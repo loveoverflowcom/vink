@@ -28,9 +28,37 @@ import { documentBudget } from './document-budget.mjs';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import {
+  MANIFEST_SCHEMA_VERSION,
+  buildLaneSummary,
+  buildModalInspectionScript,
+  buildNavInspectionScript,
+  buildOverflowInspectionScript,
+  buildTargetGeometryScript,
+  classifyTextScaleLane,
+  collectElementAccessibility,
+  collectSourceIdentity,
+  evaluateAccessibleElement,
+  evaluateLeaveModalBranch,
+  evaluateMePanelReservation,
+  evaluateNavAlignment,
+  evaluateOverflowReport,
+  evaluateTargetGeometry,
+  parsePngMetadata,
+  validateCaptureScene,
+  validateManifestRecord,
+} from './visual-evidence.mjs';
 
 const SAMPLE_WORK = '33333333-3333-4333-8333-333333333333';
 const BUILD_SHA = process.env.GITHUB_SHA ?? execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+const SOURCE_IDENTITY = collectSourceIdentity({ buildSha: BUILD_SHA });
+const EVIDENCE_STATE = {
+  lanes: {
+    appAppearanceControl: 'NOT_RUN',
+    domOverrideGeometryOnly: 'NOT_RUN',
+  },
+  negativeControls: {},
+};
 const PUBLISHED_LINE = 'Phố cũ mưa giăng sợi mỏng,';
 const INDENTED_LINE = '    đã theo mưa về rất lâu.';
 const DRAFT_ONLY_LINE = 'Khổ đang viết dở — chưa công khai.';
@@ -143,8 +171,13 @@ async function quietListSurfaces(page, selector, scenario) {
 
 async function bottomNavigationGeometry(page, scenario) {
   if (!await page.eval(`document.querySelector('.vk-ui-bottom-nav').getClientRects().length > 0`)) return;
-  await page.eval(`document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))`);
-  await page.waitFor(`Math.abs(parseFloat(getComputedStyle(document.querySelector('.vk-ui-scaffold')).getPropertyValue('--vk-ui-bar-height')) - document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().height) < 1`, 'bottom bar resize clearance');
+  const hydrated = await page.eval(`document.documentElement.dataset.hydrated === 'true'`);
+  if (hydrated) {
+    await page.eval(`document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))`);
+    await page.waitFor(`Math.abs(parseFloat(getComputedStyle(document.querySelector('.vk-ui-scaffold')).getPropertyValue('--vk-ui-bar-height')) - document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().height) < 1`, 'bottom bar resize clearance');
+  } else {
+    await page.eval(`document.fonts.ready`);
+  }
   check(await page.eval(`(() => {
     const bar = document.querySelector('.vk-ui-bottom-nav'), b = bar.getBoundingClientRect();
     const links = [...bar.querySelectorAll('a')];
@@ -166,21 +199,32 @@ async function bottomNavigationGeometry(page, scenario) {
 async function bottomNavigationAlignment(page, scenario) {
   if (!await page.eval(`document.querySelector('.vk-ui-bottom-nav').getClientRects().length > 0`)) return;
   await bottomNavigationGeometry(page, scenario);
-  const geometry = await page.eval(`(() => [...document.querySelectorAll('.vk-ui-bottom-nav a')].map(a => {
-    const target = a.getBoundingClientRect(), icon = a.querySelector('.vk-ui-icon').getBoundingClientRect();
-    const label = a.querySelector('.vk-ui-nav-item__label'), style = getComputedStyle(label);
-    const range = document.createRange(); range.selectNodeContents(label);
-    const first = [...range.getClientRects()].find(r => r.width > 0 && r.height > 0);
-    return { name: label.textContent, x: target.x, y: target.y, width: target.width, height: target.height,
-      iconCenterY: icon.y + icon.height / 2, firstLineY: first?.y,
-      font: style.font, lineHeight: style.lineHeight };
-  }))()`);
-  check(geometry.length === 3 && geometry.every(g => Number.isFinite(g.firstLineY)) &&
-    ['y', 'width', 'height', 'iconCenterY', 'firstLineY'].every(key =>
-      Math.max(...geometry.map(g => g[key])) - Math.min(...geometry.map(g => g[key])) <= 1) &&
-    geometry.every(g => g.font === geometry[0].font && g.lineHeight === geometry[0].lineHeight),
-  `${scenario}: equal targets, icon centres and first label lines align within 1px: ${JSON.stringify(geometry)}`);
-  return geometry;
+  const inspected = await page.eval(buildNavInspectionScript('.vk-ui-bottom-nav'));
+  const evalResult = evaluateNavAlignment(inspected.items, { tolerancePx: 1, maxLines: 2, checkSameRow: true, expectedCount: 3 });
+  check(evalResult.ok, `${scenario}: equal targets, icon centres, first label lines and label font align within 1px: ${evalResult.reasons.join('; ') || JSON.stringify({ iconDelta: evalResult.maxIconCenterDelta, firstLineDelta: evalResult.maxFirstLineDelta, lineCounts: evalResult.lineCounts })}`);
+  const toiAx = await collectElementAccessibility(page, '.vk-ui-bottom-nav a[href="/toi"]');
+  const routePath = await page.eval(`location.pathname`);
+  const toiAxEval = evaluateAccessibleElement(toiAx, {
+    role: 'link',
+    name: 'Tôi',
+    excludeSubstrings: ['TT', '•'],
+    ariaCurrent: routePath === '/toi' ? 'page' : null,
+  });
+  check(toiAxEval.ok, `${scenario}: Tôi AX name excludes decorative initials (${JSON.stringify({ axName: toiAx.ax.name, rawText: toiAx.rawTextContent, ariaCurrent: toiAx.dom.ariaCurrent })})${toiAxEval.reasons.length ? ' -> ' + toiAxEval.reasons.join('; ') : ''}`);
+  const overflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({ containers: ['.vk-ui-bottom-nav'] })));
+  check(overflow.ok, `${scenario}: bottom bar and page have no unintended/hidden overflow${overflow.reasons.length ? ': ' + overflow.reasons.join('; ') : ''}`);
+  return inspected.items.map((item) => ({
+    name: item.labelText,
+    x: item.x,
+    y: item.y,
+    width: item.width,
+    height: item.height,
+    iconCenterY: item.iconCenterY,
+    firstLineY: item.firstLineY,
+    font: item.labelFont,
+    lineHeight: item.labelLineHeight,
+    lineCount: item.lineCount,
+  }));
 }
 
 async function bottomNavigationRegression(page) {
@@ -189,16 +233,28 @@ async function bottomNavigationRegression(page) {
     await page.goto(`${args.base}/toi`);
     await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'navigation hydration');
     await chooseTheme(page, theme, 'page-theme');
-    for (const width of [320, 390]) {
+    for (const width of [320, 360, 390]) {
       await page.viewport(width);
       for (const scale of [100, 200]) {
         let reference;
         for (const route of ['/toi', '/', '/ban-viet']) {
           await page.goto(`${args.base}${route}`);
-          await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'navigation route hydration');
+          await page.waitFor(
+            `document.documentElement.dataset.hydrated === 'true'` +
+              (route === '/ban-viet'
+                ? ` && Boolean(document.querySelector('#draft-scope')) && document.querySelector('#draft-scope').textContent !== 'Đang tìm tác phẩm…'`
+                : ''),
+            'navigation route hydration',
+          );
           await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
-          const name = `nav-${route === '/' ? 'explore' : route.slice(1)}-${width}-${scale}-${theme}`;
-          await page.capture(name);
+          const slug = route === '/' ? 'explore' : route.slice(1);
+          const name = `nav-${slug}-${width}-${scale}-${theme}`;
+          await page.capture(name, {
+            scenario: `bottom-nav-${width}x900`,
+            requestedScene: { width, height: 900, scale, theme },
+            requiredTargets: ['.vk-ui-bottom-nav', '.vk-ui-bottom-nav a[href="/toi"]'],
+            boundary: 'Chrome-CDP-dom-override-geometry',
+          });
           const geometry = await bottomNavigationAlignment(page, name);
           // Routes may add/remove the desktop scrollbar; compare their vertical tracks.
           if (reference) check(geometry.every((g, i) => ['y', 'height', 'iconCenterY', 'firstLineY'].every(k => Math.abs(g[k] - reference[i][k]) <= 1)), `${name}: selected route preserves geometry`);
@@ -216,7 +272,82 @@ async function bottomNavigationRegression(page) {
         }
       }
     }
+    // Explicit 800-height mobile nav verification: never silently substitute 900-height captures.
+    for (const width of [320, 360, 390]) {
+      await page.viewport(width, 800);
+      await page.goto(`${args.base}/ban-viet`);
+      await page.waitFor(
+        `document.documentElement.dataset.hydrated === 'true' && Boolean(document.querySelector('#draft-scope')) && document.querySelector('#draft-scope').textContent !== 'Đang tìm tác phẩm…'`,
+        `800-height nav hydration (${width})`,
+      );
+      await page.eval(`document.documentElement.style.fontSize = '200%'; scrollTo(0, 0)`);
+      await page.capture(`nav-ban-viet-${width}x800-200-${theme}`, {
+        scenario: `bottom-nav-${width}x800`,
+        requestedScene: { width, height: 800, scale: 200, theme },
+        requiredTargets: ['.vk-ui-bottom-nav', '.vk-ui-bottom-nav a[href="/toi"]'],
+        boundary: 'Chrome-CDP-dom-override-geometry',
+      });
+      await bottomNavigationAlignment(page, `nav-ban-viet-${width}x800-200-${theme}`);
+    }
   }
+  // Before-hydration vs after-hydration check for Tôi AX name and alignment at 360x800.
+  const preErrors = page.errors.length;
+  await page.viewport(360, 800);
+  await page.send('Network.setBlockedURLs', { urls: [`${args.base}/pkg/vink.js*`, `${args.base}/pkg/vink_bg.wasm*`] });
+  try {
+    await page.goto(`${args.base}/toi`);
+    await page.eval(`document.documentElement.style.fontSize = '200%'; scrollTo(0, 0)`);
+    await page.capture('nav-toi-360x800-200-light-before-hydration', {
+      scenario: 'bottom-nav-before-hydration',
+      hydrationPhase: 'before-hydration',
+      state: 'before-hydration',
+      requestedScene: { width: 360, height: 800, scale: 200, hydrationPhase: 'before-hydration' },
+      requiredTargets: ['.vk-ui-bottom-nav', '.vk-ui-bottom-nav a[href="/toi"]'],
+      boundary: 'no-js-bootstrap-pre-hydration',
+    });
+    await bottomNavigationAlignment(page, 'nav-toi-360x800-200-before-hydration');
+  } finally {
+    await page.send('Network.setBlockedURLs', { urls: [] });
+    for (const deadline = Date.now() + 2000; page.errors.length < preErrors + 1 && Date.now() < deadline;) await sleep(50);
+    const blocked = page.errors.splice(preErrors);
+    check(blocked.every((e) => /Failed to fetch dynamically imported module|Importing a module script failed|ERR_BLOCKED_BY_CLIENT/.test(e)),
+      `before-hydration nav check produces only expected blocked imports: ${JSON.stringify(blocked)}`);
+  }
+  await page.goto(`${args.base}/toi`);
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'after-hydration nav check');
+  await page.waitFor(`document.querySelector('.vk-ui-bottom-nav a[href="/toi"] [data-kind=account]')?.dataset.initials === 'TT'`, 'nav avatar initials hydrated');
+  await page.eval(`document.documentElement.style.fontSize = '200%'; scrollTo(0, 0)`);
+  await bottomNavigationAlignment(page, 'nav-toi-360x800-200-after-hydration');
+
+  // Browser negative controls: misaligned first line and altered accessible name (Tôi -> TTTôi).
+  try {
+    await page.eval(`document.querySelector('.vk-ui-bottom-nav a[href="/toi"] .vk-ui-nav-item__label').style.paddingTop = '18px'`);
+    const badNav = await page.eval(buildNavInspectionScript('.vk-ui-bottom-nav'));
+    const badNavEval = evaluateNavAlignment(badNav.items, { tolerancePx: 1 });
+    check(!badNavEval.ok && badNavEval.reasons.some(r => r.includes('firstLineY')), 'negative control: browser oracle rejects misaligned nav first line');
+    await page.eval(`(() => {
+      const av = document.querySelector('.vk-ui-bottom-nav a[href="/toi"] .vk-nav-account-avatar');
+      av.removeAttribute('aria-hidden');
+      for (const hidden of av.querySelectorAll('[aria-hidden]')) hidden.removeAttribute('aria-hidden');
+    })()`);
+    const badAx = await collectElementAccessibility(page, '.vk-ui-bottom-nav a[href="/toi"]');
+    const badAxEval = evaluateAccessibleElement(badAx, { role: 'link', name: 'Tôi', excludeSubstrings: ['TT', '•'] });
+    check(!badAxEval.ok && String(badAx.ax.name).includes('TT'), `negative control: Chrome AX oracle catches altered accessible name (${badAx.ax.name})`);
+    EVIDENCE_STATE.negativeControls.misalignedNavFirstLine = 'PASS';
+    EVIDENCE_STATE.negativeControls.alteredAccessibleName = 'PASS';
+  } finally {
+    await page.eval(`(() => {
+      const lbl = document.querySelector('.vk-ui-bottom-nav a[href="/toi"] .vk-ui-nav-item__label');
+      if (lbl) lbl.style.paddingTop = '';
+      const av = document.querySelector('.vk-ui-bottom-nav a[href="/toi"] .vk-nav-account-avatar');
+      if (av) {
+        av.setAttribute('aria-hidden', 'true');
+        const inner = av.querySelector('[data-kind=account]');
+        if (inner) inner.setAttribute('aria-hidden', 'true');
+      }
+    })()`);
+  }
+
   // Font-size and viewport changes above exercise ResizeObserver after hydration.
   await page.eval(`document.documentElement.style.fontSize = ''`);
   await page.viewport(834);
@@ -309,7 +440,7 @@ class Page {
     return result.result.value;
   }
 
-  async waitFor(expression, what, timeout = 20000) {
+  async waitFor(expression, what, timeout = 35000) {
     const deadline = Date.now() + timeout;
     while (Date.now() < deadline) {
       try {
@@ -344,7 +475,15 @@ class Page {
     mkdirSync(dir, { recursive: true });
     const png = Buffer.from(data, 'base64');
     writeFileSync(join(dir, `${name}.png`), png);
+    const pngMeta = parsePngMetadata(png);
+    const requiredTargets = Array.isArray(evidence.requiredTargets)
+      ? evidence.requiredTargets
+      : typeof evidence.target === 'string'
+        ? [evidence.target]
+        : [];
+    const scrollSelector = typeof evidence.scrollSelector === 'string' ? evidence.scrollSelector : null;
     const context = await this.eval(`(() => {
+      const root = document.documentElement;
       const geometry = selector => {
         const el = document.querySelector(selector);
         if (!el || !el.getClientRects().length) return null;
@@ -356,9 +495,101 @@ class Page {
         const range = document.createRange(); range.selectNodeContents(rowTitle);
         return new Set([...range.getClientRects()].filter(r => r.width > 0).map(r => Math.round(r.top))).size;
       })() : null;
-      return { route: location.pathname, width: innerWidth, layoutWidth: document.documentElement.clientWidth, height: innerHeight, dpr: devicePixelRatio, scrollX, scrollY,
-        theme: document.documentElement.dataset.theme || 'system', fontSize: getComputedStyle(document.documentElement).fontSize, userAgent: navigator.userAgent,
-        appearance: { effectiveTheme: document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), osTheme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light', hydrated: document.documentElement.dataset.hydrated === 'true', rail: geometry('.vk-ui-rail'), railScrollWidth: document.querySelector('.vk-ui-rail')?.scrollWidth, railClientWidth: document.querySelector('.vk-ui-rail')?.clientWidth, pageChoice: document.querySelector('#page-theme input:checked')?.value, overlayChoice: document.querySelector('#overlay-theme input:checked')?.value, overlayOpen: document.querySelector('#profile-menu')?.open, overlayScroll: document.querySelector('#profile-menu')?.scrollTop, overlay: geometry('#profile-menu'), account: geometry('#page-account'), themeGroup: geometry('#page-theme') },
+      const explicitOwner = ${JSON.stringify(scrollSelector)} ? document.querySelector(${JSON.stringify(scrollSelector)}) : null;
+      const openDialog = document.querySelector('dialog[open]');
+      const ownerEl = explicitOwner || (openDialog && openDialog.scrollHeight > openDialog.clientHeight ? openDialog : null) || document.scrollingElement || root;
+      const ownerStyle = getComputedStyle(ownerEl);
+      const navSnapshot = (containerSelector) => {
+        const container = document.querySelector(containerSelector);
+        if (!container || !container.getClientRects().length) return [];
+        const containerFont = getComputedStyle(container).font;
+        return [...container.querySelectorAll('.vk-ui-nav-item')].map(a => {
+          const r = a.getBoundingClientRect();
+          const iconEl = a.querySelector('.vk-ui-icon');
+          const iconR = iconEl ? iconEl.getBoundingClientRect() : null;
+          const labelEl = a.querySelector('.vk-ui-nav-item__label') ?? a;
+          const labelRect = labelEl.getBoundingClientRect();
+          const labelStyle = getComputedStyle(labelEl);
+          const range = document.createRange();
+          range.selectNodeContents(labelEl);
+          const rects = [...range.getClientRects()].filter(q => q.width > 0 && q.height > 0);
+          const first = rects[0] ?? null;
+          return {
+            label: a.textContent,
+            labelText: labelEl.textContent,
+            rawTextContent: a.textContent,
+            href: a.getAttribute('href'),
+            ariaCurrent: a.getAttribute('aria-current'),
+            target: { x: r.x, y: r.y, width: r.width, height: r.height, fontSize: labelStyle.fontSize, lineHeight: labelStyle.lineHeight },
+            icon: iconR ? { x: iconR.x, y: iconR.y, width: iconR.width, height: iconR.height } : null,
+            iconCenterY: iconR ? iconR.y + iconR.height / 2 : null,
+            text: { x: labelRect.x, y: labelRect.y, width: labelRect.width, height: labelRect.height, fontSize: labelStyle.fontSize, lineHeight: labelStyle.lineHeight },
+            firstLine: first ? { x: first.x, y: first.y, width: first.width, height: first.height } : null,
+            lineCount: new Set(rects.map(q => Math.round(q.top))).size,
+            labelFont: labelStyle.font,
+            labelFontSize: labelStyle.fontSize,
+            labelLineHeight: labelStyle.lineHeight,
+            containerFont,
+          };
+        });
+      };
+      const requiredSelectors = ${JSON.stringify(requiredTargets)};
+      const requiredResults = requiredSelectors.map((sel) => {
+        const el = document.querySelector(sel);
+        if (!el) return { selector: sel, present: false, visible: false, full: false, hit: false };
+        const visible = Boolean(el.checkVisibility?.({ visibilityProperty: true, opacityProperty: true }));
+        const r = el.getBoundingClientRect();
+        return { selector: sel, present: true, visible, rect: r.toJSON() };
+      });
+      const scaffold = document.querySelector('.vk-ui-scaffold');
+      const bar = document.querySelector('.vk-ui-bottom-nav');
+      const barVar = scaffold ? parseFloat(getComputedStyle(scaffold).getPropertyValue('--vk-ui-bar-height')) : null;
+      const barRect = bar && bar.getClientRects().length ? bar.getBoundingClientRect() : null;
+      return {
+        route: location.pathname,
+        width: innerWidth,
+        layoutWidth: root.clientWidth,
+        clientWidth: root.clientWidth,
+        clientHeight: root.clientHeight,
+        height: innerHeight,
+        dpr: devicePixelRatio,
+        scrollX,
+        scrollY,
+        documentScrollWidth: root.scrollWidth,
+        documentScrollHeight: root.scrollHeight,
+        hydrated: root.dataset.hydrated === 'true',
+        theme: root.dataset.theme || 'system',
+        requestedTheme: root.dataset.theme || 'system',
+        effectiveTheme: root.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
+        osTheme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+        fontSize: getComputedStyle(root).fontSize,
+        rootInlineFontSize: root.style.fontSize || '',
+        dataText: root.dataset.text || null,
+        textScale: Math.round(parseFloat(getComputedStyle(root).fontSize) / 16 * 100),
+        media: {
+          forcedColors: matchMedia('(forced-colors: active)').matches,
+          reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+          prefersColorScheme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+        },
+        fonts: {
+          body: getComputedStyle(document.body).fontFamily,
+          required: ['16px "Be Vietnam Pro"', '16px "Literata"'].map(face => ({ face, ready: document.fonts.check(face) })),
+        },
+        scrollOwner: {
+          selector: ownerEl === root ? 'html' : (ownerEl.id ? '#' + ownerEl.id : ownerEl.tagName.toLowerCase()),
+          id: ownerEl.id || null,
+          tagName: ownerEl.tagName,
+          scrollTop: ownerEl.scrollTop,
+          scrollLeft: ownerEl.scrollLeft,
+          scrollHeight: ownerEl.scrollHeight,
+          clientHeight: ownerEl.clientHeight,
+          scrollWidth: ownerEl.scrollWidth,
+          clientWidth: ownerEl.clientWidth,
+          overflowX: ownerStyle.overflowX,
+          overflowY: ownerStyle.overflowY,
+        },
+        userAgent: navigator.userAgent,
+        appearance: { effectiveTheme: root.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), osTheme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light', hydrated: root.dataset.hydrated === 'true', rail: geometry('.vk-ui-rail'), railScrollWidth: document.querySelector('.vk-ui-rail')?.scrollWidth, railClientWidth: document.querySelector('.vk-ui-rail')?.clientWidth, pageChoice: document.querySelector('#page-theme input:checked')?.value, overlayChoice: document.querySelector('#overlay-theme input:checked')?.value, overlayOpen: document.querySelector('#profile-menu')?.open, overlayScroll: document.querySelector('#profile-menu')?.scrollTop, overlay: geometry('#profile-menu'), account: geometry('#page-account'), themeGroup: geometry('#page-theme') },
         mePanel: (() => {
           const panel = document.querySelector('#profile-menu');
           const prefix = panel?.open ? 'overlay' : document.querySelector('#me') ? 'page' : null;
@@ -379,6 +610,16 @@ class Page {
           const surfaceStyle = getComputedStyle(surface);
           const region = surface.querySelector('.vk-appearance-region');
           const rows = [...region.querySelectorAll('.vk-appearance-row')];
+          const illEl = document.querySelector('#' + prefix + '-account .vk-account-illustration');
+          const illStyle = illEl ? getComputedStyle(illEl) : null;
+          const illVisible = Boolean(illEl && illEl.getClientRects().length > 0 && illStyle.display !== 'none');
+          const illRect = illVisible ? illEl.getBoundingClientRect().toJSON() : null;
+          const textBox = document.querySelector('#' + prefix + '-account .vk-account-status > div');
+          const textStyle = textBox ? getComputedStyle(textBox) : null;
+          const textBoxRect = textBox ? textBox.getBoundingClientRect() : null;
+          const h2Rect = document.querySelector('#' + prefix + '-account h2')?.getBoundingClientRect();
+          const helpRect = document.querySelector('#' + prefix + '-account .vk-ui-tone-muted')?.getBoundingClientRect();
+          const textRight = Math.max(h2Rect?.right ?? 0, helpRect?.right ?? 0);
           return { prefix, surface: bounds(prefix === 'page' ? '#me' : '#profile-menu'),
             preferences: {
               surface: bounds(preferenceSurface), padding: ['Top', 'Right', 'Bottom', 'Left'].map(side => parseFloat(surfaceStyle['padding' + side])),
@@ -404,10 +645,29 @@ class Page {
             },
             heading: bounds(prefix === 'page' ? '#me-title' : '.vk-profile-heading'),
             account: bounds('#' + prefix + '-account'), identity: bounds('#' + prefix + '-account .vk-account-status'),
+            identityContainerWidth: document.querySelector('#' + prefix + '-account .vk-account-status')?.clientWidth ?? null,
             avatar: bounds('#' + prefix + '-account .vk-ui-avatar'),
             accountText: bounds('#' + prefix + '-account .vk-account-status > div'),
             accountLabel: bounds('#' + prefix + '-account h2'),
             accountHelp: bounds('#' + prefix + '-account .vk-ui-tone-muted'),
+            illustration: illEl ? {
+              present: true,
+              visible: illVisible,
+              display: illStyle.display,
+              ariaHidden: illEl.getAttribute('aria-hidden'),
+              pointerEvents: illStyle.pointerEvents,
+              rect: illRect,
+            } : { present: false, visible: false, display: null, ariaHidden: null, pointerEvents: null, rect: null },
+            reservation: textBox ? {
+              paddingInlineEnd: parseFloat(textStyle.paddingInlineEnd),
+              accountTextContentWidth: textBox.clientWidth - parseFloat(textStyle.paddingLeft) - parseFloat(textStyle.paddingRight),
+              accountTextScrollWidth: textBox.scrollWidth,
+              accountTextClientWidth: textBox.clientWidth,
+              accountTextContentRight: textBoxRect ? textBoxRect.right - parseFloat(textStyle.paddingRight) : null,
+              textRight,
+              illustrationLeft: illRect?.left ?? null,
+              textOverlapsIllustration: Boolean(illVisible && illRect && textRight > illRect.left + 1),
+            } : null,
             appearanceHeading: bounds(prefix === 'page' ? '#page-appearance-title' : '#profile-title'),
             choices: bounds((prefix === 'page' ? '#me' : '#profile-menu') + ' .vk-appearance-region'),
             group: bounds('#' + prefix + '-theme'),
@@ -418,19 +678,83 @@ class Page {
         reader: { title: geometry('#reader-header h1'), header: geometry('#reader-header'), body: geometry('.vk-reader .vk-document') },
         editor: { status: document.querySelector('[data-testid=save-status]')?.dataset.status, toolbar: geometry('#editor-toolbar'), save: geometry('#save'), title: geometry('#draft-title'), body: geometry('[data-testid=editor-body]'), preview: geometry('#draft-preview[open]'), leave: geometry('#leave-editor[open]') },
         explore: { heading: geometry('#explore-heading'), tools: geometry('#discovery-tools'), brand: geometry('.vk-brand'), search: geometry('#public-search'), input: geometry('#public-query'), label: geometry('#public-query-label'), shell: geometry('#public-search .vk-ui-search__shell'), clear: geometry('#clear-public-search'), submit: geometry('#public-search button[type=submit]'), stream: geometry('#community-stream'), firstRow: geometry('.vk-public-row'), byline: geometry('.vk-public-row .vk-work-byline'), author: geometry('.vk-public-row .vk-ui-byline__name'), date: geometry('.vk-public-row time'), title: geometry('.vk-public-row h3'), context: geometry('#context') },
-        navigation: { bar: geometry('.vk-ui-bottom-nav'), labels: [...document.querySelectorAll('.vk-ui-bottom-nav a')].map(a => ({ label: a.textContent, target: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"]'), icon: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"] .vk-ui-icon'), text: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"] .vk-ui-nav-item__label'), firstLine: (() => { const range = document.createRange(); range.selectNodeContents(a.querySelector('.vk-ui-nav-item__label')); const r = [...range.getClientRects()].find(r => r.width > 0 && r.height > 0); return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null; })() })) },
+        navigation: {
+          bar: geometry('.vk-ui-bottom-nav'),
+          barHeightObserver: Number.isFinite(barVar) && barRect ? { cssVarHeight: barVar, measuredHeight: barRect.height, delta: Math.abs(barVar - barRect.height) } : null,
+          labels: navSnapshot('.vk-ui-bottom-nav'),
+          rail: navSnapshot('#navigation'),
+        },
+        targets: { required: requiredResults },
       };
     })()`);
     const manifest = join(dir, 'contexts.json');
     const contexts = readdirSync(dir).includes('contexts.json') ? JSON.parse(readFileSync(manifest, 'utf8')) : {};
-    if (evidence.editorScene) {
-      const pixels = { width: png.readUInt32BE(16), height: png.readUInt32BE(20) };
-      validateEditorCapture(name, evidence.editorScene, context, pixels);
-      context.png = { ...pixels, sha256: createHash('sha256').update(png).digest('hex') };
+    const missingTargets = (context.targets?.required ?? []).filter((t) => !t.present || !t.visible);
+    const captureStatus = missingTargets.length ? 'INCOMPLETE' : 'CAPTURED';
+    const targetError = missingTargets.length
+      ? `missing or invisible target(s): ${missingTargets.map((t) => t.selector).join(', ')}`
+      : null;
+    if (!evidence.skipSceneValidation) {
+      validateCaptureScene({
+        name,
+        requestedScene: evidence.requestedScene ?? evidence.scene ?? evidence.viewport,
+        editorScene: evidence.editorScene,
+        actual: context,
+        pngMeta,
+      });
     }
-    contexts[name] = { ...context, captured_at: new Date().toISOString(), evidence: { build: BUILD_SHA, ...evidence } };
+    const textScaleLane = classifyTextScaleLane({
+      rootInlineFontSize: context.rootInlineFontSize,
+      dataText: context.dataText,
+      explicitLane: evidence.textScaleLane,
+    });
+    if (textScaleLane === 'dom-override-geometry-only') {
+      if (EVIDENCE_STATE.lanes.domOverrideGeometryOnly === 'NOT_RUN') {
+        EVIDENCE_STATE.lanes.domOverrideGeometryOnly = 'PASS';
+      }
+    }
+    const record = {
+      schemaVersion: MANIFEST_SCHEMA_VERSION,
+      scenarioId: evidence.scenario ?? evidence.sceneId ?? name,
+      captureStatus,
+      targetError,
+      state: evidence.state ?? (context.hydrated ? 'hydrated' : 'before-hydration'),
+      viewport: {
+        width: context.width,
+        height: context.height,
+        layoutWidth: context.layoutWidth,
+        clientWidth: context.clientWidth,
+        clientHeight: context.clientHeight,
+        dpr: context.dpr,
+      },
+      requestedScene: evidence.requestedScene ?? evidence.scene ?? evidence.editorScene ?? evidence.viewport ?? null,
+      textScaleLane,
+      boundary: evidence.boundary ?? null,
+      source: SOURCE_IDENTITY,
+      png: pngMeta,
+      ...context,
+      captured_at: new Date().toISOString(),
+      evidence: { build: BUILD_SHA, textScaleLane, ...evidence },
+    };
+    contexts[name] = record;
     writeFileSync(manifest, JSON.stringify(contexts, null, 2));
-    return context;
+    writeFileSync(
+      join(dir, 'evidence-summary.json'),
+      JSON.stringify(
+        buildLaneSummary({
+          phase: args.phase,
+          captures: contexts,
+          lanes: EVIDENCE_STATE.lanes,
+          negativeControls: EVIDENCE_STATE.negativeControls,
+        }),
+        null,
+        2,
+      ),
+    );
+    if (captureStatus !== 'CAPTURED' && !evidence.allowIncomplete) {
+      throw new Error(`capture incomplete for ${name}: ${targetError}`);
+    }
+    return record;
   }
 
   async click(selector, modifiers = 0) {
@@ -535,13 +859,12 @@ class Page {
 }
 
 function validateEditorCapture(name, scene, actual, pixels) {
-  const { width, height, scale, theme } = scene;
-  if (!name.endsWith(`-${width}x${height}-${scale}-${theme}`) ||
-      actual.width !== width || actual.height !== height || actual.theme !== theme ||
-      actual.fontSize !== `${16 * scale / 100}px` ||
-      pixels.width !== width * actual.dpr || pixels.height !== height * actual.dpr) {
-    throw new Error(`editor capture dimensions or appearance disagree: ${name} ${JSON.stringify({ scene, pixels, actual: [actual.width, actual.height, actual.theme, actual.fontSize, actual.dpr] })}`);
-  }
+  validateCaptureScene({
+    name,
+    editorScene: scene,
+    actual,
+    pngMeta: pixels,
+  });
 }
 
 /** Holds draft saves (PUT) until released or failed; every other request continues. */
@@ -756,6 +1079,7 @@ async function openPage(cdp, browserContextId) {
   await page.send('Page.enable');
   await page.send('Runtime.enable');
   await page.send('Network.enable');
+  await page.send('Accessibility.enable');
   // Chrome may open its update/help tab on macOS after this target is created. Keep this
   // headless target visible/focused so keyboard events and animation frames can run.
   await page.send('Page.bringToFront');
@@ -1461,6 +1785,9 @@ function accountLayoutGeometry(context, scenario) {
   if (m.prefix === 'page') {
     check([m.accountLabel, m.accountHelp].every(r => r && r.scrollWidth <= r.clientWidth + 1),
       `${scenario}: truthful account text fits without clipping`);
+    const reservation = evaluateMePanelReservation(m);
+    check(reservation.ok,
+      `${scenario}: Me panel illustration reservation matches text padding (${reservation.reasons.join('; ')})`);
     if (context.width < 760) {
       check(near(m.surface.x, 16) && near(m.surface.width, context.layoutWidth - 32),
         `${scenario}: narrow Tôi keeps one 16px gutter on both sides`);
@@ -1658,6 +1985,45 @@ async function accountAppearance(page) {
   await page.eval(`document.querySelector('#page-theme input:checked').focus()`);
   await page.key('ArrowRight');
   await page.waitFor(`document.querySelector('#page-theme input:checked')?.value === 'light' && document.documentElement.dataset.theme === 'light'`, 'native Arrow updates page preference');
+  await page.click('#page-text label:has([value="200"])');
+  await page.waitFor(`document.documentElement.dataset.text === '200' && getComputedStyle(document.documentElement).fontSize === '32px' && localStorage.getItem('vink.ui.text') === '200'`, 'real 200% control applies root font scale on /toi');
+  const meOverflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript()));
+  check(meOverflow.ok, `AC-04 real-control 200% /toi has no unintended overflow (${meOverflow.reasons.join('; ')})`);
+  await page.click('.vk-ui-rail a[href="/"]');
+  await page.waitFor(`location.pathname === '/' && document.documentElement.dataset.text === '200' && getComputedStyle(document.documentElement).fontSize === '32px'`, '200% preference persists across client route to /');
+  const exploreOverflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript()));
+  check(exploreOverflow.ok, `AC-04 real-control 200% / has no unintended overflow (${exploreOverflow.reasons.join('; ')})`);
+  await page.click('.vk-ui-rail a[href="/ban-viet"]');
+  await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('#create-draft') && document.documentElement.dataset.text === '200' && getComputedStyle(document.documentElement).fontSize === '32px'`, '200% preference persists across client route to /ban-viet');
+  await page.reload();
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.documentElement.dataset.text === '200' && getComputedStyle(document.documentElement).fontSize === '32px'`, '200% preference survives reload on /ban-viet');
+  await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.documentElement.dataset.text === '200' && getComputedStyle(document.documentElement).fontSize === '32px'`, '200% preference persists to reader route');
+  await openProfile(page);
+  check(await page.eval(`(() => {
+    const checked = document.querySelector('#overlay-text input:checked');
+    const face = checked?.closest('label');
+    return checked?.value === '200' && Boolean(face) && getComputedStyle(face, '::after').opacity === '1';
+  })()`), 'work route overlay preserves selected 200% control and visible ::after check');
+  const workOverlayAx = await page.send('Accessibility.getFullAXTree');
+  check(workOverlayAx.nodes.some(node => !node.ignored && node.role?.value === 'radio' && node.name?.value === '200%' &&
+    node.properties?.some(prop => prop.name === 'checked' && String(prop.value?.value) === 'true')),
+    'Chrome AX exposes checked=true on 200% radio after multi-route persistence and reload');
+  const workOverflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({ containers: ['#profile-menu'] })));
+  check(workOverflow.ok, `AC-04 real-control 200% work route has no unintended overflow (${workOverflow.reasons.join('; ')})`);
+  await page.capture('appearance-control-200-work', {
+    scenario: 'AC-04-app-appearance-control',
+    state: 'text-200-route-persisted',
+    textScaleLane: 'app-appearance-control',
+    requestedScene: { width: 1440, height: 900, scale: 200, theme: 'light' },
+    requiredTargets: ['#profile-menu', '#overlay-text'],
+    boundary: 'real-local-postgresql-with-fixture-identity',
+  });
+  await page.click('#overlay-text label:has([value="100"])');
+  await page.waitFor(`!document.documentElement.dataset.text && getComputedStyle(document.documentElement).fontSize === '16px' && localStorage.getItem('vink.ui.text') === null`, 'restoring 100% via real control clears text scale');
+  await page.key('Escape');
+  await page.waitFor(`!${PROFILE_OPEN}`, 'close appearance overlay after real-control persistence test');
+  EVIDENCE_STATE.lanes.appAppearanceControl = 'PASS';
   await page.goto(`${args.base}/ban-viet`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'appearance utility host');
   await openProfile(page);
@@ -1855,7 +2221,25 @@ async function railReview(page) {
     await page.eval(`document.activeElement?.blur(); document.querySelector('#navigation').scrollTop = 0`);
     const name = `rail-r1-${width}x${height}-${railWidth}-${theme}-text${scale}`;
     await assertExploreHeader(page, name);
-    await page.capture(name);
+    const railNav = await page.eval(buildNavInspectionScript('#navigation'));
+    check(railNav.present && railNav.items.length === 3, `${name}: #navigation renders all 3 .vk-ui-nav-item links`);
+    const baseLabel = railNav.items[0];
+    check(railNav.items.every(item => item.wordsIntact && item.lineCount <= 2 && item.labelScrollWidth <= item.labelClientWidth + 1 &&
+      item.labelFont === baseLabel?.labelFont && item.labelLineHeight === baseLabel?.labelLineHeight),
+      `${name}: rail nav labels keep Vietnamese words intact, consistent font, and <= 2 lines`);
+    const axProfile = await collectElementAccessibility(page, '#profile-trigger');
+    const axProfileEval = evaluateAccessibleElement(axProfile, { role: 'button', name: 'Tôi', excludeSubstrings: ['TT', '•'] });
+    check(axProfileEval.ok, `${name}: #profile-trigger AX exposes 'Tôi' without decorative badges (${axProfileEval.reasons.join('; ')})`);
+    const railOverflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({ containers: ['#navigation'] })));
+    check(railOverflow.ok, `${name}: rail and page have no unintended/hidden horizontal overflow (${railOverflow.reasons.join('; ')})`);
+    await page.capture(name, {
+      scenario: 'rail-r1',
+      requestedScene: { width, height, scale, theme },
+      textScaleLane: 'dom-override-geometry-only',
+      requiredTargets: ['#navigation', '#navigation-toggle', '#profile-trigger'],
+      railNav: { itemCount: railNav.items.length, fonts: railNav.items.map(i => i.labelFont), lineCounts: railNav.items.map(i => i.lineCount) },
+      profileAx: axProfile.ax,
+    });
     check(await page.eval(`(() => {
       const rail = document.querySelector('#navigation'), toggle = document.querySelector('#navigation-toggle');
       const centerX = rect => rect.left + rect.width / 2;
@@ -1886,14 +2270,24 @@ async function railReview(page) {
           r.left >= document.querySelector('#navigation').getBoundingClientRect().right &&
           r.top >= 0 && r.bottom <= innerHeight;
       })()`), `${name}: the focus tooltip clears the short rail`);
-      await page.capture(`${name}-tooltip`);
+      await page.capture(`${name}-tooltip`, {
+        scenario: 'rail-r1-tooltip',
+        requestedScene: { width, height, scale, theme },
+        textScaleLane: 'dom-override-geometry-only',
+        requiredTargets: ['#navigation', '#navigation-tooltip'],
+      });
       await page.key('Escape');
       for (let i = 0; i < 3; i++) await page.key('Tab');
       check(await page.eval(`(() => {
         const r = document.querySelector('#profile-trigger').getBoundingClientRect();
         return document.activeElement?.id === 'profile-trigger' && r.top >= 0 && r.bottom <= innerHeight;
       })()`), `${name}: Tab reaches and reveals Tôi at the foot`);
-      await page.capture(`${name}-account`);
+      await page.capture(`${name}-account`, {
+        scenario: 'rail-r1-account',
+        requestedScene: { width, height, scale, theme },
+        textScaleLane: 'dom-override-geometry-only',
+        requiredTargets: ['#navigation', '#profile-trigger'],
+      });
     }
   }
   await page.viewport(1440);
@@ -2112,8 +2506,9 @@ async function adaptiveShell(page) {
   await accountAppearance(page);
   await preferenceSurfaces(page);
 
-  for (const width of [1440, 1280, 1024, 834, 390, 320]) {
-    await page.viewport(width, width === 390 ? 844 : 900);
+  for (const width of [1536, 1440, 1280, 1024, 834, 390, 360, 320]) {
+    const height = width <= 360 ? 800 : width === 390 ? 844 : 900;
+    await page.viewport(width, height);
     for (const theme of ['system', 'light', 'dark']) {
       await chooseTheme(page, theme, 'page-theme');
       if (width === 1440 && theme !== 'system') await textContrast(page, theme, 'me');
@@ -2124,19 +2519,39 @@ async function adaptiveShell(page) {
         // Layout can update before glyphs repaint after a root-text change. The
         // generic capture helper also serves actual no-JS pages, so wait only here.
         await page.eval(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))`);
-        accountLayoutGeometry(await page.capture(`${width}-me-${theme}-text${scale}`), `${width}px/${scale}% ${theme}`);
+        const meMeta = {
+          scenario: 'shell-me-matrix',
+          state: `${theme}-text${scale}`,
+          requestedScene: { width, height, scale, theme },
+          textScaleLane: 'app-appearance-control',
+          requiredTargets: ['#me-title', '#page-account', '.vk-appearance-card'],
+          boundary: 'real-local-postgresql-with-fixture-identity',
+        };
+        accountLayoutGeometry(await page.capture(`${width}-me-${theme}-text${scale}`, meMeta), `${width}px/${scale}% ${theme}`);
+        const meOverflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({
+          containers: ['.vk-me', '.vk-account', '.vk-account-status', '.vk-appearance-card'],
+        })));
+        check(meOverflow.ok, `${width}px/${scale}% ${theme}: /toi has no unintended or hidden overflow (${meOverflow.reasons.join('; ')})`);
         check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), `${width}px/${scale}% ${theme}: no horizontal overflow`);
         check(await appearanceRows(page, 'page'), `${width}px/${scale}% ${theme}: appearance choices keep whole labels and touch targets`);
         if (width < 760 && scale === 200) {
           await page.eval(`document.querySelector('#page-theme-title').scrollIntoView({ block: 'start' })`);
-          await page.capture(`${width}-me-${theme}-text${scale}-appearance`);
+          await page.capture(`${width}-me-${theme}-text${scale}-appearance`, {
+            ...meMeta,
+            state: `${theme}-text${scale}-appearance`,
+            requiredTargets: ['#page-theme-title', '#page-theme'],
+          });
           await page.eval(`scrollTo(0, document.documentElement.scrollHeight)`);
           check(await page.eval(`(() => {
             const footer = document.querySelector('.vk-footer').getBoundingClientRect();
             const bar = document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect();
             return footer.bottom <= bar.top + 1;
           })()`), `${width}px/${scale}% ${theme}: final disclosure remains reachable above navigation`);
-          await page.capture(`${width}-me-${theme}-text${scale}-end`);
+          await page.capture(`${width}-me-${theme}-text${scale}-end`, {
+            ...meMeta,
+            state: `${theme}-text${scale}-end`,
+            requiredTargets: ['.vk-footer'],
+          });
           await page.eval(`scrollTo(0, 0)`);
         }
       }
@@ -2197,21 +2612,41 @@ async function appearanceFirstPaint(page) {
     await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: os }] });
     await page.eval(theme === 'system' ? `localStorage.removeItem('vink.ui.theme')` : `localStorage.setItem('vink.ui.theme', '${theme}')`);
     for (const width of [1440, 320]) {
-      await page.viewport(width);
+      await page.viewport(width, 900);
       await page.send('Network.setBlockedURLs', { urls: [`${args.base}/pkg/vink.js*`, `${args.base}/pkg/vink_bg.wasm*`] });
       await page.goto(`${args.base}/toi`);
       navigations++;
+      const toiNavSelector = width >= 760 ? '#profile-trigger' : '.vk-ui-bottom-nav a[href="/toi"]';
+      const toiAxRole = width >= 760 ? 'button' : 'link';
       for (const scale of [100, 200]) {
         await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
         const name = `appearance-first-paint-${theme}-os-${os}-${width}-text${scale}`;
-        await page.capture(name, { scenario: 'UI-REVIEW-21-first-paint', fixture: 'local-fixture-unknown-account' });
+        const firstPaintMeta = {
+          scenario: 'UI-REVIEW-21-first-paint',
+          fixture: 'local-fixture-unknown-account',
+          boundary: 'no-js-bootstrap-pre-hydration',
+          hydrationPhase: 'before-hydration',
+          requestedScene: { width, height: 900, scale, theme, hydrationPhase: 'before-hydration' },
+          requiredTargets: ['#me-title', '#page-theme'],
+          textScaleLane: 'dom-override-geometry-only',
+        };
+        await page.capture(name, firstPaintMeta);
         await page.eval(`document.querySelector('#page-theme').scrollIntoView({ block: 'end' })`);
-        await page.capture(`${name}-appearance`, { scenario: 'UI-REVIEW-21-first-paint', fixture: 'local-fixture-unknown-account' });
+        await page.capture(`${name}-appearance`, { ...firstPaintMeta, state: 'before-hydration-scrolled' });
+        if (scale === 100) {
+          const axBefore = await collectElementAccessibility(page, toiNavSelector);
+          const axBeforeEval = evaluateAccessibleElement(axBefore, { role: toiAxRole, name: 'Tôi', excludeSubstrings: ['TT', '•'] });
+          check(axBeforeEval.ok, `${name}: Tôi AX exposes 'Tôi' before hydration (${axBeforeEval.reasons.join('; ')})`);
+        }
         const state = await page.eval(`({ hydrated: document.documentElement.dataset.hydrated === 'true', theme: document.documentElement.dataset.theme || 'system', choices: ['page-theme', 'overlay-theme'].map(id => document.querySelector('#' + id + ' input:checked')?.value) })`);
         if (state.hydrated || state.theme !== theme || state.choices.some(value => value !== theme)) mismatches.push({ name, expected: theme, ...state });
       }
       await page.send('Network.setBlockedURLs', { urls: [] });
       await page.reload();
+      await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'appearance hydration after reload');
+      const axAfter = await collectElementAccessibility(page, toiNavSelector);
+      const axAfterEval = evaluateAccessibleElement(axAfter, { role: toiAxRole, name: 'Tôi', excludeSubstrings: ['TT', '•'] });
+      check(axAfterEval.ok, `first-paint reload ${theme}/${os}/${width}: Tôi AX exposes 'Tôi' after hydration (${axAfterEval.reasons.join('; ')})`);
       const hydrated = await page.eval(`({ theme: document.documentElement.dataset.theme || 'system', choices: ['page-theme', 'overlay-theme'].map(id => document.querySelector('#' + id + ' input:checked')?.value), paints: window.__appearancePaints })`);
       if (hydrated.theme !== theme || hydrated.choices.some(value => value !== theme) || hydrated.paints.some(value => value !== `${theme}:${theme}`)) mismatches.push({ name: 'hydration-' + theme + '-' + width, expected: theme, ...hydrated });
     }
@@ -2349,16 +2784,21 @@ async function captureRecovery(page, state, selector) {
   try {
     for (const theme of ['light', 'dark']) {
       await page.eval(`document.documentElement.dataset.theme='${theme}'`);
-      for (const width of [1440, 1280, 1024, 834, 390, 320]) {
-        await page.viewport(width);
+      for (const width of [1536, 1440, 1280, 1024, 834, 390, 360, 320]) {
+        const height = 900;
+        await page.viewport(width, height);
         for (const scale of [100, 200]) {
-          await page.eval(`document.documentElement.style.fontSize='${scale}%'`);
+          await page.eval(`document.documentElement.style.fontSize='${scale}%'; scrollTo(0, 0)`);
           await page.eval(`new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))`);
+          const containerBefore = await page.eval(buildTargetGeometryScript(selector));
+          check(containerBefore.present, `${state} ${width}/${scale}/${theme}: recovery container ${selector} exists before scrolling`);
           const count = await page.eval(`document.querySelector(${JSON.stringify(selector)}).querySelectorAll('button,a[href]').length`);
-          for (const index of new Set([0, count - 1])) {
-            if (index < 0) continue;
+          check(count > 0, `${state} ${width}/${scale}/${theme}: recovery container exposes at least one action`);
+          const actionSummaries = [];
+          for (let index = 0; index < count; index++) {
             await page.eval(`(() => { const el=document.querySelector(${JSON.stringify(selector)}).querySelectorAll('button,a[href]')[${index}];
-              if(document.activeElement===el) el.blur(); el?.focus(); })()`);
+              if(document.activeElement===el) el.blur(); el?.focus(); el?.setAttribute('data-vink-probe-action', '1'); })()`);
+            await page.eval(`new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))`);
             const geometry = await page.eval(`(() => {
               const el=document.activeElement,r=el.getBoundingClientRect();
               const bar=document.querySelector('.vk-ui-bottom-nav');
@@ -2379,10 +2819,46 @@ async function captureRecovery(page, state, selector) {
                 && document.documentElement.scrollWidth<=innerWidth && wordCount>0 && !brokenWords.length && primary,
                 rect:r.toJSON(),limit,scrollWidth:document.documentElement.scrollWidth,wordCount,brokenWords,background};
             })()`);
-            if (!geometry.ok) await page.capture(`recovery-failure-${state}-${width}-${scale}-${theme}`);
-            check(geometry.ok, `${state} ${width}/${scale}/${theme}: recovery ${index + 1} is reachable above navigation without horizontal overflow${index === 0 ? ' and carries primary emphasis' : ''}${geometry.ok ? '' : JSON.stringify(geometry)}`);
+            const actionTarget = await page.eval(buildTargetGeometryScript('[data-vink-probe-action="1"]'));
+            await page.eval(`document.querySelector('[data-vink-probe-action]')?.removeAttribute('data-vink-probe-action')`);
+            const targetEval = evaluateTargetGeometry(actionTarget, { requireFull: true, requireHit: true, minWidth: 44, minHeight: 44 });
+            if (!geometry.ok || !targetEval.ok) {
+              await page.capture(`recovery-failure-${state}-${width}-${scale}-${theme}`, {
+                allowIncomplete: true,
+                state: 'failure-capture',
+                target: selector,
+                requestedScene: { width, height, scale, theme },
+              });
+            }
+            check(geometry.ok && targetEval.ok, `${state} ${width}/${scale}/${theme}: recovery ${index + 1}/${count} is reachable above navigation without horizontal overflow${index === 0 ? ' and carries primary emphasis' : ''} ${JSON.stringify({ geometry, targetReasons: targetEval.reasons })}`);
+            actionSummaries.push({
+              index,
+              id: actionTarget.id,
+              visible: actionTarget.visible,
+              full: actionTarget.full,
+              hit: actionTarget.hit,
+              focused: actionTarget.focused,
+              disabled: actionTarget.disabled,
+              rect: actionTarget.rect,
+              owner: actionTarget.owner,
+            });
           }
-          await page.capture(`recovery-${state}-${width}-${scale}-${theme}`);
+          const containerAfter = await page.eval(buildTargetGeometryScript(selector));
+          const containerCheck = evaluateTargetGeometry(containerAfter, { requireFull: false, requireHit: false });
+          check(containerCheck.ok, `${state} ${width}/${scale}/${theme}: recovery container fits without horizontal overflow (${containerCheck.reasons.join('; ')})`);
+          const overflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({ containers: [selector] })));
+          check(overflow.ok, `${state} ${width}/${scale}/${theme}: recovery view has no hidden/unintended overflow (${overflow.reasons.join('; ')})`);
+          await page.capture(`recovery-${state}-${width}-${scale}-${theme}`, {
+            scenario: `recovery-${state}`,
+            state,
+            target: selector,
+            requiredTargets: [selector],
+            requestedScene: { width, height, scale, theme },
+            textScaleLane: 'dom-override-geometry-only',
+            recovery: { before: containerBefore, after: containerAfter },
+            actions: actionSummaries,
+            overflow,
+          });
         }
       }
     }
@@ -2946,42 +3422,85 @@ async function editorRecoveryScene(page, selector, scene, stem) {
   const actions = selector.includes('save-failed')
     ? ['#retry-save', '#export-failed', '#save-failure-details > summary']
     : ['#keep-mine', '#export-conflict', '#save-conflict-details > summary'];
+  const detailSelector = selector.includes('save-failed') ? '#save-failure-details' : '#save-conflict-details';
   await page.eval(`scrollTo(0, 0)`);
   await editorLayoutReady(page);
-  const before = await editorTarget(page, selector);
+  const before = await page.eval(buildTargetGeometryScript(selector));
   check(before.present, `${stem}: recovery target exists before scrolling`);
   await page.eval(`document.querySelector('${selector}').scrollIntoView({block:'start',behavior:'instant'})`);
   await editorLayoutReady(page);
-  const recovery = await editorTarget(page, selector);
-  const warning = await editorTarget(page, `${selector} .vk-ui-notice__message`);
-  check(warning.full && warning.hit && recovery.scrollWidth <= recovery.clientWidth + 1,
-    `${stem}: warning is visible and recovery fits horizontally ${JSON.stringify({ recovery, warning })}`);
+  const recovery = await page.eval(buildTargetGeometryScript(selector));
+  const recoveryCheck = evaluateTargetGeometry(recovery, { requireFull: false, requireHit: false });
+  const warning = await page.eval(buildTargetGeometryScript(`${selector} .vk-ui-notice__message`));
+  const warningCheck = evaluateTargetGeometry(warning, { requireFull: true, requireHit: false });
+  check(recoveryCheck.ok && warningCheck.ok && recovery.scrollWidth <= recovery.clientWidth + 1,
+    `${stem}: warning is visible and recovery fits horizontally ${JSON.stringify({ recovery, warning, reasons: [...recoveryCheck.reasons, ...warningCheck.reasons] })}`);
   if ([320, 390].includes(scene.width)) {
-    await captureEditorScene(page, `${stem}-warning`, scene, { before, recovery, warning });
+    await captureEditorScene(page, `${stem}-warning`, scene, {
+      state: 'recovery-warning',
+      target: selector,
+      requiredTargets: [selector, `${selector} .vk-ui-notice__message`],
+      scrollOwner: recovery.owner,
+      before,
+      recovery,
+      warning,
+    });
   }
+  const actionSummaries = [];
   for (const action of actions) {
     await page.eval(`document.querySelector(${JSON.stringify(action)}).scrollIntoView({block:'center',behavior:'instant'})`);
     await editorLayoutReady(page);
-    const revealed = await editorTarget(page, action);
-    check(fitsEditorAction(revealed), `${stem}: ${action} is visible and hit-testable ${JSON.stringify(revealed)}`);
+    const revealed = await page.eval(buildTargetGeometryScript(action));
+    const actionCheck = evaluateTargetGeometry(revealed, { requireFull: true, requireHit: true, minWidth: 44, minHeight: 44 });
+    check(fitsEditorAction(revealed) && actionCheck.ok, `${stem}: ${action} is visible and hit-testable ${JSON.stringify({ revealed, reasons: actionCheck.reasons })}`);
+    actionSummaries.push({
+      selector: action,
+      id: revealed.id,
+      visible: revealed.visible,
+      full: revealed.full,
+      hit: revealed.hit,
+      disabled: revealed.disabled,
+      disabledReason: revealed.description,
+      rect: revealed.rect,
+      scrollOwner: revealed.owner,
+    });
     if ([320, 390].includes(scene.width)) {
-      await captureEditorScene(page, `${stem}-${action.split(' ')[0].slice(1)}`, scene,
-        { recovery: await editorTarget(page, selector), action: revealed });
+      await captureEditorScene(page, `${stem}-${action.split(' ')[0].slice(1)}`, scene, {
+        state: `recovery-action-${action.split(' ')[0].slice(1)}`,
+        target: action,
+        requiredTargets: [selector, action],
+        scrollOwner: revealed.owner,
+        before,
+        recovery: await page.eval(buildTargetGeometryScript(selector)),
+        action: revealed,
+        actions: actionSummaries,
+      });
     }
   }
   await page.eval(`document.querySelector(${JSON.stringify(actions[0])}).focus()`);
   for (const action of actions.slice(1)) {
     await page.key('Tab');
-    const focused = await editorTarget(page, action);
+    const focused = await page.eval(buildTargetGeometryScript(action));
     check(fitsEditorAction(focused) && focused.focused && focused.focusRing,
       `${stem}: Tab reveals ${action} ${JSON.stringify(focused)}`);
   }
   for (const action of actions.slice(0, -1).reverse()) {
     await page.key('Tab', SHIFT);
-    const focused = await editorTarget(page, action);
+    const focused = await page.eval(buildTargetGeometryScript(action));
     check(fitsEditorAction(focused) && focused.focused && focused.focusRing,
       `${stem}: Shift+Tab reveals ${action} ${JSON.stringify(focused)}`);
   }
+  const detailBefore = await page.eval(`Boolean(document.querySelector('${detailSelector}')?.open)`);
+  await page.click(`${detailSelector} > summary`);
+  await editorLayoutReady(page);
+  const detailAfterOpen = await page.eval(`Boolean(document.querySelector('${detailSelector}')?.open)`);
+  const detailOverflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({ containers: [selector, detailSelector] })));
+  check(detailAfterOpen === !detailBefore && detailOverflow.ok,
+    `${stem}: toggling recovery details updates state cleanly without overflow (${detailOverflow.reasons.join('; ')})`);
+  await page.click(`${detailSelector} > summary`);
+  await editorLayoutReady(page);
+  const detailAfterRestore = await page.eval(`Boolean(document.querySelector('${detailSelector}')?.open)`);
+  check(detailAfterRestore === detailBefore, `${stem}: restoring recovery details returns to initial open=${detailBefore}`);
 }
 
 async function leaveActionScene(page, scene, stage, expected, disabled = []) {
@@ -2989,8 +3508,11 @@ async function leaveActionScene(page, scene, stage, expected, disabled = []) {
   const title = `${dialog} .vk-ui-dialog__title`;
   const stem = `editor-leave-${stage}`;
   const name = editorSceneName(stem, scene);
-  const read = () => Promise.all(expected.map(id => editorTarget(page, `#${id}`)));
+  const read = () => Promise.all(expected.map(id => page.eval(buildTargetGeometryScript(`#${id}`))));
   await editorLayoutReady(page);
+  const modalTop = await page.eval(buildModalInspectionScript(dialog));
+  const branchTopEval = evaluateLeaveModalBranch(modalTop, stage);
+  check(branchTopEval.ok, `${name}: leave modal branch (${stage}) passes (${branchTopEval.reasons.join('; ')})`);
   const inventory = await page.eval(`[...document.querySelectorAll('${dialog} button')].map(b => b.id)`);
   check(inventory.join() === expected.join(), `${name}: exact action inventory ${JSON.stringify(inventory)}`);
   const anatomy = await page.eval(`(() => {
@@ -3031,7 +3553,14 @@ async function leaveActionScene(page, scene, stage, expected, disabled = []) {
   const top = await read();
   const dialogRect = await page.eval(`document.querySelector('${dialog}').getBoundingClientRect().toJSON()`);
   const scrollBefore = top[0].page.scrollY;
-  await captureEditorScene(page, `${stem}-top`, scene, { stage, actions: top });
+  await captureEditorScene(page, `${stem}-top`, scene, {
+    stage,
+    canDiscard: branchTopEval.canDiscard,
+    scroll: modalTop.scroll,
+    modalActions: modalTop.actions,
+    actions: top,
+    requiredTargets: [dialog, ...expected.map(id => `#${id}`)],
+  });
 
   // Scroll inside the dialog with wheel events. The last action must be wholly visible at
   // the actual end, including when some controls above it are now outside the scrollport.
@@ -3040,26 +3569,41 @@ async function leaveActionScene(page, scene, stage, expected, disabled = []) {
       x: dialogRect.x + dialogRect.width / 2, y: dialogRect.y + dialogRect.height / 2 });
     await editorLayoutReady(page);
   }
+  const modalBottom = await page.eval(buildModalInspectionScript(dialog));
+  const branchBottomEval = evaluateLeaveModalBranch(modalBottom, stage);
+  check(branchBottomEval.ok, `${name}: leave modal bottom branch (${stage}) passes (${branchBottomEval.reasons.join('; ')})`);
   const bottom = await read();
   const last = bottom.at(-1);
   check(fitsEditorAction(last) && last.owner.id === 'leave-editor' && last.page.scrollY === scrollBefore &&
       Math.abs(last.owner.scrollHeight - last.owner.clientHeight - last.owner.scrollTop) <= 1,
     `${name}: wheel to the end reveals the last action without scrolling the page ${JSON.stringify(last)}`);
-  await captureEditorScene(page, `${stem}-bottom`, scene, { stage, actions: bottom });
+  await captureEditorScene(page, `${stem}-bottom`, scene, {
+    stage,
+    canDiscard: branchBottomEval.canDiscard,
+    scroll: modalBottom.scroll,
+    modalActions: modalBottom.actions,
+    actions: bottom,
+    requiredTargets: [dialog, ...expected.map(id => `#${id}`)],
+  });
 
   await page.eval(`document.querySelector('${title}').focus({preventScroll:true}); document.querySelector('${dialog}').scrollTop = 0`);
   for (const id of expected) {
     await page.key('Tab');
     // In confirmation, the negative tabindex heading still precedes both buttons.
-    const m = await editorTarget(page, `#${id}`);
+    const m = await page.eval(buildTargetGeometryScript(`#${id}`));
     check(fitsEditorAction(m) && m.focused && m.focusRing && m.disabled === disabled.includes(id) &&
         (!m.disabled || m.description) && m.page.scrollY === scrollBefore,
       `${name}: Tab reveals ${id} with its expected state ${JSON.stringify(m)}`);
-    await captureEditorScene(page, `${stem}-focus-${id}`, scene, { stage, action: m });
+    await captureEditorScene(page, `${stem}-focus-${id}`, scene, {
+      stage,
+      canDiscard: branchTopEval.canDiscard,
+      action: m,
+      requiredTargets: [dialog, `#${id}`],
+    });
   }
   for (const id of expected.slice(0, -1).reverse()) {
     await page.key('Tab', SHIFT);
-    const m = await editorTarget(page, `#${id}`);
+    const m = await page.eval(buildTargetGeometryScript(`#${id}`));
     check(fitsEditorAction(m) && m.focused && m.focusRing,
       `${name}: Shift+Tab reveals ${id} ${JSON.stringify(m)}`);
   }
@@ -3068,7 +3612,7 @@ async function leaveActionScene(page, scene, stage, expected, disabled = []) {
 async function editorEvidenceNegativeControls(page, scene) {
   const last = '#leave-discard';
   await page.eval(`document.querySelector('${last}').scrollIntoView({block:'center',behavior:'instant'})`);
-  const original = await editorTarget(page, last);
+  const original = await page.eval(buildTargetGeometryScript(last));
   check(fitsEditorAction(original), 'negative control starts with a reachable last action');
   try {
     await page.eval(`(() => {
@@ -3079,18 +3623,35 @@ async function editorEvidenceNegativeControls(page, scene) {
       overflow.style.cssText = 'position:absolute;top:0;left:0;width:200vw;height:1px;pointer-events:none';
       dialog.append(overflow);
     })()`);
-    const overflow = await editorTarget(page, last);
+    const overflow = await page.eval(buildTargetGeometryScript(last));
+    const hiddenOverflowEval = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({ containers: ['#leave-editor'] })));
     check(!fitsEditorAction(overflow) && overflow.owner.scrollWidth > overflow.owner.clientWidth &&
-      overflow.page.scrollX === original.page.scrollX, 'oracle rejects horizontally overflowing content inside a clipped scroll owner');
+      overflow.page.scrollX === original.page.scrollX && !hiddenOverflowEval.ok && hiddenOverflowEval.unintendedOverflows.length > 0,
+      'oracle rejects horizontally overflowing content inside a clipped scroll owner even when scrollX === 0');
+    EVIDENCE_STATE.negativeControls.overflowWithoutScrollX = 'PASS';
+
     await page.eval(`document.querySelector('#editor-overflow-fixture').remove(); document.querySelector('#leave-editor').style.overflowX=''`);
     await page.eval(`document.querySelector('${last}').style.transform='translateX(-200vw)'`);
-    const clipped = await editorTarget(page, last);
-    check(!fitsEditorAction(clipped) && clipped.page.scrollX === original.page.scrollX &&
+    const clipped = await page.eval(buildTargetGeometryScript(last));
+    const clippedEval = evaluateTargetGeometry(clipped);
+    check(!fitsEditorAction(clipped) && !clippedEval.ok && clipped.page.scrollX === original.page.scrollX &&
       clipped.page.scrollWidth === original.page.scrollWidth, 'oracle rejects a clipped action even with unchanged page scrollX and scrollWidth');
+    await page.eval(`document.querySelector('${last}').style.visibility='hidden'`);
+    const hidden = await page.eval(buildTargetGeometryScript(last));
+    const hiddenEval = evaluateTargetGeometry(hidden);
+    check(!hidden.visible && !hiddenEval.ok, 'oracle rejects a visibility:hidden target');
+    await page.eval(`document.querySelector('${last}').style.visibility=''; document.querySelector('${last}').style.transform=''`);
+    EVIDENCE_STATE.negativeControls.clippedOrHiddenTarget = 'PASS';
+
     await page.eval(`document.querySelector('${last}').id='missing-last-action'`);
-    check(!(await editorTarget(page, last)).present, 'oracle reports a missing last action, distinct from clipping');
+    const missingLastTarget = await page.eval(buildTargetGeometryScript(last));
+    const missingLastEval = evaluateTargetGeometry(missingLastTarget);
+    const missingLastModalEval = evaluateLeaveModalBranch(await page.eval(buildModalInspectionScript('#leave-editor')), 'text-conflict');
+    check(!missingLastTarget.present && missingLastEval.status === 'INCOMPLETE' && !missingLastModalEval.ok,
+      'oracle reports a missing last action distinctly from clipping');
+    EVIDENCE_STATE.negativeControls.missingLastModalAction = 'PASS';
   } finally {
-    await page.eval(`const el = document.querySelector('#missing-last-action,${last}'); el.id='leave-discard'; el.style.transform=''`);
+    await page.eval(`const el = document.querySelector('#missing-last-action,${last}'); if (el) { el.id='leave-discard'; el.style.transform=''; el.style.visibility=''; }`);
     await page.eval(`document.querySelector('#editor-overflow-fixture')?.remove(); document.querySelector('#leave-editor').style.overflowX=''`);
   }
   const { width, height, scale, theme } = scene;
@@ -3100,9 +3661,48 @@ async function editorEvidenceNegativeControls(page, scene) {
     validateEditorCapture(editorSceneName('editor-negative', { ...scene, height: height + 100 }),
       scene, actual, { width, height });
   } catch (error) {
-    rejected = error.message.includes('dimensions or appearance disagree');
+    rejected = error.message.includes('capture scene mismatch') || error.message.includes('height mismatch');
   }
-  check(rejected, 'oracle rejects a screenshot filename with the wrong viewport height');
+  let silent800Rejected = false;
+  try {
+    validateCaptureScene({
+      name: `nav-ban-viet-${width}x800-200-${theme}`,
+      requestedScene: { width, height: 800, scale: 200, theme },
+      actual: { width, height: 900, fontSize: '32px', theme, dpr: 1 },
+      pngMeta: { width, height: 900 },
+    });
+  } catch (error) {
+    silent800Rejected = error.message.includes('mismatched viewport filename') || error.message.includes('height mismatch');
+  }
+  check(rejected && silent800Rejected, 'oracle rejects silent 900-height substitution and mismatched viewport filenames');
+  EVIDENCE_STATE.negativeControls.mismatchedViewportFilename = 'PASS';
+
+  const missingScenarioTarget = await page.eval(buildTargetGeometryScript('#nonexistent-vink-target-195'));
+  const currentRoute = await page.eval('location.pathname');
+  const missingTargetEval = evaluateTargetGeometry(missingScenarioTarget);
+  const incompleteManifest = validateManifestRecord('missing-target-scene', {
+    schemaVersion: MANIFEST_SCHEMA_VERSION,
+    scenarioId: 'negative-control-missing-target',
+    captureStatus: 'INCOMPLETE',
+    state: 'failed',
+    hydrated: true,
+    route: currentRoute,
+    width,
+    layoutWidth: width,
+    height,
+    dpr: 1,
+    theme,
+    fontSize: actual.fontSize,
+    captured_at: new Date().toISOString(),
+    viewport: { width, height, layoutWidth: width, clientWidth: width, clientHeight: height, dpr: 1 },
+    scrollOwner: { tagName: 'HTML' },
+    source: { sourceSHA: SOURCE_IDENTITY.sourceSHA, dirtyInputs: SOURCE_IDENTITY.dirtyInputs },
+    png: { sha256: 'a'.repeat(64), width, height, byteSize: 128 },
+    targets: { required: [missingScenarioTarget] },
+  });
+  check(missingTargetEval.status === 'INCOMPLETE' && !incompleteManifest.ok,
+    'oracle marks missing scenario target INCOMPLETE and blocks PASS manifest certification');
+  EVIDENCE_STATE.negativeControls.missingTargetIncomplete = 'PASS';
 }
 
 async function setEditorScene(page, { width, height, scale, theme }) {
@@ -3145,10 +3745,11 @@ async function editorChrome(page) {
   await page.eval(`window.__chromeEditor = document.querySelector('.cm-editor')`);
   const geometry = async state => {
     await page.eval(`document.activeElement?.blur()`);
-    for (const width of [1440, 1024, 834, 390, 320]) {
+    for (const width of [1536, 1440, 1024, 834, 390, 360, 320]) {
       for (const scale of [100, 200]) {
         for (const theme of ['light', 'dark']) {
-          await page.viewport(width);
+          const height = 900;
+          await page.viewport(width, height);
           await page.eval(`document.documentElement.style.fontSize = '${scale}%'; document.documentElement.dataset.theme = '${theme}'; scrollTo(0, 0)`);
           await page.eval(`document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))`);
           // Closed native details can leave chip transitions idle with unresolved finished
@@ -3156,7 +3757,11 @@ async function editorChrome(page) {
           await page.waitFor(`!document.getAnimations().some(a => a.playState === 'running' && a.effect.target?.checkVisibility() && Number.isFinite(a.effect.getComputedTiming().endTime))`, 'visible editor transitions settled');
           const scenario = `editor-${state}-${width}-${scale}-${theme}`;
           if (width === 1440 && scale === 100) await textContrast(page, theme, `editor-${state}`);
-          check(await page.eval(`document.documentElement.scrollWidth <= innerWidth && ${live}`), `${scenario}: no overflow and one live EditorView`);
+          const overflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({
+            containers: ['.vk-editor', '.vk-editor-paper', '#editor-toolbar'],
+          })));
+          check(overflow.ok && await page.eval(`document.documentElement.scrollWidth <= innerWidth && ${live}`),
+            `${scenario}: no unintended overflow (${overflow.reasons.join('; ')}) and one live EditorView`);
           check(await page.eval(`(() => {
             const toolbar = document.querySelector('#editor-toolbar'), t = toolbar.getBoundingClientRect();
             return [...toolbar.querySelectorAll('button')].every(button => {
@@ -3184,7 +3789,14 @@ async function editorChrome(page) {
               getComputedStyle(document.querySelector('#editor-body-hint')).position === 'absolute';
           })()`), `${scenario}: one uninterrupted writing sheet, flat resting chrome, complete descriptions and one live status owner`);
 
-          await page.capture(scenario);
+          await page.capture(scenario, {
+            scenario: `editor-${state}`,
+            state,
+            requestedScene: { width, height, scale, theme },
+            textScaleLane: 'dom-override-geometry-only',
+            requiredTargets: ['#draft-title', '[data-testid=editor-body]', '#editor-toolbar'],
+            overflow,
+          });
           if (state === 'clean') {
             await page.waitFor(TAGS_READY, 'metadata loaded');
             check(await page.eval(`(() => {
@@ -3610,6 +4222,13 @@ async function editorChrome(page) {
   await gate.fail(await gate.next());
   await page.waitStatus('failed');
   await gate.disable();
+  await page.click('.vk-editor-heading__back');
+  await page.waitFor(`document.querySelector('#leave-editor').open`, 'leave choices in failed save state');
+  await setEditorScene(page, shortScene);
+  await leaveActionScene(page, shortScene, 'failed', conflictChoices, []);
+  await page.key('Escape');
+  await page.waitFor(`!document.querySelector('#leave-editor').open`, 'close failed leave dialog before retry reconciliation');
+  await setEditorScene(page, { width: 1440, height: 900, scale: 100, theme: 'light' });
   let heldRead = null, postDiscardWrites = 0;
   const holdRead = message => {
     if (message.sessionId !== page.sessionId || message.method !== 'Fetch.requestPaused') return;
@@ -3683,6 +4302,9 @@ async function mainPhase(page) {
   await discussionReadingAndWrites(page);
   await endorsementAsAuthor(page, { args, check });
   await adaptiveShell(page);
+  await bottomNavigationRegression(page);
+  await page.viewport(1440, 900);
+  await page.eval(`document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme; scrollTo(0, 0)`);
   await authorWorks(page, {args,check,DraftGate,sleep});
   await draftDashboard(page);
   await draftR6Hierarchy(page);
@@ -4485,10 +5107,17 @@ async function discussionR31Geometry(page, width, scale, scenario) {
   check(geometry.reasons===1 && geometry.targetReasons===0 && geometry.descriptions && geometry.shared, `${scenario}: one uniform branch reason describes every separate target`);
   check(geometry.field && geometry.radius==='28px' && geometry.buttons, `${scenario}: one native field, 28px tonal surface and reachable 48px targets`);
   check(geometry.contrast>=4.5, `${scenario}: resolved body/metadata/label contrast >=4.5 (${geometry.contrast.toFixed(2)})`);
-  if (width === 390 || width === 1440 || (width === 320 && scale === 200)) {
+  if (width === 390 || width === 360 || width === 1440 || (width === 320 && scale === 200)) {
     const scroll = await page.eval('({x:scrollX,y:scrollY})');
     await page.eval(`document.querySelector('.vk-discussion-reply-composer').scrollIntoView({block:'start'})`);
-    await page.capture(`discussion-composer-${width}-${scale}-${await page.eval('document.documentElement.dataset.theme')}`, {boundary:'intercepted-provider-contract-fixture-no-persistence'});
+    const currentTheme = await page.eval('document.documentElement.dataset.theme');
+    await page.capture(`discussion-composer-${width}-${scale}-${currentTheme}`, {
+      scenario: 'D2T-03-composer',
+      requestedScene: { width, height: 900, scale, theme: currentTheme },
+      textScaleLane: 'dom-override-geometry-only',
+      requiredTargets: ['.vk-discussion-reply-composer', '.vk-feedback-composer'],
+      boundary: 'intercepted-provider-contract-fixture-no-persistence',
+    });
     await page.eval(`window.scrollTo({left:${scroll.x},top:${scroll.y},behavior:'instant'})`);
   }
 }
@@ -4496,17 +5125,45 @@ async function discussionR31Geometry(page, width, scale, scenario) {
 async function captureDiscussionMatrix(page, name, anchor, boundary) {
   for (const theme of ['light', 'dark']) {
     await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}`);
-    for (const width of [320, 390, 834, 1024, 1440]) {
-      await page.viewport(width);
+    for (const width of [320, 360, 390, 834, 1024, 1440]) {
+      await page.viewport(width, 900);
       await page.eval(`document.documentElement.style.fontSize=''; document.querySelector(${JSON.stringify(anchor)}).scrollIntoView({block:'start'})`);
-      check(await page.eval(`document.documentElement.scrollWidth<=innerWidth+1 && document.querySelectorAll('.vk-discussion-replies .vk-discussion-replies').length===0`), `${name}/${theme}/${width}: reflows without a third reply tier`);
-      await page.capture(`discussion-${name}-${width}-${theme}`, { scenario: 'D2T-03-responsive', boundary, build: BUILD_SHA, textScale: 100 });
+      const ov100 = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({
+        containers: ['.vk-discussion-root', '.vk-discussion-thread'],
+      })));
+      check(ov100.ok && await page.eval(`document.documentElement.scrollWidth<=innerWidth+1 && document.querySelectorAll('.vk-discussion-replies .vk-discussion-replies').length===0`),
+        `${name}/${theme}/${width}: reflows without unintended overflow or a third reply tier (${ov100.reasons.join('; ')})`);
+      await page.capture(`discussion-${name}-${width}-${theme}`, {
+        scenario: 'D2T-03-responsive',
+        state: `text100-${theme}`,
+        boundary,
+        build: BUILD_SHA,
+        textScale: 100,
+        requestedScene: { width, height: 900, scale: 100, theme },
+        textScaleLane: 'dom-override-geometry-only',
+        requiredTargets: [anchor],
+        overflow: ov100,
+      });
       if (name === 'contract-fixture-flat') await discussionR31Geometry(page, width, 100, `${name}/${theme}/${width}`);
       if (width <= 390 || (width === 1440 && name === 'contract-fixture-flat')) {
         await page.eval(`document.documentElement.style.fontSize='200%'; document.querySelector(${JSON.stringify(anchor)}).scrollIntoView({block:'start'})`);
-        check(await page.eval(`document.documentElement.scrollWidth<=innerWidth+1`), `${name}/${theme}/${width}/200%: text reflows`);
+        const ov200 = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({
+          containers: ['.vk-discussion-root', '.vk-discussion-thread'],
+        })));
+        check(ov200.ok && await page.eval(`document.documentElement.scrollWidth<=innerWidth+1`),
+          `${name}/${theme}/${width}/200%: text reflows without unintended overflow (${ov200.reasons.join('; ')})`);
         if (name === 'contract-fixture-flat') await discussionR31Geometry(page, width, 200, `${name}/${theme}/${width}/200%`);
-        await page.capture(`discussion-${name}-${width}-200-${theme}`, { scenario: 'D2T-03-large-text', boundary, build: BUILD_SHA, textScale: 200 });
+        await page.capture(`discussion-${name}-${width}-200-${theme}`, {
+          scenario: 'D2T-03-large-text',
+          state: `text200-${theme}`,
+          boundary,
+          build: BUILD_SHA,
+          textScale: 200,
+          requestedScene: { width, height: 900, scale: 200, theme },
+          textScaleLane: 'dom-override-geometry-only',
+          requiredTargets: [anchor],
+          overflow: ov200,
+        });
       }
     }
   }
@@ -4597,8 +5254,8 @@ try {
 } catch (error) {
   if (activePage) {
     try {
-      await activePage.capture('failure');
-      console.error('browser context:', await activePage.eval(`({ path: location.pathname, preferences: { ...document.documentElement.dataset }, active: { tag: document.activeElement?.tagName, id: document.activeElement?.id }, selectionLength: getSelection().toString().length, view: document.querySelector('.cm-editor')?.__vinkView, status: document.querySelector('[data-testid=save-status]')?.dataset.status, errors: ${JSON.stringify(activePage.errors)} })`));
+      await activePage.capture('failure', { allowIncomplete: true, skipSceneValidation: true, state: 'failure-capture' });
+      console.error('browser context:', await activePage.eval(`({ path: location.pathname, readyState: document.readyState, preferences: { ...document.documentElement.dataset }, active: { tag: document.activeElement?.tagName, id: document.activeElement?.id }, selectionLength: getSelection().toString().length, view: document.querySelector('.cm-editor')?.__vinkView, status: document.querySelector('[data-testid=save-status]')?.dataset.status, wasmPerf: performance.getEntriesByType('resource').filter(e => e.name.includes('/pkg/')).map(e => ({ name: e.name.split('/').pop(), dur: Math.round(e.duration), status: e.responseStatus, size: e.transferSize })), errors: ${JSON.stringify(activePage.errors)} })`));
     } catch { /* Preserve the original failure if the page itself crashed. */ }
   }
   console.error(`browser-smoke: FAIL ${error.message}`);

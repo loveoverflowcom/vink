@@ -404,6 +404,7 @@ apps/vink-web/            crate vink-web: view Leptos, route, DTO riêng của w
   assets/fonts/           WOFF2 tự host, OFL, provenance.json (phục vụ tại /pkg/fonts/)
   assets/brand/           Logo selected #34 SVG/PNG, manifest, provenance (phục vụ tại /pkg/brand/)
   e2e/browser-smoke.mjs   kiểm trình duyệt qua Chrome DevTools Protocol
+  e2e/visual-evidence.mjs oracle chứng cứ trực quan, PNG/manifest/AX/overflow/modal & test (`visual-evidence.test.mjs`)
 packages/ui-system/       UI System (README owner map): shared/ tokens.json + catalog + fixtures;
   leptos/                 crate vink-ui (tokens/catalog sinh ra, UiRoot, ThemeScope, component,
                           state/feedback, navigation) + preview/
