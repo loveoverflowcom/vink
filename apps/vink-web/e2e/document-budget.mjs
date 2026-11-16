@@ -86,13 +86,15 @@ export async function documentBudget(page, { args, check }) {
       await page.viewport(1440);
       await page.goto(`${args.base}/ban-viet/${fixture.work_id}`);
       await page.waitFor(`${ready} && document.querySelector('.cm-content[contenteditable=true]')`, 'budget editor', 120000);
+      const loadedHeap = await page.send('Runtime.getHeapUsage');
+      const loadedDom = await page.send('Memory.getDOMCounters');
       const source = fixture.document.blocks.map(b => b.lines.join('\n')).join('\n\n');
       await page.eval(`window.__budgetExpected=${JSON.stringify(source)};window.__budgetView=${view}`);
       check(await page.eval(`__budgetView.state.doc.toString()===__budgetExpected`), `${fixture.case}: actual loaded buffer retains every line`);
       const snapshots = await page.eval(`(async()=>{const m=await import('/pkg/vink-editor.js');return Array.from({length:5},()=>{
         const t=performance.now(),text=m.getText({view:__budgetView,destroyed:false});
         return {ms:performance.now()-t,utf8_bytes:new TextEncoder().encode(text).length,utf16_units:text.length};});})()`);
-      const row = { case: fixture.case, snapshots, dom: await page.send('Memory.getDOMCounters'), v8_heap: await page.send('Runtime.getHeapUsage'), scenes: [] };
+      const row = { case: fixture.case, snapshots, dom: loadedDom, v8_heap: loadedHeap, scenes: [] };
       if (fixture.case === 'emoji-200000') {
         row.oversized_cache = await page.eval(String.raw`(async()=>{
           const bundle=await(await fetch('/pkg/vink.js')).text();
@@ -166,6 +168,7 @@ export async function documentBudget(page, { args, check }) {
         row.ui_conflict_preserves_buffer = true;
       }
       row.final_v8_heap = await page.send('Runtime.getHeapUsage');
+      row.final_heap_includes_test_expected_and_preserved_buffer_copies = true;
       results.editor.push(row);flush();
       // The listener accepts native beforeunload only in this synthetic scratch context.
     }
