@@ -8,7 +8,7 @@ use leptos_router::hooks::use_params_map;
 
 use vink_ui::{
     ActionState, ActionSurface, Announce, Button, ButtonKind, ButtonVariant, ChoiceOption,
-    EmptyKind, FieldVariant, Heading, HeadingLevel, Icon, IconName, InlineNotice, PanelContent,
+    EmptyKind, FieldVariant, Heading, HeadingLevel, IconName, InlineNotice, PanelContent,
     PanelKind, PlainTooltip, ProblemKind, SearchField, SearchVariant, Select, StatePanel,
     SupportingDetails, TextField, Tone, TooltipIconButton, TypeRole,
 };
@@ -1172,8 +1172,8 @@ fn Editor(draft: Draft) -> impl IntoView {
                     </>
                 }.into_any())
                 utilities=std::sync::Arc::new(move || view! {
-                    <Button variant=ButtonVariant::Text id="export" on_press=move |_| export()>
-                        <Icon name=IconName::Download />"Tải bản thảo (.txt)"
+                    <Button variant=ButtonVariant::Text leading=IconName::Download id="export" on_press=move |_| export()>
+                        "Tải bản thảo (.txt)"
                     </Button>
                 }.into_any())>
                     <TooltipIconButton id="preview" icon=IconName::Visibility label="Xem trước"
