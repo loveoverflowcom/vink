@@ -1422,6 +1422,7 @@ async function textContrast(page, theme, surface = 'shell') {
     if (surface === 'editor-conflict') list.push('#save-recovery-jump');
     return list;
   })() : {
+    'tag-rescue': ['#export-tags'],
     desk: ['.vk-desk-heading .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-search input', '#draft-sort', '#draft-sort-label', '#draft-scope'],
     explore: ['#public-query', '#explore-heading h1', '.vk-explore__heading p', '#public-query-help', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '#works-title', '.vk-public-scope', '.vk-discovery-filter-form legend', '.vk-discovery-options .vk-ui-choice__label'],
     filter: ['#modal-tag-help', '#modal-tag-form button[type=submit]'],
@@ -4203,6 +4204,41 @@ async function draftTags(page, workId) {
   const tagConflictScene = { width: 320, height: 800, scale: 200, theme: 'dark' };
   const beforeScene = await page.eval(`({width:innerWidth,height:innerHeight,font:document.documentElement.style.fontSize,theme:document.documentElement.dataset.theme ?? null})`);
   await setEditorScene(page, tagConflictScene);
+  const tagRescue = await page.eval(`(() => {
+    const actions = [...document.querySelectorAll('button')].filter(el =>
+      /Tải.*\\.txt/.test(el.textContent) && el.checkVisibility() && !el.closest('details,dialog'));
+    return actions.map(el => '#' + el.id);
+  })()`);
+  check(tagRescue.length > 0, 'tag-only conflict keeps a direct text download outside closed tools (AC-03)');
+  for (const width of [320,390]) for (const scale of [100,200]) for (const theme of ['light','dark']) {
+    const scene = {width,height:800,scale,theme};
+    await setEditorScene(page, scene);
+    await page.eval(`document.querySelector('#tags-keep-mine').focus()`);
+    await page.key('Tab');
+    const action = await editorTarget(page, '#export-tags');
+    if (width===320 && scale===100) await textContrast(page, theme, 'tag-rescue');
+    check(fitsEditorAction(action) && action.focused && action.focusRing && action.rect.width>=48 && action.rect.height>=48,
+      `tag recovery ${width}/${scale}/${theme}: Tab reaches a complete direct 48px download`);
+    if (width===320 && scale===200) await captureEditorScene(page, 'tag-recovery-export', scene, {action});
+  }
+  await setEditorScene(page, tagConflictScene);
+  const textBeforeRescue = await page.draft(workId);
+  const exportBody = await page.body();
+  const exportTitle = await page.eval(`document.querySelector('#draft-title').value`);
+  const rescueDownloads = mkdtempSync(join(tmpdir(), 'vink-tag-rescue-'));
+  page.cdp.listeners.push(countPuts);
+  try {
+    await page.cdp.send('Browser.setDownloadBehavior', {behavior:'allow',downloadPath:rescueDownloads,eventsEnabled:true});
+    const beforePuts = puts;
+    await page.click('#export-tags');
+    const file = await downloaded(rescueDownloads);
+    check(file.text===exportTitle+'\n\n'+exportBody+'\n' && puts===beforePuts &&
+      (await page.draft(workId)).version===textBeforeRescue.version && (await draftTagsOf(page,workId)).version===3,
+      'tag conflict rescue exports live text without saving text, overwriting tags or submitting the form');
+  } finally {
+    page.cdp.listeners = page.cdp.listeners.filter(item => item !== countPuts);
+    rmSync(rescueDownloads,{recursive:true,force:true});
+  }
   await page.click('.vk-editor-heading__back');
   await page.waitFor(`document.querySelector('#leave-editor').open`, 'leave with tag conflict');
   await leaveActionScene(page, tagConflictScene, 'tag-conflict',
@@ -4248,6 +4284,8 @@ async function draftTags(page, workId) {
   check(stored.version === 5, 'the dropped answer belonged to a committed save');
   check((await page.eval(`location.pathname`)) === editorPath, 'a lost tag acknowledgement keeps the author in the editor');
   await page.click('#leave-stay');
+  check(await page.eval(`document.querySelector('[data-testid=tag-failed] #export-tags')?.checkVisibility() && !document.querySelector('#export-tags').closest('details,dialog')`),
+    'uncertain tag save also keeps direct export outside tools');
   await page.click('#tags-retry');
   await waitTagStatus(page, 'unsaved', 'reconciled version with a newer local selection');
   stored = await draftTagsOf(page, workId);

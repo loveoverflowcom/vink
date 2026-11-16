@@ -73,6 +73,10 @@ title luôn có đường tới; không bắt mọi thứ nằm trên màn đầ
 
 - `apps/vink-web/src/pages/desk.rs`: compose tools/export; đóng tools trước preview.
   `DraftSession`, `project_save_slot`, save protocol và `LeaveGuard` giữ nguyên.
+- `apps/vink-web/src/pages/work_info.rs`: vùng lỗi tải/lưu, từ chối và xung đột thẻ
+  có `Tải chữ (.txt)` trực tiếp ngoài disclosure. Callback dùng cùng live-buffer
+  export của Editor; tệp chứa tiêu đề/chữ, không sao lưu thẻ. Bổ sung từ review #246
+  vì chuyển utility vào Thêm đã che lối tải khi chỉ thẻ gặp lỗi (AC-03).
 - `packages/vink-patterns/leptos/{src/lib.rs,patterns.css}`: opt-in anatomy/surface,
   native disclosure; preview `screen.editor` là sample, không backend/CodeMirror thật.
 - `apps/vink-web/style/vink.css`: scoped canvas/paper, context spacing và document flow.
@@ -84,7 +88,7 @@ title luôn có đường tới; không bắt mọi thứ nằm trên màn đầ
   utility type và default consumer compatibility.
 
 Presentation không đổi state transition/domain model; không tạo Quint/registry song song.
-WorkInfo/PublicationPanel không đổi code. Các kiểm bản thân publication không là claim
+WorkInfo chỉ bổ sung action cứu chữ; PublicationPanel không đổi code. Các kiểm bản thân publication không là claim
 quyền công khai mới. Ma trận DOM scaling/zoom khác ma trận chọn cài đặt app; báo riêng.
 
 Bằng chứng local, paired captures đã mở và bảng năm chiều được ghi ở

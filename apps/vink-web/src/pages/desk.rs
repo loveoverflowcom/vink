@@ -1272,7 +1272,8 @@ fn Editor(draft: Draft) -> impl IntoView {
             </div>
             <div class="vk-editor-work-info" on:focusin=move |_| last_field.set_value(Field::Tags)>
                 <crate::pages::work_info::WorkInfo work_id=work_id.get_value() session labels
-                    on_save=Callback::new(move |()| save()) tag_load=tag_load />
+                    on_save=Callback::new(move |()| save())
+                    on_export=Callback::new(move |()| export()) tag_load=tag_load />
             </div>
             <crate::pages::publication::PublicationPanel work_id=work_id.get_value() session
                 on_save=Callback::new(move |()| save())
