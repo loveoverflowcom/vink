@@ -76,6 +76,10 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     for (const [width,scale,theme] of [[390,100,'light'],[320,200,'dark']]) {
       await page.viewport(width);
       await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}; document.documentElement.style.fontSize='${scale}%'; document.fonts.ready`);
+      // Theme changes animate action colors; inspect the settled surface, not an in-flight frame.
+      await page.eval("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
+      await page.eval("Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))");
+      await textContrast(page, theme, 'filter');
       check(await page.eval(`(() => {
         const form=document.querySelector('#modal-tag-form'), help=document.getElementById(form.getAttribute('aria-describedby'));
         return help.textContent==='Khớp tất cả thẻ · Tối đa 4' && help.getBoundingClientRect().width>0 &&
