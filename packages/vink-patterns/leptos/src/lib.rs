@@ -177,15 +177,56 @@ pub fn AuthorWorkRow(#[prop(into)] work: Signal<AuthorWorkSummary>) -> impl Into
 pub fn EditorToolbar(
     #[prop(into)] status: Signal<String>,
     #[prop(into)] status_token: Signal<String>,
+    #[prop(optional, into)] status_problem: Option<Signal<Option<String>>>,
     #[prop(optional, into)] status_detail: Option<Signal<String>>,
+    #[prop(optional)] save_action: Option<ChildrenFn>,
     children: Children,
 ) -> impl IntoView {
+    let problem = move || status_problem.and_then(|value| value.get());
     view! {
         <div class="vk-editor-toolbar">
-            <div class="vk-editor-toolbar__status">
-                <p class="vk-save-status" role="status" aria-live="polite" aria-atomic="true" data-testid="save-status" data-status=move || status_token.get()>
-                    {move || status.get()}
-                </p>
+            <div
+                id="save-slot"
+                class="vk-editor-toolbar__status vk-save-slot"
+                data-status=move || status_token.get()
+                data-problem=problem
+            >
+                <span class="vk-save-slot__readout">
+                    <Show when=move || {
+                        matches!(
+                            status_token.get().as_str(),
+                            "saved" | "failed" | "conflict"
+                        )
+                    }>
+                        <span class="vk-save-slot__icon" aria-hidden="true">
+                            {move || {
+                                let token = status_token.get();
+                                let kind = problem();
+                                match token.as_str() {
+                                    "saved" => view! { <Icon name=IconName::Check size=IconSize::Small /> }.into_any(),
+                                    "conflict" => view! { <Icon name=IconName::Warning size=IconSize::Small /> }.into_any(),
+                                    "failed" if kind.as_deref() == Some("uncertain") => {
+                                        view! { <Icon name=IconName::Warning size=IconSize::Small /> }.into_any()
+                                    }
+                                    "failed" => view! { <Icon name=IconName::Error size=IconSize::Small /> }.into_any(),
+                                    _ => ().into_any(),
+                                }
+                            }}
+                        </span>
+                    </Show>
+                    <p
+                        class="vk-save-status"
+                        role="status"
+                        aria-live="polite"
+                        aria-atomic="true"
+                        data-testid="save-status"
+                        data-status=move || status_token.get()
+                        data-problem=problem
+                    >
+                        {move || status.get()}
+                    </p>
+                </span>
+                {save_action.map(|action| view! { <div class="vk-save-slot__action">{action()}</div> })}
                 {status_detail.map(|detail| view! {
                     <SupportingDetails id="editor-save-details" summary="Chi tiết trạng thái lưu" compact=true>
                         <p>{move || detail.get()}</p>

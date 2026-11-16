@@ -762,12 +762,6 @@
     },
     {
       "path": "apps/vink-web/style/vink.css",
-      "declaration": "font-size: 0.9375rem",
-      "owner": "Editor save status",
-      "reason": "15px feature status; migrate when save status adopts shared badge anatomy."
-    },
-    {
-      "path": "apps/vink-web/style/vink.css",
       "declaration": "transition-duration: 0.01ms !important",
       "owner": "Web reduced-motion fallback",
       "reason": "Near-zero finite transition compatibility; remove once all app transitions use shared motion."

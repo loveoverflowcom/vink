@@ -22,7 +22,7 @@ pub const QUERY_ID: &str = "work-tags-query";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
-enum TagLoad {
+pub enum TagLoad {
     Loading,
     Ready,
     Failed(Failure),
@@ -34,9 +34,10 @@ pub fn WorkInfo(
     session: RwSignal<DraftSession>,
     labels: RwSignal<TagLabels>,
     #[prop(into)] on_save: Callback<()>,
+    #[prop(optional)] tag_load: Option<RwSignal<TagLoad>>,
 ) -> impl IntoView {
     let work_id = StoredValue::new(work_id);
-    let load = RwSignal::new(TagLoad::Loading);
+    let load = tag_load.unwrap_or_else(|| RwSignal::new(TagLoad::Loading));
     let catalog = RwSignal::new(CatalogFacts::Loading);
     let query = RwSignal::new(QueryState::<TagSuggestion>::default());
 

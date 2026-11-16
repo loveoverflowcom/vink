@@ -235,6 +235,8 @@ fn serve(listener: TcpListener, site: PathBuf) {
     while !crate::lifecycle::cancelled() {
         match listener.accept() {
             Ok((stream, _)) => {
+                // Accepted sockets inherit O_NONBLOCK from a non-blocking listener on macOS/BSD.
+                let _ = stream.set_nonblocking(false);
                 let site = site.clone();
                 std::thread::spawn(move || {
                     let _ = respond(stream, &site);

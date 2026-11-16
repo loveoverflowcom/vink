@@ -335,6 +335,18 @@ impl TagSession {
         self.in_flight.as_ref().map(|(t, _)| *t)
     }
 
+    /// Version last confirmed by the server.
+    pub fn saved_version(&self) -> i64 {
+        self.base_version
+    }
+
+    /// Whether the author changed the selection after the currently in-flight save snapshot.
+    pub fn has_pending_newer_selection(&self) -> bool {
+        self.in_flight
+            .as_ref()
+            .is_some_and(|(_, submitted)| submitted != &self.current)
+    }
+
     /// The tag a refusal points at, so the view can mark that chip.
     pub fn refused_tag(&self) -> Option<&TagRefusal> {
         self.refusal.as_ref()

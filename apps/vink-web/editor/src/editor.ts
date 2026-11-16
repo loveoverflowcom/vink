@@ -40,7 +40,34 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
   let focusEpoch = 0;
   let restoringFocus = false;
   let pointerDown = false;
+  let scrollEnsureLeft = 0;
+  let scrollEnsureScheduled = false;
   const cancelFocusRestore = () => { focusEpoch++; restoringFocus = false; };
+  const ensureCaretVisible = () => {
+    if (scrollEnsureScheduled || scrollEnsureLeft <= 0 || handle.destroyed) return;
+    scrollEnsureScheduled = true;
+    requestAnimationFrame(() => {
+      scrollEnsureScheduled = false;
+      if (handle.destroyed || !handle.view.hasFocus || restoringFocus) {
+        scrollEnsureLeft = 0;
+        return;
+      }
+      const head = handle.view.state.selection.main.head;
+      const coords = handle.view.coordsAtPos(head);
+      const sticky = options.stickyAboveId ? document.getElementById(options.stickyAboveId) : null;
+      const topClearance = sticky && getComputedStyle(sticky).position === 'sticky'
+        ? Math.max(0, sticky.getBoundingClientRect().bottom)
+        : 0;
+      const hidden = !coords || coords.top < topClearance || coords.bottom > window.innerHeight;
+      if (hidden && scrollEnsureLeft > 0) {
+        scrollEnsureLeft -= 1;
+        handle.view.dispatch({ effects: EditorView.scrollIntoView(head) });
+        ensureCaretVisible();
+      } else {
+        scrollEnsureLeft = 0;
+      }
+    });
+  };
   handle.view = new EditorView({
     parent: host,
     state: EditorState.create({
@@ -106,6 +133,10 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
           focusSelection = update.view.hasFocus && !restoringFocus
             ? update.state.selection
             : focusSelection.map(update.changes);
+          if (update.view.hasFocus && !restoringFocus && update.transactions.some((tr) => tr.scrollIntoView)) {
+            scrollEnsureLeft = 2;
+            ensureCaretVisible();
+          }
           if (update.docChanged && !handle.destroyed) options.onChange();
         }),
       ],
