@@ -32,7 +32,7 @@ Commit sau chỉ ghi evidence. Build env: `CARGO_BUILD_JOBS=2` (lượt Web cu�
 | `node --check apps/vink-web/e2e/endorsement-smoke.mjs` | PASS syntax |
 | Negative oracle qua Node VM, actual 1/10/100/0 expected 1 | PASS: 10/100 bị từ chối; code cũ chấp nhận nhầm |
 | Diff / 300 relative file links / JSON lịch sử | PASS |
-| `cargo xtask verify web --scenario endorsement` | FAIL môi trường; assertions browser NOT_RUN |
+| `cargo xtask verify web --scenario endorsement` | PASS sau cleanup được ủy quyền; real PostgreSQL + Chrome, 13 assertions #226 PASS |
 | Full Web, preview Web/CMP | NOT_RUN; không đổi renderer/CSS/CMP |
 
 Các lượt Web được giữ riêng: (1) artifact lock khi quick đang chạy; (2) preflight không
@@ -49,15 +49,35 @@ bản phục hồi + manifest ở `/tmp/vink-review-242-binary-backup`. Không x
 không sửa checkout gốc hoặc worktree #204. Cluster review đã dừng, data/log giữ lại.
 Log và SHA-256: [review-verification.json](review-verification.json).
 
-Năm chiều: Functional PASS tại SSR/unit, browser NOT_RUN; Geometry/Visual/
-Accessibility-Responsive/Interaction mới NOT_RUN. Không dùng baseline cũ làm PASS mới.
+Năm chiều cho regression: Functional PASS SSR/unit/browser; Geometry và
+Accessibility/Responsive PASS theo assertions scenario; Interaction PASS cho node/focus,
+ACK/reconcile và keyboard. Visual NOT_RUN (không mở capture mới); UI mới của #226,
+OS IME/native/screen reader vẫn NOT_RUN. Không dùng baseline cũ làm PASS mới.
+
+## Tiếp tục sau cleanup được ủy quyền
+
+Không có Cargo/rustc/App đang chạy trước cleanup. Giữ hai PostgreSQL cũ port 55435/55499,
+worktree #204, source và toàn bộ `target/verify-web`. Chỉ gỡ Cargo cache `target/debug`
+và `target/wasm32-unknown-unknown` không hoạt động của checkout gốc, cùng hai đường dẫn
+binary hỏng trong clone review. Dung lượng trống tăng từ 703 MiB lên khoảng 2,9 GiB;
+sau rebuild còn khoảng 2,4 GiB. Không dọn dữ liệu không thể tái tạo.
+
+Lượt `web-clean` chạy với cùng source/tests (head `74b86c8`, chỉ docs khác `28c8773`),
+`CARGO_BUILD_JOBS=1`, Chrome và npm cache riêng như trên: **PASS** toàn scenario endorsement.
+Đã kiểm executable App là Mach-O arm64 hợp lệ; migrate scratch thành công. 13 assertions
+#226 PASS, real writes/double tap/lost ACK/replay/409/keyboard/401 PASS, không console error.
+Full Web vẫn NOT_RUN trong lượt review. Không thay source sau test, không cần chạy lại
+quick đã PASS cho cùng code/tests. Commit tiếp theo chỉ cập nhật evidence.
+
+Raw evidence: `target/verify-web/1794817043323714000-29887`; log
+`/tmp/vink-review-242-web-clean.log`. Đối chiếu cả status và SHA-256 của 30 file thay đổi
+trong worktree #204: giống trước cleanup. Cluster review được dừng sau test; giữ data/log.
 UI mới/paired capture, CMP/native, OS IME và screen reader: NOT_RUN vì không triển khai UI.
 GitHub CI: NOT_RUN theo yêu cầu; không deploy.
 
 ## Tích hợp
 
-PR review mới chứa lịch sử #242 cùng sửa đổi review, là draft thay thế dự kiến.
-**Chưa merge** vì browser chưa chạy được. #242 giữ draft để không thay đổi trạng thái
-trước khi xác nhận PR thay thế an toàn; không merge cả hai. Khi có browser PASS,
-merge PR review mới một lần rồi đóng #242 là superseded. Không đánh dấu #226 hoàn thành.
-Continuation dùng nhánh review này hoặc develop sau khi phần chuẩn bị được tích hợp.
+[PR #245](https://github.com/loveoverflowcom/vink/pull/245) chứa lịch sử #242 cùng sửa đổi
+review, đủ điều kiện tích hợp phần spec/tests sau browser PASS. Chỉ merge #245 (squash),
+rồi đóng #242 là superseded; không merge cả hai. #226 vẫn mở, toàn bộ UI AC chưa nghiệm thu.
+Continuation triển khai UI bắt đầu từ develop sau khi phần chuẩn bị được tích hợp.

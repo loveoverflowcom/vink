@@ -1,7 +1,7 @@
 {
   "source_sha": "28c877398c075bd1ecf76135b55a5ecd8f44794e",
-  "browser": "NOT_RUN",
-  "web_lane": "FAIL",
+  "browser": "PASS (endorsement scenario only)",
+  "web_lane": "PASS selected endorsement; full Web NOT_RUN",
   "logs": [
     {
       "path": "/tmp/vink-review-242-unit.log",
@@ -30,6 +30,10 @@
     {
       "path": "/tmp/vink-review-242-web-space.log",
       "sha256": "0f2e53cb4c7662401032630fd159cb2509dc3d3064bf11c519ecf17442aa3e65"
+    },
+    {
+      "path": "/tmp/vink-review-242-web-clean.log",
+      "sha256": "31c2f936dd66eb9d3f9d09620ef3b59d094bd0189aa0b44b3b216eda48a79296"
     }
   ]
 }
