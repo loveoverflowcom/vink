@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.IntSize
 import kotlin.io.encoding.Base64
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import vink.ui.ImageState
@@ -28,9 +29,17 @@ private const val MaxOutputEdge = 1024
 // state publication happen back in the owning composition.
 private val imageWorker = Dispatchers.Default.limitedParallelism(1)
 
-suspend fun decodeContentImage(base64: String, viewport: IntSize): ImageBitmap? {
+suspend fun decodeContentImage(base64: String, viewport: IntSize): ImageBitmap? =
+    decodeContentImage(base64, viewport, imageWorker)
+
+// The internal overload lets tests control dispatch and result delivery without racing a codec.
+internal suspend fun decodeContentImage(
+    base64: String,
+    viewport: IntSize,
+    worker: CoroutineDispatcher,
+): ImageBitmap? {
     if (base64.length > (MaxEncodedBytes + 2) / 3 * 4 || viewport.width <= 0 || viewport.height <= 0) return null
-    return withContext(imageWorker) {
+    return withContext(worker) {
         try {
             val bytes = Base64.decode(base64)
             val source = lossyWebpSize(bytes) ?: return@withContext null
