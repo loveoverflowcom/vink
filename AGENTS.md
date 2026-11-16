@@ -187,6 +187,12 @@ Check status first and preserve existing edits. Stage explicit paths belonging t
 Use authorization already granted in the conversation; a skill adds no requirement to ask again.
 Do not infer permission to push, post messages or publish from a local editing task.
 
+On shared macOS development machines, run supported heavy build/test commands via
+[the local resource budget](docs/development/local-resource-budget.md):
+`./tools/local-budget run -- cargo xtask …` (or the corresponding supported raw Cargo command).
+`./tools/local-budget plan` inspects the profile without Cargo bootstrap. Raw commands outside
+the launcher do not join its host-user slot. See the guide for unsupported lanes and recovery.
+
 Discover manifests, scripts and CI before selecting checks. `cargo xtask verify
 quick|discussion|expressions|kani|postgres|web` are implemented lanes, used by CI as well. `discussion` checks
 the structural D2T-01, lifecycle D2T-02 (with receipts) and reaction D2T-INV-08 Quint models and replays their inputs through the real

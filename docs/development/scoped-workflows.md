@@ -1,5 +1,9 @@
 # Chạy và kiểm đúng phạm vi (#184)
 
+Trên máy Mac nhiều agent, đặt lệnh nặng được hỗ trợ sau
+`./tools/local-budget run --` để giữ slot từ trước Cargo bootstrap. Xem
+[ngân sách local](local-resource-budget.md) để kiểm cấu hình, phạm vi và cách dừng.
+
 Đây là hợp đồng tooling local, không thay luật sản phẩm, auth authority hay trạng thái ADR.
 `build` tạo artifact; `dev` giữ tiến trình để thử tay; `verify` chạy kiểm hữu hạn. PostgreSQL luôn
 được attach sau khi [provision](../../services/postgres/README.md), không lệnh nào tự bật container.

@@ -1,0 +1,395 @@
+#!/usr/bin/env python3
+"""Pre-Cargo admission for Vink local build/test. Workflow selection still belongs to xtask."""
+
+import argparse
+import contextlib
+import fcntl
+import os
+from pathlib import Path
+import re
+import signal
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    sys.exit("local-budget: use Python 3.13+ on macOS")
+
+ROOT = Path(__file__).resolve().parents[1]
+SLOT = Path("/tmp") / f"vink-local-budget-{os.getuid()}"
+MARKER = "VINK_LOCAL_BUDGET"
+SAMPLE_INTERVAL = 1.0
+DRAIN_GRACE = 2.0
+TERM_GRACE = 10.0
+KILL_GRACE = 3.0
+RETRY = 75
+UNSUPPORTED = 69
+
+
+class Refusal(Exception):
+    def __init__(self, message, code=2):
+        super().__init__(message)
+        self.code = code
+
+
+def log(message):
+    print(f"local-budget: {message}", file=sys.stderr, flush=True)
+
+
+def positive(value, name):
+    if type(value) is int and value > 0:
+        return value
+    if isinstance(value, str) and re.fullmatch(r"[1-9][0-9]{0,8}", value):
+        return int(value)
+    raise Refusal(f"{name} must be a positive integer")
+
+
+def cargo_jobs(environ, root):
+    # Read only the knobs this launcher owns. Cargo uses the extensionless file if both exist,
+    # the nearest config wins, and the shell variable takes precedence over build.jobs.
+    cargo_home = root / environ.get("CARGO_HOME", str(Path.home() / ".cargo"))
+    directories = [root / ".cargo", *(p / ".cargo" for p in root.parents), cargo_home]
+    build_keys = ("jobs", "rustc-wrapper", "rustc-workspace-wrapper")
+    env_keys = ("CARGO_BUILD_JOBS", "RUSTC_WRAPPER", "RUSTC_WORKSPACE_WRAPPER")
+    configured = {}
+    for directory in dict.fromkeys(directories):
+        path = directory / "config"
+        if not path.exists():
+            path = directory / "config.toml"
+        if not path.exists():
+            continue
+        with path.open("rb") as source:
+            config = tomllib.load(source)
+        if "include" in config:
+            raise Refusal(f"Cargo includes in {path} are not supported by this profile")
+        for key in (*env_keys, "CARGO_BUILD_RUSTC_WRAPPER", "CARGO_BUILD_RUSTC_WORKSPACE_WRAPPER",
+                    "RUST_TEST_THREADS", "CARGO_MAKEFLAGS", "MAKEFLAGS", "MFLAGS", MARKER):
+            if key in config.get("env", {}):
+                raise Refusal(f"Cargo [env] {key} can override the local-budget environment")
+        build = config.get("build", {})
+        for key in build_keys:
+            if key in build:
+                configured.setdefault(key, build[key])
+    for key, variable in zip(build_keys[1:], env_keys[1:]):
+        cargo_var = f"CARGO_BUILD_{key.upper().replace('-', '_')}"
+        if environ.get(variable, environ.get(cargo_var, configured.get(key))):
+            raise Refusal("UNSUPPORTED: rustc wrapper may use external compiler processes",
+                          UNSUPPORTED)
+    value = environ.get("CARGO_BUILD_JOBS", configured.get("jobs", "default"))
+    return 2 if value == "default" else min(2, positive(value, "Cargo build jobs"))
+
+
+def test_threads(environ, root):
+    if "RUST_TEST_THREADS" in environ:
+        return min(2, positive(environ["RUST_TEST_THREADS"], "RUST_TEST_THREADS"))
+    path = root / ".env"
+    value = None
+    if path.is_file():
+        for line in path.read_text().splitlines():
+            key, sep, raw = line.strip().partition("=")
+            if sep and key.strip() == "RUST_TEST_THREADS":
+                # Match xtask Env::load, including last assignment and empty file defaults.
+                value = raw.strip().strip('"').strip("'")
+    return min(2, positive(value, "RUST_TEST_THREADS")) if value else 2
+
+
+def settings(environ, root):
+    if "CARGO_ALIAS_XTASK" in environ:
+        raise Refusal("unset CARGO_ALIAS_XTASK to use Vink's xtask alias")
+    for key in ("CARGO_MAKEFLAGS", "MAKEFLAGS", "MFLAGS"):
+        if "jobserver" in environ.get(key, ""):
+            raise Refusal(f"inherited jobserver in {key}; launch from the owning shell")
+    return cargo_jobs(environ, root), test_threads(environ, root)
+
+
+def validate_command(argv, threads):
+    if not argv or argv[0] != "--":
+        raise Refusal("use run -- cargo <command>")
+    argv = argv[1:]
+    if len(argv) < 2 or argv[0] != "cargo" or argv[1] not in (
+        "xtask", "test", "check", "build", "clippy", "fmt"
+    ):
+        raise Refusal("expected cargo xtask, test, check, build, clippy or fmt")
+    if argv[1:4] == ["xtask", "infra", "build-images"]:
+        raise Refusal("UNSUPPORTED: OCI builds use an external engine", UNSUPPORTED)
+    if argv[1:4] == ["xtask", "ui-preview", "cmp"]:
+        raise Refusal("UNSUPPORTED: Gradle's single-use daemon leaves the session", UNSUPPORTED)
+    if argv[1:3] == ["xtask", "ui-preview"] and argv[3:4] in (["android"], ["ios"]):
+        raise Refusal("UNSUPPORTED: native diagnostics use external device services", UNSUPPORTED)
+    if argv[1:5] == ["xtask", "ui-preview", "leptos", "verify"] or (
+        argv[1:3] == ["xtask", "verify"] and argv[3:4] in (["web"], ["preview"], ["all"])
+        and argv[-1] != "--plan"
+    ):
+        raise Refusal("UNSUPPORTED: browser process ownership is unqualified", UNSUPPORTED)
+    cargo_args, test_args = argv[2:], []
+    if "--" in cargo_args:
+        split = cargo_args.index("--")
+        cargo_args, test_args = cargo_args[:split], cargo_args[split + 1:]
+    for arg in cargo_args:
+        if arg == "--config" or arg.startswith(("--config=", "-Z")):
+            raise Refusal("Cargo config and unstable flag overrides are outside this profile")
+        if arg == "--jobs" or arg.startswith(("--jobs=", "-j")):
+            raise Refusal("use CARGO_BUILD_JOBS to select compiler jobs in this profile")
+        if arg.startswith("-") and not arg.startswith("--") and len(arg) > 2:
+            # Cargo accepts clusters such as -qj8. Require separate options before the
+            # test harness delimiter so an embedded -j cannot override the environment.
+            raise Refusal("use separate Cargo short options and values, like -p xtask")
+    for index, arg in enumerate(test_args):
+        name, sep, value = arg.partition("=")
+        if name == "--test-threads":
+            if not sep and index + 1 < len(test_args):
+                value = test_args[index + 1]
+            if positive(value, "--test-threads") > threads:
+                raise Refusal("--test-threads exceeds the effective RUST_TEST_THREADS")
+    return argv
+
+
+def capture(argv):
+    return subprocess.check_output(argv, text=True, timeout=3).strip()
+
+
+def sysctl(key):
+    return capture(["/usr/sbin/sysctl", "-n", key])
+
+
+def pressure():
+    value = sysctl("kern.memorystatus_vm_pressure_level")
+    return {"1": "normal", "2": "warning", "4": "critical"}.get(value, "unknown")
+
+
+def session_members(sid):
+    """Returns same-UID live session members with ps RSS in KiB, including other groups."""
+    listing = capture(["/bin/ps", "-axo", "uid=,pid=,rss=,state="])
+    members = {}
+    for row in listing.splitlines():
+        uid, pid, rss, state = row.split()
+        if int(uid) != os.getuid() or state.startswith("Z"):
+            continue
+        pid = int(pid)
+        try:
+            if os.getsid(pid) == sid:
+                members[pid] = int(rss)
+        except ProcessLookupError:
+            continue
+    return members
+
+
+@contextlib.contextmanager
+def admission():
+    SLOT.mkdir(mode=0o700, exist_ok=True)
+    directory = SLOT.lstat()
+    if not stat.S_ISDIR(directory.st_mode) or directory.st_uid != os.getuid() or (
+        stat.S_IMODE(directory.st_mode) != 0o700
+    ):
+        raise Refusal(f"check ownership and mode 0700 on {SLOT}")
+    # Same advisory flock family as lifecycle::Lock. Never unlink or replace the lock inode.
+    fd = os.open(SLOT / "admission.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, "r+b") as lock:
+        metadata = os.fstat(fd)
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.getuid():
+            raise Refusal("admission.lock must be a regular file owned by the current user")
+        state = SLOT / "session"
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            owner = "starting or ending"
+            with contextlib.suppress(OSError, ValueError, Refusal):
+                _, sid = state.read_text().split()
+                owner = f"session {positive(sid, 'recorded session ID')}"
+            raise Refusal(f"heavy slot busy ({owner}, {SLOT}); retry after the owning run ends",
+                          RETRY)
+        boot = sysctl("kern.bootsessionuuid")
+        if state.exists():
+            saved_boot, sid = state.read_text().split()
+            if saved_boot == boot and session_members(positive(sid, "recorded session ID")):
+                raise Refusal(f"previous session {sid} still has live processes; retry after it drains",
+                              RETRY)
+            state.unlink()
+        yield state, boot
+
+
+def record_session(state, boot, sid):
+    # The gate cannot start Cargo before this record is complete. After supervisor SIGKILL,
+    # the next owner revalidates the session under the lock before admitting any new work.
+    with tempfile.NamedTemporaryFile(mode="w", dir=SLOT, prefix="session-",
+                                     delete=False) as record:
+        record.write(f"{boot} {sid}\n")
+    os.replace(record.name, state)
+
+
+def exit_seen(pid):
+    # WNOWAIT holds the group leader's PID through the last group signal.
+    return os.waitid(os.P_PID, pid, os.WEXITED | os.WNOHANG | os.WNOWAIT) is not None
+
+
+def signal_group(pid, sig):
+    try:
+        os.killpg(pid, sig)
+    except (ProcessLookupError, PermissionError):
+        # On Darwin a group containing only our unreaped zombie can return EPERM.
+        return False
+    return True
+
+
+def supervise(child, started, timeout, cancellation):
+    sampled_peak, samples, next_sample = 0, 0, started
+    stop_started = None
+    drain_started = None
+    escalated = False
+    forced_status = None
+    while True:
+        now = time.monotonic()
+        exited = exit_seen(child.pid)
+        reason = cancellation[0]
+        if stop_started is None and (reason or (timeout and now - started >= timeout)):
+            forced_status = 128 + reason if reason else 124
+            log("interrupted; stopping owned process group" if reason else
+                "timeout; stopping owned process group")
+            signal_group(child.pid, reason or signal.SIGTERM)
+            stop_started = now
+
+        if exited or now >= next_sample:
+            members = session_members(child.pid)
+            if exited and not members and not signal_group(child.pid, 0):
+                break
+            if now >= next_sample:
+                sampled_peak = max(sampled_peak, sum(members.values()))
+                samples += 1
+                next_sample = now + SAMPLE_INTERVAL
+            if exited and stop_started is None:
+                if drain_started is None:
+                    drain_started = now
+                elif now - drain_started >= DRAIN_GRACE:
+                    log("child exited with live session members; stopping owned process group")
+                    signal_group(child.pid, signal.SIGTERM)
+                    stop_started = now
+                    forced_status = 1
+
+        if stop_started is not None and now - stop_started >= TERM_GRACE:
+            if not escalated:
+                signal_group(child.pid, signal.SIGKILL)
+                escalated = True
+            elif now - stop_started >= TERM_GRACE + KILL_GRACE:
+                raise Refusal(f"session {child.pid} did not drain; recovery fence retained", RETRY)
+        time.sleep(0.05)
+
+    result = child.wait()
+    log(f"wall={time.monotonic() - started:.2f}s sampled_peak_rss_sum={sampled_peak} KiB "
+        f"samples={samples} interval={SAMPLE_INTERVAL:g}s")
+    if cancellation[0]:
+        return 128 + cancellation[0]
+    if forced_status == 124:
+        return 124
+    if result < 0:
+        return 128 - result
+    return result or forced_status or 0
+
+
+def execute(argv, environ, timeout):
+    cancellation = [None]
+
+    def cancel(sig, _frame):
+        cancellation[0] = cancellation[0] or sig
+
+    signal.signal(signal.SIGINT, cancel)
+    signal.signal(signal.SIGTERM, cancel)
+    signal.signal(signal.SIGHUP, cancel)
+    with admission() as (state, boot):
+        start_pressure = pressure()
+        log(f"pressure={start_pressure}; swap: {sysctl('vm.swapusage')}")
+        if start_pressure != "normal":
+            raise Refusal("pressure must be normal before starting heavy work; retry later", RETRY)
+        if cancellation[0]:
+            return 128 + cancellation[0]
+        reader, writer = os.pipe()
+        started = time.monotonic()
+        child = None
+        try:
+            try:
+                child = subprocess.Popen(
+                    [sys.executable, __file__, "_exec", str(reader), *argv],
+                    cwd=ROOT, env=environ, pass_fds=(reader,), start_new_session=True,
+                )
+                record_session(state, boot, child.pid)
+                log(f"supervisor={os.getpid()} session={child.pid} slot={SLOT}")
+                if not cancellation[0]:
+                    os.write(writer, b"1")
+            finally:
+                os.close(reader)
+                os.close(writer)
+        except OSError:
+            # If startup failed, the gate sees EOF and exits without starting Cargo.
+            if child is not None:
+                with contextlib.suppress(subprocess.TimeoutExpired):
+                    child.wait(timeout=KILL_GRACE)
+            raise
+        try:
+            result = supervise(child, started, timeout, cancellation)
+        except (OSError, ValueError, subprocess.SubprocessError, Refusal):
+            # No unverified release on a failed observation. The next invocation checks state.
+            if child.returncode is None:
+                signal_group(child.pid, signal.SIGKILL)
+                with contextlib.suppress(subprocess.TimeoutExpired):
+                    child.wait(timeout=KILL_GRACE)
+            raise
+        state.unlink()
+        try:
+            log(f"pressure={pressure()}; swap: {sysctl('vm.swapusage')}")
+        except (OSError, subprocess.SubprocessError):
+            log("final pressure/swap UNKNOWN")
+        return result
+
+
+def main():
+    if len(sys.argv) >= 4 and sys.argv[1] == "_exec":
+        fd = int(sys.argv[2])
+        allowed = os.read(fd, 1) == b"1"
+        os.close(fd)
+        if allowed:
+            os.execvp(sys.argv[3], sys.argv[3:])
+        return RETRY
+
+    parser = argparse.ArgumentParser(description="Vink local-24g admission before Cargo bootstrap")
+    sub = parser.add_subparsers(dest="action", required=True)
+    plan = sub.add_parser("plan", help="show limits without Cargo or locks")
+    run = sub.add_parser("run", help="admit and supervise one Cargo invocation")
+    for command in (plan, run):
+        command.add_argument("--mode", choices=("soft", "strict"), default="soft")
+    run.add_argument("--timeout", metavar="SECONDS", help="optional deadline including bootstrap")
+    run.add_argument("cargo", nargs=argparse.REMAINDER, help="-- cargo <command> [args]")
+    args = parser.parse_args()
+    if MARKER in os.environ:
+        raise Refusal("nested launcher refused; invoke child tools inside the owning run")
+    if sys.platform != "darwin" or args.mode == "strict":
+        raise Refusal("UNSUPPORTED: this checkout provides macOS SOFT_MANAGED only; "
+                      "no strict workload was started", UNSUPPORTED)
+    if not hasattr(os, "waitid"):
+        raise Refusal("UNSUPPORTED: macOS requires Python 3.13+ with os.waitid", UNSUPPORTED)
+    jobs, threads = settings(os.environ, ROOT)
+    log(f"SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs={jobs} libtest_threads={threads} "
+        "managed_target=10–12 GiB (advisory); "
+        "Cargo bootstrap included; preflight requires normal pressure; retries manual")
+    if args.action == "plan":
+        log("managed scope: owned session; external: reused services and detached processes; "
+            "Gradle/CMP, native diagnostics, browser verification and OCI builds unsupported")
+        return 0
+    timeout = positive(args.timeout, "--timeout") if args.timeout is not None else None
+    argv = validate_command(args.cargo, threads)
+    environ = dict(os.environ, CARGO_BUILD_JOBS=str(jobs), RUST_TEST_THREADS=str(threads),
+                   VINK_LOCAL_BUDGET="local-24g")
+    return execute(argv, environ, timeout)
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except Refusal as error:
+        log(str(error))
+        sys.exit(error.code)
+    except (ValueError, OSError, subprocess.SubprocessError) as error:
+        log(str(error))
+        sys.exit(1)

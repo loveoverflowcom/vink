@@ -7,6 +7,9 @@ phát triển, không phải pilot hay production. Các lựa chọn dưới đ�
 Trang này là **nguồn duy nhất cho lệnh**. Skills, README và CI dẫn tới đây; định nghĩa thật của
 lệnh nằm trong [`xtask/src/main.rs`](../../xtask/src/main.rs).
 
+Trên máy Mac nhiều agent, dùng [profile local-24g](local-resource-budget.md) cho các lệnh nặng
+được hỗ trợ. Launcher lấy một slot chung liên worktree trước cả Cargo bootstrap.
+
 [Bản đồ tính năng và đường kiểm chứng](feature-map.md) dẫn từ route, thao tác và trạng thái
 người dùng tới source/assertion hiện có; đây không phải bảng kết quả chạy hay nghiệm thu.
 
