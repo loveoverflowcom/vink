@@ -177,9 +177,10 @@ pub struct PublicationFacts<C = RevisionContent> {
 /// ```
 /// Lawful twin:
 /// ```
-/// use vink_app::domain::publication::{PublicationFacts, PublicationState};
+/// use vink_app::domain::publication::{Publication, PublicationFacts, PublicationState};
 /// use vink_app::domain::revision::ContentHash;
 /// fn inspect(read: &PublicationState) -> &PublicationFacts<ContentHash> { read.facts() }
+/// fn authority(full: Publication) -> Publication { full }
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PublicationState(PublicationFacts<ContentHash>);
