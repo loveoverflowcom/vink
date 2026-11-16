@@ -1,0 +1,138 @@
+coverage: SELECTED Web checks (excluded checks NOT_SELECTED)
+operation: Verify; target: Web; auth: explicit fixture for main/discovery/restart/endorsement/review; real Identity for auth/password/publication
+build: [Bundle, App]
+required tools: [Rust, WasmTarget, Bindgen, Node, Npm, Chrome]
+owned services: [App]
+attached database configuration (values hidden): ["VINK_TEST_DATABASE_URL"]
+migrations: ["App scratch"]; dev seed: false (Web fixtures follow the scenario catalog)
+selected checks: [PerfBaseline]; filter: None
+dependency checks: [] (restart requires main's saved draft and browser state)
+not selected Web checks: ["main", "storage", "discovery", "restart", "endorsement", "review", "auth", "password", "publication"]
+API target isolation: no bundle, no SSR/static routes; Rust SSR dependencies remain compiled.
+data: dev attaches prepared databases; Web verification owns scratch only. No containers.
+artifacts: build from current source every invocation; no no-build/reuse mode.
+
+[PASS] Rust: rustc 1.99.1 (58cf8f9c3 2026-10-13)
+[PASS] WasmTarget: installed
+[PASS] Bindgen: wasm-bindgen 0.2.129
+[PASS] Node: v24.22.3
+[PASS] Npm: 11.19.1
+[PASS] Chrome: <scratch>/chrome
+[PASS] VINK_TEST_DATABASE_URL: 127.0.0.1:55481 database `postgres` (credentials hidden)
+==> visual evidence oracle unit tests
+✔ AC-01: PNG verification parses hash and dimensions and rejects corrupt/empty artifacts (8.001848ms)
+✔ AC-01: rejects silent 900-height substitution for 800-height scenes and mismatched viewport filenames (7.252936ms)
+✔ AC-01: manifest schema supports legacy v1 compatibility and marks missing-target captures INCOMPLETE (5.533897ms)
+✔ AC-01: collectSourceIdentity tracks dirty UI inputs deterministically without secrets (0.5157ms)
+✔ AC-03: overflow oracle catches hidden overflow with scrollX=0 while allowing text input internal scroll (0.567327ms)
+✔ AC-03: AX oracle separates raw textContent from computed AX name and catches altered accessible name (0.502804ms)
+✔ AC-03: nav alignment accepts 1-line vs 2-line height delta when first lines align and catches misaligned first line (0.598105ms)
+✔ AC-02: modal oracle enforces all can_discard/confirm branches and catches missing last modal action (0.483926ms)
+✔ AC-04 & AC-05: separates DOM override from app controls and validates Me illustration reservation (0.57833ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 142.085321
+==> build browser bundle (vink-web, hydrate)
+==> wasm-bindgen → target/site/pkg
+==> editor runtime: type check + bundle → vink-editor.js
+==> expression runtime: pinned, self-hosted software renderer
+PASS self-hosted expression runtime {"version":"0.82.1","backend":"software","worker":false,"engine":{"file":"dotlottie-a66fb009e04a2945.js","bytes":58149},"wasm":{"file":"dotlottie-player-d63074204a3c50f9.wasm","bytes":1226030},"glue_bytes":9117,"posters_bytes":83912,"animation_bytes":847563}
+==> ui tokens: 15 generated files match
+==> build App
+==> 75 bundle file(s) scanned
+==> logs/evidence: <repo>/target/verify-web/1794838615779301383-163877
+==> migrate App scratch
+[2m2026-11-16T14:16:58.299849Z[0m [32m INFO[0m [2mvink_app[0m[2m:[0m migrations applied [3mapplied[0m[2m=[0m[20261030000000, 20261103000000, 20261104000000, 20261105000000, 20261105120000, 20261107000000, 20261108000000, 20261109000000, 20261110000000, 20261111000000, 20261112000000, 20261113000000, 20261114000000, 20261115000000, 20261116000000, 20261117000000, 20261118000000, 20261119000000, 20261120000000, 20261121000000] [3mlatest[0m[2m=[0m20261121000000
+==> seed App scratch (runtime role)
+[2m2026-11-16T14:16:59.379847Z[0m [32m INFO[0m [2mvink_app[0m[2m:[0m development fixture present [3mwork[0m[2m=[0m33333333-3333-4333-8333-333333333333 [3mauthor[0m[2m=[0m11111111-1111-4111-8111-111111111111
+==> scratch tag catalog seeded at version 9
+==> vink-app ready on port 36801 (pid 167156)
+==> #234 scratch journey: 200 works / 1000 comments
+==> browser smoke --phase perf-baseline
+  ok  #234 cold SSR/hydration has no duplicate browser list GET #0
+  ok  #234 cold SSR/hydration has no duplicate browser list GET #1
+  ok  #234 cold SSR/hydration has no duplicate browser list GET #2
+  ok  #234 cold SSR/hydration has no duplicate browser list GET #3
+  ok  #234 cold SSR/hydration has no duplicate browser list GET #4
+  ok  #234 cold SSR/hydration has no duplicate browser list GET #5
+  ok  #234 cold SSR/hydration has no duplicate browser list GET #6
+  ok  #234 cold SSR/hydration has no duplicate browser list GET #7
+  ok  #234 cold SSR/hydration has no duplicate browser list GET #8
+  ok  #234 cold SSR/hydration has no duplicate browser list GET #9
+  ok  #234 warm Reader uses client navigation without a full-document reload #0
+  ok  #234 warm journey opens the 1,000-comment hot thread #0
+  ok  #234 real App Reader body stays available #0
+  ok  #234 hot thread mounts one bounded page (40 nodes) #0
+  ok  #234 warm Reader return stays in the same hydrated document #0
+  ok  #234 real bounded public page after return #0
+  ok  #234 warm Reader uses client navigation without a full-document reload #1
+  ok  #234 warm journey opens the 1,000-comment hot thread #1
+  ok  #234 real App Reader body stays available #1
+  ok  #234 hot thread mounts one bounded page (40 nodes) #1
+  ok  #234 warm Reader return stays in the same hydrated document #1
+  ok  #234 real bounded public page after return #1
+  ok  #234 warm Reader uses client navigation without a full-document reload #2
+  ok  #234 warm journey opens the 1,000-comment hot thread #2
+  ok  #234 real App Reader body stays available #2
+  ok  #234 hot thread mounts one bounded page (40 nodes) #2
+  ok  #234 warm Reader return stays in the same hydrated document #2
+  ok  #234 real bounded public page after return #2
+  ok  #234 warm Reader uses client navigation without a full-document reload #3
+  ok  #234 warm journey opens the 1,000-comment hot thread #3
+  ok  #234 real App Reader body stays available #3
+  ok  #234 hot thread mounts one bounded page (40 nodes) #3
+  ok  #234 warm Reader return stays in the same hydrated document #3
+  ok  #234 real bounded public page after return #3
+  ok  #234 warm Reader uses client navigation without a full-document reload #4
+  ok  #234 warm journey opens the 1,000-comment hot thread #4
+  ok  #234 real App Reader body stays available #4
+  ok  #234 hot thread mounts one bounded page (40 nodes) #4
+  ok  #234 warm Reader return stays in the same hydrated document #4
+  ok  #234 real bounded public page after return #4
+  ok  #234 warm Reader uses client navigation without a full-document reload #5
+  ok  #234 warm journey opens the 1,000-comment hot thread #5
+  ok  #234 real App Reader body stays available #5
+  ok  #234 hot thread mounts one bounded page (40 nodes) #5
+  ok  #234 warm Reader return stays in the same hydrated document #5
+  ok  #234 real bounded public page after return #5
+  ok  #234 warm Reader uses client navigation without a full-document reload #6
+  ok  #234 warm journey opens the 1,000-comment hot thread #6
+  ok  #234 real App Reader body stays available #6
+  ok  #234 hot thread mounts one bounded page (40 nodes) #6
+  ok  #234 warm Reader return stays in the same hydrated document #6
+  ok  #234 real bounded public page after return #6
+  ok  #234 warm Reader uses client navigation without a full-document reload #7
+  ok  #234 warm journey opens the 1,000-comment hot thread #7
+  ok  #234 real App Reader body stays available #7
+  ok  #234 hot thread mounts one bounded page (40 nodes) #7
+  ok  #234 warm Reader return stays in the same hydrated document #7
+  ok  #234 real bounded public page after return #7
+  ok  #234 warm Reader uses client navigation without a full-document reload #8
+  ok  #234 warm journey opens the 1,000-comment hot thread #8
+  ok  #234 real App Reader body stays available #8
+  ok  #234 hot thread mounts one bounded page (40 nodes) #8
+  ok  #234 warm Reader return stays in the same hydrated document #8
+  ok  #234 real bounded public page after return #8
+  ok  #234 warm Reader uses client navigation without a full-document reload #9
+  ok  #234 warm journey opens the 1,000-comment hot thread #9
+  ok  #234 real App Reader body stays available #9
+  ok  #234 hot thread mounts one bounded page (40 nodes) #9
+  ok  #234 warm Reader return stays in the same hydrated document #9
+  ok  #234 real bounded public page after return #9
+  ok  #234 at least ten raw cold and ten warm observations
+  ok  no console errors or exceptions
+browser-smoke: PASS (perf-baseline)
+
+verification summary
+  PASS  selected prerequisites
+  PASS  visual evidence oracles: manifest, PNG, overflow, AX, modal unit tests
+  PASS  selected artifacts
+  PASS  browser bundle contains no credentials
+  PASS  #234 SSR/hydration + Reader/Back performance baseline (200 works, 1000 comments, 10 cold/warm)
+  PASS  server stops gracefully on SIGTERM
+exit=0

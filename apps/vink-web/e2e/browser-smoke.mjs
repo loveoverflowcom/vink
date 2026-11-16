@@ -26,6 +26,7 @@ import { authorWorks } from './author-works-smoke.mjs';
 import { editorWriting } from './editor-writing-smoke.mjs';
 import { editorPaperFirst } from './editor-paper-first-smoke.mjs';
 import { documentBudget } from './document-budget.mjs';
+import { webPerfBaseline } from './web-perf-baseline.mjs';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -5309,6 +5310,7 @@ try {
   activePage = page;
   if (args.phase === 'discussion-only') await discussionReadingAndWrites(page);
   else if (args.phase === 'document-budget') await documentBudget(page, { args, check });
+  else if (args.phase === 'perf-baseline') await webPerfBaseline(page, { args, check });
   else if (args.phase === 'select-chevron') await selectChevron(page);
   else if (args.phase === 'editor-chrome') await editorChrome(page);
   else if (args.phase === 'main') await mainPhase(page);

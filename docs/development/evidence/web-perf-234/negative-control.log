@@ -1,0 +1,2 @@
+browser-smoke: FAIL #234 hot thread mounts one bounded page (40 nodes) #0
+  FAIL  #234 SSR/hydration + Reader/Back performance baseline (200 works, 1000 comments, 10 cold/warm): browser smoke --phase perf-baseline: exited with exit status: 1

@@ -2,6 +2,8 @@
 
 **Đối soát có phạm vi ngày 16/11/2026, `develop@6e07806`:** [20 PR gần đây, proposal và gap](verification-reconciliation-20261116.md). Các mốc ở phần mở đầu dưới đây là lịch sử theo lát, không phải ngày kiểm lại toàn bộ bản đồ. [Model/replay ReadOwner/PageChain](../../apps/vink-web/behavior/README.md) bổ sung coverage thuần; không refresh evidence browser/PG cũ.
 
+**Web Perf #234 · baseline opt-in:** [cách đo và giới hạn](web-perf-baseline.md) sử dụng catalog `xtask` + `browser-smoke.mjs`, fixture 200 works/1.000 comments và 10 vòng cold/warm. Baseline debug lab PASS tại `997d97d` ([raw](evidence/web-perf-234/README.md)); release profile, negative transport và go/no-go còn `NOT_RUN`/`PENDING`, không đổi SSR/cache policy.
+
 Với thay đổi liên quan đến quyết định ngày 10/11, tra ID và revision tại
 [kho quyết định TOML](../../decisions/README.md). Phạm vi và kiểm chứng của công cụ nằm trong
 [bàn giao #164](decision-registry-rollout.md).
