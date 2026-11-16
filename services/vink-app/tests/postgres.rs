@@ -36,6 +36,8 @@ mod author_works;
 mod commit_fence;
 #[path = "postgres/conditional_reads.rs"]
 mod conditional_reads;
+#[path = "postgres/content_storage_rfc.rs"]
+mod content_storage_rfc;
 #[path = "postgres/discovery.rs"]
 mod discovery;
 #[path = "postgres/discussion.rs"]
