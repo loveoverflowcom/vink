@@ -28,7 +28,7 @@ Review ảnh là **self-review**, không independent hoặc phê duyệt thẩm 
 | Lệnh | Kết quả / boundary |
 | --- | --- |
 | `cargo xtask verify web --scenario main` | **PASS** source `c5e54db`; PostgreSQL scratch thật + Chrome, SSR/privacy/hydration/editor/save/reload/conflict/leave/preview/tags và public storage trong main |
-| `cargo test --locked -p vink-patterns --test editor_tools` | **PASS 2/2**; SSR anatomy, sole live owner, utility type, default compatibility; được chạy lại trong Quick |
+| `cargo test --locked -p vink-patterns --test editor_tools` | **PASS 2/2**; SSR anatomy, sole live owner, utility type, default compatibility; chạy riêng sau Quick (Quick dùng `--lib --bins`, không chọn integration test này) |
 | `node --check` cho ba file E2E đã sửa/thêm | **PASS**, syntax |
 | `cargo xtask verify quick` | **PASS**, lượt cuối source `c5e54db`; fmt/clippy SSR+hydrate+preview, doctests, unit/contracts và repository checks |
 | `cargo xtask ui-preview leptos verify` | **PASS**, lượt cuối source `c5e54db`, 862 captures; token/build/media-hydration/Chrome assertions |
