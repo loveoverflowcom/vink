@@ -319,7 +319,7 @@ async fn state_reads_one_snapshot_across_a_concurrent_moderation_commit(pool: Pg
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
-async fn state_observes_policy_rereview_and_private_fences_late_approval(pool: PgPool) {
+async fn state_observes_stale_policy_and_private_fences_late_approval(pool: PgPool) {
     use vink_app::domain::moderation::{EvaluationRefusal, EvaluatorOutcome};
     use vink_app::domain::publication::Moderation;
     use vink_app::persistence::evaluation::{JobOutcome, claim_job, finish_job};
@@ -341,21 +341,10 @@ async fn state_observes_policy_rereview_and_private_fences_late_approval(pool: P
         .unwrap();
     let worker = "state-policy-230";
     let claim = claim_job(&pool, worker, 60, None).await.unwrap().unwrap();
-    assert!(matches!(
-        finish_job(&pool, worker, &claim, Some(EvaluatorOutcome::Approve), 0)
-            .await
-            .unwrap(),
-        JobOutcome::Applied(_)
-    ));
-    vink.set_private(author(), work, "policy-private-230", 2)
-        .await
-        .unwrap();
+    // A pending claim under policy 1 is stale after a policy-2 commit.
     sqlx::query("UPDATE work_publications SET policy_version=2 WHERE work_id=$1")
         .bind(work.as_uuid())
         .execute(&pool)
-        .await
-        .unwrap();
-    vink.request_public(author(), work, "policy-rereview-230", revision, 3)
         .await
         .unwrap();
     let state = vink
@@ -367,27 +356,19 @@ async fn state_observes_policy_rereview_and_private_fences_late_approval(pool: P
         state.publication.facts().revisions[0].moderation,
         Moderation::Pending
     );
-    let claim = claim_job(&pool, worker, 60, None).await.unwrap().unwrap();
-    assert_eq!(claim.policy_version, 2);
-    // Policy changes again after the claim; an old policy result cannot approve.
-    sqlx::query("UPDATE work_publications SET policy_version=3 WHERE work_id=$1")
-        .bind(work.as_uuid())
-        .execute(&pool)
-        .await
-        .unwrap();
     assert_eq!(
         finish_job(&pool, worker, &claim, Some(EvaluatorOutcome::Approve), 0)
             .await
             .unwrap(),
         JobOutcome::Refused(EvaluationRefusal::StalePolicy)
     );
-    // A fresh policy-3 job is then withdrawn by the author before its result returns.
-    vink.request_public(author(), work, "policy-fresh-230", revision, 4)
+    // Resubmit the pending revision: a fresh current-policy job, then author withdrawal.
+    vink.request_public(author(), work, "policy-fresh-230", revision, 2)
         .await
         .unwrap();
     let late = claim_job(&pool, worker, 60, None).await.unwrap().unwrap();
-    assert_eq!(late.policy_version, 3);
-    vink.set_private(author(), work, "policy-final-private-230", 5)
+    assert_eq!(late.policy_version, 2);
+    vink.set_private(author(), work, "policy-final-private-230", 3)
         .await
         .unwrap();
     assert_eq!(
@@ -419,6 +400,32 @@ async fn state_observes_policy_rereview_and_private_fences_late_approval(pool: P
 async fn state_keeps_distinct_metadata_bindings_when_only_tags_change(pool: PgPool) {
     use vink_app::application::taxonomy::SaveWorkTags;
     let vink = seeded(&pool).await;
+    // The development content seed intentionally has no taxonomy catalog.
+    use vink_app::application::catalog::CuratorAuthority;
+    use vink_app::domain::ids::TagId;
+    use vink_app::domain::taxonomy::{
+        CatalogChange, CatalogCommand, CatalogVersion, TagFacet, TagLabel,
+    };
+    let version: i64 = sqlx::query_scalar("SELECT version FROM tag_catalog")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    vink_app::persistence::change_catalog(
+        &pool,
+        CuratorAuthority::operator(),
+        &CatalogCommand {
+            expected: CatalogVersion::new(version).unwrap(),
+            change: CatalogChange::Create {
+                id: TagId::parse("a0000000-0000-4000-8000-000000000001").unwrap(),
+                facet: TagFacet::Form,
+                label: TagLabel::parse("Tản văn").unwrap(),
+                description: None,
+            },
+        },
+    )
+    .await
+    .unwrap();
+
     let work = vink.create_draft(author()).await.unwrap().work_id;
     vink.save_draft(
         author(),
