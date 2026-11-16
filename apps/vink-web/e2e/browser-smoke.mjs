@@ -2751,12 +2751,12 @@ async function draftDashboard(page) {
   check(created.length === 1 && gate.postCount === postsBefore, 'GET reconciliation found the committed draft without retrying POST');
   check(await page.eval(`!!document.querySelector('.vk-draft-row__link[href="/ban-viet/${created[0]}"]')`), 'reconciled draft is an ordinary row');
   await page.click('.vk-draft-row__link[href="/ban-viet/' + created[0] + '"]');
-  await page.waitFor(`${EDITOR_READY} && location.pathname === '/ban-viet/${created[0]}'`, 'row opens the real draft');
+  await page.waitFor(`${EDITOR_READY} && ${TAGS_READY} && location.pathname === '/ban-viet/${created[0]}'`, 'row opens the real draft and its tags');
   check((await page.status()) === 'saved', 'reconciled draft opens at its real saved version');
   const renamed = '[Fixture] Tiêu đề vừa sửa — tiếng Việt ỹ ỷ ữ ợ';
   await page.typeAtEnd('input[name=title]', renamed);
-  await page.key('s', page.mod);
-  await page.waitStatus('saved', 'renamed title acknowledged by the real server');
+  await page.key('Enter');
+  await page.waitStatus('saved', 'title Enter submits the dirty editor and the server confirms it');
   await page.click('.vk-editor-heading__back');
   await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('.vk-draft-row__link')`, 'return to dashboard');
   check(await page.eval(`document.querySelector('.vk-draft-row__link[href="/ban-viet/${created[0]}"] .vk-draft-row__title').textContent===${JSON.stringify(renamed)}`), 'return after real save shows the acknowledged title on its work row');
@@ -3201,7 +3201,10 @@ async function editorChrome(page) {
       }
     }
     await page.viewport(1440);
-    await page.eval(`document.documentElement.style.fontSize = ''; document.documentElement.dataset.theme = 'light'; scrollTo(0,0)`);
+    // Let the restored viewport deliver its resize before focusing a tooltip; a
+    // resize dismisses tooltips by design, even when the browser has already focused.
+    await page.eval(`document.documentElement.style.fontSize = ''; document.documentElement.dataset.theme = 'light'; scrollTo(0,0);
+      new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
   };
   await geometry('clean');
   await page.eval(`document.querySelector('#editor-save-details > summary').focus()`);
@@ -3394,7 +3397,11 @@ async function editorChrome(page) {
   await geometry('conflict');
   await page.eval(`document.querySelector('#save-recovery-jump').focus()`);
   await page.key('Enter');
-  check(await page.eval(`document.activeElement?.id === 'keep-mine'`), 'conflict toolbar jump routes focus directly to real conflict recovery');
+  check(await page.eval(`document.activeElement?.id === 'editor-text-conflict'`), 'conflict toolbar jump focuses the recovery region before its choices');
+  await page.key('Enter');
+  check((await page.draft(workId)).version === committed.version, 'another Enter on the recovery region cannot confirm overwrite');
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement?.id === 'keep-mine'`), 'the explicit overwrite remains next in keyboard order');
   check((await page.draft(workId)).version === committed.version, 'unknown outcome never blindly replays an already committed save');
   for (const scene of [
     { width: 320, height: 800, scale: 200, theme: 'light' },
@@ -3689,7 +3696,7 @@ async function mainPhase(page) {
   await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('#create-draft')`, 'desk list');
   check(await page.eval(`window.__vinkNavigation === 'kept'`), 'navigation stayed in the hydrated app (no full reload)');
   await page.click('#create-draft');
-  await page.waitFor(`/^\\/ban-viet\\/[0-9a-f-]{36}$/.test(location.pathname) && ${EDITOR_READY}`, 'new draft editor');
+  await page.waitFor(`/^\\/ban-viet\\/[0-9a-f-]{36}$/.test(location.pathname) && ${EDITOR_READY} && ${TAGS_READY}`, 'new draft editor and tags');
   const workId = await page.eval(`location.pathname.split('/').pop()`);
   check((await page.status()) === 'saved', 'new draft starts saved at version 1');
 
@@ -4050,6 +4057,32 @@ async function draftTags(page, workId) {
   check(puts === 0, 'choosing tags does not save by itself');
   check(await page.eval(view) && (await page.body()) === bodyBefore, 'tag edits kept the same EditorView and text');
 
+  // A refusal belongs to the submitted chips. Respond after the author removes the
+  // refused chip; the corrected selection must still be saveable with its original CAS.
+  const pendingTags = new SaveGate(page);
+  await pendingTags.enable();
+  await page.send('Input.insertText', { text: 'Gia đình' });
+  await page.waitFor(`document.getElementById('work-tags-status').textContent.includes('“Gia đình”')`, 'extra theme for a delayed refusal');
+  await page.key('Enter');
+  await page.waitFor(`document.querySelectorAll('#work-tags-themes .vk-tag-chip').length === 3`, 'third theme selected');
+  const familyTag = (await page.eval(`fetch('/api/v1/tags?facet=theme').then((r) => r.json())`)).tags.find((tag) => tag.label === 'Gia đình');
+  await page.click('#save');
+  const refusedTagPut = await pendingTags.next();
+  await page.click('#work-tags-theme-2-remove');
+  await page.waitFor(`document.querySelector('#editor-save-details').textContent.includes('lựa chọn mới nhất vẫn cần được lưu tiếp')`, 'toolbar records the selection made while saving');
+  const refusal = JSON.parse(readFileSync(new URL('../../../services/vink-app/contracts/http/v1/fixtures/error.tag_retired.json', import.meta.url), 'utf8'));
+  refusal.error.tag_id = familyTag.tag_id;
+  delete refusal.error.successor_id;
+  await page.send('Fetch.fulfillRequest', {
+    requestId: refusedTagPut, responseCode: 409,
+    responseHeaders: [{name: 'Content-Type', value: 'application/json'}],
+    body: Buffer.from(JSON.stringify(refusal)).toString('base64'),
+  });
+  await waitTagStatus(page, 'unsaved', 'a late refusal cannot block the corrected selection');
+  await pendingTags.disable();
+  check(puts === 1 && await page.eval(`!document.querySelector('[data-testid=tag-refused]') && document.querySelector('#save')?.textContent === 'Lưu'`), 'late refusal for a removed tag leaves one save action and no stale warning');
+  puts = 0;
+
   await page.key('s', page.mod);
   await waitTagStatus(page, 'saved', 'tags saved by Ctrl/Cmd+S');
   await page.waitStatus('saved', 'toolbar saved');
@@ -4077,8 +4110,19 @@ async function draftTags(page, workId) {
   await page.click('#work-tags-theme-0-remove');
   await waitTagStatus(page, 'unsaved');
   check((await page.eval(`document.querySelector('[data-testid=save-status]').textContent`)) === 'Đã lưu chữ; chưa lưu thẻ', 'toolbar truthfully distinguishes saved text with unsaved tags');
-  await page.click('#save');
+  // Removing a chip restores focus in the next frame. Finish that interaction before
+  // moving to the toolbar, then hold the request to observe focus before the 409.
+  await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
+  await pendingTags.enable();
+  await page.eval(`document.querySelector('#save').focus()`);
+  await page.key('Enter');
+  const conflictPut = await pendingTags.next();
+  await waitTagStatus(page, 'saving', 'tag conflict request in flight');
+  check(await page.eval(`document.activeElement?.id === 'save'`), 'pending tag save retains the focused toolbar button');
+  await pendingTags.release(conflictPut);
   await waitTagStatus(page, 'conflict', 'tag conflict');
+  await pendingTags.disable();
+  await page.waitFor(`document.activeElement?.id === 'save-recovery-jump'`, 'tag conflict hands keyboard focus back to the save slot');
   check((await page.eval(`document.querySelector('[data-testid=save-status]').textContent`)) === 'Đã lưu chữ; thẻ đã đổi ở nơi khác.' && await page.eval(`document.querySelector('#save') === null && document.querySelector('#save-recovery-jump')?.textContent.includes('Xử lý xung đột thẻ')`), 'tag conflict routes to tag recovery instead of blind save retry');
   check((await page.eval(`document.querySelector('[data-testid=tag-conflict]').textContent`)).includes('Đang lưu: Mùa'), 'the conflict shows the stored tags by name');
   stored = await draftTagsOf(page, workId);

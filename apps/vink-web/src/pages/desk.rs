@@ -696,6 +696,7 @@ fn Editor(draft: Draft) -> impl IntoView {
     let labels = RwSignal::new(crate::ui::adapters::TagLabels::default());
     let navigation = use_context::<NavigationGuard>();
     let title_input = NodeRef::<html::Input>::new();
+    let title_composing = StoredValue::new(false);
     let leave_open = RwSignal::new(false);
     let keep_editing = NodeRef::<html::Button>::new();
     let leave_stay = NodeRef::<html::Button>::new();
@@ -855,6 +856,9 @@ fn Editor(draft: Draft) -> impl IntoView {
         }
     };
     let save_manual = move || {
+        if title_composing.get_value() || body.is_composing() {
+            return;
+        }
         let reconcile =
             session.with_untracked(|s| matches!(s.text.status(), SaveStatus::Failed(_)));
         if let Some(ticket) = session
@@ -1028,43 +1032,32 @@ fn Editor(draft: Draft) -> impl IntoView {
         {
             use wasm_bindgen::JsCast;
             let doc = document();
-            let selectors: &[&str] = match target {
-                RecoveryTarget::TextConflict => &["#keep-mine", "#export-conflict"],
-                RecoveryTarget::TagConflict => &["#tags-use-stored", "#tags-keep-mine"],
-                RecoveryTarget::TagRefused => &["#work-tags-edit > summary"],
+            // The jump must not put a destructive choice under a still-held Enter key.
+            let selector = match target {
+                RecoveryTarget::TextConflict => "#editor-text-conflict",
+                RecoveryTarget::TagConflict => "#editor-tag-conflict",
+                RecoveryTarget::TagRefused => "#work-tags-edit > summary",
+                RecoveryTarget::TagLoad => "#tags-reload",
             };
-            for sel in selectors {
-                if let Some(el) = doc
-                    .query_selector(sel)
-                    .ok()
-                    .flatten()
-                    .and_then(|node| node.dyn_into::<web_sys::HtmlElement>().ok())
-                {
-                    let _ = el.focus();
-                    break;
-                }
+            if let Some(el) = doc
+                .query_selector(selector)
+                .ok()
+                .flatten()
+                .and_then(|node| node.dyn_into::<web_sys::HtmlElement>().ok())
+            {
+                let _ = el.focus();
             }
         }
         #[cfg(not(feature = "hydrate"))]
         let _ = target;
     };
-    let on_save_manual = Callback::new(move |()| save_manual());
     let on_jump_recovery = Callback::new(jump_to_recovery);
 
     // Deduplicate status changes: typing another character while already unsaved must not
     // mutate the polite live region. The acknowledged version stays in optional detail.
     let slot_facts = Memo::new(move |_| {
         let tags_read = tag_load.get();
-        session.with(|s| SaveSlotFacts {
-            text: s.text.status(),
-            text_pending_newer: s.text.has_pending_newer_edits(),
-            tags: s.tag_status(),
-            tags_read,
-            tags_pending_newer: s
-                .tags
-                .as_ref()
-                .is_some_and(|t| t.has_pending_newer_selection()),
-        })
+        session.with(|s| SaveSlotFacts::from_session(s, tags_read))
     });
     let slot_view = Memo::new(move |_| project_save_slot(&slot_facts.get()));
     let status = move || slot_facts.with(|f| f.text);
@@ -1115,7 +1108,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                 if shortcut {
                     event.prevent_default();
                     // An IME still composing commits first; saving half a syllable helps no one.
-                    if !event.is_composing() && !body.is_composing() {
+                    if !event.is_composing() {
                         save_manual();
                     }
                 }
@@ -1143,7 +1136,6 @@ fn Editor(draft: Draft) -> impl IntoView {
                                         | SaveSlotAction::Retry { pending: true, .. } => ActionState::pending(""),
                                         _ => ActionState::Enabled,
                                     })
-                                    on_press=on_save_manual
                                 >
                                     {move || match slot_action.get() {
                                         SaveSlotAction::Save { label, pending: false } => label,
@@ -1194,7 +1186,8 @@ fn Editor(draft: Draft) -> impl IntoView {
                 </section>
             </Show>
             <Show when=move || matches!(status(), SaveStatus::Conflict { .. })>
-                <section class="vk-editor-recovery" data-testid="conflict" data-tone="warning" aria-label="Xung đột bản nháp">
+                <section id="editor-text-conflict" tabindex="-1" class="vk-editor-recovery"
+                    data-testid="conflict" data-tone="warning" aria-label="Xung đột bản nháp">
                     <InlineNotice tone=Tone::Warning announce=Announce::Off title="Có bản mới trên máy chủ."
                         message="Tải bản sao trước khi rời trang." />
                     <div class="vk-notice__actions">
@@ -1217,6 +1210,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                     placeholder="Chưa đặt tên" autocomplete="off" value=title
                     on_focus=move |_| last_field.set_value(Field::Title)
                     on_input=move |input: vink_ui::TextInput| {
+                        title_composing.set_value(input.composing);
                         if title.get_untracked() != input.value {
                             title.set(input.value);
                             session.update(|s| s.text.edited());
@@ -1562,6 +1556,7 @@ enum RecoveryTarget {
     TextConflict,
     TagConflict,
     TagRefused,
+    TagLoad,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1599,18 +1594,19 @@ struct SaveSlotView {
     action: SaveSlotAction,
 }
 
-#[cfg(feature = "hydrate")]
-fn project_session(session: &DraftSession, tags_read: TagLoad) -> SaveSlotView {
-    project_save_slot(&SaveSlotFacts {
-        text: session.text.status(),
-        text_pending_newer: session.text.has_pending_newer_edits(),
-        tags: session.tag_status(),
-        tags_read,
-        tags_pending_newer: session
-            .tags
-            .as_ref()
-            .is_some_and(|t| t.has_pending_newer_selection()),
-    })
+impl SaveSlotFacts {
+    fn from_session(session: &DraftSession, tags_read: TagLoad) -> Self {
+        Self {
+            text: session.text.status(),
+            text_pending_newer: session.text.has_pending_newer_edits(),
+            tags: session.tag_status(),
+            tags_read,
+            tags_pending_newer: session
+                .tags
+                .as_ref()
+                .is_some_and(|t| t.has_pending_newer_selection()),
+        }
+    }
 }
 
 #[cfg(feature = "hydrate")]
@@ -1627,27 +1623,24 @@ fn sync_save_slot_focus(
     if !was_save_focused {
         return;
     }
-    if let Some(next_action) = session.try_with_untracked(|s| {
-        project_session(s, tag_load.try_get_untracked().unwrap_or(TagLoad::Loading)).action
-    }) {
-        restore_save_slot_focus(next_action);
-    }
-}
-
-#[cfg(feature = "hydrate")]
-fn restore_save_slot_focus(next_action: SaveSlotAction) {
     use wasm_bindgen::JsCast;
     request_animation_frame(move || {
         let doc = document();
-        if doc.get_element_by_id("save").is_some() {
+        if doc.get_element_by_id("save").is_some()
+            || doc
+                .active_element()
+                .is_some_and(|el| !el.tag_name().eq_ignore_ascii_case("BODY"))
+        {
             return;
         }
-        let body_or_none = doc
-            .active_element()
-            .is_none_or(|el| el.tag_name().eq_ignore_ascii_case("BODY"));
-        if !body_or_none {
+        // Resolve the active slot after DOM updates. A disposed editor cannot hand off focus
+        // to a different draft, and intervening edits may have changed the destination.
+        let Some(next_action) = session.try_with_untracked(|s| {
+            let tags_read = tag_load.try_get_untracked().unwrap_or(TagLoad::Loading);
+            project_save_slot(&SaveSlotFacts::from_session(s, tags_read)).action
+        }) else {
             return;
-        }
+        };
         let target_selector = match next_action {
             SaveSlotAction::None => Some("#editor-save-details > summary"),
             SaveSlotAction::Recover { .. } => Some("#save-recovery-jump"),
@@ -1703,6 +1696,9 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
                 Some(TagStatus::Conflict { .. } | TagStatus::Refused(_) | TagStatus::Failed(_)),
             ) => "Đang lưu chữ; thẻ cần kiểm tra…",
             (SaveStatus::Saving, _) if facts.text_pending_newer => "Đang lưu; có chữ mới…",
+            (SaveStatus::Saving, None) if matches!(facts.tags_read, TagLoad::Failed(_)) => {
+                "Đang lưu chữ; chưa tải được thẻ."
+            }
             (SaveStatus::Saving, _) => "Đang lưu…",
             (SaveStatus::Saved { .. }, Some(TagStatus::Saving)) if facts.tags_pending_newer => {
                 "Đang lưu thẻ; có thay đổi mới…"
@@ -1737,9 +1733,19 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
             status_token: "conflict",
             problem_kind: Some("conflict"),
             detail_text: format!("{text_detail} {tag_detail}"),
-            action: SaveSlotAction::Recover {
-                label: "Xử lý xung đột",
-                target: RecoveryTarget::TextConflict,
+            action: match facts.tags {
+                Some(TagStatus::Unsaved) => SaveSlotAction::Save {
+                    label: "Lưu thẻ",
+                    pending: false,
+                },
+                Some(TagStatus::Failed(_)) => SaveSlotAction::Retry {
+                    label: "Thử lưu lại thẻ",
+                    pending: false,
+                },
+                _ => SaveSlotAction::Recover {
+                    label: "Xử lý xung đột",
+                    target: RecoveryTarget::TextConflict,
+                },
             },
         };
     }
@@ -1753,6 +1759,9 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
         });
         let status_text = if text_uncertain {
             match facts.tags.as_ref() {
+                None if matches!(facts.tags_read, TagLoad::Failed(_)) => {
+                    "Chưa xác nhận lưu chữ; chưa tải được thẻ."
+                }
                 None | Some(TagStatus::Saved { .. }) => "Chưa xác nhận lưu.",
                 Some(TagStatus::Unsaved) => "Chưa xác nhận lưu chữ; thẻ chưa lưu.",
                 Some(TagStatus::Failed(tag_failure))
@@ -1760,12 +1769,24 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
                 {
                     "Chưa xác nhận lưu chữ và thẻ."
                 }
+                Some(TagStatus::Conflict { .. }) => "Chưa xác nhận lưu chữ; thẻ đã đổi ở nơi khác.",
+                Some(TagStatus::Refused(_)) => "Chưa xác nhận lưu chữ; thẻ bị từ chối.",
                 _ => "Chưa xác nhận lưu chữ; thẻ chưa lưu được.",
             }
         } else {
             match facts.tags.as_ref() {
+                None if matches!(facts.tags_read, TagLoad::Failed(_)) => {
+                    "Chưa lưu được chữ; chưa tải được thẻ."
+                }
                 None | Some(TagStatus::Saved { .. }) => "Chưa lưu được.",
                 Some(TagStatus::Unsaved) => "Chưa lưu được chữ; thẻ chưa lưu.",
+                Some(TagStatus::Conflict { .. }) => "Chưa lưu được chữ; thẻ đã đổi ở nơi khác.",
+                Some(TagStatus::Refused(_)) => "Chưa lưu được chữ; thẻ bị từ chối.",
+                Some(TagStatus::Failed(tag_failure))
+                    if crate::tag_state::uncertain(*tag_failure) =>
+                {
+                    "Chưa lưu được chữ; chưa xác nhận lưu thẻ."
+                }
                 _ => "Chưa lưu được chữ và thẻ.",
             }
         };
@@ -1911,7 +1932,11 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
         Some(TagStatus::Saving) | None => {
             if text_dirty {
                 SaveSlotView {
-                    status_text: "Chưa lưu".into(),
+                    status_text: match facts.tags_read {
+                        TagLoad::Failed(_) => "Chưa lưu chữ; chưa tải được thẻ",
+                        _ => "Chưa lưu chữ",
+                    }
+                    .into(),
                     status_token: "unsaved",
                     problem_kind: None,
                     detail_text: format!("{text_detail} {tag_detail}"),
@@ -1921,16 +1946,25 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
                     },
                 }
             } else {
-                let (status_text, problem_kind) = match facts.tags_read {
-                    TagLoad::Failed(_) => ("Đã lưu chữ; chưa tải được thẻ", Some("partial")),
-                    TagLoad::Loading | TagLoad::Ready => ("Đã lưu", None),
+                let (status_text, status_token, action) = match facts.tags_read {
+                    TagLoad::Failed(_) => (
+                        "Đã lưu chữ; chưa tải được thẻ",
+                        "failed",
+                        SaveSlotAction::Recover {
+                            label: "Kiểm tra tải thẻ",
+                            target: RecoveryTarget::TagLoad,
+                        },
+                    ),
+                    TagLoad::Loading | TagLoad::Ready => {
+                        ("Đã lưu chữ; đang tải thẻ…", "loading", SaveSlotAction::None)
+                    }
                 };
                 SaveSlotView {
                     status_text: status_text.into(),
-                    status_token: "saved",
-                    problem_kind,
+                    status_token,
+                    problem_kind: Some("partial"),
                     detail_text: format!("{text_detail} {tag_detail}"),
-                    action: SaveSlotAction::None,
+                    action,
                 }
             }
         }
@@ -2077,7 +2111,8 @@ mod editor_presentation_tests {
         let text = SaveStatus::Saved { version: 7 };
         assert_eq!(draft_status_text(text, Some(&saved_tags)), "Đã lưu");
         assert_eq!(draft_status_token(text, Some(&saved_tags)), "saved");
-        assert_eq!(draft_status_text(text, None), "Đã lưu", "tags not loaded");
+        assert_eq!(draft_status_text(text, None), "Đã lưu chữ; đang tải thẻ…");
+        assert_eq!(draft_status_token(text, None), "loading");
         assert_eq!(
             draft_status_text(text, Some(&TagStatus::Unsaved)),
             "Đã lưu chữ; chưa lưu thẻ",
@@ -2145,7 +2180,13 @@ mod editor_presentation_tests {
             tags_read: TagLoad::Failed(Failure::Unavailable),
             tags_pending_newer: false,
         });
-        assert_eq!(tag_load_failed.action, SaveSlotAction::None);
+        assert_eq!(
+            tag_load_failed.action,
+            SaveSlotAction::Recover {
+                label: "Kiểm tra tải thẻ",
+                target: RecoveryTarget::TagLoad,
+            }
+        );
         assert_eq!(tag_load_failed.status_text, "Đã lưu chữ; chưa tải được thẻ");
 
         // Text dirty + tags saved vs tags dirty + text saved vs both dirty.

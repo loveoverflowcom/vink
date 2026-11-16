@@ -161,11 +161,6 @@ impl EditorSession {
         self.in_flight
     }
 
-    /// Server-acknowledged draft version (or loaded baseline).
-    pub fn saved_version(&self) -> i64 {
-        self.base_version
-    }
-
     /// Whether edits occurred after the currently in-flight save ticket was captured.
     pub fn has_pending_newer_edits(&self) -> bool {
         self.in_flight
@@ -275,30 +270,31 @@ impl DraftSession {
     }
 
     fn manual_save_parts(&self) -> (bool, bool) {
+        // The unified action is pending until both replies settle. Shortcuts and form submits
+        // follow the same rule as the toolbar; explicit recovery/leave use their own entrypoints.
+        if !self.in_flight().is_empty() {
+            return (false, false);
+        }
         let text_needs = (self.text.has_unsaved_text()
             || matches!(self.text.status(), SaveStatus::Failed(_)))
             && self.text.can_save();
-        let tags_needs = self.tags.as_ref().is_some_and(|tags| {
-            tags.can_save()
-                && (tags.has_unsaved() || matches!(tags.status(), TagStatus::Failed(_)))
-                && !matches!(
-                    tags.status(),
-                    TagStatus::Refused(_) | TagStatus::Conflict { .. }
-                )
-        });
+        let tags_needs = self
+            .tags
+            .as_ref()
+            .is_some_and(|tags| matches!(tags.status(), TagStatus::Unsaved | TagStatus::Failed(_)));
         (text_needs, tags_needs)
     }
 
     /// Whether an author-triggered manual save (`Lưu`, `Ctrl/Cmd+S`, title `Enter`) should issue
-    /// any write. Unlike [`Self::can_save`], a clean, already-pending, conflicted or unchanged-refused
-    /// state returns `false` so manual activation never triggers redundant writes.
+    /// any write. Clean and pending activations are ignored, and a conflict or refusal only
+    /// blocks the affected part.
     pub fn needs_manual_save(&self) -> bool {
         let (text_needs, tags_needs) = self.manual_save_parts();
         text_needs || tags_needs
     }
 
     /// Starts writes only for parts that actually need manual saving or retrying, returning `None`
-    /// when the draft is clean, in flight or blocked on conflict/unchanged refusal. Leaves
+    /// when neither part can be saved or when any part is in flight. Leaves
     /// [`Self::begin_save`] intact for publication, recovery and leave callers.
     pub fn begin_manual_save(&mut self) -> Option<DraftTicket> {
         let (text_needs, tags_needs) = self.manual_save_parts();
@@ -1020,6 +1016,20 @@ mod tests {
         newer.text.save_succeeded(t1.text.unwrap(), 2);
         assert_eq!(newer.text.status(), SaveStatus::Unsaved);
         assert!(newer.needs_manual_save());
+
+        // The pending toolbar and the shortcut agree even when the other part
+        // becomes dirty during a tag-only request.
+        let mut mixed = draft(false, true);
+        let tags_ticket = mixed.begin_manual_save().unwrap().tags.unwrap();
+        mixed.text.edited();
+        assert!(!mixed.needs_manual_save());
+        assert_eq!(mixed.begin_manual_save(), None);
+        let tags = mixed.tags.as_mut().unwrap();
+        let confirmed = tags.submitted(tags_ticket).unwrap().clone();
+        tags.save_succeeded(tags_ticket, 2, confirmed);
+        let text_only = mixed.begin_manual_save().unwrap();
+        assert!(text_only.text.is_some());
+        assert!(text_only.tags.is_none());
 
         // Refused tags with clean text: never re-sends unchanged refused tags;
         // once text is also edited, saves only text without re-submitting refused tags.

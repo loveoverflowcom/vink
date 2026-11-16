@@ -192,16 +192,20 @@ impl TagSession {
     /// A refusal names a tag; once that tag is gone (or the themes fit again) it no longer
     /// describes the selection. Failures stay until the next save, like text failures.
     fn edited(&mut self) {
-        let stale = match &self.refusal {
-            Some(refusal) => match (refusal.code, refusal.tag_id.as_deref()) {
-                (TagRefusalCode::TooManyThemes, _) => self.current.themes.len() <= MAX_THEMES,
-                (_, Some(tag_id)) => !self.current.contains(tag_id),
-                (_, None) => true,
-            },
-            None => false,
-        };
-        if stale {
+        if self
+            .refusal
+            .as_ref()
+            .is_some_and(|refusal| !self.refusal_applies(refusal))
+        {
             self.refusal = None;
+        }
+    }
+
+    fn refusal_applies(&self, refusal: &TagRefusal) -> bool {
+        match (refusal.code, refusal.tag_id.as_deref()) {
+            (TagRefusalCode::TooManyThemes, _) => self.current.themes.len() > MAX_THEMES,
+            (_, Some(tag_id)) => self.current.contains(tag_id),
+            (_, None) => false,
         }
     }
 
@@ -261,7 +265,13 @@ impl TagSession {
                     self.conflict = Some((current_version, stored));
                 }
             }
-            TagRejection::Refused(refusal) => self.refusal = Some(refusal),
+            TagRejection::Refused(refusal) => {
+                // A response for the submitted chips must not block a correction already made
+                // on the page. Keep it when the relevant tag is still selected.
+                if self.current == submitted || self.refusal_applies(&refusal) {
+                    self.refusal = Some(refusal);
+                }
+            }
             TagRejection::Failed(failure) => {
                 if uncertain(failure) {
                     self.unconfirmed.push(submitted);
@@ -307,6 +317,11 @@ impl TagSession {
             }
         } else if let Some(refusal) = &self.refusal {
             TagStatus::Refused(refusal.clone())
+        } else if let Some(failure) = self.failure.filter(|failure| uncertain(*failure)) {
+            TagStatus::Failed(failure)
+        } else if !self.unconfirmed.is_empty() {
+            // A later refusal does not tell us whether a prior request committed.
+            TagStatus::Failed(Failure::Unexpected)
         } else if let Some(failure) = self.failure {
             TagStatus::Failed(failure)
         } else if self.current == self.saved {
@@ -333,11 +348,6 @@ impl TagSession {
 
     pub fn in_flight(&self) -> Option<TagTicket> {
         self.in_flight.as_ref().map(|(t, _)| *t)
-    }
-
-    /// Version last confirmed by the server.
-    pub fn saved_version(&self) -> i64 {
-        self.base_version
     }
 
     /// Whether the author changed the selection after the currently in-flight save snapshot.
@@ -578,6 +588,26 @@ mod tests {
         assert_eq!(s.status(), TagStatus::Unsaved, "not resent automatically");
         assert_eq!(s.saved(), &sel(None, &["ky-uc"]));
         assert_eq!(s.begin_save().unwrap().expected_version, 4);
+    }
+
+    #[test]
+    fn a_late_refusal_cannot_hide_an_earlier_unconfirmed_write() {
+        let mut s = TagSession::loaded(3, Selection::default());
+        s.add_theme("ky-uc").unwrap();
+        let first = s.begin_save().unwrap();
+        s.save_rejected(first, TagRejection::Failed(Failure::Network));
+        s.add_theme("do-thi").unwrap();
+        let second = s.begin_save().unwrap();
+        s.revert();
+        s.save_rejected(
+            second,
+            TagRejection::Refused(refusal(TagRefusalCode::Retired, Some("do-thi"))),
+        );
+        assert_eq!(s.current(), s.saved());
+        assert!(s.has_unsaved());
+        assert_eq!(s.status(), TagStatus::Failed(Failure::Unexpected));
+        let retry = s.begin_save().unwrap();
+        assert_eq!(retry.expected_version, 3);
     }
 
     #[test]

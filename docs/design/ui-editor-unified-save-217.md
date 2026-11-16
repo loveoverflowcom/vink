@@ -2,14 +2,14 @@
 
 ## Trạng thái trên bốn trục độc lập
 
-- **Quyết định sản phẩm:** `PRODUCT_CONFIRMED` theo `WR-01`, `WR-02`, `WR-05`, `UX-01`, `INV-08` ([PRD](../../prd/requirements.md)) và [issue #217](https://github.com/loveoverflowcom/vink/issues/217). Không thêm autosave ngầm, không khôi phục cục bộ trên thiết bị, không sửa API/SQL/auth.
+- **Phạm vi sản phẩm:** [issue #217](https://github.com/loveoverflowcom/vink/issues/217) yêu cầu hợp nhất trạng thái và thao tác lưu thủ công. Đối chiếu `WR-01`, `WR-02`, `WR-05`, `UX-01` ([PRD](../../prd/requirements.md)) và [`INV-08`](../architecture/decisions.md). Autosave trong `WR-01` và khôi phục cục bộ vẫn chưa triển khai; thay đổi UI không tạo quyết định `PRODUCT_CONFIRMED` mới.
 - **Quyết định kiến trúc:** `D-04@r1` giữ `DESIGN_PROPOSED`; đây là thiết kế UI và projection ở client thuộc phạm vi PR 1/2.
 - **Mức triển khai:** `web` (`apps/vink-web`, `packages/vink-patterns/leptos`, `packages/ui-system/leptos/preview`, `apps/vink-web/editor`). `cmp` chỉ giữ chrome mẫu tương thích tại `Patterns.kt`, chưa có editor thật hay native save runtime.
 - **Bằng chứng kiểm chứng:** Chrome headless CDP (`ui-preview leptos verify`, `verify web` đầy đủ) + PostgreSQL scratch thực + Cargo unit/clippy/UI token checks (`verify quick`); chưa kiểm thiết bị mobile thật, Safari/Firefox, OS IME hay screen reader thật. Không coi preview mẫu là bằng chứng lưu/xác thực.
 
 ## Phạm vi, owner và base
 
-- Issue [#217](https://github.com/loveoverflowcom/vink/issues/217), kế thừa [UI R5 (#101)](ui-editor-r5.md), [R1.4](editor-r14.md) và [Reflow (#193)](editor-writing-reflow-193.md); base `origin/develop` (`6de515d`).
+- Issue [#217](https://github.com/loveoverflowcom/vink/issues/217), kế thừa [UI R5 (#101)](ui-editor-r5.md), [R1.4](editor-r14.md) và [Reflow (#193)](editor-writing-reflow-193.md); base triển khai `6de515d`; review tích hợp trên `origin/develop@a3e6536`.
 - Fidelity tham chiếu: `NO_APPROVED_REFERENCE` (kế thừa R5 Lavender tokens, tự kiểm theo rubric 5 chiều của `ux-quality`).
 - Owners:
   - State & guards: [`DraftSession` / `EditorSession`](../../apps/vink-web/src/desk_state.rs), [`TagSession`](../../apps/vink-web/src/tag_state.rs), [`TagLoad`](../../apps/vink-web/src/pages/work_info.rs)
@@ -25,7 +25,7 @@ Header Bàn viết / Quay lại
         │     ├── Nhãn trạng thái sống duy nhất ([data-testid="save-status"], role="status", aria-live="polite")
         │     ├── Nút hành động theo ngữ cảnh (chỉ hiện khi cần, giữ cùng #save-slot)
         │     │     ├── Dirty / Retryable fail: Button#save (Filled khi dirty, Tonal khi Retry; pending -> ActionState::pending)
-        │     │     └── Conflict / TagRefused: Button#save-recovery-jump (Tonal -> focus control khôi phục thật)
+        │     │     └── Conflict / thẻ bị từ chối hay chưa tải được: đưa đến khôi phục nếu không còn phần có thể lưu
         │     └── SupportingDetails#editor-save-details ("Chi tiết trạng thái lưu")
         └── Secondary actions (.vk-editor-toolbar__actions)
               ├── TooltipIconButton#preview ("Xem trước")
@@ -42,9 +42,9 @@ Header Bàn viết / Quay lại
 
 ## Sự thật trạng thái chữ + thẻ và chống ghi thừa
 
-1. **Không sửa toàn cục `DraftSession::can_save` / `begin_save`:** `PublicationPanel`, `WorkInfo` và `LeaveGuard` tiếp tục dùng hợp đồng cũ. Riêng hành động lưu thủ công trên toolbar, form `Enter` tiêu đề và `Ctrl/Cmd+S` (ngoài IME composition) gọi `DraftSession::begin_manual_save` (`needs_manual_save`): trả về `None` ở trạng thái clean, đang `in_flight`, text conflict hoặc thẻ `Refused` chưa đổi lựa chọn. Nếu chỉ chữ thay đổi khi thẻ đang `Refused`, `begin_manual_save` chỉ gửi phần chữ.
+1. **Không sửa toàn cục `DraftSession::can_save` / `begin_save`:** `PublicationPanel`, `WorkInfo` và `LeaveGuard` tiếp tục dùng hợp đồng cũ. Riêng hành động lưu thủ công trên toolbar, form `Enter` tiêu đề và `Ctrl/Cmd+S` (ngoài IME composition) gọi `DraftSession::begin_manual_save` (`needs_manual_save`): không ghi khi đã lưu hoặc còn bất kỳ yêu cầu lưu nào đang chờ. Xung đột hoặc từ chối chỉ chặn phần liên quan: có thể lưu chữ khi thẻ bị từ chối và lưu thẻ khi chữ xung đột. Từ chối đến muộn không khóa lựa chọn nếu tác giả đã bỏ thẻ bị từ chối.
 2. **Projection hợp nhất (`project_save_slot`):** tổng hợp `SaveStatus`, `EditorSession::has_pending_newer_edits()`, `Option<TagStatus>`, `TagLoad`, `TagSession::has_pending_newer_selection()`.
-   - Tách rõ clean (`Đã lưu`), partial dirty (`Chưa lưu chữ`, `Đã lưu chữ; chưa lưu thẻ`), both dirty (`Chưa lưu chữ và thẻ`), pending + sửa mới trong lúc chờ (`Đang lưu; có chữ mới…`), unconfirmed vs rejected (`Chưa xác nhận lưu.` vs `Chưa lưu được.`, gồm partial text saved + tags uncertain/rejected/refused/conflict), conflict (`Có bản mới trên máy chủ.` / `Đã lưu chữ; thẻ đã đổi ở nơi khác.`).
+   - Chỉ hiện `Đã lưu` khi cả chữ và thẻ đã được xác nhận; lúc đang tải hoặc lỗi tải thẻ, nêu rõ mới xác nhận phần chữ. Tách rõ partial dirty (`Chưa lưu chữ`, `Đã lưu chữ; chưa lưu thẻ`), both dirty (`Chưa lưu chữ và thẻ`), pending + sửa mới trong lúc chờ (`Đang lưu; có chữ mới…`), unconfirmed vs rejected (`Chưa xác nhận lưu.` vs `Chưa lưu được.`, gồm partial text saved + tags uncertain/rejected/refused/conflict), conflict (`Có bản mới trên máy chủ.` / `Đã lưu chữ; thẻ đã đổi ở nơi khác.`).
    - Mọi bản sao/chi tiết nêu rõ máy chủ (`trên máy chủ`), không dùng copy khôi phục trên máy hay autosave.
    - CSS `.vk-save-status` chuyển từ exception `0.9375rem` sang token `--vk-type-label-size` (xóa entry `style_exceptions` cũ trong [`api-coverage.json`](../../packages/ui-system/shared/api-coverage.json)); cảnh báo uncertain/conflict dùng `warning-container` / `on-warning-container`.
 3. **Ổn định caret sau scale change (`editor.ts`):** bổ sung `ensureCaretVisible` (tối đa 2 `rAF`, chỉ chạy khi editor đang focus và có `tr.scrollIntoView`) để sau khi root text scale co lại (`200% → 100%`) trong lúc `.cm-editor` từng nằm ngoài viewport, CodeMirror hoàn tất rút gọn `heightMap` vẫn giữ con trỏ trong vùng nhìn thấy.
@@ -56,7 +56,7 @@ PR 2/2 (#218) kế thừa trực tiếp seam sau mà không đổi logic save ha
 - **Primary slot `#save-slot` trong `EditorToolbar`:** giữ `id="save-slot"`, `data-status`, `data-problem`, live readout `[data-testid="save-status"]` (`role="status"` duy nhất), `#editor-save-details` và slot `save_action` (`#save` / `#save-recovery-jump`).
 - **Secondary actions `{children()}` trong `.vk-editor-toolbar__actions`:** hiện giữ `#preview` và `#export`. PR 2/2 có thể gom hoặc chuyển các secondary tools / details sang overflow menu ở header mà không cần sửa `DraftSession::needs_manual_save` / `begin_manual_save`, `project_save_slot`, `sync_save_slot_focus` hay live announcement owner.
 
-## Kiểm chứng cục bộ (độ tương phản, đơn vị, preview và trình duyệt)
+## Kiểm chứng ban đầu tại `18885ee` (độ tương phản, đơn vị, preview và trình duyệt)
 
 - **`cargo xtask verify quick`:** `ui tokens` (15 files khớp), `expressions` (3/3), `fmt`, `clippy` (SSR/hydrate WASM/preview CSR WASM), 22 + 31 doctests, `unit + contract tests` (`desk_state::tests::manual_save_skips_clean_pending_conflict_and_unchanged_refusal` và `editor_presentation_tests` trong `desk.rs` mở rộng), `repository checks` (xóa style exception `0.9375rem`).
 - **`cargo xtask ui-preview leptos verify`:** build + media hydration + **838 captures** qua Chrome CDP (`screen.editor` cập nhật cho `default`/`dirty`/`pending`/`error`/`uncertain`/`conflict`, 0 errors). *(Đã thêm `stream.set_nonblocking(false)` tại `xtask/src/ui_preview.rs` vì `accept()` trên macOS/BSD kế thừa `O_NONBLOCK` từ listener khiến file `.wasm` bị ngắt giữa chừng).*
