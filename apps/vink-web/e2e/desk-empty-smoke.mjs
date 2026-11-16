@@ -135,6 +135,7 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
         await page.send('Fetch.disable');
         page.cdp.listeners=page.cdp.listeners.filter(l=>l!==corruptListener);
       }
+      await sessionFence(page, {args,check,gate,settled});
     }
     writeFileSync(join(dirname(args.state), 'desk-empty-results.json'), JSON.stringify({baseline,geometry,network,boundary:'Chrome-CDP; private-summary transport fixtures; root font-size text200; no real OS IME'},null,2));
   } finally {
@@ -143,5 +144,52 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
     await page.send('Network.setBlockedURLs',{urls:[]});
     await page.send('Network.setCacheDisabled',{cacheDisabled:false});
     await page.eval(`document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme`);
+  }
+}
+
+// Confirm a changed session through the real tab Session owner/BroadcastChannel.
+// Auth answers are explicit transport fixtures, not a real cookie/login claim.
+async function sessionFence(page, {args,check,gate,settled}) {
+  let principal='99999999-9999-4999-8999-000000000259';
+  let error;
+  const listener = event => {
+    if(event.sessionId!==page.sessionId || event.method!=='Fetch.requestPaused') return;
+    const path=new URL(event.params.request.url).pathname;
+    let result;
+    if(path==='/api/v1/auth/session') result=gate.fulfill(event.params.requestId,200,{state:'active',principal_id:principal});
+    else if(path==='/api/v1/auth/session/account') result=gate.fulfill(event.params.requestId,200,{principal_id:principal,display_name:'[Fixture #259] Changed account'});
+    else result=gate.handle(event.params);
+    result.catch(e=>{error=e;});
+  };
+  const announce=()=>page.eval(`(() => {const c=new BroadcastChannel('vink-session');c.postMessage('changed');c.close();})()`);
+  page.cdp.listeners.push(listener);
+  await page.send('Fetch.enable',{patterns:['/api/v1/auth/session','/api/v1/auth/session/account','/api/v1/author/works*','/api/v1/drafts'].map(path=>({urlPattern:args.base+path,requestStage:'Request'}))});
+  try {
+    gate.holdGets=true;
+    await page.eval(`window.__emptySearch.focus();window.__emptySearch.value='PRIVATE-OLD-QUERY';window.__emptySearch.dispatchEvent(new InputEvent('input',{bubbles:true}))`);
+    await page.key('Enter');
+    const old=await gate.next('gets');
+    await announce();
+    const fresh=await gate.next('gets');
+    check(new URL(gate.getURLs.get(fresh)).searchParams.get('q')==='' && await page.eval(`document.querySelector('#draft-search')===window.__emptySearch && window.__emptySearch.value==='' && document.querySelector('#draft-sort').value==='recent' && !document.querySelector('#drafts img')`), '#259 confirmed account change clears private query/artwork while retaining the input owner');
+    await gate.fulfill(fresh,200,{drafts:[]}); await settled();
+    await gate.fulfill(old,200,{drafts:[{work_id:'99999999-9999-4999-8999-000000000258',title:'PRIVATE-OLD-REPLY',version:1,updated_at:'2026-11-16T00:00:00Z'}]}).catch(()=>{});
+    await page.eval(`new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))`);
+    check(await page.eval(`document.querySelector('[data-testid=draft-empty]') && !document.querySelector('#desk').textContent.includes('PRIVATE-OLD-REPLY') && document.querySelectorAll('#create-draft').length===1`), '#259 late old-session read cannot replace new-session first-use');
+    await page.click('#create-draft');
+    const post=await gate.next('posts'),count=gate.postCount;
+    principal='99999999-9999-4999-8999-000000000260';
+    await announce();
+    await gate.fulfill(await gate.next('gets'),200,{drafts:[]}); await settled();
+    await gate.fulfill(post,201,{work_id:'99999999-9999-4999-8999-000000000258',title:'',version:1,document:{schema_version:1,blocks:[]},updated_at:'2026-11-16T00:00:00Z'});
+    await page.eval(`new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))`);
+    check(gate.postCount===count && await page.eval(`location.pathname==='/ban-viet' && document.querySelectorAll('#create-draft').length===1 && document.querySelector('#create-draft').getAttribute('aria-disabled')!=='true' && document.querySelector('#create-draft').textContent==='Viết bản thảo đầu tiên'`), '#259 late successful create from old session cannot navigate, retry POST or change new first-use state');
+    if(error) throw error;
+  } finally {
+    await page.send('Fetch.disable');
+    page.cdp.listeners=page.cdp.listeners.filter(l=>l!==listener);
+    // Restore server-confirmed local fixture standing for later scenarios.
+    gate.holdGets=false;
+    await announce();
   }
 }
