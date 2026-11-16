@@ -68,6 +68,9 @@ export async function readerBeforeHydration(page, { args, check }) {
       await page.send('Fetch.enable', { patterns: assets.map(urlPattern => ({ urlPattern, requestStage: 'Request' })) });
       await page.send('Page.navigate', { url: args.base + PATH });
       await page.waitFor("!!document.querySelector('.vk-document') && !!document.querySelector('#root-composer-send')", 'complete SSR Reader during bootstrap hold');
+      // SSR DOM can become observable before the deferred import reaches Fetch. Wait for
+      // the actual paused request; DOM readiness alone is not proof of an injected hold.
+      for (const deadline = Date.now() + 10000; held.size === 0 && Date.now() < deadline;) await sleep(10);
       check(held.size > 0 && await page.eval(`!(${READY})`), 'bootstrap is actually paused before the click (' + holdMs + 'ms)');
       check(await page.eval("document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')==='true'"), 'discussion refresh remains unavailable while bootstrap is held (' + holdMs + 'ms)');
       await page.click('#root-composer-send');

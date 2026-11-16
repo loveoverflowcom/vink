@@ -75,6 +75,8 @@ Không đổi framework hay giảm assertion; matrix riêng có deadline 30 giâ
   GET `/reader` trùng trong cửa sổ quan sát. Refresh unavailable trước bootstrap và enabled sau
   hydration được assert trực tiếp. Transport là CDP-visible path/method, không body,
   cookie, credential hoặc SQL; bootstrap injection được ghi rõ.
+  Harness chờ event `Fetch.requestPaused` thực với deadline trước khi kiểm hold: DOM SSR có
+  thể sẵn sàng trước deferred bootstrap import. Không suy DOM ready thành request đã bị giữ.
 - Các assertions stale/history/reordered navigation có sẵn ở `cacheFirstPublicReads` (#202),
   canonical redirect ở discovery, và Hidden/ReviewWithdrawn qua App/PG thật ở review được giữ.
   Test hiện có không tự trở thành PASS mới chỉ vì source đã đọc.
