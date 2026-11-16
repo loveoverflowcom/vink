@@ -17,11 +17,16 @@ export async function documentBudget(page, { args, check }) {
       window.__budgetHydratedAt=performance.now();}).observe(document,{subtree:true,attributes:true,attributeFilter:['data-hydrated']});
   ` });
   await page.send('Performance.enable');
-  const requests = new Map(), transfer = [];
+  await page.send('Network.enable', { maxPostDataSize: 8 * 1024 * 1024 });
+  const requests = new Map(), transfer = [], writes = [];
   const listener = event => {
     if (event.sessionId !== page.sessionId) return;
     if (event.method === 'Page.javascriptDialogOpening' && event.params.type === 'beforeunload') {
       page.send('Page.handleJavaScriptDialog', { accept: true }).catch(() => {});
+    }
+    if (event.method === 'Network.requestWillBeSent' && event.params.request.method === 'PUT') {
+      const r = event.params.request;
+      writes.push({path:new URL(r.url).pathname,post_data_bytes:r.postData === undefined ? null : Buffer.byteLength(r.postData)});
     }
     if (event.method === 'Network.responseReceived') requests.set(event.params.requestId, {
       type: event.params.type, url: new URL(event.params.response.url).pathname,
@@ -60,6 +65,7 @@ export async function documentBudget(page, { args, check }) {
               hydration_after_response_ms:window.__budgetHydratedAt-nav.responseEnd,
               blocks:body.children.length, body_text_scalars:[...body.textContent].length,
               inline_script_bytes:scripts.reduce((n,s)=>n+bytes(s.textContent),0),
+              hydration_resource_script_bytes:scripts.filter(s=>s.textContent.includes('__RESOLVED_RESOURCES')).reduce((n,s)=>n+bytes(s.textContent),0),
               inline_script_sizes:scripts.map(s=>({id:s.id,type:s.type,bytes:bytes(s.textContent)})),
               dom_elements:document.querySelectorAll('*').length,
               font_size:getComputedStyle(document.documentElement).fontSize,
@@ -145,11 +151,14 @@ export async function documentBudget(page, { args, check }) {
       const before = await page.draft(fixture.work_id);
       await page.eval('window.__budgetBeforeSave=__budgetView.state.doc.toString()');
       const saveStart = performance.now();
+      const priorWrites = writes.length;
       await page.click('#save');
       const tooLarge = Buffer.byteLength(JSON.stringify({ expected_version: before.version, title: before.title, document: fixture.document })) > 2 * 1024 * 1024;
       await page.waitFor(`['saved','failed','conflict'].includes(document.querySelector('[data-testid=save-status]')?.dataset.status)`, 'budget save result', 120000);
       row.manual_save_wall_ms = performance.now() - saveStart;
       row.save_status = await page.status();
+      row.manual_save_requests = writes.slice(priorWrites);
+      row.ime_simulation = 'CDP composition followed by committed insertion';
       const after = await page.draft(fixture.work_id);
       check(tooLarge ? after.version === before.version : after.version === before.version + 1,
         `${fixture.case}: manual save ${tooLarge ? 'transport rejection preserves server version' : 'ACK advances server version'}`);
