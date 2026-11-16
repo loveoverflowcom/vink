@@ -655,3 +655,14 @@ version nhìn thấy trên row, giữ full title/href và CAS facts. Current Lay
 `vi-VN` theo device zone sau hydrate, SSR fallback UTC; Web/CMP patterns dùng Thấm/Bỏ Thấm.
 Coverage mới nằm trong `draftDashboard`/`draftR6Hierarchy`, pagination smoke, timestamp unit và
 endorsement smoke; kết quả thực ghi tại [evidence #213](desk-compact-tham.md).
+
+
+### Empty artwork CMP diagnostic #261
+
+`ScreenRecipes.kt` tiêu thụ ba asset canonical của #258 tại catalog `screen.explore` và
+`screen.desk`, scenarios `empty`/`no-results` hiện hữu. `EmptyArtworkTest` kiểm alpha pixels,
+output bounds, cover rejection và cancellation; `EmptyArtworkPreviewTest` kiểm state exclusion,
+focus/selection, semantics, fallback/CTA và reflow; `EmptyArtworkCaptureTest` giữ before/after
+320/390/834dp × Light/Dark × text100/200. Android `exactDecorativeAlphaWebpDecodesAndKeepsRecovery`
+và iOS `testArtworkEmptyStatesKeepRecoveryAtLargeText` là checks riêng, không suy PASS từ JVM.
+[Spec](../design/empty-artwork-cmp-261.md) · [kết quả/gap](evidence/empty-webp-cmp-261/README.md).

@@ -1,0 +1,22 @@
+import AppKit
+let root = URL(fileURLWithPath: CommandLine.arguments[1])
+let states = [("screen.explore", "empty"), ("screen.explore", "no-results"), ("screen.desk", "empty"), ("screen.desk", "no-results")]
+try FileManager.default.createDirectory(at: root.appendingPathComponent("review-sheets"), withIntermediateDirectories: true)
+for width in [320,390,834] { for theme in ["light","dark"] { for scale in [100,200] {
+    let cellW = min(width,417), cellH = Int(Double(1000) * Double(min(width,417)) / Double(width)) + 28
+    let sheet = NSImage(size: NSSize(width: cellW*4, height: cellH*2))
+    sheet.lockFocus()
+    NSColor.white.setFill(); NSBezierPath(rect: NSRect(x:0,y:0,width:cellW*4,height:cellH*2)).fill()
+    for (row,phase) in ["before","after"].enumerated() { for (col,state) in states.enumerated() {
+        let name = "\(state.0)--\(state.1)--\(width)--\(theme)--\(scale).png"
+        let source = root.appendingPathComponent(phase).appendingPathComponent(name)
+        let img = NSImage(contentsOf: source)!
+        let y = (1-row)*cellH
+        img.draw(in:NSRect(x:col*cellW,y:y,width:cellW,height:cellH-28))
+        let label = "\(phase) · \(state.0)/\(state.1)"
+        (label as NSString).draw(at: NSPoint(x:col*cellW+4,y:y+cellH-23), withAttributes:[.font:NSFont.systemFont(ofSize:11),.foregroundColor:NSColor.black])
+    }}
+    sheet.unlockFocus()
+    let png = NSBitmapImageRep(data:sheet.tiffRepresentation!)!.representation(using:.png,properties:[:])!
+    try png.write(to:root.appendingPathComponent("review-sheets/\(width)-\(theme)-\(scale).png"))
+}}}

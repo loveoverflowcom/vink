@@ -1,0 +1,20 @@
+[
+  {
+    "id": "no-results",
+    "bytes": 20070,
+    "sha256": "74874272c94c2f43e293a45249dd843ffaa0ba5cc2b37a755a4eb91e2629bbb2",
+    "match": true
+  },
+  {
+    "id": "no-public-works",
+    "bytes": 16444,
+    "sha256": "56ce08c3ec4689b0222af8ca9b64397342236bc59bdeda83156718b8eb16dbbb",
+    "match": true
+  },
+  {
+    "id": "first-draft",
+    "bytes": 19190,
+    "sha256": "c4bfabfe1c70e35ac4e896f2be56f6cb3e33ea2e97057bbaf3cbc71491665a79",
+    "match": true
+  }
+]

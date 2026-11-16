@@ -145,6 +145,39 @@ class DiagnosticTest {
             "process_peak_rss_kib_before=$peakBefore process_peak_rss_kib_after=${processPeakRssKiB()}")
     }
 
+    @Test fun exactDecorativeAlphaWebpDecodesAndKeepsRecovery() = runBlocking<Unit> {
+        for (artwork in vink.ui.preview.EmptyArtwork.entries) {
+            val image = checkNotNull(vink.ui.preview.decodeEmptyArtwork(artwork, IntSize(192, 161)))
+            assertEquals(192, image.width)
+            assertEquals(160, image.height)
+            val pixels = image.toPixelMap()
+            var transparent = 0
+            var translucent = 0
+            var opaque = 0
+            var maxAlpha = 0f
+            for (y in 0 until image.height) for (x in 0 until image.width) {
+                val alpha = pixels[x, y].alpha
+                maxAlpha = maxOf(maxAlpha, alpha)
+                when {
+                    alpha == 0f -> transparent++
+                    alpha == 1f -> opaque++
+                    else -> translucent++
+                }
+            }
+            assertTrue("${artwork.id} alpha: $transparent/$translucent/$opaque", transparent > 0 && translucent > 0 && maxAlpha > 0.8f)
+            Log.i("VinkEmptyWebP", "api=${Build.VERSION.SDK_INT} artwork=${artwork.id} output=192x160 transparent=$transparent translucent=$translucent opaque=$opaque max_alpha=$maxAlpha allocation=${image.asAndroidBitmap().allocationByteCount}")
+        }
+        ui.runOnIdle { ui.activity.model.update("empty artwork") { it.copy(entry = "screen.desk", scenario = "empty", textScale = 2f) } }
+        ui.waitUntil(10_000) { ui.onAllNodesWithTag("empty-artwork-ready").fetchSemanticsNodes().isNotEmpty() }
+        ui.onNodeWithText("Viết bản thảo đầu tiên").performScrollTo().performClick()
+        ui.onNodeWithTag("sample-result").assertTextEquals("Mẫu · Đích #screen.editor/dirty")
+        ui.onNodeWithText("Đổi sáng/tối").performScrollTo().performClick()
+        ui.onNodeWithTag("empty-artwork-ready").assertExists()
+        ui.runOnIdle { ui.activity.model.update("search miss") { it.copy(scenario = "no-results") } }
+        ui.onNodeWithText("Xóa tìm kiếm").performScrollTo().performClick()
+        ui.onNodeWithTag("sample-result").assertTextEquals("Mẫu · Đã xóa tìm kiếm; không gọi dịch vụ.")
+    }
+
     private fun processPeakRssKiB(): Int? = File("/proc/self/status").useLines { lines ->
         lines.firstOrNull { it.startsWith("VmHWM:") }
             ?.removePrefix("VmHWM:")?.trimStart()?.substringBefore(' ')?.toIntOrNull()

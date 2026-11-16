@@ -16,9 +16,9 @@ final class DiagnosticTests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: stationary, object: element)], timeout: 5), .completed)
     }
 
-    private func launch(_ entry: String, _ scenario: String = "default", _ theme: String = "light") -> XCUIApplication {
+    private func launch(_ entry: String, _ scenario: String = "default", _ theme: String = "light", _ scale: String = "100") -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["--entry=\(entry)", "--scenario=\(scenario)", "--theme=\(theme)", "--motion=reduce"]
+        app.launchArguments = ["--entry=\(entry)", "--scenario=\(scenario)", "--theme=\(theme)", "--motion=reduce", "--scale=\(scale)"]
         app.launch()
         return app
     }
@@ -105,6 +105,35 @@ final class DiagnosticTests: XCTestCase {
         let bothFailed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "count == 2"), object: failure)
         XCTAssertEqual(XCTWaiter.wait(for: [bothFailed], timeout: 15), .completed)
         XCTAssertFalse(errors.descendants(matching: .any).matching(NSPredicate(format: "label == %@", alt)).firstMatch.exists)
+    }
+
+    // Alpha pixels are verified separately by EmptyArtworkTest on iosSimulatorArm64.
+    // This XCTest checks the actual host's accessible copy, scroll and sample callback.
+    func testArtworkEmptyStatesKeepRecoveryAtLargeText() {
+        for entry in ["screen.explore", "screen.desk"] {
+            for scenario in ["empty", "no-results"] {
+                for theme in ["light", "dark"] {
+                    let app = launch(entry, scenario, theme, "200")
+                    let label = scenario == "no-results" ? "Xóa tìm kiếm" :
+                        (entry == "screen.desk" ? "Viết bản thảo đầu tiên" : "Bắt đầu viết")
+                    let action = app.buttons[label]
+                    XCTAssertTrue(action.waitForExistence(timeout: 15))
+                    for _ in 0..<6 {
+                        if action.isHittable { break }
+                        app.swipeUp()
+                    }
+                    waitForStationary(action)
+                    let capture = XCTAttachment(screenshot: app.screenshot())
+                    capture.name = "\(entry)-\(scenario)-\(theme)-text200"
+                    capture.lifetime = .keepAlways
+                    add(capture)
+                    action.tap()
+                    let result = scenario == "no-results" ? "Mẫu · Đã xóa tìm kiếm; không gọi dịch vụ." : "Mẫu · Đích #screen.editor/dirty"
+                    XCTAssertTrue(app.staticTexts[result].waitForExistence(timeout: 5))
+                    app.terminate()
+                }
+            }
+        }
     }
 
 }

@@ -1,0 +1,46 @@
+{
+  "base": "57737a788869fbab556971d0b820cbb0fef64099",
+  "branch": "codex/cmp-empty-webp-states",
+  "files": [
+    {
+      "file": "packages/ui-system/cmp/androidDiagnostic/src/androidTest/kotlin/vink/ui/diagnostic/DiagnosticTest.kt",
+      "sha256": "77fa84df5271702e87862482e7628c1da9482233db4d8d2c836678c425a56fac"
+    },
+    {
+      "file": "packages/ui-system/cmp/diagnostics/build.gradle.kts",
+      "sha256": "19bec8f7e1c6ea55ae58516abf089266ded28204e1a1230a225f52a9e55379c6"
+    },
+    {
+      "file": "packages/ui-system/cmp/diagnostics/src/androidMain/kotlin/vink/ui/preview/Decode.kt",
+      "sha256": "b3a462beb17fc8b5ce5299136d2814bdfa919711dd630f83e162bc4910a6ffa6"
+    },
+    {
+      "file": "packages/ui-system/cmp/diagnostics/src/commonMain/kotlin/vink/ui/preview/ScreenRecipes.kt",
+      "sha256": "e67ea6c0d37b9d4db696d119ac809268357f46bb6d0ff2b68e443dc92eb4e294"
+    },
+    {
+      "file": "packages/ui-system/cmp/diagnostics/src/skiaMain/kotlin/vink/ui/preview/Decode.kt",
+      "sha256": "3af4482e5f3c4ab790f8d5e364ca498378f5a502fbc8daf99af50a27ed8adaac"
+    },
+    {
+      "file": "packages/ui-system/cmp/iosDiagnostic/Tests/DiagnosticTests.swift",
+      "sha256": "588ecc8c4dc4231ab79316e748c7f2ca5e355c2ff9b6c8469c256fbf6937fc8c"
+    },
+    {
+      "file": "packages/ui-system/cmp/diagnostics/src/commonMain/kotlin/vink/ui/preview/EmptyArtwork.kt",
+      "sha256": "87c44bc458c20b9f6f51464761324c2dac0cfb197974b266b7bb6183b68cc6c7"
+    },
+    {
+      "file": "packages/ui-system/cmp/diagnostics/src/commonTest/kotlin/vink/ui/preview/EmptyArtworkTest.kt",
+      "sha256": "f87348bf1b74a7ac23127ac1ea2545a1b3d3f7036799b7babd1d35b590761d60"
+    },
+    {
+      "file": "packages/ui-system/cmp/preview/src/desktopTest/kotlin/vink/ui/preview/EmptyArtworkCaptureTest.kt",
+      "sha256": "6dd9a70cb484205473317bcbab2aa16fa1ccd0b9c1e318a0a05573f6549a265a"
+    },
+    {
+      "file": "packages/ui-system/cmp/preview/src/desktopTest/kotlin/vink/ui/preview/EmptyArtworkPreviewTest.kt",
+      "sha256": "75a0fa2ec75a3c5309de8126d76265c44e82355e203c746109cd6dbe26b247f4"
+    }
+  ]
+}

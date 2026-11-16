@@ -1,0 +1,11 @@
+INFO         | Android emulator version 35.4.9.0 (build_id 13025442) (CL:N/A)
+INFO         | Graphics backend: gfxstream
+INFO         | Found systemPath /Users/manhblue/Library/Android/sdk/system-images/android-35/default/arm64-v8a/
+INFO         | Checking system compatibility:
+INFO         |   Checking: hasSufficientDiskSpace
+INFO         |      Ok: Disk space requirements to run avd: `vink261-api35` are met
+INFO         |   Checking: hasSufficientHwGpu
+INFO         |      Ok: Hardware GPU requirements to run avd: `vink261-api35` are passed
+INFO         |   Checking: hasSufficientSystem
+INFO         |      Ok: System requirements to run avd: `vink261-api35` are met
+ERROR        | Not enough space to create userdata partition. Available: 5846.488281 MB at /Users/manhblue/Documents/Codex/2026-11-17/task-5/vink/../android-runtime/avd/../avd/vink261-api35.avd, need 7372.800000 MB.

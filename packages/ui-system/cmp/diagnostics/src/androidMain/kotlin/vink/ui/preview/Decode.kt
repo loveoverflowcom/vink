@@ -40,6 +40,10 @@ private fun decodeLegacy(bytes: ByteArray, source: IntSize, output: IntSize): Bi
     // BitmapFactory may return partial pixels. Keep the legacy diagnostic path
     // restricted to the two exact bundled fixtures.
     if (bundledWebp.none { it.contentEquals(bytes) }) return null
+    return decodeLegacyPixels(bytes, source, output)
+}
+
+private fun decodeLegacyPixels(bytes: ByteArray, source: IntSize, output: IntSize): Bitmap? {
     var sample = 1
     while (source.width / (sample * 2) >= output.width && source.height / (sample * 2) >= output.height) {
         sample *= 2
@@ -56,4 +60,11 @@ private fun decodeLegacy(bytes: ByteArray, source: IntSize, output: IntSize): Bi
     } finally {
         bitmap.recycle()
     }
+}
+
+// Separate, exact build-verified decorative set. Never widens decodeContentImage/cover admission.
+internal actual fun decodeBundledArtwork(artwork: EmptyArtwork, output: IntSize): ImageBitmap? {
+    val bytes = artwork.bytes()
+    return (if (Build.VERSION.SDK_INT >= 28) decodeStrict(bytes, EmptyArtworkSourceSize, output)
+        else decodeLegacyPixels(bytes, EmptyArtworkSourceSize, output))?.asImageBitmap()
 }

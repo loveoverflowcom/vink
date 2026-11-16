@@ -222,3 +222,12 @@ fade/spatial không quyết định đóng; unmount ngay khi open=false, callbac
 Panel cuộn, Sheet consume inset của window riêng và vẫn không kéo để đóng. Android Back dùng
 adapter trong dialog window; không suy predictive Back từ Key.Back. Leptos Dialog chưa có API
 closeReason; Web navigation giữ owner cũ. [Contract và giới hạn](../../../docs/design/ui-interaction-foundation.md).
+
+## Empty artwork CMP diagnostic #261
+
+`screen.explore` và `screen.desk` dùng lại catalog `empty`/`no-results`, có heading,
+controlled search và composition private của diagnostic host. Artwork chỉ thuộc hai scenario
+fresh-empty đó; loading/error/auth/forbidden/pending/retained không đổi thành empty. CTA chỉ
+clear query hoặc ghi sample editor intent. `state.empty` và state policy chung giữ nguyên.
+[LayoutSpec/copy/decode boundary](../../../docs/design/empty-artwork-cmp-261.md) ·
+[evidence theo target](../../../docs/development/evidence/empty-webp-cmp-261/README.md).
