@@ -14,6 +14,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   check(await page.eval("document.querySelector('#public-query-help').textContent === 'Trong toàn thư viện công khai'"), 'search explicitly names the whole public library');
   await submit('không có tác phẩm này #100');
   await page.waitFor("document.querySelector('[data-testid=public-no-results]')", 'real no-results');
+  check(await page.eval("document.querySelectorAll('#public-results [role=status]').length===1 && document.querySelector('.vk-public-scope').textContent==='Trang này: 0 tác phẩm'"), '#225 empty page has one truthful page-count announcement');
   check(await page.eval("!!document.querySelector('#clear-public-results')"), 'no-results offers query recovery');
   await page.click('#clear-public-results');
   await page.waitFor("location.search === '' && document.querySelector('.vk-public-row')", 'query recovery');
@@ -31,7 +32,10 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     if ([320,390,834,1440].includes(width) && !await page.eval("document.querySelector('#tag-dock').getBoundingClientRect().width>0")) {
       check(await page.eval(`(() => {
         const button=document.querySelector('#open-tag-filters'), r=button.getBoundingClientRect();
-        return button.type==='button' && button.textContent==='Thẻ' &&
+        const icon=button.querySelector('svg[data-icon=filter-list][aria-hidden=true]');
+        return button.type==='button' && button.textContent==='Thẻ' && !!icon &&
+          button.querySelectorAll('svg').length===1 && button.classList.contains('vk-ui-button--tonal') &&
+          icon.getBoundingClientRect().left>=r.left && icon.getBoundingClientRect().right<=r.right &&
           !button.hasAttribute('aria-pressed') && !button.querySelector('button,a,input') &&
           r.width>=48 && r.height>=48 && r.left>=0 && r.right<=innerWidth;
       })()`), '#225 filter launcher keeps one named native target >=48px '+[theme,width,scale].join('/'));
@@ -68,6 +72,21 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await page.eval("document.documentElement.style.fontSize='100%'");
   await page.click('#open-tag-filters');
   await page.waitFor("document.querySelector('#tag-picker')?.open && document.querySelector('#modal-tag-form input[type=checkbox]')", 'tag picker');
+  const captureSelection = async count => {
+    for (const [width,scale,theme] of [[390,100,'light'],[320,200,'dark']]) {
+      await page.viewport(width);
+      await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}; document.documentElement.style.fontSize='${scale}%'; document.fonts.ready`);
+      check(await page.eval(`(() => {
+        const form=document.querySelector('#modal-tag-form'), help=document.getElementById(form.getAttribute('aria-describedby'));
+        return help.textContent==='Khớp tất cả thẻ · Tối đa 4' && help.getBoundingClientRect().width>0 &&
+          form.querySelectorAll('input:checked').length===${count} && document.documentElement.scrollWidth<=innerWidth;
+      })()`), '#225 helper retains AND/max4 and selection at '+[count,width,scale,theme].join('/'));
+      await page.capture('action225-filter-'+[count,width,scale,theme].join('-'), {boundary:'real-public-api',scenario:'tag-draft-selection'});
+    }
+    await page.viewport(390);
+    await page.eval("document.documentElement.style.fontSize='100%'");
+  };
+  await captureSelection(0);
   const before = await page.eval('location.href');
   check(await page.eval(`(() => {
     const form=document.querySelector('#modal-tag-form'), apply=form.querySelector('button[type=submit]');
@@ -98,6 +117,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     window.__action225Choice===document.getElementById(${JSON.stringify(choices[0])}) &&
     document.querySelector('#modal-tag-form button[type=submit]').classList.contains('vk-ui-button--filled')`),
     '#225 one Space changes one stable checkbox, never submits; changed Apply is Filled');
+  await captureSelection(1);
   check(await page.eval('location.href') === before, 'draft selection does not change applied URL');
   check(choices.length===4, '#225 catalog has at least four real choices for the max4 browser check');
   for (const id of choices.slice(1)) await page.click('label:has(#'+id+')');
@@ -106,6 +126,9 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     [...document.querySelectorAll('#modal-tag-form input[type=checkbox]:not(:checked)')].every(i=>i.disabled) &&
     [...document.querySelectorAll('#modal-tag-form input[type=checkbox]:checked')].every(i=>!i.disabled)`),
     '#225 max4 blocks extra choices while selected choices remain removable');
+  await page.click('#modal-tag-form label:has(input:disabled)');
+  check(await page.eval("document.querySelectorAll('#modal-tag-form input:checked').length===4 && window.__action225Submits===0"), '#225 attempting a fifth tag cannot select or submit');
+  await captureSelection(4);
   for (const id of choices.slice(1)) await page.click('label:has(#'+id+')');
   await page.click('label:has(#'+choices[0]+')');
   check(await page.eval(`document.querySelectorAll('#modal-tag-form input[type=checkbox]:checked').length===0 &&
@@ -210,6 +233,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await page.send('Emulation.setScriptExecutionDisabled', { value:true });
   try {
     await page.goto(args.base + '/?q=mua');
+    check(await page.eval("document.getElementById(document.querySelector('#dock-tag-form').getAttribute('aria-describedby')).textContent==='Khớp tất cả thẻ · Tối đa 4'"), '#225 no-JS filter explains AND/max4 before choosing');
     check(await page.eval("document.querySelector('.vk-public-row__link').href.includes('?q=mua')"), 'no-JS SSR supplies contextual reader links');
     await page.eval("document.querySelector('#public-query').value='khong-co-ket-qua-100'");
     const point = await page.eval("(() => { const b=document.querySelector('#public-search button[type=submit]'); b.scrollIntoView(); const r=b.getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2}; })()");
@@ -228,6 +252,28 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     await page.send('Network.setBlockedURLs',{urls:[]});
   }
   await goto('/');
+  // The always-visible rule must survive a failed catalog refresh as well as no-JS.
+  const catalogFailure = ({sessionId,method,params}) => {
+    if (sessionId===page.sessionId && method==='Fetch.requestPaused') {
+      page.send('Fetch.fulfillRequest', {requestId:params.requestId,responseCode:503,
+        responseHeaders:[{name:'Content-Type',value:'application/json'}],
+        body:Buffer.from(JSON.stringify({error:{code:'dependency_unavailable',message:'catalog fixture'}})).toString('base64')}).catch(()=>{});
+    }
+  };
+  await page.viewport(390);
+  page.cdp.listeners.push(catalogFailure);
+  await page.send('Fetch.enable', {patterns:[{urlPattern:args.base+'/api/v1/tags*',requestStage:'Request'}]});
+  try {
+    await page.click('#open-tag-filters');
+    await page.waitFor("document.querySelector('#modal-tag-form [role=alert]')", '#225 catalog refresh failure');
+    check(await page.eval("document.querySelector('#modal-tag-help').textContent==='Khớp tất cả thẻ · Tối đa 4' && document.querySelector('#modal-tag-form [role=alert]').textContent.includes('Chưa tải được danh mục thẻ')"), '#225 catalog failure keeps both the rule and an honest error');
+    await page.key('Escape');
+    await page.waitFor("!document.querySelector('#tag-picker').open && document.activeElement.id==='open-tag-filters'", '#225 failed-catalog dismiss restores trigger');
+  } finally {
+    await page.send('Fetch.disable');
+    page.cdp.listeners = page.cdp.listeners.filter(listener=>listener!==catalogFailure);
+  }
+  await goto('/');
 }
 
 export async function discoveryCorpus(page, { args, check }) {
@@ -244,6 +290,7 @@ export async function discoveryCorpus(page, { args, check }) {
   check(await page.eval("document.querySelectorAll('.vk-public-row').length===12"), 'first filtered page renders 12 real rows');
   await page.click('#public-next');
   await page.waitFor("new URL(location.href).searchParams.has('cursor') && document.querySelectorAll('.vk-public-row').length===2", 'next real page');
+  check(await page.eval("document.querySelectorAll('#public-results [role=status]').length===1 && document.querySelector('.vk-public-scope').textContent==='Trang này: 2 tác phẩm'"), '#225 final-page count stays visible and never claims a library total');
   const context = await page.eval('location.pathname+location.search');
   check(await page.eval("document.querySelector('#public-next')===null && [...document.querySelectorAll('.vk-public-row__link')].every(a=>a.hasAttribute('href'))"), '#225 continuation ends honestly and results remain native links');
   await page.eval('history.back()');
