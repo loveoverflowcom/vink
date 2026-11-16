@@ -82,6 +82,7 @@ pub enum Scenario {
     Auth,
     Password,
     Publication,
+    PerfBaseline,
 }
 impl Scenario {
     pub const ALL: [Self; 9] = [
@@ -95,6 +96,12 @@ impl Scenario {
         Self::Password,
         Self::Publication,
     ];
+    /// Default full regression intentionally excludes the expensive measurement lane.
+    pub const SELECTABLE: [Self; 10] = [
+        Self::Main, Self::Storage, Self::Discovery, Self::Restart,
+        Self::Endorsement, Self::Review, Self::Auth, Self::Password,
+        Self::Publication, Self::PerfBaseline,
+    ];
     pub fn name(self) -> &'static str {
         match self {
             Self::Main => "main",
@@ -106,10 +113,11 @@ impl Scenario {
             Self::Auth => "auth",
             Self::Password => "password",
             Self::Publication => "publication",
+            Self::PerfBaseline => "perf-baseline",
         }
     }
     pub fn parse(s: &str) -> Result<Self, String> {
-        Self::ALL
+        Self::SELECTABLE
             .into_iter()
             .find(|x| x.name() == s)
             .ok_or_else(|| format!("unknown/empty Web scenario `{s}`"))
@@ -170,7 +178,7 @@ impl Plan {
             plan.tools.extend([P::Node, P::Npm]);
         }
         if r.operation == O::Verify && r.target == T::Web {
-            plan.scenarios = Scenario::ALL
+            plan.scenarios = Scenario::SELECTABLE
                 .into_iter()
                 .filter(|s| {
                     r.scenarios.contains(s)
@@ -229,7 +237,8 @@ impl Plan {
     pub fn describe(&self) -> String {
         let coverage =
             if self.request.operation == Operation::Verify && self.request.target == Target::Web {
-                if self.request.scenarios.len() == Scenario::ALL.len() {
+                if self.request.scenarios.len() == Scenario::ALL.len()
+                    && Scenario::ALL.iter().all(|s| self.request.scenarios.contains(s)) {
                     "FULL Web regression"
                 } else {
                     "SELECTED Web checks (excluded checks NOT_SELECTED)"
@@ -244,7 +253,7 @@ impl Plan {
         } else {
             format!("{:?}", self.request.auth)
         };
-        let excluded: Vec<_> = Scenario::ALL
+        let excluded: Vec<_> = Scenario::SELECTABLE
             .into_iter()
             .filter(|s| !self.scenarios.contains(s))
             .map(Scenario::name)
@@ -298,7 +307,7 @@ mod tests {
     }
     #[test]
     fn scenarios_declare_setup_without_expanding_to_full_suite() {
-        for s in Scenario::ALL {
+        for s in Scenario::SELECTABLE {
             let mut r = request(Operation::Verify, Target::Web);
             r.scenarios = vec![s];
             let p = Plan::resolve(r);
@@ -313,6 +322,20 @@ mod tests {
             assert_eq!(p.artifacts.contains(&Artifact::Identity), s.identity());
             assert!(!p.artifacts.contains(&Artifact::Worker));
         }
+    }
+    #[test]
+    fn perf_baseline_is_explicit_only_and_reuses_app_scratch() {
+        let mut r = request(Operation::Verify, Target::Web);
+        r.scenarios = Scenario::ALL.to_vec();
+        let full = Plan::resolve(r);
+        assert!(!full.scenarios.contains(&Scenario::PerfBaseline));
+        let mut r = request(Operation::Verify, Target::Web);
+        r.scenarios = vec![Scenario::PerfBaseline];
+        let perf = Plan::resolve(r);
+        assert_eq!(perf.scenarios, vec![Scenario::PerfBaseline]);
+        assert_eq!(perf.services, vec![Service::App]);
+        assert!(!perf.artifacts.contains(&Artifact::Identity));
+        assert!(perf.describe().contains("SELECTED Web checks"));
     }
     #[test]
     fn builds_and_unit_tests_never_require_services_or_databases() {
