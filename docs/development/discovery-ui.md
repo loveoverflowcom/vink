@@ -10,6 +10,12 @@ và [registry triển khai](action-surfaces-225.md): launcher Tonal + FilterList
 draft-vs-applied selection và Filled-khi-đổi/Tonal-khi-chưa-đổi của Apply đã có từ trước.
 [Evidence chuẩn bị #240](evidence/action-surfaces-225/README.md) là baseline lịch sử riêng.
 
+**Checkbox-chip #260:** recipe chỉ dành cho `.vk-discovery-option` dùng ba track đối xứng
+cho mark/nhãn/end-slot, giữ nhãn đúng tâm và hình học ổn định khi chọn. Hai cột và native
+Checkbox/GET được giữ; không đổi primitive Checkbox hay command FilterChip.
+[LayoutSpec, lựa chọn và evidence](evidence/discovery-chip-260/README.md) ghi phép đo thực,
+đối chứng âm, matrix dock/dialog và giới hạn kiểm chứng.
+
 **Empty artwork #258:** [LayoutSpec R1](../design/empty-artwork-258.md),
 [asset/pipeline owner](../../apps/vink-web/assets/empty/README.md) và
 [evidence của lượt này](evidence/empty-webp-258/README.md). Composition app-owned

@@ -13,6 +13,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { checkSelectGeometry, selectCharacter } from '../../../packages/ui-system/leptos/preview/e2e/select-geometry.mjs';
 import { discoveryReading, discoveryCorpus } from './discovery-smoke.mjs';
+import { discoveryChipGeometry } from './discovery-chip-geometry.mjs';
 import { expressionPilot } from './expressions-smoke.mjs';
 import { endorsementAsAuthor, endorsementAsReader } from './endorsement-smoke.mjs';
 import { authWeb } from './auth-smoke.mjs';
@@ -5336,6 +5337,7 @@ try {
   else if (args.phase === 'auth-password') await passwordAuth(page, { args, check, openPage: (isolated) => openPage(cdp, isolated) });
   else if (args.phase === 'publication-author') await publicationAuthor(page, { args, check, openPage: (isolated) => openPage(cdp, isolated), capture: (target, name, evidence) => target.capture(name, evidence) });
   else if (args.phase === 'discovery-corpus') await discoveryCorpus(page, { args, check });
+  else if (args.phase === 'discovery-chip-geometry') await discoveryChipGeometry(page, { args, check });
   else if (args.phase === 'public-search') await publicReading(page);
   else if (args.phase === 'public-cache') await cacheFirstPublicReads(page);
   else if (args.phase === 'author-works') await authorWorks(page, {args,check,DraftGate,sleep});
