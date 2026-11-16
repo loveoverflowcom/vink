@@ -10,6 +10,13 @@ const LIST = "!!document.querySelector('.vk-public-row__link')";
 const READER = "!!document.querySelector('.vk-reader .vk-document')";
 const QUERY = '/?q=kiem%20thu';
 const ITERATIONS = 10;
+// md5('vink-100-work-1')::uuid: the #100 work that carries the 1,000-comment hot thread and,
+// by the fixture's publication order, the first filtered discovery row.
+const HOT_WORK = 'e4202094-9563-02e5-519d-6f8fa6a1af4c';
+// Two-tier discussion: one public page holds at most MAX_PAGE (50) roots, each with an inline
+// reply preview. Anything above this means the browser mounted more than one bounded page.
+const MAX_MOUNTED_COMMENTS = 100;
+const COMMENTS = "document.querySelectorAll('.vk-discussion-comment').length";
 
 export function distribution(values) {
   const sorted = values.filter(Number.isFinite).slice().sort((a, b) => a - b);
@@ -24,10 +31,14 @@ export function distribution(values) {
 }
 
 export function classifyTransport(entry) {
+  if (entry.path === '/') return 'document';
   if (entry.path === '/api/v1/works') return 'public-list';
   if (/^\/api\/v1\/works\/[^/]+\/reader$/.test(entry.path)) return 'reader';
   if (/^\/api\/v1\/works\/[^/]+\/discussion\/public$/.test(entry.path)) return 'public-discussion';
   if (/^\/api\/v1\/works\/[^/]+\/discussion\/me$/.test(entry.path)) return 'own-discussion';
+  if (/^\/api\/v1\/works\/[^/]+\/discussion$/.test(entry.path)) return 'actor-discussion';
+  if (/^\/api\/v1\/works\/[^/]+\/endorsements(\/me)?$/.test(entry.path)) return 'endorsement';
+  if (entry.path.startsWith('/api/v1/auth/session')) return 'session';
   if (entry.path.startsWith('/api/v1/tags')) return 'catalog';
   if (entry.path.startsWith('/pkg/')) return 'bundle';
   return 'other';
@@ -128,13 +139,13 @@ function recordTransport(page, results, phase) {
       entry.disk_cache = !!params.response.fromDiskCache;
       entry.service_worker = !!params.response.fromServiceWorker;
     } else if (method === 'Network.responseReceivedExtraInfo' && pending.has(params.requestId)) {
-      pending.get(params.requestId).wire_status = params.statusCode; // Includes actual wire 304.
+      // CDP may deliver ExtraInfo after loadingFinished, so entries stay addressable until
+      // this recorder is removed. Includes the actual wire 304 behind a 200 cache revalidation.
+      pending.get(params.requestId).wire_status = params.statusCode;
     } else if (method === 'Network.loadingFinished' && pending.has(params.requestId)) {
       pending.get(params.requestId).encoded_bytes = params.encodedDataLength;
-      pending.delete(params.requestId);
     } else if (method === 'Network.loadingFailed' && pending.has(params.requestId)) {
       pending.get(params.requestId).failed = true;
-      pending.delete(params.requestId);
     }
   };
   page.cdp.listeners.push(onEvent);
@@ -162,7 +173,7 @@ export async function webPerfBaseline(page, { args, check }) {
       source: 'App/PostgreSQL scratch, SQL v1 public projection, no production user text' },
     configuration: {
       origin: args.base, browser: await page.cdp.send('Browser.getVersion'),
-      node: process.version, build_profile: 'xtask web dev (release unverified)',
+      node: process.version, build_profile: 'xtask web dev: debug wasm (~350 MB); bundle/hydration figures are not release numbers',
       network: 'loopback / no throttling', cpu_throttle_rate: 1,
       cache_cold: 'CDP clearBrowserCache before each full-document navigation; OS/PG process remain warm',
       viewport: '1280x900 CSS px / DPR 1', text_scale: 'system default',
@@ -214,12 +225,19 @@ export async function webPerfBaseline(page, { args, check }) {
       await page.click('.vk-public-row__link');
       await page.waitFor(READER, 'reader after warm navigation #' + i, 120000);
       const readerTime = (await page.eval('performance.now()')) - before;
+      // The discussion is a secondary read: snapshot only after the hot thread's first page
+      // is mounted, otherwise the bounded-pagination assertion is vacuous (0 nodes).
+      await page.waitFor(COMMENTS + ' > 0', 'hot thread first discussion page #' + i, 120000);
+      const discussionTime = (await page.eval('performance.now()')) - before;
       const reader = await browserSnapshot(page);
       check(await page.eval('performance.timeOrigin') === timeOrigin,
         '#234 warm Reader uses client navigation without a full-document reload #' + i);
+      check(reader.path === '/tac-pham/' + HOT_WORK,
+        '#234 warm journey opens the 1,000-comment hot thread #' + i);
       check(reader.body_characters > 0, '#234 real App Reader body stays available #' + i);
       // Only a limited page may be mounted, never all 1,000 comments from the hot thread.
-      check(reader.comment_nodes < 1000, '#234 comment rendering remains bounded by pagination');
+      check(reader.comment_nodes > 0 && reader.comment_nodes <= MAX_MOUNTED_COMMENTS,
+        '#234 hot thread mounts one bounded page (' + reader.comment_nodes + ' nodes) #' + i);
       results.intended_reads.push({ phase: phase.current, reason: 'return_to_discovery', representation: 'discovery-filtered' });
       const beforeReturn = await page.eval('performance.now()');
       await page.click('#reader-return');
@@ -230,8 +248,8 @@ export async function webPerfBaseline(page, { args, check }) {
         '#234 warm Reader return stays in the same hydrated document #' + i);
       check(back.row_count <= 24 && back.row_count > 0,
         '#234 real bounded public page after return #' + i);
-      results.warm.push({ iteration: i, reader_ms: readerTime, return_ms: returnTime,
-        reader, back });
+      results.warm.push({ iteration: i, reader_ms: readerTime, discussion_ms: discussionTime,
+        return_ms: returnTime, reader, back });
       flush();
     }
     const cold = results.cold;
@@ -242,6 +260,8 @@ export async function webPerfBaseline(page, { args, check }) {
       cold_hydration_ms: distribution(cold.map(x => x.hydration_ms)),
       cold_wall_ms: distribution(cold.map(x => x.wall_ms)),
       reader_client_nav_ms: distribution(warm.map(x => x.reader_ms)),
+      reader_discussion_page_ms: distribution(warm.map(x => x.discussion_ms)),
+      warm_mounted_comments: distribution(warm.map(x => x.reader.comment_nodes)),
       discovery_return_ms: distribution(warm.map(x => x.return_ms)),
       cold_bundle_transfer_bytes: distribution(cold.map(x => x.loaded_bundle_transfer_bytes)),
       cold_dom_nodes: distribution(cold.map(x => x.dom_counters?.nodes)),

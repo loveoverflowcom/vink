@@ -32,8 +32,13 @@ INSERT INTO work_metadata_snapshot_tags (snapshot_id, slot, tag_id, facet)
 SELECT snapshot, 0, form, 'form' FROM perf_works
 UNION ALL
 SELECT snapshot, 1, theme, 'theme' FROM perf_works;
+-- Strictly older than every #100 publication, independent of the wall-clock gap between the
+-- two seeds: discovery orders by published_at DESC, so #100 work 1 (the hot thread below)
+-- deterministically stays the first filtered row that the warm journey opens.
 INSERT INTO publications (work_id, revision_id, generation, published_at, metadata_snapshot_id)
-SELECT work, revision, 1, now() - n * interval '1 second', snapshot FROM perf_works;
+SELECT work, revision, 1,
+       (SELECT min(published_at) FROM publications) - n * interval '1 second', snapshot
+FROM perf_works;
 
 -- One hot public thread with 800 roots and 200 one-level replies: 1,000 comments,
 -- deliberately much larger than the actual public page limit. The browser never mounts

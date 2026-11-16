@@ -19,6 +19,12 @@ test('request reason ledger keeps conditional reads, 304 and transport separate'
   assert.equal(classifyTransport({ path: '/api/v1/works/abc/discussion/public' }), 'public-discussion');
   assert.equal(classifyTransport({ path: '/api/v1/works/abc/discussion/me' }), 'own-discussion');
   assert.equal(classifyTransport({ path: '/api/v1/tags' }), 'catalog');
+  assert.equal(classifyTransport({ path: '/' }), 'document');
+  assert.equal(classifyTransport({ path: '/api/v1/works/abc/discussion' }), 'actor-discussion');
+  assert.equal(classifyTransport({ path: '/api/v1/works/abc/endorsements' }), 'endorsement');
+  assert.equal(classifyTransport({ path: '/api/v1/works/abc/endorsements/me' }), 'endorsement');
+  assert.equal(classifyTransport({ path: '/api/v1/auth/session/account' }), 'session');
+  assert.equal(classifyTransport({ path: '/api/v1/works/abc/reader/extra' }), 'other');
   const rows = [
     { phase: 'cold-0', kind: 'public-list', method: 'GET', validator_sent: false, response_status: 200 },
     { phase: 'cold-1', kind: 'public-list', method: 'GET', validator_sent: true, wire_status: 304, response_status: 200 },
