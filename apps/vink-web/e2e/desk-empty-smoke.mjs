@@ -79,6 +79,7 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
     }
     await page.viewport(390);
     await page.eval(`document.documentElement.style.fontSize=''; document.documentElement.dataset.theme='light'; scrollTo(0,0)`);
+    await page.eval(`Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))`);
     if (!baseline) {
       const manifest = JSON.parse(readFileSync('apps/vink-web/assets/empty/asset-manifest.json'));
       for (const id of ['no-results','first-draft']) {
@@ -128,6 +129,7 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
         await page.eval(`document.querySelector('[data-testid=draft-empty] img').src=${JSON.stringify(original + '?corrupt259')}`);
         await page.waitFor(`document.querySelector('[data-testid=draft-empty] img').complete && document.querySelector('[data-testid=draft-empty] img').naturalWidth===0`, 'corrupt image really fails');
         check(corrupt===1 && await page.eval(`document.querySelector('[data-testid=draft-empty] .vk-empty-state__message').textContent.length>0 && document.querySelector('#create-draft').getAttribute('aria-disabled')!=='true'`), '#259 one injected corrupt response preserves HTML and create');
+        await page.eval(`document.activeElement?.blur(); scrollTo(0,0)`);
         await page.capture('desk-art-corrupt', {target:'[data-testid=draft-empty]',boundary:'one-injected-corrupt-image-response'});
       } finally {
         await page.send('Fetch.disable');
