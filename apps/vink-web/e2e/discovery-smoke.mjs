@@ -391,6 +391,10 @@ async function submittedReadKeepsTyping(page, {args, check}) {
     await page.eval('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
     check(await page.eval(`document.activeElement===window.__pending258Input && document.querySelector('#public-query')===window.__pending258Input && window.__pending258Input.value===${JSON.stringify(draft)} && window.__pending258Input.selectionStart===${draft.length}`),
       '#258 a submitted read finishing cannot steal focus/caret from a newer unapplied query');
+    await page.click('#public-search button[type=submit]');
+    await page.waitFor(`new URL(location.href).searchParams.get('q')===${JSON.stringify(draft)} && document.querySelector('#public-results') && document.activeElement?.id==='community-stream'`,'#258 the newer query commits with landmark focus');
+    await page.click('#public-search button[type=submit]');
+    await page.waitFor("document.activeElement?.id==='community-stream'",'#258 repeating the same submitted query still focuses the landmark');
   } finally {
     for(const requestId of held) await page.send('Fetch.failRequest',{requestId,errorReason:'Aborted'}).catch(()=>{});
     await page.send('Fetch.disable');

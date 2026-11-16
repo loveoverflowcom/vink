@@ -21,9 +21,6 @@ use vink_ui::{
 };
 
 #[derive(Clone, Copy)]
-struct DiscoveryFocus(RwSignal<Option<&'static str>>);
-
-#[derive(Clone, Copy)]
 struct DiscoveryDraft {
     query: RwSignal<String>,
     tags: RwSignal<Vec<String>>,
@@ -65,7 +62,6 @@ pub fn TagDetail() -> impl IntoView {
 #[component]
 fn DiscoveryPage(#[prop(optional)] tag_page: Option<Memo<String>>) -> AnyView {
     let params = use_query_map();
-    provide_context(DiscoveryFocus(RwSignal::new(None)));
     let context = Memo::new(move |_| {
         let mut query = query_from(&params.read());
         let tag_page = tag_page.map(|slug| slug.get());
@@ -113,7 +109,6 @@ fn DiscoveryChrome(
     let buffer = controls.query;
     let draft = controls.tags;
     let open = controls.open;
-    let focus = expect_context::<DiscoveryFocus>().0;
     let enhanced = RwSignal::new(false);
     Effect::new(move |_| enhanced.set(true));
     let is_tag = context.tag_page.is_some();
@@ -172,10 +167,11 @@ fn DiscoveryChrome(
             <div class="vk-discovery-layout">
                 <div class="vk-discovery-main">
                     // Form stops submit propagation internally. Record the intent in its
-                    // callback before navigation replaces the submitted scope.
+                    // callback before navigation replaces the submitted scope. The helper
+                    // focuses the mounted landmark next frame; I/O completion never owns focus.
                     <Form method="get" action=action.clone() noscroll=true on_form_data=Arc::new(move |data| {
                         drop_unnamed_submitter(data);
-                        focus.set(Some("community-stream"));
+                        focus_recovery("community-stream");
                     }) attr:role="search" attr:id="public-search" attr:class="vk-public-search">
                         {hidden_tags.into_iter().map(|tag| view! { <HiddenField name="tag" value=Signal::stored(tag) /> }).collect_view()}
                         <SearchField id="public-query" label=if is_tag { "Tìm trong thẻ" } else { "Tìm tác phẩm" } name="q"
@@ -205,10 +201,6 @@ fn DiscoveryChrome(
                                 let context = result_context.clone();
                                 Suspend::new(async move {
                                     let (_, result) = works.await;
-                                    let focus = expect_context::<DiscoveryFocus>().0;
-                                    Effect::new(move |_| {
-                                        if let Some(target) = focus.get_untracked() { focus.set(None); focus_recovery(target); }
-                                    });
                                     match result {
                                         Ok(list) => {
                                             let live = public_reads::follow_works(context.query.clone(), list);
@@ -368,13 +360,12 @@ fn FilterForm(
     catalog: Resource<Result<TagList, LoadError>>,
     open: RwSignal<bool>,
 ) -> AnyView {
-    let focus = expect_context::<DiscoveryFocus>().0;
     let mut initial = expect_context::<DiscoveryDraft>().applied_tags.get_value();
     initial.sort();
     view! {
         <Form method="get" action noscroll=true on_form_data=Arc::new(move |data| {
             drop_unnamed_submitter(data);
-            focus.set(Some("community-stream"));
+            focus_recovery("community-stream");
             open.set(false);
         }) attr:class="vk-discovery-filter-form" attr:id=format!("{id}-tag-form") attr:aria-describedby=format!("{id}-tag-help")>
             <HiddenField name="q" value=Signal::stored(q) />
