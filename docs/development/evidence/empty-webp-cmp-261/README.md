@@ -88,6 +88,7 @@ alpha bán trong suốt và nét max>0,8, source-size có alpha1. Không đổi 
 [Geometry FAIL](geometry-clipped-fail.log), [XML](geometry-clipped-fail.xml): đo clipped viewport
 bounds khi nội dung cao ở 200%; sửa test sang **unclipped** Dp bounds, giữ assertion aspect/size.
 Các compile FAIL do gọi Compose waitUntil/DpRect test API sai được giữ ở `*-compile-fail.log`.
+Bản log text bỏ whitespace cuối dòng để review diff; không đổi dòng kết quả/diagnostic. Kernel log gzip giữ nguyên bytes.
 Final focused interaction và full CMP lane đều PASS, không che FAIL native prerequisite.
 
 ## AC mapping và resume

@@ -15,7 +15,7 @@ INFO         | Guest Driver: Auto (ext controls)
 library_mode swiftshader_indirect gpu mode swiftshader_indirect
 INFO         | Initializing hardware OpenGLES emulation support
 I1117 06:34:39.157934 9a720c0 opengles.cpp:285] android_startOpenglesRenderer: gpu info
-I1117 06:34:39.158363 9a720c0 opengles.cpp:286] 
+I1117 06:34:39.158363 9a720c0 opengles.cpp:286]
 INFO         | HealthMonitor disabled.
 INFO         | initIcdPaths: ICD set to 'swiftshader', using Swiftshader ICD
 INFO         | Setting ICD filenames for the loader = /Users/manhblue/Library/Android/sdk/emulator/qemu/darwin-aarch64/lib64/vulkan/vk_swiftshader_icd.json:/Users/manhblue/Library/Android/sdk/emulator/lib64/vulkan/vk_swiftshader_icd.json
@@ -69,7 +69,7 @@ INFO         |     useDedicatedAllocations: false
 INFO         | Graphics Adapter Vendor Google (Google Inc. (Google))
 INFO         | Graphics Adapter Android Emulator OpenGL ES Translator (ANGLE (Google, Vulkan 1.2.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver-5.0.0))
 INFO         | Graphics API Version OpenGL ES 3.0 (OpenGL ES 3.1.0 (ANGLE 2.1.1 git hash: fbf66f49c7cc))
-INFO         | Graphics API Extensions GL_OES_EGL_sync GL_OES_EGL_image GL_OES_EGL_image_external GL_OES_depth24 GL_OES_depth32 GL_OES_element_index_uint GL_OES_texture_float GL_OES_texture_float_linear GL_OES_compressed_paletted_texture GL_OES_compressed_ETC1_RGB8_texture GL_OES_depth_texture GL_OES_texture_half_float GL_OES_texture_half_float_linear GL_OES_packed_depth_stencil GL_OES_vertex_half_float GL_OES_standard_derivatives GL_OES_texture_npot GL_OES_rgb8_rgba8 GL_OVR_multiview2 GL_EXT_color_buffer_float GL_EXT_color_buffer_half_float GL_EXT_texture_format_BGRA8888 GL_APPLE_texture_format_BGRA8888 GL_EXT_draw_buffers_indexed GL_EXT_clip_cull_distance 
+INFO         | Graphics API Extensions GL_OES_EGL_sync GL_OES_EGL_image GL_OES_EGL_image_external GL_OES_depth24 GL_OES_depth32 GL_OES_element_index_uint GL_OES_texture_float GL_OES_texture_float_linear GL_OES_compressed_paletted_texture GL_OES_compressed_ETC1_RGB8_texture GL_OES_depth_texture GL_OES_texture_half_float GL_OES_texture_half_float_linear GL_OES_packed_depth_stencil GL_OES_vertex_half_float GL_OES_standard_derivatives GL_OES_texture_npot GL_OES_rgb8_rgba8 GL_OVR_multiview2 GL_EXT_color_buffer_float GL_EXT_color_buffer_half_float GL_EXT_texture_format_BGRA8888 GL_APPLE_texture_format_BGRA8888 GL_EXT_draw_buffers_indexed GL_EXT_clip_cull_distance
 INFO         | Graphics Device Extensions N/A
 INFO         | Sending adb public key [QAAAAJ0WIw9L4PslCJTLn3xukejAB3aI1FW+taXKoQvtC7j/1H2mg+6ZcxsVRl52d71Ya8sTMeNT/wpkhZKrhNsb9LXeKF/UfLq3EuWvVR6TaCS7WVRLm2+74KC7W4yRhXgGmMt7bYa04Dof/c3NJ8P9QKuN7dXETVwdZd/xTMWlvHOjUa+CT9KVOYh0NqB5jDTwUDJ98b86egCMpCNdh+pIt1i1+DHCZtXP+XCuvd35fPU7qU21kRS4ikIyhE8VwHvYGjcyfS7hJX6XbP5DLBs4FYOxJibufC8GAVlfSiT/hlG4zep8NjYQ7eEA3EzlSy92dD8QD6lJcZrc5nGdYITP0RWUiSmQF3xrCDVev/rCOxGgUf/aKIKFBl0tf+IC+26hsltzmFT1Y2LNn4QbD6h24zdBjCe/SjiRQJGe9ooeCT6VH15Thsub2GCUHX//mNcomUvLnvtuV1O/sOpFbKO5BuFZ8bBNP28ArOzIa4GmNjYYkCl96e5wUs0bF3WyIasaVYHn7hwFVGpU+yhxV3X3jp1lZdW7WZiqe6pPcxtIG5YGGKlXKXtTZvg3dX403kkUbptkk2hfSFh7XHwhoThHOzcwOgIXEvElblMxaae6ZslNXd7jDCD13lyELOXjfmR2AdFv4ByWs0fiu64z/YwR0NJ7dRzpRFht/i6RmH3XyyO7bn2aYAEAAQA= manhblue@unknown]
 INFO         | Userspace boot properties:
@@ -102,7 +102,7 @@ INFO         |   androidboot.vbmeta.hash_alg=sha256
 INFO         |   androidboot.vbmeta.size=6720
 INFO         |   androidboot.veritymode=enforcing
 INFO         | Monitoring duration of emulator setup.
-INFO         | Setting display: 0 configuration to: 1080x2400, dpi: 420x420 
+INFO         | Setting display: 0 configuration to: 1080x2400, dpi: 420x420
 INFO         | setDisplayActiveConfig 0
 USER_INFO    | Emulator is performing a full startup. This may take upto two minutes, or more.
 INFO         | Activated packet streamer for bluetooth emulation
