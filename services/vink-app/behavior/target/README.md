@@ -15,6 +15,8 @@ Một canonical model cho mỗi policy; không có bản publication hay tombsto
 Phân vai: PRD/decision log giữ ý định và quyết định; model ở đây giữ state/transition/invariant đã
 chọn; Rust (khi có) là implementation; mock evaluator và sơ đồ Markdown **không** phải nguồn này.
 
+Runner cũng kiểm [read lifecycle Web](../../../../apps/vink-web/behavior/README.md), owner riêng có production replay. Đây không phải target model nghiệp vụ hoặc model thứ hai của governance.
+
 ## Model
 
 | Model | Phạm vi | Yêu cầu | Đặc tả văn bản |

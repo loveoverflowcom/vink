@@ -1,5 +1,7 @@
 # Hợp nhất trạng thái–hành động lưu trong Bàn viết — #217 (PR 1/2)
 
+Proposal kỹ thuật [VDR-EDITOR-SAVE-PROJECTION@r1](../../decisions/proposals/VDR-EDITOR-SAVE-PROJECTION.r1.toml) **PENDING** ghi projection và guard thủ công đã triển khai; không chốt autosave, không thay D-04.
+
 ## Trạng thái trên bốn trục độc lập
 
 - **Phạm vi sản phẩm:** [issue #217](https://github.com/loveoverflowcom/vink/issues/217) yêu cầu hợp nhất trạng thái và thao tác lưu thủ công. Đối chiếu `WR-01`, `WR-02`, `WR-05`, `UX-01` ([PRD](../../prd/requirements.md)) và [`INV-08`](../architecture/decisions.md). Autosave trong `WR-01` và khôi phục cục bộ vẫn chưa triển khai; thay đổi UI không tạo quyết định `PRODUCT_CONFIRMED` mới.

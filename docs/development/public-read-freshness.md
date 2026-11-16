@@ -1,4 +1,4 @@
-# Đọc công khai cache-first trong tab (READ-02, Web pilot)
+# Đọc công khai cache-first và lifecycle Web (READ-02)
 
 **Issue:** [#53](https://github.com/loveoverflowcom/vink/issues/53), cập nhật tính đúng tại [#200](https://github.com/loveoverflowcom/vink/issues/200) và lifecycle [#202](https://github.com/loveoverflowcom/vink/issues/202) · **Nền:** `develop`
 (có READ-01 [#52](https://github.com/loveoverflowcom/vink/issues/52), Discovery #100, Author publication #158, Moderation & `O-17@r2`)
@@ -269,9 +269,11 @@ Chưa chọn giữa Kotlin repository + StateFlow + Ktor (A của issue) và Rus
 
 ## Lifecycle Web #202
 
+Proposal kỹ thuật: [VDR-WEB-READ-LIFECYCLE@r1](../../decisions/proposals/VDR-WEB-READ-LIFECYCLE.r1.toml), **PENDING**; không thay active READ-02 đã nhập. [Model canonical và replay](../../apps/vink-web/behavior/README.md) chỉ kiểm `ReadOwner/PageChain`, không kiểm freshness/storage/authority của adapter.
+
 Lát tiếp theo trên `develop@ebbde221` (dependency #200/#210). Giữ trạng thái sản phẩm và
 kiến trúc ở đầu tài liệu; không chốt retention/offline mới. Mức triển khai là `web`, không có
-native, IndexedDB, Service Worker hay replay mutation.
+native, Service Worker hay replay mutation trong #202. IndexedDB được bổ sung sau đó ở [#203](#indexeddb-203), dưới gate tắt.
 
 ### Contract và lựa chọn kỹ thuật
 
@@ -305,8 +307,8 @@ native, IndexedDB, Service Worker hay replay mutation.
 | Reader (`ReaderScope`, `ReaderLoaded`) | SSR in-process; browser cache-first `/reader`; refresh giữ bản đang đọc, apply rõ bằng nút | Keyed route owner; một validator cho Memory/NoOp; control no-store thay body; Published đổi chỉ báo bản mới | Không mở rộng cửa sổ 15 phút hoặc giữ full-text qua restart |
 | Public discussion (`ViewState`) | SSR public; lifecycle/manual refresh head; roots/replies continuation; refresh bỏ tail | `ReadOwner<Scope>`/`PageChain`, public epoch và mutation guard; stable composers, public DTO | Không cache discussion |
 | Own discussion (`OwnState`) | Browser only; head rồi lookup bounded; cursor riêng | Session scope + ticket; page accept trước cursor; lookup thắng listing; 401/403/404 bỏ private facts | Không authority từ public cache |
-| Desk list (`DeskIndex`) | Browser only, scoped server query; reconnect head giữ last success, append/đổi phần có giới hạn | `ReadOwner` scope session/query/sort/limit, `DraftPages` dùng `PageChain`; WakePolicy; route disposal; editor độc lập | [#201](desk-pagination.md) sở hữu API/continuation, Recent/1 riêng cho Viết tiếp và evidence của consumer |
-| Moderation (`pages/moderation.rs`) | Existing LocalResource cho queue/case/appeal/author status; manual reload | Existing session scope + target ID/command guards, không SSR private payload | **#205** nối pagination/query và lifecycle; chưa migrate, không claim reconnect ở đây |
+| Desk list (`DeskIndex`) | Browser only, scoped server query; reconnect head giữ last success, append/đổi phần có giới hạn | `ReadOwner` scope session/query/sort/limit, `DraftPages` dùng `PageChain`; WakePolicy; route disposal; editor độc lập | [#201](desk-pagination.md) sở hữu paging; sau #221/#222 Web đọc `/author/works`, bỏ resume/Recent/1; [owner hiện hành](desk-author-feedback.md) |
+| Moderation (`pages/moderation.rs`) | Hai `QueuePanel` work/appeals đã dùng ReadOwner/PageChain: head/append/restart, refresh supersede append và lifecycle wake | Session/dispose fence, authority fingerprint đổi xóa chain; 401/403/404 xóa private facts; detail/command có guard riêng | [#205/#223](moderation-runtime.md#10-hai-queue-hữu-hạn-205) đã triển khai; case detail/author history không được suy là đã paging |
 
 ### Seam cho #201 / #205
 
@@ -321,7 +323,11 @@ let page = api::search_drafts(query, sort, limit, ticket.cursor.as_deref()).awai
 if reads.accept_page(&ticket, &mut chain,
     page.drafts.iter().map(|d| d.work_id.clone()), page.next_cursor.clone()) {
     // Append: extend rows. Initial/Refresh/Restart: replace rows và bỏ tail cũ.
-    rows.extend(page.drafts);
+    if ticket.intent == Intent::Append {
+        rows.extend(page.drafts);
+    } else {
+        rows = page.drafts;
+    }
 }
 reads.finish(&ticket); // chỉ settle đúng request; fail/cancel giữ chain và rows
 ```
@@ -409,6 +415,8 @@ Không đổi product signoff, `DESIGN_PROPOSED`, D-05 `Provisional` hoặc poli
 
 
 ## IndexedDB #203
+
+Proposal kiến trúc [VDR-PUBLIC-SNAPSHOT-STORAGE@r1](../../decisions/proposals/VDR-PUBLIC-SNAPSHOT-STORAGE.r1.toml) **PENDING** ghi lại envelope/epoch/quota; độc lập với proposal sản phẩm 24 giờ và không bật gate.
 
 **Phạm vi giao:** [#203](https://github.com/loveoverflowcom/vink/issues/203), một PR vào `develop`,
 base `f22815ec387bc02792a3cac44899152ff9f1f031` (đã có #202/#201). Không đổi API server.

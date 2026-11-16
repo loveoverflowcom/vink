@@ -19,11 +19,12 @@ do not cover auth authority, locking or I/O; the D2T-INV registry and gaps are i
 is no sequence or race proof. There is no generic behavior lane.
 `services/vink-app/behavior/target` holds target specifications for the owner's decisions of
 10/11/2026 (`collections`, `comment_edit`, `discovery`): they run as a step of `verify discussion`, have generated vectors and negative controls,
-and have **no Rust replay**, so they are model evidence only. Canonical M1 (64/64 steps),
-M3 (41/41 steps) and M4 governance (`governance.qnt`, 105/105 steps, replacing `target/appeal.qnt`) live in
-`behavior/publication` with full pure-core replay plus the 24-step `evaluator-vectors.json` script
-([publication-core](../../../docs/development/publication-core.md),
-[moderation-core](../../../docs/development/moderation-core.md)). When code implements one of the remaining target models, move the model to its owner directory
+and have **no Rust replay**, so they are model evidence only. Canonical M1, M3 and M4 governance live in
+`behavior/publication` with pure-core replay and evaluator scripts; exact counts and boundaries
+belong to the [publication owner](../../../services/vink-app/behavior/publication/README.md).
+The owner-local [Web read lifecycle](../../../apps/vink-web/behavior/README.md) checks
+`ReadOwner/PageChain` and replays production Rust in the same lane, without claiming transport,
+authority, freshness or IndexedDB coverage. When code implements one of the remaining target models, move the model to its owner directory
 with a replay instead of keeping a second model of the same policy. When modeling or replay exposes an
 unresolved product rule (`O-01..O-19`, resolved via the TOML registry) or a conflict between PRD and code, route the question through
 [vink-shape](../vink-shape/SKILL.md) and record confirmed updates via

@@ -1,0 +1,21 @@
+version = 1
+id = "VDR-EDITOR-SAVE-PROJECTION"
+revision = 1
+
+[content]
+kind = "architecture"
+domain = "editor"
+title = "Projection lưu thủ công thống nhất chữ và thẻ"
+resolution = "Một save-slot tổng hợp chữ/thẻ và TagLoad, chỉ báo Đã lưu khi cả hai được xác nhận. begin_manual_save gửi đúng phần có thể lưu: clean/pending không PUT thừa; conflict/refusal chặn phần liên quan, không chặn phần độc lập. Giữ begin_save/can_save cho publication, WorkInfo và leave guard. Chưa xác nhận khác từ chối; recovery/export ngoài disclosure. CHOICE-01 B: clean là readout tĩnh, dirty/retry là nút Lưu, recovery có link thật; chỉ chuyển focus khi nút đang focus bị gỡ. Không thêm autosave, device recovery hoặc atomic save chữ+thẻ."
+rationale = "PR #227 tại develop@6e07806; docs/design/ui-editor-unified-save-217.md; desk_state.rs, tag_state.rs, pages/desk.rs. D-04 vẫn DESIGN_PROPOSED; CMP chưa có editor/save runtime. Projection unit/browser tests sở hữu bằng chứng; model ReadOwner không chứng minh mutation save. Không coi merge hoặc clean label là xác nhận WR-01 autosave."
+requires = [
+    "D-04@r1",
+    "TAG-PR-03-CHOICE-01@r1",
+]
+related_ids = [
+    "INV-08",
+    "UX-01",
+    "WR-01",
+    "WR-02",
+    "WR-05",
+]

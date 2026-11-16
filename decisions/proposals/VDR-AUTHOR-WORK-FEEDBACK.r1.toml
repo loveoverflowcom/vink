@@ -1,0 +1,21 @@
+version = 1
+id = "VDR-AUTHOR-WORK-FEEDBACK"
+revision = 1
+
+[content]
+kind = "architecture"
+domain = "publication"
+title = "Read-model tác giả và số liệu theo bản đang công khai"
+resolution = "GET /api/v1/author/works trả một row mỗi WorkId thuộc tác giả kể cả không có working draft; không có draft thì không có link sửa. Giữ audience/lifecycle/intent/moderation/current pointer riêng; has_draft_changes so title/document/ordered metadata thật, không suy từ version. Tối đa hai SELECT batch cùng snapshot REPEATABLE READ READ ONLY; metrics lỗi savepoint trả null, không zero; page lỗi vẫn là lỗi. Thấm gắn revision đang công khai theo baseline hiện hành; Nhận xét là tổng public projection của thread (root/reply hợp lệ), không số lượng trang và không reset theo revision. Private/unknown không hiển thị metrics. Không kế thừa vote/ranking, không voter list."
+rationale = "PR #222 tại develop@6e07806; docs/development/desk-author-feedback.md; persistence/author_works.rs và tests/postgres/author_works.rs. Cùng revision đăng lại giữ Thấm; revision mới không thừa kế theo baseline LVE. POLICY-01 B/C và O-07 vẫn OPEN; bản ghi kỹ thuật này không chốt chính sách tích lũy. Không gửi author facts vào SSR/public cache."
+requires = [
+    "LVE-PR-01-CHOICE-02@r1",
+    "O-17@r2",
+    "USER-02@r1",
+]
+related_ids = [
+    "AUD-01",
+    "LVE-FR-04",
+    "O-07",
+    "RANK-02",
+]

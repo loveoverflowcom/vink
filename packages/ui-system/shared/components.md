@@ -1,5 +1,7 @@
 # Contract component nền (UIS-02)
 
+Action surfaces #224 có proposal kỹ thuật [VDR-ACTION-SURFACES@r1](../../../decisions/proposals/VDR-ACTION-SURFACES.r1.toml) **PENDING**. Primitive đã có ở hai renderer; adoption của page #225 và visual acceptance là trạng thái riêng.
+
 **Trạng thái:** UIS-02/06 ([#20](https://github.com/loveoverflowcom/vink/issues/20)) — đã triển khai ở
 cả hai renderer, đăng ký trong cả hai preview với trạng thái `implemented-unverified`. UIS-05 (#23)
 đã đưa các component vào năm màn Web và composition CMP mẫu; qualification rộng hơn thuộc #24. Đây là contract ngữ

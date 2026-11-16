@@ -52,19 +52,15 @@ Google Cloud, APK Firebase, DNS/TLS và OCI trước khi diễn tập trên VPS 
 - PostgreSQL 17 với migration có phiên bản: `principals`, `works`, `working_drafts` (bản nháp có
   owner và version), `revisions` (snapshot bất biến, có `content_hash`, trigger chặn UPDATE) và
   `publications` (con trỏ công khai, chỉ trỏ tới revision của chính tác phẩm).
-- Khám phá `/` theo mật độ v4 trong [lớp đọc hiện có](../design/ui-repair-02.md) ([#9](https://github.com/loveoverflowcom/vink/issues/9)): luồng
-  tối đa 12 tác phẩm mới công khai, tên tác giả/ngày UTC, điểm dừng và gợi ý bắt đầu viết;
-  tìm tiêu đề/tên tác giả có/không dấu trong danh sách đã tải, giữ truy vấn/vị trí qua reader,
-  reload và lịch sử URL; phân biệt loading/rỗng/không kết quả/unavailable. Không spotlight hay tương tác thiếu chủ dữ liệu. Xem
-  [spec và delta](../design/public-reading.md). Trang đọc `/tac-pham/{id}`: HTML có nội dung, title, description, canonical
-  từ server; chỉ đọc snapshot qua `publications`, không bao giờ đọc `working_drafts`.
-- Dashboard `/ban-viet` ([#8](https://github.com/loveoverflowcom/vink/issues/8)): Viết tiếp mở
-  nháp mới cập nhật nhất có quyền; danh sách hiện title/version/updated_at, tìm tiêu đề có/không
-  dấu (cả Đ/đ, NFC/NFD), query/sort phía server trên toàn bộ nháp, từng trang 24 mục;
-  phần hiển thị tối đa 240 rồi chuyển phần tiếp. Tách loading/rỗng/
-  không kết quả/401/lỗi; không tải toàn bộ manuscript cho thẻ. Tạo khóa một POST đang bay,
-  không tự retry kết quả chưa rõ; tải lại danh sách thành công rồi mới cho chủ động tạo thêm.
-  Phản hồi tạo muộn sau khi rời dashboard không điều hướng. Xem [spec/delta](../design/README.md#dashboard-bàn-viết-8).
+- Khám phá `/` và `/the/:slug`: tìm toàn corpus công khai theo query/thẻ (AND), GET/SSR,
+  từng trang hữu hạn có cursor; giữ ngữ cảnh khi sang reader và quay lại. Không lọc chỉ trong
+  12 card đã tải. [Owner discovery](discovery-ui.md). Reader `/tac-pham/{id}` dùng typed `/reader`:
+  snapshot công khai hoặc trang ẩn/sau kiểm duyệt, không đọc `working_drafts`.
+- Dashboard `/ban-viet`: [read-model tác giả](desk-author-feedback.md) qua `/api/v1/author/works`,
+  một hàng mỗi tác phẩm kể cả không có draft. Query/sort toàn corpus, 24 mục/trang,
+  240 mục/phần; trạng thái tác giả, Thấm theo public revision và Nhận xét theo public thread.
+  Không có resume/Recent/1 hoặc version nhìn thấy trên row sau #221. `/drafts` giữ API legacy.
+  Tạo khóa một POST đang bay, không retry kết quả chưa rõ; xóa private facts khi đổi account/quyền.
 - Bàn viết `/ban-viet/{id}`: nội dung soạn bằng CodeMirror 6
   ([runtime riêng](../../apps/vink-web/editor/README.md)), tạo nháp, lưu có điều kiện theo version,
   trạng thái chưa lưu/đang lưu/đã lưu/lỗi/xung đột; chỉ báo đã lưu sau xác nhận của server;
@@ -234,7 +230,7 @@ API mode bỏ bundle và SSR/static routes, vẫn biên dịch dependency Rust S
 | `cargo xtask ui-preview cmp build\|run\|verify` | Gradle trong `packages/ui-system/cmp`: compile `:ui`/`:preview` (desktop); `run` mở cửa sổ; `verify` chạy test common + desktop và ghi ảnh vào `packages/ui-system/cmp/preview/build/captures`. `VINK_UI_NATIVE_TARGETS=1` thêm Android/iOS | JDK/Gradle thiếu, compile hoặc test lỗi |
 | `cargo xtask verify quick` | `ui-tokens --check`, `fmt`, clippy server (workspace, `ssr`), clippy browser (`hydrate`, wasm32), clippy preview UI (`vink-ui-preview`, `csr`, wasm32), doctests type-boundary của literary core (`vink-app`), unit/contract tests không cần database (gồm `vink-ui`, `vink-ui-preview`, generator), kiểm kho quyết định, skill, link và ranh giới module (UI system không phụ thuộc service/router/storage; Kotlin `commonMain` không import API nền tảng), font/logo asset theo `provenance.json`, phiên bản pin của runtime editor, mọi crate kế thừa lint workspace (`unsafe_code = "forbid"`) và mỗi doctest `compile_fail` có lawful twin | Một bước lỗi |
 | `cargo xtask verify postgres` | Test integration của Store, App và Identity trên PostgreSQL thật ([mặc định 2 luồng mỗi gói](#giới-hạn-song-song-khi-kiểm-thử)); config sai thoát 2; `provision.sh` thật với tên tạm (DB cũ được nhận quyền, DB mới, Identity, chạy lại, ca âm), migrate/seed bằng role tách, thử DDL/kết nối chéo, worker start/SIGTERM bằng role runtime, và kiểm enrollment giữ cùng tài khoản/principal qua hai binary thật | Thiếu `VINK_TEST_DATABASE_URL`, PostgreSQL hoặc `psql` 15+, hoặc một bước lỗi |
-| `cargo xtask verify discussion` | Cài Quint pinned, typecheck/scenarios, simulation seed cố định, mutation counterexample, drift fixture và replay vào Rust production; trước khi chạy, đòi filter test chọn đủ mười bảy test replay có tên (`REPLAYS` trong `xtask/src/discussion.rs`). Publication/moderation #150 + #151 + #157 replay 51/51 bước M1, 30/30 bước M3 (tombstone), các negative control và 21 bước `evaluator-vectors.json` qua `ScriptedEvaluator` ([publication-core](publication-core.md), [moderation-core](moderation-core.md)). Thêm một bước riêng chạy canonical M1/M3 và [đặc tả đích 10/11/2026](../../services/vink-app/behavior/target/README.md) (typecheck, simulation, scenario, drift vectors, negative control) — riêng bốn model còn ở target **không** có replay aggregate Rust | Thiếu Node/npm, sai tool version, model/test/drift, negative control không phát hiện lỗi hoặc test replay không được chọn |
+| `cargo xtask verify discussion` | Cài Quint 0.33.1 theo lockfile, typecheck/scenarios, simulation seed cố định, negative controls, fixture drift và replay Rust production. Đòi đủ 21 replay App + 2 replay Web có tên trong `xtask/src/discussion.rs`. Canonical M1/M3/M4 và evaluator scripts: [publication owner](../../services/vink-app/behavior/publication/README.md). [ReadOwner/PageChain](../../apps/vink-web/behavior/README.md): 52 bước lawful + 2 counterexample qua Rust thật. Ba [model đích](../../services/vink-app/behavior/target/README.md) `collections/comment_edit/discovery` không có aggregate replay | Thiếu Node/npm, sai pin, model/test/drift, negative control không phát hiện lỗi hoặc replay không được chọn |
 | `cargo xtask verify web` | Build, database tạm (tạo bằng `VINK_TEST_DATABASE_URL`), server thật, Chrome headless, SIGTERM, restart; hai phase [Auth Web](auth-web.md) dùng Identity email-code và native | Thiếu PostgreSQL/Node/Chrome/wasm-bindgen hoặc một bước lỗi |
 | `cargo xtask verify expressions` | Noto manifest/hash/drift, Quint lifecycle simulation/negative control và Rust replay (xem mục EMO-01A); test replay có tên phải được chọn | Thiếu dependency hoặc bất kỳ kiểm nào lỗi |
 | `cargo xtask verify kani` | Kiểm `cargo-kani` đúng pin rồi chạy từng manifest Kani owner-local ([mục Kani](#kani)); đòi tổng kết khớp đúng số `#[kani::proof]` trong các file harness đã đăng ký của manifest | Thiếu/sai version verifier, harness lỗi hoặc số harness được kiểm khác số khai báo |
@@ -457,6 +453,8 @@ Hai feature `ssr` và `hydrate` là hai build riêng; không dùng `--all-featur
 
 ## Bằng chứng theo ranh giới
 
+[Read lifecycle Web](../../apps/vink-web/behavior/README.md) chạy trong `discussion`: model + replay thuần, không browser/SQL. [Đối soát 16/11](verification-reconciliation-20261116.md) ghim phạm vi PR và các gap mới; không nâng evidence cũ thành PASS mới.
+
 | Lane | Chứng minh | Không chứng minh |
 | --- | --- | --- |
 | `quick` | Tìm tiêu đề NFC/NFD/Đ/đ và guard tạo/đối chiếu kết quả; luật document/title/version/hash; lõi phân loại tác phẩm (nhãn/slug/khóa tìm tiếng Việt, catalog, thẻ nháp, digest snapshot, use case với store giả gọi policy thật; [taxonomy](taxonomy-core.md); use case catalog/route thẻ khi DB sập, fixture thẻ, parse lệnh `vink-app tag`, guard HTTP không cầm `CuratorAuthority`: [API](taxonomy-api.md); luật/use case khám phá, tham số `GET /api/v1/works` sai → `422` trước database, fixture discovery: [discovery](discovery-api.md)); config; máy trạng thái lưu (phản hồi cũ, một request đang bay, xung đột); fixtures provider/consumer; outage PostgreSQL → readiness `503`, API `dependency_unavailable`, Khám phá/reader `503`; private route `401` khi không có authority | Transaction PostgreSQL, trình duyệt |
@@ -551,28 +549,24 @@ production đỏ; model mutant tạo OFF→old ON resurrection. Harness và kế
 
 ## Chưa triển khai hoặc chưa kiểm chứng
 
-- Đăng nhập, session, tài khoản thật (D-05, S-03, ACC-01/ACC-02). `vink-identity` chỉ có ranh giới
-  process/database/contract; không authority, không mapping subject → principal, App chưa gọi nó.
-- Gửi duyệt, moderation người/AI, publish/withdraw, curation, Tạp Chí ở runtime
-  (PUB-01–PUB-03, MOD-01–MOD-06, ED-02). #150 có [lõi publication intent thuần](publication-core.md)
-  và application planning seam; #158 thêm [API tác giả](publication-runtime.md) (snapshot, yêu cầu
-  công khai, chuyển riêng tư xóa con trỏ); #159 thêm [kiểm duyệt runtime](moderation-runtime.md)
-  (consumer `vink-worker` tắt mặc định, ca duyệt và quyền admin/moderator qua HTTP, trang sau kiểm
-  duyệt). Phần hoàn thiện sau #170 thêm trang ẩn, phản đối và Web ca tác phẩm/phản đối/chế độ tự
-  động. [PUB-AUTHOR-WEB-01](publication-author-web.md) thêm vùng “Công khai” trong Bàn viết (chọn audience,
-  lưu → chụp → gửi đúng bản, chuyển riêng tư, đối soát mất ACK/hai tab/đổi phiên). Chưa có AI
-  provider thật, grant/nhóm, điều tra hay curation/Tạp Chí.
+- Production sign-in vẫn mặc định tắt; D-05 Provisional, chưa Accepted. App/Identity đã có
+  session, subject → principal, email-code và username/password cùng consumer Web; còn CMP,
+  khôi phục tài khoản và qualification production ([Auth Web](auth-web.md), [recovery](../architecture/password-recovery.md)).
+- [Publication tác giả](publication-author-web.md) và [kiểm duyệt tác phẩm](moderation-runtime.md)
+  có API/PostgreSQL/worker kịch bản/Web: chọn audience, lưu → snapshot → gửi, chuyển riêng tư,
+  review/appeal/automation và trang ẩn/sau kiểm duyệt. Chưa AI provider thật, UI grant/nhóm,
+  điều tra hoặc delete/remove route. Curation/Tạp Chí và nhiều chương vẫn DEFERRED.
 - UI kiểm duyệt bình luận, báo cáo/khiếu nại, thông báo, inbox, hậu kiểm theo admission,
   reconciliation (D-08, S-02, S-04). Outbox có consumer shadow/audit riêng và hậu kiểm operator có authority, mặc định tắt request mới ([runbook](discussion-post-review.md)); chưa có producer admission đăng-trước.
   Discourse không còn trong phạm vi (Vink sở hữu bình luận).
 - Autosave, bản khôi phục cục bộ, paste từ Word/Docs, IME thật trên thiết bị (WR-01/WR-02, S-01).
   Undo/redo và composition mô phỏng đã có trong editor CodeMirror, chưa phải bằng chứng IME hệ
   điều hành.
-- Export ngoài `.txt` (WR-05 mới có bản văn bản thuần), nhiều chương (WR-04), tìm toàn bộ thư viện
-  công khai/tags trong UI (UX-02; Khám phá vẫn chỉ tìm title/author trong tối đa 12 public cards đã tải;
-  API catalog/thẻ nháp #97 và API khám phá #98 đã có; UI thẻ nháp có ở Bàn viết từ #99, UI tìm/lọc
-  thuộc #100),
-  backup/restore (OPS-02).
+- Export ngoài `.txt`; autosave/device recovery không được suy từ save projection #227.
+  Tìm/lọc công khai và thẻ nháp đã có consumer Web (#99/#100). IndexedDB có adapter dưới gate
+  tắt; chưa policy clearing/UX expired/cold offline launch ([READ-02](public-read-freshness.md)).
+- Diễn tập vận hành dài hạn, restore production và performance trên thiết bị đích vẫn cần
+  evidence riêng; local backup/restore được kiểm ở lane `postgres`.
 - Tải `.txt` lần thứ hai trên cùng trang có thể khiến Chrome hỏi “tải nhiều tệp”; đó là quyền của
   trình duyệt, không phải lỗi lưu.
 - Kiểm tra trên mobile thật, screen reader và đo hiệu năng.

@@ -1,0 +1,17 @@
+{
+  "format": "vink-target-spec-counterexample-v1",
+  "status": "PURE_CORE_CONFORMANCE",
+  "quint_version": "0.33.1",
+  "model": "../../../../apps/vink-web/behavior/read-lifecycle.qnt",
+  "invariant": "pageIntegrity",
+  "command": ["quint","run","../../../../apps/vink-web/behavior/read-lifecycle.qnt","--backend=typescript","--seed=41","--step=uncheckedPageStep","--max-steps=5","--max-samples=1","--invariant=pageIntegrity","--verbosity=1"],
+  "violation": [
+    {"name": "uncheckedPageStep", "steps": [
+      {"command":{"input":0,"intent":"initial","next":0,"op":"begin","rows":[],"scope":1,"ticket":0},"outcome":"started","state":{"current":{"chain":{"cursors":[],"generation":0,"ids":[],"next":0,"pages":0},"owner":{"disposed":false,"flight":1,"generation":0,"scope":1},"serial":1,"tickets":{"1":{"generation":0,"input":0,"intent":"initial","scope":1}}}}},
+      {"command":{"input":0,"intent":"initial","next":1,"op":"page","rows":[1],"scope":1,"ticket":1},"outcome":"accepted","state":{"current":{"chain":{"cursors":[1],"generation":1,"ids":[1],"next":1,"pages":1},"owner":{"disposed":false,"flight":1,"generation":0,"scope":1},"serial":1,"tickets":{"1":{"generation":0,"input":0,"intent":"initial","scope":1}}}}},
+      {"command":{"input":0,"intent":"initial","next":0,"op":"finish","rows":[],"scope":1,"ticket":1},"outcome":"finished","state":{"current":{"chain":{"cursors":[1],"generation":1,"ids":[1],"next":1,"pages":1},"owner":{"disposed":false,"flight":0,"generation":0,"scope":1},"serial":1,"tickets":{"1":{"generation":0,"input":0,"intent":"initial","scope":1}}}}},
+      {"command":{"input":1,"intent":"append","next":0,"op":"begin","rows":[],"scope":1,"ticket":0},"outcome":"started","state":{"current":{"chain":{"cursors":[1],"generation":1,"ids":[1],"next":1,"pages":1},"owner":{"disposed":false,"flight":2,"generation":0,"scope":1},"serial":2,"tickets":{"1":{"generation":0,"input":0,"intent":"initial","scope":1},"2":{"generation":0,"input":1,"intent":"append","scope":1}}}}},
+      {"command":{"input":0,"intent":"initial","next":2,"op":"page","rows":[1],"scope":1,"ticket":2},"outcome":"accepted","state":{"current":{"chain":{"cursors":[1,2],"generation":1,"ids":[1],"next":2,"pages":2},"owner":{"disposed":false,"flight":2,"generation":0,"scope":1},"serial":2,"tickets":{"1":{"generation":0,"input":0,"intent":"initial","scope":1},"2":{"generation":0,"input":1,"intent":"append","scope":1}}}}}
+    ]}
+  ]
+}

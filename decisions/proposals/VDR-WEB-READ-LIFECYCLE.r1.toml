@@ -1,0 +1,20 @@
+version = 1
+id = "VDR-WEB-READ-LIFECYCLE"
+revision = 1
+
+[content]
+kind = "architecture"
+domain = "platform"
+title = "Vòng đời đọc Web và chuỗi trang có ticket"
+resolution = "Giữ ReadOwner/ReadTicket/PageChain thuần, dùng scope gồm representation/query/filter/sort/limit và session generation cho private reads. RequestId duy nhất qua disposal/remount; đổi scope, invalidate và refresh thay append vô hiệu ticket cũ. Head thành công thay toàn chuỗi; append chỉ nhận cursor hiện hành, ID không trùng và continuation không lặp; lỗi tạm hoặc page bị từ chối không tiến cursor. Adapter chịu trách nhiệm kiểm DTO, quyền, xóa private facts khi đổi session/quyền hoặc 401/403/404, và lifecycle/backoff; primitive không tự xác thực. Public Reader điều hướng và refresh dùng typed /reader; mark_stale giữ backoff, mutation_confirmed chỉ đánh thức read phù hợp. Không retry mutation, không đổi cửa sổ hiển thị 15 phút hay chính sách offline."
+rationale = "Đối chiếu PR #210/#212 và consumer #211/#222/#223 tại develop@6e07806. Owner: docs/development/public-read-freshness.md; apps/vink-web/src/read_lifecycle.rs. Model/replay: apps/vink-web/behavior/read-lifecycle.qnt, chỉ primitive thuần. Ghi lựa chọn kỹ thuật đã triển khai để review; không suy signoff từ merge. SQL, DOM, storage và freshness::Coordinator có bằng chứng riêng."
+requires = [
+    "READ-02-CHOICE-01@r1",
+    "READ-02-CHOICE-02@r1",
+    "READ-02-CHOICE-03@r1",
+    "READ-02-CHOICE-04@r1",
+]
+related_ids = [
+    "D-03",
+    "INV-08",
+]

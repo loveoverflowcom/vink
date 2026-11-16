@@ -1,0 +1,27 @@
+{
+  "base_commit": "6e07806aa87145d0e053f4061f47ccaf3830c14a",
+  "boundary": "model + production pure core; no browser/SQL/storage run",
+  "quint_version": "0.33.1",
+  "backend": "typescript",
+  "seed": 41,
+  "samples": 1000,
+  "max_steps": 40,
+  "source_sha256": {
+    "apps/vink-web/behavior/read-lifecycle.qnt": "6ea12e843d8c4da6e6e0890ab0055a2d125a460e86d12990fb9a24686dcf5e81",
+    "apps/vink-web/behavior/read-lifecycle-vectors.json": "101b3792c121890e2b3544055d663c7bccd6ce36b0ce2bf591b5c793e815f1b7",
+    "apps/vink-web/behavior/read-lifecycle-unfenced-counterexample.json": "6a3e5aeb6be4df1151b528d6ab7683100fea84a4208b95159f56fa704a014a3d",
+    "apps/vink-web/behavior/read-lifecycle-overlap-counterexample.json": "6a64a17d7fa74b9d3bb2d353f1973e0e93442e38c2b6b3ba22b75d2c3f5ef408",
+    "apps/vink-web/src/read_lifecycle.rs": "81e795a816c98fb7ba619baf97c06b94256bc8b71df6599ee5457d35a3bd58d7",
+    "apps/vink-web/src/read_lifecycle_replay.rs": "714e272f16fb842156e667a79bece36c79169b1dd89f9ac67513794a8126ee16",
+    "services/vink-app/behavior/target/verify.mjs": "d4a6e7c8bd45dbdfb6d1d2b3e6c5806132c21b7352c7169dbe2c4d5a29ba9946",
+    "xtask/src/discussion.rs": "21a39c10f8b19e0acdcd3cdd55fda9819e6b8532c14bf6610e0fbab6176b273e"
+  },
+  "environment": {
+    "os_arch": "Darwin arm64",
+    "rustc": "1.99.1 (58cf8f9c3 2026-10-13)",
+    "node": "v26.12.0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_INCREMENTAL": "0"
+  }
+}

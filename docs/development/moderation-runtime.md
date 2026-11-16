@@ -214,6 +214,8 @@ CLI `vink-app admin add|list|remove` nhả connection trước khi đóng pool; 
 
 ## 10. Hai queue hữu hạn (#205)
 
+Lựa chọn kỹ thuật: [VDR-MODERATION-QUEUE-PAGINATION@r1](../../decisions/proposals/VDR-MODERATION-QUEUE-PAGINATION.r1.toml), **PENDING**. Model/replay [ReadOwner/PageChain](../../apps/vink-web/behavior/README.md) chỉ phủ primitive; quyền/rows trong snapshot vẫn cần PostgreSQL, authority fingerprint/session clear cần browser.
+
 Mức triển khai `persistence-api` + `web`; không thay quyết định sản phẩm hay nhận ADR Accepted.
 `ADM-01@r1 PRODUCT_CONFIRMED`, `O-18@r1 OPEN`; snapshot registry tại base `6de515d`:
 `cef5662c19d3db1219bab14d197b5413f203aa816c99eaa11e8f2c31688091c2`.
