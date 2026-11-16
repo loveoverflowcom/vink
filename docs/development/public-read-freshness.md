@@ -21,8 +21,10 @@ Ngày 16/11/2026, nguồn `develop@69f71f0cb61228dbe5ceea775b3c34c237705922`, ph
 không gọi các kết quả browser cũ ở dưới là PASS của HEAD này. Epic giữ roadmap/dependencies;
 tài liệu này giữ hiện trạng READ-02, không thay PRD hoặc kho quyết định.
 
-Đối soát lại khi rebase lên `develop@a81333c71faf6033014a00ec26c9f7b90109d1d9` sau PR #232:
-runtime owners, manifests/lockfile, decision records và xtask không đổi so với pin trên.
+Đối soát lại khi rebase lên `develop@a81333c71faf6033014a00ec26c9f7b90109d1d9` (PR #232) và merge
+`develop@6e07806` (PR #228, PR #240): `apps/vink-web/src/`, `services/vink-app/`, `decisions/`
+và `xtask/src/cli.rs` không đổi so với pin trên (#228 chỉ sửa UI system/previews; #240 thêm
+assertions E2E Desk/Discovery và tài liệu thiết kế/bằng chứng).
 Chạy lại `decision validate`/`refs`: cùng 118 revisions và snapshot digest; 79 declared
 references (thêm `USER-09@r1` trong report #229), không có problems.
 [#229 đã có corpus và report](long-document-budget.md); dùng lại source/fixtures đó cho #234,
@@ -35,11 +37,11 @@ của #233 hoặc baseline release cho toàn hành trình.
 | --- | --- | --- |
 | Public SSR | [`Resource` trong api.rs](../../apps/vink-web/src/api.rs) → [`SharedPublicReads`](../../apps/vink-web/src/server.rs) → [`PublicReadsAdapter`](../../services/vink-app/src/http/ssr.rs) → App use case/PostgreSQL | Mỗi SSR request; chỉ public DTO qua hydration, không chuyển service/credential hoặc dùng tab cache trên server |
 | Works / typed Reader | [`PublicKey`, `Coordinator`](../../apps/vink-web/src/public_reads.rs) → [`freshness::Store`](../../apps/vink-web/src/freshness.rs) → transport HTTP; `Reader` luôn gọi `/reader` | Tab; flight/validation age/removal authority ở Store; `WaiterGuard` và keyed route cleanup giải phóng waiter; snapshot mới không bị seed cũ ghi đè |
-| Snapshot retention | [`SnapshotCache`](../../apps/vink-web/src/read_cache.rs): InMemory/NoOp; policy/GC ở `freshness::Store` | Optional retention khác active DTO/flight. Store có soft cap 16 entry, chỉ evict entry không quan sát/không in-flight; chưa có hard byte budget; eviction không được mang theo authority |
+| Snapshot retention | [`SnapshotCache`](../../apps/vink-web/src/read_cache.rs): `InMemoryCache`/`NoOpCache`; policy/GC ở `freshness::Store` | Optional retention khác active DTO/flight. Store có soft cap 16 entry, chỉ evict entry không quan sát/không in-flight; chưa có hard byte budget; eviction không được mang theo authority |
 | Timer / lifecycle hints | `public_reads::browser` giữ một scheduler; [`read_events`](../../apps/vink-web/src/read_events.rs) giữ bộ listeners chung và subscription của view | Public timer dừng khi tab ẩn; mounted no-store owners dùng `WakePolicy`, không timer riêng theo card; cleanup gỡ subscription của view, tab listener tồn tại theo tab |
 | Private reads / discussion | [`ReadOwner`, `PageChain`](../../apps/vink-web/src/read_lifecycle.rs); public `ViewState` và scoped `OwnState` theo [discussion owner](discussion-web-reads.md) | Browser private facts có session scope/generation, không SSR/public cache. Public/own/capability là reads có nghĩa riêng, không tính tất cả là duplicate |
 | Device snapshot | [`public_persistence`](../../apps/vink-web/src/public_persistence.rs) → [`indexeddb.js`](../../apps/vink-web/public-cache/indexeddb.js) dưới coordinator hiện hữu | Adapter đã có, `ENABLED=false`; 32 rows/4 MiB logical UTF-8, envelope ≤512 KiB, queue 8 pending + 1 executing. Không là giới hạn process RAM/GPU; không cold offline launch |
-| Chữ/thẻ chưa ACK | [`EditorSession`/`DraftSession`](../../apps/vink-web/src/desk_state.rs), `TagSession`, CodeMirror `BodySource` | Feature editor + session scope; lưu thủ công, text/tags có ticket/version riêng; [save slot #217](../design/ui-editor-unified-save-217.md) đã merge, không có durable local recovery |
+| Chữ/thẻ chưa ACK | [`EditorSession`/`DraftSession`](../../apps/vink-web/src/desk_state.rs), [`TagSession`](../../apps/vink-web/src/tag_state.rs), CodeMirror [`BodySource`](../../apps/vink-web/src/editor.rs) | Feature editor + session scope; lưu thủ công, text/tags có ticket/version riêng; [save slot #217](../design/ui-editor-unified-save-217.md) đã merge, không có durable local recovery |
 | Comment command / composer | [`DiscussionController`](../../apps/vink-web/src/discussion_state.rs), `Submission`, typed ACK | Snapshot/key và edit generation bất biến khi gửi; Uncertain dùng exact-key/payload reconcile cùng scope; ACK không xóa chữ mới; collapse khác dispose, không bảo đảm giữ qua rời route/restart |
 | Vị trí Khám phá | `remember_public_position` / `restore_public_position` trong [`pages/mod.rs`](../../apps/vink-web/src/pages/mod.rs), URL `ExploreContext` | Row anchor/query/cursor và focus fallback đã có. Chưa có relative-offset snapshot hoặc retained public view; không đồng nhất data-cache hit với giữ nguyên DOM |
 
@@ -59,7 +61,8 @@ của #233 hoặc baseline release cho toàn hành trình.
 Đã chạy `cargo xtask decision query ID` cho từng ID trong bảng, `decision validate` và
 `decision refs`. Snapshot SHA-256:
 `cef5662c19d3db1219bab14d197b5413f203aa816c99eaa11e8f2c31688091c2`.
-Validate ghi 118 revisions; refs ghi 78 declared references, không có problems.
+Validate ghi 118 revisions; refs ghi 79 declared references (tại `69f71f0` trước khi rebase
+PR #232 là 78; từ #232 tới `develop@6e07806` là 79), không có problems.
 Đây là kiểm cấu trúc và pin; semantic review/signoff là việc riêng.
 
 | IDs | Current / head | Trạng thái / nguồn |
@@ -79,7 +82,7 @@ câu hỏi kỹ thuật có điều kiện. Thay policy/contract phải qua owne
 | --- | --- | --- |
 | INV-01/07/08, PUB-05/07, O-17: public visibility và không hồi sinh nội dung | App `reader_work`/HTTP `get_reader`; `public_reads::tests::reader_ticket_orders_cache_refreshes_and_records_request_start`, `reader_ticket_survives_republication_and_private_pointer_invalidation` | `cargo xtask verify unit web --filter public_reads`; Web `main`/`review`/`publication` cho transport/provider thật; unit không chứng minh SQL hoặc DOM |
 | READ-02 policy: seed, age, backoff, single-flight | `freshness::tests`, `public_reads::tests`, `cacheFirstPublicReads` trong [browser smoke](../../apps/vink-web/e2e/browser-smoke.mjs) | Unit web filters `freshness`, `public_reads`; Web `main`. Logical reads, transport attempts và raw/wire304 phải đếm riêng |
-| INV-05/08, COM-07/08: private scope và command authority | `read_lifecycle::tests`, `discussion_reads::tests`, `discussion_state`; `discussionSessionRaces`, `discussionReadingAndWrites` | Unit + Web `auth`/`main`; durable receipt/current authority cần PostgreSQL. Mô hình D2T không chứng minh browser/session I/O |
+| INV-05/08, COM-07/08: private scope và command authority | `read_lifecycle::tests`, `discussion_reads::tests`, `discussion_state`; `discussionSessionRaces` trong [auth smoke](../../apps/vink-web/e2e/auth-smoke.mjs), `discussionReadingAndWrites` trong [browser smoke](../../apps/vink-web/e2e/browser-smoke.mjs) | Unit + Web `auth`/`main`; durable receipt/current authority cần PostgreSQL. Mô hình D2T không chứng minh browser/session I/O |
 | WR-01/02/05: ACK đúng text và tags | `desk_state::tests::late_acknowledgement_does_not_mark_newer_text_saved`, DraftSession/TagSession, `project_save_slot` | Unit web + Web `main`/`publication`; programmatic composition không là OS IME |
 | UX-01/02: main HTML, GET, context | `publicReading`, `cacheFirstPublicReads`, discovery corpus; Async routes trong `lib.rs` | Web `main`/`discovery`/`review`; no-JS/status/privacy khác performance trace hoặc screen-reader |
 
@@ -223,7 +226,7 @@ Phân biệt rạch ròi bốn khái niệm dễ nhầm lẫn:
 | `GET /api/v1/tags`, `/tags/suggestions`, `/tags/slugs/{slug}` | Công khai (`no Actor`); `Cache-Control: no-store`, chưa có `ETag` READ-01 | Bounded/top-K catalog: `MAX_LISTED_TAGS = 200` (+ `truncated`), `MAX_SUGGESTIONS = 10` | **Ngoài READ-02:** nạp theo lượt trang/gõ có debounce/hủy từ UI | Đổi/ngừng dùng thẻ phản ánh ngay ở lần gọi kế tiếp |
 | `GET /api/v1/works/{work_id}/discussion/public`, `.../roots/{root_id}/replies` | Công khai (`no Actor`); `Cache-Control: no-store`, chưa có `ETag` | `PageCursor` v1 (`created_at ASC, id ASC`, `CursorScope::Thread`), trang mặc định `20`, tối đa `50`, preview `3` reply | **Ngoài READ-02:** không đưa vào `freshness::Store` | `404`/`409` khi tác phẩm gỡ/ẩn hoặc sai phạm vi cursor |
 | `GET /api/v1/works/{work_id}/discussion/me` | Có auth (`Actor`, `401` cho khách, `503` khi Identity lỗi); `no-store` | `PageCursor` v1 (`CursorScope::Own`), batch `20` | **Ngoài READ-02:** `discussion_reads::OwnState` (generation-fenced ticket trong RAM, không cache liên phiên) | Tự reset khi `clear` session hoặc đổi tài khoản |
-| `GET /api/v1/works/{work_id}/endorsements`, `/endorsement/me` | Tổng hợp công khai (`no Actor`) và trạng thái riêng (`/me`, có auth); `no-store` | Tóm tắt theo work/target | **Ngoài READ-02:** controller riêng của LVE; `409 revision_changed` báo READ-02 kiểm tra lại | Đọc riêng không trộn với cache công khai |
+| `GET /api/v1/works/{work_id}/endorsements`, `/endorsements/me` (`PUT .../endorsement/me`) | Tổng hợp công khai (`no Actor`) và trạng thái riêng (`/endorsements/me`, có auth); `no-store` | Tóm tắt theo work/target | **Ngoài READ-02:** controller riêng của LVE; `409 revision_changed` báo READ-02 kiểm tra lại | Đọc riêng không trộn với cache công khai |
 | Top 100 (`TOP`) | — | — | **NOT_IMPLEMENTED** (chỉ có model đích trong `services/vink-app/behavior/target`) | Chưa có API hay UI |
 
 ## Bằng chứng
@@ -343,7 +346,7 @@ Chưa chọn giữa Kotlin repository + StateFlow + Ktor (A của issue) và Rus
 
 ## Chưa làm / rủi ro còn lại
 
-- Đã nối `invalidate_publication` / `invalidate_withdrawn` từ tác giả (`pages/publication.rs`) và đường đọc khi rút/ẩn bài (`api.rs`, `pages/mod.rs`). Chưa có caller invalidation từ `pages/moderation.rs` hoặc caller `clear()` từ `session.rs`/`account`. Rủi ro còn lại là **tab khác hoặc thiết bị khác** chưa nhận push/broadcast liên tab ngay lúc rút bài (vẫn chờ revalidate hoặc lần mở tiếp theo).
+- Đã nối `invalidate_publication` / `invalidate_withdrawn` từ tác giả (`pages/publication.rs`) và áp dụng thu hồi trên đường đọc `/reader` (`public_reads::Coordinator::finish` khi `api::reader_resource` nhận `Control`/`404` cho `ReaderLoaded` trong `pages/mod.rs`). Chưa có caller invalidation từ `pages/moderation.rs` hoặc caller `clear()` từ `session.rs`/`account`. Rủi ro còn lại là **tab khác hoặc thiết bị khác** chưa nhận push/broadcast liên tab ngay lúc rút bài (vẫn chờ revalidate hoặc lần mở tiếp theo).
 - Giá trị giả định `max_display_age = 15 phút` (và chính sách hiển thị stale khi lỗi tạm / offline lâu hơn) vẫn là mục **`OPEN`** chờ chủ sản phẩm chốt; `READ-01-CHOICE-*` và `READ-02-CHOICE-*` vẫn là `DESIGN_PROPOSED`.
 - IndexedDB đã có adapter và kiểm thử dưới gate **tắt** ([#203](#indexeddb-203)); offline
   full-text qua restart/App Shell/Service Worker chưa bật, thuộc #204. SQLite, Top 100 runtime
