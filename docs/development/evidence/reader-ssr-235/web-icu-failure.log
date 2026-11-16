@@ -1,0 +1,91 @@
+coverage: SELECTED Web checks (excluded checks NOT_SELECTED)
+operation: Verify; target: Web; auth: explicit fixture for main/discovery/restart/endorsement/review; real Identity for auth/password/publication
+build: [Bundle, App]
+required tools: [Rust, WasmTarget, Bindgen, Node, Npm, Chrome]
+owned services: [App]
+attached database configuration (values hidden): ["VINK_TEST_DATABASE_URL"]
+migrations: ["App scratch"]; dev seed: false (Web fixtures follow the scenario catalog)
+selected checks: [Main, Discovery, Review]; filter: None
+dependency checks: [] (restart requires main's saved draft and browser state)
+not selected Web checks: ["storage", "restart", "endorsement", "auth", "password", "publication", "perf-baseline"]
+API target isolation: no bundle, no SSR/static routes; Rust SSR dependencies remain compiled.
+data: dev attaches prepared databases; Web verification owns scratch only. No containers.
+artifacts: build from current source every invocation; no no-build/reuse mode.
+
+[PASS] Rust: rustc 1.99.1 (58cf8f9c3 2026-10-13)
+[PASS] WasmTarget: installed
+[PASS] Bindgen: wasm-bindgen 0.2.129
+[PASS] Node: v24.22.1
+[PASS] Npm: 11.9.0
+[PASS] Chrome: /tmp/vink-235-tools/chrome
+[PASS] VINK_TEST_DATABASE_URL: 127.0.0.1:49925 database `postgres` (credentials hidden)
+==> visual evidence oracle unit tests
+✔ AC-01: PNG verification parses hash and dimensions and rejects corrupt/empty artifacts (14.720632ms)
+✔ AC-01: rejects silent 900-height substitution for 800-height scenes and mismatched viewport filenames (10.24254ms)
+✔ AC-01: manifest schema supports legacy v1 compatibility and marks missing-target captures INCOMPLETE (10.736718ms)
+✔ AC-01: collectSourceIdentity tracks dirty UI inputs deterministically without secrets (0.510572ms)
+✔ AC-03: overflow oracle catches hidden overflow with scrollX=0 while allowing text input internal scroll (0.420105ms)
+✔ AC-03: AX oracle separates raw textContent from computed AX name and catches altered accessible name (0.635782ms)
+✔ AC-03: nav alignment accepts 1-line vs 2-line height delta when first lines align and catches misaligned first line (0.743164ms)
+✔ AC-02: modal oracle enforces all can_discard/confirm branches and catches missing last modal action (0.510021ms)
+✔ AC-04 & AC-05: separates DOM override from app controls and validates Me illustration reservation (0.843526ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 560.714664
+==> build browser bundle (vink-web, hydrate)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.24s
+==> wasm-bindgen → target/site/pkg
+==> editor runtime: type check + bundle → vink-editor.js
+==> expression runtime: pinned, self-hosted software renderer
+PASS self-hosted expression runtime {"version":"0.82.1","backend":"software","worker":false,"engine":{"file":"dotlottie-a66fb009e04a2945.js","bytes":58149},"wasm":{"file":"dotlottie-player-d63074204a3c50f9.wasm","bytes":1226030},"glue_bytes":9117,"posters_bytes":83912,"animation_bytes":847563}
+==> ui tokens: 15 generated files match
+==> build App
+   Compiling ring v0.17.14
+   Compiling rustls v0.23.46
+   Compiling rustls-webpki v0.103.16
+   Compiling sqlx-core v0.9.0
+   Compiling sqlx-postgres v0.9.0
+   Compiling sqlx-macros-core v0.9.0
+   Compiling sqlx-macros v0.9.0
+   Compiling sqlx v0.9.0
+   Compiling vink-store-postgres v0.1.0 (<worktree>/packages/store-postgres)
+   Compiling vink-app v0.1.0 (<worktree>/services/vink-app)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 49.54s
+==> 75 bundle file(s) scanned
+==> logs/evidence: <worktree>/target/verify-web/1794842414971016562-15
+==> migrate App scratch
+2026-11-16T15:20:15.157237Z  INFO vink_app: migrations applied applied=[20261030000000, 20261103000000, 20261104000000, 20261105000000, 20261105120000, 20261107000000, 20261108000000, 20261109000000, 20261110000000, 20261111000000, 20261112000000, 20261113000000, 20261114000000, 20261115000000, 20261116000000, 20261117000000, 20261118000000, 20261119000000, 20261120000000, 20261121000000] latest=20261121000000
+==> seed App scratch (runtime role)
+2026-11-16T15:20:15.208528Z  INFO vink_app: development fixture present work=33333333-3333-4333-8333-333333333333 author=11111111-1111-4111-8111-111111111111
+==> scratch tag catalog seeded at version 9
+==> vink-app ready on port 36209 (pid 1754)
+==> browser smoke --phase main
+file://<worktree>/apps/vink-web/e2e/browser-smoke.mjs:1080
+  throw new Error(`Chrome did not open DevTools within 20s: ${output}`);
+        ^
+
+Error: Chrome did not open DevTools within 20s: /usr/bin/chromium: 9: [: 5223559168: unexpected operator
+[1784:1784:1116/222016.461817:FATAL:chrome/browser/process_singleton_posix.cc:297] Check failed: . socket() failed: Operation not permitted (1)
+[1116/222016.463009:ERROR:third_party/crashpad/crashpad/util/linux/scoped_ptrace_attach.cc:27] ptrace: Operation not permitted (1)
+[1805:1805:0100/000000.528880:ERROR:content/zygote/zygote_linux.cc:662] write: Broken pipe (32)
+[1804:1804:0100/000000.553234:ERROR:content/zygote/zygote_linux.cc:662] write: Broken pipe (32)
+
+    at launchChrome (file://<worktree>/apps/vink-web/e2e/browser-smoke.mjs:1080:9)
+    at async file://<worktree>/apps/vink-web/e2e/browser-smoke.mjs:5299:16
+
+Node.js v24.22.1
+xtask: SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview, draft tags: browser smoke --phase main: exited with exit status: 1
+
+verification summary
+  PASS  selected prerequisites
+  PASS  visual evidence oracles: manifest, PNG, overflow, AX, modal unit tests
+  PASS  selected artifacts
+  PASS  browser bundle contains no credentials
+  FAIL  SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview, draft tags: browser smoke --phase main: exited with exit status: 1
+  (later steps NOT_RUN)
+xtask: selected Web verification failed (later checks NOT_RUN)

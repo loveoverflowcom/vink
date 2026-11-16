@@ -27,6 +27,7 @@ import { editorWriting } from './editor-writing-smoke.mjs';
 import { editorPaperFirst } from './editor-paper-first-smoke.mjs';
 import { documentBudget } from './document-budget.mjs';
 import { webPerfBaseline } from './web-perf-baseline.mjs';
+import { readerBeforeHydration } from './reader-ssr-boundary.mjs';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -4350,6 +4351,7 @@ async function editorChrome(page) {
 
 async function mainPhase(page) {
   await serverHtml();
+  await readerBeforeHydration(page, { args, check });
   await conditionalPublicReads(page);
   await cacheFirstPublicReads(page);
   await expressionPilot(page, args, check);
