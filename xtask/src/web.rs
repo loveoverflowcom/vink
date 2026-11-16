@@ -835,6 +835,48 @@ fn seed_discovery_fixture(server: &Server) -> Result<(), String> {
     })
 }
 
+/// Real App/PostgreSQL synthetic journey fixture. #100 contributes works 1..14;
+/// this opt-in delta contributes 15..200 and one hot thread of 1,000 comments.
+fn seed_perf_journey(server: &Server) -> Result<(), String> {
+    use sqlx::{Connection, Executor};
+    let url = server
+        .env
+        .iter()
+        .find(|(key, _)| key == "DATABASE_URL")
+        .map(|(_, value)| value)
+        .ok_or("scratch URL missing")?;
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| e.to_string())?;
+    runtime.block_on(async {
+        let mut connection = sqlx::PgConnection::connect(url)
+            .await
+            .map_err(|e| e.to_string())?;
+        sqlx::raw_sql(include_str!(
+            "../../apps/vink-web/e2e/fixtures/web-perf-journey.sql"
+        ))
+        .execute(&mut connection)
+        .await
+        .map_err(|e| format!("seed #234 journey: {e}"))?;
+        let (works, comments): (i64, i64) = sqlx::query_as(
+            "SELECT
+                (SELECT count(*) FROM revisions WHERE title LIKE '[Mẫu #100] Kiểm thử %'),
+                (SELECT count(*) FROM comments WHERE body LIKE '[Mẫu #234]%')",
+        )
+        .fetch_one(&mut connection)
+        .await
+        .map_err(|e| format!("read #234 seed counts: {e}"))?;
+        if (works, comments) != (200, 1000) {
+            return Err(format!(
+                "#234 corpus is not exact: {works} labelled public works, {comments} comments"
+            ));
+        }
+        println!("==> #234 scratch journey: {works} works / {comments} comments");
+        Ok(())
+    })
+}
+
 fn run_web_checks(
     report: &mut Report,
     root: &Path,
@@ -854,7 +896,7 @@ fn run_web_checks(
     if selected.iter().any(|s| {
         matches!(
             s,
-            Scenario::Main | Scenario::Storage | Scenario::Discovery | Scenario::Restart
+            Scenario::Main | Scenario::Storage | Scenario::Discovery | Scenario::Restart | Scenario::PerfBaseline
         )
     }) {
         let mut guard = match server.start(root) {
@@ -894,6 +936,19 @@ fn run_web_checks(
     ) {
         return false;
     }
+        if selected.contains(&Scenario::PerfBaseline) && !report.step(
+            "#234 SSR/hydration + Reader/Back performance baseline (200 works, 1000 comments, 10 cold/warm)",
+            || {
+                // A joint discovery+perf selection must seed #100 only once.
+                if !selected.contains(&Scenario::Discovery) {
+                    seed_discovery_fixture(server)?;
+                }
+                seed_perf_journey(server)?;
+                smoke(root, &["--phase", "perf-baseline"], chrome, origin, state)
+            },
+        ) {
+            return false;
+        }
         if !report.step("server stops gracefully on SIGTERM", || {
             let status = guard.terminate(Duration::from_secs(15))?;
             status
