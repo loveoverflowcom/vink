@@ -721,3 +721,19 @@ và `editor-short-mobile-390.png` (390×420, tối), không nâng thành approve
 Đây là PASS của scenario main, không phải toàn Web lane hay bảo đảm không còn flake trên mọi
 browser. Giữ AC-08 OPEN, rollout tắt, POLICY-02/UX expired chưa chốt. Không kiểm GitHub CI,
 không merge PR.
+
+## Baseline hiệu năng Web & Request-Reason Ledger — #234, 16/11/2026
+
+[#234](https://github.com/loveoverflowcom/vink/issues/234) thêm kịch bản opt-in
+`cargo xtask verify web --scenario perf-baseline --release` để đo release SSR/hydration, hành trình
+Khám phá → Reader → Back và request-reason ledger trên corpus 200 tác phẩm / 1.000 bình luận
+(tái sử dụng [#229](long-document-budget.md)), không sửa code runtime hay policy của READ-02.
+
+- **Báo cáo & Go/No-Go (#235–#239):** [web-perf-baseline.md](web-perf-baseline.md).
+- **Evidence JSON thô:** [evidence/web-perf-234](evidence/web-perf-234/README.md).
+- **Ghi nhận chính tại base `ca93696` (`release` loopback):** READ-02 giữ `0` request `/works` khi
+  hydrate/warm Back và gom 4 tín hiệu ở +121s thành `1` wire `304`; nhưng mỗi lần mở Reader qua
+  client navigation vẫn phát 13 request endpoint phụ chưa gom (`own_discussion` 5,
+  `public_endorsements` 3, `public_discussion` 2, `own_endorsements` 2, `capability_discussion` 1),
+  và `vink_bg.wasm` bản `release` nặng `112,0 MB` raw do section `custom:name` (`106,8 MB`) chưa
+  strip trong `wasm-bindgen`.

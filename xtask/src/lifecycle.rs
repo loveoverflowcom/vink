@@ -47,7 +47,16 @@ impl Drop for Guard {
 }
 
 pub fn binary(root: &Path, name: &str) -> PathBuf {
-    root.join("target/debug").join(name)
+    binary_with_profile(root, name, false)
+}
+
+pub fn binary_with_profile(root: &Path, name: &str, release: bool) -> PathBuf {
+    root.join(if release {
+        "target/release"
+    } else {
+        "target/debug"
+    })
+    .join(name)
 }
 
 /// Without their credential the binaries exit 2 naming it: `serve` and the worker need

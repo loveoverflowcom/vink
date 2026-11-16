@@ -21,10 +21,11 @@ Tất cả ví dụ chạy ở repo root. Dùng `cargo xtask --help` để xem c
 | Preview Leptos | `cargo xtask dev preview` | wasm target/bindgen | Static host của preview, không App/Identity/DB |
 | Kiểm preview | `cargo xtask verify preview` | wasm target/bindgen, Node, Chrome | Giữ toàn bộ assertion preview hiện hữu |
 | Một Web scenario | `cargo xtask verify web --scenario password` | Web tools + Chrome, test PG credential | App + Identity và scratch của scenario; không worker |
-| Web regression đầy đủ | `cargo xtask verify web` | Web tools + Chrome, test PG credential | Toàn bộ 9 selector bên dưới (storage đã nằm trong main, không lặp) |
+| Web regression đầy đủ | `cargo xtask verify web` | Web tools + Chrome, test PG credential | Toàn bộ 9 selector mặc định bên dưới (storage đã nằm trong main, không lặp) |
+| Web perf baseline (opt-in) | `cargo xtask verify web --scenario perf-baseline --release` | Web tools + Chrome, test PG credential | Corpus 200 tác phẩm / 1.000 bình luận + Chrome/CDP baseline #234 (không nằm trong default `verify web`) |
 | Regression hiện hữu | `cargo xtask verify all` | Theo từng lane | Vẫn quick → discussion → expressions → postgres → web; Kani riêng |
 
-`build` nhận `api|web|worker|identity|preview`; `--release` dùng cho bốn target server, không
+`build` nhận `api|web|worker|identity|preview`; `--release` dùng cho bốn target server (`build`) và cho `verify web` (ví dụ `--scenario perf-baseline --release`), không
 preview. `build web` tạo browser bundle và App, không build Identity/worker. `verify unit` nhận
 `app|identity|store|xtask|web`; `--filter` dùng substring của libtest. Unit App vẫn biên dịch Rust
 SSR do dependency package hiện tại; không yêu cầu Node/npm/bundle hoặc database đang chạy.
@@ -88,6 +89,7 @@ file khóa để vượt một lượt đang chạy.
 | `auth` | App scratch migrate/seed + Identity scratch/local outbox | `auth` với session thật |
 | `password` | App password scratch migrate + Identity native scratch/local outbox | `auth-password`, không cần phase auth/main |
 | `publication` | App publication scratch migrate/seed/catalog + Identity scratch/local outbox | `publication-author` |
+| `perf-baseline` *(opt-in)* | App scratch + corpus #234 (200 works / 1.000 comments); không chạy trong `verify web` mặc định | `perf-baseline`: phân phối SSR/hydration, request-reason ledger, 25-cycle disposal, thu hồi thật PostgreSQL và negative controls ([#234](web-perf-baseline.md)) |
 
 Lặp `--scenario` để hợp thành nhiều kiểm; thứ tự canonical giữ như full lane. Typo, chuỗi rỗng,
 selector trùng và option trái operation bị chặn trước side effects. Selected PASS chỉ có nghĩa

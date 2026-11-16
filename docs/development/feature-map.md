@@ -262,6 +262,13 @@ serializer, `Vink<PgStore>`, router SSR và phase CDP `document-budget`. Regress
 Đây là coverage phép đo, không thêm chương, autosave hay persistence rollout; kết quả thực thi,
 ngưỡng đề xuất và giới hạn host nằm ở báo cáo #229.
 
+Baseline hiệu năng Web [#234](web-perf-baseline.md): kịch bản opt-in `--scenario perf-baseline
+--release` trên [xtask web](../../xtask/src/web.rs) và [perf-baseline.mjs](../../apps/vink-web/e2e/perf-baseline.mjs)
+tái sử dụng corpus #229 qua [perf_journey.rs](../../services/vink-app/tests/support/perf_journey.rs)
+(200 tác phẩm / 1.000 bình luận, giữ nguyên page limit thật). Đo phân phối 10 cold + 10 warm
+Desktop/Mobile, request-reason ledger, 25-cycle disposal sau GC, thu hồi thật PostgreSQL và
+negative controls; 9 selector mặc định của `verify web` và runtime sản phẩm giữ nguyên.
+
 Web runner chuẩn bị database thử, server và Chrome; khi chạy tới bước tương ứng, nó ghi
 `target/verify-web/<run-id>/server.log` và `smoke-state.json`. Mỗi lượt có thư mục riêng; không xóa bằng chứng lượt trước. `adaptiveShell`, `publicReading`, `editorChrome`
 và `shellWithDirtyEditor` ghi PNG tại `target/verify-web/<run-id>/screenshots/` (1440/1024/834/390/320px,
@@ -613,7 +620,8 @@ ngoài lựa chọn; [lifecycle](../../xtask/src/lifecycle.rs) kiểm duplicate 
 `api_composition_has_no_ssr_or_static_routes_and_keeps_private_guard` ở HTTP owner kiểm router
 mode; source/test presence không thay bằng chứng PostgreSQL/process/browser thật.
 
-`verify web` giữ full coverage của các bảng trên. `--scenario main|storage|discovery|restart|endorsement|review|auth|password|publication`
+`verify web` giữ full coverage 9 selector mặc định của các bảng trên; `--scenario perf-baseline` là
+kịch bản opt-in riêng ([#234](web-perf-baseline.md)), hỗ trợ `--release`. `--scenario main|storage|discovery|restart|endorsement|review|auth|password|publication`
 chỉ chạy coverage được chọn và dependency khai báo; `restart` kéo `main`. `verify preview` là
 alias có plan cho Leptos preview hiện hữu; CMP/native không đổi. Evidence theo lượt nằm trong
 [registry triển khai](scoped-workflows-evidence.md), không coi selected PASS là full PASS.

@@ -30,7 +30,7 @@ const PASSWORD_AUTH_DATABASE: &str = "vink_verify_web_password_auth";
 const IDENTITY_DATABASE: &str = "vink_verify_web_identity";
 const IDENTITY_ROLE: &str = "vink_verify_web_identity_runtime";
 
-use crate::lifecycle::{Guard, binary, free_port, http_status};
+use crate::lifecycle::{Guard, binary_with_profile, free_port, http_status};
 
 /// Replaces the database name in a PostgreSQL URL.
 fn with_database(url: &str, database: &str) -> Result<String, String> {
@@ -119,6 +119,7 @@ fn bundle_secrets(dir: &Path) -> Result<(), String> {
 
 struct Server {
     port: u16,
+    release: bool,
     env: Vec<(String, String)>,
     log: PathBuf,
 }
@@ -138,6 +139,7 @@ impl Server {
         }
         Self {
             port,
+            release: self.release,
             env,
             log: self.log.with_file_name("server-reader.log"),
         }
@@ -169,6 +171,7 @@ impl Server {
         ]);
         Self {
             port,
+            release: self.release,
             env,
             log: self.log.with_file_name("server-auth.log"),
         }
@@ -184,13 +187,14 @@ impl Server {
         }
         Ok(Self {
             port: self.port,
+            release: self.release,
             env,
             log: self.log.with_file_name("server-publication.log"),
         })
     }
 
     fn command(&self, root: &Path, args: &[&str]) -> Command {
-        let mut command = Command::new(binary(root, "vink-app"));
+        let mut command = Command::new(binary_with_profile(root, "vink-app", self.release));
         crate::env::clear_capabilities(&mut command);
         command.current_dir(root).args(args);
         let migrate = args.first() == Some(&"migrate");
@@ -336,7 +340,7 @@ fn auth_web(
             .map_err(|e| format!("Identity scratch database/role: {e}"))?;
     }
     let admin_identity = admin.with_database(IDENTITY_DATABASE);
-    let mut migrate = Command::new(binary(root, "vink-identity"));
+    let mut migrate = Command::new(binary_with_profile(root, "vink-identity", server.release));
     crate::env::clear_capabilities(&mut migrate);
     migrate
         .current_dir(root)
@@ -360,7 +364,8 @@ fn auth_web(
         &format!("REVOKE INSERT, UPDATE, DELETE ON _sqlx_migrations FROM {IDENTITY_ROLE}"),
     )?;
     let log = std::fs::File::create(dir.join("identity.log")).map_err(|e| e.to_string())?;
-    let mut identity_command = Command::new(binary(root, "vink-identity"));
+    let mut identity_command =
+        Command::new(binary_with_profile(root, "vink-identity", server.release));
     crate::env::clear_capabilities(&mut identity_command);
     let child = identity_command
         .current_dir(root)
@@ -428,7 +433,9 @@ fn auth_web(
             let mut envs = app.env.clone();
             envs.push((
                 "VINK_E2E_APP_BIN".into(),
-                binary(root, "vink-app").display().to_string(),
+                binary_with_profile(root, "vink-app", app.release)
+                    .display()
+                    .to_string(),
             ));
             smoke_with_env(
                 root,
@@ -522,9 +529,12 @@ fn drop_identity_scratch(admin_url: &str) {
 pub fn visual_evidence_unit_tests(root: &Path) -> Result<(), String> {
     crate::doctor::node_version()?;
     let mut node = Command::new("node");
-    node.current_dir(root)
-        .args(["--test", "apps/vink-web/e2e/visual-evidence.test.mjs"]);
-    crate::process::run(&mut node, "visual evidence oracle unit tests")
+    node.current_dir(root).args([
+        "--test",
+        "apps/vink-web/e2e/visual-evidence.test.mjs",
+        "apps/vink-web/e2e/perf-baseline.test.mjs",
+    ]);
+    crate::process::run(&mut node, "visual evidence and perf oracle unit tests")
 }
 
 pub fn verify(report: &mut Report, env: &Env) -> bool {
@@ -604,6 +614,7 @@ pub fn verify_selected(report: &mut Report, env: &Env, plan: &Plan) -> bool {
         let origin = format!("http://127.0.0.1:{port}");
         let server = Server {
             port,
+            release: plan.request.release,
             env: vec![
                 ("DATABASE_URL".into(), runtime_url),
                 ("VINK_MIGRATE_DATABASE_URL".into(), scratch_url),
@@ -835,6 +846,448 @@ fn seed_discovery_fixture(server: &Server) -> Result<(), String> {
     })
 }
 
+/// #234 opt-in baseline fixture: generates 200 works and 1,000 approved comments reusing #229's
+/// document corpus/validators (`examples/perf_journey_corpus.rs`), inserts them into scratch PG,
+/// and writes a compact `corpus-manifest.json` (no document bodies) for `browser-smoke.mjs`.
+fn seed_perf_baseline_fixture(
+    root: &Path,
+    server: &Server,
+    perf_dir: &Path,
+) -> Result<PathBuf, String> {
+    use sqlx::{Connection, Executor};
+    use std::collections::HashMap;
+
+    std::fs::create_dir_all(perf_dir).map_err(|e| format!("{}: {e}", perf_dir.display()))?;
+    let raw_path = perf_dir.join("raw-corpus.json");
+    let mut corpus_cmd = crate::process::cargo(root);
+    corpus_cmd.args([
+        "run",
+        "--locked",
+        "-p",
+        "vink-app",
+        "--example",
+        "perf_journey_corpus",
+    ]);
+    if server.release {
+        corpus_cmd.arg("--release");
+    }
+    corpus_cmd.args(["--", "--out"]);
+    corpus_cmd.arg(&raw_path);
+    crate::process::run(
+        &mut corpus_cmd,
+        "generate #234 journey corpus (200 works / 1000 comments)",
+    )?;
+
+    let raw_bytes = std::fs::read(&raw_path).map_err(|e| format!("read raw corpus: {e}"))?;
+    let raw: serde_json::Value =
+        serde_json::from_slice(&raw_bytes).map_err(|e| format!("parse raw corpus: {e}"))?;
+    let _ = std::fs::remove_file(&raw_path);
+
+    let url = server
+        .env
+        .iter()
+        .find(|(key, _)| key == "DATABASE_URL")
+        .map(|(_, value)| value.as_str())
+        .ok_or("scratch URL missing")?;
+
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let works = raw["works"]
+        .as_array()
+        .ok_or("raw corpus missing works array")?;
+
+    let (pg_version, pg_shared_buffers, tag_slugs): (String, String, HashMap<String, String>) =
+        runtime.block_on(async {
+            let mut conn = sqlx::PgConnection::connect(url)
+                .await
+                .map_err(|e| e.to_string())?;
+            let pg_info: (String, String) =
+                sqlx::query_as("SELECT version(), current_setting('shared_buffers')")
+                    .fetch_one(&mut conn)
+                    .await
+                    .map_err(|e| e.to_string())?;
+            let tag_rows: Vec<(String, String, String)> =
+                sqlx::query_as("SELECT id::text, label, slug FROM tags")
+                    .fetch_all(&mut conn)
+                    .await
+                    .map_err(|e| e.to_string())?;
+            let mut tag_ids = HashMap::new();
+            let mut slugs = HashMap::new();
+            for (id, label, slug) in tag_rows {
+                tag_ids.insert(label.clone(), id);
+                slugs.insert(label, slug);
+            }
+
+            let mut tx = conn.begin().await.map_err(|e| e.to_string())?;
+            // Defer metadata seal checks until all snapshots + tag slots exist in the tx.
+            tx.execute("SET CONSTRAINTS ALL DEFERRED")
+                .await
+                .map_err(|e| e.to_string())?;
+
+            let mut root_ids = Vec::new();
+            let mut root_threads = Vec::new();
+            let mut root_bodies = Vec::new();
+            let mut root_offsets = Vec::new();
+
+            let mut reply_ids = Vec::new();
+            let mut reply_threads = Vec::new();
+            let mut reply_roots = Vec::new();
+            let mut reply_bodies = Vec::new();
+            let mut reply_offsets = Vec::new();
+
+            let mut nested_ids = Vec::new();
+            let mut nested_threads = Vec::new();
+            let mut nested_roots = Vec::new();
+            let mut nested_reply_tos = Vec::new();
+            let mut nested_bodies = Vec::new();
+            let mut nested_offsets = Vec::new();
+
+            let mut all_comment_ids = Vec::new();
+
+            for work in works {
+                let work_id = work["work_id"].as_str().ok_or("work_id")?;
+                let rev_id = work["revision_id"].as_str().ok_or("revision_id")?;
+                let snap_id = work["snapshot_id"].as_str().ok_or("snapshot_id")?;
+                let thread_id = work["thread_id"].as_str().ok_or("thread_id")?;
+                let title = work["title"].as_str().ok_or("title")?;
+                let content_hash = work["content_hash"].as_str().ok_or("content_hash")?;
+                let form_label = work["form_label"].as_str().ok_or("form_label")?;
+                let theme_label = work["theme_label"].as_str().ok_or("theme_label")?;
+                let offset_secs = work["published_offset_secs"].as_i64().ok_or("offset")?;
+                let doc_json = serde_json::to_string(&work["document"]).map_err(|e| e.to_string())?;
+                let form_id = tag_ids
+                    .get(form_label)
+                    .ok_or_else(|| format!("missing seeded form tag {form_label}"))?;
+                let theme_id = tag_ids
+                    .get(theme_label)
+                    .ok_or_else(|| format!("missing seeded theme tag {theme_label}"))?;
+
+                sqlx::query("INSERT INTO works (id, owner_id) VALUES ($1::text::uuid, $2::text::uuid)")
+                    .bind(work_id)
+                    .bind(SAMPLE_AUTHOR)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| e.to_string())?;
+
+                sqlx::query(
+                    "INSERT INTO work_metadata_snapshots (id, work_id, metadata_version, digest)
+                     VALUES ($1::text::uuid, $2::text::uuid, 1, work_metadata_digest($3::text::uuid, ARRAY[$4::text::uuid]))",
+                )
+                .bind(snap_id)
+                .bind(work_id)
+                .bind(form_id)
+                .bind(theme_id)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| e.to_string())?;
+
+                sqlx::query(
+                    "INSERT INTO work_metadata_snapshot_tags (snapshot_id, slot, tag_id, facet)
+                     VALUES ($1::text::uuid, 0, $2::text::uuid, 'form'),
+                            ($1::text::uuid, 1, $3::text::uuid, 'theme')",
+                )
+                .bind(snap_id)
+                .bind(form_id)
+                .bind(theme_id)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| e.to_string())?;
+
+                sqlx::query(
+                    "INSERT INTO revisions (id, work_id, title, document, content_hash, created_by, metadata_snapshot_id)
+                     VALUES ($1::text::uuid, $2::text::uuid, $3, $4::text::jsonb, $5, $6::text::uuid, $7::text::uuid)",
+                )
+                .bind(rev_id)
+                .bind(work_id)
+                .bind(title)
+                .bind(&doc_json)
+                .bind(content_hash)
+                .bind(SAMPLE_AUTHOR)
+                .bind(snap_id)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| e.to_string())?;
+
+                sqlx::query(
+                    "INSERT INTO work_publications (
+                        work_id, audience, lifecycle, generation,
+                        intent_revision_id, intent_generation,
+                        pointer_revision_id, pointer_intent_generation,
+                        ever_public, public_epoch, policy_version, updated_at
+                    ) VALUES (
+                        $1::text::uuid, 'public', 'active', 2,
+                        $2::text::uuid, 2, $2::text::uuid, 2,
+                        ARRAY[$2::text::uuid], 1, 1, now() - make_interval(secs => $3::double precision)
+                    )",
+                )
+                .bind(work_id)
+                .bind(rev_id)
+                .bind(offset_secs as f64)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| e.to_string())?;
+
+                sqlx::query(
+                    "INSERT INTO work_revision_moderation (
+                        work_id, revision_id, decision_version, moderation, provenance_kind
+                    ) VALUES ($1::text::uuid, $2::text::uuid, 2, 'approved', 'legacy_bootstrap')",
+                )
+                .bind(work_id)
+                .bind(rev_id)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| e.to_string())?;
+
+                sqlx::query(
+                    "INSERT INTO publications (work_id, revision_id, generation, published_at, metadata_snapshot_id)
+                     VALUES ($1::text::uuid, $2::text::uuid, 2, now() - make_interval(secs => $3::double precision), $4::text::uuid)",
+                )
+                .bind(work_id)
+                .bind(rev_id)
+                .bind(offset_secs as f64)
+                .bind(snap_id)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| e.to_string())?;
+
+                if work["has_working_draft"].as_bool().unwrap_or(false) {
+                    sqlx::query(
+                        "INSERT INTO working_drafts (work_id, version, title, document)
+                         VALUES ($1::text::uuid, 1, $2, $3::text::jsonb)",
+                    )
+                    .bind(work_id)
+                    .bind(title)
+                    .bind(&doc_json)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| e.to_string())?;
+                }
+
+                let comments = work["comments"].as_array().ok_or("comments array")?;
+                if !comments.is_empty() {
+                    sqlx::query(
+                        "INSERT INTO discussion_threads (id, work_id, comments_open, settings_generation)
+                         VALUES ($1::text::uuid, $2::text::uuid, true, 1)",
+                    )
+                    .bind(thread_id)
+                    .bind(work_id)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| e.to_string())?;
+
+                    for c in comments {
+                        let cid = c["comment_id"].as_str().ok_or("comment_id")?.to_string();
+                        let kind = c["kind"].as_str().ok_or("kind")?;
+                        let body = c["body"].as_str().ok_or("body")?.to_string();
+                        let offset_s = c["created_offset_ms"].as_i64().unwrap_or(0) as f64 / 1000.0;
+                        all_comment_ids.push(cid.clone());
+                        if kind == "root" {
+                            root_ids.push(cid);
+                            root_threads.push(thread_id.to_string());
+                            root_bodies.push(body);
+                            root_offsets.push(offset_s);
+                        } else if let Some(reply_to) = c["reply_to_id"].as_str() {
+                            nested_ids.push(cid);
+                            nested_threads.push(thread_id.to_string());
+                            nested_roots.push(c["root_id"].as_str().ok_or("root_id")?.to_string());
+                            nested_reply_tos.push(reply_to.to_string());
+                            nested_bodies.push(body);
+                            nested_offsets.push(offset_s);
+                        } else {
+                            reply_ids.push(cid);
+                            reply_threads.push(thread_id.to_string());
+                            reply_roots.push(c["root_id"].as_str().ok_or("root_id")?.to_string());
+                            reply_bodies.push(body);
+                            reply_offsets.push(offset_s);
+                        }
+                    }
+                }
+            }
+
+            if !root_ids.is_empty() {
+                sqlx::query(
+                    "INSERT INTO comments (
+                        id, thread_id, kind, root_id, root_kind, reply_to_id, replied_to_reply,
+                        author_id, body, review, removal, moderation_version,
+                        created_at, updated_at, admission_policy, admission_reason
+                     )
+                     SELECT id::uuid, thread_id::uuid, 'root', NULL, NULL, NULL, false,
+                            $5::text::uuid, body, 'pending', NULL, 1,
+                            now() - interval '2 hours' + make_interval(secs => off),
+                            now() - interval '2 hours' + make_interval(secs => off),
+                            'premoderation.v1', 'policy_premoderation'
+                       FROM unnest($1::text[], $2::text[], $3::text[], $4::double precision[])
+                            AS t(id, thread_id, body, off)",
+                )
+                .bind(&root_ids)
+                .bind(&root_threads)
+                .bind(&root_bodies)
+                .bind(&root_offsets)
+                .bind(OTHER_PRINCIPAL)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| e.to_string())?;
+            }
+
+            if !reply_ids.is_empty() {
+                sqlx::query(
+                    "INSERT INTO comments (
+                        id, thread_id, kind, root_id, root_kind, reply_to_id, replied_to_reply,
+                        author_id, body, review, removal, moderation_version,
+                        created_at, updated_at, admission_policy, admission_reason
+                     )
+                     SELECT id::uuid, thread_id::uuid, 'reply', root_id::uuid, 'root', NULL, false,
+                            $6::text::uuid, body, 'pending', NULL, 1,
+                            now() - interval '2 hours' + make_interval(secs => off),
+                            now() - interval '2 hours' + make_interval(secs => off),
+                            'premoderation.v1', 'policy_premoderation'
+                       FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::double precision[])
+                            AS t(id, thread_id, root_id, body, off)",
+                )
+                .bind(&reply_ids)
+                .bind(&reply_threads)
+                .bind(&reply_roots)
+                .bind(&reply_bodies)
+                .bind(&reply_offsets)
+                .bind(OTHER_PRINCIPAL)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| e.to_string())?;
+            }
+
+            if !nested_ids.is_empty() {
+                sqlx::query(
+                    "INSERT INTO comments (
+                        id, thread_id, kind, root_id, root_kind, reply_to_id, replied_to_reply,
+                        author_id, body, review, removal, moderation_version,
+                        created_at, updated_at, admission_policy, admission_reason
+                     )
+                     SELECT id::uuid, thread_id::uuid, 'reply', root_id::uuid, 'root', reply_to_id::uuid, true,
+                            $7::text::uuid, body, 'pending', NULL, 1,
+                            now() - interval '2 hours' + make_interval(secs => off),
+                            now() - interval '2 hours' + make_interval(secs => off),
+                            'premoderation.v1', 'policy_premoderation'
+                       FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::double precision[])
+                            AS t(id, thread_id, root_id, reply_to_id, body, off)",
+                )
+                .bind(&nested_ids)
+                .bind(&nested_threads)
+                .bind(&nested_roots)
+                .bind(&nested_reply_tos)
+                .bind(&nested_bodies)
+                .bind(&nested_offsets)
+                .bind(OTHER_PRINCIPAL)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| e.to_string())?;
+            }
+
+            if !all_comment_ids.is_empty() {
+                let perf_mod = "66666666-6666-4666-8666-666666666666";
+                let perf_grant = "77777777-7777-4777-8777-777777777777";
+                sqlx::query(
+                    "INSERT INTO principals (id, display_name)
+                     VALUES ($1::text::uuid, 'Baseline Moderator Fixture')
+                     ON CONFLICT (id) DO NOTHING",
+                )
+                .bind(perf_mod)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| e.to_string())?;
+
+                sqlx::query(
+                    "INSERT INTO discussion_moderator_grants (id, principal_id, note)
+                     VALUES ($1::text::uuid, $2::text::uuid, 'perf-baseline fixture')
+                     ON CONFLICT (id) DO NOTHING",
+                )
+                .bind(perf_grant)
+                .bind(perf_mod)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| e.to_string())?;
+
+                sqlx::query(
+                    "UPDATE comments SET review = 'approved', moderation_version = 2
+                      WHERE id = ANY(SELECT unnest($1::text[])::uuid)",
+                )
+                .bind(&all_comment_ids)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| e.to_string())?;
+
+                sqlx::query(
+                    "INSERT INTO comment_moderation_decisions (
+                        comment_id, version, action, moderator_id, authority_kind, grant_id
+                     )
+                     SELECT id::uuid, 2, 'approve', $2::text::uuid, 'legacy_grant', $3::text::uuid
+                       FROM unnest($1::text[]) AS id",
+                )
+                .bind(&all_comment_ids)
+                .bind(perf_mod)
+                .bind(perf_grant)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| e.to_string())?;
+            }
+
+            tx.commit().await.map_err(|e| e.to_string())?;
+            Ok::<_, String>((pg_info.0, pg_info.1, slugs))
+        })?;
+
+    let summary_works: Vec<serde_json::Value> = works
+        .iter()
+        .map(|w| {
+            serde_json::json!({
+                "index": w["index"],
+                "role": w["role"],
+                "work_id": w["work_id"],
+                "revision_id": w["revision_id"],
+                "title": w["title"],
+                "shape": w["shape"],
+                "scalars": w["scalars"],
+                "canonical_json_bytes": w["canonical_json_bytes"],
+                "content_hash": w["content_hash"],
+                "form_label": w["form_label"],
+                "theme_label": w["theme_label"],
+                "comment_count": w["comments"].as_array().map_or(0, Vec::len),
+            })
+        })
+        .collect();
+
+    let manifest_path = perf_dir.join("corpus-manifest.json");
+    let manifest = serde_json::json!({
+        "journey_seed": raw["journey_seed"],
+        "document_corpus_seed": raw["document_corpus_seed"],
+        "corpus_digest": raw["corpus_digest"],
+        "work_count": raw["work_count"],
+        "comment_count": raw["comment_count"],
+        "roles": raw["roles"],
+        "build_profile": if server.release { "release" } else { "dev" },
+        "postgres": {
+            "version": pg_version,
+            "shared_buffers": pg_shared_buffers,
+        },
+        "tag_slugs": tag_slugs,
+        "limits": {
+            "discovery_default_page_size": 12,
+            "discovery_max_page_size": 24,
+            "discussion_default_root_page": 20,
+            "discussion_max_root_page": 50,
+            "discussion_preview_replies": 3,
+        },
+        "works": summary_works,
+    });
+    std::fs::write(
+        &manifest_path,
+        serde_json::to_vec_pretty(&manifest).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| format!("write corpus manifest: {e}"))?;
+    Ok(manifest_path)
+}
+
 fn run_web_checks(
     report: &mut Report,
     root: &Path,
@@ -851,10 +1304,32 @@ fn run_web_checks(
             return false;
         }
     };
+    let perf_manifest = if selected.contains(&Scenario::PerfBaseline) {
+        let perf_dir = state
+            .parent()
+            .ok_or_else(|| "state file has no parent".to_string())
+            .and_then(|dir| {
+                let p = dir.join("perf-baseline");
+                seed_perf_baseline_fixture(root, server, &p)
+            });
+        match perf_dir {
+            Ok(path) => Some(path),
+            Err(e) => {
+                report.fail("scratch database: #234 perf baseline corpus", &e);
+                return false;
+            }
+        }
+    } else {
+        None
+    };
     if selected.iter().any(|s| {
         matches!(
             s,
-            Scenario::Main | Scenario::Storage | Scenario::Discovery | Scenario::Restart
+            Scenario::Main
+                | Scenario::Storage
+                | Scenario::Discovery
+                | Scenario::Restart
+                | Scenario::PerfBaseline
         )
     }) {
         let mut guard = match server.start(root) {
@@ -894,6 +1369,32 @@ fn run_web_checks(
     ) {
         return false;
     }
+        if let Some(manifest_path) = perf_manifest.as_ref()
+            && !report.step(
+                "perf-baseline: release SSR/hydration, Explore-Reader-Back ledger, 200 works/1000 comments and negative controls",
+                || {
+                    let perf_out = manifest_path
+                        .parent()
+                        .expect("manifest inside perf-baseline dir");
+                    smoke(
+                        root,
+                        &[
+                            "--phase",
+                            "perf-baseline",
+                            "--perf-manifest",
+                            manifest_path.to_str().ok_or("non-UTF8 perf manifest path")?,
+                            "--perf-out",
+                            perf_out.to_str().ok_or("non-UTF8 perf out path")?,
+                        ],
+                        chrome,
+                        origin,
+                        state,
+                    )
+                },
+            )
+        {
+            return false;
+        }
         if !report.step("server stops gracefully on SIGTERM", || {
             let status = guard.terminate(Duration::from_secs(15))?;
             status

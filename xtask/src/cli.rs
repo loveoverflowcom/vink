@@ -6,11 +6,12 @@ pub const HELP: &str = "Scoped workflows (PostgreSQL is attached, never started)
   dev worker|identity [--migrate] [--plan]
   dev preview [--plan]                 Leptos UI preview, no business services
   verify unit app|identity|store|xtask|web [--filter NAME] [--plan]
-  verify web [--scenario NAME]... [--plan]
+  verify web [--scenario NAME]... [--release] [--plan]
   verify preview [--plan]               Leptos preview browser regression
   doctor <scoped command above>         check only that command's prerequisites
 
 Web scenarios: main, storage, discovery, restart, endorsement, review, auth, password, publication.
+Opt-in Web scenarios: perf-baseline (selected only via --scenario perf-baseline; supports --release).
 No selector means full Web regression. restart depends on main. --plan performs no task I/O.
 Auth defaults to none, independent of .env. fixture requires explicit VINK_DEV_PRINCIPAL.
 identity uses native credentials and local mail outbox; no fixture fallback or SMTP.
@@ -108,7 +109,11 @@ pub fn parse(args: &[&str]) -> Result<Option<Invocation>, String> {
             return Err(format!("duplicate option {flag}"));
         }
         match flag {
-            "--release" if r.operation == Operation::Build && r.target != Target::Preview => {
+            "--release"
+                if (r.operation == Operation::Build
+                    || (r.operation == Operation::Verify && r.target == Target::Web))
+                    && r.target != Target::Preview =>
+            {
                 r.release = true
             }
             "--migrate" if r.operation == Operation::Dev && r.target != Target::Preview => {
@@ -156,7 +161,7 @@ pub fn parse(args: &[&str]) -> Result<Option<Invocation>, String> {
         r.auth = Auth::Identity;
     }
     if r.operation == Operation::Verify && r.target == Target::Web && r.scenarios.is_empty() {
-        r.scenarios = Scenario::ALL.to_vec();
+        r.scenarios = Scenario::DEFAULT.to_vec();
     }
     Ok(Some(Invocation {
         plan: Plan::resolve(r),
@@ -204,5 +209,20 @@ mod tests {
                 .plan
         );
         assert!(parse(&["dev"]).unwrap().is_none());
+    }
+    #[test]
+    fn perf_baseline_is_opt_in_and_supports_release_verify_web() {
+        let default_web = parse(&["verify", "web"]).unwrap().unwrap().plan;
+        assert_eq!(default_web.scenarios, Scenario::DEFAULT);
+        assert!(!default_web.scenarios.contains(&Scenario::PerfBaseline));
+        assert!(!default_web.request.release);
+
+        let perf = parse(&["verify", "web", "--scenario", "perf-baseline", "--release"])
+            .unwrap()
+            .unwrap()
+            .plan;
+        assert_eq!(perf.scenarios, vec![Scenario::PerfBaseline]);
+        assert!(perf.request.release);
+        assert!(perf.describe().contains("SELECTED Web checks"));
     }
 }

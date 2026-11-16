@@ -1,0 +1,1326 @@
+{
+  "cold_explore_desktop_1440_dpr1": {
+    "reason": "cold_explore_desktop_1440_dpr1_0",
+    "logical_reads": 16,
+    "transport_attempts": 16,
+    "validator_304_count": 0,
+    "total_encoded_bytes": 112661013,
+    "by_category": {
+      "document_ssr": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 40684,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      },
+      "asset_bundle": {
+        "transport_attempts": 13,
+        "logical_reads": 13,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 112619873,
+        "wire_statuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ]
+      },
+      "auth_account": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 456,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      }
+    }
+  },
+  "cold_reader_std_desktop_1440_dpr1": {
+    "reason": "cold_reader_desktop_1440_dpr1_0",
+    "logical_reads": 26,
+    "transport_attempts": 26,
+    "validator_304_count": 0,
+    "total_encoded_bytes": 112963025,
+    "by_category": {
+      "document_ssr": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 301234,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      },
+      "asset_bundle": {
+        "transport_attempts": 13,
+        "logical_reads": 13,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 112619873,
+        "wire_statuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ]
+      },
+      "auth_account": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 456,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      },
+      "own_endorsements": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 9812,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      },
+      "public_discussion": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 22674,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      },
+      "public_endorsements": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 5816,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      },
+      "own_discussion": {
+        "transport_attempts": 5,
+        "logical_reads": 5,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 1080,
+        "wire_statuses": [
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200,
+          200,
+          200,
+          200
+        ]
+      },
+      "capability_discussion": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 2080,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      }
+    }
+  },
+  "warm_client_nav_reader_first_desktop_1440_dpr1": {
+    "reason": "warm_client_nav_reader_desktop_1440_dpr1_0",
+    "logical_reads": 17,
+    "transport_attempts": 17,
+    "validator_304_count": 0,
+    "total_encoded_bytes": 76698,
+    "by_category": {
+      "auth_account": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 251,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      },
+      "public_reader": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 6420,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      },
+      "asset_bundle": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 0,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      },
+      "public_endorsements": {
+        "transport_attempts": 3,
+        "logical_reads": 3,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 11923,
+        "wire_statuses": [
+          200,
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200,
+          200
+        ]
+      },
+      "public_discussion": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 45348,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      },
+      "own_endorsements": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 9812,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      },
+      "own_discussion": {
+        "transport_attempts": 5,
+        "logical_reads": 5,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 864,
+        "wire_statuses": [
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200,
+          200,
+          200,
+          null
+        ]
+      },
+      "capability_discussion": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 2080,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      }
+    }
+  },
+  "warm_back_desktop_1440_dpr1": {
+    "reason": "warm_back_desktop_1440_dpr1_0",
+    "logical_reads": 2,
+    "transport_attempts": 2,
+    "validator_304_count": 0,
+    "total_encoded_bytes": 1159,
+    "by_category": {
+      "public_catalog": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 1159,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      },
+      "asset_bundle": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 0,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      }
+    }
+  },
+  "warm_client_nav_reader_cached_desktop_1440_dpr1": {
+    "reason": "warm_client_nav_reader_desktop_1440_dpr1_1",
+    "logical_reads": 15,
+    "transport_attempts": 15,
+    "validator_304_count": 0,
+    "total_encoded_bytes": 70243,
+    "by_category": {
+      "asset_bundle": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 0,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      },
+      "public_endorsements": {
+        "transport_attempts": 3,
+        "logical_reads": 3,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 11923,
+        "wire_statuses": [
+          200,
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200,
+          200
+        ]
+      },
+      "public_discussion": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 45348,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      },
+      "own_endorsements": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 9812,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      },
+      "own_discussion": {
+        "transport_attempts": 5,
+        "logical_reads": 5,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 1080,
+        "wire_statuses": [
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200,
+          200,
+          200,
+          200
+        ]
+      },
+      "capability_discussion": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 2080,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      }
+    }
+  },
+  "cold_explore_mobile_390_dpr2": {
+    "reason": "cold_explore_mobile_390_dpr2_0",
+    "logical_reads": 16,
+    "transport_attempts": 16,
+    "validator_304_count": 0,
+    "total_encoded_bytes": 112661013,
+    "by_category": {
+      "document_ssr": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 40684,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      },
+      "asset_bundle": {
+        "transport_attempts": 13,
+        "logical_reads": 13,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 112619873,
+        "wire_statuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ]
+      },
+      "auth_account": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 456,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      }
+    }
+  },
+  "cold_reader_std_mobile_390_dpr2": {
+    "reason": "cold_reader_mobile_390_dpr2_0",
+    "logical_reads": 26,
+    "transport_attempts": 26,
+    "validator_304_count": 0,
+    "total_encoded_bytes": 112963025,
+    "by_category": {
+      "document_ssr": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 301234,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      },
+      "asset_bundle": {
+        "transport_attempts": 13,
+        "logical_reads": 13,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 112619873,
+        "wire_statuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ]
+      },
+      "auth_account": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 456,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      },
+      "own_endorsements": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 9812,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      },
+      "public_discussion": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 22674,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      },
+      "public_endorsements": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 5816,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      },
+      "own_discussion": {
+        "transport_attempts": 5,
+        "logical_reads": 5,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 1080,
+        "wire_statuses": [
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200,
+          200,
+          200,
+          200
+        ]
+      },
+      "capability_discussion": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 2080,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      }
+    }
+  },
+  "warm_client_nav_reader_first_mobile_390_dpr2": {
+    "reason": "warm_client_nav_reader_mobile_390_dpr2_0",
+    "logical_reads": 17,
+    "transport_attempts": 17,
+    "validator_304_count": 0,
+    "total_encoded_bytes": 76698,
+    "by_category": {
+      "auth_account": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 251,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      },
+      "public_reader": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 6420,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      },
+      "asset_bundle": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 0,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      },
+      "public_endorsements": {
+        "transport_attempts": 3,
+        "logical_reads": 3,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 11923,
+        "wire_statuses": [
+          200,
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200,
+          200
+        ]
+      },
+      "public_discussion": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 45348,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      },
+      "own_endorsements": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 9812,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      },
+      "own_discussion": {
+        "transport_attempts": 5,
+        "logical_reads": 5,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 864,
+        "wire_statuses": [
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200,
+          200,
+          200,
+          200
+        ]
+      },
+      "capability_discussion": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 2080,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      }
+    }
+  },
+  "warm_back_mobile_390_dpr2": {
+    "reason": "warm_back_mobile_390_dpr2_0",
+    "logical_reads": 2,
+    "transport_attempts": 2,
+    "validator_304_count": 0,
+    "total_encoded_bytes": 1159,
+    "by_category": {
+      "public_catalog": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 1159,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      },
+      "asset_bundle": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 0,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      }
+    }
+  },
+  "warm_client_nav_reader_cached_mobile_390_dpr2": {
+    "reason": "warm_client_nav_reader_mobile_390_dpr2_1",
+    "logical_reads": 15,
+    "transport_attempts": 15,
+    "validator_304_count": 0,
+    "total_encoded_bytes": 70243,
+    "by_category": {
+      "asset_bundle": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 0,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      },
+      "public_endorsements": {
+        "transport_attempts": 3,
+        "logical_reads": 3,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 11923,
+        "wire_statuses": [
+          200,
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200,
+          200
+        ]
+      },
+      "public_discussion": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 45348,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      },
+      "own_endorsements": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 9812,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      },
+      "own_discussion": {
+        "transport_attempts": 5,
+        "logical_reads": 5,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 1080,
+        "wire_statuses": [
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200,
+          200,
+          200,
+          200
+        ]
+      },
+      "capability_discussion": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 2080,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      }
+    }
+  },
+  "history_back_forward": {
+    "nav_type": "navigate",
+    "reason": "history_back_forward",
+    "logical_reads": 3,
+    "transport_attempts": 3,
+    "validator_304_count": 0,
+    "total_encoded_bytes": 456,
+    "by_category": {
+      "asset_bundle": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 0,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      },
+      "auth_account": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 456,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      }
+    }
+  },
+  "stale_121s_burst": {
+    "reason": "stale_121s_burst",
+    "logical_reads": 3,
+    "transport_attempts": 3,
+    "validator_304_count": 1,
+    "total_encoded_bytes": 598,
+    "by_category": {
+      "auth_account": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 456,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      },
+      "public_works_list": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 1,
+        "conditional_requests": 1,
+        "encoded_bytes": 142,
+        "wire_statuses": [
+          304
+        ],
+        "app_statuses": [
+          200
+        ]
+      }
+    }
+  },
+  "hidden_signals": {
+    "reason": "hidden_signals",
+    "logical_reads": 2,
+    "transport_attempts": 2,
+    "validator_304_count": 0,
+    "total_encoded_bytes": 456,
+    "by_category": {
+      "auth_account": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 456,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      }
+    }
+  },
+  "visible_after_hidden": {
+    "reason": "visible_after_hidden",
+    "logical_reads": 3,
+    "transport_attempts": 3,
+    "validator_304_count": 1,
+    "total_encoded_bytes": 598,
+    "by_category": {
+      "auth_account": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 456,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      },
+      "public_works_list": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 1,
+        "conditional_requests": 1,
+        "encoded_bytes": 142,
+        "wire_statuses": [
+          304
+        ],
+        "app_statuses": [
+          200
+        ]
+      }
+    }
+  },
+  "manual_retry": {
+    "boundary": "503-transport-fixture-then-real-origin",
+    "reason": "manual_retry",
+    "logical_reads": 2,
+    "transport_attempts": 2,
+    "validator_304_count": 1,
+    "total_encoded_bytes": 393,
+    "by_category": {
+      "auth_account": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 251,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      },
+      "public_works_list": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 1,
+        "conditional_requests": 1,
+        "encoded_bytes": 142,
+        "wire_statuses": [
+          304
+        ],
+        "app_statuses": [
+          200
+        ]
+      }
+    }
+  },
+  "offline_revisit": {
+    "reason": "offline_revisit",
+    "logical_reads": 6,
+    "transport_attempts": 6,
+    "validator_304_count": 0,
+    "total_encoded_bytes": 0,
+    "by_category": {
+      "public_endorsements": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 0,
+        "wire_statuses": [
+          "failed",
+          "failed"
+        ],
+        "app_statuses": [
+          "failed",
+          "failed"
+        ]
+      },
+      "public_discussion": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 0,
+        "wire_statuses": [
+          "failed"
+        ],
+        "app_statuses": [
+          "failed"
+        ]
+      },
+      "public_reader": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 0,
+        "wire_statuses": [
+          "failed"
+        ],
+        "app_statuses": [
+          "failed"
+        ]
+      },
+      "asset_bundle": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 0,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      },
+      "own_endorsements": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 0,
+        "wire_statuses": [
+          "failed"
+        ],
+        "app_statuses": [
+          "failed"
+        ]
+      }
+    }
+  },
+  "secondary_transport_503": {
+    "boundary": "transport-intercept-fixture",
+    "reason": "secondary_transport_503",
+    "logical_reads": 7,
+    "transport_attempts": 7,
+    "validator_304_count": 0,
+    "total_encoded_bytes": 4186,
+    "by_category": {
+      "asset_bundle": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 0,
+        "wire_statuses": [
+          200,
+          200
+        ],
+        "app_statuses": [
+          200,
+          200
+        ]
+      },
+      "public_reader": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 3473,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      },
+      "public_endorsements": {
+        "transport_attempts": 2,
+        "logical_reads": 2,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 238,
+        "wire_statuses": [
+          503,
+          503
+        ],
+        "app_statuses": [
+          503,
+          503
+        ]
+      },
+      "public_discussion": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 119,
+        "wire_statuses": [
+          503
+        ],
+        "app_statuses": [
+          503
+        ]
+      },
+      "own_endorsements": {
+        "transport_attempts": 1,
+        "logical_reads": 1,
+        "validator_304_count": 0,
+        "conditional_requests": 0,
+        "encoded_bytes": 356,
+        "wire_statuses": [
+          200
+        ],
+        "app_statuses": [
+          200
+        ]
+      }
+    }
+  },
+  "authoritative_withdrawal": {
+    "boundary": "real-app-postgresql",
+    "work_id": "135f4743-ab70-4fcd-8171-e8626bb7b454",
+    "set_private_status": 200,
+    "publication_status_after": 404,
+    "reader_status_after": "hidden",
+    "ssr_hidden_present": true,
+    "omitted_from_explore_list": true
+  }
+}

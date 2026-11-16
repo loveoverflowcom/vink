@@ -1,6 +1,8 @@
 //! Run without a database: `cargo test -p vink-app --test document_budget`.
 #[path = "support/document_budget.rs"]
 mod corpus;
+#[path = "support/perf_journey.rs"]
+mod perf_journey;
 
 use vink_app::domain::document::{Document, DocumentError, MAX_DOCUMENT_CHARS, Title};
 use vink_app::domain::revision::ContentHash;
@@ -82,4 +84,68 @@ fn long_document_oversized_public_record_is_a_cache_miss_without_losing_the_snap
         Snapshot::Publication(kept) => assert_eq!(kept, publication),
         _ => panic!("cache quota must not change the accepted online snapshot"),
     }
+}
+
+#[test]
+fn perf_journey_corpus_reuses_229_corpus_with_200_works_and_1000_comments() {
+    use std::collections::{BTreeMap, BTreeSet};
+    use vink_app::domain::discussion::page::{DEFAULT_PAGE, PREVIEW_REPLIES};
+
+    let first = perf_journey::generate();
+    let second = perf_journey::generate();
+    assert_eq!(first.corpus_digest, second.corpus_digest);
+    assert_eq!(first.work_count, 200);
+    assert_eq!(first.works.len(), 200);
+    assert_eq!(first.comment_count, 1_000);
+    assert_eq!(
+        first.works.iter().map(|w| w.comments.len()).sum::<usize>(),
+        1_000
+    );
+
+    let mut work_ids = BTreeSet::new();
+    for work in &first.works {
+        assert!(work_ids.insert(work.work_id.clone()));
+        let parsed = Document::parse(work.document.clone()).unwrap();
+        let title = Title::parse(&work.title).unwrap();
+        assert_eq!(ContentHash::of(&title, &parsed).as_str(), work.content_hash);
+
+        let mut roots = BTreeSet::new();
+        let mut replies_by_id = BTreeMap::new();
+        for comment in &work.comments {
+            match comment.kind {
+                "root" => {
+                    assert!(comment.root_id.is_none());
+                    assert!(comment.reply_to_id.is_none());
+                    assert!(!comment.replied_to_reply);
+                    assert!(roots.insert(comment.comment_id.clone()));
+                }
+                "reply" => {
+                    let root = comment.root_id.as_ref().expect("reply needs root_id");
+                    assert!(roots.contains(root));
+                    if let Some(parent_reply) = &comment.reply_to_id {
+                        assert!(comment.replied_to_reply);
+                        assert_eq!(replies_by_id.get(parent_reply), Some(root));
+                    }
+                    replies_by_id.insert(comment.comment_id.clone(), root.clone());
+                }
+                other => panic!("unexpected comment kind {other}"),
+            }
+        }
+    }
+
+    let standard = &first.works[0];
+    let standard_roots = standard
+        .comments
+        .iter()
+        .filter(|c| c.kind == "root")
+        .count();
+    assert!(standard_roots > usize::from(DEFAULT_PAGE));
+    let max_replies_on_root = standard
+        .comments
+        .iter()
+        .filter(|c| c.root_id.as_deref() == Some(&standard.comments[0].comment_id))
+        .count();
+    assert!(max_replies_on_root > usize::from(PREVIEW_REPLIES));
+    assert_eq!(first.works[1].scalars, MAX_DOCUMENT_CHARS);
+    assert_eq!(first.works[3].scalars, MAX_DOCUMENT_CHARS);
 }

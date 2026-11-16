@@ -82,9 +82,10 @@ pub enum Scenario {
     Auth,
     Password,
     Publication,
+    PerfBaseline,
 }
 impl Scenario {
-    pub const ALL: [Self; 9] = [
+    pub const DEFAULT: [Self; 9] = [
         Self::Main,
         Self::Storage,
         Self::Discovery,
@@ -94,6 +95,18 @@ impl Scenario {
         Self::Auth,
         Self::Password,
         Self::Publication,
+    ];
+    pub const ALL: [Self; 10] = [
+        Self::Main,
+        Self::Storage,
+        Self::Discovery,
+        Self::Restart,
+        Self::Endorsement,
+        Self::Review,
+        Self::Auth,
+        Self::Password,
+        Self::Publication,
+        Self::PerfBaseline,
     ];
     pub fn name(self) -> &'static str {
         match self {
@@ -106,6 +119,7 @@ impl Scenario {
             Self::Auth => "auth",
             Self::Password => "password",
             Self::Publication => "publication",
+            Self::PerfBaseline => "perf-baseline",
         }
     }
     pub fn parse(s: &str) -> Result<Self, String> {
@@ -229,8 +243,13 @@ impl Plan {
     pub fn describe(&self) -> String {
         let coverage =
             if self.request.operation == Operation::Verify && self.request.target == Target::Web {
-                if self.request.scenarios.len() == Scenario::ALL.len() {
-                    "FULL Web regression"
+                let all_default = Scenario::DEFAULT
+                    .iter()
+                    .all(|s| self.request.scenarios.contains(s));
+                if all_default && self.request.scenarios.len() == Scenario::DEFAULT.len() {
+                    "FULL Web regression (default 9; opt-in checks NOT_SELECTED)"
+                } else if all_default {
+                    "FULL Web regression + opt-in checks"
                 } else {
                     "SELECTED Web checks (excluded checks NOT_SELECTED)"
                 }
@@ -240,7 +259,7 @@ impl Plan {
         let auth = if self.request.operation == Operation::Verify
             && self.request.target == Target::Web
         {
-            "explicit fixture for main/discovery/restart/endorsement/review; real Identity for auth/password/publication".to_string()
+            "explicit fixture for main/discovery/restart/endorsement/review/perf-baseline; real Identity for auth/password/publication".to_string()
         } else {
             format!("{:?}", self.request.auth)
         };
@@ -343,5 +362,16 @@ mod tests {
         let p = Plan::resolve(r);
         assert_eq!(p.artifacts, vec![Artifact::Worker, Artifact::App]);
         assert_eq!(p.services, vec![Service::Worker]);
+    }
+    #[test]
+    fn perf_baseline_uses_same_web_plan_without_identity_or_worker() {
+        let mut r = request(Operation::Verify, Target::Web);
+        r.scenarios = vec![Scenario::PerfBaseline];
+        r.release = true;
+        let p = Plan::resolve(r);
+        assert_eq!(p.artifacts, vec![Artifact::Bundle, Artifact::App]);
+        assert_eq!(p.scenarios, vec![Scenario::PerfBaseline]);
+        assert!(!p.services.contains(&Service::Identity));
+        assert!(!Scenario::DEFAULT.contains(&Scenario::PerfBaseline));
     }
 }

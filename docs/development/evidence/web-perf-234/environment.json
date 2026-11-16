@@ -1,0 +1,108 @@
+{
+  "source": {
+    "sourceSHA": "ca9369653a516715fea95ca71fbd818d54c15b0a",
+    "dirty": true,
+    "dirtyInputs": [
+      {
+        "status": "M",
+        "path": "apps/vink-web/e2e/browser-smoke.mjs"
+      },
+      {
+        "status": "M",
+        "path": "xtask/src/cli.rs"
+      },
+      {
+        "status": "M",
+        "path": "xtask/src/lifecycle.rs"
+      },
+      {
+        "status": "M",
+        "path": "xtask/src/plan.rs"
+      },
+      {
+        "status": "M",
+        "path": "xtask/src/web.rs"
+      },
+      {
+        "status": "??",
+        "path": "apps/vink-web/e2e/perf-baseline.mjs"
+      },
+      {
+        "status": "??",
+        "path": "apps/vink-web/e2e/perf-baseline.test.mjs"
+      }
+    ],
+    "sourceFingerprint": "9dd680a4e3d280e0ea9fee5979f6cf682a3ce3add06bf19307a096eb36633d09"
+  },
+  "build_profile": "release",
+  "corpus": {
+    "journey_seed": 234,
+    "document_corpus_seed": 229,
+    "corpus_digest": "e3bb862747f1be49e553e425a0a2516793c729dbebdac9b1af6dfaa8c3adbc9c",
+    "work_count": 200,
+    "comment_count": 1000,
+    "limits": {
+      "discovery_default_page_size": 12,
+      "discovery_max_page_size": 24,
+      "discussion_default_root_page": 20,
+      "discussion_max_root_page": 50,
+      "discussion_preview_replies": 3
+    }
+  },
+  "browser": {
+    "protocolVersion": "1.3",
+    "product": "Chrome/157.0.8103.78",
+    "revision": "@4b3d0dabb8250b6f152d2d85d79e7706e309d087",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+    "jsVersion": "15.7.112.43"
+  },
+  "tools": {
+    "node": "v22.15.0",
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+    "postgres": {
+      "shared_buffers": "128MB",
+      "version": "PostgreSQL 17.11 (Homebrew) on aarch64-apple-darwin24.6.0, compiled by Apple clang version 17.0.0 (clang-1700.6.4.2), 64-bit"
+    }
+  },
+  "host": {
+    "platform": "darwin",
+    "release": "24.6.0",
+    "cpu_model": "Apple M4",
+    "cpu_cores": 10
+  },
+  "network_config": "loopback_unthrottled",
+  "cpu_throttling_rate": 1,
+  "font_config": {
+    "text_scale_pct": 100,
+    "root_font_size": "16px",
+    "fonts": [
+      "Be Vietnam Pro",
+      "Literata"
+    ]
+  },
+  "bundle_sizes": {
+    "vink.js": {
+      "raw_bytes": 86715,
+      "gzip9_bytes": 12844
+    },
+    "vink_bg.wasm": {
+      "raw_bytes": 111995435,
+      "gzip9_bytes": 4590181,
+      "sections": {
+        "code_bytes": 4740957,
+        "data_bytes": 373227,
+        "custom_name_bytes": 106802908,
+        "other_bytes": 78299
+      }
+    },
+    "vink-editor.js": {
+      "raw_bytes": 271882,
+      "gzip9_bytes": 88610
+    },
+    "vink.css": {
+      "raw_bytes": 150416,
+      "gzip9_bytes": 27186
+    }
+  },
+  "instrumentation_toggle": "opt-in CDP observer script; skipped in overhead control"
+}
