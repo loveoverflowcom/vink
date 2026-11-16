@@ -73,3 +73,9 @@ CMP và optional của Leptos, Standard mặc định. Tooltip wrapper chuyển 
 không cần migration; Button variants và toggle-contract-v1 không đổi. Chưa publish binary ABI.
 Không sửa app pages, Dialog/Appearance/editor; consumer #225/#226 chọn opt-in sau.
 Bằng chứng và giới hạn tại [báo cáo #224](../../../docs/development/evidence/action-surfaces-224/README.md).
+
+Consumer #225 thêm glyph `FilterList` từ Material Icons filled 24px tại commit pin hiện hành;
+hash SVG upstream nằm trong `icons.json`, generator sinh `IconName::FilterList`/`IconName.FilterList`.
+Không đổi token, default primitive, props hoặc glyph cũ. Web dùng slot leading của Button và
+surface Tonal của TooltipIconButton đã có từ #224; CMP chỉ nhận registry sinh chung, không có
+consumer product mới.

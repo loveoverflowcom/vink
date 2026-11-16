@@ -7,10 +7,10 @@ use leptos_meta::{Meta, Title};
 use leptos_router::hooks::use_params_map;
 
 use vink_ui::{
-    ActionState, Announce, Button, ButtonKind, ButtonVariant, ChoiceOption, EmptyKind,
-    FieldVariant, Heading, HeadingLevel, IconName, InlineNotice, PanelContent, PanelKind,
-    PlainTooltip, ProblemKind, SearchField, SearchVariant, Select, StatePanel, SupportingDetails,
-    TextField, Tone, TooltipIconButton, TypeRole,
+    ActionState, ActionSurface, Announce, Button, ButtonKind, ButtonVariant, ChoiceOption,
+    EmptyKind, FieldVariant, Heading, HeadingLevel, IconName, InlineNotice, PanelContent,
+    PanelKind, PlainTooltip, ProblemKind, SearchField, SearchVariant, Select, StatePanel,
+    SupportingDetails, TextField, Tone, TooltipIconButton, TypeRole,
 };
 
 use crate::contract::{ApiError, DocumentDto, Draft};
@@ -365,7 +365,7 @@ fn CreateDraftButton(
     #[prop(default = false)] first: bool,
 ) -> impl IntoView {
     view! {
-        <Button variant=if first { ButtonVariant::Filled } else { ButtonVariant::Text }
+        <Button variant=ButtonVariant::Filled
             leading=IconName::Add id="create-draft" on_press=move |_| create.run(())
             state=Signal::derive(move || if creation.get() == CreateState::Pending { ActionState::pending("Đang tạo…") } else { blocked(!can_create.get()) })
         >
@@ -481,6 +481,7 @@ fn DraftListView(
                         value=Signal::derive(move || Some(if sort.get() == DraftSort::Title { "title" } else { "recent" }.to_string()))
                         on_change={move |value: Option<String>| sort.set(if value.as_deref() == Some("title") { DraftSort::Title } else { DraftSort::Recent })} />
                     <TooltipIconButton icon=IconName::Refresh label="Tải lại" id="refresh-drafts"
+                        surface=ActionSurface::Tonal
                         state=Signal::derive(move || blocked(refresh_disabled.get())) on_press=move |_| refresh.run(()) />
                     <Show when=move || sort.get() == DraftSort::Title>
                         <p class="vk-draft-sort-help vk-muted">"Bỏ qua dấu khi sắp xếp."</p>

@@ -1,9 +1,25 @@
 # Action surfaces Bàn viết / Khám phá — #225
 
-LayoutSpec r1 · 16/11/2026 · `DESIGN_PROPOSED` · `NO_APPROVED_REFERENCE`.
-Đây là đặc tả và bộ kiểm hồi quy chuẩn bị cho [#225](https://github.com/loveoverflowcom/vink/issues/225),
-chưa triển khai delta giao diện. Chủ sản phẩm đã giao thực thi; dependency thiếu thì làm spec/tests
-độc lập, không nhập toàn bộ PR khác hoặc fork primitive.
+LayoutSpec r2 · 16/11/2026 · `DESIGN_PROPOSED` · `NO_APPROVED_REFERENCE`.
+Đặc tả consumer Web cho [#225](https://github.com/loveoverflowcom/vink/issues/225), tiếp nối
+spec/tests đã merge trong #240. Base triển khai: `6e07806aa87145d0e053f4061f47ccaf3830c14a`.
+
+## Delta r2 và lựa chọn triển khai
+
+- **CHOICE-01 A:** Filled + Add cho tạo nháp, vì đây là hành động chính duy nhất ở heading.
+  First-use giữ một CTA trong empty panel; không đổi nhãn hoặc guard của `CreateState`.
+- **CHOICE-02 A:** Refresh dùng `ActionSurface::Tonal` opt-in; Select giữ anatomy riêng.
+  Không thêm group container/inset; không đổi default shared primitive.
+- **CHOICE-03 A:** helper luôn nhìn thấy “Khớp tất cả thẻ · Tối đa 4”, liên kết với form bằng
+  `aria-describedby`. Ít trạng thái, đọc được bằng touch/keyboard/no-JS trước khi chọn và khi đạt 4.
+- Launcher “Thẻ” thêm `FilterList` từ Material Icons tại commit pin của registry, sinh Web/CMP
+  từ `shared/icons.json`. SVG trang trí, accessible name vẫn là “Thẻ”; không SVG riêng ở page.
+- Status “Trang này: N tác phẩm” luôn nói phạm vi trang, kể cả 0 hoặc trang cuối; một live owner
+  hiện hữu. Query vẫn trong SearchField/URL; empty/error/stale/refresh giữ nguyên. Không dim kết quả.
+
+Cây vùng và invariants dưới đây giữ nguyên; r2 chỉ đổi presentation/copy. Các lựa chọn là kỹ thuật
+trong scope issue, không phải signoff sản phẩm hoặc approved visual reference. Kiểm cùng fixture
+320/390/834/1440 × light/dark × text100/200; tối đa hai vòng sửa có tái render.
 
 ## Trạng thái sau rebase để review PR #240
 
@@ -33,7 +49,7 @@ Các lựa chọn presentation bên dưới vẫn dự kiến. Baseline và evid
 - Không sửa Editor trong `desk.rs`, Dialog, Appearance, row metrics, Thấm hoặc API/DB/cache.
   #229 / draft #232 không là base; không bắt đầu #226. Không thay trạng thái issue phụ thuộc.
 
-## Bố cục dự kiến
+## Bố cục r2
 
 ```text
 Screen #desk — tác giả tìm và tạo bản thảo
@@ -53,7 +69,7 @@ Screen #explore — người đọc tìm tác phẩm
     Action #apply — native submit riêng sau lựa chọn
 ```
 
-| Action | Baseline trên develop | Target sau dependency |
+| Action | Baseline trước r2 | Triển khai r2 |
 | --- | --- | --- |
 | Tạo, list có nội dung / query miss | Text + Add, một target | Filled + Add, giữ đầy đủ nhãn |
 | Tạo lần đầu | Filled + Add trong panel, không CTA header | Giữ nguyên một target |
@@ -65,14 +81,9 @@ Screen #explore — người đọc tìm tác phẩm
 | Áp dụng | Filled khi khác tập applied, Tonal khi cùng tập | Giữ đúng logic đã có, kể cả đổi thứ tự lựa chọn |
 | Applied chip / phân trang / reader return | Link có href | Giữ link và GET/SSR/no-JS |
 
-**CHOICE-01: A dự kiến** — Filled + Add ở header: tạo là hành động chính trong vùng heading;
-danh sách vẫn là nội dung chính bên dưới. B (Tonal) dịu hơn nhưng chưa có paired capture chứng minh
-đủ nhận diện trên surface cha. Chưa coi lựa chọn dự kiến là visual acceptance hoặc signoff.
-
-**CHOICE-02: A dự kiến** — Refresh Tonal opt-in, Select giữ surface riêng. B (một group tonal
-chứa Standard icon) tăng inset quanh Select đã có container. Chờ contract và width budget thật;
-không dựng group thay thế chỉ để né dependency. Hai lựa chọn phải kiểm cùng fixture trước/sau
-320/390/834/1440 × light/dark × text100/200, tối đa hai vòng sửa có capture.
+CHOICE-01/02 chọn A theo lý do ở đầu trang; không đổi thứ tự focus hoặc thêm container nhóm.
+Review paired capture quyết định mức đạt của hierarchy/width budget; lựa chọn kỹ thuật không
+thay visual acceptance hoặc signoff của chủ sản phẩm.
 
 Ở 100%, đọc theo heading → CTA → search/tools → tác phẩm; CTA nổi rõ mà list không thành bảng pill.
 Ở 200%, full label và dấu tiếng Việt còn đọc/bấm được; tăng chiều cao/wrap, không co font/target.
@@ -106,9 +117,7 @@ discovery corpus), không tạo phase/runner mới. Chúng bảo vệ semantics/
 không gắn test PASS cho presentation chưa viết. Kết quả và checklist AC→evidence nằm ở
 [bàn giao local](../development/evidence/action-surfaces-225/README.md).
 
-Sau khi shared contract/glyph có trên develop: fetch, đối chiếu interface, tích hợp có chủ đích
-trên branch này theo quyền phiên tiếp tục; sửa riêng `CreateDraftButton`, Refresh ở `DraftListView`
-và launcher trong `DiscoveryPage`. Không cần đổi logic Apply. Dùng `cargo xtask verify quick`,
-`cargo xtask verify web` và các phase hiện hữu `desk-layout` / `public-search` trên server mới build;
-`discovery` kiểm corpus + cursor. Thêm assertion container/icon thật khi đã có implementation.
-`ui-preview leptos verify` chỉ bắt buộc nếu shared pattern thực sự đổi; consumer không sở hữu nó.
+Lượt r2 giữ nguyên logic Apply, thêm assertion container/icon, helper ở 0/1/4 thẻ và catalog lỗi,
+no-JS, một live owner và count của trang cuối. Dùng `cargo xtask verify quick`,
+`cargo xtask verify web`; `ui-preview leptos verify` kiểm shared glyph/rendering.
+Kết quả triển khai và gap được ghi tại [registry r2](../development/action-surfaces-225.md).
