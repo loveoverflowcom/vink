@@ -309,10 +309,13 @@ response is `no-store`. A reviewer never reads or takes a case on their own work
   Anchor đã đóng không chặn đi tiếp. Refresh bắt đầu chuỗi mới; detail/command kiểm quyền riêng.
 - `authority_key` là fingerprint opaque của phạm vi quyền hiệu lực, không phải grant. Khi đổi
   (kể cả 200 sau mất một phần grant), Web bỏ chuỗi cũ và bắt đầu lại. Không suy diễn total hay ID từ key.
-- Migration tương thích: route array cũ `/moderation/works/queue`, `/moderation/appeals` vẫn
+- Tương thích dạng body: route array cũ `/moderation/works/queue`, `/moderation/appeals` vẫn
   nhận cùng query, nay hữu hạn 50/100 và gửi `Link: <...>; rel="next"` nếu còn trang.
   Web mới chỉ dùng `/page`; client cũ vẫn parse được array, cần theo Link để duyệt hết.
-  Server mới hỗ trợ bundle cũ trong rollout; bundle mới cần server có `/page` trước khi phục vụ.
+  Bundle Web trước #205 bỏ qua Link, nên chỉ hiển thị trang đầu (tối đa 50), không thể duyệt hết
+  queue lớn. Đây không phải tương thích chức năng đầy đủ giữa hai phiên bản. Rollout phải có
+  server `/page` và migration trước bundle mới, rồi yêu cầu tải lại các tab kiểm duyệt cũ trước
+  khi tiếp tục duyệt; nếu cần giữ nguyên tab cũ thì chưa đáp ứng điều kiện rollout.
   Không silently fallback từ lỗi `/page` sang empty hay route cũ.
 - Fixtures: [trang tác phẩm](fixtures/moderation.works.page.json),
   [trang cuối](fixtures/moderation.works.end.json), [rỗng](fixtures/moderation.queue.empty.json),

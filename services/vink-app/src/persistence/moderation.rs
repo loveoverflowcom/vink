@@ -62,6 +62,18 @@ pub(super) async fn load_queue_directory(
         .map_err(|e| integrity("queue directory restore", e))
 }
 
+/// Authorization selectivity varies by actor. Generic prepared plans can scan/sort the
+/// entire queue even when LIMIT is small; plan against this request's scope and cursor.
+/// SET LOCAL is restored when the read transaction ends, including on refusal/error.
+pub(super) async fn queue_snapshot(pool: &PgPool) -> Result<Transaction<'_, Postgres>, StoreError> {
+    let mut tx = super::discussion::read_snapshot(pool).await?;
+    query("SET LOCAL plan_cache_mode = force_custom_plan")
+        .execute(&mut *tx)
+        .await
+        .map_err(classify)?;
+    Ok(tx)
+}
+
 async fn load_directory_facts_scoped(
     conn: &mut PgConnection,
     actor: Option<Uuid>,
@@ -515,7 +527,7 @@ pub async fn list_open_work_cases(
     actor: PrincipalId,
     page: &crate::domain::moderation_queue::QueueQuery,
 ) -> Result<(Vec<CaseSummary>, String), ModerationActionError> {
-    let mut tx = super::discussion::read_snapshot(pool).await?;
+    let mut tx = queue_snapshot(pool).await?;
     let now: OffsetDateTime = query_scalar("SELECT transaction_timestamp()")
         .fetch_one(&mut *tx)
         .await

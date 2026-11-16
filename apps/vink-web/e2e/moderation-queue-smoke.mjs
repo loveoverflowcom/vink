@@ -39,6 +39,12 @@ export async function moderationQueues(page, {args,check}) {
     check(await page.eval(`document.querySelector('#automation-reason')===window.__reason205 && window.__reason205.value==='Lý do ỹ ỷ chưa gửi'`),'queue paging preserves the actual reason element and Vietnamese unsent text');
     check(automation===originalAutomation,'paging never reloads automation');
     check(await page.eval(`document.activeElement.id==='case-queue-refresh'`),'exhausted continuation restores focus to its queue refresh');
+    // A refresh can update the state of a row whose ID stays the same.
+    head=0;first.state='claimed';
+    await page.eval(`window.__case205=document.querySelector('#case-queue li a')`);
+    await page.click('#case-queue-refresh');await settled();
+    check(await page.eval(`document.querySelector('#case-queue li a').textContent.includes('Đã có người nhận')`),'refresh updates the state label of an existing case ID');
+    check(await page.eval(`document.querySelector('#case-queue li a')===window.__case205`),'refresh keeps the same case link element');
     await page.click('#case-queue-refresh');await settled();
     check((await ids()).length===1 && (await ids())[0]===fresh.id,'refresh replaces the whole chain and discards the old tail');
     tailMode='error';await page.click('#case-queue-more');await settled();

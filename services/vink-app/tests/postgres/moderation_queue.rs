@@ -305,6 +305,57 @@ async fn moderation_queue_admin_appeal_paging_recusal_and_seat_revocation(pool: 
         .await
         .unwrap();
     for path in [WORKS, APPEALS] {
+        // Legacy array clients must explicitly follow Link; ignoring it sees only page one.
+        let mut uri = format!("{}?limit=2", path.strip_suffix("/page").unwrap());
+        let mut legacy_ids = Vec::new();
+        loop {
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .uri(&uri)
+                        .header("x-test-principal", actor.to_string())
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
+            let next = response.headers().get(header::LINK).map(|h| {
+                h.to_str()
+                    .unwrap()
+                    .strip_prefix('<')
+                    .unwrap()
+                    .split_once('>')
+                    .unwrap()
+                    .0
+                    .to_owned()
+            });
+            let body: Value =
+                serde_json::from_slice(&response.into_body().collect().await.unwrap().to_bytes())
+                    .unwrap();
+            let items = body.as_array().unwrap();
+            assert!(items.len() <= 2);
+            legacy_ids.extend(items.iter().map(|r| r["id"].as_str().unwrap().to_owned()));
+            assert!(
+                legacy_ids.len() <= 5,
+                "legacy continuation must make progress"
+            );
+            if let Some(next) = next {
+                assert!(
+                    !items.is_empty(),
+                    "an empty page cannot advertise continuation"
+                );
+                uri = next;
+            } else {
+                break;
+            }
+        }
+        assert_eq!(
+            legacy_ids,
+            (3..=7).map(|n| id(n).to_string()).collect::<Vec<_>>()
+        );
         let first = page(&app, &format!("{path}?limit=2"), actor).await;
         assert_eq!(first["items"][0]["id"], id(3).to_string());
         let c = first["next_cursor"].as_str().unwrap();
@@ -448,4 +499,90 @@ async fn moderation_queue_large_sparse_query_plans(pool: PgPool) {
     assert_eq!(deep[0]["Plan"]["Actual Rows"], 51);
 
     assert_eq!(plan[0]["Plan"]["Actual Rows"], 51);
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn moderation_queue_custom_plans_are_scoped_to_each_read_transaction(pool: PgPool) {
+    use vink_app::domain::moderation_queue::{QueueKind, QueueQuery};
+    corpus(&pool, 12).await;
+    let actor = PrincipalId::from_uuid(dev_seed::OTHER_PRINCIPAL);
+    moderation::add_admin_seat(&mut pool.acquire().await.unwrap(), "test", actor, None)
+        .await
+        .unwrap();
+    // Exercise the production persistence entrypoints on one repeatedly reused connection.
+    let pinned = sqlx::postgres::PgPoolOptions::new()
+        .max_connections(1)
+        .connect_with((*pool.connect_options()).clone())
+        .await
+        .unwrap();
+    sqlx::query("SET plan_cache_mode = force_generic_plan")
+        .execute(&pinned)
+        .await
+        .unwrap();
+    for _ in 0..8 {
+        let works = QueueQuery::parse(actor, QueueKind::Works, Some("2"), None).unwrap();
+        let appeals = QueueQuery::parse(actor, QueueKind::Appeals, Some("2"), None).unwrap();
+        assert_eq!(
+            moderation::list_open_work_cases(&pinned, actor, &works)
+                .await
+                .unwrap()
+                .0
+                .len(),
+            3
+        );
+        assert_eq!(
+            appeals::list_open(&pinned, actor, &appeals)
+                .await
+                .unwrap()
+                .len(),
+            3
+        );
+    }
+    for statement in [moderation::WORK_QUEUE_SQL, appeals::APPEAL_QUEUE_SQL] {
+        let (custom, generic): (i64, i64) = sqlx::query_as(
+            "SELECT custom_plans, generic_plans FROM pg_prepared_statements WHERE statement = $1",
+        )
+        .bind(statement)
+        .fetch_one(&pinned)
+        .await
+        .unwrap();
+        assert!(
+            custom >= 8,
+            "queue must plan with the actual actor and cursor: {custom}"
+        );
+        assert_eq!(
+            generic, 0,
+            "queue must not reuse an unselective generic plan"
+        );
+    }
+    let mode: String = sqlx::query_scalar("SHOW plan_cache_mode")
+        .fetch_one(&pinned)
+        .await
+        .unwrap();
+    assert_eq!(
+        mode, "force_generic_plan",
+        "SET LOCAL must not leak into the pool"
+    );
+    sqlx::query("DELETE FROM moderation_admin_seats WHERE principal_id = $1")
+        .bind(actor.as_uuid())
+        .execute(&pool)
+        .await
+        .unwrap();
+    let works = QueueQuery::parse(actor, QueueKind::Works, None, None).unwrap();
+    assert!(
+        moderation::list_open_work_cases(&pinned, actor, &works)
+            .await
+            .is_err()
+    );
+    let appeals = QueueQuery::parse(actor, QueueKind::Appeals, None, None).unwrap();
+    assert!(appeals::list_open(&pinned, actor, &appeals).await.is_err());
+    let mode: String = sqlx::query_scalar("SHOW plan_cache_mode")
+        .fetch_one(&pinned)
+        .await
+        .unwrap();
+    assert_eq!(
+        mode, "force_generic_plan",
+        "refusal must restore session planning too"
+    );
+    pinned.close().await;
 }

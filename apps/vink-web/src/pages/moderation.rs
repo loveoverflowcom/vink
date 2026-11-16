@@ -443,7 +443,13 @@ fn QueuePanel(
             <Button id=format!("{prefix}-refresh") state=refresh_state on_press=move |_|load.run(Intent::Refresh)>{if appeals {"Tải lại phản đối"} else {"Tải lại ca tác phẩm"}}</Button>
             <p role="status">{move || if busy.get() {"Đang tải hàng chờ…"} else if !ready.get() && error.get().is_none() {loading_text(session,"Đang kiểm tra quyền…")} else if restarted.get() {"Đã tải lại từ đầu. Các trang sau được bỏ để đối chiếu trạng thái mới."} else {""}}</p>
             {move || error.get().map(|e|view! {<p role="alert">{if matches!(e,ApiError::Invalid{..}) {"Vị trí hoặc phạm vi hàng chờ đã thay đổi. Bắt đầu lại để đối chiếu."} else {error_text(&e)}}</p>})}
-            <ul class="vk-moderation__list"><For each=move ||rows.get() key=|r|r.id.clone() children=|r|view! {<li><Link href=r.href>{r.label}</Link></li>}/></ul>
+            <ul class="vk-moderation__list"><For each=move ||rows.get() key=|r|r.id.clone() children=move |r| {
+                // The key preserves the link/focus; refreshed facts must remain reactive.
+                let label = Signal::derive(move || rows.with(|current| current.iter()
+                    .find(|row| row.id == r.id).map(|row| row.label.clone())
+                    .unwrap_or_else(|| r.label.clone())));
+                view! {<li><Link href=r.href>{move || label.get()}</Link></li>}
+            }/></ul>
             {move || (ready.get() && rows.with(|r|r.is_empty())).then(||view!{<p>"Không có hồ sơ đang chờ trong phạm vi của bạn."</p>})}
             <Show when=move ||more.get()><Button id=format!("{prefix}-more") state on_press=move |_|load.run(Intent::Append)>{if appeals {"Tải thêm phản đối"} else {"Tải thêm ca tác phẩm"}}</Button></Show>
             <Show when=move ||error.with(|e|matches!(e,Some(ApiError::Invalid{..})))><Button id=format!("{prefix}-restart") state on_press=move |_|load.run(Intent::Restart)>"Bắt đầu lại hàng chờ"</Button></Show>

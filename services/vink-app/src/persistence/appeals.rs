@@ -309,7 +309,7 @@ pub async fn list_open(
     actor: PrincipalId,
     page: &crate::domain::moderation_queue::QueueQuery,
 ) -> Result<Vec<AppealRecord>, Error> {
-    let mut tx = super::discussion::read_snapshot(pool).await?;
+    let mut tx = super::moderation::queue_snapshot(pool).await?;
     let now = query_scalar("SELECT transaction_timestamp()")
         .fetch_one(&mut *tx)
         .await
