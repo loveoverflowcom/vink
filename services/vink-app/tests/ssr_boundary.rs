@@ -141,6 +141,22 @@ async fn reader_async_waits_for_secondary_before_committing_headers() {
         assert!(body.contains("http://vink.test/tac-pham/33333333-3333-4333-8333-333333333333"));
         assert!(body.contains("name=\"description\""));
         assert!(body.contains("Chưa tải được nhận xét. Bạn vẫn có thể đọc tác phẩm."));
+        let retry = body
+            .split("<button")
+            .find(|button| {
+                button
+                    .split('>')
+                    .next()
+                    .is_some_and(|tag| tag.contains("id=\"discussion-load-retry\""))
+            })
+            .expect("secondary failure offers a retry control")
+            .split('>')
+            .next()
+            .unwrap();
+        assert!(
+            retry.contains("aria-disabled=\"true\""),
+            "client-only retry must be unavailable before hydration: {retry}"
+        );
         assert!(!body.contains(PRIVATE));
         println!(
             "#235 synthetic secondary hold {delay_ms}ms: final article/meta/status before response PASS"

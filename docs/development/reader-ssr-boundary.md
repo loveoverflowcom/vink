@@ -2,9 +2,10 @@
 
 ## Kết luận kỹ thuật trong phạm vi này
 
-Giữ **WEB-PERF-02 / CHOICE-01 A**. Không đổi runtime, cache policy, SSR mode, bootstrap,
-framework hoặc authority. Đây là lựa chọn kỹ thuật của lát #235, **không** phải signoff kiến trúc
-Accepted. PR chỉ thêm regression và bằng chứng; không tuyên bố giảm latency hoặc đã thử nghiệm
+Giữ **WEB-PERF-02 / CHOICE-01 A**. Không đổi scheduling public read, cache policy, SSR mode,
+bootstrap, framework hoặc authority. Đây là lựa chọn kỹ thuật của lát #235, **không** phải
+signoff kiến trúc Accepted. Ngoài regression và bằng chứng, review Mac sửa trạng thái sẵn sàng
+của hai nút tải lại discussion trước hydration; không tuyên bố giảm latency hoặc đã thử nghiệm
 streaming trên proxy.
 
 Base đã fetch: `develop@f1b46703ae3329ee7cd11fb06db3f8157a31e5b9`, chứa PR #251/#234.
@@ -27,6 +28,14 @@ SSR. Vì vậy không dùng số đó để chọn kiến trúc B/C hoặc tuyê
 OutOfOrder có thể commit shell trước async meta. Không suy API từ phiên bản book khác.
 Rollback của lát này là giữ route Async; regression `reader_route_retains_async_as_the_rollback_baseline`
 đọc route list thật. Không có optimization runtime cần flag/rollback mới.
+
+Review Mac tìm thấy một thiếu sót đã có ở base: `discussion-refresh` và
+`discussion-load-retry` hiện enabled trong SSR dù callback cần hydration. Hai control nay bắt
+đầu unavailable với lý do “Cần JavaScript để tải lại nhận xét.”, rồi bật sau effect của chính
+component. Trạng thái đầu giống nhau ở SSR/hydration; không xếp hàng click, không đổi quyền ghi,
+read coordinator hoặc transport. Regression SSR mới đã FAIL ở source trước sửa; browser kiểm
+refresh unavailable khi bootstrap bị chặn/giữ và trở lại enabled sau hydration. Đây là guard
+trình bày theo lifecycle, không thay semantic của các model publication/read owner.
 
 ## Owner critical và secondary
 
@@ -58,11 +67,13 @@ Không đổi framework hay giảm assertion; matrix riêng có deadline 30 giâ
   sau secondary failure vẫn có full article, title/description/canonical và 200. Matrix control
   Hidden/ReviewWithdrawn/404/503 kiểm status, no-store/noindex của replacement và không có title,
   body/canonical/og:title của publication. Alternate publication method mang marker riêng để phát
-  hiện dùng nhầm representation. Đây là Leptos/Axum/serialization, không chứng minh quyền SQL.
+  hiện dùng nhầm representation; retry sau secondary failure phải unavailable trước hydration.
+  Đây là Leptos/Axum/serialization, không chứng minh quyền SQL.
 - `apps/vink-web/e2e/reader-ssr-boundary.mjs`: được gọi trong **main** của browser-smoke hiện có.
   Bootstrap blocked vẫn giữ article/link/GET search và không lộ draft fixture. Bootstrap được
   giữ 200/1000 ms rồi nhả; click trước hydration không gửi/replay mutation, fresh SSR không tạo
-  GET `/reader` trùng trong cửa sổ quan sát. Transport là CDP-visible path/method, không body,
+  GET `/reader` trùng trong cửa sổ quan sát. Refresh unavailable trước bootstrap và enabled sau
+  hydration được assert trực tiếp. Transport là CDP-visible path/method, không body,
   cookie, credential hoặc SQL; bootstrap injection được ghi rõ.
 - Các assertions stale/history/reordered navigation có sẵn ở `cacheFirstPublicReads` (#202),
   canonical redirect ở discovery, và Hidden/ReviewWithdrawn qua App/PG thật ở review được giữ.

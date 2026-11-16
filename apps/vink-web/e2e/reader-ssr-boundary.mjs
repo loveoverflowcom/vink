@@ -38,6 +38,7 @@ export async function readerBeforeHydration(page, { args, check }) {
     check(await page.eval(`!(${READY}) && document.querySelector('.vk-document')?.textContent.includes(${JSON.stringify(TEXT)})`), 'failed bootstrap retains the complete SSR article');
     check(await page.eval(`document.querySelector('link[rel=canonical]')?.href===${JSON.stringify(args.base + PATH)} && !!document.querySelector('meta[name=description]') && !document.documentElement.outerHTML.includes('Khổ đang viết dở — chưa công khai.')`), 'unhydrated document retains canonical/description and excludes the private draft');
     check(await page.eval("document.querySelector('#root-composer-send')?.getAttribute('aria-disabled')==='true' && document.querySelector('#root-composer-send')?.type==='button'"), 'unready composer send is unavailable and has no native form submission');
+    check(await page.eval("document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')==='true'"), 'client-only discussion refresh is unavailable without bootstrap');
     await page.click('#root-composer-send');
     await page.click('#discussion-refresh');
     noMutation('clicks before bootstrap do not submit a mutation');
@@ -68,6 +69,7 @@ export async function readerBeforeHydration(page, { args, check }) {
       await page.send('Page.navigate', { url: args.base + PATH });
       await page.waitFor("!!document.querySelector('.vk-document') && !!document.querySelector('#root-composer-send')", 'complete SSR Reader during bootstrap hold');
       check(held.size > 0 && await page.eval(`!(${READY})`), 'bootstrap is actually paused before the click (' + holdMs + 'ms)');
+      check(await page.eval("document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')==='true'"), 'discussion refresh remains unavailable while bootstrap is held (' + holdMs + 'ms)');
       await page.click('#root-composer-send');
       await page.click('#discussion-refresh');
       await sleep(holdMs);
@@ -76,6 +78,7 @@ export async function readerBeforeHydration(page, { args, check }) {
       await page.send('Fetch.disable');
       held.clear();
       await page.waitFor(READY, 'hydration after held bootstrap', 120000);
+      await page.waitFor("document.querySelector('#discussion-refresh')?.dataset.state==='enabled'", 'discussion refresh becomes available after hydration');
       await page.eval('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
       await sleep(300);
       noMutation('hydration does not replay a pre-hydration click (' + holdMs + 'ms)');

@@ -261,7 +261,7 @@ pub fn Discussion(work_id: String) -> impl IntoView {
                             Err(_) => view! {
                                 <p role="status">"Chưa tải được nhận xét. Bạn vẫn có thể đọc tác phẩm."</p>
                                 // A same-URL fragment link only scrolls and never re-runs the resource.
-                                <Button id="discussion-load-retry" variant=ButtonVariant::Tonal on_press=move |_| resource.refetch()>"Tải lại nhận xét"</Button>
+                                <DiscussionLoadRetry on_retry=move |_| resource.refetch() />
                             }.into_any(),
                         }
                     })
@@ -272,12 +272,37 @@ pub fn Discussion(work_id: String) -> impl IntoView {
     }
 }
 
+// Start false on both SSR and hydration; only a mounted client control can dispatch.
+// Each control owner schedules its effect after rendering, preserving hydration parity.
+fn client_action_ready() -> RwSignal<bool> {
+    let ready = RwSignal::new(false);
+    #[cfg(feature = "hydrate")]
+    Effect::new(move |_| ready.set(true));
+    ready
+}
+
+#[component]
+fn DiscussionLoadRetry(#[prop(into)] on_retry: Callback<()>) -> impl IntoView {
+    let ready = client_action_ready();
+    let state = Signal::derive(move || {
+        if ready.get() {
+            ActionState::Enabled
+        } else {
+            ActionState::disabled("Cần JavaScript để tải lại nhận xét.")
+        }
+    });
+    view! {
+        <Button id="discussion-load-retry" variant=ButtonVariant::Tonal state on_press=on_retry>"Tải lại nhận xét"</Button>
+    }
+}
+
 #[component]
 fn DiscussionLoaded(
     page: DiscussionPage,
     endorsements: Result<EndorsementSummaries, LoadError>,
     fixture: Option<String>,
 ) -> impl IntoView {
+    let client_ready = client_action_ready();
     #[cfg(feature = "hydrate")]
     if let Some(owner) = Owner::current() {
         provide_context(TransportOwner(owner.downgrade()));
@@ -410,7 +435,7 @@ fn DiscussionLoaded(
                     {move || if controller.read().settings.comments_open { "Tắt bình luận" } else { "Mở bình luận" }}
                 </Button>
             </Show>
-            <Button id="discussion-refresh" variant=ButtonVariant::Text state=Signal::derive(move || if state.read().loading || state.read().mutation_busy { ActionState::pending("Đang cập nhật nhận xét…") } else { ActionState::Enabled }) on_press=move |_| refresh.run(())>"Tải lại nhận xét"</Button>
+            <Button id="discussion-refresh" variant=ButtonVariant::Text state=Signal::derive(move || if !client_ready.get() { ActionState::disabled("Cần JavaScript để tải lại nhận xét.") } else if state.read().loading || state.read().mutation_busy { ActionState::pending("Đang cập nhật nhận xét…") } else { ActionState::Enabled }) on_press=move |_| refresh.run(())>"Tải lại nhận xét"</Button>
             <p role="status">{move || state.read().error.clone().unwrap_or_default()}</p>
             <p role="status">{move || state.read().mutation_message.clone().unwrap_or_default()}</p>
         </div>
