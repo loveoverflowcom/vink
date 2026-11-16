@@ -414,3 +414,46 @@ async fn state_observes_policy_rereview_and_private_fences_late_approval(pool: P
             .all(|j| j.state != vink_app::domain::moderation::JobState::Open)
     );
 }
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn state_keeps_distinct_metadata_bindings_when_only_tags_change(pool: PgPool) {
+    use vink_app::application::taxonomy::SaveWorkTags;
+    let vink = seeded(&pool).await;
+    let work = vink.create_draft(author()).await.unwrap().work_id;
+    vink.save_draft(
+        author(),
+        save(work, 1, "Cùng nội dung", doc(&[&["Chỉ đổi metadata"]])),
+    )
+    .await
+    .unwrap();
+    let first = vink
+        .capture_snapshot(author(), work, "metadata-first-230", 2, 1)
+        .await
+        .unwrap();
+    vink.save_work_tags(
+        author(),
+        SaveWorkTags {
+            work_id: work,
+            expected_version: 1,
+            form: Some("a0000000-0000-4000-8000-000000000001".into()),
+            themes: vec![],
+        },
+    )
+    .await
+    .unwrap();
+    let second = vink
+        .capture_snapshot(author(), work, "metadata-second-230", 2, 2)
+        .await
+        .unwrap();
+    assert_ne!(first.revision_id, second.revision_id);
+    let state = vink
+        .load_author_publication_state(author(), work)
+        .await
+        .unwrap();
+    let revisions = &state.publication.facts().revisions;
+    assert_eq!(revisions.len(), 2);
+    assert_eq!(revisions[0].snapshot.content, revisions[1].snapshot.content);
+    assert_eq!(state.revision_metadata[0].2, first.metadata_snapshot_id);
+    assert_eq!(state.revision_metadata[1].2, second.metadata_snapshot_id);
+    assert_ne!(state.revision_metadata[0].2, state.revision_metadata[1].2);
+}
