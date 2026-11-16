@@ -53,6 +53,9 @@ v1. Phần schema ứng viên và các tình huống sản phẩm được mô t
   fork phụ. Chênh lệch giữa relation và column phản ánh cả overhead/padding. WAL là delta LSN
   của cluster scratch theo transaction, có thể gồm background noise.
 - **Thời gian:** p50 là median, p95 nearest rank của 24 thao tác hỗn hợp theo layout/toàn history.
+  Với ghi, cộng `prepare_ms + commit_ms` của từng mẫu trước khi sắp xếp; p50 lấy trung bình
+  mẫu thứ 12 và 13, p95 lấy mẫu thứ 23 (đếm từ 1). Đọc dùng cùng cách trên `read_ms`.
+  Chỉ làm tròn đến hai chữ số thập phân sau khi tổng hợp, không cộng các percentile riêng.
   Mỗi revision đọc một lần ngay sau commit. Đây là cửa sổ warm/trộn loại edit, chưa kiểm cold
   cache, concurrent load, app end-to-end, full protocol bytes hoặc production.
 - **Bộ nhớ:** lượt đầu chạy trực tiếp binary test dưới `/usr/bin/time -l`, max RSS 69.844.992 B
@@ -66,6 +69,8 @@ wal_compression off. Base `f0ef35193b2bef2fc9ded9f66b1482a4557ac03e`. SHA-256 fi
 `208477807cf6fd23a212cde39e684fdb6a7059bb9ad8f7f13035f6c01c5deac8` (trước khi bổ sung ca chèn ở biên trong
 và test constraint ở cuối file), corpus
 `4d5d36971ef4041bb15b4ae928b11e19318098b456e2b9afa74e8c93a6bdf678`.
+Binary dùng profile `test` **unoptimized**, tắt debug/incremental theo lệnh trên; số đo prep
+không đại diện CPU cost của bản release.
 
 - **PASS** [Lượt 1](postgres.json) chạy test binary từ `cargo test`, 33,99 s; **PASS**
   [lượt 2](repeat.json) qua command Cargo trên, 33,18 s. Mỗi lượt có 384 capture/read round-trip.
@@ -99,3 +104,32 @@ launcher local và cập nhật xtask process; code App/corpus dùng trong phép
   với cùng flags debug/incremental, rồi chạy trực tiếp binary `postgres-*` với ba filter
   ở trên và `--test-threads=1` trên cùng cluster scratch.
 - Full lanes, browser/CMP, benchmark release/production và GitHub CI `NOT_RUN` trong #231.
+
+### Đối soát review PR #253
+
+Review head `345725f4dabe6288edd720aff4c0b5c297e7faa8`, base/merge-base
+`8424a39be933e15ea376d868ad10088ee59f0083`. So source xác nhận App và corpus không đổi từ
+base phép đo `f0ef351` đến base PR. Review không phát hiện lỗi hồi quy ở probe; commit bổ sung
+chỉ hiệu chỉnh tài liệu và ghi bằng chứng đối soát, proposal vẫn `PENDING`.
+
+- **PASS — phân tích raw:** đọc đủ 768 mẫu của hai lượt bằng Python, tính lại relation/WAL,
+  median và nearest-rank p95. Mỗi layout có 24 revision liên tiếp; hash v1 khớp giữa bốn layout;
+  `payload_bytes = new_payload_bytes + reused_payload_bytes` ở mọi mẫu. Hai lượt khớp toàn bộ
+  trường phi thời gian/WAL, payload row/column bytes; WAL tổng lệch tối đa 184 B.
+- Hiệu chỉnh bốn ô của bảng RFC: C/30k p95 ghi `4,41 → 4,40`; B/190k p50 ghi
+  `10,74 → 10,73`; C/190k p50 ghi `17,12 → 17,11`; C/thơ p95 đọc `5,60 → 5,59` ms.
+  Các số raw và kết luận chọn A được giữ nguyên.
+- **PASS — tài liệu:** `cargo fmt --all -- --check`, `cargo xtask decision validate`
+  (qua launcher local-budget, snapshot không đổi), kiểm liên kết/file/heading và
+  `git diff --check`.
+- **NOT_RUN trong lượt review — PostgreSQL/App:** artifact test cũ không còn, đĩa còn khoảng
+  3 GiB nên không build lại integration binary. Hai lượt scratch và 11 test ở trên là bằng
+  chứng lịch sử của PR, không phải lần chạy mới. Muốn đo lại cần đủ chỗ build rồi chạy các
+  lệnh tái lập; release/production, browser/CMP và GC/binding của schema ứng viên vẫn chưa đo.
+
+SHA-256 của raw được đối soát:
+
+| File | SHA-256 |
+| --- | --- |
+| [postgres.json](postgres.json) | `54d1fa7c3f1359c65d89b3e570fff3a3a32e26a8f2d1ee91e8acccc2c1edb8df` |
+| [repeat.json](repeat.json) | `9c5ac1c0c19a728b5da8a9fa23c1747415ee224ad2c313d48783f982c068cef6` |
