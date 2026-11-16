@@ -277,6 +277,9 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await page.viewport(1440);
 
   // Native browser GET, with page JS disabled and WASM preloads blocked.
+  // A decoded image from an earlier matrix must not bypass either failure fixture.
+  await page.send('Network.setCacheDisabled', {cacheDisabled:true});
+  await page.send('Network.clearBrowserCache');
   await page.send('Network.setBlockedURLs', { urls:[args.base+'/pkg/vink.js*',args.base+'/pkg/vink_bg.wasm*',args.base+'/pkg/empty/*'] });
   await page.send('Emulation.setScriptExecutionDisabled', { value:true });
   try {
@@ -287,7 +290,8 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     const point = await page.eval("(() => { const b=document.querySelector('#public-search button[type=submit]'); b.scrollIntoView(); const r=b.getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2}; })()");
     for (const type of ['mousePressed','mouseReleased']) await page.send('Input.dispatchMouseEvent', {type,...point,button:'left',clickCount:1});
     await page.waitFor("new URL(location.href).searchParams.get('q')==='khong-co-ket-qua-100' && document.querySelector('[data-testid=public-no-results]')", 'native GET result');
-    check(await page.eval("document.querySelector('.vk-empty-state__message').textContent==='Chưa có tác phẩm phù hợp.' && document.querySelector('#clear-public-results').getAttribute('href')==='/' && document.querySelectorAll('#public-results [role=status]').length===1"), '#258 blocked artwork before hydration leaves useful HTML and GET recovery');
+    await page.waitFor("document.querySelector('.vk-empty-state__art')?.complete", '#258 blocked artwork finishes with failure');
+    check(await page.eval("document.querySelector('.vk-empty-state__art').naturalWidth===0 && document.documentElement.dataset.hydrated!=='true' && document.querySelector('.vk-empty-state__message').textContent==='Chưa có tác phẩm phù hợp.' && document.querySelector('#clear-public-results').getAttribute('href')==='/' && document.querySelectorAll('#public-results [role=status]').length===1"), '#258 blocked artwork before hydration leaves useful HTML and GET recovery');
     // page.click waits for animation frames; those callbacks do not run with page JS disabled.
     // Use the same native pointer path as the no-JS search above, without a JS click fallback.
     for (const selector of ['#dock-tag-form label:has(input[type=checkbox])', '#dock-tag-form button[type=submit]']) {
@@ -297,8 +301,10 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     }
     await page.waitFor("new URL(location.href).searchParams.get('q')==='khong-co-ket-qua-100' && new URL(location.href).searchParams.getAll('tag').length===1 && !new URL(location.href).searchParams.has('cursor')", '#225 no-JS checkbox + Apply preserves q/tag through native GET and resets cursor');
     // A corrupt response before hydration must not own any state meaning or recovery.
+    let corruptRequests=0;
     const corruptArt = ({sessionId,method,params}) => {
       if (sessionId===page.sessionId && method==='Fetch.requestPaused') {
+        corruptRequests++;
         page.send('Fetch.fulfillRequest', {requestId:params.requestId,responseCode:200,
           responseHeaders:[{name:'Content-Type',value:'image/webp'},{name:'Cache-Control',value:'no-store'}],
           body:Buffer.from('invalid WebP fixture #258').toString('base64')}).catch(()=>{});
@@ -310,6 +316,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     try {
       await page.goto(args.base+'/?q=corrupt-art-258');
       await page.waitFor("document.querySelector('.vk-empty-state__art')?.complete", '#258 corrupt image completes with failure');
+      check(corruptRequests===1, '#258 exactly one corrupt artwork response was actually injected');
       check(await page.eval(`(() => {
         const art=document.querySelector('.vk-empty-state__art'), box=art.getBoundingClientRect();
         return art.naturalWidth===0 && box.width>0 && Math.abs(box.height/box.width-427/512)<0.01 &&
@@ -325,6 +332,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   } finally {
     await page.send('Emulation.setScriptExecutionDisabled',{value:false});
     await page.send('Network.setBlockedURLs',{urls:[]});
+    await page.send('Network.setCacheDisabled',{cacheDisabled:false});
   }
   await goto('/');
   // The always-visible rule must survive a failed catalog refresh as well as no-JS.
