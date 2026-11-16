@@ -1,0 +1,16 @@
+{
+  "source_sha": "5833624d8f77259a22f65abedfb47b691dffd791",
+  "sha256": {
+    "browser.json": "b14bcb8e9558cde542f8ed36776f04ba02b08371a9a745cce0f3e7878a11f505",
+    "budget-reader-1440-100.png": "e8a881c6f70693ddbab45f39533fd648c0ae8df0edec2c18a2885e3de6675857",
+    "budget-reader-1440-200.png": "675353dd0f24e6415f27205d3e0b096337d65551e6caacc46706662ffed68e97",
+    "budget-reader-390-100.png": "1d84b8d79366c7a6e3216c8cdc341728fc5fa72677075f0b498cef71d9a013ca",
+    "budget-reader-390-200.png": "0c07414cd4d656d7cb7fe9a9839e15573db002223e43fa8cd27dfd76e16c7112",
+    "compression.json": "b27c7d9ebb35b6519bc4f8c47e356122ebd80a32465cd22b4d5021eeff694ab7",
+    "contexts.json": "e89a86d9b80126ee2bf4cc086a43dd44f5c15919861e7b1aded43d6a3e829303",
+    "environment.json": "e9c89cf94b3a04c52b4ad3df3a065dcd08530248a7d2066bce5c10e270ddf353",
+    "postgres.json": "4160197a2cd061d44051ced0e8df3b3c9fec19e4d098d82a83072b950e7c6421",
+    "postmerge-browser.json": "5cf1925a99f714874ca38d186eccc79a8f6ae1a180761c7e52e20ae2ea4eeb35",
+    "repeat.json": "5578a3cbf8461023d74cdc6a86cd9034a74062d681cf51d572c17979130cb158"
+  }
+}

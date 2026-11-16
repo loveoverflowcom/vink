@@ -1,0 +1,3945 @@
+{
+  "status": "PASS",
+  "source_sha": "3d05fa601e8bf02b5a00e33612cdcd703cd9f600",
+  "boundary": "desktop Chrome headless; synthetic CDP input; local debug WASM",
+  "reader": [
+    {
+      "case": "vi_nfd-30000",
+      "width": 1440,
+      "scale": 100,
+      "ready_wall_ms": 579.890542,
+      "navigation": {
+        "name": "http://127.0.0.1:55530/tac-pham/96cd9c30-2688-4974-9e8f-fb91485f9eae",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 99,
+        "navigationId": 6793,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.3000001907348633,
+        "domainLookupStart": 0.3000001907348633,
+        "domainLookupEnd": 0.3000001907348633,
+        "connectStart": 0.3000001907348633,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.3000001907348633,
+        "requestStart": 0.7000002861022949,
+        "responseStart": 13.800000190734863,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 13.800000190734863,
+        "responseEnd": 31.300000190734863,
+        "transferSize": 224326,
+        "encodedBodySize": 224026,
+        "decodedBodySize": 224026,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 40.10000038146973,
+        "domContentLoadedEventStart": 40.200000286102295,
+        "domContentLoadedEventEnd": 40.30000019073486,
+        "domComplete": 99,
+        "loadEventStart": 99,
+        "loadEventEnd": 99,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {}
+      },
+      "hydrated_flag_ms": 546.8000001907349,
+      "hydration_after_response_ms": 515.5,
+      "blocks": 1,
+      "body_text_scalars": 30000,
+      "inline_script_bytes": 71446,
+      "hydration_resource_script_bytes": 69570,
+      "inline_script_sizes": [
+        {
+          "id": "",
+          "type": "",
+          "bytes": 812
+        },
+        {
+          "id": "",
+          "type": "module",
+          "bytes": 285
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 104
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 69466
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 23
+        }
+      ],
+      "dom_elements": 216,
+      "font_size": "16px",
+      "horizontal_overflow": false,
+      "resources": [
+        {
+          "name": "/pkg/brand/vpen-r1-lockup-light.svg",
+          "duration": 15.100000381469727,
+          "encodedBodySize": 13804,
+          "decodedBodySize": 13804,
+          "transferSize": 14104
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-lockup-dark.svg",
+          "duration": 17.300000190734863,
+          "encodedBodySize": 13785,
+          "decodedBodySize": 13785,
+          "transferSize": 14085
+        },
+        {
+          "name": "/pkg/fonts/be-vietnam-pro-400.woff2",
+          "duration": 15.400000095367432,
+          "encodedBodySize": 36464,
+          "decodedBodySize": 36464,
+          "transferSize": 36764
+        },
+        {
+          "name": "/pkg/vink.js",
+          "duration": 15.399999618530273,
+          "encodedBodySize": 88064,
+          "decodedBodySize": 88064,
+          "transferSize": 88364
+        },
+        {
+          "name": "/pkg/vink.css",
+          "duration": 22.5,
+          "encodedBodySize": 147311,
+          "decodedBodySize": 147311,
+          "transferSize": 147611
+        },
+        {
+          "name": "/pkg/fonts/literata-variable.woff2",
+          "duration": 22.59999990463257,
+          "encodedBodySize": 256620,
+          "decodedBodySize": 256620,
+          "transferSize": 256920
+        },
+        {
+          "name": "/pkg/vink_bg.wasm",
+          "duration": 391.69999980926514,
+          "encodedBodySize": 341115520,
+          "decodedBodySize": 341115520,
+          "transferSize": 341115820
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-manifest-light.webmanifest",
+          "duration": 17.699999809265137,
+          "encodedBodySize": 639,
+          "decodedBodySize": 639,
+          "transferSize": 939
+        },
+        {
+          "name": "/pkg/fonts/be-vietnam-pro-600.woff2",
+          "duration": 37.19999980926514,
+          "encodedBodySize": 38844,
+          "decodedBodySize": 38844,
+          "transferSize": 39144
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js",
+          "duration": 1.5999999046325684,
+          "encodedBodySize": 1125,
+          "decodedBodySize": 1125,
+          "transferSize": 1425
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/expressions/bridge.js",
+          "duration": 1.6999998092651367,
+          "encodedBodySize": 438,
+          "decodedBodySize": 438,
+          "transferSize": 738
+        },
+        {
+          "name": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js",
+          "duration": 1.9000000953674316,
+          "encodedBodySize": 345,
+          "decodedBodySize": 345,
+          "transferSize": 645
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js",
+          "duration": 2.299999713897705,
+          "encodedBodySize": 14611,
+          "decodedBodySize": 14611,
+          "transferSize": 14911
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-mark-light.svg",
+          "duration": 9.599999904632568,
+          "encodedBodySize": 8984,
+          "decodedBodySize": 8984,
+          "transferSize": 9284
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-mark-light.svg",
+          "duration": 0.5999999046325684,
+          "encodedBodySize": 8984,
+          "decodedBodySize": 8984,
+          "transferSize": 0
+        },
+        {
+          "name": "/api/v1/auth/session",
+          "duration": 0.6000003814697266,
+          "encodedBodySize": 72,
+          "decodedBodySize": 72,
+          "transferSize": 372
+        },
+        {
+          "name": "/api/v1/works/96cd9c30-2688-4974-9e8f-fb91485f9eae/endorsements/me",
+          "duration": 1.3999996185302734,
+          "encodedBodySize": 222,
+          "decodedBodySize": 222,
+          "transferSize": 522
+        },
+        {
+          "name": "/api/v1/works/96cd9c30-2688-4974-9e8f-fb91485f9eae/discussion/public",
+          "duration": 1,
+          "encodedBodySize": 129,
+          "decodedBodySize": 129,
+          "transferSize": 429
+        },
+        {
+          "name": "/api/v1/auth/session/account",
+          "duration": 0.8000001907348633,
+          "encodedBodySize": 117,
+          "decodedBodySize": 117,
+          "transferSize": 417
+        },
+        {
+          "name": "/api/v1/works/96cd9c30-2688-4974-9e8f-fb91485f9eae/discussion/me",
+          "duration": 0.9000000953674316,
+          "encodedBodySize": 83,
+          "decodedBodySize": 83,
+          "transferSize": 383
+        },
+        {
+          "name": "/api/v1/works/96cd9c30-2688-4974-9e8f-fb91485f9eae/discussion",
+          "duration": 0.6999998092651367,
+          "encodedBodySize": 158,
+          "decodedBodySize": 158,
+          "transferSize": 458
+        }
+      ],
+      "v8_heap": {
+        "usedSize": 4142064,
+        "totalSize": 6389760,
+        "embedderHeapUsedSize": 5165296,
+        "backingStorageSize": 422691
+      },
+      "dom": {
+        "documents": 13,
+        "nodes": 715,
+        "jsEventListeners": 50
+      },
+      "network": [
+        {
+          "type": "Image",
+          "url": "/pkg/brand/vpen-r1-lockup-light.svg",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 13980
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/vink.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 88242
+        },
+        {
+          "type": "Document",
+          "url": "/tac-pham/96cd9c30-2688-4974-9e8f-fb91485f9eae",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 224164
+        },
+        {
+          "type": "Image",
+          "url": "/pkg/brand/vpen-r1-lockup-dark.svg",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 13961
+        },
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/be-vietnam-pro-400.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 36637
+        },
+        {
+          "type": "Manifest",
+          "url": "/pkg/brand/vpen-r1-manifest-light.webmanifest",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 825
+        },
+        {
+          "type": "Stylesheet",
+          "url": "/pkg/vink.css",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 147483
+        },
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/literata-variable.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 256794
+        },
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/be-vietnam-pro-600.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 39017
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 1302
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/expressions/bridge.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 614
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 521
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 14789
+        },
+        {
+          "type": "Other",
+          "url": "/pkg/brand/vpen-r1-mark-light.svg",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 9159
+        },
+        {
+          "type": "Other",
+          "url": "/pkg/brand/vpen-r1-mark-light.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Other",
+          "url": "/pkg/vink_bg.wasm",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 341115703
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/auth/session",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 205
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/96cd9c30-2688-4974-9e8f-fb91485f9eae/endorsements/me",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 356
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/96cd9c30-2688-4974-9e8f-fb91485f9eae/discussion/public",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 263
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/auth/session/account",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 251
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/96cd9c30-2688-4974-9e8f-fb91485f9eae/discussion/me",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 216
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/96cd9c30-2688-4974-9e8f-fb91485f9eae/discussion",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 292
+        }
+      ],
+      "cache_state": "fresh browser profile, cold bundle cache"
+    },
+    {
+      "case": "poem_tabs-200000",
+      "width": 1440,
+      "scale": 100,
+      "ready_wall_ms": 512.0965419999998,
+      "navigation": {
+        "name": "http://127.0.0.1:55530/tac-pham/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 121.69999980926514,
+        "navigationId": 6338,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 1.4000000953674316,
+        "domainLookupStart": 1.4000000953674316,
+        "domainLookupEnd": 1.4000000953674316,
+        "connectStart": 1.4000000953674316,
+        "secureConnectionStart": 0,
+        "connectEnd": 1.4000000953674316,
+        "requestStart": 2.0999999046325684,
+        "responseStart": 78.59999990463257,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 78.59999990463257,
+        "responseEnd": 80.69999980926514,
+        "transferSize": 983624,
+        "encodedBodySize": 983324,
+        "decodedBodySize": 983324,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 92.40000009536743,
+        "domContentLoadedEventStart": 92.40000009536743,
+        "domContentLoadedEventEnd": 92.40000009536743,
+        "domComplete": 121.69999980926514,
+        "loadEventStart": 121.69999980926514,
+        "loadEventEnd": 121.69999980926514,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {}
+      },
+      "hydrated_flag_ms": 461.2999997138977,
+      "hydration_after_response_ms": 380.59999990463257,
+      "blocks": 782,
+      "body_text_scalars": 202343,
+      "inline_script_bytes": 484536,
+      "hydration_resource_script_bytes": 482660,
+      "inline_script_sizes": [
+        {
+          "id": "",
+          "type": "",
+          "bytes": 812
+        },
+        {
+          "id": "",
+          "type": "module",
+          "bytes": 285
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 104
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 482556
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 23
+        }
+      ],
+      "dom_elements": 997,
+      "font_size": "16px",
+      "horizontal_overflow": false,
+      "resources": [
+        {
+          "name": "/pkg/brand/vpen-r1-lockup-light.svg",
+          "duration": 0.5,
+          "encodedBodySize": 13804,
+          "decodedBodySize": 13804,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-lockup-dark.svg",
+          "duration": 0.5,
+          "encodedBodySize": 13785,
+          "decodedBodySize": 13785,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/fonts/be-vietnam-pro-400.woff2",
+          "duration": 0,
+          "encodedBodySize": 36464,
+          "decodedBodySize": 36464,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/fonts/literata-variable.woff2",
+          "duration": 0,
+          "encodedBodySize": 256620,
+          "decodedBodySize": 256620,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink.css",
+          "duration": 0,
+          "encodedBodySize": 147311,
+          "decodedBodySize": 147311,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink.js",
+          "duration": 0,
+          "encodedBodySize": 88064,
+          "decodedBodySize": 88064,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink_bg.wasm",
+          "duration": 289.30000019073486,
+          "encodedBodySize": 341115520,
+          "decodedBodySize": 341115520,
+          "transferSize": 341115820
+        },
+        {
+          "name": "/pkg/fonts/be-vietnam-pro-600.woff2",
+          "duration": 0,
+          "encodedBodySize": 38844,
+          "decodedBodySize": 38844,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-manifest-light.webmanifest",
+          "duration": 0.3000001907348633,
+          "encodedBodySize": 639,
+          "decodedBodySize": 639,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js",
+          "duration": 0,
+          "encodedBodySize": 345,
+          "decodedBodySize": 345,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js",
+          "duration": 0,
+          "encodedBodySize": 1125,
+          "decodedBodySize": 1125,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/expressions/bridge.js",
+          "duration": 0,
+          "encodedBodySize": 438,
+          "decodedBodySize": 438,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js",
+          "duration": 0,
+          "encodedBodySize": 14611,
+          "decodedBodySize": 14611,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-mark-light.svg",
+          "duration": 0.39999961853027344,
+          "encodedBodySize": 8984,
+          "decodedBodySize": 8984,
+          "transferSize": 0
+        },
+        {
+          "name": "/api/v1/auth/session",
+          "duration": 0.6999998092651367,
+          "encodedBodySize": 72,
+          "decodedBodySize": 72,
+          "transferSize": 372
+        },
+        {
+          "name": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/endorsements/me",
+          "duration": 1.4000000953674316,
+          "encodedBodySize": 222,
+          "decodedBodySize": 222,
+          "transferSize": 522
+        },
+        {
+          "name": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion/public",
+          "duration": 1.3000001907348633,
+          "encodedBodySize": 129,
+          "decodedBodySize": 129,
+          "transferSize": 429
+        },
+        {
+          "name": "/api/v1/auth/session/account",
+          "duration": 0.6999998092651367,
+          "encodedBodySize": 117,
+          "decodedBodySize": 117,
+          "transferSize": 417
+        },
+        {
+          "name": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion/me",
+          "duration": 1,
+          "encodedBodySize": 83,
+          "decodedBodySize": 83,
+          "transferSize": 383
+        },
+        {
+          "name": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion",
+          "duration": 0.9000000953674316,
+          "encodedBodySize": 158,
+          "decodedBodySize": 158,
+          "transferSize": 458
+        }
+      ],
+      "v8_heap": {
+        "usedSize": 10950540,
+        "totalSize": 18055168,
+        "embedderHeapUsedSize": 20087816,
+        "backingStorageSize": 2710776
+      },
+      "dom": {
+        "documents": 17,
+        "nodes": 3609,
+        "jsEventListeners": 260
+      },
+      "network": [
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/be-vietnam-pro-400.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/literata-variable.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Stylesheet",
+          "url": "/pkg/vink.css",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/vink.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Image",
+          "url": "/pkg/brand/vpen-r1-lockup-light.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Image",
+          "url": "/pkg/brand/vpen-r1-lockup-dark.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Document",
+          "url": "/tac-pham/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 983462
+        },
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/be-vietnam-pro-600.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/expressions/bridge.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Manifest",
+          "url": "/pkg/brand/vpen-r1-manifest-light.webmanifest",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Other",
+          "url": "/pkg/brand/vpen-r1-mark-light.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Other",
+          "url": "/pkg/vink_bg.wasm",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 341115703
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/auth/session",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 205
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion/public",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 263
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/endorsements/me",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 356
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/auth/session/account",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 251
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 292
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion/me",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 216
+        }
+      ],
+      "cache_state": "warm process and bundle cache; new document URL or reload"
+    },
+    {
+      "case": "poem_tabs-200000",
+      "width": 390,
+      "scale": 100,
+      "ready_wall_ms": 543.5110829999999,
+      "navigation": {
+        "name": "http://127.0.0.1:55530/tac-pham/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 115,
+        "navigationId": 9285,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.3000001907348633,
+        "domainLookupStart": 0.3000001907348633,
+        "domainLookupEnd": 0.3000001907348633,
+        "connectStart": 0.3000001907348633,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.3000001907348633,
+        "requestStart": 0.6000003814697266,
+        "responseStart": 69.80000019073486,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 69.80000019073486,
+        "responseEnd": 71.90000009536743,
+        "transferSize": 983624,
+        "encodedBodySize": 983324,
+        "decodedBodySize": 983324,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 71.40000009536743,
+        "unloadEventEnd": 71.40000009536743,
+        "domInteractive": 84.10000038146973,
+        "domContentLoadedEventStart": 84.2000002861023,
+        "domContentLoadedEventEnd": 84.2000002861023,
+        "domComplete": 115,
+        "loadEventStart": 115,
+        "loadEventEnd": 115,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {}
+      },
+      "hydrated_flag_ms": 484.40000009536743,
+      "hydration_after_response_ms": 412.5,
+      "blocks": 782,
+      "body_text_scalars": 202343,
+      "inline_script_bytes": 484536,
+      "hydration_resource_script_bytes": 482660,
+      "inline_script_sizes": [
+        {
+          "id": "",
+          "type": "",
+          "bytes": 812
+        },
+        {
+          "id": "",
+          "type": "module",
+          "bytes": 285
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 104
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 482556
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 23
+        }
+      ],
+      "dom_elements": 997,
+      "font_size": "16px",
+      "horizontal_overflow": false,
+      "resources": [
+        {
+          "name": "/pkg/brand/vpen-r1-lockup-light.svg",
+          "duration": 0.5,
+          "encodedBodySize": 13804,
+          "decodedBodySize": 13804,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-lockup-dark.svg",
+          "duration": 0.39999961853027344,
+          "encodedBodySize": 13785,
+          "decodedBodySize": 13785,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/fonts/be-vietnam-pro-400.woff2",
+          "duration": 0,
+          "encodedBodySize": 36464,
+          "decodedBodySize": 36464,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/fonts/literata-variable.woff2",
+          "duration": 0,
+          "encodedBodySize": 256620,
+          "decodedBodySize": 256620,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink.css",
+          "duration": 0,
+          "encodedBodySize": 147311,
+          "decodedBodySize": 147311,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink.js",
+          "duration": 0,
+          "encodedBodySize": 88064,
+          "decodedBodySize": 88064,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink_bg.wasm",
+          "duration": 332.90000009536743,
+          "encodedBodySize": 341115520,
+          "decodedBodySize": 341115520,
+          "transferSize": 341115820
+        },
+        {
+          "name": "/pkg/fonts/be-vietnam-pro-600.woff2",
+          "duration": 0,
+          "encodedBodySize": 38844,
+          "decodedBodySize": 38844,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-manifest-light.webmanifest",
+          "duration": 1.1000003814697266,
+          "encodedBodySize": 639,
+          "decodedBodySize": 639,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js",
+          "duration": 0,
+          "encodedBodySize": 345,
+          "decodedBodySize": 345,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js",
+          "duration": 0,
+          "encodedBodySize": 1125,
+          "decodedBodySize": 1125,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/expressions/bridge.js",
+          "duration": 0,
+          "encodedBodySize": 438,
+          "decodedBodySize": 438,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js",
+          "duration": 0,
+          "encodedBodySize": 14611,
+          "decodedBodySize": 14611,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-mark-light.svg",
+          "duration": 0.5,
+          "encodedBodySize": 8984,
+          "decodedBodySize": 8984,
+          "transferSize": 0
+        },
+        {
+          "name": "/api/v1/auth/session",
+          "duration": 0.5999999046325684,
+          "encodedBodySize": 72,
+          "decodedBodySize": 72,
+          "transferSize": 372
+        },
+        {
+          "name": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/endorsements/me",
+          "duration": 1.5,
+          "encodedBodySize": 222,
+          "decodedBodySize": 222,
+          "transferSize": 522
+        },
+        {
+          "name": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion/public",
+          "duration": 1,
+          "encodedBodySize": 129,
+          "decodedBodySize": 129,
+          "transferSize": 429
+        },
+        {
+          "name": "/api/v1/auth/session/account",
+          "duration": 0.5999999046325684,
+          "encodedBodySize": 117,
+          "decodedBodySize": 117,
+          "transferSize": 417
+        },
+        {
+          "name": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion/me",
+          "duration": 0.7000002861022949,
+          "encodedBodySize": 83,
+          "decodedBodySize": 83,
+          "transferSize": 383
+        },
+        {
+          "name": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion",
+          "duration": 0.7999997138977051,
+          "encodedBodySize": 158,
+          "decodedBodySize": 158,
+          "transferSize": 458
+        }
+      ],
+      "v8_heap": {
+        "usedSize": 15836264,
+        "totalSize": 19824640,
+        "embedderHeapUsedSize": 37316168,
+        "backingStorageSize": 2815364
+      },
+      "dom": {
+        "documents": 18,
+        "nodes": 5563,
+        "jsEventListeners": 228
+      },
+      "network": [
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/be-vietnam-pro-400.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/literata-variable.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Stylesheet",
+          "url": "/pkg/vink.css",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/vink.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Image",
+          "url": "/pkg/brand/vpen-r1-lockup-light.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Image",
+          "url": "/pkg/brand/vpen-r1-lockup-dark.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Document",
+          "url": "/tac-pham/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 983462
+        },
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/be-vietnam-pro-600.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/expressions/bridge.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Manifest",
+          "url": "/pkg/brand/vpen-r1-manifest-light.webmanifest",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Other",
+          "url": "/pkg/brand/vpen-r1-mark-light.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Other",
+          "url": "/pkg/vink_bg.wasm",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 341115703
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/auth/session",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 205
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion/public",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 263
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/endorsements/me",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 356
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/auth/session/account",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 251
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion/me",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 216
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 292
+        }
+      ],
+      "cache_state": "warm process and bundle cache; new document URL or reload"
+    },
+    {
+      "case": "poem_tabs-200000",
+      "width": 390,
+      "scale": 200,
+      "ready_wall_ms": 549.2929159999994,
+      "navigation": {
+        "name": "http://127.0.0.1:55530/tac-pham/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 127.19999980926514,
+        "navigationId": 8360,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.2999997138977051,
+        "domainLookupStart": 0.2999997138977051,
+        "domainLookupEnd": 0.2999997138977051,
+        "connectStart": 0.2999997138977051,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.2999997138977051,
+        "requestStart": 0.6999998092651367,
+        "responseStart": 70.89999961853027,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 70.89999961853027,
+        "responseEnd": 73.39999961853027,
+        "transferSize": 983624,
+        "encodedBodySize": 983324,
+        "decodedBodySize": 983324,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 72.39999961853027,
+        "unloadEventEnd": 72.39999961853027,
+        "domInteractive": 84.7999997138977,
+        "domContentLoadedEventStart": 84.7999997138977,
+        "domContentLoadedEventEnd": 84.89999961853027,
+        "domComplete": 127.09999990463257,
+        "loadEventStart": 127.19999980926514,
+        "loadEventEnd": 127.19999980926514,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {}
+      },
+      "hydrated_flag_ms": 491.5,
+      "hydration_after_response_ms": 418.1000003814697,
+      "blocks": 782,
+      "body_text_scalars": 202343,
+      "inline_script_bytes": 484536,
+      "hydration_resource_script_bytes": 482660,
+      "inline_script_sizes": [
+        {
+          "id": "",
+          "type": "",
+          "bytes": 812
+        },
+        {
+          "id": "",
+          "type": "module",
+          "bytes": 285
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 104
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 482556
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 23
+        }
+      ],
+      "dom_elements": 997,
+      "font_size": "32px",
+      "horizontal_overflow": false,
+      "resources": [
+        {
+          "name": "/pkg/brand/vpen-r1-lockup-light.svg",
+          "duration": 0.3000001907348633,
+          "encodedBodySize": 13804,
+          "decodedBodySize": 13804,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-lockup-dark.svg",
+          "duration": 0.40000009536743164,
+          "encodedBodySize": 13785,
+          "decodedBodySize": 13785,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/fonts/be-vietnam-pro-400.woff2",
+          "duration": 0,
+          "encodedBodySize": 36464,
+          "decodedBodySize": 36464,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/fonts/literata-variable.woff2",
+          "duration": 0,
+          "encodedBodySize": 256620,
+          "decodedBodySize": 256620,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink.css",
+          "duration": 0,
+          "encodedBodySize": 147311,
+          "decodedBodySize": 147311,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink.js",
+          "duration": 0,
+          "encodedBodySize": 88064,
+          "decodedBodySize": 88064,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink_bg.wasm",
+          "duration": 332.40000009536743,
+          "encodedBodySize": 341115520,
+          "decodedBodySize": 341115520,
+          "transferSize": 341115820
+        },
+        {
+          "name": "/pkg/fonts/be-vietnam-pro-600.woff2",
+          "duration": 0,
+          "encodedBodySize": 38844,
+          "decodedBodySize": 38844,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-manifest-light.webmanifest",
+          "duration": 0.3000001907348633,
+          "encodedBodySize": 639,
+          "decodedBodySize": 639,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js",
+          "duration": 0,
+          "encodedBodySize": 345,
+          "decodedBodySize": 345,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js",
+          "duration": 0,
+          "encodedBodySize": 1125,
+          "decodedBodySize": 1125,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/expressions/bridge.js",
+          "duration": 0,
+          "encodedBodySize": 438,
+          "decodedBodySize": 438,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js",
+          "duration": 0,
+          "encodedBodySize": 14611,
+          "decodedBodySize": 14611,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-mark-light.svg",
+          "duration": 0.5,
+          "encodedBodySize": 8984,
+          "decodedBodySize": 8984,
+          "transferSize": 0
+        },
+        {
+          "name": "/api/v1/auth/session",
+          "duration": 0.7000002861022949,
+          "encodedBodySize": 72,
+          "decodedBodySize": 72,
+          "transferSize": 372
+        },
+        {
+          "name": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/endorsements/me",
+          "duration": 1.6000003814697266,
+          "encodedBodySize": 222,
+          "decodedBodySize": 222,
+          "transferSize": 522
+        },
+        {
+          "name": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion/public",
+          "duration": 1.0999999046325684,
+          "encodedBodySize": 129,
+          "decodedBodySize": 129,
+          "transferSize": 429
+        },
+        {
+          "name": "/api/v1/auth/session/account",
+          "duration": 0.5,
+          "encodedBodySize": 117,
+          "decodedBodySize": 117,
+          "transferSize": 417
+        },
+        {
+          "name": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion/me",
+          "duration": 0.8000001907348633,
+          "encodedBodySize": 83,
+          "decodedBodySize": 83,
+          "transferSize": 383
+        },
+        {
+          "name": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion",
+          "duration": 0.7000002861022949,
+          "encodedBodySize": 158,
+          "decodedBodySize": 158,
+          "transferSize": 458
+        }
+      ],
+      "v8_heap": {
+        "usedSize": 15467128,
+        "totalSize": 25919488,
+        "embedderHeapUsedSize": 55734600,
+        "backingStorageSize": 4503746
+      },
+      "dom": {
+        "documents": 27,
+        "nodes": 7768,
+        "jsEventListeners": 278
+      },
+      "network": [
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/be-vietnam-pro-400.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/literata-variable.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Stylesheet",
+          "url": "/pkg/vink.css",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/vink.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Image",
+          "url": "/pkg/brand/vpen-r1-lockup-light.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Image",
+          "url": "/pkg/brand/vpen-r1-lockup-dark.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Document",
+          "url": "/tac-pham/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 983462
+        },
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/be-vietnam-pro-600.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/expressions/bridge.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Manifest",
+          "url": "/pkg/brand/vpen-r1-manifest-light.webmanifest",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Other",
+          "url": "/pkg/brand/vpen-r1-mark-light.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Other",
+          "url": "/pkg/vink_bg.wasm",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 341115703
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/auth/session",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 205
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion/public",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 263
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/endorsements/me",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 356
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/auth/session/account",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 251
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion/me",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 216
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 292
+        }
+      ],
+      "cache_state": "warm process and bundle cache; new document URL or reload"
+    },
+    {
+      "case": "poem_tabs-200000",
+      "width": 1440,
+      "scale": 200,
+      "ready_wall_ms": 550.7454170000001,
+      "navigation": {
+        "name": "http://127.0.0.1:55530/tac-pham/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 116.59999990463257,
+        "navigationId": 6148,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.19999980926513672,
+        "domainLookupStart": 0.19999980926513672,
+        "domainLookupEnd": 0.19999980926513672,
+        "connectStart": 0.19999980926513672,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.19999980926513672,
+        "requestStart": 0.6999998092651367,
+        "responseStart": 69.80000019073486,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 69.80000019073486,
+        "responseEnd": 71.90000009536743,
+        "transferSize": 983624,
+        "encodedBodySize": 983324,
+        "decodedBodySize": 983324,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 71.40000009536743,
+        "unloadEventEnd": 71.40000009536743,
+        "domInteractive": 84.40000009536743,
+        "domContentLoadedEventStart": 84.5,
+        "domContentLoadedEventEnd": 84.5,
+        "domComplete": 116.59999990463257,
+        "loadEventStart": 116.59999990463257,
+        "loadEventEnd": 116.59999990463257,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {}
+      },
+      "hydrated_flag_ms": 474.80000019073486,
+      "hydration_after_response_ms": 402.90000009536743,
+      "blocks": 782,
+      "body_text_scalars": 202343,
+      "inline_script_bytes": 484536,
+      "hydration_resource_script_bytes": 482660,
+      "inline_script_sizes": [
+        {
+          "id": "",
+          "type": "",
+          "bytes": 812
+        },
+        {
+          "id": "",
+          "type": "module",
+          "bytes": 285
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 104
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 482556
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 23
+        }
+      ],
+      "dom_elements": 997,
+      "font_size": "32px",
+      "horizontal_overflow": false,
+      "resources": [
+        {
+          "name": "/pkg/brand/vpen-r1-lockup-light.svg",
+          "duration": 0.40000009536743164,
+          "encodedBodySize": 13804,
+          "decodedBodySize": 13804,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-lockup-dark.svg",
+          "duration": 0.40000009536743164,
+          "encodedBodySize": 13785,
+          "decodedBodySize": 13785,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/fonts/be-vietnam-pro-400.woff2",
+          "duration": 0,
+          "encodedBodySize": 36464,
+          "decodedBodySize": 36464,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/fonts/literata-variable.woff2",
+          "duration": 0,
+          "encodedBodySize": 256620,
+          "decodedBodySize": 256620,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink.css",
+          "duration": 0,
+          "encodedBodySize": 147311,
+          "decodedBodySize": 147311,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink.js",
+          "duration": 0,
+          "encodedBodySize": 88064,
+          "decodedBodySize": 88064,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink_bg.wasm",
+          "duration": 315.7000002861023,
+          "encodedBodySize": 341115520,
+          "decodedBodySize": 341115520,
+          "transferSize": 341115820
+        },
+        {
+          "name": "/pkg/fonts/be-vietnam-pro-600.woff2",
+          "duration": 0,
+          "encodedBodySize": 38844,
+          "decodedBodySize": 38844,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-manifest-light.webmanifest",
+          "duration": 0.39999961853027344,
+          "encodedBodySize": 639,
+          "decodedBodySize": 639,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js",
+          "duration": 0,
+          "encodedBodySize": 345,
+          "decodedBodySize": 345,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js",
+          "duration": 0,
+          "encodedBodySize": 1125,
+          "decodedBodySize": 1125,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/expressions/bridge.js",
+          "duration": 0,
+          "encodedBodySize": 438,
+          "decodedBodySize": 438,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js",
+          "duration": 0,
+          "encodedBodySize": 14611,
+          "decodedBodySize": 14611,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-mark-light.svg",
+          "duration": 0.40000009536743164,
+          "encodedBodySize": 8984,
+          "decodedBodySize": 8984,
+          "transferSize": 0
+        },
+        {
+          "name": "/api/v1/auth/session",
+          "duration": 0.7000002861022949,
+          "encodedBodySize": 72,
+          "decodedBodySize": 72,
+          "transferSize": 372
+        },
+        {
+          "name": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/endorsements/me",
+          "duration": 1.700000286102295,
+          "encodedBodySize": 222,
+          "decodedBodySize": 222,
+          "transferSize": 522
+        },
+        {
+          "name": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion/public",
+          "duration": 1.0999999046325684,
+          "encodedBodySize": 129,
+          "decodedBodySize": 129,
+          "transferSize": 429
+        },
+        {
+          "name": "/api/v1/auth/session/account",
+          "duration": 0.5,
+          "encodedBodySize": 117,
+          "decodedBodySize": 117,
+          "transferSize": 417
+        },
+        {
+          "name": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion/me",
+          "duration": 1,
+          "encodedBodySize": 83,
+          "decodedBodySize": 83,
+          "transferSize": 383
+        },
+        {
+          "name": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion",
+          "duration": 0.7999997138977051,
+          "encodedBodySize": 158,
+          "decodedBodySize": 158,
+          "transferSize": 458
+        }
+      ],
+      "v8_heap": {
+        "usedSize": 20963464,
+        "totalSize": 28475392,
+        "embedderHeapUsedSize": 81484400,
+        "backingStorageSize": 6191970
+      },
+      "dom": {
+        "documents": 36,
+        "nodes": 9973,
+        "jsEventListeners": 328
+      },
+      "network": [
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/be-vietnam-pro-400.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/literata-variable.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Stylesheet",
+          "url": "/pkg/vink.css",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/vink.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Image",
+          "url": "/pkg/brand/vpen-r1-lockup-light.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Image",
+          "url": "/pkg/brand/vpen-r1-lockup-dark.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Document",
+          "url": "/tac-pham/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 983462
+        },
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/be-vietnam-pro-600.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/expressions/bridge.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Manifest",
+          "url": "/pkg/brand/vpen-r1-manifest-light.webmanifest",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Other",
+          "url": "/pkg/brand/vpen-r1-mark-light.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Other",
+          "url": "/pkg/vink_bg.wasm",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 341115703
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/auth/session",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 205
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion/public",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 263
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/endorsements/me",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 356
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/auth/session/account",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 251
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 292
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81/discussion/me",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 216
+        }
+      ],
+      "cache_state": "warm process and bundle cache; new document URL or reload"
+    },
+    {
+      "case": "tiny_blocks-200000",
+      "width": 1440,
+      "scale": 100,
+      "ready_wall_ms": 3277.4125000000004,
+      "navigation": {
+        "name": "http://127.0.0.1:55530/tac-pham/ccbf1273-e40d-43ec-b31d-04b207491f30",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 1923.7000002861023,
+        "navigationId": 2428,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 1.8000001907348633,
+        "domainLookupStart": 1.8000001907348633,
+        "domainLookupEnd": 1.8000001907348633,
+        "connectStart": 1.8000001907348633,
+        "secureConnectionStart": 0,
+        "connectEnd": 1.8000001907348633,
+        "requestStart": 2.200000286102295,
+        "responseStart": 1030.0999999046326,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 1030.0999999046326,
+        "responseEnd": 1503.9000000953674,
+        "transferSize": 9020827,
+        "encodedBodySize": 9020527,
+        "decodedBodySize": 9020527,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 1915.5999999046326,
+        "domContentLoadedEventStart": 1915.7000002861023,
+        "domContentLoadedEventEnd": 1915.8000001907349,
+        "domComplete": 1923.5,
+        "loadEventStart": 1923.7000002861023,
+        "loadEventEnd": 1923.7000002861023,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {}
+      },
+      "hydrated_flag_ms": 3019,
+      "hydration_after_response_ms": 1515.0999999046326,
+      "blocks": 200000,
+      "body_text_scalars": 200000,
+      "inline_script_bytes": 4003606,
+      "hydration_resource_script_bytes": 4001730,
+      "inline_script_sizes": [
+        {
+          "id": "",
+          "type": "",
+          "bytes": 812
+        },
+        {
+          "id": "",
+          "type": "module",
+          "bytes": 285
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 104
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 4001626
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 23
+        }
+      ],
+      "dom_elements": 200215,
+      "font_size": "16px",
+      "horizontal_overflow": false,
+      "resources": [
+        {
+          "name": "/pkg/brand/vpen-r1-lockup-light.svg",
+          "duration": 0.40000009536743164,
+          "encodedBodySize": 13804,
+          "decodedBodySize": 13804,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-lockup-dark.svg",
+          "duration": 0.5,
+          "encodedBodySize": 13785,
+          "decodedBodySize": 13785,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/fonts/be-vietnam-pro-400.woff2",
+          "duration": 0,
+          "encodedBodySize": 36464,
+          "decodedBodySize": 36464,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/fonts/literata-variable.woff2",
+          "duration": 0,
+          "encodedBodySize": 256620,
+          "decodedBodySize": 256620,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink.css",
+          "duration": 0,
+          "encodedBodySize": 147311,
+          "decodedBodySize": 147311,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink.js",
+          "duration": 0,
+          "encodedBodySize": 88064,
+          "decodedBodySize": 88064,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink_bg.wasm",
+          "duration": 1475.3999996185303,
+          "encodedBodySize": 341115520,
+          "decodedBodySize": 341115520,
+          "transferSize": 341115820
+        },
+        {
+          "name": "/pkg/fonts/be-vietnam-pro-600.woff2",
+          "duration": 0,
+          "encodedBodySize": 38844,
+          "decodedBodySize": 38844,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-manifest-light.webmanifest",
+          "duration": 0.6000003814697266,
+          "encodedBodySize": 639,
+          "decodedBodySize": 639,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js",
+          "duration": 0,
+          "encodedBodySize": 345,
+          "decodedBodySize": 345,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js",
+          "duration": 0,
+          "encodedBodySize": 1125,
+          "decodedBodySize": 1125,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/expressions/bridge.js",
+          "duration": 0,
+          "encodedBodySize": 438,
+          "decodedBodySize": 438,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js",
+          "duration": 0,
+          "encodedBodySize": 14611,
+          "decodedBodySize": 14611,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-mark-light.svg",
+          "duration": 0.5,
+          "encodedBodySize": 8984,
+          "decodedBodySize": 8984,
+          "transferSize": 0
+        },
+        {
+          "name": "/api/v1/auth/session",
+          "duration": 0.8999996185302734,
+          "encodedBodySize": 72,
+          "decodedBodySize": 72,
+          "transferSize": 372
+        },
+        {
+          "name": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/endorsements/me",
+          "duration": 1.6999998092651367,
+          "encodedBodySize": 222,
+          "decodedBodySize": 222,
+          "transferSize": 522
+        },
+        {
+          "name": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/discussion/public",
+          "duration": 1.3000001907348633,
+          "encodedBodySize": 129,
+          "decodedBodySize": 129,
+          "transferSize": 429
+        }
+      ],
+      "v8_heap": {
+        "usedSize": 42882920,
+        "totalSize": 49987584,
+        "embedderHeapUsedSize": 780572256,
+        "backingStorageSize": 21786492
+      },
+      "dom": {
+        "documents": 18,
+        "nodes": 404003,
+        "jsEventListeners": 275
+      },
+      "network": [
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/be-vietnam-pro-400.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/literata-variable.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Stylesheet",
+          "url": "/pkg/vink.css",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/vink.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Image",
+          "url": "/pkg/brand/vpen-r1-lockup-light.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Image",
+          "url": "/pkg/brand/vpen-r1-lockup-dark.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/be-vietnam-pro-600.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Manifest",
+          "url": "/pkg/brand/vpen-r1-manifest-light.webmanifest",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Document",
+          "url": "/tac-pham/ccbf1273-e40d-43ec-b31d-04b207491f30",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 9020666
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/expressions/bridge.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Other",
+          "url": "/pkg/brand/vpen-r1-mark-light.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Other",
+          "url": "/pkg/vink_bg.wasm",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 341115703
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/auth/session",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 205
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/discussion/public",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 263
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/endorsements/me",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 356
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/auth/session/account",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 251
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/discussion",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 292
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/discussion/me",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 216
+        }
+      ],
+      "cache_state": "warm process and bundle cache; new document URL or reload"
+    },
+    {
+      "case": "tiny_blocks-200000",
+      "width": 390,
+      "scale": 100,
+      "ready_wall_ms": 3228.956415999999,
+      "navigation": {
+        "name": "http://127.0.0.1:55530/tac-pham/ccbf1273-e40d-43ec-b31d-04b207491f30",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 1896.4000000953674,
+        "navigationId": 8408,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.19999980926513672,
+        "domainLookupStart": 0.19999980926513672,
+        "domainLookupEnd": 0.19999980926513672,
+        "connectStart": 0.19999980926513672,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.19999980926513672,
+        "requestStart": 1.0999999046325684,
+        "responseStart": 963.6999998092651,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 963.6999998092651,
+        "responseEnd": 1465,
+        "transferSize": 9020827,
+        "encodedBodySize": 9020527,
+        "decodedBodySize": 9020527,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 965.4000000953674,
+        "unloadEventEnd": 965.4000000953674,
+        "domInteractive": 1888.5,
+        "domContentLoadedEventStart": 1888.5999999046326,
+        "domContentLoadedEventEnd": 1888.5999999046326,
+        "domComplete": 1896.0999999046326,
+        "loadEventStart": 1896.4000000953674,
+        "loadEventEnd": 1896.4000000953674,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {}
+      },
+      "hydrated_flag_ms": 2960.2999997138977,
+      "hydration_after_response_ms": 1495.2999997138977,
+      "blocks": 200000,
+      "body_text_scalars": 200000,
+      "inline_script_bytes": 4003606,
+      "hydration_resource_script_bytes": 4001730,
+      "inline_script_sizes": [
+        {
+          "id": "",
+          "type": "",
+          "bytes": 812
+        },
+        {
+          "id": "",
+          "type": "module",
+          "bytes": 285
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 104
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 4001626
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 23
+        }
+      ],
+      "dom_elements": 200215,
+      "font_size": "16px",
+      "horizontal_overflow": false,
+      "resources": [
+        {
+          "name": "/pkg/brand/vpen-r1-lockup-light.svg",
+          "duration": 0.5999999046325684,
+          "encodedBodySize": 13804,
+          "decodedBodySize": 13804,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-lockup-dark.svg",
+          "duration": 0.5999999046325684,
+          "encodedBodySize": 13785,
+          "decodedBodySize": 13785,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/fonts/be-vietnam-pro-400.woff2",
+          "duration": 0,
+          "encodedBodySize": 36464,
+          "decodedBodySize": 36464,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/fonts/literata-variable.woff2",
+          "duration": 0,
+          "encodedBodySize": 256620,
+          "decodedBodySize": 256620,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink.css",
+          "duration": 0,
+          "encodedBodySize": 147311,
+          "decodedBodySize": 147311,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink.js",
+          "duration": 0,
+          "encodedBodySize": 88064,
+          "decodedBodySize": 88064,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink_bg.wasm",
+          "duration": 1438.5,
+          "encodedBodySize": 341115520,
+          "decodedBodySize": 341115520,
+          "transferSize": 341115820
+        },
+        {
+          "name": "/pkg/fonts/be-vietnam-pro-600.woff2",
+          "duration": 0,
+          "encodedBodySize": 38844,
+          "decodedBodySize": 38844,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-manifest-light.webmanifest",
+          "duration": 0.40000009536743164,
+          "encodedBodySize": 639,
+          "decodedBodySize": 639,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js",
+          "duration": 0,
+          "encodedBodySize": 345,
+          "decodedBodySize": 345,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js",
+          "duration": 0,
+          "encodedBodySize": 1125,
+          "decodedBodySize": 1125,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/expressions/bridge.js",
+          "duration": 0,
+          "encodedBodySize": 438,
+          "decodedBodySize": 438,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js",
+          "duration": 0,
+          "encodedBodySize": 14611,
+          "decodedBodySize": 14611,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-mark-light.svg",
+          "duration": 0.5999999046325684,
+          "encodedBodySize": 8984,
+          "decodedBodySize": 8984,
+          "transferSize": 0
+        },
+        {
+          "name": "/api/v1/auth/session",
+          "duration": 0.7999997138977051,
+          "encodedBodySize": 72,
+          "decodedBodySize": 72,
+          "transferSize": 372
+        },
+        {
+          "name": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/endorsements/me",
+          "duration": 1.5,
+          "encodedBodySize": 222,
+          "decodedBodySize": 222,
+          "transferSize": 522
+        },
+        {
+          "name": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/discussion/public",
+          "duration": 1.1000003814697266,
+          "encodedBodySize": 129,
+          "decodedBodySize": 129,
+          "transferSize": 429
+        }
+      ],
+      "v8_heap": {
+        "usedSize": 54481560,
+        "totalSize": 65142784,
+        "embedderHeapUsedSize": 1567905464,
+        "backingStorageSize": 25585058
+      },
+      "dom": {
+        "documents": 23,
+        "nodes": 803929,
+        "jsEventListeners": 191
+      },
+      "network": [
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/be-vietnam-pro-400.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/literata-variable.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Stylesheet",
+          "url": "/pkg/vink.css",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/vink.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Image",
+          "url": "/pkg/brand/vpen-r1-lockup-light.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Image",
+          "url": "/pkg/brand/vpen-r1-lockup-dark.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/be-vietnam-pro-600.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Manifest",
+          "url": "/pkg/brand/vpen-r1-manifest-light.webmanifest",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Document",
+          "url": "/tac-pham/ccbf1273-e40d-43ec-b31d-04b207491f30",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 9020666
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/expressions/bridge.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Other",
+          "url": "/pkg/brand/vpen-r1-mark-light.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Other",
+          "url": "/pkg/vink_bg.wasm",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 341115703
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/auth/session",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 205
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/discussion/public",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 263
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/endorsements/me",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 356
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/auth/session/account",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 251
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/discussion",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 292
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/discussion/me",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 216
+        }
+      ],
+      "cache_state": "warm process and bundle cache; new document URL or reload"
+    },
+    {
+      "case": "tiny_blocks-200000",
+      "width": 390,
+      "scale": 200,
+      "ready_wall_ms": 3843.0655000000006,
+      "navigation": {
+        "name": "http://127.0.0.1:55530/tac-pham/ccbf1273-e40d-43ec-b31d-04b207491f30",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 2318.4000000953674,
+        "navigationId": 2790,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.20000028610229492,
+        "domainLookupStart": 0.20000028610229492,
+        "domainLookupEnd": 0.20000028610229492,
+        "connectStart": 0.20000028610229492,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.20000028610229492,
+        "requestStart": 0.7000002861022949,
+        "responseStart": 973.7000002861023,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 973.7000002861023,
+        "responseEnd": 1606.4000000953674,
+        "transferSize": 9020827,
+        "encodedBodySize": 9020527,
+        "decodedBodySize": 9020527,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 984.1000003814697,
+        "unloadEventEnd": 984.1000003814697,
+        "domInteractive": 1916.2000002861023,
+        "domContentLoadedEventStart": 1916.3000001907349,
+        "domContentLoadedEventEnd": 1916.3000001907349,
+        "domComplete": 2318,
+        "loadEventStart": 2318.4000000953674,
+        "loadEventEnd": 2318.4000000953674,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {}
+      },
+      "hydrated_flag_ms": 3577.2000002861023,
+      "hydration_after_response_ms": 1970.8000001907349,
+      "blocks": 200000,
+      "body_text_scalars": 200000,
+      "inline_script_bytes": 4003606,
+      "hydration_resource_script_bytes": 4001730,
+      "inline_script_sizes": [
+        {
+          "id": "",
+          "type": "",
+          "bytes": 812
+        },
+        {
+          "id": "",
+          "type": "module",
+          "bytes": 285
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 104
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 4001626
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 23
+        }
+      ],
+      "dom_elements": 200215,
+      "font_size": "32px",
+      "horizontal_overflow": false,
+      "resources": [
+        {
+          "name": "/pkg/brand/vpen-r1-lockup-light.svg",
+          "duration": 0.6999998092651367,
+          "encodedBodySize": 13804,
+          "decodedBodySize": 13804,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-lockup-dark.svg",
+          "duration": 0.5999999046325684,
+          "encodedBodySize": 13785,
+          "decodedBodySize": 13785,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/fonts/be-vietnam-pro-400.woff2",
+          "duration": 0,
+          "encodedBodySize": 36464,
+          "decodedBodySize": 36464,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/fonts/literata-variable.woff2",
+          "duration": 0,
+          "encodedBodySize": 256620,
+          "decodedBodySize": 256620,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink.css",
+          "duration": 0,
+          "encodedBodySize": 147311,
+          "decodedBodySize": 147311,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink.js",
+          "duration": 0,
+          "encodedBodySize": 88064,
+          "decodedBodySize": 88064,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink_bg.wasm",
+          "duration": 2037.9000000953674,
+          "encodedBodySize": 341115520,
+          "decodedBodySize": 341115520,
+          "transferSize": 341115820
+        },
+        {
+          "name": "/pkg/fonts/be-vietnam-pro-600.woff2",
+          "duration": 0,
+          "encodedBodySize": 38844,
+          "decodedBodySize": 38844,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-manifest-light.webmanifest",
+          "duration": 1.6999998092651367,
+          "encodedBodySize": 639,
+          "decodedBodySize": 639,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js",
+          "duration": 0,
+          "encodedBodySize": 345,
+          "decodedBodySize": 345,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js",
+          "duration": 0,
+          "encodedBodySize": 1125,
+          "decodedBodySize": 1125,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/expressions/bridge.js",
+          "duration": 0,
+          "encodedBodySize": 438,
+          "decodedBodySize": 438,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js",
+          "duration": 0,
+          "encodedBodySize": 14611,
+          "decodedBodySize": 14611,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-mark-light.svg",
+          "duration": 1.1999998092651367,
+          "encodedBodySize": 8984,
+          "decodedBodySize": 8984,
+          "transferSize": 0
+        },
+        {
+          "name": "/api/v1/auth/session",
+          "duration": 0.8000001907348633,
+          "encodedBodySize": 72,
+          "decodedBodySize": 72,
+          "transferSize": 372
+        },
+        {
+          "name": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/endorsements/me",
+          "duration": 2,
+          "encodedBodySize": 222,
+          "decodedBodySize": 222,
+          "transferSize": 522
+        },
+        {
+          "name": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/discussion/public",
+          "duration": 1.0999999046325684,
+          "encodedBodySize": 129,
+          "decodedBodySize": 129,
+          "transferSize": 429
+        }
+      ],
+      "v8_heap": {
+        "usedSize": 75687312,
+        "totalSize": 78790656,
+        "embedderHeapUsedSize": 1327318296,
+        "backingStorageSize": 29586299
+      },
+      "dom": {
+        "documents": 22,
+        "nodes": 1204297,
+        "jsEventListeners": 146
+      },
+      "network": [
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/be-vietnam-pro-400.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/literata-variable.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Stylesheet",
+          "url": "/pkg/vink.css",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/vink.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Image",
+          "url": "/pkg/brand/vpen-r1-lockup-light.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Image",
+          "url": "/pkg/brand/vpen-r1-lockup-dark.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/be-vietnam-pro-600.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Manifest",
+          "url": "/pkg/brand/vpen-r1-manifest-light.webmanifest",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Document",
+          "url": "/tac-pham/ccbf1273-e40d-43ec-b31d-04b207491f30",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 9020666
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/expressions/bridge.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Other",
+          "url": "/pkg/brand/vpen-r1-mark-light.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Other",
+          "url": "/pkg/vink_bg.wasm",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 341115703
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/auth/session",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 205
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/discussion/public",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 263
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/endorsements/me",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 356
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/auth/session/account",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 251
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/discussion/me",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 216
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/discussion",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 292
+        }
+      ],
+      "cache_state": "warm process and bundle cache; new document URL or reload"
+    },
+    {
+      "case": "tiny_blocks-200000",
+      "width": 1440,
+      "scale": 200,
+      "ready_wall_ms": 3831.358207999998,
+      "navigation": {
+        "name": "http://127.0.0.1:55530/tac-pham/ccbf1273-e40d-43ec-b31d-04b207491f30",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 2400.300000190735,
+        "navigationId": 5222,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.40000009536743164,
+        "domainLookupStart": 0.40000009536743164,
+        "domainLookupEnd": 0.40000009536743164,
+        "connectStart": 0.40000009536743164,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.40000009536743164,
+        "requestStart": 1,
+        "responseStart": 1051.6000003814697,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 1051.6000003814697,
+        "responseEnd": 1571.2000002861023,
+        "transferSize": 9020827,
+        "encodedBodySize": 9020527,
+        "decodedBodySize": 9020527,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 1053.2000002861023,
+        "unloadEventEnd": 1053.2000002861023,
+        "domInteractive": 1990,
+        "domContentLoadedEventStart": 1990.1000003814697,
+        "domContentLoadedEventEnd": 1990.2000002861023,
+        "domComplete": 2399.9000000953674,
+        "loadEventStart": 2400.300000190735,
+        "loadEventEnd": 2400.300000190735,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {}
+      },
+      "hydrated_flag_ms": 3588,
+      "hydration_after_response_ms": 2016.7999997138977,
+      "blocks": 200000,
+      "body_text_scalars": 200000,
+      "inline_script_bytes": 4003606,
+      "hydration_resource_script_bytes": 4001730,
+      "inline_script_sizes": [
+        {
+          "id": "",
+          "type": "",
+          "bytes": 812
+        },
+        {
+          "id": "",
+          "type": "module",
+          "bytes": 285
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 252
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 104
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 4001626
+        },
+        {
+          "id": "",
+          "type": "",
+          "bytes": 23
+        }
+      ],
+      "dom_elements": 200215,
+      "font_size": "32px",
+      "horizontal_overflow": false,
+      "resources": [
+        {
+          "name": "/pkg/brand/vpen-r1-lockup-light.svg",
+          "duration": 0.5,
+          "encodedBodySize": 13804,
+          "decodedBodySize": 13804,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-lockup-dark.svg",
+          "duration": 0.5999999046325684,
+          "encodedBodySize": 13785,
+          "decodedBodySize": 13785,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/fonts/be-vietnam-pro-400.woff2",
+          "duration": 0,
+          "encodedBodySize": 36464,
+          "decodedBodySize": 36464,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/fonts/literata-variable.woff2",
+          "duration": 0,
+          "encodedBodySize": 256620,
+          "decodedBodySize": 256620,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink.css",
+          "duration": 0,
+          "encodedBodySize": 147311,
+          "decodedBodySize": 147311,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink.js",
+          "duration": 0,
+          "encodedBodySize": 88064,
+          "decodedBodySize": 88064,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/vink_bg.wasm",
+          "duration": 1969.3999996185303,
+          "encodedBodySize": 341115520,
+          "decodedBodySize": 341115520,
+          "transferSize": 341115820
+        },
+        {
+          "name": "/pkg/fonts/be-vietnam-pro-600.woff2",
+          "duration": 0,
+          "encodedBodySize": 38844,
+          "decodedBodySize": 38844,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-manifest-light.webmanifest",
+          "duration": 0.5,
+          "encodedBodySize": 639,
+          "decodedBodySize": 639,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js",
+          "duration": 0,
+          "encodedBodySize": 345,
+          "decodedBodySize": 345,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js",
+          "duration": 0,
+          "encodedBodySize": 1125,
+          "decodedBodySize": 1125,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/expressions/bridge.js",
+          "duration": 0,
+          "encodedBodySize": 438,
+          "decodedBodySize": 438,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js",
+          "duration": 0,
+          "encodedBodySize": 14611,
+          "decodedBodySize": 14611,
+          "transferSize": 0
+        },
+        {
+          "name": "/pkg/brand/vpen-r1-mark-light.svg",
+          "duration": 0.40000009536743164,
+          "encodedBodySize": 8984,
+          "decodedBodySize": 8984,
+          "transferSize": 0
+        },
+        {
+          "name": "/api/v1/auth/session",
+          "duration": 0.7000002861022949,
+          "encodedBodySize": 72,
+          "decodedBodySize": 72,
+          "transferSize": 372
+        },
+        {
+          "name": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/endorsements/me",
+          "duration": 1.4000000953674316,
+          "encodedBodySize": 222,
+          "decodedBodySize": 222,
+          "transferSize": 522
+        },
+        {
+          "name": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/discussion/public",
+          "duration": 1.0999999046325684,
+          "encodedBodySize": 129,
+          "decodedBodySize": 129,
+          "transferSize": 429
+        }
+      ],
+      "v8_heap": {
+        "usedSize": 92837496,
+        "totalSize": 99401728,
+        "embedderHeapUsedSize": 2186430760,
+        "backingStorageSize": 33589100
+      },
+      "dom": {
+        "documents": 25,
+        "nodes": 1604561,
+        "jsEventListeners": 193
+      },
+      "network": [
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/be-vietnam-pro-400.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/literata-variable.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Stylesheet",
+          "url": "/pkg/vink.css",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/vink.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Image",
+          "url": "/pkg/brand/vpen-r1-lockup-light.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Image",
+          "url": "/pkg/brand/vpen-r1-lockup-dark.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Font",
+          "url": "/pkg/fonts/be-vietnam-pro-600.woff2",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Manifest",
+          "url": "/pkg/brand/vpen-r1-manifest-light.webmanifest",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Document",
+          "url": "/tac-pham/ccbf1273-e40d-43ec-b31d-04b207491f30",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 9020666
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-patterns-07001ef1e5e58d58/inline0.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/editor/bridge.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/expressions/bridge.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Script",
+          "url": "/pkg/snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Other",
+          "url": "/pkg/brand/vpen-r1-mark-light.svg",
+          "status": 200,
+          "fromDiskCache": true,
+          "encodedDataLength": 0
+        },
+        {
+          "type": "Other",
+          "url": "/pkg/vink_bg.wasm",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 341115703
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/auth/session",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 205
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/discussion/public",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 263
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/endorsements/me",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 356
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/auth/session/account",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 251
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/discussion/me",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 216
+        },
+        {
+          "type": "Fetch",
+          "url": "/api/v1/works/ccbf1273-e40d-43ec-b31d-04b207491f30/discussion",
+          "status": 200,
+          "fromDiskCache": false,
+          "encodedDataLength": 292
+        }
+      ],
+      "cache_state": "warm process and bundle cache; new document URL or reload"
+    }
+  ],
+  "editor": [
+    {
+      "case": "vi_nfd-30000",
+      "snapshots": [
+        {
+          "ms": 0,
+          "utf8_bytes": 67827,
+          "utf16_units": 30000
+        },
+        {
+          "ms": 0,
+          "utf8_bytes": 67827,
+          "utf16_units": 30000
+        },
+        {
+          "ms": 0,
+          "utf8_bytes": 67827,
+          "utf16_units": 30000
+        },
+        {
+          "ms": 0,
+          "utf8_bytes": 67827,
+          "utf16_units": 30000
+        },
+        {
+          "ms": 0,
+          "utf8_bytes": 67827,
+          "utf16_units": 30000
+        }
+      ],
+      "dom": {
+        "documents": 10,
+        "nodes": 1330,
+        "jsEventListeners": 175
+      },
+      "v8_heap": {
+        "usedSize": 7280812,
+        "totalSize": 9633792,
+        "embedderHeapUsedSize": 16469768,
+        "backingStorageSize": 484962
+      },
+      "scenes": [
+        {
+          "width": 1440,
+          "scale": 100,
+          "same_view": true,
+          "same_text": true,
+          "same_selection": true,
+          "rendered_cm_lines": 1,
+          "total_lines": 1,
+          "horizontal_overflow": false
+        },
+        {
+          "width": 390,
+          "scale": 100,
+          "same_view": true,
+          "same_text": true,
+          "same_selection": true,
+          "rendered_cm_lines": 1,
+          "total_lines": 1,
+          "horizontal_overflow": false
+        },
+        {
+          "width": 390,
+          "scale": 200,
+          "same_view": true,
+          "same_text": true,
+          "same_selection": true,
+          "rendered_cm_lines": 1,
+          "total_lines": 1,
+          "horizontal_overflow": false
+        },
+        {
+          "width": 1440,
+          "scale": 200,
+          "same_view": true,
+          "same_text": true,
+          "same_selection": true,
+          "rendered_cm_lines": 1,
+          "total_lines": 1,
+          "horizontal_overflow": false
+        }
+      ],
+      "manual_save_wall_ms": 144.0023329999999,
+      "save_status": "saved",
+      "manual_save_requests": [
+        {
+          "path": "/api/v1/drafts/96cd9c30-2688-4974-9e8f-fb91485f9eae",
+          "post_data_bytes": 67952
+        }
+      ],
+      "ime_simulation": "CDP composition followed by committed insertion",
+      "stale_status": 409,
+      "ui_conflict_preserves_buffer": true,
+      "final_v8_heap": {
+        "usedSize": 8334568,
+        "totalSize": 10944512,
+        "embedderHeapUsedSize": 7314120,
+        "backingStorageSize": 579477
+      },
+      "final_heap_includes_test_expected_and_preserved_buffer_copies": true
+    },
+    {
+      "case": "poem_tabs-200000",
+      "snapshots": [
+        {
+          "ms": 0.09999990463256836,
+          "utf8_bytes": 452014,
+          "utf16_units": 203905
+        },
+        {
+          "ms": 0.10000038146972656,
+          "utf8_bytes": 452014,
+          "utf16_units": 203905
+        },
+        {
+          "ms": 0,
+          "utf8_bytes": 452014,
+          "utf16_units": 203905
+        },
+        {
+          "ms": 0,
+          "utf8_bytes": 452014,
+          "utf16_units": 203905
+        },
+        {
+          "ms": 0,
+          "utf8_bytes": 452014,
+          "utf16_units": 203905
+        }
+      ],
+      "dom": {
+        "documents": 22,
+        "nodes": 7642,
+        "jsEventListeners": 224
+      },
+      "v8_heap": {
+        "usedSize": 15059088,
+        "totalSize": 26902528,
+        "embedderHeapUsedSize": 15173368,
+        "backingStorageSize": 5921341
+      },
+      "scenes": [
+        {
+          "width": 1440,
+          "scale": 100,
+          "same_view": true,
+          "same_text": true,
+          "same_selection": true,
+          "rendered_cm_lines": 17,
+          "total_lines": 3906,
+          "horizontal_overflow": false
+        },
+        {
+          "width": 390,
+          "scale": 100,
+          "same_view": true,
+          "same_text": true,
+          "same_selection": true,
+          "rendered_cm_lines": 17,
+          "total_lines": 3906,
+          "horizontal_overflow": false
+        },
+        {
+          "width": 390,
+          "scale": 200,
+          "same_view": true,
+          "same_text": true,
+          "same_selection": true,
+          "rendered_cm_lines": 3,
+          "total_lines": 3906,
+          "horizontal_overflow": false
+        },
+        {
+          "width": 1440,
+          "scale": 200,
+          "same_view": true,
+          "same_text": true,
+          "same_selection": true,
+          "rendered_cm_lines": 9,
+          "total_lines": 3906,
+          "horizontal_overflow": false
+        }
+      ],
+      "manual_save_wall_ms": 185.0929589999996,
+      "save_status": "saved",
+      "manual_save_requests": [
+        {
+          "path": "/api/v1/drafts/74ee6efc-4f2d-4d68-8ff4-5a2500abfe81",
+          "post_data_bytes": 470108
+        }
+      ],
+      "ime_simulation": "CDP composition followed by committed insertion",
+      "stale_status": 409,
+      "ui_conflict_preserves_buffer": true,
+      "final_v8_heap": {
+        "usedSize": 14420924,
+        "totalSize": 27541504,
+        "embedderHeapUsedSize": 14197248,
+        "backingStorageSize": 4272549
+      },
+      "final_heap_includes_test_expected_and_preserved_buffer_copies": true
+    },
+    {
+      "case": "tiny_blocks-200000",
+      "snapshots": [
+        {
+          "ms": 8,
+          "utf8_bytes": 599998,
+          "utf16_units": 599998
+        },
+        {
+          "ms": 3.5,
+          "utf8_bytes": 599998,
+          "utf16_units": 599998
+        },
+        {
+          "ms": 3.299999713897705,
+          "utf8_bytes": 599998,
+          "utf16_units": 599998
+        },
+        {
+          "ms": 3.5,
+          "utf8_bytes": 599998,
+          "utf16_units": 599998
+        },
+        {
+          "ms": 3.5,
+          "utf8_bytes": 599998,
+          "utf16_units": 599998
+        }
+      ],
+      "dom": {
+        "documents": 34,
+        "nodes": 1605420,
+        "jsEventListeners": 321
+      },
+      "v8_heap": {
+        "usedSize": 119264316,
+        "totalSize": 126107648,
+        "embedderHeapUsedSize": 2187545976,
+        "backingStorageSize": 37398360
+      },
+      "scenes": [
+        {
+          "width": 1440,
+          "scale": 100,
+          "same_view": true,
+          "same_text": true,
+          "same_selection": true,
+          "rendered_cm_lines": 39,
+          "total_lines": 399999,
+          "horizontal_overflow": false
+        },
+        {
+          "width": 390,
+          "scale": 100,
+          "same_view": true,
+          "same_text": true,
+          "same_selection": true,
+          "rendered_cm_lines": 39,
+          "total_lines": 399999,
+          "horizontal_overflow": false
+        },
+        {
+          "width": 390,
+          "scale": 200,
+          "same_view": true,
+          "same_text": true,
+          "same_selection": true,
+          "rendered_cm_lines": 39,
+          "total_lines": 399999,
+          "horizontal_overflow": false
+        },
+        {
+          "width": 1440,
+          "scale": 200,
+          "same_view": true,
+          "same_text": true,
+          "same_selection": true,
+          "rendered_cm_lines": 11,
+          "total_lines": 399999,
+          "horizontal_overflow": false
+        }
+      ],
+      "manual_save_wall_ms": 441.2824999999975,
+      "save_status": "failed",
+      "manual_save_requests": [
+        {
+          "path": "/api/v1/drafts/ccbf1273-e40d-43ec-b31d-04b207491f30",
+          "post_data_bytes": 3200118
+        }
+      ],
+      "ime_simulation": "CDP composition followed by committed insertion",
+      "stale_status": 409,
+      "final_v8_heap": {
+        "usedSize": 142097724,
+        "totalSize": 200671232,
+        "embedderHeapUsedSize": 3933903944,
+        "backingStorageSize": 24376518
+      },
+      "final_heap_includes_test_expected_and_preserved_buffer_copies": true
+    }
+  ],
+  "browser": {
+    "protocolVersion": "1.3",
+    "product": "Chrome/157.0.8103.78",
+    "revision": "@4b3d0dabb8250b6f152d2d85d79e7706e309d087",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+    "jsVersion": "15.7.112.43"
+  },
+  "not_run": [
+    "physical mobile hardware",
+    "OS Telex/VNI IME",
+    "Safari/Firefox",
+    "browser process RSS/total WASM memory",
+    "OS/PostgreSQL page-cache cold restart"
+  ]
+}
