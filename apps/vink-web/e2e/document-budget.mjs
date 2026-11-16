@@ -2,11 +2,12 @@
 // SQLx scratch database. Timings are observations, never mobile SLAs or CI thresholds.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 export async function documentBudget(page, { args, check }) {
   const dir = dirname(args.state);
   const fixtures = JSON.parse(readFileSync(join(dir, 'fixtures.json'), 'utf8'));
-  const results = { status: 'RUNNING', boundary: 'desktop Chrome headless; synthetic CDP input; local debug WASM', reader: [], editor: [] };
+  const results = { status: 'RUNNING', source_sha: execFileSync('git', ['rev-parse', 'HEAD'], {encoding:'utf8'}).trim(), boundary: 'desktop Chrome headless; synthetic CDP input; local debug WASM', reader: [], editor: [] };
   const flush = () => writeFileSync(join(dir, 'browser.json'), JSON.stringify(results, null, 2));
   const view = `document.querySelector('.cm-content').cmTile.root.view`;
   const ready = `document.documentElement.dataset.hydrated === 'true'`;
@@ -92,10 +93,35 @@ export async function documentBudget(page, { args, check }) {
         const t=performance.now(),text=m.getText({view:__budgetView,destroyed:false});
         return {ms:performance.now()-t,utf8_bytes:new TextEncoder().encode(text).length,utf16_units:text.length};});})()`);
       const row = { case: fixture.case, snapshots, dom: await page.send('Memory.getDOMCounters'), v8_heap: await page.send('Runtime.getHeapUsage'), scenes: [] };
+      if (fixture.case === 'emoji-200000') {
+        row.oversized_cache = await page.eval(String.raw`(async()=>{
+          const bundle=await(await fetch('/pkg/vink.js')).text();
+          const path=bundle.match(/['"](\.\/snippets\/[^'"]+\/public-cache\/indexeddb.js)['"]/)[1];
+          const pc=await import(new URL(path,location.origin+'/pkg/vink.js'));
+          const notOpened=!(await indexedDB.databases()).some(d=>d.name===pc.DATABASE);
+          const work=location.pathname.split('/').pop();
+          const publication=await fetch('/api/v1/works/'+work+'/publication').then(r=>r.json());
+          const text=JSON.stringify({schema:1,origin:location.origin,policy:'public-snapshot-v1',key:{Reader:work},
+            provenance:'origin_response',validated_at_ms:Date.now(),payload:{kind:'published',data:publication}});
+          const adapters=[];
+          for(const Adapter of [pc.MemoryStorage,pc.NoOpStorage,pc.IndexedDbStorage]) {
+            const storage=new Adapter(),ticket=await storage.run({kind:'capture'});
+            const ack=await storage.run({kind:'write',ticket,text});
+            const restored=await storage.run({kind:'read',ticket,key:pc.keyOf({Reader:work})});
+            adapters.push({adapter:Adapter.name,durable_ack:ack===true,miss:restored===null});storage.close?.();
+          }
+          return {production_gate_kept_closed:notOpened,bytes:new TextEncoder().encode(text).length,
+            record_limit:pc.LIMITS.record,decode_miss:pc.decode(text)===null,adapters};
+        })()`);
+        check(row.oversized_cache.production_gate_kept_closed && row.oversized_cache.decode_miss
+          && row.oversized_cache.adapters.every(a=>!a.durable_ack && a.miss), 'oversized valid public record: closed rollout gate, cache miss, no fake durable ACK');
+      }
       for (const [width, scale] of [[1440, 100], [390, 100], [390, 200], [1440, 200]]) {
         await page.viewport(width);
         const scene = await page.eval(`(async()=>{document.documentElement.style.fontSize='${16 * scale / 100}px';
-          const v=__budgetView,mid=Math.floor(v.state.doc.length/2);v.dispatch({selection:{anchor:mid,head:mid+1}});
+          const v=__budgetView,mid=Math.floor(v.state.doc.length/2);v.focus();
+          await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+          v.dispatch({selection:{anchor:mid,head:mid+1}});
           await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
           const held=v.state.selection.toJSON(),raw=v.state.doc.toString();
           document.querySelector('#preview').click();await new Promise(r=>requestAnimationFrame(r));
