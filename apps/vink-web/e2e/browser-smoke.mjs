@@ -4303,8 +4303,10 @@ async function mainPhase(page) {
   await endorsementAsAuthor(page, { args, check });
   await adaptiveShell(page);
   await bottomNavigationRegression(page);
+  // The nav matrix persists its last page-theme choice; later main steps start from the
+  // system preference that adaptiveShell restored, not from a leaked explicit theme.
   await page.viewport(1440, 900);
-  await page.eval(`document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme; scrollTo(0, 0)`);
+  await page.eval(`localStorage.removeItem('vink.ui.theme'); document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme; scrollTo(0, 0)`);
   await authorWorks(page, {args,check,DraftGate,sleep});
   await draftDashboard(page);
   await draftR6Hierarchy(page);
