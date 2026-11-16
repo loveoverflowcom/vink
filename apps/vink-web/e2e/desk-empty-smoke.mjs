@@ -17,8 +17,10 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
   };
   const geometry = [];
   const network = [];
+  let loader;
   const listen = event => {
     if (event.sessionId === page.sessionId && event.method === 'Network.requestWillBeSent'
+        && event.params.loaderId === loader
         && new URL(event.params.request.url).pathname.startsWith('/pkg/empty/')) {
       network.push(event.params.request.url);
     }
@@ -30,6 +32,7 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
   try {
     await page.viewport(390);
     await page.goto(args.base + '/ban-viet');
+    loader = (await page.send('Page.getFrameTree')).frameTree.frame.loaderId;
     const initial = await gate.next('gets');
     await page.waitFor(`document.querySelector('[data-testid=draft-loading]')`, 'held initial read');
     check(network.length === 0 && await page.eval(`!document.querySelector('[data-testid=draft-empty], [data-testid=draft-no-results], #create-draft')`), '#259 loading requests no artwork and claims no empty corpus');
@@ -55,6 +58,7 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
         await page.eval(`document.querySelector(${JSON.stringify(target + ' img')}).decode()`);
         check(await page.eval(`(() => {const root=document.querySelector(${JSON.stringify(target)}),img=root.querySelector('img'); return root.querySelectorAll('img').length===1 && img.getAttribute('src')==='/pkg/empty/vink-empty-${state}.webp' && img.naturalWidth===512 && img.naturalHeight===427 && img.alt==='' && !root.querySelector('h2,h3,.vk-ui-panel') && document.querySelectorAll('#drafts [role=status]').length===1 && document.querySelectorAll('#create-draft').length===1;})()`), `#259 ${state}: shared artwork, decoded dimensions, decoration and one result status/create target`);
       }
+      const beforeMatrix = network.length;
       for (const width of [320, 390, 834, 1440]) for (const theme of ['light', 'dark']) for (const scale of [100, 200]) {
         await page.viewport(width);
         await page.eval(`document.documentElement.dataset.theme='${theme}'; document.documentElement.style.fontSize='${scale}%'; scrollTo(0,0); document.activeElement?.blur()`);
@@ -76,6 +80,7 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
         check(await page.eval(`(() => {const p=document.querySelector('.vk-desk-privacy'),r=p.getBoundingClientRect(),b=document.querySelector('.vk-ui-bottom-nav'),limit=b?.getClientRects().length?b.getBoundingClientRect().top:innerHeight;return r.bottom<=limit+1 && r.top>=0 && p.textContent.includes('Bản nháp chỉ bạn đọc được');})()`), `#259 ${state} ${width}/${theme}/${scale}: privacy copy reachable above navigation`);
         if (width < 760 && scale === 200) await page.capture(`desk-art-${state}-${width}-${theme}-${scale}-privacy`, { scenario: '#259-private-copy', state, target: '.vk-desk-privacy', boundary: 'intercepted-private-summary-transport', requestedScene: {width,height:900,theme,scale} });
       }
+      if (!baseline) check(network.length===beforeMatrix, `#259 ${state}: viewport, text scale and theme changes request no additional artwork`);
     }
     await page.viewport(390);
     await page.eval(`document.documentElement.style.fontSize=''; document.documentElement.dataset.theme='light'; scrollTo(0,0)`);
@@ -88,7 +93,7 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
         const bytes = Buffer.from(await response.arrayBuffer());
         check(response.status===200 && response.headers.get('content-type')?.startsWith('image/webp') && bytes.length===asset.bytes && createHash('sha256').update(bytes).digest('hex')===asset.sha256, `#259 ${id}: actual HTTP MIME, bytes and dependency hash`);
       }
-      check(network.length === 3 && network.every(u => /vink-empty-(first-draft|no-results)\.webp$/.test(u)), '#259 exactly one artwork request per empty transition; no public-corpus or theme-specific image');
+      check(network.length <= 3 && network.filter(u=>u.endsWith('vink-empty-first-draft.webp')).length<=2 && network.filter(u=>u.endsWith('vink-empty-no-results.webp')).length<=1 && network.every(u => /vink-empty-(first-draft|no-results)\.webp$/.test(u)), `#259 only the current artwork is requested, at most once per transition (decoded-cache reuse allowed): ${JSON.stringify(network)}`);
       const original = await page.eval(`document.querySelector('[data-testid=draft-empty] img').src`);
       await page.send('Network.setBlockedURLs', { urls: ['*vink-empty-first-draft.webp?blocked259*'] });
       await page.eval(`document.querySelector('[data-testid=draft-empty] img').src=${JSON.stringify(original + '?blocked259')}`);
@@ -139,6 +144,7 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
     }
     writeFileSync(join(dirname(args.state), 'desk-empty-results.json'), JSON.stringify({baseline,geometry,network,boundary:'Chrome-CDP; private-summary transport fixtures; root font-size text200; no real OS IME'},null,2));
   } finally {
+    writeFileSync(join(dirname(args.state), 'desk-empty-network.json'), JSON.stringify({loader,network,boundary:'current document loader only; zero requests allowed for browser-decoded cache reuse'},null,2));
     await gate.disable();
     page.cdp.listeners=page.cdp.listeners.filter(l=>l!==listen);
     await page.send('Network.setBlockedURLs',{urls:[]});
