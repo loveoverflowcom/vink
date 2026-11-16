@@ -133,10 +133,28 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
   const order = `[...document.querySelectorAll('.vk-discussion-comment')].map(c => c.id).join()`;
   const before = await page.eval(order);
 
+  // #226: presentation changes must keep the actual DOM target, rather than replacing it
+  // with a new button that happens to have the same id and label after every phase.
+  const rememberTarget = async (id) => page.eval(`(() => {
+    const target = ${button(id)};
+    (window.vinkReaderActionTargets ??= new Map()).set(${JSON.stringify(id)}, target);
+    target.focus();
+  })()`);
+  const sameTarget = async (id, phase, focused = true) => check(await page.eval(`(() => {
+    const target = ${button(id)};
+    const count = document.getElementById(${JSON.stringify(`${id}-count`)});
+    return target === window.vinkReaderActionTargets.get(${JSON.stringify(id)})
+      && ${focused ? 'document.activeElement === target' : 'true'}
+      && document.querySelectorAll(${JSON.stringify(`#${id}`)}).length === 1
+      && !target.querySelector('button, a, input, [tabindex]')
+      && count?.tagName === 'SPAN' && count.closest('button') === target;
+  })()`), `#226 ${phase}: same ${id} node${focused ? ' and focus' : ''}, one target and a noninteractive count`);
+
   const gate = writeGate(page, args);
   await gate.enable();
   try {
     console.log('  double tap, pending, confirmation only after the ACK:');
+    await rememberTarget('endorse-work');
     await page.click('#endorse-work');
     await page.waitFor(`${button('endorse-work')}.dataset.state==='pending' && ${button('endorse-work')}.getAttribute('aria-busy')==='true'`, 'pending state');
     await page.click('#endorse-work');
@@ -144,11 +162,14 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
     await sleep(200);
     check(gate.held.length === 1, 'a double tap sends one command');
     check(await page.eval(`${button('endorse-work')}.dataset.pressed==='false' && ${note('endorse-work')}.includes('Đang gửi')`), 'CHOICE-10 A: no optimistic selection while the command is pending');
+    check(await page.eval(`${count('endorse-work')}.startsWith('0')`), '#226 pending On keeps the last confirmed count at 0');
+    await sameTarget('endorse-work', 'pending On');
     await glyphs('pending');
     const firstBody = JSON.parse(first.request.postData);
     check(first.responseStatusCode === 200 && firstBody.expected_order === 1 && firstBody.endorsed === true && firstBody.revision_id === SAMPLE_REVISION && /^[0-9a-f]{8}-[0-9a-f]{4}-4/.test(firstBody.command_key), 'the command names the shown revision, the shown order and a UUID key');
     await gate.release(first);
     await page.waitFor(`${button('endorse-work')}.dataset.pressed==='true' && ${count('endorse-work')}.startsWith('1')`, 'confirmed selection');
+    await sameTarget('endorse-work', 'confirmed On');
     check(await page.eval(`${button('endorse-work')}.getAttribute('aria-label')==='Bỏ Thấm' && !!document.querySelector('#endorse-work .vk-ui-toggle__mark svg, #endorse-work .vk-ui-toggle__mark .vk-ui-icon')`), 'after the ACK: accessible name “Bỏ Thấm” and the check mark');
 
     await glyphs('confirmed');
@@ -156,10 +177,14 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
     console.log('  lost ACK after the commit, exact keyed replay:');
     await page.click('#endorse-work');
     const lost = await gate.next(2);
+    check(await page.eval(`${button('endorse-work')}.dataset.pressed==='true' && ${count('endorse-work')}.startsWith('1')`), '#226 pending Off keeps confirmed On and count 1');
+    await sameTarget('endorse-work', 'pending Off');
     check(lost.responseStatusCode === 200, 'the server committed the removal before its answer is lost');
     await gate.drop(lost);
     await page.waitFor(`${note('endorse-work')}.includes('Chưa xác nhận') && [...document.querySelectorAll('#work-endorsement button')].some(b => b.textContent==='Kiểm tra lại')`, 'uncertain state');
     check(await page.eval(`${button('endorse-work')}.dataset.pressed==='true' && ${button('endorse-work')}.getAttribute('aria-disabled')==='true'`), 'a lost answer proves nothing: the confirmed On stays and new presses wait');
+    check(await page.eval(`${count('endorse-work')}.startsWith('1')`), '#226 uncertain Off keeps the confirmed count at 1');
+    await sameTarget('endorse-work', 'uncertain Off');
     await page.click('#endorse-work');
     await sleep(200);
     check(gate.held.length === 2, 'no blind command while uncertain');
@@ -170,6 +195,8 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
     check(replayed.outcome === 'replayed' && replayed.endorsement.selected === false, 'the server answers `replayed` with the current state');
     await gate.release(replay);
     await page.waitFor(`${button('endorse-work')}.dataset.pressed==='false' && ${count('endorse-work')}.startsWith('0') && ${button('endorse-work')}.dataset.state==='enabled'`, 'reconciled removal');
+    // Recovery intentionally focuses its own command; it must not replace the vote target.
+    await sameTarget('endorse-work', 'reconciled Off', false);
 
     console.log('  another tab moves the order: 409 shows the observed state, never resends:');
     const own = await api(args, `/api/v1/works/${SAMPLE_WORK}/endorsements/me`);
@@ -185,6 +212,7 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
     check(stale.responseStatusCode === 409 && JSON.parse(stale.request.postData).expected_order === order3 - 2, 'the page sends the order it showed and the server answers 409');
     await gate.release(stale);
     await page.waitFor(`${button('endorse-work')}.dataset.pressed==='false' && ${note('endorse-work')}.includes('Không thể Thấm') && ${button('endorse-work')}.dataset.state==='enabled'`, 'conflict reconciled to the observed state');
+    await sameTarget('endorse-work', 'failed intent with observed Off', false);
     await sleep(300);
     check(gate.held.length === 4, 'the old intent is not resent with the new order');
     await page.click('#endorse-work');
@@ -194,12 +222,15 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
     await page.waitFor(`${button('endorse-work')}.dataset.pressed==='true'`, 'new intent confirmed');
 
     console.log('  “Hữu ích” on a flat reply by keyboard; the root and the work are untouched:');
-    await page.eval(`${button(`endorse-comment-${reply}`)}.focus()`);
+    await rememberTarget(`endorse-comment-${reply}`);
     await page.key('Enter');
     const useful = await gate.next(6);
     check(new URL(useful.request.url).pathname.endsWith(`/discussion/comments/${reply}/endorsement/me`) && JSON.parse(useful.request.postData).endorsed === true, 'Enter on the focused reply action sends its own command');
+    check(await page.eval(`${button(`endorse-comment-${reply}`)}.dataset.pressed==='false' && ${count(`endorse-comment-${reply}`)}.startsWith('0')`), '#226 pending Hữu ích keeps its own confirmed Off and count 0');
+    await sameTarget(`endorse-comment-${reply}`, 'pending Hữu ích');
     await gate.release(useful);
     await page.waitFor(`${button(`endorse-comment-${reply}`)}.dataset.pressed==='true' && ${count(`endorse-comment-${reply}`)}.startsWith('1')`, 'reply endorsement confirmed');
+    await sameTarget(`endorse-comment-${reply}`, 'confirmed Hữu ích');
     check(await page.eval(`document.activeElement?.id===${JSON.stringify(`endorse-comment-${reply}`)}`), 'focus stays on the same action after confirmation');
     check(await page.eval(`${count(`endorse-comment-${root}`)}.startsWith('0') && ${count('endorse-work')}.startsWith('1')`), 'the root and the work keep their own counts (no cascade)');
     await page.key('Space');
@@ -207,6 +238,7 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
     check(JSON.parse(off.request.postData).endorsed === false, 'Space toggles the desired state off');
     await gate.release(off);
     await page.waitFor(`${button(`endorse-comment-${reply}`)}.dataset.pressed==='false'`, 'reply endorsement removed');
+    await sameTarget(`endorse-comment-${reply}`, 'removed Hữu ích');
     check((await page.eval(order)) === before, 'endorsements never reorder roots or replies');
   } finally {
     await gate.disable();
