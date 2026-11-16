@@ -42,7 +42,8 @@ Một transparent file/theme, explicit theme thắng OS như shell hiện hữu.
 Interaction: gõ/chọn thẻ chỉ đổi buffer/draft; submit GET/Apply mới commit URL. Không remount input
 khi dữ liệu về; input/IME/request owner giữ nguyên. Submit thành công focus landmark có tên và
 focus-visible ở frame sau intent submit, khi scope mới đã mount (có thể còn loading).
-Kết quả đến sau không dời focus/caret của query đang gõ tiếp; submit lại cùng query vẫn tới
+Intent focus bị hủy nếu query/focus/caret đã đổi trước frame đó. Kết quả đến sau không dời
+focus/caret của query đang gõ tiếp; submit lại cùng query vẫn tới
 landmark. Reader return giữ anchor hàng, hàng mất focus landmark. Không focus target ẩn.
 Keyboard/native links luôn dùng được trước hydration, khi JS/ảnh bị chặn hoặc decode lỗi.
 Không JS error handler, retry loop hoặc chỉ dẫn nghĩa nằm trong ảnh. Không aria-hide nhóm actions.

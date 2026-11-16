@@ -36,6 +36,53 @@ fn query_from(params: &leptos_router::params::ParamsMap) -> ExploreQuery {
     )
 }
 
+/// A submit owns one focus intent, not subsequent typing or an async read completion.
+fn focus_submitted_results(data: &web_sys::FormData) {
+    #[cfg(feature = "hydrate")]
+    {
+        use wasm_bindgen::JsCast;
+        let path = window().location().pathname().ok();
+        let query = data.get("q").as_string().unwrap_or_default();
+        let origin = document().active_element();
+        let Some(input) = document()
+            .get_element_by_id("public-query")
+            .and_then(|input| input.dyn_into::<web_sys::HtmlInputElement>().ok())
+        else {
+            return;
+        };
+        let caret = (input.selection_start().ok(), input.selection_end().ok());
+        request_animation_frame(move || {
+            let Some(input) = document()
+                .get_element_by_id("public-query")
+                .and_then(|input| input.dyn_into::<web_sys::HtmlInputElement>().ok())
+            else {
+                return;
+            };
+            let active = document().active_element();
+            let moved_focus = active.as_ref().is_some_and(|element| {
+                Some(element) != origin.as_ref()
+                    && element.tag_name() != "BODY"
+                    && element.id() != "community-stream"
+            });
+            let moved_caret = origin
+                .as_ref()
+                .is_some_and(|element| element == input.unchecked_ref::<web_sys::Element>())
+                && caret != (input.selection_start().ok(), input.selection_end().ok());
+            if window().location().pathname().ok() == path
+                && input.value().trim() == query.trim()
+                && !moved_focus
+                && !moved_caret
+                && let Some(target) = document().get_element_by_id("community-stream")
+                && let Ok(target) = target.dyn_into::<web_sys::HtmlElement>()
+            {
+                let _ = target.focus();
+            }
+        });
+    }
+    #[cfg(not(feature = "hydrate"))]
+    let _ = data;
+}
+
 pub(super) fn reader_context() -> Memo<ExploreContext> {
     let params = use_query_map();
     Memo::new(move |_| {
@@ -171,7 +218,7 @@ fn DiscoveryChrome(
                     // focuses the mounted landmark next frame; I/O completion never owns focus.
                     <Form method="get" action=action.clone() noscroll=true on_form_data=Arc::new(move |data| {
                         drop_unnamed_submitter(data);
-                        focus_recovery("community-stream");
+                        focus_submitted_results(data);
                     }) attr:role="search" attr:id="public-search" attr:class="vk-public-search">
                         {hidden_tags.into_iter().map(|tag| view! { <HiddenField name="tag" value=Signal::stored(tag) /> }).collect_view()}
                         <SearchField id="public-query" label=if is_tag { "Tìm trong thẻ" } else { "Tìm tác phẩm" } name="q"
@@ -365,7 +412,7 @@ fn FilterForm(
     view! {
         <Form method="get" action noscroll=true on_form_data=Arc::new(move |data| {
             drop_unnamed_submitter(data);
-            focus_recovery("community-stream");
+            focus_submitted_results(data);
             open.set(false);
         }) attr:class="vk-discovery-filter-form" attr:id=format!("{id}-tag-form") attr:aria-describedby=format!("{id}-tag-help")>
             <HiddenField name="q" value=Signal::stored(q) />
