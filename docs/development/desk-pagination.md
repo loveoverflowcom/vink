@@ -58,6 +58,13 @@ page 24; bỏ resume và Recent/1. First-use dựa trên head không lọc thàn
 không suy corpus rỗng. Search giữ node cả khi empty/loading/error; create không dựa vào resume.
 Không tải body theo card. Session đổi xóa dữ liệu cũ, còn lỗi tạm thời giữ kết quả cùng scope.
 
+Delta #259: hai empty slots dùng `ui::empty_state::{EmptyArtwork, EmptyState}` đã nhập ở #258;
+`FirstDraft` chỉ cho successful unfiltered empty head không continuation, `NoResults` cho tìm
+không khớp. Không fork asset/CSS/pipeline. Giữ result status, create owner/uncertainty, input,
+privacy và error/stale panels; PageChain vẫn từ chối empty page có continuation. Xem
+[LayoutSpec](../design/empty-artwork-desk-259.md) và
+[evidence local](evidence/empty-webp-259/README.md). Không đổi lifecycle/Quint/API/SQL.
+
 [DraftPages](../../apps/vink-web/src/draft_list/paging.rs) là adapter DTO cho `accept_page`,
 không sở hữu transport hoặc coordinator khác. Tối đa 10 trang × 24 mục trong một phần;
 “Xem phần tiếp theo” chỉ thay phần cũ sau khi trang kế tiếp được chấp nhận. Cursor/data cùng

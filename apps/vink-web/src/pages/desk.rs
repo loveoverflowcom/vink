@@ -8,9 +8,9 @@ use leptos_router::hooks::use_params_map;
 
 use vink_ui::{
     ActionState, ActionSurface, Announce, Button, ButtonKind, ButtonVariant, ChoiceOption,
-    EmptyKind, FieldVariant, Heading, HeadingLevel, IconName, InlineNotice, PanelContent,
-    PanelKind, PlainTooltip, ProblemKind, SearchField, SearchVariant, Select, StatePanel,
-    SupportingDetails, TextField, Tone, TooltipIconButton, TypeRole,
+    FieldVariant, Heading, HeadingLevel, IconName, InlineNotice, PanelContent, PanelKind,
+    PlainTooltip, ProblemKind, SearchField, SearchVariant, Select, StatePanel, SupportingDetails,
+    TextField, Tone, TooltipIconButton, TypeRole,
 };
 
 use crate::contract::{ApiError, DocumentDto, Draft};
@@ -23,7 +23,11 @@ use crate::editor::{BODY_HINT_ID, BODY_LABEL_ID, BodyEditor, BodySource, BodySta
 use crate::navigation::NavigationGuard;
 use crate::pages::work_info::TagLoad;
 use crate::tag_state::{TagStatus, TagTicket};
-use crate::ui::{adapters, patterns::AuthorWorkRow};
+use crate::ui::{
+    adapters,
+    empty_state::{EmptyArtwork, EmptyState},
+    patterns::AuthorWorkRow,
+};
 
 const DESK_UNAVAILABLE_SSR: &str = "Bàn viết cần JavaScript để mở bản nháp riêng.";
 
@@ -301,7 +305,9 @@ pub fn DeskIndex() -> impl IntoView {
         ready.get()
             && load_error.get().is_none()
             && crate::draft_list::search_key(&applied.get()).is_empty()
-            && pages.with(|p| p.loaded && p.part == 1 && p.drafts.is_empty())
+            && pages.with(|p| {
+                p.loaded && p.part == 1 && p.drafts.is_empty() && p.chain.next_cursor.is_none()
+            })
     });
     view! {
         <Title text="Bàn viết — Vink" />
@@ -493,16 +499,16 @@ fn DraftListView(
             </Show>
             <Show when=move || first_use.get()>
                 <div class="vk-desk-empty" data-testid="draft-empty">
-                    <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::FirstUse), title: "Bắt đầu một bản thảo".into(), message: "Một trang dành riêng cho những điều bạn muốn viết.".into(), actions: vec![], code: None }>
+                    <EmptyState artwork=EmptyArtwork::FirstDraft message="Một trang dành riêng cho những điều bạn muốn viết.">
                         <CreateDraftButton creation can_create create first=true />
-                    </StatePanel>
+                    </EmptyState>
                 </div>
             </Show>
             <Show when=move || !loading.get() && !first_use.get() && load_error.get().is_none() && pages.with(|p| p.loaded && p.part == 1 && p.drafts.is_empty())>
                 <div data-testid="draft-no-results">
-                    <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::NoResults), title: "Không tìm thấy tác phẩm.".into(), message: "Thử tiêu đề khác hoặc xóa tìm kiếm.".into(), actions: vec![], code: None }>
+                    <EmptyState artwork=EmptyArtwork::NoResults message="Chưa có tác phẩm trong kết quả này.">
                         <Button variant=ButtonVariant::Filled id="clear-draft-search" on_press=move |_| clear.run(())>"Xem tất cả tác phẩm"</Button>
-                    </StatePanel>
+                    </EmptyState>
                 </div>
             </Show>
             <Show when=move || pages.with(|p| p.loaded) && (load_error.get().is_some() || page_error.get().is_some() || loading.get())>

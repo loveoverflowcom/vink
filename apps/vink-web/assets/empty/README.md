@@ -13,7 +13,7 @@ Giữ nguyên [manifest nguồn](asset-manifest.json), gồm generation ID, crop
 | --- | ---: | --- |
 | `no-results` / `NoResults` | 20.070 | Tìm không khớp hoặc trang kết quả rỗng, không khẳng định corpus rỗng |
 | `no-public-works` / `NoPublicWorks` | 16.444 | Successful unfiltered head rỗng, không continuation |
-| `first-draft` / `FirstDraft` | 19.190 | Dành cho Desk #259; #258 chưa adopt vào Desk |
+| `first-draft` / `FirstDraft` | 19.190 | First-use riêng tư của Desk #259; #258 nhập asset/composition |
 
 Mỗi ảnh: 512×427, VP8 lossy + alpha, một frame, <30 KiB. Một tệp phục vụ cả hai theme;
 không filter/invert, Drive hotlink, inline base64, preload hoặc tải cả bộ.
@@ -37,3 +37,4 @@ Consumer dùng `crate::ui::empty_state::{EmptyArtwork, EmptyState}` và CSS `.vk
 Composition chỉ render ảnh decorative + một câu HTML + controls caller-owned; `announce=true`
 chỉ khi caller không còn result status khác. Không chuyển quyền fetch/create/focus vào composition.
 [LayoutSpec và state contract](../../../../docs/design/empty-artwork-258.md).
+Desk #259 tiếp nhận đúng composition/bytes này; xem [LayoutSpec Desk](../../../../docs/design/empty-artwork-desk-259.md).

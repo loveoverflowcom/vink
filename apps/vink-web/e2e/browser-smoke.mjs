@@ -28,6 +28,7 @@ import { editorPaperFirst } from './editor-paper-first-smoke.mjs';
 import { documentBudget } from './document-budget.mjs';
 import { webPerfBaseline } from './web-perf-baseline.mjs';
 import { readerBeforeHydration } from './reader-ssr-boundary.mjs';
+import { deskEmptyState } from './desk-empty-smoke.mjs';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -1753,6 +1754,7 @@ async function textContrast(page, theme, surface = 'shell') {
     explore: ['#public-query', '#explore-heading h1', '.vk-explore__heading p', '#public-query-help', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '.vk-public-scope', '.vk-discovery-filter-form legend', '.vk-discovery-options .vk-ui-choice__label'],
     filter: ['#modal-tag-help', '#modal-tag-form button[type=submit]'],
     empty: ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-link'],
+    'desk-empty': ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-button', '.vk-desk-privacy'],
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
     me: ['#me-title', '#page-account h2', '#page-account .vk-ui-tone-muted', '#page-appearance-title', '#page-theme-title', '#page-text-title', '#page-rail-title', ...['light', 'dark', 'system'].map(value => `#page-theme label:has([value="${value}"])`)],
     account: ['#profile-title', '#overlay-theme-title', '#overlay-text-title', '#overlay-rail-title', ...['light', 'dark', 'system'].map(value => `#overlay-theme label:has([value="${value}"])`)],
@@ -3135,7 +3137,7 @@ async function draftDashboard(page) {
   await page.viewport(390);
   await page.eval(`document.querySelector('#drafts').scrollIntoView({ block: 'start' })`);
   await page.capture('desk-no-results-390');
-  check(await page.eval(`!!document.querySelector('[data-testid=draft-no-results] .vk-ui-panel__actions #clear-draft-search')`), 'draft clear belongs to the no-results panel');
+  check(await page.eval(`!!document.querySelector('[data-testid=draft-no-results] .vk-empty-state__actions #clear-draft-search')`), 'draft clear belongs to the shared no-results composition');
   await captureRecovery(page, 'desk-no-results', '[data-testid=draft-no-results]');
   await page.click('#clear-draft-search');
   await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 24`, 'clear query');
@@ -3206,7 +3208,7 @@ async function draftDashboard(page) {
   await page.click('#clear-draft-search');
   await page.waitFor(`document.querySelector('[data-testid=draft-empty]')`, 'unfiltered empty dashboard');
   check(await page.eval(`document.querySelectorAll('#create-draft').length === 1 && document.querySelector('#create-draft').textContent === 'Viết bản thảo đầu tiên' && !document.querySelector('[data-testid=draft-resume]')`), 'empty has exactly one primary create action');
-  check(await page.eval(`!!document.querySelector('[data-testid=draft-empty] .vk-ui-panel__actions #create-draft')`), 'first create belongs to the empty panel');
+  check(await page.eval(`!!document.querySelector('[data-testid=draft-empty] .vk-empty-state__actions #create-draft')`), 'first create belongs to the shared empty composition');
   await captureRecovery(page, 'desk-empty', '[data-testid=draft-empty]');
   for (const theme of ['light', 'dark']) {
     await page.eval(`document.documentElement.dataset.theme = '${theme}'`);
@@ -4366,6 +4368,7 @@ async function mainPhase(page) {
   await page.eval(`localStorage.removeItem('vink.ui.theme'); document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme; scrollTo(0, 0)`);
   await authorWorks(page, {args,check,DraftGate,sleep});
   await draftDashboard(page);
+  await deskEmptyState(page, {args,check,DraftGate,textContrast});
   await draftR6Hierarchy(page);
   await timestampPresentation(page);
   await draftPagination(page, { args, check, DraftGate, sleep });
@@ -5328,6 +5331,7 @@ try {
   else if (args.phase === 'public-search') await publicReading(page);
   else if (args.phase === 'public-cache') await cacheFirstPublicReads(page);
   else if (args.phase === 'author-works') await authorWorks(page, {args,check,DraftGate,sleep});
+  else if (args.phase === 'desk-empty') await deskEmptyState(page, {args,check,DraftGate,textContrast});
   else if (args.phase === 'desk-layout') { await draftDashboard(page); await draftR6Hierarchy(page); await timestampPresentation(page); await publicReading(page); }
   else if (args.phase === 'bottom-navigation') await bottomNavigationRegression(page);
   else if (args.phase === 'appearance') await adaptiveShell(page);
