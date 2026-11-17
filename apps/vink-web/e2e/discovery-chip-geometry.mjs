@@ -111,7 +111,9 @@ export async function discoveryChipGeometry(page, { args, check }) {
     const ax=await page.send('Accessibility.getFullAXTree');
     const names=ax.nodes.filter(n=>n.role?.value==='checkbox').map(n=>n.name?.value);
     const labels=await page.eval(`[...document.querySelectorAll('${form} .vk-ui-choice__label')].map(e=>e.textContent)`);
-    check(names.length===6 && JSON.stringify(names.sort())===JSON.stringify(labels.sort()),
+    // Same >=6 fixture floor as geometry; the page-wide AX names must equal this form's labels
+    // exactly, so a missing, duplicated (e.g. hidden dock exposed) or "✓"-prefixed name fails.
+    check(labels.length>=6 && names.length===labels.length && JSON.stringify(names.sort())===JSON.stringify(labels.sort()),
       '#260 native checkbox accessible names contain each label once, no decorative mark '+forced+' '+JSON.stringify(names));
     await page.capture('chip260-keyboard-forced-'+forced,{boundary:'Chrome-CDP-accessibility-tree-and-emulated-media',scenario:'discovery-chip-keyboard'});
   }
