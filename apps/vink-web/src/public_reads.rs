@@ -2099,12 +2099,13 @@ mod tests {
     ) -> bool {
         let hit = match coord.load(key, at) {
             LoadStart::Immediate(Ok(s)) => {
-                coord.follow_seed(key.clone(), s, at, at + 0.1);
+                // Browser follow uses the document navigation start, never the cache-hit time.
+                coord.follow_seed(key.clone(), s, 0.0, at + 0.1);
                 true
             }
-            LoadStart::Wait { effects, .. } => {
+            LoadStart::Wait { id, effects } => {
                 let (_, tk) = &effects.fetches[0];
-                coord.finish(
+                let completion = coord.finish(
                     key.clone(),
                     *tk,
                     Outcome::Fresh(snap.clone()),
@@ -2112,7 +2113,13 @@ mod tests {
                     0.0,
                     true,
                 );
-                coord.follow_seed(key.clone(), snap.clone(), at, at + 0.1);
+                assert_eq!(
+                    completion.replies,
+                    vec![(id, Ok(snap.clone()))],
+                    "benchmark must use a response accepted by the production coordinator"
+                );
+                let (_, reply) = completion.replies.into_iter().next().unwrap();
+                coord.follow_seed(key.clone(), reply.unwrap(), 0.0, at + 0.1);
                 false
             }
             LoadStart::Immediate(Err(_)) => panic!("unexpected rejected/err load state"),
@@ -2365,7 +2372,7 @@ mod tests {
         );
         assert!(
             c.status(&cancel_k).unwrap().data.is_none(),
-            "cancelled over-budget fetch must flow through SnapshotCache and not leak in Entry::data"
+            "cancelled ticket must discard the over-budget response before storing any payload"
         );
     }
 
@@ -2604,7 +2611,7 @@ mod tests {
         }
 
         println!(
-            "case,scalars,blocks,utf8_B,json_B,logical_walk_B,wasm32_proxy_B,native64_proxy_B,clone_us,walk_us,json_count_us,decode_us"
+            "case,scalars,blocks,utf8_B,json_B,logical_walk_B,wasm32_proxy_B,native64_proxy_B,production_weight_B,clone_us,walk_us,json_count_us,decode_us"
         );
         // #234 baseline rows
         let list12 = make_list(12);
@@ -2630,7 +2637,8 @@ mod tests {
             drop(cloned);
             let clone_us = t0.elapsed().as_secs_f64() * 1e6;
             let t1 = Instant::now();
-            std::hint::black_box(struct_stats(std::hint::black_box(&snap)));
+            let production_weight =
+                std::hint::black_box(super::snapshot_weight_bytes(std::hint::black_box(&snap)));
             let walk_us = t1.elapsed().as_secs_f64() * 1e6;
             let t2 = Instant::now();
             std::hint::black_box(snapshot_json_size(std::hint::black_box(&snap)));
@@ -2656,7 +2664,7 @@ mod tests {
                 Snapshot::Control(_) => 0.0,
             };
             println!(
-                "{name},0,{blocks},{utf8},{json_b},{logical},{wasm32},{native64},{clone_us:.1},{walk_us:.1},{json_us:.1},{decode_us:.1}"
+                "{name},0,{blocks},{utf8},{json_b},{logical},{wasm32},{native64},{production_weight},{clone_us:.1},{walk_us:.1},{json_us:.1},{decode_us:.1}"
             );
         }
 
@@ -2680,7 +2688,8 @@ mod tests {
                 drop(cloned);
                 let clone_us = t0.elapsed().as_secs_f64() * 1e6;
                 let t1 = Instant::now();
-                std::hint::black_box(struct_stats(std::hint::black_box(&snap)));
+                let production_weight =
+                    std::hint::black_box(super::snapshot_weight_bytes(std::hint::black_box(&snap)));
                 let walk_us = t1.elapsed().as_secs_f64() * 1e6;
                 let t2 = Instant::now();
                 std::hint::black_box(snapshot_json_size(std::hint::black_box(&snap)));
@@ -2695,11 +2704,11 @@ mod tests {
                 std::hint::black_box(decoded);
                 let decode_us = t3.elapsed().as_secs_f64() * 1e6;
                 println!(
-                    "{shape}-{scalars},{scalars},{blocks},{utf8},{json_b},{logical},{wasm32},{native64},{clone_us:.1},{walk_us:.1},{json_us:.1},{decode_us:.1}"
+                    "{shape}-{scalars},{scalars},{blocks},{utf8},{json_b},{logical},{wasm32},{native64},{production_weight},{clone_us:.1},{walk_us:.1},{json_us:.1},{decode_us:.1}"
                 );
             }
         }
-        // Check production `snapshot_weight_bytes` matches wasm32_proxy_B within exact scope.
+        // The production weight is reported separately from the exploratory structural proxies.
         println!("--- A/B/C 50-loop simulation (same corpus) ---");
         let work_list = make_list(12);
         let list_key = PublicKey::Works(ExploreQuery::default());
@@ -2778,8 +2787,11 @@ mod tests {
                 }
 
                 let idx = step % items.len();
-                let rk = PublicKey::Reader(format!("{scenario_name}-{idx}"));
                 let item = &items[idx];
+                let Snapshot::Publication(publication) = item else {
+                    unreachable!("reader corpus contains publications")
+                };
+                let rk = PublicKey::Reader(publication.work_id.clone());
                 for (idx_stat, hit) in [
                     drive_cache_visit(&mut coord_a, &rk, item, t + 1.0),
                     drive_cache_visit(&mut coord_b, &rk, item, t + 1.0),
