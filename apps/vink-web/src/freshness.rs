@@ -289,6 +289,10 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
         &self.policy
     }
 
+    pub fn cache(&self) -> &C {
+        &self.cache
+    }
+
     pub fn len(&self) -> usize {
         self.entries.len()
     }
@@ -421,16 +425,15 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
             }
             self.removed.remove(key);
         }
-        let cached = self.cache.get(key);
-        let entry = self.entry(key, now);
-        entry.restore = None;
-        if entry.data.is_none() {
-            entry.data = cached;
-        }
-        if entry.in_flight.is_none()
-            && entry.rejected.is_none()
-            && (entry.validated_at == Millis::NEG_INFINITY || entry.validated_at < rendered_at)
-        {
+        let should_seed = self.entries.get(key).is_none_or(|e| {
+            e.in_flight.is_none()
+                && e.rejected.is_none()
+                && (e.validated_at == Millis::NEG_INFINITY || e.validated_at < rendered_at)
+        });
+        if should_seed {
+            self.cache.remove(key);
+            let entry = self.entry(key, now);
+            entry.restore = None;
             entry.data = Some(data);
             entry.cached_unverified = false;
             entry.validated_at = rendered_at;
@@ -438,6 +441,21 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
             entry.immediate_retry = false;
             entry.failures = 0;
             entry.retry_at = Millis::NEG_INFINITY;
+            return;
+        }
+        let needs_cached = self.entries.get(key).is_some_and(|e| e.data.is_none());
+        let cached = if needs_cached {
+            self.cache.get(key)
+        } else {
+            None
+        };
+        let entry = self.entry(key, now);
+        entry.restore = None;
+        if entry.data.is_none() {
+            entry.data = cached;
+        }
+        if entry.observers > 0 {
+            self.cache.remove(key);
         }
     }
 
@@ -632,12 +650,20 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
     /// removal elsewhere). Existing backoff deadlines remain intact.
     pub fn edit(&mut self, key: &K, edit: impl FnOnce(&mut V)) {
         if let Some(entry) = self.entries.get_mut(key) {
-            if entry.data.is_none() {
+            let from_cache = entry.data.is_none();
+            if from_cache {
                 entry.data = self.cache.get(key);
             }
             self.cache.remove(key);
             if let Some(data) = &mut entry.data {
                 edit(data);
+            }
+            if from_cache
+                && entry.observers == 0
+                && let Some(data) = entry.data.take()
+                && (self.reusable)(&data)
+            {
+                self.cache.put(key.clone(), data);
             }
         }
     }
@@ -646,7 +672,8 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
     /// retry backoff deadlines while marking changed entries stale.
     pub fn edit_all(&mut self, mut edit: impl FnMut(&K, &mut V)) {
         for (key, entry) in &mut self.entries {
-            if entry.data.is_none() {
+            let from_cache = entry.data.is_none();
+            if from_cache {
                 entry.data = self.cache.get(key);
             }
             self.cache.remove(key);
@@ -659,6 +686,13 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
                     entry.restore = None;
                 }
             }
+            if from_cache
+                && entry.observers == 0
+                && let Some(data) = entry.data.take()
+                && (self.reusable)(&data)
+            {
+                self.cache.put(key.clone(), data);
+            }
         }
     }
 
@@ -668,9 +702,32 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
 
     pub fn observe(&mut self, key: &K, now: Millis) {
         self.record_time(now);
+        if self.entries.get(key).is_none_or(|e| e.data.is_none())
+            && let Some(cached) = self.cache.get(key)
+        {
+            self.entry(key, now).data = Some(cached);
+        }
+        // Observed views hold active state in `Entry::data`; avoid duplicating it in `SnapshotCache`.
+        self.cache.remove(key);
         let entry = self.entry(key, now);
         entry.observers += 1;
         entry.last_seen = now;
+    }
+
+    /// Move an idle unobserved entry's snapshot through [`SnapshotCache`] (for example when a
+    /// cancelled background load finishes after its last waiter dropped).
+    pub fn park_unobserved(&mut self, key: &K) {
+        if let Some(entry) = self.entries.get_mut(key)
+            && entry.observers == 0
+            && entry.in_flight.is_none()
+            && let Some(data) = entry.data.take()
+        {
+            if (self.reusable)(&data) {
+                self.cache.put(key.clone(), data);
+            } else {
+                self.cache.remove(key);
+            }
+        }
     }
 
     /// End an observation and fence its abandoned flight. Snapshot retention is optional;
@@ -1425,5 +1482,49 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn observed_entries_evict_duplicate_cache_copy_and_edit_all_respects_cache_adapter() {
+        use crate::read_cache::{NoOpCache, RetentionBudget};
+
+        let budget = RetentionBudget {
+            max_total_bytes: Some(12),
+            max_entry_bytes: Some(10),
+        };
+        let mut s: Store<&'static str, Vec<u8>, InMemoryCache<&'static str, Vec<u8>>> =
+            Store::with_cache(
+                Policy::V1,
+                InMemoryCache::with_budget(budget, Vec::len),
+                |_| true,
+            );
+        s.observe(&"k1", 0.0);
+        s.seed(&"k1", vec![1; 8], 0.0, 0.0);
+        assert_eq!(s.cache().total_bytes(), 0);
+        s.release(&"k1", 1.0);
+        assert_eq!(s.cache().total_bytes(), 8);
+
+        // Observing promotes out of SnapshotCache without holding two copies in budget.
+        assert_eq!(s.load(&"k1", 2.0), Load::Ready(vec![1; 8]));
+        s.observe(&"k1", 2.0);
+        assert_eq!(s.cache().total_bytes(), 0);
+
+        // Unobserved edit_all writes back through SnapshotCache rather than trapping in Entry.data.
+        s.release(&"k1", 3.0);
+        assert_eq!(s.cache().total_bytes(), 8);
+        s.edit_all(|_, v| {
+            v.pop();
+        });
+        assert_eq!(s.cache().total_bytes(), 7);
+        assert_eq!(s.status(&"k1").unwrap().data, Some(vec![1; 7]));
+
+        // If edit_all under NoOpCache sees an unobserved key, it stays non-retained.
+        let mut noop: Store<&'static str, Vec<u8>, NoOpCache> =
+            Store::with_cache(Policy::V1, NoOpCache, |_| true);
+        noop.observe(&"n1", 0.0);
+        noop.seed(&"n1", vec![1; 4], 0.0, 0.0);
+        noop.release(&"n1", 1.0);
+        noop.edit_all(|_, v| v.push(2));
+        assert_eq!(noop.status(&"n1").unwrap().data, None);
     }
 }
