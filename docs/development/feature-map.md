@@ -99,8 +99,10 @@ invalid/disabled/forced-colors. Popup OS và touch thực cần evidence riêng.
 [bằng chứng thực chạy](evidence/editor-format-picker-262/README.md).
 
 #263 có [owner title/corpus](../architecture/editor-title-authority.md) độc lập:
-10 ca v1 tại `application::tests::title_authority::legacy_v1_title_authority_corpus`
-bảo vệ tên riêng qua application recording store và revision validation/hash.
+11 ca v1 tại `application::tests::title_authority::legacy_v1_title_authority_corpus`
+bảo vệ tên riêng qua application recording store và revision validation/hash; đối soát
+17/11/2026 pin document v1 độc lập với `SCHEMA_VERSION` và thêm ca 200 ký tự nhập NFD
+([evidence](evidence/reconcile-pr267-271/README.md)).
 30 ca Markdown là oracle đề xuất, extraction/differential **NOT_RUN**; chưa có parser,
 format-aware save hoặc title UI. [Evidence và resume](evidence/editor-title-263/README.md)
 tách regression v1 khỏi AC tích hợp phụ thuộc #255/#256/#264.

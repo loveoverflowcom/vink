@@ -4,6 +4,11 @@ use crate::domain::revision::{RevisionContent, RevisionError};
 use serde::Deserialize;
 use unicode_normalization::UnicodeNormalization;
 
+/// The corpus is pinned to v1 on purpose. Production `SCHEMA_VERSION` may move with #255;
+/// legacy compatibility must then fail here instead of silently testing the new version.
+/// `ContentHash::of` does not hash the schema version, so the golden hash alone cannot catch it.
+const LEGACY_V1_SCHEMA_VERSION: u16 = 1;
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct LegacyCase {
@@ -22,9 +27,18 @@ async fn legacy_v1_title_authority_corpus() {
     ))
     .unwrap();
     for case in cases {
+        if case.id.contains("nfd") {
+            // Guard against an editor or tool normalizing the fixture into a precomposed case.
+            assert_ne!(
+                case.title.nfc().collect::<String>(),
+                case.title,
+                "{} must keep non-NFC input",
+                case.id
+            );
+        }
         let vink = app();
         let document = DocumentData {
-            schema_version: SCHEMA_VERSION,
+            schema_version: LEGACY_V1_SCHEMA_VERSION,
             blocks: case
                 .blocks
                 .iter()
@@ -69,7 +83,7 @@ async fn legacy_v1_title_authority_corpus() {
         assert_eq!(saved.work_id, work());
         assert_eq!(saved.expected_version, 1);
         let expected_body = DocumentData {
-            schema_version: SCHEMA_VERSION,
+            schema_version: LEGACY_V1_SCHEMA_VERSION,
             blocks: case
                 .blocks
                 .iter()
