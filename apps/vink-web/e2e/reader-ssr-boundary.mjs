@@ -1,8 +1,9 @@
 // #235: progressive enhancement on the real App/PG fixture through the existing CDP Page.
-// The only injected transport is the bootstrap asset hold; publication authority stays real.
+// Only bootstrap assets are held or failed; publication authority stays with the real App.
 import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { assertNoHydrationRead, recordTransport } from './web-request-ledger.mjs';
 
 const WORK = '33333333-3333-4333-8333-333333333333';
 const PATH = '/tac-pham/' + WORK;
@@ -12,26 +13,27 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function readerBeforeHydration(page, { args, check }) {
   console.log('#235 Reader before hydration (real App/PG, blocked or held bootstrap assets):');
+  let phase = 'blocked-bootstrap';
+  const ledger = recordTransport(page, args.base, () => phase);
   const raw = { source_sha: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
     dirty: execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim(),
-    boundary: 'real App/PostgreSQL; CDP bootstrap failure/delay; no SSR timing comparison',
-    browser: await page.cdp.send('Browser.getVersion'), phases: [], transport: [] };
-  let phase = 'blocked-bootstrap';
+    boundary: 'real App/PostgreSQL; CDP bootstrap and WASM-only failure/delay; direct local origin',
+    build_profile: args['build-profile'] ?? 'unknown',
+    browser: await page.cdp.send('Browser.getVersion'), status: 'FAIL', phases: [], transport: ledger.rows };
   const errorsBefore = page.errors.length;
   const blockedImport = 'TypeError: Failed to fetch dynamically imported module: ' + args.base + '/pkg/vink.js';
-  const network = message => {
-    if (message.sessionId !== page.sessionId || message.method !== 'Network.requestWillBeSent') return;
-    const r = message.params.request, url = new URL(r.url);
-    if (url.origin === args.base) raw.transport.push({ phase, path: url.pathname, method: r.method });
-  };
   const assets = [args.base + '/pkg/vink.js*', args.base + '/pkg/vink_bg.wasm*'];
   const held = new Set();
   const bootstrap = message => {
     if (message.sessionId === page.sessionId && message.method === 'Fetch.requestPaused') held.add(message.params.requestId);
   };
-  page.cdp.listeners.push(network);
   const flush = () => writeFileSync(join(dirname(args.state), 'reader-ssr-boundary.json'), JSON.stringify(raw, null, 2));
   const noMutation = label => check(!raw.transport.some(r => r.phase === phase && /^(POST|PUT|PATCH|DELETE)$/.test(r.method)), label);
+  const assertUnavailable = async () => check(await page.eval(`!(${READY}) &&
+    document.querySelector('.vk-document')?.textContent.includes(${JSON.stringify(TEXT)}) &&
+    !!document.querySelector('#reader-return[href]') &&
+    ['root-composer-send','discussion-refresh'].every(id=>document.getElementById(id)?.getAttribute('aria-disabled')==='true')`),
+  'complete SSR article, return link and unavailable client actions during ' + phase);
   try {
     await page.send('Network.setBlockedURLs', { urls: assets });
     await page.goto(args.base + PATH);
@@ -85,16 +87,80 @@ export async function readerBeforeHydration(page, { args, check }) {
       await page.eval('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
       await sleep(300);
       noMutation('hydration does not replay a pre-hydration click (' + holdMs + 'ms)');
-      const readerGets = raw.transport.filter(r => r.phase === phase && r.path === '/api/v1/works/' + WORK + '/reader' && r.method === 'GET');
-      check(readerGets.length === 0, 'fresh SSR Reader handoff makes no duplicate typed /reader request (' + holdMs + 'ms)');
-      raw.phases.push({ phase, injected_hold_ms: holdMs, hydrated: 'PASS', mutation_replay: 'none', fresh_reader_gets: readerGets.length,
+      assertNoHydrationRead(raw.transport, phase, 'reader');
+      raw.phases.push({ phase, injected_hold_ms: holdMs, hydrated: 'PASS', mutation_replay: 'none', fresh_reader_gets: 0,
         observation_after_hydration_ms: 300 });
       flush();
     }
+
+    // The document preloads WASM, so requestPaused alone can predate the JS module. Observe
+    // the loader's explicit fetch without changing the request or the returned Promise.
+    const observer = await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `(() => {
+      const fetch = window.fetch;
+      window.fetch = function (input, ...rest) {
+        if (typeof input === 'string' && new URL(input, location.href).pathname === '/pkg/vink_bg.wasm') {
+          window.__vinkWasmInitStarted = true;
+        }
+        return fetch.call(this, input, ...rest);
+      };
+    })()` });
+    try {
+      for (const holdMs of [200, 1000, null]) {
+        phase = holdMs === null ? 'wasm-only-503' : 'wasm-only-hold-' + holdMs;
+        await page.goto('about:blank');
+        await page.send('Network.clearBrowserCache');
+        await page.send('Fetch.enable', { patterns: [{ urlPattern: assets[1], requestStage: 'Request' }] });
+        const errorsAtStart = page.errors.length;
+        await page.send('Page.navigate', { url: args.base + PATH });
+        await page.waitFor('!!window.__vinkWasmInitStarted && !!document.querySelector("#reader-paper")',
+          'loaded JS module enters the WASM loader');
+        check(held.size > 0 && raw.transport.some(r => r.phase === phase && r.path === '/pkg/vink.js' &&
+          r.response_status === 200 && r.finished_s != null), 'JS loads successfully while only WASM is paused');
+        await assertUnavailable();
+        await page.click('#root-composer-send');
+        await page.click('#discussion-refresh');
+        if (holdMs === null) {
+          for (const requestId of held) {
+            await page.send('Fetch.fulfillRequest', { requestId, responseCode: 503,
+              responseHeaders: [{ name: 'Content-Type', value: 'application/wasm' }, { name: 'Cache-Control', value: 'no-store' }],
+              body: '' });
+          }
+          for (const deadline = Date.now() + 5000; page.errors.length === errorsAtStart && Date.now() < deadline;) await sleep(20);
+          const errors = page.errors.slice(errorsAtStart);
+          check(errors.length === 1 && errors[0].includes('failed to fetch Wasm: 503') &&
+            errors[0].includes(args.base + '/pkg/vink_bg.wasm'), 'only the expected wasm-bindgen 503 reaches Runtime.exceptionThrown');
+          page.errors.splice(errorsAtStart, 1);
+          await assertUnavailable();
+          noMutation('WASM init failure leaves native HTML and submits no mutation');
+          assertNoHydrationRead(raw.transport, phase, 'reader');
+          raw.phases.push({ phase, wasm_status: 503, js_loaded: true, loader_entered: true, hydrated: false,
+            main_text: 'PASS', mutation: 'none', fresh_reader_gets: 0 });
+          await page.send('Fetch.disable');
+        } else {
+          await sleep(holdMs);
+          await assertUnavailable();
+          noMutation('WASM hold submits no mutation');
+          await page.send('Fetch.disable');
+          await page.waitFor(READY + " && document.querySelector('#discussion-refresh')?.dataset.state==='enabled'",
+            'release of WASM brings actions online', 120000);
+          await sleep(300);
+          noMutation('WASM recovery does not replay pre-hydration clicks');
+          assertNoHydrationRead(raw.transport, phase, 'reader');
+          raw.phases.push({ phase, injected_hold_ms: holdMs, js_loaded: true, loader_entered: true,
+            hydrated: true, mutation_replay: 'none', fresh_reader_gets: 0, observation_after_hydration_ms: 300 });
+        }
+        held.clear();
+        flush();
+      }
+    } finally {
+      await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier: observer.identifier });
+    }
+    raw.status = 'PASS';
   } finally {
     await page.send('Network.setBlockedURLs', { urls: [] });
     await page.send('Fetch.disable');
-    page.cdp.listeners = page.cdp.listeners.filter(listener => listener !== network && listener !== bootstrap);
+    ledger.stop();
+    page.cdp.listeners = page.cdp.listeners.filter(listener => listener !== bootstrap);
     flush();
   }
 }
