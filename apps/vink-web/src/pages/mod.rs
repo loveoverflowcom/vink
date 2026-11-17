@@ -17,11 +17,7 @@ use leptos_router::hooks::use_params_map;
 use crate::api::{self, LoadError};
 use crate::canonical_url;
 use crate::contract::Publication;
-#[cfg(feature = "hydrate")]
-use crate::contract::WorkCard;
 use crate::document::DocumentView;
-#[cfg(feature = "hydrate")]
-use crate::public_list::work_anchor;
 use crate::public_reads;
 use crate::ui::{adapters, patterns::ReaderHeader};
 use vink_ui::{
@@ -404,6 +400,7 @@ fn remember_public_position(
     event: &web_sys::MouseEvent,
     context: &crate::discovery::ExploreContext,
     work_id: &str,
+    navigate: &impl Fn(&str, leptos_router::NavigateOptions),
 ) {
     if event.default_prevented()
         || event.button() != 0
@@ -415,57 +412,91 @@ fn remember_public_position(
         return;
     }
     if let Ok(history) = window().history() {
-        let state = history.state().unwrap_or(wasm_bindgen::JsValue::NULL);
-        let _ = history.replace_state_with_url(&state, "", Some(&context.href(Some(work_id))));
+        // Use the router's replace so its path stack also learns the row fragment. A raw
+        // replaceState leaves the prior path in Leptos: Back doesn't pop Reader, so opening
+        // that same Reader again may render its tree without pushing its URL.
+        navigate(
+            &context.href(Some(work_id)),
+            leptos_router::NavigateOptions {
+                replace: true,
+                scroll: false,
+                state: leptos_router::location::State::new(history.state().ok()),
+                ..Default::default()
+            },
+        );
     }
 }
 
-/// Run after the async list has mounted, including history traversal and initial reload.
+/// Restore a row fragment once for the settled route, not on background list refresh.
 #[cfg(feature = "hydrate")]
-fn restore_public_position(visible: Memo<Vec<WorkCard>>) {
+fn restore_public_position(stream: NodeRef<leptos::html::Section>, settled: Memo<bool>) {
     use leptos_router::hooks::use_location;
     use wasm_bindgen::JsCast;
 
     let location = use_location();
     Effect::new(move |_| {
+        let path = location.pathname.get();
+        let query = location.search.get();
         let hash = location.hash.get();
         let id = hash.trim_start_matches('#');
-        if id.is_empty() {
+        if id != "community-stream" && !id.starts_with("work-") {
             return;
         }
-        let found = visible
-            .read()
-            .iter()
-            .any(|work| work_anchor(&work.work_id) == id);
-        request_animation_frame(move || {
-            // A stale animation frame must never scroll/focus a different page.
-            if !window()
-                .location()
-                .pathname()
-                .ok()
-                .is_some_and(|p| p == "/" || p.starts_with("/the/"))
-                || window().location().hash().ok().as_deref() != Some(hash.as_str())
+        if !settled.get() {
+            return;
+        }
+        let Some(stream) = stream.get() else {
+            return;
+        };
+        if let Ok(frame) = request_animation_frame_with_handle(move || {
+            let address = window().location();
+            // Own the exact mounted result region and URL. Same row IDs can occur in
+            // several queries, even when a stale callback sees the same path and hash.
+            if !stream.is_connected()
+                || address.pathname().ok().as_deref() != Some(path.as_str())
+                || address
+                    .search()
+                    .ok()
+                    .as_deref()
+                    .map(|s| s.trim_start_matches('?'))
+                    != Some(query.as_str())
+                || address.hash().ok().as_deref() != Some(hash.as_str())
             {
                 return;
             }
-            if let Some(row) = document().get_element_by_id(if found {
-                hash.trim_start_matches('#')
-            } else {
-                "community-stream"
+            let row = document()
+                .get_element_by_id(hash.trim_start_matches('#'))
+                .filter(|row| {
+                    row.class_list().contains("vk-public-row") && stream.contains(Some(row))
+                });
+            let anchor = row.as_ref().and_then(|row| {
+                row.query_selector(".vk-public-row__link")
+                    .ok()
+                    .flatten()
+                    .and_then(|link| link.dyn_into::<web_sys::HtmlElement>().ok())
+            });
+            let target = anchor.as_ref().unwrap_or(&stream);
+            // The result may arrive after the reader has already focused search or another
+            // control. Leave both their focus and viewport alone in that case.
+            if document().active_element().is_some_and(|active| {
+                active.tag_name() != "BODY"
+                    && active.id() != "community-stream"
+                    && !row.as_ref().is_some_and(|row| row == &active)
+                    && !target.is_same_node(Some(&active))
             }) {
-                row.scroll_into_view();
-                if let Some(link) = if found {
-                    row.query_selector("a").ok().flatten().or(Some(row))
-                } else {
-                    Some(row)
-                } && let Ok(link) = link.dyn_into::<web_sys::HtmlElement>()
-                {
-                    let options = web_sys::FocusOptions::new();
-                    options.set_prevent_scroll(true);
-                    let _ = link.focus_with_options(&options);
-                }
+                return;
             }
-        });
+            if let (Some(row), Some(_)) = (row, anchor.as_ref()) {
+                row.scroll_into_view();
+            } else {
+                stream.scroll_into_view();
+            }
+            let options = web_sys::FocusOptions::new();
+            options.set_prevent_scroll(true);
+            let _ = target.focus_with_options(&options);
+        }) {
+            on_cleanup(move || frame.cancel());
+        }
     });
 }
 
