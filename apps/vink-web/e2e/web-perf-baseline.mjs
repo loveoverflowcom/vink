@@ -3,7 +3,8 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, statSync, writeFileSync } from 'node:fs';
+import { assertNoHydrationRead, countTransport, recordTransport } from './web-request-ledger.mjs';
 
 const WAIT_READY = "document.documentElement.dataset.hydrated==='true'";
 const LIST = "!!document.querySelector('.vk-public-row__link')";
@@ -13,9 +14,10 @@ const ITERATIONS = 10;
 // md5('vink-100-work-1')::uuid: the #100 work that carries the 1,000-comment hot thread and,
 // by the fixture's publication order, the first filtered discovery row.
 const HOT_WORK = 'e4202094-9563-02e5-519d-6f8fa6a1af4c';
-// Two-tier discussion: one public page holds at most MAX_PAGE (50) roots, each with an inline
-// reply preview. Anything above this means the browser mounted more than one bounded page.
-const MAX_MOUNTED_COMMENTS = 100;
+// The endpoint's default page is 20 roots, each with up to 3 inline preview replies.
+const ROOT_PAGE_SIZE = 20;
+const MAX_MOUNTED_COMMENTS = ROOT_PAGE_SIZE * (1 + 3);
+const ROOTS = "document.querySelectorAll('#root-list > .vk-discussion-root').length";
 const COMMENTS = "document.querySelectorAll('.vk-discussion-comment').length";
 
 export function distribution(values) {
@@ -30,27 +32,9 @@ export function distribution(values) {
   };
 }
 
-export function classifyTransport(entry) {
-  if (entry.path === '/') return 'document';
-  if (entry.path === '/api/v1/works') return 'public-list';
-  if (/^\/api\/v1\/works\/[^/]+\/reader$/.test(entry.path)) return 'reader';
-  if (/^\/api\/v1\/works\/[^/]+\/discussion\/public$/.test(entry.path)) return 'public-discussion';
-  if (/^\/api\/v1\/works\/[^/]+\/discussion\/me$/.test(entry.path)) return 'own-discussion';
-  if (/^\/api\/v1\/works\/[^/]+\/discussion$/.test(entry.path)) return 'actor-discussion';
-  if (/^\/api\/v1\/works\/[^/]+\/endorsements(\/me)?$/.test(entry.path)) return 'endorsement';
-  if (entry.path.startsWith('/api/v1/auth/session')) return 'session';
-  if (entry.path.startsWith('/api/v1/tags')) return 'catalog';
-  if (entry.path.startsWith('/pkg/')) return 'bundle';
-  return 'other';
-}
-
-export function countTransport(rows, phase, kind) {
-  return rows.filter(row => row.phase === phase && row.kind === kind && row.method === 'GET').length;
-}
-
 function newDocumentObserver() {
   const data = window.__vinkPerfBaseline = {
-    hydration_ms: null, meaningful_ms: null, long_tasks: [], layout_shifts: [],
+    hydration_ms: null, meaningful_ms: null, long_tasks: null, layout_shifts: null, interactions: null,
   };
   const record = () => {
     if (data.meaningful_ms === null &&
@@ -62,18 +46,24 @@ function newDocumentObserver() {
       data.hydration_ms = performance.now();
     }
   };
-  try {
+  const observe = (type, field, sample, options = {}) => {
+    if (!PerformanceObserver.supportedEntryTypes.includes(type)) return;
     new PerformanceObserver(list => {
-      for (const e of list.getEntries()) data.long_tasks.push({ start_ms: e.startTime, duration_ms: e.duration });
-    }).observe({ type: 'longtask', buffered: true });
-  } catch { /* Browser support is part of the evidence, not a requirement for app rendering. */ }
-  try {
-    new PerformanceObserver(list => {
-      for (const e of list.getEntries()) {
-        data.layout_shifts.push({ start_ms: e.startTime, value: e.value, had_recent_input: e.hadRecentInput });
+      for (const entry of list.getEntries()) {
+        const row = sample(entry);
+        if (row) data[field].push(row);
       }
-    }).observe({ type: 'layout-shift', buffered: true });
-  } catch { /* Report empty + browser metadata rather than inventing CLS. */ }
+    }).observe({ type, buffered: true, ...options });
+    data[field] = [];
+  };
+  observe('longtask', 'long_tasks', e => ({ start_ms: e.startTime, duration_ms: e.duration }));
+  observe('layout-shift', 'layout_shifts', e => ({
+    start_ms: e.startTime, value: e.value, had_recent_input: e.hadRecentInput,
+  }));
+  observe('event', 'interactions', e => e.interactionId && ({
+    id: e.interactionId, name: e.name, start_ms: e.startTime, duration_ms: e.duration,
+    processing_ms: e.processingEnd - e.processingStart,
+  }), { durationThreshold: 16 });
   const observer = new MutationObserver(record);
   observer.observe(document, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-hydrated'] });
   document.addEventListener('DOMContentLoaded', record, { once: true });
@@ -90,66 +80,23 @@ async function browserSnapshot(page) {
     'navigation:nav?{ttfb_ms:nav.responseStart-nav.requestStart,response_end_ms:nav.responseEnd,' +
     'dom_content_loaded_ms:nav.domContentLoadedEventEnd,transfer_bytes:nav.transferSize}:null,' +
     'hydration_ms:p.hydration_ms??null,first_content_ms:p.meaningful_ms??null,' +
-    'long_tasks:p.long_tasks??[],layout_shifts:p.layout_shifts??[],' +
+    'now_ms:performance.now(),long_tasks:p.long_tasks??null,layout_shifts:p.layout_shifts??null,' +
+    'interactions:p.interactions??null,' +
     'loaded_bundle_transfer_bytes:bytes,loaded_resource_count:res.length,' +
     'row_count:document.querySelectorAll(".vk-public-row").length,' +
+    'discussion_roots:' + ROOTS + ',' +
     'comment_nodes:document.querySelectorAll(".vk-discussion-comment").length,' +
     'body_characters:document.querySelector(".vk-reader .vk-document")?.textContent.length??null,' +
     'root_font_px:getComputedStyle(document.documentElement).fontSize,' +
     'dpr:devicePixelRatio,viewport:{width:innerWidth,height:innerHeight},' +
-    'fonts_status:document.fonts.status};})()');
+    'fonts_status:document.fonts.status,font_family:getComputedStyle(document.body).fontFamily,' +
+    'fonts:[...document.fonts].filter(f=>f.status==="loaded").map(f=>f.family)};})()');
   const get = async (method) => { try { return await page.send(method); } catch { return null; } };
   return {
     ...details,
     dom_counters: await get('Memory.getDOMCounters'),
     v8_heap: await get('Runtime.getHeapUsage'),
   };
-}
-
-function recordTransport(page, results, phase) {
-  const pending = new Map();
-  const origin = new URL(results.configuration.origin).origin;
-  const onEvent = event => {
-    if (event.sessionId !== page.sessionId) return;
-    const { method, params } = event;
-    if (method === 'Network.requestWillBeSent') {
-      const request = params.request;
-      const url = new URL(request.url);
-      // Only local requests, no raw URLs, cookies, headers, request bodies or manuscript text.
-      if (url.origin !== origin) return;
-      const conditional = Object.keys(request.headers ?? {}).some(h => h.toLowerCase() === 'if-none-match');
-      const entry = {
-        phase: phase.current,
-        request_id: params.requestId,
-        method: request.method,
-        path: url.pathname,
-        query_parameter_keys: [...url.searchParams.keys()].sort(),
-        kind: classifyTransport({ path: url.pathname }),
-        resource_type: params.type ?? null,
-        initiator: params.initiator?.type ?? null,
-        validator_sent: conditional,
-        response_status: null, wire_status: null,
-        encoded_bytes: null, failed: false,
-      };
-      results.transport.push(entry);
-      pending.set(params.requestId, entry);
-    } else if (method === 'Network.responseReceived' && pending.has(params.requestId)) {
-      const entry = pending.get(params.requestId);
-      entry.response_status = params.response.status;
-      entry.disk_cache = !!params.response.fromDiskCache;
-      entry.service_worker = !!params.response.fromServiceWorker;
-    } else if (method === 'Network.responseReceivedExtraInfo' && pending.has(params.requestId)) {
-      // CDP may deliver ExtraInfo after loadingFinished, so entries stay addressable until
-      // this recorder is removed. Includes the actual wire 304 behind a 200 cache revalidation.
-      pending.get(params.requestId).wire_status = params.statusCode;
-    } else if (method === 'Network.loadingFinished' && pending.has(params.requestId)) {
-      pending.get(params.requestId).encoded_bytes = params.encodedDataLength;
-    } else if (method === 'Network.loadingFailed' && pending.has(params.requestId)) {
-      pending.get(params.requestId).failed = true;
-    }
-  };
-  page.cdp.listeners.push(onEvent);
-  return () => { page.cdp.listeners = page.cdp.listeners.filter(item => item !== onEvent); };
 }
 
 function fixtureDigest() {
@@ -161,41 +108,127 @@ function fixtureDigest() {
   return hash.digest('hex');
 }
 
+async function measureControls(page, results, phase, origin, check) {
+  const controls = results.controls = {};
+  phase.current = 'negative-extra-hydration-get';
+  // Exercise the same oracle against a real extra list GET. A regression to <= 1 would
+  // make this negative control fail, even if normal hydration happens to send none.
+  check(await page.eval(`fetch('/api/v1/works${QUERY.slice(1)}', {cache:'no-store'}).then(r=>r.ok)`),
+    'extra GET reached the real App');
+  try {
+    assertNoHydrationRead(results.transport, phase.current, 'public-list');
+  } catch (error) {
+    controls.extra_hydration_get = { expected_failure: error.message };
+  }
+  check(controls.extra_hydration_get && countTransport(results.transport, phase.current, 'public-list') === 1,
+    'SSR handoff oracle rejects one extra GET');
+
+  // Same-document Back isn't a back_forward SSR seed. Force a full document history traversal
+  // (the opt-in Chrome launch disables BFCache), then require one verification for unknown age.
+  phase.current = 'history-prepare';
+  await page.goto('about:blank');
+  await page.goto(origin + QUERY);
+  await page.waitFor(WAIT_READY + ' && ' + LIST, 'history source document hydrated');
+  const oldDocument = await page.eval('performance.timeOrigin');
+  await page.goto(origin + '/tac-pham/' + HOT_WORK);
+  await page.waitFor(WAIT_READY + ' && ' + READER, 'history destination document hydrated');
+  phase.current = 'history-ssr-age-unknown';
+  results.intended_reads.push({ phase: phase.current, reason: 'document_history_revalidate', representation: 'discovery-filtered' });
+  await page.eval('history.back()');
+  await page.waitFor(`location.pathname==='/' && performance.timeOrigin!==${oldDocument} && ${WAIT_READY} && ${LIST} && performance.getEntriesByType('navigation')[0]?.type==='back_forward'`,
+    'history opens a new back_forward document');
+  await page.waitFor("document.querySelector('#public-collection')?.dataset.refreshing==='false' && performance.getEntriesByType('resource').some(e=>new URL(e.name).pathname==='/api/v1/works')", 'unknown-age SSR seed is verified');
+  check(countTransport(results.transport, phase.current, 'public-list') === 1,
+    'a back_forward document verifies its unknown-age list once');
+  controls.history = { navigation: 'back_forward', new_document: true };
+
+  phase.current = 'secondary-initial-hold';
+  const secondary = '/api/v1/works/' + HOT_WORK + '/discussion/public';
+  results.intended_reads.push({ phase: phase.current, reason: 'initial_secondary', representation: 'public-discussion' });
+  let releasePause;
+  const paused = new Promise(resolve => { releasePause = resolve; });
+  const hold = event => {
+    if (event.sessionId === page.sessionId && event.method === 'Fetch.requestPaused') releasePause(event.params.requestId);
+  };
+  page.cdp.listeners.push(hold);
+  try {
+    await page.send('Fetch.enable', { patterns: [{ urlPattern: origin + secondary + '*', requestStage: 'Request' }] });
+    const holdStarted = performance.now();
+    await page.click('.vk-public-row__link');
+    await page.waitFor(READER + ' && location.pathname.endsWith(' + JSON.stringify(HOT_WORK) + ')',
+      'real article mounts while discussion is held');
+    let timeout;
+    const requestId = await Promise.race([paused, new Promise((_, reject) => {
+      timeout = setTimeout(() => reject(new Error('no paused secondary transport')), 10000);
+    })]).finally(() => clearTimeout(timeout));
+    check(await page.eval(COMMENTS + ' === 0'), 'held public discussion has not mounted prematurely');
+    await page.eval("window.__baselinePaper = document.querySelector('#reader-paper')");
+    await new Promise(resolve => setTimeout(resolve, 200));
+    await page.send('Fetch.fulfillRequest', { requestId, responseCode: 503,
+      responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Cache-Control', value: 'no-store' }],
+      body: Buffer.from(JSON.stringify({ error: { code: 'dependency_unavailable' } })).toString('base64') });
+    await page.waitFor("document.querySelector('#discussion-load-retry')?.dataset.state==='enabled'", 'failed secondary has a retry');
+    check(await page.eval("document.querySelector('#reader-paper') === window.__baselinePaper && !!document.querySelector('.vk-document')"),
+      'failing the secondary transport leaves the authoritative article mounted');
+    const heldMs = performance.now() - holdStarted;
+    await page.send('Fetch.disable');
+    phase.current = 'secondary-manual-retry';
+    results.intended_reads.push({ phase: phase.current, reason: 'manual_retry', representation: 'public-discussion' });
+    await page.click('#discussion-load-retry');
+    await page.waitFor(COMMENTS + ' > 0', 'manual secondary retry reaches real App');
+    check(countTransport(results.transport, phase.current, 'public-discussion') === 1 &&
+      await page.eval(`${ROOTS} === ${ROOT_PAGE_SIZE} && ${COMMENTS} <= ${MAX_MOUNTED_COMMENTS}`),
+      'retry requests and mounts one bounded public discussion page');
+    controls.secondary = { injected_status: 503, minimum_hold_ms: 200, click_to_retry_control_ms: heldMs, recovered: true };
+  } finally {
+    await page.send('Fetch.disable');
+    page.cdp.listeners = page.cdp.listeners.filter(listener => listener !== hold);
+    await page.eval('delete window.__baselinePaper');
+  }
+}
+
 export async function webPerfBaseline(page, { args, check }) {
   // The test harness must never be pointed at a deployed or private service.
   if (!/^http:\/\/127\.0\.0\.1:\d+$/.test(args.base)) throw new Error('#234 lab requires loopback scratch App');
   const out = join(dirname(args.state), 'web-perf-baseline.json');
   const phase = { current: 'init' };
-  const sourceSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  const tool = (name, ...argv) => execFileSync(name, argv, { encoding: 'utf8' }).trim();
+  const sourceSha = tool('git', 'rev-parse', 'HEAD');
+  if (!['dev', 'release'].includes(args['build-profile'])) throw new Error('Missing xtask build profile');
+  const transport = recordTransport(page, args.base, () => phase.current);
   const results = {
     issue: 234, status: 'RUNNING', source_sha: sourceSha,
+    dirty: tool('git', 'status', '--porcelain'),
     corpus: { labelled_public_works: 200, comments: 1000, digest_sha256: fixtureDigest(),
       source: 'App/PostgreSQL scratch, SQL v1 public projection, no production user text' },
     configuration: {
       origin: args.base, browser: await page.cdp.send('Browser.getVersion'),
-      node: process.version, build_profile: 'xtask web dev: debug wasm (~350 MB); bundle/hydration figures are not release numbers',
+      viewer: 'guest (no local fixture principal)',
+      node: process.version, platform: process.platform, arch: process.arch,
+      rustc: tool('rustc', '--version'), wasm_bindgen: tool('wasm-bindgen', '--version'),
+      build_profile: args['build-profile'],
+      wasm_file_bytes: statSync('target/site/pkg/vink_bg.wasm').size,
       network: 'loopback / no throttling', cpu_throttle_rate: 1,
       cache_cold: 'CDP clearBrowserCache before each full-document navigation; OS/PG process remain warm',
-      viewport: '1280x900 CSS px / DPR 1', text_scale: 'system default',
+      viewport: '1280x900 CSS px / DPR 1 (see measured values)', text_scale: 'browser default',
       cold_iterations: ITERATIONS, warm_iterations: ITERATIONS,
       instrumentation: 'Page.addScriptToEvaluateOnNewDocument: PerformanceObserver + MutationObserver; scenario opt-in',
     },
-    intended_reads: [], transport: [], cold: [], warm: [],
+    intended_reads: [], transport: transport.rows, cold: [], warm: [],
     verification: {}, limitations: [
       'No field p75; p95 is a lab nearest-rank statistic over 10 iterations.',
       'No browser-process RSS, WASM heap attribution, OS page-cache cold start, production latency or RUM.',
-      'This phase is debug-profile only; release-profile qualification is a separate NOT_RUN boundary.',
+      'The cold route is filtered Explore SSR. Reader measurements here start with warm client navigation.',
+      'Client ready times in warm samples include CDP/poll overhead; event samples use Event Timing (>=16 ms).',
       'CDP transport is browser-visible only: server-side SSR SQL reads are not inferred as client GETs.',
       'Listener counts use CDP DOM counters; timer and full owner allocations have no reliable CDP proxy.',
-      'Stale age/invalidation/removal and the late-response/dispose negative cases require dedicated controls.',
+      'Lifecycle and injected transport cases are separated from measured iterations.',
     ],
   };
   const flush = () => writeFileSync(out, JSON.stringify(results, null, 2));
-  const unlisten = recordTransport(page, results, phase);
   const observer = await page.send('Page.addScriptToEvaluateOnNewDocument', {
     source: '(' + newDocumentObserver.toString() + ')()',
   });
-  await page.send('Performance.enable');
   try {
     await page.viewport(1280, 900);
     // Each cold sample uses a new document and an empty Chrome HTTP cache; the database is not restarted.
@@ -209,11 +242,14 @@ export async function webPerfBaseline(page, { args, check }) {
       const start = performance.now();
       await page.goto(args.base + QUERY);
       await page.waitFor(WAIT_READY + ' && ' + LIST, 'cold filtered discovery #' + i, 120000);
+      const wall = performance.now() - start;
+      check(await page.eval("!document.querySelector('meta[name=vink-local-discussion-fixture]')"), 'baseline renders the guest shell');
       const snapshot = await browserSnapshot(page);
-      results.cold.push({ iteration: i, wall_ms: performance.now() - start, ...snapshot });
-      // The HTML SSR list should not trigger a second client list fetch just for hydration.
-      check(countTransport(results.transport, phase.current, 'public-list') <= 1,
-        '#234 cold SSR/hydration has no duplicate browser list GET #' + i);
+      results.cold.push({ iteration: i, wall_ms: wall, ...snapshot });
+      // Keep the observation window separate from lab timings. A single client list GET is
+      // already surplus: the SSR list is not visible in the CDP ledger as an API request.
+      await new Promise(resolve => setTimeout(resolve, 300));
+      assertNoHydrationRead(results.transport, phase.current, 'public-list');
       flush();
     }
     // Leave the hydrated Explore tree in place. Native links must navigate without a document reload.
@@ -236,8 +272,12 @@ export async function webPerfBaseline(page, { args, check }) {
         '#234 warm journey opens the 1,000-comment hot thread #' + i);
       check(reader.body_characters > 0, '#234 real App Reader body stays available #' + i);
       // Only a limited page may be mounted, never all 1,000 comments from the hot thread.
-      check(reader.comment_nodes > 0 && reader.comment_nodes <= MAX_MOUNTED_COMMENTS,
+      check(reader.discussion_roots === ROOT_PAGE_SIZE && reader.comment_nodes > 0 && reader.comment_nodes <= MAX_MOUNTED_COMMENTS,
         '#234 hot thread mounts one bounded page (' + reader.comment_nodes + ' nodes) #' + i);
+      await page.waitFor("document.querySelector('#discussion-refresh')?.dataset.state==='enabled'",
+        'discussion reload control ready #' + i);
+      const readyTime = (await page.eval('performance.now()')) - before;
+      phase.current = 'return-' + i;
       results.intended_reads.push({ phase: phase.current, reason: 'return_to_discovery', representation: 'discovery-filtered' });
       const beforeReturn = await page.eval('performance.now()');
       await page.click('#reader-return');
@@ -248,10 +288,12 @@ export async function webPerfBaseline(page, { args, check }) {
         '#234 warm Reader return stays in the same hydrated document #' + i);
       check(back.row_count <= 24 && back.row_count > 0,
         '#234 real bounded public page after return #' + i);
-      results.warm.push({ iteration: i, reader_ms: readerTime, discussion_ms: discussionTime,
+      results.warm.push({ iteration: i, started_ms: before, return_started_ms: beforeReturn,
+        reader_ms: readerTime, discussion_ms: discussionTime, discussion_control_ms: readyTime,
         return_ms: returnTime, reader, back });
       flush();
     }
+    await measureControls(page, results, phase, args.base, check);
     const cold = results.cold;
     const warm = results.warm;
     results.distributions = {
@@ -261,6 +303,7 @@ export async function webPerfBaseline(page, { args, check }) {
       cold_wall_ms: distribution(cold.map(x => x.wall_ms)),
       reader_client_nav_ms: distribution(warm.map(x => x.reader_ms)),
       reader_discussion_page_ms: distribution(warm.map(x => x.discussion_ms)),
+      reader_discussion_control_ms: distribution(warm.map(x => x.discussion_control_ms)),
       warm_mounted_comments: distribution(warm.map(x => x.reader.comment_nodes)),
       discovery_return_ms: distribution(warm.map(x => x.return_ms)),
       cold_bundle_transfer_bytes: distribution(cold.map(x => x.loaded_bundle_transfer_bytes)),
@@ -272,16 +315,11 @@ export async function webPerfBaseline(page, { args, check }) {
     results.verification = {
       cold_10: 'PASS', warm_10: 'PASS', real_app_sql: 'PASS',
       transport_ledger: 'PASS', raw_distributions: 'PASS',
-      late_response_negative: 'NOT_RUN', stale_invalidation: 'NOT_RUN',
-      secondary_failover: 'NOT_RUN', release_profile: 'NOT_RUN',
+      hydration_duplicate_control: 'PASS', secondary_failover: 'PASS',
+      history_ssr_unknown_age: 'PASS', stale_invalidation: 'see public-read-lifecycle.json (main)',
+      release_profile: args['build-profile'] === 'release' ? 'PASS' : 'NOT_RUN',
     };
-    results.go_no_go = {
-      selective_ssr: 'PENDING: inspect main-content vs hydration/secondary delay before #235',
-      anchor_restore: 'PENDING: inspect return focus/position before #236',
-      ram_ceiling: 'PENDING: separate optional snapshot cache from active view before #237',
-      containment: 'PENDING: inspect render/DOM hotspots before #238',
-      prefetch: 'NO_GO until #237 establishes a byte ceiling and navigation benefit',
-    };
+    results.interpretation_owner = 'docs/development/web-perf-baseline.md';
     results.status = 'MEASURED_PARTIAL';
     flush();
   } catch (error) {
@@ -290,7 +328,7 @@ export async function webPerfBaseline(page, { args, check }) {
     flush();
     throw error;
   } finally {
-    unlisten();
+    transport.stop();
     await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier: observer.identifier });
   }
 }

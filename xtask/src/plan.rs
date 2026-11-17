@@ -83,6 +83,7 @@ pub enum Scenario {
     Password,
     Publication,
     PerfBaseline,
+    ReturnPosition,
 }
 impl Scenario {
     pub const ALL: [Self; 9] = [
@@ -96,8 +97,8 @@ impl Scenario {
         Self::Password,
         Self::Publication,
     ];
-    /// Default full regression intentionally excludes the expensive measurement lane.
-    pub const SELECTABLE: [Self; 10] = [
+    /// Default full regression intentionally excludes the longer lab measurements.
+    pub const SELECTABLE: [Self; 11] = [
         Self::Main,
         Self::Storage,
         Self::Discovery,
@@ -108,6 +109,7 @@ impl Scenario {
         Self::Password,
         Self::Publication,
         Self::PerfBaseline,
+        Self::ReturnPosition,
     ];
     pub fn name(self) -> &'static str {
         match self {
@@ -121,6 +123,7 @@ impl Scenario {
             Self::Password => "password",
             Self::Publication => "publication",
             Self::PerfBaseline => "perf-baseline",
+            Self::ReturnPosition => "return-position",
         }
     }
     pub fn parse(s: &str) -> Result<Self, String> {
@@ -275,10 +278,15 @@ impl Plan {
             .map(|s| s.name())
             .collect();
         format!(
-            "coverage: {coverage}\noperation: {:?}; target: {:?}; auth: {auth}\nbuild: {:?}\nrequired tools: {:?}\nowned services: {:?}\nattached database configuration (values hidden): {:?}\nmigrations: {:?}; dev seed: {} (Web fixtures follow the scenario catalog)\nselected checks: {:?}; filter: {:?}\ndependency checks: {:?} (restart requires main's saved draft and browser state)\nnot selected Web checks: {:?}\nAPI target isolation: no bundle, no SSR/static routes; Rust SSR dependencies remain compiled.\ndata: dev attaches prepared databases; Web verification owns scratch only. No containers.\nartifacts: build from current source every invocation; no no-build/reuse mode.\n",
+            "coverage: {coverage}\noperation: {:?}; target: {:?}; auth: {auth}\nbuild: {:?}; profile: {}\nrequired tools: {:?}\nowned services: {:?}\nattached database configuration (values hidden): {:?}\nmigrations: {:?}; dev seed: {} (Web fixtures follow the scenario catalog)\nselected checks: {:?}; filter: {:?}\ndependency checks: {:?} (restart requires main's saved draft and browser state)\nnot selected Web checks: {:?}\nAPI target isolation: no bundle, no SSR/static routes; Rust SSR dependencies remain compiled.\ndata: dev attaches prepared databases; Web verification owns scratch only. No containers.\nartifacts: build from current source every invocation; no no-build/reuse mode.\n",
             self.request.operation,
             self.request.target,
             self.artifacts,
+            if self.request.release {
+                "release (wasm-release for bundle)"
+            } else {
+                "dev"
+            },
             self.tools,
             self.services,
             self.databases,

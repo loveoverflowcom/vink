@@ -121,10 +121,36 @@ struct Server {
     port: u16,
     env: Vec<(String, String)>,
     log: PathBuf,
+    release: bool,
 }
 
 impl Server {
-    /// The same server and database for another loopback fixture principal.
+    fn profile_name(&self) -> &'static str {
+        if self.release { "release" } else { "dev" }
+    }
+
+    fn binary(&self, root: &Path, name: &str) -> PathBuf {
+        if self.release {
+            root.join("target/release").join(name)
+        } else {
+            binary(root, name)
+        }
+    }
+
+    fn as_guest(&self) -> Self {
+        Self {
+            port: self.port,
+            env: self
+                .env
+                .iter()
+                .filter(|(key, _)| key != "VINK_DEV_PRINCIPAL")
+                .cloned()
+                .collect(),
+            log: self.log.with_file_name("server-guest.log"),
+            release: self.release,
+        }
+    }
+
     /// The same database served to another loopback fixture principal on its own port.
     fn with_principal(&self, principal: &str, port: u16) -> Self {
         let mut env = self.env.clone();
@@ -140,6 +166,7 @@ impl Server {
             port,
             env,
             log: self.log.with_file_name("server-reader.log"),
+            release: self.release,
         }
     }
 
@@ -171,6 +198,7 @@ impl Server {
             port,
             env,
             log: self.log.with_file_name("server-auth.log"),
+            release: self.release,
         }
     }
 
@@ -186,11 +214,12 @@ impl Server {
             port: self.port,
             env,
             log: self.log.with_file_name("server-publication.log"),
+            release: self.release,
         })
     }
 
     fn command(&self, root: &Path, args: &[&str]) -> Command {
-        let mut command = Command::new(binary(root, "vink-app"));
+        let mut command = Command::new(self.binary(root, "vink-app"));
         crate::env::clear_capabilities(&mut command);
         command.current_dir(root).args(args);
         let migrate = args.first() == Some(&"migrate");
@@ -336,7 +365,7 @@ fn auth_web(
             .map_err(|e| format!("Identity scratch database/role: {e}"))?;
     }
     let admin_identity = admin.with_database(IDENTITY_DATABASE);
-    let mut migrate = Command::new(binary(root, "vink-identity"));
+    let mut migrate = Command::new(server.binary(root, "vink-identity"));
     crate::env::clear_capabilities(&mut migrate);
     migrate
         .current_dir(root)
@@ -360,7 +389,7 @@ fn auth_web(
         &format!("REVOKE INSERT, UPDATE, DELETE ON _sqlx_migrations FROM {IDENTITY_ROLE}"),
     )?;
     let log = std::fs::File::create(dir.join("identity.log")).map_err(|e| e.to_string())?;
-    let mut identity_command = Command::new(binary(root, "vink-identity"));
+    let mut identity_command = Command::new(server.binary(root, "vink-identity"));
     crate::env::clear_capabilities(&mut identity_command);
     let child = identity_command
         .current_dir(root)
@@ -428,7 +457,7 @@ fn auth_web(
             let mut envs = app.env.clone();
             envs.push((
                 "VINK_E2E_APP_BIN".into(),
-                binary(root, "vink-app").display().to_string(),
+                app.binary(root, "vink-app").display().to_string(),
             ));
             smoke_with_env(
                 root,
@@ -629,6 +658,7 @@ pub fn verify_selected(report: &mut Report, env: &Env, plan: &Plan) -> bool {
                 ("VINK_LOG_FORMAT".into(), "text".into()),
             ],
             log: out.join("server.log"),
+            release: plan.request.release,
         };
         let state = out.join("smoke-state.json");
         if primary {
@@ -906,11 +936,7 @@ fn run_web_checks(
     if selected.iter().any(|s| {
         matches!(
             s,
-            Scenario::Main
-                | Scenario::Storage
-                | Scenario::Discovery
-                | Scenario::Restart
-                | Scenario::PerfBaseline
+            Scenario::Main | Scenario::Storage | Scenario::Discovery | Scenario::Restart
         )
     }) {
         let mut guard = match server.start(root) {
@@ -922,7 +948,7 @@ fn run_web_checks(
         };
         if selected.contains(&Scenario::Main) && !report.step(
         "SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview, draft tags",
-        || smoke(root, &["--phase", "main"], chrome, origin, state),
+        || smoke(root, &["--phase", "main", "--build-profile", server.profile_name()], chrome, origin, state),
     ) {
         return false;
     }
@@ -950,19 +976,6 @@ fn run_web_checks(
     ) {
         return false;
     }
-        if selected.contains(&Scenario::PerfBaseline) && !report.step(
-            "#234 SSR/hydration + Reader/Back performance baseline (200 works, 1000 comments, 10 cold/warm)",
-            || {
-                // A joint discovery+perf selection must seed #100 only once.
-                if !selected.contains(&Scenario::Discovery) {
-                    seed_discovery_fixture(server)?;
-                }
-                seed_perf_journey(server)?;
-                smoke(root, &["--phase", "perf-baseline"], chrome, origin, state)
-            },
-        ) {
-            return false;
-        }
         if !report.step("server stops gracefully on SIGTERM", || {
             let status = guard.terminate(Duration::from_secs(15))?;
             status
@@ -1003,6 +1016,46 @@ fn run_web_checks(
                 return false;
             }
         }
+    }
+    if selected
+        .iter()
+        .any(|s| matches!(s, Scenario::PerfBaseline | Scenario::ReturnPosition))
+        && !report.step(
+            "guest performance lab (200 works, 1000 comments; selected Reader journey checks)",
+            || {
+                if !selected.contains(&Scenario::Discovery) {
+                    seed_discovery_fixture(server)?;
+                }
+                seed_perf_journey(server)?;
+                // LocalFixture performs an additional actor reconciliation on mount. Don't
+                // benchmark it as if it were part of a guest's public journey.
+                let guest = server.as_guest();
+                let mut guard = guest.start(root)?;
+                for scenario in [Scenario::PerfBaseline, Scenario::ReturnPosition] {
+                    if selected.contains(&scenario) {
+                        smoke(
+                            root,
+                            &[
+                                "--phase",
+                                scenario.name(),
+                                "--build-profile",
+                                guest.profile_name(),
+                            ],
+                            chrome,
+                            origin,
+                            state,
+                        )?;
+                    }
+                }
+                let status = guard.terminate(Duration::from_secs(15))?;
+                status
+                    .success()
+                    .then_some(())
+                    .ok_or_else(|| format!("guest App exited with {status}"))
+            },
+        )
+    {
+        return false;
     }
     if !selected
         .iter()
