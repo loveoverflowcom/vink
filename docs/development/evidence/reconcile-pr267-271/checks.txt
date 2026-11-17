@@ -1,0 +1,73 @@
+# Trích log kiểm chứng — đối soát PR #267–#271
+# source: base e947a42, implementation 532e028 (tree a4e4da3a), diff sha256 d00695ab756682b8a32f225ff1d51b71ffeca4f73c7fe8ddc1da3daca9fcb807
+# host: macOS 26.5.2 arm64, 16 GiB, rustc 1.99.1, Node 26.12.0, JDK 17.0.19, Chrome 157.0.8103.79, PostgreSQL 17.11 scratch 127.0.0.1
+
+## baseline e947a42: cargo test --locked -p vink-app --lib title_authority
+test application::tests::title_authority::legacy_v1_title_authority_corpus ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 334 filtered out; finished in 0.01s
+local-budget: wall=153.37s sampled_peak_rss_sum=3192672 KiB samples=150 interval=1s
+
+## after: same command
+test application::tests::title_authority::legacy_v1_title_authority_corpus ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 334 filtered out; finished in 0.01s
+local-budget: wall=21.38s sampled_peak_rss_sum=1988016 KiB samples=21 interval=1s
+
+## mutation A (temporary): Title::parse counts raw.trim() before NFC
+thread 'application::tests::title_authority::legacy_v1_title_authority_corpus' (81463) panicked at services/vink-app/src/application/tests/title_authority.rs:77:9:
+title-200-nfc-from-nfd-input: Err(Invalid(Title(TooLong)))
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 334 filtered out; finished in 0.01s
+exit=101
+
+## mutation B (temporary): SCHEMA_VERSION = 2, pinned test
+thread 'application::tests::title_authority::legacy_v1_title_authority_corpus' (82300) panicked at services/vink-app/src/application/tests/title_authority.rs:77:9:
+explicit-over-atx: Err(Invalid(Document(UnsupportedSchemaVersion(1))))
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 334 filtered out; finished in 0.00s
+exit=101
+
+## control (temporary): SCHEMA_VERSION = 2, original #271 test and fixture
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 334 filtered out; finished in 0.01s
+exit=0
+
+## ./tools/local-budget run -- cargo xtask verify quick
+test result: ok. 335 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.71s
+  PASS  ui tokens: source valid, generated CSS/Rust/Kotlin match
+  PASS  empty artwork: verified runtime derivatives
+  PASS  expressions: manifest/hash/Unicode/drift
+  PASS  visual evidence oracles: manifest, PNG, overflow, AX, modal unit tests
+  PASS  web perf analyzer: lab distribution, transport ledger and negative duplicate control
+  PASS  fmt
+  PASS  clippy server (workspace, ssr)
+  PASS  clippy browser (vink-web, hydrate, wasm32)
+  PASS  clippy UI preview (vink-ui-preview, csr, wasm32)
+  PASS  literary core type-boundary doctests
+  PASS  Reader SSR boundary (isolated public-read fixture, no database)
+  PASS  unit + contract tests (no database)
+  PASS  repository checks (decisions, skills, links, boundaries, fonts, editor packages)
+local-budget: wall=371.80s sampled_peak_rss_sum=3479536 KiB samples=359 interval=1s
+exit=0
+
+## cargo xtask ui-preview cmp verify (JAVA_HOME=17; Gradle outside launcher)
+> Task :diagnostics:generateEmptyArtwork
+BUILD SUCCESSFUL in 3m 50s
+  PASS  ui tokens: generated files match
+  PASS  CMP: common + desktop tests and captures
+exit=0
+desktopTest XML: 105 tests, 0 failures, 0 errors, 0 skipped (EmptyArtwork* 6)
+
+## VINK_TEST_DATABASE_URL=<scratch> VINK_CHROME=<Chrome> cargo xtask verify web --scenario main --scenario discovery
+  PASS  selected prerequisites
+  PASS  visual evidence oracles: manifest, PNG, overflow, AX, modal unit tests
+  PASS  selected artifacts
+  PASS  browser bundle contains no credentials
+  PASS  SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview, draft tags
+  PASS  discovery: SQL fixture corpus, real pagination/SSR/reader return and transport race
+  PASS  server stops gracefully on SIGTERM
+exit=0
+browser ok lines: main 5818, discovery-corpus 181 (#260: 164, select-desk/forced-colors: 41); FAIL/not ok: 0
+  ok  #259 isolated empty-state context has no console errors
+  ok  desk forced-colors: native Select / 18px icon / 12px inset / 38px reserve / 8px label gap / no clipped option {"select":{"x":413.125,"y":408.359375,"width":971.875,"height":87.1875,"top":408.359
+  ok  #260 native checkbox accessible names contain each label once, no decorative mark false ["Gia đình","Ký ức","Mùa","Thơ","Tản văn","Đô thị"]
+  ok  #260 native checkbox accessible names contain each label once, no decorative mark true ["Gia đình","Ký ức","Mùa","Thơ","Tản văn","Đô thị"]
+
+## node apps/vink-web/assets/empty/verify.mjs; node --test …verify.test.mjs; node --check discovery-chip-geometry.mjs; git diff --check
+PASS 3/3 assets, 3/3 tests, syntax ok, diff-check ok
