@@ -122,8 +122,11 @@ frame/dấu chấm tải, không lặp sau recomposition). Lỗi/retry không t�
 - **Activity** do host tiêm và cộng dồn như giảm chuyển động (vùng ngoài không hoạt động thì bên
   trong không chạy lại): Leptos `MotionActivity { active: Signal<bool> }` (`provide_motion_activity`),
   adapter `document_visibility()` (Page Visibility API); CMP `VinkMotionActivity(active) { … }`
-  (`LocalMotionActive`), host map lifecycle (desktop preview: cửa sổ thu nhỏ/ẩn; Android/iOS chưa có
-  host nên NOT_IMPLEMENTED). Không hoạt động (tab ẩn, nền, offscreen) → không
+  (`LocalMotionActive`), host map lifecycle: desktop preview khi cửa sổ thu nhỏ/ẩn; Android
+  diagnostic `onResume`/`onPause`, iOS diagnostic `applicationDidBecomeActive`/`WillResignActive`
+  (UIS-06, chỉ diagnostic host; chưa có native product app, runtime theo
+  [qualification evidence](../../../docs/development/ui-system-qualification-evidence.md)).
+  Không hoạt động (tab ẩn, nền, offscreen) → không
   vòng lặp nào chạy. Unmount/dispose → animation mất cùng node. Component con không tự chạy timer:
   Web dùng CSS animation, CMP `rememberInfiniteTransition` chỉ khi `loopsRun && active`.
 - Shared role định nghĩa ý nghĩa; easing/hình dạng theo nền tảng, không ép giống pixel.
@@ -206,8 +209,11 @@ Vectors chung (lawful combinations, intent, placement, `LoadingGate`) ở
 ## Ghi chú cho caller (adoption #23)
 
 - Chiếu `LoadError::{NotFound, Unavailable}` → `Absent + Failed(NotFound | Unavailable)`; `ApiError`
-  của GET → `Unavailable`/`Network`/`Unknown`; 401 chỉ thành `SessionExpired` khi authority xác nhận
-  (hiện không có auth: dùng `AuthRequired` cho vùng riêng, không có nút đăng nhập).
+  của GET → `Unavailable`/`Network`/`Unknown`; 401 chỉ thành `SessionExpired` khi authority xác nhận.
+  Ghi chú 02/11/2026 “chưa có auth” đã cũ: từ Auth Web (10/11/2026) Desk chiếu 401 thành
+  `AuthRequired`; chỉ khi deployment mở đăng nhập (`api::sign_in_open`) caller thêm link
+  “Đăng nhập ở mục Tôi” tới `/toi`, không cấp intent `Reauthenticate`; nơi đăng nhập đóng thì
+  không có nút đăng nhập ([Auth Web](../../../docs/development/auth-web.md)).
 - `CreateState::Uncertain` → `ActionPhase::Uncertain` + `Problem(Uncertain)` với `Reconcile`; chỉ
   `Reconciled` mới cho gửi lại có chủ ý. `SaveStatus` của `EditorSession` → `ActionPhase`
   (`Saved` → `Confirmed`, `Conflict` → `Failed(Conflict)`).

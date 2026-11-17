@@ -333,8 +333,9 @@ a {
 @container vk-explore (max-width: 28rem) {
   #public-results > .vk-public-scope { grid-column: 1 / -1; grid-row: auto; margin-top: var(--vk-space-1); text-align: start; }
 }
-/* Empty, no-match and unavailable are one recovery slot inside the stream: centered, full column,
- * titled below the H2 they belong to. Reader keeps its own (H1) unavailable panel. */
+/* Unavailable (`public-unavailable` StatePanel) is a recovery slot inside the stream: centered,
+ * full column, titled below its H2. Empty/no-match use `.vk-empty-state` since #258.
+ * Reader keeps its own (H1) unavailable panel. */
 #community-stream [data-testid^=public-] > .vk-ui-panel { max-inline-size: none; justify-items: center; text-align: center; }
 #community-stream [data-testid^=public-] .vk-ui-heading {
   font-size: var(--vk-type-title-size);
@@ -494,8 +495,7 @@ a {
   .vk-draft-controls { grid-template-columns: minmax(0, 1fr) max-content; align-items: start; }
 }
 .vk-desk-privacy { margin-top: var(--vk-space-8); font-size: var(--vk-type-label-size); }
-/* The first-use CTA needs its full text measure at 320px/text200. */
-.vk-desk-empty { max-width: none; }
+/* The first-use CTA drops its icon to keep the full label measure at 320px/text200. */
 .vk-desk-empty #create-draft > .vk-ui-icon { display: none; }
 
 /* Paper First (#218): quiet context/tools in flow; the manuscript owns the surface. */
