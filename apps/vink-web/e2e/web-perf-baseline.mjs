@@ -14,9 +14,10 @@ const ITERATIONS = 10;
 // md5('vink-100-work-1')::uuid: the #100 work that carries the 1,000-comment hot thread and,
 // by the fixture's publication order, the first filtered discovery row.
 const HOT_WORK = 'e4202094-9563-02e5-519d-6f8fa6a1af4c';
-// Two-tier discussion: one public page holds at most MAX_PAGE (50) roots, each with an inline
-// reply preview. Anything above this means the browser mounted more than one bounded page.
-const MAX_MOUNTED_COMMENTS = 100;
+// The endpoint's default page is 20 roots, each with up to 3 inline preview replies.
+const ROOT_PAGE_SIZE = 20;
+const MAX_MOUNTED_COMMENTS = ROOT_PAGE_SIZE * (1 + 3);
+const ROOTS = "document.querySelectorAll('#root-list > .vk-discussion-root').length";
 const COMMENTS = "document.querySelectorAll('.vk-discussion-comment').length";
 
 export function distribution(values) {
@@ -83,6 +84,7 @@ async function browserSnapshot(page) {
     'interactions:p.interactions??null,' +
     'loaded_bundle_transfer_bytes:bytes,loaded_resource_count:res.length,' +
     'row_count:document.querySelectorAll(".vk-public-row").length,' +
+    'discussion_roots:' + ROOTS + ',' +
     'comment_nodes:document.querySelectorAll(".vk-discussion-comment").length,' +
     'body_characters:document.querySelector(".vk-reader .vk-document")?.textContent.length??null,' +
     'root_font_px:getComputedStyle(document.documentElement).fontSize,' +
@@ -174,7 +176,8 @@ async function measureControls(page, results, phase, origin, check) {
     results.intended_reads.push({ phase: phase.current, reason: 'manual_retry', representation: 'public-discussion' });
     await page.click('#discussion-load-retry');
     await page.waitFor(COMMENTS + ' > 0', 'manual secondary retry reaches real App');
-    check(countTransport(results.transport, phase.current, 'public-discussion') === 1 && await page.eval(COMMENTS + ' <= ' + MAX_MOUNTED_COMMENTS),
+    check(countTransport(results.transport, phase.current, 'public-discussion') === 1 &&
+      await page.eval(`${ROOTS} === ${ROOT_PAGE_SIZE} && ${COMMENTS} <= ${MAX_MOUNTED_COMMENTS}`),
       'retry requests and mounts one bounded public discussion page');
     controls.secondary = { injected_status: 503, minimum_hold_ms: 200, click_to_retry_control_ms: heldMs, recovered: true };
   } finally {
@@ -269,7 +272,7 @@ export async function webPerfBaseline(page, { args, check }) {
         '#234 warm journey opens the 1,000-comment hot thread #' + i);
       check(reader.body_characters > 0, '#234 real App Reader body stays available #' + i);
       // Only a limited page may be mounted, never all 1,000 comments from the hot thread.
-      check(reader.comment_nodes > 0 && reader.comment_nodes <= MAX_MOUNTED_COMMENTS,
+      check(reader.discussion_roots === ROOT_PAGE_SIZE && reader.comment_nodes > 0 && reader.comment_nodes <= MAX_MOUNTED_COMMENTS,
         '#234 hot thread mounts one bounded page (' + reader.comment_nodes + ' nodes) #' + i);
       await page.waitFor("document.querySelector('#discussion-refresh')?.dataset.state==='enabled'",
         'discussion reload control ready #' + i);
@@ -316,13 +319,7 @@ export async function webPerfBaseline(page, { args, check }) {
       history_ssr_unknown_age: 'PASS', stale_invalidation: 'see public-read-lifecycle.json (main)',
       release_profile: args['build-profile'] === 'release' ? 'PASS' : 'NOT_RUN',
     };
-    results.go_no_go = {
-      selective_ssr: 'PENDING: inspect main-content vs hydration/secondary delay before #235',
-      anchor_restore: 'PENDING: inspect return focus/position before #236',
-      ram_ceiling: 'PENDING: separate optional snapshot cache from active view before #237',
-      containment: 'PENDING: inspect render/DOM hotspots before #238',
-      prefetch: 'NO_GO until #237 establishes a byte ceiling and navigation benefit',
-    };
+    results.interpretation_owner = 'docs/development/web-perf-baseline.md';
     results.status = 'MEASURED_PARTIAL';
     flush();
   } catch (error) {
