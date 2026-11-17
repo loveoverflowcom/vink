@@ -1362,8 +1362,9 @@ async fn upgrading_keeps_old_comments_and_new_ones_start_owing_work(pool: PgPool
             .is_err()
     );
     assert_eq!(count(&pool, "SELECT count(*) FROM comments").await, 1);
-    MIGRATOR.run(&pool).await.unwrap();
-    assert_eq!(schema_state(&pool).await.unwrap(), SchemaState::Current);
+    upgrade_before_cutover(&pool).await;
+    // The canonical document cutover stays pending: this database holds a pre-cutover revision.
+    assert_eq!(schema_state(&pool).await.unwrap(), SchemaState::Pending);
     // No backfill: the old comment owes nothing and is untouched; reads keep working.
     assert_eq!(
         count(&pool, "SELECT count(*) FROM discussion_events").await,
@@ -1411,8 +1412,11 @@ async fn upgrading_keeps_old_comments_and_new_ones_start_owing_work(pool: PgPool
     assert_eq!((row.state.as_str(), row.generation), ("succeeded", 2));
 }
 
-#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+#[sqlx::test(migrations = false)]
 async fn the_schema_rollback_refuses_while_work_is_owed_and_keeps_comments(pool: PgPool) {
+    // Older backouts run on the schema just before the canonical document cutover (#255), whose
+    // own backout refuses while immutable revisions exist.
+    upgrade_before_cutover(&pool).await;
     let vink = setup(&pool).await;
     let id = post(&vink, "Trước khi rollback").await;
     let script = std::fs::read_to_string(
@@ -1513,9 +1517,10 @@ async fn the_schema_rollback_refuses_while_work_is_owed_and_keeps_comments(pool:
         count(&pool, "SELECT max(version) FROM _sqlx_migrations").await,
         20261113000000
     );
-    // Roll-forward applies the migration again on the same data.
-    MIGRATOR.run(&pool).await.unwrap();
-    assert_eq!(schema_state(&pool).await.unwrap(), SchemaState::Current);
+    // Roll-forward applies the migration again on the same data, up to the canonical cutover,
+    // which stays pending while the pre-cutover revision exists.
+    upgrade_before_cutover(&pool).await;
+    assert_eq!(schema_state(&pool).await.unwrap(), SchemaState::Pending);
 }
 
 // ---------------------------------------------------------------------------------------- T9/T10/T11 process

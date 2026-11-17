@@ -3,6 +3,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { paragraphs } from './document.mjs';
 
 export async function documentBudget(page, { args, check }) {
   const dir = dirname(args.state);
@@ -73,9 +74,10 @@ export async function documentBudget(page, { args, check }) {
               resources:performance.getEntriesByType('resource').map(r=>({name:new URL(r.name).pathname,
                 duration:r.duration,encodedBodySize:r.encodedBodySize,decodedBodySize:r.decodedBodySize,transferSize:r.transferSize})) };
           })()`);
-          const expectedScalars = fixture.document.blocks.flatMap(b => b.lines).reduce((n, s) => n + [...s].length, 0)
-            + fixture.document.blocks.reduce((n, b) => n + b.lines.length - 1, 0);
-          check(metrics.blocks === fixture.document.blocks.length && metrics.body_text_scalars === expectedScalars,
+          const shown = paragraphs(fixture.document);
+          const expectedScalars = shown.flatMap(b => b.lines).reduce((n, s) => n + [...s].length, 0)
+            + shown.reduce((n, b) => n + b.lines.length - 1, 0);
+          check(metrics.blocks === shown.length && metrics.body_text_scalars === expectedScalars,
             `${fixture.case}/${width}/${scale}: Reader renders every block/scalar`);
           const heap = await page.send('Runtime.getHeapUsage');
           const dom = await page.send('Memory.getDOMCounters');
@@ -94,7 +96,7 @@ export async function documentBudget(page, { args, check }) {
       await page.waitFor(`${ready} && document.querySelector('.cm-content[contenteditable=true]')`, 'budget editor', 120000);
       const loadedHeap = await page.send('Runtime.getHeapUsage');
       const loadedDom = await page.send('Memory.getDOMCounters');
-      const source = fixture.document.blocks.map(b => b.lines.join('\n')).join('\n\n');
+      const source = fixture.document.source;
       await page.eval(`window.__budgetExpected=${JSON.stringify(source)};window.__budgetView=${view};void 0`);
       check(await page.eval(`__budgetView.state.doc.toString()===__budgetExpected`), `${fixture.case}: actual loaded buffer retains every line`);
       const snapshots = await page.eval(`(async()=>{const m=await import('/pkg/vink-editor.js');return Array.from({length:5},()=>{
@@ -164,7 +166,7 @@ export async function documentBudget(page, { args, check }) {
         `${fixture.case}: manual save ${tooLarge ? 'transport rejection preserves server version' : 'ACK advances server version'}`);
       check(await page.eval(`__budgetView===${view} && __budgetView.state.doc.toString()===__budgetBeforeSave`), `${fixture.case}: exact live buffer survives save outcome`);
       row.stale_status = await page.eval(`(async()=>{const r=await fetch('/api/v1/drafts/${fixture.work_id}',{method:'PUT',headers:{'content-type':'application/json'},
-        body:JSON.stringify({expected_version:1,title:'[Mẫu #229]',document:{schema_version:1,blocks:[{lines:['Xung đột thử nghiệm']}]}})});return r.status;})()`);
+        body:JSON.stringify({expected_version:1,title:'[Mẫu #229]',document:{format:'default',source:'Xung đột thử nghiệm'}})});return r.status;})()`);
       check(row.stale_status === 409, `${fixture.case}: stale saved-version remains 409`);
       if (!tooLarge) {
         const external = await page.eval(`(async()=>{const d=await fetch('/api/v1/drafts/${fixture.work_id}').then(r=>r.json());

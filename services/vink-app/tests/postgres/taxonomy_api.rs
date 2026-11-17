@@ -483,7 +483,7 @@ async fn draft_tags_round_trip_privately_with_presence_and_catalog_rules(pool: P
     let text = json!({
         "expected_version": 1,
         "title": "Sửa chữ, không sửa thẻ",
-        "document": { "schema_version": 1, "blocks": [{ "lines": ["Một dòng mới."] }] }
+        "document": { "format": "default", "source": "Một dòng mới." }
     });
     let (status, _, body) = call(
         &app,

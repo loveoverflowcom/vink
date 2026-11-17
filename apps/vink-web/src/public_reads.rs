@@ -1209,8 +1209,8 @@ mod tests {
             title: format!("Title {id}"),
             author_display_name: "Author".into(),
             document: DocumentDto {
-                schema_version: 1,
-                blocks: vec![],
+                format: crate::contract::DocumentFormatDto::Default,
+                source: String::new(),
             },
             published_at: "2026-11-15T00:00:00Z".into(),
             tags: vec![],

@@ -10,15 +10,20 @@ pub mod author_works;
 pub mod moderation;
 pub mod publication;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DocumentDto {
-    pub schema_version: u16,
-    pub blocks: Vec<BlockDto>,
+/// The one document shape (`VDR-DOCUMENT-SOURCE-FORMAT@r2`): an explicit format and the
+/// author's exact source. An unknown format fails to decode instead of being guessed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DocumentFormatDto {
+    Default,
+    Markdown,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BlockDto {
-    pub lines: Vec<String>,
+#[serde(deny_unknown_fields)]
+pub struct DocumentDto {
+    pub format: DocumentFormatDto,
+    pub source: String,
 }
 
 /// `GET /api/v1/works` (TAG-PR-04): one page of the public library. Only the default request
@@ -133,7 +138,9 @@ pub struct Draft {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SaveDraftRequest {
     pub expected_version: i64,
-    pub title: String,
+    /// The separate title of a `default` document; absent for `markdown` (#263).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
     pub document: DocumentDto,
 }
 
@@ -1004,13 +1011,9 @@ mod tests {
             .collect();
         assert_eq!(resolutions, ["retired", "not_found"]);
         let publication: Publication = round_trip("publication.get.json");
-        assert!(
-            publication
-                .document
-                .blocks
-                .iter()
-                .any(|b| b.lines.len() > 1)
-        );
+        // The provider sends the exact source: line breaks, blank lines and indentation.
+        assert_eq!(publication.document.format, DocumentFormatDto::Default);
+        assert!(publication.document.source.contains("\n\n\n    "));
         let request: SaveDraftRequest = round_trip("draft.save.request.json");
         assert!(request.expected_version >= 1);
         let legacy: DraftList = round_trip("drafts.list.json");
@@ -1327,6 +1330,12 @@ mod tests {
         assert_eq!(
             classify("error.unknown_revision.json", 404),
             ApiError::UnknownRevision
+        );
+        // No Web path makes a Markdown revision public before #264: the gate is an explicit,
+        // unrecovered failure, never a silent success.
+        assert_eq!(
+            classify("error.format_not_publishable.json", 409),
+            ApiError::Unexpected { status: 409 }
         );
         assert_eq!(
             classify("error.work_unavailable.json", 409),

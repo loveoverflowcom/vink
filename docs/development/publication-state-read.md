@@ -60,7 +60,7 @@ exact-content loader cho commands là scope tiếp theo nếu có evidence/contr
 | `finish_job` (`persistence/evaluation.rs`) | Full paired loader dưới work locks, claim/lease generation, policy/digest/decision fence, automation mode, late-result/admin precedence và private withdrawal. |
 | `appeals::file`, `appeals::conclude` | Full paired loader; exact adverse subject/version, standing/admin/current authority, appeal state; lưu decision/pointer/audit cùng transaction. |
 | Public API/Reader/SSR qua `PublicationStore::publication` (`persistence/discovery.rs`) | Chỉ revision đang được publications trỏ, join cùng work và một read snapshot, parse title/document và metadata digest. #230 bổ sung tính hash v1 của **đúng body trả ra** so stored hash; corrupt body trả internal trước DTO/ETag, không trả body hoặc 304. Không đọc history. |
-| Case-detail/appeal-snapshot reads hiện có | Chọn đúng revision/work/hash đã bind và deserialize `DocumentData`; không phải validation domain hay cryptographic audit mọi body. Full paired loader vẫn kiểm hash lại tại conclusion trước mọi approval. #230 không thay các read này hay bật provider. |
+| Case-detail/appeal-snapshot reads hiện có | Chọn đúng revision/work/hash đã bind và deserialize `DocumentData` canonical (`{format, source}`, #255); không phải validation domain hay cryptographic audit mọi body. Full paired loader vẫn kiểm hash lại tại conclusion trước mọi approval. #230 không thay các read này hay bật provider. |
 | PostgreSQL schema | Immutable revision UPDATE trigger; hash syntax CHECK; composite FK `(work_id,revision_id)` cho intent/pointer/moderation/job và `(work_id,metadata_snapshot_id)` cho revision. Legacy NULL được giữ. Không bypass bằng projection. |
 
 Tóm tắt luồng tin cậy:

@@ -3,7 +3,7 @@
 use uuid::Uuid;
 
 use super::*;
-use crate::domain::document::{Document, Title};
+use crate::domain::document::Document;
 use crate::domain::ids::{PrincipalId, TagId};
 use crate::domain::principal::Standing;
 use crate::domain::revision::ContentHash;
@@ -1065,29 +1065,25 @@ fn metadata_digest_matches_independent_v1_vectors() {
 }
 
 #[test]
-fn tags_never_change_the_content_hash_v1_of_a_revision() {
+fn tags_never_change_the_content_hash_of_a_revision() {
     // Same golden vector as domain::revision: tags are not part of the content identity.
-    let title = Title::parse("Việt Đ/đ").unwrap();
-    let document = Document::parse(crate::domain::document::DocumentData {
-        schema_version: crate::domain::document::SCHEMA_VERSION,
-        blocks: vec![
-            crate::domain::document::BlockData {
-                lines: vec!["Đêm xuống,".into(), "  đợi trăng".into()],
-            },
-            crate::domain::document::BlockData {
-                lines: vec!["đường xa.".into()],
-            },
-        ],
-    })
+    let content = crate::domain::document::TitledDocument::author(
+        Document::new(
+            crate::domain::document::DocumentFormat::Default,
+            "# Tên trong thân\nĐoạn sau.",
+        )
+        .unwrap(),
+        Some("Tên riêng"),
+    )
     .unwrap();
-    let before = ContentHash::of(&title, &document);
+    let before = ContentHash::of(&content);
     let facts = work_facts(1, WorkTags::EMPTY);
     let _ = decide_tag_change(actor(), &change(1, Some(TAN_VAN), &[KY_UC]), Some(&facts));
     assert_eq!(
-        ContentHash::of(&title, &document).as_str(),
-        "88bbbf2e34c3174e82d6a49388dddb70882a216e7ec3ba6b76eea165a49c36dd"
+        ContentHash::of(&content).as_str(),
+        "f735c19566fdff2931d7a5944bb57882c4a915bd0fecb29f1d3c46119ed2c79b"
     );
-    assert_eq!(ContentHash::of(&title, &document), before);
+    assert_eq!(ContentHash::of(&content), before);
 }
 
 #[test]

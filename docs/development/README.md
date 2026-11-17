@@ -36,9 +36,9 @@ chưa tích hợp composer/reaction/sticker persistence.
 [Phân trang Bàn viết #201](desk-pagination.md): API query/sort/cursor trên toàn bộ nháp của owner;
 consumer Web dùng ReadOwner/PageChain của #202; evidence phân trang và giới hạn ghi ở owner này.
 
-[Nguồn văn bản và định dạng #255](document-source-format.md): hợp đồng nguồn v2, hash `v2`,
-compatibility reader v1+v2 cô lập và kiểm chứng PG scratch dưới đề xuất `PENDING`
-([kiến trúc](../architecture/document-source-format.md)); writer v2 và migration sản xuất vẫn khóa.
+[Document canonical #255 và title #263](document-source-format.md): một shape `{format, source}`
+nguyên văn, một content hash, title theo định dạng và migration cutover fail-closed khi còn revision
+cũ ([kiến trúc](../architecture/document-source-format.md)); `VDR-DOCUMENT-SOURCE-FORMAT@r2` `PENDING`.
 
 ## Nền test-domain/container
 
@@ -406,7 +406,7 @@ apps/vink-web/            crate vink-web: view Leptos, route, DTO riêng của w
   src/public_list.rs      lọc title/author của public cards, dựng link ngữ cảnh nội bộ, thuần
   src/search.rs           comparison key tiếng Việt dùng chung, không sửa chữ gốc
   src/desk_state.rs       máy trạng thái lưu nháp và rời editor (EditorSession, LeaveGuard), thuần
-  src/document.rs         chữ nguồn ↔ document v1, DocumentView, export .txt
+  src/document.rs         document canonical {format, source}, đoạn đọc của Reader, DocumentView
   src/expressions.rs      static SSR + isolated Google Noto pilot, Rust policy bridge
   expressions/            dotLottie 0.82.1, runtime hashes/licenses, lazy Web effects
   src/editor.rs           (hydrate) cầu wasm-bindgen tới CodeMirror, BodySource::snapshot
@@ -552,9 +552,9 @@ production đỏ; model mutant tạo OFF→old ON resurrection. Harness và kế
 | Worker là binary thứ hai trong `vink-app` | Dùng chung config/application; chưa có job | Có job thật cần deploy hoặc scale riêng |
 | REST JSON v1 cho browser, SSR đọc trong tiến trình qua `PublicReads` | Server sở hữu contract; consumer có DTO riêng; không có luật nghiệp vụ thứ hai trong server function | Editor/frontend thay thế (D-04) cần transport khác |
 | Bàn viết chỉ render khung ở server, tải nháp bằng API | Không có đường nào đưa nháp vào HTML/hydration payload | Có auth thật và cần render nháp cho chủ sở hữu ở server |
-| Document v1: block là danh sách dòng, NFC | Giữ khổ thơ, xuống dòng, thụt lề; hash ổn định giữa cách gõ dấu dựng sẵn và tổ hợp | S-01 chọn editor và schema dài hạn; cần migration document |
+| Một document canonical `{format, source}`, source nguyên văn (#255; thay document v1 ngày 17/11/2026) | Giữ đúng chữ tác giả gõ: khổ thơ, dòng trống, thụt lề, CRLF, NFD; title theo format (#263) | Đổi khi #256/#264 cần dialect Markdown khác; lịch sử revision trước cutover chờ kế hoạch được ủy quyền |
 | Lưu thủ công (nút, Enter ở tiêu đề, Ctrl/Cmd+S), chưa autosave | Đủ kiểm CAS và trạng thái lưu; tránh hẹn giờ trước khi chọn editor | Làm WR-01 đầy đủ trong S-01 |
-| CodeMirror 6 sửa chữ nguồn của nội dung, build bằng npm/esbuild riêng ([#6](https://github.com/loveoverflowcom/vink/issues/6)) | Giữ undo, selection, IME tốt hơn textarea mà không đổi document v1; runtime chỉ tải ở editor | S-01 chọn editor/schema dài hạn (D-04), cần rich text hoặc bundle quá lớn |
+| CodeMirror 6 sửa chữ nguồn của nội dung, build bằng npm/esbuild riêng ([#6](https://github.com/loveoverflowcom/vink/issues/6)) | Giữ undo, selection, IME tốt hơn textarea; buffer được gửi nguyên văn; runtime chỉ tải ở editor | S-01 chọn editor/schema dài hạn (D-04), cần rich text hoặc bundle quá lớn |
 | Guard rời editor: hộp thoại riêng cho điều hướng trong app, `beforeunload` cho reload/đóng tab | Router không hủy được back/forward; guard chặn trước router và đẩy URL trang về | Router có API chặn điều hướng, hoặc shell PR 03 cần lối thoát mới |
 | Origin check cho PUT/POST | Seam CSRF trước khi có cookie session | Chọn mô hình session/CSRF cùng D-05 |
 | Một instance, database và role riêng cho App/Identity; provisioning bằng `psql` ([services/postgres](../../services/postgres/README.md)) | Runtime không DDL, Identity không đọc được từ App; vận hành nhẹ ở quy mô hiện tại | Cần tách instance/failure domain, PostgreSQL managed không có superuser, hoặc chọn auth authority (D-05) |
@@ -585,7 +585,7 @@ production đỏ; model mutant tạo OFF→old ON resurrection. Harness và kế
 
 ## Việc tiếp theo
 
-1. **S-01 Editor + SSR:** CodeMirror 6 đang sửa chữ nguồn sau ranh giới `DocumentView`/document v1;
+1. **S-01 Editor + SSR:** CodeMirror 6 đang sửa source nguyên văn của document `default`;
    còn IME thật trên macOS/Windows/Android/iOS, paste, autosave dùng lại `EditorSession`, hai tab,
    mobile, và quyết định có cần rich text (D-04).
 2. **S-03 Identity:** chọn auth authority, thay `LocalFixture` bằng resolver thật giữ nguyên

@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use time::macros::datetime;
 
 use super::*;
-use crate::domain::document::{BlockData, MAX_DOCUMENT_CHARS, MAX_TITLE_CHARS, SCHEMA_VERSION};
+use crate::domain::document::{MAX_DOCUMENT_CHARS, MAX_SOURCE_BYTES, MAX_TITLE_CHARS};
 
 mod title_authority;
 
@@ -63,8 +63,8 @@ impl DraftStore for RecordingStore {
             owner,
             work_id,
             expected_version: change.expected_version().get(),
-            title: change.title().as_str().into(),
-            document: change.document().to_data(),
+            title: change.content().title().as_str().into(),
+            document: change.content().document().to_data(),
         });
         self.outcome.clone()
     }
@@ -78,24 +78,22 @@ fn work() -> WorkId {
     WorkId::parse("33333333-3333-4333-8333-333333333333").unwrap()
 }
 
-fn data(blocks: &[&[&str]]) -> DocumentData {
+fn data(format: &str, source: &str) -> DocumentData {
     DocumentData {
-        schema_version: SCHEMA_VERSION,
-        blocks: blocks
-            .iter()
-            .map(|lines| BlockData {
-                lines: lines.iter().map(|line| (*line).into()).collect(),
-            })
-            .collect(),
+        format: format.into(),
+        source: source.into(),
     }
 }
+
+/// NFD on purpose: the title projection is NFC, the source stays exactly as authored.
+const BODY: &str = "Đe\u{0302}m xuống,\r\n  đợi trăng\n\n\n   \n\tđường xa.\n";
 
 fn command() -> SaveDraft {
     SaveDraft {
         work_id: work(),
         expected_version: 1,
-        title: "  Vie\u{0323}\u{0302}t Đ/đ  ".into(),
-        document: data(&[&["Đe\u{0302}m xuống,", "  đợi trăng"], &["đường xa."]]),
+        title: Some("  Vie\u{0323}\u{0302}t Đ/đ  ".into()),
+        document: data("default", BODY),
     }
 }
 
@@ -124,9 +122,79 @@ async fn save_passes_one_validated_change_to_the_store() {
             work_id: work(),
             expected_version: 1,
             title: "Việt Đ/đ".into(),
-            document: data(&[&["Đêm xuống,", "  đợi trăng"], &["đường xa."]]),
+            document: data("default", BODY),
         }]
     );
+}
+
+#[tokio::test]
+async fn markdown_title_is_derived_by_the_server_and_never_written_by_the_client() {
+    let vink = app();
+    let source = "Lời đề.\n\n# *Mưa* trên phố\n\n# Tên sau\n";
+    let markdown = SaveDraft {
+        title: None,
+        document: data("markdown", source),
+        ..command()
+    };
+    assert!(
+        vink.save_draft(Some(actor()), markdown.clone())
+            .await
+            .is_ok()
+    );
+    {
+        let saves = vink.store().saves.lock().unwrap();
+        assert_eq!(saves[0].title, "Mưa trên phố");
+        assert_eq!(saves[0].document, data("markdown", source));
+    }
+
+    let vink = app();
+    for title in [Some("Mưa trên phố".to_string()), Some(String::new())] {
+        assert_eq!(
+            vink.save_draft(
+                Some(actor()),
+                SaveDraft {
+                    title,
+                    ..markdown.clone()
+                }
+            )
+            .await,
+            Err(DraftError::Invalid(InvalidInput::TitleAuthority(
+                TitleAuthorityError::TitleNotWritable
+            )))
+        );
+    }
+    assert_eq!(
+        vink.save_draft(
+            Some(actor()),
+            SaveDraft {
+                title: None,
+                ..command()
+            }
+        )
+        .await,
+        Err(DraftError::Invalid(InvalidInput::TitleAuthority(
+            TitleAuthorityError::MissingTitle
+        )))
+    );
+    // An overlong first H1 is refused, not truncated; the editor keeps the source.
+    assert_eq!(
+        vink.save_draft(
+            Some(actor()),
+            SaveDraft {
+                title: None,
+                document: data(
+                    "markdown",
+                    &format!("# {}", "ơ".repeat(MAX_TITLE_CHARS + 1))
+                ),
+                ..command()
+            }
+        )
+        .await,
+        Err(DraftError::Invalid(InvalidInput::Title(
+            TitleError::TooLong
+        )))
+    );
+    assert!(vink.store().saves.lock().unwrap().is_empty());
 }
 
 #[tokio::test]
@@ -142,27 +210,30 @@ async fn invalid_raw_input_never_reaches_the_store() {
         ("ư".repeat(MAX_TITLE_CHARS + 1), TitleError::TooLong),
     ] {
         let mut input = command();
-        input.title = raw;
+        input.title = Some(raw);
         cases.push((input, InvalidInput::Title(error)));
     }
     for (raw, error) in [
-        (data(&[&[]]), DocumentError::EmptyBlock { block: 0 }),
         (
-            data(&[&["Đêm", "  "]]),
-            DocumentError::BlankLine { block: 0, line: 1 },
+            data("default", "Đêm\nxuống\u{0}"),
+            DocumentError::ForbiddenCharacter { line: 1 },
         ),
         (
-            data(&[&["Đêm\nxuống"]]),
-            DocumentError::ForbiddenCharacter { block: 0, line: 0 },
-        ),
-        (
-            data(&[&[&"ư".repeat(MAX_DOCUMENT_CHARS + 1)]]),
+            data("default", &"ư".repeat(MAX_DOCUMENT_CHARS + 1)),
             DocumentError::TooLong,
         ),
         (
+            data("default", &" ".repeat(MAX_SOURCE_BYTES + 1)),
+            DocumentError::TooManyBytes,
+        ),
+        (
+            data("asciidoc", "= Tên"),
+            DocumentError::DeferredFormat("asciidoc".into()),
+        ),
+        (
             // The untrusted wire shape deserializes successfully; that does not validate it.
-            serde_json::from_str(r#"{"schema_version":2,"blocks":[]}"#).unwrap(),
-            DocumentError::UnsupportedSchemaVersion(2),
+            serde_json::from_str(r#"{"format":"html","source":"<b>x</b>"}"#).unwrap(),
+            DocumentError::UnsupportedFormat("html".into()),
         ),
     ] {
         let mut input = command();
@@ -184,8 +255,8 @@ async fn authentication_and_validation_precedence_are_unchanged() {
     let vink = app();
     let mut input = command();
     input.expected_version = 0;
-    input.title = "a\nb".into();
-    input.document.schema_version = 2;
+    input.title = Some("a\nb".into());
+    input.document.format = "markdown".into();
     assert_eq!(
         vink.save_draft(None, input.clone()).await,
         Err(DraftError::Unauthenticated)
@@ -195,6 +266,14 @@ async fn authentication_and_validation_precedence_are_unchanged() {
         Err(DraftError::Invalid(InvalidInput::ExpectedVersion))
     );
     input.expected_version = 1;
+    // The format decides title authority, so the document is validated before the title.
+    assert_eq!(
+        vink.save_draft(Some(actor()), input.clone()).await,
+        Err(DraftError::Invalid(InvalidInput::TitleAuthority(
+            TitleAuthorityError::TitleNotWritable
+        )))
+    );
+    input.document.format = "default".into();
     assert_eq!(
         vink.save_draft(Some(actor()), input).await,
         Err(DraftError::Invalid(InvalidInput::Title(

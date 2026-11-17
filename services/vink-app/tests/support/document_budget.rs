@@ -1,6 +1,6 @@
 //! Synthetic, seeded corpus shared by the pure regression and the opt-in PG/browser probe.
 use unicode_normalization::UnicodeNormalization;
-use vink_app::domain::document::{BlockData, DocumentData, SCHEMA_VERSION};
+use vink_app::domain::document::DocumentData;
 
 pub const SEED: u64 = 229;
 pub const SHAPES: [&str; 7] = [
@@ -46,40 +46,41 @@ pub fn corpus(shape: &str, scalars: usize) -> DocumentData {
         vec![chars.iter().collect()]
     };
     let block_lines = if shape == "poem_tabs" { 4 } else { 1 };
+    // Lines joined by `\n`, stanzas/paragraphs separated by one blank line; the default format
+    // keeps every byte, so `vi_nfd` stays decomposed.
+    let source = lines
+        .chunks(block_lines)
+        .map(|lines| {
+            lines
+                .iter()
+                .map(|s| {
+                    if shape == "vi_nfd" {
+                        s.nfd().collect()
+                    } else {
+                        s.clone()
+                    }
+                })
+                .collect::<Vec<String>>()
+                .join("\n")
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n");
     DocumentData {
-        schema_version: SCHEMA_VERSION,
-        blocks: lines
-            .chunks(block_lines)
-            .map(|lines| BlockData {
-                lines: lines
-                    .iter()
-                    .map(|s| {
-                        if shape == "vi_nfd" {
-                            s.nfd().collect()
-                        } else {
-                            s.clone()
-                        }
-                    })
-                    .collect(),
-            })
-            .collect(),
+        format: "default".into(),
+        source,
     }
 }
 
-/// Replace one scalar without changing block/line boundaries or the content length.
+/// Replace one non-line-break scalar without changing line boundaries or the content length.
 pub fn edit(data: &mut DocumentData, at: usize) {
-    let mut remaining = at;
-    for line in data.blocks.iter_mut().flat_map(|b| &mut b.lines) {
-        let n = line.chars().count();
-        if remaining < n {
-            let (start, c) = line.char_indices().nth(remaining).unwrap();
-            line.replace_range(
-                start..start + c.len_utf8(),
-                if c == 'Z' { "Y" } else { "Z" },
-            );
-            return;
-        }
-        remaining -= n;
-    }
-    panic!("edit outside corpus");
+    let (start, c) = data
+        .source
+        .char_indices()
+        .filter(|(_, c)| *c != '\n')
+        .nth(at)
+        .expect("edit outside corpus");
+    data.source.replace_range(
+        start..start + c.len_utf8(),
+        if c == 'Z' { "Y" } else { "Z" },
+    );
 }

@@ -121,6 +121,8 @@ pub struct DraftCard {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Draft {
     pub work_id: String,
+    /// Effective title: the separate title of a `default` document, or the first-H1 projection
+    /// of a `markdown` one (read-only). Empty means untitled; clients show "Chưa đặt tên".
     pub title: String,
     pub version: i64,
     #[serde(with = "time::serde::rfc3339")]
@@ -132,7 +134,10 @@ pub struct Draft {
 #[serde(deny_unknown_fields)]
 pub struct SaveDraftRequest {
     pub expected_version: i64,
-    pub title: String,
+    /// Required for `default` documents; must be absent (or `null`) for `markdown` ones, whose
+    /// title is derived from the first H1 (#263).
+    #[serde(default)]
+    pub title: Option<String>,
     pub document: DocumentData,
 }
 
@@ -981,10 +986,10 @@ impl From<&PublicWork> for Publication {
         Self {
             work_id: work.work_id.to_string(),
             revision_id: work.revision_id.to_string(),
-            title: work.title.as_str().to_string(),
+            title: work.content.title().as_str().to_string(),
             author_display_name: work.author_display_name.clone(),
             published_at: work.published_at,
-            document: work.document.to_data(),
+            document: work.content.document().to_data(),
             tags: work.tags.iter().map(PublicTag::from).collect(),
         }
     }
@@ -1045,10 +1050,10 @@ impl From<&WorkingDraft> for Draft {
     fn from(draft: &WorkingDraft) -> Self {
         Self {
             work_id: draft.work_id.to_string(),
-            title: draft.title.as_str().to_string(),
+            title: draft.content.title().as_str().to_string(),
             version: draft.version.get(),
             updated_at: draft.updated_at,
-            document: draft.document.to_data(),
+            document: draft.content.document().to_data(),
         }
     }
 }
@@ -1575,7 +1580,7 @@ mod tests {
 
     use super::*;
     use crate::application::{DraftError, InvalidInput, ReadError};
-    use crate::domain::document::{BlockData, Document, DocumentError, SCHEMA_VERSION, Title};
+    use crate::domain::document::{Document, DocumentError, DocumentFormat, Title, TitledDocument};
     use crate::domain::draft::DraftVersion;
     use crate::domain::ids::{RevisionId, WorkId};
     use crate::http::ApiError;
@@ -1609,22 +1614,17 @@ mod tests {
         Title::parse("[Mẫu] Mưa trên phố cũ").unwrap()
     }
 
+    /// Two blank lines and a trailing newline: the wire carries the source losslessly.
     fn document() -> Document {
-        Document::parse(DocumentData {
-            schema_version: SCHEMA_VERSION,
-            blocks: vec![
-                BlockData {
-                    lines: vec![
-                        "Phố cũ mưa giăng sợi mỏng,".into(),
-                        "mái ngói rêu xanh lặng thầm.".into(),
-                    ],
-                },
-                BlockData {
-                    lines: vec!["    đã theo mưa về rất lâu.".into()],
-                },
-            ],
-        })
+        Document::new(
+            DocumentFormat::Default,
+            "Phố cũ mưa giăng sợi mỏng,\nmái ngói rêu xanh lặng thầm.\n\n\n    đã theo mưa về rất lâu.\n",
+        )
         .unwrap()
+    }
+
+    fn content() -> TitledDocument {
+        TitledDocument::author(document(), Some(title().as_str())).unwrap()
     }
 
     #[test]
@@ -1654,8 +1654,7 @@ mod tests {
         let draft = WorkingDraft {
             work_id: work(),
             version: DraftVersion::new(3).unwrap(),
-            title: title(),
-            document: document(),
+            content: content(),
             updated_at: AT,
         };
         assert_matches("draft.get.json", &Draft::from(&draft));
@@ -1699,7 +1698,17 @@ mod tests {
         );
         let request: SaveDraftRequest = parse("draft.save.request.json");
         assert_eq!(request.expected_version, 3);
+        assert_eq!(request.title.as_deref(), Some(title().as_str()));
         assert_eq!(Document::parse(request.document).unwrap(), document());
+        // Markdown requests omit the title; `null` means the same.
+        let mut markdown = fixture("draft.save.request.json");
+        markdown.as_object_mut().unwrap().remove("title");
+        markdown["document"]["format"] = Value::from("markdown");
+        let request: SaveDraftRequest = serde_json::from_value(markdown.clone()).unwrap();
+        assert_eq!(request.title, None);
+        markdown["title"] = Value::Null;
+        let request: SaveDraftRequest = serde_json::from_value(markdown).unwrap();
+        assert_eq!(request.title, None);
     }
 
     #[test]
@@ -1715,7 +1724,7 @@ mod tests {
             (
                 "error.validation_failed.json",
                 ApiError::from(DraftError::Invalid(InvalidInput::Document(
-                    DocumentError::BlankLine { block: 0, line: 1 },
+                    DocumentError::ForbiddenCharacter { line: 2 },
                 ))),
                 422,
             ),
@@ -2646,10 +2655,9 @@ mod tests {
             let public = PublicWork {
                 work_id: work(),
                 revision_id: RevisionId::parse("44444444-4444-4444-8444-444444444444").unwrap(),
-                title: title(),
+                content: content(),
                 author_display_name: "Tác giả mẫu (dữ liệu phát triển)".into(),
                 published_at: AT,
-                document: document(),
                 tags: vec![tan_van(), ky_uc()],
             };
             assert_matches("publication.get.json", &Publication::from(&public));
@@ -3053,6 +3061,11 @@ mod tests {
                     "error.unknown_revision.json",
                     ApiError::UnknownRevision,
                     404,
+                ),
+                (
+                    "error.format_not_publishable.json",
+                    ApiError::FormatNotPublishable,
+                    409,
                 ),
                 (
                     "error.work_unavailable.json",

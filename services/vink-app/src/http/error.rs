@@ -108,6 +108,7 @@ pub enum ApiError {
     },
     RevisionRejected,
     UnknownRevision,
+    FormatNotPublishable,
     WorkUnavailable,
     PublicationKeyReused,
     SnapshotConflict {
@@ -153,6 +154,7 @@ impl ApiError {
                 StatusCode::UNPROCESSABLE_ENTITY
             }
             Self::UnknownRevision => StatusCode::NOT_FOUND,
+            Self::FormatNotPublishable => StatusCode::CONFLICT,
             Self::AuthorityNotConfigured => StatusCode::NOT_IMPLEMENTED,
             Self::RateLimited { .. } => StatusCode::TOO_MANY_REQUESTS,
             Self::CodeRejected => StatusCode::UNPROCESSABLE_ENTITY,
@@ -393,6 +395,12 @@ impl ApiError {
             Self::UnknownRevision => (
                 "unknown_revision",
                 "the revision was not found on this work".to_string(),
+                None,
+                Some("revision_id"),
+            ),
+            Self::FormatNotPublishable => (
+                "format_not_publishable",
+                "this document format has no public reader yet; the work stays private".to_string(),
                 None,
                 Some("revision_id"),
             ),
@@ -693,6 +701,7 @@ impl From<AuthorPublicationError> for ApiError {
             }
             AuthorPublicationError::RevisionRejected => Self::RevisionRejected,
             AuthorPublicationError::UnknownRevision => Self::UnknownRevision,
+            AuthorPublicationError::FormatNotPublishable => Self::FormatNotPublishable,
             AuthorPublicationError::WorkUnavailable => Self::WorkUnavailable,
             AuthorPublicationError::DraftOrMetadataConflict {
                 current_draft_version,

@@ -1097,7 +1097,8 @@ async fn stale_note_and_lost_authority_are_persisted_honestly(pool: PgPool) {
     assert_eq!(status, StatusCode::OK, "{body}");
     let detail = json(&body);
     assert_eq!(detail["revision_id"], r2);
-    assert!(detail["document"]["blocks"].is_array());
+    assert_eq!(detail["document"]["format"], "default");
+    assert!(detail["document"]["source"].is_string());
     assert_eq!(detail["decision_version"], 2);
 
     assert_eq!(
@@ -1774,7 +1775,7 @@ async fn appeal_on_old_revision_never_overwrites_new_public_intent(pool: PgPool)
     let filed = file_appeal(&app, &old).await;
     let id = filed["appeal"]["id"].as_str().unwrap();
     let work = dev_seed::SAMPLE_WORK;
-    let (status,_,body)=call(&app,"PUT",&format!("/api/v1/drafts/{work}"),Some(dev_seed::SAMPLE_AUTHOR),Some(ORIGIN),Some(json!({"expected_version":1,"title":"Bản mới đang chờ", "document":{"schema_version":1,"blocks":[{"lines":["Nội dung mới"]}]}}))).await;
+    let (status,_,body)=call(&app,"PUT",&format!("/api/v1/drafts/{work}"),Some(dev_seed::SAMPLE_AUTHOR),Some(ORIGIN),Some(json!({"expected_version":1,"title":"Bản mới đang chờ", "document":{"format":"default","source":"Nội dung mới"}}))).await;
     assert_eq!(status, StatusCode::OK, "{body}");
     let (status,_,body)=call(&app,"POST",&snapshots_path(work),Some(dev_seed::SAMPLE_AUTHOR),Some(ORIGIN),Some(json!({"command_key":"appeal-new-snapshot","expected_draft_version":2,"expected_metadata_version":1}))).await;
     assert_eq!(status, StatusCode::CREATED, "{body}");

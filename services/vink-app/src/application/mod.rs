@@ -17,7 +17,9 @@ pub mod taxonomy;
 
 use time::OffsetDateTime;
 
-use crate::domain::document::{Document, DocumentData, DocumentError, Title, TitleError};
+use crate::domain::document::{
+    Document, DocumentData, DocumentError, Title, TitleAuthorityError, TitleError, TitledDocument,
+};
 use crate::domain::draft::{DraftChange, DraftSummary, DraftVersion, WorkingDraft};
 use crate::domain::ids::{PrincipalId, RevisionId, WorkId};
 use crate::domain::taxonomy::CatalogTag;
@@ -28,10 +30,10 @@ use ports::{DraftStore, SaveOutcome, StoreError};
 pub struct PublicWork {
     pub work_id: WorkId,
     pub revision_id: RevisionId,
-    pub title: Title,
+    /// The published revision's format, source and title, checked against its content hash.
+    pub content: TitledDocument,
     pub author_display_name: String,
     pub published_at: OffsetDateTime,
-    pub document: Document,
     /// Public tags of the bound metadata snapshot: active only, snapshot order, current labels.
     pub tags: Vec<CatalogTag>,
 }
@@ -61,11 +63,12 @@ pub struct PublicWorkSummary {
 }
 
 /// Untrusted save input. Only `save_draft` turns its raw fields into a [`DraftChange`].
+/// `title` is required for `default` documents and refused for `markdown` ones (#263).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SaveDraft {
     pub work_id: WorkId,
     pub expected_version: i64,
-    pub title: String,
+    pub title: Option<String>,
     pub document: DocumentData,
 }
 
@@ -90,17 +93,30 @@ pub enum ReadError {
 pub enum InvalidInput {
     #[error("expected_version must be >= 1")]
     ExpectedVersion,
+    /// The effective title is invalid: an explicit default title or a Markdown first H1.
     #[error("title: {0}")]
     Title(#[from] TitleError),
+    /// The title field contradicts the format's title authority.
+    #[error("title: {0}")]
+    TitleAuthority(TitleAuthorityError),
     #[error("document: {0}")]
     Document(#[from] DocumentError),
+}
+
+impl From<TitleAuthorityError> for InvalidInput {
+    fn from(error: TitleAuthorityError) -> Self {
+        match error {
+            TitleAuthorityError::Title(title) => Self::Title(title),
+            other => Self::TitleAuthority(other),
+        }
+    }
 }
 
 impl InvalidInput {
     pub fn field(&self) -> &'static str {
         match self {
             Self::ExpectedVersion => "expected_version",
-            Self::Title(_) => "title",
+            Self::Title(_) | Self::TitleAuthority(_) => "title",
             Self::Document(_) => "document",
         }
     }
@@ -213,9 +229,10 @@ where
         let owner = actor.ok_or(DraftError::Unauthenticated)?;
         let expected =
             DraftVersion::new(command.expected_version).ok_or(InvalidInput::ExpectedVersion)?;
-        let title = Title::parse(&command.title).map_err(InvalidInput::from)?;
         let document = Document::parse(command.document).map_err(InvalidInput::from)?;
-        let change = DraftChange::new(expected, title, document);
+        let content = TitledDocument::author(document, command.title.as_deref())
+            .map_err(InvalidInput::from)?;
+        let change = DraftChange::new(expected, content);
         match self
             .store
             .save_draft(owner, command.work_id, &change)

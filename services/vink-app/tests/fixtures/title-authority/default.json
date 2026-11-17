@@ -2,117 +2,74 @@
   {
     "id": "explicit-over-atx",
     "title": "Tên riêng",
-    "blocks": [
-      [
-        "# Tên trong thân",
-        "Đoạn sau."
-      ]
-    ],
+    "source": "# Tên trong thân\nĐoạn sau.",
     "expected_title": "Tên riêng",
-    "expected_v1_hash": "88bf3d8a68b1f3703e82342f48a46ee726c304b8964d02632ba77bb1a0267876"
+    "expected_hash": "f735c19566fdff2931d7a5944bb57882c4a915bd0fecb29f1d3c46119ed2c79b"
   },
   {
     "id": "explicit-over-setext",
     "title": "Tên riêng",
-    "blocks": [
-      [
-        "Tên trong thân",
-        "==="
-      ]
-    ],
+    "source": "Tên trong thân\n===",
     "expected_title": "Tên riêng"
   },
   {
     "id": "explicit-over-nested",
     "title": "Tên riêng",
-    "blocks": [
-      [
-        "> # Trong trích dẫn",
-        "- # Trong danh sách"
-      ]
-    ],
+    "source": "> # Trong trích dẫn\n- # Trong danh sách",
     "expected_title": "Tên riêng"
   },
   {
     "id": "untitled-over-atx",
     "title": "  ",
-    "blocks": [
-      [
-        "# Không được dùng làm tên"
-      ]
-    ],
+    "source": "# Không được dùng làm tên",
     "expected_title": ""
   },
   {
     "id": "untitled-over-setext",
     "title": "",
-    "blocks": [
-      [
-        "Không được dùng làm tên",
-        "==="
-      ]
-    ],
+    "source": "Không được dùng làm tên\n===",
     "expected_title": ""
   },
   {
     "id": "nfd-title-and-body",
     "title": "  Việt 👩🏽‍💻  ",
-    "blocks": [
-      [
-        "# Đêm",
-        "  Thơ."
-      ]
-    ],
+    "source": "# Đêm\n  Thơ.",
     "expected_title": "Việt 👩🏽‍💻"
   },
   {
     "id": "literal-title-markup",
     "title": "# Tên *riêng* &amp;",
-    "blocks": [
-      [
-        "# Tên khác"
-      ]
-    ],
+    "source": "# Tên khác",
     "expected_title": "# Tên *riêng* &amp;"
   },
   {
     "id": "title-200-nfc",
     "title": "ơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơ",
-    "blocks": [
-      [
-        "# Tên ngắn"
-      ]
-    ],
+    "source": "# Tên ngắn",
     "expected_title": "ơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơ"
   },
   {
     "id": "title-201-nfc",
     "title": "ơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơ",
-    "blocks": [
-      [
-        "# Tên ngắn"
-      ]
-    ],
+    "source": "# Tên ngắn",
     "expected_error": "too_long"
   },
   {
     "id": "title-200-nfc-from-nfd-input",
     "title": "ơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơ",
-    "blocks": [
-      [
-        "# Tên ngắn"
-      ]
-    ],
+    "source": "# Tên ngắn",
     "expected_title": "ơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơ"
   },
   {
     "id": "title-line-break",
     "title": "Tên\nsai",
-    "blocks": [
-      [
-        "# Tên hợp lệ trong thân"
-      ]
-    ],
+    "source": "# Tên hợp lệ trong thân",
     "expected_error": "forbidden_character"
+  },
+  {
+    "id": "nfd-blank-lines-crlf-preserved",
+    "title": "Việt",
+    "source": "# Đêm\r\n\r\n\r\n   \r\n\tThơ  \r\n",
+    "expected_title": "Việt"
   }
 ]

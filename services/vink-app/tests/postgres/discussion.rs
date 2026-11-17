@@ -20,7 +20,7 @@ use vink_app::domain::discussion::visibility::{
 use vink_app::domain::ids::CommentId;
 use vink_app::domain::principal::SuspensionReason;
 use vink_app::persistence::{
-    GrantOutcome, MIGRATOR, active_moderators, grant_moderator, migrate, reinstate_principal,
+    GrantOutcome, MIGRATOR, active_moderators, grant_moderator, reinstate_principal,
     revoke_moderator, suspend_principal,
 };
 
@@ -2168,7 +2168,7 @@ async fn upgrade_records_premoderation_for_existing_comments(pool: PgPool) {
         old.push((id, review, removal, version, body));
     }
 
-    let report = migrate(&pool).await.unwrap();
+    let report = upgrade_before_cutover(&pool).await;
     assert_eq!(report.applied.first(), Some(&ADMISSION_MIGRATION));
     for (id, review, removal, version, body) in old {
         let row: (String, String, String, Option<String>, i64, Option<String>) = sqlx::query_as(

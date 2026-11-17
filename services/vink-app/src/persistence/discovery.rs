@@ -29,7 +29,7 @@ use uuid::Uuid;
 
 use super::PgStore;
 use super::discussion::{integrity, read_snapshot};
-use super::postgres::{classify, document, title};
+use super::postgres::{classify, content, title};
 use super::taxonomy::{SlotRow, catalog_rows, slug_kind, tags_from_slots};
 use crate::application::ports::{
     DiscoveryFacts, DiscoveryRequest, PublicCardFacts, PublicationFacts, PublicationStore,
@@ -354,18 +354,16 @@ impl PublicationStore for PgStore {
         let mut snapshots = snapshots(&mut tx, bound_snapshot.as_slice()).await?;
         let catalog = snapshot_catalog(&mut tx, snapshots.values()).await?;
         tx.commit().await.map_err(classify)?;
-        let title = title(&raw_title)?;
-        let document = document(raw_document)?;
-        if crate::domain::revision::ContentHash::of(&title, &document).as_str() != content_hash {
+        let content = content(raw_document, &raw_title)?;
+        if crate::domain::revision::ContentHash::of(&content).as_str() != content_hash {
             return Err(integrity("public revision content hash mismatch", revision));
         }
         Ok(Some(PublicationFacts {
             work_id: WorkId::from_uuid(work),
             revision_id: RevisionId::from_uuid(revision),
-            title,
+            content,
             author_display_name: author,
             published_at,
-            document,
             snapshot: id.and_then(|id| snapshots.remove(&id)),
             catalog,
         }))

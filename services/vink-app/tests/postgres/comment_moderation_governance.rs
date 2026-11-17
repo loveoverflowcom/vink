@@ -20,13 +20,13 @@ use vink_app::domain::discussion::post_review::CONSUMER as POST_REVIEW_CONSUMER;
 use vink_app::domain::ids::GrantId;
 use vink_app::domain::moderation::authority::{GrantScope, GrantSpec, Grantee, ReviewCapability};
 use vink_app::evaluation_worker::EvaluationWorker;
+use vink_app::persistence::MIGRATOR;
 use vink_app::persistence::moderation::{
     add_admin_seat, create_moderation_grant, remove_admin_seat, revoke_moderation_grant,
     set_group_membership,
 };
 use vink_app::persistence::outbox as queue;
 use vink_app::persistence::post_review::OperatorPostReview;
-use vink_app::persistence::{MIGRATOR, migrate};
 
 use super::*;
 
@@ -1084,7 +1084,7 @@ async fn schema_provenance_atomicity_history_and_upgrade_backout(pool: PgPool) {
     .unwrap();
 
     // Upgrade to 20261119000000: old row is preserved with authority_kind = 'legacy_grant'.
-    let report = migrate(&pool).await.unwrap();
+    let report = upgrade_before_cutover(&pool).await;
     assert_eq!(
         report.applied,
         vec![COMMENT_GOVERNANCE_MIGRATION, 20261120000000, 20261121000000]
@@ -1105,7 +1105,7 @@ async fn schema_provenance_atomicity_history_and_upgrade_backout(pool: PgPool) {
         "../../migrations-rollback/20261119000000_comment_moderation_governance.down.sql"
     );
     sqlx::raw_sql(down_sql).execute(&pool).await.unwrap();
-    let migrated = migrate(&pool).await.unwrap();
+    let migrated = upgrade_before_cutover(&pool).await;
     assert_eq!(migrated.applied, vec![COMMENT_GOVERNANCE_MIGRATION]);
 
     // Governance provenance constraints reject every invalid/contradictory provenance combination.

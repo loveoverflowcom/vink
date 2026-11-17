@@ -235,7 +235,7 @@ async function sessionFence(page, {args,check,gate,settled}) {
     principal='99999999-9999-4999-8999-000000000260';
     await announce();
     await gate.fulfill(await gate.next('gets'),200,{drafts:[]}); await settled();
-    await gate.fulfill(post,201,{work_id:'99999999-9999-4999-8999-000000000258',title:'',version:1,document:{schema_version:1,blocks:[]},updated_at:'2026-11-16T00:00:00Z'});
+    await gate.fulfill(post,201,{work_id:'99999999-9999-4999-8999-000000000258',title:'',version:1,document:{format:'default',source:''},updated_at:'2026-11-16T00:00:00Z'});
     await page.eval(`new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))`);
     check(gate.postCount===count && await page.eval(`location.pathname==='/ban-viet' && document.querySelectorAll('#create-draft').length===1 && document.querySelector('#create-draft').getAttribute('aria-disabled')!=='true' && document.querySelector('#create-draft').textContent==='Viết bản thảo đầu tiên'`), '#259 late successful create from old session cannot navigate, retry POST or change new first-use state');
     if(error) throw error;

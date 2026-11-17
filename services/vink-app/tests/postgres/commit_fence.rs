@@ -16,7 +16,7 @@ fn save(work: WorkId, expected_version: i64, title: &str) -> SaveDraft {
     SaveDraft {
         work_id: work,
         expected_version,
-        title: title.into(),
+        title: Some(title.into()),
         document: doc(&[&["Dòng thơ"]]),
     }
 }

@@ -29,7 +29,8 @@ const LEGACY_AUTHOR: &str = "55555555-5555-4555-8555-555555555555";
 const LEGACY_WORK: &str = "66666666-6666-4666-8666-666666666666";
 const LEGACY_REVISION: &str = "77777777-7777-4777-8777-777777777777";
 const LEGACY_TITLE: &str = "[Mẫu] Đe\u{302}\u{301}m trước khi chuyển quyền";
-const LEGACY_DOCUMENT: &str = r#"{"schema_version":1,"blocks":[{"lines":["Dòng một: ầ ẩ ẫ ậ ắ ằ ẳ ẵ ặ","  thụt lề hai khoảng"]},{"lines":["Khổ hai — Đ đ ơ ư"]}]}"#;
+/// Canonical document shape (#255); NFD title and indented, blank-line separated source.
+const LEGACY_DOCUMENT: &str = r#"{"format":"default","source":"Dòng một: ầ ẩ ẫ ậ ắ ằ ẳ ẵ ặ\n  thụt lề hai khoảng\n\nKhổ hai — Đ đ ơ ư"}"#;
 
 const PRIVILEGE: &[&str] = &["42501"];
 

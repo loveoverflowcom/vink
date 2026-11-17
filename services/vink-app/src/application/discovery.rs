@@ -243,10 +243,9 @@ where
         let PublicationFacts {
             work_id,
             revision_id,
-            title,
+            content,
             author_display_name,
             published_at,
-            document,
             snapshot,
             catalog,
         } = self
@@ -258,10 +257,9 @@ where
         Ok(PublicWork {
             work_id,
             revision_id,
-            title,
+            content,
             author_display_name,
             published_at,
-            document,
             tags,
         })
     }
@@ -278,10 +276,9 @@ where
                 let PublicationFacts {
                     work_id,
                     revision_id,
-                    title,
+                    content,
                     author_display_name,
                     published_at,
-                    document,
                     snapshot,
                     catalog,
                 } = facts;
@@ -289,10 +286,9 @@ where
                 Ok(ReaderWork::Published(PublicWork {
                     work_id,
                     revision_id,
-                    title,
+                    content,
                     author_display_name,
                     published_at,
-                    document,
                     tags,
                 }))
             }

@@ -25,7 +25,7 @@ async fn author_work_corpus_cursor_privacy_and_legacy_contract(pool: PgPool) {
         sqlx::query("INSERT INTO works(id,owner_id,created_at) SELECT md5($1::uuid::text || n)::uuid,$1,'2026-01-01'::timestamptz + (n/3)*interval '1 second' FROM generate_series(1,$2) n")
             .bind(owner).bind(n).execute(&pool).await.unwrap();
         // Half the corpus has no working draft (legal schema); it must remain discoverable.
-        sqlx::query("INSERT INTO working_drafts(work_id,version,title,document,updated_at) SELECT md5($1::uuid::text || n)::uuid,1,CASE WHEN n%7=0 THEN 'ĐƯỜNG VỀ' ELSE 'Trang '||n END,'{\"schema_version\":1,\"blocks\":[]}', '2026-01-01'::timestamptz + (n/3)*interval '1 second' FROM generate_series(1,$2) n WHERE n%2=0")
+        sqlx::query("INSERT INTO working_drafts(work_id,version,title,document,updated_at) SELECT md5($1::uuid::text || n)::uuid,1,CASE WHEN n%7=0 THEN 'ĐƯỜNG VỀ' ELSE 'Trang '||n END,'{\"format\":\"default\",\"source\":\"\"}', '2026-01-01'::timestamptz + (n/3)*interval '1 second' FROM generate_series(1,$2) n WHERE n%2=0")
             .bind(owner).bind(n).execute(&pool).await.unwrap();
     }
     for sort in ["recent", "title"] {
@@ -428,7 +428,7 @@ async fn author_work_query_plans_and_fixed_statement_count(pool: PgPool) {
         (dev_seed::OTHER_PRINCIPAL, 100),
     ] {
         sqlx::query("INSERT INTO works(id,owner_id) SELECT md5($1::uuid::text||n)::uuid,$1 FROM generate_series(1,$2) n").bind(owner).bind(n).execute(&pool).await.unwrap();
-        sqlx::query("INSERT INTO working_drafts(work_id,version,title,document) SELECT id,1,'Đường về '||id,'{\"schema_version\":1,\"blocks\":[]}' FROM works WHERE owner_id=$1 ON CONFLICT DO NOTHING").bind(owner).execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO working_drafts(work_id,version,title,document) SELECT id,1,'Đường về '||id,'{\"format\":\"default\",\"source\":\"\"}' FROM works WHERE owner_id=$1 ON CONFLICT DO NOTHING").bind(owner).execute(&pool).await.unwrap();
     }
     let thread = Uuid::now_v7();
     sqlx::query("INSERT INTO discussion_threads(id,work_id,comments_open) VALUES($1,$2,false)")
@@ -539,7 +539,7 @@ async fn author_work_statement_count_measurement(pool: PgPool) {
         .bind(dev_seed::SAMPLE_AUTHOR).execute(&pool).await.unwrap();
     // Vary the number of PUBLIC anchors with page size, so a per-public-card query loop
     // would be observable (not just one public work surrounded by private rows).
-    sqlx::query("INSERT INTO revisions(id,work_id,title,document,content_hash,created_by) SELECT md5('batch-revision-'||n)::uuid,md5('batch-'||n)::uuid,'Batch public '||n,'{\"schema_version\":1,\"blocks\":[]}',repeat('a',64),$1 FROM generate_series(1,120) n")
+    sqlx::query("INSERT INTO revisions(id,work_id,title,document,content_hash,created_by) SELECT md5('batch-revision-'||n)::uuid,md5('batch-'||n)::uuid,'Batch public '||n,'{\"format\":\"default\",\"source\":\"\"}',repeat('a',64),$1 FROM generate_series(1,120) n")
         .bind(dev_seed::SAMPLE_AUTHOR).execute(&pool).await.unwrap();
     sqlx::query("INSERT INTO work_publications(work_id,audience,lifecycle,generation,intent_revision_id,intent_generation,pointer_revision_id,pointer_intent_generation) SELECT md5('batch-'||n)::uuid,'public','active',2,md5('batch-revision-'||n)::uuid,2,md5('batch-revision-'||n)::uuid,2 FROM generate_series(1,120) n")
         .execute(&pool).await.unwrap();

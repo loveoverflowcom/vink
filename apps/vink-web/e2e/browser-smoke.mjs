@@ -9,6 +9,7 @@
 // Input.dispatchKeyEvent, which is programmatic input, not a real OS IME or keyboard layout. One
 // headless Chrome is used at desktop/tablet/mobile CSS viewport sizes. Save responses are held or failed with the Fetch domain.
 
+import { defaultDocument, paragraphs } from './document.mjs';
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { checkSelectGeometry, selectCharacter } from '../../../packages/ui-system/leptos/preview/e2e/select-geometry.mjs';
@@ -1436,7 +1437,7 @@ async function cacheFirstPublicReads(page, note) {
     await page.click('.vk-public-row__link');
     await page.waitFor(`document.querySelector('.vk-reader')?.dataset.revision === '${original.revision_id}'`, 'reader again');
     await settled('#reader-freshness', 'reader revalidation on mount');
-    const updated = { ...original, revision_id: '[mẫu-kiểm-tra]-revision', title: '[Mẫu kiểm tra] Mưa trên phố cũ (bản cập nhật)', document: { schema_version: 1, blocks: [{ lines: ['Khổ thay thế chỉ có trong fixture kiểm tra.'] }] } };
+    const updated = { ...original, revision_id: '[mẫu-kiểm-tra]-revision', title: '[Mẫu kiểm tra] Mưa trên phố cũ (bản cập nhật)', document: defaultDocument('Khổ thay thế chỉ có trong fixture kiểm tra.') };
     fixtures.set(publicationPath, { status: 200, body: { ...updated, status: "published" } });
     await page.waitFor(`document.querySelector('#root-composer')`, 'Reader layout loaded before choosing a reading anchor');
     await page.eval(`window.__readingArticle = document.querySelector('#reader-paper'); window.__readingAnchor = document.querySelector('.vk-document'); const r = document.createRange(); r.selectNodeContents(window.__readingAnchor); const selection = getSelection(); selection.removeAllRanges(); selection.addRange(r); window.__readingSelection = selection.toString(); scrollTo({top:scrollY + window.__readingAnchor.getBoundingClientRect().top - 80, behavior:'instant'})`);
@@ -1595,7 +1596,7 @@ async function serverHtml() {
   const privateTitle = 'Tiêu đề riêng sau khi sửa nháp — kiểm tra privacy';
   const updated = await fetch(`${args.base}/api/v1/drafts/${SAMPLE_WORK}`, {
     method: 'PUT', headers: { 'Content-Type': 'application/json', Origin: args.base },
-    body: JSON.stringify({ expected_version: draft.version, title: privateTitle, document: { schema_version: 1, blocks: [{ lines: [DRAFT_ONLY_LINE] }] } }),
+    body: JSON.stringify({ expected_version: draft.version, title: privateTitle, document: defaultDocument(DRAFT_ONLY_LINE) }),
   });
   check(updated.status === 200, 'a private sample draft is really saved in the scratch PostgreSQL database');
   const publicAfter = await (await fetch(`${args.base}/api/v1/works/${SAMPLE_WORK}/publication`)).json();
@@ -3965,7 +3966,7 @@ async function editorChrome(page) {
   check(gate.held.length === 0, 'double click and save shortcut cannot dispatch another pending PUT');
   await gate.release(first);
   await page.waitStatus('unsaved');
-  check((await page.draft(workId)).document.blocks.at(-1).lines.at(-1) === 'Chữ mới ế — chưa lưu.', 'ack only persisted its snapshot, not newer typing');
+  check((await page.draft(workId)).document.source.endsWith('\n\nChữ mới e\u0302\u0301 — chưa lưu.'), 'ack only persisted its snapshot (exact NFD text, blank lines), not newer typing');
   await page.eval(`document.querySelector('#save').focus()`);
   await page.key('Space');
   await gate.fail(await gate.next());
@@ -4003,7 +4004,7 @@ async function editorChrome(page) {
   await page.click('#retry-save');
   await gate.release(await gate.next());
   await page.waitStatus('saved');
-  check((await page.draft(workId)).document.blocks.at(-1).lines.at(-1).endsWith('Gõ tiếp khi chờ.'), 'deliberate retry saves the current text after reconciliation');
+  check(paragraphs((await page.draft(workId)).document).at(-1).lines.at(-1).endsWith('Gõ tiếp khi chờ.'), 'deliberate retry saves the current text after reconciliation');
   const savedBeforeUnavailable = (await page.draft(workId)).version;
   await page.typeInBody(' Gõ lúc máy chủ tạm nghỉ.');
   await page.click('#save');
@@ -4029,7 +4030,7 @@ async function editorChrome(page) {
   await page.click('#save');
   const response = await responseGate.next();
   const committed = await page.draft(workId);
-  check(committed.document.blocks.at(-1).lines.at(-1).endsWith('Đã tới máy chủ.'), 'held response belongs to a real committed save');
+  check(paragraphs(committed.document).at(-1).lines.at(-1).endsWith('Đã tới máy chủ.'), 'held response belongs to a real committed save');
   await responseGate.fail(response);
   await responseGate.disable();
   await page.waitStatus('failed');
@@ -4194,7 +4195,7 @@ async function editorChrome(page) {
   await page.waitStatus('saved');
   await page.reload();
   await page.waitFor(EDITOR_READY, 'chrome editor reloaded');
-  check((await page.draft(workId)).title === title && (await page.draft(workId)).document.blocks.length === 9, 'long title and poetry survive explicit recovery and reload');
+  check((await page.draft(workId)).title === title && paragraphs((await page.draft(workId)).document).length === 9, 'long title and poetry survive explicit recovery and reload');
   await page.click('.vk-editor-heading__back');
   await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('#create-draft')`, 'clean editor leaves before Forward scenario');
   await page.eval(`history.back()`);
@@ -4446,10 +4447,10 @@ async function mainPhase(page) {
 
   const stored = await page.draft(workId);
   check(stored.title === TITLE, 'server stored the title');
-  check(JSON.stringify(stored.document.blocks) === JSON.stringify([
+  check(stored.document.format === 'default' && stored.document.source === BODY && JSON.stringify(paragraphs(stored.document)) === JSON.stringify([
     { lines: ['Sáng nay trời đổ mưa rào,', '  ngõ nhỏ ướt mềm từng viên gạch cũ.'] },
     { lines: ['Người về có nhớ hay sao —', 'ỹ ỷ ữ ợ Đ đ.'] },
-  ]), 'server stored stanzas, lines, indentation and diacritics');
+  ]), 'server stored the exact typed source: stanzas, lines, indentation and diacritics');
 
   console.log('reload keeps the confirmed draft:');
   // Page.reload can return while the old, hydrated editor is still present.
@@ -4467,7 +4468,7 @@ async function mainPhase(page) {
   const other = await page.eval(`fetch('/api/v1/drafts/${workId}', {
     method: 'PUT',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ expected_version: 2, title: 'Tab khác', document: { schema_version: 1, blocks: [{ lines: ['Bản của tab khác.'] }] } }),
+    body: JSON.stringify({ expected_version: 2, title: 'Tab khác', document: { format: 'default', source: 'Bản của tab khác.' } }),
   }).then((r) => r.status)`);
   check(other === 200, 'another tab saved version 3 first');
   await page.typeInBody(TAIL);
@@ -4597,7 +4598,7 @@ async function mainPhase(page) {
     await page.click('#leave-save');
     await page.waitFor(`location.pathname === '/ban-viet'`, 'save and leave');
     const afterLeave = await page.draft(workId);
-    check(afterLeave.version === 6 && afterLeave.document.blocks.at(-1).lines.at(-1) === `${LAST_LINE} Thêm Lui lại.`, 'left only after the server confirmed the latest text (version 6)');
+    check(afterLeave.version === 6 && paragraphs(afterLeave.document).at(-1).lines.at(-1) === `${LAST_LINE} Thêm Lui lại.`, 'left only after the server confirmed the latest text (version 6)');
 
     console.log('cancelling a save-and-leave in flight:');
     const gate = new SaveGate(page);
@@ -4665,10 +4666,38 @@ async function mainPhase(page) {
   }
 
   await draftTags(page, workId);
+  await deskRefusesLossyOpen(page);
 
   const kept = await page.draft(workId);
-  const text = kept.document.blocks.map((block) => block.lines.join('\n')).join('\n\n');
+  const text = kept.document.source;
   writeFileSync(args.state, JSON.stringify({ workId, title: kept.title, text, version: kept.version }));
+}
+
+// #255/#263: the desk never opens a draft it would save back changed (Markdown, CR line endings).
+async function deskRefusesLossyOpen(page) {
+  console.log('desk refuses drafts it cannot save back unchanged:');
+  for (const [document, label] of [
+    [{ format: 'markdown', source: '# Mưa đầu mùa\n\nThân bài.\n' }, 'Markdown'],
+    [defaultDocument('Dòng một\r\nDòng hai'), 'CRLF'],
+  ]) {
+    const created = await page.eval(`(async () => {
+      const post = await fetch('/api/v1/drafts', { method: 'POST' });
+      const draft = await post.json();
+      const body = ${JSON.stringify(document.format)} === 'markdown'
+        ? { expected_version: draft.version, document: ${JSON.stringify(document)} }
+        : { expected_version: draft.version, title: 'CR', document: ${JSON.stringify(document)} };
+      const put = await fetch('/api/v1/drafts/' + draft.work_id, { method: 'PUT',
+        headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      return { id: draft.work_id, status: put.status };
+    })()`);
+    check(created.status === 200, `${label} draft saved through the API`);
+    await page.goto(`${args.base}/ban-viet/${created.id}`);
+    await page.waitFor(`document.querySelector('[data-testid=desk-format-unavailable]')`, `${label} stop state`);
+    check(!(await page.eval(`!!document.querySelector('.cm-content')`)), `${label}: no editor, so nothing can be re-saved`);
+    const stored = await page.draft(created.id);
+    check(stored.version === 2 && JSON.stringify(stored.document) === JSON.stringify(document)
+      && (label !== 'Markdown' || stored.title === 'Mưa đầu mùa'), `${label}: source untouched; Markdown title is the first H1`);
+  }
 }
 
 const TAGS_READY = `document.querySelector('[data-testid=tag-status]') && document.querySelector('#work-tags-query')`;
@@ -4902,7 +4931,7 @@ async function draftTags(page, workId) {
   await page.waitFor(`location.pathname === '/ban-viet'`, 'left after both saves');
   stored = await draftTagsOf(page, workId);
   const text = await page.draft(workId);
-  check(stored.version === 6 && stored.themes.map((t) => t.label).join() === 'Đô thị' && text.version === textVersion + 1 && text.document.blocks.at(-1).lines.at(-1).endsWith(' Cùng thẻ.'), 'left only after the text and the tags were both confirmed');
+  check(stored.version === 6 && stored.themes.map((t) => t.label).join() === 'Đô thị' && text.version === textVersion + 1 && paragraphs(text.document).at(-1).lines.at(-1).endsWith(' Cùng thẻ.'), 'left only after the text and the tags were both confirmed');
 }
 
 /** After `verify web` retired Đô thị (successor Mùa) between the phases: the tag stays on the

@@ -18,6 +18,7 @@ use crate::desk_state::{
     DraftSession, DraftTicket, Failure, LeaveGuard, LeaveNotice, LeaveStage, SaveStatus, SaveTicket,
 };
 use crate::document::DocumentView;
+use crate::document::NotEditable;
 use crate::draft_list::{CreateState, DraftSort, display_title as untitled};
 use crate::editor::{BODY_HINT_ID, BODY_LABEL_ID, BodyEditor, BodySource, BodyState, TOOLBAR_ID};
 use crate::navigation::NavigationGuard;
@@ -623,6 +624,34 @@ fn DeskError(
     }
 }
 
+/// An explicit stop instead of a silent conversion: the stored source stays untouched.
+#[component]
+fn FormatNotEditable(reason: NotEditable) -> impl IntoView {
+    let (title, message) = match reason {
+        NotEditable::Markdown => (
+            "Bàn viết chưa mở được bản Markdown.",
+            "Bản nháp này dùng định dạng Markdown. Trình soạn Markdown chưa sẵn sàng; nội dung vẫn được giữ nguyên.",
+        ),
+        NotEditable::CarriageReturn => (
+            "Bàn viết chưa mở được bản nháp này.",
+            "Bản nháp có kiểu xuống dòng Windows (CR). Bàn viết chưa giữ nguyên được kiểu này khi lưu; nội dung vẫn được giữ nguyên.",
+        ),
+    };
+    view! {
+        <div data-testid="desk-format-unavailable" role="alert">
+            <StatePanel content=PanelContent {
+                kind: PanelKind::Error(ProblemKind::Unavailable),
+                title: title.into(),
+                message: message.into(),
+                actions: vec![],
+                code: None,
+            }>
+                <vink_ui::Link href="/ban-viet" variant=vink_ui::LinkVariant::Standalone>"Về Bàn viết"</vink_ui::Link>
+            </StatePanel>
+        </div>
+    }
+}
+
 #[component]
 pub fn DraftEditor() -> impl IntoView {
     let params = use_params_map();
@@ -682,7 +711,13 @@ pub fn DraftEditor() -> impl IntoView {
             <Suspense fallback=|| view! { <p class="vk-muted">"Đang mở bản nháp…"</p> }>
                 {move || Suspend::new(async move {
                     match draft.await {
-                        Ok(draft) => view! { <Editor draft /> }.into_any(),
+                        // The editor saves its buffer verbatim as a default document. A draft it
+                        // could not save back unchanged (Markdown until #256/#262, or CR line
+                        // endings that CodeMirror normalizes) is not opened.
+                        Ok(draft) => match crate::document::desk_editable(&draft.document) {
+                            Ok(()) => view! { <Editor draft /> }.into_any(),
+                            Err(reason) => view! { <FormatNotEditable reason /> }.into_any(),
+                        },
                         Err(error) => view! { <DeskError error /> }.into_any(),
                     }
                 })}
@@ -703,7 +738,7 @@ enum Field {
 fn Editor(draft: Draft) -> impl IntoView {
     let work_id = StoredValue::new(draft.work_id.clone());
     let title = RwSignal::new(draft.title.clone());
-    let body = BodySource::new(crate::document::document_to_text(&draft.document));
+    let body = BodySource::new(draft.document.source.clone());
     let session = RwSignal::new(DraftSession::loaded(draft.version));
     let tag_load = RwSignal::new(TagLoad::Loading);
     let leave = RwSignal::new(LeaveGuard::<DraftTicket>::default());
@@ -737,8 +772,8 @@ fn Editor(draft: Draft) -> impl IntoView {
     let send_text = move |ticket: SaveTicket, reconcile: bool| {
         let request = crate::contract::SaveDraftRequest {
             expected_version: ticket.expected_version,
-            title: title.get_untracked(),
-            document: crate::document::text_to_document(&body.snapshot()),
+            title: Some(title.get_untracked()),
+            document: crate::document::default_document(&body.snapshot()),
         };
         #[cfg(feature = "hydrate")]
         {
@@ -989,7 +1024,7 @@ fn Editor(draft: Draft) -> impl IntoView {
         if let Some(tools) = document().get_element_by_id("editor-save-details") {
             let _ = tools.remove_attribute("open");
         }
-        let document = crate::document::text_to_document(&body.snapshot());
+        let document = crate::document::default_document(&body.snapshot());
         preview.set(Some((title.get_untracked(), document)));
         remember_scroll(page_scroll);
     };
@@ -1383,7 +1418,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                 preview
                     .get()
                     .map(|(title, document)| {
-                        let empty = document.blocks.is_empty();
+                        let empty = !crate::document::has_text(&document);
                         view! {
                             <article class="vk-preview" lang="vi">
                                 <Heading level=HeadingLevel::H2 role=TypeRole::Headline>{untitled(&title)}</Heading>

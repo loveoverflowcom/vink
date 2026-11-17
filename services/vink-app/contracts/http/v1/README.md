@@ -19,16 +19,23 @@ consumer yet and no native consumer exists.
 ## Conventions
 
 - JSON, UTF-8. Identifiers are UUID strings; timestamps are RFC 3339 in UTC.
-- `document` uses schema version 1: `{"schema_version": 1, "blocks": [{"lines": ["…"]}]}`.
-  A block is a paragraph or stanza; each line is non-blank, without line breaks or control
-  characters (tab allowed). The server stores lines NFC-normalized. At most 200 000
-  characters; titles at most 200 characters, single line, trimmed.
-- **Proposed v2 lossless source contract (#255, `PENDING` signoff — NOT active on v1 wire):**
-  [VDR-DOCUMENT-SOURCE-FORMAT@r1](../../../../../decisions/proposals/VDR-DOCUMENT-SOURCE-FORMAT.r1.toml)
-  and [architecture spec](../../../../../docs/architecture/document-source-format.md) specify the
-  schema v2 envelope (`schema_version: 2`, `format: "default" | "markdown"`, raw UTF-8 `source`
-  with `\n` line breaks, `line_ending: "lf" | "crlf"`). Live HTTP routes and fixtures stay on v1
-  until signoff and multi-phase rollout.
+- `document` is the one canonical, unversioned document (#255,
+  [architecture](../../../../../docs/architecture/document-source-format.md),
+  `VDR-DOCUMENT-SOURCE-FORMAT@r2` `PENDING`): `{"format": "default" | "markdown", "source": "…"}`.
+  `source` is the author's exact text: Unicode form (NFD stays NFD), emoji sequences, tabs,
+  indentation, blank and whitespace-only lines and line endings are stored and returned byte for
+  byte. Refused: control characters other than tab/LF/CR, U+2028/U+2029, more than 200 000
+  characters (counted after NFC, line breaks excluded) or 2 097 152 bytes. `asciidoc` is deferred
+  and refused; unknown formats and any other key (including the retired `schema_version`/`blocks`)
+  are refused. There is no v1/v2 document and no legacy reader.
+- Title authority (#263): for `default`, the request's `title` is required (blank allowed in a
+  draft; trimmed, NFC, single line, at most 200 characters). For `markdown`, `title` must be absent
+  or `null`: the title is the first H1 of the CommonMark source (core dialect, no extensions),
+  flattened to text; no H1 or an empty first H1 gives an empty title (clients show “Chưa đặt
+  tên”), a later H1 is never used instead, and an overlong H1 is a `title` validation error. Every
+  `title` in responses is this effective title. Snapshots keep the title of the captured source.
+- A revision whose format has no public reader yet (`markdown`, until #264) cannot become public:
+  `POST …/publication/request-public` answers `409 format_not_publishable` and writes nothing.
 - Unknown request fields are rejected.
 - Unsafe methods (`POST`, `PUT`, `DELETE`) require an `Origin` header equal to the server's
   `VINK_PUBLIC_ORIGIN`; otherwise `403 forbidden` before any use case runs.
@@ -61,7 +68,7 @@ consumer yet and no native consumer exists.
 | `PUT /api/v1/drafts/{work_id}` | `200` new version | `401`, `403`, `404`, `409`, `422`, `503` | [request](fixtures/draft.save.request.json), [response](fixtures/draft.save.response.json) |
 | `GET /api/v1/works/{work_id}/publication/state` (`/publication/me`) | `200` the author's own state, `no-store`: `audience`, `lifecycle`, `generation`, `intent`, `pointer`, `revisions` (oldest first, each with `moderation`, `decision_version`, `decision_reason`, `can_appeal`), `open_ticket` | `401`, `403`, `404`, `503` | [public r1 + pending r2](fixtures/publication.state.public_r1_pending_r2.json), [rejected](fixtures/publication.state.public_rejected.json), [private](fixtures/publication.state.private.json) |
 | `POST /api/v1/works/{work_id}/snapshots` | `201` (`200` on replay) a revision frozen at exactly `expected_draft_version` + `expected_metadata_version`; a replay with the same `command_key` and versions returns the first revision even after the draft moved on | `401`, `403`, `404`, `409` `version_conflict` (`field`: `expected_draft_version` or `expected_metadata_version`, with `current_version`), `422` (`idempotency_key_reused`), `503` | [request](fixtures/snapshot.capture.request.json), [response](fixtures/snapshot.capture.response.json), [draft moved](fixtures/error.snapshot_draft_conflict.json), [tags moved](fixtures/error.snapshot_metadata_conflict.json) |
-| `POST /api/v1/works/{work_id}/publication/request-public` | `200` `submitted`/`waiting`/`published`/`reaffirmed` with the new `generation`; a replay (`replayed: true`) may omit `ticket_id`: read the state | `401`, `403`, `404` (`unknown_revision`), `409` (`version_conflict` with `field: expected_generation`, `revision_rejected`, `work_unavailable`), `422`, `503` | [request](fixtures/publication.request_public.request.json), [response](fixtures/publication.request_public.response.json), [replayed](fixtures/publication.request_public.response.replayed.json), [stale](fixtures/error.generation_conflict.json), [rejected](fixtures/error.revision_rejected.json), [unknown](fixtures/error.unknown_revision.json), [inactive](fixtures/error.work_unavailable.json), [key reused](fixtures/error.publication_key_reused.json) |
+| `POST /api/v1/works/{work_id}/publication/request-public` | `200` `submitted`/`waiting`/`published`/`reaffirmed` with the new `generation`; a replay (`replayed: true`) may omit `ticket_id`: read the state | `401`, `403`, `404` (`unknown_revision`), `409` (`version_conflict` with `field: expected_generation`, `revision_rejected`, `format_not_publishable`, `work_unavailable`), `422`, `503` | [request](fixtures/publication.request_public.request.json), [response](fixtures/publication.request_public.response.json), [replayed](fixtures/publication.request_public.response.replayed.json), [stale](fixtures/error.generation_conflict.json), [rejected](fixtures/error.revision_rejected.json), [unknown](fixtures/error.unknown_revision.json), [inactive](fixtures/error.work_unavailable.json), [key reused](fixtures/error.publication_key_reused.json) |
 | `POST /api/v1/works/{work_id}/publication/set-private` | `200` `made_private` with the new `generation` | as above | [request](fixtures/publication.set_private.request.json), [response](fixtures/publication.set_private.response.json) |
 
 ### Danh sách nháp riêng (#201)

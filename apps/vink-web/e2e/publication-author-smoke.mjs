@@ -17,6 +17,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { EDITOR_READY, HYDRATED, STANDING, account, fabricate, fill, openAccount, q, signIn, signOut } from './auth-smoke.mjs';
+import { paragraphs } from './document.mjs';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -41,7 +42,7 @@ const waitPhase = (page, wanted, what, timeout) =>
 const panelText = (page) => page.eval(`document.querySelector('${PUBLICATION}')?.innerText ?? ''`);
 const choose = (page, value) => page.eval(`document.querySelector('input[name=audience][value=${value}]').click()`);
 const primary = (page) => page.eval(`document.querySelector('#publication-primary')?.innerText ?? null`);
-const storedText = (draft) => draft.document.blocks.map((block) => block.lines.join('\n')).join('\n\n');
+const storedText = (draft) => draft.document.source;
 const publicRead = async (base, work) => {
   const response = await fetch(`${base}/api/v1/works/${work}/publication`);
   return { status: response.status, etag: response.headers.get('etag'), body: response.status === 200 ? await response.json() : null };
@@ -279,7 +280,7 @@ export async function publicationAuthor(page, { args, check, openPage }) {
   const approved = await stateOf(author, work);
   check(approved.pointer?.revision_id === r1 && approved.revisions[0].moderation === 'approved', 'the server pointer is the captured revision and it is approved');
   const publication = await publicRead(base, work);
-  check(publication.body.title === TITLE_1 && JSON.stringify(publication.body.document.blocks.map((b) => b.lines)) === JSON.stringify([[LINE_1A], [LINE_1B]]) && publication.body.revision_id === r1, 'the public read is the captured revision, text for text');
+  check(publication.body.title === TITLE_1 && JSON.stringify(paragraphs(publication.body.document).map((b) => b.lines)) === JSON.stringify([[LINE_1A], [LINE_1B]]) && publication.body.revision_id === r1, 'the public read is the captured revision, text for text');
   check(publication.body.tags.some((t) => t.label === FORM_TAG), `the public metadata carries the chosen tag (${FORM_TAG})`);
   const list = await (await fetch(`${base}/api/v1/works`)).json();
   const card = list.works.find((w) => w.work_id === work);
@@ -437,7 +438,7 @@ async function exactVersion({ author, mod, work, base, check, openPage, reopen }
   const r3After = (await stateOf(author, work)).revisions.find((r) => r.revision_id === r3);
   const asked = await caseOf(mod, work, r3);
   const detail = (await call(mod, `/api/v1/moderation/works/cases/${asked.id}`)).body;
-  const reviewed = detail.document.blocks.map((b) => b.lines.join('\n')).join('\n\n');
+  const reviewed = detail.document.source;
   check(r3After.content_hash === r3Before.content_hash && reviewed.includes('[x] [y]') && reviewed.endsWith('hồi') && !reviewed.includes('[z]'), 'the snapshot did not change while the draft kept changing: the reviewer reads what was saved at the press, not the later [z]');
 
   // A conflict at capture: another tab saves the text between the press and the snapshot.

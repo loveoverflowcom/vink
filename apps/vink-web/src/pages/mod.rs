@@ -244,12 +244,11 @@ fn PublicationContent(
     let context = discovery::reader_context();
     let id = publication.work_id.clone();
     let return_href = Memo::new(move |_| context.get().href(Some(&id)));
-    let description = publication
-        .document
-        .blocks
+    // First non-blank line of the source, as the legacy reader showed (a reading projection).
+    let description = crate::document::paragraphs(&publication.document.source)
         .first()
-        .and_then(|b| b.lines.first())
-        .cloned()
+        .and_then(|lines| lines.first())
+        .map(|line| (*line).to_owned())
         .unwrap_or_default();
     let canonical = canonical_url(&format!("/tac-pham/{}", publication.work_id));
     let discussion_work = publication.work_id.clone();

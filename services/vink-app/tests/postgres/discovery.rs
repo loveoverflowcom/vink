@@ -153,11 +153,7 @@ async fn publish(
     at: OffsetDateTime,
     meta: Meta<'_>,
 ) {
-    let content = RevisionContent::new(
-        Title::parse(title).unwrap(),
-        Document::parse(doc(&[&["Một dòng công khai."]])).unwrap(),
-    )
-    .unwrap();
+    let content = RevisionContent::new(titled(title, doc(&[&["Một dòng công khai."]]))).unwrap();
     let revision = Uuid::now_v7();
     let mut tx = pool.begin().await.unwrap();
     sqlx::query("INSERT INTO works (id, owner_id) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING")
@@ -173,7 +169,7 @@ async fn publish(
     .bind(revision)
     .bind(work)
     .bind(content.title().as_str())
-    .bind(sqlx::types::Json(content.document().to_data()))
+    .bind(sqlx::types::Json(content.content().document().to_data()))
     .bind(content.hash().as_str())
     .bind(owner)
     .execute(&mut *tx)
@@ -565,11 +561,8 @@ async fn library(pool: &PgPool) -> Library {
             SnapshotCapture::Captured { id, .. } => id,
             other => panic!("{other:?}"),
         };
-    let content = RevisionContent::new(
-        Title::parse("Gia phả").unwrap(),
-        Document::parse(doc(&[&["Một dòng công khai."]])).unwrap(),
-    )
-    .unwrap();
+    let content =
+        RevisionContent::new(titled("Gia phả", doc(&[&["Một dòng công khai."]]))).unwrap();
     let revision = Uuid::now_v7();
     sqlx::query(
         "INSERT INTO revisions (id, work_id, title, document, content_hash, created_by)
@@ -578,7 +571,7 @@ async fn library(pool: &PgPool) -> Library {
     .bind(revision)
     .bind(gia_pha.work_id.as_uuid())
     .bind(content.title().as_str())
-    .bind(sqlx::types::Json(content.document().to_data()))
+    .bind(sqlx::types::Json(content.content().document().to_data()))
     .bind(content.hash().as_str())
     .bind(other)
     .execute(&mut *tx)
@@ -1115,7 +1108,7 @@ async fn discovery_measurement(pool: PgPool) {
          SELECT md5('rev' || n)::uuid, md5('work' || n)::uuid,
                 (ARRAY['Mưa','Nắng','Phố','Đường về','Hồi ức','Mùa thu','Gió','Biển'])[1 + n % 8]
                     || ' số ' || n,
-                '{\"schema_version\":1,\"blocks\":[{\"lines\":[\"Một dòng.\"]}]}'::jsonb,
+                '{\"format\":\"default\",\"source\":\"Một dòng.\"}'::jsonb,
                 md5('h' || n) || md5('i' || n), md5('author' || (1 + n % 200))::uuid
            FROM generate_series(1, $1::bigint) AS n",
         "CREATE TEMP TABLE picked ON COMMIT DROP AS

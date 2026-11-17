@@ -4,19 +4,7 @@
   "version": 3,
   "updated_at": "2026-10-30T08:00:00Z",
   "document": {
-    "schema_version": 1,
-    "blocks": [
-      {
-        "lines": [
-          "Phố cũ mưa giăng sợi mỏng,",
-          "mái ngói rêu xanh lặng thầm."
-        ]
-      },
-      {
-        "lines": [
-          "    đã theo mưa về rất lâu."
-        ]
-      }
-    ]
+    "format": "default",
+    "source": "Phố cũ mưa giăng sợi mỏng,\nmái ngói rêu xanh lặng thầm.\n\n\n    đã theo mưa về rất lâu.\n"
   }
 }

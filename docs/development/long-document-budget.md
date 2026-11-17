@@ -3,6 +3,13 @@
 Baseline đo tài liệu tổng hợp trước khi quyết định chia nhỏ storage. Đây là evidence phát triển,
 không phải SLA production hay quyết định đổi giới hạn bài viết.
 
+> **Sau #255 (17/11/2026):** document v1 đo ở đây đã được thay bằng document canonical
+> `{format, source}` ([kiến trúc](../architecture/document-source-format.md)). Số liệu và oracle
+> byte/hash v1 của #249 (`evidence/long-document-229/followup/postgres.json`) là lịch sử của shape
+> cũ; runtime không còn hash v1 nên oracle đó không còn được thực thi. Probe hiện dùng shape mới:
+> `tiny_blocks-200000` còn khoảng 1 MB JSON nên không chạm giới hạn body 2 MiB như F1 của shape cũ;
+> source vượt cap byte nhận `422` trước khi ghi. #273 cần đánh giá lại upper bound trên shape mới.
+
 **Đối soát 17/11/2026:** #232/#249 đã merge vào `develop@607ef83`;
 [biên bản AC/provenance](long-document-reconciliation.md) xác nhận phạm vi baseline đã đủ.
 Các số dưới đây giữ source đo lịch sử; owner-state hiện đã dùng projection #230/#248.

@@ -1,37 +1,23 @@
 use sha2::{Digest, Sha256};
 
-use super::document::{Document, Title};
-use super::source::DocumentSource;
+use super::document::{Title, TitledDocument};
 
-/// SHA-256 over a length-prefixed encoding of title and lines (independent of JSON formatting).
+/// Domain separator of the one canonical content hash. It is not versioned: there is one document
+/// contract (`VDR-DOCUMENT-SOURCE-FORMAT@r2`).
+const DOMAIN: &[u8] = b"vink-document-content";
+
+/// SHA-256 over a length-prefixed encoding of format, effective title and exact source bytes
+/// (independent of JSON formatting). This is a content digest, not an HTTP `ETag`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ContentHash(String);
 
 impl ContentHash {
-    pub fn of(title: &Title, document: &Document) -> Self {
+    pub fn of(content: &TitledDocument) -> Self {
         let mut hasher = Sha256::new();
-        hasher.update(b"vink-revision-content-v1");
-        push_str(&mut hasher, title.as_str());
-        hasher.update((document.blocks().len() as u64).to_be_bytes());
-        for lines in document.blocks() {
-            hasher.update((lines.len() as u64).to_be_bytes());
-            for line in lines {
-                push_str(&mut hasher, line);
-            }
-        }
-        Self(hex_digest(hasher.finalize()))
-    }
-
-    /// Canonical SHA-256 over format, line ending, normalized title, and exact raw UTF-8 source
-    /// bytes (`VDR-DOCUMENT-SOURCE-FORMAT`, `PENDING` exact-revision signoff). Does not alter v1
-    /// [`ContentHash::of`].
-    pub fn of_source_v2(title: &Title, source: &DocumentSource) -> Self {
-        let mut hasher = Sha256::new();
-        hasher.update(b"vink-revision-content-v2");
-        push_str(&mut hasher, source.format().as_str());
-        push_str(&mut hasher, source.line_ending().as_str());
-        push_str(&mut hasher, title.as_str());
-        push_str(&mut hasher, source.source());
+        hasher.update(DOMAIN);
+        push_str(&mut hasher, content.format().as_str());
+        push_str(&mut hasher, content.title().as_str());
+        push_str(&mut hasher, content.document().source());
         Self(hex_digest(hasher.finalize()))
     }
 
@@ -71,8 +57,7 @@ fn hex_digest(digest: impl AsRef<[u8]>) -> String {
 /// Content of an immutable revision snapshot. Revisions always carry a title.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RevisionContent {
-    title: Title,
-    document: Document,
+    content: TitledDocument,
     hash: ContentHash,
 }
 
@@ -83,58 +68,20 @@ pub enum RevisionError {
 }
 
 impl RevisionContent {
-    pub fn new(title: Title, document: Document) -> Result<Self, RevisionError> {
-        if title.is_empty() {
+    pub fn new(content: TitledDocument) -> Result<Self, RevisionError> {
+        if content.title().is_empty() {
             return Err(RevisionError::MissingTitle);
         }
-        let hash = ContentHash::of(&title, &document);
-        Ok(Self {
-            title,
-            document,
-            hash,
-        })
+        let hash = ContentHash::of(&content);
+        Ok(Self { content, hash })
     }
 
     pub fn title(&self) -> &Title {
-        &self.title
+        self.content.title()
     }
 
-    pub fn document(&self) -> &Document {
-        &self.document
-    }
-
-    pub fn hash(&self) -> &ContentHash {
-        &self.hash
-    }
-}
-
-/// Proposed lossless v2 revision snapshot content (`VDR-DOCUMENT-SOURCE-FORMAT`, `PENDING`).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RevisionContentV2 {
-    title: Title,
-    source: DocumentSource,
-    hash: ContentHash,
-}
-
-impl RevisionContentV2 {
-    pub fn new(title: Title, source: DocumentSource) -> Result<Self, RevisionError> {
-        if title.is_empty() {
-            return Err(RevisionError::MissingTitle);
-        }
-        let hash = ContentHash::of_source_v2(&title, &source);
-        Ok(Self {
-            title,
-            source,
-            hash,
-        })
-    }
-
-    pub fn title(&self) -> &Title {
-        &self.title
-    }
-
-    pub fn source(&self) -> &DocumentSource {
-        &self.source
+    pub fn content(&self) -> &TitledDocument {
+        &self.content
     }
 
     pub fn hash(&self) -> &ContentHash {
@@ -145,119 +92,77 @@ impl RevisionContentV2 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::document::{BlockData, DocumentData, SCHEMA_VERSION};
+    use crate::domain::document::{Document, DocumentFormat};
 
-    fn doc(blocks: &[&[&str]]) -> Document {
-        Document::parse(DocumentData {
-            schema_version: SCHEMA_VERSION,
-            blocks: blocks
-                .iter()
-                .map(|l| BlockData {
-                    lines: l.iter().map(|s| s.to_string()).collect(),
-                })
-                .collect(),
-        })
-        .unwrap()
+    fn titled(format: DocumentFormat, title: Option<&str>, source: &str) -> TitledDocument {
+        TitledDocument::author(Document::new(format, source).unwrap(), title).unwrap()
+    }
+
+    fn default(title: &str, source: &str) -> ContentHash {
+        ContentHash::of(&titled(DocumentFormat::Default, Some(title), source))
     }
 
     #[test]
-    fn hash_distinguishes_line_and_stanza_boundaries() {
-        let title = Title::parse("Mưa").unwrap();
-        let one_stanza = ContentHash::of(&title, &doc(&[&["a", "b"]]));
-        let two_stanzas = ContentHash::of(&title, &doc(&[&["a"], &["b"]]));
-        let joined = ContentHash::of(&title, &doc(&[&["ab"]]));
-        assert_ne!(one_stanza, two_stanzas);
-        assert_ne!(one_stanza, joined);
-        assert_eq!(one_stanza, ContentHash::of(&title, &doc(&[&["a", "b"]])));
-        assert_eq!(one_stanza.as_str().len(), 64);
-    }
-
-    #[test]
-    fn canonical_hash_matches_fixed_v1_vector_for_nfc_and_nfd() {
-        // Fixed vector: UTF-8 title length 12; two blocks with 2/1 lines of 14/15/13 bytes.
-        // Expected SHA-256 was computed independently from those literal canonical bytes,
-        // not by calling this implementation or serializing its output.
-        const EXPECTED: &str = "88bbbf2e34c3174e82d6a49388dddb70882a216e7ec3ba6b76eea165a49c36dd";
-        let nfc = RevisionContent::new(
-            Title::parse("Việt Đ/đ").unwrap(),
-            doc(&[&["Đêm xuống,", "  đợi trăng"], &["đường xa."]]),
-        )
-        .unwrap();
-        let nfd = RevisionContent::new(
-            Title::parse("  Vie\u{0323}\u{0302}t Đ/đ  ").unwrap(),
-            doc(&[&["Đe\u{0302}m xuống,", "  đợi trăng"], &["đường xa."]]),
-        )
-        .unwrap();
-        assert_eq!(nfc.hash().as_str(), EXPECTED);
-        assert_eq!(nfd.hash().as_str(), EXPECTED);
-        assert_eq!(nfc, nfd);
-    }
-
-    #[test]
-    fn hash_keeps_title_line_lengths_case_and_indentation_significant() {
-        let title = Title::parse("Đêm").unwrap();
-        let original = ContentHash::of(&title, &doc(&[&["a", "bc"]]));
-        assert_ne!(original, ContentHash::of(&title, &doc(&[&["ab", "c"]])));
-        assert_ne!(original, ContentHash::of(&title, &doc(&[&[" a", "bc"]])));
-        assert_ne!(
-            original,
-            ContentHash::of(&Title::parse("đêm").unwrap(), &doc(&[&["a", "bc"]]))
-        );
-        assert_ne!(
-            ContentHash::of(&title, &doc(&[&["Đ"]])),
-            ContentHash::of(&title, &doc(&[&["đ"]]))
-        );
-    }
-
-    #[test]
-    fn revision_requires_title() {
+    fn canonical_hash_matches_independent_vectors() {
+        // Expected values computed in Python from literal bytes:
+        // sha256(b"vink-document-content" + u64be(len) + b"default" + u64be(len) + title + ...).
+        const DEFAULT: &str = "f735c19566fdff2931d7a5944bb57882c4a915bd0fecb29f1d3c46119ed2c79b";
         assert_eq!(
-            RevisionContent::new(Title::parse(" ").unwrap(), Document::empty()),
+            default("Tên riêng", "# Tên trong thân\nĐoạn sau.").as_str(),
+            DEFAULT
+        );
+        // Markdown, NFD source with blank, whitespace-only and CRLF lines; title from the first H1.
+        const MARKDOWN: &str = "8ba939c87570af370209535a832b9b86d550eaf5a5f59f3c1f135647c8061769";
+        let source = "# Tie\u{0302}\u{0301}ng mưa\r\n\r\n\r\n  \r\n\u{0110}oa\u{0323}n hai\t\u{1f9d1}\u{200d}\u{1f33e}\n";
+        let content = titled(DocumentFormat::Markdown, None, source);
+        assert_eq!(content.title().as_str(), "Tiếng mưa");
+        assert_eq!(ContentHash::of(&content).as_str(), MARKDOWN);
+    }
+
+    #[test]
+    fn every_byte_of_format_title_and_source_is_significant() {
+        let base = default("Mưa", "a\nb");
+        assert_eq!(
+            base,
+            default("  Mưa ", "a\nb"),
+            "title is trimmed/NFC first"
+        );
+        assert_ne!(base, default("Mưa", "a\r\nb"), "line endings are content");
+        assert_ne!(base, default("Mưa", "a\n\nb"), "blank lines are content");
+        assert_ne!(base, default("Mưa", " a\nb"), "indentation is content");
+        assert_ne!(base, default("mưa", "a\nb"), "case is content");
+        assert_ne!(
+            default("Việt", "Vie\u{0323}\u{0302}t"),
+            default("Việt", "Việt"),
+            "source keeps its Unicode form"
+        );
+        assert_eq!(
+            default("Vie\u{0323}\u{0302}t", "x"),
+            default("Việt", "x"),
+            "the title projection is NFC"
+        );
+        // Length prefixes keep title/source boundaries unambiguous.
+        assert_ne!(default("ab", "c"), default("a", "bc"));
+        let markdown = ContentHash::of(&titled(DocumentFormat::Markdown, None, "# Mưa\nx"));
+        assert_ne!(default("Mưa", "# Mưa\nx"), markdown, "format is content");
+    }
+
+    #[test]
+    fn revision_requires_a_title_for_every_format() {
+        assert_eq!(
+            RevisionContent::new(titled(DocumentFormat::Default, Some(" "), "Thân")),
             Err(RevisionError::MissingTitle)
         );
-        let source =
-            DocumentSource::from_authored(crate::domain::source::SourceFormat::Default, "Nội dung")
-                .unwrap();
-        assert_eq!(
-            RevisionContentV2::new(Title::parse(" ").unwrap(), source),
-            Err(RevisionError::MissingTitle)
-        );
-    }
-
-    #[test]
-    fn canonical_v2_hash_matches_fixed_vector_and_preserves_raw_bytes_and_format() {
-        use crate::domain::source::SourceFormat;
-
-        // Expected SHA-256 computed independently in Python from:
-        // b"vink-revision-content-v2" || len("markdown") || len("lf") || len(NFC title) || len(NFD raw source)
-        const EXPECTED_NFD_MARKDOWN_LF: &str =
-            "0ca4bf098f2b48053839130b399e35d46068e7b55c0199f12496bfa889849eee";
-
-        let title = Title::parse("Tiếng mưa").unwrap();
-        let nfd_authored = "# Tie\u{0302}\u{0301}ng mưa\n\n\n  \n\u{0110}oa\u{0323}n hai\t\u{1f9d1}\u{200d}\u{1f33e}\n";
-        let md_lf = DocumentSource::from_authored(SourceFormat::Markdown, nfd_authored).unwrap();
-        let rev = RevisionContentV2::new(title.clone(), md_lf.clone()).unwrap();
-        assert_eq!(rev.hash().as_str(), EXPECTED_NFD_MARKDOWN_LF);
-
-        // Switching format (`markdown` -> `default`) changes canonical v2 hash cleanly.
-        let default_lf =
-            DocumentSource::from_authored(SourceFormat::Default, nfd_authored).unwrap();
-        assert_ne!(rev.hash(), &ContentHash::of_source_v2(&title, &default_lf));
-
-        // Recording uniform CRLF instead of LF changes canonical v2 hash cleanly.
-        let md_crlf = DocumentSource::from_authored(
-            SourceFormat::Markdown,
-            &nfd_authored.replace('\n', "\r\n"),
-        )
-        .unwrap();
-        assert_ne!(rev.hash(), &ContentHash::of_source_v2(&title, &md_crlf));
-
-        // NFD vs NFC source bytes differ in v2 lossless hash (unlike v1 which NFC-folds).
-        let nfc_lf = DocumentSource::from_authored(
-            SourceFormat::Markdown,
-            "# Tiếng mưa\n\n\n  \nĐoạn hai\t\u{1f9d1}\u{200d}\u{1f33e}\n",
-        )
-        .unwrap();
-        assert_ne!(rev.hash(), &ContentHash::of_source_v2(&title, &nfc_lf));
+        for source in ["Thân bài.", "#\n\n# Tên sau", "<h1>Tên</h1>"] {
+            assert_eq!(
+                RevisionContent::new(titled(DocumentFormat::Markdown, None, source)),
+                Err(RevisionError::MissingTitle),
+                "{source:?}: the UI placeholder never satisfies MissingTitle"
+            );
+        }
+        let revision =
+            RevisionContent::new(titled(DocumentFormat::Markdown, None, "# Mưa")).unwrap();
+        assert_eq!(revision.title().as_str(), "Mưa");
+        assert_eq!(revision.hash(), &ContentHash::of(revision.content()));
     }
 }

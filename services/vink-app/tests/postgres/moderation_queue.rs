@@ -13,7 +13,7 @@ async fn corpus(pool: &PgPool, n: i32) {
     // IDs and identical timestamps intentionally put authorized rows behind many denied rows.
     for sql in [
         "INSERT INTO works(id,owner_id) SELECT ('00000000-0000-0000-0000-' || lpad(to_hex(10000+i),12,'0'))::uuid,$2 FROM generate_series(1,$1) i",
-        "INSERT INTO revisions(id,work_id,title,document,content_hash,created_by) SELECT id,id,'[Mẫu] Queue ỹ ỷ', '{\"schema_version\":1,\"blocks\":[{\"lines\":[\"Hàng chờ mẫu\"]}]}',repeat('a',64),$1 FROM works WHERE id<> '33333333-3333-4333-8333-333333333333'::uuid",
+        "INSERT INTO revisions(id,work_id,title,document,content_hash,created_by) SELECT id,id,'[Mẫu] Queue ỹ ỷ', '{\"format\":\"default\",\"source\":\"Hàng chờ mẫu\"}',repeat('a',64),$1 FROM works WHERE id<> '33333333-3333-4333-8333-333333333333'::uuid",
         "INSERT INTO work_publications(work_id,audience,lifecycle,generation,intent_revision_id,intent_generation,ever_public,public_epoch,policy_version) SELECT id,'public','active',2,id,2,'{}',0,1 FROM works WHERE id<> '33333333-3333-4333-8333-333333333333'::uuid",
         "INSERT INTO work_revision_moderation(work_id,revision_id,moderation,decision_version,policy_version) SELECT id,id,'pending',1,1 FROM works WHERE id<> '33333333-3333-4333-8333-333333333333'::uuid",
         "INSERT INTO moderation_cases(id,subject_kind,work_id,revision_id,content_digest,decision_version,target_content_owner,target_work_owner,origin,version,state,created_at) SELECT id,'work_revision',id,id,repeat('a',64),1,$1,$1,'automation_paused',1,'queued','2026-11-16T00:00:00Z' FROM works WHERE id<> '33333333-3333-4333-8333-333333333333'::uuid",

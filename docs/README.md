@@ -75,11 +75,12 @@ ghi quyết định Default/Markdown, legacy guards và điểm nối source con
 Markdown extraction và tích hợp PG/Web chưa triển khai; [evidence](development/evidence/editor-title-263/README.md)
 ghi riêng phần thực chạy.
 
-Nguồn văn bản theo định dạng #255: [spec kiến trúc](architecture/document-source-format.md) và
-[registry phát triển](development/document-source-format.md) ghi hợp đồng nguồn v2, capability
-schema, `CHOICE-01`/`CHOICE-02` Phương án A, hash v2 và kế hoạch rollout/rollback dưới đề xuất
-`PENDING` [VDR-DOCUMENT-SOURCE-FORMAT@r1](../decisions/proposals/VDR-DOCUMENT-SOURCE-FORMAT.r1.toml);
-writer v2 và migration DB sản xuất chưa được mở.
+Document canonical #255 (thay hoàn toàn document v1 theo quyết định sản phẩm 17/11/2026):
+[spec kiến trúc](architecture/document-source-format.md) và
+[registry phát triển](development/document-source-format.md) ghi shape `{format, source}`, title
+theo định dạng (#263), một content hash và cutover forward-only bị chặn khi còn revision bất biến
+cũ; kiến trúc [VDR-DOCUMENT-SOURCE-FORMAT@r2](../decisions/proposals/VDR-DOCUMENT-SOURCE-FORMAT.r2.toml)
+`PENDING`.
 
 ## Ánh xạ bộ foundation
 

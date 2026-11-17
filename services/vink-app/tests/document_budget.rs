@@ -2,68 +2,45 @@
 #[path = "support/document_budget.rs"]
 mod corpus;
 
-use vink_app::domain::document::{Document, DocumentError, MAX_DOCUMENT_CHARS, Title};
+use unicode_normalization::UnicodeNormalization;
+use vink_app::domain::document::{
+    Document, DocumentError, MAX_DOCUMENT_CHARS, MAX_SOURCE_BYTES, TitledDocument,
+};
 use vink_app::domain::revision::ContentHash;
 
+const TITLE: &str = "[Mẫu #229] Ngân sách văn bản";
+
+fn titled(document: Document) -> TitledDocument {
+    TitledDocument::author(document, Some(TITLE)).unwrap()
+}
+
 #[test]
-fn long_document_corpus_uses_real_validator_serializer_and_v1_hash() {
-    // #279 shares the hex encoder with hash v2. Pin v1 to the measured #249 corpus,
-    // rather than merely comparing two hashes produced by today's implementation.
-    let historical: serde_json::Value = serde_json::from_str(include_str!(
-        "../../../docs/development/evidence/long-document-229/followup/postgres.json"
-    ))
-    .unwrap();
-    assert_eq!(
-        historical["source_sha"],
-        "4f2883630ff27f36c7549e036e6b554166a86692"
-    );
-    let cases = historical["cases"].as_array().unwrap();
-    assert_eq!(cases.len(), 21);
-    let title = Title::parse("[Mẫu #229] Ngân sách văn bản").unwrap();
+fn long_document_corpus_uses_real_validator_serializer_and_canonical_hash() {
     for size in [30_000, 100_000, 200_000] {
         for shape in corpus::SHAPES {
             let data = corpus::corpus(shape, size);
             let raw = serde_json::to_vec(&data).unwrap();
             let doc = Document::parse(serde_json::from_slice(&raw).unwrap()).unwrap();
-            let scalars: usize = doc.blocks().flatten().map(|s| s.chars().count()).sum();
+            let scalars = doc.source().nfc().filter(|c| *c != '\n').count();
             assert_eq!(scalars, size, "{shape}/{size}");
+            assert!(doc.source().len() <= MAX_SOURCE_BYTES, "{shape}/{size}");
             let encoded = serde_json::to_vec(&doc.to_data()).unwrap();
+            // Lossless: the stored bytes are the authored bytes, NFD included.
+            assert_eq!(raw, encoded, "{shape}/{size}");
             let decoded = Document::parse(serde_json::from_slice(&encoded).unwrap()).unwrap();
             assert_eq!(doc, decoded);
-            let name = format!("{shape}-{size}");
-            let baseline = cases.iter().find(|case| case["case"] == name).unwrap();
-            let mut expected = baseline["pure"].as_object().unwrap().clone();
-            expected.remove("samples_ms");
-            let measured_title = Title::parse(&format!("[Mẫu #229] {name}")).unwrap();
-            let wire = serde_json::to_vec(&serde_json::json!({
-                "expected_version": 1, "title": measured_title.as_str(), "document": &data
-            }))
-            .unwrap();
-            let actual = serde_json::json!({
-                "blocks": doc.blocks().len(),
-                "lines": doc.blocks().map(|lines| lines.len()).sum::<usize>(),
-                "raw_line_scalars": data.blocks.iter().flat_map(|b| &b.lines).map(|s| s.chars().count()).sum::<usize>(),
-                "nfc_line_scalars": scalars,
-                "raw_line_utf8_bytes": data.blocks.iter().flat_map(|b| &b.lines).map(String::len).sum::<usize>(),
-                "nfc_line_utf8_bytes": doc.blocks().flatten().map(|line| line.len()).sum::<usize>(),
-                "raw_document_json_bytes": raw.len(),
-                "canonical_document_json_bytes": encoded.len(),
-                "save_request_bytes": wire.len(),
-                "content_hash_v1": ContentHash::of(&measured_title, &doc).as_str(),
-            });
-            assert_eq!(actual, serde_json::Value::Object(expected), "{name}");
-            let hash = ContentHash::of(&title, &doc);
-            assert_eq!(hash, ContentHash::of(&title, &decoded));
+            let hash = ContentHash::of(&titled(doc.clone()));
+            assert_eq!(hash, ContentHash::of(&titled(decoded)));
             if shape == "vi_nfd" {
                 let nfc = Document::parse(corpus::corpus("vi_nfc", size)).unwrap();
-                assert_eq!(doc, nfc);
-                assert!(raw.len() > encoded.len());
+                assert_ne!(doc, nfc, "NFD source is not folded to NFC");
+                assert_eq!(doc.source().nfc().collect::<String>(), nfc.source());
             }
             for at in [0, size / 2, size - 1] {
                 let mut changed = doc.to_data();
                 corpus::edit(&mut changed, at);
                 let changed = Document::parse(changed).unwrap();
-                assert_ne!(hash, ContentHash::of(&title, &changed));
+                assert_ne!(hash, ContentHash::of(&titled(changed)));
             }
         }
     }
@@ -86,8 +63,9 @@ fn long_document_scalar_boundaries_do_not_become_json_or_cache_limits() {
             }
         }
     }
+    // 200 000 one-character paragraphs: the line breaks are not counted but are kept and sent.
     let tiny = Document::parse(corpus::corpus("tiny_blocks", MAX_DOCUMENT_CHARS)).unwrap();
-    assert!(serde_json::to_vec(&tiny.to_data()).unwrap().len() > 2 * 1024 * 1024);
+    assert!(serde_json::to_vec(&tiny.to_data()).unwrap().len() > 900 * 1024);
     let emoji = Document::parse(corpus::corpus("emoji", MAX_DOCUMENT_CHARS)).unwrap();
     assert!(serde_json::to_vec(&emoji.to_data()).unwrap().len() > 512 * 1024);
 }

@@ -167,11 +167,8 @@ async fn new_revision(pool: &PgPool) -> Uuid {
             .fetch_one(pool)
             .await
             .unwrap();
-    let content = RevisionContent::new(
-        Title::parse(&format!("{raw_title} (bản sửa)")).unwrap(),
-        Document::parse(raw_document.0).unwrap(),
-    )
-    .unwrap();
+    let content =
+        RevisionContent::new(titled(&format!("{raw_title} (bản sửa)"), raw_document.0)).unwrap();
     sqlx::query(
         "INSERT INTO revisions (id, work_id, title, document, content_hash, created_by)
          SELECT $1, work_id, title || ' (bản sửa)', document, $3, created_by

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "format_not_publishable",
+    "message": "this document format has no public reader yet; the work stays private",
+    "field": "revision_id"
+  }
+}

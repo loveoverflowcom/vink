@@ -368,7 +368,7 @@ impl Flow<'_> {
             Some(
                 r#"{
             "expected_version":1,"title":"Nháp của tác giả gốc",
-            "document":{"schema_version":1,"blocks":[{"lines":["Một dòng."]}]}
+            "document":{"format":"default","source":"Một dòng."}
         }"#,
             ),
         )?

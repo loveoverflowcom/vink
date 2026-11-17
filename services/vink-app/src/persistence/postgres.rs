@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use super::principal::require_active;
 use crate::application::ports::{DraftStore, SaveOutcome, StoreError};
-use crate::domain::document::{Document, DocumentData, Title};
+use crate::domain::document::{Document, DocumentData, DocumentFormat, Title, TitledDocument};
 use crate::domain::draft::{DraftChange, DraftVersion, WorkingDraft};
 use crate::domain::ids::{PrincipalId, WorkId};
 
@@ -73,8 +73,14 @@ pub(super) fn title(raw: &str) -> Result<Title, StoreError> {
     Title::parse(raw).map_err(|e| integrity("stored title", e))
 }
 
-pub(super) fn document(Json(data): Json<DocumentData>) -> Result<Document, StoreError> {
-    Document::parse(data).map_err(|e| integrity("stored document", e))
+/// The one stored-content reader: canonical document shape plus the title its format authorizes
+/// (a Markdown title column must equal the first-H1 projection of the stored source).
+pub(super) fn content(
+    Json(data): Json<DocumentData>,
+    stored_title: &str,
+) -> Result<TitledDocument, StoreError> {
+    let document = Document::parse(data).map_err(|e| integrity("stored document", e))?;
+    TitledDocument::from_stored(document, stored_title).map_err(|e| integrity("stored title", e))
 }
 
 fn version(raw: i64) -> Result<DraftVersion, StoreError> {
@@ -97,8 +103,7 @@ impl TryFrom<DraftRow> for WorkingDraft {
         Ok(Self {
             work_id: WorkId::from_uuid(row.work_id),
             version: version(row.version)?,
-            title: title(&row.title)?,
-            document: document(row.document)?,
+            content: content(row.document, &row.title)?,
             updated_at: row.updated_at,
         })
     }
@@ -118,7 +123,8 @@ impl DraftStore for PgStore {
         owner: PrincipalId,
         work_id: WorkId,
     ) -> Result<WorkingDraft, StoreError> {
-        let empty = Document::empty();
+        // New works start as default documents; choosing a format at creation belongs to #262.
+        let empty = Document::empty(DocumentFormat::Default);
         let mut tx = self.pool.begin().await.map_err(classify)?;
         // Standing fence first: nothing else is locked and `works.owner_id` references the actor.
         require_active(&mut tx, owner).await?;
@@ -183,8 +189,8 @@ impl DraftStore for PgStore {
         .bind(work_id.as_uuid())
         .bind(owner.as_uuid())
         .bind(change.expected_version().get())
-        .bind(change.title().as_str())
-        .bind(Json(change.document().to_data()))
+        .bind(change.content().title().as_str())
+        .bind(Json(change.content().document().to_data()))
         .fetch_optional(&mut *tx)
         .await
         .map_err(classify)?;

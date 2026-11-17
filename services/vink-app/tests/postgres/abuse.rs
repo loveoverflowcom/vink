@@ -221,8 +221,11 @@ async fn password_routes_enforce_rate_limits_at_the_edge(pool: PgPool) {
     assert!(last.1.is_some(), "429 answers carry Retry-After");
 }
 
-#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+#[sqlx::test(migrations = false)]
 async fn prune_and_rollback_touch_only_rate_limit_windows(pool: PgPool) {
+    // The rollback chain below predates the canonical document cutover (#255), which cannot be
+    // backed out once immutable revisions exist; exercise it on the schema just before it.
+    upgrade_before_cutover(&pool).await;
     let vink = seeded(&pool).await;
     vink.admit(&SIGN_IN_CHALLENGE, &network("198.51.100.40"))
         .await

@@ -35,15 +35,21 @@ async fn draft_unicode_tables_match_pinned_rust_and_postgres(pool: PgPool) {
 async fn corpus(pool: &PgPool, count: i64, owner: Uuid, prefix: &str) {
     sqlx::query("INSERT INTO works(id, owner_id) SELECT md5($1 || n)::uuid, $2 FROM generate_series(1,$3::bigint) n")
         .bind(prefix).bind(owner).bind(count).execute(pool).await.unwrap();
-    sqlx::query("INSERT INTO working_drafts(work_id, version, title, document, updated_at)
+    sqlx::query(
+        "INSERT INTO working_drafts(work_id, version, title, document, updated_at)
         SELECT md5($1 || n)::uuid, 1,
           CASE WHEN n = 1 THEN 'Bản cũ duy nhất' WHEN n % 11 = 0 THEN ''
                WHEN n % 7 = 0 THEN 'ĐƯỜNG   VỀ' WHEN n % 3 = 0 THEN 'đường về'
                ELSE 'Trang ' || lpad(n::text, 5, '0') END,
-          '{\"schema_version\":1,\"blocks\":[{\"lines\":[\"PRIVATE-MANUSCRIPT-SENTINEL\"]}]}'::jsonb,
+          '{\"format\":\"default\",\"source\":\"PRIVATE-MANUSCRIPT-SENTINEL\"}'::jsonb,
           '2026-01-01'::timestamptz + (n / 3) * interval '1 second'
-        FROM generate_series(1,$2::bigint) n")
-        .bind(prefix).bind(count).execute(pool).await.unwrap();
+        FROM generate_series(1,$2::bigint) n",
+    )
+    .bind(prefix)
+    .bind(count)
+    .execute(pool)
+    .await
+    .unwrap();
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
@@ -327,7 +333,7 @@ async fn draft_keys_match_web_oracle_and_backfill_or_change_atomically(pool: PgP
             .fetch_one(&pool)
             .await
             .unwrap();
-    assert_eq!(backfilled, title_key(loaded.title.as_str()));
+    assert_eq!(backfilled, title_key(loaded.content.title().as_str()));
     let saved = vink
         .save_draft(
             author(),
