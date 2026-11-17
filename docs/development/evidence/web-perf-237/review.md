@@ -1,6 +1,6 @@
 # Review độc lập PR #283 — 17/11/2026
 
-Base `29185dd0eceb3a6395fb9c1abfece5a3f2f7068c`; PR ban đầu
+Target develop `29185dd0eceb3a6395fb9c1abfece5a3f2f7068c`; merge-base ban đầu `afb402008b94924cccf43d5b5e81b1c60743855a`; PR ban đầu
 `d0f296d991d68860eb8e080a35f5b69b67376634`. Checkout riêng trên Mac;
 không dùng kết luận tác giả làm PASS của lượt review, không đọc/chờ/rerun CI.
 
@@ -15,6 +15,10 @@ không dùng kết luận tác giả làm PASS của lượt review, không đ�
 - **P2 — kết luận GET/cache hit vượt raw.** B có 1/6 Reader miss ở normal revisit và 2/3
   ở mixed revisit; không phải 100% hit. C có 22/19/5 GET list tổng ở ba corpus, cao hơn
   B lần lượt 21/18/4. Reader GET đếm riêng. Đã sửa README, giữ raw gốc để audit.
+- **P3 — recipe NoOp một dòng không khớp type thật.** `Owner.coord` cố định generic
+  mặc định `InMemoryCache`, nên chỉ đổi constructor sang `NoOpCache` không biên dịch.
+  Đã ghi cả hai điểm cần đổi và yêu cầu kiểm trên diff rollback; rollback UNBOUNDED
+  chỉ đổi đối số budget. Không biến NoOp thành một công tắc runtime mới.
 - **Giới hạn evidence:** CSV cũ đo `struct_stats` thay vì hàm weigh production;
   lần sửa gọi `snapshot_weight_bytes` và xuất cột `production_weight_B` riêng.
   Probe Chrome gốc không có script, source patch/digest B/C; không thể chứng nhận nguồn
@@ -71,3 +75,27 @@ Chrome A lịch sử dùng runtime cũ `afb4020`, nên hai so sánh không hoán
 Ở corpus 16 Reader + list vượt soft16 nên vòng round-robin mất Reader cả A/B; hot list
 vẫn hit 49/49 revisit. B bỏ 50/50 tiny snapshots; chấp nhận thêm 46 miss so với A để tránh
 39 MB retention. Điều này giữ lựa chọn B, không dùng tỷ lệ hit tuyệt đối làm luận cứ.
+
+## Reconcile và registry
+
+Merge latest develop vào branch review tại `45616e74a83d0cc2be5f266c55d4099d24f7fe78`,
+không xung đột. Bao gồm fix session-ready PublicationPanel #281 và đối soát #282.
+Các file `public_reads.rs`, `freshness.rs`, `read_cache.rs`, `Cargo.lock` giữ nguyên SHA-256
+so với lúc chạy benchmark/negative control; không gọi kết quả đó là một lần rerun trên merge.
+
+`decision validate`: **PASS**, 127 revisions, 88 refs, snapshot
+`8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8`.
+`decision refs`: **PASS**, problems `[]`. [Raw query](review-decisions.json.gz)
+xác nhận READ-01/02/DISC-WEB DESIGN_PROPOSED; O-03/O-17 r2 và USER-02/09 r1
+PRODUCT_CONFIRMED; ba VDR nêu trên PENDING/current=null. Merging không signoff.
+
+**PASS Quick 13/13 trên integrated code `45616e7`:** fmt, 3 clippy targets,
+25 lawful + 34 compile-fail doctests, Reader SSR boundary 1/1, workspace unit/contract
+(vink-web 240 passed / 1 ignored, xtask 83 passed / 1 ignored), repository checks.
+[Raw final-code Quick](quick-integrated.log.gz), 185,71 s; sampled RSS cộng lớn nhất
+2.314.112 KiB, pressure normal; soft budget không là trần RSS vật lý.
+[Quick trước reconcile](quick-final-code.log.gz) cũng PASS 13/13, 299,06 s.
+
+**PASS corpus canonical #229**, `cargo test --offline --locked -p vink-app --test
+document_budget`: 3/3 trên `45616e7`, 49,78 s; validator/scalar boundaries, independent
+JSON byte/hash oracle và oversized optional persistence miss. [Raw](canonical-corpus.log.gz).
