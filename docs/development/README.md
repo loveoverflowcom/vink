@@ -68,9 +68,9 @@ Google Cloud, APK Firebase, DNS/TLS và OCI trước khi diễn tập trên VPS 
   ([runtime riêng](../../apps/vink-web/editor/README.md)), tạo nháp, lưu có điều kiện theo version,
   trạng thái chưa lưu/đang lưu/đã lưu/lỗi/xung đột; chỉ báo đã lưu sau xác nhận của server;
   phản hồi cũ không đánh dấu nội dung mới hơn là đã lưu; xung đột giữ nguyên nội dung đang viết.
-  Xem trước và tải `.txt` từ chữ đang có trên trang. Rời editor khi còn chữ chưa được xác nhận
-  (link, brand, back/forward) mở hộp thoại Ở lại / Lưu và rời trang; khi lưu lỗi, xung đột hoặc
-  còn treo thì có thêm Tải bản đang viết và Rời mà không lưu (xác nhận hai bước). Server chỉ render
+  Xem trước từ chữ đang có trên trang (#254 đã bỏ tải `.txt`). Rời editor khi còn chữ chưa được
+  xác nhận (link, brand, back/forward) mở hộp thoại Ở lại / Lưu và rời trang; khi lưu lỗi, xung
+  đột hoặc còn treo thì có thêm Rời mà không lưu (xác nhận hai bước). Server chỉ render
   khung trang, bản nháp được tải bằng API sau hydration.
 - Shell thích ứng ([#7](https://github.com/loveoverflowcom/vink/issues/7)): Khám phá (`/`) trước
   Bàn viết, Tôi ở chân rail. Desktop từ 1100px mặc định 220px, tablet 760–1099px và editor

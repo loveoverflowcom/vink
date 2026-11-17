@@ -34,8 +34,8 @@ gloo-net = { version = "0.7.0", optional = true, default-features = false, featu
 web-sys = { version = "0.3.106", optional = true, features = [
     "Window", "Location", "Document", "Element", "HtmlElement", "HtmlAnchorElement",
     "HtmlDialogElement", "HtmlInputElement", "BeforeUnloadEvent", "Event", "EventTarget",
-    "MouseEvent", "KeyboardEvent", "AddEventListenerOptions", "History", "Url", "Blob",
-    "BlobPropertyBag", "FocusOptions", "Storage", "DomRect", "CssStyleDeclaration",
+    "MouseEvent", "KeyboardEvent", "AddEventListenerOptions", "History", "Url",
+    "FocusOptions", "Storage", "DomRect", "CssStyleDeclaration",
     "ResizeObserver", "NodeList", "Crypto", "AbortController", "AbortSignal",
     "Performance", "VisibilityState", "RequestCache", "BroadcastChannel", "MessageEvent",
 ] }

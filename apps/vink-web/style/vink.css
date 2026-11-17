@@ -620,9 +620,7 @@ a {
 @media (max-width: 47.999rem) {
   .vk-main:has(> .vk-desk--editor) { padding-inline: min(var(--vk-space-2), 8px); }
   .vk-desk--editor .vk-editor-paper { padding-inline: min(var(--vk-space-2), 8px); }
-
 }
-
 .vk-desk--editor .vk-notice__actions { margin-top: var(--vk-space-2); }
 .vk-desk--editor .vk-notice__actions > .vk-ui-action { flex: 0 1 auto; min-width: 0; }
 .vk-desk--editor .vk-notice__actions .vk-ui-button__label { overflow-wrap: normal; }
