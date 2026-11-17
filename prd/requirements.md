@@ -48,6 +48,14 @@ Các vai trò tối thiểu: khách đọc, tác giả, người duyệt chính 
 
 Không cam kết cộng tác thời gian thực hoặc offline-first trong pilot. Local recovery, nếu có, phải phân biệt với bản đã lưu server, tách theo tài khoản và có cách xóa trên thiết bị dùng chung.
 
+**Chốt tiêu đề theo định dạng 16/11/2026 — #263:** Mặc định có tên riêng và body;
+Markdown lấy H1 đầu tiên làm tên, không có H1/H1 đầu rỗng thì UI hiện “Chưa đặt tên”.
+Không có hai nguồn tên writable; body v1/Mặc định có dấu `#` vẫn là chữ, legacy giữ
+tên riêng đến conversion chủ động. Placeholder không vượt validation/publication;
+giữ giới hạn tên hiện hành và nguồn khi lỗi. Đây là hướng `PRODUCT_CONFIRMED`,
+không phải Markdown đã triển khai hay schema/hash đã được duyệt. Xem
+[owner title, corpus và dependency #255](../docs/architecture/editor-title-authority.md).
+
 ## 4. Xuất bản và rút bài
 
 | ID | Ưu tiên | Yêu cầu | Nghiệm thu tiêu biểu |

@@ -5,6 +5,8 @@ use time::macros::datetime;
 use super::*;
 use crate::domain::document::{BlockData, MAX_DOCUMENT_CHARS, MAX_TITLE_CHARS, SCHEMA_VERSION};
 
+mod title_authority;
+
 const AT: OffsetDateTime = datetime!(2026-11-02 12:00:00 UTC);
 
 #[derive(Debug, PartialEq, Eq)]
