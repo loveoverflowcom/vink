@@ -4,6 +4,31 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 
+// Records every matching node added or removed under #drafts, including a node that is
+// mounted and dropped again within one task (the observer keeps the record).
+const watchNodes = (page, name, selector, kind) => page.eval(`(() => {
+  window.__${name}?.observer?.disconnect();
+  const hits = [], sel = ${JSON.stringify(selector)};
+  const observer = new MutationObserver(records => { for (const record of records) for (const node of record[${JSON.stringify(kind)}])
+    if (node.nodeType === 1 && (node.matches(sel) || node.querySelector(sel))) hits.push(performance.now()); });
+  observer.observe(document.querySelector('#drafts'), { childList: true, subtree: true });
+  hits.observer = observer; window.__${name} = hits;
+})()`);
+
+// Visual cluster (artwork top → actions bottom) against the free region: from the last visible
+// control above the slot (after its margin) to the end of `.vk-main`'s content box minus the privacy paragraph.
+// Document coordinates, so the result does not depend on the scroll position.
+const PLACEMENT = `(() => {
+  const box = el => el.getBoundingClientRect(), state = root.querySelector('.vk-empty-state');
+  let prev = root.previousElementSibling; while (prev && !box(prev).height) prev = prev.previousElementSibling;
+  const main = document.querySelector('.vk-main'), privacy = document.querySelector('.vk-desk-privacy'), ps = getComputedStyle(privacy);
+  const top = box(prev).bottom + parseFloat(getComputedStyle(prev).marginBlockEnd) + scrollY;
+  const bottom = box(main).bottom + scrollY - parseFloat(getComputedStyle(main).paddingBottom) - privacy.offsetHeight - parseFloat(ps.marginTop) - parseFloat(ps.marginBottom);
+  const groupTop = box(state.querySelector('img')).top + scrollY, groupBottom = box(state.querySelector('.vk-empty-state__actions')).bottom + scrollY;
+  const round = n => Math.round(n * 10) / 10;
+  return { region: [round(top), round(bottom)], group: [round(groupTop), round(groupBottom)], gapAbove: round(groupTop - top), gapBelow: round(bottom - groupBottom), centerDelta: round((groupTop + groupBottom - top - bottom) / 2) };
+})()`;
+
 export async function deskEmptyState(page, { args, check, DraftGate, textContrast }) {
   const baseline = args['empty-baseline'] === 'true';
   const gate = new DraftGate(page);
@@ -44,10 +69,32 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
     check(await page.eval(`document.querySelector('#draft-search')===window.__emptySearch && document.activeElement===window.__emptySearch && window.__emptySearch.value==='không khớp' && window.__emptySearch.selectionStart===2 && window.__emptySearch.selectionEnd===5`), '#259 loading-to-empty preserves the input node, unapplied query, focus and caret');
     await page.key('Enter');
     await page.waitFor(`document.querySelector('[data-testid=draft-no-results]')`, 'applied search miss');
+    // UIS-03 `Empty + Loading`: a same-query refresh keeps the settled miss (with its stale
+    // qualifier) instead of removing and re-adding the slot.
+    await watchNodes(page, 'missRemoved', '[data-testid=draft-no-results]', 'removedNodes');
+    gate.holdGets = true;
+    await page.click('#refresh-drafts');
+    const sameQuery = await gate.next('gets');
+    check(await page.eval(`window.__missRemoved.length===0 && !!document.querySelector('[data-testid=draft-no-results]') && !!document.querySelector('[data-testid=author-work-stale]')`), 'audit: retained no-results stays, labelled stale, while the same query refreshes');
+    gate.holdGets = false;
+    await gate.answerGet(sameQuery);
+    await settled();
+    check(await page.eval(`window.__missRemoved.length===0 && !!document.querySelector('[data-testid=draft-no-results]') && !document.querySelector('[data-testid=author-work-stale]')`), 'audit: same-query refresh settles without remounting the no-results slot');
 
     for (const state of ['no-results', 'first-draft']) {
       if (state === 'first-draft') {
+        // A search miss is never reused as the unfiltered head: nothing claims first-use (not
+        // even for one frame, nor by requesting its artwork) until that head is answered.
+        await watchNodes(page, 'falseFirstUse', '[data-testid=draft-empty]', 'addedNodes');
+        const artBefore = network.length;
+        gate.holdGets = true;
         await page.click('#clear-draft-search');
+        const unfiltered = await gate.next('gets');
+        await page.eval(`new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))`);
+        check(await page.eval(`window.__falseFirstUse.length===0 && !document.querySelector('[data-testid=draft-empty]')`) && network.length===artBefore, 'audit: clearing a search miss shows no first-use or its artwork before the unfiltered head answers');
+        gate.holdGets = false;
+        await gate.answerGet(unfiltered);
+        await settled();
         await page.waitFor(`document.querySelector('[data-testid=draft-empty]')`, 'clear search returns to first-use');
         check(await page.eval(`document.querySelector('#draft-search')===window.__emptySearch && document.activeElement===window.__emptySearch && window.__emptySearch.value===''`), '#259 clear keeps input identity and restores search focus');
       }
@@ -67,10 +114,11 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
         const measured = await page.eval(`(() => {
           const root=document.querySelector(${JSON.stringify(target)}), img=root.querySelector('img'),p=root.querySelector('.vk-empty-state__message');
           const r=el=>el?.getBoundingClientRect().toJSON();
-          return {width:innerWidth,theme:document.documentElement.dataset.theme,scale:${scale},state:${JSON.stringify(state)},art:r(img),message:r(p),messageFont:p&&getComputedStyle(p).fontSize,scrollWidth:document.documentElement.scrollWidth};
+          return {width:innerWidth,theme:document.documentElement.dataset.theme,scale:${scale},state:${JSON.stringify(state)},art:r(img),message:r(p),messageFont:p&&getComputedStyle(p).fontSize,scrollWidth:document.documentElement.scrollWidth,placement:${PLACEMENT}};
         })()`);
         geometry.push(measured);
         check(measured.scrollWidth <= width, `#259 ${state} ${width}/${theme}/${scale}: no horizontal overflow`);
+        check(Math.abs(measured.placement.centerDelta) <= 2, `audit ${state} ${width}/${theme}/${scale}: cluster centred in the free region below the controls (delta ${measured.placement.centerDelta}px, gaps ${measured.placement.gapAbove}/${measured.placement.gapBelow})`);
         if (!baseline) check(Math.abs(measured.art.width - (width < 760 ? 192 : 240)) < 1 && Math.abs(measured.art.height / measured.art.width - 427 / 512) < .01 && measured.messageFont === (scale === 100 ? '16px' : '32px'), `#259 ${state} ${width}/${theme}/${scale}: fixed artwork and scaled body type`);
         if (!baseline && scale===100) await textContrast(page,theme,'desk-empty');
         await page.capture(`desk-art-${state}-${width}-${theme}-${scale}`, { scenario: '#259-empty-artwork', state, target, boundary: 'intercepted-private-summary-transport', requestedScene: {width,height:900,theme,scale} });

@@ -43,6 +43,9 @@ Interaction: không auto-focus; query/selection/composition giữ owner qua regi
 CTA click/Enter/Space dùng VinkButton hiện hữu; clear là hành động có chủ ý, không gửi server.
 Ảnh không có tên accessibility; ảnh loading/failed vẫn giữ câu và nút. Không animation mới.
 Cuộn và safe drawing/IME inset do DiagnosticHost sở hữu, không thêm inset bên trong.
+Audit 17/11/2026: ảnh, câu (tông `OnSurfaceVariant`, căn giữa) và CTA cùng một trục giữa như Web
+`.vk-empty-state`. Host diagnostic là cột cuộn không giới hạn chiều cao nên căn giữa theo chiều
+dọc chỉ thuộc consumer native sau này; không suy ra từ capture Desktop. Xem [audit 17/11/2026](../development/evidence/empty-state-audit-261/README.md).
 
 CHOICE-01 **A**: ba alpha WebP canonical → generated build data → closed enum → worker đơn,
 fit decode không upscale, tối đa 512×427 (874.496 byte pixel ARGB8888 theo phép tính).

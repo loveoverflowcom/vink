@@ -27,6 +27,10 @@ Image → câu → actions; app background, không nested panel/hero/border/glow
 Ảnh `min(240px, 100%)`; viewport <760px là `min(192px, 100%)`, height auto + ratio/intrinsic size.
 200% chỉ tăng chữ và spacing theo token, không nhân đôi artwork. Cột/controls wrap tự nhiên,
 cuộn theo trang và giữ bottom inset của shell; không overlay/cuộn riêng mới.
+Vị trí (audit 17/11/2026): cụm ảnh → câu → actions nằm giữa vùng trống còn lại dưới search/bộ lọc
+và trên đáy vùng nội dung `.vk-main` (đã trừ rail, top bar, bottom nav), không căn theo `100vh`.
+Chỉ màn đang có `.vk-empty-state` mới thành chuỗi flex cột; nội dung cao hơn viewport thì về căn
+trên và cuộn theo trang. Nav phân trang rỗng không chiếm margin trong nhánh này. Đo theo [audit 17/11/2026](../development/evidence/empty-state-audit-261/README.md).
 Một transparent file/theme, explicit theme thắng OS như shell hiện hữu. Forced colors có thể
 ẩn decoration nhưng giữ đúng không gian để không nhảy layout; HTML nghĩa/actions luôn tồn tại.
 

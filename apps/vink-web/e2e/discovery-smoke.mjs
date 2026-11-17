@@ -44,11 +44,21 @@ export async function discoveryReading(page, { args, check, textContrast }) {
       const r=art.getBoundingClientRect(), m=message.getBoundingClientRect();
       return {width:r.width, height:r.height, font:getComputedStyle(message).fontSize,
         overflow:document.documentElement.scrollWidth-innerWidth,
-        order:r.bottom<=m.top && m.bottom<=document.querySelector('.vk-empty-state__actions').getBoundingClientRect().top};
+        order:r.bottom<=m.top && m.bottom<=document.querySelector('.vk-empty-state__actions').getBoundingClientRect().top,
+        centerDelta:(() => {
+          // Free region: last visible control above the slot → end of the screen's content box.
+          let prev=art.closest('.vk-empty-state').parentElement.previousElementSibling;
+          while (prev && !prev.getBoundingClientRect().height) prev=prev.previousElementSibling;
+          prev=prev||document.querySelector('#applied-filters');
+          const main=document.querySelector('.vk-main'), top=prev.getBoundingClientRect().bottom+parseFloat(getComputedStyle(prev).marginBlockEnd);
+          const bottom=main.getBoundingClientRect().bottom-parseFloat(getComputedStyle(main).paddingBottom)-parseFloat(getComputedStyle(document.querySelector('#explore')).marginBlockEnd);
+          return Math.round((r.top+document.querySelector('.vk-empty-state__actions').getBoundingClientRect().bottom-top-bottom)*5)/10;
+        })()};
     })()`);
     check(layout.width <= (width<760?192:240) + 1 && Math.abs(layout.height/layout.width-427/512)<0.01 &&
       layout.font===(scale===100?'16px':'32px') && layout.overflow<=1 && layout.order,
       '#258 empty composition reflow/ratio/type/order '+[theme,width,scale].join('/')+' '+JSON.stringify(layout));
+    check(Math.abs(layout.centerDelta) <= 2, 'audit empty cluster centred in the free region below search/filters '+[surface,theme,width,scale].join('/')+' delta '+layout.centerDelta+'px');
     if (width===390 && scale===100) await textContrast(page, theme, 'empty');
     await page.capture('empty258-'+surface+'-'+[theme,width,scale].join('-'), {boundary:'real-public-api',scenario:'filtered-empty-WebP'});
   }

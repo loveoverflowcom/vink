@@ -299,16 +299,21 @@ pub fn DeskIndex() -> impl IntoView {
             });
         }
     });
-    // Only an authoritative, unfiltered head can describe an empty corpus. A filtered
-    // miss (or a failed first read) says nothing about whether this owner has drafts.
+    // Emptiness needs a successful head page; a failed or unanswered read never establishes it.
+    // A retained empty head stays while the same scope refreshes (UIS-03 `Empty + Loading`):
+    // a new scope resets `pages`, so its stale answer cannot be shown as the new one.
+    let empty_head = move || {
+        load_error.get().is_none() && pages.with(|p| p.loaded && p.part == 1 && p.drafts.is_empty())
+    };
+    // Only an unfiltered head without continuation describes an empty corpus. A filtered
+    // miss says nothing about whether this owner has drafts.
     let first_use = Signal::derive(move || {
         ready.get()
-            && load_error.get().is_none()
+            && empty_head()
             && crate::draft_list::search_key(&applied.get()).is_empty()
-            && pages.with(|p| {
-                p.loaded && p.part == 1 && p.drafts.is_empty() && p.chain.next_cursor.is_none()
-            })
+            && pages.with(|p| p.chain.next_cursor.is_none())
     });
+    let no_results = Signal::derive(move || !first_use.get() && empty_head());
     view! {
         <Title text="Bàn viết — Vink" />
         <Meta name="robots" content="noindex" />
@@ -330,7 +335,7 @@ pub fn DeskIndex() -> impl IntoView {
                 })}
                 // The tools/input retain one owner through loading, empty, query and error.
                 <DraftListView pages query sort composing loading appending page_error load_error restarted
-                    first_use creation can_create create submit clear more refresh refresh_disabled />
+                    first_use no_results creation can_create create submit clear more refresh refresh_disabled />
             </div>
             <p class="vk-desk-privacy vk-muted">"Bản nháp chỉ bạn đọc được. Số Thấm và Nhận xét thuộc bản đang công khai; lưu nháp không gửi duyệt hay công khai."</p>
         </section>
@@ -443,6 +448,7 @@ fn CreateNotice(
 fn DraftListView(
     pages: RwSignal<crate::draft_list::paging::DraftPages>,
     first_use: Signal<bool>,
+    no_results: Signal<bool>,
     creation: RwSignal<CreateState>,
     can_create: Signal<bool>,
     create: Callback<()>,
@@ -498,13 +504,13 @@ fn DraftListView(
                 <p class="vk-muted" data-testid="draft-chain-restarted">"Đã tải lại từ đầu. Bạn có thể tải tiếp các tác phẩm phía sau."</p>
             </Show>
             <Show when=move || first_use.get()>
-                <div class="vk-desk-empty" data-testid="draft-empty">
+                <div data-testid="draft-empty">
                     <EmptyState artwork=EmptyArtwork::FirstDraft message="Một trang dành riêng cho những điều bạn muốn viết.">
                         <CreateDraftButton creation can_create create first=true />
                     </EmptyState>
                 </div>
             </Show>
-            <Show when=move || !loading.get() && !first_use.get() && load_error.get().is_none() && pages.with(|p| p.loaded && p.part == 1 && p.drafts.is_empty())>
+            <Show when=move || no_results.get()>
                 <div data-testid="draft-no-results">
                     <EmptyState artwork=EmptyArtwork::NoResults message="Chưa có tác phẩm trong kết quả này.">
                         <Button variant=ButtonVariant::Filled id="clear-draft-search" on_press=move |_| clear.run(())>"Xem tất cả tác phẩm"</Button>

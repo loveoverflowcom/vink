@@ -80,6 +80,12 @@ class EmptyArtworkPreviewTest {
             assertTrue(abs((slot.right - slot.left).value - if (w < 500) 176f else 240f) < 1)
             assertTrue(abs((slot.right - slot.left).value / (slot.bottom - slot.top).value - 512f / 427f) < 0.02f)
             onNodeWithText("Viết bản thảo đầu tiên").performScrollTo().assertIsDisplayed()
+            // One centered cluster (Web parity): artwork, wrapped sentence and CTA share the panel axis.
+            val axis = onNodeWithTag("empty-artwork-panel").getUnclippedBoundsInRoot().let { (it.left + it.right).value / 2 }
+            for (node in listOf(onNodeWithTag("empty-artwork-slot"), onNodeWithTag("empty-artwork-text"), onNodeWithText("Viết bản thảo đầu tiên"))) {
+                val box = node.getUnclippedBoundsInRoot()
+                assertTrue(abs((box.left + box.right).value / 2 - axis) <= 1f, "center delta at ${w}dp × $s")
+            }
         }
     }
 
