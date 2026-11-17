@@ -24,7 +24,8 @@ val generateEmptyArtwork by tasks.registering {
             val id = asset["id"] as String
             require(asset["width"] == 512 && asset["height"] == 427 && asset["alpha"] == true)
             val bytes = emptyAssetDir.file("vink-empty-$id.webp").asFile.readBytes()
-            require(bytes.size == asset["bytes"] && bytes.size < 30 * 1024)
+            // Same inclusive 30 KiB gate as apps/vink-web/assets/empty/verify.mjs (xtask build/quick).
+            require(bytes.size == asset["bytes"] && bytes.size <= 30 * 1024)
             val sha = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
             require(sha == asset["sha256"]) { "Empty artwork hash mismatch: $id" }
             "        \"$id\" -> \"${Base64.getEncoder().encodeToString(bytes)}\""
