@@ -22,7 +22,7 @@ không có Escape riêng hoặc overlay lồng. Escape trong panel đóng modal 
 focus theo shell. Radio fieldset/legend, bootstrap, `vink.ui.theme`, OS/storage
 vẫn do owner hiện hữu giữ.
 
-CHOICE-07 A: một disclosure “Bản thử nghiệm” ở footer. Nhãn Mẫu và thông báo định
+CHOICE-07 A: một disclosure “Bản thử nghiệm” ở footer *(đã gỡ footer `#build-info` khỏi shell ứng dụng ở #254 ngày 17/11/2026; các mục dưới đây giữ lịch sử nghiệm thu R5; nhãn `Mẫu` và thông báo định danh thử tại seed/preview vẫn giữ)*. Nhãn Mẫu và thông báo định
 danh thử tại thao tác thảo luận còn giữ nghĩa. Reader Tab qua disclosure trước
 bottom navigation. Summary mới có scroll-margin theo chiều cao bar đã đo để
 native focus không nằm dưới bar ở320/chữ200.

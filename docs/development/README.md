@@ -68,9 +68,9 @@ Google Cloud, APK Firebase, DNS/TLS và OCI trước khi diễn tập trên VPS 
   ([runtime riêng](../../apps/vink-web/editor/README.md)), tạo nháp, lưu có điều kiện theo version,
   trạng thái chưa lưu/đang lưu/đã lưu/lỗi/xung đột; chỉ báo đã lưu sau xác nhận của server;
   phản hồi cũ không đánh dấu nội dung mới hơn là đã lưu; xung đột giữ nguyên nội dung đang viết.
-  Xem trước và tải `.txt` từ chữ đang có trên trang. Rời editor khi còn chữ chưa được xác nhận
-  (link, brand, back/forward) mở hộp thoại Ở lại / Lưu và rời trang; khi lưu lỗi, xung đột hoặc
-  còn treo thì có thêm Tải bản đang viết và Rời mà không lưu (xác nhận hai bước). Server chỉ render
+  Xem trước từ chữ đang có trên trang (#254 đã bỏ tải `.txt`). Rời editor khi còn chữ chưa được
+  xác nhận (link, brand, back/forward) mở hộp thoại Ở lại / Lưu và rời trang; khi lưu lỗi, xung
+  đột hoặc còn treo thì có thêm Rời mà không lưu (xác nhận hai bước). Server chỉ render
   khung trang, bản nháp được tải bằng API sau hydration.
 - Shell thích ứng ([#7](https://github.com/loveoverflowcom/vink/issues/7)): Khám phá (`/`) trước
   Bàn viết, Tôi ở chân rail. Desktop từ 1100px mặc định 220px, tablet 760–1099px và editor
@@ -570,13 +570,11 @@ production đỏ; model mutant tạo OFF→old ON resurrection. Harness và kế
 - Autosave, bản khôi phục cục bộ, paste từ Word/Docs, IME thật trên thiết bị (WR-01/WR-02, S-01).
   Undo/redo và composition mô phỏng đã có trong editor CodeMirror, chưa phải bằng chứng IME hệ
   điều hành.
-- Export ngoài `.txt`; autosave/device recovery không được suy từ save projection #227.
+- Chưa có export nháp `.txt` hay export định dạng ngoài (#254 bỏ tải `.txt` trong editor); autosave/device recovery không được suy từ save projection #227.
   Tìm/lọc công khai và thẻ nháp đã có consumer Web (#99/#100). IndexedDB có adapter dưới gate
   tắt; chưa policy clearing/UX expired/cold offline launch ([READ-02](public-read-freshness.md)).
 - Diễn tập vận hành dài hạn, restore production và performance trên thiết bị đích vẫn cần
   evidence riêng; local backup/restore được kiểm ở lane `postgres`.
-- Tải `.txt` lần thứ hai trên cùng trang có thể khiến Chrome hỏi “tải nhiều tệp”; đó là quyền của
-  trình duyệt, không phải lỗi lưu.
 - Kiểm tra trên mobile thật, screen reader và đo hiệu năng.
 
 ## Việc tiếp theo

@@ -39,7 +39,7 @@ Các vai trò tối thiểu: khách đọc, tác giả, người duyệt chính 
 
 | ID | Ưu tiên | Yêu cầu | Nghiệm thu tiêu biểu |
 | --- | --- | --- | --- |
-| WR-01 | Must — Pilot | Nháp riêng có autosave và trạng thái lưu rõ | Refresh giữ nguyên dữ liệu đã được server xác nhận; mất mạng hiển thị phần chưa lưu, cho retry/export; không tuyên bố đã lưu khi chưa thành công; tài khoản khác/khách không đọc được nháp qua UI, API, SSR hoặc URL đoán |
+| WR-01 | Must — Pilot | Nháp riêng có autosave và trạng thái lưu rõ | Refresh giữ nguyên dữ liệu đã được server xác nhận; mất mạng hiển thị phần chưa lưu, giữ buffer đang viết và cho `Thử lại`/`Lưu đè` cùng guard rời trang hai bước; không tuyên bố đã lưu khi chưa thành công; tài khoản khác/khách không đọc được nháp qua UI, API, SSR hoặc URL đoán. **16/11/2026 (#254):** bỏ toàn bộ nút tải bản thảo (`.txt`) và hướng dẫn ngắt dòng khỏi giao diện viết để giữ mặt viết yên tĩnh, vẫn giữ đầy đủ chống mất nội dung |
 | WR-02 | Must — Pilot | Soạn và render đúng tiếng Việt, thơ, đoạn văn | Bộ mẫu dấu tiếng Việt, IME, khổ thơ, xuống dòng và paste từ Word/Docs đi qua save → render → edit không mất cấu trúc; kiểm trên desktop và mobile mục tiêu |
 | WR-03 | Must — Pilot | Snapshot gửi duyệt bất biến, working draft có version | Sửa tiếp tạo draft/snapshot mới; hai tab cùng lưu không âm thầm ghi đè; snapshot đã gửi có ID/hash ổn định, có thể đối chiếu lại |
 | WR-04 | Must khi mở nhiều chương — **`DEFERRED` 10/11/2026: không triển khai nhiều chương** | Danh sách chương và trạng thái riêng từng chương | Thêm/sắp xếp chương nháp không làm lộ nội dung chưa đăng; URL/ID chương cũ giữ ổn định; trật tự công khai chỉ đổi qua hành động được phép |

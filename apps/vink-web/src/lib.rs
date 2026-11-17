@@ -125,11 +125,6 @@ fn Chrome() -> impl IntoView {
                     <Route path=path!("/thu-nghiem/bieu-cam") view=expressions::ExpressionPilot />
                 </Routes>
             </main>
-            <footer class="vk-footer">
-                <vink_ui::SupportingDetails id="build-info" summary="Bản thử nghiệm">
-                    <p>"Chưa mở đăng nhập. Nội dung gắn Mẫu là dữ liệu thử."</p>
-                </vink_ui::SupportingDetails>
-            </footer>
         </AdaptiveShell>
     }
 }

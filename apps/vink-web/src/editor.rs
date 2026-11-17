@@ -2,7 +2,7 @@
 //!
 //! The runtime lives in `apps/vink-web/editor` (TypeScript, built by `cargo xtask build` into
 //! `/pkg/vink-editor.js`) and is fetched only when an editor mounts. CodeMirror owns the live body
-//! text; [`BodySource::snapshot`] is the one way save, preview, export and the leave guard read
+//! text; [`BodySource::snapshot`] is the one way save, preview and the leave guard read
 //! it. Save state stays with [`crate::desk_state::EditorSession`]. One view lives per open draft:
 //! reactive updates around it (status, notices, dialogs, theme) never remount it.
 

@@ -671,7 +671,8 @@ pub fn DraftEditor() -> impl IntoView {
         <section class="vk-desk vk-desk--editor" aria-labelledby="editor-heading">
             <header class="vk-editor-heading">
                 <a class="vk-editor-heading__back" href="/ban-viet">
-                    "← Bàn viết"
+                    <vink_ui::Icon name=IconName::ArrowBack size=vink_ui::IconSize::Small />
+                    <span>"Bàn viết"</span>
                 </a>
                 <Heading level=HeadingLevel::H1 role=TypeRole::Title id="editor-heading" class:vk-editor-heading__title=true>"Bản nháp"</Heading>
             </header>
@@ -880,16 +881,6 @@ fn Editor(draft: Draft) -> impl IntoView {
         {
             send(ticket, reconcile);
         }
-    };
-    let export = move || {
-        let text = crate::document::export_text(&title.get_untracked(), &body.snapshot());
-        let name = crate::document::export_file_name(&title.get_untracked());
-        #[cfg(feature = "hydrate")]
-        if let Err(error) = download_text(&name, &text) {
-            leptos::logging::warn!("export failed: {error:?}");
-        }
-        #[cfg(not(feature = "hydrate"))]
-        let _ = (name, text);
     };
     let focus_last_field = move || match last_field.get_value() {
         Field::Title =>
@@ -1183,11 +1174,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                         </Show>
                     </>
                 }.into_any())
-                utilities=std::sync::Arc::new(move || view! {
-                    <Button variant=ButtonVariant::Text leading=IconName::Download id="export" on_press=move |_| export()>
-                        "Tải bản thảo (.txt)"
-                    </Button>
-                }.into_any())>
+                >
                     <TooltipIconButton id="preview" icon=IconName::Visibility label="Xem trước"
                         on_press=move |_| open_preview() />
             </crate::ui::patterns::EditorToolbar>
@@ -1195,10 +1182,9 @@ fn Editor(draft: Draft) -> impl IntoView {
                 <section class="vk-editor-recovery" data-testid="save-failed" data-tone="error" aria-label="Phục hồi lưu nháp">
                     // The toolbar is the sole polite announcement owner for this state.
                     {move || view! { <InlineNotice tone=Tone::Error announce=Announce::Off
-                        title=status_text(status()) message="Tải bản sao trước khi rời trang." /> }}
+                        title=status_text(status()) message="Nội dung đang viết vẫn còn trên trang này. Chọn Thử lại hoặc giữ trang mở." /> }}
                     <div class="vk-notice__actions">
                         <Button variant=ButtonVariant::Text id="retry-save" on_press=move |_| save()>"Thử lại"</Button>
-                        <Button variant=ButtonVariant::Text id="export-failed" on_press=move |_| export()>"Tải .txt"</Button>
                     </div>
                     <SupportingDetails id="save-failure-details" summary="Chi tiết">
                         <p>{move || match status() {
@@ -1212,14 +1198,13 @@ fn Editor(draft: Draft) -> impl IntoView {
                 <section id="editor-text-conflict" tabindex="-1" class="vk-editor-recovery"
                     data-testid="conflict" data-tone="warning" aria-label="Xung đột bản nháp">
                     <InlineNotice tone=Tone::Warning announce=Announce::Off title="Có bản mới trên máy chủ."
-                        message="Tải bản sao trước khi rời trang." />
+                        message="Nội dung đang viết vẫn còn trên trang này. Bạn có thể lưu đè hoặc ở lại đối chiếu." />
                     <div class="vk-notice__actions">
                         <Button variant=ButtonVariant::Text id="keep-mine"
                             on_press=move |_| {
                                 session.update(|s| s.text.keep_local_text());
                                 save();
                             }>"Lưu đè bằng nội dung đang viết"</Button>
-                        <Button variant=ButtonVariant::Text id="export-conflict" on_press=move |_| export()>"Tải .txt"</Button>
                     </div>
                     <SupportingDetails id="save-conflict-details" summary="Chi tiết">
                         <p>{move || status_detail(status())}</p>
@@ -1276,16 +1261,11 @@ fn Editor(draft: Draft) -> impl IntoView {
                             message="Không mở được trình soạn thảo. Nội dung đã lưu trên máy chủ không bị ảnh hưởng; hãy tải lại trang."
                             attr:data-testid="editor-failed" />
                     </Show>
-                    <details class="vk-editor-help">
-                        <summary>"Cách ngắt dòng và chia khổ"</summary>
-                        <p>"Xuống dòng để ngắt câu thơ; để một dòng trống giữa các đoạn hoặc khổ."</p>
-                    </details>
                 </div>
             </div>
             <div class="vk-editor-work-info" on:focusin=move |_| last_field.set_value(Field::Tags)>
                 <crate::pages::work_info::WorkInfo work_id=work_id.get_value() session labels
-                    on_save=Callback::new(move |()| save())
-                    on_export=Callback::new(move |()| export()) tag_load=tag_load />
+                    on_save=Callback::new(move |()| save()) tag_load=tag_load />
             </div>
             <crate::pages::publication::PublicationPanel work_id=work_id.get_value() session
                 on_save=Callback::new(move |()| save())
@@ -1308,7 +1288,7 @@ fn Editor(draft: Draft) -> impl IntoView {
             });
             let leave_context = Signal::derive(move || {
                 if confirming() {
-                    "Bạn sẽ mất những chỉnh sửa chưa lưu trên trang này. Nếu đã tải tệp .txt, bản sao chữ vẫn nằm trên máy của bạn."
+                    "Bạn sẽ mất những chỉnh sửa chưa lưu trên trang này."
                         .to_string()
                 } else {
                     leave_message(
@@ -1369,12 +1349,6 @@ fn Editor(draft: Draft) -> impl IntoView {
                     }
                     secondary_actions=move || view! {
                         <Show when=move || !confirming() && can_discard()>
-                            <Button variant=ButtonVariant::Tonal
-                                id="leave-export"
-                                on_press=move |_| export()
-                            >
-                                "Tải bản đang viết (.txt)"
-                            </Button>
                             <Button variant=ButtonVariant::DangerText
                                 id="leave-discard"
                                 button_ref=leave_discard
@@ -1440,29 +1414,6 @@ fn restore_scroll(page_scroll: StoredValue<f64>) {
     }
     #[cfg(not(feature = "hydrate"))]
     let _ = page_scroll;
-}
-
-/// Saves `text` as a UTF-8 file through the browser's download, without leaving the page.
-#[cfg(feature = "hydrate")]
-fn download_text(file_name: &str, text: &str) -> Result<(), wasm_bindgen::JsValue> {
-    use wasm_bindgen::JsCast;
-    let parts = js_sys::Array::of1(&wasm_bindgen::JsValue::from_str(text));
-    let options = web_sys::BlobPropertyBag::new();
-    options.set_type("text/plain;charset=utf-8");
-    let blob = web_sys::Blob::new_with_str_sequence_and_options(&parts, &options)?;
-    let url = web_sys::Url::create_object_url_with_blob(&blob)?;
-    // A detached link: no navigation guard or router sees this click.
-    let link: web_sys::HtmlAnchorElement = document().create_element("a")?.unchecked_into();
-    link.set_href(&url);
-    link.set_download(file_name);
-    link.click();
-    set_timeout(
-        move || {
-            let _ = web_sys::Url::revoke_object_url(&url);
-        },
-        std::time::Duration::from_secs(10),
-    );
-    Ok(())
 }
 
 fn status_text(status: SaveStatus) -> String {
@@ -1546,7 +1497,7 @@ fn leave_message(
     };
     let not_saved = match status {
         SaveStatus::Conflict { .. } => {
-            "Có bản mới trên máy chủ. Ở lại để xử lý xung đột hoặc tải bản đang viết.".into()
+            "Có bản mới trên máy chủ. Ở lại để lưu đè hoặc xử lý xung đột.".into()
         }
         SaveStatus::Failed(failure) => format!(
             "Chưa lưu được. {} Chữ vẫn còn trên trang này.",
