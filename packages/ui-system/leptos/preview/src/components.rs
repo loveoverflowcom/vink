@@ -9,9 +9,9 @@ use vink_ui::{
     AvatarSize, Button, ButtonKind, ButtonVariant, Checkbox, ChoiceOption, Container, Direction,
     Divider, FieldMode, FieldVariant, FilterChip, FormSummary, Grid, GridMin, Heading,
     HeadingLevel, HiddenField, Icon, IconButton, IconName, ImageFrame, ImageState, Link,
-    LinkTarget, LinkVariant, Measure, Person, RadioGroup, Radius, SearchField, Select, Space,
-    Stack, Surface, SurfaceTone, Switch, Text, TextArea, TextField, TextInput, TextKind, TextTag,
-    TextTone, ThemePreference, ThemeScope, TypeRole,
+    LinkTarget, LinkVariant, Measure, Person, RadioGroup, Radius, SearchField, Select,
+    SelectVariant, Space, Stack, Surface, SurfaceTone, Switch, Text, TextArea, TextField,
+    TextInput, TextKind, TextTag, TextTone, ThemePreference, ThemeScope, TypeRole,
 };
 
 /// The preview's event log; absent when a specimen is rendered in a unit test.
@@ -714,7 +714,12 @@ fn field_select(scenario: &str) -> AnyView {
         log(format!("select genre = {v:?}"));
         value.set(v);
     };
+    let disabled = scenario == "disabled";
+    let format_error =
+        (scenario == "invalid").then(|| "[Mẫu] Không thể đổi định dạng.".to_string());
+    let format = RwSignal::new(Some("default".to_string()));
     view! {
+      <Stack gap=Space::S4>
         <Select
             id="genre-select"
             label="Thể loại"
@@ -722,10 +727,26 @@ fn field_select(scenario: &str) -> AnyView {
             value=value
             on_change=pick
             placeholder="Chọn thể loại…"
-            error=Signal::stored(error)
+            error=Signal::stored(error.clone())
             required=true
-            disabled=scenario == "disabled"
+            disabled=disabled
         />
+        <Select
+            id="format-select"
+            label="Định dạng bản thảo"
+            variant=SelectVariant::Inset16
+            options=vec![ChoiceOption::new("default", "Mặc định"), ChoiceOption::new("markdown", "Markdown")]
+            value=format
+            on_change={move |v: Option<String>| {
+                log(format!("[Mẫu] select format = {v:?}"));
+                format.set(v);
+            }}
+            required=true
+            disabled=disabled
+            error=Signal::stored(format_error.clone())
+            help="[Mẫu] Chỉ thử control; không tạo, lưu hay chuyển đổi bản thảo."
+        />
+      </Stack>
     }
     .into_any()
 }

@@ -89,6 +89,16 @@ trong cả hai browser runner dùng chung `select-geometry.mjs`: đo 18px/12px/8
 tâm dọc, vùng chữ bằng canvas, native type-ahead và disabled/invalid/forced-colors
 ở 320/390/1440 × hai theme × chữ100/200. [Bằng chứng local](select-r15-evidence.md).
 
+#262 bổ sung `SelectVariant::Inset16` của Leptos và mẫu `#format-select` trong
+`field.select`: `formatSelect` trong preview smoke đo icon/inset/reserve 16/16/52 CSS px,
+LTR/RTL, 320/390/834/1024/1440 × hai theme × chữ100/200; kiểm hit target click-through, native focus/Tab/type-ahead, AX name và
+invalid/disabled/forced-colors. Popup OS và touch thực cần evidence riêng.
+Đây là component/sample, chưa có picker hoặc conversion trong Bàn viết. Contract/source/hash
+#255, title #263, provider #256 và Reader #264 vẫn là prerequisite của consumer thật.
+[LayoutSpec + capability boundary](../design/editor-format-picker-262.md),
+[bằng chứng thực chạy](evidence/editor-format-picker-262/README.md).
+
+
 Lõi phân loại tác phẩm (chưa có điểm vào người dùng) thêm ngày 08/11/2026 trên nền `6c97917` cho
 [#95](https://github.com/loveoverflowcom/vink/issues/95); xem mục TAG-PR-01 cuối trang.
 Bản đồ mô tả skeleton trong checkout này; lần lập bản đồ chỉ đọc source và assertions,

@@ -507,6 +507,69 @@ async function selectChevron(page) {
   await page.choose('scale','100%');await page.viewport(1440);
 }
 
+// #262 presentation fixture only. Expected numbers come from the issue's LayoutSpec;
+// the App's versioned format/source/title/conversion contracts are not exercised here.
+async function formatSelect(page) {
+  const expected = {icon:16,inset:16,gap:20,reserve:52};
+  console.log('Select #262: opt-in geometry and native interaction (sample, no App writes):');
+  for (const [theme,label] of [['light','Sáng'],['dark','Tối']]) {
+    await page.choose('theme',label);
+    for (const width of WIDTHS) for (const scale of [100,200]) {
+      await page.viewport(width);
+      await page.choose('scale',`${scale}%`);
+      await page.open('field.radio');
+      await page.open('field.select');
+      await page.eval(`document.querySelector('#format-select').focus()`);
+      await selectCharacter(page,'m');
+      check(await page.eval(`document.querySelector('#format-select').value==='markdown'`),'format native type-ahead selects Markdown');
+      check((await page.log()).includes('[Mẫu] select format = Some("markdown")'),'format change callback receives raw fixture value');
+      check(await lowestContrast(page,'#format-select')>=4.5,`format ${theme} text contrast >=4.5:1`);
+      for (const direction of ['ltr','rtl']) {
+        await page.eval(`document.querySelector('#format-select').closest('.vk-ui-field').dir='${direction}';document.querySelector('#format-select').scrollIntoView({block:'center'})`);
+        const geometry=await checkSelectGeometry(page,'#format-select',check,`format ${theme}/${width}/${scale}/${direction}`,expected);
+        check(geometry.select.height>=48,'format retains 48px native hit target');
+        const point=await page.eval(`(() => {
+          const s=document.querySelector('#format-select'),i=s.parentElement.querySelector('svg'),r=i.getBoundingClientRect();
+          const p={x:r.x+r.width/2,y:r.y+r.height/2};
+          return {...p,hit:document.elementFromPoint(p.x,p.y)===s};
+        })()`);
+        check(point.hit,'format icon hit-tests through to native select');
+        // Native macOS menus are outside CDP. Repeated open/close probes can hang
+        // Runtime.evaluate; hit testing proves ownership, not OS popup behavior.
+        check(await page.eval(`document.activeElement.id==='format-select'`),'format retains native keyboard focus');
+        const name=`format-select-${theme}-${width}-${scale}-${direction}`;
+        const shot=await page.send('Page.captureScreenshot',{format:'png'});
+        writeFileSync(join(args.out,`${name}.png`),Buffer.from(shot.data,'base64'));
+        page.contexts[name]={...await page.eval(`({width:innerWidth,height:innerHeight,dpr:devicePixelRatio,rootFontSize:getComputedStyle(document.documentElement).fontSize,theme:document.querySelector('.vk-ui').dataset.theme})`),direction,geometry,media:{...page.media}};
+      }
+    }
+  }
+  // Failure sensitivity: the old inset must fail the new geometry oracle.
+  await page.eval(`document.querySelector('#format-select').parentElement.querySelector('svg').style.insetInlineEnd='12px'`);
+  let rejected=false;
+  await checkSelectGeometry(page,'#format-select',(ok)=>{rejected=!ok;},'negative old inset',expected);
+  check(rejected,'format geometry oracle rejects 12px inset negative control');
+  await page.eval(`document.querySelector('#format-select').parentElement.querySelector('svg').style.removeProperty('inset-inline-end')`);
+  await checkSelectGeometry(page,'#format-select',check,'restored format geometry',expected);
+  const {root}=await page.send('DOM.getDocument');
+  const {nodeId}=await page.send('DOM.querySelector',{nodeId:root.nodeId,selector:'#format-select'});
+  const {nodes}=await page.send('Accessibility.getPartialAXTree',{nodeId});
+  check(nodes.some(n=>n.role?.value==='combobox' && n.name?.value==='Định dạng bản thảo (bắt buộc)'),'format accessibility tree exposes named native combobox');
+  for (const scenario of ['invalid','disabled']) {
+    await page.open('field.select',scenario);
+    const r=await page.eval(`(() => {const s=document.querySelector('#format-select');s.focus();return {disabled:s.disabled,focused:document.activeElement===s,invalid:s.getAttribute('aria-invalid'),described:s.getAttribute('aria-describedby')}})()`);
+    check(scenario==='disabled' ? r.disabled&&!r.focused : r.invalid==='true'&&r.focused&&r.described.includes('format-select-error'),'format native invalid/disabled semantics');
+    await page.emulate('forced-colors','active');
+    check(await page.eval(`(() => {const s=document.querySelector('#format-select'),i=s.parentElement.querySelector('svg'),c=getComputedStyle(i);return c.display!=='none'&&c.visibility==='visible'&&i.getAttribute('aria-hidden')==='true'})()`),'format forced-colors retains decorative chevron');
+    await page.emulate('forced-colors','none');
+  }
+  await page.choose('scale','100%');await page.viewport(1440);
+  await page.open('field.select');
+  await page.eval(`document.querySelector('#format-select').focus()`);
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement.id!=='format-select'`),'Tab leaves native select without trapping focus');
+}
+
 async function components(page) {
   const count = () => page.eval(`document.querySelector('[data-testid=press-count]').textContent`);
   await page.open('action.button');
@@ -1771,14 +1834,15 @@ try {
   await cdp.open();
   page = await openPage(cdp);
   const version = await cdp.send('Browser.getVersion');
-  if (args['overlays-only'] !== '1' && args['actions-only'] !== '1') await mediaHydration(page);
+  if (args['overlays-only'] !== '1' && args['actions-only'] !== '1' && args['selects-only'] !== '1') await mediaHydration(page);
   await page.send('Page.navigate', { url: args.base });
   // The debug WASM can be large after the separate hydration fixture. Give bootstrap its own
   // bounded wait; interaction assertions retain the shorter default timeout.
   await page.waitFor(`document.documentElement.dataset.ready === 'true' && document.getElementById('specimen-scope')`, 'preview mounted', 60000);
-  if (args['actions-only'] === '1') { await actionSurfaces(page); await toggles(page); }
+  if (args['selects-only'] === '1') { await selectChevron(page); await formatSelect(page); }
+  else if (args['actions-only'] === '1') { await actionSurfaces(page); await toggles(page); }
   else await overlayCaptures(page, {out:args.out, version, check});
-  if (args['overlays-only'] !== '1' && args['actions-only'] !== '1') {
+  if (args['overlays-only'] !== '1' && args['actions-only'] !== '1' && args['selects-only'] !== '1') {
     await structure(page);
     await meSelection(page);
     await themes(page);
@@ -1786,6 +1850,7 @@ try {
     await densityAndMotion(page);
     await components(page);
     await selectChevron(page);
+    await formatSelect(page);
     await actionSurfaces(page);
     await toggles(page);
     await states(page, cdp);
@@ -1799,8 +1864,8 @@ try {
     if (args.focus === '1') await focusedCaptures(page, version);
   }
   check(page.errors.length === 0, `no console errors or exceptions${page.errors.length ? `: ${page.errors.join(' | ')}` : ''}`);
-  writeFileSync(join(args.out, 'contexts.json'), JSON.stringify({ browser: version.product, userAgent: version.userAgent, captures: page.contexts }, null, 2));
-  console.log(`preview-smoke${args['actions-only'] === '1' ? ' actions-only' : ''}: PASS (${Object.keys(page.contexts).length} captures in ${args.out})`);
+  writeFileSync(join(args.out, 'contexts.json'), JSON.stringify({ source: sourceIdentity(), browser: version.product, userAgent: version.userAgent, captures: page.contexts }, null, 2));
+  console.log(`preview-smoke${args['selects-only'] === '1' ? ' selects-only' : args['actions-only'] === '1' ? ' actions-only' : ''}: PASS (${Object.keys(page.contexts).length} captures in ${args.out})`);
 } catch (error) {
   console.error(`preview-smoke: FAIL ${error.message}`);
   if (page?.errors.length) console.error(`  page errors: ${page.errors.join(' | ')}`);

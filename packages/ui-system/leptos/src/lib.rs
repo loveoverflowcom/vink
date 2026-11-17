@@ -49,8 +49,8 @@ pub use feedback::{
 };
 pub use field::{
     Checkbox, ChoiceOption, FieldMode, FieldVariant, FormSummary, HiddenField, RadioGroup,
-    SearchField, SearchVariant, Select, Switch, TextArea, TextField, TextFieldProps, TextInput,
-    TextKind,
+    SearchField, SearchVariant, Select, SelectVariant, Switch, TextArea, TextField, TextFieldProps,
+    TextInput, TextKind,
 };
 pub use icons::IconName;
 pub use layout::{

@@ -1,0 +1,7 @@
+{
+  "path": "packages/ui-system/leptos/preview/src/components.rs",
+  "captured_sha256": "42ac66e882807efe197bb8e88972cbdba10064a5639f71362284290ff0013e35",
+  "final_sha256": "0d84aee1459ac3798511552382cc52a76d5f1d72960eff54a35b3c93d0f90d1f",
+  "change": "rustfmt wraps let format_error across two lines; no tokens or behavior changed",
+  "all_other_captured_source_files_match": true
+}

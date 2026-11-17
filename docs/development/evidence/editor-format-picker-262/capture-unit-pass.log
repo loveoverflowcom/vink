@@ -1,0 +1,52 @@
+TAP version 13
+# Subtest: fractional specimen bounds retain every edge, pad and clamp to the real document
+ok 1 - fractional specimen bounds retain every edge, pad and clamp to the real document
+  ---
+  duration_ms: 14.714375
+  type: 'test'
+  ...
+# Subtest: a specimen beyond the old 6000px raw cap is fully tiled at original scale
+ok 2 - a specimen beyond the old 6000px raw cap is fully tiled at original scale
+  ---
+  duration_ms: 0.102416
+  type: 'test'
+  ...
+# Subtest: nonfinite, empty and off-document geometry fails instead of yielding a misleading image
+ok 3 - nonfinite, empty and off-document geometry fails instead of yielding a misleading image
+  ---
+  duration_ms: 0.106083
+  type: 'test'
+  ...
+# Subtest: viewport-sized tiles balance the final part and cover the heading through the last pixel
+ok 4 - viewport-sized tiles balance the final part and cover the heading through the last pixel
+  ---
+  duration_ms: 0.093083
+  type: 'test'
+  ...
+# Subtest: opening invariants reject the measured F-01 scroll and clipped title
+ok 5 - opening invariants reject the measured F-01 scroll and clipped title
+  ---
+  duration_ms: 0.878291
+  type: 'test'
+  ...
+# Subtest: missing/invalid bounds, cropped viewport and horizontal overflow cannot pass
+ok 6 - missing/invalid bounds, cropped viewport and horizontal overflow cannot pass
+  ---
+  duration_ms: 0.078959
+  type: 'test'
+  ...
+# Subtest: F-02: text that crosses the panel padding fails INV-5; a column that holds it passes
+ok 7 - F-02: text that crosses the panel padding fails INV-5; a column that holds it passes
+  ---
+  duration_ms: 0.133917
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 327.409458

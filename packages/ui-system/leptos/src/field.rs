@@ -783,6 +783,15 @@ pub fn RadioGroup(
     }
 }
 
+/// Native select geometry. This is presentation only; format/capability policy belongs to hosts.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum SelectVariant {
+    #[default]
+    Standard,
+    /// Fixed CSS pixels: 16px icon, 16px inline-end inset, 52px reserved for trailing content.
+    Inset16,
+}
+
 /// A native `<select>`. The empty placeholder option means "no value" (`None`); it cannot be
 /// chosen again once a required field has a value.
 #[component]
@@ -796,6 +805,7 @@ pub fn Select(
     #[prop(optional, into)] help: Option<String>,
     #[prop(optional, into)] error: Signal<Option<String>>,
     #[prop(optional)] required: bool,
+    #[prop(optional)] variant: SelectVariant,
     #[prop(optional, into)] disabled: Signal<bool>,
 ) -> impl IntoView {
     let invalid = Signal::derive(move || present(error.get()).is_some());
@@ -811,7 +821,9 @@ pub fn Select(
                 {label}
                 {required_mark(required)}
             </label>
-            <div class="vk-ui-field__control vk-ui-field__control--select">
+            <div class="vk-ui-field__control vk-ui-field__control--select"
+                data-select-variant=(variant == SelectVariant::Inset16).then_some("inset-16")
+            >
                 <select
                     id=id.clone()
                     class="vk-ui-input vk-ui-select"
