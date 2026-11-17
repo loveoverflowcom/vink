@@ -45,7 +45,7 @@ fn long_document_corpus_uses_real_validator_serializer_and_v1_hash() {
                 "raw_line_scalars": data.blocks.iter().flat_map(|b| &b.lines).map(|s| s.chars().count()).sum::<usize>(),
                 "nfc_line_scalars": scalars,
                 "raw_line_utf8_bytes": data.blocks.iter().flat_map(|b| &b.lines).map(String::len).sum::<usize>(),
-                "nfc_line_utf8_bytes": doc.blocks().flatten().map(str::len).sum::<usize>(),
+                "nfc_line_utf8_bytes": doc.blocks().flatten().map(|line| line.len()).sum::<usize>(),
                 "raw_document_json_bytes": raw.len(),
                 "canonical_document_json_bytes": encoded.len(),
                 "save_request_bytes": wire.len(),
