@@ -71,16 +71,24 @@ pub fn corpus(shape: &str, scalars: usize) -> DocumentData {
     }
 }
 
-/// Replace one non-line-break scalar without changing line boundaries or the content length.
+/// Replace one NFC-counted corpus character, including its Vietnamese combining marks, without
+/// changing line boundaries or the NFC content length. All corpus starters have combining class
+/// zero; replacing only a raw NFD starter could leave orphan marks and exceed the 200k limit.
 pub fn edit(data: &mut DocumentData, at: usize) {
     let (start, c) = data
         .source
         .char_indices()
-        .filter(|(_, c)| *c != '\n')
+        .filter(|(_, c)| {
+            *c != '\n' && unicode_normalization::char::canonical_combining_class(*c) == 0
+        })
         .nth(at)
         .expect("edit outside corpus");
-    data.source.replace_range(
-        start..start + c.len_utf8(),
-        if c == 'Z' { "Y" } else { "Z" },
-    );
+    let end = data.source[start + c.len_utf8()..]
+        .char_indices()
+        .find(|(_, c)| unicode_normalization::char::canonical_combining_class(*c) == 0)
+        .map_or(data.source.len(), |(offset, _)| {
+            start + c.len_utf8() + offset
+        });
+    data.source
+        .replace_range(start..end, if c == 'Z' { "Y" } else { "Z" });
 }

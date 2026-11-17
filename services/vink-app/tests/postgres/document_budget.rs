@@ -96,7 +96,7 @@ async fn app_save_samples(
     title: &str,
     baseline: &DocumentData,
 ) -> (Vec<f64>, Vec<Value>, i64) {
-    let size = baseline.source.chars().filter(|c| *c != '\n').count();
+    let size = baseline.source.nfc().filter(|c| *c != '\n').count();
     let title_value = Title::parse(title).unwrap();
     let before_hash = ContentHash::of(&titled(title, baseline.clone()));
     let mut reads = Vec::new();

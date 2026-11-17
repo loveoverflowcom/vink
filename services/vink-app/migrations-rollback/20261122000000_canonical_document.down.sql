@@ -18,7 +18,10 @@ DO $$ BEGIN
             OR c.source IS DISTINCT FROM normalize(c.source, NFC)
             OR c.source ~ E'\r|^\n|\n$|\n\n\n'
             OR EXISTS (SELECT 1 FROM regexp_split_to_table(c.source, E'\n') AS l(line)
-                        WHERE c.source <> '' AND btrim(l.line, E' \t') = ''
+                        -- All non-control Unicode White_Space accepted in canonical source;
+                        -- Rust's retired line validator rejects each whitespace-only line.
+                        WHERE c.source <> ''
+                          AND btrim(l.line, E' \t\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000') = ''
                           AND l.line <> ''))
     THEN
         RAISE EXCEPTION 'a draft is not exactly representable as blocks/lines; roll forward';

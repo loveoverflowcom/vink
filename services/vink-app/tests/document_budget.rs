@@ -10,6 +10,18 @@ use vink_app::domain::revision::ContentHash;
 
 const TITLE: &str = "[Mẫu #229] Ngân sách văn bản";
 
+#[test]
+fn corpus_edits_replace_a_decomposed_character_without_touching_surrounding_source() {
+    let mut data = vink_app::domain::document::DocumentData {
+        format: "default".into(),
+        source: "a\n e\u{0302}\u{0301}\n\nb".into(),
+    };
+    corpus::edit(&mut data, 2);
+    assert_eq!(data.source, "a\n Z\n\nb");
+    corpus::edit(&mut data, 2);
+    assert_eq!(data.source, "a\n Y\n\nb");
+}
+
 fn titled(document: Document) -> TitledDocument {
     TitledDocument::author(document, Some(TITLE)).unwrap()
 }
