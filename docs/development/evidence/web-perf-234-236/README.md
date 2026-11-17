@@ -42,6 +42,11 @@ injected removal, offline và origin recovery. Fixture khác baseline khách; kh
 hai trace để so. `intent` kiểm thử, transport và SQL/owner flight là các tầng khác nhau. Chưa đo
 chi phí riêng của observer, RSS hoặc số timer/owner trực tiếp. Xem [go/no-go](../../web-perf-baseline.md).
 
+[Lượt cuối release](release-guest-final.json.gz) tại `959231f` dùng runner sau sửa #236 và
+assertion phân trang chặt hơn: **20 root / 40 comment nodes** trong cả 10 lượt warm. `discovery`
+và `perf-baseline` cũng PASS cùng lệnh `--scenario discovery --scenario perf-baseline --release`
+tại `eee78b7`. Node analyzer 4/4, syntax JS, rustfmt và `verify unit xtask` 83 PASS / 1 ignored.
+
 ## #235 — ranh giới Reader SSR
 
 [`main` release](reader-ssr-boundary.json.gz) tại `49584d6`, App/PostgreSQL thật: bootstrap blocked,
@@ -53,3 +58,39 @@ Cùng lệnh `cargo xtask verify web --scenario main --scenario discovery --scen
 đã PASS cả ba scenario. Review dùng App/PG thật cho Hidden/ReviewWithdrawn và công khai lại.
 Giữ Async dựa trên [ma trận SSR đã có và ranh giới đã review](../../reader-ssr-boundary.md).
 Streaming B/C, proxy chunking, thử rollback từ mode khác và OS a11y `NOT_RUN`.
+
+## #236 — URL, vị trí và focus khi quay lại Khám phá
+
+**Chọn A:** giữ URL anchor; sửa đồng bộ lịch sử và giới hạn callback phục hồi theo scope. Không
+thêm offset/keep-alive. [LayoutSpec](../../../design/discovery-return-position-236.md) sở hữu
+dung sai theo mép hàng và `scroll-margin`; fallback là vùng kết quả có tên của #258.
+
+- **Trước, runtime base, harness `0dde28f`: FAIL.** [Trace](return-before.json.gz),
+  [log](return-before-failure.log), [ảnh lỗi đã mở](before-reader-with-discovery-url.png).
+  Back và Forward hiển thị đúng hàng, nhưng mở lại cùng Reader sau Back → Forward → Back
+  mount article trong khi browser URL vẫn là `/`. Raw `history.replaceState` đã đổi URL
+  mà không cập nhật path stack của Leptos 0.8.17. Vì vậy cố mở lại Reader trùng đích ở đỉnh
+  stack có thể bị bỏ push URL. Lượt trước dừng tại đây nên không có chuỗi 50 để so timing.
+- **Sau, `eee78b7`: PASS** cùng `cargo xtask verify web --scenario return-position --release`,
+  [trace 50 vòng](return-after.json.gz). Router replace giữ state hiện có cho fragment;
+  Back/Forward/reopen và return link giữ q/thẻ/cursor/hàng. Frame thuộc đúng kết quả đã settle,
+  được hủy khi scope đổi; không chạy lại chỉ vì list refresh. Missing row/503 dùng landmark.
+  Lượt #236 chậm/503 là can thiệp đúng transport list, không là test quyền truy cập.
+- Cả 50 vòng chỉ có view đang dùng; max lệch 0,016 CSS px (spec ≤2). Sau GC ở vòng 10–50:
+  917 DOM nodes, 79 JS listeners, 4 documents; V8 used khoảng 2,20→2,24 MB. Embedder heap proxy
+  tăng khoảng 2,82→4,47 MB; từ mẫu này chưa kết luận mọi RAM/timer/owner đều ổn định, không suy
+  browser bitmap eviction. Không dùng vòng 50 làm timing gate.
+
+| Chiều | Kết quả trên Chrome release | Bằng chứng và giới hạn |
+| --- | --- | --- |
+| Functional | PASS | Back/Forward/reopen, return link, modifier mở tab mới không sửa URL cũ, offline warm và fallback. |
+| Geometry | PASS | Desktop 1280×900 và 390×844 chữ 200% sau resize bật reduced motion; đo khi font sẵn sàng, không forced delay font/image. |
+| Visual | PASS trong phạm vi regression | Đã mở [trước](before-desktop.png) và [sau](after-desktop.png) cùng cảnh; ring keyboard, hàng trong viewport, không thay bố cục; `NO_APPROVED_REFERENCE`. |
+| Accessibility/Responsive | PASS trong lab CSS | [Ảnh 390px chữ 200%](after-narrow-text200.png), focus keyboard và landmark có tên; chữ 200% là root font override. OS assistive tech chưa chạy. |
+| Interaction | PASS | [Ảnh sau đáp án chậm](after-delayed-read.png) giữ caret/chuỗi đang gõ. Main trước sửa và discovery sau sửa vẫn kiểm fence READ-02 và late result. |
+
+Web `discovery` đã PASS lại sau sửa #236 trên `eee78b7`. Đối chứng removal/late Reader từ
+main và authority App/PG ở review vẫn riêng với logic cuộn; không có transition/guard domain
+thay đổi cần model mới. Inject font/image, đo eviction thật trên thiết bị yếu và OS a11y còn
+`NOT_RUN`. Nếu cần rollback sửa #236, hoàn tác commit sửa router/focus về URL anchor cũ;
+trace trước giữ cả giới hạn của baseline đó.

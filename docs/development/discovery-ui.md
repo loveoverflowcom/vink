@@ -25,6 +25,12 @@ dock/dialog và giới hạn kiểm chứng.
 `community-stream` giữ tên vùng và focus-visible; unknown/retired tag và empty cursor page
 không bị gọi là corpus rỗng. Desk #259 dùng cùng API/CSS/asset; chưa adopt trong #258.
 
+**Quay lại từ Reader #236:** [LayoutSpec](../design/discovery-return-position-236.md) và
+[bằng chứng trước/sau](evidence/web-perf-234-236/README.md). Router ghi fragment vào đúng entry
+để Back, Forward và mở lại cùng tác phẩm đồng bộ URL. Kết quả đã settle phục hồi hàng hoặc
+landmark; list refresh không lấy lại focus. Chạy `verify web --scenario return-position --release`
+để kiểm keyboard và 50 vòng. Không dùng view giữ lại hoặc snapshot offset.
+
 ## HOW / WHY / TEACH
 
 Native GET ghi q, các tag lặp và cursor opaque vào URL. App giữ riêng buffer đang gõ và URL
