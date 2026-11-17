@@ -5,13 +5,17 @@ khai. Đề xuất [VDR-CONTENT-STORAGE@r1](../../decisions/proposals/VDR-CONTEN
 ở trạng thái `PENDING`. Phạm vi PR gồm RFC và phép đo PostgreSQL scratch. Runtime
 `persistence-api`/`web` vẫn dùng representation hiện hành.
 
+**Checkpoint đối soát 17/11/2026:** #253 đã merge vào `develop@f6b8846`; [ma trận AC/provenance](../development/long-document-reconciliation.md)
+ghi bounded prototype và gate verification đang pending do Mac mất kết nối. `VDR-CONTENT-STORAGE@r1` vẫn **PENDING/current=null**,
+snapshot `9dbad85666397d5d9b76d811440fc80ecf12f034328dea0ec7c22114e3596cb3`. Merge RFC/đóng #231 không là signoff/adoption.
+
 Khi tác giả sửa bài đã đăng, người đọc tiếp tục thấy đúng bản đã công khai. Một transaction có
 thẩm quyền chuyển pointer sang bản phù hợp. Nếu bài chuyển riêng tư hoặc bị gỡ, lần đọc tiếp theo
 tuân theo trạng thái mới, kể cả khi client còn ETag của bản cũ.
 
 ## Căn cứ tại develop
 
-Source base `f0ef35193b2bef2fc9ded9f66b1482a4557ac03e`. Tra `cargo xtask decision query` tại
+Source base lúc lập RFC: `f0ef35193b2bef2fc9ded9f66b1482a4557ac03e`. Tra `cargo xtask decision query` tại
 snapshot registry `6e77cb0a7f4eb67033c6e0df6d8a670a84eb61b3095a307ad0615b771c91dd9b` trước
 khi thêm proposal:
 
