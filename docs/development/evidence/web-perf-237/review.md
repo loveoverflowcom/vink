@@ -26,7 +26,7 @@ không dùng kết luận tác giả làm PASS của lượt review, không đ�
   Test cancel thực tế làm ticket cũ bị `Discarded`; không gọi nhánh park sau Fresh.
 
 Runtime của PR không đổi trong bản sửa review. Không thấy regression P0/P1 qua source audit;
-kiểm final source và giới hạn runtime sẽ được ghi dưới đây sau khi chạy.
+kiểm trên code tích hợp và giới hạn runtime được ghi dưới đây.
 
 ## Boundary và quyết định
 
@@ -99,3 +99,46 @@ PRODUCT_CONFIRMED; ba VDR nêu trên PENDING/current=null. Merging không signof
 **PASS corpus canonical #229**, `cargo test --offline --locked -p vink-app --test
 document_budget`: 3/3 trên `45616e7`, 49,78 s; validator/scalar boundaries, independent
 JSON byte/hash oracle và oversized optional persistence miss. [Raw](canonical-corpus.log.gz).
+
+## Chrome trên code tích hợp
+
+**PASS**, `cargo xtask verify web --scenario main --scenario review --scenario perf-baseline
+--scenario return-position --release`, source sạch `a9dd42130a2ddf21a42b3467e52654866e23b0cd`.
+Chrome 157.0.8103.79, PostgreSQL 17.11 cluster riêng ở loopback 55583; Node 22.15.0.
+[Raw log](web-integrated.log.gz), [baseline](review-perf-baseline.json.gz),
+[50 vòng return](review-return-position.json.gz), [source/checksums](review-verification.json).
+Main gồm kiểm adapter storage trực tiếp; không bật gate IndexedDB trong app.
+
+Lượt đầu **FAIL trước scenario** ở `npm ci`: cache dùng chung báo EACCES.
+[Log lỗi](web-npm-cache-failure.log.gz) được giữ. Chạy lại cùng source/assertions với
+`npm_config_cache` riêng của task; không chown/xóa/cache-force lên cache chung.
+
+- Reader 404 bỏ chữ/card ngay; fresh 200 sau republish khôi phục sạch; single-flight,
+  503/backoff, late response và withdrawal/control qua browser. `review` dùng API/PG thật
+  với fixture author/admin, kiểm review-withdrawn, noindex/no-store, cache purge và comments.
+- `return-position`: **50/50 PASS**, max error `0,015625 px`, `917` DOM nodes ở mọi mẫu
+  post-GC. JS used heap khoảng `2,19 → 2,24 MB`; embedder heap `2,82 → 4,56 MB`.
+  Không gọi đó là process/RSS/GPU memory phẳng hay proof không leak.
+- Baseline có 10 cold + 10 warm observations; Reader nav median `42,55 ms`, Discovery
+  return median `31,30 ms`. Raw status vẫn **MEASURED_PARTIAL**, không có timing gate,
+  không so trực tiếp timing với Node/môi trường tác giả để claim cải thiện.
+  Warm transport: 1 Reader GET, 20 public-endorsement, 10 public-discussion và **0 public-list**.
+  Artifact WASM `109.874.142 B` (baseline lịch sử `109.874.126 B`); đây là bytes file thật,
+  không phải WASM linear memory hay snapshot RAM. Không claim tối ưu bundle.
+- **NOT_RUN mới:** Chrome A/B/C thay policy, standalone discovery/restart/endorsement/auth/
+  password/publication, full PostgreSQL lane, Quint/Kani/expressions proof lanes, CMP/native,
+  OS IME và production. GitHub Actions không đọc/chờ/poll/rerun.
+
+## Acceptance có phạm vi
+
+| AC | Kết luận và evidence |
+| --- | --- |
+| AC-01 | PASS: production weight/corpus, canonical validator/hash, phân biệt retained proxy với active/flight/clone/decode và Chrome memory; không trần process RAM. |
+| AC-02 | PASS: A/B/C cùng production coordinator + 50 loops/corpus, 2 MiB/1 MiB có rationale và tradeoff thực. Chrome A/B/C cũ chỉ historical, không chứng nhận exact source. |
+| AC-03 | PASS: same conformance unbounded/weighted/NoOp, oversized read, active data và 50 vòng browser return không mất cursor/anchor. |
+| AC-04 | PASS: production seam race suite, callback/removal/republish browser, actual guard mutant FAIL rồi restored PASS; model Store/Coordinator vẫn là gap. |
+| AC-05 | PASS: raw native memory/request-intent tradeoff + Chrome B trend, recipe rollback đúng type. Full Chrome comparison và browser rollback trên diff riêng NOT_RUN; không claim heap/RSS cap. |
+
+Không còn finding chặn merge trong phạm vi #237. Hai P2 về harness/báo cáo và một P3 về
+recipe đã sửa; runtime pilot/authority không đổi sau review. Commit evidence sau đây chỉ
+đổi tài liệu/raw artifacts; inputs runtime/test được ghim trong manifest để đối chiếu lại.
