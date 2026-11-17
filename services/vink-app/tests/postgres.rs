@@ -782,7 +782,7 @@ async fn no_publications_is_an_empty_collection_and_not_an_outage(pool: PgPool) 
         .unwrap();
     let (status, _, html) = call(&app, "GET", "/", None, None, None).await;
     assert_eq!(status, StatusCode::OK);
-    assert!(html.contains("Chưa có tác phẩm nào được công khai."));
+    assert!(html.contains("Chưa có tác phẩm công khai."));
     assert!(!html.contains("Tạm thời chưa đọc được"));
     assert!(!html.contains(dev_seed::SAMPLE_TITLE) && !html.contains(dev_seed::DRAFT_ONLY_LINE));
     let (status, _, body) = call(&app, "GET", "/api/v1/works", None, None, None).await;
