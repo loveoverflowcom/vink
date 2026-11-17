@@ -1,0 +1,16 @@
+local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=1 libtest_threads=1 managed_target=10–12 GiB (advisory); Cargo bootstrap included; preflight requires normal pressure; retries manual
+local-budget: pressure=normal; swap: total = 2560.00M  used = 1402.75M  free = 1157.25M  (encrypted)
+local-budget: supervisor=70322 session=70326 slot=/tmp/vink-local-budget-501
+   Compiling vink-app v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/services/vink-app)
+    Finished `test` profile [unoptimized] target(s) in 3.20s
+     Running tests/document_budget.rs (target/debug/deps/document_budget-7d9f5bd8ebd814a3)
+
+running 3 tests
+test long_document_corpus_uses_real_validator_serializer_and_v1_hash ... ok
+test long_document_oversized_public_record_is_a_cache_miss_without_losing_the_snapshot ... ok
+test long_document_scalar_boundaries_do_not_become_json_or_cache_limits ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.47s
+
+local-budget: wall=8.03s sampled_peak_rss_sum=589008 KiB samples=8 interval=1s
+local-budget: pressure=normal; swap: total = 2560.00M  used = 1402.75M  free = 1157.25M  (encrypted)

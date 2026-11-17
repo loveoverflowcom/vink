@@ -1,0 +1,103 @@
+{
+  "read_source": "GitHub connector fresh reads at task start; no CI/status/Actions calls",
+  "issues": [
+    {
+      "number": 229,
+      "url": "https://github.com/loveoverflowcom/vink/issues/229",
+      "title": "[Long document 1/3] Đo ngân sách JSONB, payload và Reader trước khi chia khối",
+      "state": "open",
+      "updated_at": "2026-11-16T12:51:05Z",
+      "acceptance": "\n\n- [x] AC-01 — Corpus tái lập đi qua validator/serializer thật; nêu rõ scalar, UTF-8 byte, block/line và wire envelope, không suy byte từ số từ.\n- [x] AC-02 — Baseline PostgreSQL thật ghi read/update latency, WAL, heap/TOAST/index và lịch sử revision; không nhận synthetic Python là PG PASS.\n- [x] AC-03 — Baseline Reader/editor tách network, SSR, hydration, DOM/memory và save snapshot; ghi boundary mobile/IME chưa chạy.\n- [x] AC-04 — Đối chiếu pglz/default với LZ4 hoặc nêu UNSUPPORTED; giữ khác biệt dữ liệu cũ/mới, không tự đổi production setting.\n- [x] AC-05 — Boundary tests và đề xuất guard giữ nguyên chữ chưa lưu, no-silent-truncation, version conflict; không hạ limit sản phẩm vì cache quota.\n- [x] AC-06 — Oversized cache record được xử lý theo fallback hiện hành, không fake offline success; persistence rollout vẫn chịu policy của #203.\n- [x] AC-07 — Báo cáo có ngưỡng ra quyết định, raw evidence và chi phí vận hành; giữ JSONB nguyên khối là kết luận hợp lệ nếu đủ tốt. Không triển khai chương/CAS/autosave ngoài scope.\n\n**Lịch sử nghiệm thu khi tạo issue:** unchecked; chỉ source review và sáu assertions tổng hợp ngoài repo đã chạy.\n\n## Đối soát thực thi 16/11/2026 — #232 và follow-up #249\n\n**Trạng thái: OPEN, chờ merge [draft PR #249](https://github.com/loveoverflowcom/vink/pull/249).** AC-01..AC-07 được tick theo evidence baseline local trên nhánh đã kiểm; `develop` chưa chứa delta follow-up. Không đóng issue hoặc coi PR draft đã tích hợp.\n\nBase/final fetched develop `ca9369653a516715fea95ca71fbd818d54c15b0a`; code/measurement `4f2883630ff27f36c7549e036e6b554166a86692`; PR HEAD `233804451f2abb4a2b041c4406a549ed080b8153` (commit sau chỉ docs/evidence). [Ma trận AC→#232→owner/file:line→evidence/gap](https://github.com/loveoverflowcom/vink/blob/233804451f2abb4a2b041c4406a549ed080b8153/docs/development/long-document-budget.md#đối-soát-follow-up-229), [raw/commands/environment/checksums](https://github.com/loveoverflowcom/vink/tree/233804451f2abb4a2b041c4406a549ed080b8153/docs/development/evidence/long-document-229/followup).\n\n#232 đã có corpus, PG/compression/browser baseline và boundary/cache regressions. Delta #249 sửa workload: 12/15 mẫu gắn nhãn changed trước đây lặp cùng nội dung; v2 restore baseline mỗi sample và kiểm exact durable content/version. PASS: pure3, focused4, probe21 case/420 saves/42 Reader+84 editor scenes/default-pglz-LZ4 và Quick đầy đủ. 21/21 corpus khớp byte/hash #232. Mac M4/profile dev, seed229, 5 samples/kind chỉ median/max; không suy p95/production/mobile SLA. Raw lỗi hết đĩa ban đầu và retry cuối được bảo toàn.\n\n**NOT_RUN:** full PG/Web lanes, thiết bị thật/OS IME, screen reader, Safari/Firefox, release/production/cold OS-PG cache, tổng RSS/WASM peak và Quint/Kani/CMP riêng. AC-03 là baseline Chrome/SSR với memory proxy và các giới hạn này, không qualification mobile.\n\nF1 (HTTP2MiB từ chối document hợp lệ khoảng3,2MB) và F3 (Reader200k paragraphs) vẫn là gaps sản phẩm đã được đo/regression, có đề xuất follow-up transport/render riêng trong report. F2 thuộc #230/#248, PR248 còn draft/open khi đối soát; có thể tiếp tục review #230. #231 cần đối chiếu sau #230, corpus đại diện, release/thiết bị đích và quyết định storage hợp lệ. Không thêm acceptance hồi tố, đổi limit/schema/hash/cache hoặc mở chương/CAS/autosave.\n",
+      "comments": [
+        {
+          "id": 6916912805,
+          "url": "https://github.com/loveoverflowcom/vink/issues/229#issuecomment-6916912805",
+          "body": "Đối soát #229 sau #232 đã hoàn tất trên Mac, code/measurement `4f288363`, final HEAD `233804451f2abb4a2b041c4406a549ed080b8153`, base develop `ca936965`.\n\n[Draft PR #249](https://github.com/loveoverflowcom/vink/pull/249) sửa gap harness: các sample changed trước đây lặp nội dung; v2 restore baseline và kiểm exact durable content/version mỗi sample. PASS local: pure3, focused4, full probe21 case/420 saves, 42 Reader+84 editor scenes, default/pglz/LZ4 và Quick. Corpus21/21 khớp byte/hash #232; [AC matrix + raw evidence](https://github.com/loveoverflowcom/vink/blob/233804451f2abb4a2b041c4406a549ed080b8153/docs/development/long-document-budget.md#đối-soát-follow-up-229).\n\nĐã tick AC-01..AC-07 theo scope baseline local; giữ issue **OPEN chờ #249 merge**, develop chưa chứa delta. NOT_RUN: full PG/Web lanes, physical mobile/OS IME/screen reader/Safari/Firefox, release/production/cold-cache, total RSS/WASM peak và Quint/Kani/CMP riêng. Raw lỗi hết đĩa và retry PASS được bảo toàn.\n\nF1 HTTP cap và F3 Reader nhiều DOM còn là follow-up transport/render đã đề xuất; F2 thuộc #230/#248 (còn draft). #230 có thể tiếp tục review; #231 cần so sau #230 cùng corpus đại diện, thiết bị/release measurements và quyết định storage hợp lệ. Không merge/deploy."
+        }
+      ]
+    },
+    {
+      "number": 230,
+      "url": "https://github.com/loveoverflowcom/vink/issues/230",
+      "title": "[Long document 2/3] Đọc trạng thái xuất bản không tải và băm lại toàn bộ lịch sử văn bản",
+      "state": "open",
+      "updated_at": "2026-11-16T04:18:36Z",
+      "acceptance": "\n\n- [ ] AC-01 — Inventory đủ owner-state và shared loader callers; tách dữ liệu cần cho read, command, moderation và integrity, không nhầm với dashboard batch.\n- [ ] AC-02 — Đường owner-state không tải/parse/hash mọi document lịch sử; có SQL/runtime evidence, không chỉ đổi tên struct.\n- [ ] AC-03 — State/metadata đúng các trường hợp public+pending/rejected, private, withdrawn và revision/metadata binding; projection không thành authority.\n- [ ] AC-04 — Privacy/owner/no-store, standing/version/generation, conditional visibility và receipt semantics không hồi quy ở paths bị chạm.\n- [ ] AC-05 — Integrity checks có owner rõ; corruption/cross-work/late-result không tạo approval/public body sai, không bỏ hash validation vô điều kiện.\n- [ ] AC-06 — Compatibility giữ history đầy đủ hoặc migration/cursor tường minh; không silent truncate hay xóa revision để làm benchmark nhanh.\n- [ ] AC-07 — PG corpus thay đổi riêng body size và revision count cho số đo trước/sau; chứng minh giảm body processing, không cam kết latency chưa đo.\n- [ ] AC-08 — Relevant local regressions thực chạy và ghi SHA/command/target; missing runtime NOT_RUN; không thêm chương/CAS/offline ngoài scope.\n\n**Nghiệm thu hiện tại:** tất cả unchecked; source path đã xác minh, chưa chạy application hoặc database trong phiên review.",
+      "comments": []
+    },
+    {
+      "number": 231,
+      "url": "https://github.com/loveoverflowcom/vink/issues/231",
+      "title": "[Long document 3/3 · RFC] So sánh JSONB nguyên khối, payload dedup và chunk manifest có điều kiện",
+      "state": "open",
+      "updated_at": "2026-11-16T04:19:32Z",
+      "acceptance": "\n\n- [ ] AC-01 — RFC đối chiếu đầu vào với current decisions và code; không biến chapter/CAS/95%/LZ4 speed claim thành quyết định đã chốt.\n- [ ] AC-02 — So sánh A/B/C với corpus và chi phí đo được hoặc ghi đúng NOT_RUN; quyết định không chunk vẫn được nghiệm thu khi lập luận/evidence đủ.\n- [ ] AC-03 — Boundary-shift tests gồm edit đầu/giữa/cuối, insertion đúng biên, delete/reorder; không lấy một case0% làm tỷ lệ thực tế.\n- [ ] AC-04 — Tách payload identity khỏi revision/metadata/moderation/endorsement/appeal; hash canonical v1 và auth scope có đường tương thích rõ.\n- [ ] AC-05 — Manifest proposal có cùng-work/unit bindings, immutability, atomic visibility, generation/intent/receipt fences và direct-SQL/race test plan; không thay bảng publications mù quáng.\n- [ ] AC-06 — Public/private/withdrawn/history và conditional304 được thiết kế trước cache; không immutable-one-year hoặc hash-only authorization cho văn bản revocable.\n- [ ] AC-07 — Retention/reachability/GC và crash/publish races có owner; cache quota/epoch/age và #203 được reuse, không bật offline hay tạo store song song.\n- [ ] AC-08 — Block anchors/SSR/hydration/CMP selection/FTS được phân loại scope và test boundary trung thực; không tự triển khai chương/native/search ngoài task.\n- [ ] AC-09 — Deliverable có lựa chọn, raw evidence, các gate thực sự còn mở và rollback; mọi kiến trúc mới giữ proposal/PENDING tới đúng signoff, runtime chưa chạy không tick PASS.\n\n**Hiện trạng:** tất cả unchecked; source review và synthetic chunk/payload checks, chưa triển khai hoặc benchmark production.",
+      "comments": []
+    }
+  ],
+  "prs": [
+    {
+      "number": 232,
+      "url": "https://github.com/loveoverflowcom/vink/pull/232",
+      "merged": true,
+      "merged_at": "2026-11-16T05:58:19Z",
+      "head_sha": "13ff80e1d0dff554037c75c5cfd763baa63068f9",
+      "merge_commit_sha": "a81333c71faf6033014a00ec26c9f7b90109d1d9",
+      "base": "develop",
+      "comments": 0
+    },
+    {
+      "number": 249,
+      "url": "https://github.com/loveoverflowcom/vink/pull/249",
+      "merged": true,
+      "merged_at": "2026-11-16T13:07:23Z",
+      "head_sha": "11841d6acd5d0f0b0393e34e7168cd261adfa935",
+      "merge_commit_sha": "e632c352546ea7840fa59668c25c88e1fc7dfa56",
+      "base": "develop",
+      "comments": 0
+    },
+    {
+      "number": 248,
+      "url": "https://github.com/loveoverflowcom/vink/pull/248",
+      "merged": true,
+      "merged_at": "2026-11-16T13:22:37Z",
+      "head_sha": "7651416eb34008cfd6f5b1a17bf2626af099916f",
+      "merge_commit_sha": "f0ef35193b2bef2fc9ded9f66b1482a4557ac03e",
+      "base": "develop",
+      "comments": 0
+    },
+    {
+      "number": 253,
+      "url": "https://github.com/loveoverflowcom/vink/pull/253",
+      "merged": true,
+      "merged_at": "2026-11-16T14:10:10Z",
+      "head_sha": "041d5699473a8d77fb9bc591214ddc75b123468c",
+      "merge_commit_sha": "eaa0348f8631af5add17609bf4c8c1406923042b",
+      "base": "develop",
+      "comments": 0
+    }
+  ],
+  "followups": [
+    {
+      "number": 273,
+      "url": "https://github.com/loveoverflowcom/vink/issues/273",
+      "title": "[Long document][HTTP] Lưu document v1 hợp lệ trong ngân sách request hữu hạn",
+      "state": "open",
+      "bound": true
+    },
+    {
+      "number": 274,
+      "url": "https://github.com/loveoverflowcom/vink/issues/274",
+      "title": "[Long document][Reader] Ngân sách nhiều block, giữ selection/find/copy và toàn văn",
+      "state": "open",
+      "bound": true
+    },
+    {
+      "number": 275,
+      "url": "https://github.com/loveoverflowcom/vink/issues/275",
+      "title": "[Publication][PostgreSQL] Re-review bản approved dưới policy mới xung đột pending constraint",
+      "state": "open",
+      "bound": true
+    }
+  ]
+}

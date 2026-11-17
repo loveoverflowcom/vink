@@ -1,0 +1,147 @@
+{
+  "time_utc": "2026-11-17T05:49:58.256583+00:00",
+  "scope": "/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/target",
+  "lsof_before_exit": 1,
+  "source_or_test_or_profile_changes": false,
+  "foreign_artifacts_modified": [],
+  "records": [
+    {
+      "paths": [
+        "target/debug/deps/libvink_web.rlib"
+      ],
+      "sha256": "f1bd2a9776892220ab81c46910d9be524e3b8e267ffff30de56b8e50328d9dbb",
+      "logical_bytes": 209902656,
+      "allocated_before": 209903616,
+      "allocated_after": 45563904,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Modified/generated after task checkout; differs from borrowed source cache"
+    },
+    {
+      "paths": [
+        "target/debug/deps/postgres-d1aee9ab845fd5af"
+      ],
+      "sha256": "6e90b828d921ae8f942083bce60f18b8a582a31e31925f12a70784408407756f",
+      "logical_bytes": 79181552,
+      "allocated_before": 79183872,
+      "allocated_after": 27037696,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Modified/generated after task checkout; differs from borrowed source cache"
+    },
+    {
+      "paths": [
+        "target/debug/vink-app"
+      ],
+      "sha256": "122b9117b78e48e5e4c79f797618da4cbbdbeaaa58111c07b090887f1a3a80a0",
+      "logical_bytes": 70721360,
+      "allocated_before": 70721536,
+      "allocated_after": 23445504,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Modified/generated after task checkout; differs from borrowed source cache"
+    },
+    {
+      "paths": [
+        "target/debug/deps/vink_app-0acdc0d554646f37"
+      ],
+      "sha256": "122b9117b78e48e5e4c79f797618da4cbbdbeaaa58111c07b090887f1a3a80a0",
+      "logical_bytes": 70721360,
+      "allocated_before": 70721536,
+      "allocated_after": 23445504,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Modified/generated after task checkout; differs from borrowed source cache"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libvink_app-25f7d9a9e281283a.rlib"
+      ],
+      "sha256": "8f7794766a3f1c388e7b6576f7583e4772bbc3a21767660a6d234a032fc555e2",
+      "logical_bytes": 31506496,
+      "allocated_before": 31510528,
+      "allocated_after": 10641408,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Modified/generated after task checkout; differs from borrowed source cache"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libvink_app-25f7d9a9e281283a.rmeta"
+      ],
+      "sha256": "55e1d4018da9b830440e60c1c795e6dedae1f56e5d4456a2e725ea44053197fa",
+      "logical_bytes": 14769473,
+      "allocated_before": 14770176,
+      "allocated_after": 6643712,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Modified/generated after task checkout; differs from borrowed source cache"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_macros-dd3a83a6f6fc0300.dylib"
+      ],
+      "sha256": "bf27f5ee467a1d970ef7db20ea5780b5716b613f24f579c427ef51cc3561b782",
+      "logical_bytes": 14426384,
+      "allocated_before": 14430208,
+      "allocated_after": 4722688,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Modified/generated after task checkout; differs from borrowed source cache"
+    },
+    {
+      "paths": [
+        "target/debug/vink-worker"
+      ],
+      "sha256": "4af36ebb73b03f1d3240a24636e8a6438db564572f022cd2ccefe7e948d87b19",
+      "logical_bytes": 12917680,
+      "allocated_before": 12918784,
+      "allocated_after": 4980736,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Modified/generated after task checkout; differs from borrowed source cache"
+    },
+    {
+      "paths": [
+        "target/debug/deps/vink_worker-df6321cc7d7b2089"
+      ],
+      "sha256": "4af36ebb73b03f1d3240a24636e8a6438db564572f022cd2ccefe7e948d87b19",
+      "logical_bytes": 12917680,
+      "allocated_before": 12918784,
+      "allocated_after": 4980736,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Modified/generated after task checkout; differs from borrowed source cache"
+    }
+  ],
+  "skipped": [
+    {
+      "path": "target/debug/deps/vink_ui-68391b5cbf25ddd4",
+      "reason": "Byte-identical borrowed cache; leave original clone untouched"
+    },
+    {
+      "path": "target/debug/deps/vink_patterns-7d12ea81a55afecc",
+      "reason": "Byte-identical borrowed cache; leave original clone untouched"
+    },
+    {
+      "path": "target/debug/deps/libsqlx_postgres-9e1433c41a98407e.rlib",
+      "reason": "Byte-identical borrowed cache; leave original clone untouched"
+    },
+    {
+      "path": "target/debug/deps/libsqlx_postgres-43f4e0050a95af23.rlib",
+      "reason": "Byte-identical borrowed cache; leave original clone untouched"
+    },
+    {
+      "path": "target/debug/deps/libsqlx_postgres-53a6c7bbea1e2369.rlib",
+      "reason": "Byte-identical borrowed cache; leave original clone untouched"
+    },
+    {
+      "path": "target/debug/deps/libsqlx_postgres-97e0ad0c1fb3f834.rlib",
+      "reason": "Byte-identical borrowed cache; leave original clone untouched"
+    },
+    {
+      "path": "target/debug/deps/libsqlx_postgres-baf44c8fe25ae246.rlib",
+      "reason": "Byte-identical borrowed cache; leave original clone untouched"
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "at_utc": "2026-11-17T04:46:13.597274+00:00",
+  "lsof_exit": 1,
+  "only_task_failed_objects_removed": [
+    {
+      "path": "target/debug/deps/vink_web.vink_web.5c706f260707cfdc-cgu.14.rcgu.o",
+      "bytes": 13427392
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.5c706f260707cfdc-cgu.06.rcgu.o",
+      "bytes": 12972232
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.5c706f260707cfdc-cgu.04.rcgu.o",
+      "bytes": 8892744
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.5c706f260707cfdc-cgu.08.rcgu.o",
+      "bytes": 3656
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.5c706f260707cfdc-cgu.12.rcgu.o",
+      "bytes": 12541984
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.5c706f260707cfdc-cgu.00.rcgu.o",
+      "bytes": 29231304
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.5c706f260707cfdc-cgu.02.rcgu.o",
+      "bytes": 15021120
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.5c706f260707cfdc-cgu.10.rcgu.o",
+      "bytes": 11446080
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.5c706f260707cfdc-cgu.15.rcgu.o",
+      "bytes": 16075880
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.5c706f260707cfdc-cgu.07.rcgu.o",
+      "bytes": 10053472
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.5c706f260707cfdc-cgu.05.rcgu.o",
+      "bytes": 13599648
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.5c706f260707cfdc-cgu.09.rcgu.o",
+      "bytes": 12759936
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.5c706f260707cfdc-cgu.13.rcgu.o",
+      "bytes": 8661472
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.5c706f260707cfdc-cgu.01.rcgu.o",
+      "bytes": 27296576
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.5c706f260707cfdc-cgu.03.rcgu.o",
+      "bytes": 18154408
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.5c706f260707cfdc-cgu.11.rcgu.o",
+      "bytes": 6691896
+    }
+  ],
+  "reason": "Previous Web archive removed; failed codegen objects no longer open. Web-only opt-level1 reduces generated Leptos code size and avoids temporary full-size archive peak. No feature/selector/assertion changes; debug assertions and overflow checks remain enabled. No benchmark run uses this profile."
+}

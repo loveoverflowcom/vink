@@ -1,0 +1,11 @@
+{
+  "at_utc": "2026-11-17T08:29:22.217781+00:00",
+  "own_pg_stopped": true,
+  "port": 55538,
+  "data_directory": "/tmp/vink-long-reconciliation-20261117/pg",
+  "pre_stop": "SQL verified exact data directory/port/start time; zero other client backends; PID51726 matches postmaster.pid",
+  "data_and_logs_retained": true,
+  "reason": "Focused PostgreSQL tests complete; no further backend/codec/SQL changes from #281; release task resources before Quick retry",
+  "foreign_or_system_processes_stopped": [],
+  "pressure_at_read": "sysctl1 normal after earlier admission warning; fseventsd/system/foreign processes left untouched"
+}

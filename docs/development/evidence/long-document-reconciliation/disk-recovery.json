@@ -1,0 +1,28 @@
+{
+  "at_utc": "2026-11-17T04:34:29.838641+00:00",
+  "target": "/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/target",
+  "provenance": "Created by this task with APFS clone; every unique build since clone belongs to this task",
+  "dirty_source": "Only task docs/evidence; no uncommitted runtime source",
+  "process_check": "No Cargo/rustc/supervisor alive; lsof +D isolated target exit1/no output",
+  "evidence_preserved": "/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/docs/development/evidence/long-document-reconciliation",
+  "recoverability": "Source/lockfiles remain; original APFS clone source exists clean at 9c603b2; exact commands/profile recorded in logs",
+  "foreign_cargo_or_worktrees_removed": [],
+  "action": "Remove only task target and re-clone original cache for compact-symbol build",
+  "strip_attempt": "FAIL due disk; task-only normal server artifact invalidated; full target removed rather than reuse partial artifact",
+  "second_task_target_rebuild": {
+    "at_utc": "2026-11-17T04:40:40.678642+00:00",
+    "lsof_exit": 1,
+    "source_clean": true,
+    "reason": "Global strip caused cold dependency cache; keep dependency profile unchanged and strip only task App/Web binaries",
+    "config": "/Users/manhblue/Documents/Codex/2026-11-17/task-8/.cargo/config.toml",
+    "config_copy": "task-build-config.toml.txt",
+    "assertions_overflow_optimization": "Unchanged; only symbols/debug/incremental settings differ from defaults"
+  },
+  "final_profile_recovery": {
+    "at_utc": "2026-11-17T04:52:10.987107+00:00",
+    "lsof_exit": 1,
+    "source_clean": true,
+    "source_sha": "f6b88467c53a82c39e95ac79329cd22d7242212c",
+    "reason": "Web-only opt1 shrank archive, but App/SSR executable strip still exceeded transient disk. Use opt1 for App and Web only; original dependency cache reused. Complete suite/assertions/debug/overflow checks remain unchanged; no benchmark uses this profile."
+  }
+}
