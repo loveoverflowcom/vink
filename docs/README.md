@@ -75,6 +75,12 @@ ghi quyết định Default/Markdown, legacy guards và điểm nối source con
 Markdown extraction và tích hợp PG/Web chưa triển khai; [evidence](development/evidence/editor-title-263/README.md)
 ghi riêng phần thực chạy.
 
+Nguồn văn bản theo định dạng #255: [spec kiến trúc](architecture/document-source-format.md) và
+[registry phát triển](development/document-source-format.md) ghi hợp đồng nguồn v2, capability
+schema, `CHOICE-01`/`CHOICE-02` Phương án A, hash v2 và kế hoạch rollout/rollback dưới đề xuất
+`PENDING` [VDR-DOCUMENT-SOURCE-FORMAT@r1](../decisions/proposals/VDR-DOCUMENT-SOURCE-FORMAT.r1.toml);
+writer v2 và migration DB sản xuất chưa được mở.
+
 ## Ánh xạ bộ foundation
 
 Các file gốc từ thư mục `vink-foundation` được giữ nguyên nội dung sản phẩm, ID yêu cầu, trạng thái và nguồn tham chiếu; liên kết nội bộ được sửa theo vị trí mới. Trang chỉ mục này bổ sung bản đồ repository và ghi nhận việc nhập tài liệu. Không chạy lại nghiên cứu web, spike hay acceptance runtime trong lần sắp xếp.

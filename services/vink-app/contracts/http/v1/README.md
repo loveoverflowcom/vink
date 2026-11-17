@@ -23,6 +23,12 @@ consumer yet and no native consumer exists.
   A block is a paragraph or stanza; each line is non-blank, without line breaks or control
   characters (tab allowed). The server stores lines NFC-normalized. At most 200 000
   characters; titles at most 200 characters, single line, trimmed.
+- **Proposed v2 lossless source contract (#255, `PENDING` signoff — NOT active on v1 wire):**
+  [VDR-DOCUMENT-SOURCE-FORMAT@r1](../../../../../decisions/proposals/VDR-DOCUMENT-SOURCE-FORMAT.r1.toml)
+  and [architecture spec](../../../../../docs/architecture/document-source-format.md) specify the
+  schema v2 envelope (`schema_version: 2`, `format: "default" | "markdown"`, raw UTF-8 `source`
+  with `\n` line breaks, `line_ending: "lf" | "crlf"`). Live HTTP routes and fixtures stay on v1
+  until signoff and multi-phase rollout.
 - Unknown request fields are rejected.
 - Unsafe methods (`POST`, `PUT`, `DELETE`) require an `Origin` header equal to the server's
   `VINK_PUBLIC_ORIGIN`; otherwise `403 forbidden` before any use case runs.

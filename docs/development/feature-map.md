@@ -93,6 +93,14 @@ tâm dọc, vùng chữ bằng canvas, native type-ahead và disabled/invalid/fo
 `field.select`: `formatSelect` trong preview smoke đo icon/inset/reserve 16/16/52 CSS px,
 LTR/RTL, 320/390/834/1024/1440 × hai theme × chữ100/200; kiểm hit target click-through, native focus/Tab/type-ahead, AX name và
 invalid/disabled/forced-colors. Popup OS và touch thực cần evidence riêng.
+
+Nguồn văn bản có định dạng và tương thích v1 [#255](document-source-format.md): pure domain
+`services/vink-app/src/domain/source.rs` (`DocumentSource`, `StoredDocument`, `FormatCapability`)
+và `ContentHash::of_source_v2` / `RevisionContentV2`; reader adapter cô lập
+`read_document_envelope` trong `apps/vink-web/src/document.rs`; PG scratch test
+`document_source_compat` ([spec](../architecture/document-source-format.md)). `SCHEMA_VERSION`
+vẫn là `1`; `VDR-DOCUMENT-SOURCE-FORMAT@r1` và `VDR-CONTENT-STORAGE@r1` đều `PENDING`, chưa bật
+writer v2 hay migration bảng sản xuất.
 Đây là component/sample, chưa có picker hoặc conversion trong Bàn viết. Contract/source/hash
 #255, title #263, provider #256 và Reader #264 vẫn là prerequisite của consumer thật.
 [LayoutSpec + capability boundary](../design/editor-format-picker-262.md),

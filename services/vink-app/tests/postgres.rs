@@ -46,6 +46,8 @@ mod discussion;
 mod document_budget;
 #[path = "support/document_budget.rs"]
 mod document_corpus;
+#[path = "postgres/document_source_compat.rs"]
+mod document_source_compat;
 #[path = "postgres/drafts.rs"]
 mod drafts;
 #[path = "postgres/endorsement.rs"]

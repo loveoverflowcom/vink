@@ -36,6 +36,10 @@ chưa tích hợp composer/reaction/sticker persistence.
 [Phân trang Bàn viết #201](desk-pagination.md): API query/sort/cursor trên toàn bộ nháp của owner;
 consumer Web dùng ReadOwner/PageChain của #202; evidence phân trang và giới hạn ghi ở owner này.
 
+[Nguồn văn bản và định dạng #255](document-source-format.md): hợp đồng nguồn v2, hash `v2`,
+compatibility reader v1+v2 cô lập và kiểm chứng PG scratch dưới đề xuất `PENDING`
+([kiến trúc](../architecture/document-source-format.md)); writer v2 và migration sản xuất vẫn khóa.
+
 ## Nền test-domain/container
 
 [Cloudflare test và cấu hình Google Cloud](cloudflare-test-evidence.md) ghi asset upload,
