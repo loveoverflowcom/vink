@@ -12,7 +12,7 @@ Title authority: [editor-title-authority.md](../architecture/editor-title-author
 | Một content hash | `services/vink-app/src/domain/revision.rs` | `core` | `vink-document-content`; golden vector Python. |
 | Save/CAS, capture snapshot, đọc public, cổng `FormatNotPublishable` | `application/`, `persistence/{postgres,publication,discovery}.rs` | `persistence-api` | Title vật chất hóa trong cùng UPDATE với `document`. |
 | Migration cutover + backout chính xác | `migrations/20261122000000_canonical_document.sql`, `migrations-rollback/…down.sql` | `persistence-api` | Fail-closed khi còn revision cũ (lịch sử bất biến). |
-| HTTP API v1 | `http/contract.rs`, `contracts/http/v1/` | `persistence-api` | `title` bắt buộc cho `default`, bị từ chối cho `markdown`; 409 `format_not_publishable`. |
+| HTTP API v1 | `http/contract.rs`, `contracts/http/v1/` | `persistence-api` | `title` bắt buộc cho `default`; Markdown bỏ trường hoặc gửi `null`, từ chối chuỗi client; 409 `format_not_publishable`. |
 | Web Bàn viết/Reader/kiểm duyệt/IDB | `apps/vink-web/src/{contract,document}.rs`, `pages/{desk,mod,moderation}.rs`, `public_persistence.rs`, `public-cache/indexeddb.js` | `web` (Mặc định) | Gửi buffer nguyên văn; nháp Markdown → `desk-format-unavailable`. |
 | Markdown editor/outline/picker/Reader | #256/#257/#262/#264 | `NOT_IMPLEMENTED` | Xem hệ quả ở tài liệu kiến trúc mục 7. CMP: `NOT_IMPLEMENTED`. |
 

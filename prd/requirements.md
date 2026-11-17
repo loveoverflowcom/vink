@@ -50,10 +50,13 @@ Không cam kết cộng tác thời gian thực hoặc offline-first trong pilot
 
 **Chốt tiêu đề theo định dạng 16/11/2026 — #263:** Mặc định có tên riêng và body;
 Markdown lấy H1 đầu tiên làm tên, không có H1/H1 đầu rỗng thì UI hiện “Chưa đặt tên”.
-Không có hai nguồn tên writable; body v1/Mặc định có dấu `#` vẫn là chữ, legacy giữ
-tên riêng đến conversion chủ động. Placeholder không vượt validation/publication;
-giữ giới hạn tên hiện hành và nguồn khi lỗi. Đây là hướng `PRODUCT_CONFIRMED`,
-không phải Markdown đã triển khai hay schema/hash đã được duyệt. Xem
+Không có hai nguồn tên writable; body Mặc định có dấu `#` vẫn là chữ, giữ tên riêng
+đến conversion chủ động sang Markdown. Placeholder không vượt validation/publication;
+giữ giới hạn tên hiện hành và nguồn khi lỗi. **17/11/2026 — #255:** thay hoàn toàn contract
+document bằng một `{format, source}`, không duy trì v1/v2 song song. Đây là hướng
+`PRODUCT_CONFIRMED`, không phải signoff schema/hash hay quyền viết lại snapshot bất biến
+(WR-03). Markdown hiện chỉ có nháp/snapshot riêng tư qua API; editor/Reader còn phụ thuộc
+#256/#264. Xem [contract và giới hạn cutover](../docs/architecture/document-source-format.md) và
 [owner title, corpus và dependency #255](../docs/architecture/editor-title-authority.md).
 
 ## 4. Xuất bản và rút bài

@@ -1,6 +1,11 @@
 # Bằng chứng — document canonical (#255) và title theo định dạng (#263)
 
-Base `develop@607ef83` (17/11/2026), nhánh `codex/editor-canonical-replacement`, worktree riêng.
+**Phạm vi lịch sử:** các kết quả dưới đây do tác giả báo trước rebase, trên base
+`develop@607ef83` (17/11/2026), nhánh `codex/editor-canonical-replacement`, worktree riêng.
+Không dùng bảng này làm bằng chứng trên head `39641d5` (sau rebase lên `29185dd`) hay trên
+head tích hợp `develop@9640bde`. Xem [review độc lập trên Mac](mac-review/README.md) cho SHA,
+raw logs và kết quả sau reconcile develop.
+
 macOS arm64, Rust 1.99.1, PostgreSQL 17.11 (Homebrew, cluster scratch `127.0.0.1:55432`, reset
 được), Chrome cục bộ. Cargo nặng chạy qua `./tools/local-budget run --` với `CARGO_INCREMENTAL=0`;
 lane trình duyệt chạy trực tiếp (launcher không hỗ trợ). Kiến trúc:

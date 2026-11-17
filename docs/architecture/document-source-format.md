@@ -54,7 +54,8 @@ hash, migration). Title authority thuộc [#263](editor-title-authority.md). Bas
 `TitledDocument` là constructor duy nhất ghép title với document:
 
 - `author(document, title)` (biên tác giả): Mặc định **bắt buộc** trường `title` (được rỗng ở nháp);
-  Markdown **từ chối** mọi `title` client (`TitleNotWritable`) và lấy H1 đầu tiên trong AST.
+  Markdown **từ chối** mọi chuỗi `title` client (`TitleNotWritable`) và lấy H1 đầu tiên trong AST.
+  HTTP bỏ trường `title` hoặc gửi `null` đều ánh xạ thành `None`, không phải một tên writable.
 - `from_stored(document, title)` (biên lưu trữ): Mặc định dùng cột `title`; Markdown tính lại H1 và
   bắt buộc bằng cột đã lưu, lệch là lỗi integrity — không đổi tên thầm.
 - Cột `title` là projection vật chất hóa **trong cùng UPDATE/CAS** với `document` (#263

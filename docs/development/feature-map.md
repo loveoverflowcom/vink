@@ -104,7 +104,7 @@ Document canonical [#255](document-source-format.md): một shape không version
 [lịch sử bất biến](../architecture/document-source-format.md#lịch-sử-bất-biến)) và
 `VDR-DOCUMENT-SOURCE-FORMAT@r2` **PENDING**. Bàn viết soạn `default`; Markdown lưu được qua API
 (nháp/snapshot riêng tư) nhưng bị chặn công khai (`format_not_publishable`) đến #264.
-Đây là component/sample, chưa có picker hoặc conversion trong Bàn viết. Contract/source/hash
+Selector #262 vẫn là component/sample, chưa có picker hoặc conversion trong Bàn viết. Contract/source/hash
 #255, title #263, provider #256 và Reader #264 vẫn là prerequisite của consumer thật.
 [LayoutSpec + capability boundary](../design/editor-format-picker-262.md),
 [bằng chứng thực chạy](evidence/editor-format-picker-262/README.md).
@@ -112,7 +112,9 @@ Document canonical [#255](document-source-format.md): một shape không version
 #263 [title theo định dạng](../architecture/editor-title-authority.md): Mặc định dùng tên riêng,
 Markdown dùng H1 đầu tiên của AST CommonMark (`pulldown-cmark`, không extension), vật chất hóa trong
 cùng save/CAS; snapshot giữ title của source đã capture. Corpus `default.json` (12 ca) và
-`markdown.json` (30 ca) chạy qua parser, application và PostgreSQL (`canonical_document::*`).
+`markdown.json` (30 ca) chạy qua domain/application. Sáu test PostgreSQL
+(`canonical_document::*`) kiểm save/CAS, snapshot, schema và migration/backout; không phải
+một lượt replay toàn bộ corpus qua PostgreSQL.
 Differential Rust/TS `NOT_APPLICABLE` cho đến khi #256 có parser phía client.
 
 
