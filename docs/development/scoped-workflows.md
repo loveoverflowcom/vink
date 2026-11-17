@@ -92,9 +92,13 @@ file khóa để vượt một lượt đang chạy.
 | `auth` | App scratch migrate/seed + Identity scratch/local outbox | `auth` với session thật |
 | `password` | App password scratch migrate + Identity native scratch/local outbox | `auth-password`, không cần phase auth/main |
 | `publication` | App publication scratch migrate/seed/catalog + Identity scratch/local outbox | `publication-author` |
-| `perf-baseline` | App scratch + catalog + 200 public works/1.000 comments tổng hợp | 10 cold SSR/hydration + 10 warm Reader/Back, CDP transport ledger/raw JSON; **opt-in**; debug lab PASS 16/11 tại `997d97d` |
+| `perf-baseline` | App scratch + catalog + 200 public works/1.000 comments tổng hợp, phiên khách | 10 cold SSR/hydration + 10 warm Reader/Back, ledger CDP, history và secondary; **opt-in** |
+| `return-position` | Cùng fixture công khai của `perf-baseline` | Back/Forward, liên kết quay về, scope/filter/cursor, 50 vòng và các ca focus; **opt-in** |
 
-`perf-baseline` chỉ chạy khi chọn rõ và không thuộc tập full regression mặc định. Phương pháp, artifact và giới hạn nghiệm thu nằm tại [baseline #234](web-perf-baseline.md). Raw run debug ở [evidence/web-perf-234](evidence/web-perf-234/README.md); PASS selected chỉ chứng minh scenario, không nghiệm thu toàn bộ #234.
+`verify web … --release` build/chạy binary release và bundle `wasm-release` trên cùng setup
+scratch. Mặc định vẫn dùng dev. Chọn rõ `perf-baseline` và `return-position`; full regression
+không chạy hai phép đo này. Xem [phương pháp #234](web-perf-baseline.md) và
+[LayoutSpec #236](../design/discovery-return-position-236.md).
 
 Lặp `--scenario` để hợp thành nhiều kiểm; thứ tự canonical giữ như full lane. Typo, chuỗi rỗng,
 selector trùng và option trái operation bị chặn trước side effects. Selected PASS chỉ có nghĩa

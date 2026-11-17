@@ -98,3 +98,17 @@ Kết quả thực chạy, source identity, raw artifacts và các giới hạn 
 [Review Mac](evidence/reader-ssr-235/mac-review/README.md) đã PASS Quick, Web main/discovery/review
 và ba PostgreSQL/API tests; giữ raw FAIL trước sửa, so sánh trace và source pins. #234/#235
 vẫn còn acceptance chưa đủ; không coi merge là release qualification. Không đọc/chờ/poll GitHub CI.
+
+## Kiểm bổ sung 17/11/2026 trên release
+
+Scenario `main` giữ blocked JS và 200/1.000 ms bootstrap hold, thêm **WASM-only** 200/1.000 ms
+và 503. Test chờ network JS đã tải xong và lời gọi fetch của loader thật trước khi tác động:
+file WASM được preload nên event request-paused đơn lẻ chưa đủ. Quan sát trong CDP dùng wrapper
+fetch chỉ ghi đã vào loader, không đổi Promise. Thành công/503 đều cụ thể trong
+[trace mới](evidence/web-perf-234-236/README.md#235--ranh-giới-reader-ssr); chỉ lỗi wasm-bindgen
+503 dự kiến được miễn trong ca lỗi. Nội dung SSR và đường quay về còn dùng được; click trước
+hydration không phát/request lại thao tác ghi; hydrate thành công không gửi GET typed Reader dư.
+
+`main`, `discovery`, `review` release đã chạy trên App/PostgreSQL thật. Lịch sử, retry manual,
+304 và ABA được phân biệt ở ledger bổ sung của #234. Giữ Async: chưa thực nghiệm mode B/C,
+rollback một mode khác hoặc so sánh chunk trên proxy; không tuyên bố gain/architecture Accepted.

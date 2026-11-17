@@ -23,10 +23,10 @@ kết quả có tên `#community-stream`: đây là đích thấy được thay 
 theo hợp đồng #258. Giữ ring sẵn có và không thêm chuyển động. Liên kết, GET và cây nội dung SSR
 có nghĩa khi JavaScript chưa sẵn sàng; focus sau điều hướng client là phần tăng cường.
 
-Focus, lựa chọn văn bản và cuộn sau khi người dùng bắt đầu tương tác do người dùng giữ.
-Một callback cũ không cuộn hoặc focus trang/query mới; background refresh không phát lại việc
-phục hồi. `NavigationGuard` tiếp tục sở hữu điều hướng; dữ liệu và việc thu hồi vẫn do public-read
-owner quyết. Không giữ cây Reader/Khám phá đã rời, không lưu offset giữa các view.
+Khi người dùng đã chuyển focus sang control khác, callback không đổi focus hoặc viewport.
+Callback cũ không cuộn hay focus trang/query mới; background refresh không phát lại phục hồi.
+`NavigationGuard` tiếp tục sở hữu điều hướng; dữ liệu và việc thu hồi vẫn do public-read owner
+quyết. Không giữ cây Reader/Khám phá đã rời, không lưu offset giữa các view.
 
 **Kiểm geometry.** Anchor là mép trên của hàng, đối chiếu `scroll-margin-block` hiện có và giới
 hạn cuộn thực của tài liệu. Sai lệch cho phép **2 CSS px** sau khi layout/font ổn định để chừa

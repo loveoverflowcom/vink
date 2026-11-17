@@ -1,0 +1,295 @@
+{
+  "checkout_base": "d352dba77c2a86d18d7afe5690fcb9b10153c055",
+  "decisions": [
+    {
+      "snapshot_sha256": "9dbad85666397d5d9b76d811440fc80ecf12f034328dea0ec7c22114e3596cb3",
+      "lookup": "current",
+      "record": {
+        "id": "READ-01-CHOICE-01",
+        "revision": 1,
+        "status": "DESIGN_PROPOSED",
+        "sha256": "c6343eb218a1c0ab58335c15f35d437e273914428d4f34e63fc3f57819ebe43d",
+        "source": {
+          "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+          "group": "DECISION-DEV-20261112",
+          "kind": "legacy_import",
+          "line": 33,
+          "path": "docs/development/public-conditional-reads.md"
+        }
+      },
+      "head": {
+        "revision": 1,
+        "sha256": "c6343eb218a1c0ab58335c15f35d437e273914428d4f34e63fc3f57819ebe43d"
+      }
+    },
+    {
+      "snapshot_sha256": "9dbad85666397d5d9b76d811440fc80ecf12f034328dea0ec7c22114e3596cb3",
+      "lookup": "current",
+      "record": {
+        "id": "READ-01-CHOICE-02",
+        "revision": 1,
+        "status": "DESIGN_PROPOSED",
+        "sha256": "f30131f2abf4100b72e7035e1aa25ac4a3395c9b8f871914ce4544d32f0c1d34",
+        "source": {
+          "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+          "group": "DECISION-DEV-20261112",
+          "kind": "legacy_import",
+          "line": 38,
+          "path": "docs/development/public-conditional-reads.md"
+        }
+      },
+      "head": {
+        "revision": 1,
+        "sha256": "f30131f2abf4100b72e7035e1aa25ac4a3395c9b8f871914ce4544d32f0c1d34"
+      }
+    },
+    {
+      "snapshot_sha256": "9dbad85666397d5d9b76d811440fc80ecf12f034328dea0ec7c22114e3596cb3",
+      "lookup": "current",
+      "record": {
+        "id": "READ-01-CHOICE-03",
+        "revision": 1,
+        "status": "DESIGN_PROPOSED",
+        "sha256": "e2dab26d9bb2f0798b8a23b08a7b374585c0eee460779cf0cfd114b78523115f",
+        "source": {
+          "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+          "group": "DECISION-DEV-20261112",
+          "kind": "legacy_import",
+          "line": 42,
+          "path": "docs/development/public-conditional-reads.md"
+        }
+      },
+      "head": {
+        "revision": 1,
+        "sha256": "e2dab26d9bb2f0798b8a23b08a7b374585c0eee460779cf0cfd114b78523115f"
+      }
+    },
+    {
+      "snapshot_sha256": "9dbad85666397d5d9b76d811440fc80ecf12f034328dea0ec7c22114e3596cb3",
+      "lookup": "current",
+      "record": {
+        "id": "READ-01-CHOICE-04",
+        "revision": 1,
+        "status": "DESIGN_PROPOSED",
+        "sha256": "4213db2bf6126e48d3716cec965d4fcd2d1a39c7c1aa688b2557e52a7fbcf3ac",
+        "source": {
+          "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+          "group": "DECISION-DEV-20261112",
+          "kind": "legacy_import",
+          "line": 25,
+          "path": "docs/development/public-conditional-reads.md"
+        }
+      },
+      "head": {
+        "revision": 1,
+        "sha256": "4213db2bf6126e48d3716cec965d4fcd2d1a39c7c1aa688b2557e52a7fbcf3ac"
+      }
+    },
+    {
+      "snapshot_sha256": "9dbad85666397d5d9b76d811440fc80ecf12f034328dea0ec7c22114e3596cb3",
+      "lookup": "current",
+      "record": {
+        "id": "READ-02-CHOICE-01",
+        "revision": 1,
+        "status": "DESIGN_PROPOSED",
+        "sha256": "d50a6a1971b2f3c22c523dca8877744df967c18cad36b8df1eb90cfcf8aca951",
+        "source": {
+          "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+          "group": "DECISION-DEV-20261112",
+          "kind": "legacy_import",
+          "line": 49,
+          "path": "docs/development/public-read-freshness.md"
+        }
+      },
+      "head": {
+        "revision": 1,
+        "sha256": "d50a6a1971b2f3c22c523dca8877744df967c18cad36b8df1eb90cfcf8aca951"
+      }
+    },
+    {
+      "snapshot_sha256": "9dbad85666397d5d9b76d811440fc80ecf12f034328dea0ec7c22114e3596cb3",
+      "lookup": "current",
+      "record": {
+        "id": "READ-02-CHOICE-02",
+        "revision": 1,
+        "status": "DESIGN_PROPOSED",
+        "sha256": "d842ccb6576876a9003d341565386ee65e86e319102b3d440d6e9d873a77c940",
+        "source": {
+          "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+          "group": "DECISION-DEV-20261112",
+          "kind": "legacy_import",
+          "line": 64,
+          "path": "docs/development/public-read-freshness.md"
+        }
+      },
+      "head": {
+        "revision": 1,
+        "sha256": "d842ccb6576876a9003d341565386ee65e86e319102b3d440d6e9d873a77c940"
+      }
+    },
+    {
+      "snapshot_sha256": "9dbad85666397d5d9b76d811440fc80ecf12f034328dea0ec7c22114e3596cb3",
+      "lookup": "current",
+      "record": {
+        "id": "READ-02-CHOICE-03",
+        "revision": 1,
+        "status": "DESIGN_PROPOSED",
+        "sha256": "4b1f146acde8e6105c1c679e0fd22b92af8ae437d64ba56cca51000135b86dd4",
+        "source": {
+          "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+          "group": "DECISION-DEV-20261112",
+          "kind": "legacy_import",
+          "line": 68,
+          "path": "docs/development/public-read-freshness.md"
+        }
+      },
+      "head": {
+        "revision": 1,
+        "sha256": "4b1f146acde8e6105c1c679e0fd22b92af8ae437d64ba56cca51000135b86dd4"
+      }
+    },
+    {
+      "snapshot_sha256": "9dbad85666397d5d9b76d811440fc80ecf12f034328dea0ec7c22114e3596cb3",
+      "lookup": "current",
+      "record": {
+        "id": "READ-02-CHOICE-04",
+        "revision": 1,
+        "status": "DESIGN_PROPOSED",
+        "sha256": "e94c81ec10c5c95f1fc1c517aaf52ea450c3f434f0dad4b211129fd085082da0",
+        "source": {
+          "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+          "group": "DECISION-DEV-20261112",
+          "kind": "legacy_import",
+          "line": 70,
+          "path": "docs/development/public-read-freshness.md"
+        }
+      },
+      "head": {
+        "revision": 1,
+        "sha256": "e94c81ec10c5c95f1fc1c517aaf52ea450c3f434f0dad4b211129fd085082da0"
+      }
+    },
+    {
+      "snapshot_sha256": "9dbad85666397d5d9b76d811440fc80ecf12f034328dea0ec7c22114e3596cb3",
+      "lookup": "current",
+      "record": {
+        "id": "DISC-WEB-CHOICE-01",
+        "revision": 1,
+        "status": "DESIGN_PROPOSED",
+        "sha256": "d30938d4eef39ad4f42e0a40e166f47ecd3d25b74165a21da5956b6d5d18f225",
+        "source": {
+          "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+          "group": "DECISION-DEV-20261112",
+          "kind": "legacy_import",
+          "line": 9,
+          "path": "docs/development/discussion-web-reads.md"
+        }
+      },
+      "head": {
+        "revision": 1,
+        "sha256": "d30938d4eef39ad4f42e0a40e166f47ecd3d25b74165a21da5956b6d5d18f225"
+      }
+    },
+    {
+      "snapshot_sha256": "9dbad85666397d5d9b76d811440fc80ecf12f034328dea0ec7c22114e3596cb3",
+      "lookup": "current",
+      "record": {
+        "id": "DISC-WEB-CHOICE-02",
+        "revision": 1,
+        "status": "DESIGN_PROPOSED",
+        "sha256": "3f66478ed8fbc985d378947860dee33c1a1fa6e077af2d0f1e2f0fc63814b273",
+        "source": {
+          "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+          "group": "DECISION-DEV-20261112",
+          "kind": "legacy_import",
+          "line": 13,
+          "path": "docs/development/discussion-web-reads.md"
+        }
+      },
+      "head": {
+        "revision": 1,
+        "sha256": "3f66478ed8fbc985d378947860dee33c1a1fa6e077af2d0f1e2f0fc63814b273"
+      }
+    },
+    {
+      "snapshot_sha256": "9dbad85666397d5d9b76d811440fc80ecf12f034328dea0ec7c22114e3596cb3",
+      "lookup": "current",
+      "record": {
+        "id": "DISC-WEB-CHOICE-03",
+        "revision": 1,
+        "status": "DESIGN_PROPOSED",
+        "sha256": "0b38cb1180895cc1add1a6ef61b69e222bec0f093bd7db94c0b50706580dff68",
+        "source": {
+          "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+          "group": "DECISION-DEV-20261112",
+          "kind": "legacy_import",
+          "line": 18,
+          "path": "docs/development/discussion-web-reads.md"
+        }
+      },
+      "head": {
+        "revision": 1,
+        "sha256": "0b38cb1180895cc1add1a6ef61b69e222bec0f093bd7db94c0b50706580dff68"
+      }
+    },
+    {
+      "snapshot_sha256": "9dbad85666397d5d9b76d811440fc80ecf12f034328dea0ec7c22114e3596cb3",
+      "lookup": "current",
+      "record": {
+        "id": "O-03",
+        "revision": 2,
+        "status": "PRODUCT_CONFIRMED",
+        "sha256": "b827b139c80ee4d88cd7e15a1a42acd86ef96a01dfd883adf739acfe7ec39d9c",
+        "source": {
+          "commit": "af3c34bd624be18d404bd5789620759cae0b0ddb",
+          "group": "ADMIN-MODERATION-20261111",
+          "kind": "legacy_import",
+          "line": 187,
+          "path": "docs/architecture/product-decisions-20261110.md"
+        }
+      },
+      "head": {
+        "revision": 2,
+        "sha256": "b827b139c80ee4d88cd7e15a1a42acd86ef96a01dfd883adf739acfe7ec39d9c"
+      }
+    },
+    {
+      "snapshot_sha256": "9dbad85666397d5d9b76d811440fc80ecf12f034328dea0ec7c22114e3596cb3",
+      "lookup": "current",
+      "record": {
+        "id": "O-17",
+        "revision": 2,
+        "status": "PRODUCT_CONFIRMED",
+        "sha256": "cb30cb43040a3fad50bd4930096e537057a2f3c6037b387d8c332be497fa15aa",
+        "source": {
+          "kind": "proposal",
+          "path": "decisions/proposals/O-17.r2.toml",
+          "signoff_path": "decisions/signoffs/O-17.r2.toml"
+        }
+      },
+      "head": {
+        "revision": 2,
+        "sha256": "cb30cb43040a3fad50bd4930096e537057a2f3c6037b387d8c332be497fa15aa"
+      }
+    },
+    {
+      "snapshot_sha256": "9dbad85666397d5d9b76d811440fc80ecf12f034328dea0ec7c22114e3596cb3",
+      "lookup": "pending_only",
+      "record": {
+        "id": "VDR-PUBLIC-OFFLINE-AGE",
+        "revision": 1,
+        "status": "PENDING",
+        "sha256": "72bb815fc75137819c252cc7cc632a17503389d7bbd0e9fbcf866f3c4900d2aa",
+        "source": {
+          "kind": "proposal",
+          "path": "decisions/proposals/VDR-PUBLIC-OFFLINE-AGE.r1.toml",
+          "signoff_path": null
+        }
+      },
+      "head": {
+        "revision": 1,
+        "sha256": "72bb815fc75137819c252cc7cc632a17503389d7bbd0e9fbcf866f3c4900d2aa"
+      }
+    }
+  ]
+}

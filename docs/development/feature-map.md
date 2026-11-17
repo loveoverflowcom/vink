@@ -2,9 +2,11 @@
 
 **Đối soát có phạm vi ngày 16/11/2026, `develop@6e07806`:** [20 PR gần đây, proposal và gap](verification-reconciliation-20261116.md). Các mốc ở phần mở đầu dưới đây là lịch sử theo lát, không phải ngày kiểm lại toàn bộ bản đồ. [Model/replay ReadOwner/PageChain](../../apps/vink-web/behavior/README.md) bổ sung coverage thuần; không refresh evidence browser/PG cũ.
 
-**Web Perf #234 · baseline opt-in:** [cách đo và giới hạn](web-perf-baseline.md) sử dụng catalog `xtask` + `browser-smoke.mjs`, fixture 200 works/1.000 comments và 10 vòng cold/warm. Baseline debug lab PASS tại `997d97d` ([raw](evidence/web-perf-234/README.md)); release profile, negative transport và go/no-go còn `NOT_RUN`/`PENDING`, không đổi SSR/cache policy.
+**Web Perf #234 · baseline opt-in:** [cách đo và giới hạn](web-perf-baseline.md) với 200 works/1.000 comments, 10 cold + 10 warm, history SSR, transport secondary/304 và [trace release](evidence/web-perf-234-236/README.md). Debug lab `997d97d` vẫn là [evidence lịch sử](evidence/web-perf-234/README.md).
 
-**Web Perf #235 · SSR Reader:** [owner, lựa chọn A/B/C và regression](reader-ssr-boundary.md) giữ Async; thêm test Leptos/Axum ở port tổng hợp và kiểm blocked/delayed bootstrap trong scenario `main`. Kết quả theo boundary ở [evidence #235](evidence/reader-ssr-235/README.md), không suy PASS từ merge #234.
+**Web Perf #235 · SSR Reader:** [owner, lựa chọn A/B/C và regression](reader-ssr-boundary.md) giữ Async. `main` cover blocked bootstrap, WASM-only delay/failure và fresh Reader handoff; ma trận Leptos/Axum giữ status/privacy trước response. Proxy và streaming chưa thử.
+
+**Web Perf #236 · quay lại Khám phá:** [LayoutSpec](../design/discovery-return-position-236.md) và scenario `return-position` opt-in trên fixture #234. Router ghi fragment vào history; callback chỉ phục hồi vị trí của scope đã settle, bằng hàng hoặc vùng kết quả có tên. Không giữ lại view hoặc offset đã rời.
 
 Với thay đổi liên quan đến quyết định ngày 10/11, tra ID và revision tại
 [kho quyết định TOML](../../decisions/README.md). Phạm vi và kiểm chứng của công cụ nằm trong
