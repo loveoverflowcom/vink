@@ -4,6 +4,10 @@
 không lấy, deserialize, NFC hay hash manuscript của các revision. Đây là projection riêng cho
 chủ tác phẩm; **không phải bằng chứng toàn vẹn body hoặc quyền approve/publish**.
 
+**Checkpoint đối soát 17/11/2026:** #248 đã merge; tại `develop@f6b8846` owner/test/API/DTO liên quan giữ byte identity.
+[Ma trận AC/provenance](long-document-reconciliation.md) ghi focused PG mới, historical timing và final Quick UNKNOWN do Mac mất kết nối.
+Defect re-review còn tồn tại, nay có owner [#275](https://github.com/loveoverflowcom/vink/issues/275). Không gán số đo bên dưới cho HEAD mới.
+
 - Sản phẩm: giữ `USER-02@r1`, `ADM-06@r1`, `USER-09@r1` `PRODUCT_CONFIRMED`; WR-04 vẫn
   `DEFERRED`. Snapshot CLI `6e77cb0a7f4eb67033c6e0df6d8a670a84eb61b3095a307ad0615b771c91dd9b`.
 - Kiến trúc: không đổi trạng thái ADR, authority hoặc hash v1. Không thêm cache/schema/index.
@@ -203,7 +207,7 @@ full-flow trên baseline chưa chạy (**NOT_RUN**), không gán phép tái hi�
 regression của projection vẫn phải PASS; stale-policy **khi job đang pending**, private/late-result
 được kiểm riêng. Cần migration bổ sung với upgrade/backout riêng để sửa mismatch; không reset
 version hay bỏ constraint provenance trong tối ưu loader. Không tuyên bố toàn bộ moderation
-policy re-review đã hoạt động và không tự tạo/đóng issue tiếp theo.
+policy re-review đã hoạt động. Nay [#275](https://github.com/loveoverflowcom/vink/issues/275) sở hữu reproducer và additive migration/upgrade/backout; không nới guard hoặc kéo defect ngoài projection thành điều kiện mở vô hạn cho #230.
 
 ## Bảo toàn và vận hành cục bộ
 

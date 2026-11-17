@@ -3,6 +3,11 @@
 Baseline đo tài liệu tổng hợp trước khi quyết định chia nhỏ storage. Đây là evidence phát triển,
 không phải SLA production hay quyết định đổi giới hạn bài viết.
 
+**Checkpoint đối soát 17/11/2026:** #232/#249 đã merge vào `develop@f6b8846`;
+[ma trận AC/provenance](long-document-reconciliation.md) ghi evidence và final Quick đang UNKNOWN do Mac mất kết nối.
+Owner-state đã dùng #230/#248; số dưới đây là baseline lịch sử. F1 thuộc [#273](https://github.com/loveoverflowcom/vink/issues/273),
+F3 thuộc [#274](https://github.com/loveoverflowcom/vink/issues/274); không gán timing cũ cho HEAD mới.
+
 **Hiệu chỉnh sau review #232:** các mẫu app save `begin/middle/end` của baseline cũ gửi cùng
 payload năm lần; chỉ lần đầu đổi nội dung, bốn lần sau là content no-op (version vẫn tăng).
 Không dùng median của nhóm đó làm chi phí của năm edit độc lập. Các số cũ được giữ để bảo toàn
@@ -168,7 +173,7 @@ normalize từng line; validation **đã gồm** NFC nên không cộng hai cộ
 | Việt NFC | 44,88 / 429,64 / 4.269,55 | 29.858.000 |
 | Block nhỏ | 255,87 / 2.459,83 / 24.670,40 | 47.035.900 |
 
-`load_paired_state` hiện SELECT và decode document của **mọi** revision. Độ tăng gần tuyến tính
+Ở baseline trước #248, `load_paired_state` SELECT và decode document của **mọi** revision. Độ tăng gần tuyến tính
 theo lịch sử là lý do đo/ưu tiên loader ở #230; không sửa loader trong #229. Snapshot có title khác,
 document giống nhau vẫn tốn một column TOAST riêng; không có dedup/CAS được suy ra từ hash.
 
@@ -372,19 +377,19 @@ Các file:line sau ghim ở source measurement v2. App là `services/vink-app`, 
 | AC nguyên issue (rút gọn) | PR #232 thực sự đã làm | Owner production / test | Audit trước delta | Kết luận follow-up |
 | --- | --- | --- | --- | --- |
 | AC-01: corpus thật; scalar/byte/block/line/envelope | 21 case, validator/serializer/hash, NFC/NFD và repeated corpus equality | `src/domain/document.rs:68`, `src/domain/revision.rs:10` trong App; `tests/document_budget.rs:9`; `tests/support/document_budget.rs:16`; PG `pure_measurements:26` | PASS lịch sử | PASS: 3 pure tests + 21/21 corpus equality; `followup/summary.json` |
-| AC-02: PostgreSQL read/update/WAL/heap/TOAST/index/history | App/PgStore, EXPLAIN, 1/10/100 revisions; output thật | `src/persistence/postgres.rs:165`; PG `plan:212`, `app_save_samples:90`, `long_document_budget:443` | PARTIAL: nhóm changed-write trộn no-op | PASS local PG v2: 420 samples và exact durable readback; `followup/postgres.json`, `pg-focused-final.log`; chờ merge delta |
+| AC-02: PostgreSQL read/update/WAL/heap/TOAST/index/history | App/PgStore, EXPLAIN, 1/10/100 revisions; output thật | `src/persistence/postgres.rs:165`; PG `plan:212`, `app_save_samples:90`, `long_document_budget:443` | PARTIAL: nhóm changed-write trộn no-op | PASS local PG v2: 420 samples và exact durable readback; `followup/postgres.json`, `pg-focused-final.log`; delta đã merge qua #249 |
 | AC-03: Reader/editor tách network/SSR/hydration/DOM/memory/snapshot | 42 Reader/84 editor scenes, loopback timings, V8/DOM proxy; ghi NOT_RUN mobile/OS IME | Web `src/document.rs:90`, `src/editor.rs:45`; `e2e/document-budget.mjs:7`; PG router SSR | PASS theo scope lịch sử; UI latest cần tái lập | PASS local Chrome/SSR: 42 Reader + 84 editor scenes; `followup/browser.json`; RSS/WASM peak NOT_RUN |
 | AC-04: pglz/default/LZ4, old/new data, không production setting | Fresh identical datasets, insert/read/update/WAL/sizes; old pglz/new lz4 | PG `compression_probe:244`; scratch table `budget_toast_probe` | PASS lịch sử | PASS SQL scratch: `followup/compression.json`, old/new rows; không sửa production setting |
 | AC-05: boundaries/guard, text/no truncation/conflict | limit−1/limit/limit+1; lỗi HTTP/409 không đổi durable text; UI giữ full buffer | App `http/api.rs:650`; PG `long_document_http_boundaries:386`; Web `e2e/document-budget.mjs:138` | PASS baseline/regression; F1 còn là product gap | PASS PG/browser regression: `followup/pg-focused-final.log`, `browser.json`; F1 giữ follow-up transport |
 | AC-06: oversized cache fallback/gate | Rust + Memory/NoOp/IndexedDB miss, không durable ACK; online snapshot giữ nguyên | Web `public_persistence.rs:7,103,110,134,165`; pure test `document_budget.rs:62`; browser oversized case | PASS adapter/gate | PASS adapter/gate: oversized case trong `followup/browser.json`; không suy offline rollout PASS, #203 owner |
-| AC-07: thresholds/raw evidence/operations/go-no-go | Report có thresholds đề xuất, raw output, rewrite/rollback costs, conditional JSONB/default | Report này + raw historical manifest | PARTIAL: diễn giải changed-save cần hiệu chỉnh | PASS report + v1/v2 provenance/raw/thresholds; `followup/verification.json`, `manifest.json`; chờ merge report/harness |
+| AC-07: thresholds/raw evidence/operations/go-no-go | Report có thresholds đề xuất, raw output, rewrite/rollback costs, conditional JSONB/default | Report này + raw historical manifest | PARTIAL: diễn giải changed-save cần hiệu chỉnh | PASS report + v1/v2 provenance/raw/thresholds; `followup/verification.json`, `manifest.json`; report/harness đã merge qua #249 |
 
 ### Ba finding và ranh giới tiếp tục
 
 | Finding | Phân loại, evidence đã có từ #232 | Thuộc #229 tới đâu | Hành động/owner tiếp theo |
 | --- | --- | --- | --- |
 | F1: 200k tiny blocks tạo request >2 MiB, HTTP 422 | Product/transport compatibility gap thật; non-ignored PG test và browser buffer/version regression đã có. Domain chấp nhận, Axum Json rejection được API ánh xạ thành Validation/body. Không phải thiếu test hay lỗi môi trường. | AC-05 yêu cầu đo/regression/đề xuất guard, không bắt tự đổi product/transport limit. | Đề xuất issue riêng “HTTP save chấp nhận document v1 hợp lệ trong ngân sách transport có giới hạn”; cần phân tích upper bound cả escaping/NFD/title/envelope, rejection semantics và chi phí tài nguyên. Không hạ limit vì cache quota. |
-| F2: owner-state xử lý toàn history | Hotspot production read thật; history 1/10/100 đã đo. Base vẫn SELECT title/document của mọi revision tại `persistence/publication.rs:147`, parse/hash tại :211. | AC-02 cung cấp baseline và corpus. | #230/#248 sở hữu optimization/integrity boundaries. Có thể tiếp tục review/triển khai; chưa coi draft #248 đã tích hợp. |
+| F2: owner-state xử lý toàn history | Hotspot production read thật; history 1/10/100 đã đo. Base vẫn SELECT title/document của mọi revision tại `persistence/publication.rs:147`, parse/hash tại :211. | AC-02 cung cấp baseline và corpus. | #230/#248 sở hữu optimization/integrity boundaries. #248 đã merge; owner-state nay dùng metadata projection, command/worker vẫn kiểm full content; xem [trust map](publication-state-read.md). |
 | F3: Reader dựng 200k paragraph | Hotspot render thật; `DocumentView` map mọi block; raw DOM/HTML/hydration đã đo, không chỉ giả thuyết. | AC-03/07 yêu cầu đo/đánh giá, không cấp quyết định virtualization. | Đề xuất issue riêng “Ngân sách Reader nhiều block và kiểm selection/find/copy/a11y”; cần release + thiết bị đích và quyết định guard/render. Không cắt paragraph, đổi thơ hoặc tự triển khai virtualization. |
 
 #231 có thể chuẩn bị RFC với baseline này, nhưng quyết định storage cần đối chiếu sau #230,
@@ -438,10 +443,10 @@ Owner-state 1/10/100 revision: Việt NFC **45,46 / 442,33 / 4.398,78 ms**; tiny
 Compression totals vẫn default=pglz=30.965.760 B, LZ4=43.933.696 B; giữ kết luận conditional
 JSONB/default. Các bảng raw v1/v2 không là before/after optimization production.
 
-**Kết luận AC trên nhánh follow-up:** AC-01..AC-07 PASS theo phạm vi baseline local đã nêu.
+**Kết luận AC trước merge #249 (lịch sử):** AC-01..AC-07 PASS theo phạm vi baseline local đã nêu.
 AC-02/AC-07 cần delta follow-up này để thay phần diễn giải workload cũ trên develop.
 Checklist có thể tick theo evidence của nhánh đã kiểm, nhưng #229 giữ OPEN chờ merge delta;
-không tuyên bố develop đã chứa bản sửa. AC-01/03/04/05/06 đã có evidence #232 và được kiểm lại.
+không tuyên bố develop đã chứa bản sửa ở thời điểm đó. Nay #249 đã merge; [checkpoint đối soát](long-document-reconciliation.md) ghi trạng thái mới và gate còn pending. AC-01/03/04/05/06 đã có evidence #232 và được kiểm lại.
 F1/F3 vẫn là product gaps đã được báo trong acceptance baseline, không biến thành AC mới.
 
 **NOT_RUN:** full PostgreSQL/Web lanes, thiết bị mobile thật, OS Telex/VNI, Safari/Firefox,
