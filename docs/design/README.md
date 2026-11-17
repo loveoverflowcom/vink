@@ -46,6 +46,7 @@ Bổ sung [#226 — Reader/Nhận xét action surfaces](action-surfaces-reader-d
 LayoutSpec, owner map Web/CMP và seam tiếp tục sau #224; presentation mới chưa triển khai.
 
 Bổ sung [#218 — Editor Paper First](ui-editor-paper-first-218.md): công cụ không container,
+và [#254 — Giao diện Editor yên tĩnh](editor-quiet-254.md): bỏ footer `#build-info`, hướng dẫn dài và toàn bộ nút tải `.txt`, làm lại nút về Bàn viết Tonal + icon.
 Thêm native trong flow, paper/canvas scoped và giữ save/recovery/focus của #217.
 
 Bổ sung [#262 — selector định dạng](editor-format-picker-262.md): geometry native Select
@@ -221,7 +222,7 @@ Shell #shell
   Region #main — route hiện tại, editor giữ một instance
   Region #bottom-navigation — mobile: Khám phá → Bàn viết → Tôi
   Overlay #profile-menu — Giao diện: màu → cỡ chữ → rail → Mở trang Tôi (ở ngoài /toi)
-  Screen #me — /toi: Tài khoản → Giao diện: màu → cỡ chữ → rail → Bản thử nghiệm
+  Screen #me — /toi: Tài khoản → Giao diện: màu → cỡ chữ → rail
 ```
 
 Owner: [lib.rs](../../apps/vink-web/src/lib.rs) giữ router và route `/` mặc định;

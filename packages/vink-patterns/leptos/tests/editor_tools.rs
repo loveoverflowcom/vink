@@ -10,7 +10,7 @@ fn render(paper_first: bool) -> String {
             <EditorToolbar status="Đã lưu" status_token="saved" status_detail="Phiên bản 2 trên máy chủ."
                 paper_first
                 utilities=std::sync::Arc::new(|| view! {
-                    <Button id="export" variant=ButtonVariant::Text>"Tải bản thảo (.txt)"</Button>
+                    <Button id="tool-sample" variant=ButtonVariant::Text>"Công cụ phụ"</Button>
                 }.into_any())>
                 <Button id="preview" variant=ButtonVariant::Text>"Xem trước"</Button>
             </EditorToolbar>
@@ -33,9 +33,9 @@ fn paper_first_has_one_native_tools_disclosure_and_one_live_readout() {
     assert!(!html.contains(" open"), "tools start closed: {html}");
     assert!(html.contains("Thêm"));
     assert!(html.contains("Phiên bản 2 trên máy chủ."));
-    let export = html.find("id=\"export\"").unwrap();
-    let start = html[..export].rfind("<button").unwrap();
-    let end = export + html[export..].find('>').unwrap();
+    let utility = html.find("id=\"tool-sample\"").unwrap();
+    let start = html[..utility].rfind("<button").unwrap();
+    let end = utility + html[utility..].find('>').unwrap();
     assert!(
         html[start..=end].contains("type=\"button\""),
         "utility cannot submit: {html}"

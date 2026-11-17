@@ -27,8 +27,10 @@ Dialog #leave-editor / #draft-preview
 
 ### Phân cấp hành động theo trạng thái
 
-- **`#leave-editor` (có thể lưu — Unsaved / Failed):** `#leave-stay` (`Text`, đầu DOM) · `#leave-save` (`Filled`, lý do qua `aria-describedby="leave-editor-context"`) · nhóm phụ nếu `can_discard`: `#leave-export` (`Tonal`) · `#leave-discard` (`DangerText`).
-- **`#leave-editor` (xung đột — Text/Tag Conflict):** `#leave-stay` (`Filled`, đầu DOM) · `#leave-save` (`Tonal`, `ActionState::Disabled` + giải thích xung đột ở `#leave-editor-context`) · nhóm phụ: `#leave-export` (`Tonal`) · `#leave-discard` (`DangerText`).
+*(Delta #254 ngày 17/11/2026: bỏ `#leave-export` khỏi nhóm phụ của `#leave-editor`; giữ `#leave-stay`, `#leave-save`, `#leave-discard`, `#discard-back` (`Tonal`) và `#discard-confirm` (`Danger`).)*
+
+- **`#leave-editor` (có thể lưu — Unsaved / Failed):** `#leave-stay` (`Text`, đầu DOM) · `#leave-save` (`Filled`, lý do qua `aria-describedby="leave-editor-context"`) · nhóm phụ nếu `can_discard`: `#leave-discard` (`DangerText`).
+- **`#leave-editor` (xung đột — Text/Tag Conflict):** `#leave-stay` (`Filled`, đầu DOM) · `#leave-save` (`Tonal`, `ActionState::Disabled` + giải thích xung đột ở `#leave-editor-context`) · nhóm phụ: `#leave-discard` (`DangerText`).
 - **`#leave-editor` (xác nhận bỏ thay đổi — `ConfirmingDiscard`):** `#discard-back` (`Tonal`, đầu DOM + focus khởi đầu an toàn) · `#discard-confirm` (`Danger` đặc).
 - **`#draft-preview`:** `title="Xem trước bản nháp"` (`focus_title=true`) · `context` ở slot `Dialog` · `<article class="vk-preview">` (`DocumentView` giữ khổ/thụt lề thơ) · `#preview-close` (`Tonal`).
 - **Xóa bỏ khỏi `apps/vink-web/style/vink.css`:** xóa `.vk-dialog__body`, `.vk-dialog__actions`, `.vk-dialog__recovery` (cùng divider `border-top`), override `padding: clamp(...)` trên `.vk-ui-dialog__panel`, `@media (max-width: 40rem)` `padding: var(--vk-space-2)` (8px), và `#leave-editor .vk-ui-dialog__actions:empty { display: none; }`.

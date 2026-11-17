@@ -1,5 +1,7 @@
 # Editor Paper First — #218
 
+*(Delta [#254](editor-quiet-254.md) ngày 17/11/2026: giữ nguyên Paper First / `#editor-save-details` ("Thêm") chứa chi tiết trạng thái máy chủ, nhưng bỏ nút `#export` (“Tải bản thảo (.txt)”), `#export-failed`, `#export-conflict`, `#export-tags`, `#leave-export` và `.vk-editor-help`. Các kết quả dưới đây là lịch sử của #218.)*
+
 Base thực thi: `develop@a78c9ff5138a0df26e9febe4fdf6146f5915d28a`, đã có
 [#227](https://github.com/loveoverflowcom/vink/pull/227) và
 [#228](https://github.com/loveoverflowcom/vink/pull/228). Kế thừa R3 của

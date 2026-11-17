@@ -1,10 +1,6 @@
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-
 // #193: the title stays a native single-line input. Its expanded reading projection is
 // deliberately not another editing buffer. Real App/PostgreSQL, synthetic input via CDP.
-export async function editorWriting(page, { args, check, setEditorScene, captureEditorScene, editorTarget, fitsEditorAction, downloaded }) {
+export async function editorWriting(page, { args, check, setEditorScene, captureEditorScene, editorTarget, fitsEditorAction }) {
   const titleSelector = '#draft-title';
   const summary = '#draft-title-details > summary';
   const full = '#draft-title-full';
@@ -131,15 +127,7 @@ export async function editorWriting(page, { args, check, setEditorScene, capture
     await page.click('#preview'); await page.waitFor(`document.querySelector('#draft-preview').open`,'title preview');
     check(await page.eval(`document.querySelector('#draft-preview').textContent.includes(${JSON.stringify(nfd)})`),'preview reads the current title state');
     await page.key('Escape');
-    const downloads=mkdtempSync(join(tmpdir(),'vink-title-export-'));
-    try {
-      await page.cdp.send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath:downloads,eventsEnabled:true});
-      await page.click('#editor-save-details > summary');
-      await page.click('#export');
-      await page.click('#editor-save-details > summary');
-      const file=await downloaded(downloads);
-      check(file.text===nfd+'\n\n'+beforeRaw+'\n','export reads the same unnormalized title and exact live raw body');
-    } finally { rmSync(downloads,{recursive:true,force:true}); }
+    check(!await page.eval(`Boolean(document.querySelector('#export, #export-failed, #export-conflict, #export-tags'))`), 'no draft export button remains in quiet editor');
 
     check(await page.eval(raw)===beforeRaw && await page.eval(same),'title corpus, preview and save do not change raw body or view');
     const beforeEnter=writes;

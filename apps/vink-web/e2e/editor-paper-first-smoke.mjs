@@ -1,10 +1,6 @@
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-
-// #218: real App/PG/Chrome. App text preferences are chosen through Giao diện;
+// #218 & #254: real App/PG/Chrome. App text preferences are chosen through Giao diện;
 // the older editor matrix separately covers direct DOM scale and save/recovery races.
-export async function editorPaperFirst(page, { args, check, openProfile, chooseTheme, editorTarget, fitsEditorAction, downloaded }) {
+export async function editorPaperFirst(page, { args, check, openProfile, chooseTheme, editorTarget, fitsEditorAction }) {
   const summary = '#editor-save-details > summary';
   const ready = `document.querySelector('.cm-content[contenteditable=true]')`;
   const view = `document.querySelector('.cm-content').cmTile.root.view`;
@@ -72,30 +68,34 @@ export async function editorPaperFirst(page, { args, check, openProfile, chooseT
           await page.eval(`document.activeElement?.blur(); scrollTo(0,0); document.fonts.ready.then(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))))`);
           const stem=`paper-${state}-${width}-${scale}-${theme}`;
           const geometry=await page.eval(`(() => {
-            const toolbar=document.querySelector('#editor-toolbar'), paper=document.querySelector('.vk-editor-paper');
-            const t=toolbar.getBoundingClientRect(), p=paper.getBoundingClientRect(), s=getComputedStyle(toolbar);
-            return {toolbar:t.toJSON(),paper:p.toJSON(),width:document.querySelector('.cm-content').getBoundingClientRect().width,
+            const toolbar=document.querySelector('#editor-toolbar'), paper=document.querySelector('.vk-editor-paper'), back=document.querySelector('.vk-editor-heading__back');
+            const t=toolbar.getBoundingClientRect(), p=paper.getBoundingClientRect(), b=back.getBoundingClientRect(), s=getComputedStyle(toolbar), bs=getComputedStyle(back);
+            return {toolbar:t.toJSON(),paper:p.toJSON(),back:b.toJSON(),width:document.querySelector('.cm-content').getBoundingClientRect().width,
               transparent:s.backgroundColor==='rgba(0, 0, 0, 0)',inFlow:s.position==='static',
               paperSurface:getComputedStyle(paper).backgroundColor,canvas:getComputedStyle(document.querySelector('.vk-ui-scaffold')).backgroundColor,
+              backFilled:bs.backgroundColor!=='rgba(0, 0, 0, 0)' && b.height>=48 && Math.abs(b.left-p.left)<=1.5 && Boolean(back.querySelector('svg')),
               overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+1,
               h1:document.querySelectorAll('.vk-desk--editor h1').length,
               oneStatus:document.querySelectorAll('#editor-toolbar [role=status]').length===1,
-              summaryVisible:document.querySelector('${summary}').checkVisibility(),exportHidden:!document.querySelector('#export').checkVisibility()};
+              summaryVisible:document.querySelector('${summary}').checkVisibility(),
+              noBannerOrHelpOrExport:!document.querySelector('#build-info, .vk-editor-help, #export, #export-failed, #export-conflict, #export-tags')};
           })()`);
-          check(geometry.transparent && geometry.inFlow && geometry.paperSurface!==geometry.canvas && !geometry.overflow && geometry.h1===1 && geometry.oneStatus && geometry.summaryVisible && geometry.exportHidden,
-            `${stem}: chromeless tools, separate paper, one H1/readout, visible native trigger and no horizontal overflow ${JSON.stringify(geometry)}`);
+          check(geometry.transparent && geometry.inFlow && geometry.paperSurface!==geometry.canvas && geometry.backFilled && !geometry.overflow && geometry.h1===1 && geometry.oneStatus && geometry.summaryVisible && geometry.noBannerOrHelpOrExport,
+            `${stem}: quiet editor keeps chromeless tools, tonal icon Back aligned with paper, separate paper, one H1/readout, visible native trigger and removes banner/help/export ${JSON.stringify(geometry)}`);
           check(await page.eval(same) && await page.eval(`${view}.state.doc.toString()`)===raw && JSON.stringify(await page.eval(`${view}.state.selection.toJSON()`))===JSON.stringify(selection), `${stem}: actual preference/resize retains raw NFD, stanzas, selection and EditorView`);
           await page.capture(stem,{scenario:'Editor Paper First',scaleMechanism:'app-setting',fixture:{title,raw},geometry});
+          await page.eval(`document.querySelector('.vk-editor-heading__back').focus()`);
+          const backTarget=await editorTarget(page,'.vk-editor-heading__back');
+          check(fitsEditorAction(backTarget) && backTarget.focused && backTarget.focusRing && backTarget.rect.width>=48 && backTarget.rect.height>=48, `${stem}: tonal Back pill fits with visible focus ring`);
           await page.eval(`document.querySelector('${summary}').focus()`); await page.key('Enter');
           await page.waitFor(`document.querySelector('#editor-save-details').open`, 'native tools open');
-          await page.key('Tab');
-          const target=await editorTarget(page,'#export');
-          check(fitsEditorAction(target) && target.focused && target.focusRing && target.rect.width>=48 && target.rect.height>=48, `${stem}: Tab exposes the complete download action with a visible focus ring`);
+          const toolsTarget=await editorTarget(page,summary);
+          check(fitsEditorAction(toolsTarget) && toolsTarget.focused && toolsTarget.focusRing && toolsTarget.rect.width>=48 && toolsTarget.rect.height>=48 && !await page.eval(`Boolean(document.querySelector('#editor-save-details button'))`), `${stem}: opened tools keep server details without download action`);
           await page.key('Escape');
-          check(await page.eval(`document.querySelector('#editor-save-details').open && document.activeElement.id==='export' && !document.querySelector('#draft-preview').open`), `${stem}: Escape respects native disclosure semantics`);
-          await page.capture(stem+'-tools',{scenario:'Editor native tools',scaleMechanism:'app-setting',action:target});
-          await page.key('Tab',8); await page.key('Space');
-          check(await page.eval(`!document.querySelector('#editor-save-details').open && document.activeElement.matches('${summary}')`), `${stem}: Shift+Tab/Space close to the always visible trigger`);
+          check(await page.eval(`document.querySelector('#editor-save-details').open && document.activeElement.matches('${summary}') && !document.querySelector('#draft-preview').open`), `${stem}: Escape respects native disclosure semantics`);
+          await page.capture(stem+'-tools',{scenario:'Editor native tools',scaleMechanism:'app-setting',action:toolsTarget});
+          await page.key('Space');
+          check(await page.eval(`!document.querySelector('#editor-save-details').open && document.activeElement.matches('${summary}')`), `${stem}: Space closes native disclosure on trigger`);
         }
       }
     }
@@ -116,20 +116,13 @@ export async function editorPaperFirst(page, { args, check, openProfile, chooseT
     await page.send('Emulation.setTouchEmulationEnabled',{enabled:false});
     await page.typeInBody(' Lấy chữ mới khi công cụ còn mở.');
     check(await page.eval(`document.querySelector('#editor-save-details').open`),'typing leaves the native tools open');
-    const expected=title+'\n\n'+await page.eval(`${view}.state.doc.toString()`)+ '\n';
-    const downloads=mkdtempSync(join(tmpdir(),'vink-paper-export-'));
-    try {
-      await page.cdp.send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath:downloads,eventsEnabled:true});
-      await page.click('#export'); const file=await downloaded(downloads);
-      check(file.text===expected,'tools download reads the latest live NFD buffer after edits while open');
-    } finally { rmSync(downloads,{recursive:true,force:true}); }
     await page.click('#preview'); await page.waitFor(`document.querySelector('#draft-preview').open`,'preview after open tools');
     check(await page.eval(`!document.querySelector('#editor-save-details').open && document.querySelector('#draft-preview').textContent.includes('Lấy chữ mới khi công cụ còn mở.')`),'preview closes tools and reads current text');
     await page.key('Escape');
     await page.waitFor(`document.activeElement.id==='preview'`,'preview returns to its visible direct trigger');
     check(await page.eval(`document.activeElement.checkVisibility() && ${same}`),'preview dismiss never returns into collapsed tools');
     const {nodes}=await page.send('Accessibility.getFullAXTree');
-    check(nodes.some(n=>n.name?.value==='Thêm' && n.role?.value==='DisclosureTriangle') && nodes.some(n=>n.name?.value==='Xem trước' && n.role?.value==='button'),'AX tree exposes native disclosure and direct preview names');
+    check(nodes.some(n=>n.name?.value==='Thêm' && n.role?.value==='DisclosureTriangle') && nodes.some(n=>n.name?.value==='Xem trước' && n.role?.value==='button') && nodes.some(n=>n.name?.value==='Bàn viết' && n.role?.value==='link'),'AX tree exposes native disclosure, direct preview and Bàn viết back link');
     check(writes===0 && await page.status()==='unsaved','tools, appearance and preview perform no mutation or accidental form submit');
   } finally {
     page.cdp.listeners=page.cdp.listeners.filter(x=>x!==listener);

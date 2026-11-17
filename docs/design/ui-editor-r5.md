@@ -17,6 +17,8 @@ toolbar và đổi surface scoped Editor. R4/R5 bên dưới giữ làm lịch s
 ```text
 Editor
   Header — Bàn viết / Bản nháp
+*(Delta [#254](editor-quiet-254.md) ngày 17/11/2026: bỏ nút tải `.txt`, hướng dẫn ngắt dòng `.vk-editor-help` và notice `"Tải bản sao trước khi rời trang."`; làm lại nút về Bàn viết dạng Tonal + icon `ArrowBack`.)*
+
   Toolbar tonal — trạng thái ngắn + Chi tiết, Xem trước, Tải .txt, Lưu
   Recovery có điều kiện — trạng thái + nhắc tải bản sao + actions luôn thấy + Chi tiết native
   Writing sheet — label/title, label/body CodeMirror, hướng dẫn ngắt dòng tùy chọn

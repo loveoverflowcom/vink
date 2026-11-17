@@ -570,13 +570,11 @@ production đỏ; model mutant tạo OFF→old ON resurrection. Harness và kế
 - Autosave, bản khôi phục cục bộ, paste từ Word/Docs, IME thật trên thiết bị (WR-01/WR-02, S-01).
   Undo/redo và composition mô phỏng đã có trong editor CodeMirror, chưa phải bằng chứng IME hệ
   điều hành.
-- Export ngoài `.txt`; autosave/device recovery không được suy từ save projection #227.
+- Chưa có export nháp `.txt` hay export định dạng ngoài (#254 bỏ tải `.txt` trong editor); autosave/device recovery không được suy từ save projection #227.
   Tìm/lọc công khai và thẻ nháp đã có consumer Web (#99/#100). IndexedDB có adapter dưới gate
   tắt; chưa policy clearing/UX expired/cold offline launch ([READ-02](public-read-freshness.md)).
 - Diễn tập vận hành dài hạn, restore production và performance trên thiết bị đích vẫn cần
   evidence riêng; local backup/restore được kiểm ở lane `postgres`.
-- Tải `.txt` lần thứ hai trên cùng trang có thể khiến Chrome hỏi “tải nhiều tệp”; đó là quyền của
-  trình duyệt, không phải lỗi lưu.
 - Kiểm tra trên mobile thật, screen reader và đo hiệu năng.
 
 ## Việc tiếp theo

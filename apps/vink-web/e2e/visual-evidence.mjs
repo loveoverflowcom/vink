@@ -24,22 +24,22 @@ export const LEAVE_MODAL_BRANCHES = Object.freeze({
     disabledIds: [],
   }),
   failed: Object.freeze({
-    expectedIds: ['leave-stay', 'leave-save', 'leave-export', 'leave-discard'],
+    expectedIds: ['leave-stay', 'leave-save', 'leave-discard'],
     canDiscard: true,
     disabledIds: [],
   }),
   saving: Object.freeze({
-    expectedIds: ['leave-stay', 'leave-save', 'leave-export', 'leave-discard'],
+    expectedIds: ['leave-stay', 'leave-save', 'leave-discard'],
     canDiscard: true,
     disabledIds: ['leave-save'],
   }),
   'text-conflict': Object.freeze({
-    expectedIds: ['leave-stay', 'leave-save', 'leave-export', 'leave-discard'],
+    expectedIds: ['leave-stay', 'leave-save', 'leave-discard'],
     canDiscard: true,
     disabledIds: ['leave-save'],
   }),
   'tag-conflict': Object.freeze({
-    expectedIds: ['leave-stay', 'leave-save', 'leave-export', 'leave-discard'],
+    expectedIds: ['leave-stay', 'leave-save', 'leave-discard'],
     canDiscard: true,
     disabledIds: ['leave-save'],
   }),

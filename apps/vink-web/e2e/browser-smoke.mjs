@@ -70,8 +70,6 @@ const INDENTED_LINE = '    đã theo mưa về rất lâu.';
 const DRAFT_ONLY_LINE = 'Khổ đang viết dở — chưa công khai.';
 
 const TITLE = 'Thử nghiệm Bàn viết — Những ngày mưa ở khuỷu đường cũ, nơi người trở về vẫn nhớ tiếng Việt và những khổ thơ còn đang viết dở';
-// The existing export policy caps file names at 80 characters; the file keeps the full title.
-const EXPORT_NAME = 'Thử nghiệm Bàn viết — Những ngày mưa ở khuỷu đường cũ, nơi người trở về vẫn nhớ.txt';
 const BODY = 'Sáng nay trời đổ mưa rào,\n  ngõ nhỏ ướt mềm từng viên gạch cũ.\n\nNgười về có nhớ hay sao —\nỹ ỷ ữ ợ Đ đ.';
 const TAIL = ' (sửa tiếp)';
 const STANZA = '\n\nKhổ mới chưa lưu,\n  dòng thụt vào,\nlời cuối ở đây.';
@@ -677,8 +675,7 @@ class Page {
             appearanceHeading: bounds(prefix === 'page' ? '#page-appearance-title' : '#profile-title'),
             choices: bounds((prefix === 'page' ? '#me' : '#profile-menu') + ' .vk-appearance-region'),
             group: bounds('#' + prefix + '-theme'),
-            action: prefix === 'overlay' ? bounds('#open-me') : null,
-            footer: prefix === 'page' ? bounds('.vk-footer') : null };
+            action: prefix === 'overlay' ? bounds('#open-me') : null };
         })(),
         desk: { heading: geometry('#heading'), resume: geometry('#resume'), title: geometry('#resume h2'), disclosure: geometry('#resume-title-toggle'), metadata: geometry('#resume .vk-draft-meta'), cta: geometry('[data-testid=resume-draft]'), list: geometry('#drafts'), tools: geometry('#draft-tools'), search: geometry('#draft-search'), sort: geometry('#draft-sort'), refresh: geometry('#refresh-drafts'), scope: geometry('#draft-scope'), firstRow: geometry('[data-testid=draft-row]'), rowLink: geometry('.vk-draft-row__link'), rowTitle: geometry('.vk-draft-row__title'), rowTitleLines: titleLines, rowMetadata: geometry('.vk-draft-row .vk-draft-meta'), rowOpen: geometry('.vk-draft-row__open'), results: geometry('#draft-results'), listHeading: geometry('#draft-list-title'), searchField: geometry('.vk-draft-search > .vk-ui-field'), sortField: geometry('#draft-tools > .vk-ui-field:nth-child(2)') },
         reader: { title: geometry('#reader-header h1'), header: geometry('#reader-header'), body: geometry('.vk-reader .vk-document') },
@@ -1027,21 +1024,6 @@ class DraftGate {
     }
     return this[queue].shift();
   }
-}
-
-/** Waits for a finished download in `dir` and returns its name and UTF-8 text. Chrome reserves
- *  the final name with an empty file while `.crdownload` is still being written. */
-async function downloaded(dir, before = []) {
-  const deadline = Date.now() + 10000;
-  while (Date.now() < deadline) {
-    const all = readdirSync(dir);
-    const names = all.filter((n) => !before.includes(n));
-    if (names.length === 1 && !all.some((n) => n.endsWith('.crdownload'))) {
-      return { name: names[0], text: readFileSync(join(dir, names[0]), 'utf8') };
-    }
-    await sleep(100);
-  }
-  throw new Error(`no finished download; directory entries: ${JSON.stringify(readdirSync(dir))}`);
 }
 
 async function launchChrome(existingProfile) {
@@ -1745,12 +1727,11 @@ async function brandAssets(page) {
 
 async function textContrast(page, theme, surface = 'shell') {
   const selectors = surface.startsWith('editor-') ? (() => {
-    const list = ['[data-testid=save-status]', '#editor-save-details > summary', '#preview', '#draft-title', '#editor-body-label', '#editor-body-hint', '[data-testid=editor-body]', '.vk-editor-help'];
+    const list = ['.vk-editor-heading__back', '[data-testid=save-status]', '#editor-save-details > summary', '#preview', '#draft-title', '#editor-body-label', '#editor-body-hint', '[data-testid=editor-body]'];
     if (surface === 'editor-dirty' || surface === 'editor-saving' || surface === 'editor-failed') list.push('#save');
     if (surface === 'editor-conflict') list.push('#save-recovery-jump');
     return list;
   })() : {
-    'tag-rescue': ['#export-tags'],
     desk: ['.vk-desk-heading .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-search input', '#draft-sort', '#draft-sort-label', '#draft-scope'],
     explore: ['#public-query', '#explore-heading h1', '.vk-explore__heading p', '#public-query-help', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '.vk-public-scope', '.vk-discovery-filter-form legend', '.vk-discovery-options .vk-ui-choice__label'],
     filter: ['#modal-tag-help', '#modal-tag-form button[type=submit]'],
@@ -1890,15 +1871,11 @@ async function preferenceSurfaces(page) {
     await appearanceFocusContrast(page, theme);
     await page.capture(`r22-me-${theme}-selected-focus`);
     check(await appearanceRows(page, 'page'), `${theme}: page uses three compact native groups with icons and selection checks`);
-    check(await page.eval(`document.querySelectorAll('#build-info').length === 1 &&
+    check(await page.eval(`document.querySelectorAll('#build-info').length === 0 &&
       document.querySelector('#page-account h2').textContent === 'Tài khoản' &&
       document.querySelector('#page-account p').textContent === 'Tác giả mẫu (dữ liệu phát triển)' &&
       document.querySelector('#page-account .vk-account-illustration').getAttribute('aria-hidden') === 'true'`),
-      `${theme}: truthful account and one build disclosure`);
-    await page.click('#build-info summary');
-    check(await page.eval(`document.querySelector('#build-info').open && document.querySelector('#build-info').textContent.includes('Nội dung gắn Mẫu là dữ liệu thử.')`),
-      `${theme}: build detail keeps sample meaning reachable`);
-    await page.click('#build-info summary');
+      `${theme}: truthful account without prototype footer banner`);
   }
 
   await page.send('Network.setBlockedURLs', { urls: [`${args.base}/pkg/vink.js*`, `${args.base}/pkg/vink_bg.wasm*`] });
@@ -1906,12 +1883,7 @@ async function preferenceSurfaces(page) {
   const errorsBefore = page.errors.length;
   try {
     await page.goto(`${args.base}/toi`);
-    for (const id of ['build-info']) {
-      await page.eval(`document.querySelector('#${id} summary').focus()`);
-      for (const type of ['keyDown','keyUp']) await page.send('Input.dispatchKeyEvent', {type,key:' ',code:'Space',windowsVirtualKeyCode:32,nativeVirtualKeyCode:32,...(type==='keyDown'?{text:' '}:{})});
-      await page.waitFor(`document.querySelector('#${id}').open`, 'native no-JS '+id);
-      check(await page.eval(`document.documentElement.dataset.hydrated!=='true' && document.activeElement===document.querySelector('#${id} summary') && document.querySelector('#${id} .vk-ui-supporting-details__content').getBoundingClientRect().height>0`), `${id}: SSR native detail works without page JavaScript`);
-    }
+    check(await page.eval(`document.documentElement.dataset.hydrated!=='true' && document.querySelectorAll('#build-info').length===0 && document.querySelector('#page-account h2')?.textContent==='Tài khoản' && document.querySelector('#page-theme input[type=radio]')!==null`), 'SSR /toi renders without page JavaScript or build-info footer');
   } finally {
     await page.send('Emulation.setScriptExecutionDisabled', { value: false });
     await page.send('Network.setBlockedURLs', { urls: [] });
@@ -2558,14 +2530,14 @@ async function adaptiveShell(page) {
           });
           await page.eval(`scrollTo(0, document.documentElement.scrollHeight)`);
           check(await page.eval(`(() => {
-            const footer = document.querySelector('.vk-footer').getBoundingClientRect();
+            const content = document.querySelector('.vk-me').getBoundingClientRect();
             const bar = document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect();
-            return footer.bottom <= bar.top + 1;
-          })()`), `${width}px/${scale}% ${theme}: final disclosure remains reachable above navigation`);
+            return content.bottom <= bar.top + 1;
+          })()`), `${width}px/${scale}% ${theme}: end of page content remains reachable above navigation`);
           await page.capture(`${width}-me-${theme}-text${scale}-end`, {
             ...meMeta,
             state: `${theme}-text${scale}-end`,
-            requiredTargets: ['.vk-footer'],
+            requiredTargets: ['#page-text'],
           });
           await page.eval(`scrollTo(0, 0)`);
         }
@@ -2589,7 +2561,7 @@ async function adaptiveShell(page) {
   check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), '320px / 200% text reflows without horizontal overflow');
   await page.eval(`scrollTo(0, document.documentElement.scrollHeight)`);
   await page.waitFor(`parseFloat(getComputedStyle(document.querySelector('.vk-ui-scaffold')).getPropertyValue('--vk-ui-bar-height')) === document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().height`, 'measured bottom clearance');
-  check(await page.eval(`document.querySelector('.vk-footer').getBoundingClientRect().bottom <= document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().top`), 'bottom bar clears the end of page content at 320px / 200% text');
+  check(await page.eval(`document.querySelector('.vk-me').getBoundingClientRect().bottom <= document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().top`), 'bottom bar clears the end of page content at 320px / 200% text');
   await page.capture('320-me-dark-text200-bottom');
   await page.click('.vk-ui-bottom-nav a[href="/ban-viet"]');
   await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('#create-draft')`, 'mobile desk destination');
@@ -3435,8 +3407,8 @@ const captureEditorScene = (page, stem, editorScene, evidence) =>
 
 async function editorRecoveryScene(page, selector, scene, stem) {
   const actions = selector.includes('save-failed')
-    ? ['#retry-save', '#export-failed', '#save-failure-details > summary']
-    : ['#keep-mine', '#export-conflict', '#save-conflict-details > summary'];
+    ? ['#retry-save', '#save-failure-details > summary']
+    : ['#keep-mine', '#save-conflict-details > summary'];
   const detailSelector = selector.includes('save-failed') ? '#save-failure-details' : '#save-conflict-details';
   await page.eval(`scrollTo(0, 0)`);
   await editorLayoutReady(page);
@@ -3554,15 +3526,15 @@ async function leaveActionScene(page, scene, stage, expected, disabled = []) {
       `${name}: confirm stage hierarchy Quay lại=Tonal, confirm=Danger`);
   } else if (stage.includes('conflict')) {
     check(anatomy.classes['leave-stay']?.includes('vk-ui-button--filled') &&
-      anatomy.classes['leave-export']?.includes('vk-ui-button--tonal') &&
+      !anatomy.classes['leave-export'] &&
       anatomy.classes['leave-discard']?.includes('vk-ui-button--danger-text'),
-      `${name}: conflict hierarchy Stay=Filled, Export=Tonal, Discard=DangerText`);
+      `${name}: conflict hierarchy Stay=Filled, Discard=DangerText`);
   } else {
     check(anatomy.classes['leave-stay']?.includes('vk-ui-button--text') &&
       anatomy.classes['leave-save']?.includes('vk-ui-button--filled') &&
-      (!anatomy.classes['leave-export'] || anatomy.classes['leave-export']?.includes('vk-ui-button--tonal')) &&
+      !anatomy.classes['leave-export'] &&
       (!anatomy.classes['leave-discard'] || anatomy.classes['leave-discard']?.includes('vk-ui-button--danger-text')),
-      `${name}: saveable hierarchy Stay=Text, Save=Filled, Export=Tonal, Discard=DangerText`);
+      `${name}: saveable hierarchy Stay=Text, Save=Filled, Discard=DangerText`);
   }
   await page.eval(`document.querySelector('${title}').focus({preventScroll:true}); document.querySelector('${dialog}').scrollTop = 0`);
   const top = await read();
@@ -3727,8 +3699,8 @@ async function setEditorScene(page, { width, height, scale, theme }) {
 }
 
 async function editorChrome(page) {
-  await editorPaperFirst(page, { args, check, openProfile, chooseTheme, editorTarget, fitsEditorAction, downloaded });
-  await editorWriting(page, { args, check, setEditorScene, captureEditorScene, editorTarget, fitsEditorAction, downloaded });
+  await editorPaperFirst(page, { args, check, openProfile, chooseTheme, editorTarget, fitsEditorAction });
+  await editorWriting(page, { args, check, setEditorScene, captureEditorScene, editorTarget, fitsEditorAction });
   console.log('editor chrome: reflow, save races and recovery:');
   await page.viewport(1440);
   await page.goto(`${args.base}/ban-viet`);
@@ -3872,12 +3844,12 @@ async function editorChrome(page) {
   await sleep(200);
   page.cdp.listeners = page.cdp.listeners.filter((item) => item !== cleanPutListener);
   check(cleanWrites === 0 && (await page.status()) === 'saved', 'clean save slot, clean Ctrl/Cmd+S and clean title Enter issue zero PUT writes');
-  // Closed tools skip their hidden utilities. Preview is direct and precedes More.
+  // Preview is direct and precedes Thêm; closed details reach the native title directly.
   await page.eval(`document.querySelector('#preview').focus()`);
   await page.key('Tab');
   check(await page.eval(`document.activeElement.matches('#editor-save-details > summary') && document.activeElement.checkVisibility()`), 'clean Tab reaches the visible tools trigger');
   await page.key('Tab');
-  check(await page.eval(`document.activeElement.id === 'draft-title'`), 'closed tools skip hidden export and reach the native title');
+  check(await page.eval(`document.activeElement.id === 'draft-title'`), 'closed Thêm reaches the native title directly');
   for (const id of ['preview']) {
     await page.eval(`document.querySelector('#${id}').focus()`);
     await page.waitFor(`!document.querySelector('#${id}-tooltip').hidden && getComputedStyle(document.querySelector('#${id}-tooltip')).visibility === 'visible'`, `${id} focus tooltip`);
@@ -3914,11 +3886,7 @@ async function editorChrome(page) {
   // through actual Giao diện choices; its short fixture avoids DOM virtualization.
   await page.eval(`document.querySelector('.cm-content').dispatchEvent(new KeyboardEvent('keydown', {key:'s',ctrlKey:true,isComposing:true,bubbles:true,cancelable:true}))`);
   check((await page.status()) === 'unsaved', 'composing shortcut never saves a partial syllable (synthetic guard check)');
-  await page.eval(`document.querySelector('.vk-editor-help summary').focus()`);
-  await page.key('Enter');
-  check(await page.eval(`document.querySelector('.vk-editor-help').open && ${live}`), 'keyboard opens writing help without remounting the text');
-  await page.key('Enter');
-  check(await page.eval(`!document.querySelector('.vk-editor-help').open`), 'keyboard closes optional writing help');
+  check(!await page.eval(`Boolean(document.querySelector('.vk-editor-help'))`), 'quiet editor removes long line-break writing help');
   // Save -> direct preview -> visible native tools -> title, full-title disclosure, body.
   await page.eval(`document.querySelector('#save').focus()`);
   await page.key('Tab');
@@ -3926,7 +3894,7 @@ async function editorChrome(page) {
   await page.key('Tab');
   check(await page.eval(`document.activeElement.matches('#editor-save-details > summary') && document.activeElement.checkVisibility()`), 'dirty editor Tab reaches visible tools');
   await page.key('Tab');
-  check(await page.eval(`document.activeElement.id==='draft-title'`), 'closed tools skip hidden export from dirty state');
+  check(await page.eval(`document.activeElement.id==='draft-title'`), 'dirty closed Thêm reaches the native title directly');
   await page.key('Tab');
   check(await page.eval(`document.activeElement.matches('#draft-title-details > summary') && !document.querySelector('#draft-title-details').open`), 'editor Tab reaches the collapsed full-title disclosure');
   await page.key('Tab');
@@ -3969,7 +3937,7 @@ async function editorChrome(page) {
     await editorRecoveryScene(page, '[data-testid=save-failed]', scene, 'editor-failed');
   }
   await setEditorScene(page, { width: 1440, height: 900, scale: 100, theme: 'light' });
-  check(await page.eval(`document.querySelector('[data-testid=save-failed]').textContent.includes('chưa rõ') && document.querySelector('[data-testid=save-failed] .vk-ui-notice__message').textContent === 'Tải bản sao trước khi rời trang.' && !document.querySelector('#save-failure-details').open && !document.querySelector('#save-failure-details').contains(document.querySelector('#retry-save'))`), 'unconfirmed notice keeps backup reminder and recovery actions outside optional detail');
+  check(await page.eval(`document.querySelector('[data-testid=save-failed]').textContent.includes('chưa rõ') && document.querySelector('[data-testid=save-failed] .vk-ui-notice__message').textContent === 'Nội dung đang viết vẫn còn trên trang này. Chọn Thử lại hoặc giữ trang mở.' && !document.querySelector('#save-failure-details').open && !document.querySelector('#save-failure-details').contains(document.querySelector('#retry-save')) && !document.querySelector('#export-failed')`), 'unconfirmed notice keeps stay/retry guidance and recovery actions outside optional detail without download');
   await page.click('#save-failure-details > summary');
   check(await page.eval(`document.querySelector('#save-failure-details').open && document.querySelector('#save-failure-details').textContent.includes('chưa có bản khôi phục tự động') && ${live}`), 'pointer opens truthful native failure detail without remounting the editor');
   await page.key('Space');
@@ -4091,7 +4059,7 @@ async function editorChrome(page) {
     await page.key('Escape');
     await page.waitFor(`!document.querySelector('${dialog}').open`, `${kind} closed`);
   }
-  const conflictChoices = ['leave-stay', 'leave-save', 'leave-export', 'leave-discard'];
+  const conflictChoices = ['leave-stay', 'leave-save', 'leave-discard'];
   const discardChoices = ['discard-back', 'discard-confirm'];
   const shortScene = { width: 390, height: 420, scale: 200, theme: 'dark' };
   const conflictScenes = [320, 390, 1440].flatMap(width =>
@@ -4107,30 +4075,19 @@ async function editorChrome(page) {
   await setEditorScene(page, shortScene);
   await editorEvidenceNegativeControls(page, shortScene);
   const { nodes } = await page.send('Accessibility.getFullAXTree');
-  for (const label of ['Ở lại', 'Lưu và rời trang', 'Tải bản đang viết (.txt)', 'Rời mà không lưu…']) {
+  for (const label of ['Ở lại', 'Lưu và rời trang', 'Rời mà không lưu…']) {
     const action = nodes.find(node => node.role.value === 'button' && node.name?.value === label);
     check(action && (label !== 'Lưu và rời trang' || action.properties?.some(p => p.name === 'disabled' && p.value.value)),
       `Chrome AX exposes ${label} with the expected state`);
   }
+  check(!nodes.some(node => node.role.value === 'button' && /Tải/.test(node.name?.value ?? '')), 'Chrome AX exposes no draft export button in leave dialog');
   await page.eval(`document.querySelector('#leave-stay').focus()`);
   await page.key('Tab');
   await page.key('Enter');
   check(await page.eval(`document.querySelector('#leave-editor').open && location.pathname.endsWith('${workId}')`) &&
     (await page.draft(workId)).version === committed.version, 'activating disabled Save keeps the text conflict and stored version');
   await page.key('Tab');
-  check((await editorTarget(page, '#leave-export')).focused, 'keyboard reaches export after disabled Save');
-  const downloads = mkdtempSync(join(tmpdir(), 'vink-editor-194-download-'));
-  try {
-    await page.cdp.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloads, eventsEnabled: true });
-    await page.key('Enter');
-    const file = await downloaded(downloads);
-    check(file.name.endsWith('.txt') && file.text.startsWith(`${title.trim()}\n\n`) &&
-      file.text.endsWith(' Chữ còn trên trang.\n') && await page.eval(`document.querySelector('#leave-editor').open`),
-      'keyboard export downloads the live title and unsaved text without leaving');
-  } finally {
-    rmSync(downloads, { recursive: true, force: true });
-  }
-  await page.key('Tab');
+  check((await editorTarget(page, '#leave-discard')).focused, 'keyboard reaches discard after disabled Save');
   await page.key('Enter');
   await page.waitFor(`document.activeElement.id === 'discard-back'`, 'confirmation focuses the safe action');
   await leaveActionScene(page, shortScene, 'confirm', discardChoices);
@@ -4577,12 +4534,6 @@ async function mainPhase(page) {
   check(await page.eval(view), 'undo and redo in the same EditorView');
   await page.eval(`delete document.documentElement.dataset.theme`);
 
-  // Chrome asks before a page's second download, which headless Chrome cannot show: this phase
-  // downloads once (the recovery export); the toolbar export runs in the after-restart phase.
-  const downloads = mkdtempSync(join(tmpdir(), 'vink-downloads-'));
-  try {
-    await page.cdp.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloads, eventsEnabled: true });
-
     console.log('shortcut save, then back/forward with unsaved text:');
     await page.key('s', page.mod);
     await page.waitStatus('saved', 'Ctrl/Cmd+S save');
@@ -4605,7 +4556,8 @@ async function mainPhase(page) {
 
     console.log('cancelling a save-and-leave in flight:');
     const gate = new SaveGate(page);
-    await gate.enable();
+    try {
+      await gate.enable();
     await page.click(`a[href="${editorPath}"]`);
     await page.waitFor(`location.pathname === '${editorPath}' && ${EDITOR_READY}`, 'editor reopened');
     await page.typeInBody(' Hủy.');
@@ -4631,7 +4583,7 @@ async function mainPhase(page) {
     await sleep(700);
     check((await page.eval(`location.pathname`)) === editorPath, 'a late successful save did not navigate');
 
-    console.log('persistent failure: export, explicit discard, late acknowledgement:');
+    console.log('persistent failure: explicit discard and late acknowledgement:');
     await page.typeInBody(' Mất kết nối.');
     await page.click('#navigation-primary a[href="/"]');
     await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'leave dialog');
@@ -4640,9 +4592,6 @@ async function mainPhase(page) {
     await page.waitStatus('failed', 'failed save');
     check((await page.eval(`document.querySelector('#leave-editor-context').textContent`)).includes('Chưa lưu được'), 'dialog explains the failed save');
     check((await page.eval(`location.pathname`)) === editorPath && (await page.body()).endsWith(' Mất kết nối.'), 'failure keeps the route and the text');
-    await page.click('#leave-export');
-    const rescue = await downloaded(downloads);
-    check(rescue.text.endsWith(' Mất kết nối.\n'), `recovery export holds the unsaved text (${rescue.name})`);
     await page.click('#leave-save');
     const late = await gate.next();
     await page.click('#leave-discard');
@@ -4666,9 +4615,8 @@ async function mainPhase(page) {
     await sleep(1000);
     check((await page.eval(`location.pathname`)) === `/ban-viet/${SAMPLE_WORK}`, 'the late acknowledgement did not navigate again');
     check((await page.status()) === 'unsaved', 'nor marked the other draft saved');
-    await gate.disable();
   } finally {
-    rmSync(downloads, { recursive: true, force: true });
+    await gate.disable();
   }
 
   await draftTags(page, workId);
@@ -4844,45 +4792,12 @@ async function draftTags(page, workId) {
   const tagConflictScene = { width: 320, height: 800, scale: 200, theme: 'dark' };
   const beforeScene = await page.eval(`({width:innerWidth,height:innerHeight,font:document.documentElement.style.fontSize,theme:document.documentElement.dataset.theme ?? null})`);
   await setEditorScene(page, tagConflictScene);
-  const tagRescue = await page.eval(`(() => {
-    const actions = [...document.querySelectorAll('button')].filter(el =>
-      /Tải.*\\.txt/.test(el.textContent) && el.checkVisibility() && !el.closest('details,dialog'));
-    return actions.map(el => '#' + el.id);
-  })()`);
-  check(tagRescue.length > 0, 'tag-only conflict keeps a direct text download outside closed tools (AC-03)');
-  for (const width of [320,390]) for (const scale of [100,200]) for (const theme of ['light','dark']) {
-    const scene = {width,height:800,scale,theme};
-    await setEditorScene(page, scene);
-    await page.eval(`document.querySelector('#tags-keep-mine').focus()`);
-    await page.key('Tab');
-    const action = await editorTarget(page, '#export-tags');
-    if (width===320 && scale===100) await textContrast(page, theme, 'tag-rescue');
-    check(fitsEditorAction(action) && action.focused && action.focusRing && action.rect.width>=48 && action.rect.height>=48,
-      `tag recovery ${width}/${scale}/${theme}: Tab reaches a complete direct 48px download`);
-    if (width===320 && scale===200) await captureEditorScene(page, 'tag-recovery-export', scene, {action});
-  }
-  await setEditorScene(page, tagConflictScene);
-  const textBeforeRescue = await page.draft(workId);
-  const exportBody = await page.body();
-  const exportTitle = await page.eval(`document.querySelector('#draft-title').value`);
-  const rescueDownloads = mkdtempSync(join(tmpdir(), 'vink-tag-rescue-'));
-  page.cdp.listeners.push(countPuts);
-  try {
-    await page.cdp.send('Browser.setDownloadBehavior', {behavior:'allow',downloadPath:rescueDownloads,eventsEnabled:true});
-    const beforePuts = puts;
-    await page.click('#export-tags');
-    const file = await downloaded(rescueDownloads);
-    check(file.text===exportTitle+'\n\n'+exportBody+'\n' && puts===beforePuts &&
-      (await page.draft(workId)).version===textBeforeRescue.version && (await draftTagsOf(page,workId)).version===3,
-      'tag conflict rescue exports live text without saving text, overwriting tags or submitting the form');
-  } finally {
-    page.cdp.listeners = page.cdp.listeners.filter(item => item !== countPuts);
-    rmSync(rescueDownloads,{recursive:true,force:true});
-  }
+  check(await page.eval(`!document.querySelector('#export-tags') && document.querySelector('#tags-keep-mine')?.checkVisibility() && !document.querySelector('#tags-keep-mine').closest('details,dialog')`),
+    'tag-only conflict removes export and keeps direct overwrite outside closed tools');
   await page.click('.vk-editor-heading__back');
   await page.waitFor(`document.querySelector('#leave-editor').open`, 'leave with tag conflict');
   await leaveActionScene(page, tagConflictScene, 'tag-conflict',
-    ['leave-stay', 'leave-save', 'leave-export', 'leave-discard'], ['leave-save']);
+    ['leave-stay', 'leave-save', 'leave-discard'], ['leave-save']);
   check(await page.eval(`document.querySelector('#leave-editor-context').textContent.includes('Thẻ đã đổi ở nơi khác')`), 'leave prompt explains the tag conflict');
   await page.key('Tab');
   await page.key('Enter');
@@ -4924,8 +4839,8 @@ async function draftTags(page, workId) {
   check(stored.version === 5, 'the dropped answer belonged to a committed save');
   check((await page.eval(`location.pathname`)) === editorPath, 'a lost tag acknowledgement keeps the author in the editor');
   await page.click('#leave-stay');
-  check(await page.eval(`document.querySelector('[data-testid=tag-failed] #export-tags')?.checkVisibility() && !document.querySelector('#export-tags').closest('details,dialog')`),
-    'uncertain tag save also keeps direct export outside tools');
+  check(await page.eval(`!document.querySelector('#export-tags') && document.querySelector('[data-testid=tag-failed] #tags-retry')?.checkVisibility() && !document.querySelector('#tags-retry').closest('details,dialog')`),
+    'uncertain tag save removes export and keeps direct retry outside tools');
   await page.click('#tags-retry');
   await waitTagStatus(page, 'unsaved', 'reconciled version with a newer local selection');
   stored = await draftTagsOf(page, workId);
@@ -5289,23 +5204,12 @@ async function afterRestartPhase(page) {
   check((await page.eval(`document.querySelector('#editor-save-details').textContent`)).includes(`phiên bản ${state.version}`), 'version survived the restart');
   await retiredTagAfterRestart(page, state.workId);
 
-  console.log('export keeps the text being written:');
-  const downloads = mkdtempSync(join(tmpdir(), 'vink-downloads-'));
-  try {
-    await page.cdp.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloads, eventsEnabled: true });
-    await page.typeInBody(STANZA);
-    const current = await page.body();
-    check(current === state.text + STANZA, 'unsaved stanza typed after the restart');
-    await page.click('#editor-save-details > summary');
-    await page.click('#export');
-    const file = await downloaded(downloads);
-    // HFS+ returns decomposed file names; only the name comparison is canonicalized.
-    check(file.name.normalize('NFC') === EXPORT_NAME, `export file uses the capped title name (${file.name})`);
-    check(file.text === `${state.title}\n\n${current}\n`, 'export holds the title and the unsaved text with lines and stanzas');
-    check((await page.status()) === 'unsaved', 'export is not a save');
-  } finally {
-    rmSync(downloads, { recursive: true, force: true });
-  }
+  console.log('unsaved edit after restart keeps live buffer without export:');
+  await page.typeInBody(STANZA);
+  const current = await page.body();
+  check(current === state.text + STANZA, 'unsaved stanza typed after the restart');
+  check(!await page.eval(`Boolean(document.querySelector('#export'))`), 'no export button after restart');
+  check((await page.status()) === 'unsaved', 'typing after restart marks draft unsaved');
 }
 
 mkdirSync(dirname(args.state), { recursive: true });

@@ -353,22 +353,21 @@ test('AC-02: modal oracle enforces all can_discard/confirm branches and catches 
     actions: [
       { id: 'leave-stay', disabled: false, disabledReason: null },
       { id: 'leave-save', disabled: true, disabledReason: 'Đang có bản mới trên máy chủ.' },
-      { id: 'leave-export', disabled: false, disabledReason: null },
       { id: 'leave-discard', disabled: false, disabledReason: null },
     ],
   };
   assert.equal(evaluateLeaveModalBranch(modal, 'text-conflict').ok, true);
   assert.equal(evaluateLeaveModalBranch(modal, 'saving').ok, true);
 
-  // Failed state keeps leave-save enabled alongside export + discard (can_discard=true).
+  // Failed state keeps leave-save enabled alongside discard (can_discard=true).
   const failedModal = {
     ...modal,
     actions: modal.actions.map((a) => (a.id === 'leave-save' ? { ...a, disabled: false, disabledReason: null } : a)),
   };
   assert.equal(evaluateLeaveModalBranch(failedModal, 'failed').ok, true);
 
-  // Negative case: missing last modal action (#leave-discard dropped, leaving only 3 buttons).
-  const missingLast = { ...modal, actions: modal.actions.slice(0, 3) };
+  // Negative case: missing last modal action (#leave-discard dropped, leaving only 2 buttons).
+  const missingLast = { ...modal, actions: modal.actions.slice(0, 2) };
   const missingResult = evaluateLeaveModalBranch(missingLast, 'text-conflict');
   assert.equal(missingResult.ok, false);
   assert.ok(missingResult.reasons[0].includes('leave-discard'));

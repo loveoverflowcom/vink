@@ -995,7 +995,7 @@ fn run_web_checks(
                 }
             };
             let ok = report.step(
-        "confirmed draft survives server restart (browser reload), retired tag kept, export",
+        "confirmed draft survives server restart (browser reload), retired tag kept, unsaved buffer",
         || smoke(root, &["--phase", "after-restart"], chrome, origin, state),
     );
             let _ = restarted.terminate(Duration::from_secs(15));
