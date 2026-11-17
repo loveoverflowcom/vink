@@ -1,0 +1,6 @@
+BUILD SUCCESSFUL in 4m 3s
+39 actionable tasks: 39 executed
+
+verification summary
+  PASS  ui tokens: generated files match
+  PASS  CMP: common + desktop tests and captures

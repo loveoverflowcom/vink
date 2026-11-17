@@ -1,0 +1,202 @@
+  ok  #259 loading requests no artwork and claims no empty corpus
+  ok  #259 loading-to-empty preserves the input node, unapplied query, focus and caret
+  SOFT-FAIL audit: retained no-results stays, labelled stale, while the same query refreshes
+  SOFT-FAIL audit: same-query refresh settles without remounting the no-results slot
+  ok  #259 no-results: semantic artwork is rendered
+  ok  #259 no-results: shared artwork, decoded dimensions, decoration and one result status/create target
+  ok  #259 no-results 320/light/100: no horizontal overflow
+  SOFT-ok  audit no-results 320/light/100: cluster centred in the free region below the controls (delta -0.1px, gaps 36/36.2)
+  ok  #259 no-results 320/light/100: fixed artwork and scaled body type
+  ok  light desk-empty text contrast >= 4.5 (min 6.72; disabled controls exempt)
+  ok  #259 no-results 320/light/100: recovery reachable above navigation
+  ok  #259 no-results 320/light/100: privacy copy reachable above navigation
+  ok  #259 no-results 320/light/200: no horizontal overflow
+  SOFT-ok  audit no-results 320/light/200: cluster centred in the free region below the controls (delta 0.1px, gaps 72/71.8)
+  ok  #259 no-results 320/light/200: fixed artwork and scaled body type
+  ok  #259 no-results 320/light/200: recovery reachable above navigation
+  ok  #259 no-results 320/light/200: privacy copy reachable above navigation
+  ok  #259 no-results 320/dark/100: no horizontal overflow
+  SOFT-ok  audit no-results 320/dark/100: cluster centred in the free region below the controls (delta -0.1px, gaps 36/36.2)
+  ok  #259 no-results 320/dark/100: fixed artwork and scaled body type
+  ok  dark desk-empty text contrast >= 4.5 (min 8.16; disabled controls exempt)
+  ok  #259 no-results 320/dark/100: recovery reachable above navigation
+  ok  #259 no-results 320/dark/100: privacy copy reachable above navigation
+  ok  #259 no-results 320/dark/200: no horizontal overflow
+  SOFT-ok  audit no-results 320/dark/200: cluster centred in the free region below the controls (delta 0.1px, gaps 72/71.8)
+  ok  #259 no-results 320/dark/200: fixed artwork and scaled body type
+  ok  #259 no-results 320/dark/200: recovery reachable above navigation
+  ok  #259 no-results 320/dark/200: privacy copy reachable above navigation
+  ok  #259 no-results 390/light/100: no horizontal overflow
+  SOFT-ok  audit no-results 390/light/100: cluster centred in the free region below the controls (delta -0.1px, gaps 36/36.2)
+  ok  #259 no-results 390/light/100: fixed artwork and scaled body type
+  ok  light desk-empty text contrast >= 4.5 (min 6.72; disabled controls exempt)
+  ok  #259 no-results 390/light/100: recovery reachable above navigation
+  ok  #259 no-results 390/light/100: privacy copy reachable above navigation
+  ok  #259 no-results 390/light/200: no horizontal overflow
+  SOFT-ok  audit no-results 390/light/200: cluster centred in the free region below the controls (delta 0px, gaps 72/72)
+  ok  #259 no-results 390/light/200: fixed artwork and scaled body type
+  ok  #259 no-results 390/light/200: recovery reachable above navigation
+  ok  #259 no-results 390/light/200: privacy copy reachable above navigation
+  ok  #259 no-results 390/dark/100: no horizontal overflow
+  SOFT-ok  audit no-results 390/dark/100: cluster centred in the free region below the controls (delta -0.1px, gaps 36/36.2)
+  ok  #259 no-results 390/dark/100: fixed artwork and scaled body type
+  ok  dark desk-empty text contrast >= 4.5 (min 8.16; disabled controls exempt)
+  ok  #259 no-results 390/dark/100: recovery reachable above navigation
+  ok  #259 no-results 390/dark/100: privacy copy reachable above navigation
+  ok  #259 no-results 390/dark/200: no horizontal overflow
+  SOFT-ok  audit no-results 390/dark/200: cluster centred in the free region below the controls (delta 0px, gaps 72/72)
+  ok  #259 no-results 390/dark/200: fixed artwork and scaled body type
+  ok  #259 no-results 390/dark/200: recovery reachable above navigation
+  ok  #259 no-results 390/dark/200: privacy copy reachable above navigation
+  ok  #259 no-results 834/light/100: no horizontal overflow
+  SOFT-ok  audit no-results 834/light/100: cluster centred in the free region below the controls (delta -6.1px, gaps 36/48.3)
+  ok  #259 no-results 834/light/100: fixed artwork and scaled body type
+  ok  light desk-empty text contrast >= 4.5 (min 6.72; disabled controls exempt)
+  ok  #259 no-results 834/light/100: recovery reachable above navigation
+  ok  #259 no-results 834/light/100: privacy copy reachable above navigation
+  ok  #259 no-results 834/light/200: no horizontal overflow
+  SOFT-ok  audit no-results 834/light/200: cluster centred in the free region below the controls (delta -0.2px, gaps 72/72.4)
+  ok  #259 no-results 834/light/200: fixed artwork and scaled body type
+  ok  #259 no-results 834/light/200: recovery reachable above navigation
+  ok  #259 no-results 834/light/200: privacy copy reachable above navigation
+  ok  #259 no-results 834/dark/100: no horizontal overflow
+  SOFT-ok  audit no-results 834/dark/100: cluster centred in the free region below the controls (delta -6.1px, gaps 36/48.3)
+  ok  #259 no-results 834/dark/100: fixed artwork and scaled body type
+  ok  dark desk-empty text contrast >= 4.5 (min 8.16; disabled controls exempt)
+  ok  #259 no-results 834/dark/100: recovery reachable above navigation
+  ok  #259 no-results 834/dark/100: privacy copy reachable above navigation
+  ok  #259 no-results 834/dark/200: no horizontal overflow
+  SOFT-ok  audit no-results 834/dark/200: cluster centred in the free region below the controls (delta -0.2px, gaps 72/72.4)
+  ok  #259 no-results 834/dark/200: fixed artwork and scaled body type
+  ok  #259 no-results 834/dark/200: recovery reachable above navigation
+  ok  #259 no-results 834/dark/200: privacy copy reachable above navigation
+  ok  #259 no-results 1440/light/100: no horizontal overflow
+  SOFT-FAIL audit no-results 1440/light/100: cluster centred in the free region below the controls (delta -47.6px, gaps 36/131.3)
+  ok  #259 no-results 1440/light/100: fixed artwork and scaled body type
+  ok  light desk-empty text contrast >= 4.5 (min 6.72; disabled controls exempt)
+  ok  #259 no-results 1440/light/100: recovery reachable above navigation
+  ok  #259 no-results 1440/light/100: privacy copy reachable above navigation
+  ok  #259 no-results 1440/light/200: no horizontal overflow
+  SOFT-ok  audit no-results 1440/light/200: cluster centred in the free region below the controls (delta 0.2px, gaps 72/71.6)
+  ok  #259 no-results 1440/light/200: fixed artwork and scaled body type
+  ok  #259 no-results 1440/light/200: recovery reachable above navigation
+  ok  #259 no-results 1440/light/200: privacy copy reachable above navigation
+  ok  #259 no-results 1440/dark/100: no horizontal overflow
+  SOFT-FAIL audit no-results 1440/dark/100: cluster centred in the free region below the controls (delta -47.6px, gaps 36/131.3)
+  ok  #259 no-results 1440/dark/100: fixed artwork and scaled body type
+  ok  dark desk-empty text contrast >= 4.5 (min 8.16; disabled controls exempt)
+  ok  #259 no-results 1440/dark/100: recovery reachable above navigation
+  ok  #259 no-results 1440/dark/100: privacy copy reachable above navigation
+  ok  #259 no-results 1440/dark/200: no horizontal overflow
+  SOFT-ok  audit no-results 1440/dark/200: cluster centred in the free region below the controls (delta 0.2px, gaps 72/71.6)
+  ok  #259 no-results 1440/dark/200: fixed artwork and scaled body type
+  ok  #259 no-results 1440/dark/200: recovery reachable above navigation
+  ok  #259 no-results 1440/dark/200: privacy copy reachable above navigation
+  ok  #259 no-results: viewport, text scale and theme changes request no additional artwork
+  SOFT-ok  audit: clearing a search miss shows no first-use or its artwork before the unfiltered head answers
+  ok  #259 clear keeps input identity and restores search focus
+  ok  #259 first-draft: semantic artwork is rendered
+  ok  #259 first-draft: shared artwork, decoded dimensions, decoration and one result status/create target
+  ok  #259 first-draft 320/light/100: no horizontal overflow
+  SOFT-ok  audit first-draft 320/light/100: cluster centred in the free region below the controls (delta -0.1px, gaps 36/36.2)
+  ok  #259 first-draft 320/light/100: fixed artwork and scaled body type
+  ok  light desk-empty text contrast >= 4.5 (min 6.72; disabled controls exempt)
+  ok  #259 first-draft 320/light/100: recovery reachable above navigation
+  ok  #259 first-draft 320/light/100: privacy copy reachable above navigation
+  ok  #259 first-draft 320/light/200: no horizontal overflow
+  SOFT-ok  audit first-draft 320/light/200: cluster centred in the free region below the controls (delta 0.1px, gaps 72/71.8)
+  ok  #259 first-draft 320/light/200: fixed artwork and scaled body type
+  ok  #259 first-draft 320/light/200: recovery reachable above navigation
+  ok  #259 first-draft 320/light/200: privacy copy reachable above navigation
+  ok  #259 first-draft 320/dark/100: no horizontal overflow
+  SOFT-ok  audit first-draft 320/dark/100: cluster centred in the free region below the controls (delta -0.1px, gaps 36/36.2)
+  ok  #259 first-draft 320/dark/100: fixed artwork and scaled body type
+  ok  dark desk-empty text contrast >= 4.5 (min 8.16; disabled controls exempt)
+  ok  #259 first-draft 320/dark/100: recovery reachable above navigation
+  ok  #259 first-draft 320/dark/100: privacy copy reachable above navigation
+  ok  #259 first-draft 320/dark/200: no horizontal overflow
+  SOFT-ok  audit first-draft 320/dark/200: cluster centred in the free region below the controls (delta 0.1px, gaps 72/71.8)
+  ok  #259 first-draft 320/dark/200: fixed artwork and scaled body type
+  ok  #259 first-draft 320/dark/200: recovery reachable above navigation
+  ok  #259 first-draft 320/dark/200: privacy copy reachable above navigation
+  ok  #259 first-draft 390/light/100: no horizontal overflow
+  SOFT-ok  audit first-draft 390/light/100: cluster centred in the free region below the controls (delta -0.1px, gaps 36/36.2)
+  ok  #259 first-draft 390/light/100: fixed artwork and scaled body type
+  ok  light desk-empty text contrast >= 4.5 (min 6.72; disabled controls exempt)
+  ok  #259 first-draft 390/light/100: recovery reachable above navigation
+  ok  #259 first-draft 390/light/100: privacy copy reachable above navigation
+  ok  #259 first-draft 390/light/200: no horizontal overflow
+  SOFT-ok  audit first-draft 390/light/200: cluster centred in the free region below the controls (delta 0px, gaps 72/72)
+  ok  #259 first-draft 390/light/200: fixed artwork and scaled body type
+  ok  #259 first-draft 390/light/200: recovery reachable above navigation
+  ok  #259 first-draft 390/light/200: privacy copy reachable above navigation
+  ok  #259 first-draft 390/dark/100: no horizontal overflow
+  SOFT-ok  audit first-draft 390/dark/100: cluster centred in the free region below the controls (delta -0.1px, gaps 36/36.2)
+  ok  #259 first-draft 390/dark/100: fixed artwork and scaled body type
+  ok  dark desk-empty text contrast >= 4.5 (min 8.16; disabled controls exempt)
+  ok  #259 first-draft 390/dark/100: recovery reachable above navigation
+  ok  #259 first-draft 390/dark/100: privacy copy reachable above navigation
+  ok  #259 first-draft 390/dark/200: no horizontal overflow
+  SOFT-ok  audit first-draft 390/dark/200: cluster centred in the free region below the controls (delta 0px, gaps 72/72)
+  ok  #259 first-draft 390/dark/200: fixed artwork and scaled body type
+  ok  #259 first-draft 390/dark/200: recovery reachable above navigation
+  ok  #259 first-draft 390/dark/200: privacy copy reachable above navigation
+  ok  #259 first-draft 834/light/100: no horizontal overflow
+  SOFT-ok  audit first-draft 834/light/100: cluster centred in the free region below the controls (delta -0.5px, gaps 36/37.1)
+  ok  #259 first-draft 834/light/100: fixed artwork and scaled body type
+  ok  light desk-empty text contrast >= 4.5 (min 6.72; disabled controls exempt)
+  ok  #259 first-draft 834/light/100: recovery reachable above navigation
+  ok  #259 first-draft 834/light/100: privacy copy reachable above navigation
+  ok  #259 first-draft 834/light/200: no horizontal overflow
+  SOFT-ok  audit first-draft 834/light/200: cluster centred in the free region below the controls (delta -0.2px, gaps 72/72.4)
+  ok  #259 first-draft 834/light/200: fixed artwork and scaled body type
+  ok  #259 first-draft 834/light/200: recovery reachable above navigation
+  ok  #259 first-draft 834/light/200: privacy copy reachable above navigation
+  ok  #259 first-draft 834/dark/100: no horizontal overflow
+  SOFT-ok  audit first-draft 834/dark/100: cluster centred in the free region below the controls (delta -0.5px, gaps 36/37.1)
+  ok  #259 first-draft 834/dark/100: fixed artwork and scaled body type
+  ok  dark desk-empty text contrast >= 4.5 (min 8.16; disabled controls exempt)
+  ok  #259 first-draft 834/dark/100: recovery reachable above navigation
+  ok  #259 first-draft 834/dark/100: privacy copy reachable above navigation
+  ok  #259 first-draft 834/dark/200: no horizontal overflow
+  SOFT-ok  audit first-draft 834/dark/200: cluster centred in the free region below the controls (delta -0.2px, gaps 72/72.4)
+  ok  #259 first-draft 834/dark/200: fixed artwork and scaled body type
+  ok  #259 first-draft 834/dark/200: recovery reachable above navigation
+  ok  #259 first-draft 834/dark/200: privacy copy reachable above navigation
+  ok  #259 first-draft 1440/light/100: no horizontal overflow
+  SOFT-FAIL audit first-draft 1440/light/100: cluster centred in the free region below the controls (delta -42px, gaps 36/120.1)
+  ok  #259 first-draft 1440/light/100: fixed artwork and scaled body type
+  ok  light desk-empty text contrast >= 4.5 (min 6.72; disabled controls exempt)
+  ok  #259 first-draft 1440/light/100: recovery reachable above navigation
+  ok  #259 first-draft 1440/light/100: privacy copy reachable above navigation
+  ok  #259 first-draft 1440/light/200: no horizontal overflow
+  SOFT-ok  audit first-draft 1440/light/200: cluster centred in the free region below the controls (delta 0.2px, gaps 72/71.6)
+  ok  #259 first-draft 1440/light/200: fixed artwork and scaled body type
+  ok  #259 first-draft 1440/light/200: recovery reachable above navigation
+  ok  #259 first-draft 1440/light/200: privacy copy reachable above navigation
+  ok  #259 first-draft 1440/dark/100: no horizontal overflow
+  SOFT-FAIL audit first-draft 1440/dark/100: cluster centred in the free region below the controls (delta -42px, gaps 36/120.1)
+  ok  #259 first-draft 1440/dark/100: fixed artwork and scaled body type
+  ok  dark desk-empty text contrast >= 4.5 (min 8.16; disabled controls exempt)
+  ok  #259 first-draft 1440/dark/100: recovery reachable above navigation
+  ok  #259 first-draft 1440/dark/100: privacy copy reachable above navigation
+  ok  #259 first-draft 1440/dark/200: no horizontal overflow
+  SOFT-ok  audit first-draft 1440/dark/200: cluster centred in the free region below the controls (delta 0.2px, gaps 72/71.6)
+  ok  #259 first-draft 1440/dark/200: fixed artwork and scaled body type
+  ok  #259 first-draft 1440/dark/200: recovery reachable above navigation
+  ok  #259 first-draft 1440/dark/200: privacy copy reachable above navigation
+  ok  #259 first-draft: viewport, text scale and theme changes request no additional artwork
+  ok  #259 no-results: actual HTTP MIME, bytes and dependency hash
+  ok  #259 first-draft: actual HTTP MIME, bytes and dependency hash
+  ok  #259 only the current artwork is requested, at most once per transition (decoded-cache reuse allowed): ["http://127.0.0.1:52601/pkg/empty/vink-empty-first-draft.webp","http://127.0.0.1:52601/pkg/empty/vink-empty-no-results.webp","http://127.0.0.1:52601/pkg/empty/vink-empty-first-draft.webp"]
+  ok  #259 blocked image preserves meaningful HTML, status and enabled recovery
+  ok  #259 retained empty during refresh keeps its stale qualifier and disables create
+  ok  #259 load error preserves warning and is not artwork empty
+  ok  #259 empty page with continuation is rejected by existing PageChain; remains an error, never first-use
+  ok  #259 simulated composition never submits or remounts search
+  ok  #259 one injected corrupt response preserves HTML and create
+  ok  #259 confirmed account change clears private query/artwork while retaining the input owner
+  ok  #259 late old-session read cannot replace new-session first-use
+  ok  #259 late successful create from old session cannot navigate, retry POST or change new first-use state
+  ok  no console errors or exceptions
+browser-smoke: PASS (desk-empty)

@@ -26,6 +26,10 @@ muốn viết.”. Một create target, nhãn/Pending/Uncertain/Reconciled và G
 owner cũ; không POST từ mount. Loading/error/auth không thành fresh first-use; retained empty
 đang refresh còn aria-busy/stale qualifier, lỗi giữ warning hiện hữu.
 
+Vị trí (audit 17/11/2026): cụm nằm giữa khoảng trống từ `.vk-draft-controls` tới thông điệp
+riêng tư; thông điệp riêng tư về cuối vùng nội dung. Không có khoảng trống thừa thì giữ thứ tự cũ
+và cuộn theo trang. NoResults đã settle được giữ nguyên (không gỡ/gắn lại) khi refresh cùng query,
+kèm `author-work-stale` và `aria-busy`, đúng UIS-03 `Empty + Loading`. Xem [audit 17/11/2026](../development/evidence/empty-state-audit-261/README.md).
 Sizing/surface đúng `.vk-empty-state*`: ảnh 192 CSS px dưới 760px, 240px ở desktop,
 intrinsic 512×427; không nhân đôi theo text200. Body tokens hiện hữu, không fixed hero height,
 overlay hay scroll riêng. Responsive giữ CTA và privacy copy cuộn tới được trên bottom nav.

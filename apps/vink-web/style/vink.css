@@ -496,7 +496,7 @@ a {
 }
 .vk-desk-privacy { margin-top: var(--vk-space-8); font-size: var(--vk-type-label-size); }
 /* The first-use CTA drops its icon to keep the full label measure at 320px/text200. */
-.vk-desk-empty #create-draft > .vk-ui-icon { display: none; }
+.vk-empty-state__actions #create-draft > .vk-ui-icon { display: none; }
 
 /* Paper First (#218): quiet context/tools in flow; the manuscript owns the surface. */
 
@@ -973,11 +973,33 @@ a {
 /* Queue status has no reserved blank row after a settled read (#205). */
 .vk-moderation__queue > p:empty { display: none; }
 
-/* Empty artwork R1: app-owned presentation shared with Desk (#259), no state authority. */
 .vk-discovery #community-stream:focus-visible {
   outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
   outline-offset: var(--vk-size-focus-offset);
 }
+
+/* Empty artwork R1: app-owned presentation shared with Desk (#259), no state authority. */
+/* Placement: a settled Empty State is centred in the free block space the screen has below its
+ * own heading/controls. `.vk-main` already excludes rail, top bar and bottom-nav insets, so no
+ * viewport arithmetic. Only a screen that renders one becomes a column flex chain. Its auto
+ * margins fall back to top alignment when content is taller. Page scroll stays the only scroll:
+ * no fixed height, overlay or nested scroller. */
+.vk-main:has(.vk-empty-state),
+.vk-main:has(.vk-empty-state) :is(.vk-desk--index, [data-testid=draft-content], .vk-draft-list,
+  .vk-discovery, .vk-discovery-main, #community-stream, #public-collection, #public-results) {
+  display: flex;
+  flex-direction: column;
+}
+.vk-main:has(.vk-empty-state) :is(.vk-desk--index, [data-testid=draft-content], .vk-draft-list,
+  .vk-discovery, .vk-discovery-layout, #community-stream, #public-collection, #public-results) {
+  flex: 1 0 auto;
+}
+.vk-main:has(.vk-empty-state) .vk-discovery-layout { align-items: stretch; }
+/* Auto inline margins disable flex stretch, so keep Desk's measure instead of shrinking to content. */
+.vk-main:has(.vk-empty-state) > .vk-desk--index { inline-size: 100%; }
+.vk-main :is(#public-results, .vk-draft-list) > :has(> .vk-empty-state) { margin-block: auto; }
+/* Flex keeps the margins block layout used to collapse, so a nav without links must not offset it. */
+.vk-main:has(.vk-empty-state) .vk-public-pagination:empty { display: none; }
 .vk-empty-state {
   display: grid;
   justify-items: center;

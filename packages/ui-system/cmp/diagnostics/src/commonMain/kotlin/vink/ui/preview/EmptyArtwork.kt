@@ -2,6 +2,7 @@ package vink.ui.preview
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -10,6 +11,7 @@ import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlin.io.encoding.Base64
@@ -64,10 +66,18 @@ internal fun ArtworkEmptyState(artwork: EmptyArtwork, text: String, actionLabel:
     EmptyArtworkPanel(image, text, actionLabel, onAction, Modifier.onSizeChanged { viewport = it })
 }
 
-/** Text/action render independently of loading, decoder failure or host inactivity. */
+/**
+ * Text/action render independently of loading, decoder failure or host inactivity.
+ * One centered cluster like Web `.vk-empty-state`: artwork, a muted centered sentence, the CTA.
+ */
 @Composable
 fun EmptyArtworkPanel(image: ImageBitmap?, text: String, actionLabel: String, onAction: () -> Unit, imageModifier: Modifier = Modifier) {
-    Column(Modifier.fillMaxWidth().testTag("empty-artwork-panel"), verticalArrangement = Arrangement.spacedBy(VinkDimens.Space3)) {
+    val vink = LocalVink.current
+    Column(
+        Modifier.fillMaxWidth().testTag("empty-artwork-panel"),
+        verticalArrangement = Arrangement.spacedBy(VinkDimens.Space3),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             val width = if (maxWidth < 400.dp) 176.dp else 240.dp
             Box(imageModifier.widthIn(max = width).fillMaxWidth().aspectRatio(512f / 427f).testTag("empty-artwork-slot")) {
@@ -75,7 +85,9 @@ fun EmptyArtworkPanel(image: ImageBitmap?, text: String, actionLabel: String, on
                     modifier = Modifier.fillMaxSize().testTag("empty-artwork-ready"), contentScale = ContentScale.Fit)
             }
         }
-        VinkText(text)
+        // VinkText has no alignment parameter; #261 CHOICE-02 keeps the `:ui` API unchanged.
+        Text(text, Modifier.testTag("empty-artwork-text"), color = vink.colors[ColorRole.OnSurfaceVariant],
+            style = vink.text(TypeRole.Body.role).copy(textAlign = TextAlign.Center))
         VinkButton(actionLabel, onAction)
     }
 }
