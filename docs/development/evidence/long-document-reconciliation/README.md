@@ -1,13 +1,15 @@
 # Evidence đối soát #229–#231
 
-**Source Quick: `c2a30738f8fe323294ceb989ba9aa7197b39b14b`**, base develop
+**Source Quick mới: `dcd36ba6883b49bf764124e08e5d78278a485e48`**, base develop
 `607ef83aa2824a16ec54a6f25bd10eb4c137d62f` sau #281. Corpus/PG tại `11925bfc3cfd901e6b5b7e2c46ec08fb8ee8957e`;
 [OID proof](upstream-281.json) xác nhận toàn backend/codec/DTO/cache không đổi sau #281. Mac arm64 ngày 17/11/2026.
-**BLOCKED:** fmt/decision validate mới PASS; corpus 3 / PG 17 PASS tại 11925bf với OID proof.
-Full Quick mới nhất tại c2a3073 **FAIL disk ở doctest build**; SSR/unit/repository sau đó NOT_RUN.
-Full Quick 13 PASS tại 11925bf được giữ riêng. PR draft, không merge/tick/close cuối.
+**LOCAL GATES PASS:** fmt, decision validate và full Quick đã chạy PASS tại source trên.
+[Source/environment](resume-20261117T093542Z/source.json), [results](resume-20261117T093542Z/results.json),
+[raw Quick](resume-20261117T093542Z/quick.log), [input reuse proof](resume-20261117T093542Z/input-reuse-proof.json).
+Corpus 3 / PG 17 PASS tại11925bf giữ source thật và OID proof; không đo benchmark/browser mới.
+GitHub là SSOT cho merge/checklist/closure; không suy trạng thái đó từ local PASS.
 Hai benchmark PG opt-in giữ ignored; full Quick trước tại 11925bf có một scratch-lock test xtask vốn ignored.
-[Verification](verification.json), [exit codes](gate-exit-codes.json), [ma trận24 AC](../../long-document-reconciliation.md).
+[Verification](verification.json), [exit codes lịch sử c2a3073](gate-exit-codes.json), [ma trận24 AC](../../long-document-reconciliation.md).
 
 Chủ repo đã merge checkpoint #278 (`d352dba`) khi Mac mất kết nối và gate cuối còn UNKNOWN.
 Raw phục hồi xác nhận lượt đó FAIL disk. Nhánh follow-up mới
@@ -101,4 +103,12 @@ total browser RSS/WASM peak, release/production/cold-cache, candidate GC/migrati
 Quint/Kani/CMP. PR chỉ tăng oracle test và docs/evidence; không đổi runtime/contract/transition/model.
 Không đọc/chờ/poll/rerun GitHub CI, không deploy, không đổi production DB hay tự cấp signoff.
 
-Latest resource blocker: [raw FAIL](quick.log), [frozen FAIL](quick-c2a3073-doctest-archive-disk.log.gz), [recovery](c2a3073-resource-recovery.json). Sau phục hồi chỉ còn khoảng 615 MiB, ít hơn lượt 885 MiB vẫn thất bại. Fseventsd hệ thống quan sát khoảng 12 GB RAM; không kill hoặc can thiệp. Không còn thao tác thu hồi ngoại vi được phép; giữ worktree/evidence để resume khi tài nguyên đủ.
+Blocker lịch sử trước resume (đã giữ raw): [raw FAIL](quick.log), [frozen FAIL](quick-c2a3073-doctest-archive-disk.log.gz), [recovery](c2a3073-resource-recovery.json). Sau phục hồi chỉ còn khoảng 615 MiB, ít hơn lượt 885 MiB vẫn thất bại. Fseventsd hệ thống quan sát khoảng 12 GB RAM; không kill hoặc can thiệp. Không còn thao tác thu hồi ngoại vi được phép; giữ worktree/evidence để resume khi tài nguyên đủ.
+
+## Resume sau cleanup ngày 17/11
+
+Parent bảo toàn evidence tại `/Users/manhblue/vink-cleanup-evidence/20261117-scheduled/`;
+resume bắt đầu với khoảng6,4GiB trống. Không `cargo clean` hoặc xóa thủ công target thiếu CACHEDIR.TAG.
+Không sửa/dừng process, cache, DB hay worktree khác. Cluster riêng55538 vẫn dừng, data/log giữ lại.
+Lượt mới dùng cùng profile, launcher, suite và assertions; [raw/results](resume-20261117T093542Z/results.json)
+ghi source, giờ, exit và disk/pressure. Các FAIL cũ ở root vẫn là FAIL lịch sử.

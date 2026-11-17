@@ -1,0 +1,85 @@
+{
+  "started_at_utc": "2026-11-17T09:35:42.445132+00:00",
+  "source_sha": "dcd36ba6883b49bf764124e08e5d78278a485e48",
+  "base_sha": "607ef83aa2824a16ec54a6f25bd10eb4c137d62f",
+  "branch": "codex/long-document-reconciliation-evidence",
+  "cwd": "/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation",
+  "flags": {
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_BUILD_JOBS": "1",
+    "RUST_TEST_THREADS": "1"
+  },
+  "rustc_wrapper": null,
+  "profile_sha256": "5021aa473c39ce806155685fe2545be4c25d3d1a936ef754d6a1c9039e2f1ddd",
+  "parent_cleanup_evidence": "/Users/manhblue/vink-cleanup-evidence/20261117-scheduled/",
+  "target_cachedir_tag": false,
+  "cleanup": "No cleanup performed during resume; preserved parent backup, target and foreign work.",
+  "git_status": {
+    "command": [
+      "git",
+      "status",
+      "--short"
+    ],
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "disk": {
+    "command": [
+      "df",
+      "-h",
+      "."
+    ],
+    "exit_code": 0,
+    "stdout": "Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk3s5   228Gi   199Gi   6.4Gi    97%    4.0M   67M    6%   /System/Volumes/Data\n",
+    "stderr": ""
+  },
+  "pressure": {
+    "command": [
+      "sysctl",
+      "-n",
+      "kern.memorystatus_vm_pressure_level"
+    ],
+    "exit_code": 0,
+    "stdout": "1\n",
+    "stderr": ""
+  },
+  "swap": {
+    "command": [
+      "sysctl",
+      "vm.swapusage"
+    ],
+    "exit_code": 0,
+    "stdout": "vm.swapusage: total = 2816.00M  used = 2398.88M  free = 417.12M  (encrypted)\n",
+    "stderr": ""
+  },
+  "rustc": {
+    "command": [
+      "rustc",
+      "-Vv"
+    ],
+    "exit_code": 0,
+    "stdout": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: aarch64-apple-darwin\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+    "stderr": ""
+  },
+  "cargo": {
+    "command": [
+      "cargo",
+      "-V"
+    ],
+    "exit_code": 0,
+    "stdout": "cargo 1.99.1 (5f94df478 2026-08-27)\n",
+    "stderr": ""
+  },
+  "budget": {
+    "command": [
+      "./tools/local-budget",
+      "plan"
+    ],
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=2 libtest_threads=2 managed_target=10–12 GiB (advisory); Cargo bootstrap included; preflight requires normal pressure; retries manual\nlocal-budget: managed scope: owned session; external: reused services and detached processes; Gradle/CMP, native diagnostics, browser verification and OCI builds unsupported\n"
+  }
+}

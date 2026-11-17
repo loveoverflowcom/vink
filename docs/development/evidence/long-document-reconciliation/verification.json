@@ -1,6 +1,6 @@
 {
-  "generated_utc": "2026-11-17T08:46:50.125490+00:00",
-  "source_sha": "c2a30738f8fe323294ceb989ba9aa7197b39b14b",
+  "generated_utc": "2026-11-17T09:44:07.703252+00:00",
+  "source_sha": "dcd36ba6883b49bf764124e08e5d78278a485e48",
   "latest_develop_base": "607ef83aa2824a16ec54a6f25bd10eb4c137d62f",
   "branch": "codex/long-document-reconciliation-evidence",
   "production_delta_from_base": [],
@@ -26,19 +26,21 @@
       "gate": "fmt",
       "status": "PASS",
       "command": "./tools/local-budget run -- cargo fmt --all -- --check",
-      "source_sha": "c2a30738f8fe323294ceb989ba9aa7197b39b14b",
+      "source_sha": "dcd36ba6883b49bf764124e08e5d78278a485e48",
       "environment": "Mac arm64; environment.json + focused-run-source.json + quick-run-source.json",
-      "raw_log": "fmt.log",
-      "reason": "Rust formatting unchanged after test fix"
+      "raw_log": "resume-20261117T093542Z/fmt.log",
+      "reason": "Executed successfully after safe parent cleanup; selectors/assertions unchanged",
+      "exit_code": 0
     },
     {
       "gate": "decision_validate",
       "status": "PASS",
       "command": "./tools/local-budget run -- cargo xtask decision validate",
-      "source_sha": "c2a30738f8fe323294ceb989ba9aa7197b39b14b",
+      "source_sha": "dcd36ba6883b49bf764124e08e5d78278a485e48",
       "environment": "Mac arm64; environment.json + focused-run-source.json + quick-run-source.json",
-      "raw_log": "decision-validate.log",
-      "reason": "127 revisions / 88 references; snapshot8354df2c; no signoff"
+      "raw_log": "resume-20261117T093542Z/decision-validate.log",
+      "reason": "Executed successfully after safe parent cleanup; selectors/assertions unchanged",
+      "exit_code": 0
     },
     {
       "gate": "corpus",
@@ -60,19 +62,19 @@
     },
     {
       "gate": "quick",
-      "status": "FAIL",
+      "status": "PASS",
       "command": "./tools/local-budget run -- cargo xtask verify quick",
-      "source_sha": "c2a30738f8fe323294ceb989ba9aa7197b39b14b",
+      "source_sha": "dcd36ba6883b49bf764124e08e5d78278a485e48",
       "environment": "Mac arm64; environment.json + focused-run-source.json + quick-run-source.json",
-      "raw_log": "quick.log",
-      "reason": "Web archive No space left during doctest build. Prior9 substeps PASS; doctest not completed; SSR/unit/repository later steps NOT_RUN. No downgrade or current PASS reused.",
-      "exit_code": 1
+      "raw_log": "resume-20261117T093542Z/quick.log",
+      "reason": "Executed successfully after safe parent cleanup; selectors/assertions unchanged",
+      "exit_code": 0
     },
     {
       "gate": "audit",
       "status": "PASS",
       "command": "python3 docs/development/evidence/long-document-reconciliation/audit.py.txt",
-      "source_sha": "c2a30738f8fe323294ceb989ba9aa7197b39b14b",
+      "source_sha": "dcd36ba6883b49bf764124e08e5d78278a485e48",
       "environment": "Mac arm64; environment.json + focused-run-source.json + quick-run-source.json",
       "raw_log": "audit.log",
       "reason": "Historical raw recomputation, owner deltas and ancestry; not new timings"
@@ -91,7 +93,7 @@
       "gate": "full_postgres",
       "status": "NOT_RUN",
       "command": "cargo xtask verify postgres",
-      "source_sha": "c2a30738f8fe323294ceb989ba9aa7197b39b14b",
+      "source_sha": "dcd36ba6883b49bf764124e08e5d78278a485e48",
       "environment": "Current task Mac",
       "reason": "No production runtime/schema change in this PR; focused17 covers affected/reconciled seams; historical full lane is separately bounded"
     },
@@ -99,7 +101,7 @@
       "gate": "full_web",
       "status": "NOT_RUN",
       "command": "cargo xtask verify web",
-      "source_sha": "c2a30738f8fe323294ceb989ba9aa7197b39b14b",
+      "source_sha": "dcd36ba6883b49bf764124e08e5d78278a485e48",
       "environment": "Current task Mac",
       "reason": "No renderer/contract runtime change here; no new browser qualification; #280 has separate Reader/Back owner"
     },
@@ -107,7 +109,7 @@
       "gate": "new_benchmark_browser",
       "status": "NOT_RUN",
       "command": "Existing opt-in benchmarks and browser document-budget phase",
-      "source_sha": "c2a30738f8fe323294ceb989ba9aa7197b39b14b",
+      "source_sha": "dcd36ba6883b49bf764124e08e5d78278a485e48",
       "environment": "Current task Mac",
       "reason": "V1 corpus/algorithms preserved; old timing sources explicit. No new HEAD performance/SLA claim."
     },
@@ -115,21 +117,25 @@
       "gate": "models_native",
       "status": "NOT_RUN",
       "command": "Quint/Kani/CMP lanes",
-      "source_sha": "c2a30738f8fe323294ceb989ba9aa7197b39b14b",
+      "source_sha": "dcd36ba6883b49bf764124e08e5d78278a485e48",
       "environment": "Current task Mac",
       "reason": "No domain transition/invariant implementation change; no model edits for docs/test oracle"
     }
   ],
   "quick_steps": [
-    "ui tokens: source valid, generated CSS/Rust/Kotlin match",
-    "empty artwork: verified runtime derivatives",
-    "expressions: manifest/hash/Unicode/drift",
-    "visual evidence oracles: manifest, PNG, overflow, AX, modal unit tests",
-    "web perf analyzer: lab distribution, transport ledger and negative duplicate control",
+    "ui tokens: 15 generated files match",
+    "empty artwork: WebP container, dimensions, SHA-256 and byte budget",
+    "expression manifest, Unicode, safety and generated drift",
+    "visual evidence oracle unit tests",
+    "web perf analyzer unit tests",
     "fmt",
     "clippy server (workspace, ssr)",
     "clippy browser (vink-web, hydrate, wasm32)",
-    "clippy UI preview (vink-ui-preview, csr, wasm32)"
+    "clippy UI preview (vink-ui-preview, csr, wasm32)",
+    "literary core type-boundary doctests",
+    "Reader SSR boundary (isolated public-read fixture, no database)",
+    "unit + contract tests (no database)",
+    "repository checks: ok"
   ],
   "scope_ac_pass": {
     "229": 7,
@@ -150,7 +156,7 @@
   "historical_failures": "All disk/strip/archive FAIL logs retained; f4e917b added-test compile failure retained and fixed at source; early diagnostic logs may lack embedded SHA and are never used as current PASS. See per-run source JSON and raw-log-encodings.json.",
   "publication_boundary": "GitHub issue state is SSOT; closure only after follow-up merged and fresh-read acceptance/comments; #278 remains unchanged.",
   "focused_source_sha": "11925bfc3cfd901e6b5b7e2c46ec08fb8ee8957e",
-  "integration_status": "BLOCKED: latest Quick FAIL disk; PR draft; no merge or issue closure",
+  "integration_status": "LOCAL_GATES_PASS: ready for final review/merge; GitHub state remains authoritative",
   "focused_reuse_proof": "upstream-281.json: entire services tree, registry, lockfiles, Web codec/DTO/cache inputs are identical; source is not relabeled",
   "previous_full_quick": {
     "source_sha": "11925bfc3cfd901e6b5b7e2c46ec08fb8ee8957e",
@@ -159,5 +165,14 @@
     "steps": 13,
     "raw_log": "quick-source-11925bf.log",
     "boundary": "Before UI-only #281; not a full Quick PASS for current source"
+  },
+  "resumed_run": "resume-20261117T093542Z/results.json",
+  "previous_failed_quick": {
+    "source_sha": "c2a30738f8fe323294ceb989ba9aa7197b39b14b",
+    "status": "FAIL",
+    "exit_code": 1,
+    "raw_log": "quick.log",
+    "reason": "No space left during Web archive/doctest build; later steps were NOT_RUN",
+    "superseded_by_executed_run": "resume-20261117T093542Z/quick.log"
   }
 }

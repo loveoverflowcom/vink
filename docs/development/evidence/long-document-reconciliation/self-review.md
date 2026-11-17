@@ -24,4 +24,11 @@ vượt nghiệm thu. PR #278 đã được chủ repo merge khi gate chưa bi�
 
 Previous full run at11925bf observed PASS: fmt, registry127/88/snapshot8354df2c, corpus 3, PG 17 (2opt-in ignored), Quick 13. Known #275 FAIL 101 vẫn tách riêng. Hash v1 refactor hex được challenge bằng raw #249 bất biến, không chỉ round-trip hai kết quả của cùng implementation. Storage/source-format PENDING/current=null; no signoff.
 
-Final integration review: #281 only PublicationPanel/UI smoke paths; all focused backend/codec/DTO/cache OIDs identical to11925bf. Latest Quick FAIL disk/doctest at c2a3073; later SSR/unit/repo NOT_RUN. Fmt/registry and3Clippy PASS. Keep PR draft; no merge/close. No upstream owner overwritten; no full result relabeled between source SHAs.
+Checkpoint review trước resume: #281 only PublicationPanel/UI smoke paths; all focused backend/codec/DTO/cache OIDs identical to11925bf. Latest Quick FAIL disk/doctest at c2a3073; later SSR/unit/repo NOT_RUN. Fmt/registry and3Clippy PASS. Keep PR draft; no merge/close. No upstream owner overwritten; no full result relabeled between source SHAs.
+
+Resume review tại `dcd36ba6883b49bf764124e08e5d78278a485e48`: develop607ef83 không có delta mới; PR282 head khớp,
+không có review thread mới. Fmt/registry/full Quick thực thi PASS cùng assertions/selectors.
+Input OIDs so c2a3073 đồng nhất; focused PG/corpus giữ source11925bf với proof.
+Không có runtime/schema/hash/authority/registry/model delta mới; không signoff PENDING.
+Bổ sung raw mới và cập nhật nhãn current/historical, giữ toàn bộ raw FAIL.
+Cho phép merge sau final diff/source freshness checks; issue closure phải fresh-read/readback sau merge.

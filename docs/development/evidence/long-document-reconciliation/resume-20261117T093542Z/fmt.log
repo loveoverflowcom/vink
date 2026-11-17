@@ -1,0 +1,5 @@
+local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=1 libtest_threads=1 managed_target=10–12 GiB (advisory); Cargo bootstrap included; preflight requires normal pressure; retries manual
+local-budget: pressure=normal; swap: total = 2816.00M  used = 2398.88M  free = 417.12M  (encrypted)
+local-budget: supervisor=78281 session=78285 slot=/tmp/vink-local-budget-501
+local-budget: wall=1.16s sampled_peak_rss_sum=74032 KiB samples=2 interval=1s
+local-budget: pressure=normal; swap: total = 2816.00M  used = 2398.88M  free = 417.12M  (encrypted)
