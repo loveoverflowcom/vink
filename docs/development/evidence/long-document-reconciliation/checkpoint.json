@@ -189,5 +189,18 @@
     "final_build_process": "UNKNOWN; inspect before rerun/cleanup",
     "local_raw_directory": "/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/docs/development/evidence/long-document-reconciliation"
   },
-  "blocker": "Mac execution unavailable; final Quick, raw evidence upload, final cleanup and merge/issue-closure gates pending."
+  "blocker": "Mac execution unavailable; final Quick, raw evidence upload, final cleanup and issue-closure gates pending (checkpoint merged by owner decision without those gates).",
+  "merge": {
+    "pr": 278,
+    "decided_by": "repository owner, direct request 2026-11-17",
+    "waited_for_ci": false,
+    "final_quick": "UNKNOWN",
+    "raw_upload": "pending",
+    "meaning": "Docs/summary checkpoint merged into develop; not a gate PASS, no issue checklist/closure change for #229-#231",
+    "develop_delta_after_audit": {
+      "sha": "6bfbb63b2f7c79c9bbdaa3ec239c87824c8d9078",
+      "pr": 277,
+      "note": "Web document.rs/editor.rs changed (plain-text export removed); DocumentView rendering and App document/hash/publication/HTTP owners unchanged; re-fingerprint Web owners before reusing PASS"
+    }
+  }
 }

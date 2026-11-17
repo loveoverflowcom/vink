@@ -1,6 +1,6 @@
 # Checkpoint đối soát Long Document
 
-Mac bị mất kết nối trong lượt full Quick cuối. Đây là summary từ output đã quan sát, **không phải raw log được tái tạo**. [checkpoint.json](checkpoint.json) chứa SHA/commands/results/limitations; [ma trận24 AC](../../long-document-reconciliation.md) dẫn tới raw historical evidence đã có trong develop. Full raw mới tại Mac chưa upload nên PR phải giữ draft.
+Mac bị mất kết nối trong lượt full Quick cuối. Đây là summary từ output đã quan sát, **không phải raw log được tái tạo**. [checkpoint.json](checkpoint.json) chứa SHA/commands/results/limitations; [ma trận24 AC](../../long-document-reconciliation.md) dẫn tới raw historical evidence đã có trong develop. Full raw mới tại Mac chưa upload. Chủ repo đã yêu cầu merge PR #278 ngày 17/11/2026 không chờ CI/final Quick; merge này không biến summary thành raw hay gate PASS, và #229–#231 vẫn mở tới khi đủ evidence.
 
 ## Đã quan sát
 
@@ -18,10 +18,10 @@ Target riêng được APFS clone từ task-7 clean tại9c603b2; chỉ target c
 
 Final profile task-local ở thư mục cha task-8/.cargo/config.toml: App/Web strip=symbols,opt-level1; dev/test debug0,incremental0,jobs1,libtest1. Debug assertions/overflow checks/features/selectors/assertions giữ nguyên. Không dùng profile này đo timing. Corpus trước đó dùng launcher default2 libtest threads.
 
-## Tiếp tục đúng một PR
+## Tiếp tục sau khi checkpoint đã merge
 
 1. Kết nối lại Mac; kiểm process/slot/disk, git status/HEAD và raw Quick. Không giả run đã chết hoặc đã PASS.
-2. Bảo toàn local dirty docs và toàn bộ bundle ngoài target; fetch remote branch checkpoint trước commit/push. Reconcile local edits với checkpoint trên cùng branch bằng commit/merge/rebase có kiểm; không reset/stash/force-push, không tạo PR khác.
+2. Bảo toàn local dirty docs và toàn bộ bundle ngoài target. Nhánh `codex/long-document-final-reconciliation` đã merge qua #278: fetch `develop`, tạo nhánh tiếp nối mới từ đó và reconcile local edits với checkpoint đã merge bằng commit/merge có kiểm; không reset/stash/force-push, không tái dùng nhánh đã merge.
 3. Upload raw, exact environment/profile, audit script/results và preservation records; không nhận summary là raw. Kiểm final Quick đủ mọi bước trên source phù hợp. Nếu chưa PASS, sửa prerequisite trong tài nguyên task rồi chạy đủ gates, không hạ assertions.
-4. Fresh-fetch develop, đối chiếu owner delta; source inputs đổi thì chạy checks tương ứng. Không lấy PASS cũ cho owner đã đổi. Kiểm diff/links/JSON và pending decision references.
-5. Self-review same PR; chỉ merge khi local gates PASS, xác nhận merge commit trong develop. Sau đó fresh-read issue/comments, giữ concurrent edits/wording, tick đủ evidence, comment SHA/PR/gaps/limits và close/readback khi đủ điều kiện. Không CI polling/rerun hoặc deploy.
+4. Đối chiếu owner delta từ `f6b8846` tới develop mới (ít nhất #277 đổi Web `document.rs`/`editor.rs`); source inputs đổi thì chạy checks tương ứng. Không lấy PASS cũ cho owner đã đổi. Kiểm diff/links/JSON và pending decision references.
+5. Self-review PR tiếp nối (tham chiếu #278); merge khi local gates PASS, xác nhận merge commit trong develop. Sau đó fresh-read issue/comments, giữ concurrent edits/wording, tick đủ evidence, comment SHA/PR/gaps/limits và close/readback khi đủ điều kiện. Không CI polling/rerun hoặc deploy.
