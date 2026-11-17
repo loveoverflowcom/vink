@@ -496,26 +496,34 @@ pub fn PublicationPanel(
         }
     });
 
-    // The first read, and a new one for every other session of the tab: nothing private carries
-    // over (`change_scope`).
-    Effect::new(move |previous: Option<Option<String>>| {
+    // The first read waits until the tab knows who is acting. A read made while the session check
+    // is still out would show as ready and then be dropped by the first confirmation (a new
+    // scope): the region would fall back to reading under the author's press. After that, a new
+    // read for every other session of the tab: nothing private carries over (`change_scope`).
+    let started = StoredValue::new(false);
+    Effect::new(move |_| {
         let scope = tab.scope.get();
-        match previous {
-            None => runner.refresh(),
-            Some(before) if before != scope => {
-                controller.update(|c| {
-                    let work_id = c.scope().work_id.clone();
-                    c.change_scope(Scope {
-                        work_id,
-                        session: scope.clone(),
-                    });
-                });
-                choice.set(String::new());
+        let known = tab.standing.get() != crate::session::Standing::Unknown;
+        let first = !started.get_value();
+        if first && !known {
+            return;
+        }
+        started.set_value(true);
+        if controller.with_untracked(|c| c.scope().session == scope) {
+            if first {
                 runner.refresh();
             }
-            Some(_) => {}
+            return;
         }
-        scope
+        controller.update(|c| {
+            let work_id = c.scope().work_id.clone();
+            c.change_scope(Scope {
+                work_id,
+                session: scope.clone(),
+            });
+        });
+        choice.set(String::new());
+        runner.refresh();
     });
 
     // Returning to the tab or window: read again, at most every two seconds, never mid-command.
@@ -527,7 +535,11 @@ pub fn PublicationPanel(
             let idle = controller
                 .try_with_untracked(|c| !c.working())
                 .unwrap_or(false);
-            if idle && !document().hidden() && now - last.get_value() > 2000.0 {
+            if started.get_value()
+                && idle
+                && !document().hidden()
+                && now - last.get_value() > 2000.0
+            {
                 last.set_value(now);
                 runner.refresh();
             }
