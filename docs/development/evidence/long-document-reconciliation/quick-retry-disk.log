@@ -1,0 +1,179 @@
+local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=1 libtest_threads=1 managed_target=10–12 GiB (advisory); Cargo bootstrap included; preflight requires normal pressure; retries manual
+local-budget: pressure=normal; swap: total = 2048.00M  used = 1239.31M  free = 808.69M  (encrypted)
+local-budget: supervisor=53558 session=53562 slot=/tmp/vink-local-budget-501
+==> ui tokens: 15 generated files match
+==> empty artwork: WebP container, dimensions, SHA-256 and byte budget
+PASS no-results: 20070 bytes, 512x427, VP8 + alpha, SHA-256 74874272c94c2f43e293a45249dd843ffaa0ba5cc2b37a755a4eb91e2629bbb2
+PASS no-public-works: 16444 bytes, 512x427, VP8 + alpha, SHA-256 56ce08c3ec4689b0222af8ca9b64397342236bc59bdeda83156718b8eb16dbbb
+PASS first-draft: 19190 bytes, 512x427, VP8 + alpha, SHA-256 c4bfabfe1c70e35ac4e896f2be56f6cb3e33ea2e97057bbaf3cbc71491665a79
+==> expression manifest, Unicode, safety and generated drift
+TAP version 13
+# PASS Noto manifest: 16 assets, source hashes, safety, Unicode, Rust/CMP drift
+# Subtest: pinned inventory and generated outputs match
+ok 1 - pinned inventory and generated outputs match
+  ---
+  duration_ms: 42.842792
+  type: 'test'
+  ...
+# Subtest: unknown/corrupt/mislicensed/duplicate resources fail closed
+ok 2 - unknown/corrupt/mislicensed/duplicate resources fail closed
+  ---
+  duration_ms: 3.161916
+  type: 'test'
+  ...
+# Subtest: active SVG and external Lottie resources cannot be blessed by a new checksum
+ok 3 - active SVG and external Lottie resources cannot be blessed by a new checksum
+  ---
+  duration_ms: 0.957625
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 89.239542
+==> visual evidence oracle unit tests
+TAP version 13
+# Subtest: AC-01: PNG verification parses hash and dimensions and rejects corrupt/empty artifacts
+ok 1 - AC-01: PNG verification parses hash and dimensions and rejects corrupt/empty artifacts
+  ---
+  duration_ms: 4.261208
+  type: 'test'
+  ...
+# Subtest: AC-01: rejects silent 900-height substitution for 800-height scenes and mismatched viewport filenames
+ok 2 - AC-01: rejects silent 900-height substitution for 800-height scenes and mismatched viewport filenames
+  ---
+  duration_ms: 2.4315
+  type: 'test'
+  ...
+# Subtest: AC-01: manifest schema supports legacy v1 compatibility and marks missing-target captures INCOMPLETE
+ok 3 - AC-01: manifest schema supports legacy v1 compatibility and marks missing-target captures INCOMPLETE
+  ---
+  duration_ms: 2.072709
+  type: 'test'
+  ...
+# Subtest: AC-01: collectSourceIdentity tracks dirty UI inputs deterministically without secrets
+ok 4 - AC-01: collectSourceIdentity tracks dirty UI inputs deterministically without secrets
+  ---
+  duration_ms: 0.377625
+  type: 'test'
+  ...
+# Subtest: AC-03: overflow oracle catches hidden overflow with scrollX=0 while allowing text input internal scroll
+ok 5 - AC-03: overflow oracle catches hidden overflow with scrollX=0 while allowing text input internal scroll
+  ---
+  duration_ms: 0.15275
+  type: 'test'
+  ...
+# Subtest: AC-03: AX oracle separates raw textContent from computed AX name and catches altered accessible name
+ok 6 - AC-03: AX oracle separates raw textContent from computed AX name and catches altered accessible name
+  ---
+  duration_ms: 0.117916
+  type: 'test'
+  ...
+# Subtest: AC-03: nav alignment accepts 1-line vs 2-line height delta when first lines align and catches misaligned first line
+ok 7 - AC-03: nav alignment accepts 1-line vs 2-line height delta when first lines align and catches misaligned first line
+  ---
+  duration_ms: 0.211125
+  type: 'test'
+  ...
+# Subtest: AC-02: modal oracle enforces all can_discard/confirm branches and catches missing last modal action
+ok 8 - AC-02: modal oracle enforces all can_discard/confirm branches and catches missing last modal action
+  ---
+  duration_ms: 0.186833
+  type: 'test'
+  ...
+# Subtest: AC-04 & AC-05: separates DOM override from app controls and validates Me illustration reservation
+ok 9 - AC-04 & AC-05: separates DOM override from app controls and validates Me illustration reservation
+  ---
+  duration_ms: 0.303666
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 45.19225
+==> web perf analyzer unit tests
+TAP version 13
+# Subtest: lab summary reports the raw sample size, true median, nearest-rank p95 and spread
+ok 1 - lab summary reports the raw sample size, true median, nearest-rank p95 and spread
+  ---
+  duration_ms: 0.487458
+  type: 'test'
+  ...
+# Subtest: request reason ledger keeps conditional reads, 304 and transport separate
+ok 2 - request reason ledger keeps conditional reads, 304 and transport separate
+  ---
+  duration_ms: 0.238958
+  type: 'test'
+  ...
+# Subtest: negative duplicate transport control breaks the structural <=1 predicate
+ok 3 - negative duplicate transport control breaks the structural <=1 predicate
+  ---
+  duration_ms: 0.061
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 31.936625
+==> fmt
+==> clippy server (workspace, ssr)
+   Compiling ring v0.17.14
+   Compiling rustls v0.23.46
+    Checking rustls-webpki v0.103.16
+   Compiling sqlx-core v0.9.0
+   Compiling sqlx-postgres v0.9.0
+   Compiling sqlx-macros-core v0.9.0
+   Compiling sqlx-macros v0.9.0
+    Checking sqlx v0.9.0
+    Checking vink-store-postgres v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/packages/store-postgres)
+    Checking vink-app v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/services/vink-app)
+    Checking tokio-rustls v0.26.6
+    Checking lettre v0.11.23
+    Checking vink-identity v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/services/vink-identity)
+    Checking xtask v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/xtask)
+    Finished `dev` profile [unoptimized] target(s) in 28.89s
+==> clippy browser (vink-web, hydrate, wasm32)
+    Finished `dev` profile [unoptimized] target(s) in 0.29s
+==> clippy UI preview (vink-ui-preview, csr, wasm32)
+    Finished `dev` profile [unoptimized] target(s) in 0.08s
+==> literary core type-boundary doctests
+   Compiling sqlx-core v0.9.0
+   Compiling sqlx-postgres v0.9.0
+   Compiling sqlx v0.9.0
+   Compiling vink-web v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/apps/vink-web)
+rustc-LLVM ERROR: IO failure on output stream: No space left on device
+error: could not compile `vink-web` (lib)
+
+Caused by:
+  process didn't exit successfully: `/Users/manhblue/.rustup/toolchains/1.99.1-aarch64-apple-darwin/bin/rustc --crate-name vink_web --edition=2024 apps/vink-web/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type cdylib --crate-type rlib --emit=dep-info,link -C embed-bitcode=no --forbid=unsafe_code --warn=unexpected_cfgs --check-cfg 'cfg(kani)' --cfg 'feature="ssr"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("hydrate", "ssr"))' -C metadata=5b02a9fbba4c7d26 --out-dir /Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/target/debug/deps -C strip=debuginfo -L dependency=/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/target/debug/deps --extern http=/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/target/debug/deps/libhttp-cc95c10258847f5d.rlib --extern leptos=/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/target/debug/deps/libleptos-9a8fd400d0046ffc.rlib --extern leptos_axum=/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/target/debug/deps/libleptos_axum-34149596d7df6eb5.rlib --extern leptos_meta=/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/target/debug/deps/libleptos_meta-895b9d0e495c7967.rlib --extern leptos_router=/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/target/debug/deps/libleptos_router-182e2e02589508b5.rlib --extern percent_encoding=/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/target/debug/deps/libpercent_encoding-c5ab3929854530e4.rlib --extern serde=/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/target/debug/deps/libserde-7969fac4d1844064.rlib --extern serde_json=/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/target/debug/deps/libserde_json-6c12176879b77736.rlib --extern unicode_normalization=/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/target/debug/deps/libunicode_normalization-54f4e90102e80ed5.rlib --extern vink_expressions=/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/target/debug/deps/libvink_expressions-ac08049f3c93f16d.rlib --extern vink_patterns=/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/target/debug/deps/libvink_patterns-a6ca1cc2ec20f67d.rlib --extern vink_ui=/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/target/debug/deps/libvink_ui-d0aacf3991d708dd.rlib` (exit status: 101)
+xtask: literary core type-boundary doctests: literary core type-boundary doctests: exited with exit status: 101
+
+verification summary
+  PASS  ui tokens: source valid, generated CSS/Rust/Kotlin match
+  PASS  empty artwork: verified runtime derivatives
+  PASS  expressions: manifest/hash/Unicode/drift
+  PASS  visual evidence oracles: manifest, PNG, overflow, AX, modal unit tests
+  PASS  web perf analyzer: lab distribution, transport ledger and negative duplicate control
+  PASS  fmt
+  PASS  clippy server (workspace, ssr)
+  PASS  clippy browser (vink-web, hydrate, wasm32)
+  PASS  clippy UI preview (vink-ui-preview, csr, wasm32)
+  FAIL  literary core type-boundary doctests: literary core type-boundary doctests: exited with exit status: 101
+  (later steps NOT_RUN)
+local-budget: wall=85.42s sampled_peak_rss_sum=1364112 KiB samples=84 interval=1s
+local-budget: pressure=normal; swap: total = 2048.00M  used = 1215.31M  free = 832.69M  (encrypted)

@@ -1,0 +1,87 @@
+"""One-off disk recovery for this task's unused generated artifacts only.
+
+Native filesystem compression preserves the bytes, mode and modification time.
+Original shared-cache copies and artifacts with unknown hard-link ownership are skipped.
+"""
+import datetime
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+
+ROOT = Path('/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation')
+TARGET = ROOT / 'target'
+SOURCE = Path('/Users/manhblue/Documents/Codex/2026-11-17/task-7/vink/target')
+OUT = ROOT / 'docs/development/evidence/long-document-reconciliation/artifact-compression.json'
+STAGE = ROOT.parent / 'artifact-compression-stage'
+STAGE.mkdir(exist_ok=True)
+
+
+def digest(path):
+    h = hashlib.sha256()
+    with path.open('rb') as stream:
+        for data in iter(lambda: stream.read(1024 * 1024), b''):
+            h.update(data)
+    return h.hexdigest()
+
+
+assert TARGET.is_dir() and not TARGET.is_symlink()
+opened = subprocess.run(['lsof', '+D', str(TARGET)], capture_output=True, text=True)
+assert opened.returncode == 1 and not opened.stdout.strip(), opened.stdout
+cutoff = (ROOT / '.git').stat().st_mtime_ns
+inodes = {}
+for path in TARGET.rglob('*'):
+    if path.is_file() and not path.is_symlink():
+        stat = path.stat()
+        inodes.setdefault((stat.st_dev, stat.st_ino), []).append(path)
+
+records = []
+skipped = []
+candidates = sorted(inodes.values(), key=lambda paths: paths[0].stat().st_size, reverse=True)
+for aliases in candidates:
+    path = aliases[0]
+    before = path.stat()
+    if before.st_size < 2 * 1024 * 1024 or before.st_mtime_ns <= cutoff:
+        continue
+    if path.suffix in {'.o', '.d', '.json', '.log'} or '/incremental/' in str(path):
+        continue
+    if before.st_nlink != len(aliases):
+        skipped.append({'path': str(path.relative_to(ROOT)), 'reason': 'Hard links extend beyond isolated target'})
+        continue
+    old_hash = digest(path)
+    shared = SOURCE / path.relative_to(TARGET)
+    if shared.is_file() and shared.stat().st_size == before.st_size and digest(shared) == old_hash:
+        skipped.append({'path': str(path.relative_to(ROOT)), 'reason': 'Byte-identical borrowed cache; leave original clone untouched'})
+        continue
+    if before.st_blocks * 512 < before.st_size // 2:
+        continue
+    temp = STAGE / (old_hash + '.compressed')
+    if temp.exists():
+        assert digest(temp) == old_hash
+    else:
+        subprocess.run(['ditto', '--noclone', '--hfsCompression', str(path), str(temp)], check=True)
+    after = temp.stat()
+    assert digest(temp) == old_hash
+    assert after.st_size == before.st_size and after.st_mode == before.st_mode
+    assert after.st_mtime_ns == before.st_mtime_ns
+    if after.st_blocks >= before.st_blocks:
+        temp.unlink()
+        continue
+    record = {'paths': [str(p.relative_to(ROOT)) for p in aliases], 'sha256': old_hash,
+              'logical_bytes': before.st_size, 'allocated_before': before.st_blocks * 512,
+              'allocated_after': after.st_blocks * 512, 'mode_and_mtime_preserved': True,
+              'all_hardlinks_owned': True, 'provenance': 'Modified/generated after task checkout; differs from borrowed source cache'}
+    os.replace(temp, path)
+    for alias in aliases[1:]:
+        alias.unlink()
+        os.link(path, alias)
+    assert digest(path) == old_hash
+    records.append(record)
+    OUT.write_text(json.dumps({'time_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                              'scope': str(TARGET), 'lsof_before_exit': opened.returncode,
+                              'source_or_test_or_profile_changes': False,
+                              'foreign_artifacts_modified': [], 'records': records, 'skipped': skipped}, indent=2) + '\n')
+    print('compressed', path.name, before.st_blocks * 512, '->', after.st_blocks * 512, flush=True)
+
+print('reclaimed', sum(r['allocated_before'] - r['allocated_after'] for r in records), 'bytes', flush=True)

@@ -1,0 +1,29 @@
+{
+  "time_utc": "2026-11-17T04:26:23.462944+00:00",
+  "foreign_worktrees_removed": [],
+  "foreign_cargo_artifacts_removed": [],
+  "target_clone_source": "/Users/manhblue/Documents/Codex/2026-11-17/task-7/vink/target",
+  "clone_source_head": "9c603b2589ccde837727b3f91027c124c4c29514",
+  "clone_mode": "cp -cR (APFS copy on write), source untouched",
+  "own_binaries_removed": [
+    {
+      "path": "target/debug/deps/document_budget-98096cdd609887f5",
+      "bytes": 3430880,
+      "sha256": "ed4bfbc9a963bec85391231a60d9c8507920455109c7081b8373db741ce7c76f",
+      "lsof_exit": 1,
+      "provenance": "Built by this task in isolated APFS-cloned target; command/log retained",
+      "recovery": "Rebuild with exact Cargo command/flags in corpus.log or postgres-focused.log",
+      "action": "removed reproducible task binary only"
+    },
+    {
+      "path": "target/debug/deps/postgres-17b64a22f9443168",
+      "bytes": 302975456,
+      "sha256": "0c441d73555a77613e0bcadd21a44fa57231147ddbd4e526bf1f3931f116b28c",
+      "lsof_exit": 1,
+      "provenance": "Built by this task in isolated APFS-cloned target; command/log retained",
+      "recovery": "Rebuild with exact Cargo command/flags in corpus.log or postgres-focused.log",
+      "action": "removed reproducible task binary only"
+    }
+  ],
+  "db_action": "Keep all pre-existing clusters; task-only cluster running on 127.0.0.1:55538; no deploy"
+}

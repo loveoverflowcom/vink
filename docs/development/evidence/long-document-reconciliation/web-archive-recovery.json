@@ -1,0 +1,116 @@
+{
+  "at_utc": "2026-11-17T06:22:22.131763+00:00",
+  "source_sha": "d352dba77c2a86d18d7afe5690fcb9b10153c055",
+  "target_lsof_exit": 1,
+  "removed": [
+    {
+      "path": "target/debug/deps/libvink_web.rlib",
+      "bytes": 209902656,
+      "sha256": "f1bd2a9776892220ab81c46910d9be524e3b8e267ffff30de56b8e50328d9dbb",
+      "reason": "Failed Web archive/objects generated during own latest run; no open files; source and lock/profile/logs preserved"
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.9a3b8fcabf90a80f-cgu.10.rcgu.o",
+      "bytes": 7570720,
+      "sha256": "7f54058b8b9e10585ebd444c6613c010c5d43fce6c221c0442ad6139b109d672",
+      "reason": "Failed Web archive/objects generated during own latest run; no open files; source and lock/profile/logs preserved"
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.9a3b8fcabf90a80f-cgu.02.rcgu.o",
+      "bytes": 14323752,
+      "sha256": "762321dffd7b70b2a5748420773194ca848390ab546996a7379cbde0f0cc4bd3",
+      "reason": "Failed Web archive/objects generated during own latest run; no open files; source and lock/profile/logs preserved"
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.9a3b8fcabf90a80f-cgu.00.rcgu.o",
+      "bytes": 23801120,
+      "sha256": "dc8fa6b53143a6eea1461068b243621bef326ea529ad3b617758cb38b71c9805",
+      "reason": "Failed Web archive/objects generated during own latest run; no open files; source and lock/profile/logs preserved"
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.9a3b8fcabf90a80f-cgu.12.rcgu.o",
+      "bytes": 6899440,
+      "sha256": "da9b4c04bf27f0232a85239c80d5c52b51126498795bc3f0452d5e2156358e8c",
+      "reason": "Failed Web archive/objects generated during own latest run; no open files; source and lock/profile/logs preserved"
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.9a3b8fcabf90a80f-cgu.08.rcgu.o",
+      "bytes": 7701400,
+      "sha256": "f9de11d6e1a2cbe655616c77a118d15c3c7fe323e08a76e20df1e2ad00a6deea",
+      "reason": "Failed Web archive/objects generated during own latest run; no open files; source and lock/profile/logs preserved"
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.9a3b8fcabf90a80f-cgu.04.rcgu.o",
+      "bytes": 5103648,
+      "sha256": "6006e34beb14a333bad919288e7c9d57fdda6e7dd67c2b95a3a4d235032953f1",
+      "reason": "Failed Web archive/objects generated during own latest run; no open files; source and lock/profile/logs preserved"
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.9a3b8fcabf90a80f-cgu.06.rcgu.o",
+      "bytes": 6135328,
+      "sha256": "3a90f7245bff424c2e9151a1b25174de24d7fa617dd3f1928957049eebc75c77",
+      "reason": "Failed Web archive/objects generated during own latest run; no open files; source and lock/profile/logs preserved"
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.9a3b8fcabf90a80f-cgu.14.rcgu.o",
+      "bytes": 3061136,
+      "sha256": "7907fa8ae5a10bb4b9e3ad909b376ff069c87b47be5b7d25248d51e386e37953",
+      "reason": "Failed Web archive/objects generated during own latest run; no open files; source and lock/profile/logs preserved"
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.9a3b8fcabf90a80f-cgu.11.rcgu.o",
+      "bytes": 9524160,
+      "sha256": "6e485c62c231a292f57de7c5f9371fdd3935f063e8243f28ad19a60c8917ca71",
+      "reason": "Failed Web archive/objects generated during own latest run; no open files; source and lock/profile/logs preserved"
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.9a3b8fcabf90a80f-cgu.03.rcgu.o",
+      "bytes": 6561912,
+      "sha256": "348e493f242dc7b2fbd2b7b45285317ace8a2498c0ce5cd79acce7cf59e0d139",
+      "reason": "Failed Web archive/objects generated during own latest run; no open files; source and lock/profile/logs preserved"
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.9a3b8fcabf90a80f-cgu.01.rcgu.o",
+      "bytes": 10909360,
+      "sha256": "9d076da7c7d24f3e2170e7cb67b231993080095fab5683e435dafafbaaf335d5",
+      "reason": "Failed Web archive/objects generated during own latest run; no open files; source and lock/profile/logs preserved"
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.9a3b8fcabf90a80f-cgu.13.rcgu.o",
+      "bytes": 11673896,
+      "sha256": "9ccc4d4e2bd9c6f85c14982c7def250c9042b96739205c94af90ca374e7d8cb6",
+      "reason": "Failed Web archive/objects generated during own latest run; no open files; source and lock/profile/logs preserved"
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.9a3b8fcabf90a80f-cgu.09.rcgu.o",
+      "bytes": 6360232,
+      "sha256": "a5d8fe2b87baf081d90b664048fb7c32ffdbd5fe3ca94d95037de7a7c2560f80",
+      "reason": "Failed Web archive/objects generated during own latest run; no open files; source and lock/profile/logs preserved"
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.9a3b8fcabf90a80f-cgu.05.rcgu.o",
+      "bytes": 9057536,
+      "sha256": "53cef4072e8ca2dff198164e535763e6a39ed4d2a2f7368f18a63080c44adb29",
+      "reason": "Failed Web archive/objects generated during own latest run; no open files; source and lock/profile/logs preserved"
+    },
+    {
+      "path": "target/debug/deps/vink_web.4rdsk592olsgf6cswirn631t0.rcgu.o",
+      "bytes": 1280,
+      "sha256": "b9381e818fd784bbf06071b7ca9d6a5515efb027ae00e191dd2ba2e020ca3ce7",
+      "reason": "Failed Web archive/objects generated during own latest run; no open files; source and lock/profile/logs preserved"
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.9a3b8fcabf90a80f-cgu.07.rcgu.o",
+      "bytes": 5907296,
+      "sha256": "185c3b9e91a44e221c977445dd2fecc7507c9eec76b80782ded3308990964f5d",
+      "reason": "Failed Web archive/objects generated during own latest run; no open files; source and lock/profile/logs preserved"
+    },
+    {
+      "path": "target/debug/deps/vink_web.vink_web.9a3b8fcabf90a80f-cgu.15.rcgu.o",
+      "bytes": 5704608,
+      "sha256": "6685ec4ee9b32f5b23684afadbf0da982b9e155eefd1c1163167d29df3c86742",
+      "reason": "Failed Web archive/objects generated during own latest run; no open files; source and lock/profile/logs preserved"
+    }
+  ],
+  "foreign_changes": []
+}

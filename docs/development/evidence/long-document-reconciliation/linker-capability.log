@@ -1,0 +1,21 @@
+local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=1 libtest_threads=1 managed_target=10–12 GiB (advisory); Cargo bootstrap included; preflight requires normal pressure; retries manual
+local-budget: pressure=normal; swap: total = 2560.00M  used = 1595.06M  free = 964.94M  (encrypted)
+local-budget: supervisor=68218 session=68222 slot=/tmp/vink-local-budget-501
+   Compiling linker-capability v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task-8/linker-probe)
+    Finished `test` profile [optimized] target(s) in 1.23s
+     Running unittests probe.rs (/Users/manhblue/Documents/Codex/2026-11-17/task-8/linker-probe/target-baseline/debug/deps/vink_app-1cb4a6adb3888404)
+
+running 1 test
+test linked_assertions_are_unchanged ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests vink_app
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+local-budget: wall=1.74s sampled_peak_rss_sum=100768 KiB samples=2 interval=1s
+local-budget: pressure=normal; swap: total = 2560.00M  used = 1595.06M  free = 964.94M  (encrypted)
+local-budget: UNSUPPORTED: rustc wrapper may use external compiler processes

@@ -1,0 +1,10 @@
+{
+  "time_utc": "2026-11-17T05:40:09.540438+00:00",
+  "path": "target/debug/deps/vink_ui_preview-cbfa57de50f4bb5e",
+  "size": 1152,
+  "sha256": "64e8e9f1753af2c7291c24e30eb6c212e05b5aeca38f07a1cb4ae9851079c44d",
+  "mode": "0o100644",
+  "reason": "rustc strip warning No space left; non-executable data artifact, test never executed; own task generated at 12:36:55; no open target handles verified",
+  "source_restorable": true,
+  "foreign_mutations": []
+}

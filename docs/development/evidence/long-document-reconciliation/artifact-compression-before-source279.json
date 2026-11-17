@@ -1,0 +1,406 @@
+{
+  "time_utc": "2026-11-17T06:06:14.850291+00:00",
+  "scope": "/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/target",
+  "lsof_before_exit": 1,
+  "source_or_test_or_profile_changes": false,
+  "foreign_artifacts_modified": [],
+  "records": [
+    {
+      "paths": [
+        "target/debug/deps/vink_ui-68391b5cbf25ddd4"
+      ],
+      "sha256": "6eb94d3c03cea93a765c7a6ad9ec60fc91a3cf392b7ce5cec88f92ec6fbf83e2",
+      "logical_bytes": 41274160,
+      "allocated_before": 41275392,
+      "allocated_after": 8806400,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/vink_patterns-7d12ea81a55afecc"
+      ],
+      "sha256": "38266f3005cd78269fe31716a4ed7d6d69e03f994704ca831d3933a61cf6c995",
+      "logical_bytes": 35509104,
+      "allocated_before": 35512320,
+      "allocated_after": 8085504,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_postgres-9e1433c41a98407e.rlib"
+      ],
+      "sha256": "d747971d3e9fb8aa0642a65ddb1c3b7ec05d5045b920907739f368ab05e33d81",
+      "logical_bytes": 13823144,
+      "allocated_before": 13824000,
+      "allocated_after": 3637248,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_postgres-43f4e0050a95af23.rlib"
+      ],
+      "sha256": "df8fd5277fb55a97587bbb560f6814abc7c0040b6f45fddbf9fa541ad6b12017",
+      "logical_bytes": 13813952,
+      "allocated_before": 13815808,
+      "allocated_after": 3641344,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_postgres-53a6c7bbea1e2369.rlib"
+      ],
+      "sha256": "1d751d5f08fd5aedafd02c8398cfc6e7236c3cfd855537492656e6c8b2530df8",
+      "logical_bytes": 13417992,
+      "allocated_before": 13418496,
+      "allocated_after": 3600384,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_postgres-97e0ad0c1fb3f834.rlib"
+      ],
+      "sha256": "3a125c9b7e2b87c2653b93259456bfa759072b86f578d677c6f594f36cf5ac50",
+      "logical_bytes": 13319696,
+      "allocated_before": 13320192,
+      "allocated_after": 3579904,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_postgres-baf44c8fe25ae246.rlib"
+      ],
+      "sha256": "5a73cb49e5e3f58140e9e85f07f49f7b0ef9f70d78bf9e158745b3f3ecc093c2",
+      "logical_bytes": 13292656,
+      "allocated_before": 13295616,
+      "allocated_after": 3584000,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/librustls-95cf2561ad47f482.rlib"
+      ],
+      "sha256": "19722e1b3bd3310e2c195cbc668c5565d8f44dbdeee3d2fca475931ec26d985a",
+      "logical_bytes": 10804096,
+      "allocated_before": 10805248,
+      "allocated_after": 3190784,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/librustls-906de820e67a2e63.rlib"
+      ],
+      "sha256": "2584190695513bb54956e69519fd936f7c161b88fa678f9dfb662712a5fe337d",
+      "logical_bytes": 10569448,
+      "allocated_before": 10571776,
+      "allocated_after": 3129344,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_core-56141d0d6f970653.rlib"
+      ],
+      "sha256": "d3de6b8366d08b3725417c8a94795d65560594b7d1fe135a81d7637d45b24f76",
+      "logical_bytes": 6132248,
+      "allocated_before": 6135808,
+      "allocated_after": 2076672,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_core-b7a8395cc121119e.rlib"
+      ],
+      "sha256": "1667bd98cad62d8e88ff11fb2602769afbf4abfdeabfd48d38fc4bbf44a5c5a5",
+      "logical_bytes": 6127768,
+      "allocated_before": 6131712,
+      "allocated_after": 2076672,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_core-eee12e704c991a0f.rlib"
+      ],
+      "sha256": "49044f0f082c79e50ec3d4138fc6c4b20f2663623de0ff8b476b2a2fe5d8c5a8",
+      "logical_bytes": 4883432,
+      "allocated_before": 4886528,
+      "allocated_after": 1744896,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_core-2d6633a07338fd35.rlib"
+      ],
+      "sha256": "0053826e7c4e5c3ee01f217125ca72168534eb1438cdc4ab7cdc1df00e90fb82",
+      "logical_bytes": 4882488,
+      "allocated_before": 4886528,
+      "allocated_after": 1740800,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_core-0a9db06c5d1e7ef4.rlib"
+      ],
+      "sha256": "7268f8ec4d7cd81222759b8782468ab1135b206d82fbc22d3ec80c0e28d21c9b",
+      "logical_bytes": 4876096,
+      "allocated_before": 4878336,
+      "allocated_after": 1744896,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/liblettre-9e8f4b9254ea61b2.rlib"
+      ],
+      "sha256": "3444a301b88011e38d60b69f6c8dcc5ec18ca357e858129455972d248d29d996",
+      "logical_bytes": 4371024,
+      "allocated_before": 4374528,
+      "allocated_after": 1323008,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/librustls-95cf2561ad47f482.rmeta"
+      ],
+      "sha256": "55b0959731bdb12aa409df504b589e154d1e371dd64af2dbf72a7e1394485e3a",
+      "logical_bytes": 4269526,
+      "allocated_before": 4272128,
+      "allocated_after": 1650688,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/librustls-906de820e67a2e63.rmeta"
+      ],
+      "sha256": "eddc84ed16a3d0252a0354344d41bcbcc3c5cfb8a054a3abd3f83e90cfa0bd9c",
+      "logical_bytes": 4251360,
+      "allocated_before": 4251648,
+      "allocated_after": 1642496,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libring-d08d246544c576f2.rlib"
+      ],
+      "sha256": "127032a6398d4f4a5fa8025a1fdf09ccbdd13cc9ba1dd65fd88c97ccfef2a395",
+      "logical_bytes": 4153680,
+      "allocated_before": 4157440,
+      "allocated_after": 1466368,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_postgres-9e1433c41a98407e.rmeta"
+      ],
+      "sha256": "f5fcbad631e6f4e9c73c4ca3af8f7be5d5c3f91a54ed3caa56169dd432ee3efc",
+      "logical_bytes": 4065959,
+      "allocated_before": 4067328,
+      "allocated_after": 1650688,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_postgres-43f4e0050a95af23.rmeta"
+      ],
+      "sha256": "c1065646e74d8fb2022b9aff2bfbfee50f63c0e6a12630bc6048628aa6b592d8",
+      "logical_bytes": 4065881,
+      "allocated_before": 4067328,
+      "allocated_after": 1650688,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_postgres-53a6c7bbea1e2369.rmeta"
+      ],
+      "sha256": "b4acb5a76f4dcc337108644aac4d6d6905b792ffdd48cd9df0202ea25cc5ae18",
+      "logical_bytes": 4060967,
+      "allocated_before": 4063232,
+      "allocated_after": 1650688,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_postgres-97e0ad0c1fb3f834.rmeta"
+      ],
+      "sha256": "cce0acb3fbcdea1a574490196639b7fcb8c3dba6f15ecd046d06c6bb3b537848",
+      "logical_bytes": 4056592,
+      "allocated_before": 4059136,
+      "allocated_after": 1646592,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_postgres-baf44c8fe25ae246.rmeta"
+      ],
+      "sha256": "a63dc87469f2ed3282cefe1c1c07f471d93516d3fc2016cb03f795993a405d9f",
+      "logical_bytes": 4056555,
+      "allocated_before": 4059136,
+      "allocated_after": 1646592,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/librustls-b462f6c8900eae90.rmeta"
+      ],
+      "sha256": "b22011b774ccae0c7d2b037b65aa29dd81e4f41194b0808684db1d1f8d1c4f52",
+      "logical_bytes": 3712472,
+      "allocated_before": 3715072,
+      "allocated_after": 1429504,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_core-b7a8395cc121119e.rmeta"
+      ],
+      "sha256": "c02cad58347635fa6542277094177b2dd43396cd73a5b65b01ef8aff44e0e5cf",
+      "logical_bytes": 3574784,
+      "allocated_before": 3575808,
+      "allocated_after": 1449984,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_core-56141d0d6f970653.rmeta"
+      ],
+      "sha256": "d6d47432e4b1e6ed5f79f0630eb6b71866cfc71ee2ba08fb7f2caf0a6ac2587d",
+      "logical_bytes": 3574688,
+      "allocated_before": 3575808,
+      "allocated_after": 1449984,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_postgres-34f76cae5af6426e.rmeta"
+      ],
+      "sha256": "7cacdf49f69d32dd666b98bc299d6ac461f4314034f00894425ac2f3bf6c9286",
+      "logical_bytes": 3236899,
+      "allocated_before": 3239936,
+      "allocated_after": 1282048,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_core-0a9db06c5d1e7ef4.rmeta"
+      ],
+      "sha256": "18cdae5d1ee218c973b35184c579c11a3c3cfd5178f8736f578c7a6ebc9b81e7",
+      "logical_bytes": 3171049,
+      "allocated_before": 3174400,
+      "allocated_after": 1294336,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_core-2d6633a07338fd35.rmeta"
+      ],
+      "sha256": "e4d314d8328b8d0a3e6efe23f20a225ee042efe263a9ae6eea02733984a0b5b0",
+      "logical_bytes": 3170916,
+      "allocated_before": 3174400,
+      "allocated_after": 1294336,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_core-eee12e704c991a0f.rmeta"
+      ],
+      "sha256": "66879ea0f86ca803cb1cd67dee00a5ce6ad6f847319e4bc5651e4d86168cbd30",
+      "logical_bytes": 3170785,
+      "allocated_before": 3174400,
+      "allocated_after": 1294336,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_macros_core-b602461218688fbc.rlib"
+      ],
+      "sha256": "2f62c9add14d1da38aa30e6e38153ab49130700f35f7e4779fe021fa3f1796a9",
+      "logical_bytes": 2866936,
+      "allocated_before": 2867200,
+      "allocated_after": 819200,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_macros_core-7aa1fa9244bae38b.rlib"
+      ],
+      "sha256": "4ff4f9602886041e440718d546a4a5b49a7a47b4fff343ec76ced78d13f6e8fd",
+      "logical_bytes": 2860584,
+      "allocated_before": 2863104,
+      "allocated_after": 819200,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    },
+    {
+      "paths": [
+        "target/debug/deps/libsqlx_core-26e383166183d939.rmeta"
+      ],
+      "sha256": "3c97642d2cc21f7eec144e87829a44328412106d7025f78e25f76e614a94ca9d",
+      "logical_bytes": 2637335,
+      "allocated_before": 2637824,
+      "allocated_after": 1040384,
+      "mode_and_mtime_preserved": true,
+      "all_hardlinks_owned": true,
+      "provenance": "Differs from borrowed source or rewritten after documented last task clone; all aliases, bytes/mode/mtime verified"
+    }
+  ],
+  "skipped": []
+}

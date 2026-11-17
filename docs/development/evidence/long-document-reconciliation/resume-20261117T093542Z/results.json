@@ -1,0 +1,56 @@
+{
+  "source_sha": "dcd36ba6883b49bf764124e08e5d78278a485e48",
+  "base_sha": "607ef83aa2824a16ec54a6f25bd10eb4c137d62f",
+  "results": [
+    {
+      "gate": "fmt",
+      "command": "./tools/local-budget run -- cargo fmt --all -- --check",
+      "source_sha": "dcd36ba6883b49bf764124e08e5d78278a485e48",
+      "started_at_utc": "2026-11-17T09:35:42.940769+00:00",
+      "finished_at_utc": "2026-11-17T09:35:44.135690+00:00",
+      "status": "PASS",
+      "exit_code": 0,
+      "raw_log": "fmt.log"
+    },
+    {
+      "gate": "decision-validate",
+      "command": "./tools/local-budget run -- cargo xtask decision validate",
+      "source_sha": "dcd36ba6883b49bf764124e08e5d78278a485e48",
+      "started_at_utc": "2026-11-17T09:35:44.139684+00:00",
+      "finished_at_utc": "2026-11-17T09:35:59.981525+00:00",
+      "status": "PASS",
+      "exit_code": 0,
+      "raw_log": "decision-validate.log"
+    },
+    {
+      "gate": "quick",
+      "command": "./tools/local-budget run -- cargo xtask verify quick",
+      "source_sha": "dcd36ba6883b49bf764124e08e5d78278a485e48",
+      "started_at_utc": "2026-11-17T09:35:59.985883+00:00",
+      "finished_at_utc": "2026-11-17T09:43:40.610769+00:00",
+      "status": "PASS",
+      "exit_code": 0,
+      "raw_log": "quick.log"
+    }
+  ],
+  "disk_after": {
+    "command": [
+      "df",
+      "-h",
+      "."
+    ],
+    "exit_code": 0,
+    "stdout": "Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk3s5   228Gi   199Gi   5.9Gi    98%    4.0M   62M    6%   /System/Volumes/Data\n",
+    "stderr": ""
+  },
+  "pressure_after": {
+    "command": [
+      "sysctl",
+      "-n",
+      "kern.memorystatus_vm_pressure_level"
+    ],
+    "exit_code": 0,
+    "stdout": "1\n",
+    "stderr": ""
+  }
+}

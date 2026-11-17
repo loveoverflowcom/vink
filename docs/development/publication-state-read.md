@@ -4,12 +4,15 @@
 không lấy, deserialize, NFC hay hash manuscript của các revision. Đây là projection riêng cho
 chủ tác phẩm; **không phải bằng chứng toàn vẹn body hoặc quyền approve/publish**.
 
-**Checkpoint đối soát 17/11/2026:** #248 đã merge; tại `develop@f6b8846` owner/test/API/DTO liên quan giữ byte identity.
-[Ma trận AC/provenance](long-document-reconciliation.md) ghi focused PG mới, historical timing và final Quick UNKNOWN do Mac mất kết nối.
-Defect re-review còn tồn tại, nay có owner [#275](https://github.com/loveoverflowcom/vink/issues/275). Không gán số đo bên dưới cho HEAD mới.
+**Đối soát 17/11/2026:** #248 đã merge; tại `develop@607ef83` projection/command/worker/appeal owners và focused tests
+liên quan vẫn giống byte với HEAD tích hợp. Hash v1 chia sẻ helper hex từ #279; oracle corpus
+21 case hiện hành kiểm hash/bytes bất biến. [Biên bản AC/provenance](long-document-reconciliation.md)
+ghi regression PG mới, source fingerprints và giới hạn; timing bên dưới là số lịch sử, không đo
+lại ở HEAD. Defect re-review còn tồn tại, nay có owner [#275](https://github.com/loveoverflowcom/vink/issues/275).
 
 - Sản phẩm: giữ `USER-02@r1`, `ADM-06@r1`, `USER-09@r1` `PRODUCT_CONFIRMED`; WR-04 vẫn
-  `DEFERRED`. Snapshot CLI `6e77cb0a7f4eb67033c6e0df6d8a670a84eb61b3095a307ad0615b771c91dd9b`.
+  `DEFERRED`. Snapshot CLI lúc đo #248: `6e77cb0a7f4eb67033c6e0df6d8a670a84eb61b3095a307ad0615b771c91dd9b`;
+  snapshot hiện hành và proposal storage `PENDING` ở biên bản đối soát trên.
 - Kiến trúc: không đổi trạng thái ADR, authority hoặc hash v1. Không thêm cache/schema/index.
 - Triển khai: `persistence-api`; Web dùng DTO hiện hành, không đổi UI. Các command/worker giữ
   loader nội dung đầy đủ. Đây không phải batch `GET /api/v1/author/works` (#214/#222).
@@ -207,7 +210,9 @@ full-flow trên baseline chưa chạy (**NOT_RUN**), không gán phép tái hi�
 regression của projection vẫn phải PASS; stale-policy **khi job đang pending**, private/late-result
 được kiểm riêng. Cần migration bổ sung với upgrade/backout riêng để sửa mismatch; không reset
 version hay bỏ constraint provenance trong tối ưu loader. Không tuyên bố toàn bộ moderation
-policy re-review đã hoạt động. Nay [#275](https://github.com/loveoverflowcom/vink/issues/275) sở hữu reproducer và additive migration/upgrade/backout; không nới guard hoặc kéo defect ngoài projection thành điều kiện mở vô hạn cho #230.
+policy re-review đã hoạt động. [#275](https://github.com/loveoverflowcom/vink/issues/275) nay sở hữu
+reproducer và additive migration/upgrade/backout; không kéo defect ngoài projection thành điều
+kiện mở vô hạn cho #230. Lượt đối soát mới giữ failure riêng, không sửa applied migration.
 
 ## Bảo toàn và vận hành cục bộ
 

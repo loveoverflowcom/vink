@@ -1,0 +1,37 @@
+# Task-local build profile only; repository/Cargo home unchanged.
+
+[profile.dev.package.vink-app]
+strip = "symbols"
+opt-level = "z"
+debug-assertions = true
+overflow-checks = true
+
+[profile.test.package.vink-app]
+strip = "symbols"
+opt-level = "z"
+debug-assertions = true
+overflow-checks = true
+
+[profile.dev.package.vink-web]
+strip = "symbols"
+opt-level = "z"
+debug-assertions = true
+overflow-checks = true
+
+[profile.test.package.vink-web]
+strip = "symbols"
+opt-level = "z"
+debug-assertions = true
+overflow-checks = true
+
+[profile.dev.package.vink-ui-preview]
+strip = "symbols"
+opt-level = 1
+debug-assertions = true
+overflow-checks = true
+
+[profile.test.package.vink-ui-preview]
+strip = "symbols"
+opt-level = 1
+debug-assertions = true
+overflow-checks = true

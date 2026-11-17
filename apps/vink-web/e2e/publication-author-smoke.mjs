@@ -293,6 +293,29 @@ export async function publicationAuthor(page, { args, check, openPage }) {
 
 const countRevisions = async (page, work) => (await stateOf(page, work)).revisions.length;
 
+/** The region's first read waits for the tab's session check. Before, a read made while the check
+ * was out showed `ready`, then the first confirmation (a new scope) reset it to reading: a press in
+ * that window found no primary action (flaky `publication` lane on develop 92b2eb3). */
+async function readsAfterSession({ author, base, editorPath, check }) {
+  console.log('  the region reads only once the session is known:');
+  const wire = new Wire(author);
+  wire.hold = { method: 'GET', suffix: '/api/v1/auth/session' };
+  await wire.enable(['*/api/v1/auth/session*', '*/api/v1/works/*', '*/api/v1/drafts/*']);
+  try {
+    await author.goto(`${base}${editorPath}`);
+    await wire.heldRequest();
+    await author.waitFor(`${HYDRATED} && document.querySelector('${PUBLICATION}')`, 'the region while the session check is held');
+    await sleep(600);
+    check(await author.eval(`document.querySelector('${PUBLICATION}').dataset.phase === 'reading' && !document.querySelector('#publication-primary')`) && wire.count('GET', '/publication/state') === 0, 'while the session check is out the region reads nothing and offers no action');
+    await wire.release();
+    await waitPhase(author, 'ready', 'the region after the session is confirmed');
+    await sleep(300);
+    check(await author.eval(`document.querySelector('${PUBLICATION}').dataset.phase === 'ready' && Boolean(document.querySelector('#publication-primary'))`) && wire.count('GET', '/publication/state') === 1, 'once the session is known: one read, ready stays ready and the primary action is there');
+  } finally {
+    await wire.close();
+  }
+}
+
 async function rest(env) {
   const { author, mod, work, r1, base, check, openPage } = env;
   const editorPath = `/ban-viet/${work}`;
@@ -337,6 +360,7 @@ async function rest(env) {
   await author.click('[id^="file-appeal-"]');
   await author.waitFor(`document.querySelector('#author-reviews')?.textContent.includes('Đã ghi nhận, chờ quản trị viên')`, 'the appeal is recorded through the existing flow');
   check(true, 'can_appeal and decision_version lead to the existing appeal flow (no second form)');
+  await readsAfterSession({ author, base, editorPath, check });
   await reopen(author);
   await exactVersion({ ...env, reopen, editorPath });
   await retries({ ...env, reopen, editorPath });

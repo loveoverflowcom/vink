@@ -1,0 +1,66 @@
+[
+  {
+    "original_name": "initdb.log",
+    "stored_as": "initdb.log.gz",
+    "raw_bytes": 849,
+    "raw_sha256": "d17608e09ad60172ba13974128ebd2e123dcc9be629b71409670f22dab489b93",
+    "gzip_sha256": "b6dc63d33c49e08097a9d8dbb635e13c1c64a1e90782bbcfd726e0692af46ff8",
+    "reason": "Preserve raw diagnostic whitespace/EOF exactly; no normalization"
+  },
+  {
+    "original_name": "quick-package-strip-disk.log",
+    "stored_as": "quick-package-strip-disk.log.gz",
+    "raw_bytes": 19975,
+    "raw_sha256": "ac28f9048f664a12bc357525bb578c23b9023fa2766cc7e4dd6849ff1bfe8cb0",
+    "gzip_sha256": "b184247dd4acf6ffa1912791a6ec32a969823c7e1624bd48dbab2986ac09cfa3",
+    "reason": "Preserve raw diagnostic whitespace/EOF exactly; no normalization"
+  },
+  {
+    "original_name": "quick-web-opt-disk.log",
+    "stored_as": "quick-web-opt-disk.log.gz",
+    "raw_bytes": 15122,
+    "raw_sha256": "822d5bd16c2239f06761753e12a72ba959ddcdcb38a4e1ffdf36beee839f465a",
+    "gzip_sha256": "98461487a16b4500fd7c30e8dd1afbb360983956aea636060c150c7cee2f3ba8",
+    "reason": "Preserve raw diagnostic whitespace/EOF exactly; no normalization"
+  },
+  {
+    "original_name": "quick-post-recovery-strip-fail.log",
+    "stored_as": "quick-post-recovery-strip-fail.log.gz",
+    "raw_bytes": 60760,
+    "raw_sha256": "8884812ee31984c2dd48c676990a0bfd1a6ed4cfc6228ececb84d36fc6f960f5",
+    "gzip_sha256": "590e3a1e3481e89ed48abde7b38061bb96bb043b36f66b3dbc5985827593d6f2",
+    "reason": "Preserve original strip warning whitespace; failed artifact diagnostic raw is not normalized"
+  },
+  {
+    "original_name": "quick-d352dba-app-strip-disk.log",
+    "stored_as": "quick-d352dba-app-strip-disk.log.gz",
+    "raw_bytes": 17352,
+    "raw_sha256": "5ad9648fec837f7a40d6fbbd4acacb2f9a6dd2ae57b9232869b1a2d27591f4fb",
+    "gzip_sha256": "6d2510f866fec6cdd36c5960d6bd149b9e72337c7ed4dc2ad26d9b483abf0146",
+    "reason": "Preserve App strip warning and corrupt-artifact test-not-executed failure byte-exact"
+  },
+  {
+    "original_name": "quick-d352dba-web-archive-disk.log",
+    "stored_as": "quick-d352dba-web-archive-disk.log.gz",
+    "raw_bytes": 15139,
+    "raw_sha256": "863db57356982db6b100d89a3feaf021ac0afcee07a78ed1c915af10683ce704",
+    "gzip_sha256": "61a4d091162655398332e047cfcb42530779aa8419da0ebf0032d5451cc51658",
+    "reason": "Preserve complete archive failure; no unit tests or repository checks completed in this attempt"
+  },
+  {
+    "original_name": "corpus-f4e917b-compile-fail.log",
+    "stored_as": "corpus-f4e917b-compile-fail.log.gz",
+    "raw_bytes": 4339,
+    "raw_sha256": "cacf171d1824f3737c7e6a6c8629f4555d0db0c981a0516882bda7a4574253f0",
+    "gzip_sha256": "c95c0bb2c28c2c05ef715e83b7f798b8dcf1ebf30085b69ebd8781dbfe1a8b2d",
+    "reason": "Own added oracle compile error: map(str::len) expects &str but stored lines are &String; corrected closure, no assertion removed"
+  },
+  {
+    "original_name": "quick-c2a3073-doctest-archive-disk.log",
+    "stored_as": "quick-c2a3073-doctest-archive-disk.log.gz",
+    "raw_bytes": 8213,
+    "raw_sha256": "90b96e15c2005f1502b8177f9b593ac0744516232d8539718587a95ec5bf8efa",
+    "gzip_sha256": "8de53d356a9978427f9c13706fa9ee8fec78bf0c77357b96a6d82f37ae54206f",
+    "reason": "Latest source C2 full Quick FAIL disk in Web archive during doctest build; later steps NOT_RUN"
+  }
+]

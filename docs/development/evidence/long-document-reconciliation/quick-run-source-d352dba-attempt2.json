@@ -1,0 +1,22 @@
+{
+  "source_sha": "d352dba77c2a86d18d7afe5690fcb9b10153c055",
+  "base_sha": "d352dba77c2a86d18d7afe5690fcb9b10153c055",
+  "branch": "codex/long-document-reconciliation-evidence",
+  "started_at_utc": "2026-11-17T06:08:22.697511+00:00",
+  "cwd": "/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation",
+  "runtime_delta_from_develop": [],
+  "uncommitted_scope": "docs/evidence recovery only; source owners equal published develop",
+  "flags": {
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_BUILD_JOBS": "1",
+    "RUST_TEST_THREADS": "1"
+  },
+  "task_local_profile": "App/Web/UI preview opt-level1 + strip symbols; debug assertions/overflow checks retained",
+  "task_local_config_sha256": "51baf7c5a78083428df5aa51e5d6b97d17cf4279fd410334f72db74c1be262cf",
+  "artifact_handling": "Native filesystem compression with identical bytes/mode/mtime; prior corrupt 1152-byte strip output deleted, will be rebuilt",
+  "prior_run": "quick-run-source-afb8a09.json + quick-post-recovery-strip-fail.log.gz retained; not a PASS",
+  "attempt": 2,
+  "recovery": "Prior App strip attempt retained as quick-d352dba-app-strip-disk.log.gz; exact corrupt 3312-byte file removed, native compression saved 533635072+184987648 bytes after no open handles; 906 MiB free before retry. Source/profile/tests unchanged."
+}

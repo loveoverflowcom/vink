@@ -1,0 +1,15 @@
+{
+  "source_sha": "d352dba77c2a86d18d7afe5690fcb9b10153c055",
+  "branch": "codex/long-document-reconciliation-evidence",
+  "started_utc": "2026-11-17T05:44:15.149489+00:00",
+  "runtime_delta_from_develop": [],
+  "postgres": "127.0.0.1:55538 task-owned cluster",
+  "flags": {
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_BUILD_JOBS": "1",
+    "RUST_TEST_THREADS": "1"
+  },
+  "task_local_config": "task-build-config.toml.txt"
+}

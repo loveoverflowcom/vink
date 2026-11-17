@@ -220,7 +220,7 @@ hiện có; không nằm trong `verify all` và không đặt ngưỡng hiệu n
 full history; có lệnh, trust-boundary map và evidence PostgreSQL riêng.
 [RFC độ hạt lưu #231](../architecture/content-storage-rfc.md) dùng SQLx scratch để so JSONB,
 payload nguyên văn và manifest, kèm evidence và điều kiện mở lại.
-[Đối soát #229–#231](long-document-reconciliation.md) ghim AC/source/evidence/follow-up và gate pending;
+[Đối soát #229–#231](long-document-reconciliation.md) ghim AC/source/evidence/follow-up và giới hạn kiểm chứng;
 không biến proposal storage thành quyết định được duyệt.
 
 Chọn theo nhu cầu trong [hướng dẫn workflow có phạm vi](scoped-workflows.md):
