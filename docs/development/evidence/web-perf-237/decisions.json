@@ -1,0 +1,793 @@
+{
+  "checkout_base": "607ef83aa2824a16ec54a6f25bd10eb4c137d62f",
+  "decisions": [
+    {
+      "result": {
+        "head": {
+          "revision": 1,
+          "sha256": "c6343eb218a1c0ab58335c15f35d437e273914428d4f34e63fc3f57819ebe43d"
+        },
+        "lookup": "current",
+        "record": {
+          "content": {
+            "domain": "platform",
+            "kind": "architecture",
+            "rationale": "Phải chứng minh đủ phụ thuộc (byline nằm ở `principals`, thứ tự/membership của list) và tách query metadata/body sẽ tạo race. Chưa có benchmark nào cho thấy A là nút thắt.\nXem [Rút lại](#rút-lại-theo-endpoint).",
+            "requires": [
+              "D-03@r1",
+              "DISC-02-03-CHOICE-02@r1"
+            ],
+            "resolution": "Bao phủ mọi trường thật sự gửi đi (title, byline, document, revision, `published_at`, thứ tự, membership) mà không cần danh sách phụ thuộc. Đổi tên tác giả không đổi `revision_id` nhưng đổi tag. Không thêm cột, không thêm migration.\nTag là digest của đúng byte gửi đi; không có content coding (`CompressionLayer` không tồn tại), nên byte hash = byte trên dây. Thêm nén thì phải đổi tag theo coding hoặc chuyển weak trước.\nĐủ chống trùng cho số representation của một URL; header ngắn. Tag là opaque: client không được suy diễn cấu trúc.",
+            "title": "READ-01 CHOICE-01 nguồn định danh và độ mạnh ETag cho đọc công khai"
+          },
+          "context": {
+            "alternative": "Không chọn B (validator từ revision/generation)",
+            "canonical_references": "docs/development/public-conditional-reads.md",
+            "source_status": "pilot đã triển khai cho hai endpoint; đã kiểm bằng unit, PostgreSQL thật và Chrome headless cục bộ. Chưa đo trên môi trường production."
+          },
+          "historical": false,
+          "id": "READ-01-CHOICE-01",
+          "related_ids": [
+            "D-03",
+            "DISC-02-03-CHOICE-02"
+          ],
+          "revision": 1,
+          "sha256": "c6343eb218a1c0ab58335c15f35d437e273914428d4f34e63fc3f57819ebe43d",
+          "source": {
+            "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+            "group": "DECISION-DEV-20261112",
+            "kind": "legacy_import",
+            "line": 33,
+            "path": "docs/development/public-conditional-reads.md"
+          },
+          "status": "DESIGN_PROPOSED"
+        }
+      },
+      "snapshot_sha256": "8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8",
+      "version": 1
+    },
+    {
+      "result": {
+        "head": {
+          "revision": 1,
+          "sha256": "f30131f2abf4100b72e7035e1aa25ac4a3395c9b8f871914ce4544d32f0c1d34"
+        },
+        "lookup": "current",
+        "record": {
+          "content": {
+            "domain": "platform",
+            "kind": "architecture",
+            "rationale": "chưa có CDN và nội dung rút bài không được nằm ở cache trung gian",
+            "requires": [
+              "D-03@r1",
+              "DISC-02-03-CHOICE-02@r1"
+            ],
+            "resolution": "Trình duyệt được lưu nhưng phải hỏi lại server trước mỗi lần dùng; không shared cache (chưa có CDN và nội dung rút bài không được nằm ở cache trung gian). Không đặt TTL, nên không có hai TTL chồng nhau với READ-02.\n`404`/`503`/`500` không bị lưu, nên không giữ một 404 qua lúc phục hồi.\nKhông header nào chọn representation (không nén, không locale/filter).",
+            "title": "READ-01 CHOICE-02 chính sách Cache-Control cho đọc công khai"
+          },
+          "context": {
+            "canonical_references": "docs/development/public-conditional-reads.md",
+            "source_status": "pilot đã triển khai cho hai endpoint; đã kiểm bằng unit, PostgreSQL thật và Chrome headless cục bộ. Chưa đo trên môi trường production."
+          },
+          "historical": false,
+          "id": "READ-01-CHOICE-02",
+          "related_ids": [
+            "D-03",
+            "DISC-02-03-CHOICE-02"
+          ],
+          "revision": 1,
+          "sha256": "f30131f2abf4100b72e7035e1aa25ac4a3395c9b8f871914ce4544d32f0c1d34",
+          "source": {
+            "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+            "group": "DECISION-DEV-20261112",
+            "kind": "legacy_import",
+            "line": 38,
+            "path": "docs/development/public-conditional-reads.md"
+          },
+          "status": "DESIGN_PROPOSED"
+        }
+      },
+      "snapshot_sha256": "8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8",
+      "version": 1
+    },
+    {
+      "result": {
+        "head": {
+          "revision": 1,
+          "sha256": "e2dab26d9bb2f0798b8a23b08a7b374585c0eee460779cf0cfd114b78523115f"
+        },
+        "lookup": "current",
+        "record": {
+          "content": {
+            "domain": "platform",
+            "kind": "architecture",
+            "rationale": "tài nguyên đã được xác nhận công khai ở bước 1.",
+            "requires": [
+              "D-03@r1",
+              "DISC-02-03-CHOICE-02@r1"
+            ],
+            "resolution": "Body và tag đến từ **một** lần serialize của **một** câu SQL (PostgreSQL READ COMMITTED cho mỗi câu một snapshot), nên không thể gắn tag của bản A lên body B. Không giữ transaction qua request.\n1. Use case trả lỗi trước (`404` cho thiếu/chưa công khai/ID sai, `503` khi PostgreSQL không trả lời, `500` khi dữ liệu lưu sai). Không bao giờ đoán “not modified” khi chưa đọc được.\n2. Chỉ representation đang tồn tại mới được so với `If-None-Match`.",
+            "title": "READ-01 CHOICE-03 đường dẫn 304 ở tầng lưu trữ từ một snapshot DB"
+          },
+          "context": {
+            "canonical_references": "docs/development/public-conditional-reads.md",
+            "source_status": "pilot đã triển khai cho hai endpoint; đã kiểm bằng unit, PostgreSQL thật và Chrome headless cục bộ. Chưa đo trên môi trường production."
+          },
+          "historical": false,
+          "id": "READ-01-CHOICE-03",
+          "related_ids": [
+            "D-03",
+            "DISC-02-03-CHOICE-02"
+          ],
+          "revision": 1,
+          "sha256": "e2dab26d9bb2f0798b8a23b08a7b374585c0eee460779cf0cfd114b78523115f",
+          "source": {
+            "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+            "group": "DECISION-DEV-20261112",
+            "kind": "legacy_import",
+            "line": 42,
+            "path": "docs/development/public-conditional-reads.md"
+          },
+          "status": "DESIGN_PROPOSED"
+        }
+      },
+      "snapshot_sha256": "8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8",
+      "version": 1
+    },
+    {
+      "result": {
+        "head": {
+          "revision": 1,
+          "sha256": "4213db2bf6126e48d3716cec965d4fcd2d1a39c7c1aa688b2557e52a7fbcf3ac"
+        },
+        "lookup": "current",
+        "record": {
+          "content": {
+            "domain": "platform",
+            "kind": "architecture",
+            "rationale": "HTML reader/Khám phá không mang ETag của API. Draft và discussion giữ `no-store`, không có validator.",
+            "requires": [
+              "D-03@r1",
+              "DISC-02-03-CHOICE-02@r1"
+            ],
+            "resolution": "SSR vẫn đọc in-process qua `SharedPublicReads`; HTML reader/Khám phá không mang ETag của API. Draft và discussion giữ `no-store`, không có validator. `PUT` draft vẫn dùng `expected_version`/`409`, không đổi sang `If-Match`.",
+            "title": "READ-01 CHOICE-04 hợp đồng bộ nhớ đệm HTTP ở adapter Web"
+          },
+          "context": {
+            "canonical_references": "docs/development/public-conditional-reads.md",
+            "source_status": "pilot đã triển khai cho hai endpoint; đã kiểm bằng unit, PostgreSQL thật và Chrome headless cục bộ. Chưa đo trên môi trường production."
+          },
+          "historical": false,
+          "id": "READ-01-CHOICE-04",
+          "related_ids": [
+            "D-03",
+            "DISC-02-03-CHOICE-02"
+          ],
+          "revision": 1,
+          "sha256": "4213db2bf6126e48d3716cec965d4fcd2d1a39c7c1aa688b2557e52a7fbcf3ac",
+          "source": {
+            "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+            "group": "DECISION-DEV-20261112",
+            "kind": "legacy_import",
+            "line": 25,
+            "path": "docs/development/public-conditional-reads.md"
+          },
+          "status": "DESIGN_PROPOSED"
+        }
+      },
+      "snapshot_sha256": "8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8",
+      "version": 1
+    },
+    {
+      "result": {
+        "head": {
+          "revision": 1,
+          "sha256": "d50a6a1971b2f3c22c523dca8877744df967c18cad36b8df1eb90cfcf8aca951"
+        },
+        "lookup": "current",
+        "record": {
+          "content": {
+            "domain": "platform",
+            "kind": "architecture",
+            "rationale": "Không chọn: phải tự parse 304, đồng bộ data + tag, và tạo owner thứ hai cạnh HTTP cache. Chỉ mở khi A thiếu semantics.",
+            "requires": [
+              "READ-01-CHOICE-01@r1",
+              "READ-01-CHOICE-02@r1",
+              "READ-01-CHOICE-04@r1"
+            ],
+            "resolution": "Trình duyệt giữ byte + ETag và tự gửi `If-None-Match`; app không đọc/giữ ETag. Request dùng `cache: \"no-cache\"`: nếu sau này server đổi header sang có `max-age`, trình duyệt vẫn phải hỏi lại origin trước khi dùng byte đã lưu, nên app không bao giờ ghi `validated_at` cho một bản trình duyệt tự trả từ cache. Không gắn timestamp lên URL; refresh thủ công cũng gửi validator.\nNgưỡng kiểm tra lại, **không phải TTL**: không xóa gì. `validated_at` là thời điểm **bắt đầu** request được origin xác nhận (cận dưới, an toàn); đọc cache không gia hạn nó",
+            "title": "READ-02 CHOICE-01 phạm vi lưu trữ trong tab và cửa sổ tươi phía client"
+          },
+          "context": {
+            "alternative": "B — App tự quản validator",
+            "canonical_references": "docs/development/public-read-freshness.md",
+            "source_status": "Chính sách hiển thị dữ liệu cũ dưới đây là **đề xuất v1**, chưa phải quyết định sản phẩm đã chốt."
+          },
+          "historical": false,
+          "id": "READ-02-CHOICE-01",
+          "related_ids": [
+            "D-03",
+            "DISC-02-03-CHOICE-02"
+          ],
+          "revision": 1,
+          "sha256": "d50a6a1971b2f3c22c523dca8877744df967c18cad36b8df1eb90cfcf8aca951",
+          "source": {
+            "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+            "group": "DECISION-DEV-20261112",
+            "kind": "legacy_import",
+            "line": 49,
+            "path": "docs/development/public-read-freshness.md"
+          },
+          "status": "DESIGN_PROPOSED"
+        }
+      },
+      "snapshot_sha256": "8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8",
+      "version": 1
+    },
+    {
+      "result": {
+        "head": {
+          "revision": 1,
+          "sha256": "d842ccb6576876a9003d341565386ee65e86e319102b3d440d6e9d873a77c940"
+        },
+        "lookup": "current",
+        "record": {
+          "content": {
+            "domain": "platform",
+            "kind": "architecture",
+            "rationale": "view mount khi chưa có snapshot hiển thị được sẽ chờ request đang chạy (waiter), không tạo request thứ hai.",
+            "requires": [
+              "READ-01-CHOICE-01@r1",
+              "READ-01-CHOICE-02@r1",
+              "READ-01-CHOICE-04@r1"
+            ],
+            "resolution": "Một timer cho cả tab, hẹn đến mốc sớm nhất của các key đang được view quan sát: `validated_at + 120 s + spread`, spread ngẫu nhiên `0–15 s` chọn lại sau mỗi lần xác nhận. Không timer theo card\nKiểm tra nếu đã quá 120 s (không cộng spread). Gộp với request đang chạy (single-flight); bốn tín hiệu đồng thời → một request. `online` chỉ là gợi ý: lỗi vẫn backoff\nHủy timer, bỏ qua mọi tín hiệu trừ thao tác thủ công; hiện lại thì kiểm tra nếu stale",
+            "title": "READ-02 CHOICE-02 điều phối làm mới theo vòng đời trang và single-flight"
+          },
+          "context": {
+            "canonical_references": "docs/development/public-read-freshness.md",
+            "source_status": "Chính sách hiển thị dữ liệu cũ dưới đây là **đề xuất v1**, chưa phải quyết định sản phẩm đã chốt."
+          },
+          "historical": false,
+          "id": "READ-02-CHOICE-02",
+          "related_ids": [
+            "D-03",
+            "DISC-02-03-CHOICE-02"
+          ],
+          "revision": 1,
+          "sha256": "d842ccb6576876a9003d341565386ee65e86e319102b3d440d6e9d873a77c940",
+          "source": {
+            "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+            "group": "DECISION-DEV-20261112",
+            "kind": "legacy_import",
+            "line": 64,
+            "path": "docs/development/public-read-freshness.md"
+          },
+          "status": "DESIGN_PROPOSED"
+        }
+      },
+      "snapshot_sha256": "8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8",
+      "version": 1
+    },
+    {
+      "result": {
+        "head": {
+          "revision": 1,
+          "sha256": "4b1f146acde8e6105c1c679e0fd22b92af8ae437d64ba56cca51000135b86dd4"
+        },
+        "lookup": "current",
+        "record": {
+          "content": {
+            "domain": "platform",
+            "kind": "architecture",
+            "rationale": "1. **Hiển thị dữ liệu cũ:** v1 chọn hướng 1 của issue — giữ snapshot công khai đã xem trong phiên tab, có trạng thái “chưa làm mới được”, revalidate khi online/hiện lại, và `max_display_age` 15 phút cho lần mount mới. Giá trị 15 phút là giả định cần chủ sản phẩm chốt.",
+            "requires": [
+              "READ-01-CHOICE-01@r1",
+              "READ-01-CHOICE-02@r1",
+              "READ-01-CHOICE-04@r1"
+            ],
+            "resolution": "Giữ last-success trên màn hình với thông báo riêng; backoff 5 → 10 → 20 → 40 → 80 → 120 s (trần), jitter 80–100 %, tôn trọng `Retry-After` dạng giây (trần 120 s). Không retry mutation\nXóa entry ngay, reader thay chữ bằng trang “Không tìm thấy”; card của tác phẩm đó bị bỏ khỏi snapshot danh sách cho tới khi list được origin xác nhận lại. Không dùng stale-if-error cho trường hợp này\nSnapshot xác nhận quá 15 phút không được render ngay ở **lần mount mới** (sẽ tải với loading thật). Nội dung đang trên màn hình không bị rút vì lỗi tạm",
+            "title": "READ-02 CHOICE-03 xử lý ngoại tuyến/lỗi tạm thời và xóa ngay khi 404"
+          },
+          "context": {
+            "canonical_references": "docs/development/public-read-freshness.md",
+            "review_when": "Giá trị 15 phút là giả định cần chủ sản phẩm chốt.",
+            "source_status": "Chính sách hiển thị dữ liệu cũ dưới đây là **đề xuất v1**, chưa phải quyết định sản phẩm đã chốt."
+          },
+          "historical": false,
+          "id": "READ-02-CHOICE-03",
+          "related_ids": [
+            "D-03",
+            "DISC-02-03-CHOICE-02"
+          ],
+          "revision": 1,
+          "sha256": "4b1f146acde8e6105c1c679e0fd22b92af8ae437d64ba56cca51000135b86dd4",
+          "source": {
+            "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+            "group": "DECISION-DEV-20261112",
+            "kind": "legacy_import",
+            "line": 68,
+            "path": "docs/development/public-read-freshness.md"
+          },
+          "status": "DESIGN_PROPOSED"
+        }
+      },
+      "snapshot_sha256": "8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8",
+      "version": 1
+    },
+    {
+      "result": {
+        "head": {
+          "revision": 1,
+          "sha256": "e94c81ec10c5c95f1fc1c517aaf52ea450c3f434f0dad4b211129fd085082da0"
+        },
+        "lookup": "current",
+        "record": {
+          "content": {
+            "domain": "platform",
+            "kind": "architecture",
+            "rationale": "Reader **không** thay chữ đang đọc: hiện “Tác phẩm vừa có bản cập nhật” + “Xem bản mới”; áp dụng thì về đầu nội dung và focus `#noi-dung`",
+            "requires": [
+              "READ-01-CHOICE-01@r1",
+              "READ-01-CHOICE-02@r1",
+              "READ-01-CHOICE-04@r1"
+            ],
+            "resolution": "Khám phá cập nhật tại chỗ (key ổn định: giữ row, focus, scroll). Reader **không** thay chữ đang đọc: hiện “Tác phẩm vừa có bản cập nhật” + “Xem bản mới”; áp dụng thì về đầu nội dung và focus `#noi-dung`",
+            "title": "READ-02 CHOICE-04 cập nhật bài viết khi đang đọc dở (trình đọc bình tĩnh)"
+          },
+          "context": {
+            "canonical_references": "docs/development/public-read-freshness.md",
+            "source_status": "Chính sách hiển thị dữ liệu cũ dưới đây là **đề xuất v1**, chưa phải quyết định sản phẩm đã chốt."
+          },
+          "historical": false,
+          "id": "READ-02-CHOICE-04",
+          "related_ids": [
+            "D-03",
+            "DISC-02-03-CHOICE-02"
+          ],
+          "revision": 1,
+          "sha256": "e94c81ec10c5c95f1fc1c517aaf52ea450c3f434f0dad4b211129fd085082da0",
+          "source": {
+            "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+            "group": "DECISION-DEV-20261112",
+            "kind": "legacy_import",
+            "line": 70,
+            "path": "docs/development/public-read-freshness.md"
+          },
+          "status": "DESIGN_PROPOSED"
+        }
+      },
+      "snapshot_sha256": "8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8",
+      "version": 1
+    },
+    {
+      "result": {
+        "head": {
+          "revision": 1,
+          "sha256": "d30938d4eef39ad4f42e0a40e166f47ecd3d25b74165a21da5956b6d5d18f225"
+        },
+        "lookup": "current",
+        "record": {
+          "content": {
+            "domain": "discussion",
+            "kind": "architecture",
+            "rationale": "Loại B (ghép theo chronology) vì cần thêm vị trí/cursor/context cho hàng riêng dưới root chưa tải và dễ làm sai `public_replies`.",
+            "requires": [
+              "DISC-02-03-CHOICE-02@r1"
+            ],
+            "resolution": "“Nhận xét của bạn” ngay sau composer gốc. Giữ timeline công khai có nghĩa công khai; own list tới được pending/rejected ngoài trang hoặc dưới root không được liệt kê.",
+            "title": "DISC-WEB CHOICE-01 vùng riêng gọn cho nhận xét của bạn"
+          },
+          "context": {
+            "alternative": "B (ghép theo chronology)",
+            "canonical_references": "docs/development/discussion-web-reads.md, docs/architecture/discussion-reads.md",
+            "source_status": "Lát `DISC-WEB-PUBLIC-OWN-READS`, tiếp nối #144 và #146, nền `develop@4891c77`"
+          },
+          "historical": false,
+          "id": "DISC-WEB-CHOICE-01",
+          "related_ids": [
+            "D-08",
+            "DISC-02-03-CHOICE-02"
+          ],
+          "revision": 1,
+          "sha256": "d30938d4eef39ad4f42e0a40e166f47ecd3d25b74165a21da5956b6d5d18f225",
+          "source": {
+            "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+            "group": "DECISION-DEV-20261112",
+            "kind": "legacy_import",
+            "line": 9,
+            "path": "docs/development/discussion-web-reads.md"
+          },
+          "status": "DESIGN_PROPOSED"
+        }
+      },
+      "snapshot_sha256": "8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8",
+      "version": 1
+    },
+    {
+      "result": {
+        "head": {
+          "revision": 1,
+          "sha256": "3f66478ed8fbc985d378947860dee33c1a1fa6e077af2d0f1e2f0fc63814b273"
+        },
+        "lookup": "current",
+        "record": {
+          "content": {
+            "domain": "discussion",
+            "kind": "architecture",
+            "rationale": "Loại A (API capability mới) vì provider hiện có đã cấp đủ fact; không cần thêm API/SQL.",
+            "requires": [
+              "DISC-02-03-CHOICE-02@r1"
+            ],
+            "resolution": "sau hydration gọi composed v1 với `limit=1`, chỉ decode `work_id`, `viewer_is_work_author`; bỏ toàn bộ roots ngay tại decoder. Public SSR/browser dùng DTO/endpoint public riêng, không chờ hoặc phụ thuộc seam này.\nLookup own của các ID công khai cấp `can_remove`, không suy từ tên hoặc login.",
+            "title": "DISC-WEB CHOICE-02 composed capability seam có giới hạn"
+          },
+          "context": {
+            "alternative": "A (API capability mới)",
+            "canonical_references": "docs/development/discussion-web-reads.md, docs/architecture/discussion-reads.md",
+            "source_status": "Lát `DISC-WEB-PUBLIC-OWN-READS`, tiếp nối #144 và #146, nền `develop@4891c77`"
+          },
+          "historical": false,
+          "id": "DISC-WEB-CHOICE-02",
+          "related_ids": [
+            "D-08",
+            "DISC-02-03-CHOICE-02"
+          ],
+          "revision": 1,
+          "sha256": "3f66478ed8fbc985d378947860dee33c1a1fa6e077af2d0f1e2f0fc63814b273",
+          "source": {
+            "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+            "group": "DECISION-DEV-20261112",
+            "kind": "legacy_import",
+            "line": 13,
+            "path": "docs/development/discussion-web-reads.md"
+          },
+          "status": "DESIGN_PROPOSED"
+        }
+      },
+      "snapshot_sha256": "8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8",
+      "version": 1
+    },
+    {
+      "result": {
+        "head": {
+          "revision": 1,
+          "sha256": "0b38cb1180895cc1add1a6ef61b69e222bec0f093bd7db94c0b50706580dff68"
+        },
+        "lookup": "current",
+        "record": {
+          "content": {
+            "domain": "discussion",
+            "kind": "architecture",
+            "rationale": "Không thêm store toàn cục hoặc framework state.",
+            "requires": [
+              "DISC-02-03-CHOICE-02@r1"
+            ],
+            "resolution": "`ViewState` giữ epoch public/mutation; `OwnState` giữ scope + read generation. Đổi scope dọn private facts và release busy ngay, không xếp hàng sau request cũ. Mỗi own/capability read có một child Owner hủy fetch và deadline khi read kế tiếp thay thế nó.\nWrite vẫn ở feature Owner: hủy transport không chứng minh server rollback.",
+            "title": "DISC-WEB CHOICE-03 generation ở owner hiện có và đối soát lô"
+          },
+          "context": {
+            "canonical_references": "docs/development/discussion-web-reads.md, docs/architecture/discussion-reads.md",
+            "source_status": "Lát `DISC-WEB-PUBLIC-OWN-READS`, tiếp nối #144 và #146, nền `develop@4891c77`"
+          },
+          "historical": false,
+          "id": "DISC-WEB-CHOICE-03",
+          "related_ids": [
+            "D-08",
+            "DISC-02-03-CHOICE-02"
+          ],
+          "revision": 1,
+          "sha256": "0b38cb1180895cc1add1a6ef61b69e222bec0f093bd7db94c0b50706580dff68",
+          "source": {
+            "commit": "630e80a9a1b2790eb4f3c663afb7ad627163d3cb",
+            "group": "DECISION-DEV-20261112",
+            "kind": "legacy_import",
+            "line": 18,
+            "path": "docs/development/discussion-web-reads.md"
+          },
+          "status": "DESIGN_PROPOSED"
+        }
+      },
+      "snapshot_sha256": "8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8",
+      "version": 1
+    },
+    {
+      "result": {
+        "head": {
+          "revision": 2,
+          "sha256": "b827b139c80ee4d88cd7e15a1a42acd86ef96a01dfd883adf739acfe7ec39d9c"
+        },
+        "lookup": "current",
+        "record": {
+          "content": {
+            "domain": "publication",
+            "kind": "product",
+            "resolution": "Mở rộng: “không ghi mới” áp cho cả trang ẩn (PUB-07); xử lý ca đã gửi và tự gỡ vẫn được (`PRODUCT_CONFIRMED`)",
+            "title": "Quyền ghi trên tombstone (bình luận/phản hồi mới, “Hữu ích” mới)"
+          },
+          "context": {},
+          "historical": false,
+          "id": "O-03",
+          "related_ids": [
+            "PUB-04",
+            "PUB-05"
+          ],
+          "revision": 2,
+          "sha256": "b827b139c80ee4d88cd7e15a1a42acd86ef96a01dfd883adf739acfe7ec39d9c",
+          "source": {
+            "commit": "af3c34bd624be18d404bd5789620759cae0b0ddb",
+            "group": "ADMIN-MODERATION-20261111",
+            "kind": "legacy_import",
+            "line": 187,
+            "path": "docs/architecture/product-decisions-20261110.md"
+          },
+          "status": "PRODUCT_CONFIRMED"
+        }
+      },
+      "snapshot_sha256": "8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8",
+      "version": 1
+    },
+    {
+      "result": {
+        "head": {
+          "revision": 2,
+          "sha256": "cb30cb43040a3fad50bd4930096e537057a2f3c6037b387d8c332be497fa15aa"
+        },
+        "lookup": "current",
+        "record": {
+          "base": {
+            "revision": 1,
+            "sha256": "db7aafafa58b94a7d2c1b1de5b46e9f7464e13f233be3ba9a3ca9d595d53795f"
+          },
+          "content": {
+            "domain": "publication",
+            "kind": "product",
+            "rationale": "Bảo toàn tính toàn vẹn của cuộc thảo luận văn học và tôn trọng đóng góp của độc giả theo nguyên tắc tôn vinh thảo luận hai tầng (PRD §14, PUB-05, MOD-13). Thân bài bị bác do vi phạm kiểm duyệt phải bị thu hồi ngay lập tức để bảo vệ độc giả và nền tảng, nhưng các thảo luận đã diễn ra không tự động bị xóa trừ khi chính bình luận đó vi phạm. Việc chặn thêm bình luận mới ngăn chặn leo thang tranh cãi trên một tác phẩm không còn tồn tại trên không gian công khai. Quyền tự gỡ bình luận của tác giả bình luận được bảo toàn.\n",
+            "related_ids": [
+              "MOD-13",
+              "PUB-05"
+            ],
+            "resolution": "Khi moderator hoặc admin kết luận bác một revision đang đăng công khai của tác phẩm:\n1. Public pointer của tác phẩm bị rút khỏi `publications` (`GET /api/v1/works/{id}/publication` trả `404`). Khám phá và tìm kiếm đọc từ public pointer nên tác phẩm biến mất khỏi các danh sách công khai.\n2. Tại URL đọc công khai cũ (`GET /api/v1/works/{id}/reader`), hệ thống trả trạng thái `review_withdrawn` kèm `work_id` và tên hiển thị tác giả (`author_name`), không trả nội dung thân bài hay metadata tác phẩm.\n3. Trang web hiển thị HTTP 200, `<meta name=\"robots\" content=\"noindex\">`, header `Cache-Control: no-store`, tên tác giả, thông báo “Bản này đã bị gỡ sau khi kiểm duyệt.” và luồng thảo luận hai tầng bên dưới.\n4. Quyền bình luận trên trang bị gỡ:\n   - Khách xem bình luận đã được duyệt (đủ điều kiện hiển thị).\n   - Người viết bình luận vẫn xem được bình luận chờ duyệt hoặc bị từ chối của chính mình, và có quyền tự gỡ bình luận của mình.\n   - Các ca bình luận đã gửi trước đó vẫn được xử lý tiếp theo snapshot bình luận.\n   - Chặn toàn bộ hành động tạo bình luận mới, gửi phản hồi mới, chỉnh sửa bình luận và tương tác mới tại server.\n5. Khi tác giả chuyển tác phẩm sang “Chỉ mình tôi” (`set-private`), trang bị gỡ bị đóng hoàn toàn và rút cả tên tác giả khỏi URL cũ. Khi một revision mới được duyệt đúng ý định công khai, bản được duyệt sẽ thay thế trang thông báo.\n",
+            "title": "Trang ở URL cũ sau khi moderator hoặc admin bác bản đang đăng",
+            "work_audiences": [
+              "private",
+              "public"
+            ]
+          },
+          "id": "O-17",
+          "revision": 2,
+          "sha256": "cb30cb43040a3fad50bd4930096e537057a2f3c6037b387d8c332be497fa15aa",
+          "signoff": {
+            "decided_on": "2026-11-12",
+            "source": "Chủ sản phẩm yêu cầu trong phiên hoàn thiện #159 ngày 12/11/2026: “Áp dụng trang giữ bình luận cho cả admin và moderator khi bác một revision đang đăng. Ghi lựa chọn về trang và quyền bình luận vào đề xuất O-17@r2 với căn cứ từ cuộc trao đổi này. Đưa revision vào hiệu lực trong registry sau signoff đúng revision.”\n"
+          },
+          "source": {
+            "kind": "proposal",
+            "path": "decisions/proposals/O-17.r2.toml",
+            "signoff_path": "decisions/signoffs/O-17.r2.toml"
+          },
+          "status": "PRODUCT_CONFIRMED",
+          "work_audience_comparison": {
+            "against": "USER-02@r1",
+            "result": "matches"
+          }
+        }
+      },
+      "snapshot_sha256": "8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8",
+      "version": 1
+    },
+    {
+      "result": {
+        "head": {
+          "revision": 1,
+          "sha256": "2293bf58194809957b892b74bc3891d56a05998e7b97008ad1c8fbfd98fdc97b"
+        },
+        "lookup": "current",
+        "record": {
+          "content": {
+            "domain": "publication",
+            "kind": "product",
+            "resolution": "Đúng hai audience: **Chỉ mình tôi** / **Công khai**. Audience tách khỏi trạng thái kiểm duyệt; công khai không bỏ kiểm duyệt; Approved không tự công khai bài chỉ lưu riêng",
+            "title": "Hai mức riêng tư",
+            "work_audiences": [
+              "private",
+              "public"
+            ]
+          },
+          "context": {
+            "canonical_references": "D-06; AUD-01, AUD-02; PUB-01",
+            "previous_rule": "“Nháp riêng + public publication”, unlisted/nhóm kín “để sau”"
+          },
+          "historical": false,
+          "id": "USER-02",
+          "related_ids": [
+            "AUD-01",
+            "AUD-02",
+            "D-06",
+            "PUB-01"
+          ],
+          "revision": 1,
+          "sha256": "2293bf58194809957b892b74bc3891d56a05998e7b97008ad1c8fbfd98fdc97b",
+          "source": {
+            "commit": "af3c34bd624be18d404bd5789620759cae0b0ddb",
+            "group": "PRODUCT-DECISIONS-20261110",
+            "kind": "legacy_import",
+            "line": 35,
+            "path": "docs/architecture/product-decisions-20261110.md"
+          },
+          "status": "PRODUCT_CONFIRMED"
+        }
+      },
+      "snapshot_sha256": "8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8",
+      "version": 1
+    },
+    {
+      "result": {
+        "head": {
+          "revision": 1,
+          "sha256": "397b023db010494442da444670c43139558541f7ef7bf6125554c678cae8435b"
+        },
+        "lookup": "current",
+        "record": {
+          "content": {
+            "domain": "collections",
+            "kind": "product",
+            "resolution": "Mạng xã hội bài ngắn/tản văn; **không** nhiều chương. Bộ sưu tập cá nhân (hai audience), hiển thị = AND ba điều kiện",
+            "title": "Bài ngắn và bộ sưu tập cá nhân"
+          },
+          "context": {
+            "canonical_references": "D-10, D-16; WR-04; COL-01..06",
+            "previous_rule": "Một phần trước, nhiều chương cơ bản ở beta"
+          },
+          "historical": false,
+          "id": "USER-09",
+          "related_ids": [
+            "COL-01",
+            "COL-02",
+            "COL-03",
+            "COL-04",
+            "COL-05",
+            "COL-06",
+            "D-10",
+            "D-16",
+            "WR-04"
+          ],
+          "revision": 1,
+          "sha256": "397b023db010494442da444670c43139558541f7ef7bf6125554c678cae8435b",
+          "source": {
+            "commit": "af3c34bd624be18d404bd5789620759cae0b0ddb",
+            "group": "PRODUCT-DECISIONS-20261110",
+            "kind": "legacy_import",
+            "line": 42,
+            "path": "docs/architecture/product-decisions-20261110.md"
+          },
+          "status": "PRODUCT_CONFIRMED"
+        }
+      },
+      "snapshot_sha256": "8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8",
+      "version": 1
+    },
+    {
+      "result": {
+        "current": null,
+        "head": {
+          "revision": 1,
+          "sha256": "72bb815fc75137819c252cc7cc632a17503389d7bbd0e9fbcf866f3c4900d2aa"
+        },
+        "head_record": {
+          "base": null,
+          "content": {
+            "domain": "public-read",
+            "kind": "product",
+            "rationale": "Chủ sản phẩm trả lời trong chat triển khai #203 ngày 15/11/2026: “24h nhé, hết hạn sẽ có tín hiệu riêng để xử lý sau, ghi vào”. Với POLICY-02: “Giữ rollout tắt; chốt policy ở bước sau”. Đây là nội dung được ghi theo lời chủ sản phẩm để review đúng revision; chưa tự tạo signoff cho payload mới. Khi thiết bị offline, không thể biết tức thì một tác phẩm đã bị rút trên server.\n",
+            "related_ids": [
+              "O-17",
+              "PUB-05",
+              "PUB-07"
+            ],
+            "requires": [
+              "O-17@r2"
+            ],
+            "resolution": "POLICY-01 của issue #203: tuổi tối đa của snapshot công khai dùng để đọc offline qua restart là 24 giờ kể từ lần origin xác nhận. Đọc lại storage không gia hạn thời điểm đó. Snapshot khôi phục luôn mang provenance CachedUnverified; khi chạm ngưỡng 24 giờ, storage trả tín hiệu expired riêng, không trả body/cursor như một cache hit. Phần UX xử lý tín hiệu hết hạn, đặc biệt với nội dung đang được đọc, sẽ được làm ở bước sau; proposal này không quyết định tự rút nội dung đang mở hoặc chỉ kiểm tại mount.\nPOLICY-02 về giữ/xóa public device cache khi logout hoặc đổi tài khoản còn OPEN. Giữ rollout persistence/offline display tắt cho đến khi policy clearing và UX hết hạn được ghi, duyệt đúng revision và có kiểm chứng tương ứng. Issue #203 không triển khai Service Worker, HTML cache hay cold offline launch.\n",
+            "title": "Snapshot công khai qua restart: cửa sổ 24 giờ và tín hiệu hết hạn"
+          },
+          "id": "VDR-PUBLIC-OFFLINE-AGE",
+          "revision": 1,
+          "sha256": "72bb815fc75137819c252cc7cc632a17503389d7bbd0e9fbcf866f3c4900d2aa",
+          "source": {
+            "kind": "proposal",
+            "path": "decisions/proposals/VDR-PUBLIC-OFFLINE-AGE.r1.toml",
+            "signoff_path": null
+          },
+          "status": "PENDING"
+        },
+        "id": "VDR-PUBLIC-OFFLINE-AGE",
+        "lookup": "pending_only"
+      },
+      "snapshot_sha256": "8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8",
+      "version": 1
+    },
+    {
+      "result": {
+        "current": null,
+        "head": {
+          "revision": 1,
+          "sha256": "c380fad92998d2acb822aad90babad41c5de3b420f8099eaedc3ce7efa038f34"
+        },
+        "head_record": {
+          "base": null,
+          "content": {
+            "domain": "platform",
+            "kind": "architecture",
+            "rationale": "PR #215, đối chiếu apps/vink-web/src/public_persistence.rs, apps/vink-web/public-cache/indexeddb.js và docs/development/public-read-freshness.md tại develop@6e07806. VDR-PUBLIC-OFFLINE-AGE@r1 vẫn PENDING; 24 giờ không thay policy RAM 15 phút. Account clearing/thiết bị dùng chung và UX expired còn OPEN. Các giới hạn byte là kỹ thuật, không là giới hạn tác phẩm hoặc SLA; model read-lifecycle không chứng minh IndexedDB transaction.",
+            "related_ids": [
+              "D-03",
+              "VDR-PUBLIC-OFFLINE-AGE"
+            ],
+            "requires": [
+              "READ-02-CHOICE-01@r1",
+              "READ-02-CHOICE-03@r1"
+            ],
+            "resolution": "Chỉ lưu envelope đầy đủ của WorkList/publication công khai, không lưu nháp, phiên, own discussion hay moderation. Commit data/cursor/metadata cùng transaction; durable epoch, database incarnation và sequence fence writer/restore cũ sau clear/purge. Broadcast là gợi ý. ACK durable chỉ sau transaction.oncomplete; lỗi storage fallback, không thành authoritative removal. Giữ giới hạn kỹ thuật 32 row/4 MiB logical UTF-8, record 512 KiB, queue 8 pending + 1 executing. ENABLED=false và display policy=None cho tới khi chốt policy và kiểm rollout. Không Service Worker/cold offline launch.",
+            "title": "Adapter IndexedDB công khai dưới gate tắt"
+          },
+          "id": "VDR-PUBLIC-SNAPSHOT-STORAGE",
+          "revision": 1,
+          "sha256": "c380fad92998d2acb822aad90babad41c5de3b420f8099eaedc3ce7efa038f34",
+          "source": {
+            "kind": "proposal",
+            "path": "decisions/proposals/VDR-PUBLIC-SNAPSHOT-STORAGE.r1.toml",
+            "signoff_path": null
+          },
+          "status": "PENDING"
+        },
+        "id": "VDR-PUBLIC-SNAPSHOT-STORAGE",
+        "lookup": "pending_only"
+      },
+      "snapshot_sha256": "8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8",
+      "version": 1
+    },
+    {
+      "result": {
+        "current": null,
+        "head": {
+          "revision": 1,
+          "sha256": "3b5ae7212937087e70b71e4a1bc1d7973e3b26eec22ae8c589feeeff1153e355"
+        },
+        "head_record": {
+          "base": null,
+          "content": {
+            "domain": "platform",
+            "kind": "architecture",
+            "rationale": "Đối chiếu PR #210/#212 và consumer #211/#222/#223 tại develop@6e07806. Owner: docs/development/public-read-freshness.md; apps/vink-web/src/read_lifecycle.rs. Model/replay: apps/vink-web/behavior/read-lifecycle.qnt, chỉ primitive thuần. Ghi lựa chọn kỹ thuật đã triển khai để review; không suy signoff từ merge. SQL, DOM, storage và freshness::Coordinator có bằng chứng riêng.",
+            "related_ids": [
+              "D-03",
+              "INV-08"
+            ],
+            "requires": [
+              "READ-02-CHOICE-01@r1",
+              "READ-02-CHOICE-02@r1",
+              "READ-02-CHOICE-03@r1",
+              "READ-02-CHOICE-04@r1"
+            ],
+            "resolution": "Giữ ReadOwner/ReadTicket/PageChain thuần, dùng scope gồm representation/query/filter/sort/limit và session generation cho private reads. RequestId duy nhất qua disposal/remount; đổi scope, invalidate và refresh thay append vô hiệu ticket cũ. Head thành công thay toàn chuỗi; append chỉ nhận cursor hiện hành, ID không trùng và continuation không lặp; lỗi tạm hoặc page bị từ chối không tiến cursor. Adapter chịu trách nhiệm kiểm DTO, quyền, xóa private facts khi đổi session/quyền hoặc 401/403/404, và lifecycle/backoff; primitive không tự xác thực. Public Reader điều hướng và refresh dùng typed /reader; mark_stale giữ backoff, mutation_confirmed chỉ đánh thức read phù hợp. Không retry mutation, không đổi cửa sổ hiển thị 15 phút hay chính sách offline.",
+            "title": "Vòng đời đọc Web và chuỗi trang có ticket"
+          },
+          "id": "VDR-WEB-READ-LIFECYCLE",
+          "revision": 1,
+          "sha256": "3b5ae7212937087e70b71e4a1bc1d7973e3b26eec22ae8c589feeeff1153e355",
+          "source": {
+            "kind": "proposal",
+            "path": "decisions/proposals/VDR-WEB-READ-LIFECYCLE.r1.toml",
+            "signoff_path": null
+          },
+          "status": "PENDING"
+        },
+        "id": "VDR-WEB-READ-LIFECYCLE",
+        "lookup": "pending_only"
+      },
+      "snapshot_sha256": "8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8",
+      "version": 1
+    }
+  ]
+}

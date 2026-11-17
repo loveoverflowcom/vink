@@ -31,6 +31,100 @@ pub enum Snapshot {
     Control(ReaderResponse),
 }
 
+/// Measured READ-02 in-tab RAM retention budget (`WEB-PERF-07 / CHOICE-01 B`):
+/// - `max_entry_bytes = 1 MiB` (1_048_576 logical proxy bytes): admits normal `#234` works/lists
+///   and full 200k-scalar contiguous/poem `#229` works (`vi_nfc-200k` 453 KiB, `poem_tabs-200k`
+///   552 KiB, `emoji-200k` 801 KiB), while skipping retention of block-fragmented `tiny_blocks`
+///   (`30k` = 1.47 MiB .. `200k` = 9.80 MiB proxy / ~10.55 MB WASM step / ~7.7 ms `.clone()`).
+/// - `max_total_bytes = 2 MiB` (2_097_152 logical proxy bytes): keeps all 16 typical works and
+///   Discovery `WorkList` pages hot in RAM while bounding retained cache weight near ~1x the
+///   warm baseline WASM heap (`1.84-3.15 MB`). Independent of disabled `4 MiB / 512 KiB` disk quota;
+///   tracks deterministic UTF-8 + structural allocation proxy bytes, never host RSS or GPU memory.
+pub const READ_CACHE_BUDGET: crate::read_cache::RetentionBudget =
+    crate::read_cache::RetentionBudget {
+        max_total_bytes: Some(2 * 1024 * 1024),
+        max_entry_bytes: Some(1024 * 1024),
+    };
+
+/// Zero-allocation deterministic UTF-8 + structural container weight proxy for optional
+/// `SnapshotCache` retention accounting. Active views and in-flight buffers are outside this sum.
+#[must_use]
+pub fn snapshot_weight_bytes(snapshot: &Snapshot) -> usize {
+    fn opt_str_len(s: &Option<String>) -> usize {
+        s.as_ref().map_or(0, String::len)
+    }
+    fn public_tag_bytes(t: &crate::contract::PublicTagDto) -> usize {
+        64usize
+            .saturating_add(t.tag_id.len())
+            .saturating_add(t.facet.len())
+            .saturating_add(t.label.len())
+            .saturating_add(t.slug.len())
+    }
+    fn tag_dto_bytes(t: &crate::contract::TagDto) -> usize {
+        let succ = t.successor.as_ref().map_or(0, |s| {
+            48usize
+                .saturating_add(s.tag_id.len())
+                .saturating_add(s.label.len())
+                .saturating_add(s.slug.len())
+        });
+        128usize
+            .saturating_add(t.tag_id.len())
+            .saturating_add(t.facet.len())
+            .saturating_add(t.label.len())
+            .saturating_add(t.slug.len())
+            .saturating_add(opt_str_len(&t.description))
+            .saturating_add(t.status.len())
+            .saturating_add(succ)
+    }
+
+    match snapshot {
+        Snapshot::Works(list) => {
+            let mut bytes = 64usize
+                .saturating_add(opt_str_len(&list.filters.q))
+                .saturating_add(opt_str_len(&list.next_cursor));
+            for filter in &list.filters.tags {
+                bytes = bytes
+                    .saturating_add(64)
+                    .saturating_add(filter.requested.len())
+                    .saturating_add(filter.resolution.len())
+                    .saturating_add(filter.tag.as_ref().map_or(0, tag_dto_bytes));
+            }
+            for card in &list.works {
+                bytes = bytes
+                    .saturating_add(128)
+                    .saturating_add(card.work_id.len())
+                    .saturating_add(card.title.len())
+                    .saturating_add(card.author_display_name.len())
+                    .saturating_add(card.published_at.len());
+                for tag in &card.tags {
+                    bytes = bytes.saturating_add(public_tag_bytes(tag));
+                }
+            }
+            bytes
+        }
+        Snapshot::Publication(pub_) => {
+            let mut bytes = 256usize
+                .saturating_add(pub_.work_id.len())
+                .saturating_add(pub_.revision_id.len())
+                .saturating_add(pub_.title.len())
+                .saturating_add(pub_.author_display_name.len())
+                .saturating_add(pub_.published_at.len());
+            for tag in &pub_.tags {
+                bytes = bytes.saturating_add(public_tag_bytes(tag));
+            }
+            for block in &pub_.document.blocks {
+                // Account for `Vec<String>` + allocator block header + lines payload.
+                bytes = bytes.saturating_add(20);
+                for line in &block.lines {
+                    bytes = bytes.saturating_add(28).saturating_add(line.len());
+                }
+            }
+            bytes
+        }
+        Snapshot::Control(_) => 0,
+    }
+}
+
 impl PublicKey {
     pub fn path(&self) -> String {
         match self {
@@ -241,6 +335,7 @@ mod coordinator {
     pub struct Coordinator<C = InMemoryCache<PublicKey, Snapshot>> {
         pub store: Store<PublicKey, Snapshot, C>,
         waiters: BTreeMap<PublicKey, Vec<WaiterId>>,
+        abandoned: std::collections::BTreeSet<PublicKey>,
         withdrawn: BTreeMap<String, WithdrawnFence>,
         next_waiter: u64,
         seq: u64,
@@ -249,7 +344,10 @@ mod coordinator {
 
     impl Coordinator {
         pub fn new(policy: Policy) -> Self {
-            Self::with_cache(policy, InMemoryCache::default())
+            Self::with_cache(
+                policy,
+                InMemoryCache::with_budget(super::READ_CACHE_BUDGET, super::snapshot_weight_bytes),
+            )
         }
     }
     impl<C: SnapshotCache<PublicKey, Snapshot>> Coordinator<C> {
@@ -257,6 +355,7 @@ mod coordinator {
             Self {
                 store: Store::with_cache(policy, cache, |s| !matches!(s, Snapshot::Control(_))),
                 waiters: BTreeMap::new(),
+                abandoned: std::collections::BTreeSet::new(),
                 withdrawn: BTreeMap::new(),
                 next_waiter: 1,
                 seq: 0,
@@ -297,6 +396,7 @@ mod coordinator {
         }
 
         pub fn load(&mut self, key: &PublicKey, at: Millis) -> LoadStart {
+            self.abandoned.remove(key);
             match self.store.load(key, at) {
                 Load::Ready(snapshot) => LoadStart::Immediate(Ok(snapshot)),
                 Load::Rejected(rejection) => {
@@ -332,6 +432,7 @@ mod coordinator {
                 if list.is_empty() {
                     self.waiters.remove(key);
                     if self.store.matching_observed(|k| k == key).is_empty() {
+                        self.abandoned.insert(key.clone());
                         self.store.mark_stale(key);
                     }
                 }
@@ -345,6 +446,7 @@ mod coordinator {
             rendered_at: Millis,
             at: Millis,
         ) {
+            self.abandoned.remove(&key);
             self.prune_withdrawn(at);
             if (self.seed_barrier.is_finite() && rendered_at <= self.seed_barrier)
                 || self.store.is_removed_at(&key, rendered_at)
@@ -606,6 +708,8 @@ mod coordinator {
                 }
                 other => other,
             };
+            let was_abandoned = self.abandoned.remove(&key);
+            let had_waiter = self.waiters.get(&key).is_some_and(|ws| !ws.is_empty());
             let applied = self.store.complete(&key, ticket, outcome, at, random);
             match applied {
                 Applied::Fresh { .. } => {
@@ -622,6 +726,9 @@ mod coordinator {
                     }
                     if let Some(reply) = self.store.status(&key).and_then(|s| s.data).map(Ok) {
                         self.push_waiter_replies(&key, &reply, &mut effects);
+                    }
+                    if was_abandoned && !had_waiter && self.store.observer_count(&key) == 0 {
+                        self.store.park_unobserved(&key);
                     }
                 }
                 Applied::Removed => {
@@ -727,6 +834,7 @@ mod coordinator {
             }
             self.store.clear();
             self.withdrawn.clear();
+            self.abandoned.clear();
             effects
         }
 
@@ -1856,6 +1964,10 @@ mod tests {
     #[test]
     fn memory_and_noop_share_authority_error_scope_and_single_flight_contract() {
         conformance(InMemoryCache::default());
+        conformance(InMemoryCache::with_budget(
+            super::READ_CACHE_BUDGET,
+            super::snapshot_weight_bytes,
+        ));
         conformance(NoOpCache);
     }
     #[test]
@@ -1874,6 +1986,10 @@ mod tests {
             );
         }
         reopen(InMemoryCache::default(), true);
+        reopen(
+            InMemoryCache::with_budget(super::READ_CACHE_BUDGET, super::snapshot_weight_bytes),
+            true,
+        );
         reopen(NoOpCache, false);
         let mut c = Coordinator::new(Policy::V1);
         let key = PublicKey::Reader("w1".into());
@@ -1888,5 +2004,813 @@ mod tests {
         c.release(&key, 1.0);
         assert!(c.status(&key).unwrap().data.is_none());
         assert!(matches!(c.load(&key, 2.0), LoadStart::Wait { .. }));
+    }
+
+    fn heavy_pub(id: &str, block_count: usize, line_bytes: usize) -> Snapshot {
+        use crate::contract::BlockDto;
+        let line = "a".repeat(line_bytes);
+        Snapshot::Publication(Publication {
+            work_id: id.into(),
+            revision_id: format!("rev-{id}"),
+            title: id.into(),
+            author_display_name: "Tác giả".into(),
+            published_at: "2026-11-17T00:00:00Z".into(),
+            document: DocumentDto {
+                schema_version: 1,
+                blocks: vec![BlockDto { lines: vec![line] }; block_count],
+            },
+            tags: Vec::new(),
+        })
+    }
+
+    #[test]
+    fn over_budget_snapshot_reads_cleanly_without_retention_or_live_view_or_cursor_loss() {
+        use crate::read_lifecycle::{Intent, PageChain, ReadOwner};
+
+        // 30_000 blocks x 1-char line (> 1 MiB structural proxy, similar to tiny_blocks-30k).
+        let huge = heavy_pub("huge-blocks", 30_000, 1);
+        let huge_weight = super::snapshot_weight_bytes(&huge);
+        assert!(huge_weight > super::READ_CACHE_BUDGET.max_entry_bytes.unwrap());
+
+        // Typical 452 KiB contiguous doc fits within the 1 MiB per-entry budget.
+        let fit_prose = heavy_pub("fit-prose", 1, 452_000);
+        assert!(
+            super::snapshot_weight_bytes(&fit_prose)
+                <= super::READ_CACHE_BUDGET.max_entry_bytes.unwrap()
+        );
+
+        let mut c = Coordinator::new(Policy::V1);
+        let active_key = PublicKey::Reader("active".into());
+        let huge_key = PublicKey::Reader("huge-blocks".into());
+        c.follow_seed(active_key.clone(), sample_pub("active", "r1"), 0.0, 0.0);
+
+        // Over-budget work still loads, finishes, and renders while mounted.
+        let LoadStart::Wait { effects, .. } = c.load(&huge_key, 1.0) else {
+            panic!("initial huge load must fetch");
+        };
+        c.finish(
+            huge_key.clone(),
+            effects.fetches[0].1,
+            Outcome::Fresh(huge.clone()),
+            2.0,
+            0.0,
+            true,
+        );
+        c.follow_seed(huge_key.clone(), huge.clone(), 1.0, 3.0);
+        assert_eq!(c.status(&huge_key).unwrap().data, Some(huge));
+
+        // Leaving releases huge_key; SnapshotCache skips retention without failing.
+        c.release(&huge_key, 4.0);
+        assert_eq!(c.store.cache().total_bytes(), 0);
+        assert_eq!(c.store.cache().oversized_skips(), 1);
+        assert!(c.status(&huge_key).unwrap().data.is_none());
+
+        // Churning 6 x ~460 KiB works forces weighted evictions while active_key and cursor chain survive untouched.
+        let mut chain = PageChain::default();
+        let mut reads = ReadOwner::new("desk:scope:page");
+        let t = reads.begin(Intent::Initial, None).unwrap();
+        assert!(reads.accept_page(&t, &mut chain, vec!["w1".into()], Some("cur-1".into())));
+        reads.finish(&t);
+
+        for i in 0..6u32 {
+            let k = PublicKey::Reader(format!("prose-{i}"));
+            let snap = heavy_pub(&format!("prose-{i}"), 1, 460_000);
+            c.follow_seed(k.clone(), snap, 0.0, 10.0 + f64::from(i) * 2.0);
+            c.release(&k, 11.0 + f64::from(i) * 2.0);
+        }
+        assert!(c.store.cache().total_bytes() <= super::READ_CACHE_BUDGET.max_total_bytes.unwrap());
+        assert!(c.store.cache().evictions() >= 2);
+        assert_eq!(
+            c.status(&active_key).unwrap().data,
+            Some(sample_pub("active", "r1"))
+        );
+        assert_eq!(chain.next_cursor.as_deref(), Some("cur-1"));
+        assert_eq!(chain.pages, 1);
+
+        // Reopening the over-budget entry starts a clean network fetch rather than failing.
+        assert!(matches!(c.load(&huge_key, 30.0), LoadStart::Wait { .. }));
+    }
+
+    fn drive_cache_visit<C: SnapshotCache<PublicKey, Snapshot>>(
+        coord: &mut Coordinator<C>,
+        key: &PublicKey,
+        snap: &Snapshot,
+        at: f64,
+    ) -> bool {
+        let hit = match coord.load(key, at) {
+            LoadStart::Immediate(Ok(s)) => {
+                coord.follow_seed(key.clone(), s, at, at + 0.1);
+                true
+            }
+            LoadStart::Wait { effects, .. } => {
+                let (_, tk) = &effects.fetches[0];
+                coord.finish(
+                    key.clone(),
+                    *tk,
+                    Outcome::Fresh(snap.clone()),
+                    at + 0.05,
+                    0.0,
+                    true,
+                );
+                coord.follow_seed(key.clone(), snap.clone(), at, at + 0.1);
+                false
+            }
+            LoadStart::Immediate(Err(_)) => panic!("unexpected rejected/err load state"),
+        };
+        coord.release(key, at + 0.2);
+        hit
+    }
+
+    #[test]
+    fn weighted_eviction_and_50_nav_loops_preserve_hot_list_and_bound_ram() {
+        let mut coord_b = Coordinator::new(Policy::V1);
+        let mut coord_c = Coordinator::with_cache(Policy::V1, NoOpCache);
+
+        let list_key = PublicKey::Works(ExploreQuery::default());
+        let list_snap = sample_list(&["w0", "w1", "w2", "w3"]);
+        let w0 = heavy_pub("w0", 1, 460_000);
+        let w1 = heavy_pub("w1", 1, 780_000);
+        let w2 = heavy_pub("w2", 1, 780_000);
+        let w3 = heavy_pub("w3", 1, 780_000);
+        let works = [("w0", w0), ("w1", w1), ("w2", w2), ("w3", w3)];
+
+        // Simulate 50 Discovery <-> Reader loops alternating across large 200k-scale documents.
+        let mut list_hits_b = 0usize;
+        let mut list_hits_c = 0usize;
+        for step in 0..50usize {
+            let t = (step * 4) as f64;
+            if drive_cache_visit(&mut coord_b, &list_key, &list_snap, t) {
+                list_hits_b += 1;
+            }
+            if drive_cache_visit(&mut coord_c, &list_key, &list_snap, t) {
+                list_hits_c += 1;
+            }
+
+            let (id, snap) = &works[step % works.len()];
+            let r_key = PublicKey::Reader((*id).into());
+            drive_cache_visit(&mut coord_b, &r_key, snap, t + 1.0);
+            drive_cache_visit(&mut coord_c, &r_key, snap, t + 1.0);
+
+            assert!(
+                coord_b.store.cache().total_bytes()
+                    <= super::READ_CACHE_BUDGET.max_total_bytes.unwrap()
+            );
+        }
+        assert_eq!(
+            list_hits_b, 49,
+            "hot Discovery list hits cache on all 49 subsequent loops"
+        );
+        assert_eq!(
+            list_hits_c, 0,
+            "NoOpCache misses Discovery list on every loop"
+        );
+        assert!(coord_b.store.cache().evictions() > 0);
+    }
+
+    fn assert_ac04_race_matrix<C: SnapshotCache<PublicKey, Snapshot>>(cache: C) {
+        let mut c = Coordinator::with_cache(Policy::V1, cache);
+        let removed_k = PublicKey::Reader("w-removed".into());
+        let withdrawn_k = PublicKey::Reader("w-withdrawn".into());
+        let control_k = PublicKey::Reader("w-control".into());
+        let cancel_k = PublicKey::Reader("w-cancel-huge".into());
+        let list_k = PublicKey::Works(ExploreQuery::default());
+
+        c.follow_seed(
+            list_k.clone(),
+            sample_list(&["w-removed", "w-withdrawn", "keep"]),
+            0.0,
+            1.0,
+        );
+        c.release(&list_k, 2.0);
+
+        // 1) Authoritative removal + stale-if-error suppression across cache eviction churn.
+        let LoadStart::Wait { effects, .. } = c.load(&removed_k, 3.0) else {
+            panic!();
+        };
+        let old_removed_ticket = effects.fetches[0].1;
+        c.follow_seed(removed_k.clone(), sample_pub("w-removed", "r1"), 2.0, 4.0);
+        let stale_err_ticket = c.invalidate_publication("w-removed", 5.0, true).fetches[0].1;
+        c.finish(
+            removed_k.clone(),
+            stale_err_ticket,
+            Outcome::Removed,
+            6.0,
+            0.0,
+            true,
+        );
+        assert!(c.status(&removed_k).is_none());
+
+        // Withdrawn publication while an old list fetch is in flight and list_k sits in cache.
+        c.withdraw_publication("w-withdrawn", 7.0, true);
+
+        // Concurrent distinct keys + over-budget eviction pressure.
+        let distinct_k = PublicKey::Reader("distinct".into());
+        let LoadStart::Wait { effects: d_eff, .. } = c.load(&distinct_k, 8.0) else {
+            panic!();
+        };
+        let distinct_ticket = d_eff.fetches[0].1;
+        for i in 0..5u32 {
+            let churn = PublicKey::Reader(format!("churn-{i}"));
+            c.follow_seed(
+                churn.clone(),
+                heavy_pub(&format!("churn-{i}"), 1, 700_000),
+                8.0,
+                9.0 + f64::from(i),
+            );
+            c.release(&churn, 9.5 + f64::from(i));
+        }
+
+        // Old seeds / restore / late Temporary error after removal NEVER resurrect or show stale error.
+        assert!(
+            c.store.begin_restore(&removed_k, 19.5).is_none(),
+            "removed key must never begin offline restore"
+        );
+        c.follow_seed(
+            removed_k.clone(),
+            sample_pub("w-removed", "stale-ssr"),
+            5.0,
+            20.0,
+        );
+        c.release(&removed_k, 20.5);
+        assert!(
+            c.status(&removed_k).is_none(),
+            "authoritative removal fence must hold after eviction"
+        );
+        c.finish(
+            removed_k.clone(),
+            old_removed_ticket,
+            Outcome::Temporary { retry_after: None },
+            21.0,
+            0.0,
+            true,
+        );
+        assert!(
+            c.status(&removed_k).is_none(),
+            "no stale-if-error after removal"
+        );
+
+        // Restore ticket started before withdrawal is superseded by withdrawal + eviction.
+        let restore_k = PublicKey::Reader("w-restore-race".into());
+        let restore_ticket = c
+            .store
+            .begin_restore(&restore_k, 21.2)
+            .expect("restore ticket");
+        c.withdraw_publication("w-restore-race", 21.4, true);
+        let eff_restore = c.restore(
+            &restore_k,
+            restore_ticket,
+            sample_pub("w-restore-race", "stale-restore"),
+            100.0,
+            Some(60_000.0),
+            21.6,
+        );
+        assert!(eff_restore.replies.is_empty());
+        assert!(
+            c.status(&restore_k).is_none(),
+            "withdrawn key must reject late restore"
+        );
+
+        c.follow_seed(
+            withdrawn_k.clone(),
+            sample_pub("w-withdrawn", "stale-ssr"),
+            6.0,
+            22.0,
+        );
+        c.release(&withdrawn_k, 22.5);
+        assert!(
+            c.status(&withdrawn_k).is_none(),
+            "withdrawn fence must hold after eviction"
+        );
+
+        // Concurrent distinct key still commits cleanly.
+        c.finish(
+            distinct_k.clone(),
+            distinct_ticket,
+            Outcome::Fresh(sample_pub("distinct", "r-ok")),
+            23.0,
+            0.0,
+            true,
+        );
+        assert_eq!(
+            c.status(&distinct_k).unwrap().data,
+            Some(sample_pub("distinct", "r-ok"))
+        );
+
+        // 2) Control response never retained or resurrected after churn.
+        let LoadStart::Wait {
+            effects: ctl_eff, ..
+        } = c.load(&control_k, 24.0)
+        else {
+            panic!();
+        };
+        c.finish(
+            control_k.clone(),
+            ctl_eff.fetches[0].1,
+            Outcome::Fresh(Snapshot::Control(
+                crate::contract::ReaderResponse::ReviewWithdrawn {
+                    work_id: "w-control".into(),
+                    author_name: "Tác giả".into(),
+                },
+            )),
+            25.0,
+            0.0,
+            true,
+        );
+        c.follow_seed(
+            control_k.clone(),
+            sample_pub("w-control", "stale"),
+            10.0,
+            26.0,
+        );
+        c.release(&control_k, 27.0);
+        assert!(c.status(&control_k).unwrap().data.is_none());
+
+        // Republishing clears removal cleanly when a fresh origin load answers 200.
+        let LoadStart::Wait {
+            effects: rep_eff, ..
+        } = c.load(&withdrawn_k, 28.0)
+        else {
+            panic!();
+        };
+        c.finish(
+            withdrawn_k.clone(),
+            rep_eff.fetches[0].1,
+            Outcome::Fresh(sample_pub("w-withdrawn", "r2-repub")),
+            29.0,
+            0.0,
+            true,
+        );
+        assert_eq!(
+            c.status(&withdrawn_k).unwrap().data,
+            Some(sample_pub("w-withdrawn", "r2-repub"))
+        );
+
+        // 3) Waiter cancellation on an over-budget load does not trap the payload in Entry::data.
+        let LoadStart::Wait {
+            id: waiter_id,
+            effects: cancel_eff,
+        } = c.load(&cancel_k, 30.0)
+        else {
+            panic!();
+        };
+        c.cancel_waiter(&cancel_k, waiter_id);
+        let huge = heavy_pub("w-cancel-huge", 30_000, 1);
+        c.finish(
+            cancel_k.clone(),
+            cancel_eff.fetches[0].1,
+            Outcome::Fresh(huge),
+            31.0,
+            0.0,
+            true,
+        );
+        assert!(
+            c.status(&cancel_k).unwrap().data.is_none(),
+            "cancelled over-budget fetch must flow through SnapshotCache and not leak in Entry::data"
+        );
+    }
+
+    #[test]
+    fn eviction_races_never_resurrect_removed_control_or_leak_cancelled_waiters() {
+        assert_ac04_race_matrix(InMemoryCache::with_budget(
+            super::READ_CACHE_BUDGET,
+            super::snapshot_weight_bytes,
+        ));
+        assert_ac04_race_matrix(NoOpCache);
+    }
+
+    #[test]
+    #[should_panic(expected = "authoritative removal fence")]
+    fn negative_control_dropping_removal_fence_must_fail() {
+        // Bypassing `Coordinator::withdrawn`/`Store::removed` clears the removal fence; the same
+        // AC-04 assertion must fail immediately rather than silently resurrecting stale content.
+        let mut c = Coordinator::new(Policy::V1);
+        let removed_k = PublicKey::Reader("w-removed".into());
+        c.withdraw_publication("w-removed", 10.0, true);
+        // Simulate a fence bug by clearing `Store::removed` and `Coordinator::withdrawn` on reset
+        // while still re-checking the exact invariant.
+        c.clear();
+        c.follow_seed(
+            removed_k.clone(),
+            sample_pub("w-removed", "resurrected"),
+            5.0,
+            20.0,
+        );
+        c.release(&removed_k, 21.0);
+        assert!(
+            c.status(&removed_k).is_none(),
+            "authoritative removal fence must hold after eviction"
+        );
+    }
+
+    #[test]
+    #[ignore = "AC-01/AC-02 #237 corpus and A/B/C retention measurement"]
+    fn measure_237_corpus_and_retention_tradeoff() {
+        use crate::contract::{
+            BlockDto, DocumentDto, PublicTagDto, ReaderResponse, WorkCard, WorkFilters,
+        };
+        use std::io::{self, Write};
+        use std::time::Instant;
+        use unicode_normalization::UnicodeNormalization;
+
+        struct ByteCounter(usize);
+        impl Write for ByteCounter {
+            fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+                self.0 += buf.len();
+                Ok(buf.len())
+            }
+            fn flush(&mut self) -> io::Result<()> {
+                Ok(())
+            }
+        }
+
+        fn snapshot_json_size(snap: &Snapshot) -> usize {
+            let mut c = ByteCounter(0);
+            match snap {
+                Snapshot::Works(w) => serde_json::to_writer(&mut c, w).unwrap(),
+                Snapshot::Publication(p) => serde_json::to_writer(&mut c, p).unwrap(),
+                Snapshot::Control(ctrl) => serde_json::to_writer(&mut c, ctrl).unwrap(),
+            }
+            c.0
+        }
+
+        fn corpus_dto(shape: &str, scalars: usize) -> DocumentDto {
+            let alphabet: Vec<char> = match shape {
+                "ascii_repeat" => "a",
+                "emoji" => "😀🙂🌧🌿🌙🖋📚🎶",
+                "escaping" => "a\"\\\t<&>",
+                "tiny_blocks" => "abcdefghijklmnop",
+                _ => "aăâbcdđeêghiklmnoôơpqrstuưvxyáàảãạắằẳẵặấầẩẫậéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ",
+            }
+            .chars()
+            .collect();
+            let mut state: u64 = 229;
+            let chars: Vec<char> = (0..scalars)
+                .map(|_| {
+                    state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
+                    alphabet[((state >> 32) as usize) % alphabet.len()]
+                })
+                .collect();
+            let lines: Vec<String> = if shape == "poem_tabs" {
+                chars
+                    .chunks(64)
+                    .map(|chunk| {
+                        let mut s: String = chunk.iter().collect();
+                        if chunk.len() > 1 {
+                            s.replace_range(..s.chars().next().unwrap().len_utf8(), "\t");
+                        }
+                        s
+                    })
+                    .collect()
+            } else if shape == "tiny_blocks" {
+                chars.iter().map(char::to_string).collect()
+            } else {
+                vec![chars.iter().collect()]
+            };
+            let block_lines = if shape == "poem_tabs" { 4 } else { 1 };
+            DocumentDto {
+                schema_version: 1,
+                blocks: lines
+                    .chunks(block_lines)
+                    .map(|chunk| BlockDto {
+                        lines: chunk
+                            .iter()
+                            .map(|s| {
+                                if shape == "vi_nfd" {
+                                    s.nfd().collect()
+                                } else {
+                                    s.clone()
+                                }
+                            })
+                            .collect(),
+                    })
+                    .collect(),
+            }
+        }
+
+        fn wrap_pub(id: &str, doc: DocumentDto) -> Snapshot {
+            Snapshot::Publication(Publication {
+                work_id: id.into(),
+                revision_id: "00000000-0000-4000-8000-000000000001".into(),
+                title: format!("[Mẫu] Kiểm thử {id}"),
+                author_display_name: "Tác giả kiểm thử".into(),
+                published_at: "2026-11-17T00:00:00Z".into(),
+                document: doc,
+                tags: vec![
+                    PublicTagDto {
+                        tag_id: "00000000-0000-4000-8000-000000000010".into(),
+                        facet: "form".into(),
+                        label: "Thơ".into(),
+                        slug: "tho".into(),
+                    },
+                    PublicTagDto {
+                        tag_id: "00000000-0000-4000-8000-000000000011".into(),
+                        facet: "theme".into(),
+                        label: "Ký ức".into(),
+                        slug: "ky-uc".into(),
+                    },
+                ],
+            })
+        }
+
+        fn struct_stats(snap: &Snapshot) -> (usize, usize, usize, usize, usize) {
+            match snap {
+                Snapshot::Publication(p) => {
+                    let meta = p.work_id.len()
+                        + p.revision_id.len()
+                        + p.title.len()
+                        + p.author_display_name.len()
+                        + p.published_at.len()
+                        + p.tags
+                            .iter()
+                            .map(|t| t.tag_id.len() + t.facet.len() + t.label.len() + t.slug.len())
+                            .sum::<usize>();
+                    let blocks = p.document.blocks.len();
+                    let lines: usize = p.document.blocks.iter().map(|b| b.lines.len()).sum();
+                    let doc_utf8: usize = p
+                        .document
+                        .blocks
+                        .iter()
+                        .flat_map(|b| &b.lines)
+                        .map(|s| s.len())
+                        .sum();
+                    let utf8 = meta + doc_utf8;
+                    let wasm32_proxy = utf8 + 256 + blocks * 20 + lines * 28 + p.tags.len() * 64;
+                    let native64_proxy = utf8 + 512 + blocks * 40 + lines * 48 + p.tags.len() * 128;
+                    let logical_proxy = utf8 + 220 + blocks * 14 + lines * 3 + p.tags.len() * 80;
+                    (utf8, logical_proxy, wasm32_proxy, native64_proxy, blocks)
+                }
+                Snapshot::Works(w) => {
+                    let cards_utf8: usize = w
+                        .works
+                        .iter()
+                        .map(|c| {
+                            c.work_id.len()
+                                + c.title.len()
+                                + c.author_display_name.len()
+                                + c.published_at.len()
+                                + c.tags
+                                    .iter()
+                                    .map(|t| {
+                                        t.tag_id.len()
+                                            + t.facet.len()
+                                            + t.label.len()
+                                            + t.slug.len()
+                                    })
+                                    .sum::<usize>()
+                        })
+                        .sum();
+                    let utf8 = cards_utf8
+                        + w.next_cursor.as_ref().map_or(0, String::len)
+                        + w.filters.q.as_ref().map_or(0, String::len);
+                    let logical = utf8 + 64 + w.works.len() * 96;
+                    let wasm32 = utf8 + 128 + w.works.len() * 160;
+                    let native64 = utf8 + 256 + w.works.len() * 320;
+                    (utf8, logical, wasm32, native64, w.works.len())
+                }
+                Snapshot::Control(_) => (0, 0, 0, 0, 0),
+            }
+        }
+
+        fn make_list(n: usize) -> Snapshot {
+            Snapshot::Works(WorkList {
+                works: (0..n)
+                    .map(|i| WorkCard {
+                        work_id: format!("00000000-0000-4000-8000-{i:012}"),
+                        title: format!("[Mẫu #100] Kiểm thử {i}"),
+                        author_display_name: "Tác giả kiểm thử".into(),
+                        published_at: "2026-11-17T00:00:00Z".into(),
+                        tags: vec![
+                            PublicTagDto {
+                                tag_id: "00000000-0000-4000-8000-000000000010".into(),
+                                facet: "form".into(),
+                                label: "Thơ".into(),
+                                slug: "tho".into(),
+                            },
+                            PublicTagDto {
+                                tag_id: "00000000-0000-4000-8000-000000000011".into(),
+                                facet: "theme".into(),
+                                label: "Ký ức".into(),
+                                slug: "ky-uc".into(),
+                            },
+                        ],
+                    })
+                    .collect(),
+                filters: WorkFilters {
+                    q: None,
+                    tags: vec![],
+                },
+                next_cursor: Some("cursor-opaque-token".into()),
+            })
+        }
+
+        println!(
+            "case,scalars,blocks,utf8_B,json_B,logical_walk_B,wasm32_proxy_B,native64_proxy_B,clone_us,walk_us,json_count_us,decode_us"
+        );
+        // #234 baseline rows
+        let list12 = make_list(12);
+        let list20 = make_list(20);
+        let baseline_pub = wrap_pub(
+            "00000000-0000-4000-8000-000000000001",
+            DocumentDto {
+                schema_version: 1,
+                blocks: vec![BlockDto {
+                    lines: vec!["Một dòng công khai dùng riêng cho kiểm thử #100.".into()],
+                }],
+            },
+        );
+        for (name, snap) in [
+            ("list_12_cards", list12),
+            ("list_20_cards", list20),
+            ("pub_234_single_line", baseline_pub),
+        ] {
+            let (utf8, logical, wasm32, native64, blocks) = struct_stats(&snap);
+            let json_b = snapshot_json_size(&snap);
+            let t0 = Instant::now();
+            let cloned = std::hint::black_box(snap.clone());
+            drop(cloned);
+            let clone_us = t0.elapsed().as_secs_f64() * 1e6;
+            let t1 = Instant::now();
+            std::hint::black_box(struct_stats(std::hint::black_box(&snap)));
+            let walk_us = t1.elapsed().as_secs_f64() * 1e6;
+            let t2 = Instant::now();
+            std::hint::black_box(snapshot_json_size(std::hint::black_box(&snap)));
+            let json_us = t2.elapsed().as_secs_f64() * 1e6;
+            let decode_us = match &snap {
+                Snapshot::Publication(p) => {
+                    let encoded =
+                        serde_json::to_vec(&ReaderResponse::Published(p.clone())).unwrap();
+                    let t3 = Instant::now();
+                    let decoded: ReaderResponse =
+                        serde_json::from_slice(std::hint::black_box(&encoded)).unwrap();
+                    std::hint::black_box(decoded);
+                    t3.elapsed().as_secs_f64() * 1e6
+                }
+                Snapshot::Works(w) => {
+                    let encoded = serde_json::to_vec(w).unwrap();
+                    let t3 = Instant::now();
+                    let decoded: WorkList =
+                        serde_json::from_slice(std::hint::black_box(&encoded)).unwrap();
+                    std::hint::black_box(decoded);
+                    t3.elapsed().as_secs_f64() * 1e6
+                }
+                Snapshot::Control(_) => 0.0,
+            };
+            println!(
+                "{name},0,{blocks},{utf8},{json_b},{logical},{wasm32},{native64},{clone_us:.1},{walk_us:.1},{json_us:.1},{decode_us:.1}"
+            );
+        }
+
+        let shapes = [
+            "ascii_repeat",
+            "vi_nfc",
+            "vi_nfd",
+            "emoji",
+            "poem_tabs",
+            "tiny_blocks",
+            "escaping",
+        ];
+        for scalars in [30_000usize, 100_000, 200_000] {
+            for shape in shapes {
+                let doc = corpus_dto(shape, scalars);
+                let snap = wrap_pub(&format!("{shape}-{scalars}"), doc);
+                let (utf8, logical, wasm32, native64, blocks) = struct_stats(&snap);
+                let json_b = snapshot_json_size(&snap);
+                let t0 = Instant::now();
+                let cloned = std::hint::black_box(snap.clone());
+                drop(cloned);
+                let clone_us = t0.elapsed().as_secs_f64() * 1e6;
+                let t1 = Instant::now();
+                std::hint::black_box(struct_stats(std::hint::black_box(&snap)));
+                let walk_us = t1.elapsed().as_secs_f64() * 1e6;
+                let t2 = Instant::now();
+                std::hint::black_box(snapshot_json_size(std::hint::black_box(&snap)));
+                let json_us = t2.elapsed().as_secs_f64() * 1e6;
+                let Snapshot::Publication(p) = &snap else {
+                    unreachable!()
+                };
+                let encoded = serde_json::to_vec(&ReaderResponse::Published(p.clone())).unwrap();
+                let t3 = Instant::now();
+                let decoded: ReaderResponse =
+                    serde_json::from_slice(std::hint::black_box(&encoded)).unwrap();
+                std::hint::black_box(decoded);
+                let decode_us = t3.elapsed().as_secs_f64() * 1e6;
+                println!(
+                    "{shape}-{scalars},{scalars},{blocks},{utf8},{json_b},{logical},{wasm32},{native64},{clone_us:.1},{walk_us:.1},{json_us:.1},{decode_us:.1}"
+                );
+            }
+        }
+        // Check production `snapshot_weight_bytes` matches wasm32_proxy_B within exact scope.
+        println!("--- A/B/C 50-loop simulation (same corpus) ---");
+        let work_list = make_list(12);
+        let list_key = PublicKey::Works(ExploreQuery::default());
+        let corpus_scenarios: [(&str, Vec<Snapshot>); 3] = [
+            (
+                "normal_234_16_works",
+                (0..16)
+                    .map(|i| {
+                        wrap_pub(
+                            &format!("234-{i}"),
+                            DocumentDto {
+                                schema_version: 1,
+                                blocks: vec![BlockDto {
+                                    lines: vec![
+                                        "Một dòng công khai dùng riêng cho kiểm thử #100.".into(),
+                                    ],
+                                }],
+                            },
+                        )
+                    })
+                    .collect(),
+            ),
+            (
+                "mixed_229_200k_16_works",
+                (0..16)
+                    .map(|i| {
+                        let shape = if i < 8 {
+                            "vi_nfc"
+                        } else if i < 12 {
+                            "poem_tabs"
+                        } else {
+                            "emoji"
+                        };
+                        wrap_pub(&format!("mix-{i}"), corpus_dto(shape, 200_000))
+                    })
+                    .collect(),
+            ),
+            (
+                "worst_tiny_blocks_200k_4_works",
+                (0..4)
+                    .map(|i| wrap_pub(&format!("tiny-{i}"), corpus_dto("tiny_blocks", 200_000)))
+                    .collect(),
+            ),
+        ];
+
+        for (scenario_name, items) in corpus_scenarios {
+            let mut coord_a = Coordinator::with_cache(
+                Policy::V1,
+                InMemoryCache::with_budget(
+                    crate::read_cache::RetentionBudget::UNBOUNDED,
+                    super::snapshot_weight_bytes,
+                ),
+            );
+            let mut coord_b = Coordinator::new(Policy::V1);
+            let mut coord_c = Coordinator::with_cache(Policy::V1, NoOpCache);
+
+            let mut hits = [0usize; 3];
+            let mut misses = [0usize; 3];
+            let mut peak_a = 0usize;
+            let mut peak_b = 0usize;
+            for step in 0..50usize {
+                let t = (step * 2) as f64;
+                for (idx_stat, hit) in [
+                    drive_cache_visit(&mut coord_a, &list_key, &work_list, t),
+                    drive_cache_visit(&mut coord_b, &list_key, &work_list, t),
+                    drive_cache_visit(&mut coord_c, &list_key, &work_list, t),
+                ]
+                .into_iter()
+                .enumerate()
+                {
+                    if hit {
+                        hits[idx_stat] += 1;
+                    } else {
+                        misses[idx_stat] += 1;
+                    }
+                }
+
+                let idx = step % items.len();
+                let rk = PublicKey::Reader(format!("{scenario_name}-{idx}"));
+                let item = &items[idx];
+                for (idx_stat, hit) in [
+                    drive_cache_visit(&mut coord_a, &rk, item, t + 1.0),
+                    drive_cache_visit(&mut coord_b, &rk, item, t + 1.0),
+                    drive_cache_visit(&mut coord_c, &rk, item, t + 1.0),
+                ]
+                .into_iter()
+                .enumerate()
+                {
+                    if hit {
+                        hits[idx_stat] += 1;
+                    } else {
+                        misses[idx_stat] += 1;
+                    }
+                }
+
+                peak_a = peak_a.max(coord_a.store.cache().total_bytes());
+                peak_b = peak_b.max(coord_b.store.cache().total_bytes());
+            }
+            println!(
+                "sim,{scenario_name},A_peak_B={peak_a},A_entries={},A_hits={},A_misses={},B_peak_B={peak_b},B_entries={},B_hits={},B_misses={},B_evictions={},B_skips={},C_peak_B=0,C_hits={},C_misses={}",
+                coord_a.store.cache().len(),
+                hits[0],
+                misses[0],
+                coord_b.store.cache().len(),
+                hits[1],
+                misses[1],
+                coord_b.store.cache().evictions(),
+                coord_b.store.cache().oversized_skips(),
+                hits[2],
+                misses[2]
+            );
+        }
     }
 }
