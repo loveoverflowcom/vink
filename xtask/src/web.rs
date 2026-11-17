@@ -137,6 +137,20 @@ impl Server {
         }
     }
 
+    fn as_guest(&self) -> Self {
+        Self {
+            port: self.port,
+            env: self
+                .env
+                .iter()
+                .filter(|(key, _)| key != "VINK_DEV_PRINCIPAL")
+                .cloned()
+                .collect(),
+            log: self.log.with_file_name("server-guest.log"),
+            release: self.release,
+        }
+    }
+
     /// The same database served to another loopback fixture principal on its own port.
     fn with_principal(&self, principal: &str, port: u16) -> Self {
         let mut env = self.env.clone();
@@ -922,11 +936,7 @@ fn run_web_checks(
     if selected.iter().any(|s| {
         matches!(
             s,
-            Scenario::Main
-                | Scenario::Storage
-                | Scenario::Discovery
-                | Scenario::Restart
-                | Scenario::PerfBaseline
+            Scenario::Main | Scenario::Storage | Scenario::Discovery | Scenario::Restart
         )
     }) {
         let mut guard = match server.start(root) {
@@ -966,23 +976,6 @@ fn run_web_checks(
     ) {
         return false;
     }
-        if selected.contains(&Scenario::PerfBaseline) && !report.step(
-            "#234 SSR/hydration + Reader/Back performance baseline (200 works, 1000 comments, 10 cold/warm)",
-            || {
-                // A joint discovery+perf selection must seed #100 only once.
-                if !selected.contains(&Scenario::Discovery) {
-                    seed_discovery_fixture(server)?;
-                }
-                seed_perf_journey(server)?;
-                smoke(
-                    root,
-                    &["--phase", "perf-baseline", "--build-profile", server.profile_name()],
-                    chrome, origin, state,
-                )
-            },
-        ) {
-            return false;
-        }
         if !report.step("server stops gracefully on SIGTERM", || {
             let status = guard.terminate(Duration::from_secs(15))?;
             status
@@ -1023,6 +1016,24 @@ fn run_web_checks(
                 return false;
             }
         }
+    }
+    if selected.contains(&Scenario::PerfBaseline) && !report.step(
+        "#234 guest SSR/hydration + Reader/Back baseline (200 works, 1000 comments, 10 cold/warm)",
+        || {
+            if !selected.contains(&Scenario::Discovery) {
+                seed_discovery_fixture(server)?;
+            }
+            seed_perf_journey(server)?;
+            // LocalFixture performs an additional actor reconciliation on mount. Don't
+            // benchmark it as if it were part of a guest's public journey.
+            let guest = server.as_guest();
+            let mut guard = guest.start(root)?;
+            smoke(root, &["--phase", "perf-baseline", "--build-profile", guest.profile_name()], chrome, origin, state)?;
+            let status = guard.terminate(Duration::from_secs(15))?;
+            status.success().then_some(()).ok_or_else(|| format!("guest App exited with {status}"))
+        },
+    ) {
+        return false;
     }
     if !selected
         .iter()

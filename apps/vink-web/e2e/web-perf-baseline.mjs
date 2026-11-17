@@ -200,6 +200,7 @@ export async function webPerfBaseline(page, { args, check }) {
       source: 'App/PostgreSQL scratch, SQL v1 public projection, no production user text' },
     configuration: {
       origin: args.base, browser: await page.cdp.send('Browser.getVersion'),
+      viewer: 'guest (no local fixture principal)',
       node: process.version, platform: process.platform, arch: process.arch,
       rustc: tool('rustc', '--version'), wasm_bindgen: tool('wasm-bindgen', '--version'),
       build_profile: args['build-profile'],
@@ -239,6 +240,7 @@ export async function webPerfBaseline(page, { args, check }) {
       await page.goto(args.base + QUERY);
       await page.waitFor(WAIT_READY + ' && ' + LIST, 'cold filtered discovery #' + i, 120000);
       const wall = performance.now() - start;
+      check(await page.eval("!document.querySelector('meta[name=vink-local-discussion-fixture]')"), 'baseline renders the guest shell');
       const snapshot = await browserSnapshot(page);
       results.cold.push({ iteration: i, wall_ms: wall, ...snapshot });
       // Keep the observation window separate from lab timings. A single client list GET is
