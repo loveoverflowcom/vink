@@ -36,9 +36,14 @@ Các regression của lát này bảo vệ hành vi đang có, không biến pro
 ## Corpus và điểm nối parser
 
 Corpus thuộc [fixtures title-authority](../../services/vink-app/tests/fixtures/title-authority/README.md).
-`legacy-v1.json` chạy qua application save → recording store → revision constructor.
+`legacy-v1.json` chạy qua application save → recording store → revision constructor,
+với document dựng bằng hằng v1 riêng của test: nếu #255 đổi `SCHEMA_VERSION`, tương thích
+v1 phải được giữ hoặc test fail, không âm thầm kiểm version mới (hash không chứa version).
 `markdown-proposed.json` là các oracle **DESIGN_PROPOSED / extraction NOT_RUN**;
 chúng chưa được parser Rust/TS nào thực thi và không phải hợp đồng API v2.
+Thứ tự đề xuất: extraction/flatten → chuẩn hóa của `Title::parse` (trim, NFC) →
+validation (ký tự cấm, >200 scalar). `expected_projection` ghi kết quả sau chuẩn hóa,
+trước kết luận validation; raw source vẫn giữ nguyên, kể cả NFD.
 
 Grammar tham chiếu là [CommonMark 0.31.2](https://spec.commonmark.org/0.31.2/),
 đặc biệt [ATX](https://spec.commonmark.org/0.31.2/#atx-headings),

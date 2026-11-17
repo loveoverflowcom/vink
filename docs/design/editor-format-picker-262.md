@@ -17,7 +17,7 @@ không title input writable khác; AsciiDoc hoãn. Không thêm autosave hoặc 
 | Owner | Source tại base | Capability của App / điều kiện tích hợp |
 | --- | --- | --- |
 | #255 source/format/hash | `services/vink-app/src/domain/document.rs`: `SCHEMA_VERSION = 1`, `DocumentData { schema_version, blocks }`, deny unknown fields; Web `contract.rs`/`document.rs` cùng v1 | Chưa có format discriminator/lossless raw source. Phải có owner contract, compatibility/hash signoff và checks PG trước create/open theo format. |
-| #263 title | `domain/revision.rs` và `pages/desk.rs`: title riêng | Chưa có canonical Markdown title extraction/validation và same-save metadata. |
+| #263 title | `domain/revision.rs` và `pages/desk.rs`: title riêng | Chưa có canonical Markdown title extraction/validation và same-save metadata. Sau PR #271 (`e947a42`), quy tắc/corpus/điểm nối nằm ở [owner title](../architecture/editor-title-authority.md); vẫn chưa có parser hay format-aware save. |
 | #256 provider/mode | `apps/vink-web/editor/src/editor.ts` và bridge `src/editor.rs`: CM plain text | Chưa có Markdown provider/capability/mode; không dựng parser/provider thứ hai trong #262. |
 | #264 Reader | Web `document.rs::DocumentView`, public snapshot v1 | Chưa có renderer parity Markdown; không bật option khi chưa ready end-to-end. |
 | #262 presentation | `vink-ui::Select` + gallery `field.select` | Chỉ geometry opt-in và fixture callback, không format authority, persistence, conversion intent hay draft state mới. |

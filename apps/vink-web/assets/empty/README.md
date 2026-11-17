@@ -15,8 +15,9 @@ Giữ nguyên [manifest nguồn](asset-manifest.json), gồm generation ID, crop
 | `no-public-works` / `NoPublicWorks` | 16.444 | Successful unfiltered head rỗng, không continuation |
 | `first-draft` / `FirstDraft` | 19.190 | First-use riêng tư của Desk #259; #258 nhập asset/composition |
 
-Mỗi ảnh: 512×427, VP8 lossy + alpha, một frame, <30 KiB. Một tệp phục vụ cả hai theme;
-không filter/invert, Drive hotlink, inline base64, preload hoặc tải cả bộ.
+Mỗi ảnh: 512×427, VP8 lossy + alpha, một frame, ≤30 KiB (30.720 bytes, theo `verify.mjs`).
+Một tệp phục vụ cả hai theme; Web không filter/invert, Drive hotlink, inline base64, preload
+hoặc tải cả bộ.
 
 `cargo xtask build web` / `verify web` dùng `xtask/src/build.rs`: chạy `verify.mjs` rồi chỉ
 chép **ba WebP** vào `target/site/pkg/empty/`; Axum static handler hiện hữu phục vụ `/pkg/empty/`.
@@ -38,3 +39,9 @@ Composition chỉ render ảnh decorative + một câu HTML + controls caller-ow
 chỉ khi caller không còn result status khác. Không chuyển quyền fetch/create/focus vào composition.
 [LayoutSpec và state contract](../../../../docs/design/empty-artwork-258.md).
 Desk #259 tiếp nhận đúng composition/bytes này; xem [LayoutSpec Desk](../../../../docs/design/empty-artwork-desk-259.md).
+
+Consumer ngoài Web: CMP diagnostics #261 đọc chính manifest/bytes này qua Gradle
+`:diagnostics:generateEmptyArtwork` (ba ID cố định, 512×427, alpha, bytes ≤30 KiB, SHA-256)
+và chỉ sinh base64 vào build output, không check-in bản sao. Đổi bytes, ID hoặc manifest phải
+chạy lại cả `cargo xtask ui-preview cmp verify`;
+[LayoutSpec/decode CMP](../../../../docs/design/empty-artwork-cmp-261.md).

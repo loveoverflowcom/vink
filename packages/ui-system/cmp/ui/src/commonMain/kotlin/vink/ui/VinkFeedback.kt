@@ -102,7 +102,8 @@ val LocalMotionActive = compositionLocalOf { true }
 
 /**
  * Marks a subtree active or inactive. Hosts map their lifecycle here (desktop: window minimized or
- * hidden; Android: Lifecycle STARTED; iOS: scene foreground — no native host exists yet).
+ * hidden; Android diagnostic: onResume/onPause; iOS diagnostic: app active/resign active). Only
+ * diagnostic hosts exist; no native product app maps this yet.
  */
 @Composable
 fun VinkMotionActivity(active: Boolean, content: @Composable () -> Unit) {

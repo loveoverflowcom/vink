@@ -25,6 +25,11 @@ screen (Mẫu, dữ liệu cố định)
 | Desk/empty | first-draft | Một trang dành riêng cho những điều bạn muốn viết. | Viết bản thảo đầu tiên → sample editor intent |
 | Desk/no-results | no-results | Chưa có tác phẩm trong kết quả này. | Xóa tìm kiếm → clear controlled query |
 
+Câu trạng thái trùng Web #258/#259; nhãn action là của mẫu diagnostic và còn khác Web ở
+hai ô (đối soát 17/11/2026): Web Explore/empty dùng link “Đến Bàn viết”, Web Desk/no-results
+dùng nút “Xem tất cả tác phẩm” (cùng ý xóa tìm kiếm). Consumer native sản phẩm sau này phải
+đối chiếu lại copy với Web, không coi bảng này là copy đã chốt.
+
 Loading/error/auth/forbidden/pending/uncertain/refresh/partial/stale không dùng artwork empty.
 Không đổi RegionState, permission, lưu/gửi hay navigation sản phẩm.
 Scenario cố định không tự biến thành dữ liệu thật sau callback.

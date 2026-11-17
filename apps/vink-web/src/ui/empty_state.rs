@@ -5,7 +5,7 @@ use leptos::prelude::*;
 pub enum EmptyArtwork {
     NoResults,
     NoPublicWorks,
-    /// Reserved for the Desk consumer (#259), never a claim about public discovery.
+    /// Desk private first-use only (#259); never a claim about public discovery.
     FirstDraft,
 }
 
