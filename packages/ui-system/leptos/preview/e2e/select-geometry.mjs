@@ -7,6 +7,7 @@ export async function selectGeometry(page, selector) {
     const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');ctx.font=[c.fontStyle,c.fontWeight,c.fontSize,c.fontFamily].join(' ');
     const text=s.selectedOptions[0].textContent, spacing=parseFloat(c.letterSpacing)||0;
     return {select:a.toJSON(),icon:b.toJSON(),inset:c.direction==='rtl'?b.left-a.left:a.right-b.right,
+      reserve:parseFloat(c.paddingInlineEnd),appearance:c.appearance,
       center:(b.top+b.bottom-a.top-a.bottom)/2,
       gap:c.direction==='rtl'?a.left+parseFloat(c.paddingLeft)-b.right:b.left-(a.right-parseFloat(c.paddingRight)),
       contentWidth:a.width-parseFloat(c.paddingLeft)-parseFloat(c.paddingRight)-parseFloat(c.borderLeftWidth)-parseFloat(c.borderRightWidth),
@@ -17,13 +18,14 @@ export async function selectGeometry(page, selector) {
   })()`);
 }
 
-export async function checkSelectGeometry(page, selector, check, scenario) {
+export async function checkSelectGeometry(page, selector, check, scenario, expected = {icon:18,inset:12,gap:8,reserve:38}) {
   await page.eval('document.fonts.ready');
   const r=await selectGeometry(page,selector);
-  check(r.native && r.label && r.decorative==='true' && r.pointerEvents==='none' &&
-    Math.abs(r.icon.width-18)<0.5 && Math.abs(r.icon.height-18)<0.5 && Math.abs(r.inset-12)<0.5 &&
-    Math.abs(r.center)<0.5 && Math.abs(r.gap-8)<0.5 && r.textWidth<=r.contentWidth+1 && r.optionWidths.every(w=>w<=r.contentWidth+1) && !r.overflow,
-    `${scenario}: native Select / 18px icon / 12px inset / 8px label gap / no clipped option ${JSON.stringify(r)}`);
+  check(r.native && r.label && r.decorative==='true' && r.pointerEvents==='none' && r.appearance==='none' &&
+    Math.abs(r.icon.width-expected.icon)<0.5 && Math.abs(r.icon.height-expected.icon)<0.5 && Math.abs(r.inset-expected.inset)<0.5 &&
+    Math.abs(r.reserve-expected.reserve)<0.5 &&
+    Math.abs(r.center)<0.5 && Math.abs(r.gap-expected.gap)<0.5 && r.textWidth<=r.contentWidth+1 && r.optionWidths.every(w=>w<=r.contentWidth+1) && !r.overflow,
+    `${scenario}: native Select / ${expected.icon}px icon / ${expected.inset}px inset / ${expected.reserve}px reserve / ${expected.gap}px label gap / no clipped option ${JSON.stringify(r)}`);
   return r;
 }
 

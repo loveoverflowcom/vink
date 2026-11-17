@@ -105,6 +105,11 @@ Tóm tắt khác biệt có chủ đích giữa hai renderer:
 | Hover | CSS state layer 8%/12% | Material ripple/indication; capture off-screen không có hover (N/A) |
 | Kích thước | 48px, mật độ gọn 44px (sàn đã công bố) | ≥48dp |
 
+Leptos `SelectVariant::Inset16` là opt-in geometry cho consumer #262: icon 16 CSS px,
+inset inline-end 16px, text reserve 52px; `Standard` giữ 18/12/38px của #135.
+Gallery `field.select` có thêm mẫu định dạng được đánh dấu `[Mẫu]`; nó chỉ phát callback,
+không đại diện capability Markdown của App. Xem [LayoutSpec và ranh giới tích hợp](../../docs/design/editor-format-picker-262.md).
+
 ## Shell và điều hướng UIS-04
 
 Contract, LayoutSpec và owner: [shared/navigation.md](shared/navigation.md). Khác biệt có chủ đích:

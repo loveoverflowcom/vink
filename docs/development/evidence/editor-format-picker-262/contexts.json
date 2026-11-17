@@ -1,0 +1,2793 @@
+{
+  "source": {
+    "git_sha": "e4066df9d7cad602a1822414abb418219c612e18",
+    "dirty": true,
+    "source_fingerprint": "4369c31061a6043ef3cd2fef84af6e90c3214d956d430c98db6129dd3d34c395",
+    "source_files": {
+      "packages/ui-system/leptos/Cargo.toml": "e17d9d2738b954ff63ba3316920fe01a2b3aeda0b24c23b640efad84887fa6df",
+      "packages/ui-system/leptos/README.md": "088b285f8eb0a3f5da04a2bc2c9d4c04c6bc547419739ed7fc62d082129bb5cf",
+      "packages/ui-system/leptos/preview/Cargo.toml": "252167e314214941b97b38df9f57b7218ce8f5c6075af1406d9e1bdcc4383ee7",
+      "packages/ui-system/leptos/preview/e2e/focus-capture.mjs": "c991ca355a59db697e56a60d42fa9bca0eb34a1c379e9ee4b5d1794f612e891f",
+      "packages/ui-system/leptos/preview/e2e/focus-capture.test.mjs": "c52d2c2a7b6acef731be3214279ef01c8303a2bd8467231149cd27aed1921bb7",
+      "packages/ui-system/leptos/preview/e2e/overlay-capture.mjs": "ebdfb1b37135cf5e9fa09ea57e844d28b10f64882eddc5ee9a93502f7c5202b3",
+      "packages/ui-system/leptos/preview/e2e/overlay-capture.test.mjs": "02f894dff5775dbd905bbbc4663d23b66a60139a0165a94460737684d7a04e67",
+      "packages/ui-system/leptos/preview/e2e/preview-smoke.mjs": "5db9647e5d975917fff6672da838a70f9e379dedf9e3ff5a72e05c3f2a646f5e",
+      "packages/ui-system/leptos/preview/e2e/select-geometry.mjs": "c71aa878b565fc89dc652b8528b4289a9adbd35fae2a057e03bd1659f68353b6",
+      "packages/ui-system/leptos/preview/examples/media_hydration.rs": "b0e4891f2ff69dabf32b8bf7f80523255dc8e94d5a4d408f89e43b6f76a561f7",
+      "packages/ui-system/leptos/preview/index.html": "197ba26ba19cebd2663332f1d7b4b2a39ddb4d76ebc3b691968badad60da2097",
+      "packages/ui-system/leptos/preview/src/components.rs": "42ac66e882807efe197bb8e88972cbdba10064a5639f71362284290ff0013e35",
+      "packages/ui-system/leptos/preview/src/endorsement.rs": "93b61113e4150f93071533d5c43dfc13e2659af03572a3d10428c2018026afa5",
+      "packages/ui-system/leptos/preview/src/lib.rs": "ef9ea136327b4d790431dc98b7f1436ded6d44f0ecd677058411a73efc903749",
+      "packages/ui-system/leptos/preview/src/navigation.rs": "0851cb83b5326bdbc19a6a17400dfa3384d895d79ad494c3aee7e3f2d02d2994",
+      "packages/ui-system/leptos/preview/src/screens.rs": "f48fb99da6bf59049b8549889610aadbaba7bd967f33f9096edb76009b1051a2",
+      "packages/ui-system/leptos/preview/src/states.rs": "50e70834fedf5530eabbfcb954f6f87019fecc13ed4b4c827923f728f844df8e",
+      "packages/ui-system/leptos/preview/src/tags.rs": "8041e69fece5f9c8a322644dd9a59e10d556224c71edfed899abf0052f8cbd52",
+      "packages/ui-system/leptos/preview/style/preview.css": "c7974f658d0a0638f1fb321b0f03e0f7b797723bb81da8f07df20733412ba4a9",
+      "packages/ui-system/leptos/src/action.rs": "2089d1a4bde5ad58f0c9c8562670b7a66dc8c625d15f598134d601909e12fd2f",
+      "packages/ui-system/leptos/src/catalog.rs": "3356d4afb1c8dd16c7c77669d16c8bde462dc5d5af6c821e9f94f976aa763bbd",
+      "packages/ui-system/leptos/src/feedback.rs": "7ff10bd0a6ade73bc4b9702f4dadf89641cf9f90d294201a3891a90fe3851e6f",
+      "packages/ui-system/leptos/src/field.rs": "030cdea748a4a06419fb54115136430e013af736d7ea2aa007542b3c4f922f60",
+      "packages/ui-system/leptos/src/icons.rs": "457d2d15978e8dfe2bac9aaa80d60b88a64bb26be8742df5abc6d3b43e51c957",
+      "packages/ui-system/leptos/src/identity.rs": "f1a3118fc7d1f98342503324c7fbcfe406f16048a9f3c1aec57f04f2f79e9f22",
+      "packages/ui-system/leptos/src/identity_vectors.rs": "4533c582e80677131c5514ef6611c870903a58fc0963bf44441125c573a23033",
+      "packages/ui-system/leptos/src/layout.rs": "06d9d5966102b80a6e0e86abe95a24cfbeb5c222d4c82e2ce990b8ff13bc7f22",
+      "packages/ui-system/leptos/src/lib.rs": "42c6577409372a62ff35083fd741313d9f0067082cff99e4b4955a70a0c6ed56",
+      "packages/ui-system/leptos/src/media.rs": "56b9fd5ce3330e72fe66fdf61aae483c6b0e5659e53aeb6c4d54e52a42fa3464",
+      "packages/ui-system/leptos/src/navigation.rs": "61d6acf4d8f47a01edf649551484ab635ce77f370f31cdd3dab5dc58b5c9b82f",
+      "packages/ui-system/leptos/src/navigation_vectors.rs": "a872443603aff898d1253ddafa9b2f1fa4f47c510ef62f98b91969a7d7fa3500",
+      "packages/ui-system/leptos/src/root.rs": "0e0d29496fbcb12170d6d43b7b008ab5476546922cfcb23f2fd2e8000646fdbd",
+      "packages/ui-system/leptos/src/state.rs": "b631d401698fb29b345404d9b0cf4275abf799679db83636dd3311d06c8e8f52",
+      "packages/ui-system/leptos/src/state_vectors.rs": "ec3d0b2e9f1e039b747b99906cafd10ffc182a608f74608ec9fa93db7db20ba7",
+      "packages/ui-system/leptos/src/support.rs": "618cde41c19536f3a452c330e556e0f346df7aee754716a8a25f3fb00b84a5ce",
+      "packages/ui-system/leptos/src/text.rs": "cfb273d09317767fb5bf248a2e9f9bd4ede849842302b1bc04248beeda256333",
+      "packages/ui-system/leptos/src/theme.rs": "3d6058703e3ba1126bda3f3d4fecbf104fda5f1bdc30079f62ab304f29dc5886",
+      "packages/ui-system/leptos/src/toggle.rs": "61414342140a844acde5a5282a6da5f0fc52b2fec8bce1852990ce8789f86ba4",
+      "packages/ui-system/leptos/src/toggle_vectors.rs": "87c6edcc54393bf356a2a666bc34874c5be97d92eb45e0761273f4adb0d9f03e",
+      "packages/ui-system/leptos/src/tokens.rs": "6ce7c5b998f44e9da2ff04733f8bf93ad6e8326e2ccbe45490bc15597a059a1f",
+      "packages/ui-system/leptos/src/values.rs": "f7c1817e0637d4165e04f48c46ab6ff07a900a2a126aeb856bf959ac1f5f8109",
+      "packages/ui-system/leptos/style/tokens.css": "8b029d94716edc700960cb46d89865018e8e06d7b536a6ef470023e3d1b675a3",
+      "packages/ui-system/leptos/style/vink-ui.css": "7d791b575a85167b9c76014675470333c6b35b6ae0c12b52b84d590cb199b3b6",
+      "packages/ui-system/shared/README.md": "ba139c9f19e1c8d090c73d2d111a6a420d27ad37c6825497c575f664f7701ca6",
+      "packages/ui-system/shared/api-coverage.json": "3194f7e1d971f9971ae69c97a471ee9d62b56d5aeaafcb95136380d0b3c98108",
+      "packages/ui-system/shared/compatibility.md": "c61e14f8c3d39efcff938d83dfc31af0ec250057500fdc329b4c7066e941e9e1",
+      "packages/ui-system/shared/components.md": "5289dbc307733cdd73c2350d3ff20857a163f7d9a9a6ba35971c2522ae70ab73",
+      "packages/ui-system/shared/content-images.md": "390e9cd7e4e76b8e95a13003a6845888ec5b6dd2df4863a6873782a5dd490654",
+      "packages/ui-system/shared/evidence/quiet-lavender-pr01/README.md": "51a33d1ea53ffb293f05ba0ec70620a9554293c463dac0ddb5e18b8aee052a74",
+      "packages/ui-system/shared/evidence/quiet-lavender-pr01/cmp-error-focus.png": "2bf02c5fb8ddaffd38073ff63229dd6a7502b57a22bb6f266a049e960f39e4a6",
+      "packages/ui-system/shared/evidence/quiet-lavender-pr01/cmp-field-after.png": "ce981f867ea5a4c21ee7198be3bea8c6432c6c8e85ba34f563b9d8eb310c53c7",
+      "packages/ui-system/shared/evidence/quiet-lavender-pr01/cmp-field-before.png": "ced503ebecb90b6870142530aaec3b32a08fbc31d1ca1153dbf3a1d88eba7ca7",
+      "packages/ui-system/shared/evidence/quiet-lavender-pr01/cmp-text200.png": "cd966002136e36be41c1c4599cca49711c230578fc7f9386ce9379a9dc3af29c",
+      "packages/ui-system/shared/evidence/quiet-lavender-pr01/manifest.json": "1eb2de683408c7323654fb257fda2fbb0f0d6e3c8bbf29c2830bfe1f0ab8840e",
+      "packages/ui-system/shared/evidence/quiet-lavender-pr01/verification.txt": "6b612435f37d15c3001a195ddd6e64b9705ca8fdb4c7a14a5f3343f50fef46f6",
+      "packages/ui-system/shared/evidence/quiet-lavender-pr01/web-field-after.png": "5ea24288811f12a309a101abac08484aad3dc9cbeaa7f107aeab8e66115bc491",
+      "packages/ui-system/shared/evidence/quiet-lavender-pr01/web-field-before.png": "42b1fef74891bc67ba714a77f851662f3b9fb632f4847acae4622c1bf621aff7",
+      "packages/ui-system/shared/fixtures/foundation.json": "daa14c030d52e41f4c774e23a68696d0a9228f73a3cfe5c346df9da17f7b9979",
+      "packages/ui-system/shared/fixtures/identity.json": "c3cd261b1a9ef2e1d6a4c5d75f6862233ce006693a74b2c7b44658fbf422acf4",
+      "packages/ui-system/shared/fixtures/navigation.json": "400f0457e583797f84e0e7783fd4ac0a35bab64dc3f6a1aa085b7c00ed573831",
+      "packages/ui-system/shared/fixtures/states.json": "b3ea2f0bb58e743a9dd102fd82f701fbd48d8cfe110ec37945010c7022d9612f",
+      "packages/ui-system/shared/fixtures/toggle.json": "f92691480e1080b451cf6ca38d876e3a5c407103688977650496b2430dbb673d",
+      "packages/ui-system/shared/icons.json": "32718373abb0230d2905c19731c269e8683db684872f696da8866b6490983f69",
+      "packages/ui-system/shared/icons/LICENSE-material-design-icons.txt": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+      "packages/ui-system/shared/navigation.md": "967c96a9b5aae3223ae559244a09d74c4d34e457326b7909a21911ab1d9564b1",
+      "packages/ui-system/shared/preview-catalog.json": "4547665f8dad68a5b34be3dbfea66c9dabf3fe80bfd8cb4114b49b37e9ee1fd4",
+      "packages/ui-system/shared/states.md": "5b15fd5558656113c8b3b1c4442e489f5fde6b80dcca125264686318e797555a",
+      "packages/ui-system/shared/tokens.json": "e99c09acab36a84d7328488752edc23dc2009815e8129c15cf41fb4c2c23d788",
+      "packages/ui-system/shared/tokens.schema.json": "73b4f3c15aa81bed65174e2f84083bb515f447e4e9ec07b5b2c4358ef4680a9b",
+      "packages/vink-patterns/leptos/Cargo.toml": "471ecc4fff7ea6bb5bdb4ca337d07f3af0f863468ff99b8df79e88ba0a64f2ba",
+      "packages/vink-patterns/leptos/patterns.css": "e1d749a3bc99cdd7d94d00c0c9cd01fa71d75ff45109a3d3434d4a09b4b1cfba",
+      "packages/vink-patterns/leptos/src/lib.rs": "86f16eef9e21c23c59c761d9a244064bb42d3fa91ba65b97ec57026937b7eb37",
+      "packages/vink-patterns/leptos/src/tags.rs": "be52ede29fe913024aac55cea3d000b536a4317c507f7d039a000f2e0c65be0d",
+      "packages/vink-patterns/leptos/src/timestamp.rs": "cabe629f9b7dda6538952eef0486f6427b20cc4745a6c0573ac60aef03d0c182",
+      "packages/vink-patterns/leptos/tests/editor_tools.rs": "eaacb760cbca1347fa366f3d752c88935f37bb1cb1552ab72d2d9da699ceb680",
+      "packages/vink-patterns/leptos/tests/reader_actions.rs": "c24e170014df921a68766c6a117825cfdd57302fdea875bac5cde8b68b7de448"
+    }
+  },
+  "browser": "Chrome/157.0.8103.78",
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+  "captures": {
+    "select-gallery-light-320-100-viewport": {
+      "hash": "#field.select/default",
+      "width": 320,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "geometry": {
+        "select": {
+          "x": 28.796875,
+          "y": 852.34375,
+          "width": 247.40625,
+          "height": 48,
+          "top": 852.34375,
+          "right": 276.203125,
+          "bottom": 900.34375,
+          "left": 28.796875
+        },
+        "icon": {
+          "x": 246.203125,
+          "y": 867.34375,
+          "width": 18,
+          "height": 18,
+          "top": 867.34375,
+          "right": 264.203125,
+          "bottom": 885.34375,
+          "left": 246.203125
+        },
+        "inset": 12,
+        "reserve": 38,
+        "appearance": "none",
+        "center": 0,
+        "gap": 8,
+        "contentWidth": 197.40625,
+        "textWidth": 59.80790710449219,
+        "selected": "Văn xuôi",
+        "optionWidths": [
+          27.019973754882812,
+          59.80790710449219,
+          51.91194152832031
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Thể loại (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      }
+    },
+    "select-gallery-light-320-200-viewport": {
+      "hash": "#field.select/default",
+      "width": 320,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "light",
+      "geometry": {
+        "select": {
+          "x": 28.796875,
+          "y": 406.25,
+          "width": 247.40625,
+          "height": 87.1875,
+          "top": 406.25,
+          "right": 276.203125,
+          "bottom": 493.4375,
+          "left": 28.796875
+        },
+        "icon": {
+          "x": 246.203125,
+          "y": 440.84375,
+          "width": 18,
+          "height": 18,
+          "top": 440.84375,
+          "right": 264.203125,
+          "bottom": 458.84375,
+          "left": 246.203125
+        },
+        "inset": 12,
+        "reserve": 38,
+        "appearance": "none",
+        "center": 0,
+        "gap": 8,
+        "contentWidth": 197.40625,
+        "textWidth": 119.61593627929688,
+        "selected": "Văn xuôi",
+        "optionWidths": [
+          54.03997802734375,
+          119.61593627929688,
+          103.82392883300781
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Thể loại (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      }
+    },
+    "select-gallery-light-390-100-viewport": {
+      "hash": "#field.select/default",
+      "width": 390,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "geometry": {
+        "select": {
+          "x": 35.09375,
+          "y": 426.265625,
+          "width": 304.8125,
+          "height": 48,
+          "top": 426.265625,
+          "right": 339.90625,
+          "bottom": 474.265625,
+          "left": 35.09375
+        },
+        "icon": {
+          "x": 309.90625,
+          "y": 441.265625,
+          "width": 18,
+          "height": 18,
+          "top": 441.265625,
+          "right": 327.90625,
+          "bottom": 459.265625,
+          "left": 309.90625
+        },
+        "inset": 12,
+        "reserve": 38,
+        "appearance": "none",
+        "center": 0,
+        "gap": 8,
+        "contentWidth": 254.8125,
+        "textWidth": 59.80790710449219,
+        "selected": "Văn xuôi",
+        "optionWidths": [
+          27.019973754882812,
+          59.80790710449219,
+          51.91194152832031
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Thể loại (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      }
+    },
+    "select-gallery-light-390-200-viewport": {
+      "hash": "#field.select/default",
+      "width": 390,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "light",
+      "geometry": {
+        "select": {
+          "x": 35.09375,
+          "y": 406.25,
+          "width": 304.8125,
+          "height": 87.1875,
+          "top": 406.25,
+          "right": 339.90625,
+          "bottom": 493.4375,
+          "left": 35.09375
+        },
+        "icon": {
+          "x": 309.90625,
+          "y": 440.84375,
+          "width": 18,
+          "height": 18,
+          "top": 440.84375,
+          "right": 327.90625,
+          "bottom": 458.84375,
+          "left": 309.90625
+        },
+        "inset": 12,
+        "reserve": 38,
+        "appearance": "none",
+        "center": 0,
+        "gap": 8,
+        "contentWidth": 254.8125,
+        "textWidth": 119.61593627929688,
+        "selected": "Văn xuôi",
+        "optionWidths": [
+          54.03997802734375,
+          119.61593627929688,
+          103.82392883300781
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Thể loại (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      }
+    },
+    "select-gallery-light-1440-100-viewport": {
+      "hash": "#field.select/default",
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "geometry": {
+        "select": {
+          "x": 320.640625,
+          "y": 360.15625,
+          "width": 1064.359375,
+          "height": 48,
+          "top": 360.15625,
+          "right": 1385,
+          "bottom": 408.15625,
+          "left": 320.640625
+        },
+        "icon": {
+          "x": 1355,
+          "y": 375.15625,
+          "width": 18,
+          "height": 18,
+          "top": 375.15625,
+          "right": 1373,
+          "bottom": 393.15625,
+          "left": 1355
+        },
+        "inset": 12,
+        "reserve": 38,
+        "appearance": "none",
+        "center": 0,
+        "gap": 8,
+        "contentWidth": 1014.359375,
+        "textWidth": 59.80790710449219,
+        "selected": "Văn xuôi",
+        "optionWidths": [
+          27.019973754882812,
+          59.80790710449219,
+          51.91194152832031
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Thể loại (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      }
+    },
+    "select-gallery-light-1440-200-viewport": {
+      "hash": "#field.select/default",
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "light",
+      "geometry": {
+        "select": {
+          "x": 80,
+          "y": 405.90625,
+          "width": 1265,
+          "height": 87.1875,
+          "top": 405.90625,
+          "right": 1345,
+          "bottom": 493.09375,
+          "left": 80
+        },
+        "icon": {
+          "x": 1315,
+          "y": 440.5,
+          "width": 18,
+          "height": 18,
+          "top": 440.5,
+          "right": 1333,
+          "bottom": 458.5,
+          "left": 1315
+        },
+        "inset": 12,
+        "reserve": 38,
+        "appearance": "none",
+        "center": 0,
+        "gap": 8,
+        "contentWidth": 1215,
+        "textWidth": 119.61593627929688,
+        "selected": "Văn xuôi",
+        "optionWidths": [
+          54.03997802734375,
+          119.61593627929688,
+          103.82392883300781
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Thể loại (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      }
+    },
+    "select-gallery-dark-320-100-viewport": {
+      "hash": "#field.select/default",
+      "width": 320,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "dark",
+      "geometry": {
+        "select": {
+          "x": 28.796875,
+          "y": 426.34375,
+          "width": 247.40625,
+          "height": 48,
+          "top": 426.34375,
+          "right": 276.203125,
+          "bottom": 474.34375,
+          "left": 28.796875
+        },
+        "icon": {
+          "x": 246.203125,
+          "y": 441.34375,
+          "width": 18,
+          "height": 18,
+          "top": 441.34375,
+          "right": 264.203125,
+          "bottom": 459.34375,
+          "left": 246.203125
+        },
+        "inset": 12,
+        "reserve": 38,
+        "appearance": "none",
+        "center": 0,
+        "gap": 8,
+        "contentWidth": 197.40625,
+        "textWidth": 59.80790710449219,
+        "selected": "Văn xuôi",
+        "optionWidths": [
+          27.019973754882812,
+          59.80790710449219,
+          51.91194152832031
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Thể loại (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      }
+    },
+    "select-gallery-dark-320-200-viewport": {
+      "hash": "#field.select/default",
+      "width": 320,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "dark",
+      "geometry": {
+        "select": {
+          "x": 28.796875,
+          "y": 406.25,
+          "width": 247.40625,
+          "height": 87.1875,
+          "top": 406.25,
+          "right": 276.203125,
+          "bottom": 493.4375,
+          "left": 28.796875
+        },
+        "icon": {
+          "x": 246.203125,
+          "y": 440.84375,
+          "width": 18,
+          "height": 18,
+          "top": 440.84375,
+          "right": 264.203125,
+          "bottom": 458.84375,
+          "left": 246.203125
+        },
+        "inset": 12,
+        "reserve": 38,
+        "appearance": "none",
+        "center": 0,
+        "gap": 8,
+        "contentWidth": 197.40625,
+        "textWidth": 119.61593627929688,
+        "selected": "Văn xuôi",
+        "optionWidths": [
+          54.03997802734375,
+          119.61593627929688,
+          103.82392883300781
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Thể loại (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      }
+    },
+    "select-gallery-dark-390-100-viewport": {
+      "hash": "#field.select/default",
+      "width": 390,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "dark",
+      "geometry": {
+        "select": {
+          "x": 35.09375,
+          "y": 426.265625,
+          "width": 304.8125,
+          "height": 48,
+          "top": 426.265625,
+          "right": 339.90625,
+          "bottom": 474.265625,
+          "left": 35.09375
+        },
+        "icon": {
+          "x": 309.90625,
+          "y": 441.265625,
+          "width": 18,
+          "height": 18,
+          "top": 441.265625,
+          "right": 327.90625,
+          "bottom": 459.265625,
+          "left": 309.90625
+        },
+        "inset": 12,
+        "reserve": 38,
+        "appearance": "none",
+        "center": 0,
+        "gap": 8,
+        "contentWidth": 254.8125,
+        "textWidth": 59.80790710449219,
+        "selected": "Văn xuôi",
+        "optionWidths": [
+          27.019973754882812,
+          59.80790710449219,
+          51.91194152832031
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Thể loại (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      }
+    },
+    "select-gallery-dark-390-200-viewport": {
+      "hash": "#field.select/default",
+      "width": 390,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "dark",
+      "geometry": {
+        "select": {
+          "x": 35.09375,
+          "y": 406.25,
+          "width": 304.8125,
+          "height": 87.1875,
+          "top": 406.25,
+          "right": 339.90625,
+          "bottom": 493.4375,
+          "left": 35.09375
+        },
+        "icon": {
+          "x": 309.90625,
+          "y": 440.84375,
+          "width": 18,
+          "height": 18,
+          "top": 440.84375,
+          "right": 327.90625,
+          "bottom": 458.84375,
+          "left": 309.90625
+        },
+        "inset": 12,
+        "reserve": 38,
+        "appearance": "none",
+        "center": 0,
+        "gap": 8,
+        "contentWidth": 254.8125,
+        "textWidth": 119.61593627929688,
+        "selected": "Văn xuôi",
+        "optionWidths": [
+          54.03997802734375,
+          119.61593627929688,
+          103.82392883300781
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Thể loại (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      }
+    },
+    "select-gallery-dark-1440-100-viewport": {
+      "hash": "#field.select/default",
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "dark",
+      "geometry": {
+        "select": {
+          "x": 320.640625,
+          "y": 360.15625,
+          "width": 1064.359375,
+          "height": 48,
+          "top": 360.15625,
+          "right": 1385,
+          "bottom": 408.15625,
+          "left": 320.640625
+        },
+        "icon": {
+          "x": 1355,
+          "y": 375.15625,
+          "width": 18,
+          "height": 18,
+          "top": 375.15625,
+          "right": 1373,
+          "bottom": 393.15625,
+          "left": 1355
+        },
+        "inset": 12,
+        "reserve": 38,
+        "appearance": "none",
+        "center": 0,
+        "gap": 8,
+        "contentWidth": 1014.359375,
+        "textWidth": 59.80790710449219,
+        "selected": "Văn xuôi",
+        "optionWidths": [
+          27.019973754882812,
+          59.80790710449219,
+          51.91194152832031
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Thể loại (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      }
+    },
+    "select-gallery-dark-1440-200-viewport": {
+      "hash": "#field.select/default",
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "dark",
+      "geometry": {
+        "select": {
+          "x": 80,
+          "y": 405.90625,
+          "width": 1265,
+          "height": 87.1875,
+          "top": 405.90625,
+          "right": 1345,
+          "bottom": 493.09375,
+          "left": 80
+        },
+        "icon": {
+          "x": 1315,
+          "y": 440.5,
+          "width": 18,
+          "height": 18,
+          "top": 440.5,
+          "right": 1333,
+          "bottom": 458.5,
+          "left": 1315
+        },
+        "inset": 12,
+        "reserve": 38,
+        "appearance": "none",
+        "center": 0,
+        "gap": 8,
+        "contentWidth": 1215,
+        "textWidth": 119.61593627929688,
+        "selected": "Văn xuôi",
+        "optionWidths": [
+          54.03997802734375,
+          119.61593627929688,
+          103.82392883300781
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Thể loại (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      }
+    },
+    "format-select-light-320-100-ltr": {
+      "width": 320,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "direction": "ltr",
+      "geometry": {
+        "select": {
+          "x": 28.796875,
+          "y": 425.9375,
+          "width": 247.40625,
+          "height": 48,
+          "top": 425.9375,
+          "right": 276.203125,
+          "bottom": 473.9375,
+          "left": 28.796875
+        },
+        "icon": {
+          "x": 244.203125,
+          "y": 441.9375,
+          "width": 16,
+          "height": 16,
+          "top": 441.9375,
+          "right": 260.203125,
+          "bottom": 457.9375,
+          "left": 244.203125
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 183.40625,
+        "textWidth": 73.345947265625,
+        "selected": "Markdown",
+        "optionWidths": [
+          64.17594909667969,
+          73.345947265625
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-light-320-100-rtl": {
+      "width": 320,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "direction": "rtl",
+      "geometry": {
+        "select": {
+          "x": 28.796875,
+          "y": 425.9375,
+          "width": 247.40625,
+          "height": 48,
+          "top": 425.9375,
+          "right": 276.203125,
+          "bottom": 473.9375,
+          "left": 28.796875
+        },
+        "icon": {
+          "x": 44.796875,
+          "y": 441.9375,
+          "width": 16,
+          "height": 16,
+          "top": 441.9375,
+          "right": 60.796875,
+          "bottom": 457.9375,
+          "left": 44.796875
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 183.40625,
+        "textWidth": 73.345947265625,
+        "selected": "Markdown",
+        "optionWidths": [
+          64.17594909667969,
+          73.345947265625
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-light-320-200-ltr": {
+      "width": 320,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "light",
+      "direction": "ltr",
+      "geometry": {
+        "select": {
+          "x": 28.796875,
+          "y": 406.8125,
+          "width": 247.40625,
+          "height": 87.1875,
+          "top": 406.8125,
+          "right": 276.203125,
+          "bottom": 494,
+          "left": 28.796875
+        },
+        "icon": {
+          "x": 244.203125,
+          "y": 442.40625,
+          "width": 16,
+          "height": 16,
+          "top": 442.40625,
+          "right": 260.203125,
+          "bottom": 458.40625,
+          "left": 244.203125
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 183.40625,
+        "textWidth": 146.6919708251953,
+        "selected": "Markdown",
+        "optionWidths": [
+          128.35194396972656,
+          146.6919708251953
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-light-320-200-rtl": {
+      "width": 320,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "light",
+      "direction": "rtl",
+      "geometry": {
+        "select": {
+          "x": 28.796875,
+          "y": 406.8125,
+          "width": 247.40625,
+          "height": 87.1875,
+          "top": 406.8125,
+          "right": 276.203125,
+          "bottom": 494,
+          "left": 28.796875
+        },
+        "icon": {
+          "x": 44.796875,
+          "y": 442.40625,
+          "width": 16,
+          "height": 16,
+          "top": 442.40625,
+          "right": 60.796875,
+          "bottom": 458.40625,
+          "left": 44.796875
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 183.40625,
+        "textWidth": 146.6919708251953,
+        "selected": "Markdown",
+        "optionWidths": [
+          128.35194396972656,
+          146.6919708251953
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-light-390-100-ltr": {
+      "width": 390,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "direction": "ltr",
+      "geometry": {
+        "select": {
+          "x": 35.09375,
+          "y": 425.859375,
+          "width": 304.8125,
+          "height": 48,
+          "top": 425.859375,
+          "right": 339.90625,
+          "bottom": 473.859375,
+          "left": 35.09375
+        },
+        "icon": {
+          "x": 307.90625,
+          "y": 441.859375,
+          "width": 16,
+          "height": 16,
+          "top": 441.859375,
+          "right": 323.90625,
+          "bottom": 457.859375,
+          "left": 307.90625
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 240.8125,
+        "textWidth": 73.345947265625,
+        "selected": "Markdown",
+        "optionWidths": [
+          64.17594909667969,
+          73.345947265625
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-light-390-100-rtl": {
+      "width": 390,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "direction": "rtl",
+      "geometry": {
+        "select": {
+          "x": 35.09375,
+          "y": 425.859375,
+          "width": 304.8125,
+          "height": 48,
+          "top": 425.859375,
+          "right": 339.90625,
+          "bottom": 473.859375,
+          "left": 35.09375
+        },
+        "icon": {
+          "x": 51.09375,
+          "y": 441.859375,
+          "width": 16,
+          "height": 16,
+          "top": 441.859375,
+          "right": 67.09375,
+          "bottom": 457.859375,
+          "left": 51.09375
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 240.8125,
+        "textWidth": 73.345947265625,
+        "selected": "Markdown",
+        "optionWidths": [
+          64.17594909667969,
+          73.345947265625
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-light-390-200-ltr": {
+      "width": 390,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "light",
+      "direction": "ltr",
+      "geometry": {
+        "select": {
+          "x": 35.09375,
+          "y": 406.8125,
+          "width": 304.8125,
+          "height": 87.1875,
+          "top": 406.8125,
+          "right": 339.90625,
+          "bottom": 494,
+          "left": 35.09375
+        },
+        "icon": {
+          "x": 307.90625,
+          "y": 442.40625,
+          "width": 16,
+          "height": 16,
+          "top": 442.40625,
+          "right": 323.90625,
+          "bottom": 458.40625,
+          "left": 307.90625
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 240.8125,
+        "textWidth": 146.6919708251953,
+        "selected": "Markdown",
+        "optionWidths": [
+          128.35194396972656,
+          146.6919708251953
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-light-390-200-rtl": {
+      "width": 390,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "light",
+      "direction": "rtl",
+      "geometry": {
+        "select": {
+          "x": 35.09375,
+          "y": 406.8125,
+          "width": 304.8125,
+          "height": 87.1875,
+          "top": 406.8125,
+          "right": 339.90625,
+          "bottom": 494,
+          "left": 35.09375
+        },
+        "icon": {
+          "x": 51.09375,
+          "y": 442.40625,
+          "width": 16,
+          "height": 16,
+          "top": 442.40625,
+          "right": 67.09375,
+          "bottom": 458.40625,
+          "left": 51.09375
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 240.8125,
+        "textWidth": 146.6919708251953,
+        "selected": "Markdown",
+        "optionWidths": [
+          128.35194396972656,
+          146.6919708251953
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-light-834-100-ltr": {
+      "width": 834,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "direction": "ltr",
+      "geometry": {
+        "select": {
+          "x": 320.03125,
+          "y": 426.125,
+          "width": 458.96875,
+          "height": 48,
+          "top": 426.125,
+          "right": 779,
+          "bottom": 474.125,
+          "left": 320.03125
+        },
+        "icon": {
+          "x": 747,
+          "y": 442.125,
+          "width": 16,
+          "height": 16,
+          "top": 442.125,
+          "right": 763,
+          "bottom": 458.125,
+          "left": 747
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 394.96875,
+        "textWidth": 73.345947265625,
+        "selected": "Markdown",
+        "optionWidths": [
+          64.17594909667969,
+          73.345947265625
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-light-834-100-rtl": {
+      "width": 834,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "direction": "rtl",
+      "geometry": {
+        "select": {
+          "x": 320.03125,
+          "y": 426.125,
+          "width": 458.96875,
+          "height": 48,
+          "top": 426.125,
+          "right": 779,
+          "bottom": 474.125,
+          "left": 320.03125
+        },
+        "icon": {
+          "x": 336.03125,
+          "y": 442.125,
+          "width": 16,
+          "height": 16,
+          "top": 442.125,
+          "right": 352.03125,
+          "bottom": 458.125,
+          "left": 336.03125
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 394.96875,
+        "textWidth": 73.345947265625,
+        "selected": "Markdown",
+        "optionWidths": [
+          64.17594909667969,
+          73.345947265625
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-light-834-200-ltr": {
+      "width": 834,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "light",
+      "direction": "ltr",
+      "geometry": {
+        "select": {
+          "x": 73.6875,
+          "y": 406.09375,
+          "width": 671.625,
+          "height": 87.1875,
+          "top": 406.09375,
+          "right": 745.3125,
+          "bottom": 493.28125,
+          "left": 73.6875
+        },
+        "icon": {
+          "x": 713.3125,
+          "y": 441.6875,
+          "width": 16,
+          "height": 16,
+          "top": 441.6875,
+          "right": 729.3125,
+          "bottom": 457.6875,
+          "left": 713.3125
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 607.625,
+        "textWidth": 146.6919708251953,
+        "selected": "Markdown",
+        "optionWidths": [
+          128.35194396972656,
+          146.6919708251953
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-light-834-200-rtl": {
+      "width": 834,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "light",
+      "direction": "rtl",
+      "geometry": {
+        "select": {
+          "x": 73.6875,
+          "y": 406.09375,
+          "width": 671.625,
+          "height": 87.1875,
+          "top": 406.09375,
+          "right": 745.3125,
+          "bottom": 493.28125,
+          "left": 73.6875
+        },
+        "icon": {
+          "x": 89.6875,
+          "y": 441.6875,
+          "width": 16,
+          "height": 16,
+          "top": 441.6875,
+          "right": 105.6875,
+          "bottom": 457.6875,
+          "left": 89.6875
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 607.625,
+        "textWidth": 146.6919708251953,
+        "selected": "Markdown",
+        "optionWidths": [
+          128.35194396972656,
+          146.6919708251953
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-light-1024-100-ltr": {
+      "width": 1024,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "direction": "ltr",
+      "geometry": {
+        "select": {
+          "x": 320.21875,
+          "y": 425.734375,
+          "width": 648.78125,
+          "height": 48,
+          "top": 425.734375,
+          "right": 969,
+          "bottom": 473.734375,
+          "left": 320.21875
+        },
+        "icon": {
+          "x": 937,
+          "y": 441.734375,
+          "width": 16,
+          "height": 16,
+          "top": 441.734375,
+          "right": 953,
+          "bottom": 457.734375,
+          "left": 937
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 584.78125,
+        "textWidth": 73.345947265625,
+        "selected": "Markdown",
+        "optionWidths": [
+          64.17594909667969,
+          73.345947265625
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-light-1024-100-rtl": {
+      "width": 1024,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "direction": "rtl",
+      "geometry": {
+        "select": {
+          "x": 320.21875,
+          "y": 425.734375,
+          "width": 648.78125,
+          "height": 48,
+          "top": 425.734375,
+          "right": 969,
+          "bottom": 473.734375,
+          "left": 320.21875
+        },
+        "icon": {
+          "x": 336.21875,
+          "y": 441.734375,
+          "width": 16,
+          "height": 16,
+          "top": 441.734375,
+          "right": 352.21875,
+          "bottom": 457.734375,
+          "left": 336.21875
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 584.78125,
+        "textWidth": 73.345947265625,
+        "selected": "Markdown",
+        "optionWidths": [
+          64.17594909667969,
+          73.345947265625
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-light-1024-200-ltr": {
+      "width": 1024,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "light",
+      "direction": "ltr",
+      "geometry": {
+        "select": {
+          "x": 80,
+          "y": 406.046875,
+          "width": 849,
+          "height": 87.1875,
+          "top": 406.046875,
+          "right": 929,
+          "bottom": 493.234375,
+          "left": 80
+        },
+        "icon": {
+          "x": 897,
+          "y": 441.640625,
+          "width": 16,
+          "height": 16,
+          "top": 441.640625,
+          "right": 913,
+          "bottom": 457.640625,
+          "left": 897
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 785,
+        "textWidth": 146.6919708251953,
+        "selected": "Markdown",
+        "optionWidths": [
+          128.35194396972656,
+          146.6919708251953
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-light-1024-200-rtl": {
+      "width": 1024,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "light",
+      "direction": "rtl",
+      "geometry": {
+        "select": {
+          "x": 80,
+          "y": 406.046875,
+          "width": 849,
+          "height": 87.1875,
+          "top": 406.046875,
+          "right": 929,
+          "bottom": 493.234375,
+          "left": 80
+        },
+        "icon": {
+          "x": 96,
+          "y": 441.640625,
+          "width": 16,
+          "height": 16,
+          "top": 441.640625,
+          "right": 112,
+          "bottom": 457.640625,
+          "left": 96
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 785,
+        "textWidth": 146.6919708251953,
+        "selected": "Markdown",
+        "optionWidths": [
+          128.35194396972656,
+          146.6919708251953
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-light-1440-100-ltr": {
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "direction": "ltr",
+      "geometry": {
+        "select": {
+          "x": 320.640625,
+          "y": 425.75,
+          "width": 1064.359375,
+          "height": 48,
+          "top": 425.75,
+          "right": 1385,
+          "bottom": 473.75,
+          "left": 320.640625
+        },
+        "icon": {
+          "x": 1353,
+          "y": 441.75,
+          "width": 16,
+          "height": 16,
+          "top": 441.75,
+          "right": 1369,
+          "bottom": 457.75,
+          "left": 1353
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 1000.359375,
+        "textWidth": 73.345947265625,
+        "selected": "Markdown",
+        "optionWidths": [
+          64.17594909667969,
+          73.345947265625
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-light-1440-100-rtl": {
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "direction": "rtl",
+      "geometry": {
+        "select": {
+          "x": 320.640625,
+          "y": 425.75,
+          "width": 1064.359375,
+          "height": 48,
+          "top": 425.75,
+          "right": 1385,
+          "bottom": 473.75,
+          "left": 320.640625
+        },
+        "icon": {
+          "x": 336.640625,
+          "y": 441.75,
+          "width": 16,
+          "height": 16,
+          "top": 441.75,
+          "right": 352.640625,
+          "bottom": 457.75,
+          "left": 336.640625
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 1000.359375,
+        "textWidth": 73.345947265625,
+        "selected": "Markdown",
+        "optionWidths": [
+          64.17594909667969,
+          73.345947265625
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-light-1440-200-ltr": {
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "light",
+      "direction": "ltr",
+      "geometry": {
+        "select": {
+          "x": 80,
+          "y": 406.28125,
+          "width": 1265,
+          "height": 87.1875,
+          "top": 406.28125,
+          "right": 1345,
+          "bottom": 493.46875,
+          "left": 80
+        },
+        "icon": {
+          "x": 1313,
+          "y": 441.875,
+          "width": 16,
+          "height": 16,
+          "top": 441.875,
+          "right": 1329,
+          "bottom": 457.875,
+          "left": 1313
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 1201,
+        "textWidth": 146.6919708251953,
+        "selected": "Markdown",
+        "optionWidths": [
+          128.35194396972656,
+          146.6919708251953
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-light-1440-200-rtl": {
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "light",
+      "direction": "rtl",
+      "geometry": {
+        "select": {
+          "x": 80,
+          "y": 406.28125,
+          "width": 1265,
+          "height": 87.1875,
+          "top": 406.28125,
+          "right": 1345,
+          "bottom": 493.46875,
+          "left": 80
+        },
+        "icon": {
+          "x": 96,
+          "y": 441.875,
+          "width": 16,
+          "height": 16,
+          "top": 441.875,
+          "right": 112,
+          "bottom": 457.875,
+          "left": 96
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 1201,
+        "textWidth": 146.6919708251953,
+        "selected": "Markdown",
+        "optionWidths": [
+          128.35194396972656,
+          146.6919708251953
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-dark-320-100-ltr": {
+      "width": 320,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "dark",
+      "direction": "ltr",
+      "geometry": {
+        "select": {
+          "x": 28.796875,
+          "y": 425.9375,
+          "width": 247.40625,
+          "height": 48,
+          "top": 425.9375,
+          "right": 276.203125,
+          "bottom": 473.9375,
+          "left": 28.796875
+        },
+        "icon": {
+          "x": 244.203125,
+          "y": 441.9375,
+          "width": 16,
+          "height": 16,
+          "top": 441.9375,
+          "right": 260.203125,
+          "bottom": 457.9375,
+          "left": 244.203125
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 183.40625,
+        "textWidth": 73.345947265625,
+        "selected": "Markdown",
+        "optionWidths": [
+          64.17594909667969,
+          73.345947265625
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-dark-320-100-rtl": {
+      "width": 320,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "dark",
+      "direction": "rtl",
+      "geometry": {
+        "select": {
+          "x": 28.796875,
+          "y": 425.9375,
+          "width": 247.40625,
+          "height": 48,
+          "top": 425.9375,
+          "right": 276.203125,
+          "bottom": 473.9375,
+          "left": 28.796875
+        },
+        "icon": {
+          "x": 44.796875,
+          "y": 441.9375,
+          "width": 16,
+          "height": 16,
+          "top": 441.9375,
+          "right": 60.796875,
+          "bottom": 457.9375,
+          "left": 44.796875
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 183.40625,
+        "textWidth": 73.345947265625,
+        "selected": "Markdown",
+        "optionWidths": [
+          64.17594909667969,
+          73.345947265625
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-dark-320-200-ltr": {
+      "width": 320,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "dark",
+      "direction": "ltr",
+      "geometry": {
+        "select": {
+          "x": 28.796875,
+          "y": 406.8125,
+          "width": 247.40625,
+          "height": 87.1875,
+          "top": 406.8125,
+          "right": 276.203125,
+          "bottom": 494,
+          "left": 28.796875
+        },
+        "icon": {
+          "x": 244.203125,
+          "y": 442.40625,
+          "width": 16,
+          "height": 16,
+          "top": 442.40625,
+          "right": 260.203125,
+          "bottom": 458.40625,
+          "left": 244.203125
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 183.40625,
+        "textWidth": 146.6919708251953,
+        "selected": "Markdown",
+        "optionWidths": [
+          128.35194396972656,
+          146.6919708251953
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-dark-320-200-rtl": {
+      "width": 320,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "dark",
+      "direction": "rtl",
+      "geometry": {
+        "select": {
+          "x": 28.796875,
+          "y": 406.8125,
+          "width": 247.40625,
+          "height": 87.1875,
+          "top": 406.8125,
+          "right": 276.203125,
+          "bottom": 494,
+          "left": 28.796875
+        },
+        "icon": {
+          "x": 44.796875,
+          "y": 442.40625,
+          "width": 16,
+          "height": 16,
+          "top": 442.40625,
+          "right": 60.796875,
+          "bottom": 458.40625,
+          "left": 44.796875
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 183.40625,
+        "textWidth": 146.6919708251953,
+        "selected": "Markdown",
+        "optionWidths": [
+          128.35194396972656,
+          146.6919708251953
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-dark-390-100-ltr": {
+      "width": 390,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "dark",
+      "direction": "ltr",
+      "geometry": {
+        "select": {
+          "x": 35.09375,
+          "y": 425.859375,
+          "width": 304.8125,
+          "height": 48,
+          "top": 425.859375,
+          "right": 339.90625,
+          "bottom": 473.859375,
+          "left": 35.09375
+        },
+        "icon": {
+          "x": 307.90625,
+          "y": 441.859375,
+          "width": 16,
+          "height": 16,
+          "top": 441.859375,
+          "right": 323.90625,
+          "bottom": 457.859375,
+          "left": 307.90625
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 240.8125,
+        "textWidth": 73.345947265625,
+        "selected": "Markdown",
+        "optionWidths": [
+          64.17594909667969,
+          73.345947265625
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-dark-390-100-rtl": {
+      "width": 390,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "dark",
+      "direction": "rtl",
+      "geometry": {
+        "select": {
+          "x": 35.09375,
+          "y": 425.859375,
+          "width": 304.8125,
+          "height": 48,
+          "top": 425.859375,
+          "right": 339.90625,
+          "bottom": 473.859375,
+          "left": 35.09375
+        },
+        "icon": {
+          "x": 51.09375,
+          "y": 441.859375,
+          "width": 16,
+          "height": 16,
+          "top": 441.859375,
+          "right": 67.09375,
+          "bottom": 457.859375,
+          "left": 51.09375
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 240.8125,
+        "textWidth": 73.345947265625,
+        "selected": "Markdown",
+        "optionWidths": [
+          64.17594909667969,
+          73.345947265625
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-dark-390-200-ltr": {
+      "width": 390,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "dark",
+      "direction": "ltr",
+      "geometry": {
+        "select": {
+          "x": 35.09375,
+          "y": 406.8125,
+          "width": 304.8125,
+          "height": 87.1875,
+          "top": 406.8125,
+          "right": 339.90625,
+          "bottom": 494,
+          "left": 35.09375
+        },
+        "icon": {
+          "x": 307.90625,
+          "y": 442.40625,
+          "width": 16,
+          "height": 16,
+          "top": 442.40625,
+          "right": 323.90625,
+          "bottom": 458.40625,
+          "left": 307.90625
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 240.8125,
+        "textWidth": 146.6919708251953,
+        "selected": "Markdown",
+        "optionWidths": [
+          128.35194396972656,
+          146.6919708251953
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-dark-390-200-rtl": {
+      "width": 390,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "dark",
+      "direction": "rtl",
+      "geometry": {
+        "select": {
+          "x": 35.09375,
+          "y": 406.8125,
+          "width": 304.8125,
+          "height": 87.1875,
+          "top": 406.8125,
+          "right": 339.90625,
+          "bottom": 494,
+          "left": 35.09375
+        },
+        "icon": {
+          "x": 51.09375,
+          "y": 442.40625,
+          "width": 16,
+          "height": 16,
+          "top": 442.40625,
+          "right": 67.09375,
+          "bottom": 458.40625,
+          "left": 51.09375
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 240.8125,
+        "textWidth": 146.6919708251953,
+        "selected": "Markdown",
+        "optionWidths": [
+          128.35194396972656,
+          146.6919708251953
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-dark-834-100-ltr": {
+      "width": 834,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "dark",
+      "direction": "ltr",
+      "geometry": {
+        "select": {
+          "x": 320.03125,
+          "y": 426.125,
+          "width": 458.96875,
+          "height": 48,
+          "top": 426.125,
+          "right": 779,
+          "bottom": 474.125,
+          "left": 320.03125
+        },
+        "icon": {
+          "x": 747,
+          "y": 442.125,
+          "width": 16,
+          "height": 16,
+          "top": 442.125,
+          "right": 763,
+          "bottom": 458.125,
+          "left": 747
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 394.96875,
+        "textWidth": 73.345947265625,
+        "selected": "Markdown",
+        "optionWidths": [
+          64.17594909667969,
+          73.345947265625
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-dark-834-100-rtl": {
+      "width": 834,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "dark",
+      "direction": "rtl",
+      "geometry": {
+        "select": {
+          "x": 320.03125,
+          "y": 426.125,
+          "width": 458.96875,
+          "height": 48,
+          "top": 426.125,
+          "right": 779,
+          "bottom": 474.125,
+          "left": 320.03125
+        },
+        "icon": {
+          "x": 336.03125,
+          "y": 442.125,
+          "width": 16,
+          "height": 16,
+          "top": 442.125,
+          "right": 352.03125,
+          "bottom": 458.125,
+          "left": 336.03125
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 394.96875,
+        "textWidth": 73.345947265625,
+        "selected": "Markdown",
+        "optionWidths": [
+          64.17594909667969,
+          73.345947265625
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-dark-834-200-ltr": {
+      "width": 834,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "dark",
+      "direction": "ltr",
+      "geometry": {
+        "select": {
+          "x": 73.6875,
+          "y": 406.09375,
+          "width": 671.625,
+          "height": 87.1875,
+          "top": 406.09375,
+          "right": 745.3125,
+          "bottom": 493.28125,
+          "left": 73.6875
+        },
+        "icon": {
+          "x": 713.3125,
+          "y": 441.6875,
+          "width": 16,
+          "height": 16,
+          "top": 441.6875,
+          "right": 729.3125,
+          "bottom": 457.6875,
+          "left": 713.3125
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 607.625,
+        "textWidth": 146.6919708251953,
+        "selected": "Markdown",
+        "optionWidths": [
+          128.35194396972656,
+          146.6919708251953
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-dark-834-200-rtl": {
+      "width": 834,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "dark",
+      "direction": "rtl",
+      "geometry": {
+        "select": {
+          "x": 73.6875,
+          "y": 406.09375,
+          "width": 671.625,
+          "height": 87.1875,
+          "top": 406.09375,
+          "right": 745.3125,
+          "bottom": 493.28125,
+          "left": 73.6875
+        },
+        "icon": {
+          "x": 89.6875,
+          "y": 441.6875,
+          "width": 16,
+          "height": 16,
+          "top": 441.6875,
+          "right": 105.6875,
+          "bottom": 457.6875,
+          "left": 89.6875
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 607.625,
+        "textWidth": 146.6919708251953,
+        "selected": "Markdown",
+        "optionWidths": [
+          128.35194396972656,
+          146.6919708251953
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-dark-1024-100-ltr": {
+      "width": 1024,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "dark",
+      "direction": "ltr",
+      "geometry": {
+        "select": {
+          "x": 320.21875,
+          "y": 425.734375,
+          "width": 648.78125,
+          "height": 48,
+          "top": 425.734375,
+          "right": 969,
+          "bottom": 473.734375,
+          "left": 320.21875
+        },
+        "icon": {
+          "x": 937,
+          "y": 441.734375,
+          "width": 16,
+          "height": 16,
+          "top": 441.734375,
+          "right": 953,
+          "bottom": 457.734375,
+          "left": 937
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 584.78125,
+        "textWidth": 73.345947265625,
+        "selected": "Markdown",
+        "optionWidths": [
+          64.17594909667969,
+          73.345947265625
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-dark-1024-100-rtl": {
+      "width": 1024,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "dark",
+      "direction": "rtl",
+      "geometry": {
+        "select": {
+          "x": 320.21875,
+          "y": 425.734375,
+          "width": 648.78125,
+          "height": 48,
+          "top": 425.734375,
+          "right": 969,
+          "bottom": 473.734375,
+          "left": 320.21875
+        },
+        "icon": {
+          "x": 336.21875,
+          "y": 441.734375,
+          "width": 16,
+          "height": 16,
+          "top": 441.734375,
+          "right": 352.21875,
+          "bottom": 457.734375,
+          "left": 336.21875
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 584.78125,
+        "textWidth": 73.345947265625,
+        "selected": "Markdown",
+        "optionWidths": [
+          64.17594909667969,
+          73.345947265625
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-dark-1024-200-ltr": {
+      "width": 1024,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "dark",
+      "direction": "ltr",
+      "geometry": {
+        "select": {
+          "x": 80,
+          "y": 406.046875,
+          "width": 849,
+          "height": 87.1875,
+          "top": 406.046875,
+          "right": 929,
+          "bottom": 493.234375,
+          "left": 80
+        },
+        "icon": {
+          "x": 897,
+          "y": 441.640625,
+          "width": 16,
+          "height": 16,
+          "top": 441.640625,
+          "right": 913,
+          "bottom": 457.640625,
+          "left": 897
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 785,
+        "textWidth": 146.6919708251953,
+        "selected": "Markdown",
+        "optionWidths": [
+          128.35194396972656,
+          146.6919708251953
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-dark-1024-200-rtl": {
+      "width": 1024,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "dark",
+      "direction": "rtl",
+      "geometry": {
+        "select": {
+          "x": 80,
+          "y": 406.046875,
+          "width": 849,
+          "height": 87.1875,
+          "top": 406.046875,
+          "right": 929,
+          "bottom": 493.234375,
+          "left": 80
+        },
+        "icon": {
+          "x": 96,
+          "y": 441.640625,
+          "width": 16,
+          "height": 16,
+          "top": 441.640625,
+          "right": 112,
+          "bottom": 457.640625,
+          "left": 96
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 785,
+        "textWidth": 146.6919708251953,
+        "selected": "Markdown",
+        "optionWidths": [
+          128.35194396972656,
+          146.6919708251953
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-dark-1440-100-ltr": {
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "dark",
+      "direction": "ltr",
+      "geometry": {
+        "select": {
+          "x": 320.640625,
+          "y": 425.75,
+          "width": 1064.359375,
+          "height": 48,
+          "top": 425.75,
+          "right": 1385,
+          "bottom": 473.75,
+          "left": 320.640625
+        },
+        "icon": {
+          "x": 1353,
+          "y": 441.75,
+          "width": 16,
+          "height": 16,
+          "top": 441.75,
+          "right": 1369,
+          "bottom": 457.75,
+          "left": 1353
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 1000.359375,
+        "textWidth": 73.345947265625,
+        "selected": "Markdown",
+        "optionWidths": [
+          64.17594909667969,
+          73.345947265625
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-dark-1440-100-rtl": {
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "dark",
+      "direction": "rtl",
+      "geometry": {
+        "select": {
+          "x": 320.640625,
+          "y": 425.75,
+          "width": 1064.359375,
+          "height": 48,
+          "top": 425.75,
+          "right": 1385,
+          "bottom": 473.75,
+          "left": 320.640625
+        },
+        "icon": {
+          "x": 336.640625,
+          "y": 441.75,
+          "width": 16,
+          "height": 16,
+          "top": 441.75,
+          "right": 352.640625,
+          "bottom": 457.75,
+          "left": 336.640625
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 1000.359375,
+        "textWidth": 73.345947265625,
+        "selected": "Markdown",
+        "optionWidths": [
+          64.17594909667969,
+          73.345947265625
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-dark-1440-200-ltr": {
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "dark",
+      "direction": "ltr",
+      "geometry": {
+        "select": {
+          "x": 80,
+          "y": 406.28125,
+          "width": 1265,
+          "height": 87.1875,
+          "top": 406.28125,
+          "right": 1345,
+          "bottom": 493.46875,
+          "left": 80
+        },
+        "icon": {
+          "x": 1313,
+          "y": 441.875,
+          "width": 16,
+          "height": 16,
+          "top": 441.875,
+          "right": 1329,
+          "bottom": 457.875,
+          "left": 1313
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 1201,
+        "textWidth": 146.6919708251953,
+        "selected": "Markdown",
+        "optionWidths": [
+          128.35194396972656,
+          146.6919708251953
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "format-select-dark-1440-200-rtl": {
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "dark",
+      "direction": "rtl",
+      "geometry": {
+        "select": {
+          "x": 80,
+          "y": 406.28125,
+          "width": 1265,
+          "height": 87.1875,
+          "top": 406.28125,
+          "right": 1345,
+          "bottom": 493.46875,
+          "left": 80
+        },
+        "icon": {
+          "x": 96,
+          "y": 441.875,
+          "width": 16,
+          "height": 16,
+          "top": 441.875,
+          "right": 112,
+          "bottom": 457.875,
+          "left": 96
+        },
+        "inset": 16,
+        "reserve": 52,
+        "appearance": "none",
+        "center": 0,
+        "gap": 20,
+        "contentWidth": 1201,
+        "textWidth": 146.6919708251953,
+        "selected": "Markdown",
+        "optionWidths": [
+          128.35194396972656,
+          146.6919708251953
+        ],
+        "pointerEvents": "none",
+        "decorative": "true",
+        "native": true,
+        "label": "Định dạng bản thảo (bắt buộc)",
+        "overflow": false
+      },
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    }
+  }
+}

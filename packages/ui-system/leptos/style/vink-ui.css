@@ -715,6 +715,18 @@
   inset-inline: auto 12px;
 }
 
+/* #262 opt-in: the existing 18/12/8 default above remains the shared baseline.
+ * The larger 52px reserve leaves 20px between the content box and the 16px icon.
+ * Keep these in CSS pixels at text200; logical properties also support RTL hosts. */
+.vk-ui-field__control--select[data-select-variant="inset-16"] > .vk-ui-select {
+  padding-inline-end: 52px;
+}
+.vk-ui-field__control--select[data-select-variant="inset-16"] > .vk-ui-icon {
+  inline-size: 16px;
+  block-size: 16px;
+  inset-inline: auto 16px;
+}
+
 /* Floating labels share an intrinsic grid with the input: long Vietnamese labels
  * grow the first row at 200% text instead of overlapping or clipping input text. */
 .vk-ui-field--floating .vk-ui-field__control {

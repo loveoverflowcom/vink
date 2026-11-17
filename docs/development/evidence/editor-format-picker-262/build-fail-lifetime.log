@@ -1,0 +1,35 @@
+local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=2 libtest_threads=2 managed_target=10–12 GiB (advisory); Cargo bootstrap included; preflight requires normal pressure; retries manual
+local-budget: pressure=normal; swap: total = 4096.00M  used = 2526.75M  free = 1569.25M  (encrypted)
+local-budget: supervisor=8342 session=8402 slot=/tmp/vink-local-budget-501
+==> ui tokens: 15 generated files match
+==> build preview bundle (vink-ui-preview, csr)
+   Compiling vink-ui v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task-6/vink/packages/ui-system/leptos)
+   Compiling vink-patterns v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task-6/vink/packages/vink-patterns/leptos)
+   Compiling vink-ui-preview v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task-6/vink/packages/ui-system/leptos/preview)
+error[E0521]: borrowed data escapes outside of function
+   --> packages/ui-system/leptos/preview/src/components.rs:718:5
+    |
+710 |   fn field_select(scenario: &str) -> AnyView {
+    |                   --------  - let's call the lifetime of this reference `'1`
+    |                   |
+    |                   `scenario` is a reference that is only valid in the function body
+...
+718 | /     view! {
+719 | |       <Stack gap=Space::S4>
+720 | |         <Select
+721 | |             id="genre-select"
+...   |
+746 | |       </Stack>
+747 | |     }
+    | |     ^
+    | |     |
+    | |_____`scenario` escapes the function body here
+    |       argument requires that `'1` must outlive `'static`
+    |
+    = note: this error originates in the macro `view` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+For more information about this error, try `rustc --explain E0521`.
+error: could not compile `vink-ui-preview` (lib) due to 1 previous error
+xtask: build preview bundle (vink-ui-preview, csr): exited with exit status: 101
+local-budget: wall=8.07s sampled_peak_rss_sum=481232 KiB samples=8 interval=1s
+local-budget: pressure=normal; swap: total = 4096.00M  used = 2526.75M  free = 1569.25M  (encrypted)

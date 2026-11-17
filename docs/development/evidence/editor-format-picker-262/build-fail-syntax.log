@@ -1,0 +1,130 @@
+local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=2 libtest_threads=2 managed_target=10–12 GiB (advisory); Cargo bootstrap included; preflight requires normal pressure; retries manual
+local-budget: pressure=normal; swap: total = 4096.00M  used = 2526.75M  free = 1569.25M  (encrypted)
+local-budget: supervisor=6353 session=6378 slot=/tmp/vink-local-budget-501
+==> ui tokens: 15 generated files match
+==> build preview bundle (vink-ui-preview, csr)
+   Compiling web-sys v0.3.106
+   Compiling hydration_context v0.3.2
+   Compiling reactive_graph v0.2.16
+   Compiling gloo-utils v0.2.0
+   Compiling gloo-net v0.6.0
+   Compiling reactive_stores v0.4.4
+   Compiling wasm-streams v0.5.0
+   Compiling server_fn v0.8.13
+   Compiling tachys v0.2.19
+   Compiling leptos_dom v0.8.8
+   Compiling leptos_server v0.8.8
+   Compiling leptos v0.8.22
+   Compiling vink-ui v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task-6/vink/packages/ui-system/leptos)
+   Compiling vink-patterns v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task-6/vink/packages/vink-patterns/leptos)
+   Compiling vink-ui-preview v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task-6/vink/packages/ui-system/leptos/preview)
+error: expected identifier, found keyword `move`
+   --> packages/ui-system/leptos/preview/src/components.rs:737:23
+    |
+737 |             on_change=move |v: Option<String>| {
+    |                       ^^^^ expected identifier, found keyword
+    |
+help: escape `move` to use it as an identifier
+    |
+737 |             on_change=r#move |v: Option<String>| {
+    |                       ++
+
+error: expected one of `async`, `|`, or `||`, found `}`
+   --> packages/ui-system/leptos/preview/src/components.rs:718:5
+    |
+718 | /     view! {
+719 | |       <Stack gap=Space::S4>
+720 | |         <Select
+721 | |             id="genre-select"
+...   |
+746 | |       </Stack>
+747 | |     }
+    | |_____^ expected one of `async`, `|`, or `||`
+    |
+    = note: this error originates in the macro `view` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected `,`
+   --> packages/ui-system/leptos/preview/src/components.rs:718:5
+    |
+718 | /     view! {
+719 | |       <Stack gap=Space::S4>
+720 | |         <Select
+721 | |             id="genre-select"
+...   |
+746 | |       </Stack>
+747 | |     }
+    | |_____^
+    |
+    = note: this error originates in the macro `view` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: invalid tag name or attribute key
+   --> packages/ui-system/leptos/preview/src/components.rs:737:28
+    |
+737 |             on_change=move |v: Option<String>| {
+    |                            ^
+
+error: tokens was ignored during parsing
+   --> packages/ui-system/leptos/preview/src/components.rs:737:28
+    |
+737 |             on_change=move |v: Option<String>| {
+    |                            ^
+
+error: wrong close tag found
+   --> packages/ui-system/leptos/preview/src/components.rs:746:7
+    |
+746 |       </Stack>
+    |       ^
+
+error: [help] open tag that should be closed; it's started here
+   --> packages/ui-system/leptos/preview/src/components.rs:731:9
+    |
+731 |         <Select
+    |         ^
+
+error: open tag has no corresponding close tag
+   --> packages/ui-system/leptos/preview/src/components.rs:719:7
+    |
+719 |       <Stack gap=Space::S4>
+    |       ^
+
+error: [note] treating all inputs after open tag as it content
+   --> packages/ui-system/leptos/preview/src/components.rs:720:9
+    |
+720 |         <Select
+    |         ^
+
+error[E0425]: cannot find value `v` in this scope
+   --> packages/ui-system/leptos/preview/src/components.rs:738:53
+    |
+738 |                 log(format!("[Mẫu] select format = {v:?}"));
+    |                                                     ^ not found in this scope
+
+error[E0425]: cannot find value `v` in this scope
+   --> packages/ui-system/leptos/preview/src/components.rs:739:28
+    |
+739 |                 format.set(v);
+    |                            ^ not found in this scope
+
+error[E0599]: no method named `r#move` found for struct `vink_ui::field::SelectPropsBuilder<TypedBuilderFields>` in the current scope
+   --> packages/ui-system/leptos/preview/src/components.rs:737:23
+    |
+718 | /     view! {
+719 | |       <Stack gap=Space::S4>
+720 | |         <Select
+721 | |             id="genre-select"
+...   |
+736 | |             value=format
+737 | |             on_change=move |v: Option<String>| {
+    | |                      -^^^^ method not found in `SelectPropsBuilder<((String,), _, _, _, (), (), (), (), (), _, ())>`
+    | |______________________|
+    |
+    |
+    = note: the full name for the type has been written to '/Users/manhblue/Documents/Codex/2026-11-17/task-6/vink/target/wasm32-unknown-unknown/debug/deps/vink_ui_preview.long-type-16021415308430657583.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+
+Some errors have detailed explanations: E0425, E0599.
+For more information about an error, try `rustc --explain E0425`.
+error: could not compile `vink-ui-preview` (lib) due to 12 previous errors
+xtask: build preview bundle (vink-ui-preview, csr): exited with exit status: 101
+local-budget: wall=39.61s sampled_peak_rss_sum=961392 KiB samples=39 interval=1s
+local-budget: pressure=normal; swap: total = 4096.00M  used = 2526.75M  free = 1569.25M  (encrypted)

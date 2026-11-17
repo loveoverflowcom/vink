@@ -48,6 +48,10 @@ LayoutSpec, owner map Web/CMP và seam tiếp tục sau #224; presentation mới
 Bổ sung [#218 — Editor Paper First](ui-editor-paper-first-218.md): công cụ không container,
 Thêm native trong flow, paper/canvas scoped và giữ save/recovery/focus của #217.
 
+Bổ sung [#262 — selector định dạng](editor-format-picker-262.md): geometry native Select
+opt-in đã tách khỏi prerequisite source/title/provider/Reader; mẫu gallery không bật Markdown
+trong Bàn viết.
+
 ## Nguồn và thứ tự ưu tiên
 
 | Nguồn | Dùng cho |

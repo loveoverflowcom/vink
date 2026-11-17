@@ -224,7 +224,7 @@ Tên dùng chung; Leptos viết `snake_case` và component không tiền tố (`
 | `SearchField` | như TextField + nút xóa khi có chữ | `on_input`; `on_submit(String)` (Web: Enter ngoài composition; CMP: hành động Search của IME) | Tìm kiếm, debounce |
 | `Checkbox` / `Switch` | `label`, `checked`, `help?`, `error?` (Checkbox); Web: `id`, `disabled`; CMP: `enabled` | `on_change(bool)` ×1 | Read-only (không có trên choice native) |
 | `RadioGroup` | `legend`, `options: [ChoiceOption]`, `value: String?`, `help?`, `error?`, `required`; Web: `id`, `disabled`; CMP: `enabled` | `on_change(String)` ×1 | Read-only |
-| `Select` | `label`, `options`, `value: String?`, `placeholder`, `help?`, `error?`, `required`; Web: `id`, `disabled`; CMP: `enabled` | `on_change(String?)` | Tìm trong danh sách, chọn nhiều. Web `<select>` native, CMP menu Material |
+| `Select` | `label`, `options`, `value: String?`, `placeholder`, `help?`, `error?`, `required`; Web: `id`, `disabled`, `variant: Standard / Inset16` (geometry only); CMP: `enabled` | `on_change(String?)` | Tìm trong danh sách, chọn nhiều. Web `<select>` native, CMP menu Material |
 | `FormSummary` | `title`, `items: [(field_id, message)]` | Web: link `#field_id` rồi focus field; CMP: `onSelect(field_id)` để host focus | Tự gom lỗi |
 | `Icon` | `name: IconName`, `label: String?`, `size: IconSize` | — | Icon tự vẽ cho action đã có icon |
 | `Avatar` | `name?`, `identity_key?`, `image: ImageState`, `size: AvatarSize`, `kind: AvatarKind` (Author/Account), `decorative`; CMP: `narrow` (host chọn theo bề rộng cửa sổ) | — | Gravatar, tra email, ảnh có xác thực, suy account từ tên |
