@@ -83,6 +83,7 @@ pub enum Scenario {
     Password,
     Publication,
     PerfBaseline,
+    ReturnPosition,
 }
 impl Scenario {
     pub const ALL: [Self; 9] = [
@@ -96,8 +97,8 @@ impl Scenario {
         Self::Password,
         Self::Publication,
     ];
-    /// Default full regression intentionally excludes the expensive measurement lane.
-    pub const SELECTABLE: [Self; 10] = [
+    /// Default full regression intentionally excludes the longer lab measurements.
+    pub const SELECTABLE: [Self; 11] = [
         Self::Main,
         Self::Storage,
         Self::Discovery,
@@ -108,6 +109,7 @@ impl Scenario {
         Self::Password,
         Self::Publication,
         Self::PerfBaseline,
+        Self::ReturnPosition,
     ];
     pub fn name(self) -> &'static str {
         match self {
@@ -121,6 +123,7 @@ impl Scenario {
             Self::Password => "password",
             Self::Publication => "publication",
             Self::PerfBaseline => "perf-baseline",
+            Self::ReturnPosition => "return-position",
         }
     }
     pub fn parse(s: &str) -> Result<Self, String> {

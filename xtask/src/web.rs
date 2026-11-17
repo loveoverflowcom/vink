@@ -1017,22 +1017,44 @@ fn run_web_checks(
             }
         }
     }
-    if selected.contains(&Scenario::PerfBaseline) && !report.step(
-        "#234 guest SSR/hydration + Reader/Back baseline (200 works, 1000 comments, 10 cold/warm)",
-        || {
-            if !selected.contains(&Scenario::Discovery) {
-                seed_discovery_fixture(server)?;
-            }
-            seed_perf_journey(server)?;
-            // LocalFixture performs an additional actor reconciliation on mount. Don't
-            // benchmark it as if it were part of a guest's public journey.
-            let guest = server.as_guest();
-            let mut guard = guest.start(root)?;
-            smoke(root, &["--phase", "perf-baseline", "--build-profile", guest.profile_name()], chrome, origin, state)?;
-            let status = guard.terminate(Duration::from_secs(15))?;
-            status.success().then_some(()).ok_or_else(|| format!("guest App exited with {status}"))
-        },
-    ) {
+    if selected
+        .iter()
+        .any(|s| matches!(s, Scenario::PerfBaseline | Scenario::ReturnPosition))
+        && !report.step(
+            "guest performance lab (200 works, 1000 comments; selected Reader journey checks)",
+            || {
+                if !selected.contains(&Scenario::Discovery) {
+                    seed_discovery_fixture(server)?;
+                }
+                seed_perf_journey(server)?;
+                // LocalFixture performs an additional actor reconciliation on mount. Don't
+                // benchmark it as if it were part of a guest's public journey.
+                let guest = server.as_guest();
+                let mut guard = guest.start(root)?;
+                for scenario in [Scenario::PerfBaseline, Scenario::ReturnPosition] {
+                    if selected.contains(&scenario) {
+                        smoke(
+                            root,
+                            &[
+                                "--phase",
+                                scenario.name(),
+                                "--build-profile",
+                                guest.profile_name(),
+                            ],
+                            chrome,
+                            origin,
+                            state,
+                        )?;
+                    }
+                }
+                let status = guard.terminate(Duration::from_secs(15))?;
+                status
+                    .success()
+                    .then_some(())
+                    .ok_or_else(|| format!("guest App exited with {status}"))
+            },
+        )
+    {
         return false;
     }
     if !selected
