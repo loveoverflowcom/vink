@@ -1,0 +1,31 @@
+local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=1 libtest_threads=1 managed_target=10–12 GiB (advisory); Cargo bootstrap included; preflight requires normal pressure; retries manual
+local-budget: pressure=normal; swap: total = 2560.00M  used = 1402.75M  free = 1157.25M  (encrypted)
+local-budget: supervisor=70353 session=70357 slot=/tmp/vink-local-budget-501
+    Finished `test` profile [unoptimized] target(s) in 0.26s
+     Running tests/postgres.rs (target/debug/deps/postgres-608e047ac96d774e)
+
+running 19 tests
+test conditional_reads::concurrent_renames_never_pair_a_validator_with_another_body ... ok
+test conditional_reads::every_displayed_change_produces_a_new_validator ... ok
+test conditional_reads::unchanged_public_reads_revalidate_with_not_modified ... ok
+test content_storage_rfc::content_storage_boundary_shift ... ok
+test content_storage_rfc::content_storage_probe ... ignored, opt-in scratch PostgreSQL storage comparison; set VINK_CONTENT_STORAGE_OUTPUT
+test content_storage_rfc::content_storage_probe_constraints ... ok
+test document_budget::long_document_budget ... ignored, opt-in benchmark: VINK_DOCUMENT_BUDGET_OUTPUT; see long-document-budget.md
+test document_budget::long_document_http_boundaries_preserve_durable_text_and_conflicts ... ok
+test document_budget::long_document_sample_rejects_change_labeled_as_noop - should panic ... ok
+test document_budget::long_document_sample_rejects_repeated_edit_labeled_as_change - should panic ... ok
+test document_budget::long_document_samples_are_independent_durable_transitions ... ok
+test document_source_compat::production_v1_rows_remain_unmodified_and_readable_via_stored_document ... ok
+test document_source_compat::proposed_v2_check_constraint_supports_lossless_nfd_and_dual_read_in_scratch_table ... ok
+test publication_state::state_is_not_a_body_integrity_or_publication_capability ... ok
+test publication_state::state_keeps_distinct_metadata_bindings_when_only_tags_change ... ok
+test publication_state::state_observes_stale_policy_and_private_fences_late_approval ... ok
+test publication_state::state_reads_all_history_without_permission_to_read_document ... ok
+test publication_state::state_reads_one_snapshot_across_a_concurrent_moderation_commit ... ok
+test publication_state::state_rejects_job_digest_and_database_rejects_cross_work_bindings ... ok
+
+test result: ok. 17 passed; 0 failed; 2 ignored; 0 measured; 194 filtered out; finished in 6.16s
+
+local-budget: wall=7.02s sampled_peak_rss_sum=111872 KiB samples=7 interval=1s
+local-budget: pressure=normal; swap: total = 2560.00M  used = 1394.75M  free = 1165.25M  (encrypted)

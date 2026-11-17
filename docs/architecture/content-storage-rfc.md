@@ -5,9 +5,17 @@ khai. Đề xuất [VDR-CONTENT-STORAGE@r1](../../decisions/proposals/VDR-CONTEN
 ở trạng thái `PENDING`. Phạm vi PR gồm RFC và phép đo PostgreSQL scratch. Runtime
 `persistence-api`/`web` vẫn dùng representation hiện hành.
 
-**Checkpoint đối soát 17/11/2026:** #253 đã merge vào `develop@f6b8846`; [ma trận AC/provenance](../development/long-document-reconciliation.md)
-ghi bounded prototype và gate verification đang pending do Mac mất kết nối. `VDR-CONTENT-STORAGE@r1` vẫn **PENDING/current=null**,
-snapshot `9dbad85666397d5d9b76d811440fc80ecf12f034328dea0ec7c22114e3596cb3`. Merge RFC/đóng #231 không là signoff/adoption.
+**Đối soát 17/11/2026:** #253 đã merge vào `develop@607ef83`;
+[biên bản AC và source/raw audit](../development/long-document-reconciliation.md) xác nhận
+deliverable RFC/prototype giới hạn. `VDR-CONTENT-STORAGE@r1` vẫn `PENDING/current=null`,
+snapshot registry `8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8`.
+Merge RFC hoặc đóng #231 không là signoff/adoption; các số sau giữ source đo lịch sử.
+
+#279 đã thêm [contract nguồn v2](document-source-format.md) dưới proposal PENDING riêng;
+writer/API/fixtures hiện vẫn v1. Raw A/B/C trong RFC này đo document v1, không qualification
+cho envelope/hash v2. Oracle corpus hiện hành giữ hash/bytes v1 sau refactor helper hex;
+nếu writer/encoding đổi về sau, phải đo lại gates B/C với workload mới trước adoption.
+
 
 Khi tác giả sửa bài đã đăng, người đọc tiếp tục thấy đúng bản đã công khai. Một transaction có
 thẩm quyền chuyển pointer sang bản phù hợp. Nếu bài chuyển riêng tư hoặc bị gỡ, lần đọc tiếp theo

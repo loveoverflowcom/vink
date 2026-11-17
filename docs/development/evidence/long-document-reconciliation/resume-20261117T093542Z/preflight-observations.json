@@ -1,0 +1,11 @@
+{
+  "source_sha": "dcd36ba6883b49bf764124e08e5d78278a485e48",
+  "boundary": "Captured immediately before resume gates; no cleanup or process mutation by this resume.",
+  "preflight_command_result": {
+    "chunk_id": "7e190e",
+    "wall_time_seconds": 0.000020301,
+    "exit_code": 0,
+    "original_token_count": 259,
+    "output": "{\"processes\": [\"  321     1 38-07:37:31 13951328 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Support/fseventsd\", \"13958     1    17:47:23   1792 /opt/homebrew/Cellar/postgresql@17/17.11_1/bin/postgres -D /tmp/vink-265-review/pg -h 127.0.0.1 -p 55465 -k /tmp/vink-265-review -F -c max_wal_size=128MB\", \"39387     1 03-21:03:11   1776 /opt/homebrew/Cellar/postgresql@17/17.11_1/bin/postgres -D /tmp/vink-cmg-web-pg.l0SB50/data -h 127.0.0.1 -p 55435 -k /tmp/vink-cmg-web-pg.l0SB50 -F -c max_wal_size=128MB -c checkpoint_timeout=60s -c wal_compression=on\", \"88089     1 01-17:47:20   2032 /opt/homebrew/Cellar/postgresql@17/17.11_1/bin/postgres -D /tmp/vink-pg-204 -p 55499 -k /tmp/vink-pg-204\"], \"target\": \"/Users/manhblue/Documents/Codex/2026-11-17/task-8/vink-reconciliation/target\", \"target_tag\": false, \"backup_exists\": true}\nThe system has 25769803776 (1572864 pages with a page size of 16384).\nSystem-wide memory free percentage: 70%\npg_ctl: no server running\n5.0G\ttarget\n"
+  }
+}

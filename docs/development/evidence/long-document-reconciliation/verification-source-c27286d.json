@@ -1,0 +1,155 @@
+{
+  "generated_utc": "2026-11-17T07:29:11.163136+00:00",
+  "source_sha": "c27286dffd0a5c69f482f5c48469ad477210c541",
+  "latest_develop_base": "92b2eb33dc4ad55bfb1bed15cfb7f614e08df56c",
+  "branch": "codex/long-document-reconciliation-evidence",
+  "production_delta_from_base": [],
+  "committed_test_delta": "services/vink-app/tests/document_budget.rs: strengthen existing test; no original assertion removed",
+  "profile": "App/Web opt-z, UI preview1; strip symbols; debug assertions/overflow checks=true; debug0/incremental0/jobs1/libtest1; no wrapper",
+  "profile_sha256": "5021aa473c39ce806155685fe2545be4c25d3d1a936ef754d6a1c9039e2f1ddd",
+  "input_tree_oids": {
+    "apps": "8033f8c41b9d244225e3fd45120271b961d02841",
+    "packages": "ae823a0a22146a6a884124256b1fb89e56dc53c4",
+    "services/vink-app/src": "22f29bf06c3f94f4839c6c3c8059311fb2fb2087",
+    "services/vink-app/migrations": "df0e691ed34692d3f8c77f2ca40d8b176658ab91",
+    "services/vink-app/tests": "c5d1db9054b147ce1c4b7b247cfdba50fda2d1ac",
+    "decisions": "27f5ca055a225ef3f631d0ffb9c7c13cda93de38",
+    "xtask": "b4e3485eb6de56d3d32354d1d90fbda1d2a252b2",
+    "tools": "f0cf1c30838391119caffbdc2cc26e19453cf682",
+    "Cargo.toml": "d1a61ff77429d90f02f9ea2ac604210d63f338df",
+    "Cargo.lock": "3e45c5e9b527b4a6d0078acacca8f7822c981f65",
+    "AGENTS.md": "3d39e39a494e5936025204adee235c19050a4308",
+    ".agents": "8e8b9ec91f4e55f30badc7c90e0830a79ffed7e0"
+  },
+  "gates": [
+    {
+      "gate": "fmt",
+      "status": "PASS",
+      "command": "./tools/local-budget run -- cargo fmt --all -- --check",
+      "source_sha": "c27286dffd0a5c69f482f5c48469ad477210c541",
+      "environment": "Mac arm64; environment.json + focused-run-source.json + quick-run-source.json",
+      "raw_log": "fmt.log",
+      "reason": "Rust formatting unchanged after test fix"
+    },
+    {
+      "gate": "decision_validate",
+      "status": "PASS",
+      "command": "./tools/local-budget run -- cargo xtask decision validate",
+      "source_sha": "c27286dffd0a5c69f482f5c48469ad477210c541",
+      "environment": "Mac arm64; environment.json + focused-run-source.json + quick-run-source.json",
+      "raw_log": "decision-validate.log",
+      "reason": "127 revisions / 88 references; snapshot8354df2c; no signoff"
+    },
+    {
+      "gate": "corpus",
+      "status": "PASS",
+      "command": "./tools/local-budget run -- cargo test --offline --locked -p vink-app --test document_budget",
+      "source_sha": "c27286dffd0a5c69f482f5c48469ad477210c541",
+      "environment": "Mac arm64; environment.json + focused-run-source.json + quick-run-source.json",
+      "raw_log": "corpus.log",
+      "reason": "3 tests; immutable #249 oracle compares all 21 hashes/dimensions; cache/boundaries"
+    },
+    {
+      "gate": "focused_postgres",
+      "status": "PASS",
+      "command": "./tools/local-budget run -- cargo test --offline --locked -p vink-app --test postgres -- long_document_ publication_state:: content_storage_rfc:: conditional_reads:: document_source_compat:: --test-threads=1",
+      "source_sha": "c27286dffd0a5c69f482f5c48469ad477210c541",
+      "environment": "Mac arm64; environment.json + focused-run-source.json + quick-run-source.json",
+      "raw_log": "postgres-focused.log",
+      "reason": "17 passed; 2 opt-in benchmarks ignored; private real PostgreSQL17.11 port55538"
+    },
+    {
+      "gate": "quick",
+      "status": "PASS",
+      "command": "./tools/local-budget run -- cargo xtask verify quick",
+      "source_sha": "c27286dffd0a5c69f482f5c48469ad477210c541",
+      "environment": "Mac arm64; environment.json + focused-run-source.json + quick-run-source.json",
+      "raw_log": "quick.log",
+      "reason": "All13 steps; original xtask scratch-lock test remains ignored"
+    },
+    {
+      "gate": "audit",
+      "status": "PASS",
+      "command": "python3 docs/development/evidence/long-document-reconciliation/audit.py.txt",
+      "source_sha": "c27286dffd0a5c69f482f5c48469ad477210c541",
+      "environment": "Mac arm64; environment.json + focused-run-source.json + quick-run-source.json",
+      "raw_log": "audit.log",
+      "reason": "Historical raw recomputation, owner deltas and ancestry; not new timings"
+    },
+    {
+      "gate": "known_policy_desired_behavior",
+      "status": "FAIL",
+      "command": "./tools/local-budget run -- cargo test --offline --locked -p vink-app --test postgres state_observes_policy_rereview_and_private_fences_late_approval -- --test-threads=1",
+      "source_sha": "6287fbfa2817fd457f3b93e710463a7a9cc7e84f",
+      "environment": "Original task scratch PostgreSQL port55538; temporary test patch restored",
+      "raw_log": "known-policy-reproducer.log",
+      "exit_code": 101,
+      "reason": "Pre-existing by identical transition/migration; pending constraint; owner #275. Not a reconciliation delta or a PASS."
+    },
+    {
+      "gate": "full_postgres",
+      "status": "NOT_RUN",
+      "command": "cargo xtask verify postgres",
+      "source_sha": "c27286dffd0a5c69f482f5c48469ad477210c541",
+      "environment": "Current task Mac",
+      "reason": "No production runtime/schema change in this PR; focused17 covers affected/reconciled seams; historical full lane is separately bounded"
+    },
+    {
+      "gate": "full_web",
+      "status": "NOT_RUN",
+      "command": "cargo xtask verify web",
+      "source_sha": "c27286dffd0a5c69f482f5c48469ad477210c541",
+      "environment": "Current task Mac",
+      "reason": "No renderer/contract runtime change here; no new browser qualification; #280 has separate Reader/Back owner"
+    },
+    {
+      "gate": "new_benchmark_browser",
+      "status": "NOT_RUN",
+      "command": "Existing opt-in benchmarks and browser document-budget phase",
+      "source_sha": "c27286dffd0a5c69f482f5c48469ad477210c541",
+      "environment": "Current task Mac",
+      "reason": "V1 corpus/algorithms preserved; old timing sources explicit. No new HEAD performance/SLA claim."
+    },
+    {
+      "gate": "models_native",
+      "status": "NOT_RUN",
+      "command": "Quint/Kani/CMP lanes",
+      "source_sha": "c27286dffd0a5c69f482f5c48469ad477210c541",
+      "environment": "Current task Mac",
+      "reason": "No domain transition/invariant implementation change; no model edits for docs/test oracle"
+    }
+  ],
+  "quick_steps": [
+    "ui tokens: source valid, generated CSS/Rust/Kotlin match",
+    "empty artwork: verified runtime derivatives",
+    "expressions: manifest/hash/Unicode/drift",
+    "visual evidence oracles: manifest, PNG, overflow, AX, modal unit tests",
+    "web perf analyzer: lab distribution, transport ledger and negative duplicate control",
+    "fmt",
+    "clippy server (workspace, ssr)",
+    "clippy browser (vink-web, hydrate, wasm32)",
+    "clippy UI preview (vink-ui-preview, csr, wasm32)",
+    "literary core type-boundary doctests",
+    "Reader SSR boundary (isolated public-read fixture, no database)",
+    "unit + contract tests (no database)",
+    "repository checks (decisions, skills, links, boundaries, fonts, editor packages)"
+  ],
+  "scope_ac_pass": {
+    "229": 7,
+    "230": 8,
+    "231": 9
+  },
+  "known_findings": {
+    "F1": "#273 open",
+    "F3": "#274 open",
+    "policy_rereview": "#275 open"
+  },
+  "decisions": {
+    "snapshot_sha256": "8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8",
+    "VDR-CONTENT-STORAGE@r1": "PENDING/current=null",
+    "VDR-DOCUMENT-SOURCE-FORMAT@r1": "PENDING/current=null",
+    "signoff_mutations": []
+  },
+  "historical_failures": "All disk/strip/archive FAIL logs retained; f4e917b added-test compile failure retained and fixed at source; early diagnostic logs may lack embedded SHA and are never used as current PASS. See per-run source JSON and raw-log-encodings.json.",
+  "publication_boundary": "GitHub issue state is SSOT; closure only after follow-up merged and fresh-read acceptance/comments; #278 remains unchanged."
+}

@@ -1,0 +1,2 @@
+local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=2 libtest_threads=2 managed_target=10–12 GiB (advisory); Cargo bootstrap included; preflight requires normal pressure; retries manual
+local-budget: expected cargo xtask, test, check, build, clippy or fmt

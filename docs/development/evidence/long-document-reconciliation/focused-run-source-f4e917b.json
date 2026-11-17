@@ -1,0 +1,27 @@
+{
+  "source_sha": "f4e917bfb1ce3aeb563457e42ba749824bd8182c",
+  "base_sha": "92b2eb33dc4ad55bfb1bed15cfb7f614e08df56c",
+  "branch": "codex/long-document-reconciliation-evidence",
+  "started_utc": "2026-11-17T06:46:30.729370+00:00",
+  "production_delta_from_develop": [],
+  "committed_test_delta": "34 assertions/oracle lines in existing document_budget test; no original assertion removed",
+  "postgres": "127.0.0.1:55538 task-owned cluster",
+  "flags": {
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_BUILD_JOBS": "1",
+    "RUST_TEST_THREADS": "1"
+  },
+  "task_local_config": "task-build-config.toml.txt",
+  "config_sha256": "5021aa473c39ce806155685fe2545be4c25d3d1a936ef754d6a1c9039e2f1ddd",
+  "profile": "App/Web opt-z, UI preview1, strip symbols, debug assertions and overflow checks explicitly true",
+  "rustc_wrapper": null,
+  "selectors": [
+    "long_document_",
+    "publication_state::",
+    "content_storage_rfc::",
+    "conditional_reads::",
+    "document_source_compat::"
+  ]
+}

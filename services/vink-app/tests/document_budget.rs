@@ -7,6 +7,18 @@ use vink_app::domain::revision::ContentHash;
 
 #[test]
 fn long_document_corpus_uses_real_validator_serializer_and_v1_hash() {
+    // #279 shares the hex encoder with hash v2. Pin v1 to the measured #249 corpus,
+    // rather than merely comparing two hashes produced by today's implementation.
+    let historical: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../docs/development/evidence/long-document-229/followup/postgres.json"
+    ))
+    .unwrap();
+    assert_eq!(
+        historical["source_sha"],
+        "4f2883630ff27f36c7549e036e6b554166a86692"
+    );
+    let cases = historical["cases"].as_array().unwrap();
+    assert_eq!(cases.len(), 21);
     let title = Title::parse("[Mẫu #229] Ngân sách văn bản").unwrap();
     for size in [30_000, 100_000, 200_000] {
         for shape in corpus::SHAPES {
@@ -18,6 +30,28 @@ fn long_document_corpus_uses_real_validator_serializer_and_v1_hash() {
             let encoded = serde_json::to_vec(&doc.to_data()).unwrap();
             let decoded = Document::parse(serde_json::from_slice(&encoded).unwrap()).unwrap();
             assert_eq!(doc, decoded);
+            let name = format!("{shape}-{size}");
+            let baseline = cases.iter().find(|case| case["case"] == name).unwrap();
+            let mut expected = baseline["pure"].as_object().unwrap().clone();
+            expected.remove("samples_ms");
+            let measured_title = Title::parse(&format!("[Mẫu #229] {name}")).unwrap();
+            let wire = serde_json::to_vec(&serde_json::json!({
+                "expected_version": 1, "title": measured_title.as_str(), "document": &data
+            }))
+            .unwrap();
+            let actual = serde_json::json!({
+                "blocks": doc.blocks().len(),
+                "lines": doc.blocks().map(|lines| lines.len()).sum::<usize>(),
+                "raw_line_scalars": data.blocks.iter().flat_map(|b| &b.lines).map(|s| s.chars().count()).sum::<usize>(),
+                "nfc_line_scalars": scalars,
+                "raw_line_utf8_bytes": data.blocks.iter().flat_map(|b| &b.lines).map(String::len).sum::<usize>(),
+                "nfc_line_utf8_bytes": doc.blocks().flatten().map(|line| line.len()).sum::<usize>(),
+                "raw_document_json_bytes": raw.len(),
+                "canonical_document_json_bytes": encoded.len(),
+                "save_request_bytes": wire.len(),
+                "content_hash_v1": ContentHash::of(&measured_title, &doc).as_str(),
+            });
+            assert_eq!(actual, serde_json::Value::Object(expected), "{name}");
             let hash = ContentHash::of(&title, &doc);
             assert_eq!(hash, ContentHash::of(&title, &decoded));
             if shape == "vi_nfd" {
