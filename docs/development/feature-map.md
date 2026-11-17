@@ -98,6 +98,13 @@ invalid/disabled/forced-colors. Popup OS và touch thực cần evidence riêng.
 [LayoutSpec + capability boundary](../design/editor-format-picker-262.md),
 [bằng chứng thực chạy](evidence/editor-format-picker-262/README.md).
 
+#263 có [owner title/corpus](../architecture/editor-title-authority.md) độc lập:
+10 ca v1 tại `application::tests::title_authority::legacy_v1_title_authority_corpus`
+bảo vệ tên riêng qua application recording store và revision validation/hash.
+30 ca Markdown là oracle đề xuất, extraction/differential **NOT_RUN**; chưa có parser,
+format-aware save hoặc title UI. [Evidence và resume](evidence/editor-title-263/README.md)
+tách regression v1 khỏi AC tích hợp phụ thuộc #255/#256/#264.
+
 
 Lõi phân loại tác phẩm (chưa có điểm vào người dùng) thêm ngày 08/11/2026 trên nền `6c97917` cho
 [#95](https://github.com/loveoverflowcom/vink/issues/95); xem mục TAG-PR-01 cuối trang.

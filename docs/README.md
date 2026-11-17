@@ -70,6 +70,11 @@ Bộ đề xuất v0.2 đã được đưa vào repository Vink ngày 30/10/2026
 | Nguồn skills | [Skill adaptation](references/skill-adaptation.md) | Nguồn Cantos được pin riêng, draft workflow coding agent và cách chọn lọc cho Vink |
 | Bản ban đầu | [README](archive/initial/README.md), [Vision](archive/initial/prd/vision.md) | Giữ nguyên nội dung có sẵn trước lần nhập foundation; chỉ là tư liệu lịch sử |
 
+Tiêu đề theo định dạng #263: [owner và corpus](architecture/editor-title-authority.md)
+ghi quyết định Default/Markdown, legacy guards và điểm nối source contract #255.
+Markdown extraction và tích hợp PG/Web chưa triển khai; [evidence](development/evidence/editor-title-263/README.md)
+ghi riêng phần thực chạy.
+
 ## Ánh xạ bộ foundation
 
 Các file gốc từ thư mục `vink-foundation` được giữ nguyên nội dung sản phẩm, ID yêu cầu, trạng thái và nguồn tham chiếu; liên kết nội bộ được sửa theo vị trí mới. Trang chỉ mục này bổ sung bản đồ repository và ghi nhận việc nhập tài liệu. Không chạy lại nghiên cứu web, spike hay acceptance runtime trong lần sắp xếp.

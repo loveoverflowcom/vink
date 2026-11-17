@@ -1,0 +1,153 @@
+[
+  {
+    "id": "no-h1",
+    "source": "## Mục\n\nThân bài.\n",
+    "expected_projection": ""
+  },
+  {
+    "id": "empty-first-h1",
+    "source": "#\n\n# Tên sau\n",
+    "expected_projection": ""
+  },
+  {
+    "id": "empty-closing-h1",
+    "source": "# ###\n",
+    "expected_projection": ""
+  },
+  {
+    "id": "multiple-h1",
+    "source": "# Tên đầu\n\n# Tên sau\n",
+    "expected_projection": "Tên đầu"
+  },
+  {
+    "id": "after-deleting-first",
+    "source": "Thân đầu.\n\n# Tên sau\n",
+    "expected_projection": "Tên sau"
+  },
+  {
+    "id": "after-deleting-all",
+    "source": "Thân đầu.\n\nThân sau.\n",
+    "expected_projection": ""
+  },
+  {
+    "id": "atx-closing",
+    "source": "# Mưa cuối phố ###\n",
+    "expected_projection": "Mưa cuối phố"
+  },
+  {
+    "id": "atx-indent-three",
+    "source": "   # Mưa\n",
+    "expected_projection": "Mưa"
+  },
+  {
+    "id": "indent-four-code",
+    "source": "    # Trong code\n\n# Tên thật\n",
+    "expected_projection": "Tên thật"
+  },
+  {
+    "id": "atx-no-space",
+    "source": "#Không phải heading\n",
+    "expected_projection": ""
+  },
+  {
+    "id": "escaped-atx",
+    "source": "\\# Không phải heading\n",
+    "expected_projection": ""
+  },
+  {
+    "id": "seven-markers",
+    "source": "####### Không phải heading\n",
+    "expected_projection": ""
+  },
+  {
+    "id": "setext-h1",
+    "source": "Mưa cuối phố\n===\n",
+    "expected_projection": "Mưa cuối phố"
+  },
+  {
+    "id": "setext-h2",
+    "source": "Mục nhỏ\n---\n",
+    "expected_projection": ""
+  },
+  {
+    "id": "setext-multiline",
+    "source": "Mưa\ncuối phố\n===\n",
+    "expected_projection": "Mưa cuối phố"
+  },
+  {
+    "id": "nested-quote-first",
+    "source": "> # Tên trong trích dẫn\n\n# Tên ngoài\n",
+    "expected_projection": "Tên trong trích dẫn"
+  },
+  {
+    "id": "nested-list-first",
+    "source": "- # Tên trong mục\n\n# Tên ngoài\n",
+    "expected_projection": "Tên trong mục"
+  },
+  {
+    "id": "fenced-backticks",
+    "source": "```md\n# Trong code\n```\n\n# Tên thật\n",
+    "expected_projection": "Tên thật"
+  },
+  {
+    "id": "fenced-tildes",
+    "source": "~~~\nTên code\n===\n~~~\n\n# Tên thật\n",
+    "expected_projection": "Tên thật"
+  },
+  {
+    "id": "unclosed-fence",
+    "source": "```\n# Trong code\n",
+    "expected_projection": ""
+  },
+  {
+    "id": "html-block",
+    "source": "<div>\n# Trong HTML\n</div>\n\n# Tên thật\n",
+    "expected_projection": "Tên thật"
+  },
+  {
+    "id": "html-h1-is-not-markdown",
+    "source": "<h1>Tên HTML</h1>\n",
+    "expected_projection": ""
+  },
+  {
+    "id": "inline-emphasis-code-link",
+    "source": "# *Mưa* **Việt** `a_b` [Phố](https://example.test/)\n",
+    "expected_projection": "Mưa Việt a_b Phố"
+  },
+  {
+    "id": "inline-entity-escape",
+    "source": "# Mưa &amp; Việt &#x1F327; \\*\n",
+    "expected_projection": "Mưa & Việt 🌧 *"
+  },
+  {
+    "id": "image-alt",
+    "source": "# ![Mưa *phố*](rain.png)\n",
+    "expected_projection": "Mưa phố"
+  },
+  {
+    "id": "inline-html",
+    "source": "# Mưa <em>phố</em>\n",
+    "expected_projection": "Mưa phố"
+  },
+  {
+    "id": "nfd-emoji",
+    "source": "# Việt 👩🏽‍💻\n",
+    "expected_projection": "Việt 👩🏽‍💻"
+  },
+  {
+    "id": "crlf-source",
+    "source": "# Mưa\r\n\r\n  Thơ\r\n",
+    "expected_projection": "Mưa"
+  },
+  {
+    "id": "title-200",
+    "source": "# ơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơ\n",
+    "expected_projection": "ơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơ"
+  },
+  {
+    "id": "title-201",
+    "source": "# ơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơ\n",
+    "expected_projection": "ơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơơ",
+    "expected_validation_error": "too_long"
+  }
+]
