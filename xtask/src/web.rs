@@ -121,10 +121,22 @@ struct Server {
     port: u16,
     env: Vec<(String, String)>,
     log: PathBuf,
+    release: bool,
 }
 
 impl Server {
-    /// The same server and database for another loopback fixture principal.
+    fn profile_name(&self) -> &'static str {
+        if self.release { "release" } else { "dev" }
+    }
+
+    fn binary(&self, root: &Path, name: &str) -> PathBuf {
+        if self.release {
+            root.join("target/release").join(name)
+        } else {
+            binary(root, name)
+        }
+    }
+
     /// The same database served to another loopback fixture principal on its own port.
     fn with_principal(&self, principal: &str, port: u16) -> Self {
         let mut env = self.env.clone();
@@ -140,6 +152,7 @@ impl Server {
             port,
             env,
             log: self.log.with_file_name("server-reader.log"),
+            release: self.release,
         }
     }
 
@@ -171,6 +184,7 @@ impl Server {
             port,
             env,
             log: self.log.with_file_name("server-auth.log"),
+            release: self.release,
         }
     }
 
@@ -186,11 +200,12 @@ impl Server {
             port: self.port,
             env,
             log: self.log.with_file_name("server-publication.log"),
+            release: self.release,
         })
     }
 
     fn command(&self, root: &Path, args: &[&str]) -> Command {
-        let mut command = Command::new(binary(root, "vink-app"));
+        let mut command = Command::new(self.binary(root, "vink-app"));
         crate::env::clear_capabilities(&mut command);
         command.current_dir(root).args(args);
         let migrate = args.first() == Some(&"migrate");
@@ -336,7 +351,7 @@ fn auth_web(
             .map_err(|e| format!("Identity scratch database/role: {e}"))?;
     }
     let admin_identity = admin.with_database(IDENTITY_DATABASE);
-    let mut migrate = Command::new(binary(root, "vink-identity"));
+    let mut migrate = Command::new(server.binary(root, "vink-identity"));
     crate::env::clear_capabilities(&mut migrate);
     migrate
         .current_dir(root)
@@ -360,7 +375,7 @@ fn auth_web(
         &format!("REVOKE INSERT, UPDATE, DELETE ON _sqlx_migrations FROM {IDENTITY_ROLE}"),
     )?;
     let log = std::fs::File::create(dir.join("identity.log")).map_err(|e| e.to_string())?;
-    let mut identity_command = Command::new(binary(root, "vink-identity"));
+    let mut identity_command = Command::new(server.binary(root, "vink-identity"));
     crate::env::clear_capabilities(&mut identity_command);
     let child = identity_command
         .current_dir(root)
@@ -428,7 +443,7 @@ fn auth_web(
             let mut envs = app.env.clone();
             envs.push((
                 "VINK_E2E_APP_BIN".into(),
-                binary(root, "vink-app").display().to_string(),
+                app.binary(root, "vink-app").display().to_string(),
             ));
             smoke_with_env(
                 root,
@@ -629,6 +644,7 @@ pub fn verify_selected(report: &mut Report, env: &Env, plan: &Plan) -> bool {
                 ("VINK_LOG_FORMAT".into(), "text".into()),
             ],
             log: out.join("server.log"),
+            release: plan.request.release,
         };
         let state = out.join("smoke-state.json");
         if primary {
@@ -922,7 +938,7 @@ fn run_web_checks(
         };
         if selected.contains(&Scenario::Main) && !report.step(
         "SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview, draft tags",
-        || smoke(root, &["--phase", "main"], chrome, origin, state),
+        || smoke(root, &["--phase", "main", "--build-profile", server.profile_name()], chrome, origin, state),
     ) {
         return false;
     }
@@ -958,7 +974,11 @@ fn run_web_checks(
                     seed_discovery_fixture(server)?;
                 }
                 seed_perf_journey(server)?;
-                smoke(root, &["--phase", "perf-baseline"], chrome, origin, state)
+                smoke(
+                    root,
+                    &["--phase", "perf-baseline", "--build-profile", server.profile_name()],
+                    chrome, origin, state,
+                )
             },
         ) {
             return false;

@@ -28,6 +28,7 @@ import { editorWriting } from './editor-writing-smoke.mjs';
 import { editorPaperFirst } from './editor-paper-first-smoke.mjs';
 import { documentBudget } from './document-budget.mjs';
 import { webPerfBaseline } from './web-perf-baseline.mjs';
+import { recordTransport } from './web-request-ledger.mjs';
 import { readerBeforeHydration } from './reader-ssr-boundary.mjs';
 import { deskEmptyState } from './desk-empty-smoke.mjs';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -1043,6 +1044,8 @@ async function launchChrome(existingProfile) {
   ];
   // CI runners may not allow Chrome's user-namespace sandbox; only our local app is loaded.
   if (process.env.CI || process.env.VINK_CHROME_NO_SANDBOX) flags.push('--no-sandbox');
+  // #234 measures a new SSR document with back_forward navigation timing, not a BFCache hit.
+  if (args.phase === 'perf-baseline') flags.push('--disable-back-forward-cache');
   const child = spawn(args.chrome, flags, { stdio: ['ignore', 'ignore', 'pipe'] });
   let output = '';
   let exited = null;
@@ -1144,7 +1147,28 @@ async function conditionalPublicReads(page) {
 /** READ-02: the tab's public snapshot renders first, lifecycle signals revalidate it through the
  * browser HTTP cache, failures keep the last success and a 404 removes it. The app's monotonic
  * clock (`performance.now`) and the document visibility are driven by the test. */
-async function cacheFirstPublicReads(page) {
+async function tracePublicReadLifecycle(page) {
+  let phase = 'setup';
+  const ledger = recordTransport(page, args.base, () => phase);
+  const cases = [];
+  let status = 'FAIL';
+  try {
+    await cacheFirstPublicReads(page, (label, injection = null) => {
+      phase = label;
+      cases.push({ phase, trigger_or_intent: label, injection });
+    });
+    status = 'PASS';
+  } finally {
+    ledger.stop();
+    writeFileSync(join(dirname(args.state), 'public-read-lifecycle.json'), JSON.stringify({
+      source_sha: BUILD_SHA, status, build_profile: args['build-profile'] ?? 'unknown',
+      boundary: 'READ-02 main phase; real App/PG reads except tagged controls; browser attempts, not SQL or internal owner counts',
+      cases, transport: ledger.rows,
+    }, null, 2));
+  }
+}
+
+async function cacheFirstPublicReads(page, note) {
   console.log('cache-first public reads (READ-02): snapshot first, lifecycle revalidation, failure and removal:');
   const worksPath = '/api/v1/works';
   const publicationPath = `/api/v1/works/${SAMPLE_WORK}/reader`;
@@ -1201,6 +1225,7 @@ async function cacheFirstPublicReads(page) {
   const settled = (selector, what) => page.waitFor(`document.querySelector('${selector}')?.dataset.refreshing === 'false'`, what);
   page.cdp.listeners.push(network, gate);
   try {
+    note('fresh-discovery-ssr');
     await page.goto(`${args.base}/`);
     await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('.vk-public-row')`, 'hydrated Explore');
     await sleep(400);
@@ -1222,10 +1247,12 @@ async function cacheFirstPublicReads(page) {
       return { ms: Math.round(realNow() - start), loading: window.__sawLoading };
     })()`);
     const ROWS = `location.pathname === '/' && document.querySelector('.vk-public-row a[href="/tac-pham/${SAMPLE_WORK}"]')`;
+    note('initial-client-discovery');
     const first = await timed(nav, ROWS);
     check(count(worksPath) === 1 && first.loading, `a first client visit fetches once and shows its loading state (${first.ms} ms to rows)`);
     await page.click('.vk-public-row__link');
     await page.waitFor(`document.querySelector('.vk-reader')?.dataset.revision === '${original.revision_id}'`, 'reader by client navigation');
+    note('fresh-client-return');
     const back = await timed('#reader-return', ROWS);
     await sleep(300);
     check(count(worksPath) === 1 && !back.loading, `returning within the stale threshold renders the snapshot at once with no request and no loading state (${back.ms} ms to rows)`);
@@ -1234,10 +1261,12 @@ async function cacheFirstPublicReads(page) {
     await page.eval(`document.querySelector('.vk-public-row').__kept = true; document.querySelector('.vk-public-row__link').focus()`);
     // Deliberately exceed the former one-second timing margin on even a fast host.
     await sleep(1500);
+    note('fresh-lifecycle-signal', 'clock +119 seconds');
     await advance(119);
     await signals(['focus']);
     await sleep(300);
     check(count(worksPath) === 1, '119 s after validation a focus does not revalidate');
+    note('stale-lifecycle-burst', 'clock +2 seconds; real conditional App response');
     await advance(2);
     await signals(['focus', 'online', 'visibilitychange', 'pageshow']);
     await settled('#public-collection', 'list revalidation');
@@ -1247,17 +1276,20 @@ async function cacheFirstPublicReads(page) {
     check(revalidation.ifNoneMatch && revalidation.wire === 304, `the revalidation used the browser's stored validator and the origin answered 304 (${JSON.stringify(revalidation)})`);
     check(await page.eval(`document.querySelector('.vk-public-row').__kept === true && document.activeElement?.matches('.vk-public-row__link')`), 'an unchanged refresh keeps the same row elements and focus');
 
+    note('hidden-and-stale', 'visibility and clock');
     await setHidden(true);
     await advance(300);
     await signals(['focus', 'online']);
     await sleep(800);
     check(count(worksPath) === 2, 'a hidden document does not revalidate on focus/online and pauses the timer');
+    note('becomes-visible');
     await setHidden(false);
     await settled('#public-collection', 'revalidation after becoming visible');
     await sleep(300);
     check(count(worksPath) === 3, 'becoming visible with a stale snapshot sends exactly one request');
 
     await page.send('Fetch.enable', { patterns: [{ urlPattern: `${args.base}/api/v1/works*`, requestStage: 'Request' }] });
+    note('stale-refresh-failure', 'injected list 503 and Retry-After');
     fixtures.set(worksPath, {
       status: 503,
       headers: [{ name: 'Retry-After', value: '30' }],
@@ -1269,24 +1301,28 @@ async function cacheFirstPublicReads(page) {
     const afterFailureCount = count(worksPath);
     check(await page.eval(`document.querySelector('.vk-public-row').__kept === true && !document.querySelector('[data-testid=public-unavailable], [data-testid=public-empty]') && document.querySelector('#public-collection').getAttribute('aria-busy') === 'false'`), 'a temporary refresh failure keeps the last success on screen, separate from the unavailable/empty states');
     // AC-02: focus/online/visibilitychange before Retry-After deadline sends zero new requests.
+    note('retry-after-backoff', 'clock +10 seconds');
     await advance(10);
     await signals(['focus', 'online', 'visibilitychange']);
     await sleep(350);
     check(count(worksPath) === afterFailureCount, 'Retry-After backoff refuses focus/online/visibility revalidation before retry_at');
     // Once retry_at passes, focus revalidates once and clears failure notice without remount.
     fixtures.delete(worksPath);
+    note('retry-after-elapses', 'clock +25 seconds, then real App');
     await advance(25);
     await signals(['focus']);
     await page.waitFor(`!document.querySelector('[data-testid=public-refresh-failed]') && document.querySelector('#public-collection').dataset.refreshing === 'false'`, 'post-backoff signal recovers cleanly');
     check(count(worksPath) === afterFailureCount + 1 && await page.eval(`document.querySelector('.vk-public-row').__kept === true`), 'backoff clears after retry_at and preserves mounted rows');
 
     // Manual retry still bypasses stale/backoff and clears failure notice.
+    note('failure-before-manual', 'injected list 503 and Retry-After');
     fixtures.set(worksPath, { status: 503, headers: [{ name: 'Retry-After', value: '60' }], body: { error: { code: 'dependency_unavailable' } } });
     await advance(121);
     await signals(['focus']);
     await page.waitFor(`document.querySelector('[data-testid=public-refresh-failed]')`, 'second refresh failure for manual retry');
     await page.capture('explore-refresh-failed');
     fixtures.delete(worksPath);
+    note('manual-list-retry', 'real App after injected failure');
     await page.click('[data-testid=public-refresh-failed] button');
     await page.waitFor(`!document.querySelector('[data-testid=public-refresh-failed]') && document.querySelector('#public-collection').dataset.refreshing === 'false'`, 'manual retry recovers');
     check(await page.eval(`document.querySelector('.vk-public-row').__kept === true`), 'manual retry restores freshness without remounting the list');
@@ -1300,12 +1336,14 @@ async function cacheFirstPublicReads(page) {
       raw304Once = false;
       return { status: 304 };
     });
+    note('raw-304-fallback', 'first request injected 304');
     await clientNavigate('/?q=raw304');
     await page.waitFor(`new URL(location.href).searchParams.get('q') === 'raw304' && document.querySelector('[data-testid=public-no-results]')`, 'raw 304 recovers via single unconditional reload');
     check(countHref(raw304Query) === 2, 'raw 304 triggers at most one unconditional fallback reload');
 
     const double304Query = '/api/v1/works?q=double304';
     fixtures.set(double304Query, { status: 304 });
+    note('double-304-stops', 'two injected 304 responses');
     await clientNavigate('/?q=double304');
     await page.waitFor(`new URL(location.href).searchParams.get('q') === 'double304' && document.querySelector('[data-testid=public-unavailable]')`, 'double raw 304 fails finitely');
     await advance(130);
@@ -1324,6 +1362,7 @@ async function cacheFirstPublicReads(page) {
     const racePathB = `/api/v1/works/${raceB}/reader`;
     fixtures.set(racePathA, 'hold');
     fixtures.set(racePathB, { status: 200, body: { ...original, status: 'published', work_id: raceB, revision_id: 'race-b', title: '[Fixture] B' } });
+    note('late-reader-aba', 'held Published A; injected B and new Hidden A');
     await clientNavigate(`/tac-pham/${raceA}`);
     const raceDeadline = Date.now() + 10000;
     while (!held.length && Date.now() < raceDeadline) await sleep(20);
@@ -1378,12 +1417,14 @@ async function cacheFirstPublicReads(page) {
     await page.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
     await page.click('#reader-return');
     await page.waitFor(`location.pathname === '/' && document.querySelector('.vk-public-row__link')`, 'leave Reader before true offline revisit');
+    note('offline-revisit', 'CDP browser transport offline');
     await page.send('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
     await page.click('.vk-public-row__link');
     await page.waitFor(`document.querySelector('.vk-reader')?.dataset.revision === '${original.revision_id}'`, 'Reader snapshot opens with browser transport offline');
     check(await page.eval(`document.querySelector('.vk-document').textContent.includes(${JSON.stringify(PUBLISHED_LINE)})`), 'browser offline revisit needs no successful /reader response');
     await page.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
     fixtures.delete(publicationPath);
+    note('online-manual-reader-retry');
     await page.click('[data-testid=reader-refresh-failed] button');
     await settled('#reader-freshness', 'Reader restored online');
     await page.click('#reader-return');
@@ -1435,6 +1476,7 @@ async function cacheFirstPublicReads(page) {
     await page.click('.vk-public-row__link');
     await page.waitFor(`document.querySelector('.vk-reader')?.dataset.revision === '${updated.revision_id}'`, 'return to updated Reader before revocation');
     fixtures.set(publicationPath, { status: 404, body: { error: { code: 'not_found' } } });
+    note('reader-control-removal', 'injected 404 for both public projections');
     // Both public projections must agree while removed. A fresh Published /reader response
     // is authoritative recovery, so do not leave that route serving the real published fixture.
     const readerPath = `/api/v1/works/${SAMPLE_WORK}/reader`;
@@ -1453,6 +1495,7 @@ async function cacheFirstPublicReads(page) {
     fixtures.delete(worksPath);
     fixtures.delete(publicationPath);
     fixtures.delete(readerPath);
+    note('origin-recovers-list', 'release held request to App');
     await page.send('Fetch.continueRequest', { requestId: held.pop() });
     await page.waitFor(`document.querySelector('a[href^="/tac-pham/${SAMPLE_WORK}"]')`, 'origin list restores the card');
     check(true, 'the origin’s list, not the derived preview, decides membership once it answers');
@@ -1466,6 +1509,7 @@ async function cacheFirstPublicReads(page) {
       status: 422,
       body: { error: { code: 'validation_failed', field: 'cursor', message: 'opaque server message ignored' } },
     });
+    note('typed-rejection', 'injected 422 and invalid envelope');
     await clientNavigate('/?q=cursorerr&cursor=stale');
     await page.waitFor(`document.querySelector('[data-testid=public-invalid][data-invalid-kind="cursor"]') && document.querySelector('#restart-public')`, '422 cursor recovery view');
     const cCount = countHref(cursorQuery);
@@ -4314,7 +4358,7 @@ async function mainPhase(page) {
   await serverHtml();
   await readerBeforeHydration(page, { args, check });
   await conditionalPublicReads(page);
-  await cacheFirstPublicReads(page);
+  await tracePublicReadLifecycle(page);
   await expressionPilot(page, args, check);
   await discussionReadingAndWrites(page);
   await endorsementAsAuthor(page, { args, check });
@@ -5243,7 +5287,7 @@ try {
   else if (args.phase === 'discovery-corpus') await discoveryCorpus(page, { args, check });
   else if (args.phase === 'discovery-chip-geometry') await discoveryChipGeometry(page, { args, check });
   else if (args.phase === 'public-search') await publicReading(page);
-  else if (args.phase === 'public-cache') await cacheFirstPublicReads(page);
+  else if (args.phase === 'public-cache') await tracePublicReadLifecycle(page);
   else if (args.phase === 'author-works') await authorWorks(page, {args,check,DraftGate,sleep});
   else if (args.phase === 'desk-empty') await deskEmptyState(page, {args,check,DraftGate,textContrast});
   else if (args.phase === 'desk-empty-context') { await draftDashboard(page); await deskEmptyState(page, {args,check,DraftGate,textContrast}); }
