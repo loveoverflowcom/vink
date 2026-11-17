@@ -1,7 +1,8 @@
 // Pure invariants for #234's opt-in lab analyzer (no server, Chrome or database required).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { distribution, classifyTransport, countTransport } from './web-perf-baseline.mjs';
+import { distribution } from './web-perf-baseline.mjs';
+import { assertNoHydrationRead, classifyTransport, countTransport, createTransportLedger } from './web-request-ledger.mjs';
 
 test('lab summary reports the raw sample size, true median, nearest-rank p95 and spread', () => {
   assert.deepEqual(distribution([10, 3, 9, 1, 7, 4, 2, 8, 6, 5]), {
@@ -13,32 +14,53 @@ test('lab summary reports the raw sample size, true median, nearest-rank p95 and
   assert.equal(distribution([1, 2, NaN, Infinity]).count, 2);
 });
 
-test('request reason ledger keeps conditional reads, 304 and transport separate', () => {
-  assert.equal(classifyTransport({ path: '/api/v1/works' }), 'public-list');
-  assert.equal(classifyTransport({ path: '/api/v1/works/abc/reader' }), 'reader');
-  assert.equal(classifyTransport({ path: '/api/v1/works/abc/discussion/public' }), 'public-discussion');
-  assert.equal(classifyTransport({ path: '/api/v1/works/abc/discussion/me' }), 'own-discussion');
-  assert.equal(classifyTransport({ path: '/api/v1/tags' }), 'catalog');
-  assert.equal(classifyTransport({ path: '/' }), 'document');
-  assert.equal(classifyTransport({ path: '/api/v1/works/abc/discussion' }), 'actor-discussion');
-  assert.equal(classifyTransport({ path: '/api/v1/works/abc/endorsements' }), 'endorsement');
-  assert.equal(classifyTransport({ path: '/api/v1/works/abc/endorsements/me' }), 'endorsement');
-  assert.equal(classifyTransport({ path: '/api/v1/auth/session/account' }), 'session');
-  assert.equal(classifyTransport({ path: '/api/v1/works/abc/reader/extra' }), 'other');
-  const rows = [
-    { phase: 'cold-0', kind: 'public-list', method: 'GET', validator_sent: false, response_status: 200 },
-    { phase: 'cold-1', kind: 'public-list', method: 'GET', validator_sent: true, wire_status: 304, response_status: 200 },
-  ];
-  assert.equal(countTransport(rows, 'cold-0', 'public-list'), 1);
-  assert.equal(countTransport(rows, 'cold-1', 'public-list'), 1);
-  assert.equal(rows[1].wire_status, 304);
-  assert.notEqual(rows[1].wire_status, rows[1].response_status);
+test('ledger joins wire extras delivered before the request and after completion without retaining values', () => {
+  const { rows, feed } = createTransportLedger('http://127.0.0.1:80', () => 'stale');
+  feed('Network.requestWillBeSentExtraInfo', { requestId: 'a', headers: { 'If-None-Match': 'private-validator' } });
+  feed('Network.requestWillBeSent', { requestId: 'a', type: 'Fetch', request: {
+    method: 'GET', url: 'http://127.0.0.1/api/v1/works?q=private-query',
+  } });
+  feed('Network.responseReceived', { requestId: 'a', response: { status: 200 } });
+  feed('Network.loadingFinished', { requestId: 'a', encodedDataLength: 230 });
+  feed('Network.responseReceivedExtraInfo', { requestId: 'a', statusCode: 304 });
+  assert.equal(countTransport(rows, 'stale', 'public-list'), 1);
+  assert.equal(rows[0].validator_sent, true);
+  assert.equal(rows[0].response_status, 200);
+  assert.equal(rows[0].wire_status, 304);
+  assert.equal(rows[0].encoded_bytes, 230);
+  assert.deepEqual(rows[0].query_parameter_keys, ['q']);
+  assert.ok(!JSON.stringify(rows).includes('private-'));
 });
 
-test('negative duplicate transport control breaks the structural <=1 predicate', () => {
-  const one = [{ phase: 'cold-0', kind: 'public-list', method: 'GET' }];
-  const duplicate = [...one, { ...one[0] }];
-  assert.ok(countTransport(one, 'cold-0', 'public-list') <= 1);
-  assert.equal(countTransport(duplicate, 'cold-0', 'public-list') <= 1, false);
-  assert.equal(countTransport(duplicate, 'cold-0', 'catalog'), 0);
+test('redirects do not overwrite earlier attempts or attribute ambiguous extra info to either hop', () => {
+  const { rows, feed } = createTransportLedger('http://127.0.0.1', () => 'navigation');
+  const hop = (path, redirectResponse) => feed('Network.requestWillBeSent', {
+    requestId: 'redirect', type: 'Document', redirectResponse, request: {
+      method: 'GET', url: 'http://127.0.0.1' + path,
+    },
+  });
+  hop('/the/alias');
+  feed('Network.responseReceivedExtraInfo', { requestId: 'redirect', statusCode: 308 });
+  hop('/the/canonical', { status: 308 });
+  feed('Network.responseReceived', { requestId: 'redirect', response: { status: 200 } });
+  feed('Network.responseReceivedExtraInfo', { requestId: 'redirect', statusCode: 200 });
+  assert.deepEqual(rows.map(r => [r.kind, r.response_status, r.wire_status]), [
+    ['document', 308, null], ['document', 200, null],
+  ]);
+});
+
+test('a single excess list GET trips the SSR oracle independently of catalog and own overlays', () => {
+  for (const [path, kind] of [
+    ['/api/v1/tags', 'catalog'],
+    ['/api/v1/works/a/reader', 'reader'],
+    ['/api/v1/works/a/discussion/me', 'own-discussion'],
+    ['/api/v1/works/a/discussion/public', 'public-discussion'],
+    ['/api/v1/works/a/endorsements/me', 'own-endorsement'],
+    ['/api/v1/works/a/endorsements', 'public-endorsement'],
+  ]) assert.equal(classifyTransport({ path }), kind);
+  const sideReads = ['catalog', 'own-discussion', 'own-endorsement'].map(kind => ({ phase: 'cold-0', kind, method: 'GET' }));
+  assert.doesNotThrow(() => assertNoHydrationRead(sideReads, 'cold-0', 'public-list'));
+  assert.throws(() => assertNoHydrationRead([
+    ...sideReads, { phase: 'cold-0', kind: 'public-list', method: 'GET' },
+  ], 'cold-0', 'public-list'), /1 unexpected public-list GET/);
 });

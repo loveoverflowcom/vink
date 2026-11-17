@@ -158,6 +158,9 @@ fn DiscoveryChrome(
     status: ResponseStatus,
 ) -> AnyView {
     let controls = expect_context::<DiscoveryDraft>();
+    let stream = NodeRef::<leptos::html::Section>::new();
+    #[cfg(feature = "hydrate")]
+    super::restore_public_position(stream, Memo::new(move |_| works.with(Option::is_some)));
     let buffer = controls.query;
     let draft = controls.tags;
     let open = controls.open;
@@ -247,7 +250,7 @@ fn DiscoveryChrome(
                             }}
                         </Suspense>
                     </div>
-                    <section id="community-stream" aria-label="Tác phẩm khám phá" tabindex="-1">
+                    <section node_ref=stream id="community-stream" aria-label="Tác phẩm khám phá" tabindex="-1">
                         <Suspense fallback=|| view! { <p role="status" data-testid="discovery-loading">"Đang tải kết quả…"</p> }>
                             {move || {
                                 let context = result_context.clone();
@@ -483,8 +486,6 @@ fn PublicResults(context: ExploreContext, live: public_reads::Live<WorkList>) ->
     let rejected = live.rejected;
     let removed = live.removed;
     let works = Memo::new(move |_| data.with(|list| list.works.clone()));
-    #[cfg(feature = "hydrate")]
-    super::restore_public_position(works);
     let list_context = context.clone();
     let page_context = context.clone();
     let empty_context = context.clone();
@@ -572,6 +573,8 @@ fn PublicResults(context: ExploreContext, live: public_reads::Live<WorkList>) ->
 
 #[component]
 fn ResultRow(work_id: String, data: Signal<WorkList>, context: ExploreContext) -> AnyView {
+    #[cfg(feature = "hydrate")]
+    let navigate = leptos_router::hooks::use_navigate();
     let id = work_id.clone();
     let work = Memo::new(move |_| {
         data.with(|list| list.works.iter().find(|work| work.work_id == id).cloned())
@@ -584,11 +587,13 @@ fn ResultRow(work_id: String, data: Signal<WorkList>, context: ExploreContext) -
                 let context = context.clone();
                 #[cfg(feature = "hydrate")]
                 let return_id = work.work_id.clone();
+                #[cfg(feature = "hydrate")]
+                let navigate = navigate.clone();
                 let tags = work.tags.iter().map(|tag| tag.label.clone()).collect();
                 view! { <WorkCardPattern title=work.title.clone() author=adapters::card_author(&work) href=Signal::stored(href) tags
                     on_open=move |_event| {
                         #[cfg(feature = "hydrate")]
-                        super::remember_public_position(&_event, &context, &return_id);
+                        super::remember_public_position(&_event, &context, &return_id, &navigate);
                     } /> }
             })}
         </li>

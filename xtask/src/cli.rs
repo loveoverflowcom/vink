@@ -6,12 +6,12 @@ pub const HELP: &str = "Scoped workflows (PostgreSQL is attached, never started)
   dev worker|identity [--migrate] [--plan]
   dev preview [--plan]                 Leptos UI preview, no business services
   verify unit app|identity|store|xtask|web [--filter NAME] [--plan]
-  verify web [--scenario NAME]... [--plan]
+  verify web [--scenario NAME]... [--release] [--plan]
   verify preview [--plan]               Leptos preview browser regression
   doctor <scoped command above>         check only that command's prerequisites
 
 Web scenarios: main, storage, discovery, restart, endorsement, review, auth, password, publication,
-  perf-baseline (explicit opt-in, never selected by full regression).
+  perf-baseline and return-position (explicit opt-in, excluded from full regression).
 No selector means full Web regression. restart depends on main. --plan performs no task I/O.
 Auth defaults to none, independent of .env. fixture requires explicit VINK_DEV_PRINCIPAL.
 identity uses native credentials and local mail outbox; no fixture fallback or SMTP.
@@ -109,7 +109,10 @@ pub fn parse(args: &[&str]) -> Result<Option<Invocation>, String> {
             return Err(format!("duplicate option {flag}"));
         }
         match flag {
-            "--release" if r.operation == Operation::Build && r.target != Target::Preview => {
+            "--release"
+                if (r.operation == Operation::Build && r.target != Target::Preview)
+                    || (r.operation == Operation::Verify && r.target == Target::Web) =>
+            {
                 r.release = true
             }
             "--migrate" if r.operation == Operation::Dev && r.target != Target::Preview => {
@@ -168,6 +171,35 @@ pub fn parse(args: &[&str]) -> Result<Option<Invocation>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn release_web_plan_keeps_the_selected_checks() {
+        let plan = parse(&[
+            "verify",
+            "web",
+            "--scenario",
+            "perf-baseline",
+            "--release",
+            "--plan",
+        ])
+        .unwrap()
+        .unwrap()
+        .plan;
+        assert!(plan.request.release);
+        assert!(
+            plan.describe()
+                .contains("release (wasm-release for bundle)")
+        );
+        assert_eq!(plan.scenarios, [Scenario::PerfBaseline]);
+        assert!(
+            !parse(&["verify", "web"])
+                .unwrap()
+                .unwrap()
+                .plan
+                .request
+                .release
+        );
+    }
+
     #[test]
     fn invalid_combinations_and_empty_selectors_are_errors() {
         for args in [
