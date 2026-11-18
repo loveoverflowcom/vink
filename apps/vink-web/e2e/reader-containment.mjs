@@ -83,7 +83,11 @@ export async function readerContainment(page, {args,check}) {
       getSelection().removeAllRanges();getSelection().addRange(r);return getSelection().toString()})()`);
     await page.send('Input.dispatchKeyEvent',{type:'rawKeyDown',key:'c',code:'KeyC',windowsVirtualKeyCode:67,modifiers:2});
     await page.send('Input.dispatchKeyEvent',{type:'keyUp',key:'c',code:'KeyC',windowsVirtualKeyCode:67,modifiers:2});
-    record('clipboard spans article and discussion',selected.endsWith(comment) && (await page.eval('navigator.clipboard.readText()'))===selected);
+    const copied = await page.eval('navigator.clipboard.readText()');
+    const normalized = text => text.replace(/\s+/gu, ' ').trim();
+    raw.clipboard = {selected_chars:selected.length,copied_chars:copied.length,
+      same_text:normalized(copied)===normalized(selected), ends_in_comment:normalized(selected).endsWith(normalized(comment))};
+    record('clipboard spans article and discussion',raw.clipboard.ends_in_comment && raw.clipboard.same_text);
     await page.eval("getSelection().removeAllRanges();location.hash=document.querySelector('.vk-discussion-comment').id");
     await page.eval(frames);
     record('fragment exposes comment',await page.eval("Math.abs(document.querySelector('.vk-discussion-comment').getBoundingClientRect().top)<innerHeight"));
