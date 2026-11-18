@@ -10,6 +10,8 @@ không phải SLA production hay quyết định đổi giới hạn bài viết
 > `tiny_blocks-200000` còn khoảng 1 MB JSON nên không chạm giới hạn body 2 MiB như F1 của shape cũ;
 > source vượt cap byte nhận `422` trước khi ghi. #273 cần đánh giá lại upper bound trên shape mới.
 
+**READ-02 sau canonical (18/11/2026).** [Phép đo mới](evidence/web-perf-237/canonical-20261118/README.md) dùng cùng corpus #229, thêm source hợp lệ 2 MiB và phân biệt cache weight, chi phí clone/decode, DOM đang mở, JS heap, WASM và RSS Chrome.
+
 **Đối soát 17/11/2026:** #232/#249 đã merge vào `develop@607ef83`;
 [biên bản AC/provenance](long-document-reconciliation.md) xác nhận phạm vi baseline đã đủ.
 Các số dưới đây giữ source đo lịch sử; owner-state hiện đã dùng projection #230/#248.
