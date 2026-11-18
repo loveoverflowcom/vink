@@ -53,6 +53,10 @@ Bổ sung [#262 — selector định dạng](editor-format-picker-262.md): geome
 opt-in đã tách khỏi prerequisite source/title/provider/Reader; mẫu gallery không bật Markdown
 trong Bàn viết.
 
+## Hồ sơ tác giả và Theo dõi (#289)
+
+[LayoutSpec r2 và preview v4 của #289](https://github.com/loveoverflowcom/vink/issues/289) ghi hướng điều hướng đã chọn. Khi đặc tả các màn hồ sơ, Tôi và Đang theo dõi, lấy actor, quyền từng trường, action và trạng thái lỗi từ [ma trận HTTP Social r1](../../services/vink-app/contracts/http/v1/social-graph.md). [Bàn giao #288](../development/social-graph.md) ghi gate theo từng màn.
+
 ## Nguồn và thứ tự ưu tiên
 
 | Nguồn | Dùng cho |

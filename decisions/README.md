@@ -14,6 +14,17 @@ có điều kiện (`READ-01-CHOICE-01..04`, `READ-02-CHOICE-01..04`) và đọc
 nguồn còn dùng và các điểm còn mở. PRD vẫn sở hữu yêu cầu và tiêu chí nghiệm thu. ADR giữ thiết kế,
 lý do và các quyết định ngoài phạm vi nhập. Các registry phát triển ghi mức triển khai và bằng chứng.
 
+## Social Graph
+
+[#288](https://github.com/loveoverflowcom/vink/issues/288) đưa R1–R9 của Epic vào [PRD §15](../prd/requirements.md#15-hồ-sơ-tác-giả-và-theo-dõi-social-graph).
+[Proposal sản phẩm](proposals/VDR-SOCIAL-GRAPH.r1.toml) ghi phạm vi và các SOC-OPEN.
+[Proposal kiến trúc](proposals/VDR-SOCIAL-CONTRACT.r1.toml) ghi ownership và CHOICE-01..06.
+[USER-01@r2](proposals/USER-01.r2.toml) chỉ đề xuất mở trường ngày sinh tự nguyện ở Profile.
+Cả ba revision đang `PENDING`. Lệnh `cargo xtask decision query USER-01 --history` cho thấy
+`USER-01@r1 DEFERRED` vẫn có hiệu lực. [Hợp đồng](../docs/architecture/social-graph.md)
+ghi nguồn #290/#291 cho hai lựa chọn đã chốt trong phạm vi issue. Duyệt preview và merge tài liệu
+không thay signoff đúng revision/hash theo [VDR-DECISION-SIGNOFF@r1](signoffs/VDR-DECISION-SIGNOFF.r1.toml).
+
 ## Tra cứu theo phạm vi công việc
 
 [Đối soát PR 15–16/11/2026](../docs/development/verification-reconciliation-20261116.md#quyết-định-toml-mới)
