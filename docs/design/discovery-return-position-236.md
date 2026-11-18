@@ -34,3 +34,7 @@ làm tròn subpixel; liên kết phải nằm trên thanh dưới và không tr�
 của test lab, không dùng `scrollY` cố định hoặc đặt thời gian chờ trong runtime. Đo ở 1280×900
 và sau resize 390×844, chữ 200% bằng root font override, reduced motion; không so tọa độ pixel
 trước/sau trên hai viewport khác nhau.
+
+## Kiểm chứng ngày 18/11/2026
+
+Sau khi danh sách mount lại, đợi qua lần vẽ đầu rồi kiểm đúng URL, landmark và focus trước khi căn hàng. Điều này xử lý sai lệch 218,36 px ở chữ 200%. [Raw trước/sau, 50 vòng, đối chứng rollback và năm chiều UX](../development/evidence/web-perf-236-canonical/README.md).
