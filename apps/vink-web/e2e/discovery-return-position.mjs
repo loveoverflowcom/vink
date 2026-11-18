@@ -161,7 +161,7 @@ export async function discoveryReturnPosition(page, { args, check }) {
       await page.eval(`(() => {
         const style = document.createElement('style');
         style.id='return-probe-style';
-        style.textContent="@font-face{font-family:ReturnProbe;src:url('/pkg/fonts/literata-variable.woff2?return-probe')} .vk-public-row__link{font-family:ReturnProbe,serif}";
+        style.textContent="@font-face{font-family:ReturnProbe;font-display:swap;src:url('/pkg/fonts/literata-variable.woff2?return-probe')} .vk-public-row__link{font-family:ReturnProbe,serif}";
         document.head.append(style);
         const observer=new MutationObserver(() => {
           const row=document.querySelector('.vk-public-row');
@@ -180,7 +180,7 @@ export async function discoveryReturnPosition(page, { args, check }) {
       await page.eval(frames);
       const before=await geometry();
       for (const requestId of media.values()) await page.send('Fetch.continueResponse',{requestId});
-      await page.eval("Promise.all([document.fonts.ready,document.querySelector('#return-probe-image').decode()]).then(()=>true)");
+      await page.waitFor("document.fonts.status==='loaded' && document.querySelector('#return-probe-image')?.naturalWidth===32", 'held font and image settle');
       await settle();
       const after=await geometry();
       const decoded = await page.eval("document.fonts.check('16px ReturnProbe') && document.querySelector('#return-probe-image').naturalWidth===32");
