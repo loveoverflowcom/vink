@@ -112,7 +112,7 @@ hiện hành. Phiên khác không thể dùng principal trong payload để ch�
 | Sản phẩm | SOC-ID-02/04/05/06, SOC-HDL-01 và SOC-OPEN-02 theo #288, #290. SOC-OPEN-03 chỉ còn quyền chính chủ tái dùng alias. |
 | Kiến trúc | CHOICE-01 trong phạm vi #290 dùng một registry tên bất biến và một con trỏ hiện hành cho mỗi PrincipalId. VDR-SOCIAL-CONTRACT@r1 vẫn PENDING. |
 | Triển khai | `core`, `persistence-api`, `web`. [Luật tên](../../services/vink-app/src/domain/handle.rs), [giao dịch và resolver](../../services/vink-app/src/persistence/handle.rs), [hợp đồng HTTP](../../services/vink-app/contracts/http/v1/social-graph.md#địa-chỉ-tác-giả-290), [trang Web](../../apps/vink-web/src/pages/handle.rs). |
-| Kiểm chứng | [PG và HTTP](../../services/vink-app/tests/postgres/handle.rs), [đua provision](../../services/vink-app/tests/postgres/principal.rs), [Chrome với phiên thật](../../apps/vink-web/e2e/author-handle-smoke.mjs). Lệnh tương ứng là `verify postgres` và `verify web --scenario password`. Kết quả chạy và SHA nằm ở PR triển khai issue #290. |
+| Kiểm chứng | [PG và HTTP](../../services/vink-app/tests/postgres/handle.rs), [đua provision](../../services/vink-app/tests/postgres/principal.rs), [Chrome với phiên thật](../../apps/vink-web/e2e/author-handle-smoke.mjs). Lệnh tương ứng là `verify postgres` và `verify web --scenario password`. [Báo cáo #290](evidence/author-handle-290/README.md) ghi SHA, kịch bản, ảnh Chrome và số đo accessibility. |
 
 **Cấp tên và nâng schema.** Chạy migration bổ sung, chuyển sang writer mới, rồi chạy
 `vink-app principal backfill-handles` bằng role runtime App. Mỗi batch khóa tối đa
