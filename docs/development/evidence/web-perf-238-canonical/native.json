@@ -1,0 +1,42 @@
+{
+  "orca": "50.3",
+  "at_spi": "2.60.4",
+  "speech": [
+    {
+      "time": "20:02:50.937293",
+      "utterance": "[Mẫu #100] Kiểm thử 1"
+    },
+    {
+      "time": "20:02:54.137593",
+      "utterance": "Một dòng công khai dùng riêng cho kiểm thử #100."
+    },
+    {
+      "time": "20:02:55.542573",
+      "utterance": "Nhận xét"
+    },
+    {
+      "time": "20:03:01.243026",
+      "utterance": "[Mẫu #234] Nhận xét 1."
+    }
+  ],
+  "print_outputs": {
+    "Chromium": {
+      "sha256": "ad6c8b8c777b616425b5cae036e715b9eccff4388f2bf5d89f9ee44e2d2de8e2",
+      "bytes": 299568,
+      "verified_text": [
+        "Một dòng công khai dùng riêng cho kiểm thử #100.",
+        "[Mẫu #234] Nhận xét 20",
+        "[Mẫu #234] Phản hồi 820"
+      ]
+    },
+    "Firefox": {
+      "sha256": "2485ddedfdc127fa9b9afceb781b346e6d74e082ff636f4060224e97ebcc22ef",
+      "bytes": 244441,
+      "verified_text": [
+        "Một dòng công khai dùng riêng cho kiểm thử #100.",
+        "[Mẫu #234] Nhận xét 20",
+        "[Mẫu #234] Phản hồi 820"
+      ]
+    }
+  }
+}

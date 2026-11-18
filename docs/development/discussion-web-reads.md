@@ -113,3 +113,7 @@ epoch và kiểm input cursor/IDs trước khi cập nhật. Head refresh thành
 trang/cursor đã chấp nhận. Lifecycle hints của owner đang mount qua `read_events`, không replay
 mutation hoặc remount composer. Session scope, private redaction và authority refusal ở trên
 vẫn thuộc discussion. Xem [conformance và seam](public-read-freshness.md#lifecycle-web-202).
+
+## Layout danh sách nhận xét #238
+
+Giữ layout thường cho danh sách nhận xét. Containment trên `#root-list` tiết kiệm thời gian khi vùng này nằm dưới bài 200.000 đoạn, dịch mép danh sách 19 px và không đạt ngưỡng lợi ích ở bài ngắn. [Thử nghiệm A/B, native controls và kết quả từng AC](evidence/web-perf-238-canonical/README.md).
