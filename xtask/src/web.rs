@@ -446,12 +446,21 @@ fn auth_web(
             &origin,
             state,
         ),
-        IdentityPhase::PasswordAuth => smoke(
+        IdentityPhase::PasswordAuth => smoke_with_env(
             root,
             &["--phase", "auth-password", "--outbox", &outbox],
             chrome,
             &origin,
             state,
+            &[(
+                "VINK_HANDLE_SCRATCH".into(),
+                app.env
+                    .iter()
+                    .find(|(key, _)| key == "DATABASE_URL")
+                    .ok_or("missing password scratch runtime URL")?
+                    .1
+                    .clone(),
+            )],
         ),
         IdentityPhase::PublicationAuthor => {
             let mut envs = app.env.clone();

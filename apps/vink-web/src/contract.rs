@@ -951,6 +951,27 @@ pub fn classify_public_read_bytes(status: u16, body: Option<&[u8]>) -> crate::fr
     classify_public_read_envelope(status, envelope.as_ref())
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PublicAuthorRef {
+    pub pen_name: String,
+    pub handle: String,
+    pub href: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "state", rename_all = "snake_case")]
+pub enum AuthorResolution {
+    Current {
+        author: PublicAuthorRef,
+        has_public_works: bool,
+    },
+    Alias {
+        href: String,
+    },
+    Gone,
+    Missing,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -969,6 +990,17 @@ mod tests {
         let value: T = serde_json::from_value(json.clone()).unwrap();
         assert_eq!(serde_json::to_value(&value).unwrap(), json, "{name}");
         value
+    }
+
+    #[test]
+    fn handle_resolver_preserves_the_public_projection() {
+        assert!(matches!(
+            round_trip::<AuthorResolution>("author.profile.current.json"),
+            AuthorResolution::Current {
+                has_public_works: false,
+                ..
+            }
+        ));
     }
 
     #[test]

@@ -42,6 +42,14 @@ async fn concurrent_first_requests_provision_exactly_one_principal_without_orpha
     principals.dedup();
     assert_eq!(principals.len(), 1, "{principals:?}");
     assert_eq!(created, 1);
+    assert_eq!(
+        count(&pool, "SELECT count(*) FROM author_profiles").await,
+        1
+    );
+    assert_eq!(
+        count(&pool, "SELECT count(*) FROM author_handle_names").await,
+        1
+    );
     // Losers rolled back their candidate principal: no orphan rows.
     assert_eq!(
         count(&pool, "SELECT count(*) FROM principals").await,

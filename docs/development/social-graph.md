@@ -99,3 +99,32 @@ các phụ thuộc tương ứng đã tích hợp. PRE-04 và bằng chứng UI 
 
 Ở Epic, ghép signup → hồ sơ → Follow → Feed → thu hồi với fixture và SHA cuối. Phạm vi chứng
 cứ của preview #289/#290/#291 là bản thiết kế đã ghi trong từng issue.
+
+## Địa chỉ tác giả #290
+
+Tôi → **Thiết lập địa chỉ** mở `/toi/dia-chi`. Tài khoản đã có binding nhận hồ sơ ngay khi
+lưu bút danh. Xác nhận tên gợi ý hoặc tên tự nhập đều kết thúc thiết lập và giữ hai lượt
+đổi. Khi mất phản hồi, Web giữ nguyên tên đã gửi, tra receipt rồi đọc lại địa chỉ và số lượt
+hiện hành. Phiên khác không thể dùng principal trong payload để chọn chủ của lệnh.
+
+| Chiều | Trạng thái và nguồn |
+| --- | --- |
+| Sản phẩm | SOC-ID-02/04/05/06, SOC-HDL-01 và SOC-OPEN-02 theo #288, #290. SOC-OPEN-03 chỉ còn quyền chính chủ tái dùng alias. |
+| Kiến trúc | CHOICE-01 trong phạm vi #290 dùng một registry tên bất biến và một con trỏ hiện hành cho mỗi PrincipalId. VDR-SOCIAL-CONTRACT@r1 vẫn PENDING. |
+| Triển khai | `core`, `persistence-api`, `web`. [Luật tên](../../services/vink-app/src/domain/handle.rs), [giao dịch và resolver](../../services/vink-app/src/persistence/handle.rs), [hợp đồng HTTP](../../services/vink-app/contracts/http/v1/social-graph.md#địa-chỉ-tác-giả-290), [trang Web](../../apps/vink-web/src/pages/handle.rs). |
+| Kiểm chứng | [PG và HTTP](../../services/vink-app/tests/postgres/handle.rs), [đua provision](../../services/vink-app/tests/postgres/principal.rs), [Chrome với phiên thật](../../apps/vink-web/e2e/author-handle-smoke.mjs). Lệnh tương ứng là `verify postgres` và `verify web --scenario password`. [Báo cáo #290](evidence/author-handle-290/README.md) ghi SHA, kịch bản, ảnh Chrome và số đo accessibility. |
+
+**Cấp tên và nâng schema.** Chạy migration bổ sung, chuyển sang writer mới, rồi chạy
+`vink-app principal backfill-handles` bằng role runtime App. Mỗi batch khóa tối đa
+100 principal theo UUID. Các hồ sơ đã commit là checkpoint cho lần chạy lại. Báo cáo
+gồm `created`, `existing`, `attempts`, `unbound` (kể cả seed/fixture kỹ thuật) và
+`invalid` (binding có bút danh cần xử lý). Bút danh cũ được trim/NFC qua cùng parser.
+Mỗi lần cấp thử tối đa 16 tên. Địa chỉ chỉ mở đọc sau đối soát binding đủ điều kiện.
+Writer cũ còn hoạt động mà tạo binding thiếu hồ sơ sẽ đóng lại cổng đọc đến lần backfill
+kế tiếp. Khi quay lui phiên bản ứng dụng, giữ nguyên migration, reservations, quota và receipts.
+
+**Cho #292.** Từ `PgStore::resolve_handle`, nhánh `Current` trả `AuthorRef` với bút danh
+hiện hành, handle và href. Projection công khai hiện có thêm fact “có tác phẩm công khai”
+để hiển thị đúng trạng thái trống. #292 sở hữu chỉnh thông tin, quyền từng trường và nội dung
+hồ sơ mở rộng. #297 có thể gọi `persistence::handle::retire` trong transaction xóa App đã
+xác minh. Điều phối xóa tài khoản qua Identity/App vẫn thuộc Account.

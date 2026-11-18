@@ -16,7 +16,7 @@ public catalog reads and the author's private draft tags; no route changes the c
 desk (TAG-PR-05) consumes the catalog list, suggestions and draft tags; slug resolution has no
 consumer yet and no native consumer exists.
 
-The [proposed Social Graph contract r1](social-graph.md) defines public, own and viewer representations, authorization before conditional reads, and command reconciliation for #288. Its examples describe future providers and consumers.
+The [proposed Social Graph contract r1](social-graph.md) defines public, own and viewer representations, authorization before conditional reads, and command reconciliation for #288. The [implemented author address routes](social-graph.md#địa-chỉ-tác-giả-290) serve the minimal public profile, setup, rename and receipt readback.
 
 ## Conventions
 

@@ -1301,3 +1301,32 @@ pub(crate) async fn moderation_post(
         Err(crate::contract::ApiError::Unavailable)
     }
 }
+
+pub(crate) fn author_resource(
+    name: String,
+) -> Resource<Result<crate::contract::AuthorResolution, LoadError>> {
+    #[cfg(feature = "ssr")]
+    {
+        let port = use_context::<crate::server::SharedPublicReads>();
+        Resource::new(
+            || (),
+            move |_| {
+                let port = port.clone();
+                let name = name.clone();
+                async move { port.ok_or(LoadError::Unavailable)?.author(name).await }
+            },
+        )
+    }
+    #[cfg(not(feature = "ssr"))]
+    {
+        Resource::new(
+            || (),
+            move |_| {
+                browser(public_get(format!(
+                    "/api/v1/authors/{}",
+                    percent_encoding::utf8_percent_encode(&name, &DISCUSSION_ID)
+                )))
+            },
+        )
+    }
+}

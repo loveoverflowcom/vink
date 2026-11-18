@@ -8,6 +8,7 @@ pub mod document;
 pub mod draft;
 pub mod draft_query;
 pub mod endorsement;
+pub mod handle;
 pub mod ids;
 pub mod moderation;
 pub mod moderation_queue;

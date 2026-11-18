@@ -32,7 +32,8 @@ impl Destination {
         match segments(path)[..] {
             [] | ["tac-pham", _] | ["the", _] => Some(Self::Explore),
             ["ban-viet"] | ["ban-viet", _] => Some(Self::Desk),
-            ["toi"] => Some(Self::Me),
+            ["toi"] | ["toi", "dia-chi"] => Some(Self::Me),
+            [name] if name.starts_with('@') => Some(Self::Explore),
             _ => None,
         }
     }

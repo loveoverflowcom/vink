@@ -228,6 +228,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
     Router::new()
         .merge(public)
         .merge(drafts)
+        .merge(super::handle::routes())
         .merge(publication_author)
         .merge(moderation_works)
         .merge(super::appeals::routes())

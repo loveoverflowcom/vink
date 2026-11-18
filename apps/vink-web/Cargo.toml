@@ -36,7 +36,7 @@ console_error_panic_hook = { version = "0.1.7", optional = true }
 gloo-net = { version = "0.7.0", optional = true, default-features = false, features = ["http", "json"] }
 web-sys = { version = "0.3.106", optional = true, features = [
     "Window", "Location", "Document", "Element", "HtmlElement", "HtmlAnchorElement",
-    "HtmlDialogElement", "HtmlInputElement", "BeforeUnloadEvent", "Event", "EventTarget",
+    "HtmlDialogElement", "HtmlInputElement", "BeforeUnloadEvent", "PageTransitionEvent", "Event", "EventTarget",
     "MouseEvent", "KeyboardEvent", "AddEventListenerOptions", "History", "Url",
     "FocusOptions", "Storage", "DomRect", "CssStyleDeclaration",
     "ResizeObserver", "NodeList", "Crypto", "AbortController", "AbortSignal",

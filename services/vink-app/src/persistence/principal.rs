@@ -136,6 +136,7 @@ impl PrincipalStore for PgStore {
         .await
         .map_err(classify)?;
         if inserted.is_some() {
+            super::handle::provision(&mut tx, candidate.as_uuid(), pen_name).await?;
             tx.commit().await.map_err(classify)?;
             return Ok(Provisioned {
                 bound: BoundPrincipal {

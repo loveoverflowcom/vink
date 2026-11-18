@@ -9,6 +9,7 @@ pub mod discovery;
 pub mod discussion;
 pub mod drafts;
 pub mod endorsement;
+pub mod handle;
 pub mod moderation;
 pub mod ports;
 pub mod post_review;
