@@ -23,3 +23,5 @@ cargo xtask verify web --scenario main --scenario discovery --scenario review --
 ```
 
 Đã chạy lại browser release của develop tại `9fcd75e`. [Bootstrap, WASM-only và click](reader-ssr-boundary.json.gz) và [lifecycle/withdrawal/ABA](public-read-lifecycle.json.gz) đều PASS.
+
+Lane release hoàn tất cả `main`, `discovery` và `review` trên scratch App/PostgreSQL của develop `9fcd75e`. Ca O-17@r2 chạy pause, admin approve, intervention reject, SSR noindex/no-store, cache purge và comments. [Kết quả từng biên](real-authority.log).
