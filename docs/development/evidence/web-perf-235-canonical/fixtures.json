@@ -1,0 +1,14 @@
+{
+  "base": "9fcd75ec03229a27464123eac1d68104e8447b19",
+  "sql_fixture_sha256": {
+    "discovery-publications.sql": "30c199f931af00b6413a35936bd6b2e11481505a70f1e0ecf567c5e6eda19278",
+    "web-perf-journey.sql": "4e8cfed43d92c80ae802b4636f43dd999035c87256667db7c0799e375bee934c"
+  },
+  "sql_fixtures_concatenated_sha256": "81a28550dd27382b063a062a80407a4c6457758f6a973996c9929e01a247ca17",
+  "public_short_source_utf8_sha256": "5201c09e4d9a23667debfbc777cf30dba5457173a44f6f6e8f635db6daec0e6d",
+  "synthetic_ssr_fixture_rs_sha256": "22bab2e0a52d4ea83779efe5619d8ee6bbd30172c1f6db6c0da595c669319f39",
+  "scratch_guest_release": "#234 perf-probe",
+  "guest_wasm_file_bytes": 123727343,
+  "guest_wasm_encoded_transfer_bytes": 123727526,
+  "runtime_sources": "719c593 / acfe003 (identical Rust and xtask build inputs)"
+}

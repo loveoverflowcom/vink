@@ -10,7 +10,7 @@ Base `9fcd75ec03229a27464123eac1d68104e8447b19`. So A → B → A trên cùng ro
 | 04 | PASS. [Guest history](guest-history.json.gz) tại `9cb767c784c444f7640f065ccd58f336f13f68b5` với App/PostgreSQL thật. Direct fresh không GET Reader lặp, history document verify đúng một GET. #234 giữ response Reader/discussion để quan sát article, retry, ABA và control answer sau dispose. |
 | 05 | PASS cho quyết định giữ A. Cả 28 ca sau khi trở lại Async đúng contract. B đạt 8/28 theo contract HTML tĩnh. Ở A, secondary chậm 200/1000 ms thật sự chặn article SSR khoảng tương ứng. Với B, trả shell sớm nhưng ca critical chậm để article trong template cần JS, hoặc mất fallback retry. Dừng B. C chưa chạy. |
 
-Browser Chrome 157.0.8103.78/Linux x86_64, PostgreSQL 17.11, Rust 1.99.1, bundle release của develop. Guest dùng corpus 200 work/1.000 comments, SQL từ #100/#234; bài ngắn canonical. Các kết quả proxy chỉ áp dụng cho cấu hình Caddy đã đo. Browser không có JS và matrix synthetic có ranh giới riêng với kiểm tra App/DB.
+Browser Chrome 157.0.8103.78/Linux x86_64, PostgreSQL 17.11, Rust 1.99.1, bundle guest release có probe từ #234. Lane authority dùng bundle thông thường của develop. Guest dùng corpus 200 work/1.000 comments, SQL từ #100/#234; bài ngắn canonical. Các kết quả proxy chỉ áp dụng cho cấu hình Caddy đã đo. Browser không có JS và matrix synthetic có ranh giới riêng với kiểm tra App/DB.
 
 Từ gốc repo, với Caddy trong PATH và App guest trên scratch đã seed
 
@@ -25,3 +25,5 @@ cargo xtask verify web --scenario main --scenario discovery --scenario review --
 Đã chạy lại browser release của develop tại `9fcd75e`. [Bootstrap, WASM-only và click](reader-ssr-boundary.json.gz) và [lifecycle/withdrawal/ABA](public-read-lifecycle.json.gz) đều PASS.
 
 Lane release hoàn tất cả `main`, `discovery` và `review` trên scratch App/PostgreSQL của develop `9fcd75e`. Ca O-17@r2 chạy pause, admin approve, intervention reject, SSR noindex/no-store, cache purge và comments. [Kết quả từng biên](real-authority.log).
+
+[Digest SQL seed, source canonical và cấu hình artifact](fixtures.json).
