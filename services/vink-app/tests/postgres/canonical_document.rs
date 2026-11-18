@@ -500,3 +500,39 @@ async fn backout_refuses_when_it_would_lose_text_or_history(pool: PgPool) {
     let error = run_backout(&pool).await.unwrap_err().to_string();
     assert!(error.contains("immutable canonical revisions"), "{error}");
 }
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn backout_refuses_drafts_outside_retired_reader_limits(pool: PgPool) {
+    sqlx::query("INSERT INTO principals (id, display_name) VALUES ($1, '[Mẫu] Người viết')")
+        .bind(dev_seed::SAMPLE_AUTHOR)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let work = Vink::new(PgStore::new(pool.clone()))
+        .create_draft(author())
+        .await
+        .unwrap()
+        .work_id;
+    for (title, text) in [
+        ("Tên".into(), "a\u{1}".into()),
+        ("Tên".into(), "a".repeat(200001)),
+        ("t".repeat(201), "a".into()),
+        ("a\nb".into(), "a".into()),
+    ] {
+        let doc = json!({"format":"default", "source":text});
+        sqlx::query("UPDATE working_drafts SET document=$2,title=$3 WHERE work_id=$1")
+            .bind(work.as_uuid())
+            .bind(&doc)
+            .bind(&title)
+            .execute(&pool)
+            .await
+            .unwrap();
+        let before = stored(&pool, work).await;
+        let error = run_backout(&pool).await.unwrap_err();
+        assert!(
+            error.to_string().contains("not exactly representable"),
+            "{error}"
+        );
+        assert_eq!(stored(&pool, work).await, before);
+    }
+}

@@ -99,7 +99,7 @@ mới và binary này không đọc shape cũ.
 
 Backout [`migrations-rollback/20261122000000_canonical_document.down.sql`](../../services/vink-app/migrations-rollback/20261122000000_canonical_document.down.sql)
 chỉ chạy khi chính xác: từ chối nếu có revision, nháp Markdown, hoặc nháp có dòng trống thừa,
-dòng chỉ khoảng trắng, CR, NFD hay dòng trống đầu/cuối.
+dòng chỉ khoảng trắng, CR, NFD hay dòng trống đầu/cuối. Nếu một hàng được ghi ngoài writer vượt giới hạn scalar, chứa control bị cấm hoặc có title không hợp lệ, backout dừng nguyên giao dịch.
 
 ### Lịch sử bất biến
 
