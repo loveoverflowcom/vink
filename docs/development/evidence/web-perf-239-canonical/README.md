@@ -18,7 +18,7 @@ Ngưỡng lab chốt trước spike: chỉ thử B nếu median chờ GET đạt
 | 04 | PASS phần A cho intent chuột/bàn phím bị bỏ. Timeout, offline, withdraw/republish và dispose của **speculation** chưa chạy. Lifecycle của GET bình thường có evidence riêng ở #234/#237. |
 | 05 | Đã đo A và wasted bytes cùng fixture; không có before/after/rollback B. Quyết định dừng là outcome cho phép trong #239. |
 
-Tại gốc repo, phục vụ App guest với release của base và cơ sở dữ liệu scratch theo [fixture #234](https://github.com/loveoverflowcom/vink/issues/234). Chạy một lần mỗi corpus
+Tại gốc repo, phục vụ App guest với release có probe #234 và cơ sở dữ liệu scratch theo [fixture #234](https://github.com/loveoverflowcom/vink/issues/234). Chạy một lần mỗi corpus
 
 ```sh
 node apps/vink-web/e2e/browser-smoke.mjs --base "$SCRATCH_ORIGIN" --chrome "$VINK_CHROME" --state "$ARTIFACTS/state.json" --phase reader-intent-cost
@@ -27,3 +27,5 @@ node apps/vink-web/e2e/browser-smoke.mjs --base "$SCRATCH_ORIGIN" --chrome "$VIN
 Trace và ledger từng lượt nằm trong [bài ngắn](small.json.gz) và [bài dài](blocks.json.gz). Không có timing ngoài lab hay dữ liệu người dùng.
 
 Production seam kiểm lại trên develop `9fcd75e` bằng `cargo test --locked -p vink-web --lib public_reads`. 18 test PASS; phép đo corpus riêng #237 ở trạng thái ignored trong lệnh này.
+
+[Digest SQL seed, source canonical và cấu hình artifact](fixtures.json).
