@@ -2,8 +2,8 @@
   {
     "id": "literary_markdown",
     "format": "markdown",
-    "title": "Mưa trên bậc cửa & Việt",
-    "source": "> Lời đề *rất khẽ*.\n\n# Mưa trên **bậc cửa** &amp; Việt\n\nDòng đầu ❤️‍🔥\n  dòng tiếp.\nDòng ngắt  \nDòng cuối.\n\n## Mái hiên và những giọt mưa từ xóm nhỏ bên kia sông\n\n3. Bậc thứ ba\n   - Ngõ hẹp\n\n4. Bậc thứ tư\n\nMột **từ đậm**, một `mã` và [về mục](#muc-2).\n\n~~~text\n  mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-\n~~~\n\n---\n\n# H1 sau là nội dung\n\n~~Chữ gạch~~, $a+b$ và | ô chưa có bảng |.\n\n| Mùa | Mưa |\n| --- | --- |\n| Thu | Có |\n\n- [ ] Việc vẫn bằng chữ\n",
+    "title": "Mưa trên bậc cửa < nắng &amp; Việt",
+    "source": "> Lời đề *rất khẽ*.\n\n# Mưa trên **bậc cửa** &lt; nắng &amp;amp; Việt\n\nDòng đầu ❤️‍🔥\n  dòng tiếp.\nDòng ngắt  \nDòng cuối.\n\n## Mái hiên và những giọt mưa từ xóm nhỏ bên kia sông\n\n3. Bậc thứ ba\n   - Ngõ hẹp\n\n4. Bậc thứ tư\n\nMột **từ đậm**, một `mã` và [về mục](#muc-2).\n\n~~~text\n  mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-\n~~~\n\n---\n\n# H1 sau là nội dung\n\n~~Chữ gạch~~, $a+b$ và | ô chưa có bảng |.\n\n| Mùa | Mưa |\n| --- | --- |\n| Thu | Có |\n\n- [ ] Việc vẫn bằng chữ\n",
     "first_h1": true,
     "description": "Lời đề rất khẽ.",
     "html_tags": [
@@ -92,8 +92,8 @@
   {
     "id": "first_h1_after_preface",
     "format": "markdown",
-    "title": "Bản mới đến đây",
-    "source": "## Khúc dạo\n\nLời trước tên.\n\n> Bản **mới**\n> đến đây\n> =========\n\n# Tên sau\n\n    # Mã, không phải tên\n",
+    "title": "Bản mới bên hiên đến đây",
+    "source": "## Khúc dạo\n\nLời trước tên.\n\n> [Bản **mới**]( /tho \"ghi chú\" ) bên hiên\n> đến đây\n> =========\n\n# Tên sau\n\n    # Mã, không phải tên\n",
     "first_h1": true,
     "description": "Lời trước tên.",
     "html_tags": [

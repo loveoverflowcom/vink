@@ -1259,7 +1259,7 @@ fn Editor(draft: Draft) -> impl IntoView {
         let Some(ticket) = session
             .try_update(|s| {
                 if s.can_convert() {
-                    s.text.begin_save()
+                    s.text.begin_format_conversion()
                 } else {
                     None
                 }
@@ -2652,6 +2652,19 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
         };
     }
 
+    let tag_action = match facts.tags {
+        Some(TagStatus::Unsaved) => Some(SaveSlotAction::Save {
+            label: "Lưu thẻ",
+            pending: false,
+            icon: DraftActionIcon::Save,
+        }),
+        Some(TagStatus::Failed(_)) => Some(SaveSlotAction::Retry {
+            label: "Thử lưu lại thẻ",
+            pending: false,
+            icon: DraftActionIcon::Save,
+        }),
+        _ => None,
+    };
     if let SaveStatus::Conflict { .. } = facts.text {
         let status_text = match facts.tags.as_ref() {
             Some(TagStatus::Unsaved) => "Có bản mới hơn trên máy chủ; thẻ chưa lưu.",
@@ -2665,22 +2678,10 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
             status_token: "conflict",
             problem_kind: Some("conflict"),
             detail_text: format!("{text_detail} {tag_detail}"),
-            action: match facts.tags {
-                Some(TagStatus::Unsaved) => SaveSlotAction::Save {
-                    label: "Lưu thẻ",
-                    pending: false,
-                    icon: DraftActionIcon::Save,
-                },
-                Some(TagStatus::Failed(_)) => SaveSlotAction::Retry {
-                    label: "Thử lưu lại thẻ",
-                    pending: false,
-                    icon: DraftActionIcon::Save,
-                },
-                _ => SaveSlotAction::Recover {
-                    label: "Xử lý xung đột",
-                    target: RecoveryTarget::TextConflict,
-                },
-            },
+            action: tag_action.unwrap_or(SaveSlotAction::Recover {
+                label: "Xử lý xung đột",
+                target: RecoveryTarget::TextConflict,
+            }),
         };
     }
 
@@ -2732,13 +2733,11 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
             status_token: "failed",
             problem_kind,
             detail_text: format!("{text_detail} {tag_detail}"),
-            action: if title_invalid
-                && !matches!(facts.tags, Some(TagStatus::Unsaved | TagStatus::Failed(_)))
-            {
-                SaveSlotAction::Recover {
+            action: if title_invalid {
+                tag_action.unwrap_or(SaveSlotAction::Recover {
                     label: "Sửa tiêu đề",
                     target: RecoveryTarget::Title,
-                }
+                })
             } else {
                 SaveSlotAction::Retry {
                     label: "Thử lưu lại",

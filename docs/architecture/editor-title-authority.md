@@ -9,7 +9,8 @@ Kiến trúc `VDR-DOCUMENT-SOURCE-FORMAT@r2` có trạng thái `ACCEPTED`.
 Bàn viết hiện mở và lưu cả hai định dạng qua [Live Preview và bộ chọn](../design/editor-live-preview-256-257.md).
 Khi API lưu nháp trả `422` ở trường `title`, Markdown hiện hướng dẫn sửa H1 cạnh vùng Nội dung
 và Bàn viết Mặc định hiện lỗi ở ô Tiêu đề. Tác vụ **Sửa tiêu đề** đưa focus về trường cần sửa
-và giữ buffer để tác giả tiếp tục. Phản hồi chỉ mô tả đúng lượt sửa đã gửi.
+và giữ buffer để tác giả tiếp tục. Phản hồi chỉ mô tả đúng lượt sửa đã gửi. Khi tiêu đề
+còn lỗi, tác giả vẫn có thể lưu riêng thẻ. Bàn viết cho gửi lại phần chữ sau khi tác giả sửa.
 
 ## Quyết định sản phẩm và hiện trạng
 

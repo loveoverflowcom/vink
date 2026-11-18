@@ -121,7 +121,9 @@ fn reader_route_retains_async_as_the_rollback_baseline() {
 
 async fn reader_async_waits_for_secondary_before_committing_headers() {
     for delay_ms in [0, 200, 1000] {
-        let probe = probe(Ok(ReaderResponse::Published(publication())));
+        let mut work = publication();
+        work.title = "Mưa < nắng &amp; gió".into();
+        let probe = probe(Ok(ReaderResponse::Published(work)));
         let request = router(probe.clone()).oneshot(
             Request::get(format!("/tac-pham/{WORK}"))
                 .body(Body::empty())
@@ -156,7 +158,7 @@ async fn reader_async_waits_for_secondary_before_committing_headers() {
         )
         .unwrap();
         assert!(body.contains("Phố cũ mưa giăng sợi mỏng,"));
-        assert!(body.contains("<title>[Mẫu] Mưa trên phố cũ — Vink</title>"));
+        assert!(body.contains("<title>Mưa &lt; nắng &amp;amp; gió — Vink</title>"));
         assert!(body.contains("http://vink.test/tac-pham/33333333-3333-4333-8333-333333333333"));
         assert!(body.contains("name=\"description\""));
         assert!(body.contains("Chưa tải được nhận xét. Bạn vẫn có thể đọc tác phẩm."));
