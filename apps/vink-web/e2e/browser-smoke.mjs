@@ -4973,8 +4973,14 @@ async function markdownLivePreviewAndFormatPicker(page) {
   check(afterConflict.version === converted.version + 1 && afterConflict.document.source === 'Sửa ở thẻ khác.',
     'conflicting conversion preserves the concurrent server save without replay');
 
+  // Leave the conflicting fixture through the same explicit discard path as an author.
+  await page.click('.vk-editor-heading__back');
+  await page.waitFor("document.querySelector('#leave-editor')?.open", 'leaving a conflict is guarded');
+  await page.click('#leave-discard');
+  await page.waitFor("document.activeElement?.id === 'discard-back'", 'discard confirmation ready');
+  await page.click('#discard-confirm');
+  await page.waitFor("location.pathname === '/ban-viet'", 'discard kept the newer server version');
   // A browser Back can dispose a clean editor even while a conversion's reply is in transit.
-  await page.goto(args.base + '/ban-viet');
   const newDraft = async () => {
     await page.waitFor("document.querySelector('#create-draft') && document.querySelector('#create-draft-format')", 'draft creation ready');
     await page.click('#create-draft');
@@ -5004,6 +5010,8 @@ async function markdownLivePreviewAndFormatPicker(page) {
   } finally {
     await lateReply.disable();
   }
+  await page.click('#save');
+  await page.waitStatus('saved');
 
 }
 
