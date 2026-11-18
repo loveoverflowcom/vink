@@ -21,6 +21,7 @@ const PRIVATE: &str = "PRIVATE-DRAFT-MUST-NOT-ENTER-HTML";
 #[derive(Clone)]
 struct Probe {
     reader: Result<ReaderResponse, LoadError>,
+    delay: Option<Duration>,
     entered: Arc<tokio::sync::Notify>,
     release: Arc<tokio::sync::Semaphore>,
 }
@@ -48,11 +49,16 @@ impl PublicReads for Probe {
         &self,
         _: String,
     ) -> PortFuture<Result<vink_web::contract::PublicDiscussionPage, LoadError>> {
+        let delay = self.delay;
         let entered = self.entered.clone();
         let release = self.release.clone();
         Box::pin(async move {
-            entered.notify_one();
-            release.acquire().await.unwrap().forget();
+            if let Some(delay) = delay {
+                tokio::time::sleep(delay).await;
+            } else {
+                entered.notify_one();
+                let _permit = release.acquire().await.unwrap();
+            }
             // A failed secondary read must not replace the critical article/status.
             Err(LoadError::Unavailable)
         })
@@ -69,6 +75,7 @@ fn publication() -> Publication {
 fn probe(reader: Result<ReaderResponse, LoadError>) -> Probe {
     Probe {
         reader,
+        delay: None,
         entered: Arc::default(),
         release: Arc::new(tokio::sync::Semaphore::new(0)),
     }
@@ -275,7 +282,8 @@ async fn reader_chunk_probe() {
         "error" => Err(LoadError::Unavailable),
         _ => panic!("unknown probe case"),
     };
-    let port = probe(answer);
+    let mut port = probe(answer);
+    port.delay = Some(Duration::from_millis(delay));
     let routes = generate_route_list(App)
         .into_iter()
         .map(|r| {
@@ -291,14 +299,7 @@ async fn reader_chunk_probe() {
             )
         })
         .collect();
-    let app = router_with_routes(port.clone(), routes);
-    tokio::spawn(async move {
-        loop {
-            port.entered.notified().await;
-            tokio::time::sleep(Duration::from_millis(delay)).await;
-            port.release.add_permits(1);
-        }
-    });
+    let app = router_with_routes(port, routes);
     let socket = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     std::fs::write(file, socket.local_addr().unwrap().to_string()).unwrap();
     axum::serve(socket, app).await.unwrap();
