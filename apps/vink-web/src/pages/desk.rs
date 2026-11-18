@@ -737,7 +737,9 @@ fn Editor(draft: Draft) -> impl IntoView {
     let send_text = move |ticket: SaveTicket, reconcile: bool| {
         let request = crate::contract::SaveDraftRequest {
             expected_version: ticket.expected_version,
-            title: title.get_untracked(),
+            // Match Title::parse's existing trim semantics before the bounded transport.
+            // The live input is retained; padding must not crowd out valid document text.
+            title: title.get_untracked().trim().to_owned(),
             document: crate::document::text_to_document(&body.snapshot()),
         };
         #[cfg(feature = "hydrate")]

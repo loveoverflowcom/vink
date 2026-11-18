@@ -48,6 +48,8 @@ mod document_budget;
 mod document_corpus;
 #[path = "postgres/document_source_compat.rs"]
 mod document_source_compat;
+#[path = "postgres/draft_http_budget.rs"]
+mod draft_http_budget;
 #[path = "postgres/drafts.rs"]
 mod drafts;
 #[path = "postgres/endorsement.rs"]

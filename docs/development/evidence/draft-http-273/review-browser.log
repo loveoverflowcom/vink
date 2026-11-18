@@ -1,0 +1,60 @@
+    Finished `test` profile [unoptimized] target(s) in 0.24s
+     Running tests/postgres.rs (target/debug/deps/postgres-17b64a22f9443168)
+
+running 1 test
+test document_budget::draft_http_budget_browser ...   ok  vi_nfd-30000/1440/100: Reader renders every block/scalar
+  ok  vi_nfd-30000: actual loaded buffer retains every line
+  ok  vi_nfd-30000/1440/100: preview retains buffer, view and selection anchor
+  ok  vi_nfd-30000/390/100: preview retains buffer, view and selection anchor
+  ok  vi_nfd-30000/390/200: preview retains buffer, view and selection anchor
+  ok  vi_nfd-30000/1440/200: preview retains buffer, view and selection anchor
+  ok  vi_nfd-30000: valid document receives ACK and advances server version
+  ok  vi_nfd-30000: exact normalized document readback after manual save
+  ok  vi_nfd-30000: exact live buffer survives save outcome
+  ok  vi_nfd-30000: manual save sends one draft-content PUT
+  ok  vi_nfd-30000: request and stored title omit padding while the live input retains it
+  ok  vi_nfd-30000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  vi_nfd-30000: UI conflict preserves exact unsaved text
+  ok  poem_tabs-200000/1440/100: Reader renders every block/scalar
+  ok  poem_tabs-200000/390/100: Reader renders every block/scalar
+  ok  poem_tabs-200000/390/200: Reader renders every block/scalar
+  ok  poem_tabs-200000/1440/200: Reader renders every block/scalar
+  ok  poem_tabs-200000: actual loaded buffer retains every line
+  ok  poem_tabs-200000/1440/100: preview retains buffer, view and selection anchor
+  ok  poem_tabs-200000/390/100: preview retains buffer, view and selection anchor
+  ok  poem_tabs-200000/390/200: preview retains buffer, view and selection anchor
+  ok  poem_tabs-200000/1440/200: preview retains buffer, view and selection anchor
+  ok  poem_tabs-200000: valid document receives ACK and advances server version
+  ok  poem_tabs-200000: exact normalized document readback after manual save
+  ok  poem_tabs-200000: exact live buffer survives save outcome
+  ok  poem_tabs-200000: manual save sends one draft-content PUT
+  ok  poem_tabs-200000: request and stored title omit padding while the live input retains it
+  ok  poem_tabs-200000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  poem_tabs-200000: UI conflict preserves exact unsaved text
+  ok  tiny_blocks-200000/1440/100: Reader renders every block/scalar
+  ok  tiny_blocks-200000/390/100: Reader renders every block/scalar
+  ok  tiny_blocks-200000/390/200: Reader renders every block/scalar
+  ok  tiny_blocks-200000/1440/200: Reader renders every block/scalar
+  ok  tiny_blocks-200000: actual loaded buffer retains every line
+  ok  tiny_blocks-200000/1440/100: preview retains buffer, view and selection anchor
+  ok  tiny_blocks-200000/390/100: preview retains buffer, view and selection anchor
+  ok  tiny_blocks-200000/390/200: preview retains buffer, view and selection anchor
+  ok  tiny_blocks-200000/1440/200: preview retains buffer, view and selection anchor
+  ok  tiny_blocks-200000: valid document receives ACK and advances server version
+  ok  tiny_blocks-200000: exact normalized document readback after manual save
+  ok  tiny_blocks-200000: exact live buffer survives save outcome
+  ok  tiny_blocks-200000: manual save sends one draft-content PUT
+  ok  tiny_blocks-200000: request and stored title omit padding while the live input retains it
+  ok  domain refusal retains the full 200001-scalar live buffer
+  ok  failed manual save keeps exact durable document/version
+  ok  tiny_blocks-200000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  tiny_blocks-200000: UI conflict preserves exact unsaved text
+  ok  no console errors or exceptions
+browser-smoke: PASS (document-budget)
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 216 filtered out; finished in 49.19s
+
