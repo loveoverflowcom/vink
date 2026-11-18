@@ -33,3 +33,5 @@ cargo xtask verify web --scenario return-position --release
 [Raw lane chính](after-paint.json.gz). [Lần 1](repeat-1.json.gz), [lần 2](repeat-2.json.gz), [lần 3](repeat-3.json.gz) đều đạt 50/50 trên bản sao corpus có hai tag dùng trong filter. [Lần siết assertion cuối](final-assertions.json.gz) dùng cùng WASM (SHA-256 `14be942e6a9f96828d29c0ae387a944ad324c07752fbe3b24b562314c8593f96`), harness tại `2e467a3`. Bundle thiếu probe ghi `NOT_RUN` cho bộ đếm và `MEASURED_PARTIAL` cho coverage.
 
 Đối chứng paint giữ cùng #234 probe và cùng harness, thay production restore bằng bản trước sửa. Đối chứng rollback route dùng một checkout riêng tại base, `git revert --no-commit c90719f`, build bundle release, rồi phục vụ bundle đó trên corpus #234 và chạy phase `return-position` từ nhánh harness. Trường `source_sha` trong raw của lượt này là SHA của harness; WASM đến từ bản revert. [Trace 50 vòng đã merge](../web-perf-234-236/README.md) là mốc trước đó.
+
+[Digest SQL seed, source canonical và cấu hình artifact](fixtures.json).
