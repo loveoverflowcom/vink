@@ -243,13 +243,13 @@ export function mountHandle(host, principal, entry) {
       setup ? 'Dùng địa chỉ này' : 'Xem thay đổi',
     );
     let composing = false;
-    input.oncompositionstart = () => {
+    input.addEventListener('compositionstart', () => {
       composing = true;
-    };
-    input.oncompositionend = () => {
+    });
+    input.addEventListener('compositionend', () => {
       composing = false;
       change();
-    };
+    });
     field.onsubmit = (e) => {
       e.preventDefault();
       if (busy || pending || composing) return;

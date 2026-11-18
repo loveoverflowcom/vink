@@ -72,7 +72,10 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
     input.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}));
     input.form.requestSubmit();
   })()`);
-  check(!(await own(page)).setup_complete, 'an uncommitted IME composition cannot submit setup');
+  check(
+    (await page.eval(`!${has(field)}.readOnly`)) && !(await own(page)).setup_complete,
+    'an uncommitted IME composition cannot dispatch or confirm setup',
+  );
   await page.eval(
     `${has(field)}.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true}))`,
   );
