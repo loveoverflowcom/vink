@@ -195,8 +195,8 @@ async fn markdown_title_is_derived_by_the_server_and_never_written_by_the_client
             }
         )
         .await,
-        Err(DraftError::Invalid(InvalidInput::Title(
-            TitleError::TooLong
+        Err(DraftError::Invalid(InvalidInput::TitleAuthority(
+            TitleAuthorityError::MarkdownHeading(TitleError::TooLong)
         )))
     );
     assert!(vink.store().saves.lock().unwrap().is_empty());

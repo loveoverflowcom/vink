@@ -328,7 +328,6 @@ mod coordinator {
     pub struct Coordinator<C = InMemoryCache<PublicKey, Snapshot>> {
         pub store: Store<PublicKey, Snapshot, C>,
         waiters: BTreeMap<PublicKey, Vec<WaiterId>>,
-        abandoned: std::collections::BTreeSet<PublicKey>,
         withdrawn: BTreeMap<String, WithdrawnFence>,
         next_waiter: u64,
         seq: u64,
@@ -348,7 +347,6 @@ mod coordinator {
             Self {
                 store: Store::with_cache(policy, cache, |s| !matches!(s, Snapshot::Control(_))),
                 waiters: BTreeMap::new(),
-                abandoned: std::collections::BTreeSet::new(),
                 withdrawn: BTreeMap::new(),
                 next_waiter: 1,
                 seq: 0,
@@ -389,7 +387,6 @@ mod coordinator {
         }
 
         pub fn load(&mut self, key: &PublicKey, at: Millis) -> LoadStart {
-            self.abandoned.remove(key);
             match self.store.load(key, at) {
                 Load::Ready(snapshot) => LoadStart::Immediate(Ok(snapshot)),
                 Load::Rejected(rejection) => {
@@ -424,8 +421,7 @@ mod coordinator {
                 list.retain(|existing| *existing != id);
                 if list.is_empty() {
                     self.waiters.remove(key);
-                    if self.store.matching_observed(|k| k == key).is_empty() {
-                        self.abandoned.insert(key.clone());
+                    if self.store.observer_count(key) == 0 {
                         self.store.mark_stale(key);
                     }
                 }
@@ -439,7 +435,6 @@ mod coordinator {
             rendered_at: Millis,
             at: Millis,
         ) {
-            self.abandoned.remove(&key);
             self.prune_withdrawn(at);
             if (self.seed_barrier.is_finite() && rendered_at <= self.seed_barrier)
                 || self.store.is_removed_at(&key, rendered_at)
@@ -526,11 +521,14 @@ mod coordinator {
             }
         }
 
-        fn push_waiter_replies(&mut self, key: &PublicKey, reply: &Reply, effects: &mut Effects) {
-            if let Some(ids) = self.waiters.remove(key) {
-                for id in ids {
-                    effects.replies.push((id, reply.clone()));
-                }
+        fn push_waiter_replies(&mut self, key: &PublicKey, reply: Reply, effects: &mut Effects) {
+            if let Some(mut ids) = self.waiters.remove(key)
+                && let Some(last) = ids.pop()
+            {
+                effects
+                    .replies
+                    .extend(ids.into_iter().map(|id| (id, reply.clone())));
+                effects.replies.push((last, reply));
             }
         }
 
@@ -549,9 +547,9 @@ mod coordinator {
                 .collect();
             for key in waiting_keys {
                 match self.store.load(&key, at) {
-                    Load::Ready(snap) => self.push_waiter_replies(&key, &Ok(snap), effects),
+                    Load::Ready(snap) => self.push_waiter_replies(&key, Ok(snap), effects),
                     Load::Rejected(rej) => {
-                        self.push_waiter_replies(&key, &Err(LoadError::Invalid(rej)), effects);
+                        self.push_waiter_replies(&key, Err(LoadError::Invalid(rej)), effects);
                     }
                     Load::Fetch(ticket) => effects.fetches.push((key, ticket)),
                     Load::Join => {}
@@ -639,15 +637,19 @@ mod coordinator {
                 self.store.remove_at(&target, at);
             }
             if remove_entry || self.store.status(&target).is_none() {
-                self.push_waiter_replies(&target, &Err(LoadError::NotFound), effects);
+                self.push_waiter_replies(&target, Err(LoadError::NotFound), effects);
             }
-            self.store.edit_all(|key, snapshot| {
-                if matches!(key, PublicKey::Works(_))
-                    && let Snapshot::Works(list) = snapshot
-                {
+            self.store.edit_matching(
+                |key| matches!(key, PublicKey::Works(_)),
+                |_, snapshot| {
+                    let Snapshot::Works(list) = snapshot else {
+                        return false;
+                    };
+                    let before = list.works.len();
                     list.works.retain(|card| card.work_id != work_id);
-                }
-            });
+                    before != list.works.len()
+                },
+            );
             self.store
                 .mutation_confirmed_where(|k| matches!(k, PublicKey::Works(_)));
             self.wake_matching(|k| matches!(k, PublicKey::Works(_)), at, visible, effects);
@@ -695,37 +697,32 @@ mod coordinator {
                 reschedule: true,
                 ..Effects::default()
             };
+            let control = matches!(&outcome, Outcome::Fresh(Snapshot::Control(_)));
             let outcome = match outcome {
                 Outcome::Fresh(snapshot) if !valid_snapshot(&key, &snapshot) => {
                     Outcome::Temporary { retry_after: None }
                 }
                 other => other,
             };
-            let was_abandoned = self.abandoned.remove(&key);
             let had_waiter = self.waiters.get(&key).is_some_and(|ws| !ws.is_empty());
             let applied = self.store.complete(&key, ticket, outcome, at, random);
             match applied {
                 Applied::Fresh { .. } => {
                     if let PublicKey::Reader(id) = &key {
-                        if self
-                            .store
-                            .status(&key)
-                            .is_some_and(|s| matches!(s.data, Some(Snapshot::Control(_))))
-                        {
+                        if control {
                             self.apply_withdrawal(id, at, visible, false, &mut effects);
                         } else {
                             self.withdrawn.remove(id);
                         }
                     }
-                    if let Some(reply) = self.store.status(&key).and_then(|s| s.data).map(Ok) {
-                        self.push_waiter_replies(&key, &reply, &mut effects);
-                    }
-                    if was_abandoned && !had_waiter && self.store.observer_count(&key) == 0 {
-                        self.store.park_unobserved(&key);
+                    if had_waiter
+                        && let Some(reply) = self.store.status(&key).and_then(|s| s.data).map(Ok)
+                    {
+                        self.push_waiter_replies(&key, reply, &mut effects);
                     }
                 }
                 Applied::Removed => {
-                    self.push_waiter_replies(&key, &Err(LoadError::NotFound), &mut effects);
+                    self.push_waiter_replies(&key, Err(LoadError::NotFound), &mut effects);
                     if let PublicKey::Reader(id) = &key {
                         self.apply_withdrawal(id, at, visible, false, &mut effects);
                     }
@@ -733,23 +730,23 @@ mod coordinator {
                 Applied::Rejected(rejection) => {
                     self.push_waiter_replies(
                         &key,
-                        &Err(LoadError::Invalid(rejection)),
+                        Err(LoadError::Invalid(rejection)),
                         &mut effects,
                     );
                 }
                 Applied::Failed => {
-                    self.push_waiter_replies(&key, &Err(LoadError::Unavailable), &mut effects);
+                    self.push_waiter_replies(&key, Err(LoadError::Unavailable), &mut effects);
                 }
                 Applied::Discarded => {
                     if self.waiters.get(&key).is_some_and(|ws| !ws.is_empty()) {
                         match self.store.load(&key, at) {
                             Load::Ready(data) => {
-                                self.push_waiter_replies(&key, &Ok(data), &mut effects);
+                                self.push_waiter_replies(&key, Ok(data), &mut effects);
                             }
                             Load::Rejected(rejection) => {
                                 self.push_waiter_replies(
                                     &key,
-                                    &Err(LoadError::Invalid(rejection)),
+                                    Err(LoadError::Invalid(rejection)),
                                     &mut effects,
                                 );
                             }
@@ -827,7 +824,6 @@ mod coordinator {
             }
             self.store.clear();
             self.withdrawn.clear();
-            self.abandoned.clear();
             effects
         }
 
@@ -847,7 +843,7 @@ mod coordinator {
                     .store
                     .restore(key, ticket, snapshot.clone(), age, max_age, at)
             {
-                self.push_waiter_replies(key, &Ok(snapshot), &mut effects);
+                self.push_waiter_replies(key, Ok(snapshot), &mut effects);
                 effects.notify_changed = true;
                 effects.reschedule = true;
             }
@@ -959,6 +955,7 @@ mod browser {
     struct WaiterGuard {
         key: PublicKey,
         id: WaiterId,
+        resource: Ticket,
         settled: bool,
     }
 
@@ -970,6 +967,7 @@ mod browser {
                 with(|owner| {
                     owner.channels.remove(&id);
                     owner.coord.cancel_waiter(&key, id);
+                    owner.coord.store.release_resource(&key, self.resource);
                 });
             }
         }
@@ -1018,29 +1016,36 @@ mod browser {
         }
         let (receive, mut guard) = {
             let (tx, rx) = oneshot::channel();
-            let effects_to_run = with(|owner| match owner.coord.load(&key, at) {
-                LoadStart::Immediate(reply) => Err(reply),
-                LoadStart::Wait { id, effects } => {
-                    owner.channels.insert(id, tx);
-                    Ok((id, effects))
-                }
+            let start = with(|owner| owner.coord.load(&key, at));
+            if let LoadStart::Immediate(Err(error)) = start {
+                return Err(error);
+            }
+            let resource = with(|owner| owner.coord.store.hold_resource(&key, at));
+            let cancelled_key = key.clone();
+            let pending = match &start {
+                LoadStart::Immediate(_) => None,
+                LoadStart::Wait { id, .. } => Some(*id),
+            };
+            on_cleanup(move || {
+                with(|owner| {
+                    if let Some(id) = pending {
+                        owner.channels.remove(&id);
+                        owner.coord.cancel_waiter(&cancelled_key, id);
+                    }
+                    owner.coord.store.release_resource(&cancelled_key, resource);
+                });
             });
-            match effects_to_run {
-                Err(reply) => return reply,
-                Ok((id, effects)) => {
-                    let cancelled_key = key.clone();
-                    on_cleanup(move || {
-                        with(|owner| {
-                            owner.channels.remove(&id);
-                            owner.coord.cancel_waiter(&cancelled_key, id);
-                        });
-                    });
+            match start {
+                LoadStart::Immediate(reply) => return reply,
+                LoadStart::Wait { id, effects } => {
+                    with(|owner| owner.channels.insert(id, tx));
                     apply_effects(effects);
                     (
                         rx,
                         WaiterGuard {
                             key,
                             id,
+                            resource,
                             settled: false,
                         },
                     )
@@ -1048,6 +1053,14 @@ mod browser {
             }
         };
         let reply = receive.await.unwrap_or(Err(LoadError::Unavailable));
+        if reply.is_err() {
+            with(|owner| {
+                owner
+                    .coord
+                    .store
+                    .release_resource(&guard.key, guard.resource)
+            });
+        }
         guard.settled = true;
         reply
     }
@@ -1126,7 +1139,7 @@ mod browser {
             }
             // Keep storage writes below the authority fence. Clone only the accepted public
             // representation; no private API, no SSR seed and no control response is admitted.
-            let persist = with(|o| o.coord.store.is_current(&key, ticket))
+            let persist = (lease.is_some() && with(|o| o.coord.store.is_current(&key, ticket)))
                 .then(|| match &outcome {
                     Outcome::Fresh(snapshot) => crate::public_persistence::Envelope::from_origin(
                         key.clone(),
@@ -2039,6 +2052,115 @@ mod tests {
     }
 
     #[test]
+    fn joined_resources_disposed_after_delivery_release_the_unmounted_body() {
+        let mut c = Coordinator::new(Policy::V1);
+        let key = PublicKey::Reader("huge-source".into());
+        let LoadStart::Wait { id, effects } = c.load(&key, 0.0) else {
+            panic!()
+        };
+        let first = c.store.hold_resource(&key, 0.0);
+        let LoadStart::Wait { id: joined, .. } = c.load(&key, 0.1) else {
+            panic!()
+        };
+        let second = c.store.hold_resource(&key, 0.1);
+        let huge = oversized_pub("huge-source");
+        let done = c.finish(
+            key.clone(),
+            effects.fetches[0].1,
+            Outcome::Fresh(huge.clone()),
+            1.0,
+            0.0,
+            true,
+        );
+        assert_eq!(
+            done.replies,
+            vec![(id, Ok(huge.clone())), (joined, Ok(huge.clone()))]
+        );
+        assert_eq!(c.pending_waiter_count(&key), 0);
+        c.cancel_waiter(&key, id);
+        c.store.release_resource(&key, first);
+        assert_eq!(c.status(&key).unwrap().data, Some(huge));
+        assert!(c.store.observed().is_empty());
+        c.cancel_waiter(&key, joined);
+        c.store.release_resource(&key, second);
+        assert!(
+            c.status(&key).unwrap().data.is_none(),
+            "last disposed Resource must release an unmounted oversized reply"
+        );
+        assert_eq!(c.store.cache().oversized_skips(), 1);
+        assert!(matches!(c.load(&key, 2.0), LoadStart::Wait { .. }));
+    }
+
+    #[test]
+    fn disposed_resource_from_before_withdrawal_cannot_park_the_republication() {
+        let mut c = Coordinator::new(Policy::V1);
+        let key = PublicKey::Reader("w".into());
+        let LoadStart::Wait { id, effects } = c.load(&key, 0.0) else {
+            panic!()
+        };
+        let old_resource = c.store.hold_resource(&key, 0.0);
+        assert_eq!(
+            c.withdraw_publication("w", 1.0, true).replies,
+            vec![(id, Err(LoadError::NotFound))]
+        );
+        let LoadStart::Wait {
+            id: new,
+            effects: later,
+        } = c.load(&key, 2.0)
+        else {
+            panic!()
+        };
+        let current = c.store.hold_resource(&key, 2.0);
+        c.store.release_resource(&key, old_resource);
+        let obsolete = c.finish(
+            key.clone(),
+            effects.fetches[0].1,
+            Outcome::Fresh(sample_pub("w", "old")),
+            3.0,
+            0.0,
+            true,
+        );
+        assert!(obsolete.replies.is_empty());
+        assert!(c.status(&key).is_none());
+        let fresh = c.finish(
+            key.clone(),
+            later.fetches[0].1,
+            Outcome::Fresh(sample_pub("w", "new")),
+            4.0,
+            0.0,
+            true,
+        );
+        assert_eq!(fresh.replies, vec![(new, Ok(sample_pub("w", "new")))]);
+        c.store.release_resource(&key, current);
+        assert!(c.store.cache().contains_key(&key));
+    }
+
+    #[test]
+    fn withdrawal_preserves_release_order_of_unrelated_readers() {
+        let cache = InMemoryCache::with_budget(
+            crate::read_cache::RetentionBudget {
+                max_entry_bytes: None,
+                max_total_bytes: Some(2),
+            },
+            |_| 1,
+        );
+        let mut c = Coordinator::with_cache(Policy::V1, cache);
+        let key = |id: &str| PublicKey::Reader(id.into());
+        for id in ["z", "a"] {
+            c.follow_seed(key(id), sample_pub(id, "r1"), 0.0, 1.0);
+            c.release(&key(id), 2.0);
+        }
+        c.withdraw_publication("unrelated", 3.0, true);
+        c.follow_seed(key("b"), sample_pub("b", "r1"), 0.0, 4.0);
+        c.release(&key("b"), 5.0);
+        assert!(
+            !c.store.cache().contains_key(&key("z")),
+            "oldest released Reader must be evicted first"
+        );
+        assert!(c.store.cache().contains_key(&key("a")));
+    }
+
+    #[test]
     fn over_budget_snapshot_reads_cleanly_without_retention_or_live_view_or_cursor_loss() {
         use crate::read_lifecycle::{Intent, PageChain, ReadOwner};
 
@@ -2059,10 +2181,10 @@ mod tests {
         c.follow_seed(active_key.clone(), sample_pub("active", "r1"), 0.0, 0.0);
 
         // Over-budget work still loads, finishes, and renders while mounted.
-        let LoadStart::Wait { effects, .. } = c.load(&huge_key, 1.0) else {
+        let LoadStart::Wait { id, effects } = c.load(&huge_key, 1.0) else {
             panic!("initial huge load must fetch");
         };
-        c.finish(
+        let done = c.finish(
             huge_key.clone(),
             effects.fetches[0].1,
             Outcome::Fresh(huge.clone()),
@@ -2070,7 +2192,13 @@ mod tests {
             0.0,
             true,
         );
-        c.follow_seed(huge_key.clone(), huge.clone(), 1.0, 3.0);
+        let [(receiver, reply)]: [_; 1] = done.replies.try_into().unwrap();
+        let Ok(delivered) = reply else {
+            panic!("over-budget read must deliver its accepted response");
+        };
+        assert_eq!(receiver, id);
+        assert_eq!(delivered, huge);
+        c.follow_seed(huge_key.clone(), delivered, 0.0, 3.0);
         assert_eq!(c.status(&huge_key).unwrap().data, Some(huge));
 
         // Leaving releases huge_key; SnapshotCache skips retention without failing.
@@ -2111,7 +2239,9 @@ mod tests {
         snap: &Snapshot,
         at: f64,
     ) -> bool {
-        let hit = match coord.load(key, at) {
+        let start = coord.load(key, at);
+        let resource = coord.store.hold_resource(key, at);
+        let hit = match start {
             LoadStart::Immediate(Ok(s)) => {
                 // Browser follow uses the document navigation start, never the cache-hit time.
                 coord.follow_seed(key.clone(), s, 0.0, at + 0.1);
@@ -2139,6 +2269,7 @@ mod tests {
             LoadStart::Immediate(Err(_)) => panic!("unexpected rejected/err load state"),
         };
         coord.release(key, at + 0.2);
+        coord.store.release_resource(key, resource);
         hit
     }
 
@@ -2627,10 +2758,25 @@ mod tests {
             "00000000-0000-4000-8000-000000000001",
             crate::document::default_document("Một dòng công khai dùng riêng cho kiểm thử #100."),
         );
-        for (name, snap) in [
-            ("list_12_cards", list12),
-            ("list_20_cards", list20),
-            ("pub_234_single_line", baseline_pub),
+        // The canonical provider admits at most 2 MiB of exact source. Match the live
+        // two-paragraph scratch fixture: its blank lines are preserved in transport.
+        let first = "Phố cũ mưa giăng sợi mỏng,";
+        let last = "đã theo mưa về rất lâu.";
+        let source = format!(
+            "{first}{}{last}",
+            "\n".repeat(2_097_152 - first.len() - last.len())
+        );
+        let max_source = wrap_pub("max-raw-source", crate::document::default_document(&source));
+        for (name, scalars, snap) in [
+            ("list_12_cards", 0, list12),
+            ("list_20_cards", 0, list20),
+            ("pub_234_single_line", 0, baseline_pub),
+            ("nfd_oversized", 200_000, oversized_pub("nfd")),
+            (
+                "max_raw_source",
+                first.chars().count() + last.chars().count(),
+                max_source,
+            ),
         ] {
             let (utf8, logical, wasm32, native64, blocks) = struct_stats(&snap);
             let json_b = snapshot_json_size(&snap);
@@ -2666,7 +2812,7 @@ mod tests {
                 Snapshot::Control(_) => 0.0,
             };
             println!(
-                "{name},0,{blocks},{utf8},{json_b},{logical},{wasm32},{native64},{production_weight},{clone_us:.1},{walk_us:.1},{json_us:.1},{decode_us:.1}"
+                "{name},{scalars},{blocks},{utf8},{json_b},{logical},{wasm32},{native64},{production_weight},{clone_us:.1},{walk_us:.1},{json_us:.1},{decode_us:.1}"
             );
         }
 

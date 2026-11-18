@@ -215,6 +215,8 @@ struct Entry<V> {
     retry_at: Millis,
     spread: Millis,
     observers: u32,
+    // A Resource may receive its reply before its view mounts. Never schedule timers for it.
+    resources: Vec<Ticket>,
     last_seen: Millis,
 }
 
@@ -233,6 +235,7 @@ impl<V> Entry<V> {
             retry_at: Millis::NEG_INFINITY,
             spread: 0.0,
             observers: 0,
+            resources: Vec::new(),
             last_seen: now,
         }
     }
@@ -668,31 +671,69 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
         }
     }
 
-    /// Update every retained derived snapshot, including unobserved searches. Preserves existing
-    /// retry backoff deadlines while marking changed entries stale.
+    /// Update derived snapshots across keys without changing freshness on a no-op.
     pub fn edit_all(&mut self, mut edit: impl FnMut(&K, &mut V)) {
+        self.edit_matching(
+            |_| true,
+            |key, value| {
+                let before = value.clone();
+                edit(key, value);
+                *value != before
+            },
+        );
+    }
+
+    /// Edit only matching representations. Leave untouched cache entries in their release order.
+    pub(crate) fn edit_matching(
+        &mut self,
+        matches: impl Fn(&K) -> bool,
+        mut edit: impl FnMut(&K, &mut V) -> bool,
+    ) {
         for (key, entry) in &mut self.entries {
-            let from_cache = entry.data.is_none();
-            if from_cache {
-                entry.data = self.cache.get(key);
+            if !matches(key) {
+                continue;
             }
-            self.cache.remove(key);
-            if let Some(data) = &mut entry.data {
-                let before = data.clone();
-                edit(key, data);
-                if *data != before {
-                    entry.stale = true;
-                    entry.in_flight = None;
-                    entry.restore = None;
+            let changed = if let Some(data) = &mut entry.data {
+                edit(key, data)
+            } else if let Some(mut data) = self.cache.get(key) {
+                if !edit(key, &mut data) {
+                    continue;
                 }
+                if (self.reusable)(&data) {
+                    self.cache.put(key.clone(), data);
+                } else {
+                    self.cache.remove(key);
+                }
+                true
+            } else {
+                false
+            };
+            if changed {
+                entry.stale = true;
+                entry.in_flight = None;
+                entry.restore = None;
             }
-            if from_cache
-                && entry.observers == 0
-                && let Some(data) = entry.data.take()
-                && (self.reusable)(&data)
-            {
-                self.cache.put(key.clone(), data);
+        }
+    }
+
+    /// A keyed Resource owns its reply independently of the mounted view or optional cache.
+    pub fn hold_resource(&mut self, key: &K, now: Millis) -> Ticket {
+        let id = Ticket::allocate();
+        self.entry(key, now).resources.push(id);
+        self.cache.remove(key);
+        id
+    }
+
+    pub fn release_resource(&mut self, key: &K, id: Ticket) {
+        if let Some(entry) = self.entries.get_mut(key)
+            && let Some(index) = entry.resources.iter().position(|owner| *owner == id)
+        {
+            entry.resources.swap_remove(index);
+            if entry.resources.is_empty() && entry.observers == 0 && entry.in_flight.is_some() {
+                // A restore can settle the waiter while a network refresh is still pending.
+                self.mark_stale(key);
             }
+            self.park_unobserved(key);
         }
     }
 
@@ -719,6 +760,7 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
     pub fn park_unobserved(&mut self, key: &K) {
         if let Some(entry) = self.entries.get_mut(key)
             && entry.observers == 0
+            && entry.resources.is_empty()
             && entry.in_flight.is_none()
             && let Some(data) = entry.data.take()
         {
@@ -740,15 +782,9 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
             if entry.observers == 0 {
                 entry.in_flight = None;
                 entry.restore = None;
-                if let Some(data) = entry.data.take() {
-                    if (self.reusable)(&data) {
-                        self.cache.put(key.clone(), data);
-                    } else {
-                        self.cache.remove(key);
-                    }
-                }
             }
         }
+        self.park_unobserved(key);
         self.collect(now);
     }
 
@@ -821,7 +857,10 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
         self.removed.retain(|_, at| now - *at < retain);
         self.trim_removed();
         self.entries.retain(|key, e| {
-            let keep = e.observers > 0 || e.in_flight.is_some() || now - e.last_seen < retain;
+            let keep = e.observers > 0
+                || !e.resources.is_empty()
+                || e.in_flight.is_some()
+                || now - e.last_seen < retain;
             if !keep {
                 self.cache.remove(key);
             }
@@ -831,7 +870,9 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
             let oldest = self
                 .entries
                 .iter()
-                .filter(|(_, e)| e.observers == 0 && e.in_flight.is_none())
+                .filter(|(_, e)| {
+                    e.observers == 0 && e.resources.is_empty() && e.in_flight.is_none()
+                })
                 .min_by(|a, b| a.1.last_seen.total_cmp(&b.1.last_seen))
                 .map(|(k, _)| k.clone());
             match oldest {

@@ -32,8 +32,10 @@ consumer yet and no native consumer exists.
   draft; trimmed, NFC, single line, at most 200 characters). For `markdown`, `title` must be absent
   or `null`: the title is the first H1 of the CommonMark source (core dialect, no extensions),
   flattened to text; no H1 or an empty first H1 gives an empty title (clients show “Chưa đặt
-  tên”), a later H1 is never used instead, and an overlong H1 is a `title` validation error. Every
-  `title` in responses is this effective title. Snapshots keep the title of the captured source.
+  tên”). Subsequent headings remain body text. An invalid first H1 returns 422
+  `validation_failed` at `title`. Its message points to the first H1 in `document.source`,
+  where the author can correct it. Every `title` in responses is the effective title.
+  Snapshots keep the title of the captured source.
 - A revision whose format has no public reader yet (`markdown`, until #264) cannot become public:
   `POST …/publication/request-public` answers `409 format_not_publishable` and writes nothing.
 - Unknown request fields are rejected.

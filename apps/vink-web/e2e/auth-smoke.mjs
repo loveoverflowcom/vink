@@ -338,6 +338,8 @@ export async function authWeb(page, { args, check, openPage }) {
   await gate.release();
   await sleep(150);
   check(await desk.eval(`${q('[data-testid=draft-empty]')} && !document.body.textContent.includes(${JSON.stringify(TITLE_A)}) && !${q('[data-testid=draft-row]')}`), "A's late real 200 cannot replace B's already accepted desk");
+  check(await desk.eval('(async () => (await indexedDB.databases()).length === 0)()'),
+    "switching A to B and releasing A's late reply creates no IndexedDB database on this origin");
   await gate.disable();
   await page.waitFor(`!document.body.textContent.includes(${JSON.stringify(UNSAVED_LINE)}) && !${q('#draft-title')}?.value`, "A's editor let go of A's text");
   check(await page.eval(`!document.body.textContent.includes('Dòng đầu viết sau khi đăng nhập') && !document.body.textContent.includes(${JSON.stringify(TITLE_A)})`), "the editor tab holds none of A's title or text once B is confirmed");
