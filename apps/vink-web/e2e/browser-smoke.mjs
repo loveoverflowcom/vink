@@ -4899,6 +4899,12 @@ async function markdownLivePreviewAndFormatPicker(page) {
       })()`);
       check(!layout.overflow && (!scene.overlay || layout.pos === 'fixed'),
         `Markdown + Mục lục scene ${scene.width}/${scene.scale}/${scene.theme} has no horizontal overflow (${JSON.stringify(layout)})`);
+      if ((scene.width === 320 && scene.scale === '200' && scene.theme === 'dark') ||
+          (scene.width === 1440 && scene.scale === '100' && scene.theme === 'light')) {
+        await page.capture('markdown-outline-' + [scene.width, scene.scale, scene.theme].join('-'), {
+          scenario: 'markdown-outline', target: '#editor-outline-title', boundary: 'Chrome, seeded private draft',
+        });
+      }
     }
     await page.waitFor(`document.querySelector('#editor-outline-panel:modal')?.contains(document.activeElement)`,
       'the compact outline takes focus when it becomes a modal sheet');
@@ -4966,6 +4972,38 @@ async function markdownLivePreviewAndFormatPicker(page) {
   const afterConflict = await page.draft(workId);
   check(afterConflict.version === converted.version + 1 && afterConflict.document.source === 'Sửa ở thẻ khác.',
     'conflicting conversion preserves the concurrent server save without replay');
+
+  // A browser Back can dispose a clean editor even while a conversion's reply is in transit.
+  await page.goto(args.base + '/ban-viet');
+  const newDraft = async () => {
+    await page.waitFor("document.querySelector('#create-draft') && document.querySelector('#create-draft-format')", 'draft creation ready');
+    await page.click('#create-draft');
+    await page.waitFor(EDITOR_READY, 'new Default editor ready');
+    return page.eval("location.pathname.split('/').pop()");
+  };
+  const closingWork = await newDraft();
+  await chooseMarkdown();
+  await page.waitFor("document.querySelector('#format-convert-dialog')?.open", 'clean conversion open');
+  const lateReply = new SaveGate(page, 'Response');
+  try {
+    await lateReply.enable();
+    await page.click('#format-convert-apply');
+    const held = await lateReply.next();
+    await page.eval('window.__conversionPage = true; history.back()');
+    await page.waitFor("location.pathname === '/ban-viet' && !document.querySelector('.cm-editor')", 'conversion owner disposed');
+    const nextWork = await newDraft();
+    await page.typeInBody('Văn bản đang viết.');
+    await page.waitStatus('unsaved');
+    await lateReply.release(held);
+    await page.eval('new Promise(r => setTimeout(r, 250))');
+    check(await page.eval("window.__conversionPage && document.querySelector('.vk-editor').dataset.format === 'default'") &&
+      await page.status() === 'unsaved' && await page.body() === 'Văn bản đang viết.' && nextWork !== closingWork,
+      'a late conversion ACK leaves the next draft, format, buffer and save ticket intact in the same SPA');
+    check((await page.draft(closingWork)).document.format === 'markdown' && (await page.draft(nextWork)).version === 1,
+      'only the original draft committed a new version');
+  } finally {
+    await lateReply.disable();
+  }
 
 }
 
