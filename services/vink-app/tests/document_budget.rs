@@ -2,8 +2,60 @@
 #[path = "support/document_budget.rs"]
 mod corpus;
 
+use unicode_normalization::UnicodeNormalization;
 use vink_app::domain::document::{Document, DocumentError, MAX_DOCUMENT_CHARS, Title};
 use vink_app::domain::revision::ContentHash;
+
+#[test]
+fn draft_http_budget_covers_compact_client_serialization_and_unicode_expansion() {
+    use vink_app::domain::document::{BlockData, DocumentData, MAX_TITLE_CHARS};
+    use vink_app::http::contract::{MAX_SAVE_DRAFT_BODY_BYTES, SaveDraftRequest};
+    // Pin the canonical decomposition bound to the dependency's actual Unicode tables.
+    let maximum = (0..=0x10ffff)
+        .filter_map(char::from_u32)
+        .map(|c| c.to_string().nfd().count())
+        .max()
+        .unwrap();
+    assert_eq!(maximum, 4);
+    // Each raw scalar expands to at least one NFD scalar; a canonical NFC scalar to <=4.
+    // serde_json emits <=6 UTF-8 bytes/scalar (including control escapes); no ASCII-only
+    // re-escaping, insignificant whitespace or arbitrary trimmed title padding is promised.
+    let envelope_allowance = 128;
+    let upper = (15 + 4 * 6) * MAX_DOCUMENT_CHARS + 4 * 6 * MAX_TITLE_CHARS + envelope_allowance;
+    assert_eq!(upper, 7_804_928);
+    assert!(upper <= MAX_SAVE_DRAFT_BODY_BYTES);
+    for character in [
+        "x".into(),
+        "\u{1f82}".nfd().collect::<String>(),
+        "🧑".into(),
+        "\"".into(),
+        "\\".into(),
+    ] {
+        let raw = DocumentData {
+            schema_version: 1,
+            blocks: vec![
+                BlockData {
+                    lines: vec![character.clone()]
+                };
+                MAX_DOCUMENT_CHARS
+            ],
+        };
+        let title = character.repeat(MAX_TITLE_CHARS);
+        let request = vink_web::contract::SaveDraftRequest {
+            expected_version: i64::MAX,
+            title: title.clone(),
+            document: serde_json::from_value(serde_json::to_value(&raw).unwrap()).unwrap(),
+        };
+        let encoded = serde_json::to_vec(&request).unwrap();
+        let provider: SaveDraftRequest = serde_json::from_slice(&encoded).unwrap();
+        assert_eq!(provider.expected_version, i64::MAX);
+        assert_eq!(provider.title, title);
+        assert_eq!(provider.document, raw);
+        assert!(encoded.len() <= upper);
+        assert!(Document::parse(raw).is_ok());
+        assert!(Title::parse(&title).is_ok());
+    }
+}
 
 #[test]
 fn long_document_corpus_uses_real_validator_serializer_and_v1_hash() {

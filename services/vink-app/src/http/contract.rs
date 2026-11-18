@@ -27,6 +27,11 @@ use crate::domain::endorsement::{EndorsementState, EndorsementTarget};
 use crate::domain::ids::{CommentId, PrincipalId, WorkId};
 use crate::domain::taxonomy::{CatalogTag, MatchTier, TagFacet, WorkTags};
 
+/// Draft PUT only; compact client v1 envelopes need at most 7,804,928 bytes.
+/// Includes NFD, JSON escaping, 200k blocks, a trimmed 200-scalar title and version.
+/// See contracts/http/v1/README.md and docs/development/draft-http-budget.md (#273).
+pub const MAX_SAVE_DRAFT_BODY_BYTES: usize = 8 * 1024 * 1024;
+
 /// `GET /api/v1/works?q=&tag=&tag=&limit=&cursor=` (TAG-PR-04): one page of the public library.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct WorkList {

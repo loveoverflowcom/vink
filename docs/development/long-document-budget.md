@@ -9,6 +9,10 @@ Các số dưới đây giữ source đo lịch sử; owner-state hiện đã d�
 F1 thuộc [#273](https://github.com/loveoverflowcom/vink/issues/273), F3 thuộc
 [#274](https://github.com/loveoverflowcom/vink/issues/274). Không gán timing cũ cho HEAD mới.
 
+**Cập nhật #273:** [HTTP draft-save](draft-http-budget.md) có cap riêng 8 MiB, đã thay
+expectation tiny_blocks200k từ transport rejection sang save/readback thành công. Các bảng 2 MiB,
+422 và F1 bên dưới là evidence lịch sử tại SHA đã ghi, không mô tả guard mới.
+
 **Hiệu chỉnh sau review #232:** các mẫu app save `begin/middle/end` của baseline cũ gửi cùng
 payload năm lần; chỉ lần đầu đổi nội dung, bốn lần sau là content no-op (version vẫn tăng).
 Không dùng median của nhóm đó làm chi phí của năm edit độc lập. Các số cũ được giữ để bảo toàn

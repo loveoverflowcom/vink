@@ -148,6 +148,17 @@ page. Choices, plans and measurements: [discovery](../../../../../docs/developme
 the check and the write are one statement. Otherwise nothing is written. A draft that does not
 exist and a draft owned by someone else both answer `404`. A malformed `work_id` is `404`.
 
+Draft-content `PUT` alone accepts bodies up to **8,388,608 bytes (8 MiB)**, including JSON
+framing, title and `expected_version`. Other JSON routes retain Axum's default 2 MiB cap.
+This finite budget covers valid v1 documents from the compact UTF-8 Web serializer, including
+200,000 one-character blocks, NFD, emoji, quote/backslash/tab escaping and a trimmed title of
+200 NFC scalars. Web trims the title as the domain already does, retaining the live input.
+Arbitrary extra whitespace, title padding or alternative escaping is accepted only within the
+cap. Oversize (declared length or chunked) and malformed bodies keep the existing error shape:
+`422 validation_failed`, `field: body`, `Cache-Control: no-store`, without changing durable
+content/version. This is not a smaller product-content limit or a global body-cap expansion.
+See [bound, resource measurements and #285 integration](../../../../../docs/development/draft-http-budget.md).
+
 `POST` is not idempotent: a retried request after a lost response may create a second empty
 draft. Clients disable the button while a request is pending.
 

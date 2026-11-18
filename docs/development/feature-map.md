@@ -293,6 +293,11 @@ Ngân sách document lớn [#229](long-document-budget.md): corpus tổng hợp 
 serializer, `Vink<PgStore>`, router SSR và phase CDP `document-budget`. Regression thuần ở
 `services/vink-app/tests/document_budget.rs`; biên HTTP và benchmark opt-in ở
 `tests/postgres/document_budget.rs`; browser ở `apps/vink-web/e2e/document-budget.mjs`.
+[#273](draft-http-budget.md) thêm loopback HTTP/1 + PostgreSQL thật trong
+`tests/postgres/draft_http_budget.rs`: cap riêng draft PUT, client corpus, exact readback/hash,
+cap ±1 (Content-Length/chunked), malformed, quyền/CAS và non-save route giữ cap cũ.
+Phase browser giờ yêu cầu tiny_blocks200k lưu thành công; test opt-in `draft_http_budget_browser`
+chạy ba corpus chọn lọc cùng phase, kiểm full buffer sau 422/409 và title trim.
 Đo scalar/UTF-8/JSON/TOAST/HTML/DOM riêng, history 1/10/100 và pglz/LZ4 trong database scratch.
 Measurement v2 restore baseline trước từng app-save sample; regression PostgreSQL không ignored
 kiểm full content/version sau commit và hai negative controls bắt nhầm changed/no-op. Raw v1

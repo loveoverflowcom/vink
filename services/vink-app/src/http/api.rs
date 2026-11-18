@@ -1,5 +1,5 @@
 use axum::extract::rejection::{JsonRejection, QueryRejection};
-use axum::extract::{Path, Query, RawQuery, Request, State};
+use axum::extract::{DefaultBodyLimit, Path, Query, RawQuery, Request, State};
 use axum::http::{HeaderMap, HeaderValue, Method, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
@@ -44,7 +44,12 @@ pub fn routes(state: AppState) -> Router<AppState> {
     let drafts = Router::new()
         .route("/drafts", get(list_drafts).post(create_draft))
         .route("/author/works", get(list_author_works))
-        .route("/drafts/{work_id}", get(get_draft).put(save_draft))
+        .route(
+            "/drafts/{work_id}",
+            get(get_draft).merge(put(save_draft).layer(DefaultBodyLimit::max(
+                super::contract::MAX_SAVE_DRAFT_BODY_BYTES,
+            ))),
+        )
         // Draft tags (TAG-PR-03): a resource of its own with its own version (#96 CHOICE-02 B),
         // so a text save never carries, needs or clears tags.
         .route(
