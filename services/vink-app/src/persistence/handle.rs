@@ -21,23 +21,10 @@ pub(super) async fn provision(
     principal: Uuid,
     pen: &PenName,
 ) -> Result<usize, StoreError> {
-    allocate(
-        tx,
-        principal,
-        (0..16).map(|_| {
-            let random = Uuid::new_v4();
-            handle::candidate(pen, random.as_u128() as u32)
-        }),
-    )
-    .await
-}
-
-async fn allocate(
-    tx: &mut Tx<'_>,
-    principal: Uuid,
-    candidates: impl Iterator<Item = String>,
-) -> Result<usize, StoreError> {
-    for (attempt, name) in candidates.enumerate() {
+    const MAX_ATTEMPTS: usize = 16;
+    for attempt in 1..=MAX_ATTEMPTS {
+        let entropy = Uuid::new_v4().as_u128() as u32;
+        let name = handle::candidate(pen, entropy);
         if reserve(tx, principal, &name).await? {
             sqlx::query("INSERT INTO author_profiles(principal_id,current_handle) VALUES ($1,$2)")
                 .bind(principal)
@@ -45,7 +32,7 @@ async fn allocate(
                 .execute(&mut **tx)
                 .await
                 .map_err(classify)?;
-            return Ok(attempt + 1);
+            return Ok(attempt);
         }
     }
     Err(StoreError::Unavailable(
@@ -291,18 +278,38 @@ impl PgStore {
         if !handle::valid(name) {
             return Ok(Resolution::Missing);
         }
-        ready(self.pool()).await?;
-        let row: Option<(Option<String>,String,bool)> = sqlx::query_as("SELECT s.current_handle,p.display_name,
-            EXISTS(SELECT FROM publications pub JOIN works w ON w.id=pub.work_id WHERE w.owner_id=p.id)
-            FROM author_handle_names n JOIN author_profiles s USING(principal_id) JOIN principals p ON p.id=s.principal_id WHERE n.handle=$1")
-            .bind(name).fetch_optional(self.pool()).await.map_err(classify)?;
-        Ok(match row {
-            None => Resolution::Missing,
-            Some((None, _, _)) => Resolution::Gone,
-            Some((Some(current), _, _)) if current != name => Resolution::Alias {
-                href: format!("/@{current}"),
+        // Evaluate rollout, current owner/name and publication visibility in one snapshot.
+        let (ready, pen_name, current, has_public_works): (
+            bool,
+            Option<String>,
+            Option<String>,
+            bool,
+        ) = sqlx::query_as(
+            "SELECT gate.ready, p.display_name, s.current_handle,
+                        EXISTS (SELECT FROM works w JOIN publications pub ON pub.work_id=w.id
+                                 WHERE w.owner_id=p.id)
+                   FROM author_handle_rollout gate
+                   LEFT JOIN author_handle_names n ON n.handle=$1 AND gate.ready
+                   LEFT JOIN author_profiles s ON s.principal_id=n.principal_id
+                   LEFT JOIN principals p ON p.id=s.principal_id
+                  WHERE gate.singleton",
+        )
+        .bind(name)
+        .fetch_one(self.pool())
+        .await
+        .map_err(classify)?;
+        if !ready {
+            return Err(StoreError::Unavailable(
+                "author profile backfill pending".into(),
+            ));
+        }
+        Ok(match (pen_name, current) {
+            (None, _) => Resolution::Missing,
+            (Some(_), None) => Resolution::Gone,
+            (Some(_), Some(handle)) if handle != name => Resolution::Alias {
+                href: format!("/@{handle}"),
             },
-            Some((Some(handle), pen_name, has_public_works)) => Resolution::Current {
+            (Some(pen_name), Some(handle)) => Resolution::Current {
                 author: AuthorRef {
                     href: format!("/@{handle}"),
                     handle,

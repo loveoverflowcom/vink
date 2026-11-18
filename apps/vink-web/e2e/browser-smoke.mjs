@@ -5649,7 +5649,7 @@ try {
     await markdownReader(page, { args, check, textContrast });
   }
   else if (args.phase === 'auth') await authWeb(page, { args, check, openPage: () => openPage(cdp) });
-  else if (args.phase === 'auth-password') await passwordAuth(page, { args, check, openPage: (isolated) => openPage(cdp, isolated) });
+  else if (args.phase === 'auth-password') await passwordAuth(page, { args, check, textContrast, openPage: (isolated) => openPage(cdp, isolated) });
   else if (args.phase === 'publication-author') await publicationAuthor(page, { args, check, openPage: (isolated) => openPage(cdp, isolated), capture: (target, name, evidence) => target.capture(name, evidence) });
   else if (args.phase === 'discovery-corpus') await discoveryCorpus(page, { args, check });
   else if (args.phase === 'discovery-chip-geometry') await discoveryChipGeometry(page, { args, check });

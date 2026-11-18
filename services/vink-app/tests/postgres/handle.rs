@@ -63,6 +63,21 @@ async fn handle_backfill_is_bounded_resumable_and_only_provisions_bindings(pool:
     let counts:(i64,i64,i64)=sqlx::query_as("SELECT (SELECT last_value FROM collision_attempts),(SELECT count(*) FROM principal_bindings),(SELECT count(*) FROM author_profiles)")
         .fetch_one(&pool).await.unwrap();
     assert_eq!(counts, (16, 1, 1));
+    sqlx::raw_sql(
+        "CREATE OR REPLACE FUNCTION collide() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN IF nextval('collision_attempts') < 19 THEN RETURN NULL; END IF; RETURN NEW; END $$",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    create(&pool, "recovered", "Mai").await;
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT last_value FROM collision_attempts")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        19
+    );
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
@@ -218,6 +233,15 @@ async fn handle_public_http_direct_aliases_and_terminal_tombstones(pool: PgPool)
             .await
             .unwrap();
     }
+    let expected: Value = serde_json::from_str(include_str!(
+        "../../contracts/http/v1/fixtures/author.profile.current.json"
+    ))
+    .unwrap();
+    let (code, cache, json_body) =
+        call(&app, "GET", "/api/v1/authors/ngay-nang", None, None, None).await;
+    assert_eq!(code, 200);
+    assert_eq!(cache.as_deref(), Some("no-store"));
+    assert_eq!(json(&json_body), expected);
     for method in ["GET", "HEAD"] {
         for alias in [&initial, "ngay-mua"] {
             let r = app
@@ -277,4 +301,32 @@ async fn handle_public_http_direct_aliases_and_terminal_tombstones(pool: PgPool)
                 .is_err()
         );
     }
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn handle_two_accounts_compete_for_one_name(pool: PgPool) {
+    let store = PgStore::new(pool.clone());
+    let a = create(&pool, "left", "Cúc").await;
+    let b = create(&pool, "right", "Cúc").await;
+    let left = command(a, Intent::Setup, 0, "hoa-cuc");
+    let right = command(b, Intent::Setup, 0, "hoa-cuc");
+    let (left, right) = tokio::join!(store.set_handle(a, &left), store.set_handle(b, &right));
+    let (winner, loser) = match (left, right) {
+        (Ok(_), Err(HandleError::Taken)) => (a, b),
+        (Err(HandleError::Taken), Ok(_)) => (b, a),
+        other => panic!("unexpected claim race: {other:?}"),
+    };
+    let taken = store.own_handle(winner).await.unwrap();
+    let other = store.own_handle(loser).await.unwrap();
+    assert_eq!(taken.handle, "hoa-cuc");
+    assert!(taken.setup_complete && !other.setup_complete);
+    assert_eq!(
+        (
+            taken.remaining_changes,
+            other.remaining_changes,
+            other.version
+        ),
+        (2, 2, 0)
+    );
+    assert!(other.aliases.is_empty());
 }

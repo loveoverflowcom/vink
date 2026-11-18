@@ -1,6 +1,6 @@
 //! Session-scoped commands and public, actor-free resolution.
 use super::{Actor, ApiError, AppState};
-use crate::application::{handle::*, ports::StoreError};
+use crate::application::handle::*;
 use axum::{
     Json, Router,
     extract::{DefaultBodyLimit, Path, State},
@@ -35,10 +35,8 @@ impl From<HandleError> for ApiError {
             HandleError::OwnAlias => Self::HandleRefused("handle_alias_reserved"),
             HandleError::Exhausted => Self::HandleRefused("handle_quota_exhausted"),
             HandleError::Stale(current_version) => Self::VersionConflict { current_version },
-            HandleError::KeyReused => Self::KeyReused,
-            HandleError::Store(StoreError::PrincipalSuspended) => Self::PrincipalSuspended,
-            HandleError::Store(StoreError::UnknownPrincipal) => Self::Unauthenticated,
-            HandleError::Store(_) => Self::DependencyUnavailable,
+            HandleError::KeyReused => Self::HandleRefused("handle_command_reused"),
+            HandleError::Store(error) => Self::from(error),
         }
     }
 }

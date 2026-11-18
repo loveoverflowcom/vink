@@ -160,7 +160,7 @@ async function matrix(page, scenario, anchor, check) {
   await page.viewport(1280);
 }
 
-export async function passwordAuth(page, { args, check, openPage }) {
+export async function passwordAuth(page, { args, check, openPage, textContrast }) {
   const { base } = args;
   const ctx = { args, seen: new Set() };
   const userA = 'banviet.a';
@@ -232,7 +232,7 @@ export async function passwordAuth(page, { args, check, openPage }) {
   await matrix(page, 'pen-name', '#pen-name-form', check);
   const A = await name(page, penA);
   check(A.display_name === penA && A.display_name !== userA, 'the server confirms a separate pen name');
-  await authorHandles(page, {base,openPage,check,holdAnswer});
+  await authorHandles(page, {base,openPage,check,holdAnswer,textContrast});
   const draftA = await createDraft(page, '[Mẫu] Nháp tạo sau đăng ký');
   await openAccount(page, base, 'active');
   await page.click('#password-credential');
