@@ -671,23 +671,39 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
         }
     }
 
+    /// Update derived snapshots across keys without changing freshness on a no-op.
+    pub fn edit_all(&mut self, mut edit: impl FnMut(&K, &mut V)) {
+        self.edit_matching(
+            |_| true,
+            |key, value| {
+                let before = value.clone();
+                edit(key, value);
+                *value != before
+            },
+        );
+    }
+
     /// Edit only matching representations. Leave untouched cache entries in their release order.
-    pub fn edit_matching(
+    pub(crate) fn edit_matching(
         &mut self,
         matches: impl Fn(&K) -> bool,
-        mut edit: impl FnMut(&mut V) -> bool,
+        mut edit: impl FnMut(&K, &mut V) -> bool,
     ) {
         for (key, entry) in &mut self.entries {
             if !matches(key) {
                 continue;
             }
             let changed = if let Some(data) = &mut entry.data {
-                edit(data)
+                edit(key, data)
             } else if let Some(mut data) = self.cache.get(key) {
-                if !edit(&mut data) {
+                if !edit(key, &mut data) {
                     continue;
                 }
-                self.cache.put(key.clone(), data);
+                if (self.reusable)(&data) {
+                    self.cache.put(key.clone(), data);
+                } else {
+                    self.cache.remove(key);
+                }
                 true
             } else {
                 false
@@ -741,7 +757,7 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
 
     /// Move an idle unobserved entry's snapshot through [`SnapshotCache`] (for example when a
     /// cancelled background load finishes after its last waiter dropped).
-    fn park_unobserved(&mut self, key: &K) {
+    pub fn park_unobserved(&mut self, key: &K) {
         if let Some(entry) = self.entries.get_mut(key)
             && entry.observers == 0
             && entry.resources.is_empty()
@@ -1329,7 +1345,7 @@ mod tests {
         // Reading status, calling mark_stale again, or no-op edit_all cannot clear backoff.
         let _ = s.status(&"w");
         s.mark_stale(&"w");
-        s.edit_matching(|_| true, |_| false);
+        s.edit_all(|_, _| {});
         assert_eq!(s.next_wake(2_000.0), Some(31_100.0));
         assert_eq!(s.begin(&"w", Trigger::Signal, 2_000.0), None);
 
@@ -1537,7 +1553,9 @@ mod tests {
         // Unobserved edit_all writes back through SnapshotCache rather than trapping in Entry.data.
         s.release(&"k1", 3.0);
         assert_eq!(s.cache().total_bytes(), 8);
-        s.edit_matching(|_| true, |v| v.pop().is_some());
+        s.edit_all(|_, v| {
+            v.pop();
+        });
         assert_eq!(s.cache().total_bytes(), 7);
         assert_eq!(s.status(&"k1").unwrap().data, Some(vec![1; 7]));
 
@@ -1547,13 +1565,7 @@ mod tests {
         noop.observe(&"n1", 0.0);
         noop.seed(&"n1", vec![1; 4], 0.0, 0.0);
         noop.release(&"n1", 1.0);
-        noop.edit_matching(
-            |_| true,
-            |v| {
-                v.push(2);
-                true
-            },
-        );
+        noop.edit_all(|_, v| v.push(2));
         assert_eq!(noop.status(&"n1").unwrap().data, None);
     }
 }

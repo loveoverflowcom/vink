@@ -641,7 +641,7 @@ mod coordinator {
             }
             self.store.edit_matching(
                 |key| matches!(key, PublicKey::Works(_)),
-                |snapshot| {
+                |_, snapshot| {
                     let Snapshot::Works(list) = snapshot else {
                         return false;
                     };
