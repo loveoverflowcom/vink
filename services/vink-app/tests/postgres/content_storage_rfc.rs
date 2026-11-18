@@ -1,11 +1,28 @@
 //! #231: compare storage footprints in SQLx's disposable DB. No runtime schema or API is used.
-use super::{Document, DocumentData, PgPool, Title, document_corpus, json};
+//! Ported to the canonical document: a "block" is one paragraph of a default source (split at
+//! `\n\n`, an exact inverse of joining), so the chunk layouts keep their meaning.
+use super::{Document, DocumentData, PgPool, document_corpus, json, titled};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use sqlx::types::Json;
 use std::collections::HashSet;
 use std::time::Instant;
-use vink_app::domain::{document::BlockData, revision::ContentHash};
+use unicode_normalization::UnicodeNormalization;
+use vink_app::domain::revision::ContentHash;
+
+/// One paragraph of a default document's source.
+type BlockData = String;
+
+fn split(data: &DocumentData) -> Vec<BlockData> {
+    data.source.split("\n\n").map(str::to_owned).collect()
+}
+
+fn join(blocks: &[BlockData]) -> DocumentData {
+    DocumentData {
+        format: "default".into(),
+        source: blocks.join("\n\n"),
+    }
+}
 
 const FIXED_TARGET: usize = 60 * 1024;
 const MIN: usize = 32 * 1024;
@@ -122,9 +139,7 @@ fn content_storage_boundary_shift() {
     );
     assert_eq!(Layout::Fixed.chunk_blocks(&reordered).concat(), reordered);
 
-    let oversized = BlockData {
-        lines: vec!["ế".repeat(MAX)],
-    };
+    let oversized: BlockData = "ế".repeat(MAX);
     let mut mixed = vec![blocks[0].clone(), oversized, blocks[1].clone()];
     for layout in [Layout::Fixed, Layout::ContentDefined] {
         let groups = layout.chunk_blocks(&mixed);
@@ -138,9 +153,7 @@ fn content_storage_boundary_shift() {
 }
 
 fn control_block(i: usize) -> BlockData {
-    BlockData {
-        lines: vec![format!("{i:04}{}", "x".repeat(1516))],
-    }
+    format!("{i:04}{}", "x".repeat(1528))
 }
 
 fn corpus(shape: &str, size: usize) -> DocumentData {
@@ -154,42 +167,39 @@ fn corpus(shape: &str, size: usize) -> DocumentData {
     );
     if shape == "vi_paragraphs" {
         // Split after NFC so the fixture never separates a combining mark from its base.
-        let canonical = Document::parse(data.clone()).unwrap().to_data();
-        let chars: Vec<_> = canonical.blocks[0].lines[0].chars().collect();
-        data.blocks = chars
-            .chunks(600)
-            .map(|block| BlockData {
-                lines: vec![block.iter().collect()],
-            })
-            .collect();
+        let chars: Vec<char> = data.source.nfc().collect();
+        data = join(
+            &chars
+                .chunks(600)
+                .map(|block| block.iter().collect())
+                .collect::<Vec<BlockData>>(),
+        );
     }
     data
 }
 
 fn history(base: &DocumentData) -> Vec<(&'static str, DocumentData)> {
-    let mut next = base.clone();
-    let mut versions = vec![("initial", next.clone()), ("title_only", next.clone())];
+    let base_blocks = split(base);
+    let mut next = base_blocks.clone();
+    let mut versions = vec![("initial", join(&next)), ("title_only", join(&next))];
     for (kind, at) in [
         ("prepend", 0),
-        ("middle_insert", next.blocks.len() / 2),
-        ("append", next.blocks.len() + 2),
+        ("middle_insert", next.len() / 2),
+        ("append", next.len() + 2),
     ] {
-        let block = BlockData {
-            lines: vec![format!("\tĐoạn thử {kind}")],
-        };
-        next.blocks.insert(at, block);
-        versions.push((kind, next.clone()));
+        next.insert(at, format!("\tĐoạn thử {kind}"));
+        versions.push((kind, join(&next)));
     }
-    next.blocks.remove(0);
-    versions.push(("delete", next.clone()));
-    next.blocks.rotate_left(1);
-    versions.push(("reorder", next.clone()));
+    next.remove(0);
+    versions.push(("delete", join(&next)));
+    next.rotate_left(1);
+    versions.push(("reorder", join(&next)));
     versions.push(("undo", base.clone()));
-    next = base.clone();
+    next = base_blocks;
     for edit in 0..16 {
-        let at = (edit * 137 + 7) % next.blocks.len();
-        next.blocks[at].lines[0].push('ế');
-        versions.push(("small_edit", next.clone()));
+        let at = (edit * 137 + 7) % next.len();
+        next[at].push('ế');
+        versions.push(("small_edit", join(&next)));
     }
     versions
 }
@@ -226,11 +236,11 @@ async fn read_version(pool: &PgPool, layout: Layout, id: i32) -> (String, Json<D
             JOIN rfc_payloads p ON p.hash = v.hash WHERE v.id = $1"
         }
         _ => {
-            "SELECT v.title, jsonb_build_object('schema_version', 1, 'blocks',
-                COALESCE((SELECT jsonb_agg(b.block ORDER BY p.ordinal, b.ordinal)
+            "SELECT v.title, jsonb_build_object('format', 'default', 'source',
+                COALESCE((SELECT string_agg(b.block, E'\\n\\n' ORDER BY p.ordinal, b.ordinal)
                  FROM rfc_parts p JOIN rfc_payloads c ON c.hash = p.hash
-                 CROSS JOIN LATERAL jsonb_array_elements(c.body) WITH ORDINALITY b(block, ordinal)
-                 WHERE p.version = v.id), '[]'::jsonb))
+                 CROSS JOIN LATERAL jsonb_array_elements_text(c.body) WITH ORDINALITY b(block, ordinal)
+                 WHERE p.version = v.id), ''))
             FROM rfc_versions v WHERE v.id = $1"
         }
     };
@@ -246,7 +256,7 @@ async fn observations(pool: &PgPool, layout: Layout, history: &[(&str, DocumentD
         let title = format!("Mẫu #231, revision {id}");
         let canonical = Document::parse(data.clone()).unwrap();
         let expected = canonical.to_data();
-        let revision_hash = ContentHash::of(&Title::parse(&title).unwrap(), &canonical);
+        let revision_hash = ContentHash::of(&titled(&title, canonical.to_data()));
         let full_json = serde_json::to_string(&expected).unwrap();
         let start = Instant::now();
         let mut hashes = Vec::new();
@@ -262,7 +272,7 @@ async fn observations(pool: &PgPool, layout: Layout, history: &[(&str, DocumentD
         } else {
             let bodies = if layout.chunked() {
                 layout
-                    .chunk_blocks(&expected.blocks)
+                    .chunk_blocks(&split(&expected))
                     .iter()
                     .map(|group| serde_json::to_string(group).unwrap())
                     .collect()
@@ -345,17 +355,14 @@ async fn observations(pool: &PgPool, layout: Layout, history: &[(&str, DocumentD
         let read_ms = start.elapsed().as_secs_f64() * 1000.;
         assert_eq!(loaded_title, title);
         assert_eq!(loaded, expected, "{kind}, {}", layout.name());
-        let restored_hash = ContentHash::of(
-            &Title::parse(&loaded_title).unwrap(),
-            &Document::parse(loaded).unwrap(),
-        );
+        let restored_hash = ContentHash::of(&titled(&loaded_title, loaded));
         assert_eq!(restored_hash, revision_hash);
         rows.push(json!({
             "revision":id, "operation":kind, "full_json_bytes":full_json.len(),
             "payload_bytes":payload_bytes, "new_payload_bytes":new_bytes, "reused_payload_bytes":reused_bytes,
             "payload_refs":hashes.len(), "wal_bytes":wal_bytes,
             "prepare_ms":prepare_ms, "commit_ms":commit_ms, "read_ms":read_ms,
-            "hash_v1":revision_hash.as_str(),
+            "content_hash":revision_hash.as_str(),
         }));
     }
 
@@ -436,7 +443,7 @@ async fn content_storage_probe_constraints(pool: PgPool) {
     let expected = Document::parse(document_corpus::corpus("poem_tabs", 256))
         .unwrap()
         .to_data();
-    let body = serde_json::to_string(&expected.blocks).unwrap();
+    let body = serde_json::to_string(&split(&expected)).unwrap();
     let hash = hash_payload(&body);
     let mut writer = pool.begin().await.unwrap();
     sqlx::query("INSERT INTO rfc_versions VALUES (1, 'Thơ')")

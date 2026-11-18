@@ -22,8 +22,8 @@ const tag = x => fields(x, { tag_id: nonempty, facet: string, label: string, slu
 const filter = x => fields(x, { requested: string, resolution: string, tag: x => nullable(x, tag) });
 const card = x => fields(x, { work_id: nonempty, title: string, author_display_name: string,
   published_at: string, tags: x => array(x, publicTag) });
-const document = x => fields(x, { schema_version: x => x === 1,
-  blocks: x => array(x, b => fields(b, { lines: x => array(x, string) })) });
+// The one document shape; only the default format has a public Reader so far (#264).
+const document = x => fields(x, { format: x => x === 'default', source: string });
 const publication = x => fields(x, { work_id: nonempty, revision_id: nonempty, title: string,
   author_display_name: string, published_at: string, document, tags: x => array(x, publicTag) });
 const list = x => fields(x, { works: x => array(x, card) && x.length <= 100 && new Set(x.map(c => c.work_id)).size === x.length,

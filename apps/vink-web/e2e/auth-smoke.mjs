@@ -167,7 +167,7 @@ class ListGate {
   }
 }
 
-const storedText = (draft) => draft.document.blocks.map((block) => block.lines.join('\n')).join('\n\n');
+const storedText = (draft) => draft.document.source;
 export const account = (page) => page.eval(`fetch('/api/v1/auth/session/account').then(async (r) => ({ status: r.status, body: r.ok ? await r.json() : null }))`);
 const fieldError = (id) => `(document.getElementById(${JSON.stringify(id)})?.getAttribute('aria-describedby') ?? '').split(' ').map((i) => document.getElementById(i)?.textContent ?? '').join(' ')`;
 

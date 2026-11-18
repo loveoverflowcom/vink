@@ -106,8 +106,10 @@ async fn state_is_not_a_body_integrity_or_publication_capability(pool: PgPool) {
         .await
         .unwrap();
     for corrupt in [
-        json!({"schema_version":1,"blocks":[{"lines":["corrupt body"]}]}),
-        json!({"schema_version":999,"blocks":[]}),
+        // Canonical shape (the CHECK still holds) but content that no longer matches its hash,
+        // or a Markdown title that no longer matches its stored title.
+        json!({"format":"default","source":"corrupt body"}),
+        json!({"format":"markdown","source":"# Tên khác"}),
     ] {
         sqlx::query("UPDATE revisions SET document=$1 WHERE id=$2")
             .bind(sqlx::types::Json(corrupt))

@@ -1,30 +1,21 @@
 # Corpus title authority — #263
 
-[Quy tắc, trạng thái và điểm nối](../../../../../docs/architecture/editor-title-authority.md).
-Đây là dữ liệu kiểm thử, **không phải document envelope, API payload hay parser mới**.
+[Quy tắc và hiện trạng](../../../../../docs/architecture/editor-title-authority.md). Dữ liệu kiểm thử
+cho document canonical `{format, source}` (#255); không phải payload API.
 
-- `legacy-v1.json`: 11 ca tên riêng trên document v1, gồm ATX/Setext/nested body,
-  tên rỗng, NFC/NFD/emoji, tên có markup literal, 200/201 ký tự precomposed, 200 ký tự
-  nhập NFD (400 scalar trước NFC, hợp lệ vì giới hạn tính sau NFC) và newline bị từ chối.
-  `application::tests::title_authority::legacy_v1_title_authority_corpus` thực thi
-  các ca qua `Vink::save_draft`, kiểm một validated change và `RevisionContent::new`.
-  Test dựng document bằng hằng `LEGACY_V1_SCHEMA_VERSION = 1` riêng, không theo
-  `SCHEMA_VERSION` production; ca có `nfd` trong `id` phải giữ input chưa NFC.
-  Recording store chỉ chứng minh application wiring, **không chứng minh PostgreSQL CAS**.
-  `expected_v1_hash` là SHA-256 byte vector literal được dựng độc lập bằng Python
-  `hashlib`/`struct.pack('>Q', …)`, với title `Tên riêng`, một block hai dòng
-  `# Tên trong thân` / `Đoạn sau.`; không lấy expected từ Rust implementation.
-- `markdown-proposed.json`: 30 ca **DESIGN_PROPOSED** cho parser tương lai, gồm
-  no/empty/multiple/deleted H1, ATX/Setext, nested, fence/escape/HTML, inline/entity,
-  Unicode/emoji/CRLF và 200/201 ký tự. `source` là input phải giữ nguyên.
-  Thứ tự đề xuất: extraction/flatten từ source → chuẩn hóa như `Title::parse`
-  (trim, NFC) → validation (ký tự cấm, >200 scalar). `expected_projection` là chuỗi
-  sau chuẩn hóa, **trước kết luận validation**: `nfd-emoji` có source NFD còn projection
-  NFC; `title-201` giữ đủ 201 ký tự kèm `expected_validation_error`. Chuỗi rỗng không phải
-  placeholder. `expected_validation_error` nêu lỗi dự kiến, không cho truncate.
-  Corpus chưa có Rust/TS parser consumer: extraction, differential và source roundtrip
-  **NOT_RUN**. JSON parse thành công chỉ xác nhận artifact đọc được.
+- `default.json`: 12 ca định dạng `default`. Tên riêng là authority; `#`, Setext, blockquote/list
+  trong thân vẫn là chữ; tên rỗng, NFC/NFD/emoji, markup literal trong tên, 200/201 ký tự
+  precomposed, 200 ký tự nhập NFD (giới hạn tính sau NFC), newline bị từ chối, và một ca source có
+  CRLF/dòng trống/dòng chỉ khoảng trắng/NFD được lưu nguyên văn. `expected_hash` của
+  `explicit-over-atx` được dựng độc lập bằng Python `hashlib`/`struct.pack('>Q', …)` theo encoding
+  `vink-document-content`. Ca có `nfd` trong `id` phải giữ input chưa NFC.
+  Thực thi: `application::tests::title_authority::default_title_authority_corpus`.
+- `markdown.json`: 30 ca định dạng `markdown`: không/rỗng/nhiều/xóa H1, ATX/Setext, nested,
+  fence/escape/HTML, inline/entity, Unicode/emoji/CRLF và 200/201 ký tự. `expected_projection` là
+  chuỗi sau trim + NFC, trước kết luận validation; `expected_validation_error` nêu lỗi, không cho
+  truncate. Chuỗi rỗng không phải placeholder. Thực thi:
+  `domain::document::markdown::tests::markdown_title_corpus` (parser) và
+  `application::tests::title_authority::markdown_title_authority_corpus` (save → store → revision).
 
-Các file cố ý tách legacy executable khỏi Markdown proposal, tránh gắn PASS validation
-của v1 cho parser chưa có. Khi #255 sẵn sàng, các owner dùng cùng fixture thay vì tự tạo
-oracle TS/Rust riêng. Grammar/flatten chi tiết còn phải reconcile ở tài liệu owner.
+Editor Markdown (#256) và Reader (#264) phải chạy cùng `markdown.json` cho parser của mình
+(differential) trước khi hiển thị title hoặc render Markdown.

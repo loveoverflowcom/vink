@@ -33,7 +33,7 @@ use crate::domain::discussion::page::{PageCursor, PageLimit};
 use crate::domain::discussion::settings::{
     CommentsMode, ModeChange, SettingsError, SettingsGeneration,
 };
-use crate::domain::document::{Document, Title};
+use crate::domain::document::{Title, TitledDocument};
 use crate::domain::draft::{DraftChange, DraftSummary, DraftVersion, WorkingDraft};
 use crate::domain::endorsement::{
     EndorsementCommand, EndorsementCount, EndorsementFacts, EndorsementOutcome, EndorsementState,
@@ -158,10 +158,9 @@ pub struct DiscoveryFacts {
 pub struct PublicationFacts {
     pub work_id: WorkId,
     pub revision_id: RevisionId,
-    pub title: Title,
+    pub content: TitledDocument,
     pub author_display_name: String,
     pub published_at: OffsetDateTime,
-    pub document: Document,
     pub snapshot: Option<MetadataSnapshot>,
     pub catalog: Vec<CatalogTag>,
 }
@@ -213,6 +212,7 @@ pub struct AuthorSnapshotCapture {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CaptureSnapshotOutcome {
     Saved(AuthorSnapshotCapture),
+    MissingTitle,
     Conflict {
         current_draft_version: Option<DraftVersion>,
         current_metadata_version: Option<MetadataVersion>,
@@ -237,6 +237,8 @@ pub enum RequestPublicOutcome {
     },
     RevisionRejected,
     UnknownRevision,
+    /// The revision's format has no safe public Reader yet (Markdown until #264).
+    FormatNotPublishable,
     WorkUnavailable,
     KeyReused,
     NotFound,

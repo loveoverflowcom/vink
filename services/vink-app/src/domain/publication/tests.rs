@@ -1,5 +1,5 @@
 use super::*;
-use crate::domain::document::{Document, Title};
+use crate::domain::document::{Document, DocumentFormat, TitledDocument};
 
 pub(crate) fn work(n: u128) -> WorkId {
     WorkId::from_uuid(uuid::Uuid::from_u128(n))
@@ -18,8 +18,11 @@ pub(crate) fn snapshot(n: u128) -> Snapshot {
         work: work(1),
         revision: revision(n),
         content: RevisionContent::new(
-            Title::parse(&format!("Bản {n}")).unwrap(),
-            Document::empty(),
+            TitledDocument::author(
+                Document::empty(DocumentFormat::Default),
+                Some(&format!("Bản {n}")),
+            )
+            .unwrap(),
         )
         .unwrap(),
     }

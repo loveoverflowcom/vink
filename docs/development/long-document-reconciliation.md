@@ -1,5 +1,9 @@
 # Đối soát Long Document #229–#231
 
+> **Sau #255 (17/11/2026):** biên bản này ghi trạng thái tại các SHA đã nêu, khi document còn v1.
+> Document đã được thay bằng shape canonical `{format, source}`
+> ([kiến trúc](../architecture/document-source-format.md)); oracle hash/bytes v1 là lịch sử.
+
 **LOCAL GATES PASS:** sau phục hồi dung lượng, fmt, decision validate và full Quick
 đã thực thi PASS tại `dcd36ba6883b49bf764124e08e5d78278a485e48`. Raw FAIL trước đó giữ nguyên; không đổi nhãn kết quả cũ.
 [Raw và exit codes mới](evidence/long-document-reconciliation/resume-20261117T093542Z/results.json).

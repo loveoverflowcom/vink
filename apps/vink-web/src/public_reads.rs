@@ -31,15 +31,12 @@ pub enum Snapshot {
     Control(ReaderResponse),
 }
 
-/// Measured READ-02 in-tab RAM retention budget (`WEB-PERF-07 / CHOICE-01 B`):
-/// - `max_entry_bytes = 1 MiB` (1_048_576 logical proxy bytes): admits normal `#234` works/lists
-///   and full 200k-scalar contiguous/poem `#229` works (`vi_nfc-200k` 453 KiB, `poem_tabs-200k`
-///   552 KiB, `emoji-200k` 801 KiB), while skipping retention of block-fragmented `tiny_blocks`
-///   (`30k` = 1.47 MiB .. `200k` = 9.80 MiB proxy / ~10.55 MB WASM step / ~7.7 ms `.clone()`).
-/// - `max_total_bytes = 2 MiB` (2_097_152 logical proxy bytes): keeps all 16 typical works and
-///   Discovery `WorkList` pages hot in RAM while bounding retained cache weight near ~1x the
-///   warm baseline WASM heap (`1.84-3.15 MB`). Independent of disabled `4 MiB / 512 KiB` disk quota;
-///   tracks deterministic UTF-8 + structural allocation proxy bytes, never host RSS or GPU memory.
+/// READ-02 in-tab RAM retention budget (`WEB-PERF-07 / CHOICE-01 B`): 1 MiB per entry and
+/// 2 MiB total. The #237 measurements selected these limits for the retired blocks/lines
+/// document. The canonical document (#255) retains one source string, so its weight includes
+/// exact UTF-8 source bytes (including NFD and line endings), without per-line allocations.
+/// Historical clone/heap measurements do not describe this representation. Independent of the
+/// disabled disk quota; this is a deterministic proxy, never host RSS or GPU memory.
 pub const READ_CACHE_BUDGET: crate::read_cache::RetentionBudget =
     crate::read_cache::RetentionBudget {
         max_total_bytes: Some(2 * 1024 * 1024),
@@ -112,14 +109,10 @@ pub fn snapshot_weight_bytes(snapshot: &Snapshot) -> usize {
             for tag in &pub_.tags {
                 bytes = bytes.saturating_add(public_tag_bytes(tag));
             }
-            for block in &pub_.document.blocks {
-                // Account for `Vec<String>` + allocator block header + lines payload.
-                bytes = bytes.saturating_add(20);
-                for line in &block.lines {
-                    bytes = bytes.saturating_add(28).saturating_add(line.len());
-                }
-            }
+            // One String plus allocator header; format is an inline enum, covered by the base.
             bytes
+                .saturating_add(28)
+                .saturating_add(pub_.document.source.len())
         }
         Snapshot::Control(_) => 0,
     }
@@ -1317,8 +1310,8 @@ mod tests {
             title: format!("Title {id}"),
             author_display_name: "Author".into(),
             document: DocumentDto {
-                schema_version: 1,
-                blocks: vec![],
+                format: crate::contract::DocumentFormatDto::Default,
+                source: String::new(),
             },
             published_at: "2026-11-15T00:00:00Z".into(),
             tags: vec![],
@@ -2007,7 +2000,6 @@ mod tests {
     }
 
     fn heavy_pub(id: &str, block_count: usize, line_bytes: usize) -> Snapshot {
-        use crate::contract::BlockDto;
         let line = "a".repeat(line_bytes);
         Snapshot::Publication(Publication {
             work_id: id.into(),
@@ -2015,20 +2007,42 @@ mod tests {
             title: id.into(),
             author_display_name: "Tác giả".into(),
             published_at: "2026-11-17T00:00:00Z".into(),
-            document: DocumentDto {
-                schema_version: 1,
-                blocks: vec![BlockDto { lines: vec![line] }; block_count],
-            },
+            document: crate::document::default_document(&vec![line; block_count].join("\n\n")),
             tags: Vec::new(),
         })
+    }
+
+    fn oversized_pub(id: &str) -> Snapshot {
+        let Snapshot::Publication(mut publication) = heavy_pub(id, 0, 0) else {
+            unreachable!()
+        };
+        // 200k NFC characters, 1.2 MB exact NFD source: valid under the canonical text budget,
+        // but over the optional cache's 1 MiB entry limit.
+        publication.document =
+            crate::document::default_document(&"a\u{0306}\u{0301}\n".repeat(200_000));
+        Snapshot::Publication(publication)
+    }
+
+    #[test]
+    fn canonical_cache_weight_counts_exact_source_without_line_allocations() {
+        let empty = heavy_pub("source", 0, 0);
+        let Snapshot::Publication(mut publication) = empty.clone() else {
+            unreachable!()
+        };
+        let raw = "Vie\u{0323}\u{0302}t\r\n\n \t\n";
+        publication.document = crate::document::default_document(raw);
+        assert_eq!(
+            super::snapshot_weight_bytes(&Snapshot::Publication(publication)),
+            super::snapshot_weight_bytes(&empty) + raw.len()
+        );
+        assert!(super::snapshot_weight_bytes(&heavy_pub("tiny", 30_000, 1)) < 100_000);
     }
 
     #[test]
     fn over_budget_snapshot_reads_cleanly_without_retention_or_live_view_or_cursor_loss() {
         use crate::read_lifecycle::{Intent, PageChain, ReadOwner};
 
-        // 30_000 blocks x 1-char line (> 1 MiB structural proxy, similar to tiny_blocks-30k).
-        let huge = heavy_pub("huge-blocks", 30_000, 1);
+        let huge = oversized_pub("huge-source");
         let huge_weight = super::snapshot_weight_bytes(&huge);
         assert!(huge_weight > super::READ_CACHE_BUDGET.max_entry_bytes.unwrap());
 
@@ -2041,7 +2055,7 @@ mod tests {
 
         let mut c = Coordinator::new(Policy::V1);
         let active_key = PublicKey::Reader("active".into());
-        let huge_key = PublicKey::Reader("huge-blocks".into());
+        let huge_key = PublicKey::Reader("huge-source".into());
         c.follow_seed(active_key.clone(), sample_pub("active", "r1"), 0.0, 0.0);
 
         // Over-budget work still loads, finishes, and renders while mounted.
@@ -2361,7 +2375,7 @@ mod tests {
             panic!();
         };
         c.cancel_waiter(&cancel_k, waiter_id);
-        let huge = heavy_pub("w-cancel-huge", 30_000, 1);
+        let huge = oversized_pub("w-cancel-huge");
         c.finish(
             cancel_k.clone(),
             cancel_eff.fetches[0].1,
@@ -2412,9 +2426,7 @@ mod tests {
     #[test]
     #[ignore = "AC-01/AC-02 #237 corpus and A/B/C retention measurement"]
     fn measure_237_corpus_and_retention_tradeoff() {
-        use crate::contract::{
-            BlockDto, DocumentDto, PublicTagDto, ReaderResponse, WorkCard, WorkFilters,
-        };
+        use crate::contract::{DocumentDto, PublicTagDto, ReaderResponse, WorkCard, WorkFilters};
         use std::io::{self, Write};
         use std::time::Instant;
         use unicode_normalization::UnicodeNormalization;
@@ -2474,12 +2486,11 @@ mod tests {
                 vec![chars.iter().collect()]
             };
             let block_lines = if shape == "poem_tabs" { 4 } else { 1 };
-            DocumentDto {
-                schema_version: 1,
-                blocks: lines
+            crate::document::default_document(
+                &lines
                     .chunks(block_lines)
-                    .map(|chunk| BlockDto {
-                        lines: chunk
+                    .map(|chunk| {
+                        chunk
                             .iter()
                             .map(|s| {
                                 if shape == "vi_nfd" {
@@ -2488,10 +2499,12 @@ mod tests {
                                     s.clone()
                                 }
                             })
-                            .collect(),
+                            .collect::<Vec<String>>()
+                            .join("\n")
                     })
-                    .collect(),
-            }
+                    .collect::<Vec<_>>()
+                    .join("\n\n"),
+            )
         }
 
         fn wrap_pub(id: &str, doc: DocumentDto) -> Snapshot {
@@ -2531,19 +2544,13 @@ mod tests {
                             .iter()
                             .map(|t| t.tag_id.len() + t.facet.len() + t.label.len() + t.slug.len())
                             .sum::<usize>();
-                    let blocks = p.document.blocks.len();
-                    let lines: usize = p.document.blocks.iter().map(|b| b.lines.len()).sum();
-                    let doc_utf8: usize = p
-                        .document
-                        .blocks
-                        .iter()
-                        .flat_map(|b| &b.lines)
-                        .map(|s| s.len())
-                        .sum();
+                    // Rendered block count is diagnostic only: the retained DTO is one string.
+                    let blocks = crate::document::paragraphs(&p.document.source).len();
+                    let doc_utf8 = p.document.source.len();
                     let utf8 = meta + doc_utf8;
-                    let wasm32_proxy = utf8 + 256 + blocks * 20 + lines * 28 + p.tags.len() * 64;
-                    let native64_proxy = utf8 + 512 + blocks * 40 + lines * 48 + p.tags.len() * 128;
-                    let logical_proxy = utf8 + 220 + blocks * 14 + lines * 3 + p.tags.len() * 80;
+                    let wasm32_proxy = utf8 + 256 + 28 + p.tags.len() * 64;
+                    let native64_proxy = utf8 + 512 + 48 + p.tags.len() * 128;
+                    let logical_proxy = utf8 + 220 + 28 + p.tags.len() * 80;
                     (utf8, logical_proxy, wasm32_proxy, native64_proxy, blocks)
                 }
                 Snapshot::Works(w) => {
@@ -2618,12 +2625,7 @@ mod tests {
         let list20 = make_list(20);
         let baseline_pub = wrap_pub(
             "00000000-0000-4000-8000-000000000001",
-            DocumentDto {
-                schema_version: 1,
-                blocks: vec![BlockDto {
-                    lines: vec!["Một dòng công khai dùng riêng cho kiểm thử #100.".into()],
-                }],
-            },
+            crate::document::default_document("Một dòng công khai dùng riêng cho kiểm thử #100."),
         );
         for (name, snap) in [
             ("list_12_cards", list12),
@@ -2719,14 +2721,9 @@ mod tests {
                     .map(|i| {
                         wrap_pub(
                             &format!("234-{i}"),
-                            DocumentDto {
-                                schema_version: 1,
-                                blocks: vec![BlockDto {
-                                    lines: vec![
-                                        "Một dòng công khai dùng riêng cho kiểm thử #100.".into(),
-                                    ],
-                                }],
-                            },
+                            crate::document::default_document(
+                                "Một dòng công khai dùng riêng cho kiểm thử #100.",
+                            ),
                         )
                     })
                     .collect(),

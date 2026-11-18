@@ -98,26 +98,24 @@ tâm dọc, vùng chữ bằng canvas, native type-ahead và disabled/invalid/fo
 LTR/RTL, 320/390/834/1024/1440 × hai theme × chữ100/200; kiểm hit target click-through, native focus/Tab/type-ahead, AX name và
 invalid/disabled/forced-colors. Popup OS và touch thực cần evidence riêng.
 
-Nguồn văn bản có định dạng và tương thích v1 [#255](document-source-format.md): pure domain
-`services/vink-app/src/domain/source.rs` (`DocumentSource`, `StoredDocument`, `FormatCapability`)
-và `ContentHash::of_source_v2` / `RevisionContentV2`; reader adapter cô lập
-`read_document_envelope` trong `apps/vink-web/src/document.rs`; PG scratch test
-`document_source_compat` ([spec](../architecture/document-source-format.md)). `SCHEMA_VERSION`
-vẫn là `1`; `VDR-DOCUMENT-SOURCE-FORMAT@r1` và `VDR-CONTENT-STORAGE@r1` đều `PENDING`, chưa bật
-writer v2 hay migration bảng sản xuất.
-Đây là component/sample, chưa có picker hoặc conversion trong Bàn viết. Contract/source/hash
+Document canonical [#255](document-source-format.md): một shape không version
+`{format: "default" | "markdown", source}` với source nguyên văn, một `ContentHash::of`
+(`vink-document-content`), migration cutover `20261122000000` (fail-closed khi còn revision cũ —
+[lịch sử bất biến](../architecture/document-source-format.md#lịch-sử-bất-biến)) và
+`VDR-DOCUMENT-SOURCE-FORMAT@r2` **ACCEPTED**. Bàn viết soạn `default`; Markdown lưu được qua API
+(nháp/snapshot riêng tư) nhưng bị chặn công khai (`format_not_publishable`) đến #264.
+Selector #262 vẫn là component/sample, chưa có picker hoặc conversion trong Bàn viết. Contract/source/hash
 #255, title #263, provider #256 và Reader #264 vẫn là prerequisite của consumer thật.
 [LayoutSpec + capability boundary](../design/editor-format-picker-262.md),
 [bằng chứng thực chạy](evidence/editor-format-picker-262/README.md).
 
-#263 có [owner title/corpus](../architecture/editor-title-authority.md) độc lập:
-11 ca v1 tại `application::tests::title_authority::legacy_v1_title_authority_corpus`
-bảo vệ tên riêng qua application recording store và revision validation/hash; đối soát
-17/11/2026 pin document v1 độc lập với `SCHEMA_VERSION` và thêm ca 200 ký tự nhập NFD
-([evidence](evidence/reconcile-pr267-271/README.md)).
-30 ca Markdown là oracle đề xuất, extraction/differential **NOT_RUN**; chưa có parser,
-format-aware save hoặc title UI. [Evidence và resume](evidence/editor-title-263/README.md)
-tách regression v1 khỏi AC tích hợp phụ thuộc #255/#256/#264.
+#263 [title theo định dạng](../architecture/editor-title-authority.md): Mặc định dùng tên riêng,
+Markdown dùng H1 đầu tiên của AST CommonMark (`pulldown-cmark`, không extension), vật chất hóa trong
+cùng save/CAS; snapshot giữ title của source đã capture. Corpus `default.json` (12 ca) và
+`markdown.json` (30 ca) chạy qua domain/application. Sáu test PostgreSQL
+(`canonical_document::*`) kiểm save/CAS, snapshot, schema và migration/backout; không phải
+một lượt replay toàn bộ corpus qua PostgreSQL.
+Differential Rust/TS `NOT_APPLICABLE` cho đến khi #256 có parser phía client.
 
 
 Lõi phân loại tác phẩm (chưa có điểm vào người dùng) thêm ngày 08/11/2026 trên nền `6c97917` cho
@@ -297,7 +295,7 @@ serializer, `Vink<PgStore>`, router SSR và phase CDP `document-budget`. Regress
 `tests/postgres/draft_http_budget.rs`: cap riêng draft PUT, client corpus, exact readback/hash,
 cap ±1 (Content-Length/chunked), malformed, quyền/CAS và non-save route giữ cap cũ.
 Phase browser giờ yêu cầu tiny_blocks200k lưu thành công; test opt-in `draft_http_budget_browser`
-chạy ba corpus chọn lọc cùng phase, kiểm full buffer sau 422/409 và title trim.
+chạy ba corpus chọn lọc cùng phase, kiểm source/NFD và title trim trên request thật, toàn văn sau 422/409. Cận DTO canonical là 4.199.232 byte.
 Đo scalar/UTF-8/JSON/TOAST/HTML/DOM riêng, history 1/10/100 và pglz/LZ4 trong database scratch.
 Measurement v2 restore baseline trước từng app-save sample; regression PostgreSQL không ignored
 kiểm full content/version sau commit và hai negative controls bắt nhầm changed/no-op. Raw v1

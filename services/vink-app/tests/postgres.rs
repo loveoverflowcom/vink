@@ -18,7 +18,7 @@ use tower::ServiceExt;
 use uuid::Uuid;
 use vink_app::application::{DraftError, SaveDraft, Vink};
 use vink_app::dev_seed;
-use vink_app::domain::document::{BlockData, Document, DocumentData, SCHEMA_VERSION, Title};
+use vink_app::domain::document::{Document, DocumentData, DocumentFormat, Title, TitledDocument};
 use vink_app::domain::draft::DraftVersion;
 use vink_app::domain::ids::{PrincipalId, WorkId};
 use vink_app::domain::revision::RevisionContent;
@@ -32,6 +32,8 @@ const ORIGIN: &str = "http://127.0.0.1:3000";
 mod abuse;
 #[path = "postgres/author_works.rs"]
 mod author_works;
+#[path = "postgres/canonical_document.rs"]
+mod canonical_document;
 #[path = "postgres/commit_fence.rs"]
 mod commit_fence;
 #[path = "postgres/conditional_reads.rs"]
@@ -46,8 +48,6 @@ mod discussion;
 mod document_budget;
 #[path = "support/document_budget.rs"]
 mod document_corpus;
-#[path = "postgres/document_source_compat.rs"]
-mod document_source_compat;
 #[path = "postgres/draft_http_budget.rs"]
 mod draft_http_budget;
 #[path = "postgres/drafts.rs"]
@@ -89,25 +89,39 @@ fn other() -> Option<PrincipalId> {
     principal(dev_seed::OTHER_PRINCIPAL)
 }
 
+/// A default document whose lines are joined by `\n` and stanzas by one blank line.
 fn doc(blocks: &[&[&str]]) -> DocumentData {
+    source("default", &stanzas(blocks))
+}
+
+fn stanzas(blocks: &[&[&str]]) -> String {
+    blocks
+        .iter()
+        .map(|lines| lines.join("\n"))
+        .collect::<Vec<_>>()
+        .join("\n\n")
+}
+
+fn source(format: &str, source: &str) -> DocumentData {
     DocumentData {
-        schema_version: SCHEMA_VERSION,
-        blocks: blocks
-            .iter()
-            .map(|lines| BlockData {
-                lines: lines.iter().map(|l| l.to_string()).collect(),
-            })
-            .collect(),
+        format: format.into(),
+        source: source.into(),
     }
 }
 
+/// A default document saved with its separate title.
 fn save(work_id: WorkId, expected_version: i64, title: &str, document: DocumentData) -> SaveDraft {
     SaveDraft {
         work_id,
         expected_version,
-        title: title.into(),
+        title: Some(title.into()),
         document,
     }
+}
+
+/// A default document with its title, as a store would build it.
+fn titled(title: &str, document: DocumentData) -> TitledDocument {
+    TitledDocument::author(Document::parse(document).unwrap(), Some(title)).unwrap()
 }
 
 // Lock-wait helpers for race tests (shared by the taxonomy and discussion suites).
@@ -168,8 +182,59 @@ async fn wait_blocked(pool: &PgPool, n: i64) {
 }
 
 async fn seeded(pool: &PgPool) -> Vink<PgStore> {
-    dev_seed::apply(pool).await.unwrap();
+    seed(pool).await;
     Vink::new(PgStore::new(pool.clone()))
+}
+
+/// The canonical document cutover (#255). Upgrade tests of older migrations stop before it.
+const CANONICAL_DOCUMENT_MIGRATION: i64 = 20_261_122_000_000;
+
+async fn before_cutover(pool: &PgPool) -> bool {
+    let applied: bool =
+        sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM _sqlx_migrations WHERE version = $1)")
+            .bind(CANONICAL_DOCUMENT_MIGRATION)
+            .fetch_one(pool)
+            .await
+            .unwrap();
+    !applied
+}
+
+/// The dev-seed sample. On a schema older than the canonical cutover this writes the rows exactly
+/// as binaries of that time did (retired `{schema_version, blocks}` shape, v1 content hash); the
+/// current runtime never reads that shape, so such tests check older migrations at SQL level.
+async fn seed(pool: &PgPool) {
+    if before_cutover(pool).await {
+        sqlx::raw_sql(include_str!("support/pre_cutover_seed.sql"))
+            .execute(pool)
+            .await
+            .unwrap();
+    } else {
+        dev_seed::apply(pool).await.unwrap();
+    }
+}
+
+/// Applies every pending migration older than the canonical cutover, then proves the cutover
+/// itself refuses this database while its immutable pre-cutover revisions exist.
+async fn upgrade_before_cutover(pool: &PgPool) -> vink_app::persistence::MigrationReport {
+    use sqlx::migrate::Migrator;
+    let all_below: Vec<_> = vink_app::persistence::MIGRATOR
+        .migrations
+        .iter()
+        .filter(|m| m.version < CANONICAL_DOCUMENT_MIGRATION)
+        .cloned()
+        .collect();
+    let report = vink_store_postgres::migrate(pool, &Migrator::with_migrations(all_below))
+        .await
+        .unwrap();
+    let revisions: i64 = sqlx::query_scalar("SELECT count(*) FROM revisions")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    if revisions > 0 {
+        let refused = vink_app::persistence::migrate(pool).await.unwrap_err();
+        assert!(refused.to_string().contains("cutover blocked"), "{refused}");
+    }
+    report
 }
 
 fn sample_work() -> WorkId {
@@ -220,9 +285,9 @@ async fn confirmed_save_survives_a_new_connection_pool(pool: PgPool) {
         .await
         .unwrap();
     assert_eq!(loaded.version.get(), 2);
-    assert_eq!(loaded.title.as_str(), "Nháp");
+    assert_eq!(loaded.content.title().as_str(), "Nháp");
     assert_eq!(
-        loaded.document.to_data(),
+        loaded.content.document().to_data(),
         doc(&[&["Dòng một,", "dòng hai."], &["Đoạn sau."]])
     );
 }
@@ -231,8 +296,8 @@ async fn confirmed_save_survives_a_new_connection_pool(pool: PgPool) {
 async fn empty_untitled_working_draft_can_be_saved_and_loaded(pool: PgPool) {
     let vink = seeded(&pool).await;
     let draft = vink.create_draft(author()).await.unwrap();
-    assert!(draft.title.is_empty());
-    assert_eq!(draft.document.to_data(), doc(&[]));
+    assert!(draft.content.title().is_empty());
+    assert_eq!(draft.content.document().to_data(), doc(&[]));
     let saved = vink
         .save_draft(author(), save(draft.work_id, 1, "  ", doc(&[])))
         .await
@@ -240,8 +305,8 @@ async fn empty_untitled_working_draft_can_be_saved_and_loaded(pool: PgPool) {
     assert_eq!(saved.version.get(), 2);
     let loaded = vink.load_draft(author(), draft.work_id).await.unwrap();
     assert_eq!(loaded.version.get(), 2);
-    assert_eq!(loaded.title.as_str(), "");
-    assert_eq!(loaded.document.to_data(), doc(&[]));
+    assert_eq!(loaded.content.title().as_str(), "");
+    assert_eq!(loaded.content.document().to_data(), doc(&[]));
     assert_eq!(loaded.updated_at, saved.updated_at);
     assert_eq!(
         vink.publication(draft.work_id).await,
@@ -270,7 +335,7 @@ async fn another_actor_cannot_read_list_or_write_a_private_draft(pool: PgPool) {
 
     let untouched = vink.load_draft(author(), work).await.unwrap();
     assert_eq!(untouched.version, DraftVersion::FIRST);
-    assert_eq!(untouched.title.as_str(), dev_seed::SAMPLE_TITLE);
+    assert_eq!(untouched.content.title().as_str(), dev_seed::SAMPLE_TITLE);
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
@@ -300,8 +365,11 @@ async fn stale_expected_version_conflicts_without_writing(pool: PgPool) {
     );
     let stored = vink.load_draft(author(), work).await.unwrap();
     assert_eq!(stored.version.get(), 2);
-    assert_eq!(stored.title.as_str(), "Tab A");
-    assert_eq!(stored.document.to_data(), doc(&[&["bản của tab A"]]));
+    assert_eq!(stored.content.title().as_str(), "Tab A");
+    assert_eq!(
+        stored.content.document().to_data(),
+        doc(&[&["bản của tab A"]])
+    );
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
@@ -342,8 +410,8 @@ async fn concurrent_saves_of_one_version_have_exactly_one_winner(pool: PgPool) {
     assert_eq!(winners.len(), 1, "exactly one save may apply");
     let stored = vink.load_draft(author(), work).await.unwrap();
     assert_eq!(stored.version.get(), 2);
-    assert_eq!(stored.title.as_str(), winners[0]);
-    assert_eq!(stored.document.to_data(), doc(&[&[&winners[0]]]));
+    assert_eq!(stored.content.title().as_str(), winners[0]);
+    assert_eq!(stored.content.document().to_data(), doc(&[&[&winners[0]]]));
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
@@ -358,13 +426,16 @@ async fn vietnamese_text_lines_and_stanzas_round_trip(pool: PgPool) {
         ],
         &["Khổ hai — một dòng."],
     ]);
+    let input_copy = input.clone();
     vink.save_draft(author(), save(draft.work_id, 1, "Thử dấu", input))
         .await
         .unwrap();
     let stored = vink.load_draft(author(), draft.work_id).await.unwrap();
-    assert_eq!(
-        stored.document.to_data(),
-        doc(&[
+    // The source is lossless: the combining marks stay decomposed (no NFC on save).
+    assert_eq!(stored.content.document().to_data(), input_copy);
+    assert_ne!(
+        stored.content.document().source(),
+        stanzas(&[
             &["Thuở ấy, trăng còn non,", "    gió đầu ngõ ỹ ỷ ữ ợ Đ."],
             &["Khổ hai — một dòng."],
         ])
@@ -383,13 +454,13 @@ async fn public_read_serves_the_published_snapshot_not_the_draft(pool: PgPool) {
     .unwrap();
 
     let public = vink.publication(work).await.unwrap();
-    assert_eq!(public.title.as_str(), dev_seed::SAMPLE_TITLE);
+    assert_eq!(public.content.title().as_str(), dev_seed::SAMPLE_TITLE);
     let lines: Vec<String> = public
-        .document
-        .to_data()
-        .blocks
-        .into_iter()
-        .flat_map(|b| b.lines)
+        .content
+        .document()
+        .source()
+        .lines()
+        .map(str::to_owned)
         .collect();
     assert!(lines.iter().any(|l| l == dev_seed::PUBLISHED_STANZAS[0][0]));
     assert!(
@@ -452,7 +523,7 @@ impl IdentityResolver for HeaderIdentity {
 }
 
 async fn app(pool: &PgPool) -> Router {
-    dev_seed::apply(pool).await.unwrap();
+    seed(pool).await;
     router(AppState::new(
         Vink::new(PgStore::new(pool.clone())),
         Arc::new(HeaderIdentity),
@@ -526,7 +597,7 @@ async fn api_distinguishes_outcomes_and_keeps_drafts_private(pool: PgPool) {
     let request = json!({
         "expected_version": 1,
         "title": "Sửa qua API",
-        "document": { "schema_version": 1, "blocks": [{ "lines": ["Một dòng."] }] }
+        "document": { "format": "default", "source": "Một dòng." }
     });
     let (status, _, body) = call(
         &app,
@@ -561,7 +632,7 @@ async fn api_distinguishes_outcomes_and_keeps_drafts_private(pool: PgPool) {
     let invalid = json!({
         "expected_version": 2,
         "title": "x",
-        "document": { "schema_version": 1, "blocks": [{ "lines": ["a\nb"] }] }
+        "document": { "format": "default", "source": "a\u{0}b" }
     });
     let (status, _, body) = call(&app, "PUT", &path, author, Some(ORIGIN), Some(invalid)).await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
@@ -584,47 +655,56 @@ async fn invalid_http_save_input_never_changes_the_durable_draft(pool: PgPool) {
     let valid = json!({
         "expected_version": 1,
         "title": "Đợi trăng",
-        "document": { "schema_version": 1, "blocks": [{ "lines": ["đêm xuống"] }] }
+        "document": { "format": "default", "source": "đêm xuống" }
     });
     let mut cases = Vec::new();
     for (key, value, field) in [
         ("expected_version", json!(0), "expected_version"),
         ("title", json!("Đợi\ntrăng"), "title"),
+        // A Markdown document never takes a client title.
         (
             "document",
-            json!({ "schema_version": 2, "blocks": [] }),
+            json!({ "format": "markdown", "source": "# Đợi trăng" }),
+            "title",
+        ),
+        (
+            "document",
+            json!({ "format": "asciidoc", "source": "= Tên" }),
             "document",
         ),
         (
             "document",
-            json!({ "schema_version": 1, "blocks": [{ "lines": [] }] }),
+            json!({ "format": "html", "source": "<b>x</b>" }),
             "document",
         ),
         (
             "document",
-            json!({ "schema_version": 1, "blocks": [{ "lines": ["đêm", " "] }] }),
+            json!({ "format": "default", "source": "đêm\u{0}xuống" }),
             "document",
         ),
         (
             "document",
-            json!({ "schema_version": 1, "blocks": [{ "lines": ["đêm\nxuống"] }] }),
+            json!({ "format": "default", "source": "đêm\u{2028}" }),
             "document",
         ),
         (
             "document",
-            json!({ "schema_version": 1, "blocks": [{ "lines": ["ư".repeat(200_001)] }] }),
+            json!({ "format": "default", "source": "ư".repeat(200_001) }),
             "document",
         ),
+        // The retired shape is not read anywhere, including here.
         (
             "document",
-            json!({ "schema_version": 1, "blocks": {} }),
+            json!({ "schema_version": 1, "blocks": [] }),
             "body",
         ),
+        ("document", json!({ "format": "default" }), "body"),
         (
             "document",
-            json!({ "schema_version": 1, "blocks": [], "html": "<b>not a document</b>" }),
+            json!({ "format": "default", "source": "", "html": "<b>x</b>" }),
             "body",
         ),
+        ("title", json!(null), "title"),
     ] {
         let mut input = valid.clone();
         input[key] = value;
@@ -678,10 +758,10 @@ async fn server_html_has_public_content_and_never_private_drafts(pool: PgPool) {
 
     // An immutable revision is still private until the publication pointer selects it.
     let unpublished = Uuid::now_v7();
-    let revision = RevisionContent::new(
-        Title::parse("Snapshot chưa công khai").unwrap(),
-        Document::parse(doc(&[&["Văn bản chỉ có trong snapshot chưa công khai."]])).unwrap(),
-    )
+    let revision = RevisionContent::new(titled(
+        "Snapshot chưa công khai",
+        doc(&[&["Văn bản chỉ có trong snapshot chưa công khai."]]),
+    ))
     .unwrap();
     sqlx::query(
         "INSERT INTO revisions (id, work_id, title, document, content_hash, created_by)
@@ -690,7 +770,7 @@ async fn server_html_has_public_content_and_never_private_drafts(pool: PgPool) {
     .bind(unpublished)
     .bind(work)
     .bind(revision.title().as_str())
-    .bind(sqlx::types::Json(revision.document().to_data()))
+    .bind(sqlx::types::Json(revision.content().document().to_data()))
     .bind(revision.hash().as_str())
     .bind(dev_seed::SAMPLE_AUTHOR)
     .execute(&pool)

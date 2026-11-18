@@ -1,6 +1,6 @@
 use super::*;
 use crate::domain::{
-    document::{Document, Title},
+    document::{Document, DocumentFormat, TitledDocument},
     ids::{PrincipalId, RevisionId, WorkId},
     publication::{
         AuthorOutcome, IntentGeneration, Moderation, PointerEffect, ReviewOutcome,
@@ -18,7 +18,10 @@ fn use_case_calls_the_real_core_for_r1_r2_withdrawal_and_stale_commands() {
     let work = WorkId::from_uuid(uuid::Uuid::from_u128(1));
     let r1 = RevisionId::from_uuid(uuid::Uuid::from_u128(1));
     let r2 = RevisionId::from_uuid(uuid::Uuid::from_u128(2));
-    let content = RevisionContent::new(Title::parse("Mưa").unwrap(), Document::empty()).unwrap();
+    let content = RevisionContent::new(
+        TitledDocument::author(Document::empty(DocumentFormat::Default), Some("Mưa")).unwrap(),
+    )
+    .unwrap();
     let initial = Publication::new(work, actor.principal);
     let save = |id| {
         AuthorCommand::SaveSnapshot(Snapshot {
@@ -127,7 +130,10 @@ fn read_planner_composes_access_and_discussion_visibility_truth_table() {
     let stranger = PrincipalId::from_uuid(uuid::Uuid::from_u128(3));
     let work = WorkId::from_uuid(uuid::Uuid::from_u128(1));
     let r1 = RevisionId::from_uuid(uuid::Uuid::from_u128(1));
-    let content = RevisionContent::new(Title::parse("Mưa").unwrap(), Document::empty()).unwrap();
+    let content = RevisionContent::new(
+        TitledDocument::author(Document::empty(DocumentFormat::Default), Some("Mưa")).unwrap(),
+    )
+    .unwrap();
 
     let initial = Publication::new(work, author_actor.principal);
     let saved = plan_publication(

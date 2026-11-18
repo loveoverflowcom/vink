@@ -5,14 +5,20 @@ ngày 02/11/2026. Giữ hành vi lưu nháp/đọc công khai; không triển kh
 moderation, auth hay schema mới. WR-01–WR-03, PUB-02 và INV-02/05/08 là các yêu cầu liên quan;
 phần đã có chỉ bảo đảm lưu có version, owner và tách bản đọc, không hoàn tất các yêu cầu đó.
 
+**Cập nhật #255/#263 (17/11/2026):** luồng HOW, bất biến và hash dưới đây mô tả document
+canonical hiện tại. Mục WHY và bản ghi kiểm chứng RUST-CORE-01 giữ phạm vi lịch sử 02/11;
+[registry document](document-source-format.md) và [publication runtime](publication-runtime.md)
+sở hữu hiện trạng tích hợp mới hơn.
+
 ## HOW — dữ liệu đi qua đâu
 
 ```text
 PUT /api/v1/drafts/{work_id}
-  http::contract::SaveDraftRequest (i64, String, DocumentData chưa tin cậy)
+  http::contract::SaveDraftRequest (i64, Option<String>, DocumentData chưa tin cậy)
   → http::api::save_draft → application::SaveDraft (giữ nguyên input Rust)
   → Vink::save_draft
-      actor trước; DraftVersion → Title → Document (validate/NFC một lần)
+      actor trước; DraftVersion → Document (format + source nguyên văn)
+      → TitledDocument::author (title theo format: tên riêng hoặc H1 Markdown)
       → domain::draft::DraftChange (private fields, không Deserialize)
   → DraftStore::save_draft(owner, work_id, &change)
   → PgStore::save_draft → UPDATE working_drafts … FROM works
@@ -25,8 +31,9 @@ PUT /api/v1/drafts/{work_id}
 resolver phía server và trả `401` trước khi phân loại body lỗi. JSON chỉ tạo
 [`DocumentData`](../../services/vink-app/src/domain/document.rs); việc deserialize thành công
 không đồng nghĩa nội dung hợp lệ. [`Vink::save_draft`](../../services/vink-app/src/application/mod.rs)
-giữ thứ tự lỗi cũ. [`DraftChange`](../../services/vink-app/src/domain/draft.rs) chỉ nhận
-`DraftVersion`, `Title`, `Document` đã hợp lệ; không có raw constructor, setter hoặc serde bypass.
+validate document trước title vì format quyết định title authority (#263).
+[`DraftChange`](../../services/vink-app/src/domain/draft.rs) chỉ nhận `DraftVersion` và
+`TitledDocument` đã hợp lệ; không có raw constructor, setter hoặc serde bypass.
 Nó **không** xác nhận ownership, không gắn nội dung với work và không phải quyền ghi.
 
 [`PgStore`](../../services/vink-app/src/persistence/postgres.rs) vẫn kiểm owner/version trong
@@ -37,7 +44,8 @@ xung đột có thể đã tiến thêm do bên ghi khác; mỗi lần thử l�
 Đường đọc độc lập: `PublicationStore::{list_publications, publication}` → `publications` →
 `revisions` cùng work → `PublicWork`/summary. Không JOIN `working_drafts`. Revision có trigger
 chặn UPDATE và con trỏ có foreign key `(work_id, revision_id)`. Lưu nháp không ghi revision,
-không đổi pointer; chỉ seed local hiện tạo publication. `WorkingDraft` ≠ `RevisionContent` ≠
+không đổi pointer; đường gửi duyệt/công khai hiện thuộc [publication runtime](publication-runtime.md).
+`WorkingDraft` ≠ `RevisionContent` ≠
 `PublicWork`; save ≠ submit, Approved ≠ Published.
 
 ## WHY — tái dùng thay vì dựng framework
@@ -72,21 +80,21 @@ parser stored hash vì chưa có consumer đọc `content_hash` vào `ContentHas
 | Bất biến / lỗi | Owner và kết quả không đổi | Bằng chứng kiểm |
 | --- | --- | --- |
 | Nháp rỗng/chưa đặt tên hợp lệ; revision cần title | `Document::empty`, `Title::parse`, `RevisionContent::new` | Unit + PostgreSQL empty round-trip |
-| NFC/NFD tiếng Việt, Đ/đ, đoạn/khổ/dòng/thụt lề/tab | Domain normalize NFC, không case-fold hoặc flatten; whitespace trong dòng được giữ | Literal expected documents + PG round-trip |
+| NFC/NFD tiếng Việt, Đ/đ, đoạn/khổ/dòng/thụt lề/tab, CRLF, dòng trống | Source lưu nguyên văn (không NFC, không gộp dòng); chỉ title và khóa tìm kiếm là projection NFC | Literal expected documents + PG round-trip |
 | Invalid version/title/document không vào store | Application boundary; `422 validation_failed`, field giữ nguyên | RecordingStore + HTTP/PG không đổi dữ liệu |
-| Malformed shape/unknown fields; unknown schema; quá dài | Deserialize raw shape hoặc domain reject; không thêm hạn chế mới | Unit + HTTP/PG `body` khác `document` |
+| Malformed shape/unknown fields; unknown/deferred format; quá dài | Deserialize raw shape hoặc domain reject; giới hạn raw byte và ký tự theo #255 | Unit + HTTP/PG `body` khác `document` |
 | Anonymous / foreign actor | `401` / `404` không tiết lộ draft | Application precedence + PG read/list/write |
 | Stale/concurrent save | `409`, không ghi; đúng một save của một version thắng | PG stale + 8 writer đồng thời, so title/document/version bền vững |
 | Storage unavailable / stored data invalid | `503` / `500`, không giả thành công | Application outcome tests, HTTP outage/contract tests |
 | Draft/snapshot chưa được trỏ không công khai | Chỉ pointer chọn snapshot | PG public API/list/SSR privacy + immutable/pointer constraints |
 
-Hash v1 giữ nguyên SHA-256 với domain separator `vink-revision-content-v1`, độ dài UTF-8 của
-title và mỗi dòng bằng u64 big-endian, số block rồi số dòng từng block cũng bằng u64 big-endian.
-Hash dùng title/document đã NFC, không phụ thuộc JSON formatting. Thay line boundary, stanza,
-case hay indentation phải đổi hash. Không đổi schema/format/hash persisted. Golden vector cố
-định cho title `Việt Đ/đ`, block `["Đêm xuống,", "  đợi trăng"]`, rồi `["đường xa."]` là
-`88bbbf2e34c3174e82d6a49388dddb70882a216e7ec3ba6b76eea165a49c36dd`; expected được tính
-độc lập từ literal canonical bytes, không từ helper production trong test.
+Content hash (#255) là SHA-256 với domain separator `vink-document-content`, rồi `format`, title
+hiệu lực (trim/NFC) và byte nguyên văn của `source`, mỗi trường có độ dài u64 big-endian; không phụ
+thuộc JSON formatting. Đổi format, line ending, dòng trống, thụt lề, case hay dạng Unicode của source
+đều đổi hash. Golden vector `default`/`Tên riêng`/`# Tên trong thân\nĐoạn sau.` là
+`f735c19566fdff2931d7a5944bb57882c4a915bd0fecb29f1d3c46119ed2c79b`, tính độc lập bằng Python.
+Hash v1 (`vink-revision-content-v1`, title/blocks NFC) đã bị thay; revision lưu trước cutover vẫn
+mang hash đó và chặn migration ([lịch sử bất biến](../architecture/document-source-format.md#lịch-sử-bất-biến)).
 
 ## Kiểm chứng và giới hạn
 
@@ -95,7 +103,7 @@ lệnh/lane. `verify quick` chạy thêm doctests compile-fail của literary co
 raw input cho validated type, deserialize vào type đó, sửa private field hoặc trộn loại ID.
 RecordingStore chỉ chứng minh application gọi port đúng; không thay bằng chứng PostgreSQL.
 
-Không đổi state/guard sản phẩm nên không tạo model Quint. Không sửa frontend/editor hoặc
+**Giới hạn của lượt RUST-CORE-01 ngày 02/11/2026:** không đổi state/guard sản phẩm nên không tạo model Quint. Không sửa frontend/editor hoặc
 chạy browser để tuyên bố IME/thị giác. Chưa có auth authority, submit/moderation/publish thật;
 seed publication và test resolver không chứng minh các quy trình đó. Kết quả lần chạy và
 giới hạn môi trường nằm trong [bản ghi kiểm chứng](literary-domain-verification.md).

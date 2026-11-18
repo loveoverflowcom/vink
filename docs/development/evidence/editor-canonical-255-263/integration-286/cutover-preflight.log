@@ -1,0 +1,16 @@
+valid fd5a922 accepted
+valid integrated accepted
+empty-document fd5a922 accepted
+empty-document integrated accepted
+empty-block fd5a922 accepted
+empty-block integrated refused
+nbsp fd5a922 accepted
+nbsp integrated refused
+bare-cr fd5a922 accepted
+bare-cr integrated refused
+nfd fd5a922 accepted
+nfd integrated refused
+padded-title fd5a922 accepted
+padded-title integrated refused
+over-limit fd5a922 accepted
+over-limit integrated refused

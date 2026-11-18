@@ -726,7 +726,7 @@ async fn run_down(pool: &PgPool) -> Result<(), sqlx::Error> {
 #[sqlx::test(migrations = false)]
 async fn upgrade_backfills_paired_state_for_old_pointers(pool: PgPool) {
     use sqlx::migrate::Migrator;
-    use vink_app::persistence::{MIGRATOR, migrate};
+    use vink_app::persistence::MIGRATOR;
 
     Migrator::with_migrations(
         MIGRATOR
@@ -754,7 +754,7 @@ async fn upgrade_backfills_paired_state_for_old_pointers(pool: PgPool) {
         .await
         .unwrap();
 
-    let report = migrate(&pool).await.unwrap();
+    let report = upgrade_before_cutover(&pool).await;
     assert_eq!(
         report.applied,
         vec![
@@ -813,42 +813,41 @@ async fn upgrade_backfills_paired_state_for_old_pointers(pool: PgPool) {
         Some(vink_app::domain::moderation::DecisionProvenance::LegacyBootstrap)
     );
     // Seeding the upgraded database again changes nothing.
-    dev_seed::apply(&pool).await.unwrap();
-    let withdrawn = vink
-        .set_private(
-            Some(PrincipalId::from_uuid(dev_seed::SAMPLE_AUTHOR)),
-            WorkId::from_uuid(dev_seed::SAMPLE_WORK),
-            "upgrade-private-1",
-            2,
-        )
+    seed(&pool).await;
+    assert_eq!(
+        row_count(&pool, "SELECT count(*) FROM publications").await,
+        1
+    );
+    // Withdrawing needs the full content loader, which reads only canonical documents (#255):
+    // commands on these pre-cutover rows wait for the authorized history migration.
+}
+
+async fn row_count(pool: &PgPool, sql: &str) -> i64 {
+    sqlx::query_scalar(sqlx::AssertSqlSafe(sql))
+        .fetch_one(pool)
         .await
-        .unwrap();
-    assert_eq!(withdrawn.outcome.as_str(), "made_private");
-    // A later seed never re-creates the pointer the author withdrew.
-    dev_seed::apply(&pool).await.unwrap();
-    let pointers: i64 = sqlx::query_scalar("SELECT count(*) FROM publications WHERE work_id = $1")
-        .bind(dev_seed::SAMPLE_WORK)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-    assert_eq!(pointers, 0);
+        .unwrap()
 }
 
 /// The down script backs out unused schema only: once an author command was accepted it refuses
 /// and leaves every row in place.
-#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+/// Runs on the schema just before the canonical document cutover (#255), whose own backout
+/// refuses once immutable revisions exist; the accepted command is the receipt the old binary wrote.
+#[sqlx::test(migrations = false)]
 async fn backout_refuses_after_an_author_command_and_drops_unused_schema(pool: PgPool) {
-    let vink = seeded(&pool).await;
-    let accepted = vink
-        .set_private(
-            Some(PrincipalId::from_uuid(dev_seed::SAMPLE_AUTHOR)),
-            WorkId::from_uuid(dev_seed::SAMPLE_WORK),
-            "backout-private-1",
-            2,
-        )
-        .await
-        .unwrap();
-    assert_eq!(accepted.generation.get(), 3);
+    upgrade_before_cutover(&pool).await;
+    seed(&pool).await;
+    sqlx::query(
+        "INSERT INTO work_publication_command_receipts
+                (actor_id, work_id, operation, command_key, payload_digest, outcome, generation)
+         VALUES ($1, $2, 'set_private', 'backout-private-1', decode(repeat('ab', 32), 'hex'),
+                 'made_private', 3)",
+    )
+    .bind(dev_seed::SAMPLE_AUTHOR)
+    .bind(dev_seed::SAMPLE_WORK)
+    .execute(&pool)
+    .await
+    .unwrap();
     let refusal = run_down(&pool).await.unwrap_err().to_string();
     assert!(refusal.contains("roll forward"), "{refusal}");
     let receipts: i64 =
@@ -983,7 +982,7 @@ async fn author_web_recovery_contract_on_real_rows(pool: PgPool) {
         let body = json!({
             "expected_version": version,
             "title": title,
-            "document": { "schema_version": 1, "blocks": [{ "lines": [format!("Dòng của {title}")] }] }
+            "document": { "format": "default", "source": format!("Dòng của {title}") }
         });
         async move {
             call(

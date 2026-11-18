@@ -10,7 +10,7 @@ export async function setup(page, args) {
       schema: 1, origin: location.origin, policy: 'public-snapshot-v1', key: { Reader: id },
       provenance: 'origin_response', validated_at_ms: Date.now(), payload: { kind: 'published', data: {
         work_id: id, revision_id: 'revision-1', title: 'Thơ mẫu', author_display_name: 'Tác giả mẫu',
-        published_at: '2026-11-15T00:00:00Z', tags: [], document: { schema_version: 1, blocks: [{ lines: ['Mưa '.repeat(length)] }] }
+        published_at: '2026-11-15T00:00:00Z', tags: [], document: { format: 'default', source: 'Mưa '.repeat(length) }
       }}
     });
     window.pageFixture = () => {
@@ -114,7 +114,7 @@ export async function publicStorage(page, { args, check, openPage }) {
       try {
         for (let i=0;i<12;i++) {
           const e = JSON.parse(fixture('quota-'+i,null,0));
-          e.payload.data.document.blocks[0].lines = [Array.from({length:13000},()=>crypto.randomUUID()).join('')];
+          e.payload.data.document.source = Array.from({length:13000},()=>crypto.randomUUID()).join('');
           if(await s.run({kind:'write',ticket:t,text:JSON.stringify(e)}) !== true) return true;
         }
         return false;

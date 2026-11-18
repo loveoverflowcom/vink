@@ -14,5 +14,4 @@ pub mod moderation_queue;
 pub mod principal;
 pub mod publication;
 pub mod revision;
-pub mod source;
 pub mod taxonomy;

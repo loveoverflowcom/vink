@@ -29,8 +29,8 @@ use vink_app::domain::taxonomy::{
     TagLabel, WorkTags,
 };
 use vink_app::persistence::{
-    MIGRATOR, SnapshotCapture, capture_metadata_snapshot, change_catalog, migrate,
-    reinstate_principal, suspend_principal,
+    MIGRATOR, SnapshotCapture, capture_metadata_snapshot, change_catalog, reinstate_principal,
+    suspend_principal,
 };
 
 use super::*;
@@ -178,11 +178,8 @@ async fn new_revision(conn: &mut PgConnection) -> Uuid {
             .fetch_one(&mut *conn)
             .await
             .unwrap();
-    let content = RevisionContent::new(
-        Title::parse(&format!("{raw_title} (bản sửa)")).unwrap(),
-        Document::parse(raw_document.0).unwrap(),
-    )
-    .unwrap();
+    let content =
+        RevisionContent::new(titled(&format!("{raw_title} (bản sửa)"), raw_document.0)).unwrap();
     sqlx::query(
         "INSERT INTO revisions (id, work_id, title, document, content_hash, created_by)
          SELECT $1, work_id, title || ' (bản sửa)', document, $3, created_by
@@ -358,7 +355,18 @@ async fn upgrade_keeps_existing_untagged_works_readable_without_backfill(pool: P
     previous.run(&pool).await.unwrap();
     assert_eq!(schema_state(&pool).await.unwrap(), SchemaState::Pending);
     let vink = seeded(&pool).await;
-    let untitled = vink.create_draft(author()).await.unwrap().work_id;
+    // An untitled work as the old binary created it (retired document shape).
+    let untitled = WorkId::from_uuid(Uuid::now_v7());
+    sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+        r#"INSERT INTO works (id, owner_id) VALUES ('{untitled}', '{author}');
+           INSERT INTO working_drafts (work_id, version, title, document)
+           VALUES ('{untitled}', 1, '', '{{"schema_version":1,"blocks":[]}}');"#,
+        untitled = untitled.as_uuid(),
+        author = dev_seed::SAMPLE_AUTHOR,
+    )))
+    .execute(&pool)
+    .await
+    .unwrap();
     // Read the old public state with SQL: today's public read needs today's schema.
     let before: (Uuid, String) = sqlx::query_as(
         "SELECT r.id, r.title FROM publications p
@@ -376,11 +384,12 @@ async fn upgrade_keeps_existing_untagged_works_readable_without_backfill(pool: P
         .unwrap();
 
     // Upgrade through the shared migration lifecycle.
-    let report = migrate(&pool).await.unwrap();
+    let report = upgrade_before_cutover(&pool).await;
     // This slice's migration first; later additive slices (the #97 audit) may follow.
     assert_eq!(report.applied.first(), Some(&TAXONOMY_MIGRATION));
     assert!(report.applied.iter().all(|v| *v >= TAXONOMY_MIGRATION));
-    assert_eq!(schema_state(&pool).await.unwrap(), SchemaState::Current);
+    // Current except the canonical document cutover, refused while the pre-cutover revision exists.
+    assert_eq!(schema_state(&pool).await.unwrap(), SchemaState::Pending);
 
     // Nothing was inferred or backfilled; old rows read as untagged.
     assert_eq!(rows(&pool, "work_draft_metadata").await, 0);
@@ -394,12 +403,8 @@ async fn upgrade_keeps_existing_untagged_works_readable_without_backfill(pool: P
     let public = vink.public_work_tags(sample_work()).await.unwrap();
     assert_eq!(public.revision_id.as_uuid(), before.0);
     assert!(public.tags.is_empty());
-    let read = vink.publication(sample_work()).await.unwrap();
-    assert_eq!(
-        (read.revision_id.as_uuid(), read.title.as_str()),
-        (before.0, before.1.as_str())
-    );
-    assert!(read.tags.is_empty());
+    // The full public read checks the canonical document and hash; pre-cutover rows are read
+    // with SQL above (the canonical runtime has no legacy reader).
     let after: String = sqlx::query_scalar("SELECT content_hash FROM revisions WHERE id = $1")
         .bind(dev_seed::SAMPLE_REVISION)
         .fetch_one(&pool)
@@ -949,7 +954,7 @@ async fn text_and_tag_saves_of_one_work_do_not_conflict(pool: PgPool) {
     assert_eq!(text.await.unwrap().unwrap().version.get(), 2);
     assert_eq!(metadata.await.unwrap().unwrap().version.get(), 2);
     let draft = vink.load_draft(author(), sample_work()).await.unwrap();
-    assert_eq!(draft.title.as_str(), "Nháp mới");
+    assert_eq!(draft.content.title().as_str(), "Nháp mới");
     assert_eq!(
         draft_state(&pool).await,
         (Some(2), slots(Some(TAN_VAN), &[KY_UC]))

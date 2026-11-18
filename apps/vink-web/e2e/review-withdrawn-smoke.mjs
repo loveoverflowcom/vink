@@ -40,7 +40,7 @@ export async function reviewWithdrawnPage(page, { args, check }) {
   const draft = await post(author, '/api/v1/drafts');
   check(draft.status === 201, 'the author creates a draft');
   const work = draft.body.work_id;
-  const saved = await api(author, `/api/v1/drafts/${work}`, { method: 'PUT', body: JSON.stringify({ expected_version: draft.body.version, title: TITLE, document: { schema_version: draft.body.document.schema_version, blocks: [{ lines: [LINE] }] } }) });
+  const saved = await api(author, `/api/v1/drafts/${work}`, { method: 'PUT', body: JSON.stringify({ expected_version: draft.body.version, title: TITLE, document: { format: draft.body.document.format, source: LINE } }) });
   check(saved.status === 200, 'the author saves the draft');
   const tags = await api(author, `/api/v1/drafts/${work}/tags`);
   const snapshot = await post(author, `/api/v1/works/${work}/snapshots`, { command_key: `o17-snapshot-${work}`, expected_draft_version: saved.body.version, expected_metadata_version: tags.body.version });
@@ -55,7 +55,7 @@ export async function reviewWithdrawnPage(page, { args, check }) {
   const queued = queue.body.find((c) => c.work_id === work && c.revision_id === revision);
   check(queued?.origin === 'automation_paused', 'a paused submission waits in the human queue');
   const detail = await api(admin, `/api/v1/moderation/works/cases/${queued.id}`);
-  check(detail.status === 200 && detail.body.document.blocks[0].lines[0] === LINE, 'the reviewer reads the exact submitted snapshot');
+  check(detail.status === 200 && detail.body.document.source === LINE, 'the reviewer reads the exact submitted snapshot');
   await page.goto(`${admin.base}/kiem-duyet/ca/${queued.id}`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('#case-claim')`, 'private case snapshot');
   check(await page.eval(`document.querySelector('.vk-moderation__snapshot')?.textContent.includes(${JSON.stringify(LINE)})`), 'the case UI renders the submitted snapshot');

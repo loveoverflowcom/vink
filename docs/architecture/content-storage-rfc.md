@@ -11,10 +11,10 @@ deliverable RFC/prototype giới hạn. `VDR-CONTENT-STORAGE@r1` vẫn `PENDING/
 snapshot registry `8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8`.
 Merge RFC hoặc đóng #231 không là signoff/adoption; các số sau giữ source đo lịch sử.
 
-#279 đã thêm [contract nguồn v2](document-source-format.md) dưới proposal PENDING riêng;
-writer/API/fixtures hiện vẫn v1. Raw A/B/C trong RFC này đo document v1, không qualification
-cho envelope/hash v2. Oracle corpus hiện hành giữ hash/bytes v1 sau refactor helper hex;
-nếu writer/encoding đổi về sau, phải đo lại gates B/C với workload mới trước adoption.
+#255 đã thay document v1 bằng [document canonical](document-source-format.md) `{format, source}`
+(proposal `VDR-DOCUMENT-SOURCE-FORMAT@r2` ACCEPTED). Raw A/B/C trong RFC này đo document v1 và là
+lịch sử; không qualification cho shape mới. Probe `content_storage_rfc.rs` đã port sang đoạn của
+source; phải đo lại gates B/C với workload mới trước adoption.
 
 
 Khi tác giả sửa bài đã đăng, người đọc tiếp tục thấy đúng bản đã công khai. Một transaction có

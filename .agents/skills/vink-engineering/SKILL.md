@@ -15,7 +15,7 @@ Do not copy Cantos runtime assumptions or create infrastructure to satisfy this 
 
 | Responsibility | Owner today |
 | --- | --- |
-| Pure rules (document v1, title, draft version, revision hash) | `services/vink-app/src/domain/` — no Axum, SQLx, Leptos or tokio imports |
+| Pure rules (canonical document `{format, source}`, format-aware title, draft version, content hash) | `services/vink-app/src/domain/` — no Axum, SQLx, Leptos or tokio imports |
 | Discussion decisions (two tiers, body, lifecycle, comments mode, permissions, visibility, idempotency, paging) | `services/vink-app/src/domain/discussion.rs` + `domain/discussion/`; [ADR](../../../docs/architecture/discussion-ownership.md), [registry](../../../docs/development/discussion-core.md) |
 | Literary endorsement decisions (LVE #73: work revision/root/reply, accepted order, receipts) | `services/vink-app/src/domain/endorsement.rs` + `domain/endorsement/`; [decision record](../../../docs/architecture/literary-endorsement.md), [registry](../../../docs/development/endorsement-core.md); use cases, routes and `PgStore` adapter: [runtime](../../../docs/development/literary-endorsement-runtime.md) |
 | Work taxonomy (#95: Vietnamese label/slug/search key, curated catalog, draft tags, metadata snapshot) | `services/vink-app/src/domain/taxonomy.rs` + `domain/taxonomy/`; [decision record](../../../docs/architecture/work-taxonomy.md), [registry](../../../docs/development/taxonomy-core.md); PostgreSQL adapter: [storage](../../../docs/development/taxonomy-postgres.md) (#96); catalog use cases, HTTP routes, `vink-app tag` and audit: [API](../../../docs/development/taxonomy-api.md) (#97) |

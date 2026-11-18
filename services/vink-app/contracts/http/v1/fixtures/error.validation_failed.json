@@ -1,7 +1,7 @@
 {
   "error": {
     "code": "validation_failed",
-    "message": "document: block 0 line 1 is blank; blank lines separate blocks",
+    "message": "document: line 2 contains a control or Unicode line/paragraph separator character",
     "field": "document"
   }
 }

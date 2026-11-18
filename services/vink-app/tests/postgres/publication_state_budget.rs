@@ -92,5 +92,5 @@ async fn publication_state_budget(pool: PgPool) {
     // Explicitly exercise shared corpus edit utility too; the benchmark itself changes only title.
     let mut sanity = corpus::corpus(corpus::SHAPES[0], 10);
     corpus::edit(&mut sanity, 5);
-    assert_eq!(sanity.blocks[0].lines[0].chars().count(), 10);
+    assert_eq!(sanity.source.chars().count(), 10);
 }

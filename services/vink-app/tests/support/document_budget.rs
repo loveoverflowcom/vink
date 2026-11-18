@@ -1,6 +1,6 @@
 //! Synthetic, seeded corpus shared by the pure regression and the opt-in PG/browser probe.
 use unicode_normalization::UnicodeNormalization;
-use vink_app::domain::document::{BlockData, DocumentData, SCHEMA_VERSION};
+use vink_app::domain::document::DocumentData;
 
 pub const SEED: u64 = 229;
 pub const SHAPES: [&str; 7] = [
@@ -46,40 +46,49 @@ pub fn corpus(shape: &str, scalars: usize) -> DocumentData {
         vec![chars.iter().collect()]
     };
     let block_lines = if shape == "poem_tabs" { 4 } else { 1 };
+    // Lines joined by `\n`, stanzas/paragraphs separated by one blank line; the default format
+    // keeps every byte, so `vi_nfd` stays decomposed.
+    let source = lines
+        .chunks(block_lines)
+        .map(|lines| {
+            lines
+                .iter()
+                .map(|s| {
+                    if shape == "vi_nfd" {
+                        s.nfd().collect()
+                    } else {
+                        s.clone()
+                    }
+                })
+                .collect::<Vec<String>>()
+                .join("\n")
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n");
     DocumentData {
-        schema_version: SCHEMA_VERSION,
-        blocks: lines
-            .chunks(block_lines)
-            .map(|lines| BlockData {
-                lines: lines
-                    .iter()
-                    .map(|s| {
-                        if shape == "vi_nfd" {
-                            s.nfd().collect()
-                        } else {
-                            s.clone()
-                        }
-                    })
-                    .collect(),
-            })
-            .collect(),
+        format: "default".into(),
+        source,
     }
 }
 
-/// Replace one scalar without changing block/line boundaries or the content length.
+/// Replace one NFC-counted corpus character, including its Vietnamese combining marks, without
+/// changing line boundaries or the NFC content length. All corpus starters have combining class
+/// zero; replacing only a raw NFD starter could leave orphan marks and exceed the 200k limit.
 pub fn edit(data: &mut DocumentData, at: usize) {
-    let mut remaining = at;
-    for line in data.blocks.iter_mut().flat_map(|b| &mut b.lines) {
-        let n = line.chars().count();
-        if remaining < n {
-            let (start, c) = line.char_indices().nth(remaining).unwrap();
-            line.replace_range(
-                start..start + c.len_utf8(),
-                if c == 'Z' { "Y" } else { "Z" },
-            );
-            return;
-        }
-        remaining -= n;
-    }
-    panic!("edit outside corpus");
+    let (start, c) = data
+        .source
+        .char_indices()
+        .filter(|(_, c)| {
+            *c != '\n' && unicode_normalization::char::canonical_combining_class(*c) == 0
+        })
+        .nth(at)
+        .expect("edit outside corpus");
+    let end = data.source[start + c.len_utf8()..]
+        .char_indices()
+        .find(|(_, c)| unicode_normalization::char::canonical_combining_class(*c) == 0)
+        .map_or(data.source.len(), |(offset, _)| {
+            start + c.len_utf8() + offset
+        });
+    data.source
+        .replace_range(start..end, if c == 'Z' { "Y" } else { "Z" });
 }

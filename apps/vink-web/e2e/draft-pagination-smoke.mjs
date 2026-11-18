@@ -10,7 +10,7 @@ export async function draftPagination(page, { args, check, DraftGate, sleep }) {
     const title = i === 0 ? '[Paging201] ĐƯỜNG   VỀ xa' : `[Paging201] Trang ${String(i).padStart(3, '0')}`;
     const saved = await fetch(args.base + '/api/v1/drafts/' + draft.work_id, {
       method: 'PUT', headers: { Origin: args.base, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ expected_version: draft.version, title, document: { schema_version: 1, blocks: [{ lines: ['PRIVATE-201-BODY'] }] } }),
+      body: JSON.stringify({ expected_version: draft.version, title, document: { format: 'default', source: 'PRIVATE-201-BODY' } }),
     });
     if (saved.status !== 200) throw new Error('paging corpus save: ' + saved.status);
     corpus.push({ work_id: draft.work_id, title });

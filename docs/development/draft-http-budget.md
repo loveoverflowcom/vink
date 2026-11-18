@@ -4,68 +4,31 @@ Owner: `PUT /api/v1/drafts/{work_id}`, `http/api.rs`, `http/contract.rs` và Web
 `pages/desk.rs` → `api.rs`. Base: `develop@9640bdef4b570fe0fc76e90e538de947c2428614`.
 Đây là sửa F1 của [baseline #229](long-document-budget.md), không thay baseline lịch sử.
 
-## Quyết định kỹ thuật và phạm vi
+## Contract tích hợp #285
 
-**#273 CHOICE-01 A:** `DefaultBodyLimit::max(8 * 1024 * 1024)` chỉ gắn vào method PUT
-lưu nội dung nháp. PUT tags giữ mặc định Axum 2 MiB; nhóm Auth giữ cap riêng 32 KiB. Chọn guard sẵn có vì
-nó giới hạn cả body có `Content-Length` lẫn chunked trước khi deserialize JSON; không
-cần parser/streaming framework mới. Body được buffer hữu hạn, không có streaming domain
-validation. Không có thay đổi migration, hash, revision, cache, autosave hay quyền.
+Riêng PUT nội dung nháp có cap 8.388.608 byte ở `DefaultBodyLimit`. GET, PUT tags (2 MiB)
+và Auth (32 KiB) giữ guard hiện hành. Handler kiểm principal trước khi đọc body. Client dùng
+`SaveDraftRequest` → `gloo-net RequestBuilder::json` → `serde_json` compact UTF-8.
+Title riêng của `default` được trim trước khi gửi và input giữ nguyên. Markdown bỏ trường
+title. App dùng H1 đầu tiên của source. Source được lưu nguyên byte, kể cả CR/LF và NFD.
 
-- Sản phẩm: `USER-09@r1 PRODUCT_CONFIRMED`; `WR-04 DEFERRED`; WR-01/02/03 giữ nguyên.
-- Kiến trúc: đây là lựa chọn transport được issue giao agent chọn; không ký hoặc chấp nhận
-  `VDR-DOCUMENT-SOURCE-FORMAT` hay `VDR-CONTENT-STORAGE`.
-- Triển khai: `persistence-api` và consumer `web`; nội dung v1 vẫn NFC, tối đa 200.000 scalar;
-  title vẫn trim + NFC, tối đa 200 scalar. Không có native consumer mới.
-- Evidence thực thi, SHA và giới hạn: [bản ghi #273](evidence/draft-http-273/README.md).
+| Thành phần | Cận trên cho request hợp lệ |
+| --- | ---: |
+| Source tối đa 2.097.152 byte UTF-8. serde_json giữ nguyên Unicode. CR/LF/tab, quote và backslash mỗi byte thành hai byte. Các control khác không hợp lệ. | 4.194.304 B |
+| Title sau trim tối đa 200 scalar NFC. Một scalar NFC phân rã thành tối đa bốn scalar NFD theo bảng của dependency. Mỗi scalar raw tạo ít nhất một scalar NFD. Dành sáu byte JSON cho mỗi scalar raw. | 4.800 B |
+| Hai tên format, key, dấu JSON, quote và version i64, kể cả dấu âm | 128 B |
+| **Tổng bảo thủ** | **4.199.232 B** |
 
-## Phép tính byte từ serializer thật
+Giới hạn domain là 200.000 scalar sau NFC (loại CR/LF) và 2 MiB source thô. Chúng độc lập
+với cap 8 MiB trên toàn body. Padding, JSON pretty hoặc escaping khác vẫn phải nằm trong
+cap transport. Body quá cap hoặc JSON không hợp lệ trả 422 `validation_failed` ở `body`.
+Source quá giới hạn trả 422 ở `document`. Cả hai giữ nguyên durable draft. Auth, origin,
+ownership và CAS lần lượt có các regression riêng. Cap áp dụng cho declared length và chunked,
+không phải giới hạn RSS toàn process.
 
-Web `SaveDraftRequest` → gloo-net `RequestBuilder::json` → `serde_json::to_string` → UTF-8
-fetch body. Test dùng chính DTO Web và serializer này rồi deserialize bằng DTO App.
-Đây là **compact JSON UTF-8**; ký tự không ASCII không tự đổi thành `\uXXXX`.
-
-Gọi `N ≤ 200.000` là số scalar sau NFC, `L` là số line, `B` là số block:
-
-1. Mỗi line hợp lệ chứa ít nhất một scalar không trắng; mỗi block chứa ít nhất một line.
-   Vì vậy `B ≤ L ≤ N`. Empty document được phép và có chi phí cố định.
-2. NFC và đầu vào có cùng NFD. Mỗi scalar đầu vào tạo ít nhất một scalar NFD;
-   mỗi scalar NFC tạo tối đa **4** scalar NFD. Regression vét toàn bộ Unicode scalar
-   bằng bảng của `unicode-normalization` đang pin xác nhận mốc 4. Do đó đầu vào có
-   tối đa `4N` scalar, kể cả NFD tiếng Việt/Greek, không chỉ đo ký tự đã NFC.
-3. Một scalar JSON qua serde_json cần tối đa 6 byte (`\u00xx`), UTF-8 tối đa 4;
-   quote/backslash/tab cần 2. Bound bảo thủ là `24N` byte nội dung chuỗi.
-   Control bị domain từ chối vẫn nằm trong bound này.
-4. Dấu ngoặc, key `lines`, quote và comma của document tốn không quá `15N + 32` byte.
-   Trường hợp nhiều block một ký tự tốn framing nhiều nhất. Title đã trim thêm tối đa
-   `4 × 6 × 200 = 4.800` byte; envelope, schema và version `i64` được dành **128 byte**
-   (bao gồm 32 byte cố định của document).
-5. Tổng bảo thủ: `(15 + 24) × 200.000 + 4.800 + 128 = 7.804.928 B`, nhỏ hơn
-   `8.388.608 B` (8 MiB). `tiny_blocks200k` riêng document compact là 3.200.031 B;
-   title và envelope được đo riêng, không nhầm document bytes thành request bytes.
-
-Web trim title ngay trước gửi, đúng với `Title::parse`; không đổi live input hoặc buffer.
-Việc này tránh lượng whitespace title vốn bị domain bỏ đi trở thành chi phí vô hạn.
-Các client khác có thể gửi title còn padding, JSON pretty/escape khác trong cap; **không hứa
-nhận padding, whitespace hay escape tùy ý vô hạn**. Nếu vượt cap, client có thể gửi compact
-UTF-8 với title trim mà giữ nguyên nội dung được domain cho phép. Không cắt chữ để vừa cap.
-
-## Lỗi, quyền và tài nguyên
-
-Guard chạy khi `Json` đọc body. Body vượt cap, JSON malformed/unknown field vẫn đi qua hợp đồng
-hiện hành: `422 validation_failed`, `field: body`, `Cache-Control: no-store`; domain invalid là
-`field: document/title`. Không đổi thành 413 hoặc đổi dạng lỗi mà consumer chưa biết. Guard
-không gọi save use case nên không đổi text/version/updated_at. Khi thiếu principal, handler trả
-401 trước khi đọc body. Chỉ sau đó mới chạy extractor JSON với cap riêng. Origin, actor, ownership và CAS
-giữ thứ tự/kết quả hiện hành (`403`, `401`, `404`, `409`); principal standing vẫn được fence tại
-commit. Không coi test header principal là bằng chứng đăng nhập production.
-
-8 MiB là cap **mỗi request body**, không phải trần RSS/process/concurrency. Deserialize có
-allocation cho các `Vec`/`String`, domain normalize và SQLx serialize tiếp; dữ liệu cố ý có nhiều
-line rỗng có overhead lớn hơn số byte wire. Regression gần cap với khoảng 2,8 triệu line rỗng
-đo đường này và bị từ chối, không ghi DB. `Content-Length` và chunked đều kiểm limit−1/limit/
-limit+1; không tin riêng header. Xem RSS sample và timing local trong evidence, không dùng chúng
-làm SLA hay bằng chứng load/concurrency production. Không thêm global resource policy ở issue này.
+Bản đo #273 dùng shape blocks cũ (cận 7.804.928 B) và hash cũ. Các log tại
+[evidence/draft-http-273](evidence/draft-http-273/README.md) giữ nguyên làm baseline lịch sử.
+Xem [kiến trúc canonical và signoff](../architecture/document-source-format.md).
 
 ## Kiểm chứng và tái lập
 
@@ -87,28 +50,8 @@ VINK_CHROME='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
 cargo xtask verify web --scenario main
 ```
 
-Non-ignored loopback tests dùng TCP/HTTP/1 thật và PostgreSQL thật: 7 corpus seeded ở 200k,
-thêm 200k block với NFD bốn scalar, quote, backslash, supplementary; title NFD 200 scalar;
-readback exact document/title/version + hash v1 tính từ dữ liệu DB. Mỗi stale/foreign/anonymous/
-bad-Origin/malformed/oversize/domain-invalid refusal được đối chiếu durable state đầy đủ.
-Hash lịch sử #229 vẫn được golden regression bảo vệ. Browser phase sẵn có kiểm manual save,
-NFC readback, title trim trên chính request Web và title gốc trong live input, giữ full buffer khi 422/409, preview/selection và 3 corpus lựa chọn;
-không phải toàn bộ benchmark storage #229.
-
-## Tích hợp #285 và rollback
-
-Đối chiếu PR #285 tại `fd5a922dd2b81d24381120ea64e041b9c1be41ea`: `http/api.rs` vẫn giống base,
-chưa có cap riêng. #273 không cần migration/hash/title authority của #285 để sửa đường v1.
-PR #285 thay hoàn toàn shape thành `{format, source}`; **không giữ v1/v2** khi tích hợp.
-
-Người tích hợp phải cập nhật lại DTO/title optional, corpus, pure hash golden, HTTP tests,
-`document_budget.rs`, phase browser, contract/docs và tính lại bound cho source nguyên văn
-(raw byte cap, CR/LF/tab/escape, title sinh từ Markdown). Bound cho blocks ở trên **không chứng minh**
-source canonical đã đạt. Chạy lại quick, corpus, PG/HTTP và browser trên head tích hợp; không chỉ
-resolve conflict rồi kế thừa PASS của hai PR. `VDR-DOCUMENT-SOURCE-FORMAT@r2` còn PENDING;
-không thay revision bất biến, rehash lịch sử hoặc tự tạo signoff.
-
-Rollback #273 là revert thay đổi method cap và consumer trim; không có migration/DB rewrite.
-Nội dung đã lưu vẫn hợp lệ theo domain, nhưng tiny_blocks lớn lại không lưu được qua HTTP sau
-rollback: thông báo hạn chế đó, không truncate hoặc đánh dấu saved khi nhận lỗi. Không deploy,
-merge hoặc kiểm GitHub CI trong lượt triển khai này.
+Loopback kiểm exact source, title và content hash sau GET/đọc store, cả Markdown,
+NFD, CRLF ở đúng trần source, JSON escape và supplementary Unicode. Kiểm stale, foreign,
+anonymous, bad Origin và refusal quá cap qua HTTP thật trên PostgreSQL scratch. Browser
+so sánh source trong buffer, PUT và GET, title trong PUT với live title input và kiểm
+conflict cùng domain refusal. Kết quả theo commit ở [registry #285](document-source-format.md).

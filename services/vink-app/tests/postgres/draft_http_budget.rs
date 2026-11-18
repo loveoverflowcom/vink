@@ -8,7 +8,7 @@ use std::convert::Infallible;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use unicode_normalization::UnicodeNormalization;
-use vink_app::domain::document::MAX_DOCUMENT_CHARS;
+use vink_app::domain::document::{MAX_DOCUMENT_CHARS, MAX_SOURCE_BYTES};
 use vink_app::domain::revision::ContentHash;
 use vink_app::http::contract::MAX_SAVE_DRAFT_BODY_BYTES;
 
@@ -83,11 +83,11 @@ async fn server(pool: &PgPool) -> (SocketAddr, tokio::task::JoinHandle<()>) {
     (address, task)
 }
 
-fn wire(version: i64, title: &str, document: &DocumentData) -> Vec<u8> {
+fn wire(version: i64, title: Option<&str>, document: &DocumentData) -> Vec<u8> {
     // gloo-net RequestBuilder::json uses this exact serde_json serializer on Web's DTO.
     let request = vink_web::contract::SaveDraftRequest {
         expected_version: version,
-        title: title.into(),
+        title: title.map(str::to_owned),
         document: serde_json::from_value(serde_json::to_value(document).unwrap()).unwrap(),
     };
     serde_json::to_vec(&request).unwrap()
@@ -133,20 +133,22 @@ async fn draft_http_budget_accepts_client_corpus_and_preserves_authority(pool: P
     ] {
         cases.push((
             name.into(),
-            DocumentData {
-                schema_version: 1,
-                blocks: vec![
-                    BlockData {
-                        lines: vec![character]
-                    };
-                    MAX_DOCUMENT_CHARS
-                ],
-            },
+            source("default", &character.repeat(MAX_DOCUMENT_CHARS)),
         ));
     }
+    cases.push((
+        "crlf-byte-limit".into(),
+        source("default", &"\r\n".repeat(MAX_SOURCE_BYTES / 2)),
+    ));
+    cases.push((
+        "markdown-derived-title".into(),
+        source("markdown", "# Tiếng Việt\r\n\t  \r\n"),
+    ));
     for (index, (name, input)) in cases.into_iter().enumerate() {
         let document = Document::parse(input.clone()).unwrap();
-        let raw = wire(version, &title, &input);
+        let title = (input.format == "default").then_some(title.as_str());
+        let content = TitledDocument::author(document.clone(), title).unwrap();
+        let raw = wire(version, title, &input);
         assert!(raw.len() <= MAX_SAVE_DRAFT_BODY_BYTES);
         println!("corpus={name}");
         let (status, saved) = send(address, "PUT", &path, owner, ORIGIN, raw, index % 2 == 0).await;
@@ -156,7 +158,7 @@ async fn draft_http_budget_accepts_client_corpus_and_preserves_authority(pool: P
         let (status, loaded) = send(address, "GET", &path, owner, ORIGIN, vec![], false).await;
         assert_eq!(status, StatusCode::OK);
         assert_eq!(loaded["version"], version);
-        assert_eq!(loaded["title"], Title::parse(&title).unwrap().as_str());
+        assert_eq!(loaded["title"], content.title().as_str());
         assert_eq!(
             loaded["document"],
             serde_json::to_value(document.to_data()).unwrap()
@@ -165,10 +167,7 @@ async fn draft_http_budget_accepts_client_corpus_and_preserves_authority(pool: P
             .load_draft(author(), sample_work())
             .await
             .unwrap();
-        assert_eq!(
-            ContentHash::of(&stored.title, &stored.document),
-            ContentHash::of(&Title::parse(&title).unwrap(), &document)
-        );
+        assert_eq!(ContentHash::of(&stored.content), ContentHash::of(&content));
         assert_eq!(stored.version.get(), version);
         // Every refusal is followed by an exact readback including updated_at.
         for (actor, origin, expected, code) in [
@@ -193,7 +192,7 @@ async fn draft_http_budget_accepts_client_corpus_and_preserves_authority(pool: P
                 &path,
                 actor,
                 origin,
-                wire(expected, &title, &input),
+                wire(expected, title, &input),
                 true,
             )
             .await;
@@ -219,7 +218,7 @@ async fn draft_http_budget_limits_streamed_and_declared_bodies_without_writes(po
             MAX_SAVE_DRAFT_BODY_BYTES + 1,
         ] {
             let (_, before) = send(address, "GET", &path, owner, ORIGIN, vec![], false).await;
-            let mut raw = wire(version, "Tên", &document);
+            let mut raw = wire(version, Some("Tên"), &document);
             raw.resize(size, b' '); // legal JSON whitespace pins the actual byte boundary
             let (status, body) = send(address, "PUT", &path, owner, ORIGIN, raw, chunked).await;
             let (_, after) = send(address, "GET", &path, owner, ORIGIN, vec![], false).await;
@@ -238,27 +237,27 @@ async fn draft_http_budget_limits_streamed_and_declared_bodies_without_writes(po
         }
     }
     let (_, before) = send(address, "GET", &path, owner, ORIGIN, vec![], false).await;
-    let mut many_lines = format!(
-        r#"{{"expected_version":{version},"title":"T","document":{{"schema_version":1,"blocks":[{{"lines":["""#
+    let over_source = wire(
+        version,
+        Some("T"),
+        &source("default", &"\n".repeat(MAX_SOURCE_BYTES + 1)),
     );
-    many_lines.push_str(&",\"\"".repeat((MAX_SAVE_DRAFT_BODY_BYTES - many_lines.len() - 6) / 3));
-    many_lines.push_str("]}]}}");
-    assert!(many_lines.len() <= MAX_SAVE_DRAFT_BODY_BYTES);
-    let mut malformed = wire(version, "T", &document);
+    assert!(over_source.len() < MAX_SAVE_DRAFT_BODY_BYTES);
+    let mut malformed = wire(version, Some("T"), &document);
     malformed.pop();
     for (raw, field) in [
         (malformed, "body"),
         (b"{\"unexpected\":true}".to_vec(), "body"),
-        (many_lines.into_bytes(), "document"),
+        (over_source, "document"),
         (
             wire(
                 version,
-                "T",
+                Some("T"),
                 &super::document_corpus::corpus("tiny_blocks", MAX_DOCUMENT_CHARS + 1),
             ),
             "document",
         ),
-        (wire(version, &"T".repeat(201), &document), "title"),
+        (wire(version, Some(&"T".repeat(201)), &document), "title"),
     ] {
         let (status, body) = send(address, "PUT", &path, owner, ORIGIN, raw, true).await;
         assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);

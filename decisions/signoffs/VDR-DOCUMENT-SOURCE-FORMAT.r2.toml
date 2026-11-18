@@ -1,0 +1,9 @@
+version = 1
+id = "VDR-DOCUMENT-SOURCE-FORMAT"
+revision = 2
+sha256 = "478a09f823816984d5f92228046c9cf30ab23b78ffae70febf272dbc49643738"
+status = "ACCEPTED"
+decided_on = "2026-11-17"
+source = """
+Chủ sản phẩm trả lời “Duyệt phạm vi” lúc 23:48 UTC ngày 17/11/2026 sau khi được trình đúng VDR-DOCUMENT-SOURCE-FORMAT@r2 tại fd5a922dd2b81d24381120ea64e041b9c1be41ea (#285). Phạm vi gồm contract canonical, giới hạn nguồn, title/hash, gate Reader #264 và migration dừng khi còn revision cũ. Việc xóa/reset, viết lại lịch sử hoặc chạy migration trên dữ liệu thật nằm ngoài phê duyệt.
+"""

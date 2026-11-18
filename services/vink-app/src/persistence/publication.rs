@@ -22,7 +22,7 @@ use crate::application::ports::{
     AuthorPublicationStore, AuthorSnapshotCapture, BoundPrincipal, CaptureSnapshotOutcome,
     RequestPublicOutcome, SetPrivateOutcome, StoreError,
 };
-use crate::domain::document::{Document, DocumentData, Title};
+use crate::domain::document::{DocumentData, DocumentFormat, Title};
 use crate::domain::draft::DraftVersion;
 use crate::domain::ids::{EvaluationId, GrantId, PrincipalId, RevisionId, WorkId};
 use crate::domain::moderation::ReviewRequest;
@@ -96,13 +96,12 @@ fn revision_binding(rev: &RevRow) -> Result<ContentHash, StoreError> {
 }
 
 fn revision_content(rev: &mut RevRow) -> Result<RevisionContent, StoreError> {
-    let title = Title::parse(&rev.title).map_err(|e| integrity("revision title", e))?;
     let raw = rev
         .document
         .take()
         .ok_or_else(|| integrity("revision body missing", rev.id))?;
-    let doc = Document::parse(raw.0).map_err(|e| integrity("revision document", e))?;
-    let content = RevisionContent::new(title, doc).map_err(|e| integrity("revision content", e))?;
+    let content = RevisionContent::new(super::postgres::content(raw, &rev.title)?)
+        .map_err(|e| integrity("revision content", e))?;
     if content.hash().as_str() != rev.content_hash {
         return Err(integrity("revision content hash mismatch", rev.id));
     }
@@ -725,10 +724,15 @@ impl AuthorPublicationStore for PgStore {
 
             // 5. Create immutable revision
             let rev_id = Uuid::now_v7();
-            let title = Title::parse(&draft.title).map_err(|e| integrity("draft title", e))?;
-            let doc = Document::parse(draft.document.0).map_err(|e| integrity("draft doc", e))?;
-            let content =
-                RevisionContent::new(title, doc).map_err(|e| integrity("revision content", e))?;
+            // The snapshot's title comes from the same saved version as its source.
+            let draft_content = super::postgres::content(draft.document, &draft.title)?;
+            let content = match RevisionContent::new(draft_content) {
+                Ok(content) => content,
+                Err(crate::domain::revision::RevisionError::MissingTitle) => {
+                    tx.rollback().await.map_err(classify)?;
+                    return Ok(CaptureSnapshotOutcome::MissingTitle);
+                }
+            };
             let hash = content.hash().clone();
 
             query(
@@ -738,7 +742,7 @@ impl AuthorPublicationStore for PgStore {
             .bind(rev_id)
             .bind(work_id.as_uuid())
             .bind(content.title().as_str())
-            .bind(Json(content.document().to_data()))
+            .bind(Json(content.content().document().to_data()))
             .bind(hash.as_str())
             .bind(actor.as_uuid())
             .bind(metadata_snapshot_id)
@@ -897,6 +901,23 @@ impl AuthorPublicationStore for PgStore {
             {
                 tx.rollback().await.map_err(classify)?;
                 return Ok(RequestPublicOutcome::UnknownRevision);
+            }
+
+            // Capability gate (#255/#264): only formats with a safe public Reader may become
+            // public. Markdown drafts and private snapshots work; publication waits for #264.
+            let format: String = query_scalar(
+                "SELECT document->>'format' FROM revisions WHERE work_id = $1 AND id = $2",
+            )
+            .bind(work_id.as_uuid())
+            .bind(revision_id.as_uuid())
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(classify)?;
+            if DocumentFormat::parse(&format).map_err(|e| integrity("revision format", e))?
+                != DocumentFormat::Default
+            {
+                tx.rollback().await.map_err(classify)?;
+                return Ok(RequestPublicOutcome::FormatNotPublishable);
             }
 
             // MOD-14: the mode is read under a share lock in this commit, after the actor's

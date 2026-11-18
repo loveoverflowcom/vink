@@ -78,7 +78,8 @@ impl Envelope {
                 !id.is_empty()
                     && id == &p.work_id
                     && !p.revision_id.is_empty()
-                    && p.document.schema_version == 1
+                    // Only formats with a public Reader are ever published (#264 adds Markdown).
+                    && p.document.format == crate::contract::DocumentFormatDto::Default
             }
             (PublicKey::Works(q), Payload::Works(p)) => {
                 let canonical = crate::discovery::ExploreQuery::new(

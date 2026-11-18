@@ -16,7 +16,7 @@ const SECRET_B = 'Những con đường qua phố 𐐷';
 const DRAFT_TEXT = 'Dòng đầu có dấu: ỹ ỷ ữ ợ Đ đ.\n\nDòng sau để đọc lại.';
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const contains = (text) => `${q(PANEL)}?.innerText.includes(${JSON.stringify(text)})`;
-const bodyText = (draft) => draft.document.blocks.map((block) => block.lines.join('\n')).join('\n\n');
+const bodyText = (draft) => draft.document.source;
 
 const read = (page, path) => page.eval(`fetch(${JSON.stringify(path)}).then(async r => ({
   status: r.status, cache: r.headers.get('cache-control'), data: r.ok ? await r.json() : null

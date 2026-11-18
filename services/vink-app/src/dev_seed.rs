@@ -7,7 +7,7 @@ use sqlx::PgPool;
 use sqlx::types::Json;
 use uuid::{Uuid, uuid};
 
-use crate::domain::document::{BlockData, Document, DocumentData, SCHEMA_VERSION, Title};
+use crate::domain::document::{Document, DocumentFormat, TitledDocument};
 use crate::domain::revision::RevisionContent;
 
 /// Owner of the sample work. `.env.example` points `VINK_DEV_PRINCIPAL` here.
@@ -38,29 +38,25 @@ pub const PUBLISHED_STANZAS: [&[&str]; 2] = [
 /// Exists only in the working draft; public surfaces must never show it.
 pub const DRAFT_ONLY_LINE: &str = "Khổ đang viết dở — chưa công khai.";
 
-fn document(stanzas: &[&[&str]]) -> Document {
-    Document::parse(DocumentData {
-        schema_version: SCHEMA_VERSION,
-        blocks: stanzas
-            .iter()
-            .map(|lines| BlockData {
-                lines: lines.iter().map(|l| l.to_string()).collect(),
-            })
-            .collect(),
-    })
-    .expect("fixture document is valid")
+/// A default-format poem: lines joined by `\n`, stanzas separated by one blank line.
+fn poem(stanzas: &[&[&str]]) -> TitledDocument {
+    let source = stanzas
+        .iter()
+        .map(|lines| lines.join("\n"))
+        .collect::<Vec<_>>()
+        .join("\n\n");
+    let document =
+        Document::new(DocumentFormat::Default, source).expect("fixture document is valid");
+    TitledDocument::author(document, Some(SAMPLE_TITLE)).expect("fixture title is valid")
 }
 
 /// Idempotent: existing fixture rows are left untouched.
 pub async fn apply(pool: &PgPool) -> Result<(), sqlx::Error> {
-    let published = RevisionContent::new(
-        Title::parse(SAMPLE_TITLE).expect("fixture title is valid"),
-        document(&PUBLISHED_STANZAS),
-    )
-    .expect("fixture revision is valid");
+    let published =
+        RevisionContent::new(poem(&PUBLISHED_STANZAS)).expect("fixture revision is valid");
     let mut draft_stanzas: Vec<&[&str]> = PUBLISHED_STANZAS.to_vec();
     draft_stanzas.push(&[DRAFT_ONLY_LINE]);
-    let draft = document(&draft_stanzas);
+    let draft = poem(&draft_stanzas);
 
     let mut tx = pool.begin().await?;
     for (id, name) in [
@@ -87,7 +83,7 @@ pub async fn apply(pool: &PgPool) -> Result<(), sqlx::Error> {
     .bind(SAMPLE_REVISION)
     .bind(SAMPLE_WORK)
     .bind(published.title().as_str())
-    .bind(Json(published.document().to_data()))
+    .bind(Json(published.content().document().to_data()))
     .bind(published.hash().as_str())
     .bind(SAMPLE_AUTHOR)
     .execute(&mut *tx)
@@ -144,8 +140,8 @@ pub async fn apply(pool: &PgPool) -> Result<(), sqlx::Error> {
          VALUES ($1, 1, $2, $3) ON CONFLICT (work_id) DO NOTHING",
     )
     .bind(SAMPLE_WORK)
-    .bind(SAMPLE_TITLE)
-    .bind(Json(draft.to_data()))
+    .bind(draft.title().as_str())
+    .bind(Json(draft.document().to_data()))
     .execute(&mut *tx)
     .await?;
     tx.commit().await

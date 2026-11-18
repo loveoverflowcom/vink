@@ -1044,7 +1044,7 @@ async fn upgrade_and_unused_backout_preserve_comments_and_human_audit(pool: PgPo
         .run_once()
         .await
         .unwrap();
-    MIGRATOR.run(&pool).await.unwrap();
+    upgrade_before_cutover(&pool).await;
     let mut conn = pool.acquire().await.unwrap();
     sqlx::raw_sql(include_str!(
         "../../migrations-rollback/20261115000000_comment_post_review.down.sql"
@@ -1054,7 +1054,7 @@ async fn upgrade_and_unused_backout_preserve_comments_and_human_audit(pool: PgPo
     .unwrap();
     drop(conn);
     assert_eq!(state(&pool, id).await, ("approved".into(), 2));
-    MIGRATOR.run(&pool).await.unwrap();
+    upgrade_before_cutover(&pool).await;
     let ticket = enqueue(&vink, id).await;
     assert!(receipt(&pool, ticket).await.is_none());
     let human_count: i64 =

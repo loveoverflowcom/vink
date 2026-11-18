@@ -2,7 +2,7 @@
 use super::*;
 use vink_app::application::publication::AuthorPublicationError;
 use vink_app::domain::ids::RevisionId;
-use vink_app::domain::moderation::{EvaluationRefusal, EvaluatorOutcome, PolicyReasonCode};
+use vink_app::domain::moderation::{EvaluationRefusal, EvaluatorOutcome};
 use vink_app::domain::publication::Moderation;
 use vink_app::persistence::evaluation::{JobOutcome, claim_job, finish_job};
 
@@ -252,41 +252,110 @@ async fn policy_rereview_conflicting_audit_rolls_back_the_command(pool: PgPool) 
 }
 
 #[sqlx::test(migrations = false)]
-async fn upgrade_and_backout_preserve_rows_and_refuse_live_rereview(pool: PgPool) {
-    use vink_app::persistence::MIGRATOR;
+async fn policy_upgrade_and_backout_keep_legacy_history_before_canonical_cutover(pool: PgPool) {
+    use vink_app::persistence::{MIGRATOR, migrate};
 
     MIGRATOR.run_to(20261121000000, &pool).await.unwrap();
-    let vink = seeded(&pool).await;
-    for outcome in [
-        EvaluatorOutcome::Approve,
-        EvaluatorOutcome::Reject(PolicyReasonCode::SpamOrAbuse),
-        EvaluatorOutcome::Uncertain,
-    ] {
-        let (_, revision) = submit(&vink).await;
-        let claim = claim_job(&pool, "upgrade", 60, None)
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(claim.revision_id, revision.as_uuid());
-        assert!(matches!(
-            finish_job(&pool, "upgrade", &claim, Some(outcome), 0)
-                .await
-                .unwrap(),
-            JobOutcome::Applied(_)
-        ));
-    }
-    let (fresh, _) = submit(&vink).await; // Fresh pending alongside the legacy public pointer.
+    seed(&pool).await;
+    sqlx::raw_sql(include_str!("../support/pre_cutover_policy.sql"))
+        .execute(&pool)
+        .await
+        .unwrap();
     let before = stored_rows(&pool).await;
-    MIGRATOR.run_to(POLICY_MIGRATIONS[0], &pool).await.unwrap();
-    assert_eq!(policy_ledger(&pool).await, [POLICY_MIGRATIONS[0]]);
-    MIGRATOR.run_to(POLICY_MIGRATIONS[1], &pool).await.unwrap();
-    assert_eq!(policy_ledger(&pool).await, POLICY_MIGRATIONS);
+    for (index, migration) in POLICY_MIGRATIONS.iter().enumerate() {
+        MIGRATOR.run_to(*migration, &pool).await.unwrap();
+        assert_eq!(policy_ledger(&pool).await, POLICY_MIGRATIONS[..=index]);
+        assert_eq!(stored_rows(&pool).await, before);
+    }
+    assert!(
+        migrate(&pool)
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("cutover blocked")
+    );
+    assert!(before_cutover(&pool).await);
     assert_eq!(stored_rows(&pool).await, before);
     sqlx::raw_sql(BACKOUT).execute(&pool).await.unwrap();
     assert_eq!(stored_rows(&pool).await, before);
     assert!(policy_ledger(&pool).await.is_empty());
     MIGRATOR.run_to(POLICY_MIGRATIONS[1], &pool).await.unwrap();
 
+    // Represent an old writer's next decision without opening its retired document in the
+    // canonical application. Both traces are appended; the revision and its digest stay fixed.
+    let revision: Uuid = sqlx::query_scalar(
+        "SELECT revision_id FROM work_revision_moderation WHERE provenance_kind='ai_approved'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    let mut tx = pool.begin().await.unwrap();
+    sqlx::query("UPDATE work_publications SET policy_version=2, generation=3, intent_generation=3, intent_revision_id=$1 WHERE work_id=$2")
+        .bind(revision).bind(dev_seed::SAMPLE_WORK).execute(&mut *tx).await.unwrap();
+    sqlx::query("UPDATE work_revision_moderation SET decision_version=3, policy_version=2, moderation='pending', provenance_kind=NULL WHERE revision_id=$1")
+        .bind(revision).execute(&mut *tx).await.unwrap();
+    sqlx::query("INSERT INTO work_revision_decision_history(id,work_id,revision_id,decision_version,moderation,policy_version)
+                 VALUES(gen_random_uuid(),$1,$2,3,'pending',2)")
+        .bind(dev_seed::SAMPLE_WORK).bind(revision).execute(&mut *tx).await.unwrap();
+    tx.commit().await.unwrap();
+    let pending = stored_rows(&pool).await;
+    let mut conn = pool.acquire().await.unwrap();
+    let refusal = sqlx::raw_sql(BACKOUT)
+        .execute(&mut *conn)
+        .await
+        .unwrap_err();
+    assert_eq!(
+        refusal.as_database_error().unwrap().constraint(),
+        Some("work_revision_moderation_pending_check")
+    );
+    sqlx::query("ROLLBACK").execute(&mut *conn).await.unwrap();
+    drop(conn);
+    assert_eq!(stored_rows(&pool).await, pending);
+    assert_eq!(policy_ledger(&pool).await, POLICY_MIGRATIONS);
+
+    let mut tx = pool.begin().await.unwrap();
+    sqlx::query("UPDATE work_revision_moderation SET decision_version=4, moderation='approved', provenance_kind='ai_approved' WHERE revision_id=$1")
+        .bind(revision).execute(&mut *tx).await.unwrap();
+    sqlx::query("INSERT INTO work_revision_decision_history(id,work_id,revision_id,decision_version,moderation,policy_version,provenance_kind)
+                 VALUES(gen_random_uuid(),$1,$2,4,'approved',2,'ai_approved')")
+        .bind(dev_seed::SAMPLE_WORK).bind(revision).execute(&mut *tx).await.unwrap();
+    tx.commit().await.unwrap();
+    let resolved = stored_rows(&pool).await;
+    assert_eq!(
+        history(&pool, RevisionId::from_uuid(revision)).await.len(),
+        3
+    );
+    assert_eq!(
+        resolved[7], before[7],
+        "immutable revision rows and digests"
+    );
+    sqlx::raw_sql(BACKOUT).execute(&pool).await.unwrap();
+    assert!(policy_ledger(&pool).await.is_empty());
+    assert_eq!(stored_rows(&pool).await, resolved);
+    MIGRATOR.run_to(POLICY_MIGRATIONS[1], &pool).await.unwrap();
+    assert_eq!(stored_rows(&pool).await, resolved);
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn empty_schema_rolls_back_canonical_before_the_two_policy_migrations(pool: PgPool) {
+    super::canonical_document::run_backout(&pool).await.unwrap();
+    assert!(before_cutover(&pool).await);
+    assert_eq!(policy_ledger(&pool).await, POLICY_MIGRATIONS);
+    sqlx::raw_sql(BACKOUT).execute(&pool).await.unwrap();
+    assert!(policy_ledger(&pool).await.is_empty());
+    assert_eq!(
+        vink_app::persistence::migrate(&pool).await.unwrap().applied,
+        [
+            POLICY_MIGRATIONS[0],
+            POLICY_MIGRATIONS[1],
+            CANONICAL_DOCUMENT_MIGRATION
+        ]
+    );
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn canonical_policy_rereview_is_atomic_and_publishes_the_captured_digest(pool: PgPool) {
+    let vink = seeded(&pool).await;
     let work = sample_work();
     let revision = RevisionId::from_uuid(dev_seed::SAMPLE_REVISION);
     assert!(history(&pool, revision).await.is_empty());
@@ -331,25 +400,7 @@ async fn upgrade_and_backout_preserve_rows_and_refuse_live_rereview(pool: PgPool
     );
     assert_eq!(stored_rows(&pool).await, after_request);
 
-    let mut conn = pool.acquire().await.unwrap();
-    let refusal = sqlx::raw_sql(BACKOUT)
-        .execute(&mut *conn)
-        .await
-        .unwrap_err();
-    assert_eq!(
-        refusal.as_database_error().unwrap().constraint(),
-        Some("work_revision_moderation_pending_check")
-    );
-    sqlx::query("ROLLBACK").execute(&mut *conn).await.unwrap();
-    drop(conn);
-    assert_eq!(stored_rows(&pool).await, after_request);
-    assert_eq!(policy_ledger(&pool).await, POLICY_MIGRATIONS);
-
-    // Resolve under the current policy. Once the live row is compatible, the old
-    // schema can be restored while keeping the complete v2/v3/v4 history.
-    vink.set_private(author(), fresh, "withdraw-fixture", 2)
-        .await
-        .unwrap();
+    // Conclude the queued canonical revision through the real worker.
     let claim = claim_job(&pool, "current", 60, None)
         .await
         .unwrap()
@@ -364,7 +415,7 @@ async fn upgrade_and_backout_preserve_rows_and_refuse_live_rereview(pool: PgPool
     let public = vink.publication(work).await.unwrap();
     assert_eq!(public.revision_id, revision);
     assert_eq!(
-        RevisionContent::new(public.title, public.document)
+        RevisionContent::new(public.content)
             .unwrap()
             .hash()
             .as_str(),
@@ -378,12 +429,6 @@ async fn upgrade_and_backout_preserve_rows_and_refuse_live_rereview(pool: PgPool
             (4, 2, "approved".into(), Some("ai_approved".into())),
         ]
     );
-    let resolved = stored_rows(&pool).await;
-    sqlx::raw_sql(BACKOUT).execute(&pool).await.unwrap();
-    assert_eq!(stored_rows(&pool).await, resolved);
-    assert!(policy_ledger(&pool).await.is_empty());
-    MIGRATOR.run_to(POLICY_MIGRATIONS[1], &pool).await.unwrap();
-    assert_eq!(stored_rows(&pool).await, resolved);
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]

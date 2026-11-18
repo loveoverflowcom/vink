@@ -14,10 +14,11 @@ INSERT INTO works (id, owner_id)
 SELECT work, '11111111-1111-4111-8111-111111111111' FROM discovery_fixture;
 INSERT INTO revisions (id, work_id, title, document, content_hash, created_by)
 SELECT revision, work, title,
-       jsonb_build_object('schema_version',1,'blocks',jsonb_build_array(jsonb_build_object('lines',jsonb_build_array(body)))),
-       encode(sha256(convert_to('vink-revision-content-v1','UTF8') ||
-           int8send(octet_length(title)::bigint) || convert_to(title,'UTF8') ||
-           int8send(1) || int8send(1) || int8send(octet_length(body)::bigint) || convert_to(body,'UTF8')),'hex'),
+       jsonb_build_object('format', 'default', 'source', body),
+       encode(sha256(convert_to('vink-document-content', 'UTF8') ||
+         int8send(octet_length('default')::bigint) || convert_to('default', 'UTF8') ||
+         int8send(octet_length(title)::bigint) || convert_to(title, 'UTF8') ||
+         int8send(octet_length(body)::bigint) || convert_to(body, 'UTF8')), 'hex'),
        '11111111-1111-4111-8111-111111111111'
 FROM discovery_fixture;
 INSERT INTO work_metadata_snapshots (id, work_id, metadata_version, digest)

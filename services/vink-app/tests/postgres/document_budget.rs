@@ -23,41 +23,43 @@ fn write_json(dir: &Path, name: &str, value: &Value) {
 }
 
 fn pure_measurements(data: &DocumentData, title: &str) -> Value {
-    let normalized = Document::parse(data.clone()).unwrap();
-    let canonical = normalized.to_data();
-    let title = Title::parse(title).unwrap();
+    let parsed = Document::parse(data.clone()).unwrap();
+    let canonical = parsed.to_data();
+    assert_eq!(
+        &canonical, data,
+        "the canonical document stores the authored source"
+    );
+    let content = titled(title, data.clone());
     let raw_json = serde_json::to_vec(data).unwrap();
     let encoded = serde_json::to_vec(&canonical).unwrap();
-    let request = json!({"expected_version":1,"title":title.as_str(),"document":data});
+    let request = json!({"expected_version":1,"title":title,"document":data});
     let wire = serde_json::to_vec(&request).unwrap();
     let _: vink_app::http::contract::SaveDraftRequest = serde_json::from_slice(&wire).unwrap();
     let mut times = Vec::new();
     for _ in 0..5 {
         let cloned = data.clone();
-        let (_, nfc) = measured(|| {
-            data.blocks
-                .iter()
-                .flat_map(|b| &b.lines)
-                .map(|s| s.nfc().collect::<String>())
-                .collect::<Vec<_>>()
-        });
+        let (_, nfc) = measured(|| data.source.nfc().collect::<String>());
         let (_, validate) = measured(|| Document::parse(cloned).unwrap());
-        let (_, hash) = measured(|| ContentHash::of(&title, &normalized));
+        let (_, hash) = measured(|| ContentHash::of(&content));
         let (_, serialize) = measured(|| serde_json::to_vec(&canonical).unwrap());
-        let web: vink_web::contract::DocumentDto = serde_json::from_slice(&encoded).unwrap();
-        let (source, source_ms) = measured(|| vink_web::document::document_to_text(&web));
-        let (roundtrip, snapshot_ms) = measured(|| vink_web::document::text_to_document(&source));
-        assert_eq!(roundtrip, web);
-        times.push(json!({"nfc_ms":nfc,"validate_including_nfc_ms":validate,"hash_ms":hash,
-            "serialize_ms":serialize,"document_to_source_ms":source_ms,"source_to_dto_ms":snapshot_ms}));
+        let (web, decode_ms) = measured(|| {
+            serde_json::from_slice::<vink_web::contract::DocumentDto>(&encoded).unwrap()
+        });
+        let (paragraphs, paragraphs_ms) =
+            measured(|| vink_web::document::paragraphs(&web.source).len());
+        assert_eq!(web.source, data.source);
+        times.push(
+            json!({"nfc_projection_ms":nfc,"validate_including_nfc_count_ms":validate,
+            "hash_ms":hash,"serialize_ms":serialize,"web_decode_ms":decode_ms,
+            "reader_paragraphs_ms":paragraphs_ms,"reader_paragraphs":paragraphs}),
+        );
     }
-    json!({"raw_line_scalars":data.blocks.iter().flat_map(|b| &b.lines).map(|s|s.chars().count()).sum::<usize>(),
-        "nfc_line_scalars":canonical.blocks.iter().flat_map(|b| &b.lines).map(|s|s.chars().count()).sum::<usize>(),
-        "raw_line_utf8_bytes":data.blocks.iter().flat_map(|b| &b.lines).map(String::len).sum::<usize>(),
-        "nfc_line_utf8_bytes":canonical.blocks.iter().flat_map(|b| &b.lines).map(String::len).sum::<usize>(),
-        "blocks":canonical.blocks.len(),"lines":canonical.blocks.iter().map(|b|b.lines.len()).sum::<usize>(),
+    json!({"source_scalars":data.source.chars().count(),
+        "nfc_scalars_without_line_breaks":data.source.nfc().filter(|c| *c != '\n').count(),
+        "source_utf8_bytes":data.source.len(),
+        "lines":data.source.split('\n').count(),
         "raw_document_json_bytes":raw_json.len(),"canonical_document_json_bytes":encoded.len(),
-        "save_request_bytes":wire.len(),"content_hash_v1":ContentHash::of(&title,&normalized).as_str(),
+        "save_request_bytes":wire.len(),"content_hash":ContentHash::of(&content).as_str(),
         "samples_ms":times})
 }
 
@@ -94,14 +96,9 @@ async fn app_save_samples(
     title: &str,
     baseline: &DocumentData,
 ) -> (Vec<f64>, Vec<Value>, i64) {
-    let size: usize = baseline
-        .blocks
-        .iter()
-        .flat_map(|b| &b.lines)
-        .map(|s| s.chars().count())
-        .sum();
+    let size = baseline.source.nfc().filter(|c| *c != '\n').count();
     let title_value = Title::parse(title).unwrap();
-    let before_hash = ContentHash::of(&title_value, &Document::parse(baseline.clone()).unwrap());
+    let before_hash = ContentHash::of(&titled(title, baseline.clone()));
     let mut reads = Vec::new();
     let mut saves = Vec::new();
     for (kind, at) in [
@@ -114,7 +111,7 @@ async fn app_save_samples(
         if let Some(at) = at {
             corpus::edit(&mut edited, at);
         }
-        let after_hash = ContentHash::of(&title_value, &Document::parse(edited.clone()).unwrap());
+        let after_hash = ContentHash::of(&titled(title, edited.clone()));
         for sample in 0..5 {
             let restored = vink
                 .save_draft(author(), save(work, version, title, baseline.clone()))
@@ -125,8 +122,8 @@ async fn app_save_samples(
             let loaded = vink.load_draft(author(), work).await.unwrap();
             reads.push(start.elapsed().as_secs_f64() * 1000.);
             assert_eq!(loaded.version.get(), version);
-            assert_eq!(loaded.document.to_data(), *baseline);
-            assert_sample_transition(&loaded.document.to_data(), &edited, at.is_some());
+            assert_eq!(loaded.content.document().to_data(), *baseline);
+            assert_sample_transition(&loaded.content.document().to_data(), &edited, at.is_some());
             // Client-side input cloning, reset and verification are outside app/commit timing.
             let input = save(work, version, title, edited.clone());
             let wal = wal_position(pool).await;
@@ -138,11 +135,11 @@ async fn app_save_samples(
             version = saved.version.get();
             let durable = vink.load_draft(author(), work).await.unwrap();
             assert_eq!(durable.version.get(), version);
-            assert_eq!(durable.title, title_value);
-            assert_eq!(durable.document.to_data(), edited);
+            assert_eq!(durable.content.title(), &title_value);
+            assert_eq!(durable.content.document().to_data(), edited);
             saves.push(
                 json!({"kind":kind,"sample":sample,"ms":elapsed,"wal_bytes":wal_bytes,
-                "before_hash_v1":before_hash.as_str(),"after_hash_v1":after_hash.as_str(),
+                "before_content_hash":before_hash.as_str(),"after_content_hash":after_hash.as_str(),
                 "durable_exact_match":true}),
             );
         }
@@ -182,7 +179,7 @@ async fn long_document_samples_are_independent_durable_transitions(pool: PgPool)
         assert_eq!(version, 41); // one unmeasured reset + one measured save per sample
         for sample in saves {
             assert_eq!(
-                sample["before_hash_v1"] == sample["after_hash_v1"],
+                sample["before_content_hash"] == sample["after_content_hash"],
                 sample["kind"] == "noop"
             );
             assert_eq!(sample["durable_exact_match"], true);
@@ -404,12 +401,7 @@ async fn long_document_http_boundaries_preserve_durable_text_and_conflicts(pool:
         let (_, _, loaded) = call(&app, "GET", &path, actor, None, None).await;
         assert_eq!(json(&loaded)["version"], version);
         let doc: DocumentData = serde_json::from_value(json(&loaded)["document"].clone()).unwrap();
-        let scalars = doc
-            .blocks
-            .iter()
-            .flat_map(|b| &b.lines)
-            .map(|s| s.chars().count())
-            .sum::<usize>();
+        let scalars = doc.source.nfc().filter(|c| *c != '\n').count();
         assert_eq!(scalars, size.min(MAX_DOCUMENT_CHARS));
     }
     let tiny = corpus::corpus("tiny_blocks", MAX_DOCUMENT_CHARS);
@@ -432,9 +424,26 @@ async fn long_document_http_boundaries_preserve_durable_text_and_conflicts(pool:
         json(&before)["document"],
         serde_json::to_value(tiny).unwrap()
     );
-    for document in [
-        corpus::corpus("emoji", 200_000),
-        corpus::corpus("tiny_blocks", 200_000),
+    for (expected, document, status) in [
+        (1, corpus::corpus("emoji", 200_000), StatusCode::CONFLICT),
+        (
+            1,
+            corpus::corpus("tiny_blocks", 200_000),
+            StatusCode::CONFLICT,
+        ),
+        (
+            // Line breaks are not counted as characters but are bytes: over the source byte cap
+            // the domain refuses the save inside the 8 MiB transport budget.
+            version,
+            DocumentData {
+                format: "default".into(),
+                source: format!(
+                    "a{}",
+                    "\n".repeat(vink_app::domain::document::MAX_SOURCE_BYTES)
+                ),
+            },
+            StatusCode::UNPROCESSABLE_ENTITY,
+        ),
     ] {
         let (actual, _, _) = call(
             &app,
@@ -443,10 +452,10 @@ async fn long_document_http_boundaries_preserve_durable_text_and_conflicts(pool:
             actor,
             Some(ORIGIN),
             Some(json!({
-            "expected_version":1,"title":"[Mẫu #229]","document":document})),
+            "expected_version":expected,"title":"[Mẫu #229]","document":document})),
         )
         .await;
-        assert_eq!(actual, StatusCode::CONFLICT);
+        assert_eq!(actual, status);
         let (_, _, after) = call(&app, "GET", &path, actor, None, None).await;
         assert_eq!(json(&before), json(&after));
     }

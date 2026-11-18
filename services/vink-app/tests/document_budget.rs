@@ -3,119 +3,56 @@
 mod corpus;
 
 use unicode_normalization::UnicodeNormalization;
-use vink_app::domain::document::{Document, DocumentError, MAX_DOCUMENT_CHARS, Title};
+use vink_app::domain::document::{
+    Document, DocumentError, MAX_DOCUMENT_CHARS, MAX_SOURCE_BYTES, TitledDocument,
+};
 use vink_app::domain::revision::ContentHash;
 
+const TITLE: &str = "[Mẫu #229] Ngân sách văn bản";
+
 #[test]
-fn draft_http_budget_covers_compact_client_serialization_and_unicode_expansion() {
-    use vink_app::domain::document::{BlockData, DocumentData, MAX_TITLE_CHARS};
-    use vink_app::http::contract::{MAX_SAVE_DRAFT_BODY_BYTES, SaveDraftRequest};
-    // Pin the canonical decomposition bound to the dependency's actual Unicode tables.
-    let maximum = (0..=0x10ffff)
-        .filter_map(char::from_u32)
-        .map(|c| c.to_string().nfd().count())
-        .max()
-        .unwrap();
-    assert_eq!(maximum, 4);
-    // Each raw scalar expands to at least one NFD scalar; a canonical NFC scalar to <=4.
-    // serde_json emits <=6 UTF-8 bytes/scalar (including control escapes); no ASCII-only
-    // re-escaping, insignificant whitespace or arbitrary trimmed title padding is promised.
-    let envelope_allowance = 128;
-    let upper = (15 + 4 * 6) * MAX_DOCUMENT_CHARS + 4 * 6 * MAX_TITLE_CHARS + envelope_allowance;
-    assert_eq!(upper, 7_804_928);
-    assert!(upper <= MAX_SAVE_DRAFT_BODY_BYTES);
-    for character in [
-        "x".into(),
-        "\u{1f82}".nfd().collect::<String>(),
-        "🧑".into(),
-        "\"".into(),
-        "\\".into(),
-    ] {
-        let raw = DocumentData {
-            schema_version: 1,
-            blocks: vec![
-                BlockData {
-                    lines: vec![character.clone()]
-                };
-                MAX_DOCUMENT_CHARS
-            ],
-        };
-        let title = character.repeat(MAX_TITLE_CHARS);
-        let request = vink_web::contract::SaveDraftRequest {
-            expected_version: i64::MAX,
-            title: title.clone(),
-            document: serde_json::from_value(serde_json::to_value(&raw).unwrap()).unwrap(),
-        };
-        let encoded = serde_json::to_vec(&request).unwrap();
-        let provider: SaveDraftRequest = serde_json::from_slice(&encoded).unwrap();
-        assert_eq!(provider.expected_version, i64::MAX);
-        assert_eq!(provider.title, title);
-        assert_eq!(provider.document, raw);
-        assert!(encoded.len() <= upper);
-        assert!(Document::parse(raw).is_ok());
-        assert!(Title::parse(&title).is_ok());
-    }
+fn corpus_edits_replace_a_decomposed_character_without_touching_surrounding_source() {
+    let mut data = vink_app::domain::document::DocumentData {
+        format: "default".into(),
+        source: "a\n e\u{0302}\u{0301}\n\nb".into(),
+    };
+    corpus::edit(&mut data, 2);
+    assert_eq!(data.source, "a\n Z\n\nb");
+    corpus::edit(&mut data, 2);
+    assert_eq!(data.source, "a\n Y\n\nb");
+}
+
+fn titled(document: Document) -> TitledDocument {
+    TitledDocument::author(document, Some(TITLE)).unwrap()
 }
 
 #[test]
-fn long_document_corpus_uses_real_validator_serializer_and_v1_hash() {
-    // #279 shares the hex encoder with hash v2. Pin v1 to the measured #249 corpus,
-    // rather than merely comparing two hashes produced by today's implementation.
-    let historical: serde_json::Value = serde_json::from_str(include_str!(
-        "../../../docs/development/evidence/long-document-229/followup/postgres.json"
-    ))
-    .unwrap();
-    assert_eq!(
-        historical["source_sha"],
-        "4f2883630ff27f36c7549e036e6b554166a86692"
-    );
-    let cases = historical["cases"].as_array().unwrap();
-    assert_eq!(cases.len(), 21);
-    let title = Title::parse("[Mẫu #229] Ngân sách văn bản").unwrap();
+fn long_document_corpus_uses_real_validator_serializer_and_canonical_hash() {
     for size in [30_000, 100_000, 200_000] {
         for shape in corpus::SHAPES {
             let data = corpus::corpus(shape, size);
             let raw = serde_json::to_vec(&data).unwrap();
             let doc = Document::parse(serde_json::from_slice(&raw).unwrap()).unwrap();
-            let scalars: usize = doc.blocks().flatten().map(|s| s.chars().count()).sum();
+            let scalars = doc.source().nfc().filter(|c| *c != '\n').count();
             assert_eq!(scalars, size, "{shape}/{size}");
+            assert!(doc.source().len() <= MAX_SOURCE_BYTES, "{shape}/{size}");
             let encoded = serde_json::to_vec(&doc.to_data()).unwrap();
+            // Lossless: the stored bytes are the authored bytes, NFD included.
+            assert_eq!(raw, encoded, "{shape}/{size}");
             let decoded = Document::parse(serde_json::from_slice(&encoded).unwrap()).unwrap();
             assert_eq!(doc, decoded);
-            let name = format!("{shape}-{size}");
-            let baseline = cases.iter().find(|case| case["case"] == name).unwrap();
-            let mut expected = baseline["pure"].as_object().unwrap().clone();
-            expected.remove("samples_ms");
-            let measured_title = Title::parse(&format!("[Mẫu #229] {name}")).unwrap();
-            let wire = serde_json::to_vec(&serde_json::json!({
-                "expected_version": 1, "title": measured_title.as_str(), "document": &data
-            }))
-            .unwrap();
-            let actual = serde_json::json!({
-                "blocks": doc.blocks().len(),
-                "lines": doc.blocks().map(|lines| lines.len()).sum::<usize>(),
-                "raw_line_scalars": data.blocks.iter().flat_map(|b| &b.lines).map(|s| s.chars().count()).sum::<usize>(),
-                "nfc_line_scalars": scalars,
-                "raw_line_utf8_bytes": data.blocks.iter().flat_map(|b| &b.lines).map(String::len).sum::<usize>(),
-                "nfc_line_utf8_bytes": doc.blocks().flatten().map(|line| line.len()).sum::<usize>(),
-                "raw_document_json_bytes": raw.len(),
-                "canonical_document_json_bytes": encoded.len(),
-                "save_request_bytes": wire.len(),
-                "content_hash_v1": ContentHash::of(&measured_title, &doc).as_str(),
-            });
-            assert_eq!(actual, serde_json::Value::Object(expected), "{name}");
-            let hash = ContentHash::of(&title, &doc);
-            assert_eq!(hash, ContentHash::of(&title, &decoded));
+            let hash = ContentHash::of(&titled(doc.clone()));
+            assert_eq!(hash, ContentHash::of(&titled(decoded)));
             if shape == "vi_nfd" {
                 let nfc = Document::parse(corpus::corpus("vi_nfc", size)).unwrap();
-                assert_eq!(doc, nfc);
-                assert!(raw.len() > encoded.len());
+                assert_ne!(doc, nfc, "NFD source is not folded to NFC");
+                assert_eq!(doc.source().nfc().collect::<String>(), nfc.source());
             }
             for at in [0, size / 2, size - 1] {
                 let mut changed = doc.to_data();
                 corpus::edit(&mut changed, at);
                 let changed = Document::parse(changed).unwrap();
-                assert_ne!(hash, ContentHash::of(&title, &changed));
+                assert_ne!(hash, ContentHash::of(&titled(changed)));
             }
         }
     }
@@ -138,8 +75,9 @@ fn long_document_scalar_boundaries_do_not_become_json_or_cache_limits() {
             }
         }
     }
+    // 200 000 one-character paragraphs: the line breaks are not counted but are kept and sent.
     let tiny = Document::parse(corpus::corpus("tiny_blocks", MAX_DOCUMENT_CHARS)).unwrap();
-    assert!(serde_json::to_vec(&tiny.to_data()).unwrap().len() > 2 * 1024 * 1024);
+    assert!(serde_json::to_vec(&tiny.to_data()).unwrap().len() > 900 * 1024);
     let emoji = Document::parse(corpus::corpus("emoji", MAX_DOCUMENT_CHARS)).unwrap();
     assert!(serde_json::to_vec(&emoji.to_data()).unwrap().len() > 512 * 1024);
 }
@@ -167,5 +105,67 @@ fn long_document_oversized_public_record_is_a_cache_miss_without_losing_the_snap
     match envelope.snapshot() {
         Snapshot::Publication(kept) => assert_eq!(kept, publication),
         _ => panic!("cache quota must not change the accepted online snapshot"),
+    }
+}
+
+#[test]
+fn draft_http_budget_covers_canonical_client_serialization() {
+    use vink_app::domain::document::{MAX_TITLE_CHARS, Title};
+    use vink_app::http::contract::{MAX_SAVE_DRAFT_BODY_BYTES, SaveDraftRequest};
+    use vink_web::contract::{DocumentDto, DocumentFormatDto, SaveDraftRequest as WebSave};
+
+    // The title is bounded after NFC; pin the maximal canonical decomposition to the
+    // dependency's tables. The source has a separate raw-byte limit including CR and LF.
+    let max_nfd = (0..=0x10ffff)
+        .filter_map(char::from_u32)
+        .map(|c| c.to_string().nfd().count())
+        .max()
+        .unwrap();
+    assert_eq!(max_nfd, 4);
+    let upper = 2 * MAX_SOURCE_BYTES + max_nfd * 6 * MAX_TITLE_CHARS + 128;
+    assert_eq!(upper, 4_199_232);
+    assert!(upper <= MAX_SAVE_DRAFT_BODY_BYTES);
+    let title: String = "\u{1f82}".repeat(MAX_TITLE_CHARS).nfd().collect();
+    assert!(Title::parse(&title).is_ok());
+    for (format, source, title) in [
+        (
+            DocumentFormatDto::Default,
+            "\r\n".repeat(MAX_SOURCE_BYTES / 2),
+            Some(title),
+        ),
+        (
+            DocumentFormatDto::Default,
+            "\"\\\t".repeat(MAX_DOCUMENT_CHARS / 3),
+            Some(String::new()),
+        ),
+        (
+            DocumentFormatDto::Default,
+            "\u{1f82}".repeat(MAX_DOCUMENT_CHARS).nfd().collect(),
+            Some("Tên".into()),
+        ),
+        (
+            DocumentFormatDto::Markdown,
+            format!(
+                "# 🧑\r\n{}",
+                "\n".repeat(MAX_SOURCE_BYTES - "# 🧑\r\n".len())
+            ),
+            None,
+        ),
+    ] {
+        let web = WebSave {
+            expected_version: i64::MAX,
+            title,
+            document: DocumentDto { format, source },
+        };
+        let encoded = serde_json::to_vec(&web).unwrap();
+        assert!(encoded.len() <= upper);
+        let fields: serde_json::Value = serde_json::from_slice(&encoded).unwrap();
+        assert_eq!(fields.get("title").is_some(), web.title.is_some());
+        let app: SaveDraftRequest = serde_json::from_slice(&encoded).unwrap();
+        assert_eq!(app.expected_version, i64::MAX);
+        assert_eq!(app.title, web.title);
+        assert_eq!(app.document.source, web.document.source);
+        TitledDocument::author(Document::parse(app.document).unwrap(), app.title.as_deref())
+            .unwrap();
     }
 }

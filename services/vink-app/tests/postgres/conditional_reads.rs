@@ -107,11 +107,7 @@ async fn publish(
     line: &str,
     published_at: OffsetDateTime,
 ) -> Uuid {
-    let revision = RevisionContent::new(
-        Title::parse(title).unwrap(),
-        Document::parse(doc(&[&[line]])).unwrap(),
-    )
-    .unwrap();
+    let revision = RevisionContent::new(titled(title, doc(&[&[line]]))).unwrap();
     let revision_id = Uuid::now_v7();
     let mut tx = pool.begin().await.unwrap();
     sqlx::query("INSERT INTO works (id, owner_id) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING")
@@ -127,7 +123,7 @@ async fn publish(
     .bind(revision_id)
     .bind(work)
     .bind(revision.title().as_str())
-    .bind(sqlx::types::Json(revision.document().to_data()))
+    .bind(sqlx::types::Json(revision.content().document().to_data()))
     .bind(revision.hash().as_str())
     .bind(owner)
     .execute(&mut *tx)

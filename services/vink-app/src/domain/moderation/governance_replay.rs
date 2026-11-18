@@ -166,8 +166,13 @@ fn snapshot2() -> Snapshot {
         work: work(2),
         revision: revision(3),
         content: RevisionContent::new(
-            crate::domain::document::Title::parse("Bản của người duyệt").unwrap(),
-            crate::domain::document::Document::empty(),
+            crate::domain::document::TitledDocument::author(
+                crate::domain::document::Document::empty(
+                    crate::domain::document::DocumentFormat::Default,
+                ),
+                Some("Bản của người duyệt"),
+            )
+            .unwrap(),
         )
         .unwrap(),
     }

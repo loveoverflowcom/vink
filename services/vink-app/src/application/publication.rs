@@ -183,10 +183,15 @@ pub enum AuthorPublicationError {
     NotFound,
     #[error("audience intent generation changed; current generation is {current_generation}")]
     Stale { current_generation: i64 },
+    #[error("a revision needs a title")]
+    MissingTitle,
     #[error("revision was rejected")]
     RevisionRejected,
     #[error("unknown revision")]
     UnknownRevision,
+    /// Markdown stays private until the Reader (#264) renders it with the shared dialect.
+    #[error("this revision's format cannot be made public yet")]
+    FormatNotPublishable,
     #[error("work is unavailable")]
     WorkUnavailable,
     #[error("version conflict")]
@@ -260,6 +265,7 @@ where
             .await?
         {
             CaptureSnapshotOutcome::Saved(capture) => Ok(capture),
+            CaptureSnapshotOutcome::MissingTitle => Err(AuthorPublicationError::MissingTitle),
             CaptureSnapshotOutcome::Conflict {
                 current_draft_version,
                 current_metadata_version,
@@ -300,6 +306,9 @@ where
             }
             RequestPublicOutcome::RevisionRejected => Err(AuthorPublicationError::RevisionRejected),
             RequestPublicOutcome::UnknownRevision => Err(AuthorPublicationError::UnknownRevision),
+            RequestPublicOutcome::FormatNotPublishable => {
+                Err(AuthorPublicationError::FormatNotPublishable)
+            }
             RequestPublicOutcome::WorkUnavailable => Err(AuthorPublicationError::WorkUnavailable),
             RequestPublicOutcome::KeyReused => Err(AuthorPublicationError::KeyReused),
             RequestPublicOutcome::NotFound => Err(AuthorPublicationError::NotFound),

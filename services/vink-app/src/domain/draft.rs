@@ -1,6 +1,6 @@
 use time::OffsetDateTime;
 
-use super::document::{Document, Title};
+use super::document::{Title, TitledDocument};
 use super::ids::WorkId;
 
 /// Optimistic-concurrency version of a working draft. Starts at 1 and increases on every save.
@@ -33,16 +33,17 @@ impl DraftVersion {
 /// Validated replacement content and the version it intends to replace.
 ///
 /// This is neither a submitted revision nor authorization to write. The application validates
-/// untrusted input before constructing it; the store must still check owner and version at the
-/// durable write. It deliberately has no `Deserialize` implementation.
+/// untrusted input into a [`TitledDocument`] (format-aware title authority) before constructing
+/// it; the store must still check owner and version at the durable write. It deliberately has no
+/// `Deserialize` implementation.
 ///
 /// Raw input cannot stand in for validated values:
 /// ```compile_fail
 /// use vink_app::domain::document::DocumentData;
 /// use vink_app::domain::draft::DraftChange;
-/// let change = DraftChange::new(0, String::new(), DocumentData {
-///     schema_version: 2,
-///     blocks: vec![],
+/// let change = DraftChange::new(0, DocumentData {
+///     format: "default".into(),
+///     source: String::new(),
 /// });
 /// ```
 /// Nor can deserialization bypass those constructors:
@@ -52,41 +53,38 @@ impl DraftVersion {
 /// ```
 /// Once constructed, callers cannot replace its fields:
 /// ```compile_fail
-/// use vink_app::domain::document::{Document, Title};
+/// use vink_app::domain::document::{Document, DocumentFormat, TitledDocument};
 /// use vink_app::domain::draft::{DraftChange, DraftVersion};
-/// let mut change = DraftChange::new(
-///     DraftVersion::FIRST, Title::parse("").unwrap(), Document::empty(),
-/// );
+/// let content = TitledDocument::author(Document::empty(DocumentFormat::Default), Some("")).unwrap();
+/// let mut change = DraftChange::new(DraftVersion::FIRST, content);
 /// change.expected_version = DraftVersion::FIRST;
 /// ```
 /// Lawful twin of the three blocks above: the same imports, raw shape and constructor compile
 /// when validated values go in, so each block fails only at its own bypass.
 /// ```
-/// use vink_app::domain::document::{Document, DocumentData, SCHEMA_VERSION, Title};
+/// use vink_app::domain::document::{Document, DocumentData, DocumentFormat, TitledDocument};
 /// use vink_app::domain::draft::{DraftChange, DraftVersion};
 /// let data = DocumentData {
-///     schema_version: SCHEMA_VERSION,
-///     blocks: vec![],
+///     format: "default".into(),
+///     source: String::new(),
 /// };
-/// let change = DraftChange::new(
-///     DraftVersion::FIRST, Title::parse("").unwrap(), Document::parse(data).unwrap(),
-/// );
+/// let content = TitledDocument::author(Document::parse(data).unwrap(), Some("")).unwrap();
+/// let change = DraftChange::new(DraftVersion::FIRST, content);
 /// assert_eq!(change.expected_version(), DraftVersion::FIRST);
 /// let _: serde_json::Value = serde_json::from_str("{}").unwrap();
+/// let _ = DocumentFormat::Default;
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DraftChange {
     expected_version: DraftVersion,
-    title: Title,
-    document: Document,
+    content: TitledDocument,
 }
 
 impl DraftChange {
-    pub fn new(expected_version: DraftVersion, title: Title, document: Document) -> Self {
+    pub fn new(expected_version: DraftVersion, content: TitledDocument) -> Self {
         Self {
             expected_version,
-            title,
-            document,
+            content,
         }
     }
 
@@ -94,12 +92,8 @@ impl DraftChange {
         self.expected_version
     }
 
-    pub fn title(&self) -> &Title {
-        &self.title
-    }
-
-    pub fn document(&self) -> &Document {
-        &self.document
+    pub fn content(&self) -> &TitledDocument {
+        &self.content
     }
 }
 
@@ -108,8 +102,7 @@ impl DraftChange {
 pub struct WorkingDraft {
     pub work_id: WorkId,
     pub version: DraftVersion,
-    pub title: Title,
-    pub document: Document,
+    pub content: TitledDocument,
     pub updated_at: OffsetDateTime,
 }
 

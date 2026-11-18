@@ -22,7 +22,7 @@ do not inherit Cantos's CSR/Trunk setup.
 | The web app's own API v1 types and error classification | `src/contract.rs` (checked against the provider fixtures) |
 | Data access: SSR through `server::PublicReads`, browser through `/api/v1` | `src/api.rs`, `src/server.rs` |
 | Save-state and leave-intent machines (pure, unit-tested) | `src/desk_state.rs` |
-| Source text ↔ document v1, reading view, `.txt` export | `src/document.rs` |
+| Canonical document (`default_document`, Reader `paragraphs`, `DocumentView`) | `src/document.rs` |
 | CodeMirror 6 body editor: wasm-bindgen bridge, `BodySource::snapshot` | `src/editor.rs`; runtime in `editor/` (TypeScript, pinned npm, built to `/pkg/vink-editor.js`) |
 | Shared leave guard for links, back/forward and programmatic exits | `src/navigation.rs` (`NavigationGuard`) |
 | Token values (generated `tokens.css`, typed Rust); theme scope types | `packages/ui-system/shared/tokens.json` → `cargo xtask ui-tokens`; crate `vink-ui` (`packages/ui-system/leptos`) |
@@ -81,8 +81,8 @@ real consumer and no private data crosses into the browser build.
 
 ## Editor and async state
 
-Treat WR-01–WR-03 and S-01 as the acceptance boundary. The desk edits document v1 source text
-in CodeMirror 6 with manual save; it does not complete S-01 (no autosave, real-IME or device
+Treat WR-01–WR-03 and S-01 as the acceptance boundary. The desk edits the exact source of a canonical
+`default` document (`{format, source}`, #255) in CodeMirror 6 with manual save; it does not complete S-01 (no autosave, real-IME or device
 evidence). Reuse `EditorSession` for autosave instead of adding a second save-state model, and
 read the body only through `BodySource::snapshot`. New exits from the editor (rail, profile,
 menus) go through `NavigationGuard` so `LeaveGuard` can hold them. Choose the canonical
