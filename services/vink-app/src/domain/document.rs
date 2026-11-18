@@ -247,6 +247,8 @@ pub struct TitledDocument {
 pub enum TitleAuthorityError {
     #[error("title: {0}")]
     Title(#[from] TitleError),
+    #[error("first H1 in document.source: {0}")]
+    MarkdownHeading(#[source] TitleError),
     #[error("a default document needs its separate title")]
     MissingTitle,
     #[error("a markdown document takes its title from its first H1; a separate title is refused")]
@@ -304,8 +306,9 @@ impl TitledDocument {
     }
 }
 
-fn markdown_title(source: &str) -> Result<Title, TitleError> {
+fn markdown_title(source: &str) -> Result<Title, TitleAuthorityError> {
     Title::parse(&markdown::first_h1_projection(source))
+        .map_err(TitleAuthorityError::MarkdownHeading)
 }
 
 #[cfg(test)]
@@ -452,7 +455,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             TitledDocument::author(long, None),
-            Err(TitleAuthorityError::Title(TitleError::TooLong))
+            Err(TitleAuthorityError::MarkdownHeading(TitleError::TooLong))
         );
     }
 

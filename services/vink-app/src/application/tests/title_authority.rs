@@ -139,9 +139,9 @@ async fn markdown_title_authority_corpus() {
         if let Some(error) = case.expected_validation_error {
             assert_eq!(
                 result,
-                Err(DraftError::Invalid(InvalidInput::Title(title_error(
-                    &error
-                )))),
+                Err(DraftError::Invalid(InvalidInput::TitleAuthority(
+                    TitleAuthorityError::MarkdownHeading(title_error(&error))
+                ))),
                 "{}",
                 case.id
             );

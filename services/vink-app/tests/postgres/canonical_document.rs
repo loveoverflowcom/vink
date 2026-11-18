@@ -67,7 +67,12 @@ async fn markdown_title_is_materialized_in_the_same_save_and_cas(pool: PgPool) {
     vink.save_draft(author(), markdown(work, 3, "Chỉ thân bài.\n"))
         .await
         .unwrap();
-    assert_eq!(stored(&pool, work).await.0, "");
+    let before = (
+        String::new(),
+        json!({"format": "markdown", "source": "Chỉ thân bài.\n"}),
+        4,
+    );
+    assert_eq!(stored(&pool, work).await, before);
     let router = app(&pool).await;
     let (status, _, body) = call(&router, "POST", &format!("/api/v1/works/{work}/snapshots"),
         Some(dev_seed::SAMPLE_AUTHOR), Some(ORIGIN), Some(json!({
@@ -81,7 +86,7 @@ async fn markdown_title_is_materialized_in_the_same_save_and_cas(pool: PgPool) {
         .await
         .unwrap();
     assert_eq!(revision_count, 0);
-    // A client title is refused for Markdown, and an overlong H1 is refused, never truncated.
+    // Markdown only accepts a title derived from its first H1.
     assert!(matches!(
         vink.save_draft(
             author(),
@@ -93,14 +98,37 @@ async fn markdown_title_is_materialized_in_the_same_save_and_cas(pool: PgPool) {
         .await,
         Err(DraftError::Invalid(_))
     ));
-    let long = format!("# {}", "ơ".repeat(201));
-    assert!(matches!(
-        vink.save_draft(author(), markdown(work, 4, &long)).await,
-        Err(DraftError::Invalid(_))
-    ));
-    let (title, document, version) = stored(&pool, work).await;
-    assert_eq!((title.as_str(), version), ("", 4));
-    assert_eq!(document["source"], "Chỉ thân bài.\n");
+    for (invalid_heading, reason) in [
+        ("ơ".repeat(201), "title exceeds 200 characters"),
+        (
+            "Mưa&#x2028;đêm".to_owned(),
+            "title contains a line break or control character",
+        ),
+    ] {
+        let source = format!("Lời đề.\n\n{invalid_heading}\n===\n\n# Tên sau\n");
+        let (status, _, body) = call(
+            &router,
+            "PUT",
+            &format!("/api/v1/drafts/{work}"),
+            Some(dev_seed::SAMPLE_AUTHOR),
+            Some(ORIGIN),
+            Some(json!({
+                "expected_version": 4,
+                "document": {"format": "markdown", "source": source}
+            })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(
+            json(&body),
+            json!({"error": {
+                "code": "validation_failed",
+                "field": "title",
+                "message": format!("title: first H1 in document.source: {reason}")
+            }})
+        );
+        assert_eq!(stored(&pool, work).await, before);
+    }
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
