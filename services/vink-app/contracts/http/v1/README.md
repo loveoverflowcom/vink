@@ -21,7 +21,7 @@ consumer yet and no native consumer exists.
 - JSON, UTF-8. Identifiers are UUID strings; timestamps are RFC 3339 in UTC.
 - `document` is the one canonical, unversioned document (#255,
   [architecture](../../../../../docs/architecture/document-source-format.md),
-  `VDR-DOCUMENT-SOURCE-FORMAT@r2` `PENDING`): `{"format": "default" | "markdown", "source": "…"}`.
+  `VDR-DOCUMENT-SOURCE-FORMAT@r2` `ACCEPTED`): `{"format": "default" | "markdown", "source": "…"}`.
   `source` is the author's exact text: Unicode form (NFD stays NFD), emoji sequences, tabs,
   indentation, blank and whitespace-only lines and line endings are stored and returned byte for
   byte. Refused: control characters other than tab/LF/CR, U+2028/U+2029, more than 200 000
@@ -67,7 +67,7 @@ consumer yet and no native consumer exists.
 | `GET /api/v1/drafts/{work_id}` | `200` the actor's draft | `401`, `404`, `503` | [draft.get.json](fixtures/draft.get.json) |
 | `PUT /api/v1/drafts/{work_id}` | `200` new version | `401`, `403`, `404`, `409`, `422`, `503` | [request](fixtures/draft.save.request.json), [response](fixtures/draft.save.response.json) |
 | `GET /api/v1/works/{work_id}/publication/state` (`/publication/me`) | `200` the author's own state, `no-store`: `audience`, `lifecycle`, `generation`, `intent`, `pointer`, `revisions` (oldest first, each with `moderation`, `decision_version`, `decision_reason`, `can_appeal`), `open_ticket` | `401`, `403`, `404`, `503` | [public r1 + pending r2](fixtures/publication.state.public_r1_pending_r2.json), [rejected](fixtures/publication.state.public_rejected.json), [private](fixtures/publication.state.private.json) |
-| `POST /api/v1/works/{work_id}/snapshots` | `201` (`200` on replay) a revision frozen at exactly `expected_draft_version` + `expected_metadata_version`; a replay with the same `command_key` and versions returns the first revision even after the draft moved on | `401`, `403`, `404`, `409` `version_conflict` (`field`: `expected_draft_version` or `expected_metadata_version`, with `current_version`), `422` (`idempotency_key_reused`), `503` | [request](fixtures/snapshot.capture.request.json), [response](fixtures/snapshot.capture.response.json), [draft moved](fixtures/error.snapshot_draft_conflict.json), [tags moved](fixtures/error.snapshot_metadata_conflict.json) |
+| `POST /api/v1/works/{work_id}/snapshots` | `201` (`200` on replay) a revision frozen at exactly `expected_draft_version` + `expected_metadata_version`; a replay with the same `command_key` and versions returns the first revision even after the draft moved on | `401`, `403`, `404`, `409` `version_conflict` (`field`: `expected_draft_version` or `expected_metadata_version`, with `current_version`), `422` (`idempotency_key_reused`, or `validation_failed` at `title` for an untitled draft), `503` | [request](fixtures/snapshot.capture.request.json), [response](fixtures/snapshot.capture.response.json), [draft moved](fixtures/error.snapshot_draft_conflict.json), [tags moved](fixtures/error.snapshot_metadata_conflict.json) |
 | `POST /api/v1/works/{work_id}/publication/request-public` | `200` `submitted`/`waiting`/`published`/`reaffirmed` with the new `generation`; a replay (`replayed: true`) may omit `ticket_id`: read the state | `401`, `403`, `404` (`unknown_revision`), `409` (`version_conflict` with `field: expected_generation`, `revision_rejected`, `format_not_publishable`, `work_unavailable`), `422`, `503` | [request](fixtures/publication.request_public.request.json), [response](fixtures/publication.request_public.response.json), [replayed](fixtures/publication.request_public.response.replayed.json), [stale](fixtures/error.generation_conflict.json), [rejected](fixtures/error.revision_rejected.json), [unknown](fixtures/error.unknown_revision.json), [inactive](fixtures/error.work_unavailable.json), [key reused](fixtures/error.publication_key_reused.json) |
 | `POST /api/v1/works/{work_id}/publication/set-private` | `200` `made_private` with the new `generation` | as above | [request](fixtures/publication.set_private.request.json), [response](fixtures/publication.set_private.response.json) |
 
@@ -154,6 +154,18 @@ page. Choices, plans and measurements: [discovery](../../../../../docs/developme
 `PUT` writes only if the stored version equals `expected_version` and the actor owns the work;
 the check and the write are one statement. Otherwise nothing is written. A draft that does not
 exist and a draft owned by someone else both answer `404`. A malformed `work_id` is `404`.
+
+Draft-content `PUT` alone accepts bodies up to **8,388,608 bytes (8 MiB)**, including JSON
+framing, title and `expected_version`. An anonymous draft save returns `401` before the App reads
+its body. Draft tags retain Axum's default 2 MiB cap. Auth routes keep their own 32 KiB cap.
+The compact UTF-8 Web serializer needs at most 4,199,232 bytes for a canonical request,
+including the escaped 2 MiB source, an optional trimmed title of 200 NFC scalars and framing.
+Markdown omits the client title. Web trims the title as the domain already does, retaining the live input.
+Arbitrary extra whitespace, title padding or alternative escaping is accepted only within the
+cap. Oversize (declared length or chunked) and malformed bodies keep the existing error shape:
+`422 validation_failed`, `field: body`, `Cache-Control: no-store`, without changing durable
+content/version. This is not a smaller product-content limit or a global body-cap expansion.
+See [bound, resource measurements and #285 integration](../../../../../docs/development/draft-http-budget.md).
 
 `POST` is not idempotent: a retried request after a lost response may create a second empty
 draft. Clients disable the button while a request is pending.

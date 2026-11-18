@@ -102,7 +102,7 @@ Document canonical [#255](document-source-format.md): một shape không version
 `{format: "default" | "markdown", source}` với source nguyên văn, một `ContentHash::of`
 (`vink-document-content`), migration cutover `20261122000000` (fail-closed khi còn revision cũ —
 [lịch sử bất biến](../architecture/document-source-format.md#lịch-sử-bất-biến)) và
-`VDR-DOCUMENT-SOURCE-FORMAT@r2` **PENDING**. Bàn viết soạn `default`; Markdown lưu được qua API
+`VDR-DOCUMENT-SOURCE-FORMAT@r2` **ACCEPTED**. Bàn viết soạn `default`; Markdown lưu được qua API
 (nháp/snapshot riêng tư) nhưng bị chặn công khai (`format_not_publishable`) đến #264.
 Selector #262 vẫn là component/sample, chưa có picker hoặc conversion trong Bàn viết. Contract/source/hash
 #255, title #263, provider #256 và Reader #264 vẫn là prerequisite của consumer thật.
@@ -291,6 +291,11 @@ Ngân sách document lớn [#229](long-document-budget.md): corpus tổng hợp 
 serializer, `Vink<PgStore>`, router SSR và phase CDP `document-budget`. Regression thuần ở
 `services/vink-app/tests/document_budget.rs`; biên HTTP và benchmark opt-in ở
 `tests/postgres/document_budget.rs`; browser ở `apps/vink-web/e2e/document-budget.mjs`.
+[#273](draft-http-budget.md) thêm loopback HTTP/1 + PostgreSQL thật trong
+`tests/postgres/draft_http_budget.rs`: cap riêng draft PUT, client corpus, exact readback/hash,
+cap ±1 (Content-Length/chunked), malformed, quyền/CAS và non-save route giữ cap cũ.
+Phase browser giờ yêu cầu tiny_blocks200k lưu thành công; test opt-in `draft_http_budget_browser`
+chạy ba corpus chọn lọc cùng phase, kiểm source/NFD và title trim trên request thật, toàn văn sau 422/409. Cận DTO canonical là 4.199.232 byte.
 Đo scalar/UTF-8/JSON/TOAST/HTML/DOM riêng, history 1/10/100 và pglz/LZ4 trong database scratch.
 Measurement v2 restore baseline trước từng app-save sample; regression PostgreSQL không ignored
 kiểm full content/version sau commit và hai negative controls bắt nhầm changed/no-op. Raw v1

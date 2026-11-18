@@ -377,7 +377,7 @@ async fn compression_probe(pool: &PgPool, fixtures: &[(String, DocumentData)]) -
     json!(results)
 }
 
-/// Not ignored: durable boundaries, full valid content vs Axum's current 2 MiB transport cap.
+/// Not ignored: durable scalar boundaries and conflicts after the scoped #273 transport fix.
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
 async fn long_document_http_boundaries_preserve_durable_text_and_conflicts(pool: PgPool) {
     let app = app(&pool).await;
@@ -404,12 +404,36 @@ async fn long_document_http_boundaries_preserve_durable_text_and_conflicts(pool:
         let scalars = doc.source.nfc().filter(|c| *c != '\n').count();
         assert_eq!(scalars, size.min(MAX_DOCUMENT_CHARS));
     }
+    let tiny = corpus::corpus("tiny_blocks", MAX_DOCUMENT_CHARS);
+    let (status, _, _) = call(
+        &app,
+        "PUT",
+        &path,
+        actor,
+        Some(ORIGIN),
+        Some(json!({
+            "expected_version":version,"title":"[Mẫu #229]","document":tiny
+        })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    version += 1;
     let (_, _, before) = call(&app, "GET", &path, actor, None, None).await;
+    assert_eq!(json(&before)["version"], version);
+    assert_eq!(
+        json(&before)["document"],
+        serde_json::to_value(tiny).unwrap()
+    );
     for (expected, document, status) in [
         (1, corpus::corpus("emoji", 200_000), StatusCode::CONFLICT),
         (
+            1,
+            corpus::corpus("tiny_blocks", 200_000),
+            StatusCode::CONFLICT,
+        ),
+        (
             // Line breaks are not counted as characters but are bytes: over the source byte cap
-            // (and the 2 MiB request body) the save is refused before any write.
+            // the domain refuses the save inside the 8 MiB transport budget.
             version,
             DocumentData {
                 format: "default".into(),
@@ -607,6 +631,10 @@ async fn long_document_budget(pool: PgPool) {
         &compression_probe(&pool, &fixtures).await,
     );
     write_json(&out, "fixtures.json", &json!(browser));
+    run_budget_browser(vink, root, out).await;
+}
+
+async fn run_budget_browser(vink: Vink<PgStore>, root: PathBuf, out: PathBuf) {
     if let Ok(chrome) = std::env::var("VINK_CHROME") {
         struct BudgetIdentity;
         impl IdentityResolver for BudgetIdentity {
@@ -676,4 +704,46 @@ async fn long_document_budget(pool: PgPool) {
             &json!({"status":"NOT_RUN","reason":"set VINK_CHROME and build target/site first"}),
         );
     }
+}
+
+/// Reuses the existing document-budget browser phase without rerunning the #229 storage benchmark.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+#[ignore = "opt-in browser: build site, VINK_CHROME, VINK_DOCUMENT_BUDGET_OUTPUT"]
+async fn draft_http_budget_browser(pool: PgPool) {
+    assert!(std::env::var("VINK_CHROME").is_ok(), "VINK_CHROME required");
+    let out = PathBuf::from(
+        std::env::var("VINK_DOCUMENT_BUDGET_OUTPUT").expect("output directory required"),
+    );
+    assert!(out.is_absolute());
+    std::fs::create_dir_all(&out).unwrap();
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .canonicalize()
+        .unwrap();
+    let vink = seeded(&pool).await;
+    let mut fixtures = Vec::new();
+    for (shape, size) in [
+        ("vi_nfd", 30_000),
+        ("poem_tabs", 200_000),
+        ("tiny_blocks", 200_000),
+    ] {
+        let document = Document::parse(corpus::corpus(shape, size))
+            .unwrap()
+            .to_data();
+        let draft = vink.create_draft(author()).await.unwrap();
+        let title = format!("[Mẫu #273] {shape}");
+        vink.save_draft(author(), save(draft.work_id, 1, &title, document.clone()))
+            .await
+            .unwrap();
+        let captured = vink
+            .capture_snapshot(author(), draft.work_id, "budget-browser", 2, 1)
+            .await
+            .unwrap();
+        // Same scratch-only public fixture as the #229 benchmark; no moderation policy enabled.
+        sqlx::query("INSERT INTO publications(work_id,revision_id,generation,published_at) VALUES($1,$2,1,now())")
+            .bind(draft.work_id.as_uuid()).bind(captured.revision_id.as_uuid()).execute(&pool).await.unwrap();
+        fixtures.push(json!({"case":format!("{shape}-{size}"),"work_id":draft.work_id.to_string(),"document":document}));
+    }
+    write_json(&out, "fixtures.json", &json!(fixtures));
+    run_budget_browser(vink, root, out).await;
 }

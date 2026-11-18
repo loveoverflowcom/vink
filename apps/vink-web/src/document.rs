@@ -41,13 +41,12 @@ pub fn has_text(document: &DocumentDto) -> bool {
 }
 
 /// Paragraphs and stanzas of a default document for reading: a run of blank or whitespace-only
-/// lines separates blocks, a single line break stays inside one, and indentation is kept. A line
-/// ending's `\r` is not shown. The source itself is never changed.
+/// lines separates blocks, a single line break stays inside one, and indentation is kept. LF, CRLF and
+/// CR each count as one break. The source itself is never changed.
 pub fn paragraphs(source: &str) -> Vec<Vec<&str>> {
     let mut blocks = Vec::new();
     let mut current = Vec::new();
-    for line in source.split('\n') {
-        let line = line.strip_suffix('\r').unwrap_or(line);
+    for line in source.lines().flat_map(|line| line.split('\r')) {
         if line.trim().is_empty() {
             if !current.is_empty() {
                 blocks.push(std::mem::take(&mut current));
@@ -115,6 +114,10 @@ mod tests {
                 vec!["Phố cũ mưa giăng,", "  mái ngói rêu."],
                 vec!["Đêm nay ai thức?"],
             ]
+        );
+        assert_eq!(
+            paragraphs("a\rb\r\rc\r\n d"),
+            vec![vec!["a", "b"], vec!["c", " d"]]
         );
         assert!(paragraphs("  \n\n").is_empty());
         assert!(!has_text(&default_document(" \n\t\n")));

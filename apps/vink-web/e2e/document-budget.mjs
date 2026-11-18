@@ -20,6 +20,7 @@ export async function documentBudget(page, { args, check }) {
   await page.send('Performance.enable');
   await page.send('Network.enable', { maxPostDataSize: 8 * 1024 * 1024 });
   const requests = new Map(), transfer = [], writes = [];
+  let lastPutRequestId;
   const listener = event => {
     if (event.sessionId !== page.sessionId) return;
     if (event.method === 'Page.javascriptDialogOpening' && event.params.type === 'beforeunload') {
@@ -27,6 +28,7 @@ export async function documentBudget(page, { args, check }) {
     }
     if (event.method === 'Network.requestWillBeSent' && event.params.request.method === 'PUT') {
       const r = event.params.request;
+      lastPutRequestId = event.params.requestId;
       writes.push({path:new URL(r.url).pathname,post_data_bytes:r.postData === undefined ? null : Buffer.byteLength(r.postData)});
     }
     if (event.method === 'Network.responseReceived') requests.set(event.params.requestId, {
@@ -150,25 +152,45 @@ export async function documentBudget(page, { args, check }) {
       await page.waitFor(`!${view}.composing`, 'composition commit');
       // Remove one original scalar to keep the already maximal corpus at its domain boundary.
       await page.eval(`(() => {const v=__budgetView;const from=1;const cp=v.state.doc.sliceString(from).codePointAt(0);v.dispatch({changes:{from,to:from+(cp>65535?2:1),insert:''}});})()`);
+      await page.typeAtEnd('#draft-title', '  ');
       const before = await page.draft(fixture.work_id);
       await page.eval('window.__budgetBeforeSave=__budgetView.state.doc.toString()');
       const saveStart = performance.now();
       const priorWrites = writes.length;
       await page.click('#save');
-      const tooLarge = Buffer.byteLength(JSON.stringify({ expected_version: before.version, title: before.title, document: fixture.document })) > 2 * 1024 * 1024;
       await page.waitFor(`['saved','failed','conflict'].includes(document.querySelector('[data-testid=save-status]')?.dataset.status)`, 'budget save result', 120000);
       row.manual_save_wall_ms = performance.now() - saveStart;
       row.save_status = await page.status();
       row.manual_save_requests = writes.slice(priorWrites);
       row.ime_simulation = 'CDP composition followed by committed insertion';
       const after = await page.draft(fixture.work_id);
-      check(tooLarge ? after.version === before.version : after.version === before.version + 1,
-        `${fixture.case}: manual save ${tooLarge ? 'transport rejection preserves server version' : 'ACK advances server version'}`);
+      check(after.version === before.version + 1 && row.save_status === 'saved',
+        `${fixture.case}: valid document receives ACK and advances server version`);
+      const liveSource = await page.eval('__budgetBeforeSave');
+      check(after.document.format === 'default' && after.document.source === liveSource,
+        `${fixture.case}: exact source including NFD survives manual save`);
       check(await page.eval(`__budgetView===${view} && __budgetView.state.doc.toString()===__budgetBeforeSave`), `${fixture.case}: exact live buffer survives save outcome`);
+      check(row.manual_save_requests.length === 1 && row.manual_save_requests[0].path === `/api/v1/drafts/${fixture.work_id}`,
+        `${fixture.case}: manual save sends one draft-content PUT`);
+      const { postData } = await page.send('Network.getRequestPostData', { requestId: lastPutRequestId });
+      const sent = JSON.parse(postData);
+      check(sent.document.source === liveSource && sent.document.format === 'default',
+        `${fixture.case}: request carries the exact editor source`);
+      check(sent.title === before.title && after.title === before.title
+        && await page.eval(`document.querySelector('#draft-title').value`) === before.title + '  ',
+        `${fixture.case}: request and stored title omit padding while the live input retains it`);
+      if (fixture.case === 'tiny_blocks-200000') {
+        await page.eval(`(()=>{const v=__budgetView;v.dispatch({changes:{from:v.state.doc.length,insert:'X'}});window.__budgetRejected=v.state.doc.toString();})()`);
+        await page.click('#save'); await page.waitStatus('failed');
+        check(await page.eval(`__budgetView.state.doc.toString()===__budgetRejected`), 'domain refusal retains the full 200001-scalar live buffer');
+        check(JSON.stringify(await page.draft(fixture.work_id)) === JSON.stringify(after), 'failed manual save keeps exact durable document/version');
+        await page.eval(`(()=>{const v=__budgetView;v.dispatch({changes:{from:v.state.doc.length-1,to:v.state.doc.length,insert:''}});})()`);
+        row.failed_save_preserves_buffer = true;
+      }
       row.stale_status = await page.eval(`(async()=>{const r=await fetch('/api/v1/drafts/${fixture.work_id}',{method:'PUT',headers:{'content-type':'application/json'},
         body:JSON.stringify({expected_version:1,title:'[Mẫu #229]',document:{format:'default',source:'Xung đột thử nghiệm'}})});return r.status;})()`);
       check(row.stale_status === 409, `${fixture.case}: stale saved-version remains 409`);
-      if (!tooLarge) {
+      {
         const external = await page.eval(`(async()=>{const d=await fetch('/api/v1/drafts/${fixture.work_id}').then(r=>r.json());
           const r=await fetch('/api/v1/drafts/${fixture.work_id}',{method:'PUT',headers:{'content-type':'application/json'},
             body:JSON.stringify({expected_version:d.version,title:d.title,document:d.document})});return r.status;})()`);

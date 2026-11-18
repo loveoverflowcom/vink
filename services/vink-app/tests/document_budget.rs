@@ -107,3 +107,65 @@ fn long_document_oversized_public_record_is_a_cache_miss_without_losing_the_snap
         _ => panic!("cache quota must not change the accepted online snapshot"),
     }
 }
+
+#[test]
+fn draft_http_budget_covers_canonical_client_serialization() {
+    use vink_app::domain::document::{MAX_TITLE_CHARS, Title};
+    use vink_app::http::contract::{MAX_SAVE_DRAFT_BODY_BYTES, SaveDraftRequest};
+    use vink_web::contract::{DocumentDto, DocumentFormatDto, SaveDraftRequest as WebSave};
+
+    // The title is bounded after NFC; pin the maximal canonical decomposition to the
+    // dependency's tables. The source has a separate raw-byte limit including CR and LF.
+    let max_nfd = (0..=0x10ffff)
+        .filter_map(char::from_u32)
+        .map(|c| c.to_string().nfd().count())
+        .max()
+        .unwrap();
+    assert_eq!(max_nfd, 4);
+    let upper = 2 * MAX_SOURCE_BYTES + max_nfd * 6 * MAX_TITLE_CHARS + 128;
+    assert_eq!(upper, 4_199_232);
+    assert!(upper <= MAX_SAVE_DRAFT_BODY_BYTES);
+    let title: String = "\u{1f82}".repeat(MAX_TITLE_CHARS).nfd().collect();
+    assert!(Title::parse(&title).is_ok());
+    for (format, source, title) in [
+        (
+            DocumentFormatDto::Default,
+            "\r\n".repeat(MAX_SOURCE_BYTES / 2),
+            Some(title),
+        ),
+        (
+            DocumentFormatDto::Default,
+            "\"\\\t".repeat(MAX_DOCUMENT_CHARS / 3),
+            Some(String::new()),
+        ),
+        (
+            DocumentFormatDto::Default,
+            "\u{1f82}".repeat(MAX_DOCUMENT_CHARS).nfd().collect(),
+            Some("Tên".into()),
+        ),
+        (
+            DocumentFormatDto::Markdown,
+            format!(
+                "# 🧑\r\n{}",
+                "\n".repeat(MAX_SOURCE_BYTES - "# 🧑\r\n".len())
+            ),
+            None,
+        ),
+    ] {
+        let web = WebSave {
+            expected_version: i64::MAX,
+            title,
+            document: DocumentDto { format, source },
+        };
+        let encoded = serde_json::to_vec(&web).unwrap();
+        assert!(encoded.len() <= upper);
+        let fields: serde_json::Value = serde_json::from_slice(&encoded).unwrap();
+        assert_eq!(fields.get("title").is_some(), web.title.is_some());
+        let app: SaveDraftRequest = serde_json::from_slice(&encoded).unwrap();
+        assert_eq!(app.expected_version, i64::MAX);
+        assert_eq!(app.title, web.title);
+        assert_eq!(app.document.source, web.document.source);
+        TitledDocument::author(Document::parse(app.document).unwrap(), app.title.as_deref())
+            .unwrap();
+    }
+}

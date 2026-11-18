@@ -400,7 +400,7 @@ impl ApiError {
             ),
             Self::FormatNotPublishable => (
                 "format_not_publishable",
-                "this document format has no public reader yet; the work stays private".to_string(),
+                "this revision cannot be published until its format has a public reader".to_string(),
                 None,
                 Some("revision_id"),
             ),
@@ -699,6 +699,10 @@ impl From<AuthorPublicationError> for ApiError {
             AuthorPublicationError::Stale { current_generation } => {
                 Self::PublicationConflict { current_generation }
             }
+            AuthorPublicationError::MissingTitle => Self::Validation {
+                field: "title",
+                message: "a revision needs a title".into(),
+            },
             AuthorPublicationError::RevisionRejected => Self::RevisionRejected,
             AuthorPublicationError::UnknownRevision => Self::UnknownRevision,
             AuthorPublicationError::FormatNotPublishable => Self::FormatNotPublishable,

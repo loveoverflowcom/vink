@@ -1,0 +1,37 @@
+{
+  "result": {
+    "lookup": "revision",
+    "record": {
+      "base": null,
+      "content": {
+        "domain": "content",
+        "kind": "architecture",
+        "rationale": "docs/architecture/document-source-format.md và docs/development/document-source-format.md tại develop@d352dba (#255). Khớp #263 (docs/architecture/editor-title-authority.md) và #262 (docs/design/editor-format-picker-262.md), không đụng VDR-CONTENT-STORAGE@r1 (PENDING) hoặc chế độ hiển thị #256. Phương án A tránh hai nguồn ghi lệch nhau, giữ biểu thức d.document IS DISTINCT FROM pr.document, tránh phình TOAST cho tài liệu 200k và bảo vệ bất biến revisions v1. Pure domain contract (services/vink-app/src/domain/source.rs, ContentHash::of_source_v2), boundary-isolated reader vink-web và scratch PG compat test đã có; production schema và writer v2 chưa được mở.\n",
+        "related_ids": [
+          "D-02-CONTENT",
+          "PUB-01",
+          "PUB-02",
+          "VDR-CONTENT-STORAGE",
+          "WR-01",
+          "WR-04"
+        ],
+        "requires": [
+          "D-02-CONTENT@r1"
+        ],
+        "resolution": "CHOICE-01 Phương án A: Dùng một cột document jsonb với discriminated version envelope (schema_version = 1 + blocks cho dữ liệu cũ; schema_version = 2 + format, source, line_ending cho nguồn mới), không lưu song song hai bản nguồn và không viết lại dữ liệu hoặc hash v1 lịch sử.\nHỗ trợ hai định dạng chọn được là default (tên riêng, thân chữ thường không sniff Markdown) và markdown (dùng với title authority #263 và renderer #264); giữ asciidoc ở trạng thái DEFERRED trong capability schema (selectable = false) và từ chối mọi format lạ ở parser/writer/CHECK.\nNguồn v2 lưu nguyên văn UTF-8 với line break LF (không NFC-fold source, giữ NFD, emoji ZWJ/FE0F, thụt đầu dòng/tab, nhiều dòng trống và dòng chỉ có khoảng trắng), ghi nhận line_ending (lf | crlf) để khôi phục CRLF đồng nhất; NFC và blocks v1 chỉ là derived projection.\nCanonical hash ContentHash::of_source_v2 dùng separator vink-revision-content-v2 + length-prefixed format, line_ending, title và raw source bytes, tách bạch với ContentHash::of v1 và HTTP ETag.\nCHOICE-02 Phương án A: Rollout 2 pha — Pha 1 nới CHECK constraint và triển khai reader v1+v2 trong khi writer v2 tắt; Pha 2 chỉ bật writer v2 sau signoff và cập nhật các consumer #262/#263/#264/moderation/evaluation. Rollback tắt writer v2 nhưng giữ reader v1+v2. Hiện đề xuất ở trạng thái PENDING, chưa kích hoạt trong runtime.\n",
+        "title": "Hợp đồng nguồn văn bản v2 theo định dạng và tương thích ngược v1"
+      },
+      "id": "VDR-DOCUMENT-SOURCE-FORMAT",
+      "revision": 1,
+      "sha256": "ac39f4df098244634e78d76f6b338d4689cb087bf9ad9abd4c50a8ce2b91683a",
+      "source": {
+        "kind": "proposal",
+        "path": "decisions/proposals/VDR-DOCUMENT-SOURCE-FORMAT.r1.toml",
+        "signoff_path": null
+      },
+      "status": "PENDING"
+    }
+  },
+  "snapshot_sha256": "8354df2cde868013df8324e1934351d094f93739728e485c4f59a1e1d46462b8",
+  "version": 1
+}

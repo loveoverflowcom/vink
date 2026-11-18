@@ -140,12 +140,17 @@ fn validate_source(source: &str) -> Result<(), DocumentError> {
         return Err(DocumentError::TooManyBytes);
     }
     let mut line = 0usize;
+    let mut after_cr = false;
     for c in source.chars() {
-        if c == '\n' {
-            line += 1;
-        } else if is_forbidden_in_source(c) {
-            return Err(DocumentError::ForbiddenCharacter { line });
+        match c {
+            '\r' => line += 1,
+            '\n' if !after_cr => line += 1,
+            c if is_forbidden_in_source(c) => {
+                return Err(DocumentError::ForbiddenCharacter { line });
+            }
+            _ => {}
         }
+        after_cr = c == '\r';
     }
     let counted = source
         .nfc()
@@ -393,6 +398,14 @@ mod tests {
         ] {
             assert!(serde_json::from_str::<DocumentData>(raw).is_err(), "{raw}");
         }
+    }
+
+    #[test]
+    fn forbidden_character_reports_the_line_across_mixed_endings() {
+        assert_eq!(
+            validate_source("a\rb\r\nc\nd\u{2028}"),
+            Err(DocumentError::ForbiddenCharacter { line: 3 })
+        );
     }
 
     #[test]

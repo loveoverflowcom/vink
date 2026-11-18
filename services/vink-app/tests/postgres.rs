@@ -48,6 +48,8 @@ mod discussion;
 mod document_budget;
 #[path = "support/document_budget.rs"]
 mod document_corpus;
+#[path = "postgres/draft_http_budget.rs"]
+mod draft_http_budget;
 #[path = "postgres/drafts.rs"]
 mod drafts;
 #[path = "postgres/endorsement.rs"]
@@ -213,33 +215,13 @@ async fn seed(pool: &PgPool) {
 /// itself refuses this database while its immutable pre-cutover revisions exist.
 async fn upgrade_before_cutover(pool: &PgPool) -> vink_app::persistence::MigrationReport {
     use sqlx::migrate::Migrator;
-    let history: bool = sqlx::query_scalar("SELECT to_regclass('_sqlx_migrations') IS NOT NULL")
-        .fetch_one(pool)
-        .await
-        .unwrap();
-    let done: Vec<i64> = if history {
-        sqlx::query_scalar("SELECT version FROM _sqlx_migrations")
-            .fetch_all(pool)
-            .await
-            .unwrap()
-    } else {
-        Vec::new()
-    };
-    let pending: Vec<_> = vink_app::persistence::MIGRATOR
-        .migrations
-        .iter()
-        .filter(|m| m.version < CANONICAL_DOCUMENT_MIGRATION && !done.contains(&m.version))
-        .cloned()
-        .collect();
-    let applied = pending.iter().map(|m| m.version).collect();
     let all_below: Vec<_> = vink_app::persistence::MIGRATOR
         .migrations
         .iter()
         .filter(|m| m.version < CANONICAL_DOCUMENT_MIGRATION)
         .cloned()
         .collect();
-    Migrator::with_migrations(all_below)
-        .run(pool)
+    let report = vink_store_postgres::migrate(pool, &Migrator::with_migrations(all_below))
         .await
         .unwrap();
     let revisions: i64 = sqlx::query_scalar("SELECT count(*) FROM revisions")
@@ -250,10 +232,7 @@ async fn upgrade_before_cutover(pool: &PgPool) -> vink_app::persistence::Migrati
         let refused = vink_app::persistence::migrate(pool).await.unwrap_err();
         assert!(refused.to_string().contains("cutover blocked"), "{refused}");
     }
-    vink_app::persistence::MigrationReport {
-        applied,
-        latest: Some(CANONICAL_DOCUMENT_MIGRATION - 1),
-    }
+    report
 }
 
 fn sample_work() -> WorkId {

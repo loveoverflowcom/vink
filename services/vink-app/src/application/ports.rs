@@ -212,6 +212,7 @@ pub struct AuthorSnapshotCapture {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CaptureSnapshotOutcome {
     Saved(AuthorSnapshotCapture),
+    MissingTitle,
     Conflict {
         current_draft_version: Option<DraftVersion>,
         current_metadata_version: Option<MetadataVersion>,

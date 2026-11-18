@@ -725,9 +725,14 @@ impl AuthorPublicationStore for PgStore {
             // 5. Create immutable revision
             let rev_id = Uuid::now_v7();
             // The snapshot's title comes from the same saved version as its source.
-            let content =
-                RevisionContent::new(super::postgres::content(draft.document, &draft.title)?)
-                    .map_err(|e| integrity("revision content", e))?;
+            let draft_content = super::postgres::content(draft.document, &draft.title)?;
+            let content = match RevisionContent::new(draft_content) {
+                Ok(content) => content,
+                Err(crate::domain::revision::RevisionError::MissingTitle) => {
+                    tx.rollback().await.map_err(classify)?;
+                    return Ok(CaptureSnapshotOutcome::MissingTitle);
+                }
+            };
             let hash = content.hash().clone();
 
             query(

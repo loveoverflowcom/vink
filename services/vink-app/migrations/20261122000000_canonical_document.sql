@@ -1,4 +1,4 @@
--- One canonical, unversioned document (#255, #263; VDR-DOCUMENT-SOURCE-FORMAT@r2, PENDING).
+-- One canonical, unversioned document (#255, #263; VDR-DOCUMENT-SOURCE-FORMAT@r2).
 -- Product decision 17/11/2026: replace the blocks/lines document completely; no v1/v2, no
 -- dual read or write. Stored shape after this migration: {"format": "default"|"markdown",
 -- "source": "<exact authored text>"}; nothing else is accepted by the CHECKs below.
@@ -40,10 +40,37 @@ BEGIN
                      WHERE jsonb_typeof(b.block) IS DISTINCT FROM 'object'
                         OR b.block IS DISTINCT FROM jsonb_build_object('lines', b.block -> 'lines')
                         OR jsonb_typeof(b.block -> 'lines') IS DISTINCT FROM 'array'
+                        OR b.block -> 'lines' = '[]'::jsonb
                         OR EXISTS (SELECT 1 FROM jsonb_array_elements(b.block -> 'lines') AS l(line)
                                     WHERE jsonb_typeof(l.line) IS DISTINCT FROM 'string')))
     ) THEN
         RAISE EXCEPTION 'canonical document cutover blocked: a working draft has an unexpected document shape'
+            USING ERRCODE = 'data_exception';
+    END IF;
+END $$;
+
+-- The retired CHECK allowed rows the writer could never produce. Such lines cannot
+-- round-trip through blank-line separators; invalid limits/titles would make the new
+-- binary reject the converted draft. Refuse these rows before any UPDATE.
+DO $$
+DECLARE
+    whitespace constant text := E' \t\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000';
+    forbidden constant text := U&'[\0001-\0008\000A-\001F\007F-\009F\2028\2029]';
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM working_drafts d
+         WHERE NOT (d.document ? 'format') AND (
+               d.title IS NOT NFC NORMALIZED OR char_length(d.title) > 200
+               OR d.title <> btrim(d.title, whitespace)
+               OR d.title COLLATE "C" ~ forbidden OR strpos(d.title, E'\t') > 0
+               OR (SELECT coalesce(bool_or(
+                              l.line IS NOT NFC NORMALIZED OR btrim(l.line, whitespace) = ''
+                              OR l.line COLLATE "C" ~ forbidden), false)
+                          OR coalesce(sum(char_length(l.line)), 0) > 200000
+                     FROM jsonb_array_elements(d.document -> 'blocks') b(block),
+                          LATERAL jsonb_array_elements_text(b.block -> 'lines') l(line)))
+    ) THEN
+        RAISE EXCEPTION 'canonical document cutover blocked: a retired draft cannot be converted exactly'
             USING ERRCODE = 'data_exception';
     END IF;
 END $$;

@@ -10,15 +10,15 @@ hash, migration). Title authority thuộc [#263](editor-title-authority.md). Bas
 > thay thế hướng dual-read/dual-write và rollout v1→v2 hai pha của
 > `VDR-DOCUMENT-SOURCE-FORMAT@r1`. Kiến trúc tương ứng là
 > [`VDR-DOCUMENT-SOURCE-FORMAT@r2`](../../decisions/proposals/VDR-DOCUMENT-SOURCE-FORMAT.r2.toml),
-> **`PENDING`** cho đến khi có exact-revision signoff. Product approval không phải quyền viết lại
-> lịch sử publication bất biến: phần đó vẫn bị chặn (mục 6).
+> **`ACCEPTED`** theo [signoff r2](../../decisions/signoffs/VDR-DOCUMENT-SOURCE-FORMAT.r2.toml). Chủ sản phẩm duyệt cơ chế dừng an toàn khi còn revision cũ.
+> Mọi thay đổi lịch sử hoặc migration trên dữ liệu thật cần ủy quyền riêng (mục 6).
 
 ## 1. Bốn chiều trạng thái
 
 | Chiều | Trạng thái | Ghi chú |
 | --- | --- | --- |
 | Quyết định sản phẩm | `PRODUCT_CONFIRMED` (17/11/2026: thay hoàn toàn, một document; 16/11/2026: Mặc định có tên riêng, Markdown lấy H1 đầu tiên) · `DEFERRED` (AsciiDoc) | Lời chốt trích ở đầu tài liệu và ở [#263](editor-title-authority.md). |
-| Quyết định kiến trúc | `PENDING` | `VDR-DOCUMENT-SOURCE-FORMAT@r2` thay r1; `VDR-CONTENT-STORAGE@r1` (JSONB nguyên khối) giữ `PENDING`, không đổi. |
+| Quyết định kiến trúc | `ACCEPTED` | `VDR-DOCUMENT-SOURCE-FORMAT@r2` thay r1; `VDR-CONTENT-STORAGE@r1` (JSONB nguyên khối) giữ `PENDING`, không đổi. |
 | Mức triển khai | `persistence-api` + `web` (Mặc định) | Domain, application, PostgreSQL, HTTP API v1, Web Bàn viết/Reader dùng một shape. Markdown: `persistence-api` (nháp + snapshot riêng tư), **không** công khai và **không** mở trên Bàn viết. |
 | Kiểm chứng | Xem [registry](../development/document-source-format.md) | `unit`, `postgres` (scratch), `web`; mục `NOT_RUN` ghi riêng. |
 
@@ -42,7 +42,7 @@ hash, migration). Title authority thuộc [#263](editor-title-authority.md). Bas
   khác nhận `UnsupportedFormat`. Không bao giờ suy Markdown từ dấu `#` hay nội dung.
 - **Projection dẫn xuất** (không bao giờ ghi đè `source`): title Markdown (H1 → `Title::parse`,
   NFC), search/sort key từ cột `title`, đoạn hiển thị của Reader (`document::paragraphs`: dải dòng
-  trống phân đoạn, bỏ `\r` cuối dòng khi hiển thị).
+  trống phân đoạn, nhận cả LF, CRLF và CR khi hiển thị).
 - **Owner:** `services/vink-app/src/domain/document.rs` (`DocumentFormat`, `DocumentData`,
   `Document`, `Title`, `TitledDocument`), `domain/document/markdown.rs` (trích H1),
   `domain/revision.rs` (`ContentHash::of`, `RevisionContent`). Web: `apps/vink-web/src/contract.rs`
@@ -89,7 +89,7 @@ mới và binary này không đọc shape cũ.
 1. **Chặn khi có revision ở shape cũ.** Có ≥1 revision chưa có khóa `format` thì RAISE
    (`object_not_in_prerequisite_state`, “cutover blocked”) trước mọi thay đổi; transaction rollback,
    `_sqlx_migrations` không ghi gì.
-2. Kiểm shape nháp cũ đúng `{schema_version: 1, blocks: [{lines: [text…]}…]}`; lạ thì RAISE.
+2. Kiểm shape nháp cũ đúng `{schema_version: 1, blocks: [{lines: [text…]}…]}`; lạ thì RAISE. Dừng trước khi ghi nếu block rỗng, line không phải đầu ra hợp lệ của writer cũ, tổng scalar vượt trần hoặc title cũ không đọc lại được chính xác.
 3. Đổi nháp tất định: dòng nối `\n`, block nối một dòng trống, `format = default`, giữ `title`,
    `version`, `updated_at`. Chỉ khôi phục được chữ còn lưu: dòng trống/CRLF/NFD mà writer cũ đã bỏ
    thì không phục hồi.
@@ -118,7 +118,7 @@ không thể nhận migration cho đến khi một phương án dưới đây đ
 | P2 — Reset môi trường không có dữ liệu thật | Xóa và seed lại DB scratch/dev. | Chỉ hợp lệ khi xác nhận không có nội dung người dùng; không áp dụng production. |
 | P3 — Lưu trữ revision cũ ngoài runtime | Chuyển revision cũ sang archive chỉ đọc và tạo revision mới. | Đổi revision identity/pointer/appeal; không khuyến nghị. |
 
-Đến khi có ủy quyền: PR giữ **DRAFT**, `#255` mở. DB scratch dùng để kiểm chứng có thể reset tùy ý.
+Signoff r2 xác nhận cơ chế dừng khi có revision cũ. Việc merge code vẫn phụ thuộc kết quả tích hợp và kiểm chứng. Các môi trường có lịch sử tiếp tục bị chặn cutover. Kiểm chứng sử dụng dữ liệu tổng hợp trong PostgreSQL scratch.
 
 ## 7. Hệ quả cho các issue phụ thuộc
 

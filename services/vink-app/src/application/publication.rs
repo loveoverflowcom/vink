@@ -183,6 +183,8 @@ pub enum AuthorPublicationError {
     NotFound,
     #[error("audience intent generation changed; current generation is {current_generation}")]
     Stale { current_generation: i64 },
+    #[error("a revision needs a title")]
+    MissingTitle,
     #[error("revision was rejected")]
     RevisionRejected,
     #[error("unknown revision")]
@@ -263,6 +265,7 @@ where
             .await?
         {
             CaptureSnapshotOutcome::Saved(capture) => Ok(capture),
+            CaptureSnapshotOutcome::MissingTitle => Err(AuthorPublicationError::MissingTitle),
             CaptureSnapshotOutcome::Conflict {
                 current_draft_version,
                 current_metadata_version,

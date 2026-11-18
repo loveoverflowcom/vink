@@ -1,0 +1,530 @@
+local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=2 libtest_threads=2 managed_target=10–12 GiB (advisory); Cargo bootstrap included; preflight requires normal pressure; retries manual
+local-budget: pressure=normal; swap: total = 2560.00M  used = 832.94M  free = 1727.06M  (encrypted)
+local-budget: supervisor=20590 session=20616 slot=/tmp/vink-local-budget-501
+==> shared store: migration lifecycle and error classes
+   Compiling ring v0.17.14
+   Compiling rustls v0.23.46
+   Compiling rustls-webpki v0.103.16
+   Compiling sqlx-core v0.9.0
+   Compiling sqlx-postgres v0.9.0
+   Compiling sqlx-macros-core v0.9.0
+   Compiling sqlx-macros v0.9.0
+   Compiling sqlx v0.9.0
+   Compiling vink-store-postgres v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-18/task/vink-273/packages/store-postgres)
+    Finished `test` profile [unoptimized] target(s) in 7.41s
+     Running tests/postgres.rs (target/debug/deps/postgres-c919a2b3d5db7435)
+
+running 6 tests
+test a_terminated_session_is_unavailable_and_a_bad_statement_is_not ... ok
+test a_diverged_history_is_reported_and_never_migrated ... ok
+test fresh_database_migrates_once_and_reruns_as_a_no_op ... ok
+test only_the_history_owner_may_write_it ... ok
+test partial_history_is_pending_and_completes ... ok
+test the_test_harness_superuser_is_privileged ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.42s
+
+==> migrations + persistence/concurrency/HTTP tests
+   Compiling sqlx-core v0.9.0
+   Compiling sqlx-postgres v0.9.0
+   Compiling sqlx-macros-core v0.9.0
+   Compiling sqlx-macros v0.9.0
+   Compiling sqlx v0.9.0
+   Compiling vink-store-postgres v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-18/task/vink-273/packages/store-postgres)
+   Compiling vink-app v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-18/task/vink-273/services/vink-app)
+    Finished `test` profile [unoptimized] target(s) in 21.28s
+     Running tests/postgres.rs (target/debug/deps/postgres-17b64a22f9443168)
+
+running 216 tests
+test abuse::password_routes_enforce_rate_limits_at_the_edge ... ok
+test abuse::concurrent_requests_from_two_processes_are_counted_exactly ... ok
+test abuse::the_edge_answers_429_with_retry_after_from_the_shared_counter ... ok
+test abuse::prune_and_rollback_touch_only_rate_limit_windows ... ok
+test another_actor_cannot_read_list_or_write_a_private_draft ... ok
+test api_distinguishes_outcomes_and_keeps_drafts_private ... ok
+test author_works::author_work_metrics_failure_preserves_list ... ok
+test author_works::author_work_corpus_cursor_privacy_and_legacy_contract ... ok
+test author_works::author_work_revision_counts_public_projection_and_content_metadata_changes ... ok
+test author_works::author_work_statement_count_measurement ... ignored, measurement: requires VINK_PG_QUERY_LOG and superuser SET log_statement
+test commit_fence::draft_saves_and_suspensions_serialize_on_the_principal ... ok
+test commit_fence::draft_writes_are_refused_at_commit_once_suspended ... ok
+test concurrent_saves_of_one_version_have_exactly_one_winner ... ok
+test conditional_reads::concurrent_renames_never_pair_a_validator_with_another_body ... ok
+test conditional_reads::every_displayed_change_produces_a_new_validator ... ok
+test conditional_reads::unchanged_public_reads_revalidate_with_not_modified ... ok
+test confirmed_save_survives_a_new_connection_pool ... ok
+test content_storage_rfc::content_storage_boundary_shift ... ok
+test content_storage_rfc::content_storage_probe ... ignored, opt-in scratch PostgreSQL storage comparison; set VINK_CONTENT_STORAGE_OUTPUT
+test content_storage_rfc::content_storage_probe_constraints ... ok
+test discovery::cursor_scope_uses_the_same_query_key_as_postgres_matching ... ok
+test discovery::cursors_are_bound_to_their_search_and_dataset_changes_are_honest ... ok
+test discovery::discovery_measurement ... ignored, measurement; run explicitly
+test discovery::private_unpublished_and_withdrawn_works_never_reach_results_or_validators ... ok
+test discovery::search_finds_works_beyond_the_first_twelve_in_bounded_ordered_pages ... ok
+test discovery::search_validators_revalidate_and_stay_coherent_with_their_body ... ok
+test discovery::sql_search_key_matches_rust_for_vietnamese_and_latin ... ok
+test discovery::vietnamese_text_aliases_and_tag_filters_follow_an_explicit_truth_table ... ok
+test discussion::a_moderation_decision_waits_for_a_pending_suspension_and_refuses ... ok
+test discussion::a_new_comment_is_private_until_approved_and_retries_are_idempotent ... ok
+test discussion::a_suspended_writer_is_refused_at_commit_and_nothing_is_written ... ok
+test discussion::a_withdrawn_work_closes_its_discussion_but_writers_keep_control_of_their_words ... ok
+test discussion::admission_provenance_is_recorded_and_held_by_the_schema ... ok
+test discussion::closing_waits_for_an_in_flight_submission_and_vice_versa ... ok
+test discussion::concurrent_retries_with_one_key_create_exactly_one_comment ... ok
+test discussion::every_discussion_write_is_refused_at_commit_once_suspended ... ok
+test author_works::author_work_query_plans_and_fixed_statement_count ... ok
+test discussion::governance::a_seat_added_while_waiting_is_used_only_by_the_next_decision ... ok
+test discussion::governance::admin_and_governance_moderators_recuse_from_own_comments_and_works ... ok
+test discussion::governance::admin_individual_group_and_legacy_authorities_work_and_record_provenance ... ok
+test discussion::governance::capability_separation_and_work_scope_enforced_strictly ... ok
+test discussion::governance::concurrent_revocations_membership_seat_expiry_and_self_admin_races ... ok
+test discussion::governance::fallback_records_surviving_live_authority_provenance ... ok
+test discussion::governance::governance_revocation_can_wait_on_the_admin_without_blocking_a_case_grant_fk ... ok
+test discussion::governance::reaffirmation_post_review_and_public_overlay_behave_honestly ... ok
+test discussion::governance::schema_provenance_atomicity_history_and_upgrade_backout ... ok
+test discussion::governance::scoped_pagination_cursors_handle_interleaving_hidden_works_and_stale_cursors ... ok
+test discussion::hidden_roots_anchor_public_replies_and_hidden_contexts_degrade ... ok
+test discussion::moderation_authority_is_a_revocable_grant_rechecked_at_commit ... ok
+test discussion::moderation_is_version_bound_audited_and_cannot_revive_removed_comments ... ok
+test discussion::moderators_recuse_from_their_own_comments_and_their_own_works ... ok
+test discussion::pages_follow_the_keyset_order_and_previews_continue_on_the_reply_page ... ok
+test discussion::reads::a_comment_moves_from_the_overlay_to_the_public_list_exactly_once ... ok
+test discussion::reads::a_mode_change_waits_for_a_pending_suspension_and_refuses ... ok
+test discussion::reads::a_suspension_waits_for_a_write_that_already_holds_the_fence ... ok
+test discussion::reads::an_identity_outage_never_hides_the_public_projection ... ok
+test discussion::reads::approval_and_removal_during_pagination_follow_the_keyset_contract ... ok
+test discussion::reads::concurrent_writes_on_one_thread_never_deadlock ... ok
+test discussion::reads::http_keeps_public_and_private_reads_apart ... ok
+test discussion::reads::own_comments_are_recoverable_beyond_the_public_page_and_under_unlisted_roots ... ok
+test discussion::reads::own_removal_waits_for_a_pending_suspension_and_refuses ... ok
+test discussion::reads::sql_overlay_filters_match_the_domain_projection ... ok
+test discussion::reads::the_overlay_index_rolls_back_without_changing_answers ... ok
+test discussion::reads::the_public_projection_equals_the_guest_view_and_an_independent_oracle ... ok
+test discussion::rejection_reasons_reach_only_their_writer_and_are_required_in_sql ... ok
+test discussion::sql_visibility_filters_match_the_domain_projection ... ok
+test discussion::suspension_and_submission_serialize_on_the_principal ... ok
+test discussion::the_database_alone_rejects_a_third_tier_and_cross_scope_references ... ok
+test discussion::the_http_api_keeps_every_discussion_outcome_distinct ... ok
+test discussion::the_http_moderation_api_keeps_every_outcome_distinct ... ok
+test discussion::the_queue_lists_pending_present_comments_oldest_first ... ok
+test discussion::the_work_author_toggles_comments_but_has_no_power_over_others ... ok
+test discussion::upgrade_records_premoderation_for_existing_comments ... ok
+test document_budget::draft_http_budget_browser ... ignored, opt-in browser: build site, VINK_CHROME, VINK_DOCUMENT_BUDGET_OUTPUT
+test document_budget::long_document_budget ... ignored, opt-in benchmark: VINK_DOCUMENT_BUDGET_OUTPUT; see long-document-budget.md
+test discussion::governance::a_new_grant_cannot_bypass_the_in_flight_authority_fence ... ok
+test document_budget::long_document_sample_rejects_change_labeled_as_noop - should panic ... ok
+test document_budget::long_document_sample_rejects_repeated_edit_labeled_as_change - should panic ... ok
+test document_budget::long_document_http_boundaries_preserve_durable_text_and_conflicts ... ok
+test document_source_compat::production_v1_rows_remain_unmodified_and_readable_via_stored_document ... ok
+test document_source_compat::proposed_v2_check_constraint_supports_lossless_nfd_and_dual_read_in_scratch_table ... ok
+test document_budget::long_document_samples_are_independent_durable_transitions ... ok
+test draft_http_budget::draft_http_budget_limits_streamed_and_declared_bodies_without_writes ... ok
+test drafts::draft_cursor_never_supplies_authority_and_http_preserves_legacy_privacy ... ok
+test drafts::draft_keys_match_web_oracle_and_backfill_or_change_atomically ... ok
+test drafts::draft_paging_searches_all_owned_titles_with_exact_order_and_ties ... ok
+test drafts::draft_query_and_cursor_do_not_enter_debug_request_traces ... ok
+test drafts::draft_query_plans ... ignored, measurement; run explicitly with --ignored --nocapture
+test drafts::draft_unicode_tables_match_pinned_rust_and_postgres ... ok
+test drafts::live_draft_moves_require_a_fresh_head_in_both_orders ... ok
+test empty_untitled_working_draft_can_be_saved_and_loaded ... ok
+test endorsement::a_failure_after_the_state_write_rolls_back_state_count_and_key ... ok
+test endorsement::a_refused_or_failed_write_leaves_nothing_behind ... ok
+test endorsement::a_suspended_reader_cannot_endorse_and_a_pending_suspension_is_waited_for ... ok
+test endorsement::a_work_endorsement_follows_accepted_order_and_receipts ... ok
+test endorsement::an_initial_remove_fences_a_select_created_earlier ... ok
+test endorsement::an_uncommitted_first_command_decides_a_waiting_insert_in_both_commit_orders ... ok
+test endorsement::an_unreachable_stored_state_fails_closed_without_the_schema_check ... ok
+test endorsement::comment_endorsements_follow_visibility_scope_and_ignore_comments_close ... ok
+test endorsement::concurrent_commands_have_exactly_one_winner ... ok
+test endorsement::each_revision_is_its_own_target_and_own_removal_survives_hiding ... ok
+test endorsement::endorsing_and_moderation_serialize_on_the_comment ... ok
+test endorsement::endorsing_and_publication_changes_serialize_on_the_pointer ... ok
+test endorsement::summaries_equal_an_independent_recount_of_canonical_rows ... ok
+test endorsement::the_database_alone_enforces_endorsement_structure ... ok
+test endorsement::the_http_api_keeps_every_endorsement_outcome_distinct ... ok
+test fresh_database_migrates_to_current_schema ... ok
+test invalid_http_save_input_never_changes_the_durable_draft ... ok
+test moderation_queue::moderation_queue_admin_appeal_paging_recusal_and_seat_revocation ... ok
+test moderation_queue::moderation_queue_custom_plans_are_scoped_to_each_read_transaction ... ok
+test moderation_queue::moderation_queue_large_sparse_query_plans ... ok
+test moderation_queue::moderation_queue_pages_filter_before_limit_and_recheck_live_authority ... ok
+test no_publications_is_an_empty_collection_and_not_an_outage ... ok
+test outbox::a_committed_comment_owes_its_consumers_and_a_rolled_back_one_owes_nothing ... ok
+test outbox::a_moderation_in_flight_delays_the_observation_without_deadlock_or_overwrite ... ok
+test outbox::a_stuck_worker_never_blocks_public_reads_or_new_comments ... ok
+test outbox::a_suspended_writer_is_observed_as_refused_without_touching_the_comment ... ok
+test outbox::a_worker_that_lost_its_claim_writes_neither_effect_nor_outcome ... ok
+test outbox::competing_workers_claim_disjoint_work_and_a_crash_is_reclaimed ... ok
+test outbox::crashes_around_the_effect_and_lost_commit_responses_never_duplicate_it ... ok
+test outbox::old_events_never_overwrite_newer_human_decisions_or_revive_removed_comments ... ok
+test outbox::one_effect_failing_retries_only_that_effect ... ok
+test outbox::poison_exhaustion_and_deadlines_end_in_dead_letters_that_an_operator_requeues ... ok
+test outbox::replays_and_concurrent_submissions_never_duplicate_a_logical_event ... ok
+test outbox::the_restricted_runtime_role_is_enough_to_run_the_outbox ... ok
+test outbox::the_schema_rollback_refuses_while_work_is_owed_and_keeps_comments ... ok
+test outbox::the_worker_process_drains_backlog_survives_outages_kills_and_restarts ... ok
+test draft_http_budget::draft_http_budget_accepts_client_corpus_and_preserves_authority ... ok
+test outbox::timeouts_panics_and_shutdown_never_acknowledge_unfinished_work ... ok
+test outbox::upgrading_keeps_old_comments_and_new_ones_start_owing_work ... ok
+test post_review::all_three_exhaustion_boundaries_finalize_before_the_delivery_ends ... ok
+test post_review::an_event_without_a_ticket_is_visible_unresolved_operational_debt ... ok
+test post_review::clear_human_reaffirmation_and_author_removal_preserve_their_distinct_outcomes ... ok
+test post_review::db_failure_during_finalization_keeps_durable_debt_and_recovers ... ok
+test post_review::foreign_comment_schema_and_changed_text_are_quarantined_without_guessing_a_hold ... ok
+test post_review::held_reply_disappears_from_counts_previews_context_and_endorsement_capability ... ok
+test post_review::immutable_business_deadline_expires_before_first_claim_even_with_a_clear_result ... ok
+test post_review::operator_producer_checks_state_switch_exact_replay_and_atomic_enqueue ... ok
+test post_review::poisoned_binding_is_visible_debt_and_cannot_be_pruned_or_backed_out ... ok
+test post_review::real_human_and_worker_commits_serialize_in_both_orders_without_deadlock ... ok
+test outbox::the_worker_process_reports_unavailable_queues_and_refuses_privileged_roles ... ok
+test post_review::reclaimed_worker_cannot_write_result_effect_receipt_failure_or_ack ... ok
+test post_review::runtime_role_can_produce_drain_and_inspect_without_ddl_and_backout_preserves_audit ... ok
+test post_review::structured_result_is_exactly_replayed_and_hold_projects_through_existing_reads ... ok
+test post_review::supervised_timeout_and_panic_end_in_real_holds_on_the_last_attempt ... ok
+test post_review::upgrade_and_unused_backout_preserve_comments_and_human_audit ... ok
+test principal::a_pen_name_change_keeps_the_principal_its_binding_and_its_drafts ... ok
+test principal::bindings_cannot_move_be_deleted_or_attach_a_second_subject ... ok
+test principal::concurrent_first_requests_provision_exactly_one_principal_without_orphans ... ok
+test principal::distinct_subjects_never_share_a_principal ... ok
+test principal::suspension_closes_the_principal_until_lifted_and_keeps_history ... ok
+test public_read_serves_the_published_snapshot_not_the_draft ... ok
+test publication::author_web_recovery_contract_on_real_rows ... ok
+test publication::backout_refuses_after_an_author_command_and_drops_unused_schema ... ok
+test publication::concurrent_retries_with_one_key_apply_once_and_replay ... ok
+test publication::test_lock_ordering_concurrency_set_private_and_publications_share ... ok
+test publication::test_publication_state_and_snapshot_capture_lifecycle ... ok
+test publication::test_r1_remains_readable_while_r2_is_submitted ... ok
+test publication::test_request_public_and_ticket_creation ... ok
+test publication::test_schema_upgrade_and_legacy_compatibility ... ok
+test publication::test_set_private_clears_pointer_and_enforces_privacy ... ok
+test publication::upgrade_backfills_paired_state_for_old_pointers ... ok
+test publication_state::state_is_not_a_body_integrity_or_publication_capability ... ok
+test post_review::real_operator_cli_and_worker_restart_cover_a_crash_inside_the_effect ... ok
+test publication_state::state_keeps_distinct_metadata_bindings_when_only_tags_change ... ok
+test publication_state::state_observes_stale_policy_and_private_fences_late_approval ... ok
+test publication_state::state_reads_all_history_without_permission_to_read_document ... ok
+test publication_state::state_reads_one_snapshot_across_a_concurrent_moderation_commit ... ok
+test publication_state_budget::publication_state_budget ... ignored, opt-in PostgreSQL measurement; VINK_PUBLICATION_STATE_OUTPUT required
+test publication_state::state_rejects_job_digest_and_database_rejects_cross_work_bindings ... ok
+test snapshots_are_immutable_and_pointers_stay_within_their_work ... ok
+test server_html_has_public_content_and_never_private_drafts ... ok
+test stale_expected_version_conflicts_without_writing ... ok
+test taxonomy::a_failure_after_partial_work_rolls_the_whole_transaction_back ... ok
+test taxonomy::a_fresh_connection_sees_only_committed_catalog_and_draft_state ... ok
+test taxonomy::assignment_and_snapshot_rules_hold_in_sql_without_rust ... ok
+test taxonomy::catalog_changes_keep_every_slug_with_its_tag ... ok
+test taxonomy::capture_and_tag_saves_cannot_publish_a_mismatched_snapshot ... ok
+test taxonomy::catalog_refusals_and_suspension_write_nothing ... ok
+test taxonomy::catalog_rules_hold_in_sql_without_rust ... ok
+test taxonomy::draft_tags_round_trip_and_stay_private_to_their_owner ... ok
+test taxonomy::concurrent_saves_of_one_metadata_version_have_one_winner ... ok
+test taxonomy::public_tags_follow_the_binding_through_edits_replacement_and_withdrawal ... ok
+test taxonomy::retirement_and_assignment_serialize_on_the_catalog_row ... ok
+test taxonomy::sql_digest_matches_rust_and_the_independent_vectors ... ok
+test taxonomy::stale_tabs_conflict_and_every_accepted_save_advances ... ok
+test taxonomy::text_and_tag_saves_of_one_work_do_not_conflict ... ok
+test taxonomy::suspension_and_tag_saves_serialize_on_the_principal ... ok
+test taxonomy::upgrade_keeps_existing_untagged_works_readable_without_backfill ... ok
+test taxonomy_api::catalog_governance_runs_through_the_use_case_and_audits_every_step ... ok
+test taxonomy_api::catalog_reads_are_public_ranked_and_survive_an_identity_outage ... ok
+test taxonomy_api::comment_moderators_get_no_catalog_authority ... ok
+test taxonomy_api::draft_tags_round_trip_privately_with_presence_and_catalog_rules ... ok
+test taxonomy_api::lost_acknowledgements_and_parallel_tabs_never_overwrite_a_newer_choice ... ok
+test taxonomy_api::standing_is_rechecked_when_the_tag_save_commits ... ok
+test taxonomy_api::upgrading_an_unaudited_catalog_keeps_it_and_audits_from_then_on ... ok
+test unknown_principal_is_not_an_authenticated_actor ... ok
+test vietnamese_text_lines_and_stanzas_round_trip ... ok
+test work_moderation::admin_cli_returns_connection_before_closing_pool ... ok
+test work_moderation::appeal_on_old_revision_never_overwrites_new_public_intent ... ok
+test work_moderation::appeal_reserves_decision_and_concurrent_conclusions_apply_once ... ok
+test work_moderation::appeal_waits_for_seat_removal_before_taking_the_principal ... ok
+test work_moderation::group_grants_recusal_and_membership_removal ... ok
+test work_moderation::hidden_reader_retains_only_discussion_and_republication_restores_body ... ok
+test work_moderation::paused_submission_goes_to_the_human_queue ... ok
+test work_moderation::private_closes_appeal_and_refuses_late_conclusion_and_snapshot_reads ... ok
+test work_moderation::retryable_failures_use_fresh_evaluation_ids_then_go_to_people ... ok
+test work_moderation::review_withdrawn_page_survives_a_pending_resubmission ... ok
+test work_moderation::stale_claim_or_pause_before_finish_changes_nothing ... ok
+test work_moderation::stale_note_and_lost_authority_are_persisted_honestly ... ok
+test work_moderation::test_automation_pause_reroutes_open_jobs ... ok
+test work_moderation::test_bug1_set_private_withdraws_jobs_and_bug2_request_public_on_conflict ... ok
+test work_moderation::test_review_cases_lifecycle_and_grants ... ok
+test work_moderation::test_work_moderation_full_flow_and_review_withdrawn_page ... ok
+test work_moderation::work_appeal_deduplicates_and_only_admin_concludes_with_history ... ok
+test taxonomy_api::the_operator_command_changes_and_reports_the_catalog ... ok
+
+test result: ok. 209 passed; 0 failed; 7 ignored; 0 measured; 0 filtered out; finished in 73.25s
+
+==> identity: migrations and readiness on PostgreSQL
+   Compiling rustls v0.23.46
+   Compiling sqlx-core v0.9.0
+   Compiling sqlx-postgres v0.9.0
+   Compiling sqlx-macros-core v0.9.0
+   Compiling sqlx-macros v0.9.0
+   Compiling tokio-rustls v0.26.6
+   Compiling lettre v0.11.23
+   Compiling sqlx v0.9.0
+   Compiling vink-store-postgres v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-18/task/vink-273/packages/store-postgres)
+   Compiling vink-identity v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-18/task/vink-273/services/vink-identity)
+    Finished `test` profile [unoptimized] target(s) in 9.31s
+     Running tests/postgres.rs (target/debug/deps/postgres-faa75ad1306ae653)
+
+running 48 tests
+test an_app_history_in_the_database_is_diverged_not_current ... ok
+test a_current_schema_without_a_caller_is_still_not_ready ... ok
+test delivery::a_challenge_commits_with_its_delivery_and_the_worker_sends_it_once ... ok
+test delivery::a_crashed_worker_is_recovered_after_its_lease_at_least_once ... ok
+test delivery::concurrent_workers_never_send_one_claim_twice ... ok
+test delivery::global_and_per_account_ceilings_hold ... ok
+test delivery::prune_deletes_only_closed_records ... ok
+test delivery::the_rollback_script_drops_only_the_outbox ... ok
+test delivery::the_running_worker_wakes_on_commit_and_stops_on_shutdown ... ok
+test delivery::transient_failures_back_off_and_recover_permanent_ones_end_at_once ... ok
+test email_code::a_verified_email_change_keeps_the_subject_and_a_freed_address_never_inherits_it ... ok
+test email_code::codes_are_one_time_bound_to_their_handle_and_attempt_limited ... ok
+test email_code::completions_queued_behind_a_row_lock_consume_the_challenge_once ... ok
+test email_code::concurrent_completions_issue_one_session_per_challenge_and_one_account_per_address ... ok
+test email_code::disabling_an_account_revokes_every_session_and_blocks_new_ones ... ok
+test email_code::expired_sessions_are_rejected_and_cannot_be_revoked_back_to_life ... ok
+test email_code::first_sign_in_creates_one_account_and_a_verifiable_session ... ok
+test email_code::logout_revokes_only_that_session_and_is_idempotent ... ok
+test email_code::the_per_address_throttle_holds_under_concurrency_and_ignores_account_existence ... ok
+test enrollment::a_disable_that_wins_the_race_blocks_the_enrollment_and_a_credential_never_revives ... ok
+test enrollment::a_failure_after_the_hash_leaves_no_half_credential_and_the_proof_stays_usable ... ok
+test enrollment::a_logout_that_wins_the_race_blocks_the_enrollment ... ok
+test enrollment::a_password_only_account_is_not_enrolled_again_and_registration_still_makes_new_accounts ... ok
+test enrollment::a_proof_that_expires_while_waiting_on_a_username_cannot_commit ... ok
+test enrollment::a_session_expiring_at_the_issuance_fence_queues_no_enrollment_mail ... ok
+test enrollment::a_taken_username_does_not_spend_the_code_and_is_case_insensitive ... ok
+test enrollment::an_expired_proof_or_a_changed_address_enrolls_nothing ... ok
+test enrollment::an_unknown_or_expired_session_starts_nothing_and_sends_no_mail ... ok
+test enrollment::concurrent_enrollments_of_one_account_leave_exactly_one_credential ... ok
+test enrollment::concurrent_enrollments_of_two_accounts_with_one_username_give_it_to_one ... ok
+test enrollment::enrolling_attaches_the_credential_to_the_same_account_and_both_methods_sign_in_as_it ... ok
+test delivery::attempts_are_bounded_and_used_or_expired_codes_are_never_sent ... ok
+test enrollment::enrollment_is_not_configured_without_both_methods ... ok
+test enrollment::enrolling_then_disabling_or_revoking_never_restores_a_session ... ok
+test enrollment::o12_unicode_passwords_work_end_to_end_through_enrollment_and_sign_in ... ok
+test enrollment::the_proof_is_the_accounts_own_fresh_single_use_code ... ok
+test enrollment::the_rollback_script_removes_only_enrollment_challenges_and_keeps_credentials ... ok
+test identity_owns_only_credential_and_session_tables ... ok
+test enrollment::the_rpc_operations_answer_with_typed_results_and_leak_no_secret ... ok
+test password::disabled_account_cannot_sign_in_with_password_and_active_session_is_revoked ... ok
+test password::duplicate_username_registration_is_rejected ... ok
+test password::password_routes_over_http ... ok
+test password::old_raw_hashes_can_still_sign_in_to_the_same_account ... ok
+test password::registration_and_sign_in_round_trip ... ok
+test password::the_rollback_script_drops_password_tables ... ok
+test password::wrong_password_and_unknown_username_are_rejected ... ok
+test serve_is_not_ready_until_identity_migrates_and_migrating_twice_is_a_no_op ... ok
+test password::password_sign_in_throttling_after_repeated_failures ... ok
+
+test result: ok. 48 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 17.72s
+
+==> build binaries
+   Compiling sqlx-core v0.9.0
+   Compiling vink-ui v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-18/task/vink-273/packages/ui-system/leptos)
+   Compiling sqlx-postgres v0.9.0
+   Compiling sqlx v0.9.0
+   Compiling vink-store-postgres v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-18/task/vink-273/packages/store-postgres)
+   Compiling vink-patterns v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-18/task/vink-273/packages/vink-patterns/leptos)
+   Compiling tokio-rustls v0.26.6
+   Compiling lettre v0.11.23
+   Compiling vink-identity v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-18/task/vink-273/services/vink-identity)
+   Compiling vink-web v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-18/task/vink-273/apps/vink-web)
+   Compiling vink-app v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-18/task/vink-273/services/vink-app)
+    Finished `dev` profile [unoptimized] target(s) in 48.54s
+==> invalid configuration: serve, worker and migrate exit 2
+==> psql (PostgreSQL) 17.11 (Homebrew)
+==> vink-app migrate ok
+==> vink-app dev-seed ok
+==> app: database vink_verify_prov_legacy, migrator vink_verify_prov_legacy_migrator, runtime vink_verify_prov_legacy_runtime
+created role vink_verify_prov_legacy_migrator
+created role vink_verify_prov_legacy_runtime
+owner vink_verify_prov_legacy ok (migrator vink_verify_prov_legacy_migrator, runtime vink_verify_prov_legacy_runtime)
+==> identity: database vink_verify_prov_identity, migrator vink_verify_prov_identity_migrator, runtime vink_verify_prov_identity_runtime
+created role vink_verify_prov_identity_migrator
+created role vink_verify_prov_identity_runtime
+created database vink_verify_prov_identity
+owner vink_verify_prov_identity ok (migrator vink_verify_prov_identity_migrator, runtime vink_verify_prov_identity_runtime)
+==> provisioning ok
+    adopting TABLE _sqlx_migrations for vink_verify_prov_legacy_migrator
+    adopting TABLE discussion_threads for vink_verify_prov_legacy_migrator
+    adopting TABLE works for vink_verify_prov_legacy_migrator
+    adopting TABLE publications for vink_verify_prov_legacy_migrator
+    adopting TABLE comments for vink_verify_prov_legacy_migrator
+    adopting TABLE principals for vink_verify_prov_legacy_migrator
+    adopting TABLE revisions for vink_verify_prov_legacy_migrator
+    adopting TABLE working_drafts for vink_verify_prov_legacy_migrator
+    adopting TABLE discussion_command_receipts for vink_verify_prov_legacy_migrator
+    adopting TABLE discussion_moderator_grants for vink_verify_prov_legacy_migrator
+    adopting TABLE work_endorsements for vink_verify_prov_legacy_migrator
+    adopting TABLE comment_endorsements for vink_verify_prov_legacy_migrator
+    adopting TABLE endorsement_receipts for vink_verify_prov_legacy_migrator
+    adopting TABLE principal_bindings for vink_verify_prov_legacy_migrator
+    adopting TABLE principal_suspensions for vink_verify_prov_legacy_migrator
+    adopting TABLE tags for vink_verify_prov_legacy_migrator
+    adopting TABLE tag_names for vink_verify_prov_legacy_migrator
+    adopting TABLE tag_catalog for vink_verify_prov_legacy_migrator
+    adopting TABLE work_draft_metadata for vink_verify_prov_legacy_migrator
+    adopting TABLE work_draft_tags for vink_verify_prov_legacy_migrator
+    adopting TABLE work_metadata_snapshots for vink_verify_prov_legacy_migrator
+    adopting TABLE work_metadata_snapshot_tags for vink_verify_prov_legacy_migrator
+    adopting TABLE tag_catalog_changes for vink_verify_prov_legacy_migrator
+    adopting TABLE auth_rate_limits for vink_verify_prov_legacy_migrator
+    adopting TABLE discussion_events for vink_verify_prov_legacy_migrator
+    adopting TABLE discussion_deliveries for vink_verify_prov_legacy_migrator
+    adopting TABLE discussion_delivery_requeues for vink_verify_prov_legacy_migrator
+    adopting TABLE comment_admission_observations for vink_verify_prov_legacy_migrator
+    adopting TABLE comment_post_reviews for vink_verify_prov_legacy_migrator
+    adopting TABLE comment_post_review_results for vink_verify_prov_legacy_migrator
+    adopting TABLE comment_post_review_receipts for vink_verify_prov_legacy_migrator
+    adopting TABLE comment_post_review_quarantines for vink_verify_prov_legacy_migrator
+    adopting TABLE work_publications for vink_verify_prov_legacy_migrator
+    adopting TABLE work_publication_command_receipts for vink_verify_prov_legacy_migrator
+    adopting TABLE work_evaluation_jobs for vink_verify_prov_legacy_migrator
+    adopting TABLE moderation_admin_seats for vink_verify_prov_legacy_migrator
+    adopting TABLE moderation_admin_audit for vink_verify_prov_legacy_migrator
+    adopting TABLE moderation_groups for vink_verify_prov_legacy_migrator
+    adopting TABLE moderation_group_members for vink_verify_prov_legacy_migrator
+    adopting TABLE moderation_grants for vink_verify_prov_legacy_migrator
+    adopting TABLE work_revision_moderation for vink_verify_prov_legacy_migrator
+    adopting TABLE moderation_cases for vink_verify_prov_legacy_migrator
+    adopting TABLE moderation_case_notes for vink_verify_prov_legacy_migrator
+    adopting TABLE moderation_automation_state for vink_verify_prov_legacy_migrator
+    adopting TABLE work_appeals for vink_verify_prov_legacy_migrator
+    adopting TABLE moderation_automation_audit for vink_verify_prov_legacy_migrator
+    adopting TABLE work_revision_decision_history for vink_verify_prov_legacy_migrator
+    adopting TABLE moderation_directory_audit for vink_verify_prov_legacy_migrator
+    adopting TABLE comment_moderation_decisions for vink_verify_prov_legacy_migrator
+    adopting FUNCTION reject_revision_update() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION require_audited_version() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION guard_comment_update() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION reject_moderation_decision_change() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION guard_moderator_grant_update() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION vink_search_key(text) for vink_verify_prov_legacy_migrator
+    adopting FUNCTION guard_comment_admission() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION reject_discussion_event_change() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION reject_delivery_requeue_change() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION reject_post_review_change() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION guard_endorsement_update() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION reject_endorsement_removal() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION reject_principal_binding_change() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION guard_tag_update() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION guard_tag_name_write() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION guard_tag_catalog_version() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION reject_taxonomy_removal() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION guard_draft_metadata_version() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION work_metadata_digest(uuid,uuid[]) for vink_verify_prov_legacy_migrator
+    adopting FUNCTION verify_metadata_snapshot(uuid) for vink_verify_prov_legacy_migrator
+    adopting FUNCTION seal_metadata_snapshot() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION seal_metadata_snapshot_tag() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION reject_metadata_snapshot_change() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION require_tag_catalog_audit() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION check_comment_decision_authority() for vink_verify_prov_legacy_migrator
+    adopting FUNCTION vink_desk_key(text) for vink_verify_prov_legacy_migrator
+    databases still open to PUBLIC CONNECT (no Vink owner data expected): postgres, template1
+    databases still open to PUBLIC CONNECT (no Vink owner data expected): postgres, template1
+==> app: database vink_verify_prov_fresh, migrator vink_verify_prov_fresh_migrator, runtime vink_verify_prov_fresh_runtime
+created role vink_verify_prov_fresh_migrator
+created role vink_verify_prov_fresh_runtime
+created database vink_verify_prov_fresh
+owner vink_verify_prov_fresh ok (migrator vink_verify_prov_fresh_migrator, runtime vink_verify_prov_fresh_runtime)
+==> identity: database vink_verify_prov_identity, migrator vink_verify_prov_identity_migrator, runtime vink_verify_prov_identity_runtime
+owner vink_verify_prov_identity ok (migrator vink_verify_prov_identity_migrator, runtime vink_verify_prov_identity_runtime)
+==> provisioning ok
+    databases still open to PUBLIC CONNECT (no Vink owner data expected): postgres, template1
+    databases still open to PUBLIC CONNECT (no Vink owner data expected): postgres, template1
+==> app: database vink_verify_prov_legacy, migrator vink_verify_prov_legacy_migrator, runtime vink_verify_prov_legacy_runtime
+owner vink_verify_prov_legacy ok (migrator vink_verify_prov_legacy_migrator, runtime vink_verify_prov_legacy_runtime)
+==> identity: database vink_verify_prov_identity, migrator vink_verify_prov_identity_migrator, runtime vink_verify_prov_identity_runtime
+owner vink_verify_prov_identity ok (migrator vink_verify_prov_identity_migrator, runtime vink_verify_prov_identity_runtime)
+==> provisioning ok
+    databases still open to PUBLIC CONNECT (no Vink owner data expected): postgres, template1
+    databases still open to PUBLIC CONNECT (no Vink owner data expected): postgres, template1
+==> app: database vink_verify_prov_fresh, migrator vink_verify_prov_fresh_migrator, runtime vink_verify_prov_fresh_runtime
+owner vink_verify_prov_fresh ok (migrator vink_verify_prov_fresh_migrator, runtime vink_verify_prov_fresh_runtime)
+==> identity: database vink_verify_prov_identity, migrator vink_verify_prov_identity_migrator, runtime vink_verify_prov_identity_runtime
+owner vink_verify_prov_identity ok (migrator vink_verify_prov_identity_migrator, runtime vink_verify_prov_identity_runtime)
+==> provisioning ok
+    databases still open to PUBLIC CONNECT (no Vink owner data expected): postgres, template1
+    databases still open to PUBLIC CONNECT (no Vink owner data expected): postgres, template1
+==> app: database vink_verify_prov_legacy, migrator vink_verify_prov_legacy_migrator, runtime vink_verify_prov_legacy_runtime
+owner vink_verify_prov_legacy ok (migrator vink_verify_prov_legacy_migrator, runtime vink_verify_prov_legacy_runtime)
+==> identity: database vink_verify_prov_identity, migrator vink_verify_prov_identity_migrator, runtime vink_verify_prov_identity_runtime
+owner vink_verify_prov_identity ok (migrator vink_verify_prov_identity_migrator, runtime vink_verify_prov_identity_runtime)
+==> checks ok
+    databases still open to PUBLIC CONNECT (no Vink owner data expected): postgres, template1
+    databases still open to PUBLIC CONNECT (no Vink owner data expected): postgres, template1
+==> app: database vink_verify_prov_fresh, migrator vink_verify_prov_fresh_migrator, runtime vink_verify_prov_fresh_runtime
+owner vink_verify_prov_fresh ok (migrator vink_verify_prov_fresh_migrator, runtime vink_verify_prov_fresh_runtime)
+==> identity: database vink_verify_prov_identity, migrator vink_verify_prov_identity_migrator, runtime vink_verify_prov_identity_runtime
+owner vink_verify_prov_identity ok (migrator vink_verify_prov_identity_migrator, runtime vink_verify_prov_identity_runtime)
+==> checks ok
+    databases still open to PUBLIC CONNECT (no Vink owner data expected): postgres, template1
+    databases still open to PUBLIC CONNECT (no Vink owner data expected): postgres, template1
+==> migrate as the runtime role refused (exit 1), nothing created
+==> vink-app migrate ok
+==> vink-app migrate ok
+==> vink-app migrate ok
+==> vink-app dev-seed ok
+==> runtime/migrator privileges and cross-database refusals as expected
+==> app: database vink_verify_prov_legacy, migrator vink_verify_prov_legacy_migrator, runtime vink_verify_prov_legacy_runtime
+==> stray grant: --check failed and the runtime role could create a table
+==> app: database vink_verify_prov_legacy, migrator vink_verify_prov_legacy_migrator, runtime vink_verify_prov_legacy_runtime
+owner vink_verify_prov_legacy ok (migrator vink_verify_prov_legacy_migrator, runtime vink_verify_prov_legacy_runtime)
+==> identity: database vink_verify_prov_identity, migrator vink_verify_prov_identity_migrator, runtime vink_verify_prov_identity_runtime
+owner vink_verify_prov_identity ok (migrator vink_verify_prov_identity_migrator, runtime vink_verify_prov_identity_runtime)
+==> checks ok
+    databases still open to PUBLIC CONNECT (no Vink owner data expected): postgres, template1
+    databases still open to PUBLIC CONNECT (no Vink owner data expected): postgres, template1
+==> 2026-11-18T00:11:48.378097Z  INFO vink_worker: vink-worker started database="current" outbox="ready" outbox_concurrency=4 evaluation=false evaluation_mock="none" consumers="admission_shadow.v1,operator_post_review.v1" jobs="discussion_outbox,rate_limit_prune,outbox_retention,work_evaluation" post_review="operator_rereview.v1" admission_post_review="no_producer" ai_moderation="not_implemented"
+==> logs/evidence: /Users/manhblue/Documents/Codex/2026-11-18/task/vink-273/target/verify-identity/1794960708439876000-20616
+==> identity configuration errors exit 2 and name the setting
+==> identity migrations: runtime refused, applied once, App database untouched
+==> identity contract over the socket: 200/501/400/413/404/503 as specified
+==> identity callers: another uid and no configuration are refused (401)
+==> identity recovered after 2 terminated connection(s)
+==> identity reports a privileged role, unreachable or wrong database and foreign schema as not ready
+==> identity lifecycle: SIGTERM 0 (also with a stalled head), second instance refused, stale socket replaced
+==> App + Identity: 401 without/with credential, 503 only when Identity is down, public reading 200 throughout
+==> App refuses the migrator credential (503 privileged) and an Identity socket served by another user
+==> D-05: activation lock 501; sign-in via outbox worker → needs_principal → provision; network ceiling 429 + Retry-After behind a trusted proxy; isolation; logout per session; email change keeps the subject, freed address unlinked; suspension and disable close authority; Identity down is 503, public reading 200; SMTP delivery with the file credential, rotation without restart, relay outage recovered
+==> identity logs: no password or presented credential
+==> logs/evidence: /Users/manhblue/Documents/Codex/2026-11-18/task/vink-273/target/verify-backup/1794960732398283000-20616
+==> vink_verify_prov_legacy dumped and restored into vink_verify_prov_restored_app
+==> vink_verify_prov_identity dumped and restored into vink_verify_prov_restored_identity
+==> restored copies equal their sources (rows, IDs, Unicode, pointers, histories)
+
+verification summary
+  PASS  PostgreSQL available (test harness)
+  PASS  shared store: migration lifecycle and error classes
+  PASS  migrations + persistence/concurrency/HTTP tests
+  PASS  identity: migrations and readiness on PostgreSQL
+  PASS  build binaries
+  PASS  invalid configuration exits 2
+  PASS  psql 15+ available (services/postgres/provision.sh)
+  PASS  scratch owners absent before the run
+  PASS  legacy App database: one superuser migrates and seeds it (pre-provisioning layout)
+  PASS  provision.sh adopts the legacy App database and creates fresh App + Identity
+  PASS  rerun with other passwords changes no password; --check passes
+  PASS  migrate: runtime credential refused without fallback; migrator applies and reruns
+  PASS  legacy IDs, Unicode, drafts, revisions, publication pointer and history unchanged
+  PASS  runtime roles: DML only; no DDL, TEMP, history writes or other owner databases
+  PASS  negative control: a stray CREATE grant fails --check and is visible to the probe
+  PASS  worker starts with the runtime role, reports a current schema, stops on SIGTERM
+  PASS  identity: invalid configuration exits 2 without echoing credentials
+  PASS  identity migrate: runtime refused, migrator applies once, App database refused
+  PASS  identity serve on its socket: ready, honest capabilities, contract refusals, deadline
+  PASS  identity: wrong or missing caller stays closed; forged headers change nothing
+  PASS  identity: lost connections recover; wrong database or schema is not ready
+  PASS  identity: SIGTERM exits 0, restart, second instance refused, stale socket replaced
+  PASS  App + Identity: no credential is anonymous, nothing grants, Identity down is 503 for presented credentials only, public reading stays up, independent restarts
+  PASS  App readiness refuses a privileged role (production) and an untrusted Identity server
+  PASS  D-05 email-code authority, two real binaries: activation lock, sign-in through the outbox worker, network limit behind a trusted proxy, binding, isolation, logout, email change, suspension, disable, outage, SMTP delivery with password rotation and relay recovery
+  PASS  ACC-03 password enrollment, two real binaries: proof, guards, readback and ownership across both login methods
+  PASS  identity: logs contain no credential or password
+  PASS  backup/restore per owner: pg_dump of App and Identity restored elsewhere matches data and history; originals untouched
+  PASS  scratch databases and roles removed
+local-budget: wall=217.28s sampled_peak_rss_sum=1782080 KiB samples=210 interval=1s
+local-budget: pressure=normal; swap: total = 2560.00M  used = 824.94M  free = 1735.06M  (encrypted)

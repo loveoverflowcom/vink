@@ -68,6 +68,19 @@ async fn markdown_title_is_materialized_in_the_same_save_and_cas(pool: PgPool) {
         .await
         .unwrap();
     assert_eq!(stored(&pool, work).await.0, "");
+    let router = app(&pool).await;
+    let (status, _, body) = call(&router, "POST", &format!("/api/v1/works/{work}/snapshots"),
+        Some(dev_seed::SAMPLE_AUTHOR), Some(ORIGIN), Some(json!({
+            "command_key": "untitled-snapshot", "expected_draft_version": 4, "expected_metadata_version": 1
+        }))).await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(json(&body)["error"]["field"], "title");
+    let revision_count: i64 = sqlx::query_scalar("SELECT count(*) FROM revisions WHERE work_id=$1")
+        .bind(work.as_uuid())
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(revision_count, 0);
     // A client title is refused for Markdown, and an overlong H1 is refused, never truncated.
     assert!(matches!(
         vink.save_draft(
@@ -142,6 +155,26 @@ async fn snapshot_title_comes_from_the_captured_source_and_markdown_stays_privat
         vink.publication(work).await,
         Err(vink_app::application::ReadError::NotFound)
     );
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn rejected_markdown_preserves_the_previous_public_revision(pool: PgPool) {
+    let vink = seeded(&pool).await;
+    let work = sample_work();
+    let before = vink.publication(work).await.unwrap();
+    vink.save_draft(author(), markdown(work, 1, "# Bản sửa riêng"))
+        .await
+        .unwrap();
+    let capture = vink
+        .capture_snapshot(author(), work, "private-markdown", 2, 1)
+        .await
+        .unwrap();
+    assert_eq!(
+        vink.request_public(author(), work, "reject-markdown", capture.revision_id, 2)
+            .await,
+        Err(AuthorPublicationError::FormatNotPublishable)
+    );
+    assert_eq!(vink.publication(work).await.unwrap(), before);
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
@@ -317,6 +350,40 @@ async fn run_backout(pool: &PgPool) -> Result<(), sqlx::Error> {
         sqlx::query("ROLLBACK").execute(&mut *conn).await.unwrap();
     }
     result
+}
+
+#[sqlx::test(migrations = false)]
+async fn cutover_refuses_unrepresentable_retired_drafts_atomically(pool: PgPool) {
+    previous_schema(&pool).await;
+    let valid = Uuid::now_v7();
+    let invalid = Uuid::now_v7();
+    retired_work(&pool, valid, 7).await;
+    retired_work(&pool, invalid, 3).await;
+    let unchanged = stored(&pool, WorkId::from_uuid(valid)).await;
+    for (title, lines) in [
+        ("Tên", vec![]),
+        ("Tên", vec!["\u{a0}"]),
+        ("Tên", vec!["a\rb"]),
+        ("Tên", vec!["e\u{301}"]),
+        (" padded ", vec!["a"]),
+        ("Tên", vec!["a\u{80}"]),
+    ] {
+        let doc = json!({"schema_version":1,"blocks":[{"lines":lines}]});
+        sqlx::query("UPDATE working_drafts SET document=$2,title=$3 WHERE work_id=$1")
+            .bind(invalid)
+            .bind(&doc)
+            .bind(title)
+            .execute(&pool)
+            .await
+            .unwrap();
+        let refused = migrate(&pool).await.unwrap_err();
+        assert!(refused.to_string().contains("cutover blocked"), "{refused}");
+        assert_eq!(stored(&pool, WorkId::from_uuid(valid)).await, unchanged);
+        assert_eq!(
+            stored(&pool, WorkId::from_uuid(invalid)).await,
+            (title.into(), doc, 3)
+        );
+    }
 }
 
 #[sqlx::test(migrations = false)]

@@ -5,7 +5,7 @@ title; [#255](https://github.com/loveoverflowcom/vink/issues/255) sở hữu doc
 `{format, source}` và hash ([kiến trúc](document-source-format.md)). Cập nhật 17/11/2026 trên
 `develop@607ef83`: title authority đã nối domain → application → PostgreSQL → HTTP API v1; Web
 Bàn viết chỉ soạn `default`; Markdown chưa có editor (#256) và chưa được công khai (#264).
-Kiến trúc `VDR-DOCUMENT-SOURCE-FORMAT@r2` vẫn `PENDING`.
+Kiến trúc `VDR-DOCUMENT-SOURCE-FORMAT@r2` vẫn `ACCEPTED`.
 
 ## Quyết định sản phẩm và hiện trạng
 

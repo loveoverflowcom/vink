@@ -38,7 +38,7 @@ consumer Web dùng ReadOwner/PageChain của #202; evidence phân trang và gi�
 
 [Document canonical #255 và title #263](document-source-format.md): một shape `{format, source}`
 nguyên văn, một content hash, title theo định dạng và migration cutover fail-closed khi còn revision
-cũ ([kiến trúc](../architecture/document-source-format.md)); `VDR-DOCUMENT-SOURCE-FORMAT@r2` `PENDING`.
+cũ ([kiến trúc](../architecture/document-source-format.md)); `VDR-DOCUMENT-SOURCE-FORMAT@r2` `ACCEPTED`.
 
 ## Nền test-domain/container
 

@@ -634,7 +634,7 @@ fn FormatNotEditable(reason: NotEditable) -> impl IntoView {
         ),
         NotEditable::CarriageReturn => (
             "Bàn viết chưa mở được bản nháp này.",
-            "Bản nháp có kiểu xuống dòng Windows (CR). Bàn viết chưa giữ nguyên được kiểu này khi lưu; nội dung vẫn được giữ nguyên.",
+            "Bản nháp có dấu xuống dòng CR hoặc CRLF. Bàn viết chưa giữ nguyên được kiểu này khi lưu; nội dung vẫn được giữ nguyên.",
         ),
     };
     view! {
@@ -772,7 +772,8 @@ fn Editor(draft: Draft) -> impl IntoView {
     let send_text = move |ticket: SaveTicket, reconcile: bool| {
         let request = crate::contract::SaveDraftRequest {
             expected_version: ticket.expected_version,
-            title: Some(title.get_untracked()),
+            // Trim only the separate title; keep the live input and exact source.
+            title: Some(title.get_untracked().trim().to_owned()),
             document: crate::document::default_document(&body.snapshot()),
         };
         #[cfg(feature = "hydrate")]
