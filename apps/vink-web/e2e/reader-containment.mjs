@@ -2,7 +2,7 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 
 const work = 'e4202094-9563-02e5-519d-6f8fa6a1af4c';
 const path = '/tac-pham/'+work;
@@ -100,6 +100,34 @@ export async function readerContainment(page, {args,check}) {
       writeFileSync(join(folder,'print.pdf'),Buffer.from(pdf.data,'base64'));
       await page.send('Emulation.setEmulatedMedia',{media:'screen'});
     }
+    const vectors=JSON.parse(readFileSync('packages/ui-system/shared/fixtures/identity.json','utf8'));
+    for(const [name,fixture] of [['ready',vectors.sample_image],['broken',vectors.broken_image]]) {
+      let held;
+      const imageUrl=args.base+'/fixtures/containment-'+name+'.webp';
+      const onPause=e=>{if(e.sessionId===page.sessionId && e.method==='Fetch.requestPaused') held=e.params.requestId;};
+      page.cdp.listeners.push(onPause);
+      try {
+        await page.send('Fetch.enable',{patterns:[{urlPattern:imageUrl,requestStage:'Request'}]});
+        await page.eval(`(()=>{const img=new Image(256,171);img.alt='Minh họa mẫu';img.id='media-probe';
+          img.onload=()=>img.dataset.result='ready';img.onerror=()=>img.dataset.result='broken';
+          img.src=${JSON.stringify(imageUrl)};document.querySelector('#root-list .vk-discussion-comment').append(img);
+          document.querySelector('.vk-document p').scrollIntoView()})()`);
+        await page.eval(frames);
+        const top=await page.eval("document.querySelector('.vk-document p').getBoundingClientRect().top");
+        const deadline=Date.now()+5000;
+        while(!held && Date.now()<deadline)await new Promise(r=>setTimeout(r,20));
+        check(!!held,'actual image request held');
+        await page.send('Fetch.fulfillRequest',{requestId:held,responseCode:200,
+          responseHeaders:[{name:'Content-Type',value:'image/webp'}],body:fixture.webp_base64});
+        await page.waitFor(`document.querySelector('#media-probe')?.dataset.result===${JSON.stringify(name)}`,'image decoded or rejected');
+        await page.eval(frames);
+        record('reserved media '+name,await page.eval(`Math.abs(document.querySelector('.vk-document p').getBoundingClientRect().top-${top})<=2 &&
+          document.querySelector('#media-probe').getBoundingClientRect().height===171`));
+      } finally {
+        await page.send('Fetch.disable'); page.cdp.listeners=page.cdp.listeners.filter(l=>l!==onPause);
+        await page.eval("document.querySelector('#media-probe')?.remove()");
+      }
+    }
     for(const scale of [100,200]){
       await page.eval(`document.documentElement.style.fontSize='${scale}%';document.querySelector('.vk-document p').scrollIntoView()`);
       await page.eval(frames);
@@ -113,10 +141,31 @@ export async function readerContainment(page, {args,check}) {
     await page.waitFor("document.querySelectorAll('.vk-discussion-root').length===40",'second bounded page');
     await page.eval(frames);
     record('paging preserves article anchor',Math.abs(await top()-anchor)<=2);
+    await page.eval("document.querySelector('#discussion-refresh').click()");
+    await page.waitFor("document.querySelectorAll('.vk-discussion-root').length===20",'refresh replaces the tail');
+    await page.eval(frames);
+    record('refresh preserves article anchor',Math.abs(await top()-anchor)<=2);
     await page.eval("document.querySelector('#contain-probe').remove()");
     await page.eval(frames);
     record('remove CSS restores A',await page.eval(`getComputedStyle(document.querySelector('#root-list')).contentVisibility==='visible' &&
       document.querySelectorAll('.vk-document p').length===${paragraphs}`));
+    // Reinstall the trial style, then replace the published control under it.
+    await page.eval(`(()=>{const s=document.createElement('style');s.textContent=${JSON.stringify(css(intrinsic))};document.head.append(s)})()`);
+    let held;
+    const onPause=e=>{if(e.sessionId===page.sessionId && e.method==='Fetch.requestPaused')held=e.params.requestId;};
+    page.cdp.listeners.push(onPause);
+    try {
+      await page.send('Fetch.enable',{patterns:[{urlPattern:args.base+'/api/v1/works/'+work+'/reader',requestStage:'Request'}]});
+      await page.eval("const now=performance.now.bind(performance);performance.now=()=>now()+121000;window.dispatchEvent(new Event('focus'))");
+      const deadline=Date.now()+5000;
+      while(!held && Date.now()<deadline)await new Promise(r=>setTimeout(r,20));
+      check(!!held,'stale live article revalidates');
+      await page.send('Fetch.fulfillRequest',{requestId:held,responseCode:200,responseHeaders:[
+        {name:'Content-Type',value:'application/json'},{name:'Cache-Control',value:'no-store'}],
+        body:Buffer.from(JSON.stringify({status:'hidden',work_id:work})).toString('base64')});
+      await page.waitFor("!!document.querySelector('[data-testid=reader-hidden]')",'control replaces article under containment');
+      record('removed article and metadata absent',await page.eval("!document.querySelector('.vk-document,link[rel=canonical]') && !document.title.includes('[Mẫu #100]')"));
+    } finally {await page.send('Fetch.disable');page.cdp.listeners=page.cdp.listeners.filter(l=>l!==onPause);}
     raw.status='PASS';
   }catch(error){raw.error=error.message;throw error;}finally{await page.send('Performance.disable');flush();}
 }
