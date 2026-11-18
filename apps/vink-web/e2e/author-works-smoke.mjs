@@ -47,8 +47,9 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
     check(await page.eval(`document.querySelector('[data-testid=author-work-metrics]').textContent==='Thấm 8 · Nhận xét 2' && !document.querySelector('#draft-results').textContent.includes('Có bản sửa') && document.querySelector('#draft-search')===window.__authorInput && document.activeElement===window.__authorInput && document.querySelector('.vk-draft-row__link')===window.__authorEditor`), 'refresh replaces pointer+counts together without remounting input or stealing focus');
     gate.holdGets=true;await page.click('#refresh-drafts');const held=await gate.next('gets');await gate.fulfill(held,503,{error:{code:'dependency_unavailable'}});await settled();
     check(await page.eval(`!!document.querySelector('[data-testid=author-work-stale]') && !!document.querySelector('.vk-draft-row__link')`),'read outage retains same-account snapshot with an explicit stale label');
-    await page.eval(`document.querySelector('#refresh-drafts').click()`);const denied=await gate.next('gets');await gate.fulfill(denied,403,{error:{code:'forbidden'}});await settled();
-    check(await page.eval(`document.querySelectorAll('[data-testid=draft-row]').length===0`),'authority refusal clears summaries and metrics immediately');
+    await page.eval(`document.querySelector('#refresh-drafts').click()`);const denied=await gate.next('gets');await gate.fulfill(denied,403,{error:{code:'forbidden'}});
+    await page.waitFor(`document.querySelector('[data-testid=desk-access]')`,'#308 scoped access refusal');
+    check(await page.eval(`!document.querySelector('#draft-search, #retry-drafts, [data-testid=draft-row]')`),'authority refusal clears summaries, metrics and private controls immediately');
     check(gate.postCount===0,'all summary refreshes remain read-only');
   } finally {
     await gate.disable();await page.eval(`document.documentElement.style.fontSize=''`);

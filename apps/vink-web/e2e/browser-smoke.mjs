@@ -37,7 +37,7 @@ import { readerContainment } from './reader-containment.mjs';
 import { discoveryReturnPosition } from './discovery-return-position.mjs';
 import { recordTransport } from './web-request-ledger.mjs';
 import { readerBeforeHydration, readerGuestHistory } from './reader-ssr-boundary.mjs';
-import { deskEmptyState } from './desk-empty-smoke.mjs';
+import { deskEmptyState, deskGuest } from './desk-empty-smoke.mjs';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -1940,9 +1940,9 @@ async function textContrast(page, theme, surface = 'shell', targets) {
     return list;
   })() : {
     outline: ['#editor-outline-title', '.vk-editor-outline__item--title', '#editor-outline-panel [aria-current="location"] button'],
-    desk: ['.vk-desk-heading .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-search input', '#draft-sort', '#draft-sort-label', '#draft-scope'],
-    explore: ['#public-query', '#explore-heading h1', '.vk-explore__heading p', '#public-query-help', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '.vk-public-scope', '.vk-discovery-filter-form legend', '.vk-discovery-options .vk-ui-choice__label'],
-    filter: ['#modal-tag-help', '#modal-tag-form button[type=submit]'],
+    desk: ['.vk-desk-create .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-search input', '#draft-sort', '#draft-sort-label', '#draft-scope'],
+    explore: ['#public-query', '#explore-heading h1', '#open-tag-filters', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '.vk-public-scope'],
+    filter: ['#modal-tag-help', '#tag-selection-count', '#modal-tag-form legend', '#modal-tag-form .vk-ui-choice__label', '#modal-tag-form button[type=submit]'],
     empty: ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-link'],
     'desk-empty': ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-button', '.vk-desk-privacy'],
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
@@ -5813,6 +5813,7 @@ try {
   else if (args.phase === 'public-cache') await tracePublicReadLifecycle(page);
   else if (args.phase === 'author-works') await authorWorks(page, {args,check,DraftGate,sleep});
   else if (args.phase === 'desk-empty') await deskEmptyState(page, {args,check,DraftGate,textContrast});
+  else if (args.phase === 'desk-guest') await deskGuest(page, {args,check}, false);
   else if (args.phase === 'desk-empty-context') { await draftDashboard(page); await deskEmptyState(page, {args,check,DraftGate,textContrast}); }
   else if (args.phase === 'desk-layout') { await draftDashboard(page); await draftR6Hierarchy(page); await timestampPresentation(page); await publicReading(page); }
   else if (args.phase === 'bottom-navigation') await bottomNavigationRegression(page);

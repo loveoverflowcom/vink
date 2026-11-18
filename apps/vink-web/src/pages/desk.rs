@@ -36,7 +36,95 @@ const DESK_UNAVAILABLE_SSR: &str = "Bàn viết cần JavaScript để mở bả
 
 #[component]
 pub fn DeskIndex() -> impl IntoView {
-    use crate::draft_list::paging::{DraftPages, PAGE_SIZE};
+    let session = crate::account::Session::current();
+    view! {
+        <Title text="Bàn viết — Vink" />
+        <Meta name="robots" content="noindex" />
+        <section id="desk" class="vk-desk vk-desk--index" aria-labelledby="desk-title">
+            <header id="heading" class="vk-desk-heading">
+                <Heading level=HeadingLevel::H1 id="desk-title" attr:tabindex="-1">"Bàn viết"</Heading>
+            </header>
+            <section id="drafts" class="vk-drafts-region" aria-labelledby="draft-list-title">
+                <Heading id="draft-list-title" level=HeadingLevel::H2 role=TypeRole::Title attr:tabindex="-1">"Tác phẩm của bạn"</Heading>
+                <noscript><p class="vk-desk-noscript">{DESK_UNAVAILABLE_SSR}</p></noscript>
+                <Show when=move || session.scope.with(Option::is_none)>
+                    <DeskSession session />
+                </Show>
+                // Each confirmed private scope owns its DOM, requests and input buffer.
+                <For each=move || session.scope.get() key=Clone::clone
+                    children=move |scope| view! { <DeskWorks scope session /> } />
+            </section>
+        </section>
+    }
+}
+
+#[component]
+fn DeskSession(session: crate::account::Session) -> impl IntoView {
+    use crate::session::Standing;
+    let sign_in_open = crate::api::sign_in_open();
+    move || {
+        match session.standing.get() {
+        Standing::Unknown => view! { <DeskLoading /> }.into_any(),
+        Standing::Anonymous if sign_in_open => view! {
+            <DeskAccess title="Bạn chưa đăng nhập" message="Đăng nhập để viết và mở bản thảo riêng của bạn.">
+                <a id="desk-sign-in" class="vk-ui-button vk-ui-button--filled" href="/toi">"Đăng nhập"</a>
+                <a class="vk-ui-button vk-ui-button--text" href="/">"Khám phá tác phẩm"</a>
+            </DeskAccess>
+        }.into_any(),
+        Standing::Anonymous => view! {
+            <DeskAccess title="Vink chưa mở đăng nhập" message="Trong lúc này, bạn có thể đọc các tác phẩm công khai.">
+                <a class="vk-ui-button vk-ui-button--filled" href="/">"Khám phá tác phẩm"</a>
+            </DeskAccess>
+        }.into_any(),
+        Standing::NeedsPrincipal => view! {
+            <DeskAccess title="Đặt bút danh để bắt đầu" message="Hoàn tất bút danh trong Tài khoản để viết và mở bản thảo của bạn.">
+                <a class="vk-ui-button vk-ui-button--filled" href="/toi">"Đặt bút danh"</a>
+            </DeskAccess>
+        }.into_any(),
+        Standing::Suspended => view! {
+            <DeskAccess title="Tài khoản đang bị tạm khóa" message="Hãy mở Tài khoản để xem thông tin về phiên của bạn.">
+                <a class="vk-ui-button vk-ui-button--filled" href="/toi">"Mở Tài khoản"</a>
+            </DeskAccess>
+        }.into_any(),
+        Standing::Unavailable => view! {
+            <DeskAccess title="Chưa kiểm tra được phiên đăng nhập" message="Hãy kiểm tra kết nối rồi thử lại.">
+                <Button id="desk-session-retry" variant=ButtonVariant::Filled on_press=move |_| session.refresh()
+                    state=Signal::derive(move || if session.checking() { ActionState::pending("Đang kiểm tra…") } else { ActionState::Enabled })>
+                    "Kiểm tra lại phiên"
+                </Button>
+            </DeskAccess>
+        }.into_any(),
+        Standing::Active(_) => ().into_any(),
+    }
+    }
+}
+
+#[component]
+fn DeskAccess(title: &'static str, message: &'static str, children: Children) -> impl IntoView {
+    view! {
+        <div class="vk-desk-access" data-testid="desk-access">
+            <span class="vk-desk-access__icon"><vink_ui::Icon name=IconName::Lock /></span>
+            <div>
+                <Heading level=HeadingLevel::H3 role=TypeRole::Title>{title}</Heading>
+                <p class="vk-muted">{message}</p>
+            </div>
+            <div class="vk-desk-access__actions">{children()}</div>
+        </div>
+    }
+}
+
+#[component]
+fn DeskLoading() -> impl IntoView {
+    view! {
+        <p class="vk-desk-loading vk-muted" role="status" data-testid="draft-loading">"Đang mở Bàn viết…"</p>
+    }
+}
+
+#[component]
+fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
+    use crate::draft_list::paging::DraftPages;
+    #[cfg(feature = "hydrate")]
+    use crate::draft_list::paging::PAGE_SIZE;
     use crate::read_lifecycle::{Intent, ReadOwner};
     let query = RwSignal::new(String::new());
     let applied = RwSignal::new(String::new());
@@ -51,23 +139,27 @@ pub fn DeskIndex() -> impl IntoView {
     let pages = RwSignal::new(DraftPages::default());
     let load_error = RwSignal::new(None::<ApiError>);
     let page_error = RwSignal::new(None::<ApiError>);
+    let access_error = RwSignal::new(None::<ApiError>);
     let restarted = RwSignal::new(false);
-    let session = crate::account::Session::current();
-    let listed_scope = StoredValue::new(None::<(Option<String>, String, DraftSort, usize)>);
-    let reads = StoredValue::new(ReadOwner::new((
-        None::<String>,
-        String::new(),
-        DraftSort::Recent,
-        PAGE_SIZE,
-    )));
+    let scope = StoredValue::new(scope);
+    let reads = StoredValue::new(ReadOwner::new((String::new(), DraftSort::Recent)));
     let wake = StoredValue::new(crate::read_events::WakePolicy::default());
+    #[cfg(feature = "hydrate")]
+    let in_scope = move || {
+        scope.try_with_value(|bound| {
+            session
+                .scope
+                .try_with_untracked(|now| now.as_ref() == Some(bound))
+        }) == Some(Some(true))
+    };
     #[cfg(feature = "hydrate")]
     let transport_owner = StoredValue::new(Owner::current().map(|o| o.downgrade()));
     let read_list = Callback::new(move |intent: Intent| {
         #[cfg(feature = "hydrate")]
         {
             if creation.get_untracked() == CreateState::Pending
-                || session.standing.get_untracked() == crate::session::Standing::Unknown
+                || access_error.with_untracked(Option::is_some)
+                || !in_scope()
             {
                 return;
             }
@@ -96,15 +188,13 @@ pub fn DeskIndex() -> impl IntoView {
             owner.with(|| {
                 leptos::task::spawn_local_scoped_with_cancellation(async move {
                     let result = crate::api::search_author_works(
-                        &ticket.scope.1,
-                        ticket.scope.2,
-                        ticket.scope.3,
+                        &ticket.scope.0,
+                        ticket.scope.1,
+                        PAGE_SIZE,
                         ticket.cursor.as_deref(),
                     )
                     .await;
-                    if reads.try_with_value(|r| r.accepts(&ticket)) != Some(true)
-                        || session.scope.try_get_untracked() != Some(ticket.scope.0.clone())
-                    {
+                    if reads.try_with_value(|r| r.accepts(&ticket)) != Some(true) || !in_scope() {
                         return;
                     }
                     let next_part =
@@ -143,22 +233,23 @@ pub fn DeskIndex() -> impl IntoView {
                                 restarted.try_set(old_tail);
                             }
                         }
+                        // The HTTP adapter already asks the shared session owner to reconcile
+                        // a 401 or suspension. Hide this scope immediately while it checks.
+                        Err(error @ (ApiError::Unauthenticated | ApiError::Forbidden)) => {
+                            access_error.try_set(Some(error));
+                            pages.try_set(DraftPages::default());
+                        }
+                        Err(ApiError::NotFound) => {
+                            pages.try_set(DraftPages::default());
+                            ready.try_set(false);
+                            page_error.try_set(None);
+                            load_error.try_set(Some(ApiError::NotFound));
+                        }
+                        Err(error) if intent == Intent::Append => {
+                            page_error.try_set(Some(error));
+                        }
                         Err(error) => {
-                            if matches!(
-                                error,
-                                ApiError::Unauthenticated
-                                    | ApiError::Forbidden
-                                    | ApiError::NotFound
-                            ) {
-                                pages.try_set(DraftPages::default());
-                                ready.try_set(false);
-                                page_error.try_set(None);
-                                load_error.try_set(Some(error));
-                            } else if intent == Intent::Append {
-                                page_error.try_set(Some(error));
-                            } else {
-                                load_error.try_set(Some(error));
-                            }
+                            load_error.try_set(Some(error));
                         }
                     }
                     loading.try_set(false);
@@ -184,26 +275,8 @@ pub fn DeskIndex() -> impl IntoView {
     #[cfg(feature = "hydrate")]
     {
         Effect::new(move |_| {
-            let account = session.scope.get();
-            if session.standing.get() == crate::session::Standing::Unknown {
-                return;
-            }
-            let old = listed_scope.get_value();
-            if old.as_ref().is_some_and(|old| old.0 != account) {
-                query.set(String::new());
-                applied.set(String::new());
-                sort.set(DraftSort::Recent);
-                composing.set(false);
-                ready.set(false);
-                creation.set(CreateState::Ready);
-                create_format.set(DocumentFormatDto::Default);
-            }
-            let scope = (account, applied.get(), sort.get(), PAGE_SIZE);
-            if old.as_ref() == Some(&scope) {
-                return;
-            }
-            listed_scope.set_value(Some(scope.clone()));
-            reads.update_value(|r| r.change_scope(scope));
+            let requested = (applied.get(), sort.get());
+            reads.update_value(|r| r.change_scope(requested));
             pages.set(DraftPages::default());
             load_error.set(None);
             page_error.set(None);
@@ -222,7 +295,7 @@ pub fn DeskIndex() -> impl IntoView {
         });
     }
     #[cfg(not(feature = "hydrate"))]
-    let _ = (session, listed_scope, reads, wake, recovery_focus);
+    let _ = (session, scope, reads, wake, recovery_focus);
     let refresh_disabled = Signal::derive(move || {
         (loading.get() && !appending.get()) || creation.get() == CreateState::Pending
     });
@@ -268,6 +341,7 @@ pub fn DeskIndex() -> impl IntoView {
     let can_create = Signal::derive(move || {
         !loading.get()
             && ready.get()
+            && access_error.with(Option::is_none)
             && load_error.get().is_none()
             && creation.with(CreateState::can_begin)
     });
@@ -276,27 +350,29 @@ pub fn DeskIndex() -> impl IntoView {
     let create = Callback::new(move |()| {
         #[cfg(feature = "hydrate")]
         {
-            if !can_create.get_untracked()
+            if !in_scope()
+                || !can_create.get_untracked()
                 || !creation.try_update(CreateState::begin).unwrap_or(false)
             {
                 return;
             }
             let navigate = navigate.clone();
-            let scope = session.scope.get_untracked();
             let picked_format = create_format.get_untracked();
             leptos::task::spawn_local(async move {
                 let outcome = crate::api::create_draft_with_format(picked_format).await;
                 // The route owner disposes this signal. A late reply must not navigate from a
                 // different page (and an uncertain POST is never automatically repeated). A
                 // reply for an earlier session is dropped as well: its draft is not this desk's.
-                if creation.try_get_untracked().is_none()
-                    || session.scope.try_get_untracked() != Some(scope)
-                {
+                if creation.try_get_untracked().is_none() || !in_scope() {
                     return;
                 }
                 match outcome {
                     Ok(draft) => {
                         navigate(&format!("/ban-viet/{}", draft.work_id), Default::default())
+                    }
+                    Err(error @ (ApiError::Unauthenticated | ApiError::Forbidden)) => {
+                        access_error.set(Some(error));
+                        pages.set(DraftPages::default());
                     }
                     Err(error) => {
                         creation.update(|state| state.failed(error));
@@ -321,31 +397,33 @@ pub fn DeskIndex() -> impl IntoView {
     });
     let no_results = Signal::derive(move || !first_use.get() && empty_head());
     view! {
-        <Title text="Bàn viết — Vink" />
-        <Meta name="robots" content="noindex" />
-        <section id="desk" class="vk-desk vk-desk--index" aria-labelledby="desk-title">
-            <header id="heading" class="vk-desk-heading">
-                <Heading level=HeadingLevel::H1 id="desk-title" attr:tabindex="-1">"Bàn viết"</Heading>
+        {move || access_error.get().map(|error| view! {
+            <DeskAccess title=if error == ApiError::Unauthenticated { "Phiên đăng nhập cần được kiểm tra lại" } else { "Bạn không có quyền xem danh sách tác phẩm" }
+                message="Mở Tài khoản để kiểm tra phiên hiện tại.">
+                <a class="vk-ui-button vk-ui-button--filled" href="/toi">"Mở Tài khoản"</a>
+            </DeskAccess>
+        })}
+        <Show when=move || access_error.with(Option::is_none)>
+            <div class="vk-desk-works" data-testid="draft-content"
+                aria-busy=move || if loading.get() { "true" } else { "false" }>
                 <Show when=move || ready.get() && !first_use.get()>
                     <CreateDraftControls creation can_create create create_format />
                 </Show>
-            </header>
-            <noscript><p class="vk-desk-noscript">{DESK_UNAVAILABLE_SSR}</p></noscript>
-            <CreateNotice creation loading refresh />
-            <div aria-busy=move || if loading.get() { "true" } else { "false" } data-testid="draft-content">
+                <CreateNotice creation loading refresh />
                 <Show when=move || !ready.get() && loading.get()>
-                    <p class="vk-desk-loading vk-muted" role="status" data-testid="draft-loading">"Đang mở Bàn viết…"</p>
+                    <DeskLoading />
                 </Show>
                 {move || load_error.get().map(|error| view! {
-                    <DeskError error refresh retry_disabled=refresh_disabled retained=pages.with(|p| p.loaded) />
+                    <DeskError refresh=matches!(error, ApiError::Unavailable | ApiError::Network).then_some(refresh)
+                        error retry_disabled=refresh_disabled retained=pages.with(|p| p.loaded) />
                 })}
                 // The tools/input retain one owner through loading, empty, query and error.
                 <DraftListView pages query sort composing loading appending page_error load_error restarted
                     first_use no_results creation can_create create create_format submit clear more refresh refresh_disabled />
             </div>
             <p class="vk-desk-privacy vk-muted">"Bản nháp chỉ bạn đọc được. Số Thấm và Nhận xét thuộc bản đang công khai; lưu nháp không gửi duyệt hay công khai."</p>
-        </section>
-    }
+        </Show>
+    }.into_any()
 }
 
 #[cfg(feature = "hydrate")]
@@ -486,11 +564,10 @@ fn DraftListView(
     more: Callback<()>,
     refresh: Callback<()>,
     refresh_disabled: Signal<bool>,
-) -> impl IntoView {
+) -> AnyView {
     let invalid_page = move || page_error.with(|e| matches!(e, Some(ApiError::Invalid { .. })));
     view! {
-        <section id="drafts" class="vk-draft-list" aria-labelledby="draft-list-title">
-            <Heading id="draft-list-title" level=HeadingLevel::H2 role=TypeRole::Title attr:tabindex="-1">"Tác phẩm của bạn"</Heading>
+        <div class="vk-draft-list">
             <div class="vk-draft-controls">
                 <div class="vk-draft-search-group">
                     <form role="search" class="vk-draft-search" on:submit=move |event| {
@@ -502,7 +579,8 @@ fn DraftListView(
                                 composing.set(input.composing); query.set(input.value);
                             } />
                     </form>
-                    <p id="draft-scope" class="vk-muted" role="status" aria-atomic="true" data-testid="draft-result-count">
+                    <p id="draft-scope" class="vk-muted" class:vk-ui-visually-hidden=move || first_use.get()
+                        role="status" aria-atomic="true" data-testid="draft-result-count">
                         {move || if loading.get() && !appending.get() { "Đang tìm tác phẩm…".into() }
                             else if load_error.get().is_some() && !pages.with(|p| p.loaded) { "Chưa tải được kết quả.".into() }
                             else { format!("Đã tải {} tác phẩm.", pages.with(|p| p.drafts.len())) }}
@@ -526,7 +604,7 @@ fn DraftListView(
             </Show>
             <Show when=move || first_use.get()>
                 <div data-testid="draft-empty">
-                    <EmptyState artwork=EmptyArtwork::FirstDraft message="Một trang dành riêng cho những điều bạn muốn viết.">
+                    <EmptyState artwork=EmptyArtwork::FirstDraft title="Chưa có tác phẩm nào" message="Một trang dành riêng cho những điều bạn muốn viết.">
                         <CreateDraftControls creation can_create create create_format first=true />
                     </EmptyState>
                 </div>
@@ -582,14 +660,14 @@ fn DraftListView(
                     <p class="vk-muted">"Tác phẩm có thể đổi vị trí khi bản nháp được sửa. Tải lại để xem các cập nhật mới nhất."</p>
                 </Show>
             </div>
-        </section>
-    }
+        </div>
+    }.into_any()
 }
 
 #[component]
 fn DeskError(
     error: ApiError,
-    #[prop(optional)] refresh: Option<Callback<()>>,
+    #[prop(optional_no_strip)] refresh: Option<Callback<()>>,
     #[prop(optional, into)] retry_disabled: Signal<bool>,
     #[prop(optional)] retained: bool,
 ) -> impl IntoView {

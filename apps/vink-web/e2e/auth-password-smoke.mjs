@@ -4,6 +4,7 @@
 
 import { authorHandles } from './author-handle-smoke.mjs';
 import { EDITOR_READY, STANDING, account, cookies, fabricate, fill, mailedCode, openAccount, q, signIn, signOut } from './auth-smoke.mjs';
+import { deskGuest } from './desk-empty-smoke.mjs';
 
 const API = '/api/v1/auth/password';
 const PANEL = '#account-session';
@@ -50,7 +51,7 @@ async function holdAnswer(page, method, path) {
     }
   };
   page.cdp.listeners.push(listener);
-  await page.send('Fetch.enable', { patterns: [{ urlPattern: `*${path}`, requestStage: 'Response' }] });
+  await page.send('Fetch.enable', { patterns: [{ urlPattern: `*${path}*`, requestStage: 'Response' }] });
   return {
     async held() {
       for (let i = 0; !held && i < 160; i++) await sleep(50);
@@ -93,6 +94,31 @@ async function createDraft(page, title) {
   await page.waitFor(`${EDITOR_READY} && ${q('#draft-title')}.value === ${JSON.stringify(title)}`, 'saved title after reload');
   if (await page.body() !== DRAFT_TEXT) throw new Error('saved draft body changed on reload');
   return id;
+}
+
+async function expiredDesk(page, {base, check, openPage}) {
+  const cookie = (await cookies(page, base))[sessionCookie];
+  const { browserContextId } = await page.cdp.send('Target.createBrowserContext');
+  try {
+    const desk = await openPage(browserContextId);
+    await desk.send('Network.setCookie', {name:cookie.name, value:cookie.value, url:base,
+      path:'/', secure:true, httpOnly:true, sameSite:cookie.sameSite});
+    const reads = captureRequest(desk, 'GET', '/api/v1/author/works');
+    await desk.goto(base+'/ban-viet');
+    await desk.waitFor(q('[data-testid=draft-row]'), '#308 active scope loads its own draft');
+    check(reads.count()===1, '#308 active scope starts exactly one initial read');
+    const late = await holdAnswer(desk, 'GET', '/api/v1/author/works');
+    await desk.send('Network.deleteCookies', {name:sessionCookie, url:base});
+    await desk.click('#refresh-drafts');
+    check(await late.held()===401, '#308 holding the real 401 from a private refresh after session loss');
+    await late.finish();
+    await desk.waitFor(q('#desk-sign-in'), '#308 late 401 reconciles through the session owner');
+    check(reads.count()===2 && await desk.eval("!document.querySelector('#draft-search, #retry-drafts, [data-testid=draft-row]')"),
+      '#308 previous rows and controls are gone with no further list read');
+    reads.close();
+  } finally {
+    await page.cdp.send('Target.disposeBrowserContext', {browserContextId});
+  }
 }
 
 async function matrix(page, scenario, anchor, check) {
@@ -169,6 +195,24 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   const penB = 'Người giữ mùa thu';
   const email = 'taikhoan-email@vi-du.vn';
 
+  await deskGuest(page, {args,check}, true);
+  const unavailable = await fabricate(page, 'GET', '/api/v1/auth/session', 503, {error:{code:'dependency_unavailable'}});
+  const gated = captureRequest(page, 'GET', '/api/v1/author/works');
+  await page.goto(base+'/ban-viet');
+  await unavailable();
+  await page.waitFor(q('#desk-session-retry'), '#308 initial session failure offers a session retry');
+  await page.click('#desk-session-retry');
+  await page.waitFor(q('#desk-sign-in'), '#308 session retry confirms guest');
+  check(gated.count()===0, '#308 unavailable and confirmed guest never query the private list');
+  await page.click('#desk-sign-in');
+  await page.waitFor(`location.pathname==='/toi' && ${q(LOGIN)}`, '#308 Desk sign-in links to the existing form');
+  const suspended = await fabricate(page, 'GET', '/api/v1/auth/session', 200, {state:'suspended'});
+  await page.goto(base+'/ban-viet');
+  await suspended();
+  await page.waitFor("document.querySelector('.vk-desk-access h3')?.textContent==='Tài khoản đang bị tạm khóa'", '#308 suspended session is distinct');
+  check(gated.count()===0 && await page.eval("!document.querySelector('#draft-search, #retry-drafts')"), '#308 suspended state (intercepted) has no private controls or reads');
+  gated.close();
+
   console.log('Auth password: registration, browser input, server cookie and own draft:');
   await openAccount(page, base, 'anonymous');
   check(await page.eval(`${q(LOGIN)} && !${q(REGISTER)} && !${q('#sign-in-email')}`), 'password is the default guest form');
@@ -230,10 +274,17 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   await page.waitFor(`${STANDING} === 'needs_principal'`, 'registration needs pen name');
   check(await page.eval(`!${q(REGISTER + '-password')} && !${q('#password-credential')}`), 'registration disposes the secret; unbound is not active');
   await matrix(page, 'pen-name', '#pen-name-form', check);
+  const unbound = captureRequest(page, 'GET', '/api/v1/author/works');
+  await page.goto(base+'/ban-viet');
+  await page.waitFor("document.querySelector('.vk-desk-access h3')?.textContent==='Đặt bút danh để bắt đầu'", '#308 unbound session is distinct');
+  check(unbound.count()===0 && await page.eval("!document.querySelector('#draft-search, #retry-drafts')"), '#308 the real unbound session never queries the private list');
+  unbound.close();
+  await page.click('.vk-desk-access a[href="/toi"]');
   const A = await name(page, penA);
   check(A.display_name === penA && A.display_name !== userA, 'the server confirms a separate pen name');
   await authorHandles(page, {base,openPage,check,holdAnswer,textContrast});
   const draftA = await createDraft(page, '[Mẫu] Nháp tạo sau đăng ký');
+  await expiredDesk(page, {base, check, openPage});
   await openAccount(page, base, 'active');
   await page.click('#password-credential');
   await page.waitFor(contains('đã có thông tin đăng nhập'), 'credential already present');

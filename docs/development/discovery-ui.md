@@ -5,7 +5,7 @@ Scope UX-01/02, PUB-02/03. [LayoutSpec](../design/tag-discovery.md) được xu�
 Không triển khai auth, publish/moderation hoặc app native; không deploy.
 
 **Action surfaces #225 r2 (16/11/2026):** [LayoutSpec](../design/action-surfaces-desk-discovery-225.md)
-và [registry triển khai](action-surfaces-225.md): launcher Tonal + FilterList, helper luôn hiện
+và [registry triển khai](action-surfaces-225.md) ghi baseline lịch sử của launcher Tonal + FilterList, helper
 “Khớp tất cả thẻ · Tối đa 4”, status “Trang này: N tác phẩm”. Giữ native GET/no-JS,
 draft-vs-applied selection và Filled-khi-đổi/Tonal-khi-chưa-đổi của Apply đã có từ trước.
 [Evidence chuẩn bị #240](evidence/action-surfaces-225/README.md) là baseline lịch sử riêng.
@@ -16,6 +16,13 @@ Checkbox/GET được giữ; không đổi primitive Checkbox hay command Filter
 [LayoutSpec và lựa chọn](../design/discovery-chip-260.md) giữ anatomy/CHOICE;
 [evidence](evidence/discovery-chip-260/README.md) ghi phép đo thực, đối chứng âm, matrix
 dock/dialog và giới hạn kiểm chứng.
+
+**Redesign r1 [#308](https://github.com/loveoverflowcom/vink/issues/308):** hàng công cụ gồm ô
+“Tìm theo tên hoặc tác giả” và “Lọc thẻ” khi có lựa chọn hoặc cần khôi phục lỗi danh mục. Dialog
+desktop và sheet mobile dùng cùng danh mục với `<details>` trước hydration. Một lượt đọc theo
+scope URL, có thử lại khi lỗi. Danh mục rỗng ẩn nút và form lọc, các thẻ đang áp dụng vẫn gỡ được.
+Đóng, Escape và Back bỏ lựa chọn thử. Áp dụng bật khi đã đổi lựa chọn, gửi GET giữ query và đưa
+focus về vùng kết quả. Placeholder rỗng căn theo toàn vùng kết quả dưới hàng công cụ.
 
 **Empty artwork #258:** [LayoutSpec R1](../design/empty-artwork-258.md),
 [asset/pipeline owner](../../apps/vink-web/assets/empty/README.md) và

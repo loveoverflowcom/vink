@@ -608,6 +608,7 @@ pub fn Dialog(
     #[prop(into)] open: Signal<bool>,
     #[prop(into)] title: Signal<String>,
     #[prop(optional, into)] context: Option<Signal<String>>,
+    #[prop(optional, into)] header_action: Option<ViewFn>,
     #[prop(optional)] role: DialogRole,
     #[prop(optional)] focus_title: bool,
     #[prop(optional)] kind: DialogKind,
@@ -715,6 +716,7 @@ pub fn Dialog(
         >
             <div class="vk-ui-dialog__panel">
                 <h2 class="vk-ui-dialog__title" id=title_target tabindex="-1" autofocus=focus_title>{move || title.get()}</h2>
+                {header_action.map(|action| view! { <div class="vk-ui-dialog__header-action">{action.run()}</div> })}
                 {context.map(|text| view! { <p class="vk-ui-dialog__context" id=context_target>{move || text.get()}</p> })}
                 {children.map(|children| view! { <div class="vk-ui-dialog__content">{children()}</div> })}
                 <div class="vk-ui-dialog__actions">{actions.run()}</div>

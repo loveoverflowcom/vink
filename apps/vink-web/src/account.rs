@@ -90,6 +90,10 @@ impl Session {
         browser::refresh(self);
     }
 
+    pub(crate) fn checking(self) -> bool {
+        self.checking.get()
+    }
+
     fn dispatch(
         self,
         epoch: u64,

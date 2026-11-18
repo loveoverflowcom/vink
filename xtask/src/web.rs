@@ -1039,6 +1039,20 @@ fn run_web_checks(
         }) {
             return false;
         }
+        if selected.contains(&Scenario::Main)
+            && !report.step("guest Desk with sign-in disabled", || {
+                let mut guest = server.as_guest().start(root)?;
+                let result = smoke(root, &["--phase", "desk-guest"], chrome, origin, state);
+                let stopped = guest.terminate(Duration::from_secs(15))?;
+                result?;
+                stopped
+                    .success()
+                    .then_some(())
+                    .ok_or_else(|| format!("guest App exited with {stopped}"))
+            })
+        {
+            return false;
+        }
         if selected.contains(&Scenario::Restart) {
             // The curator retires a tag the main phase saved on a draft; it must stay there.
             if let Err(e) = tag_command(
