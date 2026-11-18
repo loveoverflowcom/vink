@@ -189,9 +189,6 @@ pub enum AuthorPublicationError {
     RevisionRejected,
     #[error("unknown revision")]
     UnknownRevision,
-    /// Markdown stays private until the Reader (#264) renders it with the shared dialect.
-    #[error("this revision's format cannot be made public yet")]
-    FormatNotPublishable,
     #[error("work is unavailable")]
     WorkUnavailable,
     #[error("version conflict")]
@@ -306,9 +303,6 @@ where
             }
             RequestPublicOutcome::RevisionRejected => Err(AuthorPublicationError::RevisionRejected),
             RequestPublicOutcome::UnknownRevision => Err(AuthorPublicationError::UnknownRevision),
-            RequestPublicOutcome::FormatNotPublishable => {
-                Err(AuthorPublicationError::FormatNotPublishable)
-            }
             RequestPublicOutcome::WorkUnavailable => Err(AuthorPublicationError::WorkUnavailable),
             RequestPublicOutcome::KeyReused => Err(AuthorPublicationError::KeyReused),
             RequestPublicOutcome::NotFound => Err(AuthorPublicationError::NotFound),

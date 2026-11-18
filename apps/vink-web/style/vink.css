@@ -415,6 +415,74 @@ a {
   overflow-wrap: anywhere;
 }
 
+/* Reading presentation shared by the Reader, the draft preview and review snapshots. */
+.vk-markdown {
+  min-inline-size: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.vk-markdown :is(p, ul, ol, blockquote, pre, hr, .vk-markdown__literal) {
+  margin: 0 0 1.4em;
+}
+
+.vk-markdown :is(h1, h2, h3, h4, h5, h6) {
+  margin: 0 0 0.6em;
+  scroll-margin-block-start: var(--vk-space-6);
+  overflow-wrap: anywhere;
+}
+
+.vk-markdown :is(h1, h2):not(.vk-ui-heading) {
+  font-size: var(--vk-type-headline-size);
+  line-height: var(--vk-type-headline-line-height);
+}
+
+.vk-markdown :is(h3, h4, h5, h6) {
+  font-size: var(--vk-type-title-size);
+  line-height: var(--vk-type-title-line-height);
+}
+
+.vk-markdown :is(ol, ul) {
+  padding-inline-start: min(var(--vk-space-6), 24px);
+}
+
+.vk-markdown :is(li, blockquote) > :last-child,
+.vk-markdown > :last-child {
+  margin-block-end: 0;
+}
+
+.vk-markdown blockquote {
+  padding-inline-start: min(0.65em, 8px);
+  border-inline-start: 2px solid var(--vk-outline-variant);
+  color: var(--vk-on-surface-variant);
+}
+
+.vk-markdown code {
+  font-family: var(--vk-font-code);
+  font-size: var(--vk-type-code-size);
+  white-space: pre-wrap;
+}
+
+.vk-markdown pre {
+  box-sizing: border-box;
+  max-inline-size: 100%;
+  overflow: auto;
+  padding: min(var(--vk-space-3), 12px);
+  border-radius: var(--vk-radius-md);
+  background: var(--vk-surface-container-low);
+  line-height: var(--vk-type-code-line-height);
+}
+
+.vk-markdown pre code { white-space: pre; }
+.vk-markdown__literal { white-space: pre-wrap; }
+.vk-markdown__image { font-style: italic; }
+.vk-markdown hr { border: 0; border-block-start: 1px solid var(--vk-outline-variant); }
+.vk-markdown a { color: var(--vk-primary); text-decoration: underline; }
+.vk-markdown :is(a, pre):focus-visible {
+  outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
+  outline-offset: var(--vk-size-focus-offset);
+}
+
 /* Desk */
 
 .vk-desk {
@@ -1260,49 +1328,15 @@ a {
   overflow-wrap: anywhere;
 }
 
-.vk-preview__heading {
-  font-family: var(--vk-font-reading);
-  font-weight: var(--vk-type-title-weight);
-  margin-block: var(--vk-space-4) var(--vk-space-2);
-  overflow-wrap: anywhere;
-}
-
-.vk-preview__quote {
-  margin: var(--vk-space-3) 0;
-  padding-inline-start: var(--vk-space-4);
-  border-inline-start: 3px solid var(--vk-primary);
-  color: var(--vk-on-surface-variant);
-}
-
-.vk-preview__list {
-  margin: var(--vk-space-2) 0;
-  padding-inline-start: var(--vk-space-6);
-}
-
-.vk-preview__code {
-  margin: var(--vk-space-3) 0;
-  padding: var(--vk-space-3);
-  border-radius: var(--vk-radius-md);
-  background: var(--vk-surface-container-low);
-  font-family: var(--vk-font-code);
-  font-size: var(--vk-type-code-size);
-  overflow-x: auto;
-}
-
-.vk-preview__rule {
-  margin-block: var(--vk-space-4);
-  border: 0;
-  border-block-start: 1px solid var(--vk-outline-variant);
-}
-
 /* Dialogs: shared surface, gutter, scroll and action layout live in vink-ui.css.
    Only the manuscript preview sets a reading measure for its content. */
 #draft-preview {
   inline-size: min(calc(var(--vk-measure) + 2 * var(--vk-overlay-gutter)), calc(100% - 2 * var(--vk-overlay-margin)));
 }
+#draft-preview .vk-ui-dialog__content { min-inline-size: 0; }
 .vk-preview { margin: var(--vk-space-1) 0 0; }
 .vk-preview .vk-block:last-child { margin-bottom: 0; }
-#draft-preview .vk-preview h2 { margin-top: 0; overflow-wrap: anywhere; }
+#draft-preview .vk-preview > h2 { margin-top: 0; overflow-wrap: anywhere; }
 
 
 @media (min-width: 48rem) {
@@ -1461,7 +1495,7 @@ a {
 .vk-moderation__list { display: grid; gap: var(--vk-space-4); padding-inline-start: var(--vk-space-6); }
 .vk-moderation__list > li { min-inline-size: 0; overflow-wrap: anywhere; }
 .vk-moderation__actions, .vk-moderation__feedback { display: flex; flex-wrap: wrap; gap: var(--vk-space-3); align-items: center; }
-.vk-moderation__snapshot { padding-block: var(--vk-space-4); overflow-wrap: anywhere; }
+.vk-moderation__snapshot { min-inline-size: 0; padding-block: var(--vk-space-4); overflow-wrap: anywhere; }
 
 /* Queue status has no reserved blank row after a settled read (#205). */
 .vk-moderation__queue > p:empty { display: none; }

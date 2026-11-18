@@ -107,7 +107,24 @@ async fn publish(
     line: &str,
     published_at: OffsetDateTime,
 ) -> Uuid {
-    let revision = RevisionContent::new(titled(title, doc(&[&[line]]))).unwrap();
+    publish_revision(
+        pool,
+        work,
+        owner,
+        titled(title, doc(&[&[line]])),
+        published_at,
+    )
+    .await
+}
+
+async fn publish_revision(
+    pool: &PgPool,
+    work: Uuid,
+    owner: Uuid,
+    content: TitledDocument,
+    published_at: OffsetDateTime,
+) -> Uuid {
+    let revision = RevisionContent::new(content).unwrap();
     let revision_id = Uuid::now_v7();
     let mut tx = pool.begin().await.unwrap();
     sqlx::query("INSERT INTO works (id, owner_id) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING")
@@ -245,6 +262,143 @@ async fn unchanged_public_reads_revalidate_with_not_modified(pool: PgPool) {
     .await;
     assert_eq!(html.status, StatusCode::OK);
     assert!(html.header(header::ETAG).is_none());
+}
+
+/// An already-approved scratch fixture qualifies read boundaries independently of admission.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn markdown_visibility_precedes_validation_for_json_and_html(pool: PgPool) {
+    let app = app(&pool).await;
+    let work = Uuid::now_v7();
+    let title = "Tên Markdown của fixture";
+    let source = format!("# {title}\n\n**Dòng công khai fixture**\n");
+    let owner = dev_seed::SAMPLE_AUTHOR;
+    let at = datetime!(2026-11-01 08:00:00 UTC);
+    let reader = format!("/api/v1/works/{work}/reader");
+    let publication = publication_path(work);
+    let html = format!("/tac-pham/{work}");
+    let unpublished = get(&app, &reader, &["*"]).await;
+    assert_eq!(unpublished.status, StatusCode::NOT_FOUND);
+    assert!(unpublished.header(header::ETAG).is_none());
+    assert_eq!(unpublished.header(header::CACHE_CONTROL), Some("no-store"));
+
+    publish_revision(
+        &pool,
+        work,
+        owner,
+        titled(title, super::source("default", &source)),
+        at,
+    )
+    .await;
+    let default = get(&app, &reader, &[]).await;
+    default.assert_full();
+    let markdown = TitledDocument::author(
+        Document::new(DocumentFormat::Markdown, &source).unwrap(),
+        None,
+    )
+    .unwrap();
+    let revision = publish_revision(&pool, work, owner, markdown, at).await;
+    let published = get(&app, &reader, &[default.etag()]).await;
+    published.assert_full();
+    assert_eq!(published.json()["revision_id"], revision.to_string());
+    assert_eq!(
+        published.json()["document"],
+        json!({"format": "markdown", "source": source})
+    );
+    get(&app, &reader, &[published.etag()])
+        .await
+        .assert_not_modified(published.etag());
+    let direct = get(&app, &publication, &[published.etag()]).await;
+    direct.assert_full();
+    assert_ne!(
+        direct.etag(),
+        published.etag(),
+        "two different JSON representations"
+    );
+    let ssr = get(&app, &html, &[published.etag(), direct.etag()]).await;
+    assert_eq!(ssr.status, StatusCode::OK);
+    assert!(
+        ssr.header(header::ETAG).is_none(),
+        "JSON cannot validate HTML"
+    );
+    let body = String::from_utf8(ssr.body).unwrap();
+    assert!(body.contains("<strong>Dòng công khai fixture"), "{body}");
+    assert!(body.contains("data-revision=\"") && body.contains(&revision.to_string()));
+
+    // No delete command yet. Project durable controls with synthetic rows and the public
+    // projection removed atomically, leaving the immutable revision untouched.
+    let mut tx = pool.begin().await.unwrap();
+    sqlx::query("DELETE FROM publications WHERE work_id = $1")
+        .bind(work)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    sqlx::query(
+        "INSERT INTO work_publications (
+             work_id, lifecycle, audience, generation, intent_revision_id, intent_generation,
+             review_withdrawn_revision_id, review_withdrawn_intent_generation, ever_public
+         ) VALUES ($1, 'active', 'public', 2, $2, 2, $2, 2, ARRAY[$2]::uuid[])",
+    )
+    .bind(work)
+    .bind(revision)
+    .execute(&mut *tx)
+    .await
+    .unwrap();
+    tx.commit().await.unwrap();
+
+    for control in ["review_withdrawn", "hidden", "tombstone"] {
+        match control {
+            "hidden" => {
+                sqlx::query(
+                    "UPDATE work_publications SET audience = 'private', generation = 3,
+                            intent_revision_id = NULL, intent_generation = NULL,
+                            review_withdrawn_revision_id = NULL, review_withdrawn_intent_generation = NULL,
+                            hidden_revision_id = $2, hidden_intent_generation = 2 WHERE work_id = $1",
+                )
+                .bind(work)
+                .bind(revision)
+                .execute(&pool)
+                .await
+                .unwrap();
+            }
+            "tombstone" => {
+                sqlx::query(
+                    "UPDATE work_publications SET lifecycle = 'author_deleted', generation = 4,
+                            hidden_revision_id = NULL, hidden_intent_generation = NULL,
+                            deletion_provenance = 'tombstone', tombstone_revision_id = $2,
+                            tombstone_intent_generation = 2 WHERE work_id = $1",
+                )
+                .bind(work)
+                .bind(revision)
+                .execute(&pool)
+                .await
+                .unwrap();
+            }
+            _ => {}
+        }
+        for field in [published.etag(), "*"] {
+            let response = get(&app, &reader, &[field]).await;
+            assert_eq!(response.header(header::CACHE_CONTROL), Some("no-store"));
+            assert!(response.header(header::ETAG).is_none());
+            if control == "tombstone" {
+                assert_eq!(response.status, StatusCode::NOT_FOUND);
+            } else {
+                assert_eq!(response.status, StatusCode::OK);
+                assert_eq!(response.json()["status"], control);
+            }
+            assert!(response.json().get("document").is_none());
+            let previous = get(&app, &publication, &[field]).await;
+            assert_eq!(previous.status, StatusCode::NOT_FOUND);
+            assert!(previous.header(header::ETAG).is_none());
+            let previous_html = get(&app, &html, &[field]).await;
+            assert_eq!(previous_html.status, response.status);
+            assert!(previous_html.header(header::ETAG).is_none());
+            assert!(
+                !String::from_utf8(previous_html.body)
+                    .unwrap()
+                    .contains(title)
+            );
+        }
+    }
 }
 
 /// Each step changes the rows; a stale tag must get the new bytes and their own tag, and an

@@ -75,11 +75,8 @@ impl Envelope {
         }
         match (&self.key, &self.payload) {
             (PublicKey::Reader(id), Payload::Published(p)) => {
-                !id.is_empty()
-                    && id == &p.work_id
-                    && !p.revision_id.is_empty()
-                    // Only formats with a public Reader are ever published (#264 adds Markdown).
-                    && p.document.format == crate::contract::DocumentFormatDto::Default
+                // The closed document DTO accepts only formats the Reader supports.
+                !id.is_empty() && id == &p.work_id && !p.revision_id.is_empty()
             }
             (PublicKey::Works(q), Payload::Works(p)) => {
                 let canonical = crate::discovery::ExploreQuery::new(
@@ -294,6 +291,22 @@ mod tests {
         changed.schema = 2;
         assert!(changed.encode().is_none());
     }
+    #[test]
+    fn reader_envelope_accepts_canonical_markdown_and_rejects_unknown_formats() {
+        let mut e = envelope();
+        let Payload::Published(p) = &mut e.payload else {
+            unreachable!("reader fixture");
+        };
+        p.document = crate::document::markdown_document("# Mưa\n\nThân.\n");
+        let wire = e.encode().unwrap();
+        assert_eq!(Envelope::decode(&wire, &e.origin, &e.key), Some(e.clone()));
+        let mut raw: serde_json::Value = serde_json::from_str(&wire).unwrap();
+        raw["payload"]["data"]["document"]["format"] = "asciidoc".into();
+        assert!(Envelope::decode(&raw.to_string(), &e.origin, &e.key).is_none());
+        raw["payload"]["data"]["document"] = serde_json::json!({"schema_version": 1, "blocks": []});
+        assert!(Envelope::decode(&raw.to_string(), &e.origin, &e.key).is_none());
+    }
+
     #[test]
     fn page_decode_requires_whole_members_cursor_scope_and_bounded_payload() {
         let list: WorkList = serde_json::from_str(include_str!(

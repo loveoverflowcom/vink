@@ -10,6 +10,7 @@ import { build } from 'esbuild';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixturePath = resolve(root, '../../../services/vink-app/tests/fixtures/title-authority/markdown.json');
+const renderPath = resolve(root, '../../../services/vink-app/tests/fixtures/title-authority/render.json');
 const tempDir = mkdtempSync(join(tmpdir(), 'vink-md-test-'));
 
 try {
@@ -19,6 +20,7 @@ try {
     stdin: {
       contents: `
         export * from './src/markdown.ts';
+        export { syntaxTree } from '@codemirror/language';
         export { EditorState, EditorSelection } from '@codemirror/state';
         export { history, undo, redo } from '@codemirror/commands';
       `,
@@ -56,6 +58,20 @@ try {
   ]) {
     const state = EditorState.create({doc: source, extensions: [md.markdownExtension[0]]});
     assert.equal(md.extractOutline(state, 1).title, title);
+  }
+
+  // Grammar witnesses also rendered by Leptos SSR and exercised against the browser.
+  const renderCases = JSON.parse(readFileSync(renderPath, 'utf8')).filter(c => c.format === 'markdown');
+  for (const c of renderCases) {
+    const state = EditorState.create({ doc: c.source, extensions: [md.markdownExtension[0]] });
+    const names = new Set();
+    md.syntaxTree(state).iterate({ enter: node => names.add(node.name) });
+    for (const name of c.editor_nodes) assert.ok(names.has(name), `${c.id}: ${name}`);
+    for (const extension of ['Table', 'Strikethrough', 'Task', 'InlineMath']) {
+      assert.ok(!names.has(extension), `${c.id}: unexpected ${extension}`);
+    }
+    assert.equal(md.extractFirstH1(c.source), c.title, c.id);
+    assert.equal(state.doc.toString(), c.source, c.id);
   }
 
   // Duplicate heading labels keep distinct offsets; fences/escaped/HTML are excluded.
@@ -102,8 +118,12 @@ try {
   assert.equal(md.activeHeadingFrom(outline.items, outline.items[3].from + 4), outline.items[3].from);
 
   // 200,000-character document remains bounded and preserves first H1.
-  const huge = '# Tiêu đề đầu dài\n\n' + 'Đoạn văn tiếng Việt giữ nguyên dấu. '.repeat(5500) + '\n\n## Kết thúc\n';
-  assert.ok(huge.length >= 198_000);
+  const start = '# Tiêu đề đầu dài\n\n';
+  const end = '\n\n## Kết thúc\n';
+  const filler = 'Đoạn văn tiếng Việt giữ nguyên dấu. ';
+  const count = 200_000 - [...(start + end)].length;
+  const huge = start + filler.repeat(Math.ceil(count / filler.length)).slice(0, count) + end;
+  assert.equal([...huge].length, 200_000);
   const hugeState = EditorState.create({
     doc: huge,
     extensions: [md.markdownExtension[0]],
@@ -113,7 +133,7 @@ try {
   assert.equal(hugeOutline.status, 'ready');
   assert.equal(hugeOutline.items.at(-1)?.title, 'Kết thúc');
 
-  console.log(`vink-editor markdown checks: ok (${cases.length} corpus + outline + 200k doc)`);
+  console.log(`vink-editor markdown checks: ok (${cases.length} title + ${renderCases.length} render corpus + outline + 200k doc)`);
 } finally {
   rmSync(tempDir, { recursive: true, force: true });
 }

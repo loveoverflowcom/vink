@@ -22,7 +22,10 @@ GET/HEAD /api/v1/works | /api/v1/works/{id}/publication           http/api.rs
       không khớp/vắng/sai cú pháp → 200 + đúng các byte đó
 ```
 
-SSR vẫn đọc in-process qua `SharedPublicReads`; HTML reader/Khám phá không mang ETag của API.
+SSR đọc qua `SharedPublicReads` và dựng HTML theo renderer của bản build hiện tại.
+Validator thuộc JSON của từng endpoint. Canonical `document.format` và byte `source` có mặt
+trong JSON. Đổi renderer HTML chỉ tác động phép chiếu khi đọc, vì cache Web lưu source DTO.
+[Xem pipeline #264](document-source-format.md#2-pipeline-đọc-web).
 Draft và discussion giữ `no-store`, không có validator. `PUT` draft vẫn dùng
 `expected_version`/`409`, không đổi sang `If-Match`.
 

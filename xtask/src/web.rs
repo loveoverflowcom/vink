@@ -1188,7 +1188,7 @@ fn run_web_checks(
         );
     let ok = ok
         && (!selected.contains(&Scenario::Review) || report.step(
-            "review-withdrawn page (O-17@r2): paused queue, admin approve, intervention reject, SSR noindex/no-store, cache purge, comments",
+            "review-withdrawn, moderation queues and Markdown (#264): exact snapshots, Reader SSR/hydration and current visibility",
             || {
                 smoke(
                     root,

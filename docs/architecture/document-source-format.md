@@ -19,7 +19,7 @@ hash, migration). Title authority thuộc [#263](editor-title-authority.md). Bas
 | --- | --- | --- |
 | Quyết định sản phẩm | `PRODUCT_CONFIRMED` (17/11/2026: thay hoàn toàn, một document; 16/11/2026: Mặc định có tên riêng, Markdown lấy H1 đầu tiên) · `DEFERRED` (AsciiDoc) | Lời chốt trích ở đầu tài liệu và ở [#263](editor-title-authority.md). |
 | Quyết định kiến trúc | `ACCEPTED` | `VDR-DOCUMENT-SOURCE-FORMAT@r2` thay r1; `VDR-CONTENT-STORAGE@r1` (JSONB nguyên khối) giữ `PENDING`, không đổi. |
-| Mức triển khai | `persistence-api` + `web` (Mặc định) | Domain, application, PostgreSQL, HTTP API v1, Web Bàn viết/Reader dùng một shape. Markdown: `persistence-api` (nháp + snapshot riêng tư), **không** công khai và **không** mở trên Bàn viết. |
+| Mức triển khai | `persistence-api` + `web` (Mặc định và Markdown) | Một shape đi qua Bàn viết, snapshot kiểm duyệt và Reader. Markdown được gửi duyệt qua cùng lệnh xuất bản sau #264. |
 | Kiểm chứng | Xem [registry](../development/document-source-format.md) | `unit`, `postgres` (scratch), `web`; mục `NOT_RUN` ghi riêng. |
 
 ## 2. Hợp đồng canonical
@@ -41,13 +41,13 @@ hash, migration). Title authority thuộc [#263](editor-title-authority.md). Bas
 - **Format tường minh:** `default` | `markdown`. `asciidoc` nhận lỗi riêng `DeferredFormat`; tên
   khác nhận `UnsupportedFormat`. Không bao giờ suy Markdown từ dấu `#` hay nội dung.
 - **Projection dẫn xuất** (không bao giờ ghi đè `source`): title Markdown (H1 → `Title::parse`,
-  NFC), search/sort key từ cột `title`, đoạn hiển thị của Reader (`document::paragraphs`: dải dòng
-  trống phân đoạn, nhận cả LF, CRLF và CR khi hiển thị).
+  NFC), search/sort key từ cột `title`, đoạn hiển thị Mặc định và cây CommonMark dùng để
+  đọc ([#264](../development/document-source-format.md#2-pipeline-đọc-web)).
 - **Owner:** `services/vink-app/src/domain/document.rs` (`DocumentFormat`, `DocumentData`,
   `Document`, `Title`, `TitledDocument`), `domain/document/markdown.rs` (trích H1),
   `domain/revision.rs` (`ContentHash::of`, `RevisionContent`). Web: `apps/vink-web/src/contract.rs`
   (`DocumentDto`, `DocumentFormatDto`) và `document.rs` (`default_document`, `paragraphs`,
-  `DocumentView`).
+  `ReadingDocument`).
 
 ## 3. Title authority (tóm tắt, chi tiết ở [#263](editor-title-authority.md))
 
@@ -71,13 +71,13 @@ hash thân response, tự đổi khi shape JSON đổi. Không còn `of_source_v
 
 ## 5. Kiểm kê consumer sau thay thế
 
-| Tầng | Thành phần | Sau #255 |
+| Tầng | Thành phần | Runtime canonical |
 | --- | --- | --- |
 | Domain | `document.rs`, `document/markdown.rs`, `revision.rs`, `draft.rs` (`DraftChange`/`WorkingDraft` mang `TitledDocument`) | Một model; `source.rs`, `RevisionContentV2`, `StoredDocument`, `EffectiveFormat::LegacyDefault`, `LegacyLossSummary`, `FormatCapability` đã xóa. |
-| Application | `save_draft` (document trước, rồi title authority), `PublicWork.content`, `request_public` | Cổng `FormatNotPublishable` (HTTP 409 `format_not_publishable`) cho revision không phải `default` đến khi Reader #264 an toàn. |
+| Application | `save_draft` (document trước, rồi title authority), `PublicWork.content`, `request_public` | `request_public` nhận hai format canonical sau #264 rồi áp dụng cùng hàng rào revision, generation và kiểm duyệt. |
 | PostgreSQL | `postgres.rs::content`, `publication.rs` (capture, revision content), `discovery.rs` (đọc + kiểm hash), `moderation.rs`/`appeals.rs` (trả `DocumentData` của snapshot), `author_works.rs` (`d.document IS DISTINCT FROM pr.document`) | Đọc/ghi một shape; capture lấy title + source từ cùng phiên bản nháp đã khóa `FOR SHARE`. |
 | HTTP API v1 | `Draft`, `SaveDraftRequest` (`title` tùy chọn), `Publication`, `CaseDetailDto`, appeals | Fixture `contracts/http/v1/fixtures/*` dùng `{format, source}` với dòng trống và newline cuối để chứng minh nguyên văn. |
-| Web | `contract.rs`, `document.rs`, `pages/desk.rs` (gửi buffer CodeMirror nguyên văn; bản Markdown dừng ở thông báo `desk-format-unavailable`), `pages/mod.rs`, `pages/moderation.rs`, `public_persistence.rs`, `public-cache/indexeddb.js` | Không còn `text_to_document`/`document_to_text`; IDB chỉ nhận `format: "default"`. |
+| Web | `contract.rs`, `document.rs`, `pages/desk.rs` (gửi buffer CodeMirror nguyên văn), `pages/mod.rs`, `pages/moderation.rs`, `public_persistence.rs`, `public-cache/indexeddb.js` | Reader, preview và snapshot dùng chung phép chiếu theo format. Validator Rust/JS nhận hai format canonical, với IndexedDB tắt. |
 | Fixture/seed | `dev_seed.rs`, `xtask/src/provision.rs`, `apps/vink-web/e2e/fixtures/*.sql`, script e2e (`e2e/document.mjs`) | Canonical shape và hash mới. |
 
 ## 6. Cutover cơ sở dữ liệu và lịch sử bất biến
@@ -126,11 +126,15 @@ Signoff r2 xác nhận cơ chế dừng khi có revision cũ. Việc merge code 
   `tests/fixtures/title-authority/markdown.json` cho parser TS (differential) trước khi hiện title.
   Gửi `{format: "markdown", source}` không kèm `title`.
 - **#257 (outline):** H1 đầu tiên là title đúng như server; outline chỉ đọc, không ghi title.
-- **#262 (picker/chuyển đổi):** tạo work mới hiện vẫn là `default`; chuyển format là đổi `format`
-  trong cùng save/CAS, có preview/Hủy, không suy từ nội dung. Bàn viết hiện dừng tường minh với
-  nháp Markdown.
-- **#264 (Reader):** gỡ cổng `FormatNotPublishable` chỉ khi renderer đóng (allowlist, không thực thi
-  HTML) dùng cùng dialect/corpus; cập nhật `public_persistence`/IDB nhận `markdown`.
+- **#262 (picker/chuyển đổi):** tác giả chọn format khi tạo. Chuyển đổi có preview/Hủy và đổi
+  `format` trong cùng save/CAS.
+- **#264 (Reader):** triển khai phép chiếu an toàn trên Web và mở luồng gửi duyệt Markdown.
+  Corpus chung và bằng chứng nằm trong [registry](../development/document-source-format.md#2-pipeline-đọc-web).
+
+Wording đọc v1 hoặc suy Default khi thiếu format ở #264 AC-01 và #255 AC-03 thuộc hợp đồng r1.
+R2 thay toàn bộ shape. Reader nhận format tường minh và từ chối shape/format lạ. Cutover chỉ
+chuyển nháp đủ điều kiện, còn preflight chặn với revision cũ. Điều kiện signoff ở #255 AC-05
+đã được đáp ứng bằng signoff r2 ở trên. Quyền vận hành cutover trên dữ liệu thật thuộc mục 6.
 
 ## Lịch sử
 

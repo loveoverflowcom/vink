@@ -238,8 +238,6 @@ pub enum RequestPublicOutcome {
     },
     RevisionRejected,
     UnknownRevision,
-    /// The revision's format has no safe public Reader yet (Markdown until #264).
-    FormatNotPublishable,
     WorkUnavailable,
     KeyReused,
     NotFound,
