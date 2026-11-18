@@ -1,5 +1,8 @@
 # CMP empty artwork #261 · local evidence
 
+Lượt kiểm lại ngày 18/11 trên `develop@ee20e94` bổ sung pixel runtime và ma trận capture
+Android API 24/35. [Bằng chứng và trạng thái AC-04/06/07](native-qualification-20261118/README.md).
+
 Base đã fetch/reconcile: `develop@57737a788869fbab556971d0b820cbb0fef64099` (sau #260).
 Branch: `codex/cmp-empty-webp-states`. Implementation source/asset hashes trong
 [source-integrity.json](source-integrity.json); PR head/merge pin được ghi trong GitHub handoff.

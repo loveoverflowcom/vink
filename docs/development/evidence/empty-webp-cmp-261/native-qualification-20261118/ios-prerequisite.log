@@ -1,0 +1,15 @@
+ProductName:		macOS
+ProductVersion:		15.6
+BuildVersion:		24G84
+
+Xcode developer directory
+/Library/Developer/CommandLineTools
+
+Xcode version
+xcode-select: error: tool 'xcodebuild' requires Xcode, but active developer directory '/Library/Developer/CommandLineTools' is a command line tools instance
+
+iOS Simulator devices
+xcrun: error: unable to find utility "simctl", not a developer tool or in PATH
+
+XcodeGen
+missing from PATH
