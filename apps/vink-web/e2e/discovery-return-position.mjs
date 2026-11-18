@@ -171,7 +171,8 @@ export async function discoveryReturnPosition(page, { args, check }) {
       check(media.has('Font') && media.has('Image'), 'both late media responses are pending');
       await page.eval(frames);
       const before=await geometry();
-      for (const requestId of media.values()) await page.send('Fetch.continueResponse',{requestId});
+      // Release the whole gate, including requests restarted when a keyed row remounts.
+      await page.send('Fetch.disable');
       await page.waitFor("performance.getEntriesByType('resource').filter(r=>r.name.endsWith('?return-probe') && r.responseEnd>0).length>=2", 'held font and image finish loading');
       await settle();
       const after=await geometry();
