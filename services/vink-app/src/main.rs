@@ -37,7 +37,7 @@ use vink_app::http::{AppState, router};
 use vink_app::persistence::{self, PgStore, lazy_pool};
 use vink_app::{dev_seed, identity, runtime};
 
-const USAGE: &str = "usage: vink-app [serve|serve-api|migrate|dev-seed]\n       vink-app admin add <principal-uuid> [<reason>]\n       vink-app admin remove <principal-uuid> [<reason>]\n       vink-app admin list\n       vink-app moderator grant <principal-uuid> <note>\n       vink-app moderator revoke <principal-uuid>\n       vink-app moderator list\n       vink-app principal suspend <principal-uuid> <reason>\n       vink-app principal reinstate <principal-uuid>\n       vink-app principal list\n       vink-app tag list\n       vink-app tag history [<limit>]\n       vink-app tag create <catalog-version> <form|theme> <label>\n       vink-app tag rename <catalog-version> <tag-uuid> <label>\n       vink-app tag describe <catalog-version> <tag-uuid> [<description>]\n       vink-app tag alias <catalog-version> <tag-uuid> <label>\n       vink-app tag retire <catalog-version> <tag-uuid> [<successor-uuid>]\n       vink-app outbox status\n       vink-app outbox dead [<limit>]\n       vink-app outbox requeue <event-uuid> <consumer> <note>\n       vink-app post-review request|result|status|pending\n       vink-app maintenance prune";
+const USAGE: &str = "usage: vink-app [serve|serve-api|migrate|dev-seed]\n       vink-app admin add <principal-uuid> [<reason>]\n       vink-app admin remove <principal-uuid> [<reason>]\n       vink-app admin list\n       vink-app moderator grant <principal-uuid> <note>\n       vink-app moderator revoke <principal-uuid>\n       vink-app moderator list\n       vink-app principal suspend <principal-uuid> <reason>\n       vink-app principal reinstate <principal-uuid>\n       vink-app principal list|backfill-handles\n       vink-app tag list\n       vink-app tag history [<limit>]\n       vink-app tag create <catalog-version> <form|theme> <label>\n       vink-app tag rename <catalog-version> <tag-uuid> <label>\n       vink-app tag describe <catalog-version> <tag-uuid> [<description>]\n       vink-app tag alias <catalog-version> <tag-uuid> <label>\n       vink-app tag retire <catalog-version> <tag-uuid> [<successor-uuid>]\n       vink-app outbox status\n       vink-app outbox dead [<limit>]\n       vink-app outbox requeue <event-uuid> <consumer> <note>\n       vink-app post-review request|result|status|pending\n       vink-app maintenance prune";
 
 #[derive(Debug, PartialEq, Eq)]
 enum AdminCommand {
@@ -188,6 +188,7 @@ fn parse_moderator(args: &[String]) -> Result<ModeratorCommand, String> {
 /// Operator command on principal suspensions, parsed before any configuration is read.
 #[derive(Debug, PartialEq, Eq)]
 enum PrincipalCommand {
+    BackfillHandles,
     Suspend(PrincipalId, SuspensionReason),
     Reinstate(PrincipalId),
     List,
@@ -199,6 +200,7 @@ fn parse_principal(args: &[String]) -> Result<PrincipalCommand, String> {
             .ok_or_else(|| "expected a principal UUID".to_string())
     };
     match args.first().map(String::as_str) {
+        Some("backfill-handles") if args.len() == 1 => Ok(PrincipalCommand::BackfillHandles),
         Some("suspend") => {
             let reason = SuspensionReason::parse(&args.get(2..).unwrap_or_default().join(" "))
                 .ok_or("suspend needs a one-line reason of at most 200 characters")?;
@@ -582,6 +584,10 @@ async fn principal(config: &Config, command: PrincipalCommand) -> Result<(), Fai
         other => Failure::Runtime(format!("principal command failed: {other}")),
     };
     match command {
+        PrincipalCommand::BackfillHandles => {
+            let report = persistence::handle::backfill(&pool).await.map_err(failed)?;
+            println!("{report:?}");
+        }
         PrincipalCommand::Suspend(principal, reason) => {
             match persistence::suspend_principal(&pool, principal, &reason)
                 .await

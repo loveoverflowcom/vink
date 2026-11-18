@@ -8,6 +8,7 @@ mod conditional;
 pub mod contract;
 mod drafts;
 mod error;
+mod handle;
 mod health;
 mod moderation_queue;
 mod ssr;

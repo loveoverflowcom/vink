@@ -17,6 +17,7 @@ use crate::domain::ids::{RevisionId, TagId};
 /// Outcome classes of HTTP API v1. Messages are for developers; clients branch on `code`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ApiError {
+    HandleRefused(&'static str),
     Validation {
         field: &'static str,
         message: String,
@@ -123,6 +124,7 @@ pub enum ApiError {
 impl ApiError {
     pub fn status(&self) -> StatusCode {
         match self {
+            Self::HandleRefused(_) => StatusCode::CONFLICT,
             Self::Validation { .. } => StatusCode::UNPROCESSABLE_ENTITY,
             Self::Unauthenticated => StatusCode::UNAUTHORIZED,
             Self::Forbidden
@@ -435,6 +437,7 @@ impl ApiError {
                 None,
                 None,
             ),
+            Self::HandleRefused(code) => (*code, code.to_string(), None, Some("handle")),
             Self::CaseConflict(code) => (*code, code.to_string(), None, None),
             Self::CaseForbidden(code) => (*code, code.to_string(), None, None),
             Self::Internal => ("internal", "internal error".to_string(), None, None),

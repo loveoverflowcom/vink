@@ -121,3 +121,20 @@ phục anchor còn được đọc. Trang lỗi không biến thành trang cuố
 | Conflict version / tái dùng command ID khác payload | Đọc lại owner/relationship và receipt. Giữ bản nháp của đúng phiên. Người dùng đối chiếu trước khi gửi ý định mới. |
 | Mất ACK / timeout sau gửi | Có thể đã commit. Đọc kết quả theo command ID và state/version hiện tại. Retry cùng ID, cùng payload hoặc yêu cầu đối soát. Không gửi toggle mới. |
 | Authority, DB hoặc mạng unavailable | Hiện lỗi và đường thử lại. Không giả chưa Follow, count bằng 0, tài khoản đã xóa hoặc đã lưu. |
+
+## Địa chỉ tác giả #290
+
+| Route | Kết quả |
+| --- | --- |
+| `GET /@{handle}`, `HEAD /@{handle}` | 200 hồ sơ SSR có bút danh, địa chỉ hiện hành và trạng thái chưa có tác phẩm khi phù hợp. Alias trả 301, `Location: /@<current>`; tên đã thu hồi trả 410, tên chưa cấp trả 404. Mọi kết quả dùng `Cache-Control: no-store`. Hồ sơ tối thiểu chưa có query nghiệp vụ nên allowlist rỗng. Browser quyết định fragment. |
+| `GET /api/v1/authors/{handle}` | Resolver actor-free cho #292. JSON phân biệt `current` (author gồm `pen_name`, `handle`, `href`, kèm `has_public_works`), `alias` (href đích), `missing`, `gone`. Lỗi kho hoặc đang backfill trả 503. |
+| `GET /api/v1/me/handle` | Chỉ phiên chủ đang active. Trả `principal_id`, `pen_name`, `handle`, `setup_complete`, `remaining_changes`, `version`, `aliases` và `has_public_works`. |
+| `POST /api/v1/me/handle` | JSON gồm `command_id` UUID, `principal_id` của phiên đã mở form, `expected_version`, `intent` (`setup` hoặc `rename`), `handle`. So Origin, actor, standing, chủ, lifecycle và version. Thành công trả receipt gồm `command_id`, `accepted_version`, `handle`, `remaining_changes`. |
+| `GET /api/v1/me/handle/receipts/{command_id}` | Receipt của lệnh đã nhận thuộc phiên chủ. Cùng ID và payload replay được. Khi mất ACK, đọc receipt và own state để lấy kết quả lệnh và trạng thái mới nhất. |
+
+Handle canonical dài 1–40 byte, gồm `a-z`, `0-9` và một dấu nối giữa hai nhóm.
+Từ dành riêng nằm trong [luật tên](../../../src/domain/handle.rs) và constraint
+[registry](../../../migrations/20261124000000_author_handles.sql). Input sai trả 422.
+Các lỗi 409 gồm `version_conflict`, `handle_taken`, `handle_alias_reserved`,
+`handle_quota_exhausted` và xung đột nội dung với command ID đã nhận.
+Đổi cùng tên sau setup là no-op có receipt. Mọi đường API ở bảng này dùng `no-store`.

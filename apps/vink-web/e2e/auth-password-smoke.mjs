@@ -2,6 +2,7 @@
 // The mail carrier is a local outbox. Faults delay/drop a real response or explicitly inject
 // a refusal; no synthetic success is used. Don't log request bodies, credentials or cookies.
 
+import { authorHandles } from './author-handle-smoke.mjs';
 import { EDITOR_READY, STANDING, account, cookies, fabricate, fill, mailedCode, openAccount, q, signIn, signOut } from './auth-smoke.mjs';
 
 const API = '/api/v1/auth/password';
@@ -231,6 +232,7 @@ export async function passwordAuth(page, { args, check, openPage }) {
   await matrix(page, 'pen-name', '#pen-name-form', check);
   const A = await name(page, penA);
   check(A.display_name === penA && A.display_name !== userA, 'the server confirms a separate pen name');
+  await authorHandles(page, {base,openPage,check,holdAnswer});
   const draftA = await createDraft(page, '[Mẫu] Nháp tạo sau đăng ký');
   await openAccount(page, base, 'active');
   await page.click('#password-credential');

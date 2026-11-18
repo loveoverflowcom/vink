@@ -1533,3 +1533,24 @@ mod separated_discussion_tests {
         assert!(!c.work_id.is_empty());
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PublicAuthorRef {
+    pub pen_name: String,
+    pub handle: String,
+    pub href: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "state", rename_all = "snake_case")]
+pub enum AuthorResolution {
+    Current {
+        author: PublicAuthorRef,
+        has_public_works: bool,
+    },
+    Alias {
+        href: String,
+    },
+    Gone,
+    Missing,
+}
