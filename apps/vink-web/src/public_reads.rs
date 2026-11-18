@@ -900,6 +900,10 @@ mod browser {
     struct Owner {
         coord: Coordinator,
         channels: BTreeMap<WaiterId, oneshot::Sender<Reply>>,
+        #[cfg(feature = "perf-probe")]
+        fetch_starts: u64,
+        #[cfg(feature = "perf-probe")]
+        fetch_finishes: u64,
         timer: Option<i32>,
         tick: Option<Closure<dyn FnMut()>>,
         listener: Option<u64>,
@@ -910,6 +914,10 @@ mod browser {
         static OWNER: RefCell<Owner> = RefCell::new(Owner {
             coord: Coordinator::new(Policy::V1),
             channels: BTreeMap::new(),
+            #[cfg(feature = "perf-probe")]
+            fetch_starts: 0,
+            #[cfg(feature = "perf-probe")]
+            fetch_finishes: 0,
             timer: None,
             tick: None,
             listener: None,
@@ -1111,7 +1119,25 @@ mod browser {
         apply_effects(effects);
     }
 
+    /// Snapshot of the READ-02 owner. The lab bundle exports counts only, never keys or data.
+    #[cfg(feature = "perf-probe")]
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub fn public_read_counts() -> String {
+        with(|owner| {
+            let (observers, resources, flights) = owner.coord.store.live_counts();
+            serde_json::json!({
+                "observers": observers, "resource_tickets": resources, "flights": flights,
+                "fetch_starts": owner.fetch_starts, "fetch_finishes": owner.fetch_finishes, "waiters": owner.channels.len(),
+                "scheduler_timers": usize::from(owner.timer.is_some()),
+                "read_event_subscriptions": crate::read_events::subscriptions(),
+            })
+            .to_string()
+        })
+    }
+
     fn spawn_fetch(key: PublicKey, ticket: Ticket) {
+        #[cfg(feature = "perf-probe")]
+        with(|owner| owner.fetch_starts += 1);
         leptos::task::spawn_local(async move {
             let mut lease = crate::public_persistence::browser::capture().await;
             let started_wall = js_sys::Date::now() as u64;
@@ -1219,6 +1245,8 @@ mod browser {
     }
 
     fn finish(key: PublicKey, ticket: Ticket, outcome: Outcome<Snapshot>) {
+        #[cfg(feature = "perf-probe")]
+        with(|owner| owner.fetch_finishes += 1);
         let at = now();
         let random = js_sys::Math::random();
         let effects = with(|owner| {

@@ -67,7 +67,12 @@ pub fn execute(plan: &Plan, env: &Env) -> Result<(), String> {
 pub fn artifacts(plan: &Plan) -> Result<(), String> {
     for artifact in &plan.artifacts {
         match artifact {
-            Artifact::Bundle => build::bundle(plan.request.release)?,
+            Artifact::Bundle => build::bundle(
+                plan.request.release,
+                plan.scenarios
+                    .iter()
+                    .any(|s| matches!(s, Scenario::PerfBaseline | Scenario::ReturnPosition)),
+            )?,
             Artifact::Preview => return Err("preview build belongs to its adapter".into()),
             other => build::binary(*other, plan.request.release)?,
         }
