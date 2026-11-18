@@ -9,7 +9,7 @@ const frames = 'new Promise(resolve=>requestAnimationFrame(()=>requestAnimationF
 const TOLERANCE_PX = 2;
 const offline = value => ({ offline: value, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
 
-async function heldList(page, base, action, release) {
+async function heldList(page, base, action, release, pattern = '/api/v1/works?*') {
   let signal;
   let requestId;
   const paused = new Promise(resolve => { signal = resolve; });
@@ -20,7 +20,7 @@ async function heldList(page, base, action, release) {
   };
   page.cdp.listeners.push(listener);
   try {
-    await page.send('Fetch.enable', { patterns: [{ urlPattern: base + '/api/v1/works?*', requestStage: 'Request' }] });
+    await page.send('Fetch.enable', { patterns: [{ urlPattern: base + pattern, requestStage: 'Request' }] });
     await action();
     let timer;
     const id = await Promise.race([paused, new Promise((_, reject) => {
@@ -147,6 +147,43 @@ export async function discoveryReturnPosition(page, { args, check }) {
     await page.viewport(1280, 900);
     await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
 
+    // Real local files with distinct experiment URLs. The public row currently has no cover;
+    // reserve the test image's box before restoration, as required by the media layout contract.
+    await leave(false);
+    const media = new Map();
+    const collect = event => {
+      if (event.sessionId === page.sessionId && event.method === 'Fetch.requestPaused')
+        media.set(event.params.resourceType, event.params.requestId);
+    };
+    page.cdp.listeners.push(collect);
+    try {
+      await page.send('Fetch.enable', { patterns: [{urlPattern: args.base + '/pkg/*?return-probe', requestStage:'Response'}] });
+      await page.eval(`(() => {
+        const style = document.createElement('style');
+        style.id='return-probe-style';
+        style.textContent="@font-face{font-family:ReturnProbe;font-display:swap;src:url('/pkg/fonts/literata-variable.woff2?return-probe')} .vk-public-row__link{font-family:ReturnProbe,serif} .vk-public-row:first-of-type::before{content:'';display:block;width:32px;height:32px;background-image:url('/pkg/brand/vpen-r1-mark-light-32.png?return-probe')}";
+        document.head.append(style);
+      })()`);
+      await page.click('#reader-return');
+      await page.waitFor(arrived, 'return before font or image settles');
+      const deadline=Date.now()+10000;
+      while (media.size<2 && Date.now()<deadline) await new Promise(r=>setTimeout(r,20));
+      check(media.has('Font') && media.has('Image'), 'both late media responses are pending');
+      await page.eval(frames);
+      const before=await geometry();
+      // Release the whole gate, including requests restarted when a keyed row remounts.
+      await page.send('Fetch.disable');
+      await page.waitFor("performance.getEntriesByType('resource').filter(r=>r.name.endsWith('?return-probe') && r.responseEnd>0).length>=2", 'held font and image finish loading');
+      await settle();
+      const after=await geometry();
+      const decoded = await page.eval("document.fonts.check('16px ReturnProbe') && getComputedStyle(document.querySelector('.vk-public-row'),'::before').width==='32px'");
+      result('late-font-and-sized-image', decoded && fits(before) && fits(after), { before, after, decoded });
+    } finally {
+      await page.send('Fetch.disable');
+      page.cdp.listeners=page.cdp.listeners.filter(l=>l!==collect);
+      await page.eval("document.querySelector('#return-probe-style')?.remove()");
+    }
+
     // Temporarily offline, a recent navigation snapshot can render; controls still own authority.
     await leave(false);
     await page.send('Network.emulateNetworkConditions', offline(true));
@@ -164,11 +201,23 @@ export async function discoveryReturnPosition(page, { args, check }) {
       if ([5, 10, 20, 30, 40, 50].includes(i)) {
         await page.send('HeapProfiler.collectGarbage');
         raw.post_gc.push({ iteration: i, ...await page.send('Memory.getDOMCounters'),
-          heap: await page.send('Runtime.getHeapUsage') });
+          heap: await page.send('Runtime.getHeapUsage'),
+          read_owner: await page.eval("import('/pkg/vink.js').then(m=>m.public_read_counts ? JSON.parse(m.public_read_counts()) : null)") });
         flush();
       }
     }
     result('repeat-50-no-retained-views', raw.cycles.every(cycle => cycle.pass));
+
+    const owners = raw.post_gc.map(sample => sample.read_owner);
+    raw.read_owner_status = owners.every(Boolean) ? 'MEASURED' : 'NOT_RUN';
+    if (raw.read_owner_status === 'MEASURED') {
+      const counts = ['observers','resource_tickets','read_event_subscriptions','scheduler_timers','waiters','flights'];
+      result('bounded-read-owner', counts.every(k => owners.every(o => o[k] === owners[0][k])) &&
+        // Three mounted consumers call follow_works on the same query in pages/discovery.rs.
+        owners[0].observers === 3 && owners[0].resource_tickets === 1 &&
+        owners[0].read_event_subscriptions === 1 && owners[0].scheduler_timers === 1 &&
+        owners[0].waiters === 0 && owners[0].flights === 0);
+    }
 
     const listed = await (await fetch(args.base + '/api/v1/works' + scope.slice(1))).json();
     check(listed.works.some(work => 'work-' + work.work_id === anchor), 'real oracle page contains the saved row');
@@ -188,6 +237,34 @@ export async function discoveryReturnPosition(page, { args, check }) {
     result('late-refresh-keeps-search-focus', await page.eval("document.activeElement?.id==='public-query' && document.querySelector('#public-query').value.endsWith(' — đang gõ')"), { injection: 'clock +121s; held altered list response (anchor still present)' });
     await page.capture('return-position-after-delayed-read', { boundary: 'CDP-held-list', scenario: '#236-late-refresh-focus' });
 
+    // Hold B, return to the cached A with its exact cursor, then deliver a different list.
+    await page.eval('document.activeElement.blur()');
+    await heldList(page, args.base, () => navigate('/?q=scope-b#community-stream'), async () => {
+      await navigate(href);
+      await page.waitFor(arrived, 'cached A before obsolete B is released');
+      await settle();
+      return { status:200, body:{ ...listed, works:[] } };
+    }, '/api/v1/works?q=scope-b*');
+    await settle();
+    const afterABA = await geometry();
+    result('query-A-B-A-late', await page.eval(arrived) && fits(afterABA) && await page.eval(ROWS+'===11'), afterABA);
+
+    // Force pressure through actual distinct list keys, then revisit A offline. A network
+    // attempt and unavailable state distinguish eviction from a warm offline render.
+    for (let i=0;i<18;i++) {
+      const q='pressure-'+i;
+      await navigate('/?q='+q);
+      await page.waitFor(`location.search==='?q=${q}' && document.querySelector('[data-testid=public-no-results]')`, 'distinct query settled');
+    }
+    await page.send('Network.emulateNetworkConditions', offline(true));
+    try {
+      await navigate(href);
+      await page.waitFor("!!document.querySelector('[data-testid=public-unavailable]')", 'evicted A is unavailable offline');
+      await settle();
+      result('evicted-offline-fallback', await page.eval(`location.search+location.hash===${JSON.stringify(href.slice(1))} &&
+        !document.getElementById(${JSON.stringify(anchor)}) && document.activeElement?.id==='community-stream'`));
+    } finally { await page.send('Network.emulateNetworkConditions', offline(false)); }
+
     for (const status of [200, 503]) {
       // Cold client navigation from a new document: no tab snapshot to invent a result.
       await page.goto(args.base + '/toi');
@@ -202,7 +279,7 @@ export async function discoveryReturnPosition(page, { args, check }) {
         document.activeElement?.getAttribute('aria-label')==='Tác phẩm khám phá'`), { injection: 'only list transport', status });
     }
     check(raw.cases.every(c => c.pass), 'return-position regression: ' + raw.cases.filter(c => !c.pass).map(c => c.case_id).join(', '));
-    raw.status = 'PASS';
+    raw.status = raw.read_owner_status === 'MEASURED' ? 'PASS' : 'MEASURED_PARTIAL';
   } catch (error) {
     raw.error = error.message;
     throw error;
