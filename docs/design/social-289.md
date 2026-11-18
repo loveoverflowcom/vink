@@ -116,9 +116,13 @@ Theo [HTTP r1](../../services/vink-app/contracts/http/v1/social-graph.md), quy�
 tải overlay/Feed riêng sau xác thực, hoặc SSR cá nhân cô lập theo request với
 `private, no-store`. Own/viewer/Feed và lỗi dùng `no-store`. Web giữ nháp/pending
 theo generation của phiên; A→B→A vẫn là generation mới. Khi đổi phiên bỏ request,
-page chain, receipt UI, nháp và dữ liệu Back của phiên cũ. Known revoke loại dữ liệu
-cũ và vô hiệu phản hồi đang bay; đọc lại trước khi hiển thị vùng từng có dữ liệu bị
-thu hồi khi focus/Back. Own/viewer/Feed đứng ngoài shared cache, IndexedDB và
+page chain, receipt UI, nháp và dữ liệu Back của phiên cũ. Khi biết quyền vừa bị thu hồi,
+các tab bỏ dữ liệu liên quan và phản hồi cũ đang bay. Mỗi lượt đọc mới, kể cả focus/Back,
+phải xác nhận quyền trước khi vẽ lại từ cache bất kỳ trường nào chủ có thể ẩn.
+Ví dụ, Bình đã đọc Bio công khai của An rồi mở Reader. An chuyển Bio sang riêng tư
+trên thiết bị khác. Khi Bình quay lại, Web chờ đọc lại hồ sơ. Với ETag của bản có Bio,
+server trả body mới đã lọc. Nếu cả hồ sơ mất quyền, Web hiển thị kết quả từ chối hoặc
+không còn hồ sơ. Khi lỗi mạng, vùng đang chờ hiện Thử lại. Own/viewer/Feed đứng ngoài shared cache, IndexedDB và
 `PublicKey::Works`. Dùng [ReadOwner/PageChain](../../apps/vink-web/src/read_lifecycle.rs)
 làm tham chiếu về quyền sở hữu response và trang, với scope Social từ provider.
 
@@ -139,6 +143,8 @@ Mỗi vùng dùng sizing, theme, thứ tự focus, overlay và các trạng thá
 [primitives](../../packages/ui-system/leptos/src/lib.rs) và
 [patterns Leptos](../../packages/vink-patterns/leptos/src/lib.rs).
 
+<a name="profile"></a>
+
 ### 1. Mở hồ sơ người viết · `#profile`
 
 - **Entry và Back.** Mở `/@handle` từ URL, bút danh trên WorkCard/Reader/root/reply/reply
@@ -156,6 +162,8 @@ Mỗi vùng dùng sizing, theme, thứ tự focus, overlay và các trạng thá
 - **Owner UI.** Dùng Heading, Avatar, Link, StatePanel, WorkCard. Cần trang hồ sơ và
   adapter author ref cho WorkByline, Reader và Discussion.
 
+<a name="edit-profile"></a>
+
 ### 2. Sửa hồ sơ trong Tôi · `#edit-profile`
 
 - **Entry và Back.** Từ `/toi` hoặc CTA chính chủ trên hồ sơ. Chủ thấy form có
@@ -171,6 +179,8 @@ Mỗi vùng dùng sizing, theme, thứ tự focus, overlay và các trạng thá
   form, không mở lại nháp cũ khi Back.
 - **Owner UI.** Dùng TextField, Select, Button, InlineNotice theo owner hiện có.
   Cần form có version và state nháp theo phiên, dùng AccountPanel cho lối tài khoản.
+
+<a name="handle"></a>
 
 ### 3. Xác nhận và đổi Handle · `#handle`
 
@@ -188,6 +198,8 @@ Mỗi vùng dùng sizing, theme, thứ tự focus, overlay và các trạng thá
   luồng dùng lại chính alias. Người khác vĩnh viễn không được cấp tên đã dùng.
 - **Owner UI.** Dùng TextField, InlineNotice và Dialog. Cần vùng setup/quota và
   điều khiển đổi theo version/receipt từ App Profile.
+
+<a name="privacy"></a>
 
 ### 4. Quyền theo trường · `#privacy`
 
@@ -210,6 +222,8 @@ Mỗi vùng dùng sizing, theme, thứ tự focus, overlay và các trạng thá
   quyền và copy tiết lộ theo field. Nếu có ảnh tải lên, bytes và biến thể cũng theo
   quyền hiện thời, bao gồm URL/validator cũ; #298 sở hữu đường phát ảnh.
 
+<a name="follow"></a>
+
 ### 5. Theo dõi · `#follow`
 
 - **Entry và hành động.** Vùng cạnh danh tính. Với khách, đăng nhập quay về đúng hồ
@@ -218,12 +232,15 @@ Mỗi vùng dùng sizing, theme, thứ tự focus, overlay và các trạng thá
   status nằm cạnh danh tính; lỗi có Thử lại, không suy ra chưa Follow. Chủ dùng
   Chỉnh hồ sơ. “Theo dõi lẫn nhau” chỉ ở scope viewer của hai đầu cạnh.
 - **Interaction.** Nút gửi desired state với version và ID. Pending giữ vị trí/focus.
-  Mất ACK tra receipt và đọc quan hệ hiện tại; ACK muộn của Follow sau Unfollow
-  không đổi nút hoặc count về ý định cũ. Thông báo kết quả ở vùng riêng sau khi xác
-  nhận; số đếm/list được đọc lại nếu được phép. Khi capability/target mất, bỏ action,
+  Ví dụ, Follow từ v0 đã commit ở v1 nhưng mất ACK. Sau khi tra receipt và đọc
+  quan hệ ở v1, người dùng gửi Unfollow bằng ID mới và nhận v2. Khi ACK v1 về muộn,
+  nút vẫn là **Theo dõi** theo v2. ACK v1 cũng không cập nhật số đếm hay phát lại
+  thông báo. Sau khi xác nhận, thông báo một lần và đọc lại số đếm/list được phép. Khi capability/target mất, bỏ action,
   focus về danh tính nếu nút biến mất.
 - **Owner UI.** Dùng Button hoặc ToggleAction cho trạng thái xác nhận và InlineNotice.
   Cần adapter quan hệ, capability và receipt; Graph sở hữu cạnh, count và version.
+
+<a name="relationship-list"></a>
 
 ### 6. Danh sách người · `#relationship-list`
 
@@ -239,6 +256,8 @@ Mỗi vùng dùng sizing, theme, thứ tự focus, overlay và các trạng thá
   heading quan hệ/hồ sơ khi link đã mất. Đích tác giả từ row dùng return anchor của list.
 - **Owner UI.** Dùng Heading, Link, StatePanel, Button. Cần hàng người, vùng kết quả
   có tên và cursor riêng cho public/own và từng hướng.
+
+<a name="following-feed"></a>
 
 ### 7. Khám phá → Đang theo dõi → Reader → Back · `#following-feed`
 
@@ -257,6 +276,8 @@ Mỗi vùng dùng sizing, theme, thứ tự focus, overlay và các trạng thá
   kết quả. Dùng WorkCard, StatePanel và quy ước ExploreContext/PageChain; cần mode,
   state đọc riêng theo phiên và cursor riêng. Không tái dùng chain của tìm tác giả hay tìm bài.
 
+<a name="author-search"></a>
+
 ### 8. Tìm và xem gợi ý tác giả · `#author-search`
 
 - **Entry và layout.** Từ Khám phá, dùng SearchField; kết quả/gợi ý bên dưới có
@@ -273,6 +294,8 @@ Mỗi vùng dùng sizing, theme, thứ tự focus, overlay và các trạng thá
 - **Owner UI.** Dùng SearchField, Avatar, Link, StatePanel và mẫu phục hồi #236.
   Cần hàng tác giả và kết quả/cursor độc lập với tác phẩm, overlay nếu có CTA riêng.
 
+<a name="profile-unavailable"></a>
+
 ### 9. Alias và hồ sơ không còn · `#profile-unavailable`
 
 - **Entry và kết quả.** Mở URL đã dùng qua link chia sẻ hoặc kết quả cũ. Alias
@@ -282,7 +305,10 @@ Mỗi vùng dùng sizing, theme, thứ tự focus, overlay và các trạng thá
   đưa focus đến H1 đích khi điều hướng trong app; lần tải tài liệu mới có title/H1
   và thứ tự đọc của trang đích.
 - **Hồ sơ đích đã mất.** Tombstone dừng ở trạng thái “Hồ sơ không còn truy cập
-  được”, có lối quay lại hoặc Khám phá. Mạng/5xx dùng trạng thái lỗi và Thử lại.
+  được”, có lối quay lại hoặc Khám phá. Sau H0 → H1 → H2, GET/HEAD tại H0 và H1
+  đều trả 301 thẳng đến H2. Sau khi xóa, cả ba URL dừng ở trang thay thế, bỏ
+  `Location` và mọi dấu định danh cũ, kể cả khi trình duyệt từng mở H0.
+  Mạng/5xx dùng trạng thái lỗi và Thử lại.
   URL tác phẩm theo trang thay thế của Publication; bình luận còn hợp lệ chỉ hiện
   “Tài khoản đã xóa” ở root, reply và reply context, bỏ link, ảnh, tên, Handle và
   id cũ cả trong HTML/head/hydration. Trên Back bỏ item đã biết mất quyền.
@@ -312,7 +338,8 @@ trước khi triển khai. Scope, dependency và thứ tự gộp ở [bàn giao
 | Vùng | Issue nhận bàn giao | Bằng chứng cần lấy |
 | --- | --- | --- |
 | `#profile`, `#edit-profile`, `#privacy` | [#292](https://github.com/loveoverflowcom/vink/issues/292); author ref tại [#293](https://github.com/loveoverflowcom/vink/issues/293); ảnh có điều kiện tại [#298](https://github.com/loveoverflowcom/vink/issues/298) | HTTP/SSR/no-JS và hydration cùng footprint hidden/absent; public/own hai phiên, revoke trước validator; fixture tên Việt trùng, chưa có bài, card/Reader/root/reply/context đúng ref. Browser 320 px/200%, focus, keyboard inset, conflict, A→B→A; thử bytes cũ nếu có upload. |
-| `#handle`, `#profile-unavailable` | [#290](https://github.com/loveoverflowcom/vink/issues/290), [#297](https://github.com/loveoverflowcom/vink/issues/297) | Setup giữ hoặc sửa, quota, mất ACK, 301 từng alias qua hai lần đổi, query/fragment/Back và xóa sau redirect; E2E xóa cần `SOC-DEP-01`. |
+| [`#handle`](#handle), [`#profile-unavailable`](#profile-unavailable) | [#290 · preview Handle r2 đã duyệt](https://github.com/loveoverflowcom/vink/issues/290) | Dùng preview r2 của #290 cho giao diện Handle. Kiểm setup giữ hoặc sửa, quota, mất ACK và hai tab. Kiểm SSR/no-JS cho hồ sơ tối thiểu, GET/HEAD và Back qua hai lần đổi, query/fragment và tombstone ở resolver. |
+| [`#profile-unavailable`](#profile-unavailable) | [#297](https://github.com/loveoverflowcom/vink/issues/297) | Với `SOC-DEP-01`, kiểm xóa liên miền sau khi browser đã mở alias, các URL cũ dừng ở trang thay thế và attribution của root/reply/context dùng nhãn đã xóa. |
 | `#follow`, `#relationship-list` | [#294](https://github.com/loveoverflowcom/vink/issues/294), policy field từ [#292](https://github.com/loveoverflowcom/vink/issues/292) | Browser pending và mất ACK → Unfollow → ACK cũ; Mutual hai đầu/khách/người thứ ba, list có quyền/count ẩn và ngược lại, pagination đổi quyền. Race/receipt/count cần PG/HTTP theo #294. |
 | `#following-feed` | [#296](https://github.com/loveoverflowcom/vink/issues/296), fact đầu vào từ [#291](https://github.com/loveoverflowcom/vink/issues/291) | Bài có trước Follow, lọc snapshot/provenance, lỗi append; Browser Reader→Back, A→B→A, rút bài hoặc Unfollow giữa hai trang, mất anchor. |
 | `#author-search` | [#295](https://github.com/loveoverflowcom/vink/issues/295) | Tên trùng, Handle chính xác, alias theo lựa chọn, người 0 bài, IME và query/Back; HTTP đổi cạnh riêng rồi so biểu diễn/rank công khai. |
