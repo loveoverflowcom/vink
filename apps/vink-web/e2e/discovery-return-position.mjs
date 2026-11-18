@@ -209,11 +209,14 @@ export async function discoveryReturnPosition(page, { args, check }) {
     result('repeat-50-no-retained-views', raw.cycles.every(cycle => cycle.pass));
 
     const owners = raw.post_gc.map(sample => sample.read_owner);
-    if (owners.every(Boolean)) {
+    raw.read_owner_status = owners.every(Boolean) ? 'MEASURED' : 'NOT_RUN';
+    if (raw.read_owner_status === 'MEASURED') {
       const counts = ['observers','resource_tickets','read_event_subscriptions','scheduler_timers','waiters','flights'];
       result('bounded-read-owner', counts.every(k => owners.every(o => o[k] === owners[0][k])) &&
         // Three mounted consumers call follow_works on the same query in pages/discovery.rs.
-        owners[0].observers===3 && owners[0].scheduler_timers<=1 && owners[0].flights===0);
+        owners[0].observers === 3 && owners[0].resource_tickets === 1 &&
+        owners[0].read_event_subscriptions === 1 && owners[0].scheduler_timers === 1 &&
+        owners[0].waiters === 0 && owners[0].flights === 0);
     }
 
     const listed = await (await fetch(args.base + '/api/v1/works' + scope.slice(1))).json();
@@ -276,7 +279,7 @@ export async function discoveryReturnPosition(page, { args, check }) {
         document.activeElement?.getAttribute('aria-label')==='Tác phẩm khám phá'`), { injection: 'only list transport', status });
     }
     check(raw.cases.every(c => c.pass), 'return-position regression: ' + raw.cases.filter(c => !c.pass).map(c => c.case_id).join(', '));
-    raw.status = 'PASS';
+    raw.status = raw.read_owner_status === 'MEASURED' ? 'PASS' : 'MEASURED_PARTIAL';
   } catch (error) {
     raw.error = error.message;
     throw error;
