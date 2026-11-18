@@ -26,6 +26,7 @@ class DiagnosticTest {
 
     @Test fun controlledVietnameseTextSurvivesThemeAndRecreation() {
         val input = ui.onAllNodes(hasSetTextAction()).onFirst()
+        input.assertIsNotFocused()
         input.performTextReplacement("Đường về – một buổi chiều")
         ui.onNodeWithText("Đổi sáng/tối").performClick()
         input.assertTextContains("Đường về – một buổi chiều", substring = true)
