@@ -256,6 +256,7 @@ async fn prune_and_rollback_touch_only_rate_limit_windows(pool: PgPool) {
     // Rollbacks run newest first. Operator post-review is unused here; its down script must
     // preserve debt/audit whenever present, covered by post_review's dedicated tests.
     for down in [
+        "migrations-rollback/20261121120100_rereview_history.down.sql",
         "migrations-rollback/20261121120000_policy_rereview.down.sql",
         "migrations-rollback/20261121000000_moderation_queue_order.down.sql",
         "migrations-rollback/20261120000000_draft_search.down.sql",

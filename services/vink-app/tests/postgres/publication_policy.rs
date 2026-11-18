@@ -6,9 +6,23 @@ use vink_app::domain::moderation::{EvaluationRefusal, EvaluatorOutcome, PolicyRe
 use vink_app::domain::publication::Moderation;
 use vink_app::persistence::evaluation::{JobOutcome, claim_job, finish_job};
 
-const MIGRATION: i64 = 20261121120000;
-const BACKOUT: &str =
-    include_str!("../../migrations-rollback/20261121120000_policy_rereview.down.sql");
+const POLICY_MIGRATIONS: [i64; 2] = [20261121120000, 20261121120100];
+const BACKOUT: &str = concat!(
+    include_str!("../../migrations-rollback/20261121120100_rereview_history.down.sql"),
+    "\n",
+    include_str!("../../migrations-rollback/20261121120000_policy_rereview.down.sql"),
+);
+
+async fn policy_ledger(pool: &PgPool) -> Vec<i64> {
+    sqlx::query_scalar(
+        "SELECT version FROM _sqlx_migrations WHERE version BETWEEN $1 AND $2 ORDER BY version",
+    )
+    .bind(POLICY_MIGRATIONS[0])
+    .bind(POLICY_MIGRATIONS[1])
+    .fetch_all(pool)
+    .await
+    .unwrap()
+}
 
 async fn submit(vink: &Vink<PgStore>) -> (WorkId, RevisionId) {
     let work = vink.create_draft(author()).await.unwrap().work_id;
@@ -70,9 +84,19 @@ async fn state_observes_policy_rereview_and_private_fences_late_approval(pool: P
         .await
         .unwrap();
     bump(&pool, work).await;
+    let prior_audit = || {
+        sqlx::query_scalar::<_, Value>(
+            "SELECT to_jsonb(h) FROM work_revision_decision_history h WHERE revision_id=$1 AND decision_version=2",
+        )
+        .bind(revision.as_uuid())
+        .fetch_one(&pool)
+    };
+    let approved_audit = prior_audit().await.unwrap();
+    assert_eq!(approved_audit["evaluation_id"], json!(claim.id));
     vink.request_public(author(), work, "policy-rereview-230", revision, 3)
         .await
         .unwrap();
+    assert_eq!(prior_audit().await.unwrap(), approved_audit);
     let replay = vink
         .request_public(author(), work, "policy-rereview-230", revision, 3)
         .await
@@ -168,9 +192,68 @@ async fn stored_rows(pool: &PgPool) -> Value {
     ).fetch_one(pool).await.unwrap()
 }
 
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn policy_rereview_conflicting_audit_rolls_back_the_command(pool: PgPool) {
+    let vink = seeded(&pool).await;
+    let work = sample_work();
+    let revision = RevisionId::from_uuid(dev_seed::SAMPLE_REVISION);
+    vink.set_private(author(), work, "audit-private", 2)
+        .await
+        .unwrap();
+    bump(&pool, work).await;
+    assert!(history(&pool, revision).await.is_empty());
+
+    // Simulate inconsistent imported evidence at the old or incoming version.
+    // Neither version's existing evidence may be overwritten to finish a request.
+    for version in [2_i64, 3] {
+        let fixture = Uuid::now_v7();
+        sqlx::query(
+            "INSERT INTO work_revision_decision_history
+            (id,work_id,revision_id,decision_version,moderation,policy_version,provenance_kind)
+            VALUES ($1,$2,$3,$4,'approved',1,'ai_approved')",
+        )
+        .bind(fixture)
+        .bind(work.as_uuid())
+        .bind(revision.as_uuid())
+        .bind(version)
+        .execute(&pool)
+        .await
+        .unwrap();
+        let before = stored_rows(&pool).await;
+        assert!(
+            matches!(
+                vink.request_public(author(), work, "audit-rereview", revision, 3)
+                    .await,
+                Err(AuthorPublicationError::Internal)
+            ),
+            "conflicting history v{version}"
+        );
+        assert_eq!(stored_rows(&pool).await, before);
+        sqlx::query("DELETE FROM work_revision_decision_history WHERE id=$1")
+            .bind(fixture)
+            .execute(&pool)
+            .await
+            .unwrap();
+    }
+    // A failed command left its key available. Store the legacy approval exactly
+    // once before committing a new ticket and pending version.
+    let result = vink
+        .request_public(author(), work, "audit-rereview", revision, 3)
+        .await
+        .unwrap();
+    assert!(result.ticket.is_some());
+    assert_eq!(
+        history(&pool, revision).await,
+        vec![
+            (2, 1, "approved".into(), Some("legacy_bootstrap".into())),
+            (3, 2, "pending".into(), None),
+        ]
+    );
+}
+
 #[sqlx::test(migrations = false)]
 async fn upgrade_and_backout_preserve_rows_and_refuse_live_rereview(pool: PgPool) {
-    use vink_app::persistence::{MIGRATOR, migrate};
+    use vink_app::persistence::MIGRATOR;
 
     MIGRATOR.run_to(20261121000000, &pool).await.unwrap();
     let vink = seeded(&pool).await;
@@ -194,11 +277,15 @@ async fn upgrade_and_backout_preserve_rows_and_refuse_live_rereview(pool: PgPool
     }
     let (fresh, _) = submit(&vink).await; // Fresh pending alongside the legacy public pointer.
     let before = stored_rows(&pool).await;
-    assert_eq!(migrate(&pool).await.unwrap().applied, vec![MIGRATION]);
+    MIGRATOR.run_to(POLICY_MIGRATIONS[0], &pool).await.unwrap();
+    assert_eq!(policy_ledger(&pool).await, [POLICY_MIGRATIONS[0]]);
+    MIGRATOR.run_to(POLICY_MIGRATIONS[1], &pool).await.unwrap();
+    assert_eq!(policy_ledger(&pool).await, POLICY_MIGRATIONS);
     assert_eq!(stored_rows(&pool).await, before);
     sqlx::raw_sql(BACKOUT).execute(&pool).await.unwrap();
     assert_eq!(stored_rows(&pool).await, before);
-    assert_eq!(migrate(&pool).await.unwrap().applied, vec![MIGRATION]);
+    assert!(policy_ledger(&pool).await.is_empty());
+    MIGRATOR.run_to(POLICY_MIGRATIONS[1], &pool).await.unwrap();
 
     let work = sample_work();
     let revision = RevisionId::from_uuid(dev_seed::SAMPLE_REVISION);
@@ -256,7 +343,7 @@ async fn upgrade_and_backout_preserve_rows_and_refuse_live_rereview(pool: PgPool
     sqlx::query("ROLLBACK").execute(&mut *conn).await.unwrap();
     drop(conn);
     assert_eq!(stored_rows(&pool).await, after_request);
-    assert!(migrate(&pool).await.unwrap().applied.is_empty());
+    assert_eq!(policy_ledger(&pool).await, POLICY_MIGRATIONS);
 
     // Resolve under the current policy. Once the live row is compatible, the old
     // schema can be restored while keeping the complete v2/v3/v4 history.
@@ -294,7 +381,9 @@ async fn upgrade_and_backout_preserve_rows_and_refuse_live_rereview(pool: PgPool
     let resolved = stored_rows(&pool).await;
     sqlx::raw_sql(BACKOUT).execute(&pool).await.unwrap();
     assert_eq!(stored_rows(&pool).await, resolved);
-    assert_eq!(migrate(&pool).await.unwrap().applied, vec![MIGRATION]);
+    assert!(policy_ledger(&pool).await.is_empty());
+    MIGRATOR.run_to(POLICY_MIGRATIONS[1], &pool).await.unwrap();
+    assert_eq!(stored_rows(&pool).await, resolved);
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]

@@ -691,7 +691,8 @@ const COMMENT_GOVERNANCE_MIGRATION: i64 = 20_261_119_000_000;
 
 fn down_script() -> String {
     format!(
-        "{}\n{}\n{}\n{}\n{}\n{}\n{}",
+        "{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
+        include_str!("../../migrations-rollback/20261121120100_rereview_history.down.sql"),
         include_str!("../../migrations-rollback/20261121120000_policy_rereview.down.sql"),
         include_str!("../../migrations-rollback/20261121000000_moderation_queue_order.down.sql"),
         include_str!("../../migrations-rollback/20261120000000_draft_search.down.sql"),
@@ -764,6 +765,7 @@ async fn upgrade_backfills_paired_state_for_old_pointers(pool: PgPool) {
             20261120000000,
             20261121000000,
             20261121120000,
+            20261121120100,
         ]
     );
 

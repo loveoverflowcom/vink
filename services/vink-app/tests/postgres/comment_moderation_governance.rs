@@ -1091,7 +1091,8 @@ async fn schema_provenance_atomicity_history_and_upgrade_backout(pool: PgPool) {
             COMMENT_GOVERNANCE_MIGRATION,
             20261120000000,
             20261121000000,
-            20261121120000
+            20261121120000,
+            20261121120100
         ]
     );
     assert_eq!(

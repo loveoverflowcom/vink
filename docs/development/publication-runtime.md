@@ -71,8 +71,18 @@ Khi nhận lệnh re-review, adapter lưu approval cũ còn thiếu trong histor
 ghi, kể cả timestamp và nguồn legacy. History đã có giữ nguyên actor, case, evaluation ID và
 timestamp. Việc này cùng giao dịch với decision, intent, ticket/ca và receipt.
 
-**Backout.** Dừng writer, chạy [script down](../../services/vink-app/migrations-rollback/20261121120000_policy_rereview.down.sql)
-trong một phiên riêng. PostgreSQL kiểm toàn bộ dòng khi khôi phục CHECK cũ. Có dòng hiện tại
+[Migration 20261121120100](../../services/vink-app/migrations/20261121120100_rereview_history.sql)
+đối chiếu history của cả version trước và sau khi ghi lượt re-review. Tại commit, hai bản ghi
+phải khớp work, revision, version, policy, trạng thái và các trường provenance, kể cả giá trị
+NULL. History thiếu hoặc mâu thuẫn làm cả lệnh rollback. Gửi lại cùng lượt người duyệt giữ
+version và policy. Khi chốt, decision tăng đúng một version, dùng policy hiện hành, và history
+phải trỏ tới ca đã kết luận đúng snapshot, người duyệt, căn cứ admin/grant và verdict.
+Đường ghi ca kiểm standing, quyền theo phạm vi và recusal. Các kiểm tra này áp dụng cho
+giao dịch ghi re-review. Việc đối soát những quyết định lịch sử ngoài giao dịch đó có phạm vi riêng.
+
+**Backout.** Dừng writer. Chạy [down 20261121120100](../../services/vink-app/migrations-rollback/20261121120100_rereview_history.down.sql)
+rồi [down 20261121120000](../../services/vink-app/migrations-rollback/20261121120000_policy_rereview.down.sql).
+Script đầu khóa bảng và kiểm điều kiện trước khi gỡ guard. PostgreSQL kiểm toàn bộ dòng khi khôi phục CHECK cũ. Có dòng hiện tại
 `pending` với version > 1 thì giao dịch thất bại, ledger và dữ liệu được giữ nguyên. Giữ migration
 và xử lý tiếp bằng luồng duyệt bình thường. Khi các dòng hiện tại đều tương thích, có thể backout
 và nâng lại, kể cả khi history đã có lượt re-review. Bản cũ lại có giới hạn của CHECK v1.
