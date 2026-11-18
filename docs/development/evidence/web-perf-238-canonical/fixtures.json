@@ -1,0 +1,11 @@
+{
+  "base": "9fcd75ec03229a27464123eac1d68104e8447b19",
+  "sql_fixture_sha256": {
+    "discovery-publications.sql": "30c199f931af00b6413a35936bd6b2e11481505a70f1e0ecf567c5e6eda19278",
+    "web-perf-journey.sql": "4e8cfed43d92c80ae802b4636f43dd999035c87256667db7c0799e375bee934c"
+  },
+  "sql_fixtures_concatenated_sha256": "81a28550dd27382b063a062a80407a4c6457758f6a973996c9929e01a247ca17",
+  "public_short_source_utf8_sha256": "5201c09e4d9a23667debfbc777cf30dba5457173a44f6f6e8f635db6daec0e6d",
+  "public_200000_paragraph_source_utf8_sha256": "fa1f86cba1ceae3c56009431062145965560a3a8f64607c7b76eecc0818f598e",
+  "timing_wasm_sha256": "b6c88befa7d719e1438b4d9997a07ea922b11d2f538790c2abd74585c4c483f4"
+}

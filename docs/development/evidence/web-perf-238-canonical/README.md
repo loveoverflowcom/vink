@@ -42,3 +42,7 @@ node apps/vink-web/e2e/browser-smoke.mjs --phase reader-containment --build-prof
 ```
 
 Trên corpus ngắn, `pdftotext print.pdf -` phải có thân bài, “Nhận xét 20” và “Phản hồi 820”. Bản in toàn bộ 200.000 đoạn chưa chạy. Để đối chiếu Firefox, mở cùng Reader và chèn rule B với chiều cao 9.371 px, kiểm find, selection từ đầu thân bài đến cuối nhận xét 1, Ctrl+C rồi Ctrl+V vào ô nhập, fragment đến comment, Tab vào list, in và gỡ rule. Để lặp Orca, bật trợ năng hệ thống, khởi động `orca --debug-file orca.log` và Chrome với `--force-renderer-accessibility`. Focus `#reader-return`, nhấn Ctrl+Home, duyệt heading, Down và paragraph qua article tới nhận xét. Đối chiếu bốn utterance trong native.json với `SPEECH OUTPUT`. Kiểm in/screen reader trên corpus ngắn, benchmark hai corpus đều có đủ article trong DOM.
+
+Phép thử Orca diễn ra trên cùng UI Reader với bundle lab có probe #234. Các cặp A/B tính thời gian và Firefox dùng bản release trên stable-site.
+
+[Digest SQL seed, source canonical và cấu hình artifact](fixtures.json).
