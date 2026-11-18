@@ -88,7 +88,7 @@ các phụ thuộc tương ứng đã tích hợp. PRE-04 và bằng chứng UI 
 | --- | --- | --- |
 | [#289 · Design](https://github.com/loveoverflowcom/vink/issues/289) | LayoutSpec r2, hướng điều hướng preview v4 đã chọn ở #289 | Chín bề mặt dùng ma trận quyền/lỗi ở HTTP r1. Kiểm nguồn/cỡ chữ. LayoutSpec chưa có trong base #288. |
 | [#290 · Principal/Handle](https://github.com/loveoverflowcom/vink/issues/290) | #289, preview Handle r2 đã duyệt | OPEN-02 đã chốt, OPEN-03 chỉ chặn reclaim. CHOICE-01 cần PG + HTTP/browser 301. |
-| [#291 · Publication](https://github.com/loveoverflowcom/vink/issues/291) | Preview r2 (#291), độc lập với UI | CHOICE-04 đã chọn fact theo WorkId. Kiểm hai writer, seed/backfill/rollback, giao exact/legacy/unknown cho Feed. |
+| [#291 · Publication](https://github.com/loveoverflowcom/vink/issues/291) | Preview r2 (#291), độc lập với UI | CHOICE-04 đã có [fact PostgreSQL theo WorkId và view chỉ nhận exact còn công khai](publication-runtime.md#mốc-công-khai-đầu-tiên-291). Fixture kiểm writer, seed, backfill và rollback. #296 nhận mốc cùng revision/metadata hiện hành. |
 | [#292 · Profile](https://github.com/loveoverflowcom/vink/issues/292) | #290, LayoutSpec vùng Tôi/Profile | Public ref, DTO và quyền tám trường. OPEN-01/04 và USER-01 chỉ giữ phần tương ứng. CHOICE-05 kiểm HTTP trước 304 + browser. |
 | [#293 · Attribution](https://github.com/loveoverflowcom/vink/issues/293) | #292, ref công khai | Card, Reader, comment và reply context cùng đúng ref. Kiểm fixture provider/consumer, SSR và hai link độc lập. |
 | [#294 · Graph](https://github.com/loveoverflowcom/vink/issues/294) | #292, policy list/count | CHOICE-02/03 cần race/receipt thật, đối soát và query plan. DEP-02 chỉ giữ claim hạn chế nội dung. |

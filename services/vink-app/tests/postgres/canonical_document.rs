@@ -338,7 +338,10 @@ async fn cutover_converts_retired_drafts_exactly_once(pool: PgPool) {
             .unwrap();
 
     let report = migrate(&pool).await.unwrap();
-    assert_eq!(report.applied, vec![CANONICAL_MIGRATION]);
+    assert_eq!(
+        report.applied,
+        [CANONICAL_MIGRATION, FIRST_PUBLICATION_MIGRATION]
+    );
     let (title, document, version) = stored(&pool, WorkId::from_uuid(work)).await;
     assert_eq!((title.as_str(), version), ("Tên riêng", 7));
     assert_eq!(

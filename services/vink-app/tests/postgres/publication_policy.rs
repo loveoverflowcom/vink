@@ -357,6 +357,7 @@ async fn empty_schema_rolls_back_canonical_before_the_two_policy_migrations(pool
 async fn canonical_policy_rereview_is_atomic_and_publishes_the_captured_digest(pool: PgPool) {
     let vink = seeded(&pool).await;
     let work = sample_work();
+    let first = first_publication::exact_time(&pool, work.as_uuid()).await;
     let revision = RevisionId::from_uuid(dev_seed::SAMPLE_REVISION);
     assert!(history(&pool, revision).await.is_empty());
     vink.set_private(author(), work, "legacy-private", 2)
@@ -411,6 +412,10 @@ async fn canonical_policy_rereview_is_atomic_and_publishes_the_captured_digest(p
             .await
             .unwrap(),
         JobOutcome::Applied(vink_app::domain::moderation::AppliedEvaluation::Published)
+    );
+    assert_eq!(
+        first_publication::exact_time(&pool, work.as_uuid()).await,
+        first
     );
     let public = vink.publication(work).await.unwrap();
     assert_eq!(public.revision_id, revision);

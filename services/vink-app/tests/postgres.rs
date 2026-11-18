@@ -54,6 +54,8 @@ mod draft_http_budget;
 mod drafts;
 #[path = "postgres/endorsement.rs"]
 mod endorsement;
+#[path = "postgres/first_publication.rs"]
+mod first_publication;
 #[path = "postgres/moderation_queue.rs"]
 mod moderation_queue;
 #[path = "postgres/outbox.rs"]
@@ -188,6 +190,7 @@ async fn seeded(pool: &PgPool) -> Vink<PgStore> {
 
 /// The canonical document cutover (#255). Upgrade tests of older migrations stop before it.
 const CANONICAL_DOCUMENT_MIGRATION: i64 = 20_261_122_000_000;
+const FIRST_PUBLICATION_MIGRATION: i64 = 20_261_123_000_000;
 
 async fn before_cutover(pool: &PgPool) -> bool {
     let applied: bool =

@@ -1441,6 +1441,7 @@ async fn file_appeal(app: &Router, revision: &str) -> Value {
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
 async fn work_appeal_deduplicates_and_only_admin_concludes_with_history(pool: PgPool) {
     let app = app(&pool).await;
+    let first = first_publication::exact_time(&pool, dev_seed::SAMPLE_WORK).await;
     let revision = reject_for_appeal(&pool, &app).await;
     let (a, b) = tokio::join!(file_appeal(&app, &revision), file_appeal(&app, &revision));
     assert_eq!(a["appeal"]["id"], b["appeal"]["id"]);
@@ -1514,6 +1515,10 @@ async fn work_appeal_deduplicates_and_only_admin_concludes_with_history(pool: Pg
     assert_eq!(status, StatusCode::OK, "{body}");
     assert_eq!(json(&body)["state"], "reversed");
     assert_eq!(
+        first_publication::exact_time(&pool, dev_seed::SAMPLE_WORK).await,
+        first
+    );
+    assert_eq!(
         call(
             &app,
             "POST",
@@ -1525,6 +1530,10 @@ async fn work_appeal_deduplicates_and_only_admin_concludes_with_history(pool: Pg
         .await
         .0,
         StatusCode::CONFLICT
+    );
+    assert_eq!(
+        first_publication::dated_revision(&pool, dev_seed::SAMPLE_WORK).await,
+        Some(Uuid::parse_str(&revision).unwrap())
     );
     let row:(i64,String,Option<Uuid>)=sqlx::query_as("SELECT decision_version,provenance_kind,appeal_id FROM work_revision_decision_history WHERE appeal_id=$1").bind(Uuid::parse_str(id).unwrap()).fetch_one(&pool).await.unwrap();
     assert_eq!((row.0, row.1.as_str()), (3, "admin"));
@@ -1832,6 +1841,7 @@ async fn conclude_human_policy_rereview(pool: PgPool, use_work_grant: bool) {
 
     let app = app(&pool).await;
     let work = dev_seed::SAMPLE_WORK;
+    let first = first_publication::exact_time(&pool, work).await;
     let admin = dev_seed::OTHER_PRINCIPAL;
     seat_admin(&pool, admin).await;
     let revision = snapshot(&app, work, "human-snapshot", 1).await;
@@ -2032,4 +2042,5 @@ async fn conclude_human_policy_rereview(pool: PgPool, use_work_grant: bool) {
             expected_grant
         )
     );
+    assert_eq!(first_publication::exact_time(&pool, work).await, first);
 }
