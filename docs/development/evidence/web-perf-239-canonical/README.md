@@ -25,3 +25,5 @@ node apps/vink-web/e2e/browser-smoke.mjs --base "$SCRATCH_ORIGIN" --chrome "$VIN
 ```
 
 Trace và ledger từng lượt nằm trong [bài ngắn](small.json.gz) và [bài dài](blocks.json.gz). Không có timing ngoài lab hay dữ liệu người dùng.
+
+Production seam kiểm lại trên develop `9fcd75e` bằng `cargo test --locked -p vink-web --lib public_reads`. 18 test PASS; phép đo corpus riêng #237 ở trạng thái ignored trong lệnh này.
