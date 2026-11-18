@@ -2,7 +2,7 @@
 
 **Hiện trạng:** Scenario `perf-baseline` trong catalog `xtask` và harness CDP hiện hữu, chạy
 opt-in với App/PostgreSQL scratch thật. Baseline release của khách đã chạy 10 cold + 10 warm.
-Số liệu và cấu hình ở [evidence #234–#236](evidence/web-perf-234-236/README.md). Lượt debug
+Số liệu và cấu hình ban đầu ở [evidence #234–#236](evidence/web-perf-234-236/README.md). Lượt debug
 [`997d97d`](evidence/web-perf-234/README.md) là lịch sử, khác cả profile và phiên khách, không dùng
 làm mốc để tuyên bố tăng tốc. Đây là kiểm thử lab, không phải RUM hay SLA.
 
@@ -29,7 +29,7 @@ làm mốc để tuyên bố tăng tốc. Đây là kiểm thử lab, không ph�
 - Raw RUM-free: TTFB, thời điểm hàng đầu tiên/hydration, main text Reader, readiness của reload
   thảo luận, bytes tài liệu/bundle, long task, layout shift và Event Timing (≥16 ms) khi Chrome
   hỗ trợ. Milestone warm chứa chi phí CDP/poll. DOM/listener counters và V8 heap chỉ là proxy;
-  số owner/timer trực tiếp, RSS và WASM heap attribution chưa đo. Báo median/range/p95 lab;
+  probe release đo owner/timer trực tiếp. RSS và WASM heap attribution có giới hạn ghi ở báo cáo. Báo median/range/p95 lab;
   không dùng p95 với 10 mẫu làm gate, không suy field p75.
 
 ~~~sh
@@ -43,23 +43,6 @@ Trên macOS: launcher dùng được cho build, unit và planner. Lane có chạ
 tiếp theo [local-resource-budget](local-resource-budget.md). Runtime cần `VINK_TEST_DATABASE_URL`
 đến PostgreSQL scratch thật; đích output là `target/verify-web/<run-id>/`, không có deployed collector.
 
-## Hiện trạng acceptance
+## Kết quả release ngày 18/11/2026
 
-| AC | Bằng chứng có | Giới hạn |
-| --- | --- | --- |
-| AC-01 | Release/wasm-release, browser/build SHA/seed digest, viewport/DPR/font, 200/1.000 qua App scratch | Chưa đo corpus worst-case #229 trong cùng hành trình; lab một máy |
-| AC-02 | 0 list GET khi hydrate fresh; history document verify đúng một lần; ledger main lưu stale/manual/late/removal/offline và wire 304 thật | Ledger không phải trace SQL/flight nội bộ; main dùng fixture khác; nhiều ca race/removal có transport injection đã gắn nhãn |
-| AC-03 | 10+10 raw với median/range/p95, readiness, bytes, interaction, DOM/listener/heap proxy | Không có RSS, timer/owner trực tiếp, thiết bị thật |
-| AC-04 | Inject một GET dư để oracle FAIL; giữ/hỏng secondary không làm rơi thân bài, retry dùng App thật; main giữ ABA/disposal; #236 có lặp navigation | Các đáp án late/503 tổng hợp không chứng minh authority phía database; xem Review thật ở [#235](reader-ssr-boundary.md) |
-| AC-05 | Số đo và go/no-go bên dưới, opt-in | Chưa đo chi phí riêng của observer; không chạy timing gate |
-
-- **SSR selective streaming/defer (#235): chưa làm.** Trên cùng hành trình, thành công của main
-  không cần browser secondary trả lời. Bằng chứng SSR trực tiếp hiện bảo vệ Async; chưa có
-  lợi ích meaningful article hay số liệu proxy cho B/C. Giữ A.
-- **Khôi phục vị trí (#236): tiếp tục với URL anchor.** Giữ sửa focus đã tái hiện; chỉ xem offset
-  hoặc view giữ lại nếu có drift có cơ sở và một chi phí tương xứng.
-- **RAM (#237): cần đo thêm** trên thiết bị mục tiêu. File release thử nghiệm có 109.799.191 B,
-  gồm 104.614.722 B custom section `name` (đọc section từ artifact); xét riêng ngân sách ký hiệu
-  và vận chuyển bundle trước khi quy vấn đề cho scheduling SSR hay retention của view.
-- **Containment (#238): chưa có bằng chứng** rằng layout/style là nút thắt trên thiết bị mục tiêu.
-- **Prefetch (#239): chưa bật** khi chưa có byte ceiling và lợi ích điều hướng đủ lớn ở #237.
+Năm AC đã được kiểm trên corpus ngắn và corpus 200.000 đoạn. Median click → article khi Reader chưa cache là 43,05 ms ở bài ngắn và 1.240,55 ms ở bài dài trong phép giữ discussion bằng CDP. Phần release hiện đo trực tiếp số owner và timer của READ-02. Chi phí thân hai observer trên lượt cold bài ngắn có median 0,85 ms. [Số đo, giới hạn, cách chạy và kết luận từng AC](evidence/web-perf-234-canonical/README.md).

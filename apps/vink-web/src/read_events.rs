@@ -14,6 +14,11 @@ mod browser {
     thread_local! {
         static EVENTS: RefCell<Events> = RefCell::new(Events { next: 0, hooks: BTreeMap::new(), listener: None });
     }
+    #[cfg(feature = "perf-probe")]
+    pub(crate) fn subscriptions() -> usize {
+        EVENTS.with_borrow(|events| events.hooks.len())
+    }
+
     pub fn now() -> f64 {
         window().performance().map(|p| p.now()).unwrap_or(0.0)
     }
@@ -57,6 +62,8 @@ mod browser {
         document().visibility_state() != web_sys::VisibilityState::Hidden
     }
 }
+#[cfg(feature = "perf-probe")]
+pub(crate) use browser::subscriptions;
 #[cfg(feature = "hydrate")]
 pub use browser::{now, observe, register, visible};
 

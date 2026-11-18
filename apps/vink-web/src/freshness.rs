@@ -737,6 +737,19 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
         }
     }
 
+    #[cfg(feature = "perf-probe")]
+    pub(crate) fn live_counts(&self) -> (usize, usize, usize) {
+        self.entries
+            .values()
+            .fold((0, 0, 0), |(views, resources, flights), entry| {
+                (
+                    views + entry.observers as usize,
+                    resources + entry.resources.len(),
+                    flights + usize::from(entry.in_flight.is_some()),
+                )
+            })
+    }
+
     pub fn observer_count(&self, key: &K) -> u32 {
         self.entries.get(key).map_or(0, |e| e.observers)
     }

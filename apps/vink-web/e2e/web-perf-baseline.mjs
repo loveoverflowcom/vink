@@ -6,6 +6,8 @@ import { dirname, join } from 'node:path';
 import { readFileSync, statSync, writeFileSync } from 'node:fs';
 import { assertNoHydrationRead, countTransport, recordTransport } from './web-request-ledger.mjs';
 
+import { measureReaderLifecycle, measureUncachedReader, readOwnerCounts } from './web-perf-controls.mjs';
+
 const WAIT_READY = "document.documentElement.dataset.hydrated==='true'";
 const LIST = "!!document.querySelector('.vk-public-row__link')";
 const READER = "!!document.querySelector('.vk-reader .vk-document')";
@@ -34,9 +36,24 @@ export function distribution(values) {
 
 function newDocumentObserver() {
   const data = window.__vinkPerfBaseline = {
+    observer_cpu_ms: 0, observer_callbacks: 0, clicked_at: null, article_at: null,
     hydration_ms: null, meaningful_ms: null, long_tasks: null, layout_shifts: null, interactions: null,
   };
-  const record = () => {
+  const measured = fn => (...args) => {
+    const start = performance.now();
+    fn(...args);
+    data.observer_callbacks++;
+    data.observer_cpu_ms += performance.now() - start;
+  };
+  document.addEventListener('click', event => {
+    if (event.target.closest?.('.vk-public-row__link')) {
+      data.clicked_at = performance.now();
+      data.article_at = null;
+    }
+  }, true);
+  const record = measured(() => {
+    if (data.clicked_at !== null && data.article_at === null && document.querySelector('.vk-reader .vk-document'))
+      data.article_at = performance.now();
     if (data.meaningful_ms === null &&
       document.querySelector('.vk-public-row__link, .vk-reader .vk-document')) {
       data.meaningful_ms = performance.now();
@@ -45,15 +62,15 @@ function newDocumentObserver() {
       document.documentElement?.dataset.hydrated === 'true') {
       data.hydration_ms = performance.now();
     }
-  };
+  });
   const observe = (type, field, sample, options = {}) => {
     if (!PerformanceObserver.supportedEntryTypes.includes(type)) return;
-    new PerformanceObserver(list => {
+    new PerformanceObserver(measured(list => {
       for (const entry of list.getEntries()) {
         const row = sample(entry);
         if (row) data[field].push(row);
       }
-    }).observe({ type, buffered: true, ...options });
+    })).observe({ type, buffered: true, ...options });
     data[field] = [];
   };
   observe('longtask', 'long_tasks', e => ({ start_ms: e.startTime, duration_ms: e.duration }));
@@ -80,6 +97,8 @@ async function browserSnapshot(page) {
     'navigation:nav?{ttfb_ms:nav.responseStart-nav.requestStart,response_end_ms:nav.responseEnd,' +
     'dom_content_loaded_ms:nav.domContentLoadedEventEnd,transfer_bytes:nav.transferSize}:null,' +
     'hydration_ms:p.hydration_ms??null,first_content_ms:p.meaningful_ms??null,' +
+    'observer_cpu_ms:p.observer_cpu_ms,observer_callbacks:p.observer_callbacks,' +
+    'click_to_article_ms:p.article_at==null?null:p.article_at-p.clicked_at,' +
     'now_ms:performance.now(),long_tasks:p.long_tasks??null,layout_shifts:p.layout_shifts??null,' +
     'interactions:p.interactions??null,' +
     'loaded_bundle_transfer_bytes:bytes,loaded_resource_count:res.length,' +
@@ -94,6 +113,7 @@ async function browserSnapshot(page) {
   const get = async (method) => { try { return await page.send(method); } catch { return null; } };
   return {
     ...details,
+    public_read_owner: await readOwnerCounts(page),
     dom_counters: await get('Memory.getDOMCounters'),
     v8_heap: await get('Runtime.getHeapUsage'),
   };
@@ -200,7 +220,7 @@ export async function webPerfBaseline(page, { args, check }) {
     issue: 234, status: 'RUNNING', source_sha: sourceSha,
     dirty: tool('git', 'status', '--porcelain'),
     corpus: { labelled_public_works: 200, comments: 1000, digest_sha256: fixtureDigest(),
-      source: 'App/PostgreSQL scratch, SQL v1 public projection, no production user text' },
+      source: 'App/PostgreSQL scratch, canonical format/source public projection, no production user text' },
     configuration: {
       origin: args.base, browser: await page.cdp.send('Browser.getVersion'),
       viewer: 'guest (no local fixture principal)',
@@ -221,7 +241,7 @@ export async function webPerfBaseline(page, { args, check }) {
       'The cold route is filtered Explore SSR. Reader measurements here start with warm client navigation.',
       'Client ready times in warm samples include CDP/poll overhead; event samples use Event Timing (>=16 ms).',
       'CDP transport is browser-visible only: server-side SSR SQL reads are not inferred as client GETs.',
-      'Listener counts use CDP DOM counters; timer and full owner allocations have no reliable CDP proxy.',
+      'Owner counts cover READ-02 only. Observer CPU measures callback bodies, excluding browser scheduling, CDP and profiler overhead.',
       'Lifecycle and injected transport cases are separated from measured iterations.',
     ],
   };
@@ -294,9 +314,18 @@ export async function webPerfBaseline(page, { args, check }) {
       flush();
     }
     await measureControls(page, results, phase, args.base, check);
+    await measureUncachedReader(page, { origin: args.base, query: QUERY,
+      secondary: '/api/v1/works/' + HOT_WORK + '/discussion/public', check, phase, results });
+    await measureReaderLifecycle(page, { origin: args.base, work: HOT_WORK, results, phase, check });
     const cold = results.cold;
     const warm = results.warm;
     results.distributions = {
+      cold_observer_cpu_ms: distribution(cold.map(x => x.observer_cpu_ms)),
+      warm_click_to_article_ms: distribution(warm.map(x => x.reader.click_to_article_ms)),
+      cold_key_reader_ms: distribution(results.uncached_reader.map(x => x.reader_duration_ms)),
+      cold_key_article_ms: distribution(results.uncached_reader.map(x => x.click_to_article_ms)),
+      secondary_layout_style_ms: distribution(results.uncached_reader.map(x =>
+        x.secondary_window_ms.LayoutDuration + x.secondary_window_ms.RecalcStyleDuration)),
       cold_ttfb_ms: distribution(cold.map(x => x.navigation?.ttfb_ms)),
       cold_first_content_ms: distribution(cold.map(x => x.first_content_ms)),
       cold_hydration_ms: distribution(cold.map(x => x.hydration_ms)),
@@ -316,11 +345,11 @@ export async function webPerfBaseline(page, { args, check }) {
       cold_10: 'PASS', warm_10: 'PASS', real_app_sql: 'PASS',
       transport_ledger: 'PASS', raw_distributions: 'PASS',
       hydration_duplicate_control: 'PASS', secondary_failover: 'PASS',
-      history_ssr_unknown_age: 'PASS', stale_invalidation: 'see public-read-lifecycle.json (main)',
+      history_ssr_unknown_age: 'PASS', stale_manual_offline_late: 'PASS',
       release_profile: args['build-profile'] === 'release' ? 'PASS' : 'NOT_RUN',
     };
     results.interpretation_owner = 'docs/development/web-perf-baseline.md';
-    results.status = 'MEASURED_PARTIAL';
+    results.status = 'MEASURED';
     flush();
   } catch (error) {
     results.status = 'FAIL';

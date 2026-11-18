@@ -26,7 +26,7 @@ fn binary_command(artifact: Artifact, release: bool) -> Result<std::process::Com
     Ok(command)
 }
 
-pub fn bundle(release: bool) -> Result<(), String> {
+pub fn bundle(release: bool, perf_probe: bool) -> Result<(), String> {
     let root = root();
     doctor::require_wasm_bindgen(&root)?;
     doctor::node_version()?;
@@ -42,7 +42,7 @@ pub fn bundle(release: bool) -> Result<(), String> {
         "--target",
         "wasm32-unknown-unknown",
         "--features",
-        "hydrate",
+        if perf_probe { "perf-probe" } else { "hydrate" },
         "--profile",
         profile,
     ]);
@@ -81,7 +81,7 @@ pub fn bundle(release: bool) -> Result<(), String> {
 /// `vink.css` is the generated `tokens.css`, the UI system's `vink-ui.css`, then the app's `vink.css`.
 pub fn legacy(env: &env::Env, release: bool) -> Result<(), String> {
     let _ = env;
-    bundle(release)?;
+    bundle(release, false)?;
     for artifact in [Artifact::App, Artifact::Worker, Artifact::Identity] {
         binary(artifact, release)?;
     }
