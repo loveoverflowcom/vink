@@ -29,6 +29,7 @@ import { editorWriting } from './editor-writing-smoke.mjs';
 import { editorPaperFirst } from './editor-paper-first-smoke.mjs';
 import { documentBudget } from './document-budget.mjs';
 import { webPerfBaseline } from './web-perf-baseline.mjs';
+import { readerContainment } from './reader-containment.mjs';
 import { discoveryReturnPosition } from './discovery-return-position.mjs';
 import { recordTransport } from './web-request-ledger.mjs';
 import { readerBeforeHydration } from './reader-ssr-boundary.mjs';
@@ -5625,6 +5626,7 @@ try {
   if (args.phase === 'discussion-only') await discussionReadingAndWrites(page);
   else if (args.phase === 'document-budget') await documentBudget(page, { args, check });
   else if (args.phase === 'perf-baseline') await webPerfBaseline(page, { args, check });
+  else if (args.phase === 'reader-containment') await readerContainment(page, { args, check });
   else if (args.phase === 'return-position') await discoveryReturnPosition(page, { args, check });
   else if (args.phase === 'select-chevron') await selectChevron(page);
   else if (args.phase === 'editor-chrome') await editorChrome(page);
