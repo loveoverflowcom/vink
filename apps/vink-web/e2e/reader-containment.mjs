@@ -58,7 +58,12 @@ export async function readerContainment(page, {args,check}) {
         check(dom.paragraphs===paragraphs && dom.roots===20 && dom.comments===40,'complete article and bounded first page');
         if(mode==='calibrate') {intrinsic=Math.ceil(dom.height);raw.intrinsic_css_px=intrinsic;continue;}
         const delta=Object.fromEntries(Object.entries(after).map(([k,v])=>[k,v-before[k]]));
-        raw.samples.push({i,mode,...dom,ms:delta,dom_counters:await page.send('Memory.getDOMCounters'),
+        const discussionResponse=await page.eval(`performance.getEntriesByType('resource')
+          .filter(e=>new URL(e.name).pathname.endsWith('/discussion/public'))
+          .map(e=>({encoded_body_bytes:e.encodedBodySize,transfer_bytes:e.transferSize}))`);
+        check(discussionResponse.length===1 && discussionResponse[0].encoded_body_bytes>0,
+          'one measured discussion response for this mount');
+        raw.samples.push({i,mode,...dom,ms:delta,discussion_response:discussionResponse[0],dom_counters:await page.send('Memory.getDOMCounters'),
           heap:await page.send('Runtime.getHeapUsage')});
         if(i<=2) await page.capture('containment-'+mode,{scenario:'Reader top',boundary:'real-public-api'});
         flush();
@@ -132,6 +137,7 @@ export async function readerContainment(page, {args,check}) {
       await page.eval(`document.documentElement.style.fontSize='${scale}%';document.querySelector('.vk-document p').scrollIntoView()`);
       await page.eval(frames);
       record('no horizontal overflow at '+scale,await page.eval('document.documentElement.scrollWidth<=innerWidth+1'));
+      if(scale===200 && !large) await page.capture('containment-text200',{scenario:'Reader article at 200%',boundary:'real-public-api'});
     }
     await page.eval("document.documentElement.style.fontSize='';document.querySelector('.vk-document p').scrollIntoView()");
     const top=()=>page.eval("document.querySelector('.vk-document p').getBoundingClientRect().top");
