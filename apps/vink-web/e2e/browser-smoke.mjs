@@ -1778,6 +1778,7 @@ async function textContrast(page, theme, surface = 'shell') {
     if (surface === 'editor-conflict') list.push('#save-recovery-jump');
     return list;
   })() : {
+    outline: ['#editor-outline-title', '.vk-editor-outline__item--title', '#editor-outline-panel [aria-current="location"] button'],
     desk: ['.vk-desk-heading .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-search input', '#draft-sort', '#draft-sort-label', '#draft-scope'],
     explore: ['#public-query', '#explore-heading h1', '.vk-explore__heading p', '#public-query-help', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '.vk-public-scope', '.vk-discovery-filter-form legend', '.vk-discovery-options .vk-ui-choice__label'],
     filter: ['#modal-tag-help', '#modal-tag-form button[type=submit]'],
@@ -4901,6 +4902,8 @@ async function markdownLivePreviewAndFormatPicker(page) {
         `Markdown + Mục lục scene ${scene.width}/${scene.scale}/${scene.theme} has no horizontal overflow (${JSON.stringify(layout)})`);
       if ((scene.width === 320 && scene.scale === '200' && scene.theme === 'dark') ||
           (scene.width === 1440 && scene.scale === '100' && scene.theme === 'light')) {
+        await page.waitFor(APPEARANCE_SETTLED, 'outline theme and highlight colors settled');
+        await textContrast(page, scene.theme, 'outline');
         await page.capture('markdown-outline-' + [scene.width, scene.scale, scene.theme].join('-'), {
           scenario: 'markdown-outline', target: '#editor-outline-title', boundary: 'Chrome, seeded private draft',
         });
