@@ -18,7 +18,8 @@ pub mod taxonomy;
 use time::OffsetDateTime;
 
 use crate::domain::document::{
-    Document, DocumentData, DocumentError, Title, TitleAuthorityError, TitleError, TitledDocument,
+    Document, DocumentData, DocumentError, DocumentFormat, Title, TitleAuthorityError, TitleError,
+    TitledDocument,
 };
 use crate::domain::draft::{DraftChange, DraftSummary, DraftVersion, WorkingDraft};
 use crate::domain::ids::{PrincipalId, RevisionId, WorkId};
@@ -203,8 +204,20 @@ where
         &self,
         actor: Option<PrincipalId>,
     ) -> Result<WorkingDraft, DraftError> {
+        self.create_draft_with_format(actor, DocumentFormat::Default)
+            .await
+    }
+
+    pub async fn create_draft_with_format(
+        &self,
+        actor: Option<PrincipalId>,
+        format: DocumentFormat,
+    ) -> Result<WorkingDraft, DraftError> {
         let owner = actor.ok_or(DraftError::Unauthenticated)?;
-        Ok(self.store.create_draft(owner, WorkId::generate()).await?)
+        Ok(self
+            .store
+            .create_draft(owner, WorkId::generate(), format)
+            .await?)
     }
 
     pub async fn load_draft(

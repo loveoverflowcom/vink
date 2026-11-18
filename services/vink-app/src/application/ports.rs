@@ -98,6 +98,7 @@ pub trait DraftStore: Send + Sync {
         &self,
         owner: PrincipalId,
         work_id: WorkId,
+        format: crate::domain::document::DocumentFormat,
     ) -> impl Future<Output = Result<WorkingDraft, StoreError>> + Send;
 
     fn load_draft(

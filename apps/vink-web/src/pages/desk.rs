@@ -8,19 +8,21 @@ use leptos_router::hooks::use_params_map;
 
 use vink_ui::{
     ActionState, ActionSurface, Announce, Button, ButtonKind, ButtonVariant, ChoiceOption,
-    FieldVariant, Heading, HeadingLevel, IconName, InlineNotice, PanelContent, PanelKind,
-    PlainTooltip, ProblemKind, SearchField, SearchVariant, Select, StatePanel, SupportingDetails,
-    TextField, Tone, TooltipIconButton, TypeRole,
+    FieldVariant, Heading, HeadingLevel, IconButton, IconName, InlineNotice, PanelContent,
+    PanelKind, PlainTooltip, ProblemKind, SearchField, SearchVariant, Select, SelectVariant,
+    StatePanel, SupportingDetails, TextField, Tone, TooltipIconButton, TypeRole,
 };
 
-use crate::contract::{ApiError, DocumentDto, Draft};
+use crate::contract::{ApiError, DocumentDto, DocumentFormatDto, Draft};
 use crate::desk_state::{
     DraftSession, DraftTicket, Failure, LeaveGuard, LeaveNotice, LeaveStage, SaveStatus, SaveTicket,
 };
-use crate::document::DocumentView;
-use crate::document::NotEditable;
+use crate::document::{ConversionPreview, DocumentView, NotEditable};
 use crate::draft_list::{CreateState, DraftSort, display_title as untitled};
-use crate::editor::{BODY_HINT_ID, BODY_LABEL_ID, BodyEditor, BodySource, BodyState, TOOLBAR_ID};
+use crate::editor::{
+    BODY_HINT_ID, BODY_LABEL_ID, BodyEditor, BodySource, BodyState, OutlineItem, OutlineStatus,
+    TOOLBAR_ID,
+};
 use crate::navigation::NavigationGuard;
 use crate::pages::work_info::TagLoad;
 use crate::tag_state::{TagStatus, TagTicket};
@@ -267,6 +269,7 @@ pub fn DeskIndex() -> impl IntoView {
             && load_error.get().is_none()
             && creation.with(CreateState::can_begin)
     });
+    let create_format = RwSignal::new(DocumentFormatDto::Default);
     #[cfg(feature = "hydrate")]
     let navigate = leptos_router::hooks::use_navigate();
     let create = Callback::new(move |()| {
@@ -279,8 +282,9 @@ pub fn DeskIndex() -> impl IntoView {
             }
             let navigate = navigate.clone();
             let scope = session.scope.get_untracked();
+            let picked_format = create_format.get_untracked();
             leptos::task::spawn_local(async move {
-                let outcome = crate::api::create_draft().await;
+                let outcome = crate::api::create_draft_with_format(picked_format).await;
                 // The route owner disposes this signal. A late reply must not navigate from a
                 // different page (and an uncertain POST is never automatically repeated). A
                 // reply for an earlier session is dropped as well: its draft is not this desk's.
@@ -322,7 +326,26 @@ pub fn DeskIndex() -> impl IntoView {
             <header id="heading" class="vk-desk-heading">
                 <Heading level=HeadingLevel::H1 id="desk-title" attr:tabindex="-1">"Bàn viết"</Heading>
                 <Show when=move || ready.get() && !first_use.get()>
-                    <CreateDraftButton creation can_create create />
+                    <div class="vk-desk-create">
+                        <Select
+                            id="create-draft-format"
+                            label="Định dạng bản thảo"
+                            variant=SelectVariant::Inset16
+                            required=true
+                            options=vec![
+                                ChoiceOption::new("default", "Mặc định"),
+                                ChoiceOption::new("markdown", "Markdown"),
+                            ]
+                            value=Signal::derive(move || Some(create_format.get().as_str().to_string()))
+                            disabled=Signal::derive(move || !can_create.get())
+                            on_change=Callback::new(move |picked: Option<String>| {
+                                if let Some(next) = picked.as_deref().and_then(DocumentFormatDto::parse) {
+                                    create_format.set(next);
+                                }
+                            })
+                        />
+                        <CreateDraftButton creation can_create create />
+                    </div>
                 </Show>
             </header>
             <noscript><p class="vk-desk-noscript">{DESK_UNAVAILABLE_SSR}</p></noscript>
@@ -628,10 +651,6 @@ fn DeskError(
 #[component]
 fn FormatNotEditable(reason: NotEditable) -> impl IntoView {
     let (title, message) = match reason {
-        NotEditable::Markdown => (
-            "Bàn viết chưa mở được bản Markdown.",
-            "Bản nháp này dùng định dạng Markdown. Trình soạn Markdown chưa sẵn sàng; nội dung vẫn được giữ nguyên.",
-        ),
         NotEditable::CarriageReturn => (
             "Bàn viết chưa mở được bản nháp này.",
             "Bản nháp có dấu xuống dòng CR hoặc CRLF. Bàn viết chưa giữ nguyên được kiểu này khi lưu; nội dung vẫn được giữ nguyên.",
@@ -737,8 +756,9 @@ enum Field {
 #[component]
 fn Editor(draft: Draft) -> impl IntoView {
     let work_id = StoredValue::new(draft.work_id.clone());
+    let format = RwSignal::new(draft.document.format);
     let title = RwSignal::new(draft.title.clone());
-    let body = BodySource::new(draft.document.source.clone());
+    let body = BodySource::new(draft.document.format, draft.document.source.clone());
     let session = RwSignal::new(DraftSession::loaded(draft.version));
     let tag_load = RwSignal::new(TagLoad::Loading);
     let leave = RwSignal::new(LeaveGuard::<DraftTicket>::default());
@@ -753,6 +773,77 @@ fn Editor(draft: Draft) -> impl IntoView {
     let last_field = StoredValue::new(Field::Body);
     let page_scroll = StoredValue::new(0.0_f64);
     let preview = RwSignal::new(None::<(String, DocumentDto)>);
+    let outline_open = RwSignal::new(false);
+    let outline_panel = NodeRef::<html::Dialog>::new();
+    #[cfg(feature = "hydrate")]
+    observe_outline_layout(outline_panel);
+    let close_outline = move || {
+        #[cfg(feature = "hydrate")]
+        if let Some(panel) = outline_panel.get_untracked() {
+            panel.close();
+        }
+        outline_open.set(false);
+        focus_element_by_id("outline-toggle");
+    };
+    let heading_menu_open = RwSignal::new(false);
+    let convert_preview = RwSignal::new(None::<ConversionPreview>);
+    let converting = RwSignal::new(false);
+    let conversion_notice = RwSignal::new(None::<String>);
+    let format_select_sync = RwSignal::new(0_u32);
+    let just_saved = RwSignal::new(false);
+    #[cfg(feature = "hydrate")]
+    type JustSavedTimer = Option<(i32, wasm_bindgen::closure::Closure<dyn FnMut()>)>;
+    #[cfg(feature = "hydrate")]
+    let just_saved_timer: StoredValue<JustSavedTimer, LocalStorage> = StoredValue::new_local(None);
+
+    let clear_just_saved = move || {
+        just_saved.try_set(false);
+        #[cfg(feature = "hydrate")]
+        just_saved_timer.try_update_value(|slot| {
+            if let Some((handle, _)) = slot.take() {
+                window().clear_timeout_with_handle(handle);
+            }
+        });
+    };
+    let arm_just_saved = move || {
+        clear_just_saved();
+        just_saved.try_set(true);
+        #[cfg(feature = "hydrate")]
+        {
+            use wasm_bindgen::JsCast;
+            let callback = wasm_bindgen::closure::Closure::<dyn FnMut()>::new(move || {
+                just_saved.try_set(false);
+            });
+            if let Ok(handle) = window().set_timeout_with_callback_and_timeout_and_arguments_0(
+                callback.as_ref().unchecked_ref(),
+                3000,
+            ) {
+                just_saved_timer.try_set_value(Some((handle, callback)));
+            }
+        }
+    };
+    #[cfg(feature = "hydrate")]
+    on_cleanup(move || {
+        just_saved_timer.try_update_value(|slot| {
+            if let Some((handle, _)) = slot.take() {
+                window().clear_timeout_with_handle(handle);
+            }
+        });
+    });
+
+    let reset_format_select = move || {
+        format_select_sync.update(|n| *n = n.wrapping_add(1));
+        #[cfg(feature = "hydrate")]
+        {
+            use wasm_bindgen::JsCast;
+            if let Some(el) = document()
+                .get_element_by_id("editor-format-select")
+                .and_then(|node| node.dyn_into::<web_sys::HtmlSelectElement>().ok())
+            {
+                el.set_value(format.get_untracked().as_str());
+            }
+        }
+    };
 
     // Leaves once every save the pending intent waits for has settled with nothing unconfirmed.
     let settle_leave = move || {
@@ -770,11 +861,20 @@ fn Editor(draft: Draft) -> impl IntoView {
     // Sends the text as it is now. The ticket was taken in the same turn, so it covers exactly
     // this text. The outcome settles the session first; only then may the leave intent go.
     let send_text = move |ticket: SaveTicket, reconcile: bool| {
-        let request = crate::contract::SaveDraftRequest {
-            expected_version: ticket.expected_version,
-            // Trim only the separate title; keep the live input and exact source.
-            title: Some(title.get_untracked().trim().to_owned()),
-            document: crate::document::default_document(&body.snapshot()),
+        let current_format = format.get_untracked();
+        let source = body.snapshot();
+        let request = match current_format {
+            DocumentFormatDto::Default => crate::contract::SaveDraftRequest {
+                expected_version: ticket.expected_version,
+                // Trim only the separate title; keep the live input and exact source.
+                title: Some(title.get_untracked().trim().to_owned()),
+                document: crate::document::default_document(&source),
+            },
+            DocumentFormatDto::Markdown => crate::contract::SaveDraftRequest {
+                expected_version: ticket.expected_version,
+                title: None,
+                document: crate::document::markdown_document(&source),
+            },
         };
         #[cfg(feature = "hydrate")]
         {
@@ -813,24 +913,31 @@ fn Editor(draft: Draft) -> impl IntoView {
                 };
                 // The editor may have closed while the request was in flight.
                 let was_save_focused = active_element_id_is("save");
-                let applied = session.try_update(|s| match outcome {
-                    Ok(saved) => s.text.save_succeeded(ticket, saved.version),
-                    Err(ApiError::VersionConflict { current_version }) => s
-                        .text
-                        .save_rejected(ticket, SaveRejection::Conflict { current_version }),
-                    Err(error) => s
-                        .text
-                        .save_rejected(ticket, SaveRejection::Failed(failure(&error))),
+                let mut saved_clean = false;
+                let applied = session.try_update(|s| {
+                    match outcome {
+                        Ok(saved) => s.text.save_succeeded(ticket, saved.version),
+                        Err(ApiError::VersionConflict { current_version }) => s
+                            .text
+                            .save_rejected(ticket, SaveRejection::Conflict { current_version }),
+                        Err(error) => s
+                            .text
+                            .save_rejected(ticket, SaveRejection::Failed(failure(&error))),
+                    }
+                    saved_clean = !crate::desk_state::Guarded::has_unsaved(s);
                 });
                 if applied.is_none() {
                     return;
+                }
+                if saved_clean {
+                    arm_just_saved();
                 }
                 sync_save_slot_focus(was_save_focused, session, tag_load);
                 settle_leave();
             });
         }
         #[cfg(not(feature = "hydrate"))]
-        let _ = (request, work_id, reconcile, settle_leave);
+        let _ = (request, work_id, reconcile, settle_leave, arm_just_saved);
     };
     // Sends exactly the selection the ticket recorded. A lost answer is reconciled by the next
     // explicit save with the same expected version (TAG-PR-03 CHOICE-03), never resent here.
@@ -852,6 +959,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                 use crate::tag_state::{Selection, TagRejection};
                 let outcome = crate::api::save_draft_tags(&id, &request).await;
                 let was_save_focused = active_element_id_is("save");
+                let mut saved_clean = false;
                 let applied = session.try_update(|s| {
                     let Some(tags) = s.tags.as_mut() else {
                         return;
@@ -879,16 +987,20 @@ fn Editor(draft: Draft) -> impl IntoView {
                             tags.save_rejected(ticket, TagRejection::Failed(failure(&error)))
                         }
                     }
+                    saved_clean = !crate::desk_state::Guarded::has_unsaved(s);
                 });
                 if applied.is_none() {
                     return;
+                }
+                if saved_clean {
+                    arm_just_saved();
                 }
                 sync_save_slot_focus(was_save_focused, session, tag_load);
                 settle_leave();
             });
         }
         #[cfg(not(feature = "hydrate"))]
-        let _ = (request, settle_leave);
+        let _ = (request, settle_leave, arm_just_saved);
     };
     let send = move |ticket: DraftTicket, reconcile: bool| {
         if let Some(text) = ticket.text {
@@ -899,6 +1011,7 @@ fn Editor(draft: Draft) -> impl IntoView {
         }
     };
     let save = move || {
+        clear_just_saved();
         let reconcile =
             session.with_untracked(|s| matches!(s.text.status(), SaveStatus::Failed(_)));
         if let Some(ticket) = session.try_update(DraftSession::begin_save) {
@@ -909,6 +1022,7 @@ fn Editor(draft: Draft) -> impl IntoView {
         if title_composing.get_value() || body.is_composing() {
             return;
         }
+        clear_just_saved();
         let reconcile =
             session.with_untracked(|s| matches!(s.text.status(), SaveStatus::Failed(_)));
         if let Some(ticket) = session
@@ -919,8 +1033,7 @@ fn Editor(draft: Draft) -> impl IntoView {
         }
     };
     let focus_last_field = move || match last_field.get_value() {
-        Field::Title =>
-        {
+        Field::Title if format.get_untracked() == DocumentFormatDto::Default => {
             #[cfg(feature = "hydrate")]
             if let Some(input) = title_input.get_untracked() {
                 let options = web_sys::FocusOptions::new();
@@ -928,7 +1041,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                 let _ = input.focus_with_options(&options);
             }
         }
-        Field::Body => body.focus(),
+        Field::Title | Field::Body => body.focus(),
         Field::Tags => {
             #[cfg(feature = "hydrate")]
             if let Some(input) = document()
@@ -1025,8 +1138,18 @@ fn Editor(draft: Draft) -> impl IntoView {
         if let Some(tools) = document().get_element_by_id("editor-save-details") {
             let _ = tools.remove_attribute("open");
         }
-        let document = crate::document::default_document(&body.snapshot());
-        preview.set(Some((title.get_untracked(), document)));
+        let source = body.snapshot();
+        let (preview_title, document) = match format.get_untracked() {
+            DocumentFormatDto::Default => (
+                title.get_untracked(),
+                crate::document::default_document(&source),
+            ),
+            DocumentFormatDto::Markdown => (
+                crate::document::markdown_first_h1(&source),
+                crate::document::markdown_document(&source),
+            ),
+        };
+        preview.set(Some((preview_title, document)));
         remember_scroll(page_scroll);
     };
 
@@ -1060,18 +1183,193 @@ fn Editor(draft: Draft) -> impl IntoView {
             }
         });
         on_cleanup(move || guard.remove());
+        Effect::new(move |_| {
+            let dirty_or_pending = session.with(crate::desk_state::Guarded::has_unsaved);
+            if dirty_or_pending {
+                clear_just_saved();
+            }
+        });
     }
 
     let on_body_ready = Callback::new(move |()| {
-        // A new, empty draft starts at its title; an existing one at its text.
-        if title.get_untracked().is_empty() && body.snapshot().is_empty() {
+        // A new, empty default draft starts at its title; existing drafts or Markdown start at body.
+        if format.get_untracked() == DocumentFormatDto::Default
+            && title.get_untracked().is_empty()
+            && body.snapshot().is_empty()
+        {
             last_field.set_value(Field::Title);
+        } else {
+            last_field.set_value(Field::Body);
         }
         focus_last_field();
     });
     let on_body_change = Callback::new(move |()| {
+        clear_just_saved();
         session.try_update(|s| s.text.edited());
     });
+
+    let cancel_conversion = move || {
+        if converting.get_untracked() {
+            return;
+        }
+        convert_preview.set(None);
+        reset_format_select();
+        restore_scroll(page_scroll);
+    };
+    let on_format_change = Callback::new(move |selected: Option<String>| {
+        if converting.get_untracked() {
+            reset_format_select();
+            return;
+        }
+        let Some(target) = selected.as_deref().and_then(DocumentFormatDto::parse) else {
+            reset_format_select();
+            return;
+        };
+        let current = format.get_untracked();
+        if target == current {
+            return;
+        }
+        if body.is_composing() || title_composing.get_value() {
+            reset_format_select();
+            return;
+        }
+        let blocked_by_session = session.with_untracked(|s| !s.can_convert());
+        if blocked_by_session {
+            reset_format_select();
+            return;
+        }
+        let source = body.snapshot();
+        let current_title = title.get_untracked();
+        let conversion =
+            crate::document::preview_format_conversion(current, target, &current_title, &source);
+        convert_preview.set(Some(conversion));
+        remember_scroll(page_scroll);
+    });
+    let apply_conversion = move || {
+        let Some(conversion) = convert_preview.get_untracked() else {
+            return;
+        };
+        if conversion.title_too_long()
+            || converting.get_untracked()
+            || body.is_composing()
+            || title_composing.get_value()
+        {
+            return;
+        }
+        let Some(ticket) = session
+            .try_update(|s| {
+                if s.can_convert() {
+                    s.text.begin_save()
+                } else {
+                    None
+                }
+            })
+            .flatten()
+        else {
+            return;
+        };
+        conversion_notice.set(None);
+        converting.set(true);
+        clear_just_saved();
+        let request = match conversion.target_format {
+            DocumentFormatDto::Default => crate::contract::SaveDraftRequest {
+                expected_version: ticket.expected_version,
+                title: Some(conversion.title.trim().to_owned()),
+                document: crate::document::default_document(&conversion.source),
+            },
+            DocumentFormatDto::Markdown => crate::contract::SaveDraftRequest {
+                expected_version: ticket.expected_version,
+                title: None,
+                document: crate::document::markdown_document(&conversion.source),
+            },
+        };
+        #[cfg(feature = "hydrate")]
+        {
+            let id = work_id.get_value();
+            leptos::task::spawn_local(async move {
+                use crate::desk_state::SaveRejection;
+                let mut outcome = crate::api::save_draft(id.clone(), request)
+                    .await
+                    .map(|ack| ack.version);
+                // A dropped reply can hide a committed PUT. Read back the exact proposed
+                // version, format, title and bytes. Reconciliation never issues another write.
+                if matches!(
+                    outcome,
+                    Err(ApiError::Network
+                        | ApiError::Unavailable
+                        | ApiError::Unexpected { .. }
+                        | ApiError::VersionConflict { .. })
+                ) && session.try_with_untracked(|s| s.text.in_flight() == Some(ticket))
+                    == Some(true)
+                    && let Ok(current) = crate::api::load_draft(id.clone()).await
+                    && current.work_id == id
+                {
+                    if ticket.expected_version.checked_add(1) == Some(current.version)
+                        && current.document.format == conversion.target_format
+                        && current.document.source == conversion.source
+                        && current.title == conversion.title
+                    {
+                        outcome = Ok(current.version);
+                    } else if current.version != ticket.expected_version {
+                        outcome = Err(ApiError::VersionConflict {
+                            current_version: current.version,
+                        });
+                    }
+                }
+                converting.try_set(false);
+                let mut converted_clean = false;
+                let applied = session.try_update(|s| {
+                    if s.text.in_flight() != Some(ticket) {
+                        return false;
+                    }
+                    match &outcome {
+                        Ok(version) => s.text.save_succeeded(ticket, *version),
+                        Err(ApiError::VersionConflict { current_version }) => s.text.save_rejected(
+                            ticket,
+                            SaveRejection::Conflict {
+                                current_version: *current_version,
+                            },
+                        ),
+                        Err(error) => s
+                            .text
+                            .save_rejected(ticket, SaveRejection::Failed(failure(error))),
+                    }
+                    converted_clean = !crate::desk_state::Guarded::has_unsaved(s);
+                    true
+                });
+                if applied != Some(true) {
+                    return;
+                }
+                if outcome.is_ok() {
+                    let next_title = conversion.title.trim().to_owned();
+                    format.set(conversion.target_format);
+                    title.set(next_title);
+                    outline_open.set(false);
+                    heading_menu_open.set(false);
+                    body.apply_converted_document(conversion.target_format, &conversion.source);
+                    if converted_clean {
+                        arm_just_saved();
+                    }
+                } else if let Err(error) = &outcome {
+                    let why = match error {
+                        ApiError::VersionConflict { .. } => {
+                            "Bản trên máy chủ đã thay đổi. Hãy xử lý xung đột trước khi đổi lại định dạng."
+                        }
+                        _ => failure_reason(failure(error)),
+                    };
+                    conversion_notice.set(Some(format!(
+                        "Chưa xác nhận đổi định dạng. {why} Nội dung gốc vẫn còn trên trang này."
+                    )));
+                }
+                convert_preview.set(None);
+                reset_format_select();
+                restore_scroll(page_scroll);
+                settle_leave();
+            });
+        }
+        #[cfg(not(feature = "hydrate"))]
+        let _ = (request, work_id, arm_just_saved);
+    };
 
     let jump_to_recovery = move |target: RecoveryTarget| {
         #[cfg(feature = "hydrate")]
@@ -1140,12 +1438,29 @@ fn Editor(draft: Draft) -> impl IntoView {
         )
     };
     let action_is_recover = move || matches!(slot_action.get(), SaveSlotAction::Recover { .. });
+    let format_options = vec![
+        ChoiceOption::new("default", "Mặc định"),
+        ChoiceOption::new("markdown", "Markdown"),
+    ];
+    let selected_format = Signal::derive(move || {
+        let _ = format_select_sync.get();
+        Some(format.get().as_str().to_string())
+    });
+    let md_tools_disabled = move || body.state.get() != BodyState::Ready || converting.get();
+    let format_select_disabled =
+        Signal::derive(move || converting.get() || session.with(|s| !s.can_convert()));
     view! {
         <form
             class="vk-editor"
             aria-labelledby="editor-heading"
+            data-format=move || format.get().as_str()
+            data-outline-open=move || if outline_open.get() { "true" } else { "false" }
+            data-just-saved=move || if just_saved.get() { "true" } else { "false" }
             on:submit=move |event| {
                 event.prevent_default();
+                if convert_preview.with_untracked(Option::is_some) {
+                    return;
+                }
                 save_manual();
             }
             on:keydown=move |event| {
@@ -1153,6 +1468,9 @@ fn Editor(draft: Draft) -> impl IntoView {
                     && event.key().eq_ignore_ascii_case("s");
                 if shortcut {
                     event.prevent_default();
+                    if convert_preview.with_untracked(Option::is_some) {
+                        return;
+                    }
                     // An IME still composing commits first; saving half a syllable helps no one.
                     if !event.is_composing() {
                         save_manual();
@@ -1184,11 +1502,29 @@ fn Editor(draft: Draft) -> impl IntoView {
                                         _ => ActionState::Enabled,
                                     })
                                 >
-                                    {move || match slot_action.get() {
-                                        SaveSlotAction::Save { label, pending: false } => label,
-                                        SaveSlotAction::Retry { label, pending: false } => label,
-                                        _ => "Đang lưu…",
-                                    }}
+                                    <span
+                                        class="vk-draft-action-content"
+                                        data-draft-icon=move || match slot_action.get() {
+                                            SaveSlotAction::Save { icon, .. }
+                                            | SaveSlotAction::Retry { icon, .. } => icon.id(),
+                                            _ => DraftActionIcon::Save.id(),
+                                        }
+                                    >
+                                        {move || match slot_action.get() {
+                                            SaveSlotAction::Save { icon, .. }
+                                            | SaveSlotAction::Retry { icon, .. } => {
+                                                render_draft_action_icon(icon).into_any()
+                                            }
+                                            _ => render_draft_action_icon(DraftActionIcon::Save).into_any(),
+                                        }}
+                                        <span>
+                                            {move || match slot_action.get() {
+                                                SaveSlotAction::Save { label, .. } => label,
+                                                SaveSlotAction::Retry { label, .. } => label,
+                                                _ => "Đang lưu…",
+                                            }}
+                                        </span>
+                                    </span>
                                 </Button>
                             </PlainTooltip>
                         </Show>
@@ -1248,61 +1584,293 @@ fn Editor(draft: Draft) -> impl IntoView {
                     </SupportingDetails>
                 </section>
             </Show>
-            <div class="vk-editor-paper">
-                <TextField id="draft-title" label="Tiêu đề" name="title" max_length=200 input_ref=title_input
-                    variant=FieldVariant::FloatingTonal
-                    placeholder="Chưa đặt tên" autocomplete="off" value=title
-                    on_focus=move |_| last_field.set_value(Field::Title)
-                    on_input=move |input: vink_ui::TextInput| {
-                        title_composing.set_value(input.composing);
-                        if title.get_untracked() != input.value {
-                            title.set(input.value);
-                            session.update(|s| s.text.edited());
-                        }
-                    } />
-                // Read the entire title without replacing the native editing control. This
-                // projection has no buffer of its own; native selection/undo/IME stay in input.
-                <details id="draft-title-details" class="vk-editor-title-details">
-                    <summary>"Xem trọn tiêu đề"</summary>
-                    <p id="draft-title-full">{move || {
-                        let value = title.get();
-                        if value.is_empty() { "Chưa đặt tên".to_string() } else { value }
-                    }}</p>
-                    <Button id="edit-full-title" variant=ButtonVariant::Text on_press=move |_| {
-                        #[cfg(feature = "hydrate")]
-                        if let Some(input) = title_input.get_untracked() {
-                            // User-requested focus also reveals the editing line. Do not select
-                            // or write its value: focus preserves its directional selection.
-                            let _ = input.focus();
-                        }
-                    }>"Chỉnh tiêu đề"</Button>
-                </details>
-                <div class="vk-field" on:focusin=move |_| last_field.set_value(Field::Body)>
-                    <span
-                        id=BODY_LABEL_ID
-                        class="vk-field__label"
-                        on:click=move |_| body.focus()
-                    >
-                        "Nội dung"
-                    </span>
-                    <span id=BODY_HINT_ID class="vk-ui-visually-hidden">
-                        {move || shortcut.get()}
-                    </span>
-                    <BodyEditor source=body on_change=on_body_change on_ready=on_body_ready />
-                    <Show when=move || body.state.get() == BodyState::Loading>
-                        <p class="vk-muted vk-editor-body__pending">"Đang mở trình soạn thảo…"</p>
+            <div class="vk-editor-workspace">
+                <div class="vk-editor-paper">
+                    <Show when=move || format.get() == DocumentFormatDto::Markdown>
+                        <div
+                            id="editor-markdown-toolbar"
+                            class="vk-md-toolbar"
+                            role="toolbar"
+                            aria-label="Công cụ soạn thảo Markdown"
+                        >
+                            <div
+                                class="vk-md-toolbar__formats"
+                                on:mousedown=move |ev| ev.prevent_default()
+                            >
+                                <div
+                                    class="vk-md-heading-wrap"
+                                    on:keydown=move |ev| {
+                                        if ev.key() == "Escape" && heading_menu_open.get_untracked() {
+                                            ev.prevent_default();
+                                            heading_menu_open.set(false);
+                                            focus_element_by_id("md-heading-tool");
+                                        }
+                                    }
+                                >
+                                    <Button
+                                        id="md-heading-tool"
+                                        variant=ButtonVariant::Tonal
+                                        expanded=Signal::derive(move || heading_menu_open.get())
+                                        state=Signal::derive(move || blocked(md_tools_disabled()))
+                                        on_press=move |_| heading_menu_open.update(|open| *open = !*open)
+                                    >
+                                        "H"
+                                    </Button>
+                                    <Show when=move || heading_menu_open.get()>
+                                        <div
+                                            id="md-heading-menu"
+                                            class="vk-md-heading-menu"
+                                            role="menu"
+                                            aria-label="Chọn cấp tiêu đề"
+                                        >
+                                            {(0..=6_u8)
+                                                .map(|level| {
+                                                    let label = if level == 0 {
+                                                        "Đoạn văn".to_string()
+                                                    } else {
+                                                        format!("Tiêu đề {level}")
+                                                    };
+                                                    view! {
+                                                        <div class="vk-md-heading-menu__entry" role="none">
+                                                            <Button
+                                                                variant=ButtonVariant::Text
+                                                                on_press=move |_| {
+                                                                    heading_menu_open.set(false);
+                                                                    body.apply_heading(level);
+                                                                }
+                                                            >
+                                                                <span
+                                                                    class="vk-md-heading-menu__item"
+                                                                    data-heading-level=level.to_string()
+                                                                >
+                                                                    {label}
+                                                                </span>
+                                                            </Button>
+                                                        </div>
+                                                    }
+                                                })
+                                                .collect_view()}
+                                        </div>
+                                    </Show>
+                                </div>
+                                <Button
+                                    id="md-bold"
+                                    variant=ButtonVariant::Tonal
+                                    state=Signal::derive(move || blocked(md_tools_disabled()))
+                                    on_press=move |_| {
+                                        heading_menu_open.set(false);
+                                        body.apply_inline_format("bold");
+                                    }
+                                >
+                                    "B"
+                                </Button>
+                                <Button
+                                    id="md-italic"
+                                    variant=ButtonVariant::Tonal
+                                    state=Signal::derive(move || blocked(md_tools_disabled()))
+                                    on_press=move |_| {
+                                        heading_menu_open.set(false);
+                                        body.apply_inline_format("italic");
+                                    }
+                                >
+                                    "I"
+                                </Button>
+                                <Button
+                                    id="md-link"
+                                    variant=ButtonVariant::Tonal
+                                    state=Signal::derive(move || blocked(md_tools_disabled()))
+                                    on_press=move |_| {
+                                        heading_menu_open.set(false);
+                                        body.apply_inline_format("link");
+                                    }
+                                >
+                                    "Liên kết"
+                                </Button>
+                            </div>
+                            <Button
+                                id="outline-toggle"
+                                variant=Signal::derive(move || {
+                                    if outline_open.get() {
+                                        ButtonVariant::Filled
+                                    } else {
+                                        ButtonVariant::Tonal
+                                    }
+                                })
+                                expanded=Signal::derive(move || outline_open.get())
+                                on_press=move |_| {
+                                    heading_menu_open.set(false);
+                                    outline_open.update(|open| *open = !*open);
+                                }
+                            >
+                                "Mục lục"
+                            </Button>
+                        </div>
                     </Show>
-                    <Show when=move || body.state.get() == BodyState::Failed>
-                        <InlineNotice tone=Tone::Error announce=Announce::Assertive
-                            message="Không mở được trình soạn thảo. Nội dung đã lưu trên máy chủ không bị ảnh hưởng; hãy tải lại trang."
-                            attr:data-testid="editor-failed" />
+                    <Show when=move || format.get() == DocumentFormatDto::Default>
+                        <TextField id="draft-title" label="Tiêu đề" name="title" max_length=200 input_ref=title_input
+                            variant=FieldVariant::FloatingTonal
+                            placeholder="Chưa đặt tên" autocomplete="off" value=title
+                            on_focus=move |_| last_field.set_value(Field::Title)
+                            on_input=move |input: vink_ui::TextInput| {
+                                title_composing.set_value(input.composing);
+                                if title.get_untracked() != input.value {
+                                    clear_just_saved();
+                                    title.set(input.value);
+                                    session.update(|s| s.text.edited());
+                                }
+                            } />
+                        // Read the entire title without replacing the native editing control. This
+                        // projection has no buffer of its own; native selection/undo/IME stay in input.
+                        <details id="draft-title-details" class="vk-editor-title-details">
+                            <summary>"Xem trọn tiêu đề"</summary>
+                            <p id="draft-title-full">{move || {
+                                let value = title.get();
+                                if value.is_empty() { "Chưa đặt tên".to_string() } else { value }
+                            }}</p>
+                            <Button id="edit-full-title" variant=ButtonVariant::Text on_press=move |_| {
+                                #[cfg(feature = "hydrate")]
+                                if let Some(input) = title_input.get_untracked() {
+                                    // User-requested focus also reveals the editing line. Do not select
+                                    // or write its value: focus preserves its directional selection.
+                                    let _ = input.focus();
+                                }
+                            }>"Chỉnh tiêu đề"</Button>
+                        </details>
                     </Show>
+                    <div class="vk-field" on:focusin=move |_| last_field.set_value(Field::Body)>
+                        <span
+                            id=BODY_LABEL_ID
+                            class="vk-field__label"
+                            on:click=move |_| body.focus()
+                        >
+                            "Nội dung"
+                        </span>
+                        <span id=BODY_HINT_ID class="vk-ui-visually-hidden">
+                            {move || shortcut.get()}
+                        </span>
+                        <BodyEditor source=body on_change=on_body_change on_ready=on_body_ready />
+                        <Show when=move || body.state.get() == BodyState::Loading>
+                            <p class="vk-muted vk-editor-body__pending">"Đang mở trình soạn thảo…"</p>
+                        </Show>
+                        <Show when=move || body.state.get() == BodyState::Failed>
+                            <InlineNotice tone=Tone::Error announce=Announce::Assertive
+                                message="Không mở được trình soạn thảo. Nội dung đã lưu trên máy chủ không bị ảnh hưởng; hãy tải lại trang."
+                                attr:data-testid="editor-failed" />
+                        </Show>
+                    </div>
                 </div>
+                <Show when=move || format.get() == DocumentFormatDto::Markdown && outline_open.get()>
+                    <dialog
+                        node_ref=outline_panel
+                        id="editor-outline-panel"
+                        class="vk-editor-outline"
+                        aria-labelledby="editor-outline-title"
+                        on:cancel=move |ev: leptos::ev::Event| {
+                            ev.prevent_default();
+                            close_outline();
+                        }
+                        on:click=move |ev: leptos::ev::MouseEvent| {
+                            #[cfg(feature = "hydrate")]
+                            if let Some(panel) = outline_panel.get_untracked()
+                                && ev.target().as_ref() == Some(panel.as_ref())
+                            {
+                                let r = panel.get_bounding_client_rect();
+                                let (x, y) = (f64::from(ev.client_x()), f64::from(ev.client_y()));
+                                if x < r.left() || x >= r.right() || y < r.top() || y >= r.bottom() {
+                                    close_outline();
+                                }
+                            }
+                            #[cfg(not(feature = "hydrate"))]
+                            let _ = ev;
+                        }
+                        on:keydown=move |ev| {
+                            if ev.key() == "Escape" {
+                                ev.prevent_default();
+                                ev.stop_propagation();
+                                close_outline();
+                            }
+                        }
+                    >
+                        <div class="vk-editor-outline__head">
+                            <h2 id="editor-outline-title" class="vk-editor-outline__heading">"Mục lục"</h2>
+                            <IconButton
+                                id="editor-outline-close"
+                                icon=IconName::Close
+                                label="Đóng mục lục"
+                                on_press=move |_| {
+                                    close_outline();
+                                }
+                            />
+                        </div>
+                        {move || {
+                            let snapshot = body.outline.get();
+                            if body.state.get() == BodyState::Failed {
+                                view! { <p class="vk-editor-outline__empty">"Không mở được mục lục. Hãy tải lại trang."</p> }.into_any()
+                            } else if body.state.get() != BodyState::Ready || (snapshot.items.is_empty() && snapshot.status == OutlineStatus::Partial) {
+                                view! {
+                                    <p class="vk-editor-outline__empty">"Đang đọc mục lục…"</p>
+                                }
+                                .into_any()
+                            } else if snapshot.items.is_empty() {
+                                view! {
+                                    <p class="vk-editor-outline__empty">
+                                        "Chưa có đề mục. Dùng # hoặc nút H để tạo mục lục."
+                                    </p>
+                                }
+                                .into_any()
+                            } else {
+                                let partial = snapshot.status == OutlineStatus::Partial;
+                                view! {
+                                    <nav class="vk-editor-outline__nav" aria-labelledby="editor-outline-title">
+                                        {render_outline_items(
+                                            snapshot.items,
+                                            snapshot.generation,
+                                            snapshot.active_from,
+                                            body,
+                                            outline_open,
+                                        )}
+                                        <Show when=move || partial>
+                                            <p class="vk-editor-outline__empty">"Đang cập nhật phần còn lại…"</p>
+                                        </Show>
+                                    </nav>
+                                }
+                                .into_any()
+                            }
+                        }}
+                    </dialog>
+                </Show>
             </div>
             <div class="vk-editor-work-info" on:focusin=move |_| last_field.set_value(Field::Tags)>
                 <crate::pages::work_info::WorkInfo work_id=work_id.get_value() session labels
                     on_save=Callback::new(move |()| save()) tag_load=tag_load />
             </div>
+            <section
+                id="editor-format-region"
+                class="vk-editor-format"
+                data-testid="editor-format-region"
+                aria-labelledby="editor-format-heading"
+            >
+                <div class="vk-editor-format__head">
+                    <Heading level=HeadingLevel::H2 role=TypeRole::Title id="editor-format-heading">
+                        "Định dạng bản thảo"
+                    </Heading>
+                </div>
+                <Select
+                    id="editor-format-select"
+                    label="Chọn định dạng bản thảo"
+                    options=format_options.clone()
+                    value=selected_format
+                    variant=SelectVariant::Inset16
+                    disabled=format_select_disabled
+                    on_change=on_format_change
+                />
+                {move || conversion_notice.get().map(|text| view! {
+                    <p data-testid="conversion-notice" role="alert">{text}</p>
+                })}
+                <p class="vk-muted vk-editor-format__hint">
+                    "Mặc định giữ tiêu đề riêng; Markdown bật Live Preview và lấy H1 đầu tiên làm tên tác phẩm."
+                </p>
+            </section>
             <crate::pages::publication::PublicationPanel work_id=work_id.get_value() session
                 on_save=Callback::new(move |()| save())
                 is_composing=Callback::new(move |()| body.is_composing()) />
@@ -1433,6 +2001,310 @@ fn Editor(draft: Draft) -> impl IntoView {
                     })
             }}
         </vink_ui::Dialog>
+        <vink_ui::Dialog
+            id="format-convert-dialog"
+            open=Signal::derive(move || convert_preview.with(Option::is_some))
+            title=Signal::derive(move || {
+                match convert_preview.get().map(|p| p.target_format) {
+                    Some(DocumentFormatDto::Markdown) => "Đổi định dạng bản thảo sang Markdown?",
+                    Some(DocumentFormatDto::Default) => "Đổi định dạng bản thảo sang Mặc định?",
+                    None => "Đổi định dạng bản thảo?",
+                }
+                .to_string()
+            })
+            context=Signal::derive(move || {
+                match convert_preview.get().map(|p| p.target_format) {
+                    Some(DocumentFormatDto::Markdown) => {
+                        "Tiêu đề hiện tại sẽ được đưa vào đầu bài bằng dòng # nếu chưa có H1. Thao tác này lưu thẳng bản nháp và bật Live Preview."
+                    }
+                    Some(DocumentFormatDto::Default) => {
+                        "H1 đầu tiên (nếu có) sẽ dùng cho ô Tiêu đề riêng. Toàn bộ nội dung văn bản giữ nguyên; thao tác này lưu thẳng bản nháp."
+                    }
+                    None => "",
+                }
+                .to_string()
+            })
+            focus_title=true
+            dismiss=vink_ui::DismissPolicy::EscapeOnly
+            on_dismiss=move |_| cancel_conversion()
+            actions=move || view! {
+                <Button
+                    variant=ButtonVariant::Text
+                    id="format-convert-cancel"
+                    state=Signal::derive(move || blocked(converting.get()))
+                    on_press=move |_| cancel_conversion()
+                >
+                    "Hủy"
+                </Button>
+                <Button
+                    variant=ButtonVariant::Filled
+                    id="format-convert-apply"
+                    state=Signal::derive(move || if converting.get() { ActionState::pending("") } else { blocked(convert_preview.with(|p| p.as_ref().is_none_or(ConversionPreview::title_too_long))) })
+                    on_press=move |_| apply_conversion()
+                >
+                    {move || if converting.get() { "Đang đổi…" } else { "Áp dụng" }}
+                </Button>
+            }
+            attr:data-testid="format-convert-dialog"
+        >
+            {move || {
+                convert_preview.get().map(|p| {
+                    let target_name = if p.target_format == DocumentFormatDto::Markdown {
+                        "Markdown (Live Preview)"
+                    } else {
+                        "Mặc định"
+                    };
+                    let title_label = untitled(&p.title);
+                    view! {
+                        <div class="vk-format-preview">
+                            <p class="vk-format-preview__target">
+                                <strong>"Đích: "</strong>{target_name}
+                            </p>
+                            <p class="vk-format-preview__title">
+                                <strong>"Tiêu đề sau chuyển đổi: "</strong>{title_label}
+                            </p>
+                            {p.title_too_long().then(|| view! {
+                                <p role="alert">"Tiêu đề sau chuyển đổi dài quá 200 ký tự. Hãy hủy và rút ngắn tiêu đề hoặc H1 đầu tiên trước khi đổi định dạng."</p>
+                            })}
+                            <p class="vk-muted">{p.note}</p>
+                            <pre class="vk-format-preview__source">{p.source}</pre>
+                        </div>
+                    }
+                })
+            }}
+        </vink_ui::Dialog>
+    }
+}
+
+fn outline_item_tier(level: u8, is_first_h1: bool) -> (&'static str, u8) {
+    if is_first_h1 {
+        ("vk-editor-outline__item vk-editor-outline__item--title", 0)
+    } else {
+        match level {
+            1 | 2 => ("vk-editor-outline__item vk-editor-outline__item--h2", 0),
+            3 => ("vk-editor-outline__item vk-editor-outline__item--sub", 1),
+            4 => ("vk-editor-outline__item vk-editor-outline__item--sub", 2),
+            _ => ("vk-editor-outline__item vk-editor-outline__item--sub", 3),
+        }
+    }
+}
+
+// The CSS container query owns the breakpoint. Native modal focus containment follows the
+// actual painted layout, including changes to the rail width or text scale while open.
+#[cfg(feature = "hydrate")]
+fn observe_outline_layout(node: NodeRef<html::Dialog>) {
+    use wasm_bindgen::{JsCast, closure::Closure};
+    Effect::new(move |_| {
+        let Some(panel) = node.get() else { return };
+        let sync = move || {
+            if !panel.is_connected() {
+                return;
+            }
+            let modal = window()
+                .get_computed_style(&panel)
+                .ok()
+                .flatten()
+                .and_then(|css| css.get_property_value("position").ok())
+                .is_some_and(|position| position == "fixed");
+            if panel.open() && panel.matches(":modal").unwrap_or(false) == modal {
+                return;
+            }
+            if panel.open() {
+                panel.close();
+            }
+            if modal {
+                let _ = panel.show_modal();
+                focus_element_by_id("editor-outline-close");
+            } else {
+                panel.show();
+                let _ = panel.set_attribute("role", "complementary");
+            }
+            if modal {
+                let _ = panel.remove_attribute("role");
+            }
+        };
+        sync();
+        let callback = Closure::<dyn FnMut()>::new(sync);
+        if let Ok(observer) = web_sys::ResizeObserver::new(callback.as_ref().unchecked_ref()) {
+            if let Some(panel) = node.get_untracked() {
+                observer.observe(&panel);
+                if let Some(parent) = panel.parent_element() {
+                    observer.observe(&parent);
+                }
+            }
+            let cleanup = send_wrapper::SendWrapper::new((observer, callback));
+            on_cleanup(move || {
+                let (observer, _callback) = cleanup.take();
+                observer.disconnect();
+            });
+        }
+    });
+}
+
+fn focus_element_by_id(id: &str) {
+    #[cfg(feature = "hydrate")]
+    {
+        use wasm_bindgen::JsCast;
+        if let Some(el) = document()
+            .get_element_by_id(id)
+            .and_then(|node| node.dyn_into::<web_sys::HtmlElement>().ok())
+        {
+            let options = web_sys::FocusOptions::new();
+            options.set_prevent_scroll(true);
+            let _ = el.focus_with_options(&options);
+        }
+    }
+    #[cfg(not(feature = "hydrate"))]
+    let _ = id;
+}
+
+fn render_outline_items(
+    items: Vec<OutlineItem>,
+    generation: u64,
+    active_from: Option<usize>,
+    body: BodySource,
+    outline_open: RwSignal<bool>,
+) -> AnyView {
+    render_outline_level(
+        &mut items.into_iter().peekable(),
+        0,
+        generation,
+        active_from,
+        body,
+        outline_open,
+    )
+}
+
+fn render_outline_level(
+    items: &mut std::iter::Peekable<std::vec::IntoIter<OutlineItem>>,
+    parent_level: u8,
+    generation: u64,
+    active_from: Option<usize>,
+    body: BodySource,
+    outline_open: RwSignal<bool>,
+) -> AnyView {
+    let mut rows = Vec::new();
+    while items.peek().is_some_and(|i| i.level > parent_level) {
+        let item = items.next().expect("peeked heading");
+        let (tier_class, indent) = outline_item_tier(item.level, item.is_title);
+        let from = item.from;
+        let children = items
+            .peek()
+            .is_some_and(|next| next.level > item.level)
+            .then(|| {
+                render_outline_level(
+                    items,
+                    item.level,
+                    generation,
+                    active_from,
+                    body,
+                    outline_open,
+                )
+            });
+        rows.push(view! {
+            <li class="vk-editor-outline__entry" style=format!("--outline-indent: {indent}")>
+                <Button variant=ButtonVariant::Text attr:aria-current=(active_from == Some(from)).then_some("location")
+                    on_press=move |_| {
+                        if body.jump_to_heading(from, generation) {
+                            #[cfg(feature = "hydrate")]
+                            if let Some(panel) = document().get_element_by_id("editor-outline-panel")
+                                && panel.matches(":modal").unwrap_or(false) {
+                                use wasm_bindgen::JsCast;
+                                if let Some(dialog) = panel.dyn_ref::<web_sys::HtmlDialogElement>() { dialog.close(); }
+                                outline_open.set(false);
+                                body.focus();
+                            }
+                            #[cfg(not(feature = "hydrate"))]
+                            let _ = outline_open;
+                        }
+                    }>
+                    <span class=tier_class data-heading-level=item.level.to_string() data-heading-from=from.to_string()>
+                        {if item.title.is_empty() { "Chưa đặt tên".to_owned() } else { item.title }}
+                    </span>
+                </Button>
+                {children}
+            </li>
+        });
+    }
+    view! { <ul class="vk-editor-outline__list" role="list">{rows}</ul> }.into_any()
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DraftActionIcon {
+    Send,
+    Save,
+    Spin,
+}
+
+impl DraftActionIcon {
+    fn id(self) -> &'static str {
+        match self {
+            Self::Send => "send",
+            Self::Save => "save",
+            Self::Spin => "spin",
+        }
+    }
+}
+
+fn render_draft_action_icon(icon: DraftActionIcon) -> AnyView {
+    match icon {
+        DraftActionIcon::Send => view! {
+            <svg
+                class="vk-draft-action-icon"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                focusable="false"
+            >
+                <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
+                <path d="m21.854 2.147-10.94 10.939" />
+            </svg>
+        }
+        .into_any(),
+        DraftActionIcon::Save => view! {
+            <svg
+                class="vk-draft-action-icon"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                focusable="false"
+            >
+                <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+                <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7" />
+                <path d="M7 3v4a1 1 0 0 0 1 1h7" />
+            </svg>
+        }
+        .into_any(),
+        DraftActionIcon::Spin => view! {
+            <svg
+                class="vk-draft-action-icon vk-draft-action-icon--spinner"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                focusable="false"
+            >
+                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+        }
+        .into_any(),
     }
 }
 
@@ -1576,10 +2448,12 @@ enum SaveSlotAction {
     Save {
         label: &'static str,
         pending: bool,
+        icon: DraftActionIcon,
     },
     Retry {
         label: &'static str,
         pending: bool,
+        icon: DraftActionIcon,
     },
     Recover {
         label: &'static str,
@@ -1594,6 +2468,7 @@ struct SaveSlotFacts {
     tags: Option<TagStatus>,
     tags_read: TagLoad,
     tags_pending_newer: bool,
+    first_send: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1616,6 +2491,7 @@ impl SaveSlotFacts {
                 .tags
                 .as_ref()
                 .is_some_and(|t| t.has_pending_newer_selection()),
+            first_send: session.text.acknowledged_version() <= 1,
         }
     }
 }
@@ -1699,6 +2575,7 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
     };
 
     if matches!(facts.text, SaveStatus::Saving) || matches!(facts.tags, Some(TagStatus::Saving)) {
+        let sending_first = facts.first_send && matches!(facts.text, SaveStatus::Saving);
         let status_text = match (facts.text, facts.tags.as_ref()) {
             (SaveStatus::Saving, Some(TagStatus::Saving)) => "Đang lưu chữ và thẻ…",
             (SaveStatus::Saving, Some(TagStatus::Unsaved)) => "Đang lưu chữ; thẻ chưa lưu…",
@@ -1706,10 +2583,14 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
                 SaveStatus::Saving,
                 Some(TagStatus::Conflict { .. } | TagStatus::Refused(_) | TagStatus::Failed(_)),
             ) => "Đang lưu chữ; thẻ cần kiểm tra…",
+            (SaveStatus::Saving, _) if facts.text_pending_newer && sending_first => {
+                "Đang gửi; có chữ mới…"
+            }
             (SaveStatus::Saving, _) if facts.text_pending_newer => "Đang lưu; có chữ mới…",
             (SaveStatus::Saving, None) if matches!(facts.tags_read, TagLoad::Failed(_)) => {
                 "Đang lưu chữ; chưa tải được thẻ."
             }
+            (SaveStatus::Saving, _) if sending_first => "Đang gửi…",
             (SaveStatus::Saving, _) => "Đang lưu…",
             (SaveStatus::Saved { .. }, Some(TagStatus::Saving)) if facts.tags_pending_newer => {
                 "Đang lưu thẻ; có thay đổi mới…"
@@ -1725,8 +2606,13 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
             problem_kind: None,
             detail_text: format!("{text_detail} {tag_detail}"),
             action: SaveSlotAction::Save {
-                label: "Đang lưu…",
+                label: if sending_first {
+                    "Đang gửi…"
+                } else {
+                    "Đang lưu…"
+                },
                 pending: true,
+                icon: DraftActionIcon::Spin,
             },
         };
     }
@@ -1748,10 +2634,12 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
                 Some(TagStatus::Unsaved) => SaveSlotAction::Save {
                     label: "Lưu thẻ",
                     pending: false,
+                    icon: DraftActionIcon::Save,
                 },
                 Some(TagStatus::Failed(_)) => SaveSlotAction::Retry {
                     label: "Thử lưu lại thẻ",
                     pending: false,
+                    icon: DraftActionIcon::Save,
                 },
                 _ => SaveSlotAction::Recover {
                     label: "Xử lý xung đột",
@@ -1809,6 +2697,7 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
             action: SaveSlotAction::Retry {
                 label: "Thử lưu lại",
                 pending: false,
+                icon: DraftActionIcon::Save,
             },
         };
     }
@@ -1823,6 +2712,7 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
                     SaveSlotAction::Save {
                         label: "Lưu chữ",
                         pending: false,
+                        icon: DraftActionIcon::Save,
                     },
                 )
             } else {
@@ -1851,6 +2741,7 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
                     SaveSlotAction::Save {
                         label: "Lưu chữ",
                         pending: false,
+                        icon: DraftActionIcon::Save,
                     },
                 )
             } else {
@@ -1879,7 +2770,10 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
                 (true, true) => "Chưa lưu chữ; chưa xác nhận lưu thẻ.",
                 (true, false) => "Chưa lưu chữ; thẻ chưa lưu được.",
             };
-            let label = if text_dirty {
+            let use_send = facts.first_send && text_dirty;
+            let label = if use_send {
+                "Gửi"
+            } else if text_dirty {
                 "Lưu"
             } else {
                 "Thử lưu lại"
@@ -1892,6 +2786,11 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
                 action: SaveSlotAction::Retry {
                     label,
                     pending: false,
+                    icon: if use_send {
+                        DraftActionIcon::Send
+                    } else {
+                        DraftActionIcon::Save
+                    },
                 },
             }
         }
@@ -1901,14 +2800,20 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
             } else {
                 ("Đã lưu chữ; chưa lưu thẻ", Some("partial"))
             };
+            let use_send = facts.first_send && text_dirty;
             SaveSlotView {
                 status_text: status_text.into(),
                 status_token: "unsaved",
                 problem_kind,
                 detail_text: format!("{text_detail} {tag_detail}"),
                 action: SaveSlotAction::Save {
-                    label: "Lưu",
+                    label: if use_send { "Gửi" } else { "Lưu" },
                     pending: false,
+                    icon: if use_send {
+                        DraftActionIcon::Send
+                    } else {
+                        DraftActionIcon::Save
+                    },
                 },
             }
         }
@@ -1920,8 +2825,13 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
                     problem_kind: Some("partial"),
                     detail_text: format!("{text_detail} {tag_detail}"),
                     action: SaveSlotAction::Save {
-                        label: "Lưu",
+                        label: if facts.first_send { "Gửi" } else { "Lưu" },
                         pending: false,
+                        icon: if facts.first_send {
+                            DraftActionIcon::Send
+                        } else {
+                            DraftActionIcon::Save
+                        },
                     },
                 }
             } else {
@@ -1952,8 +2862,13 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
                     problem_kind: None,
                     detail_text: format!("{text_detail} {tag_detail}"),
                     action: SaveSlotAction::Save {
-                        label: "Lưu",
+                        label: if facts.first_send { "Gửi" } else { "Lưu" },
                         pending: false,
+                        icon: if facts.first_send {
+                            DraftActionIcon::Send
+                        } else {
+                            DraftActionIcon::Save
+                        },
                     },
                 }
             } else {
@@ -1996,6 +2911,7 @@ fn draft_status_text(text: SaveStatus, tags: Option<&TagStatus>) -> String {
             TagLoad::Loading
         },
         tags_pending_newer: false,
+        first_send: false,
     })
     .status_text
 }
@@ -2012,6 +2928,7 @@ fn draft_status_token(text: SaveStatus, tags: Option<&TagStatus>) -> &'static st
             TagLoad::Loading
         },
         tags_pending_newer: false,
+        first_send: false,
     })
     .status_token
 }
@@ -2028,6 +2945,7 @@ fn draft_status_detail(text: SaveStatus, tags: Option<&TagStatus>) -> String {
             TagLoad::Loading
         },
         tags_pending_newer: false,
+        first_send: false,
     })
     .detail_text
 }
@@ -2173,6 +3091,7 @@ mod editor_presentation_tests {
             tags: Some(saved_tags.clone()),
             tags_read: TagLoad::Ready,
             tags_pending_newer: false,
+            first_send: false,
         });
         assert_eq!(clean.action, SaveSlotAction::None);
         assert_eq!(clean.status_token, "saved");
@@ -2190,6 +3109,7 @@ mod editor_presentation_tests {
             tags: None,
             tags_read: TagLoad::Failed(Failure::Unavailable),
             tags_pending_newer: false,
+            first_send: false,
         });
         assert_eq!(
             tag_load_failed.action,
@@ -2207,13 +3127,15 @@ mod editor_presentation_tests {
             tags: Some(saved_tags.clone()),
             tags_read: TagLoad::Ready,
             tags_pending_newer: false,
+            first_send: false,
         });
         assert_eq!(text_only.status_text, "Chưa lưu chữ");
         assert_eq!(
             text_only.action,
             SaveSlotAction::Save {
                 label: "Lưu",
-                pending: false
+                pending: false,
+                icon: DraftActionIcon::Save,
             }
         );
 
@@ -2223,6 +3145,7 @@ mod editor_presentation_tests {
             tags: Some(TagStatus::Unsaved),
             tags_read: TagLoad::Ready,
             tags_pending_newer: false,
+            first_send: false,
         });
         assert_eq!(both_dirty.status_text, "Chưa lưu chữ và thẻ");
         assert_eq!(both_dirty.problem_kind, None);
@@ -2234,6 +3157,7 @@ mod editor_presentation_tests {
             tags: Some(saved_tags.clone()),
             tags_read: TagLoad::Ready,
             tags_pending_newer: false,
+            first_send: false,
         });
         assert_eq!(pending_newer.status_token, "saving");
         assert_eq!(pending_newer.status_text, "Đang lưu; có chữ mới…");
@@ -2246,6 +3170,7 @@ mod editor_presentation_tests {
             tags: Some(refused.clone()),
             tags_read: TagLoad::Ready,
             tags_pending_newer: false,
+            first_send: false,
         });
         assert_eq!(
             refused_clean_text.action,
@@ -2263,12 +3188,14 @@ mod editor_presentation_tests {
             tags: Some(refused),
             tags_read: TagLoad::Ready,
             tags_pending_newer: false,
+            first_send: false,
         });
         assert_eq!(
             refused_dirty_text.action,
             SaveSlotAction::Save {
                 label: "Lưu chữ",
-                pending: false
+                pending: false,
+                icon: DraftActionIcon::Save,
             }
         );
 
@@ -2282,6 +3209,7 @@ mod editor_presentation_tests {
             }),
             tags_read: TagLoad::Ready,
             tags_pending_newer: false,
+            first_send: false,
         });
         assert_eq!(
             tag_conflict.action,
@@ -2297,6 +3225,7 @@ mod editor_presentation_tests {
             tags: Some(saved_tags),
             tags_read: TagLoad::Ready,
             tags_pending_newer: false,
+            first_send: false,
         });
         assert_eq!(
             text_conflict.action,
@@ -2304,6 +3233,89 @@ mod editor_presentation_tests {
                 label: "Xử lý xung đột",
                 target: RecoveryTarget::TextConflict,
             }
+        );
+    }
+
+    #[test]
+    fn first_send_uses_gui_label_until_version_two_is_acknowledged() {
+        let send_idle = project_save_slot(&SaveSlotFacts {
+            text: SaveStatus::Unsaved,
+            text_pending_newer: false,
+            tags: None,
+            tags_read: TagLoad::Ready,
+            tags_pending_newer: false,
+            first_send: true,
+        });
+        assert_eq!(
+            send_idle.action,
+            SaveSlotAction::Save {
+                label: "Gửi",
+                pending: false,
+                icon: DraftActionIcon::Send,
+            }
+        );
+
+        let send_pending = project_save_slot(&SaveSlotFacts {
+            text: SaveStatus::Saving,
+            text_pending_newer: false,
+            tags: None,
+            tags_read: TagLoad::Ready,
+            tags_pending_newer: false,
+            first_send: true,
+        });
+        assert_eq!(send_pending.status_text, "Đang gửi…");
+        assert_eq!(
+            send_pending.action,
+            SaveSlotAction::Save {
+                label: "Đang gửi…",
+                pending: true,
+                icon: DraftActionIcon::Spin,
+            }
+        );
+
+        let subsequent_save = project_save_slot(&SaveSlotFacts {
+            text: SaveStatus::Unsaved,
+            text_pending_newer: false,
+            tags: None,
+            tags_read: TagLoad::Ready,
+            tags_pending_newer: false,
+            first_send: false,
+        });
+        assert_eq!(
+            subsequent_save.action,
+            SaveSlotAction::Save {
+                label: "Lưu",
+                pending: false,
+                icon: DraftActionIcon::Save,
+            }
+        );
+    }
+
+    #[test]
+    fn outline_item_tier_assigns_title_to_first_h1_and_caps_subheadings() {
+        assert_eq!(
+            outline_item_tier(1, true),
+            ("vk-editor-outline__item vk-editor-outline__item--title", 0)
+        );
+        assert_eq!(
+            outline_item_tier(2, false),
+            ("vk-editor-outline__item vk-editor-outline__item--h2", 0)
+        );
+        assert_eq!(
+            outline_item_tier(3, false),
+            ("vk-editor-outline__item vk-editor-outline__item--sub", 1)
+        );
+        assert_eq!(
+            outline_item_tier(4, false),
+            ("vk-editor-outline__item vk-editor-outline__item--sub", 2)
+        );
+        assert_eq!(
+            outline_item_tier(5, false),
+            ("vk-editor-outline__item vk-editor-outline__item--sub", 3)
+        );
+        assert_eq!(
+            outline_item_tier(6, false),
+            ("vk-editor-outline__item vk-editor-outline__item--sub", 3)
         );
     }
 

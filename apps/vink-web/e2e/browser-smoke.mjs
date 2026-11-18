@@ -832,7 +832,7 @@ class Page {
     // Direct DOM focus can leave Chrome's transient caret at zero while CodeMirror is
     // restoring its selection, racing the next synthetic key only a millisecond later.
     if (!await this.eval(`document.activeElement?.classList.contains('cm-content')`)) {
-      await this.eval(`document.querySelector('#draft-title').focus()`);
+      await this.eval(`document.querySelector('#draft-title, #outline-toggle, #editor-save-details > summary')?.focus()`);
       await this.tabToBody();
     }
     await this.key(this.mac ? 'ArrowDown' : 'End', this.mod);
@@ -1778,6 +1778,7 @@ async function textContrast(page, theme, surface = 'shell') {
     if (surface === 'editor-conflict') list.push('#save-recovery-jump');
     return list;
   })() : {
+    outline: ['#editor-outline-title', '.vk-editor-outline__item--title', '#editor-outline-panel [aria-current="location"] button'],
     desk: ['.vk-desk-heading .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-search input', '#draft-sort', '#draft-sort-label', '#draft-scope'],
     explore: ['#public-query', '#explore-heading h1', '.vk-explore__heading p', '#public-query-help', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '.vk-public-scope', '.vk-discovery-filter-form legend', '.vk-discovery-options .vk-ui-choice__label'],
     filter: ['#modal-tag-help', '#modal-tag-form button[type=submit]'],
@@ -4667,37 +4668,357 @@ async function mainPhase(page) {
 
   await draftTags(page, workId);
   await deskRefusesLossyOpen(page);
+  await markdownLivePreviewAndFormatPicker(page);
 
   const kept = await page.draft(workId);
   const text = kept.document.source;
   writeFileSync(args.state, JSON.stringify({ workId, title: kept.title, text, version: kept.version }));
 }
 
-// #255/#263: the desk never opens a draft it would save back changed (Markdown, CR line endings).
+// #255/#263/#256: Markdown opens in Live Preview without a separate title box, while CRLF
+// line endings that CodeMirror normalizes are still refused before opening.
 async function deskRefusesLossyOpen(page) {
-  console.log('desk refuses drafts it cannot save back unchanged:');
-  for (const [document, label] of [
-    [{ format: 'markdown', source: '# Mưa đầu mùa\n\nThân bài.\n' }, 'Markdown'],
-    [defaultDocument('Dòng một\r\nDòng hai'), 'CRLF'],
-  ]) {
+  console.log('desk opens Markdown cleanly and refuses lossy CRLF drafts:');
+  {
+    const doc = { format: 'markdown', source: '# Mưa đầu mùa\n\nThân bài.\n' };
     const created = await page.eval(`(async () => {
       const post = await fetch('/api/v1/drafts', { method: 'POST' });
       const draft = await post.json();
-      const body = ${JSON.stringify(document.format)} === 'markdown'
-        ? { expected_version: draft.version, document: ${JSON.stringify(document)} }
-        : { expected_version: draft.version, title: 'CR', document: ${JSON.stringify(document)} };
       const put = await fetch('/api/v1/drafts/' + draft.work_id, { method: 'PUT',
-        headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ expected_version: draft.version, document: ${JSON.stringify(doc)} }) });
       return { id: draft.work_id, status: put.status };
     })()`);
-    check(created.status === 200, `${label} draft saved through the API`);
+    check(created.status === 200, 'Markdown draft saved through the API');
     await page.goto(`${args.base}/ban-viet/${created.id}`);
-    await page.waitFor(`document.querySelector('[data-testid=desk-format-unavailable]')`, `${label} stop state`);
-    check(!(await page.eval(`!!document.querySelector('.cm-content')`)), `${label}: no editor, so nothing can be re-saved`);
+    await page.waitFor(EDITOR_READY, 'Markdown draft opens in Bàn viết');
+    const mdDiag = await page.eval(`(() => ({
+      unavailable: Boolean(document.querySelector('[data-testid=desk-format-unavailable]')),
+      hasTitle: Boolean(document.querySelector('#draft-title')),
+      dataFormat: document.querySelector('.vk-editor')?.dataset.format ?? null,
+      hasToolbar: Boolean(document.querySelector('#editor-markdown-toolbar')),
+      hydrated: document.documentElement.dataset.hydrated ?? null,
+    }))()`);
+    check(!mdDiag.unavailable && !mdDiag.hasTitle && mdDiag.dataFormat === 'markdown' && mdDiag.hasToolbar,
+      `Markdown opens in single Live Preview editor without #draft-title (${JSON.stringify(mdDiag)})`);
     const stored = await page.draft(created.id);
-    check(stored.version === 2 && JSON.stringify(stored.document) === JSON.stringify(document)
-      && (label !== 'Markdown' || stored.title === 'Mưa đầu mùa'), `${label}: source untouched; Markdown title is the first H1`);
+    check(stored.version === 2 && JSON.stringify(stored.document) === JSON.stringify(doc)
+      && stored.title === 'Mưa đầu mùa', 'Markdown source untouched on open; title derives from the first H1');
   }
+
+  {
+    const doc = defaultDocument('Dòng một\r\nDòng hai');
+    const created = await page.eval(`(async () => {
+      const post = await fetch('/api/v1/drafts', { method: 'POST' });
+      const draft = await post.json();
+      const put = await fetch('/api/v1/drafts/' + draft.work_id, { method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ expected_version: draft.version, title: 'CR', document: ${JSON.stringify(doc)} }) });
+      return { id: draft.work_id, status: put.status };
+    })()`);
+    check(created.status === 200, 'CRLF draft saved through the API');
+    await page.goto(`${args.base}/ban-viet/${created.id}`);
+    await page.waitFor(`document.querySelector('[data-testid=desk-format-unavailable]')`, 'CRLF stop state');
+    check(!(await page.eval(`!!document.querySelector('.cm-content')`)), 'CRLF: no editor, so nothing can be re-saved');
+    const stored = await page.draft(created.id);
+    check(stored.version === 2 && JSON.stringify(stored.document) === JSON.stringify(doc), 'CRLF: source untouched');
+  }
+}
+
+// #256/#257/#262 + nut-gui-luu: Markdown format choice, single-editor Live Preview,
+// AST Mục lục (Cách 1), Send/Save state icon transitions and conversion dialog.
+async function markdownLivePreviewAndFormatPicker(page) {
+  console.log('editor live preview (#256), outline (#257), format picker (#262) & send/save button:');
+  const cmView = `document.querySelector('.cm-content').cmTile.root.view`;
+  await page.viewport(1440, 900);
+  await page.goto(`${args.base}/ban-viet`);
+  await page.waitFor(`document.querySelector('#create-draft') && document.querySelector('#create-draft-format') && document.documentElement.dataset.hydrated === 'true'`, 'desk index with format selector');
+  check(await page.eval(`Boolean(document.querySelector('#create-draft-format').closest('[data-select-variant="inset-16"]'))`), '#create-draft-format uses SelectVariant::Inset16');
+  await page.eval(`const sel = document.querySelector('#create-draft-format'); sel.value = 'markdown'; sel.dispatchEvent(new Event('change', { bubbles: true }))`);
+  await page.click('#create-draft');
+  await page.waitFor(EDITOR_READY, 'created markdown draft editor');
+  const workId = await page.eval(`location.pathname.split('/').pop()`);
+  check(await page.eval(`document.querySelector('.vk-editor')?.dataset.format === 'markdown' && Boolean(document.querySelector('#editor-markdown-toolbar')) && !document.querySelector('#draft-title')`), 'created Markdown draft opens directly in Markdown Live Preview');
+  await page.eval(`window.__mdView = ${cmView}; true`);
+
+  const sample = '# Tiếng mưa qua hiên\n\n## Hiên nhà\n\nMái ngói **gạch ướt** và *thưa dần* bên [Vink](https://vink.vn).\n\nĐoạn văn thường giữ nguyên.\n\n```\n# Không phải heading\n```\n';
+  await page.typeInBody(sample);
+  await page.waitStatus('unsaved');
+
+  // Verify v1 Gửi button (nut-gui-luu): 18px Lucide send icon + 8px gap + label "Gửi".
+  const v1Metrics = await page.eval(`(() => {
+    const btn = document.querySelector('#save');
+    const content = btn.querySelector('.vk-draft-action-content');
+    const svg = content.querySelector('svg');
+    const root = document.documentElement;
+    const saved = root.dataset.text;
+    try {
+      return ['100', '200'].map(scale => {
+        root.dataset.text = scale;
+        const {width, height} = svg.getBoundingClientRect();
+        return {scale, text: btn.textContent, icon: content.dataset.draftIcon, gap: getComputedStyle(content).columnGap, width, height};
+      });
+    } finally {
+      if (saved === undefined) delete root.dataset.text;
+      else root.dataset.text = saved;
+    }
+  })()`);
+  check(v1Metrics.every(m => m.text === 'Gửi' && m.icon === 'send' && m.gap === '8px' && m.width === 18 && m.height === 18),
+    `v1 primary action renders Gửi with 18px send icon and 8px gap at both text scales (${JSON.stringify(v1Metrics)})`);
+
+  const gate = new SaveGate(page);
+  try {
+    await gate.enable();
+    await page.click('#save');
+    const firstPut = await gate.next();
+    await page.waitStatus('saving');
+    check(await page.eval(`document.querySelector('#save')?.textContent === 'Đang gửi…' && document.querySelector('#save .vk-draft-action-content')?.dataset.draftIcon === 'spin' && document.querySelector('[data-testid=save-status]')?.textContent === 'Đang gửi…'`),
+      'v1 pending state switches to Đang gửi… with spinner icon');
+    await gate.release(firstPut);
+    await page.waitStatus('saved');
+    check(await page.eval(`document.querySelector('.vk-editor')?.dataset.justSaved === 'true'`), 'clean acknowledgment activates transient Đã lưu state');
+    const savedV2 = await page.draft(workId);
+    check(savedV2.version === 2 && savedV2.title === 'Tiếng mưa qua hiên' && savedV2.document.format === 'markdown',
+      'v1 Gửi commits Markdown draft and derives title from first H1');
+
+    // v2 edit transitions to Lưu + save floppy icon -> Đang lưu…
+    await page.typeInBody('Dòng thêm ở bản 2.\n');
+    await page.waitStatus('unsaved');
+    check(await page.eval(`document.querySelector('#save')?.textContent === 'Lưu' && document.querySelector('#save .vk-draft-action-content')?.dataset.draftIcon === 'save'`),
+      'v2 dirty action shows Lưu with floppy save icon');
+    await page.click('#save');
+    const secondPut = await gate.next();
+    await page.waitStatus('saving');
+    check(await page.eval(`document.querySelector('#save')?.textContent === 'Đang lưu…' && document.querySelector('#save .vk-draft-action-content')?.dataset.draftIcon === 'spin'`),
+      'v2 pending state switches to Đang lưu… with spinner icon');
+    await gate.release(secondPut);
+    await page.waitStatus('saved');
+  } finally {
+    await gate.disable();
+  }
+
+  // #256 Live Preview: reveal ## when caret enters H2 line, hide when moving back to paragraph.
+  await page.eval(`(() => {
+    const v = ${cmView};
+    const pos = v.state.doc.line(3).from + 4;
+    v.focus();
+    v.dispatch({ selection: { anchor: pos } });
+  })()`);
+  await page.waitFor(`(() => {
+    const lines = [...document.querySelectorAll('.cm-line')];
+    const h2 = lines.find(l => l.textContent.includes('Hiên nhà'));
+    return Boolean(h2?.classList.contains('cm-writing-h2')) && [...(h2?.querySelectorAll('.cm-markdown-marker') || [])].some(m => m.textContent === '##');
+  })()`, 'caret in H2 reveals ## marker');
+
+  await page.eval(`(() => {
+    const v = ${cmView};
+    const pos = v.state.doc.line(7).from + 2;
+    v.focus();
+    v.dispatch({ selection: { anchor: pos } });
+  })()`);
+  await page.waitFor(`(() => {
+    const lines = [...document.querySelectorAll('.cm-line')];
+    const h2 = lines.find(l => l.textContent.includes('Hiên nhà'));
+    return Boolean(h2?.classList.contains('cm-writing-h2')) && !h2?.textContent.includes('##');
+  })()`, 'leaving H2 hides ## marker while keeping heading formatting');
+
+  // Toolbar formatting buttons (B, I, Link, H menu), Undo/Redo & IME composition on the same EditorView.
+  const beforeFmt = await page.eval(`${cmView}.state.doc.toString()`);
+  await page.eval(`(() => {
+    const v = ${cmView};
+    const line = v.state.doc.line(7);
+    v.focus();
+    v.dispatch({ selection: { anchor: line.from, head: line.from + 4 } });
+  })()`);
+  await page.click('#md-bold');
+  await page.waitFor(`${cmView}.state.doc.toString().includes('**Đoạn**')`, '#md-bold wraps selection');
+  await new Promise(r => setTimeout(r, 600));
+  await page.click('#md-heading-tool');
+  await page.waitFor(`document.querySelector('#md-heading-menu')`, 'heading menu opens');
+  await page.click('#md-heading-menu button:has([data-heading-level="2"])');
+  await page.waitFor(`${cmView}.state.doc.toString().includes('## **Đoạn**')`, 'heading menu applies H2');
+  await page.key('z', page.mod);
+  await page.key('z', page.mod);
+  await page.waitFor(`${cmView}.state.doc.toString() === ${JSON.stringify(beforeFmt)}`, 'Undo restores exact source before toolbar edits');
+  await page.eval(`(() => { const v = ${cmView}; const p = v.state.doc.line(7).to; v.focus(); v.dispatch({ selection: { anchor: p } }); })()`);
+  await page.send('Input.imeSetComposition', { text: ' d', selectionStart: 2, selectionEnd: 2 });
+  await page.send('Input.insertText', { text: ' dấu' });
+  await new Promise(r => setTimeout(r, 80));
+  await page.key('z', page.mod);
+  await page.waitFor(`${cmView}.state.doc.toString() === ${JSON.stringify(beforeFmt)}`, 'IME commit undoes cleanly back to saved buffer');
+  check(await page.eval(`window.__mdView === ${cmView} && document.querySelectorAll('.cm-editor').length === 1`),
+    'Live Preview formatting and IME preserve the single EditorView');
+
+  // Save clean before Mục lục checks.
+  if ((await page.status()) !== 'saved') {
+    await page.click('#save');
+    await page.waitStatus('saved');
+  }
+
+  // #257 Mục lục Cách 1: AST headings, fenced code excluded, click jump without dirtying, responsive & Escape.
+  await page.click('#outline-toggle');
+  await page.waitFor(`document.querySelector('#editor-outline-panel')`, 'Mục lục panel opens');
+  const outlineItems = await page.eval(`[...document.querySelectorAll('.vk-editor-outline__item')].map(el => {
+    const btn = el.closest('button');
+    const cs = btn ? getComputedStyle(btn) : null;
+    return {
+      text: el.textContent.trim(),
+      cls: el.className,
+      current: el.closest('[aria-current]')?.getAttribute('aria-current') ?? null,
+      font: cs?.fontFamily ?? '',
+      weight: cs?.fontWeight ?? '',
+      bg: cs?.backgroundColor ?? '',
+    };
+  })`);
+  check(outlineItems.length === 2
+    && outlineItems[0].text === 'Tiếng mưa qua hiên'
+    && outlineItems[0].cls.includes('--title')
+    && outlineItems[0].font.includes('Literata')
+    && outlineItems[1].text === 'Hiên nhà'
+    && outlineItems[1].cls.includes('--h2')
+    && outlineItems[1].weight === '600',
+    `Mục lục Cách 1 renders Literata title + semibold H2 and skips code-fence # (${JSON.stringify(outlineItems)})`);
+
+  await page.click('#editor-outline-panel button:has(.vk-editor-outline__item--h2)');
+  await page.waitFor(`(() => {
+    const active = document.querySelector('#editor-outline-panel [aria-current="location"] .vk-editor-outline__item');
+    const h2Line = [...document.querySelectorAll('.cm-line')].find(l => l.textContent.includes('Hiên nhà'));
+    return active?.textContent.trim() === 'Hiên nhà' && [...(h2Line?.querySelectorAll('.cm-markdown-marker') || [])].some(m => m.textContent === '##');
+  })()`, 'outline item click jumps caret, reveals ##, and highlights active heading');
+  check((await page.status()) === 'saved', 'jumping through outline never marks draft dirty');
+
+  try {
+    for (const scene of [320, 390, 834, 1024, 1440].flatMap(width =>
+      ['100', '200'].flatMap(scale => ['light', 'dark'].map(theme => ({
+        width, scale, theme, overlay: width < 1024 || scale === '200',
+      }))))) {
+      await page.viewport(scene.width, 900);
+      await page.eval(`document.documentElement.dataset.text = '${scene.scale}'; document.documentElement.dataset.theme = '${scene.theme}'; new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))`);
+      const layout = await page.eval(`(() => {
+        const panel = document.querySelector('#editor-outline-panel');
+        return {
+          overflow: document.documentElement.scrollWidth > innerWidth,
+          pos: panel ? getComputedStyle(panel).position : null,
+        };
+      })()`);
+      check(!layout.overflow && (!scene.overlay || layout.pos === 'fixed'),
+        `Markdown + Mục lục scene ${scene.width}/${scene.scale}/${scene.theme} has no horizontal overflow (${JSON.stringify(layout)})`);
+      if ((scene.width === 320 && scene.scale === '200' && scene.theme === 'dark') ||
+          (scene.width === 1440 && scene.scale === '100' && scene.theme === 'light')) {
+        await page.waitFor(APPEARANCE_SETTLED, 'outline theme and highlight colors settled');
+        await textContrast(page, scene.theme, 'outline');
+        await page.capture('markdown-outline-' + [scene.width, scene.scale, scene.theme].join('-'), {
+          scenario: 'markdown-outline', target: '#editor-outline-title', boundary: 'Chrome, seeded private draft',
+        });
+      }
+    }
+    await page.waitFor(`document.querySelector('#editor-outline-panel:modal')?.contains(document.activeElement)`,
+      'the compact outline takes focus when it becomes a modal sheet');
+    check(await page.eval(`Boolean(document.querySelector('#editor-outline-panel li > ul > li button'))`),
+      'H2 is a nested list item of the first H1 for assistive technology');
+    await page.key('Tab');
+    check(await page.eval(`document.querySelector('#editor-outline-panel').contains(document.activeElement)`),
+      'Tab stays inside the outline sheet');
+    await page.key('Escape');
+    await page.waitFor(`!document.querySelector('#editor-outline-panel') && document.activeElement?.id === 'outline-toggle'`,
+      'Escape closes mobile Mục lục sheet and restores focus to #outline-toggle');
+  } finally {
+    await page.viewport(1440, 900);
+    await page.eval(`delete document.documentElement.dataset.text; document.documentElement.dataset.theme = 'light'; scrollTo(0, 0)`);
+  }
+
+  const beforeLongTitle = await page.draft(workId);
+  await page.eval(`(() => { const v = ${cmView}; window.__sourceBeforeLong = v.state.doc.toString(); v.dispatch({changes:{from:0,to:v.state.doc.length,insert:'# ' + 'ế'.repeat(201)}}); })()`);
+  await page.eval(`(() => { const s = document.querySelector('#editor-format-select'); s.focus(); s.value = 'default'; s.dispatchEvent(new Event('change', {bubbles:true})); })()`);
+  await page.waitFor(`document.querySelector('#format-convert-dialog[open] [role=alert]')?.textContent.includes('200') && document.querySelector('#format-convert-apply')?.getAttribute('aria-disabled') === 'true'`,
+    '201-scalar first H1 blocks conversion with a visible repair instruction');
+  await page.key('Escape');
+  await page.waitFor(`!document.querySelector('#format-convert-dialog')?.open`, 'cancel overlong H1 conversion');
+  check((await page.draft(workId)).version === beforeLongTitle.version &&
+    await page.eval(`${cmView}.state.doc.toString() === '# ' + 'ế'.repeat(201)`), 'blocked conversion preserves unsaved source and stored version');
+  await page.eval(`(() => { const v = ${cmView}; v.dispatch({changes:{from:0,to:v.state.doc.length,insert:window.__sourceBeforeLong}}); })()`);
+
+  // #262 Format switcher: preview dialog Cancel resets select cleanly; Apply persists Default cleanly on same EditorView.
+  await page.eval(`(() => { const s = document.querySelector('#editor-format-select'); s.focus(); s.value = 'default'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+  await page.waitFor(`document.querySelector('#format-convert-dialog')?.open === true`, 'format conversion preview opens');
+  check(await page.eval(`document.querySelector('#format-convert-dialog').textContent.includes('Tiếng mưa qua hiên')`),
+    'format conversion preview shows converted title');
+  await page.key('Escape');
+  await page.waitFor(`!document.querySelector('#format-convert-dialog')?.open`, 'cancel closes format conversion dialog');
+  check(await page.eval(`document.activeElement?.id === 'editor-format-select' && document.querySelector('#editor-format-select').value === 'markdown' && document.querySelector('.vk-editor')?.dataset.format === 'markdown' && window.__mdView === ${cmView}`),
+    'canceling conversion resets select and keeps Markdown EditorView untouched');
+
+  await page.eval(`(() => { const s = document.querySelector('#editor-format-select'); s.value = 'default'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+  await page.waitFor(`document.querySelector('#format-convert-dialog')?.open === true`, 'reopen format conversion dialog');
+  const ack = new SaveGate(page, 'Response');
+  try {
+    await ack.enable();
+    await page.click('#format-convert-apply');
+    await ack.fail(await ack.next());
+  } finally {
+    await ack.disable();
+  }
+  await page.waitFor(`!document.querySelector('#format-convert-dialog')?.open && document.querySelector('#draft-title')`, 'apply converts to Default and shows #draft-title');
+  await page.waitStatus('saved');
+  const converted = await page.draft(workId);
+  check(converted.document.format === 'default'
+    && converted.title === 'Tiếng mưa qua hiên'
+    && await page.eval(`document.querySelector('#draft-title')?.value === 'Tiếng mưa qua hiên' && !document.querySelector('#editor-markdown-toolbar') && window.__mdView === ${cmView}`),
+    'applying format conversion persists Default, populates #draft-title and preserves the single EditorView');
+  const chooseMarkdown = () => page.eval(`(() => { const s = document.querySelector('#editor-format-select'); s.focus(); s.value = 'markdown'; s.dispatchEvent(new Event('change', {bubbles:true})); })()`);
+  // Establish a newer server version after preview, without changing the open editor.
+  await chooseMarkdown();
+  await page.waitFor(`document.querySelector('#format-convert-dialog')?.open`, 'conversion pending author confirmation');
+  const advanced = await page.eval(`fetch('/api/v1/drafts/${workId}', {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({expected_version:${converted.version},title:'Tên khác',document:{format:'default',source:'Sửa ở thẻ khác.'}})}).then(r=>r.status)`);
+  check(advanced === 200, 'another tab saved a newer version');
+  await page.click('#format-convert-apply');
+  await page.waitStatus('conflict');
+  check(await page.eval(`document.querySelector('.vk-editor').dataset.format === 'default' && document.querySelector('#draft-title').value === 'Tiếng mưa qua hiên' && Boolean(document.querySelector('[data-testid="conversion-notice"]')) && window.__mdView === ${cmView}`),
+    'conversion 409 keeps the original title, format and editor with explicit recovery');
+  const afterConflict = await page.draft(workId);
+  check(afterConflict.version === converted.version + 1 && afterConflict.document.source === 'Sửa ở thẻ khác.',
+    'conflicting conversion preserves the concurrent server save without replay');
+
+  // Leave the conflicting fixture through the same explicit discard path as an author.
+  await page.click('.vk-editor-heading__back');
+  await page.waitFor("document.querySelector('#leave-editor')?.open", 'leaving a conflict is guarded');
+  await page.click('#leave-discard');
+  await page.waitFor("document.activeElement?.id === 'discard-back'", 'discard confirmation ready');
+  await page.click('#discard-confirm');
+  await page.waitFor("location.pathname === '/ban-viet'", 'discard kept the newer server version');
+  // A browser Back can dispose a clean editor even while a conversion's reply is in transit.
+  const newDraft = async () => {
+    await page.waitFor("document.querySelector('#create-draft') && document.querySelector('#create-draft-format')", 'draft creation ready');
+    await page.click('#create-draft');
+    await page.waitFor(EDITOR_READY, 'new Default editor ready');
+    return page.eval("location.pathname.split('/').pop()");
+  };
+  const closingWork = await newDraft();
+  await chooseMarkdown();
+  await page.waitFor("document.querySelector('#format-convert-dialog')?.open", 'clean conversion open');
+  const lateReply = new SaveGate(page, 'Response');
+  try {
+    await lateReply.enable();
+    await page.click('#format-convert-apply');
+    const held = await lateReply.next();
+    await page.eval('window.__conversionPage = true; history.back()');
+    await page.waitFor("location.pathname === '/ban-viet' && !document.querySelector('.cm-editor')", 'conversion owner disposed');
+    const nextWork = await newDraft();
+    await page.typeInBody('Văn bản đang viết.');
+    await page.waitStatus('unsaved');
+    await lateReply.release(held);
+    await page.eval('new Promise(r => setTimeout(r, 250))');
+    check(await page.eval("window.__conversionPage && document.querySelector('.vk-editor').dataset.format === 'default'") &&
+      await page.status() === 'unsaved' && await page.body() === 'Văn bản đang viết.' && nextWork !== closingWork,
+      'a late conversion ACK leaves the next draft, format, buffer and save ticket intact in the same SPA');
+    check((await page.draft(closingWork)).document.format === 'markdown' && (await page.draft(nextWork)).version === 1,
+      'only the original draft committed a new version');
+  } finally {
+    await lateReply.disable();
+  }
+  await page.click('#save');
+  await page.waitStatus('saved');
+
 }
 
 const TAGS_READY = `document.querySelector('[data-testid=tag-status]') && document.querySelector('#work-tags-query')`;

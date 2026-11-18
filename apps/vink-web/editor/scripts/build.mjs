@@ -1,4 +1,4 @@
-// Type-checks the runtime and bundles it into one ES module for the browser.
+// Type-checks the runtime, runs Markdown AST corpus checks, and bundles into one ES module.
 //
 //   node scripts/build.mjs <outfile>
 //
@@ -21,6 +21,14 @@ const tsc = spawnSync(process.execPath, [join(root, 'node_modules/typescript/bin
 });
 if (tsc.status !== 0) {
   console.error('vink-editor: type check failed');
+  process.exit(1);
+}
+
+const mdTest = spawnSync(process.execPath, [join(root, 'scripts/test-markdown.mjs')], {
+  stdio: 'inherit',
+});
+if (mdTest.status !== 0) {
+  console.error('vink-editor: markdown corpus checks failed');
   process.exit(1);
 }
 

@@ -153,6 +153,10 @@ impl EditorSession {
         self.edits
     }
 
+    pub fn acknowledged_version(&self) -> i64 {
+        self.base_version
+    }
+
     pub fn can_save(&self) -> bool {
         self.in_flight.is_none() && self.conflict.is_none()
     }
@@ -245,6 +249,12 @@ impl DraftSession {
             text: EditorSession::loaded(version),
             tags: None,
         }
+    }
+
+    pub fn can_convert(&self) -> bool {
+        self.in_flight().is_empty()
+            && !matches!(self.text.status(), SaveStatus::Conflict { .. })
+            && !matches!(self.tag_status(), Some(TagStatus::Conflict { .. }))
     }
 
     fn tags_unsaved(&self) -> bool {

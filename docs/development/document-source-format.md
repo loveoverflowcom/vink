@@ -8,13 +8,13 @@ Title authority: [editor-title-authority.md](../architecture/editor-title-author
 | Thành phần | Vị trí | Mức | Ghi chú |
 | --- | --- | --- | --- |
 | Document `{format, source}`, `Title`, `TitledDocument` | `services/vink-app/src/domain/document.rs` | `core` | Một shape, không version; `asciidoc` = `DeferredFormat`. |
-| Trích H1 Markdown (CommonMark lõi, `pulldown-cmark` không extension) | `services/vink-app/src/domain/document/markdown.rs` | `core` | Corpus `tests/fixtures/title-authority/markdown.json` 30 ca chạy thật. |
+| Trích H1 Markdown (CommonMark lõi, `pulldown-cmark` không extension) | `packages/markdown-text`, kiểm corpus tại `services/vink-app/src/domain/document/markdown.rs` | `core` | Corpus `tests/fixtures/title-authority/markdown.json` 30 ca chạy thật. |
 | Một content hash | `services/vink-app/src/domain/revision.rs` | `core` | `vink-document-content`; golden vector Python. |
 | Save/CAS, capture snapshot, đọc public, cổng `FormatNotPublishable` | `application/`, `persistence/{postgres,publication,discovery}.rs` | `persistence-api` | Title vật chất hóa trong cùng UPDATE với `document`. |
 | Migration cutover + backout chính xác | `migrations/20261122000000_canonical_document.sql`, `migrations-rollback/…down.sql` | `persistence-api` | Fail-closed khi còn revision cũ (lịch sử bất biến). |
-| HTTP API v1 | `http/contract.rs`, `contracts/http/v1/` | `persistence-api` | `title` bắt buộc cho `default`; Markdown bỏ trường hoặc gửi `null`, từ chối chuỗi client; 409 `format_not_publishable`. |
-| Web Bàn viết/Reader/kiểm duyệt/IDB | `apps/vink-web/src/{contract,document}.rs`, `pages/{desk,mod,moderation}.rs`, `public_persistence.rs`, `public-cache/indexeddb.js` | `web` (Mặc định) | Gửi buffer nguyên văn; nháp Markdown → `desk-format-unavailable`. |
-| Markdown editor/outline/picker/Reader | #256/#257/#262/#264 | `NOT_IMPLEMENTED` | Xem hệ quả ở tài liệu kiến trúc mục 7. CMP: `NOT_IMPLEMENTED`. |
+| HTTP API v1 | `http/contract.rs`, `contracts/http/v1/` | `persistence-api` | `POST /api/v1/drafts` nhận body JSON tùy chọn `{format}` (`default` \| `markdown`, vắng/rỗng = `default`); `title` bắt buộc cho `default`; Markdown bỏ trường hoặc gửi `null`, từ chối chuỗi client; 409 `format_not_publishable`. |
+| Web Bàn viết/Reader/kiểm duyệt/IDB | `apps/vink-web/src/{contract,document}.rs`, `pages/{desk,mod,moderation}.rs`, `public_persistence.rs`, `public-cache/indexeddb.js` | `web` (Mặc định + Markdown trên Bàn viết) | Gửi buffer nguyên văn; Bàn viết tạo nháp theo định dạng, soạn Markdown Live Preview, mục lục AST, đổi định dạng có xem trước; chỉ từ chối nháp chứa `\r`. |
+| Markdown Live Preview / Outline / Picker | #256/#257/#262 (`apps/vink-web/editor/src/{editor,markdown}.ts`, `apps/vink-web/src/{editor,pages/desk}.rs`) | `web` | CommonMark 0.31.2 lõi (`@codemirror/lang-markdown`), chạy đủ 30 ca `markdown.json`. Reader công khai (#264) và CMP: `NOT_IMPLEMENTED`. |
 
 Đã xóa: `domain/source.rs` (`DocumentSource`, `StoredDocument`, `EffectiveFormat::LegacyDefault`,
 `LineEnding`, `LegacyLossSummary`, `FormatCapability`), `ContentHash::of_source_v2`,

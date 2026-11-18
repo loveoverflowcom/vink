@@ -2,10 +2,12 @@
 
 Base kiểm tra: `develop@e4066df9d7cad602a1822414abb418219c612e18`, ngày 17/11/2026.
 
-> **Cập nhật sau #255:** document đã là một shape `{format, source}` không version
-> ([kiến trúc](../architecture/document-source-format.md)); bảng prerequisite dưới đây mô tả hiện
-> trạng `SCHEMA_VERSION = 1` tại base cũ. Picker thật vẫn chờ editor Markdown #256 và Reader #264;
-> Bàn viết hiện chặn tường minh nháp Markdown.
+> **Cập nhật 18/11/2026 (#256/#257/#262):** `SelectVariant::Inset16` đã được tích hợp vào
+> luồng tạo nháp trên Bàn viết (`#create-draft-format`) và tác vụ đổi định dạng có chủ đích
+> (`#editor-format-select` + `#format-convert-dialog` có xem trước / `Hủy` / `Áp dụng`); Bàn viết
+> mở và soạn được cả `default` lẫn `markdown` (một `EditorView` Live Preview). Reader công khai
+> (`#264`) vẫn tách riêng nên cổng `format_not_publishable` khi xuất bản công khai giữ nguyên.
+> Xem LayoutSpec hợp nhất tại [editor-live-preview-256-257.md](editor-live-preview-256-257.md).
 Nguồn yêu cầu: [issue #262](https://github.com/loveoverflowcom/vink/issues/262),
 body/comments đọc trước triển khai. Không có PR mở lúc discovery. #255/#256/#263 còn mở,
 không có comment triển khai; state issue chỉ là một dữ kiện, inventory source dưới đây mới

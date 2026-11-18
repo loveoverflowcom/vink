@@ -4,6 +4,7 @@
 //! rewriting. Reading paragraphs out of a default document is a presentation projection only.
 
 use leptos::prelude::*;
+use unicode_normalization::UnicodeNormalization;
 
 use crate::contract::{DocumentDto, DocumentFormatDto};
 
@@ -15,29 +16,149 @@ pub fn default_document(text: &str) -> DocumentDto {
     }
 }
 
+/// The desk's text as a Markdown document, byte for byte.
+pub fn markdown_document(text: &str) -> DocumentDto {
+    DocumentDto {
+        format: DocumentFormatDto::Markdown,
+        source: text.to_owned(),
+    }
+}
+
 /// Why the desk's CodeMirror editor cannot open a document without changing it on the next save.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NotEditable {
-    /// Markdown needs its own editor and title authority (#256/#262).
-    Markdown,
     /// CodeMirror normalizes `\r\n`/`\r` to `\n`; saving would silently change line endings.
     CarriageReturn,
 }
 
 /// The desk opens a document only when saving its buffer would return the same source bytes.
 pub fn desk_editable(document: &DocumentDto) -> Result<(), NotEditable> {
-    match document.format {
-        DocumentFormatDto::Markdown => Err(NotEditable::Markdown),
-        DocumentFormatDto::Default if document.source.contains('\r') => {
-            Err(NotEditable::CarriageReturn)
-        }
-        DocumentFormatDto::Default => Ok(()),
+    if document.source.contains('\r') {
+        Err(NotEditable::CarriageReturn)
+    } else {
+        Ok(())
     }
 }
 
 /// Whether the source holds any visible text (blank and whitespace-only lines do not count).
 pub fn has_text(document: &DocumentDto) -> bool {
     !document.source.trim().is_empty()
+}
+
+/// Result of previewing an intentional format conversion (#262).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConversionPreview {
+    pub target_format: DocumentFormatDto,
+    pub title: String,
+    pub source: String,
+    pub note: String,
+}
+
+fn escape_leading_atx_hashes(source: &str) -> String {
+    let mut out = String::with_capacity(source.len());
+    for (idx, line) in source.split('\n').enumerate() {
+        if idx > 0 {
+            out.push('\n');
+        }
+        let trimmed_start = line.trim_start_matches([' ', '\t']);
+        let indent_len = line.len() - trimmed_start.len();
+        if indent_len <= 3 && trimmed_start.starts_with('#') {
+            out.push_str(&line[..indent_len]);
+            out.push('\\');
+            out.push_str(trimmed_start);
+        } else {
+            out.push_str(line);
+        }
+    }
+    out
+}
+
+/// Computes an explicit, lossless conversion preview between `default` and `markdown` (#262).
+pub fn preview_format_conversion(
+    from: DocumentFormatDto,
+    to: DocumentFormatDto,
+    default_title: &str,
+    source: &str,
+) -> ConversionPreview {
+    if from == to {
+        return ConversionPreview {
+            target_format: to,
+            title: match to {
+                DocumentFormatDto::Default => default_title.trim().nfc().collect(),
+                DocumentFormatDto::Markdown => markdown_first_h1(source),
+            },
+            source: source.to_owned(),
+            note: "Giữ nguyên định dạng hiện tại.".into(),
+        };
+    }
+    match (from, to) {
+        (DocumentFormatDto::Default, DocumentFormatDto::Markdown) => {
+            let clean_title: String = default_title.trim().nfc().collect();
+            let escaped = escape_leading_atx_hashes(source);
+            // A plain title must remain literal, even when it contains a link, entity or closing #.
+            let mut heading = String::new();
+            for c in clean_title.chars() {
+                if c.is_ascii_punctuation() {
+                    heading.push('\\');
+                }
+                heading.push(c);
+            }
+            let next_source = if clean_title.is_empty() {
+                escaped
+            } else if escaped.is_empty() {
+                format!("# {heading}")
+            } else {
+                format!("# {heading}\n\n{escaped}")
+            };
+            let note = if clean_title.is_empty() {
+                "Giữ nguyên chữ nguồn sang Markdown; các dấu # ở đầu dòng được escape (\\#) để không đổi nghĩa."
+            } else {
+                "Tiêu đề riêng được đặt làm H1 đầu tiên (# …); các dấu # ở đầu dòng có sẵn được escape (\\#)."
+            };
+            ConversionPreview {
+                target_format: DocumentFormatDto::Markdown,
+                title: markdown_first_h1(&next_source),
+                source: next_source,
+                note: note.into(),
+            }
+        }
+        (DocumentFormatDto::Markdown, DocumentFormatDto::Default) => {
+            let extracted: String = markdown_first_h1(source);
+            ConversionPreview {
+                target_format: DocumentFormatDto::Default,
+                title: extracted,
+                source: source.to_owned(),
+                note: "H1 đầu tiên được dùng làm tiêu đề riêng; toàn bộ chữ nguồn được giữ nguyên không bị mất ký tự.".into(),
+            }
+        }
+        _ => unreachable!(),
+    }
+}
+
+/// The same CommonMark projection that the server materializes for this exact source.
+pub fn markdown_first_h1(source: &str) -> String {
+    vink_markdown_text::first_h1_projection(source)
+        .trim()
+        .nfc()
+        .collect()
+}
+
+impl ConversionPreview {
+    pub fn title_too_long(&self) -> bool {
+        self.title.chars().count() > 200
+    }
+}
+
+fn strip_atx_closing_hashes(text: &str) -> &str {
+    let trimmed = text.trim_end_matches([' ', '\t']);
+    let without_hashes = trimmed.trim_end_matches('#');
+    if without_hashes.len() < trimmed.len()
+        && (without_hashes.is_empty() || without_hashes.ends_with([' ', '\t']))
+    {
+        without_hashes.trim_end_matches([' ', '\t'])
+    } else {
+        trimmed
+    }
 }
 
 /// Paragraphs and stanzas of a default document for reading: a run of blank or whitespace-only
@@ -61,9 +182,83 @@ pub fn paragraphs(source: &str) -> Vec<Vec<&str>> {
     blocks
 }
 
+enum PreviewBlock {
+    Heading { level: usize, text: String },
+    Quote(Vec<String>),
+    Code(Vec<String>),
+    Paragraph(Vec<String>),
+}
+
+fn markdown_preview_blocks(source: &str) -> Vec<PreviewBlock> {
+    let mut blocks = Vec::new();
+    let mut para: Vec<String> = Vec::new();
+    let mut quote: Vec<String> = Vec::new();
+    let mut code: Vec<String> = Vec::new();
+    let mut fence: Option<char> = None;
+
+    let flush_para = |blocks: &mut Vec<PreviewBlock>, para: &mut Vec<String>| {
+        if !para.is_empty() {
+            blocks.push(PreviewBlock::Paragraph(std::mem::take(para)));
+        }
+    };
+    let flush_quote = |blocks: &mut Vec<PreviewBlock>, quote: &mut Vec<String>| {
+        if !quote.is_empty() {
+            blocks.push(PreviewBlock::Quote(std::mem::take(quote)));
+        }
+    };
+
+    for line in source.lines().flat_map(|line| line.split('\r')) {
+        let trimmed = line.trim_start_matches(' ');
+        if let Some(fc) = fence {
+            if trimmed.starts_with(fc) && trimmed.chars().take_while(|&c| c == fc).count() >= 3 {
+                blocks.push(PreviewBlock::Code(std::mem::take(&mut code)));
+                fence = None;
+            } else {
+                code.push(line.to_owned());
+            }
+            continue;
+        }
+        if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
+            flush_para(&mut blocks, &mut para);
+            flush_quote(&mut blocks, &mut quote);
+            fence = trimmed.chars().next();
+            continue;
+        }
+        if line.trim().is_empty() {
+            flush_para(&mut blocks, &mut para);
+            flush_quote(&mut blocks, &mut quote);
+            continue;
+        }
+        if let Some(q) = trimmed.strip_prefix('>') {
+            flush_para(&mut blocks, &mut para);
+            quote.push(q.strip_prefix(' ').unwrap_or(q).to_owned());
+            continue;
+        }
+        flush_quote(&mut blocks, &mut quote);
+        let hashes = trimmed.chars().take_while(|&c| c == '#').count();
+        if (1..=6).contains(&hashes) {
+            let rest = &trimmed[hashes..];
+            if rest.is_empty() || rest.starts_with([' ', '\t']) {
+                flush_para(&mut blocks, &mut para);
+                blocks.push(PreviewBlock::Heading {
+                    level: hashes,
+                    text: strip_atx_closing_hashes(rest.trim()).to_owned(),
+                });
+                continue;
+            }
+        }
+        para.push(line.to_owned());
+    }
+    if fence.is_some() {
+        blocks.push(PreviewBlock::Code(code));
+    }
+    flush_para(&mut blocks, &mut para);
+    flush_quote(&mut blocks, &mut quote);
+    blocks
+}
+
 /// Default documents render as paragraphs; CSS `white-space: pre-wrap` keeps line breaks and
-/// indentation. Markdown has no Reader yet (#264, and publication refuses it): its source is shown
-/// verbatim as escaped text, never interpreted as HTML.
+/// indentation. Markdown in the private draft preview renders safe escaped blocks without HTML execution.
 #[component]
 pub fn DocumentView(document: DocumentDto) -> impl IntoView {
     match document.format {
@@ -81,12 +276,41 @@ pub fn DocumentView(document: DocumentDto) -> impl IntoView {
                 .collect_view();
             view! { <div class="vk-document">{blocks}</div> }.into_any()
         }
-        DocumentFormatDto::Markdown => view! {
-            <div class="vk-document" data-format="markdown">
-                <p class="vk-block vk-block--lines">{document.source}</p>
-            </div>
+        DocumentFormatDto::Markdown => {
+            let blocks = markdown_preview_blocks(&document.source)
+                .into_iter()
+                .map(|block| match block {
+                    PreviewBlock::Heading { level, text } => view! {
+                        <p class=format!("vk-block vk-preview-md-h{level}")>{text}</p>
+                    }
+                    .into_any(),
+                    PreviewBlock::Quote(lines) => view! {
+                        <blockquote class="vk-block vk-block--lines vk-preview-md-quote">
+                            {lines.join("\n")}
+                        </blockquote>
+                    }
+                    .into_any(),
+                    PreviewBlock::Code(lines) => view! {
+                        <pre class="vk-block vk-preview-md-code"><code>{lines.join("\n")}</code></pre>
+                    }
+                    .into_any(),
+                    PreviewBlock::Paragraph(lines) => {
+                        let class = if lines.len() > 1 {
+                            "vk-block vk-block--lines"
+                        } else {
+                            "vk-block"
+                        };
+                        view! { <p class=class>{lines.join("\n")}</p> }.into_any()
+                    }
+                })
+                .collect_view();
+            view! {
+                <div class="vk-document" data-format="markdown">
+                    {blocks}
+                </div>
+            }
+            .into_any()
         }
-        .into_any(),
     }
 }
 
@@ -125,17 +349,73 @@ mod tests {
     }
 
     #[test]
-    fn the_desk_opens_only_documents_it_saves_back_unchanged() {
+    fn the_desk_opens_default_and_markdown_without_carriage_returns() {
         assert_eq!(desk_editable(&default_document("  Thơ\n\n\nKhổ\t")), Ok(()));
         assert_eq!(
             desk_editable(&default_document("Một\r\nHai")),
             Err(NotEditable::CarriageReturn)
         );
-        let markdown = DocumentDto {
-            format: DocumentFormatDto::Markdown,
-            source: "# Mưa".into(),
-        };
-        assert_eq!(desk_editable(&markdown), Err(NotEditable::Markdown));
+        let markdown = markdown_document("# Mưa");
+        assert_eq!(desk_editable(&markdown), Ok(()));
+        assert_eq!(
+            desk_editable(&markdown_document("# Mưa\r\nThân")),
+            Err(NotEditable::CarriageReturn)
+        );
+    }
+
+    #[test]
+    fn conversion_preview_preserves_text_and_escapes_hashes() {
+        let to_md = preview_format_conversion(
+            DocumentFormatDto::Default,
+            DocumentFormatDto::Markdown,
+            "Tiếng mưa",
+            "# Không phải tiêu đề\nĐoạn thường.",
+        );
+        assert_eq!(to_md.target_format, DocumentFormatDto::Markdown);
+        assert_eq!(to_md.title, "Tiếng mưa");
+        assert_eq!(
+            to_md.source,
+            "# Tiếng mưa\n\n\\# Không phải tiêu đề\nĐoạn thường."
+        );
+
+        let to_default = preview_format_conversion(
+            DocumentFormatDto::Markdown,
+            DocumentFormatDto::Default,
+            "",
+            "# Tiếng mưa\n\n## Hiên nhà\nNội dung.",
+        );
+        assert_eq!(to_default.target_format, DocumentFormatDto::Default);
+        assert_eq!(to_default.title, "Tiếng mưa");
+        assert_eq!(to_default.source, "# Tiếng mưa\n\n## Hiên nhà\nNội dung.");
+    }
+
+    #[test]
+    fn conversion_uses_the_canonical_title_and_preserves_blank_source() {
+        use DocumentFormatDto::{Default, Markdown};
+        let title = "[mưa](url) &eacute; *gió* #";
+        let converted = preview_format_conversion(Default, Markdown, title, " \n\t");
+        assert_eq!(converted.title, title);
+        assert!(converted.source.ends_with("\n\n \n\t"));
+        assert_eq!(
+            preview_format_conversion(Default, Markdown, "", "Mưa\n===").title,
+            "Mưa"
+        );
+        assert_eq!(
+            preview_format_conversion(Markdown, Default, "", "# <https://x.vn> &eacute;").title,
+            "https://x.vn é"
+        );
+        for length in [200, 201] {
+            let title = "ế".repeat(length);
+            assert_eq!(
+                preview_format_conversion(Default, Markdown, &title, "body").title_too_long(),
+                length > 200
+            );
+            assert_eq!(
+                preview_format_conversion(Markdown, Default, "", &format!("# {title}"))
+                    .title_too_long(),
+                length > 200
+            );
+        }
     }
 
     #[test]

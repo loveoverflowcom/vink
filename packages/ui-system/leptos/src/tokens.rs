@@ -1083,6 +1083,14 @@ pub mod dim {
         compact: None,
         web: WebUnit::Px,
     };
+    pub const SIZE_DRAFT_ACTION_ICON: Dimension = Dimension {
+        token: "size.draft-action-icon",
+        css_var: "--vk-size-draft-action-icon",
+        value: 18.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Px,
+    };
     pub const SIZE_EDGE_PROGRESS: Dimension = Dimension {
         token: "size.edge-progress",
         css_var: "--vk-size-edge-progress",
@@ -1235,6 +1243,14 @@ pub mod dim {
         compact: None,
         web: WebUnit::Rem,
     };
+    pub const SPACE_DRAFT_ACTION_GAP: Dimension = Dimension {
+        token: "space.draft-action-gap",
+        css_var: "--vk-space-draft-action-gap",
+        value: 8.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Px,
+    };
     pub const TEXT_READING: Dimension = Dimension {
         token: "text.reading",
         css_var: "--vk-text-reading",
@@ -1244,7 +1260,7 @@ pub mod dim {
         web: WebUnit::Rem,
     };
 
-    pub const ALL: [Dimension; 40] = [
+    pub const ALL: [Dimension; 42] = [
         DENSITY_CONTROL_HEIGHT,
         DENSITY_CONTROL_PADDING,
         DENSITY_STACK_GAP,
@@ -1265,6 +1281,7 @@ pub mod dim {
         SIZE_AVATAR_SPOTLIGHT,
         SIZE_AVATAR_SPOTLIGHT_NARROW,
         SIZE_BOTTOM_BAR,
+        SIZE_DRAFT_ACTION_ICON,
         SIZE_EDGE_PROGRESS,
         SIZE_FOCUS_OFFSET,
         SIZE_FOCUS_RING,
@@ -1284,6 +1301,7 @@ pub mod dim {
         SPACE_4,
         SPACE_6,
         SPACE_8,
+        SPACE_DRAFT_ACTION_GAP,
         TEXT_READING,
     ];
 }

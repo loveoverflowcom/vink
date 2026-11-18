@@ -41,7 +41,12 @@ impl DraftStore for RecordingStore {
         panic!("save must not list drafts")
     }
 
-    async fn create_draft(&self, _: PrincipalId, _: WorkId) -> Result<WorkingDraft, StoreError> {
+    async fn create_draft(
+        &self,
+        _: PrincipalId,
+        _: WorkId,
+        _: crate::domain::document::DocumentFormat,
+    ) -> Result<WorkingDraft, StoreError> {
         panic!("save must not create a draft or revision")
     }
 

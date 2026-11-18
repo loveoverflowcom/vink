@@ -19,6 +19,23 @@ pub enum DocumentFormatDto {
     Markdown,
 }
 
+impl DocumentFormatDto {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Default => "default",
+            Self::Markdown => "markdown",
+        }
+    }
+
+    pub fn parse(raw: &str) -> Option<Self> {
+        match raw {
+            "default" => Some(Self::Default),
+            "markdown" => Some(Self::Markdown),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DocumentDto {
@@ -133,6 +150,12 @@ pub struct Draft {
     pub version: i64,
     pub updated_at: String,
     pub document: DocumentDto,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CreateDraftRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub format: Option<DocumentFormatDto>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

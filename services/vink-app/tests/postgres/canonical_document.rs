@@ -564,3 +564,69 @@ async fn backout_refuses_drafts_outside_retired_reader_limits(pool: PgPool) {
         assert_eq!(stored(&pool, work).await, before);
     }
 }
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn create_draft_accepts_optional_format_and_rejects_deferred_or_unknown(pool: PgPool) {
+    let _ = seeded(&pool).await;
+    let router = app(&pool).await;
+
+    // Anonymous requests fail closed before reading or parsing the body.
+    let (status, _, _) = call(
+        &router,
+        "POST",
+        "/api/v1/drafts",
+        None,
+        Some(ORIGIN),
+        Some(json!({"format": "asciidoc"})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+    // Empty body defaults to `default`.
+    let (status, _, body) = call(
+        &router,
+        "POST",
+        "/api/v1/drafts",
+        Some(dev_seed::SAMPLE_AUTHOR),
+        Some(ORIGIN),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+    assert_eq!(json(&body)["document"]["format"], "default");
+    assert_eq!(json(&body)["version"], 1);
+
+    // Explicit `markdown` creates a Markdown draft at version 1.
+    let (status, _, body) = call(
+        &router,
+        "POST",
+        "/api/v1/drafts",
+        Some(dev_seed::SAMPLE_AUTHOR),
+        Some(ORIGIN),
+        Some(json!({"format": "markdown"})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+    assert_eq!(json(&body)["document"]["format"], "markdown");
+    assert_eq!(json(&body)["document"]["source"], "");
+    assert_eq!(json(&body)["title"], "");
+    assert_eq!(json(&body)["version"], 1);
+
+    // Deferred (`asciidoc`) and unsupported formats are rejected with 422.
+    for invalid in [
+        json!({"format": "asciidoc"}),
+        json!({"format": "html"}),
+        json!({"format": "markdown", "extra": true}),
+    ] {
+        let (status, _, body) = call(
+            &router,
+            "POST",
+            "/api/v1/drafts",
+            Some(dev_seed::SAMPLE_AUTHOR),
+            Some(ORIGIN),
+            Some(invalid),
+        )
+        .await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{body}");
+    }
+}

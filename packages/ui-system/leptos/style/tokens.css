@@ -70,6 +70,7 @@
   --vk-size-avatar-spotlight: 40px;
   --vk-size-avatar-spotlight-narrow: 38px;
   --vk-size-bottom-bar: 80px;
+  --vk-size-draft-action-icon: 18px;
   --vk-size-edge-progress: 4px;
   --vk-size-focus-offset: 2px;
   --vk-size-focus-ring: 3px;
@@ -89,6 +90,7 @@
   --vk-space-4: 1rem;
   --vk-space-6: 1.5rem;
   --vk-space-8: 2rem;
+  --vk-space-draft-action-gap: 8px;
   --vk-text-reading: clamp(1.0625rem, 1rem + 0.25vw, 1.25rem);
   --vk-type-body-font: var(--vk-font-ui);
   --vk-type-body-size: 1rem;

@@ -122,9 +122,9 @@ impl DraftStore for PgStore {
         &self,
         owner: PrincipalId,
         work_id: WorkId,
+        format: DocumentFormat,
     ) -> Result<WorkingDraft, StoreError> {
-        // New works start as default documents; choosing a format at creation belongs to #262.
-        let empty = Document::empty(DocumentFormat::Default);
+        let empty = Document::empty(format);
         let mut tx = self.pool.begin().await.map_err(classify)?;
         // Standing fence first: nothing else is locked and `works.owner_id` references the actor.
         require_active(&mut tx, owner).await?;

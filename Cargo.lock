@@ -3249,7 +3249,6 @@ dependencies = [
  "leptos",
  "leptos_axum",
  "leptos_meta",
- "pulldown-cmark",
  "serde",
  "serde_json",
  "sha2 0.11.1",
@@ -3263,6 +3262,7 @@ dependencies = [
  "tracing-subscriber",
  "unicode-normalization",
  "uuid",
+ "vink-markdown-text",
  "vink-store-postgres",
  "vink-web",
 ]
@@ -3300,6 +3300,13 @@ dependencies = [
  "unicode-normalization",
  "uuid",
  "vink-store-postgres",
+]
+
+[[package]]
+name = "vink-markdown-text"
+version = "0.1.0"
+dependencies = [
+ "pulldown-cmark",
 ]
 
 [[package]]
@@ -3362,6 +3369,7 @@ dependencies = [
  "serde_json",
  "unicode-normalization",
  "vink-expressions",
+ "vink-markdown-text",
  "vink-patterns",
  "vink-ui",
  "wasm-bindgen",

@@ -507,7 +507,20 @@ mod tests {
         client
             .write_all(b"GET /large.wasm HTTP/1.1\r\nHost: localhost\r\n\r\n")
             .unwrap();
-        let (stream, _) = listener.accept().unwrap();
+        // A completed loopback connect can still precede readiness on a nonblocking listener.
+        let deadline = std::time::Instant::now() + Duration::from_secs(10);
+        let stream = loop {
+            match listener.accept() {
+                Ok((stream, _)) => break stream,
+                Err(error)
+                    if error.kind() == std::io::ErrorKind::WouldBlock
+                        && std::time::Instant::now() < deadline =>
+                {
+                    std::thread::sleep(Duration::from_millis(5));
+                }
+                Err(error) => panic!("accept preview fixture: {error}"),
+            }
+        };
         stream
             .set_write_timeout(Some(Duration::from_secs(10)))
             .unwrap();

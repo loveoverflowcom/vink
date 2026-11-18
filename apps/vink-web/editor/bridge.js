@@ -31,3 +31,10 @@ export const destroyEditor = (handle) => ready().destroyEditor(handle);
 export const getText = (handle) => ready().getText(handle);
 export const focusEditor = (handle) => ready().focusEditor(handle);
 export const isComposing = (handle) => ready().isComposing(handle);
+export const setFormat = (handle, format) => ready().setFormat(handle, format);
+export const applyConvertedDocument = (handle, format, text) =>
+  ready().applyConvertedDocument(handle, format, text);
+export const applyHeading = (handle, level) => ready().applyHeading(handle, level);
+export const applyInlineFormat = (handle, kind) => ready().applyInlineFormat(handle, kind);
+export const jumpToHeading = (handle, from, generation) =>
+  ready().jumpToHeading(handle, from, generation);

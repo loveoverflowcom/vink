@@ -360,7 +360,6 @@ dependencies = [
 name = "vink-domain-proof"
 version = "0.1.0"
 dependencies = [
- "pulldown-cmark",
  "serde",
  "serde_json",
  "sha2",
@@ -368,6 +367,14 @@ dependencies = [
  "time",
  "unicode-normalization",
  "uuid",
+ "vink-markdown-text",
+]
+
+[[package]]
+name = "vink-markdown-text"
+version = "0.1.0"
+dependencies = [
+ "pulldown-cmark",
 ]
 
 [[package]]
