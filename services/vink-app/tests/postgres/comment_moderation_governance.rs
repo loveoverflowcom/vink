@@ -1087,7 +1087,13 @@ async fn schema_provenance_atomicity_history_and_upgrade_backout(pool: PgPool) {
     let report = upgrade_before_cutover(&pool).await;
     assert_eq!(
         report.applied,
-        vec![COMMENT_GOVERNANCE_MIGRATION, 20261120000000, 20261121000000]
+        vec![
+            COMMENT_GOVERNANCE_MIGRATION,
+            20261120000000,
+            20261121000000,
+            20261121120000,
+            20261121120100
+        ]
     );
     assert_eq!(
         decision_provenance(&pool, legacy_comment, 2).await,

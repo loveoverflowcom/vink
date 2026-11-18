@@ -338,7 +338,7 @@ async fn cutover_converts_retired_drafts_exactly_once(pool: PgPool) {
 
 /// The operator script as written (its own BEGIN/COMMIT) on one connection; a refusal leaves
 /// that connection's transaction aborted, so it is rolled back before the pool reuses it.
-async fn run_backout(pool: &PgPool) -> Result<(), sqlx::Error> {
+pub(super) async fn run_backout(pool: &PgPool) -> Result<(), sqlx::Error> {
     let mut conn = pool.acquire().await.unwrap();
     let result = sqlx::raw_sql(sqlx::AssertSqlSafe(include_str!(
         "../../migrations-rollback/20261122000000_canonical_document.down.sql"

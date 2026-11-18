@@ -64,6 +64,8 @@ mod post_review;
 mod principal;
 #[path = "postgres/publication.rs"]
 mod publication;
+#[path = "postgres/publication_policy.rs"]
+mod publication_policy;
 #[path = "postgres/publication_state.rs"]
 mod publication_state;
 #[path = "postgres/publication_state_budget.rs"]

@@ -1067,6 +1067,26 @@ impl AuthorPublicationStore for PgStore {
             // 6. Decision, history, evaluator job and human case exactly as the core routed the
             // review: a resubmission keeps the revision's decision version; a paused mode or a
             // human re-review goes to the queue instead of the evaluator.
+            if transition.review == ReviewRequest::PolicyRereview {
+                // Old approvals can predate the history table. Preserve the actual stored
+                // evidence before replacing it. A legacy row has no evaluator or case ID.
+                query(
+                    "INSERT INTO work_revision_decision_history
+                         (id, work_id, revision_id, decision_version, moderation, policy_version,
+                          provenance_kind, actor_id, moderator_grant_id, reason, created_at)
+                     SELECT $3, work_id, revision_id, decision_version, moderation, policy_version,
+                            provenance_kind, admin_actor, moderator_grant_id, admin_reason, updated_at
+                       FROM work_revision_moderation
+                      WHERE work_id = $1 AND revision_id = $2 AND moderation = 'approved'
+                     ON CONFLICT (work_id, revision_id, decision_version) DO NOTHING",
+                )
+                .bind(work_id.as_uuid())
+                .bind(revision_id.as_uuid())
+                .bind(Uuid::now_v7())
+                .execute(&mut *tx)
+                .await
+                .map_err(classify)?;
+            }
             if transition.ticket.is_some()
                 || transition.human_review.is_some()
                 || transition.review != ReviewRequest::None
