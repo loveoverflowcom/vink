@@ -34,7 +34,8 @@ không build trên VPS. Nếu package cần xác thực, dùng đường pull đ
    Sau xác nhận thay đổi firewall, mở route phía DB từ members bridge `vinkpdb0` tới đúng
    `10.89.3.10/32:5432/tcp` trên cùng bridge. Phía ingress chỉ cho `10.89.4.2/32` (Caddy) đến
    `10.89.4.10/32:3000/tcp` trên `vinkping0`. Không thêm inbound port hay đổi UFW defaults.
-4. Đặt `PODMAN_COMPOSE_PROVIDER=/usr/bin/podman-compose` rồi dùng cùng prefix như trong
+4. Đặt `PODMAN_COMPOSE_PROVIDER=/usr/bin/podman-compose` và dùng đường dẫn tuyệt đối cho
+   cả hai manifest. Dùng cùng prefix như trong
    `vink-prod.service` cho `up -d postgres`, đợi health qua TCP, `run --rm provision`,
    `run --rm provision --check`, `run --rm migrate-app` rồi `run --rm migrate-identity`.
    Kiểm hai lệnh migrate chạy lại no-op. Chỉ bật `vink-prod.service` sau khi hoàn tất migration.

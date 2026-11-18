@@ -13,7 +13,7 @@ work=$(mktemp -d "$root/.incomplete.XXXXXXXX")
 trap 'rm -f -- "$work/vink.dump" "$work/vink_identity.dump" "$work/SHA256SUMS"; rmdir -- "$work" 2>/dev/null || true' EXIT
 export PODMAN_COMPOSE_PROVIDER=/usr/bin/podman-compose
 compose=(podman compose --project-name vink-prod --env-file /etc/vink-prod/release.env
-    -f services/postgres/compose.yaml -f infra/production/compose.yaml)
+    -f /opt/vink-prod/current/services/postgres/compose.yaml -f /opt/vink-prod/current/infra/production/compose.yaml)
 for database in vink vink_identity; do
     "${compose[@]}" exec -T postgres pg_dump -U vink -Fc "$database" > "$work/$database.dump"
     "${compose[@]}" exec -T postgres pg_restore --list < "$work/$database.dump" > /dev/null
