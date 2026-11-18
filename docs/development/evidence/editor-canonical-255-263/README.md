@@ -1,5 +1,7 @@
 # Bằng chứng — document canonical (#255) và title theo định dạng (#263)
 
+Bản [tích hợp với #287](integration-287/README.md) ghi các mốc migration, backout và kiểm chứng trên đầu kết hợp.
+
 Kết quả tích hợp #286 và signoff r2 nằm ở [review ngày 18/11](integration-286/README.md).
 
 **Phạm vi lịch sử:** các kết quả dưới đây do tác giả báo trước rebase, trên base

@@ -27,3 +27,5 @@ Title authority: [editor-title-authority.md](../architecture/editor-title-author
 Lệnh, số test và kết quả của lần thay đổi này nằm trong mô tả PR và
 [evidence/editor-canonical-255-263](evidence/editor-canonical-255-263/README.md). Không suy PASS từ
 merge, fixture hay ảnh cũ.
+
+Sau #287, [chứng cứ kết hợp](evidence/editor-canonical-255-263/integration-287/README.md) ghim fixture legacy, ba mốc migration và lifecycle qua runtime canonical.
