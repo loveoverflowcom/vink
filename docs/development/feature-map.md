@@ -12,7 +12,7 @@ kiểm PostgreSQL, HTTP và browser cho hành trình Social thuộc từng PR tr
 
 **Đối soát có phạm vi ngày 16/11/2026, `develop@6e07806`:** [20 PR gần đây, proposal và gap](verification-reconciliation-20261116.md). Các mốc ở phần mở đầu dưới đây là lịch sử theo lát, không phải ngày kiểm lại toàn bộ bản đồ. [Model/replay ReadOwner/PageChain](../../apps/vink-web/behavior/README.md) bổ sung coverage thuần; không refresh evidence browser/PG cũ.
 
-**Web Perf #234 · baseline opt-in:** [cách đo và giới hạn](web-perf-baseline.md) với 200 works/1.000 comments, 10 cold + 10 warm, history SSR, transport secondary/304 và [trace release](evidence/web-perf-234-236/README.md). Debug lab `997d97d` vẫn là [evidence lịch sử](evidence/web-perf-234/README.md).
+**Web Perf #234 · baseline opt-in:** [cách đo và giới hạn](web-perf-baseline.md) với 200 works/1.000 comments, 10 cold + 10 warm, history SSR, transport secondary/304 và [trace release hai corpus kèm owner/timer](evidence/web-perf-234-canonical/README.md). Debug lab `997d97d` vẫn là [evidence lịch sử](evidence/web-perf-234/README.md).
 
 **Web Perf #235 · SSR Reader:** [owner, lựa chọn A/B/C và regression](reader-ssr-boundary.md) giữ Async. `main` cover blocked bootstrap, WASM-only delay/failure và fresh Reader handoff; ma trận Leptos/Axum giữ status/privacy trước response. Proxy và streaming chưa thử.
 
