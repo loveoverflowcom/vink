@@ -35,3 +35,5 @@ cargo xtask verify web --scenario return-position --release
 Đối chứng paint giữ cùng #234 probe và cùng harness, thay production restore bằng bản trước sửa. Đối chứng rollback route dùng một checkout riêng tại base, `git revert --no-commit c90719f`, build bundle release, rồi phục vụ bundle đó trên corpus #234 và chạy phase `return-position` từ nhánh harness. Trường `source_sha` trong raw của lượt này là SHA của harness; WASM đến từ bản revert. [Trace 50 vòng đã merge](../web-perf-234-236/README.md) là mốc trước đó.
 
 [Digest SQL seed, source canonical và cấu hình artifact](fixtures.json).
+
+`cargo xtask verify quick` đạt trên cùng tree tích hợp `ab62df5`. Lượt đầu dừng vì hết dung lượng trên tmpfs khi compile doctest. Lượt chạy lại dùng cùng source, chuyển target và thư mục tạm sang ổ đĩa. [Kết quả từng bước](quick.log).
