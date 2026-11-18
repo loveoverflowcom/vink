@@ -86,7 +86,7 @@ export async function measureReaderLifecycle(page, { origin, work, results, phas
   await clockAdvance(page);
   const waitWire = async label => {
     const deadline = Date.now() + 10000;
-    while (!results.transport.some(r => r.phase === label && r.path === api && r.wire_status === 304)
+    while (!results.transport.some(r => r.phase === label && r.path === api && r.wire_status === 304 && r.response_status === 200 && r.finished_s != null)
         && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 25));
     const rows = results.transport.filter(r => r.phase === label && r.path === api);
     check(rows.length === 1 && rows[0].validator_sent && rows[0].wire_status === 304 && rows[0].response_status === 200,
