@@ -1,5 +1,7 @@
 # Bằng chứng — document canonical (#255) và title theo định dạng (#263)
 
+Kết quả tích hợp #286 và signoff r2 nằm ở [review ngày 18/11](integration-286/README.md).
+
 **Phạm vi lịch sử:** các kết quả dưới đây do tác giả báo trước rebase, trên base
 `develop@607ef83` (17/11/2026), nhánh `codex/editor-canonical-replacement`, worktree riêng.
 Không dùng bảng này làm bằng chứng trên head `39641d5` (sau rebase lên `29185dd`) hay trên
