@@ -117,7 +117,9 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
       });
       return;
     }
-    emitSnapshot(extractOutline(handle.view.state, handle.generation));
+    const snapshot = extractOutline(handle.view.state, handle.generation, 8);
+    emitSnapshot(snapshot);
+    if (snapshot.status === 'partial') handle.scheduleOutline();
   };
 
   handle.scheduleOutline = (immediate = false) => {
@@ -237,14 +239,21 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
           },
         }),
         EditorView.domEventObservers({
-          mousedown() {
+          pointerdown() {
             pointerDown = true;
             cancelFocusRestore();
           },
-          mouseup() {
+          pointerup() {
             pointerDown = false;
           },
+          pointercancel() {
+            pointerDown = false;
+          },
+          compositionstart() {
+            cancelFocusRestore();
+          },
           blur() {
+            cancelFocusRestore();
             pointerDown = false;
           },
           keydown() {

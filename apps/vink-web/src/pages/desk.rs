@@ -774,9 +774,21 @@ fn Editor(draft: Draft) -> impl IntoView {
     let page_scroll = StoredValue::new(0.0_f64);
     let preview = RwSignal::new(None::<(String, DocumentDto)>);
     let outline_open = RwSignal::new(false);
+    let outline_panel = NodeRef::<html::Dialog>::new();
+    #[cfg(feature = "hydrate")]
+    observe_outline_layout(outline_panel);
+    let close_outline = move || {
+        #[cfg(feature = "hydrate")]
+        if let Some(panel) = outline_panel.get_untracked() {
+            panel.close();
+        }
+        outline_open.set(false);
+        focus_element_by_id("outline-toggle");
+    };
     let heading_menu_open = RwSignal::new(false);
     let convert_preview = RwSignal::new(None::<ConversionPreview>);
     let converting = RwSignal::new(false);
+    let conversion_notice = RwSignal::new(None::<String>);
     let format_select_sync = RwSignal::new(0_u32);
     let just_saved = RwSignal::new(false);
     #[cfg(feature = "hydrate")]
@@ -1133,9 +1145,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                 crate::document::default_document(&source),
             ),
             DocumentFormatDto::Markdown => (
-                body.outline
-                    .with_untracked(|o| (!o.title.is_empty()).then(|| o.title.clone()))
-                    .unwrap_or_else(|| crate::document::markdown_first_h1(&source)),
+                crate::document::markdown_first_h1(&source),
                 crate::document::markdown_document(&source),
             ),
         };
@@ -1223,28 +1233,15 @@ fn Editor(draft: Draft) -> impl IntoView {
             reset_format_select();
             return;
         }
-        let blocked_by_session = session.with_untracked(|s| {
-            s.text.in_flight().is_some() || matches!(s.text.status(), SaveStatus::Conflict { .. })
-        });
+        let blocked_by_session = session.with_untracked(|s| !s.can_convert());
         if blocked_by_session {
             reset_format_select();
             return;
         }
         let source = body.snapshot();
         let current_title = title.get_untracked();
-        let ast_title = (current == DocumentFormatDto::Markdown)
-            .then(|| {
-                body.outline
-                    .with_untracked(|o| (!o.title.is_empty()).then(|| o.title.clone()))
-            })
-            .flatten();
-        let conversion = crate::document::preview_format_conversion(
-            current,
-            target,
-            &current_title,
-            ast_title.as_deref(),
-            &source,
-        );
+        let conversion =
+            crate::document::preview_format_conversion(current, target, &current_title, &source);
         convert_preview.set(Some(conversion));
         remember_scroll(page_scroll);
     });
@@ -1252,12 +1249,26 @@ fn Editor(draft: Draft) -> impl IntoView {
         let Some(conversion) = convert_preview.get_untracked() else {
             return;
         };
-        if converting.get_untracked() || body.is_composing() || title_composing.get_value() {
+        if conversion.title_too_long()
+            || converting.get_untracked()
+            || body.is_composing()
+            || title_composing.get_value()
+        {
             return;
         }
-        let Some(ticket) = session.try_update(|s| s.text.begin_save()).flatten() else {
+        let Some(ticket) = session
+            .try_update(|s| {
+                if s.can_convert() {
+                    s.text.begin_save()
+                } else {
+                    None
+                }
+            })
+            .flatten()
+        else {
             return;
         };
+        conversion_notice.set(None);
         converting.set(true);
         clear_just_saved();
         let request = match conversion.target_format {
@@ -1277,12 +1288,42 @@ fn Editor(draft: Draft) -> impl IntoView {
             let id = work_id.get_value();
             leptos::task::spawn_local(async move {
                 use crate::desk_state::SaveRejection;
-                let outcome = crate::api::save_draft(id, request).await;
+                let mut outcome = crate::api::save_draft(id.clone(), request)
+                    .await
+                    .map(|ack| ack.version);
+                // A dropped reply can hide a committed PUT. Read back the exact proposed
+                // version, format, title and bytes. Reconciliation never issues another write.
+                if matches!(
+                    outcome,
+                    Err(ApiError::Network
+                        | ApiError::Unavailable
+                        | ApiError::Unexpected { .. }
+                        | ApiError::VersionConflict { .. })
+                ) && session.try_with_untracked(|s| s.text.in_flight() == Some(ticket))
+                    == Some(true)
+                    && let Ok(current) = crate::api::load_draft(id.clone()).await
+                    && current.work_id == id
+                {
+                    if ticket.expected_version.checked_add(1) == Some(current.version)
+                        && current.document.format == conversion.target_format
+                        && current.document.source == conversion.source
+                        && current.title == conversion.title
+                    {
+                        outcome = Ok(current.version);
+                    } else if current.version != ticket.expected_version {
+                        outcome = Err(ApiError::VersionConflict {
+                            current_version: current.version,
+                        });
+                    }
+                }
                 converting.try_set(false);
                 let mut converted_clean = false;
                 let applied = session.try_update(|s| {
+                    if s.text.in_flight() != Some(ticket) {
+                        return false;
+                    }
                     match &outcome {
-                        Ok(saved) => s.text.save_succeeded(ticket, saved.version),
+                        Ok(version) => s.text.save_succeeded(ticket, *version),
                         Err(ApiError::VersionConflict { current_version }) => s.text.save_rejected(
                             ticket,
                             SaveRejection::Conflict {
@@ -1294,8 +1335,9 @@ fn Editor(draft: Draft) -> impl IntoView {
                             .save_rejected(ticket, SaveRejection::Failed(failure(error))),
                     }
                     converted_clean = !crate::desk_state::Guarded::has_unsaved(s);
+                    true
                 });
-                if applied.is_none() {
+                if applied != Some(true) {
                     return;
                 }
                 if outcome.is_ok() {
@@ -1308,10 +1350,21 @@ fn Editor(draft: Draft) -> impl IntoView {
                     if converted_clean {
                         arm_just_saved();
                     }
+                } else if let Err(error) = &outcome {
+                    let why = match error {
+                        ApiError::VersionConflict { .. } => {
+                            "Bản trên máy chủ đã thay đổi. Hãy xử lý xung đột trước khi đổi lại định dạng."
+                        }
+                        _ => failure_reason(failure(error)),
+                    };
+                    conversion_notice.set(Some(format!(
+                        "Chưa xác nhận đổi định dạng. {why} Nội dung gốc vẫn còn trên trang này."
+                    )));
                 }
                 convert_preview.set(None);
                 reset_format_select();
                 restore_scroll(page_scroll);
+                settle_leave();
             });
         }
         #[cfg(not(feature = "hydrate"))]
@@ -1394,13 +1447,8 @@ fn Editor(draft: Draft) -> impl IntoView {
         Some(format.get().as_str().to_string())
     });
     let md_tools_disabled = move || body.state.get() != BodyState::Ready || converting.get();
-    let format_select_disabled = Signal::derive(move || {
-        converting.get()
-            || session.with(|s| {
-                s.text.in_flight().is_some()
-                    || matches!(s.text.status(), SaveStatus::Conflict { .. })
-            })
-    });
+    let format_select_disabled =
+        Signal::derive(move || converting.get() || session.with(|s| !s.can_convert()));
     view! {
         <form
             class="vk-editor"
@@ -1712,24 +1760,34 @@ fn Editor(draft: Draft) -> impl IntoView {
                     </div>
                 </div>
                 <Show when=move || format.get() == DocumentFormatDto::Markdown && outline_open.get()>
-                    <div
-                        class="vk-editor-outline-backdrop"
-                        aria-hidden="true"
-                        on:click=move |_| {
-                            outline_open.set(false);
-                            focus_element_by_id("outline-toggle");
-                        }
-                    ></div>
-                    <aside
+                    <dialog
+                        node_ref=outline_panel
                         id="editor-outline-panel"
                         class="vk-editor-outline"
-                        aria-label="Mục lục bài viết"
+                        aria-labelledby="editor-outline-title"
+                        on:cancel=move |ev: leptos::ev::Event| {
+                            ev.prevent_default();
+                            close_outline();
+                        }
+                        on:click=move |ev: leptos::ev::MouseEvent| {
+                            #[cfg(feature = "hydrate")]
+                            if let Some(panel) = outline_panel.get_untracked()
+                                && ev.target().as_ref() == Some(panel.as_ref())
+                            {
+                                let r = panel.get_bounding_client_rect();
+                                let (x, y) = (f64::from(ev.client_x()), f64::from(ev.client_y()));
+                                if x < r.left() || x >= r.right() || y < r.top() || y >= r.bottom() {
+                                    close_outline();
+                                }
+                            }
+                            #[cfg(not(feature = "hydrate"))]
+                            let _ = ev;
+                        }
                         on:keydown=move |ev| {
                             if ev.key() == "Escape" {
                                 ev.prevent_default();
                                 ev.stop_propagation();
-                                outline_open.set(false);
-                                focus_element_by_id("outline-toggle");
+                                close_outline();
                             }
                         }
                     >
@@ -1740,14 +1798,15 @@ fn Editor(draft: Draft) -> impl IntoView {
                                 icon=IconName::Close
                                 label="Đóng mục lục"
                                 on_press=move |_| {
-                                    outline_open.set(false);
-                                    focus_element_by_id("outline-toggle");
+                                    close_outline();
                                 }
                             />
                         </div>
                         {move || {
                             let snapshot = body.outline.get();
-                            if body.state.get() != BodyState::Ready {
+                            if body.state.get() == BodyState::Failed {
+                                view! { <p class="vk-editor-outline__empty">"Không mở được mục lục. Hãy tải lại trang."</p> }.into_any()
+                            } else if body.state.get() != BodyState::Ready || (snapshot.items.is_empty() && snapshot.status == OutlineStatus::Partial) {
                                 view! {
                                     <p class="vk-editor-outline__empty">"Đang đọc mục lục…"</p>
                                 }
@@ -1778,7 +1837,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                                 .into_any()
                             }
                         }}
-                    </aside>
+                    </dialog>
                 </Show>
             </div>
             <div class="vk-editor-work-info" on:focusin=move |_| last_field.set_value(Field::Tags)>
@@ -1805,6 +1864,9 @@ fn Editor(draft: Draft) -> impl IntoView {
                     disabled=format_select_disabled
                     on_change=on_format_change
                 />
+                {move || conversion_notice.get().map(|text| view! {
+                    <p data-testid="conversion-notice" role="alert">{text}</p>
+                })}
                 <p class="vk-muted vk-editor-format__hint">
                     "Mặc định giữ tiêu đề riêng; Markdown bật Live Preview và lấy H1 đầu tiên làm tên tác phẩm."
                 </p>
@@ -1977,7 +2039,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                 <Button
                     variant=ButtonVariant::Filled
                     id="format-convert-apply"
-                    state=Signal::derive(move || if converting.get() { ActionState::pending("") } else { ActionState::Enabled })
+                    state=Signal::derive(move || if converting.get() { ActionState::pending("") } else { blocked(convert_preview.with(|p| p.as_ref().is_none_or(ConversionPreview::title_too_long))) })
                     on_press=move |_| apply_conversion()
                 >
                     {move || if converting.get() { "Đang đổi…" } else { "Áp dụng" }}
@@ -2001,6 +2063,9 @@ fn Editor(draft: Draft) -> impl IntoView {
                             <p class="vk-format-preview__title">
                                 <strong>"Tiêu đề sau chuyển đổi: "</strong>{title_label}
                             </p>
+                            {p.title_too_long().then(|| view! {
+                                <p role="alert">"Tiêu đề sau chuyển đổi dài quá 200 ký tự. Hãy hủy và rút ngắn tiêu đề hoặc H1 đầu tiên trước khi đổi định dạng."</p>
+                            })}
                             <p class="vk-muted">{p.note}</p>
                             <pre class="vk-format-preview__source">{p.source}</pre>
                         </div>
@@ -2024,34 +2089,56 @@ fn outline_item_tier(level: u8, is_first_h1: bool) -> (&'static str, u8) {
     }
 }
 
-fn outline_is_overlay_mode() -> bool {
-    #[cfg(feature = "hydrate")]
-    {
-        let width = window()
-            .inner_width()
-            .ok()
-            .and_then(|v| v.as_f64())
-            .unwrap_or(1440.0);
-        if width < 1024.0 {
-            return true;
+// The CSS container query owns the breakpoint. Native modal focus containment follows the
+// actual painted layout, including changes to the rail width or text scale while open.
+#[cfg(feature = "hydrate")]
+fn observe_outline_layout(node: NodeRef<html::Dialog>) {
+    use wasm_bindgen::{JsCast, closure::Closure};
+    Effect::new(move |_| {
+        let Some(panel) = node.get() else { return };
+        let sync = move || {
+            if !panel.is_connected() {
+                return;
+            }
+            let modal = window()
+                .get_computed_style(&panel)
+                .ok()
+                .flatten()
+                .and_then(|css| css.get_property_value("position").ok())
+                .is_some_and(|position| position == "fixed");
+            if panel.open() && panel.matches(":modal").unwrap_or(false) == modal {
+                return;
+            }
+            if panel.open() {
+                panel.close();
+            }
+            if modal {
+                let _ = panel.show_modal();
+                focus_element_by_id("editor-outline-close");
+            } else {
+                panel.show();
+                let _ = panel.set_attribute("role", "complementary");
+            }
+            if modal {
+                let _ = panel.remove_attribute("role");
+            }
+        };
+        sync();
+        let callback = Closure::<dyn FnMut()>::new(sync);
+        if let Ok(observer) = web_sys::ResizeObserver::new(callback.as_ref().unchecked_ref()) {
+            if let Some(panel) = node.get_untracked() {
+                observer.observe(&panel);
+                if let Some(parent) = panel.parent_element() {
+                    observer.observe(&parent);
+                }
+            }
+            let cleanup = send_wrapper::SendWrapper::new((observer, callback));
+            on_cleanup(move || {
+                let (observer, _callback) = cleanup.take();
+                observer.disconnect();
+            });
         }
-        let doc = document();
-        let text_200 = doc
-            .document_element()
-            .and_then(|el| el.get_attribute("data-text"))
-            .is_some_and(|v| v == "200");
-        let root_large = doc
-            .document_element()
-            .and_then(|el| window().get_computed_style(&el).ok().flatten())
-            .and_then(|style| style.get_property_value("font-size").ok())
-            .and_then(|fs| fs.strip_suffix("px").and_then(|n| n.parse::<f64>().ok()))
-            .is_some_and(|px| px >= 24.0);
-        text_200 || root_large
-    }
-    #[cfg(not(feature = "hydrate"))]
-    {
-        false
-    }
+    });
 }
 
 fn focus_element_by_id(id: &str) {
@@ -2078,45 +2165,68 @@ fn render_outline_items(
     body: BodySource,
     outline_open: RwSignal<bool>,
 ) -> AnyView {
-    view! {
-        <ul class="vk-editor-outline__list" role="list">
-            {items
-                .into_iter()
-                .map(|item| {
-                    let (tier_class, indent) = outline_item_tier(item.level, item.is_title);
-                    let active = active_from == Some(item.from);
-                    let from = item.from;
-                    let level_str = item.level.to_string();
-                    view! {
-                        <li
-                            class="vk-editor-outline__entry"
-                            style=format!("--outline-indent: {indent}")
-                            aria-current=active.then_some("location")
-                        >
-                            <Button
-                                variant=ButtonVariant::Text
-                                on_press=move |_| {
-                                    let jumped = body.jump_to_heading(from, generation);
-                                    if jumped && outline_is_overlay_mode() {
-                                        outline_open.set(false);
-                                    }
-                                }
-                            >
-                                <span
-                                    class=tier_class
-                                    data-heading-level=level_str
-                                    data-heading-from=from.to_string()
-                                >
-                                    {item.title}
-                                </span>
-                            </Button>
-                        </li>
-                    }
-                })
-                .collect_view()}
-        </ul>
+    render_outline_level(
+        &mut items.into_iter().peekable(),
+        0,
+        generation,
+        active_from,
+        body,
+        outline_open,
+    )
+}
+
+fn render_outline_level(
+    items: &mut std::iter::Peekable<std::vec::IntoIter<OutlineItem>>,
+    parent_level: u8,
+    generation: u64,
+    active_from: Option<usize>,
+    body: BodySource,
+    outline_open: RwSignal<bool>,
+) -> AnyView {
+    let mut rows = Vec::new();
+    while items.peek().is_some_and(|i| i.level > parent_level) {
+        let item = items.next().expect("peeked heading");
+        let (tier_class, indent) = outline_item_tier(item.level, item.is_title);
+        let from = item.from;
+        let children = items
+            .peek()
+            .is_some_and(|next| next.level > item.level)
+            .then(|| {
+                render_outline_level(
+                    items,
+                    item.level,
+                    generation,
+                    active_from,
+                    body,
+                    outline_open,
+                )
+            });
+        rows.push(view! {
+            <li class="vk-editor-outline__entry" style=format!("--outline-indent: {indent}")>
+                <Button variant=ButtonVariant::Text attr:aria-current=(active_from == Some(from)).then_some("location")
+                    on_press=move |_| {
+                        if body.jump_to_heading(from, generation) {
+                            #[cfg(feature = "hydrate")]
+                            if let Some(panel) = document().get_element_by_id("editor-outline-panel")
+                                && panel.matches(":modal").unwrap_or(false) {
+                                use wasm_bindgen::JsCast;
+                                if let Some(dialog) = panel.dyn_ref::<web_sys::HtmlDialogElement>() { dialog.close(); }
+                                outline_open.set(false);
+                                body.focus();
+                            }
+                            #[cfg(not(feature = "hydrate"))]
+                            let _ = outline_open;
+                        }
+                    }>
+                    <span class=tier_class data-heading-level=item.level.to_string() data-heading-from=from.to_string()>
+                        {if item.title.is_empty() { "Chưa đặt tên".to_owned() } else { item.title }}
+                    </span>
+                </Button>
+                {children}
+            </li>
+        });
     }
-    .into_any()
+    view! { <ul class="vk-editor-outline__list" role="list">{rows}</ul> }.into_any()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

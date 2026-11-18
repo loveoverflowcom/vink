@@ -1070,15 +1070,18 @@ a {
 }
 
 /* Mục lục Cách 1 (#257): overlay sheet on phones/tablet/200%, sticky 17rem aside on desktop. */
-.vk-editor-outline-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 39;
+.vk-editor-outline::backdrop {
   background: var(--vk-scrim);
 }
 
 .vk-editor-outline {
   --outline-step: 12px;
+  margin: 0;
+  border: 0;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  top: auto;
   position: fixed;
   inset-block-end: 0;
   inset-inline: 0;
@@ -1129,10 +1132,12 @@ a {
 .vk-editor-outline__entry {
   min-inline-size: 0;
   margin: 0;
-  padding-inline-start: calc(var(--outline-indent, 0) * var(--outline-step, 12px));
+
 }
 
-.vk-editor-outline__entry .vk-ui-action {
+.vk-editor-outline__entry > .vk-ui-action {
+  box-sizing: border-box;
+  padding-inline-start: calc(var(--outline-indent, 0) * var(--outline-step));
   display: flex;
   width: 100%;
 }
@@ -1147,21 +1152,21 @@ a {
   overflow-wrap: anywhere;
 }
 
-.vk-editor-outline__entry:has(.vk-editor-outline__item--title) .vk-ui-button {
+.vk-editor-outline__entry .vk-ui-button:has(.vk-editor-outline__item--title) {
   font-family: var(--vk-font-reading);
   font-size: calc(var(--vk-type-body-size) * 1.12);
   font-weight: bold;
   line-height: var(--vk-type-headline-line-height);
 }
 
-.vk-editor-outline__entry:has(.vk-editor-outline__item--h2) .vk-ui-button {
+.vk-editor-outline__entry .vk-ui-button:has(.vk-editor-outline__item--h2) {
   font-family: var(--vk-font-ui);
   font-size: calc(var(--vk-type-body-size) * 0.89);
   font-weight: var(--vk-type-label-weight);
   line-height: var(--vk-type-label-line-height);
 }
 
-.vk-editor-outline__entry:has(.vk-editor-outline__item--sub) .vk-ui-button {
+.vk-editor-outline__entry .vk-ui-button:has(.vk-editor-outline__item--sub) {
   font-family: var(--vk-font-ui);
   font-size: calc(var(--vk-type-body-size) * 0.83);
   font-weight: var(--vk-type-body-weight);
@@ -1169,7 +1174,7 @@ a {
   color: var(--vk-on-surface-variant);
 }
 
-.vk-editor-outline__entry[aria-current="location"] .vk-ui-button {
+.vk-editor-outline__entry > .vk-ui-action[aria-current="location"] > .vk-ui-button {
   background: var(--vk-primary-container);
   color: var(--vk-on-primary-container);
 }
@@ -1182,10 +1187,6 @@ a {
   @container vk-editor-page (min-width: 50rem) {
     .vk-editor[data-format="markdown"][data-outline-open="true"] .vk-editor-workspace {
       grid-template-columns: minmax(0, 1fr) 17rem;
-    }
-
-    .vk-editor[data-format="markdown"][data-outline-open="true"] .vk-editor-outline-backdrop {
-      display: none;
     }
 
     .vk-editor[data-format="markdown"][data-outline-open="true"] .vk-editor-outline {

@@ -8,7 +8,7 @@ Title authority: [editor-title-authority.md](../architecture/editor-title-author
 | Thành phần | Vị trí | Mức | Ghi chú |
 | --- | --- | --- | --- |
 | Document `{format, source}`, `Title`, `TitledDocument` | `services/vink-app/src/domain/document.rs` | `core` | Một shape, không version; `asciidoc` = `DeferredFormat`. |
-| Trích H1 Markdown (CommonMark lõi, `pulldown-cmark` không extension) | `services/vink-app/src/domain/document/markdown.rs` | `core` | Corpus `tests/fixtures/title-authority/markdown.json` 30 ca chạy thật. |
+| Trích H1 Markdown (CommonMark lõi, `pulldown-cmark` không extension) | `packages/markdown-text`, kiểm corpus tại `services/vink-app/src/domain/document/markdown.rs` | `core` | Corpus `tests/fixtures/title-authority/markdown.json` 30 ca chạy thật. |
 | Một content hash | `services/vink-app/src/domain/revision.rs` | `core` | `vink-document-content`; golden vector Python. |
 | Save/CAS, capture snapshot, đọc public, cổng `FormatNotPublishable` | `application/`, `persistence/{postgres,publication,discovery}.rs` | `persistence-api` | Title vật chất hóa trong cùng UPDATE với `document`. |
 | Migration cutover + backout chính xác | `migrations/20261122000000_canonical_document.sql`, `migrations-rollback/…down.sql` | `persistence-api` | Fail-closed khi còn revision cũ (lịch sử bất biến). |

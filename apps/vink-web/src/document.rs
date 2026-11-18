@@ -78,7 +78,6 @@ pub fn preview_format_conversion(
     from: DocumentFormatDto,
     to: DocumentFormatDto,
     default_title: &str,
-    markdown_h1_title: Option<&str>,
     source: &str,
 ) -> ConversionPreview {
     if from == to {
@@ -86,9 +85,7 @@ pub fn preview_format_conversion(
             target_format: to,
             title: match to {
                 DocumentFormatDto::Default => default_title.trim().nfc().collect(),
-                DocumentFormatDto::Markdown => markdown_h1_title
-                    .map(str::to_string)
-                    .unwrap_or_else(|| markdown_first_h1(source)),
+                DocumentFormatDto::Markdown => markdown_first_h1(source),
             },
             source: source.to_owned(),
             note: "Giữ nguyên định dạng hiện tại.".into(),
@@ -98,12 +95,20 @@ pub fn preview_format_conversion(
         (DocumentFormatDto::Default, DocumentFormatDto::Markdown) => {
             let clean_title: String = default_title.trim().nfc().collect();
             let escaped = escape_leading_atx_hashes(source);
+            // A plain title must remain literal, even when it contains a link, entity or closing #.
+            let mut heading = String::new();
+            for c in clean_title.chars() {
+                if c.is_ascii_punctuation() {
+                    heading.push('\\');
+                }
+                heading.push(c);
+            }
             let next_source = if clean_title.is_empty() {
                 escaped
-            } else if escaped.trim().is_empty() {
-                format!("# {clean_title}")
+            } else if escaped.is_empty() {
+                format!("# {heading}")
             } else {
-                format!("# {clean_title}\n\n{escaped}")
+                format!("# {heading}\n\n{escaped}")
             };
             let note = if clean_title.is_empty() {
                 "Giữ nguyên chữ nguồn sang Markdown; các dấu # ở đầu dòng được escape (\\#) để không đổi nghĩa."
@@ -112,15 +117,13 @@ pub fn preview_format_conversion(
             };
             ConversionPreview {
                 target_format: DocumentFormatDto::Markdown,
-                title: clean_title,
+                title: markdown_first_h1(&next_source),
                 source: next_source,
                 note: note.into(),
             }
         }
         (DocumentFormatDto::Markdown, DocumentFormatDto::Default) => {
-            let extracted: String = markdown_h1_title
-                .map(|t| t.trim().nfc().collect())
-                .unwrap_or_else(|| markdown_first_h1(source));
+            let extracted: String = markdown_first_h1(source);
             ConversionPreview {
                 target_format: DocumentFormatDto::Default,
                 title: extracted,
@@ -132,85 +135,17 @@ pub fn preview_format_conversion(
     }
 }
 
-/// Lightweight CommonMark first-H1 extractor used when the CodeMirror AST is not mounted yet.
+/// The same CommonMark projection that the server materializes for this exact source.
 pub fn markdown_first_h1(source: &str) -> String {
-    let lines: Vec<&str> = source.lines().flat_map(|line| line.split('\r')).collect();
-    let mut fence: Option<(char, usize)> = None;
-    let mut prev_line: Option<&str> = None;
-
-    for line in lines {
-        let trimmed = line.trim_start_matches(' ');
-        let leading_spaces = line.len() - trimmed.len();
-        if let Some((fc, flen)) = fence {
-            if leading_spaces <= 3
-                && trimmed.starts_with(fc)
-                && trimmed.chars().take_while(|&c| c == fc).count() >= flen
-                && trimmed.trim_start_matches(fc).trim().is_empty()
-            {
-                fence = None;
-            }
-            prev_line = None;
-            continue;
-        }
-        if leading_spaces <= 3 {
-            for fc in ['`', '~'] {
-                let count = trimmed.chars().take_while(|&c| c == fc).count();
-                if count >= 3 && (fc == '~' || !trimmed[count..].contains('`')) {
-                    fence = Some((fc, count));
-                    prev_line = None;
-                    break;
-                }
-            }
-            if fence.is_some() {
-                continue;
-            }
-        }
-        if leading_spaces >= 4 || line.starts_with('\t') {
-            prev_line = None;
-            continue;
-        }
-        let unquoted = strip_quote_list_prefix(trimmed);
-        if let Some(rest) = unquoted.strip_prefix('#')
-            && (rest.is_empty() || rest.starts_with([' ', '\t']))
-        {
-            let heading = strip_atx_closing_hashes(rest.trim());
-            return strip_basic_inline_markdown(heading).trim().nfc().collect();
-        }
-        if let Some(prev) = prev_line
-            && !prev.trim().is_empty()
-            && !unquoted.is_empty()
-            && unquoted.trim_end().chars().all(|c| c == '=')
-        {
-            return strip_basic_inline_markdown(prev.trim())
-                .trim()
-                .nfc()
-                .collect();
-        }
-        prev_line = if unquoted.trim().is_empty() {
-            None
-        } else {
-            Some(unquoted)
-        };
-    }
-    String::new()
+    vink_markdown_text::first_h1_projection(source)
+        .trim()
+        .nfc()
+        .collect()
 }
 
-fn strip_quote_list_prefix(mut line: &str) -> &str {
-    loop {
-        let trimmed = line.trim_start_matches(' ');
-        if let Some(rest) = trimmed.strip_prefix('>') {
-            line = rest.strip_prefix(' ').unwrap_or(rest);
-            continue;
-        }
-        if let Some(rest) = trimmed
-            .strip_prefix("- ")
-            .or_else(|| trimmed.strip_prefix("* "))
-            .or_else(|| trimmed.strip_prefix("+ "))
-        {
-            line = rest;
-            continue;
-        }
-        return trimmed;
+impl ConversionPreview {
+    pub fn title_too_long(&self) -> bool {
+        self.title.chars().count() > 200
     }
 }
 
@@ -224,14 +159,6 @@ fn strip_atx_closing_hashes(text: &str) -> &str {
     } else {
         trimmed
     }
-}
-
-fn strip_basic_inline_markdown(input: &str) -> String {
-    input
-        .replace("\\#", "#")
-        .replace("\\*", "*")
-        .replace("**", "")
-        .replace(['*', '`'], "")
 }
 
 /// Paragraphs and stanzas of a default document for reading: a run of blank or whitespace-only
@@ -442,7 +369,6 @@ mod tests {
             DocumentFormatDto::Default,
             DocumentFormatDto::Markdown,
             "Tiếng mưa",
-            None,
             "# Không phải tiêu đề\nĐoạn thường.",
         );
         assert_eq!(to_md.target_format, DocumentFormatDto::Markdown);
@@ -456,12 +382,40 @@ mod tests {
             DocumentFormatDto::Markdown,
             DocumentFormatDto::Default,
             "",
-            Some("Tiếng mưa"),
             "# Tiếng mưa\n\n## Hiên nhà\nNội dung.",
         );
         assert_eq!(to_default.target_format, DocumentFormatDto::Default);
         assert_eq!(to_default.title, "Tiếng mưa");
         assert_eq!(to_default.source, "# Tiếng mưa\n\n## Hiên nhà\nNội dung.");
+    }
+
+    #[test]
+    fn conversion_uses_the_canonical_title_and_preserves_blank_source() {
+        use DocumentFormatDto::{Default, Markdown};
+        let title = "[mưa](url) &eacute; *gió* #";
+        let converted = preview_format_conversion(Default, Markdown, title, " \n\t");
+        assert_eq!(converted.title, title);
+        assert!(converted.source.ends_with("\n\n \n\t"));
+        assert_eq!(
+            preview_format_conversion(Default, Markdown, "", "Mưa\n===").title,
+            "Mưa"
+        );
+        assert_eq!(
+            preview_format_conversion(Markdown, Default, "", "# <https://x.vn> &eacute;").title,
+            "https://x.vn é"
+        );
+        for length in [200, 201] {
+            let title = "ế".repeat(length);
+            assert_eq!(
+                preview_format_conversion(Default, Markdown, &title, "body").title_too_long(),
+                length > 200
+            );
+            assert_eq!(
+                preview_format_conversion(Markdown, Default, "", &format!("# {title}"))
+                    .title_too_long(),
+                length > 200
+            );
+        }
     }
 
     #[test]

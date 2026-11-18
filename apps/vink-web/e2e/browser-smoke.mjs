@@ -4884,12 +4884,10 @@ async function markdownLivePreviewAndFormatPicker(page) {
   check((await page.status()) === 'saved', 'jumping through outline never marks draft dirty');
 
   try {
-    for (const scene of [
-      { width: 1440, scale: '100', theme: 'light', overlay: false },
-      { width: 1440, scale: '100', theme: 'dark', overlay: false },
-      { width: 1024, scale: '100', theme: 'light', overlay: false },
-      { width: 320, scale: '200', theme: 'light', overlay: true },
-    ]) {
+    for (const scene of [320, 390, 834, 1024, 1440].flatMap(width =>
+      ['100', '200'].flatMap(scale => ['light', 'dark'].map(theme => ({
+        width, scale, theme, overlay: width < 1024 || scale === '200',
+      }))))) {
       await page.viewport(scene.width, 900);
       await page.eval(`document.documentElement.dataset.text = '${scene.scale}'; document.documentElement.dataset.theme = '${scene.theme}'; new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))`);
       const layout = await page.eval(`(() => {
@@ -4902,7 +4900,13 @@ async function markdownLivePreviewAndFormatPicker(page) {
       check(!layout.overflow && (!scene.overlay || layout.pos === 'fixed'),
         `Markdown + Mục lục scene ${scene.width}/${scene.scale}/${scene.theme} has no horizontal overflow (${JSON.stringify(layout)})`);
     }
-    await page.eval(`document.querySelector('#editor-outline-panel .vk-editor-outline__list button')?.focus(); true`);
+    await page.waitFor(`document.querySelector('#editor-outline-panel:modal')?.contains(document.activeElement)`,
+      'the compact outline takes focus when it becomes a modal sheet');
+    check(await page.eval(`Boolean(document.querySelector('#editor-outline-panel li > ul > li button'))`),
+      'H2 is a nested list item of the first H1 for assistive technology');
+    await page.key('Tab');
+    check(await page.eval(`document.querySelector('#editor-outline-panel').contains(document.activeElement)`),
+      'Tab stays inside the outline sheet');
     await page.key('Escape');
     await page.waitFor(`!document.querySelector('#editor-outline-panel') && document.activeElement?.id === 'outline-toggle'`,
       'Escape closes mobile Mục lục sheet and restores focus to #outline-toggle');
@@ -4911,19 +4915,37 @@ async function markdownLivePreviewAndFormatPicker(page) {
     await page.eval(`delete document.documentElement.dataset.text; document.documentElement.dataset.theme = 'light'; scrollTo(0, 0)`);
   }
 
+  const beforeLongTitle = await page.draft(workId);
+  await page.eval(`(() => { const v = ${cmView}; window.__sourceBeforeLong = v.state.doc.toString(); v.dispatch({changes:{from:0,to:v.state.doc.length,insert:'# ' + 'ế'.repeat(201)}}); })()`);
+  await page.eval(`(() => { const s = document.querySelector('#editor-format-select'); s.focus(); s.value = 'default'; s.dispatchEvent(new Event('change', {bubbles:true})); })()`);
+  await page.waitFor(`document.querySelector('#format-convert-dialog[open] [role=alert]')?.textContent.includes('200') && document.querySelector('#format-convert-apply')?.getAttribute('aria-disabled') === 'true'`,
+    '201-scalar first H1 blocks conversion with a visible repair instruction');
+  await page.key('Escape');
+  await page.waitFor(`!document.querySelector('#format-convert-dialog')?.open`, 'cancel overlong H1 conversion');
+  check((await page.draft(workId)).version === beforeLongTitle.version &&
+    await page.eval(`${cmView}.state.doc.toString() === '# ' + 'ế'.repeat(201)`), 'blocked conversion preserves unsaved source and stored version');
+  await page.eval(`(() => { const v = ${cmView}; v.dispatch({changes:{from:0,to:v.state.doc.length,insert:window.__sourceBeforeLong}}); })()`);
+
   // #262 Format switcher: preview dialog Cancel resets select cleanly; Apply persists Default cleanly on same EditorView.
-  await page.eval(`(() => { const s = document.querySelector('#editor-format-select'); s.value = 'default'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+  await page.eval(`(() => { const s = document.querySelector('#editor-format-select'); s.focus(); s.value = 'default'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
   await page.waitFor(`document.querySelector('#format-convert-dialog')?.open === true`, 'format conversion preview opens');
   check(await page.eval(`document.querySelector('#format-convert-dialog').textContent.includes('Tiếng mưa qua hiên')`),
     'format conversion preview shows converted title');
-  await page.click('#format-convert-cancel');
+  await page.key('Escape');
   await page.waitFor(`!document.querySelector('#format-convert-dialog')?.open`, 'cancel closes format conversion dialog');
-  check(await page.eval(`document.querySelector('#editor-format-select').value === 'markdown' && document.querySelector('.vk-editor')?.dataset.format === 'markdown' && window.__mdView === ${cmView}`),
+  check(await page.eval(`document.activeElement?.id === 'editor-format-select' && document.querySelector('#editor-format-select').value === 'markdown' && document.querySelector('.vk-editor')?.dataset.format === 'markdown' && window.__mdView === ${cmView}`),
     'canceling conversion resets select and keeps Markdown EditorView untouched');
 
   await page.eval(`(() => { const s = document.querySelector('#editor-format-select'); s.value = 'default'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
   await page.waitFor(`document.querySelector('#format-convert-dialog')?.open === true`, 'reopen format conversion dialog');
-  await page.click('#format-convert-apply');
+  const ack = new SaveGate(page, 'Response');
+  try {
+    await ack.enable();
+    await page.click('#format-convert-apply');
+    await ack.fail(await ack.next());
+  } finally {
+    await ack.disable();
+  }
   await page.waitFor(`!document.querySelector('#format-convert-dialog')?.open && document.querySelector('#draft-title')`, 'apply converts to Default and shows #draft-title');
   await page.waitStatus('saved');
   const converted = await page.draft(workId);
@@ -4931,6 +4953,20 @@ async function markdownLivePreviewAndFormatPicker(page) {
     && converted.title === 'Tiếng mưa qua hiên'
     && await page.eval(`document.querySelector('#draft-title')?.value === 'Tiếng mưa qua hiên' && !document.querySelector('#editor-markdown-toolbar') && window.__mdView === ${cmView}`),
     'applying format conversion persists Default, populates #draft-title and preserves the single EditorView');
+  const chooseMarkdown = () => page.eval(`(() => { const s = document.querySelector('#editor-format-select'); s.focus(); s.value = 'markdown'; s.dispatchEvent(new Event('change', {bubbles:true})); })()`);
+  // Establish a newer server version after preview, without changing the open editor.
+  await chooseMarkdown();
+  await page.waitFor(`document.querySelector('#format-convert-dialog')?.open`, 'conversion pending author confirmation');
+  const advanced = await page.eval(`fetch('/api/v1/drafts/${workId}', {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({expected_version:${converted.version},title:'Tên khác',document:{format:'default',source:'Sửa ở thẻ khác.'}})}).then(r=>r.status)`);
+  check(advanced === 200, 'another tab saved a newer version');
+  await page.click('#format-convert-apply');
+  await page.waitStatus('conflict');
+  check(await page.eval(`document.querySelector('.vk-editor').dataset.format === 'default' && document.querySelector('#draft-title').value === 'Tiếng mưa qua hiên' && Boolean(document.querySelector('[data-testid="conversion-notice"]')) && window.__mdView === ${cmView}`),
+    'conversion 409 keeps the original title, format and editor with explicit recovery');
+  const afterConflict = await page.draft(workId);
+  check(afterConflict.version === converted.version + 1 && afterConflict.document.source === 'Sửa ở thẻ khác.',
+    'conflicting conversion preserves the concurrent server save without replay');
+
 }
 
 const TAGS_READY = `document.querySelector('[data-testid=tag-status]') && document.querySelector('#work-tags-query')`;

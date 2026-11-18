@@ -251,6 +251,12 @@ impl DraftSession {
         }
     }
 
+    pub fn can_convert(&self) -> bool {
+        self.in_flight().is_empty()
+            && !matches!(self.text.status(), SaveStatus::Conflict { .. })
+            && !matches!(self.tag_status(), Some(TagStatus::Conflict { .. }))
+    }
+
     fn tags_unsaved(&self) -> bool {
         self.tags.as_ref().is_some_and(TagSession::has_unsaved)
     }

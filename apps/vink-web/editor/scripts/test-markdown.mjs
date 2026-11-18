@@ -50,6 +50,14 @@ try {
     assert.equal(outline.title, c.expected_projection, `outline title mismatch for ${c.id}`);
   }
 
+  for (const [source, title] of [
+    ['# <https://x.vn> &eacute;', 'https://x.vn é'],
+    ['# Mục ` chữ ` hai', 'Mục chữ hai'],
+  ]) {
+    const state = EditorState.create({doc: source, extensions: [md.markdownExtension[0]]});
+    assert.equal(md.extractOutline(state, 1).title, title);
+  }
+
   // Duplicate heading labels keep distinct offsets; fences/escaped/HTML are excluded.
   const docSource = [
     '# Tên đầu',
@@ -102,7 +110,8 @@ try {
   });
   const hugeOutline = md.extractOutline(hugeState, 9, 250);
   assert.equal(hugeOutline.title, 'Tiêu đề đầu dài');
-  assert.ok(hugeOutline.items.length >= 1);
+  assert.equal(hugeOutline.status, 'ready');
+  assert.equal(hugeOutline.items.at(-1)?.title, 'Kết thúc');
 
   console.log(`vink-editor markdown checks: ok (${cases.length} corpus + outline + 200k doc)`);
 } finally {

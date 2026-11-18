@@ -3,6 +3,7 @@ resolver = "3"
 members = [
     "apps/vink-web",
     "packages/expressions",
+    "packages/markdown-text",
     "packages/store-postgres",
     "packages/ui-system/leptos",
     "packages/ui-system/leptos/preview",

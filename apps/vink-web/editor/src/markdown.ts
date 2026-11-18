@@ -1,3 +1,4 @@
+import { decodeHTMLStrict } from 'entities';
 import { commonmarkLanguage } from '@codemirror/lang-markdown';
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
 import { EditorSelection, EditorState, Range } from '@codemirror/state';
@@ -32,25 +33,6 @@ const SKIP_IN_HEADING = new Set([
   'ListMark',
 ]);
 
-const NAMED_ENTITIES: Record<string, string> = {
-  amp: '&',
-  lt: '<',
-  gt: '>',
-  quot: '"',
-  apos: "'",
-  nbsp: '\u00A0',
-  ndash: '\u2013',
-  mdash: '\u2014',
-  hellip: '\u2026',
-  lsquo: '\u2018',
-  rsquo: '\u2019',
-  ldquo: '\u201C',
-  rdquo: '\u201D',
-  copy: '\u00A9',
-  reg: '\u00AE',
-  trade: '\u2122',
-};
-
 function decodeHtmlEntity(raw: string): string {
   if (!raw.startsWith('&') || !raw.endsWith(';')) return raw;
   const inner = raw.slice(1, -1);
@@ -68,7 +50,7 @@ function decodeHtmlEntity(raw: string): string {
     }
     return String.fromCodePoint(code);
   }
-  return NAMED_ENTITIES[inner] ?? raw;
+  return decodeHTMLStrict(raw);
 }
 
 function headingLevel(name: string): number {
@@ -82,6 +64,15 @@ function selectionTouches(state: EditorState, from: number, to: number): boolean
 
 function flattenHeadingText(doc: EditorState['doc'], node: SyntaxNode): string {
   const walk = (current: SyntaxNode): string => {
+    if (current.name === 'Autolink') return doc.sliceString(current.from + 1, current.to - 1);
+    if (current.name === 'InlineCode') {
+      const marks = current.getChildren('CodeMark');
+      if (marks.length === 2) {
+        const code = doc.sliceString(marks[0].to, marks[1].from).replace(/\n/g, ' ');
+        return code.startsWith(' ') && code.endsWith(' ') && /[^ ]/.test(code)
+          ? code.slice(1, -1) : code;
+      }
+    }
     let pos = current.from;
     let out = '';
     for (let child = current.firstChild; child; child = child.nextSibling) {
@@ -236,7 +227,7 @@ function buildLivePreviewDecorations(view: EditorView): DecorationSet {
               if (idx === 0) {
                 const afterSpaces =
                   doc.sliceString(mark.to, markLine.to).match(/^[ \t]+/)?.[0].length ?? 0;
-                const start = markLine.from;
+                const start = mark.from;
                 if (active || !hasContent) {
                   pushRange(markerDeco, mark.from, mark.to);
                 } else {

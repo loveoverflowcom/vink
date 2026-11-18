@@ -14,6 +14,7 @@ workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+vink-markdown-text = { path = "../../packages/markdown-text" }
 serde_json.workspace = true
 vink-expressions = { path = "../../packages/expressions" }
 vink-patterns = { path = "../../packages/vink-patterns/leptos" }
