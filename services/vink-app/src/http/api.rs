@@ -1,5 +1,5 @@
 use axum::extract::rejection::{JsonRejection, QueryRejection};
-use axum::extract::{DefaultBodyLimit, Path, Query, RawQuery, Request, State};
+use axum::extract::{DefaultBodyLimit, FromRequest, Path, Query, RawQuery, Request, State};
 use axum::http::{HeaderMap, HeaderValue, Method, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
@@ -650,16 +650,13 @@ async fn save_draft(
     State(state): State<AppState>,
     Actor(actor): Actor,
     Path(raw): Path<String>,
-    body: Result<Json<SaveDraftRequest>, JsonRejection>,
+    request: Request,
 ) -> Result<Json<SavedDraftResponse>, ApiError> {
-    // Authentication is decided before the body is inspected.
     if actor.is_none() {
         return Err(ApiError::Unauthenticated);
     }
-    let Json(body) = body.map_err(|rejection| ApiError::Validation {
-        field: "body",
-        message: rejection.body_text(),
-    })?;
+    // Read the bounded document only after the principal is known.
+    let body = json_body(Json::<SaveDraftRequest>::from_request(request, &state).await)?;
     let saved = state
         .vink
         .save_draft(

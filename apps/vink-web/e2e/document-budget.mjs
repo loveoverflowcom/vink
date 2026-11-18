@@ -19,6 +19,7 @@ export async function documentBudget(page, { args, check }) {
   await page.send('Performance.enable');
   await page.send('Network.enable', { maxPostDataSize: 8 * 1024 * 1024 });
   const requests = new Map(), transfer = [], writes = [];
+  let lastPutRequestId;
   const listener = event => {
     if (event.sessionId !== page.sessionId) return;
     if (event.method === 'Page.javascriptDialogOpening' && event.params.type === 'beforeunload') {
@@ -26,6 +27,7 @@ export async function documentBudget(page, { args, check }) {
     }
     if (event.method === 'Network.requestWillBeSent' && event.params.request.method === 'PUT') {
       const r = event.params.request;
+      lastPutRequestId = event.params.requestId;
       writes.push({path:new URL(r.url).pathname,post_data_bytes:r.postData === undefined ? null : Buffer.byteLength(r.postData)});
     }
     if (event.method === 'Network.responseReceived') requests.set(event.params.requestId, {
@@ -166,8 +168,12 @@ export async function documentBudget(page, { args, check }) {
       check(savedText === await page.eval(`__budgetBeforeSave.normalize('NFC')`),
         `${fixture.case}: exact normalized document readback after manual save`);
       check(await page.eval(`__budgetView===${view} && __budgetView.state.doc.toString()===__budgetBeforeSave`), `${fixture.case}: exact live buffer survives save outcome`);
-      check(after.title === before.title && await page.eval(`document.querySelector('#draft-title').value.endsWith('  ')`),
-        `${fixture.case}: title trim matches domain while the live title is retained`);
+      check(row.manual_save_requests.length === 1 && row.manual_save_requests[0].path === `/api/v1/drafts/${fixture.work_id}`,
+        `${fixture.case}: manual save sends one draft-content PUT`);
+      const { postData } = await page.send('Network.getRequestPostData', { requestId: lastPutRequestId });
+      check(JSON.parse(postData).title === before.title && after.title === before.title
+        && await page.eval(`document.querySelector('#draft-title').value`) === before.title + '  ',
+        `${fixture.case}: request and stored title omit padding while the live input retains it`);
       if (fixture.case === 'tiny_blocks-200000') {
         await page.eval(`(()=>{const v=__budgetView;v.dispatch({changes:{from:v.state.doc.length,insert:'X'}});window.__budgetRejected=v.state.doc.toString();})()`);
         await page.click('#save'); await page.waitStatus('failed');

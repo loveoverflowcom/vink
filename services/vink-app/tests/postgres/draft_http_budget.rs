@@ -94,6 +94,22 @@ fn wire(version: i64, title: &str, document: &DocumentData) -> Vec<u8> {
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn anonymous_draft_http_budget_returns_401_before_reading_body(pool: PgPool) {
+    let app = app(&pool).await;
+    let body = Body::from("{}").map_frame(|_| -> Frame<Bytes> {
+        panic!("an anonymous draft save must return before reading the body")
+    });
+    let request = Request::put(format!("/api/v1/drafts/{}", dev_seed::SAMPLE_WORK))
+        .header(header::ORIGIN, ORIGIN)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::new(body))
+        .unwrap();
+    let response = app.oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
 async fn draft_http_budget_accepts_client_corpus_and_preserves_authority(pool: PgPool) {
     let (address, server) = server(&pool).await;
     let path = format!("/api/v1/drafts/{}", dev_seed::SAMPLE_WORK);

@@ -55,7 +55,8 @@ UTF-8 với title trim mà giữ nguyên nội dung được domain cho phép. K
 Guard chạy khi `Json` đọc body. Body vượt cap, JSON malformed/unknown field vẫn đi qua hợp đồng
 hiện hành: `422 validation_failed`, `field: body`, `Cache-Control: no-store`; domain invalid là
 `field: document/title`. Không đổi thành 413 hoặc đổi dạng lỗi mà consumer chưa biết. Guard
-không gọi save use case nên không đổi text/version/updated_at. Origin, actor, ownership và CAS
+không gọi save use case nên không đổi text/version/updated_at. Khi thiếu principal, handler trả
+401 trước khi đọc body. Chỉ sau đó mới chạy extractor JSON với cap riêng. Origin, actor, ownership và CAS
 giữ thứ tự/kết quả hiện hành (`403`, `401`, `404`, `409`); principal standing vẫn được fence tại
 commit. Không coi test header principal là bằng chứng đăng nhập production.
 
@@ -91,7 +92,7 @@ thêm 200k block với NFD bốn scalar, quote, backslash, supplementary; title 
 readback exact document/title/version + hash v1 tính từ dữ liệu DB. Mỗi stale/foreign/anonymous/
 bad-Origin/malformed/oversize/domain-invalid refusal được đối chiếu durable state đầy đủ.
 Hash lịch sử #229 vẫn được golden regression bảo vệ. Browser phase sẵn có kiểm manual save,
-NFC readback, title trim, giữ full buffer khi 422/409, preview/selection và 3 corpus lựa chọn;
+NFC readback, title trim trên chính request Web và title gốc trong live input, giữ full buffer khi 422/409, preview/selection và 3 corpus lựa chọn;
 không phải toàn bộ benchmark storage #229.
 
 ## Tích hợp #285 và rollback
