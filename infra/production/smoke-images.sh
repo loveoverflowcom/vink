@@ -56,11 +56,11 @@ until "${compose[@]}" exec -T postgres pg_isready -h 127.0.0.1 -U vink -d postgr
     fi
     sleep 1
 done
-"${compose[@]}" run --rm provision
-"${compose[@]}" run --rm provision --check
+"${compose[@]}" --profile provision run --rm provision
+"${compose[@]}" --profile provision run --rm provision --check
 for service in migrate-app migrate-identity; do
-    "${compose[@]}" run --rm "$service"
-    "${compose[@]}" run --rm "$service"
+    "${compose[@]}" --profile migration run --rm "$service"
+    "${compose[@]}" --profile migration run --rm "$service"
 done
 "${compose[@]}" up -d --wait app identity worker
 app() { "${compose[@]}" exec -T app curl --max-time 10 --silent --show-error "$@"; }

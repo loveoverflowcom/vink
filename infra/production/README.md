@@ -38,10 +38,14 @@ không build trên VPS. Nếu package cần xác thực, dùng đường pull đ
 4. Đặt `PODMAN_COMPOSE_PROVIDER=/usr/bin/podman-compose` và dùng đường dẫn tuyệt đối cho
    cả hai manifest. Giữ healthcheck PostgreSQL trong base để Podman Compose 1.3 không nối hai
    danh sách `healthcheck.test`. Dùng cùng prefix như trong `vink-prod.service` cho `up -d postgres`.
-   Đợi `pg_isready -h 127.0.0.1 -U vink -d postgres` trong container, rồi chạy `run --rm provision`,
-   `run --rm provision --check`, `run --rm migrate-app` rồi `run --rm migrate-identity`.
+   Đợi `pg_isready -h 127.0.0.1 -U vink -d postgres` trong container. Dùng `--profile provision`
+   cho `run --rm provision` và `run --rm provision --check`, rồi dùng `--profile migration` cho
+   `run --rm migrate-app` và `run --rm migrate-identity`. Podman Compose 1.3 cần profile tường minh
+   cả khi lệnh `run` chỉ đích danh service. Khi chạy từ một script nhận lệnh qua SSH stdin,
+   chuyển stdin của các lệnh `compose run` sang `/dev/null` để provider không đọc phần script sau.
    Kiểm hai lệnh migrate chạy lại no-op. Chỉ bật `vink-prod.service` sau khi hoàn tất migration.
-   systemd tạo socket directory mode 0700 UID 10001 và chạy `up` khi boot. Restart policy container
+   systemd tạo thư mục socket mode 0700. Start command chuyển owner sang UID 10001 và chạy `up`
+   trong cùng tiến trình để systemd không đặt lại owner giữa hai lệnh. Restart policy của container
    xử lý process crash. Không bật `podman-restart.service` toàn VPS.
 5. Kiểm readiness từ App và socket, UID, migrations, role hạn chế và cổng publish trước khi
    chạm edge. Bật backup timer riêng và kiểm thử restore trước khi mở public.
