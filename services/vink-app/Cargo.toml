@@ -39,4 +39,5 @@ unicode-normalization = "0.1.26"
 vink-markdown-text = { path = "../../packages/markdown-text" }
 
 [dev-dependencies]
+leptos_router.workspace = true
 tower = { workspace = true, features = ["util"] }

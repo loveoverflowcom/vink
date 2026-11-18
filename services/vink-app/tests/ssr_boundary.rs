@@ -52,7 +52,7 @@ impl PublicReads for Probe {
         let release = self.release.clone();
         Box::pin(async move {
             entered.notify_one();
-            let _permit = release.acquire().await.unwrap();
+            release.acquire().await.unwrap().forget();
             // A failed secondary read must not replace the critical article/status.
             Err(LoadError::Unavailable)
         })
@@ -75,13 +75,17 @@ fn probe(reader: Result<ReaderResponse, LoadError>) -> Probe {
 }
 
 fn router(probe: Probe) -> Router {
+    router_with_routes(probe, generate_route_list(App))
+}
+
+fn router_with_routes(probe: Probe, routes: Vec<leptos_axum::AxumRouteListing>) -> Router {
     let reads: SharedPublicReads = Arc::new(probe);
     let options = LeptosOptions::builder().output_name("vink").build();
     let rendered = options.clone();
     Router::new()
         .leptos_routes_with_context(
             &options,
-            generate_route_list(App),
+            routes,
             move || {
                 provide_context(reads.clone());
                 provide_context(SiteOrigin("http://vink.test".into()));
@@ -245,4 +249,57 @@ async fn reader_ssr_boundary() {
     })
     .await
     .expect("SSR matrix must complete within 30 seconds");
+}
+
+/// Loopback HTTP fixture for the opt-in direct/proxy comparison. The runtime route is unchanged.
+#[tokio::test]
+#[ignore = "opt-in #235 chunk probe; use the evidence recipe with VINK_SSR_PROBE_FILE"]
+async fn reader_chunk_probe() {
+    use leptos_router::SsrMode;
+    let file = std::env::var("VINK_SSR_PROBE_FILE").expect("path for the chosen loopback port");
+    let delay: u64 = std::env::var("VINK_SSR_PROBE_DELAY")
+        .unwrap()
+        .parse()
+        .unwrap();
+    let mode = std::env::var("VINK_SSR_PROBE_MODE").unwrap();
+    let answer = match std::env::var("VINK_SSR_PROBE_CASE").unwrap().as_str() {
+        "published" => Ok(ReaderResponse::Published(publication())),
+        "hidden" => Ok(ReaderResponse::Hidden {
+            work_id: WORK.into(),
+        }),
+        "withdrawn" => Ok(ReaderResponse::ReviewWithdrawn {
+            work_id: WORK.into(),
+            author_name: "Tác giả mẫu".into(),
+        }),
+        "missing" => Err(LoadError::NotFound),
+        "error" => Err(LoadError::Unavailable),
+        _ => panic!("unknown probe case"),
+    };
+    let port = probe(answer);
+    let routes = generate_route_list(App)
+        .into_iter()
+        .map(|r| {
+            if r.path() != "/tac-pham/{id}" || mode == "async" {
+                return r;
+            }
+            assert_eq!(mode, "out-of-order");
+            leptos_axum::AxumRouteListing::new(
+                r.path().into(),
+                SsrMode::OutOfOrder,
+                r.methods(),
+                vec![],
+            )
+        })
+        .collect();
+    let app = router_with_routes(port.clone(), routes);
+    tokio::spawn(async move {
+        loop {
+            port.entered.notified().await;
+            tokio::time::sleep(Duration::from_millis(delay)).await;
+            port.release.add_permits(1);
+        }
+    });
+    let socket = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    std::fs::write(file, socket.local_addr().unwrap().to_string()).unwrap();
+    axum::serve(socket, app).await.unwrap();
 }
