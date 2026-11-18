@@ -150,7 +150,7 @@ exist and a draft owned by someone else both answer `404`. A malformed `work_id`
 
 Draft-content `PUT` alone accepts bodies up to **8,388,608 bytes (8 MiB)**, including JSON
 framing, title and `expected_version`. An anonymous draft save returns `401` before the App reads
-its body. Other JSON routes retain Axum's default 2 MiB cap.
+its body. Draft tags retain Axum's default 2 MiB cap. Auth routes keep their own 32 KiB cap.
 This finite budget covers valid v1 documents from the compact UTF-8 Web serializer, including
 200,000 one-character blocks, NFD, emoji, quote/backslash/tab escaping and a trimmed title of
 200 NFC scalars. Web trims the title as the domain already does, retaining the live input.

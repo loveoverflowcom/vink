@@ -1,0 +1,177 @@
+local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=2 libtest_threads=2 managed_target=10–12 GiB (advisory); Cargo bootstrap included; preflight requires normal pressure; retries manual
+local-budget: pressure=normal; swap: total = 2048.00M  used = 796.06M  free = 1251.94M  (encrypted)
+local-budget: supervisor=51193 session=51218 slot=/tmp/vink-local-budget-501
+   Compiling sqlx-core v0.9.0
+   Compiling sqlx-postgres v0.9.0
+   Compiling sqlx-macros-core v0.9.0
+   Compiling vink-web v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-18/task/vink-273/apps/vink-web)
+   Compiling sqlx-macros v0.9.0
+   Compiling sqlx v0.9.0
+   Compiling vink-store-postgres v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-18/task/vink-273/packages/store-postgres)
+   Compiling vink-app v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-18/task/vink-273/services/vink-app)
+    Finished `test` profile [unoptimized] target(s) in 1m 08s
+     Running tests/postgres.rs (target/debug/deps/postgres-17b64a22f9443168)
+
+running 4 tests
+test document_budget::draft_http_budget_browser ... ignored, opt-in browser: build site, VINK_CHROME, VINK_DOCUMENT_BUDGET_OUTPUT
+corpus=ascii_repeat
+draft-http bytes=201691 chunked=true status=200 OK elapsed_ms=27.29
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=18.66
+draft-http bytes=201691 chunked=true status=409 Conflict elapsed_ms=19.88
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=19.34
+draft-http bytes=201691 chunked=true status=404 Not Found elapsed_ms=18.86
+test draft_http_budget::anonymous_draft_http_budget_returns_401_before_reading_body ... ok
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=18.45
+draft-http bytes=201691 chunked=true status=401 Unauthorized elapsed_ms=0.60
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=17.91
+draft-http bytes=201691 chunked=true status=403 Forbidden elapsed_ms=0.44
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=18.30
+corpus=vi_nfc
+draft-http bytes=453703 chunked=false status=200 OK elapsed_ms=79.12
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=51.84
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=0.78
+draft-http bytes=8388607 chunked=false status=200 OK elapsed_ms=39.36
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=0.66
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=0.47
+draft-http bytes=453703 chunked=true status=409 Conflict elapsed_ms=50.19
+draft-http bytes=8388608 chunked=false status=200 OK elapsed_ms=40.46
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=0.76
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=0.46
+draft-http bytes=8388609 chunked=false status=422 Unprocessable Entity elapsed_ms=2.22
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=51.46
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=0.63
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=0.42
+draft-http bytes=453703 chunked=true status=404 Not Found elapsed_ms=49.95
+draft-http bytes=8388607 chunked=true status=200 OK elapsed_ms=39.99
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=0.53
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=0.41
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=51.00
+draft-http bytes=8388608 chunked=true status=200 OK elapsed_ms=39.48
+draft-http bytes=453703 chunked=true status=401 Unauthorized elapsed_ms=0.64
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=0.66
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=0.40
+draft-http bytes=8388609 chunked=true status=422 Unprocessable Entity elapsed_ms=3.72
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=0.51
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=0.43
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=50.91
+draft-http bytes=453703 chunked=true status=403 Forbidden elapsed_ms=0.67
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=51.39
+corpus=vi_nfd
+draft-http bytes=636112 chunked=true status=200 OK elapsed_ms=61.65
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=57.16
+draft-http bytes=125 chunked=true status=422 Unprocessable Entity elapsed_ms=0.72
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=0.65
+draft-http bytes=19 chunked=true status=422 Unprocessable Entity elapsed_ms=0.44
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=0.49
+draft-http bytes=636112 chunked=true status=409 Conflict elapsed_ms=44.81
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=50.85
+draft-http bytes=636112 chunked=true status=404 Not Found elapsed_ms=45.48
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=53.37
+draft-http bytes=636112 chunked=true status=401 Unauthorized elapsed_ms=0.92
+draft-http bytes=8388605 chunked=true status=422 Unprocessable Entity elapsed_ms=325.04
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=0.89
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=50.73
+draft-http bytes=636112 chunked=true status=403 Forbidden elapsed_ms=0.72
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=53.23
+corpus=emoji
+draft-http bytes=801691 chunked=false status=200 OK elapsed_ms=62.96
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=39.47
+draft-http bytes=3200093 chunked=true status=422 Unprocessable Entity elapsed_ms=269.03
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=0.65
+draft-http bytes=326 chunked=true status=422 Unprocessable Entity elapsed_ms=0.40
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=0.45
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=1.56
+draft-http bytes=2097153 chunked=true status=422 Unprocessable Entity elapsed_ms=1.25
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=0.72
+draft-http bytes=801691 chunked=true status=409 Conflict elapsed_ms=40.56
+test draft_http_budget::draft_http_budget_limits_streamed_and_declared_bodies_without_writes ... ok
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=40.21
+draft-http bytes=801691 chunked=true status=404 Not Found elapsed_ms=38.92
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=40.09
+draft-http bytes=801691 chunked=true status=401 Unauthorized elapsed_ms=0.81
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=38.88
+draft-http bytes=801691 chunked=true status=403 Forbidden elapsed_ms=0.83
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=39.64
+corpus=poem_tabs
+draft-http bytes=471669 chunked=true status=200 OK elapsed_ms=73.45
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=57.80
+draft-http bytes=471669 chunked=true status=409 Conflict elapsed_ms=56.77
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=57.22
+draft-http bytes=471669 chunked=true status=404 Not Found elapsed_ms=56.71
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=56.92
+draft-http bytes=471669 chunked=true status=401 Unauthorized elapsed_ms=0.70
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=56.34
+draft-http bytes=471669 chunked=true status=403 Forbidden elapsed_ms=0.73
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=56.04
+corpus=tiny_blocks
+draft-http bytes=3201676 chunked=false status=200 OK elapsed_ms=459.53
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=371.72
+draft-http bytes=3201676 chunked=true status=409 Conflict elapsed_ms=424.22
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=364.11
+draft-http bytes=3201676 chunked=true status=404 Not Found elapsed_ms=424.42
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=371.23
+draft-http bytes=3201676 chunked=true status=401 Unauthorized elapsed_ms=1.15
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=355.11
+draft-http bytes=3201676 chunked=true status=403 Forbidden elapsed_ms=0.96
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=358.62
+corpus=escaping
+draft-http bytes=287350 chunked=true status=200 OK elapsed_ms=40.84
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=32.05
+draft-http bytes=287350 chunked=true status=409 Conflict elapsed_ms=31.18
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=31.37
+draft-http bytes=287350 chunked=true status=404 Not Found elapsed_ms=31.68
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=31.93
+draft-http bytes=287350 chunked=true status=401 Unauthorized elapsed_ms=0.73
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=31.72
+draft-http bytes=287350 chunked=true status=403 Forbidden elapsed_ms=0.75
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=32.28
+corpus=four-scalar-nfd
+draft-http bytes=4601676 chunked=false status=200 OK elapsed_ms=496.03
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=429.86
+draft-http bytes=4601676 chunked=true status=409 Conflict elapsed_ms=493.64
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=422.89
+draft-http bytes=4601676 chunked=true status=404 Not Found elapsed_ms=488.66
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=434.87
+draft-http bytes=4601676 chunked=true status=401 Unauthorized elapsed_ms=1.10
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=433.89
+draft-http bytes=4601676 chunked=true status=403 Forbidden elapsed_ms=1.13
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=429.23
+corpus=escaped-quote
+draft-http bytes=3401676 chunked=true status=200 OK elapsed_ms=431.40
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=344.80
+draft-http bytes=3401676 chunked=true status=409 Conflict elapsed_ms=421.63
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=357.24
+draft-http bytes=3401677 chunked=true status=404 Not Found elapsed_ms=426.69
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=363.97
+draft-http bytes=3401677 chunked=true status=401 Unauthorized elapsed_ms=1.14
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=363.29
+draft-http bytes=3401677 chunked=true status=403 Forbidden elapsed_ms=1.06
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=360.54
+corpus=escaped-backslash
+draft-http bytes=3401677 chunked=false status=200 OK elapsed_ms=435.31
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=343.62
+draft-http bytes=3401677 chunked=true status=409 Conflict elapsed_ms=420.23
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=367.12
+draft-http bytes=3401677 chunked=true status=404 Not Found elapsed_ms=420.77
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=359.01
+draft-http bytes=3401677 chunked=true status=401 Unauthorized elapsed_ms=1.31
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=358.21
+draft-http bytes=3401677 chunked=true status=403 Forbidden elapsed_ms=1.42
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=355.50
+corpus=supplementary
+draft-http bytes=3801677 chunked=true status=200 OK elapsed_ms=454.82
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=373.71
+draft-http bytes=3801677 chunked=true status=409 Conflict elapsed_ms=443.00
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=382.68
+draft-http bytes=3801677 chunked=true status=404 Not Found elapsed_ms=436.70
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=375.36
+draft-http bytes=3801677 chunked=true status=401 Unauthorized elapsed_ms=1.24
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=372.66
+draft-http bytes=3801677 chunked=true status=403 Forbidden elapsed_ms=1.38
+draft-http bytes=0 chunked=false status=200 OK elapsed_ms=372.95
+test draft_http_budget::draft_http_budget_accepts_client_corpus_and_preserves_authority ... ok
+
+test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 213 filtered out; finished in 34.66s
+
+local-budget: wall=105.28s sampled_peak_rss_sum=2094176 KiB samples=104 interval=1s
+local-budget: pressure=normal; swap: total = 2048.00M  used = 796.06M  free = 1251.94M  (encrypted)

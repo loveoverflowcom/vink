@@ -7,7 +7,7 @@ Owner: `PUT /api/v1/drafts/{work_id}`, `http/api.rs`, `http/contract.rs` và Web
 ## Quyết định kỹ thuật và phạm vi
 
 **#273 CHOICE-01 A:** `DefaultBodyLimit::max(8 * 1024 * 1024)` chỉ gắn vào method PUT
-lưu nội dung nháp. Các JSON route khác giữ mặc định Axum 2 MiB. Chọn guard sẵn có vì
+lưu nội dung nháp. PUT tags giữ mặc định Axum 2 MiB; nhóm Auth giữ cap riêng 32 KiB. Chọn guard sẵn có vì
 nó giới hạn cả body có `Content-Length` lẫn chunked trước khi deserialize JSON; không
 cần parser/streaming framework mới. Body được buffer hữu hạn, không có streaming domain
 validation. Không có thay đổi migration, hash, revision, cache, autosave hay quyền.

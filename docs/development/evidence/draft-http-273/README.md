@@ -81,3 +81,33 @@ HTTP DTO/title handling/docs và tính lại bound cho `{format, source}`, rồi
 PG/HTTP/corpus/browser trên head tích hợp. Không kế thừa bound v1 thành chứng minh canonical,
 không rehash/sửa lịch sử bất biến, không giả signoff r2. Giữ PR riêng ở Draft để parent review;
 không merge hoặc deploy trong lượt tạo PR này.
+
+## Review độc lập trên Mac
+
+Reviewer đối chiếu 16 checksum của lượt tác giả, diff từ base, validator, serializer, handler và
+câu UPDATE có owner/version cùng hàng rào standing. Với document khác rỗng, framing JSON v1
+là `31 + 12B + 3L` byte cho B block, L line; document rỗng cần 32 byte. Envelope ngoài document
+cần tối đa 64 byte với title rỗng và i64 có dấu. Các hạng tử này nằm trong bound 7.804.928 byte.
+Cap 8 MiB chỉ áp cho PUT nội dung; PUT tags dùng 2 MiB và nhóm auth dùng 32 KiB.
+
+Ở head tác giả, Axum đã giải mã tham số `Result<Json<…>>` trước khi handler trả 401.
+Commit `8f71500d3fc1b0e4a5ead5b3e0af01e32d2e413f` cho handler từ chối anonymous trước
+khi đọc body. Regression gắn một body kiểm tra việc đọc trực tiếp vào router. Test browser cũng
+đọc title từ chính request bằng CDP; trước đó server tự trim nên assertion vẫn có thể PASS nếu
+Web bỏ quên bước trim.
+
+Hai lượt focused sau chạy trên commit sửa đó, với PostgreSQL 17.11 ở loopback port 55673.
+
+- [HTTP/PG](review-http.log): selector `draft_http_budget` PASS 3, 1 ignored (browser opt-in).
+  Hai test TCP dùng HTTP/1 và PostgreSQL thật; test thứ ba kiểm 401/no-store trước khi App đọc
+  body. Các refusal trong hai test TCP có readback đối chiếu.
+- [Chrome document-budget](review-browser.log): opt-in PASS 1/1, 3 corpus, 9 cảnh Reader,
+  12 cảnh Editor. Ba lượt save lần lượt gửi 67.936, 470.091 và 3.200.101 byte. Mỗi lượt gửi
+  một PUT với title đã trim, giữ nguyên title đang nhập và toàn bộ buffer.
+- `verify quick` lần đầu dừng tại test xtask `nonblocking_listener_streams_a_complete_large_asset`
+  khi `accept()` trả `WouldBlock`. File xtask giống base. Test chạy riêng lại với một test thread
+  PASS 1/1. [PR #286](https://github.com/loveoverflowcom/vink/pull/286) ghi kết quả các lane trên head cuối.
+
+Số đo RSS/CPU ở mục trên thuộc source của tác giả, gồm cả client và App trong process test.
+Kết quả Chrome chỉ bao phủ input tổng hợp. Khi thay toàn bộ v1 bằng source canonical trong #285,
+cần tính và kiểm lại budget trên chính DTO/serializer lúc đó.
