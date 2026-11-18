@@ -1,0 +1,19 @@
+# Import from the existing Caddyfile after the private upstream passes readiness.
+vink.forum {
+    header {
+        ?X-Content-Type-Options nosniff
+        ?Referrer-Policy strict-origin-when-cross-origin
+        Strict-Transport-Security "max-age=31536000"
+        -Server
+    }
+    encode /pkg/* zstd gzip
+    reverse_proxy 10.89.4.10:3000 {
+        header_up X-Forwarded-For {remote_host}
+        header_up -Forwarded
+        header_up -X-Real-IP
+    }
+}
+
+www.vink.forum {
+    redir https://vink.forum{uri} permanent
+}

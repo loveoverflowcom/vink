@@ -1,0 +1,11 @@
+[Unit]
+Description=Back up the two Vink production PostgreSQL databases
+Requisite=vink-prod.service
+After=vink-prod.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/vink-prod/current/infra/production/backup.sh
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=20min

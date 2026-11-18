@@ -40,6 +40,11 @@ consumer Web dùng ReadOwner/PageChain của #202; evidence phân trang và gi�
 nguyên văn, một content hash, title theo định dạng và migration cutover fail-closed khi còn revision
 cũ ([kiến trúc](../architecture/document-source-format.md)); `VDR-DOCUMENT-SOURCE-FORMAT@r2` `ACCEPTED`.
 
+## Triển khai production
+
+[Runbook Vink production](../../infra/production/README.md) ghi trình tự build, PostgreSQL,
+Caddy, DNS, backup và rollback trên VPS.
+
 ## Nền test-domain/container
 
 [Cloudflare test và cấu hình Google Cloud](cloudflare-test-evidence.md) ghi asset upload,
