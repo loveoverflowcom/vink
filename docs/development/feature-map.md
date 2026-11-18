@@ -14,7 +14,7 @@ kiểm PostgreSQL, HTTP và browser cho hành trình Social thuộc từng PR tr
 
 **Web Perf #234 · baseline opt-in:** [cách đo và giới hạn](web-perf-baseline.md) với 200 works/1.000 comments, 10 cold + 10 warm, history SSR, transport secondary/304 và [trace release](evidence/web-perf-234-236/README.md). Debug lab `997d97d` vẫn là [evidence lịch sử](evidence/web-perf-234/README.md).
 
-**Web Perf #235 · SSR Reader:** [owner, lựa chọn A/B/C và regression](reader-ssr-boundary.md) giữ Async. `main` cover blocked bootstrap, WASM-only delay/failure và fresh Reader handoff; ma trận Leptos/Axum giữ status/privacy trước response. Proxy và streaming chưa thử.
+**Web Perf #235 · SSR Reader:** [owner, lựa chọn A/B/C và regression](reader-ssr-boundary.md) giữ Async. `main` cover blocked bootstrap, WASM-only delay/failure và fresh Reader handoff; ma trận Leptos/Axum giữ status/privacy trước response. [Ma trận direct/Caddy](evidence/web-perf-235-canonical/README.md) đã kiểm OutOfOrder và rollback Async.
 
 **Web Perf #236 · quay lại Khám phá:** [LayoutSpec](../design/discovery-return-position-236.md) và scenario `return-position` opt-in trên fixture #234. Router ghi fragment vào history; callback chỉ phục hồi vị trí của scope đã settle, bằng hàng hoặc vùng kết quả có tên. Không giữ lại view hoặc offset đã rời.
 

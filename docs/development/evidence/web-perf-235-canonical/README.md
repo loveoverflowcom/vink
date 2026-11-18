@@ -21,3 +21,5 @@ python3 docs/development/evidence/web-perf-235-canonical/chunks.py "$BIN" "$(com
 node apps/vink-web/e2e/browser-smoke.mjs --base "$SCRATCH_ORIGIN" --chrome "$VINK_CHROME" --state "$ARTIFACTS/state.json" --phase reader-guest-history
 cargo xtask verify web --scenario main --scenario discovery --scenario review --release
 ```
+
+Đã chạy lại browser release của develop tại `9fcd75e`. [Bootstrap, WASM-only và click](reader-ssr-boundary.json.gz) và [lifecycle/withdrawal/ABA](public-read-lifecycle.json.gz) đều PASS.
