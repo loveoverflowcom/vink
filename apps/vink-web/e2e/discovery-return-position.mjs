@@ -161,16 +161,8 @@ export async function discoveryReturnPosition(page, { args, check }) {
       await page.eval(`(() => {
         const style = document.createElement('style');
         style.id='return-probe-style';
-        style.textContent="@font-face{font-family:ReturnProbe;font-display:swap;src:url('/pkg/fonts/literata-variable.woff2?return-probe')} .vk-public-row__link{font-family:ReturnProbe,serif}";
+        style.textContent="@font-face{font-family:ReturnProbe;font-display:swap;src:url('/pkg/fonts/literata-variable.woff2?return-probe')} .vk-public-row__link{font-family:ReturnProbe,serif} .vk-public-row:first-of-type::before{content:'';display:block;width:32px;height:32px;background-image:url('/pkg/brand/vpen-r1-mark-light-32.png?return-probe')}";
         document.head.append(style);
-        const observer=new MutationObserver(() => {
-          const row=document.querySelector('.vk-public-row');
-          if (!row) return;
-          observer.disconnect();
-          const img=new Image(32,32); img.id='return-probe-image'; img.alt='';
-          img.src='/pkg/brand/vpen-r1-mark-light-32.png?return-probe'; row.append(img);
-        });
-        observer.observe(document.body,{subtree:true,childList:true});
       })()`);
       await page.click('#reader-return');
       await page.waitFor(arrived, 'return before font or image settles');
@@ -180,15 +172,15 @@ export async function discoveryReturnPosition(page, { args, check }) {
       await page.eval(frames);
       const before=await geometry();
       for (const requestId of media.values()) await page.send('Fetch.continueResponse',{requestId});
-      await page.waitFor("document.fonts.status==='loaded' && document.querySelector('#return-probe-image')?.naturalWidth===32", 'held font and image settle');
+      await page.waitFor("performance.getEntriesByType('resource').filter(r=>r.name.endsWith('?return-probe') && r.responseEnd>0).length>=2", 'held font and image finish loading');
       await settle();
       const after=await geometry();
-      const decoded = await page.eval("document.fonts.check('16px ReturnProbe') && document.querySelector('#return-probe-image').naturalWidth===32");
+      const decoded = await page.eval("document.fonts.check('16px ReturnProbe') && getComputedStyle(document.querySelector('.vk-public-row'),'::before').width==='32px'");
       result('late-font-and-sized-image', decoded && fits(before) && fits(after), { before, after, decoded });
     } finally {
       await page.send('Fetch.disable');
       page.cdp.listeners=page.cdp.listeners.filter(l=>l!==collect);
-      await page.eval("document.querySelector('#return-probe-style')?.remove();document.querySelector('#return-probe-image')?.remove()");
+      await page.eval("document.querySelector('#return-probe-style')?.remove()");
     }
 
     // Temporarily offline, a recent navigation snapshot can render; controls still own authority.
