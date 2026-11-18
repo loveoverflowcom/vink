@@ -119,7 +119,7 @@ Document canonical [#255](document-source-format.md): một shape không version
 kèm icon 18px Lucide. Markdown vẫn bị chặn xuất bản công khai (`format_not_publishable`) cho đến #264.
 Xem [LayoutSpec hợp nhất](../design/editor-live-preview-256-257.md),
 [LayoutSpec picker #262](../design/editor-format-picker-262.md) và
-[bằng chứng thực chạy](evidence/editor-format-picker-262/README.md).
+[bằng chứng Web cho link nhiều dòng, CTA đầu tiên, lỗi tên và p95 mục lục](evidence/desk-markdown-first-draft/README.md).
 
 #263 [title theo định dạng](../architecture/editor-title-authority.md): Mặc định dùng tên riêng,
 Markdown dùng H1 đầu tiên của AST CommonMark (`pulldown-cmark`, không extension), vật chất hóa trong
