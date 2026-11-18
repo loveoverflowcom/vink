@@ -28,7 +28,7 @@ export async function readerContainment(page, {args,check}) {
   await page.send('Performance.enable');
   try {
     // Alternate pair order, calibrated by one excluded A mount on the same content and device.
-    for (const [i,mode] of ['calibrate',...Array.from({length:large?2:10},(_,i)=>i%2?['B','A']:['A','B']).flat()].entries()) {
+    for (const [i,mode] of ['calibrate',...Array.from({length:10},(_,i)=>i%2?['B','A']:['A','B']).flat()].entries()) {
       await page.goto('about:blank');
       await page.goto(args.base+'/?q=kiem%20thu');
       await page.waitFor(ready+' && !!document.querySelector(".vk-public-row__link")','hydrated discovery');
