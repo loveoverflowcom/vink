@@ -73,27 +73,31 @@ function flattenHeadingText(doc: EditorState['doc'], node: SyntaxNode): string {
           ? code.slice(1, -1) : code;
       }
     }
+    // Lezer's Setext node includes the underline line. In a block quote the leading
+    // '>' on that line may be a gap, not a QuoteMark child of the heading.
+    const underline = current.name.startsWith('SetextHeading') ? current.getChild('HeaderMark') : null;
+    const end = underline ? doc.lineAt(underline.from).from - 1 : current.to;
     let pos = current.from;
     let out = '';
-    for (let child = current.firstChild; child; child = child.nextSibling) {
+    for (let child = current.firstChild; child && child.from < end; child = child.nextSibling) {
       out += doc.sliceString(pos, child.from);
       if (child.name === 'Escape') {
         out += doc.sliceString(child.from + 1, child.to);
       } else if (child.name === 'Entity') {
         out += decodeHtmlEntity(doc.sliceString(child.from, child.to));
       } else if (child.name === 'HardBreak') {
-        out += ' ';
+        out += '\n';
       } else if (!SKIP_IN_HEADING.has(child.name)) {
         out += walk(child);
       }
       pos = child.to;
     }
-    out += doc.sliceString(pos, current.to);
+    out += doc.sliceString(pos, end);
     return out;
   };
   return walk(node)
+    .replace(/[ \t]*(?:\r\n|\r|\n)[ \t]*/g, ' ')
     .replace(/\t/g, ' ')
-    .replace(/\r?\n|\r/g, ' ')
     .trim();
 }
 

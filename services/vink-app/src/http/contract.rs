@@ -3090,11 +3090,6 @@ mod tests {
                     404,
                 ),
                 (
-                    "error.format_not_publishable.json",
-                    ApiError::FormatNotPublishable,
-                    409,
-                ),
-                (
                     "error.work_unavailable.json",
                     ApiError::WorkUnavailable,
                     409,

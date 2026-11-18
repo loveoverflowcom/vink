@@ -55,8 +55,8 @@ Không có hai nguồn tên writable; body Mặc định có dấu `#` vẫn là
 giữ giới hạn tên hiện hành và nguồn khi lỗi. **17/11/2026 — #255:** thay hoàn toàn contract
 document bằng một `{format, source}`, không duy trì v1/v2 song song. Đây là hướng
 `PRODUCT_CONFIRMED`. Chủ sản phẩm duyệt [đúng kiến trúc r2](../decisions/signoffs/VDR-DOCUMENT-SOURCE-FORMAT.r2.toml)
-và cơ chế dừng khi có revision cũ. Viết lại snapshot bất biến (WR-03) hoặc migration dữ liệu thật cần ủy quyền riêng. Markdown hiện chỉ có nháp/snapshot riêng tư qua API; editor/Reader còn phụ thuộc
-#256/#264. Xem [contract và giới hạn cutover](../docs/architecture/document-source-format.md) và
+và cơ chế dừng khi có revision cũ. Viết lại snapshot bất biến (WR-03) hoặc migration dữ liệu thật cần ủy quyền riêng. Bàn viết dùng đúng format nguồn và Reader hiển thị revision đã duyệt qua
+[pipeline đọc #264](../docs/development/document-source-format.md#2-pipeline-đọc-web). Xem [contract và giới hạn cutover](../docs/architecture/document-source-format.md) và
 [owner title, corpus và dependency #255](../docs/architecture/editor-title-authority.md).
 
 ## 4. Xuất bản và rút bài

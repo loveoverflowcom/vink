@@ -16,14 +16,20 @@
 //! - The caller applies `Title::parse` (trim, NFC, forbidden characters, 200-character limit).
 //!   Nothing is truncated and the source is never rewritten.
 
-use pulldown_cmark::{Event, HeadingLevel, Options, Parser, Tag, TagEnd};
+pub use pulldown_cmark::{Event, HeadingLevel, Tag};
+use pulldown_cmark::{Options, Parser, TagEnd};
+
+/// The canonical grammar for both title extraction and document rendering.
+pub fn commonmark(source: &str) -> Parser<'_> {
+    Parser::new_ext(source, Options::empty())
+}
 
 /// Flattened text of the first H1, before `Title::parse`. Empty when there is no H1 or the first
 /// H1 has no text. Stops parsing at the end of that heading.
 pub fn first_h1_projection(source: &str) -> String {
     let mut in_h1 = false;
     let mut text = String::new();
-    for event in Parser::new_ext(source, Options::empty()) {
+    for event in commonmark(source) {
         match event {
             Event::Start(Tag::Heading {
                 level: HeadingLevel::H1,

@@ -73,15 +73,16 @@ Bộ đề xuất v0.2 đã được đưa vào repository Vink ngày 30/10/2026
 
 Tiêu đề theo định dạng #263: [owner và corpus](architecture/editor-title-authority.md)
 ghi quyết định Default/Markdown, legacy guards và điểm nối source contract #255.
-Markdown extraction và tích hợp PG/Web chưa triển khai; [evidence](development/evidence/editor-title-263/README.md)
-ghi riêng phần thực chạy.
+Domain và Web dùng chung projection title theo format trong luồng lưu và đọc. Bằng chứng ban
+đầu tại [#263](development/evidence/editor-title-263/README.md) và lượt tích hợp ở
+[registry](development/document-source-format.md).
 
 Document canonical #255 (thay hoàn toàn document v1 theo quyết định sản phẩm 17/11/2026):
 [spec kiến trúc](architecture/document-source-format.md) và
 [registry phát triển](development/document-source-format.md) ghi shape `{format, source}`, title
 theo định dạng (#263), một content hash và cutover forward-only bị chặn khi còn revision bất biến
 cũ; kiến trúc [VDR-DOCUMENT-SOURCE-FORMAT@r2](../decisions/proposals/VDR-DOCUMENT-SOURCE-FORMAT.r2.toml)
-`PENDING`.
+`ACCEPTED`. Reader, preview và snapshot dùng chung phép chiếu Mặc định/Markdown.
 
 ## Ánh xạ bộ foundation
 

@@ -2,10 +2,9 @@
 
 [Issue #263](https://github.com/loveoverflowcom/vink/issues/263) sở hữu extraction/metadata của
 title; [#255](https://github.com/loveoverflowcom/vink/issues/255) sở hữu document canonical
-`{format, source}` và hash ([kiến trúc](document-source-format.md)). Cập nhật 17/11/2026 trên
-`develop@607ef83`: title authority đã nối domain → application → PostgreSQL → HTTP API v1; Web
-Bàn viết chỉ soạn `default`; Markdown chưa có editor (#256) và chưa được công khai (#264).
-Kiến trúc `VDR-DOCUMENT-SOURCE-FORMAT@r2` vẫn `ACCEPTED`.
+`{format, source}` và hash ([kiến trúc](document-source-format.md)). Title authority nối domain → application → PostgreSQL → HTTP API v1. Web Bàn viết soạn cả
+hai format (#256) và Reader đọc bản Markdown đã duyệt ([#264](../development/document-source-format.md#2-pipeline-đọc-web)).
+Kiến trúc `VDR-DOCUMENT-SOURCE-FORMAT@r2` có trạng thái `ACCEPTED`.
 
 Bàn viết hiện mở và lưu cả hai định dạng qua [Live Preview và bộ chọn](../design/editor-live-preview-256-257.md).
 Khi API lưu nháp trả `422` ở trường `title`, Markdown hiện hướng dẫn sửa H1 cạnh vùng Nội dung
@@ -45,8 +44,8 @@ trước), không vào source, metadata hay vượt `MissingTitle`.
 - **Một cặp source/title:** `TitledDocument::author` (Default cần `title`; Markdown từ chối mọi
   `title` client) và `TitledDocument::from_stored` (Markdown tính lại H1 và phải bằng cột `title`).
 - **`CHOICE-01` chọn A** — server sinh projection; client không gửi title Markdown. Không cần payload
-  tương thích (B) vì không còn phiên bản cũ phải giữ. TS chưa có parser nên differential Rust/TS là
-  `NOT_APPLICABLE` ở PR này; #256 phải chạy cùng corpus trước khi hiển thị title phía client.
+  tương thích (B) vì không còn phiên bản cũ phải giữ. Parser CodeMirror ở #256 chạy cùng corpus với Rust.
+  Corpus #264 có thêm Setext nhiều dòng trong trích dẫn để kiểm phép chiếu title và anchor.
 - **`CHOICE-02` chọn A** — cột `working_drafts.title` vật chất hóa trong cùng `UPDATE … WHERE
   version = expected` với `document`, nên danh sách/tìm kiếm (`desk_title_key`,
   `revisions.title_search_key`) đọc đúng phiên bản. Capture snapshot đọc `title` + `document` từ
@@ -56,7 +55,7 @@ trước), không vào source, metadata hay vượt `MissingTitle`.
   golden) và [`markdown.json`](../../services/vink-app/tests/fixtures/title-authority/markdown.json)
   (30 ca, nay là oracle **thực thi** của parser Rust qua unit và application).
 
-## Hiện trạng tích hợp tại mốc 17/11/2026
+## Hiện trạng tích hợp
 
 | Owner/caller | Hiện trạng sau #255/#263 | Bằng chứng |
 | --- | --- | --- |
@@ -65,8 +64,8 @@ trước), không vào source, metadata hay vượt `MissingTitle`.
 | `persistence/postgres.rs`, `publication.rs`, `discovery.rs` | Title + document cùng CAS; snapshot title từ source đã capture; đọc kiểm `from_stored` + hash. | PG `canonical_document::*`. |
 | `drafts.rs`, `author_works.rs`, discovery search | Đọc cột `title`/khóa sinh sẵn — cùng phiên bản với source. | PG drafts/author works/discovery hiện có. |
 | `http/contract.rs`, `contracts/http/v1/` | `title` tùy chọn theo format; response `title` là title hiệu lực. | Provider/consumer fixture tests. |
-| Web `pages/desk.rs` | Bàn viết soạn `default` (tên riêng); nháp Markdown dừng tường minh, không lưu đè. | Web unit + browser lane. |
-| #256/#257/#262/#264 | Chưa triển khai: editor Markdown, outline, picker/chuyển đổi, Reader Markdown. | `NOT_RUN`. |
+| Web `pages/desk.rs` | Bàn viết dùng title draft mới nhất. Outline lấy H1 đầu từ buffer hiện tại. | CodeMirror corpus và Web main. |
+| Web `pages/mod.rs`, `pages/moderation.rs` | Reader và màn ca/phản đối lấy title từ snapshot. H1 đầu tiên của Markdown chiếm đúng vị trí nội dung, kể cả Setext hoặc H1 trong trích dẫn. | Corpus và Web review cùng PostgreSQL scratch. |
 
 ## Lịch sử
 

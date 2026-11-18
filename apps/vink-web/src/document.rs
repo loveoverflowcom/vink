@@ -8,6 +8,8 @@ use unicode_normalization::UnicodeNormalization;
 
 use crate::contract::{DocumentDto, DocumentFormatDto};
 
+mod markdown;
+
 /// The desk's text as a default document, byte for byte.
 pub fn default_document(text: &str) -> DocumentDto {
     DocumentDto {
@@ -149,18 +151,6 @@ impl ConversionPreview {
     }
 }
 
-fn strip_atx_closing_hashes(text: &str) -> &str {
-    let trimmed = text.trim_end_matches([' ', '\t']);
-    let without_hashes = trimmed.trim_end_matches('#');
-    if without_hashes.len() < trimmed.len()
-        && (without_hashes.is_empty() || without_hashes.ends_with([' ', '\t']))
-    {
-        without_hashes.trim_end_matches([' ', '\t'])
-    } else {
-        trimmed
-    }
-}
-
 /// Paragraphs and stanzas of a default document for reading: a run of blank or whitespace-only
 /// lines separates blocks, a single line break stays inside one, and indentation is kept. LF, CRLF and
 /// CR each count as one break. The source itself is never changed.
@@ -182,134 +172,64 @@ pub fn paragraphs(source: &str) -> Vec<Vec<&str>> {
     blocks
 }
 
-enum PreviewBlock {
-    Heading { level: usize, text: String },
-    Quote(Vec<String>),
-    Code(Vec<String>),
-    Paragraph(Vec<String>),
+/// Ephemeral reading projection. Only the source DTO is stored or cached.
+pub(crate) struct ReadingDocument<'a> {
+    body: ReadingBody<'a>,
 }
 
-fn markdown_preview_blocks(source: &str) -> Vec<PreviewBlock> {
-    let mut blocks = Vec::new();
-    let mut para: Vec<String> = Vec::new();
-    let mut quote: Vec<String> = Vec::new();
-    let mut code: Vec<String> = Vec::new();
-    let mut fence: Option<char> = None;
-
-    let flush_para = |blocks: &mut Vec<PreviewBlock>, para: &mut Vec<String>| {
-        if !para.is_empty() {
-            blocks.push(PreviewBlock::Paragraph(std::mem::take(para)));
-        }
-    };
-    let flush_quote = |blocks: &mut Vec<PreviewBlock>, quote: &mut Vec<String>| {
-        if !quote.is_empty() {
-            blocks.push(PreviewBlock::Quote(std::mem::take(quote)));
-        }
-    };
-
-    for line in source.lines().flat_map(|line| line.split('\r')) {
-        let trimmed = line.trim_start_matches(' ');
-        if let Some(fc) = fence {
-            if trimmed.starts_with(fc) && trimmed.chars().take_while(|&c| c == fc).count() >= 3 {
-                blocks.push(PreviewBlock::Code(std::mem::take(&mut code)));
-                fence = None;
-            } else {
-                code.push(line.to_owned());
-            }
-            continue;
-        }
-        if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
-            flush_para(&mut blocks, &mut para);
-            flush_quote(&mut blocks, &mut quote);
-            fence = trimmed.chars().next();
-            continue;
-        }
-        if line.trim().is_empty() {
-            flush_para(&mut blocks, &mut para);
-            flush_quote(&mut blocks, &mut quote);
-            continue;
-        }
-        if let Some(q) = trimmed.strip_prefix('>') {
-            flush_para(&mut blocks, &mut para);
-            quote.push(q.strip_prefix(' ').unwrap_or(q).to_owned());
-            continue;
-        }
-        flush_quote(&mut blocks, &mut quote);
-        let hashes = trimmed.chars().take_while(|&c| c == '#').count();
-        if (1..=6).contains(&hashes) {
-            let rest = &trimmed[hashes..];
-            if rest.is_empty() || rest.starts_with([' ', '\t']) {
-                flush_para(&mut blocks, &mut para);
-                blocks.push(PreviewBlock::Heading {
-                    level: hashes,
-                    text: strip_atx_closing_hashes(rest.trim()).to_owned(),
-                });
-                continue;
-            }
-        }
-        para.push(line.to_owned());
-    }
-    if fence.is_some() {
-        blocks.push(PreviewBlock::Code(code));
-    }
-    flush_para(&mut blocks, &mut para);
-    flush_quote(&mut blocks, &mut quote);
-    blocks
+enum ReadingBody<'a> {
+    Default(Vec<Vec<&'a str>>),
+    Markdown(markdown::Markdown),
 }
 
-/// Default documents render as paragraphs; CSS `white-space: pre-wrap` keeps line breaks and
-/// indentation. Markdown in the private draft preview renders safe escaped blocks without HTML execution.
-#[component]
-pub fn DocumentView(document: DocumentDto) -> impl IntoView {
-    match document.format {
-        DocumentFormatDto::Default => {
-            let blocks = paragraphs(&document.source)
-                .into_iter()
-                .map(|lines| {
-                    let class = if lines.len() > 1 {
-                        "vk-block vk-block--lines"
-                    } else {
-                        "vk-block"
-                    };
-                    view! { <p class=class>{lines.join("\n")}</p> }
-                })
-                .collect_view();
-            view! { <div class="vk-document">{blocks}</div> }.into_any()
+impl<'a> ReadingDocument<'a> {
+    pub(crate) fn new(document: &'a DocumentDto) -> Self {
+        let body = match document.format {
+            DocumentFormatDto::Default => ReadingBody::Default(paragraphs(&document.source)),
+            DocumentFormatDto::Markdown => {
+                ReadingBody::Markdown(markdown::Markdown::parse(&document.source))
+            }
+        };
+        Self { body }
+    }
+
+    /// A Markdown H1 occupies its source position. The enclosing page only supplies a
+    /// separate heading for Default or for a draft that has no H1 yet.
+    pub(crate) fn title_in_body(&self) -> bool {
+        match &self.body {
+            ReadingBody::Default(_) => false,
+            ReadingBody::Markdown(markdown) => markdown.has_h1,
         }
-        DocumentFormatDto::Markdown => {
-            let blocks = markdown_preview_blocks(&document.source)
-                .into_iter()
-                .map(|block| match block {
-                    PreviewBlock::Heading { level, text } => view! {
-                        <p class=format!("vk-block vk-preview-md-h{level}")>{text}</p>
-                    }
-                    .into_any(),
-                    PreviewBlock::Quote(lines) => view! {
-                        <blockquote class="vk-block vk-block--lines vk-preview-md-quote">
-                            {lines.join("\n")}
-                        </blockquote>
-                    }
-                    .into_any(),
-                    PreviewBlock::Code(lines) => view! {
-                        <pre class="vk-block vk-preview-md-code"><code>{lines.join("\n")}</code></pre>
-                    }
-                    .into_any(),
-                    PreviewBlock::Paragraph(lines) => {
+    }
+
+    pub(crate) fn description(&self) -> String {
+        match &self.body {
+            ReadingBody::Default(blocks) => blocks
+                .first()
+                .and_then(|lines| lines.first())
+                .map(|line| (*line).to_owned())
+                .unwrap_or_default(),
+            ReadingBody::Markdown(markdown) => markdown.description(),
+        }
+    }
+
+    pub(crate) fn render(self, title: &str) -> AnyView {
+        match self.body {
+            ReadingBody::Default(blocks) => {
+                let blocks = blocks
+                    .into_iter()
+                    .map(|lines| {
                         let class = if lines.len() > 1 {
                             "vk-block vk-block--lines"
                         } else {
                             "vk-block"
                         };
-                        view! { <p class=class>{lines.join("\n")}</p> }.into_any()
-                    }
-                })
-                .collect_view();
-            view! {
-                <div class="vk-document" data-format="markdown">
-                    {blocks}
-                </div>
+                        view! { <p class=class>{lines.join("\n")}</p> }
+                    })
+                    .collect_view();
+                view! { <div class="vk-document" data-format="default">{blocks}</div> }.into_any()
             }
-            .into_any()
+            ReadingBody::Markdown(markdown) => markdown.render(title),
         }
     }
 }
@@ -317,6 +237,123 @@ pub fn DocumentView(document: DocumentDto) -> impl IntoView {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(feature = "ssr")]
+    #[test]
+    fn shared_render_corpus_uses_the_closed_commonmark_projection() {
+        use leptos::tachys::view::RenderHtml;
+        use serde::Deserialize;
+
+        #[derive(Deserialize)]
+        struct Case {
+            id: String,
+            format: DocumentFormatDto,
+            source: String,
+            title: String,
+            first_h1: bool,
+            description: String,
+            html_tags: Vec<String>,
+            literals: Vec<String>,
+        }
+
+        let cases: Vec<Case> = serde_json::from_str(include_str!(
+            "../../../services/vink-app/tests/fixtures/title-authority/render.json"
+        ))
+        .unwrap();
+        for case in cases {
+            let document = DocumentDto {
+                format: case.format,
+                source: case.source,
+            };
+            let reading = ReadingDocument::new(&document);
+            assert_eq!(reading.title_in_body(), case.first_h1, "{}", case.id);
+            assert_eq!(reading.description(), case.description, "{}", case.id);
+            if document.format == DocumentFormatDto::Markdown {
+                assert_eq!(
+                    markdown_first_h1(&document.source),
+                    case.title,
+                    "{}",
+                    case.id
+                );
+            }
+            let html = Owner::new()
+                .with(|| {
+                    reading
+                        .render(&crate::draft_list::display_title(&case.title))
+                        .to_html()
+                })
+                .replace("<!>", "");
+            for tag in &case.html_tags {
+                assert!(
+                    html.contains(&format!("<{tag}>")) || html.contains(&format!("<{tag} ")),
+                    "{} missing {tag}: {html}",
+                    case.id
+                );
+            }
+            for text in case.literals {
+                assert!(html.contains(&text), "{} missing {text}: {html}", case.id);
+            }
+            for tag in [
+                "img",
+                "script",
+                "vink-inline",
+                "vink-raw",
+                "table",
+                "del",
+                "input",
+            ] {
+                assert!(
+                    !html.contains(&format!("<{tag}")),
+                    "{} unexpected {tag}",
+                    case.id
+                );
+            }
+            if case.id == "network_and_html" {
+                assert_eq!(html.matches("href=").count(), 3, "{html}");
+                assert!(html.contains("href=\"https://preview-network.invalid/link\""));
+                assert_eq!(html.matches("src=").count(), 1, "{html}");
+                assert!(html.contains("&lt;img src="));
+                assert!(!html.contains("href=\"javascript:"));
+                assert!(!html.contains("href=\"data:"));
+                assert!(!html.contains("href=\"//"));
+            }
+            if case.id == "default_poetry" {
+                assert_eq!(html.matches("<p ").count(), 2);
+                assert!(!html.contains("<h1"));
+            }
+            if case.id == "empty_first_h1" {
+                assert!(html.contains("Chưa đặt tên"));
+            }
+        }
+    }
+
+    #[cfg(feature = "ssr")]
+    #[test]
+    fn markdown_projection_reaches_the_end_of_a_large_document_and_bounds_nesting() {
+        use leptos::tachys::view::RenderHtml;
+
+        let start = "# Bản dài\n\n";
+        let end = "\n\n## Kết thúc";
+        let source = format!(
+            "{start}{}{end}",
+            "ơ".repeat(200_000 - (start.chars().count() + end.chars().count()))
+        );
+        let document = markdown_document(&source);
+        let html =
+            Owner::new().with(|| ReadingDocument::new(&document).render("Bản dài").to_html());
+        assert!(html.contains("id=\"muc-2\">Kết thúc"));
+        assert_eq!(document.source, source);
+
+        let source = format!("{}# Một tên\n\nPhần cuối.", "> ".repeat(48));
+        let document = markdown_document(&source);
+        let reading = ReadingDocument::new(&document);
+        assert!(reading.title_in_body());
+        let html = Owner::new().with(|| reading.render("Một tên").to_html());
+        assert!(html.contains("id=\"muc-1\""));
+        assert_eq!(html.matches("Một tên").count(), 1);
+        assert!(!html.contains("<blockquote"));
+        assert!(html.contains("Phần cuối."));
+    }
 
     #[test]
     fn editor_text_is_sent_exactly() {

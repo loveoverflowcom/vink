@@ -62,11 +62,15 @@ pub fn WorkCard(
 }
 
 #[component]
-pub fn ReaderHeader(title: String, author: Author) -> impl IntoView {
+pub fn ReaderHeader(
+    title: String,
+    author: Author,
+    #[prop(optional)] title_in_body: bool,
+) -> impl IntoView {
     view! {
         <header id="reader-header" class="vk-reader__header">
             <Text role=TypeRole::Caption tone=TextTone::Muted>"Bản công khai"</Text>
-            <Heading level=HeadingLevel::H1 role=TypeRole::Display>{title}</Heading>
+            {(!title_in_body).then(|| view! { <Heading level=HeadingLevel::H1 role=TypeRole::Display>{title}</Heading> })}
             <WorkByline author size=AvatarSize::Reader />
         </header>
     }

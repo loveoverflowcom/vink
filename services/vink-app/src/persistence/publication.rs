@@ -22,7 +22,7 @@ use crate::application::ports::{
     AuthorPublicationStore, AuthorSnapshotCapture, BoundPrincipal, CaptureSnapshotOutcome,
     RequestPublicOutcome, SetPrivateOutcome, StoreError,
 };
-use crate::domain::document::{DocumentData, DocumentFormat, Title};
+use crate::domain::document::{DocumentData, Title};
 use crate::domain::draft::DraftVersion;
 use crate::domain::ids::{EvaluationId, GrantId, PrincipalId, RevisionId, WorkId};
 use crate::domain::moderation::ReviewRequest;
@@ -901,23 +901,6 @@ impl AuthorPublicationStore for PgStore {
             {
                 tx.rollback().await.map_err(classify)?;
                 return Ok(RequestPublicOutcome::UnknownRevision);
-            }
-
-            // Capability gate (#255/#264): only formats with a safe public Reader may become
-            // public. Markdown drafts and private snapshots work; publication waits for #264.
-            let format: String = query_scalar(
-                "SELECT document->>'format' FROM revisions WHERE work_id = $1 AND id = $2",
-            )
-            .bind(work_id.as_uuid())
-            .bind(revision_id.as_uuid())
-            .fetch_one(&mut *tx)
-            .await
-            .map_err(classify)?;
-            if DocumentFormat::parse(&format).map_err(|e| integrity("revision format", e))?
-                != DocumentFormat::Default
-            {
-                tx.rollback().await.map_err(classify)?;
-                return Ok(RequestPublicOutcome::FormatNotPublishable);
             }
 
             // MOD-14: the mode is read under a share lock in this commit, after the actor's

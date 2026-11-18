@@ -1,10 +1,11 @@
 //! #255/#263: the one canonical document on real PostgreSQL — save/CAS with format-aware title
-//! authority, snapshot titles, the publication capability gate, the database CHECK and the
+//! authority, immutable snapshot titles, publication eligibility, the database CHECK and the
 //! forward-only cutover (including its refusal while immutable revisions exist).
 use super::*;
 use sqlx::migrate::Migrator;
 use time::OffsetDateTime;
-use vink_app::application::publication::AuthorPublicationError;
+use vink_app::domain::publication::AuthorOutcome;
+use vink_app::evaluation_worker::EvaluationWorker;
 use vink_app::persistence::{MIGRATOR, migrate};
 
 const CANONICAL_MIGRATION: i64 = 20_261_122_000_000;
@@ -132,7 +133,7 @@ async fn markdown_title_is_materialized_in_the_same_save_and_cas(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
-async fn snapshot_title_comes_from_the_captured_source_and_markdown_stays_private(pool: PgPool) {
+async fn markdown_publishes_only_the_approved_captured_source(pool: PgPool) {
     let vink = seeded(&pool).await;
     let work = vink.create_draft(author()).await.unwrap().work_id;
     vink.save_draft(author(), markdown(work, 1, "# Mưa đầu mùa\n\nThân."))
@@ -164,11 +165,19 @@ async fn snapshot_title_comes_from_the_captured_source_and_markdown_stays_privat
         vink_app::domain::revision::ContentHash::of(&content).as_str()
     );
     assert_eq!(capture.content_hash.as_str(), hash);
-    // No safe Reader yet (#264): the request is refused before any state, receipt or ticket.
     assert_eq!(
-        vink.request_public(author(), work, "canonical-request", capture.revision_id, 1)
-            .await,
-        Err(AuthorPublicationError::FormatNotPublishable)
+        vink.publication(work).await,
+        Err(vink_app::application::ReadError::NotFound)
+    );
+    let requested = vink
+        .request_public(author(), work, "canonical-request", capture.revision_id, 1)
+        .await
+        .unwrap();
+    assert_eq!(requested.outcome, AuthorOutcome::Submitted);
+    assert_eq!(
+        vink.publication(work).await,
+        Err(vink_app::application::ReadError::NotFound),
+        "an accepted intent still needs a verdict"
     );
     let receipts: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM work_publication_command_receipts
@@ -178,11 +187,12 @@ async fn snapshot_title_comes_from_the_captured_source_and_markdown_stays_privat
     .fetch_one(&pool)
     .await
     .unwrap();
-    assert_eq!(receipts, 0);
-    assert_eq!(
-        vink.publication(work).await,
-        Err(vink_app::application::ReadError::NotFound)
-    );
+    assert_eq!(receipts, 1);
+    decide_markdown(&pool, work, "approve").await;
+    let published = vink.publication(work).await.unwrap();
+    assert_eq!(published.revision_id, capture.revision_id);
+    assert_eq!(published.content, content);
+    assert_eq!(stored(&pool, work).await.0, "Tên mới");
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
@@ -197,12 +207,29 @@ async fn rejected_markdown_preserves_the_previous_public_revision(pool: PgPool) 
         .capture_snapshot(author(), work, "private-markdown", 2, 1)
         .await
         .unwrap();
-    assert_eq!(
-        vink.request_public(author(), work, "reject-markdown", capture.revision_id, 2)
-            .await,
-        Err(AuthorPublicationError::FormatNotPublishable)
-    );
+    let requested = vink
+        .request_public(author(), work, "reject-markdown", capture.revision_id, 2)
+        .await
+        .unwrap();
+    assert_eq!(requested.outcome, AuthorOutcome::Submitted);
     assert_eq!(vink.publication(work).await.unwrap(), before);
+    decide_markdown(&pool, work, "reject").await;
+    assert_eq!(vink.publication(work).await.unwrap(), before);
+}
+
+async fn decide_markdown(pool: &PgPool, work: WorkId, scenario: &str) {
+    let jobs = sqlx::query("UPDATE work_evaluation_jobs SET scenario = $2 WHERE work_id = $1")
+        .bind(work.as_uuid())
+        .bind(scenario)
+        .execute(pool)
+        .await
+        .unwrap();
+    assert_eq!(jobs.rows_affected(), 1);
+    assert!(
+        EvaluationWorker::run_once(pool, "markdown-fixture")
+            .await
+            .unwrap()
+    );
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]

@@ -5,8 +5,8 @@ Base kiểm tra: `develop@e4066df9d7cad602a1822414abb418219c612e18`, ngày 17/11
 > **Cập nhật 18/11/2026 (#256/#257/#262):** `SelectVariant::Inset16` đã được tích hợp vào
 > luồng tạo nháp trên Bàn viết (`#create-draft-format`) và tác vụ đổi định dạng có chủ đích
 > (`#editor-format-select` + `#format-convert-dialog` có xem trước / `Hủy` / `Áp dụng`); Bàn viết
-> mở và soạn được cả `default` lẫn `markdown` (một `EditorView` Live Preview). Reader công khai
-> (`#264`) vẫn tách riêng nên cổng `format_not_publishable` khi xuất bản công khai giữ nguyên.
+> mở và soạn được cả `default` lẫn `markdown` (một `EditorView` Live Preview). Luồng đọc và
+> công khai Markdown thuộc [#264](../development/document-source-format.md#2-pipeline-đọc-web).
 > Xem LayoutSpec hợp nhất tại [editor-live-preview-256-257.md](editor-live-preview-256-257.md).
 
 Ở trạng thái tài khoản có 0 tác phẩm, bộ chọn nằm ngay trước **Viết bản thảo đầu tiên**.
@@ -31,7 +31,7 @@ không title input writable khác; AsciiDoc hoãn. Không thêm autosave hoặc 
 | #255 source/format/hash | `services/vink-app/src/domain/document.rs`: `SCHEMA_VERSION = 1`, `DocumentData { schema_version, blocks }`, deny unknown fields; Web `contract.rs`/`document.rs` cùng v1 | Chưa có format discriminator/lossless raw source. Phải có owner contract, compatibility/hash signoff và checks PG trước create/open theo format. |
 | #263 title | `domain/revision.rs` và `pages/desk.rs`: title riêng | Chưa có canonical Markdown title extraction/validation và same-save metadata. Sau PR #271 (`e947a42`), quy tắc/corpus/điểm nối nằm ở [owner title](../architecture/editor-title-authority.md); vẫn chưa có parser hay format-aware save. |
 | #256 provider/mode | `apps/vink-web/editor/src/editor.ts` và bridge `src/editor.rs`: CM plain text | Chưa có Markdown provider/capability/mode; không dựng parser/provider thứ hai trong #262. |
-| #264 Reader | Web `document.rs::DocumentView`, public snapshot v1 | Chưa có renderer parity Markdown; không bật option khi chưa ready end-to-end. |
+| #264 Reader | Web `ReadingDocument`, public snapshot canonical | [Luồng đọc và kiểm chứng](../development/document-source-format.md#2-pipeline-đọc-web). |
 | #262 presentation | `vink-ui::Select` + gallery `field.select` | Chỉ geometry opt-in và fixture callback, không format authority, persistence, conversion intent hay draft state mới. |
 
 **CHOICE-01 A:** tái dùng native `Select` với chevron decorative, `appearance:none`, logical

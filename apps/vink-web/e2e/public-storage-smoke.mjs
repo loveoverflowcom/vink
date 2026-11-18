@@ -31,6 +31,25 @@ export async function setup(page, args) {
 export async function publicStorage(page, { args, check, openPage }) {
   await setup(page, args);
   check(await page.eval(`(async () => { return !(await indexedDB.databases()).some(d => d.name === pc.DATABASE); })()`), 'POLICY-01/02 gate: production hydration does not open persistent storage');
+  check(await page.eval(`(async () => {
+    const e = JSON.parse(fixture());
+    const source = '# Mưa' + String.fromCharCode(10, 10) + 'Thân.';
+    e.payload.data.document = { format: 'markdown', source };
+    const text = JSON.stringify(e);
+    if (pc.decode(text)?.payload.data.document.source !== source) return false;
+    const storage = new pc.IndexedDbStorage();
+    const ticket = await storage.run({kind: 'capture'});
+    const key = pc.keyOf(e.key);
+    if (!await storage.run({kind: 'write', ticket, text})) return false;
+    if (await storage.run({kind: 'read', ticket, key}) !== text) return false;
+    e.payload.data.document.format = 'unknown';
+    if (pc.decode(JSON.stringify(e))) return false;
+    e.payload.data.document = { schema_version: 1, blocks: [] };
+    if (pc.decode(JSON.stringify(e))) return false;
+    await storage.run({kind: 'barrier', work: null});
+    storage.close();
+    return true;
+  })()`), 'IndexedDB decoder round-trips Markdown source and rejects legacy and unknown formats');
   const peers = await openPage();
   await setup(peers, args);
   check(await page.eval(`(async () => {

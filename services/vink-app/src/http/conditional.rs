@@ -307,6 +307,15 @@ mod tests {
         assert_ne!(a, opaque_tag(r#"{"title":"Mưa" }"#.as_bytes()));
     }
 
+    #[test]
+    fn canonical_format_is_part_of_the_json_validator() {
+        let mut document = json!({ "format": "default", "source": "# Mưa\n\nKhổ một." });
+        let default = opaque_tag(&serde_json::to_vec(&document).unwrap());
+        document["format"] = "markdown".into();
+        let markdown = opaque_tag(&serde_json::to_vec(&document).unwrap());
+        assert_ne!(default, markdown);
+    }
+
     async fn parts(response: Response) -> (StatusCode, HeaderMap, Vec<u8>) {
         let status = response.status();
         let headers = response.headers().clone();

@@ -17,7 +17,7 @@ use leptos_router::hooks::use_params_map;
 use crate::api::{self, LoadError};
 use crate::canonical_url;
 use crate::contract::Publication;
-use crate::document::DocumentView;
+use crate::document::ReadingDocument;
 use crate::public_reads;
 use crate::ui::{adapters, patterns::ReaderHeader};
 use vink_ui::{
@@ -244,12 +244,10 @@ fn PublicationContent(
     let context = discovery::reader_context();
     let id = publication.work_id.clone();
     let return_href = Memo::new(move |_| context.get().href(Some(&id)));
-    // First non-blank line of the source, as the legacy reader showed (a reading projection).
-    let description = crate::document::paragraphs(&publication.document.source)
-        .first()
-        .and_then(|lines| lines.first())
-        .map(|line| (*line).to_owned())
-        .unwrap_or_default();
+    let document = ReadingDocument::new(&publication.document);
+    let description = document.description();
+    let title_in_body = document.title_in_body();
+    let body = document.render(&publication.title);
     let canonical = canonical_url(&format!("/tac-pham/{}", publication.work_id));
     let discussion_work = publication.work_id.clone();
     // LVE #73: one endorsement state per shown revision; a newer revision reported by the
@@ -263,7 +261,7 @@ fn PublicationContent(
     let revision = publication.revision_id.clone();
     view! {
         <Title text=format!("{} — Vink", publication.title) />
-        <Meta name="description" content=description.clone() />
+        <Meta name="description" content=description />
         <Meta property="og:title" content=publication.title.clone() />
         <Meta property="og:type" content="article" />
         <Meta property="og:url" content=canonical.clone() />
@@ -300,9 +298,9 @@ fn PublicationContent(
             </Show>
         </div>
         <article id="reader-paper" class="vk-reader" data-revision=publication.revision_id>
-            <ReaderHeader title=publication.title author />
+            <ReaderHeader title=publication.title author title_in_body />
             <discovery::PublicTags tags=publication.tags />
-            <DocumentView document=publication.document />
+            {body}
         </article>
         <Suspense fallback=|| ()>
             {move || {

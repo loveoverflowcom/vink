@@ -411,7 +411,7 @@ apps/vink-web/            crate vink-web: view Leptos, route, DTO riêng của w
   src/public_list.rs      lọc title/author của public cards, dựng link ngữ cảnh nội bộ, thuần
   src/search.rs           comparison key tiếng Việt dùng chung, không sửa chữ gốc
   src/desk_state.rs       máy trạng thái lưu nháp và rời editor (EditorSession, LeaveGuard), thuần
-  src/document.rs         document canonical {format, source}, đoạn đọc của Reader, DocumentView
+  src/document.rs         document canonical {format, source}, ReadingDocument cho Reader, preview và snapshot
   src/expressions.rs      static SSR + isolated Google Noto pilot, Rust policy bridge
   expressions/            dotLottie 0.82.1, runtime hashes/licenses, lazy Web effects
   src/editor.rs           (hydrate) cầu wasm-bindgen tới CodeMirror, BodySource::snapshot

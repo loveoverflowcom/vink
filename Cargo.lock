@@ -3369,6 +3369,7 @@ dependencies = [
  "serde",
  "serde_json",
  "unicode-normalization",
+ "url",
  "vink-expressions",
  "vink-markdown-text",
  "vink-patterns",

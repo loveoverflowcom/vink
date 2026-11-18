@@ -17,7 +17,7 @@ use crate::contract::{ApiError, DocumentDto, DocumentFormatDto, Draft};
 use crate::desk_state::{
     DraftSession, DraftTicket, Failure, LeaveGuard, LeaveNotice, LeaveStage, SaveStatus, SaveTicket,
 };
-use crate::document::{ConversionPreview, DocumentView, NotEditable};
+use crate::document::{ConversionPreview, NotEditable, ReadingDocument};
 use crate::draft_list::{CreateState, DraftSort, display_title as untitled};
 use crate::editor::{
     BODY_HINT_ID, BODY_LABEL_ID, BODY_TITLE_ERROR_ID, BodyEditor, BodySource, BodyState,
@@ -2017,14 +2017,18 @@ fn Editor(draft: Draft) -> impl IntoView {
                     .get()
                     .map(|(title, document)| {
                         let empty = !crate::document::has_text(&document);
+                        let document = ReadingDocument::new(&document);
+                        let title_in_body = document.title_in_body();
+                        let title = untitled(&title);
+                        let body = if empty {
+                            view! { <p class="vk-muted">"Chưa có nội dung."</p> }.into_any()
+                        } else {
+                            document.render(&title)
+                        };
                         view! {
                             <article class="vk-preview" lang="vi">
-                                <Heading level=HeadingLevel::H2 role=TypeRole::Headline>{untitled(&title)}</Heading>
-                                {if empty {
-                                    view! { <p class="vk-muted">"Chưa có nội dung."</p> }.into_any()
-                                } else {
-                                    view! { <DocumentView document /> }.into_any()
-                                }}
+                                {(!title_in_body).then(|| view! { <Heading level=HeadingLevel::H2 role=TypeRole::Headline>{title}</Heading> })}
+                                {body}
                             </article>
                         }
                     })

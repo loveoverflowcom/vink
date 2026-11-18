@@ -1,0 +1,158 @@
+[
+  {
+    "id": "literary_markdown",
+    "format": "markdown",
+    "title": "Mưa trên bậc cửa & Việt",
+    "source": "> Lời đề *rất khẽ*.\n\n# Mưa trên **bậc cửa** &amp; Việt\n\nDòng đầu ❤️‍🔥\n  dòng tiếp.\nDòng ngắt  \nDòng cuối.\n\n## Mái hiên và những giọt mưa từ xóm nhỏ bên kia sông\n\n3. Bậc thứ ba\n   - Ngõ hẹp\n\n4. Bậc thứ tư\n\nMột **từ đậm**, một `mã` và [về mục](#muc-2).\n\n~~~text\n  mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-mã-không-bẻ-dòng-\n~~~\n\n---\n\n# H1 sau là nội dung\n\n~~Chữ gạch~~, $a+b$ và | ô chưa có bảng |.\n\n| Mùa | Mưa |\n| --- | --- |\n| Thu | Có |\n\n- [ ] Việc vẫn bằng chữ\n",
+    "first_h1": true,
+    "description": "Lời đề rất khẽ.",
+    "html_tags": [
+      "blockquote",
+      "em",
+      "h1",
+      "h2",
+      "ol",
+      "ul",
+      "li",
+      "strong",
+      "code",
+      "a",
+      "pre",
+      "hr",
+      "br"
+    ],
+    "literals": [
+      "~~Chữ gạch~~",
+      "| --- | --- |",
+      "[ ] Việc vẫn bằng chữ",
+      "Dòng đầu ❤️‍🔥"
+    ],
+    "editor_nodes": [
+      "Blockquote",
+      "Emphasis",
+      "ATXHeading1",
+      "ATXHeading2",
+      "OrderedList",
+      "BulletList",
+      "ListItem",
+      "StrongEmphasis",
+      "InlineCode",
+      "Link",
+      "FencedCode",
+      "HorizontalRule",
+      "HardBreak"
+    ]
+  },
+  {
+    "id": "network_and_html",
+    "format": "markdown",
+    "title": "Chỉ đọc",
+    "source": "Chỉ đọc\n=======\n\n[Liên kết HTTPS](https://preview-network.invalid/link) · [Khám phá](/) · [Mảnh](#muc-1).\n\n[Nhãn script](JaVaScRiPt:void%280%29) · [Nhãn data](data:text/plain,abc) · [Nhãn mạng](//preview-network.invalid/link) · [Nhãn điều khiển](jav&#x09;ascript:void%280%29) · [Nhãn relative](guide.html).\n\n![Ảnh *bên ngoài*](https://preview-network.invalid/image.png) ![](https://preview-network.invalid/empty.png)\n\nChữ <vink-inline data-probe=\"literal\">đứng yên</vink-inline>.\n\n<img src=\"https://preview-network.invalid/raw.png\" alt=\"Chữ trong HTML\">\n</script><vink-raw data-probe=\"literal\"></vink-raw>\n",
+    "first_h1": true,
+    "description": "Liên kết HTTPS · Khám phá · Mảnh.",
+    "html_tags": [
+      "h1",
+      "a",
+      "span"
+    ],
+    "literals": [
+      "Nhãn script",
+      "Nhãn data",
+      "Nhãn mạng",
+      "Nhãn điều khiển",
+      "Nhãn relative",
+      "Ảnh bên ngoài",
+      "&lt;vink-inline",
+      "&lt;img",
+      "&lt;/script"
+    ],
+    "editor_nodes": [
+      "SetextHeading1",
+      "Link",
+      "Image",
+      "HTMLTag",
+      "HTMLBlock"
+    ]
+  },
+  {
+    "id": "default_poetry",
+    "format": "default",
+    "title": "Tên riêng",
+    "source": "# Dấu thăng vẫn là chữ\r\n  Mái ngói cũ ❤️‍🔥\r\n\r\n\r\n\tViệt <b>literal</b>\n",
+    "first_h1": false,
+    "description": "# Dấu thăng vẫn là chữ",
+    "html_tags": [
+      "p"
+    ],
+    "literals": [
+      "# Dấu thăng vẫn là chữ\n  Mái ngói cũ ❤️‍🔥",
+      "\tViệt &lt;b&gt;literal&lt;/b&gt;"
+    ]
+  },
+  {
+    "id": "first_h1_after_preface",
+    "format": "markdown",
+    "title": "Bản mới đến đây",
+    "source": "## Khúc dạo\n\nLời trước tên.\n\n> Bản **mới**\n> đến đây\n> =========\n\n# Tên sau\n\n    # Mã, không phải tên\n",
+    "first_h1": true,
+    "description": "Lời trước tên.",
+    "html_tags": [
+      "h1",
+      "h2",
+      "blockquote",
+      "code"
+    ],
+    "literals": [
+      "Khúc dạo",
+      "Tên sau",
+      "# Mã, không phải tên"
+    ],
+    "editor_nodes": [
+      "ATXHeading2",
+      "Blockquote",
+      "SetextHeading1",
+      "ATXHeading1",
+      "CodeBlock"
+    ]
+  },
+  {
+    "id": "empty_first_h1",
+    "format": "markdown",
+    "title": "",
+    "source": "#\n\n# Không dùng tên sau\n\nLời thật.",
+    "first_h1": true,
+    "description": "Lời thật.",
+    "html_tags": [
+      "h1",
+      "p"
+    ],
+    "literals": [
+      "Không dùng tên sau",
+      "Lời thật."
+    ],
+    "editor_nodes": [
+      "ATXHeading1"
+    ]
+  },
+  {
+    "id": "no_h1",
+    "format": "markdown",
+    "title": "",
+    "source": "## Section\n\n\\# Escaped.\n\n    # Code\n",
+    "first_h1": false,
+    "description": "# Escaped.",
+    "html_tags": [
+      "h2",
+      "p",
+      "code"
+    ],
+    "literals": [
+      "# Escaped.",
+      "# Code"
+    ],
+    "editor_nodes": [
+      "ATXHeading2",
+      "CodeBlock"
+    ]
+  }
+]

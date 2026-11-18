@@ -3,7 +3,7 @@
 use crate::{
     api,
     contract::{ApiError, moderation::*, publication::AuthorPublicationState},
-    document::DocumentView,
+    document::ReadingDocument,
 };
 use leptos::prelude::*;
 use leptos_meta::{Meta, Title};
@@ -518,9 +518,15 @@ fn CaseContent(
     let admin = case.viewer_is_admin;
     let queued = case.state == "queued";
     let closed = matches!(case.state.as_str(), "closed" | "concluded");
-    view! { <Heading level=HeadingLevel::H1>{case.title.unwrap_or_else(|| "Bản đã gửi".into())}</Heading>
+    let title = case.title.unwrap_or_else(|| "Bản đã gửi".into());
+    let document = case.document.as_ref().map(ReadingDocument::new);
+    let title_in_body = document
+        .as_ref()
+        .is_some_and(ReadingDocument::title_in_body);
+    let body = document.map(|document| document.render(&title));
+    view! { {(!title_in_body).then(|| view! { <Heading level=HeadingLevel::H1>{title}</Heading> })}
         <p>{format!("{} · Phiên bản ca {} · Quyết định {}",state_label(&case.state),version,case.decision_version)}</p>
-        {case.document.map(|document| view! { <article class="vk-moderation__snapshot"><DocumentView document/></article> })}
+        {body.map(|body| view! { <article class="vk-moderation__snapshot">{body}</article> })}
         {(!closed).then(|| view! { <div class="vk-moderation__actions">
             {queued.then(|| view! { <Button id="case-claim" state=actions.state() on_press=move |_| actions.run.run((format!("{}/claim",base.get_value()),json!({"expected_version":version})))>"Nhận ca"</Button> })}
             {holds.then(|| view! { <Button state=actions.state() on_press=move |_| actions.run.run((format!("{}/release",base.get_value()),json!({"expected_version":version})))>"Trả ca"</Button>
@@ -577,8 +583,12 @@ fn AppealContent(
 ) -> impl IntoView {
     let id = StoredValue::new(detail.appeal.id);
     let version = detail.appeal.decision_version;
-    view! { <Heading level=HeadingLevel::H1>{detail.title}</Heading><p>"Kết luận của quản trị viên là quyết định cuối cùng. Chưa có thông báo được gửi."</p>
-        <article class="vk-moderation__snapshot"><DocumentView document=detail.document/></article>
+    let document = ReadingDocument::new(&detail.document);
+    let title_in_body = document.title_in_body();
+    let body = document.render(&detail.title);
+    view! { {(!title_in_body).then(|| view! { <Heading level=HeadingLevel::H1>{detail.title}</Heading> })}
+        <p>"Kết luận của quản trị viên là quyết định cuối cùng. Chưa có thông báo được gửi."</p>
+        <article class="vk-moderation__snapshot">{body}</article>
         <TextArea id="appeal-reason" label="Căn cứ kết luận" value=reason on_input=move |i:vink_ui::TextInput| reason.set(i.value)/>
         <div class="vk-moderation__actions">
             <Button id="appeal-uphold" state=actions.state() on_press=move |_| actions.run.run((format!("/api/v1/moderation/appeals/{}/conclude",id.get_value()),json!({"expected_decision_version":version,"verdict":"uphold","reason":reason.get_untracked()})))>"Giữ quyết định"</Button>

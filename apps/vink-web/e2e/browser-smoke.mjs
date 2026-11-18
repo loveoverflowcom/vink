@@ -21,6 +21,7 @@ import { authWeb } from './auth-smoke.mjs';
 import { passwordAuth } from './auth-password-smoke.mjs';
 import { publicationAuthor } from './publication-author-smoke.mjs';
 import { reviewWithdrawnPage } from './review-withdrawn-smoke.mjs';
+import { markdownReader } from './markdown-reader-smoke.mjs';
 import { moderationQueues } from './moderation-queue-smoke.mjs';
 import { publicStorage, storageReopened } from './public-storage-smoke.mjs';
 import { draftPagination } from './draft-pagination-smoke.mjs';
@@ -1775,8 +1776,8 @@ async function brandAssets(page) {
   await page.send('Emulation.setEmulatedMedia', {features: [LIGHT_SYSTEM]});
 }
 
-async function textContrast(page, theme, surface = 'shell') {
-  const selectors = surface.startsWith('editor-') ? (() => {
+async function textContrast(page, theme, surface = 'shell', targets) {
+  const selectors = targets ?? (surface.startsWith('editor-') ? (() => {
     const list = ['.vk-editor-heading__back', '[data-testid=save-status]', '#editor-save-details > summary', '#preview', '#draft-title', '#editor-body-label', '#editor-body-hint', '[data-testid=editor-body]'];
     if (surface === 'editor-dirty' || surface === 'editor-saving' || surface === 'editor-failed') list.push('#save');
     if (surface === 'editor-conflict') list.push('#save-recovery-jump');
@@ -1791,7 +1792,7 @@ async function textContrast(page, theme, surface = 'shell') {
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
     me: ['#me-title', '#page-account h2', '#page-account .vk-ui-tone-muted', '#page-appearance-title', '#page-theme-title', '#page-text-title', '#page-rail-title', ...['light', 'dark', 'system'].map(value => `#page-theme label:has([value="${value}"])`)],
     account: ['#profile-title', '#overlay-theme-title', '#overlay-text-title', '#overlay-rail-title', ...['light', 'dark', 'system'].map(value => `#overlay-theme label:has([value="${value}"])`)],
-  }[surface] ?? ['#navigation-toggle', '#navigation-primary a', '#profile-trigger', '#profile-title', '#profile-menu .vk-ui-choice__target:has(:checked)', '#profile-menu .vk-ui-button'];
+  }[surface] ?? ['#navigation-toggle', '#navigation-primary a', '#profile-trigger', '#profile-title', '#profile-menu .vk-ui-choice__target:has(:checked)', '#profile-menu .vk-ui-button']);
   const pairs = await page.eval(`(() => {
     const rgb = value => value.match(/[\\d.]+/g).map(Number);
     const luminance = color => rgb(color).slice(0, 3).map(v => v / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
@@ -5642,7 +5643,11 @@ try {
   else if (args.phase === 'public-storage') { /* exercised below, with profile reopen */ }
   else if (args.phase === 'after-restart') await afterRestartPhase(page);
   else if (args.phase === 'endorsement') await endorsementAsReader(page, { args, check, captureMatrix: captureDiscussionMatrix });
-  else if (args.phase === 'review-withdrawn') { await reviewWithdrawnPage(page, { args, check }); await moderationQueues(page, {args,check}); }
+  else if (args.phase === 'review-withdrawn') {
+    await reviewWithdrawnPage(page, { args, check });
+    await moderationQueues(page, { args, check });
+    await markdownReader(page, { args, check, textContrast });
+  }
   else if (args.phase === 'auth') await authWeb(page, { args, check, openPage: () => openPage(cdp) });
   else if (args.phase === 'auth-password') await passwordAuth(page, { args, check, openPage: (isolated) => openPage(cdp, isolated) });
   else if (args.phase === 'publication-author') await publicationAuthor(page, { args, check, openPage: (isolated) => openPage(cdp, isolated), capture: (target, name, evidence) => target.capture(name, evidence) });

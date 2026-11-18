@@ -1,7 +1,0 @@
-{
-  "error": {
-    "code": "format_not_publishable",
-    "message": "this revision cannot be published until its format has a public reader",
-    "field": "revision_id"
-  }
-}

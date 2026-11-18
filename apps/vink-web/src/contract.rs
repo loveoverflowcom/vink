@@ -1354,12 +1354,6 @@ mod tests {
             classify("error.unknown_revision.json", 404),
             ApiError::UnknownRevision
         );
-        // No Web path makes a Markdown revision public before #264: the gate is an explicit,
-        // unrecovered failure, never a silent success.
-        assert_eq!(
-            classify("error.format_not_publishable.json", 409),
-            ApiError::Unexpected { status: 409 }
-        );
         assert_eq!(
             classify("error.work_unavailable.json", 409),
             ApiError::WorkUnavailable

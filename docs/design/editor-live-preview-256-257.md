@@ -11,7 +11,7 @@ Ngày: 18/11/2026 · Base tích hợp: `origin/develop@fd4cb980` · Nhánh: `cod
   - Mục lục theo **Cách 1**: phân cấp bằng chữ (H1 Literata đậm, H2 bán đậm, các cấp sâu hơn nhỏ và thụt vào), nền Lavender cho mục đang viết (`aria-current="location"`), không đường nhánh/bullet/số.
   - Rail điều hướng tách bằng tầng nền (`--vk-surface-container`), không thêm divider; logo Vink ở Khám phá (`/`) kế thừa PR `#105` / `#102`.
   - Nút hành động chính trên thanh đầu trang viết (`nut-gui-luu`): lần gửi đầu (`acknowledged_version == 1`) là **Gửi** kèm icon máy bay giấy (`send`); khi sửa bản đã gửi (`acknowledged_version >= 2`) là **Lưu** kèm icon đĩa mềm (`save`); khi đang xử lý đổi thành spinner + **Đang gửi…** / **Đang lưu…**; khi thành công hiện **Đã lưu** bằng chữ nhẹ.
-- **Architecture decision:** `ACCEPTED` cho hợp đồng canonical document (`VDR-DOCUMENT-SOURCE-FORMAT@r2`) và `DESIGN_PROPOSED` cho lựa chọn kỹ thuật cục bộ của editor/outline/conversion (chưa mở xuất bản công khai Markdown vì `#264` Reader công khai vẫn tách riêng, cổng `format_not_publishable` trên `request-public` vẫn giữ nguyên).
+- **Architecture decision:** `ACCEPTED` cho hợp đồng canonical document (`VDR-DOCUMENT-SOURCE-FORMAT@r2`) và `DESIGN_PROPOSED` cho lựa chọn kỹ thuật cục bộ của editor/outline/conversion. Pipeline đọc và xuất bản Markdown thuộc [#264](../development/document-source-format.md#2-pipeline-đọc-web).
 - **Implementation level:** `persistence-api` (`POST /api/v1/drafts` nhận `format` tùy chọn `default` | `markdown`) + `web` (CM6 Live Preview, AST outline Cách 1, picker tạo nháp + đổi định dạng có xem trước, nút Gửi/Lưu). CMP: `NOT_IMPLEMENTED`.
 - **Reference class:** `NO_APPROVED_REFERENCE`. Các bản mẫu HTML và ảnh trên Drive (`ban-viet-live-preview.html`, `ban-viet-gui-luu.html`, thư mục 5 ảnh Drive) là `candidate / NO_APPROVED_REFERENCE` định hướng thiết kế, không thay thế kiểm chứng runtime App/PostgreSQL/Chrome.
 
@@ -72,7 +72,7 @@ Screen #ban-viet-editor (/ban-viet/:id — DraftEditor)
     Region #editor-format-region (đổi định dạng có chủ đích)
       Select #editor-format-select (SelectVariant::Inset16, "Định dạng bản thảo": "Mặc định" | "Markdown")
       Dialog #format-convert-dialog (xem trước định dạng đích, tiêu đề dự kiến, nguồn văn bản dự kiến; #format-convert-cancel + #format-convert-apply)
-    Region .vk-publication (PublicationPanel — giữ cổng FormatNotPublishable cho Markdown)
+    Region .vk-publication (PublicationPanel — gửi duyệt revision đã lưu)
 
 Hierarchy: Một primary CTA trên #editor-toolbar theo trạng thái dirty/saving/retry; ở format Mặc định giữ nguyên alignment #editor-toolbar / .vk-editor-paper / .vk-work-info; ở format Markdown thanh công cụ nằm ngay trên vùng soạn và cột mục lục nằm bên phải khi đủ rộng.
 Sizing: Nút điều khiển đạt tối thiểu 48×48 CSS px (hoặc ≥44px compact); icon trong #save cố định 18×18 CSS px, gap 8px; Select Inset16 dùng 16/16/52 CSS px; cột mục lục 17rem khi viewport rộng ≥1024px ở scale 100%, gap 24px.

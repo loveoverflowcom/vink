@@ -26,6 +26,7 @@ serde.workspace = true
 vink-ui = { path = "../../packages/ui-system/leptos" }
 unicode-normalization = "0.1.26"
 percent-encoding = "2.3.2"
+url = "2.5.8"
 # Server-only: response status for SSR pages. Never part of the browser build.
 leptos_axum = { workspace = true, optional = true }
 # Browser-only.
