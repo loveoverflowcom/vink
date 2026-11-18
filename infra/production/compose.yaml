@@ -7,8 +7,6 @@ services:
     networks:
       default:
         ipv4_address: 10.89.3.10
-    healthcheck:
-      test: [CMD, pg_isready, -h, 127.0.0.1, -U, vink, -d, postgres]
     environment:
       POSTGRES_PASSWORD_FILE: /run/secrets/bootstrap_password
     volumes:

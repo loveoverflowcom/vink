@@ -23,6 +23,7 @@ không build trên VPS. Nếu package cần xác thực, dùng đường pull đ
    `/opt/vink-prod/releases/<sha>`, với các file trong `services/postgres` và `infra/production`.
    Trỏ `/opt/vink-prod/current` vào release đã chọn. Cấu hình `/etc/vink-prod/release.env` từ
    `release.env.example` với đúng ba digest. Với release tiếp theo, giữ bản env cũ theo SHA.
+   Khi sửa riêng manifest vận hành, ghi cả commit manifest và commit được ghi trên image.
 2. Tạo `/etc/vink-prod` mode 0700. Chạy `python3 infra/production/create-runtime-files.py
    /etc/vink-prod/runtime` trên VPS một lần. Script chỉ nhận thư mục mới và tạo mật khẩu riêng,
    không dùng secrets Cantos/test. Giữ các file env ngoài Git, owner root. Bootstrap file có mode
@@ -35,11 +36,16 @@ không build trên VPS. Nếu package cần xác thực, dùng đường pull đ
    `10.89.3.10/32:5432/tcp` trên cùng bridge. Phía ingress chỉ cho `10.89.4.2/32` (Caddy) đến
    `10.89.4.10/32:3000/tcp` trên `vinkping0`. Không thêm inbound port hay đổi UFW defaults.
 4. Đặt `PODMAN_COMPOSE_PROVIDER=/usr/bin/podman-compose` và dùng đường dẫn tuyệt đối cho
-   cả hai manifest. Dùng cùng prefix như trong
-   `vink-prod.service` cho `up -d postgres`, đợi health qua TCP, `run --rm provision`,
-   `run --rm provision --check`, `run --rm migrate-app` rồi `run --rm migrate-identity`.
+   cả hai manifest. Giữ healthcheck PostgreSQL trong base để Podman Compose 1.3 không nối hai
+   danh sách `healthcheck.test`. Dùng cùng prefix như trong `vink-prod.service` cho `up -d postgres`.
+   Đợi `pg_isready -h 127.0.0.1 -U vink -d postgres` trong container. Dùng `--profile provision`
+   cho `run --rm provision` và `run --rm provision --check`, rồi dùng `--profile migration` cho
+   `run --rm migrate-app` và `run --rm migrate-identity`. Podman Compose 1.3 cần profile tường minh
+   cả khi lệnh `run` chỉ đích danh service. Khi chạy từ một script nhận lệnh qua SSH stdin,
+   chuyển stdin của các lệnh `compose run` sang `/dev/null` để provider không đọc phần script sau.
    Kiểm hai lệnh migrate chạy lại no-op. Chỉ bật `vink-prod.service` sau khi hoàn tất migration.
-   systemd tạo socket directory mode 0700 UID 10001 và chạy `up` khi boot. Restart policy container
+   systemd tạo thư mục socket mode 0700. Start command chuyển owner sang UID 10001 và chạy `up`
+   trong cùng tiến trình để systemd không đặt lại owner giữa hai lệnh. Restart policy của container
    xử lý process crash. Không bật `podman-restart.service` toàn VPS.
 5. Kiểm readiness từ App và socket, UID, migrations, role hạn chế và cổng publish trước khi
    chạm edge. Bật backup timer riêng và kiểm thử restore trước khi mở public.
