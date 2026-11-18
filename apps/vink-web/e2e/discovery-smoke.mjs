@@ -67,7 +67,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await page.click('#clear-public-results');
   await page.waitFor("location.search === '' && document.querySelector('.vk-public-row')", 'query recovery');
   check(await page.eval("!document.querySelector('.vk-empty-state__art') && performance.getEntriesByType('resource').filter(r=>r.name.includes('/pkg/empty/')).every(r=>r.name.endsWith('vink-empty-no-results.webp'))"), '#258 ready branch mounts no artwork and never fetches unrelated illustrations');
-  await page.waitFor("document.querySelector('#dock-tag-form input[type=checkbox]')", 'public tag catalog ready');
+  await page.waitFor("document.querySelector('#open-tag-filters')", 'public tag catalog ready');
 
   await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:5,y:5});
   for (const theme of ['light', 'dark']) {
@@ -530,14 +530,16 @@ export async function discoveryCorpus(page, { args, check }) {
   check(await page.eval('location.pathname+location.search')===context, 'reload preserves filtered second-page URL');
   await page.capture('discovery-real-second-page', {boundary:'real-api+SQL-publication-fixture',scenario:'query-tags-pagination-reader-return'});
   await page.viewport(1440);
-  await page.waitFor("document.querySelector('#dock-tag-form input[type=checkbox]:checked')", '#225 dock with applied real tags');
-  const appliedChoice = '#dock-tag-form label:has(input[value='+JSON.stringify(form.slug)+'])';
+  await page.waitFor("document.querySelector('#open-tag-filters')", '#308 filter entry on the second page');
+  await page.click('#open-tag-filters');
+  await page.waitFor("document.querySelector('#tag-picker')?.open && document.querySelector('#modal-tag-form input:checked')", '#308 dialog with applied real tags');
+  const appliedChoice = '#modal-tag-form label:has(input[value='+JSON.stringify(form.slug)+'])';
   await page.click(appliedChoice);
-  check(await page.eval("document.querySelector('#dock-tag-form button[type=submit]').classList.contains('vk-ui-button--filled')"), '#225 removing an applied choice makes Apply Filled');
+  check(await page.eval("document.querySelector('#modal-tag-form button[type=submit]').getAttribute('aria-disabled')!=='true'"), '#308 removing an applied choice enables Apply');
   await page.click(appliedChoice);
-  check(await page.eval("document.querySelector('#dock-tag-form button[type=submit]').classList.contains('vk-ui-button--tonal') && location.pathname+location.search==="+JSON.stringify(context)), '#225 the same applied set in a different selection order is Tonal without URL mutation');
+  check(await page.eval("document.querySelector('#modal-tag-form button[type=submit]').getAttribute('aria-disabled')==='true' && location.pathname+location.search==="+JSON.stringify(context)), '#308 reordering the same applied set leaves Apply disabled and preserves the URL');
   await page.click(appliedChoice);
-  await page.click('#dock-tag-form button[type=submit]');
+  await page.click('#modal-tag-form button[type=submit]');
   await page.waitFor("!new URL(location.href).searchParams.has('cursor') && new URL(location.href).searchParams.get('q')==='kiem thu' && new URL(location.href).searchParams.getAll('tag').length===1 && document.querySelector('#public-results')", '#225 changed Apply resets second-page cursor and keeps q plus remaining tag');
 
   const tagContext='/the/'+encodeURIComponent(form.slug)+'?q=kiem%20thu&tag='+encodeURIComponent(theme.slug);
@@ -568,9 +570,11 @@ export async function discoveryCorpus(page, { args, check }) {
     while(!held.length && Date.now()<deadline) await new Promise(r=>setTimeout(r,50));
     check(held.length===1,'older query request is held deterministically');
     check(await page.eval("!document.querySelector('.vk-empty-state__art')"), '#258 unresolved read never mounts absence artwork');
-    await page.waitFor("document.querySelector('#dock-tag-form input[type=checkbox]')", 'filter controls available while A is pending');
-    await page.click('#dock-tag-form .vk-discovery-option');
-    await page.click('#dock-tag-form button[type=submit]');
+    await page.waitFor("document.querySelector('#open-tag-filters')", 'filter entry available while A is pending');
+    await page.click('#open-tag-filters');
+    await page.waitFor("document.querySelector('#tag-picker')?.open && document.querySelector('#modal-tag-form input[type=checkbox]')", 'filter controls available while A is pending');
+    await page.click('#modal-tag-form .vk-discovery-option');
+    await page.click('#modal-tag-form button[type=submit]');
     await page.waitFor("new URL(location.href).searchParams.has('tag') && document.querySelector('[data-testid=public-no-results]')",'B filter completes while A remains held');
     const body={...found,filters:{q:'race-100-a',tags:[]},works:[{...found.works[0],title:'STALE RACE RESULT #100'}]};
     await page.send('Fetch.fulfillRequest',{requestId:held.shift(),responseCode:200,responseHeaders:[{name:'Content-Type',value:'application/json'},{name:'Cache-Control',value:'no-store'}],body:Buffer.from(JSON.stringify(body)).toString('base64')});
