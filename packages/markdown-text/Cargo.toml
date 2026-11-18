@@ -2,7 +2,8 @@
 name = "vink-markdown-text"
 version = "0.1.0"
 edition.workspace = true
-rust-version.workspace = true
+# This pure projection is also built by the pinned, isolated Kani domain workspace.
+rust-version = "1.91"
 license.workspace = true
 publish.workspace = true
 

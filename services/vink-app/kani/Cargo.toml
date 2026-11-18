@@ -18,7 +18,7 @@ sha2 = "=0.11.1"
 thiserror = "=2.0.21"
 time = "=0.3.55"
 unicode-normalization = "=0.1.26"
-pulldown-cmark = { version = "=0.13.6", default-features = false }
+vink-markdown-text = { path = "../../../packages/markdown-text" }
 uuid = { version = "=1.29.0", features = ["v7"] }
 
 [workspace]
