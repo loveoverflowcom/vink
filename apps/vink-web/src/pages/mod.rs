@@ -447,7 +447,7 @@ fn restore_public_position(stream: NodeRef<leptos::html::Section>, settled: Memo
         let Some(stream) = stream.get() else {
             return;
         };
-        if let Ok(frame) = request_animation_frame_with_handle(move || {
+        let align = move || {
             let address = window().location();
             // Own the exact mounted result region and URL. Same row IDs can occur in
             // several queries, even when a stale callback sees the same path and hash.
@@ -493,8 +493,20 @@ fn restore_public_position(stream: NodeRef<leptos::html::Section>, settled: Memo
             let options = web_sys::FocusOptions::new();
             options.set_prevent_scroll(true);
             let _ = target.focus_with_options(&options);
+        };
+
+        // A newly mounted result can still use the previous viewport's row sizes in its
+        // first rendering opportunity. Align once after that layout has been painted.
+        let pending = StoredValue::new(None);
+        if let Ok(first) = request_animation_frame_with_handle(move || {
+            pending.set_value(request_animation_frame_with_handle(align).ok());
         }) {
-            on_cleanup(move || frame.cancel());
+            pending.set_value(Some(first));
+            on_cleanup(move || {
+                if let Some(Some(frame)) = pending.try_get_value() {
+                    frame.cancel();
+                }
+            });
         }
     });
 }
