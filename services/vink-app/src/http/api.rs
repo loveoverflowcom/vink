@@ -1,3 +1,4 @@
+use axum::body::Bytes;
 use axum::extract::rejection::{JsonRejection, QueryRejection};
 use axum::extract::{DefaultBodyLimit, FromRequest, Path, Query, RawQuery, Request, State};
 use axum::http::{HeaderMap, HeaderValue, Method, StatusCode, header};
@@ -12,9 +13,9 @@ use super::contract::{
     AddNoteReq, AuthorPublicationState, AuthorRevisionView, AutomationStateDto,
     CaptureSnapshotRequest, CapturedSnapshotResponse, CaseDetailDto, CaseExpectedVersionReq,
     CaseOpenedDto, CaseStatusDto, CaseSummaryDto, CommentEndorsementRequest, CommentsSettings,
-    CommentsSettingsRequest, ConcludeOutcomeDto, ConcludeReq, CreateGrantReq, CreateGrantRes,
-    CreateGroupReq, CreateGroupRes, DiscussionPage, Draft, DraftCard, DraftList, DraftTags,
-    EndorsementQuery, EndorsementSummaryList, EndorsementWriteResponse, GrantFactsDto,
+    CommentsSettingsRequest, ConcludeOutcomeDto, ConcludeReq, CreateDraftRequest, CreateGrantReq,
+    CreateGrantRes, CreateGroupReq, CreateGroupRes, DiscussionPage, Draft, DraftCard, DraftList,
+    DraftTags, EndorsementQuery, EndorsementSummaryList, EndorsementWriteResponse, GrantFactsDto,
     GroupMemberReq, ModerationDecisionRequest, ModerationDecisionResponse, ModerationQueueResponse,
     NoteRecordDto, OpenTicketView, OwnCommentList, OwnCommentsParams, OwnEndorsementList,
     PageQuery, PublicDiscussionPage, PublicPointerView, PublicReplyList, Publication,
@@ -25,14 +26,15 @@ use super::contract::{
     TagSuggestionList, TagSuggestionQuery, TakeoverReq, WorkEndorsementRequest, WorkList,
 };
 use super::{Actor, ApiError, AppState};
-use crate::application::SaveDraft;
 use crate::application::catalog::SearchTags;
 use crate::application::discovery::DiscoverWorks;
 use crate::application::discussion::{ModerateComment, SetCommentsMode, SubmitComment};
 use crate::application::endorsement::{SetCommentEndorsement, SetWorkEndorsement};
 use crate::application::taxonomy::SaveWorkTags;
+use crate::application::{InvalidInput, SaveDraft};
 use crate::domain::discovery::MAX_FILTER_REFS;
 use crate::domain::discussion::settings::CommentsMode;
+use crate::domain::document::DocumentFormat;
 use crate::domain::ids::{CaseId, CommentId, GrantId, GroupId, PrincipalId, RevisionId, WorkId};
 use crate::domain::moderation::DecisionReason;
 use crate::domain::moderation::authority::{GrantScope, GrantSpec, Grantee, ReviewCapability};
@@ -42,7 +44,10 @@ use time::OffsetDateTime;
 
 pub fn routes(state: AppState) -> Router<AppState> {
     let drafts = Router::new()
-        .route("/drafts", get(list_drafts).post(create_draft))
+        .route(
+            "/drafts",
+            get(list_drafts).merge(post(create_draft).layer(DefaultBodyLimit::max(4096))),
+        )
         .route("/author/works", get(list_author_works))
         .route(
             "/drafts/{work_id}",
@@ -419,8 +424,33 @@ async fn list_drafts(
 async fn create_draft(
     State(state): State<AppState>,
     Actor(actor): Actor,
+    request: Request,
 ) -> Result<(StatusCode, Json<Draft>), ApiError> {
-    let draft = state.vink.create_draft(actor).await?;
+    let owner = actor.ok_or(ApiError::Unauthenticated)?;
+    let bytes = Bytes::from_request(request, &state)
+        .await
+        .map_err(|rejection| ApiError::Validation {
+            field: "body",
+            message: rejection.body_text(),
+        })?;
+    let format = if bytes.iter().all(|b| b.is_ascii_whitespace()) {
+        DocumentFormat::Default
+    } else {
+        let req: CreateDraftRequest =
+            serde_json::from_slice(&bytes).map_err(|err| ApiError::Validation {
+                field: "body",
+                message: err.to_string(),
+            })?;
+        match req.format.as_deref() {
+            None => DocumentFormat::Default,
+            Some(raw) => DocumentFormat::parse(raw)
+                .map_err(|err| crate::application::DraftError::from(InvalidInput::from(err)))?,
+        }
+    };
+    let draft = state
+        .vink
+        .create_draft_with_format(Some(owner), format)
+        .await?;
     Ok((StatusCode::CREATED, Json(Draft::from(&draft))))
 }
 

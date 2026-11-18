@@ -137,6 +137,14 @@ pub struct Draft {
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
+pub struct CreateDraftRequest {
+    /// Optional format (`default` | `markdown`); omitted or null means `default` (#262).
+    #[serde(default)]
+    pub format: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SaveDraftRequest {
     pub expected_version: i64,
     /// Required for `default` documents; must be absent (or `null`) for `markdown` ones, whose
@@ -1721,6 +1729,20 @@ mod tests {
         let mut raw = fixture("draft.save.request.json");
         raw["owner_id"] = Value::from("22222222-2222-4222-8222-222222222222");
         assert!(serde_json::from_value::<SaveDraftRequest>(raw).is_err());
+        assert!(
+            serde_json::from_str::<CreateDraftRequest>(r#"{"format":"markdown","extra":1}"#)
+                .is_err()
+        );
+        assert_eq!(
+            serde_json::from_str::<CreateDraftRequest>(r#"{"format":"markdown"}"#).unwrap(),
+            CreateDraftRequest {
+                format: Some("markdown".into()),
+            }
+        );
+        assert_eq!(
+            serde_json::from_str::<CreateDraftRequest>(r#"{}"#).unwrap(),
+            CreateDraftRequest { format: None }
+        );
     }
 
     #[test]

@@ -1,20 +1,33 @@
 // CodeMirror 6 body editor for the Vink desk.
 //
-// The editor edits plain source text: prose paragraphs and poem lines separated by line breaks,
-// with blank lines between stanzas. It does not interpret Markdown or produce HTML; the Rust side
-// converts the text to document v1. The Rust `EditorSession` owns dirty/saving/saved/conflict
-// state; this module only reports that the text changed and answers what the text is now.
+// In `default` format, edits plain source text verbatim (prose paragraphs and poem lines).
+// In `markdown` format, enables CommonMark 0.31.2 Live Preview (#256) and AST outline (#257)
+// on the exact same `EditorView`. The Rust `EditorSession` owns dirty/saving/saved/conflict
+// state; this module reports edits and AST outline snapshots.
 //
-// One EditorView lives for one open draft. Styling uses the `--vk-*` roles from vink.css, so a
-// theme change is a CSS change and never reconfigures or recreates the view.
+// One EditorView lives for one open draft. Styling uses `--vk-*` roles from vink.css, so a
+// theme change or format switch never recreates the view.
 
 import { history, defaultKeymap, historyKeymap, insertNewline } from '@codemirror/commands';
-import { EditorSelection, EditorState } from '@codemirror/state';
+import { Compartment, EditorSelection, EditorState } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
+import {
+  activeHeadingFrom,
+  applyHeading as mdApplyHeading,
+  applyInlineFormat as mdApplyInlineFormat,
+  extractOutline,
+  jumpToHeading as mdJumpToHeading,
+  markdownExtension,
+  type OutlineSnapshot,
+} from './markdown';
+
+export type DocumentFormat = 'default' | 'markdown';
 
 export interface EditorOptions {
   /** The draft's text as loaded from the server. */
   text: string;
+  /** Document format controlling whether Markdown Live Preview & outline run. */
+  format?: DocumentFormat;
   /** Element ids naming and describing the text box (the visible label and hint). */
   labelledBy: string;
   describedBy: string;
@@ -22,11 +35,20 @@ export interface EditorOptions {
   stickyAboveId?: string;
   /** Called after every change to the document, including IME composition updates. */
   onChange: () => void;
+  /** Called when the Markdown AST outline or active heading changes. */
+  onOutline?: (json: string) => void;
 }
 
 export interface EditorHandle {
   view: EditorView;
   destroyed: boolean;
+  format: DocumentFormat;
+  generation: number;
+  markdownCompartment: Compartment;
+  syncProgrammaticSelection: () => void;
+  scheduleOutline: (immediate?: boolean) => void;
+  setSuppressedChange: (suppressed: boolean) => void;
+  emitOutlineNow: () => void;
 }
 
 const MOUNTED = 'vinkEditor';
@@ -35,14 +57,98 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
   if (host.dataset[MOUNTED]) {
     throw new Error('A Vink editor is already mounted in this host');
   }
-  const handle = { destroyed: false } as EditorHandle;
+  const initialFormat: DocumentFormat = options.format === 'markdown' ? 'markdown' : 'default';
+  const markdownCompartment = new Compartment();
+  const handle = {
+    destroyed: false,
+    format: initialFormat,
+    generation: 1,
+    markdownCompartment,
+  } as EditorHandle;
+
   let focusSelection = EditorSelection.single(0);
   let focusEpoch = 0;
   let restoringFocus = false;
+  let dispatchingRestore = false;
+  let skipNextFocusRestore = false;
   let pointerDown = false;
   let scrollEnsureLeft = 0;
   let scrollEnsureScheduled = false;
-  const cancelFocusRestore = () => { focusEpoch++; restoringFocus = false; };
+  let suppressChange = false;
+  let outlineRaf = 0;
+  let lastOutline: OutlineSnapshot | null = null;
+  let lastEmittedJson = '';
+
+  const cancelFocusRestore = () => {
+    focusEpoch++;
+    restoringFocus = false;
+  };
+
+  handle.syncProgrammaticSelection = () => {
+    cancelFocusRestore();
+    focusSelection = handle.view.state.selection;
+    skipNextFocusRestore = true;
+  };
+
+  handle.setSuppressedChange = (suppressed: boolean) => {
+    suppressChange = suppressed;
+  };
+
+  const emitSnapshot = (snapshot: OutlineSnapshot) => {
+    lastOutline = snapshot;
+    const json = JSON.stringify(snapshot);
+    if (json !== lastEmittedJson) {
+      lastEmittedJson = json;
+      if (!handle.destroyed && options.onOutline) {
+        options.onOutline(json);
+      }
+    }
+  };
+
+  handle.emitOutlineNow = () => {
+    if (handle.destroyed || !options.onOutline) return;
+    if (handle.format !== 'markdown') {
+      emitSnapshot({
+        status: 'ready',
+        generation: handle.generation,
+        items: [],
+        title: '',
+        activeFrom: null,
+      });
+      return;
+    }
+    emitSnapshot(extractOutline(handle.view.state, handle.generation));
+  };
+
+  handle.scheduleOutline = (immediate = false) => {
+    if (handle.destroyed || !options.onOutline) return;
+    if (immediate) {
+      if (outlineRaf) {
+        cancelAnimationFrame(outlineRaf);
+        outlineRaf = 0;
+      }
+      handle.emitOutlineNow();
+      return;
+    }
+    if (outlineRaf) return;
+    outlineRaf = requestAnimationFrame(() => {
+      outlineRaf = 0;
+      handle.emitOutlineNow();
+    });
+  };
+
+  const emitActiveOnly = () => {
+    if (handle.destroyed || !options.onOutline || handle.format !== 'markdown') return;
+    if (!lastOutline || lastOutline.generation !== handle.generation) {
+      handle.scheduleOutline(true);
+      return;
+    }
+    const nextActive = activeHeadingFrom(lastOutline.items, handle.view.state.selection.main.head);
+    if (nextActive !== lastOutline.activeFrom) {
+      emitSnapshot({ ...lastOutline, activeFrom: nextActive });
+    }
+  };
+
   const ensureCaretVisible = () => {
     if (scrollEnsureScheduled || scrollEnsureLeft <= 0 || handle.destroyed) return;
     scrollEnsureScheduled = true;
@@ -55,9 +161,10 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
       const head = handle.view.state.selection.main.head;
       const coords = handle.view.coordsAtPos(head);
       const sticky = options.stickyAboveId ? document.getElementById(options.stickyAboveId) : null;
-      const topClearance = sticky && getComputedStyle(sticky).position === 'sticky'
-        ? Math.max(0, sticky.getBoundingClientRect().bottom)
-        : 0;
+      const topClearance =
+        sticky && getComputedStyle(sticky).position === 'sticky'
+          ? Math.max(0, sticky.getBoundingClientRect().bottom)
+          : 0;
       const hidden = !coords || coords.top < topClearance || coords.bottom > window.innerHeight;
       if (hidden && scrollEnsureLeft > 0) {
         scrollEnsureLeft -= 1;
@@ -68,49 +175,81 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
       }
     });
   };
+
   handle.view = new EditorView({
     parent: host,
     state: EditorState.create({
       doc: options.text,
       extensions: [
         history(),
+        markdownCompartment.of(initialFormat === 'markdown' ? markdownExtension : []),
         // Enter breaks the line without copying indentation: alternating poem indents stay
         // the writer's choice, as in a plain text field. Tab is left to focus navigation.
         keymap.of([{ key: 'Enter', run: insertNewline }, ...defaultKeymap, ...historyKeymap]),
         EditorView.lineWrapping,
         // Native focus after a rail control or modal may place Chrome's DOM caret at the
         // beginning. Restore the selection owned by this same view before selectionchange
-        // can adopt that transient caret. Mouse selection still chooses its intended point.
+        // can adopt that transient caret. Mouse selection and explicit programmatic focus
+        // still keep their intended point.
         EditorView.domEventHandlers({
           focus(_event, view) {
-            if (pointerDown) { view.focus(); return false; }
+            if (pointerDown || skipNextFocusRestore) {
+              skipNextFocusRestore = false;
+              view.focus();
+              return false;
+            }
             const epoch = ++focusEpoch;
             restoringFocus = true;
-            view.dispatch({ selection: focusSelection });
+            dispatchingRestore = true;
+            try {
+              view.dispatch({ selection: focusSelection });
+            } finally {
+              dispatchingRestore = false;
+            }
             view.focus();
-            // Chrome can deliver the dialog's native caret change after the
-            // first frame. Keep the saved selection through that frame, then
-            // restore it unless a new input superseded this focus.
-            requestAnimationFrame(() => requestAnimationFrame(() => {
-              if (handle.destroyed || epoch !== focusEpoch) return;
-              if (view.hasFocus) {
-                view.dispatch({ selection: focusSelection });
-                view.focus();
-              }
-              restoringFocus = false;
-            }));
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => {
+                if (handle.destroyed || epoch !== focusEpoch) return;
+                if (view.hasFocus) {
+                  dispatchingRestore = true;
+                  try {
+                    view.dispatch({ selection: focusSelection });
+                  } finally {
+                    dispatchingRestore = false;
+                  }
+                  view.focus();
+                }
+                restoringFocus = false;
+              }),
+            );
+            return false;
+          },
+          compositionend(_event, view) {
+            if (handle.format === 'markdown') {
+              setTimeout(() => {
+                if (!handle.destroyed && !view.composing && !view.compositionStarted) {
+                  view.dispatch({ selection: view.state.selection });
+                  handle.scheduleOutline(true);
+                }
+              }, 30);
+            }
             return false;
           },
         }),
-        // Observers, not handlers: CodeMirror stops at the first handler that takes an event,
-        // and the keymap above takes End, arrows, Mod-a, undo… before a handler here would see
-        // them. A key or press inside the restore frames is the writer's intent and must cancel
-        // the restore, or the restore re-selects what the key just moved away from.
         EditorView.domEventObservers({
-          mousedown() { pointerDown = true; cancelFocusRestore(); },
-          mouseup() { pointerDown = false; },
-          blur() { pointerDown = false; },
-          keydown() { cancelFocusRestore(); },
+          mousedown() {
+            pointerDown = true;
+            cancelFocusRestore();
+          },
+          mouseup() {
+            pointerDown = false;
+          },
+          blur() {
+            pointerDown = false;
+          },
+          keydown() {
+            cancelFocusRestore();
+          },
         }),
         EditorView.contentAttributes.of({
           'aria-labelledby': options.labelledBy,
@@ -126,23 +265,46 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
           return { top: sticky.getBoundingClientRect().height + 16 };
         }),
         EditorView.updateListener.of((update) => {
-          // Focusing the shell after a dialog closes can move the browser's DOM
-          // caret into the blurred editor. Keep the last focused selection and
-          // map it through edits; that incidental caret is not a writer intent.
-          if (update.docChanged) cancelFocusRestore();
-          focusSelection = update.view.hasFocus && !restoringFocus
-            ? update.state.selection
-            : focusSelection.map(update.changes);
-          if (update.view.hasFocus && !restoringFocus && update.transactions.some((tr) => tr.scrollIntoView)) {
+          if (update.docChanged) {
+            cancelFocusRestore();
+            handle.generation += 1;
+          } else if (
+            update.selectionSet &&
+            !dispatchingRestore &&
+            (!update.state.selection.main.empty || update.state.selection.main.head !== 0)
+          ) {
+            cancelFocusRestore();
+          }
+          focusSelection =
+            update.view.hasFocus && !restoringFocus
+              ? update.state.selection
+              : focusSelection.map(update.changes);
+          if (
+            update.view.hasFocus &&
+            !restoringFocus &&
+            update.transactions.some((tr) => tr.scrollIntoView)
+          ) {
             scrollEnsureLeft = 2;
             ensureCaretVisible();
           }
-          if (update.docChanged && !handle.destroyed) options.onChange();
+          if (update.docChanged) {
+            if (!suppressChange && !handle.destroyed) {
+              options.onChange();
+            }
+            if (handle.format === 'markdown') {
+              handle.scheduleOutline();
+            }
+          } else if (update.selectionSet && handle.format === 'markdown') {
+            emitActiveOnly();
+          }
         }),
       ],
     }),
   });
   host.dataset[MOUNTED] = 'true';
+  if (initialFormat === 'markdown') {
+    handle.emitOutlineNow();
+  }
   return handle;
 }
 
@@ -167,4 +329,75 @@ export function focusEditor(handle: EditorHandle): void {
 /** True while an input method is composing; a save shortcut then waits for the commit. */
 export function isComposing(handle: EditorHandle): boolean {
   return handle.view.composing || handle.view.compositionStarted;
+}
+
+/** Reconfigures the Markdown Live Preview extension on the existing EditorView without remounting. */
+export function setFormat(handle: EditorHandle, format: DocumentFormat): void {
+  if (handle.destroyed) return;
+  const next: DocumentFormat = format === 'markdown' ? 'markdown' : 'default';
+  if (handle.format === next) return;
+  handle.format = next;
+  handle.generation += 1;
+  handle.view.dispatch({
+    effects: handle.markdownCompartment.reconfigure(next === 'markdown' ? markdownExtension : []),
+  });
+  handle.emitOutlineNow();
+}
+
+/** Replaces the document and format after an explicit, server-acknowledged conversion. */
+export function applyConvertedDocument(
+  handle: EditorHandle,
+  format: DocumentFormat,
+  text: string,
+): void {
+  if (handle.destroyed) return;
+  const next: DocumentFormat = format === 'markdown' ? 'markdown' : 'default';
+  handle.format = next;
+  handle.generation += 1;
+  handle.setSuppressedChange(true);
+  try {
+    handle.view.dispatch({
+      changes: { from: 0, to: handle.view.state.doc.length, insert: text },
+      selection: EditorSelection.cursor(0),
+      effects: handle.markdownCompartment.reconfigure(next === 'markdown' ? markdownExtension : []),
+    });
+    handle.syncProgrammaticSelection();
+  } finally {
+    handle.setSuppressedChange(false);
+  }
+  handle.emitOutlineNow();
+}
+
+export function applyHeading(handle: EditorHandle, level: number): boolean {
+  if (handle.destroyed || handle.format !== 'markdown') return false;
+  handle.syncProgrammaticSelection();
+  const ok = mdApplyHeading(handle.view, level);
+  if (ok) {
+    handle.syncProgrammaticSelection();
+    handle.scheduleOutline(true);
+  }
+  return ok;
+}
+
+export function applyInlineFormat(handle: EditorHandle, kind: string): boolean {
+  if (handle.destroyed || handle.format !== 'markdown') return false;
+  if (kind !== 'bold' && kind !== 'italic' && kind !== 'link') return false;
+  handle.syncProgrammaticSelection();
+  const ok = mdApplyInlineFormat(handle.view, kind);
+  if (ok) {
+    handle.syncProgrammaticSelection();
+    handle.scheduleOutline(true);
+  }
+  return ok;
+}
+
+export function jumpToHeading(handle: EditorHandle, from: number, expectedGeneration: number): boolean {
+  if (handle.destroyed || handle.format !== 'markdown') return false;
+  handle.syncProgrammaticSelection();
+  const ok = mdJumpToHeading(handle.view, from, expectedGeneration, handle.generation);
+  if (ok) {
+    handle.syncProgrammaticSelection();
+    handle.emitOutlineNow();
+  }
+  return ok;
 }

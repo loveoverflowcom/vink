@@ -743,7 +743,24 @@ mod private_draft_paths {
 
 #[cfg(feature = "hydrate")]
 pub async fn create_draft() -> Result<Draft, ApiError> {
-    http::send::<(), Draft>("POST", "/api/v1/drafts", None).await
+    create_draft_with_format(crate::contract::DocumentFormatDto::Default).await
+}
+
+#[cfg(feature = "hydrate")]
+pub async fn create_draft_with_format(
+    format: crate::contract::DocumentFormatDto,
+) -> Result<Draft, ApiError> {
+    match format {
+        crate::contract::DocumentFormatDto::Default => {
+            http::send::<(), Draft>("POST", "/api/v1/drafts", None).await
+        }
+        crate::contract::DocumentFormatDto::Markdown => {
+            let body = crate::contract::CreateDraftRequest {
+                format: Some(format),
+            };
+            http::send("POST", "/api/v1/drafts", Some(&body)).await
+        }
+    }
 }
 
 #[cfg(feature = "hydrate")]
