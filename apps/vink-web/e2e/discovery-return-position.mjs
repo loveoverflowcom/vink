@@ -183,8 +183,8 @@ export async function discoveryReturnPosition(page, { args, check }) {
       await page.eval("Promise.all([document.fonts.ready,document.querySelector('#return-probe-image').decode()]).then(()=>true)");
       await settle();
       const after=await geometry();
-      result('late-font-and-sized-image', fits(before) && fits(after), { before, after,
-        decoded:await page.eval("document.fonts.check('16px ReturnProbe') && document.querySelector('#return-probe-image').naturalWidth===32") });
+      const decoded = await page.eval("document.fonts.check('16px ReturnProbe') && document.querySelector('#return-probe-image').naturalWidth===32");
+      result('late-font-and-sized-image', decoded && fits(before) && fits(after), { before, after, decoded });
     } finally {
       await page.send('Fetch.disable');
       page.cdp.listeners=page.cdp.listeners.filter(l=>l!==collect);
@@ -241,6 +241,7 @@ export async function discoveryReturnPosition(page, { args, check }) {
     await page.capture('return-position-after-delayed-read', { boundary: 'CDP-held-list', scenario: '#236-late-refresh-focus' });
 
     // Hold B, return to the cached A with its exact cursor, then deliver a different list.
+    await page.eval('document.activeElement.blur()');
     await heldList(page, args.base, () => navigate('/?q=scope-b#community-stream'), async () => {
       await navigate(href);
       await page.waitFor(arrived, 'cached A before obsolete B is released');
@@ -256,7 +257,7 @@ export async function discoveryReturnPosition(page, { args, check }) {
     for (let i=0;i<18;i++) {
       const q='pressure-'+i;
       await navigate('/?q='+q);
-      await page.waitFor(`location.search==='?q=${q}' && document.querySelector('[data-testid=public-empty]')`, 'distinct query settled');
+      await page.waitFor(`location.search==='?q=${q}' && document.querySelector('[data-testid=public-no-results]')`, 'distinct query settled');
     }
     await page.send('Network.emulateNetworkConditions', offline(true));
     try {
