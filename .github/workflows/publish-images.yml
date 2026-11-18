@@ -3,8 +3,12 @@ name: Publish OCI images manually
 on:
   workflow_dispatch:
     inputs:
+      publish:
+        description: Publish to GHCR (develop only); false runs qualification without pushing
+        type: boolean
+        default: true
       platform:
-        description: Verified target platform (confirm the test host first)
+        description: Verified target platform
         required: true
         type: choice
         options: [linux/amd64, linux/arm64]
@@ -12,7 +16,7 @@ permissions:
   contents: read
 jobs:
   publish:
-    if: github.ref == 'refs/heads/develop' && github.repository == 'loveoverflowcom/vink'
+    if: github.repository == 'loveoverflowcom/vink' && (github.ref == 'refs/heads/develop' || !inputs.publish)
     runs-on: ${{ inputs.platform == 'linux/arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     timeout-minutes: 90
     permissions:
@@ -23,6 +27,8 @@ jobs:
     steps:
       # Same verified checkout pin as existing CI; no unpinned third-party actions.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Build clean source without registry credentials
         run: |
           rustup toolchain install
@@ -44,7 +50,10 @@ jobs:
             test -s /opt/vink/site/pkg/vink-editor.js && test -s /opt/vink/site/pkg/vink.css &&
             test -d /opt/vink/site/pkg/fonts && test -d /opt/vink/site/pkg/brand &&
             test -d /opt/vink/site/pkg/expressions && test ! -e /src && test ! -e /opt/vink/.env'
+      - name: Qualify built images against isolated PostgreSQL and Identity
+        run: infra/production/smoke-images.sh "$GITHUB_SHA" "$PLATFORM"
       - name: Publish explicitly and record remote digests
+        if: github.ref == 'refs/heads/develop' && inputs.publish
         env:
           REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

@@ -1,0 +1,20 @@
+[Unit]
+Description=Vink production runtime (PostgreSQL, Identity, Web and Worker)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/vink-prod/current
+Environment=PODMAN_COMPOSE_PROVIDER=/usr/bin/podman-compose
+RuntimeDirectory=vink-prod-identity
+RuntimeDirectoryMode=0700
+ExecStartPre=/usr/bin/chown 10001:10001 /run/vink-prod-identity
+ExecStart=/usr/bin/podman compose --project-name vink-prod --env-file /etc/vink-prod/release.env -f services/postgres/compose.yaml -f infra/production/compose.yaml up -d postgres identity app worker
+ExecStop=/usr/bin/podman compose --project-name vink-prod --env-file /etc/vink-prod/release.env -f services/postgres/compose.yaml -f infra/production/compose.yaml stop worker app identity postgres
+TimeoutStartSec=180
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

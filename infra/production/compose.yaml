@@ -1,0 +1,127 @@
+# Pair with services/postgres/compose.yaml. Never use the local overlay (it publishes a DB port).
+name: vink-prod
+services:
+  postgres:
+    image: ${VINK_PROD_POSTGRES_IMAGE:?PostgreSQL digest required}
+    restart: always
+    networks:
+      default:
+        ipv4_address: 10.89.3.10
+    healthcheck:
+      test: [CMD, pg_isready, -h, 127.0.0.1, -U, vink, -d, postgres]
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/bootstrap_password
+    volumes:
+      - ${VINK_PROD_SECRETS_DIR:?secret directory required}/postgres-bootstrap-password:/run/secrets/bootstrap_password:ro
+  app:
+    restart: always
+    networks:
+      edge:
+        ipv4_address: 10.89.4.10
+      default: {}
+    image: ${VINK_PROD_APP_IMAGE:?actual registry digest required}
+    platform: ${VINK_PROD_PLATFORM:?verified target platform required}
+    user: "${VINK_PROD_UID:?}:${VINK_PROD_UID:?}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    env_file: ["${VINK_PROD_SECRETS_DIR:?}/app-runtime.env"]
+    environment:
+      VINK_PROFILE: production
+      VINK_BIND: 0.0.0.0:3000
+      VINK_PUBLIC_ORIGIN: https://vink.forum
+      VINK_SITE_ROOT: /opt/vink/site
+      VINK_TRUSTED_PROXIES: 10.89.4.2/32
+      VINK_AUTH_SIGN_IN: disabled
+      VINK_IDENTITY_SOCKET: /run/vink-identity/identity.sock
+      VINK_IDENTITY_SERVER_UID: ${VINK_PROD_UID:?}
+      VINK_LOG_FORMAT: json
+    volumes: ["${VINK_PROD_SOCKET_DIR:?}:/run/vink-identity:ro"]
+    stop_grace_period: 20s
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1:3000/health/ready]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+  worker:
+    restart: always
+    image: ${VINK_PROD_WORKER_IMAGE:?}
+    platform: ${VINK_PROD_PLATFORM:?}
+    user: "${VINK_PROD_UID:?}:${VINK_PROD_UID:?}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    env_file: ["${VINK_PROD_SECRETS_DIR:?}/worker-runtime.env"]
+    environment:
+      VINK_PROFILE: production
+      VINK_PUBLIC_ORIGIN: https://vink.forum
+      VINK_WORKER_EVALUATION: disabled
+      VINK_AUTH_SIGN_IN: disabled
+      VINK_LOG_FORMAT: json
+    stop_grace_period: 20s
+  identity:
+    restart: always
+    image: ${VINK_PROD_IDENTITY_IMAGE:?}
+    platform: ${VINK_PROD_PLATFORM:?}
+    user: "${VINK_PROD_UID:?}:${VINK_PROD_UID:?}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    env_file: ["${VINK_PROD_SECRETS_DIR:?}/identity-runtime.env"]
+    environment:
+      VINK_IDENTITY_SOCKET: /run/vink-identity/identity.sock
+      VINK_IDENTITY_CALLER_UID: ${VINK_PROD_UID:?}
+      VINK_LOG_FORMAT: json
+    volumes: ["${VINK_PROD_SOCKET_DIR:?}:/run/vink-identity"]
+    stop_grace_period: 20s
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, --unix-socket, /run/vink-identity/identity.sock, http://identity/health/ready]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+  provision:
+    profiles: [provision]
+    image: ${VINK_PROD_POSTGRES_IMAGE:?PostgreSQL digest required}
+    user: "${VINK_PROD_UID:?}:${VINK_PROD_UID:?}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    env_file: ["${VINK_PROD_SECRETS_DIR:?}/provision.env"]
+    environment:
+      PGHOST: 10.89.3.10
+      PGPORT: "5432"
+      PGUSER: vink
+      PGDATABASE: postgres
+    volumes: ["./:/opt/vink-postgres:ro"]
+    entrypoint: [/bin/sh, /opt/vink-postgres/provision.sh]
+  migrate-app:
+    profiles: [migration]
+    image: ${VINK_PROD_APP_IMAGE:?}
+    platform: ${VINK_PROD_PLATFORM:?}
+    user: "${VINK_PROD_UID:?}:${VINK_PROD_UID:?}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    env_file: ["${VINK_PROD_SECRETS_DIR:?}/app-migrator.env"]
+    command: [migrate]
+  migrate-identity:
+    profiles: [migration]
+    image: ${VINK_PROD_IDENTITY_IMAGE:?}
+    platform: ${VINK_PROD_PLATFORM:?}
+    user: "${VINK_PROD_UID:?}:${VINK_PROD_UID:?}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    env_file: ["${VINK_PROD_SECRETS_DIR:?}/identity-migrator.env"]
+    command: [migrate]
+volumes:
+  vink-postgres:
+    external: true
+    name: ${VINK_POSTGRES_VOLUME:?production volume required}
+networks:
+  default:
+    name: ${VINK_PROD_DB_NETWORK:?production DB network required}
+    external: true
+  edge:
+    name: ${VINK_PROD_EDGE_NETWORK:?production ingress network required}
+    external: true
