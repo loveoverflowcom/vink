@@ -20,8 +20,8 @@ use crate::desk_state::{
 use crate::document::{ConversionPreview, DocumentView, NotEditable};
 use crate::draft_list::{CreateState, DraftSort, display_title as untitled};
 use crate::editor::{
-    BODY_HINT_ID, BODY_LABEL_ID, BodyEditor, BodySource, BodyState, OutlineItem, OutlineStatus,
-    TOOLBAR_ID,
+    BODY_HINT_ID, BODY_LABEL_ID, BODY_TITLE_ERROR_ID, BodyEditor, BodySource, BodyState,
+    OutlineItem, OutlineStatus, TOOLBAR_ID,
 };
 use crate::navigation::NavigationGuard;
 use crate::pages::work_info::TagLoad;
@@ -43,6 +43,7 @@ pub fn DeskIndex() -> impl IntoView {
     let sort = RwSignal::new(DraftSort::Recent);
     let composing = RwSignal::new(false);
     let creation = RwSignal::new(CreateState::Ready);
+    let create_format = RwSignal::new(DocumentFormatDto::Default);
     let loading = RwSignal::new(true);
     let appending = RwSignal::new(false);
     let recovery_focus = RwSignal::new(false);
@@ -195,6 +196,7 @@ pub fn DeskIndex() -> impl IntoView {
                 composing.set(false);
                 ready.set(false);
                 creation.set(CreateState::Ready);
+                create_format.set(DocumentFormatDto::Default);
             }
             let scope = (account, applied.get(), sort.get(), PAGE_SIZE);
             if old.as_ref() == Some(&scope) {
@@ -269,7 +271,6 @@ pub fn DeskIndex() -> impl IntoView {
             && load_error.get().is_none()
             && creation.with(CreateState::can_begin)
     });
-    let create_format = RwSignal::new(DocumentFormatDto::Default);
     #[cfg(feature = "hydrate")]
     let navigate = leptos_router::hooks::use_navigate();
     let create = Callback::new(move |()| {
@@ -326,26 +327,7 @@ pub fn DeskIndex() -> impl IntoView {
             <header id="heading" class="vk-desk-heading">
                 <Heading level=HeadingLevel::H1 id="desk-title" attr:tabindex="-1">"Bàn viết"</Heading>
                 <Show when=move || ready.get() && !first_use.get()>
-                    <div class="vk-desk-create">
-                        <Select
-                            id="create-draft-format"
-                            label="Định dạng bản thảo"
-                            variant=SelectVariant::Inset16
-                            required=true
-                            options=vec![
-                                ChoiceOption::new("default", "Mặc định"),
-                                ChoiceOption::new("markdown", "Markdown"),
-                            ]
-                            value=Signal::derive(move || Some(create_format.get().as_str().to_string()))
-                            disabled=Signal::derive(move || !can_create.get())
-                            on_change=Callback::new(move |picked: Option<String>| {
-                                if let Some(next) = picked.as_deref().and_then(DocumentFormatDto::parse) {
-                                    create_format.set(next);
-                                }
-                            })
-                        />
-                        <CreateDraftButton creation can_create create />
-                    </div>
+                    <CreateDraftControls creation can_create create create_format />
                 </Show>
             </header>
             <noscript><p class="vk-desk-noscript">{DESK_UNAVAILABLE_SSR}</p></noscript>
@@ -359,7 +341,7 @@ pub fn DeskIndex() -> impl IntoView {
                 })}
                 // The tools/input retain one owner through loading, empty, query and error.
                 <DraftListView pages query sort composing loading appending page_error load_error restarted
-                    first_use no_results creation can_create create submit clear more refresh refresh_disabled />
+                    first_use no_results creation can_create create create_format submit clear more refresh refresh_disabled />
             </div>
             <p class="vk-desk-privacy vk-muted">"Bản nháp chỉ bạn đọc được. Số Thấm và Nhận xét thuộc bản đang công khai; lưu nháp không gửi duyệt hay công khai."</p>
         </section>
@@ -393,24 +375,38 @@ fn restore_desk_anchor((id, top): (String, f64)) {
 }
 
 #[component]
-fn CreateDraftButton(
+fn CreateDraftControls(
     creation: RwSignal<CreateState>,
     can_create: Signal<bool>,
     create: Callback<()>,
+    create_format: RwSignal<DocumentFormatDto>,
     #[prop(default = false)] first: bool,
 ) -> impl IntoView {
     view! {
-        <Button variant=ButtonVariant::Filled
-            leading=IconName::Add id="create-draft" on_press=move |_| create.run(())
-            state=Signal::derive(move || if creation.get() == CreateState::Pending { ActionState::pending("Đang tạo…") } else { blocked(!can_create.get()) })
-        >
-            {move || match creation.get() {
-                CreateState::Pending => "Đang tạo…",
-                CreateState::Reconciled => "Tạo thêm bản thảo",
-                _ if first => "Viết bản thảo đầu tiên",
-                _ => "Tạo bản thảo",
-            }}
-        </Button>
+        <div class="vk-desk-create">
+            <Select id="create-draft-format" label="Định dạng bản thảo"
+                variant=SelectVariant::Inset16 required=true
+                options=vec![ChoiceOption::new("default", "Mặc định"), ChoiceOption::new("markdown", "Markdown")]
+                value=Signal::derive(move || Some(create_format.get().as_str().to_string()))
+                disabled=Signal::derive(move || !can_create.get())
+                on_change=Callback::new(move |picked: Option<String>| {
+                    if let Some(next) = picked.as_deref().and_then(DocumentFormatDto::parse) {
+                        create_format.set(next);
+                    }
+                })
+            />
+            <Button variant=ButtonVariant::Filled
+                leading=IconName::Add id="create-draft" on_press=move |_| create.run(())
+                state=Signal::derive(move || if creation.get() == CreateState::Pending { ActionState::pending("Đang tạo…") } else { blocked(!can_create.get()) })
+            >
+                {move || match creation.get() {
+                    CreateState::Pending => "Đang tạo…",
+                    CreateState::Reconciled => "Tạo thêm bản thảo",
+                    _ if first => "Viết bản thảo đầu tiên",
+                    _ => "Tạo bản thảo",
+                }}
+            </Button>
+        </div>
     }
 }
 
@@ -476,6 +472,7 @@ fn DraftListView(
     creation: RwSignal<CreateState>,
     can_create: Signal<bool>,
     create: Callback<()>,
+    create_format: RwSignal<DocumentFormatDto>,
     query: RwSignal<String>,
     sort: RwSignal<DraftSort>,
     composing: RwSignal<bool>,
@@ -530,7 +527,7 @@ fn DraftListView(
             <Show when=move || first_use.get()>
                 <div data-testid="draft-empty">
                     <EmptyState artwork=EmptyArtwork::FirstDraft message="Một trang dành riêng cho những điều bạn muốn viết.">
-                        <CreateDraftButton creation can_create create first=true />
+                        <CreateDraftControls creation can_create create create_format first=true />
                     </EmptyState>
                 </div>
             </Show>
@@ -920,6 +917,9 @@ fn Editor(draft: Draft) -> impl IntoView {
                         Err(ApiError::VersionConflict { current_version }) => s
                             .text
                             .save_rejected(ticket, SaveRejection::Conflict { current_version }),
+                        Err(ApiError::Invalid { field }) if field.as_deref() == Some("title") => s
+                            .text
+                            .save_rejected(ticket, SaveRejection::Failed(Failure::InvalidTitle)),
                         Err(error) => s
                             .text
                             .save_rejected(ticket, SaveRejection::Failed(failure(&error))),
@@ -1378,6 +1378,24 @@ fn Editor(draft: Draft) -> impl IntoView {
             let doc = document();
             // The jump must not put a destructive choice under a still-held Enter key.
             let selector = match target {
+                RecoveryTarget::Title if format.get_untracked() == DocumentFormatDto::Default => {
+                    "#draft-title"
+                }
+                RecoveryTarget::Title => {
+                    let heading = body.outline.with_untracked(|outline| {
+                        outline
+                            .items
+                            .iter()
+                            .find(|item| item.is_title)
+                            .map(|item| (item.from, outline.generation))
+                    });
+                    if !heading
+                        .is_some_and(|(from, generation)| body.jump_to_heading(from, generation))
+                    {
+                        body.focus();
+                    }
+                    return;
+                }
                 RecoveryTarget::TextConflict => "#editor-text-conflict",
                 RecoveryTarget::TagConflict => "#editor-tag-conflict",
                 RecoveryTarget::TagRefused => "#work-tags-edit > summary",
@@ -1405,6 +1423,9 @@ fn Editor(draft: Draft) -> impl IntoView {
     });
     let slot_view = Memo::new(move |_| project_save_slot(&slot_facts.get()));
     let status = move || slot_facts.with(|f| f.text);
+    let title_invalid = move || status() == SaveStatus::Failed(Failure::InvalidTitle);
+    let markdown_title_invalid =
+        move || title_invalid() && format.get() == DocumentFormatDto::Markdown;
     let tag_status = Memo::new(move |_| slot_facts.with(|f| f.tags.clone()));
     let status_label = Memo::new(move |_| slot_view.with(|v| v.status_text.clone()));
     let status_token = Memo::new(move |_| slot_view.with(|v| v.status_token.to_string()));
@@ -1550,7 +1571,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                     <TooltipIconButton id="preview" icon=IconName::Visibility label="Xem trước"
                         on_press=move |_| open_preview() />
             </crate::ui::patterns::EditorToolbar>
-            <Show when=move || matches!(status(), SaveStatus::Failed(_))>
+            <Show when=move || matches!(status(), SaveStatus::Failed(_)) && !title_invalid()>
                 <section class="vk-editor-recovery" data-testid="save-failed" data-tone="error" aria-label="Phục hồi lưu nháp">
                     // The toolbar is the sole polite announcement owner for this state.
                     {move || view! { <InlineNotice tone=Tone::Error announce=Announce::Off
@@ -1710,6 +1731,9 @@ fn Editor(draft: Draft) -> impl IntoView {
                         <TextField id="draft-title" label="Tiêu đề" name="title" max_length=200 input_ref=title_input
                             variant=FieldVariant::FloatingTonal
                             placeholder="Chưa đặt tên" autocomplete="off" value=title
+                            error=Signal::derive(move || title_invalid().then(||
+                                "Tiêu đề cần tối đa 200 ký tự trên một dòng. Hãy bỏ ký tự điều khiển.".to_owned()
+                            ))
                             on_focus=move |_| last_field.set_value(Field::Title)
                             on_input=move |input: vink_ui::TextInput| {
                                 title_composing.set_value(input.composing);
@@ -1748,6 +1772,11 @@ fn Editor(draft: Draft) -> impl IntoView {
                         <span id=BODY_HINT_ID class="vk-ui-visually-hidden">
                             {move || shortcut.get()}
                         </span>
+                        <p id=BODY_TITLE_ERROR_ID class="vk-ui-field__error" hidden=move || !markdown_title_invalid()>
+                            {move || markdown_title_invalid().then_some(
+                                "Sửa tiêu đề cấp 1 đầu tiên để có tối đa 200 ký tự trên một dòng. Hãy bỏ ký tự điều khiển."
+                            )}
+                        </p>
                         <BodyEditor source=body on_change=on_body_change on_ready=on_body_ready />
                         <Show when=move || body.state.get() == BodyState::Loading>
                             <p class="vk-muted vk-editor-body__pending">"Đang mở trình soạn thảo…"</p>
@@ -2379,6 +2408,7 @@ pub(crate) fn failure_reason(failure: Failure) -> &'static str {
         Failure::Forbidden => "Yêu cầu bị từ chối.",
         Failure::NotFound => "Không tìm thấy bản nháp.",
         Failure::Invalid => "Nội dung không hợp lệ.",
+        Failure::InvalidTitle => "Tiêu đề chưa hợp lệ.",
         Failure::Unexpected => "Phản hồi không xác định; chưa rõ bản nháp đã được lưu hay chưa.",
     }
 }
@@ -2436,6 +2466,7 @@ fn leave_message(
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum RecoveryTarget {
+    Title,
     TextConflict,
     TagConflict,
     TagRefused,
@@ -2656,7 +2687,10 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
         } else {
             "rejected"
         });
-        let status_text = if text_uncertain {
+        let title_invalid = failure == Failure::InvalidTitle;
+        let status_text = if title_invalid {
+            "Tiêu đề chưa hợp lệ."
+        } else if text_uncertain {
             match facts.tags.as_ref() {
                 None if matches!(facts.tags_read, TagLoad::Failed(_)) => {
                     "Chưa xác nhận lưu chữ; chưa tải được thẻ."
@@ -2694,10 +2728,19 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
             status_token: "failed",
             problem_kind,
             detail_text: format!("{text_detail} {tag_detail}"),
-            action: SaveSlotAction::Retry {
-                label: "Thử lưu lại",
-                pending: false,
-                icon: DraftActionIcon::Save,
+            action: if title_invalid
+                && !matches!(facts.tags, Some(TagStatus::Unsaved | TagStatus::Failed(_)))
+            {
+                SaveSlotAction::Recover {
+                    label: "Sửa tiêu đề",
+                    target: RecoveryTarget::Title,
+                }
+            } else {
+                SaveSlotAction::Retry {
+                    label: "Thử lưu lại",
+                    pending: false,
+                    icon: DraftActionIcon::Save,
+                }
             },
         };
     }

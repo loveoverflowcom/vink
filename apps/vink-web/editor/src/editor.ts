@@ -16,7 +16,6 @@ import {
   applyHeading as mdApplyHeading,
   applyInlineFormat as mdApplyInlineFormat,
   extractOutline,
-  jumpToHeading as mdJumpToHeading,
   markdownExtension,
   type OutlineSnapshot,
 } from './markdown';
@@ -401,12 +400,16 @@ export function applyInlineFormat(handle: EditorHandle, kind: string): boolean {
 }
 
 export function jumpToHeading(handle: EditorHandle, from: number, expectedGeneration: number): boolean {
-  if (handle.destroyed || handle.format !== 'markdown') return false;
+  const { view } = handle;
+  if (
+    handle.destroyed || handle.format !== 'markdown' || expectedGeneration !== handle.generation ||
+    isComposing(handle) || from < 0 || from > view.state.doc.length
+  ) return false;
+  view.dispatch({
+    selection: EditorSelection.cursor(view.state.doc.lineAt(from).to),
+    effects: EditorView.scrollIntoView(from, { y: 'center' }),
+  });
   handle.syncProgrammaticSelection();
-  const ok = mdJumpToHeading(handle.view, from, expectedGeneration, handle.generation);
-  if (ok) {
-    handle.syncProgrammaticSelection();
-    handle.emitOutlineNow();
-  }
-  return ok;
+  view.focus();
+  return true;
 }

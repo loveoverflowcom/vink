@@ -8,6 +8,11 @@ Base kiểm tra: `develop@e4066df9d7cad602a1822414abb418219c612e18`, ngày 17/11
 > mở và soạn được cả `default` lẫn `markdown` (một `EditorView` Live Preview). Reader công khai
 > (`#264`) vẫn tách riêng nên cổng `format_not_publishable` khi xuất bản công khai giữ nguyên.
 > Xem LayoutSpec hợp nhất tại [editor-live-preview-256-257.md](editor-live-preview-256-257.md).
+
+Ở trạng thái tài khoản có 0 tác phẩm, bộ chọn nằm ngay trước **Viết bản thảo đầu tiên**.
+Hai control có thể xuống hàng khi chữ phóng lớn. Tab đi từ bộ chọn đến CTA và lựa chọn được
+gửi trong cùng yêu cầu tạo nháp như ở danh sách có tác phẩm.
+
 Nguồn yêu cầu: [issue #262](https://github.com/loveoverflowcom/vink/issues/262),
 body/comments đọc trước triển khai. Không có PR mở lúc discovery. #255/#256/#263 còn mở,
 không có comment triển khai; state issue chỉ là một dữ kiện, inventory source dưới đây mới

@@ -489,6 +489,7 @@ a {
 .vk-desk-privacy { margin-top: var(--vk-space-8); font-size: var(--vk-type-label-size); }
 /* The first-use CTA drops its icon to keep the full label measure at 320px/text200. */
 .vk-empty-state__actions #create-draft > .vk-ui-icon { display: none; }
+.vk-empty-state__actions > .vk-desk-create { justify-content: center; text-align: start; }
 
 /* Paper First (#218): quiet context/tools in flow; the manuscript owns the surface. */
 

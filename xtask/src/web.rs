@@ -917,6 +917,43 @@ fn seed_perf_journey(server: &Server) -> Result<(), String> {
     })
 }
 
+fn editor_first_drafts(
+    root: &Path,
+    server: &Server,
+    chrome: &str,
+    state: &Path,
+) -> Result<(), String> {
+    let (_, url) = server
+        .env
+        .iter()
+        .find(|(key, _)| key == "VINK_MIGRATE_DATABASE_URL")
+        .ok_or("scratch migrator URL missing")?;
+    for (index, format) in ["default", "markdown"].into_iter().enumerate() {
+        let principal = format!("88888888-8888-4888-8888-{:012}", index + 256);
+        crate::identity::sql(
+            url,
+            &format!(
+                "INSERT INTO principals (id, display_name) VALUES ('{principal}', '[Mẫu] Bản thảo đầu tiên')"
+            ),
+        )?;
+        let mut fixture = server.with_principal(&principal, free_port()?);
+        fixture.log = state.with_file_name(format!("editor-first-{format}.log"));
+        let mut running = fixture.start(root)?;
+        smoke(
+            root,
+            &["--phase", "editor-first-draft", "--first-format", format],
+            chrome,
+            &format!("http://127.0.0.1:{}", fixture.port),
+            &state.with_file_name(format!("editor-first-{format}.json")),
+        )?;
+        let status = running.terminate(Duration::from_secs(15))?;
+        if !status.success() {
+            return Err(format!("first-draft fixture {format} exited with {status}"));
+        }
+    }
+    Ok(())
+}
+
 fn run_web_checks(
     report: &mut Report,
     root: &Path,
@@ -933,6 +970,14 @@ fn run_web_checks(
             return false;
         }
     };
+    if selected.contains(&Scenario::Main)
+        && !report.step(
+            "first-use draft formats with fresh scratch principals",
+            || editor_first_drafts(root, server, chrome, state),
+        )
+    {
+        return false;
+    }
     if selected.iter().any(|s| {
         matches!(
             s,
