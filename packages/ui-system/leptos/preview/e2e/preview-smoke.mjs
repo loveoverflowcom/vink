@@ -1397,6 +1397,19 @@ async function navigation(page) {
   check((await labels('#nav-rail-primary')) === 'Khám phá', 'the rail renders only the destinations the host grants');
   await page.open('navigation.bottom-bar');
   check((await labels('#nav-bottom')) === 'Khám phá|Bàn viết|Tôi', 'bottom bar: Khám phá → Bàn viết → Tôi');
+  await page.click('#nav-bottom a[data-destination=desk]');
+  await page.settle();
+  check(await page.eval(`(() => {
+    const bar = document.getElementById('nav-bottom');
+    const selected = bar.querySelector('[data-destination=desk][aria-current=page]');
+    if (!selected) return false;
+    const indicator = selected.querySelector('.vk-ui-icon').parentElement;
+    const label = selected.querySelector('.vk-ui-nav-item__label');
+    return getComputedStyle(bar).position === 'sticky' &&
+      getComputedStyle(selected).backgroundColor === 'rgba(0, 0, 0, 0)' &&
+      getComputedStyle(indicator).backgroundColor !== 'rgba(0, 0, 0, 0)' &&
+      indicator.getBoundingClientRect().bottom <= label.getBoundingClientRect().top;
+  })()`), 'explicit gallery bar remains inside its frame and moves the icon-only indicator with the host route');
   await page.open('navigation.scaffold', 'editor');
   check(await page.eval(`(() => { const s = document.querySelector('#nav-shell'); return s.hasAttribute('data-hide-bar') && s.hasAttribute('data-compact-rail') && s.dataset.layout === 'rail:compact'; })()`), 'editor context: compact rail, bar hidden');
 

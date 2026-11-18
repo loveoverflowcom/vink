@@ -1721,6 +1721,7 @@
 }
 
 .vk-ui-nav-item .vk-ui-icon { flex: 0 0 var(--vk-size-icon); }
+.vk-ui-nav-item__indicator { display: contents; }
 .vk-ui-nav-item__label { overflow-wrap: anywhere; min-inline-size: 0; }
 .vk-ui-nav-item:hover { background: var(--vk-state-hover); }
 
@@ -1845,6 +1846,7 @@
   inset: auto 0 0;
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
+  align-content: center;
   gap: var(--vk-space-1);
   /* Content determines growth at large text sizes; the minimum is a touch/shell size. */
   min-block-size: var(--vk-size-bottom-bar);
@@ -1859,10 +1861,54 @@
   flex-direction: column;
   justify-content: flex-start;
   gap: var(--vk-space-1);
-  padding: var(--vk-space-1) 0;
+  padding: min(var(--vk-space-2), 6px) 0;
+  background: transparent;
+  transition: none;
   text-align: center;
   font-size: var(--vk-type-caption-size);
   line-height: var(--vk-type-caption-line-height);
+}
+
+.vk-ui-bottom-nav .vk-ui-nav-item__indicator {
+  display: grid;
+  place-items: center;
+  inline-size: min(100%, 64px);
+  min-block-size: 32px;
+  border-radius: var(--vk-radius-full);
+  transition: background-color var(--vk-duration-short) var(--vk-ease-emphasized),
+    box-shadow var(--vk-duration-short) var(--vk-ease-emphasized);
+}
+
+.vk-ui-bottom-nav .vk-ui-nav-item[aria-current="page"] {
+  color: var(--vk-on-surface);
+}
+
+.vk-ui-bottom-nav .vk-ui-nav-item[aria-current="page"] .vk-ui-nav-item__indicator {
+  background: var(--vk-primary-container);
+  color: var(--vk-on-primary-container);
+}
+
+@media (hover: hover) {
+  .vk-ui-bottom-nav .vk-ui-nav-item:hover .vk-ui-nav-item__indicator {
+    box-shadow: inset 0 0 0 var(--vk-size-icon) var(--vk-state-hover);
+  }
+}
+
+.vk-ui-bottom-nav .vk-ui-nav-item:active .vk-ui-nav-item__indicator {
+  box-shadow: inset 0 0 0 var(--vk-size-icon) var(--vk-state-pressed);
+}
+
+.vk-ui-bottom-nav .vk-ui-nav-item:focus-visible {
+  outline-offset: calc(-1 * var(--vk-size-focus-ring));
+}
+
+@media (forced-colors: active) {
+  .vk-ui-bottom-nav .vk-ui-nav-item[aria-current="page"] .vk-ui-nav-item__indicator {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+
+  .vk-ui-bottom-nav .vk-ui-nav-item:focus-visible { outline-color: Highlight; }
 }
 
 /* Bar layouts: the rail leaves, the top bar and (unless hidden) the bottom bar appear. The
@@ -1904,7 +1950,9 @@
 .vk-ui-scaffold[data-layout="bar"] .vk-ui-bottom-nav { display: grid; position: sticky; }
 
 @media (prefers-reduced-motion: reduce) {
-  .vk-ui-nav-item { transition: none; }
+  .vk-ui-nav-item,
+  .vk-ui-bottom-nav .vk-ui-nav-item__indicator { transition: none; }
 }
 
-:where([data-motion="reduce"]) .vk-ui-nav-item { transition: none; }
+:where([data-motion="reduce"]) .vk-ui-nav-item,
+:where([data-motion="reduce"]) .vk-ui-bottom-nav .vk-ui-nav-item__indicator { transition: none; }
