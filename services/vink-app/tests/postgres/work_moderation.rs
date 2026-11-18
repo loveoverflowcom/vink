@@ -1812,3 +1812,223 @@ async fn appeal_on_old_revision_never_overwrites_new_public_intent(pool: PgPool)
         Some(old.as_str())
     );
 }
+
+/// ADM-06: the worker has already claimed this snapshot when a human approves it.
+/// After withdrawal and a policy change, only a person can decide the same revision.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn human_policy_rereview_keeps_authority_and_queues_exact_snapshot(pool: PgPool) {
+    conclude_human_policy_rereview(pool, false).await;
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn human_policy_rereview_accepts_scoped_moderator_conclusion(pool: PgPool) {
+    conclude_human_policy_rereview(pool, true).await;
+}
+
+async fn conclude_human_policy_rereview(pool: PgPool, use_work_grant: bool) {
+    use vink_app::domain::moderation::{EvaluationRefusal, EvaluatorOutcome, PolicyReasonCode};
+    use vink_app::persistence::evaluation::{JobOutcome, claim_job, finish_job};
+
+    let app = app(&pool).await;
+    let work = dev_seed::SAMPLE_WORK;
+    let admin = dev_seed::OTHER_PRINCIPAL;
+    seat_admin(&pool, admin).await;
+    let revision = snapshot(&app, work, "human-snapshot", 1).await;
+    let generation = request_public(&app, work, &revision, 2, "human-submit").await;
+    let late = claim_job(&pool, "in-flight", 60, None)
+        .await
+        .unwrap()
+        .unwrap();
+    let (status, body) = post(
+        &app,
+        &format!("/api/v1/moderation/works/{work}/revisions/{revision}/cases"),
+        admin,
+        json!({}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+    let case = json(&body)["case_id"].as_str().unwrap().to_owned();
+    let path = format!("/api/v1/moderation/works/cases/{case}");
+    let (status, body) = post(
+        &app,
+        &format!("{path}/claim"),
+        admin,
+        json!({"expected_version":1}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let (status, body) = post(
+        &app,
+        &format!("{path}/conclude"),
+        admin,
+        json!({"expected_version":2,"verdict":"approved","reason":"Đã đọc bản gửi"}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(
+        finish_job(
+            &pool,
+            "in-flight",
+            &late,
+            Some(EvaluatorOutcome::Reject(PolicyReasonCode::Harassment)),
+            0
+        )
+        .await
+        .unwrap(),
+        JobOutcome::Refused(EvaluationRefusal::Overridden)
+    );
+    let (status, body) = post(
+        &app,
+        &set_private_path(work),
+        dev_seed::SAMPLE_AUTHOR,
+        json!({"expected_generation":generation,"command_key":"human-private"}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    sqlx::query("UPDATE work_publications SET policy_version=2 WHERE work_id=$1")
+        .bind(work)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let expected = json(&body)["generation"].as_i64().unwrap();
+    request_public(&app, work, &revision, expected, "human-rereview").await;
+    request_public(&app, work, &revision, expected, "human-rereview").await;
+    let queue: Vec<(Uuid, String, i64)> = sqlx::query_as(
+        "SELECT revision_id,content_digest,decision_version FROM moderation_cases WHERE work_id=$1
+           AND state='queued' AND origin='policy_rereview'",
+    )
+    .bind(work)
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(queue, vec![(late.revision_id, late.content_digest, 3)]);
+    assert!(
+        claim_job(&pool, "another-worker", 60, None)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    type AuditRow = (i64, i64, String, Option<Uuid>, Option<Uuid>);
+    let audit: Vec<AuditRow> = sqlx::query_as(
+        "SELECT decision_version,policy_version,provenance_kind,actor_id,case_id FROM work_revision_decision_history
+         WHERE revision_id=$1 AND decision_version >= 2 ORDER BY decision_version").bind(late.revision_id).fetch_all(&pool).await.unwrap();
+    assert_eq!(
+        audit,
+        vec![
+            (
+                2,
+                1,
+                "admin".into(),
+                Some(admin),
+                Some(Uuid::parse_str(&case).unwrap())
+            ),
+            (3, 2, "policy_rereview".into(), None, None)
+        ]
+    );
+    let (status, cache, _) = call(&app, "GET", &public_read_path(work), None, None, None).await;
+    assert_eq!(
+        (status, cache.as_deref()),
+        (StatusCode::NOT_FOUND, Some("no-store"))
+    );
+    let (review_case, case_version) = open_case(&pool, work).await;
+    assert_eq!(case_version, 1);
+    let (reviewer, basis, expected_grant) = if use_work_grant {
+        let moderator = new_principal(&pool, "Người duyệt theo tác phẩm").await;
+        let (status, body) = post(
+            &app,
+            "/api/v1/moderation/grants",
+            admin,
+            json!({"grantee_kind":"principal","grantee_id":moderator,"capability":"works",
+                   "scope_kind":"work","scope_work_id":work}),
+        )
+        .await;
+        assert_eq!(status, StatusCode::CREATED, "{body}");
+        let grant = Uuid::parse_str(json(&body)["grant_id"].as_str().unwrap()).unwrap();
+        (moderator, "moderator", Some(grant))
+    } else {
+        (admin, "admin", None)
+    };
+    let path = format!("/api/v1/moderation/works/cases/{review_case}");
+    let claim = format!("{path}/claim");
+    let (status, body) = post(
+        &app,
+        &claim,
+        dev_seed::SAMPLE_AUTHOR,
+        json!({"expected_version":1}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
+    let (status, body) = post(&app, &claim, reviewer, json!({"expected_version":1})).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+
+    // A claimed human case cannot be closed by a provider, by skipping a decision
+    // version, or under a stale policy. All probes run on the reviewed snapshot.
+    for (kind, version, policy) in [
+        ("ai_approved", 4_i64, 2_i64),
+        ("admin", 5, 2),
+        ("admin", 4, 1),
+    ] {
+        let human = kind == "admin";
+        let error = sqlx::query(
+            "UPDATE work_revision_moderation SET moderation='approved',provenance_kind=$2,
+                    decision_version=$3, policy_version=$4, admin_actor=$5, admin_verdict=$6, admin_reason=$7
+             WHERE revision_id=$1",
+        )
+        .bind(late.revision_id).bind(kind).bind(version).bind(policy)
+        .bind(human.then_some(admin)).bind(human.then_some("approve")).bind(human.then_some("Đã đọc"))
+        .execute(&pool).await.unwrap_err();
+        assert_eq!(
+            error.as_database_error().unwrap().constraint(),
+            Some("work_human_rereview_transition")
+        );
+    }
+
+    // Simulate a faulty audit writer dropping the link to the actual concluded
+    // case. The case update, verdict, audit and public pointer must roll back.
+    sqlx::raw_sql(
+        "CREATE FUNCTION test_omit_case_id() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN NEW.case_id := NULL; RETURN NEW; END $$;
+        CREATE TRIGGER omit_case BEFORE INSERT ON work_revision_decision_history FOR EACH ROW
+        WHEN (NEW.decision_version=4) EXECUTE FUNCTION test_omit_case_id()",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    let conclude = format!("{path}/conclude");
+    let verdict =
+        json!({"expected_version":2,"verdict":"approved","reason":"Đã duyệt theo policy mới"});
+    let (status, body) = post(&app, &conclude, reviewer, verdict.clone()).await;
+    assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR, "{body}");
+    let untouched: (String, i64, i64, bool) = sqlx::query_as(
+        "SELECT c.state,c.version,m.decision_version, p.pointer_revision_id IS NULL
+         FROM moderation_cases c JOIN work_revision_moderation m USING (work_id,revision_id)
+         JOIN work_publications p USING (work_id) WHERE c.id=$1",
+    )
+    .bind(review_case)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(untouched, ("claimed".into(), 2, 3, true));
+    sqlx::query("DROP TRIGGER omit_case ON work_revision_decision_history")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let (status, body) = post(&app, &conclude, reviewer, verdict).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let final_audit: (i64, String, Uuid, Uuid, Uuid, Option<Uuid>) = sqlx::query_as(
+        "SELECT h.policy_version,h.provenance_kind,h.actor_id,h.case_id,p.pointer_revision_id,h.moderator_grant_id
+           FROM work_revision_decision_history h JOIN work_publications p USING (work_id)
+          WHERE h.revision_id=$1 AND h.decision_version=4",
+    ).bind(late.revision_id).fetch_one(&pool).await.unwrap();
+    assert_eq!(
+        final_audit,
+        (
+            2,
+            basis.into(),
+            reviewer,
+            review_case,
+            late.revision_id,
+            expected_grant
+        )
+    );
+}
