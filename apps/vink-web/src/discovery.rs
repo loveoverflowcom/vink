@@ -222,7 +222,14 @@ mod tests {
             panic!("must fetch");
         };
         store.mark_stale_where(|_| true);
-        store.edit_all(|_, works| works.retain(|id| *id != "withdrawn"));
+        store.edit_matching(
+            |_| true,
+            |works| {
+                let before = works.len();
+                works.retain(|id| *id != "withdrawn");
+                works.len() != before
+            },
+        );
         assert_eq!(
             store.complete(&c, old_c, Outcome::Fresh(vec!["withdrawn"]), 2.0, 0.0),
             Applied::Discarded
