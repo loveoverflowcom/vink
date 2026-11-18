@@ -2092,6 +2092,50 @@ mod tests {
     }
 
     #[test]
+    fn disposed_resource_from_before_withdrawal_cannot_park_the_republication() {
+        let mut c = Coordinator::new(Policy::V1);
+        let key = PublicKey::Reader("w".into());
+        let LoadStart::Wait { id, effects } = c.load(&key, 0.0) else {
+            panic!()
+        };
+        let old_resource = c.store.hold_resource(&key, 0.0);
+        assert_eq!(
+            c.withdraw_publication("w", 1.0, true).replies,
+            vec![(id, Err(LoadError::NotFound))]
+        );
+        let LoadStart::Wait {
+            id: new,
+            effects: later,
+        } = c.load(&key, 2.0)
+        else {
+            panic!()
+        };
+        let current = c.store.hold_resource(&key, 2.0);
+        c.store.release_resource(&key, old_resource);
+        let obsolete = c.finish(
+            key.clone(),
+            effects.fetches[0].1,
+            Outcome::Fresh(sample_pub("w", "old")),
+            3.0,
+            0.0,
+            true,
+        );
+        assert!(obsolete.replies.is_empty());
+        assert!(c.status(&key).is_none());
+        let fresh = c.finish(
+            key.clone(),
+            later.fetches[0].1,
+            Outcome::Fresh(sample_pub("w", "new")),
+            4.0,
+            0.0,
+            true,
+        );
+        assert_eq!(fresh.replies, vec![(new, Ok(sample_pub("w", "new")))]);
+        c.store.release_resource(&key, current);
+        assert!(c.store.cache().contains_key(&key));
+    }
+
+    #[test]
     fn withdrawal_preserves_release_order_of_unrelated_readers() {
         let cache = InMemoryCache::with_budget(
             crate::read_cache::RetentionBudget {
@@ -2714,10 +2758,25 @@ mod tests {
             "00000000-0000-4000-8000-000000000001",
             crate::document::default_document("Một dòng công khai dùng riêng cho kiểm thử #100."),
         );
-        for (name, snap) in [
-            ("list_12_cards", list12),
-            ("list_20_cards", list20),
-            ("pub_234_single_line", baseline_pub),
+        // The canonical provider admits at most 2 MiB of exact source. Match the live
+        // two-paragraph scratch fixture: its blank lines are preserved in transport.
+        let first = "Phố cũ mưa giăng sợi mỏng,";
+        let last = "đã theo mưa về rất lâu.";
+        let source = format!(
+            "{first}{}{last}",
+            "\n".repeat(2_097_152 - first.len() - last.len())
+        );
+        let max_source = wrap_pub("max-raw-source", crate::document::default_document(&source));
+        for (name, scalars, snap) in [
+            ("list_12_cards", 0, list12),
+            ("list_20_cards", 0, list20),
+            ("pub_234_single_line", 0, baseline_pub),
+            ("nfd_oversized", 200_000, oversized_pub("nfd")),
+            (
+                "max_raw_source",
+                first.chars().count() + last.chars().count(),
+                max_source,
+            ),
         ] {
             let (utf8, logical, wasm32, native64, blocks) = struct_stats(&snap);
             let json_b = snapshot_json_size(&snap);
@@ -2753,7 +2812,7 @@ mod tests {
                 Snapshot::Control(_) => 0.0,
             };
             println!(
-                "{name},0,{blocks},{utf8},{json_b},{logical},{wasm32},{native64},{production_weight},{clone_us:.1},{walk_us:.1},{json_us:.1},{decode_us:.1}"
+                "{name},{scalars},{blocks},{utf8},{json_b},{logical},{wasm32},{native64},{production_weight},{clone_us:.1},{walk_us:.1},{json_us:.1},{decode_us:.1}"
             );
         }
 
