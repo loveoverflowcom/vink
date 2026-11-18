@@ -22,6 +22,7 @@ const PRIVATE: &str = "PRIVATE-DRAFT-MUST-NOT-ENTER-HTML";
 struct Probe {
     reader: Result<ReaderResponse, LoadError>,
     delay: Option<Duration>,
+    critical_delay: Duration,
     entered: Arc<tokio::sync::Notify>,
     release: Arc<tokio::sync::Semaphore>,
 }
@@ -43,7 +44,13 @@ impl PublicReads for Probe {
         Box::pin(std::future::ready(Ok(p)))
     }
     fn reader(&self, _: String) -> PortFuture<Result<ReaderResponse, LoadError>> {
-        Box::pin(std::future::ready(self.reader.clone()))
+        let (answer, delay) = (self.reader.clone(), self.critical_delay);
+        Box::pin(async move {
+            if !delay.is_zero() {
+                tokio::time::sleep(delay).await;
+            }
+            answer
+        })
     }
     fn discussion(
         &self,
@@ -76,6 +83,7 @@ fn probe(reader: Result<ReaderResponse, LoadError>) -> Probe {
     Probe {
         reader,
         delay: None,
+        critical_delay: Duration::ZERO,
         entered: Arc::default(),
         release: Arc::new(tokio::sync::Semaphore::new(0)),
     }
@@ -284,6 +292,12 @@ async fn reader_chunk_probe() {
     };
     let mut port = probe(answer);
     port.delay = Some(Duration::from_millis(delay));
+    port.critical_delay = Duration::from_millis(
+        std::env::var("VINK_SSR_PROBE_CRITICAL_MS")
+            .unwrap()
+            .parse()
+            .unwrap(),
+    );
     let routes = generate_route_list(App)
         .into_iter()
         .map(|r| {

@@ -82,14 +82,17 @@ def read(origin, case):
         expected_status = {"missing": 404, "error": 503}.get(case, 200)
         valid = (response.status == expected_status and PRIVATE not in body
                  and (article_ms is not None) == published)
+        visible = "".join(doc.visible)
+        secondary_fallback = "Chưa tải được nhận xét. Bạn vẫn có thể đọc tác phẩm." in visible
         if published:
+            valid &= secondary_fallback
             valid &= "[Mẫu] Mưa trên phố cũ" in doc.title and bool(doc.canonical) and doc.description
         else:
             valid &= ARTICLE not in body and "[Mẫu] Mưa trên phố cũ" not in body and not doc.canonical
         if case in ("hidden", "withdrawn"):
             valid &= doc.noindex and response.getheader("Cache-Control") == "no-store"
         return dict(status=response.status, headers_ms=headers, article_ms=article_ms, chunks=chunks,
-                    bytes=len(data), static_html_contract=bool(valid), canonical=bool(doc.canonical),
+                    bytes=len(data), static_html_contract=bool(valid), secondary_fallback=secondary_fallback, canonical=bool(doc.canonical),
                     noindex=doc.noindex, description=doc.description)
     finally:
         conn.close()
@@ -124,12 +127,12 @@ def listening(port):
         return sock.connect_ex(("127.0.0.1", port)) == 0
 
 
-def sample(binary, caddy, mode, delay, case):
+def sample(binary, caddy, mode, delay, case, critical_ms):
     with tempfile.TemporaryDirectory() as tmp:
         folder = Path(tmp)
         address = folder / "origin"
         env = dict(os.environ, VINK_SSR_PROBE_FILE=str(address), VINK_SSR_PROBE_MODE=mode,
-                   VINK_SSR_PROBE_DELAY=str(delay), VINK_SSR_PROBE_CASE=case)
+                   VINK_SSR_PROBE_CRITICAL_MS=str(critical_ms), VINK_SSR_PROBE_DELAY=str(delay), VINK_SSR_PROBE_CASE=case)
         with child([binary, "--ignored", "--exact", "reader_chunk_probe"], env=env) as fixture:
             ready(lambda: address.exists() and address.stat().st_size, fixture)
             origin = address.read_text()
@@ -141,7 +144,7 @@ def sample(binary, caddy, mode, delay, case):
                               " reverse_proxy %s {\n flush_interval -1\n }\n}\n" % (port, origin))
             with child([caddy, "run", "--config", str(config)], cwd=folder) as proxy:
                 ready(lambda: listening(port), proxy)
-                return [dict(mode=mode, delay_ms=delay, case=case, via=via, **read(host, case))
+                return [dict(mode=mode, critical_ms=critical_ms, delay_ms=delay, case=case, via=via, **read(host, case))
                         for via, host in [("direct", origin), ("caddy", f"127.0.0.1:{port}")]]
 
 
@@ -151,6 +154,7 @@ if __name__ == "__main__":
     for mode in ["async", "out-of-order", "async"]:
         for case in ["published", "hidden", "withdrawn", "missing", "error"]:
             for delay in ([0, 200, 1000] if case == "published" else [0]):
-                rows.extend(sample(binary, caddy, mode, delay, case))
+                for critical_ms in [0, 30]:
+                    rows.extend(sample(binary, caddy, mode, delay, case, critical_ms))
     print(json.dumps(rows, indent=2))
     assert all(row["static_html_contract"] for row in rows if row["mode"] == "async")
