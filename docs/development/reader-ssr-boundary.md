@@ -1,5 +1,11 @@
 # SSR Reader #235 — giữ Async và kiểm thao tác trước hydration
 
+## Kiểm chứng release ngày 18/11/2026
+
+Giữ Async. Thảo luận chậm 1 giây làm article SSR của Async chờ khoảng 1 giây. OutOfOrder trả shell sớm, nhưng khi critical chậm 30 ms thì commit nhầm 200 cho Missing/Error trên cả direct và Caddy. Sau rollback, Async đạt đủ 28 ca. [Ma trận, history, giới hạn và lệnh tái lập](evidence/web-perf-235-canonical/README.md).
+
+## Lịch sử trước đợt kiểm release
+
 ## Kết luận kỹ thuật trong phạm vi này
 
 Giữ **WEB-PERF-02 / CHOICE-01 A**. Không đổi scheduling public read, cache policy, SSR mode,
