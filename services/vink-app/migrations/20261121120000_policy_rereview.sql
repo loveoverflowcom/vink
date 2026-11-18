@@ -24,6 +24,7 @@ BEGIN
         IF TG_OP = 'INSERT' OR OLD.moderation <> 'pending' OR OLD.decision_version = 1
            OR ((NEW.work_id, NEW.revision_id) = (OLD.work_id, OLD.revision_id)
                AND NEW.decision_version - 1 = OLD.decision_version
+               AND NEW.provenance_kind NOT IN ('legacy_bootstrap', 'policy_rereview')
                AND NEW.policy_version >= OLD.policy_version
                AND EXISTS (SELECT FROM work_publications p WHERE p.work_id = NEW.work_id
                            AND p.policy_version = NEW.policy_version)) THEN

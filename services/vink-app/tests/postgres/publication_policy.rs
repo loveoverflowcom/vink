@@ -458,6 +458,27 @@ async fn direct_sql_rejects_impossible_pending_rows_and_predecessors(pool: PgPoo
         );
     }
 
+    // Neither a bootstrap import nor a request for human re-review is a new verdict.
+    for (state, provenance) in [
+        ("approved", "legacy_bootstrap"),
+        ("needs_admin", "policy_rereview"),
+    ] {
+        let error = sqlx::query(
+            "UPDATE work_revision_moderation SET moderation=$2,
+            decision_version=4, provenance_kind=$3 WHERE revision_id=$1",
+        )
+        .bind(legacy)
+        .bind(state)
+        .bind(provenance)
+        .execute(&pool)
+        .await
+        .unwrap_err();
+        assert_eq!(
+            error.as_database_error().unwrap().constraint(),
+            Some(transition)
+        );
+    }
+
     bump(&pool, sample_work()).await;
     let stale = sqlx::query(
         "UPDATE work_revision_moderation SET moderation='approved',
