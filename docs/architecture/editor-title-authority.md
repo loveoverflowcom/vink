@@ -20,7 +20,7 @@ Nguồn chốt: issue #263, lời chủ sản phẩm ngày 16/11/2026:
 | Markdown được format contract nhận diện tường minh | H1 đầu tiên trong AST theo thứ tự source | Các H1 sau là nội dung; tên gửi từ client không là authority. |
 | Không có H1 hoặc H1 đầu tiên rỗng | Projection rỗng | UI hiển thị “Chưa đặt tên”; không thêm placeholder vào source, metadata hoặc dùng nó để vượt `MissingTitle`. H1 đầu rỗng không được bỏ qua để lấy H1 sau. |
 | Xóa H1 đầu | Tính lại từ source mới | H1 đầu còn lại thắng; nếu hết H1 thì projection rỗng. Không sửa source để giữ tên cũ. |
-| Tên trích từ H1 đầu không hợp lệ, kể cả khi vượt 200 scalar | Lỗi validation của title | Khi lưu nháp qua API, lỗi 422 ở trường `title` chỉ tác giả tới H1 đầu trong `document.source`. Bản đã lưu và version được giữ nguyên. Client giữ buffer để tác giả sửa H1. |
+| Tên trích từ H1 đầu không hợp lệ, kể cả khi vượt 200 scalar | Lỗi validation của title | Khi lưu nháp qua API, lỗi 422 ở trường `title` nêu lý do và chỉ tới H1 đầu trong `document.source`. Bản đã lưu và version được giữ nguyên. Việc giữ buffer để tác giả sửa H1 trên Bàn viết thuộc #256. |
 | AsciiDoc | `DEFERRED` | Hướng tương lai là document title trong header; không thêm parser hoặc tùy chọn dùng được. |
 
 `Title::parse` trim, NFC, cấm ký tự điều khiển (kể cả tab) và U+2028/U+2029, giới hạn 200 Unicode

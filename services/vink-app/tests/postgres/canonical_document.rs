@@ -67,7 +67,12 @@ async fn markdown_title_is_materialized_in_the_same_save_and_cas(pool: PgPool) {
     vink.save_draft(author(), markdown(work, 3, "Chỉ thân bài.\n"))
         .await
         .unwrap();
-    assert_eq!(stored(&pool, work).await.0, "");
+    let before = (
+        String::new(),
+        json!({"format": "markdown", "source": "Chỉ thân bài.\n"}),
+        4,
+    );
+    assert_eq!(stored(&pool, work).await, before);
     let router = app(&pool).await;
     let (status, _, body) = call(&router, "POST", &format!("/api/v1/works/{work}/snapshots"),
         Some(dev_seed::SAMPLE_AUTHOR), Some(ORIGIN), Some(json!({
@@ -81,7 +86,7 @@ async fn markdown_title_is_materialized_in_the_same_save_and_cas(pool: PgPool) {
         .await
         .unwrap();
     assert_eq!(revision_count, 0);
-    // A client title is refused for Markdown, and an overlong H1 is refused, never truncated.
+    // Markdown only accepts a title derived from its first H1.
     assert!(matches!(
         vink.save_draft(
             author(),
@@ -93,7 +98,13 @@ async fn markdown_title_is_materialized_in_the_same_save_and_cas(pool: PgPool) {
         .await,
         Err(DraftError::Invalid(_))
     ));
-    for invalid_heading in ["ơ".repeat(201), "Mưa&#x2028;đêm".to_owned()] {
+    for (invalid_heading, reason) in [
+        ("ơ".repeat(201), "title exceeds 200 characters"),
+        (
+            "Mưa&#x2028;đêm".to_owned(),
+            "title contains a line break or control character",
+        ),
+    ] {
         let source = format!("Lời đề.\n\n{invalid_heading}\n===\n\n# Tên sau\n");
         let (status, _, body) = call(
             &router,
@@ -108,15 +119,16 @@ async fn markdown_title_is_materialized_in_the_same_save_and_cas(pool: PgPool) {
         )
         .await;
         assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
-        let error = &json(&body)["error"];
-        assert_eq!(error["code"], "validation_failed");
-        assert_eq!(error["field"], "title");
-        let message = error["message"].as_str().unwrap();
-        assert!(message.contains("first H1 in document.source"), "{message}");
+        assert_eq!(
+            json(&body),
+            json!({"error": {
+                "code": "validation_failed",
+                "field": "title",
+                "message": format!("title: first H1 in document.source: {reason}")
+            }})
+        );
+        assert_eq!(stored(&pool, work).await, before);
     }
-    let (title, document, version) = stored(&pool, work).await;
-    assert_eq!((title.as_str(), version), ("", 4));
-    assert_eq!(document["source"], "Chỉ thân bài.\n");
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
