@@ -164,3 +164,53 @@ export async function readerBeforeHydration(page, { args, check }) {
     flush();
   }
 }
+
+// Companion guest run on the same canonical hot work as #234.
+export async function readerGuestHistory(page, {args,check}) {
+  if (!/^http:\/\/127\.0\.0\.1:\d+$/.test(args.base)) throw new Error('loopback scratch only');
+  const reader='/tac-pham/e4202094-9563-02e5-519d-6f8fa6a1af4c';
+  const article="document.querySelector('.vk-document')?.textContent.includes('Một dòng công khai dùng riêng')";
+  let phase='javascript-disabled';
+  const ledger=recordTransport(page,args.base,()=>phase);
+  const raw={source_sha:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),
+    browser:await page.cdp.send('Browser.getVersion'),transport:ledger.rows,status:'FAIL'};
+  try {
+    await page.send('Network.setBlockedURLs',{urls:[args.base+'/pkg/vink.js*',args.base+'/pkg/vink_bg.wasm*']});
+    await page.send('Emulation.setScriptExecutionDisabled',{value:true});
+    await page.goto(args.base+reader);
+    check(await page.eval(`${article} && !(${READY}) &&
+      document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')==='true' &&
+      document.querySelector('link[rel=canonical]')?.href===${JSON.stringify(args.base+reader)}`),'full canonical Reader with JS disabled');
+    await page.eval("document.querySelector('#reader-return').focus()");
+    const enter=async()=>{for(const type of ['keyDown','keyUp'])await page.send('Input.dispatchKeyEvent',{
+      type,key:'Enter',code:'Enter',windowsVirtualKeyCode:13,...(type==='keyDown'?{text:'\r'}:{})});};
+    await enter();
+    await page.waitFor("location.pathname==='/' && document.querySelector('#public-search')?.method==='get'",'native Reader return');
+    await page.eval("document.querySelector('#public-query').focus()");
+    await page.send('Input.insertText',{text:'kiem thu'});
+    await enter();
+    await page.waitFor("new URL(location.href).searchParams.get('q')==='kiem thu' && document.querySelectorAll('.vk-public-row').length>0",'native GET results');
+    raw.no_js=true;
+    await page.send('Emulation.setScriptExecutionDisabled',{value:false});
+    await page.send('Network.setBlockedURLs',{urls:[]});
+    phase='fresh-reader';
+    await page.goto(args.base+reader);
+    await page.waitFor(`${READY} && ${article}`,'fresh guest Reader');
+    await sleep(300);
+    assertNoHydrationRead(raw.transport,phase,'reader');
+    const start=await page.eval('performance.timeOrigin');
+    await page.goto(args.base+'/toi');
+    await page.waitFor(READY,'leave guest Reader document');
+    phase='history-reader';
+    await page.eval('history.back()');
+    await page.waitFor(`${READY} && ${article} && performance.timeOrigin!==${start} && performance.getEntriesByType('navigation')[0].type==='back_forward'`, 'unknown-age Reader document');
+    await page.waitFor("performance.getEntriesByType('resource').some(r=>new URL(r.name).pathname.endsWith('/reader')) && document.querySelector('#reader-freshness')?.dataset.refreshing==='false'", 'Reader revalidated');
+    check(raw.transport.filter(r=>r.phase===phase && r.kind==='reader').length===1,'one history Reader verification');
+    raw.history_verifications=1;
+    raw.status='PASS';
+  }finally{
+    await page.send('Emulation.setScriptExecutionDisabled',{value:false});
+    await page.send('Network.setBlockedURLs',{urls:[]});ledger.stop();
+    writeFileSync(join(dirname(args.state),'reader-guest-history.json'),JSON.stringify(raw,null,2));
+  }
+}

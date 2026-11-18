@@ -31,7 +31,7 @@ import { documentBudget } from './document-budget.mjs';
 import { webPerfBaseline } from './web-perf-baseline.mjs';
 import { discoveryReturnPosition } from './discovery-return-position.mjs';
 import { recordTransport } from './web-request-ledger.mjs';
-import { readerBeforeHydration } from './reader-ssr-boundary.mjs';
+import { readerBeforeHydration, readerGuestHistory } from './reader-ssr-boundary.mjs';
 import { deskEmptyState } from './desk-empty-smoke.mjs';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -1047,7 +1047,7 @@ async function launchChrome(existingProfile) {
   // CI runners may not allow Chrome's user-namespace sandbox; only our local app is loaded.
   if (process.env.CI || process.env.VINK_CHROME_NO_SANDBOX) flags.push('--no-sandbox');
   // #234 measures a new SSR document with back_forward navigation timing, not a BFCache hit.
-  if (args.phase === 'perf-baseline') flags.push('--disable-back-forward-cache');
+  if (['perf-baseline','reader-guest-history'].includes(args.phase)) flags.push('--disable-back-forward-cache');
   const child = spawn(args.chrome, flags, { stdio: ['ignore', 'ignore', 'pipe'] });
   let output = '';
   let exited = null;
@@ -5628,6 +5628,7 @@ try {
   else if (args.phase === 'return-position') await discoveryReturnPosition(page, { args, check });
   else if (args.phase === 'select-chevron') await selectChevron(page);
   else if (args.phase === 'editor-chrome') await editorChrome(page);
+  else if (args.phase === 'reader-guest-history') await readerGuestHistory(page, { args, check });
   else if (args.phase === 'main') await mainPhase(page);
   else if (args.phase === 'public-storage') { /* exercised below, with profile reopen */ }
   else if (args.phase === 'after-restart') await afterRestartPhase(page);
