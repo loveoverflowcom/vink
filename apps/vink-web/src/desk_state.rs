@@ -88,9 +88,9 @@ impl EditorSession {
         }
     }
 
-    /// Starts a save of the current edit, unless one is in flight or a conflict is unresolved.
+    /// Starts a save of the current edit if its version and title are eligible.
     pub fn begin_save(&mut self) -> Option<SaveTicket> {
-        if self.in_flight.is_some() || self.conflict.is_some() {
+        if !self.can_save() {
             return None;
         }
         self.requests += 1;
@@ -102,6 +102,14 @@ impl EditorSession {
         self.in_flight = Some(ticket);
         self.failure = None;
         Some(ticket)
+    }
+
+    /// An explicit conversion submits a different document after the author reviews it.
+    pub fn begin_format_conversion(&mut self) -> Option<SaveTicket> {
+        if self.failure == Some(Failure::InvalidTitle) {
+            self.failure = None;
+        }
+        self.begin_save()
     }
 
     pub fn save_succeeded(&mut self, ticket: SaveTicket, new_version: i64) {
@@ -163,7 +171,9 @@ impl EditorSession {
     }
 
     pub fn can_save(&self) -> bool {
-        self.in_flight.is_none() && self.conflict.is_none()
+        self.in_flight.is_none()
+            && self.conflict.is_none()
+            && self.failure != Some(Failure::InvalidTitle)
     }
 
     pub fn in_flight(&self) -> Option<SaveTicket> {
@@ -359,7 +369,9 @@ impl Guarded for DraftSession {
     }
 
     fn begin_leave_save(&mut self) -> Option<(Option<DraftTicket>, DraftTicket)> {
-        let text_blocked = self.text.has_unsaved_text() && self.text.conflict.is_some();
+        let text_blocked = self.text.has_unsaved_text()
+            && !self.text.can_save()
+            && self.text.in_flight().is_none();
         let tags_blocked = self.tags.as_ref().is_some_and(|tags| {
             tags.has_unsaved() && !tags.can_save() && tags.in_flight().is_none()
         });
@@ -1009,6 +1021,33 @@ mod tests {
         assert!(guard.request(&d, "/"));
         let sent = guard.save_and_leave(&mut d).unwrap();
         assert!(sent.tags.is_none());
+    }
+
+    #[test]
+    fn unchanged_rejected_title_is_not_resent_with_a_tag_save() {
+        let mut draft = draft(true, false);
+        let sent = draft.begin_manual_save().unwrap().text.unwrap();
+        draft
+            .text
+            .save_rejected(sent, SaveRejection::Failed(Failure::InvalidTitle));
+        assert!(draft.begin_manual_save().is_none());
+        draft.tags.as_mut().unwrap().add_theme("mua").unwrap();
+        let tags = draft.begin_manual_save().unwrap();
+        assert!(tags.text.is_none());
+        assert!(tags.tags.is_some());
+        tags_ok(&mut draft, tags, 2);
+        assert_eq!(
+            draft.text.status(),
+            SaveStatus::Failed(Failure::InvalidTitle)
+        );
+        assert!(draft.begin_leave_save().is_none());
+        let mut converting = draft.text.clone();
+        let conversion = converting.begin_format_conversion().unwrap();
+        assert_eq!(conversion.expected_version, sent.expected_version);
+        assert!(converting.begin_format_conversion().is_none());
+        draft.text.edited();
+        let corrected = draft.begin_manual_save().unwrap().text.unwrap();
+        assert_eq!(corrected.expected_version, sent.expected_version);
     }
 
     #[test]

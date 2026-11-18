@@ -97,9 +97,23 @@ pub fn App() -> impl IntoView {
     mark_hydrated();
     navigation::NavigationGuard::provide();
     view! {
+        <leptos_meta::Title formatter=format_page_title />
         <Router>
             <Chrome />
         </Router>
+    }
+}
+
+// leptos_meta 0.8.7 writes the server title directly into HTML. The browser setter
+// takes plain text, so it must receive the original title during and after hydration.
+fn format_page_title(title: String) -> String {
+    #[cfg(feature = "ssr")]
+    {
+        html_escape::encode_text(&title).into_owned()
+    }
+    #[cfg(not(feature = "ssr"))]
+    {
+        title
     }
 }
 

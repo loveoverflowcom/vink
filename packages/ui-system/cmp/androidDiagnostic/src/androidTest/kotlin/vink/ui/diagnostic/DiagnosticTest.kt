@@ -4,6 +4,7 @@ import android.os.Build
 import android.os.Debug
 import android.os.SystemClock
 import android.util.Log
+import android.view.ViewGroup
 import androidx.compose.ui.graphics.ImageBitmapConfig
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toPixelMap
@@ -27,14 +28,19 @@ class DiagnosticTest {
     @Test fun controlledVietnameseTextSurvivesThemeAndRecreation() {
         val input = ui.onAllNodes(hasSetTextAction()).onFirst()
         input.assertIsNotFocused()
-        input.performTextReplacement("Đường về – một buổi chiều")
+        ui.activityRule.scenario.recreate()
+        input.assertIsNotFocused()
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+            ui.runOnIdle { assertTrue(ui.activity.findViewById<ViewGroup>(android.R.id.content).isFocused) }
+        }
+        input.performClick().assertIsFocused().performTextReplacement("Đường về – một buổi chiều")
         ui.onNodeWithText("Đổi sáng/tối").performClick()
         input.assertTextContains("Đường về – một buổi chiều", substring = true)
         ui.runOnIdle {
             assertFalse(WindowCompat.getInsetsController(ui.activity.window, ui.activity.window.decorView).isAppearanceLightStatusBars)
         }
         ui.activityRule.scenario.recreate()
-        ui.onAllNodes(hasSetTextAction()).onFirst().assertTextContains("Đường về – một buổi chiều", substring = true)
+        input.assertTextContains("Đường về – một buổi chiều", substring = true)
     }
 
     @Test fun hostStopsActivityInBackgroundAndResumes() {

@@ -73,10 +73,17 @@ function flattenHeadingText(doc: EditorState['doc'], node: SyntaxNode): string {
           ? code.slice(1, -1) : code;
       }
     }
-    // Lezer's Setext node includes the underline line. In a block quote the leading
-    // '>' on that line may be a gap, not a QuoteMark child of the heading.
-    const underline = current.name.startsWith('SetextHeading') ? current.getChild('HeaderMark') : null;
-    const end = underline ? doc.lineAt(underline.from).from - 1 : current.to;
+    let end = current.to;
+    if (current.name === 'Link' || current.name === 'Image') {
+      // For an inline destination, only the label contributes to the heading. Lezer leaves
+      // whitespace around the URL and optional link title in gaps between its syntax nodes.
+      const marks = current.getChildren('LinkMark');
+      if (marks.length === 4) end = marks[1].from;
+    } else if (current.name.startsWith('SetextHeading')) {
+      // The underline line can include a block quote marker outside the heading's children.
+      const underline = current.getChild('HeaderMark');
+      if (underline) end = doc.lineAt(underline.from).from - 1;
+    }
     let pos = current.from;
     let out = '';
     for (let child = current.firstChild; child && child.from < end; child = child.nextSibling) {

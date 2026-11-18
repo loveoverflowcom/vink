@@ -170,6 +170,27 @@ async function titleValidation(page, { args, check }) {
   await page.waitFor(`document.activeElement === ${CM}.contentDOM &&
     ${CM}.state.selection.main.head === ${bad.indexOf('\n\n', bad.indexOf('# '))}`, 'title recovery puts the caret on the first H1');
   await page.capture('markdown-title-error', { target: '#editor-body-title-error', boundary: 'Chrome CDP, actual App 422 on PostgreSQL scratch' });
+  const writes = [];
+  const observe = event => {
+    const request = event.params?.request;
+    if (event.sessionId === page.sessionId && event.method === 'Network.requestWillBeSent' && request.method === 'PUT') {
+      writes.push(new URL(request.url).pathname);
+    }
+  };
+  page.cdp.listeners.push(observe);
+  try {
+    await page.key('s', page.mod);
+    await page.click('#work-tags-edit > summary');
+    await page.click('#work-tags-form .vk-ui-chip');
+    await page.waitFor("document.querySelector('#save')?.textContent.includes('Lưu thẻ')", 'the eligible save action names the tags');
+    await page.click(SAVE);
+    await page.waitFor("document.querySelector('#save-recovery-jump')?.textContent.includes('Sửa tiêu đề')", 'saving tags preserves title recovery');
+    check(writes.length === 1 && writes[0] === `/api/v1/drafts/${id}/tags`
+      && (await page.draft(id)).version === shown.version && await page.eval(`${SOURCE} === ${JSON.stringify(bad)}`),
+    '#263 shortcut and tag-only save never resend the rejected text or replace the buffer');
+  } finally {
+    page.cdp.listeners.splice(page.cdp.listeners.indexOf(observe), 1);
+  }
   await replaceSource(page, source.replace('Tên hợp lệ', 'Đã sửa H1'));
   await page.waitStatus('unsaved');
   check(await page.eval(`${SAME_VIEW} && document.querySelector('#editor-body-title-error').textContent.trim() === ''`),

@@ -3358,6 +3358,7 @@ dependencies = [
  "console_error_panic_hook",
  "futures-channel",
  "gloo-net 0.7.0",
+ "html-escape",
  "http",
  "js-sys",
  "leptos",

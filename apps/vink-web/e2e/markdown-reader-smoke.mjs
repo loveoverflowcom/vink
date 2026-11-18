@@ -238,7 +238,9 @@ export async function markdownReader(page, { args, check, textContrast }) {
     const beforeWasm = await view(page, '#reader-paper', ssr.text);
     const afterWasm = await view(page, '#reader-paper');
     check(equal(preview, beforeWasm) && equal(beforeWasm, afterWasm), 'the real SSR HTML, hydrated Reader, preview and case have identical projections');
-    check(await page.eval(`document.title === ${JSON.stringify(poem.title + ' — Vink')}
+    const expectedTitle = JSON.stringify(poem.title + ' — Vink');
+    check(await page.eval(`new DOMParser().parseFromString(${JSON.stringify(ssr.text)}, 'text/html').title === ${expectedTitle}
+      && document.title === ${expectedTitle}
       && document.querySelector('meta[property="og:title"]').content === ${JSON.stringify(poem.title)}
       && document.querySelector('meta[name="description"]').content === ${JSON.stringify(poem.description)}
       && document.querySelector('link[rel="canonical"]').href === ${JSON.stringify(reviewer + readerPath)}

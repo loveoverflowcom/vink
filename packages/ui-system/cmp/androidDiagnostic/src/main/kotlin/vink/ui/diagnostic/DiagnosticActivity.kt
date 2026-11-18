@@ -14,6 +14,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.core.view.WindowCompat
 import vink.ui.preview.*
 
+private const val HOST_HAD_FOCUS = "vink.diagnostic.hostHadFocus"
+
 class DiagnosticActivity : ComponentActivity() {
     lateinit var model: PreviewModel
         private set
@@ -28,9 +30,10 @@ class DiagnosticActivity : ComponentActivity() {
             (savedInstanceState?.getString(key) ?: intent.getStringExtra(key))?.let { "--$key=$it" }
         }
         model = PreviewModel(replay(args).copy(hostActive = false))
-        if (savedInstanceState == null && Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
-            // Legacy Android assigns initial focus even in touch mode. Give it to the host
-            // before Compose adds the search field so the keyboard opens on user input.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P &&
+            (savedInstanceState == null || savedInstanceState.getBoolean(HOST_HAD_FOCUS))) {
+            // Legacy Android assigns focus even in touch mode. Restore an idle host before
+            // Compose adds its first text field. Leave an active child's restoration to Android.
             val content = findViewById<ViewGroup>(android.R.id.content)
             content.isFocusableInTouchMode = true
             content.requestFocus()
@@ -70,6 +73,9 @@ class DiagnosticActivity : ComponentActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+            outState.putBoolean(HOST_HAD_FOCUS, findViewById<ViewGroup>(android.R.id.content).isFocused)
+        }
         val c = model.config
         outState.putString("entry", c.entry)
         outState.putString("scenario", c.scenario)
