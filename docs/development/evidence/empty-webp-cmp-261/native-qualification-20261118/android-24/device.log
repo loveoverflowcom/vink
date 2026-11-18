@@ -1,0 +1,10 @@
+List of devices attached
+emulator-5564          device product:sdk_phone_arm64 model:Android_SDK_built_for_arm64 device:generic_arm64 transport_id:5
+
+ro.product.model=Android SDK built for arm64
+ro.product.cpu.abi=arm64-v8a
+ro.build.version.release=7.0
+ro.build.version.sdk=24
+ro.build.id=NYC
+ro.build.fingerprint=Android/sdk_phone_arm64/generic_arm64:7.0/NYC/8695085:userdebug/test-keys
+sys.boot_completed=1

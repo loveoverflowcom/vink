@@ -1,0 +1,52 @@
+[
+  {
+    "screen": "explore",
+    "os_font_scale": 1.0,
+    "viewport_dp": [
+      390,
+      820
+    ],
+    "preview_multiplier": 1,
+    "prelaunch_input": "touch at x2,y100 on launcher",
+    "initial_keyboard_shown": false,
+    "initial_search_focused": false,
+    "no_autofocus": "PASS",
+    "keyboard_after_touch": true,
+    "before_theme": {
+      "focused": "true",
+      "text": "Vink261",
+      "bounds": "[40,383][350,439]"
+    },
+    "after_theme": {
+      "focused": "true",
+      "text": "Vink261",
+      "bounds": "[40,383][350,439]"
+    },
+    "keep_focus_and_query": "PASS"
+  },
+  {
+    "screen": "desk",
+    "os_font_scale": 2.0,
+    "viewport_dp": [
+      390,
+      820
+    ],
+    "preview_multiplier": 1,
+    "prelaunch_input": "touch at x2,y100 on launcher",
+    "initial_keyboard_shown": false,
+    "initial_search_focused": false,
+    "no_autofocus": "PASS",
+    "keyboard_after_touch": true,
+    "before_theme": {
+      "focused": "true",
+      "text": "Vink261",
+      "bounds": "[40,374][350,490]"
+    },
+    "after_theme": {
+      "focused": "true",
+      "text": "Vink261",
+      "bounds": "[40,374][350,490]"
+    },
+    "keep_focus_and_query": "PASS"
+  }
+]

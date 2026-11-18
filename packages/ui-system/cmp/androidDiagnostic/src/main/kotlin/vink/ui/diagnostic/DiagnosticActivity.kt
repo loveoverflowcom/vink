@@ -1,9 +1,11 @@
 package vink.ui.diagnostic
 
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.database.ContentObserver
 import android.provider.Settings
+import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -26,6 +28,13 @@ class DiagnosticActivity : ComponentActivity() {
             (savedInstanceState?.getString(key) ?: intent.getStringExtra(key))?.let { "--$key=$it" }
         }
         model = PreviewModel(replay(args).copy(hostActive = false))
+        if (savedInstanceState == null && Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+            // Legacy Android assigns initial focus even in touch mode. Give it to the host
+            // before Compose adds the search field so the keyboard opens on user input.
+            val content = findViewById<ViewGroup>(android.R.id.content)
+            content.isFocusableInTouchMode = true
+            content.requestFocus()
+        }
         setContent {
             val dark = when (model.config.theme) {
                 vink.ui.ThemePreference.Dark -> true

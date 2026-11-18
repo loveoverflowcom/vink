@@ -352,3 +352,7 @@ closed diagnostic decode path; opaque content-image policy không đổi. Đây 
 không native product app hay approved golden. [LayoutSpec](../design/empty-artwork-cmp-261.md)
 và [evidence, source pin, commands, pixels, before/after và native gaps](evidence/empty-webp-cmp-261/README.md)
 sở hữu kết quả của lượt này; không thay thế kết quả lịch sử #116.
+
+Lượt 18/11 với baseline `develop@ee20e94` bổ sung bằng chứng Android API 24/35, sửa
+focus ban đầu của host trên Android cũ và kiểm lại Desktop. iOS Simulator và các ca
+AT/IME còn `NOT_RUN`. [Delta AC-04/06/07](evidence/empty-webp-cmp-261/native-qualification-20261118/README.md).

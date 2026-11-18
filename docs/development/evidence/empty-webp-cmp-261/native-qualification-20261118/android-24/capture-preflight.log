@@ -1,0 +1,3 @@
+PANIC: Broken AVD system path. Check your ANDROID_SDK_ROOT value [/tmp/vink-261-native.7sxBHV/sdk24]!
+explore-empty-320-light-100 FAIL None mStable unexpected screencap dimensions for /tmp/vink-261-native.7sxBHV/api24-captures/explore-empty-320-light-100.png
+explore-empty-320-light-100 FAIL None mStable Bắt đầu viết not wholly reachable in the safe viewport: None

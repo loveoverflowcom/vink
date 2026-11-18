@@ -1,0 +1,5 @@
+--------- beginning of main
+--------- beginning of system
+11-19 00:14:38.676  2353  2369 I VinkEmptyWebP: api=24 artwork=no-results output=192x160 transparent=22290 translucent=8430 opaque=0 max_alpha=0.99607843 allocation=122880
+11-19 00:14:38.679  2353  2369 I VinkEmptyWebP: api=24 artwork=no-public-works output=192x160 transparent=22814 translucent=7906 opaque=0 max_alpha=0.99607843 allocation=122880
+11-19 00:14:38.682  2353  2369 I VinkEmptyWebP: api=24 artwork=first-draft output=192x160 transparent=22455 translucent=8265 opaque=0 max_alpha=0.99607843 allocation=122880
