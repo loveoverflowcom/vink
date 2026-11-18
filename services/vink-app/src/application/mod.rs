@@ -93,10 +93,10 @@ pub enum ReadError {
 pub enum InvalidInput {
     #[error("expected_version must be >= 1")]
     ExpectedVersion,
-    /// The effective title is invalid: an explicit default title or a Markdown first H1.
+    /// The explicit default title is invalid.
     #[error("title: {0}")]
     Title(#[from] TitleError),
-    /// The title field contradicts the format's title authority.
+    /// The title input contradicts its format or the first Markdown heading yields an invalid title.
     #[error("title: {0}")]
     TitleAuthority(TitleAuthorityError),
     #[error("document: {0}")]

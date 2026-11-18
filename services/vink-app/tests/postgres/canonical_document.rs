@@ -93,11 +93,27 @@ async fn markdown_title_is_materialized_in_the_same_save_and_cas(pool: PgPool) {
         .await,
         Err(DraftError::Invalid(_))
     ));
-    let long = format!("# {}", "ơ".repeat(201));
-    assert!(matches!(
-        vink.save_draft(author(), markdown(work, 4, &long)).await,
-        Err(DraftError::Invalid(_))
-    ));
+    for invalid_heading in ["ơ".repeat(201), "Mưa&#x2028;đêm".to_owned()] {
+        let source = format!("Lời đề.\n\n{invalid_heading}\n===\n\n# Tên sau\n");
+        let (status, _, body) = call(
+            &router,
+            "PUT",
+            &format!("/api/v1/drafts/{work}"),
+            Some(dev_seed::SAMPLE_AUTHOR),
+            Some(ORIGIN),
+            Some(json!({
+                "expected_version": 4,
+                "document": {"format": "markdown", "source": source}
+            })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+        let error = &json(&body)["error"];
+        assert_eq!(error["code"], "validation_failed");
+        assert_eq!(error["field"], "title");
+        let message = error["message"].as_str().unwrap();
+        assert!(message.contains("first H1 in document.source"), "{message}");
+    }
     let (title, document, version) = stored(&pool, work).await;
     assert_eq!((title.as_str(), version), ("", 4));
     assert_eq!(document["source"], "Chỉ thân bài.\n");
