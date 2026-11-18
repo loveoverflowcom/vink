@@ -47,6 +47,15 @@ docker network create --internal --subnet 10.89.3.0/24 "$project-db"
 docker network create --internal --subnet 10.89.4.0/24 "$project-ingress"
 docker volume create "$project-postgres"
 "${compose[@]}" up -d --wait postgres
+# PostgreSQL initialization can answer on its temporary Unix socket before TCP is ready.
+deadline=$((SECONDS + 30))
+until "${compose[@]}" exec -T postgres pg_isready -h 127.0.0.1 -U vink -d postgres -q; do
+    if (( SECONDS >= deadline )); then
+        echo 'PostgreSQL did not become ready over TCP' >&2
+        exit 1
+    fi
+    sleep 1
+done
 "${compose[@]}" run --rm provision
 "${compose[@]}" run --rm provision --check
 for service in migrate-app migrate-identity; do
