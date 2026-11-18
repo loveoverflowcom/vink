@@ -2,7 +2,7 @@
 //! metadata snapshot a publication binds, and the public projection (CHOICE-02 B).
 //!
 //! Draft tags are private working state with their own [`MetadataVersion`]. Saving them never
-//! touches a revision, its `ContentHash` v1, the publication pointer or the endorsement anchor.
+//! touches a revision, its content hash, the publication pointer or the endorsement anchor.
 //! A publication binds a content revision AND a [`MetadataSnapshot`]; only the publication
 //! owner's transaction may move that pair, and public reads project only the bound snapshot.
 
@@ -330,8 +330,8 @@ pub fn decide_tag_change(
     })
 }
 
-/// Content identity of a metadata snapshot, separate from `ContentHash` v1 (which stays title +
-/// document only). SHA-256 over `vink-work-metadata-v1`, then the form as `0x00` or `0x01` +
+/// Identifies a metadata snapshot. The revision separately hashes its format, effective title
+/// and exact source. Metadata uses SHA-256 over `vink-work-metadata-v1`, then the form as `0x00` or `0x01` +
 /// 16 UUID bytes, then the theme count as u64 big-endian and each theme's 16 UUID bytes.
 /// Order is significant: the author's theme order is part of what was published.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

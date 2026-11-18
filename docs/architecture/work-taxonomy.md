@@ -9,6 +9,8 @@ baseline `develop@6c97917b6a7aa4c51f3b2fe816462c8a0a47fc64`. **Trạng thái:** 
 [PRD §13](../../prd/requirements.md#13-phân-loại-tác-phẩm-tag); requirement → function → test/proof
 ở [registry](../development/taxonomy-core.md).
 
+> Sau #255, revision băm format, title hiệu lực và source nguyên văn. Thẻ có `MetadataDigest` riêng. Các mục ghi “hash v1” bên dưới mô tả quyết định tại baseline ngày 08/11. [Contract revision hiện hành](document-source-format.md).
+
 > **Cập nhật 10/11/2026:** chủ sản phẩm thêm **hashtag** do tác giả tự viết để lọc/tìm
 > ([đặc tả đích](hashtags.md), D-17). Hashtag là hệ **riêng**: catalog curated và giới hạn “một dạng
 > bài, ba chủ đề” của tài liệu này giữ nguyên, không bị chuyển thành hashtag và không áp giới hạn đó
