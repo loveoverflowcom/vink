@@ -1,0 +1,24 @@
+version = 1
+id = "VDR-SOCIAL-CONTRACT"
+revision = 1
+
+[content]
+kind = "architecture"
+domain = "social-graph"
+title = "Ranh giới đọc, ghi và bàn giao Social Graph"
+resolution = """
+App Principal/Profile giữ bút danh, địa chỉ và quyền. Graph giữ cạnh và thứ tự ý định. Identity giữ credential/session. Publication quyết định snapshot hiện đọc được và mốc đầu theo WorkId. Discussion dựng attribution. Web nhận projection đã lọc. Các owner dùng chung hợp đồng r1 ở docs/architecture/social-graph.md và services/vink-app/contracts/http/v1/social-graph.md.
+CHOICE-01 (#290) namespace chung dạng hàng trạng thái hoặc reservation + tham chiếu current/history. CHOICE-02 (#294) version theo cặp qua cả unfollow hoặc cạnh sống + order/receipt bền. CHOICE-03 (#294) aggregate từ cạnh hoặc counter giao dịch có rebuild. CHOICE-04 (#291 r2) đã chọn fact bền theo WorkId, ghi cùng giao dịch public đầu. Lịch sử đủ provenance chỉ còn dùng đối chiếu/backfill. CHOICE-05 (#292/#296) SSR công khai + overlay riêng hoặc SSR xác thực cô lập từng request. CHOICE-06 (#296) membership live mỗi trang hoặc cursor gắn graph revision. Các lựa chọn còn mở được quyết định bằng phép kiểm tại owner, xem hợp đồng cho điều kiện và trade-off.
+"""
+rationale = "PRE-03/06 của #284 và SPEC-02/03 của #288. #291 chọn phương án A trong preview r2 ngày 18/11/2026. Lựa chọn trong phạm vi issue chưa tạo một ADR Accepted. Các bất biến về quyền, thứ tự và rollback áp dụng cho cả hai phương án còn mở."
+requires = [
+    "VDR-DECISION-SIGNOFF@r1",
+    "VDR-SOCIAL-GRAPH@r1",
+]
+related_ids = [
+    "SOC-FEED-01",
+    "SOC-FOL-01",
+    "SOC-HDL-01",
+    "SOC-LIFE-02",
+    "SOC-PRIV-01",
+]
