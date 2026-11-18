@@ -49,6 +49,38 @@ Tất cả các endpoint tác giả trả về header `Cache-Control: no-store`,
 - Backout: [`20261116000000_work_publication_persistence.down.sql`](../../services/vink-app/migrations-rollback/20261116000000_work_publication_persistence.down.sql) chỉ dùng khi schema chưa được dùng. Có receipt, ticket hay quyết định không phải `legacy_bootstrap` thì script từ chối: giữ dữ liệu và roll forward. `publications.generation` giữ ≥ 2, schema cũ chấp nhận.
 - Lỗi `409 version_conflict` của snapshot nêu đúng trường đã đổi: `expected_draft_version` (kèm `current_version` của nháp) hoặc `expected_metadata_version` (kèm version metadata hiện tại).
 
+## Duyệt lại khi policy thay đổi (#275)
+
+Theo `ADM-06@r1`, khi tác giả gửi lại đúng revision đã rút và policy đã tăng, approval cũ
+của AI hoặc `legacy_bootstrap` chuyển sang `pending`. Decision đầu tiên là v1, approval sớm
+nhất là v2, nên re-review sớm nhất là v3. Lượt mới tăng đúng một decision version, gắn policy
+hiện tại và giữ digest của revision. Approval do admin hoặc moderator cấp đi vào hàng người
+duyệt với `needs_admin/policy_rereview`. Khi automation tạm dừng, người duyệt cũng nhận
+lượt chờ của AI. Chỉ quyết định hợp lệ cho revision còn khớp intent mới đặt được con trỏ công khai.
+
+[Migration 20261121120000](../../services/vink-app/migrations/20261121120000_policy_rereview.sql)
+kiểm hình dạng dòng, bao gồm grant và các trường provenance. Trigger kiểm cả quyết định trước
+đó khi chuyển sang pending, vì hai dòng v3 có thể có cùng hình dạng dù chỉ một dòng kế tiếp
+approval hợp lệ. Một re-review đã pending có thể được gửi lại với cùng version và policy của
+quyết định đang chờ. Worker kiểm policy của ticket khi ghi kết quả. Các khóa của lệnh, core và
+loader hash đầy đủ tiếp tục kiểm standing, intent generation, quyền người duyệt và snapshot.
+
+Upgrade chỉ đổi schema và kiểm dữ liệu hiện có. Một dòng cũ thiếu provenance của verdict,
+thiếu human verdict, hoặc pending có thông tin grant sẽ làm upgrade dừng nguyên giao dịch.
+Khi nhận lệnh re-review, adapter lưu approval cũ còn thiếu trong history bằng các giá trị đã
+ghi, kể cả timestamp và nguồn legacy. History đã có giữ nguyên actor, case, evaluation ID và
+timestamp. Việc này cùng giao dịch với decision, intent, ticket/ca và receipt.
+
+**Backout.** Dừng writer, chạy [script down](../../services/vink-app/migrations-rollback/20261121120000_policy_rereview.down.sql)
+trong một phiên riêng. PostgreSQL kiểm toàn bộ dòng khi khôi phục CHECK cũ. Có dòng hiện tại
+`pending` với version > 1 thì giao dịch thất bại, ledger và dữ liệu được giữ nguyên. Giữ migration
+và xử lý tiếp bằng luồng duyệt bình thường. Khi các dòng hiện tại đều tương thích, có thể backout
+và nâng lại, kể cả khi history đã có lượt re-review. Bản cũ lại có giới hạn của CHECK v1.
+
+Các ca [upgrade, backout, rollback, replay và SQL negatives](../../services/vink-app/tests/postgres/publication_policy.rs)
+chạy trên PostgreSQL thật. [Ca admin và evaluator đang giữ lease](../../services/vink-app/tests/postgres/work_moderation.rs)
+kiểm quyền quyết định và hàng chờ đúng snapshot.
+
 ## Đọc trạng thái không materialize history body (#230)
 
 Owner-state dùng typed metadata projection và cùng restore invariants, giữ đủ history/HTTP v1;

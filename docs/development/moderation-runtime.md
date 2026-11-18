@@ -26,7 +26,7 @@ Bốn chiều trạng thái:
 | Bảng/cột | Nội dung |
 | --- | --- |
 | `work_publications` | Thêm `hidden_*`, `review_withdrawn_*`, `ever_public`, `public_epoch`; backfill theo con trỏ cũ. |
-| `work_revision_moderation` | Mỗi quyết định giữ `policy_version`, provenance `moderator` (kèm `moderator_grant_id`) và `policy_rereview`. Gửi lại sau khi chuyển riêng tư giữ nguyên `decision_version` của core. |
+| `work_revision_moderation` | Mỗi quyết định giữ `policy_version`, provenance `moderator` (kèm `moderator_grant_id`) và `policy_rereview`. Gửi lại một quyết định pending giữ version. Mở lại approval dưới policy mới tăng đúng một version theo [quy tắc re-review và backout](publication-runtime.md#duyệt-lại-khi-policy-thay-đổi-275). |
 | `work_revision_decision_history` | Mỗi `decision_version` một dòng chỉ thêm: trạng thái, provenance, người quyết, grant, lý do, `evaluation_id`, `case_id` hoặc `appeal_id`. |
 | `work_evaluation_jobs` | Thêm `leased`, `withdrawn`, `rerouted`, `quarantined`, `claim_generation`, `claimed_by`, lease, `available_at`, `attempts` / `max_attempts` (3), `scenario`, `last_error`. |
 | `moderation_admin_seats` / `_audit` | Ghế admin do CLI cấp. Chỉ thay đổi thật mới ghi audit. |
