@@ -4748,20 +4748,23 @@ async function markdownLivePreviewAndFormatPicker(page) {
   // Verify v1 Gửi button (nut-gui-luu): 18px Lucide send icon + 8px gap + label "Gửi".
   const v1Metrics = await page.eval(`(() => {
     const btn = document.querySelector('#save');
-    const content = btn?.querySelector('.vk-draft-action-content');
-    const svg = content?.querySelector('svg');
-    const r = svg?.getBoundingClientRect();
-    const cs = content ? getComputedStyle(content) : null;
-    return {
-      text: btn?.textContent,
-      icon: content?.dataset.draftIcon,
-      gap: cs?.columnGap || cs?.gap,
-      width: r ? Math.round(r.width) : 0,
-      height: r ? Math.round(r.height) : 0,
-    };
+    const content = btn.querySelector('.vk-draft-action-content');
+    const svg = content.querySelector('svg');
+    const root = document.documentElement;
+    const saved = root.dataset.text;
+    try {
+      return ['100', '200'].map(scale => {
+        root.dataset.text = scale;
+        const {width, height} = svg.getBoundingClientRect();
+        return {scale, text: btn.textContent, icon: content.dataset.draftIcon, gap: getComputedStyle(content).columnGap, width, height};
+      });
+    } finally {
+      if (saved === undefined) delete root.dataset.text;
+      else root.dataset.text = saved;
+    }
   })()`);
-  check(v1Metrics.text === 'Gửi' && v1Metrics.icon === 'send' && v1Metrics.gap === '8px' && v1Metrics.width === 18 && v1Metrics.height === 18,
-    `v1 primary action renders Gửi with 18px send icon and 8px gap (${JSON.stringify(v1Metrics)})`);
+  check(v1Metrics.every(m => m.text === 'Gửi' && m.icon === 'send' && m.gap === '8px' && m.width === 18 && m.height === 18),
+    `v1 primary action renders Gửi with 18px send icon and 8px gap at both text scales (${JSON.stringify(v1Metrics)})`);
 
   const gate = new SaveGate(page);
   try {

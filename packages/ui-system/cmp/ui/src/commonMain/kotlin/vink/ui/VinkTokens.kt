@@ -248,6 +248,7 @@ object VinkDimens {
     val SizeAvatarSpotlight = 40.dp
     val SizeAvatarSpotlightNarrow = 38.dp
     val SizeBottomBar = 80.dp
+    val SizeDraftActionIcon = 18.dp
     val SizeEdgeProgress = 4.dp
     val SizeFocusOffset = 2.dp
     val SizeFocusRing = 3.dp
@@ -267,6 +268,7 @@ object VinkDimens {
     val Space4 = 16.dp
     val Space6 = 24.dp
     val Space8 = 32.dp
+    val SpaceDraftActionGap = 8.dp
     val TextReading = 17.dp
 }
 

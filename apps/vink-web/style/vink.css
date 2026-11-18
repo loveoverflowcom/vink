@@ -855,12 +855,12 @@ a {
 .vk-draft-action-content {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--vk-space-draft-action-gap);
 }
 
 .vk-draft-action-icon {
-  inline-size: 18px;
-  block-size: 18px;
+  inline-size: var(--vk-size-draft-action-icon);
+  block-size: var(--vk-size-draft-action-icon);
   flex: none;
 }
 
@@ -877,13 +877,11 @@ a {
 @media (prefers-reduced-motion: reduce) {
   .vk-draft-action-icon--spinner {
     animation: none;
-    opacity: 0.85;
   }
 }
 
 :root[data-motion="reduce"] .vk-draft-action-icon--spinner {
   animation: none;
-  opacity: 0.85;
 }
 
 .vk-editor[data-just-saved="true"] .vk-save-slot[data-status="saved"] .vk-save-status {
