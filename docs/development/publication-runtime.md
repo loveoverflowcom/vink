@@ -49,6 +49,50 @@ Tất cả các endpoint tác giả trả về header `Cache-Control: no-store`,
 - Backout: [`20261116000000_work_publication_persistence.down.sql`](../../services/vink-app/migrations-rollback/20261116000000_work_publication_persistence.down.sql) chỉ dùng khi schema chưa được dùng. Có receipt, ticket hay quyết định không phải `legacy_bootstrap` thì script từ chối: giữ dữ liệu và roll forward. `publications.generation` giữ ≥ 2, schema cũ chấp nhận.
 - Lỗi `409 version_conflict` của snapshot nêu đúng trường đã đổi: `expected_draft_version` (kèm `current_version` của nháp) hoặc `expected_metadata_version` (kèm version metadata hiện tại).
 
+## Mốc công khai đầu tiên (#291)
+
+Publication triển khai phần PostgreSQL của `SOC-FEED-01` theo CHOICE-04 trong
+[contract r1 của #288](https://github.com/loveoverflowcom/vink/blob/cdbdde896218251cf74b25fe38c585cddbd9a9de/docs/architecture/social-graph.md).
+[Migration 20261123000000](../../services/vink-app/migrations/20261123000000_first_publication.sql)
+giữ một hàng trong `work_first_publications` theo `work_id`. PostgreSQL lấy
+`clock_timestamp()` sau khi chèn được con trỏ vào `publications`, kể cả khi lệnh vừa
+chờ một giao dịch khác. Con trỏ và mốc có hiệu lực cùng lúc khi commit. Rút bài xóa
+con trỏ. Thay revision, duyệt lại và đăng lại giữ mốc đã ghi. Seed và các writer cũ
+cũng đi qua trigger này.
+
+| Provenance | Chứng cứ và nguồn (`source`) | Dữ liệu thời gian |
+| --- | --- | --- |
+| `never_public` | Work mới (`new_work`) hoặc work tại lúc nâng cấp chưa có revision và chưa có dấu vết công khai (`no_revision`). | Hai cột thời gian đều NULL. Lần đặt con trỏ đầu chuyển hàng thành `exact`. |
+| `exact` | Trigger quan sát lần chèn đầu của work biết chắc chưa từng công khai (`pointer_insert`). | `first_published_at` là mốc đầu xác thực. |
+| `legacy` | Còn con trỏ tại lúc nâng cấp (`existing_pointer`). | `legacy_published_at` giữ nguyên `publications.published_at` lúc đó. `first_published_at` là NULL. |
+| `unknown` | Đã rút, còn dấu vết từng public nhưng mất mốc (`withdrawn_without_time`), hoặc còn revision mà lịch sử đặt con trỏ chưa đủ (`incomplete_history`). | Hai cột thời gian đều NULL. |
+
+Schema cũ cho phép ghi đè và xóa con trỏ, nên backfill trên schema đó có 0 mốc
+`exact`. Migration chỉ đọc khóa revision và trạng thái publication. Lần chạy lại
+giữ nguyên kết quả phân loại theo WorkId. Muốn đối soát trên từng database, chạy
+truy vấn sau trước khi mở consumer và đối chiếu với tổng số work.
+
+```sql
+SELECT provenance, source, count(*) AS works
+  FROM work_first_publications
+ GROUP BY provenance, source
+ ORDER BY provenance, source;
+```
+
+**Đầu vào của #296.** View `publications_with_exact_first_time` trả `work_id`,
+`revision_id`, `metadata_snapshot_id`, `first_published_at` và `provenance` cho
+các mốc `exact` còn con trỏ công khai. Revision và metadata thuộc con trỏ hiện
+hành. Discovery kiểm membership, tác giả hợp lệ và quyền đọc trong cùng snapshot
+trước khi sắp theo `first_published_at DESC` với khóa phụ WorkId và phân trang.
+Khám phá hiện hành tiếp tục dùng `publications.published_at`.
+
+**Triển khai và quay lui.** Migration lấy khóa ghi trên `publications` và `works`
+bằng `NOWAIT`. Nếu có writer đang giữ khóa xung đột, để writer hoàn tất rồi chạy
+lại migration. Khi quay lui consumer, tắt đường đọc Following trước, giữ bảng, trigger,
+view và ledger. Writer dùng câu SQL cũ vẫn bảo toàn mốc. Readiness của binary có
+ledger trước #291 báo `diverged` trên schema mới. Dùng bản tương thích có nhúng
+migration #291 khi cần phục vụ lại. [Fixture PostgreSQL về backfill, race và rollback](../../services/vink-app/tests/postgres/first_publication.rs).
+
 ## Duyệt lại khi policy thay đổi (#275)
 
 Theo `ADM-06@r1`, khi tác giả gửi lại đúng revision đã rút và policy đã tăng, approval cũ

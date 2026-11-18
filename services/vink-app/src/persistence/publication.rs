@@ -9,7 +9,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::moderation_write::{
-    DecisionSource, locked_automation_mode, open_work_case, write_decision,
+    DecisionSource, apply_pointer_effect, locked_automation_mode, open_work_case, write_decision,
 };
 use super::postgres::{PgStore, classify, integrity};
 use super::principal::locked_standing;
@@ -36,8 +36,8 @@ use crate::domain::moderation::{
 use crate::domain::principal::Standing;
 use crate::domain::publication::{
     Audience, AuthorCommand, AuthorOutcome, DeletionProvenance, IntentGeneration, Lifecycle,
-    Moderation, PointerEffect, PublicEpoch, PublicPointer, Publication, PublicationError,
-    PublicationFacts, PublishIntent, RevisionFacts, Snapshot,
+    Moderation, PublicEpoch, PublicPointer, Publication, PublicationError, PublicationFacts,
+    PublishIntent, RevisionFacts, Snapshot,
 };
 use crate::domain::revision::{ContentHash, RevisionContent};
 use crate::domain::taxonomy::MetadataVersion;
@@ -1009,43 +1009,7 @@ impl AuthorPublicationStore for PgStore {
             .map_err(classify)?;
 
             // 5. Pointer effect on publications table
-            match transition.effects.pointer {
-                PointerEffect::Set(p) => {
-                    let meta_id: Option<Uuid> = query_scalar(
-                        "SELECT metadata_snapshot_id FROM revisions WHERE id = $1 AND work_id = $2",
-                    )
-                    .bind(p.revision.as_uuid())
-                    .bind(work_id.as_uuid())
-                    .fetch_one(&mut *tx)
-                    .await
-                    .map_err(classify)?;
-
-                    query(
-                        "INSERT INTO publications (work_id, revision_id, generation, published_at, metadata_snapshot_id)
-                         VALUES ($1, $2, $3, now(), $4)
-                         ON CONFLICT (work_id) DO UPDATE SET
-                             revision_id = EXCLUDED.revision_id,
-                             generation = EXCLUDED.generation,
-                             published_at = EXCLUDED.published_at,
-                             metadata_snapshot_id = EXCLUDED.metadata_snapshot_id",
-                    )
-                    .bind(work_id.as_uuid())
-                    .bind(p.revision.as_uuid())
-                    .bind(p.intent_generation.get())
-                    .bind(meta_id)
-                    .execute(&mut *tx)
-                    .await
-                    .map_err(classify)?;
-                }
-                PointerEffect::Clear => {
-                    query("DELETE FROM publications WHERE work_id = $1")
-                        .bind(work_id.as_uuid())
-                        .execute(&mut *tx)
-                        .await
-                        .map_err(classify)?;
-                }
-                PointerEffect::Unchanged => {}
-            }
+            apply_pointer_effect(&mut tx, work_id, transition.effects.pointer).await?;
 
             // 6. Decision, history, evaluator job and human case exactly as the core routed the
             // review: a resubmission keeps the revision's decision version; a paused mode or a
