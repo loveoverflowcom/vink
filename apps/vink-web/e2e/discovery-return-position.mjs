@@ -212,7 +212,8 @@ export async function discoveryReturnPosition(page, { args, check }) {
     if (owners.every(Boolean)) {
       const counts = ['observers','resource_tickets','read_event_subscriptions','scheduler_timers','waiters','flights'];
       result('bounded-read-owner', counts.every(k => owners.every(o => o[k] === owners[0][k])) &&
-        owners[0].observers===1 && owners[0].scheduler_timers<=1 && owners[0].flights===0);
+        // Three mounted consumers call follow_works on the same query in pages/discovery.rs.
+        owners[0].observers===3 && owners[0].scheduler_timers<=1 && owners[0].flights===0);
     }
 
     const listed = await (await fetch(args.base + '/api/v1/works' + scope.slice(1))).json();
