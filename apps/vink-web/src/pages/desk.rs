@@ -370,8 +370,8 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                     Ok(draft) => {
                         navigate(&format!("/ban-viet/{}", draft.work_id), Default::default())
                     }
-                    Err(error @ (ApiError::Unauthenticated | ApiError::Forbidden)) => {
-                        access_error.set(Some(error));
+                    Err(ApiError::Unauthenticated) => {
+                        access_error.set(Some(ApiError::Unauthenticated));
                         pages.set(DraftPages::default());
                     }
                     Err(error) => {

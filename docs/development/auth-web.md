@@ -59,7 +59,7 @@ nháp), thảo luận và ghi nhận văn học trên trang đọc. Không view 
 **Bàn viết và chân điều hướng [#308](https://github.com/loveoverflowcom/vink/issues/308).**
 Trang danh sách chỉ gọi `/api/v1/author/works` khi có scope principal hoạt động đã xác nhận.
 Mỗi scope sở hữu ô tìm, danh sách và các lượt đọc của mình. Lỗi kết nối cùng scope có thể thử lại
-với ô tìm hiện tại. Khi API từ chối quyền, trang dừng hiển thị danh sách trong lúc đối soát phiên.
+với ô tìm hiện tại. Khi lượt đọc bị từ chối quyền, trang dừng hiển thị danh sách trong lúc đối soát phiên.
 Khách có lối đăng nhập qua `/toi` khi môi trường mở đăng nhập và lối Khám phá khi đóng. Chân rail
 và thanh dưới đưa khách tới Tài khoản, nơi vẫn có các lựa chọn Giao diện.
 
