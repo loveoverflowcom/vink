@@ -754,6 +754,45 @@ export function evaluateAccessibleElement(record, expected = {}) {
   return { ok: reasons.length === 0, reasons };
 }
 
+/** Inspect where the selected fill actually paints, including custom leading such as the account avatar. */
+export function buildNavIndicatorInspectionScript(containerSelector = '.vk-ui-bottom-nav') {
+  return `(() => {
+    const bar = document.querySelector(${JSON.stringify(containerSelector)});
+    const links = [...bar.querySelectorAll('a[href]')];
+    const swatch = document.createElement('span');
+    swatch.style.cssText = 'display: none; background-color: var(--vk-primary-container)';
+    bar.append(swatch);
+    const selectedFill = getComputedStyle(swatch).backgroundColor;
+    swatch.remove();
+    const transparent = 'rgba(0, 0, 0, 0)';
+    return links.map(link => {
+      const icon = link.querySelector('.vk-ui-icon');
+      const label = link.querySelector('.vk-ui-nav-item__label');
+      const indicator = icon?.parentElement;
+      const targetStyle = getComputedStyle(link);
+      const target = link.getBoundingClientRect();
+      const track = indicator?.getBoundingClientRect();
+      const leading = icon?.getBoundingClientRect();
+      const caption = label?.getBoundingClientRect();
+      return {
+        href: link.getAttribute('href'),
+        current: link.getAttribute('aria-current'),
+        flatTarget: targetStyle.backgroundColor === transparent &&
+          targetStyle.backgroundImage === 'none' && targetStyle.boxShadow === 'none',
+        fill: indicator ? getComputedStyle(indicator).backgroundColor : null,
+        expectedFill: link.getAttribute('aria-current') === 'page' ? selectedFill : transparent,
+        leadingInside: Boolean(track && leading && track.width > leading.width && track.height > leading.height &&
+          leading.left >= track.left && leading.right <= track.right && leading.top >= track.top && leading.bottom <= track.bottom &&
+          Math.abs((track.left + track.right) - (leading.left + leading.right)) <= 2 &&
+          Math.abs((track.top + track.bottom) - (leading.top + leading.bottom)) <= 2),
+        labelOutside: Boolean(track && caption && !indicator.contains(label) && caption.top >= track.bottom &&
+          track.width < target.width && track.height < target.height),
+        avatar: Boolean(icon?.querySelector('[data-kind="account"]')),
+      };
+    });
+  })()`;
+}
+
 /**
  * Browser script inspecting nav item targets, icon centres, Range first-line coordinates,
  * actual `.vk-ui-nav-item__label` computed fonts (separate from container font), line counts and

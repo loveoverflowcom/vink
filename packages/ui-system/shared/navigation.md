@@ -69,6 +69,8 @@ Preview và CMP đặt `NavLayout` tường minh (`data-layout="rail:compact"`�
 | `AdaptiveScaffold` | `ScaffoldLayout::Auto { context }` \| `Fixed(NavLayout)` | `layout: NavLayout` | Đổi khung chỉ đổi khung: `#main` và editor không remount |
 
 Web Vink (#102) bắt đầu rail bằng toggle, sau đó đến danh sách đích và Tôi ở chân rail.
+Trên thanh dưới Web, indicator Lavender bao icon hoặc avatar của đích hiện tại. Nhãn luôn
+nằm trên hàng riêng bên dưới và toàn bộ liên kết vẫn là vùng bấm. [Web #131](https://github.com/loveoverflowcom/vink/issues/131) và [CMP #132](https://github.com/loveoverflowcom/vink/issues/132) theo dõi hai renderer.
 Leptos chỉ render wrapper brand khi host truyền slot. Toggle dùng cặp icon hiện có ở cỡ
 `size.icon-sm` (20px), căn theo trục icon của đích. Trang Khám phá tự render logo trong
 heading, nên Web shell bỏ TopBar. Specimen TopBar độc lập và Compose giữ contract hiện có.

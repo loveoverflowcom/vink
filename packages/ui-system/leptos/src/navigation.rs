@@ -334,7 +334,9 @@ pub fn NavItem(
                 }
             }
         >
-            {leading.map_or_else(|| view! { <Icon name=icon /> }.into_any(), |leading| leading.run())}
+            <span class="vk-ui-nav-item__indicator">
+                {leading.map_or_else(|| view! { <Icon name=icon /> }.into_any(), |leading| leading.run())}
+            </span>
             <span class="vk-ui-nav-item__label">{label}</span>
         </a>
     }

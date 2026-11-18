@@ -1,0 +1,487 @@
+{
+  "before": {
+    "servedCssSha256": "b810d98935bb4a5033942293b95028b2722c6a0c8a1182271a2796c4d4ff1963",
+    "captures": {
+      "before-nav-explore-390-100-light.png": {
+        "captured_at": "2026-11-18T20:34:06.861Z",
+        "scenarioId": "bottom-nav-390x900",
+        "route": "/",
+        "viewport": {
+          "width": 390,
+          "height": 900,
+          "layoutWidth": 390,
+          "clientWidth": 390,
+          "clientHeight": 900,
+          "dpr": 1
+        },
+        "hydrated": true,
+        "fontSize": "16px",
+        "textScaleLane": "dom-override-geometry-only",
+        "theme": "light",
+        "media": {
+          "forcedColors": false,
+          "reducedMotion": false,
+          "prefersColorScheme": "light"
+        },
+        "png": {
+          "width": 390,
+          "height": 900,
+          "byteSize": 41869,
+          "sha256": "ae659d27b585f66ff0e8ecc15dcbf829bd6e0415cbc93fcdad06feb09797faab"
+        },
+        "navigation": {
+          "barHeight": 80,
+          "observerHeight": 80,
+          "items": [
+            {
+              "href": "/",
+              "ariaCurrent": "page",
+              "width": 122,
+              "height": 72,
+              "iconCenterY": 840,
+              "firstLineY": 857,
+              "lineCount": 1
+            },
+            {
+              "href": "/ban-viet",
+              "ariaCurrent": null,
+              "width": 122,
+              "height": 72,
+              "iconCenterY": 840,
+              "firstLineY": 857,
+              "lineCount": 1
+            },
+            {
+              "href": "/toi",
+              "ariaCurrent": null,
+              "width": 122,
+              "height": 72,
+              "iconCenterY": 840,
+              "firstLineY": 857,
+              "lineCount": 1
+            }
+          ]
+        }
+      },
+      "before-nav-ban-viet-320x800-200-dark.png": {
+        "captured_at": "2026-11-18T20:33:56.295Z",
+        "scenarioId": "bottom-nav-320x800",
+        "route": "/ban-viet",
+        "viewport": {
+          "width": 320,
+          "height": 800,
+          "layoutWidth": 305,
+          "clientWidth": 305,
+          "clientHeight": 800,
+          "dpr": 1
+        },
+        "hydrated": true,
+        "fontSize": "32px",
+        "textScaleLane": "dom-override-geometry-only",
+        "theme": "dark",
+        "media": {
+          "forcedColors": false,
+          "reducedMotion": false,
+          "prefersColorScheme": "light"
+        },
+        "png": {
+          "width": 320,
+          "height": 800,
+          "byteSize": 39575,
+          "sha256": "7c91cf6b7b4ea7788c08d9024b18fbb0e83b2587360c9b67e170a1634636accc"
+        },
+        "navigation": {
+          "barHeight": 136.78125,
+          "observerHeight": 136.78125,
+          "items": [
+            {
+              "href": "/",
+              "ariaCurrent": null,
+              "width": 85.65625,
+              "height": 120.78125,
+              "iconCenterY": 691.21875,
+              "firstLineY": 712.21875,
+              "lineCount": 2
+            },
+            {
+              "href": "/ban-viet",
+              "ariaCurrent": "page",
+              "width": 85.671875,
+              "height": 120.78125,
+              "iconCenterY": 691.21875,
+              "firstLineY": 712.21875,
+              "lineCount": 2
+            },
+            {
+              "href": "/toi",
+              "ariaCurrent": null,
+              "width": 85.65625,
+              "height": 120.78125,
+              "iconCenterY": 691.21875,
+              "firstLineY": 712.21875,
+              "lineCount": 1
+            }
+          ]
+        }
+      },
+      "before-nav-toi-320-200-dark.png": {
+        "captured_at": "2026-11-18T20:33:46.760Z",
+        "scenarioId": "bottom-nav-320x900",
+        "route": "/toi",
+        "viewport": {
+          "width": 320,
+          "height": 900,
+          "layoutWidth": 305,
+          "clientWidth": 305,
+          "clientHeight": 900,
+          "dpr": 1
+        },
+        "hydrated": true,
+        "fontSize": "32px",
+        "textScaleLane": "dom-override-geometry-only",
+        "theme": "dark",
+        "media": {
+          "forcedColors": false,
+          "reducedMotion": false,
+          "prefersColorScheme": "light"
+        },
+        "png": {
+          "width": 320,
+          "height": 900,
+          "byteSize": 43799,
+          "sha256": "0a6515f18b912b749895cb8f8401910803982284a332fa0a06b250590f2a00f6"
+        },
+        "navigation": {
+          "barHeight": 136.78125,
+          "observerHeight": 136.78125,
+          "items": [
+            {
+              "href": "/",
+              "ariaCurrent": null,
+              "width": 85.65625,
+              "height": 120.78125,
+              "iconCenterY": 791.21875,
+              "firstLineY": 812.21875,
+              "lineCount": 2
+            },
+            {
+              "href": "/ban-viet",
+              "ariaCurrent": null,
+              "width": 85.671875,
+              "height": 120.78125,
+              "iconCenterY": 791.21875,
+              "firstLineY": 812.21875,
+              "lineCount": 2
+            },
+            {
+              "href": "/toi",
+              "ariaCurrent": "page",
+              "width": 85.65625,
+              "height": 120.78125,
+              "iconCenterY": 791.21875,
+              "firstLineY": 812.21875,
+              "lineCount": 1
+            }
+          ]
+        }
+      }
+    },
+    "source": {
+      "sourceSHA": "f581f87a106d6e39a603a27c0faaed1338598f5f",
+      "dirty": true,
+      "dirtyInputs": [
+        {
+          "status": "M",
+          "path": "apps/vink-web/e2e/browser-smoke.mjs"
+        },
+        {
+          "status": "M",
+          "path": "apps/vink-web/e2e/visual-evidence.mjs"
+        }
+      ],
+      "sourceFingerprint": "f9f6bab9d0c24d3a15a8c39bad9956bb50384969764edf27db8ab88c8a76668c"
+    },
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36"
+  },
+  "after": {
+    "servedCssSha256": "6675bd0325fbb2880c6936006ebf8d0726c679cf53b4b13e94d63a70915d11a5",
+    "captures": {
+      "after-nav-explore-390-100-light.png": {
+        "captured_at": "2026-11-18T20:41:16.276Z",
+        "scenarioId": "bottom-nav-390x900",
+        "route": "/",
+        "viewport": {
+          "width": 390,
+          "height": 900,
+          "layoutWidth": 390,
+          "clientWidth": 390,
+          "clientHeight": 900,
+          "dpr": 1
+        },
+        "hydrated": true,
+        "fontSize": "16px",
+        "textScaleLane": "dom-override-geometry-only",
+        "theme": "light",
+        "media": {
+          "forcedColors": false,
+          "reducedMotion": false,
+          "prefersColorScheme": "light"
+        },
+        "png": {
+          "width": 390,
+          "height": 900,
+          "byteSize": 41523,
+          "sha256": "bba2e2621eb02da8285335cfae9759c3f5291e276e00bbf03b2c3c51f7285786"
+        },
+        "navigation": {
+          "barHeight": 80,
+          "observerHeight": 80,
+          "items": [
+            {
+              "href": "/",
+              "ariaCurrent": "page",
+              "width": 122,
+              "height": 66.1875,
+              "iconCenterY": 848.90625,
+              "firstLineY": 869.90625,
+              "lineCount": 1
+            },
+            {
+              "href": "/ban-viet",
+              "ariaCurrent": null,
+              "width": 122,
+              "height": 66.1875,
+              "iconCenterY": 848.90625,
+              "firstLineY": 869.90625,
+              "lineCount": 1
+            },
+            {
+              "href": "/toi",
+              "ariaCurrent": null,
+              "width": 122,
+              "height": 66.1875,
+              "iconCenterY": 848.90625,
+              "firstLineY": 869.90625,
+              "lineCount": 1
+            }
+          ]
+        }
+      },
+      "after-nav-ban-viet-320x800-200-dark.png": {
+        "captured_at": "2026-11-18T20:41:05.859Z",
+        "scenarioId": "bottom-nav-320x800",
+        "route": "/ban-viet",
+        "viewport": {
+          "width": 320,
+          "height": 800,
+          "layoutWidth": 305,
+          "clientWidth": 305,
+          "clientHeight": 800,
+          "dpr": 1
+        },
+        "hydrated": true,
+        "fontSize": "32px",
+        "textScaleLane": "dom-override-geometry-only",
+        "theme": "dark",
+        "media": {
+          "forcedColors": false,
+          "reducedMotion": false,
+          "prefersColorScheme": "light"
+        },
+        "png": {
+          "width": 320,
+          "height": 800,
+          "byteSize": 38695,
+          "sha256": "de0127957cbc548fa0a2b291ef08bca88fb2b33d316baaa29dc6f202cb3ef52a"
+        },
+        "navigation": {
+          "barHeight": 140.78125,
+          "observerHeight": 140.78125,
+          "items": [
+            {
+              "href": "/",
+              "ariaCurrent": null,
+              "width": 85.65625,
+              "height": 124.78125,
+              "iconCenterY": 689.21875,
+              "firstLineY": 714.21875,
+              "lineCount": 2
+            },
+            {
+              "href": "/ban-viet",
+              "ariaCurrent": "page",
+              "width": 85.671875,
+              "height": 124.78125,
+              "iconCenterY": 689.21875,
+              "firstLineY": 714.21875,
+              "lineCount": 2
+            },
+            {
+              "href": "/toi",
+              "ariaCurrent": null,
+              "width": 85.65625,
+              "height": 124.78125,
+              "iconCenterY": 689.21875,
+              "firstLineY": 714.21875,
+              "lineCount": 1
+            }
+          ]
+        }
+      },
+      "after-nav-toi-320-200-dark.png": {
+        "captured_at": "2026-11-18T20:40:49.246Z",
+        "scenarioId": "bottom-nav-320x900",
+        "route": "/toi",
+        "viewport": {
+          "width": 320,
+          "height": 900,
+          "layoutWidth": 305,
+          "clientWidth": 305,
+          "clientHeight": 900,
+          "dpr": 1
+        },
+        "hydrated": true,
+        "fontSize": "32px",
+        "textScaleLane": "dom-override-geometry-only",
+        "theme": "dark",
+        "media": {
+          "forcedColors": false,
+          "reducedMotion": false,
+          "prefersColorScheme": "light"
+        },
+        "png": {
+          "width": 320,
+          "height": 900,
+          "byteSize": 43353,
+          "sha256": "abeba063403adf1b473cfba7f16dceb6e526ef20ffa5db62bd4d0b1f9fe9b108"
+        },
+        "navigation": {
+          "barHeight": 140.78125,
+          "observerHeight": 140.78125,
+          "items": [
+            {
+              "href": "/",
+              "ariaCurrent": null,
+              "width": 85.65625,
+              "height": 124.78125,
+              "iconCenterY": 789.21875,
+              "firstLineY": 814.21875,
+              "lineCount": 2
+            },
+            {
+              "href": "/ban-viet",
+              "ariaCurrent": null,
+              "width": 85.671875,
+              "height": 124.78125,
+              "iconCenterY": 789.21875,
+              "firstLineY": 814.21875,
+              "lineCount": 2
+            },
+            {
+              "href": "/toi",
+              "ariaCurrent": "page",
+              "width": 85.65625,
+              "height": 124.78125,
+              "iconCenterY": 789.21875,
+              "firstLineY": 814.21875,
+              "lineCount": 1
+            }
+          ]
+        }
+      },
+      "after-nav-toi-360x800-200-forced-colors.png": {
+        "captured_at": "2026-11-18T20:41:29.331Z",
+        "scenarioId": "nav-toi-360x800-200-forced-colors",
+        "route": "/toi",
+        "viewport": {
+          "width": 360,
+          "height": 800,
+          "layoutWidth": 345,
+          "clientWidth": 345,
+          "clientHeight": 800,
+          "dpr": 1
+        },
+        "hydrated": true,
+        "fontSize": "32px",
+        "textScaleLane": "dom-override-geometry-only",
+        "theme": "light",
+        "media": {
+          "forcedColors": true,
+          "reducedMotion": true,
+          "prefersColorScheme": "light"
+        },
+        "png": {
+          "width": 360,
+          "height": 800,
+          "byteSize": 37199,
+          "sha256": "676fac968477bd4c08fc13e18d2f42787318d49bb3ed63fb6c06ef60f642c96d"
+        },
+        "navigation": {
+          "barHeight": 140.78125,
+          "observerHeight": 140.78125,
+          "items": [
+            {
+              "href": "/",
+              "ariaCurrent": null,
+              "width": 99,
+              "height": 124.78125,
+              "iconCenterY": 689.21875,
+              "firstLineY": 714.21875,
+              "lineCount": 2
+            },
+            {
+              "href": "/ban-viet",
+              "ariaCurrent": null,
+              "width": 99,
+              "height": 124.78125,
+              "iconCenterY": 689.21875,
+              "firstLineY": 714.21875,
+              "lineCount": 2
+            },
+            {
+              "href": "/toi",
+              "ariaCurrent": "page",
+              "width": 99,
+              "height": 124.78125,
+              "iconCenterY": 689.21875,
+              "firstLineY": 714.21875,
+              "lineCount": 1
+            }
+          ]
+        }
+      }
+    },
+    "source": {
+      "sourceSHA": "f581f87a106d6e39a603a27c0faaed1338598f5f",
+      "dirty": true,
+      "dirtyInputs": [
+        {
+          "status": "M",
+          "path": "apps/vink-web/e2e/browser-smoke.mjs"
+        },
+        {
+          "status": "M",
+          "path": "apps/vink-web/e2e/visual-evidence.mjs"
+        },
+        {
+          "status": "M",
+          "path": "packages/ui-system/leptos/preview/e2e/preview-smoke.mjs"
+        },
+        {
+          "status": "M",
+          "path": "packages/ui-system/leptos/src/navigation.rs"
+        },
+        {
+          "status": "M",
+          "path": "packages/ui-system/leptos/style/vink-ui.css"
+        },
+        {
+          "status": "M",
+          "path": "packages/ui-system/shared/navigation.md"
+        }
+      ],
+      "sourceFingerprint": "952e8c2e91d97d635574431b84b2f7fe815b3c5fdcfe62df35f185eb8db6e038"
+    },
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36"
+  }
+}

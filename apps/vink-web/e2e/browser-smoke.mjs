@@ -45,6 +45,7 @@ import {
   MANIFEST_SCHEMA_VERSION,
   buildLaneSummary,
   buildModalInspectionScript,
+  buildNavIndicatorInspectionScript,
   buildNavInspectionScript,
   buildOverflowInspectionScript,
   buildTargetGeometryScript,
@@ -239,13 +240,135 @@ async function bottomNavigationAlignment(page, scenario) {
   }));
 }
 
+async function bottomNavigationAnatomy(page, route, scenario) {
+  const items = await page.eval(buildNavIndicatorInspectionScript());
+  check(items.map(item => item.href).join('|') === '/|/ban-viet|/toi' &&
+    items.every(item => item.current === (item.href === route ? 'page' : null)),
+  `${scenario}: route order and exactly one matching aria-current`);
+  check(items.every(item => item.flatTarget), `${scenario}: selected background must not cover the whole destination`);
+  const isolated = items.every(item => item.fill === item.expectedFill && item.leadingInside && item.labelOutside) && items[2].avatar;
+  check(isolated, `${scenario}: selected Lavender indicator contains only the icon/avatar; labels sit below` +
+    (isolated ? '' : ` (${JSON.stringify(items)})`));
+}
+
+async function bottomNavigationStates(page) {
+  const selected = '.vk-ui-bottom-nav a[aria-current="page"]';
+  const styles = () => page.eval(`(() => {
+    const link = document.querySelector('${selected}'), indicator = link.querySelector('.vk-ui-icon').parentElement;
+    return { fill: getComputedStyle(indicator).backgroundColor, layer: getComputedStyle(indicator).boxShadow,
+      hasOutline: getComputedStyle(indicator).outlineStyle === 'solid',
+      hasFocus: link.matches(':focus-visible') && getComputedStyle(link).outlineStyle === 'solid',
+      motion: getComputedStyle(indicator).transitionDuration,
+      bounds: indicator.getBoundingClientRect().toJSON() };
+  })()`);
+  const reduce = { name: 'prefers-reduced-motion', value: 'reduce' };
+  await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM, reduce] });
+  try {
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 });
+    const rest = await styles();
+    const point = { x: rest.bounds.x + rest.bounds.width / 2, y: rest.bounds.y + rest.bounds.height / 2 };
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
+    const hover = await styles();
+    await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', clickCount: 1 });
+    const press = await styles();
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 1, y: 1, button: 'left', clickCount: 1 });
+    check(new Set([rest.layer, hover.layer, press.layer]).size === 3 &&
+      [hover, press].every(state => state.fill === rest.fill && JSON.stringify(state.bounds) === JSON.stringify(rest.bounds)),
+    'hover and pressed use distinct state layers with identical selected fill and geometry');
+    check(await page.eval(`matchMedia('(prefers-reduced-motion: reduce)').matches`) &&
+      rest.motion.split(',').every(duration => parseFloat(duration) <= 0.001),
+    `bottom navigation honors reduced motion (${rest.motion})`);
+
+    await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM, reduce, { name: 'forced-colors', value: 'active' }] });
+    await page.eval(`document.querySelector('.vk-ui-bottom-nav a[href="/ban-viet"]').focus()`);
+    await page.key('Tab');
+    const forced = await styles();
+    check(forced.hasOutline && forced.hasFocus, 'forced colors preserves the selected indicator and keyboard focus');
+    await page.capture('nav-toi-360x800-200-forced-colors', { requestedScene: { width: 360, height: 800, scale: 200 } });
+  } finally {
+    await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM] });
+  }
+}
+
+async function bottomNavigationSafeArea(page) {
+  await page.viewport(390);
+  await page.eval(`document.documentElement.style.fontSize = ''`);
+  const bar = `document.querySelector('.vk-ui-bottom-nav')`;
+  const before = await page.eval(`({ height: ${bar}.getBoundingClientRect().height, padding: parseFloat(getComputedStyle(${bar}).paddingBottom) })`);
+  try {
+    await page.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom: 24, left: 20, right: 20 } });
+  } catch (error) {
+    if (!String(error).includes("wasn't found")) throw error;
+    console.log('  UNSUPPORTED  Chrome CDP safe-area inset overrides');
+    return;
+  }
+  try {
+    await page.waitFor(`${bar}.getBoundingClientRect().height > ${before.height} &&
+      parseFloat(getComputedStyle(${bar}).paddingBottom) === ${before.padding + 24}`, 'bar grows around the safe area');
+    await bottomNavigationAlignment(page, '390px with emulated safe area');
+    check(await page.eval(`(() => {
+      const bar = ${bar}, links = bar.querySelectorAll('a');
+      const lastChoice = document.querySelector('#page-rail input:checked');
+      lastChoice.focus();
+      scrollTo(0, document.documentElement.scrollHeight);
+      const r = bar.getBoundingClientRect();
+      return links[0].getBoundingClientRect().left >= r.left + 20 &&
+        links[2].getBoundingClientRect().right <= r.right - 20 &&
+        links[2].getBoundingClientRect().bottom <= r.bottom - 24 &&
+        document.activeElement === lastChoice &&
+        lastChoice.closest('label').getBoundingClientRect().bottom <= r.top;
+    })()`), 'safe-area padding and measured clearance leave the last focused control reachable');
+  } finally {
+    await page.send('Emulation.setSafeAreaInsetsOverride', { insets: { bottom: 0, left: 0, right: 0 } });
+  }
+}
+
+async function bottomNavigationLinks(page) {
+  const link = href => `.vk-ui-bottom-nav a[href="${href}"]`;
+  const selected = href => page.waitFor(
+    `location.pathname === '${href}' && document.querySelector('${link(href)}').getAttribute('aria-current') === 'page'`,
+    `mobile Router and current destination for ${href}`,
+  );
+  for (const href of ['/', '/ban-viet', '/toi']) {
+    await page.click(link(href));
+    await selected(href);
+  }
+  await page.eval('history.back()');
+  await selected('/ban-viet');
+  await page.eval('history.forward()');
+  await selected('/toi');
+  const point = await page.eval(`(() => {
+    const r = document.querySelector('${link('/')}').getBoundingClientRect();
+    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+  })()`);
+  for (const button of ['modifier', 'middle']) {
+    const prior = (await page.cdp.send('Target.getTargets')).targetInfos.map(target => target.targetId);
+    if (button === 'modifier') {
+      await page.click(link('/'), page.mod);
+    } else {
+      for (const type of ['mousePressed', 'mouseReleased']) {
+        await page.send('Input.dispatchMouseEvent', { type, ...point, button, clickCount: 1 });
+      }
+    }
+    let opened;
+    for (let attempt = 0; attempt < 50 && !opened; attempt++) {
+      const { targetInfos } = await page.cdp.send('Target.getTargets');
+      opened = targetInfos.find(target => target.type === 'page' && target.url === `${args.base}/` && !prior.includes(target.targetId));
+      if (!opened) await sleep(100);
+    }
+    check(opened && await page.eval("location.pathname === '/toi'"), `${button} click opens a native new tab while keeping the current route`);
+    await page.cdp.send('Target.closeTarget', { targetId: opened.targetId });
+    await page.send('Page.bringToFront');
+  }
+}
+
 async function bottomNavigationRegression(page) {
   for (const theme of ['dark', 'light']) {
     await page.viewport(320);
     await page.goto(`${args.base}/toi`);
     await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'navigation hydration');
     await chooseTheme(page, theme, 'page-theme');
-    for (const width of [320, 360, 390]) {
+    for (const width of [320, 360, 390, 480, 759]) {
       await page.viewport(width);
       for (const scale of [100, 200]) {
         let reference;
@@ -267,6 +390,7 @@ async function bottomNavigationRegression(page) {
             requiredTargets: ['.vk-ui-bottom-nav', '.vk-ui-bottom-nav a[href="/toi"]'],
             boundary: 'Chrome-CDP-dom-override-geometry',
           });
+          await bottomNavigationAnatomy(page, route, name);
           const geometry = await bottomNavigationAlignment(page, name);
           // Routes may add/remove the desktop scrollbar; compare their vertical tracks.
           if (reference) check(geometry.every((g, i) => ['y', 'height', 'iconCenterY', 'firstLineY'].every(k => Math.abs(g[k] - reference[i][k]) <= 1)), `${name}: selected route preserves geometry`);
@@ -278,8 +402,9 @@ async function bottomNavigationRegression(page) {
           check(focused.every((g, i) => ['y', 'width', 'height', 'iconCenterY', 'firstLineY'].every(k => Math.abs(g[k] - geometry[i][k]) <= 1)), `${name}: focus preserves geometry`);
           await page.eval(`scrollTo(0, document.documentElement.scrollHeight)`);
           check(await page.eval(`(() => {
-            const content = document.querySelector('.vk-ui-scaffold__content'), bar = document.querySelector('.vk-ui-bottom-nav');
-            return parseFloat(getComputedStyle(content).paddingBottom) >= bar.getBoundingClientRect().height + 27;
+            const content = document.querySelector('.vk-ui-scaffold__content'), bar = document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect();
+            return parseFloat(getComputedStyle(content).paddingBottom) >= bar.height + 27 &&
+              document.querySelector('#noi-dung').getBoundingClientRect().bottom <= bar.top;
           })()`), `${name}: measured content clearance follows the bar`);
         }
       }
@@ -301,6 +426,14 @@ async function bottomNavigationRegression(page) {
       });
       await bottomNavigationAlignment(page, `nav-ban-viet-${width}x800-200-${theme}`);
     }
+    await page.viewport(390);
+    await page.goto(`${args.base}/`);
+    await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'navigation contrast hydration');
+    await textContrast(page, theme, 'bottom-navigation', [
+      ...['/', '/ban-viet', '/toi'].map(href => `.vk-ui-bottom-nav a[href="${href}"] .vk-ui-nav-item__label`),
+      '.vk-ui-bottom-nav a[aria-current="page"] .vk-ui-icon',
+      '.vk-ui-bottom-nav a[href="/ban-viet"] .vk-ui-icon',
+    ]);
   }
   // Before-hydration vs after-hydration check for Tôi AX name and alignment at 360x800.
   const preErrors = page.errors.length;
@@ -317,6 +450,7 @@ async function bottomNavigationRegression(page) {
       requiredTargets: ['.vk-ui-bottom-nav', '.vk-ui-bottom-nav a[href="/toi"]'],
       boundary: 'no-js-bootstrap-pre-hydration',
     });
+    await bottomNavigationAnatomy(page, '/toi', 'before hydration');
     await bottomNavigationAlignment(page, 'nav-toi-360x800-200-before-hydration');
   } finally {
     await page.send('Network.setBlockedURLs', { urls: [] });
@@ -329,7 +463,20 @@ async function bottomNavigationRegression(page) {
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'after-hydration nav check');
   await page.waitFor(`document.querySelector('.vk-ui-bottom-nav a[href="/toi"] [data-kind=account]')?.dataset.initials === 'TT'`, 'nav avatar initials hydrated');
   await page.eval(`document.documentElement.style.fontSize = '200%'; scrollTo(0, 0)`);
+  await bottomNavigationAnatomy(page, '/toi', 'signed-in avatar');
   await bottomNavigationAlignment(page, 'nav-toi-360x800-200-after-hydration');
+
+  // The old failure was painting the whole selected link even though its geometry and AX name pass.
+  const selected = '.vk-ui-bottom-nav a[aria-current="page"]';
+  try {
+    await page.eval(`document.querySelector('${selected}').style.background = 'var(--vk-primary-container)'`);
+    const items = await page.eval(buildNavIndicatorInspectionScript());
+    check(!items.find(item => item.current === 'page').flatTarget,
+      'negative control: anatomy oracle rejects a selected fill on the whole destination');
+    EVIDENCE_STATE.negativeControls.wholeDestinationFill = 'PASS';
+  } finally {
+    await page.eval(`document.querySelector('${selected}').style.background = ''`);
+  }
 
   // Browser negative controls: misaligned first line and altered accessible name (Tôi -> TTTôi).
   try {
@@ -361,12 +508,21 @@ async function bottomNavigationRegression(page) {
   }
 
   // Font-size and viewport changes above exercise ResizeObserver after hydration.
+  await bottomNavigationStates(page);
+  await bottomNavigationSafeArea(page);
+  await bottomNavigationLinks(page);
   await page.eval(`document.documentElement.style.fontSize = ''`);
-  await page.viewport(834);
   await page.goto(`${args.base}/toi`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'rail hydration');
-  check(await page.eval(`document.querySelector('.vk-ui-rail').getClientRects().length > 0 && document.querySelector('.vk-ui-bottom-nav').getClientRects().length === 0`), '834px keeps the rail and hides the bottom bar');
-  await page.capture('nav-rail-834');
+  for (const [width, railWidth] of [[759, 0], [760, 96], [834, 96], [1440, 220]]) {
+    await page.viewport(width);
+    check(await page.eval(`(() => {
+      const rail = document.querySelector('.vk-ui-rail'), bar = document.querySelector('.vk-ui-bottom-nav');
+      return rail.getBoundingClientRect().width === ${railWidth} &&
+        Boolean(bar.getClientRects().length) === ${railWidth === 0};
+    })()`), `${width}px: expected bottom bar or rail (${railWidth}px)`);
+    if (railWidth) await page.capture(`nav-rail-${width}`);
+  }
   await page.viewport(320);
   await page.goto(`${args.base}/ban-viet/${SAMPLE_WORK}`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'editor hydration');
