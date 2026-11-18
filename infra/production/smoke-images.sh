@@ -5,6 +5,18 @@ cd "$(dirname "$0")/../.."
 revision=${1:?source SHA required}
 platform=${2:?platform required}
 [[ $revision =~ ^[a-f0-9]{40}$ && $platform =~ ^linux/(amd64|arm64)$ ]]
+for service in web worker identity; do
+    image="ghcr.io/loveoverflowcom/vink-$service:sha-$revision"
+    docker run --rm --entrypoint sh "$image" -c 'test "$(id -u)" -ne 0'
+    status=0
+    docker run --rm "$image" >/dev/null 2>&1 || status=$?
+    test "$status" = 2
+done
+docker run --rm --entrypoint sh "ghcr.io/loveoverflowcom/vink-web:sha-$revision" -c '
+    test -s /opt/vink/site/pkg/vink.js && test -s /opt/vink/site/pkg/vink_bg.wasm &&
+    test -s /opt/vink/site/pkg/vink-editor.js && test -s /opt/vink/site/pkg/vink.css &&
+    test -d /opt/vink/site/pkg/fonts && test -d /opt/vink/site/pkg/brand &&
+    test -d /opt/vink/site/pkg/expressions && test ! -e /src && test ! -e /opt/vink/.env'
 root=$(mktemp -d)
 project=vink-oci-smoke
 compose=(docker compose --project-name "$project" --env-file "$root/public.env"

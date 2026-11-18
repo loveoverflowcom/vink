@@ -1,0 +1,27 @@
+name: Qualify production OCI
+on:
+  pull_request:
+    branches: [develop]
+    paths:
+      - .github/workflows/production-oci.yml
+      - .github/workflows/publish-images.yml
+      - infra/production/**
+permissions:
+  contents: read
+concurrency:
+  group: production-oci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  qualify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build from a clean Git tree
+        run: |
+          rustup toolchain install
+          cargo xtask infra build-images docker linux/amd64
+      - name: Qualify built images against isolated PostgreSQL and Identity
+        run: infra/production/smoke-images.sh "$GITHUB_SHA" linux/amd64

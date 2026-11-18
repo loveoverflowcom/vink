@@ -9,7 +9,8 @@ Giữ Vink test và Cantos trên mạng và dữ liệu hiện tại.
 ## Build và xác nhận bản phát hành
 
 Chạy [workflow thủ công](../../.github/workflows/publish-images.yml) với `platform=linux/amd64` cho
-VPS đã kiểm CPU. `publish=false` kiểm tra một branch mà không đẩy image. `publish=true` chỉ trên
+VPS đã kiểm CPU. PR thay đổi hạ tầng production có lane `Qualify production OCI` chỉ đọc.
+`publish=false` cũng kiểm tra một branch theo yêu cầu mà không đẩy image. `publish=true` chỉ trên
 `develop` và chỉ sau khi các image vừa build chạy với PostgreSQL scratch, migration riêng theo
 owner, HTTP App, Unix socket Identity, API và SIGTERM. Ghi SHA/run ID, ba GHCR digest và digest
 PostgreSQL từ cấu hình release. Kiểm lại revision label và `amd64` sau khi pull. Build ở runner,

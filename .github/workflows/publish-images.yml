@@ -33,23 +33,6 @@ jobs:
         run: |
           rustup toolchain install
           cargo xtask infra build-images docker "$PLATFORM"
-      - name: Smoke loaders, non-root user and Web assets (no database)
-        run: |
-          set -eu
-          for name in web worker identity; do
-            image="ghcr.io/loveoverflowcom/vink-$name:sha-$GITHUB_SHA"
-            docker run --rm --entrypoint sh "$image" -c 'test "$(id -u)" -ne 0'
-            set +e
-            docker run --rm "$image" > /tmp/vink-config-check.log 2>&1
-            status=$?
-            set -e
-            test "$status" = 2
-          done
-          docker run --rm --entrypoint sh "ghcr.io/loveoverflowcom/vink-web:sha-$GITHUB_SHA" -c '
-            test -s /opt/vink/site/pkg/vink.js && test -s /opt/vink/site/pkg/vink_bg.wasm &&
-            test -s /opt/vink/site/pkg/vink-editor.js && test -s /opt/vink/site/pkg/vink.css &&
-            test -d /opt/vink/site/pkg/fonts && test -d /opt/vink/site/pkg/brand &&
-            test -d /opt/vink/site/pkg/expressions && test ! -e /src && test ! -e /opt/vink/.env'
       - name: Qualify built images against isolated PostgreSQL and Identity
         run: infra/production/smoke-images.sh "$GITHUB_SHA" "$PLATFORM"
       - name: Publish explicitly and record remote digests
