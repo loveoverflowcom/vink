@@ -7,6 +7,11 @@ title; [#255](https://github.com/loveoverflowcom/vink/issues/255) sở hữu doc
 Bàn viết chỉ soạn `default`; Markdown chưa có editor (#256) và chưa được công khai (#264).
 Kiến trúc `VDR-DOCUMENT-SOURCE-FORMAT@r2` vẫn `ACCEPTED`.
 
+Bàn viết hiện mở và lưu cả hai định dạng qua [Live Preview và bộ chọn](../design/editor-live-preview-256-257.md).
+Khi API lưu nháp trả `422` ở trường `title`, Markdown hiện hướng dẫn sửa H1 cạnh vùng Nội dung
+và Bàn viết Mặc định hiện lỗi ở ô Tiêu đề. Tác vụ **Sửa tiêu đề** đưa focus về trường cần sửa
+và giữ buffer để tác giả tiếp tục. Phản hồi chỉ mô tả đúng lượt sửa đã gửi.
+
 ## Quyết định sản phẩm và hiện trạng
 
 Nguồn chốt: issue #263, lời chủ sản phẩm ngày 16/11/2026:
@@ -51,7 +56,7 @@ trước), không vào source, metadata hay vượt `MissingTitle`.
   golden) và [`markdown.json`](../../services/vink-app/tests/fixtures/title-authority/markdown.json)
   (30 ca, nay là oracle **thực thi** của parser Rust qua unit và application).
 
-## Hiện trạng tích hợp
+## Hiện trạng tích hợp tại mốc 17/11/2026
 
 | Owner/caller | Hiện trạng sau #255/#263 | Bằng chứng |
 | --- | --- | --- |

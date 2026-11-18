@@ -27,6 +27,8 @@ import { draftPagination } from './draft-pagination-smoke.mjs';
 import { authorWorks } from './author-works-smoke.mjs';
 import { editorWriting } from './editor-writing-smoke.mjs';
 import { editorPaperFirst } from './editor-paper-first-smoke.mjs';
+import { editorDeskRegressions, firstDraftFormat } from './editor-desk-regressions.mjs';
+import { markdownBudget } from './editor-markdown-budget.mjs';
 import { documentBudget } from './document-budget.mjs';
 import { readerIntentCost } from './reader-intent-cost.mjs';
 import { webPerfBaseline } from './web-perf-baseline.mjs';
@@ -4671,6 +4673,8 @@ async function mainPhase(page) {
   await draftTags(page, workId);
   await deskRefusesLossyOpen(page);
   await markdownLivePreviewAndFormatPicker(page);
+  await editorDeskRegressions(page, { args, check });
+  await markdownBudget(page, { args, check });
 
   const kept = await page.draft(workId);
   const text = kept.document.source;
@@ -5632,6 +5636,7 @@ try {
   else if (args.phase === 'return-position') await discoveryReturnPosition(page, { args, check });
   else if (args.phase === 'select-chevron') await selectChevron(page);
   else if (args.phase === 'editor-chrome') await editorChrome(page);
+  else if (args.phase === 'editor-first-draft') await firstDraftFormat(page, { args, check });
   else if (args.phase === 'reader-guest-history') await readerGuestHistory(page, { args, check });
   else if (args.phase === 'main') await mainPhase(page);
   else if (args.phase === 'public-storage') { /* exercised below, with profile reopen */ }

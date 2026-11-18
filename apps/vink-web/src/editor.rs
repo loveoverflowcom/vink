@@ -15,6 +15,7 @@ use crate::contract::DocumentFormatDto;
 /// Ids of the visible label and hint that name and describe the text box.
 pub const BODY_LABEL_ID: &str = "editor-body-label";
 pub const BODY_HINT_ID: &str = "editor-body-hint";
+pub const BODY_TITLE_ERROR_ID: &str = "editor-body-title-error";
 /// Id of the sticky toolbar above the text; the caret is scrolled clear of it.
 pub const TOOLBAR_ID: &str = "editor-toolbar";
 
@@ -271,7 +272,7 @@ mod bridge {
     use wasm_bindgen::prelude::*;
     use web_sys::HtmlElement;
 
-    use super::{BODY_HINT_ID, BODY_LABEL_ID, TOOLBAR_ID};
+    use super::{BODY_HINT_ID, BODY_LABEL_ID, BODY_TITLE_ERROR_ID, TOOLBAR_ID};
     use crate::contract::DocumentFormatDto;
 
     #[wasm_bindgen(module = "/editor/bridge.js")]
@@ -328,7 +329,10 @@ mod bridge {
                 ("text", JsValue::from_str(text)),
                 ("format", JsValue::from_str(format.as_str())),
                 ("labelledBy", JsValue::from_str(BODY_LABEL_ID)),
-                ("describedBy", JsValue::from_str(BODY_HINT_ID)),
+                (
+                    "describedBy",
+                    JsValue::from_str(&format!("{BODY_HINT_ID} {BODY_TITLE_ERROR_ID}")),
+                ),
                 ("stickyAboveId", JsValue::from_str(TOOLBAR_ID)),
             ] {
                 Reflect::set(&options, &JsValue::from_str(key), &value)?;

@@ -27,9 +27,12 @@ References: Bản mẫu 18/11 (ban-viet-live-preview.html, ban-viet-gui-luu.html
 Screen #ban-viet (/ban-viet — DeskIndex)
   Region #heading (.vk-desk-heading)
     Heading #desk-title ("Bàn viết")
-    Row .vk-desk-create
+    [Khi đã có tác phẩm hoặc đang tìm] Row .vk-desk-create
       Select #create-draft-format (SelectVariant::Inset16, "Định dạng bản thảo": "Mặc định" | "Markdown", mặc định "Mặc định")
       Button #create-draft ("Tạo bản thảo")
+  [Kết quả không lọc có 0 tác phẩm] EmptyState tạo bản thảo đầu tiên
+    Row .vk-desk-create (cùng Select #create-draft-format)
+      Button #create-draft ("Viết bản thảo đầu tiên")
 
 Screen #ban-viet-editor (/ban-viet/:id — DraftEditor)
   Column .vk-desk--editor[data-format=default|markdown]
@@ -55,6 +58,7 @@ Screen #ban-viet-editor (/ban-viet/:id — DraftEditor)
       Region .vk-editor-paper
         [Chỉ format == default]: TextField #draft-title + <details id="draft-title-details">
         FieldBody: Label#editor-body-label + BodyEditor [data-testid="editor-body"] (1 EditorView duy nhất)
+        [Markdown có lỗi title] Lỗi H1 đầu tiên cạnh nhãn Nội dung, liên kết qua aria-describedby
       Aside #editor-outline-panel.vk-editor-outline (chỉ format == markdown & đang mở)
         Header .vk-editor-outline__top: Heading#outline-title ("Mục lục") + IconButton#outline-close ("Đóng mục lục")
         Nav [aria-label="Các tiêu đề mục trong bản thảo"]:
@@ -89,7 +93,7 @@ Compare: So sánh ảnh chụp và assertion thực tế trên Chrome (Light/Dar
 
 ## Lựa chọn kỹ thuật
 
-- **`#256 CHOICE-01`:** Chọn **A + phối hợp bounded**: dùng `commonmarkLanguage` (`@codemirror/lang-markdown`) cùng `ViewPlugin` đọc `view.visibleRanges` để gắn line decoration (`cm-writing-h1..6`, `cm-writing-quote`) và inline mark/replace decorations (`HeaderMark`, `StrongEmphasis`, `Emphasis`, `Link`, `InlineCode`, `QuoteMark`), kèm guards trong `compositionStarted` chỉ map `decorations.map(update.changes)`. Lý do: tái dụng incremental parse của Lezer/CodeMirror mà không parse lại toàn văn bản mỗi khi di chuyển caret.
+- **`#256 CHOICE-01`:** Chọn **A + phối hợp bounded**: dùng `commonmarkLanguage` (`@codemirror/lang-markdown`) cùng `ViewPlugin` đọc `view.visibleRanges` để gắn line decoration (`cm-writing-h1..6`, `cm-writing-quote`) và inline mark/replace decorations (`HeaderMark`, `StrongEmphasis`, `Emphasis`, `Link`, `InlineCode`, `QuoteMark`), kèm guards trong `compositionStarted` chỉ map `decorations.map(update.changes)`. Lý do: tái dụng incremental parse của Lezer/CodeMirror mà không parse lại toàn văn bản mỗi khi di chuyển caret. Với link nhiều dòng, replacement chỉ che cú pháp trong từng dòng nhìn thấy và giữ nguyên các chỗ xuống dòng.
 - **`#256 CHOICE-02`:** Chọn **B — CommonMark 0.31.2 lõi không extension**, đồng nhất với `packages/markdown-text` dùng chung khi tính tiêu đề ở server và xem trước chuyển đổi (`pulldown-cmark` `Options::empty()`). Mọi cú pháp ngoài CommonMark lõi (fence, HTML thô, escape) hiển thị nguyên văn an toàn.
 - **`#257 CHOICE-01`:** Chọn **A — duyệt có giới hạn (`ensureSyntaxTree(state, doc.length, 8)`) trên cùng cây cú pháp** và công bố trạng thái `ready` / `partial` kèm `generation` (bộ đếm tăng khi sửa nguồn hoặc đổi định dạng) để chặn click mục cũ (`stale`). Khi cây còn partial, tiếp tục parse ở frame sau, kể cả khi tác giả không gõ thêm.
 - **`#257 CHOICE-02`:** Chọn **Cột phải (landmark ở desktop) ở desktop rộng (`>= 1024px`, scale 100%) và sheet/modal dialog ở màn hẹp hoặc chữ `200%`**, kiểm `Escape` và trả focus về `#outline-toggle`.

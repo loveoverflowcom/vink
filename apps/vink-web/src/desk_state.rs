@@ -18,6 +18,7 @@ pub enum Failure {
     Forbidden,
     NotFound,
     Invalid,
+    InvalidTitle,
     Unexpected,
 }
 
@@ -82,6 +83,9 @@ impl EditorSession {
 
     pub fn edited(&mut self) {
         self.edits += 1;
+        if self.failure == Some(Failure::InvalidTitle) {
+            self.failure = None;
+        }
     }
 
     /// Starts a save of the current edit, unless one is in flight or a conflict is unresolved.
@@ -116,6 +120,7 @@ impl EditorSession {
         self.in_flight = None;
         match rejection {
             SaveRejection::Conflict { current_version } => self.conflict = Some(current_version),
+            SaveRejection::Failed(Failure::InvalidTitle) if ticket.edit != self.edits => (),
             SaveRejection::Failed(failure) => self.failure = Some(failure),
         }
     }
@@ -592,6 +597,23 @@ mod tests {
         assert!(s.has_unsaved_text());
         let next = s.begin_save().unwrap();
         assert_eq!(next.expected_version, 8);
+    }
+
+    #[test]
+    fn title_rejection_describes_only_the_submitted_edit() {
+        let mut s = EditorSession::loaded(2);
+        s.edited();
+        let ticket = s.begin_save().unwrap();
+        s.save_rejected(ticket, SaveRejection::Failed(Failure::InvalidTitle));
+        assert_eq!(s.status(), SaveStatus::Failed(Failure::InvalidTitle));
+        s.edited();
+        assert_eq!(s.status(), SaveStatus::Unsaved);
+
+        let ticket = s.begin_save().unwrap();
+        s.edited();
+        s.save_rejected(ticket, SaveRejection::Failed(Failure::InvalidTitle));
+        assert_eq!(s.status(), SaveStatus::Unsaved);
+        assert_eq!(s.begin_save().unwrap().expected_version, 2);
     }
 
     #[test]

@@ -3,7 +3,7 @@ import { commonmarkLanguage } from '@codemirror/lang-markdown';
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
 import { EditorSelection, EditorState, Range } from '@codemirror/state';
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate } from '@codemirror/view';
-import type { SyntaxNode } from '@lezer/common';
+import type { SyntaxNode, Tree } from '@lezer/common';
 
 export interface OutlineItem {
   level: number;
@@ -103,8 +103,15 @@ export function extractOutline(
   budgetMs = 20,
 ): OutlineSnapshot {
   const fullTree = ensureSyntaxTree(state, state.doc.length, budgetMs);
-  const tree = fullTree ?? syntaxTree(state);
-  const status: 'ready' | 'partial' = fullTree ? 'ready' : 'partial';
+  return outlineFromTree(state, fullTree ?? syntaxTree(state), generation, fullTree ? 'ready' : 'partial');
+}
+
+export function outlineFromTree(
+  state: EditorState,
+  tree: Tree,
+  generation: number,
+  status: OutlineSnapshot['status'],
+): OutlineSnapshot {
   const items: OutlineItem[] = [];
   let firstH1Seen = false;
   let title = '';
@@ -188,6 +195,24 @@ function buildLivePreviewDecorations(view: EditorView): DecorationSet {
   const pushRange = (deco: Decoration, from: number, to: number) => {
     if (from < to) {
       decorations.push(deco.range(from, to));
+    }
+  };
+
+  // ViewPlugin replacements are inline. Keep line breaks in a multi-line link and hide
+  // only the portions of its syntax that intersect the viewport, one line at a time.
+  const hideLinkSyntax = (from: number, to: number) => {
+    if (to <= doc.lineAt(from).to) {
+      pushRange(hideDeco, from, to);
+      return;
+    }
+    for (const visible of view.visibleRanges) {
+      const start = Math.max(from, visible.from);
+      const end = Math.min(to, visible.to);
+      for (let pos = start; pos < end;) {
+        const line = doc.lineAt(pos);
+        pushRange(hideDeco, pos, Math.min(end, line.to));
+        pos = line.to + 1;
+      }
     }
   };
 
@@ -306,9 +331,9 @@ function buildLivePreviewDecorations(view: EditorView): DecorationSet {
               }
               pushRange(linkDeco, marks[0].to, marks[1].from);
             } else {
-              pushRange(hideDeco, nodeRef.from, marks[0].to);
+              hideLinkSyntax(nodeRef.from, marks[0].to);
               pushRange(linkDeco, marks[0].to, marks[1].from);
-              pushRange(hideDeco, marks[1].from, nodeRef.to);
+              hideLinkSyntax(marks[1].from, nodeRef.to);
             }
           }
           return undefined;
@@ -433,30 +458,6 @@ export function applyInlineFormat(view: EditorView, kind: 'bold' | 'italic' | 'l
     changes: { from, to, insert: wrapped },
     selection: EditorSelection.single(innerFrom, innerTo),
     userEvent: 'input.format',
-  });
-  view.focus();
-  return true;
-}
-
-export function jumpToHeading(
-  view: EditorView,
-  from: number,
-  expectedGeneration: number,
-  currentGeneration: number,
-): boolean {
-  if (
-    expectedGeneration !== currentGeneration ||
-    view.composing ||
-    view.compositionStarted ||
-    from < 0 ||
-    from > view.state.doc.length
-  ) {
-    return false;
-  }
-  const line = view.state.doc.lineAt(from);
-  view.dispatch({
-    selection: EditorSelection.cursor(line.to),
-    effects: EditorView.scrollIntoView(from, { y: 'center' }),
   });
   view.focus();
   return true;

@@ -115,7 +115,7 @@ Document canonical [#255](document-source-format.md): một shape không version
 `VDR-DOCUMENT-SOURCE-FORMAT@r2` **ACCEPTED**. `POST /api/v1/drafts` nhận body JSON tùy chọn
 `{"format": "default" | "markdown"}` (vắng = `default`). Bàn viết tạo và soạn cả `default` lẫn
 `markdown` qua một `EditorView` Live Preview (#256), mục lục AST Cách 1 (#257) và luồng chọn/đổi
-định dạng có xem trước (#262); nút hành động chính tách `Gửi` (phiên bản 1) / `Lưu` (phiên bản ≥ 2)
+định dạng có xem trước (#262). Bộ chọn có tại CTA của tài khoản có 0 tác phẩm. Nút hành động chính tách `Gửi` (phiên bản 1) / `Lưu` (phiên bản ≥ 2)
 kèm icon 18px Lucide. Markdown vẫn bị chặn xuất bản công khai (`format_not_publishable`) cho đến #264.
 Xem [LayoutSpec hợp nhất](../design/editor-live-preview-256-257.md),
 [LayoutSpec picker #262](../design/editor-format-picker-262.md) và
@@ -126,6 +126,8 @@ Markdown dùng H1 đầu tiên của AST CommonMark (`pulldown-cmark`, không ex
 cùng save/CAS; snapshot giữ title của source đã capture. Corpus `default.json` (12 ca) và
 `markdown.json` (30 ca) chạy qua domain/application; `apps/vink-web/editor/scripts/test-markdown.mjs`
 kiểm đối xứng cả 30 ca `markdown.json` trên CommonMark parser phía trình duyệt (`@codemirror/lang-markdown`).
+Bàn viết hiển thị lỗi title của API cạnh vùng cần sửa. Web main kiểm buffer, sửa và lưu lại,
+nháp trống tên và phản hồi `MissingTitle` của snapshot trong PostgreSQL scratch.
 Sáu test PostgreSQL (`canonical_document::*`) kiểm save/CAS, snapshot, schema và migration/backout;
 không phải một lượt replay toàn bộ corpus qua PostgreSQL.
 
