@@ -1,0 +1,22 @@
+version = 1
+id = "USER-01"
+revision = 2
+
+[base]
+revision = 1
+sha256 = "2c982184d1470d7d7163556a5e8e27936842689647f77cbfe90b6a51d51fcec5"
+
+[content]
+kind = "product"
+domain = "audience-age"
+title = "Chỉ mở ngày sinh tự nguyện trong hồ sơ tác giả"
+resolution = """
+Đề xuất thay đúng phần hoãn trường ngày sinh của USER-01@r1. Chủ hồ sơ có thể để trống, nhập hoặc xóa ngày sinh đầy đủ. Trường mặc định self. Muốn công khai cả ngày/tháng/năm, chính chủ phải xác nhận chủ động cho đúng dữ liệu sẽ công khai. Cách xác nhận từng trường hay gộp trong một lần lưu thuộc SOC-OPEN-01.
+Nhóm tuổi phục vụ, age gate và parental consent tiếp tục DEFERRED. Không dùng ngày sinh để suy tuổi, phân nhóm, kiểm tra tuổi hay thay điều kiện lập tài khoản. Trong khi revision này PENDING, USER-01@r1 vẫn có hiệu lực, kể cả việc hoãn thu thập ngày sinh.
+"""
+rationale = "R1–R9 được #284 §2.3 tổng hợp trong brief R10. #288 yêu cầu ngoại lệ đúng phạm vi Profile. Nguồn sản phẩm này chưa duyệt payload TOML mới theo VDR-DECISION-SIGNOFF@r1."
+requires = ["VDR-DECISION-SIGNOFF@r1"]
+related_ids = [
+    "D-11",
+    "SOC-PRIV-01",
+]

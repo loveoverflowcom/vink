@@ -1,5 +1,15 @@
 # Bản đồ tính năng và đường kiểm chứng Vink
 
+## Hồ sơ tác giả và Theo dõi (#288)
+
+**Mức triển khai Social tại base `c24e5849` là `NOT_IMPLEMENTED`.** Hợp đồng r1 cho #289–#298
+được ghim ở [commit cdbdde89](https://github.com/loveoverflowcom/vink/blob/cdbdde896218251cf74b25fe38c585cddbd9a9de/docs/architecture/social-graph.md).
+Từ bút danh trên bài/bình luận, người đọc sẽ mở `/@handle`, theo dõi tác giả và đọc bài ở
+Khám phá → Đang theo dõi. [Bảng truy vết và bàn giao](social-graph.md) ghi 12 bất biến,
+30 tiêu chí, revision registry và phép kiểm của từng owner. [Ma trận quyền và DTO](../../services/vink-app/contracts/http/v1/social-graph.md)
+là đầu vào cho LayoutSpec và provider. Mốc #288 có bằng chứng tài liệu/registry. Các lượt
+kiểm PostgreSQL, HTTP và browser cho hành trình Social thuộc từng PR triển khai.
+
 **Đối soát có phạm vi ngày 16/11/2026, `develop@6e07806`:** [20 PR gần đây, proposal và gap](verification-reconciliation-20261116.md). Các mốc ở phần mở đầu dưới đây là lịch sử theo lát, không phải ngày kiểm lại toàn bộ bản đồ. [Model/replay ReadOwner/PageChain](../../apps/vink-web/behavior/README.md) bổ sung coverage thuần; không refresh evidence browser/PG cũ.
 
 **Web Perf #234 · baseline opt-in:** [cách đo và giới hạn](web-perf-baseline.md) với 200 works/1.000 comments, 10 cold + 10 warm, history SSR, transport secondary/304 và [trace release](evidence/web-perf-234-236/README.md). Debug lab `997d97d` vẫn là [evidence lịch sử](evidence/web-perf-234/README.md).

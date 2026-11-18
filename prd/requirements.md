@@ -161,6 +161,9 @@ nghĩa cá nhân hóa; feed **Đề xuất** theo vote + độ mới (RANK) và 
 
 Không viết DDL cuối cùng, OpenAPI đầy đủ hoặc model Quint thực thi trong đợt requirements này. Các tài liệu đó cần theo sau quyết định phạm vi, editor schema, identity và integration spike.
 
+Ngoại lệ được đề xuất cho **ngày sinh tùy chọn trên hồ sơ tác giả** nằm ở §15.
+[USER-01@r2](../decisions/proposals/USER-01.r2.toml) còn chờ duyệt.
+
 ## 12. Literary endorsement (LVE)
 
 Nguồn [epic #73](https://github.com/loveoverflowcom/vink/issues/73); canonical phần lõi được promote
@@ -359,3 +362,43 @@ principal, bút danh và quyền với nội dung. Đăng ký mới yêu cầu p
 
 Web `/toi` dùng mật khẩu làm lựa chọn đầu, vẫn có mã email và hỗ trợ thêm mật khẩu trên cùng
 tài khoản ([Auth Web](../docs/development/auth-web.md)). CMP và runtime khôi phục còn thiếu. [Đặc tả recovery #181](../docs/architecture/password-recovery.md) và [LayoutSpec](../docs/design/password-recovery.md) chuẩn bị luồng riêng, cùng account/principal/dữ liệu; email tùy chọn và thu hồi mọi phiên là đề xuất chờ duyệt, không đổi đăng ký hiện tại. `O-11@r1` vẫn `OPEN`, proposal r2 chưa có signoff. Production mặc định `VINK_AUTH_SIGN_IN=disabled` và D-05 vẫn `PROVISIONAL`.
+
+## 15. Hồ sơ tác giả và Theo dõi (Social Graph)
+
+Từ bút danh cạnh bài viết hoặc bình luận, người đọc mở đúng tác giả ở `/@handle`, kể cả khi
+có người trùng tên. Khách xem phần công khai. Thành viên có thể theo dõi rồi đọc bài của tác
+giả trong **Khám phá → Đang theo dõi**. Chủ sửa hồ sơ và quyền từng trường ở **Tôi**.
+Phạm vi này cụ thể hóa COM-06, UX-04 và ACC-01..03.
+
+Bảng dùng các mục §2 của [Epic #284, R10](https://github.com/loveoverflowcom/vink/issues/284)
+để truy từng luật sản phẩm R1–R9. Epic tổng hợp R1–R8 theo chủ đề và nêu đích danh ba chốt
+ở R9 (giữ Identity, Handle ASCII và một lần setup + hai lần đổi). Các ID dưới đây chỉ yêu cầu
+sản phẩm. [Hợp đồng liên miền](../docs/architecture/social-graph.md) và
+[bảng nghiệm thu](../docs/development/social-graph.md) nối từng ID với owner, bất biến và phép kiểm.
+
+| ID | Nguồn | Quy tắc sản phẩm đã chốt trong brief (`PRODUCT_CONFIRMED`) |
+| --- | --- | --- |
+| SOC-ID-01 | §2.1, ACC-01 | Mỗi tài khoản có một PrincipalId ổn định. Ownership và cạnh Theo dõi gắn với PrincipalId. |
+| SOC-ID-02 | §2.1, R9, ACC-03 | Giữ Identity hiện hành. Username đăng nhập, bút danh và Handle độc lập với nhau. |
+| SOC-ID-03 | §2.1 | Bút danh tiếng Việt sửa được, có thể trùng. Trên bài và bình luận còn công khai (kể cả ngữ cảnh trả lời), người đọc thấy bút danh hiện hành. Nội dung revision là bất biến. |
+| SOC-ID-04 | §2.1 | Hoàn tất provisioning với binding và bút danh hợp lệ thì có đúng một hồ sơ tối thiểu. Đọc công khai chỉ tra cứu. |
+| SOC-ID-05 | §2.1 | Địa chỉ chuẩn là `/@handle`. Người chưa có bài vẫn có hồ sơ, tìm được và nhận Follow. |
+| SOC-ID-06 | §2.1 | Đổi email, credential, bút danh hoặc Handle vẫn giữ đúng người, tác phẩm và quan hệ cũ. Đổi bút danh giữ nguyên Handle. |
+| SOC-HDL-01 | §2.2, R9 | Handle dùng chữ ASCII thường, số và dấu nối. Sinh từ bút danh chuyển ASCII, từ ngẫu nhiên chọn lọc và hậu tố ngẫu nhiên. Nguồn sinh loại trừ email, hash email và username. Setup một lần miễn lượt, sau đó tối đa hai lần đổi suốt đời. Retry, no-op, collision và lỗi không mất thêm lượt. Mọi tên từng dùng chỉ thuộc người ấy. Alias trả 301 thẳng đến tên hiện tại. Sau khi xóa tài khoản, tên thành tombstone. |
+| SOC-PRIV-01 | §2.3 | Tám trường có quyền `everyone`/`self` độc lập. Bút danh bắt buộc công khai. Avatar, bio, Followers list và Followers count mặc định công khai. Ngày sinh, Following list và Following count mặc định riêng. Bio và ngày sinh là tùy chọn. Muốn công khai đủ ngày/tháng/năm cần chính chủ xác nhận. |
+| SOC-FOL-01 | §2.4, COM-06 | Follow/Unfollow tự do giữa hai tài khoản hợp lệ, kể cả tác giả chưa có bài. Cấm tự Follow. Mỗi cặp có hướng có tối đa một cạnh hiện hành. Mutual chỉ cấp trực tiếp cho hai bên. Follow giữ nguyên quyền đọc tác phẩm. |
+| SOC-FEED-01 | §2.5 | Đang theo dõi là một chế độ Khám phá. Lấy cả bài có trước lần Follow, mỗi WorkId một lần theo snapshot hiện công khai. Thứ tự theo lần công khai đầu tiên, mới trước và có khóa phụ ổn định. Sửa, rút rồi tái đăng không đẩy bài lên đầu. |
+| SOC-FIND-01 | §2.6 | Tìm được đúng tác giả dù trùng tên hoặc chưa có bài. Gợi ý dùng hồ sơ/tác phẩm/thể loại/chủ đề công khai, với giới thiệu trung tính khi thiếu tín hiệu. Không có công tắc riêng để tắt gợi ý. |
+| SOC-LIFE-01 | §2.7, ACC-02 | Hạn chế chỉ đăng/bình luận vẫn cho đọc, Follow/Unfollow, xem Feed, sửa hồ sơ/quyền và giữ cạnh. Full suspension/disable tiếp tục áp theo authority hiện hành. |
+| SOC-LIFE-02 | §2.7 | Xóa vĩnh viễn chấm dứt cạnh cả hai chiều, cập nhật số đếm, dừng Profile và mọi địa chỉ từng dùng. Gỡ bài công khai về trang thay thế. Bình luận hợp lệ giữ lại mang nhãn “Tài khoản đã xóa”, kể cả trong ngữ cảnh trả lời, bỏ mọi liên kết định danh. |
+
+Ngày 18/11/2026 chủ sản phẩm chốt mốc setup trong [#290 r2](https://github.com/loveoverflowcom/vink/issues/290).
+Phần ghi vào [registry](../decisions/README.md#social-graph) còn `PENDING`. Riêng SOC-PRIV-01,
+`USER-01@r1 DEFERRED` đang hoãn cả ngày sinh. Chỉ mở thu thập ngày sinh khi revision ngoại lệ
+có hiệu lực. Age gate, nhóm tuổi và parental consent tiếp tục hoãn. Các phương án sản phẩm còn
+mở, phụ thuộc Account và phạm vi từng lát nằm trong [hợp đồng](../docs/architecture/social-graph.md).
+
+Ngoài roadmap Social hiện tại (`NOT_YET_PLANNED`) có Block, Remove Follower, Mute, duyệt người
+theo dõi/tài khoản riêng, tắt nhận Follow, Follow kín toàn cục, bạn bè/chat/DM/danh bạ, nội dung
+followers-only và xếp hạng bằng số follower. Follow Notifications thuộc Epic Notifications.
+Native product app nằm ngoài phạm vi Epic Social.
