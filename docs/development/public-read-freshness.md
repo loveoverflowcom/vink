@@ -13,6 +13,10 @@ Mục tiêu: có snapshot được phép thì hiển thị ngay, làm mới phí
 để hiện loading toàn màn; kiểm tra lại khoảng 2 phút khi màn đang hiển thị. Không thêm cache phía
 server, realtime hay Service Worker. Adapter lưu bền #203 nằm dưới gate tắt; xem [IndexedDB](#indexeddb-203).
 
+## Intent-prefetch Reader #239
+
+Giữ GET Reader khi người đọc kích hoạt liên kết. Ở bài ngắn, thời gian GET dưới ngưỡng lợi ích 16 ms. Ở bài 200.000 đoạn, body vượt 32 KiB trước khi có cơ chế admission tin cậy. [Bằng chứng 20 lượt, ngưỡng dừng và phạm vi từng AC](evidence/web-perf-239-canonical/README.md).
+
 ## Đối soát owner và evidence #233
 
 Ngày 16/11/2026, nguồn `develop@69f71f0cb61228dbe5ceea775b3c34c237705922`, phục vụ
