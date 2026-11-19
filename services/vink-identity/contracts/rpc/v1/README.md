@@ -163,3 +163,25 @@ Session credentials, codes, challenge handles, addresses, usernames and password
 from `Debug` and logs. Responses carry the session credential only at issuance and the challenge
 handle only at challenge issuance. Parse errors are discarded. Logs record refusals and
 issued sessions by session id and subject. Database URLs never appear in configuration errors.
+
+
+## Gắn email xác minh lần đầu (#329)
+
+Cả ba RPC chỉ khả dụng với native mail và password; `capabilities.operations.attach_email`
+phản ánh điều đó. Không có route đặt lại mật khẩu, không tái dùng purpose của email-change,
+sign-in hay enrollment.
+
+| RPC POST | Request JSON | Kết quả |
+| --- | --- | --- |
+| `/identity/v1/email/attachment/status` | `{credential}` | `200 {session_id,password_account,verified_email}`, binding hiện hành hoặc `null` |
+| `/identity/v1/email/attachment/challenges` | `{credential,session_id,email,password}` | `202 {challenge,challenge_id,email,expires_at}`; `email` là địa chỉ chuẩn hóa, `challenge` là bí mật chỉ App đưa vào cookie riêng |
+| `/identity/v1/email/attachment/complete` | `{credential,challenge,challenge_id,code}` | `204` sau commit consume proof và chèn binding trên đúng account |
+
+`401` caller UID không được phép, `403` phiên không dùng được/disabled, `409` gồm
+`already_attached`, `attachment_context_changed`, `no_password`, `challenge_closed` và
+`address_unavailable`, `422` gồm `invalid_credentials`, `invalid_email`, `invalid_code`,
+`429 rate_limited`. Body giới hạn như enrollment cho issuance (32 KiB); đọc và complete
+dùng 8 KiB. Từ chối schema không echo dữ liệu người dùng. Email đã thuộc tài khoản khác vẫn có
+cùng shape lúc issuance nhưng không gửi thư; chỉ proof thật có thể gắn, và unique address
+ngăn gộp hoặc đổi chủ. `503` hoặc mất ACK không xác nhận giao dịch đã hay chưa xảy ra: dùng
+status cùng phiên, không tự gửi lại complete. Status không mint phiên và không gửi mail.

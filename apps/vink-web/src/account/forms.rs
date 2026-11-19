@@ -1,6 +1,8 @@
 //! Form lifetimes own the inputs. Only the mounted form can display an answer;
 //! the tab still reconciles any write that could have changed the browser's cookie.
 
+mod attachment;
+
 use leptos::{html::Input, prelude::*};
 use vink_ui::{
     ActionState, Announce, Button, ButtonKind, ButtonVariant, FieldVariant, InlineNotice,
@@ -775,6 +777,7 @@ pub(super) fn SignedIn(epoch: u64) -> impl IntoView {
             </div>
             {move || opened.get().then(|| view! { <CredentialSettings epoch now /> })}
         </div>
+        <attachment::EmailSettings epoch now />
         <SignOut epoch before=move |_| opened.set(false) />
     }
 }

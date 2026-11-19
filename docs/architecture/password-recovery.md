@@ -1,5 +1,10 @@
 # Khôi phục mật khẩu qua email — đặc tả #181
 
+> **Cập nhật #329:** Gắn email xác minh lần đầu đã có trên Web → App → Identity; xem
+> [runtime và bằng chứng](../development/auth-web.md#gắn-email-xác-minh-lần-đầu-329).
+> Phần còn lại bên dưới mô tả đặc tả #181 tại thời điểm viết. Reset, đổi email đã gắn và
+> kích hoạt production không nằm trong lát #329 này. O-11@r2 vẫn chưa có signoff.
+
 ## 1. Phạm vi, trạng thái và nguồn
 
 Lát `AUTH-RECOVERY-SPEC-01` chỉ đặc tả Web → App → Identity. Không thêm route, schema, UI hay
@@ -61,7 +66,7 @@ Chọn tái dùng hạ tầng thay vì provider mới là suy luận kỹ thuậ
 | Có email trước khi quên | **A: email khôi phục tùy chọn**, thêm sau đăng nhập và nhắc rõ khi chưa gắn. B: bắt buộc xác minh lúc đăng ký, cải thiện coverage nhưng đổi điều kiện gia nhập. Đề xuất A, không tự sửa đăng ký | `open_product`, chờ duyệt O-11@r2 |
 | Phiên sau reset | **A: thu hồi tất cả phiên và đăng nhập lại**. B: giữ phiên hiện tại hoặc tự đăng nhập mới, ít gián đoạn nhưng khó phân biệt phiên bị chiếm. Đề xuất A; không gỡ đình chỉ/disable | `open_product`, chờ duyệt O-11@r2 |
 
-Hai câu cần chốt trước runtime: có giữ email **tùy chọn** và cho gắn sau đăng ký không? Sau reset
+Hai câu cần chốt trước khi triển khai reset, không chặn gắn email lần đầu: có giữ email **tùy chọn** và cho gắn sau đăng ký không? Sau reset
 có **đăng xuất mọi thiết bị, đăng nhập lại** không? Các mục này không ngăn việc giao đặc tả/proposal.
 Không suy quyền thực hiện từ việc merge PR tài liệu. Không hứa admin giúp lấy lại account khi mất
 hộp thư; quy trình phục hồi thủ công nếu cần phải được thiết kế riêng.

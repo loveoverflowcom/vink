@@ -149,6 +149,41 @@ pub(crate) async fn password_enrollment_status()
 }
 
 #[cfg(feature = "hydrate")]
+const EMAIL_ATTACHMENT: &str = "/api/v1/auth/email/attachment";
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn email_attachment_status()
+-> Result<crate::contract::EmailAttachmentStatus, crate::session::AuthError> {
+    http::auth::<(), _>("GET", EMAIL_ATTACHMENT, &[200], None).await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn request_email_attachment(
+    input: crate::contract::StartEmailAttachment,
+) -> Result<crate::contract::EmailAttachmentChallenge, crate::session::AuthError> {
+    http::auth(
+        "POST",
+        &format!("{EMAIL_ATTACHMENT}/challenges"),
+        &[202],
+        Some(&input),
+    )
+    .await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn complete_email_attachment(
+    input: crate::contract::CompleteEmailAttachment,
+) -> Result<(), crate::session::AuthError> {
+    http::auth(
+        "POST",
+        &format!("{EMAIL_ATTACHMENT}/complete"),
+        &[204],
+        Some(&input),
+    )
+    .await
+}
+
+#[cfg(feature = "hydrate")]
 pub(crate) async fn provision_principal(
     pen_name: String,
 ) -> Result<crate::contract::ProvisionedPrincipal, crate::session::AuthError> {
