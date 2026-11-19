@@ -97,7 +97,9 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   await guest.goto(`${base}/@${handleB}`);
   await guest.waitFor(q('#follow-sign-in'), 'guest sees follow sign-in CTA');
   const signInHref = await guest.eval(`${q('#follow-sign-in')}.getAttribute('href')`);
-  check(signInHref === `/toi?next=%2F%40${encodeURIComponent(handleB)}`, `guest CTA points to /toi?next=... (${signInHref})`);
+  const signIn = new URL(signInHref, base);
+  check(signIn.origin === new URL(base).origin && signIn.pathname === '/toi' &&
+    signIn.searchParams.get('next') === `/@${handleB}`, `guest CTA points to /toi?next=... (${signInHref})`);
 
   await page.goto(`${base}/toi?next=${encodeURIComponent(`/@${handleB}`)}`);
   await page.waitFor(q('#me-return-link'), 'active session shows validated internal return link on /toi');

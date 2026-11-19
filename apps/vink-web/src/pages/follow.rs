@@ -62,6 +62,7 @@ pub(super) fn ProfileActionRegion(
     own_relationships: RwSignal<Option<OwnRelationshipsSummary>>,
 ) -> impl IntoView {
     let session = Session::current();
+    let sign_in_open = crate::api::sign_in_open();
     let stored_handle = StoredValue::new(handle);
 
     #[cfg(feature = "hydrate")]
@@ -76,6 +77,9 @@ pub(super) fn ProfileActionRegion(
     view! {
         <div id="follow" class="vk-follow-region">
             {move || match session.standing.get() {
+                Standing::Anonymous if !sign_in_open => view! {
+                    <p id="follow-sign-in-closed" class="vk-muted">"Vink chưa mở đăng nhập."</p>
+                }.into_any(),
                 Standing::Anonymous => {
                     let href = encode_next_target(&stored_handle.get_value());
                     view! {
