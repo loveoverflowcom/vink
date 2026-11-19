@@ -29,23 +29,12 @@ fn PublicProfile(name: String, cursor: Option<String>) -> impl IntoView {
     status.set_no_store();
     #[cfg(feature = "hydrate")]
     {
-        use wasm_bindgen::JsCast;
         super::profile::observe_changes(move || advance.update(|stamp| *stamp += 1));
         crate::read_events::observe(move || {
             if crate::read_events::visible() {
                 advance.update(|stamp| *stamp += 1);
             }
         });
-        let restore = window_event_listener_untyped("pageshow", |event| {
-            if event
-                .dyn_ref::<web_sys::PageTransitionEvent>()
-                .is_some_and(|page| page.persisted())
-            {
-                // Re-enter HTTP for a potentially retired or renamed address.
-                let _ = window().location().reload();
-            }
-        });
-        on_cleanup(move || restore.remove());
     }
     view! {
         <Suspense fallback=|| view! { <p role="status">"Đang mở trang tác giả…"</p> }>

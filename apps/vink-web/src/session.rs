@@ -356,6 +356,19 @@ mod tests {
     }
 
     #[test]
+    fn profile_scope_is_fenced_during_unavailable_session_readback() {
+        let mut owner = SessionOwner::default();
+        settle(&mut owner, Observation::Active(account("a")));
+        assert_eq!(owner.profile_scope().as_deref(), Some("a/0"));
+        owner.expect_session_change();
+        assert_eq!(owner.profile_scope(), None);
+        settle(&mut owner, Observation::Unavailable);
+        assert_eq!(owner.profile_scope(), None);
+        settle(&mut owner, Observation::Active(account("a")));
+        assert_eq!(owner.profile_scope().as_deref(), Some("a/1"));
+    }
+
+    #[test]
     fn auth_web_a_late_answer_of_an_older_check_never_replaces_a_newer_one() {
         let mut owner = SessionOwner::default();
         let slow = owner.begin_check();

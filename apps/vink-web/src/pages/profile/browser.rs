@@ -197,9 +197,7 @@ impl Form {
                     super::super::focus_recovery(id);
                 }
                 Err(ApiError::Unauthenticated | ApiError::Forbidden | ApiError::NotFound) => {
-                    self.message
-                        .set("Phiên hiện tại chưa có quyền lưu hồ sơ này.");
-                    session.refresh();
+                    session.fence_profile();
                 }
                 _ => {
                     self.reconcile.set(Some(request));
@@ -238,6 +236,9 @@ impl Form {
                         self.message
                             .set("Chưa thấy thay đổi trên hồ sơ. Bạn có thể lưu lại.");
                     }
+                }
+                Err(ApiError::Unauthenticated | ApiError::Forbidden | ApiError::NotFound) => {
+                    session.fence_profile();
                 }
                 _ => self
                     .message

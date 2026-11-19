@@ -74,8 +74,42 @@ export function mountProfileNavigation() {
     }, fallback);
   }
 
+  const viewport = window.visualViewport;
+  if (viewport) {
+    const updateKeyboardInset = () => {
+      const inset = viewport.scale === 1 ? Math.max(0, innerHeight - viewport.height - viewport.offsetTop) : 0;
+      document.documentElement.style.setProperty('--vk-profile-keyboard-inset', `${inset}px`);
+    };
+    viewport.addEventListener('resize', updateKeyboardInset);
+    viewport.addEventListener('scroll', updateKeyboardInset);
+    updateKeyboardInset();
+  }
+
+  const recheck = 'vinkProfileRecheck';
+  window.addEventListener('pagehide', event => {
+    if (!event.persisted ||
+        !document.querySelector('.vk-author-public, .vk-profile-edit, #public-results, #reader')) return;
+    const main = document.getElementById('noi-dung');
+    main.style.visibility = 'hidden';
+    main.inert = true;
+    history.replaceState({...history.state, [recheck]: address()}, '');
+  });
   window.addEventListener('popstate', restore);
-  window.addEventListener('pageshow', restore);
-  // A no-store Profile can reload on a bfcache return before this module hydrates.
-  if (performance.getEntriesByType('navigation')[0]?.type === 'back_forward') restore();
+  window.addEventListener('pageshow', event => {
+    if (event.persisted && history.state?.[recheck] === address()) {
+      location.reload();
+    } else {
+      restore();
+    }
+  });
+  // A frozen document has an old projection even when a tab's RAM freshness window has
+  // not elapsed. The fresh HTTP document may re-focus the surviving link.
+  const state = history.state;
+  if (state?.[recheck] === address()) {
+    const {[recheck]: _, ...rest} = state;
+    history.replaceState(rest, '');
+    restore();
+  } else if (performance.getEntriesByType('navigation')[0]?.type === 'back_forward') {
+    restore();
+  }
 }

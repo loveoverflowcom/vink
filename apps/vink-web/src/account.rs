@@ -92,6 +92,12 @@ impl Session {
         browser::refresh(self);
     }
 
+    #[cfg(feature = "hydrate")]
+    pub(crate) fn fence_profile(self) {
+        self.owner.update(SessionOwner::expect_session_change);
+        self.refresh();
+    }
+
     pub(crate) fn checking(self) -> bool {
         self.checking.get()
     }

@@ -65,9 +65,10 @@ function fixture(a, b) {
     INSERT INTO discussion_threads(id,work_id) VALUES (${literal(ids.thread)},${literal(ids.a)});
     INSERT INTO comments(id,thread_id,kind,root_id,root_kind,reply_to_id,replied_to_reply,author_id,body,review,moderation_version,created_at)
     VALUES
-      (${literal(ids.root)},${literal(ids.thread)},'root',NULL,NULL,NULL,false,${literal(a)},'Nhận xét tại gốc','approved',1,now()),
-      (${literal(ids.reply)},${literal(ids.thread)},'reply',${literal(ids.root)},'root',NULL,false,${literal(b)},'Lời đáp thứ nhất','approved',1,now() + interval '1 second'),
-      (${literal(ids.tail)},${literal(ids.thread)},'reply',${literal(ids.root)},'root',${literal(ids.reply)},true,${literal(a)},'Gửi lại người vừa trả lời','approved',1,now() + interval '2 seconds');
+      (${literal(ids.root)},${literal(ids.thread)},'root',NULL,NULL,NULL,false,${literal(a)},'Nhận xét tại gốc','pending',1,now()),
+      (${literal(ids.reply)},${literal(ids.thread)},'reply',${literal(ids.root)},'root',NULL,false,${literal(b)},'Lời đáp thứ nhất','pending',1,now() + interval '1 second'),
+      (${literal(ids.tail)},${literal(ids.thread)},'reply',${literal(ids.root)},'root',${literal(ids.reply)},true,${literal(a)},'Gửi lại người vừa trả lời','pending',1,now() + interval '2 seconds');
+    UPDATE comments SET review='approved', moderation_version=2 WHERE thread_id=${literal(ids.thread)};
     COMMIT;`);
   return ids;
 }
@@ -106,7 +107,7 @@ async function captureLayouts(page, check, name, target) {
   await page.viewport(1280);
 }
 
-export async function authorProfiles(page, other, {base, openPage, check, holdAnswer, switchActor}) {
+export async function authorProfiles(page, other, {base, openPage, check, holdAnswer, switchActor, textContrast}) {
   console.log('Author Profile and bylines (#292/#293):');
   await page.goto(base + '/toi');
   await page.waitFor(q('#edit-profile-link'), 'Me shows the profile entry');
@@ -135,6 +136,23 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   check(await page.eval(`!!document.querySelector('a[aria-current="page"][href="/toi"]')`),
     'Tôi is active in the profile editor');
   await captureLayouts(page, check, 'edit', '#profile-pen-name, #profile-bio, #profile-save, .vk-profile-form select');
+  for (const theme of ['light', 'dark']) await textContrast(page, theme, 'profile', ['#profile-save', '#profile-bio', '#profile-name-hint']);
+  await page.viewport(320, 580);
+  await page.eval("document.documentElement.style.fontSize='200%'");
+  await page.waitFor(`(() => {
+    const save=${q(SAVE)}, nav=${q('.vk-ui-bottom-nav')};
+    const r=save.getBoundingClientRect();
+    return r.bottom <= nav.getBoundingClientRect().top+1 &&
+      save.contains(document.elementFromPoint(r.x + r.width/2, r.y + r.height/2));
+  })()`, 'save remains above navigation at 320px/200% with a short viewport');
+  await page.viewport(1280);
+  await page.eval("document.documentElement.style.fontSize=''");
+  await fill(page, BIO, 'Nháp trước khi về Tôi');
+  await page.click('#cancel-profile-edit');
+  await page.waitFor("document.activeElement?.id==='edit-profile-link'", 'cancel returns focus to Me entry');
+  await page.key('Enter');
+  await page.waitFor(`${q(BIO)}?.value==='Nháp trước khi về Tôi'`, 'cancel preserves draft in the same session');
+  await fill(page, BIO, bio);
 
   await edit(other, base);
   const b = await own(other);
@@ -169,8 +187,15 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   })()`);
   await save(page);
   await viewing.waitFor(`${q('#author-profile-heading')} && !${q('.vk-author-bio')}`, 'broadcast invalidates the previous public view');
-  await delayed.finish();
-  check(await viewing.eval(`!${q('.vk-author-bio')}`), 'late public answer cannot restore a revoked Bio');
+  await viewing.eval(`window.revokedBioShown = false;
+    new MutationObserver(records => {
+      if (records.some(record => [...record.addedNodes].some(node => node.nodeType===1 &&
+          (node.matches('.vk-author-bio') || node.querySelector('.vk-author-bio'))))) window.revokedBioShown = true;
+    }).observe(document.getElementById('noi-dung'), {childList:true, subtree:true});
+  `);
+  const publicDisposition = await delayed.finish(false, true);
+  check(await viewing.eval(`!${q('.vk-author-bio')} && !window.revokedBioShown`),
+    `late public answer cannot restore a revoked Bio (${publicDisposition})`);
   await guest.send('Page.bringToFront');
   await guest.eval("window.dispatchEvent(new FocusEvent('focus'))");
   await guest.waitFor(`${q('#author-profile-heading')} && !${q('.vk-author-bio')}`, 'isolated guest revalidates upon focus');
@@ -191,8 +216,9 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await switchActor('a');
   await staleTab.waitFor(`${q(BIO)}?.value===${JSON.stringify(bio)}`, 'A returns with a new generation');
   await fill(staleTab, BIO, 'Nháp của phiên mới');
-  await lateOwn.finish();
-  check(await staleTab.eval(`${q(BIO)}.value==='Nháp của phiên mới'`), 'old A response cannot overwrite the new A form');
+  const ownDisposition = await lateOwn.finish(false, true);
+  check(await staleTab.eval(`${q(BIO)}.value==='Nháp của phiên mới'`),
+    `old A response cannot overwrite the new A form (${ownDisposition})`);
 
   const discovery = '/?q=rieng&tag=tan-van';
   await guest.goto(base + discovery);
@@ -245,6 +271,23 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
     'reply context still has a separate comment jump');
   await guest.eval(`${q('#feedback-heading')}.scrollIntoView({block:'start'})`);
   await guest.capture('author-reply-context', {scenario:'reader discussion bylines', textScale:100});
+  // Freeze a document carrying B's byline before retiring B in this disposable fixture.
+  await guest.goto(base + readerPath);
+  await guest.waitFor(q(bylines[2][0]), 'linked byline before controlled retirement');
+  await guest.eval(`window.addEventListener('pageshow', event => {
+    if (event.persisted) sessionStorage.setItem('fixture-profile-bfcache', 'restored');
+  });`);
+  await guest.goto(base + bPath);
+  check(authorFixtureSql(`UPDATE author_profiles SET current_handle=NULL, version=version+1
+    WHERE principal_id=${literal(b.principal_id)} AND current_handle=${literal(b.handle)} RETURNING 1;`) === '1',
+    'retired exactly the B fixture');
+  await guest.reload();
+  await guest.waitFor(`${q('#author-profile-heading')}?.textContent==='Hồ sơ không còn trên Vink'`, 'B profile is gone');
+  await guest.eval('history.back()');
+  await guest.waitFor(`location.pathname===${JSON.stringify(readerPath)} &&
+    ${q('#comment-' + ids.reply)}?.textContent.includes('Tài khoản đã xóa') &&
+    !${q('a[href="' + bPath + '"]')}`, 'Back does not restore retired attribution');
+  console.log('  controlled Back used BFCache:', await guest.eval("sessionStorage.getItem('fixture-profile-bfcache')==='restored'"));
   for (const tab of [guest, viewing, staleTab]) {
     check(tab.errors.length === 0, `profile/byline tab console and hydration: ${tab.errors.join(' | ')}`);
   }
@@ -254,9 +297,6 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await edit(page, base);
   await fill(page, NAME, a.pen_name);
   await save(page);
-  await edit(other, base);
-  await fill(other, NAME, b.pen_name);
-  await save(other);
   await page.send('Page.bringToFront');
   await page.goto(base + '/toi');
 }

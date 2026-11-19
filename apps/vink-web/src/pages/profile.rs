@@ -24,20 +24,6 @@ pub(crate) fn EditProfile() -> impl IntoView {
     let session = Session::current();
     super::ResponseStatus::capture().set_no_store();
 
-    #[cfg(feature = "hydrate")]
-    {
-        use wasm_bindgen::JsCast;
-        let restore = window_event_listener_untyped("pageshow", |event| {
-            if event
-                .dyn_ref::<web_sys::PageTransitionEvent>()
-                .is_some_and(|event| event.persisted())
-            {
-                let _ = window().location().reload();
-            }
-        });
-        on_cleanup(move || restore.remove());
-    }
-
     view! {
         <Title text="Chỉnh hồ sơ · Vink" />
         <Meta name="robots" content="noindex" />
