@@ -356,3 +356,8 @@ sở hữu kết quả của lượt này; không thay thế kết quả lịch 
 Lượt 18/11 với baseline `develop@ee20e94` bổ sung bằng chứng Android API 24/35, sửa
 focus ban đầu của host trên Android cũ và kiểm lại Desktop. iOS Simulator và các ca
 AT/IME còn `NOT_RUN`. [Delta AC-04/06/07](evidence/empty-webp-cmp-261/native-qualification-20261118/README.md).
+
+Lượt 19/11 trên `develop@eb7e65e` kiểm lại hai API, thêm query/selection qua Activity recreation,
+fallback alpha, CTA với IME mở và nhập dấu qua LatinIME API 35. Suite Android vẫn đỏ
+ở ca Interaction đã có. AC-04/06/07 còn PARTIAL, iOS và named screen reader còn NOT_RUN.
+[Kết quả và bằng chứng](evidence/empty-webp-cmp-261/native-qualification-20261119/README.md).
