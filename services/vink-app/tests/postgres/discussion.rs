@@ -2314,8 +2314,31 @@ async fn author_attribution_tracks_principal_and_retirement_in_all_public_reads(
         value(&app, &reader).await["author"]["pen_name"],
         "Bút danh mới mùa mưa"
     );
+    let renamed_cards = value(&app, "/api/v1/works").await;
+    for (id, name, href) in [
+        (first, "Bút danh mới mùa mưa", &a_href),
+        (second, "Bút danh mới mùa gió", &b_href),
+    ] {
+        let card = renamed_cards["works"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|card| card["work_id"] == id.to_string())
+            .unwrap();
+        assert_eq!(card["author"]["pen_name"], name);
+        assert_eq!(card["author"]["href"].as_str(), Some(href.as_str()));
+    }
     assert_eq!(
-        value(&app, &replies).await["replies"][1]["reply_to"]["author"]["pen_name"],
+        value(&app, &discussion).await["roots"][0]["root"]["comment"]["author"]["pen_name"],
+        "Bút danh mới mùa mưa"
+    );
+    let renamed_replies = value(&app, &replies).await;
+    assert_eq!(
+        renamed_replies["replies"][0]["author"]["pen_name"],
+        "Bút danh mới mùa gió"
+    );
+    assert_eq!(
+        renamed_replies["replies"][1]["reply_to"]["author"]["pen_name"],
         "Bút danh mới mùa gió"
     );
     assert_eq!(digest(revision).await.unwrap(), before);

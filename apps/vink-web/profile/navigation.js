@@ -1,8 +1,19 @@
+const returnKey = 'vinkProfileReturn';
+const address = () => location.pathname + location.search + location.hash;
+
+export function hasProfileReturn() {
+  return history.state?.[returnKey]?.source === address();
+}
+
+export function clearProfileReturn() {
+  if (!hasProfileReturn()) return;
+  const {[returnKey]: _, ...rest} = history.state;
+  history.replaceState(rest, '');
+}
+
 // Focus belongs to the traversed history entry and to a still-present, validated link.
 export function mountProfileNavigation() {
-  const stateKey = 'vinkProfileReturn';
   let cancelFocus = () => {};
-  const address = () => location.pathname + location.search + location.hash;
 
   function focusWhenReady(expected, find, fallback, source) {
     cancelFocus();
@@ -52,7 +63,7 @@ export function mountProfileNavigation() {
     const href = link.getAttribute('href');
     if (!href || link.origin !== location.origin) return;
     const source = address();
-    history.replaceState({...history.state, [stateKey]: {id: link.id, href, source}}, '');
+    history.replaceState({...history.state, [returnKey]: {id: link.id, href, source}}, '');
     const heading = href.startsWith('/@') ? 'author-profile-heading' :
       href === '/toi/chinh-ho-so' ? 'edit-profile-heading' :
       href === '/toi#edit-profile-link' ? 'edit-profile-link' : '';
@@ -61,7 +72,7 @@ export function mountProfileNavigation() {
 
   function restore() {
     cancelFocus();
-    const entry = history.state?.[stateKey];
+    const entry = history.state?.[returnKey];
     if (!entry || entry.source !== address()) return;
     const fallback = entry.id.startsWith('profile-work-') ? 'author-works-heading' :
       entry.id.startsWith('work-') ? 'community-stream' :

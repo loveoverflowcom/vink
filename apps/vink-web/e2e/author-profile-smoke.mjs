@@ -181,7 +181,9 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   check(await guest.eval(`${q('.vk-author-bio')}.textContent===${JSON.stringify(bio)}
     && ${q(selector('profile-work-' + ids.a))} && !${q(selector('profile-work-' + ids.b))}
     && !${q('#own-profile-edit-link')}`), 'public profile lists the correct principal and no owner action');
+  await guest.waitFor("document.documentElement.dataset.hydrated==='true'", 'public profile hydrated');
   await guest.capture('author-public-desktop', {scenario:'guest with Bio and works', textScale:100});
+  await captureLayouts(guest, check, 'public', '#author-profile-heading, .vk-author-bio, #author-works-heading, .vk-author-works a');
   const staleTab = await openPage();
   await edit(staleTab, base);
   await fill(staleTab, BIO, 'Bản nháp còn ở tab kia');
@@ -298,7 +300,7 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   }
   check(await guest.eval(`!!${q('#comment-' + ids.tail + ' a[href="#comment-' + ids.reply + '"]')}`),
     'reply context still has a separate comment jump');
-  await guest.eval(`${q('#feedback-heading')}.scrollIntoView({block:'start'})`);
+  await guest.eval(`${q('#comment-' + ids.tail)}.scrollIntoView({block:'center'})`);
   await guest.capture('author-reply-context', {scenario:'reader discussion bylines', textScale:100});
   // Freeze a document carrying B's byline before retiring B in this disposable fixture.
   await guest.goto(base + readerPath);

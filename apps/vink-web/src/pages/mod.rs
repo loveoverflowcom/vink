@@ -403,6 +403,15 @@ fn focus_recovery(id: &'static str) {
     let _ = id;
 }
 
+#[cfg(feature = "hydrate")]
+#[wasm_bindgen::prelude::wasm_bindgen(module = "/profile/navigation.js")]
+extern "C" {
+    #[wasm_bindgen(js_name = hasProfileReturn)]
+    fn has_profile_return() -> bool;
+    #[wasm_bindgen(js_name = clearProfileReturn)]
+    fn clear_profile_return();
+}
+
 /// Mark only the current public history entry. A new tab/modifier click must not move it.
 #[cfg(feature = "hydrate")]
 fn remember_public_position(
@@ -421,6 +430,7 @@ fn remember_public_position(
         return;
     }
     if let Ok(history) = window().history() {
+        clear_profile_return();
         // Use the router's replace so its path stack also learns the row fragment. A raw
         // replaceState leaves the prior path in Leptos: Back doesn't pop Reader, so opening
         // that same Reader again may render its tree without pushing its URL.
@@ -461,7 +471,9 @@ fn restore_public_position(stream: NodeRef<leptos::html::Section>, settled: Memo
             let address = window().location();
             // Own the exact mounted result region and URL. Same row IDs can occur in
             // several queries, even when a stale callback sees the same path and hash.
+            // A later author click can intentionally leave that row fragment in place.
             if !stream.is_connected()
+                || has_profile_return()
                 || address.pathname().ok().as_deref() != Some(path.as_str())
                 || address
                     .search()

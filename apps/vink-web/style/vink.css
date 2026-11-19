@@ -1930,7 +1930,7 @@ a {
 /* Author profile and its session-scoped editor */
 .vk-author-public header { overflow-wrap: anywhere; }
 .vk-author-bio { white-space: pre-wrap; overflow-wrap: anywhere; }
-.vk-author-works { display: grid; gap: var(--vk-space-2); padding-inline-start: var(--vk-space-5); }
+.vk-author-works { display: grid; gap: var(--vk-space-2); padding-inline-start: var(--vk-space-6); }
 .vk-author-public section > .vk-ui-link { display: inline-block; margin-inline-end: var(--vk-space-3); }
 .vk-profile-edit { max-inline-size: 42rem; }
 .vk-profile-form, .vk-profile-form fieldset, .vk-profile-field { display: grid; gap: var(--vk-space-2); min-inline-size: 0; }
