@@ -108,6 +108,38 @@ async function captureLayouts(page, check, name, target) {
   await page.viewport(1280);
 }
 
+// A synthetic persisted event exercises the live-document branch even on a Chrome
+// configuration that chooses a fresh document for the real Back traversal below.
+async function restoredAttribution(page, check, holdAnswer, { url, endpoint, links, labels, content }) {
+  await page.goto(url);
+  await page.send('Page.bringToFront');
+  const targets = Object.entries(links);
+  const linked = targets.map(([selector, href]) =>
+    `${q(selector)}?.getAttribute('href')===${JSON.stringify(href)}`).join(' && ');
+  await page.waitFor(`document.documentElement.dataset.hydrated==='true' &&
+    document.visibilityState==='visible' && ${linked}`, 'fresh linked document before history event');
+  await page.eval(`(async () => {
+    window.dispatchEvent(new PageTransitionEvent('pageshow'));
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  })()`);
+  check(await page.eval(linked), 'ordinary pageshow does not suppress fresh attribution');
+
+  const response = await holdAnswer(page, 'GET', endpoint);
+  await page.eval("window.dispatchEvent(new PageTransitionEvent('pageshow', {persisted:true}))");
+  check(await response.held() === 200, `persisted pageshow immediately reads ${endpoint}`);
+  try {
+    const fenced = targets.map(([selector]) => `!${q(selector + '[href]')}`);
+    const safe = labels.map(selector =>
+      `${q(selector)}?.textContent.includes('Chưa xác nhận được tác giả') &&
+        !${q(selector)}.textContent.includes(${JSON.stringify(SAME_NAME)})`);
+    await page.waitFor(`${q(content)} && ${[...fenced, ...safe].join(' && ')}`,
+      'stale names and links are absent while the current projection is pending');
+  } finally {
+    await response.finish();
+  }
+  await page.waitFor(linked, 'the current projection restores the correct links');
+}
+
 export async function authorProfiles(page, other, {base, openPage, check, holdAnswer, switchActor, textContrast}) {
   console.log('Author Profile and bylines (#292/#293):');
   await page.goto(base + '/toi');
@@ -344,6 +376,24 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await guest.capture('author-reply-context', {scenario:'reader discussion bylines', textScale:100});
   await guest.click(jump);
   await guest.waitFor(`location.hash===${JSON.stringify(commentHash)}`, 'reply context jumps to the replied-to comment');
+  const workApi = '/api/v1/works/' + ids.a;
+  await guest.send('Network.setCacheDisabled', {cacheDisabled:true});
+  await restoredAttribution(guest, check, holdAnswer, {
+    url:base + discovery, endpoint:'/api/v1/works', links:{[cardA]:aPath, [cardB]:bPath},
+    labels:[rowA + ' .vk-public-row__author', '#work-' + ids.b + ' .vk-public-row__author'], content:titleA,
+  });
+  await restoredAttribution(guest, check, holdAnswer, {
+    url:base + readerPath, endpoint:workApi + '/reader', links:{'#reader-author':aPath},
+    labels:['.vk-work-byline'], content:'#reader-paper',
+  });
+  await restoredAttribution(guest, check, holdAnswer, {
+    url:base + readerPath, endpoint:workApi + '/discussion/public',
+    links:Object.fromEntries(bylines.slice(1)),
+    labels:['#comment-' + ids.root + ' .vk-discussion-name', '#comment-' + ids.reply + ' .vk-discussion-name',
+      '#comment-' + ids.tail + ' .vk-discussion-context'], content:'#comment-' + ids.root,
+  });
+  await guest.send('Network.setCacheDisabled', {cacheDisabled:false});
+  console.log('  ok  persisted pageshow revalidates Discovery, Reader and reply context before restoring links');
   // Freeze a document carrying B's byline before retiring B in this disposable fixture.
   await guest.goto(base + readerPath);
   await guest.waitFor(`document.documentElement.dataset.hydrated==='true' && ${q(bylines[2][0])}`,

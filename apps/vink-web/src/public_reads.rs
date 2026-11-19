@@ -1401,9 +1401,9 @@ mod browser {
         apply_effects(effects);
     }
 
-    /// Focus, becoming visible, `online` and a back/forward-cache restore revalidate observed
-    /// stale snapshots (`online` is only a hint: a failure still backs off). Hidden pauses the
-    /// timer. Installed once for the tab's lifetime; views only observe/release.
+    /// Ordinary wake hints revalidate observed stale snapshots. A restored history document
+    /// can have missed profile changes while frozen, so fence its attribution before refreshing
+    /// even if the snapshot was fresh just before leaving. Install once for the tab's lifetime.
     fn listen() {
         with(|owner| {
             if owner.listener.is_some() {
@@ -1413,10 +1413,14 @@ mod browser {
                 leptos::task::spawn_local(synchronize_storage());
             });
             leptos::task::spawn_local(synchronize_storage());
-            let signal = crate::read_events::register(|| {
+            let signal = crate::read_events::register(|hint| {
                 leptos::task::spawn_local(synchronize_storage());
-                let effects = with(|owner| owner.coord.signal_all(now(), visible()));
-                apply_effects(effects);
+                if hint == crate::read_events::Hint::HistoryRestored {
+                    invalidate_author_attribution();
+                } else {
+                    let effects = with(|owner| owner.coord.signal_all(now(), visible()));
+                    apply_effects(effects);
+                }
             });
             owner.listener = Some(signal);
         });
@@ -1529,6 +1533,52 @@ mod tests {
             panic!("expected fenced work data");
         };
         assert_eq!(list.works[0].author, Some(AuthorProjection::Unsupported));
+    }
+
+    #[test]
+    fn author_contract_history_restore_fences_even_fresh_observed_attribution() {
+        use crate::contract::{AuthorProjection, PublicAuthorRef};
+        let key = PublicKey::Reader("work".into());
+        let mut linked = sample_pub("work", "revision");
+        let Snapshot::Publication(publication) = &mut linked else {
+            unreachable!()
+        };
+        publication.author = Some(AuthorProjection::Linked(PublicAuthorRef {
+            pen_name: "Bút danh trước đó".into(),
+            handle: "ten-cu".into(),
+            href: "/@ten-cu".into(),
+        }));
+        let mut read = Coordinator::new(Policy::V1);
+        read.follow_seed(key.clone(), linked.clone(), 1.0, 1.0);
+        assert!(read.signal_all(2.0, true).fetches.is_empty());
+        let effects = read.invalidate_author_attribution(3.0, true);
+        assert!(effects.notify_changed);
+        assert_eq!(effects.fetches.len(), 1);
+        assert_eq!(effects.fetches[0].0, key);
+        assert!(read.signal_all(4.0, true).fetches.is_empty());
+        let Some(Snapshot::Publication(fenced)) = read.status(&key).and_then(|s| s.data) else {
+            panic!("expected retained publication");
+        };
+        assert_eq!(fenced.revision_id, "revision");
+        assert_eq!(fenced.author, Some(AuthorProjection::Unsupported));
+        assert!(fenced.author_display_name.is_empty());
+
+        let Snapshot::Publication(publication) = &mut linked else {
+            unreachable!()
+        };
+        publication.author = Some(AuthorProjection::Deleted {
+            label: "Tài khoản đã xóa".into(),
+        });
+        publication.author_display_name = "Tài khoản đã xóa".into();
+        read.finish(
+            key.clone(),
+            effects.fetches[0].1,
+            Outcome::Fresh(linked.clone()),
+            5.0,
+            0.0,
+            true,
+        );
+        assert_eq!(read.status(&key).and_then(|s| s.data), Some(linked));
     }
 
     fn sample_pub(id: &str, rev: &str) -> Snapshot {

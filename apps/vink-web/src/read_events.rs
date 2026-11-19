@@ -5,11 +5,17 @@ mod browser {
     use leptos::prelude::*;
     use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
     use wasm_bindgen::{JsCast, closure::Closure};
-    type Hook = Rc<dyn Fn()>;
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub enum Hint {
+        Wake,
+        HistoryRestored,
+    }
+
+    type Hook = Rc<dyn Fn(Hint)>;
     struct Events {
         next: u64,
         hooks: BTreeMap<u64, Hook>,
-        listener: Option<Closure<dyn FnMut()>>,
+        listener: Option<Closure<dyn FnMut(web_sys::Event)>>,
     }
     thread_local! {
         static EVENTS: RefCell<Events> = RefCell::new(Events { next: 0, hooks: BTreeMap::new(), listener: None });
@@ -23,10 +29,13 @@ mod browser {
         window().performance().map(|p| p.now()).unwrap_or(0.0)
     }
     pub fn observe(hook: impl Fn() + 'static) {
+        observe_lifecycle(move |_| hook());
+    }
+    pub fn observe_lifecycle(hook: impl Fn(Hint) + 'static) {
         let owner = Owner::current().map(|o| o.downgrade());
-        let id = register(move || {
+        let id = register(move |hint| {
             if let Some(owner) = owner.as_ref().and_then(|o| o.upgrade()) {
-                owner.with(&hook);
+                owner.with(|| hook(hint));
             }
         });
         on_cleanup(move || {
@@ -35,19 +44,29 @@ mod browser {
             })
         });
     }
-    pub fn register(hook: impl Fn() + 'static) -> u64 {
+    pub fn register(hook: impl Fn(Hint) + 'static) -> u64 {
         EVENTS.with_borrow_mut(|e| {
             e.next += 1;
             let id = e.next;
             e.hooks.insert(id, Rc::new(hook));
             if e.listener.is_none() {
-                let listener = Closure::<dyn FnMut()>::new(|| {
-                    let hooks =
-                        EVENTS.with_borrow(|e| e.hooks.values().cloned().collect::<Vec<_>>());
-                    for hook in hooks {
-                        hook();
-                    }
-                });
+                let listener =
+                    Closure::<dyn FnMut(web_sys::Event)>::new(|event: web_sys::Event| {
+                        let hint = if event.type_() == "pageshow"
+                            && event
+                                .dyn_ref::<web_sys::PageTransitionEvent>()
+                                .is_some_and(web_sys::PageTransitionEvent::persisted)
+                        {
+                            Hint::HistoryRestored
+                        } else {
+                            Hint::Wake
+                        };
+                        let hooks =
+                            EVENTS.with_borrow(|e| e.hooks.values().cloned().collect::<Vec<_>>());
+                        for hook in hooks {
+                            hook(hint);
+                        }
+                    });
                 let callback = listener.as_ref().unchecked_ref();
                 let _ = document().add_event_listener_with_callback("visibilitychange", callback);
                 for event in ["online", "focus", "pageshow"] {
@@ -65,7 +84,7 @@ mod browser {
 #[cfg(feature = "perf-probe")]
 pub(crate) use browser::subscriptions;
 #[cfg(feature = "hydrate")]
-pub use browser::{now, observe, register, visible};
+pub use browser::{Hint, now, observe, observe_lifecycle, register, visible};
 
 /// Signal throttling/backoff for no-store owners. Initial/manual reads bypass the deadline;
 /// automatic hints coalesce, including when a read fails before the next event in a burst.
