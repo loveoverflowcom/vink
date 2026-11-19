@@ -167,7 +167,7 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
 
   const heldFirst = await holdAnswer(page, 'PUT', `/api/v1/authors/${handleB}/relationship/me`);
   await page.click('#follow-action');
-  check((await heldFirst.held()) === 200, 'real server committed PUT #1 (order 1) before ACK was held');
+  check((await heldFirst.held()) === 200, 'real server committed the first PUT of the ABA case before ACK was held');
   check((await page.eval('window.__followEvents.length')) === 0, 'vink:follow-changed does NOT fire while ACK is pending');
 
   // Slow pending reveals #follow-reconcile after ~1s; clicking duplicate #follow-action does not double-send.
@@ -179,15 +179,15 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   );
   await page.waitFor(`${q('#profile-followers-link')}?.textContent?.includes('1 người theo dõi')`, 'reconcile updated followers count to 1');
 
-  // Unfollow (order 2).
+  // Unfollow as the newer intent.
   await page.click('#follow-action');
   await page.waitFor(
     `${q('#follow-action')}?.textContent?.trim() === 'Theo dõi' && window.__followEvents.length === 2`,
-    'Unfollow (order 2) settles and dispatches second invalidation event'
+    'newer Unfollow settles and dispatches second invalidation event'
   );
   check(await page.eval(`${q('#profile-followers-link')}?.textContent?.includes('0 người theo dõi')`), 'count decremented to 0 after Unfollow');
 
-  // Release delayed ACK of PUT #1 (order 1): MUST be completely ignored!
+  // Release the older delayed ACK; the newer accepted intent must remain visible.
   await heldFirst.finish(false, true);
   await sleep(150);
   check(await page.eval(`${q('#follow-action')}?.textContent?.trim() === 'Theo dõi'`), 'stale late v1 ACK ignored; button remains Theo dõi');
@@ -223,7 +223,7 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   check(await guest.eval(`${q('#profile-followers-link')}.textContent.trim() === 'Người theo dõi'`), 'profile hides count when followers_count=self');
 
   await guest.click('#profile-followers-link');
-  await guest.waitFor(`document.querySelectorAll('.vk-rel-item').length === 12`, 'page 1 shows 12 followers');
+  await guest.waitFor(`document.querySelectorAll('.vk-rel-item').length === 12 && ${q('#rel-load-more')}`, 'hydrated page 1 shows 12 followers and can append');
   check(await guest.eval(`!${q('#relationship-count')}`), 'list page omits count when followers_count=self');
 
   // Simulate append failure -> existing 12 rows stay mounted + retry button works -> 15 rows load!
