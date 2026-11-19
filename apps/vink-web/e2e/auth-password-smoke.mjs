@@ -55,7 +55,7 @@ async function createDraft(page, title) {
   return id;
 }
 
-async function attachVerifiedEmail(page, { args, check, accountBefore, draft }) {
+async function attachVerifiedEmail(page, { args, check, accountBefore, draft, seen }) {
   const path = '/api/v1/auth/email/attachment';
   const email = 'nhap-da-luu@vi-du.vn';
   const field = (suffix) => `#email-attach-${suffix}`;
@@ -94,13 +94,27 @@ async function attachVerifiedEmail(page, { args, check, accountBefore, draft }) 
   check(await page.eval(`!${q(field('code'))} && ${q(field('password'))}.value === ''`),
     '#329 bad current password does not advance and the password is cleared');
   await fill(page, field('password'), SECRET_A);
+  const pending = await holdAnswer(page, 'POST', path + '/challenges');
   await page.click(field('send'));
-  await page.waitFor(`document.activeElement?.id === 'email-attach-code'`, '#329 accepted request focuses code');
+  check(await pending.held() === 202, '#329 holds a real issued challenge before delivery');
+  await page.eval(`${q('#password-credential')}.focus()`);
+  await pending.finish(false, true);
+  await page.waitFor(q(field('code')), '#329 code is available after the delayed response');
+  check(await page.eval(`document.activeElement === ${q('#password-credential')}`),
+    '#329 receipt does not steal focus back from another account setting');
+  await mailedCode(args.outbox, email, seen);
+  await page.click(field('new-code'));
+  await page.waitFor(q(field('add')), '#329 start again reads the still-missing binding');
+  await page.click(field('add'));
+  await fill(page, field('address'), email);
+  await fill(page, field('password'), SECRET_A);
+  await page.click(field('send'));
+  await page.waitFor(`document.activeElement?.id === 'email-attach-code'`, '#329 accepted request focuses code when the form still owns focus');
   const handle = (await cookies(page, args.base))['__Host-vink_attach'];
   check(handle?.httpOnly && handle.secure && handle.sameSite === 'Strict' &&
     await page.eval(`!${q(field('password'))} && ${q(field('code'))}.autocomplete === 'one-time-code'`),
     '#329 secure strict Handle is browser-owned, password is removed, and code supports autofill');
-  const otp = await mailedCode(args.outbox, email, new Set());
+  const otp = await mailedCode(args.outbox, email, seen);
   const wrong = String((Number(otp) + 1) % 1000000).padStart(6, '0');
   await fill(page, field('code'), wrong);
   await page.click(field('confirm'));
@@ -129,6 +143,7 @@ async function attachVerifiedEmail(page, { args, check, accountBefore, draft }) 
     bodyText(await page.draft(draft)) === DRAFT_TEXT &&
     await page.eval(`!${q(field('code'))} && !${q(field('add'))}`),
     '#329 canonical email binds to the same session, principal, pen name and existing draft; no second attach control');
+  return email;
 }
 
 async function expiredDesk(page, {base, check, openPage}) {
@@ -426,7 +441,11 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
     bodyText(await page.draft(draftA)) === DRAFT_TEXT, 'password returns to the same principal, pen name and stored draft');
 
   console.log('Auth password: first verified email, wrong code and lost completion ACK:');
-  await attachVerifiedEmail(page, { args, check, accountBefore: A, draft: draftA });
+  const attachedEmail = await attachVerifiedEmail(page, { args, check, accountBefore: A, draft: draftA, seen: ctx.seen });
+  await signOut(page, base);
+  await signIn(page, ctx, attachedEmail);
+  check((await account(page)).body.principal_id === A.principal_id && bodyText(await page.draft(draftA)) === DRAFT_TEXT &&
+    await page.eval(`!${q('#pen-name-form')}`), '#327/#329 sign-in with the newly attached mailbox returns to the same writer and saved draft, without onboarding');
 
   console.log('Auth password: email account adds a credential without changing its session:');
   const { browserContextId } = await page.cdp.send('Target.createBrowserContext', { disposeOnDetach: false });
@@ -483,6 +502,9 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   check(await lostEnroll.held() === 200, 'real server committed the enrollment before the ACK is dropped');
   await lostEnroll.finish(true);
   await other.waitFor(contains('đã có thông tin đăng nhập'), 'enrolled status read after lost ACK');
+  await other.waitFor(`${q('#email-attach-verified')}?.textContent.includes(${JSON.stringify(email)})`,
+    '#329 eligibility changes after confirmed enrollment: email already bound is shown without reloading Tôi');
+  check(await other.eval(`!${q('#email-attach-add')}`), '#329 the newly enrolled account cannot attach its verified email again');
   check(enrollment.count() === 1 && (await cookies(other, base))[sessionCookie]?.value === cookieBefore.value &&
     (await account(other)).body.principal_id === B.principal_id &&
     await other.eval(`!${q(ENROLL + '-password')} && !${contains(userB)}`),

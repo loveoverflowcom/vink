@@ -36,6 +36,13 @@ function preserved(editor, key, text, includeScroll = true) {
 }
 
 export async function readerAuthClosed(page, { args, check }) {
+  await page.goto(args.base + '/toi');
+  await page.waitFor(`${HYDRATED} && ${q('#sign-in-closed')} && ${q('#auth-appearance')}`, 'closed sign-in on Tôi');
+  check(await page.eval(`!${q('#password-login, #password-register, #sign-in-email, #pen-name-form')} &&
+    ${q('#sign-in-closed')}.textContent.includes('Vink chưa mở đăng nhập')`), '#327 closed gate has no Auth form');
+  await page.eval(`${q('#auth-appearance')}.focus()`);
+  await page.key('Enter');
+  await page.waitFor(active('page-appearance'), '#327 keyboard still reaches Appearance on the real closed deployment');
   await page.goto(args.base + HERE);
   await page.waitFor(`${HYDRATED} && ${standing('anonymous')} && ${q(ROOT_EDITOR)}`, 'guest on disabled sign-in deployment');
   await page.typeAtEnd(ROOT_EDITOR, ROOT_TEXT);
