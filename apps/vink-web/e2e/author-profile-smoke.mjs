@@ -63,11 +63,11 @@ function fixture(a, b) {
     INSERT INTO tag_names(slug,tag_id,kind) VALUES ('tan-van',${literal(ids.tag)},'canonical');
     ${works.join('\n')}
     INSERT INTO discussion_threads(id,work_id) VALUES (${literal(ids.thread)},${literal(ids.a)});
-    INSERT INTO comments(id,thread_id,kind,root_id,root_kind,reply_to_id,replied_to_reply,author_id,body,review,moderation_version,created_at)
+    INSERT INTO comments(id,thread_id,kind,root_id,root_kind,reply_to_id,replied_to_reply,author_id,body,review,moderation_version,admission_policy,admission_reason,created_at)
     VALUES
-      (${literal(ids.root)},${literal(ids.thread)},'root',NULL,NULL,NULL,false,${literal(a)},'Nhận xét tại gốc','pending',1,now()),
-      (${literal(ids.reply)},${literal(ids.thread)},'reply',${literal(ids.root)},'root',NULL,false,${literal(b)},'Lời đáp thứ nhất','pending',1,now() + interval '1 second'),
-      (${literal(ids.tail)},${literal(ids.thread)},'reply',${literal(ids.root)},'root',${literal(ids.reply)},true,${literal(a)},'Gửi lại người vừa trả lời','pending',1,now() + interval '2 seconds');
+      (${literal(ids.root)},${literal(ids.thread)},'root',NULL,NULL,NULL,false,${literal(a)},'Nhận xét tại gốc','pending',1,'premoderation.v1','policy_premoderation',now()),
+      (${literal(ids.reply)},${literal(ids.thread)},'reply',${literal(ids.root)},'root',NULL,false,${literal(b)},'Lời đáp thứ nhất','pending',1,'premoderation.v1','policy_premoderation',now() + interval '1 second'),
+      (${literal(ids.tail)},${literal(ids.thread)},'reply',${literal(ids.root)},'root',${literal(ids.reply)},true,${literal(a)},'Gửi lại người vừa trả lời','pending',1,'premoderation.v1','policy_premoderation',now() + interval '2 seconds');
     UPDATE comments SET review='approved', moderation_version=2 WHERE thread_id=${literal(ids.thread)};
     COMMIT;`);
   return ids;
