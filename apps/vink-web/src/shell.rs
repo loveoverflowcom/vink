@@ -196,8 +196,7 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
                     destinations=primary()
                     account=move || {
                         move || if guest.get() {
-                            view! { <GuestAccountLink current=active(Destination::Me)
-                                expanded=Signal::derive(move || layout.get().rail_expanded()) /> }.into_any()
+                            view! { <GuestAccountLink current=active(Destination::Me) /> }.into_any()
                         } else {
                             view! {
                                 <NavUtility
@@ -284,20 +283,16 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
 }
 
 #[component]
-fn GuestAccountLink(
-    current: Signal<bool>,
-    #[prop(optional)] expanded: Signal<bool>,
-) -> impl IntoView {
+fn GuestAccountLink(current: Signal<bool>) -> impl IntoView {
     let open = crate::api::sign_in_open();
-    let full = if open {
-        "Đăng nhập / Đăng ký"
+    let label = if open {
+        "Đăng nhập"
     } else {
         "Tài khoản"
     };
     view! {
-        <NavItem destination=NavDestination::new(Destination::Me.key(), full, IconName::Person, "/toi")
+        <NavItem destination=NavDestination::new(Destination::Me.key(), label, IconName::Person, "/toi")
             active=current attr:data-sign-in=open.then_some("")
-            visible_label=Signal::derive(move || if open && !expanded.get() { "Đăng nhập".to_owned() } else { full.to_owned() })
         />
     }
 }
