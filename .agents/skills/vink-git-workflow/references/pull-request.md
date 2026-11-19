@@ -74,7 +74,7 @@ chứa chúng.
 
 ## Draft hay ready
 
-Mở `--draft` khi:
+Mặc định mở `--draft`. Nếu được giao mở ready, vẫn giữ draft và nêu lý do khi:
 
 - một khẳng định ở tiêu đề hoặc Tóm tắt chưa có bằng chứng (check cần cho khẳng định đó là
   `NOT_RUN` hoặc `FAIL`);
@@ -82,14 +82,13 @@ Mở `--draft` khi:
 - thay đổi UI cần người xem ảnh/video trước khi review.
 
 Boundary nằm ngoài phạm vi đã nêu rõ (thiết bị thật, native host) và được ghi `NOT_RUN` trong
-Kiểm chứng không tự buộc PR thành draft.
+Kiểm chứng không tự cản yêu cầu chuyển ready.
 
 ## Lệnh tạo và kiểm
 
 ```bash
 gh label list --limit 100
-gh pr create --base develop --head <nhánh> --title '<tiêu đề>' --body-file - \
-  --assignee @me [--draft] [--label enhancement] <<'EOF'
+gh pr create --draft --base develop --head "$branch" --title "$title" --body-file - <<'EOF'
 <body>
 EOF
 gh pr view --json number,url,headRefOid,isDraft
@@ -98,8 +97,8 @@ git rev-parse HEAD
 
 - Label: `feat` → `enhancement`, `fix`/`hotfix` → `bug`, `docs` → `documentation`; chỉ gắn label
   có trong `gh label list`.
-- Không tự đoán reviewer. Repo chưa có `CODEOWNERS`.
-- `headRefOid` phải bằng `git rev-parse HEAD`; khác thì đẩy lại hoặc báo.
+- Không tự gán assignee (kể cả `@me`) hay reviewer khi chưa được giao. Repo chưa có `CODEOWNERS`.
+- `headRefOid` phải bằng `git rev-parse HEAD`; khác thì fetch và kiểm tra lại, không ghi đè commit người khác.
 
 ## Cập nhật PR
 

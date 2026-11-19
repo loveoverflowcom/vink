@@ -27,6 +27,7 @@ Format `<type>/<issue>-<slug>`; bỏ `<issue>-` khi không có issue.
 
   ```bash
   git fetch origin develop
+  # Chọn một trong hai: đổi nhánh ngay tại đây HOẶC tạo worktree riêng.
   git switch --no-track -c fix/318-tag-save-after-422 origin/develop
   git worktree add --no-track -b fix/318-tag-save-after-422 ../vink-fix-318 origin/develop
   ```

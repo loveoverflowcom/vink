@@ -19,14 +19,14 @@ Chi tiết, bảng và ví dụ: [nhánh, commit, trailer và liên kết](refer
 
 - `develop` là nhánh tích hợp và default branch. Không có nhánh production riêng: image OCI chỉ
   được publish thủ công từ `develop` (`publish-images.yml`).
-- GitHub squash với `COMMIT_OR_PR_TITLE` + `COMMIT_MESSAGES`: PR nhiều commit lấy **tiêu đề PR**
-  làm subject trên `develop`, PR một commit lấy **subject của commit đó**; body là mọi commit
-  message nối thành danh sách `*`. GitHub tự nối ` (#PR)` vào subject. Vì vậy cả subject commit
-  lẫn tiêu đề PR đều phải đạt chuẩn.
+- Theo [mốc đối chiếu](../../../docs/references/skill-adaptation.md), repo dùng
+  `COMMIT_OR_PR_TITLE` + `COMMIT_MESSAGES`: PR nhiều commit lấy **tiêu đề PR**, PR một
+  commit lấy **subject của commit** làm subject squash trước hậu tố ` (#PR)`. Người merge
+  có thể sửa subject và body mặc định. Vì vậy kiểm cả subject commit lẫn tiêu đề PR.
 - Chưa có `.github/pull_request_template.md` hay `CODEOWNERS`; label hiện có gồm `bug`,
   `enhancement`, `documentation`, `accessibility`. Khi nghi cấu hình đã đổi, kiểm lại bằng
   `gh api repos/{owner}/{repo} --jq '{squash_merge_commit_title,squash_merge_commit_message}'`
-  và `gh label list`.
+  và `gh label list`. Trường trả về `null` không xác nhận cấu hình hiện tại.
 
 ## 1. Inspect
 
@@ -52,14 +52,15 @@ Bảng `type` ở [conventions](references/conventions.md#nhánh).
 
 | Tình huống | Làm |
 | --- | --- |
-| Detached HEAD, hoặc đang ở `develop`/`main`/`master` | Tạo nhánh mới từ `origin/develop` vừa fetch với `--no-track` (worktree riêng nếu checkout đang có việc khác), trừ khi người dùng yêu cầu commit thẳng |
+| Detached HEAD đã có commit của task | Neo nhánh mới tại HEAD hiện tại (`git switch -c <tên-mới>`), hoặc tiếp tục đúng head PR đã giao; không chuyển sang base làm mất dấu commit |
+| Bắt đầu task mới từ nhánh tích hợp hoặc detached HEAD không có thay đổi cần giữ | Tạo nhánh mới từ `origin/develop` vừa fetch với `--no-track` (worktree riêng nếu checkout đang có việc khác), trừ khi người dùng yêu cầu commit thẳng |
 | Tiền tố công cụ (`codex/`, `claude/`, `ai/`, `agent/`, `copilot/`, `cursor/`, `gemini/`, `antigravity/`…) hoặc sai format, **chưa có trên remote và chưa có PR** | `git branch -m <tên-mới>`, kể cả khi host đặt sẵn tên đó; báo tên mới |
 | Đã có trên remote hoặc đã có PR (gồm các nhánh `codex/*` cũ) | Giữ nguyên, ghi một dòng cảnh báo trong báo cáo. Chỉ đổi khi người dùng yêu cầu |
 | Người dùng chỉ định tên nhánh | Dùng đúng tên đó |
 
-Kiểm "đã có trên remote" bằng `git ls-remote --exit-code --heads origin <nhánh>` và
-`gh pr list --head <nhánh> --state all --json number`. Không dựa vào `@{u}`: nhánh tạo từ
-`origin/develop` thường track sẵn `origin/develop` dù chưa từng push.
+Kiểm đúng ref bằng `git ls-remote --exit-code --heads origin "refs/heads/$branch"` (0: có, 2: không có) và
+`gh pr list --head <nhánh> --state all --json number`. Nếu không tra được remote/PR, giữ nguyên tên.
+Không dựa vào `@{u}`: nhánh tạo từ `origin/develop` thường track sẵn `origin/develop` dù chưa từng push.
 
 ## 3. Resolve sources
 
@@ -119,9 +120,9 @@ Chỉ push/mở PR khi được giao. Chi tiết và mẫu body: [pull-request.m
    (điểm tác giả chưa chắc chắn) chỉ khi có. Mục không liên quan thì xoá, không ghi "N/A". Kiểm chứng dùng `PASS`/`FAIL`/`NOT_RUN`/`UNSUPPORTED`
    kèm lệnh, SHA và boundary theo [verification guide](../vink-engineering/references/verification.md);
    không ghi kết quả cho lệnh chưa chạy.
-5. Mở `--draft` khi một khẳng định ở tiêu đề/Tóm tắt còn thiếu bằng chứng, còn câu hỏi sản phẩm
-   mở, hoặc UI cần người xem trước khi review.
-6. Label map theo type nhưng chỉ dùng label có sẵn; `--assignee @me`; không tự đoán reviewer.
+5. Mặc định mở `--draft`. Khi được giao mở ready, kiểm bằng chứng cho tiêu đề/Tóm tắt,
+   câu hỏi sản phẩm còn mở và nhu cầu xem UI trước review.
+6. Chỉ dùng label có sẵn; không tự gán assignee hoặc reviewer khi chưa được giao.
 7. Sau khi mở: `gh pr view --json number,url,headRefOid,isDraft`, đối chiếu `headRefOid` với
    `git rev-parse HEAD`.
 8. Cập nhật sau review đổi phạm vi hoặc thiết kế: đọc lại cả khoảng, `gh pr edit <n> --title …
@@ -131,8 +132,8 @@ Chỉ push/mở PR khi được giao. Chi tiết và mẫu body: [pull-request.m
 
 - Liệt kê issue/quyết định sau một đường dẫn:
   `git log --format='%h %s%n%(trailers:key=Refs,key=Decision,key=Spec,valueonly)' -- <path>`.
-- Commit squash trên `develop` đặt trailer của từng commit bên trong danh sách `*`, nên git
-  không còn coi đó là trailer. Tìm bằng chuỗi cố định:
+- Nếu body squash giữ trailer của từng commit bên trong danh sách `*`, Git có thể không
+  nhận chúng là trailer. Tìm bằng chuỗi cố định:
   `git log origin/develop -F --grep='Decision: O-17'`, `git log origin/develop -F --grep='#328'`.
 - Số PR ở cuối subject (` (#332)`) mở được bằng `gh pr view 332`. Commit trước skill này dùng
   `Refs #328` (không dấu `:`) và tiêu đề tiếng Việt không có `type(scope)`; tìm theo `#328`.
@@ -159,8 +160,11 @@ Chỉ push/mở PR khi được giao. Chi tiết và mẫu body: [pull-request.m
 
 Người dùng có thể tự bật hook (commit-msg kiểm message; pre-push chặn tạo nhánh remote **mới**
 sai tên, không chặn nhánh cũ đã có) bằng
-`git config core.hooksPath .agents/skills/vink-git-workflow/scripts/hooks`. Lệnh này thay mọi
-hook trong `.git/hooks` và áp cho mọi worktree, nên agent không tự chạy nó khi chưa được yêu cầu.
+`git config core.hooksPath .agents/skills/vink-git-workflow/scripts/hooks`. Cấu hình này dùng chung giữa các
+worktree, thay nơi Git tìm hook (không xoá hook cũ).
+Đường dẫn tương đối được tìm trong checkout đang thao tác; revision chưa chứa script thì
+Git không chạy các hook này. Agent không tự bật. Kiểm hồi quy cục bộ, không cần bật hook ở repo thật:
+`python3 .agents/skills/vink-git-workflow/scripts/test_git_lint.py`.
 
 ## Báo cáo cuối
 

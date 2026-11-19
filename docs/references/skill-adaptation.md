@@ -220,8 +220,8 @@ chung cho Codex, Claude Code và Antigravity, thay quy ước nhánh `codex/<out
 | Thứ tự tra nguồn, cấm placeholder | Có | Thêm bàn giao `VINK_PROMPT_INPUT_V1`/`vink-recall` và tra revision bằng `cargo xtask decision query` |
 | Strict/fast mode | Fast mặc định, strict khi người dùng yêu cầu | `AGENTS.md`: skill không thêm bước hỏi lại cho quyền đã giao |
 | Mẫu PR body, checkbox `[x]` | Mục tiếng Việt; Kiểm chứng dùng `PASS`/`FAIL`/`NOT_RUN`/`UNSUPPORTED` kèm SHA và boundary | Cùng từ vựng với verification guide; link tương đối trong PR body render thành `href="docs/…"` (kiểm trên #332) nên dùng permalink hoặc code span |
-| Draft PR | Có | Boundary ngoài phạm vi đã ghi `NOT_RUN` không tự buộc draft |
-| Map label, `--assignee @me` | Có | Repo không có label `refactor`; chỉ gắn label có sẵn; không đoán reviewer |
+| Draft PR | Có | Mặc định mở draft; boundary ngoài phạm vi đã ghi `NOT_RUN` không tự cản yêu cầu chuyển ready |
+| Map label, `--assignee @me` | Chỉ map label có sẵn | Không mặc định gán người đang đăng nhập làm assignee; assignee/reviewer chỉ khi được giao |
 | Không footer AI trong PR | Có | `Co-Authored-By:` chỉ khi host hoặc người dùng yêu cầu |
 | Hook `commit-msg`, `pre-push` | Opt-in qua `core.hooksPath` | Agent không tự bật vì đây là cấu hình bền vững. Pre-push chỉ chặn tạo nhánh remote mới, để PR `codex/*` cũ vẫn push được. Không thêm lane CI vì sẽ chặn nhánh hiện có của người đóng góp |
 | Một skill thay vì hai | Có | Codex và Antigravity đọc `.agents/skills` (+ `agents/openai.yaml`), Claude Code đọc symlink `.claude/skills`; không cần thư mục `.codex/` riêng |

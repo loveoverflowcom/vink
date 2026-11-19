@@ -24,13 +24,10 @@ fail() { printf 'git-lint: %s\n' "$*" >&2; status=1; }
 warn() { printf 'git-lint: cảnh báo: %s\n' "$*" >&2; }
 list() { printf '%s' "$1" | sed 's/|/, /g'; }
 
-# Độ dài theo ký tự Unicode; thiếu perl thì đếm byte (chặt hơn).
+# UTF-8: mỗi code point có đúng một byte không phải byte tiếp nối (10xxxxxx).
+# Đếm giống nhau cả khi locale của hook là C và không có Perl.
 chars() {
-	if command -v perl >/dev/null 2>&1; then
-		printf '%s' "$1" | perl -CSD -e 'local $/; my $s = <STDIN>; print length($s // "")'
-	else
-		printf '%s' "$1" | wc -c | tr -d ' '
-	fi
+	printf '%s' "$1" | LC_ALL=C tr -d '\200-\277' | wc -c | tr -d ' '
 }
 
 usage() {
@@ -51,7 +48,7 @@ check_branch() {
 		fail "'$name' mang tiền tố công cụ: đổi bằng 'git branch -m' khi nhánh chưa có trên remote và chưa có PR"
 		return
 	fi
-	if ! printf '%s\n' "$name" | grep -Eq "^($BRANCH_TYPES)/([0-9]+-)?[a-z0-9]+(-[a-z0-9]+)*\$"; then
+	if ! git check-ref-format "refs/heads/$name" || ! printf '%s\n' "$name" | LC_ALL=C grep -Eq "^($BRANCH_TYPES)/([0-9]+-)?[a-z0-9]+(-[a-z0-9]+)*\$"; then
 		fail "'$name' không theo <type>/<issue>-<slug>, type thuộc: $(list "$BRANCH_TYPES"); chỉ a-z, 0-9 và '-'"
 	fi
 	n=$(chars "$name")
@@ -69,8 +66,15 @@ check_subject() {
 	s=$1
 	max=$2
 	what=$3
-	is_git_generated "$s" && return
-	if ! printf '%s\n' "$s" | grep -Eq "^($TYPES)(\([a-z0-9][a-z0-9._/-]*\))?!?: [^ ]"; then
+	case $s in
+	*'
+'*) fail "$what phải nằm trên một dòng"; return ;;
+	esac
+	if printf '%s' "$s" | LC_ALL=C grep -q '[[:cntrl:]]'; then
+		fail "$what chứa ký tự điều khiển"
+		return
+	fi
+	if ! printf '%s\n' "$s" | LC_ALL=C grep -Eq "^($TYPES)(\([a-z0-9][a-z0-9._/-]*\))?!?: [^ ]"; then
 		fail "$what phải có dạng 'type(scope): mô tả', type thuộc: $(list "$TYPES"); nhận: '$s'"
 	fi
 	n=$(chars "$s")
@@ -96,13 +100,13 @@ check_message() {
 		return
 	fi
 	subject=$(printf '%s\n' "$msg" | sed -n 1p)
-	check_subject "$subject" "$MAX_SUBJECT" 'subject commit'
 	is_git_generated "$subject" && return
+	check_subject "$subject" "$MAX_SUBJECT" 'subject commit'
 
 	second=$(printf '%s\n' "$msg" | sed -n 2p)
 	[ -z "$second" ] || fail 'dòng thứ hai phải trống: subject, một dòng trống, rồi body'
 
-	if printf '%s\n' "$msg" | grep -Eiq '#TBD|https?://[^ ]*(\.\.\.|…)'; then
+	if printf '%s\n' "$msg" | grep -Eiq '#TBD|https?://([^[:space:]]*/)?(\.\.\.|…)([/#?[:space:]]|$)'; then
 		fail 'có placeholder hoặc URL rút gọn: chỉ ghi nguồn có thật, không có thì bỏ trailer'
 	fi
 	if printf '%s\n' "$msg" | grep -Eq '\[[^]]+\]\(https?://'; then
@@ -124,14 +128,16 @@ check_message() {
 		END {
 			m = split(last, line, "\n")
 			for (i = 1; i <= m; i++)
-				if (line[i] !~ /^[A-Za-z][A-Za-z-]*( [A-Za-z-]+)?: /) exit
+				if (line[i] !~ /^[A-Za-z][A-Za-z-]*( [A-Za-z-]+)?:/) exit
 			for (i = 1; i <= m; i++) {
-				p = index(line[i], ": ")
+				p = index(line[i], ":")
 				key = tolower(substr(line[i], 1, p - 1))
-				val = substr(line[i], p + 2)
+				val = substr(line[i], p + 1)
 				gsub(/^[ \t]+|[ \t]+$/, "", val)
 				if (key ~ /^(close[sd]?|fix(e[sd])?|resolve[sd]?)$/) continue
 				if (!(key in ok)) print "WARN:trailer lạ \"" substr(line[i], 1, p - 1) "\": dùng Refs, Decision, Spec, Design, Evidence, BREAKING CHANGE"
+				if (key in ok && val != "" && substr(line[i], p + 1, 1) != " ")
+					print "FAIL:trailer cần dấu cách sau dấu hai chấm"
 				if (val == "" || toupper(val) ~ /^(TBD|TODO|N\/A|NONE|\?+|\.\.\.)$/ || tolower(val) ~ /<(link|url|issue|sha|id)>/)
 					print "FAIL:trailer \"" substr(line[i], 1, p - 1) "\" thiếu giá trị thật; không có nguồn thì bỏ dòng"
 			}
@@ -163,24 +169,22 @@ pre_push() {
 
 cmd=${1:-}
 [ $# -gt 0 ] && shift
+bad_usage() { usage >&2; exit 2; }
 case $cmd in
-branch) check_branch "${1:-$(git branch --show-current 2>/dev/null)}" ;;
+branch)
+	[ "$#" -le 1 ] || bad_usage
+	if [ "$#" -eq 1 ]; then check_branch "$1"; else check_branch "$(git branch --show-current 2>/dev/null)"; fi
+	;;
 message | msg)
-	if [ $# -lt 1 ]; then
-		usage >&2
-		exit 2
-	fi
+	[ "$#" -eq 1 ] || bad_usage
 	check_message "$1"
 	;;
-title) check_subject "${1:-}" "$MAX_TITLE" 'tiêu đề PR' ;;
-pre-push) pre_push ;;
--h | --help)
-	usage
-	exit 0
+title)
+	[ "$#" -eq 1 ] || bad_usage
+	check_subject "$1" "$MAX_TITLE" 'tiêu đề PR'
 	;;
-*)
-	usage >&2
-	exit 2
-	;;
+pre-push) [ "$#" -eq 0 ] || bad_usage; pre_push ;;
+-h | --help) [ "$#" -eq 0 ] || bad_usage; usage; exit 0 ;;
+*) bad_usage ;;
 esac
 exit "$status"
