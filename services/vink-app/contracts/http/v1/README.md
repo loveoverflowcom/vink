@@ -129,7 +129,7 @@ page. Choices, plans and measurements: [discovery](../../../../../docs/developme
   - `limit`: `1..=24`, default 12. `cursor`: the previous page's `next_cursor`, unchanged.
   - Anything else, or `q`/`limit`/`cursor` twice, is `422` with `field: query`. Validation order:
     `query` (while reading the URL), then `q`, `tag`, `limit`, `cursor`, before any database read.
-- **Answer.** `works`: cards (`work_id`, `title`, `author_display_name`, `published_at`, `tags`).
+- **Answer.** `works`: cards (`work_id`, `title`, `excerpt`, `author_display_name`, `published_at`, `tags`; `excerpt` is `null` or a bounded plain-text snippet derived from the published revision body).
   `tags` on a card or a publication are the **active** tags of the bound snapshot, form first, with
   current labels (`tag_id`, `facet`, `label`, `slug`); a retired tag stays in the snapshot but is
   not shown; a publication without a snapshot shows `[]`. `filters.q` echoes the query exactly as

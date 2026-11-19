@@ -1226,3 +1226,181 @@ async fn discovery_measurement(pool: PgPool) {
         );
     }
 }
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn discovery_excerpts_stay_bound_to_published_revisions_and_ignore_body_search(pool: PgPool) {
+    use vink_app::application::SaveDraft;
+    use vink_app::domain::document::{Document, DocumentFormat, TitledDocument};
+    use vink_app::domain::revision::ContentHash;
+
+    let app = setup(&pool).await;
+    let owner = dev_seed::SAMPLE_AUTHOR;
+
+    async fn publish_custom(
+        pool: &PgPool,
+        work_id: Uuid,
+        owner: Uuid,
+        rev_id: Uuid,
+        doc: TitledDocument,
+        published_at: OffsetDateTime,
+    ) {
+        let mut tx = pool.begin().await.unwrap();
+        sqlx::query("INSERT INTO works (id, owner_id) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING")
+            .bind(work_id)
+            .bind(owner)
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        let data = doc.document().to_data();
+        let hash = ContentHash::of(&doc).as_str().to_owned();
+        sqlx::query(
+            "INSERT INTO revisions (id, work_id, title, document, content_hash, created_by)
+             VALUES ($1, $2, $3, $4, $5, $6)",
+        )
+        .bind(rev_id)
+        .bind(work_id)
+        .bind(doc.title().as_str())
+        .bind(sqlx::types::Json(&data))
+        .bind(hash)
+        .bind(owner)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO working_drafts (work_id, version, title, document)
+             VALUES ($1, 1, $2, $3)
+             ON CONFLICT (work_id) DO NOTHING",
+        )
+        .bind(work_id)
+        .bind(doc.title().as_str())
+        .bind(sqlx::types::Json(&data))
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO publications (work_id, revision_id, generation, published_at)
+             VALUES ($1, $2, 1, $3)
+             ON CONFLICT (work_id) DO UPDATE
+                SET revision_id = EXCLUDED.revision_id,
+                    generation = publications.generation + 1,
+                    published_at = EXCLUDED.published_at",
+        )
+        .bind(work_id)
+        .bind(rev_id)
+        .bind(published_at)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+        tx.commit().await.unwrap();
+    }
+
+    let poem_doc = TitledDocument::author(
+        Document::new(
+            DocumentFormat::Default,
+            "Dòng một bietcach\nDòng hai thơ\n\nDòng ba stanza\nDòng bốn\nDòng năm",
+        )
+        .unwrap(),
+        Some("Bài thơ mặc định"),
+    )
+    .unwrap();
+    let md_doc = TitledDocument::author(
+        Document::new(
+            DocumentFormat::Markdown,
+            "# Tiêu đề Markdown\n\nĐoạn **đầu tiên**\nXuống dòng thơ\n\n[Liên kết](https://vink.test)",
+        )
+        .unwrap(),
+        None,
+    )
+    .unwrap();
+    let title_only_md = TitledDocument::author(
+        Document::new(DocumentFormat::Markdown, "# Chỉ có tiêu đề\n\n   ").unwrap(),
+        None,
+    )
+    .unwrap();
+
+    let w_poem = work(71);
+    let w_md = work(72);
+    let w_empty = work(73);
+    publish_custom(
+        &pool,
+        w_poem,
+        owner,
+        Uuid::from_u128(0x7100),
+        poem_doc,
+        BASE + Duration::minutes(3),
+    )
+    .await;
+    publish_custom(
+        &pool,
+        w_md,
+        owner,
+        Uuid::from_u128(0x7200),
+        md_doc,
+        BASE + Duration::minutes(2),
+    )
+    .await;
+    publish_custom(
+        &pool,
+        w_empty,
+        owner,
+        Uuid::from_u128(0x7300),
+        title_only_md,
+        BASE + Duration::minutes(1),
+    )
+    .await;
+
+    let first = get(&app, "/api/v1/works", None).await;
+    assert_eq!(first.status, StatusCode::OK);
+    let body = first.json();
+    let cards = body["works"].as_array().unwrap();
+    let card_for = |id: Uuid| {
+        cards
+            .iter()
+            .find(|c| c["work_id"].as_str() == Some(&id.to_string()))
+            .unwrap()
+    };
+    assert_eq!(
+        card_for(w_poem)["excerpt"].as_str(),
+        Some("Dòng một bietcach\nDòng hai thơ\n\nDòng ba stanza…")
+    );
+    assert_eq!(
+        card_for(w_md)["excerpt"].as_str(),
+        Some("Đoạn đầu tiên\nXuống dòng thơ\n\nLiên kết")
+    );
+    assert_eq!(card_for(w_empty)["excerpt"], serde_json::Value::Null);
+
+    // Editing the private working draft never alters the public excerpt or its ETag.
+    let vink = Vink::new(PgStore::new(pool.clone()));
+    vink.save_draft(
+        Some(PrincipalId::from_uuid(owner)),
+        SaveDraft {
+            work_id: WorkId::from_uuid(w_poem),
+            expected_version: 1,
+            title: Some("Bản nháp riêng tư".into()),
+            document: Document::new(DocumentFormat::Default, "Nội dung nháp chưa công khai")
+                .unwrap()
+                .to_data(),
+        },
+    )
+    .await
+    .unwrap();
+
+    let revalidated = get(&app, "/api/v1/works", Some(&first.etag())).await;
+    assert_eq!(revalidated.status, StatusCode::NOT_MODIFIED);
+
+    let after = get(&app, "/api/v1/works", None).await;
+    assert_eq!(
+        after.json()["works"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["work_id"].as_str() == Some(&w_poem.to_string()))
+            .unwrap()["excerpt"]
+            .as_str(),
+        Some("Dòng một bietcach\nDòng hai thơ\n\nDòng ba stanza…")
+    );
+    assert!(!after.text().contains("Nội dung nháp chưa công khai"));
+
+    // Body/excerpt tokens are excluded from `q` search (title + author display name only).
+    assert!(found(&app, Some("bietcach"), &[]).await.is_empty());
+}

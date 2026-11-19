@@ -91,6 +91,7 @@ pub fn snapshot_weight_bytes(snapshot: &Snapshot) -> usize {
                     .saturating_add(128)
                     .saturating_add(card.work_id.len())
                     .saturating_add(card.title.len())
+                    .saturating_add(opt_str_len(&card.excerpt))
                     .saturating_add(card.author_display_name.len())
                     .saturating_add(card.published_at.len());
                 for tag in &card.tags {
@@ -1327,6 +1328,7 @@ mod tests {
         WorkCard {
             work_id: id.into(),
             title: format!("Title {id}"),
+            excerpt: None,
             author_display_name: "Author".into(),
             published_at: "2026-11-15T00:00:00Z".into(),
             tags: vec![],
@@ -2065,6 +2067,20 @@ mod tests {
     }
 
     #[test]
+    fn discovery_cache_weight_includes_the_excerpt_utf8_bytes() {
+        let empty = sample_list(&["work"]);
+        let Snapshot::Works(mut list) = empty.clone() else {
+            unreachable!()
+        };
+        let excerpt = "Mưa trên phố cũ";
+        list.works[0].excerpt = Some(excerpt.into());
+        assert_eq!(
+            super::snapshot_weight_bytes(&Snapshot::Works(list)),
+            super::snapshot_weight_bytes(&empty) + excerpt.len()
+        );
+    }
+
+    #[test]
     fn canonical_cache_weight_counts_exact_source_without_line_allocations() {
         let empty = heavy_pub("source", 0, 0);
         let Snapshot::Publication(mut publication) = empty.clone() else {
@@ -2719,6 +2735,7 @@ mod tests {
                         .map(|c| {
                             c.work_id.len()
                                 + c.title.len()
+                                + c.excerpt.as_ref().map_or(0, String::len)
                                 + c.author_display_name.len()
                                 + c.published_at.len()
                                 + c.tags
@@ -2750,6 +2767,7 @@ mod tests {
                     .map(|i| WorkCard {
                         work_id: format!("00000000-0000-4000-8000-{i:012}"),
                         title: format!("[Mẫu #100] Kiểm thử {i}"),
+                        excerpt: None,
                         author_display_name: "Tác giả kiểm thử".into(),
                         published_at: "2026-11-17T00:00:00Z".into(),
                         tags: vec![

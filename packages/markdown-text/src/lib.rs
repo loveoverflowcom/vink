@@ -16,8 +16,8 @@
 //! - The caller applies `Title::parse` (trim, NFC, forbidden characters, 200-character limit).
 //!   Nothing is truncated and the source is never rewritten.
 
-pub use pulldown_cmark::{Event, HeadingLevel, Tag};
-use pulldown_cmark::{Options, Parser, TagEnd};
+pub use pulldown_cmark::{Event, HeadingLevel, Tag, TagEnd};
+use pulldown_cmark::{Options, Parser};
 
 /// The canonical grammar for both title extraction and document rendering.
 pub fn commonmark(source: &str) -> Parser<'_> {

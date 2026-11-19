@@ -3,6 +3,7 @@
     {
       "work_id": "33333333-3333-4333-8333-000000000001",
       "title": "Mưa tháng Bảy",
+      "excerpt": "Trời ngả chiều qua mái ngói cũ.",
       "author_display_name": "Lê Thu",
       "published_at": "2026-10-30T08:00:00Z",
       "tags": [
@@ -23,6 +24,7 @@
     {
       "work_id": "33333333-3333-4333-8333-000000000002",
       "title": "Mùa mưa ở phố cũ",
+      "excerpt": null,
       "author_display_name": "Lê Thu",
       "published_at": "2026-10-30T06:30:00Z",
       "tags": [

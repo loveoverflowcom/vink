@@ -198,6 +198,7 @@ fn ReplacementView(
     author_name: Option<String>,
     return_href: String,
 ) -> impl IntoView {
+    let context = discovery::reader_context();
     let hidden = author_name.is_none();
     let notice = if hidden {
         "Nội dung đã được ẩn"
@@ -215,7 +216,7 @@ fn ReplacementView(
         <Meta name="robots" content="noindex" />
         <div id="reader" class="vk-reader-page" data-state=state>
             <vink_ui::Link attr:id="reader-return" variant=vink_ui::LinkVariant::Standalone href=return_href>
-                <Icon name=IconName::ArrowBack /> "Khám phá"
+                <Icon name=IconName::ArrowBack /> {move || if context.get().query.q.is_empty() { "Khám phá" } else { "Về kết quả tìm kiếm" }}
             </vink_ui::Link>
             <article id="reader-paper" class="vk-reader" data-testid=test_id>
                 <header id="reader-header" class="vk-reader__header">
@@ -269,7 +270,7 @@ fn PublicationContent(
         <Link rel="canonical" href=canonical />
         <div id="reader" class="vk-reader-page">
         <vink_ui::Link attr:id="reader-return" variant=vink_ui::LinkVariant::Standalone href=return_href>
-            <Icon name=IconName::ArrowBack /> "Khám phá"
+            <Icon name=IconName::ArrowBack /> {move || if context.get().query.q.is_empty() { "Khám phá" } else { "Về kết quả tìm kiếm" }}
         </vink_ui::Link>
         <div id="reader-freshness" class="vk-reader-freshness" data-refreshing=move || refreshing.get().to_string()>
             <Show when=move || cached.get() && !failed.get() && !update.get()>

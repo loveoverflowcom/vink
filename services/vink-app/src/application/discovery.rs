@@ -137,6 +137,7 @@ fn summary(card: PublicCardFacts, catalog: &[CatalogTag]) -> Result<PublicWorkSu
     Ok(PublicWorkSummary {
         work_id: card.work_id,
         title: card.title,
+        excerpt: card.excerpt,
         author_display_name: card.author_display_name,
         published_at: card.published_at,
         tags,

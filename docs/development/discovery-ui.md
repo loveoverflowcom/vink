@@ -17,8 +17,8 @@ Checkbox/GET được giữ; không đổi primitive Checkbox hay command Filter
 [evidence](evidence/discovery-chip-260/README.md) ghi phép đo thực, đối chứng âm, matrix
 dock/dialog và giới hạn kiểm chứng.
 
-**Redesign r1 [#308](https://github.com/loveoverflowcom/vink/issues/308):** hàng công cụ gồm ô
-“Tìm theo tên hoặc tác giả” và “Lọc thẻ” khi có lựa chọn hoặc cần khôi phục lỗi danh mục. Dialog
+**Redesign r1 [#308](https://github.com/loveoverflowcom/vink/issues/308):** từ 760 CSS px, hàng công cụ ghim gồm Lọc thẻ, ô tìm và logo Vink. Trên điện thoại, kính lúp mở màn tìm toàn màn hình. Enter áp dụng từ khóa sau khi kết thúc composition. Xóa từ khóa giữ thẻ đang lọc. Khi quay về danh sách, focus trở về kính lúp và vị trí cuộn được phục hồi. Trước hydration, trang vẫn có form GET.
+Danh sách một cột hiển thị tác giả, thẻ đầu tiên nếu có, nhan đề và trích đoạn từ revision đang công khai. Chỉ nhan đề và tên tác giả có đánh dấu từ khóa khớp. Trích đoạn giữ ngắt dòng thơ. Dialog
 desktop và sheet mobile dùng cùng danh mục với `<details>` trước hydration. Một lượt đọc theo
 scope URL, có thử lại khi lỗi. Danh mục rỗng ẩn nút và form lọc, các thẻ đang áp dụng vẫn gỡ được.
 Đóng, Escape và Back bỏ lựa chọn thử. Áp dụng bật khi đã đổi lựa chọn, gửi GET giữ query và đưa
@@ -42,8 +42,7 @@ landmark; list refresh không lấy lại focus. Chạy `verify web --scenario r
 
 Native GET ghi q, các tag lặp và cursor opaque vào URL. App giữ riêng buffer đang gõ và URL
 đã áp dụng. Chọn trong bộ lọc chỉ đổi draft; Áp dụng mới gửi GET. Checkbox dùng luật discovery
-(tối đa 4 thẻ, AND), không áp cardinality của TagSelector bản nháp. TagChip, WorkByline,
-AuthorByline, SearchField Bar và Dialog được dùng lại. Catalog gọi public read no-store.
+(tối đa 4 thẻ, AND), không áp cardinality của TagSelector bản nháp. Trang dùng TagChip, SearchField Bar và Dialog. Thẻ tác phẩm lấy nhan đề làm tên truy cập của liên kết. Catalog gọi public read no-store.
 
 SSR gọi PublicReadsAdapter → Vink::discover_works/catalog_tags trong tiến trình, cùng DTO API,
 không HTTP tới chính mình hoặc Identity. Trình duyệt gọi /api/v1/works; READ-02 cache key mang

@@ -29,14 +29,14 @@ use uuid::Uuid;
 
 use super::PgStore;
 use super::discussion::{integrity, read_snapshot};
-use super::postgres::{classify, content, title};
+use super::postgres::{classify, content};
 use super::taxonomy::{SlotRow, catalog_rows, slug_kind, tags_from_slots};
 use crate::application::ports::{
     DiscoveryFacts, DiscoveryRequest, PublicCardFacts, PublicationFacts, PublicationStore,
     ReaderWorkFacts, SlugFacts, StoreError,
 };
 use crate::domain::discovery::filter_tags;
-use crate::domain::document::DocumentData;
+use crate::domain::document::{DocumentData, public_excerpt};
 use crate::domain::ids::{RevisionId, TagId, WorkId};
 use crate::domain::taxonomy::{
     CatalogTag, MetadataSnapshot, SlugHolder, TagSlug, TagStatus, resolve_slug,
@@ -48,7 +48,7 @@ use crate::domain::taxonomy::{
 /// lets the order index start at the cursor.
 /// Public only so that the measurement test can `EXPLAIN` exactly this statement.
 pub const DISCOVERY_SEARCH_SQL: &str = "
-    SELECT p.work_id, r.title, a.display_name, p.published_at, p.metadata_snapshot_id, s.digest
+    SELECT p.work_id, r.title, r.document, a.display_name, p.published_at, p.metadata_snapshot_id, s.digest
       FROM publications p
       JOIN revisions r ON r.work_id = p.work_id AND r.id = p.revision_id
       JOIN works w ON w.id = p.work_id
@@ -73,6 +73,7 @@ pub const DISCOVERY_SEARCH_SQL: &str = "
 struct CardRow {
     work_id: Uuid,
     title: String,
+    document: Json<DocumentData>,
     display_name: String,
     published_at: OffsetDateTime,
     metadata_snapshot_id: Option<Uuid>,
@@ -287,9 +288,11 @@ impl PublicationStore for PgStore {
         let works = rows
             .into_iter()
             .map(|row| {
+                let published = content(row.document, &row.title)?;
                 Ok(PublicCardFacts {
                     work_id: WorkId::from_uuid(row.work_id),
-                    title: title(&row.title)?,
+                    title: published.title().clone(),
+                    excerpt: public_excerpt(published.document()),
                     author_display_name: row.display_name,
                     published_at: row.published_at,
                     snapshot: row

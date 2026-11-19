@@ -477,6 +477,7 @@ pub fn SearchField(
     #[prop(optional, into)] clear_id: Option<String>,
     #[prop(optional, into)] on_clear: Option<Callback<()>>,
     #[prop(optional)] input_ref: Option<NodeRef<leptos::html::Input>>,
+    #[prop(optional, into)] leading: Option<ViewFn>,
 ) -> impl IntoView {
     if variant == SearchVariant::Bar {
         return search_bar(
@@ -487,12 +488,14 @@ pub fn SearchField(
             on_submit,
             help,
             mode,
+            placeholder,
             name,
             clear_href,
             clear_id,
             on_clear,
             input_ref,
             compact_placeholder,
+            leading,
         )
         .into_any();
     }
@@ -528,12 +531,14 @@ fn search_bar(
     on_submit: Option<Callback<String>>,
     help: Option<String>,
     mode: FieldMode,
+    placeholder: Option<String>,
     name: Option<String>,
     clear_href: Option<String>,
     clear_id: Option<String>,
     on_clear: Option<Callback<()>>,
     input_ref: Option<NodeRef<leptos::html::Input>>,
     compact_placeholder: Option<String>,
+    leading: Option<ViewFn>,
 ) -> impl IntoView {
     let node = input_ref.unwrap_or_default();
     let clear_id = clear_id.unwrap_or_else(|| format!("{id}-clear"));
@@ -549,7 +554,7 @@ fn search_bar(
         invalid: Signal::default(),
         required: false,
         described: Signal::stored(described),
-        placeholder: Some(label.clone()),
+        placeholder: placeholder.or_else(|| Some(label.clone())),
         autocomplete: None,
         name,
         max_length: None,
@@ -571,6 +576,7 @@ fn search_bar(
     view! {
         <div class="vk-ui-field vk-ui-search">
             <div class="vk-ui-search__shell">
+                {leading.map(|slot| slot.run())}
                 <button type="submit" class="vk-ui-icon-button" aria-label="Tìm kiếm"
                     disabled=move || mode != FieldMode::Editable
                     on:click=move |event| {
@@ -978,6 +984,54 @@ mod tests {
             private.contains("type=\"button\"") && private.contains("id=\"drafts-clear\""),
             "{private}"
         );
+    }
+
+    #[test]
+    fn search_bar_supports_custom_placeholder_and_leading_slot() {
+        let html = render(|| {
+            view! {
+                <SearchField
+                    id="q"
+                    name="q"
+                    label="Tìm theo tên hoặc tác giả"
+                    placeholder="Tìm tác phẩm hoặc tác giả"
+                    variant=SearchVariant::Bar
+                    value=Signal::stored(String::new())
+                    on_input=|_| {}
+                    leading=move || view! { <span id="back-slot">"Quay lại"</span> }
+                />
+            }
+            .into_any()
+        });
+        assert!(
+            html.contains("placeholder=\"Tìm tác phẩm hoặc tác giả\""),
+            "{html}"
+        );
+        assert!(
+            html.contains(">Tìm theo tên hoặc tác giả</label>"),
+            "{html}"
+        );
+        let shell_pos = html.find("vk-ui-search__shell").unwrap();
+        let leading_pos = html.find("id=\"back-slot\"").unwrap();
+        let submit_pos = html.find("type=\"submit\"").unwrap();
+        assert!(
+            shell_pos < leading_pos && leading_pos < submit_pos,
+            "{html}"
+        );
+
+        let fallback = render(|| {
+            view! {
+                <SearchField
+                    id="q-default"
+                    label="Tìm kiếm"
+                    variant=SearchVariant::Bar
+                    value=Signal::stored(String::new())
+                    on_input=|_| {}
+                />
+            }
+            .into_any()
+        });
+        assert!(fallback.contains("placeholder=\"Tìm kiếm\""), "{fallback}");
     }
 
     #[test]

@@ -99,6 +99,8 @@ pub struct PublicTagDto {
 pub struct WorkCard {
     pub work_id: String,
     pub title: String,
+    #[serde(default)]
+    pub excerpt: Option<String>,
     pub author_display_name: String,
     pub published_at: String,
     pub tags: Vec<PublicTagDto>,
@@ -1051,11 +1053,19 @@ mod tests {
     fn decodes_public_fixtures() {
         let list: WorkList = round_trip("works.list.json");
         assert!(!list.works.is_empty());
+        assert!(list.works[0].excerpt.is_some());
         assert!(list.next_cursor.is_none() && list.filters.tags.is_empty());
         let search: WorkList = round_trip("works.search.json");
         assert!(search.next_cursor.is_some());
         assert_eq!(search.filters.tags[0].resolution, "redirect");
         assert!(search.works.iter().all(|w| !w.tags.is_empty()));
+        assert!(search.works[0].excerpt.is_some());
+        assert!(search.works[1].excerpt.is_none());
+        let without_excerpt: WorkCard = serde_json::from_str(
+            r#"{"work_id":"33333333-3333-4333-8333-333333333333","title":"Cũ","author_display_name":"Ai","published_at":"2026-10-30T08:00:00Z","tags":[]}"#,
+        )
+        .unwrap();
+        assert_eq!(without_excerpt.excerpt, None);
         let unmatched: WorkList = round_trip("works.search.unmatched.json");
         assert!(unmatched.works.is_empty());
         let resolutions: Vec<&str> = unmatched
