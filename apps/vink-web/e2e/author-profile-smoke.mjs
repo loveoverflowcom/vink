@@ -293,6 +293,7 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await guest.viewport(1280);
 
   await guest.goto(base + readerPath);
+  await guest.waitFor("document.documentElement.dataset.hydrated==='true'", 'Reader navigation listeners are hydrated');
   const bylines = [
     ['#reader-author', aPath],
     [selector('comment-' + ids.root + '-author'), aPath],
@@ -378,6 +379,9 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await page.cdp.send('Target.disposeBrowserContext', {browserContextId:context.browserContextId});
 
   // Keep the original password/Handle scenario identities and restore its foreground page.
+  check(authorFixtureSql(`DELETE FROM publications
+    WHERE work_id IN (${literal(ids.a)}, ${literal(ids.b)}) RETURNING 1;`) === '1\n1',
+    'removed both profile fixtures from the public corpus before the zero-work Handle checks');
   await edit(page, base);
   await fill(page, NAME, a.pen_name);
   await save(page);
