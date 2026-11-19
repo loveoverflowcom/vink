@@ -214,6 +214,7 @@ Khi cả hai phương thức đã được cấu hình, đăng nhập bằng ema
   Identity binary cũ, [migration rollback](../../services/vink-identity/migrations-rollback/20261119000000_email_attachment.down.sql)
   xóa proof, thư và ngân sách của lát này, không xóa binding hoặc credential.
 
+[Bằng chứng local #329](evidence/auth-email-attachment-329/README.md).
 ## Đặt lại mật khẩu (#181, phần còn lại của #329)
 
 [Đặc tả Web → App → Identity](../architecture/password-recovery.md) và [LayoutSpec](../design/password-recovery.md)
