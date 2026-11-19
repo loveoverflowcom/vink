@@ -372,10 +372,6 @@ async function bottomNavigationRegression(page) {
   for (const theme of ['dark', 'light']) {
     await page.viewport(320);
     await page.goto(`${args.base}/toi`);
-    // The signed-in account panel is above the choice and can shift it after hydration.
-    await page.waitFor(`document.documentElement.dataset.hydrated === 'true' &&
-      document.querySelector('#account-session')?.dataset.standing === 'active'`, 'navigation hydration and account panel');
-    await page.eval('document.fonts.ready');
     await chooseTheme(page, theme, 'page-theme');
     for (const width of [320, 360, 390, 480, 759]) {
       await page.viewport(width);
@@ -1798,7 +1794,15 @@ async function openProfile(page) {
   await page.waitFor(PROFILE_OPEN, 'Tôi overlay');
 }
 
+async function waitForPageAccount(page) {
+  // Hydration can finish before the account panel above the choices changes height.
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true' &&
+    document.querySelector('#account-session')?.dataset.standing === 'active'`, 'hydrated Tôi account panel');
+  await page.eval('document.fonts.ready');
+}
+
 async function chooseTheme(page, value, group = 'overlay-theme') {
+  if (group === 'page-theme') await waitForPageAccount(page);
   const selector = `label:has(input[name="${group}"][value="${value}"])`;
   try {
     await page.click(selector);
@@ -2193,7 +2197,9 @@ async function accountAppearance(page) {
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true' &&
     document.querySelector('#page-text input:checked')?.value === '200' &&
     document.querySelector('#page-rail input:checked')?.value === 'compact'`, 'text and rail choices survive reload');
+  await waitForPageAccount(page);
   await page.click('#page-text label:has([value="100"])');
+  await page.waitFor(`!document.documentElement.dataset.text`, '100% text applied before changing the rail');
   await page.click('#page-rail label:has([value="auto"])');
   await page.waitFor(`!document.documentElement.dataset.text && !document.documentElement.dataset.rail &&
     localStorage.getItem('vink.ui.text') === null && localStorage.getItem('vink.ui.rail') === null &&
