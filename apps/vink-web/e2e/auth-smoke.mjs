@@ -14,6 +14,7 @@
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { contextualReaderAuth } from './reader-auth-smoke.mjs';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export const HYDRATED = `document.documentElement.dataset.hydrated === 'true'`;
@@ -184,14 +185,14 @@ export async function authWeb(page, { args, check, openPage }) {
   const html = await (await fetch(`${base}/toi`)).text();
   check(html.includes('name="vink-sign-in"') && html.includes('data-standing="unknown"') && !html.includes('id="sign-in-email"'), 'SSR says only whether sign-in is open; the standing is unknown until the browser asks');
   await openAccount(page, base, 'anonymous');
-  check(await page.eval(`${q('#password-login')} && ${q('#use-email-code')} && !${q('#sign-out')} && ${PANEL_TEXT}.includes('Bạn chưa đăng nhập')`), 'a guest sees password sign-in first and can choose email');
+  check(await page.eval(`${q('#password-login')} && ${q('#use-email-code')} && !${q('#sign-out')} && ${q('#auth-appearance')} && !${q('#pen-name-form')}`), 'a guest sees password sign-in first and can choose email');
   check(await page.eval(`!document.querySelector('#sign-in-email')`), 'only one guest form is visible');
   // A real email-only deployment: the App gate is open, but the Identity method is unavailable.
   await fill(page, '#password-login-username', 'email_only_fixture');
   await fill(page, '#password-login-password', 'local browser fixture');
   await page.click('#password-login-submit');
   await page.waitFor(`${PANEL_TEXT}.includes('chưa mở đăng nhập và đăng ký bằng mật khẩu')`, 'real email-only method refusal');
-  check(await page.eval(`Boolean(${q('#use-email-code')})`), 'real 501 on password login leaves the email option available');
+  check(await page.eval(`Boolean(${q('#use-email-code')} && ${q('#auth-appearance')})`), '#327 real 501 on password login leaves email and Appearance available');
   await page.goto(`${base}/ban-viet`);
   await page.waitFor(`${HYDRATED} && ${q('#desk-sign-in')}`, 'guest desk');
   check(await page.eval(`${q('#desk-sign-in')}.getAttribute('href') === '/toi' && !${q('#create-draft')} && !${q('[data-testid=draft-empty]')}`), 'Bàn viết points a guest to Tôi and offers neither create nor an empty list');
@@ -348,6 +349,8 @@ export async function authWeb(page, { args, check, openPage }) {
   await desk.reload();
   await desk.waitFor(`${q('[data-testid=draft-empty]')}`, "B's desk after reload");
   check(await desk.eval(`!document.body.textContent.includes(${JSON.stringify(TITLE_A)})`), "a reload shows B's desk only");
+
+  await contextualReaderAuth(other, { args, check, openPage, seen: ctx.seen });
 
   const discussionReader = await discussionSessionRaces(other, ctx, mailA, mailB, openPage, check);
 

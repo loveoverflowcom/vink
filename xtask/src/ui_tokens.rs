@@ -2849,15 +2849,16 @@ mod tests {
 
     #[test]
     fn committed_outputs_match_the_source() {
+        const TOKEN_VERSION: &str = "0.7.0";
         let root = crate::root();
         let (tokens, catalog, fixtures) = sources();
         let (icons, identity) = asset_sources();
-        let assets = generate_assets("0.6.0", &icons, &identity, |_| true).unwrap();
+        let assets = generate_assets(TOKEN_VERSION, &icons, &identity, |_| true).unwrap();
         let version = parse_tokens(&tokens).ok().map(|s| s.version);
         assert_eq!(
             version.as_deref(),
-            Some("0.6.0"),
-            "update the asset version above"
+            Some(TOKEN_VERSION),
+            "update the pinned token version"
         );
         let states = std::fs::read_to_string(root.join(crate::ui_states::STATES)).unwrap();
         let policy = crate::ui_states::GatePolicy {
@@ -2865,12 +2866,12 @@ mod tests {
             min_visible: 500,
             slow: 8000,
         };
-        let states = crate::ui_states::generate("0.6.0", &states, policy).unwrap();
+        let states = crate::ui_states::generate(TOKEN_VERSION, &states, policy).unwrap();
         let navigation =
             std::fs::read_to_string(root.join(crate::ui_navigation::NAVIGATION)).unwrap();
-        let navigation = crate::ui_navigation::generate("0.6.0", &navigation).unwrap();
+        let navigation = crate::ui_navigation::generate(TOKEN_VERSION, &navigation).unwrap();
         let toggle = std::fs::read_to_string(root.join(crate::ui_toggle::TOGGLE)).unwrap();
-        let toggle = crate::ui_toggle::generate("0.6.0", &toggle).unwrap();
+        let toggle = crate::ui_toggle::generate(TOKEN_VERSION, &toggle).unwrap();
         for (path, text) in generate(&tokens, &catalog, &fixtures)
             .unwrap()
             .into_iter()
@@ -3048,6 +3049,8 @@ mod tests {
             "--vk-state-hover: rgb(104 70 165 / 0.08);",
             "--vk-shadow: 0 12px 40px rgb(36 29 45 / 0.14);",
             "--vk-text-reading: clamp(1.0625rem, 1rem + 0.25vw, 1.25rem);",
+            "--vk-text-auth-dialog-heading: 1.625rem;",
+            "--vk-text-auth-heading: clamp(2rem, 1.8rem + 0.5vw, 2.25rem);",
             "--vk-space-4: 1rem;",
             "--vk-radius-md: 12px;",
             "--vk-loop-iterations: 0;",

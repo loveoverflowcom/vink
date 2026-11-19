@@ -1,13 +1,15 @@
 //! Form lifetimes own the inputs. Only the mounted form can display an answer;
 //! the tab still reconciles any write that could have changed the browser's cookie.
 
+mod attachment;
+
 use leptos::{html::Input, prelude::*};
 use vink_ui::{
     ActionState, Announce, Button, ButtonKind, ButtonVariant, FieldVariant, InlineNotice,
     TextField, TextInput, TextKind, Tone,
 };
 
-use super::{Command, Reply, Session, flow::Operation};
+use super::{Command, ReaderPresentation, Reply, Session, flow::Operation};
 use crate::{
     contract::{EnrollPasswordRequest, PasswordCredentials},
     session::{AuthError, Millis},
@@ -175,6 +177,22 @@ enum Mode {
     Email,
 }
 
+/// Visual header only. It does not own a session, a step counter or an input.
+#[component]
+pub(super) fn AuthHeading(title: &'static str) -> impl IntoView {
+    if use_context::<ReaderPresentation>().is_some() {
+        view! { <h2 id="reader-auth-title" class="vk-reader-auth-title">{title}</h2> }.into_any()
+    } else {
+        view! {
+            <header class="vk-auth-heading">
+                <span class="vk-brand__lockup" role="img" aria-label="Vink"></span>
+                <h2>{title}</h2>
+            </header>
+        }
+        .into_any()
+    }
+}
+
 #[component]
 pub(super) fn GuestAuth(epoch: u64) -> impl IntoView {
     let mode = RwSignal::new((Mode::Login, false));
@@ -294,6 +312,12 @@ fn GuestPassword(
         ),
     };
     let is_register = mode == Mode::Register;
+    let contextual_login = !is_register && use_context::<ReaderPresentation>().is_some();
+    let heading = if contextual_login {
+        "Đăng nhập để nhận xét"
+    } else {
+        title
+    };
     let username = InputValue::new();
     let password = InputValue::new();
     username.focus_on_mount(focus);
@@ -302,6 +326,7 @@ fn GuestPassword(
     let state = session.action(operation, now);
     let can_submit = move || result.get() == GuestResult::Ready;
     view! {
+        <AuthHeading title=heading />
         <form id=form_id class="vk-account-form" method="post" novalidate
             on:submit=move |event| {
                 event.prevent_default();
@@ -368,15 +393,17 @@ fn GuestPassword(
                 })}
             </div>
         </form>
-        <div class="vk-account-actions vk-auth-alternatives">
-            {if is_register {
-                view! { <Button id="use-password" variant=ButtonVariant::Text
-                    on_press=move |_| switch.run(Mode::Login)>"Quay lại đăng nhập"</Button> }.into_any()
-            } else {
-                view! { <Button id="use-registration" variant=ButtonVariant::Text
-                    on_press=move |_| switch.run(Mode::Register)>"Tạo tài khoản"</Button> }.into_any()
-            }}
-            <Button id="use-email-code" variant=ButtonVariant::Text
+        <div class="vk-auth-alternatives">
+            <div class="vk-auth-switch">
+                {if is_register {
+                    view! { <Button id="use-password" variant=ButtonVariant::Text
+                        on_press=move |_| switch.run(Mode::Login)>"Quay lại đăng nhập"</Button> }.into_any()
+                } else {
+                    view! { {(!contextual_login).then_some(view! { <span>"Chưa có tài khoản?"</span> })} <Button id="use-registration" variant=ButtonVariant::Text
+                        on_press=move |_| switch.run(Mode::Register)>"Tạo tài khoản"</Button> }.into_any()
+                }}
+            </div>
+            <Button id="use-email-code" variant=if contextual_login { ButtonVariant::Text } else { ButtonVariant::Outlined }
                 on_press=move |_| switch.run(Mode::Email)>"Dùng mã email"</Button>
         </div>
     }
@@ -457,6 +484,7 @@ fn EmailSignIn(
     let send_state = session.action(Operation::EmailChallenge, now);
     let complete_state = session.action(Operation::EmailCode, now);
     view! {
+        <AuthHeading title="Dùng mã email" />
         {move || if entered_code.get() {
             view! {
                 <form id="sign-in-code" class="vk-account-form" method="post" novalidate
@@ -547,7 +575,7 @@ fn EmailSignIn(
                 </form>
             }.into_any()
         }}
-        <div class="vk-account-actions vk-auth-alternatives">
+        <div class="vk-auth-alternatives">
             <Button id="use-password" variant=ButtonVariant::Text
                 on_press=move |_| switch.run(Mode::Login)>"Dùng mật khẩu"</Button>
         </div>
@@ -565,10 +593,12 @@ enum Credential {
 }
 
 #[component]
-fn CredentialSettings(epoch: u64, now: ReadSignal<Millis>) -> impl IntoView {
+fn CredentialSettings(epoch: u64, now: ReadSignal<Millis>, changed: Callback<()>) -> impl IntoView {
     let session = Session::current();
     let status = RwSignal::new(Credential::Loading);
     let challenge = RwSignal::new(None::<Challenge>);
+    // Enrollment changes eligibility without changing the session or remounting Tôi.
+    let pending_change = StoredValue::new(false);
     let read = move |uncertain| {
         status.set(if uncertain {
             Credential::Reconciling
@@ -580,7 +610,13 @@ fn CredentialSettings(epoch: u64, now: ReadSignal<Millis>) -> impl IntoView {
             move || status.try_get_untracked().is_some(),
             move |outcome| {
                 let next = match (outcome, uncertain) {
-                    (Ok(true), _) => Credential::Present,
+                    (Ok(true), _) => {
+                        if pending_change.get_value() {
+                            pending_change.set_value(false);
+                            changed.run(());
+                        }
+                        Credential::Present
+                    }
                     (Ok(false), true) => Credential::Uncertain(None),
                     (Ok(false), false) => Credential::Missing,
                     (Err(error), true) => Credential::Uncertain(Some(error)),
@@ -602,8 +638,14 @@ fn CredentialSettings(epoch: u64, now: ReadSignal<Millis>) -> impl IntoView {
         challenge.set(None);
         problem.set(None);
         match outcome {
-            Ok(Reply::Done) | Err(AuthError::AlreadyEnrolled) => read(false),
-            Err(error) if AuthError::uncertain(&error) => read(true),
+            Ok(Reply::Done) | Err(AuthError::AlreadyEnrolled) => {
+                pending_change.set_value(true);
+                read(false);
+            }
+            Err(error) if AuthError::uncertain(&error) => {
+                pending_change.set_value(true);
+                read(true);
+            }
             Err(AuthError::ChallengeClosed) => problem.set(Some(AuthError::ChallengeClosed)),
             _ => {}
         }
@@ -734,6 +776,8 @@ fn EnrollmentForm(
 pub(super) fn SignedIn(epoch: u64) -> impl IntoView {
     let session = Session::current();
     let opened = RwSignal::new(false);
+    let binding_changed = Trigger::new();
+    let changed = Callback::new(move |()| binding_changed.notify());
     let now = use_clock();
     view! {
         <div class="vk-account-actions">
@@ -747,8 +791,12 @@ pub(super) fn SignedIn(epoch: u64) -> impl IntoView {
                     } else { ActionState::Enabled })
                     on_press=move |_| opened.update(|open| *open = !*open)>"Tên đăng nhập và mật khẩu"</Button>
             </div>
-            {move || opened.get().then(|| view! { <CredentialSettings epoch now /> })}
+            {move || opened.get().then(|| view! { <CredentialSettings epoch now changed /> })}
         </div>
+        {move || {
+            binding_changed.track();
+            view! { <attachment::EmailSettings epoch now /> }
+        }}
         <SignOut epoch before=move |_| opened.set(false) />
     }
 }
@@ -761,6 +809,7 @@ pub(super) fn PenName(epoch: u64) -> impl IntoView {
     let error = RwSignal::new(None);
     let state = session.action(Operation::PenName, now);
     view! {
+        <AuthHeading title="Chọn bút danh" />
         <form id="pen-name-form" class="vk-account-form" method="post" novalidate
             on:submit=move |event| {
                 event.prevent_default();
@@ -786,7 +835,6 @@ pub(super) fn PenName(epoch: u64) -> impl IntoView {
                 <Button id="pen-name-save" variant=ButtonVariant::Filled kind=ButtonKind::Submit state=state>"Lưu bút danh"</Button>
             </div>
         </form>
-        <SignOut epoch />
     }
 }
 

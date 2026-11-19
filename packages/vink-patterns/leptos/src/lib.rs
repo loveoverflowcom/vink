@@ -387,6 +387,10 @@ pub fn FeedbackComposer(
     /// Reader-only tonal recipe; other feedback consumers retain their current form.
     #[prop(optional)]
     tonal: bool,
+    /// Replace only the action (e.g. contextual sign-in), not the editor or its selection.
+    #[prop(optional, into)]
+    show_alternative: Signal<bool>,
+    #[prop(optional)] alternative: Option<ViewFn>,
     #[prop(optional)] children: Option<Children>,
 ) -> impl IntoView {
     let submit_id = format!("{id}-send");
@@ -408,11 +412,15 @@ pub fn FeedbackComposer(
                 rows=if tonal { 1 } else { 4 }
                 help=if tonal { "Tối đa 4.000 ký tự, 200 dòng. Enter xuống dòng." } else { "Tối đa 4.000 ký tự, 200 dòng. Enter xuống dòng; chỉ gửi khi bấm nút." } />
             <Show when=move || tonal && !value.get().is_empty()><p class="vk-feedback-draft-note">"Rời trang có thể mất nháp."</p></Show>
-            {if tonal {
-                view! { <Button id=submit_id state=submit_state on_press=on_submit leading=IconName::ArrowBack>"Gửi"</Button> }.into_any()
-            } else {
-                view! { <Button id=submit_id state=submit_state on_press=on_submit>"Gửi nhận xét"</Button> }.into_any()
-            }}
+            <Show when=move || show_alternative.get() fallback=move || {
+                if tonal {
+                    view! { <Button id=submit_id.clone() state=submit_state on_press=on_submit leading=IconName::ArrowBack>"Gửi"</Button> }.into_any()
+                } else {
+                    view! { <Button id=submit_id.clone() state=submit_state on_press=on_submit>"Gửi nhận xét"</Button> }.into_any()
+                }
+            }>
+                {alternative.as_ref().map(ViewFn::run)}
+            </Show>
         </section>
     }
 }

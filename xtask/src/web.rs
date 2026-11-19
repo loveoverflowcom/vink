@@ -434,6 +434,18 @@ fn auth_web(
         }
         std::thread::sleep(Duration::from_millis(100));
     }
+    if matches!(phase, IdentityPhase::Auth) {
+        let url = server
+            .env
+            .iter()
+            .find(|(key, _)| key == "DATABASE_URL")
+            .map(|(_, value)| value)
+            .ok_or("Auth App scratch URL missing")?;
+        crate::identity::sql(
+            url,
+            include_str!("../../apps/vink-web/e2e/fixtures/reader-contextual-auth.sql"),
+        )?;
+    }
     let app = server.with_identity(free_port()?, &socket, uid);
     let mut guard = app.start(root)?;
     let origin = format!("http://127.0.0.1:{}", app.port);
@@ -689,7 +701,19 @@ pub fn verify_selected(report: &mut Report, env: &Env, plan: &Plan) -> bool {
                 &format!("scenario {} (real Identity/local outbox)", scenario.name()),
                 || match scenario {
                     Scenario::Auth => {
-                        auth_web(&root, &server, &url, &chrome, &state, IdentityPhase::Auth)
+                        auth_web(&root, &server, &url, &chrome, &state, IdentityPhase::Auth)?;
+                        // A real deployment with the sign-in gate off, not a fabricated refusal.
+                        let guest = server.as_guest();
+                        let mut guard = guest.start(&root)?;
+                        let result = smoke(
+                            &root,
+                            &["--phase", "reader-auth-closed"],
+                            &chrome,
+                            &origin,
+                            &state,
+                        );
+                        let _ = guard.terminate(Duration::from_secs(15));
+                        result
                     }
                     Scenario::Password => password_auth_web(&root, &server, &url, &chrome, &state),
                     Scenario::Publication => {

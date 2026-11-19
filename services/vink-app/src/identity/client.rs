@@ -14,9 +14,10 @@ use axum::body::Bytes;
 use axum::http::{Method, Request, StatusCode, header};
 use http_body_util::{BodyExt, Full, Limited};
 use hyper_util::rt::TokioIo;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use tokio::net::UnixStream;
+use uuid::Uuid;
 
 /// Below the server's 2 s deadline, so the client gives up first.
 pub const CALL_TIMEOUT: Duration = Duration::from_millis(1500);
@@ -101,6 +102,55 @@ pub enum StartError {
     InvalidEmail,
     RateLimited,
     Call(CallError),
+}
+
+/// Current Identity mailbox binding, scoped to the presenting session. The session ID is
+/// public context, not a credential. The address is private to the authenticated account.
+#[derive(Serialize, Deserialize)]
+pub struct EmailAttachmentStatus {
+    pub session_id: Uuid,
+    pub password_account: bool,
+    pub verified_email: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct IssuedAttachmentChallenge {
+    pub challenge: String,
+    pub challenge_id: Uuid,
+    pub email: String,
+    #[serde(with = "time::serde::rfc3339")]
+    pub expires_at: OffsetDateTime,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AttachmentError {
+    InvalidEmail,
+    InvalidCredentials,
+    InvalidCode,
+    ChallengeClosed,
+    ContextChanged,
+    AlreadyAttached,
+    NoPassword,
+    AddressUnavailable,
+    RateLimited,
+    CredentialRejected,
+    AccountDisabled,
+    Call(CallError),
+}
+
+/// Read only the public ID of the private wire handle. Identity owns secret decoding and
+/// verification; App rejects a form from another tab before forwarding an OTP.
+pub fn attachment_handle_id(handle: &str) -> Option<Uuid> {
+    let (id, secret) = handle.strip_prefix("vink_c1.")?.split_once('.')?;
+    if id.len() != 32
+        || secret.len() != 43
+        || !secret
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_'))
+    {
+        return None;
+    }
+    Uuid::try_parse(id).ok()
 }
 
 /// A new session for an authenticated subject. The credential is handed to the client once.
@@ -677,6 +727,102 @@ impl IdentityClient {
         }
     }
 
+    pub async fn email_attachment_status(
+        &self,
+        credential: &str,
+    ) -> Result<EmailAttachmentStatus, AttachmentError> {
+        let (status, bytes) = self
+            .call_attachment(
+                self.timeout,
+                "status",
+                serde_json::json!({ "credential": credential }),
+            )
+            .await?;
+        if status == StatusCode::OK {
+            return serde_json::from_slice(&bytes).map_err(|_| malformed_attachment());
+        }
+        Err(attachment_error(status, &bytes))
+    }
+
+    pub async fn start_email_attachment(
+        &self,
+        credential: &str,
+        email: &str,
+        password: &str,
+        session_id: Uuid,
+    ) -> Result<IssuedAttachmentChallenge, AttachmentError> {
+        if !fits_wire_field(password, MAX_PASSWORD_FIELD_BYTES) {
+            return Err(AttachmentError::InvalidCredentials);
+        }
+        let (status, bytes) = self
+            .call_attachment(
+                self.write_timeout,
+                "challenges",
+                serde_json::json!({
+                    "credential": credential, "email": email,
+                    "password": password, "session_id": session_id,
+                }),
+            )
+            .await?;
+        if status != StatusCode::ACCEPTED {
+            return Err(attachment_error(status, &bytes));
+        }
+        let challenge: IssuedAttachmentChallenge =
+            serde_json::from_slice(&bytes).map_err(|_| malformed_attachment())?;
+        if attachment_handle_id(&challenge.challenge) != Some(challenge.challenge_id) {
+            return Err(malformed_attachment());
+        }
+        Ok(challenge)
+    }
+
+    pub async fn complete_email_attachment(
+        &self,
+        credential: &str,
+        challenge: &str,
+        challenge_id: Uuid,
+        code: &str,
+    ) -> Result<(), AttachmentError> {
+        if attachment_handle_id(challenge) != Some(challenge_id) {
+            return Err(AttachmentError::ContextChanged);
+        }
+        let (status, bytes) = self
+            .call_attachment(
+                self.write_timeout,
+                "complete",
+                serde_json::json!({
+                    "credential": credential, "challenge": challenge,
+                    "challenge_id": challenge_id, "code": code,
+                }),
+            )
+            .await?;
+        if status == StatusCode::NO_CONTENT {
+            return if bytes.is_empty() {
+                Ok(())
+            } else {
+                Err(malformed_attachment())
+            };
+        }
+        Err(attachment_error(status, &bytes))
+    }
+
+    async fn call_attachment(
+        &self,
+        timeout: Duration,
+        operation: &str,
+        body: serde_json::Value,
+    ) -> Result<(StatusCode, Bytes), AttachmentError> {
+        let body = serde_json::to_vec(&body)
+            .map_err(|_| AttachmentError::Call(CallError::Unavailable(Failure::Transport)))?;
+        self.call_within(
+            timeout,
+            Method::POST,
+            &format!("/identity/v1/email/attachment/{operation}"),
+            body,
+        )
+        .await
+        .map_err(AttachmentError::Call)
+    }
+
     /// `POST /identity/v1/sessions/revoke` (logout). `false`: nothing active was revoked.
     pub async fn revoke(&self, credential: &str) -> Result<bool, CallError> {
         let body = serde_json::to_vec(&serde_json::json!({ "credential": credential }))
@@ -777,6 +923,27 @@ impl IdentityClient {
         drop(sender);
         driver.abort();
         result
+    }
+}
+
+fn malformed_attachment() -> AttachmentError {
+    AttachmentError::Call(CallError::Unavailable(Failure::MalformedResponse))
+}
+
+fn attachment_error(status: StatusCode, bytes: &[u8]) -> AttachmentError {
+    match (status.as_u16(), error_code(bytes).as_str()) {
+        (403, "credential_rejected") => AttachmentError::CredentialRejected,
+        (403, "account_disabled") => AttachmentError::AccountDisabled,
+        (422, "invalid_email") => AttachmentError::InvalidEmail,
+        (422, "invalid_credentials") => AttachmentError::InvalidCredentials,
+        (422, "invalid_code") => AttachmentError::InvalidCode,
+        (409, "challenge_closed") => AttachmentError::ChallengeClosed,
+        (409, "attachment_context_changed") => AttachmentError::ContextChanged,
+        (409, "already_attached") => AttachmentError::AlreadyAttached,
+        (409, "no_password") => AttachmentError::NoPassword,
+        (409, "address_unavailable") => AttachmentError::AddressUnavailable,
+        (429, "rate_limited") => AttachmentError::RateLimited,
+        _ => AttachmentError::Call(error_for(status, bytes)),
     }
 }
 

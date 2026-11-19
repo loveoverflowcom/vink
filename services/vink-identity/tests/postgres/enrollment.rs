@@ -1262,16 +1262,22 @@ async fn the_rollback_script_removes_only_enrollment_challenges_and_keeps_creden
         .await,
         2
     );
-    let script = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("migrations-rollback/20261114000000_password_enrollment.down.sql"),
-    )
-    .unwrap();
     let mut tx = pool.begin().await.unwrap();
-    sqlx::raw_sql(sqlx::AssertSqlSafe(script))
-        .execute(&mut *tx)
-        .await
+    for name in [
+        "20261119000000_email_attachment.down.sql",
+        "20261114000000_password_enrollment.down.sql",
+    ] {
+        let script = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("migrations-rollback")
+                .join(name),
+        )
         .unwrap();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(script))
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+    }
     tx.commit().await.unwrap();
 
     assert_eq!(
@@ -1319,7 +1325,7 @@ async fn the_rollback_script_removes_only_enrollment_challenges_and_keeps_creden
             .await
             .unwrap()
             .applied,
-        [20261114000000]
+        [20261114000000, 20261119000000]
     );
     assert_eq!(h.email_sign_in(MAIL).await.account_id, a.account_id);
     assert_eq!(

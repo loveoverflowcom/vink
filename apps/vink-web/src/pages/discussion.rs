@@ -1,7 +1,11 @@
 //! Reader feature adapter. Patterns receive view facts/intents only; HTTP and request scope
 //! stay here. SSR always reads anonymously, even when the diagnostic identity fixture runs.
+mod auth;
+
+use crate::account::Session;
 use crate::contract::{CommentStatus, OwnPlacement};
 use crate::discussion_reads::OwnState;
+use auth::{ReaderAuth, ReaderAuthDialog};
 use std::collections::{BTreeMap, BTreeSet};
 
 use leptos::prelude::*;
@@ -372,6 +376,7 @@ fn DiscussionLoaded(
         page.settings.clone(),
     ));
     controller.update_untracked(|c| c.sign_in_open = api::sign_in_open());
+    let reader_auth = ReaderAuth::provide();
     #[cfg(feature = "hydrate")]
     let work_id = page.work_id.clone();
     #[cfg(feature = "hydrate")]
@@ -431,7 +436,7 @@ fn DiscussionLoaded(
     } else {
         // The tab's session owner decides who is acting. Each change re-reads the page for
         // that viewer; typed text stays only for the same person (`text_survives`).
-        let session = crate::account::Session::current();
+        let session = Session::current();
         Effect::new(move |previous: Option<(Option<String>, Option<String>)>| {
             let (scope, principal) = (session.scope.get(), session.principal.get());
             let (before, typed_as) = previous.unwrap_or_default();
@@ -452,7 +457,15 @@ fn DiscussionLoaded(
             state.update(|s| s.change_session(controller.get_untracked().scope));
             // Invalidate presentation context from the earlier viewer immediately.
             state.with_untracked(|s| revalidate_targets(s, controller));
-            refresh.run(());
+            if scope.is_some() && reader_auth.is_open() {
+                // Public roots/replies are actor-free. Keeping the current pagination chain
+                // avoids remounting an open composer on page 2+ simply to read the new viewer.
+                // Reconcile settings and private facts without restarting the public list.
+                state.update(|s| s.wake.settled(crate::read_events::now(), true));
+                read_private(state, controller, false);
+            } else {
+                refresh.run(());
+            }
             (scope, principal.or(typed_as))
         });
     }
@@ -487,6 +500,7 @@ fn DiscussionLoaded(
             <p role="status">{move || state.read().mutation_message.clone().unwrap_or_default()}</p>
         </div>
         <DiscussionComposer key=ComposerKey::Root controller state refresh />
+        <ReaderAuthDialog host=reader_auth controller />
         <OwnComments state controller lve />
         <p class="vk-muted vk-discussion-tools-note">"Bạn có thể dùng emoji từ bàn phím."</p>
         <Show when=move || !state.read().unavailable>
@@ -621,7 +635,13 @@ fn read_private(
                             )
                         ) =>
                 {
-                    s.own.author = c.viewer_is_work_author
+                    s.own.author = c.viewer_is_work_author;
+                    if let Some(settings) = c.settings
+                        && settings.generation >= s.page.settings.generation
+                    {
+                        s.page.settings = settings.clone();
+                        controller.update(|c| c.settings = settings);
+                    }
                 }
                 _ => {
                     s.own.author = false;
@@ -806,7 +826,40 @@ fn DiscussionComposer(
         ComposerKey::Root => "root-composer".into(),
         ComposerKey::Replies(root) => format!("reply-composer-{root}"),
     };
-    let value = Signal::derive(move || controller.read().draft(&key.get_value()).body);
+    let value = Memo::new(move |_| controller.read().draft(&key.get_value()).body);
+    let editor_id = StoredValue::new(id.clone());
+    let session = Session::current();
+    let host = expect_context::<ReaderAuth>();
+    let can_auth = Memo::new(move |_| {
+        if blocked || state.read().unavailable {
+            return false;
+        }
+        let c = controller.read();
+        c.sign_in_open
+            && c.settings.comments_open
+            && c.scope.session.is_none()
+            && matches!(
+                session.standing.get(),
+                crate::session::Standing::Anonymous | crate::session::Standing::NeedsPrincipal
+            )
+            && (key.get_value() == ComposerKey::Root || c.draft(&key.get_value()).target_available)
+    });
+    let auth_action = ViewFn::from(move || {
+        view! {
+            <Button id=format!("{}-auth", editor_id.get_value()) variant=ButtonVariant::Tonal
+                on_press=move |_| {
+                    if can_auth.get_untracked() {
+                        host.open(editor_id.get_value());
+                    }
+                }>
+                {move || if session.standing.get() == crate::session::Standing::NeedsPrincipal {
+                    "Chọn bút danh"
+                } else {
+                    "Đăng nhập để nhận xét"
+                }}
+            </Button>
+        }
+    });
     let action = Signal::derive(move || {
         let c = controller.read();
         if matches!(c.draft(&key.get_value()).delivery, Delivery::Sending(_)) {
@@ -829,6 +882,7 @@ fn DiscussionComposer(
     view! {
         <div class="vk-discussion-composer">
             <FeedbackComposer id intent=FeedbackIntent::Unspecified value state=action tonal=true
+                show_alternative=can_auth alternative=auth_action
                 comments_closed=Signal::derive(move || !state.read().unavailable && !controller.read().settings.comments_open)
                 on_input=move |input: TextInput| controller.update(|c| c.edit(&key.get_value(), input.value, input.composing))
                 on_submit=move |_| { if !blocked { submit(controller, state, key.get_value(), refresh, false); } } >

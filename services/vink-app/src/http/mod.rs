@@ -788,6 +788,11 @@ mod identity_tests {
         }
     }
 
+    const ATTACH_SESSION: &str = "018f3c2e-0000-7000-8000-00000000a001";
+    const ATTACH_REQUEST: &str = "018f3c2e-0000-7000-8000-00000000c001";
+    const ATTACH_HANDLE: &str =
+        "vink_c1.018f3c2e00007000800000000000c001.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
     async fn fake_identity(name: &str) -> Fake {
         let dir = std::env::temp_dir().join(format!("vink-app-{}-{name}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
@@ -800,6 +805,43 @@ mod identity_tests {
             .route("/identity/v1/sign-in/challenges", post(fake_challenge))
             .route("/identity/v1/sign-in/complete", post(fake_complete))
             .route("/identity/v1/sessions/revoke", post(fake_revoke))
+            .route(
+                "/identity/v1/email/attachment/status",
+                post(|axum::Json(body): axum::Json<serde_json::Value>| async move {
+                    assert_eq!(body, json!({"credential": "bound"}));
+                    axum::Json(json!({
+                        "session_id": ATTACH_SESSION,
+                        "password_account": true,
+                        "verified_email": null,
+                    }))
+                }),
+            )
+            .route(
+                "/identity/v1/email/attachment/challenges",
+                post(|axum::Json(body): axum::Json<serde_json::Value>| async move {
+                    assert_eq!(body, json!({
+                        "credential": "bound", "email": "WRITER@example.test",
+                        "session_id": ATTACH_SESSION, "password": "test password",
+                    }));
+                    (
+                        StatusCode::ACCEPTED,
+                        axum::Json(json!({
+                            "challenge": ATTACH_HANDLE, "challenge_id": ATTACH_REQUEST,
+                            "email": "writer@example.test", "expires_at": "2099-11-19T10:10:00Z",
+                        })),
+                    )
+                }),
+            )
+            .route(
+                "/identity/v1/email/attachment/complete",
+                post(|axum::Json(body): axum::Json<serde_json::Value>| async move {
+                    assert_eq!(body, json!({
+                        "credential": "bound", "challenge": ATTACH_HANDLE,
+                        "challenge_id": ATTACH_REQUEST, "code": "123456",
+                    }));
+                    StatusCode::NO_CONTENT
+                }),
+            )
             .route(
                 "/identity/v1/capabilities",
                 get(|| async {
@@ -918,6 +960,124 @@ mod identity_tests {
     }
 
     const ORIGIN: (&str, &str) = ("origin", "http://127.0.0.1:3000");
+
+    #[tokio::test]
+    async fn email_attachment_routes_guard_context_and_keep_secrets_in_cookies() {
+        let fake = fake_identity("attach").await;
+        let router = app(&fake.socket, fake.uid);
+        const STATUS: &str = "/api/v1/auth/email/attachment";
+        const START: &str = "/api/v1/auth/email/attachment/challenges";
+        const COMPLETE: &str = "/api/v1/auth/email/attachment/complete";
+        let session = ("cookie", "__Host-vink_session=bound");
+        for (headers, expected) in [
+            (vec![], StatusCode::UNAUTHORIZED),
+            (
+                vec![("authorization", "Bearer bound")],
+                StatusCode::UNAUTHORIZED,
+            ),
+            (
+                vec![("cookie", "__Host-vink_session=authenticated")],
+                StatusCode::FORBIDDEN,
+            ),
+            (
+                vec![("cookie", "__Host-vink_session=suspended")],
+                StatusCode::FORBIDDEN,
+            ),
+            (
+                vec![(
+                    "cookie",
+                    "__Host-vink_session=bound; __Host-vink_session=bound",
+                )],
+                StatusCode::UNAUTHORIZED,
+            ),
+        ] {
+            let (got, headers, _) = call(&router, "GET", STATUS, &headers, None).await;
+            assert_eq!(got, expected);
+            assert_eq!(headers[header::CACHE_CONTROL], "no-store");
+        }
+        let (got, headers, body) = call(&router, "GET", STATUS, &[session], None).await;
+        assert_eq!(got, StatusCode::OK);
+        assert_eq!(headers[header::CACHE_CONTROL], "no-store");
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&body).unwrap(),
+            json!({
+                "principal_id": BOUND,
+                "session_id": ATTACH_SESSION,
+                "password_account": true,
+                "verified_email": null,
+            })
+        );
+        let start = json!({
+            "session_id": ATTACH_SESSION, "email": " WRITER@example.test ",
+            "password": "test password",
+        })
+        .to_string();
+        let (got, _, _) = call(&router, "POST", START, &[session], Some(&start)).await;
+        assert_eq!(got, StatusCode::FORBIDDEN);
+        let (got, headers, body) =
+            call(&router, "POST", START, &[ORIGIN, session], Some(&start)).await;
+        assert_eq!(got, StatusCode::ACCEPTED, "{body}");
+        assert_eq!(headers[header::CACHE_CONTROL], "no-store");
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&body).unwrap(),
+            json!({
+                "challenge_id": ATTACH_REQUEST, "email": "writer@example.test",
+                "expires_at": "2099-11-19T10:10:00Z",
+            })
+        );
+        let cookies = set_cookies(&headers);
+        assert_eq!(cookies.len(), 1);
+        assert!(cookies[0].starts_with(&format!(
+            "__Host-vink_attach={ATTACH_HANDLE}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age="
+        )));
+        let proof = format!("__Host-vink_session=bound; __Host-vink_attach={ATTACH_HANDLE}");
+        for (cookie, id) in [
+            (session, ATTACH_REQUEST),
+            (("cookie", proof.as_str()), ATTACH_SESSION),
+        ] {
+            let input = json!({"challenge_id": id, "code": "123456"}).to_string();
+            let (got, headers, body) =
+                call(&router, "POST", COMPLETE, &[ORIGIN, cookie], Some(&input)).await;
+            assert_eq!(got, StatusCode::CONFLICT, "{body}");
+            assert!(body.contains("attachment_context_changed"));
+            assert!(set_cookies(&headers).is_empty());
+        }
+        let complete = json!({"challenge_id": ATTACH_REQUEST, "code": "123 456"}).to_string();
+        let (got, headers, body) = call(
+            &router,
+            "POST",
+            COMPLETE,
+            &[ORIGIN, ("cookie", &proof)],
+            Some(&complete),
+        )
+        .await;
+        assert_eq!(got, StatusCode::NO_CONTENT, "{body}");
+        assert!(set_cookies(&headers).is_empty());
+        assert_eq!(headers[header::CACHE_CONTROL], "no-store");
+        assert!(body.is_empty());
+        let refused = Arc::new(Scripted {
+            refuse: Some(5),
+            seen: Default::default(),
+        });
+        let limited = with_peer(
+            state(&fake.socket, fake.uid).with_limiter(refused.clone()),
+            SocketAddr::from(PEER),
+        );
+        for (path, body) in [(START, &start), (COMPLETE, &complete)] {
+            let (got, headers, _) = call(
+                &limited,
+                "POST",
+                path,
+                &[ORIGIN, ("cookie", &proof)],
+                Some(body),
+            )
+            .await;
+            assert_eq!(got, StatusCode::TOO_MANY_REQUESTS);
+            assert_eq!(headers[header::RETRY_AFTER], "5");
+            assert!(set_cookies(&headers).is_empty());
+        }
+        assert_eq!(refused.seen.lock().unwrap().len(), 2);
+    }
 
     #[tokio::test]
     async fn bindings_and_suspensions_decide_after_identity_authenticates() {

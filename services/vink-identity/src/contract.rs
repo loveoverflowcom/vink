@@ -6,6 +6,7 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 pub const CONTRACT: &str = "vink.identity.v1";
 /// Largest request body accepted by RPCs without a password field.
@@ -130,6 +131,8 @@ pub struct Operations {
     pub sign_in_password: Availability,
     /// Added within v1 (challenge, completion and status): needs both native methods.
     pub enroll_password: Availability,
+    /// First verified email for an existing password account; requires both methods.
+    pub attach_email: Availability,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -162,6 +165,12 @@ pub enum ContractError {
     UsernameTaken,
     /// Added within v1 for credential enrollment.
     AlreadyEnrolled,
+    InvalidCredentials,
+    InvalidCode,
+    ChallengeClosed,
+    AttachmentContextChanged,
+    AlreadyAttached,
+    NoPassword,
     AccountDisabled,
 }
 
@@ -185,6 +194,12 @@ impl ContractError {
             Self::InvalidPassword => "invalid_password",
             Self::UsernameTaken => "username_taken",
             Self::AlreadyEnrolled => "already_enrolled",
+            Self::InvalidCredentials => "invalid_credentials",
+            Self::InvalidCode => "invalid_code",
+            Self::ChallengeClosed => "challenge_closed",
+            Self::AttachmentContextChanged => "attachment_context_changed",
+            Self::AlreadyAttached => "already_attached",
+            Self::NoPassword => "no_password",
             Self::AccountDisabled => "account_disabled",
         }
     }
@@ -214,6 +229,14 @@ impl ContractError {
             Self::InvalidPassword => "the password must be at least 10 characters",
             Self::UsernameTaken => "the username is already taken",
             Self::AlreadyEnrolled => "the account already has a username and password",
+            Self::InvalidCredentials => "the current password was not verified",
+            Self::InvalidCode => "the code did not verify",
+            Self::ChallengeClosed => "the challenge is no longer usable",
+            Self::AttachmentContextChanged => {
+                "the request no longer matches the session or challenge"
+            }
+            Self::AlreadyAttached => "the account already has a verified address",
+            Self::NoPassword => "the account does not have a password credential",
             Self::AccountDisabled => "the account is disabled; nothing was changed",
         }
     }
@@ -410,6 +433,42 @@ pub enum SignInPasswordResponse {
 pub enum SignInPasswordRejection {
     InvalidCredentials,
     AccountDisabled,
+}
+
+// --- First verified email on an existing password account (v1, #329). ---
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StartEmailAttachmentRequest {
+    pub credential: Credential,
+    pub session_id: Uuid,
+    pub email: Bounded<254>,
+    pub password: Bounded<MAX_PASSWORD_FIELD_BYTES>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CompleteEmailAttachmentRequest {
+    pub credential: Credential,
+    pub challenge: Bounded<256>,
+    pub challenge_id: Uuid,
+    pub code: Bounded<16>,
+}
+
+#[derive(Serialize)]
+pub struct EmailAttachmentStatus {
+    pub session_id: Uuid,
+    pub password_account: bool,
+    pub verified_email: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct EmailAttachmentIssued {
+    pub challenge: String,
+    pub challenge_id: Uuid,
+    pub email: String,
+    #[serde(with = "time::serde::rfc3339")]
+    pub expires_at: OffsetDateTime,
 }
 
 // --- Credential enrollment (added within v1; ACC-03, O-12@r2). ---

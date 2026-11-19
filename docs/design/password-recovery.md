@@ -1,6 +1,7 @@
 # LayoutSpec · Quên mật khẩu (#181)
 
-**Trạng thái:** đề xuất cho triển khai sau; không có UI/ảnh runtime mới trong PR này.
+**Trạng thái:** phần reset vẫn là đề xuất, chưa có UI. Mục gắn email lần đầu đã dùng baseline
+Auth Web R2 và triển khai tại `/toi`; xem [runtime #329](../development/auth-web.md#gắn-email-xác-minh-lần-đầu-329).
 Nguồn: [đặc tả recovery](../architecture/password-recovery.md),
 [Auth Password Web](auth-password-web.md), `/toi` và component hiện có tại `4c78601`.
 Không có mốc thị giác recovery đã duyệt: `NO_APPROVED_REFERENCE`.
@@ -27,9 +28,9 @@ Screen #page-account — giữ trang Tôi, Giao diện và điều hướng
       Notice — đề xuất: “Bạn sẽ cần đăng nhập lại trên các thiết bị.”
     Step #recovery-result — thành công được server xác nhận / chưa rõ kết quả
       Action — “Về đăng nhập” / “Kiểm tra kết quả”
-  Region #recovery-email-settings — mục đích attach email trước khi quên, dependency chưa có
-    Chưa gắn — “Chưa có email khôi phục”; “Thêm email khôi phục” (đề xuất tùy chọn)
-    Đang xác minh — email + code; fresh reauthentication; không báo verified trước commit
+  Region #recovery-email-settings — gắn email xác minh lần đầu, đã có ở #329
+    Chưa gắn — “Chưa có email xác minh”; “Thêm email” (không đổi đăng ký)
+    Đang xác minh — email + mật khẩu hiện tại → mã; chỉ xác nhận sau khi đọc lại binding
     Đã gắn — chỉ trong phiên đúng người, trạng thái server; đổi email là use case riêng
 ```
 

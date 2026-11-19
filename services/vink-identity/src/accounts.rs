@@ -24,6 +24,9 @@ use crate::email_code::{
 use crate::mail::Purpose;
 use crate::password::{Password, Username};
 
+mod attachment;
+pub use attachment::AttachmentRejection;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PasswordRegistrationError {
     UsernameTaken,
@@ -74,7 +77,15 @@ pub enum EnrollmentOutcome {
 enum ChallengeScope {
     SignIn,
     ChangeEmail(Uuid),
-    EnrollPassword { account: Uuid, session: Uuid },
+    EnrollPassword {
+        account: Uuid,
+        session: Uuid,
+    },
+    AttachEmail {
+        account: Uuid,
+        session: Uuid,
+        version: i32,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -790,13 +801,39 @@ impl AccountStore {
         scope: ChallengeScope,
         deliver: bool,
     ) -> Result<ChallengeOutcome, StoreError> {
-        let (purpose, account, enrollment_session) = match scope {
-            ChallengeScope::SignIn => (Purpose::SignIn, None, None),
-            ChallengeScope::ChangeEmail(account) => (Purpose::ChangeEmail, Some(account), None),
-            ChallengeScope::EnrollPassword { account, session } => {
-                (Purpose::EnrollPassword, Some(account), Some(session))
-            }
-        };
+        let (purpose, account, enrollment_session, attachment_session, attachment_version) =
+            match scope {
+                ChallengeScope::SignIn => (Purpose::SignIn, None, None, None, None),
+                ChallengeScope::ChangeEmail(account) => {
+                    (Purpose::ChangeEmail, Some(account), None, None, None)
+                }
+                ChallengeScope::EnrollPassword { account, session } => (
+                    Purpose::EnrollPassword,
+                    Some(account),
+                    Some(session),
+                    None,
+                    None,
+                ),
+                ChallengeScope::AttachEmail {
+                    account,
+                    session,
+                    version,
+                } => (
+                    Purpose::AttachEmail,
+                    Some(account),
+                    None,
+                    Some(session),
+                    Some(version),
+                ),
+            };
+        // The common order is account before address. Enrollment and attachment already hold
+        // this lock while checking the issuing session; an address-first caller could deadlock.
+        if let Some(account) = account {
+            sqlx::query("SELECT 1 FROM accounts WHERE id = $1 FOR NO KEY UPDATE")
+                .bind(account)
+                .execute(&mut **tx)
+                .await?;
+        }
         // Serialise issuance per address so concurrent requests cannot both pass the throttle.
         sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
             .bind(address.as_str())
@@ -814,13 +851,6 @@ impl AccountStore {
             return Ok(ChallengeOutcome::RateLimited(Throttle::Address));
         }
         if let Some(account) = account {
-            // Serialise per account too: two changes to different addresses must not both pass.
-            // NO KEY UPDATE: a concurrent sign-in of this account (a session insert's key-share
-            // lock) is not blocked by it.
-            sqlx::query("SELECT 1 FROM accounts WHERE id = $1 FOR NO KEY UPDATE")
-                .bind(account)
-                .execute(&mut **tx)
-                .await?;
             let changes: i64 = sqlx::query_scalar(
                 "SELECT count(*) FROM email_challenges
                   WHERE account_id = $1 AND created_at > now() - make_interval(secs => $2)",
@@ -845,19 +875,26 @@ impl AccountStore {
         }
         let handle = ChallengeHandle::generate(Uuid::now_v7())?;
         let code = Code::generate()?;
+        let mut verifier = handle.code_hash(&code);
+        if matches!(purpose, Purpose::AttachEmail) && !deliver {
+            crate::email_code::random(&mut verifier)?;
+        }
         let expires_at: OffsetDateTime = sqlx::query_scalar(
             "INSERT INTO email_challenges (id, purpose, address, account_id, code_hash, expires_at,
-                                           enrollment_session_id)
-             VALUES ($1, $2, $3, $4, $5, now() + make_interval(secs => $6), $7)
+                                           enrollment_session_id, attachment_session_id,
+                                           attachment_password_version)
+             VALUES ($1, $2, $3, $4, $5, clock_timestamp() + make_interval(secs => $6), $7, $8, $9)
              RETURNING expires_at",
         )
         .bind(handle.id)
         .bind(purpose.label())
         .bind(address.as_str())
         .bind(account)
-        .bind(handle.code_hash(&code).as_slice())
+        .bind(verifier.as_slice())
         .bind(self.policy.challenge_ttl.as_seconds_f64())
         .bind(enrollment_session)
+        .bind(attachment_session)
+        .bind(attachment_version)
         .fetch_one(&mut **tx)
         .await?;
         if deliver {
@@ -1099,6 +1136,11 @@ pub async fn prune(pool: &PgPool, retention: Retention) -> Result<Pruned, StoreE
     )
     .execute(pool)
     .await;
+    sqlx::query(
+        "DELETE FROM email_attachment_reauth_attempts WHERE created_at < now() - INTERVAL '1 day'",
+    )
+    .execute(pool)
+    .await?;
     Ok(Pruned {
         challenges,
         sessions,

@@ -342,12 +342,13 @@ impl From<PublicDiscussionPage> for DiscussionPage {
     }
 }
 
-/// A bounded composed read is used ONLY for this capability. Unknown fields (roots) are
-/// discarded at decoding; no viewer projection is retained or used for public rendering.
+/// A bounded composed read reconciles this viewer's authority and current work settings.
+/// Unknown fields (roots) are discarded; they never enter the public discussion projection.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct DiscussionCapability {
     pub work_id: String,
     pub viewer_is_work_author: bool,
+    pub settings: Option<CommentsSettings>,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct OwnCommentList {
@@ -717,6 +718,37 @@ pub struct EnrollPasswordRequest {
     pub code: String,
     pub username: String,
     pub password: String,
+}
+
+// The App sets the secret challenge handle as a cookie. These IDs are context, not credentials.
+#[derive(Serialize)]
+#[cfg_attr(test, derive(Deserialize))]
+pub struct StartEmailAttachment {
+    pub email: String,
+    pub password: String,
+    pub session_id: String,
+}
+
+#[derive(Deserialize)]
+pub struct EmailAttachmentChallenge {
+    pub challenge_id: String,
+    pub email: String,
+    pub expires_at: String,
+}
+
+#[derive(Serialize)]
+#[cfg_attr(test, derive(Deserialize))]
+pub struct CompleteEmailAttachment {
+    pub challenge_id: String,
+    pub code: String,
+}
+
+#[derive(Deserialize)]
+pub struct EmailAttachmentStatus {
+    pub session_id: String,
+    pub principal_id: String,
+    pub password_account: bool,
+    pub verified_email: Option<String>,
 }
 
 /// Account status, never a receipt naming the credentials that were entered.
