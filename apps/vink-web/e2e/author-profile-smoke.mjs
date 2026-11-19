@@ -136,7 +136,14 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   check(await page.eval(`!!document.querySelector('a[aria-current="page"][href="/toi"]')`),
     'Tôi is active in the profile editor');
   await captureLayouts(page, check, 'edit', '#profile-pen-name, #profile-bio, #profile-save, .vk-profile-form select');
-  for (const theme of ['light', 'dark']) await textContrast(page, theme, 'profile', ['#profile-save', '#profile-bio', '#profile-name-hint']);
+  for (const theme of ['light', 'dark']) {
+    await page.eval(`document.documentElement.dataset.theme='${theme}'`);
+    await page.waitFor(`!document.getAnimations().some(a => a.playState==='running' &&
+      a.effect.target?.checkVisibility() && Number.isFinite(a.effect.getComputedTiming().endTime))`,
+      'profile colors settled');
+    await textContrast(page, theme, 'profile', ['#profile-save', '#profile-bio', '#profile-name-hint']);
+  }
+  await page.eval("delete document.documentElement.dataset.theme");
   await page.viewport(320, 580);
   await page.eval("document.documentElement.style.fontSize='200%'");
   await page.waitFor(`(() => {

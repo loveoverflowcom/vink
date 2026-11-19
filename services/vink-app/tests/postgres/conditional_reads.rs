@@ -650,6 +650,11 @@ async fn profile_owner_cas_revoke_and_public_page_share_the_current_projection(p
     let path = format!("/api/v1/authors/{handle}");
     let web = format!("/@{handle}");
     let absent = get(&app, &path, &[]).await;
+    let (status, cache, absent_html) = call(&app, "GET", &web, None, None, None).await;
+    assert_eq!(
+        (status, cache.as_deref()),
+        (StatusCode::OK, Some("no-store"))
+    );
     absent.assert_full();
     assert_eq!(absent.json()["publications"]["works"], json!([]));
     assert!(absent.json().get("bio").is_none());
@@ -736,6 +741,10 @@ async fn profile_owner_cas_revoke_and_public_page_share_the_current_projection(p
     for actor in [None, Some(b), Some(a)] {
         let (status, _, html) = call(&app, "GET", &web, actor, None, None).await;
         assert_eq!(status, 200);
+        assert_eq!(
+            html, absent_html,
+            "HTML, head and hydration match the absent Bio"
+        );
         assert!(
             !html.contains(bio)
                 && !html.contains("profile_version")
@@ -777,9 +786,11 @@ async fn profile_owner_cas_revoke_and_public_page_share_the_current_projection(p
         .0,
         200
     );
-    get(&app, &path, &[absent.etag()])
-        .await
-        .assert_not_modified(absent.etag());
+    // A new server context over the persisted schema still rejects the old public validator.
+    let reopened = super::app(&pool).await;
+    let verified = get(&reopened, &path, &[public.etag()]).await;
+    verified.assert_full();
+    assert_eq!(verified.body, absent.body);
 
     let recent = datetime!(2026-11-19 01:00 UTC);
     let mut expected = Vec::new();

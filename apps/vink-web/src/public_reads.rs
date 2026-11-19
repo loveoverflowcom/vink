@@ -629,7 +629,6 @@ mod coordinator {
             }
         }
 
-        #[cfg(feature = "hydrate")]
         pub fn invalidate_author_attribution(&mut self, at: Millis, visible: bool) -> Effects {
             self.attribution_barrier = at;
             self.store.edit_matching(
@@ -1441,6 +1440,46 @@ mod tests {
             },
             next_cursor: None,
         })
+    }
+
+    #[test]
+    fn author_contract_cache_counts_ref_bytes_and_fences_retained_attribution() {
+        use crate::contract::{AuthorProjection, PublicAuthorRef};
+        let key = PublicKey::Works(ExploreQuery::default());
+        let mut stale = sample_list(&["w1"]);
+        let legacy_size = super::snapshot_weight_bytes(&stale);
+        let Snapshot::Works(list) = &mut stale else {
+            unreachable!()
+        };
+        let author = PublicAuthorRef {
+            pen_name: "Tên tác giả".into(),
+            handle: "ten".into(),
+            href: "/@ten".into(),
+        };
+        let reference_bytes = author.pen_name.len() + author.handle.len() + author.href.len();
+        list.works[0].author = Some(AuthorProjection::Linked(author));
+        assert!(super::snapshot_weight_bytes(&stale) >= legacy_size + reference_bytes);
+
+        let mut read = Coordinator::new(Policy::V1);
+        read.follow_seed(key.clone(), stale.clone(), 1.0, 1.0);
+        read.release(&key, 2.0);
+        let ticket = read.check(&key, Trigger::Manual, 3.0, true).fetches[0].1;
+        read.invalidate_author_attribution(4.0, true);
+        read.finish(
+            key.clone(),
+            ticket,
+            Outcome::Fresh(stale.clone()),
+            5.0,
+            0.0,
+            true,
+        );
+        read.follow_seed(key.clone(), stale, 3.0, 6.0);
+        let Some(Snapshot::Works(list)) = read.status(&key).and_then(|s| s.data) else {
+            panic!("expected retained work data");
+        };
+        assert_eq!(list.works[0].author, Some(AuthorProjection::Unsupported));
+        assert!(list.works[0].author_display_name.is_empty());
+        assert_eq!(list.works[0].work_id, "w1");
     }
 
     fn sample_pub(id: &str, rev: &str) -> Snapshot {

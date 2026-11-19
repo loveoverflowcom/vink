@@ -344,6 +344,23 @@ async fn profile_fields_upgrade_existing_handle_without_resetting_receipts(pool:
     let receipt = store.set_handle(actor, &setup).await.unwrap();
     MIGRATOR.run(&pool).await.unwrap();
 
+    let prior = sqlx::migrate::Migrator::with_migrations(
+        MIGRATOR
+            .iter()
+            .filter(|m| m.version <= HANDLE_MIGRATION)
+            .cloned()
+            .collect(),
+    );
+    assert_eq!(
+        vink_store_postgres::schema_state(&pool, &prior)
+            .await
+            .unwrap(),
+        SchemaState::Diverged(vink_store_postgres::Divergence::Unknown {
+            version: PROFILE_FIELDS_MIGRATION,
+        }),
+        "the old App must not report ready after the additive migration",
+    );
+
     let profile = store.own_profile(actor).await.unwrap();
     assert_eq!(profile.profile_version, 0);
     assert_eq!(profile.policies, ProfilePolicies::default());
