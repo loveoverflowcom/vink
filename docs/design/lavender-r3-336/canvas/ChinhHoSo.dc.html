@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Chỉnh hồ sơ</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&amp;family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 1400px; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; background: {{t.bg}}; color: {{t.on}}; font-family: 'Be Vietnam Pro', 'Noto Sans', sans-serif">
+  <div style="flex: 1; display: flex; flex-direction: column; min-height: 0">
+    <div style="display: flex; align-items: center; height: 56px; padding: 8px 8px 0; box-sizing: border-box">
+      <a href="#" style="display: inline-flex; align-items: center; gap: 4px; height: 44px; padding: 0 12px 0 6px; border-radius: 999px; color: {{t.pri}}; font-size: 15px; font-weight: 500; text-decoration: none">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+        Tôi
+      </a>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; padding: 4px 16px 0">
+      <h1 style="margin: 0; font-weight: 600; font-size: 28px; line-height: 1.25; letter-spacing: 0">Chỉnh hồ sơ</h1>
+      <svg width="56" height="56" viewBox="0 0 96 96" fill="none" aria-hidden="true" style="color: {{t.pri}}; opacity: 0.4">
+        <path d="M18 90 C 36 66, 54 42, 80 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+        <path d="M40 62 C 26 58, 18 46, 20 34 C 32 40, 40 50, 40 62 Z" fill="currentColor" opacity="0.35"></path>
+        <ellipse cx="78" cy="12" rx="3" ry="5" transform="rotate(38 78 12)" fill="currentColor"></ellipse>
+        <ellipse cx="72" cy="19" rx="3" ry="5" transform="rotate(-30 72 19)" fill="currentColor"></ellipse>
+        <ellipse cx="73" cy="27" rx="3" ry="5" transform="rotate(48 73 27)" fill="currentColor"></ellipse>
+        <ellipse cx="64" cy="30" rx="3" ry="5" transform="rotate(-24 64 30)" fill="currentColor"></ellipse>
+      </svg>
+    </div>
+
+    <form style="display: flex; flex-direction: column; gap: 28px; padding: 28px 16px 0; margin: 0">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="pen-name" style="font-size: 14px; font-weight: 500; line-height: 1.45">Bút danh</label>
+        <input id="pen-name" value="Hải Đường Nhỏ" aria-describedby="pen-name-help" style="box-sizing: border-box; width: 100%; height: 56px; padding: 0 16px; border: 0; border-radius: 12px; background: {{t.high}}; color: {{t.on}}; font: 400 17px/1.5 'Be Vietnam Pro', sans-serif; outline: none">
+        <p id="pen-name-help" style="margin: 0; font-size: 13px; line-height: 1.5; color: {{t.vari}}">Luôn công khai. Bút danh có thể trùng với người khác.</p>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 12px; min-height: 56px">
+        <span aria-hidden="true" style="display: grid; place-items: center; width: 48px; height: 48px; flex: none; border-radius: 999px; background: {{t.pc}}; color: {{t.onPc}}; font-size: 18px; font-weight: 500">H</span>
+        <label for="avatar-policy" style="flex: 1; min-width: 0; font-size: 15px; font-weight: 400; line-height: 1.45">Quyền xem ảnh đại diện</label>
+        <div style="position: relative; flex: none; width: 148px">
+          <select id="avatar-policy" style="appearance: none; -webkit-appearance: none; box-sizing: border-box; width: 100%; height: 44px; padding: 0 36px 0 14px; border: 0; border-radius: 12px; background: {{t.high}}; color: {{t.on}}; font: 500 15px/1.45 'Be Vietnam Pro', sans-serif">
+            <option>Công khai</option>
+            <option>Chỉ mình tôi</option>
+          </select>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; right: 12px; top: 13px; pointer-events: none; color: {{t.vari}}"><path d="M6 9l6 6 6-6"></path></svg>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="bio" style="font-size: 14px; font-weight: 500; line-height: 1.45">Bio</label>
+          <textarea id="bio" rows="4" style="box-sizing: border-box; width: 100%; min-height: 132px; padding: 14px 16px; border: 0; border-radius: 12px; background: {{t.high}}; color: {{t.on}}; font: 400 16px/1.65 'Be Vietnam Pro', sans-serif; resize: vertical; outline: none">Viết những câu chuyện dịu dàng về người, về phố và những điều còn chưa kịp nói.</textarea>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; min-height: 48px">
+          <label for="bio-policy" style="flex: 1; min-width: 0; font-size: 15px; font-weight: 400; line-height: 1.45">Quyền xem Bio</label>
+          <div style="position: relative; flex: none; width: 148px">
+            <select id="bio-policy" style="appearance: none; -webkit-appearance: none; box-sizing: border-box; width: 100%; height: 44px; padding: 0 36px 0 14px; border: 0; border-radius: 12px; background: {{t.high}}; color: {{t.on}}; font: 500 15px/1.45 'Be Vietnam Pro', sans-serif">
+              <option>Công khai</option>
+              <option>Chỉ mình tôi</option>
+            </select>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; right: 12px; top: 13px; pointer-events: none; color: {{t.vari}}"><path d="M6 9l6 6 6-6"></path></svg>
+          </div>
+        </div>
+      </div>
+
+      <a href="#" style="display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 4px 0; text-decoration: none; color: {{t.on}}; border-top: 1px solid {{t.ov}}; border-bottom: 1px solid {{t.ov}}">
+        <span style="display: flex; flex-direction: column; flex: 1; min-width: 0">
+          <span style="font-size: 15px; font-weight: 500; line-height: 1.45">Địa chỉ tác giả</span>
+          <span style="font-size: 14px; font-weight: 400; line-height: 1.5; color: {{t.vari}}; overflow-wrap: anywhere">@hai-duong-nho</span>
+        </span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: {{t.vari}}; flex: none"><path d="M9 6l6 6-6 6"></path></svg>
+      </a>
+
+      <fieldset style="display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; border: 0; min-width: 0">
+        <legend style="padding: 0; margin-bottom: 10px; font-size: 18px; font-weight: 600; line-height: 1.4">Quyền xem quan hệ</legend>
+        <div style="display: flex; align-items: center; gap: 12px; min-height: 56px">
+          <label for="followers-list" style="flex: 1; min-width: 0; font-size: 15px; line-height: 1.45">Danh sách người theo dõi</label>
+          <div style="position: relative; flex: none; width: 148px">
+            <select id="followers-list" style="appearance: none; -webkit-appearance: none; box-sizing: border-box; width: 100%; height: 44px; padding: 0 36px 0 14px; border: 0; border-radius: 12px; background: {{t.high}}; color: {{t.on}}; font: 500 15px/1.45 'Be Vietnam Pro', sans-serif">
+              <option>Công khai</option>
+              <option>Chỉ mình tôi</option>
+            </select>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; right: 12px; top: 13px; pointer-events: none; color: {{t.vari}}"><path d="M6 9l6 6 6-6"></path></svg>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; min-height: 56px">
+          <span id="followers-count" style="flex: 1; min-width: 0; font-size: 15px; line-height: 1.45">Số người theo dõi</span>
+          <span aria-labelledby="followers-count" style="display: inline-flex; align-items: center; gap: 8px; flex: none; width: 148px; box-sizing: border-box; padding-left: 14px; font-size: 15px; line-height: 1.45; color: {{t.vari}}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+            Chỉ mình tôi
+          </span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; min-height: 56px">
+          <label for="following-list" style="flex: 1; min-width: 0; font-size: 15px; line-height: 1.45">Danh sách đang theo dõi</label>
+          <div style="position: relative; flex: none; width: 148px">
+            <select id="following-list" style="appearance: none; -webkit-appearance: none; box-sizing: border-box; width: 100%; height: 44px; padding: 0 36px 0 14px; border: 0; border-radius: 12px; background: {{t.high}}; color: {{t.on}}; font: 500 15px/1.45 'Be Vietnam Pro', sans-serif">
+              <option>Công khai</option>
+              <option>Chỉ mình tôi</option>
+            </select>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; right: 12px; top: 13px; pointer-events: none; color: {{t.vari}}"><path d="M6 9l6 6 6-6"></path></svg>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; min-height: 56px">
+          <span id="following-count" style="flex: 1; min-width: 0; font-size: 15px; line-height: 1.45">Số người đang theo dõi</span>
+          <span aria-labelledby="following-count" style="display: inline-flex; align-items: center; gap: 8px; flex: none; width: 148px; box-sizing: border-box; padding-left: 14px; font-size: 15px; line-height: 1.45; color: {{t.vari}}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+            Chỉ mình tôi
+          </span>
+        </div>
+        <p style="display: flex; gap: 8px; margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: {{t.vari}}">Trường đã đặt Chỉ mình tôi hiện chưa thể công khai lại.</p>
+      </fieldset>
+    </form>
+
+    <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 16px; background: {{t.bg}}; border-top: 1px solid {{t.ov}}">
+      <p role="status" style="display: flex; align-items: center; gap: 6px; margin: 0; font-size: 14px; line-height: 1.5; color: {{t.vari}}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+        Đã lưu hồ sơ.
+      </p>
+      <div style="display: flex; gap: 12px">
+        <button type="submit" style="flex: 1; display: inline-flex; justify-content: center; align-items: center; gap: 8px; height: 52px; border: 0; border-radius: 999px; background: {{t.pri}}; color: {{t.onPri}}; font: 500 16px/1.45 'Be Vietnam Pro', sans-serif">Lưu hồ sơ</button>
+        <a href="#" style="display: inline-flex; justify-content: center; align-items: center; height: 52px; padding: 0 24px; border-radius: 999px; background: {{t.sc}}; color: {{t.onSc}}; font-size: 16px; font-weight: 500; text-decoration: none">Về Tôi</a>
+      </div>
+    </div>
+  </div>
+
+  <nav aria-label="Điều hướng chính" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); height: 80px; padding: 12px 0 16px; box-sizing: border-box; background: {{t.cont}}">
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: {{t.vari}}">
+      <span style="display: grid; place-items: center; width: 64px; height: 32px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M15.5 8.5l-2 5-5 2 2-5z"></path></svg></span>
+      <span style="font-size: 13px; font-weight: 500; line-height: 1.3">Khám phá</span>
+    </a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: {{t.vari}}">
+      <span style="display: grid; place-items: center; width: 64px; height: 32px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l4-1 10-10-3-3L5 16z"></path><path d="M13.5 6.5l3 3"></path></svg></span>
+      <span style="font-size: 13px; font-weight: 500; line-height: 1.3">Bàn viết</span>
+    </a>
+    <a href="#" aria-current="page" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: {{t.on}}">
+      <span style="display: grid; place-items: center; width: 64px; height: 32px; border-radius: 999px; background: {{t.pc}}; color: {{t.onPc}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"></path></svg></span>
+      <span style="font-size: 13px; font-weight: 600; line-height: 1.3">Tôi</span>
+    </a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":390,"height":1400}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const themes = {
+      light: { bg: '#fffaff', low: '#f7f2fa', cont: '#efe8f6', high: '#e8e0f0', on: '#241d2d', vari: '#5f566b', ov: '#d6cadd', pri: '#6846a5', onPri: '#ffffff', pc: '#ebddff', onPc: '#35205a', sec: '#685b78', sc: '#eadcf3', onSc: '#31233d', focus: '#7250b4' },
+      dark: { bg: '#17121d', low: '#211b29', cont: '#2b2434', high: '#372e42', on: '#f0e7f8', vari: '#d1c3db', ov: '#50455a', pri: '#d4bbff', onPri: '#381c63', pc: '#4e3477', onPc: '#f0e3ff', sec: '#cec0df', sc: '#493c56', onSc: '#f2daff', focus: '#d4bbff' }
+    };
+    return { t: themes[this.props.theme === 'dark' ? 'dark' : 'light'] };
+  }
+}
+</script>
+</body>
+</html>

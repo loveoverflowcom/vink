@@ -1,0 +1,52 @@
+{
+  "name": "vink-lavender-r3-336",
+  "status": "DESIGN_PROPOSED",
+  "owner_review": "Chủ sản phẩm duyệt hướng thị giác trên canvas ngày 19/11/2026; giá trị cuối chốt bằng bản dựng dùng font đóng gói.",
+  "base": "develop@eb7e65e",
+  "target_file": "packages/ui-system/shared/tokens.json",
+  "unit": "px ở cỡ chữ mặc định; web dùng rem như token hiện có",
+  "fonts_add": [
+    {
+      "family": "Be Vietnam Pro",
+      "file": "be-vietnam-pro-500.woff2",
+      "weight": 500,
+      "source": "ofl/bevietnampro/BeVietnamPro-Medium.ttf tại commit google/fonts đã pin trong provenance.json",
+      "note": "Cùng lệnh subset và dải Unicode với face 400/600; cập nhật provenance.json, README font và Desktop TTF."
+    }
+  ],
+  "type_changes": {
+    "type.display": { "from": { "weight": 600, "lineHeight": 1.2, "tracking": -0.025 }, "to": { "family": "{font.reading}", "weight": 500, "size": { "value": 36, "max": 44 }, "lineHeight": 1.15, "tracking": 0 } },
+    "type.headline": { "from": { "weight": 600, "lineHeight": 1.3, "tracking": -0.015 }, "to": { "family": "{font.reading}", "weight": 500, "size": 30, "lineHeight": 1.25, "tracking": 0 } },
+    "type.title": { "from": { "weight": 600, "size": 22, "lineHeight": 1.3 }, "to": { "family": "{font.reading}", "weight": 500, "size": 23, "lineHeight": 1.3, "tracking": 0 } },
+    "type.label": { "from": { "weight": 600, "size": 14, "lineHeight": 1.4 }, "to": { "family": "{font.ui}", "weight": 500, "size": 15, "lineHeight": 1.45, "tracking": 0 } },
+    "type.body": { "from": { "lineHeight": 1.6 }, "to": { "family": "{font.ui}", "weight": 400, "size": 16, "lineHeight": 1.65, "tracking": 0 } },
+    "type.caption": { "from": { "lineHeight": 1.4 }, "to": { "family": "{font.ui}", "weight": 400, "size": 13, "lineHeight": 1.5, "tracking": 0 } },
+    "type.reading": { "from": "giữ nguyên", "to": { "family": "{font.reading}", "weight": 400, "size": "{text.reading}", "lineHeight": "{leading.reading}", "tracking": 0 } }
+  },
+  "type_add": {
+    "type.task-headline": { "family": "{font.ui}", "weight": 600, "size": 28, "lineHeight": 1.25, "tracking": 0, "use": "Tiêu đề tác vụ: Chỉnh hồ sơ, Địa chỉ tác giả" },
+    "type.section": { "family": "{font.ui}", "weight": 600, "size": 18, "lineHeight": 1.4, "tracking": 0, "use": "Tiêu đề nhóm: Quyền xem quan hệ, Tác phẩm công khai, Nhận xét" },
+    "type.profile-name": { "family": "{font.reading}", "weight": 500, "size": { "value": 30, "max": 40 }, "lineHeight": 1.25, "tracking": 0, "use": "H1 hồ sơ tác giả" },
+    "type.excerpt": { "family": "{font.reading}", "weight": 400, "size": 17, "lineHeight": 1.6, "tracking": 0, "maxLines": 3, "use": "Trích đoạn trên Khám phá; thơ giữ ngắt dòng" },
+    "type.field-label": { "family": "{font.ui}", "weight": 500, "size": 14, "lineHeight": 1.45, "tracking": 0, "use": "Nhãn phía trên ô nhập" }
+  },
+  "color_changes": {
+    "field.container": { "from": "{color.surface-container-low}", "to": "{color.surface-container-high}", "contrast_vs_surface": { "light": "1.07 → 1.25", "dark": "1.10 → 1.43" } }
+  },
+  "role_usage": {
+    "work-eyebrow": "color.secondary, type.caption weight 500 — 'Tản văn · 18 tháng 11'",
+    "author-handle": "color.on-surface-variant, type.caption weight 400 — không dùng primary",
+    "reply-group": "color.surface-container, radius.lg",
+    "bottom-bar": "color.surface-container; pill 64×32 color.primary-container",
+    "focus": "outline 3px color.focus, offset 2px; không dùng box-shadow"
+  },
+  "measured_contrast": {
+    "on-surface/surface": { "light": 15.81, "dark": 15.33 },
+    "on-surface-variant/surface": { "light": 6.72, "dark": 10.99 },
+    "on-surface-variant/surface-container-high": { "light": 5.4, "dark": 7.68 },
+    "focus/surface": { "light": 5.78, "dark": 10.83 },
+    "focus/surface-container-high": { "light": 4.64, "dark": 7.57 },
+    "on-primary/primary": { "light": 6.98, "dark": 8.16 },
+    "secondary/surface": { "light": 6.07, "dark": 10.72 }
+  }
+}

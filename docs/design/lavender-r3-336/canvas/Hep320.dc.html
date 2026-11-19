@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Chỉnh hồ sơ 320 px chữ 200%</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&amp;family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 320px; height: 700px; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; background: #fffaff; color: #241d2d; font-family: 'Be Vietnam Pro', 'Noto Sans', sans-serif">
+  <div style="flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 24px; padding: 20px 16px 0">
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <label for="bio-200" style="font-size: 28px; font-weight: 500; line-height: 1.45">Bio</label>
+      <textarea id="bio-200" rows="4" style="box-sizing: border-box; width: 100%; height: 240px; padding: 14px 16px; border: 0; border-radius: 12px; background: #e8e0f0; color: #241d2d; font: 400 32px/1.65 'Be Vietnam Pro', sans-serif; resize: none; outline: 3px solid #7250b4; outline-offset: 2px">Viết những câu chuyện dịu dàng về người, về phố và những điều còn chưa kịp nói.</textarea>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <label for="bio-policy-200" style="font-size: 30px; line-height: 1.45">Quyền xem Bio</label>
+      <div style="position: relative">
+        <select id="bio-policy-200" style="appearance: none; -webkit-appearance: none; box-sizing: border-box; width: 100%; height: 88px; padding: 0 64px 0 20px; border: 0; border-radius: 12px; background: #e8e0f0; color: #241d2d; font: 500 30px/1.45 'Be Vietnam Pro', sans-serif">
+          <option>Công khai</option>
+          <option>Chỉ mình tôi</option>
+        </select>
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; right: 20px; top: 28px; pointer-events: none; color: #5f566b"><path d="M6 9l6 6 6-6"></path></svg>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; padding-top: 32px; border-top: 1px solid #d6cadd">
+      <span style="font-size: 30px; font-weight: 500; line-height: 1.45">Địa chỉ tác giả</span>
+      <span style="font-size: 28px; line-height: 1.5; color: #5f566b; overflow-wrap: anywhere">@hai-duong-nho</span>
+    </div>
+  </div>
+
+  <nav aria-label="Điều hướng chính" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 12px 0 16px; box-sizing: border-box; background: #efe8f6; flex: none">
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0 4px; text-decoration: none; color: #5f566b; text-align: center">
+      <span style="display: grid; place-items: center; width: 64px; height: 32px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M15.5 8.5l-2 5-5 2 2-5z"></path></svg></span>
+      <span style="font-size: 26px; font-weight: 500; line-height: 1.25">Khám phá</span>
+    </a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0 4px; text-decoration: none; color: #5f566b; text-align: center">
+      <span style="display: grid; place-items: center; width: 64px; height: 32px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l4-1 10-10-3-3L5 16z"></path><path d="M13.5 6.5l3 3"></path></svg></span>
+      <span style="font-size: 26px; font-weight: 500; line-height: 1.25">Bàn viết</span>
+    </a>
+    <a href="#" aria-current="page" style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0 4px; text-decoration: none; color: #241d2d; text-align: center">
+      <span style="display: grid; place-items: center; width: 64px; height: 32px; border-radius: 999px; background: #ebddff; color: #35205a"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"></path></svg></span>
+      <span style="font-size: 26px; font-weight: 600; line-height: 1.25">Tôi</span>
+    </a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":320,"height":700}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
