@@ -173,7 +173,7 @@ impl PgStore {
             },
             Some(row) => {
                 let relationships = super::follow::public_relationships_summary(
-                    &mut *tx,
+                    &mut tx,
                     row.principal_id,
                     name,
                     row.policies.0,
