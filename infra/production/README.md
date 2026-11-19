@@ -6,9 +6,9 @@ owner database, hai role runtime và hai role migrator. Không publish port back
 PostgreSQL. Sign-in, SMTP và evaluation giữ tắt theo [Auth operations](../../docs/development/auth-operations.md).
 Giữ Vink test và Cantos trên mạng và dữ liệu hiện tại.
 
-Nếu đặt Cloudflare trước Caddy mà vẫn giữ Spaceship và apex, xem
-[runbook Cloudflare edge production](cloudflare-edge.md). Đây là một lần đổi edge riêng, không
-phải bước bắt buộc để deploy hay phát hành image.
+Quy trình đưa Cloudflare trước Caddy nằm trong [runbook Cloudflare edge production](cloudflare-edge.md).
+Quy trình giữ domain ở registrar Spaceship và chuyển authoritative DNS sang Cloudflare Free
+trước khi bật proxy. Build và phát hành image dùng workflow bên dưới.
 
 ## Build và xác nhận bản phát hành
 
