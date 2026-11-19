@@ -88,8 +88,8 @@ export function mountProfileNavigation() {
     const fallback = entry.id.startsWith('profile-work-') ? 'author-works-heading' :
       entry.id.startsWith('work-') ? 'community-stream' :
       entry.id.startsWith('comment-') ? 'feedback-heading' :
-      entry.id.startsWith('rel-person-') ? 'relationship-title' :
-      entry.id === 'profile-followers-link' || entry.id === 'profile-following-link' || entry.id === 'own-profile-edit-link' || entry.id === 'follow-sign-in' || entry.id === 'rel-back-profile' ? 'author-profile-heading' :
+      entry.id.startsWith('rel-person-') || entry.id === 'rel-back-profile' ? 'relationship-title' :
+      entry.id === 'profile-followers-link' || entry.id === 'profile-following-link' || entry.id === 'own-profile-edit-link' || entry.id === 'follow-sign-in' ? 'author-profile-heading' :
       entry.id === 'edit-profile-link' ? 'me-title' : 'noi-dung';
     focusWhenReady(entry.source, () => {
       const node = document.getElementById(entry.id);

@@ -116,6 +116,10 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   await page.click('#profile-following-link');
   await page.waitFor(q('#relationship-title'), 'owner navigates to own following list');
   check(await page.eval(`${q('#relationship-title')}.textContent.includes('đang theo dõi')`), 'own following page heading renders');
+  await page.waitFor("document.activeElement?.id === 'relationship-title'", 'following list navigation focuses its heading');
+  await page.eval('history.back()');
+  await page.waitFor("document.activeElement?.id === 'profile-following-link'", 'Back restores the profile Following link');
+
 
   // 3. Keyboard Follow/Unfollow keeping focus + Mutual matrix across A, B and Guest.
   await page.goto(`${base}/@${handleB}`);
