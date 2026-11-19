@@ -205,20 +205,18 @@ impl ApiError {
             Self::UsernameTaken => StatusCode::CONFLICT,
             Self::ChallengeClosed => StatusCode::CONFLICT,
             Self::AccountDisabled | Self::PrincipalSuspended => StatusCode::FORBIDDEN,
-            Self::TagConflict { .. }
-            | Self::TagRetired { .. }
-            | Self::FollowConflict { .. } => StatusCode::CONFLICT,
-            Self::SelfFollow
-            | Self::RelationshipListPrivate
-            | Self::FollowActorUnavailable => StatusCode::FORBIDDEN,
+            Self::TagConflict { .. } | Self::TagRetired { .. } | Self::FollowConflict { .. } => {
+                StatusCode::CONFLICT
+            }
+            Self::SelfFollow | Self::RelationshipListPrivate | Self::FollowActorUnavailable => {
+                StatusCode::FORBIDDEN
+            }
             Self::FollowTargetUnavailable => StatusCode::CONFLICT,
             Self::ProfileGone => StatusCode::GONE,
             Self::UnknownTag { .. }
             | Self::WrongFacet { .. }
             | Self::TooManyThemes
-            | Self::FollowKeyReused => {
-                StatusCode::UNPROCESSABLE_ENTITY
-            }
+            | Self::FollowKeyReused => StatusCode::UNPROCESSABLE_ENTITY,
             Self::DependencyUnavailable => StatusCode::SERVICE_UNAVAILABLE,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }

@@ -142,12 +142,6 @@ impl FollowDirection {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FollowListScope {
-    Public,
-    Own,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FollowCommand {
     pub command_id: FollowCommandId,
     pub target: PrincipalId,
@@ -456,39 +450,42 @@ pub struct FollowPagePosition {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct FollowCursorScope([u8; 8]);
+pub struct FollowCursorScope([u8; 32]);
 
 impl FollowCursorScope {
-    pub fn of(
-        target: PrincipalId,
-        direction: FollowDirection,
-        list_scope: FollowListScope,
-        viewer: Option<PrincipalId>,
-    ) -> Self {
+    pub fn public(target: PrincipalId, direction: FollowDirection) -> Self {
+        Self::of(target, direction, None)
+    }
+
+    pub fn own(actor: PrincipalId, direction: FollowDirection, session: [u8; 32]) -> Self {
+        Self::of(actor, direction, Some(session))
+    }
+
+    fn of(target: PrincipalId, direction: FollowDirection, session: Option<[u8; 32]>) -> Self {
         let mut hasher = Sha256::new();
-        hasher.update(b"vink-follow-cursor-v1");
+        hasher.update(b"vink-follow-cursor-v2");
         hasher.update(target.as_uuid().as_bytes());
         hasher.update([match direction {
             FollowDirection::Followers => 0,
             FollowDirection::Following => 1,
         }]);
-        hasher.update([match list_scope {
-            FollowListScope::Public => 0,
-            FollowListScope::Own => 1,
-        }]);
-        match (list_scope, viewer) {
-            (FollowListScope::Own, Some(viewer_id)) => {
+        match session {
+            Some(digest) => {
                 hasher.update([1]);
-                hasher.update(viewer_id.as_uuid().as_bytes());
+                hasher.update(digest);
             }
-            _ => {
-                hasher.update([0]);
-            }
+            None => hasher.update([0]),
         }
-        let digest = hasher.finalize();
-        let mut out = [0u8; 8];
-        out.copy_from_slice(&digest[..8]);
-        Self(out)
+        Self(hasher.finalize().into())
+    }
+
+    fn mask_anchor(self, mut anchor: [u8; 16]) -> [u8; 16] {
+        // Separate the transmitted scope tag from the mask; own tokens cannot be linked
+        // to public tokens by the raw stable edge key.
+        for (byte, mask) in anchor.iter_mut().zip(&self.0[16..]) {
+            *byte ^= mask;
+        }
+        anchor
     }
 }
 
@@ -497,40 +494,35 @@ pub enum FollowCursorError {
     Malformed,
 }
 
-const CURSOR_VERSION: u8 = 1;
-const CURSOR_BYTES: usize = 1 + 8 + 16 + 8;
+const CURSOR_VERSION: u8 = 2;
+const CURSOR_BYTES: usize = 1 + 16 + 16;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FollowCursor {
-    after: FollowPagePosition,
-    scope: FollowCursorScope,
+    masked_anchor: [u8; 16],
+    scope_tag: [u8; 16],
 }
 
 impl FollowCursor {
-    pub fn new(after: FollowPagePosition, scope: FollowCursorScope) -> Self {
-        Self { after, scope }
+    pub fn new(anchor: Uuid, scope: FollowCursorScope) -> Self {
+        let mut scope_tag = [0u8; 16];
+        scope_tag.copy_from_slice(&scope.0[..16]);
+        Self {
+            masked_anchor: scope.mask_anchor(*anchor.as_bytes()),
+            scope_tag,
+        }
     }
 
-    pub const fn after(&self) -> FollowPagePosition {
-        self.after
-    }
-
-    pub const fn scope(&self) -> FollowCursorScope {
-        self.scope
+    pub fn anchor(&self, scope: FollowCursorScope) -> Option<Uuid> {
+        (self.scope_tag == scope.0[..16])
+            .then(|| Uuid::from_bytes(scope.mask_anchor(self.masked_anchor)))
     }
 
     pub fn encode(&self) -> String {
-        let micros = self
-            .after
-            .active_since
-            .unix_timestamp_nanos()
-            .div_euclid(1000);
-        let micros = i64::try_from(micros).unwrap_or(if micros < 0 { i64::MIN } else { i64::MAX });
         let mut bytes = Vec::with_capacity(CURSOR_BYTES);
         bytes.push(CURSOR_VERSION);
-        bytes.extend_from_slice(&micros.to_be_bytes());
-        bytes.extend_from_slice(self.after.cursor_key.as_bytes());
-        bytes.extend_from_slice(&self.scope.0);
+        bytes.extend_from_slice(&self.masked_anchor);
+        bytes.extend_from_slice(&self.scope_tag);
         bytes.iter().map(|b| format!("{b:02x}")).collect()
     }
 
@@ -545,23 +537,13 @@ impl FollowCursor {
         if bytes[0] != CURSOR_VERSION {
             return Err(FollowCursorError::Malformed);
         }
-        let micros =
-            i64::from_be_bytes(bytes[1..9].try_into().map_err(|_| FollowCursorError::Malformed)?);
-        let active_since = OffsetDateTime::from_unix_timestamp_nanos(i128::from(micros) * 1000)
-            .map_err(|_| FollowCursorError::Malformed)?;
-        let cursor_key = Uuid::from_bytes(
-            bytes[9..25]
+        Ok(Self {
+            masked_anchor: bytes[1..17]
                 .try_into()
                 .map_err(|_| FollowCursorError::Malformed)?,
-        );
-        let scope =
-            FollowCursorScope(bytes[25..].try_into().map_err(|_| FollowCursorError::Malformed)?);
-        Ok(Self {
-            after: FollowPagePosition {
-                active_since,
-                cursor_key,
-            },
-            scope,
+            scope_tag: bytes[17..]
+                .try_into()
+                .map_err(|_| FollowCursorError::Malformed)?,
         })
     }
 }
@@ -578,7 +560,7 @@ pub fn cut_follow_page<T>(
     mut rows: Vec<T>,
     page_size: usize,
     scope: FollowCursorScope,
-    position: impl Fn(&T) -> FollowPagePosition,
+    anchor: impl Fn(&T) -> Uuid,
 ) -> (Vec<T>, Option<FollowCursor>) {
     if rows.len() <= page_size {
         return (rows, None);
@@ -586,14 +568,13 @@ pub fn cut_follow_page<T>(
     rows.truncate(page_size);
     let next = rows
         .last()
-        .map(|last| FollowCursor::new(position(last), scope));
+        .map(|last| FollowCursor::new(anchor(last), scope));
     (rows, next)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use time::macros::datetime;
 
     fn p(n: u128) -> PrincipalId {
         PrincipalId::from_uuid(Uuid::from_u128(n))
@@ -800,7 +781,10 @@ mod tests {
 
     #[test]
     fn state_and_receipt_restore_enforce_parity_and_bounds() {
-        assert_eq!(FollowState::restore(false, 0, 0), Some(FollowState::INITIAL));
+        assert_eq!(
+            FollowState::restore(false, 0, 0),
+            Some(FollowState::INITIAL)
+        );
         assert!(FollowState::restore(true, 1, 1).is_some());
         assert!(FollowState::restore(false, 2, 2).is_some());
         assert!(FollowState::restore(false, 0, 1).is_some());
@@ -846,44 +830,27 @@ mod tests {
     }
 
     #[test]
-    fn follow_cursor_round_trips_and_binds_target_direction_and_scope() {
+    fn follow_cursor_round_trips_and_binds_target_direction_and_session() {
         let target = p(1);
-        let viewer = p(2);
-        let public_scope =
-            FollowCursorScope::of(target, FollowDirection::Followers, FollowListScope::Public, None);
-        let public_with_viewer = FollowCursorScope::of(
-            target,
-            FollowDirection::Followers,
-            FollowListScope::Public,
-            Some(viewer),
-        );
-        assert_eq!(public_scope, public_with_viewer);
-
-        let own_scope = FollowCursorScope::of(
-            target,
-            FollowDirection::Followers,
-            FollowListScope::Own,
-            Some(viewer),
-        );
-        assert_ne!(public_scope, own_scope);
+        let direction = FollowDirection::Followers;
+        let public = FollowCursorScope::public(target, direction);
+        let own = FollowCursorScope::own(target, direction, [1; 32]);
+        assert_ne!(public, own);
+        assert_ne!(own, FollowCursorScope::own(target, direction, [2; 32]));
+        assert_ne!(own, FollowCursorScope::own(p(3), direction, [1; 32]));
+        assert_ne!(public, FollowCursorScope::public(p(3), direction));
         assert_ne!(
-            public_scope,
-            FollowCursorScope::of(target, FollowDirection::Following, FollowListScope::Public, None)
-        );
-        assert_ne!(
-            public_scope,
-            FollowCursorScope::of(p(3), FollowDirection::Followers, FollowListScope::Public, None)
+            public,
+            FollowCursorScope::public(target, FollowDirection::Following)
         );
 
-        let pos = FollowPagePosition {
-            active_since: datetime!(2026-11-19 10:00:00 UTC),
-            cursor_key: Uuid::from_u128(0xdeadbeef),
-        };
-        let encoded = FollowCursor::new(pos, public_scope).encode();
+        let anchor = Uuid::from_u128(0xdeadbeef);
+        let encoded = FollowCursor::new(anchor, own).encode();
         assert_eq!(encoded.len(), 66);
         let decoded = FollowCursor::decode(&encoded).unwrap();
-        assert_eq!(decoded.after(), pos);
-        assert_eq!(decoded.scope(), public_scope);
+        assert_eq!(decoded.anchor(own), Some(anchor));
+        assert_eq!(decoded.anchor(public), None);
+        assert!(!encoded.contains(&anchor.simple().to_string()));
         assert!(FollowCursor::decode("zz").is_err());
         assert!(FollowCursor::decode(&encoded.to_uppercase()).is_err());
     }

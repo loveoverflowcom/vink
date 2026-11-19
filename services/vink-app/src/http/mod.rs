@@ -193,7 +193,7 @@ mod tests {
     use crate::persistence::lazy_pool;
 
     /// Nothing listens on port 1, so every database call fails like an outage.
-    fn outage_router() -> Router {
+    pub(super) fn outage_router() -> Router {
         let pool = lazy_pool("postgres://vink:unused@127.0.0.1:1/vink").unwrap();
         router(AppState::new(
             Vink::new(PgStore::new(pool)),
@@ -1698,7 +1698,7 @@ mod identity_tests {
 
     #[tokio::test]
     async fn follow_routes_fail_closed_with_no_store_on_auth_origin_validation_and_outage() {
-        let router = outage_router();
+        let router = super::tests::outage_router();
 
         // Missing Origin on unsafe PUT -> 403 no-store.
         let (got, headers, _) = call(
@@ -1738,13 +1738,13 @@ mod identity_tests {
             assert_eq!(headers[header::CACHE_CONTROL], "no-store", "{path}");
         }
 
-        // Strict query validation on public follow lists runs before DB outage -> 422 no-store.
+        // Authorization cannot be established during an outage, even for malformed public queries.
         for path in [
             "/api/v1/authors/an-may/followers?foo=1",
             "/api/v1/authors/an-may/following?cursor=a&cursor=b",
         ] {
             let (got, headers, body) = call(&router, "GET", path, &[], None).await;
-            assert_eq!(got, StatusCode::UNPROCESSABLE_ENTITY, "{path}: {body}");
+            assert_eq!(got, StatusCode::SERVICE_UNAVAILABLE, "{path}: {body}");
             assert_eq!(headers[header::CACHE_CONTROL], "no-store", "{path}");
         }
 

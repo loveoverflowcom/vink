@@ -335,7 +335,8 @@ impl FollowController {
             return FollowEffect::default();
         }
         let Some((shown, command)) = (match &self.phase {
-            FollowPhase::Pending { shown, command } | FollowPhase::Reconciling { shown, command }
+            FollowPhase::Pending { shown, command }
+            | FollowPhase::Reconciling { shown, command }
                 if command.command_id == command_id =>
             {
                 Some((shown.clone(), command.clone()))
@@ -397,12 +398,14 @@ impl FollowController {
                 }
             }
             Ok(ViewerRelationship::Other { .. }) | Ok(ViewerRelationship::SelfProfile { .. }) => {}
-            Err(err @ (ApiError::Unauthenticated
-            | ApiError::Forbidden
-            | ApiError::NotFound
-            | ApiError::ProfileGone
-            | ApiError::FollowActorUnavailable
-            | ApiError::TargetUnavailable)) => {
+            Err(
+                err @ (ApiError::Unauthenticated
+                | ApiError::Forbidden
+                | ApiError::NotFound
+                | ApiError::ProfileGone
+                | ApiError::FollowActorUnavailable
+                | ApiError::TargetUnavailable),
+            ) => {
                 return self.apply_terminal_or_transient_error(err, had_action, false);
             }
             Err(_) => {}
@@ -553,14 +556,20 @@ mod tests {
     use super::*;
     use crate::contract::follow::{FollowDirection, FollowToken};
 
-    fn scope(gen: u64, handle: &str) -> FollowScope {
+    fn scope(generation: u64, handle: &str) -> FollowScope {
         FollowScope {
-            session_gen: gen,
+            session_gen: generation,
             target_handle: handle.into(),
         }
     }
 
-    fn viewer_other(handle: &str, following: bool, mutual: bool, version: i64, order: i64) -> ViewerRelationship {
+    fn viewer_other(
+        handle: &str,
+        following: bool,
+        mutual: bool,
+        version: i64,
+        order: i64,
+    ) -> ViewerRelationship {
         ViewerRelationship::Other {
             target_handle: handle.into(),
             can_follow: true,
@@ -578,7 +587,9 @@ mod tests {
         ctrl.finish_load(&s, Ok(viewer_other("an-may", false, false, 0, 0)));
 
         // Duplicate press while Pending is rejected.
-        let req1 = ctrl.begin_intent("cmd-1".into(), None).expect("starts cmd-1");
+        let req1 = ctrl
+            .begin_intent("cmd-1".into(), None)
+            .expect("starts cmd-1");
         assert_eq!(req1.expected_order, 0);
         assert!(req1.following);
         assert!(ctrl.begin_intent("cmd-dup".into(), None).is_none());
@@ -613,12 +624,17 @@ mod tests {
             Ok(viewer_other("an-may", true, false, 1, 1)),
         );
         assert_eq!(
-            reconciled.invalidation.as_ref().map(|i| (i.following, i.accepted_order)),
+            reconciled
+                .invalidation
+                .as_ref()
+                .map(|i| (i.following, i.accepted_order)),
             Some((true, 1))
         );
 
         // User now clicks Unfollow (cmd-2 from expected_order 1) and receives ACK order 2.
-        let req2 = ctrl.begin_intent("cmd-2".into(), None).expect("starts cmd-2");
+        let req2 = ctrl
+            .begin_intent("cmd-2".into(), None)
+            .expect("starts cmd-2");
         assert_eq!(req2.expected_order, 1);
         assert!(!req2.following);
         let eff2 = ctrl.finish_write(
@@ -639,7 +655,10 @@ mod tests {
                 },
             }),
         );
-        assert_eq!(eff2.invalidation.as_ref().map(|i| i.accepted_order), Some(2));
+        assert_eq!(
+            eff2.invalidation.as_ref().map(|i| i.accepted_order),
+            Some(2)
+        );
 
         // Late ACK of cmd-1 (order 1, following=true) arrives now -> MUST be completely ignored!
         let stale = ctrl.finish_write(
@@ -735,7 +754,13 @@ mod tests {
                 },
             }),
         );
-        assert_eq!(conflict.invalidation.as_ref().map(|i| (i.following, i.accepted_order)), Some((true, 1)));
+        assert_eq!(
+            conflict
+                .invalidation
+                .as_ref()
+                .map(|i| (i.following, i.accepted_order)),
+            Some((true, 1))
+        );
 
         ctrl.begin_intent("cmd-2".into(), None);
         let gone = ctrl.finish_write(&s, "cmd-2", Err(ApiError::ProfileGone));

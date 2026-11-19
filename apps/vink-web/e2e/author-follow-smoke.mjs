@@ -9,7 +9,7 @@ const ownProfile = (p) => p.eval("fetch('/api/v1/me/profile').then(r => r.json()
 
 async function checkLayoutAndA11y(page, check, textContrast, url, contrastSelectors, label) {
   await page.goto(url);
-  await page.waitFor(q(contrastSelectors[0]), `${label} loaded`);
+  await page.waitFor(contrastSelectors.map(q).join(' && '), `${label} loaded`);
   for (const width of [320, 390, 834, 1024, 1440]) {
     for (const theme of ['light', 'dark']) {
       for (const scale of [100, 200]) {
@@ -34,8 +34,8 @@ async function checkLayoutAndA11y(page, check, textContrast, url, contrastSelect
         check(facts.nestedLinks === 0, `${label} zero nested links at ${width}px ${theme} ${scale}%`);
         for (const t of facts.targets) {
           check(
-            t.height >= 44,
-            `${label} touch target ${t.sel} height >= 44px at ${width}px ${theme} ${scale}% (got ${t.height})`
+            t.width >= 44 && t.height >= 44,
+            `${label} touch target ${t.sel} >= 44 × 44px at ${width}px ${theme} ${scale}% (got ${t.width}×${t.height})`
           );
         }
         if (width === 390 && scale === 100) {
@@ -45,6 +45,32 @@ async function checkLayoutAndA11y(page, check, textContrast, url, contrastSelect
             `${label} ${theme} settled`
           );
           await textContrast(page, theme, label, contrastSelectors);
+          await page.key('Tab');
+          const focus = await page.eval(`(() => {
+            const luma = (raw) => {
+              const rgb = raw.match(/[\\d.]+/g).map(Number).slice(0, 3);
+              return rgb.reduce((v, x, i) => {
+                const n = x / 255;
+                return v + (n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4) * [0.2126, 0.7152, 0.0722][i];
+              }, 0);
+            };
+            const el = ${q(contrastSelectors[0])};
+            el.focus();
+            const css = getComputedStyle(el);
+            let outside = el.parentElement;
+            while (outside && ['transparent', 'rgba(0, 0, 0, 0)'].includes(getComputedStyle(outside).backgroundColor)) outside = outside.parentElement;
+            const a = luma(css.outlineColor), b = luma(getComputedStyle(outside ?? document.documentElement).backgroundColor);
+            return {visible: document.activeElement === el && css.outlineStyle !== 'none' && parseFloat(css.outlineWidth) > 0,
+              contrast: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)};
+          })()`);
+          check(focus.visible && focus.contrast >= 3, `${label} focus ring at ${theme} has contrast >= 3:1 (${focus.contrast.toFixed(2)})`);
+        }
+        if ((width === 320 && theme === 'dark' && scale === 200) ||
+            (width === 1440 && theme === 'light' && scale === 100)) {
+          await page.eval(`${q(contrastSelectors[0])}.scrollIntoView({block:'start'})`);
+          await page.capture(`${label}-${width}-${theme}-${scale}`,
+            {scenario:label, textScale:scale, requiredTargets:contrastSelectors});
+
         }
       }
     }
@@ -109,8 +135,17 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   await guest.waitFor(q('#follow-sign-in'), 'guest profile settles');
   check(await guest.eval(`!${q('#follow-mutual')}`), 'guest never sees Mutual badge');
 
-  // Touch / click Unfollow back to clean 0 edges for ABA test.
-  await page.click('#follow-action');
+  // A touch Unfollow and a pointer Unfollow reset the active edges before the late-ACK case.
+  await page.viewport(390);
+  const tap = await page.eval(`(() => {
+    const el = ${q('#follow-action')};
+    el.scrollIntoView({block:'center'});
+    const r = el.getBoundingClientRect();
+    return {x:r.x + r.width / 2, y:r.y + r.height / 2};
+  })()`);
+  await page.send('Input.dispatchTouchEvent', {type:'touchStart', touchPoints:[tap]});
+  await page.send('Input.dispatchTouchEvent', {type:'touchEnd', touchPoints:[]});
+  await page.viewport(1280);
   await page.waitFor(`${q('#follow-action')}?.textContent?.trim() === 'Theo dõi' && !${q('#follow-mutual')}`, 'A unfollows B cleanly');
   await other.click('#follow-action');
   await other.waitFor(`${q('#follow-action')}?.textContent?.trim() === 'Theo dõi' && !${q('#follow-mutual')}`, 'B unfollows A cleanly');

@@ -22,6 +22,7 @@ pub(super) struct RelationshipPersonRow {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum LiveListState {
+    #[cfg(feature = "hydrate")]
     Loading,
     Page {
         author: PublicAuthorRef,
@@ -102,9 +103,10 @@ pub(super) fn ProfileActionRegion(
                 Standing::Active(_) => {
                     #[cfg(feature = "hydrate")]
                     {
+                        let scoped_session = move || session.profile_scope.get().into_iter().collect::<Vec<_>>();
                         view! {
                             <For
-                                each=move || session.profile_scope.get().into_iter().collect::<Vec<_>>()
+                                each=scoped_session
                                 key=Clone::clone
                                 children=move |scope| view! {
                                     <browser::ActiveFollowRegion
@@ -446,9 +448,8 @@ fn render_list_state(
     trigger_append: impl Fn() + Copy + Send + Sync + 'static,
 ) -> AnyView {
     match state {
-        LiveListState::Loading => {
-            view! { <p role="status">"Đang tải danh sách…"</p> }.into_any()
-        }
+        #[cfg(feature = "hydrate")]
+        LiveListState::Loading => view! { <p role="status">"Đang tải danh sách…"</p> }.into_any(),
         LiveListState::Page {
             author,
             direction,
@@ -525,7 +526,7 @@ fn render_list_state(
                         <div class="vk-rel-append-error" role="alert">
                             <p>"Chưa tải thêm được danh sách. Các dòng đã tải vẫn được giữ nguyên."</p>
                             <vink_ui::Button
-                                id=Some("rel-append-retry".to_string())
+                                id="rel-append-retry"
                                 variant=ButtonVariant::Tonal
                                 on_press=Callback::new(move |()| trigger_append())>
                                 "Thử lại tải thêm"
@@ -543,7 +544,7 @@ fn render_list_state(
                                     };
                                     view! {
                                         <vink_ui::Button
-                                            id=Some("rel-load-more".to_string())
+                                            id="rel-load-more"
                                             variant=ButtonVariant::Tonal
                                             state=btn_state
                                             on_press=Callback::new(move |()| trigger_append())>
@@ -633,7 +634,7 @@ fn render_list_state(
                     </Heading>
                     <p>"Hãy kiểm tra kết nối rồi thử lại."</p>
                     <vink_ui::Button
-                        id=Some("rel-retry".to_string())
+                        id="rel-retry"
                         variant=ButtonVariant::Tonal
                         on_press=Callback::new(move |()| retry_initial())>
                         "Thử lại"

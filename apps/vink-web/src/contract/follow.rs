@@ -46,7 +46,7 @@ pub fn valid_canonical_handle(raw: &str) -> bool {
         })
 }
 
-fn valid_relation_href(raw: &str, segment: &str) -> Option<&str> {
+fn valid_relation_href<'a>(raw: &'a str, segment: &str) -> Option<&'a str> {
     let rest = raw.strip_prefix("/@")?;
     let (handle, suffix) = rest.split_once('/')?;
     (suffix == segment && valid_canonical_handle(handle)).then_some(raw)
@@ -95,11 +95,17 @@ pub struct OwnRelationshipsSummary {
 
 impl OwnRelationshipsSummary {
     pub fn valid_followers_href(&self) -> Option<&str> {
-        valid_relation_href(&self.followers_href, FollowDirection::Followers.web_segment())
+        valid_relation_href(
+            &self.followers_href,
+            FollowDirection::Followers.web_segment(),
+        )
     }
 
     pub fn valid_following_href(&self) -> Option<&str> {
-        valid_relation_href(&self.following_href, FollowDirection::Following.web_segment())
+        valid_relation_href(
+            &self.following_href,
+            FollowDirection::Following.web_segment(),
+        )
     }
 }
 

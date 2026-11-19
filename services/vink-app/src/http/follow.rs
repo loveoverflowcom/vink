@@ -2,19 +2,22 @@
 
 use axum::{
     Json, Router,
-    extract::{DefaultBodyLimit, Path, RawQuery, State, rejection::JsonRejection},
-    http::{HeaderMap, HeaderValue, header},
+    extract::{
+        DefaultBodyLimit, FromRequestParts, Path, RawQuery, State, rejection::JsonRejection,
+    },
+    http::{HeaderMap, HeaderValue, header, request::Parts},
     response::{IntoResponse, Response},
     routing::get,
 };
+use sha2::{Digest, Sha256};
 use tower_http::set_header::SetResponseHeaderLayer;
 use uuid::Uuid;
 
 use super::conditional::{self, PUBLIC_ERROR_CACHE_CONTROL};
 use super::{Actor, ApiError, AppState};
-use crate::application::follow::{PublicRelationshipList, SetFollowInput};
+use crate::application::follow::{FollowError, PublicRelationshipList, SetFollowInput};
 use crate::domain::follow::{FollowDirection, MAX_MEMBERSHIP_BATCH};
-use crate::domain::handle;
+use crate::domain::{handle, ids::PrincipalId};
 
 const FOLLOW_BODY_LIMIT: usize = 4096;
 const MAX_CURSOR_QUERY_LEN: usize = 1024;
@@ -140,11 +143,11 @@ async fn public_list(
     headers: HeaderMap,
     raw: RawQuery,
 ) -> Result<Response, ApiError> {
-    let cursor = parse_cursor_query(raw)?;
+    let cursor = parse_cursor_query(raw).map_err(|_| FollowError::Invalid("query"));
     let list = state
         .vink
         .store()
-        .public_relationships(&name, direction, cursor.as_deref())
+        .public_relationships(&name, direction, cursor)
         .await?;
     match list {
         PublicRelationshipList::Page { .. } => conditional::respond(&headers, &list),
@@ -161,11 +164,7 @@ async fn viewer_relationship(
 ) -> Result<Json<crate::application::follow::ViewerRelationship>, ApiError> {
     let actor = actor.ok_or(ApiError::Unauthenticated)?;
     Ok(Json(
-        state
-            .vink
-            .store()
-            .viewer_relationship(actor, &name)
-            .await?,
+        state.vink.store().viewer_relationship(actor, &name).await?,
     ))
 }
 
@@ -194,11 +193,7 @@ async fn receipt(
         message: "invalid command_id UUID".into(),
     })?;
     Ok(Json(
-        state
-            .vink
-            .store()
-            .follow_receipt(actor, command_id)
-            .await?,
+        state.vink.store().follow_receipt(actor, command_id).await?,
     ))
 }
 
@@ -218,35 +213,59 @@ async fn membership(
     ))
 }
 
+/// Own cursors belong to the authenticated credential, not just the resolved principal.
+/// Only a domain-separated digest reaches the graph adapter. It is never logged or serialized.
+struct OwnListSession {
+    actor: PrincipalId,
+    digest: [u8; 32],
+}
+
+impl FromRequestParts<AppState> for OwnListSession {
+    type Rejection = ApiError;
+
+    async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, ApiError> {
+        let Actor(actor) = Actor::from_request_parts(parts, state).await?;
+        let actor = actor.ok_or(ApiError::Unauthenticated)?;
+        let credential =
+            crate::identity::presented_credential(parts).ok_or(ApiError::Unauthenticated)?;
+        let mut hasher = Sha256::new();
+        hasher.update(b"vink-follow-own-session-v1");
+        hasher.update(credential.as_bytes());
+        Ok(Self {
+            actor,
+            digest: hasher.finalize().into(),
+        })
+    }
+}
+
 async fn own_followers(
     State(state): State<AppState>,
-    Actor(actor): Actor,
+    session: OwnListSession,
     raw: RawQuery,
 ) -> Result<Json<crate::application::follow::OwnRelationshipList>, ApiError> {
-    own_list(state, actor, FollowDirection::Followers, raw).await
+    own_list(state, session, FollowDirection::Followers, raw).await
 }
 
 async fn own_following(
     State(state): State<AppState>,
-    Actor(actor): Actor,
+    session: OwnListSession,
     raw: RawQuery,
 ) -> Result<Json<crate::application::follow::OwnRelationshipList>, ApiError> {
-    own_list(state, actor, FollowDirection::Following, raw).await
+    own_list(state, session, FollowDirection::Following, raw).await
 }
 
 async fn own_list(
     state: AppState,
-    actor: Option<crate::domain::ids::PrincipalId>,
+    session: OwnListSession,
     direction: FollowDirection,
     raw: RawQuery,
 ) -> Result<Json<crate::application::follow::OwnRelationshipList>, ApiError> {
-    let actor = actor.ok_or(ApiError::Unauthenticated)?;
     let cursor = parse_cursor_query(raw)?;
     Ok(Json(
         state
             .vink
             .store()
-            .own_relationships(actor, direction, cursor.as_deref())
+            .own_relationships(session.actor, direction, session.digest, cursor.as_deref())
             .await?,
     ))
 }
@@ -259,7 +278,10 @@ mod tests {
     #[test]
     fn cursor_query_accepts_only_single_cursor() {
         assert_eq!(parse_cursor_query(RawQuery(None)).unwrap(), None);
-        assert_eq!(parse_cursor_query(RawQuery(Some(String::new()))).unwrap(), None);
+        assert_eq!(
+            parse_cursor_query(RawQuery(Some(String::new()))).unwrap(),
+            None
+        );
         assert_eq!(
             parse_cursor_query(RawQuery(Some("cursor=abc".into()))).unwrap(),
             Some("abc".into())

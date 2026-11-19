@@ -191,7 +191,7 @@ impl PublicReads for PublicReadsAdapter {
             };
             match vink
                 .store()
-                .public_relationships(&handle, domain_dir, cursor.as_deref())
+                .public_relationships(&handle, domain_dir, Ok(cursor))
                 .await
             {
                 Ok(list) => {

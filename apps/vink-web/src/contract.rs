@@ -1855,10 +1855,18 @@ mod follow_contract_tests {
                 ApiError::RelationshipListPrivate,
             ),
             ("error.profile_gone.json", 410, ApiError::ProfileGone),
-            ("error.follow_key_reused.json", 422, ApiError::FollowKeyReused),
+            (
+                "error.follow_key_reused.json",
+                422,
+                ApiError::FollowKeyReused,
+            ),
         ] {
             let env: ErrorEnvelope = load_fixture(name);
-            assert_eq!(ApiError::from_response(status, Some(env)), expected, "{name}");
+            assert_eq!(
+                ApiError::from_response(status, Some(env)),
+                expected,
+                "{name}"
+            );
         }
 
         for extra in ["actor_id", "follower_id"] {

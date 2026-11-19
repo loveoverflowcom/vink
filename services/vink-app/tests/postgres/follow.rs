@@ -14,6 +14,9 @@ use vink_app::domain::handle::Intent;
 use vink_app::domain::ids::PrincipalId;
 use vink_app::persistence::{PgStore, handle};
 
+const OWN_SESSION: (&str, &str) = ("cookie", "__Host-vink_session=fixture-own-session-1");
+const OTHER_OWN_SESSION: (&str, &str) = ("cookie", "__Host-vink_session=fixture-own-session-2");
+
 async fn seed_author(pool: &PgPool, id: Uuid, pen_name: &str, handle_name: &str) -> PrincipalId {
     sqlx::query("INSERT INTO principals (id, display_name) VALUES ($1, $2)")
         .bind(id)
@@ -113,7 +116,11 @@ async fn follow_auth_self_forged_fields_gone_and_suspended_boundaries(pool: PgPo
         Some(follow_body(Uuid::new_v4(), 0, true)),
     )
     .await;
-    assert_eq!((code.as_u16(), cache.as_deref()), (401, Some("no-store")), "{body}");
+    assert_eq!(
+        (code.as_u16(), cache.as_deref()),
+        (401, Some("no-store")),
+        "{body}"
+    );
 
     // Client-supplied actor_id / follower_id rejected with 422 before mutation.
     for extra in ["actor_id", "follower_id"] {
@@ -133,7 +140,11 @@ async fn follow_auth_self_forged_fields_gone_and_suspended_boundaries(pool: PgPo
             Some(forged),
         )
         .await;
-        assert_eq!((code.as_u16(), cache.as_deref()), (422, Some("no-store")), "{extra}: {body}");
+        assert_eq!(
+            (code.as_u16(), cache.as_deref()),
+            (422, Some("no-store")),
+            "{extra}: {body}"
+        );
     }
 
     // Self-follow returns 403 self_follow.
@@ -177,12 +188,14 @@ async fn follow_auth_self_forged_fields_gone_and_suspended_boundaries(pool: PgPo
     assert_eq!(json(&body)["following"], true);
 
     // Suspended actor -> 403.
-    sqlx::query("INSERT INTO principal_suspensions (id, principal_id, reason) VALUES ($1, $2, 'test')")
-        .bind(Uuid::new_v4())
-        .bind(a)
-        .execute(&pool)
-        .await
-        .unwrap();
+    sqlx::query(
+        "INSERT INTO principal_suspensions (id, principal_id, reason) VALUES ($1, $2, 'test')",
+    )
+    .bind(Uuid::new_v4())
+    .bind(a)
+    .execute(&pool)
+    .await
+    .unwrap();
     let (code, cache, _) = call(
         &app,
         "PUT",
@@ -200,12 +213,14 @@ async fn follow_auth_self_forged_fields_gone_and_suspended_boundaries(pool: PgPo
         .execute(&pool)
         .await
         .unwrap();
-    sqlx::query("INSERT INTO principal_suspensions (id, principal_id, reason) VALUES ($1, $2, 'test')")
-        .bind(Uuid::new_v4())
-        .bind(c)
-        .execute(&pool)
-        .await
-        .unwrap();
+    sqlx::query(
+        "INSERT INTO principal_suspensions (id, principal_id, reason) VALUES ($1, $2, 'test')",
+    )
+    .bind(Uuid::new_v4())
+    .bind(c)
+    .execute(&pool)
+    .await
+    .unwrap();
     let (code, _, body) = call(
         &app,
         "GET",
@@ -260,7 +275,11 @@ async fn follow_auth_self_forged_fields_gone_and_suspended_boundaries(pool: PgPo
         "/api/v1/authors/binh-moi/following",
     ] {
         let (code, cache, _, body) = get_with_headers(&app, path, None, &[]).await;
-        assert_eq!((code.as_u16(), cache.as_deref()), (410, Some("no-store")), "{path}: {body}");
+        assert_eq!(
+            (code.as_u16(), cache.as_deref()),
+            (410, Some("no-store")),
+            "{path}: {body}"
+        );
         assert_eq!(json(&body)["error"]["code"], "profile_gone");
     }
     let (code, cache, body) = call(
@@ -433,7 +452,12 @@ async fn follow_concurrency_aba_receipts_and_db_triggers(pool: PgPool) {
         .await
         .is_err()
     );
-    assert!(sqlx::query("DELETE FROM author_follows").execute(&pool).await.is_err());
+    assert!(
+        sqlx::query("DELETE FROM author_follows")
+            .execute(&pool)
+            .await
+            .is_err()
+    );
     assert!(
         sqlx::query("UPDATE author_follow_receipts SET desired_following = false")
             .execute(&pool)
@@ -519,7 +543,8 @@ async fn follow_retire_lock_wait_both_orders_index_scan_and_count_list_equality(
     tx.rollback().await.unwrap();
 
     // Paginate all followers and verify exact equality with profile & list count (26).
-    let (code, _, prof_body) = call(&app, "GET", "/api/v1/authors/trang-tho", None, None, None).await;
+    let (code, _, prof_body) =
+        call(&app, "GET", "/api/v1/authors/trang-tho", None, None, None).await;
     assert_eq!(code, 200);
     assert_eq!(json(&prof_body)["relationships"]["followers_count"], 26);
 
@@ -572,11 +597,32 @@ async fn follow_retire_lock_wait_both_orders_index_scan_and_count_list_equality(
         &app,
         &format!("/api/v1/me/relationships/followers?cursor={cross}"),
         Some(t),
-        &[],
+        &[OWN_SESSION],
     )
     .await;
     assert_eq!((code.as_u16(), cache.as_deref()), (200, Some("no-store")));
     assert_eq!(json(&cross_own)["state"], "restart");
+
+    // A private cursor paginates within the issuing authenticated session only.
+    let own_path = "/api/v1/me/relationships/followers";
+    let (code, cache, _, first_own) =
+        get_with_headers(&app, own_path, Some(t), &[OWN_SESSION]).await;
+    assert_eq!((code.as_u16(), cache.as_deref()), (200, Some("no-store")));
+    let first_own = json(&first_own);
+    assert_eq!(first_own["people"].as_array().unwrap().len(), 12);
+    let own_cursor = first_own["next_cursor"].as_str().unwrap();
+    let next = format!("{own_path}?cursor={own_cursor}");
+    let (code, _, _, page) = get_with_headers(&app, &next, Some(t), &[OWN_SESSION]).await;
+    assert_eq!(code, 200);
+    let page = json(&page);
+    assert_eq!(page["state"], "page");
+    assert_eq!(page["people"].as_array().unwrap().len(), 12);
+    for person in page["people"].as_array().unwrap() {
+        assert!(!first_own["people"].as_array().unwrap().contains(person));
+    }
+    let (code, cache, _, page) = get_with_headers(&app, &next, Some(t), &[OTHER_OWN_SESSION]).await;
+    assert_eq!((code.as_u16(), cache.as_deref()), (200, Some("no-store")));
+    assert_eq!(json(&page)["state"], "restart");
 
     // Order 1: retire(T) locks principals(T) FOR UPDATE while concurrent set_follow waits and fails Gone.
     let contender = Uuid::new_v4();
@@ -623,7 +669,10 @@ async fn follow_retire_lock_wait_both_orders_index_scan_and_count_list_equality(
         .viewer_relationship(PrincipalId::from_uuid(followers[0].0), "doc-gia-00")
         .await
         .unwrap();
-    assert_eq!(serde_json::to_value(own).unwrap()["own_relationships"]["following_count"], 0);
+    assert_eq!(
+        serde_json::to_value(own).unwrap()["own_relationships"]["following_count"],
+        0
+    );
 
     // Partial batch retirement preserves version parity & accepted_order increment across calls.
     let batch_target = Uuid::new_v4();
@@ -643,10 +692,30 @@ async fn follow_retire_lock_wait_both_orders_index_scan_and_count_list_equality(
         assert_eq!(code, 200);
     }
     let mut btx = pool.begin().await.unwrap();
-    assert_eq!(vink_app::persistence::follow::retire_edges_batch(&mut btx, batch_target_id, 2).await.unwrap(), 2);
-    assert_eq!(vink_app::persistence::follow::retire_edges_batch(&mut btx, batch_target_id, 2).await.unwrap(), 2);
-    assert_eq!(vink_app::persistence::follow::retire_edges_batch(&mut btx, batch_target_id, 2).await.unwrap(), 1);
-    assert_eq!(vink_app::persistence::follow::retire_edges_batch(&mut btx, batch_target_id, 2).await.unwrap(), 0);
+    assert_eq!(
+        vink_app::persistence::follow::retire_edges_batch(&mut btx, batch_target_id, 2)
+            .await
+            .unwrap(),
+        2
+    );
+    assert_eq!(
+        vink_app::persistence::follow::retire_edges_batch(&mut btx, batch_target_id, 2)
+            .await
+            .unwrap(),
+        2
+    );
+    assert_eq!(
+        vink_app::persistence::follow::retire_edges_batch(&mut btx, batch_target_id, 2)
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        vink_app::persistence::follow::retire_edges_batch(&mut btx, batch_target_id, 2)
+            .await
+            .unwrap(),
+        0
+    );
     btx.commit().await.unwrap();
     let parities: Vec<(bool, i64, i64)> = sqlx::query_as(
         "SELECT active, version, accepted_order FROM author_follows WHERE followee_id = $1",
@@ -732,28 +801,94 @@ async fn follow_policy_matrix_rights_before_cursor_and_mutual_isolation(pool: Pg
 
     // Mutual isolation: A and B see `mutual: true` in viewer overlay; C sees `mutual: false`;
     // guest public endpoints NEVER contain `mutual`.
-    let (_, _, avb) = call(&app, "GET", "/api/v1/authors/binh-pol/relationship/me", Some(a), None, None).await;
+    let (_, _, avb) = call(
+        &app,
+        "GET",
+        "/api/v1/authors/binh-pol/relationship/me",
+        Some(a),
+        None,
+        None,
+    )
+    .await;
     assert_eq!(json(&avb)["mutual"], true);
-    let (_, _, bva) = call(&app, "GET", "/api/v1/authors/an-pol/relationship/me", Some(b), None, None).await;
+    let (_, _, bva) = call(
+        &app,
+        "GET",
+        "/api/v1/authors/an-pol/relationship/me",
+        Some(b),
+        None,
+        None,
+    )
+    .await;
     assert_eq!(json(&bva)["mutual"], true);
-    let (_, _, cvb) = call(&app, "GET", "/api/v1/authors/binh-pol/relationship/me", Some(c), None, None).await;
+    let (_, _, cvb) = call(
+        &app,
+        "GET",
+        "/api/v1/authors/binh-pol/relationship/me",
+        Some(c),
+        None,
+        None,
+    )
+    .await;
     assert_eq!(json(&cvb)["mutual"], false);
-    let (_, _, cva) = call(&app, "GET", "/api/v1/authors/an-pol/relationship/me", Some(c), None, None).await;
+    let (_, _, cva) = call(
+        &app,
+        "GET",
+        "/api/v1/authors/an-pol/relationship/me",
+        Some(c),
+        None,
+        None,
+    )
+    .await;
     assert_eq!(json(&cva)["mutual"], false);
 
     // Cross-policy: A's public following is 403 (`following_list: self`), yet A appears in B's
     // public followers list (`followers_list: everyone`) AND owns `/me/relationships/following`.
-    let (code, cache, _, body) =
-        get_with_headers(&app, "/api/v1/authors/an-pol/following?cursor=bogus", None, &[]).await;
+    let (code, cache, _, body) = get_with_headers(
+        &app,
+        "/api/v1/authors/an-pol/following?cursor=bogus",
+        None,
+        &[],
+    )
+    .await;
     assert_eq!((code.as_u16(), cache.as_deref()), (403, Some("no-store")));
     assert_eq!(json(&body)["error"]["code"], "relationship_list_private");
 
-    let (code, _, _, body) = get_with_headers(&app, "/api/v1/authors/binh-pol/followers", None, &[]).await;
+    for (handle, direction, expected) in
+        [("an-pol", "following", 403), ("binh-pol", "followers", 422)]
+    {
+        let (status, cache, _, _) = get_with_headers(
+            &app,
+            &format!("/api/v1/authors/{handle}/{direction}?cursor=a&cursor=b"),
+            None,
+            &[],
+        )
+        .await;
+        assert_eq!(
+            (status.as_u16(), cache.as_deref()),
+            (expected, Some("no-store"))
+        );
+    }
+
+    let (code, _, _, body) =
+        get_with_headers(&app, "/api/v1/authors/binh-pol/followers", None, &[]).await;
     assert_eq!(code, 200);
     assert!(!body.contains("mutual"));
-    assert!(json(&body)["people"].as_array().unwrap().iter().any(|p| p["handle"] == "an-pol"));
+    assert!(
+        json(&body)["people"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|p| p["handle"] == "an-pol")
+    );
 
-    let (code, cache, body) = call(&app, "GET", "/api/v1/me/relationships/following", Some(a), None, None).await;
+    let (code, cache, _, body) = get_with_headers(
+        &app,
+        "/api/v1/me/relationships/following",
+        Some(a),
+        &[OWN_SESSION],
+    )
+    .await;
     assert_eq!((code.as_u16(), cache.as_deref()), (200, Some("no-store")));
     let own_following = json(&body);
     assert_eq!(own_following["count"], 1);
@@ -773,23 +908,44 @@ async fn follow_policy_matrix_rights_before_cursor_and_mutual_isolation(pool: Pg
     .execute(&pool)
     .await
     .unwrap();
-    let (code, _, _, flist) = get_with_headers(&app, "/api/v1/authors/binh-pol/followers", None, &[]).await;
+    let (code, _, _, flist) =
+        get_with_headers(&app, "/api/v1/authors/binh-pol/followers", None, &[]).await;
     assert_eq!(code, 200);
     assert!(json(&flist).get("count").is_none());
     let (code, _, _, prof) = get_with_headers(&app, "/api/v1/authors/binh-pol", None, &[]).await;
     assert_eq!(code, 200);
-    assert_eq!(json(&prof)["relationships"]["followers_href"], "/@binh-pol/nguoi-theo-doi");
-    assert!(json(&prof)["relationships"].get("followers_count").is_none());
-    assert_eq!(json(&prof)["relationships"]["following_href"], "/@binh-pol/dang-theo-doi");
-    assert!(json(&prof)["relationships"].get("following_count").is_none());
+    assert_eq!(
+        json(&prof)["relationships"]["followers_href"],
+        "/@binh-pol/nguoi-theo-doi"
+    );
+    assert!(
+        json(&prof)["relationships"]
+            .get("followers_count")
+            .is_none()
+    );
+    assert_eq!(
+        json(&prof)["relationships"]["following_href"],
+        "/@binh-pol/dang-theo-doi"
+    );
+    assert!(
+        json(&prof)["relationships"]
+            .get("following_count")
+            .is_none()
+    );
 
     // Capture valid public ETag while followers_list=everyone; also get a valid public cursor if possible.
-    let (code, _, etag_opt, _) = get_with_headers(&app, "/api/v1/authors/binh-pol/followers", None, &[]).await;
+    let (code, _, etag_opt, _) =
+        get_with_headers(&app, "/api/v1/authors/binh-pol/followers", None, &[]).await;
     assert_eq!(code, 200);
     let etag = etag_opt.unwrap();
     // Same ETag returns 304 while list is still public.
-    let (code, _, _, _) =
-        get_with_headers(&app, "/api/v1/authors/binh-pol/followers", None, &[("if-none-match", &etag)]).await;
+    let (code, _, _, _) = get_with_headers(
+        &app,
+        "/api/v1/authors/binh-pol/followers",
+        None,
+        &[("if-none-match", &etag)],
+    )
+    .await;
     assert_eq!(code, 304);
 
     // Reverse: `followers_list = self, followers_count = everyone`!
@@ -805,8 +961,13 @@ async fn follow_policy_matrix_rights_before_cursor_and_mutual_isolation(pool: Pg
     .await
     .unwrap();
     // Stale valid ETag MUST receive 403 no-store (rights BEFORE If-None-Match, NEVER 304!).
-    let (code, cache, _, body) =
-        get_with_headers(&app, "/api/v1/authors/binh-pol/followers", None, &[("if-none-match", &etag)]).await;
+    let (code, cache, _, body) = get_with_headers(
+        &app,
+        "/api/v1/authors/binh-pol/followers",
+        None,
+        &[("if-none-match", &etag)],
+    )
+    .await;
     assert_eq!((code.as_u16(), cache.as_deref()), (403, Some("no-store")));
     assert_eq!(json(&body)["error"]["code"], "relationship_list_private");
 
@@ -823,7 +984,7 @@ async fn follow_policy_matrix_rights_before_cursor_and_mutual_isolation(pool: Pg
         &app,
         "/api/v1/me/relationships/followers?cursor=invalid-token",
         Some(a),
-        &[],
+        &[OWN_SESSION],
     )
     .await;
     assert_eq!((code.as_u16(), cache.as_deref()), (200, Some("no-store")));
@@ -837,7 +998,11 @@ async fn follow_policy_matrix_rights_before_cursor_and_mutual_isolation(pool: Pg
         &[],
     )
     .await;
-    assert_eq!((code.as_u16(), cache.as_deref()), (200, Some("no-store")), "{body}");
+    assert_eq!(
+        (code.as_u16(), cache.as_deref()),
+        (200, Some("no-store")),
+        "{body}"
+    );
     let items = json(&body)["items"].as_array().unwrap().clone();
     // `an-pol` is self so omitted; `khong-ton-tai` missing so omitted; `binh-pol` followed + mutual; `chau-pol` not followed.
     assert_eq!(items.len(), 2);

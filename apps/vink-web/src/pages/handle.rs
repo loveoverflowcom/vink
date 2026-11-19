@@ -28,8 +28,9 @@ fn PublicProfile(name: String, cursor: Option<String>) -> impl IntoView {
     // change) or the failure the reader asked to retry. Lifecycle wake-ups only revalidate:
     // the current answer stays mounted with its focus and scroll until the new one arrives.
     let (floor, set_floor) = signal(0u64);
-    let live_relationships: RwSignal<Option<(String, crate::contract::follow::PublicRelationships)>> =
-        RwSignal::new(None);
+    let live_relationships: RwSignal<
+        Option<(String, crate::contract::follow::PublicRelationships)>,
+    > = RwSignal::new(None);
     let own_relationships: RwSignal<Option<crate::contract::follow::OwnRelationshipsSummary>> =
         RwSignal::new(None);
     let renew = move || {

@@ -3271,8 +3271,8 @@ mod tests {
         #[test]
         fn follow_messages_and_errors_match_fixtures() {
             let uuid = Uuid::parse_str("0192f3a1-0000-7000-8000-000000000294").unwrap();
-            let an = AuthorRef::new("An", "an-may-27");
-            let binh = AuthorRef::new("Bình", "binh-yen");
+            let an = AuthorRef::new("An".into(), "an-may-27".into());
+            let binh = AuthorRef::new("Bình".into(), "binh-yen".into());
 
             assert_matches(
                 "author.relationship.me.json",
@@ -3407,7 +3407,10 @@ mod tests {
                     "following": true,
                     extra: "forged"
                 });
-                assert!(serde_json::from_value::<SetFollowInput>(raw).is_err(), "{extra}");
+                assert!(
+                    serde_json::from_value::<SetFollowInput>(raw).is_err(),
+                    "{extra}"
+                );
             }
         }
     }

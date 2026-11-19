@@ -1437,7 +1437,10 @@ pub fn own_relationships_path(
 
 pub fn follow_membership_path(handles: &[String]) -> String {
     let encoded: Vec<String> = handles.iter().map(|h| encode_segment(h)).collect();
-    format!("/api/v1/me/follows/membership?handles={}", encoded.join(","))
+    format!(
+        "/api/v1/me/follows/membership?handles={}",
+        encoded.join(",")
+    )
 }
 
 pub(crate) fn author_relationships_resource(
@@ -1445,7 +1448,10 @@ pub(crate) fn author_relationships_resource(
     direction: crate::contract::follow::FollowDirection,
     cursor: Option<String>,
     version: ReadSignal<u64>,
-) -> Resource<(u64, Result<crate::contract::follow::AuthorRelationshipsLoad, LoadError>)> {
+) -> Resource<(
+    u64,
+    Result<crate::contract::follow::AuthorRelationshipsLoad, LoadError>,
+)> {
     #[cfg(feature = "ssr")]
     {
         let port = use_context::<crate::server::SharedPublicReads>();
@@ -1559,9 +1565,8 @@ pub(crate) async fn load_author_relationships_summary(
     match http::get::<crate::contract::AuthorResolution>(&path).await? {
         crate::contract::AuthorResolution::Current { relationships, .. } => Ok(relationships),
         crate::contract::AuthorResolution::Gone => Err(ApiError::ProfileGone),
-        crate::contract::AuthorResolution::Missing | crate::contract::AuthorResolution::Alias { .. } => {
-            Err(ApiError::NotFound)
-        }
+        crate::contract::AuthorResolution::Missing
+        | crate::contract::AuthorResolution::Alias { .. } => Err(ApiError::NotFound),
     }
 }
 

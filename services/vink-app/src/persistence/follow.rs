@@ -36,10 +36,10 @@ use crate::application::handle::AuthorRef;
 use crate::application::ports::StoreError;
 use crate::domain::follow::{
     DEFAULT_FOLLOW_PAGE_SIZE, FollowCommand, FollowCommandId, FollowCount, FollowCursor,
-    FollowCursorScope, FollowDirection, FollowFacts, FollowIntent, FollowListScope, FollowOrder,
-    FollowOutcome, FollowPagePosition, FollowReceipt, FollowRefusal, FollowState,
-    MAX_MEMBERSHIP_BATCH, MAX_STORE_MEMBERSHIP_CANDIDATES, StoredFollow, can_read_count,
-    can_read_list, cut_follow_page, decide_follow, principal_lock_pair,
+    FollowCursorScope, FollowDirection, FollowFacts, FollowIntent, FollowOrder, FollowOutcome,
+    FollowPagePosition, FollowReceipt, FollowRefusal, FollowState, MAX_MEMBERSHIP_BATCH,
+    MAX_STORE_MEMBERSHIP_CANDIDATES, StoredFollow, can_read_count, can_read_list, cut_follow_page,
+    decide_follow, principal_lock_pair,
 };
 use crate::domain::handle;
 use crate::domain::ids::PrincipalId;
@@ -245,7 +245,6 @@ async fn write_receipt(
 struct PersonRow {
     display_name: String,
     handle: String,
-    active_since: OffsetDateTime,
     cursor_key: Uuid,
 }
 
@@ -253,9 +252,42 @@ struct PersonRow {
 struct OwnPersonRow {
     display_name: String,
     handle: String,
-    active_since: OffsetDateTime,
     cursor_key: Uuid,
     mutual: bool,
+}
+
+/// Resolve an opaque anchor against the same snapshot and projection as the page.
+/// An edge which left the list can no longer provide a sort position.
+async fn resolve_list_anchor(
+    tx: &mut Transaction<'_, Postgres>,
+    owner: Uuid,
+    direction: FollowDirection,
+    cursor_key: Uuid,
+) -> Result<Option<FollowPagePosition>, StoreError> {
+    let sql = match direction {
+        FollowDirection::Followers => {
+            "SELECT f.active_since FROM author_follows f
+               JOIN author_profiles p ON p.principal_id = f.follower_id
+              WHERE f.cursor_key = $1 AND f.followee_id = $2 AND f.active
+                AND p.current_handle IS NOT NULL"
+        }
+        FollowDirection::Following => {
+            "SELECT f.active_since FROM author_follows f
+               JOIN author_profiles p ON p.principal_id = f.followee_id
+              WHERE f.cursor_key = $1 AND f.follower_id = $2 AND f.active
+                AND p.current_handle IS NOT NULL"
+        }
+    };
+    let timestamp: Option<OffsetDateTime> = sqlx::query_scalar(sql)
+        .bind(cursor_key)
+        .bind(owner)
+        .fetch_optional(&mut **tx)
+        .await
+        .map_err(classify)?;
+    Ok(timestamp.map(|active_since| FollowPagePosition {
+        active_since,
+        cursor_key,
+    }))
 }
 
 async fn fetch_public_page(
@@ -267,7 +299,7 @@ async fn fetch_public_page(
 ) -> Result<Vec<PersonRow>, StoreError> {
     let sql = match (direction, after.is_some()) {
         (FollowDirection::Followers, false) => {
-            "SELECT p.display_name, ap.current_handle AS handle, f.active_since, f.cursor_key
+            "SELECT p.display_name, ap.current_handle AS handle, f.cursor_key
                FROM author_follows f
                JOIN author_profiles ap ON ap.principal_id = f.follower_id
                JOIN principals p ON p.id = ap.principal_id
@@ -278,7 +310,7 @@ async fn fetch_public_page(
               LIMIT $2"
         }
         (FollowDirection::Followers, true) => {
-            "SELECT p.display_name, ap.current_handle AS handle, f.active_since, f.cursor_key
+            "SELECT p.display_name, ap.current_handle AS handle, f.cursor_key
                FROM author_follows f
                JOIN author_profiles ap ON ap.principal_id = f.follower_id
                JOIN principals p ON p.id = ap.principal_id
@@ -291,7 +323,7 @@ async fn fetch_public_page(
               LIMIT $4"
         }
         (FollowDirection::Following, false) => {
-            "SELECT p.display_name, ap.current_handle AS handle, f.active_since, f.cursor_key
+            "SELECT p.display_name, ap.current_handle AS handle, f.cursor_key
                FROM author_follows f
                JOIN author_profiles ap ON ap.principal_id = f.followee_id
                JOIN principals p ON p.id = ap.principal_id
@@ -302,7 +334,7 @@ async fn fetch_public_page(
               LIMIT $2"
         }
         (FollowDirection::Following, true) => {
-            "SELECT p.display_name, ap.current_handle AS handle, f.active_since, f.cursor_key
+            "SELECT p.display_name, ap.current_handle AS handle, f.cursor_key
                FROM author_follows f
                JOIN author_profiles ap ON ap.principal_id = f.followee_id
                JOIN principals p ON p.id = ap.principal_id
@@ -343,7 +375,7 @@ async fn fetch_own_page(
 ) -> Result<Vec<OwnPersonRow>, StoreError> {
     let sql = match (direction, after.is_some()) {
         (FollowDirection::Followers, false) => {
-            "SELECT p.display_name, ap.current_handle AS handle, f.active_since, f.cursor_key,
+            "SELECT p.display_name, ap.current_handle AS handle, f.cursor_key,
                     EXISTS (SELECT 1 FROM author_follows rev
                              WHERE rev.follower_id = $1
                                AND rev.followee_id = f.follower_id
@@ -358,7 +390,7 @@ async fn fetch_own_page(
               LIMIT $2"
         }
         (FollowDirection::Followers, true) => {
-            "SELECT p.display_name, ap.current_handle AS handle, f.active_since, f.cursor_key,
+            "SELECT p.display_name, ap.current_handle AS handle, f.cursor_key,
                     EXISTS (SELECT 1 FROM author_follows rev
                              WHERE rev.follower_id = $1
                                AND rev.followee_id = f.follower_id
@@ -375,7 +407,7 @@ async fn fetch_own_page(
               LIMIT $4"
         }
         (FollowDirection::Following, false) => {
-            "SELECT p.display_name, ap.current_handle AS handle, f.active_since, f.cursor_key,
+            "SELECT p.display_name, ap.current_handle AS handle, f.cursor_key,
                     EXISTS (SELECT 1 FROM author_follows rev
                              WHERE rev.follower_id = f.followee_id
                                AND rev.followee_id = $1
@@ -390,7 +422,7 @@ async fn fetch_own_page(
               LIMIT $2"
         }
         (FollowDirection::Following, true) => {
-            "SELECT p.display_name, ap.current_handle AS handle, f.active_since, f.cursor_key,
+            "SELECT p.display_name, ap.current_handle AS handle, f.cursor_key,
                     EXISTS (SELECT 1 FROM author_follows rev
                              WHERE rev.follower_id = f.followee_id
                                AND rev.followee_id = $1
@@ -617,9 +649,7 @@ impl PgStore {
             (hi_profile, lo_profile)
         };
 
-        let actor_eligible = actor_profile
-            .as_ref()
-            .is_some_and(|(h, _)| h.is_some());
+        let actor_eligible = actor_profile.as_ref().is_some_and(|(h, _)| h.is_some());
         let (target_current_handle, target_policies) = match target_profile {
             Some((handle, policies)) => (handle, policies.0),
             None => (None, ProfilePolicies::default()),
@@ -1020,7 +1050,7 @@ impl PgStore {
         &self,
         handle: &str,
         direction: FollowDirection,
-        cursor: Option<&str>,
+        cursor: Result<Option<String>, FollowError>,
     ) -> Result<PublicRelationshipList, FollowError> {
         if !handle::valid(handle) {
             return Err(FollowError::NotFound);
@@ -1069,21 +1099,36 @@ impl PgStore {
 
         let target_id = PrincipalId::from_uuid(target.principal_id);
         let author = AuthorRef::new(target.pen_name, current_handle);
-        let scope = FollowCursorScope::of(target_id, direction, FollowListScope::Public, None);
-        let after = match cursor {
+        let scope = FollowCursorScope::public(target_id, direction);
+        let after = match cursor?.as_deref() {
             None | Some("") => None,
-            Some(raw) => match FollowCursor::decode(raw) {
-                Ok(parsed) if parsed.scope() == scope => Some(parsed.after()),
-                _ => {
+            Some(raw) => {
+                let position = match FollowCursor::decode(raw)
+                    .ok()
+                    .and_then(|cursor| cursor.anchor(scope))
+                {
+                    Some(anchor) => {
+                        resolve_list_anchor(&mut tx, target.principal_id, direction, anchor).await?
+                    }
+                    None => None,
+                };
+                if position.is_none() {
                     tx.commit().await.map_err(classify)?;
                     return Ok(PublicRelationshipList::Restart { author, direction });
                 }
-            },
+                position
+            }
         };
 
         let page_size = DEFAULT_FOLLOW_PAGE_SIZE;
-        let rows = fetch_public_page(&mut tx, target.principal_id, direction, after, page_size + 1)
-            .await?;
+        let rows = fetch_public_page(
+            &mut tx,
+            target.principal_id,
+            direction,
+            after,
+            page_size + 1,
+        )
+        .await?;
         let count = if can_read_count(policies, direction, false) {
             Some(match direction {
                 FollowDirection::Followers => {
@@ -1098,10 +1143,7 @@ impl PgStore {
         };
         tx.commit().await.map_err(classify)?;
 
-        let (rows, next) = cut_follow_page(rows, page_size, scope, |row| FollowPagePosition {
-            active_since: row.active_since,
-            cursor_key: row.cursor_key,
-        });
+        let (rows, next) = cut_follow_page(rows, page_size, scope, |row| row.cursor_key);
         Ok(PublicRelationshipList::Page {
             author,
             direction,
@@ -1118,23 +1160,32 @@ impl PgStore {
         &self,
         actor: PrincipalId,
         direction: FollowDirection,
+        session_scope: [u8; 32],
         cursor: Option<&str>,
     ) -> Result<OwnRelationshipList, FollowError> {
         ready(self.pool()).await?;
         let mut tx = read_snapshot(self.pool()).await?;
         let (pen_name, handle) = require_active_actor_read(&mut tx, actor).await?;
         let author = AuthorRef::new(pen_name, handle);
-        let scope =
-            FollowCursorScope::of(actor, direction, FollowListScope::Own, Some(actor));
+        let scope = FollowCursorScope::own(actor, direction, session_scope);
         let after = match cursor {
             None | Some("") => None,
-            Some(raw) => match FollowCursor::decode(raw) {
-                Ok(parsed) if parsed.scope() == scope => Some(parsed.after()),
-                _ => {
+            Some(raw) => {
+                let position = match FollowCursor::decode(raw)
+                    .ok()
+                    .and_then(|cursor| cursor.anchor(scope))
+                {
+                    Some(anchor) => {
+                        resolve_list_anchor(&mut tx, actor.as_uuid(), direction, anchor).await?
+                    }
+                    None => None,
+                };
+                if position.is_none() {
                     tx.commit().await.map_err(classify)?;
                     return Ok(OwnRelationshipList::Restart { author, direction });
                 }
-            },
+                position
+            }
         };
 
         let page_size = DEFAULT_FOLLOW_PAGE_SIZE;
@@ -1146,10 +1197,7 @@ impl PgStore {
         };
         tx.commit().await.map_err(classify)?;
 
-        let (rows, next) = cut_follow_page(rows, page_size, scope, |row| FollowPagePosition {
-            active_since: row.active_since,
-            cursor_key: row.cursor_key,
-        });
+        let (rows, next) = cut_follow_page(rows, page_size, scope, |row| row.cursor_key);
         Ok(OwnRelationshipList::Page {
             author,
             direction,
