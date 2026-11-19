@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vink Git Workflow"
+  short_description: "Đặt tên nhánh, viết commit, PR và liên kết nguồn"
+  default_prompt: "Dùng $vink-git-workflow để chuẩn hoá nhánh, viết commit có trailer nguồn thật và tạo hoặc cập nhật PR trung thực."
