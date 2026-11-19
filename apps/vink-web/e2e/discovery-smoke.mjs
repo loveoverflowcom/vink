@@ -100,7 +100,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
         const row=document.querySelector('.vk-public-row').getBoundingClientRect();
         const tRect=toolbar.getBoundingClientRect();
         return Math.abs(filter.top - search.top) < 4 && Math.abs(search.top - brand.top) < 4 &&
-          filter.right <= search.left && search.right <= brand.left &&
+          Math.abs(search.left - filter.right - 12) <= 1 && Math.abs(brand.left - search.right - 12) <= 1 &&
           Math.abs(tRect.height - 84) <= 2 && Math.abs(row.top - 84) <= 2 &&
           getComputedStyle(document.querySelector('.vk-public-scope')).width === '1px';
       })()`), '#308 r1 desktop single-row toolbar (84px) places card 1 at y=84px');
@@ -115,7 +115,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
         const row=document.querySelector('.vk-public-row').getBoundingClientRect();
         const toolbar=document.querySelector('.vk-discovery-toolbar').getBoundingClientRect();
         return explore.dataset.search==='closed' && input.getClientRects().length===0 &&
-          filter.right <= launcher.left && launcher.right <= brand.left &&
+          filter.right <= launcher.left && Math.abs(brand.left - launcher.right - 8) <= 1 &&
           Math.abs(launcher.width-48)<1 && Math.abs(launcher.height-48)<1 &&
           Math.abs(toolbar.height - 68) <= 2 && Math.abs(row.top - 68) <= 2 &&
           input.labels[0].textContent==='Tìm theo tên hoặc tác giả';
@@ -437,8 +437,11 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await goto('/?q=missing-return-258#work-00000000-0000-4000-8000-000000000258');
   await page.waitFor("document.activeElement?.id==='community-stream'", '#258 missing reader-return row focuses the named results landmark');
   check(await page.eval("document.activeElement.getAttribute('aria-label')==='Tác phẩm khám phá' && document.activeElement.getClientRects().length>0"), '#258 reader-return fallback is a visible, named target');
-  await goto('/');
-  await submittedReadKeepsTyping(page, {args, check});
+  for (const width of [390, 1440]) {
+    await page.viewport(width);
+    await goto('/');
+    await submittedReadKeepsTyping(page, {args, check, mobile: width < 760});
+  }
   await goto('/');
 }
 
@@ -492,9 +495,21 @@ async function catalogRecovery(page, {args, check, goto}) {
   }
 }
 
-async function submittedReadKeepsTyping(page, {args, check}) {
+async function submittedReadKeepsTyping(page, {args, check, mobile}) {
   const query='pending-submit-258', draft='chữ đang gõ trong lúc tìm kiếm';
   const response=await (await fetch(args.base+'/api/v1/works?q='+query)).json();
+  if (mobile) {
+    await page.click('#open-public-search');
+    await page.waitFor("document.activeElement?.id==='public-query'", 'mobile search input ready for typing');
+  }
+  const commit = async () => {
+    if (mobile) {
+      await page.eval("document.querySelector('#public-query').focus()");
+      await page.key('Enter');
+    } else {
+      await page.click('#public-search button[type=submit]');
+    }
+  };
   const held=[];
   const gate=({sessionId,method,params})=>{
     if(sessionId!==page.sessionId || method!=='Fetch.requestPaused') return;
@@ -506,7 +521,7 @@ async function submittedReadKeepsTyping(page, {args, check}) {
   try {
     await page.eval("document.querySelector('#public-query').focus(); document.querySelector('#public-query').select()");
     await page.send('Input.insertText',{text:query});
-    await page.click('#public-search button[type=submit]');
+    await commit();
     const deadline=Date.now()+10000;
     while(!held.length && Date.now()<deadline) await new Promise(resolve=>setTimeout(resolve,25));
     check(held.length===1,'#258 submitted search response is actually held');
@@ -519,9 +534,9 @@ async function submittedReadKeepsTyping(page, {args, check}) {
     await page.eval('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
     check(await page.eval(`document.activeElement===window.__pending258Input && document.querySelector('#public-query')===window.__pending258Input && window.__pending258Input.value===${JSON.stringify(draft)} && window.__pending258Input.selectionStart===${draft.length}`),
       '#258 a submitted read finishing cannot steal focus/caret from a newer unapplied query');
-    await page.click('#public-search button[type=submit]');
+    await commit();
     await page.waitFor(`new URL(location.href).searchParams.get('q')===${JSON.stringify(draft)} && document.querySelector('#public-results') && document.activeElement?.id==='community-stream'`,'#258 the newer query commits with landmark focus');
-    await page.click('#public-search button[type=submit]');
+    await commit();
     await page.waitFor("document.activeElement?.id==='community-stream'",'#258 repeating the same submitted query still focuses the landmark');
   } finally {
     for(const requestId of held) await page.send('Fetch.failRequest',{requestId,errorReason:'Aborted'}).catch(()=>{});

@@ -323,7 +323,6 @@ a {
 }
 #community-stream [data-testid^=public-] .vk-ui-panel__actions { justify-content: center; }
 
-.vk-discovery-tools { margin-inline-start: auto; }
 .vk-public-search { margin: 0; }
 @media (max-width: 759px) {
   .vk-explore { margin-inline: min(0px, calc(16px - var(--vk-space-4))); }
