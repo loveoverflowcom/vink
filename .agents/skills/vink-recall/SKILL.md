@@ -13,7 +13,10 @@ agent's suggestion is historical evidence, not a fresh command.
 
 - Identify the feature, decision ID, issue/PR, branch or distinctive phrase the user remembers.
   Use the current conversation and supplied handoff first. Search earlier chats only when
-  they can resolve something material that is missing.
+  they can resolve something material that is missing. For a branch or PR, its commit trailers
+  (`git log --format='%(trailers:only,unfold)' origin/develop..<branch>`) and the PR body's
+  Liên kết section recover the issue, decisions and evidence it cites
+  ([vink-git-workflow](../vink-git-workflow/SKILL.md)).
 - Discover available chat tools. In Codex, use `list_threads` to locate likely Vink chats
   and `read_thread` for a small set of matches; in Claude Code, use session-history tools
   such as `search_session_transcripts` when present, or `/resume`-able transcripts the user names;

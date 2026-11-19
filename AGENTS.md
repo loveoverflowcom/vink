@@ -182,9 +182,11 @@ The following boundaries guide work within the selected scope:
 ## Work and verification
 
 Default integration branch: `develop`. Continue in the branch/worktree assigned to the task.
-For an existing PR, verify its head before editing. When creating a branch, use `codex/<outcome>`
-from the task's integration base and preserve unrelated worktrees. An explicit branch, worktree
-or direct-to-`develop` request wins.
+For an existing PR, verify its head before editing. When creating a branch, name it
+`<type>/<issue>-<slug>` (no tool prefix such as `codex/` or `claude/`) from the task's integration
+base and preserve unrelated worktrees. An explicit branch, worktree or direct-to-`develop` request
+wins. Branch names, commit messages, PR titles/bodies and source links follow
+[vink-git-workflow](.agents/skills/vink-git-workflow/SKILL.md).
 Check status first and preserve existing edits. Stage explicit paths belonging to the task.
 Use authorization already granted in the conversation; a skill adds no requirement to ask again.
 Do not infer permission to push, post messages or publish from a local editing task.
