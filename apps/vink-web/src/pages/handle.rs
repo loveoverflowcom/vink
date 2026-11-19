@@ -28,14 +28,10 @@ fn PublicProfile(name: String, cursor: Option<String>) -> impl IntoView {
     // change) or the failure the reader asked to retry. Lifecycle wake-ups only revalidate:
     // the current answer stays mounted with its focus and scroll until the new one arrives.
     let (floor, set_floor) = signal(0u64);
-    let live_relationships: RwSignal<
-        Option<(String, crate::contract::follow::PublicRelationships)>,
-    > = RwSignal::new(None);
     let own_relationships: RwSignal<
         Option<(String, crate::contract::follow::OwnRelationshipsSummary)>,
     > = RwSignal::new(None);
     let renew = move || {
-        live_relationships.set(None);
         advance.update(|stamp| *stamp += 1);
         set_floor.set(generation.get_untracked());
     };
@@ -60,7 +56,6 @@ fn PublicProfile(name: String, cursor: Option<String>) -> impl IntoView {
                         &status,
                         &name,
                         cursor.is_some(),
-                        live_relationships,
                         own_relationships,
                         renew,
                     )
@@ -76,7 +71,6 @@ fn render_profile(
     status: &super::ResponseStatus,
     name: &str,
     continued: bool,
-    live_relationships: RwSignal<Option<(String, crate::contract::follow::PublicRelationships)>>,
     own_relationships: RwSignal<Option<(String, crate::contract::follow::OwnRelationshipsSummary)>>,
     retry: impl Fn() + Copy + Send + Sync + 'static,
 ) -> AnyView {
@@ -95,6 +89,11 @@ fn render_profile(
                 .take(2)
                 .collect::<String>()
                 .to_uppercase();
+            // The overlay belongs to this exact public projection. An authoritative refresh
+            // may have revoked a list or count since the write; no old overlay may outlive it.
+            let live_relationships: RwSignal<
+                Option<(String, crate::contract::follow::PublicRelationships)>,
+            > = RwSignal::new(None);
             let handle_for_rel = author.handle.clone();
             let initial_rel = StoredValue::new(*relationships);
             let effective_public = Signal::derive(move || match live_relationships.get() {

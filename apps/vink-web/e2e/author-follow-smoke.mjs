@@ -288,6 +288,17 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   await heldOwn.finish(false, true);
   check(await tab.eval(currentEmpty), 'late nonempty own-list ACK cannot restore a prior session’s edge');
 
+  await page.goto(`${base}/@${handleB}`);
+  await page.waitFor(`${q('#follow-action')}?.textContent?.trim() === 'Theo dõi'`, 'new A session can act on B again');
+  await page.click('#follow-action');
+  await page.waitFor(`${q('#profile-followers-link')}?.textContent?.includes('16 người theo dõi')`, 'write overlays an updated public list and count');
+  authorFixtureSql(`UPDATE author_profiles SET policies = policies ||
+    '{"followers_list":"self","followers_count":"self"}'::jsonb
+    WHERE principal_id = ${literal(profB.principal_id)};`);
+  await page.eval("window.dispatchEvent(new Event('focus'))");
+  await page.waitFor(`${q('#author-profile-heading')} && !${q('#profile-followers-link')} && !${q('#profile-followers-count')}`,
+    'focus refresh removes revoked link and count even after a confirmed Follow write');
+
   check(guest.errors.length === 0 && page.errors.length === 0 && other.errors.length === 0 && tab.errors.length === 0,
     `zero console/page errors during follow flows (${[...guest.errors, ...page.errors, ...other.errors, ...tab.errors].join(' | ')})`);
 
