@@ -345,7 +345,8 @@ async fn cutover_converts_retired_drafts_exactly_once(pool: PgPool) {
             FIRST_PUBLICATION_MIGRATION,
             HANDLE_MIGRATION,
             PROFILE_FIELDS_MIGRATION,
-            PUBLIC_ATTRIBUTION_MIGRATION
+            PUBLIC_ATTRIBUTION_MIGRATION,
+            20261126000000 // Follow ledger migration
         ]
     );
     let (title, document, version) = stored(&pool, WorkId::from_uuid(work)).await;

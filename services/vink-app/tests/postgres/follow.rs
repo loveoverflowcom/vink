@@ -19,10 +19,11 @@ const OWN_SESSION: (&str, &str) = ("cookie", "__Host-vink_session=fixture-own-se
 const OTHER_OWN_SESSION: (&str, &str) = ("cookie", "__Host-vink_session=fixture-own-session-2");
 
 async fn seed_author(pool: &PgPool, id: Uuid, pen_name: &str, handle_name: &str) -> PrincipalId {
+    let mut tx = pool.begin().await.unwrap();
     sqlx::query("INSERT INTO principals (id, display_name) VALUES ($1, $2)")
         .bind(id)
         .bind(pen_name)
-        .execute(pool)
+        .execute(&mut *tx)
         .await
         .unwrap();
     sqlx::query(
@@ -30,13 +31,13 @@ async fn seed_author(pool: &PgPool, id: Uuid, pen_name: &str, handle_name: &str)
     )
     .bind(id)
     .bind(format!("sub-{id}"))
-    .execute(pool)
+    .execute(&mut *tx)
     .await
     .unwrap();
     sqlx::query("INSERT INTO author_handle_names (principal_id, handle) VALUES ($1, $2)")
         .bind(id)
         .bind(handle_name)
-        .execute(pool)
+        .execute(&mut *tx)
         .await
         .unwrap();
     sqlx::query(
@@ -44,9 +45,19 @@ async fn seed_author(pool: &PgPool, id: Uuid, pen_name: &str, handle_name: &str)
     )
     .bind(id)
     .bind(handle_name)
-    .execute(pool)
+    .execute(&mut *tx)
     .await
     .unwrap();
+    // Even after rollout, the deferred inventory guard sees this profile and its binding
+    // in one transaction. Enable the real backfill gate after the first fixture author.
+    let ready: bool = sqlx::query_scalar("SELECT ready FROM author_handle_rollout WHERE singleton")
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    if !ready {
+        handle::backfill(pool).await.unwrap();
+    }
     PrincipalId::from_uuid(id)
 }
 

@@ -818,7 +818,7 @@ async fn profile_owner_cas_revoke_and_public_page_share_the_current_projection(p
         own,
         Some(a),
         Some(ORIGIN),
-        Some(command(2, Some(bio), &initial["policies"])),
+        Some(command(4, Some(bio), &initial["policies"])),
     )
     .await;
     assert_eq!(status, 422, "widening stays gated");

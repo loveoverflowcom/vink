@@ -252,7 +252,8 @@ async fn backfill_and_old_writer_preserve_the_source_across_republication(pool: 
             FIRST_PUBLICATION_MIGRATION,
             HANDLE_MIGRATION,
             PROFILE_FIELDS_MIGRATION,
-            PUBLIC_ATTRIBUTION_MIGRATION
+            PUBLIC_ATTRIBUTION_MIGRATION,
+            20261126000000 // Follow ledger migration
         ]
     );
     // A binary embedding only the prior ledger is not ready after an additive migration.
