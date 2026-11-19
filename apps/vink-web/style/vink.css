@@ -1568,13 +1568,15 @@ a {
   display: inline-grid;
   place-items: center;
   flex: none;
-  inline-size: 28px;
-  block-size: 28px;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
   border-radius: var(--vk-radius-full);
   background: var(--vk-secondary-container);
   color: var(--vk-on-secondary-container);
   font-size: var(--vk-type-caption-size);
   font-weight: var(--vk-type-label-weight);
+  line-height: 1;
+  white-space: nowrap;
   letter-spacing: 0.02em;
 }
 .vk-public-row__author { min-inline-size: 0; overflow-wrap: anywhere; color: var(--vk-on-surface); font-weight: var(--vk-type-label-weight); }

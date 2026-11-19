@@ -137,7 +137,26 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     const dock = await page.eval("document.querySelector('#tag-dock').getBoundingClientRect().width>0");
     check(!dock, '#308 hydrated discovery has no filter column ' + [theme,width,scale].join('/'));
 
-    check(await page.eval("(() => { const row=document.querySelector('.vk-public-row'), t=row.querySelector('h2.vk-public-row__title').getBoundingClientRect(), n=row.querySelector('.vk-public-row__author').getBoundingClientRect(), a=row.querySelector('.vk-public-row__avatar').getBoundingClientRect(), e=row.querySelector('.vk-public-row__excerpt').getBoundingClientRect(), c=row.querySelector('.vk-public-row__chevron'), l=row.querySelector('a'); return document.getElementById(l.getAttribute('aria-labelledby'))===row.querySelector('h2') && n.bottom<=t.top+1 && t.bottom<=e.top+1 && Math.abs(a.width-28)<1 && Math.abs(a.height-28)<1 && !!c && e.height>0; })()"), '#308 r1 card places byline (28px avatar) above Literata h2 title, excerpt and chevron ' + [theme,width,scale].join('/'));
+    const cardLayout = await page.eval(`(() => {
+      const row = document.querySelector('.vk-public-row');
+      const title = row.querySelector('h2.vk-public-row__title');
+      const avatar = row.querySelector('.vk-public-row__avatar');
+      const circle = avatar.getBoundingClientRect();
+      const initials = document.createRange();
+      initials.selectNodeContents(avatar);
+      const ink = initials.getBoundingClientRect();
+      const excerpt = row.querySelector('.vk-public-row__excerpt').getBoundingClientRect();
+      return {
+        named: document.getElementById(row.querySelector('a').getAttribute('aria-labelledby')) === title,
+        ordered: row.querySelector('.vk-public-row__author').getBoundingClientRect().bottom <= title.getBoundingClientRect().top + 1
+          && title.getBoundingClientRect().bottom <= excerpt.top + 1 && excerpt.height > 0 && !!row.querySelector('.vk-public-row__chevron'),
+        diameter: circle.width, square: circle.width === circle.height,
+        fits: initials.getClientRects().length === 1 && ink.left >= circle.left - 1 && ink.right <= circle.right + 1
+          && ink.top >= circle.top - 1 && ink.bottom <= circle.bottom + 1,
+      };
+    })()`);
+    check(cardLayout.named && cardLayout.ordered && cardLayout.square && cardLayout.fits && Math.abs(cardLayout.diameter - 28 * scale / 100) < 1,
+      '#308 title names the card and both initials fit at the chosen text size ' + [theme,width,scale,JSON.stringify(cardLayout)].join('/'));
     if (width === 320 && scale === 200) {
       const card = await page.eval(`(() => {
         const row = document.querySelector('.vk-public-row');
