@@ -67,7 +67,9 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
     check(closed.settings.comments_open === false && await page.eval(`!${q(ROOT_EDITOR+'-auth')} && ${q(ROOT_EDITOR+'-send')}.getAttribute('aria-disabled') === 'true'`),
       '#328 no contextual entry on a real closed discussion, composer still editable');
 
-    await page.goto(args.base + '/');
+    // Full Web runs Discovery first, so its newer publications may fill the first page.
+    // Use an actual search result for the seeded Reader rather than assuming feed order.
+    await page.goto(args.base + '/?q=' + encodeURIComponent('Mưa trên phố cũ'));
     await page.waitFor(`${HYDRATED} && ${q('a[href="'+HERE+'"]')}`, 'discovery link mounted');
     await page.click('a[href="'+HERE+'"]');
     await page.waitFor(`location.pathname === '${HERE}' && ${q(ROOT_EDITOR+'-auth')}`, 'guest Reader SPA route');
