@@ -37,7 +37,7 @@ import { readerContainment } from './reader-containment.mjs';
 import { discoveryReturnPosition } from './discovery-return-position.mjs';
 import { recordTransport } from './web-request-ledger.mjs';
 import { readerBeforeHydration, readerGuestHistory } from './reader-ssr-boundary.mjs';
-import { deskEmptyState } from './desk-empty-smoke.mjs';
+import { deskEmptyState, deskGuest } from './desk-empty-smoke.mjs';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -1940,9 +1940,9 @@ async function textContrast(page, theme, surface = 'shell', targets) {
     return list;
   })() : {
     outline: ['#editor-outline-title', '.vk-editor-outline__item--title', '#editor-outline-panel [aria-current="location"] button'],
-    desk: ['.vk-desk-heading .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-search input', '#draft-sort', '#draft-sort-label', '#draft-scope'],
-    explore: ['#public-query', '#explore-heading h1', '.vk-explore__heading p', '#public-query-help', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '.vk-public-scope', '.vk-discovery-filter-form legend', '.vk-discovery-options .vk-ui-choice__label'],
-    filter: ['#modal-tag-help', '#modal-tag-form button[type=submit]'],
+    desk: ['.vk-desk-create .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-search input', '#draft-sort', '#draft-sort-label', '#draft-scope'],
+    explore: ['#public-query', '#explore-heading h1', '#open-tag-filters', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '.vk-public-scope'],
+    filter: ['#modal-tag-help', '#tag-selection-count', '#modal-tag-form legend', '#modal-tag-form .vk-ui-choice__label', '#modal-tag-form button[type=submit]'],
     empty: ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-link'],
     'desk-empty': ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-button', '.vk-desk-privacy'],
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
@@ -3375,16 +3375,19 @@ async function draftDashboard(page) {
   await page.eval(`performance.now = window.__deskNow; delete window.__deskNow`);
   gate.list = { status: 403, body: { error: { code: 'forbidden', message: 'test fixture' } } };
   await page.click('#refresh-drafts');
-  await page.waitFor(`document.querySelector('[data-testid=desk-error]')?.textContent.includes('không có quyền')`, 'forbidden dashboard');
-  check(await page.eval(`!document.querySelector('[data-testid=draft-empty]') && !document.querySelector('[data-testid=draft-resume]') && !document.querySelector('#create-draft')`), 'forbidden remains distinct from empty and never exposes resume/create');
-  await captureRecovery(page, 'desk-forbidden', '[data-testid=desk-error]');
+  await page.waitFor(`document.querySelector('[data-testid=desk-access]')?.textContent.includes('không có quyền')`, 'forbidden dashboard');
+  check(await page.eval(`!document.querySelector('[data-testid=draft-empty], #draft-search, #retry-drafts, #create-draft')`), 'forbidden clears private controls and keeps a distinct access state');
+  await captureRecovery(page, 'desk-forbidden', '[data-testid=desk-access]');
   gate.list = { status: 401, body: { error: { code: 'unauthenticated', message: 'test fixture' } } };
-  await page.click('#retry-drafts');
-  await page.waitFor(`document.querySelector('[data-testid=desk-error]')?.textContent.includes('chưa đăng nhập')`, 'unauthenticated dashboard');
-  await captureRecovery(page, 'desk-unauthenticated', '[data-testid=desk-error]');
-  check(await page.eval(`!document.querySelector('#create-draft') && document.querySelector('[data-testid=desk-error] a').getAttribute('href') === '/'`), '401 has an honest public-reading action and no fake login/create');
+  await page.reload();
+  await page.waitFor(`document.querySelector('[data-testid=desk-access]')?.textContent.includes('Phiên đăng nhập cần được kiểm tra lại')`, 'unauthenticated dashboard while fixture standing remains active');
+  await captureRecovery(page, 'desk-unauthenticated', '[data-testid=desk-access]');
+  check(await page.eval(`!document.querySelector('#create-draft, #retry-drafts') && document.querySelector('[data-testid=desk-access] a').getAttribute('href') === '/toi'`), '401 during an active standing goes to Account for reconciliation');
   gate.list = { body: { drafts: [] } };
-  await page.click('#retry-drafts');
+  await page.reload();
+  await page.waitFor(`document.querySelector('[data-testid=draft-empty]')`, 'authorized unfiltered empty dashboard');
+  await page.typeAtEnd('#draft-search', 'duong ve');
+  await page.key('Enter');
   await page.waitFor(`document.querySelector('[data-testid=draft-no-results]')`, 'empty filtered result is still a search miss');
   await page.click('#clear-draft-search');
   await page.waitFor(`document.querySelector('[data-testid=draft-empty]')`, 'unfiltered empty dashboard');
@@ -5813,6 +5816,7 @@ try {
   else if (args.phase === 'public-cache') await tracePublicReadLifecycle(page);
   else if (args.phase === 'author-works') await authorWorks(page, {args,check,DraftGate,sleep});
   else if (args.phase === 'desk-empty') await deskEmptyState(page, {args,check,DraftGate,textContrast});
+  else if (args.phase === 'desk-guest') await deskGuest(page, {args,check}, false);
   else if (args.phase === 'desk-empty-context') { await draftDashboard(page); await deskEmptyState(page, {args,check,DraftGate,textContrast}); }
   else if (args.phase === 'desk-layout') { await draftDashboard(page); await draftR6Hierarchy(page); await timestampPresentation(page); await publicReading(page); }
   else if (args.phase === 'bottom-navigation') await bottomNavigationRegression(page);

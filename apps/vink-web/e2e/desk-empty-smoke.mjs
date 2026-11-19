@@ -4,6 +4,80 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 
+export async function deskGuest(page, {args, check}, signInOpen) {
+  const path = args.base+'/ban-viet';
+  const html = await (await fetch(path)).text();
+  check(html.includes('data-testid="draft-loading"') && !html.includes('id="draft-search"') &&
+    !html.includes('id="desk-sign-in"'), '#308 SSR Desk shows a session check without private controls or a guessed standing');
+  const draftReads = [];
+  const observe = ({sessionId,method,params}) => {
+    if (sessionId!==page.sessionId || method!=='Network.requestWillBeSent') return;
+    const path = new URL(params.request.url).pathname;
+    if (path==='/api/v1/author/works' || path==='/api/v1/drafts') draftReads.push(path);
+  };
+  page.cdp.listeners.push(observe);
+  try {
+    await page.goto(path);
+    await page.waitFor("document.querySelector('[data-testid=desk-access]') && document.querySelector('#navigation-account a[href=\"/toi\"]')", '#308 confirmed guest Desk and rail');
+    const title = signInOpen ? 'Bạn chưa đăng nhập' : 'Vink chưa mở đăng nhập';
+    check(await page.eval(`document.querySelector('.vk-desk-access h3').textContent===${JSON.stringify(title)}
+      && !document.querySelector('#draft-search, #draft-sort, #retry-drafts, #create-draft')
+      && Boolean(document.querySelector('#desk-sign-in'))===${signInOpen}
+      && document.querySelector('.vk-desk-access__actions a[href="/"]')?.textContent==='Khám phá tác phẩm'
+      && document.querySelectorAll('.vk-desk-access__actions a').length===${signInOpen ? 2 : 1}`),
+      '#308 guest actions reflect this deployment’s sign-in capability');
+    for (const width of [320,390,800,1440]) for (const theme of ['light','dark']) for (const scale of [100,200]) {
+      await page.viewport(width, width<760 ? 844 : 760);
+      await page.eval(`document.documentElement.dataset.theme='${theme}'; document.documentElement.style.fontSize='${scale}%';
+        document.fonts.ready.then(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))))`);
+      const layout = await page.eval(`(() => {
+        const box = selector => document.querySelector(selector).getBoundingClientRect();
+        const panel = document.querySelector('.vk-desk-access'), panelStyle=getComputedStyle(panel);
+        const nav = document.querySelector((innerWidth<760?'#bottom-navigation':'#navigation-account')+' [data-destination=me]');
+        const actions = [...panel.querySelectorAll('a')].map(a=>a.getBoundingClientRect());
+        return {
+          headings:box('#draft-list-title').top-box('#desk-title').bottom,
+          content:box('.vk-desk-access').top-box('#draft-list-title').bottom,
+          border:panelStyle.borderWidth, width:document.documentElement.scrollWidth,
+          toned:panelStyle.backgroundColor!==getComputedStyle(document.body).backgroundColor,
+          nav:nav.textContent.trim(), name:nav.getAttribute('aria-label'),
+          target:actions.every(r=>r.height>=48 && r.width>=48 && r.left>=0 && r.right<=innerWidth),
+        };
+      })()`);
+      const label = signInOpen ? width>=1100 ? 'Đăng nhập / Đăng ký' : 'Đăng nhập' : 'Tài khoản';
+      check(layout.width<=width && layout.toned && layout.border==='0px' && layout.target &&
+        layout.nav===label && layout.name===(signInOpen?'Đăng nhập / Đăng ký':'Tài khoản') &&
+        (scale!==100 || Math.abs(layout.headings-32)<=1 && Math.abs(layout.content-12)<=1),
+        '#308 guest Desk geometry/labels '+[width,theme,scale].join('/')+' '+JSON.stringify(layout));
+      if (width===390 || width===1440 && scale===100) {
+        await page.capture('desk-guest-'+[signInOpen?'open':'closed',width,theme,scale].join('-'), {
+          scenario:'#308-guest-desk', boundary:'real-App-session',
+        });
+      }
+      if (width<=390 && scale===200) {
+        check(await page.eval(`(() => {
+          const cta=document.querySelector('.vk-desk-access__actions a');
+          cta.scrollIntoView({block:'center'});
+          const rect=cta.getBoundingClientRect(), bar=document.querySelector('#bottom-navigation').getBoundingClientRect();
+          const hit=document.elementFromPoint(rect.left+rect.width/2, rect.top+rect.height/2);
+          return rect.top>=0 && rect.bottom<=bar.top+1 && cta.contains(hit);
+        })()`), '#308 guest primary action scrolls clear of the bottom navigation '+width+'/'+theme);
+        await page.eval('scrollTo(0,0)');
+      }
+    }
+    await page.eval("document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme; document.querySelector('#navigation-primary a[href=\"/ban-viet\"]').focus()");
+    await page.key('Tab');
+    check(await page.eval(`document.activeElement.matches('#navigation-account a:focus-visible') &&
+      parseFloat(getComputedStyle(document.activeElement).outlineWidth)>0`), '#308 guest rail link is keyboard reachable with a focus ring');
+    check(draftReads.length===0, '#308 guest Desk sends zero private list requests');
+    await page.key('Enter');
+    await page.waitFor(`location.pathname==='/toi' && document.querySelector('#page-appearance-title') &&
+      document.querySelector('${signInOpen?'#password-login':'#sign-in-closed'}')`, '#308 rail goes to Account and keeps access to Appearance');
+  } finally {
+    page.cdp.listeners = page.cdp.listeners.filter(handler=>handler!==observe);
+  }
+}
+
 // Records every matching node added or removed under #drafts, including a node that is
 // mounted and dropped again within one task (the observer keeps the record).
 const watchNodes = (page, name, selector, kind) => page.eval(`(() => {
@@ -103,7 +177,7 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
       if (!baseline) {
         check(await page.eval(`!!document.querySelector(${JSON.stringify(target + ' img')})`), `#259 ${state}: semantic artwork is rendered`);
         await page.eval(`document.querySelector(${JSON.stringify(target + ' img')}).decode()`);
-        check(await page.eval(`(() => {const root=document.querySelector(${JSON.stringify(target)}),img=root.querySelector('img'); return root.querySelectorAll('img').length===1 && img.getAttribute('src')==='/pkg/empty/vink-empty-${state}.webp' && img.naturalWidth===512 && img.naturalHeight===427 && img.alt==='' && !root.querySelector('h2,h3,.vk-ui-panel') && document.querySelectorAll('#drafts [role=status]').length===1 && document.querySelectorAll('#create-draft').length===1;})()`), `#259 ${state}: shared artwork, decoded dimensions, decoration and one result status/create target`);
+        check(await page.eval(`(() => {const root=document.querySelector(${JSON.stringify(target)}),img=root.querySelector('img'); return root.querySelectorAll('img').length===1 && img.getAttribute('src')==='/pkg/empty/vink-empty-${state}.webp' && img.naturalWidth===512 && img.naturalHeight===427 && img.alt==='' && !root.querySelector('h2,.vk-ui-panel') && (root.querySelector('h3')?.textContent ?? '')===${JSON.stringify(state === 'first-draft' ? 'Chưa có tác phẩm nào' : '')} && document.querySelectorAll('#drafts [role=status]').length===1 && document.querySelectorAll('#create-draft').length===1;})()`), `#308 ${state}: shared artwork and one creation target, with a title for first use`);
       }
       const beforeMatrix = network.length;
       for (const width of [320, 390, 834, 1440]) for (const theme of ['light', 'dark']) for (const scale of [100, 200]) {
@@ -162,6 +236,15 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
       gate.list = { raw:true, body:{drafts:[],next_cursor:'fixture:24'} };
       await page.click('#retry-drafts'); await settled();
       check(await page.eval(`!document.querySelector('[data-testid=draft-empty], [data-testid=draft-no-results], #drafts img') && document.querySelector('[data-testid=desk-error]') && document.querySelector('[data-testid=author-work-stale]')`), '#259 empty page with continuation is rejected by existing PageChain; remains an error, never first-use');
+      // A proxy 502 (or 429) is `Unexpected`, not `Unavailable`: it may pass on the next try.
+      // The rejected chain is `Invalid` (no panel retry); the toolbar refresh stays available.
+      check(await page.eval(`!document.querySelector('[data-testid=desk-error] #retry-drafts') && !!document.querySelector('#refresh-drafts')`), '#308 a rejected page chain offers the toolbar refresh, not a panel retry');
+      gate.holdGets = true;
+      await page.click('#refresh-drafts');
+      await gate.fulfill(await gate.next('gets'), 502, {error:{code:'bad_gateway'}});
+      gate.holdGets = false;
+      await settled();
+      check(await page.eval(`!!document.querySelector('[data-testid=desk-error] #retry-drafts') && document.querySelector('#draft-search')===window.__emptySearch`), '#308 a transient 502 keeps the error-panel retry and the search input');
       await page.eval(`window.__emptySearch.focus(); window.__emptySearch.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true})); window.__emptySearch.setSelectionRange(0,0)`);
       const before = gate.requests.length;
       await page.key('Enter');
@@ -225,7 +308,7 @@ async function sessionFence(page, {args,check,gate,settled}) {
     const old=await gate.next('gets');
     await announce();
     const fresh=await gate.next('gets');
-    check(new URL(gate.getURLs.get(fresh)).searchParams.get('q')==='' && await page.eval(`document.querySelector('#draft-search')===window.__emptySearch && window.__emptySearch.value==='' && document.querySelector('#draft-sort').value==='recent' && !document.querySelector('#drafts img')`), '#259 confirmed account change clears private query/artwork while retaining the input owner');
+    check(new URL(gate.getURLs.get(fresh)).searchParams.get('q')==='' && await page.eval(`!window.__emptySearch.isConnected && document.querySelector('#draft-search')?.value==='' && document.querySelector('#draft-sort').value==='recent' && !document.querySelector('#drafts img')`), '#308 confirmed account change replaces the previous private input and clears query/artwork');
     await gate.fulfill(fresh,200,{drafts:[]}); await settled();
     await gate.fulfill(old,200,{drafts:[{work_id:'99999999-9999-4999-8999-000000000258',title:'PRIVATE-OLD-REPLY',version:1,updated_at:'2026-11-16T00:00:00Z'}]}).catch(()=>{});
     await page.eval(`new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))`);

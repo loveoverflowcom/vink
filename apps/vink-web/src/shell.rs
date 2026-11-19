@@ -6,7 +6,7 @@ use leptos::html;
 use leptos::prelude::*;
 use leptos_router::hooks::use_location;
 use vink_ui::{
-    AdaptiveScaffold, BottomNavigation, CloseReason, IconName, NavContext, NavDestination,
+    AdaptiveScaffold, BottomNavigation, CloseReason, IconName, NavContext, NavDestination, NavItem,
     NavLayout, NavUtility, NavigationRail, OverlayLayer, WindowClass,
 };
 
@@ -72,7 +72,8 @@ fn editor_context(path: &str) -> NavContext {
 #[component]
 pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
     let appearance = Appearance::provide();
-    crate::account::Session::provide();
+    let session = crate::account::Session::provide();
+    let guest = Memo::new(move |_| session.standing.get() == crate::session::Standing::Anonymous);
     let location = use_location();
     let current = Memo::new(move |_| location.pathname.with(|path| Destination::for_path(path)));
     let context = Memo::new(move |_| location.pathname.with(|path| editor_context(path)));
@@ -185,18 +186,25 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
                     collapse_label="Thu gọn điều hướng"
                     on_toggle=toggle
                     destinations=primary()
-                    account=move || view! {
-                        <NavUtility
-                            id="profile-trigger"
-                            label="Tôi"
-                            icon=IconName::Person
-                            leading=move || view! { <AccountAvatar navigation=true /> }
-                            controls=PROFILE
-                            expanded=profile_open
-                            current=active(Destination::Me)
-                            on_open=open_profile
-                            node_ref=trigger
-                        />
+                    account=move || {
+                        move || if guest.get() {
+                            view! { <GuestAccountLink current=active(Destination::Me)
+                                expanded=Signal::derive(move || layout.get().rail_expanded()) /> }.into_any()
+                        } else {
+                            view! {
+                                <NavUtility
+                                    id="profile-trigger"
+                                    label="Tôi"
+                                    icon=IconName::Person
+                                    leading=move || view! { <AccountAvatar navigation=true /> }
+                                    controls=PROFILE
+                                    expanded=profile_open
+                                    current=active(Destination::Me)
+                                    on_open=open_profile
+                                    node_ref=trigger
+                                />
+                            }.into_any()
+                        }
                     }
                 />
             }
@@ -205,9 +213,11 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
                     id="bottom-navigation"
                     label="Điều hướng mobile"
                     destinations=primary()
-                    trailing=move || view! {
-                        <vink_ui::NavItem destination=Destination::Me.nav() active=active(Destination::Me)
-                            leading=move || view! { <AccountAvatar navigation=true /> } />
+                    trailing=move || move || if guest.get() {
+                        view! { <GuestAccountLink current=active(Destination::Me) /> }.into_any()
+                    } else {
+                        view! { <NavItem destination=Destination::Me.nav() active=active(Destination::Me)
+                            leading=move || view! { <AccountAvatar navigation=true /> } /> }.into_any()
                     }
                 />
             }
@@ -262,6 +272,25 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
         >
             {children()}
         </AdaptiveScaffold>
+    }
+}
+
+#[component]
+fn GuestAccountLink(
+    current: Signal<bool>,
+    #[prop(optional)] expanded: Signal<bool>,
+) -> impl IntoView {
+    let open = crate::api::sign_in_open();
+    let full = if open {
+        "Đăng nhập / Đăng ký"
+    } else {
+        "Tài khoản"
+    };
+    view! {
+        <NavItem destination=NavDestination::new(Destination::Me.key(), full, IconName::Person, "/toi")
+            active=current attr:data-sign-in=open.then_some("")
+            visible_label=Signal::derive(move || if open && !expanded.get() { "Đăng nhập".to_owned() } else { full.to_owned() })
+        />
     }
 }
 

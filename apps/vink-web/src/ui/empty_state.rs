@@ -19,11 +19,12 @@ impl EmptyArtwork {
     }
 }
 
-/// A decoration and one HTML state sentence. Actions are real caller-owned controls.
+/// A decoration and an HTML state. Actions are real caller-owned controls.
 /// Opt into a polite status only when the caller has no other result announcement.
 #[component]
 pub fn EmptyState(
     artwork: EmptyArtwork,
+    #[prop(optional)] title: Option<&'static str>,
     #[prop(into)] message: String,
     #[prop(optional)] announce: bool,
     #[prop(optional)] children: Option<Children>,
@@ -31,6 +32,8 @@ pub fn EmptyState(
     view! {
         <div class="vk-empty-state">
             <img class="vk-empty-state__art" src=artwork.src() alt="" width="512" height="427" decoding="async" />
+            {title.map(|title| view! { <vink_ui::Heading class:vk-empty-state__title=true
+                level=vink_ui::HeadingLevel::H3 role=vink_ui::TypeRole::Title>{title}</vink_ui::Heading> })}
             <p class="vk-empty-state__message" role=announce.then_some("status") aria-atomic=announce.then_some("true")>{message}</p>
             {children.map(|children| view! { <div class="vk-empty-state__actions">{children()}</div> })}
         </div>

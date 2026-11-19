@@ -466,6 +466,9 @@ pub fn SearchField(
     #[prop(optional, into)] help: Option<String>,
     #[prop(optional)] mode: FieldMode,
     #[prop(optional, into)] placeholder: Option<String>,
+    /// Short visible placeholder for a narrow Bar. The label remains the accessible name.
+    #[prop(optional, into)]
+    compact_placeholder: Option<String>,
     #[prop(optional)] variant: SearchVariant,
     #[prop(optional, into)] name: Option<String>,
     /// Bar-only native fallback. The host callback handles unmodified hydrated activation.
@@ -477,8 +480,19 @@ pub fn SearchField(
 ) -> impl IntoView {
     if variant == SearchVariant::Bar {
         return search_bar(
-            id, label, value, on_input, on_submit, help, mode, name, clear_href, clear_id,
-            on_clear, input_ref,
+            id,
+            label,
+            value,
+            on_input,
+            on_submit,
+            help,
+            mode,
+            name,
+            clear_href,
+            clear_id,
+            on_clear,
+            input_ref,
+            compact_placeholder,
         )
         .into_any();
     }
@@ -519,6 +533,7 @@ fn search_bar(
     clear_id: Option<String>,
     on_clear: Option<Callback<()>>,
     input_ref: Option<NodeRef<leptos::html::Input>>,
+    compact_placeholder: Option<String>,
 ) -> impl IntoView {
     let node = input_ref.unwrap_or_default();
     let clear_id = clear_id.unwrap_or_else(|| format!("{id}-clear"));
@@ -569,6 +584,9 @@ fn search_bar(
                 <div class="vk-ui-search__query">
                     {text_control(TextControl::Search, props, node)}
                     <label class="vk-ui-visually-hidden" for=id.clone() id=format!("{id}-label")>{label}</label>
+                    {compact_placeholder.map(|text| view! {
+                        <span class="vk-ui-search__compact-placeholder" aria-hidden="true">{text}</span>
+                    })}
                 </div>
                 {move || (!value.get().is_empty() && mode == FieldMode::Editable).then(|| {
                     if let Some(href) = clear_href.clone() {

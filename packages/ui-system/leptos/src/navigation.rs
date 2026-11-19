@@ -309,6 +309,9 @@ fn plain_click(event: &leptos::ev::MouseEvent) -> bool {
 pub fn NavItem(
     destination: NavDestination,
     #[prop(into)] active: Signal<bool>,
+    /// Hosts may shorten the visible label as the frame changes.
+    #[prop(optional, into)]
+    visible_label: Option<Signal<String>>,
     #[prop(optional)] on_navigate: Option<Callback<String>>,
     #[prop(optional, into)] leading: Option<ViewFn>,
 ) -> impl IntoView {
@@ -319,11 +322,14 @@ pub fn NavItem(
         href,
     } = destination;
     let dispatched = key.clone();
+    let accessible_label = visible_label.is_some().then(|| label.clone());
+    let visible_label = visible_label.unwrap_or_else(|| Signal::stored(label));
     view! {
         <a
             class="vk-ui-nav-item"
             href=href
             data-destination=key
+            aria-label=accessible_label
             aria-current=move || active.get().then_some("page")
             on:click=move |event: leptos::ev::MouseEvent| {
                 if let Some(navigate) = on_navigate
@@ -337,7 +343,7 @@ pub fn NavItem(
             <span class="vk-ui-nav-item__indicator">
                 {leading.map_or_else(|| view! { <Icon name=icon /> }.into_any(), |leading| leading.run())}
             </span>
-            <span class="vk-ui-nav-item__label">{label}</span>
+            <span class="vk-ui-nav-item__label">{move || visible_label.get()}</span>
         </a>
     }
 }

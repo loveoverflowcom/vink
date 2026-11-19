@@ -506,15 +506,13 @@ pub fn works_resource(
     }
 }
 
-/// Public catalog is no-store, refreshed for each applied query and when opening the picker.
-pub fn catalog_resource(
-    refresh: Memo<(crate::discovery::ExploreQuery, u64)>,
-) -> Resource<Result<crate::contract::TagList, LoadError>> {
+/// One no-store catalog read per discovery scope. The picker can explicitly retry it.
+pub fn catalog_resource() -> Resource<Result<crate::contract::TagList, LoadError>> {
     #[cfg(feature = "ssr")]
     {
         let port = use_context::<crate::server::SharedPublicReads>();
         Resource::new(
-            move || refresh.get(),
+            || (),
             move |_| {
                 let port = port.clone();
                 async move {
@@ -528,10 +526,7 @@ pub fn catalog_resource(
     }
     #[cfg(not(feature = "ssr"))]
     {
-        Resource::new(
-            move || refresh.get(),
-            |_| browser(public_get("/api/v1/tags".into())),
-        )
+        Resource::new(|| (), |_| browser(public_get("/api/v1/tags".into())))
     }
 }
 

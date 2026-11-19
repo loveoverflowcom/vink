@@ -40,24 +40,29 @@ export async function discoveryChipGeometry(page, { args, check }) {
       c.textFits && c.markClear && c.inside && c.native && c.markVisible===c.checked) &&
       !m.overlap && m.overflow<=1 && m.formOverflow<=1, '#260 centered label, separate mark, >=48px nonoverlapping targets and reflow '+scene);
   };
-  for (const [width,height] of [[1440,900],[320,900],[390,844],[834,1112]]) {
+  for (const [width,height] of [[1440,900],[320,900],[390,844],[800,1112]]) {
     for (const theme of ['light','dark']) for (const scale of [100,200]) {
       const scene=[width,height,theme,scale].join('-');
       await page.viewport(width,height);
       await page.goto(args.base+'/');
-      await page.waitFor(`document.documentElement.dataset.hydrated==='true' && document.querySelector('#dock-tag-form input[type=checkbox]')`, 'chip hydration/catalog');
+      await page.waitFor(`document.documentElement.dataset.hydrated==='true' && document.querySelector('#open-tag-filters')`, 'chip hydration/catalog');
       await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}; document.documentElement.style.fontSize='${scale}%'; scrollTo(0,0)`);
       await settle();
-      const dock=await page.eval(`document.querySelector('#tag-dock').getBoundingClientRect().width>0`);
-      const form=dock?'#dock-tag-form':'#modal-tag-form';
-      if (!dock) {
-        await page.click('#open-tag-filters');
-        await page.waitFor(`document.querySelector('#tag-picker').open && document.querySelector('#modal-tag-form input[type=checkbox]')`, 'chip dialog');
-      }
+      const form='#modal-tag-form';
+      await page.click('#open-tag-filters');
+      await page.waitFor(`document.querySelector('#tag-picker').open && document.querySelector('#modal-tag-form input[type=checkbox]')`, 'chip dialog');
+      check(await page.eval(`(() => {
+        const dialog=document.querySelector('#tag-picker'), r=dialog.getBoundingClientRect();
+        const viewportWidth=document.documentElement.clientWidth;
+        const centered=Math.abs((r.left+r.right-viewportWidth)/2)<=1 && Math.abs((r.top+r.bottom-innerHeight)/2)<=1;
+        const sheet=r.left===0 && Math.abs(r.right-viewportWidth)<=1 && Math.abs(r.bottom-innerHeight)<=1;
+        return getComputedStyle(dialog).borderTopWidth==='0px' && dialog.scrollTop===0 &&
+          document.activeElement?.id==='tag-picker-title' && (innerWidth<760 ? sheet : centered);
+      })()`), '#308 tonal dialog or bottom sheet opens at its title '+scene);
       await settle();
       const initial=await inspect(form), url=await page.eval('location.href');
       await page.capture('chip260-'+scene+'-0',{boundary:'real-FilterForm-native-Checkbox',scenario:'discovery-chip-geometry'});
-      geometry(initial,scene+'/0/'+(dock?'dock':'dialog'));
+      geometry(initial,scene+'/0');
       check(initial.selected===0, '#260 initial selection is empty '+scene);
       await page.click(form+' .vk-discovery-option');
       await settle();
@@ -89,19 +94,25 @@ export async function discoveryChipGeometry(page, { args, check }) {
         geometry(await inspect(form),scene+'/long-'+normalization+'-DOM-label-fixture');
         if (normalization==='NFD') await page.capture('chip260-'+scene+'-long',{boundary:'real-FilterForm-with-synthetic-DOM-label-text',scenario:'discovery-chip-geometry'});
       }
-      if (!dock) {
-        await page.key('Escape');
-        await page.waitFor(`!document.querySelector('#tag-picker').open && document.activeElement?.id==='open-tag-filters'`, 'chip Escape focus return');
-      }
+      await page.key('Escape');
+      await page.waitFor(`!document.querySelector('#tag-picker').open && document.activeElement?.id==='open-tag-filters'`, 'chip Escape focus return');
     }
   }
   await page.viewport(390,844);
   await page.goto(args.base+'/');
-  await page.waitFor(`document.documentElement.dataset.hydrated==='true' && document.querySelector('#dock-tag-form input[type=checkbox]')`, 'keyboard chip catalog');
+  await page.waitFor(`document.documentElement.dataset.hydrated==='true' && document.querySelector('#open-tag-filters')`, 'keyboard chip catalog');
   await page.click('#open-tag-filters');
   await page.waitFor(`document.querySelector('#modal-tag-form input[type=checkbox]')`, 'keyboard chips');
   const form='#modal-tag-form';
-  await page.click(form+' .vk-discovery-option');
+  const touch = await page.eval(`(() => {
+    const r=document.querySelector('#modal-tag-form label').getBoundingClientRect();
+    return {x:r.left+r.width/2,y:r.top+r.height/2};
+  })()`);
+  await page.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1});
+  await page.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[touch]});
+  await page.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  await page.waitFor(`document.querySelector('#modal-tag-form input[type=checkbox]').checked`, '#308 touch selects the native chip');
+  await page.send('Emulation.setTouchEmulationEnabled',{enabled:false});
   for (const forced of [false,true]) {
     await page.send('Emulation.setEmulatedMedia',{features:[{name:'forced-colors',value:forced?'active':'none'},{name:'prefers-reduced-motion',value:'reduce'}]});
     await page.eval(`document.querySelector('${form} input[type=checkbox]').focus()`);

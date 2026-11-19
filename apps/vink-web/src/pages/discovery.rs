@@ -14,19 +14,13 @@ use leptos_meta::{Link, Meta, Title};
 use leptos_router::components::Form;
 use leptos_router::hooks::{use_params_map, use_query_map};
 use std::sync::Arc;
-use vink_ui::{Button, ButtonKind, ButtonVariant, Checkbox, HiddenField};
 use vink_ui::{
-    Dialog, Heading, HeadingLevel, Icon, IconName, InlineNotice, RecoveryAction, RecoveryIntent,
-    SearchField, SearchVariant, Tone, TypeRole,
+    ActionState, ActionSurface, Button, ButtonKind, ButtonVariant, Checkbox, HiddenField,
 };
-
-#[derive(Clone, Copy)]
-struct DiscoveryDraft {
-    query: RwSignal<String>,
-    tags: RwSignal<Vec<String>>,
-    applied_tags: StoredValue<Vec<String>>,
-    open: RwSignal<bool>,
-}
+use vink_ui::{
+    Dialog, DialogKind, Heading, HeadingLevel, Icon, IconButton, IconName, InlineNotice,
+    RecoveryAction, RecoveryIntent, SearchField, SearchVariant, Tone, TypeRole,
+};
 
 fn query_from(params: &leptos_router::params::ParamsMap) -> ExploreQuery {
     ExploreQuery::new(
@@ -135,35 +129,38 @@ fn DiscoveryPage(#[prop(optional)] tag_page: Option<Memo<String>>) -> AnyView {
 
 #[component]
 fn DiscoveryScope(context: ExploreContext) -> AnyView {
-    provide_context(DiscoveryDraft {
-        query: RwSignal::new(context.query.q.clone()),
-        tags: RwSignal::new(context.query.tags.clone()),
-        applied_tags: StoredValue::new(context.query.tags.clone()),
-        open: RwSignal::new(false),
-    });
     let initial_query = context.query.clone();
     let query = Memo::new(move |_| initial_query.clone());
-    let catalog_epoch = RwSignal::new(0u64);
-    let catalog = api::catalog_resource(Memo::new(move |_| (query.get(), catalog_epoch.get())));
+    let catalog = context.tag_page.is_none().then(api::catalog_resource);
     let works = api::works_resource(query);
-    view! { <DiscoveryChrome context works catalog catalog_epoch status=ResponseStatus::capture() /> }.into_any()
+    view! { <DiscoveryChrome context works catalog status=ResponseStatus::capture() /> }.into_any()
 }
 
 #[component]
 fn DiscoveryChrome(
     context: ExploreContext,
     works: Resource<(ExploreQuery, Result<WorkList, LoadError>)>,
-    catalog: Resource<Result<TagList, LoadError>>,
-    catalog_epoch: RwSignal<u64>,
+    catalog: Option<Resource<Result<TagList, LoadError>>>,
     status: ResponseStatus,
 ) -> AnyView {
-    let controls = expect_context::<DiscoveryDraft>();
     let stream = NodeRef::<leptos::html::Section>::new();
     #[cfg(feature = "hydrate")]
     super::restore_public_position(stream, Memo::new(move |_| works.with(Option::is_some)));
-    let buffer = controls.query;
-    let draft = controls.tags;
-    let open = controls.open;
+    let buffer = RwSignal::new(context.query.q.clone());
+    let open = RwSignal::new(false);
+    let draft = RwSignal::new(context.query.tags.clone());
+    let initial = StoredValue::new(context.query.tags.clone());
+    let dismiss = move || {
+        draft.set(initial.get_value());
+        open.set(false);
+    };
+    let dismiss_picker = move || {
+        dismiss();
+        #[cfg(feature = "hydrate")]
+        if document().get_element_by_id("open-tag-filters").is_none() {
+            focus_recovery("public-query");
+        }
+    };
     let enhanced = RwSignal::new(false);
     Effect::new(move |_| enhanced.set(true));
     let is_tag = context.tag_page.is_some();
@@ -179,9 +176,8 @@ fn DiscoveryChrome(
         .filter(|tag| Some(*tag) != context.tag_page.as_ref())
         .cloned()
         .collect::<Vec<_>>();
-    let filter_query = context.query.q.clone();
-    let modal_query = filter_query.clone();
-    let modal_action = action.clone();
+    let filter_query = StoredValue::new(context.query.q.clone());
+    let filter_retry = StoredValue::new(context.href(None));
     let mut cleared = context.clone();
     cleared.query.q.clear();
     cleared.query.cursor = None;
@@ -189,12 +185,15 @@ fn DiscoveryChrome(
     let clear_nav = clear_href.clone();
     let navigate = leptos_router::hooks::use_navigate();
     #[cfg(feature = "hydrate")]
-    {
-        adapt_picker(open);
+    if catalog.is_some() {
         let guard = expect_context::<crate::navigation::NavigationGuard>();
-        let registration = guard.set_overlay(move |_| {
+        let registration = guard.set_overlay(move |reason| {
             if open.get_untracked() {
-                open.set(false);
+                if reason == vink_ui::CloseReason::Navigate {
+                    dismiss();
+                } else {
+                    dismiss_picker();
+                }
                 true
             } else {
                 false
@@ -219,8 +218,7 @@ fn DiscoveryChrome(
                     })
                 }}
             </Suspense>
-            <div class="vk-discovery-layout">
-                <div class="vk-discovery-main">
+            <div class="vk-discovery-search-row">
                     // Form stops submit propagation internally. Record the intent in its
                     // callback before navigation replaces the submitted scope. The helper
                     // focuses the mounted landmark next frame; I/O completion never owns focus.
@@ -229,54 +227,96 @@ fn DiscoveryChrome(
                         focus_submitted_results(data);
                     }) attr:role="search" attr:id="public-search" attr:class="vk-public-search">
                         {hidden_tags.into_iter().map(|tag| view! { <HiddenField name="tag" value=Signal::stored(tag) /> }).collect_view()}
-                        <SearchField id="public-query" label=if is_tag { "Tìm trong thẻ" } else { "Tìm tác phẩm" } name="q"
-                            variant=SearchVariant::Bar help="Trong toàn thư viện công khai"
+                        <SearchField id="public-query" label=if is_tag { "Tìm trong thẻ" } else { "Tìm theo tên hoặc tác giả" } name="q"
+                            compact_placeholder=if is_tag { "Tìm trong thẻ" } else { "Tìm tác phẩm" }
+                            variant=SearchVariant::Bar
                             value=buffer on_input=move |input: vink_ui::TextInput| buffer.set(input.value)
                             clear_href clear_id="clear-public-search" on_clear=move |_| {
                                 navigate(&clear_nav, leptos_router::NavigateOptions { scroll: false, ..Default::default() });
                                 focus_recovery("public-query");
                             } />
                     </Form>
-                    <div id="applied-filters" class="vk-applied-filters">
-                        {(!is_tag).then(|| view! { <span class="vk-tag-launcher"><Button id="open-tag-filters" variant=ButtonVariant::Tonal leading=IconName::FilterList expanded=Signal::from(open)
-                            on_press=move |_| { catalog_epoch.update(|n| *n += 1); open.set(true); }>"Thẻ"</Button></span> })}
-                        <Suspense fallback=|| ()>
-                            {move || {
-                                let context = chip_context.clone();
-                                Suspend::new(async move {
-                                    let (_, result) = works.await;
-                                    result.ok().map(|list| view! { <AppliedFilters context list /> })
-                                })
-                            }}
-                        </Suspense>
-                    </div>
-                    <section node_ref=stream id="community-stream" aria-label="Tác phẩm khám phá" tabindex="-1">
-                        <Suspense fallback=|| view! { <p role="status" data-testid="discovery-loading">"Đang tải kết quả…"</p> }>
-                            {move || {
-                                let context = result_context.clone();
-                                Suspend::new(async move {
-                                    let (_, result) = works.await;
-                                    match result {
-                                        Ok(list) => {
-                                            let live = public_reads::follow_works(context.query.clone(), list);
-                                            view! { <PublicResults context live /> }.into_any()
-                                        }
-                                        Err(error) => view! { <DiscoveryFailure context error /> }.into_any(),
-                                    }
-                                })
-                            }}
-                        </Suspense>
-                    </section>
-                </div>
-                {(!is_tag).then(|| view! {
-                    <details id="tag-dock" class="vk-tag-dock" open><summary>"Bộ lọc thẻ"</summary>
-                        <FilterForm id="dock" action q=filter_query draft catalog open />
-                    </details>
-                    <Dialog id="tag-picker" open title="Bộ lọc thẻ" on_dismiss=move |_| open.set(false)>
-                        <FilterForm id="modal" action=modal_action q=modal_query draft catalog open />
-                    </Dialog>
+                {catalog.map(|catalog| view! {
+                    <Suspense fallback=|| view! { <p class="vk-muted" role="status" data-testid="tag-catalog-loading">"Đang tải danh mục thẻ…"</p> }>
+                        <Show when=move || catalog.map(|result| !matches!(result, Ok(list) if list.tags.is_empty())).unwrap_or(false)>
+                            <span class="vk-tag-launcher">
+                                <Button id="open-tag-filters" variant=ButtonVariant::Tonal leading=IconName::FilterList expanded=Signal::from(open)
+                                    on_press=move |_| open.set(true)>"Lọc thẻ"</Button>
+                            </span>
+                        </Show>
+                    </Suspense>
                 })}
             </div>
+            {catalog.map(|catalog| view! {
+                <Suspense fallback=|| ()>
+                    {move || catalog.get().and_then(|result| match result {
+                        Ok(list) if list.tags.is_empty() => None,
+                        Ok(list) => Some(view! {
+                            <details id="tag-dock" class="vk-tag-dock">
+                                <summary>"Lọc thẻ"</summary>
+                                <FilterForm id="dock" q=filter_query.get_value() draft initial list open />
+                            </details>
+                        }.into_any()),
+                        Err(_) => Some(view! {
+                            <details id="tag-dock" class="vk-tag-dock">
+                                <summary>"Lọc thẻ"</summary>
+                                <p role="alert">"Chưa tải được danh mục thẻ."</p>
+                                <a class="vk-ui-link" href=filter_retry.get_value()>"Tải lại danh mục thẻ"</a>
+                            </details>
+                        }.into_any()),
+                    })}
+                </Suspense>
+                <Dialog id="tag-picker" open title="Lọc thẻ" kind=DialogKind::Sheet focus_title=true
+                    on_dismiss=move |_| dismiss_picker()
+                    header_action=move || view! { <IconButton id="close-tag-filters" label="Đóng lọc thẻ" icon=IconName::Close
+                        surface=ActionSurface::Tonal on_press=move |_| dismiss_picker() /> }>
+                    <Suspense fallback=|| view! { <p role="status">"Đang tải danh mục thẻ…"</p> }>
+                        {move || catalog.get().map(|result| match result {
+                            Ok(list) if list.tags.is_empty() => view! {
+                                <p role="status">"Chưa có thẻ để lọc."</p>
+                            }.into_any(),
+                            Ok(list) => view! {
+                                <FilterForm id="modal" q=filter_query.get_value() draft initial list open modal=true />
+                            }.into_any(),
+                            Err(_) => view! {
+                                <div class="vk-discovery-catalog-error">
+                                    <p role="alert">"Chưa tải được danh mục thẻ. Các thẻ đang áp dụng vẫn được giữ."</p>
+                                    <Button variant=ButtonVariant::Tonal id="retry-tag-catalog" on_press=move |_| {
+                                        focus_recovery("tag-picker-title");
+                                        catalog.refetch();
+                                    }>"Thử tải lại"</Button>
+                                </div>
+                            }.into_any(),
+                        })}
+                    </Suspense>
+                </Dialog>
+            })}
+            <Suspense fallback=|| ()>
+                {move || {
+                    let context = chip_context.clone();
+                    Suspend::new(async move {
+                        let (_, result) = works.await;
+                        view! { <AppliedFilters context list=result.ok() /> }
+                    })
+                }}
+            </Suspense>
+            <section node_ref=stream id="community-stream" aria-label="Tác phẩm khám phá" tabindex="-1">
+                <Suspense fallback=|| view! { <p role="status" data-testid="discovery-loading">"Đang tải kết quả…"</p> }>
+                    {move || {
+                        let context = result_context.clone();
+                        Suspend::new(async move {
+                            let (_, result) = works.await;
+                            match result {
+                                Ok(list) => {
+                                    let live = public_reads::follow_works(context.query.clone(), list);
+                                    view! { <PublicResults context live /> }.into_any()
+                                }
+                                Err(error) => view! { <DiscoveryFailure context error /> }.into_any(),
+                            }
+                        })
+                    }}
+                </Suspense>
+            </section>
         </div>
     }.into_any()
 }
@@ -362,10 +402,10 @@ fn DiscoveryHeader(
         <Meta name="description" content="Tìm tác phẩm công khai theo tên, tác giả và thẻ trên Vink." />
         <Link rel="canonical" href=crate::canonical_url(&canonical.href(None)) />
         <header id="explore-heading" class="vk-explore__heading">
-            {(!is_tag).then(|| view! { <div id="discovery-tools" class="vk-discovery-tools"><a class="vk-brand" href="/" aria-label="Vink — trang chủ">
-                <span class="vk-brand__lockup" aria-hidden="true"></span></a></div> })}
             {is_tag.then(|| view! { <a class="vk-ui-link" href="/">"Về Khám phá"</a> })}
             <Heading level=HeadingLevel::H1 role=TypeRole::Display>{move || title.get()}</Heading>
+            {(!is_tag).then(|| view! { <div id="discovery-tools" class="vk-discovery-tools"><a class="vk-brand" href="/" aria-label="Vink — trang chủ">
+                <span class="vk-brand__lockup" aria-hidden="true"></span></a></div> })}
             {move || if is_tag {
                 match tag.get() {
                     Some(filter) if filter.resolution == "not_found" => view! { <p>"Không tìm thấy thẻ này. Hãy quay về Khám phá để chọn thẻ khác."</p> }.into_any(),
@@ -380,99 +420,115 @@ fn DiscoveryHeader(
                     }
                     None => ().into_any(),
                 }
-            } else { view! { <p>"Tìm tác phẩm theo tên, tác giả hoặc thẻ."</p> }.into_any() }}
+            } else { ().into_any() }}
         </header>
     }.into_any()
 }
 
 #[component]
-fn AppliedFilters(context: ExploreContext, list: WorkList) -> AnyView {
-    let live = public_reads::follow_works(context.query.clone(), list);
+fn AppliedFilters(context: ExploreContext, list: Option<WorkList>) -> AnyView {
+    let tags = context
+        .query
+        .tags
+        .iter()
+        .filter(|tag| Some(*tag) != context.tag_page.as_ref())
+        .cloned()
+        .collect::<Vec<_>>();
+    if tags.is_empty() {
+        return ().into_any();
+    }
+    let live = list.map(|list| public_reads::follow_works(context.query.clone(), list));
     view! {
-        {move || live.data.with(|list| list.filters.tags.iter().filter(|filter| {
-            !context.tag_page.as_ref().is_some_and(|slug| filter.requested == requested_slug(slug))
-        }).map(|filter| {
-            let mut without = context.clone();
-            without.query = without.query.without_tag(&filter.requested);
-            let label = filter.tag.as_ref().map(|t| t.label.clone()).unwrap_or_else(|| filter.requested.clone());
-            let mut facts = TagFacts::active(&filter.requested, &label);
-            facts.retired = filter.resolution == "retired";
-            if filter.resolution == "not_found" { facts.problem = Some("Không tìm thấy thẻ này.".into()); }
-            view! { <a class="vk-applied-tag" href=without.href(None) aria-label=format!("Bỏ lọc {label}")>
-                <TagChip id=format!("applied-{}", crate::discovery::encode(&filter.requested)) tag=facts remove_label=format!("Bỏ lọc {label}") />
-                <Icon name=IconName::Close />
-            </a> }
-        }).collect_view())}
+        <div id="applied-filters" class="vk-applied-filters">
+            {move || {
+                let resolved = live.as_ref().map(|live| live.data.with(|list| list.filters.tags.clone())).unwrap_or_default();
+                tags.iter().map(|slug| {
+                    let filter = resolved.iter().find(|filter| filter.requested == requested_slug(slug));
+                    let label = filter.and_then(|filter| filter.tag.as_ref().map(|tag| &tag.label)).unwrap_or(slug);
+                    let mut without = context.clone();
+                    without.query = without.query.without_tag(slug);
+                    let mut facts = TagFacts::active(slug, label);
+                    if let Some(filter) = filter {
+                        facts.retired = filter.resolution == "retired";
+                        if filter.resolution == "not_found" { facts.problem = Some("Không tìm thấy thẻ này.".into()); }
+                    }
+                    view! { <a class="vk-applied-tag" href=without.href(None) aria-label=format!("Bỏ lọc {label}")>
+                        <TagChip id=format!("applied-{}", crate::discovery::encode(slug)) tag=facts remove_label=format!("Bỏ lọc {label}") />
+                        <Icon name=IconName::Close />
+                    </a> }
+                }).collect_view()
+            }}
+        </div>
     }.into_any()
 }
 
 #[component]
 fn FilterForm(
     id: &'static str,
-    action: String,
     q: String,
     draft: RwSignal<Vec<String>>,
-    catalog: Resource<Result<TagList, LoadError>>,
+    initial: StoredValue<Vec<String>>,
+    list: TagList,
     open: RwSignal<bool>,
+    #[prop(optional)] modal: bool,
 ) -> AnyView {
-    let mut initial = expect_context::<DiscoveryDraft>().applied_tags.get_value();
-    initial.sort();
+    let known: Vec<_> = list.tags.iter().map(|tag| tag.slug.clone()).collect();
+    let changed = Memo::new(move |_| {
+        draft.with(|selected| {
+            initial.with_value(|applied| {
+                selected.len() != applied.len() || !selected.iter().all(|tag| applied.contains(tag))
+            })
+        })
+    });
     view! {
-        <Form method="get" action noscroll=true on_form_data=Arc::new(move |data| {
+        <Form method="get" action="/" noscroll=true on_form_data=Arc::new(move |data| {
             drop_unnamed_submitter(data);
             focus_submitted_results(data);
             open.set(false);
         }) attr:class="vk-discovery-filter-form" attr:id=format!("{id}-tag-form") attr:aria-describedby=format!("{id}-tag-help")>
             <HiddenField name="q" value=Signal::stored(q) />
-            <h2>"Bộ lọc thẻ"</h2>
-            <p id=format!("{id}-tag-help")>"Khớp tất cả thẻ · Tối đa 4"</p>
-            <Suspense fallback=move || view! {
-                <p role="status">"Đang tải danh mục thẻ…"</p>
-                {draft.get().into_iter().map(|slug| view! {
-                    <HiddenField name="tag" value=Signal::stored(slug) />
-                }).collect_view()}
-            }>
-            {move || catalog.get().map(|catalog| match catalog {
-                Err(_) => view! { <p role="alert">"Chưa tải được danh mục thẻ. Tải lại trang để thử lại; bộ lọc đang áp dụng vẫn được giữ."</p>
-                    {draft.get_untracked().into_iter().map(|slug| view! { <HiddenField name="tag" value=Signal::stored(slug) /> }).collect_view()}
-                }.into_any(),
-                Ok(catalog) => {
-                    let known: Vec<_> = catalog.tags.iter().map(|t| t.slug.clone()).collect();
-                    view! {
-                    {move || draft.get().into_iter().filter(|slug| !known.contains(slug))
-                        .map(|slug| view! { <HiddenField name="tag" value=Signal::stored(slug) /> }).collect_view()}
-                    {["form", "theme"].into_iter().map(|facet| {
-                        let options: Vec<TagDto> = catalog.tags.iter().filter(|tag| tag.facet == facet).cloned().collect();
-                        view! { <fieldset>
-                            <legend>{if facet == "form" { "Dạng bài" } else { "Chủ đề" }}</legend>
-                            <div class="vk-discovery-options">
-                                {options.into_iter().map(|tag| {
-                                    let slug = tag.slug.clone();
-                                    let checked_slug = slug.clone();  let disabled_slug = slug.clone();
-                                    let input_id = format!("{id}-tag-{}", tag.tag_id);
-                                    view! { <span class="vk-discovery-option">
-                                        <Checkbox id=input_id label=tag.label name="tag" value=tag.slug
-                                            checked=Signal::derive(move || draft.with(|tags| tags.contains(&checked_slug)))
-                                            disabled=Signal::derive(move || draft.with(|tags| tags.len() >= 4 && !tags.contains(&disabled_slug)))
-                                            on_change=move |checked| {
-                                                draft.update(|tags| {
-                                                    tags.retain(|tag| tag != &slug);
-                                                    if checked && tags.len() < 4 { tags.push(slug.clone()); }
-                                                });
-                                            } />
-                                    </span> }
-                                }).collect_view()}
-                            </div>
-                        </fieldset> }
-                    }).collect_view()}
-                    {catalog.truncated.then(|| view! { <p>"Danh mục đang hiển thị 200 thẻ đầu. Thẻ khác vẫn có thể mở từ tác phẩm hoặc đường dẫn riêng."</p> })}
-                }.into_any() },
-            })}
-            </Suspense>
-            {move || {
-                let mut selected = draft.get(); selected.sort();
-                view! { <Button kind=ButtonKind::Submit variant=if selected != initial { ButtonVariant::Filled } else { ButtonVariant::Tonal }>"Áp dụng"</Button> }
-            }}
+            {move || draft.get().into_iter().filter(|slug| !known.contains(slug))
+                .map(|slug| view! { <HiddenField name="tag" value=Signal::stored(slug) /> }).collect_view()}
+            {["form", "theme"].into_iter().filter_map(|facet| {
+                let options: Vec<TagDto> = list.tags.iter().filter(|tag| tag.facet == facet).cloned().collect();
+                (!options.is_empty()).then(|| view! {
+                    <fieldset>
+                        <legend>{if facet == "form" { "Dạng bài" } else { "Chủ đề" }}</legend>
+                        <div class="vk-discovery-options">
+                            {options.into_iter().map(|tag| {
+                                let slug = tag.slug.clone();
+                                let checked_slug = slug.clone();
+                                let disabled_slug = slug.clone();
+                                view! { <span class="vk-discovery-option">
+                                    <Checkbox id=format!("{id}-tag-{}", tag.tag_id) label=tag.label name="tag" value=tag.slug
+                                        checked=Signal::derive(move || draft.with(|tags| tags.contains(&checked_slug)))
+                                        // Native GET still submits freely. The server validates the four-tag limit.
+                                        disabled=Signal::derive(move || modal && draft.with(|tags| tags.len() >= 4 && !tags.contains(&disabled_slug)))
+                                        on_change=move |checked| {
+                                            draft.update(|tags| {
+                                                tags.retain(|tag| tag != &slug);
+                                                if checked && tags.len() < 4 { tags.push(slug.clone()); }
+                                            });
+                                        } />
+                                </span> }
+                            }).collect_view()}
+                        </div>
+                    </fieldset>
+                })
+            }).collect_view()}
+            {list.truncated.then(|| view! { <p>"Danh mục đang hiển thị 200 thẻ đầu. Thẻ khác vẫn có thể mở từ tác phẩm hoặc đường dẫn riêng."</p> })}
+            <div class="vk-discovery-filter-footer">
+                <div>
+                    <p id=format!("{id}-tag-help")>{if modal { "Khớp tất cả thẻ" } else { "Khớp tất cả thẻ · Tối đa 4" }}</p>
+                    {modal.then(|| view! { <p id="tag-selection-count" role="status" aria-atomic="true">
+                        {move || format!("Đã chọn {}/4", draft.with(Vec::len))}
+                    </p> })}
+                </div>
+                <Button kind=ButtonKind::Submit variant=ButtonVariant::Filled
+                    state=Signal::derive(move || if modal && !changed.get() { ActionState::Disabled { reason: None } } else { ActionState::Enabled })>
+                    "Áp dụng"
+                </Button>
+            </div>
         </Form>
     }.into_any()
 }
@@ -537,7 +593,7 @@ fn PublicResults(context: ExploreContext, live: public_reads::Live<WorkList>) ->
                                     <EmptyState artwork=if filtered || page_empty { EmptyArtwork::NoResults } else { EmptyArtwork::NoPublicWorks } message announce=true>
                                         {has_tags.then(|| view! { <a id="clear-public-tags" class="vk-ui-link" href=no_tags.href(None)>"Bỏ lọc thẻ"</a> })}
                                         {has_query.then(|| view! { <a id="clear-public-results" class="vk-ui-link" href=no_query.href(None)>"Xóa tìm kiếm"</a> })}
-                                        {(!filtered && !page_empty).then(|| view! { <a class="vk-ui-link" href="/ban-viet">"Đến Bàn viết"</a> })}
+                                        {(!filtered && !page_empty).then(|| view! { <a class="vk-ui-button vk-ui-button--tonal" href="/ban-viet">"Đến Bàn viết"</a> })}
                                     </EmptyState>
                                 </div> }.into_any()
                             }
@@ -658,64 +714,6 @@ fn DiscoveryFailure(context: ExploreContext, error: LoadError) -> AnyView {
         }
         .into_any(),
     }
-}
-
-/// The draft selection is shared. When reflow hides a focused presentation, carry focus to its
-/// paired checkbox, rather than leaving it in a hidden dock or behind the modal.
-#[cfg(feature = "hydrate")]
-fn adapt_picker(open: RwSignal<bool>) {
-    use wasm_bindgen::{JsCast, closure::Closure};
-    Effect::new(move |_| {
-        let Some(dock) = document().get_element_by_id("tag-dock") else {
-            return;
-        };
-        let callback =
-            Closure::<dyn FnMut(js_sys::Array, web_sys::ResizeObserver)>::new(move |_, _| {
-                let Some(dock) = document().get_element_by_id("tag-dock") else {
-                    return;
-                };
-                let wide = dock.get_bounding_client_rect().width() > 0.0;
-                let active = document().active_element();
-                let tag = active.as_ref().and_then(|el| {
-                    let id = el.id();
-                    id.strip_prefix("dock-tag-")
-                        .or_else(|| id.strip_prefix("modal-tag-"))
-                        .map(str::to_owned)
-                });
-                let in_dock = active.as_ref().is_some_and(|el| dock.contains(Some(el)));
-                let destination = if wide && open.get_untracked() {
-                    open.set(false);
-                    Some("dock")
-                } else if !wide && in_dock {
-                    open.set(true);
-                    Some("modal")
-                } else {
-                    None
-                };
-                if let Some(target) = destination
-                    .zip(tag)
-                    .map(|(part, id)| format!("{part}-tag-{id}"))
-                {
-                    request_animation_frame(move || {
-                        if let Some(el) = document()
-                            .get_element_by_id(&target)
-                            .and_then(|e| e.dyn_into::<web_sys::HtmlElement>().ok())
-                        {
-                            let _ = el.focus();
-                        }
-                    });
-                }
-            });
-        if let Ok(observer) = web_sys::ResizeObserver::new(callback.as_ref().unchecked_ref()) {
-            observer.observe(&dock);
-            let cleanup = send_wrapper::SendWrapper::new((observer, callback));
-            on_cleanup(move || {
-                let (observer, callback) = cleanup.take();
-                observer.disconnect();
-                drop(callback);
-            });
-        }
-    });
 }
 
 #[cfg(all(test, feature = "ssr"))]

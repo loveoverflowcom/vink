@@ -12,7 +12,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     await page.waitFor("document.querySelector('#public-results')", 'new query result');
   };
   await goto('/');
-  check(await page.eval("document.querySelector('#public-query-help').textContent === 'Trong toàn thư viện công khai'"), 'search explicitly names the whole public library');
+  check(await page.eval("document.querySelector('#public-query').placeholder === 'Tìm theo tên hoặc tác giả' && !document.querySelector('#public-query-help, #explore-heading p')"), '#308 search names its fields without duplicate scope copy');
   await submit('không có tác phẩm này #100');
   await page.waitFor("document.querySelector('[data-testid=public-no-results]')", 'real no-results');
   check(await page.eval("document.querySelectorAll('#public-results [role=status]').length===1 && document.querySelector('.vk-empty-state__message').textContent==='Chưa có tác phẩm phù hợp.'"), '#225/#258 empty page has one truthful result announcement without redundant 0-count');
@@ -42,23 +42,19 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     const layout = await page.eval(`(() => {
       const art=document.querySelector('.vk-empty-state__art'), message=document.querySelector('.vk-empty-state__message');
       const r=art.getBoundingClientRect(), m=message.getBoundingClientRect();
+      const region=document.querySelector('#community-stream').getBoundingClientRect();
+      const state=art.closest('.vk-empty-state').getBoundingClientRect();
+      const tools=document.querySelector('.vk-discovery-search-row').getBoundingClientRect();
       return {width:r.width, height:r.height, font:getComputedStyle(message).fontSize,
         overflow:document.documentElement.scrollWidth-innerWidth,
         order:r.bottom<=m.top && m.bottom<=document.querySelector('.vk-empty-state__actions').getBoundingClientRect().top,
-        centerDelta:(() => {
-          // Free region: last visible control above the slot → end of the screen's content box.
-          let prev=art.closest('.vk-empty-state').parentElement.previousElementSibling;
-          while (prev && !prev.getBoundingClientRect().height) prev=prev.previousElementSibling;
-          prev=prev||document.querySelector('#applied-filters');
-          const main=document.querySelector('.vk-main'), top=prev.getBoundingClientRect().bottom+parseFloat(getComputedStyle(prev).marginBlockEnd);
-          const bottom=main.getBoundingClientRect().bottom-parseFloat(getComputedStyle(main).paddingBottom)-parseFloat(getComputedStyle(document.querySelector('#explore')).marginBlockEnd);
-          return Math.round((r.top+document.querySelector('.vk-empty-state__actions').getBoundingClientRect().bottom-top-bottom)*5)/10;
-        })()};
+        centerX:(r.left + r.right - tools.left - tools.right)/2,
+        centerY:(state.top + state.bottom - region.top - region.bottom)/2};
     })()`);
     check(layout.width <= (width<760?192:240) + 1 && Math.abs(layout.height/layout.width-427/512)<0.01 &&
       layout.font===(scale===100?'16px':'32px') && layout.overflow<=1 && layout.order,
       '#258 empty composition reflow/ratio/type/order '+[theme,width,scale].join('/')+' '+JSON.stringify(layout));
-    check(Math.abs(layout.centerDelta) <= 2, 'audit empty cluster centred in the free region below search/filters '+[surface,theme,width,scale].join('/')+' delta '+layout.centerDelta+'px');
+    check(Math.abs(layout.centerX)<=1 && Math.abs(layout.centerY)<=1, '#308 empty cluster centered on both axes '+[surface,theme,width,scale].join('/')+' CSS px '+[layout.centerX,layout.centerY]);
     if (width===390 && scale===100) await textContrast(page, theme, 'empty');
     await page.capture('empty258-'+surface+'-'+[theme,width,scale].join('-'), {boundary:'real-public-api',scenario:'filtered-empty-WebP'});
   }
@@ -71,7 +67,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await page.click('#clear-public-results');
   await page.waitFor("location.search === '' && document.querySelector('.vk-public-row')", 'query recovery');
   check(await page.eval("!document.querySelector('.vk-empty-state__art') && performance.getEntriesByType('resource').filter(r=>r.name.includes('/pkg/empty/')).every(r=>r.name.endsWith('vink-empty-no-results.webp'))"), '#258 ready branch mounts no artwork and never fetches unrelated illustrations');
-  await page.waitFor("document.querySelector('#dock-tag-form input[type=checkbox]')", 'public tag catalog ready');
+  await page.waitFor("document.querySelector('#open-tag-filters')", 'public tag catalog ready');
 
   await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:5,y:5});
   for (const theme of ['light', 'dark']) {
@@ -82,11 +78,19 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     await page.viewport(width);
     await page.eval("document.documentElement.dataset.theme=" + JSON.stringify(theme) + "; document.documentElement.style.fontSize=" + JSON.stringify(scale + '%') + "; scrollTo(0,0); document.fonts.ready");
     check(await page.eval("document.documentElement.scrollWidth <= innerWidth"), 'Explore reflows ' + [theme,width,scale].join('/'));
-    if ([320,390,834,1440].includes(width) && !await page.eval("document.querySelector('#tag-dock').getBoundingClientRect().width>0")) {
+    if (width===390 && scale===100) {
+      check(await page.eval(`(() => {
+        const hint=document.querySelector('.vk-ui-search__compact-placeholder');
+        const input=document.querySelector('#public-query');
+        return hint.textContent==='Tìm tác phẩm' && hint.clientWidth>0 && hint.scrollWidth<=hint.clientWidth
+          && input.labels[0].textContent==='Tìm theo tên hoặc tác giả';
+      })()`), '#308 short mobile search hint fits and keeps its full accessible name');
+    }
+    if ([320,390,834,1440].includes(width)) {
       check(await page.eval(`(() => {
         const button=document.querySelector('#open-tag-filters'), r=button.getBoundingClientRect();
         const icon=button.querySelector('svg[data-icon=filter-list][aria-hidden=true]');
-        return button.type==='button' && button.textContent==='Thẻ' && !!icon &&
+        return button.type==='button' && button.textContent==='Lọc thẻ' && !!icon &&
           button.querySelectorAll('svg').length===1 && button.classList.contains('vk-ui-button--tonal') &&
           icon.getBoundingClientRect().left>=r.left && icon.getBoundingClientRect().right<=r.right &&
           !button.hasAttribute('aria-pressed') && !button.querySelector('button,a,input') &&
@@ -96,7 +100,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     check(await page.eval("(() => { const heading=document.querySelector('#explore-heading h1'), walker=document.createTreeWalker(heading,NodeFilter.SHOW_TEXT); for(let node=walker.nextNode();node;node=walker.nextNode()) for(const word of node.textContent.matchAll(/\\S+/g)) { const range=document.createRange(); range.setStart(node,word.index); range.setEnd(node,word.index+word[0].length); const rects=[...range.getClientRects()]; if(rects.some(r=>Math.abs(r.top-rects[0].top)>1)) return false; } return true; })()"), 'Vietnamese heading words remain intact '+[theme,width,scale].join('/'));
 
     const dock = await page.eval("document.querySelector('#tag-dock').getBoundingClientRect().width>0");
-    check(dock === (width>=1200 && scale===100), 'dock/dialog breakpoint ' + [theme,width,scale].join('/'));
+    check(!dock, '#308 hydrated discovery has no filter column ' + [theme,width,scale].join('/'));
 
     check(await page.eval("(() => { const row=document.querySelector('.vk-public-row'), t=row.querySelector('h3').getBoundingClientRect(), n=row.querySelector('.vk-ui-byline__name').getBoundingClientRect(), a=row.querySelector('.vk-ui-avatar').getBoundingClientRect(); return t.bottom<=n.top && Math.abs(a.width-32)<1 && Math.abs(a.height-32)<1; })()"), 'title first and avatar retained ' + [theme,width,scale].join('/'));
     if (width === 320 && scale === 200) {
@@ -123,6 +127,8 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   }
   await page.viewport(390);
   await page.eval("document.documentElement.style.fontSize='100%'");
+  await submit('mua');
+  await page.waitFor("document.querySelector('#open-tag-filters')", 'catalog for the applied query');
   await page.click('#open-tag-filters');
   await page.waitFor("document.querySelector('#tag-picker')?.open && document.querySelector('#modal-tag-form input[type=checkbox]')", 'tag picker');
   const captureSelection = async count => {
@@ -135,7 +141,8 @@ export async function discoveryReading(page, { args, check, textContrast }) {
       await textContrast(page, theme, 'filter');
       check(await page.eval(`(() => {
         const form=document.querySelector('#modal-tag-form'), help=document.getElementById(form.getAttribute('aria-describedby'));
-        return help.textContent==='Khớp tất cả thẻ · Tối đa 4' && help.getBoundingClientRect().width>0 &&
+        return help.textContent==='Khớp tất cả thẻ' && help.getBoundingClientRect().width>0 &&
+          form.querySelector('#tag-selection-count').textContent.trim()==='Đã chọn '+${count}+'/4' &&
           form.querySelectorAll('input:checked').length===${count} && document.documentElement.scrollWidth<=innerWidth;
       })()`), '#225 helper retains AND/max4 and selection at '+[count,width,scale,theme].join('/'));
       await page.capture('action225-filter-'+[count,width,scale,theme].join('-'), {boundary:'real-public-api',scenario:'tag-draft-selection'});
@@ -148,10 +155,10 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   check(await page.eval(`(() => {
     const form=document.querySelector('#modal-tag-form'), apply=form.querySelector('button[type=submit]');
     return form.method==='get' && form.querySelectorAll('button[type=submit]').length===1 &&
-      apply.textContent==='Áp dụng' && apply.classList.contains('vk-ui-button--tonal') &&
+      apply.textContent==='Áp dụng' && apply.getAttribute('aria-disabled')==='true' &&
       !apply.querySelector('button,a,input') && !form.querySelector('[name=cursor]') &&
       [...form.querySelectorAll('input[type=checkbox]')].every(i=>i.name==='tag' && !!i.labels?.length);
-  })()`), '#225 unchanged Apply stays Tonal; one native GET submit, labelled checkbox choices and no cursor');
+  })()`), '#308 Apply is disabled until a change; one native GET submit with labeled checkboxes');
   // Count outside the page: a native GET may replace its Window and erase page globals.
   let applySubmits = 0;
   await page.send('Runtime.addBinding', {name:'action225Submit'});
@@ -172,8 +179,8 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await page.key('Space');
   check(await page.eval(`window.__action225Changes===1 && window.__action225Submits===0 &&
     window.__action225Choice===document.getElementById(${JSON.stringify(choices[0])}) &&
-    document.querySelector('#modal-tag-form button[type=submit]').classList.contains('vk-ui-button--filled')`),
-    '#225 one Space changes one stable checkbox, never submits; changed Apply is Filled');
+    document.querySelector('#modal-tag-form button[type=submit]').getAttribute('aria-disabled')!=='true'`),
+    '#308 one Space changes one stable checkbox and enables Apply');
   await captureSelection(1);
   check(await page.eval('location.href') === before, 'draft selection does not change applied URL');
   check(choices.length===4, '#225 catalog has at least four real choices for the max4 browser check');
@@ -189,28 +196,35 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   for (const id of choices.slice(1)) await page.click('label:has(#'+id+')');
   await page.click('label:has(#'+choices[0]+')');
   check(await page.eval(`document.querySelectorAll('#modal-tag-form input[type=checkbox]:checked').length===0 &&
-    document.querySelector('#modal-tag-form button[type=submit]').classList.contains('vk-ui-button--tonal')`),
-    '#225 reverting to the applied set restores Tonal without a submit');
+    document.querySelector('#modal-tag-form button[type=submit]').getAttribute('aria-disabled')==='true'`),
+    '#308 reverting to the applied set disables Apply');
   await page.click('label:has(#'+choices[0]+')');
   await page.key('Escape');
   await page.waitFor("!document.querySelector('#tag-picker').open && document.activeElement.id === 'open-tag-filters'", 'Escape restores filter trigger');
   await page.click('#open-tag-filters');
-  await page.waitFor("document.querySelector('#tag-picker').open && document.querySelectorAll('#modal-tag-form input[type=checkbox]:checked').length===1 && document.querySelector('#modal-tag-form button[type=submit]')?.classList.contains('vk-ui-button--filled')", 'reopen picker with the refreshed catalog and draft choice ready');
+  await page.waitFor("document.querySelector('#tag-picker').open && !document.querySelector('#modal-tag-form input:checked')", '#308 Escape discards the uncommitted choice');
+  await page.click('label:has(#'+choices[0]+')');
+  await page.eval('history.back()');
+  await page.waitFor("!document.querySelector('#tag-picker').open && document.activeElement.id === 'open-tag-filters'", '#308 Back closes before leaving the query');
+  check(await page.eval('location.href') === before, '#308 Back leaves the applied URL intact');
+  await page.click('#open-tag-filters');
+  check(await page.eval("!document.querySelector('#modal-tag-form input:checked')"), '#308 Back discards the uncommitted choice');
+  await page.click('label:has(#'+choices[0]+')');
   await page.eval("document.querySelector('#modal-tag-form button[type=submit]').focus()");
   await page.key('Enter');
-  await page.waitFor("new URL(location.href).searchParams.has('tag') && document.querySelector('#public-results') && !document.querySelector('#tag-picker').open", 'Apply changes the URL');
+  await page.waitFor("new URL(location.href).searchParams.has('tag') && new URL(location.href).searchParams.get('q')==='mua' && document.querySelector('#public-results') && !document.querySelector('#tag-picker').open", 'Apply changes the tags and preserves the query');
   await page.waitFor("document.activeElement?.id==='community-stream'", '#258 Apply focuses results after the picker closes');
   check(applySubmits===1, '#225 Enter on Apply submits exactly once, including native GET navigation (observed '+applySubmits+')');
   page.cdp.listeners = page.cdp.listeners.filter(listener=>listener!==countApply);
   await page.send('Runtime.removeBinding', {name:'action225Submit'});
   check(await page.eval("document.querySelectorAll('#applied-filters .vk-applied-tag').length === 1"), 'applied filter is visible and removable');
-  await unchangedApplyDuringCatalogRefresh(page, {args, check});
+  await page.waitFor("document.querySelector('#open-tag-filters')", 'applied catalog');
   await page.click('#open-tag-filters');
   await page.waitFor("document.querySelector('#tag-picker').open", '#258 reopen unchanged picker for cancellation');
-  await page.key('Escape');
-  await page.waitFor("!document.querySelector('#tag-picker').open && document.activeElement.id==='open-tag-filters'", '#225 unchanged filter dismiss restores trigger');
+  await page.click('#close-tag-filters');
+  await page.waitFor("!document.querySelector('#tag-picker').open && document.activeElement.id==='open-tag-filters'", '#308 Close restores the trigger');
   await page.click('#applied-filters .vk-applied-tag');
-  await page.waitFor("!new URL(location.href).searchParams.has('tag') && document.querySelector('.vk-public-row')", 'remove filter');
+  await page.waitFor("!new URL(location.href).searchParams.has('tag') && new URL(location.href).searchParams.get('q')==='mua' && document.querySelector('.vk-public-row')", 'remove filter and keep the query');
 
   // IME composition is simulated through CDP (`Input.imeSetComposition`); it is not a named OS IME
   // session. Keys are trusted (`Input.dispatchKeyEvent`): unlike a dispatched DOM event they do
@@ -307,7 +321,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     check(await page.eval("document.querySelector('.vk-empty-state__art').naturalWidth===0 && document.documentElement.dataset.hydrated!=='true' && document.querySelector('.vk-empty-state__message').textContent==='Chưa có tác phẩm phù hợp.' && document.querySelector('#clear-public-results').getAttribute('href')==='/' && document.querySelectorAll('#public-results [role=status]').length===1"), '#258 blocked artwork before hydration leaves useful HTML and GET recovery');
     // page.click waits for animation frames; those callbacks do not run with page JS disabled.
     // Use the same native pointer path as the no-JS search above, without a JS click fallback.
-    for (const selector of ['#dock-tag-form label:has(input[type=checkbox])', '#dock-tag-form button[type=submit]']) {
+    for (const selector of ['#tag-dock summary', '#dock-tag-form label:has(input[type=checkbox])', '#dock-tag-form button[type=submit]']) {
       const target = await page.eval(`(() => { const el=document.querySelector(${JSON.stringify(selector)}); el.scrollIntoView(); const r=el.getBoundingClientRect(); const x=r.x+r.width/2,y=r.y+r.height/2; return {x,y,hit:el.contains(document.elementFromPoint(x,y))}; })()`);
       check(target.hit, '#225 no-JS pointer hits the native filter target '+selector);
       for (const type of ['mousePressed','mouseReleased']) await page.send('Input.dispatchMouseEvent',{type,x:target.x,y:target.y,button:'left',clickCount:1});
@@ -348,27 +362,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     await page.send('Network.setCacheDisabled',{cacheDisabled:false});
   }
   await goto('/');
-  // The always-visible rule must survive a failed catalog refresh as well as no-JS.
-  const catalogFailure = ({sessionId,method,params}) => {
-    if (sessionId===page.sessionId && method==='Fetch.requestPaused') {
-      page.send('Fetch.fulfillRequest', {requestId:params.requestId,responseCode:503,
-        responseHeaders:[{name:'Content-Type',value:'application/json'}],
-        body:Buffer.from(JSON.stringify({error:{code:'dependency_unavailable',message:'catalog fixture'}})).toString('base64')}).catch(()=>{});
-    }
-  };
-  await page.viewport(390);
-  page.cdp.listeners.push(catalogFailure);
-  await page.send('Fetch.enable', {patterns:[{urlPattern:args.base+'/api/v1/tags*',requestStage:'Request'}]});
-  try {
-    await page.click('#open-tag-filters');
-    await page.waitFor("document.querySelector('#modal-tag-form [role=alert]')", '#225 catalog refresh failure');
-    check(await page.eval("document.querySelector('#modal-tag-help').textContent==='Khớp tất cả thẻ · Tối đa 4' && document.querySelector('#modal-tag-form [role=alert]').textContent.includes('Chưa tải được danh mục thẻ')"), '#225 catalog failure keeps both the rule and an honest error');
-    await page.key('Escape');
-    await page.waitFor("!document.querySelector('#tag-picker').open && document.activeElement.id==='open-tag-filters'", '#225 failed-catalog dismiss restores trigger');
-  } finally {
-    await page.send('Fetch.disable');
-    page.cdp.listeners = page.cdp.listeners.filter(listener=>listener!==catalogFailure);
-  }
+  await catalogRecovery(page, {args, check, goto});
   await goto('/?q=missing-return-258#work-00000000-0000-4000-8000-000000000258');
   await page.waitFor("document.activeElement?.id==='community-stream'", '#258 missing reader-return row focuses the named results landmark');
   check(await page.eval("document.activeElement.getAttribute('aria-label')==='Tác phẩm khám phá' && document.activeElement.getClientRects().length>0"), '#258 reader-return fallback is a visible, named target');
@@ -377,32 +371,53 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await goto('/');
 }
 
-async function unchangedApplyDuringCatalogRefresh(page, {args, check}) {
-  const tags=await page.eval("new URL(location.href).searchParams.getAll('tag')");
-  const held=[];
-  const gate=({sessionId,method,params})=>{
-    if(sessionId===page.sessionId && method==='Fetch.requestPaused') held.push(params.requestId);
+async function catalogRecovery(page, {args, check, goto}) {
+  const catalog = await (await fetch(args.base+'/api/v1/tags')).json();
+  const tag = catalog.tags.find(tag=>tag.facet==='form');
+  await goto('/?q=mua&tag='+encodeURIComponent(tag.slug));
+  const requests = [];
+  const gate = ({sessionId,method,params}) => {
+    if (sessionId===page.sessionId && method==='Fetch.requestPaused') requests.push(params.requestId);
   };
-  await page.send('Network.setCacheDisabled',{cacheDisabled:true});
+  const answer = async (status, body) => {
+    const deadline = Date.now()+10000;
+    while (!requests.length && Date.now()<deadline) await new Promise(resolve=>setTimeout(resolve,25));
+    check(requests.length===1, '#308 one catalog request awaits an answer');
+    await page.send('Fetch.fulfillRequest', {requestId:requests.shift(), responseCode:status,
+      responseHeaders:[{name:'Content-Type',value:'application/json'}],
+      body:Buffer.from(JSON.stringify(body)).toString('base64')});
+  };
+  await page.viewport(390);
   page.cdp.listeners.push(gate);
-  await page.send('Fetch.enable',{patterns:[{urlPattern:args.base+'/api/v1/tags*',requestStage:'Request'}]});
+  await page.send('Fetch.enable', {patterns:[{urlPattern:args.base+'/api/v1/tags*',requestStage:'Request'}]});
   try {
+    await page.eval("document.querySelector('#public-query').value='mot-tu-khoa-moi'; document.querySelector('#public-search').requestSubmit()");
+    await page.waitFor("document.querySelector('[data-testid=tag-catalog-loading]') && !document.querySelector('#open-tag-filters')", '#308 pending catalog announces loading');
+    await answer(503, {error:{code:'dependency_unavailable'}});
+    await page.waitFor("document.querySelector('#open-tag-filters')", '#308 failed catalog retains entry');
     await page.click('#open-tag-filters');
-    await page.waitFor("document.querySelector('#tag-picker').open && document.querySelector('#modal-tag-form [role=status]')",'#258 catalog refresh is visibly pending');
-    const deadline=Date.now()+10000;
-    while(!held.length && Date.now()<deadline) await new Promise(resolve=>setTimeout(resolve,25));
-    check(held.length===1,'#258 catalog refresh is actually held for unchanged Apply');
-    const submitted=await page.eval("new FormData(document.querySelector('#modal-tag-form')).getAll('tag')");
-    check(JSON.stringify(submitted)===JSON.stringify(tags),'#258 a pending catalog retains the exact applied tag fields ('+JSON.stringify(submitted)+')');
-    await page.eval("document.querySelector('#modal-tag-form button[type=submit]').focus()");
-    await page.key('Enter');
-    await page.waitFor("!document.querySelector('#tag-picker').open && document.activeElement?.id==='community-stream'",'#258 unchanged Apply focuses results after its own trigger restoration');
-    check(await page.eval(`JSON.stringify(new URL(location.href).searchParams.getAll('tag'))===${JSON.stringify(JSON.stringify(tags))}`),'#258 unchanged Apply during catalog refresh preserves the applied filter');
+    await page.waitFor("document.querySelector('#tag-picker [role=alert]') && document.querySelector('#retry-tag-catalog')", '#308 catalog error offers retry');
+    check(requests.length===0 && await page.eval("!!document.querySelector('#applied-filters a') && !document.querySelector('#modal-tag-form')"), '#308 opening does not refetch or replace applied tags');
+    await page.click('#retry-tag-catalog');
+    await page.waitFor("document.querySelector('#tag-picker [role=status]')?.textContent.includes('Đang tải')", '#308 loading on explicit retry');
+    await answer(200, {tags:[],truncated:false});
+    await page.waitFor("document.querySelector('#tag-picker [role=status]')?.textContent.includes('Chưa có thẻ')", '#308 empty successful result');
+    await page.click('#close-tag-filters');
+    await page.waitFor("document.activeElement?.id==='public-query'", '#308 close focuses search when the launcher has been removed');
+    check(await page.eval("!document.querySelector('#open-tag-filters, #tag-dock, #modal-tag-form') && !!document.querySelector('#applied-filters a')"), '#308 empty catalog removes filter surfaces and keeps the active tag removal link');
+    await page.click('#applied-filters a');
+    await answer(200, {tags:[tag],truncated:false});
+    await page.waitFor("document.querySelector('#open-tag-filters')", '#308 one-facet catalog');
+    await page.click('#open-tag-filters');
+    check(await page.eval(`(() => {
+      const url = new URL(location.href), groups = document.querySelectorAll('#modal-tag-form legend');
+      return url.searchParams.get('q')==='mot-tu-khoa-moi' && !url.searchParams.has('tag') &&
+        groups.length===1 && groups[0].textContent==='Dạng bài';
+    })()`), '#308 removing an applied tag keeps q, and only available groups render');
+    await page.key('Escape');
   } finally {
-    for(const requestId of held) await page.send('Fetch.continueRequest',{requestId}).catch(()=>{});
     await page.send('Fetch.disable');
-    await page.send('Network.setCacheDisabled',{cacheDisabled:false});
-    page.cdp.listeners=page.cdp.listeners.filter(listener=>listener!==gate);
+    page.cdp.listeners = page.cdp.listeners.filter(listener=>listener!==gate);
   }
 }
 
@@ -515,14 +530,16 @@ export async function discoveryCorpus(page, { args, check }) {
   check(await page.eval('location.pathname+location.search')===context, 'reload preserves filtered second-page URL');
   await page.capture('discovery-real-second-page', {boundary:'real-api+SQL-publication-fixture',scenario:'query-tags-pagination-reader-return'});
   await page.viewport(1440);
-  await page.waitFor("document.querySelector('#dock-tag-form input[type=checkbox]:checked')", '#225 dock with applied real tags');
-  const appliedChoice = '#dock-tag-form label:has(input[value='+JSON.stringify(form.slug)+'])';
+  await page.waitFor("document.querySelector('#open-tag-filters')", '#308 filter entry on the second page');
+  await page.click('#open-tag-filters');
+  await page.waitFor("document.querySelector('#tag-picker')?.open && document.querySelector('#modal-tag-form input:checked')", '#308 dialog with applied real tags');
+  const appliedChoice = '#modal-tag-form label:has(input[value='+JSON.stringify(form.slug)+'])';
   await page.click(appliedChoice);
-  check(await page.eval("document.querySelector('#dock-tag-form button[type=submit]').classList.contains('vk-ui-button--filled')"), '#225 removing an applied choice makes Apply Filled');
+  check(await page.eval("document.querySelector('#modal-tag-form button[type=submit]').getAttribute('aria-disabled')!=='true'"), '#308 removing an applied choice enables Apply');
   await page.click(appliedChoice);
-  check(await page.eval("document.querySelector('#dock-tag-form button[type=submit]').classList.contains('vk-ui-button--tonal') && location.pathname+location.search==="+JSON.stringify(context)), '#225 the same applied set in a different selection order is Tonal without URL mutation');
+  check(await page.eval("document.querySelector('#modal-tag-form button[type=submit]').getAttribute('aria-disabled')==='true' && location.pathname+location.search==="+JSON.stringify(context)), '#308 reordering the same applied set leaves Apply disabled and preserves the URL');
   await page.click(appliedChoice);
-  await page.click('#dock-tag-form button[type=submit]');
+  await page.click('#modal-tag-form button[type=submit]');
   await page.waitFor("!new URL(location.href).searchParams.has('cursor') && new URL(location.href).searchParams.get('q')==='kiem thu' && new URL(location.href).searchParams.getAll('tag').length===1 && document.querySelector('#public-results')", '#225 changed Apply resets second-page cursor and keeps q plus remaining tag');
 
   const tagContext='/the/'+encodeURIComponent(form.slug)+'?q=kiem%20thu&tag='+encodeURIComponent(theme.slug);
@@ -553,9 +570,11 @@ export async function discoveryCorpus(page, { args, check }) {
     while(!held.length && Date.now()<deadline) await new Promise(r=>setTimeout(r,50));
     check(held.length===1,'older query request is held deterministically');
     check(await page.eval("!document.querySelector('.vk-empty-state__art')"), '#258 unresolved read never mounts absence artwork');
-    await page.waitFor("document.querySelector('#dock-tag-form input[type=checkbox]')", 'filter controls available while A is pending');
-    await page.click('#dock-tag-form .vk-discovery-option');
-    await page.click('#dock-tag-form button[type=submit]');
+    await page.waitFor("document.querySelector('#open-tag-filters')", 'filter entry available while A is pending');
+    await page.click('#open-tag-filters');
+    await page.waitFor("document.querySelector('#tag-picker')?.open && document.querySelector('#modal-tag-form input[type=checkbox]')", 'filter controls available while A is pending');
+    await page.click('#modal-tag-form .vk-discovery-option');
+    await page.click('#modal-tag-form button[type=submit]');
     await page.waitFor("new URL(location.href).searchParams.has('tag') && document.querySelector('[data-testid=public-no-results]')",'B filter completes while A remains held');
     const body={...found,filters:{q:'race-100-a',tags:[]},works:[{...found.works[0],title:'STALE RACE RESULT #100'}]};
     await page.send('Fetch.fulfillRequest',{requestId:held.shift(),responseCode:200,responseHeaders:[{name:'Content-Type',value:'application/json'},{name:'Cache-Control',value:'no-store'}],body:Buffer.from(JSON.stringify(body)).toString('base64')});
