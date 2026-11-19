@@ -147,14 +147,18 @@ kế tiếp. Khi quay lui phiên bản ứng dụng, giữ nguyên migration, re
   ACK, đọc trạng thái đúng scope rồi so version và payload. [Hồ sơ công khai](../../apps/vink-web/src/pages/handle.rs)
   đưa Bio và danh sách bài vào cùng read. Focus, Back và thông báo đổi hồ sơ làm mới quyền
   đọc. Generation của read loại response đã cũ. READ-02 tính thêm byte của attribution,
-  kiểm lại trước khi vẽ ref từ snapshot mở lại, làm hết hiệu lực response đang bay và
-  gỡ attribution khỏi snapshot RAM khi nhận đổi hồ sơ. Cổng IndexedDB vẫn đóng.
+  ẩn bút danh ở snapshot chưa xác minh, kiểm lại ngay khi snapshot có liên kết hồ sơ,
+  làm hết hiệu lực response đang bay và gỡ attribution khỏi snapshot RAM khi nhận đổi hồ sơ.
+  HTML Khám phá và Reader dùng
+  `no-store` để native Back đọc lại projection. History của tab giữ scope và đích focus,
+  chờ byline đáp ứng quyền hiện tại. Cổng IndexedDB vẫn đóng.
 - **UI.** [LayoutSpec Social r2](../design/social-289.md) là nguồn của quyền, trạng thái và
   hành trình. `fidelity: NO_APPROVED_REFERENCE`. [Ghi chú Khám phá r1](https://drive.google.com/file/d/1HH4FOCWNHjLbsJJ4Mhpv_f14qhhOXvb0/view)
   bổ sung phép kiểm bàn phím và Back trong query/tag trên WorkCard.
   [Focused browser test](../../apps/vink-web/e2e/author-profile-smoke.mjs) chạy trong
   `verify web --scenario password` và seed hai tác giả bằng phiên thật cùng corpus bài/bình luận
-  kiểm soát trong database tạm.
+  kiểm soát trong database tạm. [Bằng chứng #292/#293](evidence/author-profile-292-293/README.md)
+  ghi kết quả theo từng AC, ảnh và phiếu thử tay.
 
 ### Mở và quay lui
 
