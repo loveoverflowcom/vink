@@ -254,10 +254,8 @@ async function bottomNavigationAnatomy(page, route, scenario) {
 async function bottomNavigationStates(page) {
   const selected = '.vk-ui-bottom-nav a[aria-current="page"]';
   const styles = () => page.eval(`(async () => {
-    const link = document.querySelector('${selected}'), indicator = link.querySelector('.vk-ui-icon').parentElement;
-    // Flush pending pointer styles before waiting for the next rendered state.
-    void getComputedStyle(indicator).boxShadow;
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const link = document.querySelector('${selected}'), indicator = link.querySelector('.vk-ui-icon').parentElement;
     const style = getComputedStyle(indicator);
     return { fill: style.backgroundColor, layer: style.boxShadow,
       hovered: link.matches(':hover'), pressed: link.matches(':active'),
@@ -270,7 +268,8 @@ async function bottomNavigationStates(page) {
   const reduce = { name: 'prefers-reduced-motion', value: 'reduce' };
   await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM, reduce] });
   try {
-    await page.eval('document.fonts.ready');
+    check(await page.eval(`matchMedia('(hover: hover)').matches`),
+      'Chrome reports a hover-capable pointer for the navigation mouse probe');
     await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 });
     const rest = await styles();
     const point = { x: rest.bounds.x + rest.bounds.width / 2, y: rest.bounds.y + rest.bounds.height / 2 };
@@ -1219,6 +1218,11 @@ async function launchChrome(existingProfile) {
   ];
   // CI runners may not allow Chrome's user-namespace sandbox; only our local app is loaded.
   if (process.env.CI || process.env.VINK_CHROME_NO_SANDBOX) flags.push('--no-sandbox');
+  // Linux headless can report hover:none even when CDP injects mouse events. The navigation
+  // mouse probe uses Blink's hover-capable fine pointer types (hover = 2, fine = 4).
+  if (['main', 'bottom-navigation'].includes(args.phase)) {
+    flags.push('--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4');
+  }
   // #234 measures a new SSR document with back_forward navigation timing, not a BFCache hit.
   if (['perf-baseline','reader-guest-history'].includes(args.phase)) flags.push('--disable-back-forward-cache');
   const child = spawn(args.chrome, flags, { stdio: ['ignore', 'ignore', 'pipe'] });
