@@ -978,6 +978,7 @@ pub enum AuthorProjection {
     Unsupported,
 }
 
+#[cfg(any(feature = "hydrate", test))]
 impl AuthorProjection {
     pub(crate) fn is_linked(&self) -> bool {
         matches!(self, Self::Linked(_))
@@ -1081,6 +1082,21 @@ mod tests {
             crate::ui::adapters::author_name("legacy", None),
             ("legacy".into(), None)
         );
+        let mut card = round_trip::<WorkList>("works.list.json").works.remove(0);
+        for author in [
+            None,
+            Some(projections[2].clone()),
+            Some(projections[0].clone()),
+        ] {
+            card.author = author;
+            let cached = crate::ui::adapters::card_author(&card, true);
+            assert_eq!(cached.name, "Chưa xác nhận được tác giả");
+            assert!(cached.profile.is_none());
+        }
+        card.author = Some(projections[1].clone());
+        let cached = crate::ui::adapters::card_author(&card, true);
+        assert_eq!(cached.name, "Tài khoản đã xóa");
+        assert!(cached.profile.is_none());
         let forged = AuthorProjection::Linked(PublicAuthorRef {
             pen_name: name,
             handle: "ngay-nang".into(),
