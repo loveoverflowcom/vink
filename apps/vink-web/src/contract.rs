@@ -342,12 +342,13 @@ impl From<PublicDiscussionPage> for DiscussionPage {
     }
 }
 
-/// A bounded composed read is used ONLY for this capability. Unknown fields (roots) are
-/// discarded at decoding; no viewer projection is retained or used for public rendering.
+/// A bounded composed read reconciles this viewer's authority and current work settings.
+/// Unknown fields (roots) are discarded; they never enter the public discussion projection.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct DiscussionCapability {
     pub work_id: String,
     pub viewer_is_work_author: bool,
+    pub settings: Option<CommentsSettings>,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct OwnCommentList {

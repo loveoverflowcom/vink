@@ -169,7 +169,7 @@ fn summary(standing: &Standing) -> String {
     }
 }
 
-fn standing_id(standing: &Standing) -> &'static str {
+pub(crate) fn standing_id(standing: &Standing) -> &'static str {
     match standing {
         Standing::Unknown => "unknown",
         Standing::Anonymous => "anonymous",
@@ -196,10 +196,17 @@ fn SessionRetry() -> impl IntoView {
     }
 }
 
+/// Only presentation varies by host; AuthGate and all input owners are shared.
+#[derive(Clone, Copy)]
+struct ReaderPresentation;
+
 /// Mount once in the current host. The host supplies layout and post-auth navigation, never
 /// standing or credentials. The existing form owners are disposed on a mode/epoch change.
 #[component]
-pub(crate) fn AuthEntry() -> impl IntoView {
+pub(crate) fn AuthEntry(#[prop(optional)] reader: bool) -> impl IntoView {
+    if reader {
+        provide_context(ReaderPresentation);
+    }
     let session = Session::current();
     let open = crate::api::sign_in_open();
     move || {

@@ -14,6 +14,7 @@
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { contextualReaderAuth } from './reader-auth-smoke.mjs';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export const HYDRATED = `document.documentElement.dataset.hydrated === 'true'`;
@@ -348,6 +349,8 @@ export async function authWeb(page, { args, check, openPage }) {
   await desk.reload();
   await desk.waitFor(`${q('[data-testid=draft-empty]')}`, "B's desk after reload");
   check(await desk.eval(`!document.body.textContent.includes(${JSON.stringify(TITLE_A)})`), "a reload shows B's desk only");
+
+  await contextualReaderAuth(other, { args, check, openPage, seen: ctx.seen });
 
   const discussionReader = await discussionSessionRaces(other, ctx, mailA, mailB, openPage, check);
 

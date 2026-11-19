@@ -18,6 +18,7 @@ import { discoveryChipGeometry } from './discovery-chip-geometry.mjs';
 import { expressionPilot } from './expressions-smoke.mjs';
 import { endorsementAsAuthor, endorsementAsReader } from './endorsement-smoke.mjs';
 import { authWeb } from './auth-smoke.mjs';
+import { readerAuthClosed } from './reader-auth-smoke.mjs';
 import { passwordAuth } from './auth-password-smoke.mjs';
 import { publicationAuthor } from './publication-author-smoke.mjs';
 import { reviewWithdrawnPage } from './review-withdrawn-smoke.mjs';
@@ -5864,7 +5865,8 @@ try {
     await moderationQueues(page, { args, check });
     await markdownReader(page, { args, check, textContrast });
   }
-  else if (args.phase === 'auth') await authWeb(page, { args, check, openPage: () => openPage(cdp) });
+  else if (args.phase === 'auth') await authWeb(page, { args, check, openPage: (isolated) => openPage(cdp, isolated) });
+  else if (args.phase === 'reader-auth-closed') await readerAuthClosed(page, { args, check });
   else if (args.phase === 'auth-password') await passwordAuth(page, { args, check, textContrast, openPage: (isolated) => openPage(cdp, isolated) });
   else if (args.phase === 'publication-author') await publicationAuthor(page, { args, check, openPage: (isolated) => openPage(cdp, isolated), capture: (target, name, evidence) => target.capture(name, evidence) });
   else if (args.phase === 'discovery-corpus') await discoveryCorpus(page, { args, check });

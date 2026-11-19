@@ -6,6 +6,7 @@ import { authorHandles } from './author-handle-smoke.mjs';
 import { authorProfiles } from './author-profile-smoke.mjs';
 import { EDITOR_READY, STANDING, account, cookies, fabricate, fill, mailedCode, openAccount, q, signIn, signOut } from './auth-smoke.mjs';
 import { deskGuest } from './desk-empty-smoke.mjs';
+import { captureRequest, holdAnswer } from './auth-browser-network.mjs';
 
 const API = '/api/v1/auth/password';
 const PANEL = '#account-session';
@@ -24,66 +25,6 @@ const bodyText = (draft) => draft.document.source;
 const read = (page, path) => page.eval(`fetch(${JSON.stringify(path)}).then(async r => ({
   status: r.status, cache: r.headers.get('cache-control'), data: r.ok ? await r.json() : null
 }))`);
-
-function captureRequest(page, method, path) {
-  let requests = 0;
-  const listener = (event) => {
-    if (event.sessionId !== page.sessionId || event.method !== 'Network.requestWillBeSent') return;
-    const { request } = event.params;
-    if (request.method === method && new URL(request.url).pathname === path) requests++;
-  };
-  page.cdp.listeners.push(listener);
-  return {
-    count: () => requests,
-    close: () => { page.cdp.listeners = page.cdp.listeners.filter((item) => item !== listener); },
-  };
-}
-
-/** Hold the first matching real answer before delivery. Can release it or lose the ACK. */
-async function holdAnswer(page, method, path) {
-  let held;
-  let networkDone;
-  const listener = (event) => {
-    if (event.sessionId !== page.sessionId) return;
-    if (held && event.params?.requestId === held.networkId &&
-        (event.method === 'Network.loadingFinished' || event.method === 'Network.loadingFailed')) {
-      networkDone = event.method;
-    }
-    if (event.method !== 'Fetch.requestPaused') return;
-    const { request, requestId, networkId, responseStatusCode } = event.params;
-    if (!held && request.method === method && new URL(request.url).pathname === path) {
-      held = { requestId, networkId, status: responseStatusCode };
-    } else {
-      page.send('Fetch.continueRequest', { requestId }).catch(() => {});
-    }
-  };
-  page.cdp.listeners.push(listener);
-  await page.send('Fetch.enable', { patterns: [{ urlPattern: `*${path}*`, requestStage: 'Response' }] });
-  return {
-    async held() {
-      for (let i = 0; !held && i < 160; i++) await sleep(50);
-      if (!held) throw new Error(`timed out holding ${method} ${path}`);
-      return held.status;
-    },
-    async finish(drop = false, waitForDelivery = false) {
-      try {
-        if (drop) await page.send('Fetch.failRequest', { requestId: held.requestId, errorReason: 'ConnectionClosed' });
-        else if (networkDone !== 'Network.loadingFailed') {
-          await page.send('Fetch.continueRequest', { requestId: held.requestId });
-        }
-        if (waitForDelivery) {
-          for (let i = 0; !networkDone && i < 100; i++) await sleep(50);
-          if (!networkDone) throw new Error(`no network disposition for ${method} ${path}`);
-          await page.eval('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
-        }
-        return networkDone;
-      } finally {
-        page.cdp.listeners = page.cdp.listeners.filter((item) => item !== listener);
-        await page.send('Fetch.disable');
-      }
-    },
-  };
-}
 
 async function credentials(page, form, username, password) {
   await fill(page, `${form}-username`, username);

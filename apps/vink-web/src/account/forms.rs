@@ -7,7 +7,7 @@ use vink_ui::{
     TextField, TextInput, TextKind, Tone,
 };
 
-use super::{Command, Reply, Session, flow::Operation};
+use super::{Command, ReaderPresentation, Reply, Session, flow::Operation};
 use crate::{
     contract::{EnrollPasswordRequest, PasswordCredentials},
     session::{AuthError, Millis},
@@ -178,11 +178,16 @@ enum Mode {
 /// Visual header only. It does not own a session, a step counter or an input.
 #[component]
 pub(super) fn AuthHeading(title: &'static str) -> impl IntoView {
-    view! {
-        <header class="vk-auth-heading">
-            <span class="vk-brand__lockup" role="img" aria-label="Vink"></span>
-            <h2>{title}</h2>
-        </header>
+    if use_context::<ReaderPresentation>().is_some() {
+        view! { <h2 id="reader-auth-title" class="vk-reader-auth-title">{title}</h2> }.into_any()
+    } else {
+        view! {
+            <header class="vk-auth-heading">
+                <span class="vk-brand__lockup" role="img" aria-label="Vink"></span>
+                <h2>{title}</h2>
+            </header>
+        }
+        .into_any()
     }
 }
 
@@ -305,6 +310,12 @@ fn GuestPassword(
         ),
     };
     let is_register = mode == Mode::Register;
+    let contextual_login = !is_register && use_context::<ReaderPresentation>().is_some();
+    let heading = if contextual_login {
+        "Đăng nhập để nhận xét"
+    } else {
+        title
+    };
     let username = InputValue::new();
     let password = InputValue::new();
     username.focus_on_mount(focus);
@@ -313,7 +324,7 @@ fn GuestPassword(
     let state = session.action(operation, now);
     let can_submit = move || result.get() == GuestResult::Ready;
     view! {
-        <AuthHeading title />
+        <AuthHeading title=heading />
         <form id=form_id class="vk-account-form" method="post" novalidate
             on:submit=move |event| {
                 event.prevent_default();
@@ -386,11 +397,11 @@ fn GuestPassword(
                     view! { <Button id="use-password" variant=ButtonVariant::Text
                         on_press=move |_| switch.run(Mode::Login)>"Quay lại đăng nhập"</Button> }.into_any()
                 } else {
-                    view! { <span>"Chưa có tài khoản?"</span> <Button id="use-registration" variant=ButtonVariant::Text
+                    view! { {(!contextual_login).then_some(view! { <span>"Chưa có tài khoản?"</span> })} <Button id="use-registration" variant=ButtonVariant::Text
                         on_press=move |_| switch.run(Mode::Register)>"Tạo tài khoản"</Button> }.into_any()
                 }}
             </div>
-            <Button id="use-email-code" variant=ButtonVariant::Outlined
+            <Button id="use-email-code" variant=if contextual_login { ButtonVariant::Text } else { ButtonVariant::Outlined }
                 on_press=move |_| switch.run(Mode::Email)>"Dùng mã email"</Button>
         </div>
     }

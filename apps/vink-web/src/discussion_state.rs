@@ -192,7 +192,7 @@ impl DiscussionController {
         }
         if !self.write_ready() {
             return Some(if self.sign_in_open {
-                "Đăng nhập ở mục Tôi để gửi nhận xét. Chữ bạn soạn tại đây được giữ lại."
+                "Cần phiên đăng nhập hợp lệ để gửi. Chữ bạn soạn tại đây được giữ lại."
             } else {
                 "Vink chưa mở đăng nhập; chưa thể gửi nhận xét. Bạn có thể soạn tại đây."
             });
@@ -583,7 +583,7 @@ mod tests {
         assert!(
             c.reason(&ComposerKey::Root)
                 .unwrap()
-                .contains("Đăng nhập ở mục Tôi")
+                .contains("Cần phiên đăng nhập")
         );
         c.change_session(Some("a/0".into()));
         assert_eq!(
