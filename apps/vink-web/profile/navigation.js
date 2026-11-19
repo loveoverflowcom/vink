@@ -86,17 +86,22 @@ export function mountProfileNavigation() {
   }
 
   const recheck = 'vinkProfileRecheck';
+  let parked = false;
   window.addEventListener('pagehide', event => {
-    if (!event.persisted ||
-        !document.querySelector('.vk-author-public, .vk-profile-edit, #public-results, #reader')) return;
+    const path = location.pathname;
+    if (!event.persisted || !(path === '/' || path === '/toi/chinh-ho-so' ||
+        ['/the/', '/tac-pham/', '/@'].some(prefix => path.startsWith(prefix)))) return;
+    parked = true;
     const main = document.getElementById('noi-dung');
     main.style.visibility = 'hidden';
     main.inert = true;
-    history.replaceState({...history.state, [recheck]: address()}, '');
   });
   window.addEventListener('popstate', restore);
   window.addEventListener('pageshow', event => {
-    if (event.persisted && history.state?.[recheck] === address()) {
+    // A document can have several SPA history entries. The entry being restored need
+    // not be the entry that was current when the document was frozen.
+    if (event.persisted && parked) {
+      history.replaceState({...history.state, [recheck]: address()}, '');
       location.reload();
     } else {
       restore();

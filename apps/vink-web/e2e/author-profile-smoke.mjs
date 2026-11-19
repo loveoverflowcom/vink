@@ -146,12 +146,15 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await page.eval("delete document.documentElement.dataset.theme");
   await page.viewport(320, 580);
   await page.eval("document.documentElement.style.fontSize='200%'");
+  await page.eval(`${q('.vk-profile-form a[href="/toi/dia-chi"]')}.focus()`);
+  await page.key('Tab');
   await page.waitFor(`(() => {
     const save=${q(SAVE)}, nav=${q('.vk-ui-bottom-nav')};
     const r=save.getBoundingClientRect();
-    return r.bottom <= nav.getBoundingClientRect().top+1 &&
+    return document.activeElement === save && r.bottom <= nav.getBoundingClientRect().top+1 &&
       save.contains(document.elementFromPoint(r.x + r.width/2, r.y + r.height/2));
-  })()`, 'save remains above navigation at 320px/200% with a short viewport');
+  })()`, 'Tab reaches unobscured Save at 320px/200% with a short viewport');
+  await page.capture('author-edit-short-viewport', {scenario:'Save focused', textScale:200});
   await page.viewport(1280);
   await page.eval("document.documentElement.style.fontSize=''");
   await fill(page, BIO, 'Nháp trước khi về Tôi');
@@ -284,13 +287,16 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await guest.eval(`window.addEventListener('pageshow', event => {
     if (event.persisted) sessionStorage.setItem('fixture-profile-bfcache', 'restored');
   });`);
+  // Create a newer SPA entry in the same document, then traverse straight past it.
+  await guest.click('#reader-author');
+  await guest.waitFor(`location.pathname===${JSON.stringify(aPath)} && ${q('#author-profile-heading')}`, 'same-document Profile entry before freeze');
   await guest.goto(base + bPath);
   check(authorFixtureSql(`UPDATE author_profiles SET current_handle=NULL, version=version+1
     WHERE principal_id=${literal(b.principal_id)} AND current_handle=${literal(b.handle)} RETURNING 1;`) === '1',
     'retired exactly the B fixture');
   await guest.reload();
   await guest.waitFor(`${q('#author-profile-heading')}?.textContent==='Hồ sơ không còn trên Vink'`, 'B profile is gone');
-  await guest.eval('history.back()');
+  await guest.eval('history.go(-2)');
   await guest.waitFor(`location.pathname===${JSON.stringify(readerPath)} &&
     ${q('#comment-' + ids.reply)}?.textContent.includes('Tài khoản đã xóa') &&
     !${q('a[href="' + bPath + '"]')}`, 'Back does not restore retired attribution');
