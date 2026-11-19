@@ -59,8 +59,8 @@ function fixture(a, b) {
       VALUES (${literal(id)},${literal(rev)},1,clock_timestamp(),${literal(snapshot)});`;
   });
   authorFixtureSql(`BEGIN;
-    INSERT INTO tags(id,facet,label,slug,status) VALUES (${literal(ids.tag)},'form','Tản văn','tan-van','active');
-    INSERT INTO tag_names(slug,tag_id,kind) VALUES ('tan-van',${literal(ids.tag)},'canonical');
+    INSERT INTO tags(id,facet,label,slug,status) VALUES (${literal(ids.tag)},'form','Tản văn','tản-văn','active');
+    INSERT INTO tag_names(slug,tag_id,kind) VALUES ('tản-văn',${literal(ids.tag)},'canonical');
     ${works.join('\n')}
     INSERT INTO discussion_threads(id,work_id) VALUES (${literal(ids.thread)},${literal(ids.a)});
     INSERT INTO comments(id,thread_id,kind,root_id,root_kind,reply_to_id,replied_to_reply,author_id,body,review,moderation_version,admission_policy,admission_reason,created_at)
@@ -234,7 +234,7 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   check(await staleTab.eval(`${q(BIO)}.value==='Nháp của phiên mới'`),
     `old A response cannot overwrite the new A form (${ownDisposition})`);
 
-  const discovery = '/?q=rieng&tag=tan-van';
+  const discovery = '/?q=rieng&tag=' + encodeURIComponent('tản-văn');
   await guest.goto(base + discovery);
   const cardA = selector('work-' + ids.a + '-author');
   const cardB = selector('work-' + ids.b + '-author');
@@ -253,7 +253,10 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await guest.waitFor(`location.pathname===${JSON.stringify(aPath)} && ${q('#author-profile-heading')}`, 'Enter opens the right profile');
   await guest.eval('history.back()');
   await guest.waitFor(`document.activeElement===${q(cardA)}`, 'Back restores the validated card link');
-  check(await guest.eval(`location.pathname+location.search===${JSON.stringify(discovery)}`), 'Back preserves query and tag scope');
+  check(await guest.eval(`(() => {
+    const query = new URLSearchParams(location.search);
+    return location.pathname==='/' && query.get('q')==='rieng' && query.getAll('tag').join()==='tản-văn';
+  })()`), 'Back preserves query and tag scope');
   await guest.send('Emulation.setTouchEmulationEnabled', {enabled:true, maxTouchPoints:1});
   const point = await guest.eval(`(() => {
     const el=${q(cardB)};
