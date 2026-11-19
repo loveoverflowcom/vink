@@ -31,8 +31,9 @@ fn PublicProfile(name: String, cursor: Option<String>) -> impl IntoView {
     let live_relationships: RwSignal<
         Option<(String, crate::contract::follow::PublicRelationships)>,
     > = RwSignal::new(None);
-    let own_relationships: RwSignal<Option<crate::contract::follow::OwnRelationshipsSummary>> =
-        RwSignal::new(None);
+    let own_relationships: RwSignal<
+        Option<(String, crate::contract::follow::OwnRelationshipsSummary)>,
+    > = RwSignal::new(None);
     let renew = move || {
         live_relationships.set(None);
         advance.update(|stamp| *stamp += 1);
@@ -76,7 +77,7 @@ fn render_profile(
     name: &str,
     continued: bool,
     live_relationships: RwSignal<Option<(String, crate::contract::follow::PublicRelationships)>>,
-    own_relationships: RwSignal<Option<crate::contract::follow::OwnRelationshipsSummary>>,
+    own_relationships: RwSignal<Option<(String, crate::contract::follow::OwnRelationshipsSummary)>>,
     retry: impl Fn() + Copy + Send + Sync + 'static,
 ) -> AnyView {
     let (code, heading, detail) = match result {

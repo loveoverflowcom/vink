@@ -80,7 +80,7 @@ pub(super) fn ActiveFollowRegion(
     scope: String,
     handle: String,
     live_override: RwSignal<Option<(String, PublicRelationships)>>,
-    own_relationships: RwSignal<Option<OwnRelationshipsSummary>>,
+    own_relationships: RwSignal<Option<(String, OwnRelationshipsSummary)>>,
 ) -> impl IntoView {
     let session = Session::current();
     let follow_scope = FollowScope {
@@ -141,7 +141,7 @@ pub(super) fn ActiveFollowRegion(
             if let Some(FollowPhase::SelfProfile(summary)) =
                 controller.try_with_untracked(|c| c.phase().clone())
             {
-                own_relationships.set(Some(summary));
+                own_relationships.set(Some((scope_token.get_value(), summary)));
             } else {
                 own_relationships.set(None);
             }
@@ -388,11 +388,18 @@ pub(super) fn ListSyncHost(
             {
                 use_own = true;
             }
-            if list_gen.get_untracked() != generation {
+            if list_gen.try_get_untracked() != Some(generation) {
                 return;
             }
             if use_own {
-                match api::load_own_relationships(direction, cursor_override.as_deref()).await {
+                let result =
+                    api::load_own_relationships(direction, cursor_override.as_deref()).await;
+                if list_gen.try_get_untracked() != Some(generation)
+                    || session.profile_scope.get_untracked() != active_scope
+                {
+                    return;
+                }
+                match result {
                     Ok(OwnRelationshipList::Page {
                         author,
                         direction,
@@ -547,7 +554,7 @@ pub(super) fn ListSyncHost(
                         next_cursor,
                         ..
                     }) => {
-                        if list_gen.get_untracked() != generation {
+                        if list_gen.try_get_untracked() != Some(generation) {
                             return;
                         }
                         live_state.update(|s| {
@@ -574,22 +581,22 @@ pub(super) fn ListSyncHost(
                         });
                     }
                     Ok(OwnRelationshipList::Restart { .. }) => {
-                        if list_gen.get_untracked() == generation {
+                        if list_gen.try_get_untracked() == Some(generation) {
                             load_fresh(None);
                         }
                     }
                     Err(ApiError::RelationshipListPrivate) => {
-                        if list_gen.get_untracked() == generation {
+                        if list_gen.try_get_untracked() == Some(generation) {
                             live_state.set(Some(LiveListState::Private));
                         }
                     }
                     Err(ApiError::ProfileGone) => {
-                        if list_gen.get_untracked() == generation {
+                        if list_gen.try_get_untracked() == Some(generation) {
                             live_state.set(Some(LiveListState::Gone));
                         }
                     }
                     Err(ApiError::NotFound) => {
-                        if list_gen.get_untracked() == generation {
+                        if list_gen.try_get_untracked() == Some(generation) {
                             live_state.set(Some(LiveListState::Missing));
                         }
                     }
@@ -598,12 +605,12 @@ pub(super) fn ListSyncHost(
                         | ApiError::Forbidden
                         | ApiError::FollowActorUnavailable,
                     ) => {
-                        if list_gen.get_untracked() == generation {
+                        if list_gen.try_get_untracked() == Some(generation) {
                             load_fresh(None);
                         }
                     }
                     Err(_) => {
-                        if list_gen.get_untracked() == generation {
+                        if list_gen.try_get_untracked() == Some(generation) {
                             live_state.update(|s| {
                                 if let Some(LiveListState::Page {
                                     appending,
@@ -626,7 +633,7 @@ pub(super) fn ListSyncHost(
                         next_cursor,
                         ..
                     }) => {
-                        if list_gen.get_untracked() != generation {
+                        if list_gen.try_get_untracked() != Some(generation) {
                             return;
                         }
                         live_state.update(|s| {
@@ -653,32 +660,32 @@ pub(super) fn ListSyncHost(
                         });
                     }
                     Ok(PublicRelationshipList::Alias { href }) => {
-                        if list_gen.get_untracked() == generation {
+                        if list_gen.try_get_untracked() == Some(generation) {
                             let _ = window().location().replace(&href);
                         }
                     }
                     Ok(PublicRelationshipList::Restart { .. }) => {
-                        if list_gen.get_untracked() == generation {
+                        if list_gen.try_get_untracked() == Some(generation) {
                             load_fresh(None);
                         }
                     }
                     Err(ApiError::RelationshipListPrivate) => {
-                        if list_gen.get_untracked() == generation {
+                        if list_gen.try_get_untracked() == Some(generation) {
                             live_state.set(Some(LiveListState::Private));
                         }
                     }
                     Err(ApiError::ProfileGone) => {
-                        if list_gen.get_untracked() == generation {
+                        if list_gen.try_get_untracked() == Some(generation) {
                             live_state.set(Some(LiveListState::Gone));
                         }
                     }
                     Err(ApiError::NotFound) => {
-                        if list_gen.get_untracked() == generation {
+                        if list_gen.try_get_untracked() == Some(generation) {
                             live_state.set(Some(LiveListState::Missing));
                         }
                     }
                     Err(_) => {
-                        if list_gen.get_untracked() == generation {
+                        if list_gen.try_get_untracked() == Some(generation) {
                             live_state.update(|s| {
                                 if let Some(LiveListState::Page {
                                     appending,
@@ -732,7 +739,7 @@ async fn load_public_into(
     live_state: RwSignal<Option<LiveListState>>,
 ) {
     let result = api::load_public_relationships(handle, direction, cursor).await;
-    if list_gen.get_untracked() != generation {
+    if list_gen.try_get_untracked() != Some(generation) {
         return;
     }
     match result {

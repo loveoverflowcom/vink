@@ -59,7 +59,7 @@ fn encode_next_target(handle: &str) -> String {
 pub(super) fn ProfileActionRegion(
     handle: String,
     live_override: RwSignal<Option<(String, PublicRelationships)>>,
-    own_relationships: RwSignal<Option<OwnRelationshipsSummary>>,
+    own_relationships: RwSignal<Option<(String, OwnRelationshipsSummary)>>,
 ) -> impl IntoView {
     let session = Session::current();
     let sign_in_open = crate::api::sign_in_open();
@@ -139,10 +139,13 @@ pub(super) fn ProfileActionRegion(
 #[component]
 pub(super) fn ProfileRelationships(
     public: Signal<PublicRelationships>,
-    own: ReadSignal<Option<OwnRelationshipsSummary>>,
+    own: ReadSignal<Option<(String, OwnRelationshipsSummary)>>,
 ) -> impl IntoView {
+    let session = Session::current();
     let summary = Signal::derive(move || {
-        if let Some(own_rel) = own.get() {
+        if let Some((scope, own_rel)) = own.get()
+            && session.profile_scope.get().as_deref() == Some(scope.as_str())
+        {
             (
                 Some(own_rel.followers_count),
                 own_rel.valid_followers_href().map(str::to_owned),
