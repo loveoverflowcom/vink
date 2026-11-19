@@ -5,14 +5,24 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   const ready = async () => page.waitFor("document.documentElement.dataset.hydrated === 'true' && document.querySelector('#public-query')", 'discovery hydration');
   const goto = async path => { await page.goto(args.base + path); await ready(); };
   const submit = async q => {
+    await page.eval(`(() => {
+      const open = document.querySelector('#open-public-search');
+      if (innerWidth < 760 && open && open.getClientRects().length > 0) open.click();
+    })()`);
+    await page.waitFor("document.querySelector('#public-query').getClientRects().length > 0", 'visible search field');
     await page.eval("document.querySelector('#public-query').focus(); document.querySelector('#public-query').select()");
     await page.send('Input.insertText', { text: q });
-    await page.click('#public-search button[type=submit]');
+    const hasSubmit = await page.eval("getComputedStyle(document.querySelector('#public-search button[type=submit]')).display !== 'none'");
+    if (hasSubmit) {
+      await page.click('#public-search button[type=submit]');
+    } else {
+      await page.key('Enter');
+    }
     await page.waitFor("document.querySelector('#public-query')?.value === " + JSON.stringify(q) + " && new URL(location.href).searchParams.get('q') === " + JSON.stringify(q), 'applied query URL');
     await page.waitFor("document.querySelector('#public-results')", 'new query result');
   };
   await goto('/');
-  check(await page.eval("document.querySelector('#public-query').placeholder === 'Tìm theo tên hoặc tác giả' && !document.querySelector('#public-query-help, #explore-heading p')"), '#308 search names its fields without duplicate scope copy');
+  check(await page.eval("document.querySelector('#public-query').placeholder === 'Tìm tác phẩm hoặc tác giả' && document.querySelector('#public-query').labels[0]?.textContent === 'Tìm theo tên hoặc tác giả' && !document.querySelector('#public-query-help, #explore-heading p')"), '#308 r1 search keeps distinct placeholder and accessible label without duplicate scope copy');
   await submit('không có tác phẩm này #100');
   await page.waitFor("document.querySelector('[data-testid=public-no-results]')", 'real no-results');
   check(await page.eval("document.querySelectorAll('#public-results [role=status]').length===1 && document.querySelector('.vk-empty-state__message').textContent==='Chưa có tác phẩm phù hợp.'"), '#225/#258 empty page has one truthful result announcement without redundant 0-count');
@@ -39,12 +49,13 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   for (const theme of ['light','dark']) for (const width of [320,390,834,1440]) for (const scale of [100,200]) {
     await page.viewport(width);
     await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}; document.documentElement.style.fontSize='${scale}%'; document.fonts.ready`);
+    await page.eval("Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))");
     const layout = await page.eval(`(() => {
       const art=document.querySelector('.vk-empty-state__art'), message=document.querySelector('.vk-empty-state__message');
       const r=art.getBoundingClientRect(), m=message.getBoundingClientRect();
       const region=document.querySelector('#community-stream').getBoundingClientRect();
       const state=art.closest('.vk-empty-state').getBoundingClientRect();
-      const tools=document.querySelector('.vk-discovery-search-row').getBoundingClientRect();
+      const tools=document.querySelector('.vk-discovery-toolbar').getBoundingClientRect();
       return {width:r.width, height:r.height, font:getComputedStyle(message).fontSize,
         overflow:document.documentElement.scrollWidth-innerWidth,
         order:r.bottom<=m.top && m.bottom<=document.querySelector('.vk-empty-state__actions').getBoundingClientRect().top,
@@ -72,19 +83,43 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:5,y:5});
   for (const theme of ['light', 'dark']) {
     await page.eval("document.documentElement.dataset.theme="+JSON.stringify(theme));
+    await page.eval("Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))");
     await textContrast(page, theme, 'explore');
   }
   for (const theme of ['light', 'dark']) for (const width of [320,390,834,1024,1200,1440]) for (const scale of [100,200]) {
     await page.viewport(width);
     await page.eval("document.documentElement.dataset.theme=" + JSON.stringify(theme) + "; document.documentElement.style.fontSize=" + JSON.stringify(scale + '%') + "; scrollTo(0,0); document.fonts.ready");
+    await page.eval("Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))");
     check(await page.eval("document.documentElement.scrollWidth <= innerWidth"), 'Explore reflows ' + [theme,width,scale].join('/'));
+    if (width===1440 && scale===100) {
+      check(await page.eval(`(() => {
+        const toolbar=document.querySelector('.vk-discovery-toolbar');
+        const filter=document.querySelector('#open-tag-filters').getBoundingClientRect();
+        const search=document.querySelector('#public-search').getBoundingClientRect();
+        const brand=document.querySelector('#discovery-tools .vk-brand').getBoundingClientRect();
+        const row=document.querySelector('.vk-public-row').getBoundingClientRect();
+        const tRect=toolbar.getBoundingClientRect();
+        return Math.abs(filter.top - search.top) < 4 && Math.abs(search.top - brand.top) < 4 &&
+          Math.abs(search.left - filter.right - 12) <= 1 && Math.abs(brand.left - search.right - 12) <= 1 &&
+          Math.abs(tRect.height - 84) <= 2 && Math.abs(row.top - 84) <= 2 &&
+          getComputedStyle(document.querySelector('.vk-public-scope')).width === '1px';
+      })()`), '#308 r1 desktop single-row toolbar (84px) places card 1 at y=84px');
+    }
     if (width===390 && scale===100) {
       check(await page.eval(`(() => {
-        const hint=document.querySelector('.vk-ui-search__compact-placeholder');
+        const explore=document.querySelector('#explore');
         const input=document.querySelector('#public-query');
-        return hint.textContent==='Tìm tác phẩm' && hint.clientWidth>0 && hint.scrollWidth<=hint.clientWidth
-          && input.labels[0].textContent==='Tìm theo tên hoặc tác giả';
-      })()`), '#308 short mobile search hint fits and keeps its full accessible name');
+        const launcher=document.querySelector('#open-public-search').getBoundingClientRect();
+        const filter=document.querySelector('#open-tag-filters').getBoundingClientRect();
+        const brand=document.querySelector('#discovery-tools .vk-brand').getBoundingClientRect();
+        const row=document.querySelector('.vk-public-row').getBoundingClientRect();
+        const toolbar=document.querySelector('.vk-discovery-toolbar').getBoundingClientRect();
+        return explore.dataset.search==='closed' && input.getClientRects().length===0 &&
+          filter.right <= launcher.left && Math.abs(brand.left - launcher.right - 8) <= 1 &&
+          Math.abs(launcher.width-48)<1 && Math.abs(launcher.height-48)<1 &&
+          Math.abs(toolbar.height - 68) <= 2 && Math.abs(row.top - 68) <= 2 &&
+          input.labels[0].textContent==='Tìm theo tên hoặc tác giả';
+      })()`), '#308 r1 mobile browse toolbar (68px) places card 1 at y=68px and hides inline search');
     }
     if ([320,390,834,1440].includes(width)) {
       check(await page.eval(`(() => {
@@ -102,32 +137,85 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     const dock = await page.eval("document.querySelector('#tag-dock').getBoundingClientRect().width>0");
     check(!dock, '#308 hydrated discovery has no filter column ' + [theme,width,scale].join('/'));
 
-    check(await page.eval("(() => { const row=document.querySelector('.vk-public-row'), t=row.querySelector('h3').getBoundingClientRect(), n=row.querySelector('.vk-ui-byline__name').getBoundingClientRect(), a=row.querySelector('.vk-ui-avatar').getBoundingClientRect(); return t.bottom<=n.top && Math.abs(a.width-32)<1 && Math.abs(a.height-32)<1; })()"), 'title first and avatar retained ' + [theme,width,scale].join('/'));
+    const cardLayout = await page.eval(`(() => {
+      const row = document.querySelector('.vk-public-row');
+      const title = row.querySelector('h2.vk-public-row__title');
+      const avatar = row.querySelector('.vk-public-row__avatar');
+      const circle = avatar.getBoundingClientRect();
+      const initials = document.createRange();
+      initials.selectNodeContents(avatar);
+      const ink = initials.getBoundingClientRect();
+      const excerpt = row.querySelector('.vk-public-row__excerpt').getBoundingClientRect();
+      return {
+        named: document.getElementById(row.querySelector('a').getAttribute('aria-labelledby')) === title,
+        ordered: row.querySelector('.vk-public-row__author').getBoundingClientRect().bottom <= title.getBoundingClientRect().top + 1
+          && title.getBoundingClientRect().bottom <= excerpt.top + 1 && excerpt.height > 0 && !!row.querySelector('.vk-public-row__chevron'),
+        diameter: circle.width, square: circle.width === circle.height,
+        fits: initials.getClientRects().length === 1 && ink.left >= circle.left - 1 && ink.right <= circle.right + 1
+          && ink.top >= circle.top - 1 && ink.bottom <= circle.bottom + 1,
+      };
+    })()`);
+    check(cardLayout.named && cardLayout.ordered && cardLayout.square && cardLayout.fits && Math.abs(cardLayout.diameter - 28 * scale / 100) < 1,
+      '#308 title names the card and both initials fit at the chosen text size ' + [theme,width,scale,JSON.stringify(cardLayout)].join('/'));
     if (width === 320 && scale === 200) {
       const card = await page.eval(`(() => {
         const row = document.querySelector('.vk-public-row');
         const box = selector => row.querySelector(selector).getBoundingClientRect();
-        const byline = box('.vk-work-byline'), name = box('.vk-ui-byline__name');
-        const date = box('time'), avatar = box('.vk-ui-avatar');
+        const author = box('.vk-public-row__author'), title = box('.vk-public-row__title'), excerpt = box('.vk-public-row__excerpt');
         return {
-          nameWidth: name.width, dateWidth: date.width, bylineWidth: byline.width,
-          ordered: avatar.bottom <= name.top && name.bottom <= date.top,
-          font: getComputedStyle(row.querySelector('.vk-ui-byline__name')).fontSize,
+          ordered: author.bottom <= title.top + 1 && title.bottom <= excerpt.top + 1,
           overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         };
       })()`);
       check(
-        Math.abs(card.nameWidth - card.bylineWidth) <= 1 &&
-          Math.abs(card.dateWidth - card.bylineWidth) <= 1 && card.ordered &&
-          card.font === '32px' && card.overflow <= 1,
-        `320px / 200% ${theme}: the full-size byline uses the card measure below the avatar (${JSON.stringify(card)})`,
+        card.ordered && card.overflow <= 1,
+        `320px / 200% ${theme}: enlarged r1 card stacks without overflow (${JSON.stringify(card)})`,
       );
     }
     if ([320,390,834,1440].includes(width)) await page.capture('discovery-' + [theme,width,scale].join('-'), { boundary: 'real-public-api', scenario: 'TAG-PR-06' });
   }
   await page.viewport(390);
   await page.eval("document.documentElement.style.fontSize='100%'");
+
+  // Khám phá Web r1 mobile full-screen search, IME/Escape, Back LIFO layering & scroll restoration.
+  await page.click('#open-public-search');
+  await page.waitFor("document.querySelector('#explore').dataset.search==='open' && document.activeElement?.id==='public-query'", '#308 r1 mobile search opens and focuses query');
+  check(await page.eval(`(() => {
+    const nav=document.querySelector('#bottom-navigation'), close=document.querySelector('#close-public-search'),
+      sub=document.querySelector('#public-search button[type=submit]'), st=document.querySelector('.vk-discovery-toolbar-status');
+    return getComputedStyle(nav).display==='none' && close.getClientRects().length>0 &&
+      getComputedStyle(sub).display==='none' && st.getClientRects().length>0 && st.textContent.includes('Trang này:');
+  })()`), '#308 r1 mobile open search hides bottom nav & submit icon, shows back & row-2 count');
+  await page.capture('discovery-mobile-search-open', { boundary: 'real-public-api', scenario: 'r1-mobile-search' });
+  await page.eval("document.querySelector('#public-query').dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}))");
+  await page.key('Escape');
+  await page.eval("new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))");
+  check(await page.eval("document.querySelector('#explore').dataset.search==='open'"), '#308 r1 Escape during IME composition keeps mobile search open');
+  await page.eval("document.querySelector('#public-query').dispatchEvent(new CompositionEvent('compositionend',{bubbles:true}))");
+  await page.key('Escape');
+  await page.waitFor("document.querySelector('#explore').dataset.search==='closed' && document.activeElement?.id==='open-public-search' && getComputedStyle(document.querySelector('#bottom-navigation')).display!=='none'", '#308 r1 Escape closes mobile search, restores bottom nav and launcher focus');
+  await page.click('#open-public-search');
+  await page.waitFor("document.querySelector('#explore').dataset.search==='open'", 're-open mobile search');
+  await page.click('#open-tag-filters');
+  await page.waitFor("document.querySelector('#tag-picker')?.open", 'tag picker above mobile search');
+  await page.eval('history.back()');
+  await page.waitFor("!document.querySelector('#tag-picker').open && document.querySelector('#explore').dataset.search==='open'", '#308 r1 Back closes #tag-picker before mobile search');
+  await page.eval('history.back()');
+  await page.waitFor("document.querySelector('#explore').dataset.search==='closed' && document.activeElement?.id==='open-public-search'", '#308 r1 second Back closes mobile search and restores trigger focus');
+
   await submit('mua');
+  await page.eval('history.back()');
+  await page.waitFor("document.querySelector('#explore')?.dataset.search==='closed' && document.activeElement?.id==='open-public-search' && !location.search", '#308 Back from a submitted mobile search returns to browse');
+  await submit('mua');
+  await page.click('#clear-public-search');
+  await page.waitFor("document.querySelector('#explore')?.dataset.search==='open' && document.activeElement?.id==='public-query' && !location.search && !document.querySelector('#public-query').value", '#308 clearing a submitted query keeps mobile search open for typing');
+  await submit('mua');
+  await page.waitFor("document.querySelector('.vk-public-row__title mark.vk-search-mark')", '#308 r1 highlights matched query terms in title/author');
+  check(await page.eval(`(() => {
+    const excerptMarks = document.querySelectorAll('.vk-public-row__excerpt mark');
+    const st = document.querySelector('.vk-discovery-toolbar-status');
+    return excerptMarks.length === 0 && st.getClientRects().length > 0 && st.textContent.includes('Trang này:');
+  })()`), '#308 r1 never highlights inside excerpt and shows toolbar count on mobile search');
   await page.waitFor("document.querySelector('#open-tag-filters')", 'catalog for the applied query');
   await page.click('#open-tag-filters');
   await page.waitFor("document.querySelector('#tag-picker')?.open && document.querySelector('#modal-tag-form input[type=checkbox]')", 'tag picker');
@@ -245,7 +333,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   const returnPath = await page.eval('location.pathname + location.search');
   await page.click('.vk-public-row__link');
   await page.waitFor("document.querySelector('#reader-return') && document.querySelector('#reader-paper')", 'reader from search');
-  check(await page.eval("document.querySelector('#reader-return').getAttribute('href').startsWith(" + JSON.stringify(returnPath) + ")"), 'reader return preserves applied query');
+  check(await page.eval("document.querySelector('#reader-return').getAttribute('href').startsWith(" + JSON.stringify(returnPath) + ") && document.querySelector('#reader-return').textContent.includes('Về kết quả tìm kiếm')"), 'reader return preserves applied query and shows search return label');
   check(await page.eval("Math.abs(document.querySelector('#reader-header .vk-ui-avatar').getBoundingClientRect().width-44)<1"), 'reader avatar is exactly 44px');
   await page.capture('discovery-reader', { boundary: 'real-public-api', scenario: 'reader-return' });
   for (const width of [320, 390]) {
@@ -264,6 +352,8 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await page.eval("document.documentElement.style.fontSize='100%'");
   await page.click('#reader-return');
   await page.waitFor("document.activeElement?.matches('.vk-public-row__link')", 'reader return focuses the opened result');
+  await page.click('#close-public-search');
+  await page.waitFor("location.search==='' && document.querySelector('#explore').dataset.search==='closed' && document.activeElement?.id==='open-public-search' && getComputedStyle(document.querySelector('#bottom-navigation')).display!=='none'", '#308 r1 close-public-search returns to browse with focus on launcher');
 
   const catalog = await (await fetch(args.base + '/api/v1/tags')).json();
   const tag = catalog.tags.find(t => t.label === 'Ký ức');
@@ -366,8 +456,11 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await goto('/?q=missing-return-258#work-00000000-0000-4000-8000-000000000258');
   await page.waitFor("document.activeElement?.id==='community-stream'", '#258 missing reader-return row focuses the named results landmark');
   check(await page.eval("document.activeElement.getAttribute('aria-label')==='Tác phẩm khám phá' && document.activeElement.getClientRects().length>0"), '#258 reader-return fallback is a visible, named target');
-  await goto('/');
-  await submittedReadKeepsTyping(page, {args, check});
+  for (const width of [390, 1440]) {
+    await page.viewport(width);
+    await goto('/');
+    await submittedReadKeepsTyping(page, {args, check, mobile: width < 760});
+  }
   await goto('/');
 }
 
@@ -421,9 +514,21 @@ async function catalogRecovery(page, {args, check, goto}) {
   }
 }
 
-async function submittedReadKeepsTyping(page, {args, check}) {
+async function submittedReadKeepsTyping(page, {args, check, mobile}) {
   const query='pending-submit-258', draft='chữ đang gõ trong lúc tìm kiếm';
   const response=await (await fetch(args.base+'/api/v1/works?q='+query)).json();
+  if (mobile) {
+    await page.click('#open-public-search');
+    await page.waitFor("document.activeElement?.id==='public-query'", 'mobile search input ready for typing');
+  }
+  const commit = async () => {
+    if (mobile) {
+      await page.eval("document.querySelector('#public-query').focus()");
+      await page.key('Enter');
+    } else {
+      await page.click('#public-search button[type=submit]');
+    }
+  };
   const held=[];
   const gate=({sessionId,method,params})=>{
     if(sessionId!==page.sessionId || method!=='Fetch.requestPaused') return;
@@ -435,7 +540,7 @@ async function submittedReadKeepsTyping(page, {args, check}) {
   try {
     await page.eval("document.querySelector('#public-query').focus(); document.querySelector('#public-query').select()");
     await page.send('Input.insertText',{text:query});
-    await page.click('#public-search button[type=submit]');
+    await commit();
     const deadline=Date.now()+10000;
     while(!held.length && Date.now()<deadline) await new Promise(resolve=>setTimeout(resolve,25));
     check(held.length===1,'#258 submitted search response is actually held');
@@ -448,9 +553,9 @@ async function submittedReadKeepsTyping(page, {args, check}) {
     await page.eval('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
     check(await page.eval(`document.activeElement===window.__pending258Input && document.querySelector('#public-query')===window.__pending258Input && window.__pending258Input.value===${JSON.stringify(draft)} && window.__pending258Input.selectionStart===${draft.length}`),
       '#258 a submitted read finishing cannot steal focus/caret from a newer unapplied query');
-    await page.click('#public-search button[type=submit]');
+    await commit();
     await page.waitFor(`new URL(location.href).searchParams.get('q')===${JSON.stringify(draft)} && document.querySelector('#public-results') && document.activeElement?.id==='community-stream'`,'#258 the newer query commits with landmark focus');
-    await page.click('#public-search button[type=submit]');
+    await commit();
     await page.waitFor("document.activeElement?.id==='community-stream'",'#258 repeating the same submitted query still focuses the landmark');
   } finally {
     for(const requestId of held) await page.send('Fetch.failRequest',{requestId,errorReason:'Aborted'}).catch(()=>{});
@@ -541,6 +646,27 @@ export async function discoveryCorpus(page, { args, check }) {
   await page.click(appliedChoice);
   await page.click('#modal-tag-form button[type=submit]');
   await page.waitFor("!new URL(location.href).searchParams.has('cursor') && new URL(location.href).searchParams.get('q')==='kiem thu' && new URL(location.href).searchParams.getAll('tag').length===1 && document.querySelector('#public-results')", '#225 changed Apply resets second-page cursor and keeps q plus remaining tag');
+
+  // Verify real non-zero browse scroll restoration on 390px across open -> close search.
+  await page.goto(args.base + '/');
+  await page.waitFor("document.documentElement.dataset.hydrated==='true' && document.querySelectorAll('.vk-public-row').length>=6", 'multi-card real browse page');
+  await page.viewport(390);
+  await page.eval('scrollTo(0, 360)');
+  await page.waitFor('Math.abs(scrollY - 360) <= 2', 'scrolled browse feed');
+  const stickyTrigger = await page.eval(`(() => {
+    const el = document.querySelector('#open-public-search');
+    const r = el.getBoundingClientRect();
+    const x = r.x + r.width / 2, y = r.y + r.height / 2;
+    const hit = document.elementFromPoint(x, y);
+    return r.top >= 0 && r.bottom <= innerHeight && hit && el.contains(hit) && Math.abs(scrollY - 360) <= 2 ? { x, y } : null;
+  })()`);
+  check(!!stickyTrigger, '#308 r1 sticky mobile search launcher stays hit-testable while scrolled');
+  for (const type of ['mousePressed', 'mouseReleased']) {
+    await page.send('Input.dispatchMouseEvent', { type, x: stickyTrigger.x, y: stickyTrigger.y, button: 'left', clickCount: 1 });
+  }
+  await page.waitFor("document.querySelector('#explore').dataset.search==='open' && scrollY === 0 && document.activeElement?.id==='public-query'", '#308 r1 mobile search scrolls to top on open');
+  await page.click('#close-public-search');
+  await page.waitFor("document.querySelector('#explore').dataset.search==='closed' && Math.abs(scrollY - 360) <= 2 && document.activeElement?.id==='open-public-search'", '#308 r1 closing mobile search restores browse scrollY and trigger focus');
 
   const tagContext='/the/'+encodeURIComponent(form.slug)+'?q=kiem%20thu&tag='+encodeURIComponent(theme.slug);
   await page.goto(args.base+tagContext);

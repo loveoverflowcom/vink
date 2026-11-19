@@ -58,6 +58,7 @@ pub enum ReaderWork {
 pub struct PublicWorkSummary {
     pub work_id: WorkId,
     pub title: Title,
+    pub excerpt: Option<String>,
     pub author_display_name: String,
     pub published_at: OffsetDateTime,
     /// As in [`PublicWork::tags`].

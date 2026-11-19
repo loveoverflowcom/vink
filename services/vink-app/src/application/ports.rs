@@ -122,6 +122,7 @@ pub trait DraftStore: Send + Sync {
 pub struct PublicCardFacts {
     pub work_id: WorkId,
     pub title: Title,
+    pub excerpt: Option<String>,
     pub author_display_name: String,
     pub published_at: OffsetDateTime,
     /// The metadata snapshot bound in the same publication row; `None`: published without one.

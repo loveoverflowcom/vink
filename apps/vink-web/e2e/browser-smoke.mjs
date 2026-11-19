@@ -861,7 +861,7 @@ class Page {
           colors: Object.fromEntries(['.vk-ui-scaffold','.vk-editor-paper','#editor-toolbar','[data-testid=save-status]','#editor-save-details > summary'].flatMap(selector => {
             const el=document.querySelector(selector); if (!el) return []; const s=getComputedStyle(el); return [[selector,{color:s.color,background:s.backgroundColor}]];
           })), preview: geometry('#draft-preview[open]'), leave: geometry('#leave-editor[open]') },
-        explore: { heading: geometry('#explore-heading'), tools: geometry('#discovery-tools'), brand: geometry('.vk-brand'), search: geometry('#public-search'), input: geometry('#public-query'), label: geometry('#public-query-label'), shell: geometry('#public-search .vk-ui-search__shell'), clear: geometry('#clear-public-search'), submit: geometry('#public-search button[type=submit]'), stream: geometry('#community-stream'), firstRow: geometry('.vk-public-row'), byline: geometry('.vk-public-row .vk-work-byline'), author: geometry('.vk-public-row .vk-ui-byline__name'), date: geometry('.vk-public-row time'), title: geometry('.vk-public-row h3'), context: geometry('#context') },
+        explore: { heading: geometry('#explore-heading'), toolbar: geometry('.vk-discovery-toolbar'), tools: geometry('#discovery-tools'), brand: geometry('.vk-brand'), search: geometry('#public-search'), input: geometry('#public-query'), label: geometry('#public-query-label'), shell: geometry('#public-search .vk-ui-search__shell'), clear: geometry('#clear-public-search'), submit: geometry('#public-search button[type=submit]'), stream: geometry('#community-stream'), firstRow: geometry('.vk-public-row'), byline: geometry('.vk-public-row__byline'), author: geometry('.vk-public-row__author'), title: geometry('.vk-public-row__title'), excerpt: geometry('.vk-public-row__excerpt'), context: geometry('#context') },
         navigation: {
           bar: geometry('.vk-ui-bottom-nav'),
           barHeightObserver: Number.isFinite(barVar) && barRect ? { cssVarHeight: barVar, measuredHeight: barRect.height, delta: Math.abs(barVar - barRect.height) } : null,
@@ -1864,10 +1864,16 @@ async function assertExploreHeader(page, scenario) {
   await page.eval('document.fonts.ready');
   check(await page.eval(`(() => {
     const brand=document.querySelector('#discovery-tools .vk-brand').getBoundingClientRect();
-    const heading=document.querySelector('#explore-heading h1').getBoundingClientRect();
-    const search=document.querySelector('#public-search').getBoundingClientRect();
-    return brand.width>=44 && brand.right<=innerWidth && heading.top<search.top && heading.left===search.left && document.documentElement.scrollWidth<=innerWidth;
-  })()`), scenario + ': brand and title/search hierarchy reflow');
+    const toolbar=document.querySelector('.vk-discovery-toolbar').getBoundingClientRect();
+    const heading=document.querySelector('#explore-heading h1');
+    const search=document.querySelector('#public-search');
+    const launcher=document.querySelector('#open-public-search');
+    const searchTarget=(search && search.getClientRects().length > 0 ? search : launcher)?.getBoundingClientRect();
+    return brand.width>=44 && brand.right<=innerWidth && toolbar.width>0 && toolbar.right<=innerWidth &&
+      !!heading && heading.textContent.trim().length>0 && getComputedStyle(heading).display!=='none' &&
+      !!searchTarget && searchTarget.width>0 && searchTarget.right<=innerWidth &&
+      document.documentElement.scrollWidth<=innerWidth;
+  })()`), scenario + ': brand and toolbar hierarchy reflow');
 }
 
 async function brandAssets(page) {
@@ -1978,9 +1984,9 @@ async function textContrast(page, theme, surface = 'shell', targets) {
   })() : {
     outline: ['#editor-outline-title', '.vk-editor-outline__item--title', '#editor-outline-panel [aria-current="location"] button'],
     desk: ['.vk-desk-create .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-search input', '#draft-sort', '#draft-sort-label', '#draft-scope'],
-    explore: ['#public-query', '#explore-heading h1', '#open-tag-filters', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '.vk-public-scope'],
+    explore: ['#public-query', '#explore-heading h1', '#open-tag-filters', '.vk-public-row__title', '.vk-public-row__author', '.vk-public-row__avatar', '.vk-public-row__excerpt', '.vk-public-scope'],
     filter: ['#modal-tag-help', '#tag-selection-count', '#modal-tag-form legend', '#modal-tag-form .vk-ui-choice__label', '#modal-tag-form button[type=submit]'],
-    empty: ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-link'],
+    empty: ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-button'],
     'desk-empty': ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-button', '.vk-desk-privacy'],
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
     me: ['#me-title', '#page-account h2', '#page-account .vk-ui-tone-muted', '#page-appearance-title', '#page-theme-title', '#page-text-title', '#page-rail-title', ...['light', 'dark', 'system'].map(value => `#page-theme label:has([value="${value}"])`)],
@@ -2559,16 +2565,21 @@ async function adaptiveShell(page) {
   `Tab reaches a visible toggle focus ring in forced colors and reduced motion: ${JSON.stringify(forcedFocus)}`);
   await page.capture('rail-r1-1440-forced-colors-focus');
   await page.eval(`window.__exploreRailProbe = {
-    brand: document.querySelector('.vk-brand'), input: document.querySelector('#public-query')
-  }; window.__exploreRailProbe.right = window.__exploreRailProbe.brand.getBoundingClientRect().right;
+    brand: document.querySelector('.vk-brand'), input: document.querySelector('#public-query'),
+    top: document.querySelector('.vk-brand').getBoundingClientRect().top
+  };
   window.__exploreRailProbe.input.focus()`);
   await page.send('Input.insertText', { text: 'Mưa trên phố' });
   await page.eval(`document.querySelector('#navigation-toggle').focus()`);
   await page.key('Enter');
   check((await page.eval(RAIL_WIDTH)) === 96 && await page.eval(`document.activeElement === window.__railToggle`), 'Enter collapses once and retains the toggle');
   check(await page.eval(`(() => {
-    const { brand, input, right } = window.__exploreRailProbe;
-    return brand === document.querySelector('.vk-brand') && brand.getBoundingClientRect().right === right &&
+    const { brand, input, top } = window.__exploreRailProbe;
+    const toolbar = document.querySelector('.vk-discovery-toolbar').getBoundingClientRect();
+    const row = document.querySelector('.vk-public-row').getBoundingClientRect();
+    const b = brand.getBoundingClientRect();
+    return brand === document.querySelector('.vk-brand') && Math.abs(b.top - top) <= 1 &&
+      Math.abs(b.right - toolbar.right) <= 1 && Math.abs(b.right - row.right) <= 1 &&
       input === document.querySelector('#public-query') && input.value === 'Mưa trên phố' && !location.search;
   })()`), 'collapsing the rail keeps the brand aligned and retains the unsubmitted search');
   await page.key('Space');
@@ -2814,13 +2825,15 @@ async function adaptiveShell(page) {
   await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('#create-draft')`, 'mobile desk destination');
   await page.capture('320-desk-dark-text200');
   await page.click('.vk-ui-bottom-nav a[href="/"]');
-  await page.waitFor(`location.pathname === '/' && document.querySelector('#discovery-tools .vk-brand')`, 'mobile discovery destination');
+  await page.waitFor(`location.pathname === '/' && document.querySelector('#discovery-tools .vk-brand') && document.querySelector('#open-tag-filters')`, 'mobile discovery destination');
   await assertBrandPlacement(page);
   await page.eval(`document.querySelector('.vk-ui-skip-link').focus()`);
   await page.key('Tab');
-  check(await page.eval(`document.activeElement.matches('.vk-brand:focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'`), 'at 320px / 200% text, Tab reaches the Explore brand with a visible focus ring');
+  check(await page.eval(`document.activeElement.matches('#open-tag-filters:focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'`), 'at 320px / 200% text, Tab reaches the filter launcher with a visible focus ring');
   await page.key('Tab');
-  check(await page.eval(`document.activeElement.matches('#public-search button[type=submit]:focus-visible')`), 'the next Tab reaches the search action below the brand');
+  check(await page.eval(`document.activeElement.matches('#open-public-search:focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'`), 'the next Tab reaches the mobile search launcher with a visible focus ring');
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement.matches('.vk-brand:focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'`), 'the next Tab reaches the Explore brand with a visible focus ring');
   await page.click('.vk-ui-bottom-nav a[href="/toi"]');
   await page.waitFor(`location.pathname === '/toi'`, 'mobile Tôi screen');
   await chooseTheme(page, 'system', 'page-theme');
@@ -3234,7 +3247,12 @@ async function draftDashboard(page) {
   gate.holdGets = true;
   await gate.enable();
   await page.viewport(1440);
-  await page.goto(`${args.base}/ban-viet`);
+  if (await page.eval(`location.href === ${JSON.stringify(`${args.base}/ban-viet`)}`)) {
+    await page.reload();
+  } else {
+    await page.goto(`${args.base}/ban-viet`);
+    await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'hydrated dashboard');
+  }
   const initial = await gate.next('gets');
   await page.waitFor(`document.querySelector('[data-testid=draft-loading]')`, 'initial dashboard loading');
   check(await page.eval(`document.querySelector('[data-testid=draft-content]').getAttribute('aria-busy') === 'true' && !document.querySelector('[data-testid=draft-empty]') && !document.querySelector('#create-draft')`), 'loading is distinct from empty and cannot create');

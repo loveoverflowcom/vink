@@ -75,6 +75,7 @@ pub struct PublicTag {
 pub struct WorkCard {
     pub work_id: String,
     pub title: String,
+    pub excerpt: Option<String>,
     pub author_display_name: String,
     #[serde(with = "time::serde::rfc3339")]
     pub published_at: OffsetDateTime,
@@ -957,6 +958,7 @@ impl From<&PublicWorkSummary> for WorkCard {
         Self {
             work_id: work.work_id.to_string(),
             title: work.title.as_str().to_string(),
+            excerpt: work.excerpt.clone(),
             author_display_name: work.author_display_name.clone(),
             published_at: work.published_at,
             tags: work.tags.iter().map(PublicTag::from).collect(),
@@ -1649,6 +1651,7 @@ mod tests {
             works: vec![PublicWorkSummary {
                 work_id: work(),
                 title: title(),
+                excerpt: Some("Mưa rơi nhẹ qua phố cũ.".into()),
                 author_display_name: "Tác giả mẫu (dữ liệu phát triển)".into(),
                 published_at: AT,
                 tags: vec![],
@@ -2628,17 +2631,27 @@ mod tests {
             use crate::domain::taxonomy::TagSlug;
 
             let author = "Lê Thu".to_string();
-            let card =
-                |n: u64, title: &str, minutes: i64, tags: Vec<CatalogTag>| PublicWorkSummary {
-                    work_id: WorkId::parse(&format!("33333333-3333-4333-8333-{n:012}")).unwrap(),
-                    title: Title::parse(title).unwrap(),
-                    author_display_name: author.clone(),
-                    published_at: AT - time::Duration::minutes(minutes),
-                    tags,
-                };
+            let card = |n: u64,
+                        title: &str,
+                        excerpt: Option<&str>,
+                        minutes: i64,
+                        tags: Vec<CatalogTag>| PublicWorkSummary {
+                work_id: WorkId::parse(&format!("33333333-3333-4333-8333-{n:012}")).unwrap(),
+                title: Title::parse(title).unwrap(),
+                excerpt: excerpt.map(str::to_string),
+                author_display_name: author.clone(),
+                published_at: AT - time::Duration::minutes(minutes),
+                tags,
+            };
             let works = vec![
-                card(1, "Mưa tháng Bảy", 0, vec![tan_van(), ky_uc()]),
-                card(2, "Mùa mưa ở phố cũ", 90, vec![ky_uc()]),
+                card(
+                    1,
+                    "Mưa tháng Bảy",
+                    Some("Trời ngả chiều qua mái ngói cũ."),
+                    0,
+                    vec![tan_van(), ky_uc()],
+                ),
+                card(2, "Mùa mưa ở phố cũ", None, 90, vec![ky_uc()]),
             ];
             let last = &works[1];
             let next = DiscoveryCursor::new(

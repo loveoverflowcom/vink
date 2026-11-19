@@ -14,7 +14,10 @@
 //!
 //! AsciiDoc is `DEFERRED`: the name is recognized only to refuse it explicitly.
 
+pub mod excerpt;
 pub mod markdown;
+
+pub use excerpt::public_excerpt;
 
 use serde::{Deserialize, Serialize};
 use unicode_normalization::UnicodeNormalization;
