@@ -162,6 +162,7 @@ pub fn TagDetail() -> impl IntoView {
 
 #[component]
 fn DiscoveryPage(#[prop(optional)] tag_page: Option<Memo<String>>) -> AnyView {
+    ResponseStatus::capture().set_no_store();
     let params = use_query_map();
     let context = Memo::new(move |_| {
         let mut query = query_from(&params.read());

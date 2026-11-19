@@ -184,6 +184,10 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await guest.waitFor("document.documentElement.dataset.hydrated==='true'", 'public profile hydrated');
   await guest.capture('author-public-desktop', {scenario:'guest with Bio and works', textScale:100});
   await captureLayouts(guest, check, 'public', '#author-profile-heading, .vk-author-bio, #author-works-heading, .vk-author-works a');
+  await guest.eval(`window.addEventListener('pageshow', event => {
+    if (event.persisted) sessionStorage.setItem('fixture-public-bfcache', 'restored');
+  });`);
+  await guest.goto(base + '/toi');
   const staleTab = await openPage();
   await edit(staleTab, base);
   await fill(staleTab, BIO, 'Bản nháp còn ở tab kia');
@@ -214,6 +218,10 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   check(await viewing.eval(`${q('#author-profile-heading')} && !${q('.vk-author-bio')} && !window.revokedBioShown`),
     `late public answer cannot restore a revoked Bio (${publicDisposition})`);
   await guest.send('Page.bringToFront');
+  await guest.eval('history.back()');
+  await guest.waitFor(`location.pathname===${JSON.stringify(aPath)} && ${q('#author-profile-heading')} &&
+    !${q('.vk-author-bio')} && !${q('#noi-dung')}.inert`, 'native Back does not restore the revoked Bio');
+  console.log('  profile revoke Back used BFCache:', await guest.eval("sessionStorage.getItem('fixture-public-bfcache')==='restored'"));
   await guest.eval("window.dispatchEvent(new FocusEvent('focus'))");
   await guest.waitFor(`${q('#author-profile-heading')} && !${q('.vk-author-bio')}`, 'isolated guest revalidates upon focus');
   await staleTab.click(SAVE);
@@ -246,7 +254,7 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   const cardB = selector('work-' + ids.b + '-author');
   const rowA = selector('work-' + ids.a);
   const titleA = rowA + ' .vk-public-row__link';
-  await guest.waitFor(q(cardA), 'linked bylines in real discovery');
+  await guest.waitFor(`document.documentElement.dataset.hydrated==='true' && ${q(cardA)}`, 'linked bylines in hydrated discovery');
   check(await guest.eval(`!document.querySelector('a a') &&
     ${q(cardA)}.getAttribute('href')===${JSON.stringify(aPath)} && ${q(cardB)}.getAttribute('href')===${JSON.stringify(bPath)}`),
     'two cards with one pen name have distinct sibling destinations');
@@ -296,12 +304,25 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
     await guest.click(link);
     await guest.waitFor(`location.pathname===${JSON.stringify(target)} && ${q('#author-profile-heading')}`, 'byline opens correct public profile');
     await guest.eval('history.back()');
-    await guest.waitFor(`document.activeElement===${q(link)}`, 'Back restores the Reader or discussion byline');
+    try {
+      await guest.waitFor(`${q(link)} && document.activeElement===${q(link)}`, `Back restores ${link}`);
+    } catch (error) {
+      console.error('Byline Back state:', await guest.eval(`({
+        path: location.pathname, hash: location.hash, state: history.state,
+        active: document.activeElement?.id || document.activeElement?.tagName,
+        href: ${q(link)}?.getAttribute('href')
+      })`), guest.errors);
+      throw error;
+    }
+    console.log('  ok  Back restores', link);
   }
-  check(await guest.eval(`!!${q('#comment-' + ids.tail + ' a[href="#comment-' + ids.reply + '"]')}`),
-    'reply context still has a separate comment jump');
+  const commentHash = '#comment-' + ids.reply;
+  const jump = '#comment-' + ids.tail + ' a[href="' + commentHash + '"]';
+  check(await guest.eval(`!!${q(jump)}`), 'reply context still has a separate comment jump');
   await guest.eval(`${q('#comment-' + ids.tail)}.scrollIntoView({block:'center'})`);
   await guest.capture('author-reply-context', {scenario:'reader discussion bylines', textScale:100});
+  await guest.click(jump);
+  await guest.waitFor(`location.hash===${JSON.stringify(commentHash)}`, 'reply context jumps to the replied-to comment');
   // Freeze a document carrying B's byline before retiring B in this disposable fixture.
   await guest.goto(base + readerPath);
   await guest.waitFor(`document.documentElement.dataset.hydrated==='true' && ${q(bylines[2][0])}`,
@@ -325,6 +346,13 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   const history = await guest.send('Page.getNavigationHistory');
   check(history.entries[history.currentIndex - 2]?.id === readerEntry,
     'two-step Back targets the earlier Reader entry in the frozen document');
+  const missed = [];
+  const onMiss = (message) => {
+    if (message.sessionId === guest.sessionId && message.method === 'Page.backForwardCacheNotUsed') {
+      missed.push(...(message.params.notRestoredExplanations || []).map(item => item.reason));
+    }
+  };
+  guest.cdp.listeners.push(onMiss);
   await guest.eval('history.go(-2)');
   try {
     await guest.waitFor(`location.pathname===${JSON.stringify(readerPath)} &&
@@ -334,7 +362,7 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
     console.error('Controlled Back state:', await guest.eval(`({
       path: location.pathname,
       hydrated: document.documentElement.dataset.hydrated,
-      visibility: getComputedStyle(${q('#noi-dung')}).visibility,
+      visibility: ${q('#noi-dung')} && getComputedStyle(${q('#noi-dung')}).visibility,
       frozenDocument: window.fixtureProfileDocument === true,
       restored: sessionStorage.getItem('fixture-profile-bfcache'),
       author: ${q('#comment-' + ids.reply)}?.textContent,
@@ -342,7 +370,8 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
     })`), guest.errors);
     throw error;
   }
-  console.log('  controlled Back used BFCache:', await guest.eval("sessionStorage.getItem('fixture-profile-bfcache')==='restored'"));
+  console.log('  controlled Back used BFCache:', await guest.eval("sessionStorage.getItem('fixture-profile-bfcache')==='restored'"),
+    'reported misses:', missed);
   for (const tab of [guest, viewing, staleTab]) {
     check(tab.errors.length === 0, `profile/byline tab console and hydration: ${tab.errors.join(' | ')}`);
   }

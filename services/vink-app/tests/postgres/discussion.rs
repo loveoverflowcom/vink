@@ -2375,8 +2375,11 @@ async fn author_attribution_tracks_principal_and_retirement_in_all_public_reads(
         &format!("/tac-pham/{work}"),
         "/",
     ] {
-        let (status, _, body) = call(&app, "GET", path, None, None, None).await;
+        let (status, cache, body) = call(&app, "GET", path, None, None, None).await;
         assert_eq!(status, 200);
+        if !path.starts_with("/api/") {
+            assert_eq!(cache.as_deref(), Some("no-store"), "{path}");
+        }
         assert!(body.contains("Tài khoản đã xóa"), "{path}");
         for forbidden in [
             a_handle.as_str(),

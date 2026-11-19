@@ -69,6 +69,9 @@ impl ResponseStatus {
 
 #[component]
 pub fn Reader() -> impl IntoView {
+    // Native Back may reuse an HTML response without validating its bylines.
+    // The public API keeps its conditional reads and tab cache.
+    ResponseStatus::capture().set_no_store();
     let params = use_params_map();
     let work_id = Memo::new(move |_| params.read().get("id").unwrap_or_default());
     view! { <For each=move || vec![work_id.get()] key=|id| id.clone()
@@ -91,7 +94,6 @@ fn ReaderScope(id: String) -> impl IntoView {
                         Ok(reader) => {
                             if !matches!(reader, crate::contract::ReaderResponse::Published(_)) {
                                 status.set(200);
-                                status.set_no_store();
                             }
                             view! { <ReaderLoaded initial=reader return_href=return_href.get_untracked() /> }.into_any()
                         }

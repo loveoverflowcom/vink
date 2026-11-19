@@ -24,6 +24,8 @@ export function mountProfileNavigation() {
       observer.disconnect();
       clearTimeout(timer);
       cancelAnimationFrame(frame);
+      document.removeEventListener('pointerdown', cancel, true);
+      document.removeEventListener('keydown', cancel, true);
     };
     cancelFocus = cancel;
 
@@ -39,18 +41,26 @@ export function mountProfileNavigation() {
         return;
       }
       const active = document.activeElement;
-      if (active === document.body || active?.id === 'noi-dung' || active === source || active === target) {
+      if (active !== target && (active === document.body || active?.id === 'noi-dung' || active === source)) {
         target.scrollIntoView({block: 'nearest'});
         target.focus({preventScroll: true});
+      } else if (active !== target) {
+        cancel();
+        return;
       }
-      cancel();
+      // A revalidation can replace the focused node. Continue while this entry is
+      // current and there has been no new input.
+      if (failed) cancel();
     }
 
     function schedule() {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => apply());
     }
-    observer.observe(document.getElementById('noi-dung'), {subtree: true, childList: true});
+    observer.observe(document.getElementById('noi-dung'), {subtree: true, childList: true,
+      attributes: true, attributeFilter: ['href']});
+    document.addEventListener('pointerdown', cancel, true);
+    document.addEventListener('keydown', cancel, true);
     timer = setTimeout(() => apply(true), 4000);
     schedule();
   }
@@ -98,6 +108,7 @@ export function mountProfileNavigation() {
 
   const recheck = 'vinkProfileRecheck';
   let parked = false;
+  let reloading = false;
   window.addEventListener('pagehide', event => {
     const path = location.pathname;
     if (!event.persisted || !(path === '/' || path === '/toi/chinh-ho-so' ||
@@ -107,17 +118,19 @@ export function mountProfileNavigation() {
     main.style.visibility = 'hidden';
     main.inert = true;
   });
-  window.addEventListener('popstate', restore);
-  window.addEventListener('pageshow', event => {
+  function resume() {
     // A document can have several SPA history entries. The entry being restored need
     // not be the entry that was current when the document was frozen.
-    if (event.persisted && parked) {
+    if (!parked) {
+      restore();
+    } else if (!reloading) {
+      reloading = true;
       history.replaceState({...history.state, [recheck]: address()}, '');
       location.reload();
-    } else {
-      restore();
     }
-  });
+  }
+  window.addEventListener('popstate', resume);
+  window.addEventListener('pageshow', resume);
   // A frozen document has an old projection even when a tab's RAM freshness window has
   // not elapsed. The fresh HTTP document may re-focus the surviving link.
   const state = history.state;

@@ -1968,6 +1968,10 @@ a {
 .vk-profile-conflict dd { white-space: pre-wrap; margin-inline-start: 0; }
 .vk-profile-conflict dt { font-weight: var(--vk-type-label-weight); }
 @media (max-width: 759px) {
+  .vk-author-public h1 {
+    font-size: var(--vk-type-headline-size);
+    line-height: var(--vk-type-headline-line-height);
+  }
   .vk-profile-actions {
     inset-block-end: max(var(--vk-ui-bar-height, var(--vk-size-bottom-bar)), var(--vk-profile-keyboard-inset, 0px));
   }
