@@ -24,12 +24,20 @@ pub fn Author() -> impl IntoView {
 #[component]
 fn PublicProfile(name: String, cursor: Option<String>) -> impl IntoView {
     let (generation, advance) = signal(0u64);
+    // Answers older than `floor` may still show a field that was revoked since (a profile
+    // change) or the failure the reader asked to retry. Lifecycle wake-ups only revalidate:
+    // the current answer stays mounted with its focus and scroll until the new one arrives.
+    let (floor, set_floor) = signal(0u64);
+    let renew = move || {
+        advance.update(|stamp| *stamp += 1);
+        set_floor.set(generation.get_untracked());
+    };
     let data = crate::api::author_resource(name.clone(), cursor.clone(), generation);
     let status = super::ResponseStatus::capture();
     status.set_no_store();
     #[cfg(feature = "hydrate")]
     {
-        super::profile::observe_changes(move || advance.update(|stamp| *stamp += 1));
+        super::profile::observe_changes(renew);
         crate::read_events::observe(move || {
             if crate::read_events::visible() {
                 advance.update(|stamp| *stamp += 1);
@@ -37,17 +45,14 @@ fn PublicProfile(name: String, cursor: Option<String>) -> impl IntoView {
         });
     }
     view! {
-        <Suspense fallback=|| view! { <p role="status">"Đang mở trang tác giả…"</p> }>
-            {move || {
-                let stamp = generation.get();
-                match data.get() {
-                    Some((result_stamp, result)) if result_stamp == stamp => {
-                        render_profile(result, &status, &name, cursor.is_some(), advance)
-                    }
-                    _ => view! { <p role="status">"Đang mở trang tác giả…"</p> }.into_any(),
+        <Transition fallback=|| view! { <p role="status">"Đang mở trang tác giả…"</p> }>
+            {move || match data.get() {
+                Some((stamp, result)) if stamp >= floor.get() => {
+                    render_profile(result, &status, &name, cursor.is_some(), renew)
                 }
+                _ => view! { <p role="status">"Đang mở trang tác giả…"</p> }.into_any(),
             }}
-        </Suspense>
+        </Transition>
     }
 }
 
@@ -56,7 +61,7 @@ fn render_profile(
     status: &super::ResponseStatus,
     name: &str,
     continued: bool,
-    advance: WriteSignal<u64>,
+    retry: impl Fn() + Copy + Send + Sync + 'static,
 ) -> AnyView {
     let (code, heading, detail) = match result {
         Ok(AuthorResolution::Current {
@@ -113,8 +118,8 @@ fn render_profile(
                             None if !has_public_works => view! { <p>"Chưa có tác phẩm công khai."</p> }.into_any(),
                             None => view! {
                                 <p role="alert">"Chưa tải được danh sách tác phẩm."</p>
-                                <button type="button" class="vk-ui-button vk-ui-button--tonal"
-                                    on:click=move |_| advance.update(|stamp| *stamp += 1)>"Thử lại"</button>
+                                <vink_ui::Button variant=vink_ui::ButtonVariant::Tonal
+                                    on_press=Callback::new(move |()| retry())>"Thử lại"</vink_ui::Button>
                             }.into_any(),
                         }}
                     </section>
@@ -161,8 +166,8 @@ fn render_profile(
             <h1 id="author-profile-heading" tabindex="-1">{heading}</h1><p>{detail}</p>
             {if code == 503 {
                 view! {
-                    <button type="button" class="vk-ui-button vk-ui-button--tonal"
-                        on:click=move |_| advance.update(|stamp| *stamp += 1)>"Thử lại"</button>
+                    <vink_ui::Button variant=vink_ui::ButtonVariant::Tonal
+                        on_press=Callback::new(move |()| retry())>"Thử lại"</vink_ui::Button>
                     <noscript><a href=retry_href>"Tải lại"</a></noscript>
                 }.into_any()
             } else {

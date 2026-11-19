@@ -519,7 +519,11 @@ mod coordinator {
                 self.store.observe(&key, at);
                 return;
             }
-            let mut sanitized = rendered_at <= self.attribution_barrier;
+            // Only an invalidation seen by this document fences a seed. A back/forward
+            // document (`rendered_at` = -inf) must keep the attribution its HTML rendered,
+            // otherwise hydration disagrees with the server markup.
+            let mut sanitized =
+                self.attribution_barrier.is_finite() && rendered_at <= self.attribution_barrier;
             if sanitized {
                 initial.clear_attribution();
             }
@@ -1499,6 +1503,32 @@ mod tests {
         assert_eq!(list.works[0].author, Some(AuthorProjection::Unsupported));
         assert!(list.works[0].author_display_name.is_empty());
         assert_eq!(list.works[0].work_id, "w1");
+    }
+
+    #[test]
+    fn back_forward_seed_keeps_attribution_until_this_document_invalidates() {
+        use crate::contract::{AuthorProjection, PublicAuthorRef};
+        let key = PublicKey::Works(ExploreQuery::default());
+        let mut linked = sample_list(&["w1"]);
+        let Snapshot::Works(list) = &mut linked else {
+            unreachable!()
+        };
+        list.works[0].author = Some(AuthorProjection::Linked(PublicAuthorRef {
+            pen_name: "Tên tác giả".into(),
+            handle: "ten".into(),
+            href: "/@ten".into(),
+        }));
+        let mut read = Coordinator::new(Policy::V1);
+        read.follow_seed(key.clone(), linked.clone(), f64::NEG_INFINITY, 1.0);
+        assert_eq!(read.status(&key).and_then(|s| s.data), Some(linked.clone()));
+
+        let mut fenced = Coordinator::new(Policy::V1);
+        fenced.invalidate_author_attribution(1.0, true);
+        fenced.follow_seed(key.clone(), linked, f64::NEG_INFINITY, 2.0);
+        let Some(Snapshot::Works(list)) = fenced.status(&key).and_then(|s| s.data) else {
+            panic!("expected fenced work data");
+        };
+        assert_eq!(list.works[0].author, Some(AuthorProjection::Unsupported));
     }
 
     fn sample_pub(id: &str, rev: &str) -> Snapshot {
