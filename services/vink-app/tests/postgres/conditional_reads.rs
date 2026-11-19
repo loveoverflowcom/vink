@@ -822,9 +822,9 @@ async fn profile_owner_cas_revoke_and_public_page_share_the_current_projection(p
     )
     .await;
     assert_eq!(status, 422, "widening stays gated");
-    let mut birth = command(2, Some("bio"), &policies);
+    let mut birth = command(4, Some("bio"), &policies);
     birth["date_of_birth"] = json!("2000-01-01");
-    let mut no_bio = command(2, Some("bio"), &policies);
+    let mut no_bio = command(4, Some("bio"), &policies);
     no_bio.as_object_mut().unwrap().remove("bio");
     for invalid in [birth.clone(), no_bio] {
         // Unknown fields and an omitted Bio key are contract errors, never a silent clear.
@@ -854,7 +854,7 @@ async fn profile_owner_cas_revoke_and_public_page_share_the_current_projection(p
             own,
             Some(a),
             Some(ORIGIN),
-            Some(command(2, Some("Riêng mới"), &policies))
+            Some(command(4, Some("Riêng mới"), &policies))
         )
         .await
         .0,
@@ -864,7 +864,7 @@ async fn profile_owner_cas_revoke_and_public_page_share_the_current_projection(p
     let reopened = super::app(&pool).await;
     let verified = get(&reopened, &path, &[public.etag()]).await;
     verified.assert_full();
-    assert_eq!(verified.body, absent.body);
+    assert_eq!(verified.body, revoked_all.body);
 
     let recent = datetime!(2026-11-19 01:00 UTC);
     let mut expected = Vec::new();
