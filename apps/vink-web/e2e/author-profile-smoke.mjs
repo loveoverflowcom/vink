@@ -117,6 +117,12 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await page.waitFor(q(NAME), 'keyboard opens edit from Me');
   const a = await own(page);
   const bio = 'Viết bằng mực tím.\n\nMột đoạn nữa.';
+  await fill(page, NAME, '   ');
+  await page.click(SAVE);
+  await page.waitFor(`${q(NAME)}.getAttribute('aria-invalid')==='true' &&
+    document.activeElement===${q(NAME)}`, 'invalid pen name returns focus to its field');
+  check(await page.eval(`${q(NAME)}.value==='   '`) && (await own(page)).profile_version === a.profile_version,
+    'validation preserves the typed name and leaves durable state unchanged');
   await fill(page, NAME, SAME_NAME);
   await fill(page, BIO, bio);
   await page.eval(`(() => {
@@ -224,6 +230,20 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   console.log('  profile revoke Back used BFCache:', await guest.eval("sessionStorage.getItem('fixture-public-bfcache')==='restored'"));
   await guest.eval("window.dispatchEvent(new FocusEvent('focus'))");
   await guest.waitFor(`${q('#author-profile-heading')} && !${q('.vk-author-bio')}`, 'isolated guest revalidates upon focus');
+  check(authorFixtureSql('UPDATE author_handle_rollout SET ready=false WHERE singleton AND ready RETURNING 1;') === '1',
+    'closed the profile read gate in this scratch database only');
+  try {
+    await guest.reload();
+    await guest.waitFor(`${q('#author-profile-heading')}?.textContent==='Chưa tải được hồ sơ' &&
+      ${q('.vk-author-public button')}`, 'unavailable public profile offers retry');
+    await guest.capture('author-public-retry', {scenario:'real read gate unavailable', textScale:100});
+  } finally {
+    check(authorFixtureSql('UPDATE author_handle_rollout SET ready=true WHERE singleton AND NOT ready RETURNING 1;') === '1',
+      'reopened the scratch profile read gate');
+  }
+  await guest.click('.vk-author-public button');
+  await guest.waitFor(`${q('#author-profile-heading')}?.textContent===${JSON.stringify(SAME_NAME)} &&
+    ${q(selector('profile-work-' + ids.a))} && !${q('.vk-author-bio')}`, 'retry loads the current profile and works');
   await staleTab.click(SAVE);
   await staleTab.waitFor(q('#profile-conflict-heading'), 'stale form displays the current saved version');
   check(await staleTab.eval(`${q(BIO)}.value==='Bản nháp còn ở tab kia'`), 'CAS conflict preserves typed draft');
