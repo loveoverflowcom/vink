@@ -1,5 +1,8 @@
 # CMP empty artwork #261 · local evidence
 
+Lượt 19/11 xác nhận trên API 24/35 sau #318, thử lỗi alpha decoder, CTA khi bàn phím
+còn mở và LatinIME tiếng Việt trên API 35. [Bằng chứng mới và giới hạn](native-qualification-20261119/README.md).
+
 Lượt kiểm lại ngày 18/11 trên `develop@ee20e94` bổ sung pixel runtime và ma trận capture
 Android API 24/35. [Bằng chứng và trạng thái AC-04/06/07](native-qualification-20261118/README.md).
 
