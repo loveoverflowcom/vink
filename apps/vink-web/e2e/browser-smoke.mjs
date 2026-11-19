@@ -253,9 +253,13 @@ async function bottomNavigationAnatomy(page, route, scenario) {
 
 async function bottomNavigationStates(page) {
   const selected = '.vk-ui-bottom-nav a[aria-current="page"]';
-  const styles = () => page.eval(`(() => {
+  const styles = () => page.eval(`(async () => {
+    // CDP acknowledges input before the next paint. Reduced-motion tokens still allow a
+    // 0.01ms transition, so sample after Chrome has rendered the new pointer state.
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const link = document.querySelector('${selected}'), indicator = link.querySelector('.vk-ui-icon').parentElement;
     return { fill: getComputedStyle(indicator).backgroundColor, layer: getComputedStyle(indicator).boxShadow,
+      hovered: link.matches(':hover'), pressed: link.matches(':active'),
       hasOutline: getComputedStyle(indicator).outlineStyle === 'solid',
       hasFocus: link.matches(':focus-visible') && getComputedStyle(link).outlineStyle === 'solid',
       motion: getComputedStyle(indicator).transitionDuration,
@@ -272,6 +276,8 @@ async function bottomNavigationStates(page) {
     await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', clickCount: 1 });
     const press = await styles();
     await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 1, y: 1, button: 'left', clickCount: 1 });
+    check(!rest.hovered && !rest.pressed && hover.hovered && !hover.pressed && press.hovered && press.pressed,
+      'real pointer input reaches the selected bottom navigation link');
     check(new Set([rest.layer, hover.layer, press.layer]).size === 3 &&
       [hover, press].every(state => state.fill === rest.fill && JSON.stringify(state.bounds) === JSON.stringify(rest.bounds)),
     'hover and pressed use distinct state layers with identical selected fill and geometry');
@@ -366,7 +372,10 @@ async function bottomNavigationRegression(page) {
   for (const theme of ['dark', 'light']) {
     await page.viewport(320);
     await page.goto(`${args.base}/toi`);
-    await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'navigation hydration');
+    // The signed-in account panel is above the choice and can shift it after hydration.
+    await page.waitFor(`document.documentElement.dataset.hydrated === 'true' &&
+      document.querySelector('#account-session')?.dataset.standing === 'active'`, 'navigation hydration and account panel');
+    await page.eval('document.fonts.ready');
     await chooseTheme(page, theme, 'page-theme');
     for (const width of [320, 360, 390, 480, 759]) {
       await page.viewport(width);
@@ -1790,8 +1799,21 @@ async function openProfile(page) {
 }
 
 async function chooseTheme(page, value, group = 'overlay-theme') {
-  await page.click(`label:has(input[name="${group}"][value="${value}"])`);
-  await page.waitFor(value === 'system' ? `!document.documentElement.hasAttribute('data-theme')` : `document.documentElement.dataset.theme === '${value}'`, `${value} appearance`);
+  const selector = `label:has(input[name="${group}"][value="${value}"])`;
+  try {
+    await page.click(selector);
+    await page.waitFor(value === 'system' ? `!document.documentElement.hasAttribute('data-theme')` : `document.documentElement.dataset.theme === '${value}'`, `${value} appearance`);
+  } catch (error) {
+    const target = await page.eval(`(() => {
+      const label = document.querySelector(${JSON.stringify(selector)});
+      const rect = label?.getBoundingClientRect();
+      const hit = rect && document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+      const choice = hit?.closest('label')?.querySelector('input');
+      return { viewport: [innerWidth, innerHeight], scroll: [scrollX, scrollY], rect: rect?.toJSON(),
+        hit: hit && { tag: hit.localName, id: hit.id, group: choice?.name, value: choice?.value } };
+    })()`).catch(() => null);
+    throw new Error(`${error.message}; ${selector} current hit test ${JSON.stringify(target)}`, { cause: error });
+  }
   await page.waitFor(APPEARANCE_SETTLED, `${value} appearance transitions`);
   await assertBrand(page, value);
 }
