@@ -45,3 +45,5 @@ Rời bước xóa input; request đã đi vẫn cần đối soát với máy c
 không tràn ngang quá 1 CSS px, không mất nhãn/hành động/lỗi, font Be Vietnam Pro đã tải.
 Đối chiếu vị trí và phân cấp khi mở ảnh viewport; ảnh không thay kiểm focus, motion hoặc lưu dữ
 liệu. [Auth Web](../development/auth-web.md#kiểm-chứng) giữ bảng kiểm, artifact và giới hạn.
+
+[Ảnh Chrome và kết quả theo AC của R2](evidence/auth-r2-327/README.md).
