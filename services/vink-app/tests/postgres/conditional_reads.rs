@@ -98,6 +98,20 @@ async fn get(app: &Router, path: &str, if_none_match: &[&str]) -> Reply {
     read(app, "GET", path, if_none_match).await
 }
 
+fn html_without_request_nonce(html: &str) -> String {
+    // Leptos emits a fresh nonce per render, including on its resource preload tags.
+    let (_, rest) = html
+        .split_once("<script nonce=\"")
+        .expect("hydration nonce");
+    let (nonce, _) = rest.split_once('"').expect("end of hydration nonce");
+    assert!(!nonce.is_empty());
+    html.replace(&format!("nonce=\"{nonce}\""), "nonce=\"request-nonce\"")
+        .replace(
+            &format!("crossorigin=\"{nonce}\""),
+            "crossorigin=\"request-nonce\"",
+        )
+}
+
 /// Fixture publish: an immutable revision plus the public pointer, as one transaction.
 pub(super) async fn publish(
     pool: &PgPool,
@@ -651,6 +665,7 @@ async fn profile_owner_cas_revoke_and_public_page_share_the_current_projection(p
     let web = format!("/@{handle}");
     let absent = get(&app, &path, &[]).await;
     let (status, cache, absent_html) = call(&app, "GET", &web, None, None, None).await;
+    let absent_html = html_without_request_nonce(&absent_html);
     assert_eq!(
         (status, cache.as_deref()),
         (StatusCode::OK, Some("no-store"))
@@ -742,7 +757,8 @@ async fn profile_owner_cas_revoke_and_public_page_share_the_current_projection(p
         let (status, _, html) = call(&app, "GET", &web, actor, None, None).await;
         assert_eq!(status, 200);
         assert_eq!(
-            html, absent_html,
+            html_without_request_nonce(&html),
+            absent_html,
             "HTML, head and hydration match the absent Bio"
         );
         assert!(

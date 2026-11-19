@@ -97,6 +97,7 @@ async function captureLayouts(page, check, name, target) {
           `#292/#293 ${name} ${width}px ${theme} ${scale}% ${JSON.stringify(facts)}`);
         if (width === 320 && theme === 'dark' && scale === 200 ||
             width === 1440 && theme === 'light' && scale === 100) {
+          await page.eval(`${q(target)}.scrollIntoView({block:'start'})`);
           await page.capture(`author-${name}-${width}-${theme}-${scale}`,
             {boundary:'Chrome + App + native Identity + scratch PG', scenario:name, textScale:scale});
         }
@@ -216,6 +217,7 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await staleTab.click(SAVE);
   await staleTab.waitFor(q('#profile-conflict-heading'), 'stale form displays the current saved version');
   check(await staleTab.eval(`${q(BIO)}.value==='Bản nháp còn ở tab kia'`), 'CAS conflict preserves typed draft');
+  await staleTab.eval(`${q('.vk-profile-conflict')}.scrollIntoView({block:'center'})`);
   await staleTab.capture('author-profile-conflict', {scenario:'real CAS conflict', textScale:100});
   await staleTab.eval("document.querySelector('.vk-profile-conflict button').click()");
   await staleTab.waitFor(`document.activeElement?.id==='profile-pen-name' && ${q(BIO)}.value===${JSON.stringify(bio)}`,
