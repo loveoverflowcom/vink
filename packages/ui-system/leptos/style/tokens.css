@@ -19,6 +19,14 @@
 
 @font-face {
   font-family: "Be Vietnam Pro";
+  src: url("fonts/be-vietnam-pro-500.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Be Vietnam Pro";
   src: url("fonts/be-vietnam-pro-600.woff2") format("woff2");
   font-style: normal;
   font-weight: 600;
@@ -97,12 +105,12 @@
   --vk-type-body-font: var(--vk-font-ui);
   --vk-type-body-size: 1rem;
   --vk-type-body-weight: 400;
-  --vk-type-body-line-height: 1.6;
+  --vk-type-body-line-height: 1.65;
   --vk-type-body-tracking: 0;
   --vk-type-caption-font: var(--vk-font-ui);
   --vk-type-caption-size: 0.8125rem;
   --vk-type-caption-weight: 400;
-  --vk-type-caption-line-height: 1.4;
+  --vk-type-caption-line-height: 1.5;
   --vk-type-caption-tracking: 0;
   --vk-type-code-font: var(--vk-font-code);
   --vk-type-code-size: 0.875rem;
@@ -110,28 +118,38 @@
   --vk-type-code-line-height: 1.5;
   --vk-type-code-tracking: 0;
   --vk-type-display-font: var(--vk-font-reading);
-  --vk-type-display-size: clamp(2rem, 1.5rem + 2vw, 3rem);
-  --vk-type-display-weight: 600;
-  --vk-type-display-line-height: 1.2;
-  --vk-type-display-tracking: -0.025em;
+  --vk-type-display-size: clamp(2.25rem, 1.875rem + 1.2vw, 2.75rem);
+  --vk-type-display-weight: 500;
+  --vk-type-display-line-height: 1.15;
+  --vk-type-display-tracking: 0;
+  --vk-type-excerpt-font: var(--vk-font-reading);
+  --vk-type-excerpt-size: 1.0625rem;
+  --vk-type-excerpt-weight: 400;
+  --vk-type-excerpt-line-height: 1.6;
+  --vk-type-excerpt-tracking: 0;
   --vk-type-headline-font: var(--vk-font-reading);
-  --vk-type-headline-size: 1.75rem;
-  --vk-type-headline-weight: 600;
-  --vk-type-headline-line-height: 1.3;
-  --vk-type-headline-tracking: -0.015em;
+  --vk-type-headline-size: 1.875rem;
+  --vk-type-headline-weight: 500;
+  --vk-type-headline-line-height: 1.25;
+  --vk-type-headline-tracking: 0;
   --vk-type-label-font: var(--vk-font-ui);
   --vk-type-label-size: 0.875rem;
-  --vk-type-label-weight: 600;
-  --vk-type-label-line-height: 1.4;
+  --vk-type-label-weight: 500;
+  --vk-type-label-line-height: 1.45;
   --vk-type-label-tracking: 0;
   --vk-type-reading-font: var(--vk-font-reading);
   --vk-type-reading-size: var(--vk-text-reading);
   --vk-type-reading-weight: 400;
   --vk-type-reading-line-height: var(--vk-leading-reading);
   --vk-type-reading-tracking: 0;
+  --vk-type-section-font: var(--vk-font-ui);
+  --vk-type-section-size: 1.125rem;
+  --vk-type-section-weight: 600;
+  --vk-type-section-line-height: 1.4;
+  --vk-type-section-tracking: 0;
   --vk-type-title-font: var(--vk-font-reading);
   --vk-type-title-size: 1.375rem;
-  --vk-type-title-weight: 600;
+  --vk-type-title-weight: 500;
   --vk-type-title-line-height: 1.3;
   --vk-type-title-tracking: 0;
   --vk-avatar-1: #ebddff;
@@ -485,7 +503,7 @@
   --vk-action-toggle-selected-content: var(--vk-on-secondary-container);
   --vk-action-tonal-container: var(--vk-secondary-container);
   --vk-action-tonal-content: var(--vk-on-secondary-container);
-  --vk-field-container: var(--vk-surface-container-low);
+  --vk-field-container: var(--vk-surface-container-high);
   --vk-field-outline: var(--vk-outline);
   --vk-focus-ring: var(--vk-focus);
 }

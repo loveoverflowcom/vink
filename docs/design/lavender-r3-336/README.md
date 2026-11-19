@@ -1,10 +1,10 @@
 # Lavender R3 · chữ thoáng, ít khối · #336
 
 **19/11/2026 · [#336](https://github.com/loveoverflowcom/vink/issues/336) · `DESIGN_PROPOSED`.**
-Chủ sản phẩm duyệt hướng thị giác trên canvas ngày 19/11/2026. Đây là mốc thiết kế cho
-lượt triển khai; trạng thái kiến trúc và mức triển khai không đổi (`NOT_IMPLEMENTED` cho R3).
-Đối chiếu tại `develop@eb7e65e`. Fidelity so với ảnh tham khảo của issue: `NO_APPROVED_REFERENCE`
-cho tới khi ảnh chụp từ bản dựng được duyệt.
+Chủ sản phẩm duyệt hướng thị giác trên canvas ngày 19/11/2026. Mức triển khai: `web` (nhánh
+`feat/336-lavender-r3`, xem [Triển khai Web](#triển-khai-web)); CMP chỉ nhận token sinh lại và font
+Desktop preview. Đối chiếu tại `develop@eb7e65e`. Fidelity so với ảnh tham khảo của issue:
+`NO_APPROVED_REFERENCE` cho tới khi ảnh chụp từ bản dựng được duyệt.
 
 - Canvas Claude Design (riêng tư, cần chủ sở hữu chia sẻ): <https://claude.ai/artifact/U2EGFmygrgoT4hq5dHH1SP>
 - Nguồn từng khung: [canvas/](canvas/) (`.dc.html` dùng runtime `support.js` của Claude Design,
@@ -100,3 +100,24 @@ focus `outline` 3px lệch 2px (không dùng box-shadow), và viền hệ thốn
 Đổi `type.*` dùng chung ảnh hưởng mọi consumer (Bàn viết, dialog Auth, preview UI system,
 CMP qua Kotlin sinh ra). Liệt kê consumer và chụp lại trước/sau ở 100% và 200%, sáng/tối,
 theo [UX quality](../../../.agents/skills/vink-ui-design/references/ux-quality.md).
+
+## Triển khai Web
+
+| Vùng | Owner | Đã làm |
+| --- | --- | --- |
+| Font | `apps/vink-web/assets/fonts`, `tokens.json` `fonts` | Thêm `be-vietnam-pro-500.woff2` (Medium, cùng commit pin và lệnh subset) và bản TTF Desktop; provenance, README font, Compose preview và `FontTest` |
+| Token | `packages/ui-system/shared/tokens.json` | `type.display/headline/title` Literata 500, tracking 0; `type.label` 14/500; nhịp dòng body 1.65, caption 1.5; thêm `type.section`, `type.excerpt`; `field.container` → `surface-container-high` kèm hai cặp tương phản |
+| Khám phá | `pages/discovery.rs` `ResultRow`, `style/vink.css` | Hàng phẳng, khoảng cách 40 px (32 px dưới 760 px); thể loại ở trên nhan đề, trích đoạn Literata, byline cuối có avatar 36 px và @handle hiện rõ; bỏ chevron |
+| Hồ sơ công khai | `pages/handle.rs`, `style/vink.css` | Bỏ ảnh banner; cụm nhận diện avatar + tên + handle chữ phụ; “Chỉnh hồ sơ” tonal cạnh tên khi đủ rộng; Bio và danh sách nhan đề nằm trên nền trang, có đường kẻ và chevron vẽ bằng CSS |
+| Chỉnh hồ sơ | `pages/profile/browser.rs`, `style/vink.css` | Tiêu đề tác vụ sans 600; fieldset không viền; hàng quyền nhãn trái, select phải, xuống dòng khi hẹp/chữ lớn; quyền đã khóa hiện ổ khóa + “Chỉ mình tôi” dạng đọc; hàng Địa chỉ tác giả có handle |
+| Reader, nhận xét | token | Nhận weight/nhịp dòng mới; cấu trúc không đổi |
+
+Lệch so với canvas, có chủ đích:
+
+- `type.label` giữ 14 px (M3 label-large 14/500) thay vì 15 px để nút và thanh công cụ không đổi
+  bề rộng; tên tác giả dùng body 16/500. Không thêm `type.field-label`.
+- Khám phá giữ cấu trúc r1 (#308): tiêu đề “Khám phá” vẫn ẩn thị giác, thanh tìm và logo như cũ.
+  Hàng tác phẩm chưa có ngày vì develop chưa hiển thị ngày ở đây.
+- Thanh Lưu hồ sơ vẫn dính đáy màn ở mọi cỡ chữ; e2e AC-04 kiểm Save không bị thanh dưới che.
+- Tiêu đề “Nhận xét” trong Reader giữ Literata (vùng đọc); dòng thời gian Reader giữ định dạng Intl
+  hiện hành (e2e khóa đúng chuỗi này).

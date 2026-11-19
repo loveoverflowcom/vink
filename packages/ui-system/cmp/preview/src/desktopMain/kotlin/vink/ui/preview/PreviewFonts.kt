@@ -55,11 +55,13 @@ object PreviewFonts {
         fun face(file: String) = decoded.entries.first { it.key.file == file }.value!!
         val ui = FontFamily(
             Font("be-vietnam-pro-400", face("be-vietnam-pro-400.woff2"), FontWeight.Normal),
+            Font("be-vietnam-pro-500", face("be-vietnam-pro-500.woff2"), FontWeight.Medium),
             Font("be-vietnam-pro-600", face("be-vietnam-pro-600.woff2"), FontWeight.SemiBold),
         )
         val literata = face("literata-variable.woff2")
         val reading = FontFamily(
             Font("literata-400", literata, FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(400))),
+            Font("literata-500", literata, FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
             Font("literata-600", literata, FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
         )
         return LoadedFonts(

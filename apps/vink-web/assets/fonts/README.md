@@ -1,14 +1,15 @@
 # Font tự host của Vink Web
 
-Ba face phục vụ giao diện tiếng Việt đã chọn trong [baseline thiết kế](../../../../docs/design/README.md):
+Bốn face phục vụ giao diện tiếng Việt đã chọn trong [baseline thiết kế](../../../../docs/design/README.md):
 
 | File | Family / weight | Vai trò | Bytes |
 | --- | --- | --- | --- |
 | `be-vietnam-pro-400.woff2` | Be Vietnam Pro 400 | Chữ giao diện, đoạn hướng dẫn, metadata | 36 464 |
-| `be-vietnam-pro-600.woff2` | Be Vietnam Pro 600 | Nhãn, nút, tiêu đề nhỏ | 38 844 |
+| `be-vietnam-pro-500.woff2` | Be Vietnam Pro 500 | Nhãn, nút, tên tác giả, điều hướng (R3 #336) | 38 852 |
+| `be-vietnam-pro-600.woff2` | Be Vietnam Pro 600 | Tiêu đề tác vụ và tiêu đề nhóm | 38 844 |
 | `literata-variable.woff2` | Literata, trục `wght` 200–900 và `opsz` 7–72 | Văn đọc, editor, tiêu đề tác phẩm | 256 620 |
 
-Tổng 331 928 bytes, so với 1 365 116 bytes của bốn TTF trong prototype. Nguồn là các file
+Tổng 370 780 bytes. Ba face đầu so với 1 365 116 bytes của bốn TTF trong prototype; face 500 thêm ngày 19/11/2026 từ cùng commit pin và cùng lệnh. Nguồn là các file
 TTF chưa sửa trong [google/fonts](https://github.com/google/fonts) tại commit pin; SHA-256
 nguồn trùng với `assets/fonts/manifest.json` của bộ thiết kế. [provenance.json](provenance.json)
 ghi đường dẫn nguồn, Git blob SHA, SHA-256 trước/sau, lệnh chuyển đổi, phiên bản công cụ và dải
@@ -41,7 +42,7 @@ Literata bỏ Greek/Cyrillic: các ký tự đó dùng font serif fallback. Serv
 
 `cargo xtask verify quick` kiểm mọi face/license khớp SHA-256 trong `provenance.json`, mọi
 `.woff2` đều được ghi nhận, và mọi URL font trong `tokens.css`/`vink.css`/shell trỏ tới face đã ghi.
-Preview CMP Desktop dùng TTF giải nén từ chính ba WOFF2 này, xem phần dưới;
+Preview CMP Desktop dùng TTF giải nén từ chính bốn WOFF2 này, xem phần dưới;
 Android/iOS vẫn dùng font hệ thống, chưa có pipeline branded-font native.
 `cargo xtask verify web` kiểm trang đọc tải được hai face chính và file được phục vụ đúng
 `font/woff2`. Các lane này không chứng minh vị trí dấu, cắt chữ hay hiển thị trên thiết bị thật;
@@ -49,9 +50,9 @@ những điều đó cần ảnh chụp đã mở ở viewport/theme/cỡ chữ 
 
 ## Adapter CMP Desktop
 
-Skiko 0.9.22.2 trên Linux không giải mã được ba WOFF2 đã kiểm hash, trong khi TTF giải nén
-từ cùng dữ liệu đọc được. Desktop đóng gói ba derivative trong
-[`preview/fonts`](../../../../packages/ui-system/cmp/preview/fonts), tổng **844 748 bytes**;
+Skiko 0.9.22.2 trên Linux không giải mã được các WOFF2 đã kiểm hash, trong khi TTF giải nén
+từ cùng dữ liệu đọc được. Desktop đóng gói bốn derivative trong
+[`preview/fonts`](../../../../packages/ui-system/cmp/preview/fonts), tổng **975 744 bytes**;
 Gradle chép chúng, OFL và provenance vào classpath `vink-fonts/`. Web tiếp tục dùng các WOFF2
 trong bảng trên. Không cần Python hoặc mạng khi build/chạy preview.
 
@@ -66,5 +67,5 @@ trục Literata `opsz` 7–72, `wght` 200–900 được giữ nguyên. OFL cho 
 `python3 apps/vink-web/assets/fonts/derive_desktop.py` từ repo; thêm `--check` để chỉ đối chiếu
 byte, không ghi. Các phiên bản và lệnh cũng được pin trong provenance. `verify quick` kiểm
 format/length/hash TTF và file không có chủ; Desktop tests kiểm resource, metadata, 154 điểm mã
-tiếng Việt NFC/NFD, font được Compose dùng ở 400/600 và fallback missing/corrupt. Glyph có sẵn
+tiếng Việt NFC/NFD, font được Compose dùng ở 400/500/600 và fallback missing/corrupt. Glyph có sẵn
 không tự chứng minh shaping/IME đúng; xem [báo cáo PR 08](../../../../docs/design/ui-repair-08.md).

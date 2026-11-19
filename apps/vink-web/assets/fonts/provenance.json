@@ -55,6 +55,24 @@
         "sha256": "cd1ef6e9d7db28ad5cdb88a65ccbe693870e60d340b791f349d248342b4fe4c3"
       }
     },
+    "be-vietnam-pro-500.woff2": {
+      "family": "Be Vietnam Pro",
+      "style": "normal",
+      "weight": "500",
+      "bytes": 38852,
+      "sha256": "f5c912f8c977795eb048b925760ac74ed544a8abb5ed7f0761c8c83167d8ca67",
+      "desktop": {
+        "file": "be-vietnam-pro-500.ttf",
+        "bytes": 130996,
+        "sha256": "4b262124d18417b79ee8844dc0389cc03fdefd65b777a67a321b39d9982cb0bd"
+      },
+      "source": {
+        "path": "ofl/bevietnampro/BeVietnamPro-Medium.ttf",
+        "bytes": 135980,
+        "git_blob_sha": "d6deb87afdd7ddf003f3d0ab1070ab9df1df0724",
+        "sha256": "b60832bfa0fcd015158112c64d7e3fdad3b0c6287d1823f85a3103636e845268"
+      }
+    },
     "be-vietnam-pro-600.woff2": {
       "family": "Be Vietnam Pro",
       "style": "normal",
