@@ -236,6 +236,15 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
       gate.list = { raw:true, body:{drafts:[],next_cursor:'fixture:24'} };
       await page.click('#retry-drafts'); await settled();
       check(await page.eval(`!document.querySelector('[data-testid=draft-empty], [data-testid=draft-no-results], #drafts img') && document.querySelector('[data-testid=desk-error]') && document.querySelector('[data-testid=author-work-stale]')`), '#259 empty page with continuation is rejected by existing PageChain; remains an error, never first-use');
+      // A proxy 502 (or 429) is `Unexpected`, not `Unavailable`: it may pass on the next try.
+      // The rejected chain is `Invalid` (no panel retry); the toolbar refresh stays available.
+      check(await page.eval(`!document.querySelector('[data-testid=desk-error] #retry-drafts') && !!document.querySelector('#refresh-drafts')`), '#308 a rejected page chain offers the toolbar refresh, not a panel retry');
+      gate.holdGets = true;
+      await page.click('#refresh-drafts');
+      await gate.fulfill(await gate.next('gets'), 502, {error:{code:'bad_gateway'}});
+      gate.holdGets = false;
+      await settled();
+      check(await page.eval(`!!document.querySelector('[data-testid=desk-error] #retry-drafts') && document.querySelector('#draft-search')===window.__emptySearch`), '#308 a transient 502 keeps the error-panel retry and the search input');
       await page.eval(`window.__emptySearch.focus(); window.__emptySearch.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true})); window.__emptySearch.setSelectionRange(0,0)`);
       const before = gate.requests.length;
       await page.key('Enter');

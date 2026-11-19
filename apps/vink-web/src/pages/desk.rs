@@ -414,7 +414,9 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                     <DeskLoading />
                 </Show>
                 {move || load_error.get().map(|error| view! {
-                    <DeskError refresh=matches!(error, ApiError::Unavailable | ApiError::Network).then_some(refresh)
+                    // Retrying helps only an answer that may change: a proxy 5xx or 429 arrives
+                    // as `Unexpected`. A missing principal or invalid query would fail again.
+                    <DeskError refresh=matches!(error, ApiError::Unavailable | ApiError::Network | ApiError::Unexpected { .. }).then_some(refresh)
                         error retry_disabled=refresh_disabled retained=pages.with(|p| p.loaded) />
                 })}
                 // The tools/input retain one owner through loading, empty, query and error.
