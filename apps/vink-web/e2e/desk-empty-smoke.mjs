@@ -26,29 +26,34 @@ export async function deskGuest(page, {args, check}, signInOpen) {
       && document.querySelector('.vk-desk-access__actions a[href="/"]')?.textContent==='Khám phá tác phẩm'
       && document.querySelectorAll('.vk-desk-access__actions a').length===${signInOpen ? 2 : 1}`),
       '#308 guest actions reflect this deployment’s sign-in capability');
+    const label = signInOpen ? 'Đăng nhập' : 'Tài khoản';
+    const { root } = await page.send('DOM.getDocument');
     for (const width of [320,390,800,1440]) for (const theme of ['light','dark']) for (const scale of [100,200]) {
+      const navSelector = (width<760 ? '#bottom-navigation' : '#navigation-account')+' a[data-destination=me]';
       await page.viewport(width, width<760 ? 844 : 760);
       await page.eval(`document.documentElement.dataset.theme='${theme}'; document.documentElement.style.fontSize='${scale}%';
         document.fonts.ready.then(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))))`);
       const layout = await page.eval(`(() => {
         const box = selector => document.querySelector(selector).getBoundingClientRect();
         const panel = document.querySelector('.vk-desk-access'), panelStyle=getComputedStyle(panel);
-        const nav = document.querySelector((innerWidth<760?'#bottom-navigation':'#navigation-account')+' [data-destination=me]');
+        const nav = document.querySelector(${JSON.stringify(navSelector)});
         const actions = [...panel.querySelectorAll('a')].map(a=>a.getBoundingClientRect());
         return {
           headings:box('#draft-list-title').top-box('#desk-title').bottom,
           content:box('.vk-desk-access').top-box('#draft-list-title').bottom,
           border:panelStyle.borderWidth, width:document.documentElement.scrollWidth,
           toned:panelStyle.backgroundColor!==getComputedStyle(document.body).backgroundColor,
-          nav:nav.textContent.trim(), name:nav.getAttribute('aria-label'),
+          nav:nav.textContent.trim(),
           target:actions.every(r=>r.height>=48 && r.width>=48 && r.left>=0 && r.right<=innerWidth),
         };
       })()`);
-      const label = signInOpen ? width>=1100 ? 'Đăng nhập / Đăng ký' : 'Đăng nhập' : 'Tài khoản';
+      const { nodeId } = await page.send('DOM.querySelector', { nodeId: root.nodeId, selector: navSelector });
+      const { nodes: [guestLink] } = await page.send('Accessibility.getPartialAXTree', { nodeId, fetchRelatives: false });
+      const name = guestLink?.role.value==='link' ? guestLink.name?.value : undefined;
       check(layout.width<=width && layout.toned && layout.border==='0px' && layout.target &&
-        layout.nav===label && layout.name===(signInOpen?'Đăng nhập / Đăng ký':'Tài khoản') &&
+        layout.nav===label && name===label &&
         (scale!==100 || Math.abs(layout.headings-32)<=1 && Math.abs(layout.content-12)<=1),
-        '#308 guest Desk geometry/labels '+[width,theme,scale].join('/')+' '+JSON.stringify(layout));
+        '#308 guest Desk geometry/labels '+[width,theme,scale].join('/')+' '+JSON.stringify({ ...layout, name }));
       if (width===390 || width===1440 && scale===100) {
         await page.capture('desk-guest-'+[signInOpen?'open':'closed',width,theme,scale].join('-'), {
           scenario:'#308-guest-desk', boundary:'real-App-session',
