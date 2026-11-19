@@ -24,6 +24,9 @@ pub struct SaveProfile {
     pub principal_id: Uuid,
     pub expected_version: i64,
     pub pen_name: String,
+    /// Required key: `null` clears the Bio, an omitted key is invalid input rather than a
+    /// silent deletion.
+    #[serde(deserialize_with = "Option::deserialize")]
     pub bio: Option<String>,
     pub policies: ProfilePolicies,
 }

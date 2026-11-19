@@ -1,5 +1,6 @@
 use super::*;
 use vink_app::application::handle::{HandleCommand, HandleError};
+use vink_app::application::ports::StoreError;
 use vink_app::domain::handle::Intent;
 use vink_app::domain::principal::SubjectKey;
 use vink_app::persistence::handle::{backfill, retire};
@@ -264,6 +265,19 @@ async fn handle_public_http_direct_aliases_and_terminal_tombstones(pool: PgPool)
     retire(&mut tx, a).await.unwrap();
     retire(&mut tx, a).await.unwrap();
     tx.commit().await.unwrap();
+    // A principal without a profile row has no tombstone to redact its public name.
+    let unprovisioned = Uuid::new_v4();
+    sqlx::query("INSERT INTO principals(id,display_name) VALUES ($1,'Chưa cấp hồ sơ')")
+        .bind(unprovisioned)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let mut tx = pool.begin().await.unwrap();
+    assert!(matches!(
+        retire(&mut tx, PrincipalId::from_uuid(unprovisioned)).await,
+        Err(StoreError::Integrity(_))
+    ));
+    tx.rollback().await.unwrap();
     for name in [&initial, "ngay-mua", "ngay-nang"] {
         for method in ["GET", "HEAD"] {
             let r = app

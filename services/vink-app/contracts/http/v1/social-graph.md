@@ -143,7 +143,7 @@ Các lỗi 409 gồm `version_conflict`, `handle_taken`, `handle_alias_reserved`
 | Route | Hợp đồng hiện hành |
 | --- | --- |
 | `GET /api/v1/me/profile` | Phiên active đọc hồ sơ của chính mình. [Own Profile](fixtures/author.profile.own.json) gồm `principal_id`, bút danh, Bio, tám policy, `profile_version` và hai fact setup/quota Handle. `no-store`. |
-| `PUT /api/v1/me/profile` | JSON `principal_id`, `expected_version`, `pen_name`, `bio` (chuỗi hoặc null), `policies` (đủ tám trường). Actor lấy từ phiên. Principal trong payload là điều kiện của form bắt đầu lệnh. `200` trả Own Profile sau commit, `409 version_conflict` trả version quan sát được, `422 validation_failed` chỉ trường lỗi. `no-store`. |
+| `PUT /api/v1/me/profile` | JSON `principal_id`, `expected_version`, `pen_name`, `bio` (chuỗi hoặc null), `policies` (đủ tám trường). Actor lấy từ phiên. Principal trong payload là điều kiện của form bắt đầu lệnh. `200` trả Own Profile sau commit, `409 version_conflict` trả version quan sát được, `422 validation_failed` chỉ trường lỗi. Body sai kiểu, thiếu khóa `bio` hoặc có trường lạ như `date_of_birth` trả `422 validation_failed` với `field=body`; phiên được kiểm trước body. `no-store`. |
 | `GET/HEAD /api/v1/authors/{handle}?cursor=…` | Actor-free. [Current](fixtures/author.profile.current.json) giữ `author` và `has_public_works`, bổ sung `bio` nếu có quyền và đã điền. `publications` có `state: page`, tối đa 12 `works` (ID tác phẩm, nhan đề) và `next_cursor` nếu còn trang. `state: restart` yêu cầu mở trang đầu khi cursor sai hoặc thuộc địa chỉ khác. |
 
 Profile dùng lại parser bút danh (trim, NFC, 1–80 ký tự). Bio tối đa 500 ký tự Unicode, bỏ

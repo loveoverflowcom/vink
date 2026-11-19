@@ -124,7 +124,9 @@ Writer cũ còn hoạt động mà tạo binding thiếu hồ sơ sẽ đóng l�
 kế tiếp. Khi quay lui phiên bản ứng dụng, giữ nguyên migration, reservations, quota và receipts.
 
 **Bàn giao lifecycle.** #297 có thể gọi `persistence::handle::retire` trong transaction xóa App
-đã xác minh. Điều phối xóa tài khoản qua Identity/App vẫn thuộc Account.
+đã xác minh. Điều phối xóa tài khoản qua Identity/App vẫn thuộc Account. Principal chưa có hồ sơ
+tác giả (chưa binding, tên cũ không hợp lệ hoặc chưa backfill) làm `retire` trả lỗi `Integrity`,
+vì projection chỉ che tên qua tombstone của hồ sơ. #297 cần cấp hồ sơ hoặc có đường che riêng trước khi xóa.
 
 ## Hồ sơ và bút danh #292/#293
 

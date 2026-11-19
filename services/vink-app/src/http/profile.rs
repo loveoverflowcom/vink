@@ -1,7 +1,7 @@
 //! Own profile is session-only. The public handler resolves policy before its validator.
 use axum::{
     Json, Router,
-    extract::{DefaultBodyLimit, Path, Query, State},
+    extract::{DefaultBodyLimit, Path, Query, State, rejection::JsonRejection},
     http::{HeaderMap, HeaderValue, header},
     response::{IntoResponse, Response},
     routing::get,
@@ -55,14 +55,13 @@ async fn own(State(s): State<AppState>, Actor(actor): Actor) -> Result<Json<OwnP
 async fn save(
     State(s): State<AppState>,
     Actor(actor): Actor,
-    Json(command): Json<SaveProfile>,
+    body: Result<Json<SaveProfile>, JsonRejection>,
 ) -> Result<Json<OwnProfile>, ApiError> {
-    Ok(Json(
-        s.vink
-            .store()
-            .save_profile(actor.ok_or(ApiError::Unauthenticated)?, command)
-            .await?,
-    ))
+    // Session first: an anonymous request learns nothing about body validation. Malformed or
+    // unknown fields (such as `date_of_birth`) use the contract's `validation_failed` shape.
+    let actor = actor.ok_or(ApiError::Unauthenticated)?;
+    let command = super::api::json_body(body)?;
+    Ok(Json(s.vink.store().save_profile(actor, command).await?))
 }
 
 #[derive(Deserialize)]

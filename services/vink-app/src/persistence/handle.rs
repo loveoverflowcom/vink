@@ -277,12 +277,30 @@ impl PgStore {
 
 /// App-side hook for the account deletion owner (#297). Its caller verifies deletion
 /// and owns the transaction. Retiring a suspended profile is also idempotent.
+///
+/// Attribution redacts a principal only through its profile tombstone, so a principal
+/// without a profile row (never provisioned, unbound or invalid legacy name) fails closed
+/// instead of reporting success while its name stays public and searchable.
 pub async fn retire(
     tx: &mut Transaction<'_, Postgres>,
     owner: PrincipalId,
 ) -> Result<(), StoreError> {
     super::principal::locked_standing(tx, owner).await?;
-    sqlx::query("UPDATE author_profiles SET current_handle=NULL, version=version+1 WHERE principal_id=$1 AND current_handle IS NOT NULL")
+    let retired = sqlx::query("UPDATE author_profiles SET current_handle=NULL, version=version+1 WHERE principal_id=$1 AND current_handle IS NOT NULL")
         .bind(owner.as_uuid()).execute(&mut **tx).await.map_err(classify)?;
+    if retired.rows_affected() == 0 {
+        let tombstone: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM author_profiles WHERE principal_id=$1)",
+        )
+        .bind(owner.as_uuid())
+        .fetch_one(&mut **tx)
+        .await
+        .map_err(classify)?;
+        if !tombstone {
+            return Err(StoreError::Integrity(
+                "principal has no author profile to retire".into(),
+            ));
+        }
+    }
     Ok(())
 }

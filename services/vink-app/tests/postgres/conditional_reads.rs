@@ -783,11 +783,28 @@ async fn profile_owner_cas_revoke_and_public_page_share_the_current_projection(p
     assert_eq!(status, 422, "widening stays gated");
     let mut birth = command(2, Some("bio"), &policies);
     birth["date_of_birth"] = json!("2000-01-01");
+    let mut no_bio = command(2, Some("bio"), &policies);
+    no_bio.as_object_mut().unwrap().remove("bio");
+    for invalid in [birth.clone(), no_bio] {
+        // Unknown fields and an omitted Bio key are contract errors, never a silent clear.
+        let (status, cache, body) =
+            call(&app, "PUT", own, Some(a), Some(ORIGIN), Some(invalid)).await;
+        assert_eq!((status.as_u16(), cache.as_deref()), (422, Some("no-store")));
+        assert_eq!(json(&body)["error"]["code"], "validation_failed");
+        assert_eq!(json(&body)["error"]["field"], "body");
+    }
+    // The session is checked before the body: a guest learns nothing about validation.
     assert_eq!(
-        call(&app, "PUT", own, Some(a), Some(ORIGIN), Some(birth))
+        call(&app, "PUT", own, None, Some(ORIGIN), Some(birth))
             .await
             .0,
-        422
+        401
+    );
+    let (_, _, kept) = call(&app, "GET", own, Some(a), None, None).await;
+    assert_eq!(
+        json(&kept)["bio"],
+        json!(bio),
+        "rejected saves leave the Bio intact"
     );
     assert_eq!(
         call(
