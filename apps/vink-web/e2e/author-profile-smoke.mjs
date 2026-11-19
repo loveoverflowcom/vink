@@ -217,6 +217,8 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await staleTab.click(SAVE);
   await staleTab.waitFor(q('#profile-conflict-heading'), 'stale form displays the current saved version');
   check(await staleTab.eval(`${q(BIO)}.value==='Bản nháp còn ở tab kia'`), 'CAS conflict preserves typed draft');
+  check(await staleTab.eval(`${q(SAVE)}.dataset.state==='disabled' &&
+    ${q(SAVE)}.getAttribute('aria-disabled')==='true'`), 'Save is visibly and semantically disabled during conflict');
   await staleTab.eval(`${q('.vk-profile-conflict')}.scrollIntoView({block:'center'})`);
   await staleTab.capture('author-profile-conflict', {scenario:'real CAS conflict', textScale:100});
   await staleTab.eval("document.querySelector('.vk-profile-conflict button').click()");
@@ -241,6 +243,7 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   const cardA = selector('work-' + ids.a + '-author');
   const cardB = selector('work-' + ids.b + '-author');
   const rowA = selector('work-' + ids.a);
+  const titleA = rowA + ' .vk-public-row__link';
   await guest.waitFor(q(cardA), 'linked bylines in real discovery');
   check(await guest.eval(`!document.querySelector('a a') &&
     ${q(cardA)}.getAttribute('href')===${JSON.stringify(aPath)} && ${q(cardB)}.getAttribute('href')===${JSON.stringify(bPath)}`),
@@ -248,9 +251,16 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await captureLayouts(guest, check, 'byline', rowA + ' a');
   await guest.viewport(320);
   await guest.eval("document.documentElement.style.fontSize='200%'");
-  await guest.eval(`${q(rowA + ' .vk-public-row__link')}.focus()`);
+  await guest.eval(`${q(titleA)}.focus()`);
   await guest.key('Tab');
   check(await guest.eval(`document.activeElement===${q(cardA)}`), 'Tab goes from the work to its author');
+  await guest.key('Tab', 8); // CDP Shift modifier.
+  check(await guest.eval(`document.activeElement===${q(titleA)}`), 'Shift+Tab returns to the same work title');
+  await guest.key('Enter');
+  await guest.waitFor(`location.pathname===${JSON.stringify(readerPath)} && ${q('#reader-paper')}`, 'the sibling work link opens the Reader');
+  await guest.eval('history.back()');
+  await guest.waitFor(`document.activeElement===${q(titleA)}`, 'Reader Back restores the same work title');
+  await guest.key('Tab');
   await guest.key('Enter');
   await guest.waitFor(`location.pathname===${JSON.stringify(aPath)} && ${q('#author-profile-heading')}`, 'Enter opens the right profile');
   await guest.eval('history.back()');
@@ -292,23 +302,44 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await guest.capture('author-reply-context', {scenario:'reader discussion bylines', textScale:100});
   // Freeze a document carrying B's byline before retiring B in this disposable fixture.
   await guest.goto(base + readerPath);
-  await guest.waitFor(q(bylines[2][0]), 'linked byline before controlled retirement');
+  await guest.waitFor(`document.documentElement.dataset.hydrated==='true' && ${q(bylines[2][0])}`,
+    'linked byline is hydrated before controlled retirement');
+  const readerHistory = await guest.send('Page.getNavigationHistory');
+  const readerEntry = readerHistory.entries[readerHistory.currentIndex].id;
+  await guest.eval('window.fixtureProfileDocument = true');
   await guest.eval(`window.addEventListener('pageshow', event => {
     if (event.persisted) sessionStorage.setItem('fixture-profile-bfcache', 'restored');
   });`);
   // Create a newer SPA entry in the same document, then traverse straight past it.
   await guest.click('#reader-author');
   await guest.waitFor(`location.pathname===${JSON.stringify(aPath)} && ${q('#author-profile-heading')}`, 'same-document Profile entry before freeze');
+  check(await guest.eval('window.fixtureProfileDocument === true'), 'Reader and linked profile share the same document before freeze');
   await guest.goto(base + bPath);
   check(authorFixtureSql(`UPDATE author_profiles SET current_handle=NULL, version=version+1
     WHERE principal_id=${literal(b.principal_id)} AND current_handle=${literal(b.handle)} RETURNING 1;`) === '1',
     'retired exactly the B fixture');
   await guest.reload();
   await guest.waitFor(`${q('#author-profile-heading')}?.textContent==='Hồ sơ không còn trên Vink'`, 'B profile is gone');
+  const history = await guest.send('Page.getNavigationHistory');
+  check(history.entries[history.currentIndex - 2]?.id === readerEntry,
+    'two-step Back targets the earlier Reader entry in the frozen document');
   await guest.eval('history.go(-2)');
-  await guest.waitFor(`location.pathname===${JSON.stringify(readerPath)} &&
-    ${q('#comment-' + ids.reply)}?.textContent.includes('Tài khoản đã xóa') &&
-    !${q('a[href="' + bPath + '"]')}`, 'Back does not restore retired attribution');
+  try {
+    await guest.waitFor(`location.pathname===${JSON.stringify(readerPath)} &&
+      ${q('#comment-' + ids.reply)}?.textContent.includes('Tài khoản đã xóa') &&
+      !${q('a[href="' + bPath + '"]')}`, 'Back does not restore retired attribution');
+  } catch (error) {
+    console.error('Controlled Back state:', await guest.eval(`({
+      path: location.pathname,
+      hydrated: document.documentElement.dataset.hydrated,
+      visibility: getComputedStyle(${q('#noi-dung')}).visibility,
+      frozenDocument: window.fixtureProfileDocument === true,
+      restored: sessionStorage.getItem('fixture-profile-bfcache'),
+      author: ${q('#comment-' + ids.reply)}?.textContent,
+      retiredLink: !!${q('a[href="' + bPath + '"]')}
+    })`), guest.errors);
+    throw error;
+  }
   console.log('  controlled Back used BFCache:', await guest.eval("sessionStorage.getItem('fixture-profile-bfcache')==='restored'"));
   for (const tab of [guest, viewing, staleTab]) {
     check(tab.errors.length === 0, `profile/byline tab console and hydration: ${tab.errors.join(' | ')}`);

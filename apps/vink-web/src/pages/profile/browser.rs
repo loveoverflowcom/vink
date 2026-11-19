@@ -346,7 +346,11 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
                 <p id="profile-message" role="status" aria-atomic="true">{move || form.message.get()}</p>
                 <div>
                     <button id="profile-save" type="submit" class="vk-ui-button vk-ui-button--filled"
+                        data-state=move || if form.busy.get() { "pending" }
+                            else if form.reconcile.with(Option::is_some) || form.conflict.with(Option::is_some) { "disabled" }
+                            else { "enabled" }
                         aria-disabled=move || (blocked() || form.conflict.with(Option::is_some)).then_some("true")
+                        aria-describedby="profile-message"
                         aria-busy=move || form.busy.get().to_string()>"Lưu hồ sơ"</button>
                     <Show when=move || form.reconcile.with(Option::is_some) && !form.busy.get()>
                         <button type="button" class="vk-ui-button vk-ui-button--tonal"
