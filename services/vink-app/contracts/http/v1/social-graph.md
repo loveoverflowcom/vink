@@ -187,3 +187,7 @@ Reader thay thế theo O-17 tiếp tục dùng nhãn đã lọc.
 | `GET /api/v1/me/follows/membership?handles=…` | `200` `no-store`: tối đa 50 canonical handle, trả trạng thái `following`/`mutual`/`pair_version`/`accepted_order` cho handle còn hiệu lực (bỏ self/missing/retired) | `401`, `403 actor_unavailable`, `422 handles`/`query`, `503` | [membership](fixtures/author.follow.membership.json) |
 | `GET /api/v1/me/relationships/followers` | `200` `no-store`: `OwnRelationshipList` cho chủ đã xác thực (kể cả khi policy là `self`), mỗi người kèm `mutual`; sai scope cursor trả `state=restart` | `401`, `403 actor_unavailable`, `422`, `503` | [own list](fixtures/author.relationship.list.own.json) |
 | `GET /api/v1/me/relationships/following` | Như trên cho cạnh ra | Như trên | [own list](fixtures/author.relationship.list.own.json) |
+
+Cursor Follow v2 chỉ mang mốc cạnh ngẫu nhiên và phạm vi, không chứa thời điểm theo dõi.
+Mốc được tra lại sau khi kiểm quyền trong cùng snapshot; mốc không còn thuộc danh sách hiện
+hành trả `restart`. Cursor riêng không dùng qua lần xác thực khác, kể cả cùng PrincipalId.

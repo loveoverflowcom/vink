@@ -3295,12 +3295,12 @@ mod tests {
                     pair_version: 1,
                     accepted_order: 1,
                     committed: None,
-                    relationships: Box::new(PublicRelationships::from_policies(
+                    relationships: PublicRelationships::from_policies(
                         ProfilePolicies::default(),
                         "an-may-27",
                         Some(1),
                         None,
-                    )),
+                    ),
                 },
             );
             assert_matches(
