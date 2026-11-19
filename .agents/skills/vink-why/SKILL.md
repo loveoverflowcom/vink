@@ -22,6 +22,10 @@ mechanism itself is unclear; a plausible implementation does not establish its a
    `git log -S '<literal>' -- <path>`, `git log -G '<pattern>' -- <path>`, then `git show`
    for the candidate commit. Use blame to locate changes, not to assign fault. Read the patch
    and surrounding code; a commit title or current comment can be incomplete.
+   Commits written under [vink-git-workflow](../vink-git-workflow/SKILL.md) carry `Refs:`,
+   `Decision:` and `Spec:` trailers; squash commits on `develop` keep them inside the bullet
+   list, so also search `git log -F --grep='<ID or #N>'` and open the PR named by the subject's
+   ` (#N)` suffix. A trailer points to a source; it is not the rationale itself.
 3. If a linked PR, issue or relevant earlier chat contains the rationale, read that source
    through available tools. Prefer the service connector and inspect its current capabilities.
    Use [vink-recall](../vink-recall/SKILL.md) for conversation context. Missing access or shallow

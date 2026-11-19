@@ -38,6 +38,7 @@ do not ask again solely because this skill defaults to report-only.
 | Change touches | Trace and challenge |
 | --- | --- |
 | Requirements, AGENTS, skills or other policy | Current user intent, four status dimensions (product decision, architecture status, implementation level, evidence), `OPEN`/`DESIGN_PROPOSED` items not elevated to `PRODUCT_CONFIRMED`, semantic drift between PRD and code (e.g. char vs byte bounds), registry consistency (`vink-specify`) and unasked product choices (`vink-shape`) |
+| Commit messages, PR title/body or branch | [vink-git-workflow](../vink-git-workflow/SKILL.md): body covers the whole range, verification lines match executed evidence and SHA, links resolve and are not invented, `Closes` only when the issue's AC are complete |
 | Types, JSON/SQL parsing, errors | Construction bypasses, wrong-subject bindings, exact outcomes, useful conflict/unavailable distinctions |
 | Module/framework imports | Domain decisions hidden in handlers/components; abstractions without a consumer; server code leaking into WASM |
 | Drafts, revisions, moderation, publication | WR/PUB/MOD and INV IDs, exact snapshots, current authority, stale decisions, author intent, atomic pointer/outbox |

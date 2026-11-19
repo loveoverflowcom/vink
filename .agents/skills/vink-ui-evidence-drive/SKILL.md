@@ -60,3 +60,5 @@ Trả folder/index/manifest/report URL đã readback, run ID + SHA/build, số �
 surface/host, mức verification, reference versions, gap và bước tiếp theo. Nếu
 chưa hoàn tất, trả local bundle/receipt và failed/uncertain IDs để resume. Không
 tự xoá dữ liệu local còn cần phục hồi, sửa UI, tạo issue, merge hay deploy.
+URL folder đã readback là nguồn cho trailer `Evidence:` và mục Liên kết của PR theo
+[vink-git-workflow](../vink-git-workflow/SKILL.md).

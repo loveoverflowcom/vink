@@ -1,0 +1,3 @@
+#!/bin/sh
+# Opt-in: git config core.hooksPath .agents/skills/vink-git-workflow/scripts/hooks
+exec "$(dirname "$0")/../git-lint.sh" message "$1"

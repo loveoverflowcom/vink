@@ -48,4 +48,5 @@ Extend the same block when the work needs more context:
   carry completed work, original evidence and the next concrete step.
 
 Keep review-only, prompt-only and execution grants explicit. Preserve a commit or push grant
-already given for the task.
+already given for the task. When the grant includes a branch, commit or PR, the receiver follows
+[vink-git-workflow](../../vink-git-workflow/SKILL.md) unless the user fixed a branch name.

@@ -15,9 +15,11 @@ product requirements and architecture proposals describe intent, not executed be
 - Restate the question as an observable action and result, such as saving an edited draft
   while another tab saves first. Identify the actor, route or command, starting state and
   success/failure the user wants explained. Do not expand into a whole-repository survey.
-- Pin branch/SHA and relevant local changes. Locate the entrypoint with `rg`, then follow
-  calls and data rather than inferring behavior from names. Read the caller and callee at
-  each boundary that affects the answer.
+- Pin branch/SHA and relevant local changes. When the introducing change matters, its commit
+  trailers (`Refs:`, `Spec:`, `Design:`; [vink-git-workflow](../vink-git-workflow/SKILL.md))
+  name the issue or spec; rationale stays with `vink-why`. Locate the entrypoint with `rg`,
+  then follow calls and data rather than inferring behavior from names. Read the caller and
+  callee at each boundary that affects the answer.
 - For web flows, distinguish server HTML, hydration and later browser requests. Trace the
   server's principal resolver, application port, PostgreSQL operation and response handling
   only as far as the question requires. SSR public reads through `PublicReads` do not make

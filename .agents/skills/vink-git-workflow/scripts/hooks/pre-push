@@ -1,0 +1,4 @@
+#!/bin/sh
+# Opt-in: git config core.hooksPath .agents/skills/vink-git-workflow/scripts/hooks
+# Chỉ chặn tạo nhánh remote mới sai tên; nhánh đã có trên remote (kể cả codex/* cũ) vẫn push được.
+exec "$(dirname "$0")/../git-lint.sh" pre-push

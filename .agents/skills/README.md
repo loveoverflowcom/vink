@@ -19,7 +19,8 @@ supported by this repository read the same canonical instructions:
 In `SKILL.md`, link another skill by its portable name and relative path, e.g.
 [vink-work-item](vink-work-item/SKILL.md). Quote a single-line YAML description containing
 `: `. Use the browser, image viewer and GitHub tools exposed by the current host for authorized
-actions. Branch selection and macOS launcher setup are in [AGENTS.md](../../AGENTS.md#work-and-verification).
+actions. Branch selection and macOS launcher setup are in [AGENTS.md](../../AGENTS.md#work-and-verification);
+branch names, commits and PRs follow [vink-git-workflow](vink-git-workflow/SKILL.md).
 
 ## Choose the right skill
 
@@ -47,6 +48,7 @@ actions. Branch selection and macOS launcher setup are in [AGENTS.md](../../AGEN
 | State-transition/race impact and focused Quint models | [vink-behavior](vink-behavior/SKILL.md) |
 | Refresh the feature map or verification workflow | [vink-maintain-verification](vink-maintain-verification/SKILL.md) |
 | Review a PR, commit range, patch or local diff | [vink-code-review](vink-code-review/SKILL.md) |
+| Name a branch, write a commit or PR title/body, link sources, or read history for the issue/decision behind a change | [vink-git-workflow](vink-git-workflow/SKILL.md) |
 
 ## Conditional routing for `vink-shape` and `vink-specify`
 
@@ -133,6 +135,8 @@ settled rules goes straight to its owner.
 - Use `cargo xtask verify quick|discussion|expressions|kani|postgres|web` (and scoped commands) from
   [docs/development](../../docs/development/README.md) when verification is in scope, and
   [verification.md](vink-engineering/references/verification.md) for evidence and handoff.
+- Git metadata (branch, commit message and trailers, PR title/body) follows
+  [vink-git-workflow](vink-git-workflow/SKILL.md) from any skill that commits or opens a PR.
 - Respect user authorization already granted in the active conversation; do not ask again merely
   because a skill has a conservative default, and do not infer permission to push, publish or post
   externally from a local edit.

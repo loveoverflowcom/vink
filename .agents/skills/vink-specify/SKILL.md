@@ -43,6 +43,9 @@ Mỗi loại thông tin chỉ có một nơi sở hữu chính; các tài liệu
    chờ. Sau signoff, đối chiếu tác động tới PRD/spec/code/evidence và cập nhật marker `active`.
    Khi chỉ thay đổi hiện trạng hoặc bằng chứng, cập nhật registry phát triển. Với quyết định chưa
    chuyển, ghi vào owner Markdown tương ứng.
+4. Commit và PR của thay đổi trích `Decision: ID@rN` và `Spec:` theo
+   [vink-git-workflow](../vink-git-workflow/SKILL.md). Câu chữ trong commit/PR giữ đúng trạng thái
+   registry: `PENDING` không viết thành đã chốt, merge không phải signoff hay `Accepted`.
 
 ## 2. Bảy phần cần có của một đặc tả (viết theo độ sâu phù hợp)
 

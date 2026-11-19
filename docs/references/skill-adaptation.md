@@ -198,3 +198,35 @@ checklist và đồng bộ tiến độ. Phần bàn giao cho chủ phiên bản
   nếu chủ plugin muốn phân phối ngoài Codex. Tách phép thử đó khỏi thay đổi template nghiệp vụ.
 
 Phiên bản plugin đã đối chiếu được quản lý ngoài repo Vink.
+
+## Quy ước Git cho agent: `vink-git-workflow` (19/11/2026)
+
+Nguồn đầu vào là hai draft người dùng dán trong chat: quy ước nhánh/commit/trailer và quy ước
+PR cho coding agent. Đối chiếu với `develop@4cac8373`, cấu hình GitHub của repo
+(`squash_merge_commit_title = COMMIT_OR_PR_TITLE`, `squash_merge_commit_message = COMMIT_MESSAGES`,
+default branch `develop`, chưa có PR template hay `CODEOWNERS`) và lịch sử commit/PR gần đây.
+Kết quả là một skill [vink-git-workflow](../../.agents/skills/vink-git-workflow/SKILL.md) dùng
+chung cho Codex, Claude Code và Antigravity, thay quy ước nhánh `codex/<outcome>` trong
+`AGENTS.md`.
+
+| Ý từ draft | Áp dụng cho Vink | Điều chỉnh và lý do |
+| --- | --- | --- |
+| Bỏ tiền tố công cụ, nhánh `type/issue-slug` | Có, tối đa 50 ký tự | Nhánh `codex/*` đã push hoặc có PR giữ nguyên; tên người dùng chỉ định vẫn thắng |
+| Phát hiện "đã push" bằng `@{u}` | Không | Nhánh tạo từ `origin/develop` thường track sẵn `origin/develop`; dùng `git ls-remote --heads` và `gh pr list --head` |
+| Conventional Commits, ví dụ tiếng Anh | `type(scope)` ASCII, mô tả tiếng Việt bắt đầu bằng động từ | Giữ ngôn ngữ lịch sử repo; #324 đã có tiền lệ `docs(skills): …`; lịch sử cũ không viết lại |
+| Subject ≤ 72 ký tự | Commit ≤ 72 ký tự Unicode, tiêu đề PR ≤ 64 | GitHub nối ` (#NNN)`; PR một commit lấy subject của commit đó nên cả hai đều phải đạt |
+| `Fixes: #142` trong commit | Không | `develop` là default branch: keyword trong commit (kể cả trong body squash) đóng issue khi tới `develop`, trong khi nhiều issue Vink trải nhiều PR. Commit dùng `Refs:`; `Closes` chỉ ở PR body khi xong mọi AC |
+| Trailer `Spec`/`Source`/`Design` | `Refs`, `Decision`, `Spec`, `Design`, `Evidence` | `Decision: ID@rN` nối với kho quyết định (`vink-specify`, `vink-why`); `Evidence` nối với `vink-ui-capture`/`vink-ui-evidence-drive`; `Source` trùng `Refs`/`Spec` |
+| Thứ tự tra nguồn, cấm placeholder | Có | Thêm bàn giao `VINK_PROMPT_INPUT_V1`/`vink-recall` và tra revision bằng `cargo xtask decision query` |
+| Strict/fast mode | Fast mặc định, strict khi người dùng yêu cầu | `AGENTS.md`: skill không thêm bước hỏi lại cho quyền đã giao |
+| Mẫu PR body, checkbox `[x]` | Mục tiếng Việt; Kiểm chứng dùng `PASS`/`FAIL`/`NOT_RUN`/`UNSUPPORTED` kèm SHA và boundary | Cùng từ vựng với verification guide; link tương đối trong PR body render thành `href="docs/…"` (kiểm trên #332) nên dùng permalink hoặc code span |
+| Draft PR | Có | Mặc định mở draft; boundary ngoài phạm vi đã ghi `NOT_RUN` không tự cản yêu cầu chuyển ready |
+| Map label, `--assignee @me` | Chỉ map label có sẵn | Không mặc định gán người đang đăng nhập làm assignee; assignee/reviewer chỉ khi được giao |
+| Không footer AI trong PR | Có | `Co-Authored-By:` chỉ khi host hoặc người dùng yêu cầu |
+| Hook `commit-msg`, `pre-push` | Opt-in qua `core.hooksPath` | Agent không tự bật vì đây là cấu hình bền vững. Pre-push chỉ chặn tạo nhánh remote mới, để PR `codex/*` cũ vẫn push được. Không thêm lane CI vì sẽ chặn nhánh hiện có của người đóng góp |
+| Một skill thay vì hai | Có | Codex và Antigravity đọc `.agents/skills` (+ `agents/openai.yaml`), Claude Code đọc symlink `.claude/skills`; không cần thư mục `.codex/` riêng |
+
+"Log" trong yêu cầu được hiểu là cả hai chiều: viết subject đọc được trên `git log --oneline` và
+đọc lại lịch sử. Mục *Đọc lịch sử* của skill ghi cách tìm trailer trên commit squash (chúng nằm
+trong danh sách `*` nên phải dùng `git log -F --grep`), được `vink-why`, `vink-how` và
+`vink-recall` dẫn lại.

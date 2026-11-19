@@ -75,8 +75,8 @@ evidence) distinct. Report the scope that this slice completes. Preserve the PRD
 issue-tracking convention.
 
 Use permission already granted in the conversation. When committing is requested, inspect the
-staged diff, stage explicit task paths, commit in the repository's style and verify the resulting
-commit/status. Push or PR creation follows the user's requested scope; no skill adds a new
+staged diff, stage explicit task paths, commit with the branch, message, trailer and PR rules of
+[vink-git-workflow](../vink-git-workflow/SKILL.md) and verify the resulting commit/status. Push or PR creation follows the user's requested scope; no skill adds a new
 confirmation step for an action already authorized. Posting comments, publishing a site or
 calling a paid provider is not implied by a local implementation request.
 
