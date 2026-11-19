@@ -63,6 +63,14 @@ với ô tìm hiện tại. Khi lượt đọc bị từ chối quyền, trang d
 Khách có lối đăng nhập qua `/toi` khi môi trường mở đăng nhập và lối Khám phá khi đóng. Chân rail
 và thanh dưới đưa khách tới Tài khoản, nơi vẫn có các lựa chọn Giao diện.
 
+**Form R2 trong Tôi [#327](https://github.com/loveoverflowcom/vink/issues/327).** `account::AuthEntry`
+là điểm gắn duy nhất của form khách/bút danh trên trang: đọc `Session::standing` và epoch của
+cùng tab, không nhận trạng thái phiên từ host. Đổi bước chủ động hủy form cũ; refresh nền cùng
+standing/epoch không dựng lại input. CHOICE-01: dùng một view chung bọc các owner form hiện có,
+gồm cả đường đọc lại phiên sau lỗi, không sao chép dispatch, AuthGate hay input state. Tôi sở hữu Giao diện, đăng xuất và điều hướng;
+Reader [#328](https://github.com/loveoverflowcom/vink/issues/328) có thể gắn cùng view trong host
+khác, chỉ một bản đang mở, tự xử lý ngữ cảnh trở về. Lát này chưa nối Reader.
+
 ## 2. Luồng
 
 1. **Tạo tài khoản** bằng tên đăng nhập và mật khẩu, hoặc **Đăng nhập** bằng mật khẩu. Cả hai đọc lại

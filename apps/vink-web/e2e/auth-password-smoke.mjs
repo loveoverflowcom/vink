@@ -141,13 +141,20 @@ async function expiredDesk(page, {base, check, openPage}) {
 
 async function matrix(page, scenario, anchor, check) {
   const path = JSON.stringify(anchor);
+  const r2 = ['login', 'registration', 'pen-name'].includes(scenario);
+  const actions = ({
+    login: ['#password-login-submit', '#use-registration', '#use-email-code'],
+    registration: ['#password-register-submit', '#use-password', '#use-email-code'],
+    'pen-name': ['#pen-name-save'],
+  })[scenario];
   for (const width of [320, 390, 1280]) for (const theme of ['light', 'dark']) for (const scale of [100, 200]) {
     await page.viewport(width);
     const measured = await page.eval(`(async () => {
       document.documentElement.dataset.theme = '${theme}';
       document.documentElement.style.fontSize = '${scale}%';
       const panel = ${q(PANEL)}, section = document.querySelector(${path});
-      section.scrollIntoView({block: 'start', behavior: 'instant'});
+      if (${r2}) scrollTo({top: 0, behavior: 'instant'});
+      else section.scrollIntoView({block: 'start', behavior: 'instant'});
       await document.fonts.ready;
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
       const rect = section.getBoundingClientRect();
@@ -174,14 +181,28 @@ async function matrix(page, scenario, anchor, check) {
           const [a,b] = [luminance(text), luminance(background)].sort((x,y)=>y-x);
           return (a+.05)/(b+.05);
         }).filter(r => r !== null);
-      return { minContrast: contrasts.length ? Math.min(...contrasts) : null, ok: !!rect.width && !clipped && document.documentElement.scrollWidth <= innerWidth + 1 && font,
+      const entry = document.querySelector('.vk-auth-entry');
+      const logo = entry?.querySelector('.vk-brand__lockup');
+      const logoAsset = logo ? getComputedStyle(logo).backgroundImage : '';
+      const target = document.querySelector('${r2 ? actions.at(-1) : anchor}');
+      const bottomNav = document.querySelector('#bottom-navigation');
+      const barTop = bottomNav?.getClientRects().length ? bottomNav.getBoundingClientRect().top : innerHeight;
+      const fields = [...section.querySelectorAll('input:not([type=hidden])')].map(el => el.getBoundingClientRect());
+      const singleColumn = fields.every((r, i) => i === 0 ||
+        Math.abs(r.left - fields[0].left) <= 1 && r.top >= fields[i-1].bottom);
+      const ordered = ${JSON.stringify(actions ?? [])}.map(sel => document.querySelector(sel)?.getBoundingClientRect())
+        .every((r, i, rects) => r && r.width > 0 && r.height > 0 && (!i || r.top >= rects[i-1].bottom - 1));
+      return { logoAsset, logoVisible: Boolean(logo?.checkVisibility()), singleColumn, ordered,
+        minContrast: contrasts.length ? Math.min(...contrasts) : null, ok: !!rect.width && !clipped && document.documentElement.scrollWidth <= innerWidth + 1 && font,
         width: rect.width, left: rect.left, font, device: devicePixelRatio,
         focus: document.activeElement?.id,
-        partial: rect.bottom > (document.querySelector('.vk-ui-bottom-nav')?.getBoundingClientRect().top || innerHeight) };
+        partial: (target?.getBoundingClientRect().bottom ?? rect.bottom) > barTop };
     })()`);
     check(measured.ok, `${scenario} at ${width}px / ${theme} / text ${scale}%: no horizontal clipping, Be Vietnam Pro loaded (${JSON.stringify(measured)})`);
     if (measured.minContrast !== null) check(measured.minContrast >= 4.5, `${scenario}: measured label/help/error contrast ≥ 4.5:1`);
-    if ((width === 390 && scale === 100) || (width === 320 && scale === 200 && theme === 'dark') ||
+    if (r2) check(measured.logoVisible && measured.logoAsset.includes(`/brand/vpen-r1-lockup-${theme}.svg`) &&
+      measured.singleColumn && measured.ordered, `#327 ${scenario} ${width}/${theme}/${scale}: theme asset and one-column reading order`);
+    if (scenario === 'login' || (width === 390 && scale === 100) || (width === 320 && scale === 200 && theme === 'dark') ||
         (width === 1280 && scale === 100 && theme === 'light')) {
       await page.capture(`auth-password-${scenario}-${width}-${theme}-${scale}`, {
         boundary: 'native Identity + App + scratch PostgreSQL',
@@ -189,19 +210,58 @@ async function matrix(page, scenario, anchor, check) {
       });
       if (measured.partial) {
         await page.eval(`(() => {
-          const section = document.querySelector(${path}), bar = document.querySelector('.vk-ui-bottom-nav');
-          section.scrollIntoView({block:'end',behavior:'instant'});
-          const bottom = bar?.getBoundingClientRect().top || innerHeight;
-          scrollBy({top: Math.max(0, section.getBoundingClientRect().bottom - bottom + 12), behavior:'instant'});
+          const end = document.querySelector('${r2 ? actions.at(-1) : anchor}');
+          end.scrollIntoView({block:'center',behavior:'instant'});
         })()`);
         await page.capture(`auth-password-${scenario}-${width}-${theme}-${scale}-end`, {
           boundary: 'native Identity + App + scratch PostgreSQL', scenario, textScale: scale, font: 'Be Vietnam Pro',
         });
       }
     }
+    if (r2 && width <= 390 && scale === 200) {
+      check(await page.eval(`(() => {
+        const nav = document.querySelector('#bottom-navigation'), barTop = nav.getBoundingClientRect().top;
+        return ${JSON.stringify(r2 ? [...actions, '#auth-appearance'] : [])}.every(sel => {
+          const action = document.querySelector(sel);
+          action.scrollIntoView({block:'center',behavior:'instant'});
+          const r = action.getBoundingClientRect();
+          return r.top >= 0 && r.bottom <= barTop + 1 &&
+            action.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
+        });
+      })()`), `#327 ${scenario} action targets are reachable above mobile navigation: ${width}/${theme}/${scale}`);
+    }
   }
   await page.eval("document.documentElement.style.fontSize = ''; delete document.documentElement.dataset.theme");
   await page.viewport(1280);
+  await page.eval("scrollTo({top:0,behavior:'instant'})");
+}
+
+async function authR2Login(page, check) {
+  check(await page.eval(`(() => {
+    const entry = document.querySelector('.vk-auth-entry'), form = ${q(LOGIN)};
+    return entry?.contains(form) && entry.querySelectorAll('form').length === 1
+      && !document.querySelector('#page-account .vk-account-status, #pen-name-form')
+      && !form.querySelector('a[href*="quen"], [role=tablist]')
+      && document.activeElement !== form.querySelector('input')
+      && ${q('#auth-appearance')}.getAttribute('href') === '#page-appearance'
+      && ${q('#page-appearance-title')}.textContent.trim() === 'Giao diện'
+      && ${q(LOGIN + '-submit')}.textContent.trim() === 'Đăng nhập'
+      && ${q('#use-registration')}.textContent.trim() === 'Tạo tài khoản'
+      && ${q('#use-email-code')}.textContent.trim() === 'Dùng mã email';
+  })()`), '#327 login renders one R2 form, without the old guest status card, a premature pen-name step, duplicated actions, or autofocus');
+  await matrix(page, 'login', LOGIN, check);
+  await page.eval(`${q(LOGIN + '-username')}.focus()`);
+  for (const id of [LOGIN + '-password', LOGIN + '-password-reveal', LOGIN + '-submit', '#use-registration', '#use-email-code', '#auth-appearance']) {
+    await page.key('Tab');
+    check(await page.eval(`document.activeElement === ${q(id)} && document.activeElement.matches(':focus-visible')`), `#327 keyboard order and focus-visible: ${id}`);
+  }
+  await page.key('Enter');
+  await page.waitFor(`location.hash === '#page-appearance' && document.activeElement?.id === 'page-appearance'`,
+    '#327 keyboard activation focuses the retained Appearance section');
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement.matches('#page-theme input[type=radio]:focus-visible')`),
+    '#327 the next Tab reaches an Appearance radio with visible keyboard focus');
+  await page.eval(`history.replaceState(history.state, '', location.pathname)`);
 }
 
 export async function passwordAuth(page, { args, check, openPage, textContrast }) {
@@ -237,6 +297,7 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   check(await page.eval(`(() => { const p=${q(LOGIN + '-password')}; return p.type === 'password' && p.name === 'password' && p.autocomplete === 'current-password' &&
     !p.hasAttribute('maxlength') && p.getAttribute('aria-required') === 'true' && ${q(LOGIN + '-username')}.autocomplete === 'username'; })()`), 'native login field names and autocomplete, with no raw maxlength');
 
+  await authR2Login(page, check);
   await page.eval(`${q('#use-registration')}.focus()`);
   await page.key('Enter');
   await page.waitFor(`document.activeElement?.id === 'password-register-username'`, 'explicit mode switch focuses first field');
@@ -290,7 +351,9 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   registration.close();
   await page.send('Emulation.setEmulatedMedia', { features: [] });
   await page.waitFor(`${STANDING} === 'needs_principal'`, 'registration needs pen name');
-  check(await page.eval(`!${q(REGISTER + '-password')} && !${q('#password-credential')}`), 'registration disposes the secret; unbound is not active');
+  check(await page.eval(`!${q(REGISTER + '-password')} && !${q('#password-credential')} &&
+    document.querySelectorAll('.vk-auth-entry form').length === 1 && ${q('#pen-name-save')}.textContent.trim() === 'Lưu bút danh'`),
+    '#327 the server-confirmed needs_principal replaces the credentials with one pen-name form; no credential remains');
   await matrix(page, 'pen-name', '#pen-name-form', check);
   const unbound = captureRequest(page, 'GET', '/api/v1/author/works');
   await page.goto(base+'/ban-viet');

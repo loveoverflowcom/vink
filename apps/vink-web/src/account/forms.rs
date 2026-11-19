@@ -175,6 +175,17 @@ enum Mode {
     Email,
 }
 
+/// Visual header only. It does not own a session, a step counter or an input.
+#[component]
+pub(super) fn AuthHeading(title: &'static str) -> impl IntoView {
+    view! {
+        <header class="vk-auth-heading">
+            <span class="vk-brand__lockup" role="img" aria-label="Vink"></span>
+            <h2>{title}</h2>
+        </header>
+    }
+}
+
 #[component]
 pub(super) fn GuestAuth(epoch: u64) -> impl IntoView {
     let mode = RwSignal::new((Mode::Login, false));
@@ -302,6 +313,7 @@ fn GuestPassword(
     let state = session.action(operation, now);
     let can_submit = move || result.get() == GuestResult::Ready;
     view! {
+        <AuthHeading title />
         <form id=form_id class="vk-account-form" method="post" novalidate
             on:submit=move |event| {
                 event.prevent_default();
@@ -368,15 +380,17 @@ fn GuestPassword(
                 })}
             </div>
         </form>
-        <div class="vk-account-actions vk-auth-alternatives">
-            {if is_register {
-                view! { <Button id="use-password" variant=ButtonVariant::Text
-                    on_press=move |_| switch.run(Mode::Login)>"Quay lại đăng nhập"</Button> }.into_any()
-            } else {
-                view! { <Button id="use-registration" variant=ButtonVariant::Text
-                    on_press=move |_| switch.run(Mode::Register)>"Tạo tài khoản"</Button> }.into_any()
-            }}
-            <Button id="use-email-code" variant=ButtonVariant::Text
+        <div class="vk-auth-alternatives">
+            <div class="vk-auth-switch">
+                {if is_register {
+                    view! { <Button id="use-password" variant=ButtonVariant::Text
+                        on_press=move |_| switch.run(Mode::Login)>"Quay lại đăng nhập"</Button> }.into_any()
+                } else {
+                    view! { <span>"Chưa có tài khoản?"</span> <Button id="use-registration" variant=ButtonVariant::Text
+                        on_press=move |_| switch.run(Mode::Register)>"Tạo tài khoản"</Button> }.into_any()
+                }}
+            </div>
+            <Button id="use-email-code" variant=ButtonVariant::Outlined
                 on_press=move |_| switch.run(Mode::Email)>"Dùng mã email"</Button>
         </div>
     }
@@ -457,6 +471,7 @@ fn EmailSignIn(
     let send_state = session.action(Operation::EmailChallenge, now);
     let complete_state = session.action(Operation::EmailCode, now);
     view! {
+        <AuthHeading title="Dùng mã email" />
         {move || if entered_code.get() {
             view! {
                 <form id="sign-in-code" class="vk-account-form" method="post" novalidate
@@ -547,7 +562,7 @@ fn EmailSignIn(
                 </form>
             }.into_any()
         }}
-        <div class="vk-account-actions vk-auth-alternatives">
+        <div class="vk-auth-alternatives">
             <Button id="use-password" variant=ButtonVariant::Text
                 on_press=move |_| switch.run(Mode::Login)>"Dùng mật khẩu"</Button>
         </div>
@@ -761,6 +776,7 @@ pub(super) fn PenName(epoch: u64) -> impl IntoView {
     let error = RwSignal::new(None);
     let state = session.action(Operation::PenName, now);
     view! {
+        <AuthHeading title="Chọn bút danh" />
         <form id="pen-name-form" class="vk-account-form" method="post" novalidate
             on:submit=move |event| {
                 event.prevent_default();
@@ -786,7 +802,6 @@ pub(super) fn PenName(epoch: u64) -> impl IntoView {
                 <Button id="pen-name-save" variant=ButtonVariant::Filled kind=ButtonKind::Submit state=state>"Lưu bút danh"</Button>
             </div>
         </form>
-        <SignOut epoch />
     }
 }
 

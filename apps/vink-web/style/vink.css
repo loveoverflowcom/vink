@@ -233,7 +233,6 @@ a {
 .vk-account-error { color: var(--vk-error); }
 /* Every field in this surface is required; the native accessibility state carries that fact. */
 .vk-account-form .vk-ui-field__required { display: none; }
-.vk-auth-alternatives { row-gap: 0; }
 /* The button's reserved spinner and aria-describedby carry progress without moving the form. */
 .vk-account .vk-ui-action:has(> [aria-busy="true"]) > .vk-ui-action__note {
   position: absolute;
@@ -254,6 +253,66 @@ a {
   .vk-ui-scaffold:not([data-hide-bar]) :is(.vk-me .vk-ui-choice__input, .vk-account :is(input, button, a)) {
     scroll-margin-block-end: calc(var(--vk-ui-bar-height, 5rem) + 16px);
   }
+}
+
+/* Auth Web R2. The form owns its fields and actions; only Tôi owns the viewport and rail. */
+.vk-auth-entry {
+  display: grid; gap: var(--vk-space-6); inline-size: min(100%, 24rem);
+  min-inline-size: 0; overflow-wrap: anywhere;
+}
+.vk-auth-heading { display: grid; justify-items: center; gap: var(--vk-space-6); text-align: center; }
+.vk-auth-heading .vk-brand__lockup { height: 2.5rem; width: calc(2.5rem * 1018 / 410); max-width: 100%; }
+.vk-auth-heading h2 {
+  margin: 0; font: var(--vk-type-display-weight) clamp(2rem, 1.8rem + .5vw, 2.25rem)/var(--vk-type-display-line-height) var(--vk-font-reading);
+  letter-spacing: var(--vk-type-display-tracking);
+}
+.vk-auth-entry .vk-account-form { inline-size: 100%; }
+.vk-auth-entry .vk-account-actions, .vk-auth-alternatives { display: grid; gap: var(--vk-space-3); }
+.vk-auth-entry .vk-account-actions { margin-block-start: var(--vk-space-1); }
+.vk-auth-entry :is(.vk-account-actions, .vk-auth-alternatives) > .vk-ui-action { align-items: stretch; }
+.vk-auth-switch {
+  display: flex; justify-content: center; align-items: center; flex-wrap: wrap;
+  gap: 0 var(--vk-space-1); text-align: center; color: var(--vk-on-surface-variant);
+  font-size: var(--vk-type-label-size);
+}
+.vk-auth-switch .vk-ui-button { padding-inline: var(--vk-space-2); }
+.vk-main:has(> .vk-me .vk-auth-entry) {
+  max-inline-size: none; padding-inline: clamp(16px, 5vw, 32px);
+}
+.vk-me:has(.vk-auth-entry) { position: relative; padding-block-start: 0; }
+.vk-me:has(.vk-auth-entry) > #me-title {
+  position: absolute; inline-size: 1px; block-size: 1px; clip-path: inset(50%); overflow: hidden;
+}
+.vk-me:has(.vk-auth-entry) > :not(#page-account, #me-title) {
+  inline-size: min(100%, 54rem); margin-inline: auto;
+}
+.vk-me .vk-account-session:has(.vk-auth-entry) {
+  display: flex; flex-direction: column; align-items: center; gap: var(--vk-space-6);
+  min-block-size: 100svh; padding-block: clamp(32px, 11.5svh, 100px) var(--vk-space-6);
+}
+.vk-me .vk-auth-heading { margin-block-end: var(--vk-space-6); }
+.vk-me #auth-appearance { text-align: center; text-decoration: underline; }
+.vk-me .vk-auth-exit { margin-block-start: auto; padding-block-start: var(--vk-space-6); }
+@media (min-width: 760px) {
+  .vk-me #auth-appearance { position: absolute; inset-block-start: var(--vk-space-2); inset-inline-end: 0; }
+}
+@media (max-width: 759px) {
+  .vk-me .vk-account-session:has(.vk-auth-entry) {
+    min-block-size: calc(100svh - var(--vk-ui-bar-height, 5rem));
+    padding-block-start: clamp(24px, 9.5svh, 80px);
+  }
+  .vk-me .vk-account-session:has(#pen-name-form) {
+    --vk-pen-entry-top: clamp(24px, 13.5svh, 112px);
+    padding-block-start: var(--vk-pen-entry-top);
+  }
+  /* Keep the mobile onboarding canvas about choosing a name. Session utilities remain
+   * in normal keyboard/scroll order after it, without a clipped or fixed-height form. */
+  .vk-me .vk-auth-entry:has(#pen-name-form) {
+    align-content: start;
+    min-block-size: calc(100svh - var(--vk-ui-bar-height, 5rem) - var(--vk-pen-entry-top));
+  }
+  .vk-me .vk-auth-heading { margin-block-end: var(--vk-space-4); gap: calc(var(--vk-space-4) + var(--vk-space-1)); }
+  .vk-me .vk-auth-heading .vk-brand__lockup { height: 2.25rem; width: calc(2.25rem * 1018 / 410); }
 }
 
 .vk-main {
