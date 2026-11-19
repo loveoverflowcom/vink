@@ -978,6 +978,12 @@ pub enum AuthorProjection {
     Unsupported,
 }
 
+impl AuthorProjection {
+    pub(crate) fn is_linked(&self) -> bool {
+        matches!(self, Self::Linked(_))
+    }
+}
+
 impl PublicAuthorRef {
     pub fn valid_href(&self) -> Option<&str> {
         let path = self.href.strip_prefix("/@")?;

@@ -26,7 +26,7 @@ fn byline(
     instant: &str,
     unverified: bool,
 ) -> Author {
-    let (name, profile) = if unverified && author.is_some() {
+    let (name, profile) = if unverified && author.is_some_and(AuthorProjection::is_linked) {
         author_name("", Some(&AuthorProjection::Unsupported))
     } else {
         author_name(name, author)

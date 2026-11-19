@@ -1,7 +1,7 @@
 //! TAG-PR-06 page glue. Shared chips/bylines render facts; this module owns GET/URL/focus.
 use super::{ResponseStatus, Unavailable, drop_unnamed_submitter, focus_recovery};
 use crate::api::{self, LoadError};
-use crate::contract::{PublicTagDto, TagDto, TagList, WorkList};
+use crate::contract::{AuthorProjection, PublicTagDto, TagDto, TagList, WorkList};
 use crate::discovery::{ExploreContext, ExploreQuery, requested_slug, tag_href};
 use crate::public_reads;
 use crate::ui::{
@@ -916,7 +916,8 @@ fn ResultRow(
                 #[cfg(feature = "hydrate")]
                 let navigate = navigate.clone();
                 let query = context.query.q.clone();
-                let unverified = cached_unverified.get();
+                let unverified = work.author.as_ref().is_some_and(AuthorProjection::is_linked)
+                    && cached_unverified.get();
                 // Only a verified pen name gets initials; placeholders keep the neutral mark.
                 let named = !unverified
                     && matches!(work.author, None | Some(crate::contract::AuthorProjection::Linked(_)));

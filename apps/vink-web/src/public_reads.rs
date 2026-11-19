@@ -58,11 +58,18 @@ impl Snapshot {
         }
     }
 
-    #[cfg(feature = "hydrate")]
-    fn carries_attribution(&self) -> bool {
+    fn carries_linked_attribution(&self) -> bool {
+        use crate::contract::AuthorProjection;
         match self {
-            Self::Works(list) => list.works.iter().any(|card| card.author.is_some()),
-            Self::Publication(publication) => publication.author.is_some(),
+            Self::Works(list) => list.works.iter().any(|card| {
+                card.author
+                    .as_ref()
+                    .is_some_and(AuthorProjection::is_linked)
+            }),
+            Self::Publication(publication) => publication
+                .author
+                .as_ref()
+                .is_some_and(AuthorProjection::is_linked),
             Self::Control(_) => false,
         }
     }
@@ -1158,7 +1165,7 @@ mod browser {
 
     pub fn follow(key: PublicKey, initial: Snapshot) -> Memo<Option<Status<Snapshot>>> {
         let at = now();
-        let has_attribution = initial.carries_attribution();
+        let has_linked_attribution = initial.carries_linked_attribution();
         with(|owner| {
             owner
                 .coord
@@ -1169,7 +1176,9 @@ mod browser {
         // with the server HTML.
         let mounted = key.clone();
         Effect::new(move |_| {
-            let trigger = if has_attribution && cached_unverified(&mounted) {
+            // Only a link requires an immediate authority read on reentry. Unlinked
+            // labels and tombstones follow the normal public snapshot schedule.
+            let trigger = if has_linked_attribution && cached_unverified(&mounted) {
                 Trigger::Manual
             } else {
                 Trigger::Signal
@@ -1448,6 +1457,15 @@ mod tests {
         let key = PublicKey::Works(ExploreQuery::default());
         let mut stale = sample_list(&["w1"]);
         let legacy_size = super::snapshot_weight_bytes(&stale);
+        assert!(!stale.carries_linked_attribution());
+        let mut unavailable = stale.clone();
+        let Snapshot::Works(list) = &mut unavailable else {
+            unreachable!()
+        };
+        list.works[0].author = Some(AuthorProjection::Unavailable {
+            label: "Bút danh cũ".into(),
+        });
+        assert!(!unavailable.carries_linked_attribution());
         let Snapshot::Works(list) = &mut stale else {
             unreachable!()
         };
@@ -1458,6 +1476,7 @@ mod tests {
         };
         let reference_bytes = author.pen_name.len() + author.handle.len() + author.href.len();
         list.works[0].author = Some(AuthorProjection::Linked(author));
+        assert!(stale.carries_linked_attribution());
         assert!(super::snapshot_weight_bytes(&stale) >= legacy_size + reference_bytes);
 
         let mut read = Coordinator::new(Policy::V1);
