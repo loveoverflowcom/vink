@@ -5,5 +5,9 @@
     "handle": "ngay-nang",
     "href": "/@ngay-nang"
   },
-  "has_public_works": false
+  "has_public_works": false,
+  "publications": {
+    "state": "page",
+    "works": []
+  }
 }

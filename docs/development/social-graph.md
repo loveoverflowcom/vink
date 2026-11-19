@@ -123,8 +123,45 @@ Mỗi lần cấp thử tối đa 16 tên. Địa chỉ chỉ mở đọc sau đ
 Writer cũ còn hoạt động mà tạo binding thiếu hồ sơ sẽ đóng lại cổng đọc đến lần backfill
 kế tiếp. Khi quay lui phiên bản ứng dụng, giữ nguyên migration, reservations, quota và receipts.
 
-**Cho #292.** Từ `PgStore::resolve_handle`, nhánh `Current` trả `AuthorRef` với bút danh
-hiện hành, handle và href. Projection công khai hiện có thêm fact “có tác phẩm công khai”
-để hiển thị đúng trạng thái trống. #292 sở hữu chỉnh thông tin, quyền từng trường và nội dung
-hồ sơ mở rộng. #297 có thể gọi `persistence::handle::retire` trong transaction xóa App đã
-xác minh. Điều phối xóa tài khoản qua Identity/App vẫn thuộc Account.
+**Bàn giao lifecycle.** #297 có thể gọi `persistence::handle::retire` trong transaction xóa App
+đã xác minh. Điều phối xóa tài khoản qua Identity/App vẫn thuộc Account.
+
+## Hồ sơ và bút danh #292/#293
+
+- **Sản phẩm.** Các mặc định và ownership SOC theo #288. `USER-01@r1` còn `DEFERRED`,
+  `USER-01@r2` còn `PENDING`. SOC-OPEN-01 giữ phần công khai lại một trường, SOC-OPEN-04
+  giữ phạm vi giá trị Avatar và ảnh. Giao diện công khai dùng dấu chữ hiện có.
+- **Kiến trúc.** CHOICE-05 dùng SSR công khai và reads riêng sau hydrate vì cả Reader và
+  Tôi đã có hai ranh giới này. App chiếu một snapshot cho API và SSR. Version hồ sơ riêng
+  bao bọc Bio, tám policy và bút danh. Giao dịch lấy khóa Principal trước, cùng fence dùng
+  bởi rename Handle, suspension và thu hồi Profile. VDR-SOCIAL-CONTRACT vẫn `PENDING`.
+- **Triển khai.** `core`, `persistence-api`, `web` cho phần đã chốt. Kho App sở hữu
+  [ghi/đọc Profile](../../services/vink-app/src/persistence/profile.rs) và
+  [projection attribution](../../services/vink-app/migrations/20261125010000_public_author_attribution.sql).
+  Mọi tên hiển thị lấy từ `principals.display_name`. #294 có thể dùng
+  [ProfilePolicies](../../services/vink-app/src/domain/profile.rs) để đánh giá list/count
+  độc lập. [Hợp đồng và fixtures](../../services/vink-app/contracts/http/v1/social-graph.md#hồ-sơ-và-bút-danh-292293)
+  định nghĩa cả projection công khai lẫn phiên bản được chủ sửa.
+- **Web.** [Tôi → Chỉnh hồ sơ](../../apps/vink-web/src/pages/profile.rs) giữ nháp trong RAM
+  của generation đang xác nhận. Scope riêng dừng ngay khi nghe dấu hiệu đổi cookie. Sau lost
+  ACK, đọc trạng thái đúng scope rồi so version và payload. [Hồ sơ công khai](../../apps/vink-web/src/pages/handle.rs)
+  đưa Bio và danh sách bài vào cùng read. Focus, Back và thông báo đổi hồ sơ làm mới quyền
+  đọc. Generation của read loại response đã cũ. READ-02 tính thêm byte của attribution,
+  kiểm lại trước khi vẽ ref từ snapshot mở lại, làm hết hiệu lực response đang bay và
+  gỡ attribution khỏi snapshot RAM khi nhận đổi hồ sơ. Cổng IndexedDB vẫn đóng.
+- **UI.** [LayoutSpec Social r2](../design/social-289.md) là nguồn của quyền, trạng thái và
+  hành trình. `fidelity: NO_APPROVED_REFERENCE`. [Ghi chú Khám phá r1](https://drive.google.com/file/d/1HH4FOCWNHjLbsJJ4Mhpv_f14qhhOXvb0/view)
+  bổ sung phép kiểm bàn phím và Back trong query/tag trên WorkCard.
+  [Focused browser test](../../apps/vink-web/e2e/author-profile-smoke.mjs) chạy trong
+  `verify web --scenario password` và seed hai tác giả bằng phiên thật cùng corpus bài/bình luận
+  kiểm soát trong database tạm.
+
+### Mở và quay lui
+
+Triển khai hai migration bổ sung trên schema App đã qua #290. Dùng App có ledger hiện hành
+để phục vụ các route và projection. Khi tạm dừng tính năng, giữ columns, dữ liệu, version,
+reservation và receipts. Có thể ẩn form/link hoặc ngừng phục vụ projection mở rộng trong bản
+App vẫn kiểm quyền mới. Giữ authz và redaction tại provider cùng header revalidate. Tiếp tục
+xóa các snapshot đã được biết là cũ. Build trước migration không qua readiness trên ledger
+mở rộng, và provider byline cũ có thể phục vụ tên trước thu hồi nếu cố chạy lại. Backout an
+toàn dùng bản có cả migration lẫn redaction, ưu tiên tắt entry form/links.

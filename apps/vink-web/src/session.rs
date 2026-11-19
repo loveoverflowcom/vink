@@ -81,6 +81,14 @@ impl SessionOwner {
             .map(|principal| format!("{principal}/{}", self.generation))
     }
 
+    /// Profile forms stop applying private answers as soon as a cookie change is signalled.
+    pub(crate) fn profile_scope(&self) -> Option<String> {
+        if self.session_may_have_changed {
+            return None;
+        }
+        self.scope()
+    }
+
     /// A signal about the browser session is stronger than a focus refresh. A new cookie can
     /// represent the same principal; fence that principal's earlier private operations once
     /// the server has confirmed who is now acting.

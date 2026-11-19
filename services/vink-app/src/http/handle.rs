@@ -14,7 +14,6 @@ pub(super) fn routes() -> Router<AppState> {
     Router::new()
         .route("/me/handle", get(own).post(write))
         .route("/me/handle/receipts/{id}", get(receipt))
-        .route("/authors/{name}", get(resolve))
         .layer(DefaultBodyLimit::max(2048))
         .layer(SetResponseHeaderLayer::overriding(
             header::CACHE_CONTROL,
@@ -71,17 +70,5 @@ async fn receipt(
             .store()
             .handle_receipt(actor.ok_or(ApiError::Unauthenticated)?, id)
             .await?,
-    ))
-}
-async fn resolve(
-    State(s): State<AppState>,
-    Path(name): Path<String>,
-) -> Result<Json<Resolution>, ApiError> {
-    Ok(Json(
-        s.vink
-            .store()
-            .resolve_handle(&name)
-            .await
-            .map_err(|_| ApiError::DependencyUnavailable)?,
     ))
 }

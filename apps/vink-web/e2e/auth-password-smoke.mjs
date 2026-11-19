@@ -3,6 +3,7 @@
 // a refusal; no synthetic success is used. Don't log request bodies, credentials or cookies.
 
 import { authorHandles } from './author-handle-smoke.mjs';
+import { authorProfiles } from './author-profile-smoke.mjs';
 import { EDITOR_READY, STANDING, account, cookies, fabricate, fill, mailedCode, openAccount, q, signIn, signOut } from './auth-smoke.mjs';
 import { deskGuest } from './desk-empty-smoke.mjs';
 
@@ -282,7 +283,6 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   await page.click('.vk-desk-access a[href="/toi"]');
   const A = await name(page, penA);
   check(A.display_name === penA && A.display_name !== userA, 'the server confirms a separate pen name');
-  await authorHandles(page, {base,openPage,check,holdAnswer,textContrast});
   const draftA = await createDraft(page, '[Mẫu] Nháp tạo sau đăng ký');
   await expiredDesk(page, {base, check, openPage});
   await openAccount(page, base, 'active');
@@ -399,6 +399,18 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
     bodyText(await other.draft(draftB)) === DRAFT_TEXT &&
     (await read(other, `/api/v1/drafts/${draftA}`)).status === 404,
     'password reads the prior draft of the email account; another principal’s draft remains inaccessible');
+
+  await authorProfiles(page, other, {
+    base, openPage, check, holdAnswer,
+    switchActor: async (actor) => {
+      await openAccount(page, base, 'active');
+      await signOut(page, base);
+      await credentials(page, LOGIN, actor === 'a' ? userA : userB, actor === 'a' ? SECRET_A : SECRET_B);
+      await page.click(LOGIN + '-submit');
+      await page.waitFor(`${STANDING} === 'active'`, 'replacement cookie confirmed');
+    },
+  });
+  await authorHandles(page, {base,openPage,check,holdAnswer,textContrast});
 
   console.log('Auth password: tab switch invalidates a pending credential status and prior form:');
   const tab = await openPage();

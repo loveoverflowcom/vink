@@ -102,6 +102,8 @@ pub struct WorkCard {
     #[serde(default)]
     pub excerpt: Option<String>,
     pub author_display_name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub author: Option<AuthorProjection>,
     pub published_at: String,
     pub tags: Vec<PublicTagDto>,
 }
@@ -112,6 +114,8 @@ pub struct Publication {
     pub revision_id: String,
     pub title: String,
     pub author_display_name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub author: Option<AuthorProjection>,
     pub published_at: String,
     pub document: DocumentDto,
     pub tags: Vec<PublicTagDto>,
@@ -268,6 +272,8 @@ pub enum PublicRootView {
 pub struct PublicComment {
     pub comment_id: String,
     pub author_display_name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub author: Option<AuthorProjection>,
     pub body: String,
     pub created_at: String,
     pub reply_to: Option<ReplyTo>,
@@ -284,6 +290,7 @@ impl From<PublicComment> for CommentDto {
             comment_id: c.comment_id,
             visibility: "public".into(),
             author_display_name: c.author_display_name,
+            author: c.author,
             body: c.body,
             created_at: c.created_at,
             reply_to: c.reply_to,
@@ -417,6 +424,8 @@ pub struct CommentDto {
     /// `public`, `own_pending` or `own_rejected`; kept as text so a new value is not a crash.
     pub visibility: String,
     pub author_display_name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub author: Option<AuthorProjection>,
     pub body: String,
     pub created_at: String,
     pub reply_to: Option<ReplyTo>,
@@ -432,6 +441,8 @@ pub enum ReplyTo {
     Reply {
         comment_id: String,
         author_display_name: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        author: Option<AuthorProjection>,
     },
     /// Shown as “a comment that is no longer visible”, never as deleted by its writer.
     Unavailable,
@@ -954,6 +965,35 @@ pub fn classify_public_read_bytes(status: u16, body: Option<&[u8]>) -> crate::fr
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum AuthorProjection {
+    Linked(PublicAuthorRef),
+    Deleted {
+        label: String,
+    },
+    Unavailable {
+        label: String,
+    },
+    #[serde(other)]
+    Unsupported,
+}
+
+impl PublicAuthorRef {
+    pub fn valid_href(&self) -> Option<&str> {
+        let path = self.href.strip_prefix("/@")?;
+        (path == self.handle
+            && path.len() <= 40
+            && path.split('-').all(|group| {
+                !group.is_empty()
+                    && group
+                        .bytes()
+                        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+            }))
+        .then_some(&self.href)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PublicAuthorRef {
     pub pen_name: String,
     pub handle: String,
@@ -966,6 +1006,10 @@ pub enum AuthorResolution {
     Current {
         author: PublicAuthorRef,
         has_public_works: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        bio: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        publications: Option<ProfileWorks>,
     },
     Alias {
         href: String,
@@ -973,6 +1017,25 @@ pub enum AuthorResolution {
     Gone,
     Missing,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "state", rename_all = "snake_case")]
+pub enum ProfileWorks {
+    Page {
+        works: Vec<ProfileWork>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        next_cursor: Option<String>,
+    },
+    Restart,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProfileWork {
+    pub work_id: String,
+    pub title: String,
+}
+
+pub mod profile;
 
 #[cfg(test)]
 mod tests {
@@ -992,6 +1055,39 @@ mod tests {
         let value: T = serde_json::from_value(json.clone()).unwrap();
         assert_eq!(serde_json::to_value(&value).unwrap(), json, "{name}");
         value
+    }
+
+    #[test]
+    fn author_contract_keeps_current_href_distinct_from_deleted_and_legacy() {
+        let projections: Vec<AuthorProjection> = round_trip("author.attribution.json");
+        let (name, link) = crate::ui::adapters::author_name("legacy", Some(&projections[0]));
+        assert_eq!(name, "Nhật Ánh");
+        assert_eq!(link.unwrap().href, "/@ngay-nang");
+        assert_eq!(
+            crate::ui::adapters::author_name("old private name", Some(&projections[1])),
+            ("Tài khoản đã xóa".into(), None)
+        );
+        assert_eq!(
+            crate::ui::adapters::author_name("legacy", Some(&projections[2])),
+            ("Tên tác giả cũ".into(), None)
+        );
+        assert_eq!(
+            crate::ui::adapters::author_name("legacy", None),
+            ("legacy".into(), None)
+        );
+        let forged = AuthorProjection::Linked(PublicAuthorRef {
+            pen_name: name,
+            handle: "ngay-nang".into(),
+            href: "/@ngay-nang?private=true".into(),
+        });
+        assert!(
+            crate::ui::adapters::author_name("", Some(&forged))
+                .1
+                .is_none()
+        );
+        let own: profile::OwnProfile = round_trip("author.profile.own.json");
+        assert_eq!(own.bio.as_deref(), Some("Một dòng riêng"));
+        assert_eq!(own.policies.bio, profile::Visibility::Owner);
     }
 
     #[test]

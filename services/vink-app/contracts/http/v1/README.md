@@ -573,8 +573,8 @@ the session credential: they travel only in `__Host-` cookies (`Path=/; Secure; 
 - Enrollment counts five challenge requests and 15 completion requests per client network per
   15 minutes. Identity applies its own mail ceilings and attempt limits. Auth request bodies are
   bounded at 32 KiB. Password fields may contain at most 4096 bytes before NFKC normalization.
-- Email change for end users and profile/pen-name editing have no route yet (Identity's contract
-  has email change).
+- End-user email change remains in the Identity contract. Profile and pen-name edits use the
+  [App Profile routes](social-graph.md#hồ-sơ-và-bút-danh-292293).
 
 ## Errors
 

@@ -15,6 +15,7 @@ use crate::application::endorsement::{
     Capability, EndorsementOutcomeView, EndorsementResult, EndorsementSummaries, OwnEndorsement,
     OwnEndorsements, Summary,
 };
+use crate::application::profile::{AuthorAttribution, DELETED_AUTHOR_LABEL};
 use crate::application::taxonomy::{DraftWorkTags, SavedWorkTags};
 use crate::application::{PublicWork, PublicWorkSummary, SavedDraft};
 use crate::domain::discussion::lifecycle::{CommentState, Review};
@@ -71,12 +72,36 @@ pub struct PublicTag {
     pub slug: String,
 }
 
+/// Additive attribution in HTTP v1. Legacy labels come from the same projection.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum AuthorProjection {
+    Linked(crate::application::handle::AuthorRef),
+    Deleted { label: &'static str },
+    Unavailable { label: String },
+}
+
+impl From<&AuthorAttribution> for AuthorProjection {
+    fn from(author: &AuthorAttribution) -> Self {
+        match author {
+            AuthorAttribution::Linked(author) => Self::Linked(author.clone()),
+            AuthorAttribution::Deleted => Self::Deleted {
+                label: DELETED_AUTHOR_LABEL,
+            },
+            AuthorAttribution::Unavailable(label) => Self::Unavailable {
+                label: label.clone(),
+            },
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct WorkCard {
     pub work_id: String,
     pub title: String,
     pub excerpt: Option<String>,
     pub author_display_name: String,
+    pub author: AuthorProjection,
     #[serde(with = "time::serde::rfc3339")]
     pub published_at: OffsetDateTime,
     /// Form first, then themes, in the snapshot's order.
@@ -89,6 +114,7 @@ pub struct Publication {
     pub revision_id: String,
     pub title: String,
     pub author_display_name: String,
+    pub author: AuthorProjection,
     #[serde(with = "time::serde::rfc3339")]
     pub published_at: OffsetDateTime,
     pub document: DocumentData,
@@ -209,6 +235,7 @@ pub struct CommentView1 {
     /// `public`, `own_pending` or `own_rejected`.
     pub visibility: &'static str,
     pub author_display_name: String,
+    pub author: AuthorProjection,
     pub body: String,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
@@ -227,6 +254,7 @@ pub enum ReplyTo {
     Reply {
         comment_id: String,
         author_display_name: String,
+        author: AuthorProjection,
     },
     Unavailable,
 }
@@ -281,6 +309,7 @@ pub enum PublicRootView {
 pub struct PublicComment {
     pub comment_id: String,
     pub author_display_name: String,
+    pub author: AuthorProjection,
     pub body: String,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
@@ -959,7 +988,8 @@ impl From<&PublicWorkSummary> for WorkCard {
             work_id: work.work_id.to_string(),
             title: work.title.as_str().to_string(),
             excerpt: work.excerpt.clone(),
-            author_display_name: work.author_display_name.clone(),
+            author_display_name: work.author.label().to_owned(),
+            author: (&work.author).into(),
             published_at: work.published_at,
             tags: work.tags.iter().map(PublicTag::from).collect(),
         }
@@ -1002,7 +1032,8 @@ impl From<&PublicWork> for Publication {
             work_id: work.work_id.to_string(),
             revision_id: work.revision_id.to_string(),
             title: work.content.title().as_str().to_string(),
-            author_display_name: work.author_display_name.clone(),
+            author_display_name: work.author.label().to_owned(),
+            author: (&work.author).into(),
             published_at: work.published_at,
             document: work.content.document().to_data(),
             tags: work.tags.iter().map(PublicTag::from).collect(),
@@ -1019,13 +1050,12 @@ impl From<crate::application::ReaderWork> for ReaderResponse {
             crate::application::ReaderWork::Hidden { work_id } => Self::Hidden {
                 work_id: work_id.to_string(),
             },
-            crate::application::ReaderWork::ReviewWithdrawn {
-                work_id,
-                author_display_name,
-            } => Self::ReviewWithdrawn {
-                work_id: work_id.to_string(),
-                author_name: author_display_name,
-            },
+            crate::application::ReaderWork::ReviewWithdrawn { work_id, author } => {
+                Self::ReviewWithdrawn {
+                    work_id: work_id.to_string(),
+                    author_name: author.label().to_owned(),
+                }
+            }
         }
     }
 }
@@ -1039,13 +1069,12 @@ impl From<&crate::application::ReaderWork> for ReaderResponse {
             crate::application::ReaderWork::Hidden { work_id } => Self::Hidden {
                 work_id: work_id.to_string(),
             },
-            crate::application::ReaderWork::ReviewWithdrawn {
-                work_id,
-                author_display_name,
-            } => Self::ReviewWithdrawn {
-                work_id: work_id.to_string(),
-                author_name: author_display_name.clone(),
-            },
+            crate::application::ReaderWork::ReviewWithdrawn { work_id, author } => {
+                Self::ReviewWithdrawn {
+                    work_id: work_id.to_string(),
+                    author_name: author.label().to_owned(),
+                }
+            }
         }
     }
 }
@@ -1113,7 +1142,8 @@ impl CommentView1 {
                 // The store never lists unavailable comments; keep the mapping total.
                 CommentView::Unavailable => "unavailable",
             },
-            author_display_name: item.author.display_name.clone(),
+            author_display_name: item.author.attribution.label().to_owned(),
+            author: (&item.author.attribution).into(),
             body: item.body.clone(),
             created_at: item.created_at,
             reply_to,
@@ -1165,12 +1195,13 @@ impl DiscussionPage {
     }
 }
 
-fn reply_to(context: ReplyContext, context_author: Option<&String>) -> ReplyTo {
+fn reply_to(context: ReplyContext, context_author: Option<&AuthorAttribution>) -> ReplyTo {
     match (context, context_author) {
         (ReplyContext::Root, _) => ReplyTo::Root,
-        (ReplyContext::Reply(id), Some(name)) => ReplyTo::Reply {
+        (ReplyContext::Reply(id), Some(author)) => ReplyTo::Reply {
             comment_id: id.to_string(),
-            author_display_name: name.clone(),
+            author_display_name: author.label().to_owned(),
+            author: author.into(),
         },
         // A context without a public writer name is reported as unavailable, never guessed.
         (ReplyContext::Reply(_), None) | (ReplyContext::Unavailable, _) => ReplyTo::Unavailable,
@@ -1182,7 +1213,8 @@ impl PublicComment {
     fn new(item: &CommentItem, is_root: bool) -> Self {
         Self {
             comment_id: item.id.to_string(),
-            author_display_name: item.author.display_name.clone(),
+            author_display_name: item.author.attribution.label().to_owned(),
+            author: (&item.author.attribution).into(),
             body: item.body.clone(),
             created_at: item.created_at,
             reply_to: (!is_root).then(|| reply_to(item.context, item.context_author.as_ref())),
@@ -1323,7 +1355,7 @@ impl From<&ModerationQueue> for ModerationQueueResponse {
                     work_id: item.work_id.to_string(),
                     work_title: item.work_title.clone(),
                     kind: if item.is_root { "root" } else { "reply" },
-                    author_display_name: item.writer.display_name.clone(),
+                    author_display_name: item.writer.attribution.label().to_owned(),
                     body: item.body.clone(),
                     created_at: item.created_at,
                     version: item.version.get(),
@@ -1643,6 +1675,48 @@ mod tests {
     }
 
     #[test]
+    fn author_contract_matches_profile_and_attribution_fixtures() {
+        use crate::application::profile::OwnProfile;
+        use crate::domain::profile::{ProfilePolicies, Visibility};
+        assert_matches(
+            "author.attribution.json",
+            &[
+                AuthorProjection::from(&AuthorAttribution::project(
+                    "Nhật Ánh".into(),
+                    Some("ngay-nang".into()),
+                    false,
+                )),
+                AuthorProjection::from(&AuthorAttribution::project(
+                    "Tên đã thu hồi".into(),
+                    Some("ten-da-thu-hoi".into()),
+                    true,
+                )),
+                AuthorProjection::from(&AuthorAttribution::project(
+                    "Tên tác giả cũ".into(),
+                    None,
+                    false,
+                )),
+            ],
+        );
+        assert_matches(
+            "author.profile.own.json",
+            &OwnProfile {
+                principal_id: "11111111-1111-4111-8111-111111111111".parse().unwrap(),
+                pen_name: "Nhật Ánh".into(),
+                handle: "ngay-nang".into(),
+                handle_setup_complete: true,
+                remaining_handle_changes: 1,
+                profile_version: 3,
+                bio: Some("Một dòng riêng".into()),
+                policies: ProfilePolicies {
+                    bio: Visibility::Owner,
+                    ..ProfilePolicies::default()
+                },
+            },
+        );
+    }
+
+    #[test]
     fn public_responses_match_fixtures() {
         // The home page: the first page of the unfiltered search, an untagged publication.
         let page = WorkPage {
@@ -1652,7 +1726,7 @@ mod tests {
                 work_id: work(),
                 title: title(),
                 excerpt: Some("Mưa rơi nhẹ qua phố cũ.".into()),
-                author_display_name: "Tác giả mẫu (dữ liệu phát triển)".into(),
+                author: "Tác giả mẫu (dữ liệu phát triển)".into(),
                 published_at: AT,
                 tags: vec![],
             }],
@@ -1804,7 +1878,7 @@ mod tests {
         fn person(n: u128, name: &str) -> AuthorName {
             AuthorName {
                 id: PrincipalId::from_uuid(Uuid::from_u128(n)),
-                display_name: name.into(),
+                attribution: name.into(),
             }
         }
 
@@ -2639,7 +2713,7 @@ mod tests {
                 work_id: WorkId::parse(&format!("33333333-3333-4333-8333-{n:012}")).unwrap(),
                 title: Title::parse(title).unwrap(),
                 excerpt: excerpt.map(str::to_string),
-                author_display_name: author.clone(),
+                author: author.clone().into(),
                 published_at: AT - time::Duration::minutes(minutes),
                 tags,
             };
@@ -2696,7 +2770,7 @@ mod tests {
                 work_id: work(),
                 revision_id: RevisionId::parse("44444444-4444-4444-8444-444444444444").unwrap(),
                 content: content(),
-                author_display_name: "Tác giả mẫu (dữ liệu phát triển)".into(),
+                author: "Tác giả mẫu (dữ liệu phát triển)".into(),
                 published_at: AT,
                 tags: vec![tan_van(), ky_uc()],
             };

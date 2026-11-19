@@ -313,6 +313,8 @@ pub fn AuthorByline(
     /// A profile URL the caller has verified; absent means plain text, never an invented route.
     #[prop(optional, into)]
     href: Option<String>,
+    #[prop(optional_no_strip)] link_id: Option<String>,
+    #[prop(optional_no_strip)] link_label: Option<String>,
     #[prop(optional)] meta: Vec<String>,
     #[prop(default = AvatarSize::Feed)] size: AvatarSize,
 ) -> impl IntoView {
@@ -338,7 +340,8 @@ pub fn AuthorByline(
             />
             <div class="vk-ui-byline__text">
                 {match href {
-                    Some(href) => view! { <a class="vk-ui-byline__name vk-ui-link" href=href>{shown_name}</a> }.into_any(),
+                    Some(href) => view! { <a class="vk-ui-byline__name vk-ui-link" id=link_id aria-label=link_label
+                        data-profile-return="true" href=href>{shown_name}</a> }.into_any(),
                     None => view! { <span class="vk-ui-byline__name" data-blank=blank.then_some("true")>{shown_name}</span> }.into_any(),
                 }}
                 {(!meta.is_empty()).then(|| view! { <span class="vk-ui-byline__meta">{meta.join(" · ")}</span> })}

@@ -123,7 +123,7 @@ pub struct PublicCardFacts {
     pub work_id: WorkId,
     pub title: Title,
     pub excerpt: Option<String>,
-    pub author_display_name: String,
+    pub author: crate::application::profile::AuthorAttribution,
     pub published_at: OffsetDateTime,
     /// The metadata snapshot bound in the same publication row; `None`: published without one.
     pub snapshot: Option<MetadataSnapshot>,
@@ -161,7 +161,7 @@ pub struct PublicationFacts {
     pub work_id: WorkId,
     pub revision_id: RevisionId,
     pub content: TitledDocument,
-    pub author_display_name: String,
+    pub author: crate::application::profile::AuthorAttribution,
     pub published_at: OffsetDateTime,
     pub snapshot: Option<MetadataSnapshot>,
     pub catalog: Vec<CatalogTag>,
@@ -197,7 +197,7 @@ pub enum ReaderWorkFacts {
     Published(PublicationFacts),
     ReviewWithdrawn {
         work_id: WorkId,
-        author_display_name: String,
+        author: crate::application::profile::AuthorAttribution,
     },
 }
 

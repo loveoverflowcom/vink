@@ -4,7 +4,7 @@ use vink_app::domain::handle::Intent;
 use vink_app::domain::principal::SubjectKey;
 use vink_app::persistence::handle::{backfill, retire};
 
-async fn create(pool: &PgPool, subject: &str, name: &str) -> PrincipalId {
+pub(super) async fn create(pool: &PgPool, subject: &str, name: &str) -> PrincipalId {
     Vink::new(PgStore::new(pool.clone()))
         .provision_principal(&SubjectKey::new("vink-identity", subject).unwrap(), name)
         .await
@@ -33,7 +33,7 @@ async fn handle_backfill_is_bounded_resumable_and_only_provisions_bindings(pool:
         .unwrap();
     sqlx::query("INSERT INTO principal_bindings(principal_id,authority,subject_id) VALUES($1,'vink-identity','legacy')").bind(legacy).execute(&pool).await.unwrap();
     let store = PgStore::new(pool.clone());
-    assert!(store.resolve_handle("some-name").await.is_err());
+    assert!(store.resolve_handle("some-name", None).await.is_err());
     let first = backfill(&pool).await.unwrap();
     assert_eq!((first.created, first.existing, first.invalid), (1, 0, 0));
     assert!(first.unbound >= 2);
@@ -240,7 +240,7 @@ async fn handle_public_http_direct_aliases_and_terminal_tombstones(pool: PgPool)
     let (code, cache, json_body) =
         call(&app, "GET", "/api/v1/authors/ngay-nang", None, None, None).await;
     assert_eq!(code, 200);
-    assert_eq!(cache.as_deref(), Some("no-store"));
+    assert_eq!(cache.as_deref(), Some("private, no-cache"));
     assert_eq!(json(&json_body), expected);
     for method in ["GET", "HEAD"] {
         for alias in [&initial, "ngay-mua"] {
@@ -329,4 +329,30 @@ async fn handle_two_accounts_compete_for_one_name(pool: PgPool) {
         (2, 2, 0)
     );
     assert!(other.aliases.is_empty());
+}
+
+#[sqlx::test(migrations = false)]
+async fn profile_fields_upgrade_existing_handle_without_resetting_receipts(pool: PgPool) {
+    use vink_app::domain::profile::ProfilePolicies;
+    use vink_app::persistence::MIGRATOR;
+
+    MIGRATOR.run_to(HANDLE_MIGRATION, &pool).await.unwrap();
+    let store = PgStore::new(pool.clone());
+    let actor = create(&pool, "profile-upgrade", "Mực mới").await;
+    let old = store.own_handle(actor).await.unwrap();
+    let setup = command(actor, Intent::Setup, 0, "muc-moi");
+    let receipt = store.set_handle(actor, &setup).await.unwrap();
+    MIGRATOR.run(&pool).await.unwrap();
+
+    let profile = store.own_profile(actor).await.unwrap();
+    assert_eq!(profile.profile_version, 0);
+    assert_eq!(profile.policies, ProfilePolicies::default());
+    assert_eq!(profile.bio, None);
+    assert_eq!(profile.handle, "muc-moi");
+    assert!(profile.handle_setup_complete);
+    assert_eq!(store.own_handle(actor).await.unwrap().aliases, [old.handle]);
+    assert_eq!(
+        store.handle_receipt(actor, setup.command_id).await.unwrap(),
+        receipt
+    );
 }

@@ -1529,7 +1529,10 @@ a {
 #tag-picker .vk-ui-dialog__header-action .vk-ui-icon-button { background-color: var(--vk-surface-container-low); }
 #tag-picker .vk-ui-dialog__content { grid-column: 1 / -1; min-inline-size: 0; }
 .vk-discovery .vk-public-row { position: relative; border-bottom: 0; scroll-margin-block-start: 5.5rem; }
-.vk-discovery .vk-public-row__link {
+/* Two sibling targets (#293): the title link's overlay opens the work from anywhere on the card,
+   while the pen name sits above it and opens the profile. */
+.vk-discovery .vk-public-row__card {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -1538,22 +1541,34 @@ a {
   border-radius: var(--vk-radius-lg);
   background: var(--vk-surface-container);
   color: var(--vk-on-surface);
-  text-decoration: none;
   text-align: start;
-  scroll-margin-block-start: 5.5rem;
   transition: background-color var(--vk-duration-short) var(--vk-ease-emphasized);
 }
-.vk-discovery .vk-public-row__link:hover { background: var(--vk-surface-container-high); }
-.vk-discovery .vk-public-row__link:hover .vk-public-row__title {
+.vk-discovery .vk-public-row__card:hover { background: var(--vk-surface-container-high); }
+.vk-discovery .vk-public-row__link {
+  color: inherit;
+  text-decoration: none;
+  scroll-margin-block-start: 5.5rem;
+}
+.vk-discovery .vk-public-row__link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.vk-discovery .vk-public-row__link:hover {
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.16em;
 }
-.vk-discovery .vk-public-row__link:focus-visible {
+.vk-discovery .vk-public-row__link:focus-visible { outline: none; }
+.vk-discovery .vk-public-row__link:focus-visible::after {
   outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
   outline-offset: var(--vk-size-focus-offset);
 }
 .vk-public-row__main { display: grid; gap: 8px; min-inline-size: 0; }
+/* The byline reads above the title; the DOM keeps the heading first. */
+.vk-public-row__main > .vk-public-row__byline { order: -1; }
 .vk-public-row__byline {
   display: flex;
   flex-wrap: wrap;
@@ -1580,6 +1595,21 @@ a {
   letter-spacing: 0.02em;
 }
 .vk-public-row__author { min-inline-size: 0; overflow-wrap: anywhere; color: var(--vk-on-surface); font-weight: var(--vk-type-label-weight); }
+.vk-public-row__profile {
+  position: relative;
+  z-index: 1;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--vk-on-surface-variant);
+  text-underline-offset: 0.2em;
+  border-radius: 4px;
+  scroll-margin-block-start: 5.5rem;
+}
+.vk-public-row__profile:hover { text-decoration-color: currentColor; }
+.vk-public-row__profile:focus-visible {
+  outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
+  outline-offset: 2px;
+}
 .vk-public-row__tag { color: var(--vk-on-surface-variant); font-weight: var(--vk-type-body-weight); }
 .vk-public-row__title {
   margin: 0;
@@ -1680,17 +1710,19 @@ a {
 
   .vk-discovery .vk-explore__heading p { margin-block-start: min(var(--vk-space-2), 8px); }
   .vk-discovery .vk-public-row,
-  .vk-discovery .vk-public-row__link {
+  .vk-discovery .vk-public-row__link,
+  .vk-discovery .vk-public-row__profile {
     scroll-margin-block-start: 4.5rem;
     scroll-margin-block-end: calc(var(--vk-ui-bar-height, 5rem) + 1rem);
   }
   .vk-discovery[data-enhanced="true"][data-search="open"] .vk-public-row,
-  .vk-discovery[data-enhanced="true"][data-search="open"] .vk-public-row__link {
+  .vk-discovery[data-enhanced="true"][data-search="open"] .vk-public-row__link,
+  .vk-discovery[data-enhanced="true"][data-search="open"] .vk-public-row__profile {
     scroll-margin-block-start: 8.5rem;
     scroll-margin-block-end: 1rem;
   }
-  .vk-discovery .vk-public-row__link { padding: 16px 18px; }
-  .vk-discovery[data-enhanced="true"][data-search="open"] .vk-public-row__link { padding: 14px 16px; }
+  .vk-discovery .vk-public-row__card { padding: 16px 18px; }
+  .vk-discovery[data-enhanced="true"][data-search="open"] .vk-public-row__card { padding: 14px 16px; }
   .vk-discovery[data-enhanced="true"][data-search="open"] .vk-public-row__title {
     font-size: var(--vk-type-title-size);
     line-height: var(--vk-type-title-line-height);
@@ -1710,9 +1742,9 @@ a {
   .vk-main:has(> .vk-reader-page) { padding-inline: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .vk-discovery .vk-public-row__link { transition: none; }
+  .vk-discovery .vk-public-row__card { transition: none; }
 }
-:where([data-motion="reduce"]) .vk-discovery .vk-public-row__link { transition: none; }
+:where([data-motion="reduce"]) .vk-discovery .vk-public-row__card { transition: none; }
 
 /* Own comment bodies preserve authored lines at every text size. */
 .vk-discussion-own-body { white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -1894,3 +1926,44 @@ a {
   .vk-handle-back { display: none; }
   .vk-handle-page h1 { margin-block-start: .25rem; }
 }
+
+/* Author profile and its session-scoped editor */
+.vk-author-public header { overflow-wrap: anywhere; }
+.vk-author-bio { white-space: pre-wrap; overflow-wrap: anywhere; }
+.vk-author-works { display: grid; gap: var(--vk-space-2); padding-inline-start: var(--vk-space-5); }
+.vk-author-public section > .vk-ui-link { display: inline-block; margin-inline-end: var(--vk-space-3); }
+.vk-profile-edit { max-inline-size: 42rem; }
+.vk-profile-form, .vk-profile-form fieldset, .vk-profile-field { display: grid; gap: var(--vk-space-2); min-inline-size: 0; }
+.vk-profile-form { gap: var(--vk-space-4); }
+.vk-profile-field label, .vk-profile-form legend { font-weight: var(--vk-type-label-weight); }
+.vk-profile-form fieldset { border: 1px solid var(--vk-outline-variant); border-radius: var(--vk-radius-md); padding: var(--vk-space-3); }
+.vk-profile-field :is(input, textarea, select) {
+  box-sizing: border-box;
+  inline-size: 100%;
+  padding: var(--vk-space-2) var(--vk-space-3);
+  border: 1px solid var(--vk-outline);
+  border-radius: var(--vk-radius-sm);
+  background: var(--vk-surface);
+  color: var(--vk-on-surface);
+  font: inherit;
+}
+.vk-profile-field textarea { resize: vertical; }
+.vk-profile-field p, .vk-profile-actions p { margin: 0; }
+.vk-profile-actions {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  display: grid;
+  gap: var(--vk-space-2);
+  background: var(--vk-surface);
+  padding-block: var(--vk-space-2);
+}
+.vk-profile-actions > div { display: flex; flex-wrap: wrap; gap: var(--vk-space-2); align-items: center; }
+.vk-profile-conflict {
+  overflow-wrap: anywhere;
+  padding: var(--vk-space-3);
+  border-radius: var(--vk-radius-md);
+  background: var(--vk-surface-container);
+}
+.vk-profile-conflict dd { white-space: pre-wrap; margin-inline-start: 0; }
+.vk-profile-conflict dt { font-weight: var(--vk-type-label-weight); }

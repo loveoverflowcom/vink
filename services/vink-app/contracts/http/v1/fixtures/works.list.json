@@ -5,6 +5,10 @@
       "title": "[Mẫu] Mưa trên phố cũ",
       "excerpt": "Mưa rơi nhẹ qua phố cũ.",
       "author_display_name": "Tác giả mẫu (dữ liệu phát triển)",
+      "author": {
+        "kind": "unavailable",
+        "label": "Tác giả mẫu (dữ liệu phát triển)"
+      },
       "published_at": "2026-10-30T08:00:00Z",
       "tags": []
     }

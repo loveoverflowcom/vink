@@ -1,0 +1,54 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Visibility {
+    Everyone,
+    #[serde(rename = "self")]
+    Owner,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Policies {
+    pub pen_name: Visibility,
+    pub avatar: Visibility,
+    pub bio: Visibility,
+    pub date_of_birth: Visibility,
+    pub followers_list: Visibility,
+    pub followers_count: Visibility,
+    pub following_list: Visibility,
+    pub following_count: Visibility,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OwnProfile {
+    pub principal_id: String,
+    pub pen_name: String,
+    pub handle: String,
+    pub handle_setup_complete: bool,
+    pub remaining_handle_changes: i16,
+    pub profile_version: i64,
+    pub bio: Option<String>,
+    pub policies: Policies,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SaveProfile {
+    pub principal_id: String,
+    pub expected_version: i64,
+    pub pen_name: String,
+    pub bio: Option<String>,
+    pub policies: Policies,
+}
+
+impl SaveProfile {
+    /// On a lost answer report what was observed, without attributing a concurrent save
+    /// to this tab. An independently advanced version is handled as a conflict.
+    pub fn matches_successor(&self, stored: &OwnProfile) -> bool {
+        self.principal_id == stored.principal_id
+            && self.expected_version.checked_add(1) == Some(stored.profile_version)
+            && self.pen_name == stored.pen_name
+            && self.bio == stored.bio
+            && self.policies == stored.policies
+    }
+}

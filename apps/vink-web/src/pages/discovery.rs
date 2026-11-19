@@ -5,6 +5,7 @@ use crate::contract::{PublicTagDto, TagDto, TagList, WorkList};
 use crate::discovery::{ExploreContext, ExploreQuery, requested_slug, tag_href};
 use crate::public_reads;
 use crate::ui::{
+    adapters,
     empty_state::{EmptyArtwork, EmptyState},
     patterns::{TagChip, TagFacts},
 };
@@ -851,7 +852,7 @@ fn PublicResults(
                                 </p>
                                 <ul class="vk-public-list" role="list">
                                     <For each=move || works.with(|works| works.iter().map(|work| work.work_id.clone()).collect::<Vec<_>>()) key=Clone::clone
-                                        children=move |work_id| view! { <ResultRow work_id data context=context.clone() /> } />
+                                        children=move |work_id| view! { <ResultRow work_id data cached_unverified context=context.clone() /> } />
                                 </ul>
                             }.into_any()
                         }}
@@ -890,7 +891,12 @@ fn highlighted_text(text: &str, query: &str) -> AnyView {
 }
 
 #[component]
-fn ResultRow(work_id: String, data: Signal<WorkList>, context: ExploreContext) -> AnyView {
+fn ResultRow(
+    work_id: String,
+    data: Signal<WorkList>,
+    cached_unverified: Signal<bool>,
+    context: ExploreContext,
+) -> AnyView {
     #[cfg(feature = "hydrate")]
     let navigate = leptos_router::hooks::use_navigate();
     let id = work_id.clone();
@@ -909,28 +915,49 @@ fn ResultRow(work_id: String, data: Signal<WorkList>, context: ExploreContext) -
                 #[cfg(feature = "hydrate")]
                 let navigate = navigate.clone();
                 let query = context.query.q.clone();
-                let initials = crate::appearance::initials(Some(&work.author_display_name));
+                let unverified = cached_unverified.get();
+                // Only a verified pen name gets initials; placeholders keep the neutral mark.
+                let named = !unverified
+                    && matches!(work.author, None | Some(crate::contract::AuthorProjection::Linked(_)));
+                let author = adapters::card_author(&work, unverified);
+                let initials = crate::appearance::initials(named.then_some(author.name.as_str()));
                 let primary_tag = work.tags.first().map(|tag| tag.label.clone());
                 let excerpt = work.excerpt.clone();
+                let author_text = highlighted_text(&author.name, &query);
+                // The title link and the profile link are siblings: never one link inside another.
+                let author_view = match author.profile {
+                    Some(profile) => {
+                        let label = format!("Mở hồ sơ {} (@{})", author.name, profile.handle);
+                        view! {
+                            <a class="vk-public-row__author vk-public-row__profile" id=format!("work-{}-author", work.work_id)
+                                href=profile.href aria-label=label data-profile-return="true">{author_text}</a>
+                        }.into_any()
+                    }
+                    None => view! { <span class="vk-public-row__author">{author_text}</span> }.into_any(),
+                };
                 view! {
-                    <a class="vk-public-row__link" href=href aria-labelledby=title_id on:click=move |_event| {
-                        #[cfg(feature = "hydrate")]
-                        super::remember_public_position(&_event, &context, &return_id, &navigate);
-                    }>
+                    <div class="vk-public-row__card">
                         <div class="vk-public-row__main">
+                            // Heading first in the DOM (heading navigation, Tab: work → author);
+                            // CSS shows the byline above it as in Khám phá r1.
+                            <h2 class="vk-public-row__title" id=title_id.clone()>
+                                <a class="vk-public-row__link" href=href aria-labelledby=title_id on:click=move |_event| {
+                                    #[cfg(feature = "hydrate")]
+                                    super::remember_public_position(&_event, &context, &return_id, &navigate);
+                                }>{highlighted_text(&work.title, &query)}</a>
+                            </h2>
                             <div class="vk-public-row__byline">
                                 <span class="vk-public-row__avatar" aria-hidden="true">{initials}</span>
-                                <span class="vk-public-row__author">{highlighted_text(&work.author_display_name, &query)}</span>
+                                {author_view}
                                 {primary_tag.map(|tag| view! {
                                     <span class="vk-public-row__dot" aria-hidden="true">"·"</span>
                                     <span class="vk-public-row__tag">{tag}</span>
                                 })}
                             </div>
-                            <h2 class="vk-public-row__title" id=title_id.clone()>{highlighted_text(&work.title, &query)}</h2>
                             {excerpt.map(|text| view! { <p class="vk-public-row__excerpt">{text}</p> })}
                         </div>
                         <span class="vk-public-row__chevron" aria-hidden="true"><Icon name=IconName::ExpandMore /></span>
-                    </a>
+                    </div>
                 }
             })}
         </li>

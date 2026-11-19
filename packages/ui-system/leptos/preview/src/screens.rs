@@ -13,6 +13,7 @@ fn author(long: bool) -> Author {
         }
         .into(),
         key: Some("screen-author".into()),
+        profile: None,
         published_at: "2026-11-02T02:00:00Z".into(),
     }
 }
@@ -21,6 +22,7 @@ fn discussion_sample(anchor: bool) -> DiscussionThreadFacts {
     let author = Author {
         name: "[Mẫu] Lan Anh".into(),
         key: None,
+        profile: None,
         published_at: "2026-11-03T08:00:00Z".into(),
     };
     let comment = |id: &str, context| DiscussionComment {
@@ -42,6 +44,7 @@ fn discussion_sample(anchor: bool) -> DiscussionThreadFacts {
                 Some(DiscussionContext::Reply {
                     name: "[Mẫu] Lan Anh".into(),
                     href: Some("#comment-sample-reply".into()),
+                    profile: None,
                 }),
             ),
             comment("sample-unavailable", Some(DiscussionContext::Unavailable)),
@@ -173,7 +176,7 @@ fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
             }.into_any(),
             "screen.reader" => view! {
                 <Link href="#screen.explore/default">"← Khám phá"</Link>
-                <ReaderHeader title=title.get_untracked() author=author(long) />
+                <ReaderHeader title=title.get_untracked() author=Signal::stored(author(long)) />
                 <Text role=TypeRole::Reading>{fixture::READING}</Text>
                 {(scenario == "feedback").then(|| view! {
                     <FeedbackThread items=comments() />

@@ -40,7 +40,11 @@
         "reply_to": {
           "kind": "reply",
           "comment_id": "0192f3a1-0000-7000-8000-000000000002",
-          "author_display_name": "Minh"
+          "author_display_name": "Minh",
+          "author": {
+            "kind": "unavailable",
+            "label": "Minh"
+          }
         }
       },
       "rejection_reason": "Bình luận nêu danh tính đời thực của người khác. Hãy viết lại mà không kèm tên hoặc địa chỉ.",

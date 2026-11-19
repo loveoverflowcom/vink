@@ -138,7 +138,7 @@ fn summary(card: PublicCardFacts, catalog: &[CatalogTag]) -> Result<PublicWorkSu
         work_id: card.work_id,
         title: card.title,
         excerpt: card.excerpt,
-        author_display_name: card.author_display_name,
+        author: card.author,
         published_at: card.published_at,
         tags,
     })
@@ -245,7 +245,7 @@ where
             work_id,
             revision_id,
             content,
-            author_display_name,
+            author,
             published_at,
             snapshot,
             catalog,
@@ -259,7 +259,7 @@ where
             work_id,
             revision_id,
             content,
-            author_display_name,
+            author,
             published_at,
             tags,
         })
@@ -278,7 +278,7 @@ where
                     work_id,
                     revision_id,
                     content,
-                    author_display_name,
+                    author,
                     published_at,
                     snapshot,
                     catalog,
@@ -288,19 +288,15 @@ where
                     work_id,
                     revision_id,
                     content,
-                    author_display_name,
+                    author,
                     published_at,
                     tags,
                 }))
             }
             ReaderWorkFacts::Hidden { work_id } => Ok(ReaderWork::Hidden { work_id }),
-            ReaderWorkFacts::ReviewWithdrawn {
-                work_id,
-                author_display_name,
-            } => Ok(ReaderWork::ReviewWithdrawn {
-                work_id,
-                author_display_name,
-            }),
+            ReaderWorkFacts::ReviewWithdrawn { work_id, author } => {
+                Ok(ReaderWork::ReviewWithdrawn { work_id, author })
+            }
         }
     }
 }

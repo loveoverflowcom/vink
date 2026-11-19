@@ -165,7 +165,7 @@ pub struct SubmittedComment {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AuthorName {
     pub id: PrincipalId,
-    pub display_name: String,
+    pub attribution: super::profile::AuthorAttribution,
 }
 
 /// A comment the viewer may read. `view` is never [`CommentView::Unavailable`].
@@ -177,8 +177,8 @@ pub struct CommentItem {
     pub body: String,
     pub created_at: OffsetDateTime,
     pub context: ReplyContext,
-    /// Display name of the replied-to writer, present only when `context` is a public reply.
-    pub context_author: Option<String>,
+    /// Attribution of the replied-to writer, present only when `context` is a public reply.
+    pub context_author: Option<super::profile::AuthorAttribution>,
     /// The moderator's reason, only on the viewer's own rejected comment (MOD-04).
     pub rejection_reason: Option<String>,
 }
@@ -359,7 +359,7 @@ pub enum OwnPlacement {
         root_listed: bool,
         context: ReplyContext,
         /// Name of the replied-to writer, only when that context is public.
-        context_author: Option<String>,
+        context_author: Option<super::profile::AuthorAttribution>,
     },
 }
 

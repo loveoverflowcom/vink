@@ -1,10 +1,9 @@
-# Social Graph · hợp đồng HTTP đề xuất r1
+# Social Graph · hợp đồng HTTP v1
 
 Từ bút danh trên WorkCard, Reader, bình luận hoặc ngữ cảnh trả lời, Web mở `/@handle` từ
 ref công khai của đúng tác giả. Card có đích tác phẩm riêng để hai link đều dùng được bằng
-bàn phím. Người chưa có bài vẫn có Profile. Các biểu diễn dưới đây là **hợp đồng đích của
-#288**. Wire name, route API và fixture chạy thật thuộc provider ở PR triển khai. Owner
-và chuyển trạng thái nằm ở [đặc tả liên miền](../../../../../docs/architecture/social-graph.md).
+bàn phím. Người chưa có bài vẫn có Profile. Các ma trận là hợp đồng đích của #288. Hai phần cuối ghi các đường HTTP đã nối.
+Owner và chuyển trạng thái nằm ở [đặc tả liên miền](../../../../../docs/architecture/social-graph.md).
 
 ## Ma trận quyền và hành động
 
@@ -126,8 +125,8 @@ phục anchor còn được đọc. Trang lỗi không biến thành trang cuố
 
 | Route | Kết quả |
 | --- | --- |
-| `GET /@{handle}`, `HEAD /@{handle}` | 200 hồ sơ SSR có bút danh, địa chỉ hiện hành và trạng thái chưa có tác phẩm khi phù hợp. Alias trả 301, `Location: /@<current>`; tên đã thu hồi trả 410, tên chưa cấp trả 404. Mọi kết quả dùng `Cache-Control: no-store`. Hồ sơ tối thiểu chưa có query nghiệp vụ nên allowlist rỗng. Browser quyết định fragment. |
-| `GET /api/v1/authors/{handle}` | Resolver actor-free cho #292. JSON phân biệt `current` (author gồm `pen_name`, `handle`, `href`, kèm `has_public_works`), `alias` (href đích), `missing`, `gone`. Lỗi kho hoặc đang backfill trả 503. |
+| `GET /@{handle}`, `HEAD /@{handle}` | 200 hồ sơ SSR có bút danh, địa chỉ hiện hành, Bio có quyền và trang tác phẩm. Alias trả 301, `Location: /@<current>`; tên đã thu hồi trả 410, tên chưa cấp trả 404. Mọi kết quả dùng `Cache-Control: no-store`. Chỉ đọc query `cursor` trên địa chỉ hiện hành. Alias dẫn đến trang đầu. Browser quyết định fragment. |
+| `GET /api/v1/authors/{handle}` | Resolver actor-free cho #292. JSON phân biệt `current`, `alias` (href đích), `missing`, `gone`. Lỗi kho hoặc đang backfill trả 503. Xem biểu diễn current ở phần hồ sơ. |
 | `GET /api/v1/me/handle` | Chỉ phiên chủ đang active. Trả `principal_id`, `pen_name`, `handle`, `setup_complete`, `remaining_changes`, `version`, `aliases` và `has_public_works`. |
 | `POST /api/v1/me/handle` | JSON gồm `command_id` UUID, `principal_id` của phiên đã mở form, `expected_version`, `intent` (`setup` hoặc `rename`), `handle`. So Origin, actor, standing, chủ, lifecycle và version. Thành công trả receipt gồm `command_id`, `accepted_version`, `handle`, `remaining_changes`. |
 | `GET /api/v1/me/handle/receipts/{command_id}` | Receipt của lệnh đã nhận thuộc phiên chủ. Cùng ID và payload replay được. Khi mất ACK, đọc receipt và own state để lấy kết quả lệnh và trạng thái mới nhất. |
@@ -137,4 +136,39 @@ Từ dành riêng nằm trong [luật tên](../../../src/domain/handle.rs) và c
 [registry](../../../migrations/20261124000000_author_handles.sql). Input sai trả 422.
 Các lỗi 409 gồm `version_conflict`, `handle_taken`, `handle_alias_reserved`,
 `handle_quota_exhausted` và xung đột nội dung với command ID đã nhận.
-Đổi cùng tên sau setup là no-op có receipt. Mọi đường API ở bảng này dùng `no-store`.
+Đổi cùng tên sau setup là no-op có receipt. Own Handle, alias, missing, gone và lỗi dùng `no-store`.
+
+## Hồ sơ và bút danh #292/#293
+
+| Route | Hợp đồng hiện hành |
+| --- | --- |
+| `GET /api/v1/me/profile` | Phiên active đọc hồ sơ của chính mình. [Own Profile](fixtures/author.profile.own.json) gồm `principal_id`, bút danh, Bio, tám policy, `profile_version` và hai fact setup/quota Handle. `no-store`. |
+| `PUT /api/v1/me/profile` | JSON `principal_id`, `expected_version`, `pen_name`, `bio` (chuỗi hoặc null), `policies` (đủ tám trường). Actor lấy từ phiên. Principal trong payload là điều kiện của form bắt đầu lệnh. `200` trả Own Profile sau commit, `409 version_conflict` trả version quan sát được, `422 validation_failed` chỉ trường lỗi. `no-store`. |
+| `GET/HEAD /api/v1/authors/{handle}?cursor=…` | Actor-free. [Current](fixtures/author.profile.current.json) giữ `author` và `has_public_works`, bổ sung `bio` nếu có quyền và đã điền. `publications` có `state: page`, tối đa 12 `works` (ID tác phẩm, nhan đề) và `next_cursor` nếu còn trang. `state: restart` yêu cầu mở trang đầu khi cursor sai hoặc thuộc địa chỉ khác. |
+
+Profile dùng lại parser bút danh (trim, NFC, 1–80 ký tự). Bio tối đa 500 ký tự Unicode, bỏ
+khoảng trắng hai đầu, giữ xuống dòng và chuẩn hóa CRLF thành LF. Chuỗi trống xóa Bio. Tám
+policy và giá trị Bio lưu cùng transaction với bút danh. Version mới kiểm độc lập với Handle.
+Sau mất phản hồi, đọc lại Own Profile. Việc so cùng Principal, version kế tiếp và toàn bộ
+giá trị xác nhận trạng thái hiện tại. Conflict giữ nháp để chủ so và chọn ý định mới.
+
+Trong phạm vi này, mọi lần rút quyền `everyone → self` được ghi riêng từng trường. Chuyển
+ngược trả `422` với `field=policies` trong khi SOC-OPEN-01 còn mở. Ngày sinh chỉ có policy
+mặc định `self`; body có giá trị ngày sinh bị từ chối. API chỉ giữ policy Avatar, các giá trị
+list/count chưa được phục vụ và phần ảnh phụ thuộc quyết định SOC-OPEN-04.
+
+Lấy Handle, lifecycle, Bio đã lọc và bài đang public cùng một snapshot PostgreSQL. Trang
+lọc ownership và publication pointer trước LIMIT. Cursor thuộc địa chỉ canonical công khai,
+sắp mới nhất theo thời điểm và WorkId, mang vị trí của bài đã xuất hiện. Current JSON dùng
+`private, no-cache` và validator từ byte đã serialize. Bio bị ẩn hoặc chưa điền đều bỏ field.
+SSR công khai dùng cùng projection và `no-store`. Dữ liệu own chỉ tải sau xác thực trong Web.
+
+**Author attribution v1.** Các card, publication/Reader, bình luận gốc, trả lời và
+`reply_to` của bình luận công khai mang [`author`](fixtures/author.attribution.json).
+`linked` mang `pen_name`, Handle hiện hành và `href` cùng origin. `deleted` chỉ mang nhãn
+“Tài khoản đã xóa”. `unavailable` mang nhãn văn bản và dừng tại đó. Ref đến từ Principal ở
+cùng snapshot với item; bản thân tác phẩm, revision và comment ID giữ vai trò riêng.
+`author_display_name` cũ chiếu từ cùng dữ liệu đã lọc. Client cũ cho phép trường mới tiếp tục
+vẽ nhãn an toàn. Client cũ kiểm schema Discussion nghiêm ngặt từ chối payload mới. Web mới
+đọc dữ liệu legacy dưới dạng chữ, và bỏ liên kết khi biến thể hoặc href chưa được xác nhận.
+Reader thay thế theo O-17 tiếp tục dùng nhãn đã lọc.

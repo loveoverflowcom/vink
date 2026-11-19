@@ -11,6 +11,7 @@ mod error;
 mod handle;
 mod health;
 mod moderation_queue;
+mod profile;
 mod ssr;
 
 use std::net::SocketAddr;

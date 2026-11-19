@@ -13,6 +13,9 @@ kiểm PostgreSQL, HTTP và browser cho hành trình Social thuộc từng PR tr
 **Handle #290** · Từ Tôi, chính chủ thiết lập và đổi địa chỉ. Khách mở trực tiếp
 trang tác giả kể cả trước bài đầu tiên. [Luồng, backfill, coverage và bàn giao #292](social-graph.md#địa-chỉ-tác-giả-290).
 
+**Hồ sơ và byline #292/#293** · Tôi → Chỉnh hồ sơ, đọc lại Bio và quyền, mở `/@handle`
+từ Khám phá, Reader và nhận xét. [Owner, phạm vi gate và đường kiểm chứng](social-graph.md#hồ-sơ-và-bút-danh-292293).
+
 **Publication #291** cung cấp [mốc công khai đầu tiên theo WorkId](publication-runtime.md#mốc-công-khai-đầu-tiên-291)
 cho #296 ở mức PostgreSQL. [Ca tích hợp](../../services/vink-app/tests/postgres/first_publication.rs)
 kiểm lần đầu commit, writer cạnh tranh, rollback, rút/tái đăng và nguồn mốc sau backfill.

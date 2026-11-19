@@ -45,13 +45,17 @@ fn load_error(error: ReadError) -> LoadError {
 }
 
 impl PublicReads for PublicReadsAdapter {
-    fn author(&self, handle: String) -> PortFuture<Result<web::AuthorResolution, LoadError>> {
+    fn author(
+        &self,
+        handle: String,
+        cursor: Option<String>,
+    ) -> PortFuture<Result<web::AuthorResolution, LoadError>> {
         let vink = self.vink.clone();
         Box::pin(async move {
             to_web(
                 &vink
                     .store()
-                    .resolve_handle(&handle)
+                    .resolve_handle(&handle, cursor.as_deref())
                     .await
                     .map_err(|_| LoadError::Unavailable)?,
             )

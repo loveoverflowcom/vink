@@ -137,7 +137,7 @@ pub async fn backfill(pool: &PgPool) -> Result<BackfillReport, StoreError> {
     Ok(report)
 }
 
-async fn ready(pool: &PgPool) -> Result<(), StoreError> {
+pub(super) async fn ready(pool: &PgPool) -> Result<(), StoreError> {
     if sqlx::query_scalar::<_, bool>("SELECT ready FROM author_handle_rollout WHERE singleton")
         .fetch_one(pool)
         .await
@@ -271,52 +271,6 @@ impl PgStore {
             accepted_version,
             handle,
             remaining_changes,
-        })
-    }
-
-    pub async fn resolve_handle(&self, name: &str) -> Result<Resolution, StoreError> {
-        if !handle::valid(name) {
-            return Ok(Resolution::Missing);
-        }
-        // Evaluate rollout, current owner/name and publication visibility in one snapshot.
-        let (ready, pen_name, current, has_public_works): (
-            bool,
-            Option<String>,
-            Option<String>,
-            bool,
-        ) = sqlx::query_as(
-            "SELECT gate.ready, p.display_name, s.current_handle,
-                        EXISTS (SELECT FROM works w JOIN publications pub ON pub.work_id=w.id
-                                 WHERE w.owner_id=p.id)
-                   FROM author_handle_rollout gate
-                   LEFT JOIN author_handle_names n ON n.handle=$1 AND gate.ready
-                   LEFT JOIN author_profiles s ON s.principal_id=n.principal_id
-                   LEFT JOIN principals p ON p.id=s.principal_id
-                  WHERE gate.singleton",
-        )
-        .bind(name)
-        .fetch_one(self.pool())
-        .await
-        .map_err(classify)?;
-        if !ready {
-            return Err(StoreError::Unavailable(
-                "author profile backfill pending".into(),
-            ));
-        }
-        Ok(match (pen_name, current) {
-            (None, _) => Resolution::Missing,
-            (Some(_), None) => Resolution::Gone,
-            (Some(_), Some(handle)) if handle != name => Resolution::Alias {
-                href: format!("/@{handle}"),
-            },
-            (Some(pen_name), Some(handle)) => Resolution::Current {
-                author: AuthorRef {
-                    href: format!("/@{handle}"),
-                    handle,
-                    pen_name,
-                },
-                has_public_works,
-            },
         })
     }
 }

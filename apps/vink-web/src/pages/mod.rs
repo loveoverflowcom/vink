@@ -6,6 +6,7 @@ mod discussion;
 mod endorsement;
 pub(crate) mod handle;
 pub(crate) mod me;
+pub(crate) mod profile;
 pub(crate) mod publication;
 pub(crate) mod work_info;
 
@@ -185,7 +186,16 @@ fn PublicationView(
 ) -> impl IntoView {
     let latest = live.data;
     let shown = RwSignal::new(publication);
-    let update = Memo::new(move |_| latest.with(|l| shown.with(|s| l != s)));
+    let update = Memo::new(move |_| {
+        latest.with(|l| {
+            shown.with(|s| {
+                l.revision_id != s.revision_id
+                    || l.title != s.title
+                    || l.document != s.document
+                    || l.tags != s.tags
+            })
+        })
+    });
     move || view! { <PublicationContent publication=shown.get() live=live.clone() update shown /> }
 }
 
@@ -242,7 +252,7 @@ fn PublicationContent(
     let failed = live.failed;
     let refreshing = live.refreshing;
     let cached = live.cached_unverified;
-    let author = adapters::publication_author(&publication);
+    let author = Memo::new(move |_| latest.with(|p| adapters::publication_author(p, cached.get())));
     let context = discovery::reader_context();
     let id = publication.work_id.clone();
     let return_href = Memo::new(move |_| context.get().href(Some(&id)));
@@ -300,7 +310,7 @@ fn PublicationContent(
             </Show>
         </div>
         <article id="reader-paper" class="vk-reader" data-revision=publication.revision_id>
-            <ReaderHeader title=publication.title author title_in_body />
+            <ReaderHeader title=publication.title author=Signal::from(author) title_in_body />
             <discovery::PublicTags tags=publication.tags />
             {body}
         </article>

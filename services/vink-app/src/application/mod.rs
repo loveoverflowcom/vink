@@ -13,6 +13,7 @@ pub mod handle;
 pub mod moderation;
 pub mod ports;
 pub mod post_review;
+pub mod profile;
 pub mod publication;
 pub mod taxonomy;
 
@@ -34,7 +35,7 @@ pub struct PublicWork {
     pub revision_id: RevisionId,
     /// The published revision's format, source and title, checked against its content hash.
     pub content: TitledDocument,
-    pub author_display_name: String,
+    pub author: crate::application::profile::AuthorAttribution,
     pub published_at: OffsetDateTime,
     /// Public tags of the bound metadata snapshot: active only, snapshot order, current labels.
     pub tags: Vec<CatalogTag>,
@@ -49,7 +50,7 @@ pub enum ReaderWork {
     Published(PublicWork),
     ReviewWithdrawn {
         work_id: WorkId,
-        author_display_name: String,
+        author: crate::application::profile::AuthorAttribution,
     },
 }
 
@@ -59,7 +60,7 @@ pub struct PublicWorkSummary {
     pub work_id: WorkId,
     pub title: Title,
     pub excerpt: Option<String>,
-    pub author_display_name: String,
+    pub author: crate::application::profile::AuthorAttribution,
     pub published_at: OffsetDateTime,
     /// As in [`PublicWork::tags`].
     pub tags: Vec<CatalogTag>,

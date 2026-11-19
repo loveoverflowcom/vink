@@ -17,6 +17,7 @@ pub trait PublicReads: Send + Sync + 'static {
     fn author(
         &self,
         _handle: String,
+        _cursor: Option<String>,
     ) -> PortFuture<Result<crate::contract::AuthorResolution, LoadError>> {
         Box::pin(std::future::ready(Err(LoadError::Unavailable)))
     }

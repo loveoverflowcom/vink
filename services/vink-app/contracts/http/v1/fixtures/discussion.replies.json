@@ -4,6 +4,10 @@
       "comment_id": "0192f3a1-0000-7000-8000-000000000005",
       "visibility": "public",
       "author_display_name": "Lan Anh",
+      "author": {
+        "kind": "unavailable",
+        "label": "Lan Anh"
+      },
       "body": "Đọc lại vẫn thấy hay.",
       "created_at": "2026-11-03T08:00:00Z",
       "reply_to": {
@@ -16,6 +20,10 @@
       "comment_id": "0192f3a1-0000-7000-8000-000000000009",
       "visibility": "own_rejected",
       "author_display_name": "Bạn đọc",
+      "author": {
+        "kind": "unavailable",
+        "label": "Bạn đọc"
+      },
       "body": "Tác giả thật là anh X ở phố Y.",
       "created_at": "2026-11-03T08:00:00Z",
       "reply_to": {

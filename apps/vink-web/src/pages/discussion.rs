@@ -118,6 +118,48 @@ impl ViewState {
         self.mutation_needs_refresh = false;
         self.page.viewer_is_work_author = false;
     }
+    #[cfg(feature = "hydrate")]
+    fn invalidate_attribution(&mut self) {
+        use crate::contract::{AuthorProjection, CommentDto, OwnPlacement, ReplyTo, RootView};
+        fn context(reply_to: &mut ReplyTo) {
+            if let ReplyTo::Reply {
+                author_display_name,
+                author,
+                ..
+            } = reply_to
+            {
+                author_display_name.clear();
+                *author = Some(AuthorProjection::Unsupported);
+            }
+        }
+        fn comment(row: &mut CommentDto) {
+            row.author_display_name.clear();
+            row.author = Some(AuthorProjection::Unsupported);
+            if let Some(reply_to) = &mut row.reply_to {
+                context(reply_to);
+            }
+        }
+        for root in &mut self.page.roots {
+            if let RootView::Comment { comment: row } = &mut root.root {
+                comment(row);
+            }
+            root.preview.iter_mut().for_each(comment);
+        }
+        for replies in self.replies.values_mut() {
+            replies.replies.iter_mut().for_each(comment);
+        }
+        for row in self.own.comments.values_mut() {
+            if let OwnPlacement::Reply { reply_to, .. } = &mut row.placement {
+                context(reply_to);
+            }
+        }
+        self.roots_read.invalidate();
+        self.own.invalidate_reads();
+        self.epoch += 1;
+        self.loading = false;
+        self.reply_loading.clear();
+    }
+
     fn public_ids(&self) -> BTreeSet<String> {
         self.page
             .roots
@@ -250,7 +292,7 @@ pub fn Discussion(work_id: String) -> impl IntoView {
     let fixture = api::local_discussion_fixture_scope();
     view! {
         <section id="feedback-region" class="vk-discussion" aria-labelledby="feedback-heading">
-            <Heading level=HeadingLevel::H2 role=TypeRole::Title id="feedback-heading">"Nhận xét"</Heading>
+            <Heading level=HeadingLevel::H2 role=TypeRole::Title id="feedback-heading" attr:tabindex="-1">"Nhận xét"</Heading>
             <p class="vk-muted">"Bình luận gốc và phản hồi theo thứ tự cũ đến mới."</p>
             <Suspense fallback=|| view! { <p role="status">"Đang tải nhận xét…"</p> }>
                 {move || {
@@ -374,6 +416,11 @@ fn DiscussionLoaded(
         {
             read_roots(state, controller, lve, false);
         }
+    });
+    #[cfg(feature = "hydrate")]
+    super::profile::observe_changes(move || {
+        state.update(ViewState::invalidate_attribution);
+        refresh.run(());
     });
     // Viewer-private projections only arrive after hydration through the no-store API.
     #[cfg(feature = "hydrate")]
