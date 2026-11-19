@@ -239,13 +239,15 @@ pub(super) fn ActiveFollowRegion(
     // Keep one persistent `#follow-action` DOM element across Ready/Pending/Reconciling so
     // keyboard focus never drops during state transitions.
     let show_action = Signal::derive(move || {
-        controller.with(|c| match c.phase() {
-            FollowPhase::Ready {
-                can_follow: true, ..
-            }
-            | FollowPhase::Pending { .. }
-            | FollowPhase::Reconciling { .. } => true,
-            _ => false,
+        controller.with(|c| {
+            matches!(
+                c.phase(),
+                FollowPhase::Ready {
+                    can_follow: true,
+                    ..
+                } | FollowPhase::Pending { .. }
+                    | FollowPhase::Reconciling { .. }
+            )
         })
     });
     let action_following = Signal::derive(move || {
