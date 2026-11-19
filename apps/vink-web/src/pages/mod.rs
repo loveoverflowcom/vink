@@ -130,7 +130,6 @@ fn ReaderLoaded(initial: crate::contract::ReaderResponse, return_href: String) -
     let data = live.data;
     let removed = live.removed;
     let rejected = live.rejected;
-    let cached = live.cached_unverified;
     // Published revision identity is deliberately absent: background updates cannot remount
     // the article, endorsement state or composer and cannot replace a text selection.
     let control = Memo::new(move |_| {
@@ -146,15 +145,7 @@ fn ReaderLoaded(initial: crate::contract::ReaderResponse, return_href: String) -
             ReaderResponse::ReviewWithdrawn {
                 work_id,
                 author_name,
-            } => {
-                // Like every byline, a name from an unverified cached snapshot stays neutral.
-                let author_name = if cached.get() {
-                    "Chưa xác nhận được tác giả".to_owned()
-                } else {
-                    author_name
-                };
-                (2, Some((work_id, Some(author_name))))
-            }
+            } => (2, Some((work_id, Some(author_name)))),
         }
     });
     move || {

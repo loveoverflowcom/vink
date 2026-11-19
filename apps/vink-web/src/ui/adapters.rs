@@ -26,11 +26,10 @@ fn byline(
     instant: &str,
     unverified: bool,
 ) -> Author {
-    let (name, profile) = if unverified
-        && !matches!(
-            author,
-            Some(AuthorProjection::Deleted { .. } | AuthorProjection::Unsupported)
-        ) {
+    // Only a profile link is an authority claim that a cached, unverified snapshot cannot make:
+    // the link is withheld until the immediate re-read (`public_reads::follow`). A pen name is
+    // always public, so an unlinked label keeps READ-02 freshness like the rest of the card.
+    let (name, profile) = if unverified && matches!(author, Some(AuthorProjection::Linked(_))) {
         author_name("", Some(&AuthorProjection::Unsupported))
     } else {
         author_name(name, author)

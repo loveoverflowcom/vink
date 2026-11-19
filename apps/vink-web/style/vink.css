@@ -1554,8 +1554,11 @@ a {
   content: "";
   position: absolute;
   inset: 0;
-  border-radius: inherit;
+  border-radius: var(--vk-radius-lg);
 }
+/* The title's overlay spans the card; as a scroll anchor it would let a late title font in a
+   row above push the restored row. Anchoring uses the byline, excerpt or row instead. */
+.vk-discovery .vk-public-row__title { overflow-anchor: none; }
 .vk-discovery .vk-public-row__link:hover {
   text-decoration: underline;
   text-decoration-thickness: 1px;

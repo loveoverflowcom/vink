@@ -1089,14 +1089,19 @@ mod tests {
             ("legacy".into(), None)
         );
         let mut card = round_trip::<WorkList>("works.list.json").works.remove(0);
-        for author in [
-            None,
-            Some(projections[2].clone()),
-            Some(projections[0].clone()),
+        // An unverified cached link is withheld (label and href) until the re-read.
+        card.author = Some(projections[0].clone());
+        let cached = crate::ui::adapters::card_author(&card, true);
+        assert_eq!(cached.name, "Chưa xác nhận được tác giả");
+        assert!(cached.profile.is_none());
+        // Unlinked labels are always-public text and never gain a link.
+        for (author, label) in [
+            (None, card.author_display_name.clone()),
+            (Some(projections[2].clone()), "Tên tác giả cũ".to_string()),
         ] {
             card.author = author;
             let cached = crate::ui::adapters::card_author(&card, true);
-            assert_eq!(cached.name, "Chưa xác nhận được tác giả");
+            assert_eq!(cached.name, label);
             assert!(cached.profile.is_none());
         }
         card.author = Some(projections[1].clone());

@@ -918,14 +918,22 @@ fn ResultRow(
                 let navigate = navigate.clone();
                 let query = context.query.q.clone();
                 let unverified = cached_unverified.get();
-                // Only a verified pen name gets initials; placeholders keep the neutral mark.
-                let named = !unverified
-                    && matches!(work.author, None | Some(crate::contract::AuthorProjection::Linked(_)));
                 let author = adapters::card_author(&work, unverified);
+                // A shown pen name gets initials; withheld or terminal labels keep the neutral mark.
+                let named = match &work.author {
+                    None | Some(crate::contract::AuthorProjection::Unavailable { .. }) => true,
+                    Some(crate::contract::AuthorProjection::Linked(_)) => !unverified,
+                    Some(_) => false,
+                };
                 let initials = crate::appearance::initials(named.then_some(author.name.as_str()));
                 let primary_tag = work.tags.first().map(|tag| tag.label.clone());
                 let excerpt = work.excerpt.clone();
-                let author_text = highlighted_text(&author.name, &query);
+                // Placeholder labels are not author names: never mark them as search matches.
+                let author_text = if named {
+                    highlighted_text(&author.name, &query)
+                } else {
+                    author.name.clone().into_any()
+                };
                 // The title link and the profile link are siblings: never one link inside another.
                 let author_view = match author.profile {
                     Some(profile) => {
