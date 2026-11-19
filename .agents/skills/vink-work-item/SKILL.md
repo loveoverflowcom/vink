@@ -17,9 +17,11 @@ prior handoff, select `vink-how`, `vink-why` or `vink-recall` from the
 
 ## Resolve scope and baseline
 
-1. State one reviewable outcome, affected requirement IDs and acceptance. Retain a PR/chat/count
-   constraint the user supplied. A prompt-only request belongs to
-   [vink-prompt](../vink-prompt/SKILL.md), not implementation.
+1. Trace the requested journey or actual caller to its observable result. A sentence with the
+   affected owner, AC and check suffices for a small fix. For multi-PR work, retain the integration
+   owner, dependencies, closure scenario and any delivery constraints from the
+   [task contract](../vink-prompt/references/prompt-template.md). Route prompt-only requests to
+   [vink-prompt](../vink-prompt/SKILL.md).
 2. Read current code/manifests and decision status. Resolve decisions the task depends on through
    the [registry](../../../decisions/README.md) for migrated IDs and the PRD/ADR for the rest.
    Determine what exists, what is proposed and what prerequisite actually affects this slice.
@@ -27,10 +29,8 @@ prior handoff, select `vink-how`, `vink-why` or `vink-recall` from the
    scaffolding a competing one.
    A merged PR is not proof of runtime acceptance; an absent database is not a reason to stop
    independent pure-code work.
-3. Inspect Git status and pin the starting branch/SHA and requested base. Use the explicit
-   user base, otherwise the task's integration base, otherwise `develop`. When creating a new
-   branch, use `codex/<outcome>` by default. If the user requests a commit directly on develop,
-   keep that workflow. Preserve existing edits; do not reset, stash or sweep unrelated files.
+3. Inspect Git status and pin the starting branch/SHA and requested base. Use the task worktree
+   and branch rules in [AGENTS.md](../../../AGENTS.md#work-and-verification).
 4. Continue with reasonable reversible choices. If an unresolved product/security decision
    (`OPEN` items resolved in `O-01..O-19`, or a change to authority, public visibility, lifecycle or data
    meaning) affects correctness, complete independent work and use
@@ -62,19 +62,17 @@ status and provenance while updating links and placement.
 
 ## Verify and finish the authorized work
 
-Use [the verification guide](../vink-engineering/references/verification.md) to pick the
-`cargo xtask verify` lanes the change needs; the commands are defined in
-[docs/development](../../../docs/development/README.md), not in this skill. Do not install the
-Cantos toolchain or invent gates. Finish focused checks and review the final diff. Keep pure, fake, PostgreSQL, model and browser
-evidence distinct. If a dependency is unavailable, deliver the independently verified portion
-and record exactly what remains unverified; keep runtime failures explicit rather than fake.
+Use [the verification guide](../vink-engineering/references/verification.md) to select and report
+checks on the final diff. Fix in-scope defects. A distinct outcome or explicitly accepted
+limitation can be deferred with its owner, impact and dependency. If a prerequisite is missing,
+complete independently verifiable work and name the remaining check.
 
 Update the owning documentation via [vink-specify](../vink-specify/SKILL.md) if the change
 implements a proposed module, command or behavior, or reveals drift between PRD, ADRs and
 registries (including the affected feature-map entry when the journey or coverage changes).
 Keep the four status dimensions (product decision, architecture decision, implementation level,
-evidence) distinct, and never silently rewrite a PRD rule to bless a code deviation. Do not create a second status board or
-require GitHub-only tracking when the project has not selected it.
+evidence) distinct. Report the scope that this slice completes. Preserve the PRD and existing
+issue-tracking convention.
 
 Use permission already granted in the conversation. When committing is requested, inspect the
 staged diff, stage explicit task paths, commit in the repository's style and verify the resulting
@@ -82,6 +80,5 @@ commit/status. Push or PR creation follows the user's requested scope; no skill 
 confirmation step for an action already authorized. Posting comments, publishing a site or
 calling a paid provider is not implied by a local implementation request.
 
-Report the outcome, branch/base or commit when relevant, requirement coverage, checks and
-material gaps. Include the next concrete prerequisite for deferred acceptance. Keep the report
-proportional; do not make the user approve an abstract plan when a reviewable result can be made.
+Use the [shared handoff](../vink-engineering/references/verification.md#evidence-handoff-and-provenance)
+once. Report the commit when relevant and the next concrete prerequisite for deferred acceptance.

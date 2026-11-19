@@ -16,8 +16,9 @@ trước khi dùng, không đoán command cho host chưa có.
 
 Ở mốc trên, app có `/`, `/tac-pham/:id`, `/ban-viet`, `/ban-viet/:id`, `/toi` và
 fallback. ID gợi ý: `explore.feed`, `reader.detail`, `desk.home`, `editor.draft`,
-`me.utility`; xác nhận lại trước khi nhận vào registry. Không đặt tên `/toi` là
-profile đăng nhập. Không tự thêm login/register/comments chỉ vì design có vẽ.
+`me.utility`. Khi chụp `/toi`, đối chiếu [Auth Web](../../../../docs/development/auth-web.md)
+với chế độ Identity hoặc fixture đang chạy. Ghi route, trạng thái tài khoản và bằng chứng đúng
+với lần chụp đó trước khi cập nhật registry.
 
 ## Chọn coverage có thể kiểm đếm
 

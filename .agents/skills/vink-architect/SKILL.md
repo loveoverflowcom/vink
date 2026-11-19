@@ -69,8 +69,11 @@ is in scope; passing a check or merging a prototype alone does not make a D item
 Split larger work into independently reviewable slices with an owner, observable acceptance,
 dependency order and the verification boundary from
 [verification.md](../vink-engineering/references/verification.md). Name shared contract/file
-ownership when slices overlap. Include rollout/migration/recovery only where the change needs
-them; do not promise production checks the environment cannot perform.
+ownership when slices overlap. For a multi-PR journey, name the parent if it exists, the person
+or team responsible for integration, dependency order and final closure scenario. If exposing a
+slice early is unsafe, use an existing rollout control that covers the affected endpoints, jobs
+and data, or reorder the slices so the safe boundary lands first. Hiding a UI entry leaves direct
+callers able to reach the backend. Include migration and recovery where the change needs them.
 
 For a design request, return the recommendation, key evidence, open choices and slices. For a
 request that includes implementation, continue via [vink-work-item](../vink-work-item/SKILL.md).

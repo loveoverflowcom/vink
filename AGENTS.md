@@ -181,15 +181,18 @@ The following boundaries guide work within the selected scope:
 
 ## Work and verification
 
-Default integration branch: `develop`. For a new feature branch, use `codex/<outcome>` unless
-the user specifies another workflow; an explicit request to commit directly to `develop` wins.
+Default integration branch: `develop`. Continue in the branch/worktree assigned to the task.
+For an existing PR, verify its head before editing. When creating a branch, use `codex/<outcome>`
+from the task's integration base and preserve unrelated worktrees. An explicit branch, worktree
+or direct-to-`develop` request wins.
 Check status first and preserve existing edits. Stage explicit paths belonging to the task.
 Use authorization already granted in the conversation; a skill adds no requirement to ask again.
 Do not infer permission to push, post messages or publish from a local editing task.
 
 On shared macOS development machines, run supported heavy build/test commands via
 [the local resource budget](docs/development/local-resource-budget.md):
-`./tools/local-budget run -- cargo xtask …` (or the corresponding supported raw Cargo command).
+`./tools/local-budget run -- cargo xtask …`. If the shell resolves an older Python, invoke the
+launcher with an installed Python 3.13+ (e.g. `/opt/homebrew/bin/python3 ./tools/local-budget …`).
 `./tools/local-budget plan` inspects the profile without Cargo bootstrap. Raw commands outside
 the launcher do not join its host-user slot. See the guide for unsupported lanes and recovery.
 
@@ -211,8 +214,8 @@ agent runtimes (Codex, Claude Code, Antigravity) load it without truncation.
 For documentation/skill changes, check the diff, relative links, YAML metadata and referenced
 files. For behavior changes, use the cheapest meaningful regression and then the actual
 boundary needed by the claim: real PostgreSQL for transactions and a browser for hydration/editor interactions. Quint evidence is separate from code/I/O evidence.
-Use [the verification guide](.agents/skills/vink-engineering/references/verification.md) for scope
-and result reporting; never present an unavailable runtime check as passed.
+Use [the verification guide](.agents/skills/vink-engineering/references/verification.md) to report
+which acceptance criteria the evidence covers and which boundaries still need verification.
 
 Keep product documents and user-facing copy in Vietnamese unless requested otherwise. Agent
 instructions may use English; preserve technical identifiers. Report the outcome, relevant

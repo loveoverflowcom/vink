@@ -31,16 +31,17 @@ update in the prompt's scope.
   implemented facts and runtime evidence separate. The foundation's Cantos/Discourse source
   snapshots are research provenance, not the coder's runtime versions; Discourse is not part of
   Vink's runtime since 03/11/2026.
-- Treat illustrative paths in the stack as proposed until present. Take VERIFY commands from
-  [docs/development](../../../docs/development/README.md) (`cargo xtask verify quick|postgres|web`)
-  and name the lane each claim needs. If source access is missing, mark the gap and make the
-  receiving agent's first step discovery rather than inventing an API or result.
+- Check illustrative paths against the checkout. Select VERIFY commands from
+  [docs/development](../../../docs/development/README.md) or the
+  [scoped workflow guide](../../../docs/development/scoped-workflows.md). If source access is
+  missing, identify the gap and the discovery the receiving agent can do.
 
 ## Choose the prompt shape
 
-For implementation, specify one reviewable outcome and observable acceptance. Link owning
-skills instead of copying their policy. Use SudoLang-style constraints and if/else branches
-where they make execution clearer; plain structured instructions are also acceptable.
+Use the [short template](references/prompt-template.md) first. Name the real journey or caller,
+affected owners and observable result. Refer back to the AC ID for its check. Add fields only
+when they change what the receiver must do or preserve a constraint from the issue.
+The repository owns this prompt convention. The external `vink-github-issue` plugin owns issue tracking.
 
 For UI work, include the selected [LayoutSpec](../vink-layout-spec/SKILL.md) or an
 accessible source/revision and the user's choice. If absent, require the receiving
@@ -55,9 +56,8 @@ reduced motion fallback) from [Interaction UX](../vink-ui-design/references/inte
 into ACCEPTANCE and VERIFY. Preserve sketch-only or wait-for-selection scope; otherwise this adds
 no approval gate. Carry responsive/state/theme/interaction acceptance and compare the implementation to that spec.
 
-For split work, preserve the user's number of prompts/PRs/chats. Assign one owner for each
-shared file/contract, explicit dependencies and integration order. Make each prompt self-contained.
-Writing split prompts does not launch agents or create chats.
+For split work, use the template's multi-PR SCOPE and assign each shared file or contract one
+owner. Make each prompt self-contained. Writing split prompts does not launch agents or create chats.
 
 For review-to-repair, read the target first, cite concrete gaps and separate defect evidence
 from missing acceptance. Do not turn every desirable improvement into a blocking task.

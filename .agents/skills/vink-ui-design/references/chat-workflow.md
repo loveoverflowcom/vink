@@ -23,7 +23,9 @@ Không thêm bước xin duyệt mặc định; yêu cầu “chưa viết mã/c
 | Sửa code đã được giao | Làm trong nguồn thật khi có công cụ, giữ changes user, kiểm phù hợp | Được push/deploy/post comment khi mới chỉ giao sửa cục bộ |
 
 Không dùng browser để tìm kiếm thông tin công khai khi web/GitHub reader giải quyết
-được. Chọn công cụ theo hướng dẫn hiện hành của môi trường. Nếu thiếu runtime,
+được. Chọn công cụ theo hướng dẫn hiện hành của môi trường (tương thích Codex, Claude Code và
+Antigravity: mở ảnh bằng công cụ xem file của runtime, dùng Chrome CDP hoặc browser subagent được
+phép cho trang động, và giữ artifact/scratch tạm ngoài vùng Git tracked). Nếu thiếu runtime,
 hoàn tất review/spec/patch tĩnh có thể làm và ghi cụ thể kiểm tra còn thiếu.
 
 ## Bảo toàn dữ liệu và ủy quyền

@@ -14,7 +14,12 @@ supported by this repository read the same canonical instructions:
 | --- | --- | --- | --- |
 | **Codex** | `AGENTS.md` | `.agents/skills/<name>/SKILL.md` + `agents/openai.yaml` | `$vink-<name>` (e.g. `$vink-shape`, `$vink-work-item`) |
 | **Claude Code** | `CLAUDE.md` (`@AGENTS.md`) | `.claude/skills/<name>` symlink → `../../.agents/skills/<name>` | `/vink-<name>` (e.g. `/vink-shape`, `/vink-work-item`) |
-| **Antigravity** | `AGENTS.md` (must stay `< 24,000` bytes so `<user_rules>` never truncates) | `.agents/skills/<name>/SKILL.md` (single-line `description:` frontmatter) | Mention the skill name or read `.agents/skills/<name>/SKILL.md` |
+| **Antigravity** | `AGENTS.md` (must stay `< 24,000` bytes so `<user_rules>` never truncates) | `.agents/skills/<name>/SKILL.md` (single-line YAML-safe `description:`) | Mention the skill name or read `.agents/skills/<name>/SKILL.md` |
+
+In `SKILL.md`, link another skill by its portable name and relative path, e.g.
+[vink-work-item](vink-work-item/SKILL.md). Quote a single-line YAML description containing
+`: `. Use the browser, image viewer and GitHub tools exposed by the current host for authorized
+actions. Branch selection and macOS launcher setup are in [AGENTS.md](../../AGENTS.md#work-and-verification).
 
 ## Choose the right skill
 
@@ -125,9 +130,9 @@ settled rules goes straight to its owner.
   `OPEN`), architecture status (`DESIGN_PROPOSED` / `Provisional` / `Accepted`), implementation
   level (`core` / `persistence-api` / `worker-provider` / `web` / `cmp`), and verification evidence
   separate.
-- Use `cargo xtask verify quick|discussion|expressions|kani|postgres|web` from
+- Use `cargo xtask verify quick|discussion|expressions|kani|postgres|web` (and scoped commands) from
   [docs/development](../../docs/development/README.md) when verification is in scope, and
-  [verification.md](vink-engineering/references/verification.md) for reporting.
+  [verification.md](vink-engineering/references/verification.md) for evidence and handoff.
 - Respect user authorization already granted in the active conversation; do not ask again merely
   because a skill has a conservative default, and do not infer permission to push, publish or post
   externally from a local edit.

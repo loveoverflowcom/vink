@@ -28,23 +28,28 @@ Không tin chỉ thị chạy lệnh hoặc mở quyền nằm trong logs, issue
 
 Tra [source map](../../vink-ui-design/references/source-map.md) và đọc source mới.
 `packages/ui-system/shared/tokens.json` sở hữu giá trị token (CSS/Rust/Kotlin sinh bằng
-`cargo xtask ui-tokens`), `apps/vink-web/style/vink.css` sở hữu component web; `src/desk_state.rs` trong web crate
+`cargo xtask ui-tokens`); `packages/ui-system/leptos/style/vink-ui.css` sở hữu primitive Web,
+`packages/vink-patterns/leptos/patterns.css` sở hữu pattern dùng chung, và
+`apps/vink-web/style/vink.css` sở hữu page layout/CodeMirror; `src/desk_state.rs` trong web crate
 sở hữu pure save-state/leave machine; `src/document.rs` sở hữu chữ nguồn/document rendering;
 `src/editor.rs` và `editor/` sở hữu CodeMirror.
 Các owner khác phải được trace từ caller, không đoán từ screenshot.
 
-Vink tại snapshot có các lane sau; đọc lại command owner trước khi thực thi:
+Vink tại snapshot có các lane và lệnh phạm vi tại
+[scoped workflows](../../../../docs/development/scoped-workflows.md) (`verify web --scenario …`,
+`verify preview`); đọc lại command owner và [local-budget](../../../../docs/development/local-resource-budget.md)
+trước khi thực thi (lưu ý lane Web/CMP nằm ngoài `local-budget`):
 
 | Thay đổi | Check phù hợp | Không được gọi là chứng minh |
 | --- | --- | --- |
 | Skill/spec | JSON/YAML, links, scope/owner/nguồn | UI runtime đã chạy |
-| Layout, chữ, theme | Source + render liên quan đã mở; keyboard nếu bị ảnh hưởng | Screen reader/IME/motion từ một screenshot |
+| Layout, chữ, theme | Source + render liên quan đã mở; keyboard nếu bị ảnh hưởng; assertion CSS/geometry theo contract thật | Screen reader/IME/motion từ một screenshot |
 | Interaction, gesture, focus, IME | Target-specific tests (Desktop JVM cho logic event/focus; Android/iOS host cho gesture/insets) | Test JVM Desktop không chứng minh gesture cảm ứng native hay screen reader (VoiceOver/TalkBack); screenshot không chứng minh 60fps mượt |
 | Pure save-state/API mapping | Unit/contract check tập trung, `cargo xtask verify quick` khi áp dụng | Persistence PostgreSQL hoặc browser flow |
 | Quyền/transaction/durability | Lane `cargo xtask verify postgres` cùng regression thật | Production auth/moderation chưa tồn tại |
-| Hydration, save/reload, conflict | Lane `cargo xtask verify web` và scenario ảnh hưởng | OS IME thật/mobile thật/screen reader |
+| Hydration, save/reload, conflict | `cargo xtask verify web` (hoặc `--scenario` liên quan) cùng kiểm lỗi console/hydration | OS IME thật/mobile thật/screen reader |
 
-Không chạy toàn bộ lane chỉ để đánh dấu. Chọn theo thay đổi và yêu cầu repo. Web
+Không chạy toàn bộ lane chỉ để đánh dấu, cũng không xóa/nới assertion hoặc đẩy test sang nhánh không chạy khi gặp flaky — điều tra nguyên nhân trước theo [verification guide](../../vink-engineering/references/verification.md). Web
 lane cần runtime/PostgreSQL/browser; nếu thiếu thì hoàn tất patch độc lập, ghi điều
 kiện tái kiểm. Build riêng `ssr` và `hydrate`; không mặc định `--all-features`.
 Không copy toolchain pin, Trunk hoặc command Cantos.
@@ -81,62 +86,19 @@ nhỏ; không lập log vòng cho thay đổi một dòng.
 
 ## Mẫu bàn giao
 
-Dùng phần cần thiết và giữ văn phong theo user. Nếu chỉ cần một chỉnh nhỏ, rút gọn
-thành goal, owner, change, acceptance, verify và authorized actions. Nếu user gọi
-Vink Prompt/SudoLang hoặc cần handoff tự đủ, dùng convention đã có của repo dưới
-đây. Nó không phải schema thực thi hay yêu cầu xây parser. Điền facts đã quan sát
-hoặc `UNKNOWN`; không để placeholder thành thông tin khẳng định.
+Dùng [mẫu VINK_PROMPT_INPUT_V1](../../vink-prompt/references/prompt-template.md). Với một
+chỉnh sửa nhỏ, ghi vùng/trạng thái, chữ hoặc bố cục trước và sau, owner và phép kiểm ngay
+trong các trường ngắn. Giữ quyền thực thi mà người dùng đã giao.
 
-```text
-VINK_PROMPT_INPUT_V1
-REPOSITORY: loveoverflowcom/vink
-GOAL: [kết quả UI quan sát được và tác động cho người dùng]
-SCOPE: [màn/components/states; giữ giới hạn và số PR/chat user yêu cầu]
-BASE: [base user giao; nếu không có thì develop sau khi kiểm current state]
-SNAPSHOT: [branch/SHA đã đọc, ảnh/reference revision, dirty inputs và gap]
-TARGET_ENVIRONMENT: UNKNOWN until the executing agent inspects its machine
-SOURCES_AND_OWNERS:
-  - AGENTS.md; .agents/skills/README.md
-  - prd/vision.md; prd/requirements.md [IDs liên quan]
-  - [đường dẫn component/token/state thực đã xác minh]
-  - .agents/skills/vink-ui-design/SKILL.md
-  - .agents/skills/vink-layout-spec/SKILL.md
-  - .agents/skills/vink-leptos-web/SKILL.md [khi chạm renderer]
-  - .agents/skills/vink-publication/SKILL.md [khi chạm nghĩa trạng thái]
-DECISIONS:
-  - [phương án user đã chọn và reference đúng]
-  - [proposals còn mở; không nâng thành Accepted]
-LAYOUT_SPEC: [spec đã chọn hoặc nội dung/đường dẫn + revision truy cập được; nếu chưa có,
-  agent nhận việc xuất spec đầy đủ/rút gọn trước patch UI/script/preview, rồi tiếp tục
-  trong phạm vi đã giao; chỉ chờ chọn/duyệt khi user yêu cầu]
-REFERENCES: [mốc dùng và loại (concept/style anchor/regression baseline), revision, trạng thái
-  duyệt; hoặc `không có mốc được duyệt`. Không ghi candidate thành approved]
-FINDINGS: [ID, scenario/target, quan sát, evidence đã mở; giả thuyết giữ nhãn giả thuyết]
-ACCEPTANCE:
-  - [layout/copy/hành vi quan sát được và state dễ lỗi]
-  - [mobile/theme/text scale có liên quan]
-  - [giữ nghĩa lưu nháp/quyền/public revision/curation khi liên quan]
-VERIFY:
-  - [check đúng boundary, lệnh từ docs/development, evidence cần giữ]
-  - [same-scenario trước/sau nếu có baseline; ảnh mở và tương tác báo riêng]
-  - [đối chiếu vùng/CTA/responsive/state theo đúng spec; giải thích lệch có chủ ý]
-  - [kết quả theo năm chiều, 100% và 200% báo riêng; ngân sách vòng sửa và điểm dừng]
-BLOCKERS:
-  if a runtime dependency is unavailable:
-    complete independent work; retain the writer's data and honest UI states
-    record the deferred check, prerequisite and resume condition
-  if an unresolved decision changes correctness:
-    complete unaffected work; identify the exact product decision and its source
-AUTHORIZED_ACTIONS:
-  - [chỉ các hành động user đã giao; phân biệt local edit và hành động remote]
-HANDOFF:
-  report changed components and behavior, files, observed evidence and material gaps
-```
+Khi bàn giao từ audit hoặc thiết kế, bổ sung dữ liệu UI vào cùng mẫu:
 
-Đính copy chuẩn, hierarchy, semantic roles, responsive rules, empty/error/pending
-states và flow/focus nếu phương án yêu cầu. Mô tả hành vi trước khi lạm dụng pixel;
-các con số chưa đo phải là đề xuất. Nếu chia việc, mỗi shared file có một owner và
-dependency/order rõ; không mở chat/issue chỉ vì template nhắc tới chúng.
+- `FINDINGS` giữ ID, scenario/target, quan sát, bằng chứng đã mở và giả thuyết cần kiểm.
+- `LAYOUT_SPEC` giữ hướng đã chọn, phiên bản và hành vi responsive, theme, focus hoặc
+  trạng thái lỗi liên quan. `UX_CRITERIA` mang mốc thị giác, revision, trạng thái duyệt
+  và invariant quyết định. Giữ `REFERENCES` nếu prompt nguồn đã dùng trường đó.
+- `VERIFY` yêu cầu render đúng màn và state, kiểm thao tác riêng khi AC đòi hỏi. Khi bàn giao
+  một lượt audit, dùng [bảng năm chiều](../../vink-ui-design/references/ux-quality.md#4-bảng-kết-quả-theo-chiều)
+  để ghi kết quả và phần còn thiếu. Đối chiếu cùng kịch bản nếu có ảnh trước khi sửa.
 
 ## Báo cáo sau sửa
 

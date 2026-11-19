@@ -162,3 +162,8 @@ bằng chứng thì ghi `NOT_RUN`/gap ngay trong bàn giao, không chặn merge 
 thành PASS. Mở rộng thành gate bắt buộc theo vùng UI là quyết định của chủ sản phẩm sau khi
 pilot có số liệu về lỗi bắt được, bỏ sót và chi phí; xem
 [báo cáo #174](../../../../docs/design/ui-ux-quality-174.md).
+
+Đối chiếu với [verification guide](../../vink-engineering/references/verification.md): bằng chứng bắt
+buộc của AC thuộc phạm vi nhiệm vụ và tiêu chí UX pilot rộng hơn là hai lớp khác nhau — không âm
+thầm biến pilot thành merge gate toàn cục, cũng không lấy trạng thái pilot để miễn cho một AC bắt
+buộc chưa đạt. Mọi đề xuất biến một hạng mục thành gate mới phải nêu rõ phạm vi áp dụng và chi phí.

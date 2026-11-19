@@ -1,9 +1,10 @@
 # Verification scope and evidence
 
-Use actual manifests, commands and CI from the current checkout. The implemented lanes are
+Use the manifests and command owners at the current checkout. The implemented lanes are
 `cargo xtask verify quick|discussion|expressions|kani|postgres|web|all`; what each covers, its prerequisites and its limits
 are defined once in [docs/development](../../../../docs/development/README.md). CI runs the same
-lanes. `discussion` covers the structural D2T-01, lifecycle D2T-02 (with receipts), reaction D2T-INV-08 and literary endorsement (LVE #73) Quint models and real Rust replay;
+lanes. On shared macOS machines, run supported heavy commands via
+[local-budget](../../../../docs/development/local-resource-budget.md) (`./tools/local-budget run -- ...`, requiring Python 3.13+; note unsupported lanes such as `verify web`, Gradle/CMP and native diagnostics). `discussion` covers the structural D2T-01, lifecycle D2T-02 (with receipts), reaction D2T-INV-08 and literary endorsement (LVE #73) Quint models and real Rust replay;
 there is no generic behavior lane. Canonical publication/moderation/governance model counts and
 replay limits belong to the [publication owner](../../../../services/vink-app/behavior/publication/README.md).
 The lane also checks the [Web read-lifecycle model](../../../../apps/vink-web/behavior/README.md)
@@ -23,9 +24,19 @@ instructions or repeated checking workflows, use
 [vink-maintain-verification](../../vink-maintain-verification/SKILL.md).
 
 For a focused local task, use the [scoped workflow guide](../../../../docs/development/scoped-workflows.md):
-`verify unit <owner> [--filter NAME]`, `verify web --scenario NAME`, and `doctor <scoped command>`.
+`verify unit <owner> [--filter NAME]`, `verify web --scenario NAME`, `verify preview`, and `doctor <scoped command>`.
 Inspect dependencies with trailing `--plan`. A selected result is not a full lane PASS; `restart`
 includes `main` as setup. Full lanes and formal-method obligations below remain unchanged.
+
+## Scoped completion claims
+
+Keep these scoped claims distinct alongside the four status dimensions in [AGENTS.md](../../../../AGENTS.md) (they are reporting claims, not a second tracking database):
+
+- `IMPLEMENTED(scope)`: the relevant code and required entrypoint/caller/consumer wiring exist.
+- `VERIFIED(scope, inputs, target)`: applicable checks actually support the claim on those inputs and target.
+- `OUTCOME_COMPLETE(journey, target)`: the declared journey works across its required boundaries on the integrated version.
+
+A child PR may satisfy its own acceptance without claiming `OUTCOME_COMPLETE` for a multi-PR parent journey. Journey completion does not imply deployment, and verification does not require automatic GitHub labels or issue-state changes.
 
 ## Pick lanes by change
 
@@ -60,6 +71,33 @@ Keep tests independent of implementation where feasible: assert an observable re
 exact failure or durable state, rather than repeating the same algorithm as the expected result.
 Do not add tests that merely mirror document wording or reversible formatting edits.
 
+Distinguish **functional, visual, interaction and accessibility** evidence so each is selected and interpreted accurately; this distinction does not make interaction or accessibility optional. Prefer semantic or stable locators, without banning CSS selectors categorically: CSS and geometry assertions are valid when testing an actual contract (hit targets, clipping, focus visibility, selected indicators).
+
+For flaky checks, investigate readiness, fixtures, input delivery, environment capabilities and the oracle before rerunning or changing the test. Never delete coverage, relax acceptance, suppress errors or move a required test to an unexecuted lane merely to obtain PASS. Screenshots do not replace save/reload, keyboard, focus or IME checks.
+
+Required AC evidence and the broader advisory UX pilot (#174) in
+[UX quality §5](../../vink-ui-design/references/ux-quality.md#5-mức-bắt-buộc-hiện-tại) are distinct: do not silently convert the pilot into a universal merge gate, and do not use pilot status to excuse an unmet mandatory AC. Propose any materially new gate with its scope and cost.
+
+## Evidence handoff and provenance
+
+For each required AC, the writer and reviewer use the same handoff:
+
+`AC/claim → connected source/caller → evidence → result → gap`
+
+For a small fix this can be one sentence. Use one row per AC only when several results need
+comparison. For a run, give its original SHA/build and relevant dirty inputs, command or scenario,
+target, fixture mode, result and log/capture reference. A real database or browser can use isolated
+synthetic data. A component preview can establish how that component rendered in the preview.
+An AC on a product route needs evidence from that route.
+
+Compare the tested inputs with the final delta. Rerun an affected check if its code, build,
+fixture or target changed in a relevant way. If the delta is unrelated, record why the original
+result still applies. For example, a browser trace on A can cover the same route on B after a
+spelling fix to the contributor guide. Cite A as the executed revision. If applicability is
+unknown, preserve the original result and mark the current claim unverified.
+
+For UI changes, inspect relevant runtime errors and hydration behavior. Distinguish new unexpected errors from intentional failure fixtures and verified pre-existing/environment issues; never suppress errors to produce a clean report.
+
 ## Timing and unavailable dependencies
 
 Use the cheapest focused check while developing. At handoff, run the checks that cover the
@@ -87,3 +125,15 @@ An opened screenshot can be reported as inspected; a captured but unopened image
 A model PASS does not accept a requirement, test production code or establish a database race.
 Handoff should state the unverified claim, reason, prerequisite and next useful check when a
 missing layer affects acceptance. Keep the report short for small changes.
+
+## Human smoke handoff
+
+When a change alters a main UI journey or leaves an interaction to check on a device, add a
+review card. Aim for two minutes of interaction and state the setup separately.
+
+- accessible URL/deep link and build identity (SHA/branch/mode);
+- test state/fixture already prepared, or honest setup prerequisite;
+- 3–4 concrete actions with expected results;
+- specific remaining risk to observe.
+
+Human execution remains `NOT_RUN` until actually observed/reported. This supplements agent verification; it is not a new approval gate unless the task or current policy requires one.

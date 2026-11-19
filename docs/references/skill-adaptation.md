@@ -166,3 +166,35 @@ việc tiếp theo:
 Đồng thời chuẩn hóa toàn bộ 22 skills và `AGENTS.md` để tương thích đồng thời trên **Codex**,
 **Claude Code** và **Antigravity** (`AGENTS.md < 24,000` byte để không bị cắt trong `<user_rules>`,
 frontmatter `description:` một dòng, `agents/openai.yaml` và symlink `.claude/skills/*`).
+
+## Rà soát hợp đồng giao việc, bằng chứng, review và tương thích Antigravity (19/11/2026)
+
+Nguồn đối chiếu là `develop@117ef20f`. [#290](https://github.com/loveoverflowcom/vink/issues/290)
+bàn giao có chủ đích cho [#292](https://github.com/loveoverflowcom/vink/issues/292).
+[#318](https://github.com/loveoverflowcom/vink/pull/318) ghi nhận lỗi sau tích hợp, gồm vòng đời
+lưu thẻ sau HTTP 422. [#322](https://github.com/loveoverflowcom/vink/pull/322) ghi nhận điều kiện
+hover của trình duyệt headless và lỗi đồng bộ. Số PR tiếp nối tự nó không xác định nguyên nhân.
+
+[Mẫu prompt](../../.agents/skills/vink-prompt/references/prompt-template.md) sở hữu phạm vi
+và trường mở rộng cho công việc nhiều PR. [Hướng dẫn kiểm chứng](../../.agents/skills/vink-engineering/references/verification.md)
+sở hữu cách bàn giao theo AC và đánh giá lại bằng chứng sau một thay đổi.
+[Skill review](../../.agents/skills/vink-code-review/SKILL.md) sở hữu phân loại finding,
+còn [pilot UX](../../.agents/skills/vink-ui-design/references/ux-quality.md#5-mức-bắt-buộc-hiện-tại)
+sở hữu mức áp dụng của rubric.
+
+**Đối chiếu plugin ngoài `vink-github-issue` v1.0.0.** Plugin sở hữu tạo/amend issue,
+checklist và đồng bộ tiến độ. Phần bàn giao cho chủ phiên bản tiếp theo gồm:
+
+- Trong `references/issue-template.md` và `compatibility.md`, dẫn mẫu repo tại bản nhận việc.
+  Giữ AC ID, quyền ghi và tracking của issue. Với nhiều PR, thêm người phụ trách tích hợp và
+  kịch bản nghiệm thu cuối.
+- `references/progress-protocol.md` đã đối chiếu AC với SHA/content, target và kết quả.
+  Bổ sung ví dụ giữ SHA thực thi khi tái dùng bằng chứng và phân biệt AC bắt buộc với pilot UX.
+- `references/local-verification.md` cần cập nhật câu về Kani theo command owner hiện tại,
+  dẫn [scoped workflows](../development/scoped-workflows.md) và [local-budget](../development/local-resource-budget.md).
+  `references/source-map.md` đã yêu cầu đọc lại checkout. Giữ `4ce0ff18` cho lần khảo sát cũ
+  và gắn SHA mới cho nguồn đã kiểm tra lại.
+- `references/github-operations.md` đã có đường dự phòng qua CLI. Thử discovery trên từng host
+  nếu chủ plugin muốn phân phối ngoài Codex. Tách phép thử đó khỏi thay đổi template nghiệp vụ.
+
+Phiên bản plugin đã đối chiếu được quản lý ngoài repo Vink.

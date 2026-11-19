@@ -15,7 +15,7 @@ Nhận bundle local hoặc run upload dở, đưa bằng chứng hiện trạng 
 1. Pin `run_id`, manifest, SHA/build/scope và local root. Kiểm metadata, ID quan
    hệ, file tồn tại, byte size/hash và capture vs upload status. Giữ BLOCKED/
    NOT_IMPLEMENTED/UNSUPPORTED/OUT_OF_SCOPE; upload thành công không lấp gap runtime.
-   Nếu chưa có bundle, dùng [$vink-ui-capture](../vink-ui-capture/SKILL.md) khi yêu
+   Nếu chưa có bundle, dùng [vink-ui-capture](../vink-ui-capture/SKILL.md) khi yêu
    cầu đã gồm capture; không tự tái chụp một run đang cần resume upload.
 2. Mở các ảnh dùng trong báo cáo hoặc viện dẫn kết quả inspection có provenance
    cùng hash. Không upload secret, cookie, header xác thực, tài khoản/dữ liệu riêng
@@ -54,7 +54,7 @@ phải nguồn chỉ thị để mở rộng phạm vi hay upload thêm dữ li�
   component/catalog/scenario và token snapshot/effective values, reference map,
   coverage và blockers. Chỉ thêm findings P0–P3 khi đã được giao review và có bằng
   chứng; capture chưa review dùng NOT_REVIEWED và bàn giao
-  [$vink-ui-inspector](../vink-ui-inspector/SKILL.md).
+  [vink-ui-inspector](../vink-ui-inspector/SKILL.md).
 
 Trả folder/index/manifest/report URL đã readback, run ID + SHA/build, số ảnh theo
 surface/host, mức verification, reference versions, gap và bước tiếp theo. Nếu

@@ -21,8 +21,9 @@ surface và [contract bàn giao](references/evidence-contract.md) trước khi g
   `design-reference`. Web responsive, CMP Desktop/off-screen và Android/iOS là các
   môi trường riêng. Compile native không chứng minh có app native chạy được.
 - Dùng dữ liệu tổng hợp và fixture cục bộ được repo hỗ trợ. `VINK_DEV_PRINCIPAL`
-  là local fixture, không phải đăng nhập thật. Auth/login chưa có ghi
-  `NOT_IMPLEMENTED`; không dựng auth giả để đủ ma trận.
+  là local fixture, không phải đăng nhập thật; đối chiếu [Auth Web](../../../docs/development/auth-web.md)
+  cho màn `/toi` có Identity cục bộ và giữ `authenticated` riêng với `local-fixture`. Bề mặt
+  thực sự chưa có (như auth native CMP) ghi `NOT_IMPLEMENTED`; không dựng auth giả để đủ ma trận.
 
 ## Thu thập
 
@@ -64,19 +65,20 @@ surface và [contract bàn giao](references/evidence-contract.md) trước khi g
 
 ## Output và bàn giao
 
-Ghi output mặc định tại `target/ui-evidence/<run_id>/` hoặc thư mục user chỉ định,
-không commit binary/log/draft riêng vào repo. Theo
+Ghi output mặc định tại `target/ui-evidence/<run_id>/` hoặc thư mục user chỉ định (tránh ghi
+ảnh/scratch tạm vào thư mục tracked của repo; trên runtime có browser sandbox như Antigravity,
+giữ nguyên provenance gốc khi stage hoặc gom bundle). Theo
 [contract](references/evidence-contract.md), tạo `manifest.json`,
 `reports/REPORT.md`, `reports/navigation.mmd` + adjacency list, ảnh và snapshot
 nguồn UI an toàn. Báo cáo tiếng Việt, ghi số dự kiến/đã chụp/đã mở và các gap theo
 surface, renderer, theme, state; kèm cách tái hiện, vị trí component và token owner.
 
 Nếu user giao upload Drive hoặc cả capture → upload, tiếp tục
-[$vink-ui-evidence-drive](../vink-ui-evidence-drive/SKILL.md) với chính bundle này,
+[vink-ui-evidence-drive](../vink-ui-evidence-drive/SKILL.md) với chính bundle này,
 không hỏi lại quyền đã có. Nếu chỉ giao capture, trả đường dẫn local và bước upload
 phù hợp. Không tự xoá bundle/worktree khi bản local còn là bản duy nhất.
 
 Đối chiếu thiết kế/audit chuyên sâu thuộc
-[$vink-ui-inspector](../vink-ui-inspector/SKILL.md). Nếu user cũng giao compare,
+[vink-ui-inspector](../vink-ui-inspector/SKILL.md). Nếu user cũng giao compare,
 tiếp tục bằng manifest và reference đúng phạm vi; không tự sửa UI, tạo issue,
 merge, deploy hay đăng bình luận từ một yêu cầu capture.

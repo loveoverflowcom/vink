@@ -104,13 +104,13 @@ mobile IME, screen reader hoặc runtime. Kết quả ghi theo
 [năm chiều](../vink-ui-design/references/ux-quality.md#4-bảng-kết-quả-theo-chiều), mỗi chiều
 có scenario/target; tự kiểm bản sửa của mình là `self-review`.
 Handoff phải tự đủ ngữ cảnh, có acceptance
-và branch xử lý blocker; nếu user muốn SudoLang, dùng mẫu Vink đã được nguồn định
-nghĩa trong reference. Không tự post issue/comment, push, merge, deploy hay publish
+và cách xử lý blocker. Khi user muốn SudoLang, dùng
+[mẫu Vink](../vink-prompt/references/prompt-template.md). Không tự post issue/comment, push, merge, deploy hay publish
 khi mới có yêu cầu spec/local edit. Giữ ủy quyền đã có, không hỏi lại một cách máy móc.
 
 ## References
 
 - [Repair và handoff](references/repair-and-handoff.md): bug contract, source owners,
-  verification lanes và mẫu `VINK_PROMPT_INPUT_V1` cho design-to-code.
+  verification lanes và dữ liệu UI cần thêm khi dùng `VINK_PROMPT_INPUT_V1`.
 - [Component audit](../vink-ui-inspector/references/component-audit.md): giữ finding
   ID, vùng so sánh, severity/confidence và scenario khi nhận báo cáo review.

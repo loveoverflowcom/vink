@@ -1,69 +1,51 @@
 # VINK_PROMPT_INPUT_V1
 
-Use this copyable shape, shortening fields for a small task. This is an agent handoff convention,
-not an executable schema or a requirement to build a parser. Replace bracketed descriptions
-with observed facts or `UNKNOWN`; preserve the user's constraints and decisions.
+For a direct, single-AC fix, one or two sentences can carry the caller, exact change and check.
+Keep the repository, base, inspected revision, AC ID and grant identifiable. Omit fields that
+would repeat those sentences. For an existing issue or plugin handoff, preserve its fields,
+stable AC IDs, tracking and authorization constraints.
 
 ```text
 VINK_PROMPT_INPUT_V1
 REPOSITORY: loveoverflowcom/vink
-GOAL: [one observable outcome and why it matters]
-SCOPE: [affected capability; explicit exclusions and any user-fixed PR/chat counts]
-BASE: [explicit user base, task integration base, or develop]
-SNAPSHOT: [source branch/SHA; relevant dirty inputs; evidence gaps]
+BASE: [user's base, task integration base, or develop]
+SNAPSHOT: [source SHA and any relevant dirty inputs or access gap]
 TARGET_ENVIRONMENT: UNKNOWN until the executing agent inspects its machine
-SOURCES_AND_OWNERS:
-  - AGENTS.md and .agents/skills/README.md
-  - [existing product/architecture files, requirement/D/INV/S IDs and actual code paths]
-  - [only the relevant vink-* skills]
-DECISIONS:
-  registry_refs: [when relevant, decision ID@revision, status, source and snapshot hash]
-  confirmed:
-    - [owner-confirmed rule + authoritative source/ID]
-  open_product:
-    - [question requiring owner decision; decision_owner: product; affected_requirements: [...]; blocks: [only the dependent slice]]
-  open_technical:
-    - [technical choice the executing agent resolves from code/evidence; decision_owner: agent; affected_requirements: [...]; blocks: [...]]
-  assumptions:
-    - [reversible assumption or technical baseline used to proceed + condition to revisit]
-LAYOUT_SPEC: [UI only: selected spec/content or accessible path + revision; if missing,
-  present the full/short vink-layout-spec (including Interaction field when applicable)
-  before UI code/scripts/previews; retain the user's chosen direction and any explicit request to wait; no default approval gate]
-UX_CRITERIA: [UI only: the few rubric rows that decide this task, the visual reference class
-  (concept / style anchor / regression baseline) with revision and approved|candidate|unknown,
-  spec invariants with unit and tolerance; `no approved reference` when none exists]
-ACCEPTANCE:
-  - [observable result, failure case and its authoritative requirement]
-  - [UI/Interaction: modalities (touch/key/a11y), trigger → feedback → commit/cancel, focus retention/restoration, reduced-motion behavior, Vietnamese IME preservation]
-  - [UI: separate goals at 100% and at 200% text; 200% stays legible with hierarchy, not merely non-crashing]
-VERIFY:
-  - [cargo xtask verify quick|postgres|web (docs/development), exact claim and boundary]
-  - [UI boundary: JVM unit/offscreen for logic; native host/browser for touch gesture feel, 60fps, insets, screen reader]
-  - [UI result table: Functional, Geometry, Visual, Accessibility/Responsive, Interaction, each with scenario/target and PASS/FAIL/NOT_RUN/UNSUPPORTED; opened images named; fix-round budget and stop condition]
-BLOCKERS:
-  if a runtime dependency is unavailable:
-    complete independent work; preserve explicit unavailable/pending runtime behavior
-    record the deferred check, prerequisite and resume condition
-  if an unresolved decision changes correctness:
-    complete unaffected work and ask the specific decision with its source
-AUTHORIZED_ACTIONS:
-  - [only actions actually granted by the user; local execution scope and remote actions]
-HANDOFF:
-  report changed behavior, files, evidence actually obtained and material remaining gaps
+GOAL: [entry → action → observable result, or actual caller → output for backend/library/docs]
+SCOPE: [affected owners/consumers and what this change completes; include explicit exclusions]
+ACCEPTANCE: [AC-01 or existing ID — observable result, including recovery when relevant]
+VERIFY: [AC ID — smallest check that exercises the required boundary]
+AUTHORIZED_ACTIONS: [actions the user actually granted]
 ```
 
-If a task is intentionally review-only or prompt-only, state that scope explicitly and do not
-turn future actions described in the prompt into actions performed by the authoring session.
-If the user authorized execution and a commit, retain that grant without inventing a new approval.
+A copy fix can name the route, state and new text in AC-01, with a check of that rendered state
+on the same line. A short result with the checked revision and any gap suffices for handoff.
 
-For split prompts, include each slice's owned/shared files, contract dependency and integration
-order inside each prompt. For continuation, include completed work and valid evidence plus the
-concrete next step; do not label deferred integration as PASS.
+Extend the same block when the work needs more context:
 
-For UI, use the [shared layout convention](../../vink-layout-spec/references/layout-spec.md)
-and include comparison against the chosen spec in ACCEPTANCE/VERIFY. Pass only the decisive
-criteria from [UX quality](../../vink-ui-design/references/ux-quality.md) in `UX_CRITERIA`
-instead of asking the receiving agent to load every UI reference; omit the field for a copy or
-one-property fix whose check is obvious. Never write a candidate reference as approved, and do
-not let a round budget or a missing device turn into PASS. Omit LAYOUT_SPEC for
-tasks that do not change UI; do not invent a layout stage for a backend or documentation edit.
+- **SCOPE for split work.** Keep any user-fixed number of PRs/chats. State what this slice
+  completes and defers, the existing parent if any, integration owner, ordered dependencies
+  and scenario that closes the integrated journey. If partial exposure is unsafe, identify
+  how an existing control protects the affected entrypoints or sequence delivery safely.
+- **SOURCES_AND_OWNERS and DECISIONS.** Link the authoritative requirement, actual caller,
+  implementation owner and relevant skill. Carry applicable `registry_refs` (ID@revision,
+  status, source and snapshot), `confirmed`, `open_product`, `open_technical` and `assumptions`.
+  Give each material open choice its owner, affected requirements and dependent work.
+- **LAYOUT_SPEC and UX_CRITERIA for UI.** Carry the selected spec and its revision. For a small
+  edit, the affected region, before/after and check can fit on one line. If missing, the receiver
+  presents the [scope-appropriate spec](../../vink-layout-spec/references/layout-spec.md) before
+  a UI patch or preview. Preserve an explicit request to wait. For visual or interaction work,
+  include the decisive [rubric rows](../../vink-ui-design/references/ux-quality.md), reference
+  class/revision and approval status, measurable invariants, modalities, failure states and
+  fix budget that apply. Check 100% and 200% text when affected. Omit UX_CRITERIA for a copy or
+  single-property fix with an obvious check.
+- **VERIFY and BLOCKERS.** Select an existing command or inspection from the
+  [scoped workflows](../../../../docs/development/scoped-workflows.md). Give the target, fixture
+  and prerequisite when they affect the claim. If a dependency or decision blocks an AC,
+  identify the dependent check, work that can proceed and the condition for resuming it.
+- **HANDOFF.** Use the [verification guide](../../vink-engineering/references/verification.md#evidence-handoff-and-provenance)
+  for evidence reuse, scoped claims and a human smoke card when applicable. For continuation,
+  carry completed work, original evidence and the next concrete step.
+
+Keep review-only, prompt-only and execution grants explicit. Preserve a commit or push grant
+already given for the task.
