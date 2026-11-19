@@ -253,17 +253,23 @@ async function bottomNavigationAnatomy(page, route, scenario) {
 
 async function bottomNavigationStates(page) {
   const selected = '.vk-ui-bottom-nav a[aria-current="page"]';
-  const styles = () => page.eval(`(() => {
+  const styles = () => page.eval(`(async () => {
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const link = document.querySelector('${selected}'), indicator = link.querySelector('.vk-ui-icon').parentElement;
-    return { fill: getComputedStyle(indicator).backgroundColor, layer: getComputedStyle(indicator).boxShadow,
-      hasOutline: getComputedStyle(indicator).outlineStyle === 'solid',
+    const style = getComputedStyle(indicator);
+    return { fill: style.backgroundColor, layer: style.boxShadow,
+      hovered: link.matches(':hover'), pressed: link.matches(':active'),
+      hoverMedia: matchMedia('(hover: hover)').matches,
+      hasOutline: style.outlineStyle === 'solid',
       hasFocus: link.matches(':focus-visible') && getComputedStyle(link).outlineStyle === 'solid',
-      motion: getComputedStyle(indicator).transitionDuration,
+      motion: style.transitionDuration, transition: style.transitionProperty,
       bounds: indicator.getBoundingClientRect().toJSON() };
   })()`);
   const reduce = { name: 'prefers-reduced-motion', value: 'reduce' };
   await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM, reduce] });
   try {
+    check(await page.eval(`matchMedia('(hover: hover)').matches`),
+      'Chrome reports a hover-capable pointer for the navigation mouse probe');
     await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 });
     const rest = await styles();
     const point = { x: rest.bounds.x + rest.bounds.width / 2, y: rest.bounds.y + rest.bounds.height / 2 };
@@ -272,9 +278,15 @@ async function bottomNavigationStates(page) {
     await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', clickCount: 1 });
     const press = await styles();
     await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 1, y: 1, button: 'left', clickCount: 1 });
-    check(new Set([rest.layer, hover.layer, press.layer]).size === 3 &&
-      [hover, press].every(state => state.fill === rest.fill && JSON.stringify(state.bounds) === JSON.stringify(rest.bounds)),
-    'hover and pressed use distinct state layers with identical selected fill and geometry');
+    check(!rest.hovered && !rest.pressed && hover.hovered && !hover.pressed && press.hovered && press.pressed,
+      'real pointer input reaches the selected bottom navigation link');
+    const distinctLayers = new Set([rest.layer, hover.layer, press.layer]).size === 3;
+    check(distinctLayers, 'rest, hover and pressed use distinct state layers' +
+      (distinctLayers ? '' : ` (${JSON.stringify({ rest, hover, press })})`));
+    const stableIndicator = [hover, press].every(state =>
+      state.fill === rest.fill && JSON.stringify(state.bounds) === JSON.stringify(rest.bounds));
+    check(stableIndicator, 'hover and pressed preserve selected fill and geometry' +
+      (stableIndicator ? '' : ` (${JSON.stringify({ rest, hover, press })})`));
     check(await page.eval(`matchMedia('(prefers-reduced-motion: reduce)').matches`) &&
       rest.motion.split(',').every(duration => parseFloat(duration) <= 0.001),
     `bottom navigation honors reduced motion (${rest.motion})`);
@@ -366,7 +378,6 @@ async function bottomNavigationRegression(page) {
   for (const theme of ['dark', 'light']) {
     await page.viewport(320);
     await page.goto(`${args.base}/toi`);
-    await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'navigation hydration');
     await chooseTheme(page, theme, 'page-theme');
     for (const width of [320, 360, 390, 480, 759]) {
       await page.viewport(width);
@@ -1207,6 +1218,11 @@ async function launchChrome(existingProfile) {
   ];
   // CI runners may not allow Chrome's user-namespace sandbox; only our local app is loaded.
   if (process.env.CI || process.env.VINK_CHROME_NO_SANDBOX) flags.push('--no-sandbox');
+  // Linux headless can report hover:none even when CDP injects mouse events. The navigation
+  // mouse probe uses Blink's hover-capable fine pointer types (hover = 2, fine = 4).
+  if (['main', 'bottom-navigation'].includes(args.phase)) {
+    flags.push('--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4');
+  }
   // #234 measures a new SSR document with back_forward navigation timing, not a BFCache hit.
   if (['perf-baseline','reader-guest-history'].includes(args.phase)) flags.push('--disable-back-forward-cache');
   const child = spawn(args.chrome, flags, { stdio: ['ignore', 'ignore', 'pipe'] });
@@ -1789,9 +1805,30 @@ async function openProfile(page) {
   await page.waitFor(PROFILE_OPEN, 'Tôi overlay');
 }
 
+async function waitForPageAccount(page) {
+  // Hydration can finish before the account panel above the choices changes height.
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true' &&
+    document.querySelector('#account-session')?.dataset.standing === 'active'`, 'hydrated Tôi account panel');
+  await page.eval('document.fonts.ready');
+}
+
 async function chooseTheme(page, value, group = 'overlay-theme') {
-  await page.click(`label:has(input[name="${group}"][value="${value}"])`);
-  await page.waitFor(value === 'system' ? `!document.documentElement.hasAttribute('data-theme')` : `document.documentElement.dataset.theme === '${value}'`, `${value} appearance`);
+  if (group === 'page-theme') await waitForPageAccount(page);
+  const selector = `label:has(input[name="${group}"][value="${value}"])`;
+  try {
+    await page.click(selector);
+    await page.waitFor(value === 'system' ? `!document.documentElement.hasAttribute('data-theme')` : `document.documentElement.dataset.theme === '${value}'`, `${value} appearance`);
+  } catch (error) {
+    const target = await page.eval(`(() => {
+      const label = document.querySelector(${JSON.stringify(selector)});
+      const rect = label?.getBoundingClientRect();
+      const hit = rect && document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+      const choice = hit?.closest('label')?.querySelector('input');
+      return { viewport: [innerWidth, innerHeight], scroll: [scrollX, scrollY], rect: rect?.toJSON(),
+        hit: hit && { tag: hit.localName, id: hit.id, group: choice?.name, value: choice?.value } };
+    })()`).catch(() => null);
+    throw new Error(`${error.message}; ${selector} current hit test ${JSON.stringify(target)}`, { cause: error });
+  }
   await page.waitFor(APPEARANCE_SETTLED, `${value} appearance transitions`);
   await assertBrand(page, value);
 }
@@ -2171,7 +2208,9 @@ async function accountAppearance(page) {
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true' &&
     document.querySelector('#page-text input:checked')?.value === '200' &&
     document.querySelector('#page-rail input:checked')?.value === 'compact'`, 'text and rail choices survive reload');
+  await waitForPageAccount(page);
   await page.click('#page-text label:has([value="100"])');
+  await page.waitFor(`!document.documentElement.dataset.text`, '100% text applied before changing the rail');
   await page.click('#page-rail label:has([value="auto"])');
   await page.waitFor(`!document.documentElement.dataset.text && !document.documentElement.dataset.rail &&
     localStorage.getItem('vink.ui.text') === null && localStorage.getItem('vink.ui.rail') === null &&

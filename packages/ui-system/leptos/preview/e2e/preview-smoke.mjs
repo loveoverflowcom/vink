@@ -1397,19 +1397,33 @@ async function navigation(page) {
   check((await labels('#nav-rail-primary')) === 'Khám phá', 'the rail renders only the destinations the host grants');
   await page.open('navigation.bottom-bar');
   check((await labels('#nav-bottom')) === 'Khám phá|Bàn viết|Tôi', 'bottom bar: Khám phá → Bàn viết → Tôi');
-  await page.click('#nav-bottom a[data-destination=desk]');
+  const deskLink = '#nav-bottom a[data-destination=desk]';
+  // The sticky bar can move as scrolling settles. Check its hit target before clicking.
+  await page.eval(`document.querySelector('${deskLink}').scrollIntoView({block:'center', behavior:'instant'})`);
   await page.settle();
-  check(await page.eval(`(() => {
-    const bar = document.getElementById('nav-bottom');
-    const selected = bar.querySelector('[data-destination=desk][aria-current=page]');
-    if (!selected) return false;
-    const indicator = selected.querySelector('.vk-ui-icon').parentElement;
-    const label = selected.querySelector('.vk-ui-nav-item__label');
-    return getComputedStyle(bar).position === 'sticky' &&
-      getComputedStyle(selected).backgroundColor === 'rgba(0, 0, 0, 0)' &&
-      getComputedStyle(indicator).backgroundColor !== 'rgba(0, 0, 0, 0)' &&
-      indicator.getBoundingClientRect().bottom <= label.getBoundingClientRect().top;
-  })()`), 'explicit gallery bar remains inside its frame and moves the icon-only indicator with the host route');
+  await page.waitFor(`(() => {
+    const link = document.querySelector('${deskLink}'), r = link.getBoundingClientRect();
+    return link.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+  })()`, 'gallery bar desk link receives the pointer');
+  await page.click(deskLink);
+  await page.waitFor(`document.querySelector('${deskLink}[aria-current=page]')`, 'gallery bar selects Bàn viết');
+  const indicatorSelector = `${deskLink} .vk-ui-nav-item__indicator`;
+  await page.waitFor(`(() => {
+    const indicator = document.querySelector('${indicatorSelector}');
+    const fill = getComputedStyle(indicator).backgroundColor;
+    return fill !== 'rgba(0, 0, 0, 0)' && !indicator.getAnimations().some(a =>
+      a instanceof CSSTransition && (a.pending || a.playState === 'running'));
+  })()`, 'gallery bar selected indicator finishes its fill transition');
+  const facts = await page.eval(`(() => {
+    const bar = document.getElementById('nav-bottom'), selected = document.querySelector('${deskLink}');
+    const indicator = document.querySelector('${indicatorSelector}'), label = selected.querySelector('.vk-ui-nav-item__label');
+    return { position: getComputedStyle(bar).position, route: selected.getAttribute('aria-current'),
+      linkFill: getComputedStyle(selected).backgroundColor, indicatorFill: getComputedStyle(indicator).backgroundColor,
+      indicatorBottom: indicator.getBoundingClientRect().bottom, labelTop: label.getBoundingClientRect().top };
+  })()`);
+  check(facts.position === 'sticky' && facts.route === 'page' && facts.linkFill === 'rgba(0, 0, 0, 0)' &&
+    facts.indicatorFill !== 'rgba(0, 0, 0, 0)' && facts.indicatorBottom <= facts.labelTop,
+  `explicit gallery bar remains inside its frame and moves the icon-only indicator with the host route (${JSON.stringify(facts)})`);
   await page.open('navigation.scaffold', 'editor');
   check(await page.eval(`(() => { const s = document.querySelector('#nav-shell'); return s.hasAttribute('data-hide-bar') && s.hasAttribute('data-compact-rail') && s.dataset.layout === 'rail:compact'; })()`), 'editor context: compact rail, bar hidden');
 

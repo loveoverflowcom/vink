@@ -211,5 +211,8 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
       'previously visited URL now gone',
     );
   }
+  // The guest checks foregrounded another tab. Restore the owner before password captures.
+  await page.send('Page.bringToFront');
   await openAccount(page, base, 'active');
+  check(await page.eval(`document.visibilityState === 'visible'`), 'owner tab is visible after handle checks');
 }
