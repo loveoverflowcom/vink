@@ -1077,7 +1077,7 @@ pub enum AuthorResolution {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         publications: Option<ProfileWorks>,
         #[serde(default, skip_serializing_if = "follow::PublicRelationships::is_empty")]
-        relationships: follow::PublicRelationships,
+        relationships: Box<follow::PublicRelationships>,
     },
     Alias {
         href: String,

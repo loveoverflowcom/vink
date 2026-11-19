@@ -3,13 +3,14 @@ use axum::Router;
 use axum::body::Body;
 use axum::http::{Method, Request, StatusCode, header};
 use http_body_util::BodyExt;
-use serde_json::{Value, json};
+use serde_json::Value;
 use sqlx::PgPool;
 use std::collections::BTreeSet;
 use tower::ServiceExt;
 use uuid::Uuid;
 use vink_app::application::Vink;
 use vink_app::application::follow::{FollowError, SetFollowInput};
+use vink_app::application::handle::HandleCommand;
 use vink_app::domain::handle::Intent;
 use vink_app::domain::ids::PrincipalId;
 use vink_app::persistence::{PgStore, handle};
@@ -87,13 +88,12 @@ async fn get_with_headers(
     )
 }
 
-fn follow_body(cmd: Uuid, expected_order: i64, following: bool) -> String {
+fn follow_body(cmd: Uuid, expected_order: i64, following: bool) -> Value {
     json!({
         "command_id": cmd,
         "expected_order": expected_order,
         "following": following,
     })
-    .to_string()
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -129,8 +129,7 @@ async fn follow_auth_self_forged_fields_gone_and_suspended_boundaries(pool: PgPo
             "expected_order": 0,
             "following": true,
             extra: a
-        })
-        .to_string();
+        });
         let (code, cache, body) = call(
             &app,
             "PUT",
@@ -247,13 +246,16 @@ async fn follow_auth_self_forged_fields_gone_and_suspended_boundaries(pool: PgPo
     // Rename B so `binh-yen` becomes an alias -> public followers returns `state: "alias"` with no-store.
     let vink = Vink::new(PgStore::new(pool.clone()));
     vink.store()
-        .set_handle(vink_app::domain::handle::HandleCommand {
-            command_id: Uuid::new_v4(),
-            actor: PrincipalId::from_uuid(b),
-            expected_version: 0,
-            intent: Intent::Rename,
-            handle: "binh-moi".into(),
-        })
+        .set_handle(
+            PrincipalId::from_uuid(b),
+            &HandleCommand {
+                command_id: Uuid::new_v4(),
+                principal_id: b,
+                expected_version: 0,
+                intent: Intent::Rename,
+                handle: "binh-moi".into(),
+            },
+        )
         .await
         .unwrap();
     let (code, cache, _, body) =
@@ -464,6 +466,79 @@ async fn follow_concurrency_aba_receipts_and_db_triggers(pool: PgPool) {
             .await
             .is_err()
     );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn follow_receipt_write_failure_rolls_back_edge_and_count(pool: PgPool) {
+    let a = Uuid::new_v4();
+    let b = Uuid::new_v4();
+    let actor = seed_author(&pool, a, "An", "an-roll").await;
+    seed_author(&pool, b, "Bình", "binh-roll").await;
+    let store = PgStore::new(pool.clone());
+    let accepted = Uuid::new_v4();
+    store
+        .set_follow(
+            actor,
+            "binh-roll",
+            SetFollowInput {
+                command_id: accepted,
+                expected_order: 0,
+                following: true,
+            },
+        )
+        .await
+        .unwrap();
+
+    // Only this scratch database rejects the receipt for the next Unfollow. The production
+    // store still reaches the normal edge-update → receipt-insert transaction boundary.
+    sqlx::query(
+        "ALTER TABLE author_follow_receipts
+         ADD CONSTRAINT test_reject_unfollow_receipt CHECK (desired_following)",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let failed = Uuid::new_v4();
+    let result = store
+        .set_follow(
+            actor,
+            "binh-roll",
+            SetFollowInput {
+                command_id: failed,
+                expected_order: 1,
+                following: false,
+            },
+        )
+        .await;
+    assert!(matches!(result, Err(FollowError::Store(_))), "{result:?}");
+
+    let row: (bool, i64, i64) = sqlx::query_as(
+        "SELECT active, version, accepted_order FROM author_follows
+          WHERE follower_id = $1 AND followee_id = $2",
+    )
+    .bind(a)
+    .bind(b)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(row, (true, 1, 1));
+    let receipts: Vec<Uuid> =
+        sqlx::query_scalar("SELECT command_id FROM author_follow_receipts WHERE actor_id = $1")
+            .bind(a)
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    assert_eq!(receipts, vec![accepted]);
+
+    let router = app(&pool).await;
+    let (code, _, _, body) =
+        get_with_headers(&router, "/api/v1/authors/binh-roll/followers", None, &[]).await;
+    assert_eq!(code, 200, "{body}");
+    let list = json(&body);
+    assert_eq!(list["count"], 1);
+    assert_eq!(list["people"].as_array().unwrap().len(), 1);
+    assert_eq!(list["people"][0]["handle"], "an-roll");
 }
 
 #[sqlx::test(migrations = "./migrations")]

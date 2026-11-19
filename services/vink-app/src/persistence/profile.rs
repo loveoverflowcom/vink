@@ -184,7 +184,7 @@ impl PgStore {
                     bio: row.bio,
                     has_public_works: row.has_public_works,
                     publications: public_works(&mut tx, row.principal_id, name, cursor).await?,
-                    relationships,
+                    relationships: Box::new(relationships),
                 }
             }
         };

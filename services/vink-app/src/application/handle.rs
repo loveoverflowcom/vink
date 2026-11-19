@@ -69,7 +69,7 @@ pub enum Resolution {
             default,
             skip_serializing_if = "super::follow::PublicRelationships::is_empty"
         )]
-        relationships: super::follow::PublicRelationships,
+        relationships: Box<super::follow::PublicRelationships>,
     },
     Alias {
         href: String,

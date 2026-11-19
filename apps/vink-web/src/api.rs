@@ -1563,7 +1563,7 @@ pub(crate) async fn load_author_relationships_summary(
 ) -> Result<crate::contract::follow::PublicRelationships, ApiError> {
     let path = format!("/api/v1/authors/{}", encode_segment(handle));
     match http::get::<crate::contract::AuthorResolution>(&path).await? {
-        crate::contract::AuthorResolution::Current { relationships, .. } => Ok(relationships),
+        crate::contract::AuthorResolution::Current { relationships, .. } => Ok(*relationships),
         crate::contract::AuthorResolution::Gone => Err(ApiError::ProfileGone),
         crate::contract::AuthorResolution::Missing
         | crate::contract::AuthorResolution::Alias { .. } => Err(ApiError::NotFound),

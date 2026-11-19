@@ -543,7 +543,7 @@ pub fn format_vi_count(count: i64) -> String {
     }
     for (idx, ch) in digits.chars().enumerate() {
         let remaining = digits.len() - idx;
-        if idx > 0 && remaining % 3 == 0 {
+        if idx > 0 && remaining.is_multiple_of(3) {
             out.push('.');
         }
         out.push(ch);

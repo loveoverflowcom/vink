@@ -88,7 +88,8 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   check(Boolean(handleA && handleB && handleA !== handleB), 'distinct initial author handles for A and B');
 
   // 1. SSR HTML & Guest CTA -> /toi?next= return + open-redirect rejection.
-  const guest = await openPage();
+  const {browserContextId: guestContext} = await page.cdp.send('Target.createBrowserContext');
+  const guest = await openPage(guestContext);
   const ssrCheck = await guest.eval(`fetch(${JSON.stringify(`/@${handleB}`)}).then(async r => ({ status: r.status, text: await r.text() }))`);
   check(ssrCheck.status === 200 && ssrCheck.text.includes('profile-followers-link') && !ssrCheck.text.includes('Theo dõi lẫn nhau'),
     'SSR public profile renders followers link without mutual/viewer secrets');
@@ -258,17 +259,28 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   await checkLayoutAndA11y(page, check, textContrast, `${base}/@${handleB}`, ['#follow-action', '#profile-followers-link'], 'follow-profile');
   await checkLayoutAndA11y(guest, check, textContrast, `${base}/@${handleB}/nguoi-theo-doi`, ['#rel-back-profile', '#rel-load-more'], 'follow-list');
 
-  // 7. A -> B -> A session switch in another tab during a held own-relationship read drops stale private payload cleanly.
+  // 7. Hold a nonempty page from A. After B and a different A session, the fixture's
+  // now-inactive edge is absent. Releasing the old successful response must not reinsert it.
+  authorFixtureSql(`UPDATE author_follows SET active=true, version=version+1,
+    accepted_order=accepted_order+1, active_since=clock_timestamp()
+    WHERE follower_id=${literal(profA.principal_id)} AND followee_id=${literal(profB.principal_id)};`);
   const tab = await openPage();
   await tab.goto(`${base}/@${handleA}/dang-theo-doi`);
-  await tab.waitFor(q('#relationship-title'), 'tab opens A own following list');
+  const staleRow = `.vk-rel-item a[href="/@${handleB}"]`;
+  await tab.waitFor(q(staleRow), 'A own following initially contains B');
   const heldOwn = await holdAnswer(tab, 'GET', '/api/v1/me/relationships/following');
   await tab.reload();
-  check((await heldOwn.held()) === 200, 'A own-following read held in tab before A->B->A switch');
+  check((await heldOwn.held()) === 200, 'A nonempty own-following read held before session switch');
   await switchActor('b');
+  await tab.waitFor(q('#relationship-private'), 'B session cannot display A own Following');
+  authorFixtureSql(`UPDATE author_follows SET active=false, version=version+1,
+    accepted_order=accepted_order+1, active_since=NULL
+    WHERE follower_id=${literal(profA.principal_id)} AND followee_id=${literal(profB.principal_id)};`);
   await switchActor('a');
+  const currentEmpty = `${q('#relationship-count')}?.textContent?.trim() === '0 đang theo dõi' && !${q(staleRow)}`;
+  await tab.waitFor(currentEmpty, 'new A session reads current empty own Following');
   await heldOwn.finish(false, true);
-  await tab.waitFor(q('#relationship-title'), 'tab recovers cleanly after A->B->A session switch');
+  check(await tab.eval(currentEmpty), 'late nonempty own-list ACK cannot restore a prior session’s edge');
 
   check(guest.errors.length === 0 && page.errors.length === 0 && other.errors.length === 0 && tab.errors.length === 0,
     `zero console/page errors during follow flows (${[...guest.errors, ...page.errors, ...other.errors, ...tab.errors].join(' | ')})`);

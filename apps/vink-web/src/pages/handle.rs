@@ -95,7 +95,7 @@ fn render_profile(
                 .collect::<String>()
                 .to_uppercase();
             let handle_for_rel = author.handle.clone();
-            let initial_rel = StoredValue::new(relationships);
+            let initial_rel = StoredValue::new(*relationships);
             let effective_public = Signal::derive(move || match live_relationships.get() {
                 Some((ref h, ref rel)) if h == &handle_for_rel => rel.clone(),
                 _ => initial_rel.get_value(),
