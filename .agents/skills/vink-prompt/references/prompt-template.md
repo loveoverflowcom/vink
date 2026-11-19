@@ -7,8 +7,11 @@ with observed facts or `UNKNOWN`; preserve the user's constraints and decisions.
 ```text
 VINK_PROMPT_INPUT_V1
 REPOSITORY: loveoverflowcom/vink
-GOAL: [one observable outcome and why it matters]
-SCOPE: [affected capability; explicit exclusions and any user-fixed PR/chat counts]
+GOAL: [one observable outcome and why it matters; journey: entry → action → observable result → recovery/return (or real caller/output for backend/library/docs; one sentence suffices for a small fix)]
+SCOPE:
+  completes: [what this task completes; touchpoints: affected caller, UI/API, durable owner, consumer]
+  deferred: [explicit exclusions; for multi-PR journeys only: existing parent, integration owner, dependencies, safe-exposure/rollout rule if partial exposure is unsafe, and final closure scenario]
+  delivery_constraints: [user-fixed PR/chat counts if any]
 BASE: [explicit user base, task integration base, or develop]
 SNAPSHOT: [source branch/SHA; relevant dirty inputs; evidence gaps]
 TARGET_ENVIRONMENT: UNKNOWN until the executing agent inspects its machine
@@ -33,11 +36,11 @@ UX_CRITERIA: [UI only: the few rubric rows that decide this task, the visual ref
   (concept / style anchor / regression baseline) with revision and approved|candidate|unknown,
   spec invariants with unit and tolerance; `no approved reference` when none exists]
 ACCEPTANCE:
-  - [observable result, failure case and its authoritative requirement]
+  - [AC-01: observable result, failure case and its authoritative requirement; keep stable IDs and avoid repeating the same acceptance prose across GOAL, SCOPE, ACCEPTANCE and VERIFY]
   - [UI/Interaction: modalities (touch/key/a11y), trigger → feedback → commit/cancel, focus retention/restoration, reduced-motion behavior, Vietnamese IME preservation]
   - [UI: separate goals at 100% and at 200% text; 200% stays legible with hierarchy, not merely non-crashing]
 VERIFY:
-  - [cargo xtask verify quick|postgres|web (docs/development), exact claim and boundary]
+  - [smallest closure evidence sufficient for the ACs from docs/development (README.md, scoped-workflows.md) and verification.md: cargo xtask verify quick|discussion|expressions|kani|postgres|web, verify unit|web --scenario|preview, --plan, doctor; use ./tools/local-budget run -- on macOS where supported]
   - [UI boundary: JVM unit/offscreen for logic; native host/browser for touch gesture feel, 60fps, insets, screen reader]
   - [UI result table: Functional, Geometry, Visual, Accessibility/Responsive, Interaction, each with scenario/target and PASS/FAIL/NOT_RUN/UNSUPPORTED; opened images named; fix-round budget and stop condition]
 BLOCKERS:
@@ -49,12 +52,17 @@ BLOCKERS:
 AUTHORIZED_ACTIONS:
   - [only actions actually granted by the user; local execution scope and remote actions]
 HANDOFF:
-  report changed behavior, files, evidence actually obtained and material remaining gaps
+  report changed behavior, files, scoped completion claims (IMPLEMENTED / VERIFIED / OUTCOME_COMPLETE alongside the four status dimensions), writer/reviewer mapping (AC/claim → connected source/caller → evidence → result → gap), short human smoke card if a main UI journey or residual device risk changed, and material remaining gaps
 ```
 
 If a task is intentionally review-only or prompt-only, state that scope explicitly and do not
 turn future actions described in the prompt into actions performed by the authoring session.
 If the user authorized execution and a commit, retain that grant without inventing a new approval.
+
+Keep small tasks lightweight: one sentence suffices for Journey/Touchpoints/Closure on a small
+fix, and never force an epic/milestone onto a self-contained task or invent a UI journey for
+backend, library or documentation work. For evidence provenance, reuse and human smoke cards,
+follow [verification.md](../../vink-engineering/references/verification.md).
 
 For split prompts, include each slice's owned/shared files, contract dependency and integration
 order inside each prompt. For continuation, include completed work and valid evidence plus the

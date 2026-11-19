@@ -32,15 +32,17 @@ update in the prompt's scope.
   snapshots are research provenance, not the coder's runtime versions; Discourse is not part of
   Vink's runtime since 03/11/2026.
 - Treat illustrative paths in the stack as proposed until present. Take VERIFY commands from
-  [docs/development](../../../docs/development/README.md) (`cargo xtask verify quick|postgres|web`)
-  and name the lane each claim needs. If source access is missing, mark the gap and make the
-  receiving agent's first step discovery rather than inventing an API or result.
+  [docs/development](../../../docs/development/README.md) and the
+  [scoped workflow guide](../../../docs/development/scoped-workflows.md)
+  (`cargo xtask verify quick|discussion|expressions|kani|postgres|web`, `verify unit`,
+  `verify web --scenario`, `verify preview`, `--plan`, `doctor`, and `./tools/local-budget` on
+  shared macOS), naming the exact boundary and smallest closure evidence each AC needs per
+  [verification.md](../vink-engineering/references/verification.md). If source access is missing,
+  mark the gap and make the receiving agent's first step discovery rather than inventing an API or result.
 
 ## Choose the prompt shape
 
-For implementation, specify one reviewable outcome and observable acceptance. Link owning
-skills instead of copying their policy. Use SudoLang-style constraints and if/else branches
-where they make execution clearer; plain structured instructions are also acceptable.
+For implementation, specify one reviewable outcome, a concrete Journey (`entry → action → observable result → recovery/return`, or real caller/output for backend/library/docs — never invent a UI journey), affected Touchpoints (caller, UI/API, durable owner, consumer), what is completed vs intentionally deferred, and the smallest closure evidence for its ACs. A single sentence is enough for a small fix; do not repeat the same long acceptance text across GOAL, SCOPE, ACCEPTANCE and VERIFY. Link owning skills instead of copying their policy. Use SudoLang-style constraints and if/else branches where they make execution clearer; plain structured instructions are also acceptable. Repo skills own `VINK_PROMPT_INPUT_V1`; external GitHub issue logging/tracking belongs to the `vink-github-issue` plugin when installed.
 
 For UI work, include the selected [LayoutSpec](../vink-layout-spec/SKILL.md) or an
 accessible source/revision and the user's choice. If absent, require the receiving
@@ -56,8 +58,12 @@ into ACCEPTANCE and VERIFY. Preserve sketch-only or wait-for-selection scope; ot
 no approval gate. Carry responsive/state/theme/interaction acceptance and compare the implementation to that spec.
 
 For split work, preserve the user's number of prompts/PRs/chats. Assign one owner for each
-shared file/contract, explicit dependencies and integration order. Make each prompt self-contained.
-Writing split prompts does not launch agents or create chats.
+shared file/contract, explicit dependencies and integration order. When a journey spans multiple
+PRs, name the existing parent, integration owner, safe-exposure rule when partial exposure is
+unsafe (use an existing rollout mechanism rather than building a feature-flag system), and final
+closure scenario so a child slice can pass its ACs without claiming whole-journey completion. Do
+not force an epic or milestone onto a self-contained task. Make each prompt self-contained;
+writing split prompts does not launch agents or create chats.
 
 For review-to-repair, read the target first, cite concrete gaps and separate defect evidence
 from missing acceptance. Do not turn every desirable improvement into a blocking task.

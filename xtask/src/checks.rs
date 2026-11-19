@@ -237,6 +237,7 @@ fn skills(root: &Path, problems: &mut Vec<String>) {
             continue;
         };
         problems.extend(skill_frontmatter(&name, &text));
+        problems.extend(skill_body_problems(&name, &text));
         let yaml = read(&dir.join(&name).join("agents/openai.yaml")).unwrap_or_default();
         for key in ["display_name:", "short_description:", "default_prompt:"] {
             if !yaml.lines().any(|l| l.trim_start().starts_with(key)) {
@@ -259,7 +260,7 @@ fn skills(root: &Path, problems: &mut Vec<String>) {
 }
 
 /// Frontmatter needs `name` equal to the directory and a single-line non-empty `description`
-/// for clean parsing across Codex, Claude Code and Antigravity.
+/// (quoted if containing `: `) for clean parsing across Codex, Claude Code and Antigravity.
 fn skill_frontmatter(name: &str, text: &str) -> Vec<String> {
     let mut problems = Vec::new();
     let mut lines = text.lines();
@@ -271,16 +272,35 @@ fn skill_frontmatter(name: &str, text: &str) -> Vec<String> {
         problems.push(format!("{name}: frontmatter `name` must be `{name}`"));
     }
     let description = front.iter().position(|l| l.starts_with("description:"));
-    let has_inline_text = description.is_some_and(|i| {
-        let inline = front[i].trim_start_matches("description:").trim();
-        !inline.is_empty() && inline != ">-" && inline != ">" && inline != "|"
-    });
+    let inline = description.map(|i| front[i].trim_start_matches("description:").trim());
+    let has_inline_text =
+        inline.is_some_and(|s| !s.is_empty() && s != ">-" && s != ">" && s != "|");
     if !has_inline_text {
         problems.push(format!(
             "{name}: frontmatter `description` must be a non-empty single-line string"
         ));
+    } else if let Some(s) = inline {
+        let quoted = s.len() >= 2
+            && ((s.starts_with('"') && s.ends_with('"'))
+                || (s.starts_with('\'') && s.ends_with('\'')));
+        if !quoted && s.contains(": ") {
+            problems.push(format!(
+                "{name}: frontmatter `description` contains `: `; quote the string for YAML safety"
+            ));
+        }
     }
     problems
+}
+
+/// Cross-skill Markdown links stay runtime-neutral (`[vink-...]` instead of Codex-only `[$vink-...]`).
+fn skill_body_problems(name: &str, text: &str) -> Vec<String> {
+    if text.contains("[$vink-") {
+        vec![format!(
+            "{name}: SKILL.md uses Codex-only `[$vink-` link syntax; use runtime-neutral `[vink-...]`"
+        )]
+    } else {
+        Vec::new()
+    }
 }
 
 fn markdown_files(dir: &Path, out: &mut Vec<PathBuf>) {
@@ -979,8 +999,21 @@ mod tests {
     fn frontmatter_requires_matching_name_and_description() {
         let ok = "---\nname: vink-x\ndescription: Does x.\n---\n# X\n";
         assert!(skill_frontmatter("vink-x", ok).is_empty());
+        let ok_quoted = "---\nname: vink-x\ndescription: \"Does x: y.\"\n---\n# X\n";
+        assert!(skill_frontmatter("vink-x", ok_quoted).is_empty());
+        let bad_colon = "---\nname: vink-x\ndescription: Does x: y.\n---\n# X\n";
+        assert_eq!(skill_frontmatter("vink-x", bad_colon).len(), 1);
         let bad = "---\nname: other\ndescription: >-\n---\n";
         assert_eq!(skill_frontmatter("vink-x", bad).len(), 2);
+    }
+
+    #[test]
+    fn skill_body_rejects_codex_only_dollar_links() {
+        assert!(skill_body_problems("vink-x", "See [vink-y](../vink-y/SKILL.md).").is_empty());
+        assert_eq!(
+            skill_body_problems("vink-x", "See [$vink-y](../vink-y/SKILL.md).").len(),
+            1
+        );
     }
 
     #[test]

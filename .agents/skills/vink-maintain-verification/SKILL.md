@@ -39,7 +39,12 @@ board. A test's presence is coverage intent; only a run on identified inputs is 
    labels and selectors before documenting them.
 3. Classify each mismatch: stale description, missing assertion, unsupported environment,
    flaky tooling, or product regression. A failed check does not justify changing the expected
-   behavior to match the bug. Fix the owning layer within scope; preserve the intended claim.
+   behavior to match the bug. For flaky checks, investigate readiness, fixtures, input delivery,
+   environment capabilities and the oracle before rerunning or editing per
+   [verification.md](../vink-engineering/references/verification.md): prefer semantic or stable
+   locators without banning valid CSS/geometry contract assertions, and never delete coverage,
+   relax acceptance, hide errors or move a required test to an unexecuted lane to obtain PASS.
+   Fix the owning layer within scope; preserve the intended claim.
 4. Update only the affected owner and its links. A map-only change needs diff/link/YAML review;
    a test/runner change needs an actual affected run and relevant failure-path validation.
    Use the verification guide for missing prerequisites and independent work.

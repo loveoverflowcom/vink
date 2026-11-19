@@ -181,15 +181,18 @@ The following boundaries guide work within the selected scope:
 
 ## Work and verification
 
-Default integration branch: `develop`. For a new feature branch, use `codex/<outcome>` unless
-the user specifies another workflow; an explicit request to commit directly to `develop` wins.
+Default integration branch: `develop`. Preserve an active non-`develop` branch/worktree (such as an
+Antigravity worktree or user-specified branch) unless asked to create a new branch; when creating a
+new feature branch from `develop`, use `codex/<outcome>` unless the user specifies another workflow
+(an explicit request to commit directly to `develop` wins).
 Check status first and preserve existing edits. Stage explicit paths belonging to the task.
 Use authorization already granted in the conversation; a skill adds no requirement to ask again.
 Do not infer permission to push, post messages or publish from a local editing task.
 
 On shared macOS development machines, run supported heavy build/test commands via
 [the local resource budget](docs/development/local-resource-budget.md):
-`./tools/local-budget run -- cargo xtask …` (or the corresponding supported raw Cargo command).
+`./tools/local-budget run -- cargo xtask …` (requires Python 3.13+; in non-login shells where
+`/usr/bin/python3` is older, invoke `/opt/homebrew/bin/python3 ./tools/local-budget …`).
 `./tools/local-budget plan` inspects the profile without Cargo bootstrap. Raw commands outside
 the launcher do not join its host-user slot. See the guide for unsupported lanes and recovery.
 
@@ -211,8 +214,10 @@ agent runtimes (Codex, Claude Code, Antigravity) load it without truncation.
 For documentation/skill changes, check the diff, relative links, YAML metadata and referenced
 files. For behavior changes, use the cheapest meaningful regression and then the actual
 boundary needed by the claim: real PostgreSQL for transactions and a browser for hydration/editor interactions. Quint evidence is separate from code/I/O evidence.
-Use [the verification guide](.agents/skills/vink-engineering/references/verification.md) for scope
-and result reporting; never present an unavailable runtime check as passed.
+Use [the verification guide](.agents/skills/vink-engineering/references/verification.md) for scope,
+the shared evidence handoff (`AC/claim → connected source/caller → evidence → result → gap`),
+scoped completion claims (`IMPLEMENTED`/`VERIFIED`/`OUTCOME_COMPLETE` alongside the four status
+dimensions) and short human smoke cards; never present an unavailable runtime check as passed.
 
 Keep product documents and user-facing copy in Vietnamese unless requested otherwise. Agent
 instructions may use English; preserve technical identifiers. Report the outcome, relevant

@@ -14,7 +14,15 @@ supported by this repository read the same canonical instructions:
 | --- | --- | --- | --- |
 | **Codex** | `AGENTS.md` | `.agents/skills/<name>/SKILL.md` + `agents/openai.yaml` | `$vink-<name>` (e.g. `$vink-shape`, `$vink-work-item`) |
 | **Claude Code** | `CLAUDE.md` (`@AGENTS.md`) | `.claude/skills/<name>` symlink → `../../.agents/skills/<name>` | `/vink-<name>` (e.g. `/vink-shape`, `/vink-work-item`) |
-| **Antigravity** | `AGENTS.md` (must stay `< 24,000` bytes so `<user_rules>` never truncates) | `.agents/skills/<name>/SKILL.md` (single-line `description:` frontmatter) | Mention the skill name or read `.agents/skills/<name>/SKILL.md` |
+| **Antigravity** | `AGENTS.md` (must stay `< 24,000` bytes so `<user_rules>` never truncates) | `.agents/skills/<name>/SKILL.md` (single-line YAML-safe `description:`) | Mention the skill name or read `.agents/skills/<name>/SKILL.md` |
+
+**Antigravity runtime notes:**
+- **Discovery & YAML safety:** keep `SKILL.md` frontmatter `description:` single-line (quoted if it contains `: `) and keep `AGENTS.md < 24,000` bytes.
+- **Runtime-neutral skill links:** inside `SKILL.md`, use relative Markdown links (e.g. [vink-work-item](vink-work-item/SKILL.md)) rather than Codex-only `$vink-*` syntax.
+- **Branch/worktree preservation:** preserve an active non-`develop` branch/worktree unless asked to create a new branch.
+- **Built-in capabilities:** use `invoke_subagent` when independent review/research adds value, the `browser` subagent for live web UI (staging uploads/references under `<appDataDir>/brain/<conversation-id>/browser_sandbox/` and verifying sites/screenshots against `BROWSER_HOST_FACTS`), `read_file` to inspect screenshots, and `ask_question` for `vink-shape`; keep scratch/artifacts out of repo-tracked files.
+- **Fresh shell & macOS `local-budget`:** each shell call runs in a fresh session; on macOS, invoke with Python 3.13+ (e.g. `/opt/homebrew/bin/python3 ./tools/local-budget …`) when `/usr/bin/python3` is older.
+- **External plugins:** Codex remote plugins (such as `vink-github-issue`) are not loaded by Antigravity; discover `gh` CLI or Antigravity plugins/MCP tools when external issue actions are authorized.
 
 ## Choose the right skill
 
@@ -125,9 +133,12 @@ settled rules goes straight to its owner.
   `OPEN`), architecture status (`DESIGN_PROPOSED` / `Provisional` / `Accepted`), implementation
   level (`core` / `persistence-api` / `worker-provider` / `web` / `cmp`), and verification evidence
   separate.
-- Use `cargo xtask verify quick|discussion|expressions|kani|postgres|web` from
+- Use `cargo xtask verify quick|discussion|expressions|kani|postgres|web` (and scoped commands) from
   [docs/development](../../docs/development/README.md) when verification is in scope, and
-  [verification.md](vink-engineering/references/verification.md) for reporting.
+  [verification.md](vink-engineering/references/verification.md) for scoped completion claims
+  (`IMPLEMENTED`/`VERIFIED`/`OUTCOME_COMPLETE`), the shared writer/reviewer evidence handoff,
+  reconciliation with the advisory UX pilot ([ux-quality.md §5](vink-ui-design/references/ux-quality.md#5-mức-bắt-buộc-hiện-tại)),
+  and human smoke cards.
 - Respect user authorization already granted in the active conversation; do not ask again merely
   because a skill has a conservative default, and do not infer permission to push, publish or post
   externally from a local edit.

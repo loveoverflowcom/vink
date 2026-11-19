@@ -166,3 +166,31 @@ việc tiếp theo:
 Đồng thời chuẩn hóa toàn bộ 22 skills và `AGENTS.md` để tương thích đồng thời trên **Codex**,
 **Claude Code** và **Antigravity** (`AGENTS.md < 24,000` byte để không bị cắt trong `<user_rules>`,
 frontmatter `description:` một dòng, `agents/openai.yaml` và symlink `.claude/skills/*`).
+
+## Rà soát hợp đồng giao việc, bằng chứng, review và tương thích Antigravity (19/11/2026)
+
+Đối chiếu trên `develop@117ef20f` (tham chiếu lịch sử `f6d37cda`, các ca `#290→#292`, `#315–#318`,
+`#321→#322` và plugin ngoài `vink-github-issue` v1.0.0) theo phương án mở rộng trực tiếp tại
+các owner hiện có (không thêm skill, runner hoặc bảng trạng thái mới):
+
+- **Hợp đồng tác vụ và tách lát:** [vink-prompt](../../.agents/skills/vink-prompt/SKILL.md),
+  [prompt-template](../../.agents/skills/vink-prompt/references/prompt-template.md),
+  [vink-work-item](../../.agents/skills/vink-work-item/SKILL.md) và
+  [vink-architect](../../.agents/skills/vink-architect/SKILL.md) bổ sung `Journey` (hoặc
+  caller/output thật với backend/tài liệu), `Touchpoints`, `Completes`/`Deferred`, parent/integration
+  owner cho hành trình nhiều PR và quy tắc safe-exposure không dựng feature-flag platform mới.
+- **Chứng cứ, phân mức hoàn thành và bàn giao review:** [verification.md](../../.agents/skills/vink-engineering/references/verification.md)
+  sở hữu bộ claim theo phạm vi (`IMPLEMENTED`, `VERIFIED`, `OUTCOME_COMPLETE` song song bốn chiều
+  trạng thái), ánh xạ bàn giao chung `AC/claim → connected source/caller → evidence → result → gap`,
+  tái sử dụng theo delta (cấm gắn SHA mới lên run cũ), phân loại `DEFECT` / `ACCEPTANCE GAP` /
+  `SUGGESTION` và tính độc lập reviewer ở [vink-code-review](../../.agents/skills/vink-code-review/SKILL.md)
+  cùng [vink-ui-inspector](../../.agents/skills/vink-ui-inspector/SKILL.md), đối soát AC bắt buộc
+  với pilot UX (#174) ở [ux-quality.md §5](../../.agents/skills/vink-ui-design/references/ux-quality.md#5-mức-bắt-buộc-hiện-tại),
+  triage flaky check/assertion CSS theo contract và thẻ human smoke ngắn (~2 phút) cho luồng UI chính.
+- **Tương thích Antigravity và ranh giới plugin ngoài:** bỏ liên kết `[$vink-*]` đặc thù Codex khỏi
+  `vink-ui-capture` và `vink-ui-evidence-drive`; sửa chỉ dẫn CSS owner ở
+  [repair-and-handoff.md](../../.agents/skills/vink-ui-fix/references/repair-and-handoff.md) và trạng
+  thái auth ở [vink-ui-capture](../../.agents/skills/vink-ui-capture/SKILL.md); giữ nhánh/worktree
+  đang mở trong `AGENTS.md` và `.agents/skills/README.md`, thêm ghi chú `local-budget` Python 3.13+
+  và guard YAML/link trong `xtask/src/checks.rs`. Plugin ngoài `vink-github-issue` không có nguồn
+  editable trong repo này nên phần delta tương thích được bàn giao riêng để cập nhật ở plugin owner.

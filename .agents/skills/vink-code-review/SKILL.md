@@ -14,8 +14,12 @@ not a reason to expand scope or impose every possible check.
 
 Identify BASE/HEAD and merge-base for a branch/PR, or the exact patch/local tree being reviewed.
 Inventory tracked, staged and relevant untracked files. Read the changed owners and callers
-beyond the diff. Inspect PR head content, not just a remembered base. For a proposed finding,
-check whether it was introduced by this change or is a clearly labeled pre-existing issue. Review migrated
+beyond the diff to verify required entrypoints, callers and consumers are actually connected, and
+that significant failure paths or regressions were not omitted. Inspect PR head content and underlying
+source/artifacts directly rather than trusting an implementer's PASS table; re-execute selected
+checks when they resolve a concrete uncertainty (no second full test campaign). Use a separate
+reviewer or read-only context when available and valuable; label self-review honestly when not
+independent. For a proposed finding, check whether it was introduced by this change or is a clearly labeled pre-existing issue. Review migrated
 decision changes with the [TOML registry](../../../decisions/README.md) and its semantic diff.
 A fresh pin covers revision freshness. Review the actual rule and its consumers separately.
 
@@ -41,7 +45,7 @@ do not ask again solely because this skill defaults to report-only.
 | Public reads, curation, search or cache | Private/withdrawn content through every exposed path; version/access-aware keys; curation bound to its snapshot |
 | Leptos, editor or UI | SSR/hydration parity, IME and unsaved-text loss, stale response handling, semantics/focus, token reuse and inspected output |
 | API contract or fixtures | Provider fixture and every consumer representation changed together; error `code` and status kept distinct |
-| Tests, models or claimed evidence | Production seam actually reached; independent oracle; source freshness; real/fake boundary; meaningful failure sensitivity |
+| Tests, models or claimed evidence | Production seam actually reached; independent oracle; source freshness and delta applicability (never relabel old SHA onto new HEAD); real/fake boundary matching AC; UI runtime/hydration errors not suppressed; flaky checks investigated rather than deleted/relaxed/moved to unexecuted lanes; meaningful failure sensitivity |
 
 Missing runtime evidence is not automatically a code defect. State what cannot yet be
 concluded, and recommend the cheapest check that resolves that uncertainty. Do not demand a
@@ -49,17 +53,16 @@ model, full-stack test or screenshot for a metadata-only edit.
 
 ## Findings and report
 
-Lead with actionable findings, most severe first. For each, provide the smallest useful file
-and line location, concrete trigger, consequence and supporting path/test evidence. Keep a
-speculative concern separate from a demonstrated regression; explain assumptions explicitly.
+Lead with actionable findings, most severe first, and keep categories separate:
 
-- P0: immediate critical exposure, corruption or broad service failure.
-- P1: major supported-path failure or authorization/publication breach.
-- P2: bounded user-visible defect or correctness regression.
-- P3: minor defect with a concrete impact.
+- **`DEFECT`** (ranked P0–P3): a demonstrated requirement, contract or correctness violation. A precise static proof can establish a security, privacy, data-loss, migration or contract defect without unsafe runtime reproduction.
+  - P0: immediate critical exposure, corruption or broad service failure.
+  - P1: major supported-path failure or authorization/publication breach.
+  - P2: bounded user-visible defect or correctness regression.
+  - P3: minor defect with a concrete impact.
+- **`ACCEPTANCE GAP`**: required evidence is missing or inapplicable (`NOT_RUN` / `UNSUPPORTED` / stale SHA / wrong boundary). Missing evidence is not automatically a code defect, but prevents acceptance or fails an applicable existing gate (reconcile mandatory ACs with the advisory UX pilot per [UX quality §5](../vink-ui-design/references/ux-quality.md#5-mức-bắt-buộc-hiện-tại) and [verification.md](../vink-engineering/references/verification.md)).
+- **`SUGGESTION`**: optional improvement outside mandatory acceptance; style preferences or unselected proposals never become blocking requirements.
 
-Do not turn stylistic preferences or an unselected proposal into requirements. If no actionable
-defect is found, say so, then name important coverage limits. Finish with checks actually run
-and material unverified claims, using the
-[verification guide](../vink-engineering/references/verification.md). A green model/build is
-not proof of PostgreSQL or browser behavior.
+For each finding, provide the smallest useful file and line location, concrete trigger, consequence and supporting path/test evidence. Keep speculative concerns separate from demonstrated regressions. Fix in-scope defects before claiming completion; separate a follow-up only for a distinct outcome or explicitly accepted limitation, preserving its owner, impact and dependency.
+
+If no actionable defect is found, say so, then name important coverage limits. Finish with the shared handoff mapping (`AC/claim → connected source/caller → evidence → result → gap`), checks actually run and material unverified claims using [verification.md](../vink-engineering/references/verification.md). A green model/build is not proof of PostgreSQL or browser behavior, and child slice completion is not whole-journey completion or deployment.
