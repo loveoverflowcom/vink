@@ -68,8 +68,14 @@ là điểm gắn duy nhất của form khách/bút danh trên trang: đọc `Se
 cùng tab, không nhận trạng thái phiên từ host. Đổi bước chủ động hủy form cũ; refresh nền cùng
 standing/epoch không dựng lại input. CHOICE-01: dùng một view chung bọc các owner form hiện có,
 gồm cả đường đọc lại phiên sau lỗi, không sao chép dispatch, AuthGate hay input state. Tôi sở hữu Giao diện, đăng xuất và điều hướng;
-Reader [#328](https://github.com/loveoverflowcom/vink/issues/328) có thể gắn cùng view trong host
-khác, chỉ một bản đang mở, tự xử lý ngữ cảnh trở về. Lát này chưa nối Reader.
+Reader [#328](https://github.com/loveoverflowcom/vink/issues/328) gắn cùng view trong
+[host nhận xét](../../apps/vink-web/src/pages/discussion/auth.rs), không chạy qua `/toi`.
+Root và reply đều chỉ hiện hành động đăng nhập/bút danh khi môi trường mở, bài cho phép nhận
+xét và ngữ cảnh trả lời còn hợp lệ. Reader giữ DOM của ô soạn. Sheet/dialog chỉ giữ điểm gọi
+và vị trí cuộn; AuthGate giữ lane cho request kể cả khi view đã đóng. Thành công chờ
+`SessionOwner` đối soát principal và `DiscussionController` nhận đúng scope rồi mới trả focus
+về ô soạn. Nhận scope mới ngay trong overlay đọc lại phần riêng và quyền, không tự làm rơi
+trang bình luận đã tải. Không lưu bền nháp hoặc tự gửi/replay. [LayoutSpec Reader](../design/auth-reader-web.md).
 
 ## 2. Luồng
 
@@ -149,6 +155,7 @@ khi giữa hai tài khoản có một lúc đăng xuất.
 | Đăng xuất `204`; tab khác giữ chữ chưa lưu, lưu báo hết phiên | Thật |
 | Người cũ quay lại: cùng principal, lưu lại thành công | Thật |
 | A → B với hai/ba tab, câu trả lời của A bị giữ rồi thả muộn, reload | Thật (câu trả lời thật bị giữ ở trình duyệt) |
+| Reader #328: modal/Back/Escape, mã sai, đóng khi phản hồi thành công tới muộn, bút danh, giữ cả hai ô soạn, chỉ một POST nhận xét sau khi bấm Gửi | Chrome + App/Identity/PostgreSQL thật; dữ liệu khởi tạo gồm nhận xét công khai và một bài đã khóa nhận xét |
 
 Quyết định thuần có unit test trong `session.rs` (`cargo test -p vink-web --lib --features ssr`).
 
