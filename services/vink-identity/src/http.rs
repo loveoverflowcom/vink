@@ -19,19 +19,21 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 
 use crate::accounts::{
-    ChallengeOutcome, EmailChangeOutcome, EmailChangeStart, EnrollmentOutcome, EnrollmentRejection,
-    EnrollmentStart, PasswordRegistrationError, PasswordSignInRejection, SignInOutcome,
+    AttachmentRejection, ChallengeOutcome, EmailChangeOutcome, EmailChangeStart, EnrollmentOutcome,
+    EnrollmentRejection, EnrollmentStart, PasswordRegistrationError, PasswordSignInRejection,
+    SignInOutcome,
 };
 use crate::authority::{self, Authority, AuthorityError};
 use crate::contract::{
-    CONTRACT, Capabilities, ChallengeIssued, ChallengeRejection, ContractError,
-    CredentialRejection, EmailChangeChallengeRequest, EmailChangeCompleteRequest,
-    EmailChangeResponse, EnrollPasswordRejection, EnrollPasswordRequest, EnrollPasswordResponse,
-    IssuedSession, MAX_BODY_BYTES, MAX_PASSWORD_BODY_BYTES, Operations,
-    PasswordEnrollmentSessionRequest, PasswordEnrollmentStatus, RegisterPasswordRejection,
-    RegisterPasswordRequest, RegisterPasswordResponse, RevokeSessionRequest, RevokeSessionResponse,
-    SignInChallengeRequest, SignInCompleteRequest, SignInPasswordRejection, SignInPasswordRequest,
-    SignInPasswordResponse, SignInResponse, VerifyCredentialRequest,
+    CONTRACT, Capabilities, ChallengeIssued, ChallengeRejection, CompleteEmailAttachmentRequest,
+    ContractError, CredentialRejection, EmailAttachmentIssued, EmailAttachmentStatus,
+    EmailChangeChallengeRequest, EmailChangeCompleteRequest, EmailChangeResponse,
+    EnrollPasswordRejection, EnrollPasswordRequest, EnrollPasswordResponse, IssuedSession,
+    MAX_BODY_BYTES, MAX_PASSWORD_BODY_BYTES, Operations, PasswordEnrollmentSessionRequest,
+    PasswordEnrollmentStatus, RegisterPasswordRejection, RegisterPasswordRequest,
+    RegisterPasswordResponse, RevokeSessionRequest, RevokeSessionResponse, SignInChallengeRequest,
+    SignInCompleteRequest, SignInPasswordRejection, SignInPasswordRequest, SignInPasswordResponse,
+    SignInResponse, StartEmailAttachmentRequest, VerifyCredentialRequest,
 };
 use crate::delivery;
 use crate::email_code::{ChallengeHandle, Code, EmailAddress};
@@ -46,13 +48,17 @@ pub const DEADLINE: Duration = Duration::from_secs(2);
 pub const WRITE_DEADLINE: Duration = Duration::from_secs(5);
 
 fn writes(path: &str) -> bool {
-    if path == "/identity/v1/password/enroll/status" {
+    if matches!(
+        path,
+        "/identity/v1/password/enroll/status" | "/identity/v1/email/attachment/status"
+    ) {
         return false;
     }
     [
         "/identity/v1/sign-in/",
         "/identity/v1/sessions/",
         "/identity/v1/email-change/",
+        "/identity/v1/email/attachment/",
         "/identity/v1/password/",
     ]
     .iter()
@@ -129,14 +135,20 @@ impl IntoResponse for ContractError {
             Self::MethodNotAllowed => StatusCode::METHOD_NOT_ALLOWED,
             Self::AuthorityNotConfigured => StatusCode::NOT_IMPLEMENTED,
             Self::DependencyUnavailable | Self::DeadlineExceeded => StatusCode::SERVICE_UNAVAILABLE,
-            Self::InvalidEmail | Self::InvalidUsername | Self::InvalidPassword => {
-                StatusCode::UNPROCESSABLE_ENTITY
-            }
+            Self::InvalidEmail
+            | Self::InvalidUsername
+            | Self::InvalidPassword
+            | Self::InvalidCredentials
+            | Self::InvalidCode => StatusCode::UNPROCESSABLE_ENTITY,
             Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::CredentialRejected => StatusCode::FORBIDDEN,
-            Self::AddressUnavailable | Self::UsernameTaken | Self::AlreadyEnrolled => {
-                StatusCode::CONFLICT
-            }
+            Self::AddressUnavailable
+            | Self::UsernameTaken
+            | Self::AlreadyEnrolled
+            | Self::ChallengeClosed
+            | Self::AttachmentContextChanged
+            | Self::AlreadyAttached
+            | Self::NoPassword => StatusCode::CONFLICT,
             Self::AccountDisabled => StatusCode::FORBIDDEN,
         };
         (status, Json(self.envelope())).into_response()
@@ -157,6 +169,18 @@ pub fn router(state: IdentityState) -> Router {
         .route(
             "/identity/v1/email-change/complete",
             post(email_change_complete),
+        )
+        .route(
+            "/identity/v1/email/attachment/status",
+            post(email_attachment_status),
+        )
+        .route(
+            "/identity/v1/email/attachment/challenges",
+            post(start_email_attachment),
+        )
+        .route(
+            "/identity/v1/email/attachment/complete",
+            post(complete_email_attachment),
         )
         .route("/identity/v1/password/register", post(register_password))
         .route("/identity/v1/password/sign-in", post(sign_in_password))
@@ -245,6 +269,7 @@ async fn capabilities(State(state): State<IdentityState>) -> Json<Capabilities> 
             register_password: password,
             sign_in_password: password,
             enroll_password: state.inner.authority.enrollment_availability(),
+            attach_email: state.inner.authority.enrollment_availability(),
         },
     })
 }
@@ -425,6 +450,83 @@ async fn email_change_complete(
         EmailChangeOutcome::Rejected(reason) => Ok(Json(EmailChangeResponse::Rejected { reason })),
         EmailChangeOutcome::CredentialRejected => Err(ContractError::CredentialRejected),
     }
+}
+
+impl From<AttachmentRejection> for ContractError {
+    fn from(rejection: AttachmentRejection) -> Self {
+        match rejection {
+            AttachmentRejection::CredentialRejected => Self::CredentialRejected,
+            AttachmentRejection::AccountDisabled => Self::AccountDisabled,
+            AttachmentRejection::ContextChanged => Self::AttachmentContextChanged,
+            AttachmentRejection::NoPassword => Self::NoPassword,
+            AttachmentRejection::AlreadyAttached => Self::AlreadyAttached,
+            AttachmentRejection::InvalidCredentials => Self::InvalidCredentials,
+            AttachmentRejection::RateLimited => Self::RateLimited,
+            AttachmentRejection::ChallengeClosed => Self::ChallengeClosed,
+            AttachmentRejection::InvalidCode => Self::InvalidCode,
+            AttachmentRejection::AddressUnavailable => Self::AddressUnavailable,
+        }
+    }
+}
+
+async fn email_attachment_status(
+    State(state): State<IdentityState>,
+    body: Body,
+) -> Result<Json<EmailAttachmentStatus>, ContractError> {
+    let request: VerifyCredentialRequest = read_json(body).await?;
+    let store = state.inner.authority.enrollment()?;
+    Ok(Json(
+        store
+            .email_attachment_status(request.credential.expose())
+            .await??,
+    ))
+}
+
+async fn start_email_attachment(
+    State(state): State<IdentityState>,
+    body: Body,
+) -> Result<Response, ContractError> {
+    let request: StartEmailAttachmentRequest =
+        read_json_with_limit(body, MAX_PASSWORD_BODY_BYTES).await?;
+    let store = state.inner.authority.enrollment()?;
+    let address = EmailAddress::parse(request.email.expose()).ok_or(ContractError::InvalidEmail)?;
+    match store
+        .start_email_attachment(
+            request.credential.expose(),
+            request.session_id,
+            &address,
+            request.password.expose(),
+        )
+        .await??
+    {
+        ChallengeOutcome::Issued { handle, expires_at } => Ok((
+            StatusCode::ACCEPTED,
+            Json(EmailAttachmentIssued {
+                challenge: handle.encode(),
+                challenge_id: handle.id,
+                email: address.as_str().to_owned(),
+                expires_at,
+            }),
+        )
+            .into_response()),
+        ChallengeOutcome::RateLimited(_) => Err(ContractError::RateLimited),
+    }
+}
+
+async fn complete_email_attachment(
+    State(state): State<IdentityState>,
+    body: Body,
+) -> Result<StatusCode, ContractError> {
+    let request: CompleteEmailAttachmentRequest = read_json(body).await?;
+    let store = state.inner.authority.enrollment()?;
+    let handle = ChallengeHandle::parse(request.challenge.expose())
+        .filter(|handle| handle.id == request.challenge_id)
+        .ok_or(ContractError::AttachmentContextChanged)?;
+    let code = Code::parse(request.code.expose()).ok_or(ContractError::InvalidCode)?;
+    store
+        .complete_email_attachment(request.credential.expose(), &handle, &code)
+        .await??;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 async fn register_password(
@@ -1374,6 +1476,7 @@ mod tests {
                         register_password: Availability::Available,
                         sign_in_password: Availability::Available,
                         enroll_password: Availability::NotConfigured,
+                        attach_email: Availability::NotConfigured,
                     },
                 })
                 .unwrap(),
@@ -1437,6 +1540,7 @@ mod tests {
                         register_password: Availability::Available,
                         sign_in_password: Availability::Available,
                         enroll_password: Availability::Available,
+                        attach_email: Availability::Available,
                     },
                 })
                 .unwrap(),

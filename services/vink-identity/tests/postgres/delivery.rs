@@ -560,6 +560,7 @@ async fn the_rollback_script_drops_only_the_outbox(pool: PgPool) {
     };
     // Newest first: the enrollment purpose depends on the outbox table.
     for name in [
+        "20261119000000_email_attachment.down.sql",
         "20261114000000_password_enrollment.down.sql",
         "20261112000000_mail_outbox.down.sql",
     ] {
