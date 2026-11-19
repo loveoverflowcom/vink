@@ -186,8 +186,12 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await fill(staleTab, BIO, 'Bản nháp còn ở tab kia');
   const viewing = await openPage();
   await viewing.goto(base + aPath);
-  await viewing.waitFor(q('.vk-author-bio'), 'public profile in another tab');
   await viewing.send('Page.bringToFront');
+  await viewing.waitFor(`document.documentElement.dataset.hydrated==='true' &&
+    document.visibilityState==='visible' && ${q('.vk-author-bio')} && ${q('#own-profile-edit-link')}`,
+    'hydrated public profile and own entry in a foreground tab');
+  // Hold complete bytes of the old public response. PostgreSQL/HTTP checks the 304 path.
+  await viewing.send('Network.setCacheDisabled', {cacheDisabled:true});
   const delayed = await holdAnswer(viewing, 'GET', profileApi);
   await viewing.eval("window.dispatchEvent(new FocusEvent('focus'))");
   check(await delayed.held() === 200, 'hold a real public response before policy changes');
@@ -204,7 +208,7 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
     }).observe(document.getElementById('noi-dung'), {childList:true, subtree:true});
   `);
   const publicDisposition = await delayed.finish(false, true);
-  check(await viewing.eval(`!${q('.vk-author-bio')} && !window.revokedBioShown`),
+  check(await viewing.eval(`${q('#author-profile-heading')} && !${q('.vk-author-bio')} && !window.revokedBioShown`),
     `late public answer cannot restore a revoked Bio (${publicDisposition})`);
   await guest.send('Page.bringToFront');
   await guest.eval("window.dispatchEvent(new FocusEvent('focus'))");
