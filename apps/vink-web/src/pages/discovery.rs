@@ -913,7 +913,7 @@ fn ResultRow(work_id: String, data: Signal<WorkList>, context: ExploreContext) -
                 let primary_tag = work.tags.first().map(|tag| tag.label.clone());
                 let excerpt = work.excerpt.clone();
                 view! {
-                    <a class="vk-public-row__link" href=href aria-labelledby=title_id.clone() on:click=move |_event| {
+                    <a class="vk-public-row__link" href=href aria-labelledby=title_id on:click=move |_event| {
                         #[cfg(feature = "hydrate")]
                         super::remember_public_position(&_event, &context, &return_id, &navigate);
                     }>
@@ -926,7 +926,7 @@ fn ResultRow(work_id: String, data: Signal<WorkList>, context: ExploreContext) -
                                     <span class="vk-public-row__tag">{tag}</span>
                                 })}
                             </div>
-                            <h2 class="vk-public-row__title" id=title_id>{highlighted_text(&work.title, &query)}</h2>
+                            <h2 class="vk-public-row__title" id=title_id.clone()>{highlighted_text(&work.title, &query)}</h2>
                             {excerpt.map(|text| view! { <p class="vk-public-row__excerpt">{text}</p> })}
                         </div>
                         <span class="vk-public-row__chevron" aria-hidden="true"><Icon name=IconName::ExpandMore /></span>
