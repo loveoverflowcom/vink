@@ -24,3 +24,5 @@ Không dùng animation làm điều kiện đóng, không thêm vuốt để đ�
 
 **Evidence.** Đối chiếu mobile tối 390×844/100% với mốc được duyệt; Chrome cũng đo desktop sáng
 và 320×800/tối/200% với reduced motion. Xem [cách chạy Auth Web](../development/auth-web.md#kiểm-chứng).
+
+[Ảnh Chrome và kết quả Reader R2 theo AC](evidence/auth-r2-328/README.md).
