@@ -51,6 +51,28 @@ Lane dùng bản sửa đã qua hồi quy Khám phá và 50 vòng return-positio
 cổng đọc trên database scratch rồi mở lại để kiểm Thử lại. Các tab Profile ghi nhận
 zero console error và zero hydration exception.
 
+## Rebase lên develop@b83ac8c3 và sửa sau review (19/11/2026)
+
+Nhánh được rebase lên `develop@b83ac8c350ba5d9907f68269539f5b5b8f223ab0` (#325, Khám phá r1).
+Thẻ r1 là một link phủ cả dòng; bản ghép giữ giao diện r1 với link nhan đề phủ thẻ và link
+bút danh ngang cấp (heading đứng trước trong DOM, byline hiển thị phía trên). Các commit sửa:
+`retire` báo lỗi khi Principal chưa có hồ sơ, `PUT /me/profile` trả `validation_failed`
+(`field=body`) và bắt buộc khóa `bio`, rào attribution không xóa byline SSR của tài liệu Back,
+trang `/@handle` giữ nội dung khi focus/online, form dùng control chung của `vink_ui`, chỉ link
+hồ sơ chưa đối chiếu bị giữ lại (nhãn không link giữ độ tươi READ-02), heading của thẻ đứng
+ngoài scroll anchoring.
+
+| Lệnh | SHA thực chạy | Kết quả |
+| --- | --- | --- |
+| `cargo xtask verify quick` | `15af2f49` | `PASS` toàn bộ, 898 unit/contract, repository checks. |
+| `cargo xtask verify postgres` | `80ef9f08` (App không đổi sau đó) | `PASS` 6 Store, 237 App, 48 Identity và 29 bước binary/role. |
+| `cargo xtask verify web --scenario main --scenario discovery` | `80ef9f08` | `PASS`. `return-position` lỗi ca `late-font-and-sized-image` (4,92 px) ở SHA này. |
+| `cargo xtask verify web --scenario return-position` | `80ef9f08` + bản sửa scroll anchoring | `PASS`, 50/50 vòng, sai số 0,08 px. |
+
+`NOT_RUN` trên HEAD cuối: lane Chrome `password` (hồ sơ/byline, form control chung, IME),
+`discovery`, `return-position`, `main`. Các ảnh form, xung đột, WorkCard và file tương phản bên
+dưới chụp markup trước rebase; cần chụp lại ở PR tiếp theo khi chạy lane Chrome.
+
 ## Từ tiêu chí tới bằng chứng
 
 | AC | Caller và bằng chứng đạt trong phạm vi chạy | Phần còn lại |
