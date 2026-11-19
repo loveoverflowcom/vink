@@ -139,6 +139,7 @@ impl PgStore {
             pen_name: String,
             current_handle: Option<String>,
             bio: Option<String>,
+            policies: Json<ProfilePolicies>,
             has_public_works: bool,
         }
 
@@ -146,6 +147,7 @@ impl PgStore {
         let row: Option<PublicRow> = sqlx::query_as(
             "SELECT s.principal_id, p.display_name AS pen_name, s.current_handle,
                     CASE WHEN s.policies->>'bio' = 'everyone' THEN s.bio END AS bio,
+                    s.policies,
                     EXISTS (SELECT FROM works w JOIN publications pub ON pub.work_id = w.id
                              WHERE w.owner_id = s.principal_id) AS has_public_works
                FROM author_handle_names n
@@ -169,12 +171,22 @@ impl PgStore {
             }) if current != name => Resolution::Alias {
                 href: AuthorRef::href_for(&current),
             },
-            Some(row) => Resolution::Current {
-                author: AuthorRef::new(row.pen_name, name.to_owned()),
-                bio: row.bio,
-                has_public_works: row.has_public_works,
-                publications: public_works(&mut tx, row.principal_id, name, cursor).await?,
-            },
+            Some(row) => {
+                let relationships = super::follow::public_relationships_summary(
+                    &mut tx,
+                    row.principal_id,
+                    name,
+                    row.policies.0,
+                )
+                .await?;
+                Resolution::Current {
+                    author: AuthorRef::new(row.pen_name, name.to_owned()),
+                    bio: row.bio,
+                    has_public_works: row.has_public_works,
+                    publications: public_works(&mut tx, row.principal_id, name, cursor).await?,
+                    relationships: Box::new(relationships),
+                }
+            }
         };
         tx.commit().await.map_err(classify)?;
         Ok(result)

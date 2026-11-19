@@ -2028,6 +2028,117 @@ a {
   }
 }
 
+/* Social Follow Graph (#294) */
+.vk-follow-region,
+.vk-follow-controls,
+.vk-follow-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vk-space-2);
+  margin-block: var(--vk-space-2);
+  max-inline-size: 100%;
+}
+.vk-follow-region {
+  min-block-size: var(--vk-size-hit-target);
+}
+#follow-status {
+  margin-block: 0;
+  color: var(--vk-on-surface-variant);
+  overflow-wrap: anywhere;
+}
+#follow-status[role="alert"] {
+  color: var(--vk-error);
+}
+.vk-follow-mutual {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--vk-space-6);
+  padding: var(--vk-space-1) var(--vk-space-3);
+  border-radius: var(--vk-radius-full);
+  background: var(--vk-secondary-container);
+  color: var(--vk-on-secondary-container);
+  font-weight: var(--vk-type-label-weight);
+  overflow-wrap: anywhere;
+}
+.vk-profile-relationships {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vk-space-2) var(--vk-space-4);
+  margin-block: var(--vk-space-2) var(--vk-space-4);
+  max-inline-size: 100%;
+}
+.vk-profile-relationships a,
+.vk-rel-stat {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--vk-size-hit-target);
+  padding-inline: var(--vk-space-1);
+  color: var(--vk-on-surface);
+  overflow-wrap: anywhere;
+}
+.vk-rel-page {
+  display: grid;
+  gap: var(--vk-space-3);
+  max-inline-size: var(--vk-measure);
+  margin-inline: auto;
+  padding-block: var(--vk-space-4);
+}
+.vk-rel-count {
+  margin: 0;
+  color: var(--vk-on-surface-variant);
+}
+.vk-rel-list {
+  display: grid;
+  gap: var(--vk-space-2);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.vk-rel-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vk-space-2);
+  padding: var(--vk-space-2) var(--vk-space-3);
+  border: 1px solid var(--vk-outline-variant);
+  border-radius: var(--vk-radius-md);
+  background: var(--vk-surface-container-low);
+  min-block-size: var(--vk-size-hit-target);
+}
+.vk-rel-item a {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--vk-space-1) var(--vk-space-2);
+  min-block-size: var(--vk-size-hit-target);
+  align-content: center;
+  color: var(--vk-on-surface);
+  overflow-wrap: anywhere;
+}
+.vk-rel-name {
+  font-weight: var(--vk-type-label-weight);
+}
+.vk-rel-handle {
+  color: var(--vk-on-surface-variant);
+}
+.vk-rel-append-error {
+  display: grid;
+  gap: var(--vk-space-2);
+  padding: var(--vk-space-3);
+  border-radius: var(--vk-radius-md);
+  background: var(--vk-error-container);
+  color: var(--vk-on-error-container);
+}
+.vk-rel-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vk-space-2);
+  align-items: center;
+}
+
 /* Auth Web R2 in Reader: the same modal is a bottom sheet on a compact viewport.
  * Native top-layer inertness keeps the mounted Reader and its editor out of the tab order. */
 html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }

@@ -1,0 +1,20 @@
+{
+  "state": "page",
+  "author": {
+    "pen_name": "An",
+    "handle": "an-may-27",
+    "href": "/@an-may-27"
+  },
+  "direction": "following",
+  "count": 1,
+  "people": [
+    {
+      "author": {
+        "pen_name": "Bình",
+        "handle": "binh-yen",
+        "href": "/@binh-yen"
+      },
+      "mutual": true
+    }
+  ]
+}

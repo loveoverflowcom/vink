@@ -978,6 +978,31 @@ pub struct ErrorBody {
     /// `tag_retired` with a curator's hint: the suggested replacement.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub successor_id: Option<String>,
+    /// Follow `version_conflict` only: the actor's observed state, to reconcile from.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub follow: Option<FollowObservedDto>,
+}
+
+/// Observed follow relationship returned on follow `version_conflict` and in receipts.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct FollowObservedDto {
+    pub target_handle: String,
+    pub following: bool,
+    pub mutual: bool,
+    pub pair_version: i64,
+    pub accepted_order: i64,
+}
+
+impl From<crate::application::follow::FollowObserved> for FollowObservedDto {
+    fn from(observed: crate::application::follow::FollowObserved) -> Self {
+        Self {
+            target_handle: observed.target_handle,
+            following: observed.following,
+            mutual: observed.mutual,
+            pair_version: observed.pair_version,
+            accepted_order: observed.accepted_order,
+        }
+    }
 }
 
 impl From<&CatalogTag> for PublicTag {
@@ -3222,6 +3247,170 @@ mod tests {
                     _ => serde_json::from_value::<SetPrivateRequest>(raw).is_err(),
                 };
                 assert!(refused, "{name} accepted {forged}");
+            }
+        }
+    }
+
+    mod follow_contract_tests {
+        use super::*;
+        use crate::application::follow::{
+            FollowError, FollowObserved, FollowReceiptView, FollowToken, MembershipBatch,
+            MembershipItem, OwnRelationshipList, OwnRelationshipPerson, PublicRelationshipList,
+            PublicRelationships, SetFollowInput, SetFollowResponse, ViewerRelationship,
+        };
+        use crate::application::handle::AuthorRef;
+        use crate::domain::follow::FollowDirection;
+        use crate::domain::profile::ProfilePolicies;
+        use uuid::Uuid;
+
+        fn assert_matches(name: &str, value: &impl Serialize) {
+            let actual = serde_json::to_value(value).unwrap();
+            assert_eq!(actual, fixture(name), "{name}");
+        }
+
+        #[test]
+        fn follow_messages_and_errors_match_fixtures() {
+            let uuid = Uuid::parse_str("0192f3a1-0000-7000-8000-000000000294").unwrap();
+            let an = AuthorRef::new("An".into(), "an-may-27".into());
+            let binh = AuthorRef::new("Bình".into(), "binh-yen".into());
+
+            assert_matches(
+                "author.relationship.me.json",
+                &ViewerRelationship::Other {
+                    target_handle: "an-may-27".into(),
+                    can_follow: true,
+                    following: true,
+                    mutual: false,
+                    pair_version: 1,
+                    accepted_order: 1,
+                },
+            );
+            assert_matches(
+                "author.relationship.set.json",
+                &SetFollowResponse {
+                    target_handle: "an-may-27".into(),
+                    outcome: "accepted",
+                    following: true,
+                    mutual: true,
+                    pair_version: 1,
+                    accepted_order: 1,
+                    committed: None,
+                    relationships: PublicRelationships::from_policies(
+                        ProfilePolicies::default(),
+                        "an-may-27",
+                        Some(1),
+                        None,
+                    ),
+                },
+            );
+            assert_matches(
+                "author.relationship.list.public.json",
+                &PublicRelationshipList::Page {
+                    author: an.clone(),
+                    direction: FollowDirection::Followers,
+                    count: Some(1),
+                    people: vec![binh.clone()],
+                    next_cursor: None,
+                },
+            );
+            assert_matches(
+                "author.relationship.list.own.json",
+                &OwnRelationshipList::Page {
+                    author: an,
+                    direction: FollowDirection::Following,
+                    count: 1,
+                    people: vec![OwnRelationshipPerson {
+                        author: binh,
+                        mutual: true,
+                    }],
+                    next_cursor: None,
+                },
+            );
+            assert_matches(
+                "author.follow.receipt.json",
+                &FollowReceiptView {
+                    command_id: uuid,
+                    target_handle: "an-may-27".into(),
+                    expected_order: 0,
+                    desired_following: true,
+                    committed: FollowToken {
+                        following: true,
+                        pair_version: 1,
+                        accepted_order: 1,
+                    },
+                    observed: FollowObserved {
+                        target_handle: "an-may-27".into(),
+                        following: false,
+                        mutual: false,
+                        pair_version: 2,
+                        accepted_order: 2,
+                    },
+                },
+            );
+            assert_matches(
+                "author.follow.membership.json",
+                &MembershipBatch {
+                    items: vec![MembershipItem {
+                        handle: "an-may-27".into(),
+                        following: true,
+                        mutual: false,
+                        pair_version: 1,
+                        accepted_order: 1,
+                    }],
+                },
+            );
+
+            for (name, error, status) in [
+                (
+                    "error.follow_version_conflict.json",
+                    ApiError::from(FollowError::Conflict(FollowObserved {
+                        target_handle: "an-may-27".into(),
+                        following: false,
+                        mutual: false,
+                        pair_version: 2,
+                        accepted_order: 2,
+                    })),
+                    409,
+                ),
+                (
+                    "error.self_follow.json",
+                    ApiError::from(FollowError::SelfFollow),
+                    403,
+                ),
+                (
+                    "error.relationship_list_private.json",
+                    ApiError::from(FollowError::ListPrivate),
+                    403,
+                ),
+                (
+                    "error.profile_gone.json",
+                    ApiError::from(FollowError::Gone),
+                    410,
+                ),
+                (
+                    "error.follow_key_reused.json",
+                    ApiError::from(FollowError::KeyReused),
+                    422,
+                ),
+            ] {
+                assert_eq!(error.status().as_u16(), status, "{name}");
+                assert_matches(name, &error.envelope());
+            }
+        }
+
+        #[test]
+        fn set_follow_input_rejects_client_authority_fields() {
+            for extra in ["actor_id", "follower_id"] {
+                let raw = serde_json::json!({
+                    "command_id": "0192f3a1-0000-7000-8000-000000000294",
+                    "expected_order": 0,
+                    "following": true,
+                    extra: "forged"
+                });
+                assert!(
+                    serde_json::from_value::<SetFollowInput>(raw).is_err(),
+                    "{extra}"
+                );
             }
         }
     }

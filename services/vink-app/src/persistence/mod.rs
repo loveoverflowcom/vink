@@ -13,6 +13,7 @@ mod discussion;
 mod drafts;
 mod endorsement;
 pub mod evaluation;
+pub mod follow;
 pub mod handle;
 pub mod moderation;
 pub(crate) mod moderation_write;

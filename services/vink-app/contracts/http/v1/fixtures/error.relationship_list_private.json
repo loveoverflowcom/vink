@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "relationship_list_private",
+    "message": "relationship list is private"
+  }
+}
