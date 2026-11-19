@@ -69,7 +69,7 @@ async fn get_with_headers(
 ) -> (StatusCode, Option<String>, Option<String>, String) {
     let mut req = Request::builder().method(Method::GET).uri(path);
     if let Some(id) = actor {
-        req = req.header("x-vink-test-principal", id.to_string());
+        req = req.header("x-test-principal", id.to_string());
     }
     for (name, value) in headers {
         req = req.header(*name, *value);
