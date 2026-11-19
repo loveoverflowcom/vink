@@ -150,7 +150,8 @@ fn Chrome() -> impl IntoView {
                     <Route path=path!("/toi/chinh-ho-so") view=pages::profile::EditProfile />
                     <Route path=path!("/toi/dia-chi") view=pages::handle::Manage />
                     <Route path=path!("/:author") view=pages::handle::Author ssr=SsrMode::Async />
-                    <Route path=path!("/:author/:relation") view=pages::follow::RelationshipList ssr=SsrMode::Async />
+                    <Route path=path!("/:author/nguoi-theo-doi") view=pages::follow::FollowersList ssr=SsrMode::Async />
+                    <Route path=path!("/:author/dang-theo-doi") view=pages::follow::FollowingList ssr=SsrMode::Async />
                     <Route path=path!("/thu-nghiem/bieu-cam") view=expressions::ExpressionPilot />
                 </Routes>
             </main>

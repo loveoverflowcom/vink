@@ -229,7 +229,17 @@ pub(super) fn ProfileRelationships(
 }
 
 #[component]
-pub fn RelationshipList() -> impl IntoView {
+pub fn FollowersList() -> impl IntoView {
+    view! { <RelationshipList direction=FollowDirection::Followers /> }
+}
+
+#[component]
+pub fn FollowingList() -> impl IntoView {
+    view! { <RelationshipList direction=FollowDirection::Following /> }
+}
+
+#[component]
+fn RelationshipList(direction: FollowDirection) -> impl IntoView {
     let params = use_params_map();
     let query = use_query_map();
     view! {
@@ -237,19 +247,15 @@ pub fn RelationshipList() -> impl IntoView {
             each=move || {
                 vec![(
                     params.read().get("author").unwrap_or_default(),
-                    params.read().get("relation").unwrap_or_default(),
                     query.read().get("cursor"),
                 )]
             }
             key=Clone::clone
-            children=|(author, relation, cursor)| match (
-                author.strip_prefix('@'),
-                FollowDirection::parse_web(&relation),
-            ) {
-                (Some(name), Some(direction)) => view! {
+            children=move |(author, cursor)| match author.strip_prefix('@') {
+                Some(name) => view! {
                     <RelationshipListPage name=name.to_string() direction cursor />
                 }.into_any(),
-                _ => view! { <super::NotFound /> }.into_any(),
+                None => view! { <super::NotFound /> }.into_any(),
             }
         />
     }
