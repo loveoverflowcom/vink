@@ -248,6 +248,7 @@ fn AddressForm(
                         email: target,
                         expires,
                     }) => {
+                        let resume_focus = owns_focus();
                         step.set(Step::Code {
                             binding: Binding {
                                 session_id: live_session,
@@ -256,6 +257,9 @@ fn AddressForm(
                             challenge_id: id,
                             expires,
                         });
+                        if resume_focus {
+                            focus_after_render(step, "email-attach-code");
+                        }
                     }
                     Err(AuthError::AlreadyAttached | AuthError::AttachmentNeedsPassword) => {
                         read.run(None)
@@ -368,7 +372,6 @@ fn CodeForm(
         }
     });
     let target = binding.target.clone();
-    code.focus_on_mount(true);
     view! {
         <form id="email-attach-code-form" class="vk-account-form" method="post" novalidate
             on:submit=move |event| {
