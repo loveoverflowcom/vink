@@ -18,6 +18,7 @@ pub mod document;
 pub mod draft_list;
 pub mod editor;
 pub mod endorsement_state;
+pub mod follow_state;
 mod expressions;
 pub mod freshness;
 pub mod navigation;
@@ -149,6 +150,7 @@ fn Chrome() -> impl IntoView {
                     <Route path=path!("/toi/chinh-ho-so") view=pages::profile::EditProfile />
                     <Route path=path!("/toi/dia-chi") view=pages::handle::Manage />
                     <Route path=path!("/:author") view=pages::handle::Author ssr=SsrMode::Async />
+                    <Route path=path!("/:author/:relation") view=pages::follow::RelationshipList ssr=SsrMode::Async />
                     <Route path=path!("/thu-nghiem/bieu-cam") view=expressions::ExpressionPilot />
                 </Routes>
             </main>

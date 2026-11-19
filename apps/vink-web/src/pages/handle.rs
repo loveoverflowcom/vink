@@ -28,7 +28,12 @@ fn PublicProfile(name: String, cursor: Option<String>) -> impl IntoView {
     // change) or the failure the reader asked to retry. Lifecycle wake-ups only revalidate:
     // the current answer stays mounted with its focus and scroll until the new one arrives.
     let (floor, set_floor) = signal(0u64);
+    let live_relationships: RwSignal<Option<(String, crate::contract::follow::PublicRelationships)>> =
+        RwSignal::new(None);
+    let own_relationships: RwSignal<Option<crate::contract::follow::OwnRelationshipsSummary>> =
+        RwSignal::new(None);
     let renew = move || {
+        live_relationships.set(None);
         advance.update(|stamp| *stamp += 1);
         set_floor.set(generation.get_untracked());
     };
@@ -48,7 +53,15 @@ fn PublicProfile(name: String, cursor: Option<String>) -> impl IntoView {
         <Transition fallback=|| view! { <p role="status">"Đang mở trang tác giả…"</p> }>
             {move || match data.get() {
                 Some((stamp, result)) if stamp >= floor.get() => {
-                    render_profile(result, &status, &name, cursor.is_some(), renew)
+                    render_profile(
+                        result,
+                        &status,
+                        &name,
+                        cursor.is_some(),
+                        live_relationships,
+                        own_relationships,
+                        renew,
+                    )
                 }
                 _ => view! { <p role="status">"Đang mở trang tác giả…"</p> }.into_any(),
             }}
@@ -61,6 +74,8 @@ fn render_profile(
     status: &super::ResponseStatus,
     name: &str,
     continued: bool,
+    live_relationships: RwSignal<Option<(String, crate::contract::follow::PublicRelationships)>>,
+    own_relationships: RwSignal<Option<crate::contract::follow::OwnRelationshipsSummary>>,
     retry: impl Fn() + Copy + Send + Sync + 'static,
 ) -> AnyView {
     let (code, heading, detail) = match result {
@@ -69,6 +84,7 @@ fn render_profile(
             bio,
             publications,
             has_public_works,
+            relationships,
         }) if author.valid_href().is_some() => {
             let initials = author
                 .pen_name
@@ -77,6 +93,12 @@ fn render_profile(
                 .take(2)
                 .collect::<String>()
                 .to_uppercase();
+            let handle_for_rel = author.handle.clone();
+            let initial_rel = StoredValue::new(relationships);
+            let effective_public = Signal::derive(move || match live_relationships.get() {
+                Some((ref h, ref rel)) if h == &handle_for_rel => rel.clone(),
+                _ => initial_rel.get_value(),
+            });
             return view! {
                 <Title text=format!("{} · Vink", author.pen_name) />
                 <Link rel="canonical" href=crate::canonical_url(&author.href) />
@@ -88,7 +110,16 @@ fn render_profile(
                         <h1 id="author-profile-heading" tabindex="-1">{author.pen_name}</h1>
                         <p>{format!("@{}", author.handle)}</p>
                     </header>
-                    <super::profile::OwnProfileLink handle=author.handle />
+                    <super::profile::OwnProfileLink handle=author.handle.clone() />
+                    <super::follow::ProfileActionRegion
+                        handle=author.handle.clone()
+                        live_override=live_relationships
+                        own_relationships=own_relationships
+                    />
+                    <super::follow::ProfileRelationships
+                        public=effective_public
+                        own=own_relationships.read_only()
+                    />
                     {bio.map(|text| view! { <p class="vk-author-bio">{text}</p> })}
                     <section aria-labelledby="author-works-heading">
                         <h2 id="author-works-heading" tabindex="-1">"Tác phẩm công khai"</h2>

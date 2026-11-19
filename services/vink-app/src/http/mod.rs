@@ -8,6 +8,7 @@ mod conditional;
 pub mod contract;
 mod drafts;
 mod error;
+mod follow;
 mod handle;
 mod health;
 mod moderation_queue;
@@ -594,6 +595,7 @@ mod tests {
             ("conditional.rs", include_str!("conditional.rs")),
             ("contract.rs", include_str!("contract.rs")),
             ("error.rs", include_str!("error.rs")),
+            ("follow.rs", include_str!("follow.rs")),
             ("health.rs", include_str!("health.rs")),
             ("mod.rs", include_str!("mod.rs")),
             ("ssr.rs", include_str!("ssr.rs")),
@@ -1532,5 +1534,68 @@ mod identity_tests {
         // Database outage: not ready, regardless of Identity.
         assert_eq!(body["checks"]["database"], "unavailable");
         assert_eq!(body["checks"]["role"], "unknown");
+    }
+
+    #[tokio::test]
+    async fn follow_routes_fail_closed_with_no_store_on_auth_origin_validation_and_outage() {
+        let router = outage_router();
+
+        // Missing Origin on unsafe PUT -> 403 no-store.
+        let (got, headers, _) = call(
+            &router,
+            "PUT",
+            "/api/v1/authors/an-may/relationship/me",
+            &[],
+            Some("{bad json"),
+        )
+        .await;
+        assert_eq!(got, StatusCode::FORBIDDEN);
+        assert_eq!(headers[header::CACHE_CONTROL], "no-store");
+
+        // Auth precedes body validation: valid Origin + malformed JSON + no session -> 401 no-store.
+        let (got, headers, body) = call(
+            &router,
+            "PUT",
+            "/api/v1/authors/an-may/relationship/me",
+            &[ORIGIN],
+            Some("{bad json"),
+        )
+        .await;
+        assert_eq!(got, StatusCode::UNAUTHORIZED, "{body}");
+        assert_eq!(headers[header::CACHE_CONTROL], "no-store");
+
+        // Auth precedes query validation on private follow routes.
+        for path in [
+            "/api/v1/authors/an-may/relationship/me",
+            "/api/v1/me/follows/receipts/not-a-uuid",
+            "/api/v1/me/follows/membership?handles=",
+            "/api/v1/me/follows/membership?handles=BAD!",
+            "/api/v1/me/relationships/followers?unknown=1",
+            "/api/v1/me/relationships/following",
+        ] {
+            let (got, headers, body) = call(&router, "GET", path, &[], None).await;
+            assert_eq!(got, StatusCode::UNAUTHORIZED, "{path}: {body}");
+            assert_eq!(headers[header::CACHE_CONTROL], "no-store", "{path}");
+        }
+
+        // Strict query validation on public follow lists runs before DB outage -> 422 no-store.
+        for path in [
+            "/api/v1/authors/an-may/followers?foo=1",
+            "/api/v1/authors/an-may/following?cursor=a&cursor=b",
+        ] {
+            let (got, headers, body) = call(&router, "GET", path, &[], None).await;
+            assert_eq!(got, StatusCode::UNPROCESSABLE_ENTITY, "{path}: {body}");
+            assert_eq!(headers[header::CACHE_CONTROL], "no-store", "{path}");
+        }
+
+        // Valid query during DB outage returns 503 no-store, never empty list or 0 count.
+        for path in [
+            "/api/v1/authors/an-may/followers",
+            "/api/v1/authors/an-may/following",
+        ] {
+            let (got, headers, body) = call(&router, "GET", path, &[], None).await;
+            assert_eq!(got, StatusCode::SERVICE_UNAVAILABLE, "{path}: {body}");
+            assert_eq!(headers[header::CACHE_CONTROL], "no-store", "{path}");
+        }
     }
 }

@@ -34,6 +34,9 @@ impl Destination {
             ["ban-viet"] | ["ban-viet", _] => Some(Self::Desk),
             ["toi"] | ["toi", "dia-chi" | "chinh-ho-so"] => Some(Self::Me),
             [name] if name.starts_with('@') => Some(Self::Explore),
+            [name, "nguoi-theo-doi" | "dang-theo-doi"] if name.starts_with('@') => {
+                Some(Self::Explore)
+            }
             _ => None,
         }
     }

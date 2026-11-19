@@ -3141,6 +3141,12 @@ pub(crate) fn failure(error: &ApiError) -> Failure {
         | ApiError::RevisionRejected
         | ApiError::UnknownRevision
         | ApiError::WorkUnavailable
+        | ApiError::SelfFollow
+        | ApiError::RelationshipListPrivate
+        | ApiError::ProfileGone
+        | ApiError::FollowActorUnavailable
+        | ApiError::FollowConflict { .. }
+        | ApiError::FollowKeyReused
         | ApiError::Unexpected { .. } => Failure::Unexpected,
     }
 }

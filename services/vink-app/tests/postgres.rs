@@ -58,6 +58,8 @@ mod drafts;
 mod endorsement;
 #[path = "postgres/first_publication.rs"]
 mod first_publication;
+#[path = "postgres/follow.rs"]
+mod follow;
 #[path = "postgres/handle.rs"]
 mod handle;
 #[path = "postgres/moderation_queue.rs"]

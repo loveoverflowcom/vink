@@ -172,6 +172,45 @@ impl PublicReads for PublicReadsAdapter {
             to_web(&resp)
         })
     }
+
+    fn author_relationships(
+        &self,
+        handle: String,
+        direction: web::follow::FollowDirection,
+        cursor: Option<String>,
+    ) -> PortFuture<Result<web::follow::AuthorRelationshipsLoad, LoadError>> {
+        let vink = self.vink.clone();
+        Box::pin(async move {
+            let domain_dir = match direction {
+                web::follow::FollowDirection::Followers => {
+                    crate::domain::follow::FollowDirection::Followers
+                }
+                web::follow::FollowDirection::Following => {
+                    crate::domain::follow::FollowDirection::Following
+                }
+            };
+            match vink
+                .store()
+                .public_relationships(&handle, domain_dir, cursor.as_deref())
+                .await
+            {
+                Ok(list) => {
+                    let wire: web::follow::PublicRelationshipList = to_web(&list)?;
+                    Ok(wire.into())
+                }
+                Err(crate::application::follow::FollowError::ListPrivate) => {
+                    Ok(web::follow::AuthorRelationshipsLoad::Private)
+                }
+                Err(crate::application::follow::FollowError::Gone) => {
+                    Ok(web::follow::AuthorRelationshipsLoad::Gone)
+                }
+                Err(crate::application::follow::FollowError::NotFound) => {
+                    Ok(web::follow::AuthorRelationshipsLoad::Missing)
+                }
+                Err(_) => Err(LoadError::Unavailable),
+            }
+        })
+    }
 }
 
 pub fn routes(state: &AppState) -> Router<AppState> {

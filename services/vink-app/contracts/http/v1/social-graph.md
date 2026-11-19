@@ -172,3 +172,18 @@ cùng snapshot với item; bản thân tác phẩm, revision và comment ID gi�
 vẽ nhãn an toàn. Client cũ kiểm schema Discussion nghiêm ngặt từ chối payload mới. Web mới
 đọc dữ liệu legacy dưới dạng chữ, và bỏ liên kết khi biến thể hoặc href chưa được xác nhận.
 Reader thay thế theo O-17 tiếp tục dùng nhãn đã lọc.
+
+## Theo dõi tác giả và danh sách quan hệ #294
+
+- **Tóm tắt trên Public Profile.** `GET /api/v1/authors/{handle}` ([Current](fixtures/author.profile.current.json)) bổ sung `relationships` theo quyền đọc từng mục (`followers_count`, `following_count`, `followers_href`, `following_href`; bỏ trường khi quyền là `self` và bỏ cả `relationships` nếu cả bốn trường ẩn).
+
+| Route | Kết quả và cache | Lỗi chính | Fixture |
+| --- | --- | --- | --- |
+| `GET/HEAD /api/v1/authors/{handle}/followers` | `200` `PublicRelationshipList::Page` (`private, no-cache`, `ETag`/`304`); `alias`/`restart` dùng `no-store` | `403 relationship_list_private` (kiểm trước cursor và trước `If-None-Match`), `404`, `410 profile_gone`, `422`, `503` | [public list](fixtures/author.relationship.list.public.json), [private](fixtures/error.relationship_list_private.json), [gone](fixtures/error.profile_gone.json) |
+| `GET/HEAD /api/v1/authors/{handle}/following` | Như trên cho cạnh ra | Như trên | Như trên |
+| `GET /api/v1/authors/{handle}/relationship/me` | `200` `no-store`: `kind=self` (`can_follow=false`, `own_relationships` gồm đủ `followers_*` và `following_*`) hoặc `kind=other` (`can_follow`, `following`, `mutual`, `pair_version`, `accepted_order`) | `401`, `403 actor_unavailable`, `404`, `410 profile_gone`, `503` | [viewer me](fixtures/author.relationship.me.json) |
+| `PUT /api/v1/authors/{handle}/relationship/me` | Body `{command_id, expected_order, following}` (`deny_unknown_fields`, kiểm `Origin` và phiên trước body); `200` `no-store` trả `outcome` (`accepted` / `replayed`), state mới, `committed` khi replay và `relationships` | `401`, `403 self_follow` / `actor_unavailable`, `409 target_unavailable` / `version_conflict` (kèm `error.follow`), `410 profile_gone`, `422 follow_key_reused` / `validation_failed`, `503` | [set](fixtures/author.relationship.set.json), [self](fixtures/error.self_follow.json), [conflict](fixtures/error.follow_version_conflict.json), [key reused](fixtures/error.follow_key_reused.json) |
+| `GET /api/v1/me/follows/receipts/{command_id}` | `200` `no-store`: `committed` tại thời điểm nhận lệnh và `observed` hiện hành | `401`, `403 actor_unavailable`, `404`, `422`, `503` | [receipt](fixtures/author.follow.receipt.json) |
+| `GET /api/v1/me/follows/membership?handles=…` | `200` `no-store`: tối đa 50 canonical handle, trả trạng thái `following`/`mutual`/`pair_version`/`accepted_order` cho handle còn hiệu lực (bỏ self/missing/retired) | `401`, `403 actor_unavailable`, `422 handles`/`query`, `503` | [membership](fixtures/author.follow.membership.json) |
+| `GET /api/v1/me/relationships/followers` | `200` `no-store`: `OwnRelationshipList` cho chủ đã xác thực (kể cả khi policy là `self`), mỗi người kèm `mutual`; sai scope cursor trả `state=restart` | `401`, `403 actor_unavailable`, `422`, `503` | [own list](fixtures/author.relationship.list.own.json) |
+| `GET /api/v1/me/relationships/following` | Như trên cho cạnh ra | Như trên | [own list](fixtures/author.relationship.list.own.json) |

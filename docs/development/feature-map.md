@@ -16,6 +16,8 @@ trang tác giả kể cả trước bài đầu tiên. [Luồng, backfill, cover
 **Hồ sơ và byline #292/#293** · Tôi → Chỉnh hồ sơ, đọc lại Bio và quyền, mở `/@handle`
 từ Khám phá, Reader và nhận xét. [Owner, phạm vi gate và đường kiểm chứng](social-graph.md#hồ-sơ-và-bút-danh-292293).
 
+**Theo dõi tác giả #294 (Draft · `NOT_RUN` cục bộ)** · Nút Theo dõi/Bỏ theo dõi cạnh danh tính (`#follow`), số đếm và link danh sách độc lập theo bốn quyền, Mutual chỉ cấp cho hai bên và `/@{handle}/{nguoi-theo-doi|dang-theo-doi}`. [Owner, lựa chọn `CHOICE-02/03 = A` và trạng thái kiểm chứng](social-graph.md#theo-dõi-tác-giả-và-danh-sách-quan-hệ-294).
+
 **Publication #291** cung cấp [mốc công khai đầu tiên theo WorkId](publication-runtime.md#mốc-công-khai-đầu-tiên-291)
 cho #296 ở mức PostgreSQL. [Ca tích hợp](../../services/vink-app/tests/postgres/first_publication.rs)
 kiểm lần đầu commit, writer cạnh tranh, rollback, rút/tái đăng và nguồn mốc sau backfill.

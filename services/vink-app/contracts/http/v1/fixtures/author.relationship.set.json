@@ -1,0 +1,12 @@
+{
+  "target_handle": "an-may-27",
+  "outcome": "accepted",
+  "following": true,
+  "mutual": true,
+  "pair_version": 1,
+  "accepted_order": 1,
+  "relationships": {
+    "followers_count": 1,
+    "followers_href": "/@an-may-27/nguoi-theo-doi"
+  }
+}

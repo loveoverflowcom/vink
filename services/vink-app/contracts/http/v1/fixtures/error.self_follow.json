@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "self_follow",
+    "message": "cannot follow yourself"
+  }
+}

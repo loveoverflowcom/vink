@@ -119,6 +119,36 @@ pub enum ApiError {
     Internal,
     CaseConflict(&'static str),
     CaseForbidden(&'static str),
+    SelfFollow,
+    RelationshipListPrivate,
+    ProfileGone,
+    FollowActorUnavailable,
+    FollowTargetUnavailable,
+    FollowConflict {
+        observed: crate::application::follow::FollowObserved,
+    },
+    FollowKeyReused,
+}
+
+impl From<crate::application::follow::FollowError> for ApiError {
+    fn from(error: crate::application::follow::FollowError) -> Self {
+        use crate::application::follow::FollowError;
+        match error {
+            FollowError::Store(err) => Self::from(err),
+            FollowError::Invalid(field) => Self::Validation {
+                field,
+                message: format!("invalid {field}"),
+            },
+            FollowError::NotFound => Self::NotFound,
+            FollowError::Gone => Self::ProfileGone,
+            FollowError::ActorUnavailable => Self::FollowActorUnavailable,
+            FollowError::TargetUnavailable => Self::FollowTargetUnavailable,
+            FollowError::ListPrivate => Self::RelationshipListPrivate,
+            FollowError::SelfFollow => Self::SelfFollow,
+            FollowError::Conflict(observed) => Self::FollowConflict { observed },
+            FollowError::KeyReused => Self::FollowKeyReused,
+        }
+    }
 }
 
 impl ApiError {
@@ -162,8 +192,18 @@ impl ApiError {
             Self::UsernameTaken => StatusCode::CONFLICT,
             Self::ChallengeClosed => StatusCode::CONFLICT,
             Self::AccountDisabled | Self::PrincipalSuspended => StatusCode::FORBIDDEN,
-            Self::TagConflict { .. } | Self::TagRetired { .. } => StatusCode::CONFLICT,
-            Self::UnknownTag { .. } | Self::WrongFacet { .. } | Self::TooManyThemes => {
+            Self::TagConflict { .. }
+            | Self::TagRetired { .. }
+            | Self::FollowConflict { .. } => StatusCode::CONFLICT,
+            Self::SelfFollow
+            | Self::RelationshipListPrivate
+            | Self::FollowActorUnavailable => StatusCode::FORBIDDEN,
+            Self::FollowTargetUnavailable => StatusCode::CONFLICT,
+            Self::ProfileGone => StatusCode::GONE,
+            Self::UnknownTag { .. }
+            | Self::WrongFacet { .. }
+            | Self::TooManyThemes
+            | Self::FollowKeyReused => {
                 StatusCode::UNPROCESSABLE_ENTITY
             }
             Self::DependencyUnavailable => StatusCode::SERVICE_UNAVAILABLE,
@@ -440,6 +480,38 @@ impl ApiError {
             Self::HandleRefused(code) => (*code, code.to_string(), None, Some("handle")),
             Self::CaseConflict(code) => (*code, code.to_string(), None, None),
             Self::CaseForbidden(code) => (*code, code.to_string(), None, None),
+            Self::SelfFollow => ("self_follow", "cannot follow yourself".to_string(), None, None),
+            Self::RelationshipListPrivate => (
+                "relationship_list_private",
+                "relationship list is private".to_string(),
+                None,
+                None,
+            ),
+            Self::ProfileGone => ("profile_gone", "author profile is gone".to_string(), None, None),
+            Self::FollowActorUnavailable => (
+                "actor_unavailable",
+                "author profile required to follow".to_string(),
+                None,
+                None,
+            ),
+            Self::FollowTargetUnavailable => (
+                "target_unavailable",
+                "author cannot be followed right now".to_string(),
+                None,
+                None,
+            ),
+            Self::FollowConflict { observed } => (
+                "version_conflict",
+                "follow state changed before your request; reconcile and retry".to_string(),
+                Some(observed.accepted_order),
+                Some("expected_order"),
+            ),
+            Self::FollowKeyReused => (
+                "follow_key_reused",
+                "command_id already committed for a different target or intent".to_string(),
+                None,
+                Some("command_id"),
+            ),
             Self::Internal => ("internal", "internal error".to_string(), None, None),
         };
         ErrorEnvelope {
@@ -471,6 +543,10 @@ impl ApiError {
                         successor_id: Some(id),
                         ..
                     } => Some(id.to_string()),
+                    _ => None,
+                },
+                follow: match self {
+                    Self::FollowConflict { observed } => Some(observed.clone().into()),
                     _ => None,
                 },
             },

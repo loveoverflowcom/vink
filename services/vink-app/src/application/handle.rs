@@ -65,6 +65,8 @@ pub enum Resolution {
         bio: Option<String>,
         publications: super::profile::ProfileWorks,
         has_public_works: bool,
+        #[serde(default, skip_serializing_if = "super::follow::PublicRelationships::is_empty")]
+        relationships: super::follow::PublicRelationships,
     },
     Alias {
         href: String,

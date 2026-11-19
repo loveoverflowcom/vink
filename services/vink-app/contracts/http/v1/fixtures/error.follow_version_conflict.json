@@ -1,0 +1,15 @@
+{
+  "error": {
+    "code": "version_conflict",
+    "message": "follow state changed before your request; reconcile and retry",
+    "current_version": 2,
+    "field": "expected_order",
+    "follow": {
+      "target_handle": "an-may-27",
+      "following": false,
+      "mutual": false,
+      "pair_version": 2,
+      "accepted_order": 2
+    }
+  }
+}

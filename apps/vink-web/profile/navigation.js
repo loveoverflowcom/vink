@@ -74,7 +74,8 @@ export function mountProfileNavigation() {
     if (!href || link.origin !== location.origin) return;
     const source = address();
     history.replaceState({...history.state, [returnKey]: {id: link.id, href, source}}, '');
-    const heading = href.startsWith('/@') ? 'author-profile-heading' :
+    const heading = /^\/@[^/]+\/(nguoi-theo-doi|dang-theo-doi)(?:[?#]|$)/.test(href) ? 'relationship-title' :
+      href.startsWith('/@') ? 'author-profile-heading' :
       href === '/toi/chinh-ho-so' ? 'edit-profile-heading' :
       href === '/toi#edit-profile-link' ? 'edit-profile-link' : '';
     if (heading) focusWhenReady(href, () => document.getElementById(heading), '', link);
@@ -87,8 +88,9 @@ export function mountProfileNavigation() {
     const fallback = entry.id.startsWith('profile-work-') ? 'author-works-heading' :
       entry.id.startsWith('work-') ? 'community-stream' :
       entry.id.startsWith('comment-') ? 'feedback-heading' :
-      entry.id === 'edit-profile-link' ? 'me-title' :
-      entry.id === 'own-profile-edit-link' ? 'author-profile-heading' : 'noi-dung';
+      entry.id.startsWith('rel-person-') ? 'relationship-title' :
+      entry.id === 'profile-followers-link' || entry.id === 'profile-following-link' || entry.id === 'own-profile-edit-link' || entry.id === 'follow-sign-in' || entry.id === 'rel-back-profile' ? 'author-profile-heading' :
+      entry.id === 'edit-profile-link' ? 'me-title' : 'noi-dung';
     focusWhenReady(entry.source, () => {
       const node = document.getElementById(entry.id);
       return node?.getAttribute('href') === entry.href ? node : null;

@@ -2,6 +2,7 @@
 // The mail carrier is a local outbox. Faults delay/drop a real response or explicitly inject
 // a refusal; no synthetic success is used. Don't log request bodies, credentials or cookies.
 
+import { authorFollows } from './author-follow-smoke.mjs';
 import { authorHandles } from './author-handle-smoke.mjs';
 import { authorProfiles } from './author-profile-smoke.mjs';
 import { EDITOR_READY, STANDING, account, cookies, fabricate, fill, mailedCode, openAccount, q, signIn, signOut } from './auth-smoke.mjs';
@@ -417,15 +418,19 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
     (await read(other, `/api/v1/drafts/${draftA}`)).status === 404,
     'password reads the prior draft of the email account; another principal’s draft remains inaccessible');
 
+  const switchActor = async (actor) => {
+    await openAccount(page, base, 'active');
+    await signOut(page, base);
+    await credentials(page, LOGIN, actor === 'a' ? userA : userB, actor === 'a' ? SECRET_A : SECRET_B);
+    await page.click(LOGIN + '-submit');
+    await page.waitFor(`${STANDING} === 'active'`, 'replacement cookie confirmed');
+  };
+  await authorFollows(page, other, {
+    base, openPage, check, holdAnswer, textContrast, switchActor,
+  });
   await authorProfiles(page, other, {
     base, openPage, check, holdAnswer, textContrast,
-    switchActor: async (actor) => {
-      await openAccount(page, base, 'active');
-      await signOut(page, base);
-      await credentials(page, LOGIN, actor === 'a' ? userA : userB, actor === 'a' ? SECRET_A : SECRET_B);
-      await page.click(LOGIN + '-submit');
-      await page.waitFor(`${STANDING} === 'active'`, 'replacement cookie confirmed');
-    },
+    switchActor,
   });
   await authorHandles(page, {base,openPage,check,holdAnswer,textContrast});
 

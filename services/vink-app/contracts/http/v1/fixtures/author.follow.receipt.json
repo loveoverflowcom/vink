@@ -1,0 +1,18 @@
+{
+  "command_id": "0192f3a1-0000-7000-8000-000000000294",
+  "target_handle": "an-may-27",
+  "expected_order": 0,
+  "desired_following": true,
+  "committed": {
+    "following": true,
+    "pair_version": 1,
+    "accepted_order": 1
+  },
+  "observed": {
+    "target_handle": "an-may-27",
+    "following": false,
+    "mutual": false,
+    "pair_version": 2,
+    "accepted_order": 2
+  }
+}

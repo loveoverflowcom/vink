@@ -302,5 +302,6 @@ pub async fn retire(
             ));
         }
     }
+    super::follow::retire_edges(tx, owner).await?;
     Ok(())
 }
