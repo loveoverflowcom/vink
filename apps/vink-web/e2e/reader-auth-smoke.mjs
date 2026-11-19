@@ -70,8 +70,9 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
     // Full Web runs Discovery first, so its newer publications may fill the first page.
     // Use an actual search result for the seeded Reader rather than assuming feed order.
     await page.goto(args.base + '/?q=' + encodeURIComponent('Mưa trên phố cũ'));
-    await page.waitFor(`${HYDRATED} && ${q('a[href="'+HERE+'"]')}`, 'discovery link mounted');
-    await page.click('a[href="'+HERE+'"]');
+    const result = `.vk-public-row__link[href^="${HERE}?"]`;
+    await page.waitFor(`${HYDRATED} && ${q(result)}`, 'seeded Reader in filtered Discovery results');
+    await page.click(result);
     await page.waitFor(`location.pathname === '${HERE}' && ${q(ROOT_EDITOR+'-auth')}`, 'guest Reader SPA route');
     await page.viewport(1280, 844);
     await page.send('Page.bringToFront');
