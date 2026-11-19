@@ -73,6 +73,15 @@ export async function deskGuest(page, {args, check}, signInOpen) {
     await page.key('Enter');
     await page.waitFor(`location.pathname==='/toi' && document.querySelector('#page-appearance-title') &&
       document.querySelector('${signInOpen?'#password-login':'#sign-in-closed'}')`, '#308 rail goes to Account and keeps access to Appearance');
+    if (!signInOpen) {
+      check(await page.eval(`!document.querySelector('#account-session form')
+        && document.querySelector('#sign-in-closed').textContent.includes('Vink chưa mở đăng nhập')
+        && document.querySelector('#auth-appearance').getAttribute('href') === '#page-appearance'`),
+        '#327 real sign-in-disabled App has only availability copy and retains the Appearance entry');
+      await page.click('#auth-appearance');
+      await page.waitFor(`location.hash === '#page-appearance' && document.querySelector('#page-theme input')`,
+        '#327 sign-in-disabled Appearance anchor reaches actual choices');
+    }
   } finally {
     page.cdp.listeners = page.cdp.listeners.filter(handler=>handler!==observe);
   }

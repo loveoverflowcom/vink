@@ -15,7 +15,7 @@ pub fn Me() -> impl IntoView {
             <super::profile::ProfileEntry />
             <super::handle::HandleRegion entry=true />
             <vink_ui::Link href="/kiem-duyet">"Kiểm duyệt — dành cho người được phân quyền"</vink_ui::Link>
-            <section class="vk-appearance-card" aria-labelledby="page-appearance-title">
+            <section id="page-appearance" tabindex="-1" class="vk-appearance-card" aria-labelledby="page-appearance-title">
                 <AppearanceTitle id="page-appearance-title" />
                 <AppearanceChoices prefix="page" />
             </section>
