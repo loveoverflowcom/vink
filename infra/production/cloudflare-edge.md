@@ -35,6 +35,7 @@ không bao gồm record do hệ thống quản lý như SOA, NS, DNSKEY hay DS.
 | Nameserver đang dùng | `launch1.spaceship.net`, `launch2.spaceship.net` |
 | Nameserver Cloudflare cấp | `carlane.ns.cloudflare.com`, `drew.ns.cloudflare.com` |
 | DS cũ tại parent `.forum` | Key tag 25485, algorithm 13, digest type 2. TTL DS và NS tại cả bốn máy chủ parent là 900 giây tại thời điểm đo. |
+| TTL tại zone Spaceship | NS 1.800 giây và DNSKEY 3.600 giây ở cả hai NS Spaceship. TTL ở parent chỉ dùng cho delegation và DS. |
 
 Đọc trực tiếp parent, hai nhà cung cấp và resolver công cộng để tách trạng thái đã ghi
 khỏi trạng thái cache. Hỏi lại parent trước khi dùng TTL để lên lịch. DS vắng mặt phải
@@ -48,6 +49,8 @@ done
 
 for ns in launch1.spaceship.net launch2.spaceship.net \
     carlane.ns.cloudflare.com drew.ns.cloudflare.com; do
+  dig @"$ns" +norecurse +noall +comments +answer vink.forum NS
+  dig @"$ns" +norecurse +dnssec +noall +comments +answer vink.forum DNSKEY
   dig @"$ns" +norecurse +noall +comments +answer vink.forum A
   dig @"$ns" +norecurse +noall +comments +answer www.vink.forum CNAME
   dig @"$ns" +norecurse +noall +comments +answer test.vink.forum CNAME
@@ -76,12 +79,13 @@ done
    xác minh cả bốn parent đã bỏ DS, chờ đủ TTL DS cũ. Kiểm resolver công cộng trả
    `NOERROR` cho apex, `www` và `test`. Tại Spaceship chọn custom nameservers và
    lưu đúng cặp Cloudflare đang cấp. Kiểm parent đều công bố cặp mới, chờ hết TTL
-   delegation cũ, rồi xác minh lại resolver và hai NS Cloudflare. Giữ bốn bản ghi
-   DNS only trong suốt bước này.
+   NS cũ ở cả parent và zone, rồi xác minh lại resolver và hai NS Cloudflare. Giữ
+   bốn bản ghi DNS only trong suốt bước này.
 4. Đợi zone Cloudflare `Active`. Kiểm production trực tiếp, redirect `www`,
    `test.vink.forum`, `origin-test` và Cantos như baseline. Bật DNSSEC trong zone
    Cloudflare. Đọc DS mới từ Cloudflare và thêm vào Spaceship cho custom nameservers
-   sau khi truy vấn DNSKEY/RRSIG thành công ở cả hai NS Cloudflare. Kiểm parent thấy
+   sau khi hết TTL DNSKEY cũ và truy vấn DNSKEY/RRSIG thành công ở cả hai NS
+   Cloudflare. Kiểm parent thấy
    đúng DS mới và hai resolver công cộng trả `NOERROR` với cờ `ad` cho bản ghi apex.
    Kiểm lại `test` và `www` qua DNS thường.
 
