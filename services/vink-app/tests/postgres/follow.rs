@@ -337,17 +337,11 @@ async fn follow_concurrency_aba_receipts_and_db_triggers(pool: PgPool) {
             Some(follow_body(cmd_race_2, 0, true)),
         ),
     );
-    let (winner, loser) = match (r1.0.as_u16(), r2.0.as_u16()) {
-        (200, 409) => (r1, r2),
-        (409, 200) => (r2, r1),
+    let (winner, loser, winner_cmd) = match (r1.0.as_u16(), r2.0.as_u16()) {
+        (200, 409) => (r1, r2, cmd_race_1),
+        (409, 200) => (r2, r1, cmd_race_2),
         other => panic!("expected (200, 409), got {other:?}"),
     };
-    let winner_cmd = if winner.2 == r1.2 && r1.0 == 200 {
-        cmd_race_1
-    } else {
-        cmd_race_2
-    };
-    let _ = loser.1;
     let wj = json(&winner.2);
     assert_eq!(wj["outcome"], "accepted");
     assert_eq!(wj["following"], true);
