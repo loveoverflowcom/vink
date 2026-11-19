@@ -24,7 +24,7 @@ serde_json.workspace = true
 sqlx.workspace = true
 time = { workspace = true, features = ["serde", "formatting", "parsing", "macros"] }
 tower = { workspace = true, features = ["util"] }
-uuid = { workspace = true, features = ["v7"] }
+uuid = { workspace = true, features = ["v7", "serde"] }
 base64 = "0.22.1"
 getrandom = "0.3.4"
 # SMTP submission (D-05 production mail path): rustls/ring + webpki roots like sqlx; no

@@ -11,6 +11,8 @@ pub(super) enum Operation {
     EmailCode,
     EnrollmentChallenge,
     Enrollment,
+    AttachmentChallenge,
+    AttachmentComplete,
     PenName,
     SignOut,
 }
@@ -21,8 +23,11 @@ impl Operation {
         match self {
             Self::PasswordLogin => "Đang đăng nhập…",
             Self::PasswordRegister => "Đang tạo tài khoản…",
-            Self::EmailChallenge | Self::EnrollmentChallenge => "Đang xin mã…",
+            Self::EmailChallenge | Self::EnrollmentChallenge | Self::AttachmentChallenge => {
+                "Đang xin mã…"
+            }
             Self::EmailCode => "Đang kiểm tra mã…",
+            Self::AttachmentComplete => "Đang xác minh mã…",
             Self::Enrollment => "Đang thêm mật khẩu…",
             Self::PenName => "Đang lưu bút danh…",
             Self::SignOut => "Đang đăng xuất…",
@@ -39,6 +44,9 @@ impl Operation {
             }
             Self::EnrollmentChallenge | Self::Enrollment => {
                 "Vink chưa hỗ trợ thêm mật khẩu trên hệ thống này."
+            }
+            Self::AttachmentChallenge | Self::AttachmentComplete => {
+                "Vink chưa hỗ trợ thêm email trên hệ thống này."
             }
             Self::PenName | Self::SignOut => "Thao tác này hiện chưa khả dụng.",
         }

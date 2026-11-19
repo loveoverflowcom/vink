@@ -28,6 +28,7 @@ use vink_app::persistence::{PgStore, SchemaState, schema_state};
 
 const PROFILE_FIELDS_MIGRATION: i64 = 20261125000000;
 const PUBLIC_ATTRIBUTION_MIGRATION: i64 = 20261125010000;
+const AUTHOR_FOLLOW_MIGRATION: i64 = 20261126000000;
 const ORIGIN: &str = "http://127.0.0.1:3000";
 
 #[path = "postgres/abuse.rs"]
@@ -58,6 +59,8 @@ mod drafts;
 mod endorsement;
 #[path = "postgres/first_publication.rs"]
 mod first_publication;
+#[path = "postgres/follow.rs"]
+mod follow;
 #[path = "postgres/handle.rs"]
 mod handle;
 #[path = "postgres/moderation_queue.rs"]

@@ -149,6 +149,41 @@ pub(crate) async fn password_enrollment_status()
 }
 
 #[cfg(feature = "hydrate")]
+const EMAIL_ATTACHMENT: &str = "/api/v1/auth/email/attachment";
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn email_attachment_status()
+-> Result<crate::contract::EmailAttachmentStatus, crate::session::AuthError> {
+    http::auth::<(), _>("GET", EMAIL_ATTACHMENT, &[200], None).await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn request_email_attachment(
+    input: crate::contract::StartEmailAttachment,
+) -> Result<crate::contract::EmailAttachmentChallenge, crate::session::AuthError> {
+    http::auth(
+        "POST",
+        &format!("{EMAIL_ATTACHMENT}/challenges"),
+        &[202],
+        Some(&input),
+    )
+    .await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn complete_email_attachment(
+    input: crate::contract::CompleteEmailAttachment,
+) -> Result<(), crate::session::AuthError> {
+    http::auth(
+        "POST",
+        &format!("{EMAIL_ATTACHMENT}/complete"),
+        &[204],
+        Some(&input),
+    )
+    .await
+}
+
+#[cfg(feature = "hydrate")]
 pub(crate) async fn provision_principal(
     pen_name: String,
 ) -> Result<crate::contract::ProvisionedPrincipal, crate::session::AuthError> {
@@ -893,6 +928,8 @@ fn bounded(path: &str) -> bool {
         || path.contains("/endorsement")
         || path.starts_with("/api/v1/author/works")
         || path == "/api/v1/me/profile"
+        || path.starts_with("/api/v1/me/follows/")
+        || path.starts_with("/api/v1/me/relationships/")
         || path.starts_with("/api/v1/authors/")
         || path.contains("/tags")
         || path.starts_with("/api/v1/auth/")
@@ -1355,4 +1392,214 @@ pub(crate) async fn save_profile(
     request: &crate::contract::profile::SaveProfile,
 ) -> Result<crate::contract::profile::OwnProfile, ApiError> {
     http::send("PUT", "/api/v1/me/profile", Some(request)).await
+}
+
+fn encode_segment(value: &str) -> String {
+    percent_encoding::utf8_percent_encode(value, &DISCUSSION_ID).to_string()
+}
+
+pub fn author_relationships_path(
+    handle: &str,
+    direction: crate::contract::follow::FollowDirection,
+    cursor: Option<&str>,
+) -> String {
+    let mut path = format!(
+        "/api/v1/authors/{}/{}",
+        encode_segment(handle),
+        direction.api_segment()
+    );
+    if let Some(cursor) = cursor {
+        path.push_str("?cursor=");
+        path.push_str(&encode_segment(cursor));
+    }
+    path
+}
+
+pub fn viewer_relationship_path(handle: &str) -> String {
+    format!("/api/v1/authors/{}/relationship/me", encode_segment(handle))
+}
+
+pub fn follow_receipt_path(command_id: &str) -> String {
+    format!("/api/v1/me/follows/receipts/{}", encode_segment(command_id))
+}
+
+pub fn own_relationships_path(
+    direction: crate::contract::follow::FollowDirection,
+    cursor: Option<&str>,
+) -> String {
+    let mut path = format!("/api/v1/me/relationships/{}", direction.api_segment());
+    if let Some(cursor) = cursor {
+        path.push_str("?cursor=");
+        path.push_str(&encode_segment(cursor));
+    }
+    path
+}
+
+pub fn follow_membership_path(handles: &[String]) -> String {
+    let encoded: Vec<String> = handles.iter().map(|h| encode_segment(h)).collect();
+    format!(
+        "/api/v1/me/follows/membership?handles={}",
+        encoded.join(",")
+    )
+}
+
+pub(crate) fn author_relationships_resource(
+    name: String,
+    direction: crate::contract::follow::FollowDirection,
+    cursor: Option<String>,
+    version: ReadSignal<u64>,
+) -> Resource<(
+    u64,
+    Result<crate::contract::follow::AuthorRelationshipsLoad, LoadError>,
+)> {
+    #[cfg(feature = "ssr")]
+    {
+        let port = use_context::<crate::server::SharedPublicReads>();
+        Resource::new(
+            move || version.get(),
+            move |generation| {
+                let port = port.clone();
+                let name = name.clone();
+                let cursor = cursor.clone();
+                async move {
+                    let result = match port {
+                        Some(port) => port.author_relationships(name, direction, cursor).await,
+                        None => Err(LoadError::Unavailable),
+                    };
+                    (generation, result)
+                }
+            },
+        )
+    }
+    #[cfg(not(feature = "ssr"))]
+    {
+        let path = author_relationships_path(&name, direction, cursor.as_deref());
+        Resource::new(
+            move || version.get(),
+            move |generation| {
+                let path = path.clone();
+                browser(async move {
+                    #[cfg(feature = "hydrate")]
+                    {
+                        let result = match http::get::<
+                            crate::contract::follow::PublicRelationshipList,
+                        >(&path)
+                        .await
+                        {
+                            Ok(list) => Ok(list.into()),
+                            Err(ApiError::RelationshipListPrivate) => {
+                                Ok(crate::contract::follow::AuthorRelationshipsLoad::Private)
+                            }
+                            Err(ApiError::ProfileGone) => {
+                                Ok(crate::contract::follow::AuthorRelationshipsLoad::Gone)
+                            }
+                            Err(ApiError::NotFound) => {
+                                Ok(crate::contract::follow::AuthorRelationshipsLoad::Missing)
+                            }
+                            Err(ApiError::Invalid { field }) => {
+                                Err(LoadError::Invalid(crate::freshness::classify_rejection(
+                                    422,
+                                    Some("validation_failed"),
+                                    field.as_deref(),
+                                )))
+                            }
+                            Err(_) => Err(LoadError::Unavailable),
+                        };
+                        (generation, result)
+                    }
+                    #[cfg(not(feature = "hydrate"))]
+                    {
+                        let _ = &path;
+                        (generation, Err(LoadError::Unavailable))
+                    }
+                })
+            },
+        )
+    }
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn load_viewer_relationship(
+    handle: &str,
+) -> Result<crate::contract::follow::ViewerRelationship, ApiError> {
+    http::get(&viewer_relationship_path(handle)).await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn set_follow(
+    handle: &str,
+    request: &crate::contract::follow::SetFollowRequest,
+) -> Result<crate::contract::follow::SetFollowResponse, ApiError> {
+    http::send("PUT", &viewer_relationship_path(handle), Some(request)).await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn load_follow_receipt(
+    command_id: &str,
+) -> Result<crate::contract::follow::FollowReceipt, ApiError> {
+    http::get(&follow_receipt_path(command_id)).await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn load_public_relationships(
+    handle: &str,
+    direction: crate::contract::follow::FollowDirection,
+    cursor: Option<&str>,
+) -> Result<crate::contract::follow::PublicRelationshipList, ApiError> {
+    http::get(&author_relationships_path(handle, direction, cursor)).await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn load_own_relationships(
+    direction: crate::contract::follow::FollowDirection,
+    cursor: Option<&str>,
+) -> Result<crate::contract::follow::OwnRelationshipList, ApiError> {
+    http::get(&own_relationships_path(direction, cursor)).await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn load_author_relationships_summary(
+    handle: &str,
+) -> Result<crate::contract::follow::PublicRelationships, ApiError> {
+    let path = format!("/api/v1/authors/{}", encode_segment(handle));
+    match http::get::<crate::contract::AuthorResolution>(&path).await? {
+        crate::contract::AuthorResolution::Current { relationships, .. } => Ok(*relationships),
+        crate::contract::AuthorResolution::Gone => Err(ApiError::ProfileGone),
+        crate::contract::AuthorResolution::Missing
+        | crate::contract::AuthorResolution::Alias { .. } => Err(ApiError::NotFound),
+    }
+}
+
+#[cfg(test)]
+mod follow_path_tests {
+    use super::*;
+    use crate::contract::follow::FollowDirection;
+
+    #[test]
+    fn follow_paths_encode_segments_and_cursors() {
+        assert_eq!(
+            author_relationships_path("an-may", FollowDirection::Followers, None),
+            "/api/v1/authors/an-may/followers"
+        );
+        assert_eq!(
+            author_relationships_path("../x", FollowDirection::Following, Some("c+1&a=b")),
+            "/api/v1/authors/%2E%2E%2Fx/following?cursor=c%2B1%26a%3Db"
+        );
+        assert_eq!(
+            viewer_relationship_path("an-may"),
+            "/api/v1/authors/an-may/relationship/me"
+        );
+        assert_eq!(
+            follow_receipt_path("0192f3a1-0000-7000-8000-000000000294"),
+            "/api/v1/me/follows/receipts/0192f3a1-0000-7000-8000-000000000294"
+        );
+        assert_eq!(
+            own_relationships_path(FollowDirection::Followers, Some("next")),
+            "/api/v1/me/relationships/followers?cursor=next"
+        );
+        assert_eq!(
+            follow_membership_path(&["an-may".into(), "binh-yen".into()]),
+            "/api/v1/me/follows/membership?handles=an-may,binh-yen"
+        );
+    }
 }

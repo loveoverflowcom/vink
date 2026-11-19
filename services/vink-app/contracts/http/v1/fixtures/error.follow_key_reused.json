@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "follow_key_reused",
+    "message": "command_id already committed for a different target or intent",
+    "field": "command_id"
+  }
+}

@@ -241,7 +241,7 @@ fn trap_tab(event: leptos::ev::KeyboardEvent, node: NodeRef<html::Dialog>) {
         let (Some(first), Some(active)) = (stops.next(), document().active_element()) else {
             return;
         };
-        let last = stops.last().unwrap_or_else(|| first.clone());
+        let last = stops.next_back().unwrap_or_else(|| first.clone());
         let target = if event.shift_key() && first.is_same_node(Some(&active)) {
             last
         } else if !event.shift_key() && last.is_same_node(Some(&active)) {

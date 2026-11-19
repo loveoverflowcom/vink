@@ -376,7 +376,13 @@ pub fn error_message(error: &ApiError) -> &'static str {
         | ApiError::GenerationConflict { .. }
         | ApiError::RevisionRejected
         | ApiError::UnknownRevision
-        | ApiError::WorkUnavailable => {
+        | ApiError::WorkUnavailable
+        | ApiError::SelfFollow
+        | ApiError::RelationshipListPrivate
+        | ApiError::ProfileGone
+        | ApiError::FollowActorUnavailable
+        | ApiError::FollowConflict { .. }
+        | ApiError::FollowKeyReused => {
             "Thiết lập đã thay đổi ở nơi khác. Tải lại trước khi đổi tiếp."
         }
         ApiError::CommentRemoved => "Nhận xét không còn hiển thị.",

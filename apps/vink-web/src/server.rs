@@ -21,6 +21,15 @@ pub trait PublicReads: Send + Sync + 'static {
     ) -> PortFuture<Result<crate::contract::AuthorResolution, LoadError>> {
         Box::pin(std::future::ready(Err(LoadError::Unavailable)))
     }
+    /// Actor-free relationship list resolution (#294): enforces target list/count policies.
+    fn author_relationships(
+        &self,
+        _handle: String,
+        _direction: crate::contract::follow::FollowDirection,
+        _cursor: Option<String>,
+    ) -> PortFuture<Result<crate::contract::follow::AuthorRelationshipsLoad, LoadError>> {
+        Box::pin(std::future::ready(Err(LoadError::Unavailable)))
+    }
     fn works(
         &self,
         query: crate::discovery::ExploreQuery,

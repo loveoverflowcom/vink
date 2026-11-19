@@ -1,6 +1,8 @@
 //! Form lifetimes own the inputs. Only the mounted form can display an answer;
 //! the tab still reconciles any write that could have changed the browser's cookie.
 
+mod attachment;
+
 use leptos::{html::Input, prelude::*};
 use vink_ui::{
     ActionState, Announce, Button, ButtonKind, ButtonVariant, FieldVariant, InlineNotice,
@@ -591,10 +593,12 @@ enum Credential {
 }
 
 #[component]
-fn CredentialSettings(epoch: u64, now: ReadSignal<Millis>) -> impl IntoView {
+fn CredentialSettings(epoch: u64, now: ReadSignal<Millis>, changed: Callback<()>) -> impl IntoView {
     let session = Session::current();
     let status = RwSignal::new(Credential::Loading);
     let challenge = RwSignal::new(None::<Challenge>);
+    // Enrollment changes eligibility without changing the session or remounting Tôi.
+    let pending_change = StoredValue::new(false);
     let read = move |uncertain| {
         status.set(if uncertain {
             Credential::Reconciling
@@ -606,7 +610,13 @@ fn CredentialSettings(epoch: u64, now: ReadSignal<Millis>) -> impl IntoView {
             move || status.try_get_untracked().is_some(),
             move |outcome| {
                 let next = match (outcome, uncertain) {
-                    (Ok(true), _) => Credential::Present,
+                    (Ok(true), _) => {
+                        if pending_change.get_value() {
+                            pending_change.set_value(false);
+                            changed.run(());
+                        }
+                        Credential::Present
+                    }
                     (Ok(false), true) => Credential::Uncertain(None),
                     (Ok(false), false) => Credential::Missing,
                     (Err(error), true) => Credential::Uncertain(Some(error)),
@@ -628,8 +638,14 @@ fn CredentialSettings(epoch: u64, now: ReadSignal<Millis>) -> impl IntoView {
         challenge.set(None);
         problem.set(None);
         match outcome {
-            Ok(Reply::Done) | Err(AuthError::AlreadyEnrolled) => read(false),
-            Err(error) if AuthError::uncertain(&error) => read(true),
+            Ok(Reply::Done) | Err(AuthError::AlreadyEnrolled) => {
+                pending_change.set_value(true);
+                read(false);
+            }
+            Err(error) if AuthError::uncertain(&error) => {
+                pending_change.set_value(true);
+                read(true);
+            }
             Err(AuthError::ChallengeClosed) => problem.set(Some(AuthError::ChallengeClosed)),
             _ => {}
         }
@@ -760,6 +776,8 @@ fn EnrollmentForm(
 pub(super) fn SignedIn(epoch: u64) -> impl IntoView {
     let session = Session::current();
     let opened = RwSignal::new(false);
+    let binding_changed = Trigger::new();
+    let changed = Callback::new(move |()| binding_changed.notify());
     let now = use_clock();
     view! {
         <div class="vk-account-actions">
@@ -773,8 +791,12 @@ pub(super) fn SignedIn(epoch: u64) -> impl IntoView {
                     } else { ActionState::Enabled })
                     on_press=move |_| opened.update(|open| *open = !*open)>"Tên đăng nhập và mật khẩu"</Button>
             </div>
-            {move || opened.get().then(|| view! { <CredentialSettings epoch now /> })}
+            {move || opened.get().then(|| view! { <CredentialSettings epoch now changed /> })}
         </div>
+        {move || {
+            binding_changed.track();
+            view! { <attachment::EmailSettings epoch now /> }
+        }}
         <SignOut epoch before=move |_| opened.set(false) />
     }
 }

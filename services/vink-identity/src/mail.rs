@@ -49,8 +49,10 @@ pub enum Purpose {
     /// Fresh proof of mailbox control before a signed-in account adds a username/password
     /// credential (ACC-03). Bound to the account; never a sign-in or a recovery.
     EnrollPassword,
+    /// First verified email on an existing password account.
+    AttachEmail,
     /// `vink-identity mail test`: proves the transport end to end. Never stored (the outbox
-    /// schema accepts only the three code purposes) and its text contains no usable code.
+    /// schema accepts only the code purposes) and its text contains no usable code.
     TransportCheck,
 }
 
@@ -60,6 +62,7 @@ impl Purpose {
             Purpose::SignIn => "sign_in",
             Purpose::ChangeEmail => "change_email",
             Purpose::EnrollPassword => "enroll_password",
+            Purpose::AttachEmail => "attach_email",
             Purpose::TransportCheck => "transport_check",
         }
     }
@@ -69,6 +72,7 @@ impl Purpose {
             "sign_in" => Some(Purpose::SignIn),
             "change_email" => Some(Purpose::ChangeEmail),
             "enroll_password" => Some(Purpose::EnrollPassword),
+            "attach_email" => Some(Purpose::AttachEmail),
             _ => None,
         }
     }
@@ -134,6 +138,7 @@ pub fn render(message: &Message) -> (String, String) {
         Purpose::SignIn => "đăng nhập Vink",
         Purpose::ChangeEmail => "xác nhận địa chỉ email mới cho tài khoản Vink",
         Purpose::EnrollPassword => "thêm mật khẩu đăng nhập cho tài khoản Vink",
+        Purpose::AttachEmail => "xác minh email cho tài khoản Vink",
         Purpose::TransportCheck => {
             return (
                 "Vink: thư kiểm tra đường gửi".into(),
@@ -146,6 +151,9 @@ pub fn render(message: &Message) -> (String, String) {
     };
     let subject = format!("Mã {action}");
     let ignore = match message.purpose {
+        Purpose::AttachEmail => {
+            "Nếu bạn không yêu cầu mã này, hãy bỏ qua thư; email sẽ không được gắn vào tài khoản."
+        }
         Purpose::EnrollPassword => {
             "Nếu bạn không yêu cầu mã này, hãy bỏ qua thư; mật khẩu sẽ không được thêm vào tài khoản."
         }

@@ -727,7 +727,6 @@ async fn profile_owner_cas_revoke_and_public_page_share_the_current_projection(p
     );
 
     policies["bio"] = json!("self");
-    policies["followers_list"] = json!("self");
     let (_, _, saved) = call(
         &app,
         "PUT",
@@ -769,6 +768,48 @@ async fn profile_owner_cas_revoke_and_public_page_share_the_current_projection(p
         let (_, _, body) = call(&app, "GET", &path, actor, None, None).await;
         assert_eq!(body.as_bytes(), revoked.body);
     }
+
+    // Revoking followers_list hides only the list link while preserving public followers_count
+    // and moving the public ETag so the previous validator misses cleanly.
+    policies["followers_list"] = json!("self");
+    let (status, _, saved_list) = call(
+        &app,
+        "PUT",
+        own,
+        Some(a),
+        Some(ORIGIN),
+        Some(command(2, Some(bio), &policies)),
+    )
+    .await;
+    assert_eq!(status, 200);
+    assert_eq!(json(&saved_list)["policies"]["followers_list"], "self");
+    assert_eq!(json(&saved_list)["policies"]["followers_count"], "everyone");
+    let revoked_list = get(&app, &path, &[absent.etag()]).await;
+    revoked_list.assert_full();
+    assert_ne!(revoked_list.etag(), absent.etag());
+    let revoked_list_json = revoked_list.json();
+    assert_eq!(revoked_list_json["relationships"]["followers_count"], 0);
+    assert!(
+        revoked_list_json["relationships"]
+            .get("followers_href")
+            .is_none()
+    );
+
+    // Revoking followers_count removes the last relationship summary field from public output.
+    policies["followers_count"] = json!("self");
+    let (status, _, _) = call(
+        &app,
+        "PUT",
+        own,
+        Some(a),
+        Some(ORIGIN),
+        Some(command(3, Some(bio), &policies)),
+    )
+    .await;
+    assert_eq!(status, 200);
+    let revoked_all = get(&app, &path, &[revoked_list.etag()]).await;
+    revoked_all.assert_full();
+    assert!(revoked_all.json().get("relationships").is_none());
     let (_, _, body) = call(&app, "GET", own, Some(b), None, None).await;
     assert_eq!(json(&body)["bio"], Value::Null);
     let (status, _, _) = call(
@@ -777,13 +818,13 @@ async fn profile_owner_cas_revoke_and_public_page_share_the_current_projection(p
         own,
         Some(a),
         Some(ORIGIN),
-        Some(command(2, Some(bio), &initial["policies"])),
+        Some(command(4, Some(bio), &initial["policies"])),
     )
     .await;
     assert_eq!(status, 422, "widening stays gated");
-    let mut birth = command(2, Some("bio"), &policies);
+    let mut birth = command(4, Some("bio"), &policies);
     birth["date_of_birth"] = json!("2000-01-01");
-    let mut no_bio = command(2, Some("bio"), &policies);
+    let mut no_bio = command(4, Some("bio"), &policies);
     no_bio.as_object_mut().unwrap().remove("bio");
     for invalid in [birth.clone(), no_bio] {
         // Unknown fields and an omitted Bio key are contract errors, never a silent clear.
@@ -813,7 +854,7 @@ async fn profile_owner_cas_revoke_and_public_page_share_the_current_projection(p
             own,
             Some(a),
             Some(ORIGIN),
-            Some(command(2, Some("Riêng mới"), &policies))
+            Some(command(4, Some("Riêng mới"), &policies))
         )
         .await
         .0,
@@ -823,7 +864,7 @@ async fn profile_owner_cas_revoke_and_public_page_share_the_current_projection(p
     let reopened = super::app(&pool).await;
     let verified = get(&reopened, &path, &[public.etag()]).await;
     verified.assert_full();
-    assert_eq!(verified.body, absent.body);
+    assert_eq!(verified.body, revoked_all.body);
 
     let recent = datetime!(2026-11-19 01:00 UTC);
     let mut expected = Vec::new();

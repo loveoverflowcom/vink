@@ -155,6 +155,21 @@ async fn send(command: Command) -> Result<Reply, AuthError> {
                 Err(AuthError::Unexpected { status: 200 })
             }
         }
+        Command::RequestEmailAttachment(input) => {
+            let challenge = api::request_email_attachment(input).await?;
+            let at = js_sys::Date::parse(&challenge.expires_at);
+            if !at.is_finite() || challenge.challenge_id.is_empty() || challenge.email.is_empty() {
+                return Err(AuthError::Unexpected { status: 202 });
+            }
+            Ok(Reply::AttachmentChallenge {
+                id: challenge.challenge_id,
+                email: challenge.email,
+                expires: at as Millis,
+            })
+        }
+        Command::CompleteEmailAttachment(input) => api::complete_email_attachment(input)
+            .await
+            .map(|()| Reply::Done),
         Command::PenName(name) => api::provision_principal(name).await.map(|_| Reply::Done),
         Command::SignOut => api::sign_out().await.map(|()| Reply::Done),
     }
@@ -172,7 +187,10 @@ pub(super) fn dispatch(
         | Operation::PasswordRegister
         | Operation::EmailChallenge
         | Operation::EmailCode => matches!(standing, Standing::Anonymous),
-        Operation::Enrollment | Operation::EnrollmentChallenge => {
+        Operation::Enrollment
+        | Operation::EnrollmentChallenge
+        | Operation::AttachmentChallenge
+        | Operation::AttachmentComplete => {
             matches!(standing, Standing::Active(_))
         }
         Operation::PenName => matches!(standing, Standing::NeedsPrincipal),
@@ -224,6 +242,48 @@ pub(super) fn dispatch(
             announce();
         }
         if reread {
+            refresh(session);
+        }
+    });
+}
+
+pub(super) fn attachment_status(
+    session: Session,
+    epoch: u64,
+    live: impl Fn() -> bool + 'static,
+    complete: impl FnOnce(Result<crate::contract::EmailAttachmentStatus, AuthError>) + 'static,
+) {
+    let owns = move || {
+        session
+            .auth
+            .with_untracked(|gate| gate.epoch() == epoch && !gate.needs_check())
+    };
+    let Some(principal) = session.principal.get_untracked().filter(|_| owns()) else {
+        return;
+    };
+    spawn_local(async move {
+        let outcome = api::email_attachment_status().await.and_then(|status| {
+            if status.principal_id == principal {
+                Ok(status)
+            } else {
+                Err(AuthError::AttachmentContextChanged)
+            }
+        });
+        if !owns()
+            || !live()
+            || session
+                .principal
+                .with_untracked(|id| id.as_ref() != Some(&principal))
+        {
+            return;
+        }
+        let reread = matches!(
+            outcome,
+            Err(AuthError::Unauthenticated | AuthError::Suspended | AuthError::AccountDisabled)
+        );
+        complete(outcome);
+        if reread {
+            session.auth.update(|gate| gate.invalidate(true));
             refresh(session);
         }
     });

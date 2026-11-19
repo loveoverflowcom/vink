@@ -9,7 +9,10 @@ mod forms;
 use leptos::prelude::*;
 use vink_ui::{ActionState, Button, ButtonVariant};
 
-use crate::contract::{EnrollPasswordRequest, PasswordCredentials};
+use crate::contract::{
+    CompleteEmailAttachment, EmailAttachmentStatus, EnrollPasswordRequest, PasswordCredentials,
+    StartEmailAttachment,
+};
 use crate::session::{AuthError, Millis, SessionOwner, Standing};
 
 use flow::{AuthGate, Operation};
@@ -24,6 +27,8 @@ enum Command {
     EmailCode(String),
     RequestEnrollmentCode,
     Enroll(EnrollPasswordRequest),
+    RequestEmailAttachment(StartEmailAttachment),
+    CompleteEmailAttachment(CompleteEmailAttachment),
     PenName(String),
     SignOut,
 }
@@ -37,6 +42,8 @@ impl Command {
             Self::EmailCode(_) => Operation::EmailCode,
             Self::RequestEnrollmentCode => Operation::EnrollmentChallenge,
             Self::Enroll(_) => Operation::Enrollment,
+            Self::RequestEmailAttachment(_) => Operation::AttachmentChallenge,
+            Self::CompleteEmailAttachment(_) => Operation::AttachmentComplete,
             Self::PenName(_) => Operation::PenName,
             Self::SignOut => Operation::SignOut,
         }
@@ -47,6 +54,11 @@ impl Command {
 enum Reply {
     Done,
     Challenge(Millis),
+    AttachmentChallenge {
+        id: String,
+        email: String,
+        expires: Millis,
+    },
 }
 
 #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
@@ -122,6 +134,18 @@ impl Session {
     ) {
         #[cfg(feature = "hydrate")]
         browser::enrollment_status(self, epoch, live, complete);
+        #[cfg(not(feature = "hydrate"))]
+        let _ = (epoch, live, complete);
+    }
+
+    fn attachment_status(
+        self,
+        epoch: u64,
+        live: impl Fn() -> bool + 'static,
+        complete: impl FnOnce(Result<EmailAttachmentStatus, AuthError>) + 'static,
+    ) {
+        #[cfg(feature = "hydrate")]
+        browser::attachment_status(self, epoch, live, complete);
         #[cfg(not(feature = "hydrate"))]
         let _ = (epoch, live, complete);
     }

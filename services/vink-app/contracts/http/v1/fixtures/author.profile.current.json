@@ -9,5 +9,9 @@
   "publications": {
     "state": "page",
     "works": []
+  },
+  "relationships": {
+    "followers_count": 0,
+    "followers_href": "/@ngay-nang/nguoi-theo-doi"
   }
 }

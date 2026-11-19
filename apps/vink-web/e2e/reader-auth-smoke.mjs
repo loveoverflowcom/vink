@@ -36,6 +36,13 @@ function preserved(editor, key, text, includeScroll = true) {
 }
 
 export async function readerAuthClosed(page, { args, check }) {
+  await page.goto(args.base + '/toi');
+  await page.waitFor(`${HYDRATED} && ${q('#sign-in-closed')} && ${q('#auth-appearance')}`, 'closed sign-in on Tôi');
+  check(await page.eval(`!${q('#password-login, #password-register, #sign-in-email, #pen-name-form')} &&
+    ${q('#sign-in-closed')}.textContent.includes('Vink chưa mở đăng nhập')`), '#327 closed gate has no Auth form');
+  await page.eval(`${q('#auth-appearance')}.focus()`);
+  await page.key('Enter');
+  await page.waitFor(active('page-appearance'), '#327 keyboard still reaches Appearance on the real closed deployment');
   await page.goto(args.base + HERE);
   await page.waitFor(`${HYDRATED} && ${standing('anonymous')} && ${q(ROOT_EDITOR)}`, 'guest on disabled sign-in deployment');
   await page.typeAtEnd(ROOT_EDITOR, ROOT_TEXT);
@@ -60,9 +67,12 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
     check(closed.settings.comments_open === false && await page.eval(`!${q(ROOT_EDITOR+'-auth')} && ${q(ROOT_EDITOR+'-send')}.getAttribute('aria-disabled') === 'true'`),
       '#328 no contextual entry on a real closed discussion, composer still editable');
 
-    await page.goto(args.base + '/');
-    await page.waitFor(`${HYDRATED} && ${q('a[href="'+HERE+'"]')}`, 'discovery link mounted');
-    await page.click('a[href="'+HERE+'"]');
+    // Full Web runs Discovery first, so its newer publications may fill the first page.
+    // Use an actual search result for the seeded Reader rather than assuming feed order.
+    await page.goto(args.base + '/?q=' + encodeURIComponent('Mưa trên phố cũ'));
+    const result = `.vk-public-row__link[href^="${HERE}?"]`;
+    await page.waitFor(`${HYDRATED} && ${q(result)}`, 'seeded Reader in filtered Discovery results');
+    await page.click(result);
     await page.waitFor(`location.pathname === '${HERE}' && ${q(ROOT_EDITOR+'-auth')}`, 'guest Reader SPA route');
     await page.viewport(1280, 844);
     await page.send('Page.bringToFront');

@@ -77,6 +77,13 @@ pub enum ApiError {
     UsernameTaken,
     /// The account already has a username/password; credential enrollment adds nothing.
     AlreadyEnrolled,
+    /// Fresh password reauthentication failed, without invalidating the active session.
+    AttachmentPasswordRejected,
+    AttachmentCodeRejected,
+    AttachmentContextChanged,
+    EmailAlreadyAttached,
+    AttachmentRequiresPassword,
+    AttachmentEmailUnavailable,
     /// Registration was attempted with a session that is still valid. It would create a second
     /// account beside the signed-in one; credential enrollment is the operation for that.
     AlreadySignedIn,
@@ -119,6 +126,36 @@ pub enum ApiError {
     Internal,
     CaseConflict(&'static str),
     CaseForbidden(&'static str),
+    SelfFollow,
+    RelationshipListPrivate,
+    ProfileGone,
+    FollowActorUnavailable,
+    FollowTargetUnavailable,
+    FollowConflict {
+        observed: crate::application::follow::FollowObserved,
+    },
+    FollowKeyReused,
+}
+
+impl From<crate::application::follow::FollowError> for ApiError {
+    fn from(error: crate::application::follow::FollowError) -> Self {
+        use crate::application::follow::FollowError;
+        match error {
+            FollowError::Store(err) => Self::from(err),
+            FollowError::Invalid(field) => Self::Validation {
+                field,
+                message: format!("invalid {field}"),
+            },
+            FollowError::NotFound => Self::NotFound,
+            FollowError::Gone => Self::ProfileGone,
+            FollowError::ActorUnavailable => Self::FollowActorUnavailable,
+            FollowError::TargetUnavailable => Self::FollowTargetUnavailable,
+            FollowError::ListPrivate => Self::RelationshipListPrivate,
+            FollowError::SelfFollow => Self::SelfFollow,
+            FollowError::Conflict(observed) => Self::FollowConflict { observed },
+            FollowError::KeyReused => Self::FollowKeyReused,
+        }
+    }
 }
 
 impl ApiError {
@@ -147,6 +184,10 @@ impl ApiError {
             | Self::CommentRemoved
             | Self::ModerationConflict { .. }
             | Self::EndorsementConflict { .. }
+            | Self::AttachmentContextChanged
+            | Self::EmailAlreadyAttached
+            | Self::AttachmentRequiresPassword
+            | Self::AttachmentEmailUnavailable
             | Self::AlreadyEnrolled
             | Self::AlreadySignedIn
             | Self::CaseConflict(_)
@@ -157,15 +198,25 @@ impl ApiError {
             Self::UnknownRevision => StatusCode::NOT_FOUND,
             Self::AuthorityNotConfigured => StatusCode::NOT_IMPLEMENTED,
             Self::RateLimited { .. } => StatusCode::TOO_MANY_REQUESTS,
-            Self::CodeRejected => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::CodeRejected
+            | Self::AttachmentPasswordRejected
+            | Self::AttachmentCodeRejected => StatusCode::UNPROCESSABLE_ENTITY,
             Self::InvalidCredentials => StatusCode::UNAUTHORIZED,
             Self::UsernameTaken => StatusCode::CONFLICT,
             Self::ChallengeClosed => StatusCode::CONFLICT,
             Self::AccountDisabled | Self::PrincipalSuspended => StatusCode::FORBIDDEN,
-            Self::TagConflict { .. } | Self::TagRetired { .. } => StatusCode::CONFLICT,
-            Self::UnknownTag { .. } | Self::WrongFacet { .. } | Self::TooManyThemes => {
-                StatusCode::UNPROCESSABLE_ENTITY
+            Self::TagConflict { .. } | Self::TagRetired { .. } | Self::FollowConflict { .. } => {
+                StatusCode::CONFLICT
             }
+            Self::SelfFollow | Self::RelationshipListPrivate | Self::FollowActorUnavailable => {
+                StatusCode::FORBIDDEN
+            }
+            Self::FollowTargetUnavailable => StatusCode::CONFLICT,
+            Self::ProfileGone => StatusCode::GONE,
+            Self::UnknownTag { .. }
+            | Self::WrongFacet { .. }
+            | Self::TooManyThemes
+            | Self::FollowKeyReused => StatusCode::UNPROCESSABLE_ENTITY,
             Self::DependencyUnavailable => StatusCode::SERVICE_UNAVAILABLE,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }
@@ -306,6 +357,42 @@ impl ApiError {
                 None,
                 Some("code"),
             ),
+            Self::AttachmentPasswordRejected => (
+                "invalid_credentials",
+                "current password is not correct".to_string(),
+                None,
+                Some("password"),
+            ),
+            Self::AttachmentCodeRejected => (
+                "invalid_code",
+                "the code is not correct; try again".to_string(),
+                None,
+                Some("code"),
+            ),
+            Self::AttachmentContextChanged => (
+                "attachment_context_changed",
+                "the attachment request changed; start again".to_string(),
+                None,
+                None,
+            ),
+            Self::EmailAlreadyAttached => (
+                "already_attached",
+                "this account already has a verified email".to_string(),
+                None,
+                None,
+            ),
+            Self::AttachmentRequiresPassword => (
+                "no_password",
+                "this account does not have a password".to_string(),
+                None,
+                None,
+            ),
+            Self::AttachmentEmailUnavailable => (
+                "email_unavailable",
+                "this email cannot be attached".to_string(),
+                None,
+                Some("email"),
+            ),
             Self::InvalidCredentials => (
                 "invalid_credentials",
                 "invalid username or password".to_string(),
@@ -440,6 +527,38 @@ impl ApiError {
             Self::HandleRefused(code) => (*code, code.to_string(), None, Some("handle")),
             Self::CaseConflict(code) => (*code, code.to_string(), None, None),
             Self::CaseForbidden(code) => (*code, code.to_string(), None, None),
+            Self::SelfFollow => ("self_follow", "cannot follow yourself".to_string(), None, None),
+            Self::RelationshipListPrivate => (
+                "relationship_list_private",
+                "relationship list is private".to_string(),
+                None,
+                None,
+            ),
+            Self::ProfileGone => ("profile_gone", "author profile is gone".to_string(), None, None),
+            Self::FollowActorUnavailable => (
+                "actor_unavailable",
+                "author profile required to follow".to_string(),
+                None,
+                None,
+            ),
+            Self::FollowTargetUnavailable => (
+                "target_unavailable",
+                "author cannot be followed right now".to_string(),
+                None,
+                None,
+            ),
+            Self::FollowConflict { observed } => (
+                "version_conflict",
+                "follow state changed before your request; reconcile and retry".to_string(),
+                Some(observed.accepted_order),
+                Some("expected_order"),
+            ),
+            Self::FollowKeyReused => (
+                "follow_key_reused",
+                "command_id already committed for a different target or intent".to_string(),
+                None,
+                Some("command_id"),
+            ),
             Self::Internal => ("internal", "internal error".to_string(), None, None),
         };
         ErrorEnvelope {
@@ -471,6 +590,10 @@ impl ApiError {
                         successor_id: Some(id),
                         ..
                     } => Some(id.to_string()),
+                    _ => None,
+                },
+                follow: match self {
+                    Self::FollowConflict { observed } => Some(observed.clone().into()),
                     _ => None,
                 },
             },

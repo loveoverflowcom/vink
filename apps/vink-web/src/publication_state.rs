@@ -1116,7 +1116,13 @@ fn classify(error: &ApiError) -> Answer {
         | ApiError::EndorsementConflict { .. }
         | ApiError::RevisionChanged { .. }
         | ApiError::TagConflict { .. }
-        | ApiError::TagRefused(_) => Answer::Lost,
+        | ApiError::TagRefused(_)
+        | ApiError::SelfFollow
+        | ApiError::RelationshipListPrivate
+        | ApiError::ProfileGone
+        | ApiError::FollowActorUnavailable
+        | ApiError::FollowConflict { .. }
+        | ApiError::FollowKeyReused => Answer::Lost,
     }
 }
 

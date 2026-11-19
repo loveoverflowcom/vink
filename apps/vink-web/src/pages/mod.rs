@@ -4,6 +4,7 @@ pub(crate) mod moderation;
 pub use discovery::{Home, TagDetail};
 mod discussion;
 mod endorsement;
+pub(crate) mod follow;
 pub(crate) mod handle;
 pub(crate) mod me;
 pub(crate) mod profile;

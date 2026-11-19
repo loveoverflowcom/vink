@@ -2,6 +2,7 @@
 // The mail carrier is a local outbox. Faults delay/drop a real response or explicitly inject
 // a refusal; no synthetic success is used. Don't log request bodies, credentials or cookies.
 
+import { authorFollows } from './author-follow-smoke.mjs';
 import { authorHandles } from './author-handle-smoke.mjs';
 import { authorProfiles } from './author-profile-smoke.mjs';
 import { EDITOR_READY, STANDING, account, cookies, fabricate, fill, mailedCode, openAccount, q, signIn, signOut } from './auth-smoke.mjs';
@@ -53,6 +54,97 @@ async function createDraft(page, title) {
   await page.waitFor(`${EDITOR_READY} && ${q('#draft-title')}.value === ${JSON.stringify(title)}`, 'saved title after reload');
   if (await page.body() !== DRAFT_TEXT) throw new Error('saved draft body changed on reload');
   return id;
+}
+
+async function attachVerifiedEmail(page, { args, check, accountBefore, draft, seen }) {
+  const path = '/api/v1/auth/email/attachment';
+  const email = 'nhap-da-luu@vi-du.vn';
+  const field = (suffix) => `#email-attach-${suffix}`;
+  const cookie = (await cookies(page, args.base))[sessionCookie];
+  await page.waitFor(q(field('missing')), '#329 password account has no verified email');
+  const initial = await read(page, path);
+  check(initial.status === 200 && initial.data.password_account && initial.data.verified_email === null &&
+    initial.data.principal_id === accountBefore.principal_id && initial.cache?.includes('no-store'),
+    '#329 private initial binding read is missing and identifies the current principal');
+
+  await page.click(field('add'));
+  await page.waitFor(`document.activeElement?.id === 'email-attach-address'`, '#329 explicit open focuses email');
+  await page.eval(`${q(field('cancel'))}.focus()`);
+  await page.key('Enter');
+  await page.waitFor(`document.activeElement?.id === 'email-attach-add'`, '#329 keyboard cancel returns focus to Add');
+  await page.click(field('add'));
+  await page.waitFor(q(field('address')), '#329 attachment form reopens');
+  await page.viewport(320);
+  await page.eval("document.documentElement.style.fontSize = '200%'");
+  check(await page.eval(`(async () => {
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const viewport = document.documentElement.clientWidth;
+    const section = ${q('#recovery-email-settings')};
+    return document.documentElement.scrollWidth <= viewport + 1 &&
+      Array.from(section.querySelectorAll('input, button')).every(el => {
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.left >= -1 && r.right <= viewport + 1;
+      });
+  })()`), '#329 email form has no horizontal overflow at 320px / 200% root text');
+  await page.eval("document.documentElement.style.fontSize = ''");
+  await page.viewport(1280);
+  await fill(page, field('address'), email.toUpperCase());
+  await fill(page, field('password'), 'wrong current password');
+  await page.click(field('send'));
+  await page.waitFor(contains('Hãy nhập đúng mật khẩu hiện tại'), '#329 current password verified on server');
+  check(await page.eval(`!${q(field('code'))} && ${q(field('password'))}.value === ''`),
+    '#329 bad current password does not advance and the password is cleared');
+  await fill(page, field('password'), SECRET_A);
+  const pending = await holdAnswer(page, 'POST', path + '/challenges');
+  await page.click(field('send'));
+  check(await pending.held() === 202, '#329 holds a real issued challenge before delivery');
+  await page.eval(`${q('#password-credential')}.focus()`);
+  await pending.finish(false, true);
+  await page.waitFor(q(field('code')), '#329 code is available after the delayed response');
+  check(await page.eval(`document.activeElement === ${q('#password-credential')}`),
+    '#329 receipt does not steal focus back from another account setting');
+  await mailedCode(args.outbox, email, seen);
+  await page.click(field('new-code'));
+  await page.waitFor(q(field('add')), '#329 start again reads the still-missing binding');
+  await page.click(field('add'));
+  await fill(page, field('address'), email);
+  await fill(page, field('password'), SECRET_A);
+  await page.click(field('send'));
+  await page.waitFor(`document.activeElement?.id === 'email-attach-code'`, '#329 accepted request focuses code when the form still owns focus');
+  const handle = (await cookies(page, args.base))['__Host-vink_attach'];
+  check(handle?.httpOnly && handle.secure && handle.sameSite === 'Strict' &&
+    await page.eval(`!${q(field('password'))} && ${q(field('code'))}.autocomplete === 'one-time-code'`),
+    '#329 secure strict Handle is browser-owned, password is removed, and code supports autofill');
+  const otp = await mailedCode(args.outbox, email, seen);
+  const wrong = String((Number(otp) + 1) % 1000000).padStart(6, '0');
+  await fill(page, field('code'), wrong);
+  await page.click(field('confirm'));
+  await page.waitFor(contains('Mã chưa đúng'), '#329 wrong code rejected without advancing');
+  check((await read(page, path)).data.verified_email === null, '#329 wrong code did not write the binding');
+
+  await fill(page, field('code'), otp);
+  const writes = captureRequest(page, 'POST', `${path}/complete`);
+  const reads = captureRequest(page, 'GET', path);
+  const lost = await holdAnswer(page, 'POST', `${path}/complete`);
+  await page.eval(`${q(field('confirm'))}.focus()`);
+  await page.key('Enter');
+  check(await lost.held() === 204, '#329 real server committed before the ACK was dropped');
+  check(await page.eval(`!${q(field('verified'))}`), '#329 no optimistic verified result');
+  await lost.finish(true);
+  await page.waitFor(`${q(field('verified'))}?.textContent.includes(${JSON.stringify(email)})`, '#329 lost ACK reconciled from real binding');
+  await page.waitFor(`document.activeElement?.id === 'email-attach-verified'`, '#329 keyboard focus follows confirmed readback');
+  check(writes.count() === 1 && reads.count() === 1, '#329 uncertain completion reads once and never replays');
+  writes.close();
+  reads.close();
+  const bound = await read(page, path);
+  check(bound.data.verified_email === email && bound.data.session_id === initial.data.session_id &&
+    (await cookies(page, args.base))[sessionCookie]?.value === cookie.value &&
+    (await account(page)).body.principal_id === accountBefore.principal_id &&
+    (await account(page)).body.display_name === accountBefore.display_name &&
+    bodyText(await page.draft(draft)) === DRAFT_TEXT &&
+    await page.eval(`!${q(field('code'))} && !${q(field('add'))}`),
+    '#329 canonical email binds to the same session, principal, pen name and existing draft; no second attach control');
+  return email;
 }
 
 async function expiredDesk(page, {base, check, openPage}) {
@@ -349,6 +441,13 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   check(returnedA.principal_id === A.principal_id && returnedA.display_name === penA &&
     bodyText(await page.draft(draftA)) === DRAFT_TEXT, 'password returns to the same principal, pen name and stored draft');
 
+  console.log('Auth password: first verified email, wrong code and lost completion ACK:');
+  const attachedEmail = await attachVerifiedEmail(page, { args, check, accountBefore: A, draft: draftA, seen: ctx.seen });
+  await signOut(page, base);
+  await signIn(page, ctx, attachedEmail);
+  check((await account(page)).body.principal_id === A.principal_id && bodyText(await page.draft(draftA)) === DRAFT_TEXT &&
+    await page.eval(`!${q('#pen-name-form')}`), '#327/#329 sign-in with the newly attached mailbox returns to the same writer and saved draft, without onboarding');
+
   console.log('Auth password: email account adds a credential without changing its session:');
   const { browserContextId } = await page.cdp.send('Target.createBrowserContext', { disposeOnDetach: false });
   const other = await openPage(browserContextId);
@@ -404,6 +503,9 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   check(await lostEnroll.held() === 200, 'real server committed the enrollment before the ACK is dropped');
   await lostEnroll.finish(true);
   await other.waitFor(contains('đã có thông tin đăng nhập'), 'enrolled status read after lost ACK');
+  await other.waitFor(`${q('#email-attach-verified')}?.textContent.includes(${JSON.stringify(email)})`,
+    '#329 eligibility changes after confirmed enrollment: email already bound is shown without reloading Tôi');
+  check(await other.eval(`!${q('#email-attach-add')}`), '#329 the newly enrolled account cannot attach its verified email again');
   check(enrollment.count() === 1 && (await cookies(other, base))[sessionCookie]?.value === cookieBefore.value &&
     (await account(other)).body.principal_id === B.principal_id &&
     await other.eval(`!${q(ENROLL + '-password')} && !${contains(userB)}`),
@@ -421,15 +523,19 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
     (await read(other, `/api/v1/drafts/${draftA}`)).status === 404,
     'password reads the prior draft of the email account; another principal’s draft remains inaccessible');
 
+  const switchActor = async (actor) => {
+    await openAccount(page, base, 'active');
+    await signOut(page, base);
+    await credentials(page, LOGIN, actor === 'a' ? userA : userB, actor === 'a' ? SECRET_A : SECRET_B);
+    await page.click(LOGIN + '-submit');
+    await page.waitFor(`${STANDING} === 'active'`, 'replacement cookie confirmed');
+  };
+  await authorFollows(page, other, {
+    base, openPage, check, holdAnswer, textContrast, switchActor,
+  });
   await authorProfiles(page, other, {
     base, openPage, check, holdAnswer, textContrast,
-    switchActor: async (actor) => {
-      await openAccount(page, base, 'active');
-      await signOut(page, base);
-      await credentials(page, LOGIN, actor === 'a' ? userA : userB, actor === 'a' ? SECRET_A : SECRET_B);
-      await page.click(LOGIN + '-submit');
-      await page.waitFor(`${STANDING} === 'active'`, 'replacement cookie confirmed');
-    },
+    switchActor,
   });
   await authorHandles(page, {base,openPage,check,holdAnswer,textContrast});
 

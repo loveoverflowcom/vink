@@ -657,6 +657,9 @@ pub struct ErrorBody {
     /// `tag_retired` only, when the curator named a successor.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub successor_id: Option<String>,
+    /// Follow `version_conflict` only: the actor's observed state, to reconcile from.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub follow: Option<follow::FollowObserved>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -715,6 +718,37 @@ pub struct EnrollPasswordRequest {
     pub code: String,
     pub username: String,
     pub password: String,
+}
+
+// The App sets the secret challenge handle as a cookie. These IDs are context, not credentials.
+#[derive(Serialize)]
+#[cfg_attr(test, derive(Deserialize))]
+pub struct StartEmailAttachment {
+    pub email: String,
+    pub password: String,
+    pub session_id: String,
+}
+
+#[derive(Deserialize)]
+pub struct EmailAttachmentChallenge {
+    pub challenge_id: String,
+    pub email: String,
+    pub expires_at: String,
+}
+
+#[derive(Serialize)]
+#[cfg_attr(test, derive(Deserialize))]
+pub struct CompleteEmailAttachment {
+    pub challenge_id: String,
+    pub code: String,
+}
+
+#[derive(Deserialize)]
+pub struct EmailAttachmentStatus {
+    pub session_id: String,
+    pub principal_id: String,
+    pub password_account: bool,
+    pub verified_email: Option<String>,
 }
 
 /// Account status, never a receipt naming the credentials that were entered.
@@ -800,6 +834,15 @@ pub enum ApiError {
     /// A draft-tag refusal (`unknown_tag`, `tag_retired`, `wrong_facet`, `too_many_themes`).
     /// Nothing was written.
     TagRefused(TagRefusal),
+    /// Follow requests (#294).
+    SelfFollow,
+    RelationshipListPrivate,
+    ProfileGone,
+    FollowActorUnavailable,
+    FollowConflict {
+        observed: follow::FollowObserved,
+    },
+    FollowKeyReused,
     Invalid {
         field: Option<String>,
     },
@@ -862,6 +905,9 @@ impl ApiError {
             (401, _) => Self::Unauthenticated,
             (403, Some("self_endorsement")) => Self::SelfEndorsement,
             (403, Some("endorsement_not_permitted")) => Self::EndorsementNotPermitted,
+            (403, Some("self_follow")) => Self::SelfFollow,
+            (403, Some("relationship_list_private")) => Self::RelationshipListPrivate,
+            (403, Some("actor_unavailable")) => Self::FollowActorUnavailable,
             (403, _) => Self::Forbidden,
             (404, Some("unknown_revision")) => Self::UnknownRevision,
             (404, _) => Self::NotFound,
@@ -903,6 +949,10 @@ impl ApiError {
                     ..
                 }) => Self::EndorsementConflict { observed },
                 Some(ErrorBody {
+                    follow: Some(observed),
+                    ..
+                }) => Self::FollowConflict { observed },
+                Some(ErrorBody {
                     current_version: Some(current_version),
                     tags: Some(stored),
                     ..
@@ -928,7 +978,9 @@ impl ApiError {
             (409, Some("comments_closed")) => Self::CommentsClosed,
             (409, Some("target_unavailable")) => Self::TargetUnavailable,
             (409, Some("comment_removed")) => Self::CommentRemoved,
+            (410, Some("profile_gone")) => Self::ProfileGone,
             (422, Some("idempotency_key_reused")) => Self::KeyReused,
+            (422, Some("follow_key_reused")) => Self::FollowKeyReused,
             (422, Some("unknown_tag")) => {
                 Self::TagRefused(TagRefusal::from_body(TagRefusalCode::UnknownTag, body))
             }
@@ -1024,6 +1076,8 @@ pub enum AuthorResolution {
         bio: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         publications: Option<ProfileWorks>,
+        #[serde(default, skip_serializing_if = "follow::PublicRelationships::is_empty")]
+        relationships: Box<follow::PublicRelationships>,
     },
     Alias {
         href: String,
@@ -1049,6 +1103,7 @@ pub struct ProfileWork {
     pub title: String,
 }
 
+pub mod follow;
 pub mod profile;
 
 #[cfg(test)]
@@ -1703,5 +1758,125 @@ mod separated_discussion_tests {
         ))
         .unwrap();
         assert!(!c.work_id.is_empty());
+    }
+}
+
+#[cfg(test)]
+mod follow_contract_tests {
+    use super::follow::*;
+    use super::*;
+
+    fn load_fixture<T: serde::de::DeserializeOwned + Serialize>(name: &str) -> T {
+        let raw = match name {
+            "author.profile.current.json" => include_str!(
+                "../../../services/vink-app/contracts/http/v1/fixtures/author.profile.current.json"
+            ),
+            "author.relationship.me.json" => include_str!(
+                "../../../services/vink-app/contracts/http/v1/fixtures/author.relationship.me.json"
+            ),
+            "author.relationship.set.json" => include_str!(
+                "../../../services/vink-app/contracts/http/v1/fixtures/author.relationship.set.json"
+            ),
+            "author.relationship.list.public.json" => include_str!(
+                "../../../services/vink-app/contracts/http/v1/fixtures/author.relationship.list.public.json"
+            ),
+            "author.relationship.list.own.json" => include_str!(
+                "../../../services/vink-app/contracts/http/v1/fixtures/author.relationship.list.own.json"
+            ),
+            "author.follow.receipt.json" => include_str!(
+                "../../../services/vink-app/contracts/http/v1/fixtures/author.follow.receipt.json"
+            ),
+            "author.follow.membership.json" => include_str!(
+                "../../../services/vink-app/contracts/http/v1/fixtures/author.follow.membership.json"
+            ),
+            "error.follow_version_conflict.json" => include_str!(
+                "../../../services/vink-app/contracts/http/v1/fixtures/error.follow_version_conflict.json"
+            ),
+            "error.self_follow.json" => include_str!(
+                "../../../services/vink-app/contracts/http/v1/fixtures/error.self_follow.json"
+            ),
+            "error.relationship_list_private.json" => include_str!(
+                "../../../services/vink-app/contracts/http/v1/fixtures/error.relationship_list_private.json"
+            ),
+            "error.profile_gone.json" => include_str!(
+                "../../../services/vink-app/contracts/http/v1/fixtures/error.profile_gone.json"
+            ),
+            "error.follow_key_reused.json" => include_str!(
+                "../../../services/vink-app/contracts/http/v1/fixtures/error.follow_key_reused.json"
+            ),
+            _ => panic!("unknown fixture {name}"),
+        };
+        let value: serde_json::Value = serde_json::from_str(raw).unwrap();
+        let typed: T = serde_json::from_str(raw).unwrap();
+        assert_eq!(serde_json::to_value(&typed).unwrap(), value, "{name}");
+        typed
+    }
+
+    #[test]
+    fn follow_fixtures_and_error_envelopes_round_trip() {
+        let profile: AuthorResolution = load_fixture("author.profile.current.json");
+        match profile {
+            AuthorResolution::Current { relationships, .. } => {
+                assert_eq!(relationships.followers_count, Some(0));
+                assert_eq!(
+                    relationships.valid_followers_href(),
+                    Some("/@ngay-nang/nguoi-theo-doi")
+                );
+                assert_eq!(relationships.following_count, None);
+                assert_eq!(relationships.valid_following_href(), None);
+            }
+            other => panic!("unexpected {other:?}"),
+        }
+        let _: ViewerRelationship = load_fixture("author.relationship.me.json");
+        let _: SetFollowResponse = load_fixture("author.relationship.set.json");
+        let _: PublicRelationshipList = load_fixture("author.relationship.list.public.json");
+        let _: OwnRelationshipList = load_fixture("author.relationship.list.own.json");
+        let _: FollowReceipt = load_fixture("author.follow.receipt.json");
+        let _: MembershipBatch = load_fixture("author.follow.membership.json");
+
+        for (name, status, expected) in [
+            (
+                "error.follow_version_conflict.json",
+                409,
+                ApiError::FollowConflict {
+                    observed: FollowObserved {
+                        target_handle: "an-may-27".into(),
+                        following: false,
+                        mutual: false,
+                        pair_version: 2,
+                        accepted_order: 2,
+                    },
+                },
+            ),
+            ("error.self_follow.json", 403, ApiError::SelfFollow),
+            (
+                "error.relationship_list_private.json",
+                403,
+                ApiError::RelationshipListPrivate,
+            ),
+            ("error.profile_gone.json", 410, ApiError::ProfileGone),
+            (
+                "error.follow_key_reused.json",
+                422,
+                ApiError::FollowKeyReused,
+            ),
+        ] {
+            let env: ErrorEnvelope = load_fixture(name);
+            assert_eq!(
+                ApiError::from_response(status, Some(env)),
+                expected,
+                "{name}"
+            );
+        }
+
+        for extra in ["actor_id", "follower_id"] {
+            let forged = serde_json::json!({
+                "command_id": "0192f3a1-0000-7000-8000-000000000294",
+                "expected_order": 0,
+                "following": true,
+                extra: "forged"
+            });
+            assert!(serde_json::from_value::<SetFollowRequest>(forged).is_err());
+        }
     }
 }
