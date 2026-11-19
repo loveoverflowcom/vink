@@ -162,6 +162,7 @@ impl ViewState {
         self.epoch += 1;
         self.loading = false;
         self.reply_loading.clear();
+        self.wake = crate::read_events::WakePolicy::default();
     }
 
     fn public_ids(&self) -> BTreeSet<String> {
@@ -409,7 +410,15 @@ fn DiscussionLoaded(
         read_roots(state, controller, lve, false);
     });
     #[cfg(feature = "hydrate")]
-    crate::read_events::observe(move || {
+    let fence_attribution = move || {
+        state.update(ViewState::invalidate_attribution);
+        state.with_untracked(|s| revalidate_targets(s, controller));
+    };
+    #[cfg(feature = "hydrate")]
+    crate::read_events::observe_lifecycle(move |hint| {
+        if hint == crate::read_events::Hint::HistoryRestored {
+            fence_attribution();
+        }
         if crate::read_events::visible()
             && state.try_with_untracked(|s| {
                 s.wake.due(crate::read_events::now())
@@ -424,7 +433,7 @@ fn DiscussionLoaded(
     });
     #[cfg(feature = "hydrate")]
     super::profile::observe_changes(move || {
-        state.update(ViewState::invalidate_attribution);
+        fence_attribution();
         refresh.run(());
     });
     // Viewer-private projections only arrive after hydration through the no-store API.
