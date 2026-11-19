@@ -35,11 +35,25 @@ pub struct HandleReceipt {
     pub remaining_changes: i16,
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AuthorRef {
     pub pen_name: String,
     pub handle: String,
     pub href: String,
+}
+
+impl AuthorRef {
+    pub(crate) fn new(pen_name: String, handle: String) -> Self {
+        Self {
+            href: Self::href_for(&handle),
+            pen_name,
+            handle,
+        }
+    }
+
+    pub(crate) fn href_for(handle: &str) -> String {
+        format!("/@{handle}")
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -47,6 +61,9 @@ pub struct AuthorRef {
 pub enum Resolution {
     Current {
         author: AuthorRef,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        bio: Option<String>,
+        publications: super::profile::ProfileWorks,
         has_public_works: bool,
     },
     Alias {

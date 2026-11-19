@@ -27,16 +27,48 @@ pub struct Author {
     pub name: String,
     pub key: Option<String>,
     pub published_at: String,
+    pub profile: Option<ProfileLink>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProfileLink {
+    pub href: String,
+    pub handle: String,
+}
+
+#[component]
+fn ProfileName(
+    name: String,
+    #[prop(optional_no_strip)] profile: Option<ProfileLink>,
+    id: String,
+) -> impl IntoView {
+    match profile {
+        Some(profile) => {
+            let label = format!("Mở hồ sơ {name} (@{})", profile.handle);
+            view! {
+                <Link href=profile.href attr:id=id attr:data-profile-return="true" attr:aria-label=label>
+                    {name}
+                </Link>
+            }.into_any()
+        }
+        None => view! { <span>{name}</span> }.into_any(),
+    }
 }
 
 #[component]
 pub fn WorkByline(
     author: Author,
+    #[prop(optional_no_strip)] profile_id: Option<String>,
     #[prop(default = AvatarSize::Feed)] size: AvatarSize,
 ) -> impl IntoView {
+    let label = author
+        .profile
+        .as_ref()
+        .map(|p| format!("Mở hồ sơ {} (@{})", author.name, p.handle));
     view! {
         <div class="vk-work-byline">
-            <AuthorByline name=author.name identity_key=author.key.unwrap_or_default() size />
+            <AuthorByline name=author.name identity_key=author.key.unwrap_or_default() size
+                href=author.profile.map(|p| p.href).unwrap_or_default() link_id=profile_id link_label=label />
             <span class="vk-work-byline__date"><Timestamp instant=author.published_at /></span>
         </div>
     }
@@ -48,30 +80,38 @@ pub fn WorkCard(
     author: Author,
     #[prop(into)] href: Signal<String>,
     #[prop(optional)] tags: Vec<String>,
+    #[prop(optional_no_strip)] profile_id: Option<String>,
     #[prop(optional, into)] on_open: Option<Callback<leptos::ev::MouseEvent>>,
 ) -> impl IntoView {
     view! {
-        <Link href variant=LinkVariant::Standalone attr:class="vk-public-row__link"
-            on:click=move |event| { if let Some(open) = on_open { open.run(event); } }>
-            <Heading level=HeadingLevel::H3 role=TypeRole::Title>{title}</Heading>
-            <WorkByline author />
+        <div class="vk-work-card">
+            <Heading level=HeadingLevel::H3 role=TypeRole::Title>
+                <Link href variant=LinkVariant::Standalone attr:class="vk-public-row__link"
+                    on:click=move |event| {
+                        // A refreshed row may dispose its callback during click dispatch.
+                        // The title is still a native link in that case.
+                        if let Some(open) = on_open { let _ = open.try_run(event); }
+                    }>
+                    {title}
+                </Link>
+            </Heading>
+            <WorkByline author profile_id />
             {(!tags.is_empty()).then(|| view! { <p class="vk-public-row-tags">{tags.join(" · ")}</p> })}
-            <span class="vk-public-row__open">"Đọc tác phẩm →"</span>
-        </Link>
+        </div>
     }
 }
 
 #[component]
 pub fn ReaderHeader(
     title: String,
-    author: Author,
+    #[prop(into)] author: Signal<Author>,
     #[prop(optional)] title_in_body: bool,
 ) -> impl IntoView {
     view! {
         <header id="reader-header" class="vk-reader__header">
             <Text role=TypeRole::Caption tone=TextTone::Muted>"Bản công khai"</Text>
             {(!title_in_body).then(|| view! { <Heading level=HeadingLevel::H1 role=TypeRole::Display>{title}</Heading> })}
-            <WorkByline author size=AvatarSize::Reader />
+            {move || view! { <WorkByline author=author.get() profile_id=Some("reader-author".into()) size=AvatarSize::Reader /> }}
         </header>
     }
 }
@@ -392,7 +432,11 @@ pub struct DiscussionComment {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DiscussionContext {
     Root,
-    Reply { name: String, href: Option<String> },
+    Reply {
+        name: String,
+        href: Option<String>,
+        profile: Option<ProfileLink>,
+    },
     Unavailable,
 }
 
@@ -509,18 +553,22 @@ fn discussion_comment(
     let remove_id = comment.id.clone();
     let reply_button_id = format!("reply-to-{}", comment.id);
     let remove_button_id = format!("remove-comment-{}", comment.id);
+    let author_id = format!("comment-{}-author", comment.id);
+    let context_id = format!("comment-{}-context-author", comment.id);
     view! {
         <article id=format!("comment-{}", comment.id) class="vk-feedback-item vk-discussion-comment" tabindex="-1">
             <div class="vk-discussion-byline">
-                <div><p class="vk-discussion-name">{comment.author.name.clone()}</p>
+                <div><p class="vk-discussion-name">
+                    <ProfileName name=comment.author.name.clone() profile=comment.author.profile id=author_id />
+                </p>
                     <Timestamp instant=comment.author.published_at.clone() />
             {comment.context.map(|context| match context {
                 DiscussionContext::Root => view! { <p class="vk-discussion-context">"Trả lời bình luận gốc"</p> }.into_any(),
                 DiscussionContext::Unavailable => view! { <p class="vk-discussion-context">"Bình luận được trả lời không còn hiển thị"</p> }.into_any(),
-                DiscussionContext::Reply { name, href: Some(href) } => view! { <Link href>{format!("Đang trả lời @{name}")}</Link> }.into_any(),
-                DiscussionContext::Reply { name, href: None } => view! {
-                    <p class="vk-discussion-context">{format!("Đang trả lời @{name}")}
-                        <span>" · Ngoài trang đã tải; chưa có đường mở ngữ cảnh này."</span>
+                DiscussionContext::Reply { name, href, profile } => view! {
+                    <p class="vk-discussion-context">"Đang trả lời "
+                        <ProfileName name profile id=context_id />
+                        {href.map(|href| view! { <Link href>"Đến bình luận"</Link> })}
                     </p>
                 }.into_any(),
             })}
@@ -736,7 +784,7 @@ mod tests {
     fn public_composition_escapes_user_text_and_never_invents_a_profile() {
         let html = Owner::new().with(|| view! {
             <WorkCard title="<script>private()</script>".into()
-                author=Author { name: "<b>Tác giả</b>".into(), key: None, published_at: "2026-11-02T02:00:00Z".into() }
+                author=Author { name: "<b>Tác giả</b>".into(), key: None, profile: None, published_at: "2026-11-02T02:00:00Z".into() }
                 href="/tac-pham/public?q=tho" />
         }.to_html());
         assert!(
@@ -959,6 +1007,7 @@ mod tests {
             author: Author {
                 name: "Người đọc".into(),
                 key: None,
+                profile: None,
                 published_at: "2026-11-06T02:00:00Z".into(),
             },
             body: format!("Bình luận {id}"),

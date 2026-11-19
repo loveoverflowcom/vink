@@ -3,6 +3,7 @@
 // a refusal; no synthetic success is used. Don't log request bodies, credentials or cookies.
 
 import { authorHandles } from './author-handle-smoke.mjs';
+import { authorProfiles } from './author-profile-smoke.mjs';
 import { EDITOR_READY, STANDING, account, cookies, fabricate, fill, mailedCode, openAccount, q, signIn, signOut } from './auth-smoke.mjs';
 import { deskGuest } from './desk-empty-smoke.mjs';
 
@@ -41,11 +42,17 @@ function captureRequest(page, method, path) {
 /** Hold the first matching real answer before delivery. Can release it or lose the ACK. */
 async function holdAnswer(page, method, path) {
   let held;
+  let networkDone;
   const listener = (event) => {
-    if (event.sessionId !== page.sessionId || event.method !== 'Fetch.requestPaused') return;
-    const { request, requestId, responseStatusCode } = event.params;
+    if (event.sessionId !== page.sessionId) return;
+    if (held && event.params?.requestId === held.networkId &&
+        (event.method === 'Network.loadingFinished' || event.method === 'Network.loadingFailed')) {
+      networkDone = event.method;
+    }
+    if (event.method !== 'Fetch.requestPaused') return;
+    const { request, requestId, networkId, responseStatusCode } = event.params;
     if (!held && request.method === method && new URL(request.url).pathname === path) {
-      held = { requestId, status: responseStatusCode };
+      held = { requestId, networkId, status: responseStatusCode };
     } else {
       page.send('Fetch.continueRequest', { requestId }).catch(() => {});
     }
@@ -58,11 +65,22 @@ async function holdAnswer(page, method, path) {
       if (!held) throw new Error(`timed out holding ${method} ${path}`);
       return held.status;
     },
-    async finish(drop = false) {
-      if (drop) await page.send('Fetch.failRequest', { requestId: held.requestId, errorReason: 'ConnectionClosed' });
-      else await page.send('Fetch.continueRequest', { requestId: held.requestId });
-      page.cdp.listeners = page.cdp.listeners.filter((item) => item !== listener);
-      await page.send('Fetch.disable');
+    async finish(drop = false, waitForDelivery = false) {
+      try {
+        if (drop) await page.send('Fetch.failRequest', { requestId: held.requestId, errorReason: 'ConnectionClosed' });
+        else if (networkDone !== 'Network.loadingFailed') {
+          await page.send('Fetch.continueRequest', { requestId: held.requestId });
+        }
+        if (waitForDelivery) {
+          for (let i = 0; !networkDone && i < 100; i++) await sleep(50);
+          if (!networkDone) throw new Error(`no network disposition for ${method} ${path}`);
+          await page.eval('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+        }
+        return networkDone;
+      } finally {
+        page.cdp.listeners = page.cdp.listeners.filter((item) => item !== listener);
+        await page.send('Fetch.disable');
+      }
     },
   };
 }
@@ -282,7 +300,6 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   await page.click('.vk-desk-access a[href="/toi"]');
   const A = await name(page, penA);
   check(A.display_name === penA && A.display_name !== userA, 'the server confirms a separate pen name');
-  await authorHandles(page, {base,openPage,check,holdAnswer,textContrast});
   const draftA = await createDraft(page, '[Mẫu] Nháp tạo sau đăng ký');
   await expiredDesk(page, {base, check, openPage});
   await openAccount(page, base, 'active');
@@ -399,6 +416,18 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
     bodyText(await other.draft(draftB)) === DRAFT_TEXT &&
     (await read(other, `/api/v1/drafts/${draftA}`)).status === 404,
     'password reads the prior draft of the email account; another principal’s draft remains inaccessible');
+
+  await authorProfiles(page, other, {
+    base, openPage, check, holdAnswer, textContrast,
+    switchActor: async (actor) => {
+      await openAccount(page, base, 'active');
+      await signOut(page, base);
+      await credentials(page, LOGIN, actor === 'a' ? userA : userB, actor === 'a' ? SECRET_A : SECRET_B);
+      await page.click(LOGIN + '-submit');
+      await page.waitFor(`${STANDING} === 'active'`, 'replacement cookie confirmed');
+    },
+  });
+  await authorHandles(page, {base,openPage,check,holdAnswer,textContrast});
 
   console.log('Auth password: tab switch invalidates a pending credential status and prior form:');
   const tab = await openPage();

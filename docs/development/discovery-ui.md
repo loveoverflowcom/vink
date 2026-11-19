@@ -42,7 +42,7 @@ landmark; list refresh không lấy lại focus. Chạy `verify web --scenario r
 
 Native GET ghi q, các tag lặp và cursor opaque vào URL. App giữ riêng buffer đang gõ và URL
 đã áp dụng. Chọn trong bộ lọc chỉ đổi draft; Áp dụng mới gửi GET. Checkbox dùng luật discovery
-(tối đa 4 thẻ, AND), không áp cardinality của TagSelector bản nháp. Trang dùng TagChip, SearchField Bar và Dialog. Thẻ tác phẩm lấy nhan đề làm tên truy cập của liên kết. Catalog gọi public read no-store.
+(tối đa 4 thẻ, AND), không áp cardinality của TagSelector bản nháp. Trang dùng TagChip, SearchField Bar và Dialog. Thẻ tác phẩm lấy nhan đề làm tên truy cập của liên kết. Từ [#293](https://github.com/loveoverflowcom/vink/issues/293), thẻ có hai đích ngang cấp, không lồng nhau: liên kết nhan đề phủ cả thẻ để mở Reader, và bút danh có Handle do App cấp mở `/@handle`. DOM đặt heading trước dòng tác giả nên Tab đi nhan đề → bút danh, còn CSS hiển thị dòng tác giả phía trên như r1. Bút danh chưa đối chiếu trong cache hiện nhãn trung tính, không có link. Catalog gọi public read no-store.
 
 SSR gọi PublicReadsAdapter → Vink::discover_works/catalog_tags trong tiến trình, cùng DTO API,
 không HTTP tới chính mình hoặc Identity. Trình duyệt gọi /api/v1/works; READ-02 cache key mang

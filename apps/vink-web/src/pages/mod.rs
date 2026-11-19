@@ -6,6 +6,7 @@ mod discussion;
 mod endorsement;
 pub(crate) mod handle;
 pub(crate) mod me;
+pub(crate) mod profile;
 pub(crate) mod publication;
 pub(crate) mod work_info;
 
@@ -68,6 +69,9 @@ impl ResponseStatus {
 
 #[component]
 pub fn Reader() -> impl IntoView {
+    // Native Back may reuse an HTML response without validating its bylines.
+    // The public API keeps its conditional reads and tab cache.
+    ResponseStatus::capture().set_no_store();
     let params = use_params_map();
     let work_id = Memo::new(move |_| params.read().get("id").unwrap_or_default());
     view! { <For each=move || vec![work_id.get()] key=|id| id.clone()
@@ -90,7 +94,6 @@ fn ReaderScope(id: String) -> impl IntoView {
                         Ok(reader) => {
                             if !matches!(reader, crate::contract::ReaderResponse::Published(_)) {
                                 status.set(200);
-                                status.set_no_store();
                             }
                             view! { <ReaderLoaded initial=reader return_href=return_href.get_untracked() /> }.into_any()
                         }
@@ -185,7 +188,16 @@ fn PublicationView(
 ) -> impl IntoView {
     let latest = live.data;
     let shown = RwSignal::new(publication);
-    let update = Memo::new(move |_| latest.with(|l| shown.with(|s| l != s)));
+    let update = Memo::new(move |_| {
+        latest.with(|l| {
+            shown.with(|s| {
+                l.revision_id != s.revision_id
+                    || l.title != s.title
+                    || l.document != s.document
+                    || l.tags != s.tags
+            })
+        })
+    });
     move || view! { <PublicationContent publication=shown.get() live=live.clone() update shown /> }
 }
 
@@ -242,7 +254,7 @@ fn PublicationContent(
     let failed = live.failed;
     let refreshing = live.refreshing;
     let cached = live.cached_unverified;
-    let author = adapters::publication_author(&publication);
+    let author = Memo::new(move |_| latest.with(|p| adapters::publication_author(p, cached.get())));
     let context = discovery::reader_context();
     let id = publication.work_id.clone();
     let return_href = Memo::new(move |_| context.get().href(Some(&id)));
@@ -300,7 +312,7 @@ fn PublicationContent(
             </Show>
         </div>
         <article id="reader-paper" class="vk-reader" data-revision=publication.revision_id>
-            <ReaderHeader title=publication.title author title_in_body />
+            <ReaderHeader title=publication.title author=Signal::from(author) title_in_body />
             <discovery::PublicTags tags=publication.tags />
             {body}
         </article>
@@ -393,6 +405,15 @@ fn focus_recovery(id: &'static str) {
     let _ = id;
 }
 
+#[cfg(feature = "hydrate")]
+#[wasm_bindgen::prelude::wasm_bindgen(module = "/profile/navigation.js")]
+extern "C" {
+    #[wasm_bindgen(js_name = hasProfileReturn)]
+    fn has_profile_return() -> bool;
+    #[wasm_bindgen(js_name = clearProfileReturn)]
+    fn clear_profile_return();
+}
+
 /// Mark only the current public history entry. A new tab/modifier click must not move it.
 #[cfg(feature = "hydrate")]
 fn remember_public_position(
@@ -411,6 +432,7 @@ fn remember_public_position(
         return;
     }
     if let Ok(history) = window().history() {
+        clear_profile_return();
         // Use the router's replace so its path stack also learns the row fragment. A raw
         // replaceState leaves the prior path in Leptos: Back doesn't pop Reader, so opening
         // that same Reader again may render its tree without pushing its URL.
@@ -451,7 +473,9 @@ fn restore_public_position(stream: NodeRef<leptos::html::Section>, settled: Memo
             let address = window().location();
             // Own the exact mounted result region and URL. Same row IDs can occur in
             // several queries, even when a stale callback sees the same path and hash.
+            // A later author click can intentionally leave that row fragment in place.
             if !stream.is_connected()
+                || has_profile_return()
                 || address.pathname().ok().as_deref() != Some(path.as_str())
                 || address
                     .search()

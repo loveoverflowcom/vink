@@ -3,6 +3,10 @@
   "revision_id": "44444444-4444-4444-8444-444444444444",
   "title": "[Mẫu] Mưa trên phố cũ",
   "author_display_name": "Tác giả mẫu (dữ liệu phát triển)",
+  "author": {
+    "kind": "unavailable",
+    "label": "Tác giả mẫu (dữ liệu phát triển)"
+  },
   "published_at": "2026-10-30T08:00:00Z",
   "document": {
     "format": "default",

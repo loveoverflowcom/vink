@@ -60,6 +60,7 @@ pub(crate) struct Session {
     pub(crate) principal: Memo<Option<String>>,
     /// Scope of viewer-private state. Its format remains principal/generation.
     pub(crate) scope: Memo<Option<String>>,
+    pub(crate) profile_scope: Memo<Option<String>>,
 }
 
 impl Session {
@@ -74,6 +75,7 @@ impl Session {
             standing: Memo::new(move |_| owner.with(|o| o.standing().clone())),
             principal: Memo::new(move |_| owner.with(|o| o.principal().map(str::to_owned))),
             scope: Memo::new(move |_| owner.with(SessionOwner::scope)),
+            profile_scope: Memo::new(move |_| owner.with(SessionOwner::profile_scope)),
         };
         provide_context(this);
         #[cfg(feature = "hydrate")]
@@ -88,6 +90,12 @@ impl Session {
     pub(crate) fn refresh(self) {
         #[cfg(feature = "hydrate")]
         browser::refresh(self);
+    }
+
+    #[cfg(feature = "hydrate")]
+    pub(crate) fn fence_profile(self) {
+        self.owner.update(SessionOwner::expect_session_change);
+        self.refresh();
     }
 
     pub(crate) fn checking(self) -> bool {

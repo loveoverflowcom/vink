@@ -98,8 +98,22 @@ async fn get(app: &Router, path: &str, if_none_match: &[&str]) -> Reply {
     read(app, "GET", path, if_none_match).await
 }
 
+fn html_without_request_nonce(html: &str) -> String {
+    // Leptos emits a fresh nonce per render, including on its resource preload tags.
+    let (_, rest) = html
+        .split_once("<script nonce=\"")
+        .expect("hydration nonce");
+    let (nonce, _) = rest.split_once('"').expect("end of hydration nonce");
+    assert!(!nonce.is_empty());
+    html.replace(&format!("nonce=\"{nonce}\""), "nonce=\"request-nonce\"")
+        .replace(
+            &format!("crossorigin=\"{nonce}\""),
+            "crossorigin=\"request-nonce\"",
+        )
+}
+
 /// Fixture publish: an immutable revision plus the public pointer, as one transaction.
-async fn publish(
+pub(super) async fn publish(
     pool: &PgPool,
     work: Uuid,
     owner: Uuid,
@@ -617,4 +631,287 @@ async fn concurrent_renames_never_pair_a_validator_with_another_body(pool: PgPoo
     get(&app, &path, &[settled.etag()])
         .await
         .assert_not_modified(settled.etag());
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn profile_owner_cas_revoke_and_public_page_share_the_current_projection(pool: PgPool) {
+    use super::handle::create;
+
+    let app = app(&pool).await;
+    let a = create(&pool, "profile-a", "Hai bút danh trùng")
+        .await
+        .as_uuid();
+    let b = create(&pool, "profile-b", "Hai bút danh trùng")
+        .await
+        .as_uuid();
+    let own = "/api/v1/me/profile";
+    let (status, cache, body) = call(&app, "GET", own, Some(a), None, None).await;
+    assert_eq!(
+        (status, cache.as_deref()),
+        (StatusCode::OK, Some("no-store"))
+    );
+    let initial = json(&body);
+    let mut policies = initial["policies"].clone();
+    assert_eq!(
+        policies,
+        json!({
+            "pen_name": "everyone", "avatar": "everyone", "bio": "everyone",
+            "date_of_birth": "self", "followers_list": "everyone", "followers_count": "everyone",
+            "following_list": "self", "following_count": "self"
+        })
+    );
+    let handle = initial["handle"].as_str().unwrap();
+    let path = format!("/api/v1/authors/{handle}");
+    let web = format!("/@{handle}");
+    let absent = get(&app, &path, &[]).await;
+    let (status, cache, absent_html) = call(&app, "GET", &web, None, None, None).await;
+    let absent_html = html_without_request_nonce(&absent_html);
+    assert_eq!(
+        (status, cache.as_deref()),
+        (StatusCode::OK, Some("no-store"))
+    );
+    absent.assert_full();
+    assert_eq!(absent.json()["publications"]["works"], json!([]));
+    assert!(absent.json().get("bio").is_none());
+    let command = |version, bio: Option<&str>, policies: &Value| {
+        json!({
+            "principal_id": a, "expected_version": version, "pen_name": "Hai bút danh trùng",
+            "bio": bio, "policies": policies
+        })
+    };
+    for (actor, status) in [(None, 401), (Some(b), 403)] {
+        let (result, cache, _) = call(
+            &app,
+            "PUT",
+            own,
+            actor,
+            Some(ORIGIN),
+            Some(command(0, Some("Không ghi"), &policies)),
+        )
+        .await;
+        assert_eq!(result.as_u16(), status);
+        assert_eq!(cache.as_deref(), Some("no-store"));
+    }
+    let a_call = call(
+        &app,
+        "PUT",
+        own,
+        Some(a),
+        Some(ORIGIN),
+        Some(command(0, Some("Mưa qua thềm"), &policies)),
+    );
+    let b_call = call(
+        &app,
+        "PUT",
+        own,
+        Some(a),
+        Some(ORIGIN),
+        Some(command(0, Some("Sương qua thềm"), &policies)),
+    );
+    let (one, two) = tokio::join!(a_call, b_call);
+    let winner = match (one.0.as_u16(), two.0.as_u16()) {
+        (200, 409) => json(&one.2),
+        (409, 200) => json(&two.2),
+        other => panic!("expected exactly one commit, got {other:?}"),
+    };
+    assert_eq!(winner["profile_version"], 1);
+    let bio = winner["bio"].as_str().unwrap();
+    let public = get(&app, &path, &[absent.etag()]).await;
+    public.assert_full();
+    assert_eq!(public.json()["bio"], bio);
+    assert!(
+        call(&app, "GET", &web, None, None, None)
+            .await
+            .2
+            .contains(bio)
+    );
+
+    policies["bio"] = json!("self");
+    policies["followers_list"] = json!("self");
+    let (_, _, saved) = call(
+        &app,
+        "PUT",
+        own,
+        Some(a),
+        Some(ORIGIN),
+        Some(command(1, Some(bio), &policies)),
+    )
+    .await;
+    assert_eq!(json(&saved)["policies"]["followers_count"], "everyone");
+    assert_eq!(json(&saved)["bio"], bio);
+    let revoked = get(&app, &path, &[public.etag()]).await;
+    revoked.assert_full();
+    assert_eq!(
+        revoked.body, absent.body,
+        "private equals absent byte-for-byte"
+    );
+    assert_eq!(revoked.etag(), absent.etag());
+    get(&app, &path, &[absent.etag()])
+        .await
+        .assert_not_modified(absent.etag());
+    let head = read(&app, "HEAD", &path, &[public.etag()]).await;
+    assert_eq!(head.status, StatusCode::OK);
+    assert_eq!(head.etag(), absent.etag());
+    assert!(head.body.is_empty());
+    for actor in [None, Some(b), Some(a)] {
+        let (status, _, html) = call(&app, "GET", &web, actor, None, None).await;
+        assert_eq!(status, 200);
+        assert_eq!(
+            html_without_request_nonce(&html),
+            absent_html,
+            "HTML, head and hydration match the absent Bio"
+        );
+        assert!(
+            !html.contains(bio)
+                && !html.contains("profile_version")
+                && !html.contains(&a.to_string())
+        );
+        let (_, _, body) = call(&app, "GET", &path, actor, None, None).await;
+        assert_eq!(body.as_bytes(), revoked.body);
+    }
+    let (_, _, body) = call(&app, "GET", own, Some(b), None, None).await;
+    assert_eq!(json(&body)["bio"], Value::Null);
+    let (status, _, _) = call(
+        &app,
+        "PUT",
+        own,
+        Some(a),
+        Some(ORIGIN),
+        Some(command(2, Some(bio), &initial["policies"])),
+    )
+    .await;
+    assert_eq!(status, 422, "widening stays gated");
+    let mut birth = command(2, Some("bio"), &policies);
+    birth["date_of_birth"] = json!("2000-01-01");
+    let mut no_bio = command(2, Some("bio"), &policies);
+    no_bio.as_object_mut().unwrap().remove("bio");
+    for invalid in [birth.clone(), no_bio] {
+        // Unknown fields and an omitted Bio key are contract errors, never a silent clear.
+        let (status, cache, body) =
+            call(&app, "PUT", own, Some(a), Some(ORIGIN), Some(invalid)).await;
+        assert_eq!((status.as_u16(), cache.as_deref()), (422, Some("no-store")));
+        assert_eq!(json(&body)["error"]["code"], "validation_failed");
+        assert_eq!(json(&body)["error"]["field"], "body");
+    }
+    // The session is checked before the body: a guest learns nothing about validation.
+    assert_eq!(
+        call(&app, "PUT", own, None, Some(ORIGIN), Some(birth))
+            .await
+            .0,
+        401
+    );
+    let (_, _, kept) = call(&app, "GET", own, Some(a), None, None).await;
+    assert_eq!(
+        json(&kept)["bio"],
+        json!(bio),
+        "rejected saves leave the Bio intact"
+    );
+    assert_eq!(
+        call(
+            &app,
+            "PUT",
+            own,
+            Some(a),
+            Some(ORIGIN),
+            Some(command(2, Some("Riêng mới"), &policies))
+        )
+        .await
+        .0,
+        200
+    );
+    // A new server context over the persisted schema still rejects the old public validator.
+    let reopened = super::app(&pool).await;
+    let verified = get(&reopened, &path, &[public.etag()]).await;
+    verified.assert_full();
+    assert_eq!(verified.body, absent.body);
+
+    let recent = datetime!(2026-11-19 01:00 UTC);
+    let mut expected = Vec::new();
+    for offset in 0..13 {
+        let work = Uuid::now_v7();
+        publish(
+            &pool,
+            work,
+            a,
+            "Tác phẩm đúng tác giả",
+            "Văn bản",
+            recent - time::Duration::minutes(offset),
+        )
+        .await;
+        expected.push(work.to_string());
+    }
+    publish(
+        &pool,
+        Uuid::now_v7(),
+        b,
+        "Tác phẩm của người trùng tên",
+        "Văn bản",
+        recent + time::Duration::hours(1),
+    )
+    .await;
+    let withdrawn = Uuid::now_v7();
+    publish(
+        &pool,
+        withdrawn,
+        a,
+        "Mới rút",
+        "Không còn công khai",
+        recent + time::Duration::hours(2),
+    )
+    .await;
+    sqlx::query("DELETE FROM publications WHERE work_id = $1")
+        .bind(withdrawn)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let unpublished = Uuid::now_v7();
+    sqlx::query("INSERT INTO works(id, owner_id) VALUES($1, $2)")
+        .bind(unpublished)
+        .bind(a)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let first = get(&app, &path, &[]).await.json();
+    let rows = |page: &Value| {
+        page["publications"]["works"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| r["work_id"].as_str().unwrap().to_owned())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(rows(&first), expected[..12]);
+    let cursor = first["publications"]["next_cursor"].as_str().unwrap();
+    let second = get(&app, &format!("{path}?cursor={cursor}"), &[])
+        .await
+        .json();
+    assert_eq!(rows(&second), expected[12..]);
+    let other_handle = PgStore::new(pool.clone())
+        .own_handle(PrincipalId::from_uuid(b))
+        .await
+        .unwrap()
+        .handle;
+    let other = get(
+        &app,
+        &format!("/api/v1/authors/{other_handle}?cursor={cursor}"),
+        &[],
+    )
+    .await
+    .json();
+    assert_eq!(other["publications"], json!({"state":"restart"}));
+    let handle_state = PgStore::new(pool.clone())
+        .own_handle(PrincipalId::from_uuid(a))
+        .await
+        .unwrap();
+    assert_eq!(
+        (
+            handle_state.handle.as_str(),
+            handle_state.setup_complete,
+            handle_state.version,
+            handle_state.remaining_changes
+        ),
+        (handle, false, 0, 2)
+    );
+    assert!(handle_state.aliases.is_empty());
 }

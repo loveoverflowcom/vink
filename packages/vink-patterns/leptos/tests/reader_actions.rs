@@ -181,6 +181,7 @@ fn reader_actions_render_only_the_supplied_reply_and_removal_capabilities() {
                 author: Author {
                     name: "Người đọc".into(),
                     key: None,
+                    profile: None,
                     published_at: "2026-11-16T00:00:00Z".into(),
                 },
                 body: "Giữ nguyên chữ Việt và thứ tự nhà cung cấp.".into(),

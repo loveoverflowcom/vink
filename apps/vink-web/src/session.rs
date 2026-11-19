@@ -81,6 +81,14 @@ impl SessionOwner {
             .map(|principal| format!("{principal}/{}", self.generation))
     }
 
+    /// Profile forms stop applying private answers as soon as a cookie change is signalled.
+    pub(crate) fn profile_scope(&self) -> Option<String> {
+        if self.session_may_have_changed {
+            return None;
+        }
+        self.scope()
+    }
+
     /// A signal about the browser session is stronger than a focus refresh. A new cookie can
     /// represent the same principal; fence that principal's earlier private operations once
     /// the server has confirmed who is now acting.
@@ -345,6 +353,19 @@ mod tests {
         assert_eq!(owner.scope().as_deref(), Some("a/1"));
         assert!(!settle(&mut owner, Observation::Active(account("a"))));
         assert_eq!(owner.scope().as_deref(), Some("a/1"));
+    }
+
+    #[test]
+    fn profile_scope_is_fenced_during_unavailable_session_readback() {
+        let mut owner = SessionOwner::default();
+        settle(&mut owner, Observation::Active(account("a")));
+        assert_eq!(owner.profile_scope().as_deref(), Some("a/0"));
+        owner.expect_session_change();
+        assert_eq!(owner.profile_scope(), None);
+        settle(&mut owner, Observation::Unavailable);
+        assert_eq!(owner.profile_scope(), None);
+        settle(&mut owner, Observation::Active(account("a")));
+        assert_eq!(owner.profile_scope().as_deref(), Some("a/1"));
     }
 
     #[test]

@@ -2209,3 +2209,189 @@ mod reads;
 
 #[path = "comment_moderation_governance.rs"]
 mod governance;
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn author_attribution_tracks_principal_and_retirement_in_all_public_reads(pool: PgPool) {
+    use super::{conditional_reads::publish, handle::create};
+    use time::macros::datetime;
+    use vink_app::application::profile::SaveProfile;
+    use vink_app::domain::profile::ProfilePolicies;
+
+    let app = app(&pool).await;
+    let vink = discussion(&pool).await;
+    let store = PgStore::new(pool.clone());
+    let name = "Tên thật dài của hai tác giả dùng cùng một bút danh";
+    let a = create(&pool, "byline-a", name).await;
+    let b = create(&pool, "byline-b", name).await;
+    let a_handle = store.own_profile(a).await.unwrap().handle;
+    let b_handle = store.own_profile(b).await.unwrap().handle;
+    let a_href = format!("/@{a_handle}");
+    let b_href = format!("/@{b_handle}");
+    assert_ne!(a_href, b_href);
+    let first = Uuid::now_v7();
+    let second = Uuid::now_v7();
+    let recent = datetime!(2026-11-19 01:00 UTC);
+    let revision = publish(
+        &pool,
+        first,
+        a.as_uuid(),
+        "Dòng thứ nhất",
+        "Bản bất biến",
+        recent,
+    )
+    .await;
+    publish(
+        &pool,
+        second,
+        b.as_uuid(),
+        "Dòng thứ hai",
+        "Bản thứ hai",
+        recent,
+    )
+    .await;
+    let digest = |id| {
+        sqlx::query_scalar::<_, String>("SELECT content_hash FROM revisions WHERE id = $1")
+            .bind(id)
+            .fetch_one(&pool)
+    };
+    let before = digest(revision).await.unwrap();
+
+    let root = published(&vink, Some(a), None, "Nhận xét gốc").await;
+    let reply = published(&vink, Some(b), Some(root), "Phản hồi một").await;
+    let tail = published(&vink, Some(a), Some(reply), "Phản hồi khác").await;
+    let work = sample_work();
+    let discussion = format!("/api/v1/works/{work}/discussion/public");
+    let replies = format!("{discussion}/roots/{root}/replies");
+    let reader = format!("/api/v1/works/{first}/reader");
+
+    async fn value(app: &Router, path: &str) -> Value {
+        let (status, _, body) = call(app, "GET", path, None, None, None).await;
+        assert_eq!(status, 200, "{path}: {body}");
+        json(&body)
+    }
+
+    let cards = value(&app, "/api/v1/works").await;
+    let cards = cards["works"].as_array().unwrap();
+    let card = |id: Uuid| {
+        cards
+            .iter()
+            .find(|card| card["work_id"] == id.to_string())
+            .unwrap()
+    };
+    assert_eq!(card(first)["author"]["href"], a_href);
+    assert_eq!(card(second)["author"]["href"], b_href);
+    assert_eq!(
+        card(first)["author_display_name"],
+        card(second)["author_display_name"]
+    );
+    assert_eq!(value(&app, &reader).await["author"]["href"], a_href);
+    let roots = value(&app, &discussion).await;
+    assert_eq!(
+        roots["roots"][0]["root"]["comment"]["author"]["href"],
+        a_href
+    );
+    let page = value(&app, &replies).await;
+    assert_eq!(page["replies"][0]["author"]["href"], b_href);
+    assert_eq!(page["replies"][1]["comment_id"], tail.to_string());
+    assert_eq!(page["replies"][1]["reply_to"]["author"]["href"], b_href);
+
+    for (actor, renamed) in [(a, "Bút danh mới mùa mưa"), (b, "Bút danh mới mùa gió")] {
+        store
+            .save_profile(
+                actor,
+                SaveProfile {
+                    principal_id: actor.as_uuid(),
+                    expected_version: 0,
+                    pen_name: renamed.into(),
+                    bio: None,
+                    policies: ProfilePolicies::default(),
+                },
+            )
+            .await
+            .unwrap();
+    }
+    assert_eq!(
+        value(&app, &reader).await["author"]["pen_name"],
+        "Bút danh mới mùa mưa"
+    );
+    let renamed_cards = value(&app, "/api/v1/works").await;
+    for (id, name, href) in [
+        (first, "Bút danh mới mùa mưa", &a_href),
+        (second, "Bút danh mới mùa gió", &b_href),
+    ] {
+        let card = renamed_cards["works"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|card| card["work_id"] == id.to_string())
+            .unwrap();
+        assert_eq!(card["author"]["pen_name"], name);
+        assert_eq!(card["author"]["href"].as_str(), Some(href.as_str()));
+    }
+    assert_eq!(
+        value(&app, &discussion).await["roots"][0]["root"]["comment"]["author"]["pen_name"],
+        "Bút danh mới mùa mưa"
+    );
+    let renamed_replies = value(&app, &replies).await;
+    assert_eq!(
+        renamed_replies["replies"][0]["author"]["pen_name"],
+        "Bút danh mới mùa gió"
+    );
+    assert_eq!(
+        renamed_replies["replies"][1]["reply_to"]["author"]["pen_name"],
+        "Bút danh mới mùa gió"
+    );
+    assert_eq!(digest(revision).await.unwrap(), before);
+
+    let mut tx = pool.begin().await.unwrap();
+    for actor in [a, b] {
+        vink_app::persistence::handle::retire(&mut tx, actor)
+            .await
+            .unwrap();
+    }
+    tx.commit().await.unwrap();
+    let deleted = json!({"kind":"deleted","label":"Tài khoản đã xóa"});
+    assert_eq!(value(&app, &reader).await["author"], deleted);
+    assert_eq!(
+        value(&app, &discussion).await["roots"][0]["root"]["comment"]["author"],
+        deleted
+    );
+    assert_eq!(
+        value(&app, &replies).await["replies"][1]["reply_to"]["author"],
+        deleted
+    );
+    let old_name = value(&app, "/api/v1/works?q=mua+gio").await;
+    assert_eq!(
+        old_name["works"],
+        json!([]),
+        "retired names cannot match discovery"
+    );
+    for path in [
+        reader.as_str(),
+        discussion.as_str(),
+        replies.as_str(),
+        "/api/v1/works",
+        &format!("/tac-pham/{first}"),
+        &format!("/tac-pham/{work}"),
+        "/",
+    ] {
+        let (status, cache, body) = call(&app, "GET", path, None, None, None).await;
+        assert_eq!(status, 200);
+        if !path.starts_with("/api/") {
+            assert_eq!(cache.as_deref(), Some("no-store"), "{path}");
+        }
+        assert!(body.contains("Tài khoản đã xóa"), "{path}");
+        for forbidden in [
+            a_handle.as_str(),
+            b_handle.as_str(),
+            "Bút danh mới mùa",
+            &a.to_string(),
+            &b.to_string(),
+        ] {
+            assert!(
+                !body.contains(forbidden),
+                "{path} contains retired attribution {forbidden}"
+            );
+        }
+    }
+}

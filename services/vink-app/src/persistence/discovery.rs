@@ -35,6 +35,7 @@ use crate::application::ports::{
     DiscoveryFacts, DiscoveryRequest, PublicCardFacts, PublicationFacts, PublicationStore,
     ReaderWorkFacts, SlugFacts, StoreError,
 };
+use crate::application::profile::AuthorAttribution;
 use crate::domain::discovery::filter_tags;
 use crate::domain::document::{DocumentData, public_excerpt};
 use crate::domain::ids::{RevisionId, TagId, WorkId};
@@ -48,11 +49,11 @@ use crate::domain::taxonomy::{
 /// lets the order index start at the cursor.
 /// Public only so that the measurement test can `EXPLAIN` exactly this statement.
 pub const DISCOVERY_SEARCH_SQL: &str = "
-    SELECT p.work_id, r.title, r.document, a.display_name, p.published_at, p.metadata_snapshot_id, s.digest
+    SELECT p.work_id, r.title, r.document, a.display_name, a.handle, a.retired, p.published_at, p.metadata_snapshot_id, s.digest
       FROM publications p
       JOIN revisions r ON r.work_id = p.work_id AND r.id = p.revision_id
       JOIN works w ON w.id = p.work_id
-      JOIN principals a ON a.id = w.owner_id
+      JOIN public_author_attribution a ON a.id = w.owner_id
       LEFT JOIN work_metadata_snapshots s
              ON s.work_id = p.work_id AND s.id = p.metadata_snapshot_id
      WHERE ($1::text IS NULL
@@ -75,6 +76,8 @@ struct CardRow {
     title: String,
     document: Json<DocumentData>,
     display_name: String,
+    handle: Option<String>,
+    retired: bool,
     published_at: OffsetDateTime,
     metadata_snapshot_id: Option<Uuid>,
     digest: Option<String>,
@@ -293,7 +296,7 @@ impl PublicationStore for PgStore {
                     work_id: WorkId::from_uuid(row.work_id),
                     title: published.title().clone(),
                     excerpt: public_excerpt(published.document()),
-                    author_display_name: row.display_name,
+                    author: AuthorAttribution::project(row.display_name, row.handle, row.retired),
                     published_at: row.published_at,
                     snapshot: row
                         .metadata_snapshot_id
@@ -318,18 +321,20 @@ impl PublicationStore for PgStore {
             Uuid,
             String,
             String,
+            Option<String>,
+            bool,
             OffsetDateTime,
             Json<DocumentData>,
             Option<Uuid>,
             Option<String>,
             String,
         )> = sqlx::query_as(
-            "SELECT p.work_id, r.id, r.title, a.display_name, p.published_at, r.document,
+            "SELECT p.work_id, r.id, r.title, a.display_name, a.handle, a.retired, p.published_at, r.document,
                     p.metadata_snapshot_id, s.digest, r.content_hash
                FROM publications p
                JOIN revisions r ON r.work_id = p.work_id AND r.id = p.revision_id
                JOIN works w ON w.id = p.work_id
-               JOIN principals a ON a.id = w.owner_id
+               JOIN public_author_attribution a ON a.id = w.owner_id
                LEFT JOIN work_metadata_snapshots s
                       ON s.work_id = p.work_id AND s.id = p.metadata_snapshot_id
               WHERE p.work_id = $1",
@@ -343,6 +348,8 @@ impl PublicationStore for PgStore {
             revision,
             raw_title,
             author,
+            handle,
+            retired,
             published_at,
             raw_document,
             id,
@@ -365,7 +372,7 @@ impl PublicationStore for PgStore {
             work_id: WorkId::from_uuid(work),
             revision_id: RevisionId::from_uuid(revision),
             content,
-            author_display_name: author,
+            author: AuthorAttribution::project(author, handle, retired),
             published_at,
             snapshot: id.and_then(|id| snapshots.remove(&id)),
             catalog,
@@ -392,14 +399,16 @@ impl PgStore {
         #[derive(sqlx::FromRow)]
         struct WithdrawnRow {
             display_name: String,
+            handle: Option<String>,
+            retired: bool,
             hidden: bool,
         }
 
         let row: Option<WithdrawnRow> = sqlx::query_as(
-            "SELECT a.display_name, (wp.hidden_revision_id IS NOT NULL) AS hidden
+            "SELECT a.display_name, a.handle, a.retired, (wp.hidden_revision_id IS NOT NULL) AS hidden
                FROM work_publications wp
                JOIN works w ON w.id = wp.work_id
-               JOIN principals a ON a.id = w.owner_id
+               JOIN public_author_attribution a ON a.id = w.owner_id
               WHERE wp.work_id = $1
                 AND wp.lifecycle = 'active'
                 AND (wp.hidden_revision_id IS NOT NULL
@@ -416,7 +425,7 @@ impl PgStore {
             }
             return Ok(Some(ReaderWorkFacts::ReviewWithdrawn {
                 work_id,
-                author_display_name: r.display_name,
+                author: AuthorAttribution::project(r.display_name, r.handle, r.retired),
             }));
         }
 

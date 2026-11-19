@@ -892,6 +892,8 @@ fn bounded(path: &str) -> bool {
         || path.contains("/discussion")
         || path.contains("/endorsement")
         || path.starts_with("/api/v1/author/works")
+        || path == "/api/v1/me/profile"
+        || path.starts_with("/api/v1/authors/")
         || path.contains("/tags")
         || path.starts_with("/api/v1/auth/")
 }
@@ -1299,29 +1301,58 @@ pub(crate) async fn moderation_post(
 
 pub(crate) fn author_resource(
     name: String,
-) -> Resource<Result<crate::contract::AuthorResolution, LoadError>> {
+    cursor: Option<String>,
+    version: ReadSignal<u64>,
+) -> Resource<(u64, Result<crate::contract::AuthorResolution, LoadError>)> {
     #[cfg(feature = "ssr")]
     {
         let port = use_context::<crate::server::SharedPublicReads>();
         Resource::new(
-            || (),
-            move |_| {
+            move || version.get(),
+            move |generation| {
                 let port = port.clone();
                 let name = name.clone();
-                async move { port.ok_or(LoadError::Unavailable)?.author(name).await }
+                let cursor = cursor.clone();
+                async move {
+                    let result = match port {
+                        Some(port) => port.author(name, cursor).await,
+                        None => Err(LoadError::Unavailable),
+                    };
+                    (generation, result)
+                }
             },
         )
     }
     #[cfg(not(feature = "ssr"))]
     {
+        let mut path = format!(
+            "/api/v1/authors/{}",
+            percent_encoding::utf8_percent_encode(&name, &DISCUSSION_ID)
+        );
+        if let Some(cursor) = cursor {
+            path.push_str("?cursor=");
+            path.push_str(
+                &percent_encoding::utf8_percent_encode(&cursor, &DISCUSSION_ID).to_string(),
+            );
+        }
         Resource::new(
-            || (),
-            move |_| {
-                browser(public_get(format!(
-                    "/api/v1/authors/{}",
-                    percent_encoding::utf8_percent_encode(&name, &DISCUSSION_ID)
-                )))
+            move || version.get(),
+            move |generation| {
+                let path = path.clone();
+                browser(async move { (generation, public_get(path).await) })
             },
         )
     }
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn load_own_profile() -> Result<crate::contract::profile::OwnProfile, ApiError> {
+    http::get("/api/v1/me/profile").await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn save_profile(
+    request: &crate::contract::profile::SaveProfile,
+) -> Result<crate::contract::profile::OwnProfile, ApiError> {
+    http::send("PUT", "/api/v1/me/profile", Some(request)).await
 }

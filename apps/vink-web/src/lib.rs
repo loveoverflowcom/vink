@@ -122,6 +122,16 @@ fn format_page_title(title: String) -> String {
 #[component]
 fn Chrome() -> impl IntoView {
     navigation::use_navigation_guard().connect_router();
+    #[cfg(feature = "hydrate")]
+    {
+        use wasm_bindgen::prelude::*;
+        #[wasm_bindgen(module = "/profile/navigation.js")]
+        extern "C" {
+            #[wasm_bindgen(js_name = mountProfileNavigation)]
+            fn mount_profile_navigation();
+        }
+        Effect::new(move |_| mount_profile_navigation());
+    }
     view! {
         <AdaptiveShell>
             <main id="noi-dung" class="vk-main" tabindex="-1">
@@ -136,6 +146,7 @@ fn Chrome() -> impl IntoView {
                     <Route path=path!("/kiem-duyet/phan-doi/:id") view=pages::moderation::AppealPage />
                     <Route path=path!("/ban-viet/:id/kiem-duyet") view=pages::moderation::AuthorReviews />
                     <Route path=path!("/toi") view=Me />
+                    <Route path=path!("/toi/chinh-ho-so") view=pages::profile::EditProfile />
                     <Route path=path!("/toi/dia-chi") view=pages::handle::Manage />
                     <Route path=path!("/:author") view=pages::handle::Author ssr=SsrMode::Async />
                     <Route path=path!("/thu-nghiem/bieu-cam") view=expressions::ExpressionPilot />

@@ -3,12 +3,20 @@
     {
       "comment_id": "0192f3a1-0000-7000-8000-000000000008",
       "author_display_name": "Minh",
+      "author": {
+        "kind": "unavailable",
+        "label": "Minh"
+      },
       "body": "Câu này gợi nhớ phố cũ.",
       "created_at": "2026-11-03T08:00:00Z",
       "reply_to": {
         "kind": "reply",
         "comment_id": "0192f3a1-0000-7000-8000-000000000005",
-        "author_display_name": "Lan Anh"
+        "author_display_name": "Lan Anh",
+        "author": {
+          "kind": "unavailable",
+          "label": "Lan Anh"
+        }
       }
     }
   ],

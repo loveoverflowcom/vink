@@ -523,7 +523,7 @@ fn page_with(view: CommentView, viewer_is_work_author: bool) -> RootPage {
                 view,
                 author: AuthorName {
                     id: actor(),
-                    display_name: "Bạn đọc".into(),
+                    attribution: "Bạn đọc".into(),
                 },
                 body: "Câu thơ".into(),
                 created_at: datetime!(2026-11-03 10:00 UTC),

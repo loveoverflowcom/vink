@@ -32,7 +32,7 @@ impl Destination {
         match segments(path)[..] {
             [] | ["tac-pham", _] | ["the", _] => Some(Self::Explore),
             ["ban-viet"] | ["ban-viet", _] => Some(Self::Desk),
-            ["toi"] | ["toi", "dia-chi"] => Some(Self::Me),
+            ["toi"] | ["toi", "dia-chi" | "chinh-ho-so"] => Some(Self::Me),
             [name] if name.starts_with('@') => Some(Self::Explore),
             _ => None,
         }
@@ -73,6 +73,11 @@ fn editor_context(path: &str) -> NavContext {
 pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
     let appearance = Appearance::provide();
     let session = crate::account::Session::provide();
+    #[cfg(feature = "hydrate")]
+    {
+        crate::pages::profile::observe_changes(crate::public_reads::invalidate_author_attribution);
+        crate::pages::profile::browser::provide_draft(session);
+    }
     let guest = Memo::new(move |_| session.standing.get() == crate::session::Standing::Anonymous);
     let location = use_location();
     let current = Memo::new(move |_| location.pathname.with(|path| Destination::for_path(path)));

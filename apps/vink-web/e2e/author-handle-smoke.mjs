@@ -1,9 +1,7 @@
 // HANDLE-03/04. One real account, two owner tabs and an isolated guest in Chrome.
-import { execFileSync } from 'node:child_process';
+import { authorFixtureSql } from './author-fixtures.mjs';
 import { fill, openAccount } from './auth-smoke.mjs';
 
-const scratch = process.env.VINK_HANDLE_SCRATCH;
-delete process.env.VINK_HANDLE_SCRATCH; // Only Node's fixture helper receives the runtime URL.
 const field = '#author-handle',
   submit = '#dia-chi-tac-gia form button[type=submit]';
 const edit = '#dia-chi-tac-gia .vk-handle-text',
@@ -174,30 +172,9 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
   await guest.goto(base + '/toi');
   // Account orchestration belongs to #297. Fence the profile in this exact disposable
   // database only, then revisit the URLs in the SAME guest browser with its cache enabled.
-  const db = scratch && new URL(scratch);
-  if (!db || db.pathname !== '/vink_verify_web_password_auth')
-    throw new Error('missing password scenario scratch profile');
-  const retired = execFileSync(
-    'psql',
-    [
-      '-XAtq',
-      '-v',
-      'ON_ERROR_STOP=1',
-      '-c',
-      "UPDATE author_profiles SET current_handle=NULL,version=version+1 WHERE current_database()='vink_verify_web_password_auth' AND current_handle='mua-ngo' RETURNING 1",
-    ],
-    {
-      env: {
-        ...process.env,
-        PGDATABASE: db.pathname.slice(1),
-        PGHOST: db.hostname,
-        PGPORT: db.port,
-        PGUSER: decodeURIComponent(db.username),
-        PGPASSWORD: decodeURIComponent(db.password),
-      },
-      encoding: 'utf8',
-    },
-  ).trim();
+  const retired = authorFixtureSql(
+    "UPDATE author_profiles SET current_handle=NULL,version=version+1 WHERE current_handle='mua-ngo' RETURNING 1;",
+  );
   check(retired === '1', 'retired exactly the scenario profile');
   await guest.eval('history.back()');
   await guest.waitFor(

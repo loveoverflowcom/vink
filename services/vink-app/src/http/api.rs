@@ -229,6 +229,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .merge(public)
         .merge(drafts)
         .merge(super::handle::routes())
+        .merge(super::profile::routes())
         .merge(publication_author)
         .merge(moderation_works)
         .merge(super::appeals::routes())
@@ -307,7 +308,7 @@ fn query_params<T>(query: Result<Query<T>, QueryRejection>) -> Result<T, ApiErro
         })
 }
 
-fn json_body<T>(body: Result<Json<T>, JsonRejection>) -> Result<T, ApiError> {
+pub(super) fn json_body<T>(body: Result<Json<T>, JsonRejection>) -> Result<T, ApiError> {
     body.map(|Json(body)| body)
         .map_err(|rejection| ApiError::Validation {
             field: "body",

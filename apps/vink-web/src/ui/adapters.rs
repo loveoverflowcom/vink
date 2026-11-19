@@ -1,22 +1,63 @@
-use super::patterns::{Author, DraftSummary};
-use crate::contract::{DraftCard, Publication, WorkCard};
+use super::patterns::{Author, DraftSummary, ProfileLink};
+use crate::contract::{AuthorProjection, DraftCard, Publication, WorkCard};
 
-/// The current provider exposes a display name, not a stable author ID or profile URL.
-/// Keep the avatar neutral rather than treating a name or the current account as that ID.
-pub fn card_author(card: &WorkCard) -> Author {
-    Author {
-        name: card.author_display_name.clone(),
-        key: None,
-        published_at: card.published_at.clone(),
+pub fn author_name(
+    legacy_name: &str,
+    author: Option<&AuthorProjection>,
+) -> (String, Option<ProfileLink>) {
+    match author {
+        Some(AuthorProjection::Linked(author)) => (
+            author.pen_name.clone(),
+            author.valid_href().map(|href| ProfileLink {
+                href: href.to_owned(),
+                handle: author.handle.clone(),
+            }),
+        ),
+        Some(AuthorProjection::Deleted { .. }) => ("Tài khoản đã xóa".into(), None),
+        Some(AuthorProjection::Unavailable { label }) => (label.clone(), None),
+        Some(AuthorProjection::Unsupported) => ("Chưa xác nhận được tác giả".into(), None),
+        None => (legacy_name.to_owned(), None),
     }
 }
 
-pub fn publication_author(publication: &Publication) -> Author {
+fn byline(
+    name: &str,
+    author: Option<&AuthorProjection>,
+    instant: &str,
+    unverified: bool,
+) -> Author {
+    // Only a profile link is an authority claim that a cached, unverified snapshot cannot make:
+    // the link is withheld until the immediate re-read (`public_reads::follow`). A pen name is
+    // always public, so an unlinked label keeps READ-02 freshness like the rest of the card.
+    let (name, profile) = if unverified && matches!(author, Some(AuthorProjection::Linked(_))) {
+        author_name("", Some(&AuthorProjection::Unsupported))
+    } else {
+        author_name(name, author)
+    };
     Author {
-        name: publication.author_display_name.clone(),
+        name,
         key: None,
-        published_at: publication.published_at.clone(),
+        published_at: instant.to_owned(),
+        profile,
     }
+}
+
+pub fn card_author(card: &WorkCard, unverified: bool) -> Author {
+    byline(
+        &card.author_display_name,
+        card.author.as_ref(),
+        &card.published_at,
+        unverified,
+    )
+}
+
+pub fn publication_author(publication: &Publication, unverified: bool) -> Author {
+    byline(
+        &publication.author_display_name,
+        publication.author.as_ref(),
+        &publication.published_at,
+        unverified,
+    )
 }
 
 pub fn draft_summary(draft: &DraftCard) -> DraftSummary {
@@ -74,11 +115,12 @@ fn discussion_comment(
     };
     Some(DiscussionComment {
         id: comment.comment_id.clone(),
-        author: Author {
-            name: comment.author_display_name.clone(),
-            key: None,
-            published_at: comment.created_at.clone(),
-        },
+        author: byline(
+            &comment.author_display_name,
+            comment.author.as_ref(),
+            &comment.created_at,
+            false,
+        ),
         body: comment.body.clone(),
         status,
         can_reply: comment.visibility == "public",
@@ -89,14 +131,17 @@ fn discussion_comment(
             ReplyTo::Reply {
                 comment_id,
                 author_display_name,
+                author,
             } => {
                 let href = loaded
                     .iter()
                     .any(|c| c.comment_id == *comment_id && c.visibility == "public")
                     .then(|| format!("#comment-{comment_id}"));
+                let (name, profile) = author_name(author_display_name, author.as_ref());
                 DiscussionContext::Reply {
-                    name: author_display_name.clone(),
+                    name,
                     href,
+                    profile,
                 }
             }
         }),

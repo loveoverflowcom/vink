@@ -20,6 +20,7 @@ pub mod outbox;
 pub mod post_review;
 pub(crate) mod postgres;
 mod principal;
+mod profile;
 pub(crate) mod publication;
 mod taxonomy;
 

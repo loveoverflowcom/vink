@@ -31,6 +31,50 @@ pub enum Snapshot {
     Control(ReaderResponse),
 }
 
+#[cfg(any(feature = "hydrate", test))]
+impl Snapshot {
+    fn clear_attribution(&mut self) {
+        use crate::contract::AuthorProjection;
+        fn clear(label: &mut String, author: &mut Option<AuthorProjection>) {
+            label.clear();
+            *author = Some(AuthorProjection::Unsupported);
+        }
+        match self {
+            Self::Works(list) => {
+                for card in &mut list.works {
+                    clear(&mut card.author_display_name, &mut card.author);
+                }
+            }
+            Self::Publication(publication) => {
+                clear(
+                    &mut publication.author_display_name,
+                    &mut publication.author,
+                );
+            }
+            Self::Control(ReaderResponse::ReviewWithdrawn { author_name, .. }) => {
+                *author_name = "Chưa xác nhận được tác giả".into();
+            }
+            Self::Control(_) => {}
+        }
+    }
+
+    fn carries_linked_attribution(&self) -> bool {
+        use crate::contract::AuthorProjection;
+        match self {
+            Self::Works(list) => list.works.iter().any(|card| {
+                card.author
+                    .as_ref()
+                    .is_some_and(AuthorProjection::is_linked)
+            }),
+            Self::Publication(publication) => publication
+                .author
+                .as_ref()
+                .is_some_and(AuthorProjection::is_linked),
+            Self::Control(_) => false,
+        }
+    }
+}
+
 /// READ-02 in-tab RAM retention budget (`WEB-PERF-07 / CHOICE-01 B`): 1 MiB per entry and
 /// 2 MiB total. The #237 measurements selected these limits for the retired blocks/lines
 /// document. The canonical document (#255) retains one source string, so its weight includes
@@ -49,6 +93,20 @@ pub const READ_CACHE_BUDGET: crate::read_cache::RetentionBudget =
 pub fn snapshot_weight_bytes(snapshot: &Snapshot) -> usize {
     fn opt_str_len(s: &Option<String>) -> usize {
         s.as_ref().map_or(0, String::len)
+    }
+    fn author_bytes(author: &crate::contract::AuthorProjection) -> usize {
+        use crate::contract::AuthorProjection;
+        80usize.saturating_add(match author {
+            AuthorProjection::Linked(author) => author
+                .pen_name
+                .len()
+                .saturating_add(author.handle.len())
+                .saturating_add(author.href.len()),
+            AuthorProjection::Deleted { label } | AuthorProjection::Unavailable { label } => {
+                label.len()
+            }
+            AuthorProjection::Unsupported => 0,
+        })
     }
     fn public_tag_bytes(t: &crate::contract::PublicTagDto) -> usize {
         64usize
@@ -93,6 +151,7 @@ pub fn snapshot_weight_bytes(snapshot: &Snapshot) -> usize {
                     .saturating_add(card.title.len())
                     .saturating_add(opt_str_len(&card.excerpt))
                     .saturating_add(card.author_display_name.len())
+                    .saturating_add(card.author.as_ref().map_or(0, author_bytes))
                     .saturating_add(card.published_at.len());
                 for tag in &card.tags {
                     bytes = bytes.saturating_add(public_tag_bytes(tag));
@@ -106,6 +165,7 @@ pub fn snapshot_weight_bytes(snapshot: &Snapshot) -> usize {
                 .saturating_add(pub_.revision_id.len())
                 .saturating_add(pub_.title.len())
                 .saturating_add(pub_.author_display_name.len())
+                .saturating_add(pub_.author.as_ref().map_or(0, author_bytes))
                 .saturating_add(pub_.published_at.len());
             for tag in &pub_.tags {
                 bytes = bytes.saturating_add(public_tag_bytes(tag));
@@ -211,6 +271,11 @@ pub fn invalidate_publication(work_id: &str) {
 #[cfg(feature = "hydrate")]
 pub async fn clear_device_cache() -> bool {
     browser::clear_device_cache().await
+}
+
+#[cfg(feature = "hydrate")]
+pub fn invalidate_author_attribution() {
+    browser::invalidate_author_attribution();
 }
 
 fn follow<T>(
@@ -333,6 +398,7 @@ mod coordinator {
         next_waiter: u64,
         seq: u64,
         seed_barrier: Millis,
+        attribution_barrier: Millis,
     }
 
     impl Coordinator {
@@ -352,6 +418,7 @@ mod coordinator {
                 next_waiter: 1,
                 seq: 0,
                 seed_barrier: Millis::NEG_INFINITY,
+                attribution_barrier: Millis::NEG_INFINITY,
             }
         }
 
@@ -452,7 +519,14 @@ mod coordinator {
                 self.store.observe(&key, at);
                 return;
             }
-            let mut sanitized = false;
+            // Only an invalidation seen by this document fences a seed. A back/forward
+            // document (`rendered_at` = -inf) must keep the attribution its HTML rendered,
+            // otherwise hydration disagrees with the server markup.
+            let mut sanitized =
+                self.attribution_barrier.is_finite() && rendered_at <= self.attribution_barrier;
+            if sanitized {
+                initial.clear_attribution();
+            }
             if let Snapshot::Works(list) = &mut initial {
                 let withdrawn: Vec<String> = self
                     .withdrawn
@@ -464,7 +538,7 @@ mod coordinator {
                     let before = list.works.len();
                     list.works
                         .retain(|card| !withdrawn.iter().any(|id| id == &card.work_id));
-                    sanitized = list.works.len() != before;
+                    sanitized |= list.works.len() != before;
                 }
             }
             self.store.seed(&key, initial, rendered_at, at);
@@ -564,6 +638,25 @@ mod coordinator {
                     }
                 }
             }
+        }
+
+        pub fn invalidate_author_attribution(&mut self, at: Millis, visible: bool) -> Effects {
+            self.attribution_barrier = at;
+            self.store.edit_matching(
+                |_| true,
+                |_, snapshot| {
+                    snapshot.clear_attribution();
+                    true
+                },
+            );
+            self.store.mutation_confirmed_where(|_| true);
+            let mut effects = Effects {
+                notify_changed: true,
+                reschedule: true,
+                ..Effects::default()
+            };
+            self.wake_matching(|_| true, at, visible, &mut effects);
+            effects
         }
 
         pub fn invalidate_publication(
@@ -1076,6 +1169,7 @@ mod browser {
 
     pub fn follow(key: PublicKey, initial: Snapshot) -> Memo<Option<Status<Snapshot>>> {
         let at = now();
+        let has_linked_attribution = initial.carries_linked_attribution();
         with(|owner| {
             owner
                 .coord
@@ -1085,7 +1179,16 @@ mod browser {
         // After hydration, never during it: a refresh flag set mid-hydration would disagree
         // with the server HTML.
         let mounted = key.clone();
-        Effect::new(move |_| check(&mounted, Trigger::Signal));
+        Effect::new(move |_| {
+            // Only a link requires an immediate authority read on reentry. Unlinked
+            // labels and tombstones follow the normal public snapshot schedule.
+            let trigger = if has_linked_attribution && cached_unverified(&mounted) {
+                Trigger::Manual
+            } else {
+                Trigger::Signal
+            };
+            check(&mounted, trigger);
+        });
         let released = key.clone();
         on_cleanup(move || {
             let effects = with(|owner| owner.coord.release(&released, now()));
@@ -1103,6 +1206,11 @@ mod browser {
 
     pub fn check(key: &PublicKey, trigger: Trigger) {
         let effects = with(|owner| owner.coord.check(key, trigger, now(), visible()));
+        apply_effects(effects);
+    }
+
+    pub fn invalidate_author_attribution() {
+        let effects = with(|owner| owner.coord.invalidate_author_attribution(now(), visible()));
         apply_effects(effects);
     }
 
@@ -1330,6 +1438,7 @@ mod tests {
             title: format!("Title {id}"),
             excerpt: None,
             author_display_name: "Author".into(),
+            author: None,
             published_at: "2026-11-15T00:00:00Z".into(),
             tags: vec![],
         }
@@ -1346,12 +1455,89 @@ mod tests {
         })
     }
 
+    #[test]
+    fn author_contract_cache_counts_ref_bytes_and_fences_retained_attribution() {
+        use crate::contract::{AuthorProjection, PublicAuthorRef};
+        let key = PublicKey::Works(ExploreQuery::default());
+        let mut stale = sample_list(&["w1"]);
+        let legacy_size = super::snapshot_weight_bytes(&stale);
+        assert!(!stale.carries_linked_attribution());
+        let mut unavailable = stale.clone();
+        let Snapshot::Works(list) = &mut unavailable else {
+            unreachable!()
+        };
+        list.works[0].author = Some(AuthorProjection::Unavailable {
+            label: "Bút danh cũ".into(),
+        });
+        assert!(!unavailable.carries_linked_attribution());
+        let Snapshot::Works(list) = &mut stale else {
+            unreachable!()
+        };
+        let author = PublicAuthorRef {
+            pen_name: "Tên tác giả".into(),
+            handle: "ten".into(),
+            href: "/@ten".into(),
+        };
+        let reference_bytes = author.pen_name.len() + author.handle.len() + author.href.len();
+        list.works[0].author = Some(AuthorProjection::Linked(author));
+        assert!(stale.carries_linked_attribution());
+        assert!(super::snapshot_weight_bytes(&stale) >= legacy_size + reference_bytes);
+
+        let mut read = Coordinator::new(Policy::V1);
+        read.follow_seed(key.clone(), stale.clone(), 1.0, 1.0);
+        read.release(&key, 2.0);
+        let ticket = read.check(&key, Trigger::Manual, 3.0, true).fetches[0].1;
+        read.invalidate_author_attribution(4.0, true);
+        read.finish(
+            key.clone(),
+            ticket,
+            Outcome::Fresh(stale.clone()),
+            5.0,
+            0.0,
+            true,
+        );
+        read.follow_seed(key.clone(), stale, 3.0, 6.0);
+        let Some(Snapshot::Works(list)) = read.status(&key).and_then(|s| s.data) else {
+            panic!("expected retained work data");
+        };
+        assert_eq!(list.works[0].author, Some(AuthorProjection::Unsupported));
+        assert!(list.works[0].author_display_name.is_empty());
+        assert_eq!(list.works[0].work_id, "w1");
+    }
+
+    #[test]
+    fn back_forward_seed_keeps_attribution_until_this_document_invalidates() {
+        use crate::contract::{AuthorProjection, PublicAuthorRef};
+        let key = PublicKey::Works(ExploreQuery::default());
+        let mut linked = sample_list(&["w1"]);
+        let Snapshot::Works(list) = &mut linked else {
+            unreachable!()
+        };
+        list.works[0].author = Some(AuthorProjection::Linked(PublicAuthorRef {
+            pen_name: "Tên tác giả".into(),
+            handle: "ten".into(),
+            href: "/@ten".into(),
+        }));
+        let mut read = Coordinator::new(Policy::V1);
+        read.follow_seed(key.clone(), linked.clone(), f64::NEG_INFINITY, 1.0);
+        assert_eq!(read.status(&key).and_then(|s| s.data), Some(linked.clone()));
+
+        let mut fenced = Coordinator::new(Policy::V1);
+        fenced.invalidate_author_attribution(1.0, true);
+        fenced.follow_seed(key.clone(), linked, f64::NEG_INFINITY, 2.0);
+        let Some(Snapshot::Works(list)) = fenced.status(&key).and_then(|s| s.data) else {
+            panic!("expected fenced work data");
+        };
+        assert_eq!(list.works[0].author, Some(AuthorProjection::Unsupported));
+    }
+
     fn sample_pub(id: &str, rev: &str) -> Snapshot {
         Snapshot::Publication(Publication {
             work_id: id.into(),
             revision_id: rev.into(),
             title: format!("Title {id}"),
             author_display_name: "Author".into(),
+            author: None,
             document: DocumentDto {
                 format: crate::contract::DocumentFormatDto::Default,
                 source: String::new(),
@@ -2049,6 +2235,7 @@ mod tests {
             revision_id: format!("rev-{id}"),
             title: id.into(),
             author_display_name: "Tác giả".into(),
+            author: None,
             published_at: "2026-11-17T00:00:00Z".into(),
             document: crate::document::default_document(&vec![line; block_count].join("\n\n")),
             tags: Vec::new(),
@@ -2688,6 +2875,7 @@ mod tests {
                 revision_id: "00000000-0000-4000-8000-000000000001".into(),
                 title: format!("[Mẫu] Kiểm thử {id}"),
                 author_display_name: "Tác giả kiểm thử".into(),
+                author: None,
                 published_at: "2026-11-17T00:00:00Z".into(),
                 document: doc,
                 tags: vec![
@@ -2769,6 +2957,7 @@ mod tests {
                         title: format!("[Mẫu #100] Kiểm thử {i}"),
                         excerpt: None,
                         author_display_name: "Tác giả kiểm thử".into(),
+                        author: None,
                         published_at: "2026-11-17T00:00:00Z".into(),
                         tags: vec![
                             PublicTagDto {

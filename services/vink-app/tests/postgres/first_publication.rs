@@ -204,7 +204,13 @@ async fn backfill_and_old_writer_preserve_the_source_across_republication(pool: 
         .unwrap();
     let vink = seeded(&pool).await;
     let legacy = sample_work();
-    let pointer_time = vink.publication(legacy).await.unwrap().published_at;
+    // This stage has the old schema. Use its public pointer as the migration oracle.
+    let pointer_time: OffsetDateTime =
+        sqlx::query_scalar("SELECT published_at FROM publications WHERE work_id = $1")
+            .bind(legacy.as_uuid())
+            .fetch_one(&pool)
+            .await
+            .unwrap();
     let withdrawn = vink.create_draft(author()).await.unwrap().work_id;
     let withdrawn_revision = capture(&vink, withdrawn, 1).await;
     vink.request_public(author(), withdrawn, "submit-old", withdrawn_revision, 1)
@@ -242,7 +248,12 @@ async fn backfill_and_old_writer_preserve_the_source_across_republication(pool: 
     writer.commit().await.unwrap();
     assert_eq!(
         migrate(&pool).await.unwrap().applied,
-        [FIRST_PUBLICATION_MIGRATION, HANDLE_MIGRATION]
+        [
+            FIRST_PUBLICATION_MIGRATION,
+            HANDLE_MIGRATION,
+            PROFILE_FIELDS_MIGRATION,
+            PUBLIC_ATTRIBUTION_MIGRATION
+        ]
     );
     // A binary embedding only the prior ledger is not ready after an additive migration.
     let prior = sqlx::migrate::Migrator::with_migrations(

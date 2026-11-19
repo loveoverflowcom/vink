@@ -8,7 +8,7 @@
 //! saves the body bytes. No content coding is applied, so the bytes hashed are the bytes sent;
 //! adding compression requires a per-coding tag (or a weak one) first.
 //!
-//! Only the two bounded public reads use this. Drafts, discussion and errors never do.
+//! Only bounded public representations use this. Drafts, discussion and errors never do.
 
 use axum::body::Body;
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};

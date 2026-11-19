@@ -26,6 +26,8 @@ use vink_app::http::{AppState, router};
 use vink_app::identity::{IdentityResolver, Resolution, ResolveFuture};
 use vink_app::persistence::{PgStore, SchemaState, schema_state};
 
+const PROFILE_FIELDS_MIGRATION: i64 = 20261125000000;
+const PUBLIC_ATTRIBUTION_MIGRATION: i64 = 20261125010000;
 const ORIGIN: &str = "http://127.0.0.1:3000";
 
 #[path = "postgres/abuse.rs"]

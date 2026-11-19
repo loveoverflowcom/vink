@@ -43,6 +43,7 @@ use crate::application::discussion::{
     SubmitOutcome,
 };
 use crate::application::ports::{DiscussionStore, StoreError};
+use crate::application::profile::AuthorAttribution;
 use crate::domain::discussion::admission::AdmissionFacts;
 use crate::domain::discussion::lifecycle::{
     CommentState, LifecycleError, ModerationVersion, Removal, Review, Transition,
@@ -121,7 +122,7 @@ impl QueueRow {
             is_root: self.is_root,
             writer: AuthorName {
                 id: writer,
-                display_name: self.display_name,
+                attribution: self.display_name.into(),
             },
             body: self
                 .body
@@ -340,6 +341,8 @@ struct ItemRow {
     id: Uuid,
     author_id: Uuid,
     display_name: String,
+    handle: Option<String>,
+    retired: bool,
     body: Option<String>,
     review: String,
     removal: Option<String>,
@@ -351,6 +354,8 @@ struct ItemRow {
     context_removal: Option<String>,
     context_version: Option<i64>,
     context_author_name: Option<String>,
+    context_author_handle: Option<String>,
+    context_author_retired: Option<bool>,
     last_reason: Option<String>,
     public_replies: i64,
 }
@@ -402,7 +407,11 @@ impl ItemRow {
             view: seen,
             author: AuthorName {
                 id: PrincipalId::from_uuid(self.author_id),
-                display_name: self.display_name.clone(),
+                attribution: AuthorAttribution::project(
+                    self.display_name.clone(),
+                    self.handle.clone(),
+                    self.retired,
+                ),
             },
             body: self
                 .body
@@ -411,7 +420,13 @@ impl ItemRow {
             created_at: self.created_at,
             // Only a public context may name its writer.
             context_author: match context {
-                ReplyContext::Reply(_) => self.context_author_name.clone(),
+                ReplyContext::Reply(_) => self.context_author_name.clone().map(|name| {
+                    AuthorAttribution::project(
+                        name,
+                        self.context_author_handle.clone(),
+                        self.context_author_retired.unwrap_or_default(),
+                    )
+                }),
                 ReplyContext::Root | ReplyContext::Unavailable => None,
             },
             context,
@@ -424,7 +439,7 @@ impl ItemRow {
 }
 
 /// Columns shared by root and reply reads. `$viewer` is the reading principal or NULL.
-const ITEM_COLUMNS: &str = "c.root_id, c.id, c.author_id, a.display_name, c.body, c.review, \
+const ITEM_COLUMNS: &str = "c.root_id, c.id, c.author_id, a.display_name, a.handle, a.retired, c.body, c.review, \
      c.removal, c.moderation_version, c.created_at, c.reply_to_id, c.replied_to_reply, \
      (SELECT d.reason FROM comment_moderation_decisions d WHERE d.comment_id = c.id \
        ORDER BY d.version DESC LIMIT 1) AS last_reason";
@@ -459,6 +474,8 @@ struct OwnRow {
     context_removal: Option<String>,
     context_version: Option<i64>,
     context_author_name: Option<String>,
+    context_author_handle: Option<String>,
+    context_author_retired: Option<bool>,
     last_reason: Option<String>,
 }
 
@@ -512,7 +529,13 @@ impl OwnRow {
                     context,
                     // Only a public context may name its writer.
                     context_author: match context {
-                        ReplyContext::Reply(_) => self.context_author_name,
+                        ReplyContext::Reply(_) => self.context_author_name.map(|name| {
+                            AuthorAttribution::project(
+                                name,
+                                self.context_author_handle,
+                                self.context_author_retired.unwrap_or_default(),
+                            )
+                        }),
                         ReplyContext::Root | ReplyContext::Unavailable => None,
                     },
                 }
@@ -545,14 +568,14 @@ const OWN_COLUMNS: &str = "c.id, c.author_id, c.body, c.review, c.removal, c.mod
          AND pr.removal IS NULL) END AS root_public_replies, \
      c.reply_to_id, c.replied_to_reply, x.review AS context_review, \
      x.removal AS context_removal, x.moderation_version AS context_version, \
-     xa.display_name AS context_author_name, \
+     xa.display_name AS context_author_name, xa.handle AS context_author_handle, xa.retired AS context_author_retired, \
      (SELECT d.reason FROM comment_moderation_decisions d WHERE d.comment_id = c.id \
        ORDER BY d.version DESC LIMIT 1) AS last_reason";
 
 const OWN_FROM: &str = "comments c
        LEFT JOIN comments r ON r.id = c.root_id
        LEFT JOIN comments x ON x.id = c.reply_to_id
-       LEFT JOIN principals xa ON xa.id = x.author_id";
+       LEFT JOIN public_author_attribution xa ON xa.id = x.author_id";
 
 /// Present and unpublished: equals `own_overlay(..).unpublished` for the viewer's own rows.
 const OWN_UNPUBLISHED: &str = "c.removal IS NULL AND c.review <> 'approved'";
@@ -1175,8 +1198,8 @@ impl DiscussionStore for PgStore {
         let (after_at, after_id) = page_bounds(after);
         let rows: Vec<ItemRow> = sqlx::query_as(AssertSqlSafe(format!(
             "SELECT {ITEM_COLUMNS}, NULL::text AS context_review, NULL::text AS context_removal,
-                    NULL::bigint AS context_version, NULL::text AS context_author_name, {PUBLIC_REPLIES} AS public_replies
-               FROM comments c JOIN principals a ON a.id = c.author_id
+                    NULL::bigint AS context_version, NULL::text AS context_author_name, NULL::text AS context_author_handle, NULL::bool AS context_author_retired, {PUBLIC_REPLIES} AS public_replies
+               FROM comments c JOIN public_author_attribution a ON a.id = c.author_id
               WHERE c.thread_id = $1 AND c.kind = 'root'
                 AND ($3::timestamptz IS NULL OR (c.created_at, c.id) > ($3, $4))
                 AND (({VISIBLE_TO_VIEWER}) OR {PUBLIC_REPLIES} > 0)
@@ -1198,16 +1221,16 @@ impl DiscussionStore for PgStore {
         let root_ids: Vec<Uuid> = rows.iter().map(|row| row.id).collect();
         let previews: Vec<ItemRow> = sqlx::query_as(AssertSqlSafe(format!(
             "SELECT {ITEM_COLUMNS}, x.review AS context_review, x.removal AS context_removal,
-                    x.moderation_version AS context_version, xa.display_name AS context_author_name, 0::bigint AS public_replies
+                    x.moderation_version AS context_version, xa.display_name AS context_author_name, xa.handle AS context_author_handle, xa.retired AS context_author_retired, 0::bigint AS public_replies
                FROM unnest($1::uuid[]) AS parent(id)
               CROSS JOIN LATERAL (
                     SELECT c.* FROM comments c
                      WHERE c.root_id = parent.id AND c.kind = 'reply' AND {VISIBLE_TO_VIEWER}
                      ORDER BY c.created_at, c.id
                      LIMIT $3) c
-               JOIN principals a ON a.id = c.author_id
+               JOIN public_author_attribution a ON a.id = c.author_id
                LEFT JOIN comments x ON x.id = c.reply_to_id
-               LEFT JOIN principals xa ON xa.id = x.author_id
+               LEFT JOIN public_author_attribution xa ON xa.id = x.author_id
               ORDER BY c.root_id, c.created_at, c.id"
         )))
         .bind(&root_ids)
@@ -1276,8 +1299,8 @@ impl DiscussionStore for PgStore {
         let viewer_id = viewer.map(|viewer| viewer.as_uuid());
         let root: Option<ItemRow> = sqlx::query_as(AssertSqlSafe(format!(
             "SELECT {ITEM_COLUMNS}, NULL::text AS context_review, NULL::text AS context_removal,
-                    NULL::bigint AS context_version, NULL::text AS context_author_name, {PUBLIC_REPLIES} AS public_replies
-               FROM comments c JOIN principals a ON a.id = c.author_id
+                    NULL::bigint AS context_version, NULL::text AS context_author_name, NULL::text AS context_author_handle, NULL::bool AS context_author_retired, {PUBLIC_REPLIES} AS public_replies
+               FROM comments c JOIN public_author_attribution a ON a.id = c.author_id
               WHERE c.id = $1 AND c.thread_id = $2 AND c.kind = 'root'"
         )))
         .bind(root_id.as_uuid())
@@ -1295,11 +1318,11 @@ impl DiscussionStore for PgStore {
         let (after_at, after_id) = page_bounds(after);
         let rows: Vec<ItemRow> = sqlx::query_as(AssertSqlSafe(format!(
             "SELECT {ITEM_COLUMNS}, x.review AS context_review, x.removal AS context_removal,
-                    x.moderation_version AS context_version, xa.display_name AS context_author_name, 0::bigint AS public_replies
+                    x.moderation_version AS context_version, xa.display_name AS context_author_name, xa.handle AS context_author_handle, xa.retired AS context_author_retired, 0::bigint AS public_replies
                FROM comments c
-               JOIN principals a ON a.id = c.author_id
+               JOIN public_author_attribution a ON a.id = c.author_id
                LEFT JOIN comments x ON x.id = c.reply_to_id
-               LEFT JOIN principals xa ON xa.id = x.author_id
+               LEFT JOIN public_author_attribution xa ON xa.id = x.author_id
               WHERE c.root_id = $1 AND c.kind = 'reply' AND {VISIBLE_TO_VIEWER}
                 AND ($3::timestamptz IS NULL OR (c.created_at, c.id) > ($3, $4))
               ORDER BY c.created_at, c.id
