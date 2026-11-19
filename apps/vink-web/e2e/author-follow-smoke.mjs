@@ -177,7 +177,7 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
     `${q('#follow-action')}?.textContent?.trim() === 'Bỏ theo dõi' && window.__followEvents.length === 1`,
     'reconciliation updates state cleanly and dispatches one invalidation event'
   );
-  check(await page.eval(`${q('#profile-followers-link')}?.textContent?.includes('1 người theo dõi')`), 'reconcile updated followers count to 1');
+  await page.waitFor(`${q('#profile-followers-link')}?.textContent?.includes('1 người theo dõi')`, 'reconcile updated followers count to 1');
 
   // Unfollow (order 2).
   await page.click('#follow-action');
