@@ -909,6 +909,7 @@ fn ResultRow(
             {move || work.get().map(|work| {
                 let href = context.reader_href(&work.work_id);
                 let title_id = format!("work-title-{}", work.work_id);
+                let title_label = title_id.clone();
                 #[cfg(feature = "hydrate")]
                 let context = context.clone();
                 #[cfg(feature = "hydrate")]
@@ -941,8 +942,8 @@ fn ResultRow(
                         <div class="vk-public-row__main">
                             // Heading first in the DOM (heading navigation, Tab: work → author);
                             // CSS shows the byline above it as in Khám phá r1.
-                            <h2 class="vk-public-row__title" id=title_id.clone()>
-                                <a class="vk-public-row__link" href=href aria-labelledby=title_id on:click=move |_event| {
+                            <h2 class="vk-public-row__title" id=title_id>
+                                <a class="vk-public-row__link" href=href aria-labelledby=title_label on:click=move |_event| {
                                     #[cfg(feature = "hydrate")]
                                     super::remember_public_position(&_event, &context, &return_id, &navigate);
                                 }>{highlighted_text(&work.title, &query)}</a>
@@ -1121,6 +1122,7 @@ mod tests {
             title: "Mưa trên phố cũ".into(),
             excerpt: Some("Mưa rơi nhẹ qua phố cổ.".into()),
             author_display_name: "Lê Thu Mưa".into(),
+            author: None,
             published_at: "2026-10-30T08:00:00Z".into(),
             tags: vec![PublicTagDto {
                 tag_id: "11111111-1111-4111-8111-111111111111".into(),
