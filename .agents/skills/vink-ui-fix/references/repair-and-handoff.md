@@ -86,63 +86,19 @@ nhỏ; không lập log vòng cho thay đổi một dòng.
 
 ## Mẫu bàn giao
 
-Dùng phần cần thiết và giữ văn phong theo user. Nếu chỉ cần một chỉnh nhỏ, rút gọn
-thành goal, owner, change, acceptance, verify và authorized actions. Nếu user gọi
-Vink Prompt/SudoLang hoặc cần handoff tự đủ, dùng convention đã có của repo dưới
-đây. Nó không phải schema thực thi hay yêu cầu xây parser. Điền facts đã quan sát
-hoặc `UNKNOWN`; không để placeholder thành thông tin khẳng định.
+Dùng [mẫu VINK_PROMPT_INPUT_V1](../../vink-prompt/references/prompt-template.md). Với một
+chỉnh sửa nhỏ, ghi vùng/trạng thái, chữ hoặc bố cục trước và sau, owner và phép kiểm ngay
+trong các trường ngắn. Giữ quyền thực thi mà người dùng đã giao.
 
-```text
-VINK_PROMPT_INPUT_V1
-REPOSITORY: loveoverflowcom/vink
-GOAL: [kết quả UI quan sát được và tác động cho người dùng; hành trình entry → action → result → recovery, một câu cho sửa nhỏ]
-SCOPE: [màn/components/states và touchpoints thật; phần giữ/hoãn; giữ giới hạn và số PR/chat user yêu cầu]
-BASE: [base user giao; nếu không có thì develop sau khi kiểm current state]
-SNAPSHOT: [branch/SHA đã đọc, ảnh/reference revision, dirty inputs và gap]
-TARGET_ENVIRONMENT: UNKNOWN until the executing agent inspects its machine
-SOURCES_AND_OWNERS:
-  - AGENTS.md; .agents/skills/README.md
-  - prd/vision.md; prd/requirements.md [IDs liên quan]
-  - [đường dẫn component/token/state thực đã xác minh]
-  - .agents/skills/vink-ui-design/SKILL.md
-  - .agents/skills/vink-layout-spec/SKILL.md
-  - .agents/skills/vink-leptos-web/SKILL.md [khi chạm renderer]
-  - .agents/skills/vink-publication/SKILL.md [khi chạm nghĩa trạng thái]
-DECISIONS:
-  - [phương án user đã chọn và reference đúng]
-  - [proposals còn mở; không nâng thành Accepted]
-LAYOUT_SPEC: [spec đã chọn hoặc nội dung/đường dẫn + revision truy cập được; nếu chưa có,
-  agent nhận việc xuất spec đầy đủ/rút gọn trước patch UI/script/preview, rồi tiếp tục
-  trong phạm vi đã giao; chỉ chờ chọn/duyệt khi user yêu cầu]
-UX_CRITERIA: [các dòng rubric quyết định, loại mốc + trạng thái duyệt hoặc `no approved reference`, invariant kèm đơn vị/dung sai; bỏ với sửa copy/một thuộc tính rõ]
-REFERENCES: [mốc dùng và loại (concept/style anchor/regression baseline), revision, trạng thái
-  duyệt; hoặc `không có mốc được duyệt`. Không ghi candidate thành approved]
-FINDINGS: [ID, scenario/target, quan sát, evidence đã mở; giả thuyết giữ nhãn giả thuyết]
-ACCEPTANCE:
-  - [layout/copy/hành vi quan sát được và state dễ lỗi]
-  - [mobile/theme/text scale có liên quan]
-  - [giữ nghĩa lưu nháp/quyền/public revision/curation khi liên quan]
-VERIFY:
-  - [check đúng boundary, lệnh từ docs/development, evidence cần giữ]
-  - [same-scenario trước/sau nếu có baseline; ảnh mở và tương tác báo riêng]
-  - [đối chiếu vùng/CTA/responsive/state theo đúng spec; giải thích lệch có chủ ý]
-  - [kết quả theo năm chiều, 100% và 200% báo riêng; ngân sách vòng sửa và điểm dừng]
-BLOCKERS:
-  if a runtime dependency is unavailable:
-    complete independent work; retain the writer's data and honest UI states
-    record the deferred check, prerequisite and resume condition
-  if an unresolved decision changes correctness:
-    complete unaffected work; identify the exact product decision and its source
-AUTHORIZED_ACTIONS:
-  - [chỉ các hành động user đã giao; phân biệt local edit và hành động remote]
-HANDOFF:
-  report changed components and behavior, files, writer/reviewer evidence mapping (`AC/claim → connected source/caller → evidence → result → gap` per verification.md), short human smoke card if a main UI journey or residual device risk changed, and material gaps
-```
+Khi bàn giao từ audit hoặc thiết kế, bổ sung dữ liệu UI vào cùng mẫu:
 
-Đính copy chuẩn, hierarchy, semantic roles, responsive rules, empty/error/pending
-states và flow/focus nếu phương án yêu cầu. Mô tả hành vi trước khi lạm dụng pixel;
-các con số chưa đo phải là đề xuất. Nếu chia việc, mỗi shared file có một owner và
-dependency/order rõ; không mở chat/issue chỉ vì template nhắc tới chúng.
+- `FINDINGS` giữ ID, scenario/target, quan sát, bằng chứng đã mở và giả thuyết cần kiểm.
+- `LAYOUT_SPEC` giữ hướng đã chọn, phiên bản và hành vi responsive, theme, focus hoặc
+  trạng thái lỗi liên quan. `UX_CRITERIA` mang mốc thị giác, revision, trạng thái duyệt
+  và invariant quyết định. Giữ `REFERENCES` nếu prompt nguồn đã dùng trường đó.
+- `VERIFY` yêu cầu render đúng màn và state, kiểm thao tác riêng khi AC đòi hỏi. Khi bàn giao
+  một lượt audit, dùng [bảng năm chiều](../../vink-ui-design/references/ux-quality.md#4-bảng-kết-quả-theo-chiều)
+  để ghi kết quả và phần còn thiếu. Đối chiếu cùng kịch bản nếu có ảnh trước khi sửa.
 
 ## Báo cáo sau sửa
 

@@ -169,28 +169,32 @@ frontmatter `description:` một dòng, `agents/openai.yaml` và symlink `.claud
 
 ## Rà soát hợp đồng giao việc, bằng chứng, review và tương thích Antigravity (19/11/2026)
 
-Đối chiếu trên `develop@117ef20f` (tham chiếu lịch sử `f6d37cda`, các ca `#290→#292`, `#315–#318`,
-`#321→#322` và plugin ngoài `vink-github-issue` v1.0.0) theo phương án mở rộng trực tiếp tại
-các owner hiện có (không thêm skill, runner hoặc bảng trạng thái mới):
+Nguồn đối chiếu là `develop@117ef20f`. [#290](https://github.com/loveoverflowcom/vink/issues/290)
+bàn giao có chủ đích cho [#292](https://github.com/loveoverflowcom/vink/issues/292).
+[#318](https://github.com/loveoverflowcom/vink/pull/318) ghi nhận lỗi sau tích hợp, gồm vòng đời
+lưu thẻ sau HTTP 422. [#322](https://github.com/loveoverflowcom/vink/pull/322) ghi nhận điều kiện
+hover của trình duyệt headless và lỗi đồng bộ. Số PR tiếp nối tự nó không xác định nguyên nhân.
 
-- **Hợp đồng tác vụ và tách lát:** [vink-prompt](../../.agents/skills/vink-prompt/SKILL.md),
-  [prompt-template](../../.agents/skills/vink-prompt/references/prompt-template.md),
-  [vink-work-item](../../.agents/skills/vink-work-item/SKILL.md) và
-  [vink-architect](../../.agents/skills/vink-architect/SKILL.md) bổ sung `Journey` (hoặc
-  caller/output thật với backend/tài liệu), `Touchpoints`, `Completes`/`Deferred`, parent/integration
-  owner cho hành trình nhiều PR và quy tắc safe-exposure không dựng feature-flag platform mới.
-- **Chứng cứ, phân mức hoàn thành và bàn giao review:** [verification.md](../../.agents/skills/vink-engineering/references/verification.md)
-  sở hữu bộ claim theo phạm vi (`IMPLEMENTED`, `VERIFIED`, `OUTCOME_COMPLETE` song song bốn chiều
-  trạng thái), ánh xạ bàn giao chung `AC/claim → connected source/caller → evidence → result → gap`,
-  tái sử dụng theo delta (cấm gắn SHA mới lên run cũ), phân loại `DEFECT` / `ACCEPTANCE GAP` /
-  `SUGGESTION` và tính độc lập reviewer ở [vink-code-review](../../.agents/skills/vink-code-review/SKILL.md)
-  cùng [vink-ui-inspector](../../.agents/skills/vink-ui-inspector/SKILL.md), đối soát AC bắt buộc
-  với pilot UX (#174) ở [ux-quality.md §5](../../.agents/skills/vink-ui-design/references/ux-quality.md#5-mức-bắt-buộc-hiện-tại),
-  triage flaky check/assertion CSS theo contract và thẻ human smoke ngắn (~2 phút) cho luồng UI chính.
-- **Tương thích Antigravity và ranh giới plugin ngoài:** bỏ liên kết `[$vink-*]` đặc thù Codex khỏi
-  `vink-ui-capture` và `vink-ui-evidence-drive`; sửa chỉ dẫn CSS owner ở
-  [repair-and-handoff.md](../../.agents/skills/vink-ui-fix/references/repair-and-handoff.md) và trạng
-  thái auth ở [vink-ui-capture](../../.agents/skills/vink-ui-capture/SKILL.md); giữ nhánh/worktree
-  đang mở trong `AGENTS.md` và `.agents/skills/README.md`, thêm ghi chú `local-budget` Python 3.13+
-  và guard YAML/link trong `xtask/src/checks.rs`. Plugin ngoài `vink-github-issue` không có nguồn
-  editable trong repo này nên phần delta tương thích được bàn giao riêng để cập nhật ở plugin owner.
+[Mẫu prompt](../../.agents/skills/vink-prompt/references/prompt-template.md) sở hữu phạm vi
+và trường mở rộng cho công việc nhiều PR. [Hướng dẫn kiểm chứng](../../.agents/skills/vink-engineering/references/verification.md)
+sở hữu cách bàn giao theo AC và đánh giá lại bằng chứng sau một thay đổi.
+[Skill review](../../.agents/skills/vink-code-review/SKILL.md) sở hữu phân loại finding,
+còn [pilot UX](../../.agents/skills/vink-ui-design/references/ux-quality.md#5-mức-bắt-buộc-hiện-tại)
+sở hữu mức áp dụng của rubric.
+
+**Đối chiếu plugin ngoài `vink-github-issue` v1.0.0.** Plugin sở hữu tạo/amend issue,
+checklist và đồng bộ tiến độ. Phần bàn giao cho chủ phiên bản tiếp theo gồm:
+
+- Trong `references/issue-template.md` và `compatibility.md`, dẫn mẫu repo tại bản nhận việc.
+  Giữ AC ID, quyền ghi và tracking của issue. Với nhiều PR, thêm người phụ trách tích hợp và
+  kịch bản nghiệm thu cuối.
+- `references/progress-protocol.md` đã đối chiếu AC với SHA/content, target và kết quả.
+  Bổ sung ví dụ giữ SHA thực thi khi tái dùng bằng chứng và phân biệt AC bắt buộc với pilot UX.
+- `references/local-verification.md` cần cập nhật câu về Kani theo command owner hiện tại,
+  dẫn [scoped workflows](../development/scoped-workflows.md) và [local-budget](../development/local-resource-budget.md).
+  `references/source-map.md` đã yêu cầu đọc lại checkout. Giữ `4ce0ff18` cho lần khảo sát cũ
+  và gắn SHA mới cho nguồn đã kiểm tra lại.
+- `references/github-operations.md` đã có đường dự phòng qua CLI. Thử discovery trên từng host
+  nếu chủ plugin muốn phân phối ngoài Codex. Tách phép thử đó khỏi thay đổi template nghiệp vụ.
+
+Phiên bản plugin đã đối chiếu được quản lý ngoài repo Vink.

@@ -7,6 +7,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use pulldown_cmark::{Event, LinkType, Options, Parser, Tag};
+use saphyr::{LoadableYamlNode, MarkedYaml};
 use sha2::{Digest, Sha256};
 
 /// Self-hosted font faces, their OFL licenses and `provenance.json`.
@@ -237,7 +239,6 @@ fn skills(root: &Path, problems: &mut Vec<String>) {
             continue;
         };
         problems.extend(skill_frontmatter(&name, &text));
-        problems.extend(skill_body_problems(&name, &text));
         let yaml = read(&dir.join(&name).join("agents/openai.yaml")).unwrap_or_default();
         for key in ["display_name:", "short_description:", "default_prompt:"] {
             if !yaml.lines().any(|l| l.trim_start().starts_with(key)) {
@@ -259,48 +260,58 @@ fn skills(root: &Path, problems: &mut Vec<String>) {
     }
 }
 
-/// Frontmatter needs `name` equal to the directory and a single-line non-empty `description`
-/// (quoted if containing `: `) for clean parsing across Codex, Claude Code and Antigravity.
-fn skill_frontmatter(name: &str, text: &str) -> Vec<String> {
-    let mut problems = Vec::new();
-    let mut lines = text.lines();
-    if lines.next() != Some("---") {
-        return vec![format!("{name}: SKILL.md must start with YAML frontmatter")];
+fn skill_sections(text: &str) -> Result<(&str, &str), &'static str> {
+    let mut lines = text.split_inclusive('\n');
+    let Some(open) = lines
+        .next()
+        .filter(|line| line.trim_end_matches(['\r', '\n']) == "---")
+    else {
+        return Err("SKILL.md must start with YAML frontmatter");
+    };
+    let mut offset = open.len();
+    for line in lines {
+        if line.trim_end_matches(['\r', '\n']) == "---" {
+            return Ok((&text[open.len()..offset], &text[offset + line.len()..]));
+        }
+        offset += line.len();
     }
-    let front: Vec<&str> = lines.take_while(|l| *l != "---").collect();
-    if !front.iter().any(|l| *l == format!("name: {name}")) {
+    Err("missing closing frontmatter delimiter")
+}
+
+fn skill_frontmatter(name: &str, text: &str) -> Vec<String> {
+    let (header, _) = match skill_sections(text) {
+        Ok(sections) => sections,
+        Err(error) => return vec![format!("{name}: {error}")],
+    };
+    let documents = match MarkedYaml::load_from_str(header) {
+        Ok(documents) => documents,
+        Err(error) => return vec![format!("{name}: invalid frontmatter YAML: {error}")],
+    };
+    let [document] = documents.as_slice() else {
+        return vec![format!("{name}: expected one frontmatter mapping")];
+    };
+    let Some(fields) = document.data.as_mapping() else {
+        return vec![format!("{name}: expected a frontmatter mapping")];
+    };
+    let mut problems = Vec::new();
+    let declared_name = fields.get(&MarkedYaml::value_from_str("name"));
+    if declared_name.and_then(|node| node.data.as_str()) != Some(name) {
         problems.push(format!("{name}: frontmatter `name` must be `{name}`"));
     }
-    let description = front.iter().position(|l| l.starts_with("description:"));
-    let inline = description.map(|i| front[i].trim_start_matches("description:").trim());
-    let has_inline_text =
-        inline.is_some_and(|s| !s.is_empty() && s != ">-" && s != ">" && s != "|");
+    // A folded scalar may decode to one line even though discovery requires it on the key's line.
+    let description = fields.get_key_value(&MarkedYaml::value_from_str("description"));
+    let has_inline_text = description.is_some_and(|(key, value)| {
+        key.span.start.line() == value.span.end.line()
+            && value.data.as_str().is_some_and(|description| {
+                !description.trim().is_empty() && !description.contains(['\r', '\n'])
+            })
+    });
     if !has_inline_text {
         problems.push(format!(
             "{name}: frontmatter `description` must be a non-empty single-line string"
         ));
-    } else if let Some(s) = inline {
-        let quoted = s.len() >= 2
-            && ((s.starts_with('"') && s.ends_with('"'))
-                || (s.starts_with('\'') && s.ends_with('\'')));
-        if !quoted && s.contains(": ") {
-            problems.push(format!(
-                "{name}: frontmatter `description` contains `: `; quote the string for YAML safety"
-            ));
-        }
     }
     problems
-}
-
-/// Cross-skill Markdown links stay runtime-neutral (`[vink-...]` instead of Codex-only `[$vink-...]`).
-fn skill_body_problems(name: &str, text: &str) -> Vec<String> {
-    if text.contains("[$vink-") {
-        vec![format!(
-            "{name}: SKILL.md uses Codex-only `[$vink-` link syntax; use runtime-neutral `[vink-...]`"
-        )]
-    } else {
-        Vec::new()
-    }
 }
 
 fn markdown_files(dir: &Path, out: &mut Vec<PathBuf>) {
@@ -327,38 +338,45 @@ fn links(root: &Path, problems: &mut Vec<String>) {
     files.sort();
     for file in files {
         let Some(text) = read(&file) else { continue };
-        let mut fenced = false;
-        for (number, line) in text.lines().enumerate() {
-            if line.trim_start().starts_with("```") {
-                fenced = !fenced;
-                continue;
-            }
-            if fenced {
-                continue;
-            }
-            for target in link_targets(line) {
-                if let Some(missing) = broken(&file, &target) {
-                    problems.push(format!(
-                        "{}:{}: broken link `{missing}`",
-                        rel(root, &file),
-                        number + 1
-                    ));
-                }
-            }
-        }
+        check_markdown_links(root, &file, &text, problems);
     }
 }
 
-fn link_targets(line: &str) -> Vec<String> {
-    let mut targets = Vec::new();
-    let mut rest = line;
-    while let Some(start) = rest.find("](") {
-        let after = &rest[start + 2..];
-        let Some(end) = after.find(')') else { break };
-        targets.push(after[..end].trim().trim_matches(['<', '>']).to_string());
-        rest = &after[end..];
+fn check_markdown_links(root: &Path, file: &Path, text: &str, problems: &mut Vec<String>) {
+    let is_skill = file.file_name().is_some_and(|name| name == "SKILL.md");
+    let body = if is_skill && let Ok((_, body)) = skill_sections(text) {
+        body
+    } else {
+        text
+    };
+    let header_len = text.len() - body.len();
+    for (event, range) in Parser::new_ext(body, Options::ENABLE_TABLES).into_offset_iter() {
+        let location = || {
+            let offset = header_len + range.start;
+            let line = 1 + text[..offset].bytes().filter(|&b| b == b'\n').count();
+            format!("{}:{line}", rel(root, file))
+        };
+        let target = match event {
+            Event::Start(Tag::Link {
+                link_type: LinkType::Email,
+                ..
+            }) => continue,
+            Event::Start(Tag::Link { dest_url, .. }) => {
+                if is_skill && body[range.clone()].starts_with("[$vink-") {
+                    problems.push(format!(
+                        "{}: use a runtime-neutral skill link label",
+                        location()
+                    ));
+                }
+                dest_url
+            }
+            Event::Start(Tag::Image { dest_url, .. }) => dest_url,
+            _ => continue,
+        };
+        if let Some(missing) = broken(file, &target) {
+            problems.push(format!("{}: broken link `{missing}`", location()));
+        }
     }
-    targets
 }
 
 fn broken(file: &Path, target: &str) -> Option<String> {
@@ -988,31 +1006,70 @@ mod tests {
     }
 
     #[test]
-    fn finds_inline_link_targets() {
+    fn markdown_checks_links_and_images_at_their_source_lines() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let text = "See [source](src/main.rs) and [a](<y z.md#top>), `[example](literal)`.\n\
+            ![image](missing.png) and [guide][ref].\n\n[ref]: missing.md\n";
+        let mut problems = Vec::new();
+        check_markdown_links(root, &root.join("notes.md"), text, &mut problems);
         assert_eq!(
-            link_targets("see [a](x.md) and [b](<y z.md#top>), not `code`"),
-            vec!["x.md".to_string(), "y z.md#top".to_string()]
+            problems,
+            [
+                "notes.md:1: broken link `y z.md#top`",
+                "notes.md:2: broken link `missing.png`",
+                "notes.md:2: broken link `missing.md`",
+            ]
         );
     }
 
     #[test]
     fn frontmatter_requires_matching_name_and_description() {
-        let ok = "---\nname: vink-x\ndescription: Does x.\n---\n# X\n";
-        assert!(skill_frontmatter("vink-x", ok).is_empty());
-        let ok_quoted = "---\nname: vink-x\ndescription: \"Does x: y.\"\n---\n# X\n";
-        assert!(skill_frontmatter("vink-x", ok_quoted).is_empty());
-        let bad_colon = "---\nname: vink-x\ndescription: Does x: y.\n---\n# X\n";
-        assert_eq!(skill_frontmatter("vink-x", bad_colon).len(), 1);
+        for description in [
+            "Does x. # example: text",
+            r#""Giữ: dấu" # comment"#,
+            "'Uses the author''s text: unchanged.'",
+        ] {
+            let skill = format!("---\r\nname: vink-x\r\ndescription: {description}\r\n---\r\n");
+            assert!(
+                skill_frontmatter("vink-x", &skill).is_empty(),
+                "{description}"
+            );
+        }
+        for description in [
+            "Does x: y.",
+            r#""unterminated"#,
+            "''",
+            "# comment only",
+            "[one, two]",
+            "|-\n  x",
+            ">+\n  x",
+            "starts here\n  continues here",
+            "\n  on another line",
+        ] {
+            let skill = format!("---\nname: vink-x\ndescription: {description}\n---\n");
+            assert!(
+                !skill_frontmatter("vink-x", &skill).is_empty(),
+                "{description:?}"
+            );
+        }
         let bad = "---\nname: other\ndescription: >-\n---\n";
         assert_eq!(skill_frontmatter("vink-x", bad).len(), 2);
+        let unclosed = "---\nname: vink-x\ndescription: Does x.\n# Body\n";
+        assert!(!skill_frontmatter("vink-x", unclosed).is_empty());
     }
 
     #[test]
-    fn skill_body_rejects_codex_only_dollar_links() {
-        assert!(skill_body_problems("vink-x", "See [vink-y](../vink-y/SKILL.md).").is_empty());
+    fn skill_links_are_checked_only_in_the_markdown_body() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let text = "---\n\nname: vink-x\ndescription: '[$vink-y](other)'\n---\n\n\
+            See [vink-y](Cargo.toml). Literal: `[$vink-y](other)`.\n\
+            ```md\n[$vink-y](other)\n```\n\n\
+            ---\nSee [$vink-y][ref].\n---\n\n[ref]: Cargo.toml\n";
+        let mut problems = Vec::new();
+        check_markdown_links(root, &root.join("SKILL.md"), text, &mut problems);
         assert_eq!(
-            skill_body_problems("vink-x", "See [$vink-y](../vink-y/SKILL.md).").len(),
-            1
+            problems,
+            ["SKILL.md:13: use a runtime-neutral skill link label"]
         );
     }
 

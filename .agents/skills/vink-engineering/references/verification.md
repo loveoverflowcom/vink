@@ -1,6 +1,6 @@
 # Verification scope and evidence
 
-Use actual manifests, commands and CI from the current checkout. The implemented lanes are
+Use the manifests and command owners at the current checkout. The implemented lanes are
 `cargo xtask verify quick|discussion|expressions|kani|postgres|web|all`; what each covers, its prerequisites and its limits
 are defined once in [docs/development](../../../../docs/development/README.md). CI runs the same
 lanes. On shared macOS machines, run supported heavy commands via
@@ -80,17 +80,21 @@ Required AC evidence and the broader advisory UX pilot (#174) in
 
 ## Evidence handoff and provenance
 
-Use one concise writer/reviewer mapping per claim:
+For each required AC, the writer and reviewer use the same handoff:
 
 `AC/claim → connected source/caller → evidence → result → gap`
 
-For material execution claims, record: source/build identity and relevant dirty inputs; scenario/command and target; real versus simulated boundaries and fixture mode (real PostgreSQL or browser runs may use safe, isolated synthetic fixtures, whereas a preview, mock, screenshot or model cannot prove a different boundary); original result and accessible log/capture reference; and applicability to the final change.
+For a small fix this can be one sentence. Use one row per AC only when several results need
+comparison. For a run, give its original SHA/build and relevant dirty inputs, command or scenario,
+target, fixture mode, result and log/capture reference. A real database or browser can use isolated
+synthetic data. A component preview can establish how that component rendered in the preview.
+An AC on a product route needs evidence from that route.
 
-Preserve provenance when reusing prior evidence by comparing tested inputs with the final delta:
-- If the delta affects the claim or its dependencies, rerun the affected checks.
-- If it does not (e.g. a final documentation-only edit), state why prior evidence still applies and keep its original SHA.
-- If applicability is unknown, leave that claim unverified (`NOT_RUN`).
-- Never relabel an old run as executed on a new SHA.
+Compare the tested inputs with the final delta. Rerun an affected check if its code, build,
+fixture or target changed in a relevant way. If the delta is unrelated, record why the original
+result still applies. For example, a browser trace on A can cover the same route on B after a
+spelling fix to the contributor guide. Cite A as the executed revision. If applicability is
+unknown, preserve the original result and mark the current claim unverified.
 
 For UI changes, inspect relevant runtime errors and hydration behavior. Distinguish new unexpected errors from intentional failure fixtures and verified pre-existing/environment issues; never suppress errors to produce a clean report.
 
@@ -124,7 +128,9 @@ missing layer affects acceptance. Keep the report short for small changes.
 
 ## Human smoke handoff
 
-For changes to a main UI journey or interaction with residual device risk, add a short review card (~2 minutes of interaction, without hiding setup work):
+When a change alters a main UI journey or leaves an interaction to check on a device, add a
+review card. Aim for two minutes of interaction and state the setup separately.
+
 - accessible URL/deep link and build identity (SHA/branch/mode);
 - test state/fixture already prepared, or honest setup prerequisite;
 - 3–4 concrete actions with expected results;
