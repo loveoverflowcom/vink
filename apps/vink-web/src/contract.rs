@@ -256,6 +256,9 @@ pub struct PublicRootThread {
     pub preview: Vec<PublicComment>,
     pub preview_next_cursor: Option<String>,
 }
+// Wire DTO decoded once per page; the author projection makes the comment variant larger,
+// and boxing it would only add indirection at every match.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum PublicRootView {
@@ -405,6 +408,9 @@ pub struct RootThread {
     pub preview_next_cursor: Option<String>,
 }
 
+// Wire DTO decoded once per page; the author projection makes the comment variant larger,
+// and boxing it would only add indirection at every match.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum RootView {

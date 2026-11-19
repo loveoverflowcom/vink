@@ -148,7 +148,7 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
     await page.waitFor(`!document.getAnimations().some(a => a.playState==='running' &&
       a.effect.target?.checkVisibility() && Number.isFinite(a.effect.getComputedTiming().endTime))`,
       'profile colors settled');
-    await textContrast(page, theme, 'profile', ['#profile-save', '#profile-bio', '#profile-name-hint']);
+    await textContrast(page, theme, 'profile', ['#profile-save', '#profile-bio', '#profile-pen-name-help']);
   }
   await page.eval("delete document.documentElement.dataset.theme");
   await page.viewport(320, 580);

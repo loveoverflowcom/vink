@@ -37,7 +37,7 @@ pub struct ProfileLink {
 }
 
 #[component]
-pub fn ProfileName(
+fn ProfileName(
     name: String,
     #[prop(optional_no_strip)] profile: Option<ProfileLink>,
     id: String,

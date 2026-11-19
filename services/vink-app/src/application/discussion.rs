@@ -183,6 +183,9 @@ pub struct CommentItem {
     pub rejection_reason: Option<String>,
 }
 
+// Wire/read model built once per response; the author attribution enlarges one variant,
+// and boxing it would only add indirection at every match.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RootEntry {
     Comment(CommentItem),

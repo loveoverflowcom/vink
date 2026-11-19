@@ -1935,20 +1935,9 @@ a {
 .vk-profile-edit { max-inline-size: 42rem; }
 .vk-profile-form, .vk-profile-form fieldset, .vk-profile-field { display: grid; gap: var(--vk-space-2); min-inline-size: 0; }
 .vk-profile-form { gap: var(--vk-space-4); }
-.vk-profile-field label, .vk-profile-form legend { font-weight: var(--vk-type-label-weight); }
+.vk-profile-form legend { font-weight: var(--vk-type-label-weight); }
 .vk-profile-form fieldset { border: 1px solid var(--vk-outline-variant); border-radius: var(--vk-radius-md); padding: var(--vk-space-3); }
-.vk-profile-field :is(input, textarea, select) {
-  box-sizing: border-box;
-  inline-size: 100%;
-  padding: var(--vk-space-2) var(--vk-space-3);
-  border: 1px solid var(--vk-outline);
-  border-radius: var(--vk-radius-sm);
-  background: var(--vk-surface);
-  color: var(--vk-on-surface);
-  font: inherit;
-}
-.vk-profile-field textarea { resize: vertical; }
-.vk-profile-field p, .vk-profile-actions p { margin: 0; }
+.vk-profile-actions p { margin: 0; }
 .vk-profile-actions {
   position: sticky;
   inset-block-end: 0;

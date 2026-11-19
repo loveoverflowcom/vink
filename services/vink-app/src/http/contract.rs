@@ -121,6 +121,9 @@ pub struct Publication {
     pub tags: Vec<PublicTag>,
 }
 
+// Wire/read model built once per response; the author attribution enlarges one variant,
+// and boxing it would only add indirection at every match.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum ReaderResponse {
@@ -213,6 +216,9 @@ pub struct RootThread {
     pub preview_next_cursor: Option<String>,
 }
 
+// Wire/read model built once per response; the author attribution enlarges one variant,
+// and boxing it would only add indirection at every match.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum RootView {
@@ -291,6 +297,9 @@ pub struct PublicRootThread {
     pub preview_next_cursor: Option<String>,
 }
 
+// Wire/read model built once per response; the author attribution enlarges one variant,
+// and boxing it would only add indirection at every match.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum PublicRootView {

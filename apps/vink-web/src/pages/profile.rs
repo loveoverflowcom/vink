@@ -51,11 +51,9 @@ pub(crate) fn EditProfile() -> impl IntoView {
 fn OwnProfileHost(scope: String) -> impl IntoView {
     #[cfg(feature = "hydrate")]
     return view! { <browser::OwnProfileHost scope /> };
+    // SSR renders nothing here: the own overlay is fetched no-store after hydration.
     #[cfg(not(feature = "hydrate"))]
-    {
-        let _ = scope;
-        ()
-    }
+    let _ = scope;
 }
 
 #[component]

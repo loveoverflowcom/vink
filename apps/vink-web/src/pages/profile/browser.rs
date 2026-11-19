@@ -1,6 +1,9 @@
 use leptos::{prelude::*, task::spawn_local};
 use unicode_normalization::UnicodeNormalization;
-use vink_ui::Link;
+use vink_ui::{
+    ActionState, Button, ButtonKind, ButtonVariant, ChoiceOption, Link, Select, TextArea,
+    TextField, TextInput,
+};
 use wasm_bindgen::JsCast;
 
 use crate::account::Session;
@@ -52,8 +55,8 @@ pub(super) fn OwnProfileHost(scope: String) -> impl IntoView {
                     view! { <ProfileForm scope=key initial=profile /> }.into_any(),
                 _ => view! {
                     <p role="alert">"Chưa tải được hồ sơ của bạn."</p>
-                    <button type="button" class="vk-ui-button vk-ui-button--tonal"
-                        on:click=move |_| attempt.update(|value| *value += 1)>"Thử lại"</button>
+                    <Button variant=ButtonVariant::Tonal
+                        on_press=Callback::new(move |()| attempt.update(|value| *value += 1))>"Thử lại"</Button>
                 }.into_any(),
             })}
         </Suspense>
@@ -307,27 +310,52 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
         }
     });
     let blocked = move || form.busy.get() || form.reconcile.with(Option::is_some);
-    let invalid = move |id| (form.bad_field.get() == Some(id)).then_some("true");
+    // Shared fields keep a stable native control; the in-flight lock is applied to it here so
+    // the text that is being saved cannot change under the request.
+    Effect::new(move |_| {
+        let readonly = blocked();
+        for id in ["profile-pen-name", "profile-bio"] {
+            if let Some(element) = document().get_element_by_id(id) {
+                let _ = element.toggle_attribute_with_force("readonly", readonly);
+            }
+        }
+    });
+    let error_for = move |id: &'static str| {
+        Signal::derive(move || {
+            (form.bad_field.get() == Some(id)).then(|| form.message.get().to_string())
+        })
+    };
+    let typed = move |target: RwSignal<String>| {
+        Callback::new(move |input: TextInput| {
+            form.composing.set(input.composing);
+            if !blocked() {
+                target.set(input.value);
+            }
+        })
+    };
+    let save_state = Signal::derive(move || {
+        if form.busy.get() {
+            ActionState::Pending {
+                status: "Đang xử lý".into(),
+            }
+        } else if form.reconcile.with(Option::is_some) || form.conflict.with(Option::is_some) {
+            ActionState::Disabled { reason: None }
+        } else {
+            ActionState::Enabled
+        }
+    });
     view! {
         <form class="vk-profile-form" autocomplete="off" novalidate
             on:compositionstart=move |_| form.composing.set(true)
             on:compositionend=move |_| form.composing.set(false)
             on:submit=move |event| { event.prevent_default(); form.save(session); }>
-            <div class="vk-profile-field">
-                <label for="profile-pen-name">"Bút danh"</label>
-                <input id="profile-pen-name" type="text" prop:value=move || form.name.get()
-                    readonly=blocked aria-invalid=move || invalid("profile-pen-name")
-                    aria-describedby="profile-name-hint profile-message"
-                    on:input=move |event| form.name.set(event_target_value(&event)) />
-                <p id="profile-name-hint">"Luôn công khai. Bút danh có thể trùng với người khác."</p>
-            </div>
+            <TextField id="profile-pen-name" label="Bút danh" value=form.name
+                on_input=typed(form.name) error=error_for("profile-pen-name")
+                help="Luôn công khai. Bút danh có thể trùng với người khác." />
             <PolicyField form label="Quyền xem ảnh đại diện" id="profile-avatar-policy" access=|p| &mut p.avatar />
             <div class="vk-profile-field">
-                <label for="profile-bio">"Bio"</label>
-                <textarea id="profile-bio" rows="4" prop:value=move || form.bio.get()
-                    readonly=blocked aria-invalid=move || invalid("profile-bio")
-                    aria-describedby="profile-message"
-                    on:input=move |event| form.bio.set(event_target_value(&event)) />
+                <TextArea id="profile-bio" label="Bio" value=form.bio rows=4
+                    on_input=typed(form.bio) error=error_for("profile-bio") />
                 <PolicyField form label="Quyền xem Bio" id="profile-bio-policy" access=|p| &mut p.bio />
             </div>
             <fieldset>
@@ -345,16 +373,11 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
             <div class="vk-profile-actions">
                 <p id="profile-message" role="status" aria-atomic="true">{move || form.message.get()}</p>
                 <div>
-                    <button id="profile-save" type="submit" class="vk-ui-button vk-ui-button--filled"
-                        data-state=move || if form.busy.get() { "pending" }
-                            else if form.reconcile.with(Option::is_some) || form.conflict.with(Option::is_some) { "disabled" }
-                            else { "enabled" }
-                        aria-disabled=move || (blocked() || form.conflict.with(Option::is_some)).then_some("true")
-                        aria-describedby="profile-message"
-                        aria-busy=move || form.busy.get().to_string()>"Lưu hồ sơ"</button>
+                    <Button id="profile-save" kind=ButtonKind::Submit state=save_state
+                        described_by="profile-message">"Lưu hồ sơ"</Button>
                     <Show when=move || form.reconcile.with(Option::is_some) && !form.busy.get()>
-                        <button type="button" class="vk-ui-button vk-ui-button--tonal"
-                            on:click=move |_| form.read_back(session)>"Đối chiếu lại"</button>
+                        <Button variant=ButtonVariant::Tonal
+                            on_press=Callback::new(move |()| form.read_back(session))>"Đối chiếu lại"</Button>
                     </Show>
                     <Link attr:id="cancel-profile-edit" attr:data-profile-return="true" href="/toi#edit-profile-link">"Về Tôi"</Link>
                 </div>
@@ -379,25 +402,37 @@ fn PolicyField(
     id: &'static str,
     access: PolicyAccess,
 ) -> impl IntoView {
-    let stored_private = move || *access(&mut form.base.get().policies) == Visibility::Owner;
-    view! {
-        <div class="vk-profile-field">
-            <label for=id>{label}</label>
-            <select id=id prop:value=move || match *access(&mut form.policies.get()) {
-                Visibility::Everyone => "everyone", Visibility::Owner => "self",
-            } disabled=move || form.busy.get() || form.reconcile.with(Option::is_some)
-                on:change=move |event| {
-                    let visibility = if event_target_value(&event) == "everyone" {
-                        Visibility::Everyone
-                    } else {
-                        Visibility::Owner
-                    };
-                    form.policies.update(|policies| *access(policies) = visibility);
-                }>
-                <option value="everyone" disabled=stored_private>"Công khai"</option>
-                <option value="self">"Chỉ mình tôi"</option>
-            </select>
-        </div>
+    // While SOC-OPEN-01 is open a stored "Chỉ mình tôi" cannot be widened again.
+    let stored_private =
+        Memo::new(move |_| *access(&mut form.base.get().policies) == Visibility::Owner);
+    let value = Signal::derive(move || {
+        Some(
+            match *access(&mut form.policies.get()) {
+                Visibility::Everyone => "everyone",
+                Visibility::Owner => "self",
+            }
+            .to_string(),
+        )
+    });
+    let disabled = Signal::derive(move || form.busy.get() || form.reconcile.with(Option::is_some));
+    let on_change = Callback::new(move |picked: Option<String>| {
+        let visibility = match picked.as_deref() {
+            Some("everyone") => Visibility::Everyone,
+            Some("self") => Visibility::Owner,
+            _ => return,
+        };
+        form.policies
+            .update(|policies| *access(policies) = visibility);
+    });
+    move || {
+        let options = vec![
+            ChoiceOption {
+                disabled: stored_private.get(),
+                ..ChoiceOption::new("everyone", "Công khai")
+            },
+            ChoiceOption::new("self", "Chỉ mình tôi"),
+        ];
+        view! { <Select id label options value on_change disabled /> }
     }
 }
 
@@ -418,13 +453,13 @@ fn Conflict(form: Form, current: OwnProfile) -> impl IntoView {
                 <dt>"Danh sách đang theo dõi"</dt><dd>{policy_text(p.following_list)}</dd>
                 <dt>"Số người đang theo dõi"</dt><dd>{policy_text(p.following_count)}</dd>
             </dl>
-            <button type="button" class="vk-ui-button vk-ui-button--tonal" on:click=move |_| {
+            <Button variant=ButtonVariant::Tonal on_press=Callback::new(move |()| {
                 form.adopt(stored.clone());
                 form.conflict.set(None);
                 form.message.set("Đang chỉnh từ bản đã lưu.");
                 focus_name();
-            }>"Dùng bản đã lưu"</button>
-            <button type="button" class="vk-ui-button vk-ui-button--text" on:click=move |_| {
+            })>"Dùng bản đã lưu"</Button>
+            <Button variant=ButtonVariant::Text on_press=Callback::new(move |()| {
                 if let Some(current) = form.conflict.get_untracked() {
                     // Keep the draft text. Adopt any newer policy that already narrowed.
                     form.policies.update(|draft| {
@@ -443,7 +478,7 @@ fn Conflict(form: Form, current: OwnProfile) -> impl IntoView {
                     form.message.set("Đã giữ chữ trong nháp. Hãy xem lại quyền trước khi lưu.");
                     focus_name();
                 }
-            }>"Giữ bản nháp"</button>
+            })>"Giữ bản nháp"</Button>
         </section>
     }
 }
