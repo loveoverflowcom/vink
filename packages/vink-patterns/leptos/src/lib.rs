@@ -87,7 +87,11 @@ pub fn WorkCard(
         <div class="vk-work-card">
             <Heading level=HeadingLevel::H3 role=TypeRole::Title>
                 <Link href variant=LinkVariant::Standalone attr:class="vk-public-row__link"
-                    on:click=move |event| { if let Some(open) = on_open { open.run(event); } }>
+                    on:click=move |event| {
+                        // A refreshed row may dispose its callback during click dispatch.
+                        // The title is still a native link in that case.
+                        if let Some(open) = on_open { let _ = open.try_run(event); }
+                    }>
                     {title}
                 </Link>
             </Heading>
