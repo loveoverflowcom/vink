@@ -79,3 +79,7 @@ hash SVG upstream nằm trong `icons.json`, generator sinh `IconName::FilterList
 Không đổi token, default primitive, props hoặc glyph cũ. Web dùng slot leading của Button và
 surface Tonal của TooltipIconButton đã có từ #224; CMP chỉ nhận registry sinh chung, không có
 consumer product mới.
+
+Auth Web R2 (#327/#328): token 0.7.0 bổ sung hai kích thước tiêu đề
+`text.auth-heading` và `text.auth-dialog-heading`, giữ nguyên kích thước đã duyệt trong Tôi
+và Reader. Không đổi thang chữ chung, component, catalog, API hay giao diện CMP.

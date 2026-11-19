@@ -263,7 +263,7 @@ a {
 .vk-auth-heading { display: grid; justify-items: center; gap: var(--vk-space-6); text-align: center; }
 .vk-auth-heading .vk-brand__lockup { height: 2.5rem; width: calc(2.5rem * 1018 / 410); max-width: 100%; }
 .vk-auth-heading h2 {
-  margin: 0; font: var(--vk-type-display-weight) clamp(2rem, 1.8rem + .5vw, 2.25rem)/var(--vk-type-display-line-height) var(--vk-font-reading);
+  margin: 0; font: var(--vk-type-display-weight) var(--vk-text-auth-heading)/var(--vk-type-display-line-height) var(--vk-font-reading);
   letter-spacing: var(--vk-type-display-tracking);
 }
 .vk-auth-entry .vk-account-form { inline-size: 100%; }
@@ -2056,7 +2056,7 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
 .vk-reader-auth-bar .vk-brand__lockup { inline-size: 4.5rem; block-size: 1.8125rem; max-inline-size: 55%; }
 .vk-reader-auth-title {
   margin: 0;
-  font: var(--vk-type-display-weight) 1.625rem/var(--vk-type-display-line-height) var(--vk-font-reading);
+  font: var(--vk-type-display-weight) var(--vk-text-auth-dialog-heading)/var(--vk-type-display-line-height) var(--vk-font-reading);
   letter-spacing: var(--vk-type-display-tracking);
   overflow-wrap: anywhere;
 }
