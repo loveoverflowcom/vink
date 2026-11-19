@@ -90,11 +90,11 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   // 1. SSR HTML & Guest CTA -> /toi?next= return + open-redirect rejection.
   const {browserContextId: guestContext} = await page.cdp.send('Target.createBrowserContext');
   const guest = await openPage(guestContext);
+  await guest.goto(`${base}/@${handleB}`);
   const ssrCheck = await guest.eval(`fetch(${JSON.stringify(`/@${handleB}`)}).then(async r => ({ status: r.status, text: await r.text() }))`);
   check(ssrCheck.status === 200 && ssrCheck.text.includes('profile-followers-link') && !ssrCheck.text.includes('Theo dõi lẫn nhau'),
     'SSR public profile renders followers link without mutual/viewer secrets');
 
-  await guest.goto(`${base}/@${handleB}`);
   await guest.waitFor(q('#follow-sign-in'), 'guest sees follow sign-in CTA');
   const signInHref = await guest.eval(`${q('#follow-sign-in')}.getAttribute('href')`);
   const signIn = new URL(signInHref, base);
