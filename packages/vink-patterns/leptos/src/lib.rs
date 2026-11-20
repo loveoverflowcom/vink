@@ -426,10 +426,14 @@ pub fn FeedbackComposer(
     /// Emphasis only (R4: tonal while empty, filled with text); `state` still gates presses.
     #[prop(optional, into)]
     send_variant: Option<Signal<ButtonVariant>>,
+    /// Decorative leading glyph for the tonal send action. The action state owns its reason.
+    #[prop(optional, into)]
+    send_icon: Option<Signal<IconName>>,
     #[prop(optional)] children: Option<Children>,
 ) -> impl IntoView {
     let submit_id = format!("{id}-send");
     let send_variant = send_variant.unwrap_or_else(|| Signal::stored(ButtonVariant::Filled));
+    let send_icon = Memo::new(move |_| send_icon.map_or(IconName::Send, |icon| icon.get()));
     let submit_state = Signal::derive(move || {
         if matches!(state.get(), ActionState::Pending { .. }) {
             state.get()
@@ -457,7 +461,10 @@ pub fn FeedbackComposer(
                 </Show>
                 <Show when=move || show_alternative.get() fallback=move || {
                     if tonal {
-                        view! { <Button id=submit_id.clone() variant=send_variant state=submit_state on_press=on_submit leading=IconName::Send>"Gửi"</Button> }.into_any()
+                        let id = submit_id.clone();
+                        view! { {move || view! {
+                            <Button id=id.clone() variant=send_variant state=submit_state on_press=on_submit leading=send_icon.get()>"Gửi"</Button>
+                        }} }.into_any()
                     } else {
                         view! { <Button id=submit_id.clone() variant=send_variant state=submit_state on_press=on_submit>"Gửi nhận xét"</Button> }.into_any()
                     }

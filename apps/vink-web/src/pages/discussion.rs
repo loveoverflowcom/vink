@@ -1289,13 +1289,20 @@ fn DiscussionComposer(
                 SendEmphasis::Filled | SendEmphasis::Progress => ButtonVariant::Filled,
             },
         );
+    let send_icon = Signal::derive(move || {
+        if controller.read().status(&key.get_value()) == ComposerStatus::SignInClosed {
+            IconName::Lock
+        } else {
+            IconName::Send
+        }
+    });
     let chip_id = format!("{id}-target");
     view! {
         // The closed reason comes from the controller, which words it for the work's author.
         <div class="vk-discussion-composer" data-status=move || controller.read().status(&key.get_value()).id()>
             <FeedbackComposer id intent=FeedbackIntent::Unspecified value state=action tonal=true
                 comments_closed=is_closed field_mode
-                show_alternative alternative=auth_action send_variant
+                show_alternative alternative=auth_action send_variant send_icon
                 on_input=move |input: TextInput| {
                     copy_status.set(None);
                     controller.update(|c| c.edit(&key.get_value(), input.value, input.composing));

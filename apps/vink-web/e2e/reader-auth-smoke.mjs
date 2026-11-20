@@ -50,6 +50,7 @@ export async function readerAuthClosed(page, { args, check }) {
     !${q('meta[name="vink-sign-in"]')} && !${q(ROOT_EDITOR+'-auth')} && !${isOpen} &&
     !${q('#password-login')} && ${q(ROOT_EDITOR)}.value === ${JSON.stringify(ROOT_TEXT)} &&
     ${q(ROOT_EDITOR+'-send')}.getAttribute('aria-disabled') === 'true' &&
+    !!${q('#root-composer-send svg[data-icon=lock][aria-hidden=true]')} &&
     ${q('#root-composer-send-note')}.textContent.includes('Vink chưa mở đăng nhập')
   `), '#328 actual disabled App deployment exposes no Reader Auth action; drafting still works');
 }

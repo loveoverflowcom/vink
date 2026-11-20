@@ -33,6 +33,8 @@ Debian Linux, Rust 1.99.1, wasm-bindgen 0.2.129, Node 24.22.3, PostgreSQL 17.11 
 
 [Web CI d2092b6](https://github.com/loveoverflowcom/vink/actions/runs/44720543672/job/136235158753) giữ GET đầu: ở 120 ms chưa có skeleton, khoảng 320 ms thấy card tĩnh. Lỗi đầu và retry qua GET mới đều đạt. Sau đó phép đo ngay lúc sang dark gặp 4,36:1. Đo từng frame cùng Reader thấy nhãn field xuống 1,14:1, hai pill xuống 1,14:1 và 1,01:1; sau chuyển màu ổn định đạt 10,83/6,45/8,23:1. Bản sửa đổi nền và chữ cùng lúc, giữ chuyển động vòng focus; reduced motion tắt nội suy trong Nhận xét. Đối chứng CSS trên cùng binary cho kết quả tối thiểu 10,83/6,45/8,23:1 cho field/Ưng/Trả lời suốt 400 ms, recovery 7,68:1 ở hai kích thước trên hai lượt độc lập. Browser smoke kiểm ngưỡng 4,5:1 xuyên suốt lần đổi theme.
 
+Ảnh guest cho thấy SignInAvailable mở dialog và Escape giữ nháp. SignInClosed có đúng lý do qua aria-describedby nhưng thiếu icon khóa theo ảnh 04; glyph đã được nối vào nút Gửi của riêng trạng thái này. Ca Refused 403 với transport bị chặn trong trình duyệt giữ chữ và nêu lý do.
+
 PR giữ Draft trong khi #360 AC-04 còn FAIL. Trạng thái từng AC và các lần chạy mới hơn được cập nhật trên [PR #366](https://github.com/loveoverflowcom/vink/pull/366). Bằng chứng auth/CDP không chứng minh IME của hệ điều hành hoặc screen reader.
 
 Issue #45; branch `codex/discussion-ui`, PR #59. Checkpoint local dưới đây đã tích hợp

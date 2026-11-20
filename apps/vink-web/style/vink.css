@@ -513,6 +513,8 @@ a {
 .vk-discussion-mode__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-2); }
 .vk-discussion-fixture-note, .vk-discussion-mode__alert { margin: 0; overflow-wrap: anywhere; }
 .vk-discussion-mode__alert { color: inherit; font-size: var(--vk-type-caption-size); }
+/* Keep the live regions mounted without empty grid rows above the author's items. */
+.vk-discussion-mode__alert:empty, #own-comments > [role="status"]:empty { position: absolute; margin: 0; }
 
 /* The global reduced-motion duration can still create a one-frame color transition. */
 @media (prefers-reduced-motion: reduce) {
