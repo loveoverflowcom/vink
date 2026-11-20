@@ -45,7 +45,9 @@ cũ ([kiến trúc](../architecture/document-source-format.md)); `VDR-DOCUMENT-S
 [Runbook Vink production](../../infra/production/README.md) ghi trình tự build, PostgreSQL,
 Caddy, DNS, backup và rollback trên VPS.
 
-## Nền test-domain/container
+[Phát hành Pages từ OCI và chuyển đổi public test](../../infra/production/cloudflare-edge.md) nối manifest, origin và receipt.
+
+## Lịch sử test-domain và hạ tầng qualification
 
 [Cloudflare test và cấu hình Google Cloud](cloudflare-test-evidence.md) ghi asset upload,
 origin/DNS, GCS generation và bằng chứng reader trên máy thứ hai;
