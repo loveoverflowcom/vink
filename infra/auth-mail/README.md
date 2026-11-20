@@ -4,8 +4,10 @@
 Overlay `auth-resend.compose.yaml` của từng môi trường là tệp thứ ba, đặt sau base PostgreSQL
 và overlay triển khai hiện tại. Chỉ dùng khi đã có build hỗ trợ `resend-api` và đã kiểm chứng kế hoạch
 mạng trên Linux/Podman đích. Không tự chạy lệnh vận hành, đổi DNS/firewall hay gửi thư thật.
-Triển khai test trước; không sao chép secret, địa chỉ gửi, DB, dữ liệu hay smoke test accounts sang
-production.
+Chạy qualification trên host hoặc máy ảo riêng có origin HTTPS từ inventory test. Compose test
+dùng volume external `vink-test-postgres` và mạng mail có tên cố định, vì vậy hãy xác minh host
+thử trước khi tạo dữ liệu. Host này vẫn dùng được sau khi ngừng public test theo
+[runbook Cloudflare/VPS](../production/cloudflare-edge.md). Tách secret, sender, DB và tài khoản thử khỏi production.
 
 ## Cấu hình chỉ phía máy chủ
 
@@ -13,7 +15,7 @@ production.
 
 ```dotenv
 VINK_TEST_AUTH_SIGN_IN=disabled
-VINK_TEST_RESEND_FROM=no-reply@mail.test.vink.forum
+VINK_TEST_RESEND_FROM=no-reply@mail.qualification.example
 VINK_TEST_RESEND_SECRETS_DIR=/etc/vink-test/resend
 VINK_TEST_AUTH_MAIL_IDENTITY_IP=
 ```
@@ -93,9 +95,11 @@ qua health probe Unix socket và
 báo `authority=available`, `mail_transport=resend_api`, database restricted và schema current.
 App `/health/ready` vẫn dành cho public read, kiểm riêng `integrations.identity=available`.
 Sức khỏe process/queue hoặc HTTPS probe **không** chứng minh Resend đã nhận hoặc mailbox đã nhận.
-Nếu cần giữ overlay qua reboot, chuẩn bị và duyệt thay đổi đơn vị vận hành để cả lệnh up/stop
-dùng cùng thứ tự trên và proxy/network được tái lập trước; unit production mặc định không dùng
-overlay này.
+Trước khi kích hoạt production, đối chiếu cấu hình unit cho cả up/stop và thứ tự khởi động
+proxy, network sau reboot. Dùng đường dẫn dưới `/opt/vink-prod/current` cho bộ ba file Compose.
+[Orchestrator VPS](../cloudflare/production/origin.sh) giữ overlay khi nhãn `config_files`
+của App khớp bộ ba theo đúng thứ tự và release mới có overlay. Unit mặc định chỉ dùng hai file.
+Kiểm schema review của release cho migration Identity mới theo runbook Cloudflare/VPS.
 
 Chỉ sau khi có chấp thuận, thử thư transport tới hộp thư do chủ dự án kiểm soát, đối chiếu
 provider accepted và mailbox delivered riêng; không dùng key/test recipient thật trong CI.
@@ -117,7 +121,7 @@ và/hoặc thu hồi key theo incident, giữ socket Identity để phiên hiệ
 không còn delivery mới được chấp nhận; không xóa outbox, account, session, volumes hay migrations.
 Chỉ quay image cũ sau khi kiểm tương thích schema và khả năng kiểm phiên của authority. Chuyển về
 base-only với authority chưa cấu hình có thể làm phiên cũ không xác minh được, không dùng đó
-làm emergency stop thay cho flag. Sau khi rollback đo lại test, production và Cantos theo phạm vi.
+làm emergency stop thay cho flag. Sau khi rollback kiểm lại origin và dữ liệu của chính môi trường vừa thay đổi.
 
 ## Kiểm trên máy phát triển
 

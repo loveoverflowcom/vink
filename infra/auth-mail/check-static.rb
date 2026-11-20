@@ -47,7 +47,8 @@ realms.each do |realm, stub|
     check(!overlay['networks'].key?('default') && overlay.dig('networks', private_db) == { 'internal' => true } &&
           !app.key?('networks') && !app.key?('ports') &&
           services['postgres'] == { 'networks' => { 'default' => {}, private_db => { 'aliases' => ['postgres'] } } } &&
-          app['environment']['VINK_PUBLIC_ORIGIN'] == 'https://test.vink.forum' &&
+          !app['environment'].key?('VINK_PUBLIC_ORIGIN') &&
+          base_services['app']['environment']['VINK_PUBLIC_ORIGIN'] == '${VINK_PUBLIC_ORIGIN:?}' &&
           base_services['app']['ports'].all? { |p| p.start_with?('127.0.0.1:') }, 'test: default bridge/loopback or private DB isolation changed')
   end
 end

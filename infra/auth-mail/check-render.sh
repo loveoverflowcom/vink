@@ -9,10 +9,10 @@ for name in app-runtime worker-runtime identity-runtime app-migrator identity-mi
     touch "$fixture/$name.env"
 done
 unset VINK_PROD_AUTH_SIGN_IN VINK_TEST_AUTH_SIGN_IN VINK_AUTH_SIGN_IN
-unset VINK_PROD_RESEND_FROM VINK_TEST_RESEND_FROM
+unset VINK_PROD_RESEND_FROM VINK_TEST_RESEND_FROM VINK_PUBLIC_ORIGIN
 cat > "$fixture/public.env" <<CONF
 VINK_POSTGRES_VOLUME=vink-render-check-postgres
-VINK_PUBLIC_ORIGIN=https://test.vink.forum
+VINK_PUBLIC_ORIGIN=https://qualification.example.test
 VINK_TEST_HOST_PORT=3300
 VINK_PROD_DB_NETWORK=vink-render-check-db
 VINK_PROD_EDGE_NETWORK=vink-render-check-edge
@@ -73,7 +73,8 @@ for realm in production test; do
         and (.services.identity.ports // [] | length == 0)' >/dev/null
     if [[ $realm == test ]]; then
         env "$sender=no-reply@fixture.example" "${render[@]}" | jq -e '
-            (.networks.default.internal // false | not)
+            .services.app.environment.VINK_PUBLIC_ORIGIN == "https://qualification.example.test"
+            and (.networks.default.internal // false | not)
             and .networks["auth-test-db"].internal
             and (.services.app.networks | keys == ["default"])
             and (.services.worker.networks | keys == ["default"])

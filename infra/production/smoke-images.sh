@@ -5,6 +5,7 @@ cd "$(dirname "$0")/../.."
 revision=${1:?source SHA required}
 platform=${2:?platform required}
 # Opt-in auth Compose renders with stand-ins only; image smoke below retains auth disabled.
+ruby infra/auth-mail/check-static.rb
 bash infra/auth-mail/check-render.sh
 [[ $revision =~ ^[a-f0-9]{40}$ && $platform =~ ^linux/(amd64|arm64)$ ]]
 for service in web worker identity; do

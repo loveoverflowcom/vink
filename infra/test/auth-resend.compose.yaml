@@ -6,7 +6,6 @@ services:
       identity:
         condition: service_healthy
     environment:
-      VINK_PUBLIC_ORIGIN: https://test.vink.forum
       VINK_AUTH_SIGN_IN: ${VINK_TEST_AUTH_SIGN_IN:-disabled}
   postgres:
     networks:

@@ -88,5 +88,5 @@ Các bước DNS/Caddy trực tiếp bên dưới mô tả nền #304. Khi chuy�
   kho riêng, đối soát hai database rồi xin xác nhận thời điểm và dữ liệu trước khi chuyển hướng.
 
 Overlay [Resend HTTPS opt-in](../auth-mail/README.md) là đường chuẩn bị riêng cho native Identity.
-Chỉ thêm overlay sau khi đã thử egress và quy trình rollback trên test. Khi chủ dự án mở cờ,
+Chỉ thêm overlay sau khi đã thử egress và rollback trên môi trường qualification cô lập. Khi chủ dự án mở cờ,
 đăng nhập/đăng ký công khai; không chờ tính năng quên mật khẩu O-11 để hiện form.
