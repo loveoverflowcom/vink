@@ -713,6 +713,12 @@
     {
       "renderer": "leptos",
       "source": "packages/vink-patterns/leptos/src/lib.rs",
+      "symbol": "OwnRemoveAction",
+      "entry": "composition.feedback"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/lib.rs",
       "symbol": "EndorsementAction",
       "entry": "composition.endorsement"
     },

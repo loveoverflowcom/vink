@@ -37,6 +37,15 @@ vào [PRD §16](../prd/requirements.md#16-thông-báo-cộng-đồng-và-danh-s�
 [LVE-PR-02-03-CHOICE-12@r2](proposals/LVE-PR-02-03-CHOICE-12.r2.toml) đề xuất mở danh sách người Thấm công khai có phân trang (`WorkId + RevisionId`), giữ nguyên phần bình luận của `LVE-PR-02-03-CHOICE-12@r1` (`DESIGN_PROPOSED`, vẫn đang hiện hành khi `@r2` còn `PENDING`).
 Cả ba proposal mới đang ở trạng thái `PENDING` và chờ signoff đúng revision/SHA-256 theo [VDR-DECISION-SIGNOFF@r1](signoffs/VDR-DECISION-SIGNOFF.r1.toml).
 
+## Nhận xét R4
+
+[VDR-DISCUSSION-R4@r1](proposals/VDR-DISCUSSION-R4.r1.toml) ghi bốn lựa chọn chủ sản phẩm chọn trong
+phiên #359/#360 ngày 20/11/2026: vùng “Bạn đã gửi”, xác nhận gỡ tại chỗ, phản hồi chờ duyệt hiện cạnh
+ô soạn (không hàng tạm trong nhánh) và câu “Bạn đã tắt bình luận…” theo `viewer_is_work_author`.
+Revision đang `PENDING` chờ signoff đúng revision/SHA-256. Đổi nhãn “Hữu ích” → “Ưng” là delta thuật
+ngữ trong [literary endorsement](../docs/architecture/literary-endorsement.md#delta-thuật-ngữ-20112026--359),
+không có revision TOML riêng (như #213).
+
 ## Tra cứu theo phạm vi công việc
 
 [Đối soát PR 15–16/11/2026](../docs/development/verification-reconciliation-20261116.md#quyết-định-toml-mới)

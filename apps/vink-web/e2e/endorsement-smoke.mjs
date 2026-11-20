@@ -1,4 +1,4 @@
-// LVE #73 browser checks: the reader's “Thấm” and each comment's “Hữu ích” against the
+// LVE #73 browser checks: the reader's “Thấm” and each comment's “Ưng” (was “Hữu ích”, #359) against the
 // real App and scratch PostgreSQL, acting through the loopback LocalFixture. This is NOT
 // production auth (production writes answer 401 until D-05). Interception only holds or drops
 // real responses (a lost ACK after the commit) and answers one own-state read with 401 to show
@@ -117,7 +117,7 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
   await approve(reply, 'the reply');
   const reader = `${args.base}/tac-pham/${SAMPLE_WORK}`;
   const html = await (await fetch(reader)).text();
-  check([root, reply].every((id) => ssrCount(html, `endorse-comment-${id}`)?.text === '0'), 'SSR renders “Hữu ích” with a public count on the root and on the flat reply');
+  check([root, reply].every((id) => ssrCount(html, `endorse-comment-${id}`)?.text === '0'), 'SSR renders “Ưng” with a public count on the root and on the flat reply');
   await page.goto(reader);
   const ready = `document.documentElement.dataset.hydrated==='true' && ${button('endorse-work')}?.dataset.state==='enabled' && ${button(`endorse-comment-${reply}`)}?.dataset.state==='enabled'`;
   await page.waitFor(ready, 'own states read after hydration');
@@ -222,16 +222,18 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
     await gate.release(fresh);
     await page.waitFor(`${button('endorse-work')}.dataset.pressed==='true'`, 'new intent confirmed');
 
-    console.log('  “Hữu ích” on a flat reply by keyboard; the root and the work are untouched:');
+    console.log('  “Ưng” on a flat reply by keyboard; the root and the work are untouched:');
     await rememberTarget(`endorse-comment-${reply}`);
     await page.key('Enter');
     const useful = await gate.next(6);
     check(new URL(useful.request.url).pathname.endsWith(`/discussion/comments/${reply}/endorsement/me`) && JSON.parse(useful.request.postData).endorsed === true, 'Enter on the focused reply action sends its own command');
-    check(await page.eval(`${button(`endorse-comment-${reply}`)}.dataset.pressed==='false' && ${exactCount(`endorse-comment-${reply}`, 0)}`), '#226 pending Hữu ích keeps its own confirmed Off and count 0');
-    await sameTarget(`endorse-comment-${reply}`, 'pending Hữu ích');
+    check(await page.eval(`${button(`endorse-comment-${reply}`)}.dataset.pressed==='false' && ${exactCount(`endorse-comment-${reply}`, 0)}`), '#226 pending Ưng keeps its own confirmed Off and count 0');
+    await sameTarget(`endorse-comment-${reply}`, 'pending Ưng');
+    check(await page.eval(`${button(`endorse-comment-${reply}`)}.querySelector('[data-icon]')?.dataset.icon==='heart-outline'`), '#359 pending Ưng keeps the outline heart (no optimistic glyph)');
     await gate.release(useful);
     await page.waitFor(`${button(`endorse-comment-${reply}`)}.dataset.pressed==='true' && ${count(`endorse-comment-${reply}`)}.startsWith('1')`, 'reply endorsement confirmed');
-    await sameTarget(`endorse-comment-${reply}`, 'confirmed Hữu ích');
+    await sameTarget(`endorse-comment-${reply}`, 'confirmed Ưng');
+    check(await page.eval(`${button(`endorse-comment-${reply}`)}.querySelector('[data-icon]')?.dataset.icon==='heart' && ${button(`endorse-comment-${reply}`)}.getAttribute('aria-label')==='Bỏ Ưng'`), '#359 confirmed Ưng shows the filled heart and names the next action');
     check(await page.eval(`document.activeElement?.id===${JSON.stringify(`endorse-comment-${reply}`)}`), 'focus stays on the same action after confirmation');
     check(await page.eval(`${count(`endorse-comment-${root}`)}.startsWith('0') && ${count('endorse-work')}.startsWith('1')`), 'the root and the work keep their own counts (no cascade)');
     await page.key('Space');
@@ -239,7 +241,8 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
     check(JSON.parse(off.request.postData).endorsed === false, 'Space toggles the desired state off');
     await gate.release(off);
     await page.waitFor(`${button(`endorse-comment-${reply}`)}.dataset.pressed==='false'`, 'reply endorsement removed');
-    await sameTarget(`endorse-comment-${reply}`, 'removed Hữu ích');
+    await sameTarget(`endorse-comment-${reply}`, 'removed Ưng');
+    check(await page.eval(`${button(`endorse-comment-${reply}`)}.querySelector('[data-icon]')?.dataset.icon==='heart-outline'`), '#359 removed Ưng returns to the outline heart');
     check((await page.eval(order)) === before, 'endorsements never reorder roots or replies');
   } finally {
     await gate.disable();
@@ -268,7 +271,7 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
   await page.send('Fetch.enable', { patterns: [{ urlPattern: `${args.base}/api/v1/works/*/endorsements/me*`, requestStage: 'Request' }] });
   try {
     await page.reload();
-    await page.waitFor(`${note('endorse-work')}.includes('Cần đăng nhập để Thấm.') && ${note(`endorse-comment-${reply}`)}.includes('Cần đăng nhập để đánh dấu hữu ích.')`, 'signed-out reasons');
+    await page.waitFor(`${note('endorse-work')}.includes('Cần đăng nhập để Thấm.') && ${note(`endorse-comment-${reply}`)}.includes('Cần đăng nhập để Ưng.')`, 'signed-out reasons');
     check(await page.eval(`${count('endorse-work')}.startsWith('1') && ${button('endorse-work')}.dataset.pressed==='unknown' && !document.querySelector('#work-endorsement a, #feedback-region a[href*="dang-nhap"]')`), 'public counts stay; no own state and no fake login');
     await page.capture('lve-signed-out-reason', { scenario: 'LVE-UC-01', boundary: 'real-local-postgresql-own-read-answered-401-by-interception' });
   } finally {

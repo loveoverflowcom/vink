@@ -207,6 +207,10 @@
 .vk-discussion-delivery[hidden] { display: none; }
 .vk-discussion-composer-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--vk-space-2); min-width: 0; }
 .vk-discussion-composer-heading > p { margin: 0; overflow-wrap: anywhere; }
+/* R4 (#360): the confirmation replaces “Gỡ nhận xét của tôi” in place; its prompt takes the first
+   line so a repeated press lands on text, and the two actions wrap at text 200%. */
+.vk-discussion-remove-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-2); min-width: 0; }
+.vk-discussion-remove-confirm > p { flex-basis: 100%; margin: 0; overflow-wrap: anywhere; }
 
 .vk-discussion-context { line-height: var(--vk-type-caption-line-height); }
 .vk-discussion-thread > .vk-muted { margin: 0; padding-inline: 16px; }

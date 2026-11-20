@@ -203,7 +203,7 @@ bằng chứng: [UI evidence](../development/ui-system-endorsement-evidence.md).
 | Primitive | `ToggleAction` chung (Leptos/CMP) + `EndorsementAction` ở patterns giữ copy LVE | Bookmark/reaction sau này dùng lại được; không đưa `command_key`/order/DTO vào UI |
 | Hiển thị trạng thái | Chỉ giá trị owner đã xác nhận; pending/uncertain là ghi chú, dấu ✓ sau ACK/readback | Khớp hướng A của CHOICE-10; hướng B cần `toggle-contract-v2`. CHOICE-10 cấp sản phẩm vẫn chốt ở lát adapter |
 | Bấm | Phát trạng thái mong muốn (`!confirmed`), không phát khi pending/uncertain/chặn/chưa rõ | LVE-FR-03; uncertain → “Kiểm tra lại” (Reconcile), không replay mù |
-| Tên truy cập | Theo hành động: “Thấm”/“Bỏ Thấm”, “Hữu ích”/“Bỏ đánh dấu hữu ích”; không `aria-pressed` | Copy khởi đầu #73; tránh đọc “Bỏ…, đã nhấn”; tên chứa nhãn (WCAG 2.5.3) |
+| Tên truy cập | Theo hành động: “Thấm”/“Bỏ Thấm”, “Ưng”/“Bỏ Ưng” (trước 20/11/2026: “Hữu ích”/“Bỏ đánh dấu hữu ích”); không `aria-pressed` | Copy khởi đầu #73; tránh đọc “Bỏ…, đã nhấn”; tên chứa nhãn (WCAG 2.5.3) |
 | Số đếm | `CountFact::{Hidden, Unavailable, Known}`; unavailable “–”, không 0; mỗi đích riêng | LVE-FR-02, LVE-UC-03 |
 | Lý do chặn | Chữ hiển thị: tự đánh giá (CHOICE-08 A), không có quyền, chưa đăng nhập, không khả dụng | Không có nút đăng nhập giả khi chưa có auth |
 | Glyph | Pen Flight R2 A · Mềm (chốt 09/11/2026; tích hợp 10/11) | CHOICE-07: vector Vink-owned, 20px trang trí trong slot đầu; tiến trình/✓ giữ slot cuối. [Spec/nguồn](../design/pen-flight-r2.md) |
@@ -238,3 +238,21 @@ Work dùng nhãn ổn định “Thấm”, action name “Thấm”/“Bỏ Th�
 không đổi “Hữu ích”, Pen Flight, authority, revision anchor, order/receipts hoặc policy ranking.
 Các trích dẫn/CHOICE và DecisionDelta lịch sử phía trên giữ nguyên thuật ngữ gốc.
 Đây là delta copy `web`/`cmp` patterns; không signoff một revision kiến trúc mới.
+
+## Delta thuật ngữ 20/11/2026 — #359
+
+Chủ sản phẩm ghi trong [issue #359](https://github.com/loveoverflowcom/vink/issues/359):
+“đổi “Hữu ích” → “Ưng”, icon trái tim”, kèm phạm vi “Ngữ nghĩa giữ nguyên: một tín hiệu cho mỗi
+bình luận/phản hồi, neo revision, chỉ hiện số đã xác nhận, chưa biết thì không hiện 0, không
+optimistic. “Thấm” cấp tác phẩm không đổi.”
+
+| Mục | Hiện hành | Không đổi |
+| --- | --- | --- |
+| Nhãn / tên truy cập | “Ưng” / “Bỏ Ưng”; count-unit “lượt Ưng”; ghi chú “Đang gửi Ưng…”, “Chưa rõ bạn đã Ưng chưa.”; lý do “Cần đăng nhập để Ưng.”, “Bạn không thể tự Ưng nhận xét của mình.” | API (`/endorsement/me`, `endorsed`), enum `EndorsementKind::Comment`, bảng `comment_endorsements`, order/receipt, count Known/Unavailable/Hidden |
+| Glyph | `heart-outline` khi giá trị đã xác nhận là tắt hoặc chưa rõ, `heart` khi đã xác nhận bật (Material `favorite_border`/`favorite` tại commit đã ghim trong `icons.json`); pending/uncertain giữ glyph đã xác nhận | “Thấm” giữ Pen Flight R2 (CHOICE-07 A) |
+
+Delta này thay nhãn “Hữu ích” của bình luận trong AC-04 #128 và trong tài liệu hiện hành.
+`LVE-PR-01-CHOICE-01@r1`, O-03, O-06, RANK-02 và P-08b nhắc “Hữu ích” là cùng một tín hiệu; record
+nhập và trích dẫn lịch sử giữ nguyên chữ gốc, như với “Đánh giá cao” sau #213. Đây là delta copy và
+glyph ở `vink-ui` `ToggleAction` (`selected_icon`) cùng patterns Web/CMP; không signoff một revision
+kiến trúc mới.

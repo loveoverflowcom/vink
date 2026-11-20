@@ -16,6 +16,10 @@ Delta copy 15/11/2026 ([#213](https://github.com/loveoverflowcom/vink/issues/213
 Icon, phase, count/order/session và “Hữu ích” giữ nguyên. Bằng chứng R2 bên dưới là lịch sử,
 không tự trở thành bằng chứng cho delta mới.
 
+Delta 20/11/2026 ([#359](https://github.com/loveoverflowcom/vink/issues/359)): bình luận dùng “Ưng”
+với `heart-outline`/`heart` theo giá trị đã xác nhận; Pen Flight chỉ còn ở “Thấm”. Cây dưới đây giữ
+dạng R2 làm lịch sử ([delta thuật ngữ](../architecture/literary-endorsement.md#delta-thuật-ngữ-20112026--359)).
+
 ```text
 #reader-body → #work-endorsement
   Pen Flight · Thấm · số của revision · slot tiến trình/✓

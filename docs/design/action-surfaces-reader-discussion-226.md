@@ -23,7 +23,8 @@ Trả lời, Gửi và Gỡ mà nội dung vẫn là trọng tâm. Yêu cầu k�
 Tra [kho TOML](../../decisions/README.md): `LVE-WP-04-CHOICE-07@r1` giữ Pen Flight R2 A · Mềm
 20px trang trí; `LVE-PR-01-CHOICE-08@r1` chặn self endorsement. Cả hai record nhập vẫn
 `DESIGN_PROPOSED`; không nâng thành `Accepted` hoặc quyết định mới của chủ sản phẩm.
-Nhãn hiện hành là **Thấm / Hữu ích**, không đổi lại theo ảnh cũ.
+Nhãn lúc #226 là **Thấm / Hữu ích**, không đổi lại theo ảnh cũ. Từ #359 (20/11/2026) nhãn bình luận
+là **Ưng** với tim viền/đặc; xem [delta thuật ngữ](../architecture/literary-endorsement.md#delta-thuật-ngữ-20112026--359).
 
 `References: NO_APPROVED_REFERENCE`. Ảnh own-content lịch sử được issue dẫn là
 `BUILD_SHA_UNVERIFIED`, không làm baseline eligible reader. Ảnh baseline của lượt thực thi

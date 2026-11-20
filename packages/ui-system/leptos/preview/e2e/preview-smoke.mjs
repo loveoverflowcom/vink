@@ -1078,7 +1078,7 @@ async function toggles(page) {
   await page.open('composition.endorsement');
   const ids = await page.eval(`[...document.querySelectorAll('.vk-ui-toggle__control')].map((b) => [b.id, b.getAttribute('aria-label')])`);
   check(ids.length === 4 && new Set(ids.map((i) => i[0])).size === 4, `EndorsementAction: one control per target (${JSON.stringify(ids)})`);
-  check(ids[0][1] === 'Thấm' && ids[1][1] === 'Hữu ích' && ids[2][1] === 'Bỏ đánh dấu hữu ích', 'EndorsementAction: work and comment copy, name follows the confirmed value');
+  check(ids[0][1] === 'Thấm' && ids[1][1] === 'Ưng' && ids[2][1] === 'Bỏ Ưng', 'EndorsementAction: work and comment copy (#359 Ưng), name follows the confirmed value');
   for (const scenario of ['default', 'selected', 'pending', 'uncertain', 'own-content', 'unavailable', 'signed-out']) {
     await page.open('composition.endorsement', scenario);
     check(await page.eval(`(() => {

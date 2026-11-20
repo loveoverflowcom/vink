@@ -420,9 +420,13 @@ pub fn FeedbackComposer(
     #[prop(optional, into)]
     show_alternative: Signal<bool>,
     #[prop(optional)] alternative: Option<ViewFn>,
+    /// Emphasis only (R4: tonal while empty, filled with text); `state` still gates presses.
+    #[prop(optional, into)]
+    send_variant: Option<Signal<ButtonVariant>>,
     #[prop(optional)] children: Option<Children>,
 ) -> impl IntoView {
     let submit_id = format!("{id}-send");
+    let send_variant = send_variant.unwrap_or_else(|| Signal::stored(ButtonVariant::Filled));
     let submit_state = Signal::derive(move || {
         if matches!(state.get(), ActionState::Pending { .. }) {
             state.get()
@@ -443,9 +447,9 @@ pub fn FeedbackComposer(
             <Show when=move || tonal && !value.get().is_empty()><p class="vk-feedback-draft-note">"Rời trang có thể mất nháp."</p></Show>
             <Show when=move || show_alternative.get() fallback=move || {
                 if tonal {
-                    view! { <Button id=submit_id.clone() state=submit_state on_press=on_submit leading=IconName::ArrowBack>"Gửi"</Button> }.into_any()
+                    view! { <Button id=submit_id.clone() variant=send_variant state=submit_state on_press=on_submit leading=IconName::ArrowBack>"Gửi"</Button> }.into_any()
                 } else {
-                    view! { <Button id=submit_id.clone() state=submit_state on_press=on_submit>"Gửi nhận xét"</Button> }.into_any()
+                    view! { <Button id=submit_id.clone() variant=send_variant state=submit_state on_press=on_submit>"Gửi nhận xét"</Button> }.into_any()
                 }
             }>
                 {alternative.as_ref().map(ViewFn::run)}
@@ -496,6 +500,48 @@ pub struct CommentEndorsements {
     pub on_recover: Callback<String>,
 }
 
+/// Inline confirmation of “Gỡ nhận xét của tôi” (VDR-DISCUSSION-R4@r1). The adapter owns which
+/// comment is confirming and whether removal is still allowed; `on_remove` asks, `on_confirm`
+/// is the only path to a removal request.
+#[derive(Clone, Copy)]
+pub struct RemoveConfirmation {
+    pub confirming: Callback<String, bool>,
+    pub on_confirm: Callback<String>,
+    pub on_cancel: Callback<String>,
+}
+
+/// “Gỡ nhận xét của tôi” and, once asked, its confirmation in the same place: a destructive
+/// “Gỡ” and “Giữ lại”. Nothing is sent until “Gỡ”; the adapter moves focus between the two.
+#[component]
+pub fn OwnRemoveAction(
+    #[prop(into)] comment_id: String,
+    #[prop(into)] confirming: Signal<bool>,
+    #[prop(optional, into)] state: Signal<ActionState>,
+    #[prop(into)] on_ask: Callback<()>,
+    #[prop(into)] on_confirm: Callback<()>,
+    #[prop(into)] on_cancel: Callback<()>,
+) -> impl IntoView {
+    let ask_id = format!("remove-comment-{comment_id}");
+    let confirm_id = format!("confirm-remove-comment-{comment_id}");
+    let cancel_id = format!("cancel-remove-comment-{comment_id}");
+    let prompt_id = format!("remove-comment-{comment_id}-prompt");
+    move || {
+        if confirming.get() {
+            view! {
+                <div class="vk-discussion-remove-confirm" role="group" aria-labelledby=prompt_id.clone()>
+                    <p id=prompt_id.clone()>"Gỡ nhận xét này? Sau khi gỡ, bạn không thể khôi phục."</p>
+                    <Button id=cancel_id.clone() variant=ButtonVariant::Text on_press=on_cancel>"Giữ lại"</Button>
+                    <Button id=confirm_id.clone() variant=ButtonVariant::Danger state on_press=on_confirm>"Gỡ"</Button>
+                </div>
+            }
+            .into_any()
+        } else {
+            view! { <Button id=ask_id.clone() variant=ButtonVariant::Text state on_press=on_ask>"Gỡ nhận xét của tôi"</Button> }
+                .into_any()
+        }
+    }
+}
+
 /// Exactly two levels. A contextual reply is still rendered in the same flat reply list.
 /// Endorsements never reorder roots or replies: the provider's order is kept as given.
 #[component]
@@ -507,6 +553,9 @@ pub fn DiscussionThread(
     #[prop(optional_no_strip)] endorsements: Option<CommentEndorsements>,
     #[prop(optional, into)] has_more_replies: Signal<bool>,
     #[prop(optional)] reply_footer: Option<ChildrenFn>,
+    /// Without it, `on_remove` is the removal itself (samples and previews).
+    #[prop(optional)]
+    removal: Option<RemoveConfirmation>,
 ) -> impl IntoView {
     let root = Memo::new(move |_| facts.get().root);
     let shared_block = Memo::new(move |_| {
@@ -531,7 +580,7 @@ pub fn DiscussionThread(
     };
     view! {
         <div class="vk-discussion-thread">
-            {move || root.get().map(|comment| discussion_comment(comment, on_reply, on_remove, action_state, endorsements, shared_description))
+            {move || root.get().map(|comment| discussion_comment(comment, on_reply, on_remove, removal, action_state, endorsements, shared_description))
                 .unwrap_or_else(|| view! { <p class="vk-muted">"Bình luận gốc không còn hiển thị."</p> }.into_any())}
             <div class="vk-discussion-reply-group" hidden=move || facts.get().replies.is_empty() && !has_more_replies.get()>
             <p class="vk-discussion-reply-heading">"Phản hồi"</p>
@@ -539,7 +588,7 @@ pub fn DiscussionThread(
                 <For each=move || { facts.get().replies.into_iter().map(|comment| comment.id).collect::<Vec<_>>() } key=|id| id.clone()
                     children=move |id| {
                         let comment = Memo::new(move |_| facts.get().replies.into_iter().find(|comment| comment.id == id));
-                        view! { <li>{move || comment.get().map(|comment| discussion_comment(comment, on_reply, on_remove, action_state, endorsements, shared_description))}</li> }
+                        view! { <li>{move || comment.get().map(|comment| discussion_comment(comment, on_reply, on_remove, removal, action_state, endorsements, shared_description))}</li> }
                     } />
             </ul>
             {reply_footer.map(|footer| footer())}
@@ -582,6 +631,7 @@ fn discussion_comment(
     comment: DiscussionComment,
     on_reply: Callback<String>,
     on_remove: Callback<String>,
+    removal: Option<RemoveConfirmation>,
     state: Signal<ActionState>,
     endorsements: Option<CommentEndorsements>,
     shared_description: Signal<Option<String>>,
@@ -620,7 +670,19 @@ fn discussion_comment(
             <p class="vk-discussion-body">{comment.body}</p>
             <div class="vk-discussion-actions">
                 {comment.can_reply.then(|| view! { <Button id=reply_button_id variant=ButtonVariant::Text on_press=move |_| on_reply.run(reply_id.clone())>"Trả lời"</Button> })}
-                {comment.can_remove.then(|| view! { <Button id=remove_button_id variant=ButtonVariant::Text state on_press=move |_| on_remove.run(remove_id.clone())>"Gỡ nhận xét của tôi"</Button> })}
+                {comment.can_remove.then(|| match removal {
+                    Some(removal) => {
+                        let (ask, confirm, cancel, shown) = (remove_id.clone(), remove_id.clone(), remove_id.clone(), remove_id.clone());
+                        view! {
+                            <OwnRemoveAction comment_id=remove_id.clone() state
+                                confirming=Signal::derive(move || removal.confirming.run(shown.clone()))
+                                on_ask=move |_| on_remove.run(ask.clone())
+                                on_confirm=move |_| removal.on_confirm.run(confirm.clone())
+                                on_cancel=move |_| removal.on_cancel.run(cancel.clone()) />
+                        }.into_any()
+                    }
+                    None => view! { <Button id=remove_button_id variant=ButtonVariant::Text state on_press=move |_| on_remove.run(remove_id.clone())>"Gỡ nhận xét của tôi"</Button> }.into_any(),
+                })}
                 // Last: its note (pending, reason) wraps under it without pushing the text actions apart.
                 {endorsements.map(|endorsements| comment_endorsement(comment.id.clone(), endorsements, shared_description))}
             </div>
@@ -634,7 +696,8 @@ fn discussion_comment(
 pub enum EndorsementKind {
     /// One published revision of a work: “Thấm”.
     Work,
-    /// A root comment or a flat reply, each its own target: “Hữu ích”.
+    /// A root comment or a flat reply, each its own target: “Ưng” (heart). The 20/11/2026
+    /// rename of “Hữu ích” (#359) changes copy and glyph only, never the signal's semantics.
     Comment,
 }
 
@@ -661,13 +724,13 @@ impl EndorsementKind {
                 "Chưa rõ bạn đã Thấm chưa.",
             ),
             Self::Comment => (
-                "Hữu ích",
-                "Bỏ đánh dấu hữu ích",
-                "lượt hữu ích",
-                "Đang gửi đánh dấu hữu ích…",
-                "Đang bỏ đánh dấu hữu ích…",
-                "Không thể đánh dấu lúc này.",
-                "Chưa rõ bạn đã đánh dấu hữu ích chưa.",
+                "Ưng",
+                "Bỏ Ưng",
+                "lượt Ưng",
+                "Đang gửi Ưng…",
+                "Đang bỏ Ưng…",
+                "Không thể Ưng lúc này.",
+                "Chưa rõ bạn đã Ưng chưa.",
             ),
         };
         ToggleCopy {
@@ -680,6 +743,16 @@ impl EndorsementKind {
         }
     }
 
+    /// Decorative leading glyph for a confirmed selection; the label carries the meaning and
+    /// the outline/filled pair keeps “Ưng” readable without colour.
+    pub const fn icon(self, selected: bool) -> IconName {
+        match (self, selected) {
+            (Self::Work, _) => IconName::PenFlight,
+            (Self::Comment, false) => IconName::HeartOutline,
+            (Self::Comment, true) => IconName::Heart,
+        }
+    }
+
     /// Visible text, never hover-only; no login button is implied (no auth authority yet).
     pub const fn reason(self, block: EndorsementBlock) -> &'static str {
         match (self, block) {
@@ -687,16 +760,14 @@ impl EndorsementKind {
                 "Bạn không thể tự Thấm tác phẩm của mình."
             }
             (Self::Comment, EndorsementBlock::OwnContent) => {
-                "Bạn không thể đánh dấu nhận xét của chính mình."
+                "Bạn không thể tự Ưng nhận xét của mình."
             }
             (Self::Work, EndorsementBlock::NotPermitted) => "Tài khoản này chưa thể Thấm.",
-            (Self::Comment, EndorsementBlock::NotPermitted) => {
-                "Tài khoản này chưa thể đánh dấu hữu ích."
-            }
+            (Self::Comment, EndorsementBlock::NotPermitted) => "Tài khoản này chưa thể Ưng.",
             (Self::Work, EndorsementBlock::SignedOut) => "Cần đăng nhập để Thấm.",
-            (Self::Comment, EndorsementBlock::SignedOut) => "Cần đăng nhập để đánh dấu hữu ích.",
+            (Self::Comment, EndorsementBlock::SignedOut) => "Cần đăng nhập để Ưng.",
             (Self::Work, EndorsementBlock::Unavailable) => "Không thể Thấm lúc này.",
-            (Self::Comment, EndorsementBlock::Unavailable) => "Tạm chưa thể đánh dấu hữu ích.",
+            (Self::Comment, EndorsementBlock::Unavailable) => "Tạm chưa thể Ưng.",
         }
     }
 }
@@ -741,8 +812,9 @@ fn uniform_endorsement_block(
 }
 
 /// The endorsement control for one target. A press emits the desired selection; the adapter
-/// owns `command_key`, `expected_order`, session fencing and late answers. CHOICE-07 A uses
-/// the same decorative Pen Flight R2 in every phase; confirmation keeps its own trailing slot.
+/// owns `command_key`, `expected_order`, session fencing and late answers. “Thấm” keeps the
+/// decorative Pen Flight R2 in every phase (CHOICE-07 A); “Ưng” shows an outline heart until
+/// the confirmed value is on, then a filled one. Confirmation keeps its own trailing slot.
 #[component]
 pub fn EndorsementAction(
     /// Presentation only; confirmed facts and authority remain with the adapter.
@@ -766,7 +838,8 @@ pub fn EndorsementAction(
                 surface
                 id
                 copy=kind.copy()
-                icon=IconName::PenFlight
+                icon=kind.icon(false)
+                selected_icon=kind.icon(true)
                 value=Signal::derive(move || facts.get().value)
                 phase=Signal::derive(move || facts.get().phase)
                 count=Signal::derive(move || facts.get().count)
@@ -1052,11 +1125,49 @@ mod tests {
             },
         );
         assert!(
-            comment.contains("aria-label=\"Hữu ích\"")
-                && comment.contains("nhận xét của chính mình"),
+            comment.contains("aria-label=\"Ưng\"")
+                && comment.contains(">Ưng<")
+                && comment.contains("Bạn không thể tự Ưng nhận xét của mình."),
             "{comment}"
         );
+        assert!(
+            comment.contains("data-icon=\"heart-outline\"") && !comment.contains("pen-flight"),
+            "outline heart while off: {comment}"
+        );
         assert!(!comment.contains("e-count"), "hidden count: {comment}");
+        let liked = render(
+            EndorsementKind::Comment,
+            EndorsementFacts {
+                value: ToggleValue::On,
+                count: CountFact::Known(3),
+                ..Default::default()
+            },
+        );
+        assert!(
+            liked.contains("aria-label=\"Bỏ Ưng\"")
+                && liked.contains("lượt Ưng")
+                && liked.contains("data-icon=\"heart\""),
+            "filled heart once confirmed: {liked}"
+        );
+        let pressing = render(
+            EndorsementKind::Comment,
+            EndorsementFacts {
+                value: ToggleValue::Off,
+                phase: TogglePhase::Pending { desired: true },
+                ..Default::default()
+            },
+        );
+        assert!(
+            pressing.contains("data-icon=\"heart-outline\"") && pressing.contains("Đang gửi Ưng…"),
+            "no optimistic heart: {pressing}"
+        );
+        for copy in [
+            EndorsementKind::Comment.copy(),
+            EndorsementKind::Work.copy(),
+        ] {
+            let all = format!("{copy:?}").to_lowercase();
+            assert!(!all.contains("hữu ích"), "{all}");
+        }
         let guest = render(
             EndorsementKind::Work,
             EndorsementFacts {
@@ -1141,6 +1252,89 @@ mod tests {
             pending.contains("Đang gửi nhận xét…") && pending.contains("data-state=\"pending\""),
             "{pending}"
         );
+    }
+
+    #[test]
+    fn r4_removal_asks_in_place_and_only_confirm_reaches_the_adapter() {
+        let comment = |id: &str, can_remove| DiscussionComment {
+            id: id.into(),
+            author: Author {
+                name: "Người viết".into(),
+                key: None,
+                profile: None,
+                published_at: "2026-11-20T02:00:00Z".into(),
+                neutral: false,
+            },
+            body: format!("Bình luận {id}"),
+            status: None,
+            context: None,
+            can_reply: false,
+            can_remove,
+        };
+        let render = |confirming: &'static str| {
+            Owner::new().with(|| {
+                let facts = DiscussionThreadFacts {
+                    root_id: "root".into(),
+                    root: Some(comment("root", true)),
+                    replies: vec![comment("other", false)],
+                };
+                let removal = RemoveConfirmation {
+                    confirming: Callback::new(move |id: String| id == confirming),
+                    on_confirm: Callback::new(|_: String| {}),
+                    on_cancel: Callback::new(|_: String| {}),
+                };
+                view! {
+                    <DiscussionThread facts on_reply=|_: String| {} on_remove=|_: String| {} removal />
+                }
+                .to_html()
+            })
+        };
+        let idle = render("none");
+        assert!(
+            idle.contains("id=\"remove-comment-root\"") && !idle.contains("confirm-remove"),
+            "{idle}"
+        );
+        assert!(
+            !idle.contains("remove-comment-other"),
+            "only can_remove: {idle}"
+        );
+        let asking = render("root");
+        assert!(
+            !asking.contains("id=\"remove-comment-root\""),
+            "the ask control is replaced in place: {asking}"
+        );
+        assert!(
+            asking.contains("role=\"group\"")
+                && asking.contains("aria-labelledby=\"remove-comment-root-prompt\"")
+                && asking.contains("không thể khôi phục"),
+            "{asking}"
+        );
+        let cancel = asking.find("id=\"cancel-remove-comment-root\"").unwrap();
+        let confirm = asking.find("id=\"confirm-remove-comment-root\"").unwrap();
+        assert!(cancel < confirm, "Giữ lại comes first: {asking}");
+        assert!(asking.contains("vk-ui-button--danger"), "{asking}");
+    }
+
+    #[test]
+    fn r4_send_emphasis_is_presentation_and_never_unlocks_a_blocked_send() {
+        let render = |variant: ButtonVariant, state: ActionState| {
+            Owner::new().with(|| {
+                view! {
+                <FeedbackComposer id="c" intent=FeedbackIntent::Unspecified value="" tonal=true
+                    on_input=|_| {} state send_variant=Signal::stored(variant) on_submit=|_| {} />
+            }.to_html()
+            })
+        };
+        let empty = render(
+            ButtonVariant::Tonal,
+            ActionState::disabled("Viết nhận xét trước khi gửi."),
+        );
+        assert!(
+            empty.contains("vk-ui-button--tonal") && empty.contains("aria-disabled=\"true\""),
+            "{empty}"
+        );
+        let typed = render(ButtonVariant::Filled, ActionState::Enabled);
+        assert!(typed.contains("vk-ui-button--filled"), "{typed}");
     }
 
     #[test]

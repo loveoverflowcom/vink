@@ -31,10 +31,141 @@ pub struct Draft {
     pub target: Option<Target>,
     pub target_available: bool,
     pub open: bool,
-    pub receipt: Option<String>,
+    pub receipt: Option<Receipt>,
     pub delivery: Delivery,
     /// Typed ACK identity retained for current-state lookup, never inferred from body text.
     pub acknowledged: Option<AcknowledgedComment>,
+}
+
+impl Draft {
+    /// Typed text or a command whose outcome is still being tracked: collapsing or scrolling
+    /// the branch away must keep a place where this stays visible.
+    pub fn holds_work(&self) -> bool {
+        !self.body.is_empty() || !matches!(self.delivery, Delivery::Editing)
+    }
+
+    /// `holds_work`, or a receipt the writer has not seen settle yet.
+    pub fn needs_recovery(&self) -> bool {
+        self.holds_work() || self.receipt.is_some()
+    }
+}
+
+/// What the last send of one composer came back with. Typed so each kind gets its own tonal
+/// notice (R4); never derived from the body text or from wording.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Receipt {
+    /// Stored and waiting for review: every new comment under `premoderation.v1`.
+    Pending,
+    /// Stored and already public; the loaded public list may not show it yet.
+    Approved,
+    /// Stored and not approved; the reason is only the writer's, in “Bạn đã gửi”.
+    Rejected,
+    /// Stored, then no longer shown.
+    Removed,
+    /// No answer proves either outcome; reconciling replays the same key and body.
+    Uncertain,
+    /// Refused before anything was stored, by contract code. Typed text stays.
+    Refused(ApiError),
+    /// The session changed before the earlier command was confirmed; never replayed.
+    SessionChanged,
+}
+
+/// One accent per notice: amber waiting, blue unknown, red adverse. Colour is never the only
+/// signal; the message names the state.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum NoticeTone {
+    Neutral,
+    Waiting,
+    Unknown,
+    Adverse,
+}
+
+impl NoticeTone {
+    pub const fn id(self) -> &'static str {
+        match self {
+            Self::Neutral => "neutral",
+            Self::Waiting => "waiting",
+            Self::Unknown => "unknown",
+            Self::Adverse => "adverse",
+        }
+    }
+}
+
+impl Receipt {
+    pub fn tone(&self) -> NoticeTone {
+        match self {
+            Self::Pending => NoticeTone::Waiting,
+            Self::Uncertain | Self::SessionChanged => NoticeTone::Unknown,
+            Self::Rejected | Self::Refused(_) => NoticeTone::Adverse,
+            Self::Approved | Self::Removed => NoticeTone::Neutral,
+        }
+    }
+
+    pub fn message(&self) -> &'static str {
+        match self {
+            Self::Pending => "Chờ duyệt · Chưa công khai",
+            Self::Approved => "Lần gửi này đã được duyệt. Tải lại để xem trạng thái hiện tại.",
+            Self::Rejected => "Lần gửi này không được duyệt. Tải lại để xem lý do được cấp.",
+            Self::Removed => "Nhận xét của lần gửi này không còn hiển thị.",
+            Self::Uncertain => {
+                "Chưa rõ máy chủ đã nhận hay chưa. Đối soát dùng lại đúng nội dung và mã của lần gửi trước; chữ mới vẫn được giữ."
+            }
+            Self::Refused(error) => error_message(error),
+            Self::SessionChanged => {
+                "Phiên đăng nhập đã thay đổi trước khi lần gửi trước được xác nhận. Tải lại nhận xét để kiểm tra trước khi gửi lại; chữ vẫn được giữ."
+            }
+        }
+    }
+}
+
+/// The one primary state a composer shows (R4 image 04). Focus is presentation only and the
+/// lock reason (`reason`) is separate, so a guest's typed text is never mistaken for a send.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ComposerStatus {
+    Draft,
+    Sending,
+    CommittedPending,
+    Uncertain,
+    Refused,
+    SignInAvailable,
+    SignInClosed,
+    Closed,
+}
+
+impl ComposerStatus {
+    pub const fn id(self) -> &'static str {
+        match self {
+            Self::Draft => "draft",
+            Self::Sending => "sending",
+            Self::CommittedPending => "committed-pending",
+            Self::Uncertain => "uncertain",
+            Self::Refused => "refused",
+            Self::SignInAvailable => "sign-in",
+            Self::SignInClosed => "sign-in-closed",
+            Self::Closed => "closed",
+        }
+    }
+}
+
+/// Emphasis of “Gửi”: tonal while empty, filled once there is text, progress while sending.
+/// Whether it may be pressed is `reason`, never the emphasis.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum SendEmphasis {
+    Tonal,
+    Filled,
+    Progress,
+}
+
+/// The reply composer's target chip (R4 image 05). An unavailable context is not inferred as
+/// deleted and offers another target; sending stays blocked until a visible one is chosen.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ReplyTarget {
+    /// “Trả lời bình luận gốc”: the branch's root, nothing to clear.
+    Root,
+    /// “Đang trả lời {name}” with a control back to the root when the root accepts replies.
+    Reply { name: String },
+    /// “Chọn bình luận khác” + “Sao chép nháp”.
+    Unavailable,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -67,6 +198,9 @@ pub struct DiscussionController {
     pub drafts: BTreeMap<ComposerKey, Draft>,
     /// Whether this deployment offers sign-in; only chooses the guest's reason text.
     pub sign_in_open: bool,
+    /// The server's `viewer_is_work_author`; only chooses “Bạn đã tắt…” wording, never a
+    /// permission. Every write is decided again by the server.
+    pub viewer_is_author: bool,
     session_invalid: bool,
     sequence: u64,
     edits: BTreeMap<ComposerKey, u64>,
@@ -79,6 +213,7 @@ impl DiscussionController {
             settings,
             drafts: BTreeMap::new(),
             sign_in_open: false,
+            viewer_is_author: false,
             session_invalid: false,
             sequence: 0,
             edits: BTreeMap::new(),
@@ -92,6 +227,7 @@ impl DiscussionController {
             self.drafts.clear();
             self.edits.clear();
             self.session_invalid = false;
+            self.viewer_is_author = false;
         }
     }
 
@@ -106,14 +242,12 @@ impl DiscussionController {
         }
         self.scope.session = session;
         self.session_invalid = false;
+        self.viewer_is_author = false;
         for draft in self.drafts.values_mut() {
             draft.acknowledged = None;
             draft.receipt = match std::mem::take(&mut draft.delivery) {
                 Delivery::Editing => None,
-                Delivery::Sending(_) | Delivery::Uncertain(_) => Some(
-                    "Phiên đăng nhập đã thay đổi trước khi lần gửi trước được xác nhận. Tải lại nhận xét để kiểm tra trước khi gửi lại; chữ vẫn được giữ."
-                        .into(),
-                ),
+                Delivery::Sending(_) | Delivery::Uncertain(_) => Some(Receipt::SessionChanged),
             };
         }
     }
@@ -174,6 +308,74 @@ impl DiscussionController {
         self.drafts.entry(key.clone()).or_default().open = false;
     }
 
+    /// “Mở lại” on a collapsed reply: the same text, target and in-flight state come back.
+    pub fn reopen(&mut self, key: &ComposerKey) {
+        if let Some(draft) = self.drafts.get_mut(key) {
+            draft.open = true;
+        }
+    }
+
+    /// A reply composer that was collapsed while it still holds text or a tracked send.
+    pub fn collapsed_with_work(&self, key: &ComposerKey) -> bool {
+        matches!(key, ComposerKey::Replies(_))
+            && self
+                .drafts
+                .get(key)
+                .is_some_and(|d| !d.open && d.holds_work())
+    }
+
+    pub fn reply_target(&self, key: &ComposerKey) -> Option<ReplyTarget> {
+        let ComposerKey::Replies(root) = key else {
+            return None;
+        };
+        let draft = self.drafts.get(key)?;
+        let target = draft.target.as_ref()?;
+        Some(if !draft.target_available {
+            ReplyTarget::Unavailable
+        } else if &target.id == root {
+            ReplyTarget::Root
+        } else {
+            ReplyTarget::Reply {
+                name: target.label.clone(),
+            }
+        })
+    }
+
+    /// The one primary state for `key`. In flight wins, then the work's policy, then who is
+    /// writing, then the last receipt; a peer composer blocked by another composer's refusal
+    /// stays a draft whose lock reason explains why.
+    pub fn status(&self, key: &ComposerKey) -> ComposerStatus {
+        let draft = self.drafts.get(key);
+        match draft.map(|d| &d.delivery) {
+            Some(Delivery::Sending(_)) => return ComposerStatus::Sending,
+            Some(Delivery::Uncertain(_)) => return ComposerStatus::Uncertain,
+            _ => {}
+        }
+        if !self.settings.comments_open {
+            return ComposerStatus::Closed;
+        }
+        if self.scope.session.is_none() {
+            return if self.sign_in_open {
+                ComposerStatus::SignInAvailable
+            } else {
+                ComposerStatus::SignInClosed
+            };
+        }
+        match draft.and_then(|d| d.receipt.as_ref()) {
+            Some(Receipt::Pending) => ComposerStatus::CommittedPending,
+            Some(receipt) if receipt.tone() == NoticeTone::Adverse => ComposerStatus::Refused,
+            _ => ComposerStatus::Draft,
+        }
+    }
+
+    pub fn send_emphasis(&self, key: &ComposerKey) -> SendEmphasis {
+        match self.drafts.get(key) {
+            Some(draft) if matches!(draft.delivery, Delivery::Sending(_)) => SendEmphasis::Progress,
+            Some(draft) if !draft.body.trim().is_empty() => SendEmphasis::Filled,
+            _ => SendEmphasis::Tonal,
+        }
+    }
+
     pub fn reason(&self, key: &ComposerKey) -> Option<&'static str> {
         let draft = self.drafts.get(key);
         if draft.is_some_and(|d| matches!(d.delivery, Delivery::Sending(_))) {
@@ -183,7 +385,11 @@ impl DiscussionController {
             return Some("Kiểm tra lần gửi trước khi gửi tiếp.");
         }
         if !self.settings.comments_open {
-            return Some("Tác giả đã tắt bình luận cho bài viết này. Bản đang soạn được giữ lại.");
+            return Some(if self.viewer_is_author {
+                "Bạn đã tắt bình luận cho bài viết này. Bản đang soạn được giữ lại."
+            } else {
+                "Tác giả đã tắt bình luận cho bài viết này. Bản đang soạn được giữ lại."
+            });
         }
         if self.session_invalid {
             return Some(
@@ -289,29 +495,22 @@ impl DiscussionController {
                         _ => crate::contract::CommentStatus::Removed,
                     },
                 });
-                draft.receipt = Some(
-                    match receipt.status.as_str() {
-                        "pending" => "Chờ duyệt · Chưa công khai",
-                        "approved" => {
-                            "Lần gửi này đã được duyệt. Tải lại để xem trạng thái hiện tại."
-                        }
-                        "rejected" => {
-                            "Lần gửi này không được duyệt. Tải lại để xem lý do được cấp."
-                        }
-                        _ => "Nhận xét của lần gửi này không còn hiển thị.",
-                    }
-                    .into(),
-                );
+                draft.receipt = Some(match receipt.status.as_str() {
+                    "pending" => Receipt::Pending,
+                    "approved" => Receipt::Approved,
+                    "rejected" => Receipt::Rejected,
+                    _ => Receipt::Removed,
+                });
                 draft.delivery = Delivery::Editing;
             }
             Ok(_)
             | Err(ApiError::Network | ApiError::Unavailable | ApiError::Unexpected { .. }) => {
                 draft.delivery = Delivery::Uncertain(submission.clone());
-                draft.receipt = Some("Chưa rõ máy chủ đã nhận hay chưa. Đối soát dùng lại đúng nội dung và mã của lần gửi trước; chữ mới vẫn được giữ.".into());
+                draft.receipt = Some(Receipt::Uncertain);
             }
             Err(error) => {
                 draft.delivery = Delivery::Editing;
-                draft.receipt = Some(error_message(&error).into());
+                draft.receipt = Some(Receipt::Refused(error.clone()));
                 if error == ApiError::TargetUnavailable {
                     draft.target_available = false;
                     if let Some(target) = &mut draft.target {
@@ -443,7 +642,8 @@ mod tests {
         assert!(c.complete(&sent, ack()));
         assert_eq!(c.draft(&key).body, "Chữ mới");
         assert_eq!(c.draft(&key).target.unwrap().id, "reply-b");
-        assert!(c.draft(&key).receipt.unwrap().contains("Chưa công khai"));
+        assert_eq!(c.draft(&key).receipt, Some(Receipt::Pending));
+        assert!(Receipt::Pending.message().contains("Chưa công khai"));
         assert!(!c.complete(&sent, ack()));
     }
     #[test]
@@ -602,10 +802,10 @@ mod tests {
         let draft = c.draft(&ComposerKey::Root);
         assert_eq!(draft.body, "Chữ soạn khi chưa đăng nhập");
         assert_eq!(draft.delivery, Delivery::Editing);
+        assert_eq!(draft.receipt, Some(Receipt::SessionChanged));
         assert!(
-            draft
-                .receipt
-                .unwrap()
+            Receipt::SessionChanged
+                .message()
                 .contains("Phiên đăng nhập đã thay đổi")
         );
         assert!(!c.complete(&sent, Err(ApiError::Unauthenticated)));
@@ -686,5 +886,173 @@ mod tests {
                 .as_deref(),
             Some("peer")
         );
+    }
+
+    #[test]
+    fn r4_composer_shows_one_primary_status_in_a_fixed_precedence() {
+        let mut c = controller();
+        let key = ComposerKey::Root;
+        assert_eq!(c.status(&key), ComposerStatus::Draft);
+        assert_eq!(c.send_emphasis(&key), SendEmphasis::Tonal);
+        c.edit(&key, "   ".into(), false);
+        assert_eq!(c.send_emphasis(&key), SendEmphasis::Tonal, "blank is empty");
+        c.edit(&key, "Câu thơ\nthứ hai".into(), false);
+        assert_eq!(c.send_emphasis(&key), SendEmphasis::Filled);
+        let sent = c.begin(&key, "k1".into()).unwrap();
+        assert_eq!(c.status(&key), ComposerStatus::Sending);
+        assert_eq!(c.send_emphasis(&key), SendEmphasis::Progress);
+        // Closing comments while a send is in flight never hides the send.
+        c.settings.comments_open = false;
+        assert_eq!(c.status(&key), ComposerStatus::Sending);
+        c.settings.comments_open = true;
+        assert!(c.complete(&sent, Err(ApiError::Network)));
+        assert_eq!(c.status(&key), ComposerStatus::Uncertain);
+        assert_eq!(c.draft(&key).receipt.unwrap().tone(), NoticeTone::Unknown);
+        let replay = c.reconcile(&key).unwrap();
+        assert!(c.complete(&replay, ack()));
+        assert_eq!(c.status(&key), ComposerStatus::CommittedPending);
+        assert_eq!(c.draft(&key).receipt.unwrap().tone(), NoticeTone::Waiting);
+        // A new draft after the pending receipt keeps the receipt until the next send.
+        c.edit(&key, "Ý mới".into(), false);
+        assert_eq!(c.status(&key), ComposerStatus::CommittedPending);
+        let next = c.begin(&key, "k2".into()).unwrap();
+        assert_eq!(c.draft(&key).receipt, None);
+        assert!(c.complete(&next, Err(ApiError::Invalid { field: None })));
+        assert_eq!(c.status(&key), ComposerStatus::Refused);
+        assert_eq!(c.draft(&key).body, "Ý mới", "a refusal keeps the text");
+        assert_eq!(c.draft(&key).receipt.unwrap().tone(), NoticeTone::Adverse);
+        // The work's policy outranks who is writing and the last receipt.
+        c.settings.comments_open = false;
+        assert_eq!(c.status(&key), ComposerStatus::Closed);
+        c.settings.comments_open = true;
+        c.scope.session = None;
+        assert_eq!(c.status(&key), ComposerStatus::SignInClosed);
+        c.sign_in_open = true;
+        assert_eq!(c.status(&key), ComposerStatus::SignInAvailable);
+        assert!(c.reason(&key).is_some(), "a guest never sends");
+    }
+
+    #[test]
+    fn r4_a_peer_composer_blocked_by_an_unconfirmed_session_stays_a_draft_with_a_reason() {
+        let mut c = controller();
+        let (root, reply) = (ComposerKey::Root, ComposerKey::Replies("root".into()));
+        c.edit(&root, "Gốc".into(), false);
+        c.reply(
+            "root".into(),
+            Target {
+                id: "root".into(),
+                label: "Tác giả".into(),
+            },
+        );
+        c.edit(&reply, "Trả lời".into(), false);
+        let sent = c.begin(&root, "k".into()).unwrap();
+        c.complete(&sent, Err(ApiError::Unauthenticated));
+        assert_eq!(c.status(&root), ComposerStatus::Refused);
+        assert_eq!(c.status(&reply), ComposerStatus::Draft);
+        assert!(c.reason(&reply).unwrap().contains("phiên đăng nhập"));
+    }
+
+    #[test]
+    fn r4_reply_target_chip_returns_to_the_root_and_never_infers_deletion() {
+        let mut c = controller();
+        let key = ComposerKey::Replies("root".into());
+        assert_eq!(c.reply_target(&ComposerKey::Root), None);
+        c.reply(
+            "root".into(),
+            Target {
+                id: "root".into(),
+                label: "Tác giả gốc".into(),
+            },
+        );
+        assert_eq!(c.reply_target(&key), Some(ReplyTarget::Root));
+        c.edit(&key, "Đang viết dở".into(), false);
+        c.reply(
+            "root".into(),
+            Target {
+                id: "reply-b".into(),
+                label: "Bạn đọc B".into(),
+            },
+        );
+        assert_eq!(
+            c.reply_target(&key),
+            Some(ReplyTarget::Reply {
+                name: "Bạn đọc B".into()
+            })
+        );
+        let late = c.begin(&key, "to-b".into()).unwrap();
+        // × back to the root keeps the text; the late ACK of the earlier target cannot clear it.
+        c.reply(
+            "root".into(),
+            Target {
+                id: "root".into(),
+                label: "Tác giả gốc".into(),
+            },
+        );
+        assert_eq!(c.reply_target(&key), Some(ReplyTarget::Root));
+        assert!(c.complete(&late, ack()));
+        assert_eq!(c.draft(&key).body, "Đang viết dở");
+        c.revalidate_targets(&[]);
+        assert_eq!(c.reply_target(&key), Some(ReplyTarget::Unavailable));
+        let label = c.draft(&key).target.unwrap().label;
+        assert!(
+            !label.contains("xóa") && !label.contains("Tác giả gốc"),
+            "{label}"
+        );
+        assert!(c.begin(&key, "blocked".into()).is_none());
+    }
+
+    #[test]
+    fn r4_collapsing_a_reply_keeps_it_reopenable_with_the_same_target_and_text() {
+        let mut c = controller();
+        let key = ComposerKey::Replies("root".into());
+        c.reopen(&key);
+        assert!(
+            !c.drafts.contains_key(&key),
+            "reopen never invents a composer"
+        );
+        c.reply(
+            "root".into(),
+            Target {
+                id: "reply-b".into(),
+                label: "B".into(),
+            },
+        );
+        assert!(!c.collapsed_with_work(&key));
+        c.close_reply(&key);
+        assert!(!c.collapsed_with_work(&key), "nothing typed, nothing kept");
+        c.reply(
+            "root".into(),
+            Target {
+                id: "reply-b".into(),
+                label: "B".into(),
+            },
+        );
+        c.edit(&key, "Chữ đang gõ".into(), true);
+        c.close_reply(&key);
+        assert!(c.collapsed_with_work(&key));
+        assert!(!c.collapsed_with_work(&ComposerKey::Root));
+        c.reopen(&key);
+        let draft = c.draft(&key);
+        assert!(draft.open && draft.body == "Chữ đang gõ" && draft.composing);
+        assert_eq!(draft.target.unwrap().id, "reply-b");
+        assert!(!c.collapsed_with_work(&key));
+    }
+
+    #[test]
+    fn r4_closed_wording_follows_the_servers_author_fact_and_resets_with_scope() {
+        let mut c = controller();
+        let key = ComposerKey::Root;
+        c.settings.comments_open = false;
+        assert!(c.reason(&key).unwrap().starts_with("Tác giả đã tắt"));
+        c.viewer_is_author = true;
+        assert!(c.reason(&key).unwrap().starts_with("Bạn đã tắt"));
+        c.change_session(Some("actor-a/session-2".into()));
+        assert!(c.reason(&key).unwrap().starts_with("Tác giả đã tắt"));
+        c.viewer_is_author = true;
+        c.change_scope(Scope {
+            work_id: "work-b".into(),
+            session: Some("actor-a/session-2".into()),
+        });
+        assert!(!c.viewer_is_author);
     }
 }

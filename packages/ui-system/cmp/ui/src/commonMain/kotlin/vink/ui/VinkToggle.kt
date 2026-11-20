@@ -179,6 +179,13 @@ data class ToggleCopy(
 private val ToggleTarget = maxOf(48.dp, VinkDimens.DensityControlHeight)
 
 /**
+ * The leading glyph for a confirmed `pressed` projection: [selected] only when confirmed on, so the
+ * state never rests on colour alone and a pending or unknown press shows no new glyph.
+ */
+fun toggleGlyph(icon: IconName, selected: IconName?, pressed: Boolean?): IconName =
+    if (pressed == true && selected != null) selected else icon
+
+/**
  * A confirmed on/off action with an optional count. One clickable node: TalkBack/VoiceOver read
  * the name that follows the confirmed value, then the count; the note is a polite live region and
  * Reconcile a separate Text button shown only when needed. [blocked] non-null blocks presses
@@ -199,6 +206,8 @@ fun VinkToggleAction(
     blocked: String? = null,
     icon: IconName? = null,
     surface: ActionSurface = ActionSurface.Standard,
+    /** Shown instead of [icon] only while the confirmed value is on; never optimistic. */
+    selectedIcon: IconName? = null,
 ) {
     val vink = LocalVink.current
     val c = vink.colors
@@ -237,7 +246,7 @@ fun VinkToggleAction(
         ) {
             CompositionLocalProvider(LocalContentColor provides content) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VinkDimens.Space2)) {
-                    if (icon != null) VinkIcon(icon, Modifier.clearAndSetSemantics {}, size = IconSize.Small)
+                    if (icon != null) VinkIcon(toggleGlyph(icon, selectedIcon, view.pressed), Modifier.clearAndSetSemantics {}, size = IconSize.Small)
                     if (tonal) {
                         Column(Modifier.weight(1f, fill = false)) {
                             Text(copy.label, Modifier.clearAndSetSemantics {}, color = content, style = vink.text(VinkTextRoles.Label))

@@ -5593,7 +5593,15 @@ async function discussionReadingAndWrites(page) {
   await captureDiscussionMatrix(page, 'local-postgres-closed', '#feedback-heading', 'real-local-postgresql-with-fixture-identity');
   await page.click('#discussion-mode-toggle');
   await page.waitFor(`document.querySelector('#discussion-mode-toggle')?.textContent==='Tắt bình luận' && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true' && document.querySelector('#remove-comment-${commentId}')`, 'author reopens the same thread');
+  // VDR-DISCUSSION-R4@r1 §2: asking opens an in-place confirmation; only “Gỡ” sends DELETE.
   await page.click(`#remove-comment-${commentId}`);
+  await page.waitFor(`document.activeElement?.id==='cancel-remove-comment-${commentId}' && document.querySelector('#confirm-remove-comment-${commentId}')`, 'removal asks in place and focuses “Giữ lại”');
+  check(await page.eval(`!!document.querySelector('[data-own-comment="${commentId}"] .vk-discussion-own-body')?.textContent && !document.querySelector('#remove-comment-${commentId}')`), 'nothing is removed before confirmation');
+  await page.click(`#cancel-remove-comment-${commentId}`);
+  await page.waitFor(`document.activeElement?.id==='remove-comment-${commentId}' && !document.querySelector('#confirm-remove-comment-${commentId}')`, '“Giữ lại” closes the confirmation and returns focus');
+  await page.click(`#remove-comment-${commentId}`);
+  await page.waitFor(`document.querySelector('#confirm-remove-comment-${commentId}')`, 'confirmation reopened');
+  await page.click(`#confirm-remove-comment-${commentId}`);
   await page.waitFor(`!document.querySelector('[data-own-comment="${commentId}"] .vk-discussion-own-body')?.textContent && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'own removal refreshes the authorized projection');
 
   console.log('D2T-03: labelled provider fixture projection for flat contexts and responsive states:');

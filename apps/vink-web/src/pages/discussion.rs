@@ -4,25 +4,31 @@ mod auth;
 
 use crate::account::Session;
 use crate::contract::{CommentStatus, OwnPlacement};
-use crate::discussion_reads::OwnState;
+use crate::discussion_reads::{OwnChip, OwnState};
 use auth::{ReaderAuth, ReaderAuthDialog};
 use std::collections::{BTreeMap, BTreeSet};
 
 use leptos::prelude::*;
 use vink_ui::{
-    ActionState, Button, ButtonVariant, Heading, HeadingLevel, ListEnd, TextInput, TypeRole,
+    ActionState, Button, ButtonVariant, Heading, HeadingLevel, Icon, IconButton, IconName,
+    IconSize, ListEnd, TextInput, TypeRole,
 };
 
 use super::endorsement::Endorsements;
 use crate::api::{self, LoadError};
 use crate::contract::{DiscussionPage, EndorsementSummaries, ReplyList};
-use crate::discussion_state::{ComposerKey, Delivery, DiscussionController, Scope, Target};
+use crate::discussion_state::{
+    ComposerKey, Delivery, DiscussionController, NoticeTone, ReplyTarget, Scope, SendEmphasis,
+    Target,
+};
 use crate::endorsement_state::page_targets;
 #[cfg(feature = "hydrate")]
 use crate::endorsement_state::public_targets;
 use crate::ui::{
     adapters,
-    patterns::{DiscussionThread, FeedbackComposer, FeedbackIntent},
+    patterns::{
+        DiscussionThread, FeedbackComposer, FeedbackIntent, OwnRemoveAction, RemoveConfirmation,
+    },
 };
 
 #[cfg(feature = "hydrate")]
@@ -273,22 +279,61 @@ fn initial_chain(page: &DiscussionPage) -> crate::read_lifecycle::PageChain {
     chain
 }
 
-fn comments_mode_message(unavailable: bool, comments_open: bool) -> &'static str {
+/// `viewer_is_author` is the server's `viewer_is_work_author` (VDR-DISCUSSION-R4@r1 §4).
+fn comments_mode_message(
+    unavailable: bool,
+    comments_open: bool,
+    viewer_is_author: bool,
+) -> &'static str {
     if unavailable {
         "Thảo luận hiện không khả dụng. Bản đang soạn được giữ lại."
     } else if comments_open {
         "Bình luận đang mở"
+    } else if viewer_is_author {
+        "Bạn đã tắt bình luận cho bài viết này"
     } else {
         "Tác giả đã tắt bình luận cho bài viết này"
     }
 }
 
-fn reply_needs_editor(draft: &crate::discussion_state::Draft) -> bool {
-    !draft.body.is_empty() || !matches!(draft.delivery, Delivery::Editing)
+/// “Chưa có nhận xét…” only for a list the server returned empty, never for a failed read.
+fn shows_empty(state: &ViewState) -> bool {
+    !state.unavailable && state.error.is_none() && state.page.roots.is_empty()
 }
 
-fn should_recover_reply(draft: &crate::discussion_state::Draft) -> bool {
-    reply_needs_editor(draft) || draft.receipt.is_some()
+/// The end of the list is a fact of the cursor: only a non-empty list without a next cursor.
+fn shows_list_end(state: &ViewState) -> bool {
+    !state.unavailable && !state.page.roots.is_empty() && state.page.next_cursor.is_none()
+}
+
+/// Decorative icon of an own-comment chip; the label carries the meaning.
+fn own_chip_icon(chip: OwnChip) -> IconName {
+    match chip {
+        OwnChip::Pending => IconName::Info,
+        OwnChip::Rejected => IconName::Error,
+        OwnChip::ApprovedOffPage => IconName::Check,
+        OwnChip::Unavailable => IconName::Block,
+    }
+}
+
+fn ask_remove(state: RwSignal<ViewState>, id: String) {
+    let mut asked = false;
+    state.update(|s| asked = s.own.ask_remove(&id));
+    #[cfg(feature = "hydrate")]
+    if asked {
+        // The least destructive choice takes focus; Enter keeps the comment.
+        focus_discussion_control(format!("cancel-remove-comment-{id}"));
+    }
+    #[cfg(not(feature = "hydrate"))]
+    let _ = asked;
+}
+
+fn cancel_remove(state: RwSignal<ViewState>, id: String) {
+    state.update(|s| s.own.cancel_remove());
+    #[cfg(feature = "hydrate")]
+    focus_discussion_control(format!("remove-comment-{id}"));
+    #[cfg(not(feature = "hydrate"))]
+    let _ = id;
 }
 
 #[component]
@@ -478,6 +523,13 @@ fn DiscussionLoaded(
             (scope, principal.or(typed_as))
         });
     }
+    // Wording only: the controller mirrors the server's author fact for “Bạn đã tắt…”.
+    Effect::new(move |_| {
+        let author = state.read().own.author;
+        if controller.with_untracked(|c| c.viewer_is_author != author) {
+            controller.update(|c| c.viewer_is_author = author);
+        }
+    });
     let write_state = Signal::derive(move || {
         if state.read().mutation_busy {
             ActionState::pending("Đang cập nhật…")
@@ -497,7 +549,7 @@ fn DiscussionLoaded(
     });
     view! {
         <div id="comments-mode" class="vk-discussion-mode">
-            <p role="status">{move || comments_mode_message(state.read().unavailable, controller.read().settings.comments_open)}</p>
+            <p role="status">{move || comments_mode_message(state.read().unavailable, controller.read().settings.comments_open, state.read().own.author)}</p>
             {fixture.is_some().then(|| view! { <p class="vk-muted">"Định danh thử trên thiết bị này · Không phải tài khoản thật."</p> })}
             <Show when=move || !state.read().unavailable && state.read().own.author>
                 <Button id="discussion-mode-toggle" variant=ButtonVariant::Tonal state=write_state on_press=move |_| change_mode(state, controller, lve)>
@@ -513,7 +565,7 @@ fn DiscussionLoaded(
         <OwnComments state controller lve />
         <p class="vk-muted vk-discussion-tools-note">"Bạn có thể dùng emoji từ bàn phím."</p>
         <Show when=move || !state.read().unavailable>
-            <Show when=move || state.read().page.roots.is_empty()>
+            <Show when=move || shows_empty(&state.read())>
                 <p>"Chưa có nhận xét nào được hiển thị."</p>
             </Show>
             <Show when=move || state.read().restarted_tail>
@@ -529,14 +581,14 @@ fn DiscussionLoaded(
                     <Button variant=ButtonVariant::Tonal state=Signal::derive(move || if state.read().loading { ActionState::pending("Đang tải…") } else { ActionState::Enabled }) on_press=move |_| read_roots(state, controller, lve, true)>"Xem thêm nhận xét"</Button>
                 </div>
             </Show>
-            <Show when=move || state.read().page.next_cursor.is_none()>
+            <Show when=move || shows_list_end(&state.read())>
                 <ListEnd label="Đã hết danh sách nhận xét được cấp." />
             </Show>
         </Show>
         <For each=move || {
                 let s = state.read();
                 controller.read().drafts.iter().filter_map(|(key, draft)| match key {
-                    ComposerKey::Replies(root) if should_recover_reply(draft) && !s.page.roots.iter().any(|thread| adapters::root_id(thread) == root) => Some(key.clone()),
+                    ComposerKey::Replies(root) if draft.needs_recovery() && !s.page.roots.iter().any(|thread| adapters::root_id(thread) == root) => Some(key.clone()),
                     _ => None,
                 }).collect::<Vec<_>>()
             } key=|key| key.clone() children=move |key| {
@@ -544,8 +596,8 @@ fn DiscussionLoaded(
                 view! {
                 <section class="vk-discussion-recovered" aria-label="Bản trả lời được giữ lại">
                     <p>"Nhánh này chưa có trong danh sách đã tải. Trạng thái lần gửi và chữ đang soạn vẫn được giữ tại đây."</p>
-                    <Show when=move || reply_needs_editor(&controller.read().draft(&key.get_value()))
-                        fallback=move || view! { <p role="status">{move || controller.read().draft(&key.get_value()).receipt.unwrap_or_default()}</p> }>
+                    <Show when=move || controller.read().draft(&key.get_value()).holds_work()
+                        fallback=move || view! { <p role="status">{move || controller.read().draft(&key.get_value()).receipt.map(|r| r.message()).unwrap_or_default()}</p> }>
                         <DiscussionComposer key=key.get_value() controller state refresh blocked=true />
                     </Show>
                 </section>
@@ -563,7 +615,7 @@ fn OwnComments(
     view! {
         <Show when=move || !state.read().unavailable && controller.read().scope.session.is_some()>
             <section id="own-comments" class="vk-discussion-recovered" aria-labelledby="own-comments-heading">
-                <Heading level=HeadingLevel::H3 role=TypeRole::Title id="own-comments-heading">"Nhận xét của bạn"</Heading>
+                <Heading level=HeadingLevel::H3 role=TypeRole::Title id="own-comments-heading" attr:tabindex="-1">"Bạn đã gửi"</Heading>
                 <p class="vk-muted">"Những nhận xét chưa công khai và kết quả lần gửi của bạn."</p>
                 <Button id="own-comments-refresh" variant=ButtonVariant::Text
                     state=Signal::derive(move || if state.read().own.loading { ActionState::pending("Đang tải nhận xét của bạn…") } else { ActionState::Enabled })
@@ -578,12 +630,12 @@ fn OwnComments(
                         let id = StoredValue::new(id);
                         view! {
                             <article class="vk-discussion-delivery" data-own-comment=move || id.get_value()>
-                                <p role="status">{move || state.read().own.comments.get(&id.get_value()).map(|c| match c.status {
-                                    CommentStatus::Pending => "Chờ duyệt · Chưa công khai",
-                                    CommentStatus::Rejected => "Không được duyệt · Chưa công khai",
-                                    CommentStatus::Approved => "Đã được duyệt · Ngoài phần công khai đang tải",
-                                    CommentStatus::Removed => "Nhận xét không còn hiển thị",
-                                }).unwrap_or_default()}</p>
+                                {move || state.read().own.comments.get(&id.get_value()).map(|c| OwnChip::of(c.status)).map(|chip| view! {
+                                    <p role="status" class="vk-discussion-own-chip" data-tone=chip.tone().id()>
+                                        <Icon name=own_chip_icon(chip) size=IconSize::Small />
+                                        <span>{chip.label()}</span>
+                                    </p>
+                                })}
                                 <p class="vk-muted">{move || state.read().own.comments.get(&id.get_value()).map(|c| match &c.placement {
                                     OwnPlacement::Root => "Nhận xét gốc của bạn",
                                     OwnPlacement::Reply { root_listed: false, .. } => "Phản hồi của bạn · Nhánh chưa có trong danh sách công khai",
@@ -592,8 +644,12 @@ fn OwnComments(
                                 <p class="vk-discussion-own-body">{move || state.read().own.comments.get(&id.get_value()).and_then(|c| (c.status != CommentStatus::Removed).then(|| c.body.clone()).flatten()).unwrap_or_default()}</p>
                                 <p>{move || state.read().own.comments.get(&id.get_value()).and_then(|c| (c.status == CommentStatus::Rejected).then(|| c.rejection_reason.clone()).flatten()).unwrap_or_default()}</p>
                                 <Show when=move || state.read().own.can_remove(&id.get_value())>
-                                    <Button id=format!("remove-comment-{}", id.get_value()) variant=ButtonVariant::Text state=Signal::derive(move || if state.read().mutation_busy { ActionState::pending("Đang gỡ…") } else { ActionState::Enabled })
-                                        on_press=move |_| remove_own(state, controller, lve, id.get_value())>"Gỡ nhận xét của tôi"</Button>
+                                    <OwnRemoveAction comment_id=id.get_value()
+                                        confirming=Signal::derive(move || state.read().own.confirming(&id.get_value()))
+                                        state=Signal::derive(move || if state.read().mutation_busy { ActionState::pending("Đang gỡ…") } else { ActionState::Enabled })
+                                        on_ask=move |_| ask_remove(state, id.get_value())
+                                        on_confirm=move |_| remove_own(state, controller, lve, id.get_value())
+                                        on_cancel=move |_| cancel_remove(state, id.get_value()) />
                                 </Show>
                             </article>
                         }
@@ -799,10 +855,26 @@ fn RootThreadView(
             focus_discussion_control(format!("reply-composer-{}", root.get_value()));
         }
     });
-    let on_remove = Callback::new(move |id: String| remove_own(state, controller, lve, id));
+    let on_remove = Callback::new(move |id: String| ask_remove(state, id));
+    let removal = RemoveConfirmation {
+        confirming: Callback::new(move |id: String| state.read().own.confirming(&id)),
+        on_confirm: Callback::new(move |id: String| remove_own(state, controller, lve, id)),
+        on_cancel: Callback::new(move |id: String| cancel_remove(state, id)),
+    };
+    // The root as a reply target, only while the provider lets this viewer reply to it.
+    let root_target = Signal::derive(move || {
+        facts
+            .get()
+            .root
+            .filter(|root| root.can_reply)
+            .map(|root| Target {
+                id: root.id,
+                label: root.author.name,
+            })
+    });
     view! {
         <section class="vk-discussion-root" aria-label="Nhánh nhận xét">
-            <DiscussionThread facts on_reply on_remove action_state=write_state endorsements=lve.map(Endorsements::comments)
+            <DiscussionThread facts on_reply on_remove removal action_state=write_state endorsements=lve.map(Endorsements::comments)
                 has_more_replies=Signal::derive(move || next_reply_cursor(&state.read(), &root.get_value()).is_some())
                 reply_footer=std::sync::Arc::new(move || view! {
             <div class="vk-discussion-pagination" hidden=move || next_reply_cursor(&state.read(), &root.get_value()).is_none() && !state.read().reply_errors.contains_key(&root.get_value())>
@@ -813,9 +885,19 @@ fn RootThreadView(
             </Show>
             </div>
                 }.into_any()) />
+            <Show when=move || controller.read().collapsed_with_work(&key.get_value())>
+                <div class="vk-discussion-reply-kept">
+                    <p role="status">"Bản trả lời được giữ lại"</p>
+                    <Button id=format!("reopen-reply-{}", root.get_value()) variant=ButtonVariant::Text on_press=move |_| {
+                        controller.update(|c| c.reopen(&key.get_value()));
+                        #[cfg(feature = "hydrate")]
+                        focus_discussion_control(format!("reply-composer-{}", root.get_value()));
+                    }>"Mở lại"</Button>
+                </div>
+            </Show>
             <Show when=move || controller.read().draft(&key.get_value()).open>
                 <div class="vk-discussion-reply-composer">
-                    <DiscussionComposer key=key.get_value() controller state refresh />
+                    <DiscussionComposer key=key.get_value() controller state refresh root_target />
                 </div>
             </Show>
         </section>
@@ -829,6 +911,9 @@ fn DiscussionComposer(
     state: RwSignal<ViewState>,
     refresh: Callback<()>,
     #[prop(optional)] blocked: bool,
+    /// The branch root as a target, when it accepts replies: the chip's way back from a reply.
+    #[prop(optional, into)]
+    root_target: Signal<Option<Target>>,
 ) -> impl IntoView {
     let key = StoredValue::new(key);
     let id = match key.get_value() {
@@ -888,19 +973,56 @@ fn DiscussionComposer(
             ActionState::Enabled
         }
     });
+    // R4: tonal while empty, filled with text; progress is the pending state of the button.
+    let send_variant =
+        Signal::derive(
+            move || match controller.read().send_emphasis(&key.get_value()) {
+                SendEmphasis::Tonal => ButtonVariant::Tonal,
+                SendEmphasis::Filled | SendEmphasis::Progress => ButtonVariant::Filled,
+            },
+        );
+    let chip_id = format!("{id}-target");
     view! {
-        <div class="vk-discussion-composer">
+        // The closed reason comes from the controller, which words it for the work's author.
+        <div class="vk-discussion-composer" data-status=move || controller.read().status(&key.get_value()).id()>
             <FeedbackComposer id intent=FeedbackIntent::Unspecified value state=action tonal=true
-                show_alternative=can_auth alternative=auth_action
-                comments_closed=Signal::derive(move || !state.read().unavailable && !controller.read().settings.comments_open)
+                show_alternative=can_auth alternative=auth_action send_variant
                 on_input=move |input: TextInput| controller.update(|c| c.edit(&key.get_value(), input.value, input.composing))
                 on_submit=move |_| { if !blocked { submit(controller, state, key.get_value(), refresh, false); } } >
                 {matches!(key.get_value(), ComposerKey::Replies(_)).then(|| view! {
                     <div class="vk-discussion-composer-heading">
-                        <p>{move || {
+                        <p id=chip_id.clone() class="vk-discussion-target" data-target=move || match controller.read().reply_target(&key.get_value()) {
+                            Some(ReplyTarget::Root) => "root",
+                            Some(ReplyTarget::Reply { .. }) => "reply",
+                            Some(ReplyTarget::Unavailable) => "unavailable",
+                            None => "none",
+                        }>{move || {
                             let draft = controller.read().draft(&key.get_value());
-                            draft.target.map(|target| if draft.target_available { format!("Đang trả lời @{}", target.label) } else { target.label }).unwrap_or_default()
+                            match controller.read().reply_target(&key.get_value()) {
+                                Some(ReplyTarget::Root) => "Trả lời bình luận gốc".to_owned(),
+                                Some(ReplyTarget::Reply { name }) => format!("Đang trả lời {name}"),
+                                Some(ReplyTarget::Unavailable) => draft.target.map(|t| t.label).unwrap_or_default(),
+                                None => String::new(),
+                            }
                         }}</p>
+                        <Show when=move || matches!(controller.read().reply_target(&key.get_value()), Some(ReplyTarget::Reply { .. })) && root_target.get().is_some()>
+                            <IconButton icon=IconName::Close label="Trả lời bình luận gốc thay cho phản hồi đang chọn" on_press=move |_| {
+                                let ComposerKey::Replies(root) = key.get_value() else { return };
+                                if let Some(target) = root_target.get_untracked() {
+                                    controller.update(|c| c.reply(root.clone(), target));
+                                    #[cfg(feature = "hydrate")]
+                                    focus_discussion_control(format!("reply-composer-{root}"));
+                                }
+                            } />
+                        </Show>
+                        <Show when=move || matches!(controller.read().reply_target(&key.get_value()), Some(ReplyTarget::Unavailable))>
+                            <Button variant=ButtonVariant::Text on_press=move |_| {
+                                #[cfg(feature = "hydrate")]
+                                if let ComposerKey::Replies(root) = key.get_value() {
+                                    focus_discussion_control(format!("reply-to-{root}"));
+                                }
+                            }>"Chọn bình luận khác"</Button>
+                        </Show>
                         <Button variant=ButtonVariant::Text on_press=move |_| {
                             #[cfg(feature = "hydrate")]
                             let target = controller.read().draft(&key.get_value()).target;
@@ -911,10 +1033,14 @@ fn DiscussionComposer(
                     </div>
                 })}
             </FeedbackComposer>
-            <div class="vk-discussion-delivery" hidden=move || controller.read().draft(&key.get_value()).receipt.is_none() && !matches!(controller.read().draft(&key.get_value()).delivery, Delivery::Uncertain(_))>
+            <div class="vk-discussion-delivery" hidden=move || controller.read().draft(&key.get_value()).receipt.is_none() && !matches!(controller.read().draft(&key.get_value()).delivery, Delivery::Uncertain(_))
+                data-tone=move || {
+                    let draft = controller.read().draft(&key.get_value());
+                    if matches!(draft.delivery, Delivery::Uncertain(_)) { NoticeTone::Unknown.id() } else { draft.receipt.map_or(NoticeTone::Neutral, |r| r.tone()).id() }
+                }>
             <p role="status" data-testid="discussion-receipt">{move || {
                 let draft = controller.read().draft(&key.get_value());
-                if matches!(draft.delivery, Delivery::Uncertain(_)) { "Chưa rõ kết quả gửi".into() } else { draft.receipt.unwrap_or_default() }
+                if matches!(draft.delivery, Delivery::Uncertain(_)) { "Chưa rõ kết quả gửi" } else { draft.receipt.map(|r| r.message()).unwrap_or_default() }
             }}</p>
             <Show when=move || matches!(controller.read().draft(&key.get_value()).delivery, Delivery::Uncertain(_))>
                 <p>"Dùng lại nội dung lần trước, giữ nháp."</p>
@@ -1379,16 +1505,28 @@ fn remove_own(
     {
         let c = controller.get_untracked();
         let s = state.get_untracked();
-        let allowed = s.own.can_remove(&id);
+        let allowed = s.own.confirming(&id);
         if !allowed || !c.write_ready() || s.mutation_busy || s.mutation_needs_refresh || s.loading
         {
             return;
         }
+        // Only a confirmed, still removable comment is sent, once (VDR-DISCUSSION-R4@r1 §2).
         let mut started = false;
-        state.update(|s| started = s.begin_mutation());
+        state.update(|s| started = s.own.take_confirmed(&id) && s.begin_mutation());
         if !started {
             return;
         }
+        focus_discussion_control(
+            if document()
+                .get_element_by_id("own-comments-heading")
+                .is_some()
+            {
+                "own-comments-heading"
+            } else {
+                "feedback-heading"
+            }
+            .into(),
+        );
         spawn_transport(async move {
             let result = api::remove_comment(&c.scope.work_id, &id).await;
             if controller
@@ -1445,7 +1583,7 @@ mod tests {
             },
         );
         let key = ComposerKey::Replies("page-two-root".into());
-        assert!(!should_recover_reply(&controller.draft(&key)));
+        assert!(!controller.draft(&key).needs_recovery());
         controller.reply(
             "page-two-root".into(),
             Target {
@@ -1455,8 +1593,8 @@ mod tests {
         );
         controller.edit(&key, "Nhận xét ở trang thứ hai".into(), false);
         let request = controller.begin(&key, "off-page-command".into()).unwrap();
-        assert!(should_recover_reply(&controller.draft(&key)));
-        assert!(reply_needs_editor(&controller.draft(&key)));
+        assert!(controller.draft(&key).needs_recovery());
+        assert!(controller.draft(&key).holds_work());
         assert!(controller.complete(
             &request,
             Ok(crate::contract::SubmittedComment {
@@ -1467,9 +1605,12 @@ mod tests {
         ));
         let retained = controller.draft(&key);
         assert!(retained.body.is_empty());
-        assert!(retained.receipt.as_deref().unwrap().contains("Chờ duyệt"));
-        assert!(should_recover_reply(&retained));
-        assert!(!reply_needs_editor(&retained));
+        assert_eq!(
+            retained.receipt,
+            Some(crate::discussion_state::Receipt::Pending)
+        );
+        assert!(retained.needs_recovery());
+        assert!(!retained.holds_work());
         controller.edit(&key, "Một lần gửi khác".into(), false);
         assert!(
             controller
@@ -1479,23 +1620,38 @@ mod tests {
         controller.edit(&key, String::new(), false);
         let unsettled = controller.draft(&key);
         assert!(unsettled.receipt.is_none());
-        assert!(should_recover_reply(&unsettled));
-        assert!(reply_needs_editor(&unsettled));
+        assert!(unsettled.needs_recovery());
+        assert!(unsettled.holds_work());
     }
     #[test]
     fn loss_of_public_access_never_claims_the_author_closed_comments() {
         for prior_mode in [true, false] {
-            assert_eq!(
-                comments_mode_message(true, prior_mode),
-                "Thảo luận hiện không khả dụng. Bản đang soạn được giữ lại."
-            );
-            assert!(!comments_mode_message(true, prior_mode).contains("Tác giả"));
+            for author in [true, false] {
+                assert_eq!(
+                    comments_mode_message(true, prior_mode, author),
+                    "Thảo luận hiện không khả dụng. Bản đang soạn được giữ lại."
+                );
+                let message = comments_mode_message(true, prior_mode, author);
+                assert!(!message.contains("Tác giả") && !message.contains("Bạn đã tắt"));
+            }
         }
         assert_eq!(
-            comments_mode_message(false, false),
+            comments_mode_message(false, false, false),
             "Tác giả đã tắt bình luận cho bài viết này"
         );
-        assert_eq!(comments_mode_message(false, true), "Bình luận đang mở");
+        // VDR-DISCUSSION-R4@r1 §4: only the server's author fact changes the wording.
+        assert_eq!(
+            comments_mode_message(false, false, true),
+            "Bạn đã tắt bình luận cho bài viết này"
+        );
+        assert_eq!(
+            comments_mode_message(false, true, true),
+            "Bình luận đang mở"
+        );
+        assert_eq!(
+            comments_mode_message(false, true, false),
+            "Bình luận đang mở"
+        );
     }
     #[test]
     fn a_failed_next_page_stays_local_while_a_refresh_failure_or_loss_of_access_keeps_its_scope() {
@@ -1778,5 +1934,25 @@ mod separated_read_regressions {
             s.redacted.is_empty(),
             "even reconciliation IDs leave with the private scope"
         );
+    }
+    #[test]
+    fn r4_a_failed_read_is_never_shown_as_empty_and_the_end_follows_the_cursor() {
+        use crate::contract::ApiError;
+        let mut s = state();
+        assert!(!s.page.roots.is_empty());
+        s.page.next_cursor = Some("next".into());
+        assert!(!shows_empty(&s) && !shows_list_end(&s), "more pages remain");
+        s.page.next_cursor = None;
+        assert!(shows_list_end(&s) && !shows_empty(&s));
+        s.page.roots.clear();
+        assert!(
+            shows_empty(&s) && !shows_list_end(&s),
+            "empty is not an end marker"
+        );
+        s.fail_roots_read(false, &ApiError::Network);
+        assert!(!shows_empty(&s), "a failed refresh is not “no comments”");
+        s.error = None;
+        s.fail_roots_read(true, &ApiError::NotFound);
+        assert!(s.unavailable && !shows_empty(&s) && !shows_list_end(&s));
     }
 }
