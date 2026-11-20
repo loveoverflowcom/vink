@@ -1150,6 +1150,11 @@ mod tests {
         let cached = crate::ui::adapters::card_author(&card, true);
         assert_eq!(cached.name, "Chưa xác nhận được tác giả");
         assert!(cached.profile.is_none());
+        assert!(
+            cached.neutral,
+            "a placeholder label gets the neutral mark (#352)"
+        );
+        assert!(!crate::ui::adapters::card_author(&card, false).neutral);
         // Unlinked labels are always-public text and never gain a link.
         for (author, label) in [
             (None, card.author_display_name.clone()),
@@ -1159,11 +1164,13 @@ mod tests {
             let cached = crate::ui::adapters::card_author(&card, true);
             assert_eq!(cached.name, label);
             assert!(cached.profile.is_none());
+            assert!(!cached.neutral, "a shown name keeps its initials");
         }
         card.author = Some(projections[1].clone());
         let cached = crate::ui::adapters::card_author(&card, true);
         assert_eq!(cached.name, "Tài khoản đã xóa");
         assert!(cached.profile.is_none());
+        assert!(cached.neutral, "a deleted label never rebuilds initials");
         let forged = AuthorProjection::Linked(PublicAuthorRef {
             pen_name: name,
             handle: "ngay-nang".into(),

@@ -1,5 +1,7 @@
 # Nền test-domain và OCI Vink
 
+**Lịch sử vận hành public test.** Quy trình hiện hành và điều kiện ngừng host nằm trong [release production](../production/cloudflare-edge.md). Compose, fixture và qualification Auth cô lập vẫn dùng được.
+
 **Phạm vi:** cấu hình và quy trình cho `test.vink.forum`. Xem [triển khai thử ngày 15/11/2026](../../docs/development/test-container-evidence.md#triển-khai-thực-trên-vps-ngày-15112026) để lấy digest, cấu hình VPS và kết quả DNS/HTTPS đã quan sát. Xác minh lại target trước mỗi lượt.
 
 ## Ranh giới và lựa chọn

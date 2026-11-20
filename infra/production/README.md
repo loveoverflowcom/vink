@@ -6,7 +6,7 @@ owner database, hai role runtime và hai role migrator. Không publish port back
 PostgreSQL. Sign-in, mail Resend và evaluation giữ tắt theo [Auth operations](../../docs/development/auth-operations.md).
 Giữ Vink test và Cantos trên mạng và dữ liệu hiện tại.
 
-Quy trình đưa Cloudflare trước Caddy nằm trong [runbook Cloudflare edge production](cloudflare-edge.md).
+Điều kiện kết thúc giai đoạn giữ public test là production qua qualification và hoàn tất inventory retirement. Đóng gói frontend từ OCI, phát hành Pages, đổi origin và rollback theo [runbook Cloudflare edge production](cloudflare-edge.md).
 Quy trình giữ domain ở registrar Spaceship và chuyển authoritative DNS sang Cloudflare Free
 trước khi bật proxy. Build và phát hành image dùng workflow bên dưới.
 
@@ -20,7 +20,9 @@ owner, HTTP App, Unix socket Identity, API và SIGTERM. Ghi SHA/run ID, ba GHCR 
 PostgreSQL từ cấu hình release. Kiểm lại revision label và `amd64` sau khi pull. Build ở runner,
 không build trên VPS. Nếu package cần xác thực, dùng đường pull đọc riêng đã được phê duyệt.
 
-## Chuẩn bị lần đầu trên VPS
+## Nền VPS và lịch sử ingress trực tiếp
+
+Các bước DNS/Caddy trực tiếp bên dưới mô tả nền #304. Khi chuyển sang Pages, dùng thứ tự trong [runbook hiện hành](cloudflare-edge.md).
 
 1. Xác minh baseline HTTPS của Cantos và Vink test, tài nguyên, UFW, các bridge/IP và quyền
    deploy. Chỉ dùng plan này nếu hai dải IP đang trống. Deploy từ checkout sạch đã pin vào

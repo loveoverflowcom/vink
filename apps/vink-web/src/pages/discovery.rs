@@ -7,7 +7,7 @@ use crate::public_reads;
 use crate::ui::{
     adapters,
     empty_state::{EmptyArtwork, EmptyState},
-    patterns::{TagChip, TagFacts},
+    patterns::{AuthorIdentity, TagChip, TagFacts},
 };
 use leptos::prelude::*;
 use leptos_meta::{Link, Meta, Title};
@@ -919,40 +919,16 @@ fn ResultRow(
                 let query = context.query.q.clone();
                 let unverified = cached_unverified.get();
                 let author = adapters::card_author(&work, unverified);
-                // A shown pen name gets initials; withheld or terminal labels keep the neutral mark.
-                let named = match &work.author {
-                    None | Some(crate::contract::AuthorProjection::Unavailable { .. }) => true,
-                    Some(crate::contract::AuthorProjection::Linked(_)) => !unverified,
-                    Some(_) => false,
-                };
-                let initials = crate::appearance::initials(named.then_some(author.name.as_str()));
                 let primary_tag = work.tags.first().map(|tag| tag.label.clone());
                 let excerpt = work.excerpt.clone();
                 // Placeholder labels are not author names: never mark them as search matches.
-                let author_text = if named {
-                    highlighted_text(&author.name, &query)
-                } else {
-                    author.name.clone().into_any()
-                };
-                // Two people may share a pen name (#293): the handle is visible, not only in the label.
-                let handle = author.profile.as_ref().map(|profile| format!("@{}", profile.handle));
-                let identity = view! {
-                    <span class="vk-public-row__avatar" aria-hidden="true">{initials}</span>
-                    <span class="vk-public-row__who">
-                        <span class="vk-public-row__author">{author_text}</span>
-                        {handle.map(|handle| view! { <span class="vk-public-row__handle">{handle}</span> })}
-                    </span>
-                };
-                // Only a verified projection makes the whole byline a profile link.
-                let byline = match author.profile {
-                    Some(profile) => {
-                        let label = format!("Mở hồ sơ {} (@{})", author.name, profile.handle);
-                        view! {
-                            <a class="vk-public-row__byline vk-public-row__profile" id=format!("work-{}-author", work.work_id)
-                                href=profile.href aria-label=label data-profile-return="true">{identity}</a>
-                        }.into_any()
-                    }
-                    None => view! { <div class="vk-public-row__byline">{identity}</div> }.into_any(),
+                let author_text = (!author.neutral).then(|| highlighted_text(&author.name, &query));
+                // #352: the shared cluster (avatar → pen name → @handle). Two people may share a
+                // pen name (#293); only a verified projection makes the cluster a profile link.
+                let byline = view! {
+                    <div class="vk-public-row__byline">
+                        <AuthorIdentity author id=Some(format!("work-{}-author", work.work_id)) name_view=author_text />
+                    </div>
                 };
                 view! {
                     <div class="vk-public-row__card">

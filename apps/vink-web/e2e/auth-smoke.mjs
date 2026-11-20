@@ -485,10 +485,14 @@ async function discussionSessionRaces(other, ctx, mailA, mailB, openPage, check)
   await reader.send('Fetch.enable',{patterns:[{urlPattern:`*${endpoint}/comments/*`,requestStage:'Response'}]});
   const waitRemoves = async count => { const until = Date.now()+10000; while (removes.length<count) { if (Date.now()>until) throw new Error('held remove ACK missing'); await sleep(30); } };
   await reader.click(`#remove-comment-${createdB.body.comment_id}`);
+  await reader.waitFor(`document.querySelector('#confirm-remove-comment-${createdB.body.comment_id}')`, 'B removal asks for confirmation in place');
+  await reader.click(`#confirm-remove-comment-${createdB.body.comment_id}`);
   await waitRemoves(1);
   await select(cookieA);
   await reader.waitFor(`document.querySelector('#remove-comment-${createdA.body.comment_id}') && ${settled}`, 'A loads while obsolete B removal ACK is held');
   await reader.click(`#remove-comment-${createdA.body.comment_id}`);
+  await reader.waitFor(`document.querySelector('#confirm-remove-comment-${createdA.body.comment_id}')`, 'A removal asks for confirmation in place');
+  await reader.click(`#confirm-remove-comment-${createdA.body.comment_id}`);
   await waitRemoves(2);
   await reader.send('Fetch.continueRequest',{requestId:removes[0].requestId});
   check(await reader.eval(`document.querySelector('#discussion-refresh')?.getAttribute('aria-busy') === 'true'`), 'Reader/Auth: B removal ACK cannot clear the new A mutation busy owner');

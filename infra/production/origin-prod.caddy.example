@@ -1,0 +1,24 @@
+# Only on the dedicated DNS-only origin vhost. Require the same random secret in Pages
+# and Caddy; refuse to load/reload this candidate unless VINK_ORIGIN_KEY is nonempty.
+origin-prod.vink.forum {
+	@edge {
+		expression `size({env.VINK_ORIGIN_KEY}) >= 32 && {http.request.header.X-Vink-Origin-Key} == {env.VINK_ORIGIN_KEY}`
+		header X-Vink-Edge-Hop 1
+		header X-Vink-Client-IP *
+	}
+	handle @edge {
+		reverse_proxy 10.89.4.10:3000 {
+			header_up Host vink.forum
+			header_up X-Forwarded-Host vink.forum
+			header_up X-Forwarded-For {http.request.header.X-Vink-Client-IP}
+			header_up -Forwarded
+			header_up -X-Real-IP
+			header_up -X-Vink-Origin-Key
+			header_up -X-Vink-Client-IP
+			header_up -X-Vink-Edge-Hop
+		}
+	}
+	handle {
+		respond 403
+	}
+}

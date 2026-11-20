@@ -1,0 +1,9 @@
+version = 1
+id = "VDR-DISCUSSION-R4"
+revision = 1
+sha256 = "37d2f1d111c888fd9cdcb981861bf6a5275a19b7148b3a15439dffd3db1cf9c8"
+status = "PRODUCT_CONFIRMED"
+decided_on = "2026-11-20"
+source = """
+Chủ sản phẩm duyệt trong phiên triển khai #359/#360 ngày 20/11/2026 (PR #361). Câu hỏi: “Ký duyệt VDR-DISCUSSION-R4@r1 (sha 37d2f1d1…) để đưa vào hiệu lực?”. Trả lời nguyên văn: “Duyệt r1”. Phạm vi: đúng revision r1, SHA-256 37d2f1d111c888fd9cdcb981861bf6a5275a19b7148b3a15439dffd3db1cf9c8 (vùng “Bạn đã gửi”, xác nhận gỡ tại chỗ, phản hồi chờ duyệt cạnh ô soạn, câu tắt bình luận theo viewer_is_work_author).
+"""

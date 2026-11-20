@@ -11,7 +11,12 @@ RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 # Match Cargo.lock; doctor checks the CLI again when building the bundle.
 RUN rustup target add wasm32-unknown-unknown \
  && cargo install wasm-bindgen-cli --version 0.2.129 --locked
-RUN cargo xtask build web --release
+ARG SOURCE_REVISION
+RUN test "$(printf %s "$SOURCE_REVISION" | grep -Ec '^[0-9a-f]{40}$')" = 1 \
+ && VINK_ASSET_PREFIX="/_v/$SOURCE_REVISION" cargo xtask build web --release \
+ && printf '%s\n' "$SOURCE_REVISION" > /src/target/site-release \
+ && mkdir -p "/src/target/site/_v/$SOURCE_REVISION" \
+ && ln -s ../../pkg "/src/target/site/_v/$SOURCE_REVISION/pkg"
 FROM source AS worker-build
 RUN cargo xtask build worker --release
 FROM source AS identity-build
@@ -30,6 +35,7 @@ USER 10001:10001
 FROM runtime AS web
 COPY --from=app-build /src/target/release/vink-app /usr/local/bin/vink-app
 COPY --from=app-build /src/target/site /opt/vink/site
+COPY --from=app-build /src/target/site-release /opt/vink/site-release
 ENV VINK_SITE_ROOT=/opt/vink/site
 ENTRYPOINT ["/usr/local/bin/vink-app"]
 CMD ["serve"]

@@ -35,13 +35,13 @@
       "source_path": "svg/vink-lockup-mono.svg"
     },
     "vpen-r1-manifest-dark.webmanifest": {
-      "sha256": "7c2ef83ac8a5b59806cb01c121486c7482fd590e02a79f7f4776cf467bb3314a",
-      "bytes": 636,
+      "sha256": "6cb8144dc8d2eae45d97e99576bb96da9530848bfe1a6591fff311469fbe871a",
+      "bytes": 603,
       "derivation": "manifest URLs/palette or OS-adaptive composition of original mark paths"
     },
     "vpen-r1-manifest-light.webmanifest": {
-      "sha256": "b1183544ed20cba4d4022309b4cd363b287ca58689db3dcd169d73c0e44b99bb",
-      "bytes": 639,
+      "sha256": "4b0027519d487e3cf5a4a10e775c262ed6a7a26757f16f4ca497089110bee87d",
+      "bytes": 606,
       "derivation": "manifest URLs/palette or OS-adaptive composition of original mark paths"
     },
     "vpen-r1-mark-dark-192.png": {

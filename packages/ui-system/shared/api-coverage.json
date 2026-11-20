@@ -293,6 +293,12 @@
     {
       "renderer": "leptos",
       "source": "packages/vink-patterns/leptos/src/lib.rs",
+      "symbol": "AuthorIdentity",
+      "entry": "screen.reader"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/lib.rs",
       "symbol": "WorkByline",
       "entry": "screen.explore"
     },
@@ -702,6 +708,12 @@
       "renderer": "leptos",
       "source": "packages/vink-patterns/leptos/src/lib.rs",
       "symbol": "DiscussionThread",
+      "entry": "composition.feedback"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/lib.rs",
+      "symbol": "OwnRemoveAction",
       "entry": "composition.feedback"
     },
     {

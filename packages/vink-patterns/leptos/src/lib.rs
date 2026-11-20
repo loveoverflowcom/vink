@@ -28,6 +28,9 @@ pub struct Author {
     pub key: Option<String>,
     pub published_at: String,
     pub profile: Option<ProfileLink>,
+    /// `name` is a terminal or placeholder label from the adapter ("Tài khoản đã xóa", a cache
+    /// not yet verified), not a pen name: it gets the neutral mark, never initials or a handle.
+    pub neutral: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -36,6 +39,12 @@ pub struct ProfileLink {
     pub handle: String,
 }
 
+/// The accessible name of a profile link: two people may share a pen name, the handle may not.
+pub fn profile_label(name: &str, handle: &str) -> String {
+    format!("Mở hồ sơ {name} (@{handle})")
+}
+
+/// Inline reference (reply context): natural reading, handle in the accessible name only.
 #[component]
 fn ProfileName(
     name: String,
@@ -44,7 +53,7 @@ fn ProfileName(
 ) -> impl IntoView {
     match profile {
         Some(profile) => {
-            let label = format!("Mở hồ sơ {name} (@{})", profile.handle);
+            let label = profile_label(&name, &profile.handle);
             view! {
                 <Link href=profile.href attr:id=id attr:data-profile-return="true" attr:aria-label=label>
                     {name}
@@ -55,21 +64,41 @@ fn ProfileName(
     }
 }
 
+/// One author cluster for card, ReaderHeader, root and reply (#352): avatar → pen name →
+/// @handle, one link only for a verified profile. `name_view` may render the name (highlight).
+#[component]
+pub fn AuthorIdentity(
+    author: Author,
+    #[prop(optional_no_strip)] id: Option<String>,
+    #[prop(default = AvatarSize::Feed)] size: AvatarSize,
+    #[prop(optional_no_strip)] name_view: Option<AnyView>,
+) -> impl IntoView {
+    let profile = author.profile.filter(|_| !author.neutral);
+    let label = profile
+        .as_ref()
+        .map(|p| profile_label(&author.name, &p.handle));
+    let (href, handle) = match profile {
+        Some(p) => (p.href, Some(p.handle)),
+        None => (String::new(), None),
+    };
+    view! {
+        <AuthorByline name=author.name identity_key=author.key.unwrap_or_default() size
+            neutral=author.neutral href handle link_id=id link_label=label name_view />
+    }
+}
+
 #[component]
 pub fn WorkByline(
     author: Author,
     #[prop(optional_no_strip)] profile_id: Option<String>,
     #[prop(default = AvatarSize::Feed)] size: AvatarSize,
 ) -> impl IntoView {
-    let label = author
-        .profile
-        .as_ref()
-        .map(|p| format!("Mở hồ sơ {} (@{})", author.name, p.handle));
+    let published_at = author.published_at.clone();
     view! {
-        <div class="vk-work-byline">
-            <AuthorByline name=author.name identity_key=author.key.unwrap_or_default() size
-                href=author.profile.map(|p| p.href).unwrap_or_default() link_id=profile_id link_label=label />
-            <span class="vk-work-byline__date"><Timestamp instant=author.published_at /></span>
+        <div class="vk-work-byline" data-size=size.id()>
+            <AuthorIdentity author id=profile_id size />
+            // Outside the profile link: time is metadata of the work, not of the person.
+            <span class="vk-work-byline__date"><Timestamp instant=published_at /></span>
         </div>
     }
 }
@@ -391,9 +420,13 @@ pub fn FeedbackComposer(
     #[prop(optional, into)]
     show_alternative: Signal<bool>,
     #[prop(optional)] alternative: Option<ViewFn>,
+    /// Emphasis only (R4: tonal while empty, filled with text); `state` still gates presses.
+    #[prop(optional, into)]
+    send_variant: Option<Signal<ButtonVariant>>,
     #[prop(optional)] children: Option<Children>,
 ) -> impl IntoView {
     let submit_id = format!("{id}-send");
+    let send_variant = send_variant.unwrap_or_else(|| Signal::stored(ButtonVariant::Filled));
     let submit_state = Signal::derive(move || {
         if matches!(state.get(), ActionState::Pending { .. }) {
             state.get()
@@ -414,9 +447,9 @@ pub fn FeedbackComposer(
             <Show when=move || tonal && !value.get().is_empty()><p class="vk-feedback-draft-note">"Rời trang có thể mất nháp."</p></Show>
             <Show when=move || show_alternative.get() fallback=move || {
                 if tonal {
-                    view! { <Button id=submit_id.clone() state=submit_state on_press=on_submit leading=IconName::ArrowBack>"Gửi"</Button> }.into_any()
+                    view! { <Button id=submit_id.clone() variant=send_variant state=submit_state on_press=on_submit leading=IconName::ArrowBack>"Gửi"</Button> }.into_any()
                 } else {
-                    view! { <Button id=submit_id.clone() state=submit_state on_press=on_submit>"Gửi nhận xét"</Button> }.into_any()
+                    view! { <Button id=submit_id.clone() variant=send_variant state=submit_state on_press=on_submit>"Gửi nhận xét"</Button> }.into_any()
                 }
             }>
                 {alternative.as_ref().map(ViewFn::run)}
@@ -467,6 +500,48 @@ pub struct CommentEndorsements {
     pub on_recover: Callback<String>,
 }
 
+/// Inline confirmation of “Gỡ nhận xét của tôi” (VDR-DISCUSSION-R4@r1). The adapter owns which
+/// comment is confirming and whether removal is still allowed; `on_remove` asks, `on_confirm`
+/// is the only path to a removal request.
+#[derive(Clone, Copy)]
+pub struct RemoveConfirmation {
+    pub confirming: Callback<String, bool>,
+    pub on_confirm: Callback<String>,
+    pub on_cancel: Callback<String>,
+}
+
+/// “Gỡ nhận xét của tôi” and, once asked, its confirmation in the same place: a destructive
+/// “Gỡ” and “Giữ lại”. Nothing is sent until “Gỡ”; the adapter moves focus between the two.
+#[component]
+pub fn OwnRemoveAction(
+    #[prop(into)] comment_id: String,
+    #[prop(into)] confirming: Signal<bool>,
+    #[prop(optional, into)] state: Signal<ActionState>,
+    #[prop(into)] on_ask: Callback<()>,
+    #[prop(into)] on_confirm: Callback<()>,
+    #[prop(into)] on_cancel: Callback<()>,
+) -> impl IntoView {
+    let ask_id = format!("remove-comment-{comment_id}");
+    let confirm_id = format!("confirm-remove-comment-{comment_id}");
+    let cancel_id = format!("cancel-remove-comment-{comment_id}");
+    let prompt_id = format!("remove-comment-{comment_id}-prompt");
+    move || {
+        if confirming.get() {
+            view! {
+                <div class="vk-discussion-remove-confirm" role="group" aria-labelledby=prompt_id.clone()>
+                    <p id=prompt_id.clone()>"Gỡ nhận xét này? Sau khi gỡ, bạn không thể khôi phục."</p>
+                    <Button id=cancel_id.clone() variant=ButtonVariant::Text on_press=on_cancel>"Giữ lại"</Button>
+                    <Button id=confirm_id.clone() variant=ButtonVariant::Danger state on_press=on_confirm>"Gỡ"</Button>
+                </div>
+            }
+            .into_any()
+        } else {
+            view! { <Button id=ask_id.clone() variant=ButtonVariant::Text state on_press=on_ask>"Gỡ nhận xét của tôi"</Button> }
+                .into_any()
+        }
+    }
+}
+
 /// Exactly two levels. A contextual reply is still rendered in the same flat reply list.
 /// Endorsements never reorder roots or replies: the provider's order is kept as given.
 #[component]
@@ -478,6 +553,9 @@ pub fn DiscussionThread(
     #[prop(optional_no_strip)] endorsements: Option<CommentEndorsements>,
     #[prop(optional, into)] has_more_replies: Signal<bool>,
     #[prop(optional)] reply_footer: Option<ChildrenFn>,
+    /// Without it, `on_remove` is the removal itself (samples and previews).
+    #[prop(optional)]
+    removal: Option<RemoveConfirmation>,
 ) -> impl IntoView {
     let root = Memo::new(move |_| facts.get().root);
     let shared_block = Memo::new(move |_| {
@@ -502,7 +580,7 @@ pub fn DiscussionThread(
     };
     view! {
         <div class="vk-discussion-thread">
-            {move || root.get().map(|comment| discussion_comment(comment, on_reply, on_remove, action_state, endorsements, shared_description))
+            {move || root.get().map(|comment| discussion_comment(comment, on_reply, on_remove, removal, action_state, endorsements, shared_description))
                 .unwrap_or_else(|| view! { <p class="vk-muted">"Bình luận gốc không còn hiển thị."</p> }.into_any())}
             <div class="vk-discussion-reply-group" hidden=move || facts.get().replies.is_empty() && !has_more_replies.get()>
             <p class="vk-discussion-reply-heading">"Phản hồi"</p>
@@ -510,7 +588,7 @@ pub fn DiscussionThread(
                 <For each=move || { facts.get().replies.into_iter().map(|comment| comment.id).collect::<Vec<_>>() } key=|id| id.clone()
                     children=move |id| {
                         let comment = Memo::new(move |_| facts.get().replies.into_iter().find(|comment| comment.id == id));
-                        view! { <li>{move || comment.get().map(|comment| discussion_comment(comment, on_reply, on_remove, action_state, endorsements, shared_description))}</li> }
+                        view! { <li>{move || comment.get().map(|comment| discussion_comment(comment, on_reply, on_remove, removal, action_state, endorsements, shared_description))}</li> }
                     } />
             </ul>
             {reply_footer.map(|footer| footer())}
@@ -553,6 +631,7 @@ fn discussion_comment(
     comment: DiscussionComment,
     on_reply: Callback<String>,
     on_remove: Callback<String>,
+    removal: Option<RemoveConfirmation>,
     state: Signal<ActionState>,
     endorsements: Option<CommentEndorsements>,
     shared_description: Signal<Option<String>>,
@@ -563,13 +642,20 @@ fn discussion_comment(
     let remove_button_id = format!("remove-comment-{}", comment.id);
     let author_id = format!("comment-{}-author", comment.id);
     let context_id = format!("comment-{}-context-author", comment.id);
+    // A reply sits in the tonal reply group: one step smaller than a root (#352).
+    let size = if comment.context.is_some() {
+        AvatarSize::Small
+    } else {
+        AvatarSize::Medium
+    };
+    let published_at = comment.author.published_at.clone();
     view! {
         <article id=format!("comment-{}", comment.id) class="vk-feedback-item vk-discussion-comment" tabindex="-1">
             <div class="vk-discussion-byline">
-                <div><p class="vk-discussion-name">
-                    <ProfileName name=comment.author.name.clone() profile=comment.author.profile id=author_id />
-                </p>
-                    <Timestamp instant=comment.author.published_at.clone() />
+                <AuthorIdentity author=comment.author id=Some(author_id) size />
+                // Outside the profile link.
+                <Timestamp instant=published_at />
+            </div>
             {comment.context.map(|context| match context {
                 DiscussionContext::Root => view! { <p class="vk-discussion-context">"Trả lời bình luận gốc"</p> }.into_any(),
                 DiscussionContext::Unavailable => view! { <p class="vk-discussion-context">"Bình luận được trả lời không còn hiển thị"</p> }.into_any(),
@@ -580,14 +666,23 @@ fn discussion_comment(
                     </p>
                 }.into_any(),
             })}
-                </div>
-                <Avatar name=comment.author.name identity_key=comment.author.key.unwrap_or_default() size=AvatarSize::Medium decorative=true />
-            </div>
             {comment.status.map(|status| view! { <p class="vk-discussion-status">{status}</p> })}
             <p class="vk-discussion-body">{comment.body}</p>
             <div class="vk-discussion-actions">
                 {comment.can_reply.then(|| view! { <Button id=reply_button_id variant=ButtonVariant::Text on_press=move |_| on_reply.run(reply_id.clone())>"Trả lời"</Button> })}
-                {comment.can_remove.then(|| view! { <Button id=remove_button_id variant=ButtonVariant::Text state on_press=move |_| on_remove.run(remove_id.clone())>"Gỡ nhận xét của tôi"</Button> })}
+                {comment.can_remove.then(|| match removal {
+                    Some(removal) => {
+                        let (ask, confirm, cancel, shown) = (remove_id.clone(), remove_id.clone(), remove_id.clone(), remove_id.clone());
+                        view! {
+                            <OwnRemoveAction comment_id=remove_id.clone() state
+                                confirming=Signal::derive(move || removal.confirming.run(shown.clone()))
+                                on_ask=move |_| on_remove.run(ask.clone())
+                                on_confirm=move |_| removal.on_confirm.run(confirm.clone())
+                                on_cancel=move |_| removal.on_cancel.run(cancel.clone()) />
+                        }.into_any()
+                    }
+                    None => view! { <Button id=remove_button_id variant=ButtonVariant::Text state on_press=move |_| on_remove.run(remove_id.clone())>"Gỡ nhận xét của tôi"</Button> }.into_any(),
+                })}
                 // Last: its note (pending, reason) wraps under it without pushing the text actions apart.
                 {endorsements.map(|endorsements| comment_endorsement(comment.id.clone(), endorsements, shared_description))}
             </div>
@@ -601,7 +696,8 @@ fn discussion_comment(
 pub enum EndorsementKind {
     /// One published revision of a work: “Thấm”.
     Work,
-    /// A root comment or a flat reply, each its own target: “Hữu ích”.
+    /// A root comment or a flat reply, each its own target: “Ưng” (heart). The 20/11/2026
+    /// rename of “Hữu ích” (#359) changes copy and glyph only, never the signal's semantics.
     Comment,
 }
 
@@ -628,13 +724,13 @@ impl EndorsementKind {
                 "Chưa rõ bạn đã Thấm chưa.",
             ),
             Self::Comment => (
-                "Hữu ích",
-                "Bỏ đánh dấu hữu ích",
-                "lượt hữu ích",
-                "Đang gửi đánh dấu hữu ích…",
-                "Đang bỏ đánh dấu hữu ích…",
-                "Không thể đánh dấu lúc này.",
-                "Chưa rõ bạn đã đánh dấu hữu ích chưa.",
+                "Ưng",
+                "Bỏ Ưng",
+                "lượt Ưng",
+                "Đang gửi Ưng…",
+                "Đang bỏ Ưng…",
+                "Không thể Ưng lúc này.",
+                "Chưa rõ bạn đã Ưng chưa.",
             ),
         };
         ToggleCopy {
@@ -647,6 +743,16 @@ impl EndorsementKind {
         }
     }
 
+    /// Decorative leading glyph for a confirmed selection; the label carries the meaning and
+    /// the outline/filled pair keeps “Ưng” readable without colour.
+    pub const fn icon(self, selected: bool) -> IconName {
+        match (self, selected) {
+            (Self::Work, _) => IconName::PenFlight,
+            (Self::Comment, false) => IconName::HeartOutline,
+            (Self::Comment, true) => IconName::Heart,
+        }
+    }
+
     /// Visible text, never hover-only; no login button is implied (no auth authority yet).
     pub const fn reason(self, block: EndorsementBlock) -> &'static str {
         match (self, block) {
@@ -654,16 +760,14 @@ impl EndorsementKind {
                 "Bạn không thể tự Thấm tác phẩm của mình."
             }
             (Self::Comment, EndorsementBlock::OwnContent) => {
-                "Bạn không thể đánh dấu nhận xét của chính mình."
+                "Bạn không thể tự Ưng nhận xét của mình."
             }
             (Self::Work, EndorsementBlock::NotPermitted) => "Tài khoản này chưa thể Thấm.",
-            (Self::Comment, EndorsementBlock::NotPermitted) => {
-                "Tài khoản này chưa thể đánh dấu hữu ích."
-            }
+            (Self::Comment, EndorsementBlock::NotPermitted) => "Tài khoản này chưa thể Ưng.",
             (Self::Work, EndorsementBlock::SignedOut) => "Cần đăng nhập để Thấm.",
-            (Self::Comment, EndorsementBlock::SignedOut) => "Cần đăng nhập để đánh dấu hữu ích.",
+            (Self::Comment, EndorsementBlock::SignedOut) => "Cần đăng nhập để Ưng.",
             (Self::Work, EndorsementBlock::Unavailable) => "Không thể Thấm lúc này.",
-            (Self::Comment, EndorsementBlock::Unavailable) => "Tạm chưa thể đánh dấu hữu ích.",
+            (Self::Comment, EndorsementBlock::Unavailable) => "Tạm chưa thể Ưng.",
         }
     }
 }
@@ -708,8 +812,9 @@ fn uniform_endorsement_block(
 }
 
 /// The endorsement control for one target. A press emits the desired selection; the adapter
-/// owns `command_key`, `expected_order`, session fencing and late answers. CHOICE-07 A uses
-/// the same decorative Pen Flight R2 in every phase; confirmation keeps its own trailing slot.
+/// owns `command_key`, `expected_order`, session fencing and late answers. “Thấm” keeps the
+/// decorative Pen Flight R2 in every phase (CHOICE-07 A); “Ưng” shows an outline heart until
+/// the confirmed value is on, then a filled one. Confirmation keeps its own trailing slot.
 #[component]
 pub fn EndorsementAction(
     /// Presentation only; confirmed facts and authority remain with the adapter.
@@ -733,7 +838,8 @@ pub fn EndorsementAction(
                 surface
                 id
                 copy=kind.copy()
-                icon=IconName::PenFlight
+                icon=kind.icon(false)
+                selected_icon=kind.icon(true)
                 value=Signal::derive(move || facts.get().value)
                 phase=Signal::derive(move || facts.get().phase)
                 count=Signal::derive(move || facts.get().count)
@@ -788,11 +894,113 @@ mod tests {
         );
     }
 
+    fn person(name: &str, handle: Option<&str>, neutral: bool) -> Author {
+        Author {
+            name: name.into(),
+            key: None,
+            published_at: "2026-11-20T02:00:00Z".into(),
+            profile: handle.map(|h| ProfileLink {
+                href: format!("/@{h}"),
+                handle: h.into(),
+            }),
+            neutral,
+        }
+    }
+
+    #[test]
+    fn author_identity_distinguishes_shared_pen_names_and_never_rebuilds_a_deleted_person() {
+        let render = |author: Author| {
+            Owner::new()
+                .with(|| view! { <AuthorIdentity author id=Some("who".into()) /> }.to_html())
+        };
+        let a = render(person("Hải Đường Nhỏ", Some("hai-duong-nho"), false));
+        let b = render(person("Hải Đường Nhỏ", Some("hai-duong-pho"), false));
+        for (html, handle) in [(&a, "hai-duong-nho"), (&b, "hai-duong-pho")] {
+            assert_eq!(html.matches("<a").count(), 1, "{html}");
+            assert!(html.contains(&format!(r#"href="/@{handle}""#)), "{html}");
+            assert!(
+                html.contains(&format!(">@{handle}<")),
+                "visible handle: {html}"
+            );
+            assert!(
+                html.contains(&format!("Mở hồ sơ Hải Đường Nhỏ (@{handle})")),
+                "{html}"
+            );
+        }
+        // A deleted label is never a link, a handle or initials, even if a stale ref leaked in.
+        let deleted = render(person("Tài khoản đã xóa", Some("old-person"), true));
+        assert!(
+            !deleted.contains("href") && !deleted.contains("old-person"),
+            "{deleted}"
+        );
+        assert!(deleted.contains(r#"data-initials="""#), "{deleted}");
+        // Unavailable/legacy text keeps its name (initials) without a link or handle.
+        let unavailable = render(person("Mộc Miên", None, false));
+        assert!(
+            !unavailable.contains("href") && unavailable.contains(r#"data-initials="MM""#),
+            "{unavailable}"
+        );
+    }
+
+    #[test]
+    fn comment_byline_keeps_time_outside_the_profile_link() {
+        let comment = |id: &str, context| DiscussionComment {
+            id: id.into(),
+            author: person("An Nhiên", Some("an-nhien"), false),
+            body: "Nhận xét".into(),
+            status: None,
+            context,
+            can_reply: true,
+            can_remove: false,
+        };
+        let html = Owner::new().with(|| {
+            let facts = DiscussionThreadFacts {
+                root_id: "root".into(),
+                root: Some(comment("root", None)),
+                replies: vec![comment(
+                    "reply",
+                    Some(DiscussionContext::Reply {
+                        name: "An Nhiên".into(),
+                        href: Some("#comment-root".into()),
+                        profile: Some(ProfileLink {
+                            href: "/@an-nhien".into(),
+                            handle: "an-nhien".into(),
+                        }),
+                    }),
+                )],
+            };
+            view! {
+                <DiscussionThread facts=Signal::stored(facts) on_reply=|_: String| {} on_remove=|_: String| {} />
+            }
+            .to_html()
+        });
+        for id in ["root", "reply"] {
+            let start = html
+                .find(&format!(r#"id="comment-{id}-author""#))
+                .expect("linked author");
+            let link = &html[start..start + html[start..].find("</a>").unwrap()];
+            assert!(
+                link.contains("vk-ui-avatar") && link.contains("@an-nhien"),
+                "{link}"
+            );
+            assert!(!link.contains("<time"), "time stays outside: {link}");
+        }
+        assert!(
+            html.contains(r#"id="comment-reply-context-author""#)
+                && html.contains(r##"href="#comment-root""##),
+            "reply context keeps two distinct targets: {html}"
+        );
+        assert!(
+            html.contains("vk-ui-avatar--sm") && html.contains("vk-ui-avatar--md"),
+            "{html}"
+        );
+    }
+
     #[test]
     fn public_composition_escapes_user_text_and_never_invents_a_profile() {
         let html = Owner::new().with(|| view! {
             <WorkCard title="<script>private()</script>".into()
-                author=Author { name: "<b>Tác giả</b>".into(), key: None, profile: None, published_at: "2026-11-02T02:00:00Z".into() }
+                author=Author { name: "<b>Tác giả</b>".into(), key: None, profile: None, published_at: "2026-11-02T02:00:00Z".into(), neutral: false }
                 href="/tac-pham/public?q=tho" />
         }.to_html());
         assert!(
@@ -917,11 +1125,49 @@ mod tests {
             },
         );
         assert!(
-            comment.contains("aria-label=\"Hữu ích\"")
-                && comment.contains("nhận xét của chính mình"),
+            comment.contains("aria-label=\"Ưng\"")
+                && comment.contains(">Ưng<")
+                && comment.contains("Bạn không thể tự Ưng nhận xét của mình."),
             "{comment}"
         );
+        assert!(
+            comment.contains("data-icon=\"heart-outline\"") && !comment.contains("pen-flight"),
+            "outline heart while off: {comment}"
+        );
         assert!(!comment.contains("e-count"), "hidden count: {comment}");
+        let liked = render(
+            EndorsementKind::Comment,
+            EndorsementFacts {
+                value: ToggleValue::On,
+                count: CountFact::Known(3),
+                ..Default::default()
+            },
+        );
+        assert!(
+            liked.contains("aria-label=\"Bỏ Ưng\"")
+                && liked.contains("lượt Ưng")
+                && liked.contains("data-icon=\"heart\""),
+            "filled heart once confirmed: {liked}"
+        );
+        let pressing = render(
+            EndorsementKind::Comment,
+            EndorsementFacts {
+                value: ToggleValue::Off,
+                phase: TogglePhase::Pending { desired: true },
+                ..Default::default()
+            },
+        );
+        assert!(
+            pressing.contains("data-icon=\"heart-outline\"") && pressing.contains("Đang gửi Ưng…"),
+            "no optimistic heart: {pressing}"
+        );
+        for copy in [
+            EndorsementKind::Comment.copy(),
+            EndorsementKind::Work.copy(),
+        ] {
+            let all = format!("{copy:?}").to_lowercase();
+            assert!(!all.contains("hữu ích"), "{all}");
+        }
         let guest = render(
             EndorsementKind::Work,
             EndorsementFacts {
@@ -1009,6 +1255,89 @@ mod tests {
     }
 
     #[test]
+    fn r4_removal_asks_in_place_and_only_confirm_reaches_the_adapter() {
+        let comment = |id: &str, can_remove| DiscussionComment {
+            id: id.into(),
+            author: Author {
+                name: "Người viết".into(),
+                key: None,
+                profile: None,
+                published_at: "2026-11-20T02:00:00Z".into(),
+                neutral: false,
+            },
+            body: format!("Bình luận {id}"),
+            status: None,
+            context: None,
+            can_reply: false,
+            can_remove,
+        };
+        let render = |confirming: &'static str| {
+            Owner::new().with(|| {
+                let facts = DiscussionThreadFacts {
+                    root_id: "root".into(),
+                    root: Some(comment("root", true)),
+                    replies: vec![comment("other", false)],
+                };
+                let removal = RemoveConfirmation {
+                    confirming: Callback::new(move |id: String| id == confirming),
+                    on_confirm: Callback::new(|_: String| {}),
+                    on_cancel: Callback::new(|_: String| {}),
+                };
+                view! {
+                    <DiscussionThread facts on_reply=|_: String| {} on_remove=|_: String| {} removal />
+                }
+                .to_html()
+            })
+        };
+        let idle = render("none");
+        assert!(
+            idle.contains("id=\"remove-comment-root\"") && !idle.contains("confirm-remove"),
+            "{idle}"
+        );
+        assert!(
+            !idle.contains("remove-comment-other"),
+            "only can_remove: {idle}"
+        );
+        let asking = render("root");
+        assert!(
+            !asking.contains("id=\"remove-comment-root\""),
+            "the ask control is replaced in place: {asking}"
+        );
+        assert!(
+            asking.contains("role=\"group\"")
+                && asking.contains("aria-labelledby=\"remove-comment-root-prompt\"")
+                && asking.contains("không thể khôi phục"),
+            "{asking}"
+        );
+        let cancel = asking.find("id=\"cancel-remove-comment-root\"").unwrap();
+        let confirm = asking.find("id=\"confirm-remove-comment-root\"").unwrap();
+        assert!(cancel < confirm, "Giữ lại comes first: {asking}");
+        assert!(asking.contains("vk-ui-button--danger"), "{asking}");
+    }
+
+    #[test]
+    fn r4_send_emphasis_is_presentation_and_never_unlocks_a_blocked_send() {
+        let render = |variant: ButtonVariant, state: ActionState| {
+            Owner::new().with(|| {
+                view! {
+                <FeedbackComposer id="c" intent=FeedbackIntent::Unspecified value="" tonal=true
+                    on_input=|_| {} state send_variant=Signal::stored(variant) on_submit=|_| {} />
+            }.to_html()
+            })
+        };
+        let empty = render(
+            ButtonVariant::Tonal,
+            ActionState::disabled("Viết nhận xét trước khi gửi."),
+        );
+        assert!(
+            empty.contains("vk-ui-button--tonal") && empty.contains("aria-disabled=\"true\""),
+            "{empty}"
+        );
+        let typed = render(ButtonVariant::Filled, ActionState::Enabled);
+        assert!(typed.contains("vk-ui-button--filled"), "{typed}");
+    }
+
+    #[test]
     fn thread_endorsements_render_one_action_per_target_in_provider_order() {
         let comment = |id: &str| DiscussionComment {
             id: id.into(),
@@ -1017,6 +1346,7 @@ mod tests {
                 key: None,
                 profile: None,
                 published_at: "2026-11-06T02:00:00Z".into(),
+                neutral: false,
             },
             body: format!("Bình luận {id}"),
             status: None,

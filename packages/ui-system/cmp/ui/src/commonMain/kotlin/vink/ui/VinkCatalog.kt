@@ -465,7 +465,7 @@ object VinkCatalog {
             id = "composition.endorsement",
             family = "composition",
             label = "Ghi nhận văn học — Mẫu",
-            summary = "Ghi nhận văn học cho tác phẩm (Thấm), nhận xét gốc và phản hồi (Hữu ích) qua ToggleAction; dữ liệu Mẫu, không gọi dịch vụ, không xác nhận ghi; Pen Flight R2 A · Mềm (CHOICE-07).",
+            summary = "Ghi nhận văn học cho tác phẩm (Thấm), nhận xét gốc và phản hồi (Ưng) qua ToggleAction; dữ liệu Mẫu, không gọi dịch vụ, không xác nhận ghi; Pen Flight R2 A · Mềm (CHOICE-07) cho Thấm, tim viền/đặc theo giá trị đã xác nhận cho Ưng.",
             scenarios = listOf(Scenario("default", "Tác phẩm, gốc và phản hồi phẳng"), Scenario("selected", "Đã xác nhận"), Scenario("pending", "Đang gửi"), Scenario("uncertain", "Chưa xác nhận được"), Scenario("own-content", "Nội dung của chính mình"), Scenario("signed-out", "Chưa có danh tính"), Scenario("unavailable", "Không thể Thấm lúc này")),
             leptos = "implemented-unverified",
             cmp = "implemented-unverified",
