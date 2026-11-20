@@ -1085,11 +1085,13 @@ async function toggles(page) {
       const buttons = [...document.querySelectorAll('.vk-ui-toggle__control')];
       return buttons.length === 4 && buttons.every(b => {
         const glyph = b.querySelector('.vk-ui-toggle__glyph svg');
-        return glyph?.dataset.icon === 'pen-flight' && glyph.getAttribute('aria-hidden') === 'true'
+        const commentGlyph = b.dataset.pressed === 'true' ? 'heart' : 'heart-outline';
+        const expected = b.id === 'endorse-work' ? 'pen-flight' : commentGlyph;
+        return glyph?.dataset.icon === expected && glyph.getAttribute('aria-hidden') === 'true'
           && glyph.getBoundingClientRect().width === 20 && glyph.getBoundingClientRect().height === 20
           && b.getBoundingClientRect().height >= 48 && !b.getAttribute('aria-label').includes('Pen Flight');
       });
-    })()`), `Pen Flight: decorative 20px glyph and 48px target survive ${scenario}, labels stay independent`);
+    })()`), `EndorsementAction: confirmed decorative 20px glyph and 48px target survive ${scenario}, labels stay independent`);
   }
   await page.open('composition.endorsement', 'signed-out');
   const guest = await page.eval(`[...document.querySelectorAll('.vk-ui-toggle__control')].map((b) => [b.getAttribute('aria-disabled'), b.dataset.pressed])`);

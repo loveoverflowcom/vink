@@ -9,7 +9,7 @@ use std::fmt;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use crate::mail::{SmtpSecurity, SmtpSettings};
+use crate::mail::ResendSettings;
 
 /// `sun_path` is 104 bytes on macOS and 108 on Linux, including the terminator.
 pub const MAX_SOCKET_PATH: usize = 100;
@@ -47,155 +47,55 @@ pub enum AuthorityChoice {
 pub enum MailChoice {
     /// `local-outbox` (`VINK_IDENTITY_LOCAL_OUTBOX`): files on this machine; development only.
     LocalOutbox(PathBuf),
-    /// `smtp`: authenticated submission over TLS (`VINK_IDENTITY_SMTP_*`).
-    Smtp(SmtpSettings),
+    /// `resend-api`: HTTPS email submission using an on-disk sending key.
+    Resend(ResendSettings),
 }
 
 impl MailChoice {
     pub fn label(&self) -> &'static str {
         match self {
             MailChoice::LocalOutbox(_) => "local_outbox",
-            MailChoice::Smtp(_) => "smtp",
+            MailChoice::Resend(_) => "resend_api",
         }
     }
 }
 
-const SMTP_KEYS: [&str; 8] = [
-    "VINK_IDENTITY_SMTP_PROVIDER",
-    "VINK_IDENTITY_SMTP_HOST",
-    "VINK_IDENTITY_SMTP_PORT",
-    "VINK_IDENTITY_SMTP_SECURITY",
-    "VINK_IDENTITY_SMTP_USERNAME",
-    "VINK_IDENTITY_SMTP_PASSWORD_FILE",
-    "VINK_IDENTITY_SMTP_TIMEOUT_SECONDS",
-    "VINK_IDENTITY_MAIL_FROM",
+const RESEND_KEYS: [&str; 4] = [
+    "VINK_IDENTITY_RESEND_API_KEY_FILE",
+    "VINK_IDENTITY_RESEND_FROM",
+    "VINK_IDENTITY_RESEND_TIMEOUT_SECONDS",
+    "VINK_IDENTITY_RESEND_PROXY",
 ];
 
-/// Defaults of a known SMTP provider: `VINK_IDENTITY_SMTP_PROVIDER=<name>` fills host, security
-/// and username; explicit `VINK_IDENTITY_SMTP_*` values still win. Switching to another SMTP
-/// provider is one row here (or explicit settings) — the outbox, worker and messages do not change.
-struct SmtpPreset {
-    name: &'static str,
-    host: &'static str,
-    security: SmtpSecurity,
-    username: &'static str,
-}
-
-const SMTP_PRESETS: [SmtpPreset; 1] = [SmtpPreset {
-    // https://resend.com/docs/send-with-smtp — the password is an API key (sending access).
-    name: "resend",
-    host: "smtp.resend.com",
-    security: SmtpSecurity::ImplicitTls,
-    username: "resend",
-}];
-
-/// Longest SMTP conversation allowed; the delivery lease (45 s) must outlast one send.
-pub const MAX_SMTP_TIMEOUT_SECONDS: u64 = 30;
-
-fn loopback_host(host: &str) -> bool {
-    matches!(host, "localhost" | "127.0.0.1" | "::1" | "[::1]")
-}
-
-fn smtp_settings(
+fn resend_settings(
     value: &dyn Fn(&str) -> Option<String>,
     problems: &mut Vec<String>,
-) -> Option<SmtpSettings> {
-    let before = problems.len();
-    let preset = match value("VINK_IDENTITY_SMTP_PROVIDER")
-        .as_deref()
-        .map(str::trim)
-    {
-        None => None,
-        Some(name) => match SMTP_PRESETS.iter().find(|preset| preset.name == name) {
-            Some(preset) => Some(preset),
-            None => {
-                let known: Vec<&str> = SMTP_PRESETS.iter().map(|p| p.name).collect();
-                problems.push(format!(
-                    "VINK_IDENTITY_SMTP_PROVIDER: unknown `{name}` (known: {}); or leave it unset \
-                     and give VINK_IDENTITY_SMTP_HOST",
-                    known.join(", ")
-                ));
-                None
-            }
-        },
-    };
-    let host = value("VINK_IDENTITY_SMTP_HOST")
-        .map(|h| h.trim().to_string())
-        .or_else(|| preset.map(|p| p.host.to_string()));
-    if host.is_none() {
-        problems.push("VINK_IDENTITY_SMTP_HOST: missing (SMTP relay host name)".into());
+) -> Option<ResendSettings> {
+    let key_file = value("VINK_IDENTITY_RESEND_API_KEY_FILE").map(PathBuf::from);
+    if key_file.is_none() {
+        problems.push("VINK_IDENTITY_RESEND_API_KEY_FILE: missing (private secret file)".into());
     }
-    let security = match value("VINK_IDENTITY_SMTP_SECURITY")
-        .as_deref()
-        .map(str::trim)
-    {
-        None if preset.is_some() => preset.map_or(SmtpSecurity::StartTls, |p| p.security),
-        None | Some("starttls") => SmtpSecurity::StartTls,
-        Some("tls") => SmtpSecurity::ImplicitTls,
-        Some("none") => SmtpSecurity::Plaintext,
-        Some(other) => {
-            problems.push(format!(
-                "VINK_IDENTITY_SMTP_SECURITY: expected `starttls`, `tls` or `none`, got `{other}`"
-            ));
-            SmtpSecurity::StartTls
-        }
-    };
-    if security == SmtpSecurity::Plaintext && !host.as_deref().is_some_and(loopback_host) {
-        problems.push(
-            "VINK_IDENTITY_SMTP_SECURITY: `none` is only allowed for a loopback relay              (localhost, 127.0.0.1, ::1); use `starttls` or `tls`"
-                .into(),
-        );
-    }
-    let port = match value("VINK_IDENTITY_SMTP_PORT") {
-        None => match security {
-            SmtpSecurity::ImplicitTls => 465,
-            SmtpSecurity::StartTls => 587,
-            SmtpSecurity::Plaintext => 25,
-        },
-        Some(raw) => match raw.trim().parse::<u16>() {
-            Ok(port) if port > 0 => port,
-            _ => {
-                problems.push("VINK_IDENTITY_SMTP_PORT: expected a TCP port".into());
-                0
-            }
-        },
-    };
-    let username =
-        value("VINK_IDENTITY_SMTP_USERNAME").or_else(|| preset.map(|p| p.username.to_string()));
-    let password_file = value("VINK_IDENTITY_SMTP_PASSWORD_FILE").map(PathBuf::from);
-    if username.is_some() != password_file.is_some() {
-        problems.push(
-            "VINK_IDENTITY_SMTP_USERNAME and VINK_IDENTITY_SMTP_PASSWORD_FILE: set both or neither"
-                .into(),
-        );
-    }
-    let from = value("VINK_IDENTITY_MAIL_FROM");
+    let from = value("VINK_IDENTITY_RESEND_FROM");
     if from.is_none() {
         problems.push(
-            "VINK_IDENTITY_MAIL_FROM: missing (sender mailbox such as `Vink <no-reply@vink.vn>`)"
-                .into(),
+            "VINK_IDENTITY_RESEND_FROM: missing (mailbox on a verified sender domain)".into(),
         );
     }
-    let timeout = match value("VINK_IDENTITY_SMTP_TIMEOUT_SECONDS") {
+    let timeout = match value("VINK_IDENTITY_RESEND_TIMEOUT_SECONDS") {
         None => 10,
-        Some(raw) => match raw.trim().parse::<u64>() {
-            Ok(seconds) if (1..=MAX_SMTP_TIMEOUT_SECONDS).contains(&seconds) => seconds,
+        Some(raw) => match raw.parse::<u64>() {
+            Ok(seconds) if (1..=30).contains(&seconds) => seconds,
             _ => {
-                problems.push(format!(
-                    "VINK_IDENTITY_SMTP_TIMEOUT_SECONDS: expected 1–{MAX_SMTP_TIMEOUT_SECONDS}"
-                ));
+                problems.push("VINK_IDENTITY_RESEND_TIMEOUT_SECONDS: expected 1–30".into());
                 10
             }
         },
     };
-    (problems.len() == before).then(|| SmtpSettings {
-        host: host.unwrap_or_default(),
-        port,
-        security,
-        username,
-        password_file,
-        from: from.unwrap_or_default(),
+    Some(ResendSettings {
+        key_file: key_file?,
+        from: from?,
         timeout: Duration::from_secs(timeout),
+        proxy: value("VINK_IDENTITY_RESEND_PROXY"),
     })
 }
 
@@ -351,21 +251,36 @@ impl ServeConfig {
     }
 }
 
-/// Reads the authority and, for `email-code`, its mail transport. A secret is never accepted as a
-/// value: the SMTP password comes only from a file.
+/// Reads the authority and its explicit mail transport. Inline API keys are never accepted.
 fn authority(
     value: &dyn Fn(&str) -> Option<String>,
     problems: &mut Vec<String>,
 ) -> AuthorityChoice {
-    if value("VINK_IDENTITY_SMTP_PASSWORD").is_some() {
+    if value("VINK_IDENTITY_RESEND_API_KEY").is_some() {
         problems.push(
-            "VINK_IDENTITY_SMTP_PASSWORD: not accepted; put the password in a file readable only \
-             by the Identity user and set VINK_IDENTITY_SMTP_PASSWORD_FILE"
+            "VINK_IDENTITY_RESEND_API_KEY: not accepted; use VINK_IDENTITY_RESEND_API_KEY_FILE"
                 .into(),
         );
     }
+    if [
+        "VINK_IDENTITY_SMTP_PROVIDER",
+        "VINK_IDENTITY_SMTP_HOST",
+        "VINK_IDENTITY_SMTP_PORT",
+        "VINK_IDENTITY_SMTP_SECURITY",
+        "VINK_IDENTITY_SMTP_USERNAME",
+        "VINK_IDENTITY_SMTP_PASSWORD",
+        "VINK_IDENTITY_SMTP_PASSWORD_FILE",
+        "VINK_IDENTITY_SMTP_TIMEOUT_SECONDS",
+        "VINK_IDENTITY_MAIL_FROM",
+        "VINK_IDENTITY_RESEND_ENDPOINT",
+    ]
+    .iter()
+    .any(|key| value(key).is_some())
+    {
+        problems.push("legacy SMTP settings and custom Resend endpoints are not supported".into());
+    }
     let outbox = value("VINK_IDENTITY_LOCAL_OUTBOX");
-    let smtp_set = SMTP_KEYS.iter().any(|key| value(key).is_some());
+    let resend_set = RESEND_KEYS.iter().any(|key| value(key).is_some());
     let transport = value("VINK_IDENTITY_MAIL_TRANSPORT").map(|t| t.trim().to_string());
     let global = value("VINK_IDENTITY_GLOBAL_CHALLENGE_LIMIT");
     match value("VINK_IDENTITY_AUTHORITY").as_deref().map(str::trim) {
@@ -373,7 +288,7 @@ fn authority(
             for (set, key) in [
                 (outbox.is_some(), "VINK_IDENTITY_LOCAL_OUTBOX"),
                 (transport.is_some(), "VINK_IDENTITY_MAIL_TRANSPORT"),
-                (smtp_set, "VINK_IDENTITY_SMTP_*"),
+                (resend_set, "VINK_IDENTITY_RESEND_*"),
                 (global.is_some(), "VINK_IDENTITY_GLOBAL_CHALLENGE_LIMIT"),
             ] {
                 if set {
@@ -388,7 +303,7 @@ fn authority(
             for (set, key) in [
                 (outbox.is_some(), "VINK_IDENTITY_LOCAL_OUTBOX"),
                 (transport.is_some(), "VINK_IDENTITY_MAIL_TRANSPORT"),
-                (smtp_set, "VINK_IDENTITY_SMTP_*"),
+                (resend_set, "VINK_IDENTITY_RESEND_*"),
                 (global.is_some(), "VINK_IDENTITY_GLOBAL_CHALLENGE_LIMIT"),
             ] {
                 if set {
@@ -415,17 +330,15 @@ fn authority(
                 },
             };
             // Without an explicit transport, a local outbox keeps the spike's configuration.
-            let choice = transport
-                .as_deref()
-                .or(outbox.as_ref().map(|_| "local-outbox"));
+            let choice = transport.as_deref().or(outbox
+                .as_ref()
+                .filter(|_| !resend_set)
+                .map(|_| "local-outbox"));
             let mail = match choice {
                 Some("local-outbox") => {
-                    if smtp_set {
-                        problems.push(
-                            "VINK_IDENTITY_SMTP_*: not used with the local outbox; remove them or \
-                             set VINK_IDENTITY_MAIL_TRANSPORT=smtp"
-                                .into(),
-                        );
+                    if resend_set {
+                        problems
+                            .push("VINK_IDENTITY_RESEND_*: not used with the local outbox".into());
                     }
                     match outbox {
                         Some(dir) => Some(MailChoice::LocalOutbox(PathBuf::from(dir))),
@@ -439,23 +352,24 @@ fn authority(
                         }
                     }
                 }
-                Some("smtp") => {
+                Some("resend-api") => {
                     if outbox.is_some() {
                         problems.push(
-                            "VINK_IDENTITY_LOCAL_OUTBOX: not used with SMTP; remove it".into(),
+                            "VINK_IDENTITY_LOCAL_OUTBOX: not used with Resend; remove it".into(),
                         );
                     }
-                    smtp_settings(value, problems).map(MailChoice::Smtp)
+                    resend_settings(value, problems).map(MailChoice::Resend)
                 }
-                Some(other) => {
-                    problems.push(format!(
-                        "VINK_IDENTITY_MAIL_TRANSPORT: expected `smtp` or `local-outbox`, got `{other}`"
-                    ));
+                Some(_) => {
+                    problems.push(
+                        "VINK_IDENTITY_MAIL_TRANSPORT: expected `resend-api` or `local-outbox`"
+                            .into(),
+                    );
                     None
                 }
                 None => {
                     problems.push(
-                        "VINK_IDENTITY_MAIL_TRANSPORT: missing (`smtp`, or `local-outbox` for \
+                        "VINK_IDENTITY_MAIL_TRANSPORT: missing (`resend-api`, or `local-outbox` for \
                          development)"
                             .into(),
                     );
@@ -501,12 +415,12 @@ impl MailConfig {
         let authority = authority(&value, &mut problems);
         let log_format = log_format(value("VINK_LOG_FORMAT"), &mut problems);
         match authority {
-            AuthorityChoice::EmailCode { mail, .. } if problems.is_empty() => {
+            AuthorityChoice::EmailCode { mail, .. } | AuthorityChoice::Native { mail, .. } if problems.is_empty() => {
                 Ok(Self { mail, log_format })
             }
-            AuthorityChoice::NotConfigured if problems.is_empty() => Err(ConfigError {
+            _ if problems.is_empty() => Err(ConfigError {
                 problems: vec![
-                    "VINK_IDENTITY_AUTHORITY: `email-code` with a mail transport is needed to \
+                    "VINK_IDENTITY_AUTHORITY: `native` or `email-code` with a mail transport is needed to \
                      test mail"
                         .into(),
                 ],
@@ -695,7 +609,7 @@ mod tests {
                 "only valid with",
             ),
             (
-                &[("VINK_IDENTITY_SMTP_HOST", "smtp.example.vn")][..],
+                &[("VINK_IDENTITY_RESEND_FROM", "mail@example.vn")][..],
                 "only valid with",
             ),
             (
@@ -714,7 +628,7 @@ mod tests {
                     ("VINK_IDENTITY_AUTHORITY", "email-code"),
                     ("VINK_IDENTITY_MAIL_TRANSPORT", "sendgrid"),
                 ][..],
-                "expected `smtp` or `local-outbox`",
+                "expected `resend-api` or `local-outbox`",
             ),
             (
                 &[
@@ -731,151 +645,58 @@ mod tests {
     }
 
     #[test]
-    fn smtp_requires_tls_off_loopback_and_never_takes_a_password_value() {
+    fn resend_needs_file_and_sender_with_no_implicit_fallback() {
         let base = [
-            ("VINK_IDENTITY_DATABASE_URL", URL),
-            ("VINK_IDENTITY_SOCKET", "/run/vink/identity.sock"),
-            ("VINK_IDENTITY_AUTHORITY", "email-code"),
-            ("VINK_IDENTITY_MAIL_TRANSPORT", "smtp"),
+            ("VINK_IDENTITY_AUTHORITY", "native"),
+            ("VINK_IDENTITY_MAIL_TRANSPORT", "resend-api"),
+            ("VINK_IDENTITY_RESEND_API_KEY_FILE", "/run/secrets/resend"),
+            ("VINK_IDENTITY_RESEND_FROM", "Vink <no-reply@vink.vn>"),
         ];
         let with = |extra: &[(&str, &str)]| {
             let mut pairs = base.to_vec();
             pairs.extend_from_slice(extra);
             let vars = env(&pairs);
-            ServeConfig::from_lookup(|k| vars.get(k).cloned())
+            MailConfig::from_lookup(|k| vars.get(k).cloned())
         };
-        let good = [
-            ("VINK_IDENTITY_SMTP_HOST", "smtp.example.vn"),
-            ("VINK_IDENTITY_SMTP_USERNAME", "vink"),
-            ("VINK_IDENTITY_SMTP_PASSWORD_FILE", "/run/secrets/smtp"),
-            ("VINK_IDENTITY_MAIL_FROM", "Vink <no-reply@vink.vn>"),
-        ];
-        let config = with(&good).unwrap();
-        let AuthorityChoice::EmailCode {
-            mail: MailChoice::Smtp(smtp),
-            ..
-        } = &config.authority
-        else {
-            panic!("{:?}", config.authority);
-        };
-        assert_eq!(
-            (smtp.port, smtp.security, smtp.timeout),
-            (587, SmtpSecurity::StartTls, Duration::from_secs(10))
-        );
-        let mut implicit = good.to_vec();
-        implicit.push(("VINK_IDENTITY_SMTP_SECURITY", "tls"));
-        implicit.push(("VINK_IDENTITY_GLOBAL_CHALLENGE_LIMIT", "50"));
-        let config = with(&implicit).unwrap();
-        assert!(matches!(
-            config.authority,
-            AuthorityChoice::EmailCode {
-                mail: MailChoice::Smtp(SmtpSettings { port: 465, .. }),
-                global_challenge_limit: Some(50),
-            }
-        ));
-        let mut plain = good.to_vec();
-        plain.push(("VINK_IDENTITY_SMTP_SECURITY", "none"));
-        assert!(
-            with(&plain)
-                .unwrap_err()
-                .to_string()
-                .contains("only allowed for a loopback relay")
-        );
-        let loopback = [
-            ("VINK_IDENTITY_SMTP_HOST", "127.0.0.1"),
-            ("VINK_IDENTITY_SMTP_SECURITY", "none"),
-            ("VINK_IDENTITY_SMTP_PORT", "2525"),
-            ("VINK_IDENTITY_MAIL_FROM", "Vink <no-reply@vink.test>"),
-        ];
-        assert!(with(&loopback).is_ok());
-        let mut secret = good.to_vec();
-        secret.push(("VINK_IDENTITY_SMTP_PASSWORD", "hunter2-value"));
-        let error = with(&secret).unwrap_err().to_string();
-        assert!(
-            error.contains("VINK_IDENTITY_SMTP_PASSWORD: not accepted"),
-            "{error}"
-        );
-        assert!(!error.contains("hunter2-value"), "{error}");
+        assert!(matches!(with(&[]).unwrap().mail, MailChoice::Resend(_)));
         for (key, raw, expected) in [
-            ("VINK_IDENTITY_SMTP_TIMEOUT_SECONDS", "31", "expected 1–30"),
-            ("VINK_IDENTITY_SMTP_PORT", "smtp", "expected a TCP port"),
-            ("VINK_IDENTITY_SMTP_SECURITY", "ssl", "expected `starttls`"),
-        ] {
-            let mut bad = good.to_vec();
-            bad.push((key, raw));
-            let error = with(&bad).unwrap_err().to_string();
-            assert!(error.contains(expected), "{key}: {error}");
-        }
-        let error = with(&[("VINK_IDENTITY_SMTP_USERNAME", "vink")])
-            .unwrap_err()
-            .to_string();
-        for needle in [
-            "VINK_IDENTITY_SMTP_HOST: missing",
-            "set both or neither",
-            "VINK_IDENTITY_MAIL_FROM: missing",
-        ] {
-            assert!(error.contains(needle), "{error}");
-        }
-        // A provider preset fills host, security, port and username; explicit values win.
-        let resend = [
-            ("VINK_IDENTITY_SMTP_PROVIDER", "resend"),
-            ("VINK_IDENTITY_SMTP_PASSWORD_FILE", "/run/secrets/resend"),
-            ("VINK_IDENTITY_MAIL_FROM", "Vink <no-reply@vink.vn>"),
-        ];
-        let AuthorityChoice::EmailCode {
-            mail: MailChoice::Smtp(preset),
-            ..
-        } = with(&resend).unwrap().authority
-        else {
-            panic!("resend preset");
-        };
-        assert_eq!(
             (
-                preset.host.as_str(),
-                preset.port,
-                preset.security,
-                preset.username.as_deref()
+                "VINK_IDENTITY_RESEND_API_KEY_FILE",
+                "",
+                "missing (private secret file)",
+            ),
+            ("VINK_IDENTITY_RESEND_FROM", "", "missing (mailbox"),
+            (
+                "VINK_IDENTITY_RESEND_API_KEY",
+                "re_DO_NOT_PRINT",
+                "not accepted",
             ),
             (
-                "smtp.resend.com",
-                465,
-                SmtpSecurity::ImplicitTls,
-                Some("resend")
-            )
-        );
-        let mut starttls = resend.to_vec();
-        starttls.push(("VINK_IDENTITY_SMTP_SECURITY", "starttls"));
-        let AuthorityChoice::EmailCode {
-            mail: MailChoice::Smtp(preset),
-            ..
-        } = with(&starttls).unwrap().authority
-        else {
-            panic!("resend preset with STARTTLS");
-        };
-        assert_eq!(
-            (preset.port, preset.security),
-            (587, SmtpSecurity::StartTls)
-        );
-        let error = with(&[
-            ("VINK_IDENTITY_SMTP_PROVIDER", "mailgun"),
-            ("VINK_IDENTITY_MAIL_FROM", "Vink <no-reply@vink.vn>"),
-        ])
-        .unwrap_err()
-        .to_string();
-        assert!(
-            error.contains("unknown `mailgun` (known: resend)"),
-            "{error}"
-        );
-        let mut mixed = good.to_vec();
-        mixed.push(("VINK_IDENTITY_LOCAL_OUTBOX", "/run/vink/outbox"));
-        assert!(
-            with(&mixed)
-                .unwrap_err()
-                .to_string()
-                .contains("not used with SMTP")
-        );
-        // Debug never prints the account name.
-        assert!(!format!("{:?}", with(&good).unwrap()).contains("\"vink\""));
+                "VINK_IDENTITY_RESEND_TIMEOUT_SECONDS",
+                "31",
+                "expected 1–30",
+            ),
+            (
+                "VINK_IDENTITY_MAIL_TRANSPORT",
+                "smtp",
+                "expected `resend-api`",
+            ),
+            ("VINK_IDENTITY_SMTP_PASSWORD", "DO_NOT_PRINT", "legacy SMTP"),
+            (
+                "VINK_IDENTITY_LOCAL_OUTBOX",
+                "/tmp/mail",
+                "not used with Resend",
+            ),
+            (
+                "VINK_IDENTITY_MAIL_TRANSPORT",
+                "",
+                "MAIL_TRANSPORT: missing",
+            ),
+        ] {
+            let error = with(&[(key, raw)]).unwrap_err().to_string();
+            assert!(error.contains(expected), "{key}: {error}");
+            assert!(!error.contains("DO_NOT_PRINT"), "{error}");
+        }
     }
 
     #[test]

@@ -1,0 +1,24 @@
+version = 1
+id = "D-05-C1"
+revision = 2
+
+[base]
+revision = 1
+sha256 = "68ff875f1e0f48971c5688777ff32b457a673bd7fcc3ece071412c55e611834c"
+
+[content]
+kind = "architecture"
+domain = "account"
+title = "D-05 §11 C1 gửi thư xác thực bằng Resend HTTPS API"
+resolution = """
+Dùng Resend HTTPS REST API cho email xác thực, không triển khai SMTP mới
+và không dùng SMTP làm đường gửi production. Giữ outbox PostgreSQL,
+worker Identity qua MailSender và local-outbox cho dev/test.
+"""
+rationale = """
+Giữ việc gửi ngoài request và dùng Idempotency-Key ổn định trong phạm vi
+bảo đảm của nhà cung cấp; API key chỉ có quyền gửi, đọc từ file secret.
+Chọn transport không chấp nhận D-05 hay phê duyệt bật đăng nhập.
+"""
+requires = ["D-05@r1"]
+related_ids = ["D-05-C2"]

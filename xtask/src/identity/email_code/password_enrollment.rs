@@ -44,7 +44,6 @@ impl Run<'_> {
             origin: format!("http://127.0.0.1:{port}"),
             outbox: &outbox,
             client: "198.51.100.210".into(),
-            smtp: None,
             secrets: Vec::new(),
         };
         let checked = flow.check_enrollment();
