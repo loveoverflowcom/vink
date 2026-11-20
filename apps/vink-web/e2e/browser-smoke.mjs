@@ -5553,7 +5553,27 @@ async function discussionReadingAndWrites(page) {
         await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
         recovery.scrollIntoView({block:'center',behavior:'instant'});
       })()`);
-      await page.waitFor(`getComputedStyle(document.querySelector('.vk-discussion-delivery p')).color===getComputedStyle(document.body).color`, 'recovery text resolves the final theme foreground');
+      const recovery = '.vk-discussion-composer:has(#root-composer) .vk-discussion-delivery';
+      const palette = await page.eval(`(() => {
+        const card = document.querySelector(${JSON.stringify(recovery)});
+        const probe = document.createElement('span');
+        probe.style.cssText = 'color:var(--vk-on-info-container);background-color:var(--vk-info-container)';
+        card.append(probe);
+        const result = {
+          tone: card.dataset.tone,
+          text: getComputedStyle(card.querySelector('p')).color,
+          background: getComputedStyle(card).backgroundColor,
+          body: getComputedStyle(document.body).color,
+          tokenText: getComputedStyle(probe).color,
+          tokenBackground: getComputedStyle(probe).backgroundColor,
+        };
+        probe.remove();
+        return result;
+      })()`);
+      console.log('uncertain recovery palette', JSON.stringify(palette));
+      check(palette.tone === 'unknown' && palette.text === palette.tokenText && palette.background === palette.tokenBackground,
+        'uncertain receipt uses the resolved on-info-container foreground and info-container background');
+      await textContrast(page, 'dark', `discussion-uncertain-${width}-${scale}`, [`${recovery} [role="status"]`, `${recovery} > p`]);
       check(await page.eval(`(() => {
         const region=document.querySelector('#root-composer').closest('.vk-discussion-composer');
         const delivery=region.querySelector('.vk-discussion-delivery'), send=document.querySelector('#root-composer-send');
@@ -5697,7 +5717,7 @@ async function discussionReadingAndWrites(page) {
       if (Date.now() > deadline) throw new Error('timed out waiting for held fixture reply intent');
       await sleep(50);
     }
-    check(await page.eval(`(() => { const b = document.querySelector('#reply-composer-${rootId}-send'); const f = document.querySelector('#reply-composer-${rootId}'); return b?.getAttribute('aria-busy')==='true' && getComputedStyle(b.querySelector(':scope > .vk-ui-icon')).display==='none' && !!b.querySelector('.vk-ui-button__status svg') && f?.readOnly===true; })()`), 'R4 Sending shows spinner in leading slot and makes textarea readonly');
+    check(await page.eval(`(() => { const b = document.querySelector('#reply-composer-${rootId}-send'); const f = document.querySelector('#reply-composer-${rootId}'); return b?.getAttribute('aria-busy')==='true' && getComputedStyle(b.querySelector(':scope > .vk-ui-icon')).display==='none' && !!b.querySelector('.vk-ui-button__status svg') && f?.readOnly===false && b.querySelector('.vk-ui-button__status').getBoundingClientRect().right <= b.querySelector('.vk-ui-button__label').getBoundingClientRect().left; })()`), 'R4 Sending keeps the field editable and places the progress indicator before its label');
     await page.eval(`[...document.querySelectorAll('.vk-discussion-reply-composer button')].find(b=>b.textContent.trim()==='Thu ô · Giữ chữ').click()`);
     await page.waitFor(`!document.querySelector('#reply-composer-${rootId}') && document.activeElement?.id==='reply-to-${replyId}' && document.querySelector('.vk-discussion-reply-kept')?.textContent.includes('Bản trả lời được giữ lại')`, 'reply composer collapsed cleanly with R4 kept pill');
     await page.click(`#reopen-reply-${rootId}`);
@@ -5706,7 +5726,8 @@ async function discussionReadingAndWrites(page) {
       responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
       body: Buffer.from(JSON.stringify({ comment_id: '0192f3a1-0000-7000-8000-000000000099', status: 'pending', replayed: false })).toString('base64'),
     });
-    await page.waitFor(`document.querySelector('#reply-composer-${rootId}')?.value.includes('Giữ nguyên') && document.querySelector('#reply-composer-${rootId}-send')?.dataset.state!=='pending'`, 'held fixture reply acknowledgment completes after collapse without losing text');
+    await page.waitFor(`document.querySelector('#reply-composer-${rootId}')?.value==='' && document.querySelector('.vk-discussion-reply-composer [data-testid=discussion-receipt]')?.textContent.includes('Chờ duyệt')`, 'unchanged reply clears only when its pending receipt arrives after reopening');
+    await page.typeAtEnd(`#reply-composer-${rootId}`, 'Giữ nguyên bản trả lời mới 👩‍💻');
     check(true, 'intercepted fixture only: collapse/reopen does not cancel the feature transport or strand Sending');
     currentFixture = structuredClone(fixture);
     currentFixture.roots[0].preview = currentFixture.roots[0].preview.filter(comment => comment.comment_id !== replyId);
@@ -5716,6 +5737,7 @@ async function discussionReadingAndWrites(page) {
     check(await page.eval(`document.querySelector('#reply-composer-${rootId}')?.value.includes('Giữ nguyên') && document.querySelector('#reply-composer-${rootId}-send')?.getAttribute('aria-disabled')==='true' && document.querySelector('.vk-discussion-target-lost')?.textContent.includes('Bình luận được trả lời không còn hiển thị') && document.querySelectorAll('.vk-discussion-replies .vk-discussion-comment').length===3`), 'revoked context shows warning card with copy/reselect without claiming deletion');
     await page.eval(`[...document.querySelectorAll('.vk-discussion-target-lost button')].find(b=>b.textContent.includes('Sao chép nháp'))?.click()`);
     await page.waitFor(`document.querySelector('.vk-discussion-target-lost [data-copied="true"]')?.textContent.includes('Đã sao chép nháp')`, 'revoked context copy feedback');
+    await captureDiscussionMatrix(page, 'revoked-target', '.vk-discussion-target-lost', 'intercepted-provider-contract-fixture-no-persistence');
     const revokedDraft = await page.eval(`document.querySelector('#reply-composer-${rootId}').value`);
     check(await page.eval('navigator.clipboard.readText()') === revokedDraft, 'revoked context copy writes exact draft to real clipboard');
     await page.eval(`[...document.querySelectorAll('.vk-discussion-target-lost button')].find(b=>b.textContent.includes('Chọn bình luận khác'))?.click()`);
@@ -5787,8 +5809,8 @@ async function discussionR31Geometry(page, width, scale, scenario) {
       ratio(getComputedStyle(group.querySelector('.vk-discussion-body')).color,surface),
       ratio(getComputedStyle(group.querySelector('time')).color,surface),
       ratio(getComputedStyle(composer.querySelector('label')).color,fieldBg),
-      (rootEndorse && rootEndorse.dataset.state !== 'disabled') ? ratio(getComputedStyle(rootEndorse).color, getComputedStyle(rootEndorse).backgroundColor) : 21,
-      (rootReply && rootReply.dataset.state !== 'disabled') ? ratio(getComputedStyle(rootReply).color, getComputedStyle(rootReply).backgroundColor) : 21,
+      ratio(getComputedStyle(rootEndorse).color, getComputedStyle(rootEndorse).backgroundColor),
+      ratio(getComputedStyle(rootReply).color, getComputedStyle(rootReply).backgroundColor),
     ];
     const reasons = [...pattern.querySelectorAll('.vk-discussion-shared-reason')].filter(e=>!e.hidden);
     const segmentOrderOk = rootEndorse && rootReply && !!(rootEndorse.compareDocumentPosition(rootReply) & Node.DOCUMENT_POSITION_FOLLOWING);
@@ -5801,7 +5823,7 @@ async function discussionR31Geometry(page, width, scale, scenario) {
       !document.querySelector('#feedback-region select');
     return {root:rect(root), group:rect(group), composer:rect(composer), body:rect(body),
       segment:rect(segment), avatarLeft:rect(root.querySelector('.vk-discussion-byline .vk-ui-avatar')).left,
-      nameLeft:nameEl ? rect(nameEl).left : rect(body).left,
+      nameLeft:rect(nameEl).left,
       fieldPadLeft:rect(composer.querySelector('.vk-ui-field__control')).left - rect(composer).left,
       fieldPadRight:rect(composer).right - rect(composer.querySelector('.vk-ui-field__control')).right,
       gap:parseFloat(getComputedStyle(group.querySelector('ul')).rowGap),
@@ -5812,7 +5834,7 @@ async function discussionR31Geometry(page, width, scale, scenario) {
       shared:controls.length>=2 && controls.every(b=>(b.getAttribute('aria-describedby')||'').includes(reasons[0]?.id)),
       field:composer.querySelectorAll('textarea').length===1 && !!composer.querySelector('label[for]'),
       radius:getComputedStyle(composer).borderTopLeftRadius,
-      rootSeg48:[rootEndorse, rootReply].filter(Boolean).every(b=>{const r=b.getBoundingClientRect();return r.width>=48 && r.height>=48;}),
+      rootSeg48:[rootEndorse, rootReply].every(b=>{const r=b.getBoundingClientRect();return r.width>=48 && r.height>=48;}),
       buttons:[...thread.querySelectorAll('button')].every(b=>{const r=b.getBoundingClientRect();return r.width>=44 && r.height>=44 && r.left>=0 && r.right<=innerWidth+1;})};
   })()`);
   const close = (a,b)=>Math.abs(a-b)<=1.5;
@@ -5850,7 +5872,7 @@ async function discussionR31Geometry(page, width, scale, scenario) {
 async function captureDiscussionMatrix(page, name, anchor, boundary) {
   for (const theme of ['light', 'dark']) {
     await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}`);
-    for (const width of [320, 360, 390, 834, 1024, 1440]) {
+    for (const width of [320, 360, 390, 834, 1024, 1280, 1440]) {
       await page.viewport(width, 900);
       await page.eval(`document.documentElement.style.fontSize=''; document.querySelector(${JSON.stringify(anchor)}).scrollIntoView({block:'start'})`);
       const ov100 = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({
@@ -5870,7 +5892,7 @@ async function captureDiscussionMatrix(page, name, anchor, boundary) {
         overflow: ov100,
       });
       if (name === 'contract-fixture-flat') await discussionR31Geometry(page, width, 100, `${name}/${theme}/${width}`);
-      if (width <= 390 || (width === 1440 && name === 'contract-fixture-flat')) {
+      if (width <= 390 || width >= 1280) {
         await page.eval(`document.documentElement.style.fontSize='200%'; document.querySelector(${JSON.stringify(anchor)}).scrollIntoView({block:'start'})`);
         const ov200 = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({
           containers: ['.vk-discussion-root', '.vk-discussion-thread'],
@@ -5948,7 +5970,7 @@ try {
   else if (args.phase === 'after-restart') await afterRestartPhase(page);
   else if (args.phase === 'endorsement') await endorsementAsReader(page, { args, check, captureMatrix: captureDiscussionMatrix });
   else if (args.phase === 'review-withdrawn') {
-    await reviewWithdrawnPage(page, { args, check });
+    await reviewWithdrawnPage(page, { args, check, captureMatrix: captureDiscussionMatrix });
     await moderationQueues(page, { args, check });
     await markdownReader(page, { args, check, textContrast });
   }

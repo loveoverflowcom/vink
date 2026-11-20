@@ -130,7 +130,8 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
       const expected = b.closest('.vk-endorsement')?.dataset.kind === 'work' ? 'pen-flight'
         : b.dataset.pressed === 'true' ? 'heart' : 'heart-outline';
       return glyph?.dataset.icon === expected && glyph.getAttribute('aria-hidden') === 'true'
-        && glyph.getBoundingClientRect().width === 20 && b.getBoundingClientRect().height >= 48;
+        && glyph.getBoundingClientRect().width === 20 && glyph.getBoundingClientRect().height === 20
+        && b.getBoundingClientRect().width >= 48 && b.getBoundingClientRect().height >= 48;
     });
   })()`), `Pen Flight (Thấm) and heart (Ưng): work, root and flat reply keep decorative 20px glyph / 48px targets (${phase})`);
   await glyphs('ready');

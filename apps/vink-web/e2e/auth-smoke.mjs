@@ -570,7 +570,7 @@ async function discussionOwnFixtures(page, endpoint, check) {
     check(await page.eval(`window.__discussionInput.value === ${JSON.stringify(expected)}`), `own refresh keeps native ${command} history (CDP editing command)`);
   }
   await page.eval(`window.__discussionInput.focus(); window.__discussionInput.setSelectionRange(2,5)`);
-  for (const width of [320,390,834,1440]) for (const theme of ['light','dark']) for (const scale of [100,200]) {
+  for (const width of [320,390,834,1280,1440]) for (const theme of ['light','dark']) for (const scale of [100,200]) {
     await page.viewport(width);
     await page.eval(`document.documentElement.dataset.theme='${theme}'; document.documentElement.style.fontSize='${scale}%'; document.querySelector('#own-comments').scrollIntoView({block:'start'})`);
     check(await page.eval(`document.documentElement.scrollWidth <= innerWidth+1 && window.__discussionInput === document.querySelector('#root-composer') && document.activeElement === window.__discussionInput && window.__discussionInput.selectionStart === 2 && window.__discussionInput.selectionEnd === 5`), `own fixture ${width}/${theme}/${scale}: reflows and preserves input identity/selection`);

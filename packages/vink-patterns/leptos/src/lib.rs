@@ -766,7 +766,7 @@ fn discussion_comment(
             {comment.status.map(|status| view! { <p class="vk-discussion-status">{status}</p> })}
             <p class="vk-discussion-body">{comment.body}</p>
             <div class="vk-discussion-actions">
-                <div class="vk-discussion-action-segment"
+                <div class="vk-discussion-action-segment" data-root=is_root.then_some("true")
                     role=move || (!read_only.get()).then_some("group")
                     aria-label=move || (!read_only.get()).then(|| format!("Thao tác với nhận xét của {author_label}"))>
                     {endorsements.map(|endorsements| {

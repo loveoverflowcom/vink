@@ -287,6 +287,7 @@ fn r4_orders_endorsement_before_reply_and_keeps_read_only_static() {
         }
         .to_html()
     });
+    assert_eq!(interactive.matches("data-root=\"true\"").count(), 1);
     assert!(
         interactive.find("id=\"endorse-comment-root\"").unwrap()
             < interactive.find("id=\"reply-to-root\"").unwrap(),

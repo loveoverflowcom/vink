@@ -212,6 +212,9 @@ fn ReplacementView(
     return_href: String,
 ) -> impl IntoView {
     let context = discovery::reader_context();
+    // The replacement keeps eligible comments and their public summaries. Its discussion
+    // only renders confirmed counts and never exposes endorsement write controls.
+    endorsement::Endorsements::provide(work_id.clone(), Callback::new(|()| {}));
     let hidden = author_name.is_none();
     let badge = if hidden {
         "Không hiển thị"

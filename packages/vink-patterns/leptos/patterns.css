@@ -77,7 +77,12 @@
 .vk-discussion-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-2); min-width: 0; }
 .vk-discussion-action-segment { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-1); max-inline-size: 100%; min-width: 0; }
 .vk-discussion-action-segment[data-root="true"] { gap: 2px; }
-/* R4 (#359): inline heart · count for comment Ưng, preserving 20px icon and 44/48px target height. */
+/* Pen Flight and comment hearts share the 48px endorsement target, including compact density. */
+.vk-endorsement .vk-ui-toggle__control {
+  min-block-size: max(48px, var(--vk-density-control-height));
+  min-inline-size: max(48px, var(--vk-density-control-height));
+}
+/* R4 (#359): inline heart · count for comment Ưng. */
 .vk-endorsement[data-kind="comment"] .vk-ui-toggle__control {
   display: inline-flex;
   align-items: center;
@@ -86,7 +91,6 @@
 .vk-endorsement[data-kind="comment"] .vk-ui-toggle__count { font-weight: inherit; }
 .vk-endorsement[data-kind="comment"] .vk-ui-toggle__count[data-count="known"]::before { content: "·\00a0"; }
 .vk-discussion-action-segment[data-root="true"] .vk-endorsement[data-kind="comment"] .vk-ui-toggle__control {
-  min-block-size: var(--vk-density-control-height);
   padding: 0 14px 0 12px;
   border: 0;
   border-radius: 24px 6px 6px 24px;
@@ -102,11 +106,11 @@
   font-weight: var(--vk-type-section-weight);
 }
 .vk-discussion-action-segment[data-root="true"] .vk-endorsement[data-kind="comment"] .vk-ui-toggle__control[data-state="disabled"] {
-  background-color: var(--vk-disabled-container);
-  color: var(--vk-disabled-content);
+  background-color: var(--vk-surface-container-highest);
+  color: var(--vk-on-surface-variant);
 }
 .vk-discussion-action-segment[data-root="true"] > .vk-ui-action .vk-ui-button--tonal {
-  min-block-size: var(--vk-density-control-height);
+  min-block-size: max(48px, var(--vk-density-control-height));
   padding: 0 16px 0 12px;
   border: 0;
   border-radius: 6px 24px 24px 6px;
@@ -127,8 +131,6 @@
 }
 .vk-discussion-replies .vk-endorsement[data-kind="comment"] .vk-ui-toggle__control,
 .vk-discussion-replies .vk-discussion-action-segment .vk-ui-button--text {
-  min-block-size: var(--vk-density-control-height);
-  min-inline-size: var(--vk-density-control-height);
   padding: 0 10px;
   border-radius: var(--vk-radius-full);
   color: var(--vk-on-surface-variant);
@@ -153,9 +155,7 @@
     --vk-discussion-desktop-indent: calc(var(--vk-size-avatar-md) + var(--vk-space-3));
   }
   .vk-discussion-root > .vk-discussion-thread > .vk-discussion-comment > :is(.vk-discussion-status, .vk-discussion-body, .vk-discussion-actions),
-  .vk-discussion-root > .vk-discussion-thread > .vk-discussion-shared-reason {
-    padding-inline-start: var(--vk-discussion-desktop-indent);
-  }
+  .vk-discussion-root > .vk-discussion-thread > .vk-discussion-shared-reason,
   .vk-discussion-root > .vk-discussion-thread > .vk-discussion-reply-group,
   .vk-discussion-root > .vk-discussion-reply-composer,
   .vk-discussion-root > .vk-discussion-reply-kept {
@@ -314,8 +314,14 @@
   .vk-discussion-reply-group, .vk-feedback-composer--tonal { padding-inline: 12px; }
 }
 
-.vk-feedback-composer--tonal .vk-ui-button[aria-busy="true"] > .vk-ui-icon { display: none; }
-.vk-feedback-composer--tonal .vk-ui-button[aria-busy="true"] > .vk-ui-button__status { order: -1; }
+.vk-feedback-composer__footer .vk-ui-button[aria-busy="true"]:has(> .vk-ui-icon) > .vk-ui-icon { display: none; }
+.vk-feedback-composer__footer .vk-ui-button[aria-busy="true"]:has(> .vk-ui-icon) > .vk-ui-button__status {
+  position: static;
+  translate: none;
+  order: -1;
+  inline-size: var(--vk-size-icon-sm);
+  justify-items: center;
+}
 .vk-discussion-delivery[hidden] { display: none; }
 .vk-discussion-composer-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--vk-space-2); min-width: 0; }
 .vk-discussion-composer-heading > p { margin: 0; overflow-wrap: anywhere; }
