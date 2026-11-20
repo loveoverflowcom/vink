@@ -5,7 +5,7 @@ use crate::{
 use leptos::prelude::*;
 use leptos_meta::{Link, Meta, Title};
 use leptos_router::hooks::{use_params_map, use_query_map};
-use vink_ui::Link as UiLink;
+use vink_ui::{HiddenField, Link as UiLink};
 
 #[component]
 pub fn Author() -> impl IntoView {
@@ -269,7 +269,7 @@ pub(super) fn RetryRead(
             event.prevent_default();
             on_retry.run(());
         }>
-            {cursor.map(|value| view! { <input type="hidden" name="cursor" value=value /> })}
+            {cursor.map(|value| view! { <HiddenField name="cursor" value=Signal::stored(value) /> })}
             <vink_ui::Button id=id variant=vink_ui::ButtonVariant::Tonal kind=vink_ui::ButtonKind::Submit>
                 "Thử lại"
             </vink_ui::Button>
