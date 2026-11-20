@@ -161,7 +161,7 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
     await page.eval('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
     const before = await snapshot(page, REPLY_EDITOR, 'readerAuthReply');
     const context = await page.eval(`${q(REPLY_EDITOR)}.closest('.vk-feedback-composer').querySelector('.vk-discussion-composer-heading p').textContent`);
-    check(before.y > 0 && context.startsWith('Đang trả lời ') && !context.includes('@'), '#328 starting from a nonzero scroll position and an actual public reply target (R4 chip “Đang trả lời X”)');
+    check(before.y > 0 && context === 'Trả lời bình luận gốc', '#328 starting from a nonzero scroll position with the selected public root as reply target');
     await page.click(REPLY_EDITOR+'-auth');
     await page.waitFor(isOpen, 'reply opens the shared Auth entry');
     const openScroll = await page.eval('({y:scrollY,maxY:document.scrollingElement.scrollHeight-innerHeight})');

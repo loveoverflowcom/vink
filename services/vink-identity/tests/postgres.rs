@@ -26,8 +26,6 @@ mod email_code;
 mod enrollment;
 #[path = "postgres/password.rs"]
 mod password;
-#[path = "support/smtp_sink.rs"]
-mod smtp_sink;
 
 fn app(pool: PgPool, caller: Option<u32>) -> Router {
     router(IdentityState::new(pool, Authority::NotConfigured, caller))
@@ -62,7 +60,8 @@ async fn serve_is_not_ready_until_identity_migrates_and_migrating_twice_is_a_no_
             20261112000000,
             20261113000000,
             20261114000000,
-            20261119000000
+            20261119000000,
+            20261120000000
         ]
     );
     assert!(migrate(&pool).await.unwrap().applied.is_empty());

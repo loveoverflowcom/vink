@@ -78,8 +78,8 @@ Giá trị minh họa cho App là `postgresql://vink_app_runtime:<RUNTIME_PASSWO
 Identity đọc `VINK_IDENTITY_DATABASE_URL` từ `identity-runtime.env`. App và Identity migrator
 chỉ đọc `VINK_MIGRATE_DATABASE_URL` / `VINK_IDENTITY_MIGRATE_DATABASE_URL` trong file one-shot
 tương ứng. `provision.env` chỉ vào bước provision. Postgres đọc bootstrap password từ file qua
-`POSTGRES_PASSWORD_FILE` khi khởi tạo volume trống. Nếu sau này bật SMTP, Identity đọc file
-owner-only ở đường dẫn `VINK_IDENTITY_SMTP_PASSWORD_FILE`. Manifest hiện tại giữ đăng nhập
+`POSTGRES_PASSWORD_FILE` khi khởi tạo volume trống. Đường Resend HTTPS API dùng file
+owner-only `VINK_IDENTITY_RESEND_API_KEY_FILE` (xem [hướng dẫn test](../../infra/test/README.md)). Manifest mặc định giữ đăng nhập
 `disabled`. Nếu operator dùng một secret store, ghi resource, phiên bản số và consumer vào kế
 hoạch bàn giao riêng rồi đối chiếu khi chạy. Compose Vink hiện chỉ nhận env/file đã chuẩn bị.
 [Compose](../../infra/test/compose.yaml),

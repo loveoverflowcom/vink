@@ -27,9 +27,12 @@ tower = { workspace = true, features = ["util"] }
 uuid = { workspace = true, features = ["v7", "serde"] }
 base64 = "0.22.1"
 getrandom = "0.3.4"
-# SMTP submission (D-05 production mail path): rustls/ring + webpki roots like sqlx; no
-# connection pool, so each delivery opens a fresh, authenticated connection.
-lettre = { version = "0.11.23", default-features = false, features = ["smtp-transport", "tokio1-rustls-tls", "builder"] }
+# Reuse the pinned Hyper/Rustls stack via a small HTTPS client, with web PKI roots.
+reqwest = { version = "0.12.15", default-features = false, features = ["rustls-tls-webpki-roots"] }
+rustls = { version = "0.23", default-features = false }
+httpdate = "1"
+email_address = { version = "0.2.9", default-features = false }
+libc = "0.2"
 sha2 = "0.11.1"
 subtle = "2.6.1"
 unicode-normalization = "0.1.26"

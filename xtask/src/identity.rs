@@ -5,7 +5,6 @@
 //! D-05/S-03 email-code spike has its own end-to-end step ([`email_code`]) with both binaries.
 
 mod email_code;
-mod smtp_sink;
 
 use std::io::{Read, Write};
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
@@ -91,7 +90,7 @@ pub fn verify(report: &mut Report, scratch: &Scratch<'_>) -> bool {
         "App readiness refuses a privileged role (production) and an untrusted Identity server",
         || run.app_refusals(),
     ) && report.step(
-        "D-05 email-code authority, two real binaries: activation lock, sign-in through the outbox worker, network limit behind a trusted proxy, binding, isolation, logout, email change, suspension, disable, outage, SMTP delivery with password rotation and relay recovery",
+        "D-05 email-code authority, two real binaries: activation lock, sign-in through the outbox worker, network limit behind a trusted proxy, binding, isolation, logout, email change, suspension, disable, outage, local-outbox outage and recovery",
         || run.email_code_end_to_end(),
     ) && report.step(
         "ACC-03 password enrollment, two real binaries: proof, guards, readback and ownership across both login methods",
@@ -327,6 +326,20 @@ impl Run<'_> {
             ],
             "must be a postgres://",
         )?;
+        let uid = self.uid()?.to_string();
+        self.exit_2(
+            "resend-without-key",
+            &["serve"],
+            &[
+                ("VINK_IDENTITY_DATABASE_URL", runtime),
+                ("VINK_IDENTITY_SOCKET", &socket),
+                ("VINK_IDENTITY_CALLER_UID", &uid),
+                ("VINK_IDENTITY_AUTHORITY", "native"),
+                ("VINK_IDENTITY_MAIL_TRANSPORT", "resend-api"),
+                ("VINK_IDENTITY_RESEND_FROM", "no-reply@vink.test"),
+            ],
+            "VINK_IDENTITY_RESEND_API_KEY_FILE: missing",
+        )?;
         // A socket directory other users can enter is refused before binding.
         // Keep this negative fixture under the short socket directory too: a long checkout
         // must test directory permissions, not hit the earlier 100-byte path validation.
@@ -417,7 +430,7 @@ impl Run<'_> {
         let (code, stderr) = self.migrate("first", &s.identity_migrator)?;
         if code != Some(0)
             || !stderr.contains(
-                "applied=[20261102000000, 20261107000000, 20261112000000, 20261113000000, 20261114000000, 20261119000000]",
+                "applied=[20261102000000, 20261107000000, 20261112000000, 20261113000000, 20261114000000, 20261119000000, 20261120000000]",
             )
         {
             return Err(format!("first Identity migrate: {code:?}: {stderr}"));

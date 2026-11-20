@@ -281,6 +281,12 @@ async fn attachment_readback_reports_only_a_real_binding_and_preserves_account_a
     let pending = rig.start(&pending_account, "pending@example.test").await;
     let mut tx = pool.begin().await.unwrap();
     sqlx::raw_sql(include_str!(
+        "../../migrations-rollback/20261120000000_resend_payload_fence.down.sql"
+    ))
+    .execute(&mut *tx)
+    .await
+    .unwrap();
+    sqlx::raw_sql(include_str!(
         "../../migrations-rollback/20261119000000_email_attachment.down.sql"
     ))
     .execute(&mut *tx)
@@ -304,7 +310,7 @@ async fn attachment_readback_reports_only_a_real_binding_and_preserves_account_a
             .await
             .unwrap()
             .applied,
-        [20261119000000]
+        [20261119000000, 20261120000000]
     );
     assert_eq!(rig.status(&a).await.1["verified_email"], EMAIL);
 }

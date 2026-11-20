@@ -20,7 +20,7 @@ use vink_identity::config::{
 use vink_identity::delivery::{self, DeliveryPolicy, Worker};
 use vink_identity::email_code::{Code, EmailAddress, Policy};
 use vink_identity::http::{IdentityState, router};
-use vink_identity::mail::{LocalOutbox, Message, Purpose, Smtp, Transport};
+use vink_identity::mail::{LocalOutbox, Message, Purpose, Resend, Transport};
 use vink_identity::server::{self, SocketError};
 use vink_identity::{persistence, runtime};
 
@@ -253,7 +253,7 @@ async fn mail_test(config: &MailConfig, to: EmailAddress) -> Result<(), Failure>
             failure.label(),
             failure
                 .status()
-                .map_or(String::new(), |status| format!(" (SMTP {status})"))
+                .map_or(String::new(), |status| format!(" (HTTP {status})"))
         ))),
     }
 }
@@ -271,17 +271,11 @@ fn transport(mail: &MailChoice) -> Result<Transport, Failure> {
             );
             Ok(Arc::new(outbox))
         }
-        MailChoice::Smtp(settings) => {
-            let smtp = Smtp::new(settings.clone())
-                .map_err(|message| Failure::Usage(format!("VINK_IDENTITY_SMTP_*: {message}")))?;
-            tracing::info!(
-                host = %settings.host,
-                port = settings.port,
-                security = settings.security.label(),
-                authenticated = settings.username.is_some(),
-                "email-code authority mails through SMTP"
-            );
-            Ok(Arc::new(smtp))
+        MailChoice::Resend(settings) => {
+            let resend = Resend::new(settings.clone())
+                .map_err(|message| Failure::Usage(format!("VINK_IDENTITY_RESEND_*: {message}")))?;
+            tracing::info!("email-code authority uses the Resend API");
+            Ok(Arc::new(resend))
         }
     }
 }
@@ -376,7 +370,7 @@ async fn serve(config: ServeConfig) -> Result<(), Failure> {
         authority = label,
         mail_transport = mail.unwrap_or("not_configured"),
         production_authentication = match mail {
-            Some("smtp") => "not_accepted",
+            Some("resend_api") => "not_accepted",
             _ => "not_implemented",
         },
         "vink-identity listening"

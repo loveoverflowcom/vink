@@ -1264,6 +1264,7 @@ async fn the_rollback_script_removes_only_enrollment_challenges_and_keeps_creden
     );
     let mut tx = pool.begin().await.unwrap();
     for name in [
+        "20261120000000_resend_payload_fence.down.sql",
         "20261119000000_email_attachment.down.sql",
         "20261114000000_password_enrollment.down.sql",
     ] {
@@ -1325,7 +1326,7 @@ async fn the_rollback_script_removes_only_enrollment_challenges_and_keeps_creden
             .await
             .unwrap()
             .applied,
-        [20261114000000, 20261119000000]
+        [20261114000000, 20261119000000, 20261120000000]
     );
     assert_eq!(h.email_sign_in(MAIL).await.account_id, a.account_id);
     assert_eq!(
