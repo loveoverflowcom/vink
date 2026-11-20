@@ -2230,8 +2230,13 @@ struct Icons {
 
 /// The transparent frame most Material Icons files start with.
 const DEFAULT_FRAME: &str = "M0 0h24v24H0z";
-/// The only other frame spelling an upstream file in the registry uses (e.g. `menu_open`).
-const FRAMES: [&str; 2] = [DEFAULT_FRAME, "M0 0h24v24H0V0z"];
+/// Other transparent frames spelled differently in pinned upstream Material Icons SVGs
+/// (e.g. `menu_open`, `schedule` outlined, `visibility_off`).
+const FRAMES: [&str; 3] = [
+    DEFAULT_FRAME,
+    "M0 0h24v24H0V0z",
+    "M0 0h24v24H0zm0 0h24v24H0zm0 0h24v24H0zm0 0h24v24H0z",
+];
 
 /// Material Icons files share this exact wrapper; rebuilding it lets the generator compare the
 /// recorded upstream SHA-256 without vendoring the SVG files.

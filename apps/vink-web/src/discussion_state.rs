@@ -70,14 +70,15 @@ pub enum Receipt {
     SessionChanged,
 }
 
-/// One accent per notice: amber waiting, blue unknown, red adverse. Colour is never the only
-/// signal; the message names the state.
+/// One accent per notice: amber waiting, blue unknown, red adverse, green success.
+/// Colour is never the only signal; the message names the state.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum NoticeTone {
     Neutral,
     Waiting,
     Unknown,
     Adverse,
+    Success,
 }
 
 impl NoticeTone {
@@ -87,6 +88,7 @@ impl NoticeTone {
             Self::Waiting => "waiting",
             Self::Unknown => "unknown",
             Self::Adverse => "adverse",
+            Self::Success => "success",
         }
     }
 }

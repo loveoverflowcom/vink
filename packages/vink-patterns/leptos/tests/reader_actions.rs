@@ -227,3 +227,132 @@ fn reader_actions_render_only_the_supplied_reply_and_removal_capabilities() {
         );
     }
 }
+
+#[test]
+fn r4_orders_endorsement_before_reply_and_keeps_read_only_static() {
+    use vink_patterns::{CommentEndorsements, FeedbackComposer, FeedbackIntent};
+    use vink_ui::{ActionState, CountFact, FieldMode, TogglePhase, ToggleValue};
+
+    let author = Author {
+        name: "Người đọc".into(),
+        key: None,
+        profile: None,
+        published_at: "2026-11-20T00:00:00Z".into(),
+        neutral: false,
+    };
+    let comment = |id: &str| DiscussionComment {
+        id: id.into(),
+        author: author.clone(),
+        body: "Giữ nguyên chữ Việt.".into(),
+        status: None,
+        context: None,
+        can_reply: true,
+        can_remove: true,
+    };
+    let facts = DiscussionThreadFacts {
+        root_id: "root".into(),
+        root: Some(comment("root")),
+        replies: vec![comment("reply-1")],
+    };
+    let endorsements = CommentEndorsements {
+        facts: Callback::new(|id: String| {
+            Some(EndorsementFacts {
+                value: if id == "root" {
+                    ToggleValue::On
+                } else {
+                    ToggleValue::Off
+                },
+                phase: TogglePhase::Idle,
+                count: if id == "root" {
+                    CountFact::Known(4)
+                } else {
+                    CountFact::Unavailable
+                },
+                block: None,
+            })
+        }),
+        on_set: Callback::new(|_| {}),
+        on_recover: Callback::new(|_| {}),
+    };
+    let interactive = Owner::new().with(|| {
+        view! {
+            <DiscussionThread
+                facts=facts.clone()
+                endorsements=Some(endorsements)
+                reply_expanded=true
+                reply_target_id=Some("reply-1".to_string())
+                on_reply=|_| {}
+                on_remove=|_| {}
+            />
+        }
+        .to_html()
+    });
+    assert!(
+        interactive.find("id=\"endorse-comment-root\"").unwrap()
+            < interactive.find("id=\"reply-to-root\"").unwrap(),
+        "R4 puts Ưng before Trả lời: {interactive}"
+    );
+    assert!(
+        interactive.find("id=\"reply-to-root\"").unwrap()
+            < interactive.find("id=\"remove-comment-root\"").unwrap(),
+        "Remove action stays after the Ưng|Trả lời segment: {interactive}"
+    );
+    assert!(
+        interactive.contains("aria-expanded=\"true\"")
+            && interactive.contains("data-reply-target=\"true\"")
+            && interactive.contains("Đang là đích trả lời"),
+        "active branch and reply target markers: {interactive}"
+    );
+
+    let readonly = Owner::new().with(|| {
+        view! {
+            <DiscussionThread
+                facts=facts.clone()
+                endorsements=Some(endorsements)
+                read_only=true
+                on_reply=|_| {}
+                on_remove=|_| {}
+            />
+        }
+        .to_html()
+    });
+    assert!(
+        !readonly.contains("reply-to-"),
+        "no reply buttons when read_only: {readonly}"
+    );
+    assert!(
+        !readonly.contains("endorse-comment-"),
+        "no interactive endorse buttons when read_only: {readonly}"
+    );
+    assert!(
+        readonly.contains("Ưng · 4") && !readonly.contains("Ưng · 0"),
+        "confirmed count stays text, unknown stays without 0: {readonly}"
+    );
+    assert!(
+        readonly.contains("id=\"remove-comment-root\""),
+        "own removal remains allowed when read_only: {readonly}"
+    );
+
+    let composer_locked = Owner::new().with(|| {
+        view! {
+            <FeedbackComposer
+                id="cmp"
+                intent=FeedbackIntent::Unspecified
+                value="Nháp đang gửi"
+                tonal=true
+                field_mode=FieldMode::ReadOnly
+                state=ActionState::pending("Đang gửi…")
+                on_input=|_| {}
+                on_submit=|_| {}
+                alternative=ViewFn::from(|| view! { <span>"alt"</span> }.into_any())
+            />
+        }
+        .to_html()
+    });
+    assert!(
+        composer_locked.contains("readonly")
+            && composer_locked.contains("aria-busy=\"true\"")
+            && composer_locked.contains("data-icon=\"send\""),
+        "tonal composer keeps readonly textarea, busy indicator, and Send icon: {composer_locked}"
+    );
+}

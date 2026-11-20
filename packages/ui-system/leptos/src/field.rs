@@ -131,7 +131,7 @@ struct TextProps {
     value: Signal<String>,
     on_input: Callback<TextInput>,
     on_submit: Option<Callback<String>>,
-    mode: FieldMode,
+    mode: Signal<FieldMode>,
     invalid: Signal<bool>,
     required: bool,
     described: Signal<Option<String>>,
@@ -162,8 +162,9 @@ fn text_control(control: TextControl, p: TextProps, node: NodeRef<leptos::html::
     let invalid = move || p.invalid.get().then_some("true");
     let described = p.described;
     let required = p.required.then_some("true");
-    let readonly = p.mode == FieldMode::ReadOnly;
-    let disabled = p.mode == FieldMode::Disabled;
+    let mode = p.mode;
+    let readonly = move || mode.get() == FieldMode::ReadOnly;
+    let disabled = move || mode.get() == FieldMode::Disabled;
     let on_submit = p.on_submit;
     match control {
         TextControl::Area(rows) => view! {
@@ -250,7 +251,7 @@ fn text_field(
     help: Option<String>,
     error: Signal<Option<String>>,
     required: bool,
-    mode: FieldMode,
+    mode: Signal<FieldMode>,
     placeholder: Option<String>,
     autocomplete: Option<String>,
     name: Option<String>,
@@ -261,8 +262,9 @@ fn text_field(
     reveal_password: bool,
 ) -> impl IntoView {
     let invalid = Signal::derive(move || present(error.get()).is_some());
-    let help =
-        help.or_else(|| (mode == FieldMode::Disabled).then(|| "Tính năng chưa khả dụng.".into()));
+    let help = help.or_else(|| {
+        (mode.get_untracked() == FieldMode::Disabled).then(|| "Tính năng chưa khả dụng.".into())
+    });
     let has_help = help.is_some();
     let described = {
         let id = id.clone();
@@ -272,7 +274,7 @@ fn text_field(
     let node = input_ref.unwrap_or_default();
     let reveal = reveal_password
         && control == TextControl::Field(TextKind::Password)
-        && mode != FieldMode::Disabled;
+        && mode.get_untracked() != FieldMode::Disabled;
     let revealed = RwSignal::new(false);
     let reveal_id = format!("{id}-reveal");
     let props = TextProps {
@@ -297,7 +299,7 @@ fn text_field(
     };
     let search = control == TextControl::Search;
     let clear = move || {
-        (search && !value.get().is_empty() && mode == FieldMode::Editable).then(|| {
+        (search && !value.get().is_empty() && mode.get() == FieldMode::Editable).then(|| {
             view! {
                 <IconButton
                     icon=IconName::Close
@@ -315,7 +317,7 @@ fn text_field(
     view! {
         <div
             class=if floating { "vk-ui-field vk-ui-field--floating" } else { "vk-ui-field" }
-            data-mode=match mode {
+            data-mode=move || match mode.get() {
                 FieldMode::Editable => "editable",
                 FieldMode::ReadOnly => "read-only",
                 FieldMode::Disabled => "disabled",
@@ -382,7 +384,7 @@ pub fn TextField(
     #[prop(optional, into)] help: Option<String>,
     #[prop(optional, into)] error: Signal<Option<String>>,
     #[prop(optional)] required: bool,
-    #[prop(optional)] mode: FieldMode,
+    #[prop(optional, into)] mode: Signal<FieldMode>,
     #[prop(optional)] kind: TextKind,
     #[prop(optional)] variant: FieldVariant,
     #[prop(optional, into)] placeholder: Option<String>,
@@ -427,7 +429,7 @@ pub fn TextArea(
     #[prop(optional, into)] help: Option<String>,
     #[prop(optional, into)] error: Signal<Option<String>>,
     #[prop(optional)] required: bool,
-    #[prop(optional)] mode: FieldMode,
+    #[prop(optional, into)] mode: Signal<FieldMode>,
     #[prop(optional)] variant: FieldVariant,
     #[prop(default = 4)] rows: u16,
     #[prop(optional, into)] placeholder: Option<String>,
@@ -509,7 +511,7 @@ pub fn SearchField(
         help,
         Signal::default(),
         false,
-        mode,
+        mode.into(),
         placeholder,
         None,
         name,
@@ -550,7 +552,7 @@ fn search_bar(
         value,
         on_input,
         on_submit,
-        mode,
+        mode: mode.into(),
         invalid: Signal::default(),
         required: false,
         described: Signal::stored(described),

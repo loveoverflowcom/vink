@@ -126,10 +126,13 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
     const controls = [...document.querySelectorAll('.vk-endorsement .vk-ui-toggle__control')];
     return controls.length >= 3 && controls.every(b => {
       const glyph = b.querySelector('.vk-ui-toggle__glyph svg');
-      return glyph?.dataset.icon === 'pen-flight' && glyph.getAttribute('aria-hidden') === 'true'
+      // #359: Thấm keeps Pen Flight; Ưng shows the filled heart only for a confirmed On.
+      const expected = b.closest('.vk-endorsement')?.dataset.kind === 'work' ? 'pen-flight'
+        : b.dataset.pressed === 'true' ? 'heart' : 'heart-outline';
+      return glyph?.dataset.icon === expected && glyph.getAttribute('aria-hidden') === 'true'
         && glyph.getBoundingClientRect().width === 20 && b.getBoundingClientRect().height >= 48;
     });
-  })()`), `Pen Flight: work, root and flat reply keep decorative 20px glyph / 48px targets (${phase})`);
+  })()`), `Pen Flight (Thấm) and heart (Ưng): work, root and flat reply keep decorative 20px glyph / 48px targets (${phase})`);
   await glyphs('ready');
   const order = `[...document.querySelectorAll('.vk-discussion-comment')].map(c => c.id).join()`;
   const before = await page.eval(order);
@@ -249,6 +252,16 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
   }
   const summary = await api(args, `/api/v1/works/${SAMPLE_WORK}/endorsements?comment_ids=${root},${reply}`);
   check(summary.cache === 'no-store' && summary.body.work.count === 1 && summary.body.comments.every((c) => c.count === 0), 'PostgreSQL holds exactly the confirmed states (work 1, comments 0)');
+  check(await page.eval(`(() => {
+    const seg = document.querySelector('.vk-discussion-action-segment[data-root="true"]');
+    const endorse = seg?.querySelector('.vk-endorsement .vk-ui-toggle__control');
+    const rep = seg?.querySelector('[id^="reply-to-"]');
+    if (!endorse || !rep) return false;
+    const lum = c => { const m=c.match(/[0-9.]+/g).slice(0,3).map(Number).map(v=>v/255).map(v=>v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4); return m[0]*0.2126+m[1]*0.7152+m[2]*0.0722; };
+    const cr = (a,b) => { const x=lum(a), y=lum(b); return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05); };
+    return cr(getComputedStyle(endorse).color, getComputedStyle(endorse).backgroundColor) >= 4.5 &&
+      cr(getComputedStyle(rep).color, getComputedStyle(rep).backgroundColor) >= 4.5;
+  })()`), '#359 R4 root enabled Ưng and Trả lời tonal controls keep >=4.5:1 resolved contrast');
   const ssr = await (await fetch(reader)).text();
   check(ssrCount(ssr, 'endorse-work')?.text === '1', 'a fresh SSR shows the committed count');
 

@@ -10,16 +10,18 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use leptos::prelude::*;
 use vink_ui::{
-    ActionState, Button, ButtonVariant, Heading, HeadingLevel, Icon, IconButton, IconName,
-    IconSize, ListEnd, TextInput, TypeRole,
+    ActionState, Button, ButtonVariant, FieldMode, Heading, HeadingLevel, Icon, IconButton,
+    IconName, IconSize, ListEnd, LoadingIndicator, Skeleton, SkeletonShape, TextInput, TypeRole,
 };
+#[cfg(feature = "hydrate")]
+use vink_ui::{Clock, use_loading_gate};
 
 use super::endorsement::Endorsements;
 use crate::api::{self, LoadError};
-use crate::contract::{DiscussionPage, EndorsementSummaries, ReplyList};
+use crate::contract::{ApiError, DiscussionPage, EndorsementSummaries, ReplyList};
 use crate::discussion_state::{
-    ComposerKey, Delivery, DiscussionController, NoticeTone, ReplyTarget, Scope, SendEmphasis,
-    Target,
+    ComposerKey, ComposerStatus, Delivery, DiscussionController, NoticeTone, Receipt, ReplyTarget,
+    Scope, SendEmphasis, Target,
 };
 use crate::endorsement_state::page_targets;
 #[cfg(feature = "hydrate")]
@@ -309,10 +311,86 @@ fn shows_list_end(state: &ViewState) -> bool {
 /// Decorative icon of an own-comment chip; the label carries the meaning.
 fn own_chip_icon(chip: OwnChip) -> IconName {
     match chip {
-        OwnChip::Pending => IconName::Info,
-        OwnChip::Rejected => IconName::Error,
+        OwnChip::Pending => IconName::Schedule,
+        OwnChip::Rejected => IconName::Cancel,
         OwnChip::ApprovedOffPage => IconName::Check,
-        OwnChip::Unavailable => IconName::Block,
+        OwnChip::Unavailable => IconName::VisibilityOff,
+    }
+}
+
+fn notice_icon(tone: NoticeTone) -> IconName {
+    match tone {
+        NoticeTone::Waiting => IconName::Schedule,
+        NoticeTone::Unknown => IconName::Info,
+        NoticeTone::Adverse => IconName::Error,
+        NoticeTone::Success => IconName::Check,
+        NoticeTone::Neutral => IconName::Info,
+    }
+}
+
+fn comments_mode_kind(state: &ViewState, controller: &DiscussionController) -> &'static str {
+    if state.mutation_busy {
+        "changing"
+    } else if state.unavailable || state.error.is_some() || state.mutation_needs_refresh {
+        "conflict"
+    } else if !controller.settings.comments_open {
+        if state.own.author {
+            "author-closed"
+        } else {
+            "system-locked"
+        }
+    } else if state.own.author {
+        "open"
+    } else {
+        "reader"
+    }
+}
+
+fn copy_draft_text(text: String, status: RwSignal<Option<(bool, &'static str)>>) {
+    #[cfg(feature = "hydrate")]
+    {
+        spawn_transport(async move {
+            let Some(window) = web_sys::window() else {
+                status.set(Some((
+                    false,
+                    "Không thể tự động sao chép; hãy chọn chữ để sao chép.",
+                )));
+                return;
+            };
+            let promise = window.navigator().clipboard().write_text(&text);
+            match wasm_bindgen_futures::JsFuture::from(promise).await {
+                Ok(_) => status.set(Some((true, "Đã sao chép nháp."))),
+                Err(_) => status.set(Some((
+                    false,
+                    "Không thể tự động sao chép; hãy chọn chữ để sao chép.",
+                ))),
+            }
+        });
+    }
+    #[cfg(not(feature = "hydrate"))]
+    {
+        let _ = (text, status);
+    }
+}
+
+#[component]
+fn DiscussionInitialSkeleton() -> impl IntoView {
+    let show_skeleton = RwSignal::new(false);
+    #[cfg(feature = "hydrate")]
+    {
+        let gate = use_loading_gate(Signal::stored(true), Clock::Browser);
+        Effect::new(move |_| show_skeleton.set(gate.visible.get()));
+    }
+    view! {
+        <div class="vk-discussion-loading">
+            <p role="status" class="vk-ui-visually-hidden">"Đang tải nhận xét…"</p>
+            <Show when=move || show_skeleton.get()>
+                <div class="vk-discussion-skeleton-list" aria-hidden="true">
+                    <Skeleton shape=SkeletonShape::Card />
+                    <Skeleton shape=SkeletonShape::Card />
+                </div>
+            </Show>
+        </div>
     }
 }
 
@@ -337,23 +415,41 @@ fn cancel_remove(state: RwSignal<ViewState>, id: String) {
 }
 
 #[component]
-pub fn Discussion(work_id: String) -> impl IntoView {
+pub fn Discussion(work_id: String, #[prop(optional)] read_only: bool) -> impl IntoView {
     let resource = api::discussion_resource(work_id);
     let fixture = api::local_discussion_fixture_scope();
     view! {
-        <section id="feedback-region" class="vk-discussion" aria-labelledby="feedback-heading">
-            <Heading level=HeadingLevel::H2 role=TypeRole::Title id="feedback-heading" attr:tabindex="-1">"Nhận xét"</Heading>
-            <p class="vk-muted">"Bình luận gốc và phản hồi theo thứ tự cũ đến mới."</p>
-            <Suspense fallback=|| view! { <p role="status">"Đang tải nhận xét…"</p> }>
+        <section id="feedback-region" class="vk-discussion" aria-labelledby="feedback-heading"
+            data-readonly=read_only.then_some("true")>
+            <div class="vk-discussion-head">
+                <Heading level=HeadingLevel::H2 role=TypeRole::Title id="feedback-heading" attr:tabindex="-1">"Nhận xét"</Heading>
+                <span class="vk-discussion-order">"Cũ đến mới"</span>
+            </div>
+            {read_only.then(|| view! {
+                <div class="vk-discussion-readonly-notice" role="note" data-testid="discussion-readonly-notice">
+                    <Icon name=IconName::Lock size=IconSize::Small />
+                    <div>
+                        <strong>"Trang này chỉ đọc"</strong>
+                        <p>"Không gửi nhận xét mới hoặc bấm Ưng tại đây. Bạn vẫn đọc được nhận xét cũ và gỡ nhận xét của chính mình nếu còn quyền."</p>
+                    </div>
+                </div>
+            })}
+            <Suspense fallback=|| view! { <DiscussionInitialSkeleton /> }>
                 {move || {
                     let fixture = fixture.clone();
                     Suspend::new(async move {
                         match resource.await {
-                            Ok(load) => view! { <DiscussionLoaded page=load.page.into() endorsements=load.endorsements fixture /> }.into_any(),
+                            Ok(load) => view! { <DiscussionLoaded page=load.page.into() endorsements=load.endorsements fixture read_only /> }.into_any(),
                             Err(_) => view! {
-                                <p role="status">"Chưa tải được nhận xét. Bạn vẫn có thể đọc tác phẩm."</p>
-                                // A same-URL fragment link only scrolls and never re-runs the resource.
-                                <DiscussionLoadRetry on_retry=move |_| resource.refetch() />
+                                <div class="vk-discussion-state-card" data-tone="adverse" role="region" aria-label="Lỗi tải nhận xét">
+                                    <Icon name=IconName::Error size=IconSize::Small />
+                                    <div class="vk-discussion-state-card__body">
+                                        <strong>"Lỗi tải nhận xét"</strong>
+                                        <p role="status">"Chưa tải được nhận xét. Bạn vẫn có thể đọc tác phẩm."</p>
+                                    </div>
+                                    // A same-URL fragment link only scrolls and never re-runs the resource.
+                                    <DiscussionLoadRetry on_retry=move |_| resource.refetch() />
+                                </div>
                             }.into_any(),
                         }
                     })
@@ -393,6 +489,7 @@ fn DiscussionLoaded(
     page: DiscussionPage,
     endorsements: Result<EndorsementSummaries, LoadError>,
     fixture: Option<String>,
+    read_only: bool,
 ) -> impl IntoView {
     let client_ready = client_action_ready();
     #[cfg(feature = "hydrate")]
@@ -547,37 +644,111 @@ fn DiscussionLoaded(
             ActionState::Enabled
         }
     });
+    let retry_skeleton_visible = RwSignal::new(false);
+    #[cfg(feature = "hydrate")]
+    {
+        let retry_loading =
+            Signal::derive(move || state.read().loading && state.read().page.roots.is_empty());
+        let gate = use_loading_gate(retry_loading, Clock::Browser);
+        Effect::new(move |_| retry_skeleton_visible.set(gate.visible.get()));
+    }
     view! {
-        <div id="comments-mode" class="vk-discussion-mode">
-            <p role="status">{move || comments_mode_message(state.read().unavailable, controller.read().settings.comments_open, state.read().own.author)}</p>
-            {fixture.is_some().then(|| view! { <p class="vk-muted">"Định danh thử trên thiết bị này · Không phải tài khoản thật."</p> })}
-            <Show when=move || !state.read().unavailable && state.read().own.author>
-                <Button id="discussion-mode-toggle" variant=ButtonVariant::Tonal state=write_state on_press=move |_| change_mode(state, controller, lve)>
-                    {move || if controller.read().settings.comments_open { "Tắt bình luận" } else { "Mở bình luận" }}
-                </Button>
-            </Show>
-            <Button id="discussion-refresh" variant=ButtonVariant::Text state=Signal::derive(move || if !client_ready.get() { ActionState::disabled("Cần JavaScript để tải lại nhận xét.") } else if state.read().loading || state.read().mutation_busy { ActionState::pending("Đang cập nhật nhận xét…") } else { ActionState::Enabled }) on_press=move |_| refresh.run(())>"Tải lại nhận xét"</Button>
-            <p role="status">{move || state.read().error.clone().unwrap_or_default()}</p>
-            <p role="status">{move || state.read().mutation_message.clone().unwrap_or_default()}</p>
+        <div id="comments-mode" class="vk-discussion-mode"
+            data-mode-kind=move || comments_mode_kind(&state.read(), &controller.read())>
+            <div class="vk-discussion-mode__row">
+                <div class="vk-discussion-mode__status">
+                    {move || match comments_mode_kind(&state.read(), &controller.read()) {
+                        "open" => view! { <span class="vk-discussion-mode__dot" aria-hidden="true"></span> }.into_any(),
+                        "changing" => view! { <LoadingIndicator /> }.into_any(),
+                        "conflict" => view! { <Icon name=IconName::Info size=IconSize::Small /> }.into_any(),
+                        "author-closed" | "system-locked" => view! { <Icon name=IconName::Lock size=IconSize::Small /> }.into_any(),
+                        _ => view! { <span class="vk-discussion-mode__dot vk-discussion-mode__dot--subtle" aria-hidden="true"></span> }.into_any(),
+                    }}
+                    <div class="vk-discussion-mode__copy">
+                        <p role="status">{move || comments_mode_message(state.read().unavailable, controller.read().settings.comments_open, state.read().own.author)}</p>
+                        {move || {
+                            let s = state.read();
+                            let c = controller.read();
+                            if s.mutation_needs_refresh {
+                                Some("Trạng thái bình luận vừa thay đổi ở nơi khác. Tải lại để thấy đúng trạng thái mới nhất.".to_owned())
+                            } else if !c.settings.comments_open && !s.unavailable {
+                                Some("Nhận xét cũ vẫn hiển thị bên dưới.".to_owned())
+                            } else if s.own.author && c.settings.comments_open {
+                                Some("Người đọc có thể gửi bình luận gốc và trả lời.".to_owned())
+                            } else {
+                                None
+                            }
+                        }.map(|detail| view! { <p class="vk-muted">{detail}</p> })}
+                    </div>
+                </div>
+                <div class="vk-discussion-mode__actions">
+                    <Show when=move || !read_only && !state.read().unavailable && state.read().own.author>
+                        <Button id="discussion-mode-toggle" variant=ButtonVariant::Tonal state=write_state on_press=move |_| change_mode(state, controller, lve)>
+                            {move || if controller.read().settings.comments_open { "Tắt bình luận" } else { "Mở bình luận" }}
+                        </Button>
+                    </Show>
+                    <Button id="discussion-refresh"
+                        variant=Signal::derive(move || if state.read().mutation_needs_refresh { ButtonVariant::Filled } else { ButtonVariant::Text })
+                        state=Signal::derive(move || if !client_ready.get() { ActionState::disabled("Cần JavaScript để tải lại nhận xét.") } else if state.read().loading || state.read().mutation_busy { ActionState::pending("Đang cập nhật nhận xét…") } else { ActionState::Enabled })
+                        on_press=move |_| refresh.run(())>"Tải lại nhận xét"</Button>
+                </div>
+            </div>
+            {fixture.is_some().then(|| view! { <p class="vk-muted vk-discussion-fixture-note">"Định danh thử trên thiết bị này · Không phải tài khoản thật."</p> })}
+            <p role="status" class="vk-discussion-mode__alert">{move || state.read().error.clone().unwrap_or_default()}</p>
+            <p role="status" class="vk-discussion-mode__alert">{move || state.read().mutation_message.clone().unwrap_or_default()}</p>
         </div>
-        <DiscussionComposer key=ComposerKey::Root controller state refresh />
-        <ReaderAuthDialog host=reader_auth controller />
-        <OwnComments state controller lve />
-        <p class="vk-muted vk-discussion-tools-note">"Bạn có thể dùng emoji từ bàn phím."</p>
+        <Show when=move || !read_only>
+            <DiscussionComposer key=ComposerKey::Root controller state refresh />
+            <ReaderAuthDialog host=reader_auth controller />
+        </Show>
+        <OwnComments state controller lve refresh />
+        <Show when=move || !read_only>
+            <p class="vk-muted vk-discussion-tools-note">"Bạn có thể dùng emoji từ bàn phím."</p>
+        </Show>
+        <Show when=move || state.read().unavailable>
+            <div class="vk-discussion-state-card" data-tone="adverse" role="region" aria-label="Lỗi tải nhận xét">
+                <Icon name=IconName::Error size=IconSize::Small />
+                <div class="vk-discussion-state-card__body">
+                    <strong>"Chưa tải được nhận xét"</strong>
+                    <p role="status">"Dữ liệu nhận xét hiện chưa khả dụng. Hãy thử tải lại."</p>
+                </div>
+                <Button variant=ButtonVariant::Tonal state=Signal::derive(move || if state.read().loading { ActionState::pending("Đang tải lại…") } else { ActionState::Enabled })
+                    on_press=move |_| refresh.run(())>"Tải lại nhận xét"</Button>
+            </div>
+        </Show>
+        <Show when=move || retry_skeleton_visible.get() && state.read().loading && state.read().page.roots.is_empty()>
+            <div class="vk-discussion-loading" aria-hidden="true">
+                <div class="vk-discussion-skeleton-list">
+                    <Skeleton shape=SkeletonShape::Card />
+                    <Skeleton shape=SkeletonShape::Card />
+                </div>
+            </div>
+        </Show>
         <Show when=move || !state.read().unavailable>
-            <Show when=move || shows_empty(&state.read())>
-                <p>"Chưa có nhận xét nào được hiển thị."</p>
+            <Show when=move || !state.read().loading && shows_empty(&state.read())>
+                <div class="vk-discussion-empty" role="status">
+                    <Icon name=IconName::ChatBubbleOutline size=IconSize::Small />
+                    <div>
+                        <p class="vk-discussion-empty__title">"Chưa có nhận xét nào được hiển thị."</p>
+                        {(!read_only).then(|| view! { <p class="vk-muted">"Nếu tác phẩm gợi được một ý hay một câu còn vương lại, bạn có thể mở lời trước."</p> })}
+                    </div>
+                </div>
             </Show>
             <Show when=move || state.read().restarted_tail>
                 <p role="status" class="vk-muted" data-testid="discussion-chain-restarted">"Đã làm mới nhận xét. Các trang sau cần được tải lại."</p>
             </Show>
             <div id="root-list">
                 <For each=move || { state.read().page.roots.iter().map(|root| adapters::root_id(root).to_owned()).collect::<Vec<_>>() } key=|id| id.clone()
-                    children=move |root| view! { <RootThreadView root controller state refresh write_state lve /> } />
+                    children=move |root| view! { <RootThreadView root controller state refresh write_state lve read_only /> } />
             </div>
             <Show when=move || state.read().page.next_cursor.is_some()>
                 <div id="root-pagination" class="vk-discussion-pagination">
-                    <p role="status">{move || state.read().page_error.clone().unwrap_or_default()}</p>
+                    <Show when=move || state.read().page_error.is_some()>
+                        <div class="vk-discussion-inline-error" data-tone="adverse">
+                            <Icon name=IconName::Error size=IconSize::Small />
+                            <p role="status">{move || state.read().page_error.clone().unwrap_or_default()}</p>
+                        </div>
+                    </Show>
                     <Button variant=ButtonVariant::Tonal state=Signal::derive(move || if state.read().loading { ActionState::pending("Đang tải…") } else { ActionState::Enabled }) on_press=move |_| read_roots(state, controller, lve, true)>"Xem thêm nhận xét"</Button>
                 </div>
             </Show>
@@ -585,6 +756,7 @@ fn DiscussionLoaded(
                 <ListEnd label="Đã hết danh sách nhận xét được cấp." />
             </Show>
         </Show>
+        <Show when=move || !read_only>
         <For each=move || {
                 let s = state.read();
                 controller.read().drafts.iter().filter_map(|(key, draft)| match key {
@@ -603,6 +775,7 @@ fn DiscussionLoaded(
                 </section>
                 }
             } />
+        </Show>
     }
 }
 
@@ -611,15 +784,20 @@ fn OwnComments(
     state: RwSignal<ViewState>,
     controller: RwSignal<DiscussionController>,
     lve: Option<Endorsements>,
+    refresh: Callback<()>,
 ) -> impl IntoView {
     view! {
         <Show when=move || !state.read().unavailable && controller.read().scope.session.is_some()>
             <section id="own-comments" class="vk-discussion-recovered" aria-labelledby="own-comments-heading">
-                <Heading level=HeadingLevel::H3 role=TypeRole::Title id="own-comments-heading" attr:tabindex="-1">"Bạn đã gửi"</Heading>
-                <p class="vk-muted">"Những nhận xét chưa công khai và kết quả lần gửi của bạn."</p>
-                <Button id="own-comments-refresh" variant=ButtonVariant::Text
-                    state=Signal::derive(move || if state.read().own.loading { ActionState::pending("Đang tải nhận xét của bạn…") } else { ActionState::Enabled })
-                    on_press=move |_| read_private(state, controller, false)>"Làm mới nhận xét của bạn"</Button>
+                <div class="vk-discussion-own-head">
+                    <div>
+                        <Heading level=HeadingLevel::H3 role=TypeRole::Title id="own-comments-heading" attr:tabindex="-1">"Bạn đã gửi"</Heading>
+                        <p class="vk-muted">"Chỉ bạn thấy trước khi được duyệt."</p>
+                    </div>
+                    <Button id="own-comments-refresh" variant=ButtonVariant::Text
+                        state=Signal::derive(move || if state.read().own.loading { ActionState::pending("Đang tải nhận xét của bạn…") } else { ActionState::Enabled })
+                        on_press=move |_| read_private(state, controller, false)>"Làm mới nhận xét của bạn"</Button>
+                </div>
                 <p role="status">{move || state.read().own.error.as_ref().map(|e| crate::discussion_state::read_error_message(e, false)).unwrap_or_default()}</p>
                 <p role="status">{move || state.read().own.capability_error.as_ref().map(|_| "Chưa xác nhận được quyền thay đổi bình luận. Hãy làm mới nhận xét của bạn.").unwrap_or_default()}</p>
                 <Show when=move || !state.read().own.loading && state.read().own.error.is_none() && state.read().own.visible_items(&state.read().public_ids()).is_empty()>
@@ -629,28 +807,44 @@ fn OwnComments(
                     children=move |id| {
                         let id = StoredValue::new(id);
                         view! {
-                            <article class="vk-discussion-delivery" data-own-comment=move || id.get_value()>
-                                {move || state.read().own.comments.get(&id.get_value()).map(|c| OwnChip::of(c.status)).map(|chip| view! {
-                                    <p role="status" class="vk-discussion-own-chip" data-tone=chip.tone().id()>
-                                        <Icon name=own_chip_icon(chip) size=IconSize::Small />
-                                        <span>{chip.label()}</span>
-                                    </p>
-                                })}
-                                <p class="vk-muted">{move || state.read().own.comments.get(&id.get_value()).map(|c| match &c.placement {
-                                    OwnPlacement::Root => "Nhận xét gốc của bạn",
-                                    OwnPlacement::Reply { root_listed: false, .. } => "Phản hồi của bạn · Nhánh chưa có trong danh sách công khai",
-                                    OwnPlacement::Reply { .. } => "Phản hồi của bạn",
-                                }).unwrap_or_default()}</p>
+                            <article class="vk-discussion-delivery vk-discussion-own-card" data-own-comment=move || id.get_value()>
+                                <div class="vk-discussion-own-card__meta">
+                                    {move || state.read().own.comments.get(&id.get_value()).map(|c| OwnChip::of(c.status)).map(|chip| view! {
+                                        <p role="status" class="vk-discussion-own-chip" data-tone=chip.tone().id()>
+                                            <Icon name=own_chip_icon(chip) size=IconSize::Small />
+                                            <span>{chip.label()}</span>
+                                        </p>
+                                    })}
+                                    <p class="vk-muted">{move || state.read().own.comments.get(&id.get_value()).map(|c| match &c.placement {
+                                        OwnPlacement::Root => "Nhận xét gốc của bạn",
+                                        OwnPlacement::Reply { root_listed: false, .. } => "Phản hồi của bạn · Nhánh chưa có trong danh sách công khai",
+                                        OwnPlacement::Reply { .. } => "Phản hồi của bạn",
+                                    }).unwrap_or_default()}</p>
+                                </div>
                                 <p class="vk-discussion-own-body">{move || state.read().own.comments.get(&id.get_value()).and_then(|c| (c.status != CommentStatus::Removed).then(|| c.body.clone()).flatten()).unwrap_or_default()}</p>
-                                <p>{move || state.read().own.comments.get(&id.get_value()).and_then(|c| (c.status == CommentStatus::Rejected).then(|| c.rejection_reason.clone()).flatten()).unwrap_or_default()}</p>
-                                <Show when=move || state.read().own.can_remove(&id.get_value())>
-                                    <OwnRemoveAction comment_id=id.get_value()
-                                        confirming=Signal::derive(move || state.read().own.confirming(&id.get_value()))
-                                        state=Signal::derive(move || if state.read().mutation_busy { ActionState::pending("Đang gỡ…") } else { ActionState::Enabled })
-                                        on_ask=move |_| ask_remove(state, id.get_value())
-                                        on_confirm=move |_| remove_own(state, controller, lve, id.get_value())
-                                        on_cancel=move |_| cancel_remove(state, id.get_value()) />
-                                </Show>
+                                {move || state.read().own.comments.get(&id.get_value())
+                                    .and_then(|c| (c.status == CommentStatus::Rejected).then(|| c.rejection_reason.clone()).flatten())
+                                    .map(|reason| view! {
+                                        <div class="vk-discussion-own-rejection" data-tone="adverse">
+                                            <span class="vk-discussion-own-rejection__label">"Lý do chỉ bạn thấy"</span>
+                                            <p>{reason}</p>
+                                        </div>
+                                    })}
+                                <div class="vk-discussion-own-card__actions">
+                                    <Show when=move || state.read().own.comments.get(&id.get_value()).is_some_and(|c| c.status == CommentStatus::Approved)>
+                                        <Button variant=ButtonVariant::Tonal
+                                            state=Signal::derive(move || if state.read().loading { ActionState::pending("Đang tải lại…") } else { ActionState::Enabled })
+                                            on_press=move |_| refresh.run(())>"Tải lại nhận xét"</Button>
+                                    </Show>
+                                    <Show when=move || state.read().own.can_remove(&id.get_value())>
+                                        <OwnRemoveAction comment_id=id.get_value()
+                                            confirming=Signal::derive(move || state.read().own.confirming(&id.get_value()))
+                                            state=Signal::derive(move || if state.read().mutation_busy { ActionState::pending("Đang gỡ…") } else { ActionState::Enabled })
+                                            on_ask=move |_| ask_remove(state, id.get_value())
+                                            on_confirm=move |_| remove_own(state, controller, lve, id.get_value())
+                                            on_cancel=move |_| cancel_remove(state, id.get_value()) />
+                                    </Show>
+                                </div>
                             </article>
                         }
                     } />
@@ -810,6 +1004,7 @@ fn RootThreadView(
     refresh: Callback<()>,
     write_state: Signal<ActionState>,
     lve: Option<Endorsements>,
+    read_only: bool,
 ) -> impl IntoView {
     let root = StoredValue::new(root);
     let facts = Signal::derive(move || {
@@ -872,30 +1067,58 @@ fn RootThreadView(
                 label: root.author.name,
             })
     });
+    let reply_expanded = Signal::derive(move || {
+        !read_only && {
+            let c = controller.read();
+            let d = c.draft(&key.get_value());
+            d.open && !c.collapsed_with_work(&key.get_value())
+        }
+    });
+    let reply_target_id = Signal::derive(move || {
+        (!read_only)
+            .then(|| {
+                let c = controller.read();
+                let d = c.draft(&key.get_value());
+                (d.open && !c.collapsed_with_work(&key.get_value()))
+                    .then(|| d.target.map(|t| t.id))
+                    .flatten()
+            })
+            .flatten()
+    });
     view! {
         <section class="vk-discussion-root" aria-label="Nhánh nhận xét">
             <DiscussionThread facts on_reply on_remove removal action_state=write_state endorsements=lve.map(Endorsements::comments)
+                read_only
+                reply_expanded
+                reply_target_id
                 has_more_replies=Signal::derive(move || next_reply_cursor(&state.read(), &root.get_value()).is_some())
                 reply_footer=std::sync::Arc::new(move || view! {
             <div class="vk-discussion-pagination" hidden=move || next_reply_cursor(&state.read(), &root.get_value()).is_none() && !state.read().reply_errors.contains_key(&root.get_value())>
-            <p role="status">{move || state.read().reply_errors.get(&root.get_value()).cloned().unwrap_or_default()}</p>
+            <Show when=move || state.read().reply_errors.contains_key(&root.get_value())>
+                <div class="vk-discussion-inline-error" data-tone="adverse">
+                    <Icon name=IconName::Error size=IconSize::Small />
+                    <p role="status">{move || state.read().reply_errors.get(&root.get_value()).cloned().unwrap_or_default()}</p>
+                </div>
+            </Show>
             <Show when=move || next_reply_cursor(&state.read(), &root.get_value()).is_some()>
                 <Button variant=ButtonVariant::Text state=Signal::derive(move || if state.read().reply_loading.get(&root.get_value()) == Some(&true) { ActionState::pending("Đang tải phản hồi…") } else { ActionState::Enabled })
                     on_press=move |_| read_replies(state, controller, lve, root.get_value())>"Xem thêm phản hồi"</Button>
             </Show>
             </div>
                 }.into_any()) />
-            <Show when=move || controller.read().collapsed_with_work(&key.get_value())>
+            <Show when=move || !read_only && controller.read().collapsed_with_work(&key.get_value())>
                 <div class="vk-discussion-reply-kept">
                     <p role="status">"Bản trả lời được giữ lại"</p>
-                    <Button id=format!("reopen-reply-{}", root.get_value()) variant=ButtonVariant::Text on_press=move |_| {
+                    <Button id=format!("reopen-reply-{}", root.get_value()) variant=ButtonVariant::Text
+                        attr:aria-label="Mở lại bình luận"
+                        on_press=move |_| {
                         controller.update(|c| c.reopen(&key.get_value()));
                         #[cfg(feature = "hydrate")]
                         focus_discussion_control(format!("reply-composer-{}", root.get_value()));
                     }>"Mở lại"</Button>
                 </div>
             </Show>
-            <Show when=move || controller.read().draft(&key.get_value()).open>
+            <Show when=move || !read_only && controller.read().draft(&key.get_value()).open>
                 <div class="vk-discussion-reply-composer">
                     <DiscussionComposer key=key.get_value() controller state refresh root_target />
                 </div>
@@ -938,9 +1161,26 @@ fn DiscussionComposer(
             )
             && (key.get_value() == ComposerKey::Root || c.draft(&key.get_value()).target_available)
     });
+    let copy_status = RwSignal::new(Option::<(bool, &'static str)>::None);
     let auth_action = ViewFn::from(move || {
+        if !controller.read().settings.comments_open || blocked {
+            return view! {
+                <div class="vk-discussion-closed-actions">
+                    <span class="vk-muted">"Chỉ đọc lúc này"</span>
+                    <Show when=move || !value.get().is_empty()>
+                        <Button variant=ButtonVariant::Tonal leading=IconName::ContentCopy
+                            on_press=move |_| copy_draft_text(value.get_untracked(), copy_status)>
+                            "Sao chép nháp"
+                        </Button>
+                    </Show>
+                    {move || copy_status.get().map(|(ok, msg)| view! {
+                        <span role="status" class="vk-discussion-copy-status" data-copied=ok.then_some("true")>{msg}</span>
+                    })}
+                </div>
+            }.into_any();
+        }
         view! {
-            <Button id=format!("{}-auth", editor_id.get_value()) variant=ButtonVariant::Tonal
+            <Button id=format!("{}-auth", editor_id.get_value()) variant=ButtonVariant::Filled
                 on_press=move |_| {
                     if can_auth.get_untracked() {
                         host.open(editor_id.get_value());
@@ -953,7 +1193,23 @@ fn DiscussionComposer(
                 }}
             </Button>
         }
+        .into_any()
     });
+    let is_closed = Signal::derive(move || blocked || !controller.read().settings.comments_open);
+    let is_sending = Signal::derive(move || {
+        matches!(
+            controller.read().draft(&key.get_value()).delivery,
+            Delivery::Sending(_)
+        )
+    });
+    let field_mode = Signal::derive(move || {
+        if is_sending.get() || is_closed.get() {
+            FieldMode::ReadOnly
+        } else {
+            FieldMode::Editable
+        }
+    });
+    let show_alternative = Signal::derive(move || is_closed.get() || can_auth.get());
     let action = Signal::derive(move || {
         let c = controller.read();
         if matches!(c.draft(&key.get_value()).delivery, Delivery::Sending(_)) {
@@ -986,62 +1242,110 @@ fn DiscussionComposer(
         // The closed reason comes from the controller, which words it for the work's author.
         <div class="vk-discussion-composer" data-status=move || controller.read().status(&key.get_value()).id()>
             <FeedbackComposer id intent=FeedbackIntent::Unspecified value state=action tonal=true
-                show_alternative=can_auth alternative=auth_action send_variant
-                on_input=move |input: TextInput| controller.update(|c| c.edit(&key.get_value(), input.value, input.composing))
+                comments_closed=is_closed field_mode
+                show_alternative alternative=auth_action send_variant
+                on_input=move |input: TextInput| {
+                    copy_status.set(None);
+                    controller.update(|c| c.edit(&key.get_value(), input.value, input.composing));
+                }
                 on_submit=move |_| { if !blocked { submit(controller, state, key.get_value(), refresh, false); } } >
                 {matches!(key.get_value(), ComposerKey::Replies(_)).then(|| view! {
                     <div class="vk-discussion-composer-heading">
-                        <p id=chip_id.clone() class="vk-discussion-target" data-target=move || match controller.read().reply_target(&key.get_value()) {
-                            Some(ReplyTarget::Root) => "root",
-                            Some(ReplyTarget::Reply { .. }) => "reply",
-                            Some(ReplyTarget::Unavailable) => "unavailable",
-                            None => "none",
-                        }>{move || {
-                            let draft = controller.read().draft(&key.get_value());
-                            match controller.read().reply_target(&key.get_value()) {
-                                Some(ReplyTarget::Root) => "Trả lời bình luận gốc".to_owned(),
-                                Some(ReplyTarget::Reply { name }) => format!("Đang trả lời {name}"),
-                                Some(ReplyTarget::Unavailable) => draft.target.map(|t| t.label).unwrap_or_default(),
-                                None => String::new(),
-                            }
-                        }}</p>
-                        <Show when=move || matches!(controller.read().reply_target(&key.get_value()), Some(ReplyTarget::Reply { .. })) && root_target.get().is_some()>
-                            <IconButton icon=IconName::Close label="Trả lời bình luận gốc thay cho phản hồi đang chọn" on_press=move |_| {
-                                let ComposerKey::Replies(root) = key.get_value() else { return };
-                                if let Some(target) = root_target.get_untracked() {
-                                    controller.update(|c| c.reply(root.clone(), target));
-                                    #[cfg(feature = "hydrate")]
-                                    focus_discussion_control(format!("reply-composer-{root}"));
-                                }
-                            } />
+                        <Show when=move || matches!(controller.read().reply_target(&key.get_value()), Some(ReplyTarget::Root | ReplyTarget::Reply { .. }))>
+                            <span class="vk-discussion-target-chip" data-target=move || match controller.read().reply_target(&key.get_value()) {
+                                Some(ReplyTarget::Root) => "root",
+                                Some(ReplyTarget::Reply { .. }) => "reply",
+                                _ => "none",
+                            }>
+                                <Icon name=IconName::Reply size=IconSize::Small />
+                                <p id=chip_id.clone() class="vk-discussion-target">{move || {
+                                    match controller.read().reply_target(&key.get_value()) {
+                                        Some(ReplyTarget::Root) => "Trả lời bình luận gốc".to_owned(),
+                                        Some(ReplyTarget::Reply { name }) => format!("Đang trả lời {name}"),
+                                        _ => String::new(),
+                                    }
+                                }}</p>
+                                <Show when=move || matches!(controller.read().reply_target(&key.get_value()), Some(ReplyTarget::Reply { .. })) && root_target.get().is_some()>
+                                    <IconButton icon=IconName::Close label="Trả lời bình luận gốc thay cho phản hồi đang chọn" on_press=move |_| {
+                                        let ComposerKey::Replies(root) = key.get_value() else { return };
+                                        if let Some(target) = root_target.get_untracked() {
+                                            controller.update(|c| c.reply(root.clone(), target));
+                                            #[cfg(feature = "hydrate")]
+                                            focus_discussion_control(format!("reply-composer-{root}"));
+                                        }
+                                    } />
+                                </Show>
+                            </span>
                         </Show>
-                        <Show when=move || matches!(controller.read().reply_target(&key.get_value()), Some(ReplyTarget::Unavailable))>
-                            <Button variant=ButtonVariant::Text on_press=move |_| {
-                                #[cfg(feature = "hydrate")]
-                                if let ComposerKey::Replies(root) = key.get_value() {
-                                    focus_discussion_control(format!("reply-to-{root}"));
-                                }
-                            }>"Chọn bình luận khác"</Button>
-                        </Show>
-                        <Button variant=ButtonVariant::Text on_press=move |_| {
+                        <Button variant=ButtonVariant::Text attr:aria-label="Thu ô trả lời · Giữ chữ" on_press=move |_| {
                             #[cfg(feature = "hydrate")]
                             let target = controller.read().draft(&key.get_value()).target;
                             controller.update(|c| c.close_reply(&key.get_value()));
                             #[cfg(feature = "hydrate")]
                             if let Some(target) = target { focus_discussion_control(format!("reply-to-{}", target.id)); }
-                        }>"Thu ô trả lời · Giữ chữ"</Button>
+                        }>"Thu ô · Giữ chữ"</Button>
                     </div>
+                    <Show when=move || matches!(controller.read().reply_target(&key.get_value()), Some(ReplyTarget::Unavailable))>
+                        <div class="vk-discussion-target-lost" data-tone="waiting" role="status">
+                            <div class="vk-discussion-target-lost__head">
+                                <Icon name=IconName::Warning size=IconSize::Small />
+                                <div>
+                                    <strong>{move || controller.read().draft(&key.get_value()).target.map(|t| t.label).unwrap_or_else(|| "Bình luận được trả lời không còn hiển thị".to_owned())}</strong>
+                                    <p>"Nháp của bạn vẫn còn bên dưới. Bạn chưa thể gửi vào bình luận cũ; hãy sao chép hoặc chọn bình luận khác trong nhánh."</p>
+                                </div>
+                            </div>
+                            <div class="vk-discussion-target-lost__actions">
+                                <Button variant=ButtonVariant::Tonal leading=IconName::ContentCopy
+                                    on_press=move |_| copy_draft_text(value.get_untracked(), copy_status)>"Sao chép nháp"</Button>
+                                <Button variant=ButtonVariant::Filled on_press=move |_| {
+                                    #[cfg(feature = "hydrate")]
+                                    if let ComposerKey::Replies(root) = key.get_value() {
+                                        focus_discussion_control(format!("reply-to-{root}"));
+                                    }
+                                }>"Chọn bình luận khác"</Button>
+                                {move || copy_status.get().map(|(ok, msg)| view! {
+                                    <span role="status" class="vk-discussion-copy-status" data-copied=ok.then_some("true")>{msg}</span>
+                                })}
+                            </div>
+                        </div>
+                    </Show>
                 })}
+                <Show when=move || is_closed.get()>
+                    <div class="vk-discussion-closed-banner" data-tone="neutral" role="status">
+                        <Icon name=IconName::Lock size=IconSize::Small />
+                        <div>
+                            <strong>{move || comments_mode_message(false, false, controller.read().viewer_is_author)}</strong>
+                            <p>"Nhận xét cũ vẫn hiển thị bên dưới. Bạn vẫn có thể sao chép đoạn đã soạn để giữ lại."</p>
+                        </div>
+                    </div>
+                </Show>
+                <Show when=move || !is_closed.get() && can_auth.get()>
+                    <div class="vk-discussion-guest-banner">
+                        <Icon name=IconName::Info size=IconSize::Small />
+                        <p>"Đăng nhập để gửi nhận xét. Bạn vẫn đọc được bình luận bên dưới."</p>
+                    </div>
+                </Show>
             </FeedbackComposer>
             <div class="vk-discussion-delivery" hidden=move || controller.read().draft(&key.get_value()).receipt.is_none() && !matches!(controller.read().draft(&key.get_value()).delivery, Delivery::Uncertain(_))
                 data-tone=move || {
                     let draft = controller.read().draft(&key.get_value());
                     if matches!(draft.delivery, Delivery::Uncertain(_)) { NoticeTone::Unknown.id() } else { draft.receipt.map_or(NoticeTone::Neutral, |r| r.tone()).id() }
                 }>
-            <p role="status" data-testid="discussion-receipt">{move || {
-                let draft = controller.read().draft(&key.get_value());
-                if matches!(draft.delivery, Delivery::Uncertain(_)) { "Chưa rõ kết quả gửi" } else { draft.receipt.map(|r| r.message()).unwrap_or_default() }
-            }}</p>
+            <div class="vk-discussion-delivery__head">
+                {move || {
+                    let draft = controller.read().draft(&key.get_value());
+                    let tone = if matches!(draft.delivery, Delivery::Uncertain(_)) {
+                        NoticeTone::Unknown
+                    } else {
+                        draft.receipt.map_or(NoticeTone::Neutral, |r| r.tone())
+                    };
+                    view! { <Icon name=notice_icon(tone) size=IconSize::Small /> }
+                }}
+                <p role="status" data-testid="discussion-receipt">{move || {
+                    let draft = controller.read().draft(&key.get_value());
+                    if matches!(draft.delivery, Delivery::Uncertain(_)) { "Chưa rõ kết quả gửi" } else { draft.receipt.map(|r| r.message()).unwrap_or_default() }
+                }}</p>
+            </div>
             <Show when=move || matches!(controller.read().draft(&key.get_value()).delivery, Delivery::Uncertain(_))>
                 <p>"Dùng lại nội dung lần trước, giữ nháp."</p>
                 <Button variant=ButtonVariant::Filled state=Signal::derive(move || {
@@ -1049,6 +1353,11 @@ fn DiscussionComposer(
                     else if state.read().loading || state.read().mutation_busy || state.read().mutation_needs_refresh { ActionState::disabled("Chờ tải lại nhận xét trước khi đối soát.") }
                     else { ActionState::Enabled }
                 }) on_press=move |_| submit(controller, state, key.get_value(), refresh, true)>"Kiểm tra lần gửi"</Button>
+            </Show>
+            <Show when=move || controller.read().status(&key.get_value()) == ComposerStatus::Refused
+                && controller.read().sign_in_open
+                && matches!(controller.read().draft(&key.get_value()).receipt, Some(Receipt::Refused(ApiError::Unauthenticated)))>
+                <Button variant=ButtonVariant::Tonal on_press=move |_| host.open(editor_id.get_value())>"Đăng nhập lại"</Button>
             </Show>
             </div>
         </div>
