@@ -126,10 +126,11 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
     const controls = [...document.querySelectorAll('.vk-endorsement .vk-ui-toggle__control')];
     return controls.length >= 3 && controls.every(b => {
       const glyph = b.querySelector('.vk-ui-toggle__glyph svg');
-      return glyph?.dataset.icon === 'pen-flight' && glyph.getAttribute('aria-hidden') === 'true'
+      const expected = b.id === 'endorse-work' ? 'pen-flight' : 'heart-outline';
+      return glyph?.dataset.icon === expected && glyph.getAttribute('aria-hidden') === 'true'
         && glyph.getBoundingClientRect().width === 20 && b.getBoundingClientRect().height >= 48;
     });
-  })()`), `Pen Flight: work, root and flat reply keep decorative 20px glyph / 48px targets (${phase})`);
+  })()`), `Thấm and unselected Ưng keep their decorative 20px glyphs and 48px targets (${phase})`);
   await glyphs('ready');
   const order = `[...document.querySelectorAll('.vk-discussion-comment')].map(c => c.id).join()`;
   const before = await page.eval(order);
