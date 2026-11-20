@@ -3,7 +3,7 @@
 `https://vink.forum` dùng Web SSR + API Vink, Worker và Identity qua Unix socket riêng. Caddy
 của Cantos giữ cổng HTTPS công khai. App, Worker và Identity dùng PostgreSQL 17 riêng, với hai
 owner database, hai role runtime và hai role migrator. Không publish port backend, Identity hay
-PostgreSQL. Sign-in, SMTP và evaluation giữ tắt theo [Auth operations](../../docs/development/auth-operations.md).
+PostgreSQL. Sign-in, mail Resend và evaluation giữ tắt theo [Auth operations](../../docs/development/auth-operations.md).
 Giữ Vink test và Cantos trên mạng và dữ liệu hiện tại.
 
 Điều kiện kết thúc giai đoạn giữ public test là production qua qualification và hoàn tất inventory retirement. Đóng gói frontend từ OCI, phát hành Pages, đổi origin và rollback theo [runbook Cloudflare edge production](cloudflare-edge.md).
@@ -86,3 +86,7 @@ Các bước DNS/Caddy trực tiếp bên dưới mô tả nền #304. Khi chuy�
 - Không rollback schema theo image. Chỉ quay về image trước khi readiness của cả hai owner đã được
   chứng minh trên bản sao của schema hiện tại. Recovery có khả năng mất writes phải restore vào
   kho riêng, đối soát hai database rồi xin xác nhận thời điểm và dữ liệu trước khi chuyển hướng.
+
+Overlay [Resend HTTPS opt-in](../auth-mail/README.md) là đường chuẩn bị riêng cho native Identity.
+Chỉ thêm overlay sau khi đã thử egress và rollback trên môi trường qualification cô lập. Khi chủ dự án mở cờ,
+đăng nhập/đăng ký công khai; không chờ tính năng quên mật khẩu O-11 để hiện form.
