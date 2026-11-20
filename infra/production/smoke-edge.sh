@@ -3,9 +3,16 @@
 set -eu
 
 usage() {
-  echo "Usage: $0 direct [VPS_IP] | edge [APEX_EDGE_IP WWW_EDGE_IP]" >&2
+  echo "Usage: $0 direct [VPS_IP] | edge [APEX_EDGE_IP WWW_EDGE_IP | --release SHA]" >&2
   exit 2
 }
+
+release=
+if [ "${1-}" = edge ] && [ "${2-}" = --release ] && [ "$#" = 3 ]; then
+  release=$3
+  printf '%s\n' "$release" | grep -Eq '^[0-9a-f]{40}$' || exit 2
+  set -- edge
+fi
 
 case "${1-}:$#" in
   direct:1|direct:2|edge:1|edge:3) ;;
@@ -67,6 +74,8 @@ fetch() {
     [ -n "$ray" ] || fail 'missing CF-Ray'
     case "$(header CF-Cache-Status)" in
       ''|BYPASS|DYNAMIC) ;;
+      HIT|MISS|EXPIRED|REVALIDATED)
+        case "$path" in /_v/*/pkg/*) ;; *) fail 'shared cache on dynamic route';; esac ;;
       *) fail "unexpected CF-Cache-Status: $(header CF-Cache-Status)" ;;
     esac
   else
@@ -91,6 +100,9 @@ fetch "$www" https '/toi?edge_smoke=1' 301 ''
 [ "$(header Location)" = 'https://vink.forum/toi?edge_smoke=1' ] || fail 'www → apex changed path/query'
 
 fetch "$apex" https / 200 text/html
+if [ -n "$release" ]; then
+  grep -Fq "/_v/$release/pkg/vink.js" "$tmp/body" || fail 'SSR release differs'
+fi
 grep -Fq '<link href="https://vink.forum/" rel="canonical">' "$tmp/body" || fail 'canonical missing'
 if grep -iq 'name="robots"[^>]*noindex' "$tmp/body" ||
   printf '%s\n' "$(header X-Robots-Tag)" | grep -iqE 'noindex|(^|[[:space:],:])none([[:space:],]|$)'; then
@@ -140,7 +152,7 @@ for asset in 'vink.js text/javascript' 'vink.css text/css' 'vink_bg.wasm applica
   'fonts/be-vietnam-pro-400.woff2 font/woff2' 'fonts/literata-variable.woff2 font/woff2'; do
   path=${asset% *}
   type=${asset##* }
-  fetch "$apex" https "/pkg/$path" 200 "$type"
+  fetch "$apex" https "${release:+/_v/$release}/pkg/$path" 200 "$type"
   [ -s "$tmp/body" ] || fail 'empty asset body'
   digest=$(openssl dgst -sha256 -r "$tmp/body")
   printf 'asset %s %s\n' "$path" "${digest%% *}"

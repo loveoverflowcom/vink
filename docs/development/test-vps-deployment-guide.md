@@ -1,5 +1,7 @@
 # Đọc luồng triển khai Cantos để chuẩn bị VPS test Vink
 
+**Lịch sử vận hành public test.** Quy trình hiện hành và điều kiện ngừng host nằm trong [release production](../../infra/production/cloudflare-edge.md). Compose, fixture và qualification Auth cô lập vẫn dùng được.
+
 ```mermaid
 flowchart LR
     Operator["Operator hoặc CI được cấp quyền"] --> GSM["Cantos · Secret Manager"]
@@ -272,7 +274,7 @@ Giữ project, volume/DB, session, credentials và vòng đời của hai hệ t
    `vink-web` mang binary `vink-app` và site Leptos, `vink-worker` và `vink-identity` chỉ mang
    binary theo vai trò. Chạy loader/non-root/assets smoke, sau đó chạy topology với PostgreSQL
    scratch và đúng role trên Linux đích. [Code build](../../xtask/src/infra.rs#L302-L359),
-   [Containerfile](../../infra/test/Containerfile).
+   [Containerfile](../../infra/Containerfile).
 2. **Publish và pull.** `publish-images.yml` chạy thủ công trên `develop`, build lại source
    sạch và smoke loader rồi mới push. Dùng summary để điền `app_image` từ `web_image`, cùng
    `worker_image`/`identity_image` theo `RepoDigests`. Ghi source SHA/platform, pull theo các

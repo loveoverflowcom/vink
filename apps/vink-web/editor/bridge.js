@@ -4,7 +4,7 @@
 // separate module, fetched only when a desk editor mounts, so public reading pages never load it.
 // `cargo xtask build` writes the runtime to target/site/pkg/vink-editor.js.
 
-const RUNTIME_URL = '/pkg/vink-editor.js';
+const RUNTIME_URL = new URL('../../../vink-editor.js', import.meta.url).href;
 
 let runtime;
 let loading;

@@ -1903,10 +1903,10 @@ async function brandAssets(page) {
     const response = await fetch(`${args.base}/pkg/brand/vpen-r1-manifest-${theme}.webmanifest`);
     const manifest = await response.json();
     check(response.ok && response.headers.get('content-type')?.includes('manifest') && manifest.id === '/' &&
-      manifest.icons.every(icon => icon.src.startsWith(`/pkg/brand/vpen-r1-mark-${theme}`) && icon.purpose === 'any') &&
+      manifest.icons.every(icon => new URL(icon.src, response.url).pathname.startsWith(`/pkg/brand/vpen-r1-mark-${theme}`) && icon.purpose === 'any') &&
       manifest.icons.some(icon => icon.sizes === '192x192') && manifest.icons.some(icon => icon.sizes === '512x512'), `${theme} manifest has stable identity and only R1 any-purpose 192/512 icons`);
     for (const icon of manifest.icons) {
-      check((await fetch(`${args.base}${icon.src}`)).ok, `${theme} manifest icon ${icon.src} exists`);
+      check((await fetch(new URL(icon.src, response.url))).ok, `${theme} manifest icon ${icon.src} exists`);
     }
   }
   for (const size of [24, 32, 48, 96, 192, 512]) {
@@ -5851,6 +5851,10 @@ try {
   const page = await openPage(cdp);
   activePage = page;
   if (args.phase === 'discussion-only') await discussionReadingAndWrites(page);
+  else if (args.phase === 'production-edge') {
+    const { productionEdge } = await import('../../../infra/cloudflare/production/browser.mjs');
+    await productionEdge(page, { args, check });
+  }
   else if (args.phase === 'document-budget') await documentBudget(page, { args, check });
   else if (args.phase === 'reader-intent-cost') await readerIntentCost(page, { args, check });
   else if (args.phase === 'perf-baseline') await webPerfBaseline(page, { args, check });

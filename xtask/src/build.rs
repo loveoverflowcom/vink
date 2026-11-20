@@ -66,6 +66,9 @@ pub fn bundle(release: bool, perf_probe: bool) -> Result<(), String> {
         ])
         .arg(&pkg)
         .arg(&wasm_file);
+    if release {
+        bindgen.arg("--remove-name-section");
+    }
     process::run(&mut bindgen, "wasm-bindgen → target/site/pkg")?;
     editor_runtime(&root, &pkg.join("vink-editor.js"))?;
     expressions::build(&root, &pkg.join("expressions"))?;

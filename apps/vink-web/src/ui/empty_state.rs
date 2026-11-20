@@ -31,7 +31,7 @@ pub fn EmptyState(
 ) -> impl IntoView {
     view! {
         <div class="vk-empty-state">
-            <img class="vk-empty-state__art" src=artwork.src() alt="" width="512" height="427" decoding="async" />
+            <img class="vk-empty-state__art" src=crate::asset_url(artwork.src()) alt="" width="512" height="427" decoding="async" />
             {title.map(|title| view! { <vink_ui::Heading class:vk-empty-state__title=true
                 level=vink_ui::HeadingLevel::H3 role=vink_ui::TypeRole::Title>{title}</vink_ui::Heading> })}
             <p class="vk-empty-state__message" role=announce.then_some("status") aria-atomic=announce.then_some("true")>{message}</p>

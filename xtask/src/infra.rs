@@ -342,7 +342,7 @@ fn build_images(root: &Path, engine: &str, target: &str) -> Result<(), String> {
                 "--platform",
                 target,
                 "--file",
-                "infra/test/Containerfile",
+                "infra/Containerfile",
                 "--target",
                 image,
                 "--build-arg",
