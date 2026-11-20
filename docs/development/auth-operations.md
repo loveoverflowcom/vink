@@ -65,7 +65,9 @@ phiên hiện hữu vẫn xác minh và đăng xuất được. Khi operator đ�
 đăng nhập/đăng ký mở cho mọi người, không có invite hay allowlist. Email xác minh không là
 điều kiện mặc định của đăng ký bằng mật khẩu; mã email bổ sung. Không tự đổi điều kiện O-11.
 
-Thử trên `test.vink.forum` trước `vink.forum` với cơ sở dữ liệu, key và domain riêng. Đối chiếu
+Thử trước trên một origin HTTPS cô lập với cơ sở dữ liệu, key và domain gửi riêng.
+Vòng qualification này vẫn chạy được sau khi ngừng host test công khai theo
+[quy trình Cloudflare/VPS](../../infra/production/cloudflare-edge.md). Đối chiếu
 mật khẩu, gắn email và mã email, bút danh, Bàn viết và đăng xuất; kiểm SSR/hydration, cookie
 `Secure`/`HttpOnly`/`SameSite`, CSRF, refresh và hai tab trên đúng origin HTTPS. Xem
 [ADR §9](../architecture/auth-authority.md#9-blocker-trước-khi-accepted) cho các gate ngoài code.
