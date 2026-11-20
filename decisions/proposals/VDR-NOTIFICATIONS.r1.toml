@@ -1,0 +1,52 @@
+version = 1
+id = "VDR-NOTIFICATIONS"
+revision = 1
+
+[content]
+kind = "product"
+domain = "notifications"
+title = "Phạm vi sản phẩm Notifications v1 và danh sách Thấm công khai"
+resolution = """
+Chốt phạm vi sản phẩm Notifications v1 (N1–N8 và P-01..P-14) theo Decision Register R3 ngày 18/11/2026 (#305) và #345:
+- N1 / P-05: Sáu nhóm loại gồm (1) bình luận gốc được duyệt, (2) phản hồi được duyệt, (3) quyết định kiểm duyệt tác phẩm, (4) bình luận bị từ chối hoặc gỡ do kiểm duyệt, (5) Thấm tác phẩm, và (6) thông báo quản trị. Năm nhóm đầu thuộc phạm vi runtime v1; nhóm quản trị chỉ dành trước type/contract (TYPE_ONLY_NOW), mọi công cụ soạn/gửi, sửa/rút, ủy quyền operator và broadcast đều DEFERRED. Thông báo Theo dõi (Follow) DEFERRED chờ #284 và lượt giao phạm vi sau. Hữu ích bị loại khỏi phạm vi triển khai Epic #305 (REMOVED_FROM_SCOPE; không xóa code LVE hiện hữu). N7: mặc định bật mọi loại đã triển khai, chưa có preference UI, không bật loại reserved/deferred.
+- N2 / N3 / P-01B / COM-11: Bình luận gốc gửi tác giả tác phẩm. Phản hồi giữ một tầng phẳng dưới root; A trả lời reply của B dưới root C gửi trực tiếp B (hoặc C nếu reply_to=None) và C, loại self và dedup theo PrincipalId. Tương tác chỉ phát khi nội dung đã duyệt và đủ điều kiện hiển thị; giữ COM-11 (bình luận duyệt lúc bài ẩn không phát bù sau khi tái công khai). Thông báo bất lợi do kiểm duyệt gửi riêng đúng người viết bất kể công khai hay không; tự gỡ bình luận của chính mình không tự phát thông báo.
+- P-11a/b & P-12A: Chỉ báo “Cần xử lý” khi tác giả thực sự phải hành động (NeedsAdmin/hết retry không phải yêu cầu tác giả sửa). Tác phẩm approved -> rejected -> approved phát thông báo duyệt mới đúng decision/revision; approved -> approved/reaffirmation/no-op/retry không phát thêm. Mở màn chi tiết quyết định riêng của người viết đúng decision/revision hoặc comment/version và lý do được phép, không phục hồi thân bình luận đã gỡ và không lộ ghi chú nội bộ/tên người duyệt.
+- N4 / N5 / P-07A: Thin Pointer và Write-time Rollup. Tối đa một nhóm chưa đọc còn hiệu lực mỗi group_key (gồm recipient, loại, đích nghiệp vụ: root theo tác phẩm, reply theo đích trực tiếp trong root, Thấm theo WorkId+RevisionId, quyết định gắn đúng revision/decision và nghĩa quyết định). Event mới cập nhật nhóm chưa đọc; sau Read tạo nhóm mới, không đổi nhóm đã đọc thành chưa đọc. actor_count đếm người khác nhau; actors_preview tối đa 3 người gần nhất chỉ là tóm tắt inbox.
+- P-02B & P-03A: Thấm chỉ tạo tín hiệu thông báo lần đầu suốt vòng đời actor + loại + WorkId+RevisionId; bỏ rồi Thấm lại đối soát membership âm thầm, không tạo tín hiệu mới. Khi bỏ Thấm hoặc mất hiệu lực trên nhóm chưa đọc, bỏ contribution, giảm count, bù preview từ thành viên còn hợp lệ; còn 0 thì ẩn/hết hiệu lực (không giả Read). Nhóm đã đọc giữ lịch sử hợp lệ trong thời hạn nhưng luôn tuân quyền hiện hành.
+- N6 / P-04B / P-09A / P-10A: Seen cấp người dùng độc lập Read cấp nhóm. Badge đếm số nhóm có tín hiệu chưa Seen; chấp nhận trễ hội tụ hữu hạn và phân biệt stale/unavailable với 0. Mở chuông chỉ ACK Seen đến snapshot đã nhận. Bấm dòng ghi Read đúng phiên bản đã thấy dù mở đích lỗi. “Đọc tất cả” chỉ tới snapshot đã xác nhận.
+- P-08a/b: Danh sách đầy đủ người đang Thấm công khai theo WorkId+RevisionId có phân trang/tải thêm cho mọi người đủ quyền đọc bản đang công khai (bao gồm khách), lấy từ membership hiện hành của Endorsement qua Gateway và độc lập với inbox/preview/receipt/tuổi 180 ngày của Notifications. Hữu ích REMOVED_FROM_SCOPE.
+- N8 / P-06A / P-13B: Nhóm inbox, preview và danh sách người tương tác của Notifications hết hạn tuyệt đối tối đa 180 ngày từ lúc tạo (tương tác mới không gia hạn) và bị xóa sau tối đa 180 ngày. Biên nhận kỹ thuật/dấu chống báo lại có hạn độc lập để bảo vệ P-02B và khôi phục, nhưng không tái dựng inbox đã xóa và không xóa lượt Thấm còn hiệu lực của Endorsement. Không backfill trước activation.
+- P-14A: Triển khai Web trước nhưng API và mô hình dữ liệu/đích nghiệp vụ dùng lại được cho CMP/mobile; tách đường đọc Thấm công khai cho khách khỏi inbox/ghi cần phiên thật. Native/CMP UI DEFERRED.
+"""
+rationale = "Tổng hợp quyết định sản phẩm N1–N8 và P-01..P-14 từ Epic https://github.com/loveoverflowcom/vink/issues/305 (R1, R2 và bổ sung R3 ngày 18/11/2026) và issue phân rã https://github.com/loveoverflowcom/vink/issues/345. Theo VDR-DECISION-SIGNOFF@r1, nội dung brief/issue chưa tự là signoff của chủ sản phẩm cho payload TOML này; proposal ở trạng thái PENDING đến khi có signoff đúng revision và SHA-256."
+requires = [
+    "D-05@r1",
+    "D-14@r1",
+    "LVE-PR-02-03-CHOICE-12@r1",
+    "O-17@r2",
+    "VDR-DECISION-SIGNOFF@r1",
+]
+related_ids = [
+    "COM-06",
+    "COM-11",
+    "LVE-FR-02",
+    "LVE-FR-05",
+    "MOD-10",
+    "MOD-11",
+    "MOD-12",
+    "MOD-13",
+    "NOTIF-01",
+    "NOTIF-02",
+    "NOTIF-03",
+    "NOTIF-04",
+    "NOTIF-05",
+    "NOTIF-06",
+    "NOTIF-07",
+    "NOTIF-08",
+    "NOTIF-09",
+    "NOTIF-10",
+    "PUB-03",
+    "PUB-05",
+    "PUB-07",
+    "UX-04",
+]

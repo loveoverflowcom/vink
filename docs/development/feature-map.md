@@ -22,6 +22,18 @@ từ Khám phá, Reader và nhận xét. [Owner, phạm vi gate và đường ki
 cho #296 ở mức PostgreSQL. [Ca tích hợp](../../services/vink-app/tests/postgres/first_publication.rs)
 kiểm lần đầu commit, writer cạnh tranh, rollback, rút/tái đăng và nguồn mốc sau backfill.
 
+## Thông báo cộng đồng và danh sách Thấm (#345)
+
+**Mức triển khai Notifications v1 và danh sách người Thấm công khai là `NOT_IMPLEMENTED`.**
+Hợp đồng và SSOT cho `#346`–`#348` cùng giai đoạn Design/Web được ghi tại
+[PRD §16](../../prd/requirements.md#16-thông-báo-cộng-đồng-và-danh-sách-thấm-công-khai-notifications-v1),
+[đặc tả miền & UX bằng chữ](../architecture/notifications.md),
+[hợp đồng sự kiện & Gateway v1](../../services/vink-app/contracts/http/v1/notifications.md) và
+[bảng truy vết & bàn giao](notifications.md).
+Lượt `#345` chỉ có bằng chứng tài liệu, kho quyết định (`VDR-NOTIFICATIONS@r1`,
+`VDR-NOTIFICATIONS-CONTRACT@r1`, `LVE-PR-02-03-CHOICE-12@r2` đều `PENDING`) và liên kết;
+kiểm thử PostgreSQL, hai process/DB, HTTP Gateway và browser thuộc `#346`, `#347`, `#348` và đợt Design/Web (`NOT_RUN`).
+
 **Đối soát có phạm vi ngày 16/11/2026, `develop@6e07806`:** [20 PR gần đây, proposal và gap](verification-reconciliation-20261116.md). Các mốc ở phần mở đầu dưới đây là lịch sử theo lát, không phải ngày kiểm lại toàn bộ bản đồ. [Model/replay ReadOwner/PageChain](../../apps/vink-web/behavior/README.md) bổ sung coverage thuần; không refresh evidence browser/PG cũ.
 
 **Web Perf #234 · baseline opt-in:** [cách đo và giới hạn](web-perf-baseline.md) với 200 works/1.000 comments, 10 cold + 10 warm, history SSR, transport secondary/304 và [trace release hai corpus kèm owner/timer](evidence/web-perf-234-canonical/README.md). Debug lab `997d97d` vẫn là [evidence lịch sử](evidence/web-perf-234/README.md).

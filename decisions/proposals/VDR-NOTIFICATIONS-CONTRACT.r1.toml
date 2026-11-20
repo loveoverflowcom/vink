@@ -1,0 +1,37 @@
+version = 1
+id = "VDR-NOTIFICATIONS-CONTRACT"
+revision = 1
+
+[content]
+kind = "architecture"
+domain = "notifications"
+title = "Hướng kiến trúc K1–K6, hợp đồng liên dịch vụ và phân giao T-01..T-08"
+resolution = """
+Ghi nhận hướng kiến trúc K1–K6 từ #305 và hợp đồng liên miền/liên dịch vụ trong docs/architecture/notifications.md và services/vink-app/contracts/http/v1/notifications.md:
+- K1: PostgreSQL database riêng cho Notifications trên cùng PostgreSQL instance hiện tại; role migrate/runtime, migration và backup/restore độc lập. Cùng instance là cùng failure domain hạ tầng.
+- K2: Notification Service là process/binary Rust độc lập; ban đầu cùng VPS.
+- K3: Transactional Outbox tại App -> Relay -> Notification Service với at-least-once delivery. Nghĩa vụ gửi commit nguyên tử cùng mutation nguồn (enqueue lỗi rollback cả mutation; sau commit, lỗi relay/Notification không đảo ngược nghiệp vụ nguồn). Cấm transaction xuyên hai DB và cấm network I/O trong EffectHandler nội bộ hiện hành. Bên nhận commit nguyên tử ingestion receipt + hiệu ứng rollup/invalidation; ACK từ relay có claim fence.
+- K4: Thin Pointer; event chỉ mang định danh, metadata tối thiểu, nguồn/version/epoch và danh sách recipient đã xác định tại nguồn (cấm thân bài/bình luận, email, secret hoặc ghi chú nội bộ). App BFF/Gateway kiểm quyền hiện hành theo lô và hydrate khi hiển thị và mở đích. Notification Service không đọc trực tiếp DB App hoặc DB Identity.
+- K5: Client chỉ đi qua App Gateway, không gọi thẳng Notification Service. Inbox/badge/Seen/Read/chi tiết quyết định dùng phiên xác thực thật và kiểm standing khi ghi. Đường đọc danh sách Thấm công khai thuộc read contract của App/Endorsement qua Gateway và mở cho khách theo P-08 R3.
+- K6: Polling nhẹ 30–60 giây cho count (tách fresh/stale/unavailable với 0); chỉ tải inbox đầy đủ khi mở.
+- Phân giao 8 lựa chọn TECHNICAL_OPEN (mỗi owner chốt bằng evidence đo được, không ép chủ sản phẩm chọn schema/cursor): #346 chọn T-01/CHOICE-15 (producer/envelope/activation boundary) và T-02/CHOICE-16 (relay/delivery/fenced ACK); #347 chọn T-03/CHOICE-17 (single active unread group/concurrency), T-04/CHOICE-18 (membership/preview/ordering/suppression), T-05/CHOICE-19 (Seen watermark/group version/Read-mark-all race), T-07/CHOICE-21 (transport & service auth nội bộ Gateway/Relay <-> Notification), T-08/CHOICE-22 (storage growth/retention/backup-restore/query budget); #348 chọn T-06/CHOICE-20 (batch authz/hydration/bounded continuation, phối hợp #347 về hạn badge freshness và giữ T-07 của service).
+"""
+rationale = "Nguồn: Epic https://github.com/loveoverflowcom/vink/issues/305 (§4, §7, R3) và https://github.com/loveoverflowcom/vink/issues/345 (AC-01, AC-05). Hướng K1–K6 đã xác nhận trong brief không tự trở thành ADR/TOML ACCEPTED; T-01..T-08 được giao cho #346–#348 lựa chọn dựa trên số đo và bằng chứng local."
+requires = [
+    "D-05@r1",
+    "D-14@r1",
+    "VDR-DECISION-SIGNOFF@r1",
+    "VDR-NOTIFICATIONS@r1",
+]
+related_ids = [
+    "NOTIF-01",
+    "NOTIF-04",
+    "NOTIF-05",
+    "NOTIF-06",
+    "NOTIF-07",
+    "NOTIF-08",
+    "NOTIF-09",
+    "NOTIF-10",
+    "OPS-01",
+    "OPS-02",
+]

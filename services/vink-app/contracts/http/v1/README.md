@@ -18,6 +18,8 @@ consumer yet and no native consumer exists.
 
 The [proposed Social Graph contract r1](social-graph.md) defines public, own and viewer representations, authorization before conditional reads, and command reconciliation for #288. The [implemented author address routes](social-graph.md#địa-chỉ-tác-giả-290) serve the minimal public profile, setup, rename and receipt readback, and the [follow graph routes (#294)](social-graph.md#theo-dõi-tác-giả-và-danh-sách-quan-hệ-294) serve follow intent, counts, lists, receipts and batch viewer membership.
 
+The [proposed Notifications v1 contract](notifications.md) (`NOT_IMPLEMENTED`, #345) defines the shared inter-service envelope/receipt/ACK semantics, gateway badge/inbox/`Seen`/`Read`/private decision-detail semantics, and the proposed public paginated **Thấm** list for #346–#348 and non-Web consumers (`P-14A`).
+
 ## Conventions
 
 - JSON, UTF-8. Identifiers are UUID strings; timestamps are RFC 3339 in UTC.
@@ -448,6 +450,9 @@ from the body: unknown fields are `422`.
 - **Not provided:** voter lists or attribution, ranking by endorsements, counts on the works list
   or the publication read (READ-01 bodies and validators are unchanged), reasons or facets, rate
   limits, receipt expiry.
+  *(R3 update #305/#345: runtime above remains unchanged today; the proposed public paginated
+  “Thấm” list for works is specified in [notifications.md](notifications.md) and
+  `LVE-PR-02-03-CHOICE-12@r2` (`PENDING`), while comment “Hữu ích” stays excluded from Epic #305.)*
 
 ## Work tags (TAG-PR-03)
 
