@@ -1,5 +1,40 @@
 # D2T-03 — phạm vi triển khai và bằng chứng
 
+## Nhận xét R4 trên Linux · PR #366
+
+Base `ac77a0fa1fed42a8f25a1795991d253b64cb4ff8`. Commit [10ea20b](https://github.com/loveoverflowcom/vink/commit/10ea20ba63aa0c08edd072c6a7f32d3a5bf846c6) sửa FieldMode, root segment/geometry, composer Sending, clipboard và read-only. Commit [d2092b6](https://github.com/loveoverflowcom/vink/commit/d2092b67de3e0699921876dd1460a64e41875530) giữ tác phẩm trong DOM trong khi lần GET nhận xét đầu tiên đang chờ. [LayoutSpec R4](../design/discussion-ui.md) và [bộ tham chiếu Drive](https://drive.google.com/drive/folders/1OpT6_uY1GG-oGvhSl6b5xsmgSsM7hVdE). Đã mở 12 ảnh 01/01b, 02/02b, 03/03b, 04–08 và 10. Ảnh 04 cho phép gõ trong Sending, lần gửi giữ snapshot bất biến.
+
+### Trang ẩn và số Ưng
+
+Cùng ca thực trên base và PR: tác giả gửi nhận xét, quản trị viên duyệt rồi bấm Ưng. Trước khi ẩn, public summary trả HTTP 200, count 1. Khi mở mới Reader sau khi rút qua kiểm duyệt hoặc tác giả đặt riêng tư, summary của nhận xét trả HTTP 404. DOM của candidate chỉ hiện “Ưng”. Cả hai trang đều ẩn ô soạn, Trả lời và nút Ưng. Tác giả có `can_remove=true` mở được xác nhận gỡ; người đọc khác không có nút. [Provider đọc count](../../services/vink-app/src/application/endorsement.rs) đòi revision đang công khai. Giữ test đòi “Ưng · 1” trên cả hai đường. #360 AC-04 còn mở.
+
+### Đo trên browser
+
+Debian Linux, Rust 1.99.1, wasm-bindgen 0.2.129, Node 24.22.3, PostgreSQL 17.11 và Chromium Headless Shell 156.0.8078.79. Mỗi lượt seed cluster loopback riêng. Ca mất ACK là POST thật đã commit, đối soát trả HTTP 200 trên đúng key/body/target và chỉ có một own-pending. Các ca revoked và own-overlay thay GET bằng fixture của provider; các ảnh của chúng chứng minh cách hiển thị và tương tác ở Reader. Gallery Leptos dựng specimen không có endorsement của ứng dụng.
+
+| Bề mặt | Số đo và phạm vi đã mở |
+| --- | --- |
+| Uncertain, dark | Cùng fixture 390/100% và 320/200%. Base dùng `#f0e7f8` trên `#2b2434`, 12,45:1. Candidate dùng `--vk-on-info-container` (`#d6e6ff`) trên `--vk-info-container` (`#22466d`), 7,68:1 cho cả tiêu đề và đoạn giải thích. Assertion cũ đòi màu của body. [Ảnh và số đo CI trước sửa](https://github.com/loveoverflowcom/vink/actions/runs/44698129614/artifacts/14611799914) · [Ảnh và số đo CI trên PR](https://github.com/loveoverflowcom/vink/actions/runs/44718676473/artifacts/14620678053). |
+| Cụm root và reply | Ở 1440/100%, cạnh tên, thân, nhóm Phản hồi và ô reply cùng x=554,5 CSS px. Ở 1440/200% cùng x=364. Kiểm cả 1280, 390 và 320; root segment ≥48 px, các nút còn lại ≥44 px, thử thứ tự, góc trong 6 px và một tầng reply. |
+| Đã đóng, mất đích, Bạn đã gửi | So 224 PNG trước/sau trong bảy trạng thái × 320/390/1280/1440 × sáng/tối × chữ 100/200%. Mỗi SHA có 64 ảnh riêng cho pending/rejected/approved/removed. Candidate không tràn ngang; riêng các chip own đạt 5,05–13,26:1, nút đo được tối thiểu 153×48 px. “Tải lại nhận xét” trên ApprovedOffPage phát sinh đúng một GET public mới. |
+| Trang ẩn / rút sau kiểm duyệt | 64 PNG trước/sau; không tràn ngang ở 64/64. Nhãn Ưng tĩnh đạt 5,40:1 sáng và 7,68:1 tối. Ma trận là text scale trong DOM và Chromium trên Linux. OS IME, screen reader, thiết bị thật và browser zoom chưa chạy. |
+
+[Ảnh trước/sau của Uncertain](../design/evidence/discussion-r4-366/uncertain.jpg) · [Căn cột 1280](../design/evidence/discussion-r4-366/desktop-1280.jpg) · [Own approved ở 390](../design/evidence/discussion-r4-366/own-approved-390.jpg) · [Trang ẩn ở 390](../design/evidence/discussion-r4-366/hidden-390.jpg). Các ảnh này giữ đúng nguồn base `ac77a0f` và candidate `10ea20b`.
+
+### Lệnh và giới hạn nghiệm thu
+
+| Lệnh | Kết quả tại checkpoint |
+| --- | --- |
+| `cargo xtask verify quick` | PASS trên [CI d2092b6](https://github.com/loveoverflowcom/vink/actions/runs/44720543672/job/136235158730). Linux local qua fmt, clippy SSR/hydrate/preview và SSR boundary; các test Identity cần Unix socket bị EPERM. |
+| `cargo xtask ui-preview leptos verify` | Build renderer và media fixture thành công. Chromium desktop local bị chặn Unix socket; phép kiểm riêng với Headless Shell mở 48 cảnh thật của screen.reader và composition.feedback, chiều cao Gửi tối thiểu 48 px. |
+| `VINK_TEST_DATABASE_URL=<scratch> cargo xtask verify web --scenario main --scenario endorsement --scenario auth --scenario review` | Main local trên base dừng ở bước đổi tab ẩn; main của PR dừng khi chờ hydration trang tiện ích, trước phần nhận xét. Chạy riêng endorsement trên `d2092b6`: PASS, gồm 20 px/48 px và aria-hidden cho Pen Flight/heart, phím Enter/Space, mất ACK, 409/401. Auth local dừng ở Identity Unix socket (EPERM). Review chạy độc lập phát hiện count 404 trên cả hai trang ẩn. |
+| `cargo xtask verify postgres` và CMP | Dùng cluster PostgreSQL scratch cho kiểm local. Gradle offline local thiếu cache. Cả hai runner CMP trên [CI d2092b6](https://github.com/loveoverflowcom/vink/actions/runs/44720543672) đã qua cả build và kiểm renderer. |
+| CSS, link, API coverage, icon parity | Repository checks nằm trong quick. Danh sách tên và path của 34 icon khớp ở registry, Rust và Kotlin. |
+
+[Web CI d2092b6](https://github.com/loveoverflowcom/vink/actions/runs/44720543672/job/136235158753) giữ GET đầu: ở 120 ms chưa có skeleton, khoảng 320 ms thấy card tĩnh. Lỗi đầu và retry qua GET mới đều đạt. Sau đó phép đo ngay lúc sang dark gặp 4,36:1. Đo từng frame cùng Reader thấy nhãn field xuống 1,14:1, hai pill xuống 1,14:1 và 1,01:1; sau chuyển màu ổn định đạt 10,83/6,45/8,23:1. Bản sửa đổi nền và chữ cùng lúc, giữ chuyển động vòng focus; reduced motion tắt nội suy trong Nhận xét. Đối chứng CSS trên cùng binary cho kết quả tối thiểu 10,83/6,45/8,23:1 cho field/Ưng/Trả lời suốt 400 ms, recovery 7,68:1 ở hai kích thước trên hai lượt độc lập. Browser smoke kiểm ngưỡng 4,5:1 xuyên suốt lần đổi theme.
+
+PR giữ Draft trong khi #360 AC-04 còn FAIL. Trạng thái từng AC và các lần chạy mới hơn được cập nhật trên [PR #366](https://github.com/loveoverflowcom/vink/pull/366). Bằng chứng auth/CDP không chứng minh IME của hệ điều hành hoặc screen reader.
+
 Issue #45; branch `codex/discussion-ui`, PR #59. Checkpoint local dưới đây đã tích hợp
 `develop@27927c462244f2a70e36a686a37c8c95690775b6`.
 Source checkpoint local: `0f46f817160c2507861e0c508cfd3dbb4c1b008b`.

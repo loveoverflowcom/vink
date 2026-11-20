@@ -5511,6 +5511,7 @@ async function discussionReadingAndWrites(page) {
   check(await page.eval(`!!document.querySelector('meta[name="vink-local-discussion-fixture"]') && document.querySelector('#comments-mode').textContent.includes('Định danh thử trên thiết bị này')`), 'fixture readiness is labelled and supplied by the trusted host');
   const text = 'D2T-03 [Mẫu] Đọc khổ thơ\n\n  Tiếng Việt 👩‍💻 🌧️';
   const newer = ' Chữ mới sau khi gửi.';
+  await page.eval(`window.discussionComposerNode = document.querySelector('#root-composer')`);
   await page.typeAtEnd('#root-composer', text);
   const held = [];
   const waitHeld = async count => {
@@ -5608,7 +5609,7 @@ async function discussionReadingAndWrites(page) {
   await page.click('#discussion-mode-toggle');
   await page.waitFor(`document.querySelector('#discussion-mode-toggle')?.textContent==='Mở bình luận' && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'author closes comments with generation CAS');
   await page.send('Browser.grantPermissions', { permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'] });
-  check(await page.eval(`document.querySelector('#root-composer').value===${JSON.stringify(text + newer)} && document.querySelector('#root-composer').readOnly === true && !document.querySelector('#root-composer-send') && document.querySelector('.vk-discussion-closed-banner')?.textContent.includes('Bạn đã tắt bình luận cho bài viết này') && !!document.querySelector('[data-own-comment="${commentId}"]')`), 'closing keeps readonly draft, author notice, readable own projection and removes Gửi button');
+  check(await page.eval(`window.discussionComposerNode === document.querySelector('#root-composer') && document.querySelector('#root-composer').value===${JSON.stringify(text + newer)} && document.querySelector('#root-composer').readOnly === true && !document.querySelector('#root-composer-send') && document.querySelector('.vk-discussion-closed-banner')?.textContent.includes('Bạn đã tắt bình luận cho bài viết này') && !!document.querySelector('[data-own-comment="${commentId}"]')`), 'closing keeps readonly draft, author notice, readable own projection and removes Gửi button');
   await page.eval(`[...document.querySelectorAll('.vk-discussion-closed-actions button')].find(b=>b.textContent.includes('Sao chép nháp'))?.click()`);
   await page.waitFor(`document.querySelector('.vk-discussion-closed-actions [data-copied="true"]')?.textContent.includes('Đã sao chép nháp')`, 'closed draft copy confirmation');
   check(await page.eval('navigator.clipboard.readText()') === text + newer, 'closed draft copy writes exact draft text to real clipboard');
@@ -5631,6 +5632,7 @@ async function discussionReadingAndWrites(page) {
   await captureDiscussionMatrix(page, 'local-postgres-closed', '#feedback-heading', 'real-local-postgresql-with-fixture-identity');
   await page.click('#discussion-mode-toggle');
   await page.waitFor(`document.querySelector('#discussion-mode-toggle')?.textContent==='Tắt bình luận' && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true' && document.querySelector('#remove-comment-${commentId}')`, 'author reopens the same thread');
+  check(await page.eval(`window.discussionComposerNode === document.querySelector('#root-composer') && !window.discussionComposerNode.readOnly`), 'reopening keeps the original editable textarea');
   // VDR-DISCUSSION-R4@r1 §2: asking opens an in-place confirmation; only “Gỡ” sends DELETE.
   await page.click(`#remove-comment-${commentId}`);
   await page.waitFor(`document.activeElement?.id==='cancel-remove-comment-${commentId}' && document.querySelector('#confirm-remove-comment-${commentId}')`, 'removal asks in place and focuses “Giữ lại”');
@@ -5884,9 +5886,40 @@ async function discussionR31Geometry(page, width, scale, scenario) {
   }
 }
 
+async function checkDiscussionThemeFrames(page, theme) {
+  const minimum = await page.eval(`(async () => {
+    const field = document.querySelector('.vk-discussion-reply-composer .vk-ui-field__control');
+    const segment = document.querySelector('.vk-discussion-action-segment[data-root="true"]');
+    const toggle = segment.querySelector('.vk-ui-toggle__control');
+    const reply = segment.querySelector('[id^="reply-to-"]');
+    const targets = [[field.querySelector('label'), field], [toggle, toggle], [reply, reply]];
+    const luminance = color => {
+      const rgb = color.match(/[0-9.]+/g).slice(0,3).map(Number).map(v => v/255)
+        .map(v => v <= 0.04045 ? v/12.92 : ((v+0.055)/1.055)**2.4);
+      return rgb[0]*0.2126 + rgb[1]*0.7152 + rgb[2]*0.0722;
+    };
+    const minima = targets.map(() => Infinity);
+    document.documentElement.dataset.theme = ${JSON.stringify(theme)};
+    // Cover the first style update and the full 160 ms token in normal motion.
+    const begin = performance.now();
+    do {
+      targets.forEach(([fg, bg], index) => {
+        const a = luminance(getComputedStyle(fg).color);
+        const b = luminance(getComputedStyle(bg).backgroundColor);
+        minima[index] = Math.min(minima[index], (Math.max(a,b)+0.05)/(Math.min(a,b)+0.05));
+      });
+      await new Promise(requestAnimationFrame);
+    } while (performance.now() - begin < 200);
+    return minima;
+  })()`);
+  check(minimum.every(ratio => ratio >= 4.5),
+    `discussion ${theme}: field label, Ưng and Trả lời keep 4.5:1 through the theme change (${minimum.map(ratio => ratio.toFixed(2)).join(', ')})`);
+}
+
 async function captureDiscussionMatrix(page, name, anchor, boundary) {
   for (const theme of ['light', 'dark']) {
-    await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}`);
+    if (name === 'contract-fixture-flat') await checkDiscussionThemeFrames(page, theme);
+    else await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}`);
     for (const width of [320, 360, 390, 834, 1024, 1280, 1440]) {
       await page.viewport(width, 900);
       await page.eval(`document.documentElement.style.fontSize=''; document.querySelector(${JSON.stringify(anchor)}).scrollIntoView({block:'start'})`);

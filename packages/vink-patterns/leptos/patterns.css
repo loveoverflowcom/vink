@@ -90,6 +90,8 @@
 }
 .vk-endorsement[data-kind="comment"] .vk-ui-toggle__count { font-weight: inherit; }
 .vk-endorsement[data-kind="comment"] .vk-ui-toggle__count[data-count="known"]::before { content: "·\00a0"; }
+/* Foreground and fill switch together. Cross-fading opposite palettes loses text contrast. */
+.vk-discussion-action-segment :is(.vk-ui-toggle__control, .vk-ui-button) { transition-property: border-color; }
 .vk-discussion-action-segment[data-root="true"] .vk-endorsement[data-kind="comment"] .vk-ui-toggle__control {
   padding: 0 14px 0 12px;
   border: 0;
@@ -286,7 +288,7 @@
 .vk-feedback-composer--tonal .vk-ui-field--floating .vk-ui-field__control {
   background: var(--vk-surface-container-high);
   border-radius: var(--vk-radius-lg);
-  transition: background-color var(--vk-duration-short) var(--vk-ease-emphasized), box-shadow var(--vk-duration-short) var(--vk-ease-emphasized);
+  transition: box-shadow var(--vk-duration-short) var(--vk-ease-emphasized);
 }
 .vk-feedback-composer--tonal .vk-ui-field--floating[data-mode="read-only"] .vk-ui-field__control { background: var(--vk-surface-container); }
 .vk-feedback-composer--tonal .vk-ui-field--floating .vk-ui-field__control:has(> .vk-ui-input:focus) {

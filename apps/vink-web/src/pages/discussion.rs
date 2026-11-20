@@ -696,7 +696,8 @@ fn DiscussionLoaded(
     }));
     view! {
         <div id="comments-mode" class="vk-discussion-mode"
-            data-mode-kind=move || mode_kind.get()>
+            data-mode-kind=move || mode_kind.get()
+            data-tone=move || (state.read().unavailable || state.read().error.is_some()).then_some("adverse")>
             <div class="vk-discussion-mode__row">
                 <div class="vk-discussion-mode__status">
                     {move || match mode_kind.get() {

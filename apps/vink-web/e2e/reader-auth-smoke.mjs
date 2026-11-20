@@ -64,8 +64,9 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
     await page.goto(args.base + '/tac-pham/' + CLOSED);
     await page.waitFor(`${HYDRATED} && ${standing('anonymous')} && ${q(ROOT_EDITOR)}`, 'closed Reader, guest confirmed');
     const closed = await page.eval(`fetch('/api/v1/works/${CLOSED}/discussion/public').then(r => r.json())`);
-    check(closed.settings.comments_open === false && await page.eval(`!${q(ROOT_EDITOR+'-auth')} && ${q(ROOT_EDITOR+'-send')}.getAttribute('aria-disabled') === 'true'`),
-      '#328 no contextual entry on a real closed discussion, composer still editable');
+    check(closed.settings.comments_open === false && await page.eval(`!${q(ROOT_EDITOR+'-auth')} && !${q(ROOT_EDITOR+'-send')}
+      && ${q(ROOT_EDITOR)}.readOnly && !${q(ROOT_EDITOR)}.disabled && !!${q('.vk-discussion-closed-banner')}`),
+      '#328 a closed discussion keeps a selectable read-only draft and offers neither sign-in nor Send');
 
     // Full Web runs Discovery first, so its newer publications may fill the first page.
     // Use an actual search result for the seeded Reader rather than assuming feed order.

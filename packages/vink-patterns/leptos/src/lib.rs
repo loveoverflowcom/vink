@@ -413,7 +413,7 @@ pub fn FeedbackComposer(
     /// Author intent never decides the per-work comments policy.
     #[prop(optional, into)]
     comments_closed: Signal<bool>,
-    /// Optional reactive field mode (`ReadOnly` preserves node/focus/text when locked or sending).
+    /// Optional reactive field mode. Closing keeps the native field and its draft.
     #[prop(optional, into)]
     field_mode: Signal<FieldMode>,
     /// Reader-only tonal recipe; other feedback consumers retain their current form.

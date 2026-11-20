@@ -202,3 +202,8 @@ ngoài thẻ vẫn giữ `--vk-surface`).
 | `"Bạn đã gửi"` & Gỡ | Chip màu trung tính cho mọi `ApprovedOffPage`; confirm gỡ kiểu inline thô | Thẻ `20px`, chip `Success` xanh lá cho `ApprovedOffPage`, lý do riêng màu đỏ cho `Rejected`, xác nhận gỡ viền `2px solid var(--vk-error)` |
 | Đọc, lỗi, tác giả, trang ẩn | Fallback `"Đang tải…"`, 1 dòng mode, trang ẩn vẫn hiện nút `Ưng`/composer | Skeleton tĩnh sau `300 ms`; mode 5 trạng thái tác giả + xung đột; `ReplacementView` chỉ đọc với `Ưng · n` dạng chữ |
 
+
+
+### Đối chiếu R4 trên Reader Web Linux
+
+Đã đối chiếu ảnh R4 01–08 và 10 cùng các biến thể desktop với Reader. Ảnh 04 giữ textarea editable khi đang gửi; ảnh 10 đòi số Ưng đã xác nhận trên trang chỉ đọc. Khi bài bị ẩn hoặc rút sau kiểm duyệt, Reader giữ quyền gỡ theo `can_remove` nhưng nguồn summary trả 404, nên phần hiển thị số còn thiếu. Phép đo tối kiểm màu chữ của receipt trên chính nền thông tin; nhãn field và hai pill phải đạt 4,5:1 cả trong khi đổi theme. [Ảnh trước/sau, SHA và lệnh kiểm](../development/discussion-ui-evidence.md).

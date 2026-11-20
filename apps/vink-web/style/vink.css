@@ -512,7 +512,14 @@ a {
 .vk-discussion-mode__copy > .vk-muted { font-size: var(--vk-type-caption-size); }
 .vk-discussion-mode__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-2); }
 .vk-discussion-fixture-note, .vk-discussion-mode__alert { margin: 0; overflow-wrap: anywhere; }
-.vk-discussion-mode__alert { color: var(--vk-error); font-size: var(--vk-type-caption-size); }
+.vk-discussion-mode__alert { color: inherit; font-size: var(--vk-type-caption-size); }
+
+/* The global reduced-motion duration can still create a one-frame color transition. */
+@media (prefers-reduced-motion: reduce) {
+  .vk-discussion, .vk-discussion *, .vk-discussion *::before, .vk-discussion *::after {
+    transition-property: none;
+  }
+}
 
 /* R4 (#360 ảnh 07): static skeleton after 300ms delay, distinct error card and empty card. */
 .vk-discussion-load:not([hidden]) { display: contents; }
