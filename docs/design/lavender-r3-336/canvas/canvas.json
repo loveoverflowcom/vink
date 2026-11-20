@@ -1,0 +1,41 @@
+{
+  "v": 3,
+  "createdOnFiles": {"v": 1, "at": "2026-11-19T10:00:00Z"},
+  "title": "Vink Lavender R3 · #336",
+  "launch": {"view": "canvas"},
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {"x": 0, "y": 0, "w": 1280, "h": 3640, "title": "R3 · Hệ chữ, bề mặt và đối chiếu develop"},
+    "KhamPha.dc.html": {"x": 1400, "y": 0, "w": 390, "h": 1260, "title": "05 · Khám phá — sáng"},
+    "KhamPhaToi.dc.html": {"x": 1870, "y": 0, "w": 390, "h": 1260, "title": "06 · Khám phá — tối"},
+    "ChinhHoSo.dc.html": {"x": 2390, "y": 0, "w": 390, "h": 1400, "title": "01 · Chỉnh hồ sơ — sáng"},
+    "ChinhHoSoToi.dc.html": {"x": 2860, "y": 0, "w": 390, "h": 1400, "title": "02 · Chỉnh hồ sơ — tối"},
+    "HoSo.dc.html": {"x": 3380, "y": 0, "w": 390, "h": 1060, "title": "04 · Hồ sơ mobile, tên dài — sáng"},
+    "HoSoToi.dc.html": {"x": 3850, "y": 0, "w": 390, "h": 1060, "title": "04b · Hồ sơ mobile, tên dài — tối"},
+    "Reader.dc.html": {"x": 4370, "y": 0, "w": 390, "h": 1820, "title": "07b · Reader và nhận xét — sáng"},
+    "ReaderToi.dc.html": {"x": 4840, "y": 0, "w": 390, "h": 1820, "title": "07 · Reader và nhận xét — tối"},
+    "HoSoDesktop.dc.html": {"x": 1400, "y": 1820, "w": 1280, "h": 900, "title": "03 · Hồ sơ tác giả — desktop, chính chủ"},
+    "Hep320.dc.html": {"x": 2760, "y": 1820, "w": 320, "h": 700, "title": "AC-04 · 320 px, chữ 200% — minh họa, chưa là bằng chứng"}
+  },
+  "order": [
+    "Main.dc.html",
+    "KhamPha.dc.html",
+    "KhamPhaToi.dc.html",
+    "ChinhHoSo.dc.html",
+    "ChinhHoSoToi.dc.html",
+    "HoSo.dc.html",
+    "HoSoToi.dc.html",
+    "Reader.dc.html",
+    "ReaderToi.dc.html",
+    "HoSoDesktop.dc.html",
+    "Hep320.dc.html"
+  ],
+  "notes": {
+    "rowTitle": {"x": 1400, "y": -300, "text": "Màn Web theo R3 · cùng nội dung sáng/tối", "kind": "title1", "maxW": 3830},
+    "deskTitle": {"x": 1400, "y": 1520, "text": "Desktop và ca chữ lớn", "kind": "title1", "maxW": 1680},
+    "specTitle": {"x": 0, "y": -300, "text": "Spec R3", "kind": "title1", "maxW": 1280},
+    "note320": {"x": 3160, "y": 1820, "w": 420, "text": "320 px, chữ 200% (root font-size). Đề xuất: khi chữ lớn, thanh Lưu thôi dính và nằm cuối form, đúng LayoutSpec #289 (“Lưu… nằm trong luồng”); chỉ thanh điều hướng dưới còn cố định. Ô đang focus luôn hiện trọn phía trên thanh (scroll-padding = chiều cao thanh thật). Hàng quyền xếp dọc: nhãn trên, select rộng hết. Nhãn nav được xuống dòng, không cắt. Đây là minh họa bố cục, chưa phải bằng chứng AC-04.", "fill": "purple"},
+    "noteDark": {"x": 3160, "y": 2260, "w": 420, "text": "Tối: cùng nội dung, cùng weight với Sáng. Không làm mảnh chữ đồng loạt; kiểm từng vai trò bằng font đóng gói trên màn hình thật.", "fill": "gray"}
+  },
+  "designSystems": []
+}

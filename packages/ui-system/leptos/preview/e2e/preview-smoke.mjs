@@ -827,8 +827,20 @@ async function components(page) {
   check((await page.eval(`document.querySelector('[data-testid=group-known] .vk-ui-avatar-group__more').textContent`)) === '+9', 'AvatarGroup: a known total shows +9');
 
   await page.open('identity.author-byline');
-  const byline = await page.eval(`(() => { const b = document.querySelector('[data-byline=feed]'); const n = getComputedStyle(b.querySelector('.vk-ui-byline__name')); const m = getComputedStyle(b.querySelector('.vk-ui-byline__meta')); return [Number(n.fontWeight), parseFloat(n.fontSize), parseFloat(m.fontSize), b.querySelector('.vk-ui-avatar').getAttribute('aria-hidden'), b.textContent.split('An Nhiên').length - 1]; })()`);
-  check(byline[0] >= 600 && byline[1] > byline[2] && byline[3] === 'true' && byline[4] === 1, `AuthorByline: bold name above smaller meta; the avatar is hidden and the name read once (${byline})`);
+  const byline = await page.eval(`(() => {
+    const row = document.querySelector('[data-byline=feed]');
+    const name = getComputedStyle(row.querySelector('.vk-ui-byline__name'));
+    const meta = getComputedStyle(row.querySelector('.vk-ui-byline__meta'));
+    return {
+      nameWeight: name.fontWeight, metaWeight: meta.fontWeight,
+      nameSize: parseFloat(name.fontSize), metaSize: parseFloat(meta.fontSize),
+      avatarHidden: row.querySelector('.vk-ui-avatar').getAttribute('aria-hidden'),
+      nameCount: row.textContent.split('An Nhiên').length - 1,
+    };
+  })()`);
+  check(byline.nameWeight === '500' && byline.metaWeight === '400' && byline.nameSize > byline.metaSize
+    && byline.avatarHidden === 'true' && byline.nameCount === 1,
+  `AuthorByline: medium name above smaller regular metadata, decorative avatar and one name (${JSON.stringify(byline)})`);
   const size = await page.eval(`document.querySelector('[data-byline=reader] .vk-ui-avatar').getBoundingClientRect().width`);
   check(size === 44, `AuthorByline: reader avatar is 44px wide on a wide screen (${size})`);
 

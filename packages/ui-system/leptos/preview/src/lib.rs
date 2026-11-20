@@ -622,14 +622,14 @@ fn size_label(size: TextSize) -> String {
 fn typography(combining: bool) -> AnyView {
     let sample = |token: &str| match token {
         "type.display" if combining => fixture::LONG_TITLE,
-        "type.title" | "type.reading" if combining => fixture::COMBINING,
+        "type.title" | "type.reading" | "type.excerpt" if combining => fixture::COMBINING,
         "type.display" => fixture::DISPLAY,
-        "type.headline" => fixture::HEADLINE,
+        "type.headline" | "type.section" => fixture::HEADLINE,
         "type.title" => fixture::TITLE,
         "type.body" => fixture::BODY,
         "type.label" => fixture::LABEL,
         "type.caption" => fixture::CAPTION,
-        "type.reading" => fixture::READING,
+        "type.reading" | "type.excerpt" => fixture::READING,
         _ => fixture::CODE,
     };
     view! {
@@ -643,7 +643,7 @@ fn typography(combining: bool) -> AnyView {
             </p>
         })}
         <ul class="vkp-type">
-            {[text::DISPLAY, text::HEADLINE, text::TITLE, text::BODY, text::LABEL, text::CAPTION, text::READING, text::CODE]
+            {text::ALL
                 .into_iter()
                 .map(|role| {
                     view! {

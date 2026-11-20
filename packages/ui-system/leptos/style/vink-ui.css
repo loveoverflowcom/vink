@@ -1879,7 +1879,7 @@
 .vk-ui-bottom-nav .vk-ui-nav-item {
   flex-direction: column;
   justify-content: flex-start;
-  gap: var(--vk-space-1);
+  gap: min(var(--vk-space-1), 6px);
   padding: min(var(--vk-space-2), 6px) 0;
   background: transparent;
   transition: none;

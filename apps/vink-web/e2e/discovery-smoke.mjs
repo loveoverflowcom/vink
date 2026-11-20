@@ -148,28 +148,31 @@ export async function discoveryReading(page, { args, check, textContrast }) {
       const excerpt = row.querySelector('.vk-public-row__excerpt').getBoundingClientRect();
       return {
         named: document.getElementById(row.querySelector('a').getAttribute('aria-labelledby')) === title,
-        ordered: row.querySelector('.vk-public-row__author').getBoundingClientRect().bottom <= title.getBoundingClientRect().top + 1
-          && title.getBoundingClientRect().bottom <= excerpt.top + 1 && excerpt.height > 0 && !!row.querySelector('.vk-public-row__chevron'),
+        // R3 (#336): form tag above the title, then excerpt, then the byline; no chevron.
+        ordered: (row.querySelector('.vk-public-row__eyebrow')?.getBoundingClientRect().bottom ?? -Infinity) <= title.getBoundingClientRect().top + 1
+          && title.getBoundingClientRect().bottom <= excerpt.top + 1 && excerpt.height > 0
+          && excerpt.bottom <= row.querySelector('.vk-public-row__author').getBoundingClientRect().top + 1
+          && !row.querySelector('.vk-public-row__chevron'),
         diameter: circle.width, square: circle.width === circle.height,
         fits: initials.getClientRects().length === 1 && ink.left >= circle.left - 1 && ink.right <= circle.right + 1
           && ink.top >= circle.top - 1 && ink.bottom <= circle.bottom + 1,
       };
     })()`);
-    check(cardLayout.named && cardLayout.ordered && cardLayout.square && cardLayout.fits && Math.abs(cardLayout.diameter - 28 * scale / 100) < 1,
-      '#308 title names the card and both initials fit at the chosen text size ' + [theme,width,scale,JSON.stringify(cardLayout)].join('/'));
+    check(cardLayout.named && cardLayout.ordered && cardLayout.square && cardLayout.fits && Math.abs(cardLayout.diameter - 36 * scale / 100) < 1,
+      '#308/#336 title names the row and both initials fit at the chosen text size ' + [theme,width,scale,JSON.stringify(cardLayout)].join('/'));
     if (width === 320 && scale === 200) {
       const card = await page.eval(`(() => {
         const row = document.querySelector('.vk-public-row');
         const box = selector => row.querySelector(selector).getBoundingClientRect();
         const author = box('.vk-public-row__author'), title = box('.vk-public-row__title'), excerpt = box('.vk-public-row__excerpt');
         return {
-          ordered: author.bottom <= title.top + 1 && title.bottom <= excerpt.top + 1,
+          ordered: title.bottom <= excerpt.top + 1 && excerpt.bottom <= author.top + 1,
           overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         };
       })()`);
       check(
         card.ordered && card.overflow <= 1,
-        `320px / 200% ${theme}: enlarged r1 card stacks without overflow (${JSON.stringify(card)})`,
+        `320px / 200% ${theme}: enlarged R3 row stacks without overflow (${JSON.stringify(card)})`,
       );
     }
     if ([320,390,834,1440].includes(width)) await page.capture('discovery-' + [theme,width,scale].join('-'), { boundary: 'real-public-api', scenario: 'TAG-PR-06' });

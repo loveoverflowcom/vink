@@ -139,7 +139,7 @@ pub enum ColorRole {
     Warning,
     /// Conflict notice.
     WarningContainer,
-    /// Recipe: Text field and writing area fill.
+    /// R3 #336: borderless field fill one step above the page so the control reads without an outline.
     FieldContainer,
     /// Recipe: Text field border.
     FieldOutline,
@@ -456,7 +456,7 @@ impl ColorRole {
             ColorRole::TertiaryContainer => Rgba::new(255, 217, 232, 1.0),
             ColorRole::Warning => Rgba::new(108, 87, 17, 1.0),
             ColorRole::WarningContainer => Rgba::new(247, 237, 203, 1.0),
-            ColorRole::FieldContainer => Rgba::new(247, 242, 250, 1.0),
+            ColorRole::FieldContainer => Rgba::new(232, 224, 240, 1.0),
             ColorRole::FieldOutline => Rgba::new(129, 118, 142, 1.0),
             ColorRole::FocusRing => Rgba::new(114, 80, 180, 1.0),
         }
@@ -535,7 +535,7 @@ impl ColorRole {
             ColorRole::TertiaryContainer => Rgba::new(101, 54, 77, 1.0),
             ColorRole::Warning => Rgba::new(227, 199, 108, 1.0),
             ColorRole::WarningContainer => Rgba::new(78, 66, 35, 1.0),
-            ColorRole::FieldContainer => Rgba::new(33, 27, 41, 1.0),
+            ColorRole::FieldContainer => Rgba::new(55, 46, 66, 1.0),
             ColorRole::FieldOutline => Rgba::new(160, 149, 171, 1.0),
             ColorRole::FocusRing => Rgba::new(212, 187, 255, 1.0),
         }
@@ -614,7 +614,7 @@ impl ColorRole {
             ColorRole::TertiaryContainer => None,
             ColorRole::Warning => None,
             ColorRole::WarningContainer => None,
-            ColorRole::FieldContainer => Some(ColorRole::SurfaceContainerLow),
+            ColorRole::FieldContainer => Some(ColorRole::SurfaceContainerHigh),
             ColorRole::FieldOutline => Some(ColorRole::Outline),
             ColorRole::FocusRing => Some(ColorRole::Focus),
         }
@@ -869,6 +869,18 @@ pub const CONTRAST: &[ContrastPair] = &[
         min: 3.0,
         usage: "Focus perimeter on neutral action container",
     },
+    ContrastPair {
+        fg: ColorRole::OnSurface,
+        bg: ColorRole::SurfaceContainerHigh,
+        min: 4.5,
+        usage: "Input text on the R3 field fill",
+    },
+    ContrastPair {
+        fg: ColorRole::OnSurfaceVariant,
+        bg: ColorRole::SurfaceContainerHigh,
+        min: 4.5,
+        usage: "Placeholder and read-only values on fields",
+    },
 ];
 
 /// Shadows: CSS value per theme.
@@ -906,6 +918,11 @@ pub const FONT_FACES: &[FontFace] = &[
         family: "Be Vietnam Pro",
         file: "be-vietnam-pro-400.woff2",
         weight: (400, 400),
+    },
+    FontFace {
+        family: "Be Vietnam Pro",
+        file: "be-vietnam-pro-500.woff2",
+        weight: (500, 500),
     },
     FontFace {
         family: "Be Vietnam Pro",
@@ -1267,6 +1284,46 @@ pub mod dim {
         compact: None,
         web: WebUnit::Rem,
     };
+    pub const TEXT_DRAFT_TITLE: Dimension = Dimension {
+        token: "text.draft-title",
+        css_var: "--vk-text-draft-title",
+        value: 28.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Rem,
+    };
+    pub const TEXT_PROFILE_EDIT_HEADING: Dimension = Dimension {
+        token: "text.profile-edit-heading",
+        css_var: "--vk-text-profile-edit-heading",
+        value: 28.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Rem,
+    };
+    pub const TEXT_PROFILE_INPUT: Dimension = Dimension {
+        token: "text.profile-input",
+        css_var: "--vk-text-profile-input",
+        value: 17.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Rem,
+    };
+    pub const TEXT_PROFILE_MONOGRAM: Dimension = Dimension {
+        token: "text.profile-monogram",
+        css_var: "--vk-text-profile-monogram",
+        value: 26.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Rem,
+    };
+    pub const TEXT_PROFILE_MONOGRAM_WIDE: Dimension = Dimension {
+        token: "text.profile-monogram-wide",
+        css_var: "--vk-text-profile-monogram-wide",
+        value: 30.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Rem,
+    };
     pub const TEXT_READING: Dimension = Dimension {
         token: "text.reading",
         css_var: "--vk-text-reading",
@@ -1276,7 +1333,7 @@ pub mod dim {
         web: WebUnit::Rem,
     };
 
-    pub const ALL: [Dimension; 44] = [
+    pub const ALL: [Dimension; 49] = [
         DENSITY_CONTROL_HEIGHT,
         DENSITY_CONTROL_PADDING,
         DENSITY_STACK_GAP,
@@ -1320,6 +1377,11 @@ pub mod dim {
         SPACE_DRAFT_ACTION_GAP,
         TEXT_AUTH_DIALOG_HEADING,
         TEXT_AUTH_HEADING,
+        TEXT_DRAFT_TITLE,
+        TEXT_PROFILE_EDIT_HEADING,
+        TEXT_PROFILE_INPUT,
+        TEXT_PROFILE_MONOGRAM,
+        TEXT_PROFILE_MONOGRAM_WIDE,
         TEXT_READING,
     ];
 }
@@ -1339,7 +1401,7 @@ pub mod text {
         family: font::UI,
         size: TextSize::Fixed(16.0),
         weight: 400,
-        line_height: 1.6,
+        line_height: 1.65,
         tracking_em: 0.0,
     };
     pub const CAPTION: TextRole = TextRole {
@@ -1348,7 +1410,7 @@ pub mod text {
         family: font::UI,
         size: TextSize::Fixed(13.0),
         weight: 400,
-        line_height: 1.4,
+        line_height: 1.5,
         tracking_em: 0.0,
     };
     pub const CODE: TextRole = TextRole {
@@ -1365,29 +1427,38 @@ pub mod text {
         css_prefix: "--vk-type-display",
         family: font::READING,
         size: TextSize::Fluid {
-            min: 32.0,
-            max: 48.0,
+            min: 36.0,
+            max: 44.0,
         },
-        weight: 600,
-        line_height: 1.2,
-        tracking_em: -0.025,
+        weight: 500,
+        line_height: 1.15,
+        tracking_em: 0.0,
+    };
+    pub const EXCERPT: TextRole = TextRole {
+        token: "type.excerpt",
+        css_prefix: "--vk-type-excerpt",
+        family: font::READING,
+        size: TextSize::Fixed(17.0),
+        weight: 400,
+        line_height: 1.6,
+        tracking_em: 0.0,
     };
     pub const HEADLINE: TextRole = TextRole {
         token: "type.headline",
         css_prefix: "--vk-type-headline",
         family: font::READING,
-        size: TextSize::Fixed(28.0),
-        weight: 600,
-        line_height: 1.3,
-        tracking_em: -0.015,
+        size: TextSize::Fixed(30.0),
+        weight: 500,
+        line_height: 1.25,
+        tracking_em: 0.0,
     };
     pub const LABEL: TextRole = TextRole {
         token: "type.label",
         css_prefix: "--vk-type-label",
         family: font::UI,
         size: TextSize::Fixed(14.0),
-        weight: 600,
-        line_height: 1.4,
+        weight: 500,
+        line_height: 1.45,
         tracking_em: 0.0,
     };
     pub const READING: TextRole = TextRole {
@@ -1402,24 +1473,35 @@ pub mod text {
         line_height: 1.85,
         tracking_em: 0.0,
     };
+    pub const SECTION: TextRole = TextRole {
+        token: "type.section",
+        css_prefix: "--vk-type-section",
+        family: font::UI,
+        size: TextSize::Fixed(18.0),
+        weight: 600,
+        line_height: 1.4,
+        tracking_em: 0.0,
+    };
     pub const TITLE: TextRole = TextRole {
         token: "type.title",
         css_prefix: "--vk-type-title",
         family: font::READING,
         size: TextSize::Fixed(22.0),
-        weight: 600,
+        weight: 500,
         line_height: 1.3,
         tracking_em: 0.0,
     };
 
-    pub const ALL: [TextRole; 8] = [
+    pub const ALL: [TextRole; 10] = [
         BODY,
         CAPTION,
         CODE,
         DISPLAY,
+        EXCERPT,
         HEADLINE,
         LABEL,
         READING,
+        SECTION,
         TITLE,
     ];
 }

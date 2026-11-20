@@ -934,39 +934,43 @@ fn ResultRow(
                 } else {
                     author.name.clone().into_any()
                 };
-                // The title link and the profile link are siblings: never one link inside another.
-                let author_view = match author.profile {
+                // Two people may share a pen name (#293): the handle is visible, not only in the label.
+                let handle = author.profile.as_ref().map(|profile| format!("@{}", profile.handle));
+                let identity = view! {
+                    <span class="vk-public-row__avatar" aria-hidden="true">{initials}</span>
+                    <span class="vk-public-row__who">
+                        <span class="vk-public-row__author">{author_text}</span>
+                        {handle.map(|handle| view! { <span class="vk-public-row__handle">{handle}</span> })}
+                    </span>
+                };
+                // Only a verified projection makes the whole byline a profile link.
+                let byline = match author.profile {
                     Some(profile) => {
                         let label = format!("Mở hồ sơ {} (@{})", author.name, profile.handle);
                         view! {
-                            <a class="vk-public-row__author vk-public-row__profile" id=format!("work-{}-author", work.work_id)
-                                href=profile.href aria-label=label data-profile-return="true">{author_text}</a>
+                            <a class="vk-public-row__byline vk-public-row__profile" id=format!("work-{}-author", work.work_id)
+                                href=profile.href aria-label=label data-profile-return="true">{identity}</a>
                         }.into_any()
                     }
-                    None => view! { <span class="vk-public-row__author">{author_text}</span> }.into_any(),
+                    None => view! { <div class="vk-public-row__byline">{identity}</div> }.into_any(),
                 };
                 view! {
                     <div class="vk-public-row__card">
                         <div class="vk-public-row__main">
-                            // Heading first in the DOM (heading navigation, Tab: work → author);
-                            // CSS shows the byline above it as in Khám phá r1.
+                            // Heading first in the DOM (heading navigation, Tab: work → author).
+                            // R3 (#336): CSS shows the form tag above the title; excerpt, then byline.
                             <h2 class="vk-public-row__title" id=title_id>
                                 <a class="vk-public-row__link" href=href aria-labelledby=title_label on:click=move |_event| {
                                     #[cfg(feature = "hydrate")]
                                     super::remember_public_position(&_event, &context, &return_id, &navigate);
                                 }>{highlighted_text(&work.title, &query)}</a>
                             </h2>
-                            <div class="vk-public-row__byline">
-                                <span class="vk-public-row__avatar" aria-hidden="true">{initials}</span>
-                                {author_view}
-                                {primary_tag.map(|tag| view! {
-                                    <span class="vk-public-row__dot" aria-hidden="true">"·"</span>
-                                    <span class="vk-public-row__tag">{tag}</span>
-                                })}
-                            </div>
+                            {primary_tag.map(|tag| view! {
+                                <p class="vk-public-row__eyebrow"><span class="vk-public-row__tag">{tag}</span></p>
+                            })}
                             {excerpt.map(|text| view! { <p class="vk-public-row__excerpt">{text}</p> })}
+                            {byline}
                         </div>
-                        <span class="vk-public-row__chevron" aria-hidden="true"><Icon name=IconName::ExpandMore /></span>
                     </div>
                 }
             })}

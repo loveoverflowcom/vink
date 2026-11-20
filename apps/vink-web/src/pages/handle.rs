@@ -105,13 +105,16 @@ fn render_profile(
                 <Link rel="canonical" href=crate::canonical_url(&author.href) />
                 <article class="vk-author-public">
                     <MobileBrand />
-                    <div class="vk-author-art" aria-hidden="true"></div>
-                    <span class="vk-author-seal" aria-hidden="true">{initials}</span>
-                    <header>
-                        <h1 id="author-profile-heading" tabindex="-1">{author.pen_name}</h1>
-                        <p>{format!("@{}", author.handle)}</p>
-                    </header>
-                    <super::profile::OwnProfileLink handle=author.handle.clone() />
+                    // R3 (#336): a compact identity cluster; no banner, the owner action sits
+                    // beside the name when there is room and wraps under it when there is not.
+                    <div class="vk-author-identity">
+                        <span class="vk-author-seal" aria-hidden="true">{initials}</span>
+                        <header>
+                            <h1 id="author-profile-heading" tabindex="-1">{author.pen_name}</h1>
+                            <p>{format!("@{}", author.handle)}</p>
+                        </header>
+                        <super::profile::OwnProfileLink handle=author.handle.clone() />
+                    </div>
                     <super::follow::ProfileActionRegion
                         handle=author.handle.clone()
                         live_override=live_relationships

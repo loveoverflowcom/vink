@@ -201,6 +201,6 @@ class PreviewTest {
 
     @Test
     fun selfHostedFacesDecodeOnDesktop() {
-        assertEquals(3, fonts.loaded.size, fonts.status)
+        assertEquals(expectedDesktopFontFiles, fonts.loaded.sorted(), fonts.status)
     }
 }

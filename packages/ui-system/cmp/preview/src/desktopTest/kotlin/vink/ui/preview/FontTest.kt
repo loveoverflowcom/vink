@@ -28,6 +28,13 @@ import org.jetbrains.skia.FontVariation
 import org.jetbrains.skia.Typeface
 import vink.ui.VinkFontFaces
 
+internal val expectedDesktopFontFiles = listOf(
+    "be-vietnam-pro-400.ttf",
+    "be-vietnam-pro-500.ttf",
+    "be-vietnam-pro-600.ttf",
+    "literata-variable.ttf",
+)
+
 class FontTest {
     private fun typeface(file: String): Typeface {
         val bytes = assertNotNull(PreviewFonts.resource(file), "missing resource: $file")
@@ -48,7 +55,11 @@ class FontTest {
             assertTrue(bytes.take(4) == listOf<Byte>(0, 1, 0, 0), "$file must be sfnt TrueType")
             typeface(file).use { native ->
                 assertEquals(face.family, native.familyName, file)
-                val expectedWeight = if (file == "be-vietnam-pro-600.ttf") 600 else 400
+                val expectedWeight = when (file) {
+                    "be-vietnam-pro-500.ttf" -> 500
+                    "be-vietnam-pro-600.ttf" -> 600
+                    else -> 400
+                }
                 assertEquals(expectedWeight, native.fontStyle.weight, file)
                 assertTrue(native.getUTF32Glyphs(scalars).all { it.toInt() != 0 }, "$file has missing Vietnamese NFC/NFD glyphs")
                 val axes = native.variationAxes.orEmpty().associate { it.tag to (it.minValue to it.maxValue) }
@@ -77,17 +88,23 @@ class FontTest {
     @Test
     fun composeMeasuresWithTheLoadedFacesAtBothWeights() {
         val loaded = PreviewFonts.load()
-        assertEquals(3, loaded.loaded.size, loaded.status)
+        assertEquals(expectedDesktopFontFiles, loaded.loaded.sorted(), loaded.status)
         val measurer = TextMeasurer(createFontFamilyResolver(), Density(1f), LayoutDirection.Ltr)
         for ((family, file) in listOf(
             loaded.fonts.ui to "be-vietnam-pro-400.ttf",
+            loaded.fonts.ui to "be-vietnam-pro-500.ttf",
             loaded.fonts.ui to "be-vietnam-pro-600.ttf",
             loaded.fonts.reading to "literata-variable.ttf",
         )) {
             // Do not assume the host's default font has different metrics: users can change
             // fontconfig defaults. Require a bundled family and measure against its bytes.
             assertIs<FontListFontFamily>(family, "$file must use a bundled font family")
-            val weights = if (file == "literata-variable.ttf") listOf(400, 600) else listOf(if ("600" in file) 600 else 400)
+            val weights = when {
+                file == "literata-variable.ttf" -> listOf(400, 500, 600)
+                "600" in file -> listOf(600)
+                "500" in file -> listOf(500)
+                else -> listOf(400)
+            }
             for (weight in weights) {
                 typeface(file).use { original ->
                     original.makeClone(FontVariation("wght", weight.toFloat())).use { native ->

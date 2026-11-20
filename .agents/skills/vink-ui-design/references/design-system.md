@@ -23,7 +23,7 @@ Không suy ra tương phản đạt từ tên token hay một preview tạo sinh
 
 ## Typography và tính toàn vẹn văn bản
 
-UI dùng **Be Vietnam Pro** 400/600, văn đọc/editor/tiêu đề dùng **Literata** variable;
+UI dùng **Be Vietnam Pro** 400/500/600, văn đọc/editor/tiêu đề dùng **Literata** variable;
 cả hai tự host dạng WOFF2 subset Latin + tiếng Việt, có OFL và provenance tại
 `apps/vink-web/assets/fonts` (README ở đó ghi kích thước, cách tải, cách thêm face).
 Fallback (Noto, Segoe UI, Georgia…) vẫn phải đọc được khi font chưa tải hoặc lỗi.

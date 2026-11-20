@@ -476,17 +476,17 @@ private fun Typography(combining: Boolean) {
         val nfc = nfc(VinkFixture.COMBINING)
         Note("Chuỗi dấu tổ hợp lưu ở dạng NFD: ${VinkFixture.COMBINING.length} điểm mã, ${nfc.length} khi chuẩn hóa NFC.")
     }
-    val roles = listOf(
-        VinkTextRoles.Display to (if (combining) VinkFixture.LONG_TITLE else VinkFixture.DISPLAY),
-        VinkTextRoles.Headline to VinkFixture.HEADLINE,
-        VinkTextRoles.Title to (if (combining) VinkFixture.COMBINING else VinkFixture.TITLE),
-        VinkTextRoles.Body to VinkFixture.BODY,
-        VinkTextRoles.Label to VinkFixture.LABEL,
-        VinkTextRoles.Caption to VinkFixture.CAPTION,
-        VinkTextRoles.Reading to (if (combining) VinkFixture.COMBINING else VinkFixture.READING),
-        VinkTextRoles.Code to VinkFixture.CODE,
-    )
-    roles.forEach { (role, sample) ->
+    VinkTextRoles.all.forEach { role ->
+        val sample = when (role) {
+            VinkTextRoles.Display -> if (combining) VinkFixture.LONG_TITLE else VinkFixture.DISPLAY
+            VinkTextRoles.Headline, VinkTextRoles.Section -> VinkFixture.HEADLINE
+            VinkTextRoles.Title -> if (combining) VinkFixture.COMBINING else VinkFixture.TITLE
+            VinkTextRoles.Body -> VinkFixture.BODY
+            VinkTextRoles.Label -> VinkFixture.LABEL
+            VinkTextRoles.Caption -> VinkFixture.CAPTION
+            VinkTextRoles.Reading, VinkTextRoles.Excerpt -> if (combining) VinkFixture.COMBINING else VinkFixture.READING
+            else -> VinkFixture.CODE
+        }
         Column(Modifier.testTag("type:${role.token}")) {
             Code("${role.token} · ${role.size.value}sp${role.maxSize?.let { " (Web tới ${it.value})" } ?: ""} · ${role.weight} · ${role.lineHeight.value}sp · ${role.trackingEm}em")
             Box(Modifier.widthIn(max = VinkDimens.Measure)) { TextIn(sample, role) }

@@ -1,8 +1,8 @@
 use leptos::{prelude::*, task::spawn_local};
 use unicode_normalization::UnicodeNormalization;
 use vink_ui::{
-    ActionState, Button, ButtonKind, ButtonVariant, ChoiceOption, Link, Select, TextArea,
-    TextField, TextInput,
+    ActionState, Button, ButtonKind, ButtonVariant, ChoiceOption, Icon, IconName, Link, Select,
+    TextArea, TextField, TextInput,
 };
 use wasm_bindgen::JsCast;
 
@@ -365,8 +365,15 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
                 <PolicyField form label="Danh sách đang theo dõi" id="profile-following-list" access=|p| &mut p.following_list />
                 <PolicyField form label="Số người đang theo dõi" id="profile-following-count" access=|p| &mut p.following_count />
             </fieldset>
-            <p class="vk-muted">"Trường đã đặt Chỉ mình tôi hiện chưa thể công khai lại."</p>
-            <p><Link href="/toi/dia-chi">"Địa chỉ tác giả"</Link></p>
+            <p class="vk-muted vk-profile-note">"Trường đã đặt Chỉ mình tôi hiện chưa thể công khai lại."</p>
+            // A separate task (#290): a navigation row, independent of Lưu hồ sơ.
+            <a class="vk-profile-handle-row" href="/toi/dia-chi">
+                <span class="vk-profile-handle-row__text">
+                    <span class="vk-profile-handle-row__title">"Địa chỉ tác giả"</span>
+                    <span class="vk-profile-handle-row__value">{move || format!("@{}", form.base.with(|base| base.handle.clone()))}</span>
+                </span>
+                <span class="vk-profile-handle-row__open" aria-hidden="true"><Icon name=IconName::ArrowBack /></span>
+            </a>
             {move || form.conflict.get().map(|current| view! {
                 <Conflict form current />
             })}
@@ -425,14 +432,29 @@ fn PolicyField(
             .update(|policies| *access(policies) = visibility);
     });
     move || {
+        // AC-02 (#336): a locked value is a fact, not a control with a dead option.
+        if stored_private.get() {
+            let label_id = format!("{id}-label");
+            let group_label = label_id.clone();
+            return view! {
+                <div class="vk-profile-policy vk-profile-policy--locked" role="group" aria-labelledby=group_label>
+                    <div class="vk-ui-field">
+                        <span class="vk-ui-field__label" id=label_id>{label}</span>
+                        <p class="vk-profile-policy__value" id=id>
+                            <Icon name=IconName::Lock />
+                            <span>{policy_text(Visibility::Owner)}</span>
+                        </p>
+                    </div>
+                </div>
+            }
+            .into_any();
+        }
         let options = vec![
-            ChoiceOption {
-                disabled: stored_private.get(),
-                ..ChoiceOption::new("everyone", "Công khai")
-            },
+            ChoiceOption::new("everyone", "Công khai"),
             ChoiceOption::new("self", "Chỉ mình tôi"),
         ];
-        view! { <Select id label options value on_change disabled /> }
+        view! { <div class="vk-profile-policy"><Select id label options value on_change disabled /></div> }
+            .into_any()
     }
 }
 

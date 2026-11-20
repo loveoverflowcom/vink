@@ -141,8 +141,8 @@ enum class ColorRole(val token: String, val cssVar: String, val light: Long, val
     Warning("color.warning", "--vk-warning", 0xFF6C5711, 0xFFE3C76C),
     /** Conflict notice. */
     WarningContainer("color.warning-container", "--vk-warning-container", 0xFFF7EDCB, 0xFF4E4223),
-    /** Recipe: Text field and writing area fill. */
-    FieldContainer("field.container", "--vk-field-container", 0xFFF7F2FA, 0xFF211B29),
+    /** R3 #336: borderless field fill one step above the page so the control reads without an outline. */
+    FieldContainer("field.container", "--vk-field-container", 0xFFE8E0F0, 0xFF372E42),
     /** Recipe: Text field border. */
     FieldOutline("field.outline", "--vk-field-outline", 0xFF81768E, 0xFFA095AB),
     /** Recipe: Focus ring colour. */
@@ -160,7 +160,7 @@ enum class ColorRole(val token: String, val cssVar: String, val light: Long, val
             ActionToggleSelectedContent -> OnSecondaryContainer
             ActionTonalContainer -> SecondaryContainer
             ActionTonalContent -> OnSecondaryContainer
-            FieldContainer -> SurfaceContainerLow
+            FieldContainer -> SurfaceContainerHigh
             FieldOutline -> Outline
             FocusRing -> Focus
             else -> null
@@ -210,6 +210,8 @@ val VinkContrastPairs: List<ContrastPair> = listOf(
     ContrastPair(ColorRole.ActionToggleSelectedContent, ColorRole.ActionToggleSelectedContainer, 4.5, "Confirmed-On ToggleAction label, mark and count"),
     ContrastPair(ColorRole.ActionNeutralContent, ColorRole.ActionNeutralContainer, 4.5, "Neutral icon/toggle content"),
     ContrastPair(ColorRole.FocusRing, ColorRole.ActionNeutralContainer, 3.0, "Focus perimeter on neutral action container"),
+    ContrastPair(ColorRole.OnSurface, ColorRole.SurfaceContainerHigh, 4.5, "Input text on the R3 field fill"),
+    ContrastPair(ColorRole.OnSurfaceVariant, ColorRole.SurfaceContainerHigh, 4.5, "Placeholder and read-only values on fields"),
 )
 
 /** Font stacks; native renderers map `native` until a TTF/OTF pipeline exists. */
@@ -222,6 +224,7 @@ enum class FontRole(val token: String, val stack: List<String>, val native: Nati
 /** Self-hosted faces (apps/vink-web/assets/fonts); WOFF2 is not loaded natively. */
 val VinkFontFaces: List<FontFace> = listOf(
     FontFace("Be Vietnam Pro", "be-vietnam-pro-400.woff2", 400, 400),
+    FontFace("Be Vietnam Pro", "be-vietnam-pro-500.woff2", 500, 500),
     FontFace("Be Vietnam Pro", "be-vietnam-pro-600.woff2", 600, 600),
     FontFace("Literata", "literata-variable.woff2", 200, 900),
 )
@@ -271,6 +274,11 @@ object VinkDimens {
     val SpaceDraftActionGap = 8.dp
     val TextAuthDialogHeading = 26.dp
     val TextAuthHeading = 32.dp
+    val TextDraftTitle = 28.dp
+    val TextProfileEditHeading = 28.dp
+    val TextProfileInput = 17.dp
+    val TextProfileMonogram = 26.dp
+    val TextProfileMonogramWide = 30.dp
     val TextReading = 17.dp
 }
 
@@ -283,16 +291,18 @@ object VinkDensityDimens {
 
 /** Text roles. Fluid Web sizes use their minimum here; `maxSize` records the Web cap. */
 object VinkTextRoles {
-    val Body = VinkTextRole("type.body", FontRole.Ui, size = 16.sp, maxSize = null, weight = 400, lineHeight = 25.6.sp, trackingEm = 0.0f)
-    val Caption = VinkTextRole("type.caption", FontRole.Ui, size = 13.sp, maxSize = null, weight = 400, lineHeight = 18.2.sp, trackingEm = 0.0f)
+    val Body = VinkTextRole("type.body", FontRole.Ui, size = 16.sp, maxSize = null, weight = 400, lineHeight = 26.4.sp, trackingEm = 0.0f)
+    val Caption = VinkTextRole("type.caption", FontRole.Ui, size = 13.sp, maxSize = null, weight = 400, lineHeight = 19.5.sp, trackingEm = 0.0f)
     val Code = VinkTextRole("type.code", FontRole.Code, size = 14.sp, maxSize = null, weight = 400, lineHeight = 21.sp, trackingEm = 0.0f)
-    val Display = VinkTextRole("type.display", FontRole.Reading, size = 32.sp, maxSize = 48.sp, weight = 600, lineHeight = 38.4.sp, trackingEm = -0.025f)
-    val Headline = VinkTextRole("type.headline", FontRole.Reading, size = 28.sp, maxSize = null, weight = 600, lineHeight = 36.4.sp, trackingEm = -0.015f)
-    val Label = VinkTextRole("type.label", FontRole.Ui, size = 14.sp, maxSize = null, weight = 600, lineHeight = 19.6.sp, trackingEm = 0.0f)
+    val Display = VinkTextRole("type.display", FontRole.Reading, size = 36.sp, maxSize = 44.sp, weight = 500, lineHeight = 41.4.sp, trackingEm = 0.0f)
+    val Excerpt = VinkTextRole("type.excerpt", FontRole.Reading, size = 17.sp, maxSize = null, weight = 400, lineHeight = 27.2.sp, trackingEm = 0.0f)
+    val Headline = VinkTextRole("type.headline", FontRole.Reading, size = 30.sp, maxSize = null, weight = 500, lineHeight = 37.5.sp, trackingEm = 0.0f)
+    val Label = VinkTextRole("type.label", FontRole.Ui, size = 14.sp, maxSize = null, weight = 500, lineHeight = 20.3.sp, trackingEm = 0.0f)
     val Reading = VinkTextRole("type.reading", FontRole.Reading, size = 17.sp, maxSize = 20.sp, weight = 400, lineHeight = 31.45.sp, trackingEm = 0.0f)
-    val Title = VinkTextRole("type.title", FontRole.Reading, size = 22.sp, maxSize = null, weight = 600, lineHeight = 28.6.sp, trackingEm = 0.0f)
+    val Section = VinkTextRole("type.section", FontRole.Ui, size = 18.sp, maxSize = null, weight = 600, lineHeight = 25.2.sp, trackingEm = 0.0f)
+    val Title = VinkTextRole("type.title", FontRole.Reading, size = 22.sp, maxSize = null, weight = 500, lineHeight = 28.6.sp, trackingEm = 0.0f)
 
-    val all: List<VinkTextRole> = listOf(Body, Caption, Code, Display, Headline, Label, Reading, Title)
+    val all: List<VinkTextRole> = listOf(Body, Caption, Code, Display, Excerpt, Headline, Label, Reading, Section, Title)
 }
 
 /** Motion tokens. Reduced finite transitions become instant; loops stop, never spin at 0 ms. */
