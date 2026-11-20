@@ -24,6 +24,7 @@ use crate::domain::moderation::{
     AdminVerdict, DecisionProvenance, JobState, NeedsAdminCause, RevisionDecisionFacts,
     WorkModerationFacts,
 };
+use crate::domain::notification::{Conclusion, WorkDecisionFacts, work_decided};
 use crate::domain::publication::{Moderation, PointerEffect, PublicationFacts};
 
 /// Take the work prefix of the lock order. Returns the owner, or `None` for an unknown work.
@@ -137,11 +138,12 @@ pub(crate) async fn apply_pointer_effect(
             .map_err(classify)?;
         }
         PointerEffect::Clear => {
-            query("DELETE FROM publications WHERE work_id = $1")
+            let cleared = query("DELETE FROM publications WHERE work_id = $1")
                 .bind(work.as_uuid())
                 .execute(&mut *conn)
                 .await
                 .map_err(classify)?;
+            super::notification::work_left_public(conn, work, cleared.rows_affected()).await?;
         }
         PointerEffect::Unchanged => {}
     }
@@ -190,17 +192,46 @@ pub(crate) async fn write_decision(
     revision: RevisionId,
     source: DecisionSource,
 ) -> Result<(), StoreError> {
-    let state = publication
+    let revision_moderation = publication
         .revisions
         .iter()
         .find(|r| r.snapshot.revision == revision)
-        .and_then(|r| moderation_str(r.moderation))
+        .map(|r| r.moderation)
+        .ok_or_else(|| integrity("decision for unsubmitted revision", revision))?;
+    let state = moderation_str(revision_moderation)
         .ok_or_else(|| integrity("decision for unsubmitted revision", revision))?;
     let decision: &RevisionDecisionFacts = moderation
         .revisions
         .iter()
         .find(|r| r.revision == revision)
         .ok_or_else(|| integrity("decision facts missing", revision))?;
+    // P-11b (#346): the latest conclusion recorded for this revision at a version not above this
+    // one, read before this write replaces the current row. Legacy approvals may exist only in
+    // the current row, so both sources are read.
+    let prior: Option<String> = query_scalar(
+        "SELECT moderation FROM (
+             SELECT moderation, decision_version FROM work_revision_moderation
+              WHERE work_id = $1 AND revision_id = $2
+             UNION ALL
+             SELECT moderation, decision_version FROM work_revision_decision_history
+              WHERE work_id = $1 AND revision_id = $2
+         ) d
+          WHERE moderation IN ('approved', 'rejected') AND decision_version <= $3
+          ORDER BY decision_version DESC
+          LIMIT 1",
+    )
+    .bind(publication.work.as_uuid())
+    .bind(revision.as_uuid())
+    .bind(decision.version.get())
+    .fetch_optional(&mut *conn)
+    .await
+    .map_err(classify)?;
+    let prior = match prior.as_deref() {
+        None => None,
+        Some("approved") => Some(Conclusion::Approved),
+        Some("rejected") => Some(Conclusion::Rejected),
+        Some(other) => return Err(integrity("stored decision conclusion", other)),
+    };
 
     let mut kind = None;
     let mut reason_code = None;
@@ -311,6 +342,20 @@ pub(crate) async fn write_decision(
     .execute(&mut *conn)
     .await
     .map_err(classify)?;
+    // Every decision path (evaluation, human case, appeal, author resubmission) passes here, so
+    // the notice commits with the decision it reports or not at all.
+    super::notification::emit(
+        conn,
+        work_decided(WorkDecisionFacts {
+            work: publication.work,
+            revision,
+            owner: publication.owner,
+            decision_version: decision.version.get(),
+            moderation: revision_moderation,
+            prior,
+        }),
+    )
+    .await?;
     Ok(())
 }
 

@@ -19,6 +19,8 @@ use crate::domain::discussion::post_review::{
     self, CONSUMER, EVENT, POLICY, ReviewBinding, ReviewDecision, decide_review, payload_digest,
 };
 use crate::domain::discussion::submission::PayloadDigest;
+use crate::domain::ids::{CommentId, WorkId};
+use crate::domain::notification::comment_left_public;
 
 pub fn finding_code(finding: PostReviewFinding) -> &'static str {
     match finding {
@@ -308,6 +310,25 @@ pub(super) async fn apply(
         ReviewDecision::Hold(next) => {
             sqlx::query("UPDATE comments SET review = 'pending', moderation_version = $2, updated_at = now() WHERE id = $1")
                 .bind(comment).bind(next.version().get()).execute(&mut *tx).await?;
+            // A held approved comment is no longer a public contribution (#346): invalidate it
+            // by target in this same fenced transaction.
+            let work: Uuid = sqlx::query_scalar(
+                "SELECT t.work_id FROM comments c JOIN discussion_threads t ON t.id = c.thread_id WHERE c.id = $1",
+            )
+            .bind(comment)
+            .fetch_one(&mut *tx)
+            .await?;
+            super::notification::emit(
+                &mut *tx,
+                comment_left_public(
+                    WorkId::from_uuid(work),
+                    CommentId::from_uuid(comment),
+                    current,
+                    next,
+                ),
+            )
+            .await
+            .map_err(|error| sqlx::Error::Protocol(format!("notification enqueue: {error}")))?;
             ("held", next)
         }
         ReviewDecision::Superseded => ("superseded", current),

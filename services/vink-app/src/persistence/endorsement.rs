@@ -10,7 +10,8 @@
 //! Lock order, the prefix of the discussion adapter's: publication (FOR SHARE) → thread (FOR
 //! SHARE) → comment (FOR SHARE) → the actor's principal row (FOR UPDATE, the standing fence) →
 //! the actor's command-key namespace (transaction advisory lock) → the actor's record (FOR
-//! UPDATE). A withdrawal or republish (pointer update) and a
+//! UPDATE) → for an accepted Thấm change, the notification activation row (FOR KEY SHARE, #346).
+//! A withdrawal or republish (pointer update) and a
 //! moderation decision (comment UPDATE) either commit before the decision reads its facts or wait
 //! until it commits; endorsement never takes their rows in the reverse order. The advisory lock
 //! makes one command key have one winner across ALL targets of the actor, which a lock on the
@@ -31,6 +32,7 @@ use uuid::Uuid;
 
 use super::PgStore;
 use super::discussion::{integrity, read_snapshot, state};
+use super::notification;
 use super::postgres::classify;
 use super::principal::require_active;
 use crate::application::endorsement::CommentBatch;
@@ -45,6 +47,8 @@ use crate::domain::endorsement::{
     EndorsementTargetFacts, StoredEndorsement, decide_endorsement,
 };
 use crate::domain::ids::{CommentId, PrincipalId, RevisionId, ThreadId, WorkId};
+use crate::domain::notification::{ThamFacts, tham_changed};
+use crate::domain::publication::NotificationStamp;
 
 /// A first command can lose the INSERT to a concurrent first command at most once: afterwards
 /// the winner's row exists (rows are never deleted) and every read locks it.
@@ -478,6 +482,31 @@ impl EndorsementStore for PgStore {
                     continue;
                 }
                 write_receipt(&mut tx, write.receipt()).await?;
+                // Notifications (#346): a real Thấm change on a work revision is owed to the
+                // owner in this transaction; Hữu ích (comment target) is outside R3.
+                if let (EndorsementTarget::Work { work, revision }, Some((_, owner))) =
+                    (target, owner)
+                {
+                    let state = write.next().state();
+                    let stamp = NotificationStamp {
+                        epoch: notification::public_epoch(&mut tx, work).await?,
+                        readable: published.is_some(),
+                    };
+                    notification::emit(
+                        &mut tx,
+                        tham_changed(ThamFacts {
+                            work,
+                            revision,
+                            owner: PrincipalId::from_uuid(owner),
+                            actor,
+                            delta: write.delta(),
+                            version_after: state.version().get(),
+                            accepted_order: state.order().get(),
+                            stamp,
+                        }),
+                    )
+                    .await?;
+                }
             }
             let visible = target_facts.is_some_and(|facts| facts.visible(target));
             let count = if visible {

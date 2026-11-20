@@ -150,3 +150,85 @@ thực hiện đủ các mục sau (**hiện toàn bộ ở trạng thái `NOT_C
      SSR khách đọc danh sách Thấm công khai, kiểm logout/đổi tài khoản không rò cache.
 3. **Phạm vi giữ ở `DEFERRED`:** CMP/native UI (`P-14A` chỉ yêu cầu API dùng lại được ở `#348`,
    không dựng app native trong Epic `#305`), kênh gửi thông báo quản trị (`P-05`) và Follow Notifications.
+
+---
+
+## 6. Hiện trạng `#346`: producer, outbox và relay phía App
+
+Nhánh `feat/346-notification-producers-relay` (gốc `develop@ab5ecaf`). Bốn chiều trạng thái:
+
+| Chiều | Ghi nhận |
+| --- | --- |
+| Sản phẩm | `PRODUCT_CONFIRMED` trong brief `#305` R3; `VDR-NOTIFICATIONS@r1` vẫn `PENDING`. |
+| Kiến trúc | `T-01 / CHOICE-15 = A` và `T-02 / CHOICE-16 = A` là lựa chọn kỹ thuật của `#346` (§6.1–6.2), mức `DESIGN_PROPOSED`; không làm `VDR-NOTIFICATIONS-CONTRACT@r1` thành `ACCEPTED`. |
+| Triển khai | `persistence-api`: producer trong giao dịch nguồn, outbox `notification_events`/`notification_deliveries`, kích hoạt theo epoch, relay ACK có fence (thư viện `vink_app::notification_relay`), lệnh vận hành `vink-app notifications …`. Relay **chưa chạy** trong `vink-worker` vì transport `T-07` thuộc `#347` (log `notification_relay = "no_transport"`). |
+| Bằng chứng | Unit domain (`domain::notification::tests`, 12 ca, gồm hai digest ví dụ của hợp đồng §3 khớp từng byte) và PostgreSQL thật (`tests/postgres/notification.rs`, 15 ca) với receiver fixture. Hai process/hai DB: `NOT_RUN` (chờ `#347`). |
+
+### 6.1. `T-01 / CHOICE-15`: chọn A — mở rộng nền outbox hiện có
+
+Producer dùng chung vòng đời thuần của outbox Discussion (`domain::discussion::outbox`: claim
+generation là fence, lease chỉ là đồng hồ sống, backoff có trần, hạn chót, requeue chỉ cho dead
+letter) nhưng ghi vào bảng riêng `notification_events` + `notification_deliveries` của App.
+Không sửa `discussion_events` vì bảng đó buộc `comment_id NOT NULL` + FK và `EffectHandler` chạy
+trong giao dịch, cấm mạng; đổi giả định đó phải kiểm lại hai consumer `admission_shadow.v1` và
+`operator_post_review.v1`. Phương án B (outbox từng owner) phải đối soát bốn nguồn. Đối chiếu bằng:
+
+- **Rollback/no-op:** `emit` chạy trong giao dịch nguồn sau mọi lock của path; lỗi enqueue làm
+  rollback mutation (`an_enqueue_failure_rolls_the_decision_back`); chuyển trạng thái không đổi,
+  stale hay replay không ghi gì (unit + PG).
+- **Cutover tại commit:** `notification_activation` (một dòng). Producer đọc `FOR KEY SHARE`, lệnh
+  `activate|deactivate` khóa `FOR UPDATE`, nên mỗi giao dịch commit trọn trước hoặc trọn sau mốc.
+  Bảng khởi tạo ở trạng thái tắt; mỗi lần bật mở epoch mới; không backfill. Trên schema trước
+  migration `20261127000000` (chỉ gặp ở test dựng schema theo mốc), thiếu bảng được coi là "chưa
+  từng bật".
+
+Mỗi sự kiện lưu envelope chuẩn hóa (không có `payload_digest`) và SHA-256 của nó, ghi một lần ở
+producer; mọi lần gửi và replay dùng đúng chuỗi đó. `dedup_key` (loại, phạm vi, `source_order`, và
+actor với Thấm) bảo đảm một nghĩa vụ cho một chuyển trạng thái.
+
+### 6.2. `T-02 / CHOICE-16`: chọn A — relay là vòng lặp của worker App
+
+`NotificationRelay::run_once`: claim ngắn (`FOR UPDATE SKIP LOCKED`, generation + 1, lease) rồi
+commit → gửi một lô qua port `NotificationSink` ngoài mọi giao dịch App, timeout ngắn hơn lease →
+ghi từng kết quả trong giao dịch khóa delivery và kiểm generation. `applied`/`already_applied` →
+`succeeded`; `payload_mismatch`, `rejected_invalid` → dead letter chờ vận hành;
+`transient_unavailable`, lỗi transport, timeout, thiếu kết quả → retry có backoff, hết lượt/hạn →
+dead letter. Một lời gọi mỗi relay, tối đa 100 sự kiện; nhiều process an toàn nhờ `SKIP LOCKED`
+và fence. Dừng: ngừng claim, chờ `drain`, lô bỏ dở không ghi gì và lease tự hết hạn. Chọn A vì
+cùng pool/giám sát với outbox hiện có; tách binary (B) khi `#347` đo được backlog/restart cần cô lập.
+
+### 6.3. Điểm phát trong giao dịch nguồn
+
+| Sự kiện | Seam | Quy tắc đã cài |
+| --- | --- | --- |
+| `comment.root.approved` / `comment.reply.approved` | `persistence::discussion::moderate_comment` (Approve) | Khóa `publications FOR SHARE` sau khóa bình luận, trước standing fence; chỉ phát khi non-public → public và bài đọc được tại commit. Root → chủ bài; reply → tác giả đích trực tiếp (nếu còn hàng) + tác giả root; loại actor, dedup, sắp UUID tăng dần. |
+| `comment.moderation.adverse` | `moderate_comment` (Reject/Remove) | Gửi người viết, `actor_id = null`, `action_required = false`; Rejected → Rejected hay gỡ lặp không phát. |
+| `work.moderation.decided` | `moderation_write::write_decision` (mọi đường: `finish_job`, `conclude_case`, `appeals::conclude`, `request_public`) | Chỉ khi kết luận mới `approved`/`rejected` khác kết luận gần nhất của revision (hàng hiện tại + lịch sử). `action_required = true` chỉ với `rejected`. Không lộ người duyệt hay lý do. |
+| `work.endorsement.tham.changed` | `persistence::endorsement::set_endorsement` (Work, `Add`/`Remove`) | `source_order = accepted_order`; `first_selection = (version sau ghi == 2)`; `None`, replay, refusal và Hữu ích không phát. |
+| `notification.invalidation` (`comment`) | `moderate_comment` (gỡ/từ chối bình luận đã công khai), `remove_own_comment`, `post_review::apply` (Hold) | Không có người nhận; `source_order = moderation_version` mới. |
+| `notification.invalidation` (`work`) | `moderation_write::apply_pointer_effect` (Clear), `publication::set_private` | Khi thật sự xóa con trỏ công khai; `source_order` = epoch vừa kết thúc. |
+| `notification.invalidation` (`principal`) | `suspend_principal`, `reinstate_principal` | `source_order` = số lần đình chỉ + số lần gỡ đình chỉ. |
+
+### 6.4. Vận hành
+
+`vink-app notifications status | activate <ghi chú> | deactivate <ghi chú> | dead [<limit>] |
+requeue <event-uuid> <ghi chú> | replay <since-rfc3339> <ghi chú>`. Kích hoạt, requeue và replay
+đều có audit append-only. **Replay horizon** = 30 ngày (`REPLAY_HORIZON_DAYS`): `vink-worker` và
+`vink-app maintenance prune` chỉ xóa sự kiện đã ACK quá hạn này; sự kiện còn `ready`/`leased`/`dead`
+được giữ. Chỉ bật kích hoạt khi receiver `#347` sẵn sàng. Backout:
+[`down.sql`](../../services/vink-app/migrations-rollback/20261127000000_notification_outbox.down.sql)
+từ chối khi còn delivery chưa xong.
+
+### 6.5. Tiêu chí của `#346` theo bằng chứng
+
+| AC | Kết quả ở ranh giới App | Còn chờ |
+| --- | --- | --- |
+| AC-01 | PASS (unit + PG): root chỉ báo chủ bài, loại self; bảng 7 ca §4.3 B; pending/submitted không phát; duyệt lúc bài không đọc được không phát và tái công khai không bù. | Ca "ẩn" ở PG mô phỏng bằng xóa con trỏ trong SQL; `set_private` thật được dùng ở luồng quyết định tác phẩm nhưng chưa kết hợp với duyệt bình luận. |
+| AC-02 | PASS (unit + PG): adverse đúng người viết; P-11 qua evaluator thật + ca người duyệt (approved → rejected, `action_required`); Thấm add/remove/relike với `first_selection`; stale/không đổi không phát. | `Rejected → Approved` qua appeal chỉ có unit; đối soát âm thầm P-02B ở bên nhận (`#347`). |
+| AC-03 | PARTIAL: invalidation cho ẩn/rút/gỡ/hold/đình chỉ; envelope chỉ ID/version/mã (kiểm khóa và chuỗi cấm); cutover theo epoch; type quản trị không có producer. | Cutoff sự kiện trễ và horizon ở bên nhận (`#347`); `PUB-04/05` xóa bài chưa có runtime nên chưa có producer. |
+| AC-04 | PASS (PG): ép lỗi enqueue làm rollback quyết định; nghĩa vụ còn nguyên khi relay dừng và được giao sau restart. | Notification Service dừng thật (`#347`). |
+| AC-05 | PASS với receiver fixture: mất ACK, lease hết hạn + ACK trễ của worker cũ, retry/backoff/dead letter, requeue, payload mismatch, replay sau restore. | Hai process/hai DB, transport `T-07`, diễn tập restore lệch mốc với `#347`. |
+
+Lệnh đã chạy (PostgreSQL 17.11 container tạm): `cargo test -p vink-app --lib domain::notification`,
+`cargo test -p vink-app --test postgres` (toàn suite). `cargo xtask verify quick` được chạy trước khi
+mở PR; CI không chờ theo yêu cầu của chủ dự án.

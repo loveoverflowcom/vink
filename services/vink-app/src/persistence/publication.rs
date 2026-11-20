@@ -1302,12 +1302,15 @@ impl AuthorPublicationStore for PgStore {
             .await
             .map_err(classify)?;
 
-            // 5. Delete pointer from publications
-            query("DELETE FROM publications WHERE work_id = $1")
+            // 5. Delete pointer from publications; a readable epoch that ends here owes a work
+            // invalidation in this transaction (#346).
+            let cleared = query("DELETE FROM publications WHERE work_id = $1")
                 .bind(work_id.as_uuid())
                 .execute(&mut *tx)
                 .await
                 .map_err(classify)?;
+            super::notification::work_left_public(&mut tx, work_id, cleared.rows_affected())
+                .await?;
 
             query("UPDATE work_appeals SET state = 'closed', close_reason = 'withdrawn', updated_at = now() WHERE work_id = $1 AND state = 'open'")
                 .bind(work_id.as_uuid()).execute(&mut *tx).await.map_err(classify)?;
