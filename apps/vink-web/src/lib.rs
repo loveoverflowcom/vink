@@ -47,6 +47,11 @@ use pages::me::Me;
 use pages::{DeskIndex, DraftEditor, Home, NotFound, Reader, TagDetail};
 use shell::AdaptiveShell;
 
+// The OCI build pins SSR and hydrated views to the same public asset namespace.
+fn asset_url(path: &str) -> String {
+    format!("{}{path}", option_env!("VINK_ASSET_PREFIX").unwrap_or(""))
+}
+
 /// HTML document around the app, rendered on the server only.
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     let fixture = api::local_discussion_fixture_scope();
@@ -59,30 +64,30 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <meta name="color-scheme" content="light dark" />
                 {fixture.map(|scope| view! { <meta name="vink-local-discussion-fixture" content=scope /> })}
                 {api::sign_in_open().then(|| view! { <meta name="vink-sign-in" content="open" /> })}
-                <link id="vink-favicon" rel="icon" type="image/svg+xml" href="/pkg/brand/vpen-r1-favicon.svg" />
-                <link id="vink-manifest" rel="manifest" href="/pkg/brand/vpen-r1-manifest-light.webmanifest" />
+                <link id="vink-favicon" rel="icon" type="image/svg+xml" href=asset_url("/pkg/brand/vpen-r1-favicon.svg") />
+                <link id="vink-manifest" rel="manifest" href=asset_url("/pkg/brand/vpen-r1-manifest-light.webmanifest") />
                 <script inner_html=appearance::BOOTSTRAP></script>
-                <link as="image" rel="preload" href="/pkg/brand/vpen-r1-lockup-light.svg" type="image/svg+xml" />
-                <link as="image" rel="preload" href="/pkg/brand/vpen-r1-lockup-dark.svg" type="image/svg+xml" />
+                <link as="image" rel="preload" href=asset_url("/pkg/brand/vpen-r1-lockup-light.svg") type="image/svg+xml" />
+                <link as="image" rel="preload" href=asset_url("/pkg/brand/vpen-r1-lockup-dark.svg") type="image/svg+xml" />
                 // Faces every current page renders above the fold: UI body text and the
                 // reading/heading serif. The 600 face is left to CSS discovery.
                 // `as` first: after a string value the macro would read it as a cast.
                 <link
                     as="font"
                     rel="preload"
-                    href="/pkg/fonts/be-vietnam-pro-400.woff2"
+                    href=asset_url("/pkg/fonts/be-vietnam-pro-400.woff2")
                     type="font/woff2"
                     crossorigin="anonymous"
                 />
                 <link
                     as="font"
                     rel="preload"
-                    href="/pkg/fonts/literata-variable.woff2"
+                    href=asset_url("/pkg/fonts/literata-variable.woff2")
                     type="font/woff2"
                     crossorigin="anonymous"
                 />
-                <link rel="stylesheet" href="/pkg/vink.css?brand=vpen-r1" />
-                <HydrationScripts options />
+                <link rel="stylesheet" href=asset_url("/pkg/vink.css?brand=vpen-r1") />
+                <HydrationScripts options root=option_env!("VINK_ASSET_PREFIX").unwrap_or("").to_string() />
                 <MetaTags />
             </head>
             <body>

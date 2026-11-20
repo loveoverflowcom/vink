@@ -67,7 +67,7 @@ pub fn ExpressionPilot() -> impl IntoView {
                         <li data-expression-index=index data-phase="static" data-generation="0">
                             <div class="vk-expression-art" aria-hidden="true">
                                 <span class="vk-expression-unicode">{asset.unicode}</span>
-                                <img src=format!("/pkg/expressions/assets/{}", asset.poster) alt=asset.unicode width="96" height="96" />
+                                <img src=crate::asset_url(&format!("/pkg/expressions/assets/{}", asset.poster)) alt=asset.unicode width="96" height="96" />
                             </div>
                             <Button id=format!("expression-{index}") variant=ButtonVariant::Tonal>{asset.label_vi}</Button>
                             <p class="vk-expression-status" data-player-status>"Phát một lần"</p>
@@ -89,7 +89,7 @@ pub fn ExpressionPilot() -> impl IntoView {
                 <p>
                     <a href="https://googlefonts.github.io/noto-emoji-files/?view=docs">"Nguồn Google"</a>" · "
                     <a href="https://creativecommons.org/licenses/by/4.0/">"CC BY 4.0"</a>" · "
-                    <a href="/pkg/expressions/NOTICE.txt">"Giấy phép và ghi công"</a>
+                    <a href=crate::asset_url("/pkg/expressions/NOTICE.txt")>"Giấy phép và ghi công"</a>
                 </p>
             </footer>
         </div>

@@ -77,11 +77,11 @@ fn brand_inventory() -> BTreeMap<String, BrandOrigin> {
         ),
         (
             "vpen-r1-manifest-light.webmanifest",
-            "b1183544ed20cba4d4022309b4cd363b287ca58689db3dcd169d73c0e44b99bb",
+            "4b0027519d487e3cf5a4a10e775c262ed6a7a26757f16f4ca497089110bee87d",
         ),
         (
             "vpen-r1-manifest-dark.webmanifest",
-            "7c2ef83ac8a5b59806cb01c121486c7482fd590e02a79f7f4776cf467bb3314a",
+            "6cb8144dc8d2eae45d97e99576bb96da9530848bfe1a6591fff311469fbe871a",
         ),
     ] {
         files.insert(name.into(), BrandOrigin::Derivative(sha256));
