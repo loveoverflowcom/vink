@@ -108,9 +108,23 @@ async function profileRecovery(guest, base, handle, { check, textContrast }) {
   for (const method of ['GET', 'HEAD']) {
     check((await response(missing, method)).status === 404, `${method} to unknown profile returns 404`);
   }
-  await guest.goto(missing);
-  check(await guest.eval(`${q(heading)}?.textContent === 'Không tìm thấy hồ sơ' &&
-    ${q('#profile-unavailable-explore')}?.getAttribute('href') === '/'`), '404 explains the address and links to Khám phá');
+  await guest.send('Emulation.setScriptExecutionDisabled', {value: true});
+  try {
+    await guest.viewport(390);
+    await guest.goto(missing);
+    check(await guest.eval(`${q(heading)}?.textContent === 'Không tìm thấy hồ sơ' &&
+      ${q('#profile-unavailable-explore')}?.getAttribute('href') === '/' &&
+      !document.documentElement.dataset.hydrated`), '404 explains the address and offers Khám phá with JavaScript disabled');
+    await guest.eval(`${q(heading)}.focus()`);
+    await guest.key('Tab', 0, {settle: false});
+    await guest.waitFor("document.activeElement?.id === 'profile-unavailable-explore'", '404 Tab reaches the recovery link');
+    await guest.capture('profile-missing-390-light-100', {scenario: 'profile-missing', textScale: 100, boundary: 'real SSR, JS disabled'});
+    await guest.key('Enter', 0, {settle: false});
+    await guest.waitFor("location.pathname === '/'", '404 recovery link opens Khám phá by keyboard');
+  } finally {
+    await guest.send('Emulation.setScriptExecutionDisabled', {value: false});
+    await guest.viewport(1280);
+  }
 
   // Real SSR failure from the documented resolver gate, in the disposable #331 database.
   authorFixtureSql("UPDATE author_handle_rollout SET ready=false WHERE singleton");
@@ -149,9 +163,6 @@ async function profileRecovery(guest, base, handle, { check, textContrast }) {
 
     await guest.send('Emulation.setScriptExecutionDisabled', {value: true});
     try {
-      await guest.goto(missing);
-      check(await guest.eval(`${q('#profile-unavailable-explore')}?.getAttribute('href') === '/' &&
-        !document.documentElement.dataset.hydrated`), '404 offers Khám phá with JavaScript disabled');
       await guest.goto(lookup);
       check(await guest.eval(`document.documentElement.dataset.hydrated !== 'true' &&
         ${q(heading)}?.textContent === 'Chưa tải được hồ sơ' &&

@@ -225,7 +225,12 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
     check(await guest.eval(`${has('#profile-unavailable-explore')}?.getAttribute('href') === '/' &&
       !document.documentElement.dataset.hydrated`), '410 offers a real Khám phá link with JavaScript disabled');
     await guest.viewport(390);
-    await guest.capture('profile-gone-390-light-100', {scenario: 'profile-gone', boundary: 'real SSR; scratch profile retired; JS disabled'});
+    await guest.eval(`${has('#author-profile-heading')}.focus()`);
+    await guest.key('Tab', 0, {settle:false});
+    await guest.waitFor("document.activeElement?.id === 'profile-unavailable-explore'", '410 Tab reaches the recovery link');
+    await guest.capture('profile-gone-390-light-100', {scenario: 'profile-gone', textScale: 100, boundary: 'real SSR; scratch profile retired; JS disabled'});
+    await guest.key('Enter', 0, {settle:false});
+    await guest.waitFor("location.pathname === '/'", '410 recovery link opens Khám phá by keyboard');
   } finally {
     await guest.send('Emulation.setScriptExecutionDisabled', {value:false});
   }
