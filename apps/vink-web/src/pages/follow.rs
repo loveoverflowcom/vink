@@ -25,6 +25,7 @@ mod browser;
 pub(super) struct RelationshipPersonRow {
     pub author: PublicAuthorRef,
     pub mutual: bool,
+    pub return_cursor: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -73,6 +74,7 @@ impl From<AuthorRelationshipsLoad> for LiveListState {
                     .map(|author| RelationshipPersonRow {
                         author,
                         mutual: false,
+                        return_cursor: None,
                     })
                     .collect(),
                 next_cursor,
@@ -101,10 +103,20 @@ fn encode_next_target(handle: &str) -> String {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) enum RelationshipSummary {
+    Ready(PublicRelationships),
+    #[cfg(feature = "hydrate")]
+    Reading,
+    #[cfg(feature = "hydrate")]
+    Unavailable,
+}
+
 #[component]
 pub(super) fn ProfileActionRegion(
     handle: String,
-    live_override: RwSignal<Option<(String, PublicRelationships)>>,
+    live_override: RwSignal<Option<RelationshipSummary>>,
+    retry_summary: RwSignal<u64>,
     own_relationships: RwSignal<Option<(String, OwnRelationshipsSummary)>>,
 ) -> impl IntoView {
     let session = Session::current();
@@ -118,7 +130,7 @@ pub(super) fn ProfileActionRegion(
         }
     });
     #[cfg(not(feature = "hydrate"))]
-    let _ = (live_override, own_relationships);
+    let _ = (live_override, retry_summary, own_relationships);
 
     view! {
         <div id="follow" class="vk-follow-region">
@@ -163,6 +175,7 @@ pub(super) fn ProfileActionRegion(
                                         scope
                                         handle=stored_handle.get_value()
                                         live_override
+                                        retry_summary
                                         own_relationships
                                     />
                                 }
@@ -184,33 +197,53 @@ pub(super) fn ProfileActionRegion(
 
 #[component]
 pub(super) fn ProfileRelationships(
-    public: Signal<PublicRelationships>,
+    public: Signal<RelationshipSummary>,
     own: ReadSignal<Option<(String, OwnRelationshipsSummary)>>,
+    on_retry: Callback<()>,
 ) -> impl IntoView {
     let session = Session::current();
     let summary = Signal::derive(move || {
         if let Some((scope, own_rel)) = own.get()
             && session.profile_scope.get().as_deref() == Some(scope.as_str())
         {
-            (
+            Ok((
                 Some(own_rel.followers_count),
                 own_rel.valid_followers_href().map(str::to_owned),
                 Some(own_rel.following_count),
                 own_rel.valid_following_href().map(str::to_owned),
-            )
+            ))
         } else {
-            let pub_rel = public.get();
-            (
+            let pub_rel = match public.get() {
+                RelationshipSummary::Ready(rel) => rel,
+                #[cfg(feature = "hydrate")]
+                RelationshipSummary::Reading => return Err(false),
+                #[cfg(feature = "hydrate")]
+                RelationshipSummary::Unavailable => return Err(true),
+            };
+            Ok((
                 pub_rel.followers_count,
                 pub_rel.valid_followers_href().map(str::to_owned),
                 pub_rel.following_count,
                 pub_rel.valid_following_href().map(str::to_owned),
-            )
+            ))
         }
     });
 
     move || {
-        let (f_count, f_href, g_count, g_href) = summary.get();
+        let (f_count, f_href, g_count, g_href) = match summary.get() {
+            Ok(facts) => facts,
+            Err(failed) => return view! {
+                <div id="profile-relationships" class="vk-profile-relationships">
+                    <p role="status">{if failed { "Chưa tải được danh sách và số đếm theo dõi." }
+                        else { "Đang cập nhật danh sách và số đếm theo dõi…" }}</p>
+                    {failed.then(|| view! {
+                        <Button id="profile-relationships-retry" variant=ButtonVariant::Tonal on_press=on_retry>
+                            "Thử lại thông tin theo dõi"
+                        </Button>
+                    })}
+                </div>
+            }.into_any(),
+        };
         if f_count.is_none() && f_href.is_none() && g_count.is_none() && g_href.is_none() {
             return view! { <span></span> }.into_any();
         }
@@ -402,6 +435,7 @@ fn RelationshipListPage(
                         initial=result.map_or(LiveListState::Unavailable, LiveListState::from)
                         live=live_state
                         hydrated
+                        append_generation=append_trigger.read_only()
                         on_append=Callback::new(move |()| append_trigger.update(|n| *n += 1))
                         on_retry=Callback::new(move |()| renew())
                     />
@@ -420,6 +454,7 @@ fn RelationshipListProjection(
     initial: LiveListState,
     live: RwSignal<Option<LiveListState>>,
     hydrated: RwSignal<bool>,
+    append_generation: ReadSignal<u64>,
     on_append: Callback<()>,
     on_retry: Callback<()>,
 ) -> impl IntoView {
@@ -444,7 +479,7 @@ fn RelationshipListProjection(
             key=Clone::clone
             children=move |(handle, pen_name, href, is_own)| view! {
                 <RelationshipResults handle pen_name href direction is_own
-                    continued state hydrated on_append />
+                    continued state hydrated append_generation on_append />
             }
         />
         {move || state.with(|state| match state {
@@ -471,6 +506,7 @@ fn RelationshipResults(
     continued: bool,
     state: Memo<LiveListState>,
     hydrated: RwSignal<bool>,
+    append_generation: ReadSignal<u64>,
     on_append: Callback<()>,
 ) -> impl IntoView {
     let title = direction_heading(direction, &pen_name);
@@ -542,7 +578,7 @@ fn RelationshipResults(
             <Heading id="relationship-title" level=HeadingLevel::H1 attr:tabindex="-1">
                 {title}
             </Heading>
-            <RelationshipDirections handle direction is_own />
+            <RelationshipDirections handle direction is_own append_generation />
             {move || count.get().map(|n| view! {
                 <p id="relationship-count" class="vk-rel-count">{count_copy(direction, n)}</p>
             })}
@@ -551,7 +587,7 @@ fn RelationshipResults(
                     <For
                         each=move || rows.get()
                         key=|row| (row.author.handle.clone(), row.author.pen_name.clone(),
-                            row.author.href.clone(), row.mutual)
+                            row.author.href.clone(), row.mutual, row.return_cursor.clone())
                         children=move |row| {
                             let row_id = format!("rel-person-{}", row.author.handle);
                             let author = BylineAuthor {
@@ -562,7 +598,7 @@ fn RelationshipResults(
                                 neutral: false,
                             };
                             view! {
-                                <li class="vk-rel-item">
+                                <li class="vk-rel-item" data-rel-cursor=row.return_cursor>
                                     <AuthorIdentity author id=Some(row_id) size=AvatarSize::Medium />
                                     {(is_own && row.mutual).then(|| view! {
                                         <span class="vk-follow-mutual">"Theo dõi lẫn nhau"</span>
@@ -606,6 +642,7 @@ fn RelationshipDirections(
     handle: String,
     direction: FollowDirection,
     is_own: bool,
+    append_generation: ReadSignal<u64>,
 ) -> impl IntoView {
     let (opposite, current_label, other_label) = match direction {
         FollowDirection::Followers => (
@@ -620,32 +657,55 @@ fn RelationshipDirections(
         ),
     };
     let expected = format!("/@{handle}/{}", opposite.web_segment());
-    let data = (!is_own).then(|| {
-        let (generation, _) = signal(0);
-        crate::api::author_resource(handle, None, generation)
+    let (generation, advance) = signal(0);
+    Effect::new(move |previous: Option<u64>| {
+        let append = append_generation.get();
+        if previous.is_some_and(|old| old != append) {
+            advance.update(|n| *n += 1);
+        }
+        append
     });
+    let data = (!is_own).then(|| crate::api::author_resource(handle.clone(), None, generation));
     view! {
         <Suspense fallback=|| ()>
             {move || {
-                let allowed = is_own || data.and_then(|read| read.get()).is_some_and(|(_, result)| {
-                    let Ok(crate::contract::AuthorResolution::Current { relationships, .. }) = result else {
-                        return false;
-                    };
-                    let href = match opposite {
-                        FollowDirection::Followers => relationships.valid_followers_href(),
-                        FollowDirection::Following => relationships.valid_following_href(),
-                    };
-                    href == Some(expected.as_str())
-                });
-                allowed.then(|| view! {
-                    <nav class="vk-rel-directions" aria-label="Danh sách theo dõi">
-                        <span aria-current="page">{current_label}</span>
-                        <UiLink variant=LinkVariant::Standalone attr:id="rel-other-direction"
-                            attr:data-profile-return="true" href=expected.clone()>
-                            {other_label}
-                        </UiLink>
-                    </nav>
-                })
+                let result = if is_own { Some(Ok(true)) } else {
+                    data.and_then(|read| read.get()).and_then(|(stamp, result)| {
+                        (stamp == generation.get()).then(|| match result {
+                            Ok(crate::contract::AuthorResolution::Current { author, relationships, .. })
+                                if author.handle == handle => {
+                                let href = match opposite {
+                                    FollowDirection::Followers => relationships.valid_followers_href(),
+                                    FollowDirection::Following => relationships.valid_following_href(),
+                                };
+                                Ok(href == Some(expected.as_str()))
+                            }
+                            Ok(_) => Ok(false),
+                            Err(_) => Err(()),
+                        })
+                    })
+                };
+                match result {
+                    Some(Ok(true)) => view! {
+                        <nav class="vk-rel-directions" aria-label="Danh sách theo dõi">
+                            <span aria-current="page">{current_label}</span>
+                            <UiLink variant=LinkVariant::Standalone attr:id="rel-other-direction"
+                                attr:data-profile-return="true" href=expected.clone()>
+                                {other_label}
+                            </UiLink>
+                        </nav>
+                    }.into_any(),
+                    Some(Err(())) => view! {
+                        <div class="vk-rel-directions">
+                            <p role="status">"Chưa kiểm tra được danh sách theo dõi còn lại."</p>
+                            <Button id="rel-direction-retry" variant=ButtonVariant::Tonal
+                                on_press=Callback::new(move |()| advance.update(|n| *n += 1))>
+                                "Thử lại"
+                            </Button>
+                        </div>
+                    }.into_any(),
+                    _ => ().into_any(),
+                }
             }}
         </Suspense>
     }

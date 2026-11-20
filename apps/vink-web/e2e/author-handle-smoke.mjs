@@ -175,20 +175,46 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
         result.headers.get('cache-control')?.includes('no-store'), `${method} on ${alias} redirects directly to the canonical profile`);
     }
   }
-  // A saved author link can have been built before the rename; activate it through the app router.
-  await guest.goto(base + '/');
-  await guest.waitFor("document.documentElement.dataset.hydrated === 'true'", 'alias source has hydrated');
-  await guest.eval(`(() => {
-    const saved = document.createElement('a');
-    saved.id = 'scenario-saved-author';
-    saved.setAttribute('data-profile-return', 'true');
-    saved.href = '/@${initial}';
-    saved.textContent = 'Địa chỉ tác giả đã lưu';
-    document.querySelector('main').prepend(saved);
-  })()`);
+  // A saved author link can have been built before the rename. Hold the real Alias DTO
+  // beyond the old 10s deadline, then abandon the same request in a separate navigation.
+  async function openAliasSource() {
+    await guest.goto(base + '/');
+    await guest.waitFor("document.documentElement.dataset.hydrated === 'true'", 'alias source has hydrated');
+    await guest.eval(`(() => {
+      const saved = document.createElement('a');
+      saved.id = 'scenario-saved-author';
+      saved.setAttribute('data-profile-return', 'true');
+      saved.href = '/@${initial}';
+      saved.textContent = 'Địa chỉ tác giả đã lưu';
+      const next = document.createElement('a');
+      next.id = 'scenario-next-destination';
+      next.href = '/toi';
+      next.textContent = 'Tôi';
+      document.querySelector('main').prepend(saved, next);
+    })()`);
+  }
+  const aliasApi = '/api/v1/authors/' + initial;
+  await openAliasSource();
+  const slowAlias = await holdAnswer(guest, 'GET', aliasApi);
   await guest.click('#scenario-saved-author');
+  check(await slowAlias.held() === 200, 'real Alias DTO held before delivery');
+  await new Promise(resolve => setTimeout(resolve, 11000));
+  await slowAlias.finish(false, true);
   await guest.waitFor(`location.pathname === '/@mua-ngo' &&
-    document.activeElement?.id === 'author-profile-heading'`, 'in-app alias activation hands focus to canonical H1');
+    document.activeElement?.id === 'author-profile-heading'`,
+    'slow alias activation hands focus to canonical H1 after 11 seconds');
+  console.log('  ok  slow alias preserves canonical H1 focus after an 11 second wait');
+
+  await openAliasSource();
+  const abandonedAlias = await holdAnswer(guest, 'GET', aliasApi);
+  await guest.click('#scenario-saved-author');
+  check(await abandonedAlias.held() === 200, 'second Alias DTO held before choosing another destination');
+  await guest.click('#scenario-next-destination');
+  await guest.waitFor("location.pathname === '/toi' && document.querySelector('#me-title')", 'new destination commits first');
+  await abandonedAlias.finish(false, true);
+  check(await guest.eval("location.pathname === '/toi' && !sessionStorage.getItem('vinkProfileAliasFocus')"),
+    'abandoned alias cannot replace the newer destination or queue stale focus');
+  await guest.goto(base + '/@mua-ngo');
   const formerName = await guest.eval(`${has('#author-profile-heading')}.textContent`);
   await guest.capture('handle-public-guest', { scenario: 'handle-public', textScale: 100 });
   await guest.goto(base + '/toi');

@@ -287,7 +287,7 @@ impl FollowController {
                     target_handle: resp.target_handle,
                     following: resp.following,
                     accepted_order: resp.accepted_order,
-                    relationships: (!resp.relationships.is_empty()).then_some(resp.relationships),
+                    relationships: Some(resp.relationships),
                 });
                 FollowEffect {
                     should_focus_heading: false,
@@ -706,6 +706,32 @@ mod tests {
             }
             other => panic!("unexpected phase {other:?}"),
         }
+    }
+
+    #[test]
+    fn follow_write_applies_an_authoritative_empty_projection() {
+        let s = scope(1, "an-may");
+        let mut ctrl = FollowController::new(s.clone());
+        ctrl.finish_load(&s, Ok(viewer_other("an-may", false, false, 0, 0)));
+        ctrl.begin_intent("first".into(), None).unwrap();
+        let effect = ctrl.finish_write(
+            &s,
+            "first",
+            Ok(SetFollowResponse {
+                target_handle: "an-may".into(),
+                outcome: "accepted".into(),
+                following: true,
+                mutual: false,
+                pair_version: 1,
+                accepted_order: 1,
+                committed: None,
+                relationships: PublicRelationships::default(),
+            }),
+        );
+        assert_eq!(
+            effect.invalidation.unwrap().relationships,
+            Some(PublicRelationships::default())
+        );
     }
 
     #[test]

@@ -180,6 +180,34 @@ async function profileRecovery(guest, base, handle, { check, textContrast }) {
   }
 }
 
+async function graphReadUnavailable(page, url) {
+  let requests = 0;
+  const listener = (event) => {
+    if (event.sessionId !== page.sessionId || event.method !== 'Fetch.requestPaused') return;
+    const {requestId, request} = event.params;
+    if (request.url !== url || request.method !== 'GET') {
+      page.send('Fetch.continueRequest', {requestId}).catch(() => {});
+      return;
+    }
+    requests++;
+    page.send('Fetch.fulfillRequest', {
+      requestId,
+      responseCode: 503,
+      responseHeaders: [{name: 'content-type', value: 'application/json'}],
+      body: Buffer.from(JSON.stringify({error: {code: 'unavailable'}})).toString('base64'),
+    }).catch(() => {});
+  };
+  page.cdp.listeners.push(listener);
+  await page.send('Fetch.enable', {patterns: [{urlPattern: url}]});
+  return {
+    requests: () => requests,
+    async finish() {
+      page.cdp.listeners = page.cdp.listeners.filter(item => item !== listener);
+      await page.send('Fetch.disable');
+    },
+  };
+}
+
 export async function authorFollows(page, other, { base, openPage, check, holdAnswer, textContrast, switchActor }) {
   console.log('Social Follow Graph (#294):');
   const profA = await ownProfile(page);
@@ -211,6 +239,16 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   check(await page.eval(`!${q('#me-return-link')}`), 'open redirect next URL is rejected');
 
   // 2. Owner profile: no self-follow button; own Following link/count & /dang-theo-doi accessible even with following_list=self.
+  const ownerGraphDown = await graphReadUnavailable(page, `${base}/api/v1/authors/${handleA}/relationship/me`);
+  try {
+    await page.goto(`${base}/@${handleA}`);
+    await page.waitFor(q('#own-profile-edit-link'), 'own profile proves ownership despite Graph 503');
+    check(ownerGraphDown.requests() === 1 && await page.eval(`!${q('#follow-action')} && !${q('#follow-retry')} &&
+      ${q('#own-profile-edit-link')}.getAttribute('href') === '/toi/chinh-ho-so'`),
+      'Graph-only 503 preserves Chỉnh hồ sơ and hides viewer-only controls');
+  } finally {
+    await ownerGraphDown.finish();
+  }
   await page.goto(`${base}/@${handleA}`);
   await page.waitFor(q('#profile-following-link'), 'owner sees Following link despite default self policy');
   await page.waitFor(q('#own-profile-edit-link'), 'owner sees the Edit Profile action');
@@ -351,6 +389,46 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   await page.waitFor(`${q('#follow-action')}?.textContent.trim() === 'Theo dõi' && window.__followEvents.length === 4`,
     'reset edge after the dropped-ACK test');
 
+  // A confirmed PUT can intentionally return an empty projection for all four read fields.
+  const setPolicies = (changes) => authorFixtureSql(`UPDATE author_profiles SET policies = policies ||
+    ${literal(JSON.stringify(changes))}::jsonb WHERE principal_id = ${literal(profB.principal_id)}`);
+  const allHidden = {followers_list: 'self', followers_count: 'self', following_list: 'self', following_count: 'self'};
+  const mixedGrants = {followers_list: 'everyone', followers_count: 'self', following_list: 'self', following_count: 'everyone'};
+  const profileApi = `${base}/api/v1/authors/${handleB}`;
+  const noFacts = "!document.querySelector('#profile-followers-link, #profile-following-link, #profile-followers-count, #profile-following-count')";
+  check(await page.eval(`Boolean(${q('#profile-followers-link')})`), 'old public link is present before all four grants are revoked');
+  setPolicies(allHidden);
+  const unexpectedRead = captureRequest(page, 'GET', new URL(profileApi).pathname);
+  await page.click('#follow-action');
+  await page.waitFor(`${noFacts} && ${q('#follow-action')}?.textContent.trim() === 'Bỏ theo dõi'`,
+    'authoritative empty PUT removes both directions without a second read');
+  check(unexpectedRead.count() === 0 && await page.eval(`!${q('#profile-relationships-retry')}`),
+    'confirmed hidden fields produce neither stale facts nor a retry');
+  unexpectedRead.close();
+
+  // A lost ACK confirms the edge from its receipt. Its separate public summary can fail.
+  setPolicies(mixedGrants);
+  await page.reload();
+  await page.waitFor(`${q('#follow-action')}?.textContent.trim() === 'Bỏ theo dõi' &&
+    ${q('#profile-followers-link')} && ${q('#profile-following-count')}`, 'mixed grants are visible before isolated summary failure');
+  await page.send('Network.setBlockedURLs', {urls: [profileApi]});
+  try {
+    const lost = await holdAnswer(page, 'PUT', actionPath);
+    await page.click('#follow-action');
+    check(await lost.held() === 200, 'receipt fixture commits before only summary transport fails');
+    await lost.finish(true);
+    await page.waitFor(`${q('#follow-action')}?.textContent.trim() === 'Theo dõi' &&
+      ${q('#profile-relationships-retry')} && ${noFacts}`, 'summary failure hides old facts separately from the confirmed edge');
+  } finally {
+    await page.send('Network.setBlockedURLs', {urls: []});
+  }
+  await page.click('#profile-relationships-retry');
+  await page.waitFor(`${q('#profile-followers-link')}?.textContent.trim() === 'Người theo dõi' &&
+    ${q('#profile-following-count')}?.textContent.trim() === '0 đang theo dõi' &&
+    !${q('#profile-followers-count')} && !${q('#profile-following-link')}`,
+    'retry restores a list without count and an independent zero count without list');
+  console.log('  ok  verified empty PUT, isolated summary error and independently granted fields after retry');
+
   // 5. 15 followers + independent 4-policy matrix + append retry + mid-list live permission loss.
   const followerSql = [];
   for (let i = 0; i < 15; i++) {
@@ -405,6 +483,49 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   await guest.key('Space');
   await guest.waitFor(`document.querySelectorAll('.vk-rel-item').length === 15 && !${q('#rel-load-more')}`, 'append retry loads remaining 3 rows (total 15)');
   await guest.waitFor("document.activeElement === document.querySelectorAll('.vk-rel-item a')[12]", 'successful retry brings focus to the first new row');
+
+  const appendedId = await guest.eval("document.activeElement.id");
+  const appendedLink = q('#' + appendedId);
+  const listPath = `/@${handleB}/nguoi-theo-doi`;
+  await guest.key('Enter');
+  await guest.waitFor("document.activeElement?.id === 'author-profile-heading'", 'open a profile from appended page 2');
+  await guest.eval('history.back()');
+  await guest.waitFor(`document.activeElement === ${appendedLink}`, 'Back freshly reads page 2 and restores the appended anchor');
+  check(await guest.eval(`(() => {
+    const entry = history.state.vinkProfileReturn;
+    return entry.source === ${JSON.stringify(listPath)} && typeof entry.cursor === 'string' &&
+      Object.keys(entry).sort().join(',') === 'cursor,href,id,source';
+  })()`), 'Back stores only a cursor and navigation locators in history');
+
+  const appendedEdge = `followee_id = ${literal(profB.principal_id)} AND follower_id =
+    (SELECT principal_id FROM author_profiles WHERE current_handle = ${literal(appendedId.slice('rel-person-'.length))})`;
+  const activeSince = authorFixtureSql(`SELECT active_since FROM author_follows WHERE ${appendedEdge}`);
+  await guest.key('Enter');
+  await guest.waitFor("document.activeElement?.id === 'author-profile-heading'", 'open the same appended profile before revocation');
+  authorFixtureSql(`UPDATE author_follows SET active=false, version=version+1, accepted_order=accepted_order+1,
+    active_since=NULL WHERE ${appendedEdge}`);
+  try {
+    await guest.eval('history.back()');
+    await guest.waitFor(`document.activeElement?.id === 'relationship-title' && !${appendedLink}`, 'Back focuses H1 if the saved row disappears from the fresh page');
+    console.log('  ok  verified page 2 anchor and H1 fallback from freshly read rows');
+  } finally {
+    authorFixtureSql(`UPDATE author_follows SET active=true, version=version+1, accepted_order=accepted_order+1,
+      active_since=${literal(activeSince)} WHERE ${appendedEdge}`);
+  }
+
+  setPolicies({following_list: 'everyone'});
+  await guest.goto(`${base}/@${handleB}`);
+  await guest.goto(base + listPath);
+  await guest.waitFor(`${q('#rel-load-more')} && ${q('#rel-other-direction')}`, 'opposite direction is initially allowed');
+  setPolicies({following_list: 'self'});
+  const otherDirection = await holdAnswer(guest, 'GET', new URL(profileApi).pathname);
+  await guest.click('#rel-load-more');
+  check(await otherDirection.held() === 200 && await guest.eval(`!${q('#rel-other-direction')}`),
+    'append reads the opposite permission and withholds the previous link while checking');
+  await otherDirection.finish(false, true);
+  await guest.waitFor(`!${q('#rel-other-direction')} && !${q('#rel-direction-retry')} &&
+    document.querySelectorAll('.vk-rel-item').length === 15`, 'append revalidates and removes a newly hidden opposite direction');
+  console.log('  ok  append revalidates the opposite direction independently');
 
   await guest.goto(`${base}/@${handleB}/nguoi-theo-doi`);
   await guest.waitFor(q('#rel-load-more'), 'first page offers an append cursor');

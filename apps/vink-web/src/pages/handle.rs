@@ -101,14 +101,15 @@ fn render_profile(
                 .to_uppercase();
             // The overlay belongs to this exact public projection. An authoritative refresh
             // may have revoked a list or count since the write; no old overlay may outlive it.
-            let live_relationships: RwSignal<
-                Option<(String, crate::contract::follow::PublicRelationships)>,
-            > = RwSignal::new(None);
-            let handle_for_rel = author.handle.clone();
-            let initial_rel = StoredValue::new(*relationships);
-            let effective_public = Signal::derive(move || match live_relationships.get() {
-                Some((ref h, ref rel)) if h == &handle_for_rel => rel.clone(),
-                _ => initial_rel.get_value(),
+            let live_relationships: RwSignal<Option<super::follow::RelationshipSummary>> =
+                RwSignal::new(None);
+            let retry_summary = RwSignal::new(0u64);
+            let initial_rel =
+                StoredValue::new(super::follow::RelationshipSummary::Ready(*relationships));
+            let effective_public = Signal::derive(move || {
+                live_relationships
+                    .get()
+                    .unwrap_or_else(|| initial_rel.get_value())
             });
             return view! {
                 <Title text=format!("{} · Vink", author.pen_name) />
@@ -125,11 +126,13 @@ fn render_profile(
                     <super::follow::ProfileActionRegion
                         handle=author.handle.clone()
                         live_override=live_relationships
+                        retry_summary
                         own_relationships=own_relationships
                     />
                     <super::follow::ProfileRelationships
                         public=effective_public
                         own=own_relationships.read_only()
+                        on_retry=Callback::new(move |()| retry_summary.update(|n| *n += 1))
                     />
                     {bio.map(|text| view! { <p class="vk-author-bio">{text}</p> })}
                     <section aria-labelledby="author-works-heading">
