@@ -212,11 +212,24 @@ fn ReplacementView(
     return_href: String,
 ) -> impl IntoView {
     let context = discovery::reader_context();
+    // The replacement keeps eligible comments and their public summaries. Its discussion
+    // only renders confirmed counts and never exposes endorsement write controls.
+    endorsement::Endorsements::provide(work_id.clone(), Callback::new(|()| {}));
     let hidden = author_name.is_none();
+    let badge = if hidden {
+        "Không hiển thị"
+    } else {
+        "Gỡ sau kiểm duyệt"
+    };
     let notice = if hidden {
         "Nội dung đã được ẩn"
     } else {
         "Bản này đã bị gỡ sau khi kiểm duyệt."
+    };
+    let detail = if hidden {
+        "Tác phẩm này không còn hiển thị với người đọc."
+    } else {
+        "Bản công khai của tác phẩm đã được rút sau khi kiểm duyệt."
     };
     let state = if hidden { "hidden" } else { "review-withdrawn" };
     let test_id = if hidden {
@@ -231,15 +244,20 @@ fn ReplacementView(
             <vink_ui::Link attr:id="reader-return" variant=vink_ui::LinkVariant::Standalone href=return_href>
                 <Icon name=IconName::ArrowBack /> {move || if context.get().query.q.is_empty() { "Khám phá" } else { "Về kết quả tìm kiếm" }}
             </vink_ui::Link>
-            <article id="reader-paper" class="vk-reader" data-testid=test_id>
+            <article id="reader-paper" class="vk-reader vk-reader--replacement" data-testid=test_id>
                 <header id="reader-header" class="vk-reader__header">
+                    <p class="vk-reader-replacement-badge">
+                        <Icon name=IconName::VisibilityOff size=vink_ui::IconSize::Small />
+                        <span>{badge}</span>
+                    </p>
                     {author_name.map(|name| view! { <Text role=TypeRole::Caption tone=TextTone::Muted>{name}</Text> })}
                     <Heading level=HeadingLevel::H1 role=TypeRole::Title>
                         {notice}
                     </Heading>
+                    <p class="vk-muted">{detail}</p>
                 </header>
             </article>
-            <discussion::Discussion work_id=work_id />
+            <discussion::Discussion work_id=work_id read_only=true />
         </div>
     }
 }

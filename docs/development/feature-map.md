@@ -439,6 +439,10 @@ Các hàng dưới là assertion đã viết, không tự xác nhận kết qu�
 | Web/CMP patterns | `sharing-open`, `sharing-closed`, `discussion-flat`, `discussion-anchor` cùng catalog IDs; Web render tests và CMP Desktop tests giữ text/selection qua policy | CMP là composition mẫu; chưa native service consumer, OS IME/screen reader/performance |
 | Responsive/target revocation | Browser smoke captures light/dark 320/390/834/1024/1440 và 200% ở 320/390; context fixture revoke giữ peers/draft | Capture labels tách real local PostgreSQL khỏi intercepted provider fixture; ảnh cần mở riêng |
 
+## Reader Web · Nhận xét R4 (#359, #360)
+
+`DiscussionThread` trình bày cú bấm Ưng, nhánh Phản hồi và đích đang chọn. `Discussion` sở hữu cursor, snapshot/key, quyền ghi và gỡ. Root và reply dùng cùng native textarea khi đổi chế độ. Trang thay thế tắt ghi; chỉ chủ nhận xét có `can_remove` còn thấy Gỡ. Cả trang tác giả chuyển riêng tư và trang bị rút qua kiểm duyệt hiện chữ tĩnh “Ưng” không số, kể cả khi số đã được xác nhận trước đó. Endpoint summary tiếp tục trả 404 cho tác phẩm ẩn. [Lệnh, ảnh và số đo theo SHA](discussion-ui-evidence.md), gồm [chín trạng thái của ô trả lời tại bb25af4](../design/evidence/discussion-r4-366/reply-bb25af4.jpg).
+
 ## DISC-WEB-PUBLIC-OWN-READS (10/11/2026)
 
 Nền `4891c77`; [DecisionMap/LayoutSpec/scope](discussion-web-reads.md). Coverage dưới đây là

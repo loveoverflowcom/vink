@@ -60,7 +60,8 @@ impl OwnChip {
         match self {
             Self::Pending => NoticeTone::Waiting,
             Self::Rejected => NoticeTone::Adverse,
-            Self::ApprovedOffPage | Self::Unavailable => NoticeTone::Neutral,
+            Self::ApprovedOffPage => NoticeTone::Success,
+            Self::Unavailable => NoticeTone::Neutral,
         }
     }
 }
@@ -466,6 +467,8 @@ mod tests {
         );
         assert_eq!(OwnChip::Pending.tone(), NoticeTone::Waiting);
         assert_eq!(OwnChip::Rejected.tone(), NoticeTone::Adverse);
+        assert_eq!(OwnChip::ApprovedOffPage.tone(), NoticeTone::Success);
+        assert_eq!(OwnChip::Unavailable.tone(), NoticeTone::Neutral);
         let labels = chips.map(OwnChip::label);
         assert!(labels.iter().all(|l| !l.is_empty()));
         assert_eq!(

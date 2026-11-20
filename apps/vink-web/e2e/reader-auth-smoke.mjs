@@ -45,13 +45,23 @@ export async function readerAuthClosed(page, { args, check }) {
   await page.waitFor(active('page-appearance'), '#327 keyboard still reaches Appearance on the real closed deployment');
   await page.goto(args.base + HERE);
   await page.waitFor(`${HYDRATED} && ${standing('anonymous')} && ${q(ROOT_EDITOR)}`, 'guest on disabled sign-in deployment');
-  await page.typeAtEnd(ROOT_EDITOR, ROOT_TEXT);
-  check(await page.eval(`
-    !${q('meta[name="vink-sign-in"]')} && !${q(ROOT_EDITOR+'-auth')} && !${isOpen} &&
-    !${q('#password-login')} && ${q(ROOT_EDITOR)}.value === ${JSON.stringify(ROOT_TEXT)} &&
-    ${q(ROOT_EDITOR+'-send')}.getAttribute('aria-disabled') === 'true' &&
-    ${q('#root-composer-send-note')}.textContent.includes('Vink chưa mở đăng nhập')
-  `), '#328 actual disabled App deployment exposes no Reader Auth action; drafting still works');
+  async function checkClosedComposer(editor, text) {
+    await page.typeAtEnd(editor, text);
+    const send = editor + '-send';
+    const note = editor.slice(1) + '-send-note';
+    check(await page.eval(`
+      !${q('meta[name="vink-sign-in"]')} && !${q(editor+'-auth')} && !${isOpen} &&
+      !${q('#password-login')} && ${q(editor)}.value === ${JSON.stringify(text)} &&
+      ${q(send)}.getAttribute('aria-disabled') === 'true' &&
+      ${q(send)}.getAttribute('aria-describedby')?.split(/\\s+/).includes(${JSON.stringify(note)}) &&
+      !!${q(send+' svg[data-icon=lock][aria-hidden=true]')} &&
+      ${q('#'+note)}.textContent.includes('Vink chưa mở đăng nhập')
+    `), `#328 closed sign-in: ${editor} keeps the draft with a locked send control and its visible reason`);
+  }
+  await checkClosedComposer(ROOT_EDITOR, ROOT_TEXT);
+  await page.click('#reply-to-' + ROOT);
+  await page.waitFor(`${q(REPLY_EDITOR)} && ${active(REPLY_EDITOR.slice(1))}`, 'guest reply on disabled sign-in deployment');
+  await checkClosedComposer(REPLY_EDITOR, REPLY_TEXT);
 }
 
 export async function contextualReaderAuth(owner, { args, check, openPage, seen }) {
@@ -64,8 +74,9 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
     await page.goto(args.base + '/tac-pham/' + CLOSED);
     await page.waitFor(`${HYDRATED} && ${standing('anonymous')} && ${q(ROOT_EDITOR)}`, 'closed Reader, guest confirmed');
     const closed = await page.eval(`fetch('/api/v1/works/${CLOSED}/discussion/public').then(r => r.json())`);
-    check(closed.settings.comments_open === false && await page.eval(`!${q(ROOT_EDITOR+'-auth')} && ${q(ROOT_EDITOR+'-send')}.getAttribute('aria-disabled') === 'true'`),
-      '#328 no contextual entry on a real closed discussion, composer still editable');
+    check(closed.settings.comments_open === false && await page.eval(`!${q(ROOT_EDITOR+'-auth')} && !${q(ROOT_EDITOR+'-send')}
+      && ${q(ROOT_EDITOR)}.readOnly && !${q(ROOT_EDITOR)}.disabled && !!${q('.vk-discussion-closed-banner')}`),
+      '#328 a closed discussion keeps a selectable read-only draft and offers neither sign-in nor Send');
 
     // Full Web runs Discovery first, so its newer publications may fill the first page.
     // Use an actual search result for the seeded Reader rather than assuming feed order.

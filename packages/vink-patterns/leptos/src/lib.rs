@@ -413,6 +413,9 @@ pub fn FeedbackComposer(
     /// Author intent never decides the per-work comments policy.
     #[prop(optional, into)]
     comments_closed: Signal<bool>,
+    /// Optional reactive field mode. Closing keeps the native field and its draft.
+    #[prop(optional, into)]
+    field_mode: Signal<FieldMode>,
     /// Reader-only tonal recipe; other feedback consumers retain their current form.
     #[prop(optional)]
     tonal: bool,
@@ -423,10 +426,14 @@ pub fn FeedbackComposer(
     /// Emphasis only (R4: tonal while empty, filled with text); `state` still gates presses.
     #[prop(optional, into)]
     send_variant: Option<Signal<ButtonVariant>>,
+    /// Decorative leading glyph for the tonal send action. The action state owns its reason.
+    #[prop(optional, into)]
+    send_icon: Option<Signal<IconName>>,
     #[prop(optional)] children: Option<Children>,
 ) -> impl IntoView {
     let submit_id = format!("{id}-send");
     let send_variant = send_variant.unwrap_or_else(|| Signal::stored(ButtonVariant::Filled));
+    let send_icon = Memo::new(move |_| send_icon.map_or(IconName::Send, |icon| icon.get()));
     let submit_state = Signal::derive(move || {
         if matches!(state.get(), ActionState::Pending { .. }) {
             state.get()
@@ -441,19 +448,30 @@ pub fn FeedbackComposer(
             {children.map(|header| header())}
             {intent.label().map(|label| view! { <Text role=TypeRole::Label>{label}</Text> })}
             <TextArea id label=if intent == FeedbackIntent::Technique { "Góp ý kỹ thuật có ngữ cảnh" } else { "Nhận xét của bạn" }
-                value on_input variant=if tonal { FieldVariant::FloatingTonal } else { FieldVariant::ExternalLabel }
+                value on_input mode=field_mode variant=if tonal { FieldVariant::FloatingTonal } else { FieldVariant::ExternalLabel }
                 rows=if tonal { 1 } else { 4 }
                 help=if tonal { "Tối đa 4.000 ký tự, 200 dòng. Enter xuống dòng." } else { "Tối đa 4.000 ký tự, 200 dòng. Enter xuống dòng; chỉ gửi khi bấm nút." } />
-            <Show when=move || tonal && !value.get().is_empty()><p class="vk-feedback-draft-note">"Rời trang có thể mất nháp."</p></Show>
-            <Show when=move || show_alternative.get() fallback=move || {
-                if tonal {
-                    view! { <Button id=submit_id.clone() variant=send_variant state=submit_state on_press=on_submit leading=IconName::ArrowBack>"Gửi"</Button> }.into_any()
-                } else {
-                    view! { <Button id=submit_id.clone() variant=send_variant state=submit_state on_press=on_submit>"Gửi nhận xét"</Button> }.into_any()
-                }
-            }>
-                {alternative.as_ref().map(ViewFn::run)}
-            </Show>
+            <Show when=move || tonal && !value.get().is_empty() && !comments_closed.get()><p class="vk-feedback-draft-note">"Rời trang có thể mất nháp."</p></Show>
+            <div class="vk-feedback-composer__footer">
+                <Show when=move || tonal && !comments_closed.get() && !show_alternative.get()>
+                    <p class="vk-feedback-policy">
+                        <Icon name=IconName::VerifiedUser size=IconSize::Small />
+                        <span>"Duyệt trước khi hiện công khai"</span>
+                    </p>
+                </Show>
+                <Show when=move || show_alternative.get() fallback=move || {
+                    if tonal {
+                        let id = submit_id.clone();
+                        view! { {move || view! {
+                            <Button id=id.clone() variant=send_variant state=submit_state on_press=on_submit leading=send_icon.get()>"Gửi"</Button>
+                        }} }.into_any()
+                    } else {
+                        view! { <Button id=submit_id.clone() variant=send_variant state=submit_state on_press=on_submit>"Gửi nhận xét"</Button> }.into_any()
+                    }
+                }>
+                    {alternative.as_ref().map(ViewFn::run)}
+                </Show>
+            </div>
         </section>
     }
 }
@@ -529,9 +547,14 @@ pub fn OwnRemoveAction(
         if confirming.get() {
             view! {
                 <div class="vk-discussion-remove-confirm" role="group" aria-labelledby=prompt_id.clone()>
-                    <p id=prompt_id.clone()>"Gỡ nhận xét này? Sau khi gỡ, bạn không thể khôi phục."</p>
-                    <Button id=cancel_id.clone() variant=ButtonVariant::Text on_press=on_cancel>"Giữ lại"</Button>
-                    <Button id=confirm_id.clone() variant=ButtonVariant::Danger state on_press=on_confirm>"Gỡ"</Button>
+                    <p id=prompt_id.clone()>
+                        <Icon name=IconName::Warning size=IconSize::Small />
+                        <span>"Gỡ nhận xét này? Sau khi gỡ, bạn không thể khôi phục."</span>
+                    </p>
+                    <div class="vk-discussion-remove-actions">
+                        <Button id=cancel_id.clone() variant=ButtonVariant::Text on_press=on_cancel>"Giữ lại"</Button>
+                        <Button id=confirm_id.clone() variant=ButtonVariant::Danger state on_press=on_confirm>"Gỡ"</Button>
+                    </div>
                 </div>
             }
             .into_any()
@@ -552,6 +575,15 @@ pub fn DiscussionThread(
     #[prop(optional, into)] action_state: Signal<ActionState>,
     #[prop(optional_no_strip)] endorsements: Option<CommentEndorsements>,
     #[prop(optional, into)] has_more_replies: Signal<bool>,
+    /// Read-only work page (#360 ảnh 10): hides reply actions and shows the static Ưng label without a count.
+    #[prop(optional, into)]
+    read_only: Signal<bool>,
+    /// Whether this thread's reply composer is expanded (`aria-expanded` on root Trả lời).
+    #[prop(optional, into)]
+    reply_expanded: Signal<bool>,
+    /// Currently targeted reply/root comment ID inside this thread.
+    #[prop(optional, into)]
+    reply_target_id: Signal<Option<String>>,
     #[prop(optional)] reply_footer: Option<ChildrenFn>,
     /// Without it, `on_remove` is the removal itself (samples and previews).
     #[prop(optional)]
@@ -559,6 +591,9 @@ pub fn DiscussionThread(
 ) -> impl IntoView {
     let root = Memo::new(move |_| facts.get().root);
     let shared_block = Memo::new(move |_| {
+        if read_only.get() {
+            return None;
+        }
         let endorsements = endorsements?;
         let thread = facts.get();
         uniform_endorsement_block(
@@ -578,9 +613,19 @@ pub fn DiscussionThread(
         let reason_id = reason_id.clone();
         Signal::derive(move || shared_block.get().map(|_| reason_id.clone()))
     };
+    let ctx = ThreadCommentCtx {
+        on_reply,
+        on_remove,
+        removal,
+        state: action_state,
+        endorsements,
+        shared_description,
+        read_only,
+        reply_target_id,
+    };
     view! {
         <div class="vk-discussion-thread">
-            {move || root.get().map(|comment| discussion_comment(comment, on_reply, on_remove, removal, action_state, endorsements, shared_description))
+            {move || root.get().map(|comment| discussion_comment(comment, true, reply_expanded, ctx))
                 .unwrap_or_else(|| view! { <p class="vk-muted">"Bình luận gốc không còn hiển thị."</p> }.into_any())}
             <div class="vk-discussion-reply-group" hidden=move || facts.get().replies.is_empty() && !has_more_replies.get()>
             <p class="vk-discussion-reply-heading">"Phản hồi"</p>
@@ -588,7 +633,7 @@ pub fn DiscussionThread(
                 <For each=move || { facts.get().replies.into_iter().map(|comment| comment.id).collect::<Vec<_>>() } key=|id| id.clone()
                     children=move |id| {
                         let comment = Memo::new(move |_| facts.get().replies.into_iter().find(|comment| comment.id == id));
-                        view! { <li>{move || comment.get().map(|comment| discussion_comment(comment, on_reply, on_remove, removal, action_state, endorsements, shared_description))}</li> }
+                        view! { <li>{move || comment.get().map(|comment| discussion_comment(comment, false, Signal::stored(false), ctx))}</li> }
                     } />
             </ul>
             {reply_footer.map(|footer| footer())}
@@ -602,6 +647,7 @@ pub fn DiscussionThread(
 /// same button (and its focus) instead of replacing it.
 fn comment_endorsement(
     id: String,
+    surface: vink_ui::ActionSurface,
     endorsements: CommentEndorsements,
     shared_description: Signal<Option<String>>,
 ) -> impl IntoView {
@@ -616,6 +662,7 @@ fn comment_endorsement(
             view! {
                 <EndorsementAction
                     id=format!("endorse-comment-{id}")
+                    surface
                     kind=EndorsementKind::Comment
                     blocked_description=shared_description
                     facts=Signal::derive(move || facts.get().unwrap_or_default())
@@ -627,35 +674,71 @@ fn comment_endorsement(
     }
 }
 
-fn discussion_comment(
-    comment: DiscussionComment,
+#[derive(Clone, Copy)]
+struct ThreadCommentCtx {
     on_reply: Callback<String>,
     on_remove: Callback<String>,
     removal: Option<RemoveConfirmation>,
     state: Signal<ActionState>,
     endorsements: Option<CommentEndorsements>,
     shared_description: Signal<Option<String>>,
+    read_only: Signal<bool>,
+    reply_target_id: Signal<Option<String>>,
+}
+
+fn discussion_comment(
+    comment: DiscussionComment,
+    is_root: bool,
+    reply_expanded: Signal<bool>,
+    ctx: ThreadCommentCtx,
 ) -> AnyView {
+    let ThreadCommentCtx {
+        on_reply,
+        on_remove,
+        removal,
+        state,
+        endorsements,
+        shared_description,
+        read_only,
+        reply_target_id,
+    } = ctx;
     let reply_id = comment.id.clone();
     let remove_id = comment.id.clone();
+    let target_match_id = comment.id.clone();
+    let endorsement_id = comment.id.clone();
     let reply_button_id = format!("reply-to-{}", comment.id);
     let remove_button_id = format!("remove-comment-{}", comment.id);
     let author_id = format!("comment-{}-author", comment.id);
     let context_id = format!("comment-{}-context-author", comment.id);
+    let author_label = comment.author.name.clone();
     // A reply sits in the tonal reply group: one step smaller than a root (#352).
-    let size = if comment.context.is_some() {
-        AvatarSize::Small
-    } else {
+    let size = if is_root {
         AvatarSize::Medium
+    } else {
+        AvatarSize::Small
+    };
+    let surface = if is_root {
+        vink_ui::ActionSurface::Tonal
+    } else {
+        vink_ui::ActionSurface::Standard
     };
     let published_at = comment.author.published_at.clone();
+    let is_target = Signal::derive(move || {
+        !is_root
+            && !read_only.get()
+            && reply_target_id.get().as_deref() == Some(target_match_id.as_str())
+    });
     view! {
-        <article id=format!("comment-{}", comment.id) class="vk-feedback-item vk-discussion-comment" tabindex="-1">
+        <article id=format!("comment-{}", comment.id) class="vk-feedback-item vk-discussion-comment" tabindex="-1"
+            data-reply-target=move || is_target.get().then_some("true")>
             <div class="vk-discussion-byline">
                 <AuthorIdentity author=comment.author id=Some(author_id) size />
                 // Outside the profile link.
                 <Timestamp instant=published_at />
             </div>
+            <Show when=move || is_target.get()>
+                <p class="vk-discussion-target-badge">"Đang là đích trả lời"</p>
+            </Show>
             {comment.context.map(|context| match context {
                 DiscussionContext::Root => view! { <p class="vk-discussion-context">"Trả lời bình luận gốc"</p> }.into_any(),
                 DiscussionContext::Unavailable => view! { <p class="vk-discussion-context">"Bình luận được trả lời không còn hiển thị"</p> }.into_any(),
@@ -669,7 +752,39 @@ fn discussion_comment(
             {comment.status.map(|status| view! { <p class="vk-discussion-status">{status}</p> })}
             <p class="vk-discussion-body">{comment.body}</p>
             <div class="vk-discussion-actions">
-                {comment.can_reply.then(|| view! { <Button id=reply_button_id variant=ButtonVariant::Text on_press=move |_| on_reply.run(reply_id.clone())>"Trả lời"</Button> })}
+                <div class="vk-discussion-action-segment" data-root=is_root.then_some("true")
+                    role=move || (!read_only.get()).then_some("group")
+                    aria-label=move || (!read_only.get()).then(|| format!("Thao tác với nhận xét của {author_label}"))>
+                    {move || {
+                        if read_only.get() {
+                            view! {
+                                <span class="vk-discussion-static-endorsement" data-endorsement-readonly=endorsement_id.clone()>
+                                    <Icon name=IconName::HeartOutline size=IconSize::Small />
+                                    <span>"Ưng"</span>
+                                </span>
+                            }.into_any()
+                        } else {
+                            endorsements.map(|endorsements| {
+                                comment_endorsement(endorsement_id.clone(), surface, endorsements, shared_description)
+                            }).into_any()
+                        }
+                    }}
+                    {move || (comment.can_reply && !read_only.get()).then(|| {
+                        let reply_id = reply_id.clone();
+                        let reply_button_id = reply_button_id.clone();
+                        if is_root {
+                            view! {
+                                <Button id=reply_button_id variant=ButtonVariant::Tonal leading=IconName::Reply
+                                    expanded=reply_expanded on_press=move |_| on_reply.run(reply_id.clone())>"Trả lời"</Button>
+                            }.into_any()
+                        } else {
+                            view! {
+                                <Button id=reply_button_id variant=ButtonVariant::Text leading=IconName::Reply
+                                    on_press=move |_| on_reply.run(reply_id.clone())>"Trả lời"</Button>
+                            }.into_any()
+                        }
+                    })}
+                </div>
                 {comment.can_remove.then(|| match removal {
                     Some(removal) => {
                         let (ask, confirm, cancel, shown) = (remove_id.clone(), remove_id.clone(), remove_id.clone(), remove_id.clone());
@@ -683,8 +798,6 @@ fn discussion_comment(
                     }
                     None => view! { <Button id=remove_button_id variant=ButtonVariant::Text state on_press=move |_| on_remove.run(remove_id.clone())>"Gỡ nhận xét của tôi"</Button> }.into_any(),
                 })}
-                // Last: its note (pending, reason) wraps under it without pushing the text actions apart.
-                {endorsements.map(|endorsements| comment_endorsement(comment.id.clone(), endorsements, shared_description))}
             </div>
         </article>
     }.into_any()

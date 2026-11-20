@@ -105,11 +105,15 @@ fn required_mark(required: bool) -> impl IntoView {
     required.then(|| view! { <span class="vk-ui-field__required">" (bắt buộc)"</span> })
 }
 
-fn messages(id: String, help: Option<String>, error: Signal<Option<String>>) -> impl IntoView {
+fn messages(
+    id: String,
+    help: Signal<Option<String>>,
+    error: Signal<Option<String>>,
+) -> impl IntoView {
     let help_id = format!("{id}-help");
     let error_id = format!("{id}-error");
     view! {
-        {help.map(|help| view! { <p class="vk-ui-field__help" id=help_id>{help}</p> })}
+        {move || help.get().map(|help| view! { <p class="vk-ui-field__help" id=help_id.clone()>{help}</p> })}
         {move || present(error.get()).map(|error| view! {
             <p class="vk-ui-field__error" id=error_id.clone()>
                 <Icon name=IconName::Error size=IconSize::Small />
@@ -131,7 +135,7 @@ struct TextProps {
     value: Signal<String>,
     on_input: Callback<TextInput>,
     on_submit: Option<Callback<String>>,
-    mode: FieldMode,
+    mode: Signal<FieldMode>,
     invalid: Signal<bool>,
     required: bool,
     described: Signal<Option<String>>,
@@ -162,8 +166,9 @@ fn text_control(control: TextControl, p: TextProps, node: NodeRef<leptos::html::
     let invalid = move || p.invalid.get().then_some("true");
     let described = p.described;
     let required = p.required.then_some("true");
-    let readonly = p.mode == FieldMode::ReadOnly;
-    let disabled = p.mode == FieldMode::Disabled;
+    let mode = p.mode;
+    let readonly = move || mode.get() == FieldMode::ReadOnly;
+    let disabled = move || mode.get() == FieldMode::Disabled;
     let on_submit = p.on_submit;
     match control {
         TextControl::Area(rows) => view! {
@@ -250,7 +255,7 @@ fn text_field(
     help: Option<String>,
     error: Signal<Option<String>>,
     required: bool,
-    mode: FieldMode,
+    mode: Signal<FieldMode>,
     placeholder: Option<String>,
     autocomplete: Option<String>,
     name: Option<String>,
@@ -261,19 +266,27 @@ fn text_field(
     reveal_password: bool,
 ) -> impl IntoView {
     let invalid = Signal::derive(move || present(error.get()).is_some());
-    let help =
-        help.or_else(|| (mode == FieldMode::Disabled).then(|| "Tính năng chưa khả dụng.".into()));
-    let has_help = help.is_some();
+    let help = Signal::derive(move || {
+        help.clone().or_else(|| {
+            (mode.get() == FieldMode::Disabled).then(|| "Tính năng chưa khả dụng.".into())
+        })
+    });
     let described = {
         let id = id.clone();
-        Signal::derive(move || described_by(&id, has_help, invalid.get()))
+        Signal::derive(move || described_by(&id, help.with(Option::is_some), invalid.get()))
     };
     let floating = variant == FieldVariant::FloatingTonal;
     let node = input_ref.unwrap_or_default();
-    let reveal = reveal_password
-        && control == TextControl::Field(TextKind::Password)
-        && mode != FieldMode::Disabled;
+    let password_toggle = reveal_password && control == TextControl::Field(TextKind::Password);
+    let reveal = move || password_toggle && mode.get() != FieldMode::Disabled;
     let revealed = RwSignal::new(false);
+    if password_toggle {
+        Effect::new(move |_| {
+            if mode.get() == FieldMode::Disabled {
+                revealed.set(false);
+            }
+        });
+    }
     let reveal_id = format!("{id}-reveal");
     let props = TextProps {
         id: id.clone(),
@@ -293,11 +306,11 @@ fn text_field(
         name,
         max_length,
         on_focus,
-        revealed: Signal::derive(move || revealed.get()),
+        revealed: Signal::derive(move || reveal() && revealed.get()),
     };
     let search = control == TextControl::Search;
     let clear = move || {
-        (search && !value.get().is_empty() && mode == FieldMode::Editable).then(|| {
+        (search && !value.get().is_empty() && mode.get() == FieldMode::Editable).then(|| {
             view! {
                 <IconButton
                     icon=IconName::Close
@@ -315,7 +328,7 @@ fn text_field(
     view! {
         <div
             class=if floating { "vk-ui-field vk-ui-field--floating" } else { "vk-ui-field" }
-            data-mode=match mode {
+            data-mode=move || match mode.get() {
                 FieldMode::Editable => "editable",
                 FieldMode::ReadOnly => "read-only",
                 FieldMode::Disabled => "disabled",
@@ -328,7 +341,7 @@ fn text_field(
                     {required_mark(required)}
                 </label>
             })}
-            <div class="vk-ui-field__control" data-search=search.then_some("true") data-reveal=reveal.then_some("true")>
+            <div class="vk-ui-field__control" data-search=search.then_some("true") data-reveal=move || reveal().then_some("true")>
                 {search.then(|| view! { <Icon name=IconName::Search /> })}
                 {text_control(control, props, node)}
                 {floating.then(|| view! {
@@ -338,7 +351,7 @@ fn text_field(
                     </label>
                 })}
                 {clear}
-                {reveal.then(|| view! {
+                <Show when=reveal>
                     // Toggling a native type keeps the same node. Keep the caret even on a
                     // browser that resets selection when changing the input's type.
                     <span class="vk-ui-field__reveal" on:mousedown=move |ev| {
@@ -348,7 +361,7 @@ fn text_field(
                             ev.prevent_default();
                         }
                     }>
-                        <IconButton id=reveal_id icon=IconName::Visibility label="Hiện mật khẩu"
+                        <IconButton id=reveal_id.clone() icon=IconName::Visibility label="Hiện mật khẩu"
                             pressed=Signal::derive(move || revealed.get())
                             on_press=move |_| {
                                 let next = !revealed.get_untracked();
@@ -366,7 +379,7 @@ fn text_field(
                                 revealed.set(next);
                             } />
                     </span>
-                })}
+                </Show>
             </div>
             {messages(id, help, error)}
         </div>
@@ -382,7 +395,7 @@ pub fn TextField(
     #[prop(optional, into)] help: Option<String>,
     #[prop(optional, into)] error: Signal<Option<String>>,
     #[prop(optional)] required: bool,
-    #[prop(optional)] mode: FieldMode,
+    #[prop(optional, into)] mode: Signal<FieldMode>,
     #[prop(optional)] kind: TextKind,
     #[prop(optional)] variant: FieldVariant,
     #[prop(optional, into)] placeholder: Option<String>,
@@ -427,7 +440,7 @@ pub fn TextArea(
     #[prop(optional, into)] help: Option<String>,
     #[prop(optional, into)] error: Signal<Option<String>>,
     #[prop(optional)] required: bool,
-    #[prop(optional)] mode: FieldMode,
+    #[prop(optional, into)] mode: Signal<FieldMode>,
     #[prop(optional)] variant: FieldVariant,
     #[prop(default = 4)] rows: u16,
     #[prop(optional, into)] placeholder: Option<String>,
@@ -509,7 +522,7 @@ pub fn SearchField(
         help,
         Signal::default(),
         false,
-        mode,
+        mode.into(),
         placeholder,
         None,
         name,
@@ -550,7 +563,7 @@ fn search_bar(
         value,
         on_input,
         on_submit,
-        mode,
+        mode: mode.into(),
         invalid: Signal::default(),
         required: false,
         described: Signal::stored(described),
@@ -611,7 +624,7 @@ fn search_bar(
                     }
                 })}
             </div>
-            {messages(id, help, Signal::default())}
+            {messages(id, Signal::stored(help), Signal::default())}
         </div>
     }
 }
@@ -684,7 +697,7 @@ fn toggle(
                     </span>
                 })}
             </label>
-            {messages(id, help, error)}
+            {messages(id, Signal::stored(help), error)}
         </div>
     }
 }
@@ -802,7 +815,7 @@ pub fn RadioGroup(
                     }
                 })
                 .collect_view()}
-            {messages(id, help, error)}
+            {messages(id, Signal::stored(help), error)}
         </fieldset>
     }
 }
@@ -878,7 +891,7 @@ pub fn Select(
                 </select>
                 <Icon name=IconName::ExpandMore />
             </div>
-            {messages(id, help, error)}
+            {messages(id, Signal::stored(help), error)}
         </div>
     }
 }
@@ -1225,6 +1238,40 @@ mod tests {
         }
         assert!(!html.contains("fixture-secret"));
         assert!(!html.contains("maxlength"));
+    }
+
+    #[test]
+    fn password_mode_updates_reveal_and_default_help_after_construction() {
+        for (initial, updated) in [
+            (FieldMode::Editable, FieldMode::Disabled),
+            (FieldMode::Disabled, FieldMode::ReadOnly),
+            (FieldMode::ReadOnly, FieldMode::Editable),
+        ] {
+            let html = render(move || {
+                let mode = RwSignal::new(initial);
+                let field = view! {
+                    <TextField id="password" label="Mật khẩu" kind=TextKind::Password
+                        mode=mode reveal_password=true value=Signal::stored(String::new())
+                        on_input=|_| {} />
+                };
+                mode.set(updated);
+                field.into_any()
+            });
+            let disabled = updated == FieldMode::Disabled;
+            assert_eq!(html.contains("id=\"password-reveal\""), !disabled, "{html}");
+            assert_eq!(html.contains("data-reveal=\"true\""), !disabled, "{html}");
+            assert_eq!(html.contains("id=\"password-help\""), disabled, "{html}");
+            assert_eq!(
+                html.contains("aria-describedby=\"password-help\""),
+                disabled,
+                "{html}"
+            );
+            assert_eq!(
+                html.contains("readonly"),
+                updated == FieldMode::ReadOnly,
+                "{html}"
+            );
+        }
     }
 
     #[test]

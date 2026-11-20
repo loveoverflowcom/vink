@@ -53,6 +53,7 @@
 .vk-discussion-thread { display: grid; gap: var(--vk-space-3); min-width: 0; }
 .vk-discussion-comment { display: grid; gap: var(--vk-space-3); min-width: 0; padding: 0; border: 0; scroll-margin-block: var(--vk-space-6); }
 .vk-discussion-thread > .vk-discussion-comment { padding: 0 16px; }
+.vk-discussion-root > .vk-discussion-thread > .vk-discussion-comment { padding: 0; }
 .vk-discussion-comment p { margin: 0; }
 /* #352: author cluster on the start edge, time at the end outside the link; time wraps under
    the cluster at narrow widths or enlarged text. */
@@ -61,16 +62,108 @@
 .vk-discussion-byline > time { margin-inline-start: auto; padding-block-start: min(var(--vk-space-1), 4px); color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
 /* The reply context belongs to the byline above it, closer than the comment's own rhythm. */
 .vk-discussion-byline + .vk-discussion-context { margin-block-start: calc(min(var(--vk-space-2), 8px) * -1); }
-.vk-discussion-reply-group { padding: 16px; border-radius: var(--vk-radius-lg); background: var(--vk-surface-container); min-width: 0; }
-.vk-discussion-reply-heading { margin: 0 0 var(--vk-space-3); font-weight: var(--vk-type-label-weight); }
+.vk-discussion-reply-group { padding: 14px 14px 10px; border-radius: var(--vk-radius-lg); background: var(--vk-surface-container); min-width: 0; }
+.vk-discussion-reply-heading { margin: 0 0 var(--vk-space-3); font-size: var(--vk-type-caption-size); color: var(--vk-on-surface-variant); font-weight: var(--vk-type-label-weight); }
 .vk-discussion-shared-reason { margin: 0; padding-inline: 16px; font-size: var(--vk-type-caption-size); color: var(--vk-on-surface-variant); }
+.vk-discussion-root > .vk-discussion-thread > .vk-discussion-shared-reason { padding-inline: 0; }
 .vk-discussion-comment:focus { outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring); outline-offset: var(--vk-size-focus-offset); }
+.vk-discussion-comment[data-reply-target="true"] { padding: 12px; border-radius: var(--vk-radius-md); background: color-mix(in srgb, var(--vk-primary-container) 32%, transparent); box-shadow: inset 0 0 0 2px var(--vk-primary); }
+.vk-discussion-target-badge { justify-self: start; display: inline-flex; align-items: center; padding: 2px 10px; border-radius: var(--vk-radius-full); background: var(--vk-primary-container); color: var(--vk-on-primary-container); font-size: var(--vk-type-caption-size); font-weight: var(--vk-type-section-weight); }
 .vk-discussion-replies { display: grid; gap: 16px; list-style: none; padding: 0; margin: 0; border: 0; }
 .vk-discussion-replies > li { min-width: 0; }
 .vk-discussion-body { white-space: pre-wrap; overflow-wrap: anywhere; }
 .vk-discussion-context { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--vk-space-1) var(--vk-space-2); color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); }
 .vk-discussion-status { color: var(--vk-on-surface); font-weight: var(--vk-type-label-weight); }
-.vk-discussion-actions { display: flex; flex-wrap: wrap; gap: var(--vk-space-2); }
+.vk-discussion-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-2); min-width: 0; }
+.vk-discussion-action-segment { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-1); max-inline-size: 100%; min-width: 0; }
+.vk-discussion-action-segment[data-root="true"] { gap: 2px; }
+/* Pen Flight and comment hearts share the 48px endorsement target, including compact density. */
+.vk-endorsement .vk-ui-toggle__control {
+  min-block-size: max(48px, var(--vk-density-control-height));
+  min-inline-size: max(48px, var(--vk-density-control-height));
+}
+/* R4 (#359): inline heart · count for comment Ưng. */
+.vk-endorsement[data-kind="comment"] .vk-ui-toggle__control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.vk-endorsement[data-kind="comment"] .vk-ui-toggle__count { font-weight: inherit; }
+.vk-endorsement[data-kind="comment"] .vk-ui-toggle__count[data-count="known"]::before { content: "·\00a0"; }
+/* Foreground and fill switch together. Cross-fading opposite palettes loses text contrast. */
+.vk-discussion-action-segment :is(.vk-ui-toggle__control, .vk-ui-button) { transition-property: border-color; }
+.vk-discussion-action-segment[data-root="true"] .vk-endorsement[data-kind="comment"] .vk-ui-toggle__control {
+  padding: 0 14px 0 12px;
+  border: 0;
+  border-radius: 24px 6px 6px 24px;
+  background-color: var(--vk-secondary-container);
+  color: var(--vk-on-secondary-container);
+}
+.vk-discussion-action-segment[data-root="true"] .vk-endorsement[data-kind="comment"]:only-child .vk-ui-toggle__control {
+  border-radius: var(--vk-radius-full);
+}
+.vk-discussion-action-segment[data-root="true"] .vk-endorsement[data-kind="comment"] .vk-ui-toggle__control[data-pressed="true"] {
+  background-color: var(--vk-primary-container);
+  color: var(--vk-on-primary-container);
+  font-weight: var(--vk-type-section-weight);
+}
+.vk-discussion-action-segment[data-root="true"] .vk-endorsement[data-kind="comment"] .vk-ui-toggle__control[data-state="disabled"] {
+  background-color: var(--vk-surface-container-highest);
+  color: var(--vk-on-surface-variant);
+}
+.vk-discussion-action-segment[data-root="true"] > .vk-ui-action .vk-ui-button--tonal {
+  min-block-size: max(48px, var(--vk-density-control-height));
+  padding: 0 16px 0 12px;
+  border: 0;
+  border-radius: 6px 24px 24px 6px;
+  background-color: var(--vk-secondary-container);
+  color: var(--vk-on-secondary-container);
+}
+.vk-discussion-action-segment[data-root="true"] > .vk-ui-action:only-child .vk-ui-button--tonal {
+  border-radius: var(--vk-radius-full);
+}
+.vk-discussion-action-segment[data-root="true"] > .vk-ui-action .vk-ui-button--tonal[aria-expanded="true"] {
+  background-color: var(--vk-primary-container);
+  color: var(--vk-on-primary-container);
+  font-weight: var(--vk-type-section-weight);
+}
+.vk-discussion-replies .vk-discussion-action-segment {
+  gap: 4px;
+  margin-inline-start: calc(-1 * var(--vk-space-2));
+}
+.vk-discussion-replies .vk-endorsement[data-kind="comment"] .vk-ui-toggle__control,
+.vk-discussion-replies .vk-discussion-action-segment .vk-ui-button--text {
+  padding: 0 10px;
+  border-radius: var(--vk-radius-full);
+  color: var(--vk-on-surface-variant);
+}
+.vk-discussion-replies .vk-endorsement[data-kind="comment"] .vk-ui-toggle__control[data-pressed="true"] {
+  background-color: var(--vk-primary-container);
+  color: var(--vk-on-primary-container);
+}
+.vk-discussion-static-endorsement {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--vk-radius-full);
+  background: var(--vk-surface-container-high);
+  color: var(--vk-on-surface-variant);
+  font-size: var(--vk-type-label-size);
+  font-weight: var(--vk-type-label-weight);
+}
+@media (min-width: 1024px) {
+  .vk-discussion-root {
+    --vk-discussion-desktop-indent: calc(var(--vk-size-avatar-md) + var(--vk-space-3));
+  }
+  .vk-discussion-root > .vk-discussion-thread > .vk-discussion-comment > :is(.vk-discussion-status, .vk-discussion-body, .vk-discussion-actions),
+  .vk-discussion-root > .vk-discussion-thread > .vk-discussion-shared-reason,
+  .vk-discussion-root > .vk-discussion-thread > .vk-discussion-reply-group,
+  .vk-discussion-root > .vk-discussion-reply-composer,
+  .vk-discussion-root > .vk-discussion-reply-kept {
+    margin-inline-start: var(--vk-discussion-desktop-indent);
+  }
+}
 @media (max-width: 759px) {
   .vk-reader__header { row-gap: min(var(--vk-space-2), 8px); }
   .vk-reader__header > .vk-work-byline { margin-block-start: min(var(--vk-space-2), 8px); }
@@ -191,34 +284,75 @@
 .vk-tag-browse .vk-tag-options { margin-block-start: var(--vk-space-2); }
 
 /* Reader composition: one tonal surface and one native field focus owner. */
-.vk-feedback-composer--tonal { background: var(--vk-surface-container-high); border-radius: var(--vk-radius-xl); padding: 16px; min-width: 0; }
-.vk-feedback-composer--tonal .vk-ui-field__control { background: transparent; }
+.vk-feedback-composer--tonal { background: var(--vk-surface-container-low); border-radius: var(--vk-radius-xl); padding: 10px 10px 12px; min-width: 0; gap: var(--vk-space-2); }
+.vk-feedback-composer--tonal .vk-ui-field--floating .vk-ui-field__control {
+  background: var(--vk-surface-container-high);
+  border-radius: var(--vk-radius-lg);
+  transition: box-shadow var(--vk-duration-short) var(--vk-ease-emphasized);
+}
+.vk-feedback-composer--tonal .vk-ui-field--floating[data-mode="read-only"] .vk-ui-field__control { background: var(--vk-surface-container); }
+.vk-feedback-composer--tonal .vk-ui-field--floating .vk-ui-field__control:has(> .vk-ui-input:focus) {
+  background: var(--vk-surface);
+  outline: 2px solid var(--vk-primary);
+  outline-offset: -2px;
+}
+.vk-feedback-composer--tonal .vk-ui-field--floating .vk-ui-field__control:has(> .vk-ui-input:focus) .vk-ui-field__label {
+  color: var(--vk-primary);
+}
 .vk-feedback-composer--tonal .vk-ui-input--area { min-height: 48px; resize: vertical; }
 .vk-feedback-composer--tonal:focus-within .vk-ui-input--area,
 .vk-feedback-composer--tonal[data-filled] .vk-ui-input--area { min-height: 4lh; }
-.vk-feedback-composer--tonal > .vk-ui-action { justify-self: end; max-width: 100%; }
-.vk-feedback-draft-note { margin: 0; color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); }
+.vk-feedback-composer__footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--vk-space-2); padding-inline: 4px; min-width: 0; }
+.vk-feedback-composer:not(.vk-feedback-composer--tonal) .vk-feedback-composer__footer { justify-content: flex-end; }
+.vk-feedback-composer__footer:not(:has(.vk-feedback-policy)) { justify-content: flex-end; }
+.vk-feedback-policy { display: inline-flex; align-items: center; gap: 6px; margin: 0; color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); min-width: 0; }
+.vk-feedback-composer--tonal:has(.vk-ui-action__note) .vk-feedback-policy { display: none; }
+.vk-feedback-composer--tonal .vk-feedback-composer__footer > .vk-ui-action { flex: 1 1 auto; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--vk-space-2); max-width: 100%; }
+.vk-feedback-composer--tonal .vk-ui-action__note { order: -1; margin-inline-end: auto; overflow-wrap: anywhere; }
+.vk-feedback-draft-note { margin: 0; padding-inline: 6px; color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); }
 @media (max-width: 359px) {
   .vk-discussion-thread > .vk-discussion-comment, .vk-discussion-shared-reason { padding-inline: 12px; }
+  .vk-discussion-root > .vk-discussion-thread > .vk-discussion-comment { padding-inline: 0; }
   .vk-discussion-reply-group, .vk-feedback-composer--tonal { padding-inline: 12px; }
 }
 
-.vk-feedback-composer--tonal > .vk-ui-action .vk-ui-button > .vk-ui-icon { transform: rotate(180deg); }
+.vk-feedback-composer__footer .vk-ui-button[aria-busy="true"]:has(> .vk-ui-icon) > .vk-ui-icon { display: none; }
+.vk-feedback-composer__footer .vk-ui-button[aria-busy="true"]:has(> .vk-ui-icon) > .vk-ui-button__status {
+  position: static;
+  translate: none;
+  order: -1;
+  inline-size: var(--vk-size-icon-sm);
+  justify-items: center;
+}
 .vk-discussion-delivery[hidden] { display: none; }
 .vk-discussion-composer-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--vk-space-2); min-width: 0; }
 .vk-discussion-composer-heading > p { margin: 0; overflow-wrap: anywhere; }
-/* R4 (#360): the confirmation replaces “Gỡ nhận xét của tôi” in place; its prompt takes the first
-   line so a repeated press lands on text, and the two actions wrap at text 200%. */
-.vk-discussion-remove-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-2); min-width: 0; }
-.vk-discussion-remove-confirm > p { flex-basis: 100%; margin: 0; overflow-wrap: anywhere; }
+/* R4 (#360): the confirmation replaces “Gỡ nhận xét của tôi” in place with an error-bordered
+   destructive alert card, and wraps its actions at text 200%. */
+.vk-discussion-remove-confirm {
+  inline-size: 100%;
+  box-sizing: border-box;
+  display: grid;
+  gap: var(--vk-space-2);
+  padding: 12px 14px;
+  border: 2px solid var(--vk-error);
+  border-radius: var(--vk-radius-lg);
+  background: color-mix(in srgb, var(--vk-error-container) 28%, var(--vk-surface));
+  min-width: 0;
+}
+.vk-discussion-remove-confirm > p { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: var(--vk-on-surface); font-weight: var(--vk-type-label-weight); overflow-wrap: anywhere; }
+.vk-discussion-remove-confirm > p > .vk-ui-icon { color: var(--vk-error); flex-shrink: 0; margin-block-start: 2px; }
+.vk-discussion-remove-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--vk-space-2); }
 
 .vk-discussion-context { line-height: var(--vk-type-caption-line-height); }
 .vk-discussion-thread > .vk-muted { margin: 0; padding-inline: 16px; }
-
-.vk-discussion-actions > .vk-ui-action:first-child .vk-ui-button--text { padding-inline-start: 0; justify-content: flex-start; }
-.vk-feedback-composer--tonal .vk-ui-input--area { padding-inline: 0; }
-.vk-feedback-composer--tonal .vk-ui-field__label { margin-inline: 0; }
-.vk-feedback-composer--tonal .vk-ui-field__control:has(> .vk-ui-input:focus) { outline-offset: 4px; }
+@media (forced-colors: active) {
+  .vk-discussion-action-segment[data-root="true"] .vk-endorsement[data-kind="comment"] .vk-ui-toggle__control,
+  .vk-discussion-action-segment[data-root="true"] > .vk-ui-action .vk-ui-button--tonal { border: 1px solid ButtonText; }
+  .vk-feedback-composer--tonal .vk-ui-field--floating .vk-ui-field__control { border: 1px solid ButtonText; }
+  .vk-discussion-comment[data-reply-target="true"],
+  .vk-discussion-remove-confirm { outline: 2px solid Highlight; }
+}
 
 /* #213: compact rows retain the full Unicode title and expand for deliberate inspection.
    The link remains the sole target; touch follows it to the complete title in the editor. */

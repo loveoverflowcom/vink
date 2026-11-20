@@ -5511,6 +5511,7 @@ async function discussionReadingAndWrites(page) {
   check(await page.eval(`!!document.querySelector('meta[name="vink-local-discussion-fixture"]') && document.querySelector('#comments-mode').textContent.includes('Định danh thử trên thiết bị này')`), 'fixture readiness is labelled and supplied by the trusted host');
   const text = 'D2T-03 [Mẫu] Đọc khổ thơ\n\n  Tiếng Việt 👩‍💻 🌧️';
   const newer = ' Chữ mới sau khi gửi.';
+  await page.eval(`window.discussionComposerNode = document.querySelector('#root-composer')`);
   await page.typeAtEnd('#root-composer', text);
   const held = [];
   const waitHeld = async count => {
@@ -5553,7 +5554,27 @@ async function discussionReadingAndWrites(page) {
         await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
         recovery.scrollIntoView({block:'center',behavior:'instant'});
       })()`);
-      await page.waitFor(`getComputedStyle(document.querySelector('.vk-discussion-delivery p')).color===getComputedStyle(document.body).color`, 'recovery text resolves the final theme foreground');
+      const recovery = '.vk-discussion-composer:has(#root-composer) .vk-discussion-delivery';
+      const palette = await page.eval(`(() => {
+        const card = document.querySelector(${JSON.stringify(recovery)});
+        const probe = document.createElement('span');
+        probe.style.cssText = 'color:var(--vk-on-info-container);background-color:var(--vk-info-container)';
+        card.append(probe);
+        const result = {
+          tone: card.dataset.tone,
+          text: getComputedStyle(card.querySelector('p')).color,
+          background: getComputedStyle(card).backgroundColor,
+          body: getComputedStyle(document.body).color,
+          tokenText: getComputedStyle(probe).color,
+          tokenBackground: getComputedStyle(probe).backgroundColor,
+        };
+        probe.remove();
+        return result;
+      })()`);
+      console.log('uncertain recovery palette', JSON.stringify(palette));
+      check(palette.tone === 'unknown' && palette.text === palette.tokenText && palette.background === palette.tokenBackground,
+        'uncertain receipt uses the resolved on-info-container foreground and info-container background');
+      await textContrast(page, 'dark', `discussion-uncertain-${width}-${scale}`, [`${recovery} [role="status"]`, `${recovery} > p`]);
       check(await page.eval(`(() => {
         const region=document.querySelector('#root-composer').closest('.vk-discussion-composer');
         const delivery=region.querySelector('.vk-discussion-delivery'), send=document.querySelector('#root-composer-send');
@@ -5579,6 +5600,13 @@ async function discussionReadingAndWrites(page) {
     const matches = own.roots.filter(root => root.root.kind === 'comment' && root.root.comment.body === text.trim());
     check(matches.length === 1 && matches[0].root.comment.visibility === 'own_pending', 'keyed replay persisted exactly one own-pending comment in real PostgreSQL');
     commentId = matches[0].root.comment.comment_id;
+    await page.waitFor(`document.querySelector('#own-comments [data-own-comment="${commentId}"]')`, 'the pending item appears in Bạn đã gửi');
+    check(await page.eval(`(() => {
+      const region = document.getElementById('own-comments');
+      const head = region.querySelector('.vk-discussion-own-head').getBoundingClientRect();
+      const card = region.querySelector('[data-own-comment]').getBoundingClientRect();
+      return Math.abs(card.top - head.bottom - parseFloat(getComputedStyle(region).rowGap)) <= 1;
+    })()`), 'empty live regions leave only one grid gap above the first own item');
     const publicHtml = await (await fetch(`${args.base}/tac-pham/${SAMPLE_WORK}`)).text();
     check(!publicHtml.includes('D2T-03 [Mẫu] Đọc khổ thơ') && !publicHtml.includes('own_pending') && !publicHtml.includes('own_rejected'), 'public SSR and hydration payload exclude fixture viewer-private comments');
   } finally {
@@ -5587,12 +5615,31 @@ async function discussionReadingAndWrites(page) {
   }
   await page.click('#discussion-mode-toggle');
   await page.waitFor(`document.querySelector('#discussion-mode-toggle')?.textContent==='Mở bình luận' && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'author closes comments with generation CAS');
-  check(await page.eval(`document.querySelector('#root-composer').value===${JSON.stringify(text + newer)} && document.querySelector('#root-composer-send').getAttribute('aria-disabled')==='true' && !!document.querySelector('[data-own-comment="${commentId}"]')`), 'closing preserves draft and readable own projection while blocking new sends');
+  await page.send('Browser.grantPermissions', { permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'] });
+  check(await page.eval(`window.discussionComposerNode === document.querySelector('#root-composer') && document.querySelector('#root-composer').value===${JSON.stringify(text + newer)} && document.querySelector('#root-composer').readOnly === true && !document.querySelector('#root-composer-send') && document.querySelector('.vk-discussion-closed-banner')?.textContent.includes('Bạn đã tắt bình luận cho bài viết này') && !!document.querySelector('[data-own-comment="${commentId}"]')`), 'closing keeps readonly draft, author notice, readable own projection and removes Gửi button');
+  await page.eval(`[...document.querySelectorAll('.vk-discussion-closed-actions button')].find(b=>b.textContent.includes('Sao chép nháp'))?.click()`);
+  await page.waitFor(`document.querySelector('.vk-discussion-closed-actions [data-copied="true"]')?.textContent.includes('Đã sao chép nháp')`, 'closed draft copy confirmation');
+  check(await page.eval('navigator.clipboard.readText()') === text + newer, 'closed draft copy writes exact draft text to real clipboard');
+  // A missing Clipboard API must leave exactly the author's native draft selected.
+  await page.eval(`Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined })`);
+  try {
+    await page.eval(`[...document.querySelectorAll('.vk-discussion-closed-actions button')].find(b=>b.textContent.includes('Sao chép nháp')).click()`);
+    await page.waitFor(`(() => {
+      const field = document.querySelector('#root-composer');
+      const status = document.querySelector('.vk-discussion-closed-actions [role="status"]');
+      return status?.textContent.includes('Không thể tự động sao chép') && !status.hasAttribute('data-copied')
+        && document.activeElement === field && field.selectionStart === 0 && field.selectionEnd === field.value.length;
+    })()`, 'missing clipboard exposes manual copy and selects the entire unchanged draft');
+  } finally {
+    await page.eval(`delete navigator.clipboard`);
+  }
+
   const closed = await (await fetch(endpoint)).json();
   check(!closed.settings.comments_open && closed.settings.generation > 1, 'closed mode is a durable provider fact');
   await captureDiscussionMatrix(page, 'local-postgres-closed', '#feedback-heading', 'real-local-postgresql-with-fixture-identity');
   await page.click('#discussion-mode-toggle');
   await page.waitFor(`document.querySelector('#discussion-mode-toggle')?.textContent==='Tắt bình luận' && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true' && document.querySelector('#remove-comment-${commentId}')`, 'author reopens the same thread');
+  check(await page.eval(`window.discussionComposerNode === document.querySelector('#root-composer') && !window.discussionComposerNode.readOnly`), 'reopening keeps the original editable textarea');
   // VDR-DISCUSSION-R4@r1 §2: asking opens an in-place confirmation; only “Gỡ” sends DELETE.
   await page.click(`#remove-comment-${commentId}`);
   await page.waitFor(`document.activeElement?.id==='cancel-remove-comment-${commentId}' && document.querySelector('#confirm-remove-comment-${commentId}')`, 'removal asks in place and focuses “Giữ lại”');
@@ -5611,6 +5658,8 @@ async function discussionReadingAndWrites(page) {
   const replyId = fixture.roots[0].preview[0].comment_id;
   let currentFixture = structuredClone(fixture);
   let replyRequest;
+  let heldInitialPublic = null;
+  let holdInitialRead = true;
   let failRead = true;
   let failNextPage = false;
   const readCursors = [];
@@ -5631,6 +5680,11 @@ async function discussionReadingAndWrites(page) {
     }
     const cursor = new URL(message.params.request.url).searchParams.get('cursor');
     readCursors.push(cursor);
+    if (holdInitialRead && cursor === null) {
+      holdInitialRead = false;
+      heldInitialPublic = message.params.requestId;
+      return;
+    }
     if (failRead || (failNextPage && cursor !== null)) {
       page.send('Fetch.fulfillRequest', { requestId: message.params.requestId, responseCode: 503,
         responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Cache-Control', value: 'no-store' }],
@@ -5646,22 +5700,56 @@ async function discussionReadingAndWrites(page) {
   page.cdp.listeners.push(fixtureListener);
   await page.send('Fetch.enable', { patterns: [{ urlPattern: `${wirePattern}*`, requestStage: 'Request' }] });
   try {
-    // Client navigation exercises the initial resource error without changing SSR or the DB.
+    // Client navigation exercises the 300ms static skeleton and initial resource error cleanly.
     await page.goto(`${args.base}/`);
     await page.waitFor(`document.documentElement.dataset.hydrated==='true' && document.querySelector('a[href="/tac-pham/${SAMPLE_WORK}"]')`, 'reader link for initial-read failure');
     await page.click(`a[href="/tac-pham/${SAMPLE_WORK}"]`);
-    await page.waitFor(`document.querySelector('#discussion-load-retry')`, 'initial discussion read failed');
+    const waitHeldDeadline = Date.now() + 5000;
+    while (!heldInitialPublic && Date.now() < waitHeldDeadline) await sleep(20);
+    check(!!heldInitialPublic, 'the first public GET is held before measuring the skeleton');
+    await sleep(120);
+    check(await page.eval(`!document.querySelector('.vk-discussion-skeleton-list')`), '300ms gate hides skeleton before threshold');
+    await page.waitFor(`!!document.querySelector('.vk-discussion-skeleton-list')`, 'static skeleton appears after 300ms delay');
+    check(await page.eval(`!document.querySelector('.vk-discussion-comment') && getComputedStyle(document.querySelector('.vk-discussion-skeleton-list .vk-ui-skeleton')).animationName==='none'`), 'skeleton is static and never creates comment items');
+    await page.send('Fetch.fulfillRequest', { requestId: heldInitialPublic, responseCode: 503,
+      responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Cache-Control', value: 'no-store' }],
+      body: Buffer.from(JSON.stringify({ error: { code: 'unavailable', message: 'fixture outage' } })).toString('base64'),
+    });
+    // The error DOM mounts while LoadingGate still honours the skeleton's minimum visible time.
+    const retrySelector = '#discussion-load-retry';
+    await page.waitFor(`!document.querySelector('.vk-discussion-skeleton-list')
+      && document.querySelector('${retrySelector}')?.checkVisibility()
+      && document.querySelector('${retrySelector}').getAttribute('aria-disabled') !== 'true'`,
+      'initial read shows an actionable retry after the skeleton clears');
+    await page.eval(`document.querySelector('${retrySelector}').scrollIntoView({block:'center', behavior:'instant'})`);
+    check(await page.eval(`document.querySelector('.vk-discussion-state-card[data-tone="adverse"]')?.textContent.includes('Chưa tải được nhận xét') && !document.querySelector('#feedback-region').textContent.includes('Chưa có nhận xét nào')`), 'initial error is distinct from empty state');
     const failedInitialReads = readCursors.length;
     check(failedInitialReads === 1, 'one failed initial GET exposes the retry button');
-    await page.capture('discussion-contract-fixture-initial-error', { scenario: 'D2T-03-load-retry', boundary: 'intercepted-provider-contract-fixture-no-persistence' });
+    await page.capture('discussion-contract-fixture-initial-error', { scenario: 'D2T-03-load-retry', target: retrySelector, boundary: 'intercepted-provider-contract-fixture-no-persistence' });
     failRead = false;
-    await page.click('#discussion-load-retry');
+    await page.click(retrySelector);
     await page.waitFor(`document.querySelector('#reply-to-${replyId}') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'initial retry completes with contract fixture projection');
     check(readCursors.length > failedInitialReads && !await page.eval(`!!document.querySelector('#discussion-load-retry')`), 'initial retry issues a new GET and replaces the error with loaded comments');
+    // These projected IDs are absent from the real endorsement store. Its independent read
+    // replaces the inline recovery action with one shared reason, moving the adjacent reply.
+    const reasonId = `thread-${rootId}-endorsement-reason`;
+    await page.waitFor(`(() => {
+      const reason = document.getElementById('${reasonId}');
+      const endorse = document.getElementById('endorse-comment-${replyId}');
+      return reason?.checkVisibility() && reason.textContent === 'Tạm chưa thể Ưng.'
+        && endorse?.getAttribute('aria-describedby')?.split(' ').includes('${reasonId}')
+        && document.getElementById('reply-to-${replyId}')?.checkVisibility();
+    })()`, 'the fixture reply is visible beside the confirmed unavailable endorsement');
     await page.click(`#reply-to-${replyId}`);
     await page.waitFor(`document.activeElement?.id==='reply-composer-${rootId}'`, 'reply moves focus to its own stable field');
     await page.typeAtEnd(`#reply-composer-${rootId}`, 'Bản trả lời có ngữ cảnh\n\n  Giữ nguyên 👩‍💻');
+    check(await page.eval(`document.querySelector('#comment-${replyId}')?.dataset.replyTarget==='true' && document.querySelector('#comment-${replyId} .vk-discussion-target-badge')?.textContent.includes('Đang là đích trả lời')`), 'targeted reply highlights inside the branch');
     check(await page.eval(`document.querySelectorAll('.vk-discussion-replies .vk-discussion-replies').length===0 && document.querySelectorAll('#reply-composer-${rootId}').length===1`), 'reply-to-reply mounts one composer in its root and no third indentation level');
+    await page.eval(`document.querySelector('.vk-discussion-target-chip button')?.click()`);
+    await page.waitFor(`document.activeElement?.id==='reply-composer-${rootId}' && document.querySelector('.vk-discussion-target-chip')?.dataset.target==='root'`, 'clearing target chip returns to root target while keeping draft and focus');
+    check(await page.eval(`document.querySelector('#reply-composer-${rootId}')?.value.includes('Giữ nguyên')`), 'clearing target preserves draft');
+    await page.click(`#reply-to-${replyId}`);
+    await page.waitFor(`document.activeElement?.id==='reply-composer-${rootId}'`, 're-select reply target');
     await captureDiscussionMatrix(page, 'contract-fixture-flat', `#comment-${rootId}`, 'intercepted-provider-contract-fixture-no-persistence');
     await page.click(`#reply-composer-${rootId}-send`);
     const deadline = Date.now() + 10_000;
@@ -5669,23 +5757,38 @@ async function discussionReadingAndWrites(page) {
       if (Date.now() > deadline) throw new Error('timed out waiting for held fixture reply intent');
       await sleep(50);
     }
-    await page.typeAtEnd(`#reply-composer-${rootId}`, ' Gõ tiếp khi đang gửi.');
-    await page.eval(`[...document.querySelectorAll('.vk-discussion-reply-composer button')].find(b=>b.textContent==='Thu ô trả lời · Giữ chữ').click()`);
-    await page.waitFor(`!document.querySelector('#reply-composer-${rootId}') && document.activeElement?.id==='reply-to-${replyId}'`, 'reply composer collapsed and restored its trigger focus');
-    await page.click(`#reply-to-${replyId}`);
-    await page.waitFor(`document.querySelector('#reply-composer-${rootId}-send')?.dataset.state==='pending'`, 'feature-owned transport survives composer collapse');
+    check(await page.eval(`(() => { const b = document.querySelector('#reply-composer-${rootId}-send'); const f = document.querySelector('#reply-composer-${rootId}'); return b?.getAttribute('aria-busy')==='true' && getComputedStyle(b.querySelector(':scope > .vk-ui-icon')).display==='none' && !!b.querySelector('.vk-ui-button__status svg') && f?.readOnly===false && b.querySelector('.vk-ui-button__status').getBoundingClientRect().right <= b.querySelector('.vk-ui-button__label').getBoundingClientRect().left; })()`), 'R4 Sending keeps the field editable and places the progress indicator before its label');
+    await page.eval(`window.discussionReplyComposerNode = document.querySelector('#reply-composer-${rootId}');
+      window.discussionReplyComposerNode.setSelectionRange(1, 4, 'backward')`);
+    await page.eval(`[...document.querySelectorAll('.vk-discussion-reply-composer button')].find(b=>b.textContent.trim()==='Thu ô · Giữ chữ').click()`);
+    await page.waitFor(`document.querySelector('#reply-composer-${rootId}') === window.discussionReplyComposerNode && window.discussionReplyComposerNode.getClientRects().length === 0 && document.activeElement?.id==='reply-to-${replyId}' && document.querySelector('.vk-discussion-reply-kept')?.textContent.includes('Bản trả lời được giữ lại')`, 'reply composer collapsed cleanly with R4 kept pill');
+    await page.click(`#reopen-reply-${rootId}`);
+    await page.waitFor(`document.activeElement === window.discussionReplyComposerNode &&
+      document.querySelector('#reply-composer-${rootId}') === window.discussionReplyComposerNode &&
+      window.discussionReplyComposerNode.selectionStart === 1 && window.discussionReplyComposerNode.selectionEnd === 4 &&
+      window.discussionReplyComposerNode.selectionDirection === 'backward' &&
+      document.querySelector('#reply-composer-${rootId}-send')?.dataset.state === 'pending'`,
+      'reopening restores focus and preserves the native textarea, selection and pending transport');
     await page.send('Fetch.fulfillRequest', { requestId: replyRequest, responseCode: 201,
       responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
       body: Buffer.from(JSON.stringify({ comment_id: '0192f3a1-0000-7000-8000-000000000099', status: 'pending', replayed: false })).toString('base64'),
     });
-    await page.waitFor(`document.querySelector('#reply-composer-${rootId}')?.value.includes('Gõ tiếp khi đang gửi.') && document.querySelector('#reply-composer-${rootId}-send')?.dataset.state!=='pending'`, 'held fixture reply acknowledgment completes after collapse without losing newer text');
+    await page.waitFor(`document.querySelector('#reply-composer-${rootId}')?.value==='' && document.querySelector('.vk-discussion-reply-composer [data-testid=discussion-receipt]')?.textContent.includes('Chờ duyệt')`, 'unchanged reply clears only when its pending receipt arrives after reopening');
+    await page.typeAtEnd(`#reply-composer-${rootId}`, 'Giữ nguyên bản trả lời mới 👩‍💻');
     check(true, 'intercepted fixture only: collapse/reopen does not cancel the feature transport or strand Sending');
     currentFixture = structuredClone(fixture);
     currentFixture.roots[0].preview = currentFixture.roots[0].preview.filter(comment => comment.comment_id !== replyId);
     currentFixture.roots[0].preview[0].reply_to = { kind: 'unavailable' };
     await page.click('#discussion-refresh');
     await page.waitFor(`!document.querySelector('#comment-${replyId}') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'context revocation fixture refresh');
-    check(await page.eval(`document.querySelector('#reply-composer-${rootId}')?.value.includes('Giữ nguyên') && document.querySelector('#reply-composer-${rootId}-send')?.getAttribute('aria-disabled')==='true' && document.querySelectorAll('.vk-discussion-replies .vk-discussion-comment').length===3`), 'revoked context keeps peer replies and draft, neutralizes cached target identity and blocks stale send');
+    check(await page.eval(`document.querySelector('#reply-composer-${rootId}')?.value.includes('Giữ nguyên') && document.querySelector('#reply-composer-${rootId}-send')?.getAttribute('aria-disabled')==='true' && document.querySelector('.vk-discussion-target-lost')?.textContent.includes('Bình luận được trả lời không còn hiển thị') && document.querySelectorAll('.vk-discussion-replies .vk-discussion-comment').length===3`), 'revoked context shows warning card with copy/reselect without claiming deletion');
+    await page.eval(`[...document.querySelectorAll('.vk-discussion-target-lost button')].find(b=>b.textContent.includes('Sao chép nháp'))?.click()`);
+    await page.waitFor(`document.querySelector('.vk-discussion-target-lost [data-copied="true"]')?.textContent.includes('Đã sao chép nháp')`, 'revoked context copy feedback');
+    await captureDiscussionMatrix(page, 'revoked-target', '.vk-discussion-target-lost', 'intercepted-provider-contract-fixture-no-persistence');
+    const revokedDraft = await page.eval(`document.querySelector('#reply-composer-${rootId}').value`);
+    check(await page.eval('navigator.clipboard.readText()') === revokedDraft, 'revoked context copy writes exact draft to real clipboard');
+    await page.eval(`[...document.querySelectorAll('.vk-discussion-target-lost button')].find(b=>b.textContent.includes('Chọn bình luận khác'))?.click()`);
+    await page.waitFor(`document.activeElement?.id==='reply-to-${rootId}'`, 'Chọn bình luận khác moves focus cleanly inside branch');
     await page.eval(`document.querySelector('.vk-discussion-reply-composer').scrollIntoView({ block: 'center', behavior: 'instant' })`);
     await page.capture('discussion-contract-fixture-context-revoked', { scenario: 'D2T-03-context', boundary: 'intercepted-provider-contract-fixture-no-persistence' });
     failRead = true;
@@ -5719,6 +5822,10 @@ async function discussionReadingAndWrites(page) {
     await page.eval(`document.documentElement.style.fontSize='200%'; document.querySelector('[data-testid=discussion-chain-restarted]').scrollIntoView({block:'center'})`);
     check(await page.eval(`document.documentElement.scrollWidth <= innerWidth + 1`), 'chain restart notice reflows at 390px / text 200%');
     await page.capture('discussion-chain-restarted-390-200', { scenario: '#202-head-refresh', viewport: {width:390}, textScale:200, boundary: 'intercepted-provider-contract-fixture-no-persistence' });
+    currentFixture = { ...fixture, roots: [], next_cursor: null };
+    await page.click('#discussion-refresh');
+    await page.waitFor(`document.querySelector('.vk-discussion-empty') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'authoritative empty discussion state');
+    check(await page.eval(`document.querySelector('.vk-discussion-empty')?.textContent.includes('Chưa có nhận xét nào được hiển thị.') && !document.querySelector('#discussion-load-retry') && !document.querySelector('#feedback-region')?.textContent.includes('Đã hết danh sách nhận xét')`), 'R4 empty state renders empty card cleanly without error button or list end');
   } finally {
     await page.send('Fetch.disable');
     page.cdp.listeners = page.cdp.listeners.filter(item => item !== fixtureListener);
@@ -5732,6 +5839,10 @@ async function discussionR31Geometry(page, width, scale, scenario) {
     const thread = document.querySelector('.vk-discussion-root'), pattern = thread.querySelector('.vk-discussion-thread');
     const root = pattern.querySelector(':scope > .vk-discussion-comment'), group = pattern.querySelector('.vk-discussion-reply-group');
     const composer = thread.querySelector('.vk-feedback-composer'), body = root.querySelector('.vk-discussion-body');
+    const segment = root.querySelector('.vk-discussion-actions .vk-discussion-action-segment[data-root="true"]');
+    const rootEndorse = segment?.querySelector('.vk-endorsement .vk-ui-toggle__control');
+    const rootReply = segment?.querySelector('[id^="reply-to-"]');
+    const nameEl = root.querySelector('.vk-discussion-byline .vk-ui-byline__name');
     const rect = e => { const r=e.getBoundingClientRect(); return {left:r.left, right:r.right}; };
     const controls = [...pattern.querySelectorAll('.vk-ui-toggle__control')];
     const luminance = color => {
@@ -5739,28 +5850,57 @@ async function discussionR31Geometry(page, width, scale, scenario) {
       return rgb[0]*0.2126+rgb[1]*0.7152+rgb[2]*0.0722;
     };
     const ratio=(a,b)=>{const x=luminance(a),y=luminance(b);return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05);};
-    const surface=getComputedStyle(group).backgroundColor, tonal=getComputedStyle(composer).backgroundColor;
-    const ratios=[ratio(getComputedStyle(group.querySelector('.vk-discussion-body')).color,surface), ratio(getComputedStyle(group.querySelector('time')).color,surface), ratio(getComputedStyle(composer.querySelector('label')).color,tonal)];
+    const surface=getComputedStyle(group).backgroundColor;
+    const fieldBg=getComputedStyle(composer.querySelector('.vk-ui-field__control')).backgroundColor;
+    const ratios=[
+      ratio(getComputedStyle(group.querySelector('.vk-discussion-body')).color,surface),
+      ratio(getComputedStyle(group.querySelector('time')).color,surface),
+      ratio(getComputedStyle(composer.querySelector('label')).color,fieldBg),
+      ratio(getComputedStyle(rootEndorse).color, getComputedStyle(rootEndorse).backgroundColor),
+      ratio(getComputedStyle(rootReply).color, getComputedStyle(rootReply).backgroundColor),
+    ];
     const reasons = [...pattern.querySelectorAll('.vk-discussion-shared-reason')].filter(e=>!e.hidden);
-    return {root:rect(root), group:rect(group), composer:rect(composer),
-      inset:rect(body).left-rect(root).left, insetRight:rect(root).right-rect(body).right,
-      aligned: Math.abs(rect(root.querySelector('.vk-discussion-byline .vk-ui-avatar')).left-rect(body).left)<=1 && Math.abs(rect(root.querySelector('.vk-discussion-actions .vk-ui-button__label')).left-rect(body).left)<=1,
-      composerInset:rect(composer.querySelector('textarea')).left+parseFloat(getComputedStyle(composer.querySelector('textarea')).paddingLeft)-rect(composer).left,
+    const segmentOrderOk = rootEndorse && rootReply && !!(rootEndorse.compareDocumentPosition(rootReply) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const segmentCornersOk = rootEndorse && rootReply &&
+      getComputedStyle(rootEndorse).borderTopRightRadius === '6px' &&
+      getComputedStyle(rootReply).borderTopLeftRadius === '6px' &&
+      getComputedStyle(segment).columnGap === '2px';
+    const headingStatic = document.querySelector('.vk-discussion-head')?.textContent.includes('Nhận xét') &&
+      document.querySelector('.vk-discussion-order')?.textContent.trim() === 'Cũ đến mới' &&
+      !document.querySelector('#feedback-region select');
+    return {root:rect(root), group:rect(group), composer:rect(composer), body:rect(body),
+      segment:rect(segment), avatarLeft:rect(root.querySelector('.vk-discussion-byline .vk-ui-avatar')).left,
+      nameLeft:rect(nameEl).left,
+      fieldPadLeft:rect(composer.querySelector('.vk-ui-field__control')).left - rect(composer).left,
+      fieldPadRight:rect(composer).right - rect(composer.querySelector('.vk-ui-field__control')).right,
       gap:parseFloat(getComputedStyle(group.querySelector('ul')).rowGap),
       contrast:Math.min(...ratios),
+      segmentOrderOk, segmentCornersOk, headingStatic,
       reasons:reasons.length, targetReasons:pattern.querySelectorAll('.vk-ui-action__note').length,
       descriptions:controls.every(b=>(b.getAttribute('aria-describedby')||'').split(' ').filter(Boolean).every(id=>!!document.getElementById(id))),
       shared:controls.length>=2 && controls.every(b=>(b.getAttribute('aria-describedby')||'').includes(reasons[0]?.id)),
       field:composer.querySelectorAll('textarea').length===1 && !!composer.querySelector('label[for]'),
       radius:getComputedStyle(composer).borderTopLeftRadius,
-      buttons:[...thread.querySelectorAll('button')].every(b=>{const r=b.getBoundingClientRect();return r.width>=48 && r.height>=48 && r.left>=0 && r.right<=innerWidth+1;})};
+      rootSeg48:[rootEndorse, rootReply].every(b=>{const r=b.getBoundingClientRect();return r.width>=48 && r.height>=48;}),
+      buttons:[...thread.querySelectorAll('button')].every(b=>{const r=b.getBoundingClientRect();return r.width>=44 && r.height>=44 && r.left>=0 && r.right<=innerWidth+1;})};
   })()`);
-  const close = (a,b)=>Math.abs(a-b)<=1;
-  check(['group','composer'].every(k=>close(geometry.root.left,geometry[k].left)&&close(geometry.root.right,geometry[k].right)) && geometry.aligned, `${scenario}: root/group/composer share both edges and text/action axis (${JSON.stringify(geometry)})`);
-  check(close(geometry.inset, width < 360 ? 12 : 16) && close(geometry.inset,geometry.insetRight) && close(geometry.composerInset,geometry.inset) && geometry.gap===16, `${scenario}: balanced fixed inset and 16px reply spacing`);
+  const close = (a,b)=>Math.abs(a-b)<=1.5;
+  const isDesktop = width >= 1024;
+  const expectedLeft = isDesktop ? geometry.nameLeft : geometry.avatarLeft;
+  check(
+    close(geometry.body.left, expectedLeft)
+      && close(geometry.segment.left, expectedLeft)
+      && close(geometry.group.left, expectedLeft)
+      && close(geometry.group.right, geometry.root.right)
+      && close(geometry.composer.left, expectedLeft)
+      && close(geometry.composer.right, geometry.root.right),
+    `${scenario}: R4 alignment (${isDesktop ? 'desktop name-track indent' : 'mobile full width'}) (${JSON.stringify(geometry)})`
+  );
+  check(close(geometry.fieldPadLeft, geometry.fieldPadRight) && geometry.gap===16, `${scenario}: symmetrical composer inset and 16px reply spacing`);
+  check(geometry.headingStatic && geometry.segmentOrderOk && geometry.segmentCornersOk, `${scenario}: R4 heading “Cũ đến mới” static and root segmented Ưng|Trả lời 6px inner corners`);
   check(geometry.reasons===1 && geometry.targetReasons===0 && geometry.descriptions && geometry.shared, `${scenario}: one uniform branch reason describes every separate target`);
-  check(geometry.field && geometry.radius==='28px' && geometry.buttons, `${scenario}: one native field, 28px tonal surface and reachable 48px targets`);
-  check(geometry.contrast>=4.5, `${scenario}: resolved body/metadata/label contrast >=4.5 (${geometry.contrast.toFixed(2)})`);
+  check(geometry.field && geometry.radius==='28px' && geometry.rootSeg48 && geometry.buttons, `${scenario}: one native field, 28px tonal surface, 48px root segment and >=44px targets`);
+  check(geometry.contrast>=4.5, `${scenario}: resolved body/metadata/label/button contrast >=4.5 (${geometry.contrast.toFixed(2)})`);
   if (width === 390 || width === 360 || width === 1440 || (width === 320 && scale === 200)) {
     const scroll = await page.eval('({x:scrollX,y:scrollY})');
     await page.eval(`document.querySelector('.vk-discussion-reply-composer').scrollIntoView({block:'start'})`);
@@ -5776,10 +5916,41 @@ async function discussionR31Geometry(page, width, scale, scenario) {
   }
 }
 
+async function checkDiscussionThemeFrames(page, theme) {
+  const minimum = await page.eval(`(async () => {
+    const field = document.querySelector('.vk-discussion-reply-composer .vk-ui-field__control');
+    const segment = document.querySelector('.vk-discussion-action-segment[data-root="true"]');
+    const toggle = segment.querySelector('.vk-ui-toggle__control');
+    const reply = segment.querySelector('[id^="reply-to-"]');
+    const targets = [[field.querySelector('label'), field], [toggle, toggle], [reply, reply]];
+    const luminance = color => {
+      const rgb = color.match(/[0-9.]+/g).slice(0,3).map(Number).map(v => v/255)
+        .map(v => v <= 0.04045 ? v/12.92 : ((v+0.055)/1.055)**2.4);
+      return rgb[0]*0.2126 + rgb[1]*0.7152 + rgb[2]*0.0722;
+    };
+    const minima = targets.map(() => Infinity);
+    document.documentElement.dataset.theme = ${JSON.stringify(theme)};
+    // Cover the first style update and the full 160 ms token in normal motion.
+    const begin = performance.now();
+    do {
+      targets.forEach(([fg, bg], index) => {
+        const a = luminance(getComputedStyle(fg).color);
+        const b = luminance(getComputedStyle(bg).backgroundColor);
+        minima[index] = Math.min(minima[index], (Math.max(a,b)+0.05)/(Math.min(a,b)+0.05));
+      });
+      await new Promise(requestAnimationFrame);
+    } while (performance.now() - begin < 200);
+    return minima;
+  })()`);
+  check(minimum.every(ratio => ratio >= 4.5),
+    `discussion ${theme}: field label, Ưng and Trả lời keep 4.5:1 through the theme change (${minimum.map(ratio => ratio.toFixed(2)).join(', ')})`);
+}
+
 async function captureDiscussionMatrix(page, name, anchor, boundary) {
   for (const theme of ['light', 'dark']) {
-    await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}`);
-    for (const width of [320, 360, 390, 834, 1024, 1440]) {
+    if (name === 'contract-fixture-flat') await checkDiscussionThemeFrames(page, theme);
+    else await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}`);
+    for (const width of [320, 360, 390, 834, 1024, 1280, 1440]) {
       await page.viewport(width, 900);
       await page.eval(`document.documentElement.style.fontSize=''; document.querySelector(${JSON.stringify(anchor)}).scrollIntoView({block:'start'})`);
       const ov100 = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({
@@ -5799,7 +5970,7 @@ async function captureDiscussionMatrix(page, name, anchor, boundary) {
         overflow: ov100,
       });
       if (name === 'contract-fixture-flat') await discussionR31Geometry(page, width, 100, `${name}/${theme}/${width}`);
-      if (width <= 390 || (width === 1440 && name === 'contract-fixture-flat')) {
+      if (width <= 390 || width >= 1280) {
         await page.eval(`document.documentElement.style.fontSize='200%'; document.querySelector(${JSON.stringify(anchor)}).scrollIntoView({block:'start'})`);
         const ov200 = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({
           containers: ['.vk-discussion-root', '.vk-discussion-thread'],
@@ -5877,7 +6048,7 @@ try {
   else if (args.phase === 'after-restart') await afterRestartPhase(page);
   else if (args.phase === 'endorsement') await endorsementAsReader(page, { args, check, captureMatrix: captureDiscussionMatrix });
   else if (args.phase === 'review-withdrawn') {
-    await reviewWithdrawnPage(page, { args, check });
+    await reviewWithdrawnPage(page, { args, check, captureMatrix: captureDiscussionMatrix });
     await moderationQueues(page, { args, check });
     await markdownReader(page, { args, check, textContrast });
   }

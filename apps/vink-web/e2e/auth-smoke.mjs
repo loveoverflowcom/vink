@@ -552,6 +552,7 @@ async function discussionOwnFixtures(page, endpoint, check) {
   await page.waitFor(`document.querySelector('#own-comments-more') && document.querySelector('#own-comments-refresh')?.getAttribute('aria-busy') !== 'true'`, 'independent own cursor');
   await page.click('#own-comments-more');
   await page.waitFor(`document.querySelector('#own-comments')?.textContent.includes(${JSON.stringify(rejected.rejection_reason)}) && document.querySelector('#own-comments-refresh')?.getAttribute('aria-busy') !== 'true'`, 'own rejected fixture');
+  check(await page.eval(`document.querySelector('[data-own-comment="${rejected.comment_id}"] .vk-discussion-own-chip')?.dataset.tone==='adverse' && document.querySelector('[data-own-comment="${rejected.comment_id}"] .vk-discussion-own-rejection')?.textContent.includes('Lý do chỉ bạn thấy')`), 'rejected own item uses adverse tone chip and writer-only reason box');
   check(ownCursors.includes('fixture-own-next') && ownBatches.every(b=>b.length<=20 && b.length===new Set(b).size) && ownBatches.some(b=>b.length>1), 'labelled own fixtures: separate own cursor and deduplicated multi-ID lookup batches <=20');
   check(await page.eval(`document.querySelector('#own-comments').textContent.includes('Nhánh chưa có trong danh sách công khai') && !document.querySelector('#root-list').textContent.includes(${JSON.stringify(rejected.body)})`), 'labelled own fixtures: off-page pending, unlisted-root reply and own rejection remain outside the public timeline');
   const beforeInput = await page.eval(`document.querySelector('#root-composer').value`);
@@ -569,7 +570,7 @@ async function discussionOwnFixtures(page, endpoint, check) {
     check(await page.eval(`window.__discussionInput.value === ${JSON.stringify(expected)}`), `own refresh keeps native ${command} history (CDP editing command)`);
   }
   await page.eval(`window.__discussionInput.focus(); window.__discussionInput.setSelectionRange(2,5)`);
-  for (const width of [320,390,834,1440]) for (const theme of ['light','dark']) for (const scale of [100,200]) {
+  for (const width of [320,390,834,1280,1440]) for (const theme of ['light','dark']) for (const scale of [100,200]) {
     await page.viewport(width);
     await page.eval(`document.documentElement.dataset.theme='${theme}'; document.documentElement.style.fontSize='${scale}%'; document.querySelector('#own-comments').scrollIntoView({block:'start'})`);
     check(await page.eval(`document.documentElement.scrollWidth <= innerWidth+1 && window.__discussionInput === document.querySelector('#root-composer') && document.activeElement === window.__discussionInput && window.__discussionInput.selectionStart === 2 && window.__discussionInput.selectionEnd === 5`), `own fixture ${width}/${theme}/${scale}: reflows and preserves input identity/selection`);
@@ -578,6 +579,7 @@ async function discussionOwnFixtures(page, endpoint, check) {
   own.comments[0].status='approved';
   await page.click('#own-comments-refresh');
   await page.waitFor(`document.querySelector('[data-own-comment="${own.comments[0].comment_id}"]')?.textContent.includes('Đã được duyệt')`, 'off-page approval confirmed by lookup');
+  check(await page.eval(`document.querySelector('[data-own-comment="${own.comments[0].comment_id}"] .vk-discussion-own-chip')?.dataset.tone==='success' && [...document.querySelectorAll('[data-own-comment="${own.comments[0].comment_id}"] button')].some(b=>b.textContent.includes('Tải lại nhận xét'))`), 'approved off-page chip uses green success tone and offers Tải lại nhận xét');
   check(await page.eval(`document.querySelectorAll('[data-own-comment="${own.comments[0].comment_id}"]').length === 1`),'labelled fixture pending→approved off-page has one representation');
   own.comments[0].status='removed'; own.comments[0].body=null; own.comments[0].can_remove=false;
   await page.click('#own-comments-refresh');

@@ -21,7 +21,7 @@ async function api(actor, path, init = {}) {
   return { status: response.status, cache: response.headers.get('cache-control'), body };
 }
 
-export async function reviewWithdrawnPage(page, { args, check }) {
+export async function reviewWithdrawnPage(page, { args, check, captureMatrix }) {
   console.log('O-17@r2 review-withdrawn page (author + admin fixtures, real API):');
   const author = { base: args['author-base'] };
   const admin = { base: args.base };
@@ -80,6 +80,11 @@ export async function reviewWithdrawnPage(page, { args, check }) {
   const item = comments.body.items.find((entry) => entry.comment_id === comment.body.comment_id);
   const decided = await post(admin, `/api/v1/moderation/comments/${comment.body.comment_id}/decisions`, { expected_version: item.version, action: 'approve' });
   check(decided.status === 200, 'the comment is approved');
+  const endorsed = await api(admin, `/api/v1/works/${work}/discussion/comments/${comment.body.comment_id}/endorsement/me`, {
+    method: 'PUT',
+    body: JSON.stringify({ command_key: crypto.randomUUID(), expected_order: 1, endorsed: true }),
+  });
+  check(endorsed.status === 200 && endorsed.body.summary?.count === 1, 'the approved comment has one confirmed endorsement before withdrawal');
 
   // 3. The reader page and Explore show the public work; the tab caches both.
   const readerPath = `/tac-pham/${work}`;
@@ -121,6 +126,30 @@ export async function reviewWithdrawnPage(page, { args, check }) {
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('[data-testid=reader-review-withdrawn]')`, 'the reader shows the notice');
   check(await page.eval(`!document.body.textContent.includes(${JSON.stringify(LINE)}) && document.querySelector('#reader-header h1')?.textContent.trim() === ${JSON.stringify(NOTICE)}`), 'the hydrated page shows the notice, never the body');
   check(await page.eval(`document.body.textContent.includes(${JSON.stringify(COMMENT)})`), 'the discussion stays readable');
+  async function checkReadOnly(state) {
+    const id = comment.body.comment_id;
+    const notice = '[data-testid=discussion-readonly-notice]';
+    const label = `[data-endorsement-readonly="${id}"]`;
+    await page.waitFor(`document.querySelector('${label}') && document.querySelector('#comments-mode')?.dataset.modeKind === 'system-locked'`, `${state}: read-only discussion ready`);
+    check(await page.eval(`document.querySelector('${notice}').textContent.includes('Trang này chỉ đọc') &&
+      document.querySelector('${label}').textContent.trim() === 'Ưng' &&
+      !document.querySelector('${label}').closest('button, a, [role=button]') &&
+      !document.querySelector('#root-composer, [id^="reply-composer-"], [id^="reply-to-"], [id^="endorse-comment-"], [id^="remove-comment-"], #discussion-mode-toggle')`),
+      `${state}: another reader sees the static Ưng label without a count or write actions`);
+    const summaries = await api(admin, `/api/v1/works/${work}/endorsements?comment_ids=${id}`);
+    check(summaries.status === 404, `${state}: the hidden work's endorsement summary stays private`);
+    await captureMatrix(page, state, notice, 'real-local-postgresql-with-approved-comment');
+    await page.goto(`${author.base}${readerPath}`);
+    const remove = `#remove-comment-${id}`;
+    await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('${remove}')`, `${state}: the comment writer may remove their own comment`);
+    await page.click(remove);
+    await page.click(`#cancel-remove-comment-${id}`);
+    check(await page.eval(`document.querySelector('#comment-${id} .vk-discussion-body')?.textContent === ${JSON.stringify(COMMENT)}`),
+      `${state}: cancelling removal retains the approved comment`);
+  }
+  await checkReadOnly('review-withdrawn');
+  await page.goto(`${admin.base}${readerPath}`);
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('#reader-return')`, 'reader revisits the withdrawn work');
   await page.click('#reader-return');
   await page.waitFor(`location.pathname === '/' && document.documentElement.dataset.hydrated === 'true'`, 'back to Explore');
   check(await page.eval(`!document.querySelector('a[href^="/tac-pham/${work}"]')`), 'Explore no longer lists the removed work');
@@ -160,6 +189,7 @@ export async function reviewWithdrawnPage(page, { args, check }) {
   check(hiddenHtml.includes('Nội dung đã được ẩn') && hiddenHtml.includes(COMMENT) && !hiddenHtml.includes(TITLE) && !hiddenHtml.includes(LINE), 'hidden SSR keeps the comment without title or body');
   await page.goto(`${admin.base}${readerPath}`);
   await page.waitFor(`document.querySelector('[data-testid=reader-hidden]') && document.documentElement.dataset.hydrated === 'true'`, 'hidden hydrated reader');
+  await checkReadOnly('author-hidden');
   await page.capture('reader-hidden-mobile');
   const blocked = await post(author, `/api/v1/works/${work}/discussion/comments`, { body: 'Không ghi mới', command_key: crypto.randomUUID() });
   check(blocked.status === 409 && blocked.body.error.code === 'hidden_read_only', 'hidden page rejects new comments');
@@ -171,4 +201,5 @@ export async function reviewWithdrawnPage(page, { args, check }) {
   const now = await api(admin, '/api/v1/moderation/automation');
   const enabled = await post(admin, '/api/v1/moderation/automation/mode', { expected_version: now.body.version, mode: 'enabled', reason: 'verify web O-17 done' });
   check(enabled.status === 200, 'the admin re-enables automation');
+
 }
