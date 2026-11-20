@@ -104,7 +104,7 @@ fn encode_next_target(handle: &str) -> String {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(super) enum RelationshipSummary {
+pub(crate) enum RelationshipSummary {
     Ready(PublicRelationships),
     #[cfg(feature = "hydrate")]
     Reading,

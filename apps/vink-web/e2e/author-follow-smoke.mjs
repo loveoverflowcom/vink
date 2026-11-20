@@ -180,11 +180,16 @@ async function profileRecovery(guest, base, handle, { check, textContrast }) {
   }
 }
 
-async function graphReadUnavailable(page, url) {
+async function graphReadUnavailable(page, url, writeUrl) {
   let requests = 0;
+  let heldWrite;
   const listener = (event) => {
     if (event.sessionId !== page.sessionId || event.method !== 'Fetch.requestPaused') return;
     const {requestId, request} = event.params;
+    if (request.url === writeUrl && request.method === 'PUT' && !heldWrite) {
+      heldWrite = {requestId, status: event.params.responseStatusCode};
+      return;
+    }
     if (request.url !== url || request.method !== 'GET') {
       page.send('Fetch.continueRequest', {requestId}).catch(() => {});
       return;
@@ -198,9 +203,17 @@ async function graphReadUnavailable(page, url) {
     }).catch(() => {});
   };
   page.cdp.listeners.push(listener);
-  await page.send('Fetch.enable', {patterns: [{urlPattern: url}]});
+  const patterns = [{urlPattern: url}];
+  if (writeUrl) patterns.push({urlPattern: writeUrl, requestStage: 'Response'});
+  await page.send('Fetch.enable', {patterns});
   return {
     requests: () => requests,
+    async dropWrite() {
+      for (let i = 0; !heldWrite && i < 160; i++) await sleep(50);
+      if (!heldWrite) throw new Error('timed out holding the real Follow write');
+      await page.send('Fetch.failRequest', {requestId: heldWrite.requestId, errorReason: 'ConnectionClosed'});
+      return heldWrite.status;
+    },
     async finish() {
       page.cdp.listeners = page.cdp.listeners.filter(item => item !== listener);
       await page.send('Fetch.disable');
@@ -411,16 +424,15 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   await page.reload();
   await page.waitFor(`${q('#follow-action')}?.textContent.trim() === 'Bỏ theo dõi' &&
     ${q('#profile-followers-link')} && ${q('#profile-following-count')}`, 'mixed grants are visible before isolated summary failure');
-  await page.send('Network.setBlockedURLs', {urls: [profileApi]});
+  const summaryDown = await graphReadUnavailable(page, profileApi, base + actionPath);
   try {
-    const lost = await holdAnswer(page, 'PUT', actionPath);
     await page.click('#follow-action');
-    check(await lost.held() === 200, 'receipt fixture commits before only summary transport fails');
-    await lost.finish(true);
+    check(await summaryDown.dropWrite() === 200, 'receipt fixture commits before only summary transport fails');
     await page.waitFor(`${q('#follow-action')}?.textContent.trim() === 'Theo dõi' &&
       ${q('#profile-relationships-retry')} && ${noFacts}`, 'summary failure hides old facts separately from the confirmed edge');
+    check(summaryDown.requests() > 0, 'only the public summary is refused after the lost ACK');
   } finally {
-    await page.send('Network.setBlockedURLs', {urls: []});
+    await summaryDown.finish();
   }
   await page.click('#profile-relationships-retry');
   await page.waitFor(`${q('#profile-followers-link')}?.textContent.trim() === 'Người theo dõi' &&
@@ -526,6 +538,24 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   await guest.waitFor(`!${q('#rel-other-direction')} && !${q('#rel-direction-retry')} &&
     document.querySelectorAll('.vk-rel-item').length === 15`, 'append revalidates and removes a newly hidden opposite direction');
   console.log('  ok  append revalidates the opposite direction independently');
+
+  setPolicies({following_list: 'everyone'});
+  await guest.goto(`${base}/@${handleB}`);
+  await guest.goto(base + listPath);
+  await guest.waitFor(`${q('#rel-load-more')} && ${q('#rel-other-direction')}`, 'opposite direction restored from fresh reads');
+  const directionDown = await graphReadUnavailable(guest, profileApi);
+  try {
+    await guest.click('#rel-load-more');
+    await guest.waitFor(`${q('#rel-direction-retry')} && !${q('#rel-other-direction')} &&
+      document.querySelectorAll('.vk-rel-item').length === 15`, 'opposite-direction failure is retryable while the current list remains readable');
+    check(directionDown.requests() > 0, 'only the opposite permission read receives 503');
+  } finally {
+    await directionDown.finish();
+  }
+  await guest.click('#rel-direction-retry');
+  await guest.waitFor(q('#rel-other-direction'), 'retry uses the current grants of the opposite direction');
+  setPolicies({following_list: 'self'});
+
 
   await guest.goto(`${base}/@${handleB}/nguoi-theo-doi`);
   await guest.waitFor(q('#rel-load-more'), 'first page offers an append cursor');

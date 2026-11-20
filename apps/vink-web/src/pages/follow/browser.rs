@@ -513,9 +513,12 @@ pub(super) fn ListSyncHost(
                 return;
             }
             let saved_cursor = pending_return.get_value();
-            let resumed = resume_cursor.get_untracked().is_some()
-                && cursor_override == resume_cursor.get_untracked();
-            if resumed && matches!(state, LiveListState::Restart { .. }) {
+            let resume = resume_cursor.get_untracked();
+            let resumed = resume.is_some() && cursor_override == resume;
+            if resumed
+                && (matches!(state, LiveListState::Restart { .. })
+                    || matches!(&state, LiveListState::Page { people, .. } if people.is_empty()))
+            {
                 // This cursor can be invalid even if a fresh read for the current scope is allowed.
                 let route = stored_cursor.get_value();
                 state = read_relationship_page(&handle, direction, is_own, route.as_deref()).await;
