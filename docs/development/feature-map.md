@@ -22,9 +22,15 @@ từ Khám phá, Reader và nhận xét. [Owner, phạm vi gate và đường ki
 cho #296 ở mức PostgreSQL. [Ca tích hợp](../../services/vink-app/tests/postgres/first_publication.rs)
 kiểm lần đầu commit, writer cạnh tranh, rollback, rút/tái đăng và nguồn mốc sau backfill.
 
-## Thông báo cộng đồng và danh sách Thấm (#345)
+## Thông báo cộng đồng và danh sách Thấm (#345, #346)
 
-**Mức triển khai Notifications v1 và danh sách người Thấm công khai là `NOT_IMPLEMENTED`.**
+**#346 (phía App):** producer cho năm nhóm v1 + invalidation, outbox thông báo có kích hoạt theo epoch
+tại commit và relay ACK có fence ở mức `persistence-api` (relay là thư viện trong App, chưa chạy trong
+`vink-worker` vì transport `T-07` thuộc #347). Bằng chứng: unit domain + PostgreSQL thật với receiver
+fixture; chưa có hai process/hai DB. Chi tiết, lựa chọn `T-01`/`T-02` và khoảng trống ở
+[registry Notifications §6](notifications.md#6-hiện-trạng-346-producer-outbox-và-relay-phía-app).
+
+**Mức triển khai Notification Service, inbox/Gateway và danh sách người Thấm công khai là `NOT_IMPLEMENTED`.**
 Hợp đồng và SSOT cho `#346`–`#348` cùng giai đoạn Design/Web được ghi tại
 [PRD §16](../../prd/requirements.md#16-thông-báo-cộng-đồng-và-danh-sách-thấm-công-khai-notifications-v1),
 [đặc tả miền & UX bằng chữ](../architecture/notifications.md),

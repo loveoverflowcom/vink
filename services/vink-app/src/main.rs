@@ -8,7 +8,9 @@
 //! curated tag catalog (TAG-PR-03, #97 CHOICE-02 A); each change names the catalog version the
 //! operator last read and is audited in the same transaction. `outbox status|dead|requeue` is the
 //! operator's view of the discussion outbox (DISC-04): queue health, dead letters, and the only way
-//! to requeue one (audited, dead letters only; never through HTTP). Exit codes: 0 success, 1 runtime
+//! to requeue one (audited, dead letters only; never through HTTP). `notifications
+//! status|activate|deactivate|dead|requeue|replay` is the operator's view of the Notifications v1
+//! outbox (#346): the audited activation cutover, relay health, dead letters, requeue and replay. Exit codes: 0 success, 1 runtime
 //! failure, 2 invalid configuration or usage, or a catalog change that was refused or conflicted
 //! (nothing written).
 
@@ -37,7 +39,7 @@ use vink_app::http::{AppState, router};
 use vink_app::persistence::{self, PgStore, lazy_pool};
 use vink_app::{dev_seed, identity, runtime};
 
-const USAGE: &str = "usage: vink-app [serve|serve-api|migrate|dev-seed]\n       vink-app admin add <principal-uuid> [<reason>]\n       vink-app admin remove <principal-uuid> [<reason>]\n       vink-app admin list\n       vink-app moderator grant <principal-uuid> <note>\n       vink-app moderator revoke <principal-uuid>\n       vink-app moderator list\n       vink-app principal suspend <principal-uuid> <reason>\n       vink-app principal reinstate <principal-uuid>\n       vink-app principal list|backfill-handles\n       vink-app tag list\n       vink-app tag history [<limit>]\n       vink-app tag create <catalog-version> <form|theme> <label>\n       vink-app tag rename <catalog-version> <tag-uuid> <label>\n       vink-app tag describe <catalog-version> <tag-uuid> [<description>]\n       vink-app tag alias <catalog-version> <tag-uuid> <label>\n       vink-app tag retire <catalog-version> <tag-uuid> [<successor-uuid>]\n       vink-app outbox status\n       vink-app outbox dead [<limit>]\n       vink-app outbox requeue <event-uuid> <consumer> <note>\n       vink-app post-review request|result|status|pending\n       vink-app maintenance prune";
+const USAGE: &str = "usage: vink-app [serve|serve-api|migrate|dev-seed]\n       vink-app admin add <principal-uuid> [<reason>]\n       vink-app admin remove <principal-uuid> [<reason>]\n       vink-app admin list\n       vink-app moderator grant <principal-uuid> <note>\n       vink-app moderator revoke <principal-uuid>\n       vink-app moderator list\n       vink-app principal suspend <principal-uuid> <reason>\n       vink-app principal reinstate <principal-uuid>\n       vink-app principal list|backfill-handles\n       vink-app tag list\n       vink-app tag history [<limit>]\n       vink-app tag create <catalog-version> <form|theme> <label>\n       vink-app tag rename <catalog-version> <tag-uuid> <label>\n       vink-app tag describe <catalog-version> <tag-uuid> [<description>]\n       vink-app tag alias <catalog-version> <tag-uuid> <label>\n       vink-app tag retire <catalog-version> <tag-uuid> [<successor-uuid>]\n       vink-app outbox status\n       vink-app outbox dead [<limit>]\n       vink-app outbox requeue <event-uuid> <consumer> <note>\n       vink-app notifications status\n       vink-app notifications activate|deactivate <note>\n       vink-app notifications dead [<limit>]\n       vink-app notifications requeue <event-uuid> <note>\n       vink-app notifications replay <since-rfc3339> <note>\n       vink-app post-review request|result|status|pending\n       vink-app maintenance prune";
 
 #[derive(Debug, PartialEq, Eq)]
 enum AdminCommand {
@@ -154,6 +156,56 @@ fn parse_outbox(args: &[String]) -> Result<OutboxCommand, String> {
         _ => {
             Err("expected `status`, `dead [<limit>]` or `requeue <event> <consumer> <note>`".into())
         }
+    }
+}
+
+/// Operator command on the Notifications v1 outbox (#346), parsed before any configuration.
+#[derive(Debug, PartialEq, Eq)]
+enum NotificationsCommand {
+    Status,
+    Activate(bool, String),
+    Dead(i64),
+    Requeue(uuid::Uuid, String),
+    Replay(time::OffsetDateTime, String),
+}
+
+fn operator_note(words: &[String]) -> Result<String, String> {
+    let note = words.join(" ");
+    if note.trim().is_empty() || note.chars().count() > 500 || note.contains('\n') {
+        return Err(
+            "expected a one-line note of 1 to 500 characters naming operator and reason".into(),
+        );
+    }
+    Ok(note)
+}
+
+fn parse_notifications(args: &[String]) -> Result<NotificationsCommand, String> {
+    match args.first().map(String::as_str) {
+        Some("status") if args.len() == 1 => Ok(NotificationsCommand::Status),
+        Some(verb @ ("activate" | "deactivate")) if args.len() >= 2 => Ok(
+            NotificationsCommand::Activate(verb == "activate", operator_note(&args[1..])?),
+        ),
+        Some("dead") if args.len() <= 2 => {
+            let limit = match args.get(1) {
+                None => DEFAULT_HISTORY,
+                Some(raw) => raw
+                    .parse::<i64>()
+                    .ok()
+                    .filter(|n| (1..=1_000).contains(n))
+                    .ok_or_else(|| "expected a limit between 1 and 1000".to_string())?,
+            };
+            Ok(NotificationsCommand::Dead(limit))
+        }
+        Some("requeue") if args.len() >= 3 => Ok(NotificationsCommand::Requeue(
+            uuid::Uuid::parse_str(&args[1]).map_err(|_| "expected an event UUID".to_string())?,
+            operator_note(&args[2..])?,
+        )),
+        Some("replay") if args.len() >= 3 => Ok(NotificationsCommand::Replay(
+            time::OffsetDateTime::parse(&args[1], &time::format_description::well_known::Rfc3339)
+                .map_err(|_| "expected an RFC 3339 instant".to_string())?,
+            operator_note(&args[2..])?,
+        )),
+        _ => Err("expected `status`, `activate|deactivate <note>`, `dead [<limit>]`, `requeue <event> <note>` or `replay <since-rfc3339> <note>`".into()),
     }
 }
 
@@ -294,6 +346,7 @@ fn main() -> ExitCode {
             | "principal"
             | "tag"
             | "outbox"
+            | "notifications"
             | "post-review"
             | "maintenance"
     ) {
@@ -360,6 +413,18 @@ fn main() -> ExitCode {
     } else {
         None
     };
+    let notifications_command = if command == "notifications" {
+        let args: Vec<String> = std::env::args().skip(2).collect();
+        match parse_notifications(&args) {
+            Ok(parsed) => Some(parsed),
+            Err(error) => {
+                eprintln!("vink-app notifications: {error}\n{USAGE}");
+                return ExitCode::from(2);
+            }
+        }
+    } else {
+        None
+    };
     let post_review_command = if command == "post-review" {
         let args: Vec<String> = std::env::args().skip(2).collect();
         match parse_post_review(&args) {
@@ -420,6 +485,9 @@ fn main() -> ExitCode {
             }
             Loaded::App(config) if let Some(operation) = outbox_command => {
                 outbox(&config, operation).await
+            }
+            Loaded::App(config) if let Some(operation) = notifications_command => {
+                notifications(&config, operation).await
             }
             Loaded::App(config) if let Some(operation) = post_review_command => {
                 post_review(&config, operation).await
@@ -766,10 +834,103 @@ async fn maintenance(config: &Config) -> Result<(), Failure> {
     let events = persistence::outbox::prune(&pool, 30, 1_000)
         .await
         .map_err(|_| Failure::Runtime("outbox prune failed".into()));
+    let notices = persistence::notification::prune(
+        &pool,
+        persistence::notification::REPLAY_HORIZON_DAYS,
+        1_000,
+    )
+    .await
+    .map_err(|_| Failure::Runtime("notification prune failed".into()));
     pool.close().await;
     println!("pruned {} expired rate-limit window(s)", pruned?);
     println!("pruned {} finished outbox event(s)", events?);
+    println!("pruned {} acknowledged notification event(s)", notices?);
     Ok(())
+}
+
+/// `vink-app notifications …` (#346): activation cutover, relay queue health, dead letters,
+/// requeue and replay after a receiver restore. Codes, counts and identifiers only.
+async fn notifications(config: &Config, command: NotificationsCommand) -> Result<(), Failure> {
+    use persistence::notification::{self as queue, RequeueOutcome};
+    use vink_app::domain::notification::ActivationChange;
+    let pool = connect(&config.database_url, "vink-app notifications").await?;
+    let failed = |error: vink_app::application::ports::StoreError| {
+        Failure::Runtime(format!("notifications command failed: {error}"))
+    };
+    let result = match command {
+        NotificationsCommand::Status => {
+            let activation = queue::activation(&pool).await.map_err(failed)?;
+            let backlog = queue::backlog(&pool).await.map_err(failed)?;
+            println!("active\t{}", activation.active());
+            println!("epoch\t{}", activation.epoch());
+            println!("eligible\t{}", backlog.eligible);
+            println!("scheduled_retry\t{}", backlog.scheduled);
+            println!("leased\t{}", backlog.leased);
+            println!("dead\t{}", backlog.dead);
+            println!(
+                "oldest_eligible\t{}",
+                backlog
+                    .oldest_eligible_seconds
+                    .map_or_else(|| "-".to_string(), |s| format!("{s}s"))
+            );
+            Ok(())
+        }
+        NotificationsCommand::Activate(active, note) => {
+            match queue::set_activation(&pool, active, &note)
+                .await
+                .map_err(failed)?
+            {
+                ActivationChange::Changed(next) => {
+                    println!("active={} epoch={}; audited", next.active(), next.epoch());
+                    Ok(())
+                }
+                ActivationChange::Unchanged(current) => {
+                    println!(
+                        "unchanged: active={} epoch={}; nothing was written",
+                        current.active(),
+                        current.epoch()
+                    );
+                    Ok(())
+                }
+                ActivationChange::Exhausted => Err(Failure::Runtime(
+                    "activation epoch exhausted; nothing was written".into(),
+                )),
+            }
+        }
+        NotificationsCommand::Dead(limit) => {
+            for dead in queue::dead_letters(&pool, limit).await.map_err(failed)? {
+                println!(
+                    "{}\t{}\t{}\tattempts={}\t{}",
+                    dead.event_id, dead.event_type, dead.outcome, dead.attempts, dead.finished_at
+                );
+            }
+            Ok(())
+        }
+        NotificationsCommand::Requeue(event, note) => {
+            match queue::requeue(&pool, event, &note).await.map_err(failed)? {
+                RequeueOutcome::Requeued { previous_attempts } => {
+                    println!("requeued {event} (previous attempts {previous_attempts}); audited");
+                    Ok(())
+                }
+                RequeueOutcome::Refused(state) => Err(Failure::Usage(format!(
+                    "refused: the delivery is {}; only a dead letter can be requeued and nothing was written",
+                    state.code()
+                ))),
+                RequeueOutcome::NotFound => Err(Failure::Usage(
+                    "no such delivery; nothing was written".into(),
+                )),
+            }
+        }
+        NotificationsCommand::Replay(since, note) => {
+            let replayed = queue::replay(&pool, since, &note, 10_000)
+                .await
+                .map_err(failed)?;
+            println!("replayed {replayed} acknowledged event(s) created since {since}; audited");
+            Ok(())
+        }
+    };
+    pool.close().await;
+    result
 }
 
 /// `vink-app outbox …`: counts, codes and identifiers only; no comment content is read.

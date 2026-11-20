@@ -17,6 +17,7 @@ pub mod follow;
 pub mod handle;
 pub mod moderation;
 pub(crate) mod moderation_write;
+pub mod notification;
 pub mod outbox;
 pub mod post_review;
 pub(crate) mod postgres;
