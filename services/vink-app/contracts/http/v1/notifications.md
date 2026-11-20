@@ -2,9 +2,9 @@
 
 **Trạng thái:** Hợp đồng đề xuất r1 · `NOT_IMPLEMENTED` (chưa có route Axum, service hay fixture
 kiểm tự động trong `contract.rs`).
-Tài liệu này chốt ngữ nghĩa chung cho **tầng liên dịch vụ** (`#346` App/Relay ↔ `#347` Notification
-Service) và **tầng Gateway ↔ Client** (`#347` ↔ `#348`, dùng lại được cho Web và CMP/mobile theo
-`P-14A`), **không** kê đơn SQL DDL và **không** chọn bố cục/CSS.
+Tài liệu này đặc tả hợp đồng giao sự kiện từ App/Relay (`#346`) tới Notification Service
+(`#347`) và hợp đồng App Gateway (`#348`) cung cấp cho Web và CMP/mobile theo `P-14A`.
+Gateway dùng dịch vụ nội bộ của `#347` để đọc nhóm và ghi ACK.
 
 - **Yêu cầu sản phẩm:** [PRD §16](../../../../../prd/requirements.md#16-thông-báo-cộng-đồng-và-danh-sách-thấm-công-khai-notifications-v1) (`NOTIF-01..10`)
 - **Đặc tả miền, Event Inventory & UX bằng chữ:** [docs/architecture/notifications.md](../../../../../docs/architecture/notifications.md)
@@ -26,18 +26,32 @@ Notification Service không đọc trực tiếp App DB hay Identity DB (`K4`).
 | Trường envelope | Kiểu & Ngữ nghĩa bắt buộc | Quy tắc bất biến |
 | --- | --- | --- |
 | `event_id` | UUID duy nhất của lần phát nguồn | Khóa chống trùng chính ở `ingestion_receipt`. Cùng `event_id` + cùng nội dung chỉ có một hiệu ứng. |
-| `event_type` | Enum đóng (`comment.root.approved`, `comment.reply.approved`, `work.moderation.decided`, `comment.moderation.adverse`, `work.endorsement.tham.changed`, `admin.notice.reserved`, `notification.invalidation`) | Trong v1: 5 nhóm nghiệp vụ + invalidation plumbing chạy thật; `admin.notice.reserved` chỉ dành trước (`P-05`, `TYPE_ONLY_NOW`); **Hữu ích** và **Follow** không có trong v1. |
+| `event_type` | Enum đóng (`comment.root.approved`, `comment.reply.approved`, `work.moderation.decided`, `comment.moderation.adverse`, `work.endorsement.tham.changed`, `admin.notice.reserved`, `notification.invalidation`) | Phạm vi cần triển khai v1 gồm 5 nhóm nghiệp vụ và invalidation. `admin.notice.reserved` chỉ dành trước (`P-05`, `TYPE_ONLY_NOW`); **Hữu ích** và **Follow** nằm ngoài phạm vi. |
 | `schema_version` | Số nguyên dương (`1`) | Cho phép nâng cấp schema an toàn mà không làm hỏng delivery cũ đang đợi retry. |
 | `source_owner` | `"discussion"` \| `"publication_moderation"` \| `"endorsement"` \| `"principal"` | Phục vụ truy vết và tách luồng nếu `#346` chọn `T-01 B`. |
 | `activation_epoch` | Mốc/epoch kích hoạt tính năng gắn tại commit nguồn | Ghi theo **thời điểm commit giao dịch nguồn**, không lấy giờ Relay. Sự kiện có mốc trước activation bị bỏ qua; không backfill lịch sử. |
-| `source_order` / `source_version` | Phiên bản tăng đơn điệu tại owner nguồn (`moderation_version`, `decision_version`, `accepted_order`, `public_epoch`) | Dùng để xử lý sự kiện đến đảo thứ tự (ví dụ `Add`/`Remove` Thấm hoặc vô hiệu hóa sau khi duyệt) mà không suy từ `now()` hay UUID. |
-| `occurred_at` | RFC 3339 UTC do PostgreSQL nguồn ghi khi commit | Chỉ để hiển thị/tính hạn trễ; không dùng làm bằng chứng thứ tự commit thay `source_order`. |
+| `source_order` | Phiên bản tăng đơn điệu trong phạm vi đối tượng tại nguồn: `moderation_version` theo bình luận, `decision_version` theo revision, `accepted_order` theo (actor, tác phẩm, revision), hoặc version vòng đời của đối tượng bị vô hiệu hóa. | Bên nhận so sánh trong cùng phạm vi để đối soát delivery đến đảo thứ tự. |
+| `publication_stamp` | `{epoch, readable}` chụp từ Publication trong giao dịch nguồn đối với tương tác root/reply/Thấm. | Mốc COM-11 độc lập với `activation_epoch` và `source_order`. Chỉ tạo tín hiệu tương tác đủ điều kiện trong epoch công khai đó. `remove` vẫn đối soát âm thầm khi tác phẩm đã ẩn hoặc đổi revision. |
+| `occurred_at` | RFC 3339 UTC, ghi bền cùng sự kiện tại App | Mốc hiển thị/tính hạn trễ. Thứ tự nghiệp vụ lấy từ version nguồn. |
 | `actor_id` | `PrincipalId` (UUID) hoặc `null` với quyết định hệ thống/kiểm duyệt | Không gửi tên hiển thị, email hay tên moderator; Gateway hydrate tên/avatar công khai tại lúc đọc. |
 | `recipients` | Mảng không rỗng `PrincipalId` đã loại self và dedup tại nguồn (trừ invalidation toàn cục theo target) | Tối đa đã rút gọn theo `P-01B` (`reply` gửi tối đa `{direct_target_author, root_author} \ {actor}`). |
-| `target` | Object định danh có kiểu (xem §2.4) | Chỉ mang `work_id`, `revision_id`, `root_id`, `reply_target_id`, `comment_id`, `decision_version`, `moderation_version`. |
+| `target` | Với sự kiện nghiệp vụ, dùng các ID và version của kiểu đích ở §2.4. Với `notification.invalidation`, dùng kiểu nội bộ `work` + `work_id`, `comment` + `work_id, comment_id` hoặc `principal` + `principal_id`. | Loại đối tượng chỉ phạm vi cần đối soát. Gateway vẫn kiểm quyền hiện hành tại list/open. Invalidation và `admin.notice.reserved` không tạo dòng inbox. |
 | `semantic_kind` | Chỉ dấu ngữ nghĩa cho gom nhóm & quyết định (`approved` \| `rejected` \| `removed` \| `add` \| `remove` \| `invalidate`) | Với Thấm: chỉ phát khi `EndorsementDelta` là `Add` hoặc `Remove`; không phát `EndorsementDelta::None`. Với tác phẩm: phân biệt `approved` với `rejected` (`P-07A`, `P-11b`). |
+| `first_selection` | Boolean bắt buộc đối với Thấm `add`, lấy từ lịch sử actor/target đã khóa ở Endorsement. Với các sự kiện khác, bỏ trường này. | Chỉ lượt chọn đầu tiên đủ điều kiện tạo tín hiệu. Mỗi lần chọn lại vẫn mang thứ tự nguồn để đối soát membership (§1.2). |
 | `action_required` | `bool` | Chỉ `true` khi chủ nội dung thực sự cần hành động (`P-11a`); `NeedsAdmin` / retry exhausted không phát event cho tác giả. |
-| `payload_digest` | SHA-256 chuẩn hóa của các trường nghiệp vụ bất biến trong event | Dùng để phát hiện `payload_mismatch` khi nhận lại cùng `event_id` với nội dung khác. |
+| `payload_digest` | SHA-256 dạng hex chữ thường, tính trên envelope chuẩn hóa bên dưới. | Hai bên tính độc lập để phát hiện cùng `event_id` nhưng khác nội dung. |
+
+Trong ví dụ wire v1, bỏ duy nhất trường `payload_digest`. Ghi các khóa ở **mọi** cấp theo
+thứ tự từ điển ASCII, mảng `recipients` theo thứ tự UUID chữ thường tăng dần, các mảng khác
+giữ nguyên thứ tự. Mã hóa JSON UTF-8 đặc, không khoảng trắng hay newline ngoài chuỗi; số nguyên
+dùng thập phân chính xác, chuỗi ASCII định danh/enum/thời điểm giữ nguyên giá trị. Từ chối khóa
+lặp, field lạ hoặc recipient trùng. Bên nhận tính lại digest trước khi đọc receipt. Digest gửi
+sai trả `rejected_invalid`; digest hợp lệ nhưng khác receipt trước cho cùng ID trả `payload_mismatch`.
+
+Với tín hiệu tác giả nhận muộn sau lần ẩn rồi tái công khai, Gateway đối chiếu
+`publication_stamp` tại nguồn với trạng thái đọc và epoch hiện hành theo COM-11. Tên tác phẩm,
+revision hay `moderation_version` trùng nhau giữa hai lần công khai vẫn phải qua phép đối chiếu
+này. Chi tiết quyết định riêng theo N3 dùng quyền của người viết.
 
 **Cấm tuyệt đối trong envelope, receipt và log vận hành:** thân bài viết, thân bình luận, địa chỉ
 email, mật khẩu/token phiên, danh tính cá nhân người kiểm duyệt và ghi chú kiểm duyệt nội bộ (`MOD-12`).
@@ -52,6 +66,14 @@ email, mật khẩu/token phiên, danh tính cá nhân người kiểm duyệt v
   muộn so với chính sách 180 ngày (`N8`). Sự kiện đã trễ quá tuổi nhóm hoặc quá retention cutoff không
   được phép tạo hoặc hồi sinh một nhóm inbox hết hạn; tuy nhiên, đối với `work.endorsement.tham.changed`,
   dấu chống báo lại `P-02B` vẫn phải được đối soát đúng mà không làm hiện thông báo cũ.
+- **Thấm lần đầu qua mốc activation (`P-02B`):** Với mỗi `add`, App phải cung cấp fact từ giao
+  dịch Endorsement đủ để phân biệt lần chọn đầu trong vòng đời (actor, Thấm, work, revision) và
+  lần chọn lại. Ví dụ: Add trước activation → Remove → Add sau activation chỉ đối soát membership.
+  Tương tự, khi relike đến trước delivery đầu, hoặc bản restore thiếu receipt đầu tiên, bên nhận
+  không được coi việc chưa thấy receipt là bằng chứng “lần đầu”. Dùng thứ tự nguồn của chính
+  actor/target để giữ trạng thái mới nhất khi replay. Chỉ Add đầu đủ điều kiện mới có thể tạo
+  tín hiệu một lần; Add cũ đến sau không đảo ngược Remove hay đánh thức nhóm đã đóng.
+  `#346` và `#347` cùng chốt cách lấy fact, dấu tối thiểu và horizon phục hồi theo `T-01/04/08`.
 
 ### 1.3. Delivery Receipt, Payload Mismatch & Fenced ACK (`#346` ↔ `#347`)
 
@@ -63,7 +85,7 @@ Giao tiếp qua hai database không dùng transaction phân tán; chu kỳ giao 
    Notification Service kèm `event_id` và `payload_digest`.
 3. **Receipt + Effect nguyên tử tại Notification DB (`#347`):** Notification Service chạy một
    transaction cục bộ kiểm tra `ingestion_receipt(event_id)`:
-   - Chưa có `event_id`: ghi `ingestion_receipt(event_id, payload_digest, …)` + áp dụng hiệu ứng
+   - Chưa có `event_id` và sự kiện hợp lệ, còn trong phạm vi activation/cutoff: ghi `ingestion_receipt(event_id, payload_digest, …)` + áp dụng hiệu ứng
      rollup/invalidation (`group_key`, `actor_count`, `actors_preview`, `P-02B` suppression,
      `signal_version`) trong **cùng transaction**, trả `status = "applied"`.
    - Đã có `event_id` và **khớp** `payload_digest`: không áp dụng hiệu ứng lần hai, trả
@@ -71,7 +93,7 @@ Giao tiếp qua hai database không dùng transaction phân tán; chu kỳ giao 
    - Đã có `event_id` nhưng **lệch** `payload_digest`: từ chối ghi, không coi là replay hợp lệ, trả
      `status = "payload_mismatch"` để Relay đưa vào trạng thái lỗi cần đối soát/cảnh báo (dead-letter /
      quarantine).
-   - Payload sai schema/không hợp lệ: trả `status = "rejected_invalid"` (không retry vô hạn).
+   - Sự kiện tới muộn ngoài cutoff: ghi nhận đã xử lý và trả `applied` mà không tạo tín hiệu inbox; đối soát dấu `P-02B` theo §1.2. Type quản trị chỉ dành trước và envelope sai schema/digest trả `status = "rejected_invalid"`.
    - Quá tải/DB tạm lỗi: trả `status = "transient_unavailable"` để Relay backoff/retry có giới hạn.
 4. **Fenced ACK (`#346`):** Nhận được `applied` hoặc `already_applied`, Relay khóa bản ghi delivery tại
    App DB và chỉ đánh dấu hoàn tất khi `claim_generation` vẫn khớp lease đang giữ. Nếu mất ACK hoặc
@@ -80,11 +102,14 @@ Giao tiếp qua hai database không dùng transaction phân tán; chu kỳ giao 
 5. **Restore lệch mốc (`T-08`, Epic AC-15):** Nếu Notification DB phải restore về thời điểm cũ hơn mốc
    App đã ACK trong giới hạn recovery horizon công bố, kênh vận hành/replay của `#346` + `#347` cho
    phép phát lại các sự kiện trong cửa sổ phục hồi (kể cả đã ACK ở App) nhưng **không** hồi sinh các
-   nhóm đã vượt quá trần 180 ngày (`P-13B`).
+   nhóm đã vượt quá trần 180 ngày (`P-13B`). Ở chiều ngược lại (App lùi mốc, Notification còn các
+   hiệu ứng từ thời điểm muộn hơn), đối soát phần projection bị ảnh hưởng với nghiệp vụ đã commit
+   ở nguồn có thẩm quyền trước khi phục vụ lại. Trong lúc chưa xác minh, trả trạng thái không khả
+   dụng cho phần đó. Hai owner diễn tập cả hai chiều trong recovery horizon/RPO đã công bố (`#347` AC-06).
 
 ---
 
-## 2. Ngữ nghĩa Gateway ↔ Client (`#347` ↔ `#348`, tái sử dụng CMP/mobile `P-14A`)
+## 2. Ngữ nghĩa Gateway (`#348`) ↔ Client (Web, CMP/mobile theo `P-14A`)
 
 ### 2.1. Hai ranh giới xác thực & Bộ nhớ đệm tách biệt
 
@@ -93,8 +118,8 @@ endpoint nào nối trực tiếp tới Notification Service (`K5`).
 
 | Bề mặt đọc/ghi | Chủ sở hữu dữ liệu | Yêu cầu phiên / Quyền | Chính sách `Cache-Control` |
 | --- | --- | --- | --- |
-| Badge count, trang Inbox, ACK `Seen`, `Read`, `MarkAllRead`, Chi tiết quyết định riêng | Notification Service (dữ liệu nhóm/con trỏ) + App Gateway (authz/hydration) | Bắt buộc phiên thật (`__Host-vink_session` hoặc `Authorization: Bearer`). Server tự giải `PrincipalId`. Khách nhận `401`. Ghi đòi `Origin` hợp lệ (với cookie/browser) và `principal::require_active`. | `Cache-Control: no-store` (mọi phản hồi 2xx và lỗi). Không `ETag`, không dùng chung cache giữa các phiên. |
-| Danh sách người Thấm công khai (`WorkId + RevisionId`) | App / Endorsement (`work_endorsements` + phép chiếu hồ sơ công khai) | Actor-free (không bắt đăng nhập); khách vẫn xem được khi tác phẩm có `publications` đúng `RevisionId` đó. Không có bản công khai hiện hành trả `404`. | `200`/`304`: `Cache-Control: private, no-cache` kèm strong `ETag` trên đúng byte phản hồi (kiểm visibility trước `If-None-Match`, giống `READ-01`). Lỗi `404`/`422`/`503`: `no-store`. |
+| Badge count, trang Inbox, ACK `Seen`, `Read`, `MarkAllRead`, Chi tiết quyết định riêng | Notification Service (dữ liệu nhóm/con trỏ) + App Gateway (authz/hydration) | Bắt buộc phiên thật (`__Host-vink_session` hoặc `Authorization: Bearer`). Server tự giải `PrincipalId`. Khách nhận `401`. Mọi lệnh ghi qua Gateway, kể cả bằng Bearer, đòi `Origin` bằng `VINK_PUBLIC_ORIGIN` và kiểm standing khi ghi. | `Cache-Control: no-store` (mọi phản hồi 2xx và lỗi). Không `ETag`, không dùng chung cache giữa các phiên. |
+| Danh sách người Thấm công khai (`WorkId + RevisionId`) | App / Endorsement (`work_endorsements` + phép chiếu hồ sơ công khai) | Actor-free (không bắt đăng nhập); khách vẫn xem được khi tác phẩm có `publications` đúng `RevisionId` đó. Không có bản công khai hiện hành trả `404`. | `200`/`304`: `Cache-Control: private, no-cache` kèm strong `ETag` trên đúng byte phản hồi (kiểm lại visibility, membership và projection trước `If-None-Match`, giống `READ-01`). Mọi lỗi: `no-store`. |
 
 ### 2.2. `inbox_snapshot`, `group_version`, `signal_version` và ACK đơn điệu
 
@@ -102,7 +127,9 @@ endpoint nào nối trực tiếp tới Notification Service (`K5`).
 
 - **`inbox_snapshot`:** Chuỗi/token đại diện mốc nhất quán theo **thứ tự commit của Notification DB**
   (không dùng `now()`/`created_at`/UUID trước commit — `T-05`). Phản hồi `GET` trang đầu inbox trả về
-  `inbox_snapshot` mới nhất đã quan sát.
+  `inbox_snapshot` mới nhất đã quan sát. Chỉ chấp nhận token do server phát cho chính chủ
+  hộp thư; không cho client tự chọn watermark tương lai. Một token đã cấp vẫn dùng được từ
+  tab khác của cùng chủ theo quy tắc idempotency.
 - **`group_version` vs `signal_version`:**
   - `group_version` tăng mỗi khi nhóm có thay đổi quan sát được (thêm actor, bỏ Thấm giảm count,
     cập nhật preview, đánh dấu Read).
@@ -114,11 +141,17 @@ endpoint nào nối trực tiếp tới Notification Service (`K5`).
      ACK cũ mang snapshot nhỏ hơn `seen_snapshot` hiện tại là no-op thành công và không xóa tín hiệu mới.
   2. `Read(group_id, observed_group_version, command_key)`: Đánh dấu `is_read = true` cho phiên bản
      nhóm mà người dùng đã thấy, **kể cả khi việc mở trang đích tiếp theo bị lỗi hoặc mất quyền**. Nếu
-     sau `observed_group_version` đã có tín hiệu mới tách sang nhóm `unread` mới (`N5`), nhóm cũ đã
-     được Read ở phiên bản thấy được mà **không** tự đánh dấu Read nhóm `unread` mới vừa sinh.
+     tín hiệu mới đã nhập cùng nhóm sau phiên bản đã thấy, ACK ghi nhận phần đã thấy và giữ
+     phần mới chưa đọc. Ví dụ tab A thấy G/v1, tab B làm G lên v2 với tín hiệu mới trước khi
+     ACK v1 tới: lần đọc kế vẫn thấy cập nhật v2 là unread. Nếu v2 chỉ sửa membership/preview
+     âm thầm, ACK v1 đọc hết tín hiệu đã thấy. Thực hiện theo mốc tín hiệu tương ứng với
+     `observed_group_version` trong G; `T-05` sở hữu cách lưu. `Read` không tiến `Seen`.
   3. `MarkAllRead(up_to_snapshot, command_key)`: Chỉ đánh dấu đã đọc các nhóm unread của chủ phiên có
-     cập nhật cuối nằm trong `<= up_to_snapshot`. Nhóm mới hoặc nhóm nhận tín hiệu sau `up_to_snapshot`
-     vẫn giữ `is_read = false`.
+     tín hiệu thuộc snapshot đã xác nhận. Nhóm mới hoặc phần tín hiệu sau `up_to_snapshot` vẫn
+     chưa đọc; một chỉnh sửa preview không sinh tín hiệu sẽ không cản việc xác nhận snapshot cũ.
+     Cả ba lệnh kiểm chủ phiên, scope và version được cấp. Cùng chủ, `command_key` và cùng
+     lệnh/tham số trả lại kết quả ACK khi retry; đổi lệnh/tham số với cùng khóa trả `422
+     idempotency_key_reused`. ACK cũ hợp lệ tới trễ không phải lỗi xung đột.
 
 ### 2.3. Trạng thái Badge & Hạn hội tụ (`P-04B`)
 
@@ -138,11 +171,19 @@ hoặc CMP tự ánh xạ sang route hoặc màn hình gốc của mình:
 | `target.kind` | Trường định danh bắt buộc | Đích điều hướng nghiệp vụ (Web / CMP) |
 | --- | --- | --- |
 | `work_comment_thread` | `work_id`, `comment_id`, `moderation_version` | Mở tác phẩm tại bình luận gốc (nếu còn hợp lệ); nếu mất quyền, mở trạng thái ẩn/tombstone/không khả dụng. |
-| `work_comment_reply` | `work_id`, `root_id`, `reply_target_id`, `comment_id`, `moderation_version` | Mở chuỗi phản hồi tại `comment_id` dưới `root_id` (giữ `reply_target_id` làm ngữ cảnh). |
+| `work_comment_reply` | `work_id`, `root_id`, `reply_context_kind` (`root` hoặc `reply`), `reply_target_id` (nullable), `comment_id`, `moderation_version` | Mở phản hồi `comment_id` dưới `root_id`. Nếu đích trực tiếp là root thì `reply_target_id = root_id`; nếu đích là reply đã purge thì giữ `reply_context_kind = "reply"` và trả `reply_target_id = null`. |
 | `work_endorsement` | `work_id`, `revision_id` | Mở tác phẩm tại phần Thấm (hoặc chỉ dẫn tới revision nếu bài đã cập nhật revision mới). |
 | `work_moderation_decision` | `work_id`, `revision_id`, `decision_version` | Mở **màn chi tiết quyết định riêng** của chủ tác phẩm (`P-12A`) cho đúng `(work_id, revision_id, decision_version)`. |
 | `comment_moderation_decision` | `work_id`, `comment_id`, `moderation_version` | Mở **màn chi tiết quyết định riêng** của người viết bình luận (`P-12A`) cho đúng `(comment_id, moderation_version)`. |
 | `admin_notice_reserved` | `notice_id` | Dành trước (`P-05`, `TYPE_ONLY_NOW`); v1 không sinh item runtime. |
+
+Với root/reply gom nhiều contribution, khi đích mới nhất bị gỡ, Gateway chọn contribution mới
+nhất còn hợp lệ làm đích, tính lại preview và số actor phân biệt. Nếu một actor vẫn còn bình
+luận khác trong nhóm thì vẫn tính người đó. Chỉ ẩn nhóm khi không còn contribution hợp lệ.
+Với reply, nguồn phân biệt trả lời root và trả lời reply qua `replied_to_reply`; nếu reply
+đích đã purge và nguồn mất ID, dùng nhóm riêng theo `comment_id` của phản hồi mới, vẫn
+gửi chủ root đủ điều kiện. Nếu còn ID của đích trực tiếp thì dùng ID đó để gom; Gateway chỉ
+hiện ngữ cảnh được phép. `href` của một actor liên kết lấy từ phép chiếu hồ sơ công khai.
 
 **Quy tắc màn chi tiết quyết định riêng (`P-12A`):**
 - Chỉ chủ tác phẩm đọc được `work_moderation_decision`; chỉ tác giả bình luận đọc được
@@ -151,8 +192,7 @@ hoặc CMP tự ánh xạ sang route hoặc màn hình gốc của mình:
 - Luôn trả `outcome`, `action_required`, mã/lý do được phép hiển thị (`reason`), `decided_at`, và
   phiên bản (`revision_id`/`decision_version` hoặc `moderation_version`) của chính quyết định đó — kể
   cả khi tác phẩm đang riêng tư/bị bác hoặc bình luận đã bị gỡ.
-- Khi bình luận đã bị gỡ bởi kiểm duyệt (`Removal::ByModeration`), trường `comment_excerpt` / `body`
-  luôn là `null` (không phục hồi thân chữ đã xóa/gỡ). Không bao giờ trả tên/ID người duyệt hay ghi
+- Khi bình luận đã bị gỡ, `comment_body` luôn là `null`; không trả trích đoạn hoặc phục hồi thân chữ đã xóa/gỡ. Không bao giờ trả tên/ID người duyệt hay ghi
   chú nội bộ.
 
 ### 2.5. Phân trang (`Cursor`) & Continuation hữu hạn (`T-06`)
@@ -168,24 +208,26 @@ hoặc CMP tự ánh xạ sang route hoặc màn hình gốc của mình:
   - Bỏ qua toàn bộ item hết hiệu lực / mất quyền (`N4`); **tuyệt đối không** trả item mà Gateway
     không hydrate được quyền.
 - **Danh sách người Thấm công khai (`P-08`):**
-  - Tham số: `limit` hữu hạn (mặc định & trần do `#348` chốt, không trả không giới hạn) và `cursor`
-    opaque gắn với `(work_id, revision_id, ordering_basis)` — ví dụ sắp theo `(endorsed_at DESC,
-    actor_id ASC)` hoặc `(accepted_order DESC, actor_id ASC)` dựa trên bản ghi đang `selected = true`
-    trong `work_endorsements`.
+  - Tham số: `limit` hữu hạn (mặc định & trần do `#348` chốt) và `cursor` opaque gắn với
+    `(work_id, revision_id, ordering_basis)`. Thứ tự phải xác định và có khóa phân xử ổn định;
+    ví dụ sắp theo `actor_id ASC` của các membership đang `selected = true`. Bản ghi ngoài
+    trang chưa đọc vẫn giữ vị trí qua lệnh Select cùng trạng thái của actor đó. `accepted_order`
+    tiến ngay cả khi lệnh không đổi trạng thái và chỉ có ý nghĩa trong phạm vi từng actor.
   - Mỗi lần tải trang kiểm tra lại `publications.revision_id == requested_revision_id` và áp phép
     chiếu danh tính công khai hiện hành (`linked` | `deleted` | `unavailable`). Nếu revision hiện hành
-    đã đổi sang revision khác hoặc bài bị rút/ẩn giữa hai trang: từ chối tiếp tục (`409`
-    `revision_changed` hoặc `404`), không trộn người Thấm của hai revision.
+    đã đổi sang revision công khai khác khi tiếp tục cursor hợp lệ, trả `409 revision_changed`.
+    Khi bài không còn bản công khai, trả `404 not_found`. Yêu cầu trang đầu với revision cũ
+    cũng trả `404`. Client bỏ các trang cũ khi mất quyền hoặc đổi revision.
 
 ### 2.6. Bảng mã lỗi chuẩn hóa
 
 | HTTP Status | Mã lỗi (`error.code`) | Khi nào trả & Bắt buộc với client |
 | --- | --- | --- |
-| `401` | `unauthenticated` | Thiếu hoặc hết hạn/thu hồi phiên cho badge, inbox, ACK hoặc chi tiết quyết định riêng. Không trả cho danh sách Thấm công khai khi bài đang công khai. |
-| `403` | `forbidden` / `principal_suspended` / `invalid_origin` | Sai `Origin` ở lệnh ghi hoặc principal đang bị đình chỉ. |
+| `401` | `unauthenticated` | Gateway không giải được principal active vì thiếu phiên, phiên hết hạn/thu hồi, chưa gắn principal hoặc đã đình chỉ. Không cần phiên cho danh sách Thấm công khai. |
+| `403` | `forbidden` / `principal_suspended` | Thiếu/sai `Origin` ở lệnh ghi trả `forbidden` trước khi resolve phiên. Standing fence phát hiện đình chỉ tại bước commit ghi trả `principal_suspended`. |
 | `404` | `not_found` | Tác phẩm/revision không công khai (với danh sách Thấm), hoặc quyết định/đối tượng không tồn tại hoặc không thuộc quyền đọc của người gọi. |
-| `409` | `revision_changed` / `group_version_stale` / `work_unavailable` | Revision công khai vừa thay đổi khi đang phân trang Thấm, hoặc trạng thái nhóm xung đột ngoài quy tắc idempotent. |
-| `422` | `validation_failed` / `idempotency_key_reused` | Sai cursor/limit/query, unknown field, hoặc tái sử dụng `command_key` với payload khác. |
+| `409` | `revision_changed` | Revision công khai vừa thay đổi khi đang phân trang Thấm. |
+| `422` | `validation_failed` / `idempotency_key_reused` | Sai cursor/limit/query, snapshot không hợp lệ cho hộp thư, version ngoài lịch sử nhóm, unknown field, hoặc tái sử dụng `command_key` với lệnh/tham số khác. |
 | `503` | `dependency_unavailable` | Identity, App DB hoặc Notification Service không sẵn sàng / quá hạn. **Không bao giờ** thay bằng count `0` hay mảng rỗng. |
 
 ### 2.7. Hợp đồng hành vi client: Polling, Ẩn/Offline & Đổi tài khoản (bàn giao `#348` & Web)
@@ -198,9 +240,7 @@ Client Web (và CMP sau này) phải tuân các quy tắc điều phối sau tr�
    polling nền; khi tab sáng lại hoặc kết nối trở lại, thực hiện kiểm tra lại có giới hạn + jitter
    (và exponential backoff khi nhận `503`/lỗi mạng).
 3. **Đổi tài khoản / Đăng xuất (`A → B → A`):** Tăng generation phiên ở client; hủy bỏ hoặc bỏ qua
-   mọi request đang bay, dữ liệu inbox, badge count và state `Read` của phiên trước. Danh sách Thấm
-   công khai đang mở giữ phần dữ liệu công khai hợp lệ nhưng đặt lại trạng thái riêng (`own_state`)
-   theo phiên mới hoặc góc nhìn khách.
+   mọi request đang bay, dữ liệu inbox, badge count và state `Read` của phiên trước. Với danh sách Thấm đang mở, bỏ các trang cũ, kiểm lại quyền đọc revision qua Gateway và tải trạng thái riêng (`own_state`) cho phiên mới hoặc khách.
 
 ---
 
@@ -216,6 +256,7 @@ Client Web (và CMP sau này) phải tuân các quy tắc điều phối sau tr�
   "source_owner": "discussion",
   "activation_epoch": 1,
   "source_order": 2,
+  "publication_stamp": {"epoch": 1, "readable": true},
   "occurred_at": "2026-11-20T02:10:00Z",
   "actor_id": "11111111-1111-4111-8111-11111111111a",
   "recipients": [
@@ -226,13 +267,14 @@ Client Web (và CMP sau này) phải tuân các quy tắc điều phối sau tr�
     "kind": "work_comment_reply",
     "work_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     "root_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    "reply_context_kind": "reply",
     "reply_target_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
     "comment_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
     "moderation_version": 2
   },
   "semantic_kind": "approved",
   "action_required": false,
-  "payload_digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  "payload_digest": "e6f89afc584f2f9e4464294c5db85d852c4840a8cde79c891bfb038348ed26b6"
 }
 ```
 
@@ -246,6 +288,7 @@ Ví dụ envelope **Thấm** (`Add` và `Remove` mang `source_order = accepted_o
   "source_owner": "endorsement",
   "activation_epoch": 1,
   "source_order": 4,
+  "publication_stamp": {"epoch": 1, "readable": false},
   "occurred_at": "2026-11-20T02:11:12Z",
   "actor_id": "44444444-4444-4444-8444-44444444444d",
   "recipients": [
@@ -258,7 +301,7 @@ Ví dụ envelope **Thấm** (`Add` và `Remove` mang `source_order = accepted_o
   },
   "semantic_kind": "remove",
   "action_required": false,
-  "payload_digest": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+  "payload_digest": "c922b2f3355c071bf1cf9fca5ac1ac73031b34579808a0aa87ce438e35859140"
 }
 ```
 
@@ -274,11 +317,6 @@ Phản hồi ingestion của Notification Service về cho Relay (`#347` → `#3
     {
       "event_id": "019a9b10-0002-7000-8000-000000000102",
       "status": "already_applied"
-    },
-    {
-      "event_id": "019a9b10-0003-7000-8000-000000000103",
-      "status": "payload_mismatch",
-      "reason": "existing_receipt_digest_differs"
     }
   ]
 }
@@ -393,21 +431,28 @@ Phản hồi ingestion của Notification Service về cho Relay (`#347` → `#3
 
 Lệnh ACK idempotent (Gateway nhận principal từ phiên):
 
+**Seen** khi mở chuông.
+
 ```json
-// Đánh dấu Seen khi mở chuông:
 {
   "command_key": "019a9b30-0001-7000-8000-000000000001",
   "up_to_snapshot": "s1.00000045"
 }
+```
 
-// Đánh dấu Read đúng phiên bản dòng vừa bấm (kể cả mở đích lỗi):
+**Read** phiên bản dòng vừa bấm, kể cả khi mở đích lỗi.
+
+```json
 {
   "command_key": "019a9b30-0002-7000-8000-000000000002",
   "group_id": "019a9b20-1111-7000-8000-000000000002",
   "observed_group_version": 1
 }
+```
 
-// Đánh dấu Đọc tất cả tới snapshot đang xác nhận:
+**Đọc tất cả** tới snapshot đang xác nhận.
+
+```json
 {
   "command_key": "019a9b30-0003-7000-8000-000000000003",
   "up_to_snapshot": "s1.00000045"
@@ -494,30 +539,27 @@ lập hoàn toàn với `actors_preview` và tuổi 180 ngày của Notification
         "pen_name": "Lan Phương",
         "handle": "lan-phuong-12",
         "href": "/@lan-phuong-12"
-      },
-      "endorsed_at": "2026-11-20T02:15:00Z"
+      }
     },
     {
       "author": {
         "kind": "deleted",
         "label": "Tài khoản đã xóa"
-      },
-      "endorsed_at": "2026-04-01T08:30:00Z"
+      }
     },
     {
       "author": {
         "kind": "unavailable",
         "label": "Người đọc Vink"
-      },
-      "endorsed_at": "2026-03-10T12:00:00Z"
+      }
     }
   ],
   "next_cursor": "e1.eeeeeeeeeeee.0000000000000003"
 }
 ```
 
-*(Lưu ý ví dụ trên minh họa lượt Thấm từ `2026-03-10` — hơn 180 ngày trước `2026-11-20` — vẫn còn
-hiệu lực trên danh sách công khai sau khi inbox Notifications đã purge theo `P-08` & `P-13B`.)*
+Ví dụ thành viên cuối trang đã Thấm từ 10/03/2026 và vẫn giữ lượt Thấm vào 20/11/2026.
+Dòng công khai còn hiệu lực sau khi inbox Notifications đã purge theo `P-08` và `P-13B`.
 
 ---
 
@@ -527,10 +569,10 @@ Phần việc sau nằm ngoài phạm vi tài liệu `#345` và ngoài các lư�
 giai đoạn Design/Web sau khi hợp đồng và API BE sẵn sàng:
 
 1. **Lập LayoutSpec (`vink-layout-spec`, `vink-ui-design` — `Epic AC-16`):**
-   - Bề mặt chuông & badge trên thanh điều hướng thích ứng (desktop rail / tablet / mobile bottom bar).
+   - Vị trí và thao tác mở chuông trên từng cỡ màn hình do LayoutSpec xác định.
    - Popover/sheet/trang Inbox: dòng gom nhóm (`actors_preview <= 3`), phân biệt `unread`/`read`, nút
      “Đọc tất cả”, trạng thái trống/loading/lỗi/`stale`/`503` (không thành `0`/trống).
-   - Màn chi tiết quyết định riêng (`P-12A`) cho tác phẩm & bình luận (tôn trọng `body: null`, nhãn
+   - Màn chi tiết quyết định riêng (`P-12A`) cho tác phẩm & bình luận (tôn trọng `comment_body: null`, nhãn
      “Cần xử lý” đúng `P-11a`, lối đi sửa bài hoặc khiếu nại theo `MOD-10`).
    - Danh sách người Thấm công khai có phân trang (`P-08 R3`) trên Reader: preview tổng số + kích
      hoạt danh sách, tải thêm “Xem thêm”, xử lý `unlike` giữa trang / `409 revision_changed`, tách
@@ -539,8 +581,6 @@ giai đoạn Design/Web sau khi hợp đồng và API BE sẵn sàng:
    - Bộ điều phối polling 30–60 giây cho count nhẹ, dừng khi tab ẩn/offline, backoff/resume khi hồi
      phục, tăng generation hủy response muộn khi logout/đổi tài khoản (`A → B → A`).
    - Kiểm chứng Chrome headless: 320–1440px, Light/Dark, chữ 100%–200%, phím `Tab`/`Enter`/`Escape`,
-     hit target `≥ 44×44` px, trả focus khi đóng sheet/dialog hoặc bấm “Xem thêm”, SSR không lộ dữ
-     liệu riêng tư, khách đọc được danh sách Thấm công khai không cần JS/đăng nhập (hoặc qua trang
-     tải thêm có lối thử lại).
+     hit target `≥ 44×44` px, trả focus khi đóng sheet/dialog hoặc bấm “Xem thêm”, SSR chỉ trả dữ liệu được phép. Khách mở, tải thêm và thử lại danh sách Thấm trên revision công khai.
 3. **Ngoài phạm vi Epic v1 (`DEFERRED`):** Giao diện CMP/native (`P-14A` chỉ giữ contract dữ liệu dùng
    lại được ở trên), kênh gửi quản trị thực tế (`P-05`), và Follow Notifications.

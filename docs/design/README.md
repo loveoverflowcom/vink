@@ -64,9 +64,8 @@ ghi gate theo từng màn.
 ## Thông báo và danh sách Thấm công khai (#345 — chờ giai đoạn design)
 
 `LAYOUT_SPEC: NOT_CREATED` (chờ đợt Design/Web sau khi `#345` và nhánh BE cung cấp hợp đồng/API).
-Đặc tả hành vi bằng chữ cho chuông/badge, inbox/`Seen`/`Read`/“Đọc tất cả”, màn chi tiết quyết định
-riêng (`P-12A`), danh sách người **Thấm** công khai có phân trang (`P-08` R3) cùng yêu cầu bàn phím,
-chạm, trả focus và cỡ chữ 100%–200% nằm tại [notifications.md](../architecture/notifications.md#5-đặc-tả-ux-hành-vi-bằng-chữ--chuông-inbox-seenread-và-chi-tiết-quyết-định-ac-03).
+Hành vi `Seen`, `Read`, “Đọc tất cả” và mở quyết định riêng (`P-12A`) nằm ở [đặc tả chuông và inbox](../architecture/notifications.md#5-đặc-tả-ux-hành-vi-bằng-chữ--chuông-inbox-seenread-và-chi-tiết-quyết-định-ac-03).
+Phân trang, tải lại, thao tác phím/chạm, trả focus và chữ 100%–200% nằm ở [đặc tả danh sách Thấm công khai](../architecture/notifications.md#6-đặc-tả-ux-hành-vi-bằng-chữ--danh-sách-người-thấm-công-khai-ac-04-p-08-r3).
 Hợp đồng dữ liệu/lỗi/polling nằm tại [HTTP v1](../../services/vink-app/contracts/http/v1/notifications.md)
 và danh mục bàn giao cho `Epic AC-16`/`AC-17` nằm tại [bảng bàn giao](../development/notifications.md#5-bàn-giao-riêng-cho-giai-đoạn-design--web-epic-ac-16--ac-17).
 
