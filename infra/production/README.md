@@ -86,4 +86,5 @@ không build trên VPS. Nếu package cần xác thực, dùng đường pull đ
   kho riêng, đối soát hai database rồi xin xác nhận thời điểm và dữ liệu trước khi chuyển hướng.
 
 Overlay [Resend HTTPS opt-in](../auth-mail/README.md) là đường chuẩn bị riêng cho native Identity.
-Không đưa tệp thứ ba vào unit đang chạy hoặc bật flag trước khi test, egress và recovery đạt gate.
+Chỉ thêm overlay sau khi đã thử egress và quy trình rollback trên test. Khi chủ dự án mở cờ,
+đăng nhập/đăng ký công khai; không chờ tính năng quên mật khẩu O-11 để hiện form.
