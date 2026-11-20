@@ -13,6 +13,16 @@ phần ngoài lát vẫn là đề xuất ở epic. Không đổi nghĩa các D/
 > luận không bao giờ là vote của tác phẩm; thứ tự bình luận không đổi. Hai hệ quả còn `OPEN`: count
 > bắt đầu lại khi đăng revision mới ảnh hưởng thứ hạng (O-07), và “Hữu ích” khi bình luận được sửa
 > (O-06, [đặc tả](comment-editing.md)). Không lựa chọn nào của lát LVE bị đổi; chưa có code xếp hạng.
+>
+> **Cập nhật 18–20/11/2026 ([#305 R3](https://github.com/loveoverflowcom/vink/issues/305), [#345](https://github.com/loveoverflowcom/vink/issues/345)):**
+> `P-08` bổ sung yêu cầu mở **danh sách người đã Thấm công khai có phân trang** theo `WorkId + RevisionId`
+> qua Gateway (bao gồm khách khi bản công khai), còn **Hữu ích** bị loại khỏi phạm vi triển khai Epic
+> Notifications (`REMOVED_FROM_SCOPE`, giữ nguyên code/tổng số hiện hữu). Lịch sử
+> `LVE-PR-02-03-CHOICE-12@r1` (`DESIGN_PROPOSED`) vẫn được giữ nguyên và là revision hiện hành
+> trong kho; proposal mở rộng chỉ cho Thấm nằm ở
+> [LVE-PR-02-03-CHOICE-12@r2](../../decisions/proposals/LVE-PR-02-03-CHOICE-12.r2.toml) (`PENDING`),
+> xem thêm [notifications.md](notifications.md) và
+> [hợp đồng v1](../../services/vink-app/contracts/http/v1/notifications.md).
 
 **Record (11/11/2026):** phạm vi D-14 tra tại `D-14@r1`. Lựa chọn của #73 tra theo lát:
 `LVE-PR-01-CHOICE-*`, `LVE-PR-02-03-CHOICE-*` (#81) và `LVE-WP-04-CHOICE-07/10`, đều `DESIGN_PROPOSED`.

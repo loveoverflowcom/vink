@@ -25,6 +25,18 @@ Cả ba revision đang `PENDING`. Lệnh `cargo xtask decision query USER-01 --h
 ghi nguồn #290/#291 cho hai lựa chọn đã chốt trong phạm vi issue. Duyệt preview và merge tài liệu
 không thay signoff đúng revision/hash theo [VDR-DECISION-SIGNOFF@r1](signoffs/VDR-DECISION-SIGNOFF.r1.toml).
 
+## Thông báo (Notifications v1)
+
+[#345](https://github.com/loveoverflowcom/vink/issues/345) đưa R1–R3 của [Epic #305](https://github.com/loveoverflowcom/vink/issues/305)
+vào [PRD §16](../prd/requirements.md#16-thông-báo-cộng-đồng-và-danh-sách-thấm-công-khai-notifications-v1),
+[đặc tả miền](../docs/architecture/notifications.md),
+[hợp đồng liên dịch vụ/Gateway](../services/vink-app/contracts/http/v1/notifications.md) và
+[bảng truy vết](../docs/development/notifications.md).
+[VDR-NOTIFICATIONS@r1](proposals/VDR-NOTIFICATIONS.r1.toml) tóm tắt phạm vi `N1–N8` và `P-01..P-14` (chỉ Thấm + danh sách công khai có phân trang; Hữu ích loại khỏi Epic #305).
+[VDR-NOTIFICATIONS-CONTRACT@r1](proposals/VDR-NOTIFICATIONS-CONTRACT.r1.toml) ghi hướng kiến trúc `K1–K6` và phân giao `T-01..T-08` cho `#346`–`#348`.
+[LVE-PR-02-03-CHOICE-12@r2](proposals/LVE-PR-02-03-CHOICE-12.r2.toml) đề xuất mở danh sách người Thấm công khai có phân trang (`WorkId + RevisionId`), giữ nguyên phần bình luận của `LVE-PR-02-03-CHOICE-12@r1` (`DESIGN_PROPOSED`, vẫn đang hiện hành khi `@r2` còn `PENDING`).
+Cả ba proposal mới đang ở trạng thái `PENDING` và chờ signoff đúng revision/SHA-256 theo [VDR-DECISION-SIGNOFF@r1](signoffs/VDR-DECISION-SIGNOFF.r1.toml).
+
 ## Tra cứu theo phạm vi công việc
 
 [Đối soát PR 15–16/11/2026](../docs/development/verification-reconciliation-20261116.md#quyết-định-toml-mới)

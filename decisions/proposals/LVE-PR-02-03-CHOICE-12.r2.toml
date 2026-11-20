@@ -1,0 +1,32 @@
+version = 1
+id = "LVE-PR-02-03-CHOICE-12"
+revision = 2
+
+[base]
+revision = 1
+sha256 = "a38e54ad78a7a4798b7104b3574115e9d530d5b0517aabcd01821be7f4986223"
+
+[content]
+kind = "architecture"
+domain = "endorsement"
+title = "Mở rộng P-08 R3: danh sách người Thấm công khai có phân trang cho tác phẩm"
+resolution = """
+Đề xuất thay thế CHỈ riêng phần tác phẩm (“Thấm”, neo WorkId + RevisionId) của LVE-PR-02-03-CHOICE-12@r1:
+- Mở endpoint đọc công khai có phân trang (hữu hạn page size, thứ tự rõ, con trỏ tải tiếp) cho danh sách người đang Thấm hợp lệ (selected = true) trên revision đang công khai hiện hành của tác phẩm, thuộc App/Endorsement qua Gateway.
+- Mọi người đủ quyền đọc tác phẩm/revision công khai hiện hành (bao gồm khách chưa đăng nhập) được xem danh sách; không mở danh sách cho bài riêng tư/ẩn/bị bác/đã xóa hoặc revision cũ không còn là public pointer hiện hành.
+- Nguồn dữ liệu là membership hiện hành trong Endorsement (work_endorsements) kết hợp phép chiếu danh tính công khai hiện hành của tác giả/người dùng (pen_name, @handle/href hoặc nhãn đã xóa/không khả dụng); tuyệt đối không dựng từ actors_preview của inbox, từ suppression marker hay từ ingestion receipt của Notifications, và không lộ email, trường riêng tư hay ghi chú nội bộ.
+- Danh sách Thấm công khai độc lập với chính sách xóa 180 ngày của Notifications (P-13B): lượt Thấm hợp lệ lâu hơn 180 ngày vẫn hiển thị bình thường miễn target và actor còn đủ điều kiện.
+- Phần bình luận (“Hữu ích”, neo WorkId + CommentId) bị loại khỏi phạm vi triển khai Epic #305 (P-08b REMOVED_FROM_SCOPE) và tiếp tục giữ nguyên baseline LVE-PR-02-03-CHOICE-12@r1 (chỉ tổng số và trạng thái riêng; không có voter list cho bình luận; không xóa code LVE hiện hữu). Trong khi @r2 ở trạng thái PENDING, LVE-PR-02-03-CHOICE-12@r1 (DESIGN_PROPOSED) vẫn là revision hiện hành trong kho.
+"""
+rationale = "Đáp ứng yêu cầu R3 P-08a/b của Epic https://github.com/loveoverflowcom/vink/issues/305 (18/11/2026) và https://github.com/loveoverflowcom/vink/issues/345 (AC-01, AC-04), đồng thời bảo toàn lịch sử CHOICE-12@r1. Chờ signoff đúng revision và SHA-256 theo VDR-DECISION-SIGNOFF@r1."
+requires = [
+    "D-14@r1",
+    "VDR-DECISION-SIGNOFF@r1",
+    "VDR-NOTIFICATIONS@r1",
+]
+related_ids = [
+    "D-14",
+    "LVE-FR-02",
+    "LVE-FR-05",
+    "NOTIF-08",
+]
