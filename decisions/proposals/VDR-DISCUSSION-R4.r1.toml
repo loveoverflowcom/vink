@@ -1,0 +1,28 @@
+version = 1
+id = "VDR-DISCUSSION-R4"
+revision = 1
+
+[content]
+kind = "product"
+domain = "discussion"
+title = "Nhận xét R4: vùng Bạn đã gửi, xác nhận gỡ, nơi hiện phản hồi chờ duyệt và câu tắt bình luận của tác giả"
+resolution = """
+Áp cho Reader Web theo #360 (lát B của Nhận xét R4); không đổi API, SQL, admission hay moderation.
+1. Vùng riêng của người viết (own-overlay) đổi tên từ “Nhận xét của bạn” thành “Bạn đã gửi”. Mỗi mục có chip trạng thái bằng chữ + icon: chờ duyệt, không được duyệt (lý do chỉ người viết thấy), đã duyệt ngoài phần đang tải, không còn hiển thị.
+2. “Gỡ nhận xét của tôi” không gửi DELETE ngay: bấm mở xác nhận tại chỗ ở đúng mục đó, gồm hành động phá hủy “Gỡ” và “Giữ lại”. Mỗi lúc chỉ một mục đang xác nhận; đổi phiên, tải lại hay mất quyền gỡ thì xác nhận bị hủy. Áp cho cả nút gỡ trong danh sách công khai lẫn trong “Bạn đã gửi”. Quyền gỡ vẫn chỉ theo `can_remove` từ API và được server kiểm lại.
+3. Phản hồi vừa được máy chủ nhận và đang chờ duyệt hiển thị bằng biên nhận “Chờ duyệt · Chưa công khai” cạnh ô soạn và trong “Bạn đã gửi”. Không chèn hàng tạm chỉ người gửi thấy vào danh sách nhánh (phương án B của brief #120 không áp dụng ở lát này).
+4. Khi bình luận đã tắt, chỉ người xem mà API trả `viewer_is_work_author = true` thấy “Bạn đã tắt bình luận cho bài viết này”; người khác vẫn thấy “Tác giả đã tắt bình luận cho bài viết này”. Không suy vai trò tác giả từ tên hay ID.
+"""
+rationale = """
+Chủ sản phẩm chọn trong phiên triển khai #359/#360 ngày 20/11/2026, qua ba câu hỏi vink-shape (tình huống + A/B + khuyến nghị): “B · Đổi tên + xác nhận”, “A · Cạnh ô soạn”, “A · Bạn đã tắt…”. Căn cứ: người viết không tự khôi phục được nhận xét đã gỡ nên cần một bước chặn bấm nhầm; giữ biên nhận cạnh ô soạn tránh thêm trạng thái gộp/phân trang/đổi phiên mà brief #120 đã cảnh báo; câu theo vai trò dùng fact máy chủ. Theo VDR-DECISION-SIGNOFF@r1, lựa chọn trong phiên chưa tự là signoff cho payload TOML này; revision ở PENDING đến khi chủ sản phẩm duyệt đúng revision và SHA-256.
+"""
+requires = [
+    "O-17@r2",
+    "VDR-DECISION-SIGNOFF@r1",
+]
+related_ids = [
+    "COM-04",
+    "COM-07",
+    "COM-08",
+    "COM-11",
+]

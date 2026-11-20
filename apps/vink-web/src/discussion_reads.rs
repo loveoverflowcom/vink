@@ -21,7 +21,50 @@ pub struct OwnState {
     pub error: Option<ApiError>,
     pub author: bool,
     pub capability_error: Option<ApiError>,
+    /// The one own comment whose removal waits for an explicit “Gỡ” (VDR-DISCUSSION-R4@r1).
+    confirming: Option<String>,
 }
+
+/// The chip “Bạn đã gửi” shows for one own comment (R4 image 06): text plus icon, never colour
+/// alone. Placement and the writer-only rejection reason stay separate facts.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum OwnChip {
+    Pending,
+    Rejected,
+    /// Approved, yet not in the public pages loaded so far.
+    ApprovedOffPage,
+    Unavailable,
+}
+
+impl OwnChip {
+    pub const fn of(status: CommentStatus) -> Self {
+        match status {
+            CommentStatus::Pending => Self::Pending,
+            CommentStatus::Rejected => Self::Rejected,
+            CommentStatus::Approved => Self::ApprovedOffPage,
+            CommentStatus::Removed => Self::Unavailable,
+        }
+    }
+
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Pending => "Chờ duyệt · Chưa công khai",
+            Self::Rejected => "Không được duyệt · Chưa công khai",
+            Self::ApprovedOffPage => "Đã được duyệt · Ngoài phần công khai đang tải",
+            Self::Unavailable => "Nhận xét không còn hiển thị",
+        }
+    }
+
+    pub const fn tone(self) -> crate::discussion_state::NoticeTone {
+        use crate::discussion_state::NoticeTone;
+        match self {
+            Self::Pending => NoticeTone::Waiting,
+            Self::Rejected => NoticeTone::Adverse,
+            Self::ApprovedOffPage | Self::Unavailable => NoticeTone::Neutral,
+        }
+    }
+}
+
 impl OwnState {
     pub fn new(scope: Scope) -> Self {
         Self {
@@ -35,6 +78,7 @@ impl OwnState {
             error: None,
             author: false,
             capability_error: None,
+            confirming: None,
         }
     }
     pub fn change_scope(&mut self, scope: Scope) {
@@ -64,6 +108,8 @@ impl OwnState {
         )?;
         self.loading = true;
         self.error = None;
+        // Reloading what the writer sees cancels a removal they had not confirmed yet.
+        self.confirming = None;
         Some(ticket)
     }
     pub fn invalidate_reads(&mut self) {
@@ -145,6 +191,28 @@ impl OwnState {
     }
     pub fn can_remove(&self, id: &str) -> bool {
         self.error.is_none() && !self.loading && self.comments.get(id).is_some_and(|c| c.can_remove)
+    }
+    /// “Gỡ nhận xét của tôi” opens a confirmation at that item; nothing is sent yet. Asking for
+    /// another item moves the single confirmation there.
+    pub fn ask_remove(&mut self, id: &str) -> bool {
+        let allowed = self.can_remove(id);
+        self.confirming = allowed.then(|| id.to_owned());
+        allowed
+    }
+    pub fn cancel_remove(&mut self) {
+        self.confirming = None;
+    }
+    /// Shown only while removal is still allowed: a lost capability hides the confirmation.
+    pub fn confirming(&self, id: &str) -> bool {
+        self.confirming.as_deref() == Some(id) && self.can_remove(id)
+    }
+    /// Consumes the confirmation. Only a confirmed, still removable comment may be sent.
+    pub fn take_confirmed(&mut self, id: &str) -> bool {
+        let confirmed = self.confirming(id);
+        if confirmed {
+            self.confirming = None;
+        }
+        confirmed
     }
     pub fn visible_items(&self, public: &BTreeSet<String>) -> Vec<OwnComment> {
         // Approved off-page is still recoverable after an ACK/lookup; never duplicate a
@@ -326,5 +394,85 @@ mod tests {
             batches.into_iter().flatten().collect::<BTreeSet<_>>().len(),
             81
         );
+    }
+
+    #[test]
+    fn r4_removal_waits_for_one_confirmation_that_any_reload_or_lost_capability_cancels() {
+        let mut s = OwnState::new(scope("a/0"));
+        let t = s.begin().unwrap();
+        let mut page = list();
+        for c in &mut page.comments {
+            c.can_remove = true;
+        }
+        let first = page.comments[0].comment_id.clone();
+        assert!(s.apply_list(&t, page.clone(), false));
+        assert!(
+            !s.ask_remove(&first),
+            "nothing is removable while a read is open"
+        );
+        s.finish(&t, None);
+        assert!(!s.take_confirmed(&first), "no confirmation, no DELETE");
+        assert!(s.ask_remove(&first) && s.confirming(&first));
+        assert!(
+            !s.ask_remove("unknown-id") && !s.confirming(&first),
+            "one at a time"
+        );
+        assert!(s.ask_remove(&first));
+        s.cancel_remove();
+        assert!(!s.take_confirmed(&first));
+        assert!(s.ask_remove(&first));
+        assert!(s.take_confirmed(&first));
+        assert!(
+            !s.take_confirmed(&first),
+            "consumed: a double press sends once"
+        );
+        // A reload cancels; so does a failed read that revokes every capability.
+        assert!(s.ask_remove(&first));
+        let reload = s.begin().unwrap();
+        assert!(!s.confirming(&first));
+        assert!(s.apply_list(&reload, page.clone(), false));
+        s.finish(&reload, None);
+        assert!(
+            !s.confirming(&first),
+            "a finished reload does not resurrect it"
+        );
+        assert!(s.ask_remove(&first));
+        let failing = s.begin_page(false).unwrap();
+        s.finish(&failing, Some(ApiError::Unavailable));
+        assert!(!s.confirming(&first) && !s.take_confirmed(&first));
+        // Another principal starts without any pending confirmation.
+        s.change_scope(scope("b/1"));
+        assert!(!s.confirming(&first));
+    }
+
+    #[test]
+    fn r4_own_chips_name_each_status_in_words_with_their_own_tone() {
+        use crate::discussion_state::NoticeTone;
+        let chips = [
+            CommentStatus::Pending,
+            CommentStatus::Rejected,
+            CommentStatus::Approved,
+            CommentStatus::Removed,
+        ]
+        .map(OwnChip::of);
+        assert_eq!(
+            chips,
+            [
+                OwnChip::Pending,
+                OwnChip::Rejected,
+                OwnChip::ApprovedOffPage,
+                OwnChip::Unavailable
+            ]
+        );
+        assert_eq!(OwnChip::Pending.tone(), NoticeTone::Waiting);
+        assert_eq!(OwnChip::Rejected.tone(), NoticeTone::Adverse);
+        let labels = chips.map(OwnChip::label);
+        assert!(labels.iter().all(|l| !l.is_empty()));
+        assert_eq!(
+            labels.iter().collect::<BTreeSet<_>>().len(),
+            4,
+            "distinct words, not colour alone"
+        );
+        assert!(!OwnChip::Unavailable.label().contains("xóa"));
     }
 }

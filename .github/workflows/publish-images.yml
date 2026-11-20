@@ -1,5 +1,5 @@
-# Explicit manual publication only. No deploy, DNS, SSH or workflow_run trigger.
-name: Publish OCI images manually
+# Only an explicit website request enters the protected production job.
+name: Publish OCI images and optionally release Vink
 on:
   workflow_dispatch:
     inputs:
@@ -12,12 +12,27 @@ on:
         required: true
         type: choice
         options: [linux/amd64, linux/arm64]
+      website:
+        description: Website release after qualified GHCR publication (requires vink-production environment)
+        type: boolean
+        default: false
+      previous_origin:
+        description: Observed current origin source SHA (website release only)
+        type: string
+      previous_edge:
+        description: Observed Pages deployment ID, or none on first deployment
+        type: string
+      reader:
+        description: Public Reader work UUID for guest browser verification
+        type: string
 permissions:
   contents: read
 jobs:
   publish:
     if: github.repository == 'loveoverflowcom/vink' && (github.ref == 'refs/heads/develop' || !inputs.publish)
     runs-on: ${{ inputs.platform == 'linux/arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    outputs:
+      release: ${{ steps.registry.outputs.release }}
     timeout-minutes: 90
     permissions:
       contents: read
@@ -29,13 +44,26 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Validate website request before any publication
+        if: inputs.website
+        env:
+          PUBLISH: ${{ inputs.publish }}
+          OLD_ORIGIN: ${{ inputs.previous_origin }}
+          OLD_EDGE: ${{ inputs.previous_edge }}
+          READER: ${{ inputs.reader }}
+        run: |
+          [[ "$GITHUB_REF" == refs/heads/develop && "$PUBLISH" == true ]]
+          [[ "$OLD_ORIGIN" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$OLD_EDGE" == none || "$OLD_EDGE" =~ ^[a-f0-9-]{36}$ ]]
+          [[ "$READER" =~ ^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$ ]]
       - name: Build clean source without registry credentials
         run: |
           rustup toolchain install
           cargo xtask infra build-images docker "$PLATFORM"
       - name: Qualify built images against isolated PostgreSQL and Identity
         run: infra/production/smoke-images.sh "$GITHUB_SHA" "$PLATFORM"
-      - name: Publish explicitly and record remote digests
+      - id: registry
+        name: Publish explicitly and record remote digests
         if: github.ref == 'refs/heads/develop' && inputs.publish
         env:
           REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -44,11 +72,62 @@ jobs:
           trap 'docker logout ghcr.io' EXIT
           printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           printf '```toml\nsource_revision = "%s"\nplatform = "%s"\n' "$GITHUB_SHA" "$PLATFORM" >> "$GITHUB_STEP_SUMMARY"
+          refs=$(mktemp)
           for name in web worker identity; do
             image="ghcr.io/loveoverflowcom/vink-$name:sha-$GITHUB_SHA"
             docker push "$image"
             digest=$(docker image inspect --format '{{index .RepoDigests 0}}' "$image")
             case "$digest" in ghcr.io/loveoverflowcom/vink-"$name"@sha256:*) ;; *) exit 1;; esac
+            printf '%s %s\n' "$name" "$digest" >> "$refs"
             printf '%s_image = "%s"\n' "$name" "$digest" >> "$GITHUB_STEP_SUMMARY"
           done
           printf '# Schema compatibility must be reviewed against both owners before rollback.\n```\n' >> "$GITHUB_STEP_SUMMARY"
+          python3 - "$refs" >> "$GITHUB_STEP_SUMMARY" <<'PYTHON'
+          import json, os, sys
+          from pathlib import Path
+          images = dict(line.split() for line in Path(sys.argv[1]).read_text().splitlines())
+          receipt = {"environment": "production", "public_origin": "https://vink.forum",
+                     "source_sha": os.environ["GITHUB_SHA"], "platform": os.environ["PLATFORM"], "images": images}
+          print("Input for release.py (image publication only)\n```json")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              print("release=" + json.dumps(receipt, separators=(",", ":")), file=output)
+          print(json.dumps(receipt, indent=2))
+          print("```")
+          PYTHON
+  website:
+    needs: publish
+    if: inputs.website && inputs.publish && github.ref == 'refs/heads/develop' && github.repository == 'loveoverflowcom/vink'
+    runs-on: ubuntu-24.04
+    environment: vink-production
+    concurrency:
+      group: vink-production-website
+      cancel-in-progress: false
+    permissions: {}
+    env:
+      RELEASE: ${{ needs.publish.outputs.release }}
+      PREVIOUS_ORIGIN: ${{ inputs.previous_origin }}
+      PREVIOUS_EDGE: ${{ inputs.previous_edge }}
+      READER: ${{ inputs.reader }}
+      RELEASE_HOST: ${{ vars.VINK_RELEASE_SSH_HOST }}
+      HOST_KEYS: ${{ secrets.VINK_RELEASE_KNOWN_HOSTS }}
+      RELEASE_KEY: ${{ secrets.VINK_RELEASE_SSH_KEY }}
+    steps:
+      - name: Submit immutable image receipt to the Vink release controller
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          [[ "$RELEASE_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]]
+          dir=$(mktemp -d)
+          trap 'rm -f "$dir/key" "$dir/hosts" "$dir/request"; rmdir "$dir"' EXIT
+          printf '%s\n' "$RELEASE_KEY" > "$dir/key"
+          printf '%s\n' "$HOST_KEYS" > "$dir/hosts"
+          unset RELEASE_KEY HOST_KEYS
+          python3 - > "$dir/request" <<'PYTHON'
+          import json, os
+          print(json.dumps({"release":json.loads(os.environ["RELEASE"]),
+                            **{k.lower():os.environ[k] for k in ("PREVIOUS_ORIGIN","PREVIOUS_EDGE","READER")}}))
+          PYTHON
+          ssh -T -o BatchMode=yes -o IdentitiesOnly=yes -o ForwardAgent=no \
+            -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$dir/hosts" -i "$dir/key" \
+            "vink-release@$RELEASE_HOST" vink-release < "$dir/request"

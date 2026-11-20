@@ -39,6 +39,17 @@ fn byline(
         key: None,
         published_at: instant.to_owned(),
         profile,
+        neutral: neutral_label(author, unverified),
+    }
+}
+
+/// A shown pen name (linked and verified, unavailable text, legacy) gets initials; a deleted,
+/// unsupported or not-yet-verified projection is a label and keeps the neutral mark (#352).
+pub fn neutral_label(author: Option<&AuthorProjection>, unverified: bool) -> bool {
+    match author {
+        None | Some(AuthorProjection::Unavailable { .. }) => false,
+        Some(AuthorProjection::Linked(_)) => unverified,
+        Some(AuthorProjection::Deleted { .. } | AuthorProjection::Unsupported) => true,
     }
 }
 

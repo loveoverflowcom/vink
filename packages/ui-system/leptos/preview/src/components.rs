@@ -983,7 +983,7 @@ fn identity_byline(long: bool) -> AnyView {
         (AvatarSize::Reader, "reader", Some("/tac-gia/mau-an-nhien")),
     ];
     view! {
-        {note("Tên đậm trước metadata; avatar ẩn với công nghệ hỗ trợ. Chỉ dòng reader có href (giả định đã xác minh).")}
+        {note("Avatar → tên → @handle là một đích khi có href đã xác minh (dòng reader); metadata nằm ngoài link. Avatar ẩn với công nghệ hỗ trợ.")}
         <Stack gap=Space::S6>
             {rows
                 .into_iter()
@@ -996,6 +996,7 @@ fn identity_byline(long: bool) -> AnyView {
                                 identity_key=key.unwrap_or_default()
                                 size=size
                                 href=href.map(str::to_string).unwrap_or_default()
+                                handle=href.map(|_| "mau-an-nhien".to_string())
                                 meta=vec![fixture::CAPTION.to_string(), format!("byline {label}")]
                             />
                         </div>
@@ -1003,6 +1004,7 @@ fn identity_byline(long: bool) -> AnyView {
                 })
                 .collect_view()}
             <div data-byline="blank"><AuthorByline name="  " meta=vec!["Tên trống được nói rõ".to_string()] /></div>
+            <div data-byline="neutral"><AuthorByline name="Tài khoản đã xóa" neutral=true meta=vec!["Nhãn trung tính: không chữ cái đầu, handle hay link".to_string()] /></div>
         </Stack>
     }
     .into_any()

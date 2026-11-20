@@ -1274,7 +1274,7 @@ pub const ENTRIES: &[CatalogEntry] = &[
         id: "composition.endorsement",
         family: "composition",
         label: "Ghi nhận văn học — Mẫu",
-        summary: "Ghi nhận văn học cho tác phẩm (Thấm), nhận xét gốc và phản hồi (Hữu ích) qua ToggleAction; dữ liệu Mẫu, không gọi dịch vụ, không xác nhận ghi; Pen Flight R2 A · Mềm (CHOICE-07).",
+        summary: "Ghi nhận văn học cho tác phẩm (Thấm), nhận xét gốc và phản hồi (Ưng) qua ToggleAction; dữ liệu Mẫu, không gọi dịch vụ, không xác nhận ghi; Pen Flight R2 A · Mềm (CHOICE-07) cho Thấm, tim viền/đặc theo giá trị đã xác nhận cho Ưng.",
         scenarios: &[
             Scenario {
                 id: "default",

@@ -140,10 +140,11 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     const cardLayout = await page.eval(`(() => {
       const row = document.querySelector('.vk-public-row');
       const title = row.querySelector('h2.vk-public-row__title');
-      const avatar = row.querySelector('.vk-public-row__avatar');
+      // #352: the card uses the shared AuthorByline cluster (avatar → pen name → @handle).
+      const avatar = row.querySelector('.vk-public-row__byline .vk-ui-avatar');
       const circle = avatar.getBoundingClientRect();
       const initials = document.createRange();
-      initials.selectNodeContents(avatar);
+      initials.selectNodeContents(avatar.querySelector('.vk-ui-avatar__initials'));
       const ink = initials.getBoundingClientRect();
       const excerpt = row.querySelector('.vk-public-row__excerpt').getBoundingClientRect();
       return {
@@ -151,7 +152,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
         // R3 (#336): form tag above the title, then excerpt, then the byline; no chevron.
         ordered: (row.querySelector('.vk-public-row__eyebrow')?.getBoundingClientRect().bottom ?? -Infinity) <= title.getBoundingClientRect().top + 1
           && title.getBoundingClientRect().bottom <= excerpt.top + 1 && excerpt.height > 0
-          && excerpt.bottom <= row.querySelector('.vk-public-row__author').getBoundingClientRect().top + 1
+          && excerpt.bottom <= row.querySelector('.vk-public-row__byline .vk-ui-byline__name').getBoundingClientRect().top + 1
           && !row.querySelector('.vk-public-row__chevron'),
         diameter: circle.width, square: circle.width === circle.height,
         fits: initials.getClientRects().length === 1 && ink.left >= circle.left - 1 && ink.right <= circle.right + 1
@@ -164,7 +165,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
       const card = await page.eval(`(() => {
         const row = document.querySelector('.vk-public-row');
         const box = selector => row.querySelector(selector).getBoundingClientRect();
-        const author = box('.vk-public-row__author'), title = box('.vk-public-row__title'), excerpt = box('.vk-public-row__excerpt');
+        const author = box('.vk-public-row__byline .vk-ui-byline__name'), title = box('.vk-public-row__title'), excerpt = box('.vk-public-row__excerpt');
         return {
           ordered: title.bottom <= excerpt.top + 1 && excerpt.bottom <= author.top + 1,
           overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,

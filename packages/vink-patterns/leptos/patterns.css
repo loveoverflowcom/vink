@@ -1,17 +1,14 @@
 /* Vink feature composition geometry; primitive styles and tokens stay in vink-ui. */
-.vk-work-byline { container: vk-work-byline / inline-size; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--vk-space-3); margin-bottom: var(--vk-space-2); overflow-wrap: anywhere; }
-/* Keep AuthorByline's avatar/name primitives; date shares the name's track at comfortable measures. */
-.vk-work-byline > .vk-ui-byline { display: contents; }
-.vk-work-byline .vk-ui-avatar { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
-.vk-work-byline .vk-ui-byline__text { grid-column: 2; grid-row: 1; align-self: end; }
-.vk-work-byline__date { grid-column: 2; grid-row: 2; align-self: start; color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
+.vk-work-byline { container: vk-work-byline / inline-size; --vk-work-byline-indent: var(--vk-size-avatar-feed); display: grid; row-gap: min(var(--vk-space-1), 4px); margin-bottom: var(--vk-space-2); min-width: 0; overflow-wrap: anywhere; }
+.vk-work-byline[data-size="reader"] { --vk-work-byline-indent: var(--vk-size-avatar-reader); }
+/* #352: the date is the work's metadata, outside the profile link, on the name's track. */
+.vk-work-byline__date { padding-inline-start: calc(var(--vk-work-byline-indent) + var(--vk-space-3)); color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
 /* Keep the semantic time element at the full date-track measure after localization. */
 .vk-work-byline__date > time { display: block; }
-/* At narrow relative measures, give the name and date the width occupied by the avatar track. */
+/* At narrow relative measures, the name and date take the width of the avatar track. */
 @container vk-work-byline (max-width: 14rem) {
-  .vk-work-byline .vk-ui-avatar { grid-row: 1; margin-block-end: min(var(--vk-space-1), 4px); }
-  .vk-work-byline .vk-ui-byline__text { grid-column: 1 / -1; grid-row: 2; }
-  .vk-work-byline__date { grid-column: 1 / -1; grid-row: 3; }
+  .vk-work-byline .vk-ui-byline__identity { flex-direction: column; align-items: flex-start; gap: min(var(--vk-space-1), 4px); }
+  .vk-work-byline__date { padding-inline-start: 0; }
 }
 /* Reader rhythm: context caption → title → byline, each step separated before the body. */
 .vk-reader__header { display: grid; justify-items: start; row-gap: var(--vk-space-2); }
@@ -57,10 +54,13 @@
 .vk-discussion-comment { display: grid; gap: var(--vk-space-3); min-width: 0; padding: 0; border: 0; scroll-margin-block: var(--vk-space-6); }
 .vk-discussion-thread > .vk-discussion-comment { padding: 0 16px; }
 .vk-discussion-comment p { margin: 0; }
-.vk-discussion-byline { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--vk-space-3); min-width: 0; }
-.vk-discussion-byline > div { min-width: 0; }
-.vk-discussion-name { font-size: var(--vk-type-body-size); font-weight: var(--vk-type-label-weight); }
-.vk-discussion-byline time { color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); }
+/* #352: author cluster on the start edge, time at the end outside the link; time wraps under
+   the cluster at narrow widths or enlarged text. */
+.vk-discussion-byline { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--vk-space-1) var(--vk-space-3); min-width: 0; }
+.vk-discussion-byline > .vk-ui-byline { flex: 0 1 auto; min-width: 0; }
+.vk-discussion-byline > time { margin-inline-start: auto; padding-block-start: min(var(--vk-space-1), 4px); color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
+/* The reply context belongs to the byline above it, closer than the comment's own rhythm. */
+.vk-discussion-byline + .vk-discussion-context { margin-block-start: calc(min(var(--vk-space-2), 8px) * -1); }
 .vk-discussion-reply-group { padding: 16px; border-radius: var(--vk-radius-lg); background: var(--vk-surface-container); min-width: 0; }
 .vk-discussion-reply-heading { margin: 0 0 var(--vk-space-3); font-weight: var(--vk-type-label-weight); }
 .vk-discussion-shared-reason { margin: 0; padding-inline: 16px; font-size: var(--vk-type-caption-size); color: var(--vk-on-surface-variant); }
@@ -207,11 +207,14 @@
 .vk-discussion-delivery[hidden] { display: none; }
 .vk-discussion-composer-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--vk-space-2); min-width: 0; }
 .vk-discussion-composer-heading > p { margin: 0; overflow-wrap: anywhere; }
+/* R4 (#360): the confirmation replaces “Gỡ nhận xét của tôi” in place; its prompt takes the first
+   line so a repeated press lands on text, and the two actions wrap at text 200%. */
+.vk-discussion-remove-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-2); min-width: 0; }
+.vk-discussion-remove-confirm > p { flex-basis: 100%; margin: 0; overflow-wrap: anywhere; }
 
-.vk-discussion-byline :is(time, .vk-discussion-context, .vk-ui-link) { font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
+.vk-discussion-context { line-height: var(--vk-type-caption-line-height); }
 .vk-discussion-thread > .vk-muted { margin: 0; padding-inline: 16px; }
 
-.vk-discussion-byline .vk-ui-link { display: block; }
 .vk-discussion-actions > .vk-ui-action:first-child .vk-ui-button--text { padding-inline-start: 0; justify-content: flex-start; }
 .vk-feedback-composer--tonal .vk-ui-input--area { padding-inline: 0; }
 .vk-feedback-composer--tonal .vk-ui-field__label { margin-inline: 0; }

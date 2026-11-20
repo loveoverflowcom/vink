@@ -15,6 +15,7 @@ fn author(long: bool) -> Author {
         key: Some("screen-author".into()),
         profile: None,
         published_at: "2026-11-02T02:00:00Z".into(),
+        neutral: false,
     }
 }
 
@@ -24,6 +25,7 @@ fn discussion_sample(anchor: bool) -> DiscussionThreadFacts {
         key: None,
         profile: None,
         published_at: "2026-11-03T08:00:00Z".into(),
+        neutral: false,
     };
     let comment = |id: &str, context| DiscussionComment {
         id: id.into(),

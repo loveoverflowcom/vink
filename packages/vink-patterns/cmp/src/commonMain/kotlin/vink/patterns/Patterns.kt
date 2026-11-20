@@ -162,7 +162,7 @@ enum class EndorsementKind(val id: String) {
     /** One published revision of a work: “Thấm”. */
     Work("work"),
 
-    /** A root comment or a flat reply, each its own target: “Hữu ích”. */
+    /** A root comment or a flat reply, each its own target: “Ưng” (heart; renamed 20/11/2026, #359). */
     Comment("comment"),
     ;
 
@@ -174,18 +174,24 @@ enum class EndorsementKind(val id: String) {
                 failed = "Không thể Thấm lúc này.", unknown = "Chưa rõ bạn đã Thấm chưa.",
             )
             Comment -> ToggleCopy(
-                "Hữu ích", "Bỏ đánh dấu hữu ích", countUnit = "lượt hữu ích",
-                pendingOn = "Đang gửi đánh dấu hữu ích…", pendingOff = "Đang bỏ đánh dấu hữu ích…",
-                failed = "Không thể đánh dấu lúc này.", unknown = "Chưa rõ bạn đã đánh dấu hữu ích chưa.",
+                "Ưng", "Bỏ Ưng", countUnit = "lượt Ưng",
+                pendingOn = "Đang gửi Ưng…", pendingOff = "Đang bỏ Ưng…",
+                failed = "Không thể Ưng lúc này.", unknown = "Chưa rõ bạn đã Ưng chưa.",
             )
         }
 
+    /** Decorative glyph for a confirmed selection: Pen Flight for “Thấm”, outline/filled heart for “Ưng”. */
+    fun icon(selected: Boolean): IconName = when (this) {
+        Work -> IconName.PenFlight
+        Comment -> if (selected) IconName.Heart else IconName.HeartOutline
+    }
+
     /** Visible text, never hover-only; no login control is implied (no auth authority yet). */
     fun reason(block: EndorsementBlock): String = when (block) {
-        EndorsementBlock.OwnContent -> if (this == Work) "Bạn không thể tự Thấm tác phẩm của mình." else "Bạn không thể đánh dấu nhận xét của chính mình."
-        EndorsementBlock.NotPermitted -> if (this == Work) "Tài khoản này chưa thể Thấm." else "Tài khoản này chưa thể đánh dấu hữu ích."
-        EndorsementBlock.SignedOut -> if (this == Work) "Cần đăng nhập để Thấm." else "Cần đăng nhập để đánh dấu hữu ích."
-        EndorsementBlock.Unavailable -> if (this == Work) "Không thể Thấm lúc này." else "Không thể đánh dấu lúc này."
+        EndorsementBlock.OwnContent -> if (this == Work) "Bạn không thể tự Thấm tác phẩm của mình." else "Bạn không thể tự Ưng nhận xét của mình."
+        EndorsementBlock.NotPermitted -> if (this == Work) "Tài khoản này chưa thể Thấm." else "Tài khoản này chưa thể Ưng."
+        EndorsementBlock.SignedOut -> if (this == Work) "Cần đăng nhập để Thấm." else "Cần đăng nhập để Ưng."
+        EndorsementBlock.Unavailable -> if (this == Work) "Không thể Thấm lúc này." else "Tạm chưa thể Ưng."
     }
 }
 
@@ -203,7 +209,8 @@ data class EndorsementFacts(
 
 /**
  * The endorsement control for one target. A press emits the desired selection; the adapter owns
- * `command_key`, `expected_order`, session fencing and late answers. CHOICE-07 A: Pen Flight R2.
+ * `command_key`, `expected_order`, session fencing and late answers. CHOICE-07 A: Pen Flight R2 for
+ * “Thấm”; “Ưng” shows an outline heart until the confirmed value is on.
  */
 @Composable
 fun EndorsementAction(
@@ -223,7 +230,8 @@ fun EndorsementAction(
         phase = facts.phase,
         count = facts.count,
         blocked = facts.block?.let(kind::reason),
-        icon = IconName.PenFlight,
+        icon = kind.icon(selected = false),
         surface = surface,
+        selectedIcon = kind.icon(selected = true),
     )
 }
