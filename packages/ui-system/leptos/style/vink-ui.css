@@ -1021,11 +1021,41 @@
 
 .vk-ui-avatar-group__more.vk-ui-avatar--sm { --vk-ui-avatar-size: var(--vk-size-avatar-sm); }
 
+/* #352: avatar → name → @handle is one target; metadata (time) follows outside it and wraps
+   under the identity when the measure is narrow or text is enlarged. */
 .vk-ui-byline {
   display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--vk-space-1) var(--vk-space-3);
+  min-inline-size: 0;
+}
+
+.vk-ui-byline__identity {
+  display: inline-flex;
   align-items: center;
   gap: var(--vk-space-3);
   min-inline-size: 0;
+  max-inline-size: 100%;
+  color: inherit;
+  text-decoration: none;
+}
+
+/* A profile link keeps a 44 px target without growing the avatar recipe. */
+a.vk-ui-byline__identity {
+  min-block-size: 44px;
+  border-radius: var(--vk-radius-sm);
+}
+
+a.vk-ui-byline__identity:hover .vk-ui-byline__name {
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+a.vk-ui-byline__identity:focus-visible {
+  outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
+  outline-offset: 2px;
 }
 
 .vk-ui-byline__text {
@@ -1043,15 +1073,27 @@
   overflow-wrap: anywhere;
 }
 
-.vk-ui-byline__name.vk-ui-link { color: var(--vk-on-surface); }
-.vk-ui-byline__name[data-blank] { font-weight: var(--vk-type-body-weight); color: var(--vk-on-surface-variant); }
+.vk-ui-byline__name:is([data-blank], [data-neutral]) { font-weight: var(--vk-type-body-weight); color: var(--vk-on-surface-variant); }
 
-.vk-ui-byline__meta {
+.vk-ui-byline__handle {
   font-family: var(--vk-type-caption-font);
   font-size: var(--vk-type-caption-size);
   line-height: var(--vk-type-caption-line-height);
   color: var(--vk-on-surface-variant);
   overflow-wrap: anywhere;
+}
+
+.vk-ui-byline__meta {
+  margin-inline-start: auto;
+  font-family: var(--vk-type-caption-font);
+  font-size: var(--vk-type-caption-size);
+  line-height: var(--vk-type-caption-line-height);
+  color: var(--vk-on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+@media (forced-colors: active) {
+  a.vk-ui-byline__identity .vk-ui-byline__name { color: LinkText; }
 }
 
 .vk-ui-frame {

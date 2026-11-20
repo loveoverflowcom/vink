@@ -331,8 +331,9 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
     const query = new URLSearchParams(location.search);
     return location.pathname==='/' && query.get('q')==='rieng' && query.getAll('tag').join()==='tản-văn';
   })()`), 'Back preserves query and tag scope');
-  for (const part of ['avatar', 'author', 'handle']) {
-    await guest.click(cardA + ' .vk-public-row__' + part);
+  // #352: avatar, pen name and @handle are one shared AuthorByline target.
+  for (const part of ['vk-ui-avatar', 'vk-ui-byline__name', 'vk-ui-byline__handle']) {
+    await guest.click(cardA + ' .' + part);
     await guest.waitFor(`location.pathname===${JSON.stringify(aPath)} && ${q('#author-profile-heading')}`,
       'clicking the ' + part + ' opens the same author profile');
     await guest.eval('history.back()');
@@ -340,7 +341,7 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   }
   await guest.send('Emulation.setTouchEmulationEnabled', {enabled:true, maxTouchPoints:1});
   const point = await guest.eval(`(() => {
-    const el=${q(cardB + ' .vk-public-row__handle')};
+    const el=${q(cardB + ' .vk-ui-byline__handle')};
     el.scrollIntoView({block:'center'});
     const rect=el.getBoundingClientRect();
     return {x:rect.x+rect.width/2, y:rect.y+rect.height/2};
@@ -387,7 +388,7 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await guest.send('Network.setCacheDisabled', {cacheDisabled:true});
   await restoredAttribution(guest, check, holdAnswer, {
     url:base + discovery, endpoint:'/api/v1/works', links:{[cardA]:aPath, [cardB]:bPath},
-    labels:[rowA + ' .vk-public-row__author', '#work-' + ids.b + ' .vk-public-row__author'], content:titleA,
+    labels:[rowA + ' .vk-ui-byline__name', '#work-' + ids.b + ' .vk-ui-byline__name'], content:titleA,
   });
   await restoredAttribution(guest, check, holdAnswer, {
     url:base + readerPath, endpoint:workApi + '/reader', links:{'#reader-author':aPath},
@@ -396,7 +397,7 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await restoredAttribution(guest, check, holdAnswer, {
     url:base + readerPath, endpoint:workApi + '/discussion/public',
     links:Object.fromEntries(bylines.slice(1)),
-    labels:['#comment-' + ids.root + ' .vk-discussion-name', '#comment-' + ids.reply + ' .vk-discussion-name',
+    labels:['#comment-' + ids.root + ' .vk-discussion-byline .vk-ui-byline__name', '#comment-' + ids.reply + ' .vk-discussion-byline .vk-ui-byline__name',
       '#comment-' + ids.tail + ' .vk-discussion-context'], content:'#comment-' + ids.root,
   });
   await guest.send('Network.setCacheDisabled', {cacheDisabled:false});

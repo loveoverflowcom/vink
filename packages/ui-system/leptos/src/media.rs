@@ -303,8 +303,15 @@ pub fn AvatarGroup(
     }
 }
 
-/// Author name (bold, a link only for a verified `href`) before muted metadata; the avatar is
-/// decorative so the name is read once.
+/// The visible handle of a verified profile, `@` prefixed once; blank means none.
+pub fn handle_text(handle: &str) -> Option<String> {
+    let handle = handle.trim().trim_start_matches('@');
+    (!handle.is_empty()).then(|| format!("@{handle}"))
+}
+
+/// Avatar → name → `@handle` (#352). With a verified `href` the three form one link target and
+/// the decorative avatar keeps the name read once; metadata such as time stays outside the link.
+/// A `neutral` name is a server label ("Tài khoản đã xóa"), not a person: no initials, no handle.
 #[component]
 pub fn AuthorByline(
     #[prop(into)] name: String,
@@ -313,10 +320,19 @@ pub fn AuthorByline(
     /// A profile URL the caller has verified; absent means plain text, never an invented route.
     #[prop(optional, into)]
     href: Option<String>,
+    /// The verified handle shown under the name; rendered only together with a safe `href`.
+    #[prop(optional_no_strip)]
+    handle: Option<String>,
     #[prop(optional_no_strip)] link_id: Option<String>,
     #[prop(optional_no_strip)] link_label: Option<String>,
+    /// The name is a placeholder/terminal label: neutral avatar mark and muted text.
+    #[prop(optional)]
+    neutral: bool,
     #[prop(optional)] meta: Vec<String>,
     #[prop(default = AvatarSize::Feed)] size: AvatarSize,
+    /// Optional rendering of `name` (e.g. a search highlight); its text must equal `name`.
+    #[prop(optional_no_strip)]
+    name_view: Option<AnyView>,
 ) -> impl IntoView {
     let blank = name.trim().is_empty();
     let shown_name = if blank {
@@ -325,27 +341,41 @@ pub fn AuthorByline(
         name.clone()
     };
     let href = href.and_then(|h| crate::action::safe_href(&h).map(str::to_string));
+    let handle = href
+        .as_ref()
+        .and(handle)
+        .filter(|_| !neutral)
+        .and_then(|h| handle_text(&h));
     let meta = meta
         .into_iter()
         .filter(|m| !m.trim().is_empty())
         .collect::<Vec<_>>();
+    let name_view = match name_view {
+        Some(view) if !blank => view,
+        _ => shown_name.into_any(),
+    };
+    let identity = view! {
+        <Avatar
+            name=if blank || neutral { String::new() } else { name }
+            identity_key=if neutral { String::new() } else { identity_key.unwrap_or_default() }
+            image=image
+            size=size
+            decorative=true
+        />
+        <span class="vk-ui-byline__text">
+            <span class="vk-ui-byline__name" data-blank=blank.then_some("true")
+                data-neutral=neutral.then_some("true")>{name_view}</span>
+            {handle.map(|handle| view! { <span class="vk-ui-byline__handle">{handle}</span> })}
+        </span>
+    };
     view! {
         <div class=format!("vk-ui-byline vk-ui-byline--{}", size.id())>
-            <Avatar
-                name=if blank { String::new() } else { name }
-                identity_key=identity_key.unwrap_or_default()
-                image=image
-                size=size
-                decorative=true
-            />
-            <div class="vk-ui-byline__text">
-                {match href {
-                    Some(href) => view! { <a class="vk-ui-byline__name vk-ui-link" id=link_id aria-label=link_label
-                        data-profile-return="true" href=href>{shown_name}</a> }.into_any(),
-                    None => view! { <span class="vk-ui-byline__name" data-blank=blank.then_some("true")>{shown_name}</span> }.into_any(),
-                }}
-                {(!meta.is_empty()).then(|| view! { <span class="vk-ui-byline__meta">{meta.join(" · ")}</span> })}
-            </div>
+            {match href {
+                Some(href) => view! { <a class="vk-ui-byline__identity" id=link_id aria-label=link_label
+                    data-profile-return="true" href=href>{identity}</a> }.into_any(),
+                None => view! { <span class="vk-ui-byline__identity">{identity}</span> }.into_any(),
+            }}
+            {(!meta.is_empty()).then(|| view! { <span class="vk-ui-byline__meta">{meta.join(" · ")}</span> })}
         </div>
     }
 }
@@ -520,8 +550,64 @@ mod tests {
         assert_eq!(html.matches("Trần Linh").count(), 1, "{html}");
         assert!(!html.contains("href"), "{html}");
         assert!(html.contains("02/11/2026 · Thơ"), "{html}");
-        let html =
-            render(|| view! { <AuthorByline name="Trần Linh" href="javascript:x" /> }.into_any());
+        let html = render(|| {
+            view! { <AuthorByline name="Trần Linh" href="javascript:x" handle=Some("tran-linh".into()) /> }.into_any()
+        });
         assert!(!html.contains("href"), "{html}");
+        assert!(
+            !html.contains("@tran-linh"),
+            "an unsafe link shows no handle: {html}"
+        );
+    }
+
+    #[test]
+    fn linked_bylines_wrap_avatar_name_and_handle_in_one_target() {
+        let html = render(|| {
+            view! {
+                <AuthorByline
+                    name="Trần Linh"
+                    href="/@tran-linh"
+                    handle=Some("tran-linh".into())
+                    link_id=Some("reader-author".into())
+                    link_label=Some("Mở hồ sơ Trần Linh (@tran-linh)".into())
+                    meta=vec!["02/11/2026".to_string()]
+                />
+            }
+            .into_any()
+        });
+        let link = html.find("<a").expect("one link");
+        let close = html.find("</a>").expect("closed link");
+        assert_eq!(html.matches("<a").count(), 1, "{html}");
+        let inside = &html[link..close];
+        assert!(
+            inside.contains("vk-ui-avatar")
+                && inside.contains("Trần Linh")
+                && inside.contains("@tran-linh"),
+            "{html}"
+        );
+        assert!(
+            html[close..].contains("02/11/2026"),
+            "metadata stays outside the link: {html}"
+        );
+        assert!(
+            inside.contains(r#"id="reader-author""#) && inside.contains("data-profile-return"),
+            "{html}"
+        );
+    }
+
+    #[test]
+    fn neutral_labels_get_no_initials_handle_or_link() {
+        let html = render(|| {
+            view! {
+                <AuthorByline name="Tài khoản đã xóa" neutral=true identity_key="acct-001" handle=Some("old".into()) />
+            }
+            .into_any()
+        });
+        assert!(html.contains(r#"data-initials="""#), "{html}");
+        assert!(html.contains(r#"data-tone="neutral""#), "{html}");
+        assert!(!html.contains("href") && !html.contains("@old"), "{html}");
+        assert!(html.contains("Tài khoản đã xóa"), "{html}");
+        assert_eq!(handle_text("@an"), Some("@an".into()));
+        assert_eq!(handle_text("  "), None);
     }
 }
