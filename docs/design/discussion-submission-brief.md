@@ -43,7 +43,7 @@ nhận biết.
 
 R4 (#360, 20/11/2026) đưa các trạng thái Draft…CommittedPending/Rejected của bảng này thành kiểu
 `ComposerStatus`/`Receipt`/`NoticeTone` trong controller Web; phương án B dưới đây không áp dụng ở
-lát đó (`VDR-DISCUSSION-R4@r1`, PENDING). Chi tiết ở [LayoutSpec](discussion-ui.md#nhận-xét-r4--lát-logic-359-360-20112026).
+lát đó (`VDR-DISCUSSION-R4@r1`, `PRODUCT_CONFIRMED` 20/11/2026). Chi tiết ở [LayoutSpec](discussion-ui.md#nhận-xét-r4--lát-logic-359-360-20112026).
 
 Hôm nay mọi bình luận mới là **CommittedPending** (`premoderation.v1`). Mã provenance như
 `trust_stale` hay `content_flagged` là dữ liệu audit nội bộ, **không** hiển thị cho người dùng.

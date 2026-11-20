@@ -42,7 +42,8 @@ Cả ba proposal mới đang ở trạng thái `PENDING` và chờ signoff đún
 [VDR-DISCUSSION-R4@r1](proposals/VDR-DISCUSSION-R4.r1.toml) ghi bốn lựa chọn chủ sản phẩm chọn trong
 phiên #359/#360 ngày 20/11/2026: vùng “Bạn đã gửi”, xác nhận gỡ tại chỗ, phản hồi chờ duyệt hiện cạnh
 ô soạn (không hàng tạm trong nhánh) và câu “Bạn đã tắt bình luận…” theo `viewer_is_work_author`.
-Revision đang `PENDING` chờ signoff đúng revision/SHA-256. Đổi nhãn “Hữu ích” → “Ưng” là delta thuật
+Chủ sản phẩm đã signoff đúng revision/SHA-256 ngày 20/11/2026
+([signoff](signoffs/VDR-DISCUSSION-R4.r1.toml)); revision hiện hành là `PRODUCT_CONFIRMED`. Đổi nhãn “Hữu ích” → “Ưng” là delta thuật
 ngữ trong [literary endorsement](../docs/architecture/literary-endorsement.md#delta-thuật-ngữ-20112026--359),
 không có revision TOML riêng (như #213).
 

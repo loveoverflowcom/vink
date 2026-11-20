@@ -140,7 +140,9 @@ và facts** vào controller/patterns, nối tối thiểu vào Reader Web để 
 R4 (nhóm nút liền góc trong 6px, nhóm Phản hồi tonal, desktop thụt theo cột tên, vùng tonal theo màu,
 skeleton 300 ms, vòng tiến trình thay icon) còn `NOT_IMPLEMENTED` và thuộc lát UI kế tiếp.
 Quyết định: [delta “Ưng”](../architecture/literary-endorsement.md#delta-thuật-ngữ-20112026--359)
-và `VDR-DISCUSSION-R4@r1` (**PENDING**, chờ signoff đúng revision/SHA-256).
+và `VDR-DISCUSSION-R4@r1` (`PRODUCT_CONFIRMED`, signoff 20/11/2026).
+
+<!-- vdr: active VDR-DISCUSSION-R4@r1 -->
 
 | Facts / quy tắc | Owner | Trình bày tối thiểu hiện nay |
 | --- | --- | --- |
