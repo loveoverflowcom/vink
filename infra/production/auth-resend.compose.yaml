@@ -1,0 +1,27 @@
+# Optional third file, after the PostgreSQL base and production overlay.
+# Do not use until the private mail proxy is qualified on this host. Only App controls sign-in.
+services:
+  app:
+    depends_on:
+      identity:
+        condition: service_healthy
+    environment:
+      VINK_AUTH_SIGN_IN: ${VINK_PROD_AUTH_SIGN_IN:-disabled}
+  identity:
+    networks:
+      default: {}
+      auth-mail:
+        ipv4_address: ${VINK_PROD_AUTH_MAIL_IDENTITY_IP:?private production Identity IP required}
+    environment:
+      VINK_IDENTITY_AUTHORITY: native
+      VINK_IDENTITY_MAIL_TRANSPORT: resend-api
+      VINK_IDENTITY_RESEND_FROM: ${VINK_PROD_RESEND_FROM:?verified production sender required}
+      VINK_IDENTITY_RESEND_API_KEY_FILE: /run/vink-resend/api-key
+      VINK_IDENTITY_RESEND_PROXY: http://vink-resend-egress:3128
+    # Mount the dedicated directory, not the file, so an atomic key replacement is visible.
+    volumes:
+      - ${VINK_PROD_RESEND_SECRETS_DIR:?production Resend key directory required}:/run/vink-resend:ro
+networks:
+  auth-mail:
+    name: vink-prod-auth-mail
+    external: true
