@@ -1,0 +1,60 @@
+SHA 4004e1c357504e3913e6df497a21109e931eb5ca
+base ab5ecaff9685938dc689b52d98957375fbbfdf12
+cwd /private/tmp/vink-353-follow-profile
+Browser: cargo xtask verify web --scenario password
+Fixture: #331; real App/Identity, Chrome headless and isolated PostgreSQL 17.11.
+Full local log: /private/tmp/vink-353-evidence/tmpy0qpmv2x/scenario.log
+
+==> logs/evidence: /private/tmp/vink-353-follow-profile/target/verify-web/1795186927425599000-5948
+  ok  Graph-only 503 preserves Chỉnh hồ sơ and hides viewer-only controls
+  ok  only the public summary is refused after the lost ACK
+  ok  the page displaying the summary stayed mounted during sign-out
+  ok  guest retry reads a real public summary
+  ok  verified empty PUT, public summary retry as guest and separate fields after a viewer change
+  ok  Back stores only a cursor and navigation locators in history
+  ok  the restored page has a native first-page link
+  ok  restored page offers first-page recovery by keyboard
+  ok  verified page 2 anchor and H1 fallback from freshly read rows
+  ok  append revalidates the opposite direction independently
+  ok  race fixture has two real browser sessions
+  ok  scratch App returns B Page and B Restart with A’s cursor
+  ok  real Graph ownership read held before switching the cookie
+  ok  private fallback still belongs to requested A URL
+  ok  initial list attempted the private endpoint after A’s Graph answer
+  ok  private append gets a real reply after the cookie changes
+  ok  private fallback still belongs to requested A URL
+  ok  verified real scratch A/B Page and Restart across a cookie race
+  ok  late nonempty own-list ACK cannot restore a prior session’s edge
+  profile revoke Back used BFCache: false
+  ok  slow alias preserves canonical H1 focus after an 11 second wait
+  ok  abandoned alias cannot replace the newer destination or queue stale focus
+browser-smoke: PASS (auth-password)
+  PASS  scenario password (real Identity/local outbox)
+
+Browser process exit: 0
+
+Unit: python3.13 ./tools/local-budget run -- cargo xtask verify unit web --filter follow
+Full local log: /private/tmp/vink-353-evidence/ac02-unit-4004e1c.log
+==> selected 14 unit/contract tests for vink-web; database/browser checks NOT_SELECTED
+test follow_state::tests::aba_lost_ack_reconcile_unfollow_and_stale_v1_ack_is_ignored ... ok
+test follow_state::tests::conflict_reconciles_and_disappearance_requests_heading_focus ... ok
+test follow_state::tests::follow_ack_arriving_after_readback_applies_only_to_latest_intent ... ok
+test follow_state::tests::follow_own_page_and_restart_require_the_canonical_owner_and_direction ... ok
+test follow_state::tests::follow_write_applies_an_authoritative_empty_projection ... ok
+test follow_state::tests::safe_profile_return_and_vi_count_enforce_strict_rules ... ok
+test follow_state::tests::session_switch_a_b_a_drops_stale_in_flight_answers ... ok
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 262 filtered out; finished in 0.00s
+local-budget: wall=34.78s sampled_peak_rss_sum=1034160 KiB samples=34 interval=1s
+Unit process exit: 0
+
+PASS cargo fmt --all -- --check
+PASS git diff --check origin/develop...HEAD
+PASS node --check apps/vink-web/profile/navigation.js
+PASS node --check apps/vink-web/e2e/author-follow-smoke.mjs
+PASS node --check apps/vink-web/e2e/auth-password-smoke.mjs
+
+Cleanup after both scopes exited, no open target files in lsof:
+cargo clean --offline --profile dev --target-dir target
+Removed reproducible target/wasm32-unknown-unknown/debug and target/site/pkg.
+Own target before 4702300 KiB, after 48872 KiB, recovered 4.44 GiB.
+Preserved target/verify-web, full local logs, prior images and Git worktrees/refs.
