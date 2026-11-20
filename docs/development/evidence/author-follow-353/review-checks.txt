@@ -1,0 +1,40 @@
+#353 · scoped recheck after independent review
+cwd /private/tmp/vink-353-follow-profile
+base ab5ecaff9685938dc689b52d98957375fbbfdf12
+reviewed head 03f2b1dbcc56adba1d532b0e533d0e16271286c0
+checked source 16095755d21a10bc855a73075e86cf0a9d0940ca
+macOS 15.6 arm64 · Chrome 158.0.8127.36 · PostgreSQL 17.11 scratch
+
+python3.13 ./tools/local-budget run -- cargo xtask verify unit web --filter follow
+==> selected 13 unit/contract tests for vink-web; database/browser checks NOT_SELECTED
+test follow_state::tests::aba_lost_ack_reconcile_unfollow_and_stale_v1_ack_is_ignored ... ok
+test follow_state::tests::conflict_reconciles_and_disappearance_requests_heading_focus ... ok
+test follow_state::tests::follow_ack_arriving_after_readback_applies_only_to_latest_intent ... ok
+test follow_state::tests::follow_write_applies_an_authoritative_empty_projection ... ok
+test follow_state::tests::safe_profile_return_and_vi_count_enforce_strict_rules ... ok
+test follow_state::tests::session_switch_a_b_a_drops_stale_in_flight_answers ... ok
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 262 filtered out; finished in 0.00s
+
+cargo xtask verify web --scenario password
+run 1795185305086785000-97026
+  ok  Graph-only 503 preserves Chỉnh hồ sơ and hides viewer-only controls
+  ok  old public link is present before all four grants are revoked
+  ok  confirmed hidden fields produce neither stale facts nor a retry
+  ok  receipt fixture commits before only summary transport fails
+  ok  only the public summary is refused after the lost ACK
+  ok  verified empty PUT, isolated summary error and independently granted fields after retry
+  ok  Back stores only a cursor and navigation locators in history
+  ok  verified page 2 anchor and H1 fallback from freshly read rows
+  ok  append reads the opposite permission and withholds the previous link while checking
+  ok  append revalidates the opposite direction independently
+  ok  only the opposite permission read receives 503
+  ok  real Alias DTO held before delivery
+  ok  slow alias preserves canonical H1 focus after an 11 second wait
+  ok  second Alias DTO held before choosing another destination
+  ok  abandoned alias cannot replace the newer destination or queue stale focus
+browser-smoke: PASS (auth-password)
+  PASS  selected prerequisites
+  PASS  visual evidence oracles: manifest, PNG, overflow, AX, modal unit tests
+  PASS  selected artifacts
+  PASS  browser bundle contains no credentials
+  PASS  scenario password (real Identity/local outbox)
