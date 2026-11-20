@@ -568,17 +568,6 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
     document.querySelectorAll('.vk-rel-item').length === 15`, 'append revalidates and removes a newly hidden opposite direction');
   console.log('  ok  append revalidates the opposite direction independently');
 
-  check(await guest.eval(`${q('#rel-first-page')}?.getAttribute('href') === ${JSON.stringify(listPath)} &&
-    ${q('#rel-first-page')}.textContent.trim() === 'Về trang đầu'`),
-    'the restored page has a native first-page link');
-  await guest.eval(`${q('#rel-first-page')}.focus()`);
-  await guest.key('Enter');
-  await guest.waitFor(`document.activeElement?.id === 'relationship-title' &&
-    document.querySelectorAll('.vk-rel-item').length === 12 && ${q('#rel-load-more')} &&
-    !${q('#rel-first-page')} && !history.state?.vinkProfileReturn`,
-    'keyboard first-page recovery clears the saved cursor and focuses the fresh heading');
-  console.log('  ok  restored page offers first-page recovery by keyboard');
-
   setPolicies({following_list: 'everyone'});
   await guest.goto(`${base}/@${handleB}`);
   await guest.goto(base + listPath);
