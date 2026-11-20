@@ -862,7 +862,7 @@ class Page {
           colors: Object.fromEntries(['.vk-ui-scaffold','.vk-editor-paper','#editor-toolbar','[data-testid=save-status]','#editor-save-details > summary'].flatMap(selector => {
             const el=document.querySelector(selector); if (!el) return []; const s=getComputedStyle(el); return [[selector,{color:s.color,background:s.backgroundColor}]];
           })), preview: geometry('#draft-preview[open]'), leave: geometry('#leave-editor[open]') },
-        explore: { heading: geometry('#explore-heading'), toolbar: geometry('.vk-discovery-toolbar'), tools: geometry('#discovery-tools'), brand: geometry('.vk-brand'), search: geometry('#public-search'), input: geometry('#public-query'), label: geometry('#public-query-label'), shell: geometry('#public-search .vk-ui-search__shell'), clear: geometry('#clear-public-search'), submit: geometry('#public-search button[type=submit]'), stream: geometry('#community-stream'), firstRow: geometry('.vk-public-row'), byline: geometry('.vk-public-row__byline'), author: geometry('.vk-public-row__author'), title: geometry('.vk-public-row__title'), excerpt: geometry('.vk-public-row__excerpt'), context: geometry('#context') },
+        explore: { heading: geometry('#explore-heading'), toolbar: geometry('.vk-discovery-toolbar'), tools: geometry('#discovery-tools'), brand: geometry('.vk-brand'), search: geometry('#public-search'), input: geometry('#public-query'), label: geometry('#public-query-label'), shell: geometry('#public-search .vk-ui-search__shell'), clear: geometry('#clear-public-search'), submit: geometry('#public-search button[type=submit]'), stream: geometry('#community-stream'), firstRow: geometry('.vk-public-row'), byline: geometry('.vk-public-row__byline'), author: geometry('.vk-public-row__byline .vk-ui-byline__name'), title: geometry('.vk-public-row__title'), excerpt: geometry('.vk-public-row__excerpt'), context: geometry('#context') },
         navigation: {
           bar: geometry('.vk-ui-bottom-nav'),
           barHeightObserver: Number.isFinite(barVar) && barRect ? { cssVarHeight: barVar, measuredHeight: barRect.height, delta: Math.abs(barVar - barRect.height) } : null,
@@ -1985,7 +1985,7 @@ async function textContrast(page, theme, surface = 'shell', targets) {
   })() : {
     outline: ['#editor-outline-title', '.vk-editor-outline__item--title', '#editor-outline-panel [aria-current="location"] button'],
     desk: ['.vk-desk-create .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-search input', '#draft-sort', '#draft-sort-label', '#draft-scope'],
-    explore: ['#public-query', '#explore-heading h1', '#open-tag-filters', '.vk-public-row__title', '.vk-public-row__author', '.vk-public-row__avatar', '.vk-public-row__excerpt', '.vk-public-scope'],
+    explore: ['#public-query', '#explore-heading h1', '#open-tag-filters', '.vk-public-row__title', '.vk-public-row__byline .vk-ui-byline__name', '.vk-public-row__byline .vk-ui-avatar', '.vk-public-row__excerpt', '.vk-public-scope'],
     filter: ['#modal-tag-help', '#tag-selection-count', '#modal-tag-form legend', '#modal-tag-form .vk-ui-choice__label', '#modal-tag-form button[type=submit]'],
     empty: ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-button'],
     'desk-empty': ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-button', '.vk-desk-privacy'],
@@ -5736,7 +5736,7 @@ async function discussionR31Geometry(page, width, scale, scenario) {
     const reasons = [...pattern.querySelectorAll('.vk-discussion-shared-reason')].filter(e=>!e.hidden);
     return {root:rect(root), group:rect(group), composer:rect(composer),
       inset:rect(body).left-rect(root).left, insetRight:rect(root).right-rect(body).right,
-      aligned: Math.abs(rect(root.querySelector('.vk-discussion-name')).left-rect(body).left)<=1 && Math.abs(rect(root.querySelector('.vk-discussion-actions .vk-ui-button__label')).left-rect(body).left)<=1,
+      aligned: Math.abs(rect(root.querySelector('.vk-discussion-byline .vk-ui-avatar')).left-rect(body).left)<=1 && Math.abs(rect(root.querySelector('.vk-discussion-actions .vk-ui-button__label')).left-rect(body).left)<=1,
       composerInset:rect(composer.querySelector('textarea')).left+parseFloat(getComputedStyle(composer.querySelector('textarea')).paddingLeft)-rect(composer).left,
       gap:parseFloat(getComputedStyle(group.querySelector('ul')).rowGap),
       contrast:Math.min(...ratios),

@@ -28,6 +28,9 @@ pub struct Author {
     pub key: Option<String>,
     pub published_at: String,
     pub profile: Option<ProfileLink>,
+    /// `name` is a terminal or placeholder label from the adapter ("Tài khoản đã xóa", a cache
+    /// not yet verified), not a pen name: it gets the neutral mark, never initials or a handle.
+    pub neutral: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -36,6 +39,12 @@ pub struct ProfileLink {
     pub handle: String,
 }
 
+/// The accessible name of a profile link: two people may share a pen name, the handle may not.
+pub fn profile_label(name: &str, handle: &str) -> String {
+    format!("Mở hồ sơ {name} (@{handle})")
+}
+
+/// Inline reference (reply context): natural reading, handle in the accessible name only.
 #[component]
 fn ProfileName(
     name: String,
@@ -44,7 +53,7 @@ fn ProfileName(
 ) -> impl IntoView {
     match profile {
         Some(profile) => {
-            let label = format!("Mở hồ sơ {name} (@{})", profile.handle);
+            let label = profile_label(&name, &profile.handle);
             view! {
                 <Link href=profile.href attr:id=id attr:data-profile-return="true" attr:aria-label=label>
                     {name}
@@ -55,21 +64,41 @@ fn ProfileName(
     }
 }
 
+/// One author cluster for card, ReaderHeader, root and reply (#352): avatar → pen name →
+/// @handle, one link only for a verified profile. `name_view` may render the name (highlight).
+#[component]
+pub fn AuthorIdentity(
+    author: Author,
+    #[prop(optional_no_strip)] id: Option<String>,
+    #[prop(default = AvatarSize::Feed)] size: AvatarSize,
+    #[prop(optional_no_strip)] name_view: Option<AnyView>,
+) -> impl IntoView {
+    let profile = author.profile.filter(|_| !author.neutral);
+    let label = profile
+        .as_ref()
+        .map(|p| profile_label(&author.name, &p.handle));
+    let (href, handle) = match profile {
+        Some(p) => (p.href, Some(p.handle)),
+        None => (String::new(), None),
+    };
+    view! {
+        <AuthorByline name=author.name identity_key=author.key.unwrap_or_default() size
+            neutral=author.neutral href handle link_id=id link_label=label name_view />
+    }
+}
+
 #[component]
 pub fn WorkByline(
     author: Author,
     #[prop(optional_no_strip)] profile_id: Option<String>,
     #[prop(default = AvatarSize::Feed)] size: AvatarSize,
 ) -> impl IntoView {
-    let label = author
-        .profile
-        .as_ref()
-        .map(|p| format!("Mở hồ sơ {} (@{})", author.name, p.handle));
+    let published_at = author.published_at.clone();
     view! {
-        <div class="vk-work-byline">
-            <AuthorByline name=author.name identity_key=author.key.unwrap_or_default() size
-                href=author.profile.map(|p| p.href).unwrap_or_default() link_id=profile_id link_label=label />
-            <span class="vk-work-byline__date"><Timestamp instant=author.published_at /></span>
+        <div class="vk-work-byline" data-size=size.id()>
+            <AuthorIdentity author id=profile_id size />
+            // Outside the profile link: time is metadata of the work, not of the person.
+            <span class="vk-work-byline__date"><Timestamp instant=published_at /></span>
         </div>
     }
 }
@@ -563,13 +592,20 @@ fn discussion_comment(
     let remove_button_id = format!("remove-comment-{}", comment.id);
     let author_id = format!("comment-{}-author", comment.id);
     let context_id = format!("comment-{}-context-author", comment.id);
+    // A reply sits in the tonal reply group: one step smaller than a root (#352).
+    let size = if comment.context.is_some() {
+        AvatarSize::Small
+    } else {
+        AvatarSize::Medium
+    };
+    let published_at = comment.author.published_at.clone();
     view! {
         <article id=format!("comment-{}", comment.id) class="vk-feedback-item vk-discussion-comment" tabindex="-1">
             <div class="vk-discussion-byline">
-                <div><p class="vk-discussion-name">
-                    <ProfileName name=comment.author.name.clone() profile=comment.author.profile id=author_id />
-                </p>
-                    <Timestamp instant=comment.author.published_at.clone() />
+                <AuthorIdentity author=comment.author id=Some(author_id) size />
+                // Outside the profile link.
+                <Timestamp instant=published_at />
+            </div>
             {comment.context.map(|context| match context {
                 DiscussionContext::Root => view! { <p class="vk-discussion-context">"Trả lời bình luận gốc"</p> }.into_any(),
                 DiscussionContext::Unavailable => view! { <p class="vk-discussion-context">"Bình luận được trả lời không còn hiển thị"</p> }.into_any(),
@@ -580,9 +616,6 @@ fn discussion_comment(
                     </p>
                 }.into_any(),
             })}
-                </div>
-                <Avatar name=comment.author.name identity_key=comment.author.key.unwrap_or_default() size=AvatarSize::Medium decorative=true />
-            </div>
             {comment.status.map(|status| view! { <p class="vk-discussion-status">{status}</p> })}
             <p class="vk-discussion-body">{comment.body}</p>
             <div class="vk-discussion-actions">
@@ -788,11 +821,113 @@ mod tests {
         );
     }
 
+    fn person(name: &str, handle: Option<&str>, neutral: bool) -> Author {
+        Author {
+            name: name.into(),
+            key: None,
+            published_at: "2026-11-20T02:00:00Z".into(),
+            profile: handle.map(|h| ProfileLink {
+                href: format!("/@{h}"),
+                handle: h.into(),
+            }),
+            neutral,
+        }
+    }
+
+    #[test]
+    fn author_identity_distinguishes_shared_pen_names_and_never_rebuilds_a_deleted_person() {
+        let render = |author: Author| {
+            Owner::new()
+                .with(|| view! { <AuthorIdentity author id=Some("who".into()) /> }.to_html())
+        };
+        let a = render(person("Hải Đường Nhỏ", Some("hai-duong-nho"), false));
+        let b = render(person("Hải Đường Nhỏ", Some("hai-duong-pho"), false));
+        for (html, handle) in [(&a, "hai-duong-nho"), (&b, "hai-duong-pho")] {
+            assert_eq!(html.matches("<a").count(), 1, "{html}");
+            assert!(html.contains(&format!(r#"href="/@{handle}""#)), "{html}");
+            assert!(
+                html.contains(&format!(">@{handle}<")),
+                "visible handle: {html}"
+            );
+            assert!(
+                html.contains(&format!("Mở hồ sơ Hải Đường Nhỏ (@{handle})")),
+                "{html}"
+            );
+        }
+        // A deleted label is never a link, a handle or initials, even if a stale ref leaked in.
+        let deleted = render(person("Tài khoản đã xóa", Some("old-person"), true));
+        assert!(
+            !deleted.contains("href") && !deleted.contains("old-person"),
+            "{deleted}"
+        );
+        assert!(deleted.contains(r#"data-initials="""#), "{deleted}");
+        // Unavailable/legacy text keeps its name (initials) without a link or handle.
+        let unavailable = render(person("Mộc Miên", None, false));
+        assert!(
+            !unavailable.contains("href") && unavailable.contains(r#"data-initials="MM""#),
+            "{unavailable}"
+        );
+    }
+
+    #[test]
+    fn comment_byline_keeps_time_outside_the_profile_link() {
+        let comment = |id: &str, context| DiscussionComment {
+            id: id.into(),
+            author: person("An Nhiên", Some("an-nhien"), false),
+            body: "Nhận xét".into(),
+            status: None,
+            context,
+            can_reply: true,
+            can_remove: false,
+        };
+        let html = Owner::new().with(|| {
+            let facts = DiscussionThreadFacts {
+                root_id: "root".into(),
+                root: Some(comment("root", None)),
+                replies: vec![comment(
+                    "reply",
+                    Some(DiscussionContext::Reply {
+                        name: "An Nhiên".into(),
+                        href: Some("#comment-root".into()),
+                        profile: Some(ProfileLink {
+                            href: "/@an-nhien".into(),
+                            handle: "an-nhien".into(),
+                        }),
+                    }),
+                )],
+            };
+            view! {
+                <DiscussionThread facts=Signal::stored(facts) on_reply=|_: String| {} on_remove=|_: String| {} />
+            }
+            .to_html()
+        });
+        for id in ["root", "reply"] {
+            let start = html
+                .find(&format!(r#"id="comment-{id}-author""#))
+                .expect("linked author");
+            let link = &html[start..start + html[start..].find("</a>").unwrap()];
+            assert!(
+                link.contains("vk-ui-avatar") && link.contains("@an-nhien"),
+                "{link}"
+            );
+            assert!(!link.contains("<time"), "time stays outside: {link}");
+        }
+        assert!(
+            html.contains(r#"id="comment-reply-context-author""#)
+                && html.contains(r##"href="#comment-root""##),
+            "reply context keeps two distinct targets: {html}"
+        );
+        assert!(
+            html.contains("vk-ui-avatar--sm") && html.contains("vk-ui-avatar--md"),
+            "{html}"
+        );
+    }
+
     #[test]
     fn public_composition_escapes_user_text_and_never_invents_a_profile() {
         let html = Owner::new().with(|| view! {
             <WorkCard title="<script>private()</script>".into()
-                author=Author { name: "<b>Tác giả</b>".into(), key: None, profile: None, published_at: "2026-11-02T02:00:00Z".into() }
+                author=Author { name: "<b>Tác giả</b>".into(), key: None, profile: None, published_at: "2026-11-02T02:00:00Z".into(), neutral: false }
                 href="/tac-pham/public?q=tho" />
         }.to_html());
         assert!(
@@ -1017,6 +1152,7 @@ mod tests {
                 key: None,
                 profile: None,
                 published_at: "2026-11-06T02:00:00Z".into(),
+                neutral: false,
             },
             body: format!("Bình luận {id}"),
             status: None,
