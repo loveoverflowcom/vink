@@ -1284,6 +1284,38 @@ pub mod dim {
         compact: None,
         web: WebUnit::Rem,
     };
+    pub const TEXT_PROFILE_EDIT_HEADING: Dimension = Dimension {
+        token: "text.profile-edit-heading",
+        css_var: "--vk-text-profile-edit-heading",
+        value: 28.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Rem,
+    };
+    pub const TEXT_PROFILE_INPUT: Dimension = Dimension {
+        token: "text.profile-input",
+        css_var: "--vk-text-profile-input",
+        value: 17.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Rem,
+    };
+    pub const TEXT_PROFILE_MONOGRAM: Dimension = Dimension {
+        token: "text.profile-monogram",
+        css_var: "--vk-text-profile-monogram",
+        value: 26.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Rem,
+    };
+    pub const TEXT_PROFILE_MONOGRAM_WIDE: Dimension = Dimension {
+        token: "text.profile-monogram-wide",
+        css_var: "--vk-text-profile-monogram-wide",
+        value: 30.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Rem,
+    };
     pub const TEXT_READING: Dimension = Dimension {
         token: "text.reading",
         css_var: "--vk-text-reading",
@@ -1293,7 +1325,7 @@ pub mod dim {
         web: WebUnit::Rem,
     };
 
-    pub const ALL: [Dimension; 44] = [
+    pub const ALL: [Dimension; 48] = [
         DENSITY_CONTROL_HEIGHT,
         DENSITY_CONTROL_PADDING,
         DENSITY_STACK_GAP,
@@ -1337,6 +1369,10 @@ pub mod dim {
         SPACE_DRAFT_ACTION_GAP,
         TEXT_AUTH_DIALOG_HEADING,
         TEXT_AUTH_HEADING,
+        TEXT_PROFILE_EDIT_HEADING,
+        TEXT_PROFILE_INPUT,
+        TEXT_PROFILE_MONOGRAM,
+        TEXT_PROFILE_MONOGRAM_WIDE,
         TEXT_READING,
     ];
 }
