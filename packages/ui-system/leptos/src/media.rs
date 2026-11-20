@@ -311,7 +311,7 @@ pub fn handle_text(handle: &str) -> Option<String> {
 
 /// Avatar → name → `@handle` (#352). With a verified `href` the three form one link target and
 /// the decorative avatar keeps the name read once; metadata such as time stays outside the link.
-/// A `neutral` name is a server label ("Tài khoản đã xóa"), not a person: no initials, no handle.
+/// A neutral byline shows the server label as plain text beside a generic avatar.
 #[component]
 pub fn AuthorByline(
     #[prop(into)] name: String,
@@ -340,25 +340,23 @@ pub fn AuthorByline(
     } else {
         name.clone()
     };
-    let href = href.and_then(|h| crate::action::safe_href(&h).map(str::to_string));
-    let handle = href
-        .as_ref()
-        .and(handle)
+    let href = href
         .filter(|_| !neutral)
-        .and_then(|h| handle_text(&h));
+        .and_then(|h| crate::action::safe_href(&h).map(str::to_string));
+    let handle = href.as_ref().and(handle).and_then(|h| handle_text(&h));
     let meta = meta
         .into_iter()
         .filter(|m| !m.trim().is_empty())
         .collect::<Vec<_>>();
     let name_view = match name_view {
-        Some(view) if !blank => view,
+        Some(view) if !blank && !neutral => view,
         _ => shown_name.into_any(),
     };
     let identity = view! {
         <Avatar
             name=if blank || neutral { String::new() } else { name }
             identity_key=if neutral { String::new() } else { identity_key.unwrap_or_default() }
-            image=image
+            image=if neutral { Signal::default() } else { image }
             size=size
             decorative=true
         />
@@ -570,6 +568,8 @@ mod tests {
                     handle=Some("tran-linh".into())
                     link_id=Some("reader-author".into())
                     link_label=Some("Mở hồ sơ Trần Linh (@tran-linh)".into())
+                    image=ImageState::ready("/avatar.webp")
+                    name_view=Some(view! { <mark>"Trần Linh"</mark> }.into_any())
                     meta=vec!["02/11/2026".to_string()]
                 />
             }
@@ -581,8 +581,11 @@ mod tests {
         let inside = &html[link..close];
         assert!(
             inside.contains("vk-ui-avatar")
-                && inside.contains("Trần Linh")
-                && inside.contains("@tran-linh"),
+                && inside.contains("<mark>Trần Linh</mark>")
+                && inside.contains(r#"src="/avatar.webp""#)
+                && inside.contains(r#"aria-label="Mở hồ sơ Trần Linh (@tran-linh)""#)
+                && inside.contains(r#"href="/@tran-linh""#)
+                && inside.contains(r#"class="vk-ui-byline__handle">@tran-linh</span>"#),
             "{html}"
         );
         assert!(
@@ -596,17 +599,30 @@ mod tests {
     }
 
     #[test]
-    fn neutral_labels_get_no_initials_handle_or_link() {
-        let html = render(|| {
+    fn neutral_labels_ignore_stale_identity_props() {
+        let label = "Tài khoản đã xóa";
+        let plain = render(move || view! { <AuthorByline name=label neutral=true /> }.into_any());
+        let html = render(move || {
             view! {
-                <AuthorByline name="Tài khoản đã xóa" neutral=true identity_key="acct-001" handle=Some("old".into()) />
+                <AuthorByline name=label neutral=true identity_key="acct-001"
+                    href="/@tac-gia-cu" handle=Some("tac-gia-cu".into())
+                    link_id=Some("reader-author".into()) link_label=Some("Mở hồ sơ cũ".into())
+                    image=ImageState::ready("/avatar-cu.webp")
+                    name_view=Some(view! { <mark>{label}</mark> }.into_any()) />
             }
             .into_any()
         });
         assert!(html.contains(r#"data-initials="""#), "{html}");
         assert!(html.contains(r#"data-tone="neutral""#), "{html}");
-        assert!(!html.contains("href") && !html.contains("@old"), "{html}");
-        assert!(html.contains("Tài khoản đã xóa"), "{html}");
+        assert!(!html.contains("<a ") && !html.contains("<img "), "{html}");
+        assert!(
+            html.contains(r#"data-neutral="true""#) && html.contains(label),
+            "{html}"
+        );
+        assert_eq!(
+            html, plain,
+            "stale identity props must not change the neutral HTML"
+        );
         assert_eq!(handle_text("@an"), Some("@an".into()));
         assert_eq!(handle_text("  "), None);
     }
