@@ -31,6 +31,8 @@ Trên [bb25af4](https://github.com/loveoverflowcom/vink/commit/bb25af4f73916b38a
 
 Ở 320 và 390 px, `bb25af4` còn khoảng trống 100 px giữa tiêu đề “Bạn đã gửi” và mục đầu. Hai vùng thông báo rỗng chứa một dấu cách do renderer sinh ra. Selector `:empty` không loại chúng khỏi grid. Bản sửa lấy trạng thái rỗng từ dữ liệu, giữ hai vùng thông báo trong DOM và kiểm khoảng cách tới item đầu bằng đúng một `row-gap`.
 
+Trên [1da9d4d](https://github.com/loveoverflowcom/vink/commit/1da9d4dd30d8afd487a5befabc52114665f2e852), khoảng cách còn 12 px tại cả hai chiều rộng và trở lại 12 px sau lỗi 503. Chromium xác nhận hai vùng thông báo có vai trò `status` và chế độ `polite`. [Ảnh lỗi tải đầu trong CI](https://github.com/loveoverflowcom/vink/actions/runs/44732821800/artifacts/14627127832) cũng cho thấy skeleton vẫn hiện khi nút thử lại đã được tạo trong DOM. Phép thử nay đợi skeleton kết thúc thời gian hiển thị tối thiểu 500 ms và nút hiện trên màn hình, sau đó nhấp bằng con trỏ và xác nhận có GET mới.
+
 ### Lệnh và giới hạn nghiệm thu
 
 | Lệnh | Kết quả tại checkpoint |

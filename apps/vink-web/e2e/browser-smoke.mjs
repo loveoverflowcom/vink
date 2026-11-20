@@ -5715,13 +5715,19 @@ async function discussionReadingAndWrites(page) {
       responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Cache-Control', value: 'no-store' }],
       body: Buffer.from(JSON.stringify({ error: { code: 'unavailable', message: 'fixture outage' } })).toString('base64'),
     });
-    await page.waitFor(`document.querySelector('#discussion-load-retry')`, 'initial discussion read failed');
+    // The error DOM mounts while LoadingGate still honours the skeleton's minimum visible time.
+    const retrySelector = '#discussion-load-retry';
+    await page.waitFor(`!document.querySelector('.vk-discussion-skeleton-list')
+      && document.querySelector('${retrySelector}')?.checkVisibility()
+      && document.querySelector('${retrySelector}').getAttribute('aria-disabled') !== 'true'`,
+      'initial read shows an actionable retry after the skeleton clears');
+    await page.eval(`document.querySelector('${retrySelector}').scrollIntoView({block:'center', behavior:'instant'})`);
     check(await page.eval(`document.querySelector('.vk-discussion-state-card[data-tone="adverse"]')?.textContent.includes('Chưa tải được nhận xét') && !document.querySelector('#feedback-region').textContent.includes('Chưa có nhận xét nào')`), 'initial error is distinct from empty state');
     const failedInitialReads = readCursors.length;
     check(failedInitialReads === 1, 'one failed initial GET exposes the retry button');
-    await page.capture('discussion-contract-fixture-initial-error', { scenario: 'D2T-03-load-retry', boundary: 'intercepted-provider-contract-fixture-no-persistence' });
+    await page.capture('discussion-contract-fixture-initial-error', { scenario: 'D2T-03-load-retry', target: retrySelector, boundary: 'intercepted-provider-contract-fixture-no-persistence' });
     failRead = false;
-    await page.click('#discussion-load-retry');
+    await page.click(retrySelector);
     await page.waitFor(`document.querySelector('#reply-to-${replyId}') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'initial retry completes with contract fixture projection');
     check(readCursors.length > failedInitialReads && !await page.eval(`!!document.querySelector('#discussion-load-retry')`), 'initial retry issues a new GET and replaces the error with loaded comments');
     await page.click(`#reply-to-${replyId}`);
