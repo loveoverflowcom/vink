@@ -295,15 +295,17 @@ fn network_failure(error: reqwest::Error) -> Failure {
     }
     let mut source = error.source();
     while let Some(cause) = source {
-        if cause.is::<rustls::Error>()
-            || cause
-                .downcast_ref::<std::io::Error>()
-                .and_then(std::io::Error::get_ref)
-                .is_some_and(|e| e.is::<rustls::Error>())
-        {
+        if cause.is::<rustls::Error>() {
             return Failure::Tls;
         }
-        source = cause.source();
+        // hyper-rustls wraps tokio-rustls' io::Error in another io::Error on direct
+        // connections. io::Error::source delegates to its inner error's source and
+        // can skip the inner typed rustls error entirely. Unwrap both layers first.
+        source = cause
+            .downcast_ref::<std::io::Error>()
+            .and_then(std::io::Error::get_ref)
+            .map(|inner| inner as &(dyn std::error::Error + 'static))
+            .or_else(|| cause.source());
     }
     if error.is_connect() {
         Failure::Connect
@@ -604,6 +606,9 @@ mod tests {
             let mut hello = [0; 4096];
             assert!(stream.read(&mut hello).await.unwrap() > 0);
             stream.write_all(b"HTTP/1.1 200 OK\r\n\r\n").await.unwrap();
+            // Keep the peer alive until the client closes; closing with unread TLS bytes
+            // can otherwise replace the parser error with a platform-dependent TCP reset.
+            while stream.read(&mut hello).await.unwrap_or(0) != 0 {}
         });
         let resend = Resend::build(scratch.settings(), url, true).unwrap();
         assert_eq!(
