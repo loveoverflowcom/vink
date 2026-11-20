@@ -6,8 +6,12 @@
 //! Lock order, shared by every path:
 //! - Discussion writes: publication -> thread -> comment row -> principal row (`FOR UPDATE`).
 //! - Moderation decisions: directory `FOR SHARE` locks (admin seat -> legacy grant -> group ->
-//!   membership -> governance grant) -> comment `FOR UPDATE` -> actor standing fence. The final
-//!   authority check only uses facts covered by these locks and samples expiry after waiting.
+//!   membership -> governance grant) -> comment `FOR UPDATE` -> (approve only) public pointer
+//!   `FOR SHARE` -> actor standing fence. The final authority check only uses facts covered by
+//!   these locks and samples expiry after waiting. Publication paths never lock a comment, so
+//!   the pointer share lock after the comment lock adds no reverse edge.
+//! - Notifications (#346): every producing write ends with `notification::emit`, whose only lock
+//!   is the activation row (`FOR KEY SHARE`), after all of the path's own locks.
 //!
 //! A submission holds share locks on the publication, thread and target rows; a mode change
 //! updates the thread row. Moderation leaves publication and thread rows unlocked. Literary
@@ -34,6 +38,7 @@ use uuid::Uuid;
 
 use super::PgStore;
 use super::moderation::{load_directory_facts, load_moderation_directory, lock_admin_seat};
+use super::notification;
 use super::outbox;
 use super::postgres::classify;
 use super::principal::{locked_standing, require_active};
@@ -68,6 +73,9 @@ use crate::domain::moderation::authority::{
     AuthorityBasis, AuthorityRefusal, GrantOrigin, Grantee, ModerationDirectory, ReviewCapability,
     ReviewTarget,
 };
+use crate::domain::notification::{
+    CommentModerationFacts, PlacementFacts, ReplyTarget, comment_left_public, comment_moderated,
+};
 
 const SUBMIT: &str = "submit_comment";
 
@@ -81,6 +89,50 @@ const fn action_code(action: ModerationAction) -> &'static str {
         ModerationAction::Approve => "approve",
         ModerationAction::Reject => "reject",
         ModerationAction::Remove => "remove",
+    }
+}
+
+/// The comment a moderator decides on, with the placement facts its notifications need. A
+/// placement never changes except a purged context (`reply_to_id` set NULL), which needs this
+/// comment's row lock; writers never change, so the root and target writers need no lock.
+#[derive(sqlx::FromRow)]
+struct ModeratedRow {
+    work_id: Uuid,
+    author_id: Uuid,
+    review: String,
+    removal: Option<String>,
+    moderation_version: i64,
+    owner_id: Uuid,
+    is_reply: bool,
+    root_id: Option<Uuid>,
+    reply_to_id: Option<Uuid>,
+    replied_to_reply: bool,
+    root_author: Option<Uuid>,
+    target_author: Option<Uuid>,
+}
+
+impl ModeratedRow {
+    fn placement(&self) -> Result<PlacementFacts, StoreError> {
+        if !self.is_reply {
+            return Ok(PlacementFacts::Root);
+        }
+        let (Some(root), Some(root_author)) = (self.root_id, self.root_author) else {
+            return Err(integrity("reply without its root", self.work_id));
+        };
+        let target = match (self.replied_to_reply, self.reply_to_id, self.target_author) {
+            (false, _, _) => ReplyTarget::Root,
+            (true, Some(id), Some(author)) => ReplyTarget::Reply {
+                id: CommentId::from_uuid(id),
+                author: PrincipalId::from_uuid(author),
+            },
+            (true, None, _) => ReplyTarget::Purged,
+            (true, Some(_), None) => return Err(integrity("reply context without row", root)),
+        };
+        Ok(PlacementFacts::Reply {
+            root: CommentId::from_uuid(root),
+            root_author: PrincipalId::from_uuid(root_author),
+            target,
+        })
     }
 }
 
@@ -915,6 +967,13 @@ impl DiscussionStore for PgStore {
             .execute(&mut *tx)
             .await
             .map_err(classify)?;
+            // The writer is never told about their own removal; an approved contribution that
+            // others were told about is invalidated by target (#346).
+            notification::emit(
+                &mut tx,
+                comment_left_public(work_id, comment_id, current, next),
+            )
+            .await?;
             tx.commit().await.map_err(classify)?;
         }
         Ok(Guarded::Decided(decided))
@@ -1000,8 +1059,12 @@ impl DiscussionStore for PgStore {
         };
         let work_ids: Vec<Uuid> = works.iter().map(WorkId::as_uuid).collect();
 
-        let row: Option<(Uuid, Uuid, String, Option<String>, i64, Uuid)> = sqlx::query_as(
-            "SELECT t.work_id, c.author_id, c.review, c.removal, c.moderation_version, w.owner_id
+        let row: Option<ModeratedRow> = sqlx::query_as(
+            "SELECT t.work_id, c.author_id, c.review, c.removal, c.moderation_version, w.owner_id,
+                    c.kind = 'reply' AS is_reply, c.root_id, c.reply_to_id, c.replied_to_reply,
+                    (SELECT r.author_id FROM comments r WHERE r.id = c.root_id) AS root_author,
+                    (SELECT x.author_id FROM comments x WHERE x.id = c.reply_to_id)
+                        AS target_author
                FROM comments c
                JOIN discussion_threads t ON t.id = c.thread_id
                JOIN works w ON w.id = t.work_id
@@ -1015,13 +1078,22 @@ impl DiscussionStore for PgStore {
         .fetch_optional(&mut *tx)
         .await
         .map_err(classify)?;
+        // Notifications (#346): an approval is owed only if the work is readable when this
+        // decision commits (COM-11). The pointer's share lock comes after the comment lock and
+        // before the standing fence; publication paths never wait on a comment.
+        let stamp = match (&row, action) {
+            (Some(row), ModerationAction::Approve) => {
+                Some(notification::locked_stamp(&mut tx, WorkId::from_uuid(row.work_id)).await?)
+            }
+            _ => None,
+        };
         // Standing fence after comment lock: an uncommitted suspension waits here and refuses.
         require_active(&mut tx, actor).await?;
         let commit_now: OffsetDateTime = sqlx::query_scalar("SELECT clock_timestamp()")
             .fetch_one(&mut *tx)
             .await
             .map_err(classify)?;
-        let Some((work_id, writer, raw_review, raw_removal, version, work_author)) = row else {
+        let Some(moderated) = row else {
             return Ok(
                 match directory.capability_scope(actor, capability, commit_now) {
                     Some((true, _)) => Guarded::NotFound,
@@ -1029,6 +1101,16 @@ impl DiscussionStore for PgStore {
                 },
             );
         };
+        let placement = moderated.placement()?;
+        let ModeratedRow {
+            work_id,
+            author_id: writer,
+            review: raw_review,
+            removal: raw_removal,
+            moderation_version: version,
+            owner_id: work_author,
+            ..
+        } = moderated;
         let verified = match directory.resolve(
             actor,
             &ReviewTarget::comment(
@@ -1048,10 +1130,8 @@ impl DiscussionStore for PgStore {
         let (authority_kind, grant_id, governance_grant_id) =
             provenance_for_authority(&directory, verified.basis())?;
 
-        let decided = action.apply(
-            state(&raw_review, raw_removal.as_deref(), version)?,
-            expected,
-        );
+        let current = state(&raw_review, raw_removal.as_deref(), version)?;
+        let decided = action.apply(current, expected);
         if let Ok(Transition::Changed(next)) = decided {
             sqlx::query(
                 "UPDATE comments SET review = $2, removal = $3, moderation_version = $4,
@@ -1084,6 +1164,20 @@ impl DiscussionStore for PgStore {
             .execute(&mut *tx)
             .await
             .map_err(classify)?;
+            notification::emit(
+                &mut tx,
+                comment_moderated(CommentModerationFacts {
+                    work: WorkId::from_uuid(work_id),
+                    work_owner: PrincipalId::from_uuid(work_author),
+                    comment: comment_id,
+                    writer: PrincipalId::from_uuid(writer),
+                    placement,
+                    before: current,
+                    after: next,
+                    stamp,
+                }),
+            )
+            .await?;
             tx.commit().await.map_err(classify)?;
         }
         Ok(Guarded::Decided(decided))

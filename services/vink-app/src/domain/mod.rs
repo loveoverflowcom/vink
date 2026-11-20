@@ -13,6 +13,7 @@ pub mod handle;
 pub mod ids;
 pub mod moderation;
 pub mod moderation_queue;
+pub mod notification;
 pub mod principal;
 pub mod profile;
 pub mod publication;

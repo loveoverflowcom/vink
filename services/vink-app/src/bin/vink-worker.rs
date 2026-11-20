@@ -5,6 +5,9 @@
 //! an hourly housekeeping pass: expired sign-in rate-limit windows (D-05) and discussion events
 //! whose deliveries all finished more than [`EVENT_RETENTION_DAYS`] days ago and owe no review
 //! finalization. Admission post-review has no producer; no AI provider is configured.
+//! Acknowledged Notifications v1 events (#346) are pruned after their replay horizon. The
+//! notification relay (`vink_app::notification_relay`, T-02 CHOICE-16 A) is a loop of this
+//! process, not started until the Notification Service transport (#347, T-07) exists.
 //! Identity's mail outbox is delivered by `vink-identity serve`, never here: the App does not read
 //! the Identity database.
 //!
@@ -21,7 +24,7 @@ use vink_app::application::Vink;
 use vink_app::config::{Config, Profile};
 use vink_app::outbox_worker::{OutboxSettings, OutboxWorker};
 use vink_app::persistence::{
-    PgStore, SchemaState, lazy_pool, outbox, role_is_privileged, schema_state,
+    PgStore, SchemaState, lazy_pool, notification, outbox, role_is_privileged, schema_state,
 };
 use vink_app::runtime;
 
@@ -127,7 +130,10 @@ async fn run(
         consumers = vink_app::domain::discussion::outbox::Consumer::ALL
             .map(|consumer| consumer.code())
             .join(","),
-        jobs = "discussion_outbox,rate_limit_prune,outbox_retention,work_evaluation",
+        jobs = "discussion_outbox,rate_limit_prune,outbox_retention,notification_retention,work_evaluation",
+        // #346: producers write only while `vink-app notifications activate` is in force; the
+        // relay loop (`vink_app::notification_relay`) starts once #347 provides its transport.
+        notification_relay = "no_transport",
         post_review = "operator_rereview.v1",
         admission_post_review = "no_producer",
         ai_moderation = "not_implemented",
@@ -183,6 +189,10 @@ async fn run(
                 match outbox::prune(&pool, EVENT_RETENTION_DAYS, PRUNE_BATCH).await {
                     Ok(rows) => tracing::info!(rows, "finished outbox events pruned"),
                     Err(_) => tracing::warn!("outbox retention could not reach the database"),
+                }
+                match notification::prune(&pool, notification::REPLAY_HORIZON_DAYS, PRUNE_BATCH).await {
+                    Ok(rows) => tracing::info!(rows, "acknowledged notification events pruned"),
+                    Err(_) => tracing::warn!("notification retention could not reach the database"),
                 }
             }
         }

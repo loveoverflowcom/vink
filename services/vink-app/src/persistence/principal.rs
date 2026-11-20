@@ -9,6 +9,7 @@ use super::PgStore;
 use super::postgres::classify;
 use crate::application::ports::{BoundPrincipal, PrincipalStore, Provisioned, StoreError};
 use crate::domain::ids::PrincipalId;
+use crate::domain::notification::principal_standing_changed;
 use crate::domain::principal::{PenName, Standing, SubjectKey, SuspensionReason};
 
 const BOUND: &str = "SELECT b.principal_id,
@@ -171,6 +172,7 @@ pub async fn suspend_principal(
     principal: PrincipalId,
     reason: &SuspensionReason,
 ) -> Result<SuspensionOutcome, StoreError> {
+    let mut tx = pool.begin().await.map_err(classify)?;
     let inserted: Option<Uuid> = sqlx::query_scalar(
         "INSERT INTO principal_suspensions (id, principal_id, reason) VALUES ($1, $2, $3)
          ON CONFLICT (principal_id) WHERE lifted_at IS NULL DO NOTHING
@@ -179,12 +181,15 @@ pub async fn suspend_principal(
     .bind(Uuid::now_v7())
     .bind(principal.as_uuid())
     .bind(reason.as_str())
-    .fetch_optional(pool)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(classify)?;
     if let Some(id) = inserted {
+        standing_changed(&mut tx, principal).await?;
+        tx.commit().await.map_err(classify)?;
         return Ok(SuspensionOutcome::Suspended(id));
     }
+    tx.rollback().await.map_err(classify)?;
     let active: Uuid = sqlx::query_scalar(
         "SELECT id FROM principal_suspensions WHERE principal_id = $1 AND lifted_at IS NULL",
     )
@@ -201,15 +206,38 @@ pub async fn reinstate_principal(
     pool: &PgPool,
     principal: PrincipalId,
 ) -> Result<Option<Uuid>, StoreError> {
-    sqlx::query_scalar(
+    let mut tx = pool.begin().await.map_err(classify)?;
+    let lifted: Option<Uuid> = sqlx::query_scalar(
         "UPDATE principal_suspensions SET lifted_at = now()
           WHERE principal_id = $1 AND lifted_at IS NULL
          RETURNING id",
     )
     .bind(principal.as_uuid())
-    .fetch_optional(pool)
+    .fetch_optional(&mut *tx)
     .await
-    .map_err(classify)
+    .map_err(classify)?;
+    if lifted.is_some() {
+        standing_changed(&mut tx, principal).await?;
+    }
+    tx.commit().await.map_err(classify)?;
+    Ok(lifted)
+}
+
+/// A standing change owes a principal invalidation (#346) in the same transaction. Its order
+/// counts every suspension and every lift of the principal, so it only advances.
+async fn standing_changed(
+    tx: &mut Transaction<'_, Postgres>,
+    principal: PrincipalId,
+) -> Result<(), StoreError> {
+    let version: i64 = sqlx::query_scalar(
+        "SELECT count(*) + count(lifted_at) FROM principal_suspensions WHERE principal_id = $1",
+    )
+    .bind(principal.as_uuid())
+    .fetch_one(&mut **tx)
+    .await
+    .map_err(classify)?;
+    super::notification::emit(tx, [principal_standing_changed(principal, version)]).await?;
+    Ok(())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

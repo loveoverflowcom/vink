@@ -1,7 +1,9 @@
 # Notifications v1 & Danh sách Thấm công khai — Hợp đồng đề xuất (ngoài Web)
 
-**Trạng thái:** Hợp đồng đề xuất r1 · `NOT_IMPLEMENTED` (chưa có route Axum, service hay fixture
-kiểm tự động trong `contract.rs`).
+**Trạng thái:** Hợp đồng đề xuất r1. §1 phía App/Relay (`#346`) đã triển khai: envelope chuẩn hóa
+(`domain::notification`, hai digest ví dụ ở §3 được kiểm từng byte), outbox và relay ACK có fence
+([registry §6](../../../../../docs/development/notifications.md#6-hiện-trạng-346-producer-outbox-và-relay-phía-app)).
+Notification Service (`#347`), route Gateway (`#348`) và fixture HTTP trong `contract.rs`: `NOT_IMPLEMENTED`.
 Tài liệu này đặc tả hợp đồng giao sự kiện từ App/Relay (`#346`) tới Notification Service
 (`#347`) và hợp đồng App Gateway (`#348`) cung cấp cho Web và CMP/mobile theo `P-14A`.
 Gateway dùng dịch vụ nội bộ của `#347` để đọc nhóm và ghi ACK.
