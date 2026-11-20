@@ -164,7 +164,7 @@ impl Local {
                 .is_some_and(|s| s != "local-outbox")
             {
                 return Err(
-                    "local Identity requires local-outbox; SMTP is not enabled by dev".into(),
+                    "local Identity requires local-outbox; dev never sends real mail".into(),
                 );
             }
             if env
@@ -468,7 +468,7 @@ mod tests {
             ("VINK_PROFILE", "local"),
             ("VINK_BIND", "invalid"),
             ("VINK_PUBLIC_ORIGIN", "invalid"),
-            ("VINK_IDENTITY_MAIL_TRANSPORT", "smtp"),
+            ("VINK_IDENTITY_MAIL_TRANSPORT", "resend-api"),
         ]);
         let plan = crate::cli::parse(&["dev", "worker"]).unwrap().unwrap().plan;
         assert!(Local::resolve(&plan, &env).is_ok());

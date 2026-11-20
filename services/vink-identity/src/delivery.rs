@@ -10,12 +10,14 @@
 //!
 //! **Guarantee: at least once, never exactly once.** A crash after the relay accepted a message
 //! but before the outcome commits, or a send that outlives its lease, leads to one more attempt
-//! of the same code under the same Message-ID. That is harmless: the code still needs the secret
+//! with the same delivery key and payload. The provider deduplicates only within its published
+//! window; a timeout is ambiguous, not proof of non-acceptance. The code still needs the secret
 //! that only the requesting client holds. A message the relay accepted can still be lost later
 //! (bounce, spam folder); bounce handling is not implemented.
 //!
 //! **Bounds.** Attempts are capped ([`DeliveryPolicy::max_attempts`]) with exponential backoff and
-//! jitter; a `5xx` refusal ends the delivery at once; a code whose challenge expired or was used
+//! jitter and any longer provider retry minimum. A definitive refusal ends the delivery; a
+//! code whose challenge expired or was used
 //! is cancelled instead of sent. Every terminal state clears the stored code in the same
 //! statement.
 
@@ -95,8 +97,13 @@ pub fn decide_outcome(
         Ok(()) => Outcome::Sent,
         Err(failure) if failure.is_permanent() => Outcome::Failed,
         Err(_) if attempts >= policy.max_attempts => Outcome::Failed,
-        Err(_) => Outcome::Retry {
-            after: backoff(attempts, policy) + jitter.min(policy.base_backoff),
+        Err(failure) => Outcome::Retry {
+            after: (backoff(attempts, policy) + jitter.min(policy.base_backoff)).max(
+                match failure {
+                    Failure::ProviderRetry { after, .. } => after,
+                    _ => Duration::ZERO,
+                },
+            ),
         },
     }
 }
@@ -201,6 +208,50 @@ pub async fn claim(pool: &PgPool, policy: &DeliveryPolicy) -> Result<Vec<Claimed
         .collect()
 }
 
+/// Final admission immediately before transport I/O. Re-check the DB clock, the challenge and
+/// the lease after scheduling the task. Pin the exact wire payload before the first network
+/// call: a timeout or a crash after that call cannot permit a different payload on replay.
+/// No external I/O occurs while a row lock/transaction is held.
+enum Admission {
+    Send,
+    Stale,
+    Cancel,
+    Fail,
+}
+
+async fn admit_send(
+    pool: &PgPool,
+    row: &Claimed,
+    fingerprint: Option<[u8; 32]>,
+    maximum: i32,
+) -> Result<Admission, sqlx::Error> {
+    let result = sqlx::query(
+        "UPDATE mail_deliveries d
+            SET payload_fingerprint = COALESCE(d.payload_fingerprint, $3)
+           FROM email_challenges c
+          WHERE d.challenge_id = $1 AND d.lease_token = $2 AND d.state = 'pending'
+            AND c.id = d.challenge_id AND d.next_attempt_at > clock_timestamp()
+      RETURNING c.consumed_at IS NOT NULL OR c.expires_at <= clock_timestamp() AS ended,
+                d.attempts <= $4 AND (d.payload_fingerprint IS NOT DISTINCT FROM $3) AS allowed",
+    )
+    .bind(row.challenge)
+    .bind(row.token)
+    .bind(fingerprint.as_ref().map(|digest| digest.as_slice()))
+    .bind(maximum)
+    .fetch_optional(pool)
+    .await?;
+    let Some(result) = result else {
+        return Ok(Admission::Stale);
+    };
+    if result.try_get("ended")? {
+        Ok(Admission::Cancel)
+    } else if result.try_get("allowed")? {
+        Ok(Admission::Send)
+    } else {
+        Ok(Admission::Fail)
+    }
+}
+
 /// Terminal states. Each clears the code and the lease in the same statement.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Final {
@@ -222,7 +273,7 @@ pub async fn finish(pool: &PgPool, claimed: &Claimed, outcome: Final) -> Result<
     };
     let updated = sqlx::query(
         "UPDATE mail_deliveries
-            SET state = $3, code = NULL, lease_token = NULL, finished_at = now(),
+            SET state = $3, code = NULL, payload_fingerprint = NULL, lease_token = NULL, finished_at = now(),
                 last_error = COALESCE($4, last_error), last_status = COALESCE($5, last_status)
           WHERE challenge_id = $1 AND lease_token = $2 AND state = 'pending'",
     )
@@ -243,10 +294,13 @@ pub async fn reschedule(
     failure: Failure,
 ) -> Result<bool, sqlx::Error> {
     let updated = sqlx::query(
-        "UPDATE mail_deliveries
-            SET next_attempt_at = now() + make_interval(secs => $3), lease_token = NULL,
-                last_error = $4, last_status = $5
-          WHERE challenge_id = $1 AND lease_token = $2 AND state = 'pending'",
+        "UPDATE mail_deliveries d
+            SET next_attempt_at = now() + make_interval(secs => LEAST($3::float8,
+                    GREATEST(0, EXTRACT(epoch FROM c.expires_at - now())::float8))),
+                lease_token = NULL, last_error = $4, last_status = $5
+           FROM email_challenges c
+          WHERE d.challenge_id = $1 AND d.lease_token = $2 AND d.state = 'pending'
+            AND d.challenge_id = c.id",
     )
     .bind(claimed.challenge)
     .bind(claimed.token)
@@ -388,11 +442,36 @@ async fn deliver(
         tracing::info!(%delivery, "code not sent: its challenge is used or expired");
         return Ok(());
     }
+    match admit_send(
+        pool,
+        &row,
+        transport.payload_fingerprint(message),
+        policy.max_attempts,
+    )
+    .await?
+    {
+        Admission::Stale => return Ok(()),
+        Admission::Cancel => {
+            finish(pool, &row, Final::Cancelled).await?;
+            return Ok(());
+        }
+        Admission::Fail => {
+            finish(
+                pool,
+                &row,
+                Final::Failed(Some(Failure::Permanent { status: None })),
+            )
+            .await?;
+            tracing::warn!(%delivery, "send withheld: exhausted attempts or changed payload");
+            return Ok(());
+        }
+        Admission::Send => {}
+    }
     let result = transport.send(message).await;
     let recorded = match decide_outcome(row.attempts, result, policy, jitter(policy)) {
         Outcome::Sent => {
             let kept = finish(pool, &row, Final::Sent).await?;
-            tracing::info!(%delivery, attempts = row.attempts, transport = transport.label(), "code delivered");
+            tracing::info!(%delivery, attempts = row.attempts, transport = transport.label(), "transport accepted delivery");
             kept
         }
         Outcome::Retry { after } => {
@@ -435,6 +514,27 @@ mod tests {
         assert_eq!(decide_claim(true, false), Claim::Cancel);
         assert_eq!(decide_claim(false, true), Claim::Cancel);
         assert_eq!(decide_claim(true, true), Claim::Cancel);
+    }
+
+    #[test]
+    fn provider_delay_is_a_floor_but_never_extends_the_attempt_budget() {
+        let policy = DeliveryPolicy::default();
+        for floor in [Duration::ZERO, Duration::from_secs(12), Duration::MAX] {
+            let failure = Failure::ProviderRetry {
+                status: 429,
+                after: floor,
+            };
+            assert_eq!(
+                decide_outcome(1, Err(failure), &policy, Duration::ZERO),
+                Outcome::Retry {
+                    after: policy.base_backoff.max(floor)
+                }
+            );
+            assert_eq!(
+                decide_outcome(policy.max_attempts, Err(failure), &policy, Duration::ZERO),
+                Outcome::Failed
+            );
+        }
     }
 
     /// Every attempt count up to past the bound × every failure category: the delivery ends on

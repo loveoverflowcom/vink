@@ -3,7 +3,7 @@
 //! database, serving a private contract on a Unix socket. Without configuration it answers
 //! `authority_not_configured`. The native email-code authority (`authority`, `email_code`,
 //! `accounts`) mails codes through a durable outbox and worker (`delivery`) over a transport
-//! (`mail`: SMTP, or a local outbox for development). D-05 is still Provisional: a working SMTP
+//! (`mail`: Resend HTTPS or a local outbox for development). D-05 is still Provisional: a working mail
 //! path is not an accepted production authority (see `docs/architecture/auth-authority.md`).
 //!
 //! Identity grants no Vink permission (admin, editor, publish) and never reads App data. It issues

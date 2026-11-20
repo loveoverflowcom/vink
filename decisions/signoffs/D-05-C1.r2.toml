@@ -1,0 +1,10 @@
+version = 1
+id = "D-05-C1"
+revision = 2
+sha256 = "db3f6f78c116f56f98cc6c57566a3e93d34cf52c80b740f30edd4a1bf21cc325"
+status = "PROVISIONAL"
+decided_on = "2026-11-20"
+source = """
+Brief của chủ sản phẩm ngày 20/11/2026, §1.1: “Sử dụng Resend HTTPS REST API để gửi email. Không triển khai SMTP mới và không dùng SMTP làm đường gửi production của Vink.”
+Chỉ xác nhận lựa chọn transport C1; D-05 vẫn Provisional, không phê duyệt activation hay O-11.
+"""

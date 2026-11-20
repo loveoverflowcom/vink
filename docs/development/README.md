@@ -141,7 +141,7 @@ Google Cloud, APK Firebase, DNS/TLS và OCI trước khi diễn tập trên VPS 
   Contract riêng tư [v1 draft](../../services/vink-identity/contracts/rpc/v1/README.md): mặc định
   `authority_not_configured`; với `VINK_IDENTITY_AUTHORITY=email-code` (D-05 Provisional,
   [ADR](../architecture/auth-authority.md)) có đăng nhập bằng mã email một lần và phiên opaque; mã
-  được worker của Identity gửi qua outbox bền + SMTP (Resend) hoặc outbox cục bộ khi dev
+  được worker của Identity gửi qua outbox bền + Resend HTTPS API hoặc outbox cục bộ khi dev
   ([runbook](auth-operations.md), [bằng chứng](auth-production-evidence.md)). Cấu hình `native`
   bật thêm password và cho tài khoản mã email thêm credential bằng proof mới. App đếm request
   đăng nhập theo mạng nguồn trong PostgreSQL; ở profile production đăng nhập khóa cho tới khi

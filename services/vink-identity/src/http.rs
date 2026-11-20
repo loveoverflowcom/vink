@@ -83,7 +83,7 @@ struct Inner {
     caller_uid: Option<u32>,
     deadline: Duration,
     write_deadline: Duration,
-    /// Label of the transport the delivery worker uses (`local_outbox`, `smtp`), reported by
+    /// Label of the transport the delivery worker uses (`local_outbox`, `resend_api`), reported by
     /// readiness; `None` without the email-code authority.
     mail_transport: Option<&'static str>,
 }
@@ -809,11 +809,11 @@ async fn ready(State(state): State<IdentityState>) -> (StatusCode, Json<Value>) 
                 "oldest_pending_seconds": q.oldest_pending_seconds,
                 "failed_last_hour": q.failed_last_hour,
             })),
-            // The local outbox reaches nobody outside this machine. With SMTP the code path is
-            // production-capable, but D-05 is still Provisional and its gates are open
+            // The local outbox reaches nobody outside this machine. Resend is configured, but this endpoint
+            // does not probe external delivery; D-05 remains Provisional
             // (docs/architecture/auth-authority.md §9), so it is not accepted either.
             "production_authentication": match transport {
-                "smtp" => "not_accepted",
+                "resend_api" => "not_accepted",
                 _ => "not_implemented",
             },
         })),

@@ -1,9 +1,8 @@
 # Vận hành xác thực (D-05) — runbook
 
-**Trạng thái:** D-05 **Provisional** ([ADR](../architecture/auth-authority.md)). Đường mail
-production, giới hạn lạm dụng, fence đình chỉ tại commit và retention đã có code và bằng chứng
-cục bộ ([bằng chứng](auth-production-evidence.md)); **chưa** bật đăng nhập production. Tài liệu này
-mô tả cách cấu hình, giám sát, xoay secret, xử lý sự cố và rollback khi chủ sản phẩm quyết định bật.
+**Trạng thái:** D-05 **Provisional** ([ADR](../architecture/auth-authority.md)). Đường gửi production
+là Resend HTTPS API. [Bằng chứng SMTP cũ](auth-production-evidence.md) không chứng minh
+API mới. Tài liệu mô tả cấu hình và rollback; không phải bằng chứng đã bật production.
 
 ## 1. Luồng và owner
 
@@ -11,58 +10,38 @@ mô tả cách cấu hình, giám sát, xoay secret, xử lý sự cố và roll
 | --- | --- | --- |
 | `POST /api/v1/auth/sign-in/challenges` | App | Kiểm `Origin`; đếm theo mạng nguồn (10/15 phút) trong DB App **trước** khi gọi Identity; lỗi đếm = `503` |
 | Phát challenge | Identity | Trần theo địa chỉ (3/15 phút), theo tài khoản (3 lần đổi email/giờ), toàn cục (200/10 phút); challenge + ý định gửi commit **cùng** transaction |
-| Gửi mã | Worker trong `vink-identity serve` | Claim `SKIP LOCKED` + lease 45 s; gửi ngoài transaction; tối đa 5 lần, backoff 5→60 s; `5xx` dừng ngay; mã hết hạn/đã dùng bị hủy; trạng thái cuối xóa mã |
+| Gửi mã | Worker trong `vink-identity serve` | Claim `SKIP LOCKED` + lease 45 s; gửi ngoài transaction; tối đa 5 lần, backoff 5→60 s; HTTP `5xx` thử lại, tôn trọng `Retry-After` nếu còn hạn; mã hết hạn/đã dùng bị hủy; trạng thái cuối xóa mã |
 | `POST …/sign-in/complete` | App → Identity | Đếm theo mạng (30/15 phút); 5 lần sai đóng challenge; phiên mới thay phiên cũ của trình duyệt (thu hồi phiên cũ) |
 | Mỗi request riêng tư | App → Identity | `verify-credential` + binding + đình chỉ; Identity/DB không trả lời = `503`, không bao giờ ẩn danh |
 | Mỗi lệnh ghi được bảo vệ | App (PostgreSQL) | Fence đình chỉ tại commit: nháp, tag, bình luận (gửi/xóa), chế độ bình luận, kiểm duyệt, ghi nhận |
 
-Gửi thư là **at-least-once**: crash sau khi relay nhận nhưng trước khi ghi kết quả có thể tạo một
-bản trùng cùng mã, cùng `Message-ID` — vô hại vì mã vẫn cần bí mật trong cookie của trình duyệt đã
-xin mã. `202` của API nghĩa là "đã ghi ý định gửi", không phải "đã vào hộp thư".
+Worker xử lý **at-least-once**; lần thử lại giữ payload và `Idempotency-Key` theo delivery ID.
+Timeout không chứng minh provider chưa nhận. Resend giữ khóa [24 giờ](https://resend.com/docs/dashboard/emails/idempotency-keys),
+không bảo đảm exactly-once. `202` từ Vink nghĩa là đã ghi ý định gửi; `sent` nghĩa là provider
+chấp nhận, không phải thư đã tới hộp thư.
 
 ## 2. Cấu hình production
 
-### Identity (Resend qua SMTP)
-
-Resend nhận SMTP ở `smtp.resend.com`, cổng `465` (TLS ngay) hoặc `587` (STARTTLS), username
-`resend`, password là API key. Dùng API key **chỉ có quyền gửi** (sending access), giới hạn theo
-domain gửi, và domain đã xác minh SPF/DKIM ở Resend (DMARC khuyến nghị) trước khi bật.
-
-```bash
-install -m 600 -o vink-identity /dev/stdin /run/secrets/vink-identity-smtp   # dán API key, Ctrl-D
-```
+### Identity (Resend HTTPS API)
 
 ```dotenv
-VINK_IDENTITY_AUTHORITY=email-code
-VINK_IDENTITY_MAIL_TRANSPORT=smtp
-VINK_IDENTITY_SMTP_PROVIDER=resend        # = host smtp.resend.com, tls/465, user resend
-VINK_IDENTITY_SMTP_PASSWORD_FILE=/run/secrets/vink-identity-smtp
-VINK_IDENTITY_MAIL_FROM=Vink <no-reply@<domain-đã-xác-minh>>
-# Tùy chọn: VINK_IDENTITY_SMTP_SECURITY=starttls (587), VINK_IDENTITY_SMTP_TIMEOUT_SECONDS=10,
-#           VINK_IDENTITY_GLOBAL_CHALLENGE_LIMIT=200
+VINK_IDENTITY_AUTHORITY=native
+VINK_IDENTITY_MAIL_TRANSPORT=resend-api
+VINK_IDENTITY_RESEND_API_KEY_FILE=/run/secrets/vink-resend/api-key
+VINK_IDENTITY_RESEND_FROM=no-reply@your-verified-domain
+# Tùy chọn: VINK_IDENTITY_RESEND_TIMEOUT_SECONDS=10 (1–30)
+#           VINK_IDENTITY_RESEND_PROXY=http://vink-resend-egress:3128
 ```
 
-**Mạng có firewall chặn TLS** (đã gặp 10/11/2026 trên mạng văn phòng: Fortinet thay chứng chỉ của
-`smtp.resend.com:465` bằng chứng chỉ do CA Fortinet ký): Identity từ chối — đúng thiết kế, không bao
-giờ tin CA lạ — và báo `tls`. Dùng `VINK_IDENTITY_SMTP_SECURITY=starttls` (cổng 587 nhận chứng chỉ
-thật) hoặc chạy từ mạng không bị chặn; **không** tắt kiểm chứng chỉ.
+Cấp [key chỉ quyền gửi](https://resend.com/docs/dashboard/api-keys/introduction), giới hạn cho
+[domain đã xác minh](https://resend.com/docs/dashboard/domains/introduction) của từng môi trường.
+File nằm ngoài repo (`0600`), mount chỉ đọc, chỉ tiến trình Identity đọc được. Client gửi
+`POST https://api.resend.com/emails`, xác minh TLS; không fallback SMTP hay `local-outbox`.
+Khởi động kiểm cấu hình cục bộ, readiness không chứng minh DNS/egress, credential hoặc email đến.
 
-### Đổi nhà cung cấp mail
-
-Outbox, worker, chính sách retry và nội dung thư không biết nhà cung cấp; worker chỉ giữ một
-`MailSender` ([mail.rs](../../services/vink-identity/src/mail.rs)).
-- Nhà cung cấp SMTP khác: đặt `VINK_IDENTITY_SMTP_HOST`/`_SECURITY`/`_USERNAME` tường minh (bỏ
-  `VINK_IDENTITY_SMTP_PROVIDER`), hoặc thêm một dòng vào `SMTP_PRESETS` trong
-  [config.rs](../../services/vink-identity/src/config.rs). Không sửa code khác.
-- Nhà cung cấp chỉ có API HTTP: thêm một `impl MailSender` và một nhánh `MailChoice`; outbox, worker
-  và contract không đổi.
-- Sau khi đổi: `vink-identity mail test <hộp-thư-thử>` (§4).
-
-Quy tắc kiểm khi khởi động (thoát `2`, không in secret): mật khẩu chỉ qua file `0600`
-(`VINK_IDENTITY_SMTP_PASSWORD` dạng giá trị bị từ chối); `none` (không TLS) chỉ cho relay loopback;
-username và file mật khẩu phải đi cùng nhau; `MAIL_FROM` phải là mailbox RFC 5322. Khởi động
-**không** gọi mạng: readiness không chứng minh egress, DNS, TLS hay credential đúng — xác nhận bằng
-một lần gửi thật (§4).
+Xem hướng dẫn [test](../../infra/test/README.md) và [production](../../infra/production/README.md)
+để tách môi trường, mạng egress và secret.
+Giữ `From` và mẫu thư ổn định khi còn delivery chờ; worker không gửi lại payload đã đổi.
 
 ### App
 
@@ -81,23 +60,26 @@ cho phép client tự chọn bucket — khi đó giới hạn theo mạng mất 
 
 ## 3. Khóa kích hoạt
 
-Ở profile production, `VINK_AUTH_SIGN_IN` mặc định `disabled`: hai route xin/trả mã trả
-`501 authority_not_configured`; phiên đã có vẫn được xác minh và đăng xuất được. Chỉ đặt
-`enabled` khi đủ các gate ở [ADR §9](../architecture/auth-authority.md#9-blocker-trước-khi-accepted),
-tối thiểu: chủ sản phẩm chấp nhận UX mã email, gửi thật qua Resend thành công (§4), UI đăng nhập
-([Auth Web](auth-web.md)) có qualification trình duyệt trên HTTPS/domain thật, review bảo mật độc lập và người chịu trách nhiệm vận hành auth.
+Production mặc định `disabled`. App trả `501 authority_not_configured` cho route tạo phiên;
+phiên hiện hữu vẫn xác minh và đăng xuất được. Khi operator đặt `enabled` theo từng môi trường,
+đăng nhập/đăng ký mở cho mọi người, không có invite hay allowlist. Email xác minh không là
+điều kiện mặc định của đăng ký bằng mật khẩu; mã email bổ sung. Không tự đổi điều kiện O-11.
+
+Thử trên `test.vink.forum` trước `vink.forum` với cơ sở dữ liệu, key và domain riêng. Đối chiếu
+mật khẩu, gắn email và mã email, bút danh, Bàn viết và đăng xuất; kiểm SSR/hydration, cookie
+`Secure`/`HttpOnly`/`SameSite`, CSRF, refresh và hai tab trên đúng origin HTTPS. Xem
+[ADR §9](../architecture/auth-authority.md#9-blocker-trước-khi-accepted) cho các gate ngoài code.
 
 ## 4. Kiểm chứng gửi thật (trước khi bật)
 
-1. Với cấu hình §2: `vink-identity mail test <hộp-thư-thử>` gửi một thư kiểm tra (không chứa mã)
-   qua đúng sender của `serve`, không cần database. Thành công = relay đã nhận (`accepted by smtp`);
-   lỗi in loại (`tls`, `connect`, `configuration`, `permanent (SMTP 5xx)`…). Hộp thư mô phỏng của
-   Resend `delivered@resend.dev` cho phép thử không làm phiền ai.
-2. Luồng đầy đủ: xin mã cho hộp thư thử do đội sở hữu; kiểm thư đến (không vào spam), `From`, tiêu
-   đề tiếng Việt, mã đúng, header `Auto-Submitted`.
-3. `vink-identity mail status` phải về `pending 0`; log có `code delivered` (không có địa chỉ/mã).
-4. Ghi kết quả vào [bằng chứng](auth-production-evidence.md) — relay giả trong `verify postgres`
-   không thay được bước này.
+1. Chủ dự án tự chạy `vink-identity mail test <hộp-thư-thử>` đến hộp thư do mình kiểm soát.
+   Dùng cùng transport với worker, không có mã và không cần DB. Ghi riêng provider accepted
+   và mailbox delivered (xác nhận trong hộp thư).
+2. Sau khi mở trên test, xin mã thật và xác minh trên trình duyệt ban đầu. Kiểm `From`,
+   tiêu đề tiếng Việt, mã, session/bút danh và thư có vào spam không.
+3. `vink-identity mail status` phải về `pending 0`; log chỉ có delivery ID, loại và mã số lỗi.
+   Không đưa key, mã đăng nhập, địa chỉ hay nội dung provider vào bằng chứng. Mock HTTP không
+   thay thế phép kiểm thật; phép gửi thật do chủ dự án thực hiện.
 
 ## 5. Giám sát
 
@@ -105,19 +87,19 @@ tối thiểu: chủ sản phẩm chấp nhận UX mã email, gửi thật qua R
 | --- | --- | --- |
 | `mail_queue.pending`, `oldest_pending_seconds` | `/health/ready` của Identity, `vink-identity mail status` | Thư chờ > 60 s: relay chậm/sập |
 | `mail_queue.failed_last_hour` | như trên | > 0 liên tục: domain/credential/relay |
-| `code delivery failed; retrying` (`failure`, `status`) | log Identity | Nhiều `connect`/`tls`: egress/DNS; `transient 4xx`: relay quá tải |
+| `code delivery failed; retrying` (`failure`, `status`) | log Identity | Nhiều `connect`/`tls`: egress/DNS; `429`/HTTP `5xx`: provider giới hạn/lỗi |
 | `sign-in code refused: throttle` (`throttle=global`) | log Identity | Có thể bị flood: xem §6.2 |
 | `sign-in request refused: network ceiling` | log App | Một mạng thử liên tục |
 | `write refused at commit: principal suspended` | log App | Đình chỉ đang chặn ghi (mong đợi) |
 
-Readiness Identity báo `mail_transport` và `production_authentication` (`not_accepted` với SMTP,
+Readiness Identity báo `mail_transport` và `production_authentication` (`not_accepted` với Resend API,
 `not_implemented` với outbox cục bộ) cho tới khi D-05 Accepted. Backlog thư **không** làm readiness
 `503`: xác minh phiên không phụ thuộc mail.
 
 ## 6. Sự cố
 
-### 6.1 Relay hoặc Resend sập
-Không cần can thiệp ngay: API vẫn `202`, thư được giữ và thử lại tối đa 5 lần (khoảng 2–3 phút);
+### 6.1 Resend không nhận thư
+Không cần can thiệp ngay: API vẫn `202`, thư được giữ và thử lại tối đa 5 lần trong hạn mã;
 mã sống 10 phút. Sau đó thư `failed`, người dùng xin mã mới (tối đa 3 mã/15 phút/địa chỉ). Nếu sự
 cố kéo dài, cân nhắc tạm `VINK_AUTH_SIGN_IN=disabled` để người dùng thấy thông báo rõ thay vì chờ thư.
 
@@ -134,9 +116,11 @@ Thứ tự này quan trọng: disable ở Identity không fence được request
 không có giao dịch xuyên owner); đình chỉ ở App thì có.
 
 ### 6.4 Lộ API key mail
-Tạo key mới (chỉ quyền gửi) → `install -m 600` đè file mật khẩu (worker đọc lại ở lần gửi sau,
-không cần restart) → kiểm một lần gửi → thu hồi key cũ ở Resend. Không bao giờ dán key vào issue,
-log, tài liệu, ảnh chụp hay Git; file key nằm ngoài repository.
+Cấp key chỉ quyền gửi cho cùng domain/môi trường. Ghi file riêng `0600` đúng owner rồi
+thay atomically trong thư mục secret mount; worker đọc lại ở lần gửi kế tiếp. Nếu mount một
+file thay vì thư mục, recreate container để thấy inode mới. Smoke bằng hộp thư được phép, rồi
+thu hồi key cũ (nếu đang bị lạm dụng, thu hồi trước). Không đưa key vào issue, log, ảnh, Git
+hay shell history.
 
 ### 6.5 Lộ DB Identity
 DB chỉ có hash phiên/mã; mã đang chờ gửi lưu rõ trong `mail_deliveries.code` tới khi gửi xong
@@ -148,7 +132,7 @@ migrator/DBA) nếu nghi ngờ hash bị dùng sai.
 
 | Secret | Cách xoay | Ảnh hưởng |
 | --- | --- | --- |
-| API key SMTP | §6.4, không restart | Không |
+| API key Resend | §6.4 | Không |
 | Mật khẩu role PostgreSQL | Đổi ở PostgreSQL → cập nhật URL → restart tiến trình | Gián đoạn ngắn; phiên giữ nguyên |
 | Phiên | Không có khóa ký (phiên opaque, chỉ lưu hash): không cần xoay; thu hồi theo §6.3/§6.5 | — |
 
@@ -163,20 +147,23 @@ migrator/DBA) nếu nghi ngờ hash bị dùng sai.
 
 ## 9. Rollback
 
-Migration mới đều **cộng thêm**; binary cũ coi lịch sử có migration lạ là `diverged` (không ready),
-nên rollback binary phải đi kèm script rollback tương ứng:
+Tắt gate riêng của môi trường và recreate App, giữ Identity phục vụ phiên cũ. Kiểm `/toi`
+đóng, route tạo phiên trả `501`, phiên hợp lệ vẫn xác minh/đăng xuất và dữ liệu không đổi.
+Gate chỉ chặn tạo phiên mới; thư đã xếp hàng hoặc hành động từ phiên đang mở không tự dừng.
+Nếu cần dừng mọi lần gửi, ngắt egress của proxy Resend riêng theo
+[hướng dẫn production](../../infra/production/README.md), không tắt Identity hay PostgreSQL.
 
-1. Đặt `VINK_AUTH_SIGN_IN=disabled` (nếu đã bật) — dừng phiên mới, giữ phiên cũ.
-2. App: dừng → `psql "$VINK_MIGRATE_DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f services/vink-app/migrations-rollback/20261112000000_auth_rate_limits.down.sql`
-   → chạy binary cũ. Chỉ mất bộ đếm rate limit.
-3. Identity: dừng → `psql "$VINK_IDENTITY_MIGRATE_DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f services/vink-identity/migrations-rollback/20261112000000_mail_outbox.down.sql`
-   → chạy binary cũ (chỉ có outbox cục bộ). Chỉ mất thư đang chờ; tài khoản, phiên, challenge giữ
-   nguyên, không ai bị đăng xuất.
-4. Hai script được chạy trên PostgreSQL thật trong `verify postgres`. Luôn `pg_dump` theo owner
-   trước khi migrate/rollback ([sao lưu](../../services/postgres/README.md)).
+Không downgrade schema để rollback cấu hình. Khi rollback binary sau migration, sao lưu theo
+[owner](../../services/postgres/README.md) và chỉ dùng down migration tương ứng đúng version
+sau khi đối chiếu guard lịch sử. Với migration Resend, đóng cổng tạo phiên và ngừng nhận intent
+mail mới; đợi delivery hiện có xử lý xong hoặc hết hạn, dừng các worker Identity và dùng
+[down migration Resend](../../services/vink-identity/migrations-rollback/20261120000000_resend_payload_fence.down.sql).
+Không chạy lẫn worker SMTP cũ và worker Resend mới: worker cũ không hiểu ràng buộc payload,
+có thể gửi trùng; không rollback cả outbox hay chỉnh tài khoản chỉ để tắt auth.
 
-## Recovery #181: chỉ là đặc tả
+## Recovery #181/#329: gắn email đã có, reset chưa có
 
+Gắn email lần đầu, đăng nhập mã email và thêm mật khẩu có proof riêng; không phải reset.
 [Đặc tả recovery](../architecture/password-recovery.md) đề xuất purpose/receipt/retention riêng,
 chống dò account, xử lý thư gửi lại và revoke phiên. Chưa có route, migration hoặc quyền vận hành
 reset; không dùng lệnh disable/enable hay sửa trực tiếp password hash để giả lập recovery đã nghiệm

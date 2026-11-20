@@ -1,5 +1,8 @@
 # Bằng chứng đường production của D-05 (10/11/2026)
 
+> **Bằng chứng lịch sử:** kết quả SMTP bên dưới áp dụng cho cấu hình cũ, không xác nhận
+> Resend HTTPS API. Dùng [runbook hiện hành](auth-operations.md) cho các gate còn mở.
+
 Bằng chứng cho nhánh `codex/identity-production-backend` theo [ADR D-05 §11](../architecture/auth-authority.md#11-đường-production-10112026)
 và [runbook](auth-operations.md). Kế tiếp [bằng chứng spike S-03](auth-authority-s03-evidence.md).
 **Không bước nào dưới đây là đăng nhập production**; gửi thật chỉ tới hộp thư mô phỏng của Resend (#29): D-05 vẫn Provisional,

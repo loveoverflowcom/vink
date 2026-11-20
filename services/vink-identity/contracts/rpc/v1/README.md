@@ -11,7 +11,7 @@ Without configuration the provider has no authority and answers every verificati
 `authority_not_configured`. The D-05/S-03 spike ([ADR](../../../../../docs/architecture/auth-authority.md))
 introduced native accounts proven by a one-time email code and opaque server-side sessions.
 The native authority now supports `email-code`, `password` or `native` (both methods). Mail delivery
-uses SMTP or a local outbox. D-05 remains Provisional. The
+uses the Resend HTTPS API or a local outbox. D-05 remains Provisional. The
 `verify.authenticated.json`/`verify.rejected.json` fixtures come from a labelled unit-test authority
 (`authority: "test-fixture"`) that is not compiled into the binary; the email-code fixtures below are
 produced by the real types with fixed values.
