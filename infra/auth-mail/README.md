@@ -99,7 +99,13 @@ Trước khi kích hoạt production, đối chiếu cấu hình unit cho cả u
 proxy, network sau reboot. Dùng đường dẫn dưới `/opt/vink-prod/current` cho bộ ba file Compose.
 [Orchestrator VPS](../cloudflare/production/origin.sh) giữ overlay khi nhãn `config_files`
 của App khớp bộ ba theo đúng thứ tự và release mới có overlay. Unit mặc định chỉ dùng hai file.
-Kiểm schema review của release cho migration Identity mới theo runbook Cloudflare/VPS.
+Cổng schema của [release](../cloudflare/production/release.py) yêu cầu cả image cũ và mới
+đạt readiness trên schema sau migration. Trong rehearsal PostgreSQL 17.11, Identity có mã
+như `ac77a0f` trả 200 trước migration `20261120000000` và 503 (`schema=diverged`) sau đó.
+Identity Resend trả 200 trên schema mới và bản ghi delivery đang chờ vẫn còn. Vì vậy
+`old_on_result` là **FAIL** cho cặp này. Nếu image tiền nhiệm ở VPS có cùng giới hạn,
+release bị chặn đến khi có lộ trình chuyển schema tương thích đã được thử trên bản sao
+với đúng cặp digest. Cờ Auth chỉ điều khiển cấp phiên, không giải quyết cổng schema.
 
 Chỉ sau khi có chấp thuận, thử thư transport tới hộp thư do chủ dự án kiểm soát, đối chiếu
 provider accepted và mailbox delivered riêng; không dùng key/test recipient thật trong CI.
