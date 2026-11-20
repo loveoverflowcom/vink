@@ -33,6 +33,8 @@ Trên [bb25af4](https://github.com/loveoverflowcom/vink/commit/bb25af4f73916b38a
 
 Trên [1da9d4d](https://github.com/loveoverflowcom/vink/commit/1da9d4dd30d8afd487a5befabc52114665f2e852), khoảng cách còn 12 px tại cả hai chiều rộng và trở lại 12 px sau lỗi 503. Chromium xác nhận hai vùng thông báo có vai trò `status` và chế độ `polite`. [Ảnh lỗi tải đầu trong CI](https://github.com/loveoverflowcom/vink/actions/runs/44732821800/artifacts/14627127832) cũng cho thấy skeleton vẫn hiện khi nút thử lại đã được tạo trong DOM. Phép thử nay đợi skeleton kết thúc thời gian hiển thị tối thiểu 500 ms và nút hiện trên màn hình, sau đó nhấp bằng con trỏ và xác nhận có GET mới.
 
+Ở [27fe7e6](https://github.com/loveoverflowcom/vink/actions/runs/44734861173/job/136283713871), CI đã xác nhận GET mới, rồi cú nhấp “Trả lời” rơi lên thẻ nhận xét. Trace cùng fixture cho thấy API Ưng đọc độc lập: khi các ID chỉ có trong fixture trả về unavailable, “Kiểm tra lại” biến mất và nút “Trả lời” dịch từ x=755 xuống x=602. Phép thử đợi lý do “Tạm chưa thể Ưng.” hiện và liên kết bằng `aria-describedby`, rồi mới nhấp một lần và kiểm focus ở chính textarea.
+
 ### Lệnh và giới hạn nghiệm thu
 
 | Lệnh | Kết quả tại checkpoint |

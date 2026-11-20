@@ -575,7 +575,7 @@ pub fn DiscussionThread(
     #[prop(optional, into)] action_state: Signal<ActionState>,
     #[prop(optional_no_strip)] endorsements: Option<CommentEndorsements>,
     #[prop(optional, into)] has_more_replies: Signal<bool>,
-    /// Read-only work page (#360 ảnh 10): hides reply actions and renders confirmed Ưng counts as plain text.
+    /// Read-only work page (#360 ảnh 10): hides reply actions and shows the static Ưng label without a count.
     #[prop(optional, into)]
     read_only: Signal<bool>,
     /// Whether this thread's reply composer is expanded (`aria-expanded` on root Trả lời).

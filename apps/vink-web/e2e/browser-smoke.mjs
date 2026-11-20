@@ -5730,6 +5730,16 @@ async function discussionReadingAndWrites(page) {
     await page.click(retrySelector);
     await page.waitFor(`document.querySelector('#reply-to-${replyId}') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'initial retry completes with contract fixture projection');
     check(readCursors.length > failedInitialReads && !await page.eval(`!!document.querySelector('#discussion-load-retry')`), 'initial retry issues a new GET and replaces the error with loaded comments');
+    // These projected IDs are absent from the real endorsement store. Its independent read
+    // replaces the inline recovery action with one shared reason, moving the adjacent reply.
+    const reasonId = `thread-${rootId}-endorsement-reason`;
+    await page.waitFor(`(() => {
+      const reason = document.getElementById('${reasonId}');
+      const endorse = document.getElementById('endorse-comment-${replyId}');
+      return reason?.checkVisibility() && reason.textContent === 'Tạm chưa thể Ưng.'
+        && endorse?.getAttribute('aria-describedby')?.split(' ').includes('${reasonId}')
+        && document.getElementById('reply-to-${replyId}')?.checkVisibility();
+    })()`, 'the fixture reply is visible beside the confirmed unavailable endorsement');
     await page.click(`#reply-to-${replyId}`);
     await page.waitFor(`document.activeElement?.id==='reply-composer-${rootId}'`, 'reply moves focus to its own stable field');
     await page.typeAtEnd(`#reply-composer-${rootId}`, 'Bản trả lời có ngữ cảnh\n\n  Giữ nguyên 👩‍💻');
