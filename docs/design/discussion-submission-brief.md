@@ -41,6 +41,10 @@ nhận biết.
 | Rejected | Bị từ chối | Lý do chỉ cho người viết; không khuyến khích gửi lại mù để né policy |
 | Removed/Unavailable | Bị gỡ hoặc không còn quyền xem | Không lộ chữ/byline/ngữ cảnh đã thu hồi; root ẩn vẫn neo replies hợp lệ |
 
+R4 (#360, 20/11/2026) đưa các trạng thái Draft…CommittedPending/Rejected của bảng này thành kiểu
+`ComposerStatus`/`Receipt`/`NoticeTone` trong controller Web; phương án B dưới đây không áp dụng ở
+lát đó (`VDR-DISCUSSION-R4@r1`, `PRODUCT_CONFIRMED` 20/11/2026). Chi tiết ở [LayoutSpec](discussion-ui.md#nhận-xét-r4--lát-logic-359-360-20112026).
+
 Hôm nay mọi bình luận mới là **CommittedPending** (`premoderation.v1`). Mã provenance như
 `trust_stale` hay `content_flagged` là dữ liệu audit nội bộ, **không** hiển thị cho người dùng.
 Held chỉ xuất hiện nếu D-08 delta được chấp nhận; design không cần màn riêng trước đó.

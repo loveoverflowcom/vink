@@ -97,13 +97,13 @@ fn reader_actions_keep_confirmed_values_and_counts_in_every_mutation_phase() {
                 "{html}"
             );
             assert_eq!(html.contains("Kiểm tra lại"), recovery, "{html}");
-            assert_eq!(
-                html.matches("data-icon=\"pen-flight\"").count(),
-                1,
-                "{html}"
-            );
+            // One decorative glyph that follows only the confirmed value (#359: “Ưng” heart).
+            let glyph = format!("data-icon=\"{}\"", kind.icon(pressed == "true").id());
+            let other = format!("data-icon=\"{}\"", kind.icon(pressed != "true").id());
+            assert_eq!(html.matches(glyph.as_str()).count(), 1, "{html}");
+            assert!(glyph == other || !html.contains(&other), "{html}");
             assert!(
-                opening_tag(&html, "data-icon=\"pen-flight\"").contains("aria-hidden=\"true\""),
+                opening_tag(&html, &glyph).contains("aria-hidden=\"true\""),
                 "{html}"
             );
             match count {

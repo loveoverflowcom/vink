@@ -447,7 +447,7 @@ assertion, không tự là kết quả PASS.
 | Điểm vào | Owner / assertion | Giới hạn |
 | --- | --- | --- |
 | Public SSR và GET roots/replies | DTO public strict, `separated_discussion_tests`, paths encoded; SSR resource chỉ serialize public | Không cache/validator mới |
-| Nhận xét của bạn | `discussion_reads::OwnState`: own cursor, dedup ID, lookup ≤20/batch, lookup thắng list; unit và `discussionOwnFixtures` | Status/rejected/unlisted trong browser dùng provider fixture có nhãn |
+| Bạn đã gửi (trước R4: “Nhận xét của bạn”) | `discussion_reads::OwnState`: own cursor, dedup ID, lookup ≤20/batch, lookup thắng list; unit và `discussionOwnFixtures` | Status/rejected/unlisted trong browser dùng provider fixture có nhãn |
 | Session đổi / read hoặc ACK trễ | `ViewState::change_session`, controller ACK typed, private child Owner; `separated_read_regressions`, `discussionSessionRaces` | App + Identity thật với local outbox, CDP đổi cookie thật/giữ response; không production auth |
 | Loading/busy và public độc lập | Old request không settle owner mới; own/capability 503 không mất public; 404 work bỏ public/own | Browser 503 riêng dựng và ghi nhãn; reducer kiểm chống hồi sinh body/context |
 | Own layout / composer identity | `discussionOwnFixtures`: 320/390/834/1440 × sáng/tối × chữ100/200; node/selection, ảnh | Programmatic input, không OS IME/screen reader/native |
@@ -553,7 +553,7 @@ trạng thái riêng.
 
 ## LVE Web adapter (#73, WP-04)
 
-Reader `/tac-pham/{id}`: “Thấm” sau văn bản và “Hữu ích” trên từng bình luận gốc/phản hồi
+Reader `/tac-pham/{id}`: “Thấm” sau văn bản và “Ưng” (tim; trước #359 là “Hữu ích”) trên từng bình luận gốc/phản hồi
 phẳng công khai. Owner, bảng ánh xạ lỗi và CHOICE-10 A: [runtime](literary-endorsement-runtime.md#web-adapter-wp-04);
 kết quả chạy: [web evidence](literary-endorsement-web-evidence.md). Production trả `401`; ghi thật chỉ
 qua LocalFixture loopback.

@@ -448,6 +448,10 @@ a {
 .vk-discussion-reply-composer > .vk-ui-action { justify-self: start; }
 .vk-discussion-delivery { display: grid; justify-items: start; gap: var(--vk-space-3); padding: 16px; border-radius: var(--vk-radius-lg); background: var(--vk-surface-container); }
 .vk-discussion-delivery > p { margin: 0; }
+/* R4 (#360) logic slice: layout only; the tonal colours per `data-tone` belong to the UI slice. */
+.vk-discussion-own-chip { display: inline-flex; align-items: center; gap: var(--vk-space-2); }
+.vk-discussion-reply-kept { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-2); margin-block-start: var(--vk-space-3); min-width: 0; }
+.vk-discussion-reply-kept > p { margin: 0; }
 .vk-discussion-recovered { border-block-start: 1px solid var(--vk-outline-variant); padding-block: var(--vk-space-4); }
 .vk-discussion-tools-note { font-size: var(--vk-type-caption-size); }
 .vk-discussion-pagination { display: grid; justify-items: start; gap: var(--vk-space-2); margin-block: var(--vk-space-4); min-width: 0; }

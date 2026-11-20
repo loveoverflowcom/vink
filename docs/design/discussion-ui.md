@@ -126,6 +126,37 @@ Discussion HTTP có deadline 30 giây cho mỗi transport attempt. Timeout/abort
 
 ## Delta public/own Reader Web (10/11/2026)
 
-SSR và browser dùng public projection; vùng “Nhận xét của bạn” sau root composer giữ own
+SSR và browser dùng public projection; vùng “Nhận xét của bạn” (R4: “Bạn đã gửi”) sau root composer giữ own
 pending/rejected hoặc kết quả gửi ngoài trang. [DecisionMap, LayoutSpec delta, scope và bằng chứng](../development/discussion-web-reads.md)
 sở hữu lát này; anatomy R3.1, native composer và Pen Flight giữ nguyên.
+
+## Nhận xét R4 — lát logic (#359, #360; 20/11/2026)
+
+Thiết kế R4 (`DESIGN_PROPOSED`, ảnh 01–10 trong
+[thư mục Drive](https://drive.google.com/drive/folders/1OpT6_uY1GG-oGvhSl6b5xsmgSsM7hVdE)) chia hai
+lát: A ([#359](https://github.com/loveoverflowcom/vink/issues/359), Ưng + anatomy) và B
+([#360](https://github.com/loveoverflowcom/vink/issues/360), trạng thái). Lát này chỉ đưa **logic
+và facts** vào controller/patterns, nối tối thiểu vào Reader Web để hành vi quan sát được. Geometry
+R4 (nhóm nút liền góc trong 6px, nhóm Phản hồi tonal, desktop thụt theo cột tên, vùng tonal theo màu,
+skeleton 300 ms, vòng tiến trình thay icon) còn `NOT_IMPLEMENTED` và thuộc lát UI kế tiếp.
+Quyết định: [delta “Ưng”](../architecture/literary-endorsement.md#delta-thuật-ngữ-20112026--359)
+và `VDR-DISCUSSION-R4@r1` (`PRODUCT_CONFIRMED`, signoff 20/11/2026).
+
+<!-- vdr: active VDR-DISCUSSION-R4@r1 -->
+
+| Facts / quy tắc | Owner | Trình bày tối thiểu hiện nay |
+| --- | --- | --- |
+| `ComposerStatus` một trạng thái chính: `Sending` > `Uncertain` > `Closed` > khách (`SignInAvailable`/`SignInClosed`) > biên nhận (`CommittedPending`, `Refused`) > `Draft`; focus thuộc trình bày | `discussion_state` | `data-status` trên `.vk-discussion-composer` |
+| `Receipt` có kiểu (Pending/Approved/Rejected/Removed/Uncertain/Refused(mã)/SessionChanged) + `NoticeTone` (waiting hổ phách, unknown xanh, adverse đỏ, neutral) thay chuỗi | `discussion_state` | `data-tone` trên `.vk-discussion-delivery`, copy cũ giữ nguyên |
+| `SendEmphasis`: Tonal khi trống, Filled khi có chữ, Progress khi gửi; lý do khóa vẫn là `reason()` + `aria-describedby` | `discussion_state`, `FeedbackComposer.send_variant` | Biến thể nút “Gửi” |
+| `ReplyTarget`: Root “Trả lời bình luận gốc” / Reply “Đang trả lời X” + × về gốc (chỉ khi gốc nhận trả lời) / Unavailable “Chọn bình luận khác”; không suy “đã xóa”; đổi đích giữ chữ và ACK muộn không xóa chữ | `discussion_state` | Chip chữ, `IconButton` ×, nút chuyển focus |
+| Thu ô giữ chữ: `collapsed_with_work` + `reopen` | `discussion_state` | “Bản trả lời được giữ lại · Mở lại” |
+| “Bạn đã gửi” + `OwnChip` (chữ + icon + tone) | `discussion_reads` | Heading đổi tên, chip `data-tone` |
+| Gỡ có xác nhận tại chỗ: `ask_remove`/`confirming`/`take_confirmed`; một mục mỗi lúc; tải lại, lỗi đọc, mất `can_remove`, đổi phiên đều hủy; DELETE chỉ sau “Gỡ” | `discussion_reads`, `OwnRemoveAction`, `RemoveConfirmation` | “Giữ lại” nhận focus, “Gỡ” `Danger` |
+| Đọc: rỗng chỉ khi không lỗi; điểm kết thúc chỉ khi danh sách không rỗng và hết cursor | `pages/discussion.rs` (`shows_empty`, `shows_list_end`) | Giữ nguyên copy |
+| Bình luận đã tắt: “Bạn đã tắt…” chỉ khi API `viewer_is_work_author` | `comments_mode_message`, `DiscussionController.viewer_is_author` | Dòng trạng thái và lý do khóa ô soạn |
+
+Chưa làm trong lát này: “Sao chép nháp” (clipboard, cần browser thật), skeleton trễ 300 ms, góc
+tác giả đủ năm trạng thái ảnh 08 (đang đổi/xung đột/hệ thống khóa vẫn dùng `mutation_*` hiện có),
+trang ẩn ảnh 10 với số Ưng dạng chữ, anatomy/geometry R4 của lát A và CMP product. Phản hồi chờ
+duyệt hiện cạnh ô soạn và trong “Bạn đã gửi”, không chèn hàng tạm vào nhánh.

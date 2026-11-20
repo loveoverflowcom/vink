@@ -32,6 +32,10 @@ pub enum IconName {
     Explore,
     /// Mở bộ lọc thẻ
     FilterList,
+    /// Ưng nhận xét — đã chọn (tim đặc)
+    Heart,
+    /// Ưng nhận xét — chưa chọn hoặc chưa rõ (tim viền)
+    HeartOutline,
     /// Chưa rõ kết quả
     Help,
     /// Khung ảnh chưa có hoặc lỗi
@@ -46,7 +50,7 @@ pub enum IconName {
     MenuOpen,
     /// Link mở tab mới
     OpenInNew,
-    /// Thấm tác phẩm / Hữu ích nhận xét — Pen Flight R2 A · Mềm
+    /// Thấm tác phẩm — Pen Flight R2 A · Mềm
     PenFlight,
     /// Avatar/khung ảnh trung tính
     Person,
@@ -61,7 +65,7 @@ pub enum IconName {
 }
 
 impl IconName {
-    pub const ALL: [IconName; 24] = [Self::Add, Self::ArrowBack, Self::Block, Self::Check, Self::Close, Self::Download, Self::Edit, Self::Error, Self::ExpandMore, Self::Explore, Self::FilterList, Self::Help, Self::Image, Self::Info, Self::Lock, Self::Menu, Self::MenuOpen, Self::OpenInNew, Self::PenFlight, Self::Person, Self::Refresh, Self::Search, Self::Visibility, Self::Warning];
+    pub const ALL: [IconName; 26] = [Self::Add, Self::ArrowBack, Self::Block, Self::Check, Self::Close, Self::Download, Self::Edit, Self::Error, Self::ExpandMore, Self::Explore, Self::FilterList, Self::Heart, Self::HeartOutline, Self::Help, Self::Image, Self::Info, Self::Lock, Self::Menu, Self::MenuOpen, Self::OpenInNew, Self::PenFlight, Self::Person, Self::Refresh, Self::Search, Self::Visibility, Self::Warning];
 
     pub const fn id(self) -> &'static str {
         match self {
@@ -76,6 +80,8 @@ impl IconName {
             Self::ExpandMore => "expand-more",
             Self::Explore => "explore",
             Self::FilterList => "filter-list",
+            Self::Heart => "heart",
+            Self::HeartOutline => "heart-outline",
             Self::Help => "help",
             Self::Image => "image",
             Self::Info => "info",
@@ -105,6 +111,8 @@ impl IconName {
             Self::ExpandMore => "M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z",
             Self::Explore => "M12 10.9c-.61 0-1.1.49-1.1 1.1s.49 1.1 1.1 1.1c.61 0 1.1-.49 1.1-1.1s-.49-1.1-1.1-1.1zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm2.19 12.19L6 18l3.81-8.19L18 6l-3.81 8.19z",
             Self::FilterList => "M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z",
+            Self::Heart => "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z",
+            Self::HeartOutline => "M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z",
             Self::Help => "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z",
             Self::Image => "M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z",
             Self::Info => "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z",
@@ -134,6 +142,8 @@ impl IconName {
             Self::ExpandMore => "src/navigation/expand_more/materialicons/24px.svg",
             Self::Explore => "src/action/explore/materialicons/24px.svg",
             Self::FilterList => "src/content/filter_list/materialicons/24px.svg",
+            Self::Heart => "src/action/favorite/materialicons/24px.svg",
+            Self::HeartOutline => "src/action/favorite_border/materialicons/24px.svg",
             Self::Help => "src/action/help/materialicons/24px.svg",
             Self::Image => "src/image/image/materialicons/24px.svg",
             Self::Info => "src/action/info/materialicons/24px.svg",

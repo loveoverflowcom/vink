@@ -70,7 +70,7 @@ Kế thừa Reader/R3.1 và Pen Flight, không đổi shared presentation.
 ```text
 #feedback-region
   #comments-mode / #root-composer — giữ native field, focus và receipt hiện hữu
-  #own-comments — heading “Nhận xét của bạn”, làm mới và lỗi riêng
+  #own-comments — heading “Bạn đã gửi” (đổi từ “Nhận xét của bạn” theo R4 #360), làm mới và lỗi riêng
     [data-own-comment] — status → nhãn ngữ cảnh trung tính → body → lý do nếu rejected
       Gỡ nhận xét của tôi — chỉ capability server còn được xác nhận
     #own-comments-more — cursor own độc lập

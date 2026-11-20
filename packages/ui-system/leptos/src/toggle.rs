@@ -248,6 +248,19 @@ impl ToggleCopy {
     }
 }
 
+/// The leading glyph for a confirmed `pressed` projection: `selected` only when confirmed on, so
+/// the state never rests on colour alone and a pending or unknown press shows no new glyph.
+pub const fn toggle_glyph(
+    icon: IconName,
+    selected: Option<IconName>,
+    pressed: Option<bool>,
+) -> IconName {
+    match (pressed, selected) {
+        (Some(true), Some(selected)) => selected,
+        _ => icon,
+    }
+}
+
 /// A confirmed on/off action with an optional count. One `<button>` target; the accessible name
 /// follows the confirmed value, the count and note are its description, the note is a polite
 /// live region, and Reconcile is a separate Text button that appears only when needed.
@@ -274,6 +287,10 @@ pub fn ToggleAction(
     /// Leading glyph from the registry (kept in every state); the check mark is separate.
     #[prop(optional)]
     icon: Option<IconName>,
+    /// Glyph shown instead of `icon` only while the confirmed value is on (an outline/filled
+    /// pair). Pending, uncertain and unknown keep the confirmed glyph: nothing optimistic.
+    #[prop(optional)]
+    selected_icon: Option<IconName>,
     #[prop(into)] on_set: Callback<bool>,
     #[prop(into)] on_recover: Callback<RecoveryIntent>,
 ) -> impl IntoView {
@@ -338,10 +355,13 @@ pub fn ToggleAction(
                     None => ev.prevent_default(),
                 }
             >
-                {icon.map(|name| view! {
-                    <span class="vk-ui-toggle__glyph" aria-hidden="true">
-                        <Icon name=name size=IconSize::Small />
-                    </span>
+                {icon.map(|name| {
+                    let glyph = move || toggle_glyph(name, selected_icon, view.get().pressed);
+                    view! {
+                        <span class="vk-ui-toggle__glyph" aria-hidden="true">
+                            {move || view! { <Icon name=glyph() size=IconSize::Small /> }}
+                        </span>
+                    }
                 })}
                 <span class="vk-ui-toggle__label">{copy.with_value(|c| c.label.clone())}</span>
                 {move || {
@@ -605,5 +625,45 @@ mod tests {
             html.contains("Chưa rõ trạng thái.") && html.contains("Kiểm tra lại"),
             "{html}"
         );
+    }
+
+    #[test]
+    fn a_selected_glyph_follows_only_the_confirmed_value() {
+        let (outline, filled) = (IconName::HeartOutline, Some(IconName::Heart));
+        for &(val, ph, avail, ..) in v::VIEWS {
+            let pressed = ToggleView::resolve(value(val), phase(ph), avail == "enabled").pressed;
+            let expected = if pressed == Some(true) {
+                IconName::Heart
+            } else {
+                outline
+            };
+            let case = format!("{val} × {ph} × {avail}");
+            assert_eq!(toggle_glyph(outline, filled, pressed), expected, "{case}");
+            assert_eq!(toggle_glyph(outline, None, pressed), outline, "{case}");
+        }
+        let render_glyph = |value: ToggleValue, phase: TogglePhase| {
+            render(move || {
+                view! {
+                    <ToggleAction
+                        id="comment-1"
+                        copy=ToggleCopy::new("Ưng", "Bỏ Ưng")
+                        value=value
+                        phase=phase
+                        icon=IconName::HeartOutline
+                        selected_icon=IconName::Heart
+                        on_set=|_: bool| {}
+                        on_recover=|_: RecoveryIntent| {}
+                    />
+                }
+                .into_any()
+            })
+        };
+        let on = render_glyph(ToggleValue::On, TogglePhase::Idle);
+        assert!(on.contains("data-icon=\"heart\""), "{on}");
+        // A press toward on is not confirmed yet: the outline stays.
+        let pending = render_glyph(ToggleValue::Off, TogglePhase::Pending { desired: true });
+        assert!(pending.contains("data-icon=\"heart-outline\""), "{pending}");
+        let unknown = render_glyph(ToggleValue::Unknown, TogglePhase::Idle);
+        assert!(unknown.contains("data-icon=\"heart-outline\""), "{unknown}");
     }
 }

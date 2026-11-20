@@ -523,10 +523,14 @@ mod tests {
             "one action per target: {html}"
         );
         assert!(html.contains(">0<"), "a known zero on a reply: {html}");
+        assert!(
+            html.matches("data-icon=\"pen-flight\"").count() == 1
+                && html.contains("data-icon=\"heart-outline\""),
+            "#359: Thấm keeps Pen Flight, Ưng uses the heart: {html}"
+        );
         let html = Owner::new().with(|| endorsement("signed-out").to_html());
         assert!(
-            html.contains("Cần đăng nhập để Thấm.")
-                && html.contains("Cần đăng nhập để đánh dấu hữu ích."),
+            html.contains("Cần đăng nhập để Thấm.") && html.contains("Cần đăng nhập để Ưng."),
             "{html}"
         );
     }
