@@ -80,6 +80,7 @@ impl Resend {
         }
         authorization(&settings.key_file)?;
         let mut builder = Client::builder()
+            .user_agent(concat!("vink-identity/", env!("CARGO_PKG_VERSION")))
             .no_proxy()
             .https_only(https_only)
             // Keep this true even if another dependency enables reqwest's HTTP/2 feature.
@@ -444,6 +445,10 @@ mod tests {
         assert_eq!(first.2[AUTHORIZATION], format!("Bearer {FAKE_KEY}"));
         assert_eq!(second.2[AUTHORIZATION], "Bearer re_fixture_rotated");
         assert_eq!(first.2[CONTENT_TYPE], "application/json");
+        assert_eq!(
+            first.2[reqwest::header::USER_AGENT],
+            concat!("vink-identity/", env!("CARGO_PKG_VERSION"))
+        );
         assert_eq!(
             first.2["idempotency-key"],
             format!("vink-identity/{}", code.delivery.simple())
