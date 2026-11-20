@@ -101,6 +101,7 @@
   --vk-space-draft-action-gap: 8px;
   --vk-text-auth-dialog-heading: 1.625rem;
   --vk-text-auth-heading: clamp(2rem, 1.8rem + 0.5vw, 2.25rem);
+  --vk-text-draft-title: 1.75rem;
   --vk-text-profile-edit-heading: 1.75rem;
   --vk-text-profile-input: 1.0625rem;
   --vk-text-profile-monogram: 1.625rem;

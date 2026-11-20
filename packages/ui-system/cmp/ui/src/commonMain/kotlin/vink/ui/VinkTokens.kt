@@ -274,6 +274,7 @@ object VinkDimens {
     val SpaceDraftActionGap = 8.dp
     val TextAuthDialogHeading = 26.dp
     val TextAuthHeading = 32.dp
+    val TextDraftTitle = 28.dp
     val TextProfileEditHeading = 28.dp
     val TextProfileInput = 17.dp
     val TextProfileMonogram = 26.dp

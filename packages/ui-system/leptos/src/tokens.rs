@@ -1284,6 +1284,14 @@ pub mod dim {
         compact: None,
         web: WebUnit::Rem,
     };
+    pub const TEXT_DRAFT_TITLE: Dimension = Dimension {
+        token: "text.draft-title",
+        css_var: "--vk-text-draft-title",
+        value: 28.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Rem,
+    };
     pub const TEXT_PROFILE_EDIT_HEADING: Dimension = Dimension {
         token: "text.profile-edit-heading",
         css_var: "--vk-text-profile-edit-heading",
@@ -1325,7 +1333,7 @@ pub mod dim {
         web: WebUnit::Rem,
     };
 
-    pub const ALL: [Dimension; 48] = [
+    pub const ALL: [Dimension; 49] = [
         DENSITY_CONTROL_HEIGHT,
         DENSITY_CONTROL_PADDING,
         DENSITY_STACK_GAP,
@@ -1369,6 +1377,7 @@ pub mod dim {
         SPACE_DRAFT_ACTION_GAP,
         TEXT_AUTH_DIALOG_HEADING,
         TEXT_AUTH_HEADING,
+        TEXT_DRAFT_TITLE,
         TEXT_PROFILE_EDIT_HEADING,
         TEXT_PROFILE_INPUT,
         TEXT_PROFILE_MONOGRAM,

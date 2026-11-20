@@ -768,7 +768,7 @@ a {
 }
 
 .vk-editor-paper > .vk-ui-field { margin: 0; }
-.vk-editor-paper #draft-title { font-family: var(--vk-font-reading); font-size: var(--vk-type-headline-size); font-weight: var(--vk-type-headline-weight); line-height: var(--vk-type-headline-line-height); }
+.vk-editor-paper #draft-title { font-family: var(--vk-font-reading); font-size: var(--vk-text-draft-title); font-weight: var(--vk-type-headline-weight); line-height: var(--vk-type-headline-line-height); }
 .vk-editor-paper .vk-field__label { color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
 /* The title retains the shared native field/label contract, while the sheet owns its fill.
    Focus perimeters remain local to the focused control, including in forced colours. */
