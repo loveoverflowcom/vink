@@ -31,6 +31,7 @@ fn PublicProfile(name: String, cursor: Option<String>) -> impl IntoView {
     let own_relationships: RwSignal<
         Option<(String, crate::contract::follow::OwnRelationshipsSummary)>,
     > = RwSignal::new(None);
+    let retry_focus = RwSignal::new(false);
     let renew = move || {
         advance.update(|stamp| *stamp += 1);
         set_floor.set(generation.get_untracked());
@@ -51,13 +52,21 @@ fn PublicProfile(name: String, cursor: Option<String>) -> impl IntoView {
         <Transition fallback=|| view! { <p role="status">"Đang mở trang tác giả…"</p> }>
             {move || match data.get() {
                 Some((stamp, result)) if stamp >= floor.get() => {
+                    if retry_focus.get_untracked() {
+                        retry_focus.set(false);
+                        super::focus_recovery("author-profile-heading");
+                    }
                     render_profile(
                         result,
                         &status,
                         &name,
-                        cursor.is_some(),
+                        cursor.clone(),
                         own_relationships,
-                        renew,
+                        move || {
+                            #[cfg(feature = "hydrate")]
+                            retry_focus.set(document().active_element().is_some_and(|el| el.id() == "profile-retry"));
+                            renew();
+                        },
                     )
                 }
                 _ => view! { <p role="status">"Đang mở trang tác giả…"</p> }.into_any(),
@@ -70,10 +79,11 @@ fn render_profile(
     result: Result<AuthorResolution, crate::api::LoadError>,
     status: &super::ResponseStatus,
     name: &str,
-    continued: bool,
+    cursor: Option<String>,
     own_relationships: RwSignal<Option<(String, crate::contract::follow::OwnRelationshipsSummary)>>,
     retry: impl Fn() + Copy + Send + Sync + 'static,
 ) -> AnyView {
+    let continued = cursor.is_some();
     let (code, heading, detail) = match result {
         Ok(AuthorResolution::Current {
             author,
@@ -105,15 +115,12 @@ fn render_profile(
                 <Link rel="canonical" href=crate::canonical_url(&author.href) />
                 <article class="vk-author-public">
                     <MobileBrand />
-                    // R3 (#336): a compact identity cluster; no banner, the owner action sits
-                    // beside the name when there is room and wraps under it when there is not.
                     <div class="vk-author-identity">
                         <span class="vk-author-seal" aria-hidden="true">{initials}</span>
                         <header>
                             <h1 id="author-profile-heading" tabindex="-1">{author.pen_name}</h1>
                             <p>{format!("@{}", author.handle)}</p>
                         </header>
-                        <super::profile::OwnProfileLink handle=author.handle.clone() />
                     </div>
                     <super::follow::ProfileActionRegion
                         handle=author.handle.clone()
@@ -162,55 +169,89 @@ fn render_profile(
             }.into_any();
         }
         Ok(AuthorResolution::Alias { href }) => {
-            #[cfg(feature = "ssr")]
-            if let Some(opts) = &status.0
-                && let Ok(url) = http::HeaderValue::from_str(&href)
-            {
-                opts.set_status(http::StatusCode::MOVED_PERMANENTLY);
-                opts.insert_header(http::header::LOCATION, url);
-            }
-            #[cfg(feature = "hydrate")]
-            {
-                let location = window().location();
-                let _ =
-                    location.replace(&format!("{}{}", href, location.hash().unwrap_or_default()));
-            }
+            redirect_alias(status, &format!("/@{name}"), &href);
             return view! { <a href=href>"Mở địa chỉ hiện tại"</a> }.into_any();
         }
         Ok(AuthorResolution::Gone) => (
             410,
             "Hồ sơ không còn trên Vink",
-            "Tài khoản của tác giả đã được xóa.",
+            "Tài khoản của tác giả đã được xóa. Địa chỉ này sẽ không dẫn đến hồ sơ khác.",
         ),
         Ok(AuthorResolution::Missing) => (
             404,
             "Không tìm thấy hồ sơ",
-            "Hãy kiểm tra lại địa chỉ trong liên kết.",
+            "Hãy kiểm tra lại địa chỉ trong liên kết hoặc quay về Khám phá.",
         ),
         _ => (
             503,
             "Chưa tải được hồ sơ",
-            "Hãy kiểm tra kết nối rồi thử lại.",
+            "Kết nối có thể bị gián đoạn hoặc máy chủ đang bận. Bạn có thể thử lại ngay tại đây.",
         ),
     };
     status.set(code);
-    let retry_href = format!("/@{name}");
     view! {
         <Title text=format!("{heading} · Vink") />
-        <section class="vk-author-public">
-            <h1 id="author-profile-heading" tabindex="-1">{heading}</h1><p>{detail}</p>
+        <Meta name="robots" content="noindex" />
+        <section id="profile-unavailable" class="vk-author-public vk-profile-unavailable"
+            aria-labelledby="author-profile-heading">
+            <h1 id="author-profile-heading" tabindex="-1">{heading}</h1>
+            <p>{detail}</p>
             {if code == 503 {
                 view! {
-                    <vink_ui::Button variant=vink_ui::ButtonVariant::Tonal
-                        on_press=Callback::new(move |()| retry())>"Thử lại"</vink_ui::Button>
-                    <noscript><a href=retry_href>"Tải lại"</a></noscript>
+                    <RetryRead id="profile-retry" path=format!("/@{name}") cursor
+                        on_retry=Callback::new(move |()| retry()) />
                 }.into_any()
             } else {
-                view! { <UiLink href="/">"Khám phá"</UiLink> }.into_any()
+                view! {
+                    <UiLink variant=vink_ui::LinkVariant::Standalone attr:id="profile-unavailable-explore"
+                        href="/">"Về Khám phá"</UiLink>
+                }.into_any()
             }}
         </section>
     }
     .into_any()
+}
+
+// A native GET is the fallback for the same path and cursor before hydration or without JS.
+#[component]
+pub(super) fn RetryRead(
+    id: &'static str,
+    path: String,
+    cursor: Option<String>,
+    on_retry: Callback<()>,
+) -> impl IntoView {
+    let action = crate::follow_state::safe_profile_return(&path);
+    view! {
+        <form method="get" action=action on:submit=move |event: leptos::ev::SubmitEvent| {
+            event.prevent_default();
+            on_retry.run(());
+        }>
+            {cursor.map(|value| view! { <input type="hidden" name="cursor" value=value /> })}
+            <vink_ui::Button id=id variant=vink_ui::ButtonVariant::Tonal kind=vink_ui::ButtonKind::Submit>
+                "Thử lại"
+            </vink_ui::Button>
+        </form>
+    }
+}
+
+pub(super) fn redirect_alias(status: &super::ResponseStatus, source_path: &str, href: &str) {
+    #[cfg(feature = "ssr")]
+    if let Some(opts) = &status.0
+        && let Ok(url) = http::HeaderValue::from_str(href)
+    {
+        opts.set_status(http::StatusCode::MOVED_PERMANENTLY);
+        opts.insert_header(http::header::LOCATION, url);
+    }
+    #[cfg(feature = "hydrate")]
+    replace_profile_alias(source_path, href);
+    let _ = (status, source_path, href);
+}
+
+#[cfg(feature = "hydrate")]
+#[wasm_bindgen::prelude::wasm_bindgen(module = "/profile/navigation.js")]
+extern "C" {
+    #[wasm_bindgen(js_name = replaceProfileAlias)]
+    fn replace_profile_alias(source_path: &str, href: &str);
 }
 
 #[component]

@@ -73,6 +73,7 @@ pub struct FollowController {
     scope: FollowScope,
     phase: FollowPhase,
     highest_accepted_order: i64,
+    latest_command: Option<String>,
 }
 
 impl FollowController {
@@ -81,6 +82,7 @@ impl FollowController {
             scope,
             phase: FollowPhase::Loading,
             highest_accepted_order: -1,
+            latest_command: None,
         }
     }
 
@@ -101,6 +103,7 @@ impl FollowController {
         self.scope = scope;
         self.phase = FollowPhase::Loading;
         self.highest_accepted_order = -1;
+        self.latest_command = None;
     }
 
     pub fn retry_load(&mut self) {
@@ -213,6 +216,7 @@ impl FollowController {
             expected_order,
             following,
         };
+        self.latest_command = Some(command_id.clone());
         self.phase = FollowPhase::Pending {
             shown: state,
             command,
@@ -230,23 +234,30 @@ impl FollowController {
         command_id: &str,
         result: Result<SetFollowResponse, ApiError>,
     ) -> FollowEffect {
-        if scope != &self.scope {
+        if scope != &self.scope || !self.is_latest_command(command_id) {
             return FollowEffect::default();
         }
-        let had_action = self.action_currently_visible();
+        let pending = self.is_current_command(command_id);
+        // A read may have observed the old order while the current write was still in flight.
+        // In that case a later, confirmed result still belongs to the latest intent.
+        if !pending
+            && !matches!(
+                self.phase,
+                FollowPhase::Ready {
+                    can_follow: true,
+                    ..
+                }
+            )
+        {
+            return FollowEffect::default();
+        }
         match result {
             Ok(resp) => {
                 if resp.target_handle != self.scope.target_handle {
                     return FollowEffect::default();
                 }
-                let matches_inflight = matches!(
-                    &self.phase,
-                    FollowPhase::Pending { command, .. } | FollowPhase::Reconciling { command, .. }
-                        if command.command_id == command_id
-                );
-                // Reject stale ACKs that arrive after a newer accepted order has already settled.
                 if resp.accepted_order < self.highest_accepted_order
-                    || (resp.accepted_order == self.highest_accepted_order && !matches_inflight)
+                    || (resp.accepted_order == self.highest_accepted_order && !pending)
                 {
                     return FollowEffect::default();
                 }
@@ -259,8 +270,12 @@ impl FollowController {
                     pair_version: resp.pair_version,
                     accepted_order: resp.accepted_order,
                 };
-                let notice = (resp.outcome == "replayed").then_some(FollowNotice {
-                    text: "Đã xác nhận trạng thái theo dõi hiện tại.",
+                let notice = Some(FollowNotice {
+                    text: match (resp.outcome.as_str(), resp.following) {
+                        ("accepted", true) => "Đã theo dõi tác giả.",
+                        ("accepted", false) => "Đã bỏ theo dõi tác giả.",
+                        _ => "Đã xác nhận trạng thái theo dõi hiện tại.",
+                    },
                     is_error: false,
                 });
                 self.phase = FollowPhase::Ready {
@@ -282,11 +297,7 @@ impl FollowController {
             Err(ApiError::FollowConflict { observed }) => {
                 if observed.target_handle != self.scope.target_handle
                     || observed.accepted_order < self.highest_accepted_order
-                {
-                    return FollowEffect::default();
-                }
-                if observed.accepted_order == self.highest_accepted_order
-                    && !matches!(&self.phase, FollowPhase::Pending { command, .. } | FollowPhase::Reconciling { command, .. } if command.command_id == command_id)
+                    || (observed.accepted_order == self.highest_accepted_order && !pending)
                 {
                     return FollowEffect::default();
                 }
@@ -311,17 +322,21 @@ impl FollowController {
                     invalidation,
                 }
             }
-            Err(err) => {
-                if !matches!(
-                    &self.phase,
-                    FollowPhase::Pending { command, .. } | FollowPhase::Reconciling { command, .. }
-                        if command.command_id == command_id
-                ) {
-                    return FollowEffect::default();
-                }
-                self.apply_terminal_or_transient_error(err, had_action, true)
-            }
+            Err(err) if pending => self.apply_terminal_or_transient_error(err, true, true),
+            Err(_) => FollowEffect::default(),
         }
+    }
+
+    pub fn is_latest_command(&self, command_id: &str) -> bool {
+        self.latest_command.as_deref() == Some(command_id)
+    }
+
+    pub fn is_current_command(&self, command_id: &str) -> bool {
+        matches!(
+            &self.phase,
+            FollowPhase::Pending { command, .. } | FollowPhase::Reconciling { command, .. }
+                if command.command_id == command_id
+        )
     }
 
     pub fn finish_reconcile(
@@ -684,10 +699,58 @@ mod tests {
             FollowPhase::Ready { state, notice, .. } => {
                 assert!(!state.following);
                 assert_eq!(state.accepted_order, 2);
-                assert!(notice.is_none());
+                assert_eq!(
+                    notice.as_ref().map(|n| n.text),
+                    Some("Đã bỏ theo dõi tác giả.")
+                );
             }
             other => panic!("unexpected phase {other:?}"),
         }
+    }
+
+    #[test]
+    fn follow_ack_arriving_after_readback_applies_only_to_latest_intent() {
+        let s = scope(1, "an-may");
+        let mut ctrl = FollowController::new(s.clone());
+        ctrl.finish_load(&s, Ok(viewer_other("an-may", false, false, 0, 0)));
+        ctrl.begin_intent("first".into(), None).unwrap();
+        ctrl.finish_reconcile(
+            &s,
+            "first",
+            None,
+            Ok(viewer_other("an-may", false, false, 0, 0)),
+        );
+
+        let delayed = Ok(SetFollowResponse {
+            target_handle: "an-may".into(),
+            outcome: "accepted".into(),
+            following: true,
+            mutual: false,
+            pair_version: 1,
+            accepted_order: 1,
+            committed: None,
+            relationships: PublicRelationships::default(),
+        });
+        let mut newer = ctrl.clone();
+        newer.begin_intent("second".into(), None).unwrap();
+        assert!(
+            newer
+                .finish_write(&s, "first", delayed.clone())
+                .invalidation
+                .is_none()
+        );
+        assert!(newer.is_current_command("second"));
+
+        assert!(
+            ctrl.finish_write(&s, "first", delayed.clone())
+                .invalidation
+                .is_some()
+        );
+        assert!(
+            ctrl.finish_write(&s, "first", delayed)
+                .invalidation
+                .is_none()
+        );
     }
 
     #[test]

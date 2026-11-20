@@ -2,6 +2,7 @@
 import { randomUUID } from 'node:crypto';
 import { authorFixtureSql } from './author-fixtures.mjs';
 import { q } from './auth-smoke.mjs';
+import { captureRequest } from './auth-browser-network.mjs';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const literal = (text) => "'" + String(text).replaceAll("'", "''") + "'";
@@ -14,10 +15,12 @@ async function checkLayoutAndA11y(page, check, textContrast, url, contrastSelect
     for (const theme of ['light', 'dark']) {
       for (const scale of [100, 200]) {
         await page.viewport(width);
-        const facts = await page.eval(`(() => {
+        const facts = await page.eval(`(async () => {
           const root = document.documentElement;
           root.dataset.theme = '${theme}';
           root.style.fontSize = '${scale}%';
+          await document.fonts.ready;
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
           const overflow = document.documentElement.scrollWidth - window.innerWidth;
           const nestedLinks = document.querySelectorAll('a a').length;
           const targets = ${JSON.stringify(contrastSelectors)}
@@ -44,7 +47,9 @@ async function checkLayoutAndA11y(page, check, textContrast, url, contrastSelect
               a.effect?.target?.checkVisibility?.() && Number.isFinite(a.effect.getComputedTiming().endTime))`,
             `${label} ${theme} settled`
           );
-          await textContrast(page, theme, label, contrastSelectors);
+          const text = label === 'follow-list' ? ['.vk-ui-byline__name', '.vk-ui-byline__handle'] :
+            label === 'profile-read-unavailable' ? ['#profile-unavailable > h1', '#profile-unavailable > p'] : [];
+          await textContrast(page, theme, label, [...contrastSelectors, ...text]);
           await page.key('Tab');
           const focus = await page.eval(`(() => {
             const luma = (raw) => {
@@ -65,7 +70,22 @@ async function checkLayoutAndA11y(page, check, textContrast, url, contrastSelect
           })()`);
           check(focus.visible && focus.contrast >= 3, `${label} focus ring at ${theme} has contrast >= 3:1 (${focus.contrast.toFixed(2)})`);
         }
-        if ((width === 320 && theme === 'dark' && scale === 200) ||
+        if (width <= 390 && ['follow-list', 'profile-read-unavailable'].includes(label)) {
+          const last = label === 'follow-list' ? '#rel-load-more' : '#profile-retry';
+          const clearance = await page.eval(`(async () => {
+            const target = ${q(last)};
+            target.scrollIntoView({block: 'end'});
+            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+            const rect = target.getBoundingClientRect();
+            const barTop = ${q('.vk-ui-bottom-nav')}.getBoundingClientRect().top;
+            const hit = target.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+            return {bottom: rect.bottom, barTop, hit};
+          })()`);
+          check(clearance.hit && clearance.bottom <= clearance.barTop + 1,
+            `${label} final action clears bottom bar at ${width}px ${theme}/${scale}% ${JSON.stringify(clearance)}`);
+        }
+        if ((width === 320 && scale === 200) ||
+            (width === 390 && scale === 100) ||
             (width === 1440 && theme === 'light' && scale === 100)) {
           await page.eval(`${q(contrastSelectors[0])}.scrollIntoView({block:'start'})`);
           await page.capture(`${label}-${width}-${theme}-${scale}`,
@@ -77,6 +97,76 @@ async function checkLayoutAndA11y(page, check, textContrast, url, contrastSelect
   }
   await page.eval("document.documentElement.style.fontSize = ''; delete document.documentElement.dataset.theme");
   await page.viewport(1280);
+}
+
+async function profileRecovery(guest, base, handle, { check, textContrast }) {
+  const missing = `${base}/@chu-chua-co-nguoi-o`;
+  const lookup = `${base}/@${handle}?cursor=tiep`;
+  const heading = '#author-profile-heading';
+  const retry = '#profile-retry';
+  const response = (url, method) => fetch(url, {method, redirect: 'manual'});
+  for (const method of ['GET', 'HEAD']) {
+    check((await response(missing, method)).status === 404, `${method} to unknown profile returns 404`);
+  }
+  await guest.goto(missing);
+  check(await guest.eval(`${q(heading)}?.textContent === 'Không tìm thấy hồ sơ' &&
+    ${q('#profile-unavailable-explore')}?.getAttribute('href') === '/'`), '404 explains the address and links to Khám phá');
+
+  // Real SSR failure from the documented resolver gate, in the disposable #331 database.
+  authorFixtureSql("UPDATE author_handle_rollout SET ready=false WHERE singleton");
+  try {
+    for (const method of ['GET', 'HEAD']) {
+      check((await response(lookup, method)).status === 503, `${method} to temporarily unavailable profile returns 503`);
+    }
+    for (const [segment, apiDirection] of [['nguoi-theo-doi', 'followers'], ['dang-theo-doi', 'following']]) {
+      const route = `${base}/@${handle}/${segment}?cursor=tiep`;
+      check((await response(route, 'GET')).status === 503, `${apiDirection} list read error is 503`);
+      await guest.goto(route);
+      check(await guest.eval(`${q('#rel-retry')}?.form.elements.cursor.value === 'tiep' &&
+        !${q('#relationship-empty')} && !${q('#relationship-count')}`), `${apiDirection} read error offers retry and is distinct from zero or empty`);
+    }
+    await checkLayoutAndA11y(guest, check, textContrast, lookup, [retry], 'profile-read-unavailable');
+
+    await guest.goto(base + '/');
+    await guest.waitFor("document.documentElement.dataset.hydrated === 'true'", 'app entry hydrated');
+    await guest.eval(`(() => {
+      const saved = document.createElement('a');
+      saved.id = 'scenario-profile-unavailable';
+      saved.setAttribute('data-profile-return', 'true');
+      saved.href = '/@${handle}?cursor=tiep';
+      saved.textContent = 'Hồ sơ đã lưu';
+      document.querySelector('main').prepend(saved);
+    })()`);
+    await guest.click('#scenario-profile-unavailable');
+    await guest.waitFor(`document.activeElement?.id === 'author-profile-heading' &&
+      ${q(retry)}`, 'in-app 503 puts focus on the recovery heading');
+    authorFixtureSql("UPDATE author_handle_rollout SET ready=true WHERE singleton");
+    await guest.eval(`${q(retry)}.focus()`);
+    await guest.key('Space');
+    await guest.waitFor(`document.activeElement?.id === 'author-profile-heading' &&
+      !${q(retry)} && location.href === ${JSON.stringify(lookup)}`, 'hydrated retry keeps its resource and recovers heading focus');
+    authorFixtureSql("UPDATE author_handle_rollout SET ready=false WHERE singleton");
+
+    await guest.send('Emulation.setScriptExecutionDisabled', {value: true});
+    try {
+      await guest.goto(missing);
+      check(await guest.eval(`${q('#profile-unavailable-explore')}?.getAttribute('href') === '/' &&
+        !document.documentElement.dataset.hydrated`), '404 offers Khám phá with JavaScript disabled');
+      await guest.goto(lookup);
+      check(await guest.eval(`document.documentElement.dataset.hydrated !== 'true' &&
+        ${q(heading)}?.textContent === 'Chưa tải được hồ sơ' &&
+        ${q(retry)}?.form.elements.cursor.value === 'tiep'`), '503 SSR exposes a native retry of the same profile and cursor without JavaScript');
+      authorFixtureSql("UPDATE author_handle_rollout SET ready=true WHERE singleton");
+      await guest.eval(`${q(retry)}.focus()`);
+      await guest.key('Enter', 0, {settle: false});
+      await guest.waitFor(`document.readyState === 'complete' && location.href === ${JSON.stringify(lookup)} &&
+        !${q(retry)} && ${q(heading)} && !document.documentElement.dataset.hydrated`, 'native retry restores the requested profile without JavaScript');
+    } finally {
+      await guest.send('Emulation.setScriptExecutionDisabled', {value: false});
+    }
+  } finally {
+    authorFixtureSql("UPDATE author_handle_rollout SET ready=true WHERE singleton");
+  }
 }
 
 export async function authorFollows(page, other, { base, openPage, check, holdAnswer, textContrast, switchActor }) {
@@ -112,7 +202,9 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   // 2. Owner profile: no self-follow button; own Following link/count & /dang-theo-doi accessible even with following_list=self.
   await page.goto(`${base}/@${handleA}`);
   await page.waitFor(q('#profile-following-link'), 'owner sees Following link despite default self policy');
-  check(await page.eval(`!${q('#follow-action')}`), 'owner sees no self-follow button on own profile');
+  await page.waitFor(q('#own-profile-edit-link'), 'owner sees the Edit Profile action');
+  check(await page.eval(`!${q('#follow-action')} && ${q('#own-profile-edit-link')}.getAttribute('href') === '/toi/chinh-ho-so'`),
+    'owner can edit the profile and sees no self-follow action');
   await page.click('#profile-following-link');
   await page.waitFor(q('#relationship-title'), 'owner navigates to own following list');
   check(await page.eval(`${q('#relationship-title')}.textContent.includes('đang theo dõi')`), 'own following page heading renders');
@@ -126,7 +218,8 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   await page.waitFor(q('#follow-action'), 'member sees #follow-action on other profile');
   await page.eval(`${q('#follow-action')}.focus()`);
   await page.key('Enter');
-  await page.waitFor(`${q('#follow-action')}?.textContent?.trim() === 'Bỏ theo dõi'`, 'keyboard Follow commits');
+  await page.waitFor(`${q('#follow-action')}?.textContent?.trim() === 'Bỏ theo dõi' &&
+    ${q('#follow-status')}?.textContent?.trim() === 'Đã theo dõi tác giả.'`, 'keyboard Follow commits and announces once');
   check(await page.eval(`document.activeElement?.id === 'follow-action'`), 'focus stays on #follow-action after keyboard Follow');
   check(await page.eval(`${q('#profile-followers-link')}?.textContent?.includes('1 người theo dõi')`), 'followers count updates in-place to 1');
 
@@ -141,6 +234,13 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   await guest.goto(`${base}/@${handleB}`);
   await guest.waitFor(q('#follow-sign-in'), 'guest profile settles');
   check(await guest.eval(`!${q('#follow-mutual')}`), 'guest never sees Mutual badge');
+  await other.goto(`${base}/@${handleB}/nguoi-theo-doi`);
+  await other.waitFor(q('.vk-rel-item .vk-follow-mutual'), 'owner sees Mutual in their private list overlay');
+  await guest.goto(`${base}/@${handleB}/nguoi-theo-doi`);
+  check(await guest.eval(`Boolean(${q('.vk-rel-item')}) && !${q('.vk-rel-item .vk-follow-mutual')}`),
+    'the same public list has no Mutual badge');
+  await other.goto(`${base}/@${handleA}`);
+  await other.waitFor(q('#follow-mutual'), 'second member has their authorized Mutual state again');
 
   // A touch Unfollow and a pointer Unfollow reset the active edges before the late-ACK case.
   await page.viewport(390);
@@ -165,9 +265,30 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
     window.addEventListener('vink:follow-changed', (e) => window.__followEvents.push(e.detail));
   })()`);
 
-  const heldFirst = await holdAnswer(page, 'PUT', `/api/v1/authors/${handleB}/relationship/me`);
-  await page.click('#follow-action');
+  const actionPath = `/api/v1/authors/${handleB}/relationship/me`;
+  const writes = captureRequest(page, 'PUT', actionPath);
+  const heldFirst = await holdAnswer(page, 'PUT', actionPath);
+  await page.viewport(320);
+  await page.eval(`(async () => {
+    document.documentElement.style.fontSize = '200%';
+    await document.fonts.ready;
+    const node = ${q('#follow-action')};
+    node.focus();
+    window.__followGeometry = {node, rect: node.getBoundingClientRect().toJSON(), live: ${q('#follow-status')}};
+  })()`);
+  await page.key('Space');
   check((await heldFirst.held()) === 200, 'real server committed the first PUT of the ABA case before ACK was held');
+  await page.waitFor(`${q('#follow-action')}?.getAttribute('aria-busy') === 'true'`, 'held Follow exposes busy state');
+  const pending = await page.eval(`(() => {
+    const node = ${q('#follow-action')}, rect = node.getBoundingClientRect().toJSON();
+    const before = window.__followGeometry;
+    const moved = ['x','y','width','height'].some(dim => Math.abs(rect[dim] - before.rect[dim]) > 0.5);
+    return {same: node === before.node && document.activeElement === node,
+      live: ${q('#follow-status')} === before.live, moved, rect, before: before.rect};
+  })()`);
+  check(pending.same && pending.live && !pending.moved, `320px/200% pending keeps the node, focus, live region and rect ${JSON.stringify(pending)}`);
+  await page.key('Enter');
+  check(writes.count() === 1, 'keyboard reactivation while pending sends no second write');
   check((await page.eval('window.__followEvents.length')) === 0, 'vink:follow-changed does NOT fire while ACK is pending');
 
   // Slow pending reveals #follow-reconcile after ~1s; clicking duplicate #follow-action does not double-send.
@@ -178,6 +299,9 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
     'reconciliation updates state cleanly and dispatches one invalidation event'
   );
   await page.waitFor(`${q('#profile-followers-link')}?.textContent?.includes('1 người theo dõi')`, 'reconcile updated followers count to 1');
+  await page.waitFor("document.activeElement?.id === 'follow-action'", 'focus returns from the dismissed reconciliation action');
+  await page.eval("document.documentElement.style.fontSize = ''");
+  await page.viewport(1280);
 
   // Unfollow as the newer intent.
   await page.click('#follow-action');
@@ -193,6 +317,28 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   check(await page.eval(`${q('#follow-action')}?.textContent?.trim() === 'Theo dõi'`), 'stale late v1 ACK ignored; button remains Theo dõi');
   check(await page.eval(`${q('#profile-followers-link')}?.textContent?.includes('0 người theo dõi')`), 'stale late v1 ACK ignored; count remains 0');
   check((await page.eval('window.__followEvents.length')) === 2, 'stale late v1 ACK does not emit extra invalidation');
+  check(await page.eval(`${q('#follow-status')}?.textContent.trim() === 'Đã bỏ theo dõi tác giả.'`),
+    'stale late v1 ACK cannot replace the announcement for the latest action');
+  writes.close();
+
+  await page.eval(`(() => {
+    const live = ${q('#follow-status')};
+    window.__followNotices = [];
+    const observe = new MutationObserver(() => window.__followNotices.push(live.textContent.trim()));
+    observe.observe(live, {subtree: true, characterData: true, childList: true});
+  })()`);
+  const lostAck = await holdAnswer(page, 'PUT', actionPath);
+  await page.click('#follow-action');
+  check((await lostAck.held()) === 200, 'real Follow succeeds before the ACK is dropped');
+  await lostAck.finish(true);
+  await page.waitFor(`${q('#follow-action')}?.textContent.trim() === 'Bỏ theo dõi' &&
+    window.__followEvents.length === 3`, 'lost ACK reconciles automatically from the real receipt');
+  check(await page.eval(`window.__followNotices.some(text => text.startsWith('Chưa nhận')) &&
+    window.__followNotices.filter(text => text === 'Đã đối chiếu trạng thái mới nhất từ máy chủ.').length === 1`),
+    'lost ACK exposes reconciliation and announces its new result once');
+  await page.click('#follow-action');
+  await page.waitFor(`${q('#follow-action')}?.textContent.trim() === 'Theo dõi' && window.__followEvents.length === 4`,
+    'reset edge after the dropped-ACK test');
 
   // 5. 15 followers + independent 4-policy matrix + append retry + mid-list live permission loss.
   const followerSql = [];
@@ -226,15 +372,46 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   await guest.waitFor(`document.querySelectorAll('.vk-rel-item').length === 12 && ${q('#rel-load-more')}`, 'hydrated page 1 shows 12 followers and can append');
   check(await guest.eval(`!${q('#relationship-count')}`), 'list page omits count when followers_count=self');
 
-  // Simulate append failure -> existing 12 rows stay mounted + retry button works -> 15 rows load!
+  const firstPerson = '.vk-rel-item a[id^="rel-person-"]';
+  await guest.eval(`${q(firstPerson)}.focus()`);
+  await guest.key('Enter');
+  await guest.waitFor("document.activeElement?.id === 'author-profile-heading'", 'person link opens the correct profile and focuses H1');
+  await guest.eval('history.back()');
+  await guest.waitFor(`document.activeElement === ${q(firstPerson)}`, 'Back restores the person link on the list');
+  check(await guest.eval(`${q(firstPerson)}.getAttribute('aria-label')?.includes('@') &&
+    ${q(firstPerson)}.querySelector('.vk-ui-byline__handle')`), 'person link exposes the handle in its byline and accessible name');
+
+  // A transport failure leaves the rows and the focused pagination button mounted.
   const dropAppend = await holdAnswer(guest, 'GET', `/api/v1/authors/${handleB}/followers`);
-  await guest.click('#rel-load-more');
+  await guest.eval(`window.__append = ${q('#rel-load-more')}; window.__person = ${q(firstPerson)}; window.__append.focus()`);
+  await guest.key('Enter');
   check((await dropAppend.held()) === 200, 'real page 2 held before network failure injection');
   await dropAppend.finish(true);
-  await guest.waitFor(q('#rel-append-retry'), 'append error shows retry button');
-  check((await guest.eval(`document.querySelectorAll('.vk-rel-item').length`)) === 12, 'append failure retains existing 12 rows');
-  await guest.click('#rel-append-retry');
+  await guest.waitFor(`${q('#rel-load-more')}?.textContent.trim() === 'Thử lại tải thêm'`, 'same pagination action becomes Retry');
+  check(await guest.eval(`document.querySelectorAll('.vk-rel-item').length === 12 &&
+    window.__person === ${q(firstPerson)} && window.__append === document.activeElement`),
+    'append error preserves existing rows, the button and keyboard focus');
+  await guest.key('Space');
   await guest.waitFor(`document.querySelectorAll('.vk-rel-item').length === 15 && !${q('#rel-load-more')}`, 'append retry loads remaining 3 rows (total 15)');
+  await guest.waitFor("document.activeElement === document.querySelectorAll('.vk-rel-item a')[12]", 'successful retry brings focus to the first new row');
+
+  await guest.goto(`${base}/@${handleB}/nguoi-theo-doi`);
+  await guest.waitFor(q('#rel-load-more'), 'first page offers an append cursor');
+  const expiredAnchor = await guest.eval("document.querySelector('.vk-rel-item:last-child a').getAttribute('href').slice(2)");
+  const edge = `followee_id = ${literal(profB.principal_id)} AND follower_id =
+    (SELECT principal_id FROM author_profiles WHERE current_handle = ${literal(expiredAnchor)})`;
+  authorFixtureSql(`UPDATE author_follows SET active=false, version=version+1, accepted_order=accepted_order+1,
+    active_since=NULL WHERE ${edge}`);
+  try {
+    await guest.eval(`${q('#rel-load-more')}.focus()`);
+    await guest.key('Enter');
+    await guest.waitFor(`document.activeElement?.id === 'relationship-title' &&
+      !${q("#rel-person-" + expiredAnchor)} && document.querySelectorAll(".vk-rel-item").length === 12`,
+      'expired cursor replaces the chain and returns focus to the heading');
+  } finally {
+    authorFixtureSql(`UPDATE author_follows SET active=true, version=version+1, accepted_order=accepted_order+1,
+      active_since=clock_timestamp() WHERE ${edge}`);
+  }
 
   // Mid-list permission revocation: reload page 1 (12 rows), flip policy to followers_list=self, followers_count=everyone,
   // then click Load More -> MUST immediately clear ALL rows and render private notice!
@@ -249,12 +426,48 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
 
   await guest.click('#rel-load-more');
   await guest.waitFor(q('#relationship-private'), 'mid-list revocation switches page to private state');
+  await guest.waitFor("document.activeElement?.id === 'relationship-title'", 'revocation restores focus to the list heading');
   check((await guest.eval(`document.querySelectorAll('.vk-rel-item').length`)) === 0, 'mid-list revocation clears all previously loaded rows');
 
   await guest.goto(`${base}/@${handleB}`);
   await guest.waitFor(q('#profile-followers-count'), 'profile renders count span when list=self and count=everyone');
   check(await guest.eval(`!${q('#profile-followers-link')} && ${q('#profile-followers-count')}.textContent.includes('15 người theo dõi')`),
     'profile renders count without link when list=self and count=everyone');
+
+  const directionPolicies = [['everyone', 'everyone'], ['everyone', 'self'], ['self', 'everyone'], ['self', 'self']];
+  for (const [list, count] of directionPolicies) {
+    authorFixtureSql(`UPDATE author_profiles SET policies = policies ||
+      '{"followers_list":"${list}","followers_count":"${count}","following_list":"${list}","following_count":"${count}"}'::jsonb
+      WHERE principal_id = ${literal(profB.principal_id)};`);
+    await guest.goto(`${base}/@${handleB}`);
+    for (const [direction, allowedCount] of [['followers', 15], ['following', 0]]) {
+      const link = q(`#profile-${direction}-link`), stat = q(`#profile-${direction}-count`);
+      const shown = await guest.eval(`({link: ${link}?.textContent.trim(), stat: ${stat}?.textContent.trim()})`);
+      check(Boolean(shown.link) === (list === 'everyone') &&
+        Boolean(shown.stat) === (list === 'self' && count === 'everyone') &&
+        /^\d/.test(shown.link ?? shown.stat ?? '') === (count === 'everyone') &&
+        (count !== 'everyone' || (shown.link ?? shown.stat).startsWith(String(allowedCount))),
+        `${direction}: independent list=${list} and count=${count} (${JSON.stringify(shown)})`);
+    }
+    if (list === 'everyone') {
+      await guest.waitFor("document.documentElement.dataset.hydrated === 'true'", 'profile navigation has hydrated');
+      await guest.click('#profile-followers-link');
+      await guest.waitFor("document.activeElement?.id === 'relationship-title'", 'followers heading receives app navigation focus');
+      await guest.waitFor(q('#rel-other-direction'), 'permitted Following direction is available from the list');
+      await guest.eval(`${q('#rel-other-direction')}.focus()`);
+      await guest.key('Enter');
+      await guest.waitFor(`document.activeElement?.id === 'relationship-title' && location.pathname.endsWith('/dang-theo-doi')`,
+        'direction link moves keyboard focus to Following H1');
+      check(await guest.eval(`Boolean(${q('#relationship-count')}) === ${count === 'everyone'} && Boolean(${q('#relationship-empty')})`),
+        'empty Following and real zero count are distinct from a hidden count');
+      await guest.eval('history.back()');
+      await guest.waitFor("document.activeElement?.id === 'rel-other-direction'", 'Back returns to the authorized direction link');
+    }
+  }
+  authorFixtureSql(`UPDATE author_profiles SET policies = policies ||
+    '{"followers_list":"everyone","followers_count":"self"}'::jsonb
+    WHERE principal_id = ${literal(profB.principal_id)};`);
+  await checkLayoutAndA11y(guest, check, textContrast, `${base}/@${handleB}`, ['#profile-followers-link'], 'follow-list-without-count');
 
   // 6. Restore list=everyone temporarily to run 5-viewport / 2-theme / 100-200% layout + contrast audit on both profile & list.
   authorFixtureSql(`UPDATE author_profiles SET policies = '{
@@ -263,7 +476,7 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
     "following_list":"self","following_count":"self"
   }'::jsonb WHERE principal_id = ${literal(profB.principal_id)}`);
   await checkLayoutAndA11y(page, check, textContrast, `${base}/@${handleB}`, ['#follow-action', '#profile-followers-link'], 'follow-profile');
-  await checkLayoutAndA11y(guest, check, textContrast, `${base}/@${handleB}/nguoi-theo-doi`, ['#rel-back-profile', '#rel-load-more'], 'follow-list');
+  await checkLayoutAndA11y(guest, check, textContrast, `${base}/@${handleB}/nguoi-theo-doi`, ['#rel-back-profile', '#rel-load-more', '.vk-rel-item a'], 'follow-list');
 
   // 7. Hold a nonempty page from A. After B and a different A session, the fixture's
   // now-inactive edge is absent. Releasing the old successful response must not reinsert it.
@@ -319,4 +532,5 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
        }'::jsonb
      WHERE principal_id IN (${literal(profA.principal_id)}, ${literal(profB.principal_id)});
   COMMIT;`);
+  await profileRecovery(guest, base, handleB, {check, textContrast});
 }

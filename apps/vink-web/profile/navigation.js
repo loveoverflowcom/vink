@@ -1,5 +1,34 @@
 const returnKey = 'vinkProfileReturn';
+const aliasFocusKey = 'vinkProfileAliasFocus';
+let pendingDestination;
+
 const address = () => location.pathname + location.search + location.hash;
+
+export function replaceProfileAlias(sourcePath, href) {
+  const target = new URL(href, location.origin);
+  if (target.origin !== location.origin) return;
+  const expected = pendingDestination;
+  const source = expected && new URL(expected.href, location.origin);
+  const fromLink = source?.pathname === sourcePath && expected.expires >= Date.now();
+  target.hash = fromLink ? source.hash : location.hash;
+  if (fromLink) {
+    try {
+      sessionStorage.setItem(aliasFocusKey, JSON.stringify({
+        address: target.pathname + target.search + target.hash,
+        heading: expected.heading,
+        expires: Date.now() + 10000,
+      }));
+    } catch { /* Navigation still works with storage disabled. */ }
+  }
+  // Blocking route data can resolve before the router commits the alias URL. The prior
+  // document may already have the canonical address. Force a clean document in that case.
+  if (target.pathname === location.pathname && target.search === location.search) {
+    history.replaceState(history.state, '', target.href);
+    location.reload();
+  } else {
+    location.replace(target.href);
+  }
+}
 
 export function hasProfileReturn() {
   return history.state?.[returnKey]?.source === address();
@@ -78,6 +107,7 @@ export function mountProfileNavigation() {
       href.startsWith('/@') ? 'author-profile-heading' :
       href === '/toi/chinh-ho-so' ? 'edit-profile-heading' :
       href === '/toi#edit-profile-link' ? 'edit-profile-link' : '';
+    pendingDestination = heading ? {href, heading, expires: Date.now() + 10000} : undefined;
     if (heading) focusWhenReady(href, () => document.getElementById(heading), '', link);
   });
 
@@ -88,7 +118,7 @@ export function mountProfileNavigation() {
     const fallback = entry.id.startsWith('profile-work-') ? 'author-works-heading' :
       entry.id.startsWith('work-') ? 'community-stream' :
       entry.id.startsWith('comment-') ? 'feedback-heading' :
-      entry.id.startsWith('rel-person-') || entry.id === 'rel-back-profile' ? 'relationship-title' :
+      entry.id.startsWith('rel-person-') || ['rel-back-profile', 'rel-other-direction'].includes(entry.id) ? 'relationship-title' :
       entry.id === 'profile-followers-link' || entry.id === 'profile-following-link' || entry.id === 'own-profile-edit-link' || entry.id === 'follow-sign-in' ? 'author-profile-heading' :
       entry.id === 'edit-profile-link' ? 'me-title' : 'noi-dung';
     focusWhenReady(entry.source, () => {
@@ -120,7 +150,9 @@ export function mountProfileNavigation() {
     main.style.visibility = 'hidden';
     main.inert = true;
   });
-  function resume() {
+  let aliasEntryFocus = false;
+  function resume(event) {
+    if (event.type === 'pageshow' && !event.persisted && aliasEntryFocus) return;
     // A document can have several SPA history entries. The entry being restored need
     // not be the entry that was current when the document was frozen.
     if (!parked) {
@@ -135,6 +167,15 @@ export function mountProfileNavigation() {
   window.addEventListener('pageshow', resume);
   // A frozen document has an old projection even when a tab's RAM freshness window has
   // not elapsed. The fresh HTTP document may re-focus the surviving link.
+  let aliasFocus;
+  try {
+    aliasFocus = JSON.parse(sessionStorage.getItem(aliasFocusKey));
+    sessionStorage.removeItem(aliasFocusKey);
+  } catch { /* No focus handoff available. */ }
+  if (aliasFocus?.address === address() && aliasFocus.expires >= Date.now()) {
+    aliasEntryFocus = true;
+    focusWhenReady(address(), () => document.getElementById(aliasFocus.heading), '');
+  }
   const state = history.state;
   if (state?.[recheck] === address()) {
     const {[recheck]: _, ...rest} = state;
