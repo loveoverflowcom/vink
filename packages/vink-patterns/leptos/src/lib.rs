@@ -674,28 +674,6 @@ fn comment_endorsement(
     }
 }
 
-/// Non-interactive Ưng display for read-only work pages (#360 ảnh 10): only confirmed counts, never `0` for unknown.
-fn comment_endorsement_readonly(id: String, endorsements: CommentEndorsements) -> impl IntoView {
-    let facts = {
-        let id = id.clone();
-        Memo::new(move |_| endorsements.facts.run(id.clone()))
-    };
-    move || {
-        facts.get().map(|facts| {
-            let text = match facts.count {
-                CountFact::Known(n) => format!("Ưng · {n}"),
-                CountFact::Unavailable | CountFact::Hidden => "Ưng".to_owned(),
-            };
-            view! {
-                <span class="vk-discussion-static-endorsement" data-endorsement-readonly=id.clone()>
-                    <Icon name=IconName::HeartOutline size=IconSize::Small />
-                    <span>{text}</span>
-                </span>
-            }
-        })
-    }
-}
-
 #[derive(Clone, Copy)]
 struct ThreadCommentCtx {
     on_reply: Callback<String>,
@@ -727,6 +705,7 @@ fn discussion_comment(
     let reply_id = comment.id.clone();
     let remove_id = comment.id.clone();
     let target_match_id = comment.id.clone();
+    let endorsement_id = comment.id.clone();
     let reply_button_id = format!("reply-to-{}", comment.id);
     let remove_button_id = format!("remove-comment-{}", comment.id);
     let author_id = format!("comment-{}-author", comment.id);
@@ -776,17 +755,20 @@ fn discussion_comment(
                 <div class="vk-discussion-action-segment" data-root=is_root.then_some("true")
                     role=move || (!read_only.get()).then_some("group")
                     aria-label=move || (!read_only.get()).then(|| format!("Thao tác với nhận xét của {author_label}"))>
-                    {endorsements.map(|endorsements| {
-                        let readonly_id = comment.id.clone();
-                        let active_id = comment.id.clone();
-                        move || {
-                            if read_only.get() {
-                                comment_endorsement_readonly(readonly_id.clone(), endorsements).into_any()
-                            } else {
-                                comment_endorsement(active_id.clone(), surface, endorsements, shared_description).into_any()
-                            }
+                    {move || {
+                        if read_only.get() {
+                            view! {
+                                <span class="vk-discussion-static-endorsement" data-endorsement-readonly=endorsement_id.clone()>
+                                    <Icon name=IconName::HeartOutline size=IconSize::Small />
+                                    <span>"Ưng"</span>
+                                </span>
+                            }.into_any()
+                        } else {
+                            endorsements.map(|endorsements| {
+                                comment_endorsement(endorsement_id.clone(), surface, endorsements, shared_description)
+                            }).into_any()
                         }
-                    })}
+                    }}
                     {move || (comment.can_reply && !read_only.get()).then(|| {
                         let reply_id = reply_id.clone();
                         let reply_button_id = reply_button_id.clone();

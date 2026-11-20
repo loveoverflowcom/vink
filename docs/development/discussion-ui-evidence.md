@@ -4,9 +4,9 @@
 
 Base `ac77a0fa1fed42a8f25a1795991d253b64cb4ff8`. Commit [10ea20b](https://github.com/loveoverflowcom/vink/commit/10ea20ba63aa0c08edd072c6a7f32d3a5bf846c6) sửa FieldMode, root segment/geometry, composer Sending, clipboard và read-only. Commit [d2092b6](https://github.com/loveoverflowcom/vink/commit/d2092b67de3e0699921876dd1460a64e41875530) giữ tác phẩm trong DOM trong khi lần GET nhận xét đầu tiên đang chờ. [LayoutSpec R4](../design/discussion-ui.md) và [bộ tham chiếu Drive](https://drive.google.com/drive/folders/1OpT6_uY1GG-oGvhSl6b5xsmgSsM7hVdE). Đã mở 12 ảnh 01/01b, 02/02b, 03/03b, 04–08 và 10. Ảnh 04 cho phép gõ trong Sending, lần gửi giữ snapshot bất biến.
 
-### Trang ẩn và số Ưng
+### Nhãn Ưng trên trang ẩn
 
-Cùng ca thực trên base và PR: tác giả gửi nhận xét, quản trị viên duyệt rồi bấm Ưng. Trước khi ẩn, public summary trả HTTP 200, count 1. Khi mở mới Reader sau khi rút qua kiểm duyệt hoặc tác giả đặt riêng tư, summary của nhận xét trả HTTP 404. DOM của candidate chỉ hiện “Ưng”. Cả hai trang đều ẩn ô soạn, Trả lời và nút Ưng. Tác giả có `can_remove=true` mở được xác nhận gỡ; người đọc khác không có nút. [Provider đọc count](../../services/vink-app/src/application/endorsement.rs) đòi revision đang công khai. Giữ test đòi “Ưng · 1” trên cả hai đường. #360 AC-04 còn mở.
+Cùng ca thực trên base và PR: tác giả gửi nhận xét, quản trị viên duyệt rồi bấm Ưng. Trước khi ẩn, public summary trả HTTP 200, count 1. Khi mở mới Reader sau khi rút qua kiểm duyệt hoặc tác giả đặt riêng tư, summary của nhận xét trả HTTP 404. DOM của candidate chỉ hiện “Ưng”. Cả hai trang đều ẩn ô soạn, Trả lời và nút Ưng. Tác giả có `can_remove=true` mở được xác nhận gỡ; người đọc khác không có nút. [Provider đọc count](../../services/vink-app/src/application/endorsement.rs) đòi revision đang công khai. Ngày 20/11/2026, Mạnh chốt “Ưng” là nhãn tĩnh không số trong hai trường hợp này, kể cả khi Reader từng biết số. Regression kiểm cả hai đường với nhận xét thật, quyền gỡ của người viết và quyền đọc hiện hành.
 
 ### Đo trên browser
 
@@ -35,7 +35,7 @@ Debian Linux, Rust 1.99.1, wasm-bindgen 0.2.129, Node 24.22.3, PostgreSQL 17.11 
 
 Ảnh guest cho thấy SignInAvailable mở dialog và Escape giữ nháp. SignInClosed có đúng lý do qua aria-describedby nhưng thiếu icon khóa theo ảnh 04; glyph đã được nối vào nút Gửi của riêng trạng thái này. Ca Refused 403 với transport bị chặn trong trình duyệt giữ chữ và nêu lý do.
 
-PR giữ Draft trong khi #360 AC-04 còn FAIL. Trạng thái từng AC và các lần chạy mới hơn được cập nhật trên [PR #366](https://github.com/loveoverflowcom/vink/pull/366). Bằng chứng auth/CDP không chứng minh IME của hệ điều hành hoặc screen reader.
+Checkpoint `fd31064` đã kiểm 93/93 ảnh Reader. Ô gốc đã kiểm đủ chín trạng thái, ô trả lời đã quan sát tám trạng thái. Bài thử Auth bổ sung `SignInClosed` cho ô trả lời trên deployment tắt đăng nhập. Trạng thái từng AC và các lần chạy trên cây tích hợp được cập nhật trên [PR #366](https://github.com/loveoverflowcom/vink/pull/366). Bằng chứng auth/CDP không chứng minh IME của hệ điều hành hoặc screen reader.
 
 Issue #45; branch `codex/discussion-ui`, PR #59. Checkpoint local dưới đây đã tích hợp
 `develop@27927c462244f2a70e36a686a37c8c95690775b6`.

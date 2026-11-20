@@ -326,8 +326,8 @@ fn r4_orders_endorsement_before_reply_and_keeps_read_only_static() {
         "no interactive endorse buttons when read_only: {readonly}"
     );
     assert!(
-        readonly.contains("Ưng · 4") && !readonly.contains("Ưng · 0"),
-        "confirmed count stays text, unknown stays without 0: {readonly}"
+        readonly.matches(">Ưng<").count() == 2 && !readonly.contains("Ưng ·"),
+        "both read-only labels omit the count even when the prior count is known: {readonly}"
     );
     assert!(
         readonly.contains("id=\"remove-comment-root\""),

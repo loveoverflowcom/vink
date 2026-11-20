@@ -158,7 +158,7 @@ và `VDR-DISCUSSION-R4@r1` (`PRODUCT_CONFIRMED`, signoff 20/11/2026).
 
 Chưa làm trong lát này: “Sao chép nháp” (clipboard, cần browser thật), skeleton trễ 300 ms, góc
 tác giả đủ năm trạng thái ảnh 08 (đang đổi/xung đột/hệ thống khóa vẫn dùng `mutation_*` hiện có),
-trang ẩn ảnh 10 với số Ưng dạng chữ, anatomy/geometry R4 của lát A và CMP product. Phản hồi chờ
+trang ẩn ảnh 10 với nhãn Ưng dạng chữ, anatomy/geometry R4 của lát A và CMP product. Phản hồi chờ
 duyệt hiện cạnh ô soạn và trong “Bạn đã gửi”, không chèn hàng tạm vào nhánh.
 
 ## LayoutSpec R4 — lát UI (#359, #360; 20/11/2026)
@@ -186,7 +186,7 @@ ngoài thẻ vẫn giữ `--vk-surface`).
     - Lỗi tải thêm nằm ngay trên nút `"Xem thêm nhận xét"`, giữ nguyên các nhận xét đã tải và cursor cũ; lỗi nhánh nằm trong `.vk-discussion-reply-group` kèm `"Thử lại"`. `"Đã hết danh sách nhận xét được cấp."` chỉ hiện khi không rỗng và `next_cursor.is_none()`.
   - **`#root-list` (`.vk-discussion-root` + `.vk-discussion-thread`)**:
     - Thẻ root `--vk-surface-container-low` (radius `28px`, padding `16px`).
-    - Nhóm thao tác root `.vk-discussion-actions`: **`Ưng · n` trước → `Trả lời` sau** (+ `OwnRemoveAction` tách sau nhóm). Trên root (khi hai nút cùng hiện), cặp `Ưng | Trả lời` dùng cụm pill tonal ghép sát (`gap: 2px`, góc ngoài `24px`, góc trong `6px`, chiều cao chạm `>=48px`; mặc định `--vk-secondary-container`, khi `Ưng` `data-pressed="true"` hoặc `Trả lời` `aria-expanded="true"` chuyển `--vk-primary-container`). Ở trang chỉ đọc (`ReplacementView`), bỏ `Trả lời` và hiện `Ưng · n` dạng text chip tĩnh, không có `<button>` ghi.
+    - Nhóm thao tác root `.vk-discussion-actions`: **`Ưng · n` trước → `Trả lời` sau** (+ `OwnRemoveAction` tách sau nhóm). Trên root (khi hai nút cùng hiện), cặp `Ưng | Trả lời` dùng cụm pill tonal ghép sát (`gap: 2px`, góc ngoài `24px`, góc trong `6px`, chiều cao chạm `>=48px`; mặc định `--vk-secondary-container`, khi `Ưng` `data-pressed="true"` hoặc `Trả lời` `aria-expanded="true"` chuyển `--vk-primary-container`). Khi tác giả chuyển tác phẩm sang riêng tư hoặc tác phẩm bị rút qua kiểm duyệt (`ReplacementView`), mỗi nhận xét hiện nhãn chữ tĩnh `Ưng` không số, kể cả khi trước đó đã có số xác nhận. Ẩn nút Ưng, Trả lời và ô soạn. Chỉ hiện “Gỡ nhận xét của tôi” khi `can_remove=true`.
     - Nhóm `.vk-discussion-reply-group`: hộp tonal lồng một tầng `--vk-surface-container` (radius `20px`), tiêu đề `"Phản hồi"` (không số đếm giả); phản hồi bên trong dùng nút chữ nhỏ theo thứ tự `Ưng · n` → `Trả lời` (+ `OwnRemoveAction`), `min-block-size: 44px`. Đích trả lời đang chọn được đánh dấu viền/nhãn `"Đang là đích trả lời"`.
     - **Responsive**:
       - `< 1024px`: thân nhận xét, nhóm thao tác, `.vk-discussion-reply-group` và `.vk-discussion-reply-composer` dùng cùng hai biên thẻ root, không thụt lề phụ; hai nút ở `320px`/chữ `200%` tự wrap, không cắt nhãn hay tràn ngang (`scrollWidth <= innerWidth + 1`).
@@ -200,10 +200,10 @@ ngoài thẻ vẫn giữ `--vk-surface`).
 | Cụm root & desktop | `Trả lời` trước `Ưng`; không thẻ tonal; mọi màn cùng biên trái | `Ưng · n \| Trả lời` pill liền góc trong `6px`; desktop `>=1024px` thụt thân/nhánh/ô trả lời theo cột tên |
 | Ô soạn & trả lời | 1 hộp delivery đơn sắc; Gửi vẫn dùng `ArrowBack` xoay + spinner cạnh phải; thiếu `"Sao chép nháp"` clipboard ở `Closed` | 9 trạng thái tonal đúng ảnh 04; vòng tiến trình thay icon `send`; chip đích + `"Sao chép nháp"` clipboard thật; `ReadOnly` giữ node & text |
 | `"Bạn đã gửi"` & Gỡ | Chip màu trung tính cho mọi `ApprovedOffPage`; confirm gỡ kiểu inline thô | Thẻ `20px`, chip `Success` xanh lá cho `ApprovedOffPage`, lý do riêng màu đỏ cho `Rejected`, xác nhận gỡ viền `2px solid var(--vk-error)` |
-| Đọc, lỗi, tác giả, trang ẩn | Fallback `"Đang tải…"`, 1 dòng mode, trang ẩn vẫn hiện nút `Ưng`/composer | Skeleton tĩnh sau `300 ms`; mode 5 trạng thái tác giả + xung đột; `ReplacementView` chỉ đọc với `Ưng · n` dạng chữ |
+| Đọc, lỗi, tác giả, trang ẩn | Fallback `"Đang tải…"`, 1 dòng mode, trang ẩn vẫn hiện nút `Ưng`/composer | Skeleton tĩnh sau `300 ms`; mode 5 trạng thái tác giả + xung đột; `ReplacementView` hiện chữ tĩnh `Ưng` không số |
 
 
 
 ### Đối chiếu R4 trên Reader Web Linux
 
-Đã đối chiếu ảnh R4 01–08 và 10 cùng các biến thể desktop với Reader. Ảnh 04 giữ textarea editable khi đang gửi; ảnh 10 đòi số Ưng đã xác nhận trên trang chỉ đọc. Khi bài bị ẩn hoặc rút sau kiểm duyệt, Reader giữ quyền gỡ theo `can_remove` nhưng nguồn summary trả 404, nên phần hiển thị số còn thiếu. Phép đo tối kiểm màu chữ của receipt trên chính nền thông tin; nhãn field và hai pill phải đạt 4,5:1 cả trong khi đổi theme. [Ảnh trước/sau, SHA và lệnh kiểm](../development/discussion-ui-evidence.md).
+Đã đối chiếu ảnh R4 01–08 và 10 cùng các biến thể desktop với Reader. Ảnh 04 giữ textarea editable khi đang gửi. Riêng ảnh 10, Mạnh đã chốt nhãn tĩnh “Ưng” không số cho cả tác phẩm chuyển riêng tư và tác phẩm bị rút. Reader giữ quyền gỡ theo `can_remove`. Hợp đồng đọc và quyền truy cập được giữ nguyên. Phép đo tối kiểm màu chữ của receipt trên chính nền thông tin; nhãn field và hai pill phải đạt 4,5:1 cả trong khi đổi theme. [Ảnh trước/sau, SHA và lệnh kiểm](../development/discussion-ui-evidence.md).
