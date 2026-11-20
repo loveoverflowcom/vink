@@ -1321,7 +1321,7 @@ a {
 .vk-editor-outline__entry .vk-ui-button:has(.vk-editor-outline__item--h2) {
   font-family: var(--vk-font-ui);
   font-size: calc(var(--vk-type-body-size) * 0.89);
-  font-weight: var(--vk-type-label-weight);
+  font-weight: var(--vk-type-section-weight);
   line-height: var(--vk-type-label-line-height);
 }
 
