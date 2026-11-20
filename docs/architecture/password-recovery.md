@@ -143,7 +143,7 @@ Server so ID trong form/header với challenge trong cookie **trước** attempt
 App giữ Origin check, body limit và `Cache-Control: no-store` cho mọi kết quả/lỗi.
 
 - Xin mã: cú pháp sai `422` tại email; trần địa chỉ/mạng/global `429` không phụ thuộc account tồn tại.
-  `202` chỉ ghi nhận, không nói “đã gửi thành công”. DB/provider chưa commit → `503`; lỗi SMTP sau
+  `202` chỉ ghi nhận, không nói “đã gửi thành công”. DB/provider chưa commit → `503`; lỗi transport sau
   commit vẫn cùng `202`, retry bounded tới TTL, không public delivery status dùng để dò account.
   Nhánh unknown/disabled/email-only phải có **dummy challenge có state**: cùng handle/TTL, attempts,
   cửa sổ throttle và lifecycle lỗi như challenge thật, nhưng không thể thay credential/phát phiên.
@@ -184,7 +184,7 @@ không sửa lịch sử. Receipt chỉ có ID ngẫu nhiên, outcome/timestamp,
 không lưu password hoặc digest có thể dò password. Thông số retention đề xuất kế thừa
 [runbook](../development/auth-operations.md#8-retention): challenge/receipt 7 ngày sau expiry,
 code trong outbox xóa ngay trạng thái cuối; hết TTL browser chỉ còn đường bắt đầu lại. Việc xử lý
-thư reset đã xếp hàng sau revoke/gửi lại phải được worker kiểm trước send; thư đã ra SMTP không
+thư reset đã xếp hàng sau revoke/gửi lại phải được worker kiểm trước send; thư provider đã nhận không
 thể thu hồi, nhưng code không còn quyền. Không dùng email gửi thành công làm authority.
 
 Không log password, OTP, handle, recipient, body, request JSON hoặc raw provider error. Tracing
@@ -204,7 +204,7 @@ Không AI/provider mới; không gửi draft hay thông tin tài khoản cho AI.
 Ma trận implementation phải có: account password không email, email đã gắn, address account khác,
 email-only chưa có credential, disabled và suspended; sai/hết hạn/reuse/cross-purpose; gửi lại đồng
 thời, hai completion đồng thời; đổi email đi/quay về; login kiểm hash cũ bị giữ tới sau reset;
-SMTP retry/expiry; dummy vs thật ở issuance/complete/status (code sai, expiry, 5 attempts, rate
+retry/expiry đường gửi thư; dummy vs thật ở issuance/complete/status (code sai, expiry, 5 attempts, rate
 limit, password invalid, malformed input); hai tab xin mã với ACK đảo thứ tự, Set-Cookie cũ ghi đè
 cookie mới và tab khác overwrite cookie receipt; crash trước/sau commit và ACK bị mất. Đo account/subject/principal/pen name,
 draft ID/body trước/sau; login mới đúng, session cũ bị từ chối; recovery không gỡ đình chỉ.

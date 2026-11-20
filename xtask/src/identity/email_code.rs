@@ -3,9 +3,9 @@
 //! API (codes delivered by Identity's outbox worker, read from its local outbox like a mailbox),
 //! the per-network limit behind a trusted proxy, principal provisioning, account isolation, forged
 //! headers, logout, verified email change, App suspension, Identity disable, an Identity outage,
-//! and finally SMTP delivery to a loopback relay with password rotation and relay recovery.
+//! and mail outbox failure and recovery.
 //!
-//! This is real process/socket/database/SMTP-protocol evidence. It is **not** production
+//! This is real process/socket/database evidence. It is **not** production
 //! authentication: no real provider (Resend), TLS, DNS or mailbox is involved, and no browser
 //! runs here (cookies are sent by this client exactly as the App set them).
 
@@ -18,7 +18,6 @@ use std::time::Duration;
 
 use serde_json::Value;
 
-use super::smtp_sink::Sink;
 use super::{Run, expect, request, sql};
 use crate::lifecycle;
 
@@ -150,8 +149,6 @@ struct Flow<'a> {
     /// X-Forwarded-For; each sign-in comes from a new one so per-network limits stay out of
     /// the way except where a step tests them.
     client: String,
-    /// When set, codes are read from this SMTP relay instead of the outbox directory.
-    smtp: Option<Sink>,
     /// Every credential, handle and code seen; none may appear in a log or public page.
     secrets: Vec<String>,
 }
@@ -175,7 +172,7 @@ impl Flow<'_> {
     }
 
     /// The code mailed for `handle`: the delivery worker sends after the challenge commits, so
-    /// this waits for the message (outbox file or SMTP relay) named by the challenge id.
+    /// this waits for the local outbox file named by the challenge id.
     fn code(&mut self, handle: &str) -> Result<String, String> {
         self.code_within(handle, Duration::from_secs(15))
     }
@@ -188,20 +185,13 @@ impl Flow<'_> {
             .to_string();
         let deadline = std::time::Instant::now() + limit;
         loop {
-            let found = match &self.smtp {
-                Some(sink) => sink
-                    .messages()
-                    .into_iter()
-                    .find(|m| m.data.contains(&id))
-                    .and_then(|m| m.code()),
-                None => std::fs::read_to_string(self.outbox.join(format!("{id}.txt")))
-                    .ok()
-                    .and_then(|text| {
-                        text.lines()
-                            .find_map(|line| line.strip_prefix("X-Vink-Code: "))
-                            .map(str::to_string)
-                    }),
-            };
+            let found = std::fs::read_to_string(self.outbox.join(format!("{id}.txt")))
+                .ok()
+                .and_then(|text| {
+                    text.lines()
+                        .find_map(|line| line.strip_prefix("X-Vink-Code: "))
+                        .map(str::to_string)
+                });
             if let Some(code) = found {
                 self.secrets.push(code.clone());
                 return Ok(code);
@@ -388,7 +378,6 @@ impl Run<'_> {
             origin: format!("http://127.0.0.1:{port}"),
             outbox: &outbox,
             client: "198.51.100.0".into(),
-            smtp: None,
             secrets: Vec::new(),
         };
         let checked = (|| {
@@ -719,84 +708,32 @@ impl Run<'_> {
             flow.drafts(&reader)?
                 .expect("sessions survive an Identity restart", 200, "drafts")?;
 
-            // 8. SMTP: the same binary delivers through a relay with its configured credential;
-            // the password file is re-read per delivery (rotation without restart); a relay
-            // outage delays the code but never fails the request, and the worker recovers.
-            if let Some(server) = identity.take() {
-                self.stop(server)?;
-            }
-            let sink = Sink::start()?;
-            let password_file = self.dir.join("smtp-password");
-            let write_secret = |value: &str| -> Result<(), String> {
-                std::fs::write(&password_file, format!("{value}\n")).map_err(|e| e.to_string())?;
-                std::fs::set_permissions(&password_file, std::fs::Permissions::from_mode(0o600))
-                    .map_err(|e| e.to_string())
-            };
-            let first_secret = format!("smtp-secret-one-{}", std::process::id());
-            let second_secret = format!("smtp-secret-two-{}", std::process::id());
-            flow.secrets.push(first_secret.clone());
-            flow.secrets.push(second_secret.clone());
-            write_secret(&first_secret)?;
-            let port_text = sink.port.to_string();
-            let smtp_env: [(&str, &OsStr); 8] = [
-                ("VINK_IDENTITY_AUTHORITY", OsStr::new("email-code")),
-                ("VINK_IDENTITY_MAIL_TRANSPORT", OsStr::new("smtp")),
-                ("VINK_IDENTITY_SMTP_HOST", OsStr::new("127.0.0.1")),
-                ("VINK_IDENTITY_SMTP_PORT", OsStr::new(&port_text)),
-                ("VINK_IDENTITY_SMTP_SECURITY", OsStr::new("none")),
-                ("VINK_IDENTITY_SMTP_USERNAME", OsStr::new("vink-e2e")),
-                (
-                    "VINK_IDENTITY_SMTP_PASSWORD_FILE",
-                    password_file.as_os_str(),
-                ),
-                (
-                    "VINK_IDENTITY_MAIL_FROM",
-                    OsStr::new("Vink <no-reply@vink.test>"),
-                ),
-            ];
-            identity = Some(self.start_with(
-                "email-code-smtp",
-                &s.identity_runtime,
-                Some(uid),
-                &smtp_env,
-            )?);
-            expect(
-                "readiness reports SMTP, still not an accepted production authority",
-                request(&self.socket, "GET", "/health/ready", &[], b""),
-                200,
-                r#""mail_transport":"smtp""#,
-            )?;
-            expect(
-                "D-05 stays provisional with SMTP",
-                request(&self.socket, "GET", "/health/ready", &[], b""),
-                200,
-                r#""production_authentication":"not_accepted""#,
-            )?;
-            flow.smtp = Some(sink.clone());
-            let (reply, _) = flow.sign_in("qua.smtp@vi-du.vn")?;
-            reply.expect(
-                "sign-in with a code mailed over SMTP",
-                200,
-                "needs_principal",
-            )?;
-            let used = sink.messages().last().and_then(|m| m.password.clone());
-            if used.as_deref() != Some(first_secret.as_str()) {
-                return Err("the relay did not see the configured SMTP credential".into());
-            }
-            write_secret(&second_secret)?;
-            let (reply, _) = flow.sign_in("xoay.khoa@vi-du.vn")?;
-            reply.expect("sign-in after the password rotated", 200, "needs_principal")?;
-            let used = sink.messages().last().and_then(|m| m.password.clone());
-            if used.as_deref() != Some(second_secret.as_str()) {
-                return Err("the rotated SMTP password was not used without a restart".into());
-            }
-            sink.set_unavailable(true);
-            flow.next_client();
-            let handle = flow.challenge("relay.sap@vi-du.vn")?;
-            if flow.code_within(&handle, Duration::from_secs(2)).is_ok() {
-                return Err("a code was delivered while the relay refused service".into());
-            }
-            sink.set_unavailable(false);
+            // 8. Offline transport outage: the request commits while the local mailbox is
+            // unavailable. Wait for the real worker to persist the failure, then restore it.
+            let parked = self.dir.join("outbox-parked");
+            std::fs::rename(&outbox, &parked).map_err(|error| error.to_string())?;
+            let interrupted = (|| {
+                flow.next_client();
+                let recipient = "mail.gian.doan@vi-du.vn";
+                let handle = flow.challenge(recipient)?;
+                flow.secrets.push(recipient.to_owned());
+                let deadline = std::time::Instant::now() + Duration::from_secs(15);
+                loop {
+                    let failed = sql(
+                        &s.admin_identity,
+                        "SELECT count(*) FROM mail_deliveries WHERE state = 'pending' AND last_error = 'transient' AND recipient = 'mail.gian.doan@vi-du.vn'",
+                    )?;
+                    if failed == 1 {
+                        return Ok::<_, String>(handle);
+                    }
+                    if std::time::Instant::now() >= deadline {
+                        return Err("worker did not persist the offline transport error".into());
+                    }
+                    std::thread::sleep(Duration::from_millis(50));
+                }
+            })();
+            std::fs::rename(&parked, &outbox).map_err(|error| error.to_string())?;
+            let handle = interrupted?;
             let code = flow.code_within(&handle, Duration::from_secs(30))?;
             flow.call(
                 "POST",
@@ -805,7 +742,7 @@ impl Run<'_> {
                 Some(&format!(r#"{{"code":"{code}"}}"#)),
             )?
             .expect(
-                "the code delivered after the relay recovered works",
+                "the code delivered after the local outbox recovered works",
                 200,
                 "state",
             )?;
@@ -839,23 +776,21 @@ impl Run<'_> {
         for name in [
             "email-code",
             "email-code-restarted",
-            "email-code-smtp",
             "email-code-app",
             "email-code-app-closed",
         ] {
             let text = std::fs::read_to_string(self.log(name)).unwrap_or_default();
-            if let Some(secret) = flow
+            if flow
                 .secrets
                 .iter()
-                .find(|secret| text.contains(secret.as_str()))
+                .any(|secret| text.contains(secret.as_str()))
             {
-                let shape = &secret[..secret.len().min(8)];
-                return Err(format!("{name}.log contains a secret ({shape}…)"));
+                return Err(format!("{name}.log contains a secret"));
             }
         }
         let _ = std::fs::remove_dir_all(&outbox);
         println!(
-            "==> D-05: activation lock 501; sign-in via outbox worker → needs_principal → provision; network ceiling 429 + Retry-After behind a trusted proxy; isolation; logout per session; email change keeps the subject, freed address unlinked; suspension and disable close authority; Identity down is 503, public reading 200; SMTP delivery with the file credential, rotation without restart, relay outage recovered"
+            "==> D-05: activation lock 501; sign-in via outbox worker → needs_principal → provision; network ceiling 429 + Retry-After behind a trusted proxy; isolation; logout per session; email change keeps the subject, freed address unlinked; suspension and disable close authority; Identity down is 503, public reading 200; local-outbox outage recovered"
         );
         Ok(())
     }

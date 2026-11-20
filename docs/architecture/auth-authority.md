@@ -2,15 +2,16 @@
 
 > **Đổi hướng 10/11/2026 (chủ sản phẩm):** **username + mật khẩu** là phương thức đăng nhập chính;
 > mã email có thể bổ sung sau, chưa ưu tiên (ACC-03). Lựa chọn “mã email trước” của tài liệu này
-> **không còn là hướng chính**. Nội dung dưới đây vẫn mô tả đúng **code hiện có** (chỉ mã email) và
-> được giữ nguyên làm lịch sử + hiện trạng; khác biệt và gap cho PR auth sau ở
+> **không còn là hướng chính**. Các mục spike dưới đây được giữ làm lịch sử; hiện trạng và phần
+> còn thiếu nằm ở
 > [§12](#12-đổi-hướng-10112026-username--mật-khẩu-là-chính). D-05 vẫn chưa Accepted.
 
 **Ngày:** 07/11/2026 (spike), cập nhật 10/11/2026 (đường production, §11) · **Base spike:**
 `develop@9dc4991620ef93b09c21fdba355a3c3f557da608` ·
 **Trạng thái:** **Đề xuất cho pilot (Recommended / Provisional)**, chưa Accepted. Spike chạy được
 cục bộ và đổi D-05 từ “Cần spike + lựa chọn” sang “Đề xuất A, chờ chủ sản phẩm và các blocker ở
-§9”. Từ 10/11/2026 backend có **đường production**: thư qua outbox bền + SMTP (Resend), giới hạn
+§9”. Từ 10/11/2026 backend có **đường production**: thư qua outbox bền (đường gửi hiện hành:
+Resend HTTPS API, xem C1), giới hạn
 lạm dụng nhiều process, fence đình chỉ tại commit cho mọi lệnh ghi được bảo vệ, retention và
 rollback (§11). **Đăng nhập production vẫn bị khóa** (`VINK_AUTH_SIGN_IN` mặc định `disabled`):
 chưa có thư tới hộp thư thật từ domain Vink, UI đăng nhập Web mới được kiểm chứng trong môi trường
@@ -215,14 +216,14 @@ Trạng thái sau §11 (10/11/2026): **đã xử lý trong code** = có implemen
 **còn mở** = chặn Accepted.
 
 1. **Đã trả lời 10/11/2026:** chủ sản phẩm **không** chọn UX chỉ-mã-email; yêu cầu username + mật
-   khẩu làm phương thức chính (§12). Phần này chuyển thành việc triển khai, chưa có code.
-2. **Một phần:** mail transport production đã có (SMTP + outbox bền, chọn Resend); **còn mở:** gửi
-   thật qua Resend, domain SPF/DKIM/DMARC, bounce/complaint, chi phí thật.
+   khẩu làm phương thức chính (§12). Web/App/Identity đã có luồng mật khẩu; production còn khóa.
+2. **Một phần:** mail transport dùng Resend HTTPS API + outbox bền; **còn mở:** kiểm egress, giao thư thật
+   qua API từ domain Vink, SPF/DKIM/DMARC, bounce/complaint và chi phí thật.
 3. **Một phần:** rate limit theo mạng nguồn (trusted proxy) + trần Identity, log giám sát; **còn
    mở:** biên/WAF chống flood thể tích, quy trình phục hồi tài khoản, thông báo về địa chỉ cũ khi đổi
    email.
-4. **Còn mở:** qualification trình duyệt (cookie `__Host-` trên origin thật, HTTPS) và UI đăng
-   nhập; carrier/CSRF cho native.
+4. **Còn mở:** qualification trình duyệt (cookie `__Host-` trên origin thật, HTTPS) cho UI đăng
+   nhập Web đã có; carrier/CSRF cho native.
 5. **Đã xử lý trong code:** fence đình chỉ tại commit cho mọi lệnh ghi được bảo vệ hiện có; retention
    phiên/challenge/bộ đếm. **Còn mở:** review bảo mật độc lập.
 6. **Còn mở:** một người/nhóm được giao chịu trách nhiệm bảo trì bảo mật auth (vá, sự cố, phục hồi
@@ -245,26 +246,18 @@ Mục tiêu: đưa authority A từ spike tới backend vận hành được, kh
 đợi ngoài. Bằng chứng: [auth-production-evidence](../development/auth-production-evidence.md);
 vận hành: [runbook](../development/auth-operations.md).
 
-### C1. SMTP hay API transactional email — **chọn SMTP (Resend)**
+### C1. Đường gửi thư (quyết định 20/11/2026)
 
-<!-- vdr: active D-05-C1@r1 -->
+<!-- vdr: active D-05-C1@r2 -->
 
-| | SMTP submission (`lettre`, rustls) | API HTTP của nhà cung cấp |
-| --- | --- | --- |
-| Phụ thuộc | Một crate, chuẩn RFC 5321; đổi nhà cung cấp = đổi host/credential | SDK hoặc client HTTP riêng cho từng hãng |
-| Kiểm thử | Relay giả nói đúng giao thức qua TCP thật | Mock HTTP theo hợp đồng hãng |
-| Ngữ nghĩa lỗi | Mã 4xx/5xx, không idempotency key | Lỗi có cấu trúc, idempotency key |
+Chủ sản phẩm chọn Resend HTTPS REST API, không triển khai SMTP mới và không dùng SMTP trên
+production. Giữ `MailSender`, outbox PostgreSQL, worker Identity và `local-outbox` offline.
+Lần thử lại phải giữ payload và idempotency key theo delivery ID; lỗi provider chỉ lưu loại và
+mã số, không log nội dung phản hồi, người nhận hay mã.
 
-**WHY:** trung lập nhà cung cấp, kiểm được bằng giao thức thật, cùng hướng Cantos đã vận hành
-(Resend qua SMTP, `lettre`). **Seam đổi nhà cung cấp:** worker chỉ giữ `Arc<dyn MailSender>`;
-`VINK_IDENTITY_SMTP_PROVIDER=resend` là một preset cấu hình; nhà cung cấp SMTP khác chỉ đổi cấu hình,
-nhà cung cấp chỉ có API HTTP là một `MailSender` mới — outbox, retry, nội dung thư không đổi. Gửi thật
-qua Resend (10/11/2026) thành công cả lệnh `mail test` lẫn luồng challenge → outbox → worker; trên mạng
-văn phòng, cổng 465 bị firewall Fortinet chặn TLS (client từ chối đúng), 587 STARTTLS dùng được. **HOW:** TLS bắt buộc (465 implicit hoặc 587 STARTTLS), plaintext chỉ cho
-relay loopback; mật khẩu (API key) chỉ qua file `0600`, đọc lại mỗi lần gửi (xoay không restart);
-lỗi rút gọn thành loại + mã số, không giữ văn bản relay (có thể chứa địa chỉ). **TRADEOFF:** không
-có idempotency key → trùng thư có thể xảy ra (cùng mã, cùng `Message-ID`, vô hại); bounce/complaint
-cần webhook của nhà cung cấp — chưa làm.
+**Lịch sử:** `D-05-C1@r1` chọn SMTP submission. [Bằng chứng SMTP cũ](../development/auth-production-evidence.md)
+không dùng để xác nhận HTTPS API, domain hay inbox Vink. Xem [runbook](../development/auth-operations.md)
+cho cấu hình và các gate chưa đạt. Lựa chọn C1 không chuyển `D-05@r1` thành Accepted.
 
 ### C2. Outbox PostgreSQL hay worker hiện có — **outbox của Identity, worker trong `serve`**
 
@@ -273,8 +266,8 @@ cần webhook của nhà cung cấp — chưa làm.
 `vink-worker` là tiến trình App, không được đọc DB Identity (mã là secret của Identity). **HOW:**
 bảng `mail_deliveries` trong `vink_identity`; challenge và ý định gửi commit cùng transaction; worker
 claim `FOR UPDATE SKIP LOCKED` + lease 45 s (nhiều instance an toàn), gửi ngoài transaction, ghi kết
-quả chỉ khi còn giữ `lease_token`; 5 lần, backoff 5→60 s + jitter; `5xx` dừng ngay; mã đã dùng/hết
-hạn bị hủy; trạng thái cuối xóa mã; worker thức ngay sau commit (Notify) và poll 2 s cho việc của
+quả chỉ khi còn giữ `lease_token`; 5 lần, backoff 5→60 s + jitter; HTTP `5xx` có thể thử lại; lỗi
+xác định bị từ chối thì dừng; mã đã dùng/hết hạn bị hủy; trạng thái cuối xóa mã; worker thức ngay sau commit (Notify) và poll 2 s cho việc của
 instance khác/retry. **TRADEOFF:** at-least-once, không exactly-once; thông lượng gắn với số instance
 Identity (đủ cho pilot; tách `deliver` thành lệnh riêng nếu cần).
 

@@ -142,6 +142,8 @@ async function restoredAttribution(page, check, holdAnswer, { url, endpoint, lin
 
 export async function authorProfiles(page, other, {base, openPage, check, holdAnswer, switchActor, textContrast}) {
   console.log('Author Profile and bylines (#292/#293):');
+  // The preceding multi-account scenario last opened a different tab.
+  await page.send('Page.bringToFront');
   await page.goto(base + '/toi');
   await page.waitFor(q('#edit-profile-link'), 'Me shows the profile entry');
   await page.eval(`${q('#edit-profile-link')}.focus()`);

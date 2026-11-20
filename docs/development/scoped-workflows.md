@@ -17,7 +17,7 @@ Tất cả ví dụ chạy ở repo root. Dùng `cargo xtask --help` để xem c
 | Unit/contract một owner | `cargo xtask verify unit app --filter publication` | Dependency biên dịch thật của package | Test binary, không server/DB/browser; zero match là FAIL |
 | Build API | `cargo xtask build api` | Không tool frontend | Chỉ binary `vink-app` |
 | API công khai | `cargo xtask dev api` | App DB đã migrate, role runtime | App với health + API, ẩn danh |
-| API với đăng nhập thật | `cargo xtask dev api --auth identity` | App/Identity DB đã migrate, runtime roles | Identity native + App; local mail outbox, không SMTP |
+| API với đăng nhập thật | `cargo xtask dev api --auth identity` | App/Identity DB đã migrate, runtime roles | Identity native + App; local mail outbox, không gửi ra ngoài |
 | Worker | `cargo xtask dev worker` | App DB đã migrate, runtime role | Chỉ `vink-worker`; outbox/retention, evaluation không tự bật |
 | Identity riêng | `cargo xtask dev identity` | Identity DB đã migrate, runtime role | Chỉ Identity native/socket/local outbox |
 | Web thử tay | `cargo xtask dev web --auth identity` | App/Identity DB, wasm target/bindgen, Node/npm | App SSR + assets và Identity; không Chrome E2E |
@@ -36,9 +36,9 @@ SSR do dependency package hiện tại; không yêu cầu Node/npm/bundle hoặc
 `dev api|web` mặc định `--auth none`, kể cả `.env`/shell có socket, principal mẫu hoặc sign-in
 được bật. `--auth fixture` đòi principal đã cấu hình; không tự tạo tài khoản, grant hay admin.
 `--auth identity` xóa fixture, dùng native Identity và giữ kiểm UID/socket, Origin, cookie/Bearer
-của dịch vụ. Cấu hình SMTP hoặc authority khác `native` bị từ chối; sign-in bị disable rõ ràng
+của dịch vụ. Cấu hình gửi ra ngoài hoặc authority khác `native` bị từ chối; sign-in bị disable rõ ràng
 vẫn được giữ. Workflow local không mở khóa production. Khi cần thử riêng authority email-code
-hay SMTP, dùng [runbook auth](auth-operations.md) và binary trực tiếp.
+hay Resend HTTPS API, dùng [runbook auth](auth-operations.md) và binary trực tiếp.
 
 ## Plan, doctor, dữ liệu và artifact
 
