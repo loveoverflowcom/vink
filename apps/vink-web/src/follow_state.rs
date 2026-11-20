@@ -283,7 +283,7 @@ impl FollowController {
                     can_follow: true,
                     notice,
                 };
-                let invalidation = changed.then(|| FollowInvalidation {
+                let invalidation = changed.then_some(FollowInvalidation {
                     target_handle: resp.target_handle,
                     following: resp.following,
                     accepted_order: resp.accepted_order,

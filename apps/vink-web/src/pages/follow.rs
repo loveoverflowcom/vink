@@ -211,11 +211,12 @@ pub(super) fn ProfileRelationships(
                 own_rel.valid_following_href().map(str::to_owned),
             ))
         } else {
+            #[cfg(not(feature = "hydrate"))]
+            let RelationshipSummary::Ready(pub_rel) = public.get();
+            #[cfg(feature = "hydrate")]
             let pub_rel = match public.get() {
                 RelationshipSummary::Ready(rel) => rel,
-                #[cfg(feature = "hydrate")]
                 RelationshipSummary::Reading => return Err(false),
-                #[cfg(feature = "hydrate")]
                 RelationshipSummary::Unavailable => return Err(true),
             };
             Ok((
