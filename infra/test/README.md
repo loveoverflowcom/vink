@@ -89,14 +89,14 @@ parent vẫn cần quyền connect socket; phải đo UID thực trong namespace
 Podman mapping không tự đồng nghĩa UID host10001; dùng `podman unshare`/operator provisioning đúng
 mapping, không chmod777, bỏ peer guard hoặc chạy privileged để chữa.
 
-SMTP nếu bật sau này cần bind mount password file0600 đúng UID Identity và cấu hình transport TLS.
-Compose secret mặc định0444 không đáp ứng kiểm tra source; base manifest **không cấu hình mail**.
+Base manifest **không cấu hình mail**. Resend HTTPS opt-in cần tệp API key mode 0600, owner theo
+UID Identity, và proxy riêng; xem [runbook Auth/Resend](../auth-mail/README.md).
 Auth sign-in bị khóa `disabled`; muốn opt-in test phải review authority/rate-limit/mail transport,
 thêm override explicit và kiểm lại, không sửa default global hoặc dùng fake email như mail thật.
 
 ## OCI build, smoke, publish và release
 
-Build không cần DB/DNS/SMTP/SSH. `.dockerignore` allowlist source; final image chỉ binary/site,
+Build không cần DB, DNS, Resend hoặc SSH. `.dockerignore` allowlist source; final image chỉ binary/site,
 CA certificates, curl và Debian runtime. Không Rust/Node/source/secrets trong final image.
 Toolchain1.99.1 và wasm-bindgen0.2.129 theo repo; khi nâng lockfile phải cập nhật pin rồi build lại.
 Kiểm linux libs bằng `ldd`, non-root, site đầy đủ, config-fail exit2, health và SIGTERM thật trước
@@ -192,3 +192,8 @@ khi compatibility đã kiểm, nếu chưa thì giữ hệ thống dừng và ph
 Xem [báo cáo lượt chạy](../../docs/development/test-container-evidence.md). Code-ready,
 image-built, image-published, DNS-applied và test-online là năm mức khác nhau. Không có quyền
 hạ tầng không cản PR code độc lập, nhưng tuyệt đối không đổi NOT_RUN thành PASS.
+
+## Thử native Identity qua Resend
+
+Xem [overlay Auth/Resend opt-in](../auth-mail/README.md) cho cấu hình test, kiểm tra bridge DB nội bộ bổ sung và
+rollback. Manifest mặc định không thay đổi; không dùng bộ secret, sender hoặc dữ liệu production.

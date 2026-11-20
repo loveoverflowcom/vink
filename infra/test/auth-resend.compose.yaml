@@ -1,0 +1,33 @@
+# Optional third file, after the PostgreSQL base and test overlay.
+# Keep the existing App/Worker network and loopback ingress; Identity never joins it.
+services:
+  app:
+    depends_on:
+      identity:
+        condition: service_healthy
+    environment:
+      VINK_AUTH_SIGN_IN: ${VINK_TEST_AUTH_SIGN_IN:-disabled}
+  postgres:
+    networks:
+      default: {}
+      auth-test-db:
+        aliases: [postgres]
+  identity:
+    networks:
+      auth-test-db: {}
+      auth-mail:
+        ipv4_address: ${VINK_TEST_AUTH_MAIL_IDENTITY_IP:?private test Identity IP required}
+    environment:
+      VINK_IDENTITY_AUTHORITY: native
+      VINK_IDENTITY_MAIL_TRANSPORT: resend-api
+      VINK_IDENTITY_RESEND_FROM: ${VINK_TEST_RESEND_FROM:?verified test sender required}
+      VINK_IDENTITY_RESEND_API_KEY_FILE: /run/vink-resend/api-key
+      VINK_IDENTITY_RESEND_PROXY: http://vink-resend-egress:3128
+    volumes:
+      - ${VINK_TEST_RESEND_SECRETS_DIR:?test Resend key directory required}:/run/vink-resend:ro
+networks:
+  auth-test-db:
+    internal: true
+  auth-mail:
+    name: vink-test-auth-mail
+    external: true

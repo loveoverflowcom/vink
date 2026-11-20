@@ -6,6 +6,10 @@ on:
       - .github/workflows/production-oci.yml
       - .github/workflows/publish-images.yml
       - infra/production/**
+      - infra/auth-mail/**
+      - infra/test/auth-resend.compose.yaml
+      - infra/test/compose.yaml
+      - services/postgres/compose.yaml
       - infra/Containerfile
       - infra/cloudflare/production/**
 permissions:
