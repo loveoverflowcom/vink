@@ -115,8 +115,7 @@ pub(crate) enum RelationshipSummary {
 #[component]
 pub(super) fn ProfileActionRegion(
     handle: String,
-    live_override: RwSignal<Option<RelationshipSummary>>,
-    retry_summary: RwSignal<u64>,
+    on_summary: Callback<Option<PublicRelationships>>,
     own_relationships: RwSignal<Option<(String, OwnRelationshipsSummary)>>,
 ) -> impl IntoView {
     let session = Session::current();
@@ -130,7 +129,7 @@ pub(super) fn ProfileActionRegion(
         }
     });
     #[cfg(not(feature = "hydrate"))]
-    let _ = (live_override, retry_summary, own_relationships);
+    let _ = (on_summary, own_relationships);
 
     view! {
         <div id="follow" class="vk-follow-region">
@@ -174,8 +173,7 @@ pub(super) fn ProfileActionRegion(
                                     <browser::ActiveFollowRegion
                                         scope
                                         handle=stored_handle.get_value()
-                                        live_override
-                                        retry_summary
+                                        on_summary
                                         own_relationships
                                     />
                                 }
@@ -375,6 +373,7 @@ fn RelationshipListPage(
     let hydrated = RwSignal::new(false);
     let append_trigger = RwSignal::new(0u64);
     let reload_trigger = RwSignal::new(0u64);
+    let first_trigger = RwSignal::new(0u64);
 
     let data = crate::api::author_relationships_resource(
         name.clone(),
@@ -416,6 +415,7 @@ fn RelationshipListPage(
                             live_state
                             append_trigger
                             reload_trigger
+                            first_trigger
                         />
                     }.into_any()
                 }
@@ -438,6 +438,7 @@ fn RelationshipListPage(
                         append_generation=append_trigger.read_only()
                         on_append=Callback::new(move |()| append_trigger.update(|n| *n += 1))
                         on_retry=Callback::new(move |()| renew())
+                        on_first=Callback::new(move |()| first_trigger.update(|n| *n += 1))
                     />
                 })}
             </Transition>
@@ -457,6 +458,7 @@ fn RelationshipListProjection(
     append_generation: ReadSignal<u64>,
     on_append: Callback<()>,
     on_retry: Callback<()>,
+    on_first: Callback<()>,
 ) -> impl IntoView {
     let initial = StoredValue::new(initial);
     let continued = cursor.is_some();
@@ -479,7 +481,7 @@ fn RelationshipListProjection(
             key=Clone::clone
             children=move |(handle, pen_name, href, is_own)| view! {
                 <RelationshipResults handle pen_name href direction is_own
-                    continued state hydrated append_generation on_append />
+                    continued state hydrated append_generation on_append on_first />
             }
         />
         {move || state.with(|state| match state {
@@ -508,6 +510,7 @@ fn RelationshipResults(
     hydrated: RwSignal<bool>,
     append_generation: ReadSignal<u64>,
     on_append: Callback<()>,
+    on_first: Callback<()>,
 ) -> impl IntoView {
     let title = direction_heading(direction, &pen_name);
     let list_url = StoredValue::new(format!("/@{handle}/{}", direction.web_segment()));
@@ -527,6 +530,14 @@ fn RelationshipResults(
                 .collect::<Vec<_>>(),
             _ => vec![],
         })
+    });
+    let has_previous_page = Memo::new(move |_| {
+        continued
+            || rows.with(|people| {
+                people
+                    .first()
+                    .is_some_and(|row| row.return_cursor.is_some())
+            })
     });
     let cursor = Memo::new(move |_| {
         state.with(|state| match state {
@@ -610,6 +621,21 @@ fn RelationshipResults(
                 </ul>
             }>
                 <p id="relationship-empty" class="vk-rel-empty">{empty_copy(direction, continued)}</p>
+            </Show>
+            <Show when=move || has_previous_page.get()>
+                <UiLink variant=LinkVariant::Standalone attr:id="rel-first-page"
+                    attr:data-profile-return="true" href=list_url.get_value()
+                    on:click=move |event: leptos::ev::MouseEvent| {
+                        // A Back-resumed page can share the first page's address.
+                        if !continued && event.button() == 0 && !event.ctrl_key() && !event.meta_key()
+                            && !event.shift_key() && !event.alt_key()
+                        {
+                            event.prevent_default();
+                            on_first.run(());
+                        }
+                    }>
+                    "Về trang đầu"
+                </UiLink>
             </Show>
             <Show when=move || cursor.with(Option::is_some)>
                 <div class="vk-rel-pagination">

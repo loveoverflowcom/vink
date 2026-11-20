@@ -1,11 +1,13 @@
 // #294 Social Follow Graph E2E: real Chrome, password sessions, App and scratch PostgreSQL.
 import { randomUUID } from 'node:crypto';
 import { authorFixtureSql } from './author-fixtures.mjs';
-import { q } from './auth-smoke.mjs';
+import { cookies, q } from './auth-smoke.mjs';
 import { captureRequest } from './auth-browser-network.mjs';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const literal = (text) => "'" + String(text).replaceAll("'", "''") + "'";
+const ownFollowing = '/api/v1/me/relationships/following';
+const sessionCookie = '__Host-vink_session';
 const ownProfile = (p) => p.eval("fetch('/api/v1/me/profile').then(r => r.json())");
 
 async function checkLayoutAndA11y(page, check, textContrast, url, contrastSelectors, label) {
@@ -434,12 +436,24 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   } finally {
     await summaryDown.finish();
   }
+  await page.eval(`window.__summaryProfile = ${q('.vk-author-public')}`);
+  const sessionControls = await openPage();
+  await switchActor('guest', sessionControls);
+  await page.waitFor(`${q('#follow-sign-in')} && ${q('#profile-relationships-retry')} && ${noFacts}`,
+    'same profile gives the signed-out visitor a public summary retry');
+  check(await page.eval(`window.__summaryProfile === ${q('.vk-author-public')}`),
+    'the page displaying the summary stayed mounted during sign-out');
+  const guestRetry = await holdAnswer(page, 'GET', new URL(profileApi).pathname);
   await page.click('#profile-relationships-retry');
+  check(await guestRetry.held() === 200, 'guest retry reads a real public summary');
+  await switchActor('a', sessionControls, 'anonymous');
+  await page.waitFor(q('#follow-action'), 'a replacement viewer session appears during the public read');
+  await guestRetry.finish(false, true);
   await page.waitFor(`${q('#profile-followers-link')}?.textContent.trim() === 'Người theo dõi' &&
     ${q('#profile-following-count')}?.textContent.trim() === '0 đang theo dõi' &&
     !${q('#profile-followers-count')} && !${q('#profile-following-link')}`,
     'retry restores a list without count and an independent zero count without list');
-  console.log('  ok  verified empty PUT, isolated summary error and independently granted fields after retry');
+  console.log('  ok  verified empty PUT, public summary retry as guest and separate fields after a viewer change');
 
   // 5. 15 followers + independent 4-policy matrix + append retry + mid-list live permission loss.
   const followerSql = [];
@@ -509,6 +523,21 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
       Object.keys(entry).sort().join(',') === 'cursor,href,id,source';
   })()`), 'Back stores only a cursor and navigation locators in history');
 
+  check(await guest.eval(`${q('#rel-first-page')}?.getAttribute('href') === ${JSON.stringify(listPath)} &&
+    ${q('#rel-first-page')}.textContent.trim() === 'Về trang đầu'`),
+    'the restored page has a native first-page link');
+  await guest.eval(`${q('#rel-first-page')}.focus()`);
+  await guest.key('Enter');
+  await guest.waitFor(`document.activeElement?.id === 'relationship-title' &&
+    document.querySelectorAll('.vk-rel-item').length === 12 && ${q('#rel-load-more')} &&
+    !${q('#rel-first-page')} && !history.state?.vinkProfileReturn`,
+    'keyboard first-page recovery clears the saved cursor and focuses the fresh heading');
+  console.log('  ok  restored page offers first-page recovery by keyboard');
+
+  await guest.eval(`${q('#rel-load-more')}.focus()`);
+  await guest.key('Enter');
+  await guest.waitFor(`document.activeElement === ${appendedLink}`, 'page 2 can be appended again after first-page recovery');
+
   const appendedEdge = `followee_id = ${literal(profB.principal_id)} AND follower_id =
     (SELECT principal_id FROM author_profiles WHERE current_handle = ${literal(appendedId.slice('rel-person-'.length))})`;
   const activeSince = authorFixtureSql(`SELECT active_since FROM author_follows WHERE ${appendedEdge}`);
@@ -538,6 +567,17 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   await guest.waitFor(`!${q('#rel-other-direction')} && !${q('#rel-direction-retry')} &&
     document.querySelectorAll('.vk-rel-item').length === 15`, 'append revalidates and removes a newly hidden opposite direction');
   console.log('  ok  append revalidates the opposite direction independently');
+
+  check(await guest.eval(`${q('#rel-first-page')}?.getAttribute('href') === ${JSON.stringify(listPath)} &&
+    ${q('#rel-first-page')}.textContent.trim() === 'Về trang đầu'`),
+    'the restored page has a native first-page link');
+  await guest.eval(`${q('#rel-first-page')}.focus()`);
+  await guest.key('Enter');
+  await guest.waitFor(`document.activeElement?.id === 'relationship-title' &&
+    document.querySelectorAll('.vk-rel-item').length === 12 && ${q('#rel-load-more')} &&
+    !${q('#rel-first-page')} && !history.state?.vinkProfileReturn`,
+    'keyboard first-page recovery clears the saved cursor and focuses the fresh heading');
+  console.log('  ok  restored page offers first-page recovery by keyboard');
 
   setPolicies({following_list: 'everyone'});
   await guest.goto(`${base}/@${handleB}`);
@@ -639,6 +679,67 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
   }'::jsonb WHERE principal_id = ${literal(profB.principal_id)}`);
   await checkLayoutAndA11y(page, check, textContrast, `${base}/@${handleB}`, ['#follow-action', '#profile-followers-link'], 'follow-profile');
   await checkLayoutAndA11y(guest, check, textContrast, `${base}/@${handleB}/nguoi-theo-doi`, ['#rel-back-profile', '#rel-load-more', '.vk-rel-item a'], 'follow-list');
+
+  // Create 15 edges for A so its real own cursor can be sent with B's cookie.
+  const fixtureMembers = `SELECT follower_id FROM author_follows
+    WHERE followee_id=${literal(profB.principal_id)} AND follower_id IN
+      (SELECT principal_id FROM author_profiles WHERE current_handle LIKE 'ban-theo-doi-%')`;
+  authorFixtureSql(`INSERT INTO author_follows
+    (follower_id, followee_id, active, version, accepted_order, active_since)
+    SELECT ${literal(profA.principal_id)}, follower_id, true, 1, 1, active_since
+    FROM author_follows WHERE followee_id=${literal(profB.principal_id)} AND follower_id IN (${fixtureMembers})`);
+  const raceTab = await openPage();
+  const ownListUrl = `${base}/@${handleA}/dang-theo-doi`;
+  const cookieA = (await cookies(page, base))[sessionCookie];
+  const cookieB = (await cookies(other, base))[sessionCookie];
+  check(cookieA && cookieB && cookieA.value !== cookieB.value, 'race fixture has two real browser sessions');
+  const useCookie = async ({name, value, sameSite}) => {
+    const {success} = await raceTab.send('Network.setCookie',
+      {name, value, url: base, path: '/', secure: true, httpOnly: true, sameSite});
+    check(success, 'scratch browser session cookie installed');
+  };
+  const ownFirst = await page.eval(`fetch(${JSON.stringify(ownFollowing)}).then(r => r.json())`);
+  const cursorPath = `${ownFollowing}?cursor=${encodeURIComponent(ownFirst.next_cursor)}`;
+  const bPage = await other.eval(`fetch(${JSON.stringify(ownFollowing)}).then(r => r.json())`);
+  const bRestart = await other.eval(`fetch(${JSON.stringify(cursorPath)}).then(r => r.json())`);
+  check(ownFirst.author?.handle === handleA && ownFirst.next_cursor &&
+    bPage.state === 'page' && bPage.author.handle === handleB &&
+    bRestart.state === 'restart' && bRestart.author.handle === handleB,
+    'scratch App returns B Page and B Restart with A’s cursor');
+  const checkPrivateFallback = async (label) => {
+    await raceTab.waitFor(`${q('#relationship-private')} && !${q('#relationship-count')} &&
+      !${q('.vk-rel-item')} && !${q('#rel-load-more')}`, label);
+    check(await raceTab.eval(`location.pathname === ${JSON.stringify(new URL(ownListUrl).pathname)} &&
+      !Array.from(document.querySelectorAll('h1')).some(h => h.textContent.includes(${JSON.stringify(bPage.author.pen_name)}))`),
+      'private fallback still belongs to requested A URL');
+  };
+  try {
+    const owner = await holdAnswer(raceTab, 'GET', `/api/v1/authors/${handleA}/relationship/me`);
+    await raceTab.goto(ownListUrl);
+    check(await owner.held() === 200, 'real Graph ownership read held before switching the cookie');
+    const privateRead = captureRequest(raceTab, 'GET', ownFollowing);
+    await useCookie(cookieB);
+    await owner.finish(false, true);
+    await checkPrivateFallback('B private Page cannot replace a list at A URL');
+    check(privateRead.count() > 0, 'initial list attempted the private endpoint after A’s Graph answer');
+    privateRead.close();
+
+    await useCookie(cookieA);
+    await raceTab.reload();
+    await raceTab.waitFor(`${q('#rel-load-more')} && ${q('#relationship-count')}`,
+      'A own Following offers its own append cursor again');
+    const append = await holdAnswer(raceTab, 'GET', ownFollowing);
+    await useCookie(cookieB);
+    await raceTab.click('#rel-load-more');
+    check(await append.held() === 200, 'private append gets a real reply after the cookie changes');
+    await append.finish(false, true);
+    await checkPrivateFallback('B private Restart cannot preserve or replace A’s private page');
+    console.log('  ok  verified real scratch A/B Page and Restart across a cookie race');
+  } finally {
+    await useCookie(cookieA);
+    authorFixtureSql(`DELETE FROM author_follows WHERE follower_id=${literal(profA.principal_id)}
+      AND followee_id IN (${fixtureMembers})`);
+  }
 
   // 7. Hold a nonempty page from A. After B and a different A session, the fixture's
   // now-inactive edge is absent. Releasing the old successful response must not reinsert it.

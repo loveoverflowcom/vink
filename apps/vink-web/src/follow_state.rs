@@ -529,6 +529,22 @@ impl FollowController {
     }
 }
 
+#[cfg(any(feature = "hydrate", test))]
+pub(crate) fn own_relationship_list_matches(
+    result: &crate::contract::follow::OwnRelationshipList,
+    handle: &str,
+    direction: crate::contract::follow::FollowDirection,
+) -> bool {
+    use crate::contract::follow::OwnRelationshipList::{Page, Restart};
+    let (author, actual_direction) = match result {
+        Page {
+            author, direction, ..
+        }
+        | Restart { author, direction } => (author, direction),
+    };
+    author.handle == handle && author.valid_href().is_some() && *actual_direction == direction
+}
+
 /// Allows returning ONLY to internal canonical `/@{handle}` or `/@{handle}/(nguoi-theo-doi|dang-theo-doi)`.
 pub fn safe_profile_return(raw: &str) -> Option<String> {
     let trimmed = raw.trim();
@@ -705,6 +721,47 @@ mod tests {
                 );
             }
             other => panic!("unexpected phase {other:?}"),
+        }
+    }
+
+    #[test]
+    fn follow_own_page_and_restart_require_the_canonical_owner_and_direction() {
+        use crate::contract::{PublicAuthorRef, follow::OwnRelationshipList};
+        let author = PublicAuthorRef {
+            pen_name: "Bút danh A".into(),
+            handle: "an-may".into(),
+            href: "/@an-may".into(),
+        };
+        let direction = FollowDirection::Following;
+        for result in [
+            OwnRelationshipList::Page {
+                author: author.clone(),
+                direction,
+                count: 1,
+                people: vec![],
+                next_cursor: None,
+            },
+            OwnRelationshipList::Restart { author, direction },
+        ] {
+            assert!(own_relationship_list_matches(&result, "an-may", direction));
+            assert!(!own_relationship_list_matches(
+                &result, "ben-song", direction
+            ));
+            assert!(!own_relationship_list_matches(
+                &result,
+                "an-may",
+                FollowDirection::Followers
+            ));
+            let mut noncanonical = result;
+            match &mut noncanonical {
+                OwnRelationshipList::Page { author, .. }
+                | OwnRelationshipList::Restart { author, .. } => author.href = "/@cu".into(),
+            }
+            assert!(!own_relationship_list_matches(
+                &noncanonical,
+                "an-may",
+                direction
+            ));
         }
     }
 

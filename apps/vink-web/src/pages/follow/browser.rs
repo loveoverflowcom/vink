@@ -7,15 +7,17 @@ use send_wrapper::SendWrapper;
 use vink_ui::{ActionState, Button, ButtonVariant, Link, LinkVariant};
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 
-use super::{LiveListState, RelationshipPersonRow, RelationshipSummary};
+use super::{LiveListState, RelationshipPersonRow};
 use crate::account::Session;
 use crate::api::{self, LoadError};
 use crate::contract::ApiError;
 use crate::contract::follow::{
     AuthorRelationshipsLoad, FollowDirection, OwnRelationshipList, OwnRelationshipsSummary,
-    PublicRelationshipList, ViewerRelationship,
+    PublicRelationshipList, PublicRelationships, ViewerRelationship,
 };
-use crate::follow_state::{FollowController, FollowInvalidation, FollowPhase, FollowScope};
+use crate::follow_state::{
+    FollowController, FollowInvalidation, FollowPhase, FollowScope, own_relationship_list_matches,
+};
 
 const FOLLOW_CHANNEL: &str = "vink-follow-changes";
 const SLOW_RECONCILE_DELAY_MS: i32 = 1000;
@@ -79,8 +81,7 @@ fn announce_follow_changed(invalidation: &FollowInvalidation) {
 pub(super) fn ActiveFollowRegion(
     scope: String,
     handle: String,
-    live_override: RwSignal<Option<RelationshipSummary>>,
-    retry_summary: RwSignal<u64>,
+    on_summary: Callback<Option<PublicRelationships>>,
     own_relationships: RwSignal<Option<(String, OwnRelationshipsSummary)>>,
 ) -> impl IntoView {
     let session = Session::current();
@@ -115,43 +116,8 @@ pub(super) fn ActiveFollowRegion(
         }
     });
 
-    let summary_ticket = RwSignal::new(0u64);
-    let refresh_summary = move || {
-        let target = stored_handle.get_value();
-        let order = controller.with_untracked(FollowController::highest_accepted_order);
-        summary_ticket.update(|n| *n += 1);
-        let ticket = summary_ticket.get_untracked();
-        live_override.set(Some(RelationshipSummary::Reading));
-        spawn_local(async move {
-            let result = api::load_author_relationships_summary(&target).await;
-            if still_live()
-                && summary_ticket.get_untracked() == ticket
-                && controller.try_with_untracked(FollowController::highest_accepted_order)
-                    == Some(order)
-            {
-                live_override.set(Some(match result {
-                    Ok(rel) => RelationshipSummary::Ready(rel),
-                    Err(_) => RelationshipSummary::Unavailable,
-                }));
-            }
-        });
-    };
-
-    Effect::new(move |previous: Option<u64>| {
-        let current = retry_summary.get();
-        if previous.is_some_and(|old| old != current) {
-            refresh_summary();
-        }
-        current
-    });
-
     let apply_invalidation = move |invalidation: FollowInvalidation| {
-        if let Some(rel) = invalidation.relationships.clone() {
-            summary_ticket.update(|n| *n += 1);
-            live_override.set(Some(RelationshipSummary::Ready(rel)));
-        } else {
-            refresh_summary();
-        }
+        on_summary.run(invalidation.relationships.clone());
         announce_follow_changed(&invalidation);
     };
 
@@ -456,6 +422,7 @@ pub(super) fn ListSyncHost(
     live_state: RwSignal<Option<LiveListState>>,
     append_trigger: RwSignal<u64>,
     reload_trigger: RwSignal<u64>,
+    first_trigger: RwSignal<u64>,
 ) -> impl IntoView {
     let session = Session::current();
     let list_gen = RwSignal::new(0u64);
@@ -484,7 +451,7 @@ pub(super) fn ListSyncHost(
         }
     });
 
-    let load_fresh = move |cursor_override: Option<String>| {
+    let load_fresh = move |cursor_override: Option<String>, force_public: bool| {
         request_heading();
         let generation = list_gen.with_untracked(|g| *g) + 1;
         list_gen.set(generation);
@@ -493,10 +460,11 @@ pub(super) fn ListSyncHost(
         live_state.set(Some(LiveListState::Loading));
 
         spawn_local(async move {
-            let is_own = active_scope.is_some()
+            let is_own = !force_public
+                && active_scope.is_some()
                 && matches!(
                     api::load_viewer_relationship(&handle).await,
-                    Ok(ViewerRelationship::SelfProfile { .. })
+                    Ok(ViewerRelationship::SelfProfile { target_handle, .. }) if target_handle == handle
                 );
             let still_current = || {
                 list_gen.try_get_untracked() == Some(generation)
@@ -557,7 +525,7 @@ pub(super) fn ListSyncHost(
                 || previous.as_ref().is_some_and(|old| old.1.is_some()))
             && previous.as_ref() != Some(&current)
         {
-            load_fresh(requested_cursor());
+            load_fresh(requested_cursor(), false);
         }
         current
     });
@@ -571,9 +539,20 @@ pub(super) fn ListSyncHost(
                     crate::session::Standing::Unknown
                 ))
         {
-            load_fresh(requested_cursor());
+            load_fresh(requested_cursor(), false);
         }
         cur
+    });
+
+    Effect::new(move |previous: Option<u64>| {
+        let current = first_trigger.get();
+        if previous.is_some_and(|old| old != current) {
+            super::super::clear_profile_return();
+            pending_return.set_value(None);
+            resume_cursor.set(None);
+            load_fresh(None, false);
+        }
+        current
     });
 
     // React to pagination Append triggers (`Tải thêm`).
@@ -605,21 +584,46 @@ pub(super) fn ListSyncHost(
         };
 
         let generation = list_gen.get_untracked();
+        let active_scope = session.profile_scope.get_untracked();
         let handle = stored_name.get_value();
+        if is_own && active_scope.is_none() {
+            resume_cursor.set(None);
+            load_fresh(None, true);
+            return cur;
+        }
         live_state.set(Some(page_snapshot));
 
         spawn_local(async move {
+            // The HTTP request is already tied to this cursor. Before applying any reply,
+            // verify that the mounted list still owns that exact append and session scope.
+            let owns_append = || {
+                list_gen.try_get_untracked() == Some(generation)
+                    && session.profile_scope.try_get_untracked() == Some(active_scope.clone())
+                    && live_state.try_with_untracked(|state| {
+                        matches!(state,
+                            Some(LiveListState::Page { next_cursor, appending: true, .. })
+                                if next_cursor.as_deref() == Some(cursor.as_str())
+                        )
+                    }) == Some(true)
+            };
             if is_own {
-                match api::load_own_relationships(direction, Some(&cursor)).await {
+                let result = api::load_own_relationships(direction, Some(&cursor)).await;
+                if !owns_append() {
+                    return;
+                }
+                match result {
+                    Ok(ref answer)
+                        if !own_relationship_list_matches(answer, &handle, direction) =>
+                    {
+                        resume_cursor.set(None);
+                        load_fresh(None, true);
+                    }
                     Ok(OwnRelationshipList::Page {
                         count,
                         people,
                         next_cursor,
                         ..
                     }) => {
-                        if list_gen.try_get_untracked() != Some(generation) {
-                            return;
-                        }
                         let focus = append_focus(people.first().map(|row| &row.author));
                         live_state.update(|s| {
                             if let Some(LiveListState::Page {
@@ -649,57 +653,50 @@ pub(super) fn ListSyncHost(
                         }
                     }
                     Ok(OwnRelationshipList::Restart { .. }) => {
-                        if list_gen.try_get_untracked() == Some(generation) {
-                            resume_cursor.set(None);
-                            load_fresh(None);
-                        }
+                        resume_cursor.set(None);
+                        load_fresh(None, false);
                     }
                     Err(ApiError::RelationshipListPrivate) => {
-                        if list_gen.try_get_untracked() == Some(generation) {
-                            request_heading();
-                            live_state.set(Some(LiveListState::Private));
-                        }
+                        request_heading();
+                        live_state.set(Some(LiveListState::Private));
                     }
                     Err(ApiError::ProfileGone) => {
-                        if list_gen.try_get_untracked() == Some(generation) {
-                            request_heading();
-                            live_state.set(Some(LiveListState::Gone));
-                        }
+                        request_heading();
+                        live_state.set(Some(LiveListState::Gone));
                     }
                     Err(ApiError::NotFound) => {
-                        if list_gen.try_get_untracked() == Some(generation) {
-                            request_heading();
-                            live_state.set(Some(LiveListState::Missing));
-                        }
+                        request_heading();
+                        live_state.set(Some(LiveListState::Missing));
                     }
                     Err(
                         ApiError::Unauthenticated
                         | ApiError::Forbidden
                         | ApiError::FollowActorUnavailable,
                     ) => {
-                        if list_gen.try_get_untracked() == Some(generation) {
-                            resume_cursor.set(None);
-                            load_fresh(None);
-                        }
+                        resume_cursor.set(None);
+                        load_fresh(None, true);
                     }
                     Err(_) => {
-                        if list_gen.try_get_untracked() == Some(generation) {
-                            live_state.update(|s| {
-                                if let Some(LiveListState::Page {
-                                    appending,
-                                    append_error,
-                                    ..
-                                }) = s
-                                {
-                                    *appending = false;
-                                    *append_error = true;
-                                }
-                            });
-                        }
+                        live_state.update(|s| {
+                            if let Some(LiveListState::Page {
+                                appending,
+                                append_error,
+                                ..
+                            }) = s
+                            {
+                                *appending = false;
+                                *append_error = true;
+                            }
+                        });
                     }
                 }
             } else {
-                match api::load_public_relationships(&handle, direction, Some(&cursor)).await {
+                let result =
+                    api::load_public_relationships(&handle, direction, Some(&cursor)).await;
+                if !owns_append() {
+                    return;
+                }
+                match result {
                     Ok(PublicRelationshipList::Page {
                         count,
                         people,
@@ -749,7 +746,7 @@ pub(super) fn ListSyncHost(
                     Ok(PublicRelationshipList::Restart { .. }) => {
                         if list_gen.try_get_untracked() == Some(generation) {
                             resume_cursor.set(None);
-                            load_fresh(None);
+                            load_fresh(None, false);
                         }
                     }
                     Err(ApiError::RelationshipListPrivate) => {
@@ -853,6 +850,7 @@ async fn read_relationship_page(
 ) -> LiveListState {
     if is_own {
         match api::load_own_relationships(direction, cursor).await {
+            Ok(ref answer) if !own_relationship_list_matches(answer, handle, direction) => {}
             Ok(OwnRelationshipList::Page {
                 author,
                 direction,

@@ -101,16 +101,8 @@ fn render_profile(
                 .to_uppercase();
             // The overlay belongs to this exact public projection. An authoritative refresh
             // may have revoked a list or count since the write; no old overlay may outlive it.
-            let live_relationships: RwSignal<Option<super::follow::RelationshipSummary>> =
-                RwSignal::new(None);
-            let retry_summary = RwSignal::new(0u64);
-            let initial_rel =
-                StoredValue::new(super::follow::RelationshipSummary::Ready(*relationships));
-            let effective_public = Signal::derive(move || {
-                live_relationships
-                    .get()
-                    .unwrap_or_else(|| initial_rel.get_value())
-            });
+            let (public_summary, on_summary) =
+                profile_summary(author.handle.clone(), *relationships);
             return view! {
                 <Title text=format!("{} · Vink", author.pen_name) />
                 <Link rel="canonical" href=crate::canonical_url(&author.href) />
@@ -125,14 +117,13 @@ fn render_profile(
                     </div>
                     <super::follow::ProfileActionRegion
                         handle=author.handle.clone()
-                        live_override=live_relationships
-                        retry_summary
+                        on_summary
                         own_relationships=own_relationships
                     />
                     <super::follow::ProfileRelationships
-                        public=effective_public
+                        public=public_summary.into()
                         own=own_relationships.read_only()
-                        on_retry=Callback::new(move |()| retry_summary.update(|n| *n += 1))
+                        on_retry=Callback::new(move |()| on_summary.run(None))
                     />
                     {bio.map(|text| view! { <p class="vk-author-bio">{text}</p> })}
                     <section aria-labelledby="author-works-heading">
@@ -213,6 +204,55 @@ fn render_profile(
         </section>
     }
     .into_any()
+}
+
+// The public summary lives with the rendered profile. A viewer change affects the
+// command/receipt and the private overlay, but the public read can still settle or retry.
+fn profile_summary(
+    handle: String,
+    initial: crate::contract::follow::PublicRelationships,
+) -> (
+    ReadSignal<super::follow::RelationshipSummary>,
+    Callback<Option<crate::contract::follow::PublicRelationships>>,
+) {
+    use super::follow::RelationshipSummary;
+    let (summary, set_summary) = signal(RelationshipSummary::Ready(initial));
+    #[cfg(feature = "hydrate")]
+    let publish = {
+        let ticket = RwSignal::new(0u64);
+        Callback::new(
+            move |confirmed: Option<crate::contract::follow::PublicRelationships>| {
+                ticket.update(|n| *n += 1);
+                match confirmed {
+                    Some(relationships) => {
+                        set_summary.set(RelationshipSummary::Ready(relationships))
+                    }
+                    None => {
+                        let target = handle.clone();
+                        let request = ticket.get_untracked();
+                        set_summary.set(RelationshipSummary::Reading);
+                        leptos::task::spawn_local(async move {
+                            let result =
+                                crate::api::load_author_relationships_summary(&target).await;
+                            if ticket.try_get_untracked() == Some(request) {
+                                set_summary.set(match result {
+                                    Ok(relationships) => RelationshipSummary::Ready(relationships),
+                                    Err(_) => RelationshipSummary::Unavailable,
+                                });
+                            }
+                        });
+                    }
+                }
+            },
+        )
+    };
+    #[cfg(not(feature = "hydrate"))]
+    let publish = Callback::new(
+        move |_: Option<crate::contract::follow::PublicRelationships>| {
+            let _ = (&handle, set_summary);
+        },
+    );
+    (summary, publish)
 }
 
 // A native GET is the fallback for the same path and cursor before hydration or without JS.

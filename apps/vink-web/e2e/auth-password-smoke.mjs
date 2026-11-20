@@ -523,12 +523,13 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
     (await read(other, `/api/v1/drafts/${draftA}`)).status === 404,
     'password reads the prior draft of the email account; another principal’s draft remains inaccessible');
 
-  const switchActor = async (actor) => {
-    await openAccount(page, base, 'active');
-    await signOut(page, base);
-    await credentials(page, LOGIN, actor === 'a' ? userA : userB, actor === 'a' ? SECRET_A : SECRET_B);
-    await page.click(LOGIN + '-submit');
-    await page.waitFor(`${STANDING} === 'active'`, 'replacement cookie confirmed');
+  const switchActor = async (actor, control = page, standing = 'active') => {
+    await openAccount(control, base, standing);
+    if (standing === 'active') await signOut(control, base);
+    if (actor === 'guest') return;
+    await credentials(control, LOGIN, actor === 'a' ? userA : userB, actor === 'a' ? SECRET_A : SECRET_B);
+    await control.click(LOGIN + '-submit');
+    await control.waitFor(`${STANDING} === 'active'`, 'replacement cookie confirmed');
   };
   await authorFollows(page, other, {
     base, openPage, check, holdAnswer, textContrast, switchActor,
