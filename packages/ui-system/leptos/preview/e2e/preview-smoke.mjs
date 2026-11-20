@@ -1085,11 +1085,16 @@ async function toggles(page) {
       const buttons = [...document.querySelectorAll('.vk-ui-toggle__control')];
       return buttons.length === 4 && buttons.every(b => {
         const glyph = b.querySelector('.vk-ui-toggle__glyph svg');
-        return glyph?.dataset.icon === 'pen-flight' && glyph.getAttribute('aria-hidden') === 'true'
+        const kind = b.closest('.vk-endorsement')?.dataset.kind;
+        const on = b.dataset.pressed === 'true';
+        const expectedGlyph = kind === 'work' ? 'pen-flight' : on ? 'heart' : 'heart-outline';
+        const label = kind === 'work' ? 'Thấm' : 'Ưng';
+        return (kind === 'work' || kind === 'comment') && glyph?.dataset.icon === expectedGlyph
+          && glyph.getAttribute('aria-hidden') === 'true' && b.getAttribute('aria-label') === (on ? 'Bỏ ' + label : label)
           && glyph.getBoundingClientRect().width === 20 && glyph.getBoundingClientRect().height === 20
-          && b.getBoundingClientRect().height >= 48 && !b.getAttribute('aria-label').includes('Pen Flight');
+          && b.getBoundingClientRect().width >= 48 && b.getBoundingClientRect().height >= 48;
       });
-    })()`), `Pen Flight: decorative 20px glyph and 48px target survive ${scenario}, labels stay independent`);
+    })()`), `Work Pen Flight and comment hearts: 20px decorative glyphs, 48px targets and confirmed action names in ${scenario}`);
   }
   await page.open('composition.endorsement', 'signed-out');
   const guest = await page.eval(`[...document.querySelectorAll('.vk-ui-toggle__control')].map((b) => [b.getAttribute('aria-disabled'), b.dataset.pressed])`);
