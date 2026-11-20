@@ -35,6 +35,8 @@ Debian Linux, Rust 1.99.1, wasm-bindgen 0.2.129, Node 24.22.3, PostgreSQL 17.11 
 
 Ảnh guest cho thấy SignInAvailable mở dialog và Escape giữ nháp. SignInClosed có đúng lý do qua aria-describedby nhưng thiếu icon khóa theo ảnh 04; glyph đã được nối vào nút Gửi của riêng trạng thái này. Ca Refused 403 với transport bị chặn trong trình duyệt giữ chữ và nêu lý do.
 
+Kiểm ô trả lời phát hiện thu ô khi POST đang bay vẫn giữ request nhưng tháo textarea khỏi DOM. Bản sửa giữ node sau lần mở đầu và ẩn ô trong lúc thu. Browser regression đối chiếu cùng node, vùng chọn ngược 1–4 và focus sau mở lại trước khi cấp ACK.
+
 Checkpoint `fd31064` đã kiểm 93/93 ảnh Reader. Ô gốc đã kiểm đủ chín trạng thái, ô trả lời đã quan sát tám trạng thái. Bài thử Auth bổ sung `SignInClosed` cho ô trả lời trên deployment tắt đăng nhập. Trạng thái từng AC và các lần chạy trên cây tích hợp được cập nhật trên [PR #366](https://github.com/loveoverflowcom/vink/pull/366). Bằng chứng auth/CDP không chứng minh IME của hệ điều hành hoặc screen reader.
 
 Issue #45; branch `codex/discussion-ui`, PR #59. Checkpoint local dưới đây đã tích hợp

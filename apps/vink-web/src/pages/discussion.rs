@@ -1163,16 +1163,15 @@ fn RootThreadView(
                 <div class="vk-discussion-reply-kept">
                     <p role="status">"Bản trả lời được giữ lại"</p>
                     <Button id=format!("reopen-reply-{}", root.get_value()) variant=ButtonVariant::Text
-                        attr:aria-label="Mở lại bình luận"
                         on_press=move |_| {
                         controller.update(|c| c.reopen(&key.get_value()));
                         #[cfg(feature = "hydrate")]
                         focus_discussion_control(format!("reply-composer-{}", root.get_value()));
-                    }>"Mở lại"</Button>
+                    }>"Mở lại"<span class="vk-ui-visually-hidden">" bình luận"</span></Button>
                 </div>
             </Show>
-            <Show when=move || !read_only && controller.read().draft(&key.get_value()).open>
-                <div class="vk-discussion-reply-composer">
+            <Show when=move || !read_only && controller.read().drafts.contains_key(&key.get_value())>
+                <div class="vk-discussion-reply-composer" hidden=move || !reply_expanded.get()>
                     <DiscussionComposer key=key.get_value() controller state refresh root_target reselect_id />
                 </div>
             </Show>

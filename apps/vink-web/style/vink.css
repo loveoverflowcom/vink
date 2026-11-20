@@ -629,6 +629,7 @@ a {
   min-width: 0;
 }
 .vk-discussion-reply-composer { display: grid; gap: var(--vk-space-3); margin-block-start: var(--vk-space-3); min-width: 0; }
+.vk-discussion-reply-composer[hidden] { display: none; }
 .vk-discussion-reply-composer > .vk-ui-action { justify-self: start; }
 
 .vk-discussion-delivery {

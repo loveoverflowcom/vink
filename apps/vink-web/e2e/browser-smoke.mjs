@@ -5735,10 +5735,17 @@ async function discussionReadingAndWrites(page) {
       await sleep(50);
     }
     check(await page.eval(`(() => { const b = document.querySelector('#reply-composer-${rootId}-send'); const f = document.querySelector('#reply-composer-${rootId}'); return b?.getAttribute('aria-busy')==='true' && getComputedStyle(b.querySelector(':scope > .vk-ui-icon')).display==='none' && !!b.querySelector('.vk-ui-button__status svg') && f?.readOnly===false && b.querySelector('.vk-ui-button__status').getBoundingClientRect().right <= b.querySelector('.vk-ui-button__label').getBoundingClientRect().left; })()`), 'R4 Sending keeps the field editable and places the progress indicator before its label');
+    await page.eval(`window.discussionReplyComposerNode = document.querySelector('#reply-composer-${rootId}');
+      window.discussionReplyComposerNode.setSelectionRange(1, 4, 'backward')`);
     await page.eval(`[...document.querySelectorAll('.vk-discussion-reply-composer button')].find(b=>b.textContent.trim()==='Thu ô · Giữ chữ').click()`);
-    await page.waitFor(`!document.querySelector('#reply-composer-${rootId}') && document.activeElement?.id==='reply-to-${replyId}' && document.querySelector('.vk-discussion-reply-kept')?.textContent.includes('Bản trả lời được giữ lại')`, 'reply composer collapsed cleanly with R4 kept pill');
+    await page.waitFor(`document.querySelector('#reply-composer-${rootId}') === window.discussionReplyComposerNode && window.discussionReplyComposerNode.getClientRects().length === 0 && document.activeElement?.id==='reply-to-${replyId}' && document.querySelector('.vk-discussion-reply-kept')?.textContent.includes('Bản trả lời được giữ lại')`, 'reply composer collapsed cleanly with R4 kept pill');
     await page.click(`#reopen-reply-${rootId}`);
-    await page.waitFor(`document.querySelector('#reply-composer-${rootId}-send')?.dataset.state==='pending'`, 'feature-owned transport survives composer collapse');
+    await page.waitFor(`document.activeElement === window.discussionReplyComposerNode &&
+      document.querySelector('#reply-composer-${rootId}') === window.discussionReplyComposerNode &&
+      window.discussionReplyComposerNode.selectionStart === 1 && window.discussionReplyComposerNode.selectionEnd === 4 &&
+      window.discussionReplyComposerNode.selectionDirection === 'backward' &&
+      document.querySelector('#reply-composer-${rootId}-send')?.dataset.state === 'pending'`,
+      'reopening restores focus and preserves the native textarea, selection and pending transport');
     await page.send('Fetch.fulfillRequest', { requestId: replyRequest, responseCode: 201,
       responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
       body: Buffer.from(JSON.stringify({ comment_id: '0192f3a1-0000-7000-8000-000000000099', status: 'pending', replayed: false })).toString('base64'),
