@@ -11,8 +11,12 @@ const sessionCookie = '__Host-vink_session';
 const ownProfile = (p) => p.eval("fetch('/api/v1/me/profile').then(r => r.json())");
 
 async function checkLayoutAndA11y(page, check, textContrast, url, contrastSelectors, label) {
+  // Audits switch between the guest and signed-in targets. Focus emulation lets
+  // DOM checks run in a background tab, but PNG capture needs its compositor surface.
+  await page.send('Page.bringToFront');
   await page.goto(url);
-  await page.waitFor(contrastSelectors.map(q).join(' && '), `${label} loaded`);
+  await page.waitFor(`document.visibilityState === 'visible' && ${contrastSelectors.map(q).join(' && ')}`,
+    `${label} visible with required targets`);
   for (const width of [320, 390, 834, 1024, 1440]) {
     for (const theme of ['light', 'dark']) {
       for (const scale of [100, 200]) {
@@ -89,10 +93,30 @@ async function checkLayoutAndA11y(page, check, textContrast, url, contrastSelect
         if ((width === 320 && scale === 200) ||
             (width === 390 && scale === 100) ||
             (width === 1440 && theme === 'light' && scale === 100)) {
-          await page.eval(`${q(contrastSelectors[0])}.scrollIntoView({block:'start'})`);
-          await page.capture(`${label}-${width}-${theme}-${scale}`,
-            {scenario:label, textScale:scale, requiredTargets:contrastSelectors});
-
+          const name = `${label}-${width}-${theme}-${scale}`;
+          // Let the foreground target frame the new scroll position before CDP snapshots it.
+          const context = await page.eval(`(async () => {
+            ${q(contrastSelectors[0])}.scrollIntoView({block:'start', behavior:'instant'});
+            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+            const root = document.documentElement;
+            return {
+              path: location.pathname, visibility: document.visibilityState,
+              focused: document.hasFocus(), readyState: document.readyState,
+              hydrated: root.dataset.hydrated === 'true',
+              width: innerWidth, height: innerHeight, dpr: devicePixelRatio,
+              theme: root.dataset.theme, fontSize: getComputedStyle(root).fontSize, scrollY,
+              wasmBytes: performance.getEntriesByType('resource')
+                .find(entry => new URL(entry.name).pathname.endsWith('/vink_bg.wasm'))?.decodedBodySize,
+            };
+          })()`);
+          try {
+            await page.capture(name, {
+              scenario: label, textScale: scale, requiredTargets: contrastSelectors,
+              requestedScene: {width, height: 900, theme, scale},
+            });
+          } catch (error) {
+            throw new Error(`${name} capture failed (${JSON.stringify(context)}): ${error.message}`, {cause: error});
+          }
         }
       }
     }
