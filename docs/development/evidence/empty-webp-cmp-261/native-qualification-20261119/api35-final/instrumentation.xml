@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuite name="vink.ui.diagnostic.DiagnosticTest" tests="10" failures="1" errors="0" skipped="0" time="15.842" timestamp="2026-11-19T14:01:48" hostname="localhost">
+  <properties>
+    <property name="device" value="vink261-head-api35(AVD) - 15" />
+    <property name="flavor" value="" />
+    <property name="project" value=":androidDiagnostic" />
+  </properties>
+  <testcase name="interactionImeClearAndSheetKeepControlledText" classname="vink.ui.diagnostic.DiagnosticTest" time="2.279">
+    <failure>java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'Đã tìm 1 lần' (ignoreCase: false))
+Semantics of the node:
+Node #75 at (l=105.0, t=1061.0, r=327.0, b=1110.0)px, Tag: 'interaction-count'
+Text = '[Đã tìm 0 lần]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 6 siblings
+Selector used: (TestTag = 'interaction-count')
+
+at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:264)
+at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:254)
+at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:208)
+at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:204)
+at vink.ui.diagnostic.DiagnosticTest.interactionImeClearAndSheetKeepControlledText(DiagnosticTest.kt:75)
+</failure>
+  </testcase>
+  <testcase name="webpAdapterRejectsInvalidBytesAndReportsBoundedOutput" classname="vink.ui.diagnostic.DiagnosticTest" time="0.783" />
+  <testcase name="artworkSearchKeepsQueryAndSelectionThroughThemeAndRecreation" classname="vink.ui.diagnostic.DiagnosticTest" time="2.138" />
+  <testcase name="pendingAndDisabledDoNotDispatchAgain" classname="vink.ui.diagnostic.DiagnosticTest" time="0.997" />
+  <testcase name="exactDecorativeAlphaWebpDecodesAndKeepsRecovery" classname="vink.ui.diagnostic.DiagnosticTest" time="1.469" />
+  <testcase name="webpSpecimenRendersPixelsAndReplacesThemWithFallback" classname="vink.ui.diagnostic.DiagnosticTest" time="1.181" />
+  <testcase name="controlledVietnameseTextSurvivesThemeAndRecreation" classname="vink.ui.diagnostic.DiagnosticTest" time="1.453" />
+  <testcase name="hostStopsActivityInBackgroundAndResumes" classname="vink.ui.diagnostic.DiagnosticTest" time="1.799" />
+  <testcase name="dialogWindowBackDismissesOnceAndExplicitPolicyRefuses" classname="vink.ui.diagnostic.DiagnosticTest" time="2.203" />
+  <testcase name="artworkRecoveryStaysAvailableWhileImageIsUnavailable" classname="vink.ui.diagnostic.DiagnosticTest" time="1.059" />
+</testsuite>

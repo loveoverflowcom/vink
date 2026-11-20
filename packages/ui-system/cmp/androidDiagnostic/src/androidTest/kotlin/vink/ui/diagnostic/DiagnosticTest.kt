@@ -8,8 +8,11 @@ import android.view.ViewGroup
 import androidx.compose.ui.graphics.ImageBitmapConfig
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.Lifecycle
 import java.io.File
@@ -183,6 +186,49 @@ class DiagnosticTest {
         ui.runOnIdle { ui.activity.model.update("search miss") { it.copy(scenario = "no-results") } }
         ui.onNodeWithText("Xóa tìm kiếm").performScrollTo().performClick()
         ui.onNodeWithTag("sample-result").assertTextEquals("Mẫu · Đã xóa tìm kiếm; không gọi dịch vụ.")
+    }
+
+    @Test fun artworkSearchKeepsQueryAndSelectionThroughThemeAndRecreation() {
+        ui.runOnIdle {
+            ui.activity.model.update("search miss") { it.copy(entry = "screen.explore", scenario = "no-results") }
+        }
+        val input = ui.onNode(hasSetTextAction())
+        val query = "Đường về O\u0302\u0303"
+        val selection = TextRange(2, 5)
+        val selectedRange = SemanticsMatcher.expectValue(SemanticsProperties.TextSelectionRange, selection)
+        input.performScrollTo().assertIsNotFocused().performClick()
+        input.performTextReplacement(query)
+        input.performTextInputSelection(selection)
+        input.assertTextContains(query).assert(selectedRange)
+
+        ui.onNodeWithText("Đổi sáng/tối").performScrollTo().performClick()
+        input.assertIsFocused().assertTextContains(query).assert(selectedRange)
+        ui.activityRule.scenario.recreate()
+        input.assertTextContains(query).assert(selectedRange)
+
+        ui.onNodeWithText("Xóa tìm kiếm").performScrollTo().performClick()
+        input.assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("")))
+        ui.onNodeWithTag("sample-result").assertTextEquals("Mẫu · Đã xóa tìm kiếm; không gọi dịch vụ.")
+    }
+
+    @Test fun artworkRecoveryStaysAvailableWhileImageIsUnavailable() {
+        ui.runOnIdle {
+            ui.activity.model.update("artwork unavailable") {
+                it.copy(entry = "screen.desk", scenario = "empty", textScale = 2f, hostActive = false)
+            }
+        }
+        val status = ui.onNodeWithTag("empty-artwork-text")
+        val action = ui.onNodeWithText("Viết bản thảo đầu tiên")
+        status.performScrollTo().assertIsDisplayed()
+            .assertTextEquals("Một trang dành riêng cho những điều bạn muốn viết.")
+        ui.onNodeWithTag("empty-artwork-ready").assertDoesNotExist()
+        action.performScrollTo().assertIsDisplayed().performClick()
+        ui.onNodeWithTag("sample-result").assertTextEquals("Mẫu · Đích #screen.editor/dirty")
+
+        ui.runOnIdle { ui.activity.model.update("artwork available") { it.copy(hostActive = true) } }
+        ui.waitUntil(10_000) { ui.onAllNodesWithTag("empty-artwork-ready").fetchSemanticsNodes().isNotEmpty() }
+        status.assertTextEquals("Một trang dành riêng cho những điều bạn muốn viết.")
+        action.assertExists()
     }
 
     private fun processPeakRssKiB(): Int? = File("/proc/self/status").useLines { lines ->

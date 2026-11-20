@@ -1,0 +1,58 @@
+[
+  {
+    "case": "screen.desk-empty-320-dark-200",
+    "activity_config": "mCurrentConfig={2.0 310mcc260mnc [en_US] ldltr sw320dp w320dp h680dp 160dpi nrml long port finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 320, 680) mAppBounds=Rect(0, 0 - 320, 680) mMaxBounds=Rect(0, 0 - 320, 680) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} s.2 fontWeightAdjustment=0}",
+    "os_font_scale": "2.0",
+    "preview_multiplier": 1,
+    "ime_top_px": 386,
+    "cta_bounds_px": [
+      40,
+      39,
+      280,
+      130
+    ],
+    "result": "Mẫu · Đích #screen.editor/dirty"
+  },
+  {
+    "case": "screen.explore-no-results-320-dark-200",
+    "activity_config": "mCurrentConfig={2.0 310mcc260mnc [en_US] ldltr sw320dp w320dp h680dp 160dpi nrml long port finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 320, 680) mAppBounds=Rect(0, 0 - 320, 680) mMaxBounds=Rect(0, 0 - 320, 680) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} s.2 fontWeightAdjustment=0}",
+    "os_font_scale": "2.0",
+    "preview_multiplier": 1,
+    "ime_top_px": 386,
+    "cta_bounds_px": [
+      59,
+      280,
+      261,
+      334
+    ],
+    "result": "Mẫu · Đã xóa tìm kiếm; không gọi dịch vụ."
+  },
+  {
+    "case": "screen.explore-empty-390-light-100",
+    "activity_config": "mCurrentConfig={1.0 310mcc260mnc [en_US] ldltr sw390dp w390dp h820dp 160dpi nrml long port finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 390, 820) mAppBounds=Rect(0, 0 - 390, 820) mMaxBounds=Rect(0, 0 - 390, 820) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} s.2 fontWeightAdjustment=0}",
+    "os_font_scale": "1.0",
+    "preview_multiplier": 1,
+    "ime_top_px": 490,
+    "cta_bounds_px": [
+      133,
+      313,
+      258,
+      361
+    ],
+    "result": "Mẫu · Đích #screen.editor/dirty"
+  },
+  {
+    "case": "screen.desk-no-results-834-light-200",
+    "activity_config": "mCurrentConfig={2.0 310mcc260mnc [en_US] ldltr sw834dp w834dp h912dp 160dpi lrg port finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 834, 912) mAppBounds=Rect(0, 0 - 834, 912) mMaxBounds=Rect(0, 0 - 834, 912) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} s.2 fontWeightAdjustment=0}",
+    "os_font_scale": "2.0",
+    "preview_multiplier": 1,
+    "ime_top_px": 517,
+    "cta_bounds_px": [
+      316,
+      292,
+      518,
+      346
+    ],
+    "result": "Mẫu · Đã xóa tìm kiếm; không gọi dịch vụ."
+  }
+]

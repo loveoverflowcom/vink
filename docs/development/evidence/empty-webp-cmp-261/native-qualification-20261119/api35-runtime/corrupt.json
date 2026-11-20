@@ -1,0 +1,18 @@
+{
+  "phase": "corrupt",
+  "launcher_config": "mCurrentConfig={1.0 310mcc260mnc [en_US] ldltr sw390dp w390dp h820dp 160dpi nrml long port finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 390, 820) mAppBounds=Rect(0, 0 - 390, 820) mMaxBounds=Rect(0, 0 - 390, 820) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=home mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.12 fontWeightAdjustment=0}",
+  "sentence": "Một trang dành riêng cho những điều bạn muốn viết.",
+  "status_bounds_px": [
+    40,
+    604,
+    350,
+    649
+  ],
+  "cta_bounds_px": [
+    101,
+    661,
+    290,
+    709
+  ],
+  "result": "Mẫu · Đích #screen.editor/dirty"
+}

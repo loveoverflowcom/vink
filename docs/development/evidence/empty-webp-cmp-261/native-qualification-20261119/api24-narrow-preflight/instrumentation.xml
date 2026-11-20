@@ -1,0 +1,71 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuite name="vink.ui.diagnostic.DiagnosticTest" tests="10" failures="3" errors="0" skipped="0" time="6.761" timestamp="2026-11-19T14:08:49" hostname="localhost">
+  <properties>
+    <property name="device" value="vink261-head-api24(AVD) - 7.0" />
+    <property name="flavor" value="" />
+    <property name="project" value=":androidDiagnostic" />
+  </properties>
+  <testcase name="interactionImeClearAndSheetKeepControlledText" classname="vink.ui.diagnostic.DiagnosticTest" time="1.13">
+    <failure>java.lang.AssertionError: Failed to assert the following: (EditableText = '')
+Semantics of the node:
+Node #59 at (l=105.0, t=2.0, r=285.0, b=722.0)px, Tag: 'interaction-search'
+ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+EditableText = 'Tiếng Việt'
+Focused = 'true'
+ImeAction = 'Search'
+InputText = 'Tiếng Việt'
+IsEditable = 'true'
+Text = '[Tìm tác phẩm]'
+TextSelectionRange = 'TextRange(10, 10)'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, InsertTextAtCursor, OnAutofillText, OnClick, OnLongClick, PasteText, PerformImeAction, RequestFocus, ScrollBy, ScrollByOffset, SetSelection, SetText, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 1 child, 6 siblings
+Selector used: (TestTag = 'interaction-search')
+
+at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:264)
+at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:254)
+at vink.ui.diagnostic.DiagnosticTest.interactionImeClearAndSheetKeepControlledText(DiagnosticTest.kt:70)
+</failure>
+  </testcase>
+  <testcase name="webpAdapterRejectsInvalidBytesAndReportsBoundedOutput" classname="vink.ui.diagnostic.DiagnosticTest" time="0.157" />
+  <testcase name="artworkSearchKeepsQueryAndSelectionThroughThemeAndRecreation" classname="vink.ui.diagnostic.DiagnosticTest" time="1.215" />
+  <testcase name="pendingAndDisabledDoNotDispatchAgain" classname="vink.ui.diagnostic.DiagnosticTest" time="0.248">
+    <failure>java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (Text + InputText + EditableText contains 'Đã nhận 1 lần kích hoạt' (ignoreCase: false))
+
+at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists(SemanticsNodeInteraction.kt:125)
+at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists$default(SemanticsNodeInteraction.kt:124)
+at vink.ui.diagnostic.DiagnosticTest.pendingAndDisabledDoNotDispatchAgain(DiagnosticTest.kt:62)
+</failure>
+  </testcase>
+  <testcase name="exactDecorativeAlphaWebpDecodesAndKeepsRecovery" classname="vink.ui.diagnostic.DiagnosticTest" time="0.819" />
+  <testcase name="webpSpecimenRendersPixelsAndReplacesThemWithFallback" classname="vink.ui.diagnostic.DiagnosticTest" time="0.428" />
+  <testcase name="controlledVietnameseTextSurvivesThemeAndRecreation" classname="vink.ui.diagnostic.DiagnosticTest" time="0.254">
+    <failure>java.lang.AssertionError: Failed to assert the following: (Focused = 'true')
+Semantics of the node:
+Node #568 at (l=105.0, t=1068.0, r=285.0, b=1351.0)px
+ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+EditableText = ''
+Focused = 'false'
+ImeAction = 'Next'
+InputText = ''
+IsEditable = 'true'
+Text = '[Tiêu đề (bắt buộc)]'
+TextSelectionRange = 'TextRange(0, 0)'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, InsertTextAtCursor, OnAutofillText, OnClick, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 1 sibling
+Selector used: ((SetText is defined)[0])
+
+at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:264)
+at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:254)
+at androidx.compose.ui.test.AssertionsKt.assertIsFocused(Assertions.kt:117)
+at vink.ui.diagnostic.DiagnosticTest.controlledVietnameseTextSurvivesThemeAndRecreation(DiagnosticTest.kt:39)
+</failure>
+  </testcase>
+  <testcase name="hostStopsActivityInBackgroundAndResumes" classname="vink.ui.diagnostic.DiagnosticTest" time="0.402" />
+  <testcase name="dialogWindowBackDismissesOnceAndExplicitPolicyRefuses" classname="vink.ui.diagnostic.DiagnosticTest" time="1.147" />
+  <testcase name="artworkRecoveryStaysAvailableWhileImageIsUnavailable" classname="vink.ui.diagnostic.DiagnosticTest" time="0.559" />
+</testsuite>

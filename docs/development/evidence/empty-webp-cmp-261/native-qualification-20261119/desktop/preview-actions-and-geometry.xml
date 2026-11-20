@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="vink.ui.preview.EmptyArtworkPreviewTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-11-19T13:57:28.721Z" hostname="Mac-mini" time="0.294">
+  <properties/>
+  <testcase name="failedPictureKeepsSemanticTextAndAction[desktop]" classname="vink.ui.preview.EmptyArtworkPreviewTest" time="0.017"/>
+  <testcase name="panelReflowsAtActualWidthsAndBothTextScales[desktop]" classname="vink.ui.preview.EmptyArtworkPreviewTest" time="0.023"/>
+  <testcase name="semanticStatesActionsAndInputIdentitySurviveChanges[desktop]" classname="vink.ui.preview.EmptyArtworkPreviewTest" time="0.254"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,19 @@
+eb7e65ee8a42d512343eb657abdd29cdec3d4f89
+ProductName:		macOS
+ProductVersion:		15.6
+BuildVersion:		24G84
+      Model Name: Mac mini
+      Chip: Apple M4
+      Total Number of Cores: 10 (4 performance and 6 efficiency)
+      Memory: 24 GB
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s5   228Gi   172Gi    17Gi    92%    2.7M  173M    2%   /System/Volumes/Data
+<home>/Library/Java/JavaVirtualMachines/jbr-21.0.11/Contents/Home
+rustc 1.99.1 (58cf8f9c3 2026-10-13)
+cargo 1.99.1 (5f94df478 2026-08-27)
+v22.15.0
+/Library/Developer/CommandLineTools
+xcode-select: error: tool 'xcodebuild' requires Xcode, but active developer directory '/Library/Developer/CommandLineTools' is a command line tools instance
+xcrun: error: unable to find utility "simctl", not a developer tool or in PATH
+XcodeGen: unavailable
+system-images/android-35/default/arm64-v8a/source.properties

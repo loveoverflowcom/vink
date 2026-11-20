@@ -6,6 +6,10 @@ owner database, hai role runtime và hai role migrator. Không publish port back
 PostgreSQL. Sign-in, SMTP và evaluation giữ tắt theo [Auth operations](../../docs/development/auth-operations.md).
 Giữ Vink test và Cantos trên mạng và dữ liệu hiện tại.
 
+Quy trình đưa Cloudflare trước Caddy nằm trong [runbook Cloudflare edge production](cloudflare-edge.md).
+Quy trình giữ domain ở registrar Spaceship và chuyển authoritative DNS sang Cloudflare Free
+trước khi bật proxy. Build và phát hành image dùng workflow bên dưới.
+
 ## Build và xác nhận bản phát hành
 
 Chạy [workflow thủ công](../../.github/workflows/publish-images.yml) với `platform=linux/amd64` cho
