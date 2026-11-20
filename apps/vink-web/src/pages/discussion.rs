@@ -743,7 +743,7 @@ fn DiscussionLoaded(
                 </div>
             </div>
             {fixture.is_some().then(|| view! { <p class="vk-muted vk-discussion-fixture-note">"Định danh thử trên thiết bị này · Không phải tài khoản thật."</p> })}
-            <p role="status" class="vk-discussion-mode__alert">{move || state.read().error.clone().unwrap_or_default()}</p>
+            <p role="status" class="vk-discussion-mode__alert vk-discussion-live" class:vk-ui-visually-hidden=move || state.read().error.is_none()>{move || state.read().error.clone().unwrap_or_default()}</p>
             <p role="status" class="vk-discussion-mode__alert">{move || state.read().mutation_message.clone().unwrap_or_default()}</p>
         </div>
         <Show when=move || !read_only>
@@ -842,8 +842,8 @@ fn OwnComments(
                         state=Signal::derive(move || if state.read().own.loading { ActionState::pending("Đang tải nhận xét của bạn…") } else { ActionState::Enabled })
                         on_press=move |_| read_private(state, controller, false)>"Làm mới nhận xét của bạn"</Button>
                 </div>
-                <p role="status">{move || state.read().own.error.as_ref().map(|e| crate::discussion_state::read_error_message(e, false)).unwrap_or_default()}</p>
-                <p role="status">{move || state.read().own.capability_error.as_ref().map(|_| "Chưa xác nhận được quyền thay đổi bình luận. Hãy làm mới nhận xét của bạn.").unwrap_or_default()}</p>
+                <p role="status" class="vk-discussion-live" class:vk-ui-visually-hidden=move || state.read().own.error.is_none()>{move || state.read().own.error.as_ref().map(|e| crate::discussion_state::read_error_message(e, false)).unwrap_or_default()}</p>
+                <p role="status" class="vk-discussion-live" class:vk-ui-visually-hidden=move || state.read().own.capability_error.is_none()>{move || state.read().own.capability_error.as_ref().map(|_| "Chưa xác nhận được quyền thay đổi bình luận. Hãy làm mới nhận xét của bạn.").unwrap_or_default()}</p>
                 <Show when=move || !state.read().own.loading && state.read().own.error.is_none() && state.read().own.visible_items(&state.read().public_ids()).is_empty()>
                     <p>"Chưa có nhận xét riêng nào trong phần đã tải."</p>
                 </Show>

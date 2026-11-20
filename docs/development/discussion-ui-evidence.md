@@ -21,6 +21,16 @@ Debian Linux, Rust 1.99.1, wasm-bindgen 0.2.129, Node 24.22.3, PostgreSQL 17.11 
 
 [Ảnh trước/sau của Uncertain](../design/evidence/discussion-r4-366/uncertain.jpg) · [Căn cột 1280](../design/evidence/discussion-r4-366/desktop-1280.jpg) · [Own approved ở 390](../design/evidence/discussion-r4-366/own-approved-390.jpg) · [Trang ẩn ở 390](../design/evidence/discussion-r4-366/hidden-390.jpg). Các ảnh này giữ đúng nguồn base `ac77a0f` và candidate `10ea20b`.
 
+### Cây tích hợp sau #357 và #358
+
+`develop@2b3f9d2480c64d9e5891ab66a2c55013a2629289`. Trên [13daed3](https://github.com/loveoverflowcom/vink/commit/13daed30fb5554b65cac11867b48114e92067066), `cargo xtask verify web --scenario review` với PostgreSQL 17.11 scratch đã qua cả hai trường hợp trang ẩn. Lượt Ưng trước khi ẩn là 1. Sau khi ẩn, Reader của người khác chỉ hiện chữ “Ưng”, summary trả 404 và người viết mở rồi hủy được xác nhận gỡ ở cả hai trang.
+
+Trên [bb25af4](https://github.com/loveoverflowcom/vink/commit/bb25af4f73916b38a0d80a81c74119719d901012), Chromium và App thật đã hiển thị đủ chín trạng thái của cả hai ô soạn. Refused dùng phản hồi 403 được kiểm soát. Sending dùng POST đã commit với ACK bị giữ. Ở bản trước sửa `13daed3`, thu ô khiến textarea mất kết nối với DOM. Ở `bb25af4`, sau một POST 201, thu rồi mở lại giữ nguyên node, focus và vùng chọn ngược 2–8 khi ACK còn chờ. IME qua CDP nhập đúng một chữ “đ”, Enter xuống dòng, không gửi nhận xét. [Chín trạng thái ô gốc](../design/evidence/discussion-r4-366/root-bb25af4.jpg) · [Chín trạng thái ô trả lời](../design/evidence/discussion-r4-366/reply-bb25af4.jpg) · [Thu và mở lại khi đang gửi](../design/evidence/discussion-r4-366/fold-bb25af4.jpg).
+
+`cargo xtask ui-preview leptos verify` trên Linux đã PASS 902 capture. Đã mở ảnh `screen.reader/feedback` và `composition.feedback/discussion-flat`. Bộ Reader riêng chạy 93 ảnh. Ở ma trận “Bạn đã gửi”, 64/64 ảnh không tràn ngang. Chip có tương phản thấp nhất 5,05:1, nút nhỏ nhất 153×48 px. Tải lại từ mục đã duyệt ngoài trang tạo đúng một GET. Bốn trạng thái Ưng/Trả lời được đo trên màu thực, gồm Ưng đã chọn 10,84:1 sáng và 8,23:1 tối. Quyết định accessibility của LVE dùng tên hành động “Ưng”/“Bỏ Ưng”; nút không gắn thêm `aria-pressed`. [Hợp đồng tên truy cập](../architecture/literary-endorsement.md).
+
+Ở 320 và 390 px, `bb25af4` còn khoảng trống 100 px giữa tiêu đề “Bạn đã gửi” và mục đầu. Hai vùng thông báo rỗng chứa một dấu cách do renderer sinh ra. Selector `:empty` không loại chúng khỏi grid. Bản sửa lấy trạng thái rỗng từ dữ liệu, giữ hai vùng thông báo trong DOM và kiểm khoảng cách tới item đầu bằng đúng một `row-gap`.
+
 ### Lệnh và giới hạn nghiệm thu
 
 | Lệnh | Kết quả tại checkpoint |

@@ -439,7 +439,7 @@ a {
 /* LVE #73: the work's endorsement closes the text, quiet and start-aligned, before discussion. */
 .vk-reader-endorsement { display: flex; margin-block: var(--vk-space-6) 0; min-width: 0; }
 .vk-discussion { margin-block: var(--vk-space-8); padding-block-start: var(--vk-space-6); border-block-start: 1px solid var(--vk-outline-variant); min-width: 0; display: grid; gap: var(--vk-space-3); }
-.vk-discussion [role="status"]:empty { display: none; }
+.vk-discussion [role="status"]:empty:not(.vk-discussion-live) { display: none; }
 .vk-discussion-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--vk-space-2) var(--vk-space-4); }
 .vk-discussion-head .vk-ui-heading { margin: 0; }
 .vk-discussion-order { font-size: var(--vk-type-caption-size); color: var(--vk-on-surface-variant); }
@@ -513,8 +513,6 @@ a {
 .vk-discussion-mode__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-2); }
 .vk-discussion-fixture-note, .vk-discussion-mode__alert { margin: 0; overflow-wrap: anywhere; }
 .vk-discussion-mode__alert { color: inherit; font-size: var(--vk-type-caption-size); }
-/* Keep the live regions mounted without empty grid rows above the author's items. */
-.vk-discussion-mode__alert:empty, #own-comments > [role="status"]:empty { position: absolute; margin: 0; }
 
 /* The global reduced-motion duration can still create a one-frame color transition. */
 @media (prefers-reduced-motion: reduce) {

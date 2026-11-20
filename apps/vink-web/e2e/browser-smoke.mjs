@@ -5600,6 +5600,13 @@ async function discussionReadingAndWrites(page) {
     const matches = own.roots.filter(root => root.root.kind === 'comment' && root.root.comment.body === text.trim());
     check(matches.length === 1 && matches[0].root.comment.visibility === 'own_pending', 'keyed replay persisted exactly one own-pending comment in real PostgreSQL');
     commentId = matches[0].root.comment.comment_id;
+    await page.waitFor(`document.querySelector('#own-comments [data-own-comment="${commentId}"]')`, 'the pending item appears in Bạn đã gửi');
+    check(await page.eval(`(() => {
+      const region = document.getElementById('own-comments');
+      const head = region.querySelector('.vk-discussion-own-head').getBoundingClientRect();
+      const card = region.querySelector('[data-own-comment]').getBoundingClientRect();
+      return Math.abs(card.top - head.bottom - parseFloat(getComputedStyle(region).rowGap)) <= 1;
+    })()`), 'empty live regions leave only one grid gap above the first own item');
     const publicHtml = await (await fetch(`${args.base}/tac-pham/${SAMPLE_WORK}`)).text();
     check(!publicHtml.includes('D2T-03 [Mẫu] Đọc khổ thơ') && !publicHtml.includes('own_pending') && !publicHtml.includes('own_rejected'), 'public SSR and hydration payload exclude fixture viewer-private comments');
   } finally {
