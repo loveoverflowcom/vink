@@ -726,8 +726,9 @@ export async function authorFollows(page, other, { base, openPage, check, holdAn
     console.log('  ok  verified real scratch A/B Page and Restart across a cookie race');
   } finally {
     await useCookie(cookieA);
-    authorFixtureSql(`DELETE FROM author_follows WHERE follower_id=${literal(profA.principal_id)}
-      AND followee_id IN (${fixtureMembers})`);
+    authorFixtureSql(`UPDATE author_follows SET active=false, version=version+1,
+      accepted_order=accepted_order+1, active_since=NULL
+      WHERE follower_id=${literal(profA.principal_id)} AND followee_id IN (${fixtureMembers})`);
   }
 
   // 7. Hold a nonempty page from A. After B and a different A session, the fixture's
