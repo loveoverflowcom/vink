@@ -515,6 +515,7 @@ a {
 .vk-discussion-mode__alert { color: var(--vk-error); font-size: var(--vk-type-caption-size); }
 
 /* R4 (#360 ảnh 07): static skeleton after 300ms delay, distinct error card and empty card. */
+.vk-discussion-load:not([hidden]) { display: contents; }
 .vk-discussion-skeleton-list { display: grid; gap: var(--vk-space-3); }
 .vk-discussion-loading .vk-ui-skeleton { animation: none; border-radius: var(--vk-radius-xl); background: var(--vk-surface-container-low); }
 .vk-discussion-state-card,

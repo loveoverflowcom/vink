@@ -5612,6 +5612,20 @@ async function discussionReadingAndWrites(page) {
   await page.eval(`[...document.querySelectorAll('.vk-discussion-closed-actions button')].find(b=>b.textContent.includes('Sao chép nháp'))?.click()`);
   await page.waitFor(`document.querySelector('.vk-discussion-closed-actions [data-copied="true"]')?.textContent.includes('Đã sao chép nháp')`, 'closed draft copy confirmation');
   check(await page.eval('navigator.clipboard.readText()') === text + newer, 'closed draft copy writes exact draft text to real clipboard');
+  // A missing Clipboard API must leave exactly the author's native draft selected.
+  await page.eval(`Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined })`);
+  try {
+    await page.eval(`[...document.querySelectorAll('.vk-discussion-closed-actions button')].find(b=>b.textContent.includes('Sao chép nháp')).click()`);
+    await page.waitFor(`(() => {
+      const field = document.querySelector('#root-composer');
+      const status = document.querySelector('.vk-discussion-closed-actions [role="status"]');
+      return status?.textContent.includes('Không thể tự động sao chép') && !status.hasAttribute('data-copied')
+        && document.activeElement === field && field.selectionStart === 0 && field.selectionEnd === field.value.length;
+    })()`, 'missing clipboard exposes manual copy and selects the entire unchanged draft');
+  } finally {
+    await page.eval(`delete navigator.clipboard`);
+  }
+
   const closed = await (await fetch(endpoint)).json();
   check(!closed.settings.comments_open && closed.settings.generation > 1, 'closed mode is a durable provider fact');
   await captureDiscussionMatrix(page, 'local-postgres-closed', '#feedback-heading', 'real-local-postgresql-with-fixture-identity');
@@ -5683,6 +5697,7 @@ async function discussionReadingAndWrites(page) {
     await page.click(`a[href="/tac-pham/${SAMPLE_WORK}"]`);
     const waitHeldDeadline = Date.now() + 5000;
     while (!heldInitialPublic && Date.now() < waitHeldDeadline) await sleep(20);
+    check(!!heldInitialPublic, 'the first public GET is held before measuring the skeleton');
     await sleep(120);
     check(await page.eval(`!document.querySelector('.vk-discussion-skeleton-list')`), '300ms gate hides skeleton before threshold');
     await page.waitFor(`!!document.querySelector('.vk-discussion-skeleton-list')`, 'static skeleton appears after 300ms delay');

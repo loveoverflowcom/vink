@@ -450,9 +450,10 @@ fn cancel_remove(state: RwSignal<ViewState>, id: String) {
 pub fn Discussion(work_id: String, #[prop(optional)] read_only: bool) -> impl IntoView {
     let resource = api::discussion_resource(work_id);
     let fixture = StoredValue::new(api::local_discussion_fixture_scope());
-    // The gate must outlive the fallback to finish its minimum visible interval.
-    let initial_skeleton =
-        discussion_skeleton_visibility(Signal::derive(move || resource.with(Option::is_none)));
+    // Reading the resource outside the nested Suspense also suspends the entire reader.
+    // Keep its future mounted while the discussion-only gate shows its minimum interval.
+    let initial_loading = RwSignal::new(true);
+    let initial_skeleton = discussion_skeleton_visibility(initial_loading.into());
     view! {
         <section id="feedback-region" class="vk-discussion" aria-labelledby="feedback-heading"
             data-readonly=read_only.then_some("true")>
@@ -469,12 +470,15 @@ pub fn Discussion(work_id: String, #[prop(optional)] read_only: bool) -> impl In
                     </div>
                 </div>
             })}
-            <Show when=move || !initial_skeleton.get() fallback=|| view! { <DiscussionSkeleton /> }>
+            <Show when=move || initial_skeleton.get()><DiscussionSkeleton /></Show>
+            <div class="vk-discussion-load" hidden=move || initial_skeleton.get()>
             <Suspense fallback=|| view! { <p role="status" class="vk-ui-visually-hidden">"Đang tải nhận xét…"</p> }>
                 {move || {
                     let fixture = fixture.get_value();
                     Suspend::new(async move {
-                        match resource.await {
+                        let result = resource.await;
+                        initial_loading.try_set(false);
+                        match result {
                             Ok(load) => view! { <DiscussionLoaded page=load.page.into() endorsements=load.endorsements fixture read_only /> }.into_any(),
                             Err(_) => view! {
                                 <div class="vk-discussion-state-card" data-tone="adverse" role="region" aria-label="Lỗi tải nhận xét">
@@ -484,14 +488,17 @@ pub fn Discussion(work_id: String, #[prop(optional)] read_only: bool) -> impl In
                                         <p role="status">"Chưa tải được nhận xét. Bạn vẫn có thể đọc tác phẩm."</p>
                                     </div>
                                     // A same-URL fragment link only scrolls and never re-runs the resource.
-                                    <DiscussionLoadRetry on_retry=move |_| resource.refetch() />
+                                    <DiscussionLoadRetry on_retry=move |_| {
+                                        initial_loading.set(true);
+                                        resource.refetch();
+                                    } />
                                 </div>
                             }.into_any(),
                         }
                     })
                 }}
             </Suspense>
-            </Show>
+            </div>
             <noscript><p>"Bật JavaScript để tải thêm phản hồi và soạn nhận xét. Các nhận xét công khai ở trên được máy chủ cung cấp."</p></noscript>
         </section>
     }
