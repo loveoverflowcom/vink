@@ -28,6 +28,13 @@ import org.jetbrains.skia.FontVariation
 import org.jetbrains.skia.Typeface
 import vink.ui.VinkFontFaces
 
+internal val expectedDesktopFontFiles = listOf(
+    "be-vietnam-pro-400.ttf",
+    "be-vietnam-pro-500.ttf",
+    "be-vietnam-pro-600.ttf",
+    "literata-variable.ttf",
+)
+
 class FontTest {
     private fun typeface(file: String): Typeface {
         val bytes = assertNotNull(PreviewFonts.resource(file), "missing resource: $file")
@@ -81,7 +88,7 @@ class FontTest {
     @Test
     fun composeMeasuresWithTheLoadedFacesAtBothWeights() {
         val loaded = PreviewFonts.load()
-        assertEquals(4, loaded.loaded.size, loaded.status)
+        assertEquals(expectedDesktopFontFiles, loaded.loaded.sorted(), loaded.status)
         val measurer = TextMeasurer(createFontFamilyResolver(), Density(1f), LayoutDirection.Ltr)
         for ((family, file) in listOf(
             loaded.fonts.ui to "be-vietnam-pro-400.ttf",

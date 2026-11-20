@@ -2473,6 +2473,10 @@ async function railReview(page) {
     check(axProfileEval.ok, `${name}: #profile-trigger AX exposes 'Tôi' without decorative badges (${axProfileEval.reasons.join('; ')})`);
     const railOverflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({ containers: ['#navigation'] })));
     check(railOverflow.ok, `${name}: rail and page have no unintended/hidden horizontal overflow (${railOverflow.reasons.join('; ')})`);
+    check(await page.eval(`(() => {
+      const rows = [...document.querySelectorAll('#explore .vk-public-row')];
+      return rows.length > 0 && rows.every(row => row.scrollWidth <= row.clientWidth + 1);
+    })()`), `${name}: each work link stays within its discovery row`);
     await page.capture(name, {
       scenario: 'rail-r1',
       requestedScene: { width, height, scale, theme },

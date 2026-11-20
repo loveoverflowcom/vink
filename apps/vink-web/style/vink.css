@@ -1603,12 +1603,11 @@ a {
   text-decoration: none;
   scroll-margin-block-start: 5.5rem;
 }
-/* A small bleed gives the focus ring room around flat text; it stays inside the list gap
-   and the page gutter, so it never adds horizontal scroll. */
+/* Extend into the gap between rows while keeping the hit area inside the list width. */
 .vk-discovery .vk-public-row__link::after {
   content: "";
   position: absolute;
-  inset: calc(var(--vk-space-2) * -1) calc(min(var(--vk-space-2), 8px) * -1);
+  inset: calc(var(--vk-space-2) * -1) 0;
   border-radius: var(--vk-radius-md);
 }
 /* The title's overlay spans the card; as a scroll anchor it would let a late title font in a
@@ -1675,13 +1674,15 @@ a {
 }
 /* Avatar + name + handle read as one byline pattern; the name underlines on hover. */
 .vk-public-row__profile {
+  align-self: flex-start;
+  max-inline-size: 100%;
   position: relative;
   z-index: 1;
   text-decoration: none;
   border-radius: 4px;
   scroll-margin-block-start: 5.5rem;
 }
-.vk-public-row__profile:hover {
+.vk-public-row__profile:hover .vk-public-row__author {
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.2em;

@@ -82,7 +82,7 @@ class VinkThemeTest {
 
     @Test
     fun lineHeightIsSizeTimesRatioInSp() {
-        assertEquals(VinkTextRoles.Body.size.value * 1.6f, VinkTextRoles.Body.lineHeight.value, 0.001f)
+        assertEquals(VinkTextRoles.Body.size.value * 1.65f, VinkTextRoles.Body.lineHeight.value, 0.001f)
         assertEquals(17f, VinkTextRoles.Reading.size.value)
         assertEquals(20f, VinkTextRoles.Reading.maxSize?.value)
     }

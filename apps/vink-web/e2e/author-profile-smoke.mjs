@@ -331,9 +331,16 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
     const query = new URLSearchParams(location.search);
     return location.pathname==='/' && query.get('q')==='rieng' && query.getAll('tag').join()==='tản-văn';
   })()`), 'Back preserves query and tag scope');
+  for (const part of ['avatar', 'author', 'handle']) {
+    await guest.click(cardA + ' .vk-public-row__' + part);
+    await guest.waitFor(`location.pathname===${JSON.stringify(aPath)} && ${q('#author-profile-heading')}`,
+      'clicking the ' + part + ' opens the same author profile');
+    await guest.eval('history.back()');
+    await guest.waitFor(`document.activeElement===${q(cardA)}`, 'Back from the ' + part + ' restores the byline');
+  }
   await guest.send('Emulation.setTouchEmulationEnabled', {enabled:true, maxTouchPoints:1});
   const point = await guest.eval(`(() => {
-    const el=${q(cardB)};
+    const el=${q(cardB + ' .vk-public-row__handle')};
     el.scrollIntoView({block:'center'});
     const rect=el.getBoundingClientRect();
     return {x:rect.x+rect.width/2, y:rect.y+rect.height/2};

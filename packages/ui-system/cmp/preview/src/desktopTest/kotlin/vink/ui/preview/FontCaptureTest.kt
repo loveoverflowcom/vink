@@ -26,7 +26,7 @@ class FontCaptureTest {
     @Test
     fun capturesTypographyBylineAndReaderWithBothFormats() {
         val after = PreviewFonts.load()
-        assertEquals(3, after.loaded.size, after.status)
+        assertEquals(expectedDesktopFontFiles, after.loaded.sorted(), after.status)
         // Exercise the old input through the same decode/construction seam. On Linux this is
         // the honest all-system fallback, on macOS it may be the actual original WOFF2 faces.
         val before = PreviewFonts.load { ttf ->
