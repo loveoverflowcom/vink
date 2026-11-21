@@ -1,9 +1,11 @@
 use leptos::{prelude::*, task::spawn_local};
 use vink_ui::{ActionState, Button, ButtonVariant};
+use wasm_bindgen::JsValue;
 
 use super::{RESULTS_HEADING, SearchResults, rows};
 use crate::account::Session;
 use crate::api::{self, InvalidRead, LoadError};
+use crate::contract::PublicAuthorPage;
 use crate::contract::follow::{MembershipItem, ViewerRelationship};
 use crate::follow_state::{FollowController, FollowEffect, FollowPhase, FollowScope};
 use crate::read_lifecycle::{Intent, PageChain, ReadOwner};
@@ -32,6 +34,86 @@ pub(super) fn observe(
             renew();
         }
     });
+}
+
+pub(super) fn return_notice(
+    resource: Resource<(u64, Result<PublicAuthorPage, LoadError>)>,
+    cursor: RwSignal<Option<String>>,
+    generation: RwSignal<u64>,
+) -> RwSignal<bool> {
+    let notice = RwSignal::new(false);
+    Effect::new(move |_| {
+        let generation = generation.get();
+        let cursor = cursor.get();
+        if notice.get_untracked() || !super::super::has_profile_return() {
+            return;
+        }
+        // Appended rows return to their own page. Wait for it, including when the
+        // first page was already in the hydrated document.
+        if let Some(expected) = author_search_return_cursor()
+            && cursor.as_deref() != Some(expected.as_str())
+        {
+            return;
+        }
+        let Some((stamp, Ok(page))) = resource.get() else {
+            return;
+        };
+        if stamp != generation {
+            return;
+        }
+        // Use the same id and href as profile navigation's focus restoration.
+        // has_profile_return has already checked that the entry owns the current address.
+        let Some((handle, href)) = author_search_return_target() else {
+            return;
+        };
+        if !page
+            .authors
+            .iter()
+            .any(|author| author.handle == handle && author.valid_href() == Some(href.as_str()))
+        {
+            notice.set(true);
+        }
+    });
+    notice
+}
+
+fn author_search_return_target() -> Option<(String, String)> {
+    fn property(value: &JsValue, key: &str) -> Option<JsValue> {
+        js_sys::Reflect::get(value, &JsValue::from_str(key)).ok()
+    }
+    let state = window().history().ok()?.state().ok()?;
+    let entry = property(&state, "vinkProfileReturn")?;
+    let id = property(&entry, "id")?.as_string()?;
+    let href = property(&entry, "href")?.as_string()?;
+    Some((id.strip_prefix("search-author-")?.to_owned(), href))
+}
+
+pub(super) fn own_handle() -> Signal<Option<String>> {
+    let session = Session::current();
+    let own = RwSignal::new(None::<(String, String)>);
+    Effect::new(move |_| {
+        own.set(None);
+        let Some(scope) = session.profile_scope.get() else {
+            return;
+        };
+        spawn_local(async move {
+            if let Ok(profile) = api::load_own_profile().await
+                && session.profile_scope.try_get_untracked().flatten().as_ref() == Some(&scope)
+                && session.principal.try_get_untracked().flatten().as_deref()
+                    == Some(profile.principal_id.as_str())
+            {
+                own.try_set(Some((scope, profile.handle)));
+            }
+        });
+    });
+    Signal::derive(move || {
+        let scope = session.profile_scope.get()?;
+        own.with(|own| {
+            own.as_ref()
+                .filter(|(stored, _)| stored == &scope)
+                .map(|(_, handle)| handle.clone())
+        })
+    })
 }
 
 #[derive(Clone, PartialEq)]
@@ -175,10 +257,16 @@ pub(super) fn enhance(
 pub(super) fn AuthorFollow(
     handle: String,
     membership: Signal<Option<Membership>>,
+    own_handle: Signal<Option<String>>,
     on_refresh: Callback<()>,
 ) -> impl IntoView {
     let target = StoredValue::new(handle);
+    let is_self =
+        move || own_handle.with(|own| target.with_value(|target| own.as_ref() == Some(target)));
     let scope = Memo::new(move |_| {
+        if is_self() {
+            return None;
+        }
         membership.with(|value| {
             let value = value.as_ref()?;
             target
@@ -187,6 +275,9 @@ pub(super) fn AuthorFollow(
         })
     });
     view! {
+        <Show when=is_self>
+            <span class="vk-author-search__self">"Bạn"</span>
+        </Show>
         <For each={move || scope.get().into_iter().collect::<Vec<_>>()} key=Clone::clone
             children=move |scope| view! { <ActiveAuthorFollow target scope membership on_refresh /> } />
     }
