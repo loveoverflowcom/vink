@@ -39,7 +39,7 @@ Bảng dưới tách rõ phần nền đã có trên `develop@1a0c4e31` và ph�
 | **Discussion & Outbox** | `EventKind::CommentSubmitted`, `OperatorReviewRequested` ([outbox.rs](../../services/vink-app/src/domain/discussion/outbox.rs)); `EffectHandler` chạy trong App DB tx không network ([persistence/outbox.rs](../../services/vink-app/src/persistence/outbox.rs)); `vink-worker` ([vink-worker.rs](../../services/vink-app/src/bin/vink-worker.rs)) với 30 ngày retention; giao dịch `moderate_comment` ghi lịch sử `comment_moderation_decisions` theo `(comment_id, version)`, còn `remove_own_comment` xóa thân bình luận ([discussion.rs](../../services/vink-app/src/persistence/discussion.rs)), `post_review::apply` ([post_review.rs](../../services/vink-app/src/persistence/post_review.rs)); cấu trúc phẳng `CommentPlacement` & `ReplyContext`/`OwnOverlay`. | Producer và outbox/relay cho `comment.root.approved`, `comment.reply.approved`, `comment.moderation.adverse`, invalidation; cơ chế giữ/đồng bộ vượt 2 DB sang Notification Service (`#346`). |
 | **Publication & Moderation** | `request_public`, `set_private` ([publication.rs](../../services/vink-app/src/persistence/publication.rs)), `finish_job` ([evaluation.rs](../../services/vink-app/src/persistence/evaluation.rs)), `conclude_case` ([moderation.rs](../../services/vink-app/src/persistence/moderation.rs)), `appeals::conclude` ([appeals.rs](../../services/vink-app/src/persistence/appeals.rs)); [lịch sử quyết định theo revision](../../services/vink-app/src/persistence/moderation_write.rs) và điều kiện thông báo đúng đợt công khai trong `Publication::should_notify_author` ([domain/publication.rs](../../services/vink-app/src/domain/publication.rs)); trang `review_withdrawn` (`O-17@r2`) và `hidden` (`PUB-07`). | Producer `work.moderation.decided` (`P-11a/b`), đường đọc chi tiết quyết định riêng `P-12A` qua Gateway (`#346`, `#348`); runtime `PUB-04` tác giả xóa bài & `PUB-05 C` admin gỡ toàn bài (vẫn là phụ thuộc vòng đời bài). |
 | **Endorsement (Thấm)** | `set_endorsement`, `endorsement_summaries` (tổng số), `own_endorsements` trên `work_endorsements` & `comment_endorsements` ([persistence/endorsement.rs](../../services/vink-app/src/persistence/endorsement.rs), [HTTP v1](../../services/vink-app/contracts/http/v1/README.md#literary-endorsement-lve-73)); pure `decide_endorsement` trả `EndorsementDelta` ([domain/endorsement.rs](../../services/vink-app/src/domain/endorsement.rs)). | Producer `work.endorsement.tham.changed` (chỉ Thấm, bỏ `None`, bỏ Hữu ích — `#346`); endpoint danh sách người Thấm công khai có phân trang cho khách `P-08` (`#348`). |
-| **Profile, Follow & Identity** | `identity::Resolution` ([identity/mod.rs](../../services/vink-app/src/identity/mod.rs)), [view public_author_attribution](../../services/vink-app/migrations/20261125010000_public_author_attribution.sql) và [phép chiếu AuthorAttribution](../../services/vink-app/src/application/profile.rs). [PR #331](https://github.com/loveoverflowcom/vink/pull/331) đã triển khai Follow của #294. Thông báo Follow vẫn `DEFERRED`. `services/postgres/provision.sh` (chỉ có DB `vink` & `vink_identity`) và `infra/production/backup.sh`. | DB PostgreSQL riêng + role migrate/runtime + binary `vink-notifications` + backup manifest mở rộng (`#347`); giao thức nội bộ xác thực peer/service (`T-07`); `SOC-DEP-01` xóa tài khoản hai DB & `D-05` mở khóa đăng nhập production. |
+| **Profile, Follow & Identity** | `identity::Resolution` ([identity/mod.rs](../../services/vink-app/src/identity/mod.rs)), [view public_author_attribution](../../services/vink-app/migrations/20261125010000_public_author_attribution.sql) và [phép chiếu AuthorAttribution](../../services/vink-app/src/application/profile.rs). [PR #331](https://github.com/loveoverflowcom/vink/pull/331) đã triển khai Follow của #294. Thông báo Follow vẫn `DEFERRED`. `services/postgres/provision.sh` (chỉ có DB `vink` & `vink_identity`) và `infra/production/backup.sh`. | DB PostgreSQL riêng + role migrate/runtime + binary `vink-notifications` + backup manifest mở rộng (`#347`, phần đầu đã có, xem §7); giao thức nội bộ xác thực peer/service (`T-07`, §7.1); `SOC-DEP-01` xóa tài khoản hai DB & `D-05` mở khóa đăng nhập production. |
 | **Web / Design / CMP** | Shell thích ứng, Reader `/tac-pham/:id`, Explore `/`, `/toi` (`Auth Web`). | Toàn bộ `LayoutSpec`, chuông/badge, popover/trang inbox, màn chi tiết quyết định riêng, UI danh sách Thấm công khai, bộ điều phối polling 30–60s (`LAYOUT_SPEC: NOT_CREATED`; CMP/native `DEFERRED`). |
 
 ---
@@ -161,7 +161,7 @@ Nhánh `feat/346-notification-producers-relay` (gốc `develop@ab5ecaf`). Bốn 
 | --- | --- |
 | Sản phẩm | `PRODUCT_CONFIRMED` trong brief `#305` R3; `VDR-NOTIFICATIONS@r1` vẫn `PENDING`. |
 | Kiến trúc | `T-01 / CHOICE-15 = A` và `T-02 / CHOICE-16 = A` là lựa chọn kỹ thuật của `#346` (§6.1–6.2), mức `DESIGN_PROPOSED`; không làm `VDR-NOTIFICATIONS-CONTRACT@r1` thành `ACCEPTED`. |
-| Triển khai | `persistence-api`: producer trong giao dịch nguồn, outbox `notification_events`/`notification_deliveries`, kích hoạt theo epoch, relay ACK có fence (thư viện `vink_app::notification_relay`), lệnh vận hành `vink-app notifications …`. Relay **chưa chạy** trong `vink-worker` vì transport `T-07` thuộc `#347` (log `notification_relay = "no_transport"`). |
+| Triển khai | `persistence-api`: producer trong giao dịch nguồn, outbox `notification_events`/`notification_deliveries`, kích hoạt theo epoch, relay ACK có fence (thư viện `vink_app::notification_relay`), lệnh vận hành `vink-app notifications …`. Relay chạy trong `vink-worker` khi cấu hình socket ingest của `#347` (§7; không cấu hình thì log `notification_relay = "no_transport"`). |
 | Bằng chứng | Unit domain (`domain::notification::tests`, 12 ca, gồm hai digest ví dụ của hợp đồng §3 khớp từng byte) và PostgreSQL thật (`tests/postgres/notification.rs`, 15 ca) với receiver fixture. Hai process/hai DB: `NOT_RUN` (chờ `#347`). |
 
 ### 6.1. `T-01 / CHOICE-15`: chọn A — mở rộng nền outbox hiện có
@@ -232,3 +232,105 @@ từ chối khi còn delivery chưa xong.
 Lệnh đã chạy (PostgreSQL 17.11 container tạm): `cargo test -p vink-app --lib domain::notification`,
 `cargo test -p vink-app --test postgres` (toàn suite). `cargo xtask verify quick` được chạy trước khi
 mở PR; CI không chờ theo yêu cầu của chủ dự án.
+
+---
+
+## 7. Hiện trạng `#347`: Notification Service
+
+Nhánh `feat/347-notification-service-inbox` (gốc `develop@07fec5a`). Đây là phần đầu của `#347`;
+các mục còn chờ ở §7.6 vẫn mở. Bốn chiều trạng thái:
+
+| Chiều | Ghi nhận |
+| --- | --- |
+| Sản phẩm | `PRODUCT_CONFIRMED` trong brief `#305` R3; `VDR-NOTIFICATIONS@r1` vẫn `PENDING`. |
+| Kiến trúc | `T-07 = A`, `T-03 = B`, `T-04 = A`, `T-05 = A`, `T-08 = A` (§7.1) là lựa chọn kỹ thuật của `#347`, mức `DESIGN_PROPOSED`; không làm `VDR-NOTIFICATIONS-CONTRACT@r1` thành `ACCEPTED`. |
+| Triển khai | `persistence-api` + `worker-provider` cục bộ: crate/binary [`vink-notifications`](../../services/vink-notifications/README.md), DB `vink_notifications` với role migrator/runtime trong [`provision.sh`](../../services/postgres/provision.sh), dump thứ ba trong [`backup.sh`](../../infra/production/backup.sh), [hợp đồng socket v1](../../services/vink-notifications/contracts/rpc/v1/README.md), sink socket của relay ([`notification_transport.rs`](../../services/vink-app/src/notification_transport.rs)) mà `vink-worker` chạy khi có `VINK_NOTIFICATIONS_INGEST_SOCKET` + `VINK_NOTIFICATIONS_SERVER_UID` (log `notification_relay = "socket"`, không thì vẫn `"no_transport"`). Chưa có image/service trong compose production, chưa có client Gateway (`#348`). |
+| Bằng chứng | §7.5. |
+
+### 7.1. Lựa chọn kỹ thuật
+
+- **`T-07 / CHOICE-21 = A` (Unix socket xác minh peer).** Cùng mẫu đã chạy với Identity: HTTP/1.1
+  trên Unix socket, service kiểm OS peer user (`SO_PEERCRED`) của từng kết nối, App kiểm ngược UID
+  của tiến trình phục vụ. Hai socket cho hai phạm vi (ingest cho relay, inbox cho Gateway); route
+  của phạm vi này không tồn tại trên socket kia. Production chạy mọi service cùng UID, nên phạm vi
+  được tách bằng mount: chỉ worker thấy socket ingest, chỉ app thấy socket inbox. Phương án B (HTTP
+  nội bộ có token/scope) cần thêm secret, rotation và TLS nội bộ mà topology một host hiện tại chưa
+  đòi hỏi; chuyển sang B khi service tách host.
+- **`T-03 / CHOICE-17 = B` (serialize trên dòng khóa kèm constraint).** Mọi thay đổi của một hộp thư
+  (hiệu ứng ingest, Read, Seen, MarkAllRead, đóng nhóm hết hạn) khóa `inboxes(recipient)` trước; partial
+  unique index `notification_groups_one_open` giữ tối đa một nhóm mở cho mỗi `group_key` như một
+  constraint. Khóa theo người nhận (thô hơn `group_key`) vì Read/expire/append và version của `T-05`
+  cùng tranh chấp trên một hộp thư. Hot key là một tác giả nhận nhiều tương tác cùng lúc: các ghi
+  của người đó chạy tuần tự; chưa đo (§7.6).
+- **`T-04 / CHOICE-18 = A` (state theo actor+target có thứ tự nguồn).** `tham_marks` giữ trạng thái
+  chọn mới nhất của (người nhận, actor, work, revision) cùng `accepted_order`; sự kiện cũ hơn không
+  đè sự kiện mới hơn. Chỉ `add` có `first_selection = true`, bài đọc được lúc commit và chưa từng có
+  tín hiệu mới tạo tín hiệu (`P-02B`); mọi `add`/`remove` khác chỉ đối soát membership của nhóm mở
+  (`P-03A`), về 0 thì nhóm đóng và ẩn. Fact lần đầu là `first_selection` của App (`#346`), không phải
+  việc thiếu receipt; dấu chống báo lại vì vậy nằm ở cả hai phía: App giữ suốt đời theo dòng
+  `work_endorsements`, service giữ dấu 400 ngày cho thứ tự/replay.
+- **`T-05 / CHOICE-19 = A` (version trong transaction serialize theo người nhận).** `inboxes.last_seq`
+  tăng khi giữ khóa dòng hộp thư, nên thứ tự số là thứ tự commit; `inbox_snapshot = s<last_seq>`,
+  `group_version`/`signal_version` là các giá trị của dãy này. Hai transaction lấy số rồi commit ngược
+  không thể xảy ra trong cùng hộp thư. ACK snapshot cũ là no-op; token vượt số đã commit bị từ chối.
+- **`T-08 / CHOICE-22 = A` (bảng/index thường + purge theo lô).** Purge mỗi giờ, 1 000 hàng mỗi lệnh,
+  theo `expires_at` có index. Hàng `inboxes` không bao giờ bị xóa để dãy số không quay lại (token cũ
+  không thể xác nhận tín hiệu mới). Partition chỉ cân nhắc khi số đo dung lượng/WAL/vacuum đòi hỏi.
+
+### 7.2. Nhóm, đóng góp và invalidation
+
+| Loại | `group_key` (`target_key`) | Đếm | Đóng góp |
+| --- | --- | --- | --- |
+| `comment.root.approved` | `work/{work_id}` | Người khác nhau | Bình luận (`comment_id`) |
+| `comment.reply.approved` | `root/{root_id}`, `reply/{reply_target_id}`, hoặc `purged/{comment_id}` khi neo đã mất (§4.3 B) | Người khác nhau | Bình luận |
+| `work.endorsement.tham.changed` | `revision/{work_id}/{revision_id}` | Người khác nhau | Revision (một mỗi actor) |
+| `work.moderation.decided` | `revision/{work_id}/{revision_id}/{approved\|rejected}` | Quyết định | — |
+| `comment.moderation.adverse` | `comment/{comment_id}/{rejected\|removed}` | Quyết định | — |
+
+Invalidation `comment` bỏ đóng góp của bình luận đó khỏi mọi nhóm còn hạn (đã đọc hoặc chưa) và
+ghi fence `comment_fences`, nên một lần duyệt cũ hơn đến muộn không phục hồi được. Invalidation
+`work` và `principal` chỉ có receipt (`noted`): Gateway kiểm quyền hiện hành ở mỗi lần đọc (`N4`).
+
+### 7.3. Retention, sự kiện muộn và phục hồi
+
+- Nhóm sống tối đa 180 ngày từ `created_at = min(now, occurred_at của sự kiện tạo nhóm)`; cập nhật
+  không gia hạn; nhóm hết hạn vô hình và không bao giờ được nhập lại, kể cả trước khi purge.
+- Sự kiện xảy ra quá 30 ngày (`late_event_cutoff`, bằng replay horizon của App) chỉ có receipt và
+  đối soát, không tạo/hồi sinh nhóm.
+- Receipt và fence 45 ngày, dấu Thấm 400 ngày, câu trả lời lệnh ACK 7 ngày.
+- **Recovery horizon (thiết kế):** 30 ngày. Notification DB restore lùi so với mốc App đã ACK: chạy
+  `vink-app notifications replay <since> <ghi chú>` với `since` ≤ thời điểm của bản backup; sự kiện đã
+  áp trước bản backup trả `already_applied`, sự kiện mất được áp lại, sự kiện quá 30 ngày không hiện
+  lại. Với backup hằng ngày, RPO của inbox sau replay là 0 cho sự kiện trong 30 ngày khi App DB còn
+  nguyên. Chiều ngược lại (App lùi mốc so với Notification, gồm mất cả instance) cần đối soát projection
+  trước khi phục vụ và **chưa có công cụ hay diễn tập** (§7.6).
+
+### 7.4. Vận hành
+
+`vink-notifications serve|migrate|maintenance purge|maintenance status` ([README](../../services/vink-notifications/README.md)).
+Thứ tự bật: provision → `vink-notifications migrate` → `serve` → cấu hình relay trong `vink-worker`
+→ chỉ sau đó `vink-app notifications activate` (`#346`). Backout:
+[`down.sql`](../../services/vink-notifications/migrations-rollback/20261128000000_notification_inbox.down.sql)
+từ chối khi còn nhóm trong hạn; dừng relay trước, nghĩa vụ App nằm chờ và được gửi lại sau khi
+migrate tiến.
+
+### 7.5. Tiêu chí của `#347` theo bằng chứng
+
+| AC | Kết quả | Còn chờ |
+| --- | --- | --- |
+| AC-01 | PASS phần service/DB/role/caller: binary riêng, DB riêng, role migrator/runtime qua `provision.sh`; runtime không DDL/TEMP; kết nối chéo giữa App/Identity/Notification bị từ chối; migrate bằng runtime thoát 1; socket sai/thiếu caller `401`, route sai phạm vi `404`; type quản trị bị từ chối và không lưu. Lane `verify postgres` (§7.5 lệnh). | Image/compose production; client Gateway (`#348`). |
+| AC-02 | PASS (PG): receipt + hiệu ứng một transaction; mất ACK → `already_applied`; payload mismatch không ghi; cùng event hai relay một hiệu ứng; 12 writer đồng thời một nhóm mở; Read đua append không tạo hai nhóm mở; event sau Read tạo nhóm mới; đếm actor khác nhau, preview ≤ 3 mới nhất. | Rollback có fault injection giữa chừng chỉ kiểm gián tiếp (lỗi database rollback cả sự kiện). |
+| AC-03 | PASS (PG): Thấm báo một lần; unlike giảm count/bù preview cả trong lẫn ngoài 3 tên; về 0 ẩn nhóm; relike âm thầm; nhóm đã Read giữ lịch sử; Remove trước Add cũ không đánh thức; relike sau purge 181 ngày vẫn im lặng. | Relike sau restore Notification thiếu dấu: chỉ dựa vào `first_selection` của App (thiết kế), chưa diễn tập hai process. |
+| AC-04 | PASS (PG + route): badge đếm nhóm chưa Seen; Seen theo snapshot, ACK cũ no-op, token tương lai `422`; Read theo phiên bản giữ tín hiệu mới; hai tab; MarkAllRead chỉ tới snapshot; cùng khóa khác lệnh `422`. | `stale` của badge và đo hội tụ dưới backlog cùng Gateway (`#348`); service luôn trả `fresh` hoặc `503`. |
+| AC-05 | PASS (PG, clock điều khiển): 180 ngày không gia hạn, ngày 181 tạo nhóm mới, purge xóa nhóm+membership, giữ dấu Thấm; sự kiện muộn không hiện. | Đo purge/WAL ở khối lượng thật. |
+| AC-06 | PARTIAL: relay thật → service thật qua socket, hai DB: `applied`; dừng service → retry `transport` rồi giao sau restart; `vink-app notifications replay` → `already_applied`, inbox không đổi; backup/restore `vink_notifications` bằng `pg_dump`/`pg_restore` khớp lịch sử và hàng; restore mất hết hàng rồi replay trong test PG không hồi sinh nhóm quá 30 ngày. | Diễn tập migration/backout trên bản sao, restore lệch mốc hai chiều với số đo, App lùi mốc, workload hot key, `EXPLAIN`, dung lượng, WAL/purge lag, backlog, ngân sách; RPO đo được; phân biệt sự cố riêng service với mất cả instance. |
+
+Lệnh đã chạy được ghi trong PR (SHA, container PostgreSQL 17.11 tạm, lane và kết quả).
+
+### 7.6. Còn mở
+
+- Image OCI và service `notifications` trong `infra/production/compose.yaml` (+ mount socket theo phạm vi).
+- Client inbox của Gateway và badge `stale` (`#348`); Gateway phải lọc nhóm theo quyền hiện hành, gồm
+  tác phẩm ẩn và principal đình chỉ (invalidation `work`/`principal` chưa đổi projection).
+- Diễn tập AC-06 đầy đủ và số đo ngân sách; công cụ đối soát khi App lùi mốc.
+- `admin.notice.reserved` vẫn `TYPE_ONLY_NOW`: bị từ chối ở ingest, không có bảng hay route gửi.
