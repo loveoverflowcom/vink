@@ -116,7 +116,7 @@ async fn first_public_keyset_live_revocation_cursor_and_no_store(pool: PgPool) {
     let other = seed_author(&pool, Uuid::new_v4(), "Thành viên", "feed-thanh-vien").await;
     let author = seed_author(&pool, Uuid::new_v4(), "Trăng non", "feed-trang-non").await;
     let poet = seed_author(&pool, Uuid::new_v4(), "Mây trắng", "feed-may-trang").await;
-    let empty = seed_author(&pool, Uuid::new_v4(), "Bản thảo", "feed-ban-thao").await;
+    seed_author(&pool, Uuid::new_v4(), "Bản thảo", "feed-ban-thao").await;
     let outside = seed_author(&pool, Uuid::new_v4(), "Ngoài dòng", "feed-ngoai-dong").await;
 
     let mut expected = works(&pool, author, 28, "Tác phẩm trước Follow").await;
