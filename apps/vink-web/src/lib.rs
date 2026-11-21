@@ -52,18 +52,36 @@ fn asset_url(path: &str) -> String {
     format!("{}{path}", option_env!("VINK_ASSET_PREFIX").unwrap_or(""))
 }
 
+// An SSR document can be at an earlier history entry when hydration starts.
+// Identify its route without reflecting the requested path, query or retired Handle into HTML.
+fn route_fingerprint(path: &str, query: &str) -> String {
+    use sha2::{Digest, Sha256};
+    let mut hash = Sha256::new();
+    hash.update(path.as_bytes());
+    hash.update([0]);
+    hash.update(query.as_bytes());
+    hash.finalize()[..16]
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
+
 /// HTML document around the app, rendered on the server only.
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     let fixture = api::local_discussion_fixture_scope();
+    let rendered_route = use_context::<leptos_router::location::RequestUrl>()
+        .and_then(|request| request.parse().ok())
+        .map(|url| route_fingerprint(url.path(), url.search()));
     view! {
         <!DOCTYPE html>
-        <html lang="vi">
+        <html lang="vi" data-rendered-route=rendered_route>
             <head>
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
                 <meta name="color-scheme" content="light dark" />
                 {fixture.map(|scope| view! { <meta name="vink-local-discussion-fixture" content=scope /> })}
                 {api::sign_in_open().then(|| view! { <meta name="vink-sign-in" content="open" /> })}
+                {api::following_feed_enabled().then(|| view! { <meta name="vink-following-feed" content="enabled" /> })}
                 <link id="vink-favicon" rel="icon" type="image/svg+xml" href=asset_url("/pkg/brand/vpen-r1-favicon.svg") />
                 <link id="vink-manifest" rel="manifest" href=asset_url("/pkg/brand/vpen-r1-manifest-light.webmanifest") />
                 <script inner_html=appearance::BOOTSTRAP></script>
@@ -200,6 +218,23 @@ fn mark_hydrated() {
 #[cfg(feature = "hydrate")]
 #[wasm_bindgen::prelude::wasm_bindgen]
 pub fn hydrate() {
+    use wasm_bindgen::prelude::*;
+
+    #[wasm_bindgen(module = "/profile/navigation.js")]
+    extern "C" {
+        #[wasm_bindgen(js_name = canHydrateCurrentEntry)]
+        fn can_hydrate_current_entry(fingerprint: &str) -> bool;
+    }
+
+    let location = window().location();
+    if let (Ok(path), Ok(query)) = (location.pathname(), location.search())
+        && !can_hydrate_current_entry(&route_fingerprint(
+            &path,
+            query.strip_prefix('?').unwrap_or(&query),
+        ))
+    {
+        return;
+    }
     console_error_panic_hook::set_once();
     leptos::mount::hydrate_body(App);
 }

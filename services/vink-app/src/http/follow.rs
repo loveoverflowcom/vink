@@ -2,22 +2,19 @@
 
 use axum::{
     Json, Router,
-    extract::{
-        DefaultBodyLimit, FromRequestParts, Path, RawQuery, State, rejection::JsonRejection,
-    },
-    http::{HeaderMap, HeaderValue, header, request::Parts},
+    extract::{DefaultBodyLimit, Path, RawQuery, State, rejection::JsonRejection},
+    http::{HeaderMap, HeaderValue, header},
     response::{IntoResponse, Response},
     routing::get,
 };
-use sha2::{Digest, Sha256};
 use tower_http::set_header::SetResponseHeaderLayer;
 use uuid::Uuid;
 
 use super::conditional::{self, PUBLIC_ERROR_CACHE_CONTROL};
-use super::{Actor, ApiError, AppState};
+use super::{Actor, ApiError, AppState, PrivateSession};
 use crate::application::follow::{FollowError, PublicRelationshipList, SetFollowInput};
 use crate::domain::follow::{FollowDirection, MAX_MEMBERSHIP_BATCH};
-use crate::domain::{handle, ids::PrincipalId};
+use crate::domain::handle;
 
 const FOLLOW_BODY_LIMIT: usize = 4096;
 const MAX_CURSOR_QUERY_LEN: usize = 1024;
@@ -213,34 +210,9 @@ async fn membership(
     ))
 }
 
-/// Own cursors belong to the authenticated credential, not just the resolved principal.
-/// Only a domain-separated digest reaches the graph adapter. It is never logged or serialized.
-struct OwnListSession {
-    actor: PrincipalId,
-    digest: [u8; 32],
-}
-
-impl FromRequestParts<AppState> for OwnListSession {
-    type Rejection = ApiError;
-
-    async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, ApiError> {
-        let Actor(actor) = Actor::from_request_parts(parts, state).await?;
-        let actor = actor.ok_or(ApiError::Unauthenticated)?;
-        let credential =
-            crate::identity::presented_credential(parts).ok_or(ApiError::Unauthenticated)?;
-        let mut hasher = Sha256::new();
-        hasher.update(b"vink-follow-own-session-v1");
-        hasher.update(credential.as_bytes());
-        Ok(Self {
-            actor,
-            digest: hasher.finalize().into(),
-        })
-    }
-}
-
 async fn own_followers(
     State(state): State<AppState>,
-    session: OwnListSession,
+    session: PrivateSession,
     raw: RawQuery,
 ) -> Result<Json<crate::application::follow::OwnRelationshipList>, ApiError> {
     own_list(state, session, FollowDirection::Followers, raw).await
@@ -248,7 +220,7 @@ async fn own_followers(
 
 async fn own_following(
     State(state): State<AppState>,
-    session: OwnListSession,
+    session: PrivateSession,
     raw: RawQuery,
 ) -> Result<Json<crate::application::follow::OwnRelationshipList>, ApiError> {
     own_list(state, session, FollowDirection::Following, raw).await
@@ -256,7 +228,7 @@ async fn own_following(
 
 async fn own_list(
     state: AppState,
-    session: OwnListSession,
+    session: PrivateSession,
     direction: FollowDirection,
     raw: RawQuery,
 ) -> Result<Json<crate::application::follow::OwnRelationshipList>, ApiError> {

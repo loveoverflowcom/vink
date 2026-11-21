@@ -132,7 +132,10 @@ pub(crate) fn shown_tags(
     }
 }
 
-fn summary(card: PublicCardFacts, catalog: &[CatalogTag]) -> Result<PublicWorkSummary, StoreError> {
+pub(crate) fn summary(
+    card: PublicCardFacts,
+    catalog: &[CatalogTag],
+) -> Result<PublicWorkSummary, StoreError> {
     let tags = shown_tags(card.snapshot.as_ref(), catalog)?;
     Ok(PublicWorkSummary {
         work_id: card.work_id,

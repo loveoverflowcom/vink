@@ -72,3 +72,7 @@ pub struct LocalDiscussionFixture(pub String);
 /// A rendering hint only: the sign-in routes decide again on every request.
 #[derive(Debug, Clone, Copy)]
 pub struct SignInOpen(pub bool);
+
+/// Deployment flag shared by the Explore shell and its private endpoint.
+#[derive(Clone, Copy)]
+pub struct FollowingFeedEnabled(pub bool);

@@ -108,6 +108,34 @@ pub struct WorkCard {
     pub tags: Vec<PublicTagDto>,
 }
 
+#[cfg(feature = "hydrate")]
+#[derive(Debug, Deserialize)]
+#[serde(tag = "state", rename_all = "snake_case")]
+pub(crate) enum FeedResponse {
+    Page {
+        viewer: String,
+        has_following: bool,
+        works: Vec<WorkCard>,
+        retained: Vec<WorkCard>,
+        next_cursor: Option<String>,
+    },
+    Checked {
+        viewer: String,
+        retained: Vec<WorkCard>,
+    },
+    Restart,
+}
+
+#[cfg(feature = "hydrate")]
+impl FeedResponse {
+    pub(crate) fn viewer(&self) -> Option<&str> {
+        match self {
+            Self::Page { viewer, .. } | Self::Checked { viewer, .. } => Some(viewer),
+            Self::Restart => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Publication {
     pub work_id: String,

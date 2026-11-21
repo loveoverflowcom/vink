@@ -2,6 +2,7 @@
 // The mail carrier is a local outbox. Faults delay/drop a real response or explicitly inject
 // a refusal; no synthetic success is used. Don't log request bodies, credentials or cookies.
 
+import { followingFeed } from './following-feed-smoke.mjs';
 import { authorFollows } from './author-follow-smoke.mjs';
 import { authorHandles } from './author-handle-smoke.mjs';
 import { authorProfiles } from './author-profile-smoke.mjs';
@@ -533,6 +534,9 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   };
   await authorFollows(page, other, {
     base, openPage, check, holdAnswer, textContrast, switchActor,
+  });
+  await followingFeed(page, other, {
+    base, openPage, check, holdAnswer, switchActor, textContrast,
   });
   await authorProfiles(page, other, {
     base, openPage, check, holdAnswer, textContrast,
