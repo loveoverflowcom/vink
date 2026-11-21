@@ -14,32 +14,6 @@ use crate::contract::{
 };
 
 #[component]
-pub(super) fn OwnProfileLink(handle: String) -> impl IntoView {
-    let session = Session::current();
-    let owner = LocalResource::new(move || {
-        let scope = session.profile_scope.get();
-        async move {
-            let scope = scope?;
-            let profile = api::load_own_profile().await.ok()?;
-            (session.profile_scope.get_untracked().as_deref() == Some(scope.as_str())
-                && session.principal.get_untracked().as_deref()
-                    == Some(profile.principal_id.as_str()))
-            .then_some((scope, profile.handle))
-        }
-    });
-    move || {
-        let scope = session.profile_scope.get();
-        owner.get().flatten().and_then(|(read_scope, owned)| {
-            (scope.as_deref() == Some(&read_scope) && owned == handle).then(|| view! {
-                <Link attr:id="own-profile-edit-link" attr:data-profile-return="true" href=super::EDIT_PATH>
-                    "Chỉnh hồ sơ"
-                </Link>
-            })
-        })
-    }
-}
-
-#[component]
 pub(super) fn OwnProfileHost(scope: String) -> impl IntoView {
     let session = Session::current();
     let attempt = RwSignal::new(0u64);

@@ -16,7 +16,7 @@ serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.154"
 sha2 = "=0.11.1"
 thiserror = "=2.0.21"
-time = "=0.3.55"
+time = { version = "=0.3.55", features = ["formatting"] }
 unicode-normalization = "=0.1.26"
 vink-markdown-text = { path = "../../../packages/markdown-text" }
 uuid = { version = "=1.29.0", features = ["v7"] }

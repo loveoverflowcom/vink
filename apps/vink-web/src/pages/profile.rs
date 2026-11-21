@@ -56,21 +56,6 @@ fn OwnProfileHost(scope: String) -> impl IntoView {
     let _ = scope;
 }
 
-#[component]
-pub(super) fn OwnProfileLink(handle: String) -> impl IntoView {
-    let session = Session::current();
-    view! {
-        <Show when=move || session.profile_scope.get().is_some()>
-            {
-                #[cfg(feature = "hydrate")]
-                { view! { <browser::OwnProfileLink handle=handle.clone() /> } }
-                #[cfg(not(feature = "hydrate"))]
-                { let _ = &handle; }
-            }
-        </Show>
-    }
-}
-
 #[cfg(feature = "hydrate")]
 const CHANNEL: &str = "vink-profile-changes";
 

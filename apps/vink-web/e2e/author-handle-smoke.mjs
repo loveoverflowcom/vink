@@ -168,6 +168,54 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
   );
   await visit(initial, 'mua-ngo');
   await visit('dem-mua', 'mua-ngo');
+  for (const method of ['GET', 'HEAD']) {
+    for (const alias of [initial, 'dem-mua']) {
+      const result = await fetch(`${base}/@${alias}?next=elsewhere`, {method, redirect: 'manual'});
+      check(result.status === 301 && result.headers.get('location') === '/@mua-ngo' &&
+        result.headers.get('cache-control')?.includes('no-store'), `${method} on ${alias} redirects directly to the canonical profile`);
+    }
+  }
+  // A saved author link can have been built before the rename. Hold the real Alias DTO
+  // beyond the old 10s deadline, then abandon the same request in a separate navigation.
+  async function openAliasSource() {
+    await guest.goto(base + '/');
+    await guest.waitFor("document.documentElement.dataset.hydrated === 'true'", 'alias source has hydrated');
+    await guest.eval(`(() => {
+      const saved = document.createElement('a');
+      saved.id = 'scenario-saved-author';
+      saved.setAttribute('data-profile-return', 'true');
+      saved.href = '/@${initial}';
+      saved.textContent = 'Địa chỉ tác giả đã lưu';
+      const next = document.createElement('a');
+      next.id = 'scenario-next-destination';
+      next.href = '/toi';
+      next.textContent = 'Tôi';
+      document.querySelector('main').prepend(saved, next);
+    })()`);
+  }
+  const aliasApi = '/api/v1/authors/' + initial;
+  await openAliasSource();
+  const slowAlias = await holdAnswer(guest, 'GET', aliasApi);
+  await guest.click('#scenario-saved-author');
+  check(await slowAlias.held() === 200, 'real Alias DTO held before delivery');
+  await new Promise(resolve => setTimeout(resolve, 11000));
+  await slowAlias.finish(false, true);
+  await guest.waitFor(`location.pathname === '/@mua-ngo' &&
+    document.activeElement?.id === 'author-profile-heading'`,
+    'slow alias activation hands focus to canonical H1 after 11 seconds');
+  console.log('  ok  slow alias preserves canonical H1 focus after an 11 second wait');
+
+  await openAliasSource();
+  const abandonedAlias = await holdAnswer(guest, 'GET', aliasApi);
+  await guest.click('#scenario-saved-author');
+  check(await abandonedAlias.held() === 200, 'second Alias DTO held before choosing another destination');
+  await guest.click('#scenario-next-destination');
+  await guest.waitFor("location.pathname === '/toi' && document.querySelector('#me-title')", 'new destination commits first');
+  await abandonedAlias.finish(false, true);
+  check(await guest.eval("location.pathname === '/toi' && !sessionStorage.getItem('vinkProfileAliasFocus')"),
+    'abandoned alias cannot replace the newer destination or queue stale focus');
+  await guest.goto(base + '/@mua-ngo');
+  const formerName = await guest.eval(`${has('#author-profile-heading')}.textContent`);
   await guest.capture('handle-public-guest', { scenario: 'handle-public', textScale: 100 });
   await guest.goto(base + '/toi');
   // Account orchestration belongs to #297. Fence the profile in this exact disposable
@@ -187,6 +235,30 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
       "document.querySelector('main h1')?.textContent==='Hồ sơ không còn trên Vink'",
       'previously visited URL now gone',
     );
+  }
+  for (const method of ['GET', 'HEAD']) {
+    const result = await fetch(`${base}/@${initial}`, {method, redirect:'manual'});
+    check(result.status === 410 && !result.headers.has('location') &&
+      result.headers.get('cache-control')?.includes('no-store'), `${method} on a retired alias returns 410 with no redirect`);
+    const html = await result.text();
+    check(!html.includes('mua-ngo') && !html.includes('dem-mua') && !html.includes(initial) && !html.includes(formerName) &&
+      (method !== 'GET' || (html.includes('Hồ sơ không còn trên Vink') && !html.includes('rel="canonical"'))),
+      `${method} on a retired alias omits old byline links, canonical and handles`);
+  }
+  await guest.send('Emulation.setScriptExecutionDisabled', {value:true});
+  try {
+    await guest.goto(`${base}/@${initial}`);
+    check(await guest.eval(`${has('#profile-unavailable-explore')}?.getAttribute('href') === '/' &&
+      !document.documentElement.dataset.hydrated`), '410 offers a real Khám phá link with JavaScript disabled');
+    await guest.viewport(390);
+    await guest.eval(`${has('#author-profile-heading')}.focus()`);
+    await guest.key('Tab', 0, {settle:false});
+    await guest.waitFor("document.activeElement?.id === 'profile-unavailable-explore'", '410 Tab reaches the recovery link');
+    await guest.capture('profile-gone-390-light-100', {scenario: 'profile-gone', textScale: 100, boundary: 'real SSR; scratch profile retired; JS disabled'});
+    await guest.key('Enter', 0, {settle:false});
+    await guest.waitFor("location.pathname === '/'", '410 recovery link opens Khám phá by keyboard');
+  } finally {
+    await guest.send('Emulation.setScriptExecutionDisabled', {value:false});
   }
   // The guest checks foregrounded another tab. Restore the owner before password captures.
   await page.send('Page.bringToFront');

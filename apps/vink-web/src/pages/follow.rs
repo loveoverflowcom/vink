@@ -3,11 +3,18 @@
 use leptos::prelude::*;
 use leptos_meta::{Link, Meta, Title};
 use leptos_router::hooks::{use_params_map, use_query_map};
-use vink_ui::{ButtonVariant, Heading, HeadingLevel, Link as UiLink, LinkVariant};
+use vink_ui::{
+    ActionState, AvatarSize, Button, ButtonVariant, Heading, HeadingLevel, Link as UiLink,
+    LinkVariant,
+};
+
+use crate::ui::patterns::{Author as BylineAuthor, AuthorIdentity, ProfileLink};
 
 use crate::account::Session;
 use crate::contract::PublicAuthorRef;
-use crate::contract::follow::{FollowDirection, OwnRelationshipsSummary, PublicRelationships};
+use crate::contract::follow::{
+    AuthorRelationshipsLoad, FollowDirection, OwnRelationshipsSummary, PublicRelationships,
+};
 use crate::follow_state::{format_vi_count, safe_profile_return};
 use crate::session::Standing;
 
@@ -18,6 +25,7 @@ mod browser;
 pub(super) struct RelationshipPersonRow {
     pub author: PublicAuthorRef,
     pub mutual: bool,
+    pub return_cursor: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,6 +42,9 @@ pub(super) enum LiveListState {
         appending: bool,
         append_error: bool,
     },
+    Alias {
+        href: String,
+    },
     Restart {
         author: PublicAuthorRef,
         direction: FollowDirection,
@@ -42,6 +53,43 @@ pub(super) enum LiveListState {
     Gone,
     Missing,
     Unavailable,
+}
+
+impl From<AuthorRelationshipsLoad> for LiveListState {
+    fn from(loaded: AuthorRelationshipsLoad) -> Self {
+        match loaded {
+            AuthorRelationshipsLoad::Page {
+                author,
+                direction,
+                count,
+                people,
+                next_cursor,
+            } => Self::Page {
+                author,
+                direction,
+                is_own: false,
+                count,
+                people: people
+                    .into_iter()
+                    .map(|author| RelationshipPersonRow {
+                        author,
+                        mutual: false,
+                        return_cursor: None,
+                    })
+                    .collect(),
+                next_cursor,
+                appending: false,
+                append_error: false,
+            },
+            AuthorRelationshipsLoad::Restart { author, direction } => {
+                Self::Restart { author, direction }
+            }
+            AuthorRelationshipsLoad::Alias { href } => Self::Alias { href },
+            AuthorRelationshipsLoad::Private => Self::Private,
+            AuthorRelationshipsLoad::Gone => Self::Gone,
+            AuthorRelationshipsLoad::Missing => Self::Missing,
+        }
+    }
 }
 
 fn encode_next_target(handle: &str) -> String {
@@ -55,10 +103,19 @@ fn encode_next_target(handle: &str) -> String {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum RelationshipSummary {
+    Ready(PublicRelationships),
+    #[cfg(feature = "hydrate")]
+    Reading,
+    #[cfg(feature = "hydrate")]
+    Unavailable,
+}
+
 #[component]
 pub(super) fn ProfileActionRegion(
     handle: String,
-    live_override: RwSignal<Option<(String, PublicRelationships)>>,
+    on_summary: Callback<Option<PublicRelationships>>,
     own_relationships: RwSignal<Option<(String, OwnRelationshipsSummary)>>,
 ) -> impl IntoView {
     let session = Session::current();
@@ -72,7 +129,7 @@ pub(super) fn ProfileActionRegion(
         }
     });
     #[cfg(not(feature = "hydrate"))]
-    let _ = (live_override, own_relationships);
+    let _ = (on_summary, own_relationships);
 
     view! {
         <div id="follow" class="vk-follow-region">
@@ -116,7 +173,7 @@ pub(super) fn ProfileActionRegion(
                                     <browser::ActiveFollowRegion
                                         scope
                                         handle=stored_handle.get_value()
-                                        live_override
+                                        on_summary
                                         own_relationships
                                     />
                                 }
@@ -138,33 +195,54 @@ pub(super) fn ProfileActionRegion(
 
 #[component]
 pub(super) fn ProfileRelationships(
-    public: Signal<PublicRelationships>,
+    public: Signal<RelationshipSummary>,
     own: ReadSignal<Option<(String, OwnRelationshipsSummary)>>,
+    on_retry: Callback<()>,
 ) -> impl IntoView {
     let session = Session::current();
     let summary = Signal::derive(move || {
         if let Some((scope, own_rel)) = own.get()
             && session.profile_scope.get().as_deref() == Some(scope.as_str())
         {
-            (
+            Ok((
                 Some(own_rel.followers_count),
                 own_rel.valid_followers_href().map(str::to_owned),
                 Some(own_rel.following_count),
                 own_rel.valid_following_href().map(str::to_owned),
-            )
+            ))
         } else {
-            let pub_rel = public.get();
-            (
+            #[cfg(not(feature = "hydrate"))]
+            let RelationshipSummary::Ready(pub_rel) = public.get();
+            #[cfg(feature = "hydrate")]
+            let pub_rel = match public.get() {
+                RelationshipSummary::Ready(rel) => rel,
+                RelationshipSummary::Reading => return Err(false),
+                RelationshipSummary::Unavailable => return Err(true),
+            };
+            Ok((
                 pub_rel.followers_count,
                 pub_rel.valid_followers_href().map(str::to_owned),
                 pub_rel.following_count,
                 pub_rel.valid_following_href().map(str::to_owned),
-            )
+            ))
         }
     });
 
     move || {
-        let (f_count, f_href, g_count, g_href) = summary.get();
+        let (f_count, f_href, g_count, g_href) = match summary.get() {
+            Ok(facts) => facts,
+            Err(failed) => return view! {
+                <div id="profile-relationships" class="vk-profile-relationships">
+                    <p role="status">{if failed { "Chưa tải được danh sách và số đếm theo dõi." }
+                        else { "Đang cập nhật danh sách và số đếm theo dõi…" }}</p>
+                    {failed.then(|| view! {
+                        <Button id="profile-relationships-retry" variant=ButtonVariant::Tonal on_press=on_retry>
+                            "Thử lại thông tin theo dõi"
+                        </Button>
+                    })}
+                </div>
+            }.into_any(),
+        };
         if f_count.is_none() && f_href.is_none() && g_count.is_none() && g_href.is_none() {
             return view! { <span></span> }.into_any();
         }
@@ -291,11 +369,12 @@ fn RelationshipListPage(
     direction: FollowDirection,
     cursor: Option<String>,
 ) -> impl IntoView {
-    let (generation, advance) = signal(0u64);
+    let (generation, _advance) = signal(0u64);
     let live_state: RwSignal<Option<LiveListState>> = RwSignal::new(None);
     let hydrated = RwSignal::new(false);
     let append_trigger = RwSignal::new(0u64);
     let reload_trigger = RwSignal::new(0u64);
+    let first_trigger = RwSignal::new(0u64);
 
     let data = crate::api::author_relationships_resource(
         name.clone(),
@@ -307,9 +386,10 @@ fn RelationshipListPage(
     status.set_no_store();
 
     let renew = move || {
-        live_state.set(None);
-        advance.update(|n| *n += 1);
+        #[cfg(feature = "hydrate")]
         reload_trigger.update(|n| *n += 1);
+        #[cfg(not(feature = "hydrate"))]
+        _advance.update(|n| *n += 1);
     };
 
     #[cfg(feature = "hydrate")]
@@ -320,7 +400,7 @@ fn RelationshipListPage(
     }
 
     let name_for_view = StoredValue::new(name);
-    let continued = cursor.is_some();
+    let route_cursor = StoredValue::new(cursor.clone());
 
     view! {
         <div class="vk-rel-wrapper">
@@ -336,6 +416,7 @@ fn RelationshipListPage(
                             live_state
                             append_trigger
                             reload_trigger
+                            first_trigger
                         />
                     }.into_any()
                 }
@@ -346,237 +427,336 @@ fn RelationshipListPage(
                 }
             }
             <Transition fallback=|| view! { <p role="status">"Đang mở danh sách…"</p> }>
-                {move || {
-                    let current_name = name_for_view.get_value();
-                    if let Some(current) = live_state.get() {
-                        return render_list_state(
-                            current,
-                            &status,
-                            &current_name,
-                            direction,
-                            continued,
-                            hydrated,
-                            renew,
-                            move || append_trigger.update(|n| *n += 1),
-                        );
-                    }
-                    match data.get() {
-                        Some((_, Ok(loaded))) => {
-                            let converted = match loaded {
-                                crate::contract::follow::AuthorRelationshipsLoad::Page {
-                                    author,
-                                    direction,
-                                    count,
-                                    people,
-                                    next_cursor,
-                                } => LiveListState::Page {
-                                    author,
-                                    direction,
-                                    is_own: false,
-                                    count,
-                                    people: people
-                                        .into_iter()
-                                        .map(|author| RelationshipPersonRow {
-                                            author,
-                                            mutual: false,
-                                        })
-                                        .collect(),
-                                    next_cursor,
-                                    appending: false,
-                                    append_error: false,
-                                },
-                                crate::contract::follow::AuthorRelationshipsLoad::Restart {
-                                    author,
-                                    direction,
-                                } => LiveListState::Restart { author, direction },
-                                crate::contract::follow::AuthorRelationshipsLoad::Alias { href } => {
-                                    #[cfg(feature = "ssr")]
-                                    if let Some(opts) = &status.0
-                                        && let Ok(url) = http::HeaderValue::from_str(&href)
-                                    {
-                                        opts.set_status(http::StatusCode::MOVED_PERMANENTLY);
-                                        opts.insert_header(http::header::LOCATION, url);
-                                    }
-                                    #[cfg(feature = "hydrate")]
-                                    {
-                                        let location = window().location();
-                                        let _ = location.replace(&format!(
-                                            "{}{}",
-                                            href,
-                                            location.hash().unwrap_or_default()
-                                        ));
-                                    }
-                                    return view! {
-                                        <UiLink href=href>"Mở địa chỉ hiện tại"</UiLink>
-                                    }.into_any();
-                                }
-                                crate::contract::follow::AuthorRelationshipsLoad::Private => {
-                                    LiveListState::Private
-                                }
-                                crate::contract::follow::AuthorRelationshipsLoad::Gone => {
-                                    LiveListState::Gone
-                                }
-                                crate::contract::follow::AuthorRelationshipsLoad::Missing => {
-                                    LiveListState::Missing
-                                }
-                            };
-                            render_list_state(
-                                converted,
-                                &status,
-                                &current_name,
-                                direction,
-                                continued,
-                                hydrated,
-                                renew,
-                                move || append_trigger.update(|n| *n += 1),
-                            )
-                        }
-                        Some((_, Err(_))) => render_list_state(
-                            LiveListState::Unavailable,
-                            &status,
-                            &current_name,
-                            direction,
-                            continued,
-                            hydrated,
-                            renew,
-                            move || append_trigger.update(|n| *n += 1),
-                        ),
-                        None => view! { <p role="status">"Đang mở danh sách…"</p> }.into_any(),
-                    }
-                }}
+                {move || data.get().map(|(_, result)| view! {
+                    <RelationshipListProjection
+                        name=name_for_view.get_value()
+                        direction
+                        cursor=route_cursor.get_value()
+                        status=status.clone()
+                        initial=result.map_or(LiveListState::Unavailable, LiveListState::from)
+                        live=live_state
+                        hydrated
+                        append_generation=append_trigger.read_only()
+                        on_append=Callback::new(move |()| append_trigger.update(|n| *n += 1))
+                        on_retry=Callback::new(move |()| renew())
+                        on_first=Callback::new(move |()| first_trigger.update(|n| *n += 1))
+                    />
+                })}
             </Transition>
         </div>
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-fn render_list_state(
+#[component]
+fn RelationshipListProjection(
+    name: String,
+    direction: FollowDirection,
+    cursor: Option<String>,
+    status: super::ResponseStatus,
+    initial: LiveListState,
+    live: RwSignal<Option<LiveListState>>,
+    hydrated: RwSignal<bool>,
+    append_generation: ReadSignal<u64>,
+    on_append: Callback<()>,
+    on_retry: Callback<()>,
+    on_first: Callback<()>,
+) -> impl IntoView {
+    let initial = StoredValue::new(initial);
+    let continued = cursor.is_some();
+    let state = Memo::new(move |_| live.get().unwrap_or_else(|| initial.get_value()));
+    let page_key = Memo::new(move |_| {
+        state.with(|state| match state {
+            LiveListState::Page { author, is_own, .. } => Some((
+                author.handle.clone(),
+                author.pen_name.clone(),
+                author.href.clone(),
+                *is_own,
+            )),
+            _ => None,
+        })
+    });
+
+    view! {
+        <For
+            each=move || page_key.get().into_iter()
+            key=Clone::clone
+            children=move |(handle, pen_name, href, is_own)| view! {
+                <RelationshipResults handle pen_name href direction is_own
+                    continued state hydrated append_generation on_append on_first />
+            }
+        />
+        {move || state.with(|state| match state {
+            LiveListState::Page { .. } => ().into_any(),
+            current => render_list_status(
+                current.clone(),
+                &status,
+                &name,
+                direction,
+                cursor.clone(),
+                move || on_retry.run(()),
+            ),
+        })}
+    }
+}
+
+#[component]
+fn RelationshipResults(
+    handle: String,
+    pen_name: String,
+    href: String,
+    direction: FollowDirection,
+    is_own: bool,
+    continued: bool,
+    state: Memo<LiveListState>,
+    hydrated: RwSignal<bool>,
+    append_generation: ReadSignal<u64>,
+    on_append: Callback<()>,
+    on_first: Callback<()>,
+) -> impl IntoView {
+    let title = direction_heading(direction, &pen_name);
+    let list_url = StoredValue::new(format!("/@{handle}/{}", direction.web_segment()));
+    let canonical = crate::canonical_url(&list_url.get_value());
+    let count = Memo::new(move |_| {
+        state.with(|state| match state {
+            LiveListState::Page { count, .. } => *count,
+            _ => None,
+        })
+    });
+    let rows = Memo::new(move |_| {
+        state.with(|state| match state {
+            LiveListState::Page { people, .. } => people
+                .iter()
+                .filter(|row| row.author.valid_href().is_some())
+                .cloned()
+                .collect::<Vec<_>>(),
+            _ => vec![],
+        })
+    });
+    let has_previous_page = Memo::new(move |_| {
+        continued
+            || rows.with(|people| {
+                people
+                    .first()
+                    .is_some_and(|row| row.return_cursor.is_some())
+            })
+    });
+    let cursor = Memo::new(move |_| {
+        state.with(|state| match state {
+            LiveListState::Page { next_cursor, .. } => next_cursor.clone(),
+            _ => None,
+        })
+    });
+    let failed = Memo::new(move |_| {
+        matches!(
+            &*state.read(),
+            LiveListState::Page {
+                append_error: true,
+                ..
+            }
+        )
+    });
+    let pending = Memo::new(move |_| {
+        matches!(
+            &*state.read(),
+            LiveListState::Page {
+                appending: true,
+                ..
+            }
+        )
+    });
+    let button_state = Signal::derive(move || {
+        if pending.get() {
+            ActionState::pending("Đang tải thêm…")
+        } else {
+            ActionState::Enabled
+        }
+    });
+
+    view! {
+        <Title text=format!("{title} · Vink") />
+        {if is_own {
+            view! { <Meta name="robots" content="noindex" /> }.into_any()
+        } else {
+            view! { <Link rel="canonical" href=canonical /> }.into_any()
+        }}
+        <section id="relationship-list" class="vk-rel-page" aria-labelledby="relationship-title">
+            <UiLink
+                variant=LinkVariant::Standalone
+                attr:id="rel-back-profile"
+                attr:data-profile-return="true"
+                href=href>
+                "Quay lại hồ sơ"
+            </UiLink>
+            <Heading id="relationship-title" level=HeadingLevel::H1 attr:tabindex="-1">
+                {title}
+            </Heading>
+            <RelationshipDirections handle direction is_own append_generation />
+            {move || count.get().map(|n| view! {
+                <p id="relationship-count" class="vk-rel-count">{count_copy(direction, n)}</p>
+            })}
+            <Show when=move || rows.with(Vec::is_empty) fallback=move || view! {
+                <ul class="vk-rel-list">
+                    <For
+                        each=move || rows.get()
+                        key=|row| (row.author.handle.clone(), row.author.pen_name.clone(),
+                            row.author.href.clone(), row.mutual, row.return_cursor.clone())
+                        children=move |row| {
+                            let row_id = format!("rel-person-{}", row.author.handle);
+                            let author = BylineAuthor {
+                                name: row.author.pen_name,
+                                key: None,
+                                published_at: String::new(),
+                                profile: Some(ProfileLink { href: row.author.href, handle: row.author.handle }),
+                                neutral: false,
+                            };
+                            view! {
+                                <li class="vk-rel-item" data-rel-cursor=row.return_cursor>
+                                    <AuthorIdentity author id=Some(row_id) size=AvatarSize::Medium />
+                                    {(is_own && row.mutual).then(|| view! {
+                                        <span class="vk-follow-mutual">"Theo dõi lẫn nhau"</span>
+                                    })}
+                                </li>
+                            }
+                        }
+                    />
+                </ul>
+            }>
+                <p id="relationship-empty" class="vk-rel-empty">{empty_copy(direction, continued)}</p>
+            </Show>
+            <Show when=move || has_previous_page.get()>
+                <UiLink variant=LinkVariant::Standalone attr:id="rel-first-page"
+                    attr:data-profile-return="true" href=list_url.get_value()
+                    on:click=move |event: leptos::ev::MouseEvent| {
+                        // A Back-resumed page can share the first page's address.
+                        if !continued && event.button() == 0 && !event.ctrl_key() && !event.meta_key()
+                            && !event.shift_key() && !event.alt_key()
+                        {
+                            event.prevent_default();
+                            on_first.run(());
+                        }
+                    }>
+                    "Về trang đầu"
+                </UiLink>
+            </Show>
+            <Show when=move || cursor.with(Option::is_some)>
+                <div class="vk-rel-pagination">
+                    <Show when=move || hydrated.get() fallback=move || {
+                        cursor.get().map(|c| view! {
+                            <UiLink variant=LinkVariant::Standalone attr:id="rel-next-link"
+                                href=format!("{}?cursor={c}", list_url.get_value())>
+                                "Trang tiếp"
+                            </UiLink>
+                        })
+                    }>
+                        <p class="vk-rel-append-error" role="status">
+                            {move || if failed.get() {
+                                "Chưa tải thêm được danh sách. Bạn có thể thử lại tại đây."
+                            } else { "" }}
+                        </p>
+                        <Button id="rel-load-more" variant=ButtonVariant::Tonal state=button_state on_press=on_append>
+                            {move || if failed.get() { "Thử lại tải thêm" } else { "Tải thêm" }}
+                        </Button>
+                    </Show>
+                </div>
+            </Show>
+        </section>
+    }
+}
+
+// The public author projection already carries the two independent list grants.
+#[component]
+fn RelationshipDirections(
+    handle: String,
+    direction: FollowDirection,
+    is_own: bool,
+    append_generation: ReadSignal<u64>,
+) -> impl IntoView {
+    let (opposite, current_label, other_label) = match direction {
+        FollowDirection::Followers => (
+            FollowDirection::Following,
+            "Người theo dõi",
+            "Đang theo dõi",
+        ),
+        FollowDirection::Following => (
+            FollowDirection::Followers,
+            "Đang theo dõi",
+            "Người theo dõi",
+        ),
+    };
+    let expected = format!("/@{handle}/{}", opposite.web_segment());
+    let (generation, advance) = signal(0);
+    Effect::new(move |previous: Option<u64>| {
+        let append = append_generation.get();
+        if previous.is_some_and(|old| old != append) {
+            advance.update(|n| *n += 1);
+        }
+        append
+    });
+    let data = (!is_own).then(|| crate::api::author_resource(handle.clone(), None, generation));
+    view! {
+        <Suspense fallback=|| ()>
+            {move || {
+                let result = if is_own { Some(Ok(true)) } else {
+                    data.and_then(|read| read.get()).and_then(|(stamp, result)| {
+                        (stamp == generation.get()).then(|| match result {
+                            Ok(crate::contract::AuthorResolution::Current { author, relationships, .. })
+                                if author.handle == handle => {
+                                let href = match opposite {
+                                    FollowDirection::Followers => relationships.valid_followers_href(),
+                                    FollowDirection::Following => relationships.valid_following_href(),
+                                };
+                                Ok(href == Some(expected.as_str()))
+                            }
+                            Ok(_) => Ok(false),
+                            Err(_) => Err(()),
+                        })
+                    })
+                };
+                match result {
+                    Some(Ok(true)) => view! {
+                        <nav class="vk-rel-directions" aria-label="Danh sách theo dõi">
+                            <span aria-current="page">{current_label}</span>
+                            <UiLink variant=LinkVariant::Standalone attr:id="rel-other-direction"
+                                attr:data-profile-return="true" href=expected.clone()>
+                                {other_label}
+                            </UiLink>
+                        </nav>
+                    }.into_any(),
+                    Some(Err(())) => view! {
+                        <div class="vk-rel-directions">
+                            <p role="status">"Chưa kiểm tra được danh sách theo dõi còn lại."</p>
+                            <Button id="rel-direction-retry" variant=ButtonVariant::Tonal
+                                on_press=Callback::new(move |()| advance.update(|n| *n += 1))>
+                                "Thử lại"
+                            </Button>
+                        </div>
+                    }.into_any(),
+                    _ => ().into_any(),
+                }
+            }}
+        </Suspense>
+    }
+}
+
+fn render_list_status(
     state: LiveListState,
     status: &super::ResponseStatus,
     name: &str,
     direction: FollowDirection,
-    continued: bool,
-    hydrated: RwSignal<bool>,
+    cursor: Option<String>,
     retry_initial: impl Fn() + Copy + Send + Sync + 'static,
-    trigger_append: impl Fn() + Copy + Send + Sync + 'static,
 ) -> AnyView {
     match state {
         #[cfg(feature = "hydrate")]
         LiveListState::Loading => view! { <p role="status">"Đang tải danh sách…"</p> }.into_any(),
-        LiveListState::Page {
-            author,
-            direction,
-            is_own,
-            count,
-            people,
-            next_cursor,
-            appending,
-            append_error,
-        } => {
-            let profile_href = author
-                .valid_href()
-                .map(str::to_owned)
-                .unwrap_or_else(|| format!("/@{name}"));
-            let title = direction_heading(direction, &author.pen_name);
-            let list_url = format!("/@{}/{}", author.handle, direction.web_segment());
-            let canonical = crate::canonical_url(&list_url);
-            let items = people
-                .into_iter()
-                .filter_map(|row| {
-                    let href = row.author.valid_href()?.to_owned();
-                    let row_id = format!("rel-person-{}", row.author.handle);
-                    let handle_tag = format!("@{}", row.author.handle);
-                    let mutual_badge = (is_own && row.mutual).then(|| {
-                        view! { <span class="vk-follow-mutual">"Theo dõi lẫn nhau"</span> }
-                    });
-                    Some(view! {
-                        <li class="vk-rel-item">
-                            <UiLink
-                                variant=LinkVariant::Standalone
-                                attr:id=row_id
-                                attr:data-profile-return="true"
-                                href=href>
-                                <span class="vk-rel-name">{row.author.pen_name}</span>
-                                " "
-                                <span class="vk-rel-handle">{handle_tag}</span>
-                            </UiLink>
-                            {mutual_badge}
-                        </li>
-                    })
-                })
-                .collect_view();
-            let is_empty = items.is_empty();
-            let ssr_next_href = next_cursor
-                .as_ref()
-                .map(|c| format!("{list_url}?cursor={c}"));
-
-            view! {
-                <Title text=format!("{title} · Vink") />
-                {if is_own {
-                    view! { <Meta name="robots" content="noindex" /> }.into_any()
-                } else {
-                    view! { <Link rel="canonical" href=canonical /> }.into_any()
-                }}
-                <section id="relationship-list" class="vk-rel-page" aria-labelledby="relationship-title">
-                    <UiLink
-                        variant=LinkVariant::Standalone
-                        attr:id="rel-back-profile"
-                        attr:data-profile-return="true"
-                        href=profile_href>
-                        "Quay lại hồ sơ"
-                    </UiLink>
-                    <Heading id="relationship-title" level=HeadingLevel::H1 attr:tabindex="-1">
-                        {title}
-                    </Heading>
-                    {count.map(|n| view! {
-                        <p id="relationship-count" class="vk-rel-count">{count_copy(direction, n)}</p>
-                    })}
-                    {is_empty.then(|| view! {
-                        <p id="relationship-empty" class="vk-rel-empty">{empty_copy(direction, continued)}</p>
-                    })}
-                    {(!is_empty).then(|| view! { <ul class="vk-rel-list">{items}</ul> })}
-                    {append_error.then(|| view! {
-                        <div class="vk-rel-append-error" role="alert">
-                            <p>"Chưa tải thêm được danh sách. Các dòng đã tải vẫn được giữ nguyên."</p>
-                            <vink_ui::Button
-                                id="rel-append-retry"
-                                variant=ButtonVariant::Tonal
-                                on_press=Callback::new(move |()| trigger_append())>
-                                "Thử lại tải thêm"
-                            </vink_ui::Button>
-                        </div>
-                    })}
-                    {next_cursor.is_some().then(|| {
-                        view! {
-                            <div class="vk-rel-pagination">
-                                {move || if hydrated.get() {
-                                    let btn_state = if appending {
-                                        vink_ui::ActionState::pending("Đang tải thêm…")
-                                    } else {
-                                        vink_ui::ActionState::Enabled
-                                    };
-                                    view! {
-                                        <vink_ui::Button
-                                            id="rel-load-more"
-                                            variant=ButtonVariant::Tonal
-                                            state=btn_state
-                                            on_press=Callback::new(move |()| trigger_append())>
-                                            "Tải thêm"
-                                        </vink_ui::Button>
-                                    }.into_any()
-                                } else {
-                                    ssr_next_href.clone().map(|href| view! {
-                                        <UiLink variant=LinkVariant::Standalone attr:id="rel-next-link" href=href>
-                                            "Trang tiếp"
-                                        </UiLink>
-                                    }).into_any()
-                                }}
-                            </div>
-                        }
-                    })}
-                </section>
-            }
-            .into_any()
+        LiveListState::Page { .. } => ().into_any(),
+        LiveListState::Alias { href } => {
+            super::handle::redirect_alias(
+                status,
+                &format!("/@{name}/{}", direction.web_segment()),
+                &href,
+            );
+            view! { <UiLink href=href>"Mở địa chỉ hiện tại"</UiLink> }.into_any()
         }
         LiveListState::Restart { author, direction } => {
             let list_url = format!("/@{}/{}", author.handle, direction.web_segment());
@@ -638,7 +818,7 @@ fn render_list_state(
         }
         LiveListState::Unavailable => {
             status.set(503);
-            let fallback_href = format!("/@{name}/{}", direction.web_segment());
+            let path = format!("/@{name}/{}", direction.web_segment());
             view! {
                 <Title text="Chưa tải được danh sách · Vink" />
                 <section id="relationship-list" class="vk-rel-page" aria-labelledby="relationship-title">
@@ -646,13 +826,8 @@ fn render_list_state(
                         "Chưa tải được danh sách"
                     </Heading>
                     <p>"Hãy kiểm tra kết nối rồi thử lại."</p>
-                    <vink_ui::Button
-                        id="rel-retry"
-                        variant=ButtonVariant::Tonal
-                        on_press=Callback::new(move |()| retry_initial())>
-                        "Thử lại"
-                    </vink_ui::Button>
-                    <noscript><a href=fallback_href>"Tải lại"</a></noscript>
+                    <super::handle::RetryRead id="rel-retry" path cursor
+                        on_retry=Callback::new(move |()| retry_initial()) />
                 </section>
             }
             .into_any()

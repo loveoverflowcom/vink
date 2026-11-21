@@ -2220,8 +2220,8 @@ a {
   font-weight: var(--vk-type-body-weight);
   line-height: var(--vk-type-caption-line-height);
 }
-/* The owner's entry is a tonal action beside the name, not an inline text link. */
-.vk-author-identity > #own-profile-edit-link {
+/* The owner's entry uses the same action region as Follow. */
+#own-profile-edit-link {
   display: inline-flex;
   align-items: center;
   min-block-size: var(--vk-size-hit-target);
@@ -2232,7 +2232,7 @@ a {
   font: var(--vk-type-label-weight) var(--vk-type-label-size)/var(--vk-type-label-line-height) var(--vk-type-label-font);
   text-decoration: none;
 }
-.vk-author-identity > #own-profile-edit-link:hover {
+#own-profile-edit-link:hover {
   background: color-mix(in srgb, var(--vk-action-tonal-content) 8%, var(--vk-action-tonal-container));
 }
 .vk-author-public .vk-profile-relationships a {
@@ -2280,7 +2280,6 @@ a {
 .vk-author-public section > .vk-ui-link { display: inline-block; margin-inline-end: var(--vk-space-3); }
 @container (min-width: 40rem) {
   .vk-author-public .vk-author-identity > .vk-author-seal { inline-size: 5.5rem; block-size: 5.5rem; font-size: var(--vk-text-profile-monogram-wide); }
-  .vk-author-identity > #own-profile-edit-link { margin-inline-start: auto; }
   .vk-author-public .vk-follow-region,
   .vk-author-public .vk-profile-relationships,
   .vk-author-bio { margin-inline-start: calc(5.5rem + var(--vk-space-6)); }
@@ -2385,26 +2384,38 @@ a {
 }
 
 /* Social Follow Graph (#294) */
-.vk-follow-region,
-.vk-follow-controls,
-.vk-follow-error {
+.vk-follow-region {
+  min-block-size: var(--vk-size-hit-target);
+  margin-block: var(--vk-space-2);
+}
+.vk-follow-controls {
+  display: grid;
+  justify-items: start;
+  gap: var(--vk-space-2);
+  min-inline-size: 0;
+}
+.vk-follow-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--vk-space-2);
-  margin-block: var(--vk-space-2);
+  min-inline-size: 0;
   max-inline-size: 100%;
 }
-.vk-follow-region {
-  min-block-size: var(--vk-size-hit-target);
-}
 #follow-status {
-  margin-block: 0;
+  margin: 0;
   color: var(--vk-on-surface-variant);
   overflow-wrap: anywhere;
 }
-#follow-status[role="alert"] {
-  color: var(--vk-error);
+#follow-status[data-error] { color: var(--vk-error); }
+/* Retain the live region and the busy button's description when visually collapsed. */
+#follow-action-note { display: none; }
+#follow-status:empty, .vk-rel-append-error:empty {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
 .vk-follow-mutual {
   display: inline-flex;
@@ -2456,43 +2467,47 @@ a {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: var(--vk-space-2);
-  padding: var(--vk-space-2) var(--vk-space-3);
-  border: 1px solid var(--vk-outline-variant);
-  border-radius: var(--vk-radius-md);
-  background: var(--vk-surface-container-low);
-  min-block-size: var(--vk-size-hit-target);
+  min-inline-size: 0;
+  padding: var(--vk-space-2) var(--vk-space-1);
+  border-block-end: 1px solid var(--vk-outline-variant);
 }
-.vk-rel-item a {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--vk-space-1) var(--vk-space-2);
-  min-block-size: var(--vk-size-hit-target);
-  align-content: center;
-  color: var(--vk-on-surface);
-  overflow-wrap: anywhere;
-}
-.vk-rel-name {
-  font-weight: var(--vk-type-label-weight);
-}
-.vk-rel-handle {
+.vk-rel-item .vk-ui-byline { flex: 1 1 12rem; }
+.vk-rel-item .vk-ui-byline__identity { inline-size: 100%; }
+.vk-rel-item .vk-follow-mutual {
+  background: transparent;
   color: var(--vk-on-surface-variant);
+  padding-inline: var(--vk-space-1);
+  font-size: var(--vk-type-caption-size);
 }
-.vk-rel-append-error {
-  display: grid;
-  gap: var(--vk-space-2);
-  padding: var(--vk-space-3);
-  border-radius: var(--vk-radius-md);
-  background: var(--vk-error-container);
-  color: var(--vk-on-error-container);
-}
-.vk-rel-pagination {
+.vk-rel-directions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--vk-space-2);
+  gap: var(--vk-space-2) var(--vk-space-4);
   align-items: center;
+}
+.vk-rel-directions [aria-current] {
+  font-weight: var(--vk-type-label-weight);
+}
+.vk-rel-append-error {
+  margin: 0;
+  color: var(--vk-error);
+}
+.vk-rel-pagination {
+  display: grid;
+  justify-items: start;
+  gap: var(--vk-space-2);
+}
+.vk-profile-unavailable {
+  display: grid;
+  justify-items: start;
+  gap: var(--vk-space-3);
+  max-inline-size: 42rem;
+  padding-block: var(--vk-space-8);
+}
+.vk-profile-unavailable h1, .vk-profile-unavailable p { margin: 0; }
+.vk-profile-unavailable :is(.vk-ui-link, .vk-ui-button), .vk-rel-pagination .vk-ui-button {
+  min-block-size: max(44px, var(--vk-size-hit-target));
 }
 
 /* Auth Web R2 in Reader: the same modal is a bottom sheet on a compact viewport.

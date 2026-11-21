@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use leptos::{prelude::*, task::spawn_local};
 use send_wrapper::SendWrapper;
-use vink_ui::{ActionState, Button, ButtonVariant};
+use vink_ui::{ActionState, Button, ButtonVariant, Link, LinkVariant};
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 
 use super::{LiveListState, RelationshipPersonRow};
@@ -15,7 +15,9 @@ use crate::contract::follow::{
     AuthorRelationshipsLoad, FollowDirection, OwnRelationshipList, OwnRelationshipsSummary,
     PublicRelationshipList, PublicRelationships, ViewerRelationship,
 };
-use crate::follow_state::{FollowController, FollowInvalidation, FollowPhase, FollowScope};
+use crate::follow_state::{
+    FollowController, FollowInvalidation, FollowPhase, FollowScope, own_relationship_list_matches,
+};
 
 const FOLLOW_CHANNEL: &str = "vink-follow-changes";
 const SLOW_RECONCILE_DELAY_MS: i32 = 1000;
@@ -79,7 +81,7 @@ fn announce_follow_changed(invalidation: &FollowInvalidation) {
 pub(super) fn ActiveFollowRegion(
     scope: String,
     handle: String,
-    live_override: RwSignal<Option<(String, PublicRelationships)>>,
+    on_summary: Callback<Option<PublicRelationships>>,
     own_relationships: RwSignal<Option<(String, OwnRelationshipsSummary)>>,
 ) -> impl IntoView {
     let session = Session::current();
@@ -92,6 +94,7 @@ pub(super) fn ActiveFollowRegion(
     let load_ticket = RwSignal::new(0u64);
     let action_ref = NodeRef::<leptos::html::Button>::new();
 
+    let reconcile_in_flight = RwSignal::<Option<String>>::new(None);
     let scope_token = StoredValue::new(scope);
     let typed_scope = StoredValue::new(follow_scope);
     let stored_handle = StoredValue::new(handle);
@@ -102,24 +105,19 @@ pub(super) fn ActiveFollowRegion(
         })
     };
 
-    let apply_invalidation = move |invalidation: FollowInvalidation| {
-        if let Some(rel) = invalidation.relationships.clone() {
-            live_override.set(Some((invalidation.target_handle.clone(), rel)));
-        } else {
-            let target = invalidation.target_handle.clone();
-            let my_scope = typed_scope.get_value();
-            let accepted_order = invalidation.accepted_order;
-            spawn_local(async move {
-                if let Ok(rel) = api::load_author_relationships_summary(&target).await
-                    && still_live()
-                    && controller.try_with_untracked(|c| {
-                        c.scope() == &my_scope && c.highest_accepted_order() == accepted_order
-                    }) == Some(true)
-                {
-                    live_override.set(Some((target, rel)));
-                }
-            });
+    // Ownership comes from the profile record. Graph supplies counts and the viewer's edge.
+    let verified_owner = RwSignal::new(false);
+    spawn_local(async move {
+        if let Ok(profile) = api::load_own_profile().await
+            && still_live()
+            && session.principal.get_untracked().as_deref() == Some(profile.principal_id.as_str())
+        {
+            verified_owner.set(profile.handle == stored_handle.get_value());
         }
+    });
+
+    let apply_invalidation = move |invalidation: FollowInvalidation| {
+        on_summary.run(invalidation.relationships.clone());
         announce_follow_changed(&invalidation);
     };
 
@@ -154,6 +152,12 @@ pub(super) fn ActiveFollowRegion(
     trigger_load();
 
     let run_reconcile = move |command_id: String| {
+        if reconcile_in_flight.with_untracked(|id| id.as_ref() == Some(&command_id))
+            || controller.try_with_untracked(|c| c.is_current_command(&command_id)) != Some(true)
+        {
+            return;
+        }
+        reconcile_in_flight.set(Some(command_id.clone()));
         let target = stored_handle.get_value();
         let my_scope = typed_scope.get_value();
         spawn_local(async move {
@@ -162,7 +166,16 @@ pub(super) fn ActiveFollowRegion(
             if !still_live() {
                 return;
             }
+            if reconcile_in_flight.with_untracked(|id| id.as_ref() == Some(&command_id)) {
+                reconcile_in_flight.set(None);
+            }
+            if controller.try_with_untracked(|c| c.is_current_command(&command_id)) != Some(true) {
+                return;
+            }
             let was_focused = focus_element_in_follow();
+            let was_reconcile = document()
+                .active_element()
+                .is_some_and(|el| el.id() == "follow-reconcile");
             let Some(eff) = controller
                 .try_update(|c| c.finish_reconcile(&my_scope, &command_id, receipt, viewer))
             else {
@@ -174,6 +187,11 @@ pub(super) fn ActiveFollowRegion(
             }
             if eff.should_focus_heading && was_focused {
                 super::super::focus_recovery("author-profile-heading");
+            } else if was_reconcile
+                && controller.try_with_untracked(|c| matches!(c.phase(), FollowPhase::Ready { .. }))
+                    == Some(true)
+            {
+                super::super::focus_recovery("follow-action");
             }
         });
     };
@@ -211,10 +229,15 @@ pub(super) fn ActiveFollowRegion(
 
         spawn_local(async move {
             let result = api::set_follow(&target, &req).await;
-            if !still_live() {
+            if !still_live()
+                || controller.try_with_untracked(|c| c.is_latest_command(&command_id)) != Some(true)
+            {
                 return;
             }
             let was_focused = focus_element_in_follow();
+            let was_reconcile = document()
+                .active_element()
+                .is_some_and(|el| el.id() == "follow-reconcile");
             let Some(eff) =
                 controller.try_update(|c| c.finish_write(&my_scope, &command_id, result))
             else {
@@ -232,23 +255,30 @@ pub(super) fn ActiveFollowRegion(
             }
             if matches!(phase_now, Some(FollowPhase::Reconciling { .. })) {
                 run_reconcile(command_id);
+            } else if was_reconcile && matches!(phase_now, Some(FollowPhase::Ready { .. })) {
+                super::super::focus_recovery("follow-action");
             }
         });
     });
 
     // Keep one persistent `#follow-action` DOM element across Ready/Pending/Reconciling so
     // keyboard focus never drops during state transitions.
+    let is_owner = Signal::derive(move || {
+        verified_owner.get()
+            || controller.with(|c| matches!(c.phase(), FollowPhase::SelfProfile(_)))
+    });
     let show_action = Signal::derive(move || {
-        controller.with(|c| {
-            matches!(
-                c.phase(),
-                FollowPhase::Ready {
-                    can_follow: true,
-                    ..
-                } | FollowPhase::Pending { .. }
-                    | FollowPhase::Reconciling { .. }
-            )
-        })
+        !is_owner.get()
+            && controller.with(|c| {
+                matches!(
+                    c.phase(),
+                    FollowPhase::Ready {
+                        can_follow: true,
+                        ..
+                    } | FollowPhase::Pending { .. }
+                        | FollowPhase::Reconciling { .. }
+                )
+            })
     });
     let action_following = Signal::derive(move || {
         controller.with(|c| match c.phase() {
@@ -280,7 +310,7 @@ pub(super) fn ActiveFollowRegion(
             FollowPhase::Ready {
                 can_follow: true, ..
             } => ActionState::Enabled,
-            FollowPhase::Pending { .. } => ActionState::pending("Đang cập nhật theo dõi…"),
+            FollowPhase::Pending { .. } => ActionState::pending("Đang gửi yêu cầu theo dõi…"),
             FollowPhase::Reconciling { .. } => ActionState::pending("Đang đối chiếu trạng thái…"),
             _ => ActionState::Disabled { reason: None },
         })
@@ -295,6 +325,9 @@ pub(super) fn ActiveFollowRegion(
         })
     });
     let status_info = Signal::derive(move || {
+        if is_owner.get() {
+            return (false, "");
+        }
         controller.with(|c| match c.phase() {
             FollowPhase::Loading => (false, "Đang kiểm tra trạng thái theo dõi…"),
             FollowPhase::SelfProfile(_) => (false, ""),
@@ -317,8 +350,23 @@ pub(super) fn ActiveFollowRegion(
         })
     });
 
+    let show_reconcile = Memo::new(move |_| reconcile_cmd_id.with(Option::is_some));
+    let reconcile_state = Signal::derive(move || {
+        if reconcile_in_flight.with(Option::is_some) {
+            ActionState::Disabled { reason: None }
+        } else {
+            ActionState::Enabled
+        }
+    });
     view! {
         <div class="vk-follow-controls">
+          <div class="vk-follow-actions">
+            <Show when=move || is_owner.get()>
+                <Link variant=LinkVariant::Standalone attr:id="own-profile-edit-link"
+                    attr:data-profile-return="true" href=super::super::profile::EDIT_PATH>
+                    "Chỉnh hồ sơ"
+                </Link>
+            </Show>
             <Show when=move || show_action.get()>
                 <Button
                     id="follow-action"
@@ -332,15 +380,7 @@ pub(super) fn ActiveFollowRegion(
                     <span id="follow-mutual" class="vk-follow-mutual">"Theo dõi lẫn nhau"</span>
                 </Show>
             </Show>
-            {move || reconcile_cmd_id.get().map(|cmd_id| view! {
-                <Button
-                    id="follow-reconcile"
-                    variant=ButtonVariant::Tonal
-                    on_press=Callback::new(move |()| run_reconcile(cmd_id.clone()))>
-                    "Đối chiếu trạng thái"
-                </Button>
-            })}
-            <Show when=move || controller.with(|c| matches!(c.phase(), FollowPhase::Error))>
+            <Show when=move || !is_owner.get() && controller.with(|c| matches!(c.phase(), FollowPhase::Error))>
                 <Button
                     id="follow-retry"
                     variant=ButtonVariant::Tonal
@@ -348,16 +388,29 @@ pub(super) fn ActiveFollowRegion(
                     "Thử lại"
                 </Button>
             </Show>
-            <Show when=move || !status_info.get().1.is_empty()>
-                <p
-                    id="follow-status"
-                    role=move || if status_info.get().0 { "alert" } else { "status" }
-                    aria-live="polite">
-                    {move || status_info.get().1}
-                </p>
-            </Show>
+          </div>
+          <p id="follow-status" role="status" aria-atomic="true"
+              data-error=move || status_info.get().0.then_some("true")>
+              {move || status_info.get().1}
+          </p>
+          <Show when=move || show_reconcile.get()>
+              <Button id="follow-reconcile" variant=ButtonVariant::Tonal state=reconcile_state
+                  on_press=Callback::new(move |()| {
+                      if let Some(cmd) = reconcile_cmd_id.get_untracked() { run_reconcile(cmd); }
+                  })>
+                  "Đối chiếu trạng thái"
+              </Button>
+          </Show>
         </div>
     }
+}
+
+#[wasm_bindgen::prelude::wasm_bindgen(module = "/profile/navigation.js")]
+extern "C" {
+    #[wasm_bindgen(js_name = relationshipReturnCursor)]
+    fn relationship_return_cursor(path: &str) -> Option<String>;
+    #[wasm_bindgen(js_name = focusRelationshipReturn)]
+    fn focus_relationship_return(cursor: &str);
 }
 
 #[component]
@@ -369,13 +422,37 @@ pub(super) fn ListSyncHost(
     live_state: RwSignal<Option<LiveListState>>,
     append_trigger: RwSignal<u64>,
     reload_trigger: RwSignal<u64>,
+    first_trigger: RwSignal<u64>,
 ) -> impl IntoView {
     let session = Session::current();
     let list_gen = RwSignal::new(0u64);
+    let return_cursor =
+        relationship_return_cursor(&format!("/@{name}/{}", direction.web_segment()));
+    let pending_return = StoredValue::new(return_cursor.clone());
+    let resume_cursor = RwSignal::new(return_cursor);
     let stored_name = StoredValue::new(name);
     let stored_cursor = StoredValue::new(cursor);
+    let recover_heading = RwSignal::new(false);
+    let request_heading = move || {
+        if document()
+            .active_element()
+            .is_some_and(|el| el.closest("#relationship-list").ok().flatten().is_some())
+        {
+            recover_heading.set(true);
+        }
+    };
+    Effect::new(move |_| {
+        if live_state.with(
+            |state| matches!(state, Some(current) if !matches!(current, LiveListState::Loading)),
+        ) && recover_heading.get_untracked()
+        {
+            recover_heading.set(false);
+            focus_list_after_render("relationship-title".into());
+        }
+    });
 
-    let load_fresh = move |cursor_override: Option<String>| {
+    let load_fresh = move |cursor_override: Option<String>, force_public: bool| {
+        request_heading();
         let generation = list_gen.with_untracked(|g| *g) + 1;
         list_gen.set(generation);
         let handle = stored_name.get_value();
@@ -383,107 +460,99 @@ pub(super) fn ListSyncHost(
         live_state.set(Some(LiveListState::Loading));
 
         spawn_local(async move {
-            let mut use_own = false;
-            if active_scope.is_some()
-                && let Ok(ViewerRelationship::SelfProfile { .. }) =
-                    api::load_viewer_relationship(&handle).await
-            {
-                use_own = true;
-            }
-            if list_gen.try_get_untracked() != Some(generation) {
+            let is_own = !force_public
+                && active_scope.is_some()
+                && matches!(
+                    api::load_viewer_relationship(&handle).await,
+                    Ok(ViewerRelationship::SelfProfile { target_handle, .. }) if target_handle == handle
+                );
+            let still_current = || {
+                list_gen.try_get_untracked() == Some(generation)
+                    && session.profile_scope.try_get_untracked() == Some(active_scope.clone())
+            };
+            if !still_current() {
                 return;
             }
-            if use_own {
-                let result =
-                    api::load_own_relationships(direction, cursor_override.as_deref()).await;
-                if list_gen.try_get_untracked() != Some(generation)
-                    || session.profile_scope.get_untracked() != active_scope
-                {
+
+            let mut state =
+                read_relationship_page(&handle, direction, is_own, cursor_override.as_deref())
+                    .await;
+            if !still_current() {
+                return;
+            }
+            let saved_cursor = pending_return.get_value();
+            let resume = resume_cursor.get_untracked();
+            let resumed = resume.is_some() && cursor_override == resume;
+            if resumed
+                && (matches!(state, LiveListState::Restart { .. })
+                    || matches!(&state, LiveListState::Page { people, .. } if people.is_empty()))
+            {
+                // This cursor can be invalid even if a fresh read for the current scope is allowed.
+                let route = stored_cursor.get_value();
+                state = read_relationship_page(&handle, direction, is_own, route.as_deref()).await;
+                if !still_current() {
                     return;
                 }
-                match result {
-                    Ok(OwnRelationshipList::Page {
-                        author,
-                        direction,
-                        count,
-                        people,
-                        next_cursor,
-                    }) => {
-                        live_state.set(Some(LiveListState::Page {
-                            author,
-                            direction,
-                            is_own: true,
-                            count: Some(count),
-                            people: people
-                                .into_iter()
-                                .map(|p| RelationshipPersonRow {
-                                    author: p.author,
-                                    mutual: p.mutual,
-                                })
-                                .collect(),
-                            next_cursor,
-                            appending: false,
-                            append_error: false,
-                        }));
-                    }
-                    Ok(OwnRelationshipList::Restart { author, direction }) => {
-                        live_state.set(Some(LiveListState::Restart { author, direction }));
-                    }
-                    Err(
-                        ApiError::Unauthenticated
-                        | ApiError::Forbidden
-                        | ApiError::FollowActorUnavailable,
-                    ) => {
-                        live_state.set(Some(LiveListState::Loading));
-                        load_public_into(
-                            &handle,
-                            direction,
-                            cursor_override.as_deref(),
-                            generation,
-                            list_gen,
-                            live_state,
-                        )
-                        .await;
-                    }
-                    Err(ApiError::ProfileGone) => live_state.set(Some(LiveListState::Gone)),
-                    Err(ApiError::NotFound) => live_state.set(Some(LiveListState::Missing)),
-                    Err(_) => live_state.set(Some(LiveListState::Unavailable)),
+                resume_cursor.set(None);
+            } else if resumed && let LiveListState::Page { people, .. } = &mut state {
+                for row in people {
+                    row.return_cursor.clone_from(&cursor_override);
                 }
-            } else {
-                load_public_into(
-                    &handle,
-                    direction,
-                    cursor_override.as_deref(),
-                    generation,
-                    list_gen,
-                    live_state,
-                )
-                .await;
+            }
+            live_state.set(Some(state));
+            if let Some(saved) = saved_cursor {
+                pending_return.set_value(None);
+                focus_relationship_return(&saved);
             }
         });
     };
 
-    // React to ANY session change (`A -> B -> A` or logout): immediately clear private rows and reload.
-    Effect::new(move |prev_scope: Option<Option<String>>| {
-        let current_scope = session.profile_scope.get();
-        if let Some(prev) = prev_scope {
-            if prev != current_scope {
-                live_state.set(Some(LiveListState::Loading));
-                load_fresh(stored_cursor.get_value());
-            }
-        } else if current_scope.is_some() {
-            load_fresh(stored_cursor.get_value());
+    let requested_cursor = move || {
+        resume_cursor
+            .get_untracked()
+            .or_else(|| stored_cursor.get_value())
+    };
+
+    // Re-read a Back cursor using the current session, after its initial check finishes.
+    // Revocation or a change of session never reuses previously projected rows.
+    Effect::new(move |previous: Option<(bool, Option<String>)>| {
+        let known = !matches!(session.standing.get(), crate::session::Standing::Unknown);
+        let scope = session.profile_scope.get();
+        let current = (known, scope);
+        if current.0
+            && (current.1.is_some()
+                || pending_return.with_value(Option::is_some)
+                || previous.as_ref().is_some_and(|old| old.1.is_some()))
+            && previous.as_ref() != Some(&current)
+        {
+            load_fresh(requested_cursor(), false);
         }
-        current_scope
+        current
     });
 
-    // React to explicit retries or external invalidations.
     Effect::new(move |prev: Option<u64>| {
         let cur = reload_trigger.get();
-        if prev.is_some_and(|p| p != cur) {
-            load_fresh(stored_cursor.get_value());
+        if prev.is_some_and(|p| p != cur)
+            && (!pending_return.with_value(Option::is_some)
+                || !matches!(
+                    session.standing.get_untracked(),
+                    crate::session::Standing::Unknown
+                ))
+        {
+            load_fresh(requested_cursor(), false);
         }
         cur
+    });
+
+    Effect::new(move |previous: Option<u64>| {
+        let current = first_trigger.get();
+        if previous.is_some_and(|old| old != current) {
+            super::super::clear_profile_return();
+            pending_return.set_value(None);
+            resume_cursor.set(None);
+            load_fresh(None, false);
+        }
+        current
     });
 
     // React to pagination Append triggers (`Tải thêm`).
@@ -494,34 +563,7 @@ pub(super) fn ListSyncHost(
         }
         let snapshot = live_state
             .get_untracked()
-            .or_else(|| match ssr_data.get_untracked()? {
-                (
-                    _,
-                    Ok(AuthorRelationshipsLoad::Page {
-                        author,
-                        direction,
-                        count,
-                        people,
-                        next_cursor,
-                    }),
-                ) => Some(LiveListState::Page {
-                    author,
-                    direction,
-                    is_own: false,
-                    count,
-                    people: people
-                        .into_iter()
-                        .map(|author| RelationshipPersonRow {
-                            author,
-                            mutual: false,
-                        })
-                        .collect(),
-                    next_cursor,
-                    appending: false,
-                    append_error: false,
-                }),
-                _ => None,
-            });
+            .or_else(|| ssr_data.get_untracked()?.1.ok().map(LiveListState::from));
         let Some(mut page_snapshot) = snapshot else {
             return cur;
         };
@@ -530,35 +572,59 @@ pub(super) fn ListSyncHost(
                 is_own,
                 next_cursor,
                 appending,
-                append_error,
                 ..
             } if !*appending => {
                 let Some(next) = next_cursor.clone() else {
                     return cur;
                 };
                 *appending = true;
-                *append_error = false;
                 (*is_own, next)
             }
             _ => return cur,
         };
 
         let generation = list_gen.get_untracked();
+        let active_scope = session.profile_scope.get_untracked();
         let handle = stored_name.get_value();
+        if is_own && active_scope.is_none() {
+            resume_cursor.set(None);
+            load_fresh(None, true);
+            return cur;
+        }
         live_state.set(Some(page_snapshot));
 
         spawn_local(async move {
+            // The HTTP request is already tied to this cursor. Before applying any reply,
+            // verify that the mounted list still owns that exact append and session scope.
+            let owns_append = || {
+                list_gen.try_get_untracked() == Some(generation)
+                    && session.profile_scope.try_get_untracked() == Some(active_scope.clone())
+                    && live_state.try_with_untracked(|state| {
+                        matches!(state,
+                            Some(LiveListState::Page { next_cursor, appending: true, .. })
+                                if next_cursor.as_deref() == Some(cursor.as_str())
+                        )
+                    }) == Some(true)
+            };
             if is_own {
-                match api::load_own_relationships(direction, Some(&cursor)).await {
+                let result = api::load_own_relationships(direction, Some(&cursor)).await;
+                if !owns_append() {
+                    return;
+                }
+                match result {
+                    Ok(ref answer)
+                        if !own_relationship_list_matches(answer, &handle, direction) =>
+                    {
+                        resume_cursor.set(None);
+                        load_fresh(None, true);
+                    }
                     Ok(OwnRelationshipList::Page {
                         count,
                         people,
                         next_cursor,
                         ..
                     }) => {
-                        if list_gen.try_get_untracked() != Some(generation) {
-                            return;
-                        }
+                        let focus = append_focus(people.first().map(|row| &row.author));
                         live_state.update(|s| {
                             if let Some(LiveListState::Page {
                                 count: c,
@@ -574,6 +640,7 @@ pub(super) fn ListSyncHost(
                                     RelationshipPersonRow {
                                         author: p.author,
                                         mutual: p.mutual,
+                                        return_cursor: Some(cursor.clone()),
                                     }
                                 }));
                                 *nc = next_cursor;
@@ -581,54 +648,55 @@ pub(super) fn ListSyncHost(
                                 *append_error = false;
                             }
                         });
+                        if let Some(id) = focus {
+                            focus_list_after_render(id);
+                        }
                     }
                     Ok(OwnRelationshipList::Restart { .. }) => {
-                        if list_gen.try_get_untracked() == Some(generation) {
-                            load_fresh(None);
-                        }
+                        resume_cursor.set(None);
+                        load_fresh(None, false);
                     }
                     Err(ApiError::RelationshipListPrivate) => {
-                        if list_gen.try_get_untracked() == Some(generation) {
-                            live_state.set(Some(LiveListState::Private));
-                        }
+                        request_heading();
+                        live_state.set(Some(LiveListState::Private));
                     }
                     Err(ApiError::ProfileGone) => {
-                        if list_gen.try_get_untracked() == Some(generation) {
-                            live_state.set(Some(LiveListState::Gone));
-                        }
+                        request_heading();
+                        live_state.set(Some(LiveListState::Gone));
                     }
                     Err(ApiError::NotFound) => {
-                        if list_gen.try_get_untracked() == Some(generation) {
-                            live_state.set(Some(LiveListState::Missing));
-                        }
+                        request_heading();
+                        live_state.set(Some(LiveListState::Missing));
                     }
                     Err(
                         ApiError::Unauthenticated
                         | ApiError::Forbidden
                         | ApiError::FollowActorUnavailable,
                     ) => {
-                        if list_gen.try_get_untracked() == Some(generation) {
-                            load_fresh(None);
-                        }
+                        resume_cursor.set(None);
+                        load_fresh(None, true);
                     }
                     Err(_) => {
-                        if list_gen.try_get_untracked() == Some(generation) {
-                            live_state.update(|s| {
-                                if let Some(LiveListState::Page {
-                                    appending,
-                                    append_error,
-                                    ..
-                                }) = s
-                                {
-                                    *appending = false;
-                                    *append_error = true;
-                                }
-                            });
-                        }
+                        live_state.update(|s| {
+                            if let Some(LiveListState::Page {
+                                appending,
+                                append_error,
+                                ..
+                            }) = s
+                            {
+                                *appending = false;
+                                *append_error = true;
+                            }
+                        });
                     }
                 }
             } else {
-                match api::load_public_relationships(&handle, direction, Some(&cursor)).await {
+                let result =
+                    api::load_public_relationships(&handle, direction, Some(&cursor)).await;
+                if !owns_append() {
+                    return;
+                }
+                match result {
                     Ok(PublicRelationshipList::Page {
                         count,
                         people,
@@ -638,6 +706,7 @@ pub(super) fn ListSyncHost(
                         if list_gen.try_get_untracked() != Some(generation) {
                             return;
                         }
+                        let focus = append_focus(people.first());
                         live_state.update(|s| {
                             if let Some(LiveListState::Page {
                                 count: c,
@@ -653,6 +722,7 @@ pub(super) fn ListSyncHost(
                                     RelationshipPersonRow {
                                         author,
                                         mutual: false,
+                                        return_cursor: Some(cursor.clone()),
                                     }
                                 }));
                                 *nc = next_cursor;
@@ -660,29 +730,40 @@ pub(super) fn ListSyncHost(
                                 *append_error = false;
                             }
                         });
+                        if let Some(id) = focus {
+                            focus_list_after_render(id);
+                        }
                     }
                     Ok(PublicRelationshipList::Alias { href }) => {
                         if list_gen.try_get_untracked() == Some(generation) {
-                            let _ = window().location().replace(&href);
+                            super::super::handle::redirect_alias(
+                                &super::super::ResponseStatus::capture(),
+                                &format!("/@{handle}/{}", direction.web_segment()),
+                                &href,
+                            );
                         }
                     }
                     Ok(PublicRelationshipList::Restart { .. }) => {
                         if list_gen.try_get_untracked() == Some(generation) {
-                            load_fresh(None);
+                            resume_cursor.set(None);
+                            load_fresh(None, false);
                         }
                     }
                     Err(ApiError::RelationshipListPrivate) => {
                         if list_gen.try_get_untracked() == Some(generation) {
+                            request_heading();
                             live_state.set(Some(LiveListState::Private));
                         }
                     }
                     Err(ApiError::ProfileGone) => {
                         if list_gen.try_get_untracked() == Some(generation) {
+                            request_heading();
                             live_state.set(Some(LiveListState::Gone));
                         }
                     }
                     Err(ApiError::NotFound) => {
                         if list_gen.try_get_untracked() == Some(generation) {
+                            request_heading();
                             live_state.set(Some(LiveListState::Missing));
                         }
                     }
@@ -732,52 +813,85 @@ pub(super) fn ListSyncHost(
     view! { <span></span> }
 }
 
-async fn load_public_into(
+fn append_focus(first: Option<&crate::contract::PublicAuthorRef>) -> Option<String> {
+    document()
+        .active_element()
+        .filter(|el| el.id() == "rel-load-more")?;
+    Some(
+        first
+            .filter(|author| author.valid_href().is_some())
+            .map_or_else(
+                || "relationship-title".into(),
+                |author| format!("rel-person-{}", author.handle),
+            ),
+    )
+}
+
+fn focus_list_after_render(id: String) {
+    let path = window().location().href().ok();
+    request_animation_frame(move || {
+        if window().location().href().ok() == path
+            && document()
+                .active_element()
+                .is_some_and(|el| el.tag_name() == "BODY" || el.id() == "rel-load-more")
+            && let Some(target) = document().get_element_by_id(&id)
+            && let Ok(target) = target.dyn_into::<web_sys::HtmlElement>()
+        {
+            let _ = target.focus();
+        }
+    });
+}
+
+async fn read_relationship_page(
     handle: &str,
     direction: FollowDirection,
+    is_own: bool,
     cursor: Option<&str>,
-    generation: u64,
-    list_gen: RwSignal<u64>,
-    live_state: RwSignal<Option<LiveListState>>,
-) {
-    let result = api::load_public_relationships(handle, direction, cursor).await;
-    if list_gen.try_get_untracked() != Some(generation) {
-        return;
-    }
-    match result {
-        Ok(PublicRelationshipList::Page {
-            author,
-            direction,
-            count,
-            people,
-            next_cursor,
-        }) => {
-            live_state.set(Some(LiveListState::Page {
+) -> LiveListState {
+    if is_own {
+        match api::load_own_relationships(direction, cursor).await {
+            Ok(ref answer) if !own_relationship_list_matches(answer, handle, direction) => {}
+            Ok(OwnRelationshipList::Page {
                 author,
                 direction,
-                is_own: false,
                 count,
-                people: people
-                    .into_iter()
-                    .map(|author| RelationshipPersonRow {
-                        author,
-                        mutual: false,
-                    })
-                    .collect(),
+                people,
                 next_cursor,
-                appending: false,
-                append_error: false,
-            }));
+            }) => {
+                return LiveListState::Page {
+                    author,
+                    direction,
+                    is_own: true,
+                    count: Some(count),
+                    people: people
+                        .into_iter()
+                        .map(|p| RelationshipPersonRow {
+                            author: p.author,
+                            mutual: p.mutual,
+                            return_cursor: None,
+                        })
+                        .collect(),
+                    next_cursor,
+                    appending: false,
+                    append_error: false,
+                };
+            }
+            Ok(OwnRelationshipList::Restart { author, direction }) => {
+                return LiveListState::Restart { author, direction };
+            }
+            Err(
+                ApiError::Unauthenticated | ApiError::Forbidden | ApiError::FollowActorUnavailable,
+            ) => {}
+            Err(ApiError::ProfileGone) => return LiveListState::Gone,
+            Err(ApiError::NotFound) => return LiveListState::Missing,
+            Err(_) => return LiveListState::Unavailable,
         }
-        Ok(PublicRelationshipList::Restart { author, direction }) => {
-            live_state.set(Some(LiveListState::Restart { author, direction }));
-        }
-        Ok(PublicRelationshipList::Alias { href }) => {
-            let _ = window().location().replace(&href);
-        }
-        Err(ApiError::RelationshipListPrivate) => live_state.set(Some(LiveListState::Private)),
-        Err(ApiError::ProfileGone) => live_state.set(Some(LiveListState::Gone)),
-        Err(ApiError::NotFound) => live_state.set(Some(LiveListState::Missing)),
-        Err(_) => live_state.set(Some(LiveListState::Unavailable)),
+    }
+    match api::load_public_relationships(handle, direction, cursor).await {
+        Ok(page) => LiveListState::from(AuthorRelationshipsLoad::from(page)),
+        Err(ApiError::RelationshipListPrivate) => LiveListState::Private,
+        Err(ApiError::ProfileGone) => LiveListState::Gone,
+        Err(ApiError::NotFound) => LiveListState::Missing,
+        Err(_) => LiveListState::Unavailable,
     }
 }

@@ -1,0 +1,426 @@
+#353 · captured stdout excerpts
+cwd /private/tmp/vink-353-follow-profile
+base ab5ecaff9685938dc689b52d98957375fbbfdf12
+browser SHA 8ac0943025f556bb5bd340f1293551d472170f22
+unit SHA b4c64f4944cb4aa7274ae09de1d0302138d0b267
+macOS 15.6 arm64 · Chrome 158.0.8127.36 · PostgreSQL 17.11 scratch · DPR 1
+
+python3.13 ./tools/local-budget run -- cargo xtask verify unit web --filter follow
+==> selected 12 unit/contract tests for vink-web; database/browser checks NOT_SELECTED
+test api::follow_path_tests::follow_paths_encode_segments_and_cursors ... ok
+test discussion_state::tests::r4_closed_wording_follows_the_servers_author_fact_and_resets_with_scope ... ok
+test follow_state::tests::aba_lost_ack_reconcile_unfollow_and_stale_v1_ack_is_ignored ... ok
+test follow_state::tests::conflict_reconciles_and_disappearance_requests_heading_focus ... ok
+test follow_state::tests::follow_ack_arriving_after_readback_applies_only_to_latest_intent ... ok
+test follow_state::tests::safe_profile_return_and_vi_count_enforce_strict_rules ... ok
+test follow_state::tests::session_switch_a_b_a_drops_stale_in_flight_answers ... ok
+test contract::follow_contract_tests::follow_fixtures_and_error_envelopes_round_trip ... ok
+test pages::publication::tests::the_primary_action_follows_the_choice_against_what_the_server_confirmed ... ok
+test pages::discussion::separated_read_regressions::r4_a_failed_read_is_never_shown_as_empty_and_the_end_follows_the_cursor ... ok
+test tag_state::tests::a_lost_write_followed_by_a_newer_choice_keeps_the_newer_choice_unsaved ... ok
+test session::tests::auth_errors_follow_the_contract_fixtures ... ok
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 262 filtered out; finished in 0.00s
+
+cargo xtask verify web --scenario password
+Social Follow Graph (#294):
+  ok  distinct initial author handles for A and B
+  ok  SSR public profile renders followers link without mutual/viewer secrets
+  ok  guest CTA points to /toi?next=... (/toi?next=%2F%40nguoi%2Dgiu%2Dmua%2Dthu%2Dtruc%2D2c476a)
+  ok  return link targets canonical author profile
+  ok  open redirect next URL is rejected
+  ok  owner can edit the profile and sees no self-follow action
+  ok  own following page heading renders
+  ok  focus stays on #follow-action after keyboard Follow
+  ok  followers count updates in-place to 1
+  ok  Mutual badge text on B
+  ok  guest never sees Mutual badge
+  ok  the same public list has no Mutual badge
+  ok  real server committed the first PUT of the ABA case before ACK was held
+  ok  320px/200% pending keeps the node, focus, live region and rect {"same":true,"live":true,"moved":false,"rect":{"x":16,"y":677,"width":218.75,"height":90.59375,"top":677,"right":234.75,"bottom":767.59375,"left":16},"before":{"x":16,"y":677,"width":218.75,"height":90.59375,"top":677,"right":234.75,"bottom":767.59375,"left":16}}
+  ok  keyboard reactivation while pending sends no second write
+  ok  vink:follow-changed does NOT fire while ACK is pending
+  ok  count decremented to 0 after Unfollow
+  ok  stale late v1 ACK ignored; button remains Theo dõi
+  ok  stale late v1 ACK ignored; count remains 0
+  ok  stale late v1 ACK does not emit extra invalidation
+  ok  stale late v1 ACK cannot replace the announcement for the latest action
+  ok  real Follow succeeds before the ACK is dropped
+  ok  lost ACK exposes reconciliation and announces its new result once
+  ok  profile hides count when followers_count=self
+  ok  list page omits count when followers_count=self
+  ok  person link exposes the handle in its byline and accessible name
+  ok  real page 2 held before network failure injection
+  ok  append error preserves existing rows, the button and keyboard focus
+  ok  mid-list revocation clears all previously loaded rows
+  ok  profile renders count without link when list=self and count=everyone
+  ok  followers: independent list=everyone and count=everyone ({"link":"15 người theo dõi"})
+  ok  following: independent list=everyone and count=everyone ({"link":"0 đang theo dõi"})
+  ok  empty Following and real zero count are distinct from a hidden count
+  ok  followers: independent list=everyone and count=self ({"link":"Người theo dõi"})
+  ok  following: independent list=everyone and count=self ({"link":"Đang theo dõi"})
+  ok  empty Following and real zero count are distinct from a hidden count
+  ok  followers: independent list=self and count=everyone ({"stat":"15 người theo dõi"})
+  ok  following: independent list=self and count=everyone ({"stat":"0 đang theo dõi"})
+  ok  followers: independent list=self and count=self ({})
+  ok  following: independent list=self and count=self ({})
+  ok  follow-list-without-count zero overflow at 320px light 100% (got 0)
+  ok  follow-list-without-count zero nested links at 320px light 100%
+  ok  follow-list-without-count touch target #profile-followers-link >= 44 × 44px at 320px light 100% (got 109.15625×44)
+  ok  follow-list-without-count zero overflow at 320px light 200% (got -15)
+  ok  follow-list-without-count zero nested links at 320px light 200%
+  ok  follow-list-without-count touch target #profile-followers-link >= 44 × 44px at 320px light 200% (got 218.3125×44.796875)
+  ok  follow-list-without-count zero overflow at 320px dark 100% (got 0)
+  ok  follow-list-without-count zero nested links at 320px dark 100%
+  ok  follow-list-without-count touch target #profile-followers-link >= 44 × 44px at 320px dark 100% (got 109.15625×44)
+  ok  follow-list-without-count zero overflow at 320px dark 200% (got -15)
+  ok  follow-list-without-count zero nested links at 320px dark 200%
+  ok  follow-list-without-count touch target #profile-followers-link >= 44 × 44px at 320px dark 200% (got 218.3125×44.796875)
+  ok  follow-list-without-count zero overflow at 390px light 100% (got 0)
+  ok  follow-list-without-count zero nested links at 390px light 100%
+  ok  follow-list-without-count touch target #profile-followers-link >= 44 × 44px at 390px light 100% (got 109.15625×44)
+  ok  light follow-list-without-count text contrast >= 4.5 (min 15.81; disabled controls exempt)
+  ok  follow-list-without-count focus ring at light has contrast >= 3:1 (5.78)
+  ok  follow-list-without-count zero overflow at 390px light 200% (got -15)
+  ok  follow-list-without-count zero nested links at 390px light 200%
+  ok  follow-list-without-count touch target #profile-followers-link >= 44 × 44px at 390px light 200% (got 218.3125×44.796875)
+  ok  follow-list-without-count zero overflow at 390px dark 100% (got 0)
+  ok  follow-list-without-count zero nested links at 390px dark 100%
+  ok  follow-list-without-count touch target #profile-followers-link >= 44 × 44px at 390px dark 100% (got 109.15625×44)
+  ok  dark follow-list-without-count text contrast >= 4.5 (min 15.33; disabled controls exempt)
+  ok  follow-list-without-count focus ring at dark has contrast >= 3:1 (10.83)
+  ok  follow-list-without-count zero overflow at 390px dark 200% (got -15)
+  ok  follow-list-without-count zero nested links at 390px dark 200%
+  ok  follow-list-without-count touch target #profile-followers-link >= 44 × 44px at 390px dark 200% (got 218.3125×44.796875)
+  ok  follow-list-without-count zero overflow at 834px light 100% (got 0)
+  ok  follow-list-without-count zero nested links at 834px light 100%
+  ok  follow-list-without-count touch target #profile-followers-link >= 44 × 44px at 834px light 100% (got 109.15625×44)
+  ok  follow-list-without-count zero overflow at 834px light 200% (got 0)
+  ok  follow-list-without-count zero nested links at 834px light 200%
+  ok  follow-list-without-count touch target #profile-followers-link >= 44 × 44px at 834px light 200% (got 218.3125×44.796875)
+  ok  follow-list-without-count zero overflow at 834px dark 100% (got 0)
+  ok  follow-list-without-count zero nested links at 834px dark 100%
+  ok  follow-list-without-count touch target #profile-followers-link >= 44 × 44px at 834px dark 100% (got 109.15625×44)
+  ok  follow-list-without-count zero overflow at 834px dark 200% (got 0)
+  ok  follow-list-without-count zero nested links at 834px dark 200%
+  ok  follow-list-without-count touch target #profile-followers-link >= 44 × 44px at 834px dark 200% (got 218.3125×44.796875)
+  ok  follow-list-without-count zero overflow at 1024px light 100% (got 0)
+  ok  follow-list-without-count zero nested links at 1024px light 100%
+  ok  follow-list-without-count touch target #profile-followers-link >= 44 × 44px at 1024px light 100% (got 109.15625×44)
+  ok  follow-list-without-count zero overflow at 1024px light 200% (got 0)
+  ok  follow-list-without-count zero nested links at 1024px light 200%
+  ok  follow-list-without-count touch target #profile-followers-link >= 44 × 44px at 1024px light 200% (got 218.3125×44.796875)
+  ok  follow-list-without-count zero overflow at 1024px dark 100% (got 0)
+  ok  follow-list-without-count zero nested links at 1024px dark 100%
+  ok  follow-list-without-count touch target #profile-followers-link >= 44 × 44px at 1024px dark 100% (got 109.15625×44)
+  ok  follow-list-without-count zero overflow at 1024px dark 200% (got 0)
+  ok  follow-list-without-count zero nested links at 1024px dark 200%
+  ok  follow-list-without-count touch target #profile-followers-link >= 44 × 44px at 1024px dark 200% (got 218.3125×44.796875)
+  ok  follow-list-without-count zero overflow at 1440px light 100% (got 0)
+  ok  follow-list-without-count zero nested links at 1440px light 100%
+  ok  follow-list-without-count touch target #profile-followers-link >= 44 × 44px at 1440px light 100% (got 109.15625×44)
+  ok  follow-list-without-count zero overflow at 1440px light 200% (got 0)
+  ok  follow-list-without-count zero nested links at 1440px light 200%
+  ok  follow-list-without-count touch target #profile-followers-link >= 44 × 44px at 1440px light 200% (got 218.3125×44.796875)
+  ok  follow-list-without-count zero overflow at 1440px dark 100% (got 0)
+  ok  follow-list-without-count zero nested links at 1440px dark 100%
+  ok  follow-list-without-count touch target #profile-followers-link >= 44 × 44px at 1440px dark 100% (got 109.15625×44)
+  ok  follow-list-without-count zero overflow at 1440px dark 200% (got 0)
+  ok  follow-list-without-count zero nested links at 1440px dark 200%
+  ok  follow-list-without-count touch target #profile-followers-link >= 44 × 44px at 1440px dark 200% (got 218.3125×44.796875)
+  ok  follow-profile zero overflow at 320px light 100% (got 0)
+  ok  follow-profile zero nested links at 320px light 100%
+  ok  follow-profile touch target #follow-action >= 44 × 44px at 320px light 100% (got 110.375×48)
+  ok  follow-profile touch target #profile-followers-link >= 44 × 44px at 320px light 100% (got 125.125×44)
+  ok  follow-profile zero overflow at 320px light 200% (got -15)
+  ok  follow-profile zero nested links at 320px light 200%
+  ok  follow-profile touch target #follow-action >= 44 × 44px at 320px light 200% (got 218.75×90.59375)
+  ok  follow-profile touch target #profile-followers-link >= 44 × 44px at 320px light 200% (got 250.234375×44.796875)
+  ok  follow-profile zero overflow at 320px dark 100% (got 0)
+  ok  follow-profile zero nested links at 320px dark 100%
+  ok  follow-profile touch target #follow-action >= 44 × 44px at 320px dark 100% (got 110.375×48)
+  ok  follow-profile touch target #profile-followers-link >= 44 × 44px at 320px dark 100% (got 125.125×44)
+  ok  follow-profile zero overflow at 320px dark 200% (got -15)
+  ok  follow-profile zero nested links at 320px dark 200%
+  ok  follow-profile touch target #follow-action >= 44 × 44px at 320px dark 200% (got 218.75×90.59375)
+  ok  follow-profile touch target #profile-followers-link >= 44 × 44px at 320px dark 200% (got 250.234375×44.796875)
+  ok  follow-profile zero overflow at 390px light 100% (got 0)
+  ok  follow-profile zero nested links at 390px light 100%
+  ok  follow-profile touch target #follow-action >= 44 × 44px at 390px light 100% (got 110.375×48)
+  ok  follow-profile touch target #profile-followers-link >= 44 × 44px at 390px light 100% (got 125.125×44)
+  ok  light follow-profile text contrast >= 4.5 (min 6.98; disabled controls exempt)
+  ok  follow-profile focus ring at light has contrast >= 3:1 (5.78)
+  ok  follow-profile zero overflow at 390px light 200% (got -15)
+  ok  follow-profile zero nested links at 390px light 200%
+  ok  follow-profile touch target #follow-action >= 44 × 44px at 390px light 200% (got 218.75×90.59375)
+  ok  follow-profile touch target #profile-followers-link >= 44 × 44px at 390px light 200% (got 250.234375×44.796875)
+  ok  follow-profile zero overflow at 390px dark 100% (got 0)
+  ok  follow-profile zero nested links at 390px dark 100%
+  ok  follow-profile touch target #follow-action >= 44 × 44px at 390px dark 100% (got 110.375×48)
+  ok  follow-profile touch target #profile-followers-link >= 44 × 44px at 390px dark 100% (got 125.125×44)
+  ok  dark follow-profile text contrast >= 4.5 (min 8.16; disabled controls exempt)
+  ok  follow-profile focus ring at dark has contrast >= 3:1 (10.83)
+  ok  follow-profile zero overflow at 390px dark 200% (got -15)
+  ok  follow-profile zero nested links at 390px dark 200%
+  ok  follow-profile touch target #follow-action >= 44 × 44px at 390px dark 200% (got 218.75×90.59375)
+  ok  follow-profile touch target #profile-followers-link >= 44 × 44px at 390px dark 200% (got 250.234375×44.796875)
+  ok  follow-profile zero overflow at 834px light 100% (got 0)
+  ok  follow-profile zero nested links at 834px light 100%
+  ok  follow-profile touch target #follow-action >= 44 × 44px at 834px light 100% (got 110.375×48)
+  ok  follow-profile touch target #profile-followers-link >= 44 × 44px at 834px light 100% (got 125.125×44)
+  ok  follow-profile zero overflow at 834px light 200% (got 0)
+  ok  follow-profile zero nested links at 834px light 200%
+  ok  follow-profile touch target #follow-action >= 44 × 44px at 834px light 200% (got 218.75×90.59375)
+  ok  follow-profile touch target #profile-followers-link >= 44 × 44px at 834px light 200% (got 250.234375×44.796875)
+  ok  follow-profile zero overflow at 834px dark 100% (got 0)
+  ok  follow-profile zero nested links at 834px dark 100%
+  ok  follow-profile touch target #follow-action >= 44 × 44px at 834px dark 100% (got 110.375×48)
+  ok  follow-profile touch target #profile-followers-link >= 44 × 44px at 834px dark 100% (got 125.125×44)
+  ok  follow-profile zero overflow at 834px dark 200% (got 0)
+  ok  follow-profile zero nested links at 834px dark 200%
+  ok  follow-profile touch target #follow-action >= 44 × 44px at 834px dark 200% (got 218.75×90.59375)
+  ok  follow-profile touch target #profile-followers-link >= 44 × 44px at 834px dark 200% (got 250.234375×44.796875)
+  ok  follow-profile zero overflow at 1024px light 100% (got 0)
+  ok  follow-profile zero nested links at 1024px light 100%
+  ok  follow-profile touch target #follow-action >= 44 × 44px at 1024px light 100% (got 110.375×48)
+  ok  follow-profile touch target #profile-followers-link >= 44 × 44px at 1024px light 100% (got 125.125×44)
+  ok  follow-profile zero overflow at 1024px light 200% (got 0)
+  ok  follow-profile zero nested links at 1024px light 200%
+  ok  follow-profile touch target #follow-action >= 44 × 44px at 1024px light 200% (got 218.75×90.59375)
+  ok  follow-profile touch target #profile-followers-link >= 44 × 44px at 1024px light 200% (got 250.234375×44.796875)
+  ok  follow-profile zero overflow at 1024px dark 100% (got 0)
+  ok  follow-profile zero nested links at 1024px dark 100%
+  ok  follow-profile touch target #follow-action >= 44 × 44px at 1024px dark 100% (got 110.375×48)
+  ok  follow-profile touch target #profile-followers-link >= 44 × 44px at 1024px dark 100% (got 125.125×44)
+  ok  follow-profile zero overflow at 1024px dark 200% (got 0)
+  ok  follow-profile zero nested links at 1024px dark 200%
+  ok  follow-profile touch target #follow-action >= 44 × 44px at 1024px dark 200% (got 218.75×90.59375)
+  ok  follow-profile touch target #profile-followers-link >= 44 × 44px at 1024px dark 200% (got 250.234375×44.796875)
+  ok  follow-profile zero overflow at 1440px light 100% (got 0)
+  ok  follow-profile zero nested links at 1440px light 100%
+  ok  follow-profile touch target #follow-action >= 44 × 44px at 1440px light 100% (got 110.375×48)
+  ok  follow-profile touch target #profile-followers-link >= 44 × 44px at 1440px light 100% (got 125.125×44)
+  ok  follow-profile zero overflow at 1440px light 200% (got 0)
+  ok  follow-profile zero nested links at 1440px light 200%
+  ok  follow-profile touch target #follow-action >= 44 × 44px at 1440px light 200% (got 218.75×90.59375)
+  ok  follow-profile touch target #profile-followers-link >= 44 × 44px at 1440px light 200% (got 250.234375×44.796875)
+  ok  follow-profile zero overflow at 1440px dark 100% (got 0)
+  ok  follow-profile zero nested links at 1440px dark 100%
+  ok  follow-profile touch target #follow-action >= 44 × 44px at 1440px dark 100% (got 110.375×48)
+  ok  follow-profile touch target #profile-followers-link >= 44 × 44px at 1440px dark 100% (got 125.125×44)
+  ok  follow-profile zero overflow at 1440px dark 200% (got 0)
+  ok  follow-profile zero nested links at 1440px dark 200%
+  ok  follow-profile touch target #follow-action >= 44 × 44px at 1440px dark 200% (got 218.75×90.59375)
+  ok  follow-profile touch target #profile-followers-link >= 44 × 44px at 1440px dark 200% (got 250.234375×44.796875)
+  ok  follow-list zero overflow at 320px light 100% (got -15)
+  ok  follow-list zero nested links at 320px light 100%
+  ok  follow-list touch target #rel-back-profile >= 44 × 44px at 320px light 100% (got 273×48)
+  ok  follow-list touch target #rel-load-more >= 44 × 44px at 320px light 100% (got 109.5625×46.296875)
+  ok  follow-list touch target .vk-rel-item a >= 44 × 44px at 320px light 100% (got 265×44)
+  ok  follow-list final action clears bottom bar at 320px light/100% {"bottom":804.0625,"barTop":820,"hit":true}
+  ok  follow-list zero overflow at 320px light 200% (got -15)
+  ok  follow-list zero nested links at 320px light 200%
+  ok  follow-list touch target #rel-back-profile >= 44 × 44px at 320px light 200% (got 241×48)
+  ok  follow-list touch target #rel-load-more >= 44 × 44px at 320px light 200% (got 217.125×90.59375)
+  ok  follow-list touch target .vk-rel-item a >= 44 × 44px at 320px light 200% (got 225×209.78125)
+  ok  follow-list final action clears bottom bar at 320px light/200% {"bottom":739.796875,"barTop":756,"hit":true}
+  ok  follow-list zero overflow at 320px dark 100% (got -15)
+  ok  follow-list zero nested links at 320px dark 100%
+  ok  follow-list touch target #rel-back-profile >= 44 × 44px at 320px dark 100% (got 273×48)
+  ok  follow-list touch target #rel-load-more >= 44 × 44px at 320px dark 100% (got 109.5625×46.296875)
+  ok  follow-list touch target .vk-rel-item a >= 44 × 44px at 320px dark 100% (got 265×44)
+  ok  follow-list final action clears bottom bar at 320px dark/100% {"bottom":804.0625,"barTop":820,"hit":true}
+  ok  follow-list zero overflow at 320px dark 200% (got -15)
+  ok  follow-list zero nested links at 320px dark 200%
+  ok  follow-list touch target #rel-back-profile >= 44 × 44px at 320px dark 200% (got 241×48)
+  ok  follow-list touch target #rel-load-more >= 44 × 44px at 320px dark 200% (got 217.125×90.59375)
+  ok  follow-list touch target .vk-rel-item a >= 44 × 44px at 320px dark 200% (got 225×209.78125)
+  ok  follow-list final action clears bottom bar at 320px dark/200% {"bottom":739.796875,"barTop":756,"hit":true}
+  ok  follow-list zero overflow at 390px light 100% (got -15)
+  ok  follow-list zero nested links at 390px light 100%
+  ok  follow-list touch target #rel-back-profile >= 44 × 44px at 390px light 100% (got 343×48)
+  ok  follow-list touch target #rel-load-more >= 44 × 44px at 390px light 100% (got 109.5625×46.296875)
+  ok  follow-list touch target .vk-rel-item a >= 44 × 44px at 390px light 100% (got 335×44)
+  ok  light follow-list text contrast >= 4.5 (min 6.72; disabled controls exempt)
+  ok  follow-list focus ring at light has contrast >= 3:1 (5.78)
+  ok  follow-list final action clears bottom bar at 390px light/100% {"bottom":803.671875,"barTop":820,"hit":true}
+  ok  follow-list zero overflow at 390px light 200% (got -15)
+  ok  follow-list zero nested links at 390px light 200%
+  ok  follow-list touch target #rel-back-profile >= 44 × 44px at 390px light 200% (got 311×48)
+  ok  follow-list touch target #rel-load-more >= 44 × 44px at 390px light 200% (got 217.125×90.59375)
+  ok  follow-list touch target .vk-rel-item a >= 44 × 44px at 390px light 200% (got 295×124.390625)
+  ok  follow-list final action clears bottom bar at 390px light/200% {"bottom":740.453125,"barTop":756,"hit":true}
+  ok  follow-list zero overflow at 390px dark 100% (got -15)
+  ok  follow-list zero nested links at 390px dark 100%
+  ok  follow-list touch target #rel-back-profile >= 44 × 44px at 390px dark 100% (got 343×48)
+  ok  follow-list touch target #rel-load-more >= 44 × 44px at 390px dark 100% (got 109.5625×46.296875)
+  ok  follow-list touch target .vk-rel-item a >= 44 × 44px at 390px dark 100% (got 335×44)
+  ok  dark follow-list text contrast >= 4.5 (min 7.87; disabled controls exempt)
+  ok  follow-list focus ring at dark has contrast >= 3:1 (10.83)
+  ok  follow-list final action clears bottom bar at 390px dark/100% {"bottom":803.671875,"barTop":820,"hit":true}
+  ok  follow-list zero overflow at 390px dark 200% (got -15)
+  ok  follow-list zero nested links at 390px dark 200%
+  ok  follow-list touch target #rel-back-profile >= 44 × 44px at 390px dark 200% (got 311×48)
+  ok  follow-list touch target #rel-load-more >= 44 × 44px at 390px dark 200% (got 217.125×90.59375)
+  ok  follow-list touch target .vk-rel-item a >= 44 × 44px at 390px dark 200% (got 295×124.390625)
+  ok  follow-list final action clears bottom bar at 390px dark/200% {"bottom":740.453125,"barTop":756,"hit":true}
+  ok  follow-list zero overflow at 834px light 100% (got -15)
+  ok  follow-list zero nested links at 834px light 100%
+  ok  follow-list touch target #rel-back-profile >= 44 × 44px at 834px light 100% (got 659×48)
+  ok  follow-list touch target #rel-load-more >= 44 × 44px at 834px light 100% (got 109.5625×46.296875)
+  ok  follow-list touch target .vk-rel-item a >= 44 × 44px at 834px light 100% (got 651×44)
+  ok  follow-list zero overflow at 834px light 200% (got -15)
+  ok  follow-list zero nested links at 834px light 200%
+  ok  follow-list touch target #rel-back-profile >= 44 × 44px at 834px light 200% (got 595×48)
+  ok  follow-list touch target #rel-load-more >= 44 × 44px at 834px light 200% (got 217.125×90.59375)
+  ok  follow-list touch target .vk-rel-item a >= 44 × 44px at 834px light 200% (got 579×85.390625)
+  ok  follow-list zero overflow at 834px dark 100% (got -15)
+  ok  follow-list zero nested links at 834px dark 100%
+  ok  follow-list touch target #rel-back-profile >= 44 × 44px at 834px dark 100% (got 659×48)
+  ok  follow-list touch target #rel-load-more >= 44 × 44px at 834px dark 100% (got 109.5625×46.296875)
+  ok  follow-list touch target .vk-rel-item a >= 44 × 44px at 834px dark 100% (got 651×44)
+  ok  follow-list zero overflow at 834px dark 200% (got -15)
+  ok  follow-list zero nested links at 834px dark 200%
+  ok  follow-list touch target #rel-back-profile >= 44 × 44px at 834px dark 200% (got 595×48)
+  ok  follow-list touch target #rel-load-more >= 44 × 44px at 834px dark 200% (got 217.125×90.59375)
+  ok  follow-list touch target .vk-rel-item a >= 44 × 44px at 834px dark 200% (got 579×85.390625)
+  ok  follow-list zero overflow at 1024px light 100% (got -15)
+  ok  follow-list zero nested links at 1024px light 100%
+  ok  follow-list touch target #rel-back-profile >= 44 × 44px at 1024px light 100% (got 672×48)
+  ok  follow-list touch target #rel-load-more >= 44 × 44px at 1024px light 100% (got 109.5625×46.296875)
+  ok  follow-list touch target .vk-rel-item a >= 44 × 44px at 1024px light 100% (got 664×44)
+  ok  follow-list zero overflow at 1024px light 200% (got -15)
+  ok  follow-list zero nested links at 1024px light 200%
+  ok  follow-list touch target #rel-back-profile >= 44 × 44px at 1024px light 200% (got 785×48)
+  ok  follow-list touch target #rel-load-more >= 44 × 44px at 1024px light 200% (got 217.125×90.59375)
+  ok  follow-list touch target .vk-rel-item a >= 44 × 44px at 1024px light 200% (got 769×85.390625)
+  ok  follow-list zero overflow at 1024px dark 100% (got -15)
+  ok  follow-list zero nested links at 1024px dark 100%
+  ok  follow-list touch target #rel-back-profile >= 44 × 44px at 1024px dark 100% (got 672×48)
+  ok  follow-list touch target #rel-load-more >= 44 × 44px at 1024px dark 100% (got 109.5625×46.296875)
+  ok  follow-list touch target .vk-rel-item a >= 44 × 44px at 1024px dark 100% (got 664×44)
+  ok  follow-list zero overflow at 1024px dark 200% (got -15)
+  ok  follow-list zero nested links at 1024px dark 200%
+  ok  follow-list touch target #rel-back-profile >= 44 × 44px at 1024px dark 200% (got 785×48)
+  ok  follow-list touch target #rel-load-more >= 44 × 44px at 1024px dark 200% (got 217.125×90.59375)
+  ok  follow-list touch target .vk-rel-item a >= 44 × 44px at 1024px dark 200% (got 769×85.390625)
+  ok  follow-list zero overflow at 1440px light 100% (got -15)
+  ok  follow-list zero nested links at 1440px light 100%
+  ok  follow-list touch target #rel-back-profile >= 44 × 44px at 1440px light 100% (got 672×48)
+  ok  follow-list touch target #rel-load-more >= 44 × 44px at 1440px light 100% (got 109.5625×46.296875)
+  ok  follow-list touch target .vk-rel-item a >= 44 × 44px at 1440px light 100% (got 664×44)
+  ok  follow-list zero overflow at 1440px light 200% (got -15)
+  ok  follow-list zero nested links at 1440px light 200%
+  ok  follow-list touch target #rel-back-profile >= 44 × 44px at 1440px light 200% (got 1077×48)
+  ok  follow-list touch target #rel-load-more >= 44 × 44px at 1440px light 200% (got 217.125×90.59375)
+  ok  follow-list touch target .vk-rel-item a >= 44 × 44px at 1440px light 200% (got 1061×85.390625)
+  ok  follow-list zero overflow at 1440px dark 100% (got -15)
+  ok  follow-list zero nested links at 1440px dark 100%
+  ok  follow-list touch target #rel-back-profile >= 44 × 44px at 1440px dark 100% (got 672×48)
+  ok  follow-list touch target #rel-load-more >= 44 × 44px at 1440px dark 100% (got 109.5625×46.296875)
+  ok  follow-list touch target .vk-rel-item a >= 44 × 44px at 1440px dark 100% (got 664×44)
+  ok  follow-list zero overflow at 1440px dark 200% (got -15)
+  ok  follow-list zero nested links at 1440px dark 200%
+  ok  follow-list touch target #rel-back-profile >= 44 × 44px at 1440px dark 200% (got 1077×48)
+  ok  follow-list touch target #rel-load-more >= 44 × 44px at 1440px dark 200% (got 217.125×90.59375)
+  ok  follow-list touch target .vk-rel-item a >= 44 × 44px at 1440px dark 200% (got 1061×85.390625)
+  ok  A nonempty own-following read held before session switch
+  ok  late nonempty own-list ACK cannot restore a prior session’s edge
+  ok  zero console/page errors during follow flows ()
+  ok  GET to unknown profile returns 404
+  ok  HEAD to unknown profile returns 404
+  ok  404 explains the address and offers Khám phá with JavaScript disabled
+  ok  GET to temporarily unavailable profile returns 503
+  ok  HEAD to temporarily unavailable profile returns 503
+  ok  followers list read error is 503
+  ok  followers read error offers retry and is distinct from zero or empty
+  ok  following list read error is 503
+  ok  following read error offers retry and is distinct from zero or empty
+  ok  profile-read-unavailable zero overflow at 320px light 100% (got 0)
+  ok  profile-read-unavailable zero nested links at 320px light 100%
+  ok  profile-read-unavailable touch target #profile-retry >= 44 × 44px at 320px light 100% (got 95.828125×46.296875)
+  ok  profile-read-unavailable final action clears bottom bar at 320px light/100% {"bottom":232.578125,"barTop":820,"hit":true}
+  ok  profile-read-unavailable zero overflow at 320px light 200% (got -15)
+  ok  profile-read-unavailable zero nested links at 320px light 200%
+  ok  profile-read-unavailable touch target #profile-retry >= 44 × 44px at 320px light 200% (got 189.65625×90.59375)
+  ok  profile-read-unavailable final action clears bottom bar at 320px light/200% {"bottom":739.71875,"barTop":756,"hit":true}
+  ok  profile-read-unavailable zero overflow at 320px dark 100% (got 0)
+  ok  profile-read-unavailable zero nested links at 320px dark 100%
+  ok  profile-read-unavailable touch target #profile-retry >= 44 × 44px at 320px dark 100% (got 95.828125×46.296875)
+  ok  profile-read-unavailable final action clears bottom bar at 320px dark/100% {"bottom":232.578125,"barTop":820,"hit":true}
+  ok  profile-read-unavailable zero overflow at 320px dark 200% (got -15)
+  ok  profile-read-unavailable zero nested links at 320px dark 200%
+  ok  profile-read-unavailable touch target #profile-retry >= 44 × 44px at 320px dark 200% (got 189.65625×90.59375)
+  ok  profile-read-unavailable final action clears bottom bar at 320px dark/200% {"bottom":739.71875,"barTop":756,"hit":true}
+  ok  profile-read-unavailable zero overflow at 390px light 100% (got 0)
+  ok  profile-read-unavailable zero nested links at 390px light 100%
+  ok  profile-read-unavailable touch target #profile-retry >= 44 × 44px at 390px light 100% (got 95.828125×46.296875)
+  ok  light profile-read-unavailable text contrast >= 4.5 (min 11.14; disabled controls exempt)
+  ok  profile-read-unavailable focus ring at light has contrast >= 3:1 (5.78)
+  ok  profile-read-unavailable final action clears bottom bar at 390px light/100% {"bottom":206.984375,"barTop":820,"hit":true}
+  ok  profile-read-unavailable zero overflow at 390px light 200% (got -15)
+  ok  profile-read-unavailable zero nested links at 390px light 200%
+  ok  profile-read-unavailable touch target #profile-retry >= 44 × 44px at 390px light 200% (got 189.65625×90.59375)
+  ok  profile-read-unavailable final action clears bottom bar at 390px light/200% {"bottom":589.34375,"barTop":756,"hit":true}
+  ok  profile-read-unavailable zero overflow at 390px dark 100% (got 0)
+  ok  profile-read-unavailable zero nested links at 390px dark 100%
+  ok  profile-read-unavailable touch target #profile-retry >= 44 × 44px at 390px dark 100% (got 95.828125×46.296875)
+  ok  dark profile-read-unavailable text contrast >= 4.5 (min 7.87; disabled controls exempt)
+  ok  profile-read-unavailable focus ring at dark has contrast >= 3:1 (10.83)
+  ok  profile-read-unavailable final action clears bottom bar at 390px dark/100% {"bottom":206.984375,"barTop":820,"hit":true}
+  ok  profile-read-unavailable zero overflow at 390px dark 200% (got -15)
+  ok  profile-read-unavailable zero nested links at 390px dark 200%
+  ok  profile-read-unavailable touch target #profile-retry >= 44 × 44px at 390px dark 200% (got 189.65625×90.59375)
+  ok  profile-read-unavailable final action clears bottom bar at 390px dark/200% {"bottom":589.34375,"barTop":756,"hit":true}
+  ok  profile-read-unavailable zero overflow at 834px light 100% (got 0)
+  ok  profile-read-unavailable zero nested links at 834px light 100%
+  ok  profile-read-unavailable touch target #profile-retry >= 44 × 44px at 834px light 100% (got 95.828125×46.296875)
+  ok  profile-read-unavailable zero overflow at 834px light 200% (got 0)
+  ok  profile-read-unavailable zero nested links at 834px light 200%
+  ok  profile-read-unavailable touch target #profile-retry >= 44 × 44px at 834px light 200% (got 189.65625×90.59375)
+  ok  profile-read-unavailable zero overflow at 834px dark 100% (got 0)
+  ok  profile-read-unavailable zero nested links at 834px dark 100%
+  ok  profile-read-unavailable touch target #profile-retry >= 44 × 44px at 834px dark 100% (got 95.828125×46.296875)
+  ok  profile-read-unavailable zero overflow at 834px dark 200% (got 0)
+  ok  profile-read-unavailable zero nested links at 834px dark 200%
+  ok  profile-read-unavailable touch target #profile-retry >= 44 × 44px at 834px dark 200% (got 189.65625×90.59375)
+  ok  profile-read-unavailable zero overflow at 1024px light 100% (got 0)
+  ok  profile-read-unavailable zero nested links at 1024px light 100%
+  ok  profile-read-unavailable touch target #profile-retry >= 44 × 44px at 1024px light 100% (got 95.828125×46.296875)
+  ok  profile-read-unavailable zero overflow at 1024px light 200% (got 0)
+  ok  profile-read-unavailable zero nested links at 1024px light 200%
+  ok  profile-read-unavailable touch target #profile-retry >= 44 × 44px at 1024px light 200% (got 189.65625×90.59375)
+  ok  profile-read-unavailable zero overflow at 1024px dark 100% (got 0)
+  ok  profile-read-unavailable zero nested links at 1024px dark 100%
+  ok  profile-read-unavailable touch target #profile-retry >= 44 × 44px at 1024px dark 100% (got 95.828125×46.296875)
+  ok  profile-read-unavailable zero overflow at 1024px dark 200% (got 0)
+  ok  profile-read-unavailable zero nested links at 1024px dark 200%
+  ok  profile-read-unavailable touch target #profile-retry >= 44 × 44px at 1024px dark 200% (got 189.65625×90.59375)
+  ok  profile-read-unavailable zero overflow at 1440px light 100% (got 0)
+  ok  profile-read-unavailable zero nested links at 1440px light 100%
+  ok  profile-read-unavailable touch target #profile-retry >= 44 × 44px at 1440px light 100% (got 95.828125×46.296875)
+  ok  profile-read-unavailable zero overflow at 1440px light 200% (got 0)
+  ok  profile-read-unavailable zero nested links at 1440px light 200%
+  ok  profile-read-unavailable touch target #profile-retry >= 44 × 44px at 1440px light 200% (got 189.65625×90.59375)
+  ok  profile-read-unavailable zero overflow at 1440px dark 100% (got 0)
+  ok  profile-read-unavailable zero nested links at 1440px dark 100%
+  ok  profile-read-unavailable touch target #profile-retry >= 44 × 44px at 1440px dark 100% (got 95.828125×46.296875)
+  ok  profile-read-unavailable zero overflow at 1440px dark 200% (got 0)
+  ok  profile-read-unavailable zero nested links at 1440px dark 200%
+  ok  profile-read-unavailable touch target #profile-retry >= 44 × 44px at 1440px dark 200% (got 189.65625×90.59375)
+  ok  503 SSR exposes a native retry of the same profile and cursor without JavaScript
+  ok  GET on an-nhien-truc-827a83 redirects directly to the canonical profile
+  ok  GET on dem-mua redirects directly to the canonical profile
+  ok  HEAD on an-nhien-truc-827a83 redirects directly to the canonical profile
+  ok  HEAD on dem-mua redirects directly to the canonical profile
+  ok  retired exactly the scenario profile
+  ok  GET on a retired alias returns 410 with no redirect
+  ok  GET on a retired alias omits old byline links, canonical and handles
+  ok  HEAD on a retired alias returns 410 with no redirect
+  ok  HEAD on a retired alias omits old byline links, canonical and handles
+  ok  410 offers a real Khám phá link with JavaScript disabled
+browser-smoke: PASS (auth-password)
+  PASS  selected prerequisites
+  PASS  visual evidence oracles: manifest, PNG, overflow, AX, modal unit tests
+  PASS  selected artifacts
+  PASS  browser bundle contains no credentials
+  PASS  scenario password (real Identity/local outbox)
