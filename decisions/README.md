@@ -52,8 +52,9 @@ không có revision TOML riêng (như #213).
 [VDR-WORK-VIEWS@r1](proposals/VDR-WORK-VIEWS.r1.toml) ghi P-01..P-11 của
 [Epic #323](https://github.com/loveoverflowcom/vink/issues/323) theo lời chốt ngày 21/11/2026
 trong brief [#340](https://github.com/loveoverflowcom/vink/issues/340): định nghĩa một lượt, chống
-trùng 24 giờ, khách, tác giả, cộng dồn theo `WorkId`, chỉ tác giả thấy số, lưu giữ và xóa. Proposal
-đang `PENDING` chờ signoff đúng revision/SHA-256. Yêu cầu ở
+trùng 24 giờ, khách, tác giả, cộng dồn theo `WorkId`, chỉ tác giả thấy số, lưu giữ và xóa. Chủ sản
+phẩm đã signoff đúng revision/SHA-256 ngày 21/11/2026 ([signoff](signoffs/VDR-WORK-VIEWS.r1.toml));
+revision hiện hành là `PRODUCT_CONFIRMED`. OQ-1..OQ-4 và CHOICE-01..06 vẫn `OPEN`. Yêu cầu ở
 [PRD §17](../prd/requirements.md#17-lượt-xem-tác-phẩm-work-views), luật và ví dụ ở
 [đặc tả](../docs/architecture/work-views.md), mức triển khai ở
 [registry](../docs/development/work-views.md).

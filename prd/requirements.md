@@ -447,8 +447,9 @@ trong phiên làm #340, chủ sản phẩm trả lời “Theo khuyến nghị�
 P-01..P-11 và luật hiển thị ghi dưới đây. Brief do chủ sản phẩm gửi. Định nghĩa, bảng ví dụ và
 vòng đời theo trạng thái nằm ở [đặc tả nghiệp vụ](../docs/architecture/work-views.md). Mức triển
 khai và bản đồ sang #341–#343 nằm ở [registry phát triển](../docs/development/work-views.md).
-Proposal [VDR-WORK-VIEWS@r1](../decisions/proposals/VDR-WORK-VIEWS.r1.toml) chờ signoff đúng
-revision theo `VDR-DECISION-SIGNOFF@r1`.
+[VDR-WORK-VIEWS@r1](../decisions/proposals/VDR-WORK-VIEWS.r1.toml) ghi cùng nội dung; chủ sản
+phẩm đã duyệt đúng revision này cùng ngày ([signoff](../decisions/signoffs/VDR-WORK-VIEWS.r1.toml)),
+nên đây là revision hiện hành.
 
 Các ID dưới đây giữ nguyên WR-01, UX-01, AUD-01/02, PUB-04/05/07, MOD-05, INV-08 và `O-17@r2`
 (trang rút trả HTTP 200; mã HTTP không phải bằng chứng đã xem).
@@ -470,8 +471,8 @@ Các ID dưới đây giữ nguyên WR-01, UX-01, AUD-01/02, PUB-04/05/07, MOD-0
 
 **Trạng thái bốn chiều và phần còn mở của §17:**
 - *Quyết định sản phẩm:* VIEW-01..12 là `PRODUCT_CONFIRMED` trong brief ngày 21/11/2026.
-  [VDR-WORK-VIEWS@r1](../decisions/proposals/VDR-WORK-VIEWS.r1.toml) ghi cùng nội dung và đang
-  `PENDING`. Còn `OPEN`: OQ-1 (hiện Lượt xem khi bài riêng tư trong khi Thấm/Nhận xét bị ẩn),
+  [VDR-WORK-VIEWS@r1](../decisions/proposals/VDR-WORK-VIEWS.r1.toml) ghi cùng nội dung, có
+  [signoff](../decisions/signoffs/VDR-WORK-VIEWS.r1.toml) `PRODUCT_CONFIRMED` ngày 21/11/2026. Còn `OPEN`: OQ-1 (hiện Lượt xem khi bài riêng tư trong khi Thấm/Nhận xét bị ẩn),
   OQ-2 (luật xóa số liệu chờ route xóa tác phẩm/tài khoản), OQ-3 (thân bài hiện mà không có
   thao tác mở mới, tab mở nền) và OQ-4 (admin gỡ cả bài, PUB-05 C). Chi tiết ở
   [đặc tả](../docs/architecture/work-views.md#4-câu-hỏi-còn-mở).

@@ -14,6 +14,8 @@ Tác giả biết bài của mình được mở đọc ở mức nào, qua mộ
 chốt. Con số không cản người đọc, không lộ ai đã đọc và không lưu nhiều hơn mức cần để chống
 trùng.
 
+<!-- vdr: active VDR-WORK-VIEWS@r1 -->
+
 **Lời chốt.** Ngày 21/11/2026, trong phiên làm #340, chủ sản phẩm trả lời “Theo khuyến nghị”
 cho đúng bộ khuyến nghị P-01..P-11 và luật UX ở [§3](#3-bảng-quyết-định-p-01p-11). Brief do chủ
 sản phẩm gửi. Các phương án gốc, câu hỏi kỹ thuật CHOICE-01..06 và phép kiểm đề xuất nằm trong
@@ -21,7 +23,7 @@ Epic #323.
 
 | Chiều | Trạng thái |
 | --- | --- |
-| Quyết định sản phẩm | P-01..P-11 và luật UX: `PRODUCT_CONFIRMED` trong brief ngày 21/11/2026 (VIEW-01..12). [VDR-WORK-VIEWS@r1](../../decisions/proposals/VDR-WORK-VIEWS.r1.toml) ghi cùng nội dung và đang `PENDING` cho tới khi có signoff đúng revision theo `VDR-DECISION-SIGNOFF@r1`. OQ-1..OQ-4 ở [§4](#4-câu-hỏi-còn-mở) là `OPEN`. |
+| Quyết định sản phẩm | P-01..P-11 và luật UX: `PRODUCT_CONFIRMED` trong brief ngày 21/11/2026 (VIEW-01..12). [VDR-WORK-VIEWS@r1](../../decisions/proposals/VDR-WORK-VIEWS.r1.toml) ghi cùng nội dung; chủ sản phẩm duyệt đúng revision này ngày 21/11/2026 ([signoff](../../decisions/signoffs/VDR-WORK-VIEWS.r1.toml), `PRODUCT_CONFIRMED`). OQ-1..OQ-4 ở [§4](#4-câu-hỏi-còn-mở) là `OPEN`. |
 | Quyết định kiến trúc | CHOICE-01..06 `OPEN`, giao cho #341–#343. [§10](#10-ràng-buộc-cho-lựa-chọn-kỹ-thuật-choice-0106) chỉ ghi ràng buộc nghiệp vụ mà lựa chọn phải thỏa. |
 | Mức triển khai | `NOT_IMPLEMENTED`: chưa có bảng, use case, API, tín hiệu Web hay UI. |
 | Bằng chứng | Kiểm tài liệu tại snapshot `develop@9f68c513b5dae224b6a9f896d04bc9d1d035e1b8`; không có runtime PASS. |
@@ -250,7 +252,7 @@ tư hay cookie nói chung. Các mục này cần quyết định riêng trước
 | --- | --- |
 | Yêu cầu có ID | [PRD §17](../../prd/requirements.md#17-lượt-xem-tác-phẩm-work-views) |
 | Luật, ví dụ, vòng đời | Tài liệu này |
-| Bản ghi quyết định | [VDR-WORK-VIEWS@r1](../../decisions/proposals/VDR-WORK-VIEWS.r1.toml), `PENDING` |
+| Bản ghi quyết định | [VDR-WORK-VIEWS@r1](../../decisions/proposals/VDR-WORK-VIEWS.r1.toml), [signoff](../../decisions/signoffs/VDR-WORK-VIEWS.r1.toml) `PRODUCT_CONFIRMED` |
 | Mức triển khai, bản đồ issue, kịch bản xuyên suốt | [Registry phát triển](../development/work-views.md) |
 | Code tương lai | `services/vink-app` (domain, application, PostgreSQL, HTTP), `apps/vink-web` (tín hiệu Reader, Bàn viết), `services/vink-app/contracts/http/v1` |
 

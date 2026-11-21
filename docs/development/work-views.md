@@ -13,7 +13,7 @@ Nguồn: [Epic #323](https://github.com/loveoverflowcom/vink/issues/323),
 
 | Chiều | Trạng thái |
 | --- | --- |
-| Quyết định sản phẩm | VIEW-01..12 `PRODUCT_CONFIRMED` trong brief #340 ngày 21/11/2026. [VDR-WORK-VIEWS@r1](../../decisions/proposals/VDR-WORK-VIEWS.r1.toml) `PENDING`. OQ-1..OQ-4 `OPEN`. |
+| Quyết định sản phẩm | VIEW-01..12 `PRODUCT_CONFIRMED` trong brief #340 ngày 21/11/2026. [VDR-WORK-VIEWS@r1](../../decisions/proposals/VDR-WORK-VIEWS.r1.toml) có [signoff](../../decisions/signoffs/VDR-WORK-VIEWS.r1.toml) `PRODUCT_CONFIRMED` ngày 21/11/2026, là revision hiện hành. OQ-1..OQ-4 `OPEN`. |
 | Quyết định kiến trúc | CHOICE-01..06 `OPEN`. Chưa có `DESIGN_PROPOSED` nào. |
 | Mức triển khai | `NOT_IMPLEMENTED` cho mọi VIEW-ID (bảng ở §3). |
 | Bằng chứng | Kiểm tài liệu (§6). Không có runtime PASS. |
@@ -21,13 +21,15 @@ Nguồn: [Epic #323](https://github.com/loveoverflowcom/vink/issues/323),
 ## 2. Snapshot quyết định
 
 Tra bằng `cargo xtask decision` tại nhánh `docs/340-dac-ta-luot-xem`, base
-`develop@9f68c513b5dae224b6a9f896d04bc9d1d035e1b8`, sau khi tạo proposal:
-snapshot `176154f6ec916e58eb3e4d5db8419e7e256d8c2dfcc8c3b8a643e67708fa8330`
-(137 revision). Snapshot đổi khi kho có revision hay signoff mới; người tiếp tục tra lại.
+`develop@9f68c513b5dae224b6a9f896d04bc9d1d035e1b8`, sau khi ghi signoff:
+snapshot `8a322aed0446142317f78323e9bcb1748deae7e50e6cfbc892c360f2bc68aaaf`
+(137 revision). Trước signoff, ngay sau khi tạo proposal, snapshot là
+`176154f6ec916e58eb3e4d5db8419e7e256d8c2dfcc8c3b8a643e67708fa8330`. Snapshot đổi khi kho có
+revision hay signoff mới; người tiếp tục tra lại.
 
 | ID@rN | Trạng thái | SHA-256 payload | Vai trò |
 | --- | --- | --- | --- |
-| `VDR-WORK-VIEWS@r1` | `PENDING` (`pending_only`) | `cfb789cc2c5f7a99a2f8c8e24f0057815d736d7b02cdacde50d327c8a525e008` | Luật Lượt xem của PR này. |
+| `VDR-WORK-VIEWS@r1` | `PRODUCT_CONFIRMED` (`current`, signoff 21/11/2026) | `cfb789cc2c5f7a99a2f8c8e24f0057815d736d7b02cdacde50d327c8a525e008` | Luật Lượt xem của PR này. |
 | `O-17@r2` | `PRODUCT_CONFIRMED` | `cb30cb43040a3fad50bd4930096e537057a2f3c6037b387d8c332be497fa15aa` | Trang rút sau kiểm duyệt trả HTTP 200; không phải lượt. |
 | `USER-02@r1` | `PRODUCT_CONFIRMED` | `2293bf58194809957b892b74bc3891d56a05998e7b97008ad1c8fbfd98fdc97b` | Hai audience. |
 | `LVE-PR-01-CHOICE-02@r1` | `DESIGN_PROPOSED` | `766485bf6d2c6eabc3292921fc478d01a13376b46bed36bee9a00150a6ad6a03` | Thấm gắn `RevisionId`; Lượt xem cố ý khác (P-06). |
@@ -98,7 +100,7 @@ Chỉ kiểm tài liệu; không chạy runtime. Kết quả ghi ở mục cuố
 | `git diff --check` | Không có lỗi khoảng trắng. |
 | Kiểm link tương đối của các file đã sửa | Mọi đường dẫn và anchor nội bộ trỏ đúng. |
 | `cargo xtask decision validate` | Kho TOML hợp lệ sau khi thêm proposal. |
-| `cargo xtask decision query VDR-WORK-VIEWS` | `pending_only` khi chưa có signoff. |
+| `cargo xtask decision query VDR-WORK-VIEWS` | `pending_only` trước signoff, `current` sau signoff. |
 | `wc -c AGENTS.md` | Dưới 24.000 byte. |
 | Đối chiếu P-01..P-11 của #323 | Mỗi câu có dòng VIEW-ID, dòng trong bảng quyết định và ví dụ. |
 
@@ -115,6 +117,17 @@ Chạy trên cây làm việc của nhánh `docs/340-dac-ta-luot-xem` (base
 | `cargo xtask decision query VDR-WORK-VIEWS` | `pending_only`, head r1, SHA-256 `cfb789cc2c5f7a99a2f8c8e24f0057815d736d7b02cdacde50d327c8a525e008`. |
 | `wc -c AGENTS.md` | 18.876 byte; không sửa AGENTS.md. |
 | Đối chiếu 11 câu của #323 | Đủ, bảng dưới. |
+
+Sau signoff (cùng ngày, trên cây làm việc sau commit `8c9cbf38830042e8b761cf709a80f9a4f36f33da`):
+
+| Phép kiểm | Kết quả |
+| --- | --- |
+| `cargo xtask decision signoff VDR-WORK-VIEWS@r1 cfb789cc… INPUT` | `current: true`, `PRODUCT_CONFIRMED`. |
+| `cargo xtask decision validate` | 137 revision, snapshot `8a322aed0446142317f78323e9bcb1748deae7e50e6cfbc892c360f2bc68aaaf`, 99 tham chiếu khai báo. |
+| `cargo xtask decision query VDR-WORK-VIEWS` | `current`, r1, `PRODUCT_CONFIRMED`, SHA-256 không đổi. |
+| `cargo xtask decision query VIEW-03` | `related_only` trả `VDR-WORK-VIEWS@r1`. |
+| `cargo xtask decision refs` | Marker `active VDR-WORK-VIEWS@r1` ở đặc tả được nhận. |
+| `git diff --check`, kiểm link, `wc -c AGENTS.md` | Không lỗi; 0 link hỏng; 18.876 byte. |
 
 ### Đối chiếu 11 câu của #323
 
@@ -139,15 +152,14 @@ Chạy trên cây làm việc của nhánh `docs/340-dac-ta-luot-xem` (base
 | AC-01 | Mỗi P-ID dẫn về lời chốt 21/11/2026; OQ-1..OQ-4 ghi `OPEN` kèm ca bị ảnh hưởng | Đủ trong PRD §17 và đặc tả §3–§4. |
 | AC-02 | Bảng ví dụ phủ đủ danh sách của brief | Đặc tả §6 (E-01..E-37). |
 | AC-03 | Vòng đời theo trạng thái, độc giả đọc được khi thống kê lỗi, nhãn đúng độ phủ | Đặc tả §7, §8. Xóa tác phẩm/tài khoản và admin gỡ cả bài chỉ ở mức target. |
-| AC-04 | PRD, đặc tả, proposal, registry trỏ đúng owner; bản đồ P/CHOICE | §4 của registry này; proposal `PENDING`. |
-| AC-05 | Trình payload `VDR-WORK-VIEWS@r1` cho chủ sản phẩm; signoff chỉ khi có lời duyệt đúng ID@r1 | Chờ lời duyệt. Chưa chạy `decision signoff`. |
+| AC-04 | PRD, đặc tả, proposal, registry trỏ đúng owner; bản đồ P/CHOICE | §4 của registry này. Proposal giữ `PENDING` tới lúc có lời duyệt. |
+| AC-05 | Trình payload `VDR-WORK-VIEWS@r1` cho chủ sản phẩm; signoff chỉ khi có lời duyệt đúng ID@r1 | Chủ sản phẩm trả lời nguyên văn “Duyệt r1” cho câu hỏi duyệt `VDR-WORK-VIEWS@r1` (sha `cfb789cc…`) trong phiên #340 ngày 21/11/2026. Đã chạy `decision signoff` với đúng SHA-256 và trích lời đó. |
 
 ## 7. Điều kiện để bắt đầu việc tiếp theo
 
-- **#341:** PR này đã merge vào `develop`, để mọi lát dùng cùng một revision đặc tả. Các P cần
-  cho đường ghi (P-01, P-03..06, P-08, P-11) đã `PRODUCT_CONFIRMED` trong brief. Nếu
-  `VDR-WORK-VIEWS@r1` vẫn `PENDING` lúc bắt đầu, bàn giao của #341 ghi rõ trạng thái đó. OQ-1..OQ-4
-  không chặn #341.
+- **#341:** PR này đã merge vào `develop`, để mọi lát dùng cùng một revision đặc tả
+  (`VDR-WORK-VIEWS@r1`, `PRODUCT_CONFIRMED`). Các P cần cho đường ghi (P-01, P-03..06, P-08, P-11)
+  đều trong revision đó. OQ-1..OQ-4 không chặn #341.
 - **Lượt thiết kế:** bắt đầu được sau khi PR này merge, dùng dữ liệu mẫu có nhãn. Cần câu trả lời
   OQ-1 trước khi chốt hàng Bàn viết của bài riêng tư.
 - **#342, #343:** theo thứ tự ở §4.
