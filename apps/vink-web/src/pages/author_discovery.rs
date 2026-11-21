@@ -2,13 +2,15 @@
 use leptos::prelude::*;
 use leptos_meta::{Link, Meta, Title};
 use leptos_router::hooks::use_navigate;
-use vink_ui::{Heading, HeadingLevel, HiddenField, SearchField, SearchVariant, TypeRole};
+use vink_ui::{
+    Avatar, AvatarSize, Heading, HeadingLevel, HiddenField, SearchField, SearchVariant, TypeRole,
+};
 
 use super::{ResponseStatus, focus_recovery};
 use crate::api::{self, InvalidRead, LoadError};
 use crate::contract::{PublicAuthorPage, PublicAuthorRef};
-use crate::discovery::{ExploreMode, author_search_href};
-use crate::ui::patterns::{Author, AuthorIdentity, ProfileLink};
+use crate::discovery::{ExploreContext, ExploreMode, ExploreQuery, author_search_href};
+use crate::ui::patterns::{Author, AuthorIdentity, ProfileLink, profile_label};
 
 #[cfg(feature = "hydrate")]
 mod browser;
@@ -29,6 +31,14 @@ pub(super) fn AuthorSearch(q: String, cursor: Option<String>) -> impl IntoView {
     let resource = api::author_search_resource(q, active_cursor, generation);
     #[cfg(feature = "hydrate")]
     browser::observe(active_cursor, renew);
+    #[cfg(feature = "hydrate")]
+    let return_notice = browser::return_notice(resource, active_cursor, generation);
+    #[cfg(not(feature = "hydrate"))]
+    let return_notice = RwSignal::new(false);
+    #[cfg(feature = "hydrate")]
+    let own_handle = browser::own_handle();
+    #[cfg(not(feature = "hydrate"))]
+    let own_handle = Signal::stored(None);
 
     let canonical = crate::canonical_url(&author_search_href(&q.get_value(), None));
     let clear_href = author_search_href("", None);
@@ -36,6 +46,7 @@ pub(super) fn AuthorSearch(q: String, cursor: Option<String>) -> impl IntoView {
     let restart = Callback::new({
         let navigate = navigate.clone();
         move |()| {
+            return_notice.set(false);
             #[cfg(feature = "hydrate")]
             super::clear_profile_return();
             if url_has_cursor {
@@ -47,9 +58,9 @@ pub(super) fn AuthorSearch(q: String, cursor: Option<String>) -> impl IntoView {
             focus_recovery(RESULTS_HEADING);
         }
     });
-    let on_clear = {
+    let clear = Callback::new({
         let navigate = navigate.clone();
-        move |_| {
+        move |()| {
             buffer.set(String::new());
             if q.with_value(|q| q.trim().is_empty()) {
                 restart.run(());
@@ -58,7 +69,7 @@ pub(super) fn AuthorSearch(q: String, cursor: Option<String>) -> impl IntoView {
             }
             focus_recovery("author-search-query");
         }
-    };
+    });
     let submit = move |event: leptos::ev::SubmitEvent| {
         event.prevent_default();
         if composing.get_untracked() {
@@ -89,19 +100,22 @@ pub(super) fn AuthorSearch(q: String, cursor: Option<String>) -> impl IntoView {
                 <SearchField id="author-search-query" label="Tìm bút danh hoặc @handle"
                     placeholder="Bút danh hoặc @handle" name="q" variant=SearchVariant::Bar
                     value=buffer on_input=move |input: vink_ui::TextInput| buffer.set(input.value)
-                    clear_href=author_search_href("", None) on_clear />
+                    clear_href=author_search_href("", None) on_clear=move |_| clear.run(()) />
             </form>
             <section aria-labelledby=RESULTS_HEADING class="vk-author-search__results">
-                <Heading id=RESULTS_HEADING level=HeadingLevel::H2 role=TypeRole::Title attr:tabindex="-1">
-                    {if suggestions { "Gợi ý tác giả" } else { "Kết quả tìm tác giả" }}
-                </Heading>
-                <Transition fallback=search_loading>
+                {q.with_value(|q| results_heading(q))}
+                <Show when=move || return_notice.get()>
+                    <p id="author-search-notice" role="status" class="vk-author-search__note">
+                        "Một hồ sơ không còn truy cập được; danh sách đã cập nhật."
+                    </p>
+                </Show>
+                <Transition fallback=move || search_loading(suggestions)>
                     {move || {
                         let status = status.clone();
                         match resource.get() {
                             Some((stamp, result)) if stamp == generation.get() => match result {
                                 Ok(page) => view! {
-                                    <AuthorResults page q cursor=active_cursor.get_untracked()
+                                    <AuthorResults page q cursor=active_cursor.get_untracked() clear own_handle
                                         on_refresh=Callback::new(move |()| renew()) on_restart=restart />
                                 }.into_any(),
                                 Err(error) => {
@@ -112,7 +126,7 @@ pub(super) fn AuthorSearch(q: String, cursor: Option<String>) -> impl IntoView {
                                     }.into_any()
                                 }
                             },
-                            _ => search_loading().into_any(),
+                            _ => search_loading(suggestions).into_any(),
                         }
                     }}
                 </Transition>
@@ -121,8 +135,29 @@ pub(super) fn AuthorSearch(q: String, cursor: Option<String>) -> impl IntoView {
     }
 }
 
-fn search_loading() -> impl IntoView {
-    view! { <p role="status" id="author-search-loading">"Đang tải danh sách tác giả…"</p> }
+fn results_heading(q: &str) -> impl IntoView + use<> {
+    let suggestions = q.trim().is_empty();
+    let title = if suggestions {
+        "Gợi ý tác giả".into()
+    } else {
+        format!("Tác giả khớp “{q}”")
+    };
+    view! {
+        <Heading id=RESULTS_HEADING level=HeadingLevel::H2 role=TypeRole::Title attr:tabindex="-1">
+            {title}
+        </Heading>
+        {suggestions.then(|| view! {
+            <p id="author-search-note" class="vk-author-search__note">"Ai cũng thấy cùng danh sách gợi ý này."</p>
+        })}
+    }
+}
+
+fn search_loading(suggestions: bool) -> impl IntoView {
+    view! {
+        <p role="status" id="author-search-loading">
+            {if suggestions { "Đang tải gợi ý tác giả…" } else { "Đang tìm tác giả…" }}
+        </p>
+    }
 }
 
 #[component]
@@ -148,15 +183,22 @@ fn SearchError(
             false,
         ),
         LoadError::Unavailable | LoadError::NotFound => (
-            "Chưa tải được danh sách tác giả.",
+            "Chưa tìm được lúc này",
             "Thử lại",
             q.with_value(|q| author_search_href(q, cursor.as_deref())),
             true,
         ),
     };
     view! {
-        <div class="vk-author-search__error">
-            <p id="author-search-error" role="alert">{message}</p>
+        <div class="vk-author-search__error" id="author-search-error" role="alert">
+            {if can_retry {
+                view! {
+                    <Heading level=HeadingLevel::H3 role=TypeRole::Title>{message}</Heading>
+                    <p>"Kết quả chưa tải xong – chưa thể nói là không có tác giả."</p>
+                }.into_any()
+            } else {
+                view! { <p>{message}</p> }.into_any()
+            }}
             <a class="vk-ui-link" href=href on:click=move |event| {
                 if restart && ordinary_click(&event) {
                     event.prevent_default();
@@ -169,6 +211,37 @@ fn SearchError(
             }>{label}</a>
         </div>
     }
+}
+
+#[component]
+fn SearchEmpty(q: StoredValue<String>, clear: Callback<()>) -> impl IntoView {
+    let q = q.get_value();
+    if q.trim().is_empty() {
+        return view! { <p id="author-search-empty" role="status">"Chưa có gợi ý tác giả."</p> }
+            .into_any();
+    }
+    let works = ExploreContext {
+        query: ExploreQuery::new(q.clone(), Vec::new(), None),
+        ..Default::default()
+    };
+    view! {
+        <div class="vk-author-search__empty">
+            <div id="author-search-empty" role="status">
+                <p>{format!("Chưa có tác giả khớp “{q}”.")}</p>
+                <p class="vk-author-search__note">"Thử bút danh khác, hoặc nhập chính xác @handle."</p>
+            </div>
+            <div class="vk-author-search__actions">
+                <a id="author-search-in-works" class="vk-ui-link vk-author-search__in-works" href=works.href(None)>"Tìm trong tác phẩm"</a>
+                <a id="author-search-clear" class="vk-ui-link" href=author_search_href("", None)
+                    on:click=move |event| {
+                        if ordinary_click(&event) {
+                            event.prevent_default();
+                            clear.run(());
+                        }
+                    }>"Xóa tìm kiếm"</a>
+            </div>
+        </div>
+    }.into_any()
 }
 
 fn ordinary_click(event: &leptos::ev::MouseEvent) -> bool {
@@ -196,8 +269,10 @@ fn AuthorResults(
     page: PublicAuthorPage,
     q: StoredValue<String>,
     cursor: Option<String>,
+    clear: Callback<()>,
     on_refresh: Callback<()>,
     on_restart: Callback<()>,
+    own_handle: Signal<Option<String>>,
 ) -> impl IntoView {
     let results = RwSignal::new(SearchResults {
         rows: rows(page.authors, cursor.as_deref()),
@@ -208,18 +283,12 @@ fn AuthorResults(
     #[cfg(feature = "hydrate")]
     let (append, membership) = browser::enhance(q, results);
     #[cfg(not(feature = "hydrate"))]
-    let _ = on_refresh;
+    let _ = (on_refresh, own_handle);
 
     let has_cursor = cursor.is_some();
     view! {
         <Show when=move || results.with(|state| state.rows.is_empty())>
-            <p id="author-search-empty" role="status">{
-                if q.with_value(|q| q.trim().is_empty()) {
-                    "Chưa có gợi ý tác giả."
-                } else {
-                    "Không tìm thấy tác giả phù hợp."
-                }
-            }</p>
+            <SearchEmpty q clear />
         </Show>
         <ul class="vk-rel-list vk-author-search__list" id="author-search-list" role="list">
             <For each=move || results.with(|state| state.rows.clone())
@@ -228,22 +297,13 @@ fn AuthorResults(
                     let author = row.author;
                     let handle = author.handle.clone();
                     let id = format!("search-author-{handle}");
-                    let name = q.with_value(|q| super::discovery::highlighted_text(&author.pen_name, q));
-                    let byline = Author {
-                        profile: author.valid_href().map(|href| ProfileLink {
-                            href: href.into(), handle: handle.clone(),
-                        }),
-                        name: author.pen_name,
-                        key: None,
-                        published_at: String::new(),
-                        neutral: false,
-                    };
+                    let identity = q.with_value(|q| search_author_identity(author, id, q));
                     view! {
                         <li class="vk-rel-item vk-author-search__row" data-author-cursor=row.cursor>
-                            <AuthorIdentity author=byline id=Some(id) name_view=Some(name) />
+                            {identity}
                             {
                                 #[cfg(feature = "hydrate")]
-                                { view! { <browser::AuthorFollow handle membership on_refresh /> } }
+                                { view! { <browser::AuthorFollow handle membership own_handle on_refresh /> } }
                                 #[cfg(not(feature = "hydrate"))]
                                 { let _ = handle; }
                             }
@@ -292,6 +352,56 @@ fn AuthorResults(
     }
 }
 
+fn search_author_identity(author: PublicAuthorRef, id: String, q: &str) -> AnyView {
+    let q = q.trim();
+    let handle_query = q.starts_with('@');
+    let profile = author.valid_href().map(|href| ProfileLink {
+        href: href.into(),
+        handle: author.handle.clone(),
+    });
+    if let Some(profile) = &profile
+        && let Some(requested) = q.strip_prefix('@')
+        && profile.handle.eq_ignore_ascii_case(requested)
+    {
+        // AuthorIdentity supports highlighted names. Only an exact Handle hit needs this
+        // rendering of the verified link with the mark in the Handle slot.
+        let label = profile_label(&author.pen_name, &profile.handle);
+        let handle = format!("@{}", profile.handle);
+        let blank = author.pen_name.trim().is_empty();
+        let name = if blank {
+            "Chưa có tên tác giả".into()
+        } else {
+            author.pen_name.clone()
+        };
+        let avatar_name = if blank {
+            String::new()
+        } else {
+            author.pen_name
+        };
+        return view! {
+            <div class="vk-ui-byline vk-ui-byline--feed">
+                <a class="vk-ui-byline__identity" id=id aria-label=label data-profile-return="true" href=profile.href.clone()>
+                    <Avatar name=avatar_name size=AvatarSize::Feed decorative=true />
+                    <span class="vk-ui-byline__text">
+                        <span class="vk-ui-byline__name" data-blank=blank.then_some("true")>{name}</span>
+                        <span class="vk-ui-byline__handle"><mark class="vk-search-mark">{handle}</mark></span>
+                    </span>
+                </a>
+            </div>
+        }.into_any();
+    }
+    let name_view =
+        (!handle_query).then(|| super::discovery::highlighted_text(&author.pen_name, q));
+    let author = Author {
+        profile,
+        name: author.pen_name,
+        key: None,
+        published_at: String::new(),
+        neutral: false,
+    };
+    view! { <AuthorIdentity author id=Some(id) name_view /> }.into_any()
+}
+
 #[component]
 fn FirstSearchPage(q: StoredValue<String>, on_restart: Callback<()>) -> impl IntoView {
     view! {
@@ -314,4 +424,121 @@ fn rows(authors: Vec<PublicAuthorRef>, cursor: Option<&str>) -> Vec<AuthorRow> {
             cursor: cursor.map(str::to_owned),
         })
         .collect()
+}
+
+#[cfg(all(test, feature = "ssr"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn headings_and_loading_labels_follow_the_query() {
+        Owner::new().with(|| {
+            let suggestions = results_heading("").to_html();
+            assert!(suggestions.contains("Gợi ý tác giả"));
+            assert!(suggestions.contains("id=\"author-search-note\""));
+            assert!(suggestions.contains("Ai cũng thấy cùng danh sách gợi ý này."));
+
+            let matching = results_heading("Bút danh Đỗ").to_html();
+            assert!(matching.contains("id=\"author-search-results-heading\""));
+            assert!(matching.contains("tabindex=\"-1\""));
+            assert!(matching.contains("Tác giả khớp “Bút danh Đỗ”"));
+            assert!(!matching.contains("author-search-note"));
+
+            assert!(
+                search_loading(true)
+                    .to_html()
+                    .contains("Đang tải gợi ý tác giả…")
+            );
+            assert!(
+                search_loading(false)
+                    .to_html()
+                    .contains("Đang tìm tác giả…")
+            );
+        });
+    }
+
+    #[test]
+    fn empty_search_links_keep_the_query_in_works_and_clear_in_authors() {
+        Owner::new().with(|| {
+            let clear = Callback::new(|()| {});
+            let q = StoredValue::new("Đỗ & bạn".to_string());
+            let missing = view! { <SearchEmpty q clear /> }.to_html();
+            assert!(missing.contains("Chưa có tác giả khớp “Đỗ &amp; bạn”."));
+            assert!(missing.contains("Thử bút danh khác, hoặc nhập chính xác @handle."));
+            assert!(missing.contains("href=\"/?q=%C4%90%E1%BB%97%20%26%20b%E1%BA%A1n\""));
+            assert!(missing.contains("href=\"/?mode=authors\""));
+            assert!(missing.contains("id=\"author-search-empty\" role=\"status\""));
+
+            q.set_value("  ".into());
+            let suggestions = view! { <SearchEmpty q clear /> }.to_html();
+            assert!(suggestions.contains("Chưa có gợi ý tác giả."));
+            assert!(!suggestions.contains("author-search-clear"));
+            assert!(!suggestions.contains("author-search-in-works"));
+        });
+    }
+
+    #[test]
+    fn failure_calls_for_retry_with_the_same_cursor_and_keeps_invalid_recovery() {
+        Owner::new().with(|| {
+            let render = |error| {
+                let q = StoredValue::new("bút danh".to_string());
+                let noop = Callback::new(|()| {});
+                view! { <SearchError error q cursor=Some("page-2".into()) on_retry=noop on_restart=noop /> }
+                    .to_html()
+            };
+            for error in [LoadError::Unavailable, LoadError::NotFound] {
+                let retry = render(error);
+                assert!(retry.contains("id=\"author-search-error\" role=\"alert\""));
+                assert!(retry.contains("Chưa tìm được lúc này"));
+                assert!(retry.contains("Kết quả chưa tải xong – chưa thể nói là không có tác giả."));
+                assert!(retry.contains("Thử lại"));
+                assert!(retry.contains("&amp;cursor=page-2\""));
+                assert!(!retry.contains("author-search-empty"));
+            }
+            let restart = render(LoadError::Invalid(InvalidRead::RestartCursor));
+            assert!(restart.contains("Vị trí trang không còn khớp với kết quả tìm."));
+            assert!(restart.contains("Về trang đầu"));
+            assert!(!restart.contains("cursor=page-2"));
+
+            let invalid = render(LoadError::Invalid(InvalidRead::Fallback));
+            assert!(invalid.contains("Hãy nhập bút danh tối đa 100 ký tự hoặc @handle hiện tại."));
+            assert!(invalid.contains("href=\"#author-search-query\""));
+            assert!(invalid.contains("Sửa từ khóa"));
+        });
+    }
+
+    #[test]
+    fn exact_handle_mark_preserves_canonical_text_and_accessible_identity() {
+        Owner::new().with(|| {
+            let render = |q| {
+                search_author_identity(
+                    PublicAuthorRef {
+                        pen_name: "Đỗ Ánh".into(),
+                        handle: "do-anh".into(),
+                        href: "/@do-anh".into(),
+                    },
+                    "search-author-do-anh".into(),
+                    q,
+                )
+                .to_html()
+            };
+            let matching = render(" @DO-ANH ");
+            let plain = render("");
+            assert!(plain.contains("<span class=\"vk-ui-byline__handle\">@do-anh</span>"));
+            assert!(matching.contains("<span class=\"vk-ui-byline__name\">Đỗ Ánh</span>"));
+            let marked = "<span class=\"vk-ui-byline__handle\"><mark class=\"vk-search-mark\">@do-anh</mark></span>";
+            assert!(matching.contains(marked));
+            assert_eq!(matching.matches("<mark").count(), 1);
+            for html in [&plain, &matching] {
+                assert_eq!(html.matches("class=\"vk-ui-byline__handle\"").count(), 1);
+                assert_eq!(html.matches("<a ").count(), 1);
+                assert!(html.contains("aria-label=\"Mở hồ sơ Đỗ Ánh (@do-anh)\""));
+                assert!(html.contains("href=\"/@do-anh\""));
+                assert!(html.contains("data-profile-return=\"true\""));
+                assert!(html.contains("aria-hidden=\"true\""));
+            }
+            assert!(!render("@do").contains("<mark"));
+            assert!(render("do").contains("<mark class=\"vk-search-mark\">Đỗ</mark>"));
+        });
+    }
 }
