@@ -589,8 +589,9 @@ production đỏ; model mutant tạo OFF→old ON resurrection. Harness và kế
   reconciliation (D-08, S-02, S-04). Outbox có consumer shadow/audit riêng và hậu kiểm operator có authority, mặc định tắt request mới ([runbook](discussion-post-review.md)); chưa có producer admission đăng-trước.
   Discourse không còn trong phạm vi (Vink sở hữu bình luận).
 - Lượt xem tác phẩm ([#340](https://github.com/loveoverflowcom/vink/issues/340)): [đặc tả](../architecture/work-views.md)
-  và [registry](work-views.md) ghi luật đếm và bản đồ sang #341–#343; chưa có bảng, API, tín hiệu
-  Reader hay số ở Bàn viết.
+  và [registry](work-views.md) ghi luật đếm và bản đồ sang #341–#343. #341 có đường ghi
+  `domain::work_view` + bảng `work_view_*` + dọn hạn trong `vink-worker`; chưa có HTTP thu nhận
+  (#343), API đọc (#342), tín hiệu Reader hay số ở Bàn viết.
 - Autosave, bản khôi phục cục bộ, paste từ Word/Docs, IME thật trên thiết bị (WR-01/WR-02, S-01).
   Undo/redo và composition mô phỏng đã có trong editor CodeMirror, chưa phải bằng chứng IME hệ
   điều hành.

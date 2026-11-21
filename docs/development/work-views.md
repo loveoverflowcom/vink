@@ -14,9 +14,9 @@ Nguồn: [Epic #323](https://github.com/loveoverflowcom/vink/issues/323),
 | Chiều | Trạng thái |
 | --- | --- |
 | Quyết định sản phẩm | VIEW-01..12 `PRODUCT_CONFIRMED` trong brief #340 ngày 21/11/2026. [VDR-WORK-VIEWS@r1](../../decisions/proposals/VDR-WORK-VIEWS.r1.toml) có [signoff](../../decisions/signoffs/VDR-WORK-VIEWS.r1.toml) `PRODUCT_CONFIRMED` ngày 21/11/2026, là revision hiện hành. OQ-1..OQ-4 `OPEN`. |
-| Quyết định kiến trúc | CHOICE-01..06 `OPEN`. Chưa có `DESIGN_PROPOSED` nào. |
-| Mức triển khai | `NOT_IMPLEMENTED` cho mọi VIEW-ID (bảng ở §3). |
-| Bằng chứng | Kiểm tài liệu (§6). Không có runtime PASS. |
+| Quyết định kiến trúc | CHOICE-02 A, CHOICE-03 và CHOICE-06 A `DESIGN_PROPOSED` bởi #341 (§7.1), chưa `Accepted`. CHOICE-01, 04, 05 `OPEN`. |
+| Mức triển khai | Đường ghi #341: `core` + adapter PostgreSQL + dọn hạn trong `vink-worker`, chưa có HTTP (bảng ở §3). Các VIEW-ID còn lại `NOT_IMPLEMENTED`. |
+| Bằng chứng | #340: kiểm tài liệu (§6). #341: unit và PostgreSQL thật (§7.7). Chưa có HTTP hay browser. |
 
 ## 2. Snapshot quyết định
 
@@ -41,17 +41,17 @@ revision hay signoff mới; người tiếp tục tra lại.
 
 | ID | Mức hiện tại | Issue sở hữu | Ghi chú |
 | --- | --- | --- | --- |
-| VIEW-01 | `NOT_IMPLEMENTED` | #343 (điểm phát), #341 (kiểm tại lúc ghi) | Điểm hiển thị có sẵn: `ReaderResponse::Published` → `PublicationView`. |
-| VIEW-02 | `NOT_IMPLEMENTED` | #343 | No-JS không đếm theo luật. |
-| VIEW-03 | `NOT_IMPLEMENTED` | #341 | Cửa sổ trượt neo tại lượt được tính. |
-| VIEW-04 | `NOT_IMPLEMENTED` | #341 | Mã khách first-party, thời hạn 24 giờ. |
-| VIEW-05 | `NOT_IMPLEMENTED` | #341 | So principal với chủ tác phẩm tại lúc ghi. |
-| VIEW-06 | `NOT_IMPLEMENTED` | #341 (khóa ghi), #342 (đọc không reset) | Không có trong bản đồ của brief; xếp theo khóa dữ liệu. |
+| VIEW-01 | Kiểm tại lúc ghi: `core` + PostgreSQL (#341). Điểm phát: `NOT_IMPLEMENTED` | #343 (điểm phát), #341 (kiểm tại lúc ghi) | Điểm hiển thị có sẵn: `ReaderResponse::Published` → `PublicationView`. Ghi chỉ cộng khi pointer công khai tồn tại lúc commit. |
+| VIEW-02 | `NOT_IMPLEMENTED` | #343 | No-JS không đếm theo luật. Luật nhận diện prefetch/prerender (`is_speculative`) có ở core, chưa áp tại HTTP. |
+| VIEW-03 | `core` + PostgreSQL (#341) | #341 | Cửa sổ trượt neo tại lượt được tính; đúng 24 giờ vẫn chặn. Receipt theo sự kiện tách khỏi cửa sổ. |
+| VIEW-04 | `core` + PostgreSQL (#341); cookie khách `NOT_IMPLEMENTED` | #341, #343 (cấp cookie) | `GuestToken` UUID v4, thời hạn 24 giờ cố định. |
+| VIEW-05 | `core` + PostgreSQL (#341) | #341 | So principal với `works.owner_id` tại lúc ghi. |
+| VIEW-06 | Khóa ghi: `core` + PostgreSQL (#341). Đọc: `NOT_IMPLEMENTED` | #341 (khóa ghi), #342 (đọc không reset) | Mọi bảng khóa theo `WorkId`; revision chỉ là căn cứ ghi trong receipt. |
 | VIEW-07 | `NOT_IMPLEMENTED` | #342 | Chỉ API tác giả; không API công khai. |
-| VIEW-08 | `NOT_IMPLEMENTED` | #342 (đọc), #341 (không tăng khi hết công khai) | OQ-1 cho hàng riêng tư. |
-| VIEW-09 | `NOT_IMPLEMENTED` | #342 | Mốc bật và nhãn “Tính từ”. |
-| VIEW-10 | `NOT_IMPLEMENTED` | #343 (retry), #341 (idempotency) | Kỳ vọng khoảng 1 phút, không SLA. |
-| VIEW-11 | `NOT_IMPLEMENTED` | #341 | Xóa khi xóa tác phẩm/tài khoản là target (OQ-2). |
+| VIEW-08 | Phía ghi: `core` + PostgreSQL (#341). Đọc: `NOT_IMPLEMENTED` | #342 (đọc), #341 (không tăng khi hết công khai) | Tổng không bao giờ giảm khi ẩn/rút. OQ-1 cho hàng riêng tư. |
+| VIEW-09 | Mốc lưu ở `work_view_counting` (#341). Nhãn: `NOT_IMPLEMENTED` | #342 | Không backfill; mốc là lần quyết định sự kiện đầu tiên. |
+| VIEW-10 | Idempotency: `core` + PostgreSQL (#341). Retry: `NOT_IMPLEMENTED` | #343 (retry), #341 (idempotency) | Kỳ vọng khoảng 1 phút, không SLA. Ghi đồng bộ nên số có ngay sau commit. |
+| VIEW-11 | `core` + PostgreSQL + `vink-worker` (#341) | #341 | Ba loại dữ liệu; cửa sổ và receipt xóa sau 24 giờ (chu kỳ dọn mỗi giờ). Xóa theo `WorkId` có hàm `erase_work`, chưa có route (OQ-2). |
 | VIEW-12 | `NOT_IMPLEMENTED` | #342 (trạng thái dữ liệu), lượt thiết kế (hiển thị) | Copy cuối thuộc lượt thiết kế. |
 
 ## 4. Bản đồ P/CHOICE sang issue
@@ -155,11 +155,155 @@ Sau signoff (cùng ngày, trên cây làm việc sau commit `8c9cbf38830042e8b76
 | AC-04 | PRD, đặc tả, proposal, registry trỏ đúng owner; bản đồ P/CHOICE | §4 của registry này. Proposal giữ `PENDING` tới lúc có lời duyệt. |
 | AC-05 | Trình payload `VDR-WORK-VIEWS@r1` cho chủ sản phẩm; signoff chỉ khi có lời duyệt đúng ID@r1 | Chủ sản phẩm trả lời nguyên văn “Duyệt r1” cho câu hỏi duyệt `VDR-WORK-VIEWS@r1` (sha `cfb789cc…`) trong phiên #340 ngày 21/11/2026. Đã chạy `decision signoff` với đúng SHA-256 và trích lời đó. |
 
-## 7. Điều kiện để bắt đầu việc tiếp theo
+## 7. Đường ghi (#341)
 
-- **#341:** PR này đã merge vào `develop`, để mọi lát dùng cùng một revision đặc tả
-  (`VDR-WORK-VIEWS@r1`, `PRODUCT_CONFIRMED`). Các P cần cho đường ghi (P-01, P-03..06, P-08, P-11)
-  đều trong revision đó. OQ-1..OQ-4 không chặn #341.
+Nguồn: [#341](https://github.com/loveoverflowcom/vink/issues/341), base
+`develop@d478a0633a4772fc3b6bfdb49e29af2418b25089`, đặc tả `VDR-WORK-VIEWS@r1`
+(`PRODUCT_CONFIRMED`). Code:
+[`domain/work_view.rs`](../../services/vink-app/src/domain/work_view.rs) (luật thuần),
+[`application/work_view.rs`](../../services/vink-app/src/application/work_view.rs) (use case),
+[`persistence/work_view.rs`](../../services/vink-app/src/persistence/work_view.rs) (transaction,
+dọn hạn, xóa theo `WorkId`),
+[migration](../../services/vink-app/migrations/20261130000000_work_views.sql),
+[backout](../../services/vink-app/migrations-rollback/20261130000000_work_views.down.sql) và vòng
+dọn hạn của `vink-worker`. Chưa có route HTTP: chưa có lượt nào được đếm trong runtime.
+
+### 7.1 Lựa chọn kỹ thuật (`DESIGN_PROPOSED`)
+
+Merge code không làm các lựa chọn này thành `Accepted`.
+
+| CHOICE | Lựa chọn | Lý do | Giới hạn đã biết |
+| --- | --- | --- | --- |
+| CHOICE-02 | **A**: một transaction cho mỗi sự kiện: khóa chia sẻ pointer công khai → advisory lock theo sự kiện → hàng cửa sổ `FOR UPDATE` → `decide_view` → cộng tổng, tổng ngày, receipt → commit. | Ít thành phần; số có ngay sau commit nên không cần chứng minh hội tụ trễ; tổng và tổng ngày luôn khớp vì cùng transaction. | Mọi lượt được tính của một tác phẩm tuần tự hóa trên hàng tổng. Đo local: 32 lượt đồng thời của một bài mất 0,5–1 s (máy dev đang tải). Chuyển sang B (sự kiện bền + tổng hợp trễ) khi đo được tranh chấp thật. |
+| CHOICE-03 | Thành viên: `PrincipalId` từ phiên. Khách: `GuestToken` (UUID v4) first-party, sống 24 giờ **cố định** từ lúc cấp, không làm mới. Không gộp khách với tài khoản (E-30: lần hai +1). Phiên không hợp lệ hay hết hạn là khách. Thành viên bị đình chỉ vẫn được tính như người đọc: đọc không phải thao tác ghi có thẩm quyền nên không lấy standing fence. Mã lưu là HMAC-SHA-256 theo khóa server của (loại người đọc, id, `WorkId`). | Không thêm loại định danh nào ngoài đặc tả. Khóa server khiến một bản sao DB không đủ để thử “thành viên X có đọc W không”. Gắn `WorkId` để không nối hàng của một người đọc qua nhiều tác phẩm. | Đổi khóa làm mọi cửa sổ đang mở mất hiệu lực: mỗi (người đọc, tác phẩm) có thể được tính thêm tối đa một lần trong 24 giờ sau; chỉ đổi khi lộ khóa. Người có cả DB lẫn khóa vẫn thử được trong 24 giờ lưu giữ. |
+| CHOICE-06 | **A** (luật ở #341, áp tại HTTP ở #343): kiểm input (event UUIDv7, mã khách UUID v4), idempotency theo sự kiện, gộp theo cửa sổ, chân trời thời gian của sự kiện ±11 giờ, `INGEST_LIMIT` 120 yêu cầu/10 phút/mạng **trong bộ nhớ tiến trình**, không tính yêu cầu speculative (`is_speculative`: `Sec-Purpose`/`Purpose`/`X-Purpose` chứa `prefetch` hay `prerender`). | So sánh bên dưới. B cần khóa ký và một mã riêng cho mỗi lần mở trong phản hồi Reader, trái với Reader công khai đang cache theo `ETag` (READ-01/02). | Bot chạy JavaScript và xoay mã khách vẫn cộng được tối đa một lượt/mã/24 giờ trong giới hạn tần suất. Mạng dùng chung vượt giới hạn có thể mất lượt (VIEW-10 chấp nhận). Đồng hồ máy khách lệch quá 11 giờ thì mất lượt. Không lưu khóa mạng nào của lưu lượng lượt xem. |
+
+So sánh CHOICE-06 theo các ca issue yêu cầu:
+
+| Ca | A (đã chọn) | B (bằng chứng mở bài do server cấp) |
+| --- | --- | --- |
+| Bấm đúp, hai tab | Một thân bài hiện → một sự kiện; nhiều sự kiện của cùng người đọc gộp theo cửa sổ (+1). | Như A, thêm một lần cấp mã. |
+| Mã khách hết hạn | Cookie hết 24 giờ sau lúc cấp → mã mới → có thể +1 sớm hơn 24 giờ kể từ lượt trước của trình duyệt đó, như khi khách xóa cookie (VIEW-04). Không làm mới nên không mã nào sống quá một cửa sổ. | Như A. |
+| Thiết bị dùng chung mạng | Chung giới hạn tần suất; NAT lớn có thể mất lượt, không bao giờ cản đọc. | Như A nếu vẫn giới hạn theo mạng. |
+| Chi phí | Không có bí mật mới cho mỗi lần mở; một bộ đếm trong bộ nhớ cho mỗi mạng. | Khóa ký, mã trong phản hồi Reader (phá cache công khai) hoặc thêm một request trước khi gửi. |
+
+### 7.2 Luật ghi đã chọn
+
+`decide_view` kiểm theo thứ tự, và adapter chỉ thực hiện đúng quyết định trả về:
+
+| # | Điều kiện | Kết quả | Ghi gì |
+| --- | --- | --- | --- |
+| 1 | Đã có receipt của mã sự kiện, cùng tác phẩm | `Replayed(<quyết định đầu>)`, bất kể người đọc hay đồng hồ hiện tại | Không ghi |
+| 1b | Receipt của mã đó thuộc tác phẩm khác | `Ignored(event_reused)` | Không ghi |
+| 2 | Thời điểm trong UUIDv7 ngoài [now − 11 giờ, now + 11 giờ] | `Ignored(outside_horizon)` | Không ghi |
+| 3 | Không có tác phẩm | `Ignored(work_not_found)` | Không ghi |
+| 4 | Không có pointer công khai lúc quyết định | `Skipped(not_public)` | Receipt |
+| 5 | Thành viên là chủ tác phẩm | `Skipped(own_work)` | Receipt |
+| 6 | Cửa sổ còn mở: `now − counted_at ≤ 24 giờ` | `Skipped(within_window)`, không kéo dài cửa sổ | Receipt |
+| 7 | Còn lại | `Counted` | Cửa sổ neo tại `now`, +1 tổng, +1 ngày (`Asia/Ho_Chi_Minh`), receipt |
+
+- **Đúng mốc 24 giờ** vẫn chặn; sau mốc một micro giây thì tính (khớp “đã quá 24 giờ”).
+- **Gửi lại sau khi receipt hết hạn.** Receipt giữ 24 giờ, lớn hơn bề rộng chân trời (11 + 11
+  giờ), nên mọi lần gửi lại còn trong chân trời đều gặp receipt của nó; lần gửi lại muộn hơn bị
+  bỏ qua vì quá cũ. Gửi trùng kỹ thuật vì thế không thành lượt mới kể cả sau khi dữ liệu chống
+  trùng đã xóa (AC-03).
+- **Mất phản hồi của khách mới.** Lần gửi đầu đã commit nhưng phản hồi (và cookie khách) bị mất,
+  lần gửi lại mang mã khách mới: receipt theo mã sự kiện, không theo người đọc, nên vẫn là gửi lại.
+- **Đồng hồ.** Thời điểm quyết định do caller truyền (HTTP dùng đồng hồ tiến trình), cắt về micro
+  giây, không trộn với `now()` của DB. Cửa sổ, receipt, ngày và dọn hạn dùng cùng một đồng hồ, nên
+  test PostgreSQL điều khiển được dòng thời gian.
+
+### 7.3 Dữ liệu và lưu giữ (VIEW-11)
+
+| Bảng | Nội dung | Lưu giữ |
+| --- | --- | --- |
+| `work_view_totals` | `work_id`, `views ≥ 1`, `updated_at` | Tới khi xóa tác phẩm |
+| `work_view_days` | `work_id`, `day` (`Asia/Ho_Chi_Minh`), `views ≥ 1`; tổng các ngày = tổng | Tới khi xóa tác phẩm |
+| `work_view_windows` | `work_id`, `reader_digest` (HMAC 32 byte), `counted_at` | Xóa khi `counted_at < now − 24 giờ` |
+| `work_view_receipts` | `event_digest` (SHA-256 của mã sự kiện), `work_id`, `verdict`, `basis_revision_id` (căn cứ publication), `decided_at`; **không có người đọc** | Xóa khi `decided_at < now − 24 giờ` |
+| `work_view_counting` | `started_at`: lần quyết định sự kiện đầu tiên (mốc VIEW-09) | Một hàng, giữ mãi |
+
+Trigger giữ: tổng và tổng ngày chỉ tăng đúng 1, cửa sổ chỉ tiến, receipt và mốc không bao giờ bị
+sửa. Mọi bảng cascade theo `works`; `erase_work` xóa theo `WorkId` trong transaction của caller
+(OQ-2). `vink-worker` dọn mỗi giờ (`prune_work_views`, lô 1.000, tối đa 100 vòng, `SKIP LOCKED`), nên
+hàng hết hạn bị xóa vật lý trong khoảng một giờ sau mốc 24 giờ. Không có IP, fingerprint, danh
+sách người xem hay lịch sử đọc; không backfill. Backout từ chối khi đã có tổng.
+
+### 7.4 Hợp đồng cho #342 và #343
+
+API nội bộ: `Vink::record_work_view(&ViewDigestKey, Viewer, RecordWorkView { work_id, event_id },
+now) -> Result<WorkViewRecord, WorkViewError>`. `WorkViewRecord` có `result`, `basis` (revision
+công khai mà quyết định đầu thấy), `decided_at` và `delta()`.
+
+| Kết quả | Tổng | Đề xuất cho HTTP #343 |
+| --- | --- | --- |
+| `Counted` | +1 | Một phản hồi thành công thống nhất (ví dụ `204`) cho mọi kết quả `Ok`, để phản hồi không lộ quyền tác giả, trạng thái riêng tư hay cửa sổ. |
+| `Skipped(within_window \| own_work \| not_public)` | 0 | Như trên. |
+| `Replayed(..)` | 0 | Như trên; tab ngừng gửi lại. |
+| `Ignored(outside_horizon \| event_reused)` | 0 | Như trên; tab ngừng gửi lại. |
+| `Ignored(work_not_found)` | 0 | **Bắt buộc** giống hệt `not_public`. |
+| `Err(Invalid(field))` | — | `400`/`422` kèm `field`; không gửi lại. |
+| `Err(Unavailable)` | — | `503`; gửi lại cùng mã sự kiện trong giới hạn. |
+| `Err(Internal)` | — | `500`; không có gì được commit. |
+
+#343 cần thêm: (1) chọn `Viewer` (phiên hợp lệ → thành viên; còn lại → cookie khách; chưa có thì
+`GuestToken::generate()` và `Set-Cookie` tiền tố `__Host-`, `HttpOnly`, `Secure`, `SameSite=Lax`,
+`Path=/`, `Max-Age` = `GUEST_TOKEN_TTL` = 86.400 giây, không làm mới cookie còn hạn); (2) một khóa
+bí mật 32 byte từ cấu hình (đề xuất `VINK_WORK_VIEW_DIGEST_KEY`, 64 chữ số hex qua
+`ViewDigestKey::parse_hex`), không vào DB, log hay bundle; (3) `is_speculative` trên header và
+chờ `document.prerendering === false` ở client; (4) `INGEST_LIMIT` theo mạng của
+`abuse::client_address`, trong bộ nhớ, vượt giới hạn thì bỏ qua lặng lẽ; (5) truyền
+`OffsetDateTime::now_utc()`; (6) tab sinh UUIDv7 một lần cho mỗi thân bài đã hiện, retry cùng mã
+và kết thúc retry sớm hơn nhiều so với 11 giờ.
+
+#342 đọc: tổng = `work_view_totals.views`, vắng hàng là 0 chỉ khi `work_view_counting` đã có hàng
+(chưa có hàng: chưa bắt đầu đếm, không phải “0”); nhãn “Tính từ” khi ngày công khai đầu tiên trước
+`started_at`; tổng giữ nguyên khi bài ẩn/rút (VIEW-08). Đọc bằng phiên chủ tác phẩm, `no-store`.
+
+Fixture dùng chung trong
+[`tests/fixtures/work-views/`](../../services/vink-app/tests/fixtures/work-views/):
+`decisions.json` (28 vector đầu vào → quyết định, gắn E-xx và VIEW-ID) và `scenario.json` (26 bước
+dòng thời gian cùng tổng, tổng ngày, số hàng cửa sổ/receipt và mốc bắt đầu cuối cùng). Unit test
+chạy cả hai qua quyết định thuần và một store trong bộ nhớ; test PostgreSQL chạy `scenario.json`
+qua adapter thật. #343 dùng lại hai file cho HTTP (ánh xạ người đọc sang phiên/cookie); #342 dùng
+trạng thái cuối của `scenario.json` làm oracle đọc.
+
+### 7.5 Ranh giới chưa kiểm và phần còn mở
+
+- HTTP thu nhận, cookie khách, bộ giới hạn tần suất, cấu hình khóa và tín hiệu Web: #343.
+- API đọc, “0”/“—”/“Tính từ”: #342. Không có số liệu nào được hiển thị.
+- Route xóa tác phẩm/tài khoản chưa có (OQ-2); chỉ có `erase_work` và cascade, đã kiểm trên
+  PostgreSQL.
+- OQ-3 không đổi luật ghi; OQ-1, OQ-4 thuộc phía đọc.
+- Tranh chấp bài nóng chỉ đo local (32 lượt đồng thời), chưa đo tải thật.
+- Không có quy trình đổi khóa hai khóa song song.
+- Không có mô hình Quint: luật nhỏ, đã có vector và oracle dòng thời gian chạy trên cả model trong
+  bộ nhớ lẫn PostgreSQL; lane `verify discussion` không đổi.
+
+### 7.6 Bằng chứng và nghiệm thu
+
+Chạy trên nhánh `feat/341-ghi-luot-xem` (base `develop@d478a06`), Linux, PostgreSQL 17.11 trong
+container tạm.
+
+| Phép kiểm | Ranh giới | Kết quả |
+| --- | --- | --- |
+| `cargo test -p vink-app --lib work_view` | unit | PASS, 19 test |
+| `cargo test -p vink-app --test postgres work_view` | postgres | PASS, 15 test |
+| `cargo xtask verify unit app` | unit/contract | PASS, 410 test (406 + 4) |
+| `cargo xtask verify quick` | fmt, clippy server và wasm, doctest, Reader SSR boundary, unit, repository checks (decisions, links, boundaries) | PASS |
+| `cargo xtask verify postgres` | postgres: store 6; App 278 PASS, 7 ignored; Identity 55; Notifications 23; binary thật, backup/restore | PASS |
+
+| AC | Phép kiểm | Kết quả, gap |
+| --- | --- | --- |
+| AC-01 | 28 vector của E-xx (`shared_decision_vectors`); kiểm tại commit: rút trước → `not_public`, sự kiện giữ khóa pointer trước → `counted` rồi rút (`a_withdrawal_committed_before_the_decision_skips_the_view`, `a_view_decided_before_the_withdrawal_commits_counts`); r2 thay r1 qua evaluator thật giữa cửa sổ (bước 10–11 của `scenario.json`) | PASS unit + postgres |
+| AC-02 | Cùng sự kiện ×8 đồng thời → 1; hai tab ×8 → 1; 32 người đọc → 32 và tổng ngày khớp; mất phản hồi + pool mới (khởi động lại) + mã khách mới → gửi lại; lỗi chèn trước commit → không còn dấu vết, gửi lại +1 đúng một lần; oracle dòng thời gian so trên hàng đã commit | PASS postgres |
+| AC-03 | Mốc bắt đầu ghi ở sự kiện đầu; bài có sẵn đếm từ sự kiện đầu; Thấm không sinh lượt (`nothing_is_inferred_from_earlier_activity`); dọn hạn (bước 23: 5 cửa sổ, 13 receipt; `retention_skips_a_window_a_decision_holds`); gửi lại sau hết hạn bị bỏ qua (bước 24, 26); xóa theo `WorkId` (`erasing_a_work_removes_only_its_view_rows`); xử lý đồng bộ nên không cần tiêu chí hội tụ trễ | PASS; route xóa còn chờ OQ-2 |
+| AC-04 | Hợp đồng §7.4, fixture, giới hạn §7.1 và §7.5 | Tài liệu; HTTP chưa kiểm |
+
+## 8. Điều kiện để bắt đầu việc tiếp theo
+
+- **#341:** đường ghi ở §7. #342 và #343 dùng API, bảng và fixture ở §7.4.
 - **Lượt thiết kế:** bắt đầu được sau khi PR này merge, dùng dữ liệu mẫu có nhãn. Cần câu trả lời
   OQ-1 trước khi chốt hàng Bàn viết của bài riêng tư.
-- **#342, #343:** theo thứ tự ở §4.
+- **#342, #343:** theo thứ tự ở §4. #343 cần thêm cấu hình khóa digest và cookie khách (§7.4)
+  trước khi bật thu nhận.

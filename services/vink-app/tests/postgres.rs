@@ -33,6 +33,7 @@ const NOTIFICATION_OUTBOX_MIGRATION: i64 = 20261127000000;
 const FOLLOWING_FEED_ORDER_MIGRATION: i64 = 20261127010000;
 const AUTHOR_DISCOVERY_MIGRATION: i64 = 20261128000000;
 const SOCIAL_RETIREMENT_MIGRATION: i64 = 20261129000000;
+const WORK_VIEWS_MIGRATION: i64 = 20261130000000;
 const ORIGIN: &str = "http://127.0.0.1:3000";
 
 #[path = "postgres/abuse.rs"]
@@ -97,6 +98,8 @@ mod taxonomy;
 mod taxonomy_api;
 #[path = "postgres/work_moderation.rs"]
 mod work_moderation;
+#[path = "postgres/work_view.rs"]
+mod work_view;
 
 fn principal(id: Uuid) -> Option<PrincipalId> {
     Some(PrincipalId::from_uuid(id))

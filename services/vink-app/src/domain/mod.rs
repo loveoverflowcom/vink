@@ -19,3 +19,4 @@ pub mod profile;
 pub mod publication;
 pub mod revision;
 pub mod taxonomy;
+pub mod work_view;

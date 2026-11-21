@@ -5,7 +5,8 @@
 //! an hourly housekeeping pass: expired sign-in rate-limit windows (D-05) and discussion events
 //! whose deliveries all finished more than [`EVENT_RETENTION_DAYS`] days ago and owe no review
 //! finalization. Admission post-review has no producer; no AI provider is configured.
-//! Acknowledged Notifications v1 events (#346) are pruned after their replay horizon. The
+//! Acknowledged Notifications v1 events (#346) are pruned after their replay horizon, and work
+//! view windows and receipts (#341) once older than 24 hours (VIEW-11). The
 //! notification relay (`vink_app::notification_relay`, T-02 CHOICE-16 A) is a loop of this
 //! process; it starts when `VINK_NOTIFICATIONS_INGEST_SOCKET` and `VINK_NOTIFICATIONS_SERVER_UID`
 //! name the Notification Service's ingest socket (#347, T-07 CHOICE-21 A) and is supervised like
@@ -143,7 +144,7 @@ async fn run(
         consumers = vink_app::domain::discussion::outbox::Consumer::ALL
             .map(|consumer| consumer.code())
             .join(","),
-        jobs = "discussion_outbox,rate_limit_prune,outbox_retention,notification_retention,work_evaluation",
+        jobs = "discussion_outbox,rate_limit_prune,outbox_retention,notification_retention,work_view_retention,work_evaluation",
         // #346: producers write only while `vink-app notifications activate` is in force; the
         // relay sends to the Notification Service's ingest socket when one is configured (#347).
         notification_relay = if relay_transport.is_some() {
@@ -236,6 +237,15 @@ async fn run(
                 match notification::prune(&pool, notification::REPLAY_HORIZON_DAYS, PRUNE_BATCH).await {
                     Ok(rows) => tracing::info!(rows, "acknowledged notification events pruned"),
                     Err(_) => tracing::warn!("notification retention could not reach the database"),
+                }
+                match vink.prune_work_views(time::OffsetDateTime::now_utc(), PRUNE_BATCH).await {
+                    Ok(pruned) => tracing::info!(
+                        windows = pruned.windows,
+                        receipts = pruned.receipts,
+                        drained = pruned.drained,
+                        "expired work view windows and receipts pruned"
+                    ),
+                    Err(_) => tracing::warn!("work view retention could not reach the database"),
                 }
             }
         }

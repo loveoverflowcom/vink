@@ -1,0 +1,49 @@
+{
+  "schema": "vink.work-views.scenario.v1",
+  "spec": "VDR-WORK-VIEWS@r1",
+  "about": "Timeline oracle of the write path (#341). W starts public at R1, owned by T. A, D and M are members; G1, G2 and G3 are guest browsers (G3 signs in as M at step 9). An event label is minted as a UUIDv7 at its first step's time and reused by later steps with the same label. 'expect' is the decision of that step; 'total' the work's total after it. Times are UTC; the day buckets are Asia/Ho_Chi_Minh.",
+  "readers": {
+    "T": "member",
+    "A": "member",
+    "D": "member",
+    "M": "member",
+    "G1": "guest",
+    "G2": "guest",
+    "G3": "guest"
+  },
+  "steps": [
+    { "at": "2026-12-01T01:00:00Z", "do": "view", "reader": "A", "event": "e1", "expect": "counted", "basis": "R1", "total": 1, "examples": ["E-01"] },
+    { "at": "2026-12-01T01:00:02Z", "do": "view", "reader": "A", "event": "e1", "expect": "replayed:counted", "basis": "R1", "total": 1, "examples": ["E-28"] },
+    { "at": "2026-12-01T01:05:00Z", "do": "view", "reader": "A", "event": "e2", "expect": "within_window", "basis": "R1", "total": 1, "examples": ["E-14"] },
+    { "at": "2026-12-01T01:10:00Z", "do": "view", "reader": "G1", "event": "e3", "expect": "counted", "basis": "R1", "total": 2, "examples": ["E-05", "E-19"] },
+    { "at": "2026-12-01T01:10:01Z", "do": "view", "reader": "G1", "event": "e4", "expect": "within_window", "basis": "R1", "total": 2, "examples": ["E-07", "E-29"] },
+    { "at": "2026-12-01T01:20:00Z", "do": "view", "reader": "T", "event": "e5", "expect": "own_work", "basis": "R1", "total": 2, "examples": ["E-22"] },
+    { "at": "2026-12-01T01:30:00Z", "do": "view", "reader": "D", "event": "e6", "expect": "counted", "basis": "R1", "total": 3, "examples": ["E-26"] },
+    { "at": "2026-12-01T02:00:00Z", "do": "view", "reader": "G3", "event": "e7", "expect": "counted", "basis": "R1", "total": 4, "examples": ["E-30"] },
+    { "at": "2026-12-01T02:05:00Z", "do": "view", "reader": "M", "event": "e8", "expect": "counted", "basis": "R1", "total": 5, "examples": ["E-30"] },
+    { "at": "2026-12-01T03:00:00Z", "do": "replace_revision", "examples": ["L-06"] },
+    { "at": "2026-12-01T03:00:05Z", "do": "view", "reader": "A", "event": "e9", "expect": "within_window", "basis": "R2", "total": 5, "examples": ["E-35"] },
+    { "at": "2026-12-01T04:00:00Z", "do": "set_private", "examples": ["L-07"] },
+    { "at": "2026-12-01T04:00:05Z", "do": "view", "reader": "G2", "event": "e10", "expect": "not_public", "basis": null, "total": 5, "examples": ["E-12"] },
+    { "at": "2026-12-01T04:00:06Z", "do": "view", "reader": "A", "event": "e11", "expect": "not_public", "basis": null, "total": 5, "examples": ["E-12"] },
+    { "at": "2026-12-01T05:00:00Z", "do": "republish", "examples": ["L-09"] },
+    { "at": "2026-12-01T05:00:05Z", "do": "view", "reader": "G2", "event": "e10", "expect": "replayed:not_public", "basis": null, "total": 5, "examples": ["E-34"] },
+    { "at": "2026-12-01T05:00:06Z", "do": "view", "reader": "G2", "event": "e12", "expect": "counted", "basis": "R2", "total": 6, "examples": ["L-09"] },
+    { "at": "2026-12-01T05:00:07Z", "do": "view", "reader": "G1", "event": "e13", "expect": "within_window", "basis": "R2", "total": 6, "examples": ["L-09"] },
+    { "at": "2026-12-01T13:00:00Z", "do": "view", "reader": "A", "event": "e14", "expect": "within_window", "basis": "R2", "total": 6, "examples": ["E-16"] },
+    { "at": "2026-12-02T00:59:00Z", "do": "view", "reader": "A", "event": "e15", "expect": "within_window", "basis": "R2", "total": 6, "examples": ["E-16"] },
+    { "at": "2026-12-02T01:00:00Z", "do": "view", "reader": "A", "event": "e16", "expect": "within_window", "basis": "R2", "total": 6, "examples": ["E-16"] },
+    { "at": "2026-12-02T01:01:00Z", "do": "view", "reader": "A", "event": "e17", "expect": "counted", "basis": "R2", "total": 7, "examples": ["E-17"] },
+    { "at": "2026-12-02T06:00:00Z", "do": "prune", "pruned": { "windows": 5, "receipts": 13 }, "examples": ["L-11"] },
+    { "at": "2026-12-02T06:00:05Z", "do": "view", "reader": "A", "event": "e1", "expect": "refused:outside_horizon", "basis": null, "total": 7, "examples": ["E-28"] },
+    { "at": "2026-12-02T06:00:06Z", "do": "view", "reader": "G2", "event": "e18", "expect": "counted", "basis": "R2", "total": 8, "examples": ["E-17"] },
+    { "at": "2026-12-02T06:00:07Z", "do": "view", "reader": "G1", "event": "e3", "expect": "refused:outside_horizon", "basis": null, "total": 8, "examples": ["E-28"] }
+  ],
+  "final": {
+    "total": 8,
+    "days": { "2026-12-01": 6, "2026-12-02": 2 },
+    "windows": 2,
+    "receipts": 5,
+    "counting_started_at": "2026-12-01T01:00:00Z"
+  }
+}

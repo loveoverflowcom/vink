@@ -1,0 +1,298 @@
+{
+  "schema": "vink.work-views.decisions.v1",
+  "spec": "VDR-WORK-VIEWS@r1",
+  "actors": {
+    "W": "0193a000-0000-7000-8000-00000000000a",
+    "V": "0193a000-0000-7000-8000-00000000000b",
+    "T": "0193a000-0000-7000-8000-0000000000a1",
+    "A": "0193a000-0000-7000-8000-0000000000a2",
+    "D": "0193a000-0000-7000-8000-0000000000a3",
+    "G1": "5b1f0c7e-9d43-4a2e-8f61-2c7d9e0a4b11",
+    "G2": "c3e8a2d4-71b5-4f09-a6d2-8e4f1b3c5d22",
+    "R1": "0193a000-0000-7000-8000-0000000000e1",
+    "R2": "0193a000-0000-7000-8000-0000000000e2"
+  },
+  "defaults": {
+    "work": "W",
+    "owner": "T",
+    "published": "R1",
+    "receipt": null,
+    "window_counted_at": null
+  },
+  "cases": [
+    {
+      "id": "member-first-open",
+      "examples": ["E-01", "E-02", "E-03"],
+      "rules": ["VIEW-01", "VIEW-03"],
+      "now": "2026-12-01T01:00:00Z",
+      "reader": "A",
+      "event_issued_at": "2026-12-01T01:00:00Z",
+      "expect": { "decision": "count", "basis": "R1", "day": "2026-12-01", "replaces": null }
+    },
+    {
+      "id": "guest-first-open",
+      "examples": ["E-04", "E-05", "E-19"],
+      "rules": ["VIEW-04"],
+      "now": "2026-12-01T01:00:00Z",
+      "reader": "G1",
+      "event_issued_at": "2026-12-01T00:59:58Z",
+      "expect": { "decision": "count", "basis": "R1", "day": "2026-12-01", "replaces": null }
+    },
+    {
+      "id": "refresh-inside-window",
+      "examples": ["E-14", "E-15", "E-27"],
+      "rules": ["VIEW-03"],
+      "now": "2026-12-01T01:05:00Z",
+      "reader": "A",
+      "event_issued_at": "2026-12-01T01:05:00Z",
+      "window_counted_at": "2026-12-01T01:00:00Z",
+      "expect": { "decision": "skip", "verdict": "within_window", "basis": "R1" }
+    },
+    {
+      "id": "reopen-one-minute-before-window-ends",
+      "examples": ["E-16"],
+      "rules": ["VIEW-03"],
+      "now": "2026-12-02T00:59:00Z",
+      "reader": "A",
+      "event_issued_at": "2026-12-02T00:59:00Z",
+      "window_counted_at": "2026-12-01T01:00:00Z",
+      "expect": { "decision": "skip", "verdict": "within_window", "basis": "R1" }
+    },
+    {
+      "id": "reopen-at-exactly-24-hours-is-still-blocked",
+      "examples": ["E-16"],
+      "rules": ["VIEW-03"],
+      "now": "2026-12-02T01:00:00Z",
+      "reader": "A",
+      "event_issued_at": "2026-12-02T01:00:00Z",
+      "window_counted_at": "2026-12-01T01:00:00Z",
+      "expect": { "decision": "skip", "verdict": "within_window", "basis": "R1" }
+    },
+    {
+      "id": "reopen-one-microsecond-after-24-hours-counts",
+      "examples": ["E-17"],
+      "rules": ["VIEW-03"],
+      "now": "2026-12-02T01:00:00.000001Z",
+      "reader": "A",
+      "event_issued_at": "2026-12-02T01:00:00Z",
+      "window_counted_at": "2026-12-01T01:00:00Z",
+      "expect": { "decision": "count", "basis": "R1", "day": "2026-12-02", "replaces": "2026-12-01T01:00:00Z" }
+    },
+    {
+      "id": "reopen-next-morning-counts",
+      "examples": ["E-17"],
+      "rules": ["VIEW-03"],
+      "now": "2026-12-02T01:01:00Z",
+      "reader": "A",
+      "event_issued_at": "2026-12-02T01:01:00Z",
+      "window_counted_at": "2026-12-01T01:00:00Z",
+      "expect": { "decision": "count", "basis": "R1", "day": "2026-12-02", "replaces": "2026-12-01T01:00:00Z" }
+    },
+    {
+      "id": "author-signed-in",
+      "examples": ["E-22"],
+      "rules": ["VIEW-05"],
+      "now": "2026-12-01T01:20:00Z",
+      "reader": "T",
+      "event_issued_at": "2026-12-01T01:20:00Z",
+      "expect": { "decision": "skip", "verdict": "own_work", "basis": "R1" }
+    },
+    {
+      "id": "author-signed-out-is-a-guest",
+      "examples": ["E-24"],
+      "rules": ["VIEW-04", "VIEW-05"],
+      "now": "2026-12-01T01:20:00Z",
+      "reader": "G2",
+      "event_issued_at": "2026-12-01T01:20:00Z",
+      "expect": { "decision": "count", "basis": "R1", "day": "2026-12-01", "replaces": null }
+    },
+    {
+      "id": "admin-on-public-reader",
+      "examples": ["E-26"],
+      "rules": ["VIEW-05"],
+      "now": "2026-12-01T01:30:00Z",
+      "reader": "D",
+      "event_issued_at": "2026-12-01T01:30:00Z",
+      "expect": { "decision": "count", "basis": "R1", "day": "2026-12-01", "replaces": null }
+    },
+    {
+      "id": "work-made-private",
+      "examples": ["E-12", "E-13"],
+      "rules": ["VIEW-01", "VIEW-08"],
+      "now": "2026-12-01T04:00:05Z",
+      "reader": "A",
+      "published": null,
+      "event_issued_at": "2026-12-01T04:00:05Z",
+      "expect": { "decision": "skip", "verdict": "not_public", "basis": null }
+    },
+    {
+      "id": "event-arrives-after-withdrawal",
+      "examples": ["E-34"],
+      "rules": ["VIEW-08", "VIEW-10"],
+      "now": "2026-12-01T04:00:30Z",
+      "reader": "G1",
+      "published": null,
+      "event_issued_at": "2026-12-01T03:59:50Z",
+      "expect": { "decision": "skip", "verdict": "not_public", "basis": null }
+    },
+    {
+      "id": "author-of-a-private-work",
+      "examples": ["E-23"],
+      "rules": ["VIEW-05", "VIEW-08"],
+      "now": "2026-12-01T04:00:05Z",
+      "reader": "T",
+      "published": null,
+      "event_issued_at": "2026-12-01T04:00:05Z",
+      "expect": { "decision": "skip", "verdict": "not_public", "basis": null }
+    },
+    {
+      "id": "new-revision-keeps-the-window",
+      "examples": ["E-35", "L-06"],
+      "rules": ["VIEW-03", "VIEW-06"],
+      "now": "2026-12-01T03:00:05Z",
+      "reader": "A",
+      "published": "R2",
+      "event_issued_at": "2026-12-01T03:00:05Z",
+      "window_counted_at": "2026-12-01T01:00:00Z",
+      "expect": { "decision": "skip", "verdict": "within_window", "basis": "R2" }
+    },
+    {
+      "id": "republished-reader-still-blocked",
+      "examples": ["L-09"],
+      "rules": ["VIEW-03", "VIEW-08"],
+      "now": "2026-12-01T05:00:07Z",
+      "reader": "G1",
+      "published": "R2",
+      "event_issued_at": "2026-12-01T05:00:07Z",
+      "window_counted_at": "2026-12-01T01:10:00Z",
+      "expect": { "decision": "skip", "verdict": "within_window", "basis": "R2" }
+    },
+    {
+      "id": "lost-ack-retry-replays",
+      "examples": ["E-28"],
+      "rules": ["VIEW-03", "VIEW-10"],
+      "now": "2026-12-01T01:00:02Z",
+      "reader": "A",
+      "event_issued_at": "2026-12-01T01:00:00Z",
+      "window_counted_at": "2026-12-01T01:00:00Z",
+      "receipt": { "work": "W", "verdict": "counted", "basis": "R1" },
+      "expect": { "decision": "replay", "verdict": "counted", "basis": "R1" }
+    },
+    {
+      "id": "retry-without-guest-cookie-replays",
+      "examples": ["E-28"],
+      "rules": ["VIEW-04", "VIEW-10"],
+      "note": "The first answer (and its cookie) was lost: the retry carries a fresh guest token, so only the event receipt recognises it.",
+      "now": "2026-12-01T01:00:03Z",
+      "reader": "G2",
+      "event_issued_at": "2026-12-01T01:00:00Z",
+      "receipt": { "work": "W", "verdict": "counted", "basis": "R1" },
+      "expect": { "decision": "replay", "verdict": "counted", "basis": "R1" }
+    },
+    {
+      "id": "retry-after-republish-replays-not-public",
+      "examples": ["E-34"],
+      "rules": ["VIEW-08", "VIEW-10"],
+      "now": "2026-12-01T05:00:05Z",
+      "reader": "G2",
+      "published": "R2",
+      "event_issued_at": "2026-12-01T04:00:05Z",
+      "receipt": { "work": "W", "verdict": "not_public", "basis": null },
+      "expect": { "decision": "replay", "verdict": "not_public", "basis": null }
+    },
+    {
+      "id": "receipt-wins-over-the-horizon",
+      "examples": ["E-28"],
+      "rules": ["VIEW-03"],
+      "now": "2026-12-01T13:00:00Z",
+      "reader": "A",
+      "event_issued_at": "2026-12-01T01:00:00Z",
+      "receipt": { "work": "W", "verdict": "counted", "basis": "R1" },
+      "expect": { "decision": "replay", "verdict": "counted", "basis": "R1" }
+    },
+    {
+      "id": "event-id-reused-for-another-work",
+      "examples": [],
+      "rules": ["CHOICE-06"],
+      "now": "2026-12-01T01:00:05Z",
+      "reader": "A",
+      "event_issued_at": "2026-12-01T01:00:00Z",
+      "receipt": { "work": "V", "verdict": "counted", "basis": "R1" },
+      "expect": { "decision": "refuse", "refusal": "event_reused" }
+    },
+    {
+      "id": "oldest-accepted-event",
+      "examples": ["E-32"],
+      "rules": ["VIEW-10"],
+      "now": "2026-12-01T12:00:00Z",
+      "reader": "A",
+      "event_issued_at": "2026-12-01T01:00:00Z",
+      "expect": { "decision": "count", "basis": "R1", "day": "2026-12-01", "replaces": null }
+    },
+    {
+      "id": "replay-after-receipt-expired-is-refused",
+      "examples": ["E-28"],
+      "rules": ["VIEW-03", "VIEW-11"],
+      "note": "Receipt and window were removed after 24 hours; the event's own time keeps it from counting again.",
+      "now": "2026-12-02T06:00:07Z",
+      "reader": "G1",
+      "event_issued_at": "2026-12-01T01:10:00Z",
+      "expect": { "decision": "refuse", "refusal": "outside_horizon" }
+    },
+    {
+      "id": "event-one-second-too-old",
+      "examples": [],
+      "rules": ["VIEW-10"],
+      "now": "2026-12-01T12:00:01Z",
+      "reader": "A",
+      "event_issued_at": "2026-12-01T01:00:00Z",
+      "expect": { "decision": "refuse", "refusal": "outside_horizon" }
+    },
+    {
+      "id": "client-clock-eleven-hours-ahead",
+      "examples": [],
+      "rules": ["VIEW-10"],
+      "now": "2026-12-01T01:00:00Z",
+      "reader": "A",
+      "event_issued_at": "2026-12-01T12:00:00Z",
+      "expect": { "decision": "count", "basis": "R1", "day": "2026-12-01", "replaces": null }
+    },
+    {
+      "id": "client-clock-too-far-ahead",
+      "examples": [],
+      "rules": ["VIEW-10"],
+      "now": "2026-12-01T01:00:00Z",
+      "reader": "A",
+      "event_issued_at": "2026-12-01T12:00:01Z",
+      "expect": { "decision": "refuse", "refusal": "outside_horizon" }
+    },
+    {
+      "id": "unknown-work",
+      "examples": ["E-10"],
+      "rules": ["VIEW-01"],
+      "now": "2026-12-01T01:00:00Z",
+      "reader": "A",
+      "work": null,
+      "event_issued_at": "2026-12-01T01:00:00Z",
+      "expect": { "decision": "refuse", "refusal": "work_not_found" }
+    },
+    {
+      "id": "last-second-of-the-local-day",
+      "examples": [],
+      "rules": ["VIEW-11"],
+      "now": "2026-12-01T16:59:59.999999Z",
+      "reader": "A",
+      "event_issued_at": "2026-12-01T16:59:59Z",
+      "expect": { "decision": "count", "basis": "R1", "day": "2026-12-01", "replaces": null }
+    },
+    {
+      "id": "local-midnight-starts-a-new-day",
+      "examples": [],
+      "rules": ["VIEW-11"],
+      "now": "2026-12-01T17:00:00Z",
+      "reader": "A",
+      "event_issued_at": "2026-12-01T17:00:00Z",
+      "expect": { "decision": "count", "basis": "R1", "day": "2026-12-02", "replaces": null }
+    }
+  ]
+}
