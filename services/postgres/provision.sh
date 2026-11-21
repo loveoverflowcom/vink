@@ -1,6 +1,6 @@
 #!/bin/sh
-# Provisions Vink's PostgreSQL owners on one instance: the App database and the Identity
-# database, each with its own migrator and runtime role (see README.md).
+# Provisions Vink's PostgreSQL owners on one instance: the App, Identity and Notification
+# databases, each with its own migrator and runtime role (see README.md).
 #
 #   services/postgres/provision.sh [--check] [--env-file FILE]
 #
@@ -52,6 +52,9 @@ fi
 : "${VINK_IDENTITY_DATABASE:=vink_identity}"
 : "${VINK_IDENTITY_MIGRATOR_ROLE:=vink_identity_migrator}"
 : "${VINK_IDENTITY_RUNTIME_ROLE:=vink_identity_runtime}"
+: "${VINK_NOTIFICATIONS_DATABASE:=vink_notifications}"
+: "${VINK_NOTIFICATIONS_MIGRATOR_ROLE:=vink_notifications_migrator}"
+: "${VINK_NOTIFICATIONS_RUNTIME_ROLE:=vink_notifications_runtime}"
 
 # owner LABEL DATABASE MIGRATOR RUNTIME MIGRATOR_PASSWORD RUNTIME_PASSWORD
 owner() {
@@ -70,4 +73,7 @@ owner app "$VINK_APP_DATABASE" "$VINK_APP_MIGRATOR_ROLE" "$VINK_APP_RUNTIME_ROLE
     "${VINK_APP_MIGRATOR_PASSWORD:-}" "${VINK_APP_RUNTIME_PASSWORD:-}"
 owner identity "$VINK_IDENTITY_DATABASE" "$VINK_IDENTITY_MIGRATOR_ROLE" "$VINK_IDENTITY_RUNTIME_ROLE" \
     "${VINK_IDENTITY_MIGRATOR_PASSWORD:-}" "${VINK_IDENTITY_RUNTIME_PASSWORD:-}"
+owner notifications "$VINK_NOTIFICATIONS_DATABASE" "$VINK_NOTIFICATIONS_MIGRATOR_ROLE" \
+    "$VINK_NOTIFICATIONS_RUNTIME_ROLE" \
+    "${VINK_NOTIFICATIONS_MIGRATOR_PASSWORD:-}" "${VINK_NOTIFICATIONS_RUNTIME_PASSWORD:-}"
 if [ "$check_only" = 1 ]; then echo "==> checks ok"; else echo "==> provisioning ok"; fi
