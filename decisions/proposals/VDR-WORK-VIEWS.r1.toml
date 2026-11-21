@@ -1,0 +1,58 @@
+version = 1
+id = "VDR-WORK-VIEWS"
+revision = 1
+
+[content]
+kind = "product"
+domain = "work-views"
+title = "Lượt xem tác phẩm: cách tính một lượt và số tác giả được thấy"
+resolution = """
+Ghi P-01..P-11 của Epic #323 và luật UX theo lời chốt ngày 21/11/2026 trong brief #340 (PRD §17, VIEW-01..12):
+- Định nghĩa: một lượt xem là một lần người đọc chủ động mở trang đọc công khai của tác phẩm và thân bài công khai đã hiện trên trình duyệt có JavaScript; người đọc không phải tác giả đang đăng nhập của bài. Không phải số người duy nhất, không phải số người đọc hết bài. Tên hiển thị “Lượt xem”.
+- VIEW-01 / P-01 B: cộng 1 khi thân bài công khai đã hiện; không yêu cầu thời gian ở lại. Bấm rồi hủy, tải lỗi, trang thay thế Hidden/ReviewWithdrawn (kể cả HTTP 200) = +0.
+- VIEW-02 / P-02 B: link nội bộ, URL trực tiếp, link chia sẻ, tab mới; chuột, chạm, Enter đều tính. Hover, prefetch, bot tạo bản xem trước link không tính. Trình duyệt tắt JavaScript không được đếm, giới hạn ghi rõ cho tác giả.
+- VIEW-03 / P-03 C: tối đa 1 lượt/người đọc/tác phẩm trong cửa sổ 24 giờ trượt. Lần mở được tính khi chưa có lượt hoặc lượt được tính gần nhất của cùng người đọc với cùng tác phẩm đã quá 24 giờ; lần mở bị chặn không kéo dài cửa sổ. Refresh, Back/Forward, mở lại trong cửa sổ = +0. Gửi trùng kỹ thuật không bao giờ thành lượt mới.
+- VIEW-04 / P-04 A: tính khách; chống trùng bằng mã ngẫu nhiên first-party, thời hạn bằng cửa sổ P-03. Không IP thô, không fingerprint. Chấp nhận đếm lại khi xóa cookie, đổi máy hoặc khách đăng nhập giữa cửa sổ. Thành viên dùng PrincipalId từ phiên.
+- VIEW-05 / P-05 B: không tính khi phiên là tác giả của bài. Màn kiểm duyệt, preview, nháp không bao giờ tính. Admin mở Reader công khai như độc giả thì tính. Tác giả đã đăng xuất được tính như khách, không hứa nhận diện.
+- VIEW-06 / P-06 A: cộng dồn theo WorkId qua sửa, đăng lại, revision mới; khác Thấm (gắn RevisionId).
+- VIEW-07 / P-07 A: bản đầu chỉ tác giả thấy, ở Bàn viết. Không số công khai, không danh sách người xem.
+- VIEW-08 / P-08 A: bài bị ẩn, chuyển riêng tư hay bị rút sau kiểm duyệt thì tác giả vẫn thấy số cũ, không tăng thêm; công khai lại thì đếm tiếp; mở trang thay thế không tính.
+- VIEW-09 / P-09 A: bắt đầu từ ngày bật; bài đăng trước mốc có nhãn “Tính từ dd/mm/yyyy”. Không backfill (chưa từng có nguồn; #214 loại tracking). Không suy từ Thấm/Nhận xét.
+- VIEW-10 / P-10 A: số tham khảo, kỳ vọng tác giả thấy trong khoảng 1 phút (không phải SLA). Retry hữu hạn trong tab cùng mã sự kiện. Đóng tab hoặc offline có thể mất lượt; không bao giờ cộng trùng. Lỗi thống kê không bao giờ cản người đọc.
+- VIEW-11 / P-11 B: chỉ lưu tổng/tác phẩm, tổng theo ngày/tác phẩm (không theo người, chưa có biểu đồ) và mã chống trùng đã băm, tự xóa khi hết cửa sổ. Xóa tác phẩm hoặc tài khoản thì xóa số liệu.
+- VIEW-12 / UX: chưa có hoặc lỗi = “—” kèm lý do, khác “0” thật; định dạng số kiểu Việt (1.234); không realtime, không thông báo; nhãn diễn đạt đúng độ phủ (khách theo trình duyệt, không có JavaScript thì không đếm, “Tính từ”).
+- Còn OPEN, không chặn: OQ-1 hiện Lượt xem khi bài riêng tư trong khi read-model tác giả ẩn Thấm/Nhận xét (khi chưa trả lời, hàng Bàn viết có thể chỉ hiện Lượt xem); OQ-2 luật xóa số liệu ghi ở mức target, kích hoạt khi route xóa tác phẩm/tài khoản có runtime (O-08 tách riêng); OQ-3 thân bài hiện mà không có thao tác mở mới hoặc ở tab mở nền chưa được xem; OQ-4 admin gỡ cả bài (PUB-05 C) thì tác giả còn thấy số cũ không.
+- CHOICE-01..06 của #323 vẫn OPEN, giao #341–#343; lựa chọn phải thỏa: không cộng mọi GET/SSR/render/prefetch; retry cùng mã sự kiện; mã băm + tự xóa; thống kê lỗi không chặn đọc; số liệu tác giả không vào SSR hay cache công khai.
+"""
+rationale = "Câu hỏi và phương án gốc: Epic https://github.com/loveoverflowcom/vink/issues/323 (P-01..P-11, CHOICE-01..06). Lời chốt: chủ sản phẩm trả lời “Theo khuyến nghị” cho đúng bộ khuyến nghị trong brief #340 ngày 21/11/2026 (https://github.com/loveoverflowcom/vink/issues/340). Đặc tả docs/architecture/work-views.md; registry docs/development/work-views.md. Luật “—” khác “0” theo mẫu VDR-AUTHOR-WORK-FEEDBACK@r1 (kiến trúc, PENDING). Theo VDR-DECISION-SIGNOFF@r1, brief chưa tự là signoff cho payload TOML này; proposal ở PENDING đến khi chủ sản phẩm duyệt đúng revision và SHA-256."
+requires = [
+    "LVE-PR-01-CHOICE-02@r1",
+    "O-17@r2",
+    "USER-02@r1",
+    "VDR-DECISION-SIGNOFF@r1",
+]
+related_ids = [
+    "AUD-01",
+    "AUD-02",
+    "INV-08",
+    "MOD-05",
+    "O-08",
+    "PUB-04",
+    "PUB-05",
+    "PUB-07",
+    "SOC-LIFE-02",
+    "UX-01",
+    "VIEW-01",
+    "VIEW-02",
+    "VIEW-03",
+    "VIEW-04",
+    "VIEW-05",
+    "VIEW-06",
+    "VIEW-07",
+    "VIEW-08",
+    "VIEW-09",
+    "VIEW-10",
+    "VIEW-11",
+    "VIEW-12",
+    "WR-01",
+]
