@@ -10,7 +10,7 @@ ghi các issue tiêu thụ r1 và phép kiểm còn phải chạy.
 | --- | --- |
 | Sản phẩm | R1–R9 `PRODUCT_CONFIRMED` theo [R10 §2](https://github.com/loveoverflowcom/vink/issues/284). SHA-256 body gốc 17/11 theo #288 là `3b076a69470a3e0d8c0b386eefd4831bccb37ad3665e17a68c9724c0cbc02973`. Cập nhật đúng phạm vi issue con ngày 18/11 ở hai bảng dưới. |
 | Kiến trúc | `DESIGN_PROPOSED`. D-05@r1 `PROVISIONAL`, O-12@r2 `PRODUCT_CONFIRMED`. Các proposal Social và USER-01@r2 chờ signoff đúng revision/hash theo VDR-DECISION-SIGNOFF@r1. [Kho TOML](../../decisions/README.md#social-graph) |
-| Triển khai | `NOT_IMPLEMENTED` cho Profile/Handle/Follow/Following Feed. Có sẵn binding, đứng tên theo Principal, public pointer, cây thảo luận và bộ đọc Web. |
+| Triển khai | Xem [registry Social](../development/social-graph.md) cho mức triển khai và bằng chứng từng lát. |
 | Bằng chứng | Đối chiếu source tại develop `e0551edf08d4d44903f35717acffa6da70ce4bf3`. Kiểm tài liệu/registry theo SHA ở PR #288. Các phép kiểm Social model/PG/HTTP/Web là mục tiêu cho child. |
 
 <!-- vdr: active USER-01@r1 -->
@@ -178,5 +178,5 @@ Child ghi lựa chọn, phương án bỏ và bằng chứng ở đúng owner. C
 | CHOICE-02 · Graph #294 | Giữ desired state/version kể cả khi unfollow (giữ hàng lịch sử), hoặc cạnh sống + thứ tự/receipt bền (thêm lưu trữ và dọn). | PG thử ABA, mất ACK, đổi ý, retry cũ, xóa và restart. Mở. |
 | CHOICE-03 · Graph #294 | Batch aggregate theo index trên cạnh, hoặc materialized counter cùng transaction có kiểm/rebuild. | Đo query plan, skew, contention. Kiểm exact delta qua no-op/rollback/xóa và rebuild bằng nguồn cạnh. Mở. |
 | CHOICE-04 · Publication #291 | Fact bền mỗi WorkId ghi cùng public pointer lần đầu, hoặc derive từ lịch sử event đầy đủ, có provenance và chi phí đọc hữu hạn. | A đã chọn trong [#291 r2](https://github.com/loveoverflowcom/vink/issues/291). PG kiểm mọi writer, backfill, race, rút/tái đăng. Lịch sử chỉ xác thực mốc cũ khi đủ bằng chứng. |
-| CHOICE-05 · App/Web #292, #296 | SSR public + overlay/Feed no-store sau xác thực, hoặc SSR cá nhân cô lập theo request (có chi phí xác thực và cô lập hydration). | HTTP/SSR hai phiên, trước 304. Browser kiểm logout A→B→A, Back/focus và response muộn. Mở. |
-| CHOICE-06 · Discovery #296 | Live membership mỗi trang, restart local sau mutation (bài mới trên cursor đợi refresh), hoặc cursor gắn graph revision, đổi graph thì reject/restart (tốn cập nhật revision). | Thử follow/unfollow/withdraw giữa hai trang, tie, đổi viewer/mode. Cả hai kiểm lại quyền đã thu hồi. Mở. |
+| CHOICE-05 · App/Web #292, #296 | SSR public + overlay/Feed no-store sau xác thực, hoặc SSR cá nhân cô lập theo request (có chi phí xác thực và cô lập hydration). | HTTP/SSR hai phiên, trước 304. Browser kiểm logout A→B→A, Back/focus và response muộn. Owner #292/#296 chọn SSR công khai và đọc riêng sau hydrate. |
+| CHOICE-06 · Discovery #296 | Live membership mỗi trang, restart local sau mutation (bài mới trên cursor đợi refresh), hoặc cursor gắn graph revision, đổi graph thì reject/restart (tốn cập nhật revision). | Thử follow/unfollow/withdraw giữa hai trang, tie, đổi viewer/mode. Cả hai kiểm lại quyền đã thu hồi. [Owner #296](../development/social-graph.md#đang-theo-dõi-trong-khám-phá-296) chọn membership live. |

@@ -21,6 +21,9 @@ use crate::session::Standing;
 #[cfg(feature = "hydrate")]
 mod browser;
 
+#[cfg(feature = "hydrate")]
+pub(super) use browser::observe_changes;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct RelationshipPersonRow {
     pub author: PublicAuthorRef,

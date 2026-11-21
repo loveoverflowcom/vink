@@ -433,22 +433,26 @@ extern "C" {
     fn clear_profile_return();
 }
 
-/// Mark only the current public history entry. A new tab/modifier click must not move it.
+#[cfg(feature = "hydrate")]
+fn is_primary_link_click(event: &web_sys::MouseEvent) -> bool {
+    !event.default_prevented()
+        && event.button() == 0
+        && !event.meta_key()
+        && !event.ctrl_key()
+        && !event.alt_key()
+        && !event.shift_key()
+}
+
+/// Mark only the current history entry. A new tab/modifier click must not move it.
 #[cfg(feature = "hydrate")]
 fn remember_public_position(
     event: &web_sys::MouseEvent,
     context: &crate::discovery::ExploreContext,
     work_id: &str,
     navigate: &impl Fn(&str, leptos_router::NavigateOptions),
-) {
-    if event.default_prevented()
-        || event.button() != 0
-        || event.meta_key()
-        || event.ctrl_key()
-        || event.alt_key()
-        || event.shift_key()
-    {
-        return;
+) -> bool {
+    if !is_primary_link_click(event) {
+        return false;
     }
     if let Ok(history) = window().history() {
         clear_profile_return();
@@ -464,12 +468,24 @@ fn remember_public_position(
                 ..Default::default()
             },
         );
+        true
+    } else {
+        false
     }
 }
 
 /// Restore a row fragment once for the settled route, not on background list refresh.
 #[cfg(feature = "hydrate")]
 fn restore_public_position(stream: NodeRef<leptos::html::Section>, settled: Memo<bool>) {
+    restore_explore_position(stream, settled, Signal::stored(true));
+}
+
+#[cfg(feature = "hydrate")]
+fn restore_explore_position(
+    stream: NodeRef<leptos::html::Section>,
+    settled: Memo<bool>,
+    allow_anchor: Signal<bool>,
+) {
     use leptos_router::hooks::use_location;
     use wasm_bindgen::JsCast;
 
@@ -506,8 +522,11 @@ fn restore_public_position(stream: NodeRef<leptos::html::Section>, settled: Memo
             {
                 return;
             }
-            let row = document()
-                .get_element_by_id(hash.trim_start_matches('#'))
+            let row = allow_anchor
+                .try_get_untracked()
+                .unwrap_or_default()
+                .then(|| document().get_element_by_id(hash.trim_start_matches('#')))
+                .flatten()
                 .filter(|row| {
                     row.class_list().contains("vk-public-row") && stream.contains(Some(row))
                 });

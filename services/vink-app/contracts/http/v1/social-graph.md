@@ -191,3 +191,31 @@ Reader thay thế theo O-17 tiếp tục dùng nhãn đã lọc.
 Cursor Follow v2 chỉ mang mốc cạnh ngẫu nhiên và phạm vi, không chứa thời điểm theo dõi.
 Mốc được tra lại sau khi kiểm quyền trong cùng snapshot; mốc không còn thuộc danh sách hiện
 hành trả `restart`. Cursor riêng không dùng qua lần xác thực khác, kể cả cùng PrincipalId.
+
+## Đang theo dõi #296
+
+`GET/HEAD /api/v1/me/following-feed` dùng actor do phiên xác thực cung cấp. Mọi kết quả
+mang `Cache-Control: private, no-store`. Server xử lý quyền hiện tại cả khi nhận
+`If-None-Match`; route này không phát validator. Phiên vắng/hết hạn trả 401. Phiên
+bị từ chối hoặc hồ sơ actor không còn hiệu lực không nhận dữ liệu Feed. Khi tắt Feed,
+endpoint trả 404 với cùng quy tắc cache.
+
+| Query | Kết quả |
+| --- | --- |
+| Không có tham số | `state: page`, tối đa 12 thẻ mới nhất. |
+| `around=<WorkId>` | Mở một trang từ thẻ còn đúng quyền, gồm thẻ đó. Nếu thẻ không còn đủ điều kiện, trả trang đầu theo quyền hiện hành. |
+| `cursor=<token>` | Trang sau mốc. Token lỗi, thuộc phiên khác hoặc neo đã mất quyền trả `state: restart`. |
+| `cursor=<token>&seen=<uuid,uuid,…>` | Trang sau mốc và `retained` gồm các thẻ trong `seen` còn đúng quyền, bằng cùng snapshot. |
+| `seen=<uuid,uuid,…>` | `state: checked` và `retained` cho một batch độc lập, tối đa 48 WorkId phân biệt. |
+
+`page` gồm `viewer`, `has_following`, `works`, `retained` (rỗng nếu không
+revalidate) và `next_cursor` (null ở cuối). `checked` gồm `viewer` và `retained`.
+`viewer` là PrincipalId xác thực để Web kiểm scope của response. `has_following`
+là phép kiểm tồn tại cạnh active tới hồ sơ còn hoạt động. Mỗi thẻ dùng shape `WorkCard`
+của API tác phẩm, trong đó `published_at` của riêng representation này là mốc công
+khai lần đầu `exact`. Tiêu đề, trích đoạn, tác giả và thẻ đến từ projection hiện hành.
+
+Sắp giảm dần theo `(first_published_at, WorkId)`. Cursor v1 chứa khóa tác phẩm công
+khai và MAC gắn phiên, actor, representation, query cố định, thứ tự và page size.
+`q`, `tag`, `mode` và tham số query lạ đều trả 422 ở endpoint Feed. Client chỉ trao
+cursor trong request API và bắt đầu lại sau thay đổi Follow đã được xác nhận.

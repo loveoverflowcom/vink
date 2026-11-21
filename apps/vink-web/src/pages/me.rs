@@ -8,11 +8,16 @@ use crate::appearance::{AppearanceChoices, AppearanceTitle};
 pub fn Me() -> impl IntoView {
     let query = leptos_router::hooks::use_query_map();
     let session = crate::account::Session::current();
+    let feed_enabled = crate::api::following_feed_enabled();
     let return_href = Memo::new(move |_| {
-        query
-            .read()
-            .get("next")
-            .and_then(|raw| crate::follow_state::safe_profile_return(&raw))
+        query.read().get("next").and_then(|raw| {
+            if feed_enabled && raw == crate::discovery::ExploreMode::FOLLOWING_HREF {
+                Some((raw, "Quay lại Đang theo dõi"))
+            } else {
+                crate::follow_state::safe_profile_return(&raw)
+                    .map(|href| (href, "Quay lại trang tác giả"))
+            }
+        })
     });
 
     view! {
@@ -24,12 +29,12 @@ pub fn Me() -> impl IntoView {
             {move || (session.profile_scope.get().is_some())
                 .then(|| return_href.get())
                 .flatten()
-                .map(|href| view! {
+                .map(|(href, label)| view! {
                     <vink_ui::Link
                         variant=vink_ui::LinkVariant::Standalone
                         attr:id="me-return-link"
                         href=href>
-                        "Quay lại trang tác giả"
+                        {label}
                     </vink_ui::Link>
                 })}
             <super::profile::ProfileEntry />

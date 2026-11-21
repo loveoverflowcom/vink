@@ -1100,6 +1100,7 @@ async fn serve(config: Config, api_only: bool) -> Result<(), Failure> {
     )
     .with_sign_in(identity::sign_in_client(&config))
     .with_sign_in_enabled(config.sign_in_enabled)
+    .with_following_feed_enabled(config.following_feed_enabled)
     .with_trusted_proxies(config.trusted_proxies.clone())
     .with_identity_probe(probe)
     .with_restricted_role_required(config.profile == Profile::Production);
