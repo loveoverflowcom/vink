@@ -1,8 +1,8 @@
 //! `verify postgres` checks for services/postgres provisioning, on the test harness server.
 //!
-//! The operator script runs with scratch names for three owners: an App database first populated
-//! the pre-provisioning way (one superuser migrates and seeds it), a fresh App database and an
-//! Identity database. The outcome is then checked with the provisioned credentials themselves —
+//! The operator script runs with scratch names for four owners: an App database first populated
+//! the pre-provisioning way (one superuser migrates and seeds it), a fresh App database, an
+//! Identity database and a Notification database. The outcome is then checked with the provisioned credentials themselves —
 //! the real binaries migrate and seed, and each role attempts connections and DDL — rather than
 //! with the script's own post-checks. Scratch names never match a real owner; they are removed
 //! before and after every run.
@@ -20,9 +20,11 @@ use crate::process::Report;
 const FRESH: &str = "vink_verify_prov_fresh";
 const LEGACY: &str = "vink_verify_prov_legacy";
 const IDENTITY: &str = "vink_verify_prov_identity";
+const NOTIFICATIONS: &str = "vink_verify_prov_notifications";
 /// Separate databases that receive the per-owner backups; never an original.
 const RESTORED_APP: &str = "vink_verify_prov_restored_app";
 const RESTORED_IDENTITY: &str = "vink_verify_prov_restored_identity";
+const RESTORED_NOTIFICATIONS: &str = "vink_verify_prov_restored_notifications";
 
 /// Data written before provisioning; the title is NFD on purpose, so any rewrite would show.
 const LEGACY_AUTHOR: &str = "55555555-5555-4555-8555-555555555555";
@@ -58,6 +60,7 @@ struct Run<'a> {
     fresh: Owner,
     legacy: Owner,
     identity: Owner,
+    notifications: Owner,
 }
 
 pub fn verify(report: &mut Report, root: &Path, admin_url: &str) -> bool {
@@ -83,6 +86,7 @@ pub fn verify(report: &mut Report, root: &Path, admin_url: &str) -> bool {
         fresh: Owner::new(FRESH),
         legacy: Owner::new(LEGACY),
         identity: Owner::new(IDENTITY),
+        notifications: Owner::new(NOTIFICATIONS),
     };
     if !report.step(
         "psql 15+ available (services/postgres/provision.sh)",
@@ -169,7 +173,7 @@ impl Run<'_> {
                 Ok(())
             },
         ) && report.step(
-            "provision.sh adopts the legacy App database and creates fresh App + Identity",
+            "provision.sh adopts the legacy App database and creates fresh App + Identity + Notifications",
             || {
                 self.provision(&self.legacy, false, &self.password)?;
                 self.provision(&self.fresh, false, &self.password)
@@ -193,8 +197,9 @@ impl Run<'_> {
             "worker starts with the runtime role, reports a current schema, stops on SIGTERM",
             || lifecycle::worker_lifecycle(self.root, &self.url(&self.fresh.runtime, FRESH), "current"),
         ) && crate::identity::verify(report, &self.identity_scratch())
+            && crate::notifications::verify(report, &self.notifications_scratch())
             && report.step(
-                "backup/restore per owner: pg_dump of App and Identity restored elsewhere matches data and history; originals untouched",
+                "backup/restore per owner: pg_dump of App, Identity and Notifications restored elsewhere matches data and history; originals untouched",
                 || self.backup_restore(),
             )
     }
@@ -220,15 +225,65 @@ impl Run<'_> {
         }
     }
 
+    /// The provisioned Notification owner, with the App and Identity owners as "other" databases.
+    fn notifications_scratch(&self) -> crate::notifications::Scratch<'_> {
+        let n = &self.notifications;
+        let mut secrets = vec![self.password.clone()];
+        secrets.extend(self.admin.password().map(str::to_string));
+        crate::notifications::Scratch {
+            root: self.root,
+            admin_notifications: self.admin_on(NOTIFICATIONS),
+            runtime: self.url(&n.runtime, NOTIFICATIONS),
+            migrator: self.url(&n.migrator, NOTIFICATIONS),
+            crossings: vec![
+                (
+                    format!("{} → {FRESH}", n.runtime),
+                    self.url(&n.runtime, FRESH),
+                ),
+                (
+                    format!("{} → {IDENTITY}", n.runtime),
+                    self.url(&n.runtime, IDENTITY),
+                ),
+                (
+                    format!("{} → {FRESH}", n.migrator),
+                    self.url(&n.migrator, FRESH),
+                ),
+                (
+                    format!("{} → {NOTIFICATIONS}", self.fresh.runtime),
+                    self.url(&self.fresh.runtime, NOTIFICATIONS),
+                ),
+                (
+                    format!("{} → {NOTIFICATIONS}", self.identity.runtime),
+                    self.url(&self.identity.runtime, NOTIFICATIONS),
+                ),
+            ],
+            admin_app: self.admin_on(FRESH),
+            app_runtime: self.url(&self.fresh.runtime, FRESH),
+            secrets,
+        }
+    }
+
     /// Drops the scratch databases and roles; harmless when they do not exist.
     fn cleanup(&self) -> Result<(), String> {
         let admin = self.admin_url.clone();
-        let mut statements: Vec<String> =
-            [FRESH, LEGACY, IDENTITY, RESTORED_APP, RESTORED_IDENTITY]
-                .iter()
-                .map(|db| format!("DROP DATABASE IF EXISTS {db} WITH (FORCE)"))
-                .collect();
-        for owner in [&self.fresh, &self.legacy, &self.identity] {
+        let mut statements: Vec<String> = [
+            FRESH,
+            LEGACY,
+            IDENTITY,
+            NOTIFICATIONS,
+            RESTORED_APP,
+            RESTORED_IDENTITY,
+            RESTORED_NOTIFICATIONS,
+        ]
+        .iter()
+        .map(|db| format!("DROP DATABASE IF EXISTS {db} WITH (FORCE)"))
+        .collect();
+        for owner in [
+            &self.fresh,
+            &self.legacy,
+            &self.identity,
+            &self.notifications,
+        ] {
             for role in [&owner.migrator, &owner.runtime] {
                 statements.push(format!("DROP ROLE IF EXISTS {role}"));
             }
@@ -299,6 +354,15 @@ impl Run<'_> {
             .env("VINK_IDENTITY_DATABASE", self.identity.database)
             .env("VINK_IDENTITY_MIGRATOR_ROLE", &self.identity.migrator)
             .env("VINK_IDENTITY_RUNTIME_ROLE", &self.identity.runtime)
+            .env("VINK_NOTIFICATIONS_DATABASE", self.notifications.database)
+            .env(
+                "VINK_NOTIFICATIONS_MIGRATOR_ROLE",
+                &self.notifications.migrator,
+            )
+            .env(
+                "VINK_NOTIFICATIONS_RUNTIME_ROLE",
+                &self.notifications.runtime,
+            )
             .stdout(Stdio::inherit())
             .stderr(Stdio::piped());
         if check {
@@ -310,6 +374,8 @@ impl Run<'_> {
                 "VINK_APP_RUNTIME_PASSWORD",
                 "VINK_IDENTITY_MIGRATOR_PASSWORD",
                 "VINK_IDENTITY_RUNTIME_PASSWORD",
+                "VINK_NOTIFICATIONS_MIGRATOR_PASSWORD",
+                "VINK_NOTIFICATIONS_RUNTIME_PASSWORD",
             ] {
                 command.env(key, password);
             }
@@ -490,7 +556,12 @@ impl Run<'_> {
         if identity_before == "[]" {
             return Err("Identity has no migration history to back up".into());
         }
-        for (source, target) in [(LEGACY, RESTORED_APP), (IDENTITY, RESTORED_IDENTITY)] {
+        let notifications_before = self.notification_rows(NOTIFICATIONS)?;
+        for (source, target) in [
+            (LEGACY, RESTORED_APP),
+            (IDENTITY, RESTORED_IDENTITY),
+            (NOTIFICATIONS, RESTORED_NOTIFICATIONS),
+        ] {
             let file = dir.join(format!("{source}.dump"));
             let out = self
                 .pg_tool("pg_dump")?
@@ -530,7 +601,13 @@ impl Run<'_> {
         if self.history(RESTORED_IDENTITY)? != identity_before {
             return Err("the restored Identity history differs from its source".into());
         }
-        if self.snapshot(LEGACY)? != app_before || self.history(IDENTITY)? != identity_before {
+        if self.notification_rows(RESTORED_NOTIFICATIONS)? != notifications_before {
+            return Err("the restored Notification database differs from its source".into());
+        }
+        if self.snapshot(LEGACY)? != app_before
+            || self.history(IDENTITY)? != identity_before
+            || self.notification_rows(NOTIFICATIONS)? != notifications_before
+        {
             return Err("taking a backup changed an original database".into());
         }
         // Ownership comes back with the objects: the restored App stays migratable by its migrator.
@@ -559,6 +636,29 @@ impl Run<'_> {
         Ok(())
     }
 
+    /// The Notification history plus every inbox row the process checks wrote, as text.
+    fn notification_rows(&self, database: &str) -> Result<String, String> {
+        let url = self.admin_on(database);
+        let history = self.history(database)?;
+        let rows: String = block_on(async move {
+            let mut connection = connect(&url).await?;
+            sqlx::query_scalar(
+                "SELECT json_build_object(
+                    'inboxes', (SELECT json_agg(t ORDER BY t.recipient) FROM inboxes t),
+                    'receipts', (SELECT json_agg(t ORDER BY t.event_id) FROM ingestion_receipts t),
+                    'groups', (SELECT json_agg(t ORDER BY t.group_id) FROM notification_groups t),
+                    'members', (SELECT json_agg(t ORDER BY t.group_id, t.contribution) FROM group_members t))::text",
+            )
+            .fetch_one(&mut connection)
+            .await
+            .map_err(|e| e.to_string())
+        })?;
+        if !rows.contains("\"groups\" : [") && !rows.contains("\"groups\":[") {
+            return Err(format!("{database} has no inbox group to back up: {rows}"));
+        }
+        Ok(format!("{history}\n{rows}"))
+    }
+
     /// Number of scratch roles and their stored password verifiers (compared, never printed).
     fn verifiers(&self) -> Result<(i64, String), String> {
         let admin = self.admin_url.clone();
@@ -577,9 +677,9 @@ impl Run<'_> {
 
     fn rerun(&self) -> Result<(), String> {
         let before = self.verifiers()?;
-        if before.0 != 6 {
+        if before.0 != 8 {
             return Err(format!(
-                "expected six scratch roles after provisioning, found {}",
+                "expected eight scratch roles after provisioning, found {}",
                 before.0
             ));
         }

@@ -138,6 +138,10 @@ Google Cloud, APK Firebase, DNS/TLS và OCI trước khi diễn tập trên VPS 
   DDL); `vink-app migrate` chỉ dùng credential migrator. Pool, vòng đời migration và phân loại
   lỗi kết nối nằm ở [vink-store-postgres](../../packages/store-postgres/README.md). Ranh giới:
   [identity-postgres-boundaries](../architecture/identity-postgres-boundaries.md).
+- [vink-notifications](../../services/vink-notifications/README.md) (`#347`, phần đầu): binary riêng
+  (`serve`/`migrate`/`maintenance`) trên database `vink_notifications`, hai Unix socket (ingest cho
+  relay của `vink-worker`, inbox cho Gateway) với caller theo peer uid; receipt + gom nhóm inbox,
+  `Seen`/`Read`, purge 180 ngày ([hiện trạng](notifications.md#7-hiện-trạng-347-notification-service)).
 - [vink-identity](../../services/vink-identity/README.md): binary riêng (`serve`/`migrate`/`account`)
   trên database `vink_identity`, chỉ nghe Unix socket; caller là OS user kết nối (peer uid).
   Contract riêng tư [v1 draft](../../services/vink-identity/contracts/rpc/v1/README.md): mặc định
@@ -435,6 +439,9 @@ packages/store-postgres/  crate vink-store-postgres: pool, vòng đời migratio
 services/postgres/        container PostgreSQL (compose + overlay local), provision.sh, runbook
 services/vink-identity/   crate vink-identity: bin riêng, Unix socket, contract rpc/v1, migrations
                           riêng; không phụ thuộc vink-app/vink-web và không đọc bảng App
+services/vink-notifications/ crate vink-notifications: bin riêng, hai Unix socket, contract rpc/v1,
+                          migrations riêng; không phụ thuộc vink-app/vink-identity, không đọc bảng
+                          App/Identity
 services/vink-app/        crate vink-app: composition root, bin vink-app và vink-worker
   src/domain/             luật thuần: document, title, version, revision hash; discussion, LVE;
                           taxonomy (nhãn/slug/khóa tìm tiếng Việt, catalog, thẻ nháp, snapshot)
@@ -463,8 +470,9 @@ Chiều phụ thuộc: `http`, `persistence` → `application` → `domain`; `pe
 `vink-web` (feature `ssr`) và cung cấp `PublicReads`; SSR gọi application trong tiến trình, không
 vòng HTTP về chính server. `vink-web` không phụ thuộc `vink-app`, SQLx hay secrets; build
 `hydrate` chỉ chứa view, DTO và fetch client. `verify quick` kiểm các import bị cấm trong
-`domain`/`application`, dependency của `vink-web` và của `packages/*`, việc `vink-app` và
-`vink-identity` không import nhau, SQL của Identity không chạm bảng App, và file được track không
+`domain`/`application`, dependency của `vink-web` và của `packages/*`, việc `vink-app`,
+`vink-identity` và `vink-notifications` không import nhau, SQL của Identity và Notifications không
+chạm bảng của owner khác, và file được track không
 có private key hay URL PostgreSQL mang password không phải giá trị local dùng một lần. Mọi crate
 kế thừa `[workspace.lints]` không ghi đè: `unsafe_code = "forbid"` chặn cả `unsafe` do macro sinh
 vào crate; manifest Kani biên dịch source ngoài workspace nên lặp lại lint này. Ranh giới type

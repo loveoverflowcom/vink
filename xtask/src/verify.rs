@@ -183,6 +183,10 @@ fn postgres(report: &mut Report, env: &env::Env) -> bool {
             "identity: migrations and readiness on PostgreSQL",
             "vink-identity",
         ),
+        (
+            "notifications: receipts, rollup, Seen/Read and retention on PostgreSQL",
+            "vink-notifications",
+        ),
     ] {
         let mut tests = cargo(&root);
         tests
@@ -202,6 +206,8 @@ fn postgres(report: &mut Report, env: &env::Env) -> bool {
         "vink-app",
         "-p",
         "vink-identity",
+        "-p",
+        "vink-notifications",
         "--bins",
     ]);
     if !report.step("build binaries", || {

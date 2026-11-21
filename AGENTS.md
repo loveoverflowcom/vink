@@ -106,6 +106,12 @@ those registries rather than duplicating long status narratives across skills.
   offers password registration, sign-in and enrollment alongside email codes. CMP auth, account recovery (`O-11`) and production sign-in unlock (`VINK_AUTH_SIGN_IN`
   defaults to `disabled` in production) remain unimplemented. Every protected App write takes the
   shared standing fence (`principal::require_active`) at commit.
+- **Notifications v1 (#305; [spec](docs/architecture/notifications.md),
+  [registry](docs/development/notifications.md)):** App producers + fenced relay (#346) and, since
+  the first part of #347, `services/vink-notifications`: own binary and database
+  `vink_notifications`, two peer-uid Unix sockets (ingest for the `vink-worker` relay, inbox for the
+  Gateway), receipts + write-time rollup, Seen/Read and 180-day purge. No Gateway inbox API (#348),
+  production image or full restore drill yet; `admin.notice.reserved` stays type-only.
 - **Discussion ([ownership ADR](docs/architecture/discussion-ownership.md),
   [core](docs/development/discussion-core.md), [admission](docs/architecture/discussion-admission.md),
   [post-review](docs/development/discussion-post-review.md),

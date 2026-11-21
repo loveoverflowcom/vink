@@ -3463,6 +3463,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "vink-notifications"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+ "sqlx",
+ "time",
+ "tokio",
+ "tower",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+ "vink-store-postgres",
+]
+
+[[package]]
 name = "vink-patterns"
 version = "0.1.0"
 dependencies = [
