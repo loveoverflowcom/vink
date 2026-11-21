@@ -18,7 +18,7 @@ use vink_app::persistence::{PgStore, handle};
 const OWN_SESSION: (&str, &str) = ("cookie", "__Host-vink_session=fixture-own-session-1");
 const OTHER_OWN_SESSION: (&str, &str) = ("cookie", "__Host-vink_session=fixture-own-session-2");
 
-async fn seed_author(pool: &PgPool, id: Uuid, pen_name: &str, handle_name: &str) -> PrincipalId {
+pub(super) async fn seed_author(pool: &PgPool, id: Uuid, pen_name: &str, handle_name: &str) -> PrincipalId {
     let mut tx = pool.begin().await.unwrap();
     sqlx::query("INSERT INTO principals (id, display_name) VALUES ($1, $2)")
         .bind(id)

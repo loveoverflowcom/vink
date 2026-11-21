@@ -82,6 +82,8 @@ mod publication_policy;
 mod publication_state;
 #[path = "postgres/publication_state_budget.rs"]
 mod publication_state_budget;
+#[path = "postgres/social_retirement.rs"]
+mod social_retirement;
 #[path = "postgres/taxonomy.rs"]
 mod taxonomy;
 #[path = "postgres/taxonomy_api.rs"]

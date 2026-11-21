@@ -24,6 +24,7 @@ pub(crate) mod postgres;
 mod principal;
 mod profile;
 pub(crate) mod publication;
+mod social_retirement;
 mod taxonomy;
 
 use sqlx::migrate::Migrator;

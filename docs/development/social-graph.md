@@ -123,10 +123,9 @@ Mỗi lần cấp thử tối đa 16 tên. Địa chỉ chỉ mở đọc sau đ
 Writer cũ còn hoạt động mà tạo binding thiếu hồ sơ sẽ đóng lại cổng đọc đến lần backfill
 kế tiếp. Khi quay lui phiên bản ứng dụng, giữ nguyên migration, reservations, quota và receipts.
 
-**Bàn giao lifecycle.** #297 có thể gọi `persistence::handle::retire` trong transaction xóa App
-đã xác minh. Điều phối xóa tài khoản qua Identity/App vẫn thuộc Account. Principal chưa có hồ sơ
-tác giả (chưa binding, tên cũ không hợp lệ hoặc chưa backfill) làm `retire` trả lỗi `Integrity`,
-vì projection chỉ che tên qua tombstone của hồ sơ. #297 cần cấp hồ sơ hoặc có đường che riêng trước khi xóa.
+**Bàn giao lifecycle.** Dùng [Social adapter #297](#social-adapter-thu-hồi-tài-khoản-297)
+để ghi fence bằng operation ID đã xác minh. Adapter áp dụng cả với binding legacy chưa có
+hồ sơ tác giả.
 
 ## Hồ sơ và bút danh #292/#293
 
@@ -178,3 +177,25 @@ toàn dùng bản có cả migration lẫn redaction, ưu tiên tắt entry form
 - **Kiến trúc.** `CHOICE-02 = A`: lưu bảng cặp bền `author_follows` (trigger giữ hàng, parity `active == ((version % 2) = 1)`, tăng đơn điệu `accepted_order`) kèm ledger `author_follow_receipts` append-only. `CHOICE-03 = A`: tính live aggregate qua partial index `WHERE active` và join `author_profiles.current_handle IS NOT NULL` trong snapshot `REPEATABLE READ`. Thứ tự khóa chuẩn hóa theo cặp `PrincipalId` tăng dần giúp `set_follow` hai chiều và `persistence::handle::retire` (`retire_edges`) không deadlock. `VDR-SOCIAL-GRAPH@r1` và `VDR-SOCIAL-CONTRACT@r1` vẫn ở trạng thái `DESIGN_PROPOSED` / `PENDING`.
 - **Triển khai.** `core` ([domain/follow.rs](../../services/vink-app/src/domain/follow.rs)), `persistence-api` ([20261126000000_author_follows.sql](../../services/vink-app/migrations/20261126000000_author_follows.sql), [persistence/follow.rs](../../services/vink-app/src/persistence/follow.rs), [http/follow.rs](../../services/vink-app/src/http/follow.rs)), và `web` ([follow_state.rs](../../apps/vink-web/src/follow_state.rs), [pages/follow.rs](../../apps/vink-web/src/pages/follow.rs), route `/@{handle}/nguoi-theo-doi` và `/@{handle}/dang-theo-doi`, `/toi?next=…`). Bàn giao seam batch membership (`followed_in_tx`, `followed_principals_in`, `GET /api/v1/me/follows/membership`) cho #295/#296 và hook `retire_edges`/`retire_edges_batch` trong `handle::retire` cho #297.
 - **Kiểm chứng.** [Bằng chứng #294](evidence/author-follow-294/README.md) ghi lệnh và SHA, PostgreSQL thật, Web password với Follow/Profile/Handle/Auth, ma trận responsive và bốn ảnh đã xem. Cursor danh sách riêng bị ràng buộc theo phiên; response cũ không vượt rào A→B→A. Quyền hiện hành được kiểm trước cursor, HTTP validator và hiển thị danh sách/số đếm.
+
+## Social adapter thu hồi tài khoản #297
+
+- **Sản phẩm.** SOC-LIFE-02 yêu cầu thu hồi mọi địa chỉ và quan hệ của tài khoản đã
+  xác minh xóa. SOC-DEP-01 thuộc Account/Identity và vẫn là phụ thuộc ngoài. SOC-DEP-02
+  giữ nguyên phạm vi. Phân loại full suspension tiếp tục dùng guard hiện hành.
+- **Kiến trúc.** [Adapter App](../../services/vink-app/src/persistence/social_retirement.rs)
+  nhận PrincipalId đã binding và operation ID ổn định qua retry. Transaction thứ nhất
+  khóa Principal trước Profile, ghi fence và bỏ con trỏ Handle. Từ commit này, các alias
+  và Handle hiện hành trả 410. Count/list loại cạnh theo Profile, kể cả khi batch dọn
+  cạnh chưa chạy. Với principal legacy chưa có Profile, fence che attribution và chặn
+  backfill cấp tên. Transaction batch khóa checkpoint và cạnh theo cặp có thứ tự,
+  tối đa 100 cạnh mỗi lượt và ghi hoàn tất trong cùng commit với batch cuối.
+- **Tích hợp và quay lui.** Account tiếp tục cùng operation ID sau lỗi hoặc mất ACK.
+  Existing binding, lịch sử order/receipt và reservation Handle tồn tại qua các lượt
+  dọn. Có thể dừng gọi adapter giữa hai batch và tiếp tục từ checkpoint. Duy trì schema,
+  fence và projection có redaction khi quay lui. `Complete` biểu thị hoàn tất Social
+  Profile/Graph trong App. Luồng xác minh, revoke phiên, Publication, retention và
+  điều phối hai DB thuộc Account/owner tương ứng.
+- **Kiểm chứng.** [Fixture adapter trên PostgreSQL](../../services/vink-app/tests/postgres/social_retirement.rs)
+  kiểm fence trước cleanup, fault trong batch, restart, replay, alias và ghi đua.
+  Account E2E và SOC-AC-20/21 cấp Epic ở trạng thái `NOT_RUN` cho đến khi có SOC-DEP-01.
