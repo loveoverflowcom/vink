@@ -1003,6 +1003,10 @@ fn WorkCardRow(
                 let excerpt = work.excerpt.clone();
                 let following = context.mode == ExploreMode::Following;
                 let date = following.then(|| first_public_date(&work.published_at)).flatten();
+                let separate_metadata = primary_tag.is_some() && date.is_some();
+                let date = date.map(|label| view! {
+                    <time class="vk-feed-date" datetime=work.published_at.clone() title="Công khai lần đầu">{label}</time>
+                });
                 #[cfg(feature = "hydrate")]
                 let author_return = work.work_id.clone();
                 // Placeholder labels are not author names: never mark them as search matches.
@@ -1018,9 +1022,6 @@ fn WorkCardRow(
                         }
                     }>
                         <AuthorIdentity author id=Some(format!("work-{}-author", work.work_id)) name_view=author_text />
-                        {date.map(|label| view! {
-                            <time class="vk-feed-date" datetime=work.published_at.clone() title="Công khai lần đầu">{label}</time>
-                        })}
                     </div>
                 };
                 view! {
@@ -1037,8 +1038,12 @@ fn WorkCardRow(
                                     }
                                 }>{highlighted_text(&work.title, &query)}</a>
                             </h2>
-                            {primary_tag.map(|tag| view! {
-                                <p class="vk-public-row__eyebrow"><span class="vk-public-row__tag">{tag}</span></p>
+                            {(primary_tag.is_some() || date.is_some()).then(|| view! {
+                                <p class="vk-public-row__eyebrow">
+                                    {primary_tag.map(|tag| view! { <span class="vk-public-row__tag">{tag}</span> })}
+                                    {separate_metadata.then_some(" · ")}
+                                    {date}
+                                </p>
                             })}
                             {excerpt.map(|text| view! { <p class="vk-public-row__excerpt">{text}</p> })}
                             {byline}

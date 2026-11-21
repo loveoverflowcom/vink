@@ -29,19 +29,13 @@ pub(in crate::pages::discovery) fn remember_position(session: Session, id: &str)
     });
 }
 
-#[wasm_bindgen::prelude::wasm_bindgen(module = "/profile/navigation.js")]
-extern "C" {
-    #[wasm_bindgen(js_name = profileReturnWork)]
-    fn profile_return_work() -> Option<String>;
-}
-
 fn around_for(scope: &str, hash: &str) -> Option<String> {
     RETURN_POSITION.with_borrow_mut(|last| {
         if last.as_ref().is_some_and(|(owner, _)| owner != scope) {
             *last = None;
         }
         let (.., work) = last.as_ref()?;
-        let profile_work = profile_return_work();
+        let profile_work = crate::pages::profile_return_work();
         let anchor = profile_work
             .as_deref()
             .or_else(|| hash.strip_prefix("#work-"));
@@ -199,7 +193,13 @@ pub(super) fn ActiveFeed(
         else {
             return;
         };
-        let around = (intent == Intent::Initial)
+        let returning = intent != Intent::Append
+            && !settled_scope.with_untracked(|value| {
+                value
+                    .as_ref()
+                    .is_some_and(|(scope, _)| scope == &ticket.scope)
+            });
+        let around = returning
             .then(|| around_for(&ticket.scope, &location.hash.get_untracked()))
             .flatten();
         let checked = if intent == Intent::Append {
@@ -257,7 +257,7 @@ pub(super) fn ActiveFeed(
                 .ok()
                 .and_then(FeedResponse::viewer)
                 .is_some_and(|viewer| viewer != principal);
-            feed.update(|state| {
+            let settled = feed.try_update(|state| {
                 match result {
                     Ok(_) if viewer_changed => state.reset(Phase::Loading),
                     Ok(FeedResponse::Page {
@@ -295,14 +295,14 @@ pub(super) fn ActiveFeed(
                     }
                 }
                 state.owner.finish(&ticket);
+                matches!(
+                    state.phase,
+                    Phase::Ready { .. } | Phase::Expired | Phase::Restricted | Phase::Disabled
+                )
             });
             if viewer_changed {
                 session.fence_profile();
-            } else if !settled_scope.with_untracked(|value| {
-                value
-                    .as_ref()
-                    .is_some_and(|(scope, _)| scope == &ticket.scope)
-            }) {
+            } else if returning && settled == Some(true) {
                 settled_scope.set(Some((ticket.scope, around.is_some())));
             }
         });

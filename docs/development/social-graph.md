@@ -202,8 +202,10 @@ toàn dùng bản có cả migration lẫn redaction, ưu tiên tắt entry form
 - **Vòng đời.** `ReadOwner` và `PageChain` xét ticket theo generation phiên. Khi append,
   revalidate các thẻ đã hiển thị và trả lại projection còn hợp lệ. Khi nhận ACK Follow,
   xóa chain và đọc trang đầu. Wake/Back đọc lại từ server. Tab giữ gợi ý vị trí được ràng
-  theo phiên trong RAM; history chỉ mang mode và anchor công khai. Back khôi phục link
-  còn đọc được hoặc vùng kết quả. Thay phiên loại dữ liệu và bỏ kết quả đang bay.
+  theo phiên trong RAM; history chỉ mang mode và anchor công khai. Sau lần đọc được
+  chấp nhận, Back trả về link nhan đề hoặc bút danh còn hợp lệ. Khi anchor mất, focus
+  về tiêu đề “Đang theo dõi” (H2). Lỗi mạng giữ ý định quay lại để thử đọc mới. Thay
+  phiên loại dữ liệu, hint và kết quả đang bay.
   Khi Back nhanh đổi entry trước hydrate, Web đối chiếu mã băm tuyến SSR rồi tải
   đúng địa chỉ đang mở.
 - **Quay lui.** Đặt `VINK_FOLLOWING_FEED=disabled` rồi khởi động lại App. Link mode ẩn,

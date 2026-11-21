@@ -99,11 +99,12 @@ export async function discoveryReading(page, { args, check, textContrast }) {
         const brand=document.querySelector('#discovery-tools .vk-brand').getBoundingClientRect();
         const row=document.querySelector('.vk-public-row').getBoundingClientRect();
         const tRect=toolbar.getBoundingClientRect();
-        return Math.abs(filter.top - search.top) < 4 && Math.abs(search.top - brand.top) < 4 &&
+        const modes=document.querySelector('.vk-explore-modes').getBoundingClientRect();
+        return modes.top >= tRect.bottom && row.top >= modes.bottom && Math.abs(filter.top - search.top) < 4 && Math.abs(search.top - brand.top) < 4 &&
           Math.abs(search.left - filter.right - 12) <= 1 && Math.abs(brand.left - search.right - 12) <= 1 &&
-          Math.abs(tRect.height - 84) <= 2 && Math.abs(row.top - 84) <= 2 &&
+          Math.abs(tRect.height - 84) <= 2 &&
           getComputedStyle(document.querySelector('.vk-public-scope')).width === '1px';
-      })()`), '#308 r1 desktop single-row toolbar (84px) places card 1 at y=84px');
+      })()`), '#308 r1 desktop keeps its 84px toolbar above the mode picker and results');
     }
     if (width===390 && scale===100) {
       check(await page.eval(`(() => {
@@ -114,12 +115,13 @@ export async function discoveryReading(page, { args, check, textContrast }) {
         const brand=document.querySelector('#discovery-tools .vk-brand').getBoundingClientRect();
         const row=document.querySelector('.vk-public-row').getBoundingClientRect();
         const toolbar=document.querySelector('.vk-discovery-toolbar').getBoundingClientRect();
-        return explore.dataset.search==='closed' && input.getClientRects().length===0 &&
+        const modes=document.querySelector('.vk-explore-modes').getBoundingClientRect();
+        return modes.top >= toolbar.bottom && row.top >= modes.bottom && explore.dataset.search==='closed' && input.getClientRects().length===0 &&
           filter.right <= launcher.left && Math.abs(brand.left - launcher.right - 8) <= 1 &&
           Math.abs(launcher.width-48)<1 && Math.abs(launcher.height-48)<1 &&
-          Math.abs(toolbar.height - 68) <= 2 && Math.abs(row.top - 68) <= 2 &&
+          Math.abs(toolbar.height - 68) <= 2 &&
           input.labels[0].textContent==='Tìm theo tên hoặc tác giả';
-      })()`), '#308 r1 mobile browse toolbar (68px) places card 1 at y=68px and hides inline search');
+      })()`), '#308 r1 mobile keeps its 68px toolbar above the mode picker and results, with inline search hidden');
     }
     if ([320,390,834,1440].includes(width)) {
       check(await page.eval(`(() => {

@@ -29,7 +29,10 @@ pub(super) fn FollowingFeed(context: ExploreContext) -> impl IntoView {
             if let Some(scope) = session.profile_scope.get() {
                 settled_scope.with(|value| value.as_ref().is_some_and(|(key, _)| key == &scope))
             } else {
-                !matches!(session.standing.get(), Standing::Unknown)
+                matches!(
+                    session.standing.get(),
+                    Standing::Anonymous | Standing::NeedsPrincipal | Standing::Suspended
+                ) && !session.checking()
             }
         });
         let allow_anchor = Signal::derive(move || {
@@ -40,7 +43,12 @@ pub(super) fn FollowingFeed(context: ExploreContext) -> impl IntoView {
                     .is_some_and(|(owner, restore)| *restore && Some(owner) == scope.as_ref())
             })
         });
-        super::super::restore_explore_position(stream, settled, allow_anchor);
+        super::super::restore_explore_position(
+            stream,
+            settled,
+            allow_anchor,
+            Some("following-feed-heading"),
+        );
     }
     #[cfg(not(feature = "hydrate"))]
     let _ = context;
@@ -54,7 +62,8 @@ pub(super) fn FollowingFeed(context: ExploreContext) -> impl IntoView {
                 <Heading level=HeadingLevel::H1>"Khám phá"</Heading>
             </header>
             <super::ExploreModes mode=ExploreMode::Following />
-            <section node_ref=stream id="community-stream" aria-label="Tác phẩm đang theo dõi" tabindex="-1">
+            <section node_ref=stream id="community-stream" aria-labelledby="following-feed-heading" tabindex="-1">
+                <Heading id="following-feed-heading" level=HeadingLevel::H2 role=vink_ui::TypeRole::Title attr:tabindex="-1">"Đang theo dõi"</Heading>
                 {move || if !enabled {
                     view! { <FeedOff /> }.into_any()
                 } else {

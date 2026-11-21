@@ -96,6 +96,10 @@ export function profileReturnWork() {
   return /^work-([0-9a-f-]{36})-author$/.exec(entry.id)?.[1];
 }
 
+export function profileReturnHref() {
+  return hasProfileReturn() ? history.state[returnKey].href : undefined;
+}
+
 export function clearProfileReturn() {
   if (!hasProfileReturn()) return;
   const {[returnKey]: _, ...rest} = history.state;
@@ -182,6 +186,9 @@ export function mountProfileNavigation() {
     cancelFocus();
     const entry = history.state?.[returnKey];
     if (!entry || entry.source !== address() || relationshipReturnCursor(location.pathname)) return;
+    // The private Feed owns its byline return and waits for an accepted scoped read.
+    if (location.pathname === '/' && new URLSearchParams(location.search).get('mode') === 'following' &&
+        profileReturnWork()) return;
     const fallback = entry.id.startsWith('profile-work-') ? 'author-works-heading' :
       entry.id.startsWith('search-author-') ? 'author-search-results-heading' :
       entry.id.startsWith('work-') ? 'community-stream' :
