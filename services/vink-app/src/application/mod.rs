@@ -19,6 +19,7 @@ pub mod profile;
 pub mod publication;
 pub mod social_retirement;
 pub mod taxonomy;
+pub mod work_view;
 
 use time::OffsetDateTime;
 
@@ -293,3 +294,7 @@ mod catalog_tests;
 #[cfg(test)]
 #[path = "discovery_tests.rs"]
 mod discovery_tests;
+
+#[cfg(test)]
+#[path = "work_view_tests.rs"]
+mod work_view_tests;

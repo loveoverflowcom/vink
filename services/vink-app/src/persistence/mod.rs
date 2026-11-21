@@ -29,6 +29,7 @@ mod profile;
 pub(crate) mod publication;
 mod social_retirement;
 mod taxonomy;
+pub mod work_view;
 
 use sqlx::migrate::Migrator;
 use sqlx::postgres::PgPool;

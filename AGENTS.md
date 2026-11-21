@@ -112,6 +112,11 @@ those registries rather than duplicating long status narratives across skills.
   `vink_notifications`, two peer-uid Unix sockets (ingest for the `vink-worker` relay, inbox for the
   Gateway), receipts + write-time rollup, Seen/Read and 180-day purge. No Gateway inbox API (#348),
   production image or full restore drill yet; `admin.notice.reserved` stays type-only.
+- **Work views (“Lượt xem”, #340–#343; [spec](docs/architecture/work-views.md),
+  [registry](docs/development/work-views.md)):** `VDR-WORK-VIEWS@r1` is `PRODUCT_CONFIRMED`. #341
+  adds the write path only: `domain::work_view`, `work_view_*` tables (keyed reader digests,
+  reader-free event receipts, 24-hour retention in `vink-worker`), CHOICE-02/03/06
+  `DESIGN_PROPOSED`. No HTTP ingest, read API, Reader signal or Desk number exists yet.
 - **Discussion ([ownership ADR](docs/architecture/discussion-ownership.md),
   [core](docs/development/discussion-core.md), [admission](docs/architecture/discussion-admission.md),
   [post-review](docs/development/discussion-post-review.md),

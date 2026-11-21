@@ -48,6 +48,7 @@ use crate::domain::taxonomy::{
     CatalogCommand, CatalogOutcome, CatalogTag, CatalogVersion, MetadataSnapshot, MetadataVersion,
     SlugHolder, SlugKind, TagAlias, TagChange, TagLabel, TagOutcome, TagSlug, WorkTags,
 };
+use crate::domain::work_view::{EventDigest, ReaderDigest, ViewDecision, ViewEvent};
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum StoreError {
@@ -668,4 +669,36 @@ pub trait RateLimitStore: Send + Sync {
 
     /// Deletes windows that ended more than a day ago. Returns the rows deleted.
     fn prune_rate_limits(&self) -> impl Future<Output = Result<u64, StoreError>> + Send;
+}
+
+/// One validated view event with its stored digests and the decision clock (#341).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ViewWrite {
+    pub event: ViewEvent,
+    pub reader: ReaderDigest,
+    pub event_digest: EventDigest,
+    pub now: OffsetDateTime,
+}
+
+/// Rows one prune round removed.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ViewPrune {
+    pub windows: u64,
+    pub receipts: u64,
+}
+
+pub trait WorkViewStore: Send + Sync {
+    /// One transaction: facts under locks, `decide_view`, exactly that decision's writes, commit.
+    /// Returns the committed decision.
+    fn record_view(
+        &self,
+        write: ViewWrite,
+    ) -> impl Future<Output = Result<ViewDecision, StoreError>> + Send;
+
+    /// One round: at most `limit` expired windows and `limit` expired receipts at `now`.
+    fn prune_views(
+        &self,
+        now: OffsetDateTime,
+        limit: i64,
+    ) -> impl Future<Output = Result<ViewPrune, StoreError>> + Send;
 }

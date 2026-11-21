@@ -24,9 +24,9 @@ Epic #323.
 | Chiều | Trạng thái |
 | --- | --- |
 | Quyết định sản phẩm | P-01..P-11 và luật UX: `PRODUCT_CONFIRMED` trong brief ngày 21/11/2026 (VIEW-01..12). [VDR-WORK-VIEWS@r1](../../decisions/proposals/VDR-WORK-VIEWS.r1.toml) ghi cùng nội dung; chủ sản phẩm duyệt đúng revision này ngày 21/11/2026 ([signoff](../../decisions/signoffs/VDR-WORK-VIEWS.r1.toml), `PRODUCT_CONFIRMED`). OQ-1..OQ-4 ở [§4](#4-câu-hỏi-còn-mở) là `OPEN`. |
-| Quyết định kiến trúc | CHOICE-01..06 `OPEN`, giao cho #341–#343. [§10](#10-ràng-buộc-cho-lựa-chọn-kỹ-thuật-choice-0106) chỉ ghi ràng buộc nghiệp vụ mà lựa chọn phải thỏa. |
-| Mức triển khai | `NOT_IMPLEMENTED`: chưa có bảng, use case, API, tín hiệu Web hay UI. |
-| Bằng chứng | Kiểm tài liệu tại snapshot `develop@9f68c513b5dae224b6a9f896d04bc9d1d035e1b8`; không có runtime PASS. |
+| Quyết định kiến trúc | #341 đề xuất CHOICE-02 A, CHOICE-03 và CHOICE-06 A (`DESIGN_PROPOSED`, [registry §7](../development/work-views.md#7-đường-ghi-341)). CHOICE-01, 04, 05 `OPEN`, giao cho #342–#343. [§10](#10-ràng-buộc-cho-lựa-chọn-kỹ-thuật-choice-0106) chỉ ghi ràng buộc nghiệp vụ mà lựa chọn phải thỏa. |
+| Mức triển khai | Đường ghi (#341): `core` + adapter PostgreSQL + dọn hạn trong `vink-worker`. Chưa có HTTP thu nhận, API đọc, tín hiệu Web hay UI ([registry](../development/work-views.md)). |
+| Bằng chứng | Đường ghi: unit và PostgreSQL thật ([registry §7.6](../development/work-views.md#76-bằng-chứng-và-nghiệm-thu)). Chưa có HTTP hay browser. |
 
 Các luật đã có và đặc tả này giữ nguyên: WR-01 (nháp riêng), UX-01 (Reader có HTML từ server),
 AUD-01/02 (hai audience, audience không phải trạng thái xuất bản), PUB-04/05/07 (xóa, riêng tư,
@@ -48,7 +48,7 @@ Nó cũng không phải số người đọc hết bài, thời gian đọc, hay
 được tính gần nhất của người đọc đó với tác phẩm đó đã quá 24 giờ. Lần mở bị chặn trong 24 giờ
 ấy không cộng và không kéo dài cửa sổ. Ví dụ: 08:00 thứ Hai +1, 20:00 thứ Hai +0, 07:59 thứ Ba
 +0, 08:01 thứ Ba +1. Cách đọc này khớp với mã chống trùng có thời hạn bằng cửa sổ (P-04) và tự
-xóa khi hết cửa sổ (P-11). Cách xử lý đúng mốc 24 giờ thuộc #341.
+xóa khi hết cửa sổ (P-11). Đúng mốc 24 giờ (08:00:00 thứ Ba) vẫn +0; từ sau mốc đó +1 (#341).
 
 | Tên trong sản phẩm | Tên trong code/API hiện có | Trạng thái | Ranh giới |
 | --- | --- | --- | --- |
@@ -59,12 +59,12 @@ xóa khi hết cửa sổ (P-11). Cách xử lý đúng mốc 24 giờ thuộc #
 | Đang mở | `Suspense` fallback “Đang mở tác phẩm…” trong `ReaderScope` | có sẵn | Rời trang ở đây không sinh lượt. |
 | Tải lỗi | `LoadError::NotFound` (404), lỗi khác (503, `Unavailable`) | có sẵn | Không sinh lượt. |
 | Trang thay thế | `ReaderResponse::Hidden` (trang ẩn, PUB-07) và `ReaderResponse::ReviewWithdrawn` (`O-17@r2`) → `ReplacementView` | có sẵn | Trả HTTP 200 nhưng không có thân bài, nên không sinh lượt. |
-| Người đọc (định danh đo lường) | Thành viên: `PrincipalId` từ phiên. Khách: mã first-party | đề xuất | Một định danh đo lường, không phải một người thật. |
-| Mã khách | — | đề xuất | Ngẫu nhiên, first-party, thời hạn 24 giờ, chỉ dùng chống trùng Lượt xem. |
-| Mã chống trùng đã băm | — | đề xuất | Dạng băm của người đọc gắn với tác phẩm; tự xóa khi hết cửa sổ. |
-| Mã sự kiện | — | đề xuất | Gửi lại cùng mã không bao giờ cộng thêm (P-03, P-10). |
-| Tổng theo tác phẩm, tổng theo ngày | — | đề xuất | Không theo người (P-11). |
-| Mốc bật | — | đề xuất | Ngày bắt đầu đếm; nhãn “Tính từ dd/mm/yyyy” (P-09). |
+| Người đọc (định danh đo lường) | `ViewReader`: thành viên `PrincipalId` từ phiên, khách `GuestToken` | có (core, #341) | Một định danh đo lường, không phải một người thật. Hai loại không gộp (E-30). |
+| Mã khách | `GuestToken` (UUID v4) | có (core); cookie do #343 cấp | Ngẫu nhiên, first-party, thời hạn 24 giờ cố định, chỉ dùng chống trùng Lượt xem. |
+| Mã chống trùng đã băm | `ReaderDigest` (HMAC theo khóa server), bảng `work_view_windows` | có (core + PostgreSQL) | Dạng băm của người đọc gắn với tác phẩm; tự xóa khi hết cửa sổ. |
+| Mã sự kiện | `ViewEventId` (UUIDv7), receipt `work_view_receipts` | có (core + PostgreSQL) | Gửi lại cùng mã không bao giờ cộng thêm (P-03, P-10). |
+| Tổng theo tác phẩm, tổng theo ngày | `work_view_totals`, `work_view_days` | có (PostgreSQL); API đọc thuộc #342 | Không theo người (P-11). |
+| Mốc bật | `work_view_counting.started_at` | có (PostgreSQL); nhãn thuộc #342 | Ngày bắt đầu đếm; nhãn “Tính từ dd/mm/yyyy” (P-09). |
 | Bàn viết | `/ban-viet`, `GET /api/v1/author/works` ([read-model](../development/desk-author-feedback.md)) | có sẵn | Nơi tác giả sẽ thấy số; vị trí trong hàng thuộc lượt thiết kế sau. |
 
 ## 3. Bảng quyết định P-01..P-11
@@ -149,7 +149,7 @@ có gì mới.
 | E-27 | A bấm đúp link W | Thân bài hiện một lần | +1 tổng | T thấy +1 | VIEW-03 |
 | E-28 | Lần gửi đầu đã ghi nhưng mất phản hồi; tab gửi lại cùng mã sự kiện | Đọc bình thường | +1 tổng | T thấy +1 | VIEW-03, 10 |
 | E-29 | A mở W ở hai tab gần như cùng lúc | Hai tab hiện thân bài | +1 tổng, kể cả khi hai yêu cầu tới server đồng thời | T thấy +1 | VIEW-03 |
-| E-30 | Khách G mở W (+1), đăng nhập thành A rồi mở lại W trong cửa sổ | Thân bài | Lần hai có thể +1 (chấp nhận). #341 ghi rõ hành vi đã chọn | T thấy +1 hoặc +2 | VIEW-04 |
+| E-30 | Khách G mở W (+1), đăng nhập thành A rồi mở lại W trong cửa sổ | Thân bài | Lần hai +1: #341 không gộp mã khách với tài khoản | T thấy +2 | VIEW-04 |
 | E-31 | Trình duyệt tắt JavaScript mở W | HTML server có thân bài, đọc bình thường | +0 | T không thấy lượt này; nhãn nói rõ giới hạn | VIEW-02, 12 |
 | E-32 | A mở W, thân bài hiện, mất mạng trước khi gửi xong; online lại trong cùng tab | Đọc bình thường | +1 nếu thử lại thành công trong giới hạn; +0 nếu hết lượt thử hoặc đã đóng tab; không bao giờ +2 | T thấy +1 hoặc không đổi | VIEW-10 |
 | E-33 | Ghi lượt lỗi phía server | Đọc bình thường, không thấy lỗi nào | +0 (lượt có thể mất) | T thấy số không đổi, hoặc “—” nếu đọc số cũng lỗi | VIEW-10, 12 |
@@ -224,8 +224,10 @@ dùng dữ liệu mẫu có nhãn, không gọi API thật. Trước khi nghiệ
 
 ## 10. Ràng buộc cho lựa chọn kỹ thuật (CHOICE-01..06)
 
-Các lựa chọn vẫn `OPEN` và do issue tương ứng chọn bằng bằng chứng. Lựa chọn nào làm đổi nghĩa
-số, quyền riêng tư, độ trễ hay khả năng mất lượt thì quay lại chủ sản phẩm.
+Các lựa chọn do issue tương ứng chọn bằng bằng chứng. #341 đề xuất CHOICE-02 A, CHOICE-03 và
+luật CHOICE-06 A (`DESIGN_PROPOSED`, lý do và giới hạn ở
+[registry §7](../development/work-views.md#7-đường-ghi-341)); các lựa chọn còn lại `OPEN`. Lựa chọn
+nào làm đổi nghĩa số, quyền riêng tư, độ trễ hay khả năng mất lượt thì quay lại chủ sản phẩm.
 
 | CHOICE | Issue | Ràng buộc nghiệp vụ phải thỏa |
 | --- | --- | --- |

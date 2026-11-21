@@ -476,9 +476,13 @@ Các ID dưới đây giữ nguyên WR-01, UX-01, AUD-01/02, PUB-04/05/07, MOD-0
   OQ-2 (luật xóa số liệu chờ route xóa tác phẩm/tài khoản), OQ-3 (thân bài hiện mà không có
   thao tác mở mới, tab mở nền) và OQ-4 (admin gỡ cả bài, PUB-05 C). Chi tiết ở
   [đặc tả](../docs/architecture/work-views.md#4-câu-hỏi-còn-mở).
-- *Quyết định kiến trúc:* CHOICE-01..06 của #323 còn `OPEN`, giao cho #341–#343. Đặc tả chỉ ghi
-  ràng buộc nghiệp vụ mà các lựa chọn phải thỏa.
-- *Mức triển khai:* `NOT_IMPLEMENTED` (không có bảng, API, tín hiệu Web hay UI).
-- *Bằng chứng:* chỉ kiểm tài liệu; không có runtime PASS.
+- *Quyết định kiến trúc:* #341 đề xuất CHOICE-02 A, CHOICE-03 và CHOICE-06 A (`DESIGN_PROPOSED`,
+  chưa `Accepted`; [registry §7](../docs/development/work-views.md#7-đường-ghi-341)). CHOICE-01,
+  04, 05 còn `OPEN`, giao cho #342–#343.
+- *Mức triển khai:* đường ghi VIEW-03..06, 08, 10 (chống trùng), 11 ở mức `core` + adapter
+  PostgreSQL và dọn hạn trong `vink-worker` (#341). Chưa có HTTP thu nhận, API đọc, tín hiệu Web
+  hay UI, nên chưa có lượt nào được đếm trong runtime.
+- *Bằng chứng:* unit (decision vectors, oracle dòng thời gian) và PostgreSQL thật cho đồng thời,
+  mất phản hồi, rollback, khởi động lại, dọn hạn và công khai/rút; chưa có HTTP hay browser.
 - *Ngoài phạm vi §17:* số công khai ở Reader, danh sách người xem, dashboard/biểu đồ, xếp hạng,
   Notifications, CMP/native, vị trí và thiết kế thị giác của con số (thuộc lượt thiết kế sau).
