@@ -40,3 +40,21 @@ trên macOS arm64, DPR 1, viewport cao 900 CSS px, App và Identity thật với
 - PASS sau sửa với cargo xtask verify web --scenario password --scenario return-position,
   lượt 1795242508473992000-61815. 19 PNG Feed và manifest. Lượt return-position công khai là đối chứng.
 - Log local, PNG gốc và manifest giữ ở thư mục /private/tmp/vink-355-evidence.OcqmKp0a.
+
+## Bản vá sau review #374
+
+Mã và fixture kiểm tại `1c605cdcb8eb8f4c1cfccb420034bb015d0810a2`, trên cây có `develop@9f68c513b5dae224b6a9f896d04bc9d1d035e1b8`.
+Chrome 158.0.8127.36, PostgreSQL 17.11 scratch, App và Identity thật. Lượt Chrome `1795249910005940000-86397`.
+Hai tab dùng cookie thật qua một lượt A → B → A để giữ nguyên trần đăng nhập của scenario.
+
+| Nghiệm thu và chiều | Kết quả |
+| --- | --- |
+| AC-01 · Functional | PASS. WorkId, ngày công khai lần đầu, thứ tự sau tái đăng, thẻ thể loại và khoảng ngắt thơ được so với fixture PostgreSQL. Smoke byline có đích nhan đề và bút danh độc lập ngay cả khi hai tác giả cùng tên. |
+| AC-02 · Functional | PASS. Khách có đường về Feed, hai trạng thái rỗng có dữ liệu thật, Follow từ kết quả tìm tác giả chưa có bài và mất ACK vẫn đối soát được. Có ca hết phiên, lỗi ở lượt đầu, lỗi append và thử lại. |
+| AC-03 · Interaction | PASS. Back qua document mới sau khi giữ WASM của trang hồ sơ đặt focus vào đúng bút danh trên trang đã tải thêm. Hai entry Feed mở hai Reader trong cùng document, Back về entry cũ đặt focus vào đúng nhan đề. Đổi Follow một tác giả khác giữa hai animation frame hủy focus cũ, lượt đọc kế tiếp tìm lại bài. Response append và Back cũ đều bị loại khi A → B → A. Rút bài hoặc Unfollow về H2, lỗi mạng còn thử lại được. |
+| AC-04 · Geometry, Visual, Accessibility/Responsive | PASS trong Chrome/CDP. Ở 320 × 720 CSS px và chữ 200%, đúng link bút danh đang focus, từ y=32 đến 466,34 px, phía trên thanh dưới bắt đầu tại y=576 px. Tương phản viền focus 5,78:1. Ma trận 320/390 × sáng/tối × 100/200%, rail desktop, ba đích thanh dưới, bàn phím, reduced motion và safe area mô phỏng đều được chạy lại. [Ảnh đã xem](back-byline-320-200.png). |
+
+- `cargo xtask verify web --scenario password --scenario return-position` PASS. Bao gồm Feed với quyền và cookie thật, hành trình bút danh từ thẻ/Reader/nhận xét, và Back của Khám phá công khai. Đây là lượt chọn scenario.
+- `python3.13 ./tools/local-budget run -- cargo xtask verify quick` PASS 13/13.
+- `python3.13 ./tools/local-budget run -- cargo xtask verify postgres` PASS 36/36. Ca HTTP Feed trả đúng trang sâu với dấu khớp credential hiện tại và trả trang đầu khi dùng credential mới của cùng principal. Lane chạy 347 test trên App, Store, Identity và Notifications, cùng kiểm relay qua hai socket, provision và backup/restore. Bảy test đo lường opt-in giữ trạng thái ignored.
+- Log, manifest và PNG gốc của lượt review ở `/private/tmp/vink-355-review.vUzRMgkw`. BFCache hit tự nhiên, bộ gõ hệ điều hành và trình đọc màn hình trên thiết bị là NOT_RUN.
