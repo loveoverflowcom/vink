@@ -105,7 +105,7 @@ fn present(raw: &Option<String>) -> Option<&str> {
     raw.as_deref().filter(|value| !value.trim().is_empty())
 }
 
-fn page_size(raw: Option<&str>) -> Result<PageSize, DiscoveryInput> {
+pub(super) fn page_size(raw: Option<&str>) -> Result<PageSize, DiscoveryInput> {
     match raw {
         None => Ok(PageSize::DEFAULT),
         Some(raw) => raw
@@ -132,7 +132,10 @@ pub(crate) fn shown_tags(
     }
 }
 
-fn summary(card: PublicCardFacts, catalog: &[CatalogTag]) -> Result<PublicWorkSummary, StoreError> {
+pub(crate) fn summary(
+    card: PublicCardFacts,
+    catalog: &[CatalogTag],
+) -> Result<PublicWorkSummary, StoreError> {
     let tags = shown_tags(card.snapshot.as_ref(), catalog)?;
     Ok(PublicWorkSummary {
         work_id: card.work_id,

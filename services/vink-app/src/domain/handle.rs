@@ -2,6 +2,8 @@
 use super::principal::PenName;
 use unicode_normalization::{UnicodeNormalization, char::is_combining_mark};
 
+pub const MAX_HANDLE_BYTES: usize = 40;
+
 const WORDS: [&str; 8] = ["may", "truc", "sen", "gio", "la", "mua", "song", "lua"];
 const RESERVED: &[&str] = &[
     "admin",
@@ -15,7 +17,7 @@ const RESERVED: &[&str] = &[
 ];
 
 pub fn valid(name: &str) -> bool {
-    (1..=40).contains(&name.len())
+    (1..=MAX_HANDLE_BYTES).contains(&name.len())
         && !RESERVED.contains(&name)
         && name.split('-').all(|part| {
             !part.is_empty()

@@ -22,6 +22,10 @@ từ Khám phá, Reader và nhận xét. [Owner, phạm vi gate và đường ki
 cho #296 ở mức PostgreSQL. [Ca tích hợp](../../services/vink-app/tests/postgres/first_publication.rs)
 kiểm lần đầu commit, writer cạnh tranh, rollback, rút/tái đăng và nguồn mốc sau backfill.
 
+**Đang theo dõi #296** · Mode riêng `/?mode=following` trong Khám phá. Feed lấy cạnh
+hiện hành và publication theo mốc đầu, tải riêng theo phiên, hỗ trợ tải thêm và Back qua
+Reader. [Owner, thiết kế kỹ thuật và quay lui](social-graph.md#đang-theo-dõi-trong-khám-phá-296).
+
 ## Thông báo cộng đồng và danh sách Thấm (#345, #346)
 
 **#346 (phía App):** producer cho năm nhóm v1 + invalidation, outbox thông báo có kích hoạt theo epoch
@@ -209,6 +213,7 @@ Xem ảnh `brand-before-hydration-*`, `rail-r1-*` và `explore-real-*` từ runn
 | --- | --- | --- | --- |
 | Thử biểu cảm · Mẫu | `/thu-nghiem/bieu-cam` → chọn một hình để phát một lần | 16 poster tĩnh; Unicode nguyên bản, cap 2, reduced/hidden/offscreen và lỗi quay về poster/Unicode; không lưu reaction/sticker. Không có picker sản phẩm. | [expressions.rs](../../apps/vink-web/src/expressions.rs), [catalog/policy](../../packages/expressions/README.md), [LayoutSpec/registry](expressions.md) |
 | Khám phá tác phẩm công khai | /?q=…&tag=…&tag=…&cursor=…; /the/:slug | Discovery toàn thư viện qua API #98, AND tối đa 4 thẻ, GET/SSR, danh sách hữu hạn và link trang kế. Alias canonical theo server. #308 dùng dialog/sheet có lối GET trước hydration, bỏ nút khi danh mục rỗng, giữ lối gỡ thẻ đã áp dụng và căn placeholder WebP #258 theo toàn vùng kết quả. | [pages/discovery.rs](../../apps/vink-web/src/pages/discovery.rs), [discovery.rs](../../apps/vink-web/src/discovery.rs), [TAG-PR-06](discovery-ui.md) |
+| Khám phá tác giả | `/?mode=authors[&q=…&cursor=…]` → `/@handle` | Gợi ý công khai hoặc tìm bút danh/Handle hiện hành, kể cả người chưa có bài. SSR và form GET có sẵn. Chrome tải phần Theo dõi theo phiên. | [#295](social-graph.md#tìm-và-gợi-ý-tác-giả-295) |
 | Đọc tác phẩm | /tac-pham/:id?q=…&tag=…&cursor=…&from_tag=… | Giữ toàn bộ ngữ cảnh discovery/trang thẻ và focus hàng; nếu hàng mất thì focus landmark kết quả có tên (#258). Canonical reader bỏ query; metadata thẻ lấy từ snapshot công khai. | [pages/mod.rs](../../apps/vink-web/src/pages/mod.rs), [discovery UI](discovery-ui.md) |
 | Điều hướng thích ứng | Rail: Khám phá → Bàn viết, Tôi ở chân; mobile: Khám phá → Bàn viết → Tôi | `/` vẫn là mặc định. Desktop 220px; tablet/editor 96px; thu/mở nhớ trên thiết bị và ghi đè ngữ cảnh. Mobile ẩn bar khi viết. Route lạ (`/ban-vietnam`, `/tac-pham/a/b`) là 404, không sáng đích. Back/Forward khi Tôi mở chỉ đóng Tôi, kể cả lịch sử fragment nội trang ([UI-REVIEW-20](../design/ui-review-20.md)) | [shell.rs](../../apps/vink-web/src/shell.rs) (`Destination`), primitive [vink-ui navigation](../../packages/ui-system/leptos/src/navigation.rs), [spec shell](../design/README.md#shell-thích-ứng-7) |
 | Tôi và chọn giao diện | Rail: Tôi mở panel Giao diện. Khách ở rail và mọi phiên ở thanh dưới mở `/toi` | `/toi` và panel dùng chung lựa chọn màu, cỡ chữ 100%/200% và chế độ rail. Cả ba áp dụng trước hydration và lưu trên thiết bị nếu có storage. Thẻ Tài khoản và điều hướng dùng avatar trung tính trên SSR. Sau hydration, khách thấy nhãn theo khả năng đăng nhập (#308), principal hoạt động có avatar chữ từ bút danh qua `GET /api/v1/auth/session/account` (`no-store`). Chuyển route dùng guard của editor. | [appearance.rs](../../apps/vink-web/src/appearance.rs), [me.rs](../../apps/vink-web/src/pages/me.rs), [NavigationGuard](../../apps/vink-web/src/navigation.rs) |

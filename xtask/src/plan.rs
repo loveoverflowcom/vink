@@ -81,12 +81,13 @@ pub enum Scenario {
     Review,
     Auth,
     Password,
+    AuthorSearch,
     Publication,
     PerfBaseline,
     ReturnPosition,
 }
 impl Scenario {
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 10] = [
         Self::Main,
         Self::Storage,
         Self::Discovery,
@@ -95,10 +96,11 @@ impl Scenario {
         Self::Review,
         Self::Auth,
         Self::Password,
+        Self::AuthorSearch,
         Self::Publication,
     ];
     /// Default full regression intentionally excludes the longer lab measurements.
-    pub const SELECTABLE: [Self; 11] = [
+    pub const SELECTABLE: [Self; 12] = [
         Self::Main,
         Self::Storage,
         Self::Discovery,
@@ -107,6 +109,7 @@ impl Scenario {
         Self::Review,
         Self::Auth,
         Self::Password,
+        Self::AuthorSearch,
         Self::Publication,
         Self::PerfBaseline,
         Self::ReturnPosition,
@@ -121,6 +124,7 @@ impl Scenario {
             Self::Review => "review",
             Self::Auth => "auth",
             Self::Password => "password",
+            Self::AuthorSearch => "author-search",
             Self::Publication => "publication",
             Self::PerfBaseline => "perf-baseline",
             Self::ReturnPosition => "return-position",
@@ -133,7 +137,10 @@ impl Scenario {
             .ok_or_else(|| format!("unknown/empty Web scenario `{s}`"))
     }
     pub fn identity(self) -> bool {
-        matches!(self, Self::Auth | Self::Password | Self::Publication)
+        matches!(
+            self,
+            Self::Auth | Self::Password | Self::AuthorSearch | Self::Publication
+        )
     }
 }
 #[derive(Clone, Debug, PartialEq, Eq)]

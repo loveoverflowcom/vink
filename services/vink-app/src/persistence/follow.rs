@@ -114,7 +114,7 @@ pub(super) async fn public_relationships_summary(
     ))
 }
 
-async fn require_active_actor_read(
+pub(super) async fn require_active_actor_read(
     conn: &mut PgConnection,
     actor: PrincipalId,
 ) -> Result<(String, String), FollowError> {

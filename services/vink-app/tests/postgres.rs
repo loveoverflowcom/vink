@@ -30,10 +30,13 @@ const PROFILE_FIELDS_MIGRATION: i64 = 20261125000000;
 const PUBLIC_ATTRIBUTION_MIGRATION: i64 = 20261125010000;
 const AUTHOR_FOLLOW_MIGRATION: i64 = 20261126000000;
 const NOTIFICATION_OUTBOX_MIGRATION: i64 = 20261127000000;
+const FOLLOWING_FEED_ORDER_MIGRATION: i64 = 20261127010000;
 const ORIGIN: &str = "http://127.0.0.1:3000";
 
 #[path = "postgres/abuse.rs"]
 mod abuse;
+#[path = "postgres/author_discovery.rs"]
+mod author_discovery;
 #[path = "postgres/author_works.rs"]
 mod author_works;
 #[path = "postgres/canonical_document.rs"]
@@ -58,6 +61,8 @@ mod draft_http_budget;
 mod drafts;
 #[path = "postgres/endorsement.rs"]
 mod endorsement;
+#[path = "postgres/feed.rs"]
+mod feed;
 #[path = "postgres/first_publication.rs"]
 mod first_publication;
 #[path = "postgres/follow.rs"]

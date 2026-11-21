@@ -1832,6 +1832,55 @@ a {
 #tag-picker .vk-ui-dialog__title { font-family: var(--vk-font-ui); }
 #tag-picker .vk-ui-dialog__header-action .vk-ui-icon-button { background-color: var(--vk-surface-container-low); }
 #tag-picker .vk-ui-dialog__content { grid-column: 1 / -1; min-inline-size: 0; }
+.vk-explore-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-block: var(--vk-space-3) var(--vk-space-6);
+}
+.vk-explore-modes a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 44px;
+  min-inline-size: 0;
+  padding: var(--vk-space-2) var(--vk-space-4);
+  border-radius: var(--vk-radius-sm);
+  background: var(--vk-surface-container);
+  color: var(--vk-on-surface);
+  font-weight: var(--vk-type-label-weight);
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+.vk-explore-modes a:first-child { border-start-start-radius: 999px; border-end-start-radius: 999px; }
+.vk-explore-modes a:last-child { border-start-end-radius: 999px; border-end-end-radius: 999px; }
+.vk-explore-modes a[aria-current] {
+  background: var(--vk-primary);
+  color: var(--vk-on-primary);
+}
+@media (max-width: 759px) {
+  .vk-explore-modes a { flex: 1 1 auto; }
+}
+.vk-explore-modes a:hover { text-decoration: underline; }
+.vk-explore-modes a:focus-visible {
+  outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
+  outline-offset: var(--vk-size-focus-offset);
+}
+.vk-feed-state, .vk-feed-paging {
+  margin-block: var(--vk-space-6);
+}
+.vk-discovery--following .vk-public-row__byline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vk-space-2) var(--vk-space-4);
+  align-items: center;
+  justify-content: space-between;
+}
+.vk-feed-date {
+  color: var(--vk-on-surface-variant);
+  font-size: var(--vk-type-caption-size);
+}
+
 .vk-discovery .vk-public-row { position: relative; border-bottom: 0; scroll-margin-block-start: 5.5rem; }
 /* The title link covers the flat row. The byline sits above it and opens the author profile. */
 .vk-discovery .vk-public-row__card {
@@ -2557,4 +2606,44 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
     border-end-start-radius: 0;
     border-end-end-radius: 0;
   }
+}
+
+.vk-author-search {
+  display: grid;
+  gap: var(--vk-space-4);
+}
+.vk-author-search .vk-explore-modes { margin-block: 0; }
+.vk-author-search #author-search {
+  max-inline-size: var(--vk-measure);
+  min-inline-size: 0;
+}
+.vk-author-search__results {
+  display: grid;
+  gap: var(--vk-space-3);
+  min-inline-size: 0;
+  max-inline-size: var(--vk-measure);
+}
+.vk-author-search__results p {
+  margin: 0;
+}
+.vk-author-search__list {
+  gap: var(--vk-space-1);
+}
+.vk-author-search__row {
+  background: var(--vk-surface-container-low);
+  border: 0;
+  border-radius: var(--vk-radius-sm);
+  padding-inline: var(--vk-space-3);
+}
+.vk-author-search__row .vk-ui-byline,
+.vk-author-search__follow {
+  min-inline-size: 0;
+}
+.vk-author-search__follow {
+  margin-inline-start: auto;
+  max-inline-size: 100%;
+}
+.vk-author-search__error {
+  color: var(--vk-error);
+  overflow-wrap: anywhere;
 }

@@ -30,6 +30,13 @@ pub trait PublicReads: Send + Sync + 'static {
     ) -> PortFuture<Result<crate::contract::follow::AuthorRelationshipsLoad, LoadError>> {
         Box::pin(std::future::ready(Err(LoadError::Unavailable)))
     }
+    fn authors(
+        &self,
+        _q: String,
+        _cursor: Option<String>,
+    ) -> PortFuture<Result<crate::contract::PublicAuthorPage, LoadError>> {
+        Box::pin(std::future::ready(Err(LoadError::Unavailable)))
+    }
     fn works(
         &self,
         query: crate::discovery::ExploreQuery,
@@ -72,3 +79,7 @@ pub struct LocalDiscussionFixture(pub String);
 /// A rendering hint only: the sign-in routes decide again on every request.
 #[derive(Debug, Clone, Copy)]
 pub struct SignInOpen(pub bool);
+
+/// Deployment flag shared by the Explore shell and its private endpoint.
+#[derive(Clone, Copy)]
+pub struct FollowingFeedEnabled(pub bool);

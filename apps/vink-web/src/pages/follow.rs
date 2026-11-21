@@ -20,6 +20,8 @@ use crate::session::Standing;
 
 #[cfg(feature = "hydrate")]
 mod browser;
+#[cfg(feature = "hydrate")]
+pub(super) use browser::{announce_follow_changed, generate_command_id, observe_changes};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct RelationshipPersonRow {

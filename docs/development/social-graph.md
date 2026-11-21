@@ -92,7 +92,7 @@ các phụ thuộc tương ứng đã tích hợp. PRE-04 và bằng chứng UI 
 | [#292 · Profile](https://github.com/loveoverflowcom/vink/issues/292) | #290, LayoutSpec vùng Tôi/Profile | Public ref, DTO và quyền tám trường. OPEN-01/04 và USER-01 chỉ giữ phần tương ứng. CHOICE-05 kiểm HTTP trước 304 + browser. |
 | [#293 · Attribution](https://github.com/loveoverflowcom/vink/issues/293) | #292, ref công khai | Card, Reader, comment và reply context cùng đúng ref. Kiểm fixture provider/consumer, SSR và hai link độc lập. |
 | [#294 · Graph](https://github.com/loveoverflowcom/vink/issues/294) | #292, policy list/count | CHOICE-02/03 cần race/receipt thật, đối soát và query plan. DEP-02 chỉ giữ claim hạn chế nội dung. |
-| [#295 · Tìm/gợi ý](https://github.com/loveoverflowcom/vink/issues/295) | #292, thêm #294 cho nút/lọc theo viewer | OPEN-05/06 giữ phạm vi tìm/lọc. So bytes public, pagination và query plan trên hai viewer. |
+| [#295 · Tìm/gợi ý](https://github.com/loveoverflowcom/vink/issues/295) | #292, thêm #294 cho nút/lọc theo viewer | OPEN-05/06 chọn A. So bytes public, pagination và query plan trên hai viewer. |
 | [#296 · Following Feed](https://github.com/loveoverflowcom/vink/issues/296) | #291 + #293 + #294 | Chỉ nhận exact khi mở thử. CHOICE-05/06 kiểm query, cursor, đổi phiên, graph và Back. |
 | [#297 · Lifecycle](https://github.com/loveoverflowcom/vink/issues/297) | #293 + #294, DEP-01 từ Account/Identity | Kiểm Social fence và resume cục bộ. E2E xóa cần cả hai DB, old session, Publication và Discussion. |
 | [#298 · Media](https://github.com/loveoverflowcom/vink/issues/298) | #292, chỉ khi OPEN-04 chọn upload | Chứng minh quyền đến URL cũ/bytes/variants/validator sau revoke, thay ảnh và xóa. |
@@ -178,6 +178,60 @@ toàn dùng bản có cả migration lẫn redaction, ưu tiên tắt entry form
 - **Triển khai.** `core` ([domain/follow.rs](../../services/vink-app/src/domain/follow.rs)), `persistence-api` ([20261126000000_author_follows.sql](../../services/vink-app/migrations/20261126000000_author_follows.sql), [persistence/follow.rs](../../services/vink-app/src/persistence/follow.rs), [http/follow.rs](../../services/vink-app/src/http/follow.rs)), và `web` ([follow_state.rs](../../apps/vink-web/src/follow_state.rs), [pages/follow.rs](../../apps/vink-web/src/pages/follow.rs), route `/@{handle}/nguoi-theo-doi` và `/@{handle}/dang-theo-doi`, `/toi?next=…`). Bàn giao seam batch membership (`followed_in_tx`, `followed_principals_in`, `GET /api/v1/me/follows/membership`) cho #295/#296 và hook `retire_edges`/`retire_edges_batch` trong `handle::retire` cho #297.
 - **Kiểm chứng.** [Bằng chứng #294](evidence/author-follow-294/README.md) ghi lệnh và SHA, PostgreSQL thật, Web password với Follow/Profile/Handle/Auth, ma trận responsive và bốn ảnh đã xem. Cursor danh sách riêng bị ràng buộc theo phiên; response cũ không vượt rào A→B→A. Quyền hiện hành được kiểm trước cursor, HTTP validator và hiển thị danh sách/số đếm.
 
+## Đang theo dõi trong Khám phá #296
+
+- **Lựa chọn triển khai.** CHOICE-05 dùng SSR độc lập với actor và tải Feed riêng
+  sau hydrate, cùng hướng với #292. CHOICE-06 dùng membership hiện hành ở từng snapshot đọc.
+  Cách này dùng index/cạnh có sẵn, tránh cập nhật graph revision cho mọi writer. Cạnh mới
+  có thể đưa bài vào phía trên cursor cũ. Refresh và ACK Follow được xác nhận mở lại trang
+  đầu. Publication giữ mốc `exact` theo #291. [Hợp đồng r1](../architecture/social-graph.md)
+  và LayoutSpec Social r2 tiếp tục theo trạng thái ghi trong registry.
+- **PostgreSQL và HTTP.** [Provider](../../services/vink-app/src/persistence/feed.rs)
+  lấy WorkId từ view Publication, lọc tác giả/cạnh/readable pointer trước `ORDER BY/LIMIT`
+  và đọc nhiều nhất 13 ID/trang. Chỉ dựng trích đoạn sau khi chọn ID; thẻ dùng cùng projection
+  và các query batched của Discovery. Các lượt đọc dùng `REPEATABLE READ, READ ONLY`.
+  [Hợp đồng Feed](../../services/vink-app/contracts/http/v1/social-graph.md#đang-theo-dõi-296)
+  ghi giới hạn batch, thứ tự, lý do restart và quyền tại lần đọc.
+- **Web và #295.** Khám phá tiếp tục ở `/`. `ExploreMode` và trình chọn mode ở
+  [route owner](../../apps/vink-web/src/pages/discovery.rs) định tuyến `Works` và
+  `Following` (`/?mode=following`). [Module Feed](../../apps/vink-web/src/pages/discovery/feed.rs)
+  sở hữu status, owner phiên và append. Thêm mode Tác giả ở route chung bằng module và
+  query/cursor riêng. Thay liên kết “Khám phá tác phẩm” của trạng thái chưa theo dõi ai
+  bằng đích Tác giả khi #295 có route thật. Feed v1 giữ query cố định và mẫu WorkCard
+  Lavender R3. Tìm kiếm/lọc thẻ tiếp tục ở mode Tất cả.
+- **Vòng đời.** `ReadOwner` và `PageChain` xét ticket theo generation phiên. Khi append,
+  revalidate các thẻ đã hiển thị và trả lại projection còn hợp lệ. Khi nhận ACK Follow,
+  xóa chain và đọc trang đầu. Wake/Back đọc lại từ server. Tab giữ gợi ý vị trí được ràng
+  theo phiên trong RAM; history chỉ mang mode và anchor công khai. Back khôi phục link
+  còn đọc được hoặc vùng kết quả. Thay phiên loại dữ liệu và bỏ kết quả đang bay.
+  Khi Back nhanh đổi entry trước hydrate, Web đối chiếu mã băm tuyến SSR rồi tải
+  đúng địa chỉ đang mở.
+- **Quay lui.** Đặt `VINK_FOLLOWING_FEED=disabled` rồi khởi động lại App. Link mode ẩn,
+  đường dẫn đã lưu có trạng thái tạm tắt và lối về Khám phá. Route API trả 404.
+  Giữ migration index, fact Publication và cả cạnh/receipt. Chuyển lại `enabled`
+  rồi khởi động lại để mở Feed từ dữ liệu hiện hành.
+
+## Tìm và gợi ý tác giả #295
+
+- **Sản phẩm.** SOC-OPEN-05/06 chọn A theo [#295](https://github.com/loveoverflowcom/vink/issues/295).
+  Mode **Tác giả** riêng trong Khám phá. Kết quả lấy bút danh/Handle hiện hành. Handle cũ
+  dùng resolver khi mở URL. Gợi ý và thứ tự dùng chung, nút Theo dõi cập nhật theo phiên.
+- **Kiến trúc.** Dùng Handle công khai làm khóa sắp trang. Dùng hai nhánh prefix rời nhau
+  theo Handle và bút danh gập dấu. Mỗi nhánh lấy tối đa một trang cộng một và kết quả
+  chung cũng giữ giới hạn này. Hai index dùng projection hiện hành của Profile.
+  `VDR-SOCIAL-CONTRACT@r1` giữ trạng thái `PENDING`.
+- **Triển khai.** [Provider](../../services/vink-app/src/persistence/author_discovery.rs),
+  [hợp đồng HTTP](../../services/vink-app/contracts/http/v1/social-graph.md#tìm-và-gợi-ý-tác-giả-295),
+  [Web](../../apps/vink-web/src/pages/author_discovery.rs). Kết quả và nút Theo dõi có
+  các request riêng. Lỗi tải thêm giữ hàng đang hiển thị. History lưu vị trí công khai đã
+  mở và Web đọc lại trang trước khi phục hồi focus. Có thể ẩn mode và ngừng phục vụ
+  đường đọc mới cùng lúc, giữ nguyên bảng tên, tombstone và các giới hạn Profile.
+- **Kiểm chứng.** [PG](../../services/vink-app/tests/postgres/author_discovery.rs) so bytes
+  công khai sau thay đổi Bio riêng và quan hệ hai chiều, kiểm NFC/NFD, Handle, alias và
+  truy vấn có dữ liệu lệch. [Chrome](../../apps/vink-web/e2e/author-search-smoke.mjs) có
+  scenario `cargo xtask verify web --scenario author-search` dùng App và Identity scratch.
+  Giá trị ngày sinh chưa có trong runtime. Scope Chrome IME dùng sự kiện mô phỏng.
+
 ## Social adapter thu hồi tài khoản #297
 
 - **Sản phẩm.** SOC-LIFE-02 yêu cầu thu hồi mọi địa chỉ và quan hệ của tài khoản đã
@@ -198,4 +252,7 @@ toàn dùng bản có cả migration lẫn redaction, ưu tiên tắt entry form
   điều phối hai DB thuộc Account/owner tương ứng.
 - **Kiểm chứng.** [Fixture adapter trên PostgreSQL](../../services/vink-app/tests/postgres/social_retirement.rs)
   kiểm fence trước cleanup, fault trong batch, restart, replay, alias và ghi đua.
+  [Feed và tìm tác giả](../../services/vink-app/tests/postgres/feed.rs) đọc lại sau fence
+  trong khi cạnh còn active trong bảng. [Reader và Discussion](../../services/vink-app/tests/postgres/discussion.rs)
+  kiểm validator cũ, attribution và ngữ cảnh trả lời.
   Account E2E và SOC-AC-20/21 cấp Epic ở trạng thái `NOT_RUN` cho đến khi có SOC-DEP-01.

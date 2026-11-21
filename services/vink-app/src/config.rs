@@ -44,6 +44,8 @@ pub struct Config {
     /// activation is an explicit operator decision, not a side effect of configuring Identity.
     /// Sessions already issued keep being verified either way.
     pub sign_in_enabled: bool,
+    /// Kill switch for the personalized Explore mode and its private reads.
+    pub following_feed_enabled: bool,
     /// `VINK_TRUSTED_PROXIES`: proxies whose `X-Forwarded-For` attributes a request to a client
     /// network for rate limits. Empty: only the TCP peer counts.
     pub trusted_proxies: TrustedProxies,
@@ -71,6 +73,7 @@ impl fmt::Debug for Config {
             .field("dev_principal", &self.dev_principal)
             .field("identity", &self.identity)
             .field("sign_in_enabled", &self.sign_in_enabled)
+            .field("following_feed_enabled", &self.following_feed_enabled)
             .field("trusted_proxies", &self.trusted_proxies)
             .field("log_format", &self.log_format)
             .finish()
@@ -223,6 +226,14 @@ impl Config {
                 false
             }
         };
+        let following_feed_enabled = match value("VINK_FOLLOWING_FEED").as_deref().map(str::trim) {
+            None | Some("enabled") => true,
+            Some("disabled") => false,
+            Some(_) => {
+                problems.push("VINK_FOLLOWING_FEED: expected `enabled` or `disabled`".into());
+                false
+            }
+        };
         if sign_in_enabled && identity.is_none() && value("VINK_AUTH_SIGN_IN").is_some() {
             problems.push(
                 "VINK_AUTH_SIGN_IN: `enabled` needs VINK_IDENTITY_SOCKET (the Identity process)"
@@ -251,6 +262,7 @@ impl Config {
                 dev_principal,
                 identity,
                 sign_in_enabled,
+                following_feed_enabled,
                 trusted_proxies,
                 log_format,
             })

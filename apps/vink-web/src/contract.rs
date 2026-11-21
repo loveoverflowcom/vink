@@ -108,6 +108,34 @@ pub struct WorkCard {
     pub tags: Vec<PublicTagDto>,
 }
 
+#[cfg(feature = "hydrate")]
+#[derive(Debug, Deserialize)]
+#[serde(tag = "state", rename_all = "snake_case")]
+pub(crate) enum FeedResponse {
+    Page {
+        viewer: String,
+        has_following: bool,
+        works: Vec<WorkCard>,
+        retained: Vec<WorkCard>,
+        next_cursor: Option<String>,
+    },
+    Checked {
+        viewer: String,
+        retained: Vec<WorkCard>,
+    },
+    Restart,
+}
+
+#[cfg(feature = "hydrate")]
+impl FeedResponse {
+    pub(crate) fn viewer(&self) -> Option<&str> {
+        match self {
+            Self::Page { viewer, .. } | Self::Checked { viewer, .. } => Some(viewer),
+            Self::Restart => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Publication {
     pub work_id: String,
@@ -1067,6 +1095,13 @@ pub struct PublicAuthorRef {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PublicAuthorPage {
+    pub authors: Vec<PublicAuthorRef>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "state", rename_all = "snake_case")]
 pub enum AuthorResolution {
     Current {
@@ -1184,6 +1219,12 @@ mod tests {
         let own: profile::OwnProfile = round_trip("author.profile.own.json");
         assert_eq!(own.bio.as_deref(), Some("Một dòng riêng"));
         assert_eq!(own.policies.bio, profile::Visibility::Owner);
+    }
+
+    #[test]
+    fn author_search_uses_the_public_reference_contract() {
+        let page: PublicAuthorPage = round_trip("authors.search.json");
+        assert_eq!(page.authors[0].valid_href(), Some("/@ngay-nang"));
     }
 
     #[test]
@@ -1775,6 +1816,9 @@ mod follow_contract_tests {
 
     fn load_fixture<T: serde::de::DeserializeOwned + Serialize>(name: &str) -> T {
         let raw = match name {
+            "authors.search.json" => include_str!(
+                "../../../services/vink-app/contracts/http/v1/fixtures/authors.search.json"
+            ),
             "author.profile.current.json" => include_str!(
                 "../../../services/vink-app/contracts/http/v1/fixtures/author.profile.current.json"
             ),

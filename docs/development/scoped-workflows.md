@@ -25,7 +25,7 @@ Tất cả ví dụ chạy ở repo root. Dùng `cargo xtask --help` để xem c
 | Preview Leptos | `cargo xtask dev preview` | wasm target/bindgen | Static host của preview, không App/Identity/DB |
 | Kiểm preview | `cargo xtask verify preview` | wasm target/bindgen, Node, Chrome | Giữ toàn bộ assertion preview hiện hữu |
 | Một Web scenario | `cargo xtask verify web --scenario password` | Web tools + Chrome, test PG credential | App + Identity và scratch của scenario; không worker |
-| Web regression đầy đủ | `cargo xtask verify web` | Web tools + Chrome, test PG credential | Toàn bộ 9 selector bên dưới (storage đã nằm trong main, không lặp) |
+| Web regression đầy đủ | `cargo xtask verify web` | Web tools + Chrome, test PG credential | Toàn bộ 10 selector bên dưới (storage đã nằm trong main, không lặp) |
 | Regression hiện hữu | `cargo xtask verify all` | Theo từng lane | Vẫn quick → discussion → expressions → postgres → web; Kani riêng |
 
 `build` nhận `api|web|worker|identity|preview`; `--release` dùng cho bốn target server, không
@@ -91,6 +91,7 @@ file khóa để vượt một lượt đang chạy.
 | `review` | Seed/catalog, tác giả + admin + reviewer trong scratch | `review-withdrawn`, queue continuation/recovery #205 và #264 (Markdown qua preview, case, Reader, hai revision và chuyển riêng tư) |
 | `auth` | App scratch migrate/seed + Identity scratch/local outbox | `auth` với session thật |
 | `password` | App password scratch migrate + Identity native scratch/local outbox | `auth-password`, không cần phase auth/main |
+| `author-search` | App password scratch và Identity native, fixture hồ sơ với bút danh trùng | `author-search`, SSR/no-JS, IME mô phỏng, Back, phân trang và Theo dõi theo phiên |
 | `publication` | App publication scratch migrate/seed/catalog + Identity scratch/local outbox | `publication-author` |
 | `perf-baseline` | App scratch + catalog + 200 public works/1.000 comments tổng hợp, phiên khách | 10 cold SSR/hydration + 10 warm Reader/Back, ledger CDP, history và secondary; **opt-in** |
 | `return-position` | Cùng fixture công khai của `perf-baseline` | Back/Forward, liên kết quay về, scope/filter/cursor, 50 vòng và các ca focus; **opt-in** |

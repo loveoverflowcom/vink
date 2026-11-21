@@ -1709,6 +1709,18 @@ mod tests {
     }
 
     #[test]
+    fn author_search_uses_the_public_reference_contract() {
+        use crate::application::{author_discovery::AuthorPage, handle::AuthorRef};
+        assert_matches(
+            "authors.search.json",
+            &AuthorPage {
+                authors: vec![AuthorRef::new("Nhật Ánh".into(), "ngay-nang".into())],
+                next_cursor: Some("authors-v1.0123456789abcdef.ngay-nang".into()),
+            },
+        );
+    }
+
+    #[test]
     fn author_contract_matches_profile_and_attribution_fixtures() {
         use crate::application::profile::OwnProfile;
         use crate::domain::profile::{ProfilePolicies, Visibility};
