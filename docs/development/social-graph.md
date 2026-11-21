@@ -179,6 +179,39 @@ toàn dùng bản có cả migration lẫn redaction, ưu tiên tắt entry form
 - **Triển khai.** `core` ([domain/follow.rs](../../services/vink-app/src/domain/follow.rs)), `persistence-api` ([20261126000000_author_follows.sql](../../services/vink-app/migrations/20261126000000_author_follows.sql), [persistence/follow.rs](../../services/vink-app/src/persistence/follow.rs), [http/follow.rs](../../services/vink-app/src/http/follow.rs)), và `web` ([follow_state.rs](../../apps/vink-web/src/follow_state.rs), [pages/follow.rs](../../apps/vink-web/src/pages/follow.rs), route `/@{handle}/nguoi-theo-doi` và `/@{handle}/dang-theo-doi`, `/toi?next=…`). Bàn giao seam batch membership (`followed_in_tx`, `followed_principals_in`, `GET /api/v1/me/follows/membership`) cho #295/#296 và hook `retire_edges`/`retire_edges_batch` trong `handle::retire` cho #297.
 - **Kiểm chứng.** [Bằng chứng #294](evidence/author-follow-294/README.md) ghi lệnh và SHA, PostgreSQL thật, Web password với Follow/Profile/Handle/Auth, ma trận responsive và bốn ảnh đã xem. Cursor danh sách riêng bị ràng buộc theo phiên; response cũ không vượt rào A→B→A. Quyền hiện hành được kiểm trước cursor, HTTP validator và hiển thị danh sách/số đếm.
 
+## Đang theo dõi trong Khám phá #296
+
+- **Lựa chọn triển khai.** CHOICE-05 dùng SSR độc lập với actor và tải Feed riêng
+  sau hydrate, cùng hướng với #292. CHOICE-06 dùng membership hiện hành ở từng snapshot đọc.
+  Cách này dùng index/cạnh có sẵn, tránh cập nhật graph revision cho mọi writer. Cạnh mới
+  có thể đưa bài vào phía trên cursor cũ. Refresh và ACK Follow được xác nhận mở lại trang
+  đầu. Publication giữ mốc `exact` theo #291. [Hợp đồng r1](../architecture/social-graph.md)
+  và LayoutSpec Social r2 tiếp tục theo trạng thái ghi trong registry.
+- **PostgreSQL và HTTP.** [Provider](../../services/vink-app/src/persistence/feed.rs)
+  lấy WorkId từ view Publication, lọc tác giả/cạnh/readable pointer trước `ORDER BY/LIMIT`
+  và đọc nhiều nhất 13 ID/trang. Chỉ dựng trích đoạn sau khi chọn ID; thẻ dùng cùng projection
+  và các query batched của Discovery. Các lượt đọc dùng `REPEATABLE READ, READ ONLY`.
+  [Hợp đồng Feed](../../services/vink-app/contracts/http/v1/social-graph.md#đang-theo-dõi-296)
+  ghi giới hạn batch, thứ tự, lý do restart và quyền tại lần đọc.
+- **Web và #295.** Khám phá tiếp tục ở `/`. `ExploreMode` và trình chọn mode ở
+  [route owner](../../apps/vink-web/src/pages/discovery.rs) định tuyến `Works` và
+  `Following` (`/?mode=following`). [Module Feed](../../apps/vink-web/src/pages/discovery/feed.rs)
+  sở hữu status, owner phiên và append. Thêm mode Tác giả ở route chung bằng module và
+  query/cursor riêng. Thay liên kết “Khám phá tác phẩm” của trạng thái chưa theo dõi ai
+  bằng đích Tác giả khi #295 có route thật. Feed v1 giữ query cố định và mẫu WorkCard
+  Lavender R3. Tìm kiếm/lọc thẻ tiếp tục ở mode Tất cả.
+- **Vòng đời.** `ReadOwner` và `PageChain` xét ticket theo generation phiên. Khi append,
+  revalidate các thẻ đã hiển thị và trả lại projection còn hợp lệ. Khi nhận ACK Follow,
+  xóa chain và đọc trang đầu. Wake/Back đọc lại từ server. Tab giữ gợi ý vị trí được ràng
+  theo phiên trong RAM; history chỉ mang mode và anchor công khai. Back khôi phục link
+  còn đọc được hoặc vùng kết quả. Thay phiên loại dữ liệu và bỏ kết quả đang bay.
+  Khi Back nhanh đổi entry trước hydrate, Web đối chiếu mã băm tuyến SSR rồi tải
+  đúng địa chỉ đang mở.
+- **Quay lui.** Đặt `VINK_FOLLOWING_FEED=disabled` rồi khởi động lại App. Link mode ẩn,
+  đường dẫn đã lưu có trạng thái tạm tắt và lối về Khám phá. Route API trả 404.
+  Giữ migration index, fact Publication và cả cạnh/receipt. Chuyển lại `enabled`
+  rồi khởi động lại để mở Feed từ dữ liệu hiện hành.
+
 ## Tìm và gợi ý tác giả #295
 
 - **Sản phẩm.** SOC-OPEN-05/06 chọn A theo [#295](https://github.com/loveoverflowcom/vink/issues/295).

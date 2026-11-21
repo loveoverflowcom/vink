@@ -71,8 +71,8 @@ pub const DISCOVERY_SEARCH_SQL: &str = "
      LIMIT $5";
 
 #[derive(sqlx::FromRow)]
-struct CardRow {
-    work_id: Uuid,
+pub(super) struct CardRow {
+    pub(super) work_id: Uuid,
     title: String,
     document: Json<DocumentData>,
     display_name: String,
@@ -207,6 +207,38 @@ async fn filter_facts(
         .collect())
 }
 
+/// Resolve bound public tags in two batches, then project the bounded list of revisions.
+pub(super) async fn project_cards(
+    conn: &mut PgConnection,
+    rows: Vec<CardRow>,
+) -> Result<(Vec<PublicCardFacts>, Vec<CatalogTag>), StoreError> {
+    let bound_rows = rows
+        .iter()
+        .filter_map(|row| {
+            bound(row.metadata_snapshot_id, row.digest.clone(), row.work_id).transpose()
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let snapshots = snapshots(conn, &bound_rows).await?;
+    let catalog = snapshot_catalog(conn, snapshots.values()).await?;
+    let works = rows
+        .into_iter()
+        .map(|row| {
+            let published = content(row.document, &row.title)?;
+            Ok(PublicCardFacts {
+                work_id: WorkId::from_uuid(row.work_id),
+                title: published.title().clone(),
+                excerpt: public_excerpt(published.document()),
+                author: AuthorAttribution::project(row.display_name, row.handle, row.retired),
+                published_at: row.published_at,
+                snapshot: row
+                    .metadata_snapshot_id
+                    .and_then(|id| snapshots.get(&id).cloned()),
+            })
+        })
+        .collect::<Result<Vec<_>, StoreError>>()?;
+    Ok((works, catalog))
+}
+
 impl PublicationStore for PgStore {
     async fn discover_works(
         &self,
@@ -279,31 +311,8 @@ impl PublicationStore for PgStore {
             .fetch_all(&mut *tx)
             .await
             .map_err(classify)?;
-        let bound_rows = rows
-            .iter()
-            .filter_map(|row| {
-                bound(row.metadata_snapshot_id, row.digest.clone(), row.work_id).transpose()
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        let snapshots = snapshots(&mut tx, &bound_rows).await?;
-        let catalog = snapshot_catalog(&mut tx, snapshots.values()).await?;
+        let (works, catalog) = project_cards(&mut tx, rows).await?;
         tx.commit().await.map_err(classify)?;
-        let works = rows
-            .into_iter()
-            .map(|row| {
-                let published = content(row.document, &row.title)?;
-                Ok(PublicCardFacts {
-                    work_id: WorkId::from_uuid(row.work_id),
-                    title: published.title().clone(),
-                    excerpt: public_excerpt(published.document()),
-                    author: AuthorAttribution::project(row.display_name, row.handle, row.retired),
-                    published_at: row.published_at,
-                    snapshot: row
-                        .metadata_snapshot_id
-                        .and_then(|id| snapshots.get(&id).cloned()),
-                })
-            })
-            .collect::<Result<Vec<_>, StoreError>>()?;
         Ok(DiscoveryFacts {
             query_key: key,
             filters,

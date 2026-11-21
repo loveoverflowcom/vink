@@ -1,7 +1,5 @@
 use leptos::{prelude::*, task::spawn_local};
-use send_wrapper::SendWrapper;
 use vink_ui::{ActionState, Button, ButtonVariant};
-use wasm_bindgen::{JsCast, closure::Closure};
 
 use super::{RESULTS_HEADING, SearchResults, rows};
 use crate::account::Session;
@@ -142,7 +140,7 @@ pub(super) fn enhance(
     let generation = RwSignal::new(0u64);
     let items = RwSignal::new(None::<Membership>);
     let hint = RwSignal::new(0u64);
-    observe_follow_changes(move || hint.update(|stamp| *stamp += 1));
+    super::super::follow::observe_changes(move || hint.update(|stamp| *stamp += 1));
     Effect::new(move |_| {
         let scope = session.profile_scope.get();
         let handles = handles.get();
@@ -171,32 +169,6 @@ pub(super) fn enhance(
         items.get().filter(|items| items.scope == scope)
     });
     (append, membership)
-}
-
-fn observe_follow_changes(callback: impl Fn() + 'static) {
-    let channel = web_sys::BroadcastChannel::new("vink-follow-changes").ok();
-    let owner = Owner::current().map(|owner| owner.downgrade());
-    let listener = Closure::<dyn FnMut(web_sys::Event)>::new(move |_| {
-        if let Some(owner) = owner.as_ref().and_then(|owner| owner.upgrade()) {
-            owner.with(&callback);
-        }
-    });
-    if let Some(channel) = &channel {
-        channel.set_onmessage(Some(listener.as_ref().unchecked_ref()));
-    }
-    let _ = window()
-        .add_event_listener_with_callback("vink:follow-changed", listener.as_ref().unchecked_ref());
-    let resources = SendWrapper::new((channel, listener));
-    on_cleanup(move || {
-        let _ = window().remove_event_listener_with_callback(
-            "vink:follow-changed",
-            resources.1.as_ref().unchecked_ref(),
-        );
-        if let Some(channel) = &resources.0 {
-            channel.set_onmessage(None);
-            channel.close();
-        }
-    });
 }
 
 #[component]

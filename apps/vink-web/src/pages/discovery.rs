@@ -1,8 +1,10 @@
 //! TAG-PR-06 page glue. Shared chips/bylines render facts; this module owns GET/URL/focus.
 use super::{ResponseStatus, Unavailable, drop_unnamed_submitter, focus_recovery};
 use crate::api::{self, LoadError};
-use crate::contract::{PublicTagDto, TagDto, TagList, WorkList};
-use crate::discovery::{ExploreContext, ExploreQuery, requested_slug, tag_href};
+use crate::contract::{PublicTagDto, TagDto, TagList, WorkCard, WorkList};
+use crate::discovery::{
+    ExploreContext, ExploreMode, ExploreQuery, author_search_href, requested_slug, tag_href,
+};
 use crate::public_reads;
 use crate::ui::{
     adapters,
@@ -21,6 +23,8 @@ use vink_ui::{
     Dialog, DialogKind, Heading, HeadingLevel, Icon, IconButton, IconName, InlineNotice,
     RecoveryAction, RecoveryIntent, SearchField, SearchVariant, Tone, TypeRole,
 };
+
+mod feed;
 
 fn query_from(params: &leptos_router::params::ParamsMap) -> ExploreQuery {
     ExploreQuery::new(
@@ -82,12 +86,27 @@ fn focus_submitted_results(data: &leptos::web_sys::FormData) {
     let _ = data;
 }
 
+fn mode_from(params: &leptos_router::params::ParamsMap) -> ExploreMode {
+    ExploreMode::from_param(params.get("mode").as_deref())
+}
+
 pub(super) fn reader_context() -> Memo<ExploreContext> {
     let params = use_query_map();
+    let feed_enabled = api::following_feed_enabled();
     Memo::new(move |_| {
         let params = params.read();
+        let mode = if feed_enabled && mode_from(&params) == ExploreMode::Following {
+            ExploreMode::Following
+        } else {
+            ExploreMode::Works
+        };
         ExploreContext {
-            query: query_from(&params),
+            mode,
+            query: if mode == ExploreMode::Works {
+                query_from(&params)
+            } else {
+                ExploreQuery::default()
+            },
             tag_page: params.get("from_tag").filter(|s| !s.is_empty()),
         }
     })
@@ -150,26 +169,7 @@ fn restore_browse(browse_scroll_y: RwSignal<Option<f64>>) {
 
 #[component]
 pub fn Home() -> impl IntoView {
-    let params = use_query_map();
-    let authors = Memo::new(move |_| params.read().get("mode").as_deref() == Some("authors"));
-    let query = Memo::new(move |_| {
-        let params = params.read();
-        (params.get("q").unwrap_or_default(), params.get("cursor"))
-    });
-    view! {
-        <Show when=move || authors.get() fallback=|| view! { <DiscoveryPage /> }>
-            <For each=move || vec![query.get()] key=Clone::clone
-                children=move |(q, cursor)| {
-                    let works = ExploreQuery::new(q.clone(), vec![], None).search();
-                    view! { <super::author_discovery::AuthorSearch q cursor modes=move || view! {
-                        <nav class="vk-rel-directions" aria-label="Chế độ Khám phá">
-                            <a class="vk-ui-link" href=format!("/{works}")>"Tác phẩm"</a>
-                            <a class="vk-ui-link" href=super::author_discovery::author_search_href("", None) aria-current="page">"Tác giả"</a>
-                        </nav>
-                    } /> }
-                } />
-        </Show>
-    }
+    view! { <DiscoveryPage /> }
 }
 
 #[component]
@@ -184,14 +184,32 @@ fn DiscoveryPage(#[prop(optional)] tag_page: Option<Memo<String>>) -> AnyView {
     ResponseStatus::capture().set_no_store();
     let params = use_query_map();
     let context = Memo::new(move |_| {
-        let mut query = query_from(&params.read());
+        let params = params.read();
         let tag_page = tag_page.map(|slug| slug.get());
+        let mode = if tag_page.is_none() {
+            mode_from(&params)
+        } else {
+            ExploreMode::Works
+        };
+        let mut query = match mode {
+            ExploreMode::Works => query_from(&params),
+            ExploreMode::Following => ExploreQuery::default(),
+            ExploreMode::Authors => ExploreQuery::new(
+                params.get("q").unwrap_or_default(),
+                Vec::new(),
+                params.get("cursor"),
+            ),
+        };
         if let Some(slug) = &tag_page {
             query.tags.push(slug.clone());
             query.tags.sort();
             query.tags.dedup();
         }
-        ExploreContext { query, tag_page }
+        ExploreContext {
+            mode,
+            query,
+            tag_page,
+        }
     });
     let mobile_search_open = RwSignal::new(false);
     let browse_scroll_y = RwSignal::new(None::<f64>);
@@ -206,12 +224,17 @@ fn DiscoveryPage(#[prop(optional)] tag_page: Option<Memo<String>>) -> AnyView {
                 && let Ok(href) = window().location().href()
                 && let Ok(next) = url::Url::parse(&href)
             {
-                let search = next.fragment() == Some("tim-kiem")
-                    || next
-                        .query_pairs()
-                        .any(|(k, v)| k == "q" && !v.trim().is_empty());
-                let was_search = mobile_search_open.get_untracked()
-                    || !context.get_untracked().query.q.is_empty();
+                let public = !next
+                    .query_pairs()
+                    .any(|(k, v)| k == "mode" && matches!(v.as_ref(), "following" | "authors"));
+                let search = public
+                    && (next.fragment() == Some("tim-kiem")
+                        || next
+                            .query_pairs()
+                            .any(|(k, v)| k == "q" && !v.trim().is_empty()));
+                let previous = context.get_untracked();
+                let was_search = previous.mode == ExploreMode::Works
+                    && (mobile_search_open.get_untracked() || !previous.query.q.is_empty());
                 mobile_search_open.set(next.path() == "/" && search);
                 if was_search && !search && next.path() == "/" {
                     restore_browse(browse_scroll_y);
@@ -236,11 +259,36 @@ fn DiscoveryScope(
     mobile_search_open: RwSignal<bool>,
     browse_scroll_y: RwSignal<Option<f64>>,
 ) -> AnyView {
+    match context.mode {
+        ExploreMode::Following => return view! { <feed::FollowingFeed context /> }.into_any(),
+        ExploreMode::Authors => return view! {
+            <super::author_discovery::AuthorSearch q=context.query.q cursor=context.query.cursor />
+        }
+        .into_any(),
+        ExploreMode::Works => {}
+    }
     let initial_query = context.query.clone();
     let query = Memo::new(move |_| initial_query.clone());
     let catalog = context.tag_page.is_none().then(api::catalog_resource);
     let works = api::works_resource(query);
     view! { <DiscoveryChrome context works catalog status=ResponseStatus::capture() mobile_search_open browse_scroll_y /> }.into_any()
+}
+
+#[component]
+pub(super) fn ExploreModes(
+    mode: ExploreMode,
+    #[prop(optional)] author_query: String,
+) -> impl IntoView {
+    view! {
+        <nav class="vk-explore-modes" aria-label="Chế độ Khám phá">
+            <a id="explore-mode-works" href="/" aria-current=(mode == ExploreMode::Works).then_some("page")>"Tất cả"</a>
+            {api::following_feed_enabled().then(|| view! {
+                <a id="explore-mode-following" href=ExploreMode::FOLLOWING_HREF aria-current=(mode == ExploreMode::Following).then_some("page")>"Đang theo dõi"</a>
+            })}
+            <a id="explore-mode-authors" href=author_search_href(&author_query, None)
+                aria-current=(mode == ExploreMode::Authors).then_some("page")>"Tác giả"</a>
+        </nav>
+    }
 }
 
 #[component]
@@ -436,10 +484,6 @@ fn DiscoveryChrome(
                     })
                 }}
             </Suspense>
-            {(!is_tag).then(|| view! {
-                <a id="explore-find-author" class="vk-ui-link"
-                    href=super::author_discovery::author_search_href(&context.query.q, None)>"Tác giả"</a>
-            })}
             <div class="vk-discovery-toolbar">
                 {catalog.map(|catalog| view! {
                     <Suspense fallback=|| view! { <p class="vk-muted" role="status" data-testid="tag-catalog-loading">"Đang tải danh mục thẻ…"</p> }>
@@ -546,6 +590,7 @@ fn DiscoveryChrome(
                     })
                 }}
             </Suspense>
+            {(!is_tag).then(|| view! { <ExploreModes mode=ExploreMode::Works author_query=context.query.q.clone() /> })}
             <section node_ref=stream id="community-stream" aria-label="Tác phẩm khám phá" tabindex="-1">
                 <Suspense fallback=|| view! { <p role="status" data-testid="discovery-loading">"Đang tải kết quả…"</p> }>
                     {move || {
@@ -921,12 +966,25 @@ fn ResultRow(
     cached_unverified: Signal<bool>,
     context: ExploreContext,
 ) -> AnyView {
-    #[cfg(feature = "hydrate")]
-    let navigate = leptos_router::hooks::use_navigate();
     let id = work_id.clone();
     let work = Memo::new(move |_| {
         data.with(|list| list.works.iter().find(|work| work.work_id == id).cloned())
     });
+    view! { <WorkCardRow work_id work cached_unverified context /> }.into_any()
+}
+
+/// Shared card for both scopes. The feed's date is first-public, supplied by Publication.
+#[component]
+fn WorkCardRow(
+    work_id: String,
+    work: Memo<Option<WorkCard>>,
+    cached_unverified: Signal<bool>,
+    context: ExploreContext,
+) -> impl IntoView {
+    #[cfg(feature = "hydrate")]
+    let navigate = leptos_router::hooks::use_navigate();
+    #[cfg(feature = "hydrate")]
+    let session = crate::account::Session::current();
     view! {
         <li id=crate::public_list::work_anchor(&work_id) class="vk-public-row" data-work-id=work_id>
             {move || work.get().map(|work| {
@@ -934,34 +992,49 @@ fn ResultRow(
                 let title_id = format!("work-title-{}", work.work_id);
                 let title_label = title_id.clone();
                 #[cfg(feature = "hydrate")]
-                let context = context.clone();
+                let card_context = context.clone();
                 #[cfg(feature = "hydrate")]
                 let return_id = work.work_id.clone();
                 #[cfg(feature = "hydrate")]
                 let navigate = navigate.clone();
                 let query = context.query.q.clone();
-                let unverified = cached_unverified.get();
-                let author = adapters::card_author(&work, unverified);
+                let author = adapters::card_author(&work, cached_unverified.get());
                 let primary_tag = work.tags.first().map(|tag| tag.label.clone());
                 let excerpt = work.excerpt.clone();
+                let following = context.mode == ExploreMode::Following;
+                let date = following.then(|| first_public_date(&work.published_at)).flatten();
+                #[cfg(feature = "hydrate")]
+                let author_return = work.work_id.clone();
                 // Placeholder labels are not author names: never mark them as search matches.
                 let author_text = (!author.neutral).then(|| highlighted_text(&author.name, &query));
-                // #352: the shared cluster (avatar → pen name → @handle). Two people may share a
-                // pen name (#293); only a verified projection makes the cluster a profile link.
                 let byline = view! {
-                    <div class="vk-public-row__byline">
+                    <div class="vk-public-row__byline" on:click=move |_event| {
+                        #[cfg(feature = "hydrate")]
+                        if following && super::is_primary_link_click(&_event)
+                            && event_target::<leptos::web_sys::Element>(&_event)
+                                .closest("a[data-profile-return]").ok().flatten().is_some()
+                        {
+                            feed::remember_position(session, &author_return);
+                        }
+                    }>
                         <AuthorIdentity author id=Some(format!("work-{}-author", work.work_id)) name_view=author_text />
+                        {date.map(|label| view! {
+                            <time class="vk-feed-date" datetime=work.published_at.clone() title="Công khai lần đầu">{label}</time>
+                        })}
                     </div>
                 };
                 view! {
                     <div class="vk-public-row__card">
                         <div class="vk-public-row__main">
                             // Heading first in the DOM (heading navigation, Tab: work → author).
-                            // R3 (#336): CSS shows the form tag above the title; excerpt, then byline.
                             <h2 class="vk-public-row__title" id=title_id>
                                 <a class="vk-public-row__link" href=href aria-labelledby=title_label on:click=move |_event| {
                                     #[cfg(feature = "hydrate")]
-                                    super::remember_public_position(&_event, &context, &return_id, &navigate);
+                                    if super::remember_public_position(&_event, &card_context, &return_id, &navigate)
+                                        && card_context.mode == ExploreMode::Following
+                                    {
+                                        feed::remember_position(session, &return_id);
+                                    }
                                 }>{highlighted_text(&work.title, &query)}</a>
                             </h2>
                             {primary_tag.map(|tag| view! {
@@ -974,7 +1047,26 @@ fn ResultRow(
                 }
             })}
         </li>
-    }.into_any()
+    }
+}
+
+fn first_public_date(value: &str) -> Option<String> {
+    #[cfg(feature = "hydrate")]
+    {
+        use wasm_bindgen::JsValue;
+        let date = js_sys::Date::new(&JsValue::from_str(value));
+        let options = js_sys::Object::new();
+        js_sys::Reflect::set(&options, &"timeZone".into(), &"Asia/Ho_Chi_Minh".into()).ok()?;
+        date.get_time()
+            .is_finite()
+            .then(|| date.to_locale_date_string("vi-VN", &options).as_string())
+            .flatten()
+    }
+    #[cfg(not(feature = "hydrate"))]
+    {
+        let _ = value;
+        None
+    }
 }
 
 #[component]
@@ -1063,6 +1155,7 @@ mod tests {
     }
     fn context(q: &str, cursor: Option<&str>) -> ExploreContext {
         ExploreContext {
+            mode: ExploreMode::Works,
             query: ExploreQuery::new(q.into(), vec![], cursor.map(str::to_owned)),
             tag_page: None,
         }

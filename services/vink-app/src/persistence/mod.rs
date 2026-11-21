@@ -15,6 +15,7 @@ mod discussion;
 mod drafts;
 mod endorsement;
 pub mod evaluation;
+pub mod feed;
 pub mod follow;
 pub mod handle;
 pub mod moderation;

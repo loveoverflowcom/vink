@@ -7,7 +7,7 @@ use vink_ui::{Heading, HeadingLevel, HiddenField, SearchField, SearchVariant, Ty
 use super::{ResponseStatus, focus_recovery};
 use crate::api::{self, InvalidRead, LoadError};
 use crate::contract::{PublicAuthorPage, PublicAuthorRef};
-use crate::discovery::encode;
+use crate::discovery::{ExploreMode, author_search_href};
 use crate::ui::patterns::{Author, AuthorIdentity, ProfileLink};
 
 #[cfg(feature = "hydrate")]
@@ -15,25 +15,8 @@ mod browser;
 
 const RESULTS_HEADING: &str = "author-search-results-heading";
 
-pub(super) fn author_search_href(q: &str, cursor: Option<&str>) -> String {
-    let mut href = "/?mode=authors".to_owned();
-    if !q.trim().is_empty() {
-        href.push_str("&q=");
-        href.push_str(&encode(q));
-    }
-    if let Some(cursor) = cursor {
-        href.push_str("&cursor=");
-        href.push_str(&encode(cursor));
-    }
-    href
-}
-
 #[component]
-pub(super) fn AuthorSearch(
-    q: String,
-    cursor: Option<String>,
-    #[prop(into)] modes: ViewFn,
-) -> impl IntoView {
+pub(super) fn AuthorSearch(q: String, cursor: Option<String>) -> impl IntoView {
     let status = ResponseStatus::capture();
     status.set_no_store();
     let buffer = RwSignal::new(q.clone());
@@ -96,7 +79,7 @@ pub(super) fn AuthorSearch(
         <Meta name="description" content="Tìm tác giả Vink theo bút danh hoặc @handle." />
         <Link rel="canonical" href=canonical />
         <div id="explore" class="vk-explore vk-author-search">
-            {modes.run()}
+            <super::discovery::ExploreModes mode=ExploreMode::Authors author_query=q.get_value() />
             <Heading level=HeadingLevel::H1 role=TypeRole::Display>"Tìm tác giả"</Heading>
             <form method="get" action="/" role="search" id="author-search"
                 on:compositionstart=move |_| composing.set(true)

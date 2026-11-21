@@ -56,6 +56,32 @@ pub fn sign_in_open() -> bool {
     }
 }
 
+pub(crate) fn following_feed_enabled() -> bool {
+    #[cfg(feature = "ssr")]
+    {
+        use_context::<crate::server::FollowingFeedEnabled>().is_some_and(|flag| flag.0)
+    }
+    #[cfg(all(feature = "hydrate", not(feature = "ssr")))]
+    {
+        document()
+            .query_selector("meta[name='vink-following-feed']")
+            .ok()
+            .flatten()
+            .is_some()
+    }
+    #[cfg(not(any(feature = "ssr", feature = "hydrate")))]
+    {
+        false
+    }
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn load_following_feed(
+    query: &str,
+) -> Result<crate::contract::FeedResponse, ApiError> {
+    http::get(&format!("/api/v1/me/following-feed{query}")).await
+}
+
 #[cfg(feature = "hydrate")]
 pub(crate) async fn current_account()
 -> Result<crate::contract::CurrentAccount, crate::session::AuthError> {
@@ -977,6 +1003,7 @@ fn bounded(path: &str) -> bool {
         || path.contains("/discussion")
         || path.contains("/endorsement")
         || path.starts_with("/api/v1/author/works")
+        || path.starts_with("/api/v1/me/following-feed")
         || path == "/api/v1/me/profile"
         || path.starts_with("/api/v1/me/follows/")
         || path.starts_with("/api/v1/me/relationships/")

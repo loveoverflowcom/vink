@@ -114,8 +114,11 @@ export async function authorSearch(page, { args, check, textContrast }) {
   }
 
   await page.goto(base + '/');
-  const entry = 'a[href="/?mode=authors"]';
+  const entry = '#explore-mode-authors';
   await page.waitFor(`${HYDRATED} && ${q(entry)}`, 'author search mode in Khám phá');
+  check(await page.eval(`${q('#explore-mode-works')}.parentElement === ${q(entry)}.parentElement
+    && ${q('#explore-mode-following')}.parentElement === ${q(entry)}.parentElement`),
+    'work, following and author modes share one navigation region');
   await page.click(entry);
   await page.waitFor(`${HYDRATED} && ${HAS_ROWS} === 12`, 'guest author suggestions');
   const guest = await fetch(base + SEARCH + '?q=' + encodeURIComponent(pen)).then(r => r.text());
@@ -276,6 +279,13 @@ export async function authorSearch(page, { args, check, textContrast }) {
     }
   }
   await page.viewport(1280);
+  await page.click('#explore-mode-following');
+  const emptyFeedLink = '[data-feed-state=no-follows] a[href="/?mode=authors"]';
+  await page.waitFor(q(emptyFeedLink), 'empty Following Feed offers author search');
+  await page.click(emptyFeedLink);
+  await page.waitFor(`${q(INPUT)} && ${HAS_ROWS} === 12 && location.search === '?mode=authors'`,
+    'Feed’s author link opens the public suggestions in the shared route');
+
   // Revisit a native profile document, then traverse again before its WASM can hydrate.
   // This reproduces the two-document history timing reported on #293.
   const rapidQuery = "dang minh hoa";

@@ -19,6 +19,33 @@ use crate::follow_state::{
     FollowController, FollowInvalidation, FollowPhase, FollowScope, own_relationship_list_matches,
 };
 
+pub(in crate::pages) fn observe_changes(on_change: impl Fn() + Clone + 'static) {
+    let owner = Owner::current().map(|owner| owner.downgrade());
+    let local = {
+        let owner = owner.clone();
+        let on_change = on_change.clone();
+        window_event_listener_untyped("vink:follow-changed", move |_| {
+            if let Some(owner) = owner.as_ref().and_then(|owner| owner.upgrade()) {
+                owner.with(&on_change);
+            }
+        })
+    };
+    on_cleanup(move || local.remove());
+    if let Ok(channel) = web_sys::BroadcastChannel::new(FOLLOW_CHANNEL) {
+        let listener = Closure::<dyn FnMut(web_sys::MessageEvent)>::new(move |_| {
+            if let Some(owner) = owner.as_ref().and_then(|owner| owner.upgrade()) {
+                owner.with(&on_change);
+            }
+        });
+        channel.set_onmessage(Some(listener.as_ref().unchecked_ref()));
+        let guard = SendWrapper::new((channel, listener));
+        on_cleanup(move || {
+            guard.0.set_onmessage(None);
+            guard.0.close();
+        });
+    }
+}
+
 const FOLLOW_CHANNEL: &str = "vink-follow-changes";
 const SLOW_RECONCILE_DELAY_MS: i32 = 1000;
 
@@ -795,20 +822,7 @@ pub(super) fn ListSyncHost(
             reload_trigger.update(|n| *n += 1);
         }
     });
-    if let Ok(channel) = web_sys::BroadcastChannel::new(FOLLOW_CHANNEL) {
-        let owner = Owner::current().map(|o| o.downgrade());
-        let listener = Closure::<dyn FnMut(web_sys::MessageEvent)>::new(move |_| {
-            if let Some(owner) = owner.as_ref().and_then(|o| o.upgrade()) {
-                owner.with(|| reload_trigger.update(|n| *n += 1));
-            }
-        });
-        channel.set_onmessage(Some(listener.as_ref().unchecked_ref()));
-        let guard = SendWrapper::new((channel, listener));
-        on_cleanup(move || {
-            guard.0.set_onmessage(None);
-            guard.0.close();
-        });
-    }
+    observe_changes(move || reload_trigger.update(|n| *n += 1));
 
     view! { <span></span> }
 }

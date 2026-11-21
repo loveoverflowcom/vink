@@ -66,7 +66,7 @@ pub(super) async fn seed_author(
     PrincipalId::from_uuid(id)
 }
 
-async fn get_with_headers(
+pub(super) async fn get_with_headers(
     router: &Router,
     path: &str,
     actor: Option<Uuid>,

@@ -1,8 +1,24 @@
 const returnKey = 'vinkProfileReturn';
 const aliasFocusKey = 'vinkProfileAliasFocus';
+const recheckKey = 'vinkProfileRecheck';
 let pendingDestination;
 
 const address = () => location.pathname + location.search + location.hash;
+
+// Back can change the active history entry while an SSR document waits for WASM.
+// Restart at the current URL before mounting a router against another route's DOM.
+export function canHydrateCurrentEntry(fingerprint) {
+  const rendered = document.documentElement.dataset.renderedRoute;
+  if (!rendered || rendered === fingerprint) return true;
+  const main = document.getElementById('noi-dung');
+  if (main) {
+    main.style.visibility = 'hidden';
+    main.inert = true;
+  }
+  history.replaceState({...history.state, [recheckKey]: address()}, '');
+  location.reload();
+  return false;
+}
 
 export function replaceProfileAlias(sourcePath, href) {
   const target = new URL(href, location.origin);
@@ -71,6 +87,13 @@ export function authorSearchReturnCursor() {
 
 export function hasProfileReturn() {
   return history.state?.[returnKey]?.source === address();
+}
+
+// The private Feed rechecks this position with its current viewer before rendering the row.
+export function profileReturnWork() {
+  const entry = history.state?.[returnKey];
+  if (entry?.source !== address()) return undefined;
+  return /^work-([0-9a-f-]{36})-author$/.exec(entry.id)?.[1];
 }
 
 export function clearProfileReturn() {
@@ -183,7 +206,6 @@ export function mountProfileNavigation() {
     updateKeyboardInset();
   }
 
-  const recheck = 'vinkProfileRecheck';
   let parked = false;
   let reloading = false;
   window.addEventListener('pagehide', event => {
@@ -205,7 +227,7 @@ export function mountProfileNavigation() {
       restore();
     } else if (!reloading) {
       reloading = true;
-      history.replaceState({...history.state, [recheck]: address()}, '');
+      history.replaceState({...history.state, [recheckKey]: address()}, '');
       location.reload();
     }
   }
@@ -223,8 +245,8 @@ export function mountProfileNavigation() {
     focusWhenReady(address(), () => document.getElementById(aliasFocus.heading), '');
   }
   const state = history.state;
-  if (state?.[recheck] === address()) {
-    const {[recheck]: _, ...rest} = state;
+  if (state?.[recheckKey] === address()) {
+    const {[recheckKey]: _, ...rest} = state;
     history.replaceState(rest, '');
     restore();
   } else if (performance.getEntriesByType('navigation')[0]?.type === 'back_forward') {
