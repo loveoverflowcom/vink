@@ -1,4 +1,5 @@
 const returnKey = 'vinkProfileReturn';
+const feedReturnKey = 'vinkFeedReturn';
 const aliasFocusKey = 'vinkProfileAliasFocus';
 const recheckKey = 'vinkProfileRecheck';
 let pendingDestination;
@@ -98,6 +99,16 @@ export function profileReturnWork() {
 
 export function profileReturnHref() {
   return hasProfileReturn() ? history.state[returnKey].href : undefined;
+}
+
+export function rememberFeedReturn(work, scope) {
+  history.replaceState({...history.state, [feedReturnKey]: {work, scope}}, '');
+}
+
+export function feedReturnScope(work) {
+  const hint = history.state?.[feedReturnKey];
+  return hint?.work === work && typeof hint.scope === 'string' &&
+    /^[0-9a-f]{64}$/.test(hint.scope) ? hint.scope : undefined;
 }
 
 export function clearProfileReturn() {

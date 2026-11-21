@@ -17,7 +17,7 @@ const own = (page) => page.eval("fetch('/api/v1/me/profile').then(r => r.json())
 const rowLink = (id) => `#work-${id} .vk-public-row__link`;
 
 function publish(author, count, prefix) {
-  const source = 'Mưa rơi qua ô cửa.\nGió khuya lay giàn hoa.\n\nMùa cũ vẫn còn trong trí nhớ.';
+  const poem = 'Mưa rơi qua ô cửa.\nGió khuya lay giàn hoa.\n\nMùa cũ vẫn còn trong trí nhớ.';
   const ids = [];
   const form = randomUUID();
   const [label, slug] = count > 1 ? ['Thơ', 'thơ'] : ['Truyện ngắn', 'truyện-ngắn'];
@@ -26,6 +26,7 @@ function publish(author, count, prefix) {
     const snapshot = randomUUID();
     ids.push(id);
     const title = `${prefix} ${i + 1}`;
+    const source = count > 1 && i === 0 ? poem + '\n' + 'Mưa vẫn rơi bên hiên nhà cũ.\n'.repeat(12) : poem;
     const hash = createHash('sha256').update('vink-document-content');
     for (const text of ['default', title, source]) {
       const bytes = Buffer.from(text);
@@ -293,6 +294,15 @@ export async function followingFeed(control, other, {base, openPage, check, hold
   const anchor = await page.eval("Array.from(document.querySelectorAll('#following-cards > li')).at(-2).dataset.workId");
   const selector = rowLink(anchor);
   const sameDocument = await page.eval('performance.timeOrigin');
+  const otherAuthor = randomUUID();
+  const otherHandle = 'vink-feed-race-author';
+  authorFixtureSql(`BEGIN;
+    INSERT INTO principals(id, display_name) VALUES (${literal(otherAuthor)}, 'Tác giả đổi Follow');
+    INSERT INTO principal_bindings(principal_id, authority, subject_id)
+      VALUES (${literal(otherAuthor)}, 'vink-identity', ${literal(otherAuthor)});
+    INSERT INTO author_handle_names(principal_id, handle) VALUES (${literal(otherAuthor)}, '${otherHandle}');
+    INSERT INTO author_profiles(principal_id, current_handle) VALUES (${literal(otherAuthor)}, '${otherHandle}');
+    COMMIT;`);
   const enter = async () => {
     await page.eval(`${q(selector)}.focus()`);
     await page.key('Enter');
@@ -314,6 +324,47 @@ export async function followingFeed(control, other, {base, openPage, check, hold
   await page.waitFor(`location.search === '?mode=following' && document.activeElement === ${q(selector)}`, 'retry validates and focuses the row from the appended page');
   await focusEvidence(page, selector, check, 'feed-355-back-title');
   check(await page.eval(`performance.timeOrigin === ${sameDocument}`), 'Feed → Reader → Back uses the hydrated document');
+  await enter();
+  // Hold the frame queued for the already painted anchor, then commit an unrelated Follow
+  // while the replacement read is still on the wire.
+  await page.eval(`(() => {
+    const requestFrame = window.requestAnimationFrame;
+    const queued = [];
+    let runningFirst = false;
+    window.fixtureFeedFrames = queued;
+    window.requestAnimationFrame = callback => {
+      if (location.search !== '?mode=following' || !${q(selector)}) {
+        return requestFrame.call(window, callback);
+      }
+      if (runningFirst) return requestFrame.call(window, time => queued.push(() => callback(time)));
+      return requestFrame.call(window, time => {
+        runningFirst = true;
+        try { callback(time); } finally { runningFirst = false; }
+      });
+    };
+    window.releaseFixtureFeedFrames = () => {
+      window.requestAnimationFrame = requestFrame;
+      for (const callback of queued.splice(0)) callback();
+    };
+  })()`);
+  await page.eval('history.back()');
+  await page.waitFor(`window.fixtureFeedFrames.length > 0 && ${q(selector)}`,
+    'accepted around read painted the appended anchor before the held focus frame');
+  const restart = await holdAnswer(page, 'GET', API);
+  await toggle(control, base, otherHandle, true);
+  check(await restart.held() === 200, 'another author’s confirmed Follow invalidates the pending focus request');
+  await page.send('Page.bringToFront');
+  await page.waitFor(`${state('loading')} && ${ROWS}===0`, 'replacement read owns the empty pending stream');
+  await page.eval('window.releaseFixtureFeedFrames()');
+  await page.eval(FRAME);
+  check(await page.eval(`document.activeElement !== ${q(HEADING)}`), 'old focus frame cannot focus fallback during a replacement read');
+  await restart.finish(false);
+  await page.waitFor(`document.activeElement === ${q(selector)}`,
+    'replacement read revalidates and focuses the same appended work');
+  await toggle(control, base, otherHandle, false);
+  await page.waitFor(`${ROWS}===12 && ${q('#feed-load-more')}`, 'completed restore leaves a normal fresh head after Follow changes');
+  await page.click('#feed-load-more');
+  await page.waitFor(q(selector), 'reopen the target after the regular append');
   await enter();
   withdraw(anchor);
   await page.eval('history.back()');
@@ -349,9 +400,38 @@ export async function followingFeed(control, other, {base, openPage, check, hold
   await page.waitFor(`${ROWS}===12 && ${q('#explore-mode-following')} && !${q('#author-profile-heading')} && !${q('#reader-paper')}`,
     'late intermediate profile cannot replace the Feed at its history URL');
 
+  // The last eligible work has a long poem. Give its author a long pen name and
+  // require the actual link to be in view above the bottom bar at large mobile text.
+  const deep = bWorks[0];
+  const deepTitle = rowLink(deep);
+  const deepByline = `#work-${deep} .vk-ui-byline__identity`;
+  authorFixtureSql(`UPDATE principals SET display_name='Nguyễn Thị Phương Vy Bên Hiên Nhà Mùa Mưa'
+    WHERE id=${literal(b.principal_id)};`);
+  await page.viewport(320, 720);
+  await page.eval("document.documentElement.style.fontSize = '200%'; document.fonts.ready");
+  await page.click('#feed-load-more');
+  await page.waitFor(q(deepByline), 'the tall poem and byline are on the appended page');
+  check(await page.eval(`(() => {
+    const byline = ${q(deepByline)};
+    const row = byline.closest('li');
+    const bar = document.getElementById('bottom-navigation');
+    const start = parseFloat(getComputedStyle(row).scrollMarginBlockStart);
+    return byline.querySelector('.vk-ui-byline__name').textContent.includes('Bên Hiên Nhà Mùa Mưa') &&
+      byline.getBoundingClientRect().bottom - row.getBoundingClientRect().top + start >
+      bar.getBoundingClientRect().top;
+  })()`), 'the tall fixture would put the byline below the bar if Back scrolled only to the row');
+  await page.eval(`${q(deepByline)}.focus()`);
+  await page.key('Enter');
+  await page.waitFor(`location.pathname === '/@${b.handle}' && ${q('#author-profile-heading')}`,
+    'keyboard enters the tall row author profile');
+  await page.eval('history.back()');
+  await page.waitFor(`document.activeElement === ${q(deepByline)}`, 'Back focuses the exact tall-row byline');
+  await focusEvidence(page, deepByline, check, 'feed-355-back-byline-320-200');
+
   // Real document traversal matching #293: a second Back before the intermediate
   // Profile document hydrates must not start the router against the wrong SSR DOM.
-  await page.click(authorLink);
+  const originalDocument = await page.eval('performance.timeOrigin');
+  await page.click(deepByline);
   await page.waitFor(`location.pathname === '/@${b.handle}' && ${q('#author-profile-heading')}`, 'profile ready before new document');
   await page.eval(`window.addEventListener('pageshow', event => {
     if (event.isTrusted && event.persisted) sessionStorage.setItem('fixture-feed-bfcache', 'hit');
@@ -368,14 +448,35 @@ export async function followingFeed(control, other, {base, openPage, check, hold
     'second Back changes the URL before profile hydration');
   await wasm.finish(false);
   await page.send('Network.setCacheDisabled', {cacheDisabled:false});
-  await page.waitFor(`${ROWS}===12 && document.documentElement.dataset.hydrated==='true' &&
-    !${q('#author-profile-heading')}`, 'two-document Back hydrates the current Feed instead of the stale profile');
-  await page.waitFor(`document.activeElement === ${q(authorLink)} ||
-    document.activeElement === ${q(HEADING)}`, 'two-document Back restores a valid focus target');
+  await page.waitFor(`performance.timeOrigin !== ${originalDocument} &&
+    document.documentElement.dataset.hydrated==='true' && !${q('#author-profile-heading')} &&
+    document.activeElement === ${q(deepByline)}`,
+    'new Feed document revalidates and focuses the exact byline from the appended page');
 
   console.log('  #355 natural persisted pageshow:', await page.eval("sessionStorage.getItem('fixture-feed-bfcache') === 'hit'"));
 
+  await page.click(deepTitle);
+  await page.waitFor(`location.pathname === '/tac-pham/${deep}' && ${q('#reader-paper')}`, 'open Reader from the deep Feed entry');
+  const readerHistory = await page.send('Page.getNavigationHistory');
+  const deepFeedEntry = readerHistory.entries[readerHistory.currentIndex - 1];
+  check(new URL(deepFeedEntry.url).hash === '#work-' + deep, 'the original Feed entry owns its work hint');
+  const historyDocument = await page.eval('performance.timeOrigin');
+  await page.click('#bottom-navigation a[href="/"]');
+  await page.waitFor(`location.pathname === '/' && !location.search && ${q('#explore-mode-following')}`,
+    'Khám phá opens from Reader in the shared shell');
+  await page.click('#explore-mode-following');
+  await page.waitFor(`${ROWS}===12 && ${q(workLink)}`, 'an independent Feed entry starts at the first page');
+  const newest = await page.eval("document.querySelector('#following-cards > li').dataset.workId");
   await page.click(workLink);
+  await page.waitFor(`location.pathname === '/tac-pham/${newest}' && ${q('#reader-paper')}`,
+    'a different Feed entry opens another Reader');
+  await page.send('Page.navigateToHistoryEntry', {entryId: deepFeedEntry.id});
+  await page.waitFor(`document.activeElement === ${q(deepTitle)}`,
+    'traversal to the original entry restores its own appended title, not the newer entry’s work');
+  check(await page.eval(`performance.timeOrigin === ${historyDocument}`),
+    'both independent Feed entries and Readers live in the same hydrated document');
+
+  await page.click(deepTitle);
   await page.waitFor(q('#reader-paper'), 'a currently public work stays open during Unfollow');
   await toggle(control, base, b.handle, false);
   await page.send('Page.bringToFront');
@@ -398,15 +499,37 @@ export async function followingFeed(control, other, {base, openPage, check, hold
 
   await toggle(control, base, b.handle, true);
   await page.waitFor(`${ROWS}===12 && ${q('#feed-load-more')}`, 'new Follow restarts from the current head');
-  const oldSession = await holdAnswer(page, 'GET', API);
-  await page.click('#feed-load-more');
+  // One real cookie transition invalidates both pending reads. A separate Feed tab
+  // owns the append while the original tab is traversing Back to its history entry.
+  const appendTab = await openPage();
+  await appendTab.goto(base + FEED);
+  await appendTab.waitFor(`${ROWS}===12 && ${q('#feed-load-more')}`, 'second tab has A’s first page');
+  const oldSession = await holdAnswer(appendTab, 'GET', API);
+  await appendTab.click('#feed-load-more');
   check(await oldSession.held() === 200, 'A append is held before the native session changes');
+
+  await page.send('Page.bringToFront');
+  await page.click('#feed-load-more');
+  await page.waitFor(q(deepTitle), 'append the old work before opening Reader');
+  await page.click(deepTitle);
+  await page.waitFor(q('#reader-paper'), 'open the appended work before changing authority');
+  const previousRestore = await holdAnswer(page, 'GET', API);
+  await page.eval('history.back()');
+  check(await previousRestore.held() === 200, 'old A around response is held during Back');
   await switchActor('b', control);
-  await page.waitFor(`${state('no-follows')} && ${ROWS}===0`, 'B never renders A’s page chain');
+  await Promise.all([page, appendTab].map(tab => tab.waitFor(`${state('no-follows')} && ${ROWS}===0`,
+    'B never renders A’s anchor or page chain')));
   await switchActor('a', control);
-  await page.waitFor(`${ROWS}===12`, 'new session for A begins with the first page');
+  await Promise.all([page, appendTab].map(tab => tab.waitFor(`${ROWS}===12 && !${q(deepTitle)}`,
+    'new A starts at the first page without the old session’s around position')));
+  await appendTab.send('Page.bringToFront');
   await oldSession.finish(false, true);
-  check(await page.eval(`${ROWS}===12 && location.search==='?mode=following'`), 'stale A completion cannot append in the new A session');
+  check(await appendTab.eval(`${ROWS}===12 && location.search==='?mode=following'`),
+    'stale A completion cannot append in the new A session');
+  await page.send('Page.bringToFront');
+  await previousRestore.finish(false, true);
+  check(await page.eval(`!${q(deepTitle)} && document.activeElement !== ${q(deepTitle)}`),
+    'late focus and rows from the old A restore stay fenced after A → B → A');
   check(publicReads.count() === 0, 'the private mode never requests the public collection endpoint');
   publicReads.close();
 
@@ -419,8 +542,8 @@ export async function followingFeed(control, other, {base, openPage, check, hold
 
   authorFixtureSql(`DELETE FROM publications WHERE work_id IN (${[...bWorks, ...aWorks].map(literal).join(',')});`);
   await toggle(control, base, b.handle, false);
-  check(page.errors.length === 0 && guest.errors.length === 0,
-    `Feed tabs have no console or hydration errors: ${[...page.errors,...guest.errors].join(' | ')}`);
+  const errors = [...page.errors, ...appendTab.errors, ...guest.errors];
+  check(errors.length === 0, `Feed tabs have no console or hydration errors: ${errors.join(' | ')}`);
   await control.cdp.send('Target.disposeBrowserContext', {browserContextId});
   await control.send('Page.bringToFront');
   await control.goto(base + '/toi');

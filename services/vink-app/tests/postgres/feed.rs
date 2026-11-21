@@ -196,6 +196,37 @@ async fn first_public_keyset_live_revocation_cursor_and_no_store(pool: PgPool) {
     .await;
     assert_eq!(ids(&around, "works")[0], deep);
 
+    const RETURN_SCOPE: &str = "x-vink-feed-return-scope";
+    let read_return = |session: (&str, &str), hint: Option<&str>| {
+        let mut request = Request::get(format!("{PATH}?around={deep}"))
+            .header("x-test-principal", viewer.as_uuid().to_string())
+            .header(session.0, session.1);
+        if let Some(hint) = hint {
+            request = request.header(RETURN_SCOPE, hint);
+        }
+        router.clone().oneshot(request.body(Body::empty()).unwrap())
+    };
+    let original = read_return(SESSION, None).await.unwrap();
+    assert_eq!(original.status(), StatusCode::OK);
+    let original_scope = original.headers()[RETURN_SCOPE].to_str().unwrap();
+    assert_eq!(original_scope.len(), 64);
+    let same = read_return(SESSION, Some(original_scope)).await.unwrap();
+    assert_eq!(same.headers()[RETURN_SCOPE], original_scope);
+    let body = same.into_body().collect().await.unwrap().to_bytes();
+    assert_eq!(
+        ids(&json(std::str::from_utf8(&body).unwrap()), "works")[0],
+        deep
+    );
+
+    let new = read_return(SESSION_B, Some(original_scope)).await.unwrap();
+    assert_eq!(new.status(), StatusCode::OK);
+    assert_ne!(new.headers()[RETURN_SCOPE], original_scope);
+    let body = new.into_body().collect().await.unwrap().to_bytes();
+    assert_eq!(
+        ids(&json(std::str::from_utf8(&body).unwrap()), "works"),
+        expected[..FEED_PAGE_SIZE]
+    );
+
     let replacement = expected[0];
     let replaced = Uuid::new_v4();
     let mut tx = pool.begin().await.unwrap();

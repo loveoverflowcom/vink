@@ -201,11 +201,12 @@ toàn dùng bản có cả migration lẫn redaction, ưu tiên tắt entry form
   Lavender R3. Tìm kiếm/lọc thẻ tiếp tục ở mode Tất cả.
 - **Vòng đời.** `ReadOwner` và `PageChain` xét ticket theo generation phiên. Khi append,
   revalidate các thẻ đã hiển thị và trả lại projection còn hợp lệ. Khi nhận ACK Follow,
-  xóa chain và đọc trang đầu. Wake/Back đọc lại từ server. Tab giữ gợi ý vị trí được ràng
-  theo phiên trong RAM; history chỉ mang mode và anchor công khai. Sau lần đọc được
-  chấp nhận, Back trả về link nhan đề hoặc bút danh còn hợp lệ. Khi anchor mất, focus
-  về tiêu đề “Đang theo dõi” (H2). Lỗi mạng giữ ý định quay lại để thử đọc mới. Thay
-  phiên loại dữ liệu, hint và kết quả đang bay.
+  xóa chain và đọc lại. Wake/Back đọc lại từ server. Mỗi history entry giữ anchor
+  công khai và dấu điều hướng mờ của phiên, không giữ thẻ hay cursor. Sau lần đọc
+  được chấp nhận, Back trả về link nhan đề hoặc bút danh còn hợp lệ, kể cả qua
+  document mới. Khi anchor mất, focus về tiêu đề “Đang theo dõi” (H2). Lỗi mạng
+  giữ ý định quay lại để thử đọc mới. Thay đổi Follow trong lúc chờ focus cần một
+  lần đọc mới. Thay phiên loại dữ liệu và kết quả đang bay; dấu cũ mất hiệu lực.
   Khi Back nhanh đổi entry trước hydrate, Web đối chiếu mã băm tuyến SSR rồi tải
   đúng địa chỉ đang mở.
   [Bằng chứng Web #355](evidence/following-feed-355/README.md) đi qua Feed, Reader và hồ sơ.

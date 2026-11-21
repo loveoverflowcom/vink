@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::collections::HashMap;
 
 use leptos::{prelude::*, task::spawn_local};
 use vink_ui::{ActionState, Button, ButtonVariant, Link};
@@ -9,38 +9,36 @@ use crate::{
     api,
     contract::{ApiError, FeedResponse, WorkCard},
     discovery::{ExploreContext, ExploreMode, encode},
+    pages::ExploreRestore,
     read_lifecycle::{Intent, PageChain, ReadOwner, ReadTicket},
 };
 
 const CHECK_LIMIT: usize = 48;
 
-thread_local! {
-    // Only a position hint. A return always reads the current provider again. A new
-    // document or session cannot use the old scope, and history carries no private cursor.
-    static RETURN_POSITION: RefCell<Option<(String, String)>> = const { RefCell::new(None) };
+#[wasm_bindgen::prelude::wasm_bindgen(module = "/profile/navigation.js")]
+extern "C" {
+    #[wasm_bindgen(js_name = rememberFeedReturn, catch)]
+    fn remember_feed_return(work: &str, scope: &str) -> Result<(), wasm_bindgen::JsValue>;
+    #[wasm_bindgen(js_name = feedReturnScope)]
+    fn feed_return_scope(work: &str) -> Option<String>;
 }
 
-pub(in crate::pages::discovery) fn remember_position(session: Session, id: &str) {
-    RETURN_POSITION.with_borrow_mut(|last| {
-        *last = session
-            .profile_scope
-            .get_untracked()
-            .map(|scope| (scope, id.to_owned()));
-    });
-}
+#[derive(Clone, Copy)]
+pub(in crate::pages::discovery) struct ReturnScope(Signal<Option<String>>);
 
-fn around_for(scope: &str, hash: &str) -> Option<String> {
-    RETURN_POSITION.with_borrow_mut(|last| {
-        if last.as_ref().is_some_and(|(owner, _)| owner != scope) {
-            *last = None;
+impl ReturnScope {
+    pub(in crate::pages::discovery) fn remember(self, work: &str) {
+        if let Some(scope) = self.0.try_get_untracked().flatten() {
+            let _ = remember_feed_return(work, &scope);
         }
-        let (.., work) = last.as_ref()?;
-        let profile_work = crate::pages::profile_return_work();
-        let anchor = profile_work
-            .as_deref()
-            .or_else(|| hash.strip_prefix("#work-"));
-        (anchor == Some(work)).then(|| work.clone())
-    })
+    }
+}
+
+fn return_hint(hash: &str) -> Option<(String, String)> {
+    let work = crate::pages::profile_return_work()
+        .or_else(|| hash.strip_prefix("#work-").map(str::to_owned))?;
+    let scope = feed_return_scope(&work)?;
+    Some((work, scope))
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -60,6 +58,7 @@ struct Feed {
     phase: Phase,
     works: Vec<WorkCard>,
     append_error: bool,
+    return_scope: Option<String>,
 }
 
 impl Feed {
@@ -69,6 +68,7 @@ impl Feed {
         self.phase = phase;
         self.works.clear();
         self.append_error = false;
+        self.return_scope = None;
     }
 
     fn recheck(&mut self, checked: &[String], fresh: Vec<WorkCard>) {
@@ -157,7 +157,8 @@ pub(super) fn ActiveFeed(
     scope: String,
     context: ExploreContext,
     expired: RwSignal<bool>,
-    settled_scope: RwSignal<Option<(String, bool)>>,
+    restore: RwSignal<Option<ExploreRestore>>,
+    return_completed: RwSignal<bool>,
 ) -> impl IntoView {
     let session = Session::current();
     let scope = StoredValue::new(scope);
@@ -167,7 +168,13 @@ pub(super) fn ActiveFeed(
         phase: Phase::Loading,
         works: Vec::new(),
         append_error: false,
+        return_scope: None,
     });
+    provide_context(ReturnScope(Signal::derive(move || {
+        (session.profile_scope.get() == Some(scope.get_value()))
+            .then(|| feed.with(|state| state.return_scope.clone()))
+            .flatten()
+    })));
     let live = move |ticket: &ReadTicket<String>| {
         session.profile_scope.try_get_untracked().flatten().as_ref() == Some(&ticket.scope)
             && feed.try_with_untracked(|state| state.owner.accepts(ticket)) == Some(true)
@@ -193,14 +200,12 @@ pub(super) fn ActiveFeed(
         else {
             return;
         };
-        let returning = intent != Intent::Append
-            && !settled_scope.with_untracked(|value| {
-                value
-                    .as_ref()
-                    .is_some_and(|(scope, _)| scope == &ticket.scope)
-            });
+        let returning = intent != Intent::Append && !return_completed.get_untracked();
+        if returning {
+            restore.set(None);
+        }
         let around = returning
-            .then(|| around_for(&ticket.scope, &location.hash.get_untracked()))
+            .then(|| return_hint(&location.hash.get_untracked()))
             .flatten();
         let checked = if intent == Intent::Append {
             feed.with_untracked(|state| {
@@ -222,12 +227,12 @@ pub(super) fn ActiveFeed(
             // Long lists recheck their earlier cards in bounded batches before committing
             // the append. Normal pagination checks the existing cards in the same snapshot.
             for batch in batches {
-                let result = api::load_following_feed(&page_query(None, None, batch)).await;
+                let result = api::load_following_feed(&page_query(None, None, batch), None).await;
                 if !live(&ticket) {
                     return;
                 }
                 match result {
-                    Ok(FeedResponse::Checked { viewer, retained }) if viewer == principal => {
+                    Ok((FeedResponse::Checked { viewer, retained }, _)) if viewer == principal => {
                         recover_removed_focus();
                         feed.update(|state| state.recheck(batch, retained));
                     }
@@ -240,11 +245,14 @@ pub(super) fn ActiveFeed(
             let result = match reply {
                 Some(result) => result,
                 None => {
-                    api::load_following_feed(&page_query(
-                        ticket.cursor.as_deref(),
-                        around.as_deref(),
-                        first,
-                    ))
+                    api::load_following_feed(
+                        &page_query(
+                            ticket.cursor.as_deref(),
+                            around.as_ref().map(|(work, _)| work.as_str()),
+                            first,
+                        ),
+                        around.as_ref().map(|(_, scope)| scope.as_str()),
+                    )
                     .await
                 }
             };
@@ -255,18 +263,26 @@ pub(super) fn ActiveFeed(
             let viewer_changed = result
                 .as_ref()
                 .ok()
-                .and_then(FeedResponse::viewer)
+                .and_then(|(page, _)| page.viewer())
                 .is_some_and(|viewer| viewer != principal);
+            let anchor = result.as_ref().ok().and_then(|(_, returned_scope)| {
+                around.as_ref().and_then(|(work, scope)| {
+                    (returned_scope.as_ref() == Some(scope)).then(|| work.clone())
+                })
+            });
             let settled = feed.try_update(|state| {
                 match result {
                     Ok(_) if viewer_changed => state.reset(Phase::Loading),
-                    Ok(FeedResponse::Page {
-                        has_following,
-                        works,
-                        retained,
-                        next_cursor,
-                        ..
-                    }) => {
+                    Ok((
+                        FeedResponse::Page {
+                            has_following,
+                            works,
+                            retained,
+                            next_cursor,
+                            ..
+                        },
+                        return_scope,
+                    )) => {
                         let ids = works.iter().map(|work| work.work_id.clone());
                         if !state
                             .owner
@@ -280,11 +296,12 @@ pub(super) fn ActiveFeed(
                             } else {
                                 state.works = works;
                             }
+                            state.return_scope = return_scope;
                             state.phase = Phase::Ready { has_following };
                         }
                     }
-                    Ok(FeedResponse::Restart) => state.reset(Phase::Restart),
-                    Ok(FeedResponse::Checked { .. }) => {
+                    Ok((FeedResponse::Restart, _)) => state.reset(Phase::Restart),
+                    Ok((FeedResponse::Checked { .. }, _)) => {
                         state.fail(intent, ApiError::Unexpected { status: 200 })
                     }
                     Err(error) => {
@@ -303,12 +320,13 @@ pub(super) fn ActiveFeed(
             if viewer_changed {
                 session.fence_profile();
             } else if returning && settled == Some(true) {
-                settled_scope.set(Some((ticket.scope, around.is_some())));
+                restore.set(Some(ExploreRestore::Feed { ticket, anchor }));
             }
         });
     });
 
     let restart = move || {
+        restore.set(None);
         recover_removed_focus();
         feed.update(|state| state.reset(Phase::Loading));
         read.run(Intent::Restart);
@@ -329,6 +347,7 @@ pub(super) fn ActiveFeed(
     });
     // A frozen history document must never paint rows from before revalidation.
     let pagehide = window_event_listener(leptos::ev::pagehide, move |_| {
+        restore.set(None);
         feed.update(|state| state.reset(Phase::Loading));
         if let Some(rows) = document().get_element_by_id("following-cards") {
             let _ = rows.set_attribute("hidden", "");

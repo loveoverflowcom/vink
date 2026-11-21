@@ -208,6 +208,11 @@ endpoint trả 404 với cùng quy tắc cache.
 | `cursor=<token>&seen=<uuid,uuid,…>` | Trang sau mốc và `retained` gồm các thẻ trong `seen` còn đúng quyền, bằng cùng snapshot. |
 | `seen=<uuid,uuid,…>` | `state: checked` và `retained` cho một batch độc lập, tối đa 48 WorkId phân biệt. |
 
+Phản hồi 200 kèm `X-Vink-Feed-Return-Scope`, dấu điều hướng riêng của phiên
+hiện tại. Client có thể gửi lại dấu đã lưu cùng `around`; khi dấu khác phiên
+hiện tại, server trả trang đầu. Dấu này không cấp quyền đọc. Mọi yêu cầu
+`around` vẫn kiểm quyền của phiên hiện hành và quyền của từng tác phẩm.
+
 `page` gồm `viewer`, `has_following`, `works`, `retained` (rỗng nếu không
 revalidate) và `next_cursor` (null ở cuối). `checked` gồm `viewer` và `retained`.
 `viewer` là PrincipalId xác thực để Web kiểm scope của response. `has_following`

@@ -2045,6 +2045,10 @@ a {
     scroll-margin-block-start: 4.5rem;
     scroll-margin-block-end: calc(var(--vk-ui-bar-height, 5rem) + 1rem);
   }
+  /* A fully wrapped byline needs the space above the bottom bar at large text sizes. */
+  .vk-discovery--following .vk-public-row__byline a.vk-ui-byline__identity {
+    scroll-margin-block-start: 1rem;
+  }
   .vk-discovery[data-enhanced="true"][data-search="open"] .vk-public-row,
   .vk-discovery[data-enhanced="true"][data-search="open"] .vk-public-row__link,
   .vk-discovery[data-enhanced="true"][data-search="open"] .vk-public-row__byline a.vk-ui-byline__identity {

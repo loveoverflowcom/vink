@@ -984,7 +984,7 @@ fn WorkCardRow(
     #[cfg(feature = "hydrate")]
     let navigate = leptos_router::hooks::use_navigate();
     #[cfg(feature = "hydrate")]
-    let session = crate::account::Session::current();
+    let feed_scope = use_context::<feed::ReturnScope>();
     view! {
         <li id=crate::public_list::work_anchor(&work_id) class="vk-public-row" data-work-id=work_id>
             {move || work.get().map(|work| {
@@ -1017,8 +1017,9 @@ fn WorkCardRow(
                         if following && super::is_primary_link_click(&_event)
                             && event_target::<leptos::web_sys::Element>(&_event)
                                 .closest("a[data-profile-return]").ok().flatten().is_some()
+                            && let Some(scope) = feed_scope
                         {
-                            feed::remember_position(session, &author_return);
+                            scope.remember(&author_return);
                         }
                     }>
                         <AuthorIdentity author id=Some(format!("work-{}-author", work.work_id)) name_view=author_text />
@@ -1031,10 +1032,11 @@ fn WorkCardRow(
                             <h2 class="vk-public-row__title" id=title_id>
                                 <a class="vk-public-row__link" href=href aria-labelledby=title_label on:click=move |_event| {
                                     #[cfg(feature = "hydrate")]
-                                    if super::remember_public_position(&_event, &card_context, &return_id, &navigate)
-                                        && card_context.mode == ExploreMode::Following
                                     {
-                                        feed::remember_position(session, &return_id);
+                                        if super::is_primary_link_click(&_event) && let Some(scope) = feed_scope {
+                                            scope.remember(&return_id);
+                                        }
+                                        super::remember_public_position(&_event, &card_context, &return_id, &navigate);
                                     }
                                 }>{highlighted_text(&work.title, &query)}</a>
                             </h2>

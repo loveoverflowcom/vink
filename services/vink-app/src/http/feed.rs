@@ -2,15 +2,32 @@
 use axum::{
     Json, Router,
     extract::{RawQuery, State},
-    http::{HeaderValue, header},
+    http::{HeaderMap, HeaderValue, header},
+    response::IntoResponse,
     routing::get,
 };
+use hmac::{Hmac, KeyInit, Mac};
 use serde::Serialize;
+use sha2::Sha256;
 use tower_http::set_header::SetResponseHeaderLayer;
 use uuid::Uuid;
 
 use super::{ApiError, AppState, PrivateSession, contract::WorkCard};
 use crate::persistence::feed::{FEED_CHECK_LIMIT, FeedRead, FeedReadout};
+
+const RETURN_SCOPE: &str = "x-vink-feed-return-scope";
+
+// A navigation binding. It exposes neither the private session digest nor a cursor, and
+// cannot authorize any read. A new credential for the same principal gets a different value.
+fn return_scope(session: &PrivateSession) -> HeaderValue {
+    let mut mac = Hmac::<Sha256>::new_from_slice(&session.digest)
+        .expect("HMAC supports a 32-byte session key");
+    mac.update(b"vink:following-feed:return-scope:v1");
+    mac.update(session.actor.as_uuid().as_bytes());
+    let signature = mac.finalize().into_bytes();
+    let value: String = signature.iter().map(|byte| format!("{byte:02x}")).collect();
+    HeaderValue::from_str(&value).expect("hex is a valid header value")
+}
 
 pub(super) fn routes(enabled: bool) -> Router<AppState> {
     let read = if enabled {
@@ -110,18 +127,27 @@ enum FeedResponse {
 async fn feed(
     State(state): State<AppState>,
     session: PrivateSession,
+    headers: HeaderMap,
     raw: RawQuery,
-) -> Result<Json<FeedResponse>, ApiError> {
+) -> Result<impl IntoResponse, ApiError> {
     let query = parse_query(raw)?;
     let seen = query.seen_ids()?;
-    let read = query.read(&seen)?;
+    let scope = return_scope(&session);
+    let read = match query.read(&seen)? {
+        FeedRead::First { around: Some(_) }
+            if headers.get(RETURN_SCOPE).is_some_and(|hint| hint != scope) =>
+        {
+            FeedRead::First { around: None }
+        }
+        read => read,
+    };
     let result = state
         .vink
         .store()
         .following_feed(session.actor, session.digest, read)
         .await?;
     let viewer = session.actor.as_uuid();
-    Ok(Json(match result {
+    let body = match result {
         FeedReadout::Page {
             has_following,
             works,
@@ -139,7 +165,8 @@ async fn feed(
             retained: retained.iter().map(WorkCard::from).collect(),
         },
         FeedReadout::Restart => FeedResponse::Restart,
-    }))
+    };
+    Ok(([(RETURN_SCOPE, scope)], Json(body)))
 }
 
 #[cfg(test)]
