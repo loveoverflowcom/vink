@@ -28,7 +28,7 @@ fn next_scope_id() -> u64 {
     NEXT_SCOPE_ID.fetch_add(1, Ordering::Relaxed)
 }
 
-fn generate_command_id() -> Option<String> {
+pub(in crate::pages) fn generate_command_id() -> Option<String> {
     let mut random = [0u8; 16];
     window()
         .crypto()
@@ -48,7 +48,7 @@ fn focus_element_in_follow() -> bool {
     container.contains(Some(&active))
 }
 
-fn announce_follow_changed(invalidation: &FollowInvalidation) {
+pub(in crate::pages) fn announce_follow_changed(invalidation: &FollowInvalidation) {
     let detail = js_sys::Object::new();
     let _ = js_sys::Reflect::set(
         &detail,

@@ -105,7 +105,7 @@ fn present(raw: &Option<String>) -> Option<&str> {
     raw.as_deref().filter(|value| !value.trim().is_empty())
 }
 
-fn page_size(raw: Option<&str>) -> Result<PageSize, DiscoveryInput> {
+pub(super) fn page_size(raw: Option<&str>) -> Result<PageSize, DiscoveryInput> {
     match raw {
         None => Ok(PageSize::DEFAULT),
         Some(raw) => raw

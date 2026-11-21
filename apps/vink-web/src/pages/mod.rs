@@ -1,3 +1,4 @@
+mod author_discovery;
 mod desk;
 mod discovery;
 pub(crate) mod moderation;
@@ -406,14 +407,15 @@ fn drop_unnamed_submitter(data: &leptos::web_sys::FormData) {
 
 /// The recovery control can unmount as its state resolves. Focus an enduring field/heading
 /// after that render; never scroll a different route in response to a stale frame.
-fn focus_recovery(id: &'static str) {
+fn focus_recovery(id: impl Into<String>) {
+    let id = id.into();
     #[cfg(feature = "hydrate")]
     {
         use wasm_bindgen::JsCast;
         let path = window().location().pathname().ok();
         request_animation_frame(move || {
             if window().location().pathname().ok() == path
-                && let Some(element) = document().get_element_by_id(id)
+                && let Some(element) = document().get_element_by_id(&id)
                 && let Ok(element) = element.dyn_into::<web_sys::HtmlElement>()
             {
                 let _ = element.focus();

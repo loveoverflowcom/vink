@@ -150,7 +150,26 @@ fn restore_browse(browse_scroll_y: RwSignal<Option<f64>>) {
 
 #[component]
 pub fn Home() -> impl IntoView {
-    view! { <DiscoveryPage /> }
+    let params = use_query_map();
+    let authors = Memo::new(move |_| params.read().get("mode").as_deref() == Some("authors"));
+    let query = Memo::new(move |_| {
+        let params = params.read();
+        (params.get("q").unwrap_or_default(), params.get("cursor"))
+    });
+    view! {
+        <Show when=move || authors.get() fallback=|| view! { <DiscoveryPage /> }>
+            <For each=move || vec![query.get()] key=Clone::clone
+                children=move |(q, cursor)| {
+                    let works = ExploreQuery::new(q.clone(), vec![], None).search();
+                    view! { <super::author_discovery::AuthorSearch q cursor modes=move || view! {
+                        <nav class="vk-rel-directions" aria-label="Chế độ Khám phá">
+                            <a class="vk-ui-link" href=format!("/{works}")>"Tác phẩm"</a>
+                            <a class="vk-ui-link" href=super::author_discovery::author_search_href("", None) aria-current="page">"Tác giả"</a>
+                        </nav>
+                    } /> }
+                } />
+        </Show>
+    }
 }
 
 #[component]
@@ -417,6 +436,10 @@ fn DiscoveryChrome(
                     })
                 }}
             </Suspense>
+            {(!is_tag).then(|| view! {
+                <a id="explore-find-author" class="vk-ui-link"
+                    href=super::author_discovery::author_search_href(&context.query.q, None)>"Tác giả"</a>
+            })}
             <div class="vk-discovery-toolbar">
                 {catalog.map(|catalog| view! {
                     <Suspense fallback=|| view! { <p class="vk-muted" role="status" data-testid="tag-catalog-loading">"Đang tải danh mục thẻ…"</p> }>
@@ -877,7 +900,7 @@ fn PublicResults(
     }.into_any()
 }
 
-fn highlighted_text(text: &str, query: &str) -> AnyView {
+pub(super) fn highlighted_text(text: &str, query: &str) -> AnyView {
     crate::search::highlight_spans(text, query)
         .into_iter()
         .map(|(part, matched)| {

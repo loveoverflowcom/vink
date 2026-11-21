@@ -30,6 +30,13 @@ pub trait PublicReads: Send + Sync + 'static {
     ) -> PortFuture<Result<crate::contract::follow::AuthorRelationshipsLoad, LoadError>> {
         Box::pin(std::future::ready(Err(LoadError::Unavailable)))
     }
+    fn authors(
+        &self,
+        _q: String,
+        _cursor: Option<String>,
+    ) -> PortFuture<Result<crate::contract::PublicAuthorPage, LoadError>> {
+        Box::pin(std::future::ready(Err(LoadError::Unavailable)))
+    }
     fn works(
         &self,
         query: crate::discovery::ExploreQuery,
