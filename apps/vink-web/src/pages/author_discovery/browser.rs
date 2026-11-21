@@ -370,10 +370,12 @@ fn ActiveAuthorFollow(
     });
     view! {
         <div class="vk-author-search__follow">
-            <Button variant state on_press=press attr:aria-pressed=move || following.get().to_string()>
+            <Button variant state on_press=press
+                id=target.with_value(|handle| format!("search-follow-{handle}"))
+                described_by=target.with_value(|handle| format!("search-author-{handle}"))>
                 {move || controller.with(|owner| match owner.phase() {
                     FollowPhase::Reconciling { .. } => "Đối chiếu",
-                    _ if following.get() => "Đang theo dõi",
+                    _ if following.get() => "Bỏ theo dõi",
                     _ => "Theo dõi",
                 })}
             </Button>

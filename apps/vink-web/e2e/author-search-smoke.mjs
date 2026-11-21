@@ -210,9 +210,17 @@ export async function authorSearch(page, { args, check }) {
   await page.goto(base + queryUrl(pen));
   const action = `document.querySelector(${JSON.stringify(row(currentAuthor))})?.closest('li').querySelector('button')`;
   await page.waitFor(`${action}?.textContent.trim() === 'Theo dõi'`, 'first real session gets the Follow button');
+  check(await page.eval(`(() => {
+    const paths = performance.getEntriesByType('resource').map(entry => new URL(entry.name).pathname);
+    return paths.filter(path => path === '/api/v1/me/follows/membership').length === 1
+      && !paths.some(path => path.endsWith('/relationship/me'));
+  })()`), 'the visible author page uses one membership batch and no per-row reads');
   await page.eval(`${action}.click()`);
-  await page.waitFor(`${action}?.textContent.trim() === 'Đang theo dõi' && ${action}.getAttribute('aria-pressed') === 'true'`,
+  await page.waitFor(`${action}?.textContent.trim() === 'Bỏ theo dõi'`,
     'Follow writes through the Graph owner and reflects committed membership');
+  const relationship = await fetchInPage(page, SEARCH + '/' + currentAuthor + '/relationship/me');
+  check(relationship.status === 200 && JSON.parse(relationship.body).following,
+    'the first viewer’s confirmed membership is persisted by Graph');
   check((await fetchInPage(page, SEARCH + '?q=' + encodeURIComponent(pen))).body === guest,
     'first viewer gets the same public JSON bytes, order and cursor as the guest');
 
