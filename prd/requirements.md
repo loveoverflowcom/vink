@@ -437,3 +437,48 @@ chờ signoff nằm ở [kho quyết định](../decisions/README.md#thông-báo
 - *Mức triển khai* — `NOT_IMPLEMENTED` cho Notification Service, outbox/relay thông báo, API Gateway inbox/Seen/Read/chi tiết quyết định, danh sách người Thấm công khai và UI Web. LayoutSpec thuộc đợt Design (`NOT_CREATED`).
 - *Bằng chứng* — [Bảng truy vết](../docs/development/notifications.md) ghi phần đã đối chiếu ở mức tài liệu và hợp đồng. Kiểm chứng runtime của các luồng Notifications ở PostgreSQL, HTTP và browser còn `NOT_RUN`.
 - *Hoãn (`DEFERRED`) và loại khỏi Epic (`REMOVED_FROM_SCOPE`):* Follow Notifications (`#284`), gửi/soạn/sửa/rút/ủy quyền/broadcast thông báo quản trị (`P-05`), push OS, email thông báo, WebSocket/SSE, preference UI nâng cao, và mọi UI native/CMP (`P-14A`) đều `DEFERRED`. Hữu ích trên bình luận bị loại khỏi phạm vi Epic `#305` (`REMOVED_FROM_SCOPE`), không tự xóa code LVE hiện có.
+
+## 17. Lượt xem tác phẩm (Work views)
+
+Tác giả biết bài của mình được mở đọc ở mức nào qua một con số tham khảo **Lượt xem** tại Bàn
+viết. Phạm vi này trả lời [Epic #323](https://github.com/loveoverflowcom/vink/issues/323)
+(P-01..P-11) qua [#340](https://github.com/loveoverflowcom/vink/issues/340). Ngày 21/11/2026,
+trong phiên làm #340, chủ sản phẩm trả lời “Theo khuyến nghị” cho đúng bộ khuyến nghị
+P-01..P-11 và luật hiển thị ghi dưới đây. Brief do chủ sản phẩm gửi. Định nghĩa, bảng ví dụ và
+vòng đời theo trạng thái nằm ở [đặc tả nghiệp vụ](../docs/architecture/work-views.md). Mức triển
+khai và bản đồ sang #341–#343 nằm ở [registry phát triển](../docs/development/work-views.md).
+[VDR-WORK-VIEWS@r1](../decisions/proposals/VDR-WORK-VIEWS.r1.toml) ghi cùng nội dung; chủ sản
+phẩm đã duyệt đúng revision này cùng ngày ([signoff](../decisions/signoffs/VDR-WORK-VIEWS.r1.toml)),
+nên đây là revision hiện hành.
+
+Các ID dưới đây giữ nguyên WR-01, UX-01, AUD-01/02, PUB-04/05/07, MOD-05, INV-08 và `O-17@r2`
+(trang rút trả HTTP 200; mã HTTP không phải bằng chứng đã xem).
+
+| ID | Nguồn #323 | Quy tắc sản phẩm đã chốt trong brief (`PRODUCT_CONFIRMED`, 21/11/2026) |
+| --- | --- | --- |
+| VIEW-01 | P-01 B | Một lượt được cộng khi thân bài công khai đã hiện sau thao tác mở. Không yêu cầu thời gian ở lại. Bấm rồi hủy, tải lỗi và trang thay thế (trang ẩn của PUB-07, trang rút sau kiểm duyệt của `O-17@r2`, kể cả khi trả HTTP 200) đều không cộng. Tên hiển thị là “Lượt xem”. Đây không phải số người duy nhất và không phải số người đọc hết bài. |
+| VIEW-02 | P-02 B | Link nội bộ, URL trực tiếp, link chia sẻ và tab mới đều tính; mở bằng chuột, chạm hay Enter đều như nhau. Hover, prefetch và bot tạo bản xem trước link không tính. Trình duyệt tắt JavaScript không được đếm, và giới hạn này phải được ghi rõ cho tác giả. |
+| VIEW-03 | P-03 C | Mỗi người đọc được tính tối đa một lượt cho mỗi tác phẩm trong cửa sổ 24 giờ trượt. Refresh, Back/Forward hay mở lại trong cửa sổ không cộng. Gửi trùng kỹ thuật (bấm đúp, gửi lại cùng sự kiện) không bao giờ thành lượt mới. |
+| VIEW-04 | P-04 A | Khách chưa đăng nhập được tính. Chống trùng cho khách dùng mã ngẫu nhiên first-party có thời hạn bằng cửa sổ VIEW-03. Không dùng IP thô, không fingerprint. Chấp nhận đếm lại khi khách xóa cookie, đổi trình duyệt/máy hoặc đăng nhập giữa cửa sổ. |
+| VIEW-05 | P-05 B | Không tính khi phiên đang đăng nhập là tác giả của bài. Màn kiểm duyệt, preview và nháp không bao giờ tính. Admin mở Reader công khai như độc giả thì được tính. Tác giả đã đăng xuất được tính như khách; hệ thống không hứa nhận diện được tác giả trong trường hợp đó. |
+| VIEW-06 | P-06 A | Số lượt cộng dồn theo `WorkId` qua sửa, đăng lại và revision mới. Khác với Thấm, vốn gắn với `RevisionId` đang công khai. |
+| VIEW-07 | P-07 A | Bản đầu chỉ tác giả thấy số, tại Bàn viết. Không có số công khai ở Reader, Khám phá hay hồ sơ, và không có danh sách người đã xem. |
+| VIEW-08 | P-08 A | Khi bài bị ẩn hoặc chuyển “Chỉ mình tôi” (trang ẩn, PUB-07) hay bị rút sau kiểm duyệt (`O-17@r2`), tác giả vẫn thấy số cũ và số không tăng thêm. Công khai lại thì đếm tiếp từ số cũ. Mở trang thay thế không tính. |
+| VIEW-09 | P-09 A | Đếm bắt đầu từ ngày bật tính năng. Bài đã công khai trước mốc mang nhãn “Tính từ dd/mm/yyyy”. Không backfill vì chưa từng có nguồn dữ liệu (#214 loại tracking khỏi phạm vi). Không suy lượt xem từ Thấm hay Nhận xét. |
+| VIEW-10 | P-10 A | Lượt xem là số tham khảo. Kỳ vọng tác giả thấy lượt mới trong khoảng 1 phút; đây là kỳ vọng, không phải SLA. Gửi lỗi được thử lại hữu hạn trong cùng tab với cùng mã sự kiện. Đóng tab hoặc offline có thể làm mất lượt, nhưng không bao giờ cộng trùng. Lỗi thống kê không bao giờ cản người đọc mở hay đọc bài. |
+| VIEW-11 | P-11 B | Chỉ lưu tổng theo tác phẩm, tổng theo ngày theo tác phẩm (không theo người, chưa có biểu đồ) và mã chống trùng đã băm, tự xóa khi hết cửa sổ VIEW-03. Xóa tác phẩm hoặc xóa tài khoản thì xóa số liệu tương ứng. |
+| VIEW-12 | UX | Chưa có số hoặc đọc số lỗi hiển thị “—” kèm lý do, khác với “0” thật (theo mẫu của VDR-AUTHOR-WORK-FEEDBACK). Số định dạng kiểu Việt (1.234). Không cập nhật trực tiếp (realtime) và không gửi thông báo. Nhãn phải diễn đạt đúng độ phủ: khách tính theo trình duyệt, trình duyệt không có JavaScript không được đếm, nhãn “Tính từ” cho bài cũ. |
+
+**Trạng thái bốn chiều và phần còn mở của §17:**
+- *Quyết định sản phẩm:* VIEW-01..12 là `PRODUCT_CONFIRMED` trong brief ngày 21/11/2026.
+  [VDR-WORK-VIEWS@r1](../decisions/proposals/VDR-WORK-VIEWS.r1.toml) ghi cùng nội dung, có
+  [signoff](../decisions/signoffs/VDR-WORK-VIEWS.r1.toml) `PRODUCT_CONFIRMED` ngày 21/11/2026. Còn `OPEN`: OQ-1 (hiện Lượt xem khi bài riêng tư trong khi Thấm/Nhận xét bị ẩn),
+  OQ-2 (luật xóa số liệu chờ route xóa tác phẩm/tài khoản), OQ-3 (thân bài hiện mà không có
+  thao tác mở mới, tab mở nền) và OQ-4 (admin gỡ cả bài, PUB-05 C). Chi tiết ở
+  [đặc tả](../docs/architecture/work-views.md#4-câu-hỏi-còn-mở).
+- *Quyết định kiến trúc:* CHOICE-01..06 của #323 còn `OPEN`, giao cho #341–#343. Đặc tả chỉ ghi
+  ràng buộc nghiệp vụ mà các lựa chọn phải thỏa.
+- *Mức triển khai:* `NOT_IMPLEMENTED` (không có bảng, API, tín hiệu Web hay UI).
+- *Bằng chứng:* chỉ kiểm tài liệu; không có runtime PASS.
+- *Ngoài phạm vi §17:* số công khai ở Reader, danh sách người xem, dashboard/biểu đồ, xếp hạng,
+  Notifications, CMP/native, vị trí và thiết kế thị giác của con số (thuộc lượt thiết kế sau).

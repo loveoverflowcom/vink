@@ -1,0 +1,9 @@
+version = 1
+id = "VDR-WORK-VIEWS"
+revision = 1
+sha256 = "cfb789cc2c5f7a99a2f8c8e24f0057815d736d7b02cdacde50d327c8a525e008"
+status = "PRODUCT_CONFIRMED"
+decided_on = "2026-11-21"
+source = """
+Chủ sản phẩm duyệt trong phiên làm #340 ngày 21/11/2026 (PR #375). Câu hỏi: “Bạn duyệt VDR-WORK-VIEWS@r1 (sha cfb789cc…) để tôi ghi signoff không?”. Trả lời nguyên văn: “Duyệt r1”. Phạm vi: đúng revision r1, SHA-256 cfb789cc2c5f7a99a2f8c8e24f0057815d736d7b02cdacde50d327c8a525e008 (P-01..P-11 và luật UX của Lượt xem, VIEW-01..12, kể cả cách đọc cửa sổ 24 giờ neo tại lượt được tính); OQ-1..OQ-4 và CHOICE-01..06 vẫn OPEN.
+"""
