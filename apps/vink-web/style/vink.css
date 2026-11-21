@@ -1866,15 +1866,19 @@ a {
   outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
   outline-offset: var(--vk-size-focus-offset);
 }
+#following-feed-heading {
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  margin: 0 0 var(--vk-space-4);
+  overflow-wrap: anywhere;
+  scroll-margin-block-start: 5.5rem;
+}
+#following-feed-heading:focus {
+  outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
+  outline-offset: var(--vk-size-focus-offset);
+}
 .vk-feed-state, .vk-feed-paging {
   margin-block: var(--vk-space-6);
-}
-.vk-discovery--following .vk-public-row__byline {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--vk-space-2) var(--vk-space-4);
-  align-items: center;
-  justify-content: space-between;
 }
 .vk-feed-date {
   color: var(--vk-on-surface-variant);
@@ -2040,6 +2044,10 @@ a {
   .vk-discovery .vk-public-row__byline a.vk-ui-byline__identity {
     scroll-margin-block-start: 4.5rem;
     scroll-margin-block-end: calc(var(--vk-ui-bar-height, 5rem) + 1rem);
+  }
+  /* A fully wrapped byline needs the space above the bottom bar at large text sizes. */
+  .vk-discovery--following .vk-public-row__byline a.vk-ui-byline__identity {
+    scroll-margin-block-start: 1rem;
   }
   .vk-discovery[data-enhanced="true"][data-search="open"] .vk-public-row,
   .vk-discovery[data-enhanced="true"][data-search="open"] .vk-public-row__link,

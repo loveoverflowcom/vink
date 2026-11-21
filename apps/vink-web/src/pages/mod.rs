@@ -433,6 +433,10 @@ extern "C" {
     fn has_profile_return() -> bool;
     #[wasm_bindgen(js_name = clearProfileReturn)]
     fn clear_profile_return();
+    #[wasm_bindgen(js_name = profileReturnWork)]
+    fn profile_return_work() -> Option<String>;
+    #[wasm_bindgen(js_name = profileReturnHref)]
+    fn profile_return_href() -> Option<String>;
 }
 
 #[cfg(feature = "hydrate")]
@@ -476,17 +480,29 @@ fn remember_public_position(
     }
 }
 
+#[cfg(feature = "hydrate")]
+#[derive(Clone, PartialEq, Eq)]
+enum ExploreRestore {
+    Public,
+    Guest,
+    Feed {
+        ticket: crate::read_lifecycle::ReadTicket<String>,
+        anchor: Option<String>,
+    },
+}
+
 /// Restore a row fragment once for the settled route, not on background list refresh.
 #[cfg(feature = "hydrate")]
 fn restore_public_position(stream: NodeRef<leptos::html::Section>, settled: Memo<bool>) {
-    restore_explore_position(stream, settled, Signal::stored(true));
+    let ready = Signal::derive(move || settled.get().then_some(ExploreRestore::Public));
+    restore_explore_position(stream, ready, None);
 }
 
 #[cfg(feature = "hydrate")]
 fn restore_explore_position(
     stream: NodeRef<leptos::html::Section>,
-    settled: Memo<bool>,
-    allow_anchor: Signal<bool>,
+    ready: Signal<Option<ExploreRestore>>,
+    private: Option<(&'static str, RwSignal<bool>)>,
 ) {
     use leptos_router::hooks::use_location;
     use wasm_bindgen::JsCast;
@@ -496,13 +512,19 @@ fn restore_explore_position(
         let path = location.pathname.get();
         let query = location.search.get();
         let hash = location.hash.get();
+        let fallback_heading = private.map(|(heading, _)| heading);
+        let author_work = private.and_then(|_| profile_return_work());
+        let author_href = author_work.as_ref().and_then(|_| profile_return_href());
         let id = hash.trim_start_matches('#');
-        if id != "community-stream" && !id.starts_with("work-") {
+        if author_work.is_none() && id != "community-stream" && !id.starts_with("work-") {
             return;
         }
-        if !settled.get() {
+        let row_id = author_work
+            .as_ref()
+            .map_or_else(|| id.to_owned(), |work| format!("work-{work}"));
+        let Some(permit) = ready.get() else {
             return;
-        }
+        };
         let Some(stream) = stream.get() else {
             return;
         };
@@ -512,7 +534,12 @@ fn restore_explore_position(
             // several queries, even when a stale callback sees the same path and hash.
             // A later author click can intentionally leave that row fragment in place.
             if !stream.is_connected()
-                || has_profile_return()
+                || ready.try_get_untracked().flatten().as_ref() != Some(&permit)
+                || if fallback_heading.is_some() {
+                    author_work != profile_return_work()
+                } else {
+                    has_profile_return()
+                }
                 || address.pathname().ok().as_deref() != Some(path.as_str())
                 || address
                     .search()
@@ -524,35 +551,64 @@ fn restore_explore_position(
             {
                 return;
             }
+            let allow_anchor = match permit {
+                ExploreRestore::Public => true,
+                ExploreRestore::Feed { ref anchor, .. } => anchor
+                    .as_ref()
+                    .is_some_and(|work| row_id.strip_prefix("work-") == Some(work.as_str())),
+                ExploreRestore::Guest => false,
+            };
             let row = allow_anchor
-                .try_get_untracked()
-                .unwrap_or_default()
-                .then(|| document().get_element_by_id(hash.trim_start_matches('#')))
+                .then(|| document().get_element_by_id(&row_id))
                 .flatten()
                 .filter(|row| {
                     row.class_list().contains("vk-public-row") && stream.contains(Some(row))
                 });
             let anchor = row.as_ref().and_then(|row| {
-                row.query_selector(".vk-public-row__link")
+                let selector = if author_work.is_some() {
+                    "a[data-profile-return]"
+                } else {
+                    ".vk-public-row__link"
+                };
+                row.query_selector(selector)
                     .ok()
                     .flatten()
+                    .filter(|link| {
+                        author_work.is_none() || link.get_attribute("href") == author_href
+                    })
                     .and_then(|link| link.dyn_into::<web_sys::HtmlElement>().ok())
             });
-            let target = anchor.as_ref().unwrap_or(&stream);
+            let fallback = match fallback_heading {
+                Some(id) => document()
+                    .get_element_by_id(id)
+                    .filter(|heading| stream.contains(Some(heading)))
+                    .and_then(|heading| heading.dyn_into::<web_sys::HtmlElement>().ok()),
+                None => Some(stream.clone().unchecked_into()),
+            };
+            let Some(target) = anchor.as_ref().or(fallback.as_ref()) else {
+                return;
+            };
+            if let Some((_, completed)) = private {
+                completed.set(true);
+            }
             // The result may arrive after the reader has already focused search or another
             // control. Leave both their focus and viewport alone in that case.
             if document().active_element().is_some_and(|active| {
                 active.tag_name() != "BODY"
                     && active.id() != "community-stream"
+                    && !fallback_heading
+                        .is_some_and(|id| active.id() == id || active.id() == "noi-dung")
                     && !row.as_ref().is_some_and(|row| row == &active)
                     && !target.is_same_node(Some(&active))
             }) {
                 return;
             }
-            if let (Some(row), Some(_)) = (row, anchor.as_ref()) {
+            if author_work.is_none()
+                && let (Some(row), Some(_)) = (row, anchor.as_ref())
+            {
                 row.scroll_into_view();
             } else {
-                stream.scroll_into_view();
+                target.scroll_into_view();
             }
             let options = web_sys::FocusOptions::new();
             options.set_prevent_scroll(true);

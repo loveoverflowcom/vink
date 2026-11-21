@@ -379,6 +379,29 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
     }
     console.log('  ok  Back restores', link);
   }
+  // Join the real byline navigation with a member's Follow and the profile's per-field policy.
+  await page.send('Page.bringToFront');
+  await page.goto(base + readerPath);
+  await page.waitFor(`${q(bylines[2][0])} && document.documentElement.dataset.hydrated === 'true'`,
+    'member can open the other author from a verified reply byline');
+  await page.eval(`${q(bylines[2][0])}.focus()`);
+  await page.key('Enter');
+  await page.waitFor(`location.pathname === ${JSON.stringify(bPath)} &&
+    ${q('#follow-action')}?.textContent.trim() === 'Theo dõi'`, 'reply author has a real member Follow action');
+  await page.click('#follow-action');
+  await page.waitFor(`${q('#follow-action')}?.textContent.trim() === 'Bỏ theo dõi'`,
+    'profile reached from reply confirms the Follow');
+  await page.click('#profile-followers-link');
+  await page.waitFor(`${q('#relationship-title')} && ${q('#rel-person-' + a.handle)}`,
+    'public follower list includes the member who followed from the reply');
+  await page.eval('history.back()');
+  await page.waitFor(`${q('#author-profile-heading')} && ${q('#follow-action')}?.textContent.trim() === 'Bỏ theo dõi'`,
+    'Back returns to the same author and confirmed state');
+  check(await page.eval(`!${q('#profile-following-link')}`), 'the other author’s private Following list remains hidden');
+  await page.click('#follow-action');
+  await page.waitFor(`${q('#follow-action')}?.textContent.trim() === 'Theo dõi'`, 'clean up the confirmed fixture edge');
+  await guest.send('Page.bringToFront');
+
   const commentHash = '#comment-' + ids.reply;
   const jump = '#comment-' + ids.tail + ' a[href="' + commentHash + '"]';
   check(await guest.eval(`!!${q(jump)}`), 'reply context still has a separate comment jump');

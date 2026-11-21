@@ -78,8 +78,9 @@ pub(crate) fn following_feed_enabled() -> bool {
 #[cfg(feature = "hydrate")]
 pub(crate) async fn load_following_feed(
     query: &str,
-) -> Result<crate::contract::FeedResponse, ApiError> {
-    http::get(&format!("/api/v1/me/following-feed{query}")).await
+    return_scope: Option<&str>,
+) -> Result<(crate::contract::FeedResponse, Option<String>), ApiError> {
+    http::following_feed(&format!("/api/v1/me/following-feed{query}"), return_scope).await
 }
 
 #[cfg(feature = "hydrate")]
@@ -1139,6 +1140,25 @@ mod http {
             .await
             .map_err(|_| ApiError::Network)?;
         decode(path, response).await
+    }
+
+    pub(super) async fn following_feed(
+        path: &str,
+        return_scope: Option<&str>,
+    ) -> Result<(crate::contract::FeedResponse, Option<String>), ApiError> {
+        const RETURN_SCOPE: &str = "x-vink-feed-return-scope";
+        let deadline = Deadline::new()?;
+        let signal = deadline.controller.signal();
+        let mut request = Request::get(path)
+            .cache(web_sys::RequestCache::NoStore)
+            .abort_signal(Some(&signal))
+            .header("accept", "application/json");
+        if let Some(scope) = return_scope {
+            request = request.header(RETURN_SCOPE, scope);
+        }
+        let response = request.send().await.map_err(|_| ApiError::Network)?;
+        let scope = response.headers().get(RETURN_SCOPE);
+        Ok((decode(path, response).await?, scope))
     }
 
     pub async fn send<B: Serialize, T: DeserializeOwned>(

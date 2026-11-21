@@ -23,8 +23,9 @@ cho #296 ở mức PostgreSQL. [Ca tích hợp](../../services/vink-app/tests/po
 kiểm lần đầu commit, writer cạnh tranh, rollback, rút/tái đăng và nguồn mốc sau backfill.
 
 **Đang theo dõi #296** · Mode riêng `/?mode=following` trong Khám phá. Feed lấy cạnh
-hiện hành và publication theo mốc đầu, tải riêng theo phiên, hỗ trợ tải thêm và Back qua
-Reader. [Owner, thiết kế kỹ thuật và quay lui](social-graph.md#đang-theo-dõi-trong-khám-phá-296).
+hiện hành và publication theo mốc đầu, tải riêng theo phiên. Web đọc lại quyền khi Back
+từ Reader hoặc hồ sơ rồi trả focus về link còn hợp lệ, hoặc tiêu đề Feed nếu mất anchor.
+[Owner, thiết kế kỹ thuật và quay lui](social-graph.md#đang-theo-dõi-trong-khám-phá-296).
 
 ## Thông báo cộng đồng và danh sách Thấm (#345, #346)
 
