@@ -232,6 +232,19 @@ toàn dùng bản có cả migration lẫn redaction, ưu tiên tắt entry form
   scenario `cargo xtask verify web --scenario author-search` dùng App và Identity scratch.
   Giá trị ngày sinh chưa có trong runtime. Scope Chrome IME dùng sự kiện mô phỏng.
 
+## Trình bày tìm tác giả #354
+
+- **Web.** Tiêu đề tìm kiếm hiển thị truy vấn đã gửi. Gợi ý có chú thích về danh sách công
+  khai dùng chung. Truy vấn bút danh tô phần khớp trong tên và truy vấn exact `@handle`
+  tô Handle. Kết quả rỗng có lối tìm cùng từ khóa trong tác phẩm và xóa tìm kiếm.
+  Chờ lần đầu, lỗi lần đầu và lỗi tải thêm có phản hồi riêng trong vùng kết quả.
+- **Phiên và Back.** Lớp hydrate dùng Handle từ một lượt đọc hồ sơ của phiên hiện hành
+  cho mỗi vùng tìm tác giả đang mở để hiện “Bạn” ở hàng chính mình. Khi revalidate
+  trên đường Back và hàng đã mở đã mất, Web thông báo cập nhật danh sách rồi đặt
+  focus ở tiêu đề vùng kết quả.
+- **Kiểm chứng.** [Ma trận Chrome trước/sau, số đo và AX tree](evidence/author-search-354/README.md).
+  Các khung 295-01..04 có trạng thái `DESIGN_PROPOSED / NO_APPROVED_REFERENCE`.
+
 ## Social adapter thu hồi tài khoản #297
 
 - **Sản phẩm.** SOC-LIFE-02 yêu cầu thu hồi mọi địa chỉ và quan hệ của tài khoản đã
