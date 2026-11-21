@@ -208,6 +208,7 @@ toàn dùng bản có cả migration lẫn redaction, ưu tiên tắt entry form
   phiên loại dữ liệu, hint và kết quả đang bay.
   Khi Back nhanh đổi entry trước hydrate, Web đối chiếu mã băm tuyến SSR rồi tải
   đúng địa chỉ đang mở.
+  [Bằng chứng Web #355](evidence/following-feed-355/README.md) đi qua Feed, Reader và hồ sơ.
 - **Quay lui.** Đặt `VINK_FOLLOWING_FEED=disabled` rồi khởi động lại App. Link mode ẩn,
   đường dẫn đã lưu có trạng thái tạm tắt và lối về Khám phá. Route API trả 404.
   Giữ migration index, fact Publication và cả cạnh/receipt. Chuyển lại `enabled`
