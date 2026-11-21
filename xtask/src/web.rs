@@ -320,6 +320,8 @@ enum IdentityPhase {
     Auth,
     /// AUTH-PASSWORD-WEB-01: the same App against native Identity with both methods.
     PasswordAuth,
+    /// Author discovery with separate public and session-scoped projections.
+    AuthorSearch,
     /// PUB-AUTHOR-WEB-01: the author's whole publication path with a second, granted moderator.
     PublicationAuthor,
 }
@@ -403,7 +405,7 @@ fn auth_web(
         .env(
             "VINK_IDENTITY_AUTHORITY",
             match phase {
-                IdentityPhase::PasswordAuth => "native",
+                IdentityPhase::PasswordAuth | IdentityPhase::AuthorSearch => "native",
                 _ => "email-code",
             },
         )
@@ -458,9 +460,18 @@ fn auth_web(
             &origin,
             state,
         ),
-        IdentityPhase::PasswordAuth => smoke_with_env(
+        IdentityPhase::PasswordAuth | IdentityPhase::AuthorSearch => smoke_with_env(
             root,
-            &["--phase", "auth-password", "--outbox", &outbox],
+            &[
+                "--phase",
+                if matches!(phase, IdentityPhase::AuthorSearch) {
+                    "author-search"
+                } else {
+                    "auth-password"
+                },
+                "--outbox",
+                &outbox,
+            ],
             chrome,
             &origin,
             state,
@@ -530,12 +541,13 @@ fn publication_author(
 
 /// The email-code phase exhausts the App's network limiter. Password auth also uses email
 /// (including enrollment), so give it independent App state and fresh Identity state.
-fn password_auth_web(
+fn native_auth_scratch(
     root: &Path,
     server: &Server,
     admin_url: &str,
     chrome: &str,
     state: &Path,
+    phase: IdentityPhase,
 ) -> Result<(), String> {
     let drop = format!("DROP DATABASE IF EXISTS {PASSWORD_AUTH_DATABASE} WITH (FORCE)");
     let _ = crate::identity::sql(admin_url, &drop);
@@ -547,14 +559,7 @@ fn password_auth_web(
     let result = (|| {
         let app = server.with_database(PASSWORD_AUTH_DATABASE)?;
         prepare_app(root, &app, false)?;
-        auth_web(
-            root,
-            &app,
-            admin_url,
-            chrome,
-            state,
-            IdentityPhase::PasswordAuth,
-        )
+        auth_web(root, &app, admin_url, chrome, state, phase)
     })();
     let _ = crate::identity::sql(admin_url, &drop);
     result
@@ -715,7 +720,18 @@ pub fn verify_selected(report: &mut Report, env: &Env, plan: &Plan) -> bool {
                         let _ = guard.terminate(Duration::from_secs(15));
                         result
                     }
-                    Scenario::Password => password_auth_web(&root, &server, &url, &chrome, &state),
+                    Scenario::Password | Scenario::AuthorSearch => native_auth_scratch(
+                        &root,
+                        &server,
+                        &url,
+                        &chrome,
+                        &state,
+                        if *scenario == Scenario::AuthorSearch {
+                            IdentityPhase::AuthorSearch
+                        } else {
+                            IdentityPhase::PasswordAuth
+                        },
+                    ),
                     Scenario::Publication => {
                         publication_author(&root, &server, &url, &chrome, &state)
                     }

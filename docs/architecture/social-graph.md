@@ -157,8 +157,8 @@ cập nhật đã có của child. Điểm mở chỉ chặn hành vi khác nhau
 | SOC-OPEN-02 | Xác nhận tường minh cả khi giữ gợi ý | Chờ lần đầu đặt tên riêng mới kết thúc setup | `PRODUCT_CONFIRMED` A theo lời chủ ở [#290 r2](https://github.com/loveoverflowcom/vink/issues/290), 18/11. #290 kiểm cả giữ và sửa tên rồi còn 2 lượt. |
 | SOC-OPEN-03 | Alias đã nghỉ vĩnh viễn không trở lại current | Chỉ chính Principal cũ được dùng lại, tính một lượt đổi bình thường sau setup | `PRODUCT_OPEN` · #290, chỉ lệnh/UX reclaim. Người khác vĩnh viễn không được cấp tên này. |
 | SOC-OPEN-04 | Avatar chữ theo phạm vi sản phẩm v1 | Upload có storage, thay/xóa ảnh gốc, thumbnails và quyền đọc bytes | `PRODUCT_OPEN` · #292/#298. #298 chỉ kích hoạt khi chọn B. A điều chỉnh nghiệm thu media. |
-| SOC-OPEN-05 | Exact Handle, tìm bút danh/Handle hiện tại, alias chỉ resolve ở URL | Thêm tìm alias về đúng một Principal, nêu rõ liên hệ lịch sử | `PRODUCT_OPEN` · #289/#295, chốt cả nơi tìm (mode tác giả trong Khám phá hoặc nhóm tác giả trong kết quả). Cả hai tìm được người chưa có bài. |
-| SOC-OPEN-06 | Tập xếp hạng công khai trung tính, CTA theo viewer | Sau xếp hạng mới lọc mình/đã Follow bằng quyền của viewer | `PRODUCT_OPEN` · #295, B cần #294. Cả hai cấm dùng cạnh riêng để tạo candidate/score. |
+| SOC-OPEN-05 | Exact Handle, tìm bút danh/Handle hiện tại, alias chỉ resolve ở URL | Thêm tìm alias về đúng một Principal, nêu rõ liên hệ lịch sử | `PRODUCT_CONFIRMED` A, mode **Tác giả** riêng trong Khám phá theo [#295](https://github.com/loveoverflowcom/vink/issues/295), 21/11/2026. |
+| SOC-OPEN-06 | Tập xếp hạng công khai trung tính, CTA theo viewer | Sau xếp hạng mới lọc mình/đã Follow bằng quyền của viewer | `PRODUCT_CONFIRMED` A theo [#295](https://github.com/loveoverflowcom/vink/issues/295), 21/11/2026. Phần Theo dõi dùng Graph #294 theo phiên. |
 
 **Phụ thuộc Account/Identity**
 

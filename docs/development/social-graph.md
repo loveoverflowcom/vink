@@ -92,7 +92,7 @@ các phụ thuộc tương ứng đã tích hợp. PRE-04 và bằng chứng UI 
 | [#292 · Profile](https://github.com/loveoverflowcom/vink/issues/292) | #290, LayoutSpec vùng Tôi/Profile | Public ref, DTO và quyền tám trường. OPEN-01/04 và USER-01 chỉ giữ phần tương ứng. CHOICE-05 kiểm HTTP trước 304 + browser. |
 | [#293 · Attribution](https://github.com/loveoverflowcom/vink/issues/293) | #292, ref công khai | Card, Reader, comment và reply context cùng đúng ref. Kiểm fixture provider/consumer, SSR và hai link độc lập. |
 | [#294 · Graph](https://github.com/loveoverflowcom/vink/issues/294) | #292, policy list/count | CHOICE-02/03 cần race/receipt thật, đối soát và query plan. DEP-02 chỉ giữ claim hạn chế nội dung. |
-| [#295 · Tìm/gợi ý](https://github.com/loveoverflowcom/vink/issues/295) | #292, thêm #294 cho nút/lọc theo viewer | OPEN-05/06 giữ phạm vi tìm/lọc. So bytes public, pagination và query plan trên hai viewer. |
+| [#295 · Tìm/gợi ý](https://github.com/loveoverflowcom/vink/issues/295) | #292, thêm #294 cho nút/lọc theo viewer | OPEN-05/06 chọn A. So bytes public, pagination và query plan trên hai viewer. |
 | [#296 · Following Feed](https://github.com/loveoverflowcom/vink/issues/296) | #291 + #293 + #294 | Chỉ nhận exact khi mở thử. CHOICE-05/06 kiểm query, cursor, đổi phiên, graph và Back. |
 | [#297 · Lifecycle](https://github.com/loveoverflowcom/vink/issues/297) | #293 + #294, DEP-01 từ Account/Identity | Kiểm Social fence và resume cục bộ. E2E xóa cần cả hai DB, old session, Publication và Discussion. |
 | [#298 · Media](https://github.com/loveoverflowcom/vink/issues/298) | #292, chỉ khi OPEN-04 chọn upload | Chứng minh quyền đến URL cũ/bytes/variants/validator sau revoke, thay ảnh và xóa. |
@@ -211,3 +211,24 @@ toàn dùng bản có cả migration lẫn redaction, ưu tiên tắt entry form
   đường dẫn đã lưu có trạng thái tạm tắt và lối về Khám phá. Route API trả 404.
   Giữ migration index, fact Publication và cả cạnh/receipt. Chuyển lại `enabled`
   rồi khởi động lại để mở Feed từ dữ liệu hiện hành.
+
+## Tìm và gợi ý tác giả #295
+
+- **Sản phẩm.** SOC-OPEN-05/06 chọn A theo [#295](https://github.com/loveoverflowcom/vink/issues/295).
+  Mode **Tác giả** riêng trong Khám phá. Kết quả lấy bút danh/Handle hiện hành. Handle cũ
+  dùng resolver khi mở URL. Gợi ý và thứ tự dùng chung, nút Theo dõi cập nhật theo phiên.
+- **Kiến trúc.** Dùng Handle công khai làm khóa sắp trang. Dùng hai nhánh prefix rời nhau
+  theo Handle và bút danh gập dấu. Mỗi nhánh lấy tối đa một trang cộng một và kết quả
+  chung cũng giữ giới hạn này. Hai index dùng projection hiện hành của Profile.
+  `VDR-SOCIAL-CONTRACT@r1` giữ trạng thái `PENDING`.
+- **Triển khai.** [Provider](../../services/vink-app/src/persistence/author_discovery.rs),
+  [hợp đồng HTTP](../../services/vink-app/contracts/http/v1/social-graph.md#tìm-và-gợi-ý-tác-giả-295),
+  [Web](../../apps/vink-web/src/pages/author_discovery.rs). Kết quả và nút Theo dõi có
+  các request riêng. Lỗi tải thêm giữ hàng đang hiển thị. History lưu vị trí công khai đã
+  mở và Web đọc lại trang trước khi phục hồi focus. Có thể ẩn mode và ngừng phục vụ
+  đường đọc mới cùng lúc, giữ nguyên bảng tên, tombstone và các giới hạn Profile.
+- **Kiểm chứng.** [PG](../../services/vink-app/tests/postgres/author_discovery.rs) so bytes
+  công khai sau thay đổi Bio riêng và quan hệ hai chiều, kiểm NFC/NFD, Handle, alias và
+  truy vấn có dữ liệu lệch. [Chrome](../../apps/vink-web/e2e/author-search-smoke.mjs) có
+  scenario `cargo xtask verify web --scenario author-search` dùng App và Identity scratch.
+  Giá trị ngày sinh chưa có trong runtime. Scope Chrome IME dùng sự kiện mô phỏng.

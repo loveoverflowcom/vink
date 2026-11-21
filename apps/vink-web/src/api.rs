@@ -525,6 +525,56 @@ impl LoadError {
     }
 }
 
+pub(crate) fn author_search_resource(
+    q: StoredValue<String>,
+    cursor: RwSignal<Option<String>>,
+    generation: RwSignal<u64>,
+) -> Resource<(u64, Result<crate::contract::PublicAuthorPage, LoadError>)> {
+    let source = move || (generation.get(), cursor.get());
+    #[cfg(feature = "ssr")]
+    {
+        let port = use_context::<crate::server::SharedPublicReads>();
+        Resource::new(source, move |(stamp, cursor)| {
+            let port = port.clone();
+            let q = q.get_value();
+            async move {
+                let page = match port {
+                    Some(port) => port.authors(q, cursor).await,
+                    None => Err(LoadError::Unavailable),
+                };
+                (stamp, page)
+            }
+        })
+    }
+    #[cfg(not(feature = "ssr"))]
+    {
+        Resource::new(source, move |(stamp, cursor)| {
+            let q = q.get_value();
+            browser(async move { (stamp, load_author_search(&q, cursor.as_deref()).await) })
+        })
+    }
+}
+
+#[cfg(not(feature = "ssr"))]
+pub(crate) async fn load_author_search(
+    query: &str,
+    cursor: Option<&str>,
+) -> Result<crate::contract::PublicAuthorPage, LoadError> {
+    let mut path = format!("/api/v1/authors?q={}", crate::discovery::encode(query));
+    if let Some(cursor) = cursor {
+        path.push_str("&cursor=");
+        path.push_str(&crate::discovery::encode(cursor));
+    }
+    public_get(path).await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn load_follow_membership(
+    handles: &[String],
+) -> Result<crate::contract::follow::MembershipBatch, ApiError> {
+    http::get(&follow_membership_path(handles)).await
+}
+
 pub fn works_resource(
     query: Memo<crate::discovery::ExploreQuery>,
 ) -> Resource<(crate::discovery::ExploreQuery, Result<WorkList, LoadError>)> {
@@ -958,6 +1008,7 @@ fn bounded(path: &str) -> bool {
         || path.starts_with("/api/v1/me/follows/")
         || path.starts_with("/api/v1/me/relationships/")
         || path.starts_with("/api/v1/authors/")
+        || path.starts_with("/api/v1/authors?")
         || path.contains("/tags")
         || path.starts_with("/api/v1/auth/")
 }

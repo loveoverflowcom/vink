@@ -2,7 +2,9 @@
 use super::{ResponseStatus, Unavailable, drop_unnamed_submitter, focus_recovery};
 use crate::api::{self, LoadError};
 use crate::contract::{PublicTagDto, TagDto, TagList, WorkCard, WorkList};
-use crate::discovery::{ExploreContext, ExploreMode, ExploreQuery, requested_slug, tag_href};
+use crate::discovery::{
+    ExploreContext, ExploreMode, ExploreQuery, author_search_href, requested_slug, tag_href,
+};
 use crate::public_reads;
 use crate::ui::{
     adapters,
@@ -93,8 +95,8 @@ pub(super) fn reader_context() -> Memo<ExploreContext> {
     let feed_enabled = api::following_feed_enabled();
     Memo::new(move |_| {
         let params = params.read();
-        let mode = if feed_enabled {
-            mode_from(&params)
+        let mode = if feed_enabled && mode_from(&params) == ExploreMode::Following {
+            ExploreMode::Following
         } else {
             ExploreMode::Works
         };
@@ -189,10 +191,14 @@ fn DiscoveryPage(#[prop(optional)] tag_page: Option<Memo<String>>) -> AnyView {
         } else {
             ExploreMode::Works
         };
-        let mut query = if mode == ExploreMode::Works {
-            query_from(&params)
-        } else {
-            ExploreQuery::default()
+        let mut query = match mode {
+            ExploreMode::Works => query_from(&params),
+            ExploreMode::Following => ExploreQuery::default(),
+            ExploreMode::Authors => ExploreQuery::new(
+                params.get("q").unwrap_or_default(),
+                Vec::new(),
+                params.get("cursor"),
+            ),
         };
         if let Some(slug) = &tag_page {
             query.tags.push(slug.clone());
@@ -220,14 +226,15 @@ fn DiscoveryPage(#[prop(optional)] tag_page: Option<Memo<String>>) -> AnyView {
             {
                 let public = !next
                     .query_pairs()
-                    .any(|(k, v)| k == "mode" && v == "following");
+                    .any(|(k, v)| k == "mode" && matches!(v.as_ref(), "following" | "authors"));
                 let search = public
                     && (next.fragment() == Some("tim-kiem")
                         || next
                             .query_pairs()
                             .any(|(k, v)| k == "q" && !v.trim().is_empty()));
-                let was_search = mobile_search_open.get_untracked()
-                    || !context.get_untracked().query.q.is_empty();
+                let previous = context.get_untracked();
+                let was_search = previous.mode == ExploreMode::Works
+                    && (mobile_search_open.get_untracked() || !previous.query.q.is_empty());
                 mobile_search_open.set(next.path() == "/" && search);
                 if was_search && !search && next.path() == "/" {
                     restore_browse(browse_scroll_y);
@@ -252,8 +259,13 @@ fn DiscoveryScope(
     mobile_search_open: RwSignal<bool>,
     browse_scroll_y: RwSignal<Option<f64>>,
 ) -> AnyView {
-    if context.mode == ExploreMode::Following {
-        return view! { <feed::FollowingFeed context /> }.into_any();
+    match context.mode {
+        ExploreMode::Following => return view! { <feed::FollowingFeed context /> }.into_any(),
+        ExploreMode::Authors => return view! {
+            <super::author_discovery::AuthorSearch q=context.query.q cursor=context.query.cursor />
+        }
+        .into_any(),
+        ExploreMode::Works => {}
     }
     let initial_query = context.query.clone();
     let query = Memo::new(move |_| initial_query.clone());
@@ -263,13 +275,20 @@ fn DiscoveryScope(
 }
 
 #[component]
-fn ExploreModes(mode: ExploreMode) -> impl IntoView {
-    api::following_feed_enabled().then(|| view! {
+pub(super) fn ExploreModes(
+    mode: ExploreMode,
+    #[prop(optional)] author_query: String,
+) -> impl IntoView {
+    view! {
         <nav class="vk-explore-modes" aria-label="Chế độ Khám phá">
             <a id="explore-mode-works" href="/" aria-current=(mode == ExploreMode::Works).then_some("page")>"Tất cả"</a>
-            <a id="explore-mode-following" href=ExploreMode::FOLLOWING_HREF aria-current=(mode == ExploreMode::Following).then_some("page")>"Đang theo dõi"</a>
+            {api::following_feed_enabled().then(|| view! {
+                <a id="explore-mode-following" href=ExploreMode::FOLLOWING_HREF aria-current=(mode == ExploreMode::Following).then_some("page")>"Đang theo dõi"</a>
+            })}
+            <a id="explore-mode-authors" href=author_search_href(&author_query, None)
+                aria-current=(mode == ExploreMode::Authors).then_some("page")>"Tác giả"</a>
         </nav>
-    })
+    }
 }
 
 #[component]
@@ -571,7 +590,7 @@ fn DiscoveryChrome(
                     })
                 }}
             </Suspense>
-            {(!is_tag).then(|| view! { <ExploreModes mode=ExploreMode::Works /> })}
+            {(!is_tag).then(|| view! { <ExploreModes mode=ExploreMode::Works author_query=context.query.q.clone() /> })}
             <section node_ref=stream id="community-stream" aria-label="Tác phẩm khám phá" tabindex="-1">
                 <Suspense fallback=|| view! { <p role="status" data-testid="discovery-loading">"Đang tải kết quả…"</p> }>
                     {move || {
@@ -926,7 +945,7 @@ fn PublicResults(
     }.into_any()
 }
 
-fn highlighted_text(text: &str, query: &str) -> AnyView {
+pub(super) fn highlighted_text(text: &str, query: &str) -> AnyView {
     crate::search::highlight_spans(text, query)
         .into_iter()
         .map(|(part, matched)| {

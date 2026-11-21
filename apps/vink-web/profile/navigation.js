@@ -78,6 +78,13 @@ export function focusRelationshipReturn(cursor) {
   });
 }
 
+export function authorSearchReturnCursor() {
+  const entry = history.state?.[returnKey];
+  if (entry?.source !== address() || !entry.id.startsWith('search-author-') ||
+      typeof entry.cursor !== 'string' || !entry.cursor.length || entry.cursor.length > 80) return undefined;
+  return entry.cursor;
+}
+
 export function hasProfileReturn() {
   return history.state?.[returnKey]?.source === address();
 }
@@ -165,7 +172,8 @@ export function mountProfileNavigation() {
       href === '/toi#edit-profile-link' ? 'edit-profile-link' : '';
     pendingDestination = {href, heading, source};
     if (!preserve) return;
-    const cursor = link.id.startsWith('rel-person-') ? link.closest('li')?.dataset.relCursor : undefined;
+    const cursor = link.id.startsWith('rel-person-') ? link.closest('li')?.dataset.relCursor :
+      link.id.startsWith('search-author-') ? link.closest('li')?.dataset.authorCursor : undefined;
     history.replaceState({...history.state, [returnKey]: {id: link.id, href, source, cursor}}, '');
     if (heading) focusWhenReady(href, () => document.getElementById(heading), '', link);
   });
@@ -175,6 +183,7 @@ export function mountProfileNavigation() {
     const entry = history.state?.[returnKey];
     if (!entry || entry.source !== address() || relationshipReturnCursor(location.pathname)) return;
     const fallback = entry.id.startsWith('profile-work-') ? 'author-works-heading' :
+      entry.id.startsWith('search-author-') ? 'author-search-results-heading' :
       entry.id.startsWith('work-') ? 'community-stream' :
       entry.id.startsWith('comment-') ? 'feedback-heading' :
       entry.id.startsWith('rel-person-') || ['rel-back-profile', 'rel-other-direction', 'rel-first-page'].includes(entry.id) ? 'relationship-title' :

@@ -290,7 +290,9 @@ Mỗi vùng dùng sizing, theme, thứ tự focus, overlay và các trạng thá
   Mở profile rồi Back phục hồi mode/query, cuộn và link đã mở nếu còn quyền; nếu
   profile vừa xóa trả trạng thái không còn hồ sơ và khi Back chọn heading nếu
   mất hàng. Preview dùng ví dụ public; candidate/score/thứ tự gốc chỉ lấy facts
-  công khai. `SOC-OPEN-05/06` quyết định scope tìm và phần lọc theo viewer.
+  công khai. Chủ sản phẩm chọn mode **Tác giả** riêng, chỉ tra bút danh và Handle
+  hiện hành. Gợi ý giữ cùng danh sách và thứ tự. Nút Theo dõi nạp theo phiên.
+  [SOC-OPEN-05/06 ở #295](https://github.com/loveoverflowcom/vink/issues/295)
 - **Owner UI.** Dùng SearchField, Avatar, Link, StatePanel và mẫu phục hồi #236.
   Cần hàng tác giả và kết quả/cursor độc lập với tác phẩm, overlay nếu có CTA riêng.
 
@@ -326,8 +328,8 @@ vùng đã nêu. Các gate chỉ giữ phần phụ thuộc tương ứng.
 | `SOC-OPEN-02` · đã chốt A tại #290 r2 | A hoàn tất khi xác nhận thành công cả giữ gợi ý và nhập tên mới. B từng đề xuất đợi tên tự nhập được lưu mới hoàn tất. B là lịch sử; số lượt sau setup vẫn là 2. | `#handle`: triển khai/test cả giữ và đổi. |
 | `SOC-OPEN-03` · mở | A alias đã nghỉ vĩnh viễn không trở lại current. B chỉ chính Principal có thể dùng lại, tốn một lượt đổi thường sau setup. | `#handle`: giữ reclaim chưa mở; resolve alias và cấm tái cấp khác chủ áp trong cả hai. |
 | `SOC-OPEN-04` · mở | A Avatar chữ, điều chỉnh nghiệm thu media theo phạm vi v1 nếu được chọn. B upload kèm thay/xóa, ảnh gốc, biến thể và phục vụ bytes có kiểm quyền. | `#profile`/`#privacy`: chờ quyết định phạm vi Avatar; upload chỉ mở sau khi #298 kiểm được quyền. |
-| `SOC-OPEN-05` · mở | A exact Handle, tìm bút danh/Handle hiện hành; alias chỉ resolve URL. B tìm thêm alias về cùng Principal, ghi rõ quan hệ lịch sử. Cân nhắc mode tác giả riêng (query/Back riêng) hoặc nhóm tác giả cùng truy vấn (anchor độc lập cho nhóm). Cùng thử người trùng tên và chưa có bài để so hai cách. | `#author-search`: khớp alias và cấu trúc kết quả. |
-| `SOC-OPEN-06` · mở | A giữ tập/thứ tự gợi ý công khai, CTA theo viewer. B sau rank lọc chính mình/đã Follow bằng dữ liệu được viewer phép đọc. Candidate/score và DTO công khai bất biến khi đổi cạnh riêng. | `#author-search`: biến thể B/CTA theo viewer cần #294. |
+| `SOC-OPEN-05` · đã chọn A ở #295 | A exact Handle, tìm bút danh/Handle hiện hành; alias chỉ resolve URL. B tìm thêm alias về cùng Principal, ghi rõ quan hệ lịch sử. Cân nhắc mode tác giả riêng (query/Back riêng) hoặc nhóm tác giả cùng truy vấn (anchor độc lập cho nhóm). Cùng thử người trùng tên và chưa có bài để so hai cách. | `#author-search`: khớp alias và cấu trúc kết quả. |
+| `SOC-OPEN-06` · đã chọn A ở #295 | A giữ tập/thứ tự gợi ý công khai, CTA theo viewer. B sau rank lọc chính mình/đã Follow bằng dữ liệu được viewer phép đọc. Candidate/score và DTO công khai bất biến khi đổi cạnh riêng. | `#author-search`: biến thể B/CTA theo viewer cần #294. |
 
 ## Bàn giao và kiểm chứng
 

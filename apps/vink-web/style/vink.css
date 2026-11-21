@@ -2607,3 +2607,43 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
     border-end-end-radius: 0;
   }
 }
+
+.vk-author-search {
+  display: grid;
+  gap: var(--vk-space-4);
+}
+.vk-author-search .vk-explore-modes { margin-block: 0; }
+.vk-author-search #author-search {
+  max-inline-size: var(--vk-measure);
+  min-inline-size: 0;
+}
+.vk-author-search__results {
+  display: grid;
+  gap: var(--vk-space-3);
+  min-inline-size: 0;
+  max-inline-size: var(--vk-measure);
+}
+.vk-author-search__results p {
+  margin: 0;
+}
+.vk-author-search__list {
+  gap: var(--vk-space-1);
+}
+.vk-author-search__row {
+  background: var(--vk-surface-container-low);
+  border: 0;
+  border-radius: var(--vk-radius-sm);
+  padding-inline: var(--vk-space-3);
+}
+.vk-author-search__row .vk-ui-byline,
+.vk-author-search__follow {
+  min-inline-size: 0;
+}
+.vk-author-search__follow {
+  margin-inline-start: auto;
+  max-inline-size: 100%;
+}
+.vk-author-search__error {
+  color: var(--vk-error);
+  overflow-wrap: anywhere;
+}

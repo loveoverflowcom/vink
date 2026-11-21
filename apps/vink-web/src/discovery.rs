@@ -105,17 +105,33 @@ pub enum ExploreMode {
     #[default]
     Works,
     Following,
+    Authors,
 }
 
 impl ExploreMode {
     pub const FOLLOWING_HREF: &str = "/?mode=following";
+    pub const AUTHORS_HREF: &str = "/?mode=authors";
 
     pub fn from_param(value: Option<&str>) -> Self {
         match value {
             Some("following") => Self::Following,
+            Some("authors") => Self::Authors,
             _ => Self::Works,
         }
     }
+}
+
+pub(crate) fn author_search_href(q: &str, cursor: Option<&str>) -> String {
+    let mut href = ExploreMode::AUTHORS_HREF.to_owned();
+    if !q.trim().is_empty() {
+        href.push_str("&q=");
+        href.push_str(&encode(q));
+    }
+    if let Some(cursor) = cursor {
+        href.push_str("&cursor=");
+        href.push_str(&encode(cursor));
+    }
+    href
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -141,6 +157,7 @@ impl ExploreContext {
         let mut href = match self.mode {
             ExploreMode::Works => format!("{base}{}", query.search()),
             ExploreMode::Following => ExploreMode::FOLLOWING_HREF.to_owned(),
+            ExploreMode::Authors => author_search_href(&query.q, query.cursor.as_deref()),
         };
         if let Some(work) = work {
             href.push('#');

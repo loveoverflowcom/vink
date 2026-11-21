@@ -219,3 +219,19 @@ Sắp giảm dần theo `(first_published_at, WorkId)`. Cursor v1 chứa khóa t
 khai và MAC gắn phiên, actor, representation, query cố định, thứ tự và page size.
 `q`, `tag`, `mode` và tham số query lạ đều trả 422 ở endpoint Feed. Client chỉ trao
 cursor trong request API và bắt đầu lại sau thay đổi Follow đã được xác nhận.
+
+## Tìm và gợi ý tác giả #295
+
+`GET /api/v1/authors?q=&limit=&cursor=` (và `HEAD`) trả một trang
+[author ref công khai](fixtures/authors.search.json). Query trống gợi ý hồ sơ có
+Handle hiện hành theo thứ tự ASCII của Handle. Từ khóa thường khớp phần đầu bút danh
+gập dấu/hoa thường hoặc phần đầu Handle. `@handle` khớp chính xác Handle hiện hành,
+không phân biệt hoa thường ASCII. URL Handle cũ tiếp tục đi qua resolver #290.
+Cỡ trang mặc định 12 và giới hạn 24. Cursor buộc vào bộ lọc và thứ tự này, chỉ mang
+vị trí từ Handle công khai. Cursor sai trả `422` cho trường `cursor`, client quay về
+trang đầu. Lỗi kho hoặc cổng backfill chưa mở trả `503`. Mọi kết quả dùng `no-store`.
+
+Projection lấy hồ sơ còn Handle trong một snapshot. Khách và thành viên nhận cùng
+danh sách, thứ tự và cursor. Client hydrate nút Theo dõi từ API membership riêng của
+Graph #294. Kết quả công khai chỉ chứa `pen_name`, `handle`, `href` và cursor trang
+nếu có. Đặc tả lựa chọn sản phẩm nằm ở [SOC-OPEN-05/06](../../../../../docs/architecture/social-graph.md#lựa-chọn-sản-phẩm-và-phụ-thuộc).

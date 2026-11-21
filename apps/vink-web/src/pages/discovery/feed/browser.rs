@@ -8,7 +8,7 @@ use crate::{
     account::Session,
     api,
     contract::{ApiError, FeedResponse, WorkCard},
-    discovery::{ExploreContext, encode},
+    discovery::{ExploreContext, ExploreMode, encode},
     read_lifecycle::{Intent, PageChain, ReadOwner, ReadTicket},
 };
 
@@ -358,7 +358,7 @@ pub(super) fn ActiveFeed(
                     <div class="vk-feed-state" data-feed-state=if has_following { "no-works" } else { "no-follows" }>
                         <p role="status">{if has_following { "Chưa có tác phẩm công khai đủ điều kiện." }
                         else { "Bạn chưa theo dõi tác giả nào." }}</p>
-                        {(!has_following).then(|| view! { <Link href="/">"Khám phá tác phẩm"</Link> })}
+                        {(!has_following).then(|| view! { <Link href=ExploreMode::AUTHORS_HREF>"Tìm tác giả"</Link> })}
                     </div>
                 }.into_any(),
                 Phase::Ready { .. } => ().into_any(),
