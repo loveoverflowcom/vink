@@ -318,14 +318,25 @@ migrate tiến.
 
 | AC | Kết quả | Còn chờ |
 | --- | --- | --- |
-| AC-01 | PASS phần service/DB/role/caller: binary riêng, DB riêng, role migrator/runtime qua `provision.sh`; runtime không DDL/TEMP; kết nối chéo giữa App/Identity/Notification bị từ chối; migrate bằng runtime thoát 1; socket sai/thiếu caller `401`, route sai phạm vi `404`; type quản trị bị từ chối và không lưu. Lane `verify postgres` (§7.5 lệnh). | Image/compose production; client Gateway (`#348`). |
+| AC-01 | PASS phần service/DB/role/caller: binary riêng, DB riêng, role migrator/runtime qua `provision.sh`; runtime không DDL/TEMP; kết nối chéo giữa App/Identity/Notification bị từ chối; migrate bằng runtime thoát 1; socket sai/thiếu caller `401`, route sai phạm vi `404`; type quản trị bị từ chối và không lưu (lane `verify postgres`, xem lệnh bên dưới). | Image/compose production; client Gateway (`#348`). |
 | AC-02 | PASS (PG): receipt + hiệu ứng một transaction; mất ACK → `already_applied`; payload mismatch không ghi; cùng event hai relay một hiệu ứng; 12 writer đồng thời một nhóm mở; Read đua append không tạo hai nhóm mở; event sau Read tạo nhóm mới; đếm actor khác nhau, preview ≤ 3 mới nhất. | Rollback có fault injection giữa chừng chỉ kiểm gián tiếp (lỗi database rollback cả sự kiện). |
 | AC-03 | PASS (PG): Thấm báo một lần; unlike giảm count/bù preview cả trong lẫn ngoài 3 tên; về 0 ẩn nhóm; relike âm thầm; nhóm đã Read giữ lịch sử; Remove trước Add cũ không đánh thức; relike sau purge 181 ngày vẫn im lặng. | Relike sau restore Notification thiếu dấu: chỉ dựa vào `first_selection` của App (thiết kế), chưa diễn tập hai process. |
 | AC-04 | PASS (PG + route): badge đếm nhóm chưa Seen; Seen theo snapshot, ACK cũ no-op, token tương lai `422`; Read theo phiên bản giữ tín hiệu mới; hai tab; MarkAllRead chỉ tới snapshot; cùng khóa khác lệnh `422`. | `stale` của badge và đo hội tụ dưới backlog cùng Gateway (`#348`); service luôn trả `fresh` hoặc `503`. |
 | AC-05 | PASS (PG, clock điều khiển): 180 ngày không gia hạn, ngày 181 tạo nhóm mới, purge xóa nhóm+membership, giữ dấu Thấm; sự kiện muộn không hiện. | Đo purge/WAL ở khối lượng thật. |
 | AC-06 | PARTIAL: relay thật → service thật qua socket, hai DB: `applied`; dừng service → retry `transport` rồi giao sau restart; `vink-app notifications replay` → `already_applied`, inbox không đổi; backup/restore `vink_notifications` bằng `pg_dump`/`pg_restore` khớp lịch sử và hàng; restore mất hết hàng rồi replay trong test PG không hồi sinh nhóm quá 30 ngày. | Diễn tập migration/backout trên bản sao, restore lệch mốc hai chiều với số đo, App lùi mốc, workload hot key, `EXPLAIN`, dung lượng, WAL/purge lag, backlog, ngân sách; RPO đo được; phân biệt sự cố riêng service với mất cả instance. |
 
-Lệnh đã chạy được ghi trong PR (SHA, container PostgreSQL 17.11 tạm, lane và kết quả).
+Lệnh đã chạy trên `e58dbff` (đã merge `develop@c8db486`), PostgreSQL 17.11 container tạm, mỗi
+lệnh trong scope `systemd-run` giới hạn RAM 8–11 GiB:
+
+- `cargo test --locked --workspace --lib --bins`: PASS (gồm 26 unit của `vink-notifications`,
+  digest hai ví dụ hợp đồng, transport socket thật phía App và phía service).
+- `cargo clippy --locked --workspace --all-targets -- -D warnings`: PASS.
+- `cargo xtask verify quick`: PASS 13/13 bước (gồm repository checks: link, ranh giới ba service).
+- `RUST_TEST_THREADS=4 cargo xtask verify postgres`: PASS 36/36 bước (App 263, Identity 55,
+  Notifications 23 test PostgreSQL; provisioning bốn owner; relay hai process; backup/restore).
+  Ở các lượt trước với 8 luồng, `conditional_reads::markdown_visibility_precedes_validation_for_json_and_html`
+  của App treo 2/4 lượt dù chạy riêng đạt; ca này không thuộc phạm vi `#347`. Lượt thứ ba phát hiện
+  race khi tắt `vink-worker` (relay xong trước nhánh shutdown nên thoát 1) và đã sửa.
 
 ### 7.6. Còn mở
 
