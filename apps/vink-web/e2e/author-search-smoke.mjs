@@ -1,20 +1,50 @@
-// #295: real SSR, Chrome and native Identity against disposable PostgreSQL databases.
+// #295 and #354: real SSR, Chrome and native Identity against disposable PostgreSQL databases.
 import { fill, HYDRATED, q } from './auth-smoke.mjs';
 import { authorFixtureSql } from './author-fixtures.mjs';
 
 const MODE = '/?mode=authors';
 const SEARCH = '/api/v1/authors';
 const INPUT = '#author-search-query';
+const HEADING = '#author-search-results-heading';
+const NOTE = '#author-search-note';
+const EMPTY = '#author-search-empty';
+const IN_WORKS = 'a#author-search-in-works';
+const CLEAR = 'a#author-search-clear';
+const ERROR = '#author-search-error';
+const LOADING = '#author-search-loading';
+const NOTICE = '#author-search-notice';
+const SELF = '.vk-author-search__self';
+const COPY = {
+  suggestions: 'Gợi ý tác giả',
+  matches: query => `Tác giả khớp “${query}”`,
+  note: 'Ai cũng thấy cùng danh sách gợi ý này.',
+  empty: query => `Chưa có tác giả khớp “${query}”.`,
+  emptySuggestions: 'Chưa có gợi ý tác giả.',
+  hint: 'Thử bút danh khác, hoặc nhập chính xác @handle.',
+  inWorks: 'Tìm trong tác phẩm',
+  clear: 'Xóa tìm kiếm',
+  unavailable: 'Chưa tìm được lúc này',
+  unavailableDetail: 'Kết quả chưa tải xong – chưa thể nói là không có tác giả.',
+  retry: 'Thử lại',
+  loading: 'Đang tìm tác giả…',
+  notice: 'Một hồ sơ không còn truy cập được; danh sách đã cập nhật.',
+  self: 'Bạn',
+};
+const textOf = selector => `${q(selector)}?.textContent.trim()`;
+const hasCopy = (selector, copy) => `${textOf(selector)} === ${JSON.stringify(copy)}`;
+const searchParam = key => `new URL(location.href).searchParams.get(${JSON.stringify(key)})`;
 const HAS_ROWS = 'document.querySelectorAll("#author-search-list > li").length';
 const row = handle => '#search-author-' + handle;
 const currentAuthor = 'tac-gia-thu-01';
 const secondPageAuthor = 'tac-gia-thu-15';
 const pen = 'Đặng Minh Hòa';
+const absentQuery = 'Không có bút danh này';
 const queryUrl = (query) => MODE + '&q=' + encodeURIComponent(query);
 const ENDPOINTS = {
   register: '/api/v1/auth/password/register',
   principal: '/api/v1/auth/principal',
   session: '/api/v1/auth/session',
+  ownProfile: '/api/v1/me/profile',
 };
 
 function seed() {
@@ -103,7 +133,118 @@ async function provision(page, name) {
   if (principal.status !== 201) throw new Error('password fixture binding: ' + principal.status);
 }
 
+async function waitForPresentation(page, expression, label, presentation) {
+  try {
+    await page.waitFor(expression, label, 8000);
+  } catch (error) {
+    if (error.message !== `timed out waiting for ${label}`) throw error;
+    presentation(false, error.message);
+    return;
+  }
+  presentation(true, label);
+}
+
+async function emptyPresentation(page, base, presentation) {
+  await fill(page, INPUT, absentQuery);
+  await enter(page);
+  await page.waitFor(`${searchParam('q')} === ${JSON.stringify(absentQuery)}
+    && ${q(EMPTY)} && ${HAS_ROWS} === 0`, 'search succeeds with zero matching authors');
+  const empty = await page.eval(textOf(EMPTY));
+  presentation(await page.eval(`${q(EMPTY)}.getAttribute('role') === 'status'`)
+    && empty.includes(COPY.empty(absentQuery)) && empty.includes(COPY.hint),
+    `S2 empty success has the query and hint (found ${JSON.stringify(empty)})`);
+
+  const canSearchWorks = await page.eval(`Boolean(${q(IN_WORKS)})`);
+  presentation(await page.eval(hasCopy(IN_WORKS, COPY.inWorks)), 'S2 empty success offers Tìm trong tác phẩm');
+  if (canSearchWorks) {
+    await page.click(IN_WORKS);
+    await waitForPresentation(page, `location.pathname === '/' && ${searchParam('mode')} !== 'authors'
+      && ${searchParam('q')} === ${JSON.stringify(absentQuery)}
+      && ${q('#public-query')}?.value === ${JSON.stringify(absentQuery)}`,
+      'S2 works search receives the same query', presentation);
+    await page.goto(base + queryUrl(absentQuery));
+    await page.waitFor(`${HYDRATED} && ${q(EMPTY)}`, 'return to the empty author query before clearing');
+  }
+
+  const canClear = await page.eval(`Boolean(${q(CLEAR)})`);
+  presentation(await page.eval(hasCopy(CLEAR, COPY.clear)), 'S2 empty success offers Xóa tìm kiếm');
+  if (canClear) {
+    await page.click(CLEAR);
+    await waitForPresentation(page, `location.search === '?mode=authors' && ${hasCopy(HEADING, COPY.suggestions)}
+      && ${HAS_ROWS} === 12 && ${q(INPUT)}?.value === '' && document.activeElement === ${q(INPUT)}`,
+      'S2 clear returns to suggestions and focuses the author search field', presentation);
+  }
+}
+
+function unavailableAnswer(page, requestId) {
+  return page.send('Fetch.fulfillRequest', {
+    requestId, responseCode: 503,
+    responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
+    body: Buffer.from('{"error":{"code":"dependency_unavailable"}}').toString('base64'),
+  });
+}
+
+async function initialOutage(page, base, check, presentation) {
+  const query = '@' + secondPageAuthor;
+  const release = await intercept(page, base + SEARCH + '?*', ({ requestId, request }) => {
+    if (new URL(request.url).searchParams.get('q') === query) {
+      unavailableAnswer(page, requestId).catch(() => {});
+    } else {
+      page.send('Fetch.continueRequest', { requestId }).catch(() => {});
+    }
+  });
+  try {
+    await fill(page, INPUT, query);
+    await enter(page);
+    await page.waitFor(q(ERROR), 'first author search page receives the injected 503');
+    check(await page.eval(`!${q(EMPTY)} && ${HAS_ROWS} === 0`),
+      'initial author search outage is distinct from a successful empty result');
+    const error = await page.eval(textOf(ERROR));
+    presentation(await page.eval(`${q(ERROR)}.getAttribute('role') === 'alert'`)
+        && error.includes(COPY.unavailable) && error.includes(COPY.unavailableDetail),
+      `S3 initial outage explains that results are unavailable (found ${JSON.stringify(error)})`);
+  } finally {
+    await release();
+  }
+
+  // The previous SSR view rendered its retry as a sibling of the alert.
+  const retry = `${ERROR} a, ${ERROR} + a`;
+  check(await page.eval(hasCopy(retry, COPY.retry)), 'initial outage offers a Thử lại link');
+  await page.click(retry);
+  await waitForPresentation(page, `${q(row(secondPageAuthor))} && ${HAS_ROWS} === 1 && !${q(ERROR)}`,
+    'S3 Thử lại restores the exact Handle result after the injected 503', presentation);
+}
+
+function assertNotice(page, presentation) {
+  return waitForPresentation(page, `(() => {
+    const notices = document.querySelectorAll(${JSON.stringify(NOTICE)});
+    return notices.length === 1 && notices[0].matches('p[role="status"]')
+      && notices[0].textContent.trim() === ${JSON.stringify(COPY.notice)};
+  })()`, 'S5 Back announces the removed profile exactly once', presentation);
+}
+
+async function openOwnRow(page, base) {
+  const profile = await fetchInPage(page, ENDPOINTS.ownProfile);
+  if (profile.status !== 200) throw new Error('own Profile fixture read: ' + profile.status);
+  const { handle } = JSON.parse(profile.body);
+  if (!handle) throw new Error('own Profile fixture has no public Handle');
+  const url = base + queryUrl('@' + handle);
+  await page.goto(url);
+  await page.waitFor(`${HYDRATED} && ${q(row(handle))} && ${HAS_ROWS} === 1`, 'exact provisioned Handle result is hydrated');
+  return { url, handle };
+}
+
 export async function authorSearch(page, { args, check, textContrast }) {
+  // Run every presentation contract against both baseline and candidate using the same scenario.
+  // Collect only presentation failures so the legacy fixture and interaction checks stay fail-fast.
+  const failures = [];
+  const presentation = (condition, label) => {
+    if (condition) check(condition, label);
+    else {
+      console.error(`  FAIL ${label}`);
+      failures.push(label);
+    }
+  };
   seed();
   const base = args.base;
   const exact = await fetch(base + queryUrl('@' + currentAuthor));
@@ -139,6 +280,9 @@ export async function authorSearch(page, { args, check, textContrast }) {
     'work, following and author modes share one navigation region');
   await page.click(entry);
   await page.waitFor(`${HYDRATED} && ${HAS_ROWS} === 12`, 'guest author suggestions');
+  presentation(await page.eval(`${hasCopy(HEADING, COPY.suggestions)}
+    && ${q(NOTE)}?.tagName === 'P' && ${hasCopy(NOTE, COPY.note)}`),
+    'S1 suggestions have their own heading and public-list note');
   const guest = await fetch(base + SEARCH + '?q=' + encodeURIComponent(pen)).then(r => r.text());
   await page.eval(`${q(INPUT)}.focus()`);
   await page.send('Input.imeSetComposition', { text: 'Đặng', selectionStart: 4, selectionEnd: 4 });
@@ -153,6 +297,10 @@ export async function authorSearch(page, { args, check, textContrast }) {
   await page.waitFor(`new URL(location.href).searchParams.get('q') === ${JSON.stringify(pen)} && ${HAS_ROWS} === 12`,
     'Vietnamese query after IME commit');
   await page.waitFor(`document.activeElement?.id === 'author-search-results-heading'`, 'focus after submitting search');
+
+  const heading = await page.eval(textOf(HEADING));
+  presentation(heading === COPY.matches(pen),
+    `S1 heading includes the committed Vietnamese query (found ${JSON.stringify(heading)})`);
 
   let held;
   let oldNetworkId;
@@ -176,6 +324,10 @@ export async function authorSearch(page, { args, check, textContrast }) {
   await enter(page);
   const oldRequest = await Promise.race([old, new Promise((_, reject) =>
     setTimeout(() => reject(new Error('old query was not intercepted')), 5000))]);
+  await page.waitFor(q(LOADING), 'delayed author query exposes a pending state');
+  const loading = await page.eval(textOf(LOADING));
+  presentation(loading === COPY.loading,
+    `S4 delayed query says Đang tìm tác giả… (found ${JSON.stringify(loading)})`);
   await fill(page, INPUT, '@' + currentAuthor);
   await enter(page);
   await page.waitFor(`${q(row(currentAuthor))} && ${HAS_ROWS} === 1`, 'new query resolves while old transport waits');
@@ -191,16 +343,22 @@ export async function authorSearch(page, { args, check, textContrast }) {
   })()`),
     'a delayed old response cannot change the committed scope');
 
+  const handleSelector = row(currentAuthor) + ' .vk-ui-byline__handle';
+  const nameSelector = row(currentAuthor) + ' .vk-ui-byline__name';
+  presentation(await page.eval(`${hasCopy(handleSelector, '@' + currentAuthor)}
+    && ${textOf(handleSelector + ' mark')}?.replace(/^@/, '') === ${JSON.stringify(currentAuthor)}
+    && ${hasCopy(nameSelector, pen)} && !${q(nameSelector + ' mark')}`),
+    'S6 exact @ query highlights the Handle and keeps the pen name plain');
+
+  await emptyPresentation(page, base, presentation);
+  await initialOutage(page, base, check, presentation);
+
   await fill(page, INPUT, pen);
   await enter(page);
   await page.waitFor(`${HAS_ROWS} === 12 && ${q('#author-search-more')}`, 'fresh query resets cursor');
   const failAppend = await intercept(page, base + SEARCH + '?*', ({ requestId, request }) => {
     if (new URL(request.url).searchParams.has('cursor')) {
-      page.send('Fetch.fulfillRequest', {
-        requestId, responseCode: 503,
-        responseHeaders: [{name: 'Content-Type', value: 'application/json'}],
-        body: Buffer.from('{"error":{"code":"dependency_unavailable"}}').toString('base64'),
-      }).catch(() => {});
+      unavailableAnswer(page, requestId).catch(() => {});
     } else page.send('Fetch.continueRequest', { requestId }).catch(() => {});
   });
   await page.eval(`${q('#author-search-more')}.focus()`);
@@ -246,8 +404,33 @@ export async function authorSearch(page, { args, check, textContrast }) {
   check((await fetchInPage(page, SEARCH + '?q=' + encodeURIComponent(pen))).body === guest,
     'first viewer gets the same public JSON bytes, order and cursor as the guest');
 
+  const own = await openOwnRow(page, base);
+  const ownLink = q(row(own.handle));
+  const selfInRow = `${ownLink}?.closest('li').querySelector(${JSON.stringify(SELF)})`;
+  const ssrIsPublic = await page.eval(`(async () => {
+    const response = await fetch(${JSON.stringify(own.url)});
+    if (!response.ok) return false;
+    const document = new DOMParser().parseFromString(await response.text(), 'text/html');
+    const row = ${ownLink}?.closest('li');
+    return Boolean(row && !row.querySelector(${JSON.stringify(SELF + ', button')}));
+  })()`);
+  presentation(ssrIsPublic, 'S7 signed-in SSR shows the public row without viewer text or Follow');
+  await waitForPresentation(page, `${selfInRow}?.textContent.trim() === ${JSON.stringify(COPY.self)}
+    && !${ownLink}.contains(${selfInRow}) && !${ownLink}.closest('li').querySelector('button')
+    && performance.getEntriesByType('resource').filter(entry =>
+      new URL(entry.name).pathname === ${JSON.stringify(ENDPOINTS.ownProfile)}).length === 1`,
+    'S7 owner sees Bạn outside the profile link, has no Follow button and uses one own-profile read', presentation);
+
   check((await fetchInPage(page, ENDPOINTS.session, { method: 'DELETE' })).status === 204, 'first session signs out');
+  await page.goto(own.url);
+  await page.waitFor(`${HYDRATED} && ${ownLink}`, 'guest opens the same exact Handle result');
+  presentation(await page.eval(`!${selfInRow} && !${ownLink}.closest('li').querySelector('button')`),
+    'S7 guest sees neither Bạn nor a Follow button');
   await provision(page, 'beta');
+  await page.goto(own.url);
+  await page.waitFor(`${ownLink}?.closest('li').querySelector('button')?.textContent.trim() === 'Theo dõi'`,
+    'second session can follow the first viewer as an author');
+  presentation(await page.eval(`!${selfInRow}`), 'S7 a different account does not inherit Bạn');
   await page.goto(base + queryUrl(pen));
   await page.waitFor(`${action}?.textContent.trim() === 'Theo dõi'`, 'second real session sees only its own Follow state');
   check((await fetchInPage(page, SEARCH + '?q=' + encodeURIComponent(pen))).body === guest,
@@ -317,6 +500,7 @@ export async function authorSearch(page, { args, check, textContrast }) {
   await backThroughUnhydratedProfile(page, base, '/@' + currentAuthor, '#author-profile-heading', rapidQuery);
   await page.waitFor(`${HYDRATED} && !${q('#author-profile-heading')} && ${q(row(currentAuthor))}
     && document.activeElement?.id === 'search-author-${currentAuthor}'`, 'rapid Back restores author mode, DOM and focus');
+  presentation(await page.eval(`!${q(NOTICE)}`), 'S5 Back to a surviving author does not announce a missing profile');
 
   await page.viewport(1280);
   await page.goto(base + queryUrl(pen));
@@ -355,10 +539,21 @@ export async function authorSearch(page, { args, check, textContrast }) {
   await page.waitFor(`new URL(location.href).searchParams.get('q') === ${JSON.stringify(pen)}
     && ${q('#author-search-list')} && !${q(row(currentAuthor))}
     && document.activeElement?.id === 'author-search-results-heading'`, 'Back excludes retired author and focuses results');
+  await assertNotice(page, presentation);
+  const freshResults = await fetch(base + queryUrl(pen));
+  presentation(freshResults.ok && !(await freshResults.text()).includes(COPY.notice),
+    'S5 fresh SSR never contains the Back notice');
   authorFixtureSql('UPDATE author_handle_rollout SET ready = false');
   const unavailable = await fetch(base + MODE);
   const unavailableHtml = await unavailable.text();
-  check(unavailable.status === 503 && unavailableHtml.includes('Chưa tải được danh sách tác giả.')
-    && !unavailableHtml.includes('Chưa có gợi ý tác giả.'), 'SSR unavailable and legitimate empty stay distinct');
+  check(unavailable.status === 503 && !unavailableHtml.includes(COPY.emptySuggestions),
+    'SSR unavailable and legitimate empty stay distinct');
+  presentation(unavailableHtml.includes(COPY.unavailable) && unavailableHtml.includes(COPY.unavailableDetail),
+    'S3 SSR unavailable uses the same heading and explanation as hydrated search');
   authorFixtureSql('UPDATE author_handle_rollout SET ready = true');
+
+  if (failures.length) {
+    check(page.errors.length === 0, `no console errors or exceptions: ${page.errors.join(' | ')}`);
+    throw new Error(`author search presentation: ${failures.length} failed assertions (see S1–S7 above)`);
+  }
 }
