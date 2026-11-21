@@ -251,6 +251,9 @@ export async function authorSearch(page, { args, check, textContrast }) {
           root.style.fontSize = '${scale}%';
           await document.fonts.ready;
           await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          await Promise.all(document.getAnimations().filter(animation =>
+            Number.isFinite(animation.effect?.getComputedTiming().endTime))
+            .map(animation => animation.finished.catch(() => {})));
           const link = ${q(row(currentAuthor))};
           const targets = [link, ${q(INPUT)}, ${action}];
           return root.scrollWidth <= root.clientWidth + 1 && targets.every(element => {
