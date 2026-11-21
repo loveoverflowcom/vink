@@ -14,6 +14,7 @@ mod doctor;
 mod env;
 mod expressions;
 mod identity;
+mod notifications;
 mod infra;
 mod kani;
 mod legacy;
