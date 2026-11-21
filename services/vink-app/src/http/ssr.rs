@@ -11,13 +11,15 @@ use serde::de::DeserializeOwned;
 use vink_web::api::LoadError;
 use vink_web::contract as web;
 use vink_web::server::{
-    LocalDiscussionFixture, PortFuture, PublicReads, SharedPublicReads, SignInOpen, SiteOrigin,
+    FollowingFeedEnabled, LocalDiscussionFixture, PortFuture, PublicReads, SharedPublicReads,
+    SignInOpen, SiteOrigin,
 };
 use vink_web::{App, shell};
 
 use super::AppState;
 use super::contract::{Publication, WorkList};
-use crate::application::discovery::DiscoverWorks;
+use crate::application::author_discovery::DiscoverAuthors;
+use crate::application::discovery::{DiscoverWorks, DiscoveryError, DiscoveryInput};
 use crate::application::{ReadError, Vink};
 use crate::domain::ids::WorkId;
 use crate::persistence::PgStore;
@@ -41,6 +43,19 @@ fn load_error(error: ReadError) -> LoadError {
     match error {
         ReadError::NotFound => LoadError::NotFound,
         ReadError::Unavailable | ReadError::Internal => LoadError::Unavailable,
+    }
+}
+
+fn discovery_load_error(error: DiscoveryError) -> LoadError {
+    use vink_web::api::{InvalidInputField, InvalidRead};
+    match error {
+        DiscoveryError::Invalid(input) => LoadError::Invalid(match input {
+            DiscoveryInput::Cursor(_) | DiscoveryInput::CursorScope => InvalidRead::RestartCursor,
+            DiscoveryInput::Query(_) => InvalidRead::InvalidInput(InvalidInputField::Query),
+            DiscoveryInput::Tag(_) => InvalidRead::InvalidInput(InvalidInputField::Tag),
+            DiscoveryInput::Limit(_) => InvalidRead::InvalidInput(InvalidInputField::Limit),
+        }),
+        DiscoveryError::Unavailable | DiscoveryError::Internal => LoadError::Unavailable,
     }
 }
 
@@ -114,6 +129,26 @@ impl PublicReads for PublicReadsAdapter {
         })
     }
 
+    fn authors(
+        &self,
+        q: String,
+        cursor: Option<String>,
+    ) -> PortFuture<Result<web::PublicAuthorPage, LoadError>> {
+        let vink = self.vink.clone();
+        Box::pin(async move {
+            let page = vink
+                .store()
+                .discover_authors(DiscoverAuthors {
+                    q: Some(q),
+                    cursor,
+                    limit: None,
+                })
+                .await
+                .map_err(discovery_load_error)?;
+            to_web(&page)
+        })
+    }
+
     fn works(
         &self,
         query: vink_web::discovery::ExploreQuery,
@@ -129,27 +164,7 @@ impl PublicReads for PublicReadsAdapter {
                     limit: None,
                 })
                 .await
-                .map_err(|error| match error {
-                    crate::application::discovery::DiscoveryError::Invalid(input) => {
-                        use crate::application::discovery::DiscoveryInput;
-                        use vink_web::api::{InvalidInputField, InvalidRead};
-                        LoadError::Invalid(match input {
-                            DiscoveryInput::Cursor(_) | DiscoveryInput::CursorScope => {
-                                InvalidRead::RestartCursor
-                            }
-                            DiscoveryInput::Query(_) => {
-                                InvalidRead::InvalidInput(InvalidInputField::Query)
-                            }
-                            DiscoveryInput::Tag(_) => {
-                                InvalidRead::InvalidInput(InvalidInputField::Tag)
-                            }
-                            DiscoveryInput::Limit(_) => {
-                                InvalidRead::InvalidInput(InvalidInputField::Limit)
-                            }
-                        })
-                    }
-                    _ => LoadError::Unavailable,
-                })?;
+                .map_err(discovery_load_error)?;
             to_web(&WorkList::from(&page))
         })
     }
@@ -219,11 +234,13 @@ pub fn routes(state: &AppState) -> Router<AppState> {
     });
     let origin = SiteOrigin(state.public_origin.to_string());
     let fixture = state.identity.local_discussion_fixture_scope();
+    let feed = FollowingFeedEnabled(state.following_feed_enabled);
     let sign_in = SignInOpen(state.sign_in.is_some() && state.sign_in_enabled);
     let context = move || {
         provide_context(reads.clone());
         provide_context(origin.clone());
         provide_context(sign_in);
+        provide_context(feed);
         if let Some(scope) = &fixture {
             provide_context(LocalDiscussionFixture(scope.clone()));
         }

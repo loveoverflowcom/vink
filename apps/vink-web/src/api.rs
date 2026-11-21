@@ -56,6 +56,32 @@ pub fn sign_in_open() -> bool {
     }
 }
 
+pub(crate) fn following_feed_enabled() -> bool {
+    #[cfg(feature = "ssr")]
+    {
+        use_context::<crate::server::FollowingFeedEnabled>().is_some_and(|flag| flag.0)
+    }
+    #[cfg(all(feature = "hydrate", not(feature = "ssr")))]
+    {
+        document()
+            .query_selector("meta[name='vink-following-feed']")
+            .ok()
+            .flatten()
+            .is_some()
+    }
+    #[cfg(not(any(feature = "ssr", feature = "hydrate")))]
+    {
+        false
+    }
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn load_following_feed(
+    query: &str,
+) -> Result<crate::contract::FeedResponse, ApiError> {
+    http::get(&format!("/api/v1/me/following-feed{query}")).await
+}
+
 #[cfg(feature = "hydrate")]
 pub(crate) async fn current_account()
 -> Result<crate::contract::CurrentAccount, crate::session::AuthError> {
@@ -499,6 +525,56 @@ impl LoadError {
     }
 }
 
+pub(crate) fn author_search_resource(
+    q: StoredValue<String>,
+    cursor: RwSignal<Option<String>>,
+    generation: RwSignal<u64>,
+) -> Resource<(u64, Result<crate::contract::PublicAuthorPage, LoadError>)> {
+    let source = move || (generation.get(), cursor.get());
+    #[cfg(feature = "ssr")]
+    {
+        let port = use_context::<crate::server::SharedPublicReads>();
+        Resource::new(source, move |(stamp, cursor)| {
+            let port = port.clone();
+            let q = q.get_value();
+            async move {
+                let page = match port {
+                    Some(port) => port.authors(q, cursor).await,
+                    None => Err(LoadError::Unavailable),
+                };
+                (stamp, page)
+            }
+        })
+    }
+    #[cfg(not(feature = "ssr"))]
+    {
+        Resource::new(source, move |(stamp, cursor)| {
+            let q = q.get_value();
+            browser(async move { (stamp, load_author_search(&q, cursor.as_deref()).await) })
+        })
+    }
+}
+
+#[cfg(not(feature = "ssr"))]
+pub(crate) async fn load_author_search(
+    query: &str,
+    cursor: Option<&str>,
+) -> Result<crate::contract::PublicAuthorPage, LoadError> {
+    let mut path = format!("/api/v1/authors?q={}", crate::discovery::encode(query));
+    if let Some(cursor) = cursor {
+        path.push_str("&cursor=");
+        path.push_str(&crate::discovery::encode(cursor));
+    }
+    public_get(path).await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn load_follow_membership(
+    handles: &[String],
+) -> Result<crate::contract::follow::MembershipBatch, ApiError> {
+    http::get(&follow_membership_path(handles)).await
+}
+
 pub fn works_resource(
     query: Memo<crate::discovery::ExploreQuery>,
 ) -> Resource<(crate::discovery::ExploreQuery, Result<WorkList, LoadError>)> {
@@ -927,10 +1003,12 @@ fn bounded(path: &str) -> bool {
         || path.contains("/discussion")
         || path.contains("/endorsement")
         || path.starts_with("/api/v1/author/works")
+        || path.starts_with("/api/v1/me/following-feed")
         || path == "/api/v1/me/profile"
         || path.starts_with("/api/v1/me/follows/")
         || path.starts_with("/api/v1/me/relationships/")
         || path.starts_with("/api/v1/authors/")
+        || path.starts_with("/api/v1/authors?")
         || path.contains("/tags")
         || path.starts_with("/api/v1/auth/")
 }

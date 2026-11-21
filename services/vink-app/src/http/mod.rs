@@ -3,11 +3,13 @@
 mod api;
 mod appeals;
 mod auth;
+mod author_discovery;
 mod author_works;
 mod conditional;
 pub mod contract;
 mod drafts;
 mod error;
+mod feed;
 mod follow;
 mod handle;
 mod health;
@@ -23,6 +25,7 @@ use axum::Router;
 use axum::extract::{ConnectInfo, FromRef, FromRequestParts};
 use axum::http::request::Parts;
 use leptos::config::LeptosOptions;
+use sha2::{Digest, Sha256};
 use tower_http::trace::TraceLayer;
 
 pub use auth::{AdmitFuture, SignInLimiter};
@@ -46,6 +49,7 @@ pub struct AppState {
     /// Whether the sign-in routes may start new sessions (`VINK_AUTH_SIGN_IN`). Logout and the
     /// verification of existing sessions never depend on it.
     pub sign_in_enabled: bool,
+    pub following_feed_enabled: bool,
     /// Rate limits of the sign-in routes; by default the App database.
     pub limiter: Arc<dyn SignInLimiter>,
     /// Proxies whose `X-Forwarded-For` names the client network (`VINK_TRUSTED_PROXIES`).
@@ -84,6 +88,7 @@ impl AppState {
             identity,
             sign_in: None,
             sign_in_enabled: true,
+            following_feed_enabled: true,
             trusted_proxies: Arc::default(),
             identity_probe: None,
             require_restricted_role: false,
@@ -99,6 +104,11 @@ impl AppState {
 
     pub fn with_sign_in_enabled(mut self, enabled: bool) -> Self {
         self.sign_in_enabled = enabled;
+        self
+    }
+
+    pub fn with_following_feed_enabled(mut self, enabled: bool) -> Self {
+        self.following_feed_enabled = enabled;
         self
     }
 
@@ -150,6 +160,31 @@ impl FromRequestParts<AppState> for Actor {
             crate::identity::Resolution::Unavailable => Err(ApiError::DependencyUnavailable),
             other => Ok(Self(other.principal())),
         }
+    }
+}
+
+/// Own cursors belong to the authenticated credential, not just the resolved principal.
+/// Only a domain-separated digest reaches private readers. It is never logged or serialized.
+pub(super) struct PrivateSession {
+    pub actor: PrincipalId,
+    pub digest: [u8; 32],
+}
+
+impl FromRequestParts<AppState> for PrivateSession {
+    type Rejection = ApiError;
+
+    async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, ApiError> {
+        let Actor(actor) = Actor::from_request_parts(parts, state).await?;
+        let actor = actor.ok_or(ApiError::Unauthenticated)?;
+        let credential =
+            crate::identity::presented_credential(parts).ok_or(ApiError::Unauthenticated)?;
+        let mut hasher = Sha256::new();
+        hasher.update(b"vink-follow-own-session-v1");
+        hasher.update(credential.as_bytes());
+        Ok(Self {
+            actor,
+            digest: hasher.finalize().into(),
+        })
     }
 }
 

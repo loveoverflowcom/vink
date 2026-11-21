@@ -3,6 +3,7 @@
 
 pub mod abuse;
 pub mod account;
+pub mod author_discovery;
 pub mod author_works;
 pub mod catalog;
 pub mod discovery;
@@ -16,6 +17,7 @@ pub mod ports;
 pub mod post_review;
 pub mod profile;
 pub mod publication;
+pub mod social_retirement;
 pub mod taxonomy;
 
 use time::OffsetDateTime;

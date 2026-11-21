@@ -5,6 +5,8 @@
 //! the App's own migrations, so no other registry reaches the App database.
 
 mod abuse;
+mod author_discovery;
+pub use author_discovery::AUTHOR_SEARCH_SQL;
 mod author_works;
 pub use author_works::{AUTHOR_METRICS_SQL, author_page_sql};
 pub mod appeals;
@@ -13,6 +15,7 @@ mod discussion;
 mod drafts;
 mod endorsement;
 pub mod evaluation;
+pub mod feed;
 pub mod follow;
 pub mod handle;
 pub mod moderation;
@@ -24,6 +27,7 @@ pub(crate) mod postgres;
 mod principal;
 mod profile;
 pub(crate) mod publication;
+mod social_retirement;
 mod taxonomy;
 
 use sqlx::migrate::Migrator;

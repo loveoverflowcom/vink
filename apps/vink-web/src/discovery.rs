@@ -1,4 +1,4 @@
-//! URL and request identity for public discovery. No catalog authority or local corpus filter.
+//! URL and request identity for Khám phá. No catalog authority or local corpus filter.
 use crate::contract::WorkList;
 use crate::public_list::work_anchor;
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
@@ -99,8 +99,45 @@ impl ExploreQuery {
     }
 }
 
+/// The route owns the mode, each mode owns its own query and results.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ExploreMode {
+    #[default]
+    Works,
+    Following,
+    Authors,
+}
+
+impl ExploreMode {
+    pub const FOLLOWING_HREF: &str = "/?mode=following";
+    pub const AUTHORS_HREF: &str = "/?mode=authors";
+
+    pub fn from_param(value: Option<&str>) -> Self {
+        match value {
+            Some("following") => Self::Following,
+            Some("authors") => Self::Authors,
+            _ => Self::Works,
+        }
+    }
+}
+
+pub(crate) fn author_search_href(q: &str, cursor: Option<&str>) -> String {
+    let mut href = ExploreMode::AUTHORS_HREF.to_owned();
+    if !q.trim().is_empty() {
+        href.push_str("&q=");
+        href.push_str(&encode(q));
+    }
+    if let Some(cursor) = cursor {
+        href.push_str("&cursor=");
+        href.push_str(&encode(cursor));
+    }
+    href
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExploreContext {
+    #[serde(default)]
+    pub mode: ExploreMode,
     pub query: ExploreQuery,
     pub tag_page: Option<String>,
 }
@@ -117,15 +154,22 @@ impl ExploreContext {
             }
             None => "/".into(),
         };
-        let mut href = format!("{base}{}", query.search());
+        let mut href = match self.mode {
+            ExploreMode::Works => format!("{base}{}", query.search()),
+            ExploreMode::Following => ExploreMode::FOLLOWING_HREF.to_owned(),
+            ExploreMode::Authors => author_search_href(&query.q, query.cursor.as_deref()),
+        };
         if let Some(work) = work {
             href.push('#');
             href.push_str(&work_anchor(work));
         }
         href
     }
-    /// No arbitrary return URL: only an encoded tag slug and public query fields are carried.
+    /// Only the supported mode and its public URL fields carry over to Reader.
     pub fn reader_href(&self, id: &str) -> String {
+        if self.mode == ExploreMode::Following {
+            return format!("/tac-pham/{}?mode=following", encode(id));
+        }
         let mut query = self.query.search();
         if let Some(slug) = &self.tag_page {
             query.push(if query.is_empty() { '?' } else { '&' });
@@ -145,6 +189,7 @@ impl ExploreContext {
                 .unwrap_or_else(|| requested_slug(slug))
         });
         Self {
+            mode: self.mode,
             query: self.query.canonical(list),
             tag_page,
         }
@@ -161,6 +206,7 @@ mod tests {
     #[test]
     fn url_context_encodes_once_preserves_all_filters_and_page_and_stays_local() {
         let context = ExploreContext {
+            mode: ExploreMode::Works,
             query: ExploreQuery::new(
                 "Đ & 100% + #".into(),
                 vec!["ky-uc".into(), "tho".into()],
@@ -186,6 +232,17 @@ mod tests {
         assert!(!hostile.query.first().search().contains("cursor="));
         assert_eq!(hostile.query.without_tag("tho").tags, ["ky-uc"]);
     }
+    #[test]
+    fn following_mode_round_trips_without_public_query_or_private_cursor() {
+        let context = ExploreContext {
+            mode: ExploreMode::from_param(Some("following")),
+            query: ExploreQuery::new("mưa".into(), vec!["tho".into()], Some("opaque".into())),
+            tag_page: Some("tho".into()),
+        };
+        assert_eq!(context.href(Some("abc")), "/?mode=following#work-abc");
+        assert_eq!(context.reader_href("abc"), "/tac-pham/abc?mode=following");
+    }
+
     #[test]
     fn keys_differ_for_query_filter_and_page_and_are_order_independent() {
         let base = ExploreQuery::default();
@@ -248,6 +305,7 @@ mod tests {
         let tag = catalog.tags.into_iter().find(|t| t.label == "Thơ").unwrap();
         let raw: String = "THƠ".nfd().collect();
         let context = ExploreContext {
+            mode: ExploreMode::Works,
             query: ExploreQuery::new(String::new(), vec![raw.clone()], None),
             tag_page: Some(raw.clone()),
         };

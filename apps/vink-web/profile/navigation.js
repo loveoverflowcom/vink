@@ -1,8 +1,24 @@
 const returnKey = 'vinkProfileReturn';
 const aliasFocusKey = 'vinkProfileAliasFocus';
+const recheckKey = 'vinkProfileRecheck';
 let pendingDestination;
 
 const address = () => location.pathname + location.search + location.hash;
+
+// Back can change the active history entry while an SSR document waits for WASM.
+// Restart at the current URL before mounting a router against another route's DOM.
+export function canHydrateCurrentEntry(fingerprint) {
+  const rendered = document.documentElement.dataset.renderedRoute;
+  if (!rendered || rendered === fingerprint) return true;
+  const main = document.getElementById('noi-dung');
+  if (main) {
+    main.style.visibility = 'hidden';
+    main.inert = true;
+  }
+  history.replaceState({...history.state, [recheckKey]: address()}, '');
+  location.reload();
+  return false;
+}
 
 export function replaceProfileAlias(sourcePath, href) {
   const target = new URL(href, location.origin);
@@ -62,8 +78,22 @@ export function focusRelationshipReturn(cursor) {
   });
 }
 
+export function authorSearchReturnCursor() {
+  const entry = history.state?.[returnKey];
+  if (entry?.source !== address() || !entry.id.startsWith('search-author-') ||
+      typeof entry.cursor !== 'string' || !entry.cursor.length || entry.cursor.length > 80) return undefined;
+  return entry.cursor;
+}
+
 export function hasProfileReturn() {
   return history.state?.[returnKey]?.source === address();
+}
+
+// The private Feed rechecks this position with its current viewer before rendering the row.
+export function profileReturnWork() {
+  const entry = history.state?.[returnKey];
+  if (entry?.source !== address()) return undefined;
+  return /^work-([0-9a-f-]{36})-author$/.exec(entry.id)?.[1];
 }
 
 export function clearProfileReturn() {
@@ -142,7 +172,8 @@ export function mountProfileNavigation() {
       href === '/toi#edit-profile-link' ? 'edit-profile-link' : '';
     pendingDestination = {href, heading, source};
     if (!preserve) return;
-    const cursor = link.id.startsWith('rel-person-') ? link.closest('li')?.dataset.relCursor : undefined;
+    const cursor = link.id.startsWith('rel-person-') ? link.closest('li')?.dataset.relCursor :
+      link.id.startsWith('search-author-') ? link.closest('li')?.dataset.authorCursor : undefined;
     history.replaceState({...history.state, [returnKey]: {id: link.id, href, source, cursor}}, '');
     if (heading) focusWhenReady(href, () => document.getElementById(heading), '', link);
   });
@@ -152,6 +183,7 @@ export function mountProfileNavigation() {
     const entry = history.state?.[returnKey];
     if (!entry || entry.source !== address() || relationshipReturnCursor(location.pathname)) return;
     const fallback = entry.id.startsWith('profile-work-') ? 'author-works-heading' :
+      entry.id.startsWith('search-author-') ? 'author-search-results-heading' :
       entry.id.startsWith('work-') ? 'community-stream' :
       entry.id.startsWith('comment-') ? 'feedback-heading' :
       entry.id.startsWith('rel-person-') || ['rel-back-profile', 'rel-other-direction', 'rel-first-page'].includes(entry.id) ? 'relationship-title' :
@@ -174,7 +206,6 @@ export function mountProfileNavigation() {
     updateKeyboardInset();
   }
 
-  const recheck = 'vinkProfileRecheck';
   let parked = false;
   let reloading = false;
   window.addEventListener('pagehide', event => {
@@ -196,7 +227,7 @@ export function mountProfileNavigation() {
       restore();
     } else if (!reloading) {
       reloading = true;
-      history.replaceState({...history.state, [recheck]: address()}, '');
+      history.replaceState({...history.state, [recheckKey]: address()}, '');
       location.reload();
     }
   }
@@ -214,8 +245,8 @@ export function mountProfileNavigation() {
     focusWhenReady(address(), () => document.getElementById(aliasFocus.heading), '');
   }
   const state = history.state;
-  if (state?.[recheck] === address()) {
-    const {[recheck]: _, ...rest} = state;
+  if (state?.[recheckKey] === address()) {
+    const {[recheckKey]: _, ...rest} = state;
     history.replaceState(rest, '');
     restore();
   } else if (performance.getEntriesByType('navigation')[0]?.type === 'back_forward') {

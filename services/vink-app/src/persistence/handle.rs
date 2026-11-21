@@ -57,7 +57,8 @@ pub async fn backfill(pool: &PgPool) -> Result<BackfillReport, StoreError> {
     loop {
         let mut tx = pool.begin().await.map_err(classify)?;
         let batch: Vec<(Uuid,String)> = sqlx::query_as("SELECT p.id,p.display_name FROM principals p JOIN principal_bindings b ON b.principal_id=p.id
-            WHERE ($1::uuid IS NULL OR p.id > $1) ORDER BY p.id LIMIT 100 FOR UPDATE OF p")
+            WHERE NOT EXISTS (SELECT FROM social_retirements sr WHERE sr.principal_id = p.id)
+              AND ($1::uuid IS NULL OR p.id > $1) ORDER BY p.id LIMIT 100 FOR UPDATE OF p")
             .bind(after).fetch_all(&mut *tx).await.map_err(classify)?;
         if batch.is_empty() {
             tx.commit().await.map_err(classify)?;
@@ -66,7 +67,8 @@ pub async fn backfill(pool: &PgPool) -> Result<BackfillReport, StoreError> {
         for (principal, display) in batch {
             after = Some(principal);
             let exists: bool = sqlx::query_scalar(
-                "SELECT EXISTS(SELECT FROM author_profiles WHERE principal_id=$1)",
+                "SELECT EXISTS(SELECT FROM author_profiles WHERE principal_id=$1)
+                     OR EXISTS(SELECT FROM social_retirements WHERE principal_id=$1)",
             )
             .bind(principal)
             .fetch_one(&mut *tx)
@@ -108,7 +110,9 @@ pub async fn backfill(pool: &PgPool) -> Result<BackfillReport, StoreError> {
             "SELECT b.principal_id, p.display_name FROM principal_bindings b
              JOIN principals p ON p.id = b.principal_id
              LEFT JOIN author_profiles s USING (principal_id)
-             WHERE s.principal_id IS NULL AND ($1::uuid IS NULL OR b.principal_id > $1)
+             WHERE s.principal_id IS NULL
+               AND NOT EXISTS (SELECT FROM social_retirements sr WHERE sr.principal_id = b.principal_id)
+               AND ($1::uuid IS NULL OR b.principal_id > $1)
              ORDER BY b.principal_id LIMIT 100",
         )
         .bind(cursor)
@@ -275,20 +279,33 @@ impl PgStore {
     }
 }
 
-/// App-side hook for the account deletion owner (#297). Its caller verifies deletion
-/// and owns the transaction. Retiring a suspended profile is also idempotent.
+/// Under the principal write lock, make every allocated name resolve as gone.
+pub(super) async fn clear_current_handle(
+    tx: &mut Transaction<'_, Postgres>,
+    owner: PrincipalId,
+) -> Result<bool, StoreError> {
+    let changed = sqlx::query(
+        "UPDATE author_profiles SET current_handle = NULL, version = version + 1
+          WHERE principal_id = $1 AND current_handle IS NOT NULL",
+    )
+    .bind(owner.as_uuid())
+    .execute(&mut **tx)
+    .await
+    .map_err(classify)?;
+    Ok(changed.rows_affected() != 0)
+}
+
+/// Retire an existing profile and its edges in the caller's transaction.
+/// Use the durable Social retirement adapter for Account operations.
 ///
-/// Attribution redacts a principal only through its profile tombstone, so a principal
-/// without a profile row (never provisioned, unbound or invalid legacy name) fails closed
-/// instead of reporting success while its name stays public and searchable.
+/// This helper needs a profile row to leave a tombstone. The durable adapter can also
+/// fence bound legacy principals whose profile has never been provisioned.
 pub async fn retire(
     tx: &mut Transaction<'_, Postgres>,
     owner: PrincipalId,
 ) -> Result<(), StoreError> {
     super::principal::locked_standing(tx, owner).await?;
-    let retired = sqlx::query("UPDATE author_profiles SET current_handle=NULL, version=version+1 WHERE principal_id=$1 AND current_handle IS NOT NULL")
-        .bind(owner.as_uuid()).execute(&mut **tx).await.map_err(classify)?;
-    if retired.rows_affected() == 0 {
+    if !clear_current_handle(tx, owner).await? {
         let tombstone: bool = sqlx::query_scalar(
             "SELECT EXISTS(SELECT 1 FROM author_profiles WHERE principal_id=$1)",
         )
