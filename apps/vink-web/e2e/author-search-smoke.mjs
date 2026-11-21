@@ -234,6 +234,56 @@ async function openOwnRow(page, base) {
   return { url, handle };
 }
 
+async function longHandleReflow(page, base, presentation) {
+  const handle = 'zzztacgiakiemthudongtieudevaketqua0123';
+  const id = 'f211b8b0-31d4-4393-8203-25c1c4bd08cf';
+  // Add this author after pagination and retirement checks so their fixture counts stay stable.
+  authorFixtureSql(`BEGIN;
+    INSERT INTO principals (id, display_name) VALUES ('${id}', 'Tác giả kiểm tra reflow');
+    INSERT INTO principal_bindings (principal_id, authority, subject_id)
+      VALUES ('${id}', 'vink-identity', '${id}');
+    INSERT INTO author_handle_names (principal_id, handle) VALUES ('${id}', '${handle}');
+    INSERT INTO author_profiles (principal_id, current_handle) VALUES ('${id}', '${handle}');
+    COMMIT;`);
+
+  const query = '@' + handle;
+  const link = q(row(handle));
+  await page.goto(base + queryUrl(query));
+  await page.waitFor(`${HYDRATED} && ${link} && ${HAS_ROWS} === 1`, 'exact unbroken Handle fixture');
+  for (const [width, theme, scale] of [[320, 'dark', 200], [390, 'light', 100]]) {
+    await page.viewport(width);
+    const layout = await page.eval(`(async () => {
+      const root = document.documentElement;
+      root.dataset.theme = '${theme}';
+      root.style.fontSize = '${scale}%';
+      await document.fonts.ready;
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const heading = ${q(HEADING)};
+      const row = ${link}.closest('li');
+      const handle = row.querySelector('.vk-ui-byline__handle');
+      const edges = ({ left, right }) => [left, right];
+      const textEdges = node => {
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        return Array.from(range.getClientRects(), edges);
+      };
+      return {
+        clientWidth: root.clientWidth, scrollWidth: root.scrollWidth,
+        heading: edges(heading.getBoundingClientRect()),
+        headingText: textEdges(heading),
+        row: edges(row.getBoundingClientRect()),
+        handleText: textEdges(handle),
+        fullText: heading.textContent.includes(${JSON.stringify(query)})
+          && handle.textContent.trim() === ${JSON.stringify(query)},
+      };
+    })()`);
+    const inside = ([left, right]) => right > left && left >= -1 && right <= layout.clientWidth + 1;
+    const bounds = [layout.heading, layout.row, ...layout.headingText, ...layout.handleText];
+    presentation(layout.fullText && layout.scrollWidth <= layout.clientWidth + 1 && bounds.every(inside),
+      `S6 exact long @handle fits the heading and row at ${width}px/${theme}/${scale}% (${JSON.stringify(layout)})`);
+  }
+}
+
 export async function authorSearch(page, { args, check, textContrast }) {
   // Run every presentation contract against both baseline and candidate using the same scenario.
   // Collect only presentation failures so the legacy fixture and interaction checks stay fail-fast.
@@ -552,6 +602,7 @@ export async function authorSearch(page, { args, check, textContrast }) {
     'S3 SSR unavailable uses the same heading and explanation as hydrated search');
   authorFixtureSql('UPDATE author_handle_rollout SET ready = true');
 
+  await longHandleReflow(page, base, presentation);
   if (failures.length) {
     check(page.errors.length === 0, `no console errors or exceptions: ${page.errors.join(' | ')}`);
     throw new Error(`author search presentation: ${failures.length} failed assertions (see S1–S7 above)`);
