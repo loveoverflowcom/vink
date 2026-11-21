@@ -8,7 +8,10 @@ use super::{
 };
 use time::{OffsetDateTime, macros::datetime};
 use vink_app::{
-    application::follow::SetFollowInput,
+    application::{
+        follow::SetFollowInput,
+        social_retirement::{SocialRetirement, SocialRetirementProgress},
+    },
     domain::revision::ContentHash,
     persistence::feed::{FEED_PAGE_SIZE, FOLLOWING_FEED_PAGE_SQL},
 };
@@ -299,11 +302,29 @@ async fn first_public_keyset_live_revocation_cursor_and_no_store(pool: PgPool) {
         assert_eq!(ids(&after, "works"), allowed);
     }
     set_follow(&store, viewer, "feed-may-trang", 2, true).await;
-    let mut retirement = pool.begin().await.unwrap();
-    vink_app::persistence::handle::retire(&mut retirement, poet)
-        .await
-        .unwrap();
-    retirement.commit().await.unwrap();
+    let lookup = "/api/v1/authors?q=%40feed-may-trang";
+    let (status, _, before) = call(&router, "GET", lookup, None, None, None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(json(&before)["authors"][0]["href"], "/@feed-may-trang");
+
+    let retirement = SocialRetirement::new(poet, Uuid::new_v4()).unwrap();
+    assert_eq!(
+        store.fence_social_retirement(retirement).await.unwrap(),
+        SocialRetirementProgress::Fenced
+    );
+    let edge_pending_cleanup: bool = sqlx::query_scalar(
+        "SELECT active FROM author_follows WHERE follower_id=$1 AND followee_id=$2",
+    )
+    .bind(viewer.as_uuid())
+    .bind(poet.as_uuid())
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(edge_pending_cleanup);
+    let (status, cache, after) = call(&router, "GET", lookup, None, None, None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(cache.as_deref(), Some("no-store"));
+    assert_eq!(json(&after)["authors"], json!([]));
     let after_retire = get(
         &router,
         &format!("{PATH}?seen={seen}"),
@@ -320,6 +341,11 @@ async fn first_public_keyset_live_revocation_cursor_and_no_store(pool: PgPool) {
     assert_eq!(
         ids(&after_retire, "retained").contains(&boundary),
         !poet_owned.contains(&boundary)
+    );
+
+    assert_eq!(
+        store.step_social_retirement(retirement).await.unwrap(),
+        SocialRetirementProgress::Complete
     );
 
     let disabled = router_with_feed_off(&pool);

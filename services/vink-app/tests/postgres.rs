@@ -31,6 +31,8 @@ const PUBLIC_ATTRIBUTION_MIGRATION: i64 = 20261125010000;
 const AUTHOR_FOLLOW_MIGRATION: i64 = 20261126000000;
 const NOTIFICATION_OUTBOX_MIGRATION: i64 = 20261127000000;
 const FOLLOWING_FEED_ORDER_MIGRATION: i64 = 20261127010000;
+const AUTHOR_DISCOVERY_MIGRATION: i64 = 20261128000000;
+const SOCIAL_RETIREMENT_MIGRATION: i64 = 20261129000000;
 const ORIGIN: &str = "http://127.0.0.1:3000";
 
 #[path = "postgres/abuse.rs"]
@@ -87,6 +89,8 @@ mod publication_policy;
 mod publication_state;
 #[path = "postgres/publication_state_budget.rs"]
 mod publication_state_budget;
+#[path = "postgres/social_retirement.rs"]
+mod social_retirement;
 #[path = "postgres/taxonomy.rs"]
 mod taxonomy;
 #[path = "postgres/taxonomy_api.rs"]

@@ -2343,13 +2343,33 @@ async fn author_attribution_tracks_principal_and_retirement_in_all_public_reads(
     );
     assert_eq!(digest(revision).await.unwrap(), before);
 
-    let mut tx = pool.begin().await.unwrap();
+    use vink_app::application::social_retirement::{SocialRetirement, SocialRetirementProgress};
+    let published_response = app
+        .clone()
+        .oneshot(Request::get(&reader).body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    let old_validator = published_response.headers()[header::ETAG].clone();
+
     for actor in [a, b] {
-        vink_app::persistence::handle::retire(&mut tx, actor)
-            .await
-            .unwrap();
+        let command = SocialRetirement::new(actor, Uuid::new_v4()).unwrap();
+        assert_eq!(
+            store.fence_social_retirement(command).await.unwrap(),
+            SocialRetirementProgress::Fenced
+        );
     }
-    tx.commit().await.unwrap();
+    let revalidated = app
+        .clone()
+        .oneshot(
+            Request::get(&reader)
+                .header(header::IF_NONE_MATCH, old_validator.clone())
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(revalidated.status(), StatusCode::OK);
+    assert_ne!(revalidated.headers()[header::ETAG], old_validator);
     let deleted = json!({"kind":"deleted","label":"Tài khoản đã xóa"});
     assert_eq!(value(&app, &reader).await["author"], deleted);
     assert_eq!(

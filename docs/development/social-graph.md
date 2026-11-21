@@ -123,10 +123,9 @@ Mỗi lần cấp thử tối đa 16 tên. Địa chỉ chỉ mở đọc sau đ
 Writer cũ còn hoạt động mà tạo binding thiếu hồ sơ sẽ đóng lại cổng đọc đến lần backfill
 kế tiếp. Khi quay lui phiên bản ứng dụng, giữ nguyên migration, reservations, quota và receipts.
 
-**Bàn giao lifecycle.** #297 có thể gọi `persistence::handle::retire` trong transaction xóa App
-đã xác minh. Điều phối xóa tài khoản qua Identity/App vẫn thuộc Account. Principal chưa có hồ sơ
-tác giả (chưa binding, tên cũ không hợp lệ hoặc chưa backfill) làm `retire` trả lỗi `Integrity`,
-vì projection chỉ che tên qua tombstone của hồ sơ. #297 cần cấp hồ sơ hoặc có đường che riêng trước khi xóa.
+**Bàn giao lifecycle.** Dùng [Social adapter #297](#social-adapter-thu-hồi-tài-khoản-297)
+để ghi fence bằng operation ID đã xác minh. Adapter áp dụng cả với binding legacy chưa có
+hồ sơ tác giả.
 
 ## Hồ sơ và bút danh #292/#293
 
@@ -232,3 +231,28 @@ toàn dùng bản có cả migration lẫn redaction, ưu tiên tắt entry form
   truy vấn có dữ liệu lệch. [Chrome](../../apps/vink-web/e2e/author-search-smoke.mjs) có
   scenario `cargo xtask verify web --scenario author-search` dùng App và Identity scratch.
   Giá trị ngày sinh chưa có trong runtime. Scope Chrome IME dùng sự kiện mô phỏng.
+
+## Social adapter thu hồi tài khoản #297
+
+- **Sản phẩm.** SOC-LIFE-02 yêu cầu thu hồi mọi địa chỉ và quan hệ của tài khoản đã
+  xác minh xóa. SOC-DEP-01 thuộc Account/Identity và vẫn là phụ thuộc ngoài. SOC-DEP-02
+  giữ nguyên phạm vi. Phân loại full suspension tiếp tục dùng guard hiện hành.
+- **Kiến trúc.** [Adapter App](../../services/vink-app/src/persistence/social_retirement.rs)
+  nhận PrincipalId đã binding và operation ID ổn định qua retry. Transaction thứ nhất
+  khóa Principal trước Profile, ghi fence và bỏ con trỏ Handle. Từ commit này, các alias
+  và Handle hiện hành trả 410. Count/list loại cạnh theo Profile, kể cả khi batch dọn
+  cạnh chưa chạy. Với principal legacy chưa có Profile, fence che attribution và chặn
+  backfill cấp tên. Transaction batch khóa checkpoint và cạnh theo cặp có thứ tự,
+  tối đa 100 cạnh mỗi lượt và ghi hoàn tất trong cùng commit với batch cuối.
+- **Tích hợp và quay lui.** Account tiếp tục cùng operation ID sau lỗi hoặc mất ACK.
+  Existing binding, lịch sử order/receipt và reservation Handle tồn tại qua các lượt
+  dọn. Có thể dừng gọi adapter giữa hai batch và tiếp tục từ checkpoint. Duy trì schema,
+  fence và projection có redaction khi quay lui. `Complete` biểu thị hoàn tất Social
+  Profile/Graph trong App. Luồng xác minh, revoke phiên, Publication, retention và
+  điều phối hai DB thuộc Account/owner tương ứng.
+- **Kiểm chứng.** [Fixture adapter trên PostgreSQL](../../services/vink-app/tests/postgres/social_retirement.rs)
+  kiểm fence trước cleanup, fault trong batch, restart, replay, alias và ghi đua.
+  [Feed và tìm tác giả](../../services/vink-app/tests/postgres/feed.rs) đọc lại sau fence
+  trong khi cạnh còn active trong bảng. [Reader và Discussion](../../services/vink-app/tests/postgres/discussion.rs)
+  kiểm validator cũ, attribution và ngữ cảnh trả lời.
+  Account E2E và SOC-AC-20/21 cấp Epic ở trạng thái `NOT_RUN` cho đến khi có SOC-DEP-01.

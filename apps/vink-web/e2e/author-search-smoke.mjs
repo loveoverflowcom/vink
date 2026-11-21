@@ -65,6 +65,24 @@ async function intercept(page, pattern, handler) {
   };
 }
 
+async function backThroughUnhydratedProfile(page, base, path, selector, query) {
+  await page.send('Network.setCacheDisabled', { cacheDisabled: true });
+  const heldWasm = [];
+  const releaseWasm = await intercept(page, base + '/pkg/vink_bg.wasm*', ({ requestId }) => heldWasm.push(requestId));
+  try {
+    await back(page);
+    await page.waitFor(`location.pathname === ${JSON.stringify(path)} && ${q(selector)} && !(${HYDRATED})`,
+      'first Back reaches profile HTML before hydration at ' + path);
+    await back(page);
+    await page.waitFor(`location.pathname === '/' && new URL(location.href).searchParams.get('q') === ${JSON.stringify(query)}`,
+      'second Back reaches the original author-search URL');
+  } finally {
+    for (const requestId of heldWasm) await page.send('Fetch.continueRequest', { requestId }).catch(() => {});
+    await releaseWasm();
+    await page.send('Network.setCacheDisabled', { cacheDisabled: false });
+  }
+}
+
 function fetchInPage(page, path, options = {}) {
   return page.eval(`(async () => {
     const response = await fetch(${JSON.stringify(path)}, ${JSON.stringify(options)});
@@ -296,18 +314,7 @@ export async function authorSearch(page, { args, check, textContrast }) {
   await page.waitFor(`location.pathname === '/@${currentAuthor}' && ${q('#author-profile-heading')}`, 'profile in history');
   await page.goto(base + queryUrl('khong co but danh nay'));
   await page.waitFor(q('#author-search-empty'), 'second search document is ready');
-  await page.send('Network.setCacheDisabled', { cacheDisabled: true });
-  const heldWasm = [];
-  const releaseWasm = await intercept(page, base + '/pkg/vink_bg.wasm*', ({ requestId }) => heldWasm.push(requestId));
-  await back(page);
-  await page.waitFor(`location.pathname === '/@${currentAuthor}' && ${q('#author-profile-heading')} && !(${HYDRATED})`,
-    'the first Back reached profile HTML before hydration');
-  await back(page);
-  await page.waitFor(`location.pathname === '/' && new URL(location.href).searchParams.get('q') === ${JSON.stringify(rapidQuery)}`,
-    'the second Back returned to the original author-search URL');
-  for (const requestId of heldWasm) await page.send('Fetch.continueRequest', { requestId }).catch(() => {});
-  await releaseWasm();
-  await page.send('Network.setCacheDisabled', { cacheDisabled: false });
+  await backThroughUnhydratedProfile(page, base, '/@' + currentAuthor, '#author-profile-heading', rapidQuery);
   await page.waitFor(`${HYDRATED} && !${q('#author-profile-heading')} && ${q(row(currentAuthor))}
     && document.activeElement?.id === 'search-author-${currentAuthor}'`, 'rapid Back restores author mode, DOM and focus');
 
@@ -317,12 +324,33 @@ export async function authorSearch(page, { args, check, textContrast }) {
   await page.eval(`${q(row(currentAuthor))}.focus()`);
   await enter(page);
   await page.waitFor(`location.pathname === '/@${currentAuthor}' && ${q('#author-profile-heading')}`, 'open current Handle before retirement');
-  // Only the Profile fence is exercised here. The App adapter and retirement retry have PG tests.
-  authorFixtureSql("UPDATE author_profiles SET current_handle = NULL WHERE current_handle = 'tac-gia-thu-01'");
-  const retired = await fetch(base + '/@ten-cu-rieng', { redirect: 'manual' });
+  // Commit the browser fixture at the Social fence before cleanup. The Rust adapter and its
+  // retry are exercised by the PostgreSQL suite.
+  authorFixtureSql(`BEGIN;
+    INSERT INTO social_retirements (principal_id, operation_id)
+      SELECT principal_id, 'f720c1fb-5548-4d54-95de-15278fdddd81'
+        FROM author_profiles WHERE current_handle = 'tac-gia-thu-01';
+    UPDATE author_profiles SET current_handle = NULL WHERE current_handle = 'tac-gia-thu-01';
+    COMMIT;`);
+  const oldPath = '/@ten-cu-rieng';
+  const retired = await fetch(base + oldPath, { redirect: 'manual' });
   check(retired.status === 410 && retired.headers.get('cache-control') === 'no-store'
     && !retired.headers.has('location') && !(await retired.text()).includes(pen),
     'an old URL has a retirement page and drops identity and redirect');
+  await page.eval(`setTimeout(() => location.replace(${JSON.stringify(oldPath)}), 0); true`);
+  await page.waitFor(`${HYDRATED} && location.pathname === ${JSON.stringify(oldPath)} && ${q('#profile-unavailable')}`,
+    'the old Handle renders a retirement profile document in Chrome');
+  await page.goto(base + queryUrl('khong co but danh nay'));
+  await page.waitFor(q('#author-search-empty'), 'second search document after the retirement profile is ready');
+  await backThroughUnhydratedProfile(page, base, oldPath, '#profile-unavailable', pen);
+  await page.waitFor(`${HYDRATED} && new URL(location.href).searchParams.get('mode') === 'authors'
+    && !${q('#profile-unavailable')} && ${q('#author-search-list')} && !${q(row(currentAuthor))}
+    && document.activeElement?.id === 'author-search-results-heading'`, 'rapid Back from the retired alias restores author results and fallback focus');
+  // A forward traversal must still land on the 410 document, with the alias reserved.
+  const { entries, currentIndex } = await page.send('Page.getNavigationHistory', {});
+  await page.send('Page.navigateToHistoryEntry', { entryId: entries[currentIndex + 1].id });
+  await page.waitFor(`${HYDRATED} && location.pathname === ${JSON.stringify(oldPath)} && ${q('#profile-unavailable')}`,
+    'Forward from search keeps the historical URL on the retirement page');
   await back(page);
   await page.waitFor(`new URL(location.href).searchParams.get('q') === ${JSON.stringify(pen)}
     && ${q('#author-search-list')} && !${q(row(currentAuthor))}
