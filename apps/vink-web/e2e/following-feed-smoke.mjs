@@ -17,8 +17,7 @@ function publish(author, count, prefix) {
   const source = 'Mưa rơi qua ô cửa.\n\nMùa cũ vẫn còn trong trí nhớ.';
   const ids = [];
   const form = randomUUID();
-  const slug = `form-feed-${form.slice(0, 8)}`;
-  const label = count > 1 ? 'Thơ' : 'Truyện ngắn';
+  const [label, slug] = count > 1 ? ['Thơ', 'thơ'] : ['Truyện ngắn', 'truyện-ngắn'];
   const sql = Array.from({length: count}, (_, i) => {
     const id = randomUUID();
     const snapshot = randomUUID();
