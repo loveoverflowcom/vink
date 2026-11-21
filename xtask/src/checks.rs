@@ -518,10 +518,17 @@ fn boundaries(root: &Path, problems: &mut Vec<String>) {
             let path = entry.path().join("Cargo.toml");
             let manifest = read(&path).unwrap_or_default();
             for line in manifest.lines().map(str::trim_start) {
-                let forbidden = ["vink-app", "vink-web", "vink-identity", "axum", "leptos"]
-                    .into_iter()
-                    .find(|name| line.starts_with(name))
-                    .or_else(|| line.contains("../../services/").then_some("a service path"));
+                let forbidden = [
+                    "vink-app",
+                    "vink-web",
+                    "vink-identity",
+                    "vink-notifications",
+                    "axum",
+                    "leptos",
+                ]
+                .into_iter()
+                .find(|name| line.starts_with(name))
+                .or_else(|| line.contains("../../services/").then_some("a service path"));
                 if let Some(name) = forbidden {
                     problems.push(format!(
                         "{}: a shared package must not depend on `{name}`",
@@ -536,22 +543,50 @@ fn boundaries(root: &Path, problems: &mut Vec<String>) {
     // Any mention in the manifest counts: `[dependencies.x]`, renamed packages and paths too.
     for (manifest, forbidden) in [
         ("services/vink-app/Cargo.toml", "vink-identity"),
+        ("services/vink-app/Cargo.toml", "vink-notifications"),
         ("services/vink-identity/Cargo.toml", "vink-app"),
         ("services/vink-identity/Cargo.toml", "vink-web"),
+        ("services/vink-identity/Cargo.toml", "vink-notifications"),
+        ("services/vink-notifications/Cargo.toml", "vink-app"),
+        ("services/vink-notifications/Cargo.toml", "vink-identity"),
+        ("services/vink-notifications/Cargo.toml", "vink-web"),
     ] {
         let text = read(&root.join(manifest)).unwrap_or_default();
         if text.lines().any(|l| l.contains(forbidden)) {
             problems.push(format!("{manifest}: must not depend on `{forbidden}`"));
         }
     }
-    // Identity's code and migrations never touch App tables. A lint only: database roles that
-    // cannot connect across owners are the actual guard (`verify postgres`).
-    let mut identity = Vec::new();
-    rust_files(&root.join("services/vink-identity/src"), &mut identity);
-    if let Ok(entries) = std::fs::read_dir(root.join("services/vink-identity/migrations")) {
-        identity.extend(entries.filter_map(Result::ok).map(|e| e.path()));
+    // Identity's and Notifications' code and migrations never touch another owner's tables. A
+    // lint only: database roles that cannot connect across owners are the actual guard
+    // (`verify postgres`).
+    let mut foreign = Vec::new();
+    for owner in ["vink-identity", "vink-notifications"] {
+        let mut files = Vec::new();
+        rust_files(&root.join(format!("services/{owner}/src")), &mut files);
+        if let Ok(entries) = std::fs::read_dir(root.join(format!("services/{owner}/migrations"))) {
+            files.extend(entries.filter_map(Result::ok).map(|e| e.path()));
+        }
+        let mut tables = vec![
+            "working_drafts",
+            "works",
+            "principals",
+            "revisions",
+            "publications",
+        ];
+        if owner == "vink-notifications" {
+            // App discussion/endorsement/outbox and Identity tables are not the service's.
+            tables.extend([
+                "comments",
+                "work_endorsements",
+                "notification_events",
+                "notification_deliveries",
+                "accounts",
+                "sessions",
+            ]);
+        }
+        foreign.extend(files.into_iter().map(|file| (owner, file, tables.clone())));
     }
-    for file in identity {
+    for (owner, file, tables) in foreign {
         // Quotes and escapes dropped, whitespace collapsed: `FROM\n  public."works"` still counts.
         let lowered = read(&file)
             .unwrap_or_default()
@@ -562,17 +597,11 @@ fn boundaries(root: &Path, problems: &mut Vec<String>) {
             .collect::<Vec<_>>()
             .join(" ")
             .replace("public.", "");
-        for table in [
-            "working_drafts",
-            "works",
-            "principals",
-            "revisions",
-            "publications",
-        ] {
+        for table in tables {
             for verb in ["from", "join", "into", "update", "table"] {
                 if text.contains(&format!("{verb} {table}")) {
                     problems.push(format!(
-                        "{}: Identity must not use the App table `{table}`",
+                        "{}: {owner} must not use another owner's table `{table}`",
                         rel(root, &file)
                     ));
                 }

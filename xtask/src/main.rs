@@ -18,6 +18,7 @@ mod infra;
 mod kani;
 mod legacy;
 mod lifecycle;
+mod notifications;
 mod pgurl;
 mod plan;
 mod process;

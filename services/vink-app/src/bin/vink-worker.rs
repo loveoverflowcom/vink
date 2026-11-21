@@ -7,7 +7,9 @@
 //! finalization. Admission post-review has no producer; no AI provider is configured.
 //! Acknowledged Notifications v1 events (#346) are pruned after their replay horizon. The
 //! notification relay (`vink_app::notification_relay`, T-02 CHOICE-16 A) is a loop of this
-//! process, not started until the Notification Service transport (#347, T-07) exists.
+//! process; it starts when `VINK_NOTIFICATIONS_INGEST_SOCKET` and `VINK_NOTIFICATIONS_SERVER_UID`
+//! name the Notification Service's ingest socket (#347, T-07 CHOICE-21 A) and is supervised like
+//! the outbox loop.
 //! Identity's mail outbox is delivered by `vink-identity serve`, never here: the App does not read
 //! the Identity database.
 //!
@@ -17,11 +19,14 @@
 //! A production worker refuses to run the outbox with a privileged database role.
 
 use std::process::ExitCode;
+use std::sync::Arc;
 use std::time::Duration;
 
 use tokio::sync::watch;
 use vink_app::application::Vink;
 use vink_app::config::{Config, Profile};
+use vink_app::notification_relay::{NotificationRelay, RelaySettings};
+use vink_app::notification_transport::{RelayTransport, SocketSink};
 use vink_app::outbox_worker::{OutboxSettings, OutboxWorker};
 use vink_app::persistence::{
     PgStore, SchemaState, lazy_pool, notification, outbox, role_is_privileged, schema_state,
@@ -59,6 +64,13 @@ fn main() -> ExitCode {
                 return ExitCode::from(2);
             }
         };
+    let relay = match RelayTransport::from_lookup(|key| std::env::var(key).ok()) {
+        Ok(transport) => transport,
+        Err(error) => {
+            eprintln!("vink-worker: invalid configuration: {error}");
+            return ExitCode::from(2);
+        }
+    };
     runtime::init_tracing(config.log_format);
     let tokio = match tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -70,7 +82,7 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    tokio.block_on(run(config, outbox, evaluation))
+    tokio.block_on(run(config, outbox, evaluation, relay))
 }
 
 /// What the startup probe found. `ready` is logged only when the queue tables answered.
@@ -101,6 +113,7 @@ async fn run(
     config: Config,
     settings: OutboxSettings,
     eval_settings: vink_app::evaluation_worker::EvaluationSettings,
+    relay_transport: Option<RelayTransport>,
 ) -> ExitCode {
     // Listen for SIGINT/SIGTERM before any probe, so a signal during startup is a clean stop.
     let (stop, mut stopped) = watch::channel(false);
@@ -132,8 +145,12 @@ async fn run(
             .join(","),
         jobs = "discussion_outbox,rate_limit_prune,outbox_retention,notification_retention,work_evaluation",
         // #346: producers write only while `vink-app notifications activate` is in force; the
-        // relay loop (`vink_app::notification_relay`) starts once #347 provides its transport.
-        notification_relay = "no_transport",
+        // relay sends to the Notification Service's ingest socket when one is configured (#347).
+        notification_relay = if relay_transport.is_some() {
+            "socket"
+        } else {
+            "no_transport"
+        },
         post_review = "operator_rereview.v1",
         admission_post_review = "no_producer",
         ai_moderation = "not_implemented",
@@ -158,6 +175,21 @@ async fn run(
             vink_app::evaluation_worker::EvaluationWorker::new(pool.clone(), eval_settings);
         tokio::spawn(worker.run(stopped.clone()))
     });
+    let mut relay = match relay_transport {
+        None => None,
+        Some(transport) => {
+            let settings = RelaySettings::default();
+            let sink = Arc::new(SocketSink::new(transport, settings));
+            match NotificationRelay::new(pool.clone(), sink, settings) {
+                Ok(relay) => Some(tokio::spawn(relay.run(stopped.clone()))),
+                Err(error) => {
+                    tracing::error!(%error, "notification relay settings are invalid");
+                    pool.close().await;
+                    return ExitCode::from(2);
+                }
+            }
+        }
+    };
     let vink = Vink::new(PgStore::new(pool.clone()));
     let mut prune = tokio::time::interval(PRUNE_INTERVAL);
     prune.tick().await;
@@ -171,6 +203,17 @@ async fn run(
                     Err(error) => tracing::error!(panicked = error.is_panic(), "outbox loop failed"),
                 }
                 outbox = None;
+                code = ExitCode::FAILURE;
+                break;
+            }
+            joined = async { relay.as_mut().expect("guarded").await }, if relay.is_some() => {
+                relay = None;
+                match joined {
+                    // The relay saw the same shutdown first and drained: a normal stop.
+                    Ok(()) if *stopped.borrow() => break,
+                    Ok(()) => tracing::error!("notification relay ended without a shutdown request"),
+                    Err(error) => tracing::error!(panicked = error.is_panic(), "notification relay failed"),
+                }
                 code = ExitCode::FAILURE;
                 break;
             }
@@ -204,6 +247,15 @@ async fn run(
         tracing::error!(
             panicked = error.is_panic(),
             "outbox loop failed during drain"
+        );
+        code = ExitCode::FAILURE;
+    }
+    if let Some(task) = relay
+        && let Err(error) = task.await
+    {
+        tracing::error!(
+            panicked = error.is_panic(),
+            "notification relay failed during drain"
         );
         code = ExitCode::FAILURE;
     }

@@ -21,6 +21,7 @@ khác; `PUBLIC` không còn `CONNECT`/`TEMPORARY` trên database owner.
 | --- | --- | --- |
 | `vink` (App, có sẵn) | `vink_app_migrator`: sở hữu object trong `public`, được `CREATE` schema | `vink_app_runtime`: DML trên bảng, chỉ `SELECT` `_sqlx_migrations` |
 | `vink_identity` (migrations của [vink-identity](../vink-identity/README.md); hiện chỉ baseline) | `vink_identity_migrator` (`VINK_IDENTITY_MIGRATE_DATABASE_URL`) | `vink_identity_runtime` (`VINK_IDENTITY_DATABASE_URL`) |
+| `vink_notifications` (migrations của [vink-notifications](../vink-notifications/README.md), `#347`) | `vink_notifications_migrator` (`VINK_NOTIFICATIONS_MIGRATE_DATABASE_URL`) | `vink_notifications_runtime` (`VINK_NOTIFICATIONS_DATABASE_URL`) |
 
 Operator/bootstrap là superuser `vink` do image tạo khi khởi tạo volume. Chỉ dùng nó cho
 provisioning, backup và test harness local; không đưa vào app. Không role service nào có

@@ -1,0 +1,31 @@
+[package]
+name = "vink-notifications"
+version = "0.1.0"
+description = "Vink Notification Service: inbox rollup, receipts, Seen/Read and retention in its own database, served on private Unix sockets"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vink-store-postgres = { path = "../../packages/store-postgres" }
+axum.workspace = true
+http-body-util = "0.1.5"
+hyper = { version = "1.12.0", features = ["http1", "server"] }
+hyper-util = { version = "0.1.21", features = ["tokio", "server"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal", "net", "time", "fs"] }
+tower = { workspace = true, features = ["util"] }
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter", "json", "fmt"] }
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+time = { workspace = true, features = ["serde", "formatting", "parsing", "macros"] }
+uuid = { workspace = true, features = ["v7", "serde"] }
+sha2 = "0.11.1"
+
+[dev-dependencies]
+hyper = { version = "1.12.0", features = ["http1", "client", "server"] }
