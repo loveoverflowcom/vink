@@ -13,7 +13,7 @@ use crate::{
 #[cfg(feature = "hydrate")]
 mod browser;
 #[cfg(feature = "hydrate")]
-pub(super) use browser::remember_position;
+pub(super) use browser::ReturnScope;
 
 #[component]
 pub(super) fn FollowingFeed(context: ExploreContext) -> impl IntoView {
@@ -22,25 +22,35 @@ pub(super) fn FollowingFeed(context: ExploreContext) -> impl IntoView {
     let expired = RwSignal::new(false);
     let stream = NodeRef::<leptos::html::Section>::new();
     #[cfg(feature = "hydrate")]
-    let settled_scope = RwSignal::new(None::<(String, bool)>);
+    let restore = RwSignal::new(None::<super::super::ExploreRestore>);
+    #[cfg(feature = "hydrate")]
+    let return_completed = RwSignal::new(false);
     #[cfg(feature = "hydrate")]
     {
-        let settled = Memo::new(move |_| {
+        use super::super::ExploreRestore;
+
+        let ready = Signal::derive(move || {
+            if return_completed.get() {
+                return None;
+            }
             if let Some(scope) = session.profile_scope.get() {
-                settled_scope.with(|value| value.as_ref().is_some_and(|(key, _)| key == &scope))
+                restore.get().filter(|permit| match permit {
+                    ExploreRestore::Feed { ticket, .. } => ticket.scope == scope,
+                    _ => false,
+                })
             } else {
-                !matches!(session.standing.get(), Standing::Unknown)
+                (matches!(
+                    session.standing.get(),
+                    Standing::Anonymous | Standing::NeedsPrincipal | Standing::Suspended
+                ) && !session.checking())
+                .then_some(ExploreRestore::Guest)
             }
         });
-        let allow_anchor = Signal::derive(move || {
-            let scope = session.profile_scope.get();
-            settled_scope.with(|value| {
-                value
-                    .as_ref()
-                    .is_some_and(|(owner, restore)| *restore && Some(owner) == scope.as_ref())
-            })
-        });
-        super::super::restore_explore_position(stream, settled, allow_anchor);
+        super::super::restore_explore_position(
+            stream,
+            ready,
+            Some(("following-feed-heading", return_completed)),
+        );
     }
     #[cfg(not(feature = "hydrate"))]
     let _ = context;
@@ -54,7 +64,8 @@ pub(super) fn FollowingFeed(context: ExploreContext) -> impl IntoView {
                 <Heading level=HeadingLevel::H1>"Khám phá"</Heading>
             </header>
             <super::ExploreModes mode=ExploreMode::Following />
-            <section node_ref=stream id="community-stream" aria-label="Tác phẩm đang theo dõi" tabindex="-1">
+            <section node_ref=stream id="community-stream" aria-labelledby="following-feed-heading" tabindex="-1">
+                <Heading id="following-feed-heading" level=HeadingLevel::H2 role=vink_ui::TypeRole::Title attr:tabindex="-1">"Đang theo dõi"</Heading>
                 {move || if !enabled {
                     view! { <FeedOff /> }.into_any()
                 } else {
@@ -84,7 +95,7 @@ pub(super) fn FollowingFeed(context: ExploreContext) -> impl IntoView {
                                     <For each=move || session.profile_scope.get().into_iter()
                                         key=Clone::clone
                                         children=move |scope| view! {
-                                            <browser::ActiveFeed scope context=context.clone() expired settled_scope />
+                                            <browser::ActiveFeed scope context=context.clone() expired restore return_completed />
                                         } />
                                 }.into_any()
                             }
