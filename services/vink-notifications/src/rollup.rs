@@ -86,7 +86,7 @@ pub fn group_key(event: &Event) -> Option<GroupKey> {
             return None;
         }
     };
-    event.event_type.grouped().then(|| GroupKey {
+    event.event_type.grouped().then_some(GroupKey {
         event_type: event.event_type,
         target_key,
     })
