@@ -38,6 +38,7 @@ pub(super) fn AuthorSearch(
     status.set_no_store();
     let buffer = RwSignal::new(q.clone());
     let q = StoredValue::new(q);
+    let url_has_cursor = cursor.is_some();
     let active_cursor = RwSignal::new(cursor);
     let generation = RwSignal::new(0u64);
     let composing = RwSignal::new(false);
@@ -49,11 +50,29 @@ pub(super) fn AuthorSearch(
     let canonical = crate::canonical_url(&author_search_href(&q.get_value(), None));
     let clear_href = author_search_href("", None);
     let navigate = use_navigate();
+    let restart = Callback::new({
+        let navigate = navigate.clone();
+        move |()| {
+            #[cfg(feature = "hydrate")]
+            super::clear_profile_return();
+            if url_has_cursor {
+                q.with_value(|q| navigate(&author_search_href(q, None), Default::default()));
+            } else {
+                active_cursor.set(None);
+                renew();
+            }
+            focus_recovery(RESULTS_HEADING);
+        }
+    });
     let on_clear = {
         let navigate = navigate.clone();
         move |_| {
             buffer.set(String::new());
-            navigate(&clear_href, Default::default());
+            if q.with_value(|q| q.trim().is_empty()) {
+                restart.run(());
+            } else {
+                navigate(&clear_href, Default::default());
+            }
             focus_recovery("author-search-query");
         }
     };
@@ -63,12 +82,12 @@ pub(super) fn AuthorSearch(
             return;
         }
         let entered = buffer.get_untracked();
-        if entered == q.get_value() && active_cursor.get_untracked().is_none() {
-            renew();
+        if q.with_value(|q| q == &entered) {
+            restart.run(());
         } else {
             navigate(&author_search_href(&entered, None), Default::default());
+            focus_recovery(RESULTS_HEADING);
         }
-        focus_recovery(RESULTS_HEADING);
     };
     let suggestions = q.with_value(|q| q.trim().is_empty());
 
@@ -100,13 +119,13 @@ pub(super) fn AuthorSearch(
                             Some((stamp, result)) if stamp == generation.get() => match result {
                                 Ok(page) => view! {
                                     <AuthorResults page q cursor=active_cursor.get_untracked()
-                                        on_refresh=Callback::new(move |()| renew()) />
+                                        on_refresh=Callback::new(move |()| renew()) on_restart=restart />
                                 }.into_any(),
                                 Err(error) => {
                                     status.set(if error.is_invalid() { 422 } else { 503 });
                                     view! {
                                         <SearchError error q cursor=active_cursor.get_untracked()
-                                            on_retry=Callback::new(move |()| renew()) />
+                                            on_retry=Callback::new(move |()| renew()) on_restart=restart />
                                     }.into_any()
                                 }
                             },
@@ -129,7 +148,9 @@ fn SearchError(
     q: StoredValue<String>,
     cursor: Option<String>,
     on_retry: Callback<()>,
+    on_restart: Callback<()>,
 ) -> impl IntoView {
+    let restart = error == LoadError::Invalid(InvalidRead::RestartCursor);
     let (message, label, href, can_retry) = match error {
         LoadError::Invalid(InvalidRead::RestartCursor) => (
             "Vị trí trang không còn khớp với kết quả tìm.",
@@ -154,7 +175,10 @@ fn SearchError(
         <div class="vk-author-search__error">
             <p id="author-search-error" role="alert">{message}</p>
             <a class="vk-ui-link" href=href on:click=move |event| {
-                if can_retry && ordinary_click(&event) {
+                if restart && ordinary_click(&event) {
+                    event.prevent_default();
+                    on_restart.run(());
+                } else if can_retry && ordinary_click(&event) {
                     event.prevent_default();
                     focus_recovery(RESULTS_HEADING);
                     on_retry.run(());
@@ -190,6 +214,7 @@ fn AuthorResults(
     q: StoredValue<String>,
     cursor: Option<String>,
     on_refresh: Callback<()>,
+    on_restart: Callback<()>,
 ) -> impl IntoView {
     let results = RwSignal::new(SearchResults {
         rows: rows(page.authors, cursor.as_deref()),
@@ -203,7 +228,6 @@ fn AuthorResults(
     let _ = on_refresh;
 
     let has_cursor = cursor.is_some();
-    let first_page = q.with_value(|q| author_search_href(q, None));
     view! {
         <Show when=move || results.with(|state| state.rows.is_empty())>
             <p id="author-search-empty" role="status">{
@@ -254,7 +278,7 @@ fn AuthorResults(
                 };
                 view! { <div class="vk-author-search__error" role="alert">
                     <p>{message}</p>
-                    {restart.then(|| view! { <a class="vk-ui-link" href=q.with_value(|q| author_search_href(q, None))>"Về trang đầu"</a> })}
+                    {restart.then(|| view! { <FirstSearchPage q on_restart /> })}
                 </div> }
             }))}
             <Show when=move || results.with(|state| state.appending)>
@@ -277,8 +301,24 @@ fn AuthorResults(
                     } else { "Tải thêm tác giả" })}
                 </a>
             </Show>
-            {has_cursor.then(|| view! { <a class="vk-ui-link" href=first_page>"Về trang đầu"</a> })}
+            <Show when=move || has_cursor && !results.with(|state|
+                state.append_error == Some(LoadError::Invalid(InvalidRead::RestartCursor)))>
+                <FirstSearchPage q on_restart />
+            </Show>
         </div>
+    }
+}
+
+#[component]
+fn FirstSearchPage(q: StoredValue<String>, on_restart: Callback<()>) -> impl IntoView {
+    view! {
+        <a id="author-search-first" class="vk-ui-link" href=q.with_value(|q| author_search_href(q, None))
+            on:click=move |event| {
+                if ordinary_click(&event) {
+                    event.prevent_default();
+                    on_restart.run(());
+                }
+            }>"Về trang đầu"</a>
     }
 }
 

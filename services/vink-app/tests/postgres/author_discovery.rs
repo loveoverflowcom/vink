@@ -145,6 +145,17 @@ async fn author_lookup_is_actor_free_and_reads_current_profiles_before_paging(po
     let (status, _, _) = call(&app, "GET", "/@dang-mai", None, None, None).await;
     assert_eq!(status, StatusCode::GONE);
 
+    // A backout can remove the auxiliary indexes without reopening the profile.
+    sqlx::raw_sql(
+        "DROP INDEX author_profiles_search_handle_idx; DROP INDEX principals_search_pen_name_idx;",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    assert_eq!(read(&app, lookup, None).await, second_page);
+    let (status, _, _) = call(&app, "GET", "/@dang-moi", None, None, None).await;
+    assert_eq!(status, StatusCode::GONE);
+
     sqlx::query("UPDATE author_handle_rollout SET ready = false")
         .execute(&pool)
         .await

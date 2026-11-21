@@ -37,6 +37,21 @@ function seed() {
    COMMIT;`);
 }
 
+async function enter(page) {
+  // A native GET can remove the current CDP execution context within this key press.
+  for (const type of ['keyDown', 'keyUp']) {
+    await page.send('Input.dispatchKeyEvent', {
+      type, key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13,
+      ...(type === 'keyDown' ? { text: '\r' } : {}),
+    });
+  }
+}
+
+async function back(page) {
+  const { entries, currentIndex } = await page.send('Page.getNavigationHistory', {});
+  await page.send('Page.navigateToHistoryEntry', { entryId: entries[currentIndex - 1].id });
+}
+
 async function intercept(page, pattern, handler) {
   const listener = message => {
     if (message.sessionId !== page.sessionId || message.method !== 'Fetch.requestPaused') return;
@@ -84,16 +99,24 @@ export async function authorSearch(page, { args, check }) {
     && aliasSearch.authors.length === 0, 'historical Handle resolves from its URL and stays outside search');
 
   await page.send('Network.setBlockedURLs', { urls: [base + '/pkg/vink.js*', base + '/pkg/vink_bg.wasm*'] });
-  await page.goto(base + MODE);
-  await page.waitFor(q(INPUT), 'SSR author search form before Web bundle');
-  await fill(page, INPUT, pen);
-  await page.key('Enter');
-  await page.waitFor(`new URL(location.href).searchParams.get('q') === ${JSON.stringify(pen)} && ${HAS_ROWS} === 12`, 'native GET without hydration');
-  check(await page.eval(`!(${HYDRATED}) && ${q('#author-search-more')}.href.includes('cursor=')`),
-    'native form and paginated link usable without JavaScript');
-  await page.send('Network.setBlockedURLs', { urls: [] });
+  await page.send('Emulation.setScriptExecutionDisabled', { value: true });
+  try {
+    await page.goto(base + MODE);
+    await page.waitFor(q(INPUT), 'SSR author search form before Web bundle');
+    await fill(page, INPUT, pen);
+    await enter(page);
+    await page.waitFor(`new URL(location.href).searchParams.get('q') === ${JSON.stringify(pen)} && ${HAS_ROWS} === 12`, 'native GET without hydration');
+    check(await page.eval(`!(${HYDRATED}) && ${q('#author-search-more')}.href.includes('cursor=')`),
+      'native form and paginated link usable without JavaScript');
+  } finally {
+    await page.send('Emulation.setScriptExecutionDisabled', { value: false });
+    await page.send('Network.setBlockedURLs', { urls: [] });
+  }
 
-  await page.goto(base + MODE);
+  await page.goto(base + '/');
+  const entry = 'a[href="/?mode=authors"]';
+  await page.waitFor(`${HYDRATED} && ${q(entry)}`, 'author search mode in Khám phá');
+  await page.click(entry);
   await page.waitFor(`${HYDRATED} && ${HAS_ROWS} === 12`, 'guest author suggestions');
   const guest = await fetch(base + SEARCH + '?q=' + encodeURIComponent(pen)).then(r => r.text());
   await page.eval(`${q(INPUT)}.focus()`);
@@ -105,32 +128,50 @@ export async function authorSearch(page, { args, check }) {
     'IME keeps the current view and ignores submit before commit');
   await page.send('Input.insertText', { text: pen });
   await fill(page, INPUT, pen);
-  await page.key('Enter');
+  await enter(page);
   await page.waitFor(`new URL(location.href).searchParams.get('q') === ${JSON.stringify(pen)} && ${HAS_ROWS} === 12`,
     'Vietnamese query after IME commit');
   await page.waitFor(`document.activeElement?.id === 'author-search-results-heading'`, 'focus after submitting search');
 
   let held;
+  let oldNetworkId;
+  let resolveOldFinished;
   const old = new Promise(resolve => { held = resolve; });
-  const releaseOld = await intercept(page, base + SEARCH + '?*', ({ requestId, request }) => {
-    if (new URL(request.url).searchParams.get('q') === 'truy van cu')
+  const oldFinished = new Promise(resolve => { resolveOldFinished = resolve; });
+  const observeOld = message => {
+    if (message.sessionId === page.sessionId && message.params?.requestId === oldNetworkId
+        && ['Network.loadingFinished', 'Network.loadingFailed'].includes(message.method)) {
+      resolveOldFinished();
+    }
+  };
+  page.cdp.listeners.push(observeOld);
+  const releaseOld = await intercept(page, base + SEARCH + '?*', ({ requestId, networkId, request }) => {
+    if (new URL(request.url).searchParams.get('q') === 'truy van cu') {
+      oldNetworkId = networkId;
       held(requestId);
-    else page.send('Fetch.continueRequest', { requestId }).catch(() => {});
+    } else page.send('Fetch.continueRequest', { requestId }).catch(() => {});
   });
   await fill(page, INPUT, 'truy van cu');
-  await page.key('Enter');
+  await enter(page);
   const oldRequest = await Promise.race([old, new Promise((_, reject) =>
     setTimeout(() => reject(new Error('old query was not intercepted')), 5000))]);
   await fill(page, INPUT, '@' + currentAuthor);
-  await page.key('Enter');
+  await enter(page);
   await page.waitFor(`${q(row(currentAuthor))} && ${HAS_ROWS} === 1`, 'new query resolves while old transport waits');
-  await page.send('Fetch.continueRequest', { requestId: oldRequest });
+  await page.send('Fetch.continueRequest', { requestId: oldRequest }).catch(() => {});
+  await Promise.race([oldFinished, new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('delayed query did not finish or cancel')), 5000))]);
+  page.cdp.listeners.splice(page.cdp.listeners.indexOf(observeOld), 1);
   await releaseOld();
-  check(await page.eval(`new URL(location.href).searchParams.get('q') === '@${currentAuthor}'`),
+  check(await page.eval(`(async () => {
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    return new URL(location.href).searchParams.get('q') === '@${currentAuthor}'
+      && ${HAS_ROWS} === 1 && ${q(row(currentAuthor))};
+  })()`),
     'a delayed old response cannot change the committed scope');
 
   await fill(page, INPUT, pen);
-  await page.key('Enter');
+  await enter(page);
   await page.waitFor(`${HAS_ROWS} === 12 && ${q('#author-search-more')}`, 'fresh query resets cursor');
   const failAppend = await intercept(page, base + SEARCH + '?*', ({ requestId, request }) => {
     if (new URL(request.url).searchParams.has('cursor')) {
@@ -142,46 +183,26 @@ export async function authorSearch(page, { args, check }) {
     } else page.send('Fetch.continueRequest', { requestId }).catch(() => {});
   });
   await page.eval(`${q('#author-search-more')}.focus()`);
-  await page.key('Enter');
+  await enter(page);
   await page.waitFor(`document.querySelector('[role=alert]')?.textContent.includes('Chưa tải thêm')`, 'append outage has recovery');
   check(await page.eval(`${HAS_ROWS} === 12 && document.activeElement.id === 'author-search-more'`),
     'append outage preserves the prior page and keeps the retry focused');
   await failAppend();
-  await page.key('Enter');
+  await enter(page);
   await page.waitFor(`${HAS_ROWS} === 16 && ${q(row(secondPageAuthor))}`, 'real second page after retry');
   await page.eval(`${q(row(secondPageAuthor))}.focus()`);
-  await page.key('Enter');
+  await enter(page);
   await page.waitFor(`location.pathname === '/@${secondPageAuthor}' && ${q('#author-profile-heading')}`,
     'profile of second-page author without works');
-  await page.eval('history.back()');
+  await back(page);
   await page.waitFor(`location.search.includes('mode=authors') && ${q(row(secondPageAuthor))}
     && document.activeElement?.id === 'search-author-${secondPageAuthor}'`, 'Back restores mode, query, appended row and keyboard focus');
   check(await page.eval(`new URL(location.href).searchParams.get('q') === ${JSON.stringify(pen)}`),
     'Back keeps exact Vietnamese search query');
 
-  // Revisit a native profile document, then traverse again before its WASM can hydrate.
-  // This reproduces the two-document history timing reported on #293.
-  await page.goto(base + queryUrl(pen));
-  await page.waitFor(`${HYDRATED} && ${q(row(currentAuthor))}`, 'first search document is ready');
-  await page.eval(`${q(row(currentAuthor))}.focus()`);
-  await page.key('Enter');
-  await page.waitFor(`location.pathname === '/@${currentAuthor}' && ${q('#author-profile-heading')}`, 'profile in history');
-  await page.goto(base + queryUrl('khong co but danh nay'));
-  await page.waitFor(q('#author-search-empty'), 'second search document is ready');
-  await page.send('Network.setCacheDisabled', { cacheDisabled: true });
-  const heldWasm = [];
-  const releaseWasm = await intercept(page, base + '/pkg/vink_bg.wasm*', ({ requestId }) => heldWasm.push(requestId));
-  await page.eval('history.back()');
-  await page.waitFor(`location.pathname === '/@${currentAuthor}' && ${q('#author-profile-heading')} && !(${HYDRATED})`,
-    'the first Back reached profile HTML before hydration');
-  await page.eval('history.back()');
-  await page.waitFor(`location.pathname === '/' && new URL(location.href).searchParams.get('q') === ${JSON.stringify(pen)}`,
-    'the second Back returned to the original author-search URL');
-  for (const requestId of heldWasm) await page.send('Fetch.continueRequest', { requestId }).catch(() => {});
-  await releaseWasm();
-  await page.send('Network.setCacheDisabled', { cacheDisabled: false });
-  await page.waitFor(`${HYDRATED} && !${q('#author-profile-heading')} && ${q(row(currentAuthor))}
-    && document.activeElement?.id === 'search-author-${currentAuthor}'`, 'rapid Back restores author mode, DOM and focus');
+  await page.eval(`${q('#author-search-first')}.focus()`);
+  await enter(page);
+  await page.waitFor(`${HAS_ROWS} === 12 && ${q(row(currentAuthor))}`, 'first page action clears restored cursor');
 
   await page.goto(base + queryUrl(pen));
   await page.waitFor(`${HYDRATED} && ${HAS_ROWS} === 12`, 'restore first page before auth');
@@ -232,10 +253,36 @@ export async function authorSearch(page, { args, check }) {
     }
   }
   await page.viewport(1280);
+  // Revisit a native profile document, then traverse again before its WASM can hydrate.
+  // This reproduces the two-document history timing reported on #293.
+  const rapidQuery = "dang minh hoa";
+  await page.goto(base + queryUrl(rapidQuery));
+  await page.waitFor(`${HYDRATED} && ${q(row(currentAuthor))}`, 'first search document is ready');
+  await page.eval(`${q(row(currentAuthor))}.focus()`);
+  await enter(page);
+  await page.waitFor(`location.pathname === '/@${currentAuthor}' && ${q('#author-profile-heading')}`, 'profile in history');
+  await page.goto(base + queryUrl('khong co but danh nay'));
+  await page.waitFor(q('#author-search-empty'), 'second search document is ready');
+  await page.send('Network.setCacheDisabled', { cacheDisabled: true });
+  const heldWasm = [];
+  const releaseWasm = await intercept(page, base + '/pkg/vink_bg.wasm*', ({ requestId }) => heldWasm.push(requestId));
+  await back(page);
+  await page.waitFor(`location.pathname === '/@${currentAuthor}' && ${q('#author-profile-heading')} && !(${HYDRATED})`,
+    'the first Back reached profile HTML before hydration');
+  await back(page);
+  await page.waitFor(`location.pathname === '/' && new URL(location.href).searchParams.get('q') === ${JSON.stringify(rapidQuery)}`,
+    'the second Back returned to the original author-search URL');
+  for (const requestId of heldWasm) await page.send('Fetch.continueRequest', { requestId }).catch(() => {});
+  await releaseWasm();
+  await page.send('Network.setCacheDisabled', { cacheDisabled: false });
+  await page.waitFor(`${HYDRATED} && !${q('#author-profile-heading')} && ${q(row(currentAuthor))}
+    && document.activeElement?.id === 'search-author-${currentAuthor}'`, 'rapid Back restores author mode, DOM and focus');
+
+  await page.viewport(1280);
   await page.goto(base + queryUrl(pen));
   await page.waitFor(`${HYDRATED} && ${q(row(currentAuthor))}`, 'search before profile retirement fixture');
   await page.eval(`${q(row(currentAuthor))}.focus()`);
-  await page.key('Enter');
+  await enter(page);
   await page.waitFor(`location.pathname === '/@${currentAuthor}' && ${q('#author-profile-heading')}`, 'open current Handle before retirement');
   // Only the Profile fence is exercised here. The App adapter and retirement retry have PG tests.
   authorFixtureSql("UPDATE author_profiles SET current_handle = NULL WHERE current_handle = 'tac-gia-thu-01'");
@@ -243,7 +290,7 @@ export async function authorSearch(page, { args, check }) {
   check(retired.status === 410 && retired.headers.get('cache-control') === 'no-store'
     && !retired.headers.has('location') && !(await retired.text()).includes(pen),
     'an old URL has a retirement page and drops identity and redirect');
-  await page.eval('history.back()');
+  await back(page);
   await page.waitFor(`new URL(location.href).searchParams.get('q') === ${JSON.stringify(pen)}
     && ${q('#author-search-list')} && !${q(row(currentAuthor))}
     && document.activeElement?.id === 'author-search-results-heading'`, 'Back excludes retired author and focuses results');

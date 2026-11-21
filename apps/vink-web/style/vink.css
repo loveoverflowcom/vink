@@ -2563,6 +2563,10 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
   display: grid;
   gap: var(--vk-space-4);
 }
+.vk-author-search #author-search {
+  max-inline-size: var(--vk-measure);
+  min-inline-size: 0;
+}
 .vk-author-search__results {
   display: grid;
   gap: var(--vk-space-3);
