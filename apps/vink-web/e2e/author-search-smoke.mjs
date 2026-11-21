@@ -85,7 +85,7 @@ async function provision(page, name) {
   if (principal.status !== 201) throw new Error('password fixture binding: ' + principal.status);
 }
 
-export async function authorSearch(page, { args, check }) {
+export async function authorSearch(page, { args, check, textContrast }) {
   seed();
   const base = args.base;
   const exact = await fetch(base + queryUrl('@' + currentAuthor));
@@ -215,7 +215,8 @@ export async function authorSearch(page, { args, check }) {
     return paths.filter(path => path === '/api/v1/me/follows/membership').length === 1
       && !paths.some(path => path.endsWith('/relationship/me'));
   })()`), 'the visible author page uses one membership batch and no per-row reads');
-  await page.eval(`${action}.click()`);
+  await page.eval(`${action}.focus()`);
+  await enter(page);
   await page.waitFor(`${action}?.textContent.trim() === 'Bỏ theo dõi'`,
     'Follow writes through the Graph owner and reflects committed membership');
   const relationship = await fetchInPage(page, SEARCH + '/' + currentAuthor + '/relationship/me');
@@ -232,6 +233,13 @@ export async function authorSearch(page, { args, check }) {
     'second viewer gets identical public search bytes after a private Follow');
   check(await page.eval(`!document.querySelector(${JSON.stringify(row(currentAuthor))}).contains(${action})`),
     'profile link and Follow remain distinct keyboard targets');
+  const { nodes } = await page.send('Accessibility.getFullAXTree');
+  check([currentAuthor, 'tac-gia-thu-02'].every(handle => nodes.some(node =>
+    node.role?.value === 'link' && node.name?.value === `Mở hồ sơ ${pen} (@${handle})`)),
+    'AX names distinguish identical pen names by Handle');
+  check(nodes.some(node => node.role?.value === 'button' && node.name?.value === 'Theo dõi'
+      && node.description?.value?.includes('@' + currentAuthor)),
+    'AX describes Follow in the context of its author');
 
   for (const width of [320, 390, 834, 1024, 1440]) {
     for (const theme of ['light', 'dark']) {
@@ -251,6 +259,10 @@ export async function authorSearch(page, { args, check }) {
           });
         })()`);
         check(layout, `author search reflow ${width}px / ${theme} / ${scale}%`);
+        if (width === 390 && scale === 100) {
+          await textContrast(page, theme, 'author-search', [INPUT, '#author-search-results-heading',
+            row(currentAuthor) + ' .vk-ui-byline__name', '#search-follow-' + currentAuthor]);
+        }
         if (width === 320 && theme === 'dark' && scale === 200
             || width === 1440 && theme === 'light' && scale === 100) {
           await page.capture(`author-search-${width}-${theme}-${scale}`, {
