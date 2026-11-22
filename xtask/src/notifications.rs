@@ -30,6 +30,14 @@ pub struct Scratch<'a> {
     /// The fresh App owner: harness URL, runtime URL (for the relay worker).
     pub admin_app: String,
     pub app_runtime: String,
+    /// The fresh App database name (restored by the App-behind drill).
+    pub app_database: &'a str,
+    pub notifications_database: &'a str,
+    /// Scratch copy for the backout drill, and the harness URL on it.
+    pub copy_database: &'a str,
+    pub admin_copy: String,
+    /// libpq settings of the harness credential, for psql/pg_dump/pg_restore.
+    pub pg_env: Vec<(&'static str, String)>,
     /// Values that must not appear in any output.
     pub secrets: Vec<String>,
 }
@@ -70,6 +78,18 @@ pub fn verify(report: &mut Report, scratch: &Scratch<'_>) -> bool {
     ) && report.step(
         "App relay → Notification Service, two real binaries and two databases: applied, service stop retried then delivered, operator replay already_applied",
         || run.relay_end_to_end(),
+    ) && report.step(
+        "kill -9 of the service and the worker under load: every event applied exactly once",
+        || run.crash_under_load(),
+    ) && report.step(
+        "Notification restored behind the App's ACK: gate closed, replay restores the projection exactly",
+        || run.restore_behind_app(),
+    ) && report.step(
+        "App restored behind Notification: Notification restored from the earlier dump and replayed; lost App events never appear",
+        || run.app_behind_notification(),
+    ) && report.step(
+        "migration backout and forward on a restored copy",
+        || run.backout_on_copy(),
     ) && report.step("notifications: logs contain no credential", || {
         run.no_secrets_in_logs()
     })
@@ -112,10 +132,22 @@ fn sha256_hex(bytes: &[u8]) -> String {
 const OWNER: &str = "0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a";
 const WORK: &str = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
-/// A root approval as the App producer stores it: canonical envelope and its digest.
+/// A root approval for the default owner and work.
 fn root_approval(
     event_id: &str,
     actor: &str,
+    comment: &str,
+    occurred_at: &str,
+) -> (String, String) {
+    approval(event_id, actor, OWNER, WORK, comment, occurred_at)
+}
+
+/// A root approval as the App producer stores it: canonical envelope and its digest.
+fn approval(
+    event_id: &str,
+    actor: &str,
+    owner: &str,
+    work: &str,
     comment: &str,
     occurred_at: &str,
 ) -> (String, String) {
@@ -129,10 +161,10 @@ fn root_approval(
         "publication_stamp": {"epoch": 1, "readable": true},
         "occurred_at": occurred_at,
         "actor_id": actor,
-        "recipients": [OWNER],
+        "recipients": [owner],
         "target": {
             "kind": "work_comment_thread",
-            "work_id": WORK,
+            "work_id": work,
             "comment_id": comment,
             "moderation_version": 2
         },
@@ -245,7 +277,7 @@ impl Run<'_> {
             ));
         }
         let (code, stderr) = self.migrate("first", &s.migrator)?;
-        if code != Some(0) || !stderr.contains("applied=[20261128000000]") {
+        if code != Some(0) || !stderr.contains("applied=[20261128000000, 20261129000000]") {
             return Err(format!("first Notification migrate: {code:?}: {stderr}"));
         }
         let (code, stderr) = self.migrate("second", &s.migrator)?;
@@ -453,7 +485,11 @@ impl Run<'_> {
     }
 
     fn start_worker(&self, uid: u32) -> Result<Guard, String> {
-        let log = std::fs::File::create(self.log("worker")).map_err(|e| e.to_string())?;
+        self.start_worker_named(uid, "worker")
+    }
+
+    fn start_worker_named(&self, uid: u32, name: &str) -> Result<Guard, String> {
+        let log = std::fs::File::create(self.log(name)).map_err(|e| e.to_string())?;
         let mut command = Command::new(lifecycle::binary(self.scratch.root, "vink-worker"));
         crate::env::clear_capabilities(&mut command);
         command
@@ -581,6 +617,487 @@ impl Run<'_> {
         self.stop(service)?;
         println!(
             "==> relay delivered across two processes and two databases; replay had no second effect"
+        );
+        Ok(())
+    }
+
+    /// psql/pg_dump/pg_restore with the harness credential (`VINK_PG_BIN` or PATH).
+    fn pg(&self, name: &str) -> Command {
+        let program = std::env::var_os("VINK_PG_BIN")
+            .map(|dir| Path::new(&dir).join(name))
+            .unwrap_or_else(|| name.into());
+        let mut command = Command::new(program);
+        command
+            .current_dir(self.scratch.root)
+            .env_clear()
+            .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+            .envs(self.scratch.pg_env.iter().map(|(k, v)| (*k, v.as_str())));
+        command
+    }
+
+    fn dump(&self, database: &str, label: &str) -> Result<PathBuf, String> {
+        let file = self.dir.join(format!("{label}.dump"));
+        let out = self
+            .pg("pg_dump")
+            .args(["--format=custom", "--file"])
+            .arg(&file)
+            .args(["--dbname", database])
+            .output()
+            .map_err(|e| format!("pg_dump {database}: {e}"))?;
+        if !out.status.success() {
+            return Err(format!(
+                "pg_dump {database}: {}",
+                String::from_utf8_lossy(&out.stderr)
+            ));
+        }
+        Ok(file)
+    }
+
+    /// Restores `file` over the existing database in one transaction; database-level grants stay.
+    fn restore(&self, database: &str, file: &Path) -> Result<(), String> {
+        let out = self
+            .pg("pg_restore")
+            .args([
+                "--clean",
+                "--if-exists",
+                "--single-transaction",
+                "--exit-on-error",
+                "--dbname",
+                database,
+            ])
+            .arg(file)
+            .output()
+            .map_err(|e| format!("pg_restore {database}: {e}"))?;
+        if !out.status.success() {
+            return Err(format!(
+                "pg_restore {database}: {}",
+                String::from_utf8_lossy(&out.stderr)
+            ));
+        }
+        Ok(())
+    }
+
+    fn psql_file(&self, database: &str, file: &Path) -> Result<(bool, String), String> {
+        let out = self
+            .pg("psql")
+            .args([
+                "-X",
+                "-q",
+                "-v",
+                "ON_ERROR_STOP=1",
+                "--dbname",
+                database,
+                "-f",
+            ])
+            .arg(file)
+            .output()
+            .map_err(|e| format!("psql: {e}"))?;
+        Ok((
+            out.status.success(),
+            String::from_utf8_lossy(&out.stderr).into_owned(),
+        ))
+    }
+
+    /// `count` root approvals of drill `drill`, spread over ten owners and seven works, each by a
+    /// new actor on a new comment, stored as the App producer stores them.
+    fn insert_batch(&self, drill: u32, from: u32, count: u32) -> Result<(), String> {
+        let occurred = query_text(
+            &self.scratch.admin_app,
+            "SELECT to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')",
+        )?;
+        let mut rows = Vec::new();
+        for i in from..from + count {
+            let event_id = format!("019a9b10-0347-7{drill:03x}-8000-{i:012x}");
+            let actor = format!("a1a1a1a1-{drill:04x}-4000-8000-{i:012x}");
+            let owner = format!("0b0b0b0b-{drill:04x}-4000-8000-{:012x}", i % 10);
+            let work = format!("aaaaaaaa-{drill:04x}-4000-8000-{:012x}", i % 7);
+            let comment = format!("c0c0c0c0-{drill:04x}-4000-8000-{i:012x}");
+            let (envelope, digest) =
+                approval(&event_id, &actor, &owner, &work, &comment, &occurred);
+            rows.push(format!(
+                "('{event_id}', 'comment.root.approved', 1, 'discussion', 'comment.root.approved/comment/{comment}/2', 1, '{envelope}', '{digest}')"
+            ));
+        }
+        let statement = format!(
+            "WITH e AS (INSERT INTO notification_events
+                 (id, event_type, schema_version, source_owner, dedup_key, activation_epoch, envelope, payload_digest)
+               VALUES {} RETURNING id)
+             INSERT INTO notification_deliveries (event_id) SELECT id FROM e",
+            rows.join(",")
+        );
+        if sql(&self.scratch.admin_app, &statement)? != i64::from(count) {
+            return Err("the App events were not stored".into());
+        }
+        Ok(())
+    }
+
+    fn drill_like(drill: u32) -> String {
+        format!("019a9b10-0347-7{drill:03x}-%")
+    }
+
+    /// App deliveries of a drill not yet succeeded, and succeeded with `already_applied`.
+    fn pending_and_replayed(&self, drill: u32) -> Result<(i64, i64), String> {
+        let like = Self::drill_like(drill);
+        Ok((
+            sql(
+                &self.scratch.admin_app,
+                &format!(
+                    "SELECT count(*) FROM notification_deliveries WHERE event_id::text LIKE '{like}' AND state <> 'succeeded'"
+                ),
+            )?,
+            sql(
+                &self.scratch.admin_app,
+                &format!(
+                    "SELECT count(*) FROM notification_deliveries WHERE event_id::text LIKE '{like}' AND outcome = 'already_applied'"
+                ),
+            )?,
+        ))
+    }
+
+    fn all_pending(&self) -> Result<i64, String> {
+        sql(
+            &self.scratch.admin_app,
+            "SELECT count(*) FROM notification_deliveries WHERE state <> 'succeeded'",
+        )
+    }
+
+    fn receipts(&self, drill: u32) -> Result<i64, String> {
+        sql(
+            &self.scratch.admin_notifications,
+            &format!(
+                "SELECT count(*) FROM ingestion_receipts WHERE event_id::text LIKE '{}'",
+                Self::drill_like(drill)
+            ),
+        )
+    }
+
+    fn wait_for(
+        &self,
+        what: &str,
+        within: Duration,
+        mut done: impl FnMut() -> Result<bool, String>,
+    ) -> Result<Duration, String> {
+        let started = Instant::now();
+        while started.elapsed() < within {
+            if done()? {
+                return Ok(started.elapsed());
+            }
+            std::thread::sleep(Duration::from_millis(200));
+        }
+        Err(format!("{what}: not reached within {within:?}"))
+    }
+
+    /// The inbox projection without generated IDs: every group's key, counts, active actors,
+    /// read state and creation time, in a stable order.
+    fn projection(&self) -> Result<String, String> {
+        query_text(
+            &self.scratch.admin_notifications,
+            "SELECT coalesce(json_agg(p ORDER BY p.recipient, p.event_type, p.target_key, p.created_at), '[]')::text
+               FROM (SELECT g.recipient, g.event_type, g.target_key, g.actor_count, g.item_count,
+                            g.read_through > 0 AS read, g.created_at,
+                            (SELECT array_agg(m.actor_id ORDER BY m.actor_id) FROM group_members m
+                              WHERE m.group_id = g.group_id AND m.active) AS actors
+                       FROM notification_groups g) p",
+        )
+    }
+
+    fn kill(guard: &mut Guard) -> Result<(), String> {
+        let mut child = guard.0.take().ok_or("process already stopped")?;
+        child.kill().map_err(|e| e.to_string())?;
+        child.wait().map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    fn operator(
+        &self,
+        binary: &str,
+        args: &[&str],
+        database_env: (&str, &str),
+    ) -> Result<String, String> {
+        let out = Command::new(lifecycle::binary(self.scratch.root, binary))
+            .args(args)
+            .current_dir(self.scratch.root)
+            .env_clear()
+            .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+            .env(database_env.0, database_env.1)
+            .env("VINK_PROFILE", "local")
+            .env("VINK_LOG_FORMAT", "text")
+            .output()
+            .map_err(|e| e.to_string())?;
+        if !out.status.success() {
+            return Err(format!(
+                "{binary} {}: {}",
+                args.join(" "),
+                String::from_utf8_lossy(&out.stderr)
+            ));
+        }
+        Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+    }
+
+    fn recovery(&self, phase: &str, note: &str) -> Result<(), String> {
+        self.operator(
+            "vink-notifications",
+            &["maintenance", "recovery", phase, note],
+            ("VINK_NOTIFICATIONS_DATABASE_URL", &self.scratch.runtime),
+        )
+        .map(|_| ())
+    }
+
+    fn replay(&self, since: &str, note: &str) -> Result<(), String> {
+        self.operator(
+            "vink-app",
+            &["notifications", "replay", since, note],
+            ("DATABASE_URL", &self.scratch.app_runtime),
+        )
+        .map(|_| ())
+    }
+
+    fn inbox_count(&self, owner: &str) -> Result<(u16, String), String> {
+        request(
+            &self.inbox,
+            "GET",
+            &format!("/v1/inboxes/{owner}/count"),
+            &[],
+            b"",
+        )
+    }
+
+    fn crash_under_load(&self) -> Result<(), String> {
+        const DRILL: u32 = 1;
+        const EVENTS: u32 = 400;
+        let uid = self.uid()?;
+        self.insert_batch(DRILL, 0, EVENTS)?;
+        let mut service = self.start("serve-crash-1", Some(uid), Some(uid))?;
+        let mut worker = self.start_worker_named(uid, "worker-crash-1")?;
+        self.wait_for("first deliveries", Duration::from_secs(60), || {
+            Ok(self.pending_and_replayed(DRILL)?.0 <= i64::from(EVENTS) - 50)
+        })?;
+        Self::kill(&mut service)?;
+        let pending = self.pending_and_replayed(DRILL)?.0;
+        println!("==> service killed (SIGKILL) with {pending} of {EVENTS} deliveries outstanding");
+        let _service = self.start("serve-crash-2", Some(uid), Some(uid))?;
+        self.wait_for("progress after restart", Duration::from_secs(90), || {
+            Ok(self.pending_and_replayed(DRILL)?.0 < pending)
+        })?;
+        Self::kill(&mut worker)?;
+        let pending = self.pending_and_replayed(DRILL)?.0;
+        println!(
+            "==> worker killed (SIGKILL) with {pending} deliveries outstanding; its leases must expire"
+        );
+        let mut worker = self.start_worker_named(uid, "worker-crash-2")?;
+        let waited = self.wait_for("every delivery", Duration::from_secs(150), || {
+            Ok(self.pending_and_replayed(DRILL)?.0 == 0)
+        })?;
+        let receipts = self.receipts(DRILL)?;
+        let members = sql(
+            &self.scratch.admin_notifications,
+            &format!(
+                "SELECT coalesce(sum(actor_count), 0)::bigint FROM notification_groups
+              WHERE recipient::text LIKE '0b0b0b0b-{DRILL:04x}-%'"
+            ),
+        )?;
+        let replayed = self.pending_and_replayed(DRILL)?.1;
+        println!(
+            "==> all {EVENTS} delivered {:.1}s after the worker restart; {replayed} answered already_applied (committed before a lost ACK)",
+            waited.as_secs_f64()
+        );
+        if receipts != i64::from(EVENTS) || members != i64::from(EVENTS) {
+            return Err(format!(
+                "expected {EVENTS} receipts and members, found {receipts} and {members}"
+            ));
+        }
+        let status = worker.terminate(Duration::from_secs(15))?;
+        if !status.success() {
+            return Err(format!("vink-worker exited with {status}"));
+        }
+        self.stop(_service)
+    }
+
+    fn restore_behind_app(&self) -> Result<(), String> {
+        const DRILL: u32 = 2;
+        let uid = self.uid()?;
+        let service = self.start("serve-restore-1", Some(uid), Some(uid))?;
+        let mut worker = self.start_worker_named(uid, "worker-restore")?;
+        self.insert_batch(DRILL, 0, 500)?;
+        let drained = self.wait_for("first 500", Duration::from_secs(120), || {
+            Ok(self.pending_and_replayed(DRILL)?.0 == 0)
+        })?;
+        println!(
+            "==> relay drained 500 events in {:.2}s ({:.0}/s end to end)",
+            drained.as_secs_f64(),
+            500.0 / drained.as_secs_f64()
+        );
+        let since = query_text(
+            &self.scratch.admin_app,
+            "SELECT to_char((now() - interval '1 minute') AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')",
+        )?;
+        let dump = self.dump(self.scratch.notifications_database, "notifications-before")?;
+        self.insert_batch(DRILL, 500, 100)?;
+        self.wait_for("next 100", Duration::from_secs(60), || {
+            Ok(self.pending_and_replayed(DRILL)?.0 == 0)
+        })?;
+        let reference = self.projection()?;
+        // Notification is lost and restored to the dump: behind what the App acknowledged.
+        self.stop(service)?;
+        self.restore(self.scratch.notifications_database, &dump)?;
+        if self.receipts(DRILL)? != 500 {
+            return Err("the restore did not go back to the dump".into());
+        }
+        self.recovery("begin", "verify: Notification restored behind the App")?;
+        let service = self.start("serve-restore-2", Some(uid), Some(uid))?;
+        let owner = format!("0b0b0b0b-{DRILL:04x}-4000-8000-000000000000");
+        let (status, body) = self.inbox_count(&owner)?;
+        if status != 503 || !body.contains("recovering") {
+            return Err(format!("inbox while recovering: {status} {body}"));
+        }
+        self.replay(&since, "verify: replay after Notification restore")?;
+        self.wait_for("replay", Duration::from_secs(120), || {
+            Ok(self.all_pending()? == 0)
+        })?;
+        self.recovery("end", "verify: replay drained")?;
+        let (status, body) = self.inbox_count(&owner)?;
+        if status != 200 {
+            return Err(format!("inbox after recovery: {status} {body}"));
+        }
+        if self.projection()? != reference || self.receipts(DRILL)? != 600 {
+            return Err("the replayed projection differs from the one before the loss".into());
+        }
+        let replayed = self.pending_and_replayed(DRILL)?.1;
+        println!(
+            "==> restore + replay: projection identical; {replayed} replayed events were already applied"
+        );
+        let status = worker.terminate(Duration::from_secs(15))?;
+        if !status.success() {
+            return Err(format!("vink-worker exited with {status}"));
+        }
+        self.stop(service)
+    }
+
+    fn app_behind_notification(&self) -> Result<(), String> {
+        const DRILL: u32 = 3;
+        let uid = self.uid()?;
+        let service = self.start("serve-app-behind-1", Some(uid), Some(uid))?;
+        let mut worker = self.start_worker_named(uid, "worker-app-behind-1")?;
+        // A backup set as backup.sh takes it: Notification first, then the App.
+        let since = query_text(
+            &self.scratch.admin_app,
+            "SELECT to_char((now() - interval '1 minute') AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')",
+        )?;
+        let notifications = self.dump(self.scratch.notifications_database, "set-notifications")?;
+        let app = self.dump(self.scratch.app_database, "set-app")?;
+        let reference = self.projection()?;
+        // Work after the backup reaches Notification, then the App is lost and restored.
+        self.insert_batch(DRILL, 0, 50)?;
+        self.wait_for("events after the backup", Duration::from_secs(60), || {
+            Ok(self.pending_and_replayed(DRILL)?.0 == 0)
+        })?;
+        if self.receipts(DRILL)? != 50 {
+            return Err("Notification did not apply the events after the backup".into());
+        }
+        self.recovery("begin", "verify: App restore in progress")?;
+        let status = worker.terminate(Duration::from_secs(15))?;
+        if !status.success() {
+            return Err(format!("vink-worker exited with {status}"));
+        }
+        self.restore(self.scratch.app_database, &app)?;
+        // Notification is ahead of the App: go back to the set's earlier Notification dump.
+        self.stop(service)?;
+        self.restore(self.scratch.notifications_database, &notifications)?;
+        self.recovery("begin", "verify: Notification restored from the same set")?;
+        let service = self.start("serve-app-behind-2", Some(uid), Some(uid))?;
+        let mut worker = self.start_worker_named(uid, "worker-app-behind-2")?;
+        self.replay(&since, "verify: replay after App restore")?;
+        self.wait_for("replay", Duration::from_secs(120), || {
+            Ok(self.all_pending()? == 0)
+        })?;
+        self.recovery("end", "verify: reconciled with the App")?;
+        let lost = sql(
+            &self.scratch.admin_app,
+            &format!(
+                "SELECT count(*) FROM notification_events WHERE id::text LIKE '{}'",
+                Self::drill_like(DRILL)
+            ),
+        )?;
+        if lost != 0 || self.receipts(DRILL)? != 0 || self.projection()? != reference {
+            return Err("an event the App lost is still visible in Notifications".into());
+        }
+        println!(
+            "==> App restored behind Notification: the 50 lost App events left no inbox effect"
+        );
+        let status = worker.terminate(Duration::from_secs(15))?;
+        if !status.success() {
+            return Err(format!("vink-worker exited with {status}"));
+        }
+        self.stop(service)
+    }
+
+    fn backout_on_copy(&self) -> Result<(), String> {
+        let s = self.scratch;
+        let dump = self.dump(s.notifications_database, "backout-source")?;
+        sql(
+            &s.admin_app,
+            &format!(
+                "CREATE DATABASE {} WITH TEMPLATE template0 ENCODING 'UTF8'",
+                s.copy_database
+            ),
+        )
+        .or_else(|_| {
+            sql(
+                &s.admin_notifications,
+                &format!(
+                    "CREATE DATABASE {} WITH TEMPLATE template0 ENCODING 'UTF8'",
+                    s.copy_database
+                ),
+            )
+        })?;
+        let out = self
+            .pg("pg_restore")
+            .args(["--exit-on-error", "--dbname", s.copy_database])
+            .arg(&dump)
+            .output()
+            .map_err(|e| e.to_string())?;
+        if !out.status.success() {
+            return Err(format!(
+                "restore into the copy: {}",
+                String::from_utf8_lossy(&out.stderr)
+            ));
+        }
+        let rollback = s
+            .root
+            .join("services/vink-notifications/migrations-rollback");
+        let (ok, stderr) = self.psql_file(
+            s.copy_database,
+            &rollback.join("20261129000000_notification_recovery.down.sql"),
+        )?;
+        if !ok {
+            return Err(format!("recovery backout: {stderr}"));
+        }
+        let inbox_down = rollback.join("20261128000000_notification_inbox.down.sql");
+        let (ok, stderr) = self.psql_file(s.copy_database, &inbox_down)?;
+        if ok || !stderr.contains("within retention") {
+            return Err(format!(
+                "inbox backout with live groups must refuse: {stderr}"
+            ));
+        }
+        sql(&s.admin_copy, "DELETE FROM notification_groups")?;
+        let (ok, stderr) = self.psql_file(s.copy_database, &inbox_down)?;
+        if !ok {
+            return Err(format!("inbox backout after purge: {stderr}"));
+        }
+        if sql(
+            &s.admin_copy,
+            "SELECT count(*) FROM pg_tables WHERE schemaname = 'public' AND tablename <> '_sqlx_migrations'",
+        )? != 0
+            || sql(&s.admin_copy, "SELECT count(*) FROM _sqlx_migrations")? != 0
+        {
+            return Err("backout left tables or history behind".into());
+        }
+        let (code, stderr) = self.migrate("copy-forward", &s.admin_copy)?;
+        if code != Some(0) || !stderr.contains("applied=[20261128000000, 20261129000000]") {
+            return Err(format!("forward migration on the copy: {code:?}: {stderr}"));
+        }
+        println!(
+            "==> backout on a copy: refused with live groups, clean after purge, forward migration reapplied"
         );
         Ok(())
     }

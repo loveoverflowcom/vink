@@ -16,7 +16,7 @@ use vink_notifications::http::{NotificationState, Scope, router};
 use vink_notifications::server::{self, SocketError};
 use vink_notifications::{persistence, runtime, store};
 
-const USAGE: &str = "usage: vink-notifications [serve|migrate]\n       vink-notifications maintenance purge\n       vink-notifications maintenance status";
+const USAGE: &str = "usage: vink-notifications [serve|migrate]\n       vink-notifications maintenance purge\n       vink-notifications maintenance status\n       vink-notifications maintenance recovery begin|end <note>";
 
 /// How often `serve` purges expired rows.
 const PURGE_INTERVAL: Duration = Duration::from_secs(3600);
@@ -24,17 +24,40 @@ const PURGE_INTERVAL: Duration = Duration::from_secs(3600);
 const PURGE_BATCH: i64 = 1_000;
 const PURGE_MAX_BATCHES: u32 = 100;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum Maintenance {
     Purge,
     Status,
+    /// Closes (`true`) or opens the recovery gate, with the operator's note.
+    Recovery(bool, String),
 }
+
+/// Longest operator note, as the audit table allows.
+const MAX_NOTE: usize = 500;
 
 fn parse_maintenance(args: &[String]) -> Result<Maintenance, String> {
     match (args.first().map(String::as_str), args.len()) {
         (Some("purge"), 1) => Ok(Maintenance::Purge),
         (Some("status"), 1) => Ok(Maintenance::Status),
-        _ => Err("expected `maintenance purge` or `maintenance status`".into()),
+        (Some("recovery"), n) if n >= 3 => {
+            let recovering = match args[1].as_str() {
+                "begin" => true,
+                "end" => false,
+                _ => {
+                    return Err("expected `recovery begin <note>` or `recovery end <note>`".into());
+                }
+            };
+            let note = args[2..].join(" ").trim().to_string();
+            let length = note.chars().count();
+            if length == 0 || length > MAX_NOTE {
+                return Err(format!("the note must have 1–{MAX_NOTE} characters"));
+            }
+            Ok(Maintenance::Recovery(recovering, note))
+        }
+        _ => Err(
+            "expected `maintenance purge`, `maintenance status` or `maintenance recovery begin|end <note>`"
+                .into(),
+        ),
     }
 }
 
@@ -141,7 +164,7 @@ async fn maintenance(config: &OperatorConfig, task: Maintenance) -> Result<(), F
             .await
             .map(|status| {
                 println!(
-                    "inboxes {}; groups {} (open {}, expired awaiting purge {}); members {}; receipts {}; Thấm marks {}; oldest group {}",
+                    "inboxes {}; groups {} (open {}, expired awaiting purge {}); members {}; receipts {}; Thấm marks {}; oldest group {}; inbox {}",
                     status.inboxes,
                     status.groups,
                     status.open_groups,
@@ -151,10 +174,40 @@ async fn maintenance(config: &OperatorConfig, task: Maintenance) -> Result<(), F
                     status.marks,
                     status
                         .oldest_group_days
-                        .map_or("-".into(), |days| format!("{days} day(s)"))
+                        .map_or("-".into(), |days| format!("{days} day(s)")),
+                    if status.recovering {
+                        "recovering (503)"
+                    } else {
+                        "serving"
+                    }
                 );
             })
             .map_err(|error| Failure::Runtime(format!("status failed: {}", store::error_class(&error)))),
+        Maintenance::Recovery(recovering, note) => store::set_recovery(&pool, recovering, &note)
+            .await
+            .map(|change| match change {
+                store::RecoveryChange::Changed(state) => println!(
+                    "recovery {} (epoch {}); inbox calls now {}",
+                    if state.recovering { "begun" } else { "ended" },
+                    state.epoch,
+                    if state.recovering {
+                        "answer 503 recovering"
+                    } else {
+                        "are served"
+                    }
+                ),
+                store::RecoveryChange::Unchanged(state) => println!(
+                    "recovery already {} (epoch {}); nothing changed",
+                    if state.recovering { "in progress" } else { "ended" },
+                    state.epoch
+                ),
+            })
+            .map_err(|error| {
+                Failure::Runtime(format!(
+                    "recovery change failed: {}",
+                    store::error_class(&error)
+                ))
+            }),
     };
     pool.close().await;
     result
@@ -297,6 +350,23 @@ mod tests {
             Ok(Maintenance::Status)
         );
         for bad in [&[][..], &["purge", "now"][..], &["vacuum"][..]] {
+            assert!(parse_maintenance(&args(bad)).is_err(), "{bad:?}");
+        }
+        assert_eq!(
+            parse_maintenance(&args(&["recovery", "begin", "restore", "2026-11-21"])),
+            Ok(Maintenance::Recovery(true, "restore 2026-11-21".into()))
+        );
+        assert_eq!(
+            parse_maintenance(&args(&["recovery", "end", "replayed"])),
+            Ok(Maintenance::Recovery(false, "replayed".into()))
+        );
+        let long = "x".repeat(MAX_NOTE + 1);
+        for bad in [
+            &["recovery", "begin"][..],
+            &["recovery", "pause", "x"][..],
+            &["recovery", "end", " "][..],
+            &["recovery", "end", long.as_str()][..],
+        ] {
             assert!(parse_maintenance(&args(bad)).is_err(), "{bad:?}");
         }
     }

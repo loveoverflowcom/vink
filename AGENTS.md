@@ -110,11 +110,13 @@ those registries rather than duplicating long status narratives across skills.
   [registry](docs/development/notifications.md)):** App producers + fenced relay (#346) and, since
   the first part of #347, `services/vink-notifications`: own binary and database
   `vink_notifications`, two peer-uid Unix sockets (ingest for the `vink-worker` relay, inbox for the
-  Gateway), receipts + write-time rollup, Seen/Read and 180-day purge. #348 adds the Gateway:
+  Gateway), receipts + write-time rollup, Seen/Read and 180-day purge; part 2 adds the recovery
+  gate (`maintenance recovery begin|end`, inbox `503 recovering`), a Notification-first backup
+  order and AC-06 kill/restore/backout drills in `verify postgres`. #348 adds the Gateway:
   `/api/v1/me/notifications…` (count with fresh/stale/503, inbox pages filtered by current access,
   session-bound snapshot/cursor tokens, Seen/Read/MarkAllRead, private decision details), comment
-  excerpts (#365) and the public Thấm list. No Web UI (#364), Ưng notifications, production image or
-  full restore drill yet; `admin.notice.reserved` stays type-only.
+  excerpts (#365) and the public Thấm list. No Web UI (#364), Ưng notifications or production
+  image yet; `admin.notice.reserved` stays type-only.
 - **Work views (“Lượt xem”, #340–#343; [spec](docs/architecture/work-views.md),
   [registry](docs/development/work-views.md)):** `VDR-WORK-VIEWS@r1` is `PRODUCT_CONFIRMED`. #341
   adds the write path only: `domain::work_view`, `work_view_*` tables (keyed reader digests,

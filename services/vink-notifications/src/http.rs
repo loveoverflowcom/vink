@@ -108,6 +108,7 @@ fn error(status: StatusCode, code: &'static str) -> Response {
         "not_found" => "no such group in this inbox",
         "deadline_exceeded" => "the call did not finish in time",
         "unknown_route" => "this socket has no such route",
+        "recovering" => "the inbox is being reconciled after a restore",
         _ => "the notification store is unavailable",
     };
     let mut response = (
@@ -202,6 +203,28 @@ async fn deadline(
     }
 }
 
+/// While an operator reconciles after a restore, inbox reads and commands are refused with
+/// `503 recovering`: a projection that may be behind or ahead of the App is never served as
+/// current (contract §1.3 step 5). Ingest is not gated, so the App relay's replay can run.
+/// Called by each inbox handler after its own request checks, so a malformed request is still
+/// `400` before any database call.
+async fn recovery_gate(state: &NotificationState) -> Option<Response> {
+    match store::recovery(&state.pool).await {
+        Ok(recovery) if !recovery.recovering => None,
+        Ok(_) => Some(error(StatusCode::SERVICE_UNAVAILABLE, "recovering")),
+        Err(failure) => {
+            tracing::warn!(
+                error = store::error_class(&failure),
+                "recovery gate unreadable"
+            );
+            Some(error(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "dependency_unavailable",
+            ))
+        }
+    }
+}
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct IngestRequest {
@@ -269,6 +292,9 @@ async fn count(State(state): State<NotificationState>, Path(raw): Path<String>) 
     let Some(recipient) = recipient(&raw) else {
         return error(StatusCode::BAD_REQUEST, "invalid_request");
     };
+    if let Some(refused) = recovery_gate(&state).await {
+        return refused;
+    }
     match store::count(&state.pool, recipient, state.now()).await {
         Ok(count) => ok(json!({
             "status": "fresh",
@@ -298,6 +324,9 @@ async fn groups(
     let limit = query.limit.unwrap_or(20);
     if !(1..=store::MAX_PAGE).contains(&limit) {
         return error(StatusCode::BAD_REQUEST, "invalid_request");
+    }
+    if let Some(refused) = recovery_gate(&state).await {
+        return refused;
     }
     match store::page(
         &state.pool,
@@ -343,6 +372,9 @@ async fn run(state: &NotificationState, raw: &str, key: &str, command: Command) 
     };
     if !command_key(key) {
         return error(StatusCode::BAD_REQUEST, "invalid_request");
+    }
+    if let Some(refused) = recovery_gate(state).await {
+        return refused;
     }
     match store::command(&state.pool, recipient, key, &command, state.now()).await {
         Ok(answer) => ok(answer),
@@ -416,6 +448,17 @@ async fn ready(State(state): State<NotificationState>) -> Response {
     };
     let callers = state.caller_uid.is_some();
     let ready = schema == Some(SchemaState::Current) && role == "least_privileged" && callers;
+    // Reported, not a readiness condition: ingest must stay up for the replay, and a gated inbox
+    // already answers `503 recovering` per call.
+    let recovery = if schema == Some(SchemaState::Current) {
+        match store::recovery(&state.pool).await {
+            Ok(recovery) if recovery.recovering => "recovering",
+            Ok(_) => "serving",
+            Err(_) => "unknown",
+        }
+    } else {
+        "unknown"
+    };
     let body = json!({
         "status": if ready { "ready" } else { "not_ready" },
         "scope": state.scope.label(),
@@ -424,6 +467,7 @@ async fn ready(State(state): State<NotificationState>) -> Response {
             "schema": schema.map_or("unknown", SchemaState::label),
             "role": role,
             "callers": if callers { "configured" } else { "not_configured" },
+            "recovery": recovery,
         },
     });
     let mut response = (

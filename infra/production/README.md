@@ -74,11 +74,11 @@ Các bước DNS/Caddy trực tiếp bên dưới mô tả nền #304. Khi chuy�
 - Chạy một restart **chỉ Vink production**, kiểm lại health, migration và dữ liệu. Kiểm unit được
   enable và dependency trong systemd. Reboot VPS là bài kiểm riêng cần lịch và đồng ý do dùng chung.
 - `vink-prod-backup.timer` chạy hằng ngày từ 02:15 UTC. Mỗi lần ghi một custom dump có checksum
-  cho từng DB đã provision (`vink`, `vink_identity`, và `vink_notifications` khi đã có; dump
-  Notification lấy sau cùng), giữ bảy bộ trên cùng VPS với mode 0700. Không khẳng định offsite hoặc
+  cho từng DB đã provision (`vink_notifications` khi đã có, rồi `vink`, `vink_identity`; dump
+  Notification lấy trước để bản restore không bao giờ đi trước App), giữ bảy bộ trên cùng VPS với mode 0700. Không khẳng định offsite hoặc
   snapshot chung giữa các DB. Image/service `vink-notifications` chưa có trong compose production;
-  RPO và diễn tập restore lệch mốc của Notifications vẫn chờ `#347` (xem
-  [hiện trạng](../../docs/development/notifications.md#7-hiện-trạng-347-notification-service)).
+  khi khôi phục, làm theo [runbook theo loại sự cố](../../docs/development/notifications.md#73-retention-sự-kiện-muộn-và-phục-hồi)
+  (Notification không bao giờ được phục vụ khi đi trước App; replay lấp khoảng trống).
   Restore rehearsal dùng PostgreSQL 17 riêng và volume tạm, kiểm checksum, replay `pg_restore
   --exit-on-error`, so khớp schema/migrations và số dòng. Vai trò phải tồn tại khi dùng owner/grants
   trong lần recovery thật. Ghi vị trí/checksum, thời gian và giới hạn, không đính kèm dumps vào PR.

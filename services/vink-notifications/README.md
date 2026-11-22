@@ -33,7 +33,7 @@ UID của tiến trình phục vụ socket (`VINK_NOTIFICATIONS_SERVER_UID`) tr�
 
 ## Lệnh
 
-`vink-notifications [serve|migrate|maintenance purge|maintenance status]`; mã thoát 0 thành công,
+`vink-notifications [serve|migrate|maintenance purge|maintenance status|maintenance recovery begin|end <ghi chú>]`; mã thoát 0 thành công,
 1 lỗi runtime, 2 cấu hình hoặc cú pháp sai.
 
 | Lệnh | Credential | Việc |
@@ -41,7 +41,8 @@ UID của tiến trình phục vụ socket (`VINK_NOTIFICATIONS_SERVER_UID`) tr�
 | `serve` (mặc định) | `VINK_NOTIFICATIONS_DATABASE_URL` (runtime) | Bind hai socket, purge mỗi giờ; không bao giờ migrate |
 | `migrate` | `VINK_NOTIFICATIONS_MIGRATE_DATABASE_URL` (migrator) | Áp migrations; không dùng runtime làm dự phòng |
 | `maintenance purge` | runtime | Xóa hàng hết hạn theo lô |
-| `maintenance status` | runtime | Đếm inbox, nhóm, receipt, dấu Thấm và tuổi nhóm cũ nhất (không in ID) |
+| `maintenance status` | runtime | Đếm inbox, nhóm, receipt, dấu Thấm, tuổi nhóm cũ nhất và trạng thái cổng recovery (không in ID) |
+| `maintenance recovery begin\|end <ghi chú>` | runtime | Đóng/mở cổng recovery: inbox trả `503 recovering` trong lúc đối soát sau restore; có audit ([runbook](../../docs/development/notifications.md#73-retention-sự-kiện-muộn-và-phục-hồi)) |
 
 Readiness (`/health/ready` trên mỗi socket) chỉ `200` khi database trả lời, schema hiện hành, role
 không có quyền đặc biệt và socket đó có caller.
@@ -55,4 +56,4 @@ không có quyền đặc biệt và socket đó có caller.
 | [src/server.rs](src/server.rs) | Socket `0660` trong thư mục đóng, thay socket cũ an toàn, shutdown xóa đúng socket của mình |
 | [migrations/](migrations/) | Schema `vink_notifications` |
 | [migrations-rollback/](migrations-rollback/) | Backout, từ chối khi còn nhóm trong hạn |
-| [tests/postgres.rs](tests/postgres.rs) | PostgreSQL thật: idempotency, rollup, đua ghi, Thấm, invalidation, Seen/Read, retention, restore |
+| [tests/postgres.rs](tests/postgres.rs) | PostgreSQL thật: idempotency, rollup, đua ghi, Thấm, invalidation, Seen/Read, retention, restore, cổng recovery; phép đo ngân sách `#[ignore]` ở `tests/postgres/budget.rs` |
