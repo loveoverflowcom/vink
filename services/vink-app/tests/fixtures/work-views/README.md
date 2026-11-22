@@ -18,5 +18,7 @@ ngày tính theo `Asia/Ho_Chi_Minh`.
   `work_view::shared_timeline_oracle_on_postgres` trong `tests/postgres.rs` (adapter thật,
   publication thật).
 
-HTTP thu nhận (#343) dùng lại hai file bằng cách ánh xạ người đọc sang phiên hay cookie khách;
-API đọc (#342) dùng trạng thái cuối của `scenario.json` làm oracle.
+HTTP thu nhận (#343) dùng lại hai file bằng cách ánh xạ người đọc sang phiên hay cookie khách.
+Đọc của tác giả (#342) dùng `total` của từng bước `scenario.json` làm oracle: test PostgreSQL đọc
+lại số qua read-model tác giả sau mỗi bước (chưa đo trước bước đầu; giữ qua thay revision, riêng
+tư, công khai lại và dọn hạn).

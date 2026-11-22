@@ -18,12 +18,14 @@ use vink_app::application::work_view::{
     RecordWorkView, Viewer, WorkViewError, WorkViewRecord, WorkViewResult,
 };
 use vink_app::domain::ids::RevisionId;
+use vink_app::domain::work_view::count::ViewCount;
 use vink_app::domain::work_view::{
     EventDigest, GuestToken, ViewDigestKey, ViewEventId, ViewRefusal, ViewSkip, ViewVerdict,
 };
 use vink_app::evaluation_worker::EvaluationWorker;
 use vink_app::persistence::work_view::{EVENT_LOCK_SEED, EVENT_LOCK_SQL, erase_work};
 
+use super::work_view_reads::{author_views, first_published_at, started_at};
 use super::*;
 
 const KEY: ViewDigestKey = ViewDigestKey::from_bytes([0x5a; 32]);
@@ -36,14 +38,14 @@ fn t0() -> OffsetDateTime {
     at("2026-12-01T01:00:00Z")
 }
 
-fn event_at(time: OffsetDateTime) -> String {
+pub(super) fn event_at(time: OffsetDateTime) -> String {
     let nanos = time.unix_timestamp_nanos();
     let seconds = u64::try_from(nanos.div_euclid(1_000_000_000)).unwrap();
     let subsec = u32::try_from(nanos.rem_euclid(1_000_000_000)).unwrap();
     Uuid::new_v7(Timestamp::from_unix(NoContext, seconds, subsec)).to_string()
 }
 
-fn guest() -> Viewer {
+pub(super) fn guest() -> Viewer {
     Viewer::Guest(GuestToken::generate().expose())
 }
 
@@ -51,7 +53,7 @@ fn member(id: Uuid) -> Viewer {
     Viewer::Member(PrincipalId::from_uuid(id))
 }
 
-async fn view(
+pub(super) async fn view(
     vink: &Vink<PgStore>,
     viewer: Viewer,
     work: WorkId,
@@ -111,7 +113,7 @@ async fn pointer(pool: &PgPool, work: WorkId) -> Option<Uuid> {
         .unwrap()
 }
 
-async fn new_member(pool: &PgPool, name: &str) -> Uuid {
+pub(super) async fn new_member(pool: &PgPool, name: &str) -> Uuid {
     let id = Uuid::now_v7();
     sqlx::query("INSERT INTO principals (id, display_name) VALUES ($1, $2)")
         .bind(id)
@@ -240,6 +242,12 @@ async fn shared_timeline_oracle_on_postgres(pool: PgPool) {
     )]);
     let mut events: HashMap<String, String> = HashMap::new();
     let mut generation = 2;
+    // #342 reads the same timeline back as the author: no number before the first decided
+    // event, then the oracle's total after every step, through the revision change, the private
+    // period, republication and retention (VIEW-06, VIEW-08, VIEW-09).
+    assert_eq!(author_views(&vink, work).await, Some(ViewCount::NotStarted));
+    let first_public = first_published_at(&pool, work).await;
+    let mut shown = 0;
     for (n, step) in scenario.steps.iter().enumerate() {
         let now = at(&step.at);
         let label = format!("step {} ({} at {})", n + 1, step.action, step.at);
@@ -302,6 +310,16 @@ async fn shared_timeline_oracle_on_postgres(pool: PgPool) {
             }
             other => panic!("unknown action {other}"),
         }
+        shown = step.total.map_or(shown, i64::unsigned_abs);
+        let start = started_at(&pool).await.unwrap();
+        assert_eq!(
+            author_views(&vink, work).await,
+            Some(ViewCount::Counted {
+                views: shown,
+                since: (first_public < start).then_some(start),
+            }),
+            "{label}: author read"
+        );
     }
     assert_eq!(total(&pool, work).await, scenario.end.total);
     let days: Vec<(time::Date, i64)> =

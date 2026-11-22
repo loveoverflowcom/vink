@@ -100,6 +100,8 @@ mod taxonomy_api;
 mod work_moderation;
 #[path = "postgres/work_view.rs"]
 mod work_view;
+#[path = "postgres/work_view_reads.rs"]
+mod work_view_reads;
 
 fn principal(id: Uuid) -> Option<PrincipalId> {
     Some(PrincipalId::from_uuid(id))

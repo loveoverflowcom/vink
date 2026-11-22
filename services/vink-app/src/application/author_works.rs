@@ -5,6 +5,7 @@ use crate::domain::{
     draft::DraftVersion,
     draft_query::DraftSearch,
     ids::{PrincipalId, RevisionId, WorkId},
+    work_view::count::ViewCount,
 };
 use time::OffsetDateTime;
 
@@ -16,6 +17,11 @@ pub struct AuthorWorkSummary {
     pub updated_at: OffsetDateTime,
     /// None means inconsistent/unknown state, never a guessed private/public state.
     pub publication: Option<PublicationSummary>,
+    /// Work views (#342, VIEW-07): per `WorkId`, independent of `publication` and of
+    /// `current_public`, so a private, hidden or withdrawn work keeps its number (VIEW-08).
+    /// None means unavailable (the statistics read failed or its facts are inconsistent); it is
+    /// never shown as zero.
+    pub views: Option<ViewCount>,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PublicationSummary {

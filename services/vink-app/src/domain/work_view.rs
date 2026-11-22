@@ -2,7 +2,8 @@
 //! `VDR-WORK-VIEWS@r1` (docs/architecture/work-views.md). The production caller is the
 //! `PgStore` transaction (`persistence/work_view.rs`), which loads the facts under locks, calls
 //! [`decide_view`] and applies exactly the decision returned here; runtime status and evidence
-//! live in docs/development/work-views.md.
+//! live in docs/development/work-views.md. What the author is told from the stored totals (#342)
+//! is the separate read rule in [`count`].
 //!
 //! **What is decided.** One event is one displayed public body in one tab (#343 emits it). Two
 //! separate checks apply, in this order (VIEW-03):
@@ -42,6 +43,7 @@ use uuid::{Uuid, Variant, Version};
 
 use super::ids::{PrincipalId, RevisionId, WorkId};
 
+pub mod count;
 #[cfg(test)]
 mod tests;
 

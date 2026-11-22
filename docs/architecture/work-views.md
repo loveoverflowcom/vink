@@ -24,9 +24,9 @@ Epic #323.
 | Chiều | Trạng thái |
 | --- | --- |
 | Quyết định sản phẩm | P-01..P-11 và luật UX: `PRODUCT_CONFIRMED` trong brief ngày 21/11/2026 (VIEW-01..12). [VDR-WORK-VIEWS@r1](../../decisions/proposals/VDR-WORK-VIEWS.r1.toml) ghi cùng nội dung; chủ sản phẩm duyệt đúng revision này ngày 21/11/2026 ([signoff](../../decisions/signoffs/VDR-WORK-VIEWS.r1.toml), `PRODUCT_CONFIRMED`). OQ-1..OQ-4 ở [§4](#4-câu-hỏi-còn-mở) là `OPEN`. |
-| Quyết định kiến trúc | #341 đề xuất CHOICE-02 A, CHOICE-03 và CHOICE-06 A (`DESIGN_PROPOSED`, [registry §7](../development/work-views.md#7-đường-ghi-341)). CHOICE-01, 04, 05 `OPEN`, giao cho #342–#343. [§10](#10-ràng-buộc-cho-lựa-chọn-kỹ-thuật-choice-0106) chỉ ghi ràng buộc nghiệp vụ mà lựa chọn phải thỏa. |
-| Mức triển khai | Đường ghi (#341): `core` + adapter PostgreSQL + dọn hạn trong `vink-worker`. Chưa có HTTP thu nhận, API đọc, tín hiệu Web hay UI ([registry](../development/work-views.md)). |
-| Bằng chứng | Đường ghi: unit và PostgreSQL thật ([registry §7.6](../development/work-views.md#76-bằng-chứng-và-nghiệm-thu)). Chưa có HTTP hay browser. |
+| Quyết định kiến trúc | #341 đề xuất CHOICE-02 A, CHOICE-03 và CHOICE-06 A (`DESIGN_PROPOSED`, [registry §7](../development/work-views.md#7-đường-ghi-341)); #342 đề xuất CHOICE-05 A ([registry §9.1](../development/work-views.md#91-choice-05-design_proposed)). CHOICE-01, 04 `OPEN`, giao cho #343. [§10](#10-ràng-buộc-cho-lựa-chọn-kỹ-thuật-choice-0106) chỉ ghi ràng buộc nghiệp vụ mà lựa chọn phải thỏa. |
+| Mức triển khai | Đường ghi (#341): `core` + adapter PostgreSQL + dọn hạn trong `vink-worker`. Đọc của tác giả (#342): `persistence-api`, trường `views` của `GET /api/v1/author/works`. Chưa có HTTP thu nhận, tín hiệu Web hay UI ([registry](../development/work-views.md)). |
+| Bằng chứng | Đường ghi: unit và PostgreSQL thật ([registry §7.6](../development/work-views.md#76-bằng-chứng-và-nghiệm-thu)). Đọc: unit/contract và PostgreSQL qua router HTTP ([registry §9.5](../development/work-views.md#95-bằng-chứng-và-nghiệm-thu)). Chưa có browser. |
 
 Các luật đã có và đặc tả này giữ nguyên: WR-01 (nháp riêng), UX-01 (Reader có HTML từ server),
 AUD-01/02 (hai audience, audience không phải trạng thái xuất bản), PUB-04/05/07 (xóa, riêng tư,
@@ -52,7 +52,7 @@ xóa khi hết cửa sổ (P-11). Đúng mốc 24 giờ (08:00:00 thứ Ba) vẫ
 
 | Tên trong sản phẩm | Tên trong code/API hiện có | Trạng thái | Ranh giới |
 | --- | --- | --- | --- |
-| Lượt xem | — | đề xuất | Chỉ tác giả thấy (P-07). |
+| Lượt xem | `views` trong `GET /api/v1/author/works` | có (API tác giả, #342) | Chỉ tác giả thấy (P-07). |
 | Tác phẩm | `WorkId` | có sẵn | Khóa cộng dồn của Lượt xem (P-06). |
 | Bản công khai | `RevisionId`, `Publication` | có sẵn | Không phải khóa của Lượt xem. Thấm dùng khóa này ([`LVE-PR-01-CHOICE-02@r1`](literary-endorsement.md)). |
 | Thân bài công khai đã hiện | `ReaderResponse::Published` → `PublicationView` trong [`pages/mod.rs`](../../apps/vink-web/src/pages/mod.rs) | có sẵn (điểm hiển thị) | Điểm duy nhất có thể sinh lượt. |
@@ -63,8 +63,8 @@ xóa khi hết cửa sổ (P-11). Đúng mốc 24 giờ (08:00:00 thứ Ba) vẫ
 | Mã khách | `GuestToken` (UUID v4) | có (core); cookie do #343 cấp | Ngẫu nhiên, first-party, thời hạn 24 giờ cố định, chỉ dùng chống trùng Lượt xem. |
 | Mã chống trùng đã băm | `ReaderDigest` (HMAC theo khóa server), bảng `work_view_windows` | có (core + PostgreSQL) | Dạng băm của người đọc gắn với tác phẩm; tự xóa khi hết cửa sổ. |
 | Mã sự kiện | `ViewEventId` (UUIDv7), receipt `work_view_receipts` | có (core + PostgreSQL) | Gửi lại cùng mã không bao giờ cộng thêm (P-03, P-10). |
-| Tổng theo tác phẩm, tổng theo ngày | `work_view_totals`, `work_view_days` | có (PostgreSQL); API đọc thuộc #342 | Không theo người (P-11). |
-| Mốc bật | `work_view_counting.started_at` | có (PostgreSQL); nhãn thuộc #342 | Ngày bắt đầu đếm; nhãn “Tính từ dd/mm/yyyy” (P-09). |
+| Tổng theo tác phẩm, tổng theo ngày | `work_view_totals`, `work_view_days` | có (PostgreSQL); tổng đọc qua API tác giả (#342), tổng ngày chưa đọc | Không theo người (P-11). |
+| Mốc bật | `work_view_counting.started_at` | có (PostgreSQL); `views.counted_since` (#342); nhãn hiển thị thuộc lượt thiết kế | Ngày bắt đầu đếm; nhãn “Tính từ dd/mm/yyyy” (P-09). |
 | Bàn viết | `/ban-viet`, `GET /api/v1/author/works` ([read-model](../development/desk-author-feedback.md)) | có sẵn | Nơi tác giả sẽ thấy số; vị trí trong hàng thuộc lượt thiết kế sau. |
 
 ## 3. Bảng quyết định P-01..P-11
@@ -200,9 +200,10 @@ Vị trí con số, bố cục, kiểu chữ, icon và mockup thuộc lượt th
 - **Reader không đổi gì** về giao diện. Lỗi ghi lượt không hiện cho độc giả và không chặn mở,
   đọc, cuộn, bình luận hay quay lại.
 
-**Ranh giới thiết kế trước runtime.** Hiện chưa có hành vi runtime nào: mọi màn hình mẫu phải
-dùng dữ liệu mẫu có nhãn, không gọi API thật. Trước khi nghiệm thu đầu-cuối cần #341 (ghi),
-#342 (đọc theo quyền) và #343 (tín hiệu Reader).
+**Ranh giới thiết kế trước runtime.** Đường ghi (#341) và đọc theo quyền (#342) đã có, nhưng chưa có
+tín hiệu Reader (#343) nên runtime chưa đếm lượt nào. Màn hình mẫu dùng dữ liệu mẫu có nhãn, ví dụ
+hai fixture ở [registry §9.3](../development/work-views.md#93-hợp-đồng-và-ví-dụ). Nghiệm thu
+đầu-cuối cần #343.
 
 ## 9. Dữ liệu, quyền riêng tư và lưu giữ
 
@@ -226,7 +227,9 @@ dùng dữ liệu mẫu có nhãn, không gọi API thật. Trước khi nghiệ
 
 Các lựa chọn do issue tương ứng chọn bằng bằng chứng. #341 đề xuất CHOICE-02 A, CHOICE-03 và
 luật CHOICE-06 A (`DESIGN_PROPOSED`, lý do và giới hạn ở
-[registry §7](../development/work-views.md#7-đường-ghi-341)); các lựa chọn còn lại `OPEN`. Lựa chọn
+[registry §7](../development/work-views.md#7-đường-ghi-341)); #342 đề xuất CHOICE-05 A
+([registry §9.1](../development/work-views.md#91-choice-05-design_proposed)); các lựa chọn còn lại
+`OPEN`. Lựa chọn
 nào làm đổi nghĩa số, quyền riêng tư, độ trễ hay khả năng mất lượt thì quay lại chủ sản phẩm.
 
 | CHOICE | Issue | Ràng buộc nghiệp vụ phải thỏa |
@@ -258,4 +261,4 @@ tư hay cookie nói chung. Các mục này cần quyết định riêng trước
 | Mức triển khai, bản đồ issue, kịch bản xuyên suốt | [Registry phát triển](../development/work-views.md) |
 | Code tương lai | `services/vink-app` (domain, application, PostgreSQL, HTTP), `apps/vink-web` (tín hiệu Reader, Bàn viết), `services/vink-app/contracts/http/v1` |
 
-Bằng chứng hiện có chỉ là kiểm tài liệu, ghi ở registry.
+Bằng chứng (kiểm tài liệu, unit, PostgreSQL) ghi ở registry.

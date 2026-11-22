@@ -14,9 +14,9 @@ Nguồn: [Epic #323](https://github.com/loveoverflowcom/vink/issues/323),
 | Chiều | Trạng thái |
 | --- | --- |
 | Quyết định sản phẩm | VIEW-01..12 `PRODUCT_CONFIRMED` trong brief #340 ngày 21/11/2026. [VDR-WORK-VIEWS@r1](../../decisions/proposals/VDR-WORK-VIEWS.r1.toml) có [signoff](../../decisions/signoffs/VDR-WORK-VIEWS.r1.toml) `PRODUCT_CONFIRMED` ngày 21/11/2026, là revision hiện hành. OQ-1..OQ-4 `OPEN`. |
-| Quyết định kiến trúc | CHOICE-02 A, CHOICE-03 và CHOICE-06 A `DESIGN_PROPOSED` bởi #341 (§7.1), chưa `Accepted`. CHOICE-01, 04, 05 `OPEN`. |
-| Mức triển khai | Đường ghi #341: `core` + adapter PostgreSQL + dọn hạn trong `vink-worker`, chưa có HTTP (bảng ở §3). Các VIEW-ID còn lại `NOT_IMPLEMENTED`. |
-| Bằng chứng | #340: kiểm tài liệu (§6). #341: unit và PostgreSQL thật (§7.7). Chưa có HTTP hay browser. |
+| Quyết định kiến trúc | CHOICE-02 A, CHOICE-03 và CHOICE-06 A `DESIGN_PROPOSED` bởi #341 (§7.1); CHOICE-05 A `DESIGN_PROPOSED` bởi #342 (§9.1). Chưa lựa chọn nào `Accepted`. CHOICE-01, 04 `OPEN`. |
+| Mức triển khai | Đường ghi #341: `core` + adapter PostgreSQL + dọn hạn trong `vink-worker`, chưa có HTTP thu nhận. Đọc #342: `persistence-api` (luật đọc thuần, câu lệnh batch trong read-model tác giả, trường `views` của `GET /api/v1/author/works`). Chưa có consumer Web (bảng ở §3). |
+| Bằng chứng | #340: kiểm tài liệu (§6). #341: unit và PostgreSQL thật (§7.6). #342: unit/contract và PostgreSQL thật qua router HTTP (§9.5). Chưa có browser. |
 
 ## 2. Snapshot quyết định
 
@@ -46,20 +46,20 @@ revision hay signoff mới; người tiếp tục tra lại.
 | VIEW-03 | `core` + PostgreSQL (#341) | #341 | Cửa sổ trượt neo tại lượt được tính; đúng 24 giờ vẫn chặn. Receipt theo sự kiện tách khỏi cửa sổ. |
 | VIEW-04 | `core` + PostgreSQL (#341); cookie khách `NOT_IMPLEMENTED` | #341, #343 (cấp cookie) | `GuestToken` UUID v4, thời hạn 24 giờ cố định. |
 | VIEW-05 | `core` + PostgreSQL (#341) | #341 | So principal với `works.owner_id` tại lúc ghi. |
-| VIEW-06 | Khóa ghi: `core` + PostgreSQL (#341). Đọc: `NOT_IMPLEMENTED` | #341 (khóa ghi), #342 (đọc không reset) | Mọi bảng khóa theo `WorkId`; revision chỉ là căn cứ ghi trong receipt. |
-| VIEW-07 | `NOT_IMPLEMENTED` | #342 | Chỉ API tác giả; không API công khai. |
-| VIEW-08 | Phía ghi: `core` + PostgreSQL (#341). Đọc: `NOT_IMPLEMENTED` | #342 (đọc), #341 (không tăng khi hết công khai) | Tổng không bao giờ giảm khi ẩn/rút. OQ-1 cho hàng riêng tư. |
-| VIEW-09 | Mốc lưu ở `work_view_counting` (#341). Nhãn: `NOT_IMPLEMENTED` | #342 | Không backfill; mốc là lần quyết định sự kiện đầu tiên. |
+| VIEW-06 | Khóa ghi: `core` + PostgreSQL (#341). Đọc: `persistence-api` (#342) | #341 (khóa ghi), #342 (đọc không reset) | Mọi bảng khóa theo `WorkId`; revision chỉ là căn cứ ghi trong receipt. Đọc không nhìn revision. |
+| VIEW-07 | `persistence-api` (#342); Bàn viết `NOT_IMPLEMENTED` (lượt thiết kế) | #342 | Chỉ `GET /api/v1/author/works` của phiên chủ; không API công khai. |
+| VIEW-08 | Phía ghi: `core` + PostgreSQL (#341). Đọc: `persistence-api` (#342) | #342 (đọc), #341 (không tăng khi hết công khai) | Tổng không bao giờ giảm khi ẩn/rút. Bài riêng tư vẫn đọc được số theo fallback OQ-1. |
+| VIEW-09 | Mốc lưu ở `work_view_counting` (#341). Dữ liệu nhãn: `persistence-api` (`counted_since`, #342). Nhãn hiển thị: `NOT_IMPLEMENTED` | #342, lượt thiết kế | Không backfill; mốc là lần quyết định sự kiện đầu tiên. |
 | VIEW-10 | Idempotency: `core` + PostgreSQL (#341). Retry: `NOT_IMPLEMENTED` | #343 (retry), #341 (idempotency) | Kỳ vọng khoảng 1 phút, không SLA. Ghi đồng bộ nên số có ngay sau commit. |
 | VIEW-11 | `core` + PostgreSQL + `vink-worker` (#341) | #341 | Ba loại dữ liệu; cửa sổ và receipt xóa sau 24 giờ (chu kỳ dọn mỗi giờ). Xóa theo `WorkId` có hàm `erase_work`, chưa có route (OQ-2). |
-| VIEW-12 | `NOT_IMPLEMENTED` | #342 (trạng thái dữ liệu), lượt thiết kế (hiển thị) | Copy cuối thuộc lượt thiết kế. |
+| VIEW-12 | Trạng thái dữ liệu: `persistence-api` (`views.state`, #342). Hiển thị: `NOT_IMPLEMENTED` | #342 (trạng thái dữ liệu), lượt thiết kế (hiển thị) | Copy cuối thuộc lượt thiết kế. |
 
 ## 4. Bản đồ P/CHOICE sang issue
 
 | Issue | Kết quả | P-ID | CHOICE | Câu còn mở chạm tới |
 | --- | --- | --- | --- | --- |
 | [#341](https://github.com/loveoverflowcom/vink/issues/341) Ghi và chống trùng | Use case ghi, migration, adapter PostgreSQL, purge mã hết hạn | P-03, P-04, P-05, P-11 (thêm P-06 cho khóa `WorkId`; P-01/P-08 cho kiểm tại lúc ghi) | CHOICE-02, CHOICE-03, CHOICE-06 | OQ-2 (thiết kế để xóa theo `WorkId` làm được) |
-| [#342](https://github.com/loveoverflowcom/vink/issues/342) Đọc theo quyền | Query/read-model, DTO, contract đọc của tác giả, trạng thái “0”/“—”/“Tính từ” | P-07, P-08, P-09 (thêm P-06 cho đọc cộng dồn; VIEW-12 cho trạng thái) | CHOICE-05 | OQ-1, OQ-4 |
+| [#342](https://github.com/loveoverflowcom/vink/issues/342) Đọc theo quyền | Query/read-model, DTO, contract đọc của tác giả, trạng thái “0”/“—”/“Tính từ” (§9) | P-07, P-08, P-09 (thêm P-06 cho đọc cộng dồn; VIEW-12 cho trạng thái) | CHOICE-05 (A, §9.1) | OQ-1, OQ-4 |
 | [#343](https://github.com/loveoverflowcom/vink/issues/343) Reader và kiểm xuyên suốt | HTTP thu nhận, tín hiệu Web tại điểm thân bài đã hiện, kịch bản browser cuối | P-01, P-02, P-10 | CHOICE-01, CHOICE-04 | OQ-3 |
 | Lượt thiết kế (chưa có issue) | LayoutSpec vị trí số, copy “—”/“Tính từ”/độ phủ trong Bàn viết | VIEW-07, VIEW-12 | — | OQ-1 |
 
@@ -271,7 +271,7 @@ trạng thái cuối của `scenario.json` làm oracle đọc.
 ### 7.5 Ranh giới chưa kiểm và phần còn mở
 
 - HTTP thu nhận, cookie khách, bộ giới hạn tần suất, cấu hình khóa và tín hiệu Web: #343.
-- API đọc, “0”/“—”/“Tính từ”: #342. Không có số liệu nào được hiển thị.
+- API đọc, “0”/“—”/“Tính từ”: #342 (§9). Chưa có số liệu nào được hiển thị trên giao diện.
 - Route xóa tác phẩm/tài khoản chưa có (OQ-2); chỉ có `erase_work` và cascade, đã kiểm trên
   PostgreSQL.
 - OQ-3 không đổi luật ghi; OQ-1, OQ-4 thuộc phía đọc.
@@ -303,7 +303,113 @@ container tạm.
 ## 8. Điều kiện để bắt đầu việc tiếp theo
 
 - **#341:** đường ghi ở §7. #342 và #343 dùng API, bảng và fixture ở §7.4.
-- **Lượt thiết kế:** bắt đầu được sau khi PR này merge, dùng dữ liệu mẫu có nhãn. Cần câu trả lời
-  OQ-1 trước khi chốt hàng Bàn viết của bài riêng tư.
-- **#342, #343:** theo thứ tự ở §4. #343 cần thêm cấu hình khóa digest và cookie khách (§7.4)
-  trước khi bật thu nhận.
+- **#342:** đọc theo quyền ở §9; #343 dùng hợp đồng ở §9.4 để nghiệm thu xuyên suốt.
+- **Lượt thiết kế:** dùng hai fixture ở §9.3 làm dữ liệu mẫu có nhãn. Cần câu trả lời OQ-1 trước
+  khi chốt hàng Bàn viết của bài riêng tư.
+- **#343:** cần thêm cấu hình khóa digest và cookie khách (§7.4) trước khi bật thu nhận.
+
+## 9. Đọc theo quyền (#342)
+
+Nguồn: [#342](https://github.com/loveoverflowcom/vink/issues/342), base
+`develop@002cc12e1ca106e9593b0a2c513dd81cb27b5bd2`, đặc tả `VDR-WORK-VIEWS@r1`
+(`PRODUCT_CONFIRMED`). Code:
+[`domain/work_view/count.rs`](../../services/vink-app/src/domain/work_view/count.rs) (luật đọc
+thuần), [`persistence/author_works.rs`](../../services/vink-app/src/persistence/author_works.rs)
+(`AUTHOR_VIEWS_SQL`),
+[`application/author_works.rs`](../../services/vink-app/src/application/author_works.rs)
+(`AuthorWorkSummary.views`), [`http/author_works.rs`](../../services/vink-app/src/http/author_works.rs)
+(`WorkViews`) và [hợp đồng HTTP](../../services/vink-app/contracts/http/v1/README.md#lượt-xem-của-tác-giả-342-view-0709-view-12).
+Không migration, không route mới, không đổi DTO công khai hay consumer Web.
+
+### 9.1 CHOICE-05 (`DESIGN_PROPOSED`)
+
+Chọn **A**: thêm `views` vào từng thẻ của read-model tác giả `GET /api/v1/author/works`, đọc theo
+lô của trang. Merge code không làm lựa chọn này thành `Accepted`.
+
+| Tiêu chí | A: trong read-model tác giả (đã chọn) | B: endpoint summary/batch riêng |
+| --- | --- | --- |
+| Số câu lệnh | Trang + Thấm/Nhận xét (≤ 1) + Lượt xem (1). Đo bằng sự kiện câu lệnh của sqlx: 7 ở trang 1, 24 và 100; mỗi loại SELECT đúng 1 | Danh sách như cũ, cộng một request HTTP: resolve phiên lần nữa và ít nhất một câu lệnh |
+| Lỗi riêng nguồn thống kê | Savepoint riêng: `views` thành `unavailable`, tên, trạng thái và Thấm/Nhận xét giữ nguyên; lỗi Thấm cũng không làm mất Lượt xem | Request lỗi riêng; client tự ghép hai kết quả có thể lệch thời điểm |
+| Phạm vi quyền | ID lấy từ chính trang đã lọc theo chủ trong cùng snapshot; câu lệnh lặp lại `owner_id` | Kiểm chủ cho từng `WorkId` client gửi; thêm một bề mặt dò ID |
+| Cache, toàn văn | Route vốn `no-store`, không validator; DTO và `ETag` công khai không đổi; danh sách không chứa toàn văn | Như A, thêm một route `no-store` |
+| Độ tươi | Mỗi lần tải danh sách đọc số mới | Làm mới số mà không tải danh sách; chưa cần vì VIEW-12 không realtime |
+
+Giới hạn đã biết: representation tác giả rộng hơn (một object mỗi thẻ); số chỉ mới khi tải lại
+trang danh sách. Nếu sau này cần làm mới số riêng, B thêm được mà không đổi luật đọc ở §9.2.
+
+### 9.2 Luật đọc
+
+`read_view_count` đọc ba sự thật trong cùng snapshot của trang: tổng (`work_view_totals`), lần
+công khai đầu (`work_first_publications`) và mốc bắt đầu đếm (`work_view_counting`). Luật không
+nhìn trạng thái publication, nên đổi revision, chuyển riêng tư, ẩn, rút sau duyệt và công khai lại
+đều không đổi số (VIEW-06, VIEW-08); không có đường nào suy số từ Thấm/Nhận xét hay log (VIEW-09).
+
+| # | Điều kiện | `state` | `count` | `counted_since` |
+| --- | --- | --- | --- | --- |
+| 1 | Có tổng nhưng tổng ≤ 0, chưa có mốc, hoặc bài `never_public` (dữ liệu không đường ghi nào tạo ra) | `unavailable` | null | null |
+| 2 | Không có tổng, bài `never_public` (L-01) | `never_public` | null | null |
+| 3 | Không có tổng, chưa có mốc | `not_started` | null | null |
+| 4 | Còn lại | `counted` | tổng, hoặc 0 khi vắng hàng (L-02) | Mốc, trừ khi bài công khai lần đầu (`exact`) tại hoặc sau mốc (L-12, L-13) |
+| — | Câu lệnh Lượt xem lỗi | `unavailable` cho mọi thẻ của trang (L-05) | null | null |
+
+- **“Tính từ” cho lịch sử không chính xác.** `legacy` (đã công khai trước khi có bảng lần công
+  khai đầu, tức trước mọi mốc) và `unknown` (không chứng minh được) luôn mang mốc: câu “tính từ
+  mốc” đúng trong mọi trường hợp. Hệ quả: một bài `unknown` thật ra chưa từng công khai hiện
+  `counted` 0 kèm mốc thay vì `never_public`, vì không có bằng chứng phân biệt.
+- **Mốc là toàn hệ thống.** Trước sự kiện đầu tiên được quyết định ở bất kỳ tác phẩm nào, mọi bài
+  từng công khai là `not_started`. Bước 1 của §5 (“0 thật”) chỉ đúng sau khi mốc đã có.
+- **Bài riêng tư** (OQ-1 chưa trả lời): áp P-08 A, thẻ vẫn có số cũ trong khi `current_public` và
+  Thấm/Nhận xét vắng.
+- **Quyền.** Chủ lấy từ phiên (`Actor`); không nhận owner ID từ client; khách `401`, Identity lỗi
+  `503`, đều `no-store`. Đọc của chính tác giả không đi qua standing fence, như phần còn lại của
+  read-model (đình chỉ vẫn đọc được bài mình); quyền sở hữu không chuyển được.
+- **OQ-2, OQ-4.** Chưa có route xóa tác phẩm/tài khoản hay admin gỡ cả bài, nên không có ca runtime.
+  Khi route xóa có, `erase_work` (#341) xóa hàng và tác phẩm rời danh sách; quyết định cho admin
+  gỡ cả bài vẫn `OPEN`, không tự áp P-08.
+
+### 9.3 Hợp đồng và ví dụ
+
+[Hợp đồng HTTP](../../services/vink-app/contracts/http/v1/README.md#lượt-xem-của-tác-giả-342-view-0709-view-12)
+mô tả bốn trạng thái. Hai fixture là dữ liệu mẫu có nhãn cho lượt thiết kế:
+
+- [`author.works.views.json`](../../services/vink-app/contracts/http/v1/fixtures/author.works.views.json):
+  sau mốc, gồm “Tính từ” (L-12), 0 thật (L-02), bài riêng tư (L-07) và bài bị rút sau duyệt
+  (L-08) giữ số, bài chưa công khai (L-01), lỗi đọc số trong khi Thấm/Nhận xét vẫn có (L-05).
+- [`author.works.views-not-started.json`](../../services/vink-app/contracts/http/v1/fixtures/author.works.views-not-started.json):
+  trước mốc.
+
+Unit test của provider so serializer với từng fixture. Test PostgreSQL so hình dạng (key, kiểu
+giá trị) của phản hồi HTTP sinh từ dữ liệu đường ghi thật với ví dụ cùng trạng thái.
+
+### 9.4 Bàn giao cho #343 và lượt thiết kế
+
+- Nghiệm thu xuyên suốt §5 đọc số qua `views` của `GET /api/v1/author/works` bằng phiên tác giả:
+  bước 1 (`counted`/0 khi mốc đã có, ngược lại `not_started`), 9–11 (giữ qua r2, riêng tư,
+  công khai lại), 12 (`unavailable`), 14 (`counted_since`). Ghi đồng bộ (CHOICE-02 A) nên số có
+  ngay sau commit; không có trạng thái “chưa hội tụ”.
+- Tải lại danh sách là cách duy nhất để thấy số mới; không validator, không `304`. `ETag` của
+  Reader, danh sách công khai và `/publication` không phụ thuộc số (§9.5).
+- Consumer Web (`apps/vink-web/src/contract/author_works.rs`) hiện bỏ qua `views` (decoder không
+  từ chối field lạ). Lượt thiết kế thêm representation, “—” kèm lý do cho ba trạng thái không số,
+  định dạng 1.234 và “Tính từ dd/mm/yyyy” theo `Asia/Ho_Chi_Minh` từ `counted_since`.
+
+### 9.5 Bằng chứng và nghiệm thu
+
+Chạy trên nhánh `feat/342-work-view-reads` (base `develop@002cc12`), Linux, PostgreSQL 17.11
+trong container tạm.
+
+| Phép kiểm | Ranh giới | Kết quả |
+| --- | --- | --- |
+| `cargo test -p vink-app --lib -- author_work work_view::count` | unit/contract | PASS, 4 test |
+| `cargo test -p vink-app --test postgres -- work_view author_work --test-threads=4` | postgres + router HTTP | PASS, 24 test, 1 measurement cũ ignored |
+| `cargo xtask verify unit app` | unit/contract | PASS, 413 test (409 + 4) |
+| `cargo xtask verify postgres` (`RUST_TEST_THREADS=4`) | postgres: store 6; App 283 PASS, 7 ignored; Identity 55; Notifications 23; binary thật, backup/restore | PASS |
+| `cargo xtask verify quick` | fmt, clippy server và wasm, doctest, Reader SSR boundary, unit, repository checks (decisions, links, boundaries) | PASS |
+| `cargo xtask decision query VDR-WORK-VIEWS` | registry | `current`, r1, `PRODUCT_CONFIRMED`, SHA-256 `cfb789cc…`, snapshot `8a322aed…` không đổi |
+
+| AC | Phép kiểm | Kết quả, gap |
+| --- | --- | --- |
+| AC-01 | `only_the_owner_reads_views_and_no_public_surface_depends_on_them`: chủ đọc được (kể cả khi gửi `If-None-Match`); thành viên khác không thấy W; khách `401`; Identity lỗi `503`; tất cả `no-store`, không `ETag`. Trạng thái qua thay revision, riêng tư, công khai lại (`shared_timeline_oracle_on_postgres` đọc lại sau từng bước của `scenario.json`), rút sau duyệt qua route ca duyệt thật rồi công khai r2 (`views_survive_review_withdrawal_and_count_on_after_republication`) | PASS postgres. Xóa tác phẩm và admin gỡ cả bài: không có route (OQ-2, OQ-4). API công khai: không có theo VIEW-07 |
+| AC-02 | Luật thuần 15 ca (`read_rule_distinguishes_measured_zero_from_no_number`); trên PostgreSQL: `not_started`, `never_public`, “Tính từ”, 0 thật rồi 1 (`author_reads_the_states_the_write_path_produces`); lỗi bảng tổng → `unavailable` mà tên/trạng thái/Thấm còn, lỗi Thấm mà Lượt xem còn, một hàng không nhất quán chỉ mất số của nó (`a_views_failure_is_independent_of_the_rest_of_the_row`) | PASS unit + postgres. Trễ hội tụ: không áp dụng (ghi đồng bộ) |
+| AC-03 | Câu lệnh đếm từ sự kiện sqlx: trang 1/24/100 đều 7, mỗi loại SELECT đúng 1 (`views_read_is_one_batch_statement_for_any_page_size`); sau một lượt mới, Reader và danh sách công khai trả `304` với validator cũ, byte Reader không đổi, không JSON/HTML công khai nào có `views`/`counted_since`/“Lượt xem”; chuyển riêng tư thì validator cũ nhận trang ẩn `200` `no-store` | PASS postgres |
+| AC-04 | §9.2–§9.4, hợp đồng HTTP, hai fixture; unit so serializer với fixture; PostgreSQL so hình dạng phản hồi thật với ví dụ cùng trạng thái | PASS unit + postgres. Chưa có browser vì không đổi Web |

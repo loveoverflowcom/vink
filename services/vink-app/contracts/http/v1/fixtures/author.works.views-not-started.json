@@ -1,0 +1,56 @@
+{
+  "works": [
+    {
+      "work_id": "55555555-5555-4555-8555-555555555501",
+      "title": "Mưa trên phố cũ",
+      "draft_version": 2,
+      "updated_at": "2026-11-30T03:00:00Z",
+      "publication": {
+        "audience": "public",
+        "lifecycle": "active",
+        "generation": 2,
+        "intent_revision_id": "66666666-6666-4666-8666-666666666601",
+        "intent_moderation": "approved",
+        "latest_revision_id": "66666666-6666-4666-8666-666666666601",
+        "latest_moderation": "approved",
+        "review_withdrawn": false,
+        "has_draft_changes": false,
+        "current_public": {
+          "revision_id": "66666666-6666-4666-8666-666666666601",
+          "title": "Mưa trên phố cũ",
+          "tham": 4,
+          "comments": 2
+        }
+      },
+      "views": {
+        "state": "not_started",
+        "count": null,
+        "counted_since": null
+      }
+    },
+    {
+      "work_id": "55555555-5555-4555-8555-555555555505",
+      "title": "Bản nháp chưa đăng",
+      "draft_version": 7,
+      "updated_at": "2026-11-30T03:00:00Z",
+      "publication": {
+        "audience": "private",
+        "lifecycle": "active",
+        "generation": 1,
+        "intent_revision_id": null,
+        "intent_moderation": null,
+        "latest_revision_id": null,
+        "latest_moderation": null,
+        "review_withdrawn": false,
+        "has_draft_changes": null,
+        "current_public": null
+      },
+      "views": {
+        "state": "never_public",
+        "count": null,
+        "counted_since": null
+      }
+    }
+  ],
+  "next_cursor": null
+}

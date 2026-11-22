@@ -701,3 +701,22 @@ Current public có revision_id/title và hai số `tham`, `comments` nullable: z
 unavailable/null. Không phải tổng Thấm lịch sử, không Hữu ích comment, không manuscript/voter IDs.
 Hai truy vấn batch cùng read snapshot; metric failure có thể giữ title/status với counters null.
 Chi tiết semantics, fallback work không draft và giới hạn: [registry](../../../../../docs/development/desk-author-feedback.md).
+
+### Lượt xem của tác giả (#342, VIEW-07..09, VIEW-12)
+
+Mỗi work có thêm `views` (luôn có, đủ ba key), ở cấp work chứ không trong `current_public`: số
+theo `WorkId`, đọc được cả khi bài riêng tư, bị ẩn hay bị rút sau duyệt và khi `publication` là
+null. Không có ở API, HTML hay cache công khai nào; route giữ `no-store`, không validator.
+
+| `state` | `count` | `counted_since` | Nghĩa |
+| --- | --- | --- | --- |
+| `counted` | số nguyên ≥ 0 | RFC 3339 hoặc null | Số đo được. `0` chỉ ở đây. `counted_since` là mốc bắt đầu đếm khi bài có thể đã công khai trước mốc (“Tính từ dd/mm/yyyy”, ngày theo `Asia/Ho_Chi_Minh`); null khi bài công khai lần đầu từ mốc trở đi. |
+| `not_started` | null | null | Chưa từng có sự kiện nào được quyết định trên hệ thống: chưa đo, không phải 0. |
+| `never_public` | null | null | Bài chưa từng công khai nên không thể có lượt: không phải 0. |
+| `unavailable` | null | null | Không đọc được số (lỗi nguồn số liệu hoặc dữ liệu không nhất quán). Tên, trạng thái và Thấm/Nhận xét vẫn có thể có. |
+
+Consumer coi `state` lạ là `unavailable`. Ví dụ: [sau mốc đếm](fixtures/author.works.views.json)
+(“Tính từ”, 0 thật, bài riêng tư và bài bị rút giữ số cũ, bài chưa công khai, lỗi đọc số) và
+[trước mốc đếm](fixtures/author.works.views-not-started.json). Số đọc trong cùng snapshot với
+trang bằng một câu lệnh batch trong savepoint riêng. Luật đọc và bằng chứng:
+[registry Lượt xem §9](../../../../../docs/development/work-views.md#9-đọc-theo-quyền-342).
