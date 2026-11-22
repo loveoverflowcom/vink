@@ -52,6 +52,7 @@ fn instant(at: Millis) -> String {
 struct InputValue {
     node: NodeRef<Input>,
     composing: RwSignal<bool>,
+    missing: RwSignal<bool>,
 }
 
 impl InputValue {
@@ -59,6 +60,7 @@ impl InputValue {
         let this = Self {
             node: NodeRef::new(),
             composing: RwSignal::new(false),
+            missing: RwSignal::new(false),
         };
         // Drop the actual value even if a browser still holds the detached input briefly.
         #[cfg(feature = "hydrate")]
@@ -75,7 +77,19 @@ impl InputValue {
     }
 
     fn edit(self) -> Callback<TextInput> {
-        Callback::new(move |input: TextInput| self.composing.set(input.composing))
+        Callback::new(move |input: TextInput| {
+            self.composing.set(input.composing);
+            if !input.composing {
+                self.missing.set(false);
+            }
+        })
+    }
+
+    fn focus(self) {
+        #[cfg(feature = "hydrate")]
+        if let Some(Some(node)) = self.node.try_get_untracked() {
+            let _ = node.focus();
+        }
     }
 
     fn clear(self) {
@@ -90,6 +104,7 @@ impl InputValue {
             let pending = StoredValue::new(true);
             Effect::new(move |_| {
                 if let Some(node) = self.node.get()
+                    && node.is_connected()
                     && pending.get_value()
                 {
                     pending.set_value(false);
@@ -104,6 +119,21 @@ impl InputValue {
 
 fn empty_value() -> Signal<String> {
     Signal::stored(String::new())
+}
+
+pub(super) fn focus_within(selector: &str) -> bool {
+    #[cfg(feature = "hydrate")]
+    {
+        document()
+            .active_element()
+            .and_then(|element| element.closest(selector).ok().flatten())
+            .is_some()
+    }
+    #[cfg(not(feature = "hydrate"))]
+    {
+        let _ = selector;
+        false
+    }
 }
 
 fn field_error(
@@ -246,6 +276,10 @@ fn PasswordFields(
     let password_help = (purpose != PasswordUse::Login).then_some(
         "10–128 ký tự sau khi chuẩn hóa Unicode, tối đa 4.096 byte nhập. Không bắt buộc chữ hoa, số hay ký hiệu."
     );
+    let username_error = field_error(error, |e| {
+        matches!(e, AuthError::InvalidUsername | AuthError::UsernameTaken)
+    });
+    let password_error = field_error(error, |e| *e == AuthError::InvalidPassword);
     let mut user = vink_ui::TextFieldProps::builder()
         .id(user_id)
         .name("username")
@@ -256,8 +290,12 @@ fn PasswordFields(
         .input_ref(username.node)
         .value(empty_value())
         .on_input(username.edit())
-        .error(field_error(error, |e| {
-            matches!(e, AuthError::InvalidUsername | AuthError::UsernameTaken)
+        .error(Signal::derive(move || {
+            if username.missing.get() {
+                Some("Hãy nhập tên đăng nhập.".to_owned())
+            } else {
+                username_error.get()
+            }
         }))
         .build();
     user.help = help.map(str::to_owned);
@@ -273,7 +311,13 @@ fn PasswordFields(
         .input_ref(password.node)
         .value(empty_value())
         .on_input(password.edit())
-        .error(field_error(error, |e| *e == AuthError::InvalidPassword))
+        .error(Signal::derive(move || {
+            if password.missing.get() {
+                Some("Hãy nhập mật khẩu.".to_owned())
+            } else {
+                password_error.get()
+            }
+        }))
         .build();
     secret.help = password_help.map(str::to_owned);
     view! { {TextField(user)} {TextField(secret)} }
@@ -332,7 +376,19 @@ fn GuestPassword(
                 event.prevent_default();
                 if result.get_untracked() != GuestResult::Ready { return; }
                 let (Some(user), Some(secret)) = (username.read(), password.read()) else { return; };
-                // Use server validation for registration and login, including legacy passwords.
+                // Whitespace in a password can be significant, including for legacy credentials.
+                let (no_user, no_secret) = (user.trim().is_empty(), secret.is_empty());
+                username.missing.set(no_user);
+                password.missing.set(no_secret);
+                if no_user || no_secret {
+                    error.set(None);
+                    if no_user {
+                        username.focus();
+                    } else {
+                        password.focus();
+                    }
+                    return;
+                }
                 let input = PasswordCredentials { username: user, password: secret };
                 let command = if is_register { Command::Register(input) } else { Command::Login(input) };
                 session.dispatch(epoch, command, move |outcome| {
@@ -437,6 +493,7 @@ fn EmailSignIn(
 ) -> impl IntoView {
     let session = Session::current();
     let challenge = RwSignal::new(None::<Challenge>);
+    let focus_code = StoredValue::new(false);
     let address = RwSignal::new(String::new());
     let error = RwSignal::new(None);
     let response_uncertain = RwSignal::new(false);
@@ -448,6 +505,7 @@ fn EmailSignIn(
         let value = value.trim().to_owned();
         if !value.contains('@') {
             error.set(Some(AuthError::InvalidEmail));
+            email.focus();
             return;
         }
         session.dispatch(
@@ -459,6 +517,7 @@ fn EmailSignIn(
                 }
                 match outcome {
                     Ok(Reply::Challenge(expires)) => {
+                        focus_code.set_value(focus_within("#sign-in-email"));
                         address.set(value);
                         code.clear();
                         challenge.set(Some(Challenge { expires }));
@@ -486,12 +545,16 @@ fn EmailSignIn(
     view! {
         <AuthHeading title="Dùng mã email" />
         {move || if entered_code.get() {
+            code.focus_on_mount(focus_code.get_value());
             view! {
                 <form id="sign-in-code" class="vk-account-form" method="post" novalidate
                     on:submit=move |event| {
                         event.prevent_default();
                         if response_uncertain.get_untracked() { return; }
-                        let Some(value) = code_value(code, error) else { return; };
+                        let Some(value) = code_value(code, error) else {
+                            if !code.composing.get_untracked() { code.focus(); }
+                            return;
+                        };
                         session.dispatch(epoch, Command::EmailCode(value), move |outcome| {
                             if challenge.try_get_untracked().is_none() { return; }
                             match outcome {
@@ -802,10 +865,11 @@ pub(super) fn SignedIn(epoch: u64) -> impl IntoView {
 }
 
 #[component]
-pub(super) fn PenName(epoch: u64) -> impl IntoView {
+pub(super) fn PenName(epoch: u64, focus: bool) -> impl IntoView {
     let session = Session::current();
     let now = use_clock();
     let pen_name = InputValue::new();
+    pen_name.focus_on_mount(focus);
     let error = RwSignal::new(None);
     let state = session.action(Operation::PenName, now);
     view! {
@@ -816,6 +880,7 @@ pub(super) fn PenName(epoch: u64) -> impl IntoView {
                 let Some(value) = pen_name.read() else { return; };
                 if value.trim().is_empty() {
                     error.set(Some(AuthError::InvalidPenName));
+                    pen_name.focus();
                     return;
                 }
                 session.dispatch(epoch, Command::PenName(value), move |result| {

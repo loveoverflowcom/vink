@@ -27,6 +27,12 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
     check(await page.eval(`document.querySelector('#draft-row-${works[0].work_id}').textContent.includes('Đã đăng · Có bản sửa') && document.querySelector('#draft-row-${works[2].work_id}').textContent.includes('không được duyệt')`), 'public pointer coexists with pending/rejected newer revisions');
     check(await page.eval(`document.querySelector('#draft-row-${works[4].work_id}').textContent.includes('Thấm —') && !!document.querySelector('#draft-row-${works[4].work_id} a[href^="/ban-viet/"]')`), 'unavailable metrics keep the editor link usable');
     check(await page.eval(`document.querySelectorAll('#draft-results a a, #draft-results a button, #draft-results button').length===0`), 'readonly counters offer no endorsement mutation or nested targets');
+    check(await page.eval(`(() => {
+      const row=document.querySelector('#draft-row-${works[0].work_id}');
+      const title=row.querySelector('.vk-draft-row__title'), metadata=row.querySelector('.vk-author-work__status');
+      const editor=row.querySelector('.vk-draft-row__link'), reader=row.querySelector('.vk-author-work__reader');
+      return editor.contains(title) && editor.contains(metadata) && reader.closest('a')===reader && !editor.contains(reader);
+    })()`), 'F-13 editor covers status and title, and published works retain an independent reader link');
     for (const width of [320,390,834,1440]) for (const theme of ['light','dark']) for (const scale of [100,200]) {
       await page.viewport(width);
       await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:0,y:0});

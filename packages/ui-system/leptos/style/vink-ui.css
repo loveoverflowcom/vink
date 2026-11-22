@@ -625,7 +625,7 @@
 }
 .vk-ui-field__reveal {
   position: absolute;
-  inset-inline-end: var(--vk-space-1);
+  inset-inline-end: calc(var(--vk-space-1) + 2px);
   inset-block-end: 0;
   display: flex;
   align-items: center;
@@ -720,7 +720,9 @@
 /* R1.5 (#135): reserve one fixed trailing slot as text grows. Native option labels
  * use the shared label recipe; rem-scaled insets otherwise consume their measure at 200%. */
 .vk-ui-select {
+  -webkit-appearance: none;
   appearance: none;
+  background-image: none;
   padding-inline: 12px calc(12px + 18px + 8px);
   font-size: var(--vk-type-label-size);
   font-weight: var(--vk-type-label-weight);
@@ -1733,8 +1735,13 @@ a.vk-ui-byline__identity:focus-visible {
 
 .vk-ui-rail__brand { padding-inline: var(--vk-space-2); }
 .vk-ui-rail__primary { display: flex; flex-direction: column; gap: var(--vk-space-2); }
-.vk-ui-rail__account { margin-block-start: auto; }
-.vk-ui-rail__account .vk-ui-nav-item { inline-size: 100%; }
+.vk-ui-rail__account {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vk-space-2);
+  margin-block-start: auto;
+}
+.vk-ui-rail .vk-ui-nav-item { min-block-size: max(56px, var(--vk-size-nav-item)); }
 
 .vk-ui-rail-toggle {
   flex: none;
@@ -1756,6 +1763,13 @@ a.vk-ui-byline__identity:focus-visible {
 
 .vk-ui-rail-toggle:hover { background: var(--vk-state-hover); }
 .vk-ui-rail-toggle:active { background: var(--vk-state-pressed); }
+
+.vk-ui-rail-toggle[aria-expanded="true"] .vk-ui-rail-expand,
+.vk-ui-rail-toggle[aria-expanded="false"] .vk-ui-rail-collapse,
+.vk-ui-rail:has(.vk-ui-rail-toggle[aria-expanded="true"]) + .vk-ui-tooltip .vk-ui-rail-expand,
+.vk-ui-rail:has(.vk-ui-rail-toggle[aria-expanded="false"]) + .vk-ui-tooltip .vk-ui-rail-collapse {
+  display: none;
+}
 
 @media (forced-colors: active) {
   .vk-ui-rail-toggle:focus-visible { outline-color: Highlight; }
@@ -1792,56 +1806,74 @@ a.vk-ui-byline__identity:focus-visible {
   color: var(--vk-on-primary-container);
 }
 
-/* The toggle follows the centred items in either stacked layout. */
+/* Compact rails and expanded rails at 200% stack the label below the icon. */
 @container vk-ui-rail (max-width: 100px) or (max-width: 10rem) {
   .vk-ui-rail-toggle { align-self: center; margin-inline-start: 0; }
-}
 
-/* A 220px rail at enlarged text needs the full label line. Keep the requested rail
-   width and text size; only reflow its icon above the label within the same rail. */
-@container vk-ui-rail (min-width: 101px) and (max-width: 10rem) {
-  .vk-ui-rail .vk-ui-nav-item {
-    flex-direction: column;
-    gap: var(--vk-space-1);
-    padding-inline: 0;
-    text-align: center;
-  }
-}
-
-
-/* Compact rail: icon above label, centred. */
-@container vk-ui-rail (max-width: 100px) {
-  .vk-ui-rail__brand { display: flex; justify-content: center; padding: 0; }
   .vk-ui-rail .vk-ui-nav-item {
     flex-direction: column;
     justify-content: center;
-    gap: var(--vk-space-1);
-    padding: var(--vk-space-3) 0;
-    /* Reclaim the rail's side padding for Vietnamese words at 200% root text. */
-    margin-inline: calc(-1 * var(--vk-space-1));
+    gap: 4px;
+    padding: 8px 0;
     text-align: center;
-    font-size: var(--vk-type-caption-size);
   }
-  /* Match the links' reclaimed side space on the account button with an explicit width. */
-  .vk-ui-rail__account .vk-ui-nav-item { inline-size: calc(100% + 2 * var(--vk-space-1)); }
-  /* A short frame's scrollbar also consumes width. Labels may use the side padding while
-     the clickable surface and its focus ring stay inside the rail's scroll viewport. */
-  .vk-ui-rail .vk-ui-nav-item__label { inline-size: calc(100% + var(--vk-space-1)); }
-  .vk-ui-rail .vk-ui-nav-item:focus-visible { outline-offset: -3px; }
+
+  .vk-ui-rail .vk-ui-nav-item__indicator {
+    display: grid;
+    place-items: center;
+    inline-size: min(56px, 100%);
+    block-size: 32px;
+    flex: none;
+    border-radius: var(--vk-radius-full);
+  }
+
+  .vk-ui-rail .vk-ui-nav-item__label { max-inline-size: 100%; }
+
+  .vk-ui-rail .vk-ui-nav-item[aria-current="page"]:not(:hover),
+  .vk-ui-rail .vk-ui-nav-utility[aria-expanded="true"]:not(:hover) { background: transparent; }
+
+  .vk-ui-rail .vk-ui-nav-item:is([aria-current="page"], [aria-expanded="true"]):hover {
+    background: var(--vk-state-hover);
+  }
+
+  .vk-ui-rail .vk-ui-nav-item:is([aria-current="page"], [aria-expanded="true"]) .vk-ui-nav-item__indicator {
+    background: var(--vk-primary-container);
+    color: var(--vk-on-primary-container);
+  }
+
+  @media (forced-colors: active) {
+    .vk-ui-rail .vk-ui-nav-item[aria-current="page"] .vk-ui-nav-item__indicator {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+    }
+  }
 }
 
-/* Anchored beside the toggle by the component (measured rect), outside the rail's containment. */
+@container vk-ui-rail (max-width: 100px) {
+  .vk-ui-rail__brand { display: flex; justify-content: center; padding: 0; }
+  .vk-ui-rail .vk-ui-nav-item {
+    /* Leave 3px for the ring while recovering label width beside a classic scrollbar. */
+    margin-inline: -9px;
+    font-size: var(--vk-type-caption-size);
+  }
+  .vk-ui-rail .vk-ui-nav-item:focus-visible { outline-offset: 0; }
+}
+
+/* Below the toggle, within the rail's inline bounds, outside its scroll containment. */
 .vk-ui-tooltip {
   position: fixed;
-  inset-inline-start: calc(var(--vk-ui-tooltip-x, var(--vk-ui-rail-width)) + 12px);
-  inset-block-start: var(--vk-ui-tooltip-y, 6rem);
-  transform: translateY(-50%);
-  max-inline-size: min(20rem, 60vw);
-  padding: var(--vk-space-2) var(--vk-space-3);
+  box-sizing: border-box;
+  left: calc(var(--vk-ui-tooltip-left, 0px) + var(--vk-ui-tooltip-width, var(--vk-ui-rail-width)) / 2);
+  top: calc(var(--vk-ui-tooltip-top, 4rem) + 4px);
+  transform: translateX(-50%);
+  max-inline-size: calc(var(--vk-ui-tooltip-width, var(--vk-ui-rail-width)) - 8px);
+  padding: 4px 8px;
   border-radius: var(--vk-radius-sm);
   background: var(--vk-inverse-surface);
   color: var(--vk-inverse-on-surface);
-  font-size: var(--vk-type-label-size);
+  font-size: var(--vk-type-caption-size);
+  text-align: center;
+  overflow-wrap: anywhere;
   pointer-events: none;
   z-index: 10;
 }
@@ -1974,7 +2006,7 @@ a.vk-ui-byline__identity:focus-visible {
 
 /* Bar layouts: the rail leaves, the top bar and (unless hidden) the bottom bar appear. The
  * measured `--vk-ui-bar-height` keeps the end of the content and focused controls clear. */
-@media (max-width: 759px) {
+@media (width < 760px) {
   .vk-ui-scaffold[data-layout="auto"] .vk-ui-rail { display: none; }
   .vk-ui-scaffold[data-layout="auto"] .vk-ui-scaffold__content { margin-inline-start: 0; padding-block-end: calc(var(--vk-ui-bar-height, max(var(--vk-size-bottom-bar), 5rem)) + 28px); }
   .vk-ui-scaffold[data-layout="auto"] .vk-ui-top-bar { display: flex; }

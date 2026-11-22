@@ -4,6 +4,7 @@ export async function editorWriting(page, { args, check, setEditorScene, capture
   const titleSelector = '#draft-title';
   const summary = '#draft-title-details > summary';
   const full = '#draft-title-full';
+  const disclosureVisible = `document.querySelector('${summary}')?.checkVisibility() === true`;
   const ready = `document.querySelector('.cm-content[contenteditable=true]')`;
   // Pinned CM 6 DOM bridge (also used by EditorView.findFromDOM). Read the actual view,
   // including non-rendered lines: DOM text alone cannot prove exact raw-buffer retention.
@@ -17,7 +18,51 @@ export async function editorWriting(page, { args, check, setEditorScene, capture
   await page.waitFor(`document.querySelector('#create-draft') && document.documentElement.dataset.hydrated === 'true'`, 'writing desk');
   await page.click('#create-draft'); await page.waitFor(ready, 'writing editor');
   const workId = await page.eval(`location.pathname.split('/').pop()`);
-  await page.typeAtEnd(titleSelector, title); await page.typeInBody(body);
+  check(!await page.eval(disclosureVisible), 'empty title has no full-title disclosure');
+  const shortTitle = 'Buổi tối an lành';
+  await page.typeAtEnd(titleSelector, shortTitle);
+  await setEditorScene(page,{width:1440,height:900,scale:100,theme:'light'});
+  check(!await page.eval(disclosureVisible), 'audit short title fits at desktop and has no disclosure');
+  const {nodes: shortTree}=await page.send('Accessibility.getFullAXTree');
+  check(!shortTree.some(n=>!n.ignored && n.name?.value==='Xem trọn tiêu đề'), 'fitting title omits the disclosure from the accessibility tree');
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement.matches('.cm-content')`), 'Tab from a fitting title reaches the editor body directly');
+
+  await setEditorScene(page,{width:320,height:900,scale:100,theme:'light'});
+  check(!await page.eval(disclosureVisible), 'the short title still fits at 320px and 100% text');
+  // Swap to a face with larger advances at the same CSS font size and viewport width.
+  await page.eval(`(async () => {
+    const input=document.querySelector('${titleSelector}'), paper=input.closest('.vk-editor-paper');
+    window.__titleFitWidth=input.clientWidth;
+    const fallback=getComputedStyle(input).fontFamily;
+    paper.style.setProperty('--vk-font-reading','"Vink Wide Title Test", '+fallback);
+    const face=new FontFace('Vink Wide Title Test','url(/pkg/fonts/literata-variable.woff2)',{sizeAdjust:'240%',weight:'200 900'});
+    window.__wideTitleFace=await face.load();
+    document.fonts.add(__wideTitleFace);
+  })()`);
+  await page.waitFor(disclosureVisible,'wider loaded font clips the same title');
+  check(await page.eval(`document.querySelector('${titleSelector}').clientWidth===__titleFitWidth`), 'font metrics reveal disclosure without changing the input width');
+  await page.eval(`document.fonts.delete(__wideTitleFace); document.querySelector('.vk-editor-paper').style.removeProperty('--vk-font-reading')`);
+  await page.waitFor(`!(${disclosureVisible})`,'original font fits the same title again');
+
+  await setEditorScene(page,{width:320,height:900,scale:200,theme:'light'});
+  await page.waitFor(disclosureVisible,'the same title clips after increasing the text size');
+  await page.eval(`window.__writingTitle=document.querySelector('${titleSelector}'); __writingTitle.focus(); __writingTitle.setSelectionRange(1,5,'backward')`);
+  const shortSelection=await page.eval(selection);
+  await page.key('Tab'); await page.key('Enter');
+  check(await page.eval(`document.activeElement.matches('${summary}') && document.querySelector('#draft-title-details').open`), 'Tab and Enter reach and open the disclosure for the clipped title');
+  await setEditorScene(page,{width:1440,height:900,scale:200,theme:'light'});
+  await page.waitFor(`!(${disclosureVisible})`,'wider viewport fits the title again');
+  check(await page.eval(`document.activeElement===__writingTitle && ${selection}===${JSON.stringify(shortSelection)}`), 'hiding the focused disclosure returns focus to the same title and keeps directional selection');
+  await setEditorScene(page,{width:320,height:900,scale:200,theme:'light'});
+  await page.waitFor(disclosureVisible,'narrowing the viewport clips the title again');
+  check(await page.eval(`document.activeElement===__writingTitle && !document.querySelector('#draft-title-details').open`), 'showing the disclosure again leaves the caret and returns the disclosure to collapsed');
+
+  await setEditorScene(page,{width:1440,height:900,scale:100,theme:'light'});
+  await page.eval(`__writingTitle.select()`);
+  await page.send('Input.insertText',{text:title});
+  await page.waitFor(disclosureVisible,'editing from a fitting title to a long title reveals its disclosure');
+  await page.typeInBody(body);
   await page.click('#save'); await page.waitStatus('saved');
   const saved = await page.draft(workId);
   await page.eval(`window.__writingTitle=document.querySelector('#draft-title'); window.__writingView=${view}; __writingTitle.focus(); __writingTitle.setSelectionRange(10,24,'backward')`);
@@ -113,9 +158,14 @@ export async function editorWriting(page, { args, check, setEditorScene, capture
       const result=await page.eval(`(async()=>{ const created=await fetch('/api/v1/drafts',{method:'POST'}).then(r=>r.json()); const r=await fetch('/api/v1/drafts/'+created.work_id,{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({expected_version:created.version,title:${JSON.stringify(sample)},document:${JSON.stringify(saved.document)}})}); return {ok:r.ok,status:r.status,body:await r.json(),stored:await fetch('/api/v1/drafts/'+created.work_id).then(r=>r.json())}; })()`);
       check(result.ok===accepted && (accepted ? result.stored.title===sample.trim().normalize('NFC') && result.stored.version===2 : result.status===422 && result.stored.version===1), `real API title trim/NFC/scalar boundary ${sample.length}/${[...sample].length} accepted=${accepted} ${result.ok===accepted ? '' : JSON.stringify(result)}`);
     }
+    await replace(title);
+    await page.waitFor(disclosureVisible,'the long title is clipped before shortening');
     await replace('m');
+    await page.waitFor(`!(${disclosureVisible})`,'shortening the title hides its disclosure');
+    check(await page.eval(`document.activeElement===__writingTitle && __writingTitle.selectionStart===1 && __writingTitle.selectionEnd===1`), 'hiding the disclosure during typing leaves the caret in the title');
     const priorWrites=writes;
     await page.send('Input.imeSetComposition',{text:'ư',selectionStart:1,selectionEnd:1});
+    check(await page.eval(`document.activeElement===__writingTitle && __writingTitle.value==='mư' && ${same}`), 'composition keeps focus and preedit text in the same title input');
     await page.key('Enter'); await page.key('s',page.mod);
     check(writes===priorWrites,'title composition Enter/shortcut never saves partial syllables');
     await page.send('Input.insertText',{text:'ưa'});
@@ -144,6 +194,7 @@ export async function editorWriting(page, { args, check, setEditorScene, capture
     await page.key('z',page.mod); await page.key('z',page.mod);
     check(await page.eval(raw)===beforeRaw && await page.eval(same),'body undo restores the exact original raw buffer');
     await page.key('s',page.mod); await page.waitStatus('saved');
+    await page.waitFor(disclosureVisible,'the long title disclosure remains reachable for focus testing');
     for (const forced of [false,true]) {
       await page.send('Emulation.setEmulatedMedia',{features:[{name:'forced-colors',value:forced?'active':'none'},{name:'prefers-reduced-motion',value:'reduce'}]});
       await page.eval(`document.querySelector('${summary}').focus()`); await page.key('Tab'); await page.key('Tab',8);

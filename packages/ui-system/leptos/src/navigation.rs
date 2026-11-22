@@ -348,7 +348,7 @@ pub fn NavItem(
     }
 }
 
-/// A shell utility that opens an overlay (Vink: Tôi at the foot of the rail), not a route.
+/// A shell utility that opens an overlay, not a route.
 #[component]
 pub fn NavUtility(
     #[prop(into)] id: String,
@@ -377,7 +377,9 @@ pub fn NavUtility(
             aria-current=move || current.get().then_some("page")
             on:click=move |_| on_open.run(())
         >
-            {leading.map_or_else(|| view! { <Icon name=icon /> }.into_any(), |leading| leading.run())}
+            <span class="vk-ui-nav-item__indicator">
+                {leading.map_or_else(|| view! { <Icon name=icon /> }.into_any(), |leading| leading.run())}
+            </span>
             <span class="vk-ui-nav-item__label">{label}</span>
         </button>
     }
@@ -413,6 +415,9 @@ pub fn NavigationRail(
     expanded: Signal<bool>,
     #[prop(into)] expand_label: String,
     #[prop(into)] collapse_label: String,
+    /// Optional separate modal controlled by the toggle in a host-defined window class.
+    #[prop(optional, into)]
+    modal_controls: Option<Signal<Option<&'static str>>>,
     on_toggle: Callback<()>,
     destinations: Vec<(NavDestination, Signal<bool>)>,
     #[prop(optional)] on_navigate: Option<Callback<String>>,
@@ -448,14 +453,18 @@ pub fn NavigationRail(
                 tooltip.set(false);
             }
         });
-        on_cleanup(move || escape.remove());
+        let resize = window_event_listener(leptos::ev::resize, move |_| tooltip.set(false));
+        on_cleanup(move || {
+            escape.remove();
+            resize.remove();
+        });
     }
 
     let primary = items(destinations, on_navigate);
     let controls = id.clone();
 
     view! {
-        <aside id=id class="vk-ui-rail" aria-label=label>
+        <aside id=id class="vk-ui-rail" aria-label=label on:scroll=move |_| tooltip.set(false)>
             {brand.map(|brand| view! { <div class="vk-ui-rail__brand">{brand.run()}</div> })}
             <button
                 type="button"
@@ -464,7 +473,10 @@ pub fn NavigationRail(
                 node_ref=toggle
                 aria-label=accessible_name
                 aria-expanded=move || expanded.get().to_string()
-                aria-controls=controls
+                aria-controls=move || modal_controls.and_then(|modal| modal.get()).map_or_else(|| controls.clone(), str::to_owned)
+                aria-haspopup=move || modal_controls.and_then(|modal| modal.get()).map(|_| "dialog")
+                data-expand-label=expand_label.clone()
+                data-collapse-label=collapse_label.clone()
                 aria-describedby=move || tooltip.get().then(|| described.clone())
                 on:click=move |_| {
                     on_toggle.run(());
@@ -475,10 +487,8 @@ pub fn NavigationRail(
                 on:focus=move |_| show()
                 on:blur=move |_| tooltip.set(false)
             >
-                {move || {
-                    let icon = if expanded.get() { IconName::MenuOpen } else { IconName::Menu };
-                    view! { <Icon name=icon size=IconSize::Small /> }
-                }}
+                <span class="vk-ui-rail-expand"><Icon name=IconName::Menu size=IconSize::Small /></span>
+                <span class="vk-ui-rail-collapse"><Icon name=IconName::MenuOpen size=IconSize::Small /></span>
             </button>
             <nav id=primary_id class="vk-ui-rail__primary" aria-label=nav_label>
                 {primary}
@@ -486,28 +496,24 @@ pub fn NavigationRail(
             <div id=account_id class="vk-ui-rail__account">{account.run()}</div>
         </aside>
         <span id=tooltip_id role="tooltip" class="vk-ui-tooltip" node_ref=tip hidden=move || !tooltip.get()>
-            {name}
+            <span class="vk-ui-rail-expand">{expand_label}</span>
+            <span class="vk-ui-rail-collapse">{collapse_label}</span>
         </span>
     }
 }
 
-/// Anchors the tooltip outside the rail's edge, level with the toggle, as laid out now (rail
-/// width, scroll, text size).
+/// Anchors the tooltip below the toggle and within the rail's inline bounds, clear of main.
 fn place_tooltip(toggle: NodeRef<html::Button>, tip: NodeRef<html::Span>) {
     #[cfg(target_arch = "wasm32")]
     if let (Some(toggle), Some(tip)) = (toggle.get_untracked(), tip.get_untracked()) {
         let rect = toggle.get_bounding_client_rect();
-        let edge = toggle
-            .closest(".vk-ui-rail")
-            .ok()
-            .flatten()
-            .map_or(rect.right(), |rail| rail.get_bounding_client_rect().right());
-        let style = web_sys::HtmlElement::style(&tip);
-        let _ = style.set_property("--vk-ui-tooltip-x", &format!("{edge}px"));
-        let _ = style.set_property(
-            "--vk-ui-tooltip-y",
-            &format!("{}px", rect.top() + rect.height() / 2.0),
-        );
+        if let Ok(Some(rail)) = toggle.closest(".vk-ui-rail") {
+            let rail = rail.get_bounding_client_rect();
+            let style = web_sys::HtmlElement::style(&tip);
+            let _ = style.set_property("--vk-ui-tooltip-left", &format!("{}px", rail.left()));
+            let _ = style.set_property("--vk-ui-tooltip-width", &format!("{}px", rail.width()));
+            let _ = style.set_property("--vk-ui-tooltip-top", &format!("{}px", rect.bottom()));
+        }
     }
     #[cfg(not(target_arch = "wasm32"))]
     let _ = (toggle, tip);

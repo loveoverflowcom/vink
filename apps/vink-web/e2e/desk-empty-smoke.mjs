@@ -8,7 +8,8 @@ export async function deskGuest(page, {args, check}, signInOpen) {
   const path = args.base+'/ban-viet';
   const html = await (await fetch(path)).text();
   check(html.includes('data-testid="draft-loading"') && !html.includes('id="draft-search"') &&
-    !html.includes('id="desk-sign-in"'), '#308 SSR Desk shows a session check without private controls or a guessed standing');
+    !html.includes('id="desk-sign-in"') && !html.includes('id="draft-list-title"'),
+  '#308 SSR Desk shows a session check without the private heading, controls or a guessed standing');
   const draftReads = [];
   const observe = ({sessionId,method,params}) => {
     if (sessionId!==page.sessionId || method!=='Network.requestWillBeSent') return;
@@ -20,8 +21,9 @@ export async function deskGuest(page, {args, check}, signInOpen) {
     await page.goto(path);
     await page.waitFor("document.querySelector('[data-testid=desk-access]') && document.querySelector('#navigation-account a[href=\"/toi\"]')", '#308 confirmed guest Desk and rail');
     const title = signInOpen ? 'Bạn chưa đăng nhập' : 'Vink chưa mở đăng nhập';
-    check(await page.eval(`document.querySelector('.vk-desk-access h3').textContent===${JSON.stringify(title)}
+    check(await page.eval(`document.querySelector('.vk-desk-access h2').textContent===${JSON.stringify(title)}
       && !document.querySelector('#draft-search, #draft-sort, #retry-drafts, #create-draft')
+      && !document.querySelector('#draft-list-title') && document.querySelectorAll('#desk h1').length===1
       && Boolean(document.querySelector('#desk-sign-in'))===${signInOpen}
       && document.querySelector('.vk-desk-access__actions a[href="/"]')?.textContent==='Khám phá tác phẩm'
       && document.querySelectorAll('.vk-desk-access__actions a').length===${signInOpen ? 2 : 1}`),
@@ -39,8 +41,7 @@ export async function deskGuest(page, {args, check}, signInOpen) {
         const nav = document.querySelector(${JSON.stringify(navSelector)});
         const actions = [...panel.querySelectorAll('a')].map(a=>a.getBoundingClientRect());
         return {
-          headings:box('#draft-list-title').top-box('#desk-title').bottom,
-          content:box('.vk-desk-access').top-box('#draft-list-title').bottom,
+          spacing:box('.vk-desk-access').top-box('#desk-title').bottom,
           border:panelStyle.borderWidth, width:document.documentElement.scrollWidth,
           toned:panelStyle.backgroundColor!==getComputedStyle(document.body).backgroundColor,
           nav:nav.textContent.trim(),
@@ -52,7 +53,7 @@ export async function deskGuest(page, {args, check}, signInOpen) {
       const name = guestLink?.role.value==='link' ? guestLink.name?.value : undefined;
       check(layout.width<=width && layout.toned && layout.border==='0px' && layout.target &&
         layout.nav===label && name===label &&
-        (scale!==100 || Math.abs(layout.headings-32)<=1 && Math.abs(layout.content-12)<=1),
+        Math.abs(layout.spacing-24)<=1,
         '#308 guest Desk geometry/labels '+[width,theme,scale].join('/')+' '+JSON.stringify({ ...layout, name }));
       if (width===390 || width===1440 && scale===100) {
         await page.capture('desk-guest-'+[signInOpen?'open':'closed',width,theme,scale].join('-'), {
@@ -71,6 +72,9 @@ export async function deskGuest(page, {args, check}, signInOpen) {
       }
     }
     await page.eval("document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme; document.querySelector('#navigation-primary a[href=\"/ban-viet\"]').focus()");
+    await page.key('Tab');
+    check(await page.eval(`document.activeElement.matches('#profile-trigger:focus-visible')`),
+      'the appearance shortcut has keyboard focus before the guest account link');
     await page.key('Tab');
     check(await page.eval(`document.activeElement.matches('#navigation-account a:focus-visible') &&
       parseFloat(getComputedStyle(document.activeElement).outlineWidth)>0`), '#308 guest rail link is keyboard reachable with a focus ring');
@@ -242,7 +246,7 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
       gate.holdGets = true;
       await page.click('#refresh-drafts');
       const pending = await gate.next('gets');
-      check(await page.eval(`document.querySelector('[data-testid=draft-empty]') && document.querySelector('[data-testid=author-work-stale]') && document.querySelector('#create-draft').getAttribute('aria-disabled')==='true'`), '#259 retained empty during refresh keeps its stale qualifier and disables create');
+      check(await page.eval(`document.querySelector('[data-testid=draft-empty]') && document.querySelector('#draft-scope [data-testid=author-work-stale]') && document.querySelector('#create-draft').getAttribute('aria-disabled')!=='true'`), '#259 retained empty during refresh keeps its stale qualifier and allows create');
       await gate.fulfill(pending, 503, {error:{code:'dependency_unavailable'}});
       await settled();
       check(await page.eval(`document.querySelector('[data-testid=desk-error]') && document.querySelector('[data-testid=author-work-stale]') && !document.querySelector('#drafts img')`), '#259 load error preserves warning and is not artwork empty');

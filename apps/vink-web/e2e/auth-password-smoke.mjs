@@ -33,16 +33,22 @@ async function credentials(page, form, username, password) {
   await fill(page, `${form}-password`, password);
 }
 
-async function name(page, penName) {
+async function setPenName(page, penName, { returnToDesk = false } = {}) {
   await page.waitFor(`${STANDING} === 'needs_principal' && ${q('#pen-name')}`, 'pen name');
   await fill(page, '#pen-name', penName);
   await page.click('#pen-name-save');
-  await page.waitFor(`${STANDING} === 'active'`, 'active session');
+  if (returnToDesk) {
+    await page.waitFor(`location.pathname === '/ban-viet' && ${q('#create-draft')}`, 'active session returns to Bàn viết');
+  } else {
+    await page.waitFor(`${STANDING} === 'active'`, 'active session on Tôi');
+  }
   return (await account(page)).body;
 }
 
 async function createDraft(page, title) {
-  await page.click('#account-session a[href="/ban-viet"]');
+  if (await page.eval("location.pathname !== '/ban-viet'")) {
+    await page.click('#account-session a[href="/ban-viet"]');
+  }
   await page.waitFor(`location.pathname === '/ban-viet' && ${q('#create-draft')}`, 'own writing desk');
   await page.click('#create-draft');
   await page.waitFor(`location.pathname.startsWith('/ban-viet/') && ${EDITOR_READY}`, 'new draft');
@@ -306,6 +312,7 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   const penA = 'An Nhiên';
   const penB = 'Người giữ mùa thu';
   const email = 'taikhoan-email@vi-du.vn';
+  const workQueuePath = '/api/v1/moderation/works/queue/page';
 
   await deskGuest(page, {args,check}, true);
   const unavailable = await fabricate(page, 'GET', '/api/v1/auth/session', 503, {error:{code:'dependency_unavailable'}});
@@ -317,21 +324,43 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   await page.waitFor(q('#desk-sign-in'), '#308 session retry confirms guest');
   check(gated.count()===0, '#308 unavailable and confirmed guest never query the private list');
   await page.click('#desk-sign-in');
-  await page.waitFor(`location.pathname==='/toi' && ${q(LOGIN)}`, '#308 Desk sign-in links to the existing form');
+  await page.waitFor(`location.pathname==='/toi' && new URLSearchParams(location.search).get('next') === '/ban-viet' && ${q(LOGIN)}`,
+    'F-06 Desk sign-in links to the existing form with a return target');
   const suspended = await fabricate(page, 'GET', '/api/v1/auth/session', 200, {state:'suspended'});
   await page.goto(base+'/ban-viet');
   await suspended();
-  await page.waitFor("document.querySelector('.vk-desk-access h3')?.textContent==='Tài khoản đang bị tạm khóa'", '#308 suspended session is distinct');
+  await page.waitFor("document.querySelector('.vk-desk-access h2')?.textContent==='Tài khoản đang bị tạm khóa'", '#308 suspended session is distinct');
   check(gated.count()===0 && await page.eval("!document.querySelector('#draft-search, #retry-drafts')"), '#308 suspended state (intercepted) has no private controls or reads');
   gated.close();
 
   console.log('Auth password: registration, browser input, server cookie and own draft:');
+  const guestReview = captureRequest(page, 'HEAD', workQueuePath);
   await openAccount(page, base, 'anonymous');
   check(await page.eval(`${q(LOGIN)} && !${q(REGISTER)} && !${q('#sign-in-email')}`), 'password is the default guest form');
   check(await page.eval(`(() => { const p=${q(LOGIN + '-password')}; return p.type === 'password' && p.name === 'password' && p.autocomplete === 'current-password' &&
     !p.hasAttribute('maxlength') && p.getAttribute('aria-required') === 'true' && ${q(LOGIN + '-username')}.autocomplete === 'username'; })()`), 'native login field names and autocomplete, with no raw maxlength');
 
   await authR2Login(page, check);
+  const loginField = (name) => q(LOGIN + '-' + name);
+  const invalid = (name, message) =>
+    `${loginField(name)}.getAttribute('aria-invalid') === 'true' &&
+    ${loginField(name)}.getAttribute('aria-describedby').split(' ').some(id =>
+      document.getElementById(id)?.textContent.includes(${JSON.stringify(message)}))`;
+  const blankLogin = captureRequest(page, 'POST', `${API}/login`);
+  await page.click(LOGIN + '-submit');
+  await page.waitFor(`${invalid('username', 'Hãy nhập tên đăng nhập.')} &&
+    ${invalid('password', 'Hãy nhập mật khẩu.')} && document.activeElement === ${loginField('username')}`,
+    'F-11 empty login marks both fields and focuses the first');
+  await fill(page, LOGIN + '-username', userA);
+  await page.key('Enter');
+  await page.waitFor(`${invalid('password', 'Hãy nhập mật khẩu.')} && document.activeElement === ${loginField('password')} &&
+    ${loginField('username')}.getAttribute('aria-invalid') !== 'true' &&
+    ${loginField('username')}.value === ${JSON.stringify(userA)}`, 'F-11 Enter keeps the username and focuses the missing password');
+  check(blankLogin.count() === 0, 'F-11 blank login sends zero requests');
+  check(guestReview.count() === 0 && await page.eval(`!${q('#me-moderation-link')}`),
+    'F-18 the guest has neither a moderation check nor a moderation link');
+  blankLogin.close();
+  guestReview.close();
   await page.eval(`${q('#use-registration')}.focus()`);
   await page.key('Enter');
   await page.waitFor(`document.activeElement?.id === 'password-register-username'`, 'explicit mode switch focuses first field');
@@ -345,28 +374,44 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
     p.focus(); p.setSelectionRange(2, 7, 'backward');
   })()`);
   const registration = captureRequest(page, 'POST', `${API}/register`);
+  // Arm interception before any activation in this scenario, including the IME negative control.
+  const heldRegistration = await holdAnswer(page, 'POST', `${API}/register`);
   await page.click(REGISTER + '-password-reveal');
   check(await page.eval(`(() => {
     const p = ${q(REGISTER + '-password')};
     return p === window.savedInput && p.type === 'text' && p.selectionStart === 2 &&
       p.selectionEnd === 7 && p.selectionDirection === 'backward' && document.activeElement === p &&
-      ${q(REGISTER + '-password-reveal')}.getAttribute('aria-pressed') === 'true';
+      ${q(REGISTER + '-password-reveal')}.getAttribute('aria-pressed') === 'true' &&
+      ${q(REGISTER + '-password-reveal [data-icon="visibility-off"]')} &&
+      ${q(REGISTER + '-password-reveal')}.getAttribute('aria-label') === 'Hiển thị mật khẩu';
   })()`), 'pointer reveal keeps the same input, focus and selection');
   await page.key('Tab');
   await page.key('Space');
   check(registration.count() === 0 && await page.eval(`
-    ${q(REGISTER + '-password')}.type === 'password' && document.activeElement?.id === 'password-register-password-reveal'
+    ${q(REGISTER + '-password')}.type === 'password' && document.activeElement?.id === 'password-register-password-reveal' &&
+    ${q(REGISTER + '-password-reveal [data-icon="visibility"]')} &&
+    ${q(REGISTER + '-password-reveal')}.getAttribute('aria-pressed') === 'false'
   `), 'keyboard conceal keeps focus on the toggle and sends no mutation');
-  await page.eval(`delete window.savedInput;
-    ${q(REGISTER + '-username')}.dispatchEvent(new CompositionEvent('compositionstart', {bubbles: true}));
-    ${q(REGISTER + '-username')}.focus()`);
+  await page.eval(`(() => {
+    delete window.savedInput;
+    const input = ${q(REGISTER + '-username')};
+    input.focus();
+    const composition = window.authComposition = { enter: null, submits: 0 };
+    input.addEventListener('keydown', event => { composition.enter = event; }, { once: true });
+    input.form.addEventListener('submit', () => { composition.submits++; }, { capture: true });
+    input.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+  })()`);
   await page.key('Enter');
-  check(registration.count() === 0, 'Enter during simulated composition sends nothing');
+  check(registration.count() === 0 && await page.eval(`(() => {
+    const { enter, submits } = window.authComposition;
+    return enter?.key === 'Enter' && enter.target === ${q(REGISTER + '-username')} &&
+      enter.defaultPrevented && submits === 0;
+  })()`), 'Enter during simulated composition is canceled at the input and sends no form or network request');
   await page.eval(`${q(REGISTER + '-username')}.dispatchEvent(new CompositionEvent('compositionend', {bubbles: true}))`);
 
   await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
-  const heldRegistration = await holdAnswer(page, 'POST', `${API}/register`);
   await page.key('Enter');
+  check(await page.eval('window.authComposition.submits === 1'), 'Enter after composition submits the registration form once');
   check(await heldRegistration.held() === 200, 'registration commits through the App with DOM autofill and Unicode NFD');
   await page.waitFor(`${q(REGISTER + '-submit')}.getAttribute('aria-busy') === 'true'`, 'registration pending');
   const motion = await page.eval(`(() => {
@@ -381,6 +426,7 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
     `pending control keeps an accessible busy state and a static arc in reduced motion (${JSON.stringify(motion)})`);
   await page.click(REGISTER + '-submit');
   check(registration.count() === 1, 'Enter then click while the real response is held sends one registration');
+  await page.eval('delete window.authComposition');
   await heldRegistration.finish();
   registration.close();
   await page.send('Emulation.setEmulatedMedia', { features: [] });
@@ -391,15 +437,21 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   await matrix(page, 'pen-name', '#pen-name-form', check);
   const unbound = captureRequest(page, 'GET', '/api/v1/author/works');
   await page.goto(base+'/ban-viet');
-  await page.waitFor("document.querySelector('.vk-desk-access h3')?.textContent==='Đặt bút danh để bắt đầu'", '#308 unbound session is distinct');
+  await page.waitFor("document.querySelector('.vk-desk-access h2')?.textContent==='Đặt bút danh để bắt đầu'", '#308 unbound session is distinct');
   check(unbound.count()===0 && await page.eval("!document.querySelector('#draft-search, #retry-drafts')"), '#308 the real unbound session never queries the private list');
   unbound.close();
-  await page.click('.vk-desk-access a[href="/toi"]');
-  const A = await name(page, penA);
+  await page.click('#desk-pen-name');
+  await page.waitFor(`new URLSearchParams(location.search).get('next') === '/ban-viet' && ${q('#pen-name-form')}`,
+    'F-06 the Desk pen-name action preserves its return target');
+  const A = await setPenName(page, penA, { returnToDesk: true });
   check(A.display_name === penA && A.display_name !== userA, 'the server confirms a separate pen name');
   const draftA = await createDraft(page, '[Mẫu] Nháp tạo sau đăng ký');
   await expiredDesk(page, {base, check, openPage});
+  const writerReview = await holdAnswer(page, 'HEAD', workQueuePath);
   await openAccount(page, base, 'active');
+  check(await writerReview.held() === 403, 'F-18 the bodyless authorization check refuses an ordinary writer');
+  await writerReview.finish(false, true);
+  check(await page.eval(`!${q('#me-moderation-link')}`), 'F-18 Tôi offers no moderation link to an ordinary writer');
   await page.click('#password-credential');
   await page.waitFor(contains('đã có thông tin đăng nhập'), 'credential already present');
   check(await page.eval(`!${q(ENROLL + '-send')}`), 'already-enrolled account has no second enrollment form');
@@ -419,6 +471,7 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   readbacks.close();
   await page.eval(`${q(LOGIN + '-username')}.value = ''; ${q(LOGIN + '-password')}.value = ''`);
   await matrix(page, 'invalid-credentials', LOGIN, check);
+  await credentials(page, LOGIN, userA, SECRET_A);
   const throttled = await fabricate(page, 'POST', `${API}/login`, 429,
     { error: { code: 'rate_limited', message: 'fixture' } }, [{ name: 'Retry-After', value: '8' }]);
   await page.click(LOGIN + '-submit');
@@ -428,6 +481,10 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   await matrix(page, 'cooldown', LOGIN, check);
   await page.waitFor(`${q(LOGIN + '-submit')}.getAttribute('aria-disabled') !== 'true'`, 'password cooldown elapsed');
   // A stale form may not update the replacement form; the late Set-Cookie still has to be read.
+  await page.goto(base + '/ban-viet');
+  await page.waitFor(q('#desk-sign-in'), 'returning guest at the Desk');
+  await page.click('#desk-sign-in');
+  await page.waitFor(`location.pathname === '/toi' && ${q(LOGIN)}`, 'F-06 returning guest opens contextual sign-in');
   await credentials(page, LOGIN, userA, SECRET_A);
   const late = await holdAnswer(page, 'POST', `${API}/login`);
   await page.click(LOGIN + '-submit');
@@ -437,12 +494,14 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   check(await page.eval(`!${q(LOGIN + '-password')} && ${q('#sign-in-send')}.getAttribute('aria-disabled') === 'true'`),
     'switch removes the password and keeps the single auth lane occupied');
   await late.finish();
-  await page.waitFor(`${STANDING} === 'active' && !${q('#sign-in-email')}`, 'late real cookie observed');
+  await page.waitFor(`location.pathname === '/ban-viet' && ${q('#create-draft')} && !${q('#sign-in-email')}`,
+    'F-06 late real cookie makes the Desk available and returns to it');
   const returnedA = (await account(page)).body;
   check(returnedA.principal_id === A.principal_id && returnedA.display_name === penA &&
     bodyText(await page.draft(draftA)) === DRAFT_TEXT, 'password returns to the same principal, pen name and stored draft');
 
   console.log('Auth password: first verified email, wrong code and lost completion ACK:');
+  await openAccount(page, base, 'active');
   const attachedEmail = await attachVerifiedEmail(page, { args, check, accountBefore: A, draft: draftA, seen: ctx.seen });
   await signOut(page, base);
   await signIn(page, ctx, attachedEmail);
@@ -454,7 +513,7 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   const other = await openPage(browserContextId);
   await openAccount(other, base, 'anonymous');
   await signIn(other, ctx, email);
-  const B = await name(other, penB);
+  const B = await setPenName(other, penB);
   const draftB = await createDraft(other, '[Mẫu] Nháp có từ trước khi thêm mật khẩu');
   await openAccount(other, base, 'active');
   await other.click('#password-credential');

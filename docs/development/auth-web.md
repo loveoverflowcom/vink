@@ -60,8 +60,10 @@ nháp), thảo luận và ghi nhận văn học trên trang đọc. Không view 
 Trang danh sách chỉ gọi `/api/v1/author/works` khi có scope principal hoạt động đã xác nhận.
 Mỗi scope sở hữu ô tìm, danh sách và các lượt đọc của mình. Lỗi kết nối cùng scope có thể thử lại
 với ô tìm hiện tại. Khi lượt đọc bị từ chối quyền, trang dừng hiển thị danh sách trong lúc đối soát phiên.
-Khách có lối đăng nhập qua `/toi` khi môi trường mở đăng nhập và lối Khám phá khi đóng. Chân rail
-và thanh dưới đưa khách tới Tài khoản, nơi vẫn có các lựa chọn Giao diện.
+Khi môi trường mở đăng nhập, nút **Đăng nhập** ở Bàn viết dẫn đến `/toi?next=/ban-viet`.
+Sau khi xác nhận principal hoạt động, trang đưa người vừa đăng nhập hoặc vừa đặt bút danh về
+Bàn viết. Khi môi trường đóng đăng nhập, khách có lối sang Khám phá. Mục tài khoản ở chân rail
+và thanh dưới dẫn tới `/toi`, nơi cũng có các lựa chọn Giao diện.
 
 **Form R2 trong Tôi [#327](https://github.com/loveoverflowcom/vink/issues/327).** `account::AuthEntry`
 là điểm gắn duy nhất của form khách/bút danh trên trang: đọc `Session::standing` và epoch của

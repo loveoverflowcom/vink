@@ -18,6 +18,22 @@ pub(crate) const BOOTSTRAP: &str = r#"try{for(const [key,attr,allowed] of [['vin
 // Read the root authority rather than storage again; hydration adopts this same preference.
 const CHOICE_BOOTSTRAP: &str = r#"(()=>{const group=document.currentScript.previousElementSibling,value=document.documentElement.dataset[group.parentElement.dataset.preference];if(value)for(const input of group.querySelectorAll('input[type=radio]'))input.checked=input.value===value})()"#;
 
+// This parser-time script updates only the toggle's attributes. The two icon shapes already
+// exist in the SSR markup and CSS selects the visible one from aria-expanded.
+pub(crate) const RAIL_BOOTSTRAP: &str = r#"(()=>{
+    const toggle=document.getElementById('navigation-toggle');
+    const desktop=matchMedia('(min-width: 1100px)').matches;
+    const medium=!desktop&&matchMedia('(min-width: 760px)').matches;
+    const preferred=document.documentElement.dataset.rail;
+    const expanded=desktop&&(preferred==='expanded'||(!preferred&&!toggle.closest('#shell').hasAttribute('data-compact-rail')));
+    toggle.setAttribute('aria-expanded',String(expanded));
+    toggle.setAttribute('aria-label',expanded?toggle.dataset.collapseLabel:toggle.dataset.expandLabel);
+    if(medium){
+        toggle.setAttribute('aria-controls','navigation-modal');
+        toggle.setAttribute('aria-haspopup','dialog');
+    }
+})()"#;
+
 /// Theme preference values and parsing are owned by the UI system; this module keeps the
 /// storage key, the pre-CSS bootstrap and when to persist.
 pub(crate) use vink_ui::ThemePreference as Theme;
@@ -175,7 +191,7 @@ fn AppearanceRow(
                 <vink_ui::RadioGroup id legend=label options value on_change />
                 <script inner_html=CHOICE_BOOTSTRAP></script>
                 {(preference == "rail").then(|| view! {
-                    <p class="vk-appearance-rail-hint">"Áp dụng khi có thanh bên."</p>
+                    <p class="vk-appearance-rail-hint">"Trên màn hình vừa, thanh bên mở rộng khi bạn bấm nút điều hướng."</p>
                 })}
             </div>
         </div>

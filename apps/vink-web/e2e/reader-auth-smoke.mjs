@@ -180,7 +180,7 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
     const address = `reader-context-${Date.now().toString(36)}@vi-du.vn`;
     await fill(page, '#sign-in-address', address);
     await page.click('#sign-in-send');
-    await page.waitFor(q('#sign-in-digits'), 'real email challenge in the Reader overlay');
+    await page.waitFor(`${q('#sign-in-digits')} && ${active('sign-in-digits')}`, 'F-11 real email challenge focuses the next field in the Reader overlay');
     const right = await mailedCode(args.outbox, address, seen);
     const wrong = String((Number(right) + 1) % 1000000).padStart(6, '0');
     await fill(page, '#sign-in-digits', wrong);
@@ -201,6 +201,12 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
     const late = await holdAnswer(page, 'POST', '/api/v1/auth/sign-in/complete');
     await page.click('#sign-in-complete');
     check(await late.held() === 200, '#328 holds the real successful email verification before browser delivery');
+    check(await page.eval(`(() => {
+      const button = ${q('#sign-in-complete')};
+      const note = document.getElementById(button.getAttribute('aria-describedby'));
+      return button.getAttribute('aria-busy') === 'true' && !!button.querySelector('.vk-ui-arc') &&
+        note?.textContent.includes('Đang kiểm tra mã') && getComputedStyle(note).clipPath !== 'none';
+    })()`), 'F-18 Reader uses the shared pending spinner with a visually hidden description');
     await page.click('#reader-auth-close');
     await page.waitFor(`!${isOpen} && ${active(REPLY_EDITOR.slice(1)+'-auth')}`, 'dismiss the live request; focus returns to the reply trigger');
     // Native dialog may restore focus synchronously, before the host restores scroll.

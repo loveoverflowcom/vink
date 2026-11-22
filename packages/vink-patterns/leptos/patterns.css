@@ -25,7 +25,7 @@
 /* arrow-back mirrored is the registry's forward arrow; no extra icon asset. */
 .vk-draft-row__open .vk-ui-icon { margin: 0; transform: scaleX(-1); }
 .vk-draft-row__link:hover .vk-draft-row__title { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
-@container vk-draft-row (max-width: 30rem) {
+@container vk-draft-row (max-width: 16rem) {
   .vk-draft-row__text { grid-column: 1 / -1; }
   .vk-draft-row__open { display: none; }
 }
@@ -360,11 +360,12 @@
 .vk-draft-row__link:is(:focus, :hover) .vk-draft-row__title { display: block; -webkit-line-clamp: unset; overflow: visible; }
 
 /* Author summaries preserve the compact row and let status/counts reflow at text 200%. */
-.vk-author-work { min-inline-size: 0; padding: var(--vk-space-3) var(--vk-space-4); }
-.vk-author-work > .vk-draft-row__title { display: block; overflow: visible; -webkit-line-clamp: unset; }
-.vk-author-work .vk-draft-row__link { padding-block: 0; padding-inline: 0; min-block-size: 48px; }
-.vk-author-work__status, .vk-author-work__metrics, .vk-author-work__context { margin-block: var(--vk-space-1); overflow-wrap: anywhere; }
+.vk-author-work { min-inline-size: 0; }
+.vk-author-work > .vk-draft-row__text { padding: var(--vk-space-3) var(--vk-space-4); }
+.vk-author-work > .vk-draft-row__text > .vk-draft-row__title { display: block; overflow: visible; -webkit-line-clamp: unset; }
+.vk-author-work .vk-draft-row__link { min-block-size: 48px; }
+.vk-author-work__status, .vk-author-work__metrics, .vk-author-work__context { margin: 0; overflow-wrap: anywhere; }
 .vk-author-work__status { display: block; }
 .vk-author-work__metrics { color: var(--vk-on-surface); font-size: var(--vk-type-label-size); }
 .vk-author-work__context { color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); }
-.vk-author-work__reader { display: inline-flex; align-items: center; min-block-size: 2.75rem; }
+.vk-author-work__reader { display: inline-flex; align-items: center; min-block-size: 2.75rem; margin-inline: var(--vk-space-4); margin-block-end: var(--vk-space-3); }
