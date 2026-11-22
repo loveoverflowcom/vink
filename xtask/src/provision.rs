@@ -21,6 +21,8 @@ const FRESH: &str = "vink_verify_prov_fresh";
 const LEGACY: &str = "vink_verify_prov_legacy";
 const IDENTITY: &str = "vink_verify_prov_identity";
 const NOTIFICATIONS: &str = "vink_verify_prov_notifications";
+/// Copy that the Notification backout drill restores into; never an original.
+const NOTIFICATIONS_COPY: &str = "vink_verify_prov_notifications_copy";
 /// Separate databases that receive the per-owner backups; never an original.
 const RESTORED_APP: &str = "vink_verify_prov_restored_app";
 const RESTORED_IDENTITY: &str = "vink_verify_prov_restored_identity";
@@ -259,6 +261,11 @@ impl Run<'_> {
             ],
             admin_app: self.admin_on(FRESH),
             app_runtime: self.url(&self.fresh.runtime, FRESH),
+            app_database: FRESH,
+            notifications_database: NOTIFICATIONS,
+            copy_database: NOTIFICATIONS_COPY,
+            admin_copy: self.admin_on(NOTIFICATIONS_COPY),
+            pg_env: self.admin.psql_env(),
             secrets,
         }
     }
@@ -271,6 +278,7 @@ impl Run<'_> {
             LEGACY,
             IDENTITY,
             NOTIFICATIONS,
+            NOTIFICATIONS_COPY,
             RESTORED_APP,
             RESTORED_IDENTITY,
             RESTORED_NOTIFICATIONS,

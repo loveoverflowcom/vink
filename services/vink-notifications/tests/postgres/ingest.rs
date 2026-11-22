@@ -657,3 +657,47 @@ async fn the_ingest_route_answers_one_result_per_event_in_order(pool: PgPool) {
         "the reserved admin type is never stored (P-05)"
     );
 }
+
+/// The SQL refresh and the pure rule (`rollup::preview`) agree on count and preview, including
+/// repeated actors, removed contributions and ties.
+#[sqlx::test(migrator = "vink_notifications::persistence::MIGRATOR")]
+async fn the_stored_preview_matches_the_pure_rule(pool: PgPool) {
+    use vink_notifications::rollup::{Member, preview};
+    let (owner, work) = (id(OWNER), id(WORK));
+    for n in 0u8..30 {
+        // Seven actors, several comments each.
+        let actor = id(0x60 + n % 7);
+        applied(
+            &pool,
+            &root(event_id(), actor, owner, work, id(0x80 + n), 2, T0),
+            T0,
+        )
+        .await;
+        if n % 4 == 3 {
+            let gone = comment_gone(event_id(), work, id(0x80 + n), 3, T0);
+            applied(&pool, &gone, T0).await;
+        }
+        let group = page(&pool, owner, T0).await.groups.remove(0);
+        let rows: Vec<(Uuid, Uuid, bool, i64)> = sqlx::query_as(
+            "SELECT actor_id, contribution, active, last_seq FROM group_members WHERE group_id = $1",
+        )
+        .bind(group.group_id)
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+        let members: Vec<Member> = rows
+            .into_iter()
+            .map(|(actor, contribution, active, last_seq)| Member {
+                actor,
+                contribution,
+                active,
+                last_seq,
+            })
+            .collect();
+        assert_eq!(
+            (group.actor_count, group.actors_preview),
+            preview(&members),
+            "after event {n}"
+        );
+    }
+}

@@ -22,8 +22,8 @@ use uuid::Uuid;
 
 use crate::envelope::{self, Event, EventType, SemanticKind, Target};
 use crate::rollup::{
-    self, COMMAND_HORIZON, Counting, GroupKey, MARK_HORIZON, Mark, Member, RECEIPT_HORIZON,
-    ReadRefusal, Snapshot, ThamStep,
+    self, COMMAND_HORIZON, Counting, GroupKey, MARK_HORIZON, Mark, RECEIPT_HORIZON, ReadRefusal,
+    Snapshot, ThamStep,
 };
 
 /// What the service answers for one event (contract §1.3).
@@ -348,39 +348,32 @@ async fn signal_group(
     Ok(())
 }
 
-/// Recomputes an actor-counted group's count and preview from its members at version `seq`.
-/// A group left without any active contribution closes (P-03A): hidden, never read.
+/// Recomputes an actor-counted group's count and preview from its members at version `seq`, in
+/// the database (one aggregate over the group's rows, never the rows themselves). Same rule as
+/// [`rollup::preview`]: distinct actors with an active contribution, the three with the newest
+/// contribution first, ties by actor ID. A group left without any active contribution closes
+/// (P-03A): hidden, never read.
 async fn refresh_members(tx: &mut Tx<'_>, group_id: Uuid, seq: i64) -> Result<i32, sqlx::Error> {
-    let rows = sqlx::query(
-        "SELECT actor_id, contribution, active, last_seq FROM group_members WHERE group_id = $1",
+    sqlx::query_scalar(
+        "WITH actors AS (
+             SELECT actor_id, max(last_seq) AS latest FROM group_members
+             WHERE group_id = $1 AND active GROUP BY actor_id
+         ), summary AS (
+             SELECT count(*)::integer AS actor_count,
+                    coalesce((SELECT array_agg(actor_id ORDER BY latest DESC, actor_id)
+                                FROM (SELECT actor_id, latest FROM actors
+                                      ORDER BY latest DESC, actor_id LIMIT 3) top), '{}') AS preview
+             FROM actors
+         )
+         UPDATE notification_groups g SET actor_count = s.actor_count, actors_preview = s.preview,
+             group_version = $2, open = g.open AND s.actor_count > 0
+         FROM summary s WHERE g.group_id = $1
+         RETURNING g.actor_count",
     )
     .bind(group_id)
-    .fetch_all(&mut **tx)
-    .await?;
-    let members = rows
-        .iter()
-        .map(|row| {
-            Ok(Member {
-                actor: row.try_get("actor_id")?,
-                contribution: row.try_get("contribution")?,
-                active: row.try_get("active")?,
-                last_seq: row.try_get("last_seq")?,
-            })
-        })
-        .collect::<Result<Vec<_>, sqlx::Error>>()?;
-    let (count, preview) = rollup::preview(&members);
-    sqlx::query(
-        "UPDATE notification_groups SET actor_count = $2, actors_preview = $3,
-             group_version = $4, open = open AND $2 > 0
-         WHERE group_id = $1",
-    )
-    .bind(group_id)
-    .bind(count)
-    .bind(&preview)
     .bind(seq)
-    .execute(&mut **tx)
-    .await?;
-    Ok(count)
+    .fetch_one(&mut **tx)
+    .await
 }
 
 async fn upsert_member(
@@ -1220,6 +1213,7 @@ pub struct Status {
     pub receipts: i64,
     pub marks: i64,
     pub oldest_group_days: Option<i64>,
+    pub recovering: bool,
 }
 
 pub async fn status(pool: &PgPool, now: OffsetDateTime) -> Result<Status, sqlx::Error> {
@@ -1232,7 +1226,8 @@ pub async fn status(pool: &PgPool, now: OffsetDateTime) -> Result<Status, sqlx::
                 (SELECT count(*) FROM ingestion_receipts) AS receipts,
                 (SELECT count(*) FROM tham_marks) AS marks,
                 (SELECT floor(extract(epoch FROM ($1 - min(created_at))) / 86400)::bigint
-                   FROM notification_groups) AS oldest_group_days",
+                   FROM notification_groups) AS oldest_group_days,
+                (SELECT recovering FROM recovery_state) AS recovering",
     )
     .bind(now)
     .fetch_one(pool)
@@ -1246,7 +1241,73 @@ pub async fn status(pool: &PgPool, now: OffsetDateTime) -> Result<Status, sqlx::
         receipts: row.try_get("receipts")?,
         marks: row.try_get("marks")?,
         oldest_group_days: row.try_get("oldest_group_days")?,
+        recovering: row.try_get("recovering")?,
     })
+}
+
+/// The recovery gate (AC-06): while closed, the Gateway socket answers `503 recovering`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Recovery {
+    pub recovering: bool,
+    pub epoch: i64,
+}
+
+pub async fn recovery(pool: &PgPool) -> Result<Recovery, sqlx::Error> {
+    let row = sqlx::query("SELECT recovering, epoch FROM recovery_state")
+        .fetch_one(pool)
+        .await?;
+    Ok(Recovery {
+        recovering: row.try_get("recovering")?,
+        epoch: row.try_get("epoch")?,
+    })
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RecoveryChange {
+    Changed(Recovery),
+    Unchanged(Recovery),
+}
+
+/// Opens (`recovering = false`) or closes the gate with an audited operator note. Beginning a
+/// recovery starts a new epoch; ending keeps it. A no-op writes nothing.
+pub async fn set_recovery(
+    pool: &PgPool,
+    recovering: bool,
+    note: &str,
+) -> Result<RecoveryChange, sqlx::Error> {
+    let mut tx = pool.begin().await?;
+    let row = sqlx::query("SELECT recovering, epoch FROM recovery_state FOR UPDATE")
+        .fetch_one(&mut *tx)
+        .await?;
+    let current = Recovery {
+        recovering: row.try_get("recovering")?,
+        epoch: row.try_get("epoch")?,
+    };
+    if current.recovering == recovering {
+        tx.rollback().await?;
+        return Ok(RecoveryChange::Unchanged(current));
+    }
+    let next = Recovery {
+        recovering,
+        epoch: if recovering {
+            current.epoch.saturating_add(1)
+        } else {
+            current.epoch
+        },
+    };
+    sqlx::query("UPDATE recovery_state SET recovering = $1, epoch = $2, changed_at = now()")
+        .bind(next.recovering)
+        .bind(next.epoch)
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query("INSERT INTO recovery_changes (recovering, epoch, note) VALUES ($1, $2, $3)")
+        .bind(next.recovering)
+        .bind(next.epoch)
+        .bind(note)
+        .execute(&mut *tx)
+        .await?;
+    tx.commit().await?;
+    Ok(RecoveryChange::Changed(next))
 }
 
 #[cfg(test)]

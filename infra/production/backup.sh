@@ -14,11 +14,12 @@ trap 'rm -f -- "$work/vink.dump" "$work/vink_identity.dump" "$work/vink_notifica
 export PODMAN_COMPOSE_PROVIDER=/usr/bin/podman-compose
 compose=(podman compose --project-name vink-prod --env-file /etc/vink-prod/release.env
     -f /opt/vink-prod/current/services/postgres/compose.yaml -f /opt/vink-prod/current/infra/production/compose.yaml)
-# Each owner database is dumped on its own (K1); the Notification dump is taken last, so a restore
-# of this set leaves it at or after the App's point and the App relay's replay covers the gap.
-# A database that is not provisioned yet (vink_notifications before #347 is deployed) is skipped.
+# Each owner database is dumped on its own (K1). The Notification dump is taken first, so a
+# restore of this set never leaves Notifications ahead of the App: the App relay's replay from the
+# Notification dump's time fills the gap (docs/development/notifications.md §7.3). A database that
+# is not provisioned yet (vink_notifications before #347 is deployed) is skipped.
 dumps=()
-for database in vink vink_identity vink_notifications; do
+for database in vink_notifications vink vink_identity; do
     if [ "$database" = vink_notifications ] && ! "${compose[@]}" exec -T postgres \
         psql -U vink -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = 'vink_notifications'" | grep -q 1; then
         continue

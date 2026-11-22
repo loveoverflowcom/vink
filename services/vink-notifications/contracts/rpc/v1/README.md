@@ -82,6 +82,10 @@ khác trả `contributions: null`. Service vẫn không lưu thân bình luận 
   trả lại đúng câu trả lời đã lưu trong 7 ngày; khác lệnh/tham số → `422 idempotency_key_reused`.
 - Lỗi database → `503 dependency_unavailable`; không bao giờ trả `0` hay danh sách rỗng thay lỗi
   (`P-04B`). Hạn trễ của badge mà Gateway được phép phục vụ: `max_staleness_seconds = 60`.
+- **Cổng recovery:** khi vận hành đang đối soát sau restore (`maintenance recovery begin`), mọi route
+  inbox trả `503 recovering`; Gateway coi như nguồn không khả dụng (`stale` nếu còn mốc trong hạn,
+  không thì `503`), không bao giờ thành `0`. Ingest không bị chặn. `/health/ready` báo
+  `checks.recovery = "serving" | "recovering" | "unknown"` nhưng không vì thế mà not ready.
 
 ## 4. Hạn công bố
 
@@ -93,4 +97,4 @@ khác trả `contributions: null`. Service vẫn không lưu thân bình luận 
 | Dấu Thấm (`P-02B`) | 400 ngày từ lần đổi cuối | Phòng thủ thêm cho thứ tự/replay; bảo đảm suốt đời đến từ fact `first_selection` của App |
 | Câu trả lời lệnh ACK | 7 ngày | Cửa sổ idempotency của `command_key` |
 | `max_staleness_seconds` (`P-04B`) | 60 | Hạn trễ count Gateway được phục vụ |
-| Recovery horizon (thiết kế) | 30 ngày | Bằng replay horizon của App; xem điều kiện và phần chưa diễn tập ở [§7](../../../../../docs/development/notifications.md#7-hiện-trạng-347-notification-service) |
+| Recovery horizon | 30 ngày | Bằng replay horizon của App; runbook và RPO theo loại sự cố ở [§7.3](../../../../../docs/development/notifications.md#73-retention-sự-kiện-muộn-và-phục-hồi) |

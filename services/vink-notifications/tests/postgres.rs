@@ -20,10 +20,14 @@ use vink_notifications::persistence::{SchemaState, migrate, schema_state};
 use vink_notifications::server::Peer;
 use vink_notifications::store::{self, Command, Effect, IngestStatus, Page};
 
+#[path = "postgres/budget.rs"]
+mod budget;
 #[path = "postgres/inbox.rs"]
 mod inbox;
 #[path = "postgres/ingest.rs"]
 mod ingest;
+#[path = "postgres/recovery.rs"]
+mod recovery;
 #[path = "postgres/retention.rs"]
 mod retention;
 
@@ -305,7 +309,7 @@ async fn serve_is_not_ready_until_migrated_and_migrating_twice_is_a_no_op(pool: 
     assert_eq!(body["checks"]["schema"], "pending_migrations");
 
     let first = migrate(&pool).await.unwrap();
-    assert_eq!(first.applied, vec![20261128000000]);
+    assert_eq!(first.applied, vec![20261128000000, 20261129000000]);
     assert!(migrate(&pool).await.unwrap().applied.is_empty());
     assert_eq!(schema_state(&pool).await.unwrap(), SchemaState::Current);
 
@@ -336,6 +340,8 @@ async fn the_service_owns_only_inbox_tables(pool: PgPool) {
             "inboxes",
             "ingestion_receipts",
             "notification_groups",
+            "recovery_changes",
+            "recovery_state",
             "tham_marks"
         ]
     );

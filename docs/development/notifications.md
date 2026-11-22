@@ -237,8 +237,9 @@ mở PR; CI không chờ theo yêu cầu của chủ dự án.
 
 ## 7. Hiện trạng `#347`: Notification Service
 
-Nhánh `feat/347-notification-service-inbox` (gốc `develop@07fec5a`). Đây là phần đầu của `#347`;
-các mục còn chờ ở §7.6 vẫn mở. Bốn chiều trạng thái:
+Phần đầu ở [PR #373](https://github.com/loveoverflowcom/vink/pull/373) (service, DB, transport,
+rollup); phần hai trên nhánh `feat/347-notification-recovery` thêm cổng recovery, runbook khôi phục,
+diễn tập AC-06 và số đo ngân sách (§7.3, §7.7). Các mục ở §7.6 vẫn mở. Bốn chiều trạng thái:
 
 | Chiều | Ghi nhận |
 | --- | --- |
@@ -261,7 +262,9 @@ các mục còn chờ ở §7.6 vẫn mở. Bốn chiều trạng thái:
   unique index `notification_groups_one_open` giữ tối đa một nhóm mở cho mỗi `group_key` như một
   constraint. Khóa theo người nhận (thô hơn `group_key`) vì Read/expire/append và version của `T-05`
   cùng tranh chấp trên một hộp thư. Hot key là một tác giả nhận nhiều tương tác cùng lúc: các ghi
-  của người đó chạy tuần tự; chưa đo (§7.6).
+  của người đó chạy tuần tự; số đo ở §7.7. Count và preview của nhóm được tính bằng một aggregate
+  SQL theo cùng luật với `rollup::preview` (test PG đối chiếu hai bên); bản đầu kéo cả membership về
+  Rust nên hot key chỉ đạt 46 sự kiện/s.
 - **`T-04 / CHOICE-18 = A` (state theo actor+target có thứ tự nguồn).** `tham_marks` giữ trạng thái
   chọn mới nhất của (người nhận, actor, work, revision) cùng `accepted_order`; sự kiện cũ hơn không
   đè sự kiện mới hơn. Chỉ `add` có `first_selection = true`, bài đọc được lúc commit và chưa từng có
@@ -298,52 +301,98 @@ ghi fence `comment_fences`, nên một lần duyệt cũ hơn đến muộn khô
 - Sự kiện xảy ra quá 30 ngày (`late_event_cutoff`, bằng replay horizon của App) chỉ có receipt và
   đối soát, không tạo/hồi sinh nhóm.
 - Receipt và fence 45 ngày, dấu Thấm 400 ngày, câu trả lời lệnh ACK 7 ngày.
-- **Recovery horizon (thiết kế):** 30 ngày. Notification DB restore lùi so với mốc App đã ACK: chạy
-  `vink-app notifications replay <since> <ghi chú>` với `since` ≤ thời điểm của bản backup; sự kiện đã
-  áp trước bản backup trả `already_applied`, sự kiện mất được áp lại, sự kiện quá 30 ngày không hiện
-  lại. Với backup hằng ngày, RPO của inbox sau replay là 0 cho sự kiện trong 30 ngày khi App DB còn
-  nguyên. Chiều ngược lại (App lùi mốc so với Notification, gồm mất cả instance) cần đối soát projection
-  trước khi phục vụ và **chưa có công cụ hay diễn tập** (§7.6).
+- **Recovery horizon:** 30 ngày, bằng replay horizon của App (`REPLAY_HORIZON_DAYS`): App chỉ xóa sự
+  kiện đã ACK quá 30 ngày, nên mọi sự kiện trong cửa sổ này phát lại được bằng
+  `vink-app notifications replay <since> <ghi chú>`. Backup giữ 7 bộ hằng ngày, đều nằm trong horizon.
+- **Bất biến khôi phục:** Notification không bao giờ được phục vụ khi đi trước App. `backup.sh` dump
+  `vink_notifications` **trước** `vink`, nên restore cùng một bộ luôn để Notification ở mốc bằng hoặc
+  sớm hơn App; replay lấp khoảng giữa. Sự kiện App đã mất không bao giờ còn hiệu ứng trong inbox.
+- **Cổng recovery:** `vink-notifications maintenance recovery begin|end <ghi chú>` (audit append-only).
+  Khi đóng, socket inbox trả `503 recovering` cho mọi lời gọi; ingest vẫn mở để replay chạy; readiness
+  báo `checks.recovery`. `pg_restore` đưa cổng về trạng thái lúc dump, nên runbook đóng lại ngay sau
+  restore, trước khi `serve` chạy.
+
+| Sự cố | Làm gì | RPO / RTO |
+| --- | --- | --- |
+| Process `vink-notifications` chết (kill, OOM, restart) | Service manager khởi động lại; relay retry, lease hết hạn thì worker khác nhận | Không mất sự kiện; trễ bằng thời gian restart + backoff relay (≤ 10 s đầu, lease 30 s nếu worker cũng chết) |
+| Chỉ DB `vink_notifications` hỏng | Dừng service → `pg_restore` bộ gần nhất → `recovery begin` → `serve` → `vink-app notifications replay <mốc dump − biên>` → chờ backlog App về 0 → `recovery end` | Sự kiện: 0 trong horizon. Seen/Read sau mốc dump mất (nhóm hiện lại chưa đọc); nhóm tạo lại giữ tuổi từ sự kiện gốc |
+| Chỉ DB `vink` (App) restore lùi | `recovery begin` → dừng worker → restore App → dừng service → restore `vink_notifications` **cùng bộ** (dump trước App) → `recovery begin` → `serve` + worker → replay từ mốc dump Notification → chờ backlog về 0 → `recovery end` | App mất writes sau mốc dump của App (RPO App = chu kỳ backup); inbox khớp đúng App sau đối soát |
+| Mất cả instance PostgreSQL | Restore ba DB từ cùng bộ, rồi như dòng trên | Như dòng trên cho cả ba owner |
 
 ### 7.4. Vận hành
 
-`vink-notifications serve|migrate|maintenance purge|maintenance status` ([README](../../services/vink-notifications/README.md)).
+`vink-notifications serve|migrate|maintenance purge|maintenance status|maintenance recovery begin|end`
+([README](../../services/vink-notifications/README.md)).
 Thứ tự bật: provision → `vink-notifications migrate` → `serve` → cấu hình relay trong `vink-worker`
 → chỉ sau đó `vink-app notifications activate` (`#346`). Backout:
 [`down.sql`](../../services/vink-notifications/migrations-rollback/20261128000000_notification_inbox.down.sql)
-từ chối khi còn nhóm trong hạn; dừng relay trước, nghĩa vụ App nằm chờ và được gửi lại sau khi
-migrate tiến.
+từ chối khi còn nhóm trong hạn; backout cổng recovery từ chối khi cổng đang đóng. Dừng relay trước,
+nghĩa vụ App nằm chờ và được gửi lại sau khi migrate tiến.
 
 ### 7.5. Tiêu chí của `#347` theo bằng chứng
 
 | AC | Kết quả | Còn chờ |
 | --- | --- | --- |
-| AC-01 | PASS phần service/DB/role/caller: binary riêng, DB riêng, role migrator/runtime qua `provision.sh`; runtime không DDL/TEMP; kết nối chéo giữa App/Identity/Notification bị từ chối; migrate bằng runtime thoát 1; socket sai/thiếu caller `401`, route sai phạm vi `404`; type quản trị bị từ chối và không lưu (lane `verify postgres`, xem lệnh bên dưới). | Image/compose production; client Gateway (`#348`). |
-| AC-02 | PASS (PG): receipt + hiệu ứng một transaction; mất ACK → `already_applied`; payload mismatch không ghi; cùng event hai relay một hiệu ứng; 12 writer đồng thời một nhóm mở; Read đua append không tạo hai nhóm mở; event sau Read tạo nhóm mới; đếm actor khác nhau, preview ≤ 3 mới nhất. | Rollback có fault injection giữa chừng chỉ kiểm gián tiếp (lỗi database rollback cả sự kiện). |
-| AC-03 | PASS (PG): Thấm báo một lần; unlike giảm count/bù preview cả trong lẫn ngoài 3 tên; về 0 ẩn nhóm; relike âm thầm; nhóm đã Read giữ lịch sử; Remove trước Add cũ không đánh thức; relike sau purge 181 ngày vẫn im lặng. | Relike sau restore Notification thiếu dấu: chỉ dựa vào `first_selection` của App (thiết kế), chưa diễn tập hai process. |
-| AC-04 | PASS (PG + route): badge đếm nhóm chưa Seen; Seen theo snapshot, ACK cũ no-op, token tương lai `422`; Read theo phiên bản giữ tín hiệu mới; hai tab; MarkAllRead chỉ tới snapshot; cùng khóa khác lệnh `422`. | `stale` của badge và đo hội tụ dưới backlog cùng Gateway (`#348`); service luôn trả `fresh` hoặc `503`. |
-| AC-05 | PASS (PG, clock điều khiển): 180 ngày không gia hạn, ngày 181 tạo nhóm mới, purge xóa nhóm+membership, giữ dấu Thấm; sự kiện muộn không hiện. | Đo purge/WAL ở khối lượng thật. |
-| AC-06 | PARTIAL: relay thật → service thật qua socket, hai DB: `applied`; dừng service → retry `transport` rồi giao sau restart; `vink-app notifications replay` → `already_applied`, inbox không đổi; backup/restore `vink_notifications` bằng `pg_dump`/`pg_restore` khớp lịch sử và hàng; restore mất hết hàng rồi replay trong test PG không hồi sinh nhóm quá 30 ngày. | Diễn tập migration/backout trên bản sao, restore lệch mốc hai chiều với số đo, App lùi mốc, workload hot key, `EXPLAIN`, dung lượng, WAL/purge lag, backlog, ngân sách; RPO đo được; phân biệt sự cố riêng service với mất cả instance. |
+| AC-01 | PASS phần service/DB/role/caller: binary riêng, DB riêng, role migrator/runtime qua `provision.sh`; runtime không DDL/TEMP; kết nối chéo giữa App/Identity/Notification bị từ chối; migrate bằng runtime thoát 1; socket sai/thiếu caller `401`, route sai phạm vi `404`; type quản trị bị từ chối và không lưu (lane `verify postgres`). Client Gateway có từ [PR #391](https://github.com/loveoverflowcom/vink/pull/391) (§8). | Image OCI/compose production: ngoài phạm vi lượt này theo yêu cầu chủ dự án. |
+| AC-02 | PASS (PG + hai process): receipt + hiệu ứng một transaction; mất ACK → `already_applied`; payload mismatch không ghi; cùng event hai relay một hiệu ứng; 12 writer đồng thời một nhóm mở; Read đua append không tạo hai nhóm mở; event sau Read tạo nhóm mới; đếm actor khác nhau, preview ≤ 3 mới nhất (aggregate SQL đối chiếu `rollup::preview` qua 30 sự kiện). `kill -9` service rồi worker dưới tải 400 sự kiện: đúng 400 receipt và 400 thành viên; 65 sự kiện trả `already_applied` vì đã commit trước khi mất ACK. | Rollback có fault injection giữa chừng chỉ kiểm gián tiếp (lỗi database rollback cả sự kiện). |
+| AC-03 | PASS (PG): Thấm báo một lần; unlike giảm count/bù preview cả trong lẫn ngoài 3 tên; về 0 ẩn nhóm; relike âm thầm; nhóm đã Read giữ lịch sử; Remove trước Add cũ không đánh thức; relike sau purge 181 ngày vẫn im lặng. | Relike sau restore Notification thiếu dấu: chỉ dựa vào `first_selection` của App (thiết kế); diễn tập restore dùng sự kiện duyệt nhận xét, chưa có ca Thấm riêng. |
+| AC-04 | PASS (PG + route): badge đếm nhóm chưa Seen; Seen theo snapshot, ACK cũ no-op, token tương lai `422`; Read theo phiên bản giữ tín hiệu mới; hai tab; MarkAllRead chỉ tới snapshot; cùng khóa khác lệnh `422`. Service trả `fresh`, `503 dependency_unavailable` hoặc `503 recovering`, không bao giờ `0` thay lỗi. | `stale` thuộc Gateway (§8.2); kiểm qua process thật ở `#348` AC-06. Đo hội tụ dưới backlog production. |
+| AC-05 | PASS (PG, clock điều khiển): 180 ngày không gia hạn, ngày 181 tạo nhóm mới, purge xóa nhóm+membership, giữ dấu Thấm; sự kiện muộn không hiện. Purge 50 000 nhóm hết hạn kèm 150 000 thành viên: ≥ 24 000 nhóm/s, WAL khoảng 11–12 MiB (§7.7). | Số đo trên phần cứng production. |
+| AC-06 | PASS ở máy phát triển (lane `verify postgres`, hai process và hai DB thật): backout migration trên bản sao (từ chối khi còn nhóm trong hạn, sạch sau purge, migrate tiến lại); `kill -9` service và worker (dòng AC-02); Notification restore lùi sau mốc App đã ACK: cổng recovery đóng, inbox `503 recovering`, replay đưa projection về **đúng** bản trước sự cố, 500 sự kiện trả `already_applied`; App restore lùi sau Notification: restore Notification từ dump sớm hơn **cùng bộ**, replay, 50 sự kiện App đã mất không còn hiệu ứng. Recovery horizon và RPO/RTO theo loại sự cố (riêng process, riêng DB Notification, riêng DB App, mất cả instance) ở §7.3. Workload hot key, plan, dung lượng, WAL, purge và ngân sách ở §7.7; relay xả 500 sự kiện trong 6,84 s (73 sự kiện/s đầu-cuối). | Số đo production và WAL/purge lag dưới tải liên tục. Mất cả instance chưa diễn tập riêng: quy trình là restore ba DB cùng bộ rồi như ca App lùi mốc (ca đó đã diễn tập; restore từng DB đã có ở `verify-backup`). |
 
-Lệnh đã chạy trên `e58dbff` (đã merge `develop@c8db486`), PostgreSQL 17.11 container tạm, mỗi
-lệnh trong scope `systemd-run` giới hạn RAM 8–11 GiB:
+Lệnh phần đầu chạy trên `e58dbff` (đã merge `develop@c8db486`), giữ làm lịch sử: `cargo test
+--locked --workspace --lib --bins`, `cargo clippy --locked --workspace --all-targets -- -D warnings`,
+`cargo xtask verify quick` (13/13) và `RUST_TEST_THREADS=4 cargo xtask verify postgres` (36/36) đều
+PASS; chi tiết ở [PR #373](https://github.com/loveoverflowcom/vink/pull/373).
 
-- `cargo test --locked --workspace --lib --bins`: PASS (gồm 26 unit của `vink-notifications`,
-  digest hai ví dụ hợp đồng, transport socket thật phía App và phía service).
-- `cargo clippy --locked --workspace --all-targets -- -D warnings`: PASS.
-- `cargo xtask verify quick`: PASS 13/13 bước (gồm repository checks: link, ranh giới ba service).
-- `RUST_TEST_THREADS=4 cargo xtask verify postgres`: PASS 36/36 bước (App 263, Identity 55,
-  Notifications 23 test PostgreSQL; provisioning bốn owner; relay hai process; backup/restore).
-  Ở các lượt trước với 8 luồng, `conditional_reads::markdown_visibility_precedes_validation_for_json_and_html`
-  của App treo 2/4 lượt dù chạy riêng đạt; ca này không thuộc phạm vi `#347`. Lượt thứ ba phát hiện
-  race khi tắt `vink-worker` (relay xong trước nhánh shutdown nên thoát 1) và đã sửa.
+Lệnh phần hai chạy trên `develop@e60593c` cộng thay đổi của nhánh, PostgreSQL 17.11 container tạm,
+mỗi lệnh trong scope `systemd-run` `MemoryMax=8G` với `CARGO_BUILD_JOBS=6`:
+
+- `cargo clippy --locked -p vink-notifications --all-targets -- -D warnings`: PASS.
+- `cargo test --locked -p vink-notifications --test postgres`: PASS 26, 2 bỏ qua (phép đo ngân sách).
+- `cargo test --locked -p vink-notifications --test postgres budget:: -- --ignored --nocapture
+  --test-threads=1`: PASS 2/2 (lượt 3 ở §7.7).
+- `RUST_TEST_THREADS=4 cargo xtask verify postgres`: PASS 40/40 bước (App 290, Identity 55,
+  Notifications 26 test PostgreSQL; provisioning bốn owner; relay hai process; bốn diễn tập AC-06;
+  backup/restore).
+- `cargo xtask verify quick`: lượt đầu FAIL ở unit test `http::tests::batches_and_paths_are_bounded_before_any_database_call`
+  vì cổng recovery là middleware đọc DB trước khi kiểm path (request sai dạng thành `503`). Cổng
+  chuyển vào handler sau bước kiểm request; lượt lại PASS 13/13. Sau bản sửa, test PostgreSQL và
+  clippy của service chạy lại đạt; `verify postgres` chạy lại ở nhánh `#348` xếp chồng (§8.5).
 
 ### 7.6. Còn mở
 
-- Image OCI và service `notifications` trong `infra/production/compose.yaml` (+ mount socket theo phạm vi).
-- ~~Client inbox của Gateway và badge `stale` (`#348`)~~: xem §8.
-- Diễn tập AC-06 đầy đủ và số đo ngân sách; công cụ đối soát khi App lùi mốc.
+- Image OCI và service `notifications` trong `infra/production/compose.yaml` (+ mount socket theo phạm vi);
+  theo yêu cầu của chủ dự án, lượt này không build image production.
+- ~~Client inbox của Gateway và badge `stale` (`#348`)~~: xem §8 (Gateway lọc nhóm theo quyền hiện
+  hành, gồm tác phẩm ẩn và principal đình chỉ; invalidation `work`/`principal` không đổi projection).
+- Số đo trên phần cứng production và WAL/purge lag dưới tải liên tục; số ở §7.7 là máy phát triển.
 - `admin.notice.reserved` vẫn `TYPE_ONLY_NOW`: bị từ chối ở ingest, không có bảng hay route gửi.
+
+### 7.7. Ngân sách và số đo
+
+Đo bằng các test `#[ignore]` trong
+[`tests/postgres/budget.rs`](../../services/vink-notifications/tests/postgres/budget.rs) (chạy tay:
+`cargo test -p vink-notifications --test postgres budget:: -- --ignored --nocapture --test-threads=1`),
+máy phát triển dùng chung 22 CPU, PostgreSQL 17.11 trong container, cấu hình mặc định. Lượt 1–2
+chạy liên tiếp trước rebase; lượt 3 chạy sau rebase lên `develop@e60593c`. Ngân sách là lựa chọn kỹ
+thuật (`DESIGN_PROPOSED`) và được assert trong chính test đo.
+
+| Phép đo | Lượt 1 | Lượt 2 | Lượt 3 (`e60593c`) | Ngân sách |
+| --- | --- | --- | --- | --- |
+| Ingest rải đều (2 000 sự kiện, 200 hộp thư, 8 writer) | 794/s, p50 7,8 ms, p99 27,9 ms | 623/s, p50 10,1 ms, p99 24,9 ms | 499/s, p50 8,2 ms, p99 189 ms | ≥ 200/s, p99 ≤ 250 ms |
+| Hot key (2 000 Thấm đầu tiên vào một nhóm, 8 writer) | 143/s, p50 41,3 ms, p99 212 ms | 147/s, p50 49,1 ms, p99 164 ms | 119/s, p50 49,5 ms, p99 432 ms | ≥ 100/s, p99 ≤ 500 ms |
+| WAL mỗi sự kiện có tín hiệu | 2,2 KiB (rải), 2,6 KiB (hot) | như trên | 2,1 KiB (rải), 2,5 KiB (hot) | ≤ 8 KiB |
+| Dung lượng mỗi nhóm có 3 thành viên (bảng + index) | 1 273 B (110 000 nhóm: nhóm 61,5 MiB, thành viên 72,1 MiB) | 1 280 B | 1 284 B (nhóm 61,8 MiB, thành viên 72,9 MiB) | ≤ 4 KiB |
+| Badge count, hộp thư 10 000 nhóm / 100 nhóm (`EXPLAIN ANALYZE`, Index Scan `notification_groups_inbox`) | 4,99 ms / 0,12 ms | 3,30 ms / 0,20 ms | 3,97 ms / 0,15 ms | ≤ 50 ms / ≤ 5 ms |
+| Trang đầu, hộp thư 10 000 nhóm (Index Scan + Incremental Sort, 5 buffer) | 0,12 ms | 0,10 ms | 0,15 ms | ≤ 20 ms |
+| Purge 50 000 nhóm hết hạn kèm 150 000 thành viên, lô 1 000 | 24 596 nhóm/s, WAL 11,0 MiB | 28 548 nhóm/s, WAL 11,0 MiB | 25 793 nhóm/s, WAL 11,9 MiB | ≥ 2 000 nhóm/s |
+
+Diễn giải: hot key bị giới hạn bởi khóa hộp thư (`T-03`) và aggregate membership O(n) mỗi lần cập
+nhật nhóm; 140+ tín hiệu/s vào **một** tác giả vượt xa tải dự kiến của Vink, nên chưa cần partition
+hay đếm tăng dần. Purge một lần mỗi giờ với 100 000 dòng/lượt tối đa (100 lô × 1 000) có biên lớn.
+Độ trễ đuôi dao động theo tải của máy dùng chung: p99 lượt 3 (189 ms rải, 432 ms hot key) vẫn trong
+ngân sách nhưng sát trần hot key, nên số production phải đo lại trước khi coi ngân sách là đủ.
 
 ---
 
