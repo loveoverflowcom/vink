@@ -217,7 +217,16 @@ này. Gateway hydrate từ đúng đóng góp được chọn làm đích, chỉ
 phẩm đọc được; chuẩn hóa NFC, gộp mọi khoảng trắng/xuống dòng thành một dấu cách, cắt tối đa 140
 extended grapheme cluster (không tách dấu thanh tiếng Việt hay chuỗi emoji ZWJ). `truncated = true`
 khi đã cắt; client tự thêm dấu “…” và giới hạn số dòng theo LayoutSpec. Notification Service không
-lưu thân bình luận.
+lưu thân bình luận. Xem thêm [fixture JSON độc lập Web](fixtures/notifications-gateway.json).
+
+**Delta Ưng nhận xét (`#365`, chờ runtime).** Sự kiện đề xuất `comment.endorsement.ung.changed` sẽ
+do Endorsement phát khi `Add`/`Remove` trên nhận xét (`EndorsementTarget::Comment`), gửi tác giả
+nhận xét và loại self. Khóa nhóm `(recipient, event_type, comment_id)`, đích đề xuất
+`work_comment_endorsement {work_id, comment_id}`. Áp dụng `P-02B` (một tín hiệu trong vòng đời
+actor+nhận xét) và `P-03A` (bỏ Ưng giảm đóng góp nhóm chưa đọc, ẩn khi về 0). Gateway kiểm nhận
+xét `approved`/present, tác phẩm công khai và standing trước khi hiển thị hoặc mở đích. Producer,
+rollup và DTO runtime cho loại này thuộc lượt triển khai nối tiếp; danh sách công khai tiếp tục
+giữ phạm vi Thấm tác phẩm (`P-08a`).
 
 **Quy tắc màn chi tiết quyết định riêng (`P-12A`):**
 - Chỉ chủ tác phẩm đọc được `work_moderation_decision`; chỉ tác giả bình luận đọc được

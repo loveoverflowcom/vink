@@ -1,0 +1,59 @@
+{
+  "requests": {
+    "seen": {
+      "command_key": "019a9b30-0001-7000-8000-000000000001",
+      "up_to_snapshot": "s1.45.0b6e1d9c2f7a48e3a1c5d6e7f8091a2b"
+    },
+    "read": {
+      "command_key": "019a9b30-0002-7000-8000-000000000002",
+      "group_id": "019a9b20-1111-7000-8000-000000000003",
+      "observed_group_version": 12
+    }
+  },
+  "response": {
+    "inbox_snapshot": "s1.45.0b6e1d9c2f7a48e3a1c5d6e7f8091a2b",
+    "items": [
+      {
+        "group_id": "019a9b20-1111-7000-8000-000000000003",
+        "group_version": 12,
+        "type": "comment.root.approved",
+        "is_read": false,
+        "is_unseen": true,
+        "actor_count": 2,
+        "item_count": 0,
+        "actors_preview": [
+          {
+            "kind": "linked",
+            "pen_name": "Minh Khôi",
+            "handle": "minh-khoi-08",
+            "href": "/@minh-khoi-08"
+          },
+          {
+            "kind": "unavailable",
+            "label": "Người đọc Vink"
+          }
+        ],
+        "target": {
+          "kind": "work_comment_thread",
+          "work_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "comment_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          "moderation_version": 2,
+          "work_title": "Chiều qua bến cũ"
+        },
+        "excerpt": {
+          "text": "Câu thơ thứ hai làm tôi nhớ bến sông quê",
+          "truncated": false
+        },
+        "summary": {
+          "kind": "comment_root_rollup",
+          "action_required": false
+        },
+        "created_at": "2026-11-20T01:00:00Z",
+        "updated_at": "2026-11-20T02:30:00Z",
+        "expires_at": "2027-05-19T01:00:00Z"
+      }
+    ],
+    "next_cursor": "n1.40.019a9b20111170008000000000000003.5d0c7f3e9a1b2c4d6e8f00112233aa44",
+    "continuation_reason": "more_items"
+  }
+}
