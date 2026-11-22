@@ -26,6 +26,24 @@ ngữ nghĩa envelope, receipt/ACK, snapshot/version, cursor, lỗi và ví dụ
 
 ---
 
+## Bổ sung ngày 20/11/2026 từ #365
+
+Chủ sản phẩm chốt “Có, báo Ưng”. P-08b được mở lại cho **thông báo** Ưng nhận xét.
+P-08a tiếp tục sở hữu danh sách **Thấm tác phẩm** công khai. Các bảng R3 dưới đây giữ mốc lịch sử
+18/11/2026. Đề xuất [VDR-NOTIFICATIONS@r2](../../decisions/proposals/VDR-NOTIFICATIONS.r2.toml)
+và [VDR-NOTIFICATIONS-CONTRACT@r2](../../decisions/proposals/VDR-NOTIFICATIONS-CONTRACT.r2.toml)
+ghi delta và giữ `PENDING`.
+
+| Phần bổ sung | Nguồn và vòng đời |
+| --- | --- |
+| Trích đoạn | `comment.root.approved` và `comment.reply.approved`. App Gateway hydrate từ đóng góp còn quyền mới nhất đã kiểm (`excerpt: {text, truncated}`, NFC, tối đa 140 extended grapheme cluster). Hold, gỡ, rút bài, epoch công khai và standing được kiểm ở App. |
+| `comment.endorsement.ung.changed` | Đề xuất phát Add/Remove từ Endorsement trên nhận xét (`EndorsementTarget::Comment`). Người nhận là tác giả nhận xét, loại self. Khóa nhóm theo `(recipient, event_type, comment_id)`. Báo lần đầu theo actor+nhận xét (`P-02B`); bỏ Ưng cập nhật nhóm chưa đọc, ẩn khi về 0 (`P-03A`). |
+| Đích Ưng | `work_comment_endorsement` mang `work_id` và `comment_id`. App kiểm nhận xét và tác phẩm ở lần đọc/mở. Runtime producer, rollup và DTO Ưng thuộc lượt triển khai nối tiếp của `#365`. |
+
+**Nguồn:** [Epic #305 và lời chốt](https://github.com/loveoverflowcom/vink/issues/305)
+· [AC của #365](https://github.com/loveoverflowcom/vink/issues/365)
+· [hợp đồng HTTP](../../services/vink-app/contracts/http/v1/notifications.md#24-typed-target--chi-tiết-quyết-định-riêng-p-12a-p-14a).
+
 ## 1. Mục tiêu, phạm vi v1 và thu hẹp R3
 
 1. **Mục tiêu:** Cung cấp hộp thư thông báo riêng cho từng tác giả/người dùng qua một Notification

@@ -34,6 +34,9 @@ vào [PRD §16](../prd/requirements.md#16-thông-báo-cộng-đồng-và-danh-s�
 [bảng truy vết](../docs/development/notifications.md).
 [VDR-NOTIFICATIONS@r1](proposals/VDR-NOTIFICATIONS.r1.toml) tóm tắt phạm vi `N1–N8` và `P-01..P-14` (chỉ Thấm + danh sách công khai có phân trang; Hữu ích loại khỏi Epic #305).
 [VDR-NOTIFICATIONS-CONTRACT@r1](proposals/VDR-NOTIFICATIONS-CONTRACT.r1.toml) ghi hướng kiến trúc `K1–K6` và phân giao `T-01..T-08` cho `#346`–`#348`.
+[VDR-NOTIFICATIONS@r2](proposals/VDR-NOTIFICATIONS.r2.toml) và
+[VDR-NOTIFICATIONS-CONTRACT@r2](proposals/VDR-NOTIFICATIONS-CONTRACT.r2.toml) ghi delta `#365`
+(trích đoạn nhận xét và thông báo Ưng) cùng lựa chọn kỹ thuật `#348`; cả hai revision giữ `PENDING`.
 [LVE-PR-02-03-CHOICE-12@r2](proposals/LVE-PR-02-03-CHOICE-12.r2.toml) đề xuất mở danh sách người Thấm công khai có phân trang (`WorkId + RevisionId`), giữ nguyên phần bình luận của `LVE-PR-02-03-CHOICE-12@r1` (`DESIGN_PROPOSED`, vẫn đang hiện hành khi `@r2` còn `PENDING`).
 Cả ba proposal mới đang ở trạng thái `PENDING` và chờ signoff đúng revision/SHA-256 theo [VDR-DECISION-SIGNOFF@r1](signoffs/VDR-DECISION-SIGNOFF.r1.toml).
 

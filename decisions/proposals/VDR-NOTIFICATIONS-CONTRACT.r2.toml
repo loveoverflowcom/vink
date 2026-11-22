@@ -1,0 +1,21 @@
+version = 1
+id = "VDR-NOTIFICATIONS-CONTRACT"
+revision = 2
+
+[base]
+revision = 1
+sha256 = "4edffa1fd7fbe0bcbcdf171ccd6a992fb85f947bf3d910bdbbcd73696a1a9580"
+
+[content]
+kind = "architecture"
+domain = "notifications"
+title = "Quét ứng viên hữu hạn, trích đoạn Gateway và hợp đồng Ưng (#348/#365)"
+resolution = """
+Giữ K1–K6 của VDR-NOTIFICATIONS-CONTRACT@r1 và cập nhật phần thuộc T-06/K4:
+- T-06 / CHOICE-20 A ở mức DESIGN_PROPOSED. Gateway quét tối đa 3 lô × 50 ứng viên từ Notification Service qua socket peer UID, kiểm quyền/hydrate theo lô từ App DB (5 truy vấn mỗi lô) và trả continuation hữu hạn (`more_items` hoặc `filtered_page_scan_bound`). Snapshot và cursor riêng tư gắn MAC theo phiên và principal.
+- Badge quét tối đa 2 lô × 50 nhóm chưa Seen (có cờ `count_is_lower_bound` khi vượt ngân sách), phục vụ `fresh`/`stale` trong hạn 60 giây và trả `503` khi không xác minh được. Trích đoạn cho `comment.root.approved` và `comment.reply.approved` chuẩn hóa NFC, gộp khoảng trắng và cắt tối đa 140 extended grapheme cluster tại Gateway (`excerpt: {text, truncated}`); Service giữ Thin Pointer và tối đa 16 đóng góp mới nhất để lùi đích khi bình luận mới nhất mất quyền.
+- Ưng nhận xét dùng event đề xuất `comment.endorsement.ung.changed` và đích `work_comment_endorsement` (`work_id`, `comment_id`). Producer, rollup và DTO runtime Ưng là lượt triển khai nối tiếp của #365.
+"""
+rationale = "Nguồn https://github.com/loveoverflowcom/vink/issues/348 và https://github.com/loveoverflowcom/vink/issues/365, đồng bộ với triển khai Gateway ở #391 (docs/development/notifications.md §8). Lựa chọn kỹ thuật và mã triển khai chưa chuyển proposal thành Accepted."
+requires = ["VDR-DECISION-SIGNOFF@r1", "VDR-NOTIFICATIONS@r2"]
+related_ids = ["NOTIF-01", "NOTIF-05", "NOTIF-06", "NOTIF-07", "NOTIF-08", "NOTIF-10"]

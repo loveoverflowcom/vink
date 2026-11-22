@@ -1,0 +1,20 @@
+version = 1
+id = "VDR-NOTIFICATIONS"
+revision = 2
+
+[base]
+revision = 1
+sha256 = "c38b3940b1a34b98dc02727dd314be7f10fb7c80b856cb141fb0fa24ae6830dd"
+
+[content]
+kind = "product"
+domain = "notifications"
+title = "Bổ sung Ưng nhận xét và trích đoạn thông báo"
+resolution = """
+Giữ quy tắc N1–N8 và P-01..P-14 của VDR-NOTIFICATIONS@r1, áp dụng các thay đổi sau:
+- N1 và P-08b mở lại thông báo Ưng trên nhận xét. Khi có Ưng đủ điều kiện, gửi cho tác giả nhận xét, loại tự Ưng. Gom theo nhận xét và áp dụng P-02B/P-03A cho actor+nhận xét: thông báo lần đầu, bỏ Ưng trừ đóng góp nhóm chưa đọc, ẩn khi nhóm còn 0. P-08a tiếp tục là danh sách Thấm tác phẩm công khai.
+- N4 cho phép trích đoạn ngắn ở thông báo nhận xét gốc và phản hồi đã duyệt. Gateway lấy từ đóng góp đủ quyền hiện hành mới nhất đã kiểm. Hold, gỡ, rút bài hoặc mất quyền chặn trích đoạn. Notification Service tiếp tục giữ Thin Pointer.
+"""
+rationale = "Delta ngày 20/11/2026 từ https://github.com/loveoverflowcom/vink/issues/365 và comment cập nhật của Epic https://github.com/loveoverflowcom/vink/issues/305. Chủ sản phẩm chốt nghiệp vụ Ưng bằng lời “Có, báo Ưng”. Lời chốt này có trước payload TOML; bản ghi vẫn chờ signoff chính revision và SHA-256 theo VDR-DECISION-SIGNOFF@r1."
+requires = ["VDR-DECISION-SIGNOFF@r1"]
+related_ids = ["NOTIF-01", "NOTIF-04", "NOTIF-05", "NOTIF-07", "NOTIF-08"]

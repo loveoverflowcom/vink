@@ -353,9 +353,9 @@ Nhánh `feat/348-notification-gateway-reads` (gốc `develop@002cc12`). Bốn ch
 
 | Chiều | Ghi nhận |
 | --- | --- |
-| Sản phẩm | `PRODUCT_CONFIRMED` trong brief `#305` R3 và quyết định 20/11/2026 về trích đoạn/Ưng (`#365`); `VDR-NOTIFICATIONS@r1` vẫn `PENDING`, chưa có proposal VDR riêng cho trích đoạn. |
-| Kiến trúc | `T-06 / CHOICE-20 = A` (§8.1), độ dài trích đoạn 140 grapheme, MAC token theo phiên và `cursor_key` của danh sách Thấm là lựa chọn kỹ thuật của `#348`, mức `DESIGN_PROPOSED`. |
-| Triển khai | `persistence-api`: client socket inbox (`notification_inbox.rs`), lõi thuần `domain::notification_inbox`, đọc lô `persistence::notification_reads`, route `http::notifications` ([hợp đồng §2.8](../../services/vink-app/contracts/http/v1/notifications.md#28-route-gateway-đã-triển-khai-348)), seam `contributions` của service ([RPC §3](../../services/vink-notifications/contracts/rpc/v1/README.md#3-inbox-socket-inbox)), migration `20261201000000_public_endorser_list`. Chưa có UI (`#364`). |
+| Sản phẩm | `PRODUCT_CONFIRMED` trong brief `#305` R3 và quyết định 20/11/2026 về trích đoạn/Ưng (`#365`); [VDR-NOTIFICATIONS@r1](../../decisions/proposals/VDR-NOTIFICATIONS.r1.toml) và [VDR-NOTIFICATIONS@r2](../../decisions/proposals/VDR-NOTIFICATIONS.r2.toml) giữ `PENDING`. |
+| Kiến trúc | `T-06 / CHOICE-20 = A` (§8.1), độ dài trích đoạn 140 grapheme, MAC token theo phiên, `cursor_key` của danh sách Thấm và hợp đồng Ưng (`#365`) ghi ở [VDR-NOTIFICATIONS-CONTRACT@r2](../../decisions/proposals/VDR-NOTIFICATIONS-CONTRACT.r2.toml) (`PENDING`, mức `DESIGN_PROPOSED`). |
+| Triển khai | `persistence-api`: client socket inbox (`notification_inbox.rs`), lõi thuần `domain::notification_inbox`, đọc lô `persistence::notification_reads`, route `http::notifications` ([hợp đồng §2.8](../../services/vink-app/contracts/http/v1/notifications.md#28-route-gateway-đã-triển-khai-348), [fixture JSON](../../services/vink-app/contracts/http/v1/fixtures/notifications-gateway.json)), seam `contributions` của service ([RPC §3](../../services/vink-notifications/contracts/rpc/v1/README.md#3-inbox-socket-inbox)), migration `20261201000000_public_endorser_list`. Producer/rollup/DTO runtime của Ưng (`#365`) còn chờ; UI thuộc `#364`. |
 | Bằng chứng | §8.3. |
 
 ### 8.1. `T-06 / CHOICE-20 = A`
