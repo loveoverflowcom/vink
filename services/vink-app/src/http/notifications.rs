@@ -883,6 +883,101 @@ mod tests {
         }
     }
 
+    /// #348 AC-06: the Web-independent fixture is exactly what the Gateway serializes and accepts:
+    /// an inbox item field by field, the Seen/Read request bodies, and the token shapes.
+    #[test]
+    fn the_gateway_fixture_is_what_the_runtime_serializes() {
+        use crate::application::handle::AuthorRef;
+        use crate::domain::notification_inbox::Excerpt;
+        use time::format_description::well_known::Rfc3339;
+
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../contracts/http/v1/fixtures/notifications-gateway.json"
+        ))
+        .unwrap();
+        let expected = &fixture["response"]["items"][0];
+        let uuid = |key: &str| Uuid::parse_str(expected["target"][key].as_str().unwrap()).unwrap();
+        let at =
+            |key: &str| OffsetDateTime::parse(expected[key].as_str().unwrap(), &Rfc3339).unwrap();
+        let (linked, unavailable) = (
+            PrincipalId::from_uuid(Uuid::from_u128(1)),
+            PrincipalId::from_uuid(Uuid::from_u128(2)),
+        );
+        let (work, comment) = (
+            WorkId::from_uuid(uuid("work_id")),
+            CommentId::from_uuid(uuid("comment_id")),
+        );
+        let group = WireGroup {
+            group_id: Uuid::parse_str(expected["group_id"].as_str().unwrap()).unwrap(),
+            event_type: "comment.root.approved".into(),
+            target: json!({"kind": "work_comment_thread", "work_id": work.to_string(),
+                           "comment_id": comment.to_string(), "moderation_version": 2}),
+            group_version: 12,
+            signal_version: 12,
+            unread: true,
+            unseen: true,
+            actor_count: 2,
+            item_count: 0,
+            actors_preview: vec![linked.as_uuid(), unavailable.as_uuid()],
+            contributions: None,
+            action_required: false,
+            publication_epoch: Some(1),
+            created_at: at("created_at"),
+            last_signal_at: at("updated_at"),
+            expires_at: at("expires_at"),
+        };
+        let shown = Shown {
+            target: InboxTarget::CommentThread {
+                work,
+                comment,
+                moderation_version: 2,
+            },
+            work_title: Some("Chiều qua bến cũ".into()),
+            actors_preview: vec![linked, unavailable],
+            actor_count: 2,
+            item_count: 0,
+            excerpt: Excerpt::of("Câu thơ thứ hai làm tôi nhớ bến sông quê"),
+            outcome: None,
+        };
+        let identities = HashMap::from([(
+            linked,
+            AuthorAttribution::Linked(AuthorRef::new("Minh Khôi".into(), "minh-khoi-08".into())),
+        )]);
+        assert_eq!(
+            item_json(&group, GroupKind::RootApproved, &shown, &identities),
+            *expected
+        );
+
+        // Request bodies deserialize with the runtime's strict types.
+        let seen: SnapshotRequest =
+            serde_json::from_value(fixture["requests"]["seen"].clone()).unwrap();
+        assert_eq!(seen.up_to_snapshot, fixture["response"]["inbox_snapshot"]);
+        let read: ReadRequest =
+            serde_json::from_value(fixture["requests"]["read"].clone()).unwrap();
+        assert_eq!(
+            (read.group_id, read.observed_group_version),
+            (group.group_id, 12)
+        );
+
+        // Token shapes: `s1.<seq>.<32 hex>` and `n1.<seq>.<group hex>.<32 hex>`, like the fixture.
+        let session = session(7, 3);
+        let shape = |token: &str| {
+            token
+                .split('.')
+                .map(|part| (part.len(), part.bytes().all(|b| b.is_ascii_hexdigit())))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            shape(&snapshot_token(&session, 45)),
+            shape(fixture["response"]["inbox_snapshot"].as_str().unwrap())
+        );
+        assert_eq!(
+            shape(&cursor_token(&session, 40, group.group_id)),
+            shape(fixture["response"]["next_cursor"].as_str().unwrap())
+        );
+        assert_eq!(fixture["response"]["continuation_reason"], "more_items");
+    }
+
     #[test]
     fn snapshot_and_cursor_tokens_belong_to_one_session_and_principal() {
         let a = session(1, 7);

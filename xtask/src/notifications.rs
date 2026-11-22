@@ -2,8 +2,9 @@
 //! errors, the migration lifecycle with provisioned roles, database isolation, the two private
 //! sockets whose callers are authenticated by the OS peer user (T-07 CHOICE-21 A), and the App
 //! relay of the real `vink-worker` delivering through the ingest socket from the App database to
-//! the Notification database — including a service stop and an operator replay. The scratch
-//! Notification owner comes from [`crate::provision`].
+//! the Notification database — including a service stop and an operator replay — and the App
+//! Gateway of real `vink-app` processes reading the inbox socket (#348 AC-06, [`gateway`]). The
+//! scratch Notification owner comes from [`crate::provision`].
 
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
@@ -17,6 +18,8 @@ use sqlx::{Connection, Executor, PgConnection};
 use crate::identity::{request, sql};
 use crate::lifecycle::{self, Guard};
 use crate::process::Report;
+
+mod gateway;
 
 /// Scratch credentials and databases prepared by the provisioning checks.
 pub struct Scratch<'a> {
@@ -90,6 +93,9 @@ pub fn verify(report: &mut Report, scratch: &Scratch<'_>) -> bool {
     ) && report.step(
         "migration backout and forward on a restored copy",
         || run.backout_on_copy(),
+    ) && report.step(
+        "App Gateway ↔ Notification Service, real processes: business commits → relay → badge/list/Seen/Read/MarkAllRead; removal and private work filtered; recovering → 503/stale",
+        || run.gateway_end_to_end(),
     ) && report.step("notifications: logs contain no credential", || {
         run.no_secrets_in_logs()
     })
