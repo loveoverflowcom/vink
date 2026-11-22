@@ -9,6 +9,32 @@ pub fn Me() -> impl IntoView {
     let query = leptos_router::hooks::use_query_map();
     let session = crate::account::Session::current();
     let feed_enabled = crate::api::following_feed_enabled();
+    #[cfg(feature = "hydrate")]
+    {
+        use crate::session::Standing;
+        let navigation = crate::navigation::use_navigation_guard();
+        let desk_auth_entry = StoredValue::new(false);
+        Effect::new(move |_| {
+            if query.read().get("next").as_deref() != Some("/ban-viet") {
+                desk_auth_entry.set_value(false);
+                return;
+            }
+            if matches!(
+                session.standing.get(),
+                Standing::Anonymous | Standing::NeedsPrincipal
+            ) {
+                desk_auth_entry.set_value(true);
+            }
+            if session.profile_scope.with(Option::is_some)
+                && !session.checking()
+                && desk_auth_entry.get_value()
+            {
+                // An already-active visit (including Back) can stay on Tôi.
+                desk_auth_entry.set_value(false);
+                navigation.navigate("/ban-viet");
+            }
+        });
+    }
     let return_href = Memo::new(move |_| {
         query.read().get("next").and_then(|raw| {
             if feed_enabled && raw == crate::discovery::ExploreMode::FOLLOWING_HREF {
@@ -18,6 +44,15 @@ pub fn Me() -> impl IntoView {
                     .map(|href| (href, "Quay lại trang tác giả"))
             }
         })
+    });
+    let review_access = LocalResource::new(move || {
+        let scope = session.profile_scope.get();
+        async move {
+            let scope = scope?;
+            crate::api::can_read_work_review_queue()
+                .await
+                .then_some(scope)
+        }
     });
 
     view! {
@@ -39,7 +74,12 @@ pub fn Me() -> impl IntoView {
                 })}
             <super::profile::ProfileEntry />
             <super::handle::HandleRegion entry=true />
-            <vink_ui::Link href="/kiem-duyet">"Kiểm duyệt — dành cho người được phân quyền"</vink_ui::Link>
+            {move || {
+                let scope = session.profile_scope.get()?;
+                (review_access.get().flatten().as_ref() == Some(&scope)).then(|| view! {
+                    <vink_ui::Link attr:id="me-moderation-link" href="/kiem-duyet">"Kiểm duyệt"</vink_ui::Link>
+                })
+            }}
             <section id="page-appearance" tabindex="-1" class="vk-appearance-card" aria-labelledby="page-appearance-title">
                 <AppearanceTitle id="page-appearance-title" />
                 <AppearanceChoices prefix="page" />

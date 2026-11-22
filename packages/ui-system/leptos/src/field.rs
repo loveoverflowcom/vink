@@ -361,7 +361,8 @@ fn text_field(
                             ev.prevent_default();
                         }
                     }>
-                        <IconButton id=reveal_id.clone() icon=IconName::Visibility label="Hiện mật khẩu"
+                        <IconButton id=reveal_id.clone() icon=IconName::Visibility
+                            pressed_icon=IconName::VisibilityOff label="Hiển thị mật khẩu"
                             pressed=Signal::derive(move || revealed.get())
                             on_press=move |_| {
                                 let next = !revealed.get_untracked();

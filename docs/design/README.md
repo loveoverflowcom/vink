@@ -224,6 +224,13 @@ reader có tên và cài đặt reduced-motion của hệ điều hành. Ảnh t
 
 ## Shell thích ứng #7
 
+**Điều hướng Web sau audit Bàn viết ngày 22/11/2026.** Mục **Tôi** trên rail và thanh dưới
+dẫn tới `/toi`. Nút **Giao diện** trên rail cho phép đổi tùy chọn ngay trong trang đang xem.
+Ở 760–1099px, rail thu gọn dành 96px cho điều hướng. Khi mở rộng, hộp thoại phủ lên nội dung
+để giữ nguyên bề rộng của Bàn viết. Escape hoặc bấm nền đóng danh sách và trả focus về nút mở.
+Ở rail xếp dọc, nền chọn bao quanh biểu tượng, nhãn nằm bên dưới và cả mục đều bấm được.
+Các mô tả về nút Tôi trong LayoutSpec r1 và bằng chứng bên dưới ghi lại hành vi ở thời điểm #7.
+
 LayoutSpec r1, đã trình bày trước sửa UI ngày 01/11/2026; nền `develop@6648200`.
 Nguồn: [v2.3](https://drive.google.com/file/d/1IlLVGiPHIg9DBohATdwd-38Gdy7z4U5g/view),
 [Navigation Research](https://drive.google.com/file/d/1TDA4HoX5O-IHtQfu3RSnOks2WaYXkBaz/view),
@@ -244,9 +251,8 @@ Shell #shell
 ```
 
 Owner: [lib.rs](../../apps/vink-web/src/lib.rs) giữ router và route `/` mặc định;
-[shell.rs](../../apps/vink-web/src/shell.rs) giữ đích Vink (`Destination::for_path` khớp nguyên
-segment như route: `/ban-vietnam`, `/tac-pham/a/b` là NotFound, không sáng đích nào), lớp phủ Tôi
-và chính sách responsive; từ UIS-04 (#22) shell render bằng `AdaptiveScaffold`, `NavigationRail`,
+[shell.rs](../../apps/vink-web/src/shell.rs) ánh xạ `/ban-viet/:id/kiem-duyet` về Bàn viết và
+điều phối dialog Giao diện cùng rail mở rộng trên cửa sổ vừa. Từ UIS-04 (#22) shell render bằng `AdaptiveScaffold`, `NavigationRail`,
 `BottomNavigation`, `NavUtility` của UI system, nên ID con của rail suy từ `navigation`
 (`#navigation-toggle`, `#navigation-primary`, `#navigation-account`, `#navigation-tooltip`) thay cho
 `#nav-primary`/`#account-bottom` trong cây trên;
@@ -256,8 +262,9 @@ thêm palette hay logo. `initials` ủy quyền cho `vink_ui::identity::initials
 `avatar-identity-v1`): từ đầu/cuối, NFC và uppercase tiếng Việt, bỏ từ không có chữ/số (emoji,
 dấu câu đứng riêng); không có tên thật thì trả dấu trung tính. An Nhiên → AN chỉ là fixture unit test.
 
-- Từ 1100px mặc định 220px; 760–1099px và editor mặc định 96px. Preference `vink.ui.rail`
-  ghi đè ngữ cảnh. Rail compact đặt icon trên/nhãn dưới; rail cuộn khi thiếu chiều cao.
+- Từ 1100px mặc định 220px, riêng editor mặc định 96px. Preference `vink.ui.rail` ghi đè ngữ cảnh
+  ở lớp cửa sổ này. Ở 760–1099px, xem [hợp đồng rail Medium](../../packages/ui-system/shared/navigation.md#chọn-khung-navlayoutresolve).
+  Rail compact đặt icon trên nhãn và cuộn khi thiếu chiều cao.
 - Dưới 760px rail ẩn và bottom bar có ba đích. Editor ẩn bottom bar,
   giữ đường Về Bàn viết hiện có. `ResizeObserver` đo chiều cao bar (gồm safe area) để dành đáy,
   cả khi tăng chữ 200%; không dùng chiều cao cứng làm khoảng bù.
@@ -267,19 +274,19 @@ dấu câu đứng riêng); không có tên thật thì trả dấu trung tính.
   Mobile dùng đích Tôi trên thanh dưới để tới `/toi`.
 - Rail, thanh dưới và thẻ **Tài khoản** dùng chữ viết tắt của bút danh từ phiên hiện tại. Sau
   hydration, Web gọi `GET /api/v1/auth/session/account` (`no-store`) và kiểm lại khi cửa sổ nhận
-  focus. SSR và phiên chưa có bút danh dùng dấu gạch trung tính. Bút danh của LocalFixture thuộc
+  focus. SSR hiển thị biểu tượng tài khoản cùng nhãn khách. Bút danh của LocalFixture thuộc
   dữ liệu phát triển. Web tải thông tin tài khoản riêng qua API.
-- Overlay native `dialog` neo cạnh chân rail, có nền riêng và ngoài dialog inert. Bấm Tôi ở chân
-  rail mở panel cả trên `/toi`. Focus vào
-  radio đang chọn, Tab giữ bên trong, Escape/Đóng/bấm ngoài trả trigger. Resize về mobile đóng
-  overlay và focus main đang hiển thị; route, scroll và editor được giữ. Một `OverlayLayer` giữ một
-  modal hoạt động; Back/Forward khi Tôi mở chỉ đóng Tôi (guard đẩy URL trang về), lần Back sau mới
-  tới guard editor. Sự kiện `close` đến muộn của lần đóng trước không đóng lớp phủ vừa mở lại.
+- Dialog Giao diện neo cạnh chân rail, giữ tiêu đề và nút Đóng bên ngoài thân cuộn. Nút
+  **Giao diện** mở panel cả trên `/toi`. Focus vào radio đang chọn khi radio hiện trọn trong
+  thân cuộn, hoặc vào nút Đóng khi cửa sổ thấp. Tab giữ bên trong. Escape, Đóng hoặc bấm
+  ngoài trả focus về nút mở. Resize về mobile đóng dialog và focus main, giữ route, scroll
+  và editor. `OverlayLayer` giữ một modal hoạt động. Back/Forward đóng dialog và giữ URL
+  hiện tại. Back tiếp theo đi qua guard editor. Sự kiện `close` đến muộn của lần đóng trước
+  không làm mất trạng thái của dialog đã mở lại.
 - Chọn màu theo hệ thống, chữ 100% hoặc rail tự động sẽ xóa giá trị ghi đè tương ứng trong
   `localStorage`. Ba khóa là `vink.ui.theme`, `vink.ui.text` và `vink.ui.rail`. Bootstrap
-  áp dụng preference trước CSS và đồng bộ lựa chọn SSR. Nút **Mở trang Tôi** đóng overlay trước
-  khi gọi `NavigationGuard.navigate`. Link và back/forward dùng
-  guard PR 02. Lưu lỗi/xung đột/treo giữ nguyên đường xuất và xác nhận rời không lưu.
+  áp dụng preference trước CSS và đồng bộ lựa chọn SSR. Liên kết **Tôi** và back/forward
+  đi qua `NavigationGuard`. Lưu lỗi/xung đột/treo giữ nguyên xác nhận rời không lưu.
 - Loading/empty/lỗi/saved/dirty/conflict tiếp tục do route/editor hiện có trình bày. Shell không
   suy ra trạng thái tài khoản hay bản thảo. Tooltip thu/mở rail có hover/focus/Escape, nằm ngoài
   vùng rail cuộn để không bị cắt; thông tin thiết yếu vẫn có nhãn và trạng thái trực tiếp.

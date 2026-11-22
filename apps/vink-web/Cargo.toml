@@ -39,7 +39,7 @@ web-sys = { version = "0.3.106", optional = true, features = [
     "Window", "Location", "Document", "Element", "HtmlElement", "HtmlAnchorElement",
     "HtmlDialogElement", "HtmlInputElement", "BeforeUnloadEvent", "PageTransitionEvent", "Event", "EventTarget",
     "MouseEvent", "KeyboardEvent", "AddEventListenerOptions", "History", "Url",
-    "FocusOptions", "Storage", "DomRect", "CssStyleDeclaration",
+    "FocusOptions", "Storage", "DomRect", "CssStyleDeclaration", "MediaQueryList",
     "ResizeObserver", "NodeList", "Crypto", "AbortController", "AbortSignal",
     "Performance", "VisibilityState", "RequestCache", "BroadcastChannel", "MessageEvent",
     "Navigator", "Clipboard", "HtmlTextAreaElement",

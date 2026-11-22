@@ -206,6 +206,9 @@ pub fn IconButton(
     #[prop(optional, into)] surface: Signal<ActionSurface>,
     #[prop(optional, into)] state: Signal<ActionState>,
     #[prop(optional, into)] pressed: Option<Signal<bool>>,
+    /// Optional alternate icon for the pressed state of a toggle.
+    #[prop(optional)]
+    pressed_icon: Option<IconName>,
     #[prop(optional, into)] id: Option<String>,
     /// Optional supporting information; the accessible name remains `label`.
     #[prop(optional, into)]
@@ -233,7 +236,13 @@ pub fn IconButton(
                 }
                 on:click=press_handler(state, on_press)
             >
-                <Icon name=icon />
+                {move || {
+                    let name = match pressed_icon {
+                        Some(alternate) if pressed.is_some_and(|p| p.get()) => alternate,
+                        _ => icon,
+                    };
+                    view! { <Icon name /> }
+                }}
             </button>
             {note_view(state, note_id)}
         </span>

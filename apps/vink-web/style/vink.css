@@ -45,15 +45,36 @@ a {
 :focus-visible {
   outline: 3px solid var(--vk-focus);
   outline-offset: 2px;
-  border-radius: var(--vk-radius-sm);
 }
 
 /* Shell geometry, rail, bars, skip link and tooltip come from the UI system (vink-ui.css,
- * shared/navigation.md). The app owns the Tôi overlay content and the Khám phá brand. */
+ * shared/navigation.md). The app owns the Medium overlay, Giao diện and the Khám phá brand. */
 
-.vk-ui-rail__account [data-sign-in] {
-  background: var(--vk-primary-container);
-  color: var(--vk-on-primary-container);
+@media (760px <= width < 1100px) {
+  #shell { --vk-ui-rail-width: var(--vk-size-rail-compact); }
+}
+
+.vk-rail-modal {
+  --vk-ui-rail-width: var(--vk-size-rail-expanded);
+  inset: 0 auto 0 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  inline-size: var(--vk-ui-rail-width);
+  block-size: 100dvh;
+  max-inline-size: 100%;
+  max-block-size: 100%;
+  background: var(--vk-surface-container-low);
+  overflow: hidden;
+}
+
+.vk-rail-modal::backdrop { background: var(--vk-scrim); }
+.vk-rail-modal .vk-ui-rail { position: static; overscroll-behavior: contain; }
+
+#shell .vk-ui-rail .vk-ui-nav-utility[aria-expanded="true"],
+#shell .vk-ui-rail .vk-ui-nav-utility[aria-expanded="true"] .vk-ui-nav-item__indicator {
+  background: var(--vk-surface-container-highest);
+  color: var(--vk-on-surface);
 }
 
 .vk-brand {
@@ -90,7 +111,6 @@ a {
 /* Tôi and the rail utility share one appearance recipe on native RadioGroup. */
 :root[data-text="200"] { font-size: 200%; }
 
-.vk-profile-menu,
 .vk-appearance-card {
   padding: clamp(var(--vk-space-3), 8vw, min(32px, var(--vk-space-6)));
   border-radius: var(--vk-radius-xl);
@@ -99,6 +119,7 @@ a {
 }
 
 .vk-profile-menu {
+  --vk-profile-inset: clamp(var(--vk-space-3), 8vw, min(32px, var(--vk-space-6)));
   position: fixed;
   inset: auto;
   inset-inline-start: calc(var(--vk-ui-rail-width) + 16px);
@@ -106,19 +127,35 @@ a {
   margin: 0;
   inline-size: min(30rem, 540px, calc(100vw - var(--vk-ui-rail-width) - 32px));
   max-block-size: calc(100dvh - 32px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scroll-padding: 16px;
+  overflow: hidden;
+  overflow: clip;
+  padding: 0;
   border: 0;
+  border-radius: var(--vk-radius-xl);
+  background: var(--vk-surface-container-high);
+  color: var(--vk-on-surface);
 }
 .vk-profile-menu::backdrop { background: var(--vk-scrim); }
-.vk-profile-menu[open] { display: flex; flex-direction: column; gap: var(--vk-space-6); }
-.vk-profile-menu > * { flex-shrink: 0; }
-.vk-profile-heading { display: flex; justify-content: space-between; align-items: center; gap: var(--vk-space-2); }
+.vk-profile-menu[open] { display: flex; flex-direction: column; }
+.vk-profile-heading {
+  display: flex;
+  flex: none;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--vk-space-2);
+  padding: var(--vk-profile-inset) var(--vk-profile-inset) 0;
+}
+.vk-profile-body {
+  min-block-size: 0;
+  margin-inline: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-block: var(--vk-profile-inset);
+  padding-inline: calc(var(--vk-profile-inset) - 8px);
+  scrollbar-color: var(--vk-outline) transparent;
+  scroll-padding-block: var(--vk-space-2);
+}
 .vk-profile-heading .vk-ui-icon-button { flex: none; min-inline-size: 48px; min-block-size: 48px; }
-.vk-profile-menu #open-me { align-self: flex-start; padding-inline-start: 0; }
-.vk-profile-menu #open-me .vk-ui-button__label { display: inline-flex; align-items: center; gap: 8px; }
-.vk-profile-menu #open-me [data-appearance-icon] { inline-size: 16px; block-size: 16px; }
 
 .vk-appearance-title {
   display: flex; align-items: center; gap: var(--vk-space-3);
@@ -234,7 +271,7 @@ a {
 /* Every field in this surface is required; the native accessibility state carries that fact. */
 .vk-account-form .vk-ui-field__required { display: none; }
 /* The button's reserved spinner and aria-describedby carry progress without moving the form. */
-.vk-account .vk-ui-action:has(> [aria-busy="true"]) > .vk-ui-action__note {
+:is(.vk-account, .vk-auth-entry) .vk-ui-action:has(> [aria-busy="true"]) > .vk-ui-action__note {
   position: absolute;
   inline-size: 1px;
   block-size: 1px;
@@ -786,7 +823,7 @@ a {
   margin: 0 auto;
 }
 
-/* Private list (#8): resume first, then one compact list. No empty support column. */
+/* Bàn viết: create at the heading, then one compact list. */
 .vk-desk--index { max-width: 64rem; container: vk-desk-index / inline-size; }
 /* On phones, text enlargement should use the content measure instead of doubling the gutters. */
 @media (max-width: 759px) {
@@ -795,11 +832,16 @@ a {
 @media (max-width: 359px) {
   .vk-main:has(> .vk-desk--index) { padding-inline: min(var(--vk-space-2), 8px); }
 }
-.vk-desk-heading { margin-block: var(--vk-space-4) var(--vk-space-8); }
+.vk-desk-heading {
+  display: grid;
+  justify-items: start;
+  gap: min(var(--vk-space-3), 12px);
+  margin-block: min(var(--vk-space-4), 16px) min(var(--vk-space-6), 24px);
+}
 .vk-drafts-region, .vk-desk-works, .vk-draft-list { display: grid; min-inline-size: 0; }
 .vk-desk-works, .vk-draft-list { gap: var(--vk-space-3); }
 .vk-drafts-region > .vk-ui-heading {
-  margin-block-end: var(--vk-space-3);
+  margin-block-end: min(var(--vk-space-3), 12px);
   font-family: var(--vk-font-ui);
   font-size: var(--vk-type-body-size);
   font-weight: var(--vk-type-title-weight);
@@ -842,8 +884,7 @@ a {
   display: flex;
   flex-wrap: wrap;
   align-items: end;
-  justify-content: end;
-  gap: var(--vk-space-2) var(--vk-space-3);
+  gap: min(var(--vk-space-2), 8px) min(var(--vk-space-3), 12px);
   max-inline-size: 100%;
   min-inline-size: 0;
 }
@@ -857,9 +898,12 @@ a {
   flex: 0 1 auto;
   max-inline-size: 100%;
 }
+/* The format has a preselected value. Keep the disabled placeholder out of the choice set. */
+.vk-desk-create .vk-ui-field__required { display: none; }
+.vk-desk-create .vk-ui-button { padding-inline: min(var(--vk-space-6), 24px); }
+.vk-desk-create #create-draft-note, .vk-draft-tools #refresh-drafts-note { display: none; }
 .vk-desk--index #desk-title { font-family: var(--vk-font-ui); font-size: var(--vk-type-headline-size); font-weight: var(--vk-type-headline-weight); }
-.vk-draft-controls { display: grid; gap: var(--vk-space-3); min-inline-size: 0; }
-.vk-draft-search-group { display: grid; gap: var(--vk-space-1); min-inline-size: 0; }
+.vk-draft-controls { display: grid; gap: min(var(--vk-space-2), 8px) var(--vk-space-3); min-inline-size: 0; }
 .vk-draft-tools {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -874,11 +918,17 @@ a {
 }
 /* Share the Select body row even when its label needs a separate line. */
 .vk-draft-tools > .vk-ui-plain-tooltip { grid-column: 2; grid-row: 2; align-self: center; }
+/* At large text sizes the selected option needs the full width of a narrow Desk. */
+@container vk-desk-index (max-width: 9.5rem) {
+  .vk-draft-tools { grid-template-columns: minmax(0, 1fr); }
+  .vk-draft-tools > .vk-ui-plain-tooltip { grid-column: 1; grid-row: 3; justify-self: start; }
+}
 .vk-draft-search { min-inline-size: 0; margin: 0; }
+.vk-draft-search .vk-ui-search__shell { min-block-size: var(--vk-density-control-height); padding-block: 0; }
+.vk-draft-search .vk-ui-input { padding-block: 0; }
 /* Keep the native search description without repeating the visible scope/status line. */
 .vk-draft-search #draft-search-help { position: absolute; inline-size: 1px; block-size: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 #draft-scope, .vk-draft-sort-help { margin: 0; font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
-.vk-draft-sort-help { grid-column: 1 / -1; }
 /* DraftRow owns equal insets; the list owns one quiet surface, with space between links. */
 .vk-draft-rows { display: grid; gap: var(--vk-space-1); margin: 0; padding: var(--vk-space-1) 0; list-style: none; border-radius: var(--vk-radius-lg); background: var(--vk-surface-container-low); }
 .vk-draft-rows:empty { display: none; }
@@ -889,7 +939,9 @@ a {
   .vk-draft-tools > .vk-ui-plain-tooltip { grid-row: 1; }
 }
 @container vk-desk-index (min-width: 48rem) {
-  .vk-draft-controls { grid-template-columns: minmax(0, 1fr) max-content; align-items: start; }
+  .vk-desk-heading { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+  .vk-draft-controls { grid-template-columns: minmax(0, 1fr) max-content; align-items: center; }
+  .vk-draft-sort-help { grid-column: 2; grid-row: 2; }
 }
 .vk-desk-privacy { margin-top: var(--vk-space-8); font-size: var(--vk-type-label-size); }
 /* The first-use CTA drops its icon to keep the full label measure at 320px/text200. */
@@ -1013,7 +1065,7 @@ a {
 }
 
 .vk-editor-paper > .vk-ui-field { margin: 0; }
-.vk-editor-paper #draft-title { font-family: var(--vk-font-reading); font-size: var(--vk-text-draft-title); font-weight: var(--vk-type-headline-weight); line-height: var(--vk-type-headline-line-height); }
+.vk-editor-paper :is(#draft-title, .vk-editor-title-measure > span) { font-family: var(--vk-font-reading); font-size: var(--vk-text-draft-title); font-weight: var(--vk-type-headline-weight); line-height: var(--vk-type-headline-line-height); }
 .vk-editor-paper .vk-field__label { color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
 /* The title retains the shared native field/label contract, while the sheet owns its fill.
    Focus perimeters remain local to the focused control, including in forced colours. */
@@ -1023,6 +1075,14 @@ a {
 .vk-editor-paper > .vk-field { min-inline-size: 0; }
 .vk-editor-paper .vk-editor-body { background: transparent; }
 .vk-editor-paper .vk-editor-body .cm-editor .cm-content { padding: var(--vk-space-2) 0 var(--vk-space-6); }
+.vk-editor-title-measure {
+  position: absolute;
+  inline-size: 0;
+  block-size: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+.vk-editor-title-measure > span { display: block; inline-size: max-content; white-space: pre; }
 .vk-editor-title-details { min-inline-size: 0; margin-block-start: calc(-1 * var(--vk-space-4)); }
 .vk-editor-title-details > summary {
   min-block-size: var(--vk-size-hit-target);

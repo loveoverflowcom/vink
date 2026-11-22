@@ -7,7 +7,7 @@
 //! [`NavigationGuard::go`]. Leaving the document itself (reload, close, external link) keeps the
 //! browser's own `beforeunload` prompt, owned by the page.
 //!
-//! An open shell overlay (the Tôi utility) is asked first, through [`NavigationGuard::set_overlay`]:
+//! An open shell overlay is asked first, through [`NavigationGuard::set_overlay`]:
 //! back/forward closes it and stays on the page (Back closes an overlay before it leaves a
 //! screen, shared/navigation.md), while a link or programmatic exit closes it and continues to
 //! the page's check. The guard stays the only owner of leaving.

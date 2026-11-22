@@ -19,7 +19,7 @@ AdaptiveScaffold #shell                   — .vk-ui-scaffold[data-layout][data-
     Slot #brand                           — tùy chọn, host cấp; Web Vink bỏ slot (#102)
     RailToggle #rail-toggle               — disclosure thường trực: aria-expanded, aria-controls, tên + tooltip
     NavList #nav-primary                  — <nav aria-label>: NavItem* theo thứ tự host
-    Slot #account                         — chân rail: NavUtility (mở lớp phủ) hoặc NavItem
+    Slot #account                         — chân rail: Giao diện (NavUtility), Tôi (NavItem)
   Column #content
     TopBar #top-bar                       — tùy host; chỉ hiện ở layout Bar
     Slot #main                            — <main id tabindex=-1> của host; giữ instance khi đổi khung
@@ -52,8 +52,14 @@ sau resize); thanh dưới không có toggle. Breakpoint nội dung 1200 không 
 Native chọn theo window size class/dp của nền tảng, không chép px. Bảng đầy đủ:
 [fixtures/navigation.json](fixtures/navigation.json) (`layouts`, 36 tổ hợp).
 
-**Web, trước hydration:** CSS (`vink-ui.css`) giải cùng bảng bằng media query và `:root[data-rail]`
-(host đặt trước CSS như `data-theme`), nên HTML SSR đúng bề rộng không chờ JS; `data-layout="auto"`.
+**Shell Web Vink:** từ 760 đến 1099 CSS px, cột nội dung chừa 96 px cho rail thu gọn.
+Toggle mở rail 220 px bằng dialog có scrim và giữ nguyên bề rộng nội dung. Thu gọn, Escape,
+bấm scrim và Back trả focus về toggle. Từ 1100 px, preference đã lưu và ngữ cảnh editor
+quyết định rail 96/220 px. Mở rail trong cửa sổ vừa chỉ kéo dài đến lúc đóng dialog.
+
+**Web, trước hydration:** CSS (`vink-ui.css` và phần shell trong `vink.css`) dành chỗ cho rail
+theo media query và `:root[data-rail]` do host đặt trước CSS. Bootstrap cập nhật tên,
+`aria-expanded` và `aria-controls` của toggle. CSS chọn glyph từ `aria-expanded`.
 Preview và CMP đặt `NavLayout` tường minh (`data-layout="rail:compact"`…).
 
 ## Primitive
@@ -62,22 +68,24 @@ Preview và CMP đặt `NavLayout` tường minh (`data-layout="rail:compact"`�
 | --- | --- | --- | --- |
 | `NavDestination` | `{ key, label, icon, href }` | `NavDestination(key, label, icon)` | `key` ổn định cho test/active; Web có `href` thật |
 | `NavItem` | `<a href aria-current=page>` | `onNavigate(key)` | Web: không chặn click — router/guard của host nhận link; modifier/middle click, copy link, tab mới giữ nguyên |
-| `NavUtility` | `<button aria-haspopup=dialog aria-expanded aria-current>` | `onOpen()` | Tiện ích ở chân rail (Tôi): mở lớp phủ, không phải route |
+| `NavUtility` | `<button aria-haspopup=dialog aria-expanded>` | `onOpen()` | Nút Giao diện mở dialog ở chân rail Web. |
 | `NavigationRail` | `expanded: Signal<bool>`, `on_toggle` | `expanded`, `onToggle` | Toggle luôn hiện (cả khi thu), ≥44 CSS px / 48dp, nhãn + tooltip hover/focus, Escape ẩn tooltip; icon `menu` ↔ `menu-open` |
 | `BottomNavigation` | ≥`size.bottom-bar`, safe-area, đo chiều cao → `--vk-ui-bar-height` | `NavigationBar` | Đích chia đều, nhãn xuống dòng, không cắt chữ 200% |
 | `TopBar` | `<header>` brand + actions | `VinkTopBar` | Không chứa đích chính |
 | `AdaptiveScaffold` | `ScaffoldLayout::Auto { context }` \| `Fixed(NavLayout)` | `layout: NavLayout` | Đổi khung chỉ đổi khung: `#main` và editor không remount |
 
-Web Vink (#102) bắt đầu rail bằng toggle, sau đó đến danh sách đích và Tôi ở chân rail.
+Web Vink (#102) bắt đầu rail bằng toggle, sau đó đến danh sách đích. Chân rail có nút Giao diện
+và liên kết tới `/toi`. Khách có thể đổi giao diện từ rail hoặc vùng Giao diện trên `/toi`.
 Trên thanh dưới Web, indicator Lavender bao icon hoặc avatar của đích hiện tại. Nhãn luôn
 nằm trên hàng riêng bên dưới và toàn bộ liên kết vẫn là vùng bấm. [Web #131](https://github.com/loveoverflowcom/vink/issues/131) và [CMP #132](https://github.com/loveoverflowcom/vink/issues/132) theo dõi hai renderer.
 Leptos chỉ render wrapper brand khi host truyền slot. Toggle dùng cặp icon hiện có ở cỡ
 `size.icon-sm` (20px), căn theo trục icon của đích. Trang Khám phá tự render logo trong
 heading, nên Web shell bỏ TopBar. Specimen TopBar độc lập và Compose giữ contract hiện có.
 
-Kích thước: rail `size.rail-expanded` 220 / `size.rail-compact` 96 (px Web, dp CMP), đích
-`size.nav-item` 52. Rail thu đặt icon trên/nhãn dưới; rail cuộn khi thấp/ngang nên toggle và Tôi luôn tới
-được. Lớp z: rail/thanh 5 < tooltip/skip-link 10 < dialog native (top layer).
+Rail dùng `size.rail-expanded` 220 và `size.rail-compact` 96 (px Web, dp CMP). Mục rail Web ở
+hàng ngang cao tối thiểu 56 px. Khi xếp dọc, indicator 56×32 px bao biểu tượng và nhãn nằm
+bên dưới. Pane rail cuộn khi cửa sổ thấp. Tooltip đặt ngoài vùng cuộn, dưới nút và trong bề
+rộng rail. Lớp z: rail/thanh 5 < tooltip/skip-link 10 < dialog native (top layer).
 
 ## Lớp phủ (`OverlayLayer`)
 

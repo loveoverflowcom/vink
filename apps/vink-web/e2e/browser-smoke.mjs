@@ -136,7 +136,7 @@ async function searchBarGeometry(page, selector, scenario) {
     const a = input.getBoundingClientRect(), l = label.getBoundingClientRect();
     const hidden = getComputedStyle(label);
     return { width: s.width, inputWidth: a.width, firstContentTop: document.querySelector('.vk-public-row,#draft-results')?.getBoundingClientRect().top,
-      ok: a.width >= 100 && s.height >= 56 && a.left >= s.left && a.right <= s.right &&
+      ok: a.width >= 100 && s.height >= ${selector === '#draft-search' ? 48 : 56} && a.left >= s.left && a.right <= s.right &&
         controls.every(el => { const r=el.getBoundingClientRect(); return r.width>=48 && r.height>=48 &&
           r.left>=s.left && r.right<=s.right && r.top>=s.top && r.bottom<=s.bottom && (r.right<=a.left || r.left>=a.right); }) &&
         input.placeholder===label.textContent && l.width<=1 && l.height<=1 && hidden.position==='absolute' && hidden.display!=='none' &&
@@ -184,7 +184,7 @@ async function quietListSurfaces(page, selector, scenario) {
   })()`), `${scenario}: full-row links are separated by space and flat tone, without row rules or endpoint chrome`);
 }
 
-async function bottomNavigationGeometry(page, scenario) {
+async function bottomNavigationGeometry(page, scenario, accountLabel = 'Tôi') {
   if (!await page.eval(`document.querySelector('.vk-ui-bottom-nav').getClientRects().length > 0`)) return;
   const hydrated = await page.eval(`document.documentElement.dataset.hydrated === 'true'`);
   if (hydrated) {
@@ -196,7 +196,7 @@ async function bottomNavigationGeometry(page, scenario) {
   check(await page.eval(`(() => {
     const bar = document.querySelector('.vk-ui-bottom-nav'), b = bar.getBoundingClientRect();
     const links = [...bar.querySelectorAll('a')];
-    return links.map(a => a.querySelector('.vk-ui-nav-item__label').textContent).join('|') === 'Khám phá|Bàn viết|Tôi' && links.every(a => {
+    return links.map(a => a.querySelector('.vk-ui-nav-item__label').textContent).join('|') === ${JSON.stringify('Khám phá|Bàn viết|' + accountLabel)} && links.every(a => {
       const r = a.getBoundingClientRect(), label = a.querySelector('.vk-ui-nav-item__label');
       const l = label.getBoundingClientRect(), range = document.createRange();
       range.selectNodeContents(label);
@@ -211,9 +211,9 @@ async function bottomNavigationGeometry(page, scenario) {
 
 // Compare the icon row and the first rendered text line, never the centre of the
 // whole label: one- and two-line labels intentionally have different heights.
-async function bottomNavigationAlignment(page, scenario) {
+async function bottomNavigationAlignment(page, scenario, accountLabel = 'Tôi') {
   if (!await page.eval(`document.querySelector('.vk-ui-bottom-nav').getClientRects().length > 0`)) return;
-  await bottomNavigationGeometry(page, scenario);
+  await bottomNavigationGeometry(page, scenario, accountLabel);
   const inspected = await page.eval(buildNavInspectionScript('.vk-ui-bottom-nav'));
   const evalResult = evaluateNavAlignment(inspected.items, { tolerancePx: 1, maxLines: 2, checkSameRow: true, expectedCount: 3 });
   check(evalResult.ok, `${scenario}: equal targets, icon centres, first label lines and label font align within 1px: ${evalResult.reasons.join('; ') || JSON.stringify({ iconDelta: evalResult.maxIconCenterDelta, firstLineDelta: evalResult.maxFirstLineDelta, lineCounts: evalResult.lineCounts })}`);
@@ -221,7 +221,7 @@ async function bottomNavigationAlignment(page, scenario) {
   const routePath = await page.eval(`location.pathname`);
   const toiAxEval = evaluateAccessibleElement(toiAx, {
     role: 'link',
-    name: 'Tôi',
+    name: accountLabel,
     excludeSubstrings: ['TT', '•'],
     ariaCurrent: routePath === '/toi' ? 'page' : null,
   });
@@ -242,13 +242,13 @@ async function bottomNavigationAlignment(page, scenario) {
   }));
 }
 
-async function bottomNavigationAnatomy(page, route, scenario) {
+async function bottomNavigationAnatomy(page, route, scenario, hasAccountAvatar = true) {
   const items = await page.eval(buildNavIndicatorInspectionScript());
   check(items.map(item => item.href).join('|') === '/|/ban-viet|/toi' &&
     items.every(item => item.current === (item.href === route ? 'page' : null)),
   `${scenario}: route order and exactly one matching aria-current`);
   check(items.every(item => item.flatTarget), `${scenario}: selected background must not cover the whole destination`);
-  const isolated = items.every(item => item.fill === item.expectedFill && item.leadingInside && item.labelOutside) && items[2].avatar;
+  const isolated = items.every(item => item.fill === item.expectedFill && item.leadingInside && item.labelOutside) && items[2].avatar === hasAccountAvatar;
   check(isolated, `${scenario}: selected Lavender indicator contains only the icon/avatar; labels sit below` +
     (isolated ? '' : ` (${JSON.stringify(items)})`));
 }
@@ -463,8 +463,9 @@ async function bottomNavigationRegression(page) {
       requiredTargets: ['.vk-ui-bottom-nav', '.vk-ui-bottom-nav a[href="/toi"]'],
       boundary: 'no-js-bootstrap-pre-hydration',
     });
-    await bottomNavigationAnatomy(page, '/toi', 'before hydration');
-    await bottomNavigationAlignment(page, 'nav-toi-360x800-200-before-hydration');
+    const accountLabel = await page.eval(`document.querySelector('meta[name="vink-sign-in"]') ? 'Đăng nhập' : 'Tài khoản'`);
+    await bottomNavigationAnatomy(page, '/toi', 'before hydration', false);
+    await bottomNavigationAlignment(page, 'nav-toi-360x800-200-before-hydration', accountLabel);
   } finally {
     await page.send('Network.setBlockedURLs', { urls: [] });
     for (const deadline = Date.now() + 2000; page.errors.length < preErrors + 1 && Date.now() < deadline;) await sleep(50);
@@ -786,7 +787,7 @@ class Page {
               paddingLeft: s.paddingLeft, paddingRight: s.paddingRight,
               textLines: new Set([...range.getClientRects()].filter(r => r.width > 0).map(r => Math.round(r.top))).size };
           };
-          const preferenceSurface = prefix === 'page' ? '.vk-appearance-card' : '#profile-menu';
+          const preferenceSurface = prefix === 'page' ? '.vk-appearance-card' : '#profile-body';
           const surface = document.querySelector(preferenceSurface);
           const surfaceStyle = getComputedStyle(surface);
           const region = surface.querySelector('.vk-appearance-region');
@@ -803,8 +804,11 @@ class Page {
           const textRight = Math.max(h2Rect?.right ?? 0, helpRect?.right ?? 0);
           return { prefix, surface: bounds(prefix === 'page' ? '#me' : '#profile-menu'),
             preferences: {
-              surface: bounds(preferenceSurface), padding: ['Top', 'Right', 'Bottom', 'Left'].map(side => parseFloat(surfaceStyle['padding' + side])),
-              background: surfaceStyle.backgroundColor, radius: parseFloat(surfaceStyle.borderRadius),
+              surface: bounds(preferenceSurface),
+              padding: ['Top', 'Right', 'Bottom', 'Left'].map(side =>
+                parseFloat(surfaceStyle['padding' + side]) + (panel?.open ? parseFloat(surfaceStyle['margin' + side]) : 0)),
+              background: panel?.open ? getComputedStyle(panel).backgroundColor : surfaceStyle.backgroundColor,
+              radius: parseFloat(panel?.open ? getComputedStyle(panel).borderRadius : surfaceStyle.borderRadius),
               scroll: { top: surface.scrollTop, height: surface.scrollHeight, clientHeight: surface.clientHeight },
               rowGap: parseFloat(getComputedStyle(region).rowGap),
               rows: rows.map((row, index) => {
@@ -851,8 +855,7 @@ class Page {
             } : null,
             appearanceHeading: bounds(prefix === 'page' ? '#page-appearance-title' : '#profile-title'),
             choices: bounds((prefix === 'page' ? '#me' : '#profile-menu') + ' .vk-appearance-region'),
-            group: bounds('#' + prefix + '-theme'),
-            action: prefix === 'overlay' ? bounds('#open-me') : null };
+            group: bounds('#' + prefix + '-theme') };
         })(),
         desk: { heading: geometry('#heading'), resume: geometry('#resume'), title: geometry('#resume h2'), disclosure: geometry('#resume-title-toggle'), metadata: geometry('#resume .vk-draft-meta'), cta: geometry('[data-testid=resume-draft]'), list: geometry('#drafts'), tools: geometry('#draft-tools'), search: geometry('#draft-search'), sort: geometry('#draft-sort'), refresh: geometry('#refresh-drafts'), scope: geometry('#draft-scope'), firstRow: geometry('[data-testid=draft-row]'), rowLink: geometry('.vk-draft-row__link'), rowTitle: geometry('.vk-draft-row__title'), rowTitleLines: titleLines, rowMetadata: geometry('.vk-draft-row .vk-draft-meta'), rowOpen: geometry('.vk-draft-row__open'), results: geometry('#draft-results'), listHeading: geometry('#draft-list-title'), searchField: geometry('.vk-draft-search > .vk-ui-field'), sortField: geometry('#draft-tools > .vk-ui-field:nth-child(2)') },
         reader: { title: geometry('#reader-header h1'), header: geometry('#reader-header'), body: geometry('.vk-reader .vk-document') },
@@ -1797,6 +1800,8 @@ async function serverHtml() {
 
 const RAIL_WIDTH = `Math.round(document.querySelector('.vk-ui-rail').getBoundingClientRect().width)`;
 const PROFILE_OPEN = `document.querySelector('[data-testid=profile-menu]').open`;
+const RAIL_MODAL_OPEN = `document.querySelector('#navigation-modal').matches(':modal')`;
+const RAIL_ME = '#navigation a[href="/toi"]';
 // Poll live transitions. Waiting on a snapshot of Animation.finished promises
 // can stall DevTools after a dirty editor resize.
 const APPEARANCE_SETTLED = `!document.getAnimations().some(a =>
@@ -1804,7 +1809,7 @@ const APPEARANCE_SETTLED = `!document.getAnimations().some(a =>
 
 async function openProfile(page) {
   await page.click('#profile-trigger');
-  await page.waitFor(PROFILE_OPEN, 'Tôi overlay');
+  await page.waitFor(PROFILE_OPEN, 'Giao diện dialog');
 }
 
 async function waitForPageAccount(page) {
@@ -1993,7 +1998,7 @@ async function textContrast(page, theme, surface = 'shell', targets) {
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
     me: ['#me-title', '#page-account h2', '#page-account .vk-ui-tone-muted', '#page-appearance-title', '#page-theme-title', '#page-text-title', '#page-rail-title', ...['light', 'dark', 'system'].map(value => `#page-theme label:has([value="${value}"])`)],
     account: ['#profile-title', '#overlay-theme-title', '#overlay-text-title', '#overlay-rail-title', ...['light', 'dark', 'system'].map(value => `#overlay-theme label:has([value="${value}"])`)],
-  }[surface] ?? ['#navigation-toggle', '#navigation-primary a', '#profile-trigger', '#profile-title', '#profile-menu .vk-ui-choice__target:has(:checked)', '#profile-menu .vk-ui-button']);
+  }[surface] ?? ['#navigation-toggle', '#navigation-primary a', '#profile-trigger', '#profile-title', '#profile-menu .vk-ui-choice__target:has(:checked)', '#profile-close']);
   const pairs = await page.eval(`(() => {
     const rgb = value => value.match(/[\\d.]+/g).map(Number);
     const luminance = color => rgb(color).slice(0, 3).map(v => v / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
@@ -2028,10 +2033,9 @@ async function textContrast(page, theme, surface = 'shell', targets) {
 function accountLayoutGeometry(context, scenario) {
   const m = context.mePanel, near = (a, b) => Math.abs(a - b) <= 1;
   check(Boolean(m), `${scenario}: appearance geometry is present`);
-  const fullWidth = m.prefix === 'page' ? [m.heading, m.account, m.identity] : [m.heading, m.choices];
-  check(fullWidth.every(r => r && near(r.x, m.surface.contentLeft) && near(r.width, m.surface.contentWidth)),
-    `${scenario}: appearance uses the available surface width`);
   if (m.prefix === 'page') {
+    check([m.heading, m.account, m.identity].every(r => r && near(r.x, m.surface.contentLeft) && near(r.width, m.surface.contentWidth)),
+      `${scenario}: appearance uses the available surface width`);
     check([m.accountLabel, m.accountHelp].every(r => r && r.scrollWidth <= r.clientWidth + 1),
       `${scenario}: truthful account text fits without clipping`);
     const reservation = evaluateMePanelReservation(m);
@@ -2042,9 +2046,10 @@ function accountLayoutGeometry(context, scenario) {
         `${scenario}: narrow Tôi keeps one 16px gutter on both sides`);
     }
   } else {
-    check(m.surface.paddingLeft === m.surface.paddingRight && near(m.action.x, m.surface.contentLeft) &&
-      m.action.x + m.action.width <= m.surface.contentLeft + m.surface.contentWidth + 1,
-      `${scenario}: the panel action shares the content axis`);
+    const body = m.preferences.surface;
+    check(body.paddingLeft === body.paddingRight && near(m.appearanceHeading.x, body.contentLeft) &&
+      near(m.choices.x, body.contentLeft) && near(m.choices.width, body.contentWidth),
+      `${scenario}: the pinned title shares the scrolling body's content axis`);
   }
   const { preferences: p } = m;
   const inside = r => r && r.x >= p.surface.contentLeft - 1 &&
@@ -2158,7 +2163,7 @@ async function shortAppearanceStart(page) {
         const r = panel.querySelector(selector).getBoundingClientRect();
         return r.top >= top && r.bottom <= bottom;
       };
-      return { scrollTop: panel.scrollTop, title: visible('#profile-title'),
+      return { scrollTop: panel.querySelector('#profile-body').scrollTop, title: visible('#profile-title'),
         close: visible('#profile-close'), focused: document.activeElement.id };
     })()`);
     check(opened.scrollTop <= 1 && opened.title && opened.close && opened.focused === 'profile-close',
@@ -2185,7 +2190,7 @@ async function accountAppearance(page) {
   await page.viewport(1440);
   await page.goto(`${args.base}/toi`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'canonical Tôi route for the appearance matrix');
-  await page.waitFor(`['#profile-trigger', '#page-account', '#bottom-navigation a[href="/toi"]'].every(selector => {
+  await page.waitFor(`[${JSON.stringify(RAIL_ME)}, '#page-account', '#bottom-navigation a[href="/toi"]'].every(selector => {
     const badge = document.querySelector(selector + ' [data-kind=account]');
     return badge?.dataset.initials === 'TT' && !badge.querySelector('[data-icon=person]');
   })`, 'the same current account initials appear on the rail, bottom bar and Tôi');
@@ -2197,7 +2202,7 @@ async function accountAppearance(page) {
   })`), 'current account is read from the private session endpoint');
   await page.eval(`document.querySelector('#profile-trigger').focus()`);
   await page.key('Enter');
-  await page.waitFor(`${PROFILE_OPEN} && document.activeElement?.name === 'overlay-theme' && !document.querySelector('#open-me')`, 'Tôi opens the shared modal on /toi without a self-link');
+  await page.waitFor(`${PROFILE_OPEN} && document.activeElement?.name === 'overlay-theme'`, 'Giao diện opens the shared modal on /toi');
   await page.click('#overlay-text label:has([value="200"])');
   await page.click('#overlay-rail label:has([value="compact"])');
   await page.waitFor(`document.querySelector('#page-text input:checked')?.value === '200' &&
@@ -2274,14 +2279,14 @@ async function accountAppearance(page) {
     document.querySelector('#profile-trigger').getAttribute('aria-haspopup') === 'dialog' &&
     document.querySelector('#profile-trigger').getAttribute('aria-controls') === 'profile-menu' &&
     document.querySelector('#navigation-primary a[href="/ban-viet"]').getAttribute('aria-current') === 'page' &&
-    !document.querySelector('#profile-menu .vk-account-status') && document.querySelector('#open-me')`), 'compact appearance dialog identifies its purpose and preserves the active route');
+    !document.querySelector('#profile-menu .vk-account-status, #profile-menu a[href="/toi"]')`), 'appearance dialog identifies its purpose and preserves the active route');
   check(await appearanceRows(page, 'overlay'), 'panel uses the same three native groups, glyphs and selection checks');
   const { nodes } = await page.send('Accessibility.getFullAXTree');
   const visible = nodes.filter(node => !node.ignored);
   const hasName = (role, name) => visible.some(node => node.role.value === role && node.name?.value === name);
   const checked = visible.filter(node => node.role.value === 'radio' &&
     node.properties?.some(prop => prop.name === 'checked' && String(prop.value.value) === 'true'));
-  check(hasName('dialog', 'Giao diện') && hasName('button', 'Đóng Giao diện') && hasName('button', 'Mở trang Tôi') &&
+  check(hasName('dialog', 'Giao diện') && hasName('button', 'Đóng Giao diện') &&
     ['Chế độ màu', 'Cỡ chữ', 'Thanh điều hướng'].every(name => hasName('radiogroup', name)) &&
     ['Hệ thống', 'Sáng', 'Tối', '100%', '200%', 'Tự động', 'Mở rộng', 'Thu gọn'].every(name => hasName('radio', name)) &&
     checked.length === 3 && ['Sáng', '100%', 'Tự động'].every(name => checked.some(node => node.name?.value === name)),
@@ -2305,7 +2310,16 @@ async function accountAppearance(page) {
   await page.waitFor(`${PROFILE_OPEN} && document.querySelector('#overlay-theme input:checked')?.value === 'dark'`, 'native Space selects the focused choice');
   await page.eval(`(() => { for (const value of ['light', 'system', 'dark']) document.querySelector('#overlay-theme input[value="' + value + '"]').click(); })()`);
   await page.waitFor(`${PROFILE_OPEN} && document.querySelector('#overlay-theme input:checked')?.value === 'dark' && document.documentElement.dataset.theme === 'dark'`, 'rapid theme intents settle on the final preference');
-  check(await page.eval(`(() => { const close = document.querySelector('#profile-close'), r = close.getBoundingClientRect(), dialog = document.querySelector('#profile-menu'); return r.width >= 48 && r.height >= 48 && close.getAttribute('aria-label') === 'Đóng Giao diện' && close.querySelector('[data-icon=close]') && getComputedStyle(dialog).backgroundColor.startsWith('rgb(') && getComputedStyle(dialog, '::backdrop').backgroundColor !== 'rgba(0, 0, 0, 0)' && [...dialog.querySelectorAll('*')].every(el => !['auto','scroll'].includes(getComputedStyle(el).overflowY)); })()`), 'opaque panel, visible scrim, one scroller and named close icon target >=48px');
+  check(await page.eval(`(() => {
+    const close = document.querySelector('#profile-close'), r = close.getBoundingClientRect();
+    const dialog = document.querySelector('#profile-menu'), s = getComputedStyle(dialog);
+    const scrollers = [...dialog.querySelectorAll('*')].filter(el => ['auto','scroll'].includes(getComputedStyle(el).overflowY));
+    return r.width >= 48 && r.height >= 48 && close.getAttribute('aria-label') === 'Đóng Giao diện' &&
+      close.querySelector('[data-icon=close]') && s.backgroundColor.startsWith('rgb(') &&
+      s.overflowY === 'clip' && s.borderRadius === '28px' &&
+      getComputedStyle(dialog, '::backdrop').backgroundColor !== 'rgba(0, 0, 0, 0)' &&
+      scrollers.length === 1 && scrollers[0].id === 'profile-body';
+  })()`), 'rounded opaque panel, visible scrim, one inner scroller and named close icon target >=48px');
   await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM, { name: 'forced-colors', value: 'active' }, { name: 'prefers-reduced-motion', value: 'reduce' }] });
   await page.eval(`document.querySelector('#overlay-theme input:checked').focus()`);
   await page.key('ArrowRight');
@@ -2325,10 +2339,10 @@ async function accountAppearance(page) {
     { width: 1440, rail: 'compact', height: 900 },
     { width: 1024, rail: 'compact', height: 900 },
     { width: 834, rail: 'compact', height: 900 },
-    { width: 834, rail: 'expanded', height: 900 },
     { width: 1440, rail: 'expanded', height: 360 },
     { width: 1440, rail: 'compact', height: 360 },
-    { width: 834, rail: 'expanded', height: 360 },
+    { width: 1280, rail: 'expanded', height: 480 },
+    { width: 1280, rail: 'expanded', height: 380 },
     { width: 834, rail: 'compact', height: 360 },
   ]) {
     await page.viewport(width, height);
@@ -2349,12 +2363,19 @@ async function accountAppearance(page) {
             dialog.scrollWidth <= dialog.clientWidth && document.documentElement.scrollWidth <= innerWidth &&
             document.querySelector('#profile-trigger').getAttribute('aria-expanded') === 'true';
         })()`), `${scenario}: modal stays beside the rail, within the viewport, without internal horizontal overflow`);
-        check(await page.eval(`(() => {
+        const initial = await page.eval(`(() => {
           const panel = document.querySelector('#profile-menu'), rect = panel.getBoundingClientRect();
           const title = document.querySelector('#profile-title').getBoundingClientRect();
-          return panel.scrollTop <= 1 && title.top >= rect.top && title.bottom <= rect.bottom &&
-            document.activeElement === panel.querySelector('#overlay-theme input:checked');
-        })()`), `${scenario}: title and initial radio focus are present at the start of the panel`);
+          const body = panel.querySelector('#profile-body'), choice = panel.querySelector('#overlay-theme input:checked');
+          const choiceVisible = choice.getBoundingClientRect().bottom <= body.getBoundingClientRect().bottom;
+          return { scrollTop: body.scrollTop, outerScrollTop: panel.scrollTop,
+            titleVisible: title.top >= rect.top && title.bottom <= rect.bottom,
+            titleTop: title.top, panelTop: rect.top,
+            focus: document.activeElement === choice ? 'choice' : document.activeElement?.id, choiceVisible };
+        })()`);
+        check(initial.scrollTop <= 1 && initial.outerScrollTop === 0 && initial.titleVisible &&
+          initial.focus === (initial.choiceVisible ? 'choice' : 'profile-close'),
+          `${scenario}: title and initial focus are visible at the start of the panel (${JSON.stringify(initial)})`);
         if (height === 900 && width === 1440 && scale === 100 && theme !== 'system') await textContrast(page, theme, 'account');
         check(await appearanceRows(page, 'overlay'), `${scenario}: compact panel groups keep whole labels and touch targets`);
         accountLayoutGeometry(await page.capture(`account-overlay-${scenario}`), scenario);
@@ -2367,18 +2388,22 @@ async function accountAppearance(page) {
               const r = target.getBoundingClientRect();
               return target.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
             });
-            panel.scrollTop = 0;
+            panel.querySelector('#profile-body').scrollTop = 0;
             return reachable;
           })()`), `${scenario}: every radio hit target can be revealed in the scrollport`);
         }
         await page.eval(`document.querySelector('#profile-close').focus()`);
         await page.key('Tab', SHIFT);
         check(await page.eval(`(() => {
-          const el = document.activeElement, r = el.getBoundingClientRect(), d = document.querySelector('#profile-menu').getBoundingClientRect();
-          return el.id === 'open-me' && r.top >= d.top && r.bottom <= d.bottom && r.height >= 44 &&
-            el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
-        })()`), `${scenario}: Shift+Tab reaches the final action and its hit target is exposed`);
-        if (await page.eval(`document.querySelector('#profile-menu').scrollHeight > document.querySelector('#profile-menu').clientHeight`)) await page.capture(`account-overlay-${scenario}-bottom`);
+          const dialog = document.querySelector('#profile-menu'), el = document.activeElement;
+          const r = el.getBoundingClientRect(), body = dialog.querySelector('#profile-body').getBoundingClientRect();
+          const close = dialog.querySelector('#profile-close').getBoundingClientRect();
+          return el === dialog.querySelector('#overlay-rail input:checked') &&
+            r.top >= body.top && r.bottom <= body.bottom && r.height >= 44 &&
+            close.top >= dialog.getBoundingClientRect().top && close.bottom <= body.top &&
+            el === document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+        })()`), `${scenario}: Shift+Tab reveals the last radio without scrolling Close away`);
+        if (await page.eval(`document.querySelector('#profile-body').scrollTop > 0`)) await page.capture(`account-overlay-${scenario}-bottom`);
         await page.key('Tab');
         check(await page.eval(`(() => {
           const el = document.activeElement, r = el.getBoundingClientRect(), d = document.querySelector('#profile-menu').getBoundingClientRect();
@@ -2415,7 +2440,7 @@ async function shellFragmentHistory(page) {
   await openProfile(page);
   await page.capture('1440-fragment-overlay-before-back');
   await page.eval(`history.back()`);
-  await page.waitFor(`!${PROFILE_OPEN}`, 'fragment Back closes Tôi');
+  await page.waitFor(`!${PROFILE_OPEN}`, 'fragment Back closes Giao diện');
   await sleep(100);
   check(await page.eval(`location.pathname === '/ban-viet' && location.hash === '#shell-fragment' && document.activeElement?.id === 'profile-trigger'`), 'fragment Back closes the overlay, retains the current URL and restores trigger focus');
   await page.capture('1440-fragment-overlay-after-back');
@@ -2428,7 +2453,7 @@ async function shellFragmentHistory(page) {
   await page.waitFor(`location.hash === ''`, 'prepare fragment Forward with overlay');
   await openProfile(page);
   await page.eval(`history.forward()`);
-  await page.waitFor(`!${PROFILE_OPEN}`, 'fragment Forward closes Tôi');
+  await page.waitFor(`!${PROFILE_OPEN}`, 'fragment Forward closes Giao diện');
   await sleep(100);
   check(await page.eval(`location.pathname === '/ban-viet' && location.hash === '' && document.activeElement?.id === 'profile-trigger'`), 'fragment Forward also closes the overlay before changing the current URL');
 
@@ -2440,7 +2465,7 @@ async function shellFragmentHistory(page) {
   check(scroll > 0, 'fragment scroll probe starts below the top of the page');
   await openProfile(page);
   await page.eval(`history.back()`);
-  await page.waitFor(`!${PROFILE_OPEN}`, 'scrolled fragment Back closes Tôi');
+  await page.waitFor(`!${PROFILE_OPEN}`, 'scrolled fragment Back closes Giao diện');
   await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
   check(await page.eval(`scrollY === ${scroll} && location.hash === '#shell-scroll' && document.activeElement?.id === 'profile-trigger'`), 'held fragment Back preserves nonzero page scroll after native history restoration');
   await page.capture('1440x360-fragment-scroll-text200');
@@ -2452,7 +2477,7 @@ async function railReview(page) {
   const cases = [
     [1440, 900, 100, 'light', 220], [1440, 900, 100, 'light', 96],
     [1440, 900, 100, 'dark', 220], [1440, 900, 100, 'dark', 96],
-    [1024, 900, 200, 'light', 96], [1024, 900, 200, 'light', 220],
+    [1024, 900, 200, 'light', 96], [1440, 900, 200, 'light', 220],
     [834, 360, 100, 'light', 96], [834, 360, 200, 'light', 96],
   ];
   for (const [width, height, scale, theme, railWidth] of cases) {
@@ -2463,21 +2488,38 @@ async function railReview(page) {
     await page.eval(`document.activeElement?.blur(); document.querySelector('#navigation').scrollTop = 0`);
     const name = `rail-r1-${width}x${height}-${railWidth}-${theme}-text${scale}`;
     await assertExploreHeader(page, name);
+    await page.waitFor(APPEARANCE_SETTLED, `${name}: rail state-layer transitions settle`);
     const railNav = await page.eval(buildNavInspectionScript('#navigation'));
-    check(railNav.present && railNav.items.length === 3, `${name}: #navigation renders all 3 .vk-ui-nav-item links`);
+    check(railNav.present && railNav.items.filter(item => item.href).length === 3 &&
+      railNav.items.some(item => item.id === 'profile-trigger' && !item.href),
+      `${name}: #navigation renders three links and the separate appearance control`);
     const baseLabel = railNav.items[0];
     check(railNav.items.every(item => item.wordsIntact && item.lineCount <= 2 && item.labelScrollWidth <= item.labelClientWidth + 1 &&
       item.labelFont === baseLabel?.labelFont && item.labelLineHeight === baseLabel?.labelLineHeight),
       `${name}: rail nav labels keep Vietnamese words intact, consistent font, and <= 2 lines`);
-    const axProfile = await collectElementAccessibility(page, '#profile-trigger');
-    const axProfileEval = evaluateAccessibleElement(axProfile, { role: 'button', name: 'Tôi', excludeSubstrings: ['TT', '•'] });
-    check(axProfileEval.ok, `${name}: #profile-trigger AX exposes 'Tôi' without decorative badges (${axProfileEval.reasons.join('; ')})`);
+    const axProfile = await collectElementAccessibility(page, RAIL_ME);
+    const axProfileEval = evaluateAccessibleElement(axProfile, { role: 'link', name: 'Tôi', excludeSubstrings: ['TT', '•'] });
+    check(axProfileEval.ok, `${name}: account link AX exposes 'Tôi' without decorative badges (${axProfileEval.reasons.join('; ')})`);
+    const appearanceAx = await collectElementAccessibility(page, '#profile-trigger');
+    check(evaluateAccessibleElement(appearanceAx, { role: 'button', name: 'Giao diện' }).ok, `${name}: Giao diện has a separate accessible button`);
     const railOverflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({ containers: ['#navigation'] })));
     check(railOverflow.ok, `${name}: rail and page have no unintended/hidden horizontal overflow (${railOverflow.reasons.join('; ')})`);
     check(await page.eval(`(() => {
       const rows = [...document.querySelectorAll('#explore .vk-public-row')];
       return rows.length > 0 && rows.every(row => row.scrollWidth <= row.clientWidth + 1);
     })()`), `${name}: each work link stays within its discovery row`);
+    check(await page.eval(`(() => {
+      const active = document.querySelector('#navigation a[aria-current=page]');
+      const toggle = document.querySelector('#navigation-toggle');
+      const indicator = active.querySelector('.vk-ui-nav-item__indicator');
+      const label = active.querySelector('.vk-ui-nav-item__label');
+      const item = getComputedStyle(active), pill = getComputedStyle(indicator);
+      const r = indicator.getBoundingClientRect(), text = label.getBoundingClientRect();
+      if (item.borderRadius !== '28px' || parseFloat(getComputedStyle(toggle).borderRadius) < 24) return false;
+      if (item.flexDirection === 'row') return active.getBoundingClientRect().height >= 56 && pill.display === 'contents';
+      return r.width === 56 && r.height === 32 && text.top - r.bottom >= 4 &&
+        item.backgroundColor === 'rgba(0, 0, 0, 0)' && pill.backgroundColor !== 'rgba(0, 0, 0, 0)';
+    })()`), `${name}: active indicator follows rail orientation and controls keep their own radii`);
     await page.capture(name, {
       scenario: 'rail-r1',
       requestedScene: { width, height, scale, theme },
@@ -2489,9 +2531,10 @@ async function railReview(page) {
     check(await page.eval(`(() => {
       const rail = document.querySelector('#navigation'), toggle = document.querySelector('#navigation-toggle');
       const centerX = rect => rect.left + rect.width / 2;
-      const r = toggle.getBoundingClientRect(), glyph = toggle.querySelector('svg').getBoundingClientRect();
+      const r = toggle.getBoundingClientRect();
+      const glyph = [...toggle.querySelectorAll('svg')].find(icon => icon.getClientRects().length).getBoundingClientRect();
       const navIcons = [...rail.querySelectorAll('.vk-ui-nav-item .vk-ui-icon')];
-      const aligned = navIcons.length === 3 && navIcons.every(icon =>
+      const aligned = navIcons.length === 4 && navIcons.every(icon =>
         Math.abs(centerX(glyph) - centerX(icon.getBoundingClientRect())) <= 1);
       const wordsFit = [...rail.querySelectorAll('.vk-ui-nav-item__label')].every(label =>
         [...label.textContent.matchAll(/\\S+/g)].every(word => {
@@ -2513,7 +2556,7 @@ async function railReview(page) {
         const tip = document.querySelector('#navigation-tooltip');
         const r = tip.getBoundingClientRect();
         return document.activeElement?.id === 'navigation-toggle' && !tip.hidden &&
-          r.left >= document.querySelector('#navigation').getBoundingClientRect().right &&
+          r.right <= document.querySelector('#navigation').getBoundingClientRect().right &&
           r.top >= 0 && r.bottom <= innerHeight;
       })()`), `${name}: the focus tooltip clears the short rail`);
       await page.capture(`${name}-tooltip`, {
@@ -2523,10 +2566,10 @@ async function railReview(page) {
         requiredTargets: ['#navigation', '#navigation-tooltip'],
       });
       await page.key('Escape');
-      for (let i = 0; i < 3; i++) await page.key('Tab');
+      for (let i = 0; i < 4; i++) await page.key('Tab');
       check(await page.eval(`(() => {
-        const r = document.querySelector('#profile-trigger').getBoundingClientRect();
-        return document.activeElement?.id === 'profile-trigger' && r.top >= 0 && r.bottom <= innerHeight;
+        const link = document.querySelector(${JSON.stringify(RAIL_ME)}), r = link.getBoundingClientRect();
+        return document.activeElement === link && r.top >= 0 && r.bottom <= innerHeight;
       })()`), `${name}: Tab reaches and reveals Tôi at the foot`);
       await page.capture(`${name}-account`, {
         scenario: 'rail-r1-account',
@@ -2539,6 +2582,56 @@ async function railReview(page) {
   await page.viewport(1440);
   await page.eval(`localStorage.removeItem('vink.ui.rail')`);
   await page.reload();
+}
+
+async function mediumRail(page) {
+  await page.viewport(768, 1024);
+  const toggle = '#navigation-toggle';
+  const modal = '#navigation-expanded-toggle';
+  await page.waitFor(`(() => {
+    const control = document.querySelector('#navigation-toggle');
+    return ${RAIL_WIDTH} === 96 && control.getAttribute('aria-expanded') === 'false' &&
+      control.getAttribute('aria-label') === 'Mở rộng điều hướng' &&
+      control.getAttribute('aria-controls') === 'navigation-modal' &&
+      control.getAttribute('aria-haspopup') === 'dialog';
+  })()`, 'Medium rail exposes its actual collapsed state');
+  await page.eval(`window.__mediumRailMain = document.querySelector('#noi-dung');`);
+  const mainRect = () => page.eval(`document.querySelector('#noi-dung').getBoundingClientRect().toJSON()`);
+  const before = await mainRect();
+  const preference = await page.eval(`localStorage.getItem('vink.ui.rail')`);
+  await page.click(toggle);
+  await page.waitFor(RAIL_MODAL_OPEN, 'first Medium toggle opens the modal rail');
+  check(JSON.stringify(await mainRect()) === JSON.stringify(before), 'opening Medium rail leaves the main geometry in place');
+  check(await page.eval(`(() => {
+    const dialog = document.querySelector('#navigation-modal');
+    document.querySelector('#noi-dung').focus();
+    return document.activeElement?.id === 'navigation-expanded-toggle' &&
+      document.querySelector('#navigation-toggle').getAttribute('aria-expanded') === 'true' &&
+      document.querySelector('#navigation-expanded').getBoundingClientRect().width === 220 &&
+      getComputedStyle(dialog, '::backdrop').backgroundColor !== 'rgba(0, 0, 0, 0)' &&
+      window.__mediumRailMain === document.querySelector('#noi-dung');
+  })()`), 'Medium rail renders a scrim, traps focus and retains the same main element');
+  await page.key('Tab', SHIFT);
+  check(await page.eval(`document.activeElement === document.querySelector('#navigation-expanded a[href="/toi"]')`), 'Medium Shift+Tab wraps to the last link');
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement?.id === 'navigation-expanded-toggle'`), 'Medium Tab wraps to the close control');
+  await page.capture('768-modal-expanded-rail');
+  await page.key('Escape');
+  await page.waitFor(`!${RAIL_MODAL_OPEN} && document.activeElement?.id === 'navigation-toggle'`, 'Medium Escape dismisses and restores the base toggle');
+  await page.key('Enter');
+  await page.waitFor(RAIL_MODAL_OPEN, 'Medium Enter opens rail');
+  await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 760, y: 20, button: 'left', clickCount: 1 });
+  await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 760, y: 20, button: 'left', clickCount: 1 });
+  await page.waitFor(`!${RAIL_MODAL_OPEN} && document.activeElement?.id === 'navigation-toggle'`, 'Medium scrim dismisses and restores the base toggle');
+  await page.click(toggle);
+  await page.click('#navigation-expanded-appearance');
+  await page.waitFor(`${PROFILE_OPEN} && !${RAIL_MODAL_OPEN}`, 'Giao diện replaces the expanded rail without stacking dialogs');
+  await page.key('Escape');
+  await page.waitFor(`!${PROFILE_OPEN} && document.activeElement?.id === 'navigation-toggle'`, 'Giao diện reached through the modal restores its base toggle');
+  await page.click(toggle);
+  await page.click(modal);
+  await page.waitFor(`!${RAIL_MODAL_OPEN} && document.activeElement?.id === 'navigation-toggle'`, 'explicit Medium collapse restores the base toggle');
+  check(await page.eval(`localStorage.getItem('vink.ui.rail')`) === preference, 'transient Medium expansion preserves the saved device preference');
 }
 
 async function adaptiveShell(page) {
@@ -2608,7 +2701,12 @@ async function adaptiveShell(page) {
   const hover = await page.eval(`(() => { const r = document.querySelector('#navigation-toggle').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
   await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...hover });
   await page.waitFor(`!document.querySelector('[role=tooltip]').hidden`, 'hover tooltip');
-  check(await page.eval(`(() => { const r = document.querySelector('[role=tooltip]').getBoundingClientRect(); return r.left >= document.querySelector('.vk-ui-rail').getBoundingClientRect().right && r.right <= innerWidth; })()`), 'hover tooltip is outside the scrolling rail and within the viewport');
+  check(await page.eval(`(() => {
+    const r = document.querySelector('#navigation-tooltip').getBoundingClientRect();
+    const rail = document.querySelector('#navigation').getBoundingClientRect();
+    const toggle = document.querySelector('#navigation-toggle').getBoundingClientRect();
+    return r.left >= rail.left && r.right <= rail.right && r.top >= toggle.bottom;
+  })()`), 'hover tooltip stays below the toggle inside the rail width, clear of the page heading');
   await page.capture('1440-rail-tooltip-light');
   await page.key('Escape');
   check(await page.eval(`document.querySelector('[role=tooltip]').hidden`), 'Escape also dismisses a hover tooltip without trigger focus');
@@ -2616,8 +2714,7 @@ async function adaptiveShell(page) {
   check((await page.eval(RAIL_WIDTH)) === 96, 'rail preference survives reload');
   await page.viewport(1024);
   check((await page.eval(RAIL_WIDTH)) === 96, 'manual compact preference survives resize');
-  await page.click('#navigation-toggle');
-  check((await page.eval(RAIL_WIDTH)) === 220, 'manual expanded preference overrides tablet default');
+  await mediumRail(page);
   await page.eval(`localStorage.removeItem('vink.ui.rail')`);
   await page.reload();
   check((await page.eval(RAIL_WIDTH)) === 96, 'tablet defaults to a compact rail');
@@ -2643,6 +2740,12 @@ async function adaptiveShell(page) {
     check(await page.eval(`document.querySelectorAll('[aria-current=page]').length === 0`), `${path} marks no destination active`);
     await assertBrandPlacement(page);
   }
+  await page.goto(args.base + '/ban-viet/33333333-3333-4333-8333-333333333333/kiem-duyet');
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true' &&
+    document.querySelector('#navigation a[href="/ban-viet"]').getAttribute('aria-current') === 'page'`, 'author review activates Desk on the rail');
+  await page.viewport(390);
+  check(await page.eval(`document.querySelector('#bottom-navigation a[href="/ban-viet"]').getAttribute('aria-current') === 'page'`), 'author review activates Desk on the bottom bar');
+  await page.viewport(1440);
   await page.goto(`${args.base}/`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'shell hydration after unknown routes');
   await page.eval(`(() => { for (const href of ['/ban-viet', '/', '/ban-viet']) document.querySelector('#navigation-primary a[href="' + href + '"]').click(); })()`);
@@ -2658,21 +2761,21 @@ async function adaptiveShell(page) {
   check(await page.eval(`document.querySelector('#profile-title').textContent === 'Giao diện' && !document.querySelector('#profile-menu .vk-account-status')`), 'appearance utility contains preferences');
   await page.eval(`document.querySelector('#profile-close').focus()`);
   await page.key('Tab', SHIFT);
-  check(await page.eval(`document.activeElement?.id === 'open-me'`), 'Shift+Tab is contained at the beginning of the modal');
+  check(await page.eval(`document.activeElement === document.querySelector('#overlay-rail input:checked')`), 'Shift+Tab wraps from Close to the last radio');
   await page.key('Tab');
   check(await page.eval(`document.activeElement?.id === 'profile-close'`), 'Tab is contained at the end of the modal');
   await chooseTheme(page, 'dark');
   await textContrast(page, 'dark');
   await page.capture('1440-overlay-dark');
   await page.key('Escape');
-  check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.id === 'profile-trigger'`), 'Escape closes Tôi and restores trigger focus');
+  check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.id === 'profile-trigger'`), 'Escape closes Giao diện and restores trigger focus');
   await page.reload();
   check(await page.eval(`document.documentElement.dataset.theme === 'dark'`), 'theme preference survives reload');
   await assertBrand(page, 'dark');
   await openProfile(page);
   await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 1400, y: 20, button: 'left', clickCount: 1 });
   await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 1400, y: 20, button: 'left', clickCount: 1 });
-  check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.id === 'profile-trigger'`), 'outside click closes Tôi and restores focus');
+  check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.id === 'profile-trigger'`), 'outside click closes Giao diện and restores focus');
   await openProfile(page);
   await page.click('#profile-close');
   check(await page.eval(`!${PROFILE_OPEN}`), 'explicit close works');
@@ -2686,13 +2789,12 @@ async function adaptiveShell(page) {
   check(await page.eval(`${PROFILE_OPEN} && document.querySelector('#profile-trigger').getAttribute('aria-expanded') === 'true'`), 'stale close events leave the reopened overlay and its expanded state intact');
   await page.key('Escape');
   check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.id === 'profile-trigger' && document.querySelector('#profile-trigger').getAttribute('aria-expanded') === 'false'`), 'reopened overlay still dismisses and restores focus');
-  await openProfile(page);
-  await page.click('#open-me');
+  await page.click(RAIL_ME);
   await page.waitFor(`location.pathname === '/toi' && document.querySelector('#me-title')`, 'real Tôi destination');
-  check(await page.eval(`document.querySelector('#profile-trigger').getAttribute('aria-current') === 'page'`), 'Tôi route marks the rail utility active');
+  check(await page.eval(`document.querySelector(${JSON.stringify(RAIL_ME)}).getAttribute('aria-current') === 'page' && !${PROFILE_OPEN}`), 'the rail account link goes straight to /toi and marks its route active');
   await page.eval(`document.querySelector('#profile-trigger').focus()`);
   await page.key('Enter');
-  check(await page.eval(`${PROFILE_OPEN} && document.activeElement?.name === 'overlay-theme' && !document.querySelector('#open-me')`), '/toi can open the appearance panel without a self-link');
+  check(await page.eval(`${PROFILE_OPEN} && document.activeElement?.name === 'overlay-theme'`), '/toi can open the separate appearance panel');
   await page.key('Escape');
   await page.click('#navigation-primary a[href="/"]');
   await page.waitFor(`location.pathname === '/'`, 'overlay history host');
@@ -2745,7 +2847,8 @@ async function adaptiveShell(page) {
   await page.capture('appearance-storage-denied-overlay-dark');
   await chooseTheme(page, 'system');
   await chooseTextSize(page, 200, 'overlay-text');
-  await page.click('#open-me');
+  await page.key('Escape');
+  await page.click(RAIL_ME);
   await page.waitFor(`location.pathname === '/toi' && document.querySelector('#page-theme input:checked')?.value === 'system' &&
     document.querySelector('#page-text input:checked')?.value === '200'`, 'storage-denied System and text size survive client navigation');
   await page.capture('appearance-storage-denied-page-system');
@@ -2812,7 +2915,7 @@ async function adaptiveShell(page) {
   await page.viewport(1024);
   await chooseTextSize(page, 200, 'page-text');
   const compactWords = await page.eval(`(() => {
-    const labels = [...document.querySelectorAll('.vk-ui-rail .vk-ui-nav-item__label')].filter((el) => el.textContent === 'Khám phá');
+    const labels = [...document.querySelectorAll('#navigation .vk-ui-nav-item__label')].filter((el) => el.textContent === 'Khám phá');
     return { count: labels.length, intact: labels.every((el) => [[0,4],[5,8]].every(([a,b]) => {
       const range = document.createRange(); range.setStart(el.firstChild,a); range.setEnd(el.firstChild,b);
       return range.getClientRects().length === 1;
@@ -2864,13 +2967,21 @@ async function appearanceFirstPaint(page) {
   for (const [theme, os] of [['light', 'dark'], ['dark', 'light'], ['system', 'light'], ['system', 'dark']]) {
     await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: os }] });
     await page.eval(theme === 'system' ? `localStorage.removeItem('vink.ui.theme')` : `localStorage.setItem('vink.ui.theme', '${theme}')`);
-    for (const width of [1440, 320]) {
+    for (const width of [1440, 768, 320]) {
       await page.viewport(width, 900);
       await page.send('Network.setBlockedURLs', { urls: [`${args.base}/pkg/vink.js*`, `${args.base}/pkg/vink_bg.wasm*`] });
       await page.goto(`${args.base}/toi`);
       navigations++;
-      const toiNavSelector = width >= 760 ? '#profile-trigger' : '.vk-ui-bottom-nav a[href="/toi"]';
-      const toiAxRole = width >= 760 ? 'button' : 'link';
+      const toiNavSelector = width >= 760 ? RAIL_ME : '.vk-ui-bottom-nav a[href="/toi"]';
+      const guestLabel = await page.eval(`document.querySelector('meta[name="vink-sign-in"]') ? 'Đăng nhập' : 'Tài khoản'`);
+      if (width === 768) {
+        check(await page.eval(`(() => {
+          const toggle = document.querySelector('#navigation-toggle');
+          return ${RAIL_WIDTH} === 96 && toggle.getAttribute('aria-expanded') === 'false' &&
+            toggle.getAttribute('aria-controls') === 'navigation-modal' &&
+            toggle.querySelector('[data-icon="menu"]').getClientRects().length === 1;
+        })()`), '768px rail button and glyph match the compact CSS before hydration');
+      }
       for (const scale of [100, 200]) {
         await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
         const name = `appearance-first-paint-${theme}-os-${os}-${width}-text${scale}`;
@@ -2888,8 +2999,8 @@ async function appearanceFirstPaint(page) {
         await page.capture(`${name}-appearance`, { ...firstPaintMeta, state: 'before-hydration-scrolled' });
         if (scale === 100) {
           const axBefore = await collectElementAccessibility(page, toiNavSelector);
-          const axBeforeEval = evaluateAccessibleElement(axBefore, { role: toiAxRole, name: 'Tôi', excludeSubstrings: ['TT', '•'] });
-          check(axBeforeEval.ok, `${name}: Tôi AX exposes 'Tôi' before hydration (${axBeforeEval.reasons.join('; ')})`);
+          const axBeforeEval = evaluateAccessibleElement(axBefore, { role: 'link', name: guestLabel, excludeSubstrings: ['TT', '•'] });
+          check(axBeforeEval.ok, `${name}: SSR exposes the account link with the guest label (${axBeforeEval.reasons.join('; ')})`);
         }
         const state = await page.eval(`({ hydrated: document.documentElement.dataset.hydrated === 'true', theme: document.documentElement.dataset.theme || 'system', choices: ['page-theme', 'overlay-theme'].map(id => document.querySelector('#' + id + ' input:checked')?.value) })`);
         if (state.hydrated || state.theme !== theme || state.choices.some(value => value !== theme)) mismatches.push({ name, expected: theme, ...state });
@@ -2897,8 +3008,9 @@ async function appearanceFirstPaint(page) {
       await page.send('Network.setBlockedURLs', { urls: [] });
       await page.reload();
       await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'appearance hydration after reload');
+      await waitForPageAccount(page);
       const axAfter = await collectElementAccessibility(page, toiNavSelector);
-      const axAfterEval = evaluateAccessibleElement(axAfter, { role: toiAxRole, name: 'Tôi', excludeSubstrings: ['TT', '•'] });
+      const axAfterEval = evaluateAccessibleElement(axAfter, { role: 'link', name: 'Tôi', excludeSubstrings: ['TT', '•'] });
       check(axAfterEval.ok, `first-paint reload ${theme}/${os}/${width}: Tôi AX exposes 'Tôi' after hydration (${axAfterEval.reasons.join('; ')})`);
       const hydrated = await page.eval(`({ theme: document.documentElement.dataset.theme || 'system', choices: ['page-theme', 'overlay-theme'].map(id => document.querySelector('#' + id + ' input:checked')?.value), paints: window.__appearancePaints })`);
       if (hydrated.theme !== theme || hydrated.choices.some(value => value !== theme) || hydrated.paints.some(value => value !== `${theme}:${theme}`)) mismatches.push({ name: 'hydration-' + theme + '-' + width, expected: theme, ...hydrated });
@@ -2955,7 +3067,7 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   await page.tabToBody();
   await page.waitFor(`${selected} === ${JSON.stringify(LAST_LINE)}`, 'selection after rail changes');
   await openProfile(page);
-  check(!(await page.dialogOpen('leave-editor')), 'opening Tôi utility does not invoke the leave guard');
+  check(!(await page.dialogOpen('leave-editor')), 'opening Giao diện does not invoke the leave guard');
   await page.click('#overlay-text label:has([value="200"])');
   await page.waitFor(`getComputedStyle(document.documentElement).fontSize === '32px'`, 'panel enlarges text in the dirty editor');
   await page.click('#overlay-rail label:has([value="expanded"])');
@@ -2996,8 +3108,7 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
     if (destination.endsWith('/kiem-duyet')) {
       await page.click('#editor-review-status');
     } else if (destination === '/toi') {
-      await openProfile(page);
-      await page.click('#open-me');
+      await page.click(RAIL_ME);
     } else {
       await page.click(`#navigation-primary a[href="${destination}"]`);
     }
@@ -3006,6 +3117,16 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
     await page.key('Escape');
     await page.waitFor(selectionAfterEscape, `selection after cancelling navigation to ${destination}`);
   }
+  await page.viewport(768);
+  await page.click('#navigation-toggle');
+  await page.waitFor(RAIL_MODAL_OPEN, 'Medium rail opens over the dirty editor');
+  await page.click('#navigation-expanded a[href="/toi"]');
+  await page.waitFor(`!${RAIL_MODAL_OPEN} && document.querySelector('[data-testid=leave-editor]').open &&
+    location.pathname === '${editorPath}'`, 'Medium account link closes the rail and goes through the dirty leave guard');
+  await page.key('Escape');
+  await page.waitFor(selectionAfterEscape, 'cancelling the Medium account link restores the editor selection');
+  check(await page.eval(view) && (await page.body()) === written, 'Medium rail and the leave guard keep the same editor and text');
+  await page.viewport(1440);
   await openProfile(page);
   await page.viewport(390);
   await page.waitFor(`!${PROFILE_OPEN}`, 'editor overlay closes on mobile resize');
@@ -3125,6 +3246,7 @@ async function captureRecovery(page, state, selector) {
 
 async function selectChevron(page) {
   console.log('Select #135: shared geometry and native keyboard in the desk:');
+  const inset16 = { icon: 16, inset: 16, reserve: 52, gap: 20 };
   await page.goto(`${args.base}/ban-viet`);
   await page.waitFor(`document.documentElement.dataset.hydrated==='true' && document.querySelector('#draft-sort')`, 'native sort');
   for (const theme of ['light','dark']) for (const width of [320,390,834,1440,1536]) for (const scale of [100,200]) {
@@ -3132,12 +3254,12 @@ async function selectChevron(page) {
     await page.eval(`document.documentElement.dataset.theme='${theme}';document.documentElement.style.fontSize='${scale}%';document.querySelector('#draft-sort').scrollIntoView({block:'center'})`);
     await page.eval('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');
     const scenario=`select-desk-${theme}-${width}-${scale}`;
-    await checkSelectGeometry(page,'#draft-sort',check,scenario);
+    await checkSelectGeometry(page,'#draft-sort',check,scenario,inset16);
     // Real native key dispatch, rather than changing .value or emitting a synthetic change.
     await page.eval(`document.querySelector('#draft-sort').focus()`);
     await selectCharacter(page,'t');
     await page.waitFor(`document.querySelector('#draft-sort').value==='title'`, 'keyboard A–Z');
-    await checkSelectGeometry(page,'#draft-sort',check,`${scenario} A–Z`);
+    await checkSelectGeometry(page,'#draft-sort',check,`${scenario} A–Z`,inset16);
     await selectCharacter(page,'m');
     await page.waitFor(`document.querySelector('#draft-sort').value==='recent'`, 'keyboard recent');
     await page.capture(scenario);
@@ -3146,7 +3268,7 @@ async function selectChevron(page) {
   await page.eval(`document.querySelector('#draft-sort').focus()`);
   const focus=await page.eval(`(() => {const s=document.querySelector('#draft-sort'),c=getComputedStyle(s);return {native:document.activeElement===s,outline:c.outlineWidth,offset:c.outlineOffset,icon:getComputedStyle(s.parentElement.querySelector('svg')).color,system:(()=>{const p=document.createElement('span');p.style.color='ButtonText';document.body.append(p);const c=getComputedStyle(p).color;p.remove();return c})()}})()`);
   check(focus.native && focus.outline==='2px' && focus.offset==='-2px' && focus.icon===focus.system,'forced-colors: native sort keeps focus and one inset perimeter');
-  await checkSelectGeometry(page,'#draft-sort',check,'desk forced-colors');
+  await checkSelectGeometry(page,'#draft-sort',check,'desk forced-colors',inset16);
   await page.capture('select-desk-forced-colors-1440-200');
   await page.send('Emulation.setEmulatedMedia',{features:[LIGHT_SYSTEM]});
   await page.eval(`document.documentElement.style.fontSize='';delete document.documentElement.dataset.theme`);
@@ -3196,7 +3318,7 @@ async function draftR6Hierarchy(page) {
   }));
   const gate = new DraftGate(page); gate.list = {body:{drafts:cards}}; await gate.enable();
   await page.goto(`${args.base}/ban-viet`);
-  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length===3 && document.querySelector('#draft-scope').textContent==='Đã tải 3 tác phẩm.'`, 'compact R6 fixture');
+  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length===3 && document.querySelector('#draft-scope').textContent.trim()==='Hiển thị 3 tác phẩm'`, 'compact R6 fixture');
   for (const [width, scale, theme] of [[390,100,'light'], [320,200,'dark'], [1440,100,'light'], [1280,100,'light'], [1440,200,'dark'], [1280,200,'dark']]) {
     await page.viewport(width);
     await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:0,y:0});
@@ -3261,7 +3383,7 @@ async function draftDashboard(page) {
   }
   const initial = await gate.next('gets');
   await page.waitFor(`document.querySelector('[data-testid=draft-loading]')`, 'initial dashboard loading');
-  check(await page.eval(`document.querySelector('[data-testid=draft-content]').getAttribute('aria-busy') === 'true' && !document.querySelector('[data-testid=draft-empty]') && !document.querySelector('#create-draft')`), 'loading is distinct from empty and cannot create');
+  check(await page.eval(`document.querySelector('[data-testid=draft-content]').getAttribute('aria-busy') === 'true' && !document.querySelector('[data-testid=draft-empty]') && !document.querySelector('#create-draft') && document.querySelector('#draft-scope').hidden && document.querySelectorAll('#drafts [role=status]').length===1`), 'opening shows one status, no empty state and no create');
   await gate.fulfill(initial, 503, {error:{code:'dependency_unavailable'}});
   await page.waitFor(`!!document.querySelector('[data-testid=desk-error]')`, 'first-load failure');
   check(await page.eval(`!document.querySelector('[data-testid=draft-empty], [data-testid=draft-no-results], #create-draft') && !!document.querySelector('#draft-search')`), 'first-load failure is not empty and search stays reachable without enabling create');
@@ -3271,7 +3393,7 @@ async function draftDashboard(page) {
   const firstHref = `/ban-viet/${cards[0].work_id}`;
   check(await page.eval(`!document.querySelector('#resume, #resume-title-toggle, [data-testid=draft-resume]') && document.querySelector('.vk-draft-row__link').getAttribute('href')===${JSON.stringify(firstHref)}`), 'removed resume has no replacement or disclosure; first row opens the authorized work');
   check(gate.requests.length===2 && gate.requests.every(u=>new URL(u).searchParams.get('limit')==='24'), 'failed initial read and retry each use only the page read');
-  check(await page.eval(`document.querySelector('#draft-scope').textContent.includes('Đã tải 24 tác phẩm') && document.querySelector('#draft-search-help').textContent === 'Theo tên bản thảo; gồm cả tác phẩm đã đăng'`), '24 loaded rows are not claimed as a global total');
+  check(await page.eval(`document.querySelector('#draft-scope').textContent.trim()==='Hiển thị 24 tác phẩm' && document.querySelector('#draft-search-help').textContent === 'Theo tên bản thảo; gồm cả tác phẩm đã đăng'`), 'scope counts the visible page while search retains its description');
   check(await page.eval(`[...document.querySelectorAll('[data-testid=draft-row]')].every((row, i) => row.querySelector('a').getAttribute('href') === '/ban-viet/' + ${JSON.stringify(cards)}[i].work_id && !row.textContent.includes('Phiên bản') && row.querySelector('time').dateTime === '2026-11-01T08:30:00Z')`), 'every row keeps the provider work_id and raw update instant, with no visible version');
   check(manuscriptRequests === 0, 'list never fetches full manuscripts (no N+1)');
   check(await page.eval(`!document.querySelector('#desk').textContent.match(/Chưa đăng|Đã đăng|góp ý|thể loại|D-05|VINK_DEV_PRINCIPAL/)`), 'no invented publication/profile/feedback state or implementation copy');
@@ -3314,13 +3436,17 @@ async function draftDashboard(page) {
     check(await page.eval(`(() => {
       const row=document.querySelector('.vk-draft-row__link'), arrow=row.querySelector('.vk-draft-row__open');
       const targets=['#draft-sort','#refresh-drafts'].map(s=>document.querySelector(s).getBoundingClientRect());
-      return arrow.getAttribute('aria-hidden')==='true' && targets.every(r=>r.left>=0 && r.right<=innerWidth && r.width>=48 && r.height>=48);
+      return arrow.getAttribute('aria-hidden')==='true' && (${scale}===200 || ${width}===320 || getComputedStyle(arrow).display!=='none') && targets.every(r=>r.left>=0 && r.right<=innerWidth && r.width>=48 && r.height>=48);
     })()`), `#213 ${width}/${scale}: sort/refresh targets fit without shrinking`);
     check(await page.eval(`(() => {
       const create=document.querySelector('#create-draft'), refresh=document.querySelector('#refresh-drafts');
       const r=create.getBoundingClientRect(), label=create.querySelector('.vk-ui-button__label');
       const range=document.createRange(); range.selectNodeContents(label);
-      return document.querySelectorAll('#create-draft').length===1 && create.type==='button' &&
+      const picks=['#create-draft-format','#draft-sort'].map(s=>document.querySelector(s));
+      return document.querySelectorAll('#create-draft').length===1 && create.type==='button' && create.closest('#heading') &&
+        document.querySelectorAll('#desk h1').length===1 && document.querySelector('#drafts h2#draft-list-title')?.textContent==='Tác phẩm của bạn' &&
+        picks.every(p=>getComputedStyle(p).appearance==='none' && getComputedStyle(p).backgroundImage==='none' && p.parentElement.dataset.selectVariant==='inset-16' && p.parentElement.querySelectorAll('svg[data-icon=expand-more]').length===1) &&
+        getComputedStyle(picks[0].closest('.vk-ui-field').querySelector('.vk-ui-field__required')).display==='none' &&
         create.textContent==='Tạo bản thảo' && create.classList.contains('vk-ui-button--filled') &&
         getComputedStyle(create).backgroundColor!=='rgba(0, 0, 0, 0)' &&
         create.querySelectorAll('svg[data-icon=add][aria-hidden=true]').length===1 &&
@@ -3341,6 +3467,22 @@ async function draftDashboard(page) {
       await page.capture(`desk-last-${width}-${scale}-${theme}`);
     }
   }
+  await page.viewport(320,800);
+  await page.eval(`document.documentElement.style.fontSize=''; document.documentElement.dataset.text='200'; scrollTo(0,0); document.fonts.ready`);
+  check(await page.eval(`(() => {
+    const search=document.querySelector('.vk-draft-search .vk-ui-search__shell').getBoundingClientRect();
+    const create=document.querySelector('.vk-desk-create').getBoundingClientRect();
+    const heading=document.querySelector('#desk-title').getBoundingClientRect();
+    const nav=document.querySelector('#bottom-navigation').getBoundingClientRect();
+    return getComputedStyle(document.documentElement).fontSize==='32px' && document.documentElement.scrollWidth<=innerWidth &&
+      search.top>=0 && search.bottom<=nav.top+1 && Math.abs(create.left-heading.left)<=1;
+  })()`), 'F-15 search is visible above navigation on the first 320×800 app-text200 viewport');
+  await page.capture('desk-audit-320x800-text200', {
+    requestedScene: { width: 320, height: 800, theme: 'dark', scale: 200 },
+    requiredTargets: ['#heading', '#draft-search', '#bottom-navigation'],
+    boundary: 'Chrome-CDP viewport and in-app root text scale',
+  });
+  await page.eval(`delete document.documentElement.dataset.text`);
   // Blank and unbroken titles retain their full accessible value and one real destination.
   for (const [variant,title] of [['blank',''],['word','[Fixture] '+'Đườngỹỷữợ'.repeat(20)]]) {
     gate.list={body:{drafts:[{...cards[0],title}]}};
@@ -3355,6 +3497,10 @@ async function draftDashboard(page) {
   }
   await page.eval(`document.documentElement.style.fontSize = ''`);
   await page.viewport(1440);
+  check(await page.eval(`(() => {
+    const rects=['.vk-draft-search .vk-ui-search__shell','#draft-sort','#refresh-drafts'].map(s=>document.querySelector(s).getBoundingClientRect());
+    return rects.every(r=>Math.abs(r.top-rects[0].top)<=1 && Math.abs(r.height-48)<=1);
+  })()`), 'F-10 Search, Sort and Refresh share the 48px desktop row');
   gate.list = { body: { drafts: cards } };
   await page.click('#refresh-drafts');
   await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 24`, 'restore 24 loaded rows');
@@ -3365,7 +3511,7 @@ async function draftDashboard(page) {
     check(gate.requests.length === requestsBefore, 'unsubmitted search text does not issue a read');
     await page.key('Enter');
   };
-  await page.waitFor(`document.querySelector('[data-testid=draft-result-count]').textContent.includes('Đã tải 24')`, 'settled inventory before typing');
+  await page.waitFor(`document.querySelector('[data-testid=draft-result-count]').textContent.includes('Hiển thị 24')`, 'settled inventory before typing');
   await page.eval(`window.__resultAnnouncements=[]; window.__resultObserver = new MutationObserver(() => window.__resultAnnouncements.push(document.querySelector('[data-testid=draft-result-count]').textContent)); window.__resultObserver.observe(document.querySelector('[data-testid=draft-result-count]'), {childList:true,subtree:true,characterData:true})`);
   await search('duong ve');
   await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 2`, 'accentless Vietnamese results');
@@ -3374,14 +3520,14 @@ async function draftDashboard(page) {
   await search('không có tên này');
   await page.waitFor(`document.querySelector('[data-testid=draft-no-results]')`, 'no results');
   check(await page.eval(`document.activeElement.id==='draft-search'`), 'submitting a server query preserves focus');
-  await page.waitFor(`document.querySelector('[data-testid=draft-result-count]').textContent==='Đã tải 0 tác phẩm.'`, 'one settled no-result announcement');
+  await page.waitFor(`document.querySelector('[data-testid=draft-result-count]').textContent.trim()==='Không có kết quả'`, 'one settled no-result announcement');
   check(await page.eval(`window.__resultAnnouncements.length>=3 && document.querySelectorAll('#drafts [role=status]').length===1`), 'one live result status reports each completed server query');
   await page.eval(`window.__resultObserver.disconnect()`);
   check(await page.eval(`!document.querySelector('[data-testid=draft-empty]') && !!document.querySelector('#create-draft') && !!document.querySelector('#draft-search')`), 'filtered miss is not first-use; create and search remain reachable');
   await page.viewport(390);
   await page.eval(`document.querySelector('#drafts').scrollIntoView({ block: 'start' })`);
   await page.capture('desk-no-results-390');
-  check(await page.eval(`!!document.querySelector('[data-testid=draft-no-results] .vk-empty-state__actions #clear-draft-search')`), 'draft clear belongs to the shared no-results composition');
+  check(await page.eval(`!!document.querySelector('[data-testid=draft-no-results] .vk-empty-state__actions #clear-draft-search.vk-ui-button--tonal') && document.querySelectorAll('#desk .vk-ui-button--filled').length===1`), 'F-16 clear is tonal and create is the sole filled action in no-results');
   await captureRecovery(page, 'desk-no-results', '[data-testid=draft-no-results]');
   await page.click('#clear-draft-search');
   await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 24`, 'clear query');
@@ -3401,9 +3547,16 @@ async function draftDashboard(page) {
   await page.eval(`window.__draftSearchInput.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true}))`);
   gate.list = { status: 503, body: { error: { code: 'dependency_unavailable', message: 'test fixture' } } };
   gate.holdGets = true;
+  const rowTop = `document.querySelector('#draft-results').getBoundingClientRect().top + scrollY`;
+  const beforeRefresh = await page.eval(rowTop);
   await page.click('#refresh-drafts');
   const pendingRefresh = await gate.next('gets');
   check(await page.eval(`document.querySelector('[data-testid=draft-content]').getAttribute('aria-busy') === 'true' && document.querySelectorAll('[data-testid=draft-row]').length === 2 && window.__draftSearchInput === document.querySelector('#draft-search') && document.querySelector('#draft-search').value === 'duong ve' && !location.search`), 'pending refresh keeps loaded rows and private query/input without URL persistence');
+  check(Math.abs(await page.eval(rowTop) - beforeRefresh) <= 1 && await page.eval(`
+    document.querySelector('#refresh-drafts').getAttribute('aria-busy')==='true' &&
+    document.querySelector('#draft-scope [data-testid=author-work-stale]').textContent==='Đang tải lại…' &&
+    document.querySelector('#create-draft').getAttribute('aria-disabled')!=='true' &&
+    !document.querySelector('#create-draft-format').disabled`), 'F-17 refresh keeps list geometry, marks the action busy and permits independent creation');
   gate.holdGets = false;
   await gate.answerGet(pendingRefresh);
   await page.waitFor(`document.querySelector('[data-testid=desk-error]')`, 'dependency failure');
@@ -3426,6 +3579,7 @@ async function draftDashboard(page) {
   await page.waitFor(`document.querySelector('[data-testid=draft-content]').getAttribute('aria-busy') === 'false'`, 'retry settled before lifecycle hints');
   gate.holdGets = true;
   const beforeReconnectPosts = gate.postCount;
+  const beforeBackgroundRefresh = await page.eval(rowTop);
   await page.eval(`window.__deskNow = performance.now.bind(performance); performance.now = () => window.__deskNow() + 121000; document.querySelector('#draft-search').focus(); for (const name of ['online','focus','visibilitychange','pageshow']) (name === 'visibilitychange' ? document : window).dispatchEvent(new Event(name))`);
   const backgroundList = await gate.next('gets');
   await sleep(150);
@@ -3434,18 +3588,34 @@ async function draftDashboard(page) {
   gate.holdGets = false;
   await gate.answerGet(backgroundList);
   await page.waitFor(`document.querySelector('[data-testid=draft-content]').getAttribute('aria-busy') === 'false'`, 'background Desk refresh accepted');
+  check(Math.abs(await page.eval(rowTop) - beforeBackgroundRefresh)<=1, 'F-17 an accepted refresh of the same rows keeps the list position');
   check(await page.eval(`document.activeElement === window.__draftSearchInput`), 'background completion does not move focus');
   await page.eval(`performance.now = window.__deskNow; delete window.__deskNow`);
   gate.list = { status: 403, body: { error: { code: 'forbidden', message: 'test fixture' } } };
   await page.click('#refresh-drafts');
   await page.waitFor(`document.querySelector('[data-testid=desk-access]')?.textContent.includes('không có quyền')`, 'forbidden dashboard');
-  check(await page.eval(`!document.querySelector('[data-testid=draft-empty], #draft-search, #retry-drafts, #create-draft')`), 'forbidden clears private controls and keeps a distinct access state');
+  check(await page.eval(`!document.querySelector('[data-testid=draft-empty], #draft-list-title, #draft-search, #retry-drafts, #create-draft')`), 'forbidden clears the private heading and controls and keeps a distinct access state');
   await captureRecovery(page, 'desk-forbidden', '[data-testid=desk-access]');
   gate.list = { status: 401, body: { error: { code: 'unauthenticated', message: 'test fixture' } } };
   await page.reload();
   await page.waitFor(`document.querySelector('[data-testid=desk-access]')?.textContent.includes('Phiên đăng nhập cần được kiểm tra lại')`, 'unauthenticated dashboard while fixture standing remains active');
   await captureRecovery(page, 'desk-unauthenticated', '[data-testid=desk-access]');
-  check(await page.eval(`!document.querySelector('#create-draft, #retry-drafts') && document.querySelector('[data-testid=desk-access] a').getAttribute('href') === '/toi'`), '401 during an active standing goes to Account for reconciliation');
+  check(await page.eval(`!document.querySelector('#draft-list-title, #create-draft, #retry-drafts') && document.querySelector('[data-testid=desk-access] a').getAttribute('href').startsWith('/toi')`), '401 during an active standing goes to Account for reconciliation');
+  gate.list = { body: { drafts: cards } };
+  await page.reload();
+  await page.waitFor(`document.querySelector('#draft-results .vk-draft-row')`, 'list restored before a session-loss race');
+  gate.holdGets = true;
+  await page.click('#refresh-drafts');
+  const expiredRefresh = await gate.next('gets');
+  await page.click('#create-draft');
+  const lateCreate = await gate.next('posts');
+  const latePosts = gate.postCount;
+  await gate.fulfill(expiredRefresh, 401, { error: { code: 'unauthenticated' } });
+  await page.waitFor(`document.querySelector('[data-testid=desk-access]') && !document.querySelector('#draft-list-title, #draft-results, #create-draft')`, 'F-17 session loss during refresh immediately clears the private list and create');
+  await gate.fulfill(lateCreate, 201, { ...cards[0], document: { format: 'default', source: '' } });
+  await page.eval('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');
+  check(gate.postCount === latePosts && await page.eval(`location.pathname==='/ban-viet' && !document.querySelector('#draft-results, #create-draft')`), 'F-17 a late create acknowledgement cannot restore or navigate a denied session');
+  gate.holdGets = false;
   gate.list = { body: { drafts: [] } };
   await page.reload();
   await page.waitFor(`document.querySelector('[data-testid=draft-empty]')`, 'authorized unfiltered empty dashboard');
@@ -3479,6 +3649,10 @@ async function draftDashboard(page) {
   await page.goto(`${args.base}/ban-viet`);
   await page.waitFor(`document.querySelector('.vk-draft-row__link')`, 'real authorized list');
   const before = await page.eval(`fetch('/api/v1/drafts').then(r => r.json()).then(list => list.drafts.map(d => d.work_id))`);
+  const priorSnapshot = await page.eval(`fetch('/api/v1/author/works?limit=24').then(r=>r.json())`);
+  gate.holdGets = true;
+  await page.click('#refresh-drafts');
+  const earlierRead = await gate.next('gets');
   await page.click('#create-draft');
   const lost = await gate.next('posts');
   const postsBefore = gate.postCount;
@@ -3490,8 +3664,11 @@ async function draftDashboard(page) {
   gate.dropAck = true;
   await page.send('Fetch.continueRequest', { requestId: lost });
   await page.waitFor(`document.querySelector('[data-testid=create-notice]')?.textContent.includes('có thể đã được tạo')`, 'uncertain create after lost 201');
+  await gate.fulfill(earlierRead, 200, priorSnapshot);
+  gate.holdGets = false;
+  await page.waitFor(`document.querySelector('[data-testid=draft-content]').getAttribute('aria-busy') === 'false'`, 'the earlier refresh settles after the lost create response');
   check(gate.droppedStatus === 201 && gate.postCount === postsBefore, 'one real POST committed and its ack was dropped without duplicate submissions');
-  check(await page.eval(`document.querySelector('#create-draft').getAttribute('aria-disabled') === 'true' && location.pathname === '/ban-viet'`), 'uncertain creation stays on desk and blocks another POST');
+  check(await page.eval(`document.querySelector('#create-draft').getAttribute('aria-disabled') === 'true' && location.pathname === '/ban-viet'`), 'F-17 the earlier read cannot reconcile the uncertain POST or unlock creation');
   check(await page.eval(`!!document.querySelector('[data-testid=create-notice] [data-panel="error:uncertain"] .vk-ui-panel__actions #reconcile-drafts')`), 'uncertain creation offers GET reconciliation in its own warning panel');
   await captureRecovery(page, 'desk-uncertain-create', '[data-testid=create-notice]');
   // Failed reconciliation must keep creation blocked.
@@ -3507,7 +3684,12 @@ async function draftDashboard(page) {
   const created = after.filter(id => !before.includes(id));
   check(created.length === 1 && gate.postCount === postsBefore, 'GET reconciliation found the committed draft without retrying POST');
   check(await page.eval(`!!document.querySelector('.vk-draft-row__link[href="/ban-viet/${created[0]}"]')`), 'reconciled draft is an ordinary row');
-  await page.click('.vk-draft-row__link[href="/ban-viet/' + created[0] + '"]');
+  const editorLink = '.vk-draft-row__link[href="/ban-viet/' + created[0] + '"]';
+  for (const [width,height] of [[768,1024], [360,800], [390,844]]) {
+    await page.viewport(width,height);
+    check(await page.eval(`getComputedStyle(document.querySelector(${JSON.stringify(editorLink + ' .vk-draft-row__open')})).display!=='none'`), `F-13 the editor link shows its arrow at ${width}×${height}`);
+  }
+  await page.click(editorLink + ' .vk-author-work__status');
   await page.waitFor(`${EDITOR_READY} && ${TAGS_READY} && location.pathname === '/ban-viet/${created[0]}'`, 'row opens the real draft and its tags');
   check((await page.status()) === 'saved', 'reconciled draft opens at its real saved version');
   const renamed = '[Fixture] Tiêu đề vừa sửa — tiếng Việt ỹ ỷ ữ ợ';
@@ -4708,7 +4890,8 @@ async function mainPhase(page) {
   await page.eval(`document.querySelector('.cm-editor').__appearanceConflictView = 'kept'`);
   await openProfile(page);
   await chooseTheme(page, 'dark');
-  await page.click('#open-me');
+  await page.key('Escape');
+  await page.click(RAIL_ME);
   await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'profile navigation from a conflicted editor uses the guard');
   check(await page.eval(`location.pathname === '/ban-viet/${workId}' && document.querySelector('.cm-editor').__appearanceConflictView === 'kept'`) && (await page.body()) === BODY + TAIL && (await page.status()) === 'conflict', 'appearance and guarded Tôi navigation retain the conflicted editor and text');
   await page.key('Escape');
@@ -4835,8 +5018,7 @@ async function mainPhase(page) {
     await page.click(`a[href="${editorPath}"]`);
     await page.waitFor(`location.pathname === '${editorPath}' && ${EDITOR_READY}`, 'editor reopened');
     await page.typeInBody(' Hủy.');
-    await openProfile(page);
-    await page.click('#open-me');
+    await page.click(RAIL_ME);
     await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'leave dialog');
     check(!(await page.eval(`document.querySelector('[data-testid=leave-recovery]')`)), 'no discard offered while saving is still possible');
     await page.click('#leave-save');
@@ -4848,7 +5030,8 @@ async function mainPhase(page) {
     await page.eval(`document.querySelector('.cm-editor').__appearancePendingView = 'kept'`);
     await openProfile(page);
     await chooseTheme(page, 'light');
-    await page.click('#open-me');
+    await page.key('Escape');
+    await page.click(RAIL_ME);
     await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'profile navigation during a pending save uses the guard');
     check(await page.eval(`location.pathname === '${editorPath}' && document.querySelector('.cm-editor').__appearancePendingView === 'kept'`) && (await page.body()) === pendingText && (await page.status()) === 'saving' && gate.held.length === 0, 'appearance keeps the same pending editor protected without starting another save');
     await page.key('Escape');

@@ -195,7 +195,10 @@ export async function authWeb(page, { args, check, openPage }) {
   check(await page.eval(`Boolean(${q('#use-email-code')} && ${q('#auth-appearance')})`), '#327 real 501 on password login leaves email and Appearance available');
   await page.goto(`${base}/ban-viet`);
   await page.waitFor(`${HYDRATED} && ${q('#desk-sign-in')}`, 'guest desk');
-  check(await page.eval(`${q('#desk-sign-in')}.getAttribute('href') === '/toi' && !${q('#create-draft')} && !${q('[data-testid=draft-empty]')}`), 'Bàn viết points a guest to Tôi and offers neither create nor an empty list');
+  check(await page.eval(`${q('#desk-sign-in')}.getAttribute('href') === '/toi?next=/ban-viet' && !${q('#create-draft')} && !${q('[data-testid=draft-empty]')}`), 'F-06 Bàn viết points a guest to Tôi with a return target and no private controls');
+  await page.goto(`${base}/ban-viet/33333333-3333-4333-8333-333333333333`);
+  await page.waitFor(`${HYDRATED} && ${q('[data-testid=desk-error] #desk-sign-in')}`, 'guest opens a private draft link');
+  check(await page.eval(`${q('#desk-sign-in')}.getAttribute('href') === '/toi?next=/ban-viet'`), 'F-06 a private draft also returns its guest to the Desk after sign-in');
 
   console.log('Auth Web: code request failures keep the typed address:');
   await openAccount(page, base, 'anonymous');
@@ -256,7 +259,8 @@ export async function authWeb(page, { args, check, openPage }) {
   await page.waitFor(`${STANDING} === 'needs_principal' && ${q('#pen-name')}`, 'pen-name step after reload');
   check(true, 'a reload in the middle resumes at the pen-name step');
   await page.click('#pen-name-save');
-  await page.waitFor(`${fieldError('pen-name')}.includes('1 đến 80 ký tự')`, 'empty pen name');
+  await page.waitFor(`${fieldError('pen-name')}.includes('1 đến 80 ký tự') &&
+    document.activeElement === ${q('#pen-name')} && ${q('#pen-name')}.getAttribute('aria-invalid') === 'true'`, 'F-11 empty pen name marks and focuses the field');
   await fill(page, '#pen-name', PEN_NAME_A);
   await page.click('#pen-name-save');
   await page.waitFor(`${STANDING} === 'active'`, 'active account');

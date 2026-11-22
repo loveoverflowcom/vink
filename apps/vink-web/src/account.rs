@@ -241,7 +241,10 @@ pub(crate) fn AuthEntry(#[prop(optional)] reader: bool) -> impl IntoView {
                 <p id="sign-in-closed" class="vk-muted">"Vink chưa mở đăng nhập. Bạn vẫn có thể đọc các tác phẩm công khai."</p>
             }.into_any(),
             Standing::Anonymous => view! { <GuestAuth epoch /> }.into_any(),
-            Standing::NeedsPrincipal => view! { <PenName epoch /> }.into_any(),
+            Standing::NeedsPrincipal => {
+                let focus = forms::focus_within("#password-login, #password-register, #sign-in-code");
+                view! { <PenName epoch focus /> }.into_any()
+            },
             _ => return None,
         };
         Some(view! { <div class="vk-auth-entry">{body}<SessionRetry /></div> })
