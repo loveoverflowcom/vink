@@ -1,5 +1,8 @@
-//! Two bounded SELECTs in one repeatable-read snapshot. A failed metrics statement rolls
-//! back to a savepoint; known titles/state remain usable with unavailable counters.
+//! At most three bounded SELECTs in one repeatable-read snapshot: the page, then two batch
+//! statements over the page's IDs (Thấm/Nhận xét of public anchors; work views of every row).
+//! Each batch statement runs in its own savepoint: a failure rolls back to it, so known
+//! titles/state and the other counters remain usable, and only the failed counters are
+//! unavailable.
 use super::{
     PgStore,
     discussion::read_snapshot,
@@ -13,6 +16,7 @@ use crate::domain::{
     draft::DraftVersion,
     draft_query::{DraftPosition, DraftSearch, DraftSort},
     ids::{PrincipalId, RevisionId, WorkId},
+    work_view::count::{FirstPublic, ViewCount, ViewCountFacts, read_view_count},
 };
 use sqlx::{Acquire, AssertSqlSafe, PgPool};
 use time::OffsetDateTime;
@@ -89,6 +93,48 @@ SELECT a.work_id, tham.n AS tham, discussion.n AS comments FROM anchors a
  JOIN tham USING(work_id) JOIN discussion USING(work_id)
 "#;
 
+/// Work views of the page (#342): the stored total, the first publication and the counting
+/// start of each page ID, in the page's snapshot. One statement whatever the page size (the IDs
+/// are at most one page); the owner predicate repeats the page's scope so the statement can
+/// never read another owner's work, whatever IDs it is given. No full text, no reader data:
+/// the read rule (`domain::work_view::count`) turns these facts into the author's number.
+pub const AUTHOR_VIEWS_SQL: &str = r#"
+SELECT w.id AS work_id, t.views, f.provenance, f.first_published_at, c.started_at
+  FROM unnest($1::uuid[]) AS page(work_id)
+  JOIN works w ON w.id = page.work_id AND w.owner_id = $2
+  LEFT JOIN work_view_totals t ON t.work_id = w.id
+  LEFT JOIN work_first_publications f ON f.work_id = w.id
+  LEFT JOIN work_view_counting c ON true
+"#;
+
+type ViewRow = (
+    Uuid,
+    Option<i64>,
+    Option<String>,
+    Option<OffsetDateTime>,
+    Option<OffsetDateTime>,
+);
+
+/// The read rule's facts from one row, or `None` when the stored history is not one the schema
+/// allows (the work's number is then unavailable, never guessed).
+fn view_count(
+    (_, total, provenance, first_published_at, started_at): &ViewRow,
+) -> Option<ViewCount> {
+    let first_public = match (provenance.as_deref(), first_published_at) {
+        (Some("never_public"), None) => FirstPublic::Never,
+        (Some("exact"), Some(at)) => FirstPublic::At(*at),
+        (Some("legacy"), None) => FirstPublic::Legacy,
+        (Some("unknown"), None) => FirstPublic::Unknown,
+        _ => return None,
+    };
+    read_view_count(ViewCountFacts {
+        total: *total,
+        first_public,
+        counting_started_at: *started_at,
+    })
+    .ok()
+}
+
 #[derive(sqlx::FromRow)]
 struct Row {
     work_id: Uuid,
@@ -143,6 +189,7 @@ impl Row {
                 .transpose()?,
             updated_at: self.updated_at,
             publication,
+            views: None,
         })
     }
 }
@@ -223,6 +270,37 @@ async fn search(
             Err(_) => {
                 tracing::warn!("author work metrics unavailable");
                 metrics.rollback().await.map_err(classify)?;
+            }
+        }
+    }
+    let page: Vec<Uuid> = rows
+        .iter()
+        .take(search.size())
+        .map(|w| w.work_id.as_uuid())
+        .collect();
+    if !page.is_empty() {
+        let mut views = tx.begin().await.map_err(classify)?;
+        let counts = sqlx::query_as::<_, ViewRow>(AUTHOR_VIEWS_SQL)
+            .bind(&page)
+            .bind(owner.as_uuid())
+            .fetch_all(&mut *views)
+            .await;
+        match counts {
+            Ok(counts) => {
+                views.commit().await.map_err(classify)?;
+                let mut anomalies = 0_usize;
+                for w in rows.iter_mut().take(search.size()) {
+                    let found = counts.iter().find(|c| c.0 == w.work_id.as_uuid());
+                    w.views = found.and_then(view_count);
+                    anomalies += usize::from(w.views.is_none());
+                }
+                if anomalies > 0 {
+                    tracing::warn!(anomalies, "author work views inconsistent");
+                }
+            }
+            Err(_) => {
+                tracing::warn!("author work views unavailable");
+                views.rollback().await.map_err(classify)?;
             }
         }
     }

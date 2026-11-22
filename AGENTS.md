@@ -116,7 +116,9 @@ those registries rather than duplicating long status narratives across skills.
   [registry](docs/development/work-views.md)):** `VDR-WORK-VIEWS@r1` is `PRODUCT_CONFIRMED`. #341
   adds the write path only: `domain::work_view`, `work_view_*` tables (keyed reader digests,
   reader-free event receipts, 24-hour retention in `vink-worker`), CHOICE-02/03/06
-  `DESIGN_PROPOSED`. No HTTP ingest, read API, Reader signal or Desk number exists yet.
+  `DESIGN_PROPOSED`. #342 adds the author-only read (`views` on `GET /api/v1/author/works`:
+  `counted`/`not_started`/`never_public`/`unavailable`, CHOICE-05 A `DESIGN_PROPOSED`). No HTTP
+  ingest, Reader signal or Desk number exists yet.
 - **Discussion ([ownership ADR](docs/architecture/discussion-ownership.md),
   [core](docs/development/discussion-core.md), [admission](docs/architecture/discussion-admission.md),
   [post-review](docs/development/discussion-post-review.md),

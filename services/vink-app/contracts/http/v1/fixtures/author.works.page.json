@@ -21,6 +21,11 @@
           "tham": 0,
           "comments": 12
         }
+      },
+      "views": {
+        "state": "counted",
+        "count": 8,
+        "counted_since": null
       }
     }
   ],

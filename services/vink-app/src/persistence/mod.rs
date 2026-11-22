@@ -8,7 +8,7 @@ mod abuse;
 mod author_discovery;
 pub use author_discovery::AUTHOR_SEARCH_SQL;
 mod author_works;
-pub use author_works::{AUTHOR_METRICS_SQL, author_page_sql};
+pub use author_works::{AUTHOR_METRICS_SQL, AUTHOR_VIEWS_SQL, author_page_sql};
 pub mod appeals;
 mod discovery;
 mod discussion;

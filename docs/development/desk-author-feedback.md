@@ -41,7 +41,9 @@ CHOICE-02 B: tối đa hai SELECT (aggregate chỉ khi có public anchor) trong 
    revision; approved/present comments theo thread). Không fan-out, không loop query theo card.
 
 Metrics nằm trong savepoint: lỗi aggregate trả `tham/comments: null`, vẫn giữ title/state/link
-editor. Lỗi toàn page vẫn là lỗi đọc; không biến thành empty/zero. `None` publication khi paired
+editor. Từ #342, SELECT batch thứ ba đọc Lượt xem theo `WorkId` cho mọi thẻ của trang (không cần
+public anchor) trong savepoint riêng; luật và bằng chứng ở
+[registry Lượt xem §9](work-views.md#9-đọc-theo-quyền-342). Lỗi toàn page vẫn là lỗi đọc; không biến thành empty/zero. `None` publication khi paired
 pointer lệch public projection là unknown. Không lộ manuscript, actor/voter ID hay toàn revisions.
 Snapshot chỉ nhất quán trong một response; nhiều trang là live keyset, refresh lấy lại head.
 
@@ -64,7 +66,7 @@ Tên public khác tên draft có context rõ; count là text, link đọc là si
 
 - Application/port: `application/author_works.rs`, `ports::AuthorWorkStore`.
 - SQL: `persistence/author_works.rs`; `author_page_sql` và `AUTHOR_METRICS_SQL` là SQL production
-  được EXPLAIN trực tiếp. Không thêm migration/index khi chưa có bằng chứng cần.
+  được EXPLAIN trực tiếp; `AUTHOR_VIEWS_SQL` (#342) thuộc [Lượt xem](work-views.md#9-đọc-theo-quyền-342). Không thêm migration/index khi chưa có bằng chứng cần.
 - HTTP provider: `http/author_works.rs`; fixture `author.works.page.json`.
 - Web: `contract/author_works.rs`, `ui::adapters::author_work_summary`, `DeskIndex`,
   DTO-free `AuthorWorkRow`. Enum tương lai giữ Unknown, metric thiếu/âm không thành zero.
