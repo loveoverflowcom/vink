@@ -30,6 +30,8 @@ mod ingest;
 mod recovery;
 #[path = "postgres/retention.rs"]
 mod retention;
+#[path = "postgres/ung.rs"]
+mod ung;
 
 pub const CALLER: u32 = 501;
 pub const T0: OffsetDateTime = datetime!(2026-11-21 00:00 UTC);
@@ -159,6 +161,44 @@ pub fn tham(
             "kind": "work_endorsement",
             "work_id": work.to_string(),
             "revision_id": revision.to_string()
+        },
+        "semantic_kind": if add.is_some() { "add" } else { "remove" },
+        "action_required": false
+    });
+    if let Some(first) = add {
+        value["first_selection"] = json!(first);
+    }
+    sign(value)
+}
+
+/// `comment.endorsement.ung.changed` (#365): Ưng on `comment` of `work`, owed to `writer`.
+/// `add: Some(first_selection)` adds, `None` removes.
+#[allow(clippy::too_many_arguments)]
+pub fn ung(
+    event: Uuid,
+    actor: Uuid,
+    writer: Uuid,
+    work: Uuid,
+    comment: Uuid,
+    add: Option<bool>,
+    order: i64,
+    when: OffsetDateTime,
+) -> String {
+    let mut value = json!({
+        "event_id": event.to_string(),
+        "event_type": "comment.endorsement.ung.changed",
+        "schema_version": 1,
+        "source_owner": "endorsement",
+        "activation_epoch": 1,
+        "source_order": order,
+        "publication_stamp": {"epoch": 1, "readable": true},
+        "occurred_at": at(when),
+        "actor_id": actor.to_string(),
+        "recipients": sorted(vec![writer]),
+        "target": {
+            "kind": "work_comment_endorsement",
+            "work_id": work.to_string(),
+            "comment_id": comment.to_string()
         },
         "semantic_kind": if add.is_some() { "add" } else { "remove" },
         "action_required": false
@@ -309,7 +349,10 @@ async fn serve_is_not_ready_until_migrated_and_migrating_twice_is_a_no_op(pool: 
     assert_eq!(body["checks"]["schema"], "pending_migrations");
 
     let first = migrate(&pool).await.unwrap();
-    assert_eq!(first.applied, vec![20261128000000, 20261129000000]);
+    assert_eq!(
+        first.applied,
+        vec![20261128000000, 20261129000000, 20261202000000]
+    );
     assert!(migrate(&pool).await.unwrap().applied.is_empty());
     assert_eq!(schema_state(&pool).await.unwrap(), SchemaState::Current);
 
@@ -342,7 +385,8 @@ async fn the_service_owns_only_inbox_tables(pool: PgPool) {
             "notification_groups",
             "recovery_changes",
             "recovery_state",
-            "tham_marks"
+            "tham_marks",
+            "ung_marks"
         ]
     );
 }

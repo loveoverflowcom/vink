@@ -18,6 +18,10 @@
 //! one. Only an add the App flagged `first_selection` may signal, once (P-02B); every other add or
 //! remove reconciles membership of the open group silently (P-03A). The App's flag, not the
 //! absence of a receipt, is the evidence of a first selection (contract §1.2).
+//!
+//! **Ưng (#365).** The same rule per (recipient, actor, comment): the writer hears of an actor's
+//! first Ưng on that comment once in its lifetime; removing it before the group is read takes the
+//! contribution away and a group left at zero closes. The marks live in their own table.
 
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -32,7 +36,7 @@ pub const LATE_EVENT_CUTOFF: Duration = Duration::days(30);
 /// How long a receipt (and a comment fence) is kept: past the App's replay horizon and the
 /// late cutoff, so any event the App can still send finds its receipt.
 pub const RECEIPT_HORIZON: Duration = Duration::days(45);
-/// How long a Thấm mark is kept after its last change. It is defense in depth for P-02B
+/// How long a Thấm or Ưng mark is kept after its last change. It is defense in depth for P-02B
 /// (ordering and replay); the lifetime guarantee is the App's `first_selection` fact.
 pub const MARK_HORIZON: Duration = Duration::days(400);
 /// How long an acknowledged command answer is replayable for the same `command_key`.
@@ -52,7 +56,7 @@ pub struct GroupKey {
 /// How a group counts its contents.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Counting {
-    /// Distinct actors with a valid contribution (root/reply approvals, Thấm).
+    /// Distinct actors with a valid contribution (root/reply approvals, Thấm, Ưng).
     Actors,
     /// One item per decision (work decision, adverse comment decision).
     Items,
@@ -74,6 +78,8 @@ pub fn group_key(event: &Event) -> Option<GroupKey> {
             ReplyContext::Purged => format!("purged/{comment}"),
         },
         Target::WorkEndorsement { work, revision } => format!("revision/{work}/{revision}"),
+        // #365: one Ưng group per comment and recipient (the writer).
+        Target::WorkCommentEndorsement { comment, .. } => format!("ung/{comment}"),
         Target::WorkModerationDecision { work, revision, .. } => {
             format!("revision/{work}/{revision}/{}", event.semantic.code())
         }
@@ -99,8 +105,8 @@ pub const fn counting(event_type: EventType) -> Counting {
     }
 }
 
-/// The unit of membership an actor-counted event contributes: the approved comment, or the
-/// revision for a Thấm (one contribution per actor).
+/// The unit of membership an actor-counted event contributes: the approved comment, the
+/// revision for a Thấm or the endorsed comment for an Ưng (one contribution per actor).
 pub fn contribution(event: &Event) -> Option<(Uuid, Uuid)> {
     let actor = event.actor?;
     let unit = match event.target {
@@ -108,6 +114,7 @@ pub fn contribution(event: &Event) -> Option<(Uuid, Uuid)> {
             comment
         }
         Target::WorkEndorsement { revision, .. } => revision,
+        Target::WorkCommentEndorsement { comment, .. } => comment,
         _ => return None,
     };
     Some((actor, unit))
@@ -119,6 +126,7 @@ pub const fn work_of(target: Target) -> Option<Uuid> {
         Target::WorkCommentThread { work, .. }
         | Target::WorkCommentReply { work, .. }
         | Target::WorkEndorsement { work, .. }
+        | Target::WorkCommentEndorsement { work, .. }
         | Target::WorkModerationDecision { work, .. }
         | Target::CommentModerationDecision { work, .. }
         | Target::InvalidWork { work }
@@ -177,7 +185,8 @@ pub fn preview(members: &[Member]) -> (i32, Vec<Uuid>) {
     )
 }
 
-/// The stored Thấm mark of one (recipient, actor, work, revision).
+/// The stored mark of one Thấm (recipient, actor, work, revision) or Ưng (recipient, actor,
+/// comment).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Mark {
     pub selected: bool,
@@ -186,7 +195,7 @@ pub struct Mark {
     pub signaled: bool,
 }
 
-/// What a Thấm event does to its mark and to the open group.
+/// What a Thấm or Ưng event does to its mark and to the open group.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ThamStep {
     /// Older than (or equal to) the mark: nothing changes.

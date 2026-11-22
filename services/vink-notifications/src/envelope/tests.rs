@@ -291,6 +291,56 @@ fn each_type_carries_exactly_its_own_fields() {
 }
 
 #[test]
+fn ung_has_its_own_comment_target_and_groups_by_comment() {
+    let comment_target = json!({
+        "kind": "work_comment_endorsement",
+        "work_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "comment_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
+    });
+    let mut ung = tham_example();
+    ung["event_type"] = json!("comment.endorsement.ung.changed");
+    // A Thấm target does not fit the Ưng type, nor the comment target a Thấm.
+    assert_eq!(
+        parse(&signed(ung.clone()), id(THAM_ID)),
+        Err(Invalid::Shape)
+    );
+    let mut tham = tham_example();
+    tham["target"] = comment_target.clone();
+    assert_eq!(parse(&signed(tham), id(THAM_ID)), Err(Invalid::Shape));
+
+    ung["target"] = comment_target;
+    let removed = parse(&signed(ung.clone()), id(THAM_ID)).unwrap();
+    assert_eq!(removed.event_type, EventType::CommentUngChanged);
+    assert_eq!(
+        removed.target,
+        Target::WorkCommentEndorsement {
+            work: id("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+            comment: id("dddddddd-dddd-4ddd-8ddd-dddddddddddd"),
+        }
+    );
+    let key = crate::rollup::group_key(&removed).unwrap();
+    assert_eq!(key.target_key, "ung/dddddddd-dddd-4ddd-8ddd-dddddddddddd");
+    assert_eq!(
+        crate::rollup::contribution(&removed),
+        Some((
+            id("44444444-4444-4444-8444-44444444444d"),
+            id("dddddddd-dddd-4ddd-8ddd-dddddddddddd")
+        ))
+    );
+
+    // Add needs first_selection, like Thấm; never addressed to its own actor.
+    ung["semantic_kind"] = json!("add");
+    assert_eq!(
+        parse(&signed(ung.clone()), id(THAM_ID)),
+        Err(Invalid::Shape)
+    );
+    ung["first_selection"] = json!(true);
+    assert!(parse(&signed(ung.clone()), id(THAM_ID)).is_ok());
+    ung["recipients"] = json!(["44444444-4444-4444-8444-44444444444d"]);
+    assert_eq!(parse(&signed(ung), id(THAM_ID)), Err(Invalid::Shape));
+}
+
+#[test]
 fn reply_contexts_are_root_reply_or_purged() {
     let mut root = reply_example();
     root["target"]["reply_context_kind"] = json!("root");

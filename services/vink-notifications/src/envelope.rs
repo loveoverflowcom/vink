@@ -34,17 +34,20 @@ pub enum EventType {
     WorkModerationDecided,
     CommentModerationAdverse,
     WorkThamChanged,
+    /// Ưng on a comment (#365): owed to the comment's writer.
+    CommentUngChanged,
     AdminNoticeReserved,
     Invalidation,
 }
 
 impl EventType {
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::CommentRootApproved,
         Self::CommentReplyApproved,
         Self::WorkModerationDecided,
         Self::CommentModerationAdverse,
         Self::WorkThamChanged,
+        Self::CommentUngChanged,
         Self::AdminNoticeReserved,
         Self::Invalidation,
     ];
@@ -56,6 +59,7 @@ impl EventType {
             Self::WorkModerationDecided => "work.moderation.decided",
             Self::CommentModerationAdverse => "comment.moderation.adverse",
             Self::WorkThamChanged => "work.endorsement.tham.changed",
+            Self::CommentUngChanged => "comment.endorsement.ung.changed",
             Self::AdminNoticeReserved => "admin.notice.reserved",
             Self::Invalidation => "notification.invalidation",
         }
@@ -141,6 +145,11 @@ pub enum Target {
     WorkEndorsement {
         work: Uuid,
         revision: Uuid,
+    },
+    /// Ưng on a comment of a work (#365).
+    WorkCommentEndorsement {
+        work: Uuid,
+        comment: Uuid,
     },
     WorkModerationDecision {
         work: Uuid,
@@ -274,6 +283,8 @@ enum WireTarget {
         work_id: String,
         revision_id: String,
     },
+    #[serde(rename = "work_comment_endorsement")]
+    WorkCommentEndorsement { work_id: String, comment_id: String },
     #[serde(rename = "work_moderation_decision")]
     WorkModerationDecision {
         work_id: String,
@@ -466,6 +477,13 @@ fn target(wire: WireTarget) -> Result<Target, Invalid> {
             work: uuid(&work_id)?,
             revision: uuid(&revision_id)?,
         },
+        WireTarget::WorkCommentEndorsement {
+            work_id,
+            comment_id,
+        } => Target::WorkCommentEndorsement {
+            work: uuid(&work_id)?,
+            comment: uuid(&comment_id)?,
+        },
         WireTarget::WorkModerationDecision {
             work_id,
             revision_id,
@@ -559,6 +577,17 @@ fn check_type(event: &Event, owner: &str) -> Result<(), Invalid> {
         T::WorkThamChanged => shape(
             owner == "endorsement"
                 && matches!(event.target, Target::WorkEndorsement { .. })
+                && matches!(event.semantic, S::Add | S::Remove)
+                && event.actor.is_some()
+                && has_recipients
+                && not_self
+                && event.stamp.is_some()
+                && (event.semantic == S::Add) == event.first_selection.is_some()
+                && !event.action_required,
+        ),
+        T::CommentUngChanged => shape(
+            owner == "endorsement"
+                && matches!(event.target, Target::WorkCommentEndorsement { .. })
                 && matches!(event.semantic, S::Add | S::Remove)
                 && event.actor.is_some()
                 && has_recipients

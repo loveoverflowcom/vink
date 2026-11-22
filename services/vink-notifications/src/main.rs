@@ -155,8 +155,8 @@ async fn maintenance(config: &OperatorConfig, task: Maintenance) -> Result<(), F
             .await
             .map(|purged| {
                 println!(
-                    "purged {} group(s), {} receipt(s), {} Thấm mark(s), {} fence(s), {} command answer(s)",
-                    purged.groups, purged.receipts, purged.marks, purged.fences, purged.commands
+                    "purged {} group(s), {} receipt(s), {} Thấm mark(s), {} Ưng mark(s), {} fence(s), {} command answer(s)",
+                    purged.groups, purged.receipts, purged.marks, purged.ung_marks, purged.fences, purged.commands
                 );
             })
             .map_err(|error| Failure::Runtime(format!("purge failed: {}", store::error_class(&error)))),
@@ -164,7 +164,7 @@ async fn maintenance(config: &OperatorConfig, task: Maintenance) -> Result<(), F
             .await
             .map(|status| {
                 println!(
-                    "inboxes {}; groups {} (open {}, expired awaiting purge {}); members {}; receipts {}; Thấm marks {}; oldest group {}; inbox {}",
+                    "inboxes {}; groups {} (open {}, expired awaiting purge {}); members {}; receipts {}; Thấm marks {}; Ưng marks {}; oldest group {}; inbox {}",
                     status.inboxes,
                     status.groups,
                     status.open_groups,
@@ -172,6 +172,7 @@ async fn maintenance(config: &OperatorConfig, task: Maintenance) -> Result<(), F
                     status.members,
                     status.receipts,
                     status.marks,
+                    status.ung_marks,
                     status
                         .oldest_group_days
                         .map_or("-".into(), |days| format!("{days} day(s)")),
@@ -323,6 +324,7 @@ async fn purge_periodically(pool: sqlx::PgPool, mut stopped: watch::Receiver<boo
                 groups = purged.groups,
                 receipts = purged.receipts,
                 marks = purged.marks,
+                ung_marks = purged.ung_marks,
                 fences = purged.fences,
                 commands = purged.commands,
                 "retention purge"

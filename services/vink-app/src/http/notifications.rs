@@ -288,6 +288,7 @@ fn summary_kind(kind: GroupKind, shown: &Shown) -> &'static str {
         (GroupKind::RootApproved, _) => "comment_root_rollup",
         (GroupKind::ReplyApproved, _) => "comment_reply_rollup",
         (GroupKind::Tham, _) => "work_tham_rollup",
+        (GroupKind::Ung, _) => "comment_ung_rollup",
         (GroupKind::WorkDecision, Some("rejected")) => "work_moderation_rejected",
         (GroupKind::WorkDecision, _) => "work_moderation_approved",
         (GroupKind::CommentAdverse, Some("removed")) => "comment_moderation_removed",

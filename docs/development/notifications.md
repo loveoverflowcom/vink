@@ -406,7 +406,7 @@ Phần chính ở [PR #391](https://github.com/loveoverflowcom/vink/pull/391); p
 | --- | --- |
 | Sản phẩm | `PRODUCT_CONFIRMED` trong brief `#305` R3 và quyết định 20/11/2026 về trích đoạn/Ưng (`#365`); [VDR-NOTIFICATIONS@r1](../../decisions/proposals/VDR-NOTIFICATIONS.r1.toml) và [VDR-NOTIFICATIONS@r2](../../decisions/proposals/VDR-NOTIFICATIONS.r2.toml) giữ `PENDING`. |
 | Kiến trúc | `T-06 / CHOICE-20 = A` (§8.1), độ dài trích đoạn 140 grapheme, MAC token theo phiên, `cursor_key` của danh sách Thấm và hợp đồng Ưng (`#365`) ghi ở [VDR-NOTIFICATIONS-CONTRACT@r2](../../decisions/proposals/VDR-NOTIFICATIONS-CONTRACT.r2.toml) (`PENDING`, mức `DESIGN_PROPOSED`). |
-| Triển khai | `persistence-api`: client socket inbox (`notification_inbox.rs`), lõi thuần `domain::notification_inbox`, đọc lô `persistence::notification_reads`, route `http::notifications` ([hợp đồng §2.8](../../services/vink-app/contracts/http/v1/notifications.md#28-route-gateway-đã-triển-khai-348), [fixture JSON](../../services/vink-app/contracts/http/v1/fixtures/notifications-gateway.json)), seam `contributions` của service ([RPC §3](../../services/vink-notifications/contracts/rpc/v1/README.md#3-inbox-socket-inbox)), migration `20261201000000_public_endorser_list`. Producer/rollup/DTO runtime của Ưng (`#365`) còn chờ; UI thuộc `#364`. |
+| Triển khai | `persistence-api`: client socket inbox (`notification_inbox.rs`), lõi thuần `domain::notification_inbox`, đọc lô `persistence::notification_reads`, route `http::notifications` ([hợp đồng §2.8](../../services/vink-app/contracts/http/v1/notifications.md#28-route-gateway-đã-triển-khai-348), [fixture JSON](../../services/vink-app/contracts/http/v1/fixtures/notifications-gateway.json)), seam `contributions` của service ([RPC §3](../../services/vink-notifications/contracts/rpc/v1/README.md#3-inbox-socket-inbox)), migration `20261201000000_public_endorser_list`. Ưng (`#365`): §9; UI thuộc `#364`. |
 | Bằng chứng | §8.3, §8.5. |
 
 ### 8.1. `T-06 / CHOICE-20 = A`
@@ -449,8 +449,7 @@ BUFFERS)` là index scan dừng sau 51 hàng, 417 buffer, khoảng 0,5 ms, khôn
 
 `#365`: AC-01/02 phần Gateway PASS (trích đoạn, cắt theo grapheme, các ca gỡ/hold/ẩn/mất quyền và
 lùi về đóng góp hợp lệ); PRD `NOTIF-07` đã cập nhật. Còn lại: proposal VDR cho trích đoạn (AC-03) và
-toàn bộ thông báo Ưng (AC-04..06: producer `comment.endorsement.ung.changed`, rollup ở service, đích
-`work_comment_endorsement`) — chưa triển khai.
+thông báo Ưng (AC-04..06) — xem §9.
 
 Lệnh đã chạy (PostgreSQL 17.11 container tạm, scope `systemd-run` 6/8 GiB, `CARGO_BUILD_JOBS=6`):
 `cargo test -p vink-app --lib` (unit mới), `cargo test -p vink-app --test postgres`,
@@ -460,7 +459,7 @@ Lệnh đã chạy (PostgreSQL 17.11 container tạm, scope `systemd-run` 6/8 Gi
 ### 8.4. Còn mở
 
 - ~~Kiểm thử hai process thật trong `cargo xtask verify postgres`~~: §8.5.
-- Proposal VDR cho trích đoạn; thông báo Ưng (`#365` AC-04..06).
+- Signoff của `VDR-NOTIFICATIONS@r2` (trích đoạn, Ưng); runtime Ưng ở §9.
 - Bộ nhớ count `stale` là theo tiến trình; nhiều replica App sẽ có bộ nhớ riêng.
 - Kịch bản process thật dùng fixture danh tính loopback (`VINK_DEV_PRINCIPAL`), không đi qua
   Identity; đăng nhập thật qua Identity đã có ở bước identity của cùng lane.
@@ -494,4 +493,47 @@ về 0 trong hạn 60 s. Lượt lại `RUST_TEST_THREADS=4 cargo xtask verify p
 290, Identity 55, Notifications 26 test PostgreSQL; bốn diễn tập `#347`; bước Gateway; backup/restore),
 mỗi lệnh trong scope `systemd-run` `MemoryMax=8G`, `CARGO_BUILD_JOBS=6`, PostgreSQL 17.11 container tạm.
 Test đối chiếu fixture: `cargo test -p vink-app --lib http::notifications` PASS 4/4.
+
+---
+
+## 9. Hiện trạng `#365`: thông báo Ưng nhận xét
+
+Nhánh `feat/365-thong-bao-ung`. Phần trích đoạn (AC-01..03) đã có ở
+[PR #391](https://github.com/loveoverflowcom/vink/pull/391) và
+[PR #390](https://github.com/loveoverflowcom/vink/pull/390). Bốn chiều trạng thái:
+
+| Chiều | Ghi nhận |
+| --- | --- |
+| Sản phẩm | `PRODUCT_CONFIRMED` theo lời chủ sản phẩm ngày 20/11/2026 (“Có, báo Ưng”); bản ghi [VDR-NOTIFICATIONS@r2](../../decisions/proposals/VDR-NOTIFICATIONS.r2.toml) vẫn `PENDING` chờ signoff đúng revision/SHA-256. |
+| Kiến trúc | Tên loại, đích `work_comment_endorsement`, khóa nhóm `ung/{comment_id}`, bảng dấu riêng `ung_marks` và việc không trả trích đoạn cho dòng Ưng: `DESIGN_PROPOSED` ([VDR-NOTIFICATIONS-CONTRACT@r2](../../decisions/proposals/VDR-NOTIFICATIONS-CONTRACT.r2.toml), `PENDING`). |
+| Triển khai | `persistence-api` + `worker-provider`: producer trong `persistence::endorsement::set_endorsement` (App migration `20261203000000_comment_ung_notification` mở rộng CHECK `event_type`), lõi thuần `domain::notification::ung_changed`; service: envelope/rollup/`ung_marks` (migration `20261202000000_comment_ung` của `vink_notifications`), cùng bước P-02B/P-03A với Thấm; Gateway: `GroupKind::Ung`, `summary.kind = comment_ung_rollup`. UI thuộc `#364`. |
+| Bằng chứng | §9.1. |
+
+Hai migration nằm ở hai database khác nhau (`vink` và `vink_notifications`), mỗi bên có lịch sử
+`_sqlx_migrations` riêng; số `20261203000000` của App được chọn khác `20261202000000` của service
+để tránh nhầm khi đọc runbook. Backout service từ chối khi còn nhóm Ưng trong hạn; backout App từ
+chối khi đã có sự kiện Ưng.
+
+### 9.1. Tiêu chí `#365` AC-04..06 theo bằng chứng
+
+| AC | Kết quả | Còn chờ |
+| --- | --- | --- |
+| AC-04 | PASS (unit + PG): `domain::notification::ung_changed` phát `add`/`remove`, `first_selection` từ hàng giữ lại, loại self; producer trong `set_endorsement` cùng transaction (test PG App: chọn → cùng trạng thái không nợ → bỏ → chọn lại; replay không nợ thêm; người viết tự Ưng bị từ chối, không nợ); PRD `NOTIF-01/05`, hợp đồng §1.1/§2.4 và đặc tả miền cập nhật. | — |
+| AC-05 | PASS (PG service): một nhóm cho mỗi `(người viết, comment_id)`; báo một lần mỗi actor + nhận xét kể cả sau bỏ/chọn lại; bỏ Ưng trước Read trừ đóng góp, về 0 ẩn nhóm; sau Read Ưng lại im lặng, người mới mở nhóm mới; sự kiện cũ hơn không đè, sự kiện muộn không báo; dấu purge theo hạn 400 ngày. Gateway (PG + unit): chỉ người viết thấy, nhận xét bị gỡ/hold hoặc tác phẩm không đọc được/khác epoch thì ẩn; đích `work_comment_endorsement`. | — |
+| AC-06 | PASS phần runtime: process thật trong `verify postgres` (Ưng của bạn đọc A trên nhận xét của B tới hộp thư B, không tới chủ bài; gỡ nhận xét làm dòng Ưng biến mất). Proposal mở lại P-08b là `VDR-NOTIFICATIONS@r2` (có từ [PR #390](https://github.com/loveoverflowcom/vink/pull/390)). | Signoff `VDR-NOTIFICATIONS@r2` thuộc chủ sản phẩm. |
+
+**Cần chủ sản phẩm chốt:** 01_DESIGN_SPEC r2 (D7) vẽ trích đoạn của chính nhận xét được Ưng trong
+dòng Ưng, còn `VDR-NOTIFICATIONS@r2` N4 và `#365` AC-01 chỉ cho trích đoạn ở nhận xét gốc/phản hồi
+được duyệt. Runtime theo nguồn nghiệp vụ (không trả `excerpt` cho Ưng). Nếu chủ sản phẩm muốn có
+trích đoạn, cần một revision VDR mới; phía Gateway chỉ cần trả `excerpt` cho `GroupKind::Ung` từ
+facts đã đọc.
+
+Lệnh đã chạy (PostgreSQL 17.11 container tạm, scope `systemd-run` `MemoryMax=11G`,
+`CARGO_BUILD_JOBS=6`): `cargo test -p vink-notifications --lib` (27) và `--test postgres` (30, 2 bỏ
+qua; lượt đầu FAIL vì CHECK `event_type` của `ingestion_receipts`/`notification_groups` chưa có
+loại mới, migration `20261202000000` đã nới cả hai), `cargo test -p vink-app --lib notification`
+(36), `cargo test -p vink-app --test postgres -- notification canonical_document first_publication`
+(36), `cargo clippy -p vink-notifications -p vink-app -p xtask --all-targets -- -D warnings`,
+`RUST_TEST_THREADS=4 cargo xtask verify postgres` PASS 41/41 (App 292, Identity 55, Notifications 30).
+`verify discussion` không chạy: lõi `domain::endorsement` không đổi.
 
