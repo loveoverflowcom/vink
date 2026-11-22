@@ -2,6 +2,37 @@
 
 `https://vink.forum` là URL chính thức. Pages Advanced Mode phục vụ asset từ image Web đã qua qualification. Worker gửi SSR, deep link, health và API đến `https://origin-prod.vink.forum`. Caddy chuyển tiếp đến App. Identity, session và hai database ở VPS. Mỗi đợt phát hành cần một lệnh riêng.
 
+## Mốc triển khai ngày 22/11/2026
+
+- `vink.forum` và `www.vink.forum` chạy trên Pages `vink-production`, nhánh `main`. Bản
+  `69fff7eb-88ce-40e9-a3a5-1dc9207f3bd7` chứa 82 asset byte-for-byte từ image
+  `a9d6a4f9fb0a35b1e0e56f843132d4e3fe5dbb20` và bản vá riêng của Worker để giữ strong ETag.
+  Bản vá đang chạy cần được áp dụng vào source trước khi đóng gói lại từ `develop`.
+- Nameserver là `carlane.ns.cloudflare.com` và `drew.ns.cloudflare.com`. DS `2371/13/2` đã
+  được cả bốn máy chủ `.forum` công bố. Cloudflare DNS, Google Public DNS và Quad9 đều xác
+  thực bản ghi apex. Caddy trả `403` khi gọi thẳng apex qua IP VPS hoặc khi gọi origin riêng
+  thiếu khóa. Origin có HTTPS hợp lệ và vẫn giữ SSR/API trên VPS.
+- Receipt thủ công và bản Caddy trước cutover nằm trong
+  `/opt/vink-prod/pages-bootstrap/a9d6a4f9fb0a35b1e0e56f843132d4e3fe5dbb20/` trên VPS.
+  Chưa có receipt qua controller. URL Preview riêng báo lỗi TLS và alias Pages trả về bị rút
+  ngắn so với SHA đầy đủ mà controller đang dùng. Production chưa có tác phẩm công khai để
+  chạy kịch bản Reader `200`.
+- App và Identity hiện mở [đăng nhập bằng username và mật khẩu](../../docs/development/auth-operations.md#31-production-username-và-mật-khẩu).
+  Giữ cấu hình này qua lần đổi image nếu chưa có quyết định đổi phương thức.
+
+## Khóa gọi workflow thủ công
+
+`VINK_RELEASE_DISPATCH_TOKEN` là GitHub Actions secret ở repo `loveoverflowcom/vink` và là
+secret cùng tên trong Google Cloud Secret Manager của project `vink-d0846`. Secret Manager
+đã xác minh nội dung phiên bản đang dùng. Dùng tài khoản vận hành được cấp quyền và truyền
+giá trị qua stdin hoặc cơ chế nạp secret của môi trường chạy. Khi kiểm kê, đọc tên và trạng thái
+phiên bản. `publish-images.yml` dùng `GITHUB_TOKEN` riêng để đẩy GHCR sau qualification.
+
+Lần dispatch [45017318350](https://github.com/loveoverflowcom/vink/actions/runs/45017318350) của
+`e60593c0798ebce582ba050749b004be00f76920` đã build image. Qualification PostgreSQL dừng vì
+fixture thiếu mật khẩu khi provision role `vink_notifications_migrator`. Cần sửa fixture và
+qualify lại trước khi có receipt image mới.
+
 ## Nguồn và kích thước
 
 | Thành phần | Trước thay đổi | Cách phát hành |
@@ -46,7 +77,17 @@ python3 "$r" status "$@"
 
 HTML/JS/CSS/WASM và lazy imports giữ namespace `/_v/<sha>/pkg/`. Cả A và B tồn tại khi activate B hoặc khi quay lại A. Nếu request đến PoP còn Worker cũ, nó chỉ lấy byte ở alias Pages của SHA đã stage, không gửi cookie. Alias `/pkg/` tương thích cũ trỏ bộ asset bootstrap với revalidation. Khi lần đầu thay HTML **chưa có namespace**, kiểm tab của release cũ và chờ cửa sổ chuyển đổi trước khi tháo origin cũ. Giữ archive và alias còn caller; khi gần giới hạn file/worker, dừng, đo và duyệt chính sách retention trước release tiếp. [Preview aliases](https://developers.cloudflare.com/pages/configuration/preview-deployments/).
 
-SSR/API dùng fetch bypass cache; private/session/Set-Cookie dùng `no-store`. Chỉ các route READ-01 có `private, no-cache` từ App mới giữ revalidation. Giữ API không transform/nén lại trên zone để bảo toàn strong ETag. Range chưa được bật ở asset adapter, GET trả toàn bộ file và HEAD không có body. Bypass cache cho SSR/API, không áp Cache Everything, Always Online hoặc HTML fallback. Kiểm cookie, 304, TTL và header tại domain thật; Chrome/workerd ở loopback chỉ kiểm hợp đồng cục bộ.
+SSR/API dùng fetch bypass cache. Phản hồi riêng tư, có session hoặc có Set-Cookie dùng
+`no-store`. Chỉ các route READ-01 có `private, no-cache` từ App mới giữ revalidation.
+Worker đang triển khai thêm `no-transform` vào các phản hồi này để Pages giữ strong ETag khi
+trình duyệt chấp nhận gzip hoặc Brotli. Giữ rule nén của zone theo cấu hình API. Range chưa
+được bật ở asset adapter. GET trả toàn bộ file và HEAD không có body. Bypass cache cho SSR/API,
+không áp Cache Everything, Always Online hoặc HTML fallback. Kiểm cookie, 304, TTL và header
+tại domain thật. Chrome/workerd ở loopback chỉ kiểm hợp đồng cục bộ.
+
+Khi origin trả `404` cho `/robots.txt`, Cloudflare Free có thể trả `200` với thông báo Content Signals chỉ chứa dòng chú thích. Smoke qua edge chấp nhận thông báo này nếu không có chỉ dẫn crawler. [Content Signals Policy](https://developers.cloudflare.com/bots/additional-configurations/managed-robots-txt/#content-signals-policy).
+
+Rule ở zone giữ redirect `308` cho HTTP apex, giữ đường dẫn và query. Phản hồi HTTPS apex giữ HSTS `max-age=31536000`, `X-Content-Type-Options: nosniff` và `Referrer-Policy: strict-origin-when-cross-origin` như cấu hình Caddy trực tiếp trước cutover.
 
 ## Cutover và khôi phục
 
