@@ -17,8 +17,9 @@
   Chưa có receipt qua controller. URL Preview riêng báo lỗi TLS và alias Pages trả về bị rút
   ngắn so với SHA đầy đủ mà controller đang dùng. Production chưa có tác phẩm công khai để
   chạy kịch bản Reader `200`.
-- App và Identity hiện mở [đăng nhập bằng username và mật khẩu](../../docs/development/auth-operations.md#31-production-username-và-mật-khẩu).
-  Giữ cấu hình này qua lần đổi image nếu chưa có quyết định đổi phương thức.
+- App và Identity hiện mở [đăng nhập bằng mật khẩu và mã email](../../docs/development/auth-operations.md#31-production-username-mật-khẩu-và-mã-email).
+  Xem [bàn giao cấu hình production](production-handoff.md) để đọc lại DNS/Pages/VPS, lấy khóa
+  phát hành, khôi phục khóa Resend và giữ overlay qua lần đổi image.
 
 ## Khóa gọi workflow thủ công
 

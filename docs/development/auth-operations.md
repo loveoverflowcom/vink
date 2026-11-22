@@ -72,28 +72,23 @@ mật khẩu, gắn email và mã email, bút danh, Bàn viết và đăng xuấ
 `Secure`/`HttpOnly`/`SameSite`, CSRF, refresh và hai tab trên đúng origin HTTPS. Xem
 [ADR §9](../architecture/auth-authority.md#9-blocker-trước-khi-accepted) cho các gate ngoài code.
 
-### 3.1 Production username và mật khẩu
+### 3.1 Production username, mật khẩu và mã email
 
-Ngày 22/11/2026, production ở image `a9d6a4f9` mở đăng nhập và đăng ký bằng username/mật khẩu.
-Đăng xuất thu hồi session ở Identity. Chế độ `password` giữ mã email và xác minh địa chỉ qua
-email chưa khả dụng. Web của bản này vẫn hiện nút **Dùng mã email**. Mở mã email là một đợt
-qualification riêng theo §4. Trạng thái quyết định D-05 vẫn là `Provisional`.
+Ngày 22/11/2026, production ở image `a9d6a4f9` mở đăng nhập và đăng ký bằng username/mật khẩu,
+sau đó bật mã email từ `no-reply@mail.vink.forum`. App dùng `VINK_PROD_AUTH_SIGN_IN=enabled`.
+Identity dùng `native` qua overlay Resend. Worker dùng `disabled`. Đăng xuất thu hồi session ở
+Identity. Trạng thái quyết định D-05 vẫn là `Provisional`.
 
-VPS giữ nguyên cặp file Compose trong `vink-prod.service`. Identity đọc
-`VINK_IDENTITY_AUTHORITY=password` từ `/etc/vink-prod/runtime/identity-runtime.env`. Trong
-manifest đang chạy, riêng App đọc `VINK_AUTH_SIGN_IN` từ
-`${VINK_PROD_AUTH_SIGN_IN:-disabled}`. `/etc/vink-prod/release.env` đặt
-`VINK_PROD_AUTH_SIGN_IN=enabled`. Worker dùng `disabled`. Manifest trong release tiếp theo
-cần giữ mapping này, nếu không App sẽ khởi động với cổng đóng như mặc định của repo.
+Diễn tập cùng digest trên PostgreSQL scratch qua đăng ký mật khẩu, đăng nhập, đăng xuất, thu hồi
+cookie, CSRF và sai mật khẩu. Trên HTTPS production, đăng nhập mật khẩu sai trả `401`, sai Origin
+trả `403`, đăng xuất khách trả `204` với cookie hết hạn. Thử mã email thật tại `/toi`: thư vào
+Inbox, mã tạo phiên đến bước đặt bút danh, đăng xuất và reload trả về màn hình đăng nhập.
+Identity báo `resend_api` với hàng đợi rỗng sau phép thử.
 
-Diễn tập bằng cùng digest trên PostgreSQL scratch qua đăng ký, đăng nhập, đăng xuất và thu hồi
-cookie, CSRF và sai mật khẩu. Trên HTTPS production, `/toi` hydrate và chuyển giữa hai form,
-đăng nhập sai trả `401`, sai Origin trả `403`, và đăng xuất khách trả `204` với cookie hết hạn.
-Nghiệm thu này dùng tài khoản tổng hợp ở scratch và request khách ở production.
-
-Để dừng cấp phiên mới, đặt `VINK_PROD_AUTH_SIGN_IN=disabled` rồi recreate riêng App bằng cùng
-hai manifest và release env. Giữ Identity ở chế độ `password` để các phiên hiện hữu vẫn được
-xác minh và đăng xuất. Kiểm `/toi`, health của App và [smoke qua Cloudflare](../../infra/production/cloudflare-edge.md).
+Xem [bàn giao cấu hình production](../../infra/production/production-handoff.md) để lấy lại
+cấu hình VPS, khôi phục khóa từ Google Secret Manager và giữ overlay khi đổi image.
+Để dừng cấp phiên mới, đặt `VINK_PROD_AUTH_SIGN_IN=disabled` rồi recreate riêng App bằng
+cùng tập manifest và release env. Giữ Identity để phiên hiện hữu xác minh và đăng xuất.
 
 ## 4. Kiểm chứng gửi thật (trước khi bật)
 
