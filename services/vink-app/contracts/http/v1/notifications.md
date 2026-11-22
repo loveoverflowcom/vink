@@ -3,7 +3,10 @@
 **Trạng thái:** Hợp đồng đề xuất r1. §1 phía App/Relay (`#346`) đã triển khai: envelope chuẩn hóa
 (`domain::notification`, hai digest ví dụ ở §3 được kiểm từng byte), outbox và relay ACK có fence
 ([registry §6](../../../../../docs/development/notifications.md#6-hiện-trạng-346-producer-outbox-và-relay-phía-app)).
-Notification Service (`#347`), route Gateway (`#348`) và fixture HTTP trong `contract.rs`: `NOT_IMPLEMENTED`.
+Notification Service (`#347`, phần đầu) đã có socket v1. Route Gateway của `#348` đã triển khai ở
+mức `persistence-api` (§2.8, [registry §8](../../../../../docs/development/notifications.md#8-hiện-trạng-348-gateway-inbox-quyết-định-riêng-và-danh-sách-thấm)):
+count, inbox, `Seen`/`Read`/`MarkAllRead`, chi tiết quyết định riêng, danh sách Thấm công khai và
+trích đoạn bình luận (`#365`). Ví dụ §3 đã được đối chiếu với runtime; số liệu trong ví dụ chỉ minh họa.
 Tài liệu này đặc tả hợp đồng giao sự kiện từ App/Relay (`#346`) tới Notification Service
 (`#347`) và hợp đồng App Gateway (`#348`) cung cấp cho Web và CMP/mobile theo `P-14A`.
 Gateway dùng dịch vụ nội bộ của `#347` để đọc nhóm và ghi ACK.
@@ -160,10 +163,19 @@ endpoint nào nối trực tiếp tới Notification Service (`K5`).
 Endpoint đếm nhẹ cho polling 30–60 giây trả về `freshness` rõ ràng để client không bao giờ nhầm lỗi
 hoặc dữ liệu cũ với `0`:
 
-- `status = "fresh"`: kèm `unseen_group_count` (số nguyên `>= 0`), `as_of_snapshot`, `max_staleness_seconds`.
-- `status = "stale"`: khi nguồn count chưa thể xác minh kịp trong hạn `max_staleness_seconds` nhưng
-  còn mốc hợp lệ gần nhất trong giới hạn chính sách; kèm `last_known_count`, `as_of_snapshot`, `reason`.
-- Lỗi dịch vụ / dependency mất kết nối: HTTP `503 dependency_unavailable` (không trả `200` với `0`).
+- `status = "fresh"`: kèm `unseen_group_count` (số nguyên `>= 0`), `count_is_lower_bound`,
+  `as_of_snapshot`, `max_staleness_seconds` (`60`).
+- `status = "stale"`: Notification Service hoặc App DB không trả lời, nhưng Gateway còn count đã xác
+  minh cho chính principal này trong `60` giây; kèm `last_known_count`, `count_is_lower_bound`,
+  `as_of_snapshot`, `age_seconds`, `reason = "dependency_unavailable"`. Bộ nhớ count nằm trong tiến
+  trình App, theo principal, tối đa 10 000 mục; khởi động lại thì mất (trả `503` cho tới lần xác minh kế).
+- Lỗi dịch vụ / dependency mất kết nối và không có count còn hạn: HTTP `503 dependency_unavailable`
+  (không trả `200` với `0`).
+- **Count theo quyền (`#348`):** count thô của service chỉ là cận trên. Khi nó bằng `0` Gateway trả
+  `0` ngay (một lời gọi). Khi lớn hơn `0`, Gateway đọc tối đa 2 lô × 50 nhóm mới nhất (mọi nhóm
+  chưa Seen nằm đầu danh sách vì sắp theo tín hiệu mới nhất), áp đúng quy tắc §2.4 và chỉ đếm nhóm
+  được phép hiện. Còn nhóm chưa Seen ngoài 100 nhóm đó thì `count_is_lower_bound = true` (client
+  hiển thị dạng `99+`).
 
 ### 2.4. Typed Target & Chi tiết quyết định riêng (`P-12A`, `P-14A`)
 
@@ -187,6 +199,26 @@ Với reply, nguồn phân biệt trả lời root và trả lời reply qua `re
 gửi chủ root đủ điều kiện. Nếu còn ID của đích trực tiếp thì dùng ID đó để gom; Gateway chỉ
 hiện ngữ cảnh được phép. `href` của một actor liên kết lấy từ phép chiếu hồ sơ công khai.
 
+**Quy tắc lọc khi đọc (`#348`, `N4`, `COM-11`).** Gateway đọc một snapshot App cho mỗi lô ứng viên:
+- Root/reply/Thấm chỉ hiện khi tác phẩm đang đọc được công khai (`publications` có hàng) **và**
+  `publication_epoch` của nhóm bằng `work_publications.public_epoch` hiện hành
+  (`Publication::should_notify_author`). Sau ẩn rồi công khai lại, nhóm của epoch cũ bị ẩn.
+- Root và Thấm chỉ thuộc chủ tác phẩm. Với root/reply, đóng góp hợp lệ là bình luận
+  `review = approved`, chưa gỡ, cùng tác phẩm và đúng tác giả; đích là đóng góp hợp lệ mới nhất trong
+  `contributions` của service; không còn đóng góp hợp lệ thì ẩn nhóm.
+- `work_moderation_decision` chỉ hiện cho chủ tác phẩm, kèm tựa của đúng revision, không cần bài công
+  khai. `comment_moderation_decision` chỉ hiện cho người viết bình luận khi có quyết định
+  reject/remove đúng `moderation_version`; tựa tác phẩm chỉ có khi bài đang công khai.
+- Loại lạ, target sai kiểu hoặc `admin.notice.reserved` không bao giờ hiện.
+
+**Trích đoạn bình luận (`#365`, `DESIGN_PROPOSED`).** Dòng `comment.root.approved` và
+`comment.reply.approved` có `excerpt: {"text", "truncated"}` hoặc `null`; loại khác không có trường
+này. Gateway hydrate từ đúng đóng góp được chọn làm đích, chỉ khi bình luận đang công khai trên tác
+phẩm đọc được; chuẩn hóa NFC, gộp mọi khoảng trắng/xuống dòng thành một dấu cách, cắt tối đa 140
+extended grapheme cluster (không tách dấu thanh tiếng Việt hay chuỗi emoji ZWJ). `truncated = true`
+khi đã cắt; client tự thêm dấu “…” và giới hạn số dòng theo LayoutSpec. Notification Service không
+lưu thân bình luận.
+
 **Quy tắc màn chi tiết quyết định riêng (`P-12A`):**
 - Chỉ chủ tác phẩm đọc được `work_moderation_decision`; chỉ tác giả bình luận đọc được
   `comment_moderation_decision`. Mọi actor khác (kể cả chủ tác phẩm đối với bình luận của người khác)
@@ -196,6 +228,12 @@ hiện ngữ cảnh được phép. `href` của một actor liên kết lấy t
   cả khi tác phẩm đang riêng tư/bị bác hoặc bình luận đã bị gỡ.
 - Khi bình luận đã bị gỡ, `comment_body` luôn là `null`; không trả trích đoạn hoặc phục hồi thân chữ đã xóa/gỡ. Không bao giờ trả tên/ID người duyệt hay ghi
   chú nội bộ.
+- Runtime (`#348`): `reason = {code, message}`, cả hai có thể `null`. Tác phẩm: `code` là mã chính
+  sách khi AI từ chối, `message` là lý do người duyệt đã ghi (admin/moderator) — đúng phần tác giả
+  đã thấy ở trạng thái xuất bản; nguồn khác không có lý do. Bình luận: `message` là lý do người
+  viết thấy theo MOD-04. `is_current = false` khi một quyết định mới hơn trên cùng revision/bình
+  luận đã thay thế quyết định này (đảo quyết định); `can_appeal` chỉ `true` với quyết định hiện hành
+  đủ điều kiện kháng nghị. Phiên bản `pending`/`needs_admin` hoặc lần duyệt bình luận trả `404`.
 
 ### 2.5. Phân trang (`Cursor`) & Continuation hữu hạn (`T-06`)
 
@@ -209,12 +247,20 @@ hiện ngữ cảnh được phép. `href` của một actor liên kết lấy t
     nhầm là danh sách trống).
   - Bỏ qua toàn bộ item hết hiệu lực / mất quyền (`N4`); **tuyệt đối không** trả item mà Gateway
     không hydrate được quyền.
+- **Inbox runtime — `T-06 / CHOICE-20 = A` (`#348`, `DESIGN_PROPOSED`):** mỗi trang đọc tối đa
+  3 lô × 50 nhóm từ service (cursor keyset `(signal_seq, group_id)` giảm dần), mỗi lô một snapshot
+  App với số câu lệnh cố định (5 truy vấn theo `ANY`, không N+1). Đủ `limit` mục thì `next_cursor`
+  trỏ ngay sau mục cuối và `continuation_reason = "more_items"`; hết 3 lô mà chưa đủ thì
+  `next_cursor` trỏ sau ứng viên cuối đã quét và `continuation_reason = "filtered_page_scan_bound"`
+  (trang có thể rỗng nhưng chưa hết). `next_cursor = null` nghĩa là đã quét hết. Nhóm nhận tín hiệu
+  mới nhảy lên đầu: không lặp lại ở các trang sau và hiện ở đầu khi tải lại trang đầu; thay đổi âm
+  thầm (Read, membership) không đổi vị trí. Phương án B (projection eligibility) chưa cần: service
+  đã bỏ đóng góp bình luận khi nhận invalidation, phần lọc còn lại ở Gateway là theo tác phẩm/epoch.
 - **Danh sách người Thấm công khai (`P-08`):**
-  - Tham số: `limit` hữu hạn (mặc định & trần do `#348` chốt) và `cursor` opaque gắn với
-    `(work_id, revision_id, ordering_basis)`. Thứ tự phải xác định và có khóa phân xử ổn định;
-    ví dụ sắp theo `actor_id ASC` của các membership đang `selected = true`. Bản ghi ngoài
-    trang chưa đọc vẫn giữ vị trí qua lệnh Select cùng trạng thái của actor đó. `accepted_order`
-    tiến ngay cả khi lệnh không đổi trạng thái và chỉ có ý nghĩa trong phạm vi từng actor.
+  - Tham số: `limit` `1..50` (mặc định `20`) và `cursor` `e1.<revision>.<position>`. Thứ tự là
+    `work_endorsements.cursor_key` tăng dần: một UUID ngẫu nhiên cố định cho mỗi hàng (migration
+    `20261201000000`), nên cursor không mang `PrincipalId` và bỏ Thấm rồi Thấm lại giữ nguyên vị
+    trí. `total_count` là số thành viên `selected` hiện hành của revision đó.
   - Mỗi lần tải trang kiểm tra lại `publications.revision_id == requested_revision_id` và áp phép
     chiếu danh tính công khai hiện hành (`linked` | `deleted` | `unavailable`). Nếu revision hiện hành
     đã đổi sang revision công khai khác khi tiếp tục cursor hợp lệ, trả `409 revision_changed`.
@@ -222,6 +268,9 @@ hiện ngữ cảnh được phép. `href` của một actor liên kết lấy t
     cũng trả `404`. Client bỏ các trang cũ khi mất quyền hoặc đổi revision.
 
 ### 2.6. Bảng mã lỗi chuẩn hóa
+
+Runtime: snapshot/cursor sai, hết hạn hoặc của phiên khác trả `422 validation_failed`
+(`field = up_to_snapshot | cursor`) mà không gọi service; `command_key` 1–128 ký tự ASCII in được.
 
 | HTTP Status | Mã lỗi (`error.code`) | Khi nào trả & Bắt buộc với client |
 | --- | --- | --- |
@@ -245,6 +294,28 @@ Client Web (và CMP sau này) phải tuân các quy tắc điều phối sau tr�
    mọi request đang bay, dữ liệu inbox, badge count và state `Read` của phiên trước. Với danh sách Thấm đang mở, bỏ các trang cũ, kiểm lại quyền đọc revision qua Gateway và tải trạng thái riêng (`own_state`) cho phiên mới hoặc khách.
 
 ---
+
+### 2.8. Route Gateway đã triển khai (`#348`)
+
+| Method & path (`/api/v1`) | Phiên | Ghi chú |
+| --- | --- | --- |
+| `GET /me/notifications/count` | Bắt buộc | §2.3; `no-store` |
+| `GET /me/notifications?limit=1..50&cursor=` | Bắt buộc | §2.5; mặc định `limit = 20` |
+| `POST /me/notifications/seen` | Bắt buộc + `Origin` | `{command_key, up_to_snapshot}` → `{seen_snapshot}` |
+| `POST /me/notifications/read` | Bắt buộc + `Origin` | `{command_key, group_id, observed_group_version}` → `{group_id, group_version, is_read}` |
+| `POST /me/notifications/mark-all-read` | Bắt buộc + `Origin` | `{command_key, up_to_snapshot}` → `{up_to_snapshot, groups_marked}` |
+| `GET /me/notifications/decisions/works/{work_id}/revisions/{revision_id}/{decision_version}` | Bắt buộc | Chủ tác phẩm; khác `404` |
+| `GET /me/notifications/decisions/comments/{comment_id}/{moderation_version}` | Bắt buộc | Người viết bình luận; khác `404` |
+| `GET /works/{work_id}/revisions/{revision_id}/endorsers?limit=1..50&cursor=` | Không | `private, no-cache` + strong `ETag`; lỗi `no-store` |
+
+“Bắt buộc” nghĩa là principal active giải từ cookie `__Host-vink_session` hoặc `Authorization:
+Bearer`; thiếu là `401` trước mọi lời gọi service. `inbox_snapshot`/`as_of_snapshot` có dạng
+`s1.<n>.<mac>` và `next_cursor` dạng `n1.<n>.<group>.<mac>`, với MAC HMAC-SHA-256 khóa bằng digest
+credential của phiên, gắn principal và mục đích: token chỉ dùng được trong đúng phiên đã nhận (tab
+khác cùng cookie vẫn dùng được; đổi tài khoản hay đăng nhập lại thì token cũ trả `422`). Lệnh ghi
+kiểm standing (`principal::require_active`) ở App ngay trước khi gửi service; principal bị đình chỉ
+nhận `403 principal_suspended` và service không nhận lệnh. Chưa cấu hình
+`VINK_NOTIFICATIONS_INBOX_SOCKET` + `VINK_NOTIFICATIONS_SERVER_UID` thì mọi route riêng tư trả `503`.
 
 ## 3. Bộ ví dụ dữ liệu hợp đồng (dùng được ngoài Web)
 
@@ -331,8 +402,9 @@ Phản hồi ingestion của Notification Service về cho Relay (`#347` → `#3
   "freshness": {
     "status": "fresh",
     "unseen_group_count": 3,
-    "as_of_snapshot": "s1.00000042",
-    "max_staleness_seconds": 120
+    "as_of_snapshot": "s1.42.9f2c41d07a6be38815c0e2d4a7b1f630",
+    "count_is_lower_bound": false,
+    "max_staleness_seconds": 60
   }
 }
 ```
@@ -342,9 +414,11 @@ Phản hồi ingestion của Notification Service về cho Relay (`#347` → `#3
   "freshness": {
     "status": "stale",
     "last_known_count": 3,
-    "as_of_snapshot": "s1.00000042",
-    "max_staleness_seconds": 120,
-    "reason": "notification_backlog"
+    "count_is_lower_bound": false,
+    "as_of_snapshot": "s1.42.9f2c41d07a6be38815c0e2d4a7b1f630",
+    "max_staleness_seconds": 60,
+    "age_seconds": 35,
+    "reason": "dependency_unavailable"
   }
 }
 ```
@@ -362,13 +436,15 @@ Phản hồi ingestion của Notification Service về cho Relay (`#347` → `#3
 
 ```json
 {
-  "inbox_snapshot": "s1.00000045",
+  "inbox_snapshot": "s1.45.0b6e1d9c2f7a48e3a1c5d6e7f8091a2b",
   "items": [
     {
       "group_id": "019a9b20-1111-7000-8000-000000000001",
       "group_version": 5,
       "type": "work.endorsement.tham.changed",
       "is_read": false,
+      "is_unseen": true,
+      "item_count": 0,
       "actor_count": 4,
       "actors_preview": [
         {
@@ -408,6 +484,8 @@ Phản hồi ingestion của Notification Service về cho Relay (`#347` → `#3
       "group_version": 1,
       "type": "work.moderation.decided",
       "is_read": false,
+      "is_unseen": false,
+      "item_count": 1,
       "actor_count": 0,
       "actors_preview": [],
       "target": {
@@ -426,7 +504,7 @@ Phản hồi ingestion của Notification Service về cho Relay (`#347` → `#3
       "expires_at": "2027-05-19T02:05:00Z"
     }
   ],
-  "next_cursor": "n1.019a9b20111170008000000000000002",
+  "next_cursor": "n1.40.019a9b20111170008000000000000002.5d0c7f3e9a1b2c4d6e8f00112233aa44",
   "continuation_reason": "more_items"
 }
 ```
@@ -438,7 +516,7 @@ Lệnh ACK idempotent (Gateway nhận principal từ phiên):
 ```json
 {
   "command_key": "019a9b30-0001-7000-8000-000000000001",
-  "up_to_snapshot": "s1.00000045"
+  "up_to_snapshot": "s1.45.0b6e1d9c2f7a48e3a1c5d6e7f8091a2b"
 }
 ```
 
@@ -457,9 +535,44 @@ Lệnh ACK idempotent (Gateway nhận principal từ phiên):
 ```json
 {
   "command_key": "019a9b30-0003-7000-8000-000000000003",
-  "up_to_snapshot": "s1.00000045"
+  "up_to_snapshot": "s1.45.0b6e1d9c2f7a48e3a1c5d6e7f8091a2b"
 }
 ```
+
+Dòng bình luận gốc được duyệt kèm trích đoạn (`#365`), sau khi bình luận mới nhất của nhóm vừa
+bị giữ lại nên đích lùi về bình luận hợp lệ trước đó:
+
+```json
+{
+  "group_id": "019a9b20-1111-7000-8000-000000000003",
+  "group_version": 12,
+  "type": "comment.root.approved",
+  "is_read": false,
+  "is_unseen": true,
+  "actor_count": 2,
+  "item_count": 0,
+  "actors_preview": [
+    {"kind": "linked", "pen_name": "Minh Khôi", "handle": "minh-khoi-08", "href": "/@minh-khoi-08"},
+    {"kind": "unavailable", "label": "Người đọc Vink"}
+  ],
+  "target": {
+    "kind": "work_comment_thread",
+    "work_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "comment_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    "moderation_version": 2,
+    "work_title": "Chiều qua bến cũ"
+  },
+  "excerpt": {"text": "Câu thơ thứ hai làm tôi nhớ bến sông quê", "truncated": false},
+  "summary": {"kind": "comment_root_rollup", "action_required": false},
+  "created_at": "2026-11-20T01:00:00Z",
+  "updated_at": "2026-11-20T02:30:00Z",
+  "expires_at": "2027-05-19T01:00:00Z"
+}
+```
+
+`summary.kind` runtime: `comment_root_rollup`, `comment_reply_rollup`, `work_tham_rollup`,
+`work_moderation_approved`, `work_moderation_rejected`, `comment_moderation_rejected`,
+`comment_moderation_removed`.
 
 ### Ví dụ 4 — Chi tiết quyết định riêng của người viết (`P-12A`, `P-11a/b`)
 
@@ -479,6 +592,7 @@ Tác phẩm bị từ chối cần xử lý:
     "message": "Nội dung vi phạm chính sách an toàn cộng đồng ở khổ thứ ba."
   },
   "can_appeal": true,
+  "is_current": true,
   "decided_at": "2026-11-20T02:05:00Z"
 }
 ```
@@ -499,6 +613,7 @@ Tác phẩm được duyệt lại sau khi bị từ chối (`P-11b`):
     "message": "Phản đối được chấp nhận; phiên bản đã được duyệt lại."
   },
   "can_appeal": false,
+  "is_current": true,
   "decided_at": "2026-11-20T02:20:00Z"
 }
 ```
@@ -516,9 +631,10 @@ Bình luận bị kiểm duyệt gỡ (không phục hồi thân chữ đã gỡ
   "action_required": false,
   "comment_body": null,
   "reason": {
-    "code": "harassment",
+    "code": null,
     "message": "Bình luận chứa lời lẽ công kích cá nhân không phù hợp tiêu chuẩn cộng đồng."
   },
+  "is_current": true,
   "decided_at": "2026-11-20T02:12:00Z"
 }
 ```
@@ -556,7 +672,7 @@ lập hoàn toàn với `actors_preview` và tuổi 180 ngày của Notification
       }
     }
   ],
-  "next_cursor": "e1.eeeeeeeeeeee.0000000000000003"
+  "next_cursor": "e1.eeeeeeeeeeee4eee8eeeeeeeeeeeeeee.6f1e2d3c4b5a49788776655443322110"
 }
 ```
 

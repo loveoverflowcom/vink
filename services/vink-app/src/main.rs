@@ -1092,12 +1092,28 @@ async fn serve(config: Config, api_only: bool) -> Result<(), Failure> {
     let probe = config.identity.as_ref().map(|identity| {
         identity::IdentityClient::new(identity.socket.clone(), identity.server_uid)
     });
+    // #348: the Gateway's inbox socket. Unset leaves inbox routes at `503 dependency_unavailable`.
+    let inbox =
+        vink_app::notification_inbox::InboxTransport::from_lookup(|key| std::env::var(key).ok())
+            .map_err(Failure::Usage)?;
+    tracing::info!(
+        notification_inbox = if inbox.is_some() {
+            "socket"
+        } else {
+            "no_transport"
+        },
+        "notification inbox transport"
+    );
     let state = AppState::new(
         Vink::new(PgStore::new(pool.clone())),
         Arc::from(resolver),
         &config.public_origin,
         &config.site_root,
     )
+    .with_notification_inbox(inbox.map(|transport| {
+        Arc::new(vink_app::notification_inbox::SocketInbox::new(transport))
+            as Arc<dyn vink_app::notification_inbox::NotificationInbox>
+    }))
     .with_sign_in(identity::sign_in_client(&config))
     .with_sign_in_enabled(config.sign_in_enabled)
     .with_following_feed_enabled(config.following_feed_enabled)

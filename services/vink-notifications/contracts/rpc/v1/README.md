@@ -64,6 +64,12 @@ nhất, §2.4 của contract App), `group_version`, `signal_version`, `unread`, 
 `publication_epoch` (mốc COM-11 để Gateway so với epoch hiện hành), `created_at`, `last_signal_at`,
 `expires_at`. Nhóm hết hạn hoặc về 0 không bao giờ được trả.
 
+Từ `#348`, nhóm `comment.root.approved`/`comment.reply.approved` có thêm `contributions`:
+`{"newest": [{"comment_id","actor_id"}…], "total": n}`, tối đa 16 đóng góp còn hiệu lực, mới
+nhất trước, đọc trong cùng snapshot của trang. Gateway dùng nó để chọn bình luận hợp lệ mới nhất
+khi bình luận mới nhất mất quyền trước lúc invalidation tới, và tính lại preview/số người. Loại
+khác trả `contributions: null`. Service vẫn không lưu thân bình luận (Thin Pointer).
+
 - **Snapshot/version (`T-05`)**: token `s<n>` là giá trị dãy số của hộp thư. Mọi thay đổi của một hộp
   thư lấy số kế tiếp khi giữ khóa dòng hộp thư, nên thứ tự số là thứ tự commit. Token lớn hơn số đã
   commit → `422 invalid_snapshot`.

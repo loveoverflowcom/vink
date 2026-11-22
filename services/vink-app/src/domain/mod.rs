@@ -14,6 +14,7 @@ pub mod ids;
 pub mod moderation;
 pub mod moderation_queue;
 pub mod notification;
+pub mod notification_inbox;
 pub mod principal;
 pub mod profile;
 pub mod publication;

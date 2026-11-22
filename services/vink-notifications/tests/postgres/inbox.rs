@@ -450,3 +450,63 @@ async fn read_racing_new_signals_never_leaves_two_open_groups(pool: PgPool) {
     .unwrap();
     assert_eq!(bad, 0);
 }
+
+/// #348 seam: a comment group carries its newest active contributions (bounded, newest first)
+/// and how many are active, so the Gateway can fall back to an older valid comment; an
+/// invalidated contribution leaves the list; other group types carry none.
+#[sqlx::test(migrator = "vink_notifications::persistence::MIGRATOR")]
+async fn comment_groups_carry_their_newest_active_contributions_within_a_bound(pool: PgPool) {
+    // 20 comments by 4 actors on one work: one open group.
+    for n in 0..20u8 {
+        signal(&pool, 0x40 + n % 4, 0x80 + n).await;
+    }
+    let page = store::page(&pool, id(OWNER), 10, None, T0).await.unwrap();
+    assert_eq!(page.groups.len(), 1);
+    let contributions = page.groups[0].contributions.clone().unwrap();
+    assert_eq!(contributions.total, 20);
+    assert_eq!(
+        contributions.newest.len(),
+        usize::try_from(store::MAX_CONTRIBUTIONS).unwrap()
+    );
+    assert_eq!(contributions.newest[0], (id(0x80 + 19), id(0x40 + 19 % 4)));
+    assert_eq!(contributions.newest[1], (id(0x80 + 18), id(0x40 + 18 % 4)));
+    // The newest comment is invalidated: it leaves the list, the next one leads.
+    applied(
+        &pool,
+        &comment_gone(event_id(), id(WORK), id(0x80 + 19), 3, T0),
+        T0,
+    )
+    .await;
+    let page = store::page(&pool, id(OWNER), 10, None, T0).await.unwrap();
+    let contributions = page.groups[0].contributions.clone().unwrap();
+    assert_eq!(contributions.total, 19);
+    assert_eq!(contributions.newest[0], (id(0x80 + 18), id(0x40 + 18 % 4)));
+    assert!(
+        !contributions
+            .newest
+            .contains(&(id(0x80 + 19), id(0x40 + 19 % 4)))
+    );
+    // The route serializes the seam; a decision group has none.
+    applied(
+        &pool,
+        &decided(event_id(), id(OWNER), id(WORK), id(0x77), 2, true, T0),
+        T0,
+    )
+    .await;
+    let page = store::page(&pool, id(OWNER), 10, None, T0).await.unwrap();
+    let json: Vec<Value> = page.groups.iter().map(store::GroupView::json).collect();
+    let decision = json
+        .iter()
+        .find(|g| g["event_type"] == "work.moderation.decided")
+        .unwrap();
+    assert!(decision["contributions"].is_null());
+    let root = json
+        .iter()
+        .find(|g| g["event_type"] == "comment.root.approved")
+        .unwrap();
+    assert_eq!(root["contributions"]["total"], 19);
+    assert_eq!(
+        root["contributions"]["newest"][0]["comment_id"],
+        id(0x80 + 18).to_string()
+    );
+}

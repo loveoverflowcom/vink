@@ -259,6 +259,7 @@ async fn backfill_and_old_writer_preserve_the_source_across_republication(pool: 
             AUTHOR_DISCOVERY_MIGRATION,
             SOCIAL_RETIREMENT_MIGRATION,
             WORK_VIEWS_MIGRATION,
+            PUBLIC_ENDORSER_LIST_MIGRATION,
         ]
     );
     // A binary embedding only the prior ledger is not ready after an additive migration.

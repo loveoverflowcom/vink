@@ -341,7 +341,74 @@ lệnh trong scope `systemd-run` giới hạn RAM 8–11 GiB:
 ### 7.6. Còn mở
 
 - Image OCI và service `notifications` trong `infra/production/compose.yaml` (+ mount socket theo phạm vi).
-- Client inbox của Gateway và badge `stale` (`#348`); Gateway phải lọc nhóm theo quyền hiện hành, gồm
-  tác phẩm ẩn và principal đình chỉ (invalidation `work`/`principal` chưa đổi projection).
+- ~~Client inbox của Gateway và badge `stale` (`#348`)~~: xem §8.
 - Diễn tập AC-06 đầy đủ và số đo ngân sách; công cụ đối soát khi App lùi mốc.
 - `admin.notice.reserved` vẫn `TYPE_ONLY_NOW`: bị từ chối ở ingest, không có bảng hay route gửi.
+
+---
+
+## 8. Hiện trạng `#348`: Gateway inbox, quyết định riêng và danh sách Thấm
+
+Nhánh `feat/348-notification-gateway-reads` (gốc `develop@002cc12`). Bốn chiều trạng thái:
+
+| Chiều | Ghi nhận |
+| --- | --- |
+| Sản phẩm | `PRODUCT_CONFIRMED` trong brief `#305` R3 và quyết định 20/11/2026 về trích đoạn/Ưng (`#365`); `VDR-NOTIFICATIONS@r1` vẫn `PENDING`, chưa có proposal VDR riêng cho trích đoạn. |
+| Kiến trúc | `T-06 / CHOICE-20 = A` (§8.1), độ dài trích đoạn 140 grapheme, MAC token theo phiên và `cursor_key` của danh sách Thấm là lựa chọn kỹ thuật của `#348`, mức `DESIGN_PROPOSED`. |
+| Triển khai | `persistence-api`: client socket inbox (`notification_inbox.rs`), lõi thuần `domain::notification_inbox`, đọc lô `persistence::notification_reads`, route `http::notifications` ([hợp đồng §2.8](../../services/vink-app/contracts/http/v1/notifications.md#28-route-gateway-đã-triển-khai-348)), seam `contributions` của service ([RPC §3](../../services/vink-notifications/contracts/rpc/v1/README.md#3-inbox-socket-inbox)), migration `20261201000000_public_endorser_list`. Chưa có UI (`#364`). |
+| Bằng chứng | §8.3. |
+
+### 8.1. `T-06 / CHOICE-20 = A`
+
+Gateway quét ứng viên có giới hạn từ service, kiểm quyền/hydrate theo lô ở App rồi trả continuation
+hữu hạn. Số đo (test PostgreSQL, fake service đếm lời gọi): một trang inbox tốn tối đa 3 lời gọi
+service × 50 nhóm và 5 truy vấn App mỗi lô (works, comments, tựa revision của quyết định, quyết định
+bình luận, danh tính công khai), không phụ thuộc số nhóm; 160 nhóm bị lọc trên 1 nhóm hợp lệ cho trang
+đầu rỗng với `filtered_page_scan_bound` sau đúng 3 lời gọi, trang sau trả nhóm hợp lệ. Count: một lời
+gọi `count` của service khi bằng 0; nếu không, tối đa 2 lô; vượt thì `count_is_lower_bound`. Chọn A vì
+service đã bỏ đóng góp bình luận khi invalidation tới; phần còn lọc ở Gateway là theo tác phẩm/epoch
+và quyền sở hữu, nên mật độ ứng viên hợp lệ thường cao. Chuyển sang B (projection eligibility) khi số
+đo thật cho thấy tỉ lệ trang `filtered_page_scan_bound` hoặc độ trễ count vượt ngân sách.
+
+Danh sách Thấm công khai với 20 000 hàng (18 000 đang chọn) trên một revision: `EXPLAIN (ANALYZE,
+BUFFERS)` là index scan dừng sau 51 hàng, 417 buffer, khoảng 0,5 ms, không có seq scan.
+
+### 8.2. Hạn và giới hạn công bố
+
+| Hạn | Giá trị |
+| --- | --- |
+| `max_staleness_seconds` của badge `stale` | 60 (bộ nhớ trong tiến trình App, theo principal, tối đa 10 000 mục) |
+| Lời gọi service | 2,5 s mỗi lời gọi (service tự cắt ở 5 s) |
+| Trang inbox | `limit` 1..50 (mặc định 20), tối đa 3 lô × 50 ứng viên |
+| Count | tối đa 2 lô × 50 nhóm chưa Seen |
+| Đóng góp mỗi nhóm bình luận | 16 mới nhất + tổng số |
+| Trích đoạn | 140 extended grapheme cluster sau NFC và gộp khoảng trắng |
+| Danh sách Thấm | `limit` 1..50 (mặc định 20) |
+
+### 8.3. Tiêu chí của `#348` theo bằng chứng
+
+| AC | Kết quả | Còn chờ |
+| --- | --- | --- |
+| AC-01 | PASS (PG + route): chủ inbox lấy từ phiên; khách `401` trước mọi lời gọi; thiếu `Origin` `403`; principal đình chỉ `403 principal_suspended`, service không nhận lệnh; token của phiên/principal khác `422`; chưa cấu hình socket `503`; danh sách Thấm đọc được không cần phiên. | Kiểm qua Identity thật (fixture `HeaderIdentity`); browser A → B → A thuộc `#364`. |
+| AC-02 | PASS (PG + route): count theo quyền, `fresh`/`stale` có hạn/`503`, không `0` giả; Seen/Read/MarkAllRead chuyển đúng snapshot/version đã xác thực; count bằng 0 không quét inbox. Ngữ nghĩa ACK cũ/hai tab/mark-all ở service: test PG của `#347`. | Đo polling dưới backlog thật và độ trễ hội tụ. |
+| AC-03 | PASS (unit + PG): lọc theo tác phẩm/epoch/chủ sở hữu; chọn lại đóng góp hợp lệ khi bình luận mới nhất bị gỡ/giữ; nhóm không còn đóng góp bị ẩn; trang bị lọc dày có continuation hữu hạn; không lộ thân, tên hoặc `PrincipalId`. | Nhóm đổi vị trí chỉ được lập luận theo keyset (không lặp, hiện ở đầu khi tải lại), chưa có test riêng; mở đích là route Reader hiện có. |
+| AC-04 | PASS (PG + route): chi tiết quyết định bình luận đúng người viết, đúng version, `comment_body = null` khi đã gỡ, không lộ người duyệt; chủ tác phẩm và người khác `404`; quyết định tác phẩm chỉ chủ đọc. | Chuỗi duyệt → bác → kháng nghị duyệt lại qua route chưa có test riêng (`is_current` có trong SQL). |
+| AC-05 | PASS (PG + route): khách đọc đủ thành viên qua nhiều trang (> 3), bỏ Thấm giữa trang, `304`, đổi revision `409`/trang đầu revision cũ `404`, bài không công khai `404`; nguồn là `work_endorsements`, không phụ thuộc inbox. | — |
+| AC-06 | PARTIAL: ví dụ JSON trong hợp đồng đã đối chiếu runtime; test dùng client HTTP ngoài Leptos. | Fixture HTTP trong `contract.rs`; đặc tả polling chi tiết cho `#364` ở hợp đồng §2.7. |
+
+`#365`: AC-01/02 phần Gateway PASS (trích đoạn, cắt theo grapheme, các ca gỡ/hold/ẩn/mất quyền và
+lùi về đóng góp hợp lệ); PRD `NOTIF-07` đã cập nhật. Còn lại: proposal VDR cho trích đoạn (AC-03) và
+toàn bộ thông báo Ưng (AC-04..06: producer `comment.endorsement.ung.changed`, rollup ở service, đích
+`work_comment_endorsement`) — chưa triển khai.
+
+Lệnh đã chạy (PostgreSQL 17.11 container tạm, scope `systemd-run` 6/8 GiB, `CARGO_BUILD_JOBS=6`):
+`cargo test -p vink-app --lib` (unit mới), `cargo test -p vink-app --test postgres`,
+`cargo test -p vink-notifications --test postgres`, `cargo clippy -p vink-app -p vink-notifications
+--all-targets -- -D warnings`. Kết quả từng lượt nằm trong mô tả PR.
+
+### 8.4. Còn mở
+
+- Kiểm thử hai process thật (App Gateway → `vink-notifications` qua socket inbox) trong
+  `cargo xtask verify postgres`; hiện client socket có test socket thật, route có test với fake service.
+- Proposal VDR cho trích đoạn; thông báo Ưng (`#365` AC-04..06).
+- Bộ nhớ count `stale` là theo tiến trình; nhiều replica App sẽ có bộ nhớ riêng.

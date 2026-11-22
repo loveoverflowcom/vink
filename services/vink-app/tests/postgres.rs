@@ -34,6 +34,7 @@ const FOLLOWING_FEED_ORDER_MIGRATION: i64 = 20261127010000;
 const AUTHOR_DISCOVERY_MIGRATION: i64 = 20261128000000;
 const SOCIAL_RETIREMENT_MIGRATION: i64 = 20261129000000;
 const WORK_VIEWS_MIGRATION: i64 = 20261130000000;
+const PUBLIC_ENDORSER_LIST_MIGRATION: i64 = 20261201000000;
 const ORIGIN: &str = "http://127.0.0.1:3000";
 
 #[path = "postgres/abuse.rs"]
@@ -76,6 +77,8 @@ mod handle;
 mod moderation_queue;
 #[path = "postgres/notification.rs"]
 mod notification;
+#[path = "postgres/notification_gateway.rs"]
+mod notification_gateway;
 #[path = "postgres/outbox.rs"]
 mod outbox;
 #[path = "postgres/post_review.rs"]

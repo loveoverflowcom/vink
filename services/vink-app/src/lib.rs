@@ -11,6 +11,7 @@ pub mod domain;
 pub mod evaluation_worker;
 pub mod http;
 pub mod identity;
+pub mod notification_inbox;
 pub mod notification_relay;
 pub mod notification_transport;
 pub mod outbox_worker;

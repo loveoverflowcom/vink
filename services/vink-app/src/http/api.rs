@@ -232,6 +232,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .merge(super::handle::routes())
         .merge(super::profile::routes())
         .merge(super::follow::routes())
+        .merge(super::notifications::routes())
         .merge(super::feed::routes(state.following_feed_enabled))
         .merge(publication_author)
         .merge(moderation_works)

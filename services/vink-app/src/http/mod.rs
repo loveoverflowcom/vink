@@ -14,6 +14,7 @@ mod follow;
 mod handle;
 mod health;
 mod moderation_queue;
+pub mod notifications;
 mod profile;
 mod ssr;
 
@@ -60,6 +61,10 @@ pub struct AppState {
     pub require_restricted_role: bool,
     pub public_origin: Arc<str>,
     pub leptos: LeptosOptions,
+    /// The Notification Service inbox (#348); `None` answers `503 dependency_unavailable`.
+    pub notifications: Option<Arc<dyn crate::notification_inbox::NotificationInbox>>,
+    /// Last verified badge counts, served as `stale` within their bound when a dependency fails.
+    pub badges: Arc<notifications::BadgeCache>,
 }
 
 impl FromRef<AppState> for LeptosOptions {
@@ -94,7 +99,17 @@ impl AppState {
             require_restricted_role: false,
             public_origin: Arc::from(public_origin),
             leptos,
+            notifications: None,
+            badges: Arc::default(),
         }
+    }
+
+    pub fn with_notification_inbox(
+        mut self,
+        inbox: Option<Arc<dyn crate::notification_inbox::NotificationInbox>>,
+    ) -> Self {
+        self.notifications = inbox;
+        self
     }
 
     pub fn with_sign_in(mut self, client: Option<IdentityClient>) -> Self {
