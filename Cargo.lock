@@ -3410,6 +3410,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "unicode-normalization",
+ "unicode-segmentation",
  "uuid",
  "vink-markdown-text",
  "vink-store-postgres",

@@ -750,6 +750,10 @@ pub struct GroupView {
     pub actor_count: i32,
     pub item_count: i32,
     pub actors_preview: Vec<Uuid>,
+    /// Comment groups only (#348): the newest active contributions, newest first, at most
+    /// [`MAX_CONTRIBUTIONS`], so the Gateway can fall back to an older valid comment when the
+    /// newest one lost visibility before its invalidation arrived. `None` for other types.
+    pub contributions: Option<Contributions>,
     pub action_required: bool,
     pub publication_epoch: Option<i64>,
     pub created_at: OffsetDateTime,
@@ -774,6 +778,7 @@ impl GroupView {
             "actor_count": self.actor_count,
             "item_count": self.item_count,
             "actors_preview": self.actors_preview,
+            "contributions": self.contributions.as_ref().map(Contributions::json),
             "action_required": self.action_required,
             "publication_epoch": self.publication_epoch,
             "created_at": at(self.created_at),
@@ -782,6 +787,30 @@ impl GroupView {
         })
     }
 }
+
+/// Active contributions of a comment group (newest first) and how many are active in total.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Contributions {
+    /// `(comment_id, actor_id)`, newest signal first.
+    pub newest: Vec<(Uuid, Uuid)>,
+    pub total: i64,
+}
+
+impl Contributions {
+    fn json(&self) -> Value {
+        json!({
+            "newest": self
+                .newest
+                .iter()
+                .map(|(comment, actor)| json!({ "comment_id": comment, "actor_id": actor }))
+                .collect::<Vec<_>>(),
+            "total": self.total,
+        })
+    }
+}
+
+/// Contributions returned per comment group; the Gateway's fallback depth.
+pub const MAX_CONTRIBUTIONS: i64 = 16;
 
 /// A page of the inbox read in one snapshot: the snapshot token, the Seen watermark and the
 /// groups newest signal first.
@@ -849,11 +878,12 @@ pub async fn page(
     .bind(limit + 1)
     .fetch_all(&mut *tx)
     .await?;
-    tx.commit().await?;
     let mut groups = rows
         .iter()
         .map(|row| view(row, seen_seq))
         .collect::<Result<Vec<_>, sqlx::Error>>()?;
+    attach_contributions(&mut tx, &mut groups).await?;
+    tx.commit().await?;
     let next_cursor = if groups.len() > usize::try_from(limit).unwrap_or(0) {
         groups.pop();
         groups
@@ -868,6 +898,65 @@ pub async fn page(
         groups,
         next_cursor,
     })
+}
+
+/// One bounded query for every comment group of the page, in the page's snapshot.
+async fn attach_contributions(
+    tx: &mut Tx<'_>,
+    groups: &mut [GroupView],
+) -> Result<(), sqlx::Error> {
+    let ids: Vec<Uuid> = groups
+        .iter()
+        .filter(|group| is_comment_group(&group.event_type))
+        .map(|group| group.group_id)
+        .collect();
+    if ids.is_empty() {
+        return Ok(());
+    }
+    let rows = sqlx::query(
+        "SELECT group_id, contribution, actor_id, total FROM (
+             SELECT group_id, contribution, actor_id,
+                    row_number() OVER (PARTITION BY group_id
+                                       ORDER BY last_seq DESC, contribution DESC) AS rank,
+                    count(*) OVER (PARTITION BY group_id) AS total
+             FROM group_members WHERE group_id = ANY($1) AND active) ranked
+         WHERE rank <= $2
+         ORDER BY group_id, rank",
+    )
+    .bind(&ids)
+    .bind(MAX_CONTRIBUTIONS)
+    .fetch_all(&mut **tx)
+    .await?;
+    let mut found: BTreeMap<Uuid, Contributions> = BTreeMap::new();
+    for row in &rows {
+        let entry = found
+            .entry(row.try_get("group_id")?)
+            .or_insert_with(|| Contributions {
+                newest: Vec::new(),
+                total: 0,
+            });
+        entry.total = row.try_get("total")?;
+        entry
+            .newest
+            .push((row.try_get("contribution")?, row.try_get("actor_id")?));
+    }
+    for group in groups
+        .iter_mut()
+        .filter(|group| is_comment_group(&group.event_type))
+    {
+        group.contributions = Some(found.remove(&group.group_id).unwrap_or(Contributions {
+            newest: Vec::new(),
+            total: 0,
+        }));
+    }
+    Ok(())
+}
+
+fn is_comment_group(event_type: &str) -> bool {
+    matches!(
+        event_type,
+        "comment.root.approved" | "comment.reply.approved"
+    )
 }
 
 fn view(row: &PgRow, seen_seq: i64) -> Result<GroupView, sqlx::Error> {
@@ -885,6 +974,7 @@ fn view(row: &PgRow, seen_seq: i64) -> Result<GroupView, sqlx::Error> {
         actor_count: row.try_get("actor_count")?,
         item_count: row.try_get("item_count")?,
         actors_preview: row.try_get("actors_preview")?,
+        contributions: None,
         action_required: row.try_get("action_required")?,
         publication_epoch: row.try_get("publication_epoch")?,
         created_at: row.try_get("created_at")?,
