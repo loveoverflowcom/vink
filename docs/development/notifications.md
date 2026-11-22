@@ -398,14 +398,16 @@ ngân sách nhưng sát trần hot key, nên số production phải đo lại tr
 
 ## 8. Hiện trạng `#348`: Gateway inbox, quyết định riêng và danh sách Thấm
 
-Nhánh `feat/348-notification-gateway-reads` (gốc `develop@002cc12`). Bốn chiều trạng thái:
+Phần chính ở [PR #391](https://github.com/loveoverflowcom/vink/pull/391); phần cuối trên nhánh
+`test/348-gateway-hai-process` (xếp chồng trên `#347` phần hai) thêm kịch bản process thật trong
+`verify postgres` và test đối chiếu fixture (§8.5). Bốn chiều trạng thái:
 
 | Chiều | Ghi nhận |
 | --- | --- |
 | Sản phẩm | `PRODUCT_CONFIRMED` trong brief `#305` R3 và quyết định 20/11/2026 về trích đoạn/Ưng (`#365`); [VDR-NOTIFICATIONS@r1](../../decisions/proposals/VDR-NOTIFICATIONS.r1.toml) và [VDR-NOTIFICATIONS@r2](../../decisions/proposals/VDR-NOTIFICATIONS.r2.toml) giữ `PENDING`. |
 | Kiến trúc | `T-06 / CHOICE-20 = A` (§8.1), độ dài trích đoạn 140 grapheme, MAC token theo phiên, `cursor_key` của danh sách Thấm và hợp đồng Ưng (`#365`) ghi ở [VDR-NOTIFICATIONS-CONTRACT@r2](../../decisions/proposals/VDR-NOTIFICATIONS-CONTRACT.r2.toml) (`PENDING`, mức `DESIGN_PROPOSED`). |
 | Triển khai | `persistence-api`: client socket inbox (`notification_inbox.rs`), lõi thuần `domain::notification_inbox`, đọc lô `persistence::notification_reads`, route `http::notifications` ([hợp đồng §2.8](../../services/vink-app/contracts/http/v1/notifications.md#28-route-gateway-đã-triển-khai-348), [fixture JSON](../../services/vink-app/contracts/http/v1/fixtures/notifications-gateway.json)), seam `contributions` của service ([RPC §3](../../services/vink-notifications/contracts/rpc/v1/README.md#3-inbox-socket-inbox)), migration `20261201000000_public_endorser_list`. Producer/rollup/DTO runtime của Ưng (`#365`) còn chờ; UI thuộc `#364`. |
-| Bằng chứng | §8.3. |
+| Bằng chứng | §8.3, §8.5. |
 
 ### 8.1. `T-06 / CHOICE-20 = A`
 
@@ -443,7 +445,7 @@ BUFFERS)` là index scan dừng sau 51 hàng, 417 buffer, khoảng 0,5 ms, khôn
 | AC-03 | PASS (unit + PG): lọc theo tác phẩm/epoch/chủ sở hữu; chọn lại đóng góp hợp lệ khi bình luận mới nhất bị gỡ/giữ; nhóm không còn đóng góp bị ẩn; trang bị lọc dày có continuation hữu hạn; không lộ thân, tên hoặc `PrincipalId`. | Nhóm đổi vị trí chỉ được lập luận theo keyset (không lặp, hiện ở đầu khi tải lại), chưa có test riêng; mở đích là route Reader hiện có. |
 | AC-04 | PASS (PG + route): chi tiết quyết định bình luận đúng người viết, đúng version, `comment_body = null` khi đã gỡ, không lộ người duyệt; chủ tác phẩm và người khác `404`; quyết định tác phẩm chỉ chủ đọc. | Chuỗi duyệt → bác → kháng nghị duyệt lại qua route chưa có test riêng (`is_current` có trong SQL). |
 | AC-05 | PASS (PG + route): khách đọc đủ thành viên qua nhiều trang (> 3), bỏ Thấm giữa trang, `304`, đổi revision `409`/trang đầu revision cũ `404`, bài không công khai `404`; nguồn là `work_endorsements`, không phụ thuộc inbox. | — |
-| AC-06 | PARTIAL: ví dụ JSON trong hợp đồng đã đối chiếu runtime; test dùng client HTTP ngoài Leptos. | Fixture HTTP trong `contract.rs`; đặc tả polling chi tiết cho `#364` ở hợp đồng §2.7. |
+| AC-06 | PASS: [fixture JSON](../../services/vink-app/contracts/http/v1/fixtures/notifications-gateway.json) được unit test đối chiếu từng trường với output runtime (item, request Seen/Read) bằng client ngoài Leptos/DOM; nhịp polling 30–60 s, ẩn/offline, backoff/resume và đổi phiên A → B → A ở [hợp đồng §2.7](../../services/vink-app/contracts/http/v1/notifications.md#27-hợp-đồng-hành-vi-client-polling-ẩnoffline--đổi-tài-khoản-bàn-giao-348--web); chuỗi duyệt → giao → inbox → ACK → rút quyền chạy qua process thật (§8.5). | Browser (AC-17) thuộc `#364`; native ngoài phạm vi. |
 
 `#365`: AC-01/02 phần Gateway PASS (trích đoạn, cắt theo grapheme, các ca gỡ/hold/ẩn/mất quyền và
 lùi về đóng góp hợp lệ); PRD `NOTIF-07` đã cập nhật. Còn lại: proposal VDR cho trích đoạn (AC-03) và
@@ -457,7 +459,39 @@ Lệnh đã chạy (PostgreSQL 17.11 container tạm, scope `systemd-run` 6/8 Gi
 
 ### 8.4. Còn mở
 
-- Kiểm thử hai process thật (App Gateway → `vink-notifications` qua socket inbox) trong
-  `cargo xtask verify postgres`; hiện client socket có test socket thật, route có test với fake service.
+- ~~Kiểm thử hai process thật trong `cargo xtask verify postgres`~~: §8.5.
 - Proposal VDR cho trích đoạn; thông báo Ưng (`#365` AC-04..06).
 - Bộ nhớ count `stale` là theo tiến trình; nhiều replica App sẽ có bộ nhớ riêng.
+- Kịch bản process thật dùng fixture danh tính loopback (`VINK_DEV_PRINCIPAL`), không đi qua
+  Identity; đăng nhập thật qua Identity đã có ở bước identity của cùng lane.
+
+### 8.5. Gateway qua process thật (`verify postgres`)
+
+Bước “App Gateway ↔ Notification Service, real processes” trong
+[`xtask/src/notifications/gateway.rs`](../../xtask/src/notifications/gateway.rs) chạy trên database
+App và Notification đã provision của lane, với role runtime thật:
+
+- **Process:** `vink-notifications serve` (socket ingest + inbox, peer-uid), `vink-worker` (relay qua
+  socket ingest) và bốn `vink-app serve-api` (chủ bài, hai bạn đọc, kiểm duyệt viên), mỗi process
+  một principal qua `VINK_DEV_PRINCIPAL` (profile `local`, chỉ loopback) và đọc socket inbox thật.
+  Gateway vẫn đòi cookie phiên vì token gắn theo phiên.
+- **Dữ liệu:** `vink-app dev-seed`, `moderator grant` và `notifications activate` bằng CLI vận hành;
+  mọi tín hiệu xuất phát từ commit nghiệp vụ qua HTTP (Thấm, gửi nhận xét, kiểm duyệt duyệt/gỡ, chủ
+  bài chuyển riêng tư), không chèn sự kiện tay.
+- **Kịch bản:** khách `401`, thiếu `Origin` `403`, hộp thư rỗng là `fresh` 0 → Thấm + hai nhận xét
+  được duyệt → badge 2 → danh sách hydrate (nhóm nhận xét 2 người, trích đoạn của nhận xét mới nhất,
+  nhan đề, không lộ `PrincipalId`) → Seen → badge 0 → Read nhóm Thấm → Thấm của người thứ hai mở
+  nhóm mới (nhóm đã đọc giữ lịch sử) → **cổng recovery đóng:** danh sách `503`, badge `stale` giữ số
+  1 (không về 0), principal chưa có số nhớ `503`, ACK `503` → mở cổng, badge `fresh` 1 → danh sách
+  Thấm công khai cho khách → MarkAllRead → gỡ một nhận xét: nhóm còn 1 người và trích đoạn lùi về
+  nhận xét hợp lệ, người viết nhận quyết định bất lợi → chủ bài chuyển riêng tư: danh sách rỗng →
+  principal bị đình chỉ: Seen `403 principal_suspended`, badge của họ không đổi → mọi delivery App
+  `succeeded`; log không có thân nhận xét hay ID bạn đọc.
+
+Kết quả: lượt đầu FAIL ở kiểm cuối (`2/1010` delivery chưa `succeeded`): hai invalidation do
+chính lệnh chuyển riêng tư và đình chỉ sinh ra chưa kịp giao lúc đếm; kiểm được đổi thành chờ backlog
+về 0 trong hạn 60 s. Lượt lại `RUST_TEST_THREADS=4 cargo xtask verify postgres` PASS 41/41 bước (App
+290, Identity 55, Notifications 26 test PostgreSQL; bốn diễn tập `#347`; bước Gateway; backup/restore),
+mỗi lệnh trong scope `systemd-run` `MemoryMax=8G`, `CARGO_BUILD_JOBS=6`, PostgreSQL 17.11 container tạm.
+Test đối chiếu fixture: `cargo test -p vink-app --lib http::notifications` PASS 4/4.
+
