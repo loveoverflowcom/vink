@@ -384,6 +384,32 @@ impl Run<'_> {
         let took = drill.settle(author, 2, "Thấm + two approvals reach the Gateway badge")?;
         println!("==> Thấm and two approved comments → badge 2 after {took:?}");
 
+        // #365: an Ưng on reader B's comment reaches B (its writer), never the work's owner.
+        expect(
+            "Ưng",
+            reader_a.send(
+                "PUT",
+                &format!("/api/v1/works/{WORK}/discussion/comments/{comment_b}/endorsement/me"),
+                &json!({"command_key": drill.key(), "expected_order": 1, "endorsed": true}),
+            )?,
+            200,
+        )?;
+        drill.settle(reader_b, 1, "an Ưng reaches the comment's writer")?;
+        let ung_page = drill.list(reader_b)?;
+        let ung_rows = of_type(&items(&ung_page), "comment.endorsement.ung.changed")
+            .into_iter()
+            .cloned()
+            .collect::<Vec<_>>();
+        if ung_rows.len() != 1
+            || ung_rows[0]["target"]["kind"] != "work_comment_endorsement"
+            || ung_rows[0]["target"]["comment_id"] != comment_b.as_str()
+            || ung_rows[0]["actor_count"] != 1
+            || ung_rows[0]["summary"]["kind"] != "comment_ung_rollup"
+            || ung_rows[0].get("excerpt").is_some()
+        {
+            return Err(format!("writer's Ưng row: {ung_page}"));
+        }
+
         // AC-02/03: what the Gateway shows is hydrated from current App facts.
         let page = drill.list(author)?;
         let shown = items(&page);
@@ -517,15 +543,18 @@ impl Run<'_> {
                     group["actor_count"] == 1 && group["excerpt"]["text"].as_str() == Some(BODY_A)
                 }))
         })?;
-        drill.settle(
-            reader_b,
-            1,
-            "the writer's adverse decision reaches their badge",
-        )?;
-        let writer_page = drill.list(reader_b)?;
-        if of_type(&items(&writer_page), "comment.moderation.adverse").len() != 1 {
-            return Err(format!("writer inbox after removal: {writer_page}"));
-        }
+        // The writer gets the adverse decision; the Ưng row of the removed comment disappears.
+        let mut writer_page = Value::Null;
+        self.wait_for(
+            "the writer's inbox holds only the adverse decision",
+            SETTLE,
+            || {
+                writer_page = drill.list(reader_b)?;
+                let rows = items(&writer_page);
+                Ok(rows.len() == 1 && rows[0]["type"] == "comment.moderation.adverse")
+            },
+        )
+        .map_err(|e| format!("{e}: {writer_page}"))?;
 
         // Loss of permission: the work set private hides every interaction group.
         let state = expect(
@@ -581,7 +610,7 @@ impl Run<'_> {
         })
         .map_err(|e| format!("{e} (last {backlog})"))?;
         println!(
-            "==> Gateway over real processes: badge/list/Seen/Read/MarkAllRead; recovering → 503 and stale 1 (never 0); removal and private work filtered; suspended Seen → 403; deliveries {backlog} succeeded"
+            "==> Gateway over real processes: badge/list/Seen/Read/MarkAllRead; Ưng to the writer; recovering → 503 and stale 1 (never 0); removal and private work filtered; suspended Seen → 403; deliveries {backlog} succeeded"
         );
         Ok(())
     }

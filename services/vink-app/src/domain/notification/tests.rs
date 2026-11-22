@@ -384,6 +384,54 @@ fn tham_owes_every_real_change_but_only_the_first_selection_may_signal() {
     assert_eq!(tham(EndorsementDelta::Add, 2, 2, 7), None);
 }
 
+fn ung(delta: EndorsementDelta, version_after: i64, order: i64, actor: u8) -> Option<Notice> {
+    ung_changed(UngFacts {
+        work: WorkId::from_uuid(WORK),
+        comment: CommentId::from_uuid(REPLY),
+        writer: principal(9),
+        actor: principal(actor),
+        delta,
+        version_after,
+        accepted_order: order,
+        stamp: stamp(1, true),
+    })
+}
+
+/// #365: Ưng follows Thấm's rule per (actor, comment), owed to the comment's writer.
+#[test]
+fn ung_owes_every_real_change_to_the_writer_but_only_the_first_selection_may_signal() {
+    let first = ung(EndorsementDelta::Add, 2, 2, 1).unwrap();
+    assert_eq!(first.event_type(), EventType::CommentUngChanged);
+    assert_eq!(first.first_selection(), Some(true));
+    assert_eq!(first.recipients(), &[principal(9)]);
+    assert_eq!(
+        first.target(),
+        Target::WorkCommentEndorsement {
+            work: WorkId::from_uuid(WORK),
+            comment: CommentId::from_uuid(REPLY),
+        }
+    );
+    assert_eq!(ung(EndorsementDelta::None, 2, 3, 1), None);
+    let removed = ung(EndorsementDelta::Remove, 3, 4, 1).unwrap();
+    assert_eq!(
+        (removed.semantic(), removed.first_selection()),
+        (SemanticKind::Remove, None)
+    );
+    let again = ung(EndorsementDelta::Add, 4, 5, 1).unwrap();
+    assert_eq!(again.first_selection(), Some(false));
+    assert_ne!(
+        first.dedup_key(),
+        ung(EndorsementDelta::Add, 2, 2, 2).unwrap().dedup_key()
+    );
+    assert!(
+        first
+            .dedup_key()
+            .starts_with("comment.endorsement.ung.changed/comment/")
+    );
+    // Ưng on one's own comment owes nothing.
+    assert_eq!(ung(EndorsementDelta::Add, 2, 2, 9), None);
+}
+
 #[test]
 fn envelopes_carry_identifiers_versions_and_codes_only() {
     let allowed = [
@@ -404,6 +452,7 @@ fn envelopes_carry_identifiers_versions_and_codes_only() {
     ];
     let notices = [
         tham(EndorsementDelta::Add, 2, 2, 1).unwrap(),
+        ung(EndorsementDelta::Add, 2, 2, 1).unwrap(),
         decision(Moderation::Rejected, None, 2).unwrap(),
         work_unreadable(WorkId::from_uuid(WORK), PublicEpoch::new(3).unwrap()),
         principal_standing_changed(principal(5), 1),

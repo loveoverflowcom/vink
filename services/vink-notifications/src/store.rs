@@ -161,7 +161,9 @@ async fn apply(pool: &PgPool, event: &Event, now: OffsetDateTime) -> Result<Inge
         EventType::CommentRootApproved | EventType::CommentReplyApproved => {
             approval(&mut tx, event, now).await?
         }
-        EventType::WorkThamChanged => tham(&mut tx, event, now).await?,
+        EventType::WorkThamChanged | EventType::CommentUngChanged => {
+            endorsement(&mut tx, event, now).await?
+        }
         EventType::WorkModerationDecided | EventType::CommentModerationAdverse => {
             decision(&mut tx, event, now).await?
         }
@@ -459,12 +461,126 @@ async fn approval(
     Ok(effect)
 }
 
-/// Thấm on a work revision: P-02B suppression and P-03A reconciliation (T-04 A).
-async fn tham(tx: &mut Tx<'_>, event: &Event, now: OffsetDateTime) -> Result<Effect, sqlx::Error> {
-    let (Some(key), Some((actor, revision)), Target::WorkEndorsement { work, .. }) = (
+/// Where the P-02B mark of an endorsement event lives: Thấm per (recipient, work, revision,
+/// actor), Ưng per (recipient, comment, actor) (#365).
+#[derive(Debug, Clone, Copy)]
+enum MarkKey {
+    Tham { work: Uuid, revision: Uuid },
+    Ung { work: Uuid, comment: Uuid },
+}
+
+impl MarkKey {
+    fn of(target: Target) -> Option<Self> {
+        match target {
+            Target::WorkEndorsement { work, revision } => Some(Self::Tham { work, revision }),
+            Target::WorkCommentEndorsement { work, comment } => Some(Self::Ung { work, comment }),
+            _ => None,
+        }
+    }
+
+    async fn load(
+        self,
+        tx: &mut Tx<'_>,
+        recipient: Uuid,
+        actor: Uuid,
+    ) -> Result<Option<Mark>, sqlx::Error> {
+        let row = match self {
+            Self::Tham { work, revision } => {
+                sqlx::query(
+                    "SELECT selected, source_order, signaled FROM tham_marks
+                     WHERE recipient = $1 AND work_id = $2 AND revision_id = $3 AND actor_id = $4
+                     FOR UPDATE",
+                )
+                .bind(recipient)
+                .bind(work)
+                .bind(revision)
+                .bind(actor)
+                .fetch_optional(&mut **tx)
+                .await?
+            }
+            Self::Ung { comment, .. } => {
+                sqlx::query(
+                    "SELECT selected, source_order, signaled FROM ung_marks
+                     WHERE recipient = $1 AND comment_id = $2 AND actor_id = $3
+                     FOR UPDATE",
+                )
+                .bind(recipient)
+                .bind(comment)
+                .bind(actor)
+                .fetch_optional(&mut **tx)
+                .await?
+            }
+        };
+        row.map(|row| {
+            Ok(Mark {
+                selected: row.try_get("selected")?,
+                source_order: row.try_get("source_order")?,
+                signaled: row.try_get("signaled")?,
+            })
+        })
+        .transpose()
+    }
+
+    async fn store(
+        self,
+        tx: &mut Tx<'_>,
+        recipient: Uuid,
+        actor: Uuid,
+        mark: Mark,
+        now: OffsetDateTime,
+    ) -> Result<(), sqlx::Error> {
+        let query = match self {
+            Self::Tham { work, revision } => sqlx::query(
+                "INSERT INTO tham_marks
+                     (recipient, work_id, revision_id, actor_id, selected, source_order, signaled,
+                      updated_at, expires_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                 ON CONFLICT (recipient, work_id, revision_id, actor_id) DO UPDATE SET
+                     selected = EXCLUDED.selected, source_order = EXCLUDED.source_order,
+                     signaled = EXCLUDED.signaled, updated_at = EXCLUDED.updated_at,
+                     expires_at = EXCLUDED.expires_at",
+            )
+            .bind(recipient)
+            .bind(work)
+            .bind(revision),
+            Self::Ung { work, comment } => sqlx::query(
+                "INSERT INTO ung_marks
+                     (recipient, comment_id, work_id, actor_id, selected, source_order, signaled,
+                      updated_at, expires_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                 ON CONFLICT (recipient, comment_id, actor_id) DO UPDATE SET
+                     selected = EXCLUDED.selected, source_order = EXCLUDED.source_order,
+                     signaled = EXCLUDED.signaled, updated_at = EXCLUDED.updated_at,
+                     expires_at = EXCLUDED.expires_at",
+            )
+            .bind(recipient)
+            .bind(comment)
+            .bind(work),
+        };
+        query
+            .bind(actor)
+            .bind(mark.selected)
+            .bind(mark.source_order)
+            .bind(mark.signaled)
+            .bind(now)
+            .bind(now + MARK_HORIZON)
+            .execute(&mut **tx)
+            .await?;
+        Ok(())
+    }
+}
+
+/// Thấm on a work revision or Ưng on a comment: P-02B suppression and P-03A reconciliation
+/// (T-04 A), with the mark of [`MarkKey`].
+async fn endorsement(
+    tx: &mut Tx<'_>,
+    event: &Event,
+    now: OffsetDateTime,
+) -> Result<Effect, sqlx::Error> {
+    let (Some(key), Some((actor, unit)), Some(marks)) = (
         rollup::group_key(event),
         rollup::contribution(event),
-        event.target,
+        MarkKey::of(event.target),
     ) else {
         return Ok(Effect::Noted);
     };
@@ -475,26 +591,7 @@ async fn tham(tx: &mut Tx<'_>, event: &Event, now: OffsetDateTime) -> Result<Eff
     lock_inboxes(tx, &recipients, now).await?;
     let mut effect = Effect::Stale;
     for recipient in recipients {
-        let row = sqlx::query(
-            "SELECT selected, source_order, signaled FROM tham_marks
-             WHERE recipient = $1 AND work_id = $2 AND revision_id = $3 AND actor_id = $4
-             FOR UPDATE",
-        )
-        .bind(recipient)
-        .bind(work)
-        .bind(revision)
-        .bind(actor)
-        .fetch_optional(&mut **tx)
-        .await?;
-        let mark = row
-            .map(|row| {
-                Ok::<_, sqlx::Error>(Mark {
-                    selected: row.try_get("selected")?,
-                    source_order: row.try_get("source_order")?,
-                    signaled: row.try_get("signaled")?,
-                })
-            })
-            .transpose()?;
+        let mark = marks.load(tx, recipient, actor).await?;
         let step = rollup::tham_step(
             mark,
             event.semantic,
@@ -506,27 +603,7 @@ async fn tham(tx: &mut Tx<'_>, event: &Event, now: OffsetDateTime) -> Result<Eff
             continue;
         }
         let next = rollup::next_mark(mark, step, event.source_order, selected);
-        sqlx::query(
-            "INSERT INTO tham_marks
-                 (recipient, work_id, revision_id, actor_id, selected, source_order, signaled,
-                  updated_at, expires_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-             ON CONFLICT (recipient, work_id, revision_id, actor_id) DO UPDATE SET
-                 selected = EXCLUDED.selected, source_order = EXCLUDED.source_order,
-                 signaled = EXCLUDED.signaled, updated_at = EXCLUDED.updated_at,
-                 expires_at = EXCLUDED.expires_at",
-        )
-        .bind(recipient)
-        .bind(work)
-        .bind(revision)
-        .bind(actor)
-        .bind(next.selected)
-        .bind(next.source_order)
-        .bind(next.signaled)
-        .bind(now)
-        .bind(now + MARK_HORIZON)
-        .execute(&mut **tx)
-        .await?;
+        marks.store(tx, recipient, actor, next, now).await?;
         let group = open_group(tx, recipient, &key, now).await?;
         match step {
             ThamStep::Signal => {
@@ -538,7 +615,7 @@ async fn tham(tx: &mut Tx<'_>, event: &Event, now: OffsetDateTime) -> Result<Eff
                     }
                     None => create_group(tx, recipient, &key, event, seq, now).await?,
                 };
-                upsert_member(tx, group_id, actor, revision, event.source_order, seq).await?;
+                upsert_member(tx, group_id, actor, unit, event.source_order, seq).await?;
                 refresh_members(tx, group_id, seq).await?;
                 effect = Effect::Signal;
             }
@@ -554,7 +631,7 @@ async fn tham(tx: &mut Tx<'_>, event: &Event, now: OffsetDateTime) -> Result<Eff
                      WHERE group_id = $1 AND contribution = $2 AND actor_id = $3 AND active <> $4",
                 )
                 .bind(group.group_id)
-                .bind(revision)
+                .bind(unit)
                 .bind(actor)
                 .bind(active)
                 .bind(event.source_order)
@@ -1160,6 +1237,7 @@ pub struct Purged {
     pub groups: u64,
     pub receipts: u64,
     pub marks: u64,
+    pub ung_marks: u64,
     pub fences: u64,
     pub commands: u64,
 }
@@ -1179,6 +1257,7 @@ pub async fn purge(
         ("notification_groups", &mut purged.groups),
         ("ingestion_receipts", &mut purged.receipts),
         ("tham_marks", &mut purged.marks),
+        ("ung_marks", &mut purged.ung_marks),
         ("comment_fences", &mut purged.fences),
         ("inbox_commands", &mut purged.commands),
     ] {
@@ -1212,6 +1291,7 @@ pub struct Status {
     pub members: i64,
     pub receipts: i64,
     pub marks: i64,
+    pub ung_marks: i64,
     pub oldest_group_days: Option<i64>,
     pub recovering: bool,
 }
@@ -1225,6 +1305,7 @@ pub async fn status(pool: &PgPool, now: OffsetDateTime) -> Result<Status, sqlx::
                 (SELECT count(*) FROM group_members) AS members,
                 (SELECT count(*) FROM ingestion_receipts) AS receipts,
                 (SELECT count(*) FROM tham_marks) AS marks,
+                (SELECT count(*) FROM ung_marks) AS ung_marks,
                 (SELECT floor(extract(epoch FROM ($1 - min(created_at))) / 86400)::bigint
                    FROM notification_groups) AS oldest_group_days,
                 (SELECT recovering FROM recovery_state) AS recovering",
@@ -1240,6 +1321,7 @@ pub async fn status(pool: &PgPool, now: OffsetDateTime) -> Result<Status, sqlx::
         members: row.try_get("members")?,
         receipts: row.try_get("receipts")?,
         marks: row.try_get("marks")?,
+        ung_marks: row.try_get("ung_marks")?,
         oldest_group_days: row.try_get("oldest_group_days")?,
         recovering: row.try_get("recovering")?,
     })

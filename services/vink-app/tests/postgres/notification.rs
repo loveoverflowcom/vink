@@ -1,6 +1,7 @@
 //! Notifications v1 producers and relay on real PostgreSQL (#346; contract
 //! `contracts/http/v1/notifications.md` §1): activation cutover, the five producing transitions
-//! and their invalidations, source atomicity, and at-least-once delivery with a fenced ACK.
+//! and their invalidations, Ưng on comments (#365), source atomicity, and at-least-once delivery
+//! with a fenced ACK.
 //!
 //! `Receiver` is a labelled fixture of the Notification Service's ingestion (#347 owns the real
 //! one): it keeps a receipt per `event_id` with its digest and counts effects, so a duplicate is
@@ -16,7 +17,7 @@ use std::time::Duration;
 use serde_json::Value;
 use tokio::sync::watch;
 use vink_app::application::discussion::{ModerateComment, ModerationAction, SubmitComment};
-use vink_app::application::endorsement::SetWorkEndorsement;
+use vink_app::application::endorsement::{SetCommentEndorsement, SetWorkEndorsement};
 use vink_app::domain::discussion::outbox::{OutboxPolicy, StaleReason};
 use vink_app::domain::ids::{CaseId, CommentId, RevisionId};
 use vink_app::domain::notification::{
@@ -514,6 +515,87 @@ async fn tham_changes_are_owed_with_first_selection_from_the_retained_row(pool: 
             dev_seed::SAMPLE_REVISION.to_string()
         );
         assert_eq!(event.json()["publication_stamp"]["readable"], true);
+    }
+}
+
+/// #365 AC-04: Ưng on a comment is owed to the comment's writer in the endorsement transaction,
+/// with `first_selection` from the retained row; the writer's own Ưng owes nothing.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn ung_changes_are_owed_to_the_comment_writer_with_first_selection(pool: PgPool) {
+    let vink = setup(&pool).await;
+    let writer = new_principal(&pool, "Người viết nhận xét #365").await;
+    const BODY: &str = "Nhận xét sẽ được Ưng (dữ liệu kiểm thử)";
+    let comment = submit(&vink, writer, None, BODY).await;
+    moderate(&vink, comment, 1, ModerationAction::Approve)
+        .await
+        .unwrap();
+    // Activated after the approval, so only Ưng changes are owed below.
+    activate(&pool).await;
+    let ung = |key: &str, expected: i64, endorsed: bool| SetCommentEndorsement {
+        work_id: sample_work(),
+        comment_id: comment,
+        command_key: key.into(),
+        expected_order: expected,
+        endorsed,
+    };
+    const K1: &str = "019a9b40-0365-7000-8000-000000000001";
+    for (key, expected, endorsed) in [
+        (K1, 1, true),
+        ("019a9b40-0365-7000-8000-000000000002", 2, true), // same state: nothing is owed
+        ("019a9b40-0365-7000-8000-000000000003", 3, false),
+        ("019a9b40-0365-7000-8000-000000000004", 4, true),
+    ] {
+        vink.set_comment_endorsement(other(), ung(key, expected, endorsed))
+            .await
+            .unwrap();
+    }
+    // A replay owes nothing new; the writer cannot Ưng their own comment.
+    vink.set_comment_endorsement(other(), ung(K1, 1, true))
+        .await
+        .unwrap();
+    assert!(
+        vink.set_comment_endorsement(
+            principal(writer),
+            ung("019a9b40-0365-7000-8000-000000000005", 1, true)
+        )
+        .await
+        .is_err()
+    );
+    let owed = events(&pool).await;
+    let summary: Vec<(String, Value, Value)> = owed
+        .iter()
+        .map(|e| {
+            let json = e.json();
+            (
+                json["semantic_kind"].as_str().unwrap().to_owned(),
+                json.get("first_selection").cloned().unwrap_or(Value::Null),
+                json["source_order"].clone(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        summary,
+        [
+            ("add".into(), Value::Bool(true), Value::from(2)),
+            ("remove".into(), Value::Null, Value::from(4)),
+            ("add".into(), Value::Bool(false), Value::from(5)),
+        ]
+    );
+    for event in &owed {
+        assert_eq!(event.event_type, "comment.endorsement.ung.changed");
+        assert_eq!(recipients(event), [writer.to_string()]);
+        let json = event.json();
+        assert_eq!(json["source_owner"], "endorsement");
+        assert_eq!(json["target"]["kind"], "work_comment_endorsement");
+        assert_eq!(json["target"]["comment_id"], comment.to_string());
+        assert_eq!(json["target"]["work_id"], dev_seed::SAMPLE_WORK.to_string());
+        assert_eq!(json["publication_stamp"]["readable"], true);
+        assert!(
+            event
+                .dedup_key
+                .starts_with("comment.endorsement.ung.changed/comment/")
+        );
+        assert_minimal(event, &[BODY, "Người viết nhận xét"]);
     }
 }
 

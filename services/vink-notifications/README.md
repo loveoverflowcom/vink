@@ -11,7 +11,7 @@ service ở [contracts/rpc/v1](contracts/rpc/v1/README.md); hiện trạng và b
 
 | Thuộc Notification Service | Không thuộc service |
 | --- | --- |
-| `ingestion_receipts`, nhóm inbox và membership, dấu Thấm `P-02B`, fence bình luận, `Seen`/`Read`, purge 180 ngày | Chọn người nhận và quyền lúc phát (App, `#346`); kiểm quyền hiển thị, hydrate danh tính/nội dung (Gateway App, `#348`); danh sách người Thấm công khai (Endorsement của App) |
+| `ingestion_receipts`, nhóm inbox và membership, dấu Thấm và dấu Ưng `P-02B`, fence bình luận, `Seen`/`Read`, purge 180 ngày | Chọn người nhận và quyền lúc phát (App, `#346`); kiểm quyền hiển thị, hydrate danh tính/nội dung (Gateway App, `#348`); danh sách người Thấm công khai (Endorsement của App) |
 
 Service không đọc database `vink` hay `vink_identity`, không có cổng TCP, không lưu nội dung, tên
 hiển thị, email hay danh tính người kiểm duyệt. Hai crate không import nhau (`verify quick` kiểm
@@ -41,7 +41,7 @@ UID của tiến trình phục vụ socket (`VINK_NOTIFICATIONS_SERVER_UID`) tr�
 | `serve` (mặc định) | `VINK_NOTIFICATIONS_DATABASE_URL` (runtime) | Bind hai socket, purge mỗi giờ; không bao giờ migrate |
 | `migrate` | `VINK_NOTIFICATIONS_MIGRATE_DATABASE_URL` (migrator) | Áp migrations; không dùng runtime làm dự phòng |
 | `maintenance purge` | runtime | Xóa hàng hết hạn theo lô |
-| `maintenance status` | runtime | Đếm inbox, nhóm, receipt, dấu Thấm, tuổi nhóm cũ nhất và trạng thái cổng recovery (không in ID) |
+| `maintenance status` | runtime | Đếm inbox, nhóm, receipt, dấu Thấm/Ưng, tuổi nhóm cũ nhất và trạng thái cổng recovery (không in ID) |
 | `maintenance recovery begin\|end <ghi chú>` | runtime | Đóng/mở cổng recovery: inbox trả `503 recovering` trong lúc đối soát sau restore; có audit ([runbook](../../docs/development/notifications.md#73-retention-sự-kiện-muộn-và-phục-hồi)) |
 
 Readiness (`/health/ready` trên mỗi socket) chỉ `200` khi database trả lời, schema hiện hành, role
@@ -50,10 +50,10 @@ không có quyền đặc biệt và socket đó có caller.
 | File | Vai trò |
 | --- | --- |
 | [src/envelope.rs](src/envelope.rs) | Parse envelope nghiêm ngặt, digest chuẩn hóa, luật theo từng loại; từ chối `admin.notice.reserved` (`P-05`, `TYPE_ONLY_NOW`) |
-| [src/rollup.rs](src/rollup.rs) | Luật thuần: `group_key`, preview 3 người, bước Thấm `P-02B`/`P-03A`, Read theo phiên bản, snapshot, các hạn công bố |
+| [src/rollup.rs](src/rollup.rs) | Luật thuần: `group_key`, preview 3 người, bước Thấm/Ưng `P-02B`/`P-03A`, Read theo phiên bản, snapshot, các hạn công bố |
 | [src/store.rs](src/store.rs) | Transaction receipt + hiệu ứng, lệnh `Seen`/`Read`/`MarkAllRead` idempotent, đọc trang/badge, purge và status |
 | [src/http.rs](src/http.rs) | Hai router, xác thực caller theo peer UID, deadline 5 s, readiness |
 | [src/server.rs](src/server.rs) | Socket `0660` trong thư mục đóng, thay socket cũ an toàn, shutdown xóa đúng socket của mình |
 | [migrations/](migrations/) | Schema `vink_notifications` |
 | [migrations-rollback/](migrations-rollback/) | Backout, từ chối khi còn nhóm trong hạn |
-| [tests/postgres.rs](tests/postgres.rs) | PostgreSQL thật: idempotency, rollup, đua ghi, Thấm, invalidation, Seen/Read, retention, restore, cổng recovery; phép đo ngân sách `#[ignore]` ở `tests/postgres/budget.rs` |
+| [tests/postgres.rs](tests/postgres.rs) | PostgreSQL thật: idempotency, rollup, đua ghi, Thấm, Ưng, invalidation, Seen/Read, retention, restore, cổng recovery; phép đo ngân sách `#[ignore]` ở `tests/postgres/budget.rs` |

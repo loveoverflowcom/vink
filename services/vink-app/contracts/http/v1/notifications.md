@@ -31,7 +31,7 @@ Notification Service không đọc trực tiếp App DB hay Identity DB (`K4`).
 | Trường envelope | Kiểu & Ngữ nghĩa bắt buộc | Quy tắc bất biến |
 | --- | --- | --- |
 | `event_id` | UUID duy nhất của lần phát nguồn | Khóa chống trùng chính ở `ingestion_receipt`. Cùng `event_id` + cùng nội dung chỉ có một hiệu ứng. |
-| `event_type` | Enum đóng (`comment.root.approved`, `comment.reply.approved`, `work.moderation.decided`, `comment.moderation.adverse`, `work.endorsement.tham.changed`, `admin.notice.reserved`, `notification.invalidation`) | Phạm vi cần triển khai v1 gồm 5 nhóm nghiệp vụ và invalidation. `admin.notice.reserved` chỉ dành trước (`P-05`, `TYPE_ONLY_NOW`); **Hữu ích** và **Follow** nằm ngoài phạm vi. |
+| `event_type` | Enum đóng (`comment.root.approved`, `comment.reply.approved`, `work.moderation.decided`, `comment.moderation.adverse`, `work.endorsement.tham.changed`, `comment.endorsement.ung.changed`, `admin.notice.reserved`, `notification.invalidation`) | Phạm vi runtime v1 gồm 5 nhóm nghiệp vụ của R3, Ưng nhận xét (`#365`, `VDR-NOTIFICATIONS@r2`) và invalidation. `admin.notice.reserved` chỉ dành trước (`P-05`, `TYPE_ONLY_NOW`); **Follow** nằm ngoài phạm vi. |
 | `schema_version` | Số nguyên dương (`1`) | Cho phép nâng cấp schema an toàn mà không làm hỏng delivery cũ đang đợi retry. |
 | `source_owner` | `"discussion"` \| `"publication_moderation"` \| `"endorsement"` \| `"principal"` | Phục vụ truy vết và tách luồng nếu `#346` chọn `T-01 B`. |
 | `activation_epoch` | Mốc/epoch kích hoạt tính năng gắn tại commit nguồn | Ghi theo **thời điểm commit giao dịch nguồn**, không lấy giờ Relay. Sự kiện có mốc trước activation bị bỏ qua; không backfill lịch sử. |
@@ -187,6 +187,7 @@ hoặc CMP tự ánh xạ sang route hoặc màn hình gốc của mình:
 | `work_comment_thread` | `work_id`, `comment_id`, `moderation_version` | Mở tác phẩm tại bình luận gốc (nếu còn hợp lệ); nếu mất quyền, mở trạng thái ẩn/tombstone/không khả dụng. |
 | `work_comment_reply` | `work_id`, `root_id`, `reply_context_kind` (`root` hoặc `reply`), `reply_target_id` (nullable), `comment_id`, `moderation_version` | Mở phản hồi `comment_id` dưới `root_id`. Nếu đích trực tiếp là root thì `reply_target_id = root_id`; nếu đích là reply đã purge thì giữ `reply_context_kind = "reply"` và trả `reply_target_id = null`. |
 | `work_endorsement` | `work_id`, `revision_id` | Mở tác phẩm tại phần Thấm (hoặc chỉ dẫn tới revision nếu bài đã cập nhật revision mới). |
+| `work_comment_endorsement` | `work_id`, `comment_id` | Ưng nhận xét (`#365`): mở tác phẩm tại nhận xét `comment_id`; mất quyền thì mở trạng thái ẩn/không khả dụng như `work_comment_thread`. |
 | `work_moderation_decision` | `work_id`, `revision_id`, `decision_version` | Mở **màn chi tiết quyết định riêng** của chủ tác phẩm (`P-12A`) cho đúng `(work_id, revision_id, decision_version)`. |
 | `comment_moderation_decision` | `work_id`, `comment_id`, `moderation_version` | Mở **màn chi tiết quyết định riêng** của người viết bình luận (`P-12A`) cho đúng `(comment_id, moderation_version)`. |
 | `admin_notice_reserved` | `notice_id` | Dành trước (`P-05`, `TYPE_ONLY_NOW`); v1 không sinh item runtime. |
@@ -219,14 +220,18 @@ extended grapheme cluster (không tách dấu thanh tiếng Việt hay chuỗi e
 khi đã cắt; client tự thêm dấu “…” và giới hạn số dòng theo LayoutSpec. Notification Service không
 lưu thân bình luận. Xem thêm [fixture JSON độc lập Web](fixtures/notifications-gateway.json).
 
-**Delta Ưng nhận xét (`#365`, chờ runtime).** Sự kiện đề xuất `comment.endorsement.ung.changed` sẽ
-do Endorsement phát khi `Add`/`Remove` trên nhận xét (`EndorsementTarget::Comment`), gửi tác giả
-nhận xét và loại self. Khóa nhóm `(recipient, event_type, comment_id)`, đích đề xuất
-`work_comment_endorsement {work_id, comment_id}`. Áp dụng `P-02B` (một tín hiệu trong vòng đời
-actor+nhận xét) và `P-03A` (bỏ Ưng giảm đóng góp nhóm chưa đọc, ẩn khi về 0). Gateway kiểm nhận
-xét `approved`/present, tác phẩm công khai và standing trước khi hiển thị hoặc mở đích. Producer,
-rollup và DTO runtime cho loại này thuộc lượt triển khai nối tiếp; danh sách công khai tiếp tục
-giữ phạm vi Thấm tác phẩm (`P-08a`).
+**Ưng nhận xét (`#365`, đã có runtime).** `comment.endorsement.ung.changed` do Endorsement phát
+trong cùng transaction với lệnh Ưng được chấp nhận (`persistence::endorsement::set_endorsement`,
+`EndorsementTarget::Comment`) khi delta là `Add`/`Remove`; người nhận là tác giả nhận xét (đọc từ
+dòng nhận xét đã khóa), loại self; `source_owner = "endorsement"`, `source_order = accepted_order`,
+`first_selection` chỉ ở `add` và chỉ `true` cho lần chọn đầu của hàng giữ lại (giống Thấm). Đích
+`work_comment_endorsement {work_id, comment_id}`; service gom theo `(người nhận, loại,
+comment_id)` (`target_key = ung/{comment_id}`), áp `P-02B` theo actor + nhận xét bằng bảng dấu
+`ung_marks` và `P-03A` (bỏ Ưng giảm đóng góp nhóm chưa đọc, về 0 thì ẩn). Gateway chỉ hiện dòng
+cho chính tác giả nhận xét, khi nhận xét đang công khai trên tác phẩm đọc được ở đúng epoch đã
+đóng dấu; `summary.kind = "comment_ung_rollup"`; dòng Ưng **không** có `excerpt` (trích đoạn theo
+`VDR-NOTIFICATIONS@r2` N4 chỉ cho nhận xét gốc/phản hồi được duyệt). Danh sách công khai tiếp tục
+giữ phạm vi Thấm tác phẩm (`P-08a`); không có danh sách người Ưng.
 
 **Quy tắc màn chi tiết quyết định riêng (`P-12A`):**
 - Chỉ chủ tác phẩm đọc được `work_moderation_decision`; chỉ tác giả bình luận đọc được
@@ -580,8 +585,8 @@ bị giữ lại nên đích lùi về bình luận hợp lệ trước đó:
 ```
 
 `summary.kind` runtime: `comment_root_rollup`, `comment_reply_rollup`, `work_tham_rollup`,
-`work_moderation_approved`, `work_moderation_rejected`, `comment_moderation_rejected`,
-`comment_moderation_removed`.
+`comment_ung_rollup`, `work_moderation_approved`, `work_moderation_rejected`,
+`comment_moderation_rejected`, `comment_moderation_removed`.
 
 ### Ví dụ 4 — Chi tiết quyết định riêng của người viết (`P-12A`, `P-11a/b`)
 

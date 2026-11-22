@@ -70,6 +70,11 @@ nhất trước, đọc trong cùng snapshot của trang. Gateway dùng nó đ�
 khi bình luận mới nhất mất quyền trước lúc invalidation tới, và tính lại preview/số người. Loại
 khác trả `contributions: null`. Service vẫn không lưu thân bình luận (Thin Pointer).
 
+Từ `#365`, nhóm `comment.endorsement.ung.changed` (Ưng nhận xét) có `target` kiểu
+`work_comment_endorsement` và đếm actor như Thấm: một nhóm cho mỗi `(người nhận, comment_id)`,
+`P-02B` theo actor + nhận xét (bảng `ung_marks`), `P-03A` khi bỏ Ưng; `contributions: null`.
+Invalidation bình luận không đụng nhóm Ưng: Gateway lọc theo quyền hiện hành của nhận xét.
+
 - **Snapshot/version (`T-05`)**: token `s<n>` là giá trị dãy số của hộp thư. Mọi thay đổi của một hộp
   thư lấy số kế tiếp khi giữ khóa dòng hộp thư, nên thứ tự số là thứ tự commit. Token lớn hơn số đã
   commit → `422 invalid_snapshot`.
@@ -94,7 +99,7 @@ khác trả `contributions: null`. Service vẫn không lưu thân bình luận 
 | Tuổi nhóm (`P-06A`) | 180 ngày từ lúc tạo | Không gia hạn; nhóm do replay tạo được tính tuổi từ `occurred_at` của sự kiện gốc |
 | `late_event_cutoff` (`P-13B`) | 30 ngày | Sự kiện xảy ra lâu hơn: có receipt, đối soát dấu/membership, không tạo hay hồi sinh nhóm |
 | Receipt và fence bình luận | 45 ngày | Dài hơn replay horizon 30 ngày của App và `late_event_cutoff` |
-| Dấu Thấm (`P-02B`) | 400 ngày từ lần đổi cuối | Phòng thủ thêm cho thứ tự/replay; bảo đảm suốt đời đến từ fact `first_selection` của App |
+| Dấu Thấm và dấu Ưng (`P-02B`, `#365`) | 400 ngày từ lần đổi cuối | Phòng thủ thêm cho thứ tự/replay; bảo đảm suốt đời đến từ fact `first_selection` của App |
 | Câu trả lời lệnh ACK | 7 ngày | Cửa sổ idempotency của `command_key` |
 | `max_staleness_seconds` (`P-04B`) | 60 | Hạn trễ count Gateway được phục vụ |
 | Recovery horizon | 30 ngày | Bằng replay horizon của App; runbook và RPO theo loại sự cố ở [§7.3](../../../../../docs/development/notifications.md#73-retention-sự-kiện-muộn-và-phục-hồi) |

@@ -59,17 +59,20 @@ pub enum EventType {
     WorkModerationDecided,
     CommentModerationAdverse,
     WorkThamChanged,
+    /// Ưng on a comment (#365, VDR-NOTIFICATIONS@r2), owed to the comment's writer.
+    CommentUngChanged,
     AdminNoticeReserved,
     Invalidation,
 }
 
 impl EventType {
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::CommentRootApproved,
         Self::CommentReplyApproved,
         Self::WorkModerationDecided,
         Self::CommentModerationAdverse,
         Self::WorkThamChanged,
+        Self::CommentUngChanged,
         Self::AdminNoticeReserved,
         Self::Invalidation,
     ];
@@ -81,6 +84,7 @@ impl EventType {
             Self::WorkModerationDecided => "work.moderation.decided",
             Self::CommentModerationAdverse => "comment.moderation.adverse",
             Self::WorkThamChanged => "work.endorsement.tham.changed",
+            Self::CommentUngChanged => "comment.endorsement.ung.changed",
             Self::AdminNoticeReserved => "admin.notice.reserved",
             Self::Invalidation => "notification.invalidation",
         }
@@ -179,6 +183,11 @@ pub enum Target {
         work: WorkId,
         revision: RevisionId,
     },
+    /// Ưng on a comment (#365): opens the Reader at that comment.
+    WorkCommentEndorsement {
+        work: WorkId,
+        comment: CommentId,
+    },
     WorkModerationDecision {
         work: WorkId,
         revision: RevisionId,
@@ -242,6 +251,11 @@ impl Target {
                 "work_id": id(work.as_uuid()),
                 "revision_id": id(revision.as_uuid()),
             }),
+            Self::WorkCommentEndorsement { work, comment } => json!({
+                "kind": "work_comment_endorsement",
+                "work_id": id(work.as_uuid()),
+                "comment_id": id(comment.as_uuid()),
+            }),
             Self::WorkModerationDecision {
                 work,
                 revision,
@@ -284,6 +298,7 @@ impl Target {
             Self::WorkCommentThread { comment, .. }
             | Self::WorkCommentReply { comment, .. }
             | Self::CommentModerationDecision { comment, .. }
+            | Self::WorkCommentEndorsement { comment, .. }
             | Self::InvalidComment { comment, .. } => format!("comment/{comment}"),
             Self::WorkEndorsement { work, revision }
             | Self::WorkModerationDecision { work, revision, .. } => {
@@ -384,8 +399,8 @@ impl Notice {
         self.action_required
     }
 
-    /// The logical event: one per type, scope, order (and Thấm actor). A producer that ran twice
-    /// for the same transition owes one obligation, never two.
+    /// The logical event: one per type, scope, order (and Thấm/Ưng actor). A producer that ran
+    /// twice for the same transition owes one obligation, never two.
     pub fn dedup_key(&self) -> String {
         let mut key = format!(
             "{}/{}/{}",
@@ -393,7 +408,9 @@ impl Notice {
             self.target.scope(),
             self.source_order
         );
-        if let (EventType::WorkThamChanged, Some(actor)) = (self.event_type, self.actor) {
+        if let (EventType::WorkThamChanged | EventType::CommentUngChanged, Some(actor)) =
+            (self.event_type, self.actor)
+        {
             key.push_str(&format!("/{actor}"));
         }
         key
@@ -657,6 +674,49 @@ pub fn tham_changed(facts: ThamFacts) -> Option<Notice> {
         target: Target::WorkEndorsement {
             work: facts.work,
             revision: facts.revision,
+        },
+        semantic,
+        first_selection,
+        action_required: false,
+    })
+}
+
+/// An accepted Ưng command on a comment, after its write (#365).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UngFacts {
+    pub work: WorkId,
+    pub comment: CommentId,
+    /// The comment's writer, read from the locked comment row (never from the request).
+    pub writer: PrincipalId,
+    pub actor: PrincipalId,
+    pub delta: EndorsementDelta,
+    /// The retained row's version after the write (even iff selected).
+    pub version_after: i64,
+    /// The accepted order after the write; advances on every accepted command of the actor.
+    pub accepted_order: i64,
+    pub stamp: NotificationStamp,
+}
+
+/// P-02B/P-03A for Ưng (VDR-NOTIFICATIONS@r2): every real change is owed to the writer so the
+/// receiver can reconcile membership; only the first selection in the (actor, Ưng, comment)
+/// lifetime may signal. Ưng on one's own comment owes nothing (the domain refuses it anyway).
+pub fn ung_changed(facts: UngFacts) -> Option<Notice> {
+    let (semantic, first_selection) = match facts.delta {
+        EndorsementDelta::None => return None,
+        EndorsementDelta::Add => (SemanticKind::Add, Some(facts.version_after == 2)),
+        EndorsementDelta::Remove => (SemanticKind::Remove, None),
+    };
+    let recipients = Recipients::of([facts.writer], Some(facts.actor));
+    (!recipients.is_empty()).then_some(Notice {
+        event_type: EventType::CommentUngChanged,
+        source_owner: SourceOwner::Endorsement,
+        source_order: facts.accepted_order,
+        stamp: Some(facts.stamp),
+        actor: Some(facts.actor),
+        recipients,
+        target: Target::WorkCommentEndorsement {
+            work: facts.work,
+            comment: facts.comment,
         },
         semantic,
         first_selection,

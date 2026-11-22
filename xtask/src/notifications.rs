@@ -94,7 +94,7 @@ pub fn verify(report: &mut Report, scratch: &Scratch<'_>) -> bool {
         "migration backout and forward on a restored copy",
         || run.backout_on_copy(),
     ) && report.step(
-        "App Gateway ↔ Notification Service, real processes: business commits → relay → badge/list/Seen/Read/MarkAllRead; removal and private work filtered; recovering → 503/stale",
+        "App Gateway ↔ Notification Service, real processes: business commits → relay → badge/list/Seen/Read/MarkAllRead; Ưng to the writer; removal and private work filtered; recovering → 503/stale",
         || run.gateway_end_to_end(),
     ) && report.step("notifications: logs contain no credential", || {
         run.no_secrets_in_logs()
@@ -283,7 +283,9 @@ impl Run<'_> {
             ));
         }
         let (code, stderr) = self.migrate("first", &s.migrator)?;
-        if code != Some(0) || !stderr.contains("applied=[20261128000000, 20261129000000]") {
+        if code != Some(0)
+            || !stderr.contains("applied=[20261128000000, 20261129000000, 20261202000000]")
+        {
             return Err(format!("first Notification migrate: {code:?}: {stderr}"));
         }
         let (code, stderr) = self.migrate("second", &s.migrator)?;
@@ -1073,6 +1075,13 @@ impl Run<'_> {
             .join("services/vink-notifications/migrations-rollback");
         let (ok, stderr) = self.psql_file(
             s.copy_database,
+            &rollback.join("20261202000000_comment_ung.down.sql"),
+        )?;
+        if !ok {
+            return Err(format!("Ưng marks backout: {stderr}"));
+        }
+        let (ok, stderr) = self.psql_file(
+            s.copy_database,
             &rollback.join("20261129000000_notification_recovery.down.sql"),
         )?;
         if !ok {
@@ -1099,7 +1108,9 @@ impl Run<'_> {
             return Err("backout left tables or history behind".into());
         }
         let (code, stderr) = self.migrate("copy-forward", &s.admin_copy)?;
-        if code != Some(0) || !stderr.contains("applied=[20261128000000, 20261129000000]") {
+        if code != Some(0)
+            || !stderr.contains("applied=[20261128000000, 20261129000000, 20261202000000]")
+        {
             return Err(format!("forward migration on the copy: {code:?}: {stderr}"));
         }
         println!(

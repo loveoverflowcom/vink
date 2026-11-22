@@ -183,7 +183,10 @@ fn group(
 ) -> Value {
     let counted = matches!(
         event_type,
-        "comment.root.approved" | "comment.reply.approved" | "work.endorsement.tham.changed"
+        "comment.root.approved"
+            | "comment.reply.approved"
+            | "work.endorsement.tham.changed"
+            | "comment.endorsement.ung.changed"
     );
     json!({
         "group_id": Uuid::from_u128(0x019a_9b20_0000_7000_8000_0000_0000_0000 + seq as u128),
@@ -534,6 +537,102 @@ async fn the_inbox_shows_only_what_the_viewer_may_see_now(pool: PgPool) {
     );
     let foreign = get_as(&f, "/api/v1/me/notifications", r1, SESSION).await;
     assert_eq!(foreign.body["items"], json!([]));
+}
+
+fn ung_target(comment: Uuid) -> Value {
+    json!({"kind": "work_comment_endorsement", "work_id": dev_seed::SAMPLE_WORK.to_string(),
+           "comment_id": comment.to_string()})
+}
+
+/// #365 AC-05/06: an Ưng row is hydrated for the comment's writer only, while the comment is
+/// public on a readable work; held/removed comments and other viewers never see it, and no
+/// excerpt or principal ID reaches the client.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn ung_rows_are_the_writers_while_the_comment_is_public(pool: PgPool) {
+    let f = fixture(pool).await;
+    let (writer, a, b) = (reader_id(1), reader_id(2), reader_id(3));
+    let kept = comment(
+        &f,
+        writer,
+        "Nhận xét được Ưng",
+        Some(ModerationAction::Approve),
+    )
+    .await;
+    let removed = comment(
+        &f,
+        writer,
+        "Nhận xét sẽ bị gỡ",
+        Some(ModerationAction::Approve),
+    )
+    .await;
+    let epoch = f.epoch;
+    for (seq, target) in [(20, kept), (21, removed)] {
+        f.inbox.add(
+            writer,
+            group(
+                seq,
+                "comment.endorsement.ung.changed",
+                ung_target(target),
+                &[b, a],
+                None,
+                Some(epoch),
+                false,
+            ),
+        );
+    }
+    // The same row addressed to the work's owner (a contract violation) is never shown.
+    f.inbox.add(
+        OWNER,
+        group(
+            22,
+            "comment.endorsement.ung.changed",
+            ung_target(kept),
+            &[a],
+            None,
+            Some(epoch),
+            false,
+        ),
+    );
+    let page = get_as(&f, "/api/v1/me/notifications", writer, SESSION).await;
+    assert_eq!(page.status, StatusCode::OK, "{}", page.body);
+    let items = page.body["items"].as_array().unwrap();
+    assert_eq!(items.len(), 2, "{}", page.body);
+    let row = &items[1];
+    assert_eq!(row["type"], "comment.endorsement.ung.changed");
+    assert_eq!(row["target"]["kind"], "work_comment_endorsement");
+    assert_eq!(row["target"]["comment_id"], kept.to_string());
+    assert_eq!(row["target"]["work_title"], dev_seed::SAMPLE_TITLE);
+    assert_eq!(row["actor_count"], 2);
+    assert_eq!(row["summary"]["kind"], "comment_ung_rollup");
+    assert!(row.get("excerpt").is_none(), "{row}");
+    let rendered = page.body.to_string();
+    assert!(!rendered.contains("Nhận xét được Ưng") && !rendered.contains(&a.to_string()));
+    let count = get_as(&f, "/api/v1/me/notifications/count", writer, SESSION).await;
+    assert_eq!(count.body["freshness"]["unseen_group_count"], 2);
+
+    // A removed comment hides its Ưng row at once (no invalidation needed for this type).
+    moderate(
+        &f,
+        CommentId::from_uuid(removed),
+        2,
+        ModerationAction::Remove,
+    )
+    .await;
+    let page = get_as(&f, "/api/v1/me/notifications", writer, SESSION).await;
+    let items = page.body["items"].as_array().unwrap();
+    assert_eq!(items.len(), 1, "{}", page.body);
+    assert_eq!(items[0]["target"]["comment_id"], kept.to_string());
+    let owner = get_as(&f, "/api/v1/me/notifications", OWNER, SESSION).await;
+    assert_eq!(owner.body["items"], json!([]));
+
+    // The work stops being public: the Ưng row disappears too.
+    sqlx::query("DELETE FROM publications WHERE work_id = $1")
+        .bind(dev_seed::SAMPLE_WORK)
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    let hidden = get_as(&f, "/api/v1/me/notifications", writer, SESSION).await;
+    assert_eq!(hidden.body["items"], json!([]), "{}", hidden.body);
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]

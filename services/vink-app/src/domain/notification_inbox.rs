@@ -30,6 +30,8 @@ pub enum GroupKind {
     WorkDecision,
     CommentAdverse,
     Tham,
+    /// Ưng on the viewer's comment (#365).
+    Ung,
 }
 
 impl GroupKind {
@@ -40,6 +42,7 @@ impl GroupKind {
             "work.moderation.decided" => Self::WorkDecision,
             "comment.moderation.adverse" => Self::CommentAdverse,
             "work.endorsement.tham.changed" => Self::Tham,
+            "comment.endorsement.ung.changed" => Self::Ung,
             _ => return None,
         })
     }
@@ -51,6 +54,7 @@ impl GroupKind {
             Self::WorkDecision => "work.moderation.decided",
             Self::CommentAdverse => "comment.moderation.adverse",
             Self::Tham => "work.endorsement.tham.changed",
+            Self::Ung => "comment.endorsement.ung.changed",
         }
     }
 }
@@ -82,6 +86,11 @@ pub enum InboxTarget {
     Endorsement {
         work: WorkId,
         revision: RevisionId,
+    },
+    /// Ưng on a comment (#365): the endorsed comment.
+    CommentEndorsement {
+        work: WorkId,
+        comment: CommentId,
     },
     WorkDecision {
         work: WorkId,
@@ -142,6 +151,10 @@ impl InboxTarget {
                 work: work()?,
                 revision: RevisionId::from_uuid(uuid_field(value, "revision_id")?),
             },
+            "work_comment_endorsement" => Self::CommentEndorsement {
+                work: work()?,
+                comment: comment()?,
+            },
             "work_moderation_decision" => Self::WorkDecision {
                 work: work()?,
                 revision: RevisionId::from_uuid(uuid_field(value, "revision_id")?),
@@ -161,6 +174,7 @@ impl InboxTarget {
             Self::CommentThread { work, .. }
             | Self::CommentReply { work, .. }
             | Self::Endorsement { work, .. }
+            | Self::CommentEndorsement { work, .. }
             | Self::WorkDecision { work, .. }
             | Self::CommentDecision { work, .. } => work,
         }
@@ -172,6 +186,7 @@ impl InboxTarget {
             (GroupKind::RootApproved, Self::CommentThread { .. })
                 | (GroupKind::ReplyApproved, Self::CommentReply { .. })
                 | (GroupKind::Tham, Self::Endorsement { .. })
+                | (GroupKind::Ung, Self::CommentEndorsement { .. })
                 | (GroupKind::WorkDecision, Self::WorkDecision { .. })
                 | (GroupKind::CommentAdverse, Self::CommentDecision { .. })
         )
@@ -217,6 +232,11 @@ impl InboxTarget {
                 "kind": "work_endorsement",
                 "work_id": id(work.as_uuid()),
                 "revision_id": id(revision.as_uuid()),
+            }),
+            Self::CommentEndorsement { work, comment } => json!({
+                "kind": "work_comment_endorsement",
+                "work_id": id(work.as_uuid()),
+                "comment_id": id(comment.as_uuid()),
             }),
             Self::WorkDecision {
                 work,
@@ -289,7 +309,8 @@ impl Candidate {
     /// Comments whose current visibility the Gateway must read.
     pub fn comments(&self) -> impl Iterator<Item = CommentId> + '_ {
         let decision = match self.target {
-            InboxTarget::CommentDecision { comment, .. } => Some(comment),
+            InboxTarget::CommentDecision { comment, .. }
+            | InboxTarget::CommentEndorsement { comment, .. } => Some(comment),
             _ => None,
         };
         self.contributions
@@ -398,6 +419,27 @@ pub fn decide(viewer: PrincipalId, candidate: &Candidate, facts: &ReadFacts) -> 
                 excerpt: None,
                 outcome: None,
             })
+        }
+        GroupKind::Ung => {
+            // #365: only the writer, only while the endorsed comment is public on a work that is
+            // readable in the epoch the signal was stamped with. No excerpt: VDR-NOTIFICATIONS@r2
+            // allows excerpts on approval rows only.
+            let InboxTarget::CommentEndorsement { comment, .. } = candidate.target else {
+                return None;
+            };
+            let readable = current_epoch(candidate, work)?;
+            let facts = facts.comments.get(&comment)?;
+            (facts.public && facts.author == viewer && facts.work == candidate.target.work()).then(
+                || Shown {
+                    target: candidate.target,
+                    work_title: Some(readable.title.clone()),
+                    actors_preview: candidate.actors_preview.clone(),
+                    actor_count: candidate.actor_count,
+                    item_count: candidate.item_count,
+                    excerpt: None,
+                    outcome: None,
+                },
+            )
         }
         GroupKind::WorkDecision => {
             let InboxTarget::WorkDecision { revision, .. } = candidate.target else {
@@ -747,6 +789,74 @@ mod tests {
         let shown = decide(p(OWNER), &root_group(&[(1, 2), (2, 3)], 9, 40), &facts).unwrap();
         assert_eq!(shown.actor_count, 8);
         assert!(!shown.actors_preview.contains(&p(2)));
+    }
+
+    fn ung_group(comment: u128, epoch: i64) -> Candidate {
+        Candidate::new(
+            GroupKind::Ung,
+            InboxTarget::CommentEndorsement {
+                work: work(),
+                comment: c(comment),
+            },
+            true,
+            (2, 0),
+            vec![p(5), p(6)],
+            (Vec::new(), 0),
+            Some(epoch),
+            false,
+        )
+        .unwrap()
+    }
+
+    /// #365: an Ưng row is the writer's, while the endorsed comment is public on a work readable
+    /// in the stamped epoch; never an excerpt, never for anyone else.
+    #[test]
+    fn ung_is_shown_only_to_the_writer_of_a_public_comment() {
+        let mut readable = facts(Some(1));
+        comment(&mut readable, 1, 2, true, "Câu kết hay quá");
+        let group = ung_group(1, 1);
+        assert_eq!(
+            group.comments().collect::<Vec<_>>(),
+            vec![c(1)],
+            "the endorsed comment is read in the batch"
+        );
+        let shown = decide(p(2), &group, &readable).expect("the writer sees it");
+        assert_eq!(
+            (
+                shown.actor_count,
+                shown.excerpt.clone(),
+                shown.work_title.as_deref()
+            ),
+            (2, None, Some("Chiều qua bến cũ"))
+        );
+        assert_eq!(shown.target.json()["kind"], "work_comment_endorsement");
+        // The work's owner and anyone else: hidden.
+        assert_eq!(decide(p(OWNER), &group, &readable), None);
+        assert_eq!(decide(p(7), &group, &readable), None);
+        // Held or removed comment, unreadable work, republished epoch: hidden.
+        let mut held = facts(Some(1));
+        comment(&mut held, 1, 2, false, "");
+        assert_eq!(decide(p(2), &group, &held), None);
+        assert_eq!(decide(p(2), &group, &facts(None)), None);
+        assert_eq!(decide(p(2), &ung_group(1, 0), &readable), None);
+        // A target of another type never builds an Ưng candidate.
+        assert!(
+            Candidate::new(
+                GroupKind::Ung,
+                InboxTarget::Endorsement {
+                    work: work(),
+                    revision: revision()
+                },
+                true,
+                (1, 0),
+                vec![p(5)],
+                (Vec::new(), 0),
+                Some(1),
+                false,
+            )
+            .is_none()
+        );
+        assert_eq!(InboxTarget::parse(&shown.target.json()), Some(shown.target));
     }
 
     #[test]
