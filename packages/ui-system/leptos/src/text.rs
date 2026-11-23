@@ -91,11 +91,15 @@ pub enum TextTag {
 }
 
 fn class(role: TypeRole, tone: TextTone) -> String {
-    format!(
+    let mut class = format!(
         "vk-ui-text vk-ui-type-{} vk-ui-tone-{}",
         role.id(),
         tone.id()
-    )
+    );
+    if role == TypeRole::Reading {
+        class.push_str(" whitespace-pre-line");
+    }
+    class
 }
 
 /// Text in a type role. Line breaks in `Reading` text are preserved (`white-space: pre-line`).

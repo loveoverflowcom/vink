@@ -117,10 +117,6 @@
   letter-spacing: var(--vk-type-code-tracking);
 }
 
-.vk-ui-type-reading {
-  white-space: pre-line;
-}
-
 .vk-ui-tone-muted { color: var(--vk-on-surface-variant); }
 .vk-ui-tone-primary { color: var(--vk-primary); }
 .vk-ui-tone-error { color: var(--vk-error); }
