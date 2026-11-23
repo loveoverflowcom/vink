@@ -174,7 +174,13 @@ def advance_origin(origin, journal, result, mode, evidence):
         require(result["phase"] in {"origin_switch_started", "origin_prepared",
                                     "origin_rollback_started", "origin_rolled_back"},
                 "origin may have accepted writes; rollback is unavailable")
-        if result["phase"] != "origin_rolled_back":
+        if result["phase"] in {"origin_switch_started", "origin_prepared"}:
+            started = origin.rollback_started(evidence, prepared=result["phase"] == "origin_prepared")
+            if not started:
+                # The predecessor is still serving; acknowledge rollback without inventing origin state.
+                result.update(phase="origin_rolled_back", origin_release=result["previous_origin"])
+                store(journal, result)
+                return False
             result["phase"] = "origin_rollback_started"
             store(journal, result)
     if result["phase"] == "origin_rollback_started":

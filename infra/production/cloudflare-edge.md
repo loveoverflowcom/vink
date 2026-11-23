@@ -132,8 +132,10 @@ trong khi origin đóng. Asset hai SHA đã stage sẵn vẫn được phục v�
    ghi `origin_opening` trước khi đổi manifest/image và bắt đầu service công khai. Nếu mất ACK
    từ lúc này, coi ghi có thể đã mở. Dùng `status`, đối chiếu container và ledger rồi
    `resume` theo chiều tiến. Không dùng bản sao trước cửa sổ để thay dữ liệu mới.
-6. Trước `origin_opening`, dùng `rollback-origin` để quay về image cũ. Nếu đã bắt đầu
-   migration, một transaction đổi tên **cả hai** bản sao về tên canonical, giữ riêng hai DB
+6. Trước `origin_opening`, dùng `rollback-origin` để quay về image cũ. Nếu controller đã ghi
+   `origin_switch_started` còn origin chưa có journal, lệnh chỉ ghi nhận rollback khi đã xác
+   minh môi trường, ledger và readiness của predecessor. Nếu thấy chốt hoặc dấu vết khác
+   của bảo trì, lệnh dừng và giữ pha cũ để đối soát. Nếu đã bắt đầu migration, một transaction đổi tên **cả hai** bản sao về tên canonical, giữ riêng hai DB
    đã migrate với kết nối bị khóa. Đối chiếu OID, ledger và readiness private trước khi mở
    lại App cũ. Mất ACK ở đây dùng `resume` để hoàn tất đúng ý định rollback, kiểm lại OID
    trước khi làm thêm. Controller ghi `origin_rolled_back` và giữ journal vì Pages vẫn chứa

@@ -321,8 +321,10 @@ class Origin:
             argv.extend(["-f", str(CURRENT / path)])
         return argv
 
-    def env(self, images):
-        old = (self.work / "release-before.env").read_text()
+    def env(self, images, content=None):
+        if content is None:
+            content = (self.work / "release-before.env").read_bytes()
+        old = content.decode()
         for key, image in SERVICES.values():
             name = f"VINK_PROD_{key}_IMAGE"
             old, count = re.subn(rf"(?m)^{name}=.*$", f"{name}={images[image]}", old)
@@ -435,12 +437,46 @@ class Origin:
         self.check_ledgers(self.before)
         return current_env, observed_overlay(unit, labels, flags, current_env)
 
+    def state_key(self, evidence):
+        return {"from": self.old, "release": self.spec, "old_images": self.old_images, "review": evidence}
+
+    def read_state(self, key):
+        state = json.loads(self.state_path.read_bytes())
+        require(all(state.get(field) == value for field, value in key.items()), "maintenance inputs changed")
+        return state
+
+    def rollback_started(self, evidence, *, prepared):
+        """Check rollback before the caller records intent; return whether origin has started."""
+        require(not self.work.is_symlink() and not self.state_path.is_symlink() and not GUARD.is_symlink(),
+                "unexpected maintenance journal path")
+        if self.state_path.exists():
+            state = self.read_state(self.state_key(evidence))
+            allowed = {"prepared"} if prepared else {"draining", "copying", "migrating", "prepared"}
+            require(state["phase"] in allowed, "origin phase conflicts with rollback request")
+            if GUARD.exists():
+                require(GUARD.read_text() == self.new, "another origin maintenance owns the restart fence")
+            else:
+                require(state["phase"] == "draining", "maintenance restart fence was removed")
+            return True
+
+        require(not prepared and not GUARD.exists(), "origin journal is missing despite evidence of maintenance")
+        require(not self.work.exists() or {path.name for path in self.work.iterdir()} <= {"release-before.env"},
+                "origin journal is missing but maintenance artifacts remain")
+        current_env = ENV.read_bytes()
+        saved_env = self.work / "release-before.env"
+        require(not saved_env.is_symlink() and (not saved_env.exists() or saved_env.read_bytes() == current_env)
+                and self.env(self.old_images, current_env) == current_env, "predecessor image env drift")
+        require(set(self.db_oids()) == set(OWNERS), "unexpected database copies without an origin journal")
+        self.check_ledgers(self.before)
+        require(self.observe(self.old, self.old_images), "unchanged predecessor readiness not observed")
+        return False
+
     def operate(self, mode, evidence):
         boot_fence()
         os.environ["PODMAN_COMPOSE_PROVIDER"] = "/usr/bin/podman-compose"
         with (BACKUPS / ".lock").open("a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            key = {"from": self.old, "release": self.spec, "old_images": self.old_images, "review": evidence}
+            key = self.state_key(evidence)
             if not self.state_path.exists():
                 require(mode == "prepare" and not GUARD.exists(), "origin maintenance has not been prepared")
                 current_env, overlay = self.preflight(evidence)
@@ -450,8 +486,7 @@ class Origin:
                 state = key | {"overlay": overlay}
                 write_state(self.state_path, state, "draining")
             else:
-                state = json.loads(self.state_path.read_bytes())
-                require(all(state.get(field) == value for field, value in key.items()), "maintenance inputs changed")
+                state = self.read_state(key)
             if GUARD.exists():
                 require(GUARD.read_text() == self.new, "another origin maintenance owns the restart fence")
             elif state["phase"] not in {"opened", "rolled_back"}:
