@@ -114,14 +114,14 @@ export async function deskGuest(page, {args, check}, signInOpen) {
   }
 }
 
-// Records every matching node added or removed under #drafts, including a node that is
+// Records every matching node added or removed under the chosen owner, including a node that is
 // mounted and dropped again within one task (the observer keeps the record).
-const watchNodes = (page, name, selector, kind) => page.eval(`(() => {
+const watchNodes = (page, name, selector, kind, owner = '#drafts') => page.eval(`(() => {
   window.__${name}?.observer?.disconnect();
   const hits = [], sel = ${JSON.stringify(selector)};
   const observer = new MutationObserver(records => { for (const record of records) for (const node of record[${JSON.stringify(kind)}])
     if (node.nodeType === 1 && (node.matches(sel) || node.querySelector(sel))) hits.push(performance.now()); });
-  observer.observe(document.querySelector('#drafts'), { childList: true, subtree: true });
+  observer.observe(document.querySelector(${JSON.stringify(owner)}), { childList: true, subtree: true });
   hits.observer = observer; window.__${name} = hits;
 })()`);
 
@@ -132,7 +132,8 @@ const PLACEMENT = `(() => {
   const box = el => el.getBoundingClientRect(), state = root.querySelector('.vk-empty-state');
   let prev = root.previousElementSibling; while (prev && !box(prev).height) prev = prev.previousElementSibling;
   const main = document.querySelector('.vk-main'), privacy = document.querySelector('.vk-desk-privacy'), ps = getComputedStyle(privacy);
-  const top = box(prev).bottom + parseFloat(getComputedStyle(prev).marginBlockEnd) + scrollY;
+  const top = (prev ? box(prev).bottom + parseFloat(getComputedStyle(prev).marginBlockEnd)
+    : box(root.parentElement).top) + scrollY;
   const bottom = box(main).bottom + scrollY - parseFloat(getComputedStyle(main).paddingBottom) - privacy.offsetHeight - parseFloat(ps.marginTop) - parseFloat(ps.marginBottom);
   const groupTop = box(state.querySelector('img')).top + scrollY, groupBottom = box(state.querySelector('.vk-empty-state__actions')).bottom + scrollY;
   const round = n => Math.round(n * 10) / 10;
@@ -165,8 +166,36 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
   await page.send('Network.clearBrowserCache');
   await gate.enable();
   try {
-    await page.viewport(390);
-    await page.goto(args.base + '/ban-viet');
+    if (!baseline) {
+      await page.viewport(1440);
+      await page.goto(args.base + '/ban-viet');
+      const rail = '#navigation-primary a[href="/ban-viet"]';
+      for (const selector of ['#open-draft-search', '#draft-sort', rail]) {
+        const held = await gate.next('gets');
+        const target = JSON.stringify(selector);
+        await page.eval(`window.__heldSearch = document.querySelector('#draft-search');
+          document.querySelector(${target}).focus()`);
+        check(await page.eval(`document.activeElement === document.querySelector(${target})`),
+          `#411 focus starts on ${selector} before the empty page returns`);
+        await gate.answerGet(held);
+        await settled();
+        await page.waitFor(`document.querySelector('[data-testid=draft-empty]') && document.activeElement ===
+          document.querySelector(${selector === rail ? target : "'#desk-title'"})`,
+          `#411 initial empty result settles focus from ${selector}`);
+        if (selector !== rail) {
+          await page.key('Tab');
+          check(await page.eval(`document.activeElement?.id === 'create-draft-format'`),
+            `#411 from ${selector}, Tab reaches the format Select after recovery`);
+        }
+        check(await page.eval(`document.querySelector('#draft-search') === window.__heldSearch`),
+          '#411 the initial empty response leaves the search node mounted');
+        await page.reload();
+      }
+      await page.viewport(390);
+    } else {
+      await page.viewport(390);
+      await page.goto(args.base + '/ban-viet');
+    }
     loader = (await page.send('Page.getFrameTree')).frameTree.frame.loaderId;
     const initial = await gate.next('gets');
     await page.waitFor(`document.querySelector('[data-testid=draft-loading]')`, 'held initial read');
@@ -174,12 +203,23 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
     await page.capture('desk-loading-held-390', {scenario:'#411-initial-load',target:'.vk-desk-loading',boundary:'intercepted-private-summary-transport'});
     check(network.length === 0 && await page.eval(`!document.querySelector('[data-testid=draft-empty], [data-testid=draft-no-results], #create-draft')`), '#259 loading requests no artwork and claims no empty corpus');
     await page.click('#open-draft-search');
+    await watchNodes(page, 'searchRemoved', '#draft-search', 'removedNodes', '#heading');
     await page.eval(`window.__emptySearch=document.querySelector('#draft-search'); window.__emptySearch.focus(); window.__emptySearch.value='không khớp'; window.__emptySearch.dispatchEvent(new InputEvent('input',{bubbles:true})); window.__emptySearch.setSelectionRange(2,5)`);
     gate.holdGets = false;
     await gate.answerGet(initial);
     await settled();
     await page.waitFor(`document.querySelector('[data-testid=draft-empty]')`, 'successful unfiltered empty head');
     check(await page.eval(`document.querySelector('#draft-search')===window.__emptySearch && document.activeElement===window.__emptySearch && window.__emptySearch.value==='không khớp' && window.__emptySearch.selectionStart===2 && window.__emptySearch.selectionEnd===5`), '#259 loading-to-empty preserves the input node, unapplied query, focus and caret');
+    if (!baseline) {
+      await page.key('Escape');
+      await page.waitFor(`document.activeElement?.id === 'open-draft-search' &&
+        document.querySelector('#draft-sort')?.checkVisibility()`, '#411 text in the field keeps closed search and sort available on first-use');
+      await page.key('Enter');
+      await page.waitFor(`document.activeElement === window.__emptySearch &&
+        document.querySelector('#draft-search') === window.__emptySearch &&
+        window.__emptySearch.value === 'không khớp' && !window.__searchRemoved.length`,
+        '#411 reopening the dock retains the same text and search node');
+    }
     await page.key('Enter');
     await page.waitFor(`document.querySelector('[data-testid=draft-no-results]')`, 'applied search miss');
     // UIS-03 `Empty + Loading`: a same-query refresh keeps the settled miss (with its stale
@@ -211,6 +251,19 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
         await page.waitFor(`document.querySelector('[data-testid=draft-empty]')`, 'clear search returns to first-use');
         check(await page.eval(`document.querySelector('#draft-search')===window.__emptySearch && document.activeElement===window.__emptySearch && window.__emptySearch.value===''`), '#259 clear keeps input identity and restores search focus');
         await page.click('#close-draft-search');
+        if (!baseline) {
+          await page.waitFor(`document.activeElement?.id === 'desk-title' &&
+            ['#open-draft-search', '#draft-sort', '#draft-search'].every(selector =>
+              document.querySelector(selector)?.checkVisibility() === false)`,
+            '#411 closing a blank first-use dock focuses the heading and hides search and sort');
+          const { nodes } = await page.send('Accessibility.getFullAXTree');
+          check(!nodes.some(node => !node.ignored && ['Tìm tác phẩm', 'Sắp xếp'].includes(node.name?.value)),
+            '#411 hidden tools are absent from the accessibility tree');
+          await page.key('Tab');
+          check(await page.eval(`document.activeElement?.id === 'create-draft-format' &&
+            document.querySelector('#draft-search') === window.__emptySearch &&
+            window.__searchRemoved.length === 0`), '#411 Tab skips the hidden tools and reaches the native format Select without remounting search');
+        }
       }
       const target = state === 'first-draft' ? '[data-testid=draft-empty]' : '[data-testid=draft-no-results]';
       const action = state === 'first-draft' ? '#create-draft' : '#clear-draft-search';
@@ -272,6 +325,10 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
       await gate.fulfill(pending, 503, {error:{code:'dependency_unavailable'}});
       await settled();
       check(await page.eval(`document.querySelector('[data-testid=desk-error]') && document.querySelector('[data-testid=author-work-stale]') && !document.querySelector('#drafts img')`), '#259 load error preserves warning and is not artwork empty');
+      check(await page.eval(`document.querySelector('#open-draft-search')?.checkVisibility() &&
+        document.querySelector('#draft-sort')?.checkVisibility() &&
+        document.querySelector('#draft-search') === window.__emptySearch &&
+        window.__searchRemoved.length === 0`), '#411 a transient error keeps tools reachable and retains search');
       for (const [width, theme, scale] of [[320, 'dark', 200], [1440, 'light', 100]]) {
         await page.viewport(width);
         await page.eval(`document.documentElement.dataset.theme='${theme}'; document.documentElement.style.fontSize='${scale}%'; scrollTo(0,0); document.fonts.ready`);

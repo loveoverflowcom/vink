@@ -3705,12 +3705,15 @@ async function draftDashboard(page) {
   await gate.fulfill(lateCreate, 201, { ...cards[0], document: { format: 'default', source: '' } });
   await page.eval('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');
   check(gate.postCount === latePosts && await page.eval(`location.pathname==='/ban-viet' && !document.querySelector('#draft-results, #create-draft')`), 'F-17 a late create acknowledgement cannot restore or navigate a denied session');
-  gate.holdGets = false;
+  gate.holdGets = true;
   gate.list = { body: { drafts: [] } };
   await page.reload();
-  await page.waitFor(`document.querySelector('[data-testid=draft-empty]')`, 'authorized unfiltered empty dashboard');
+  const initialEmpty = await gate.next('gets');
   await page.click('#open-draft-search');
   await page.typeAtEnd('#draft-search', 'duong ve');
+  gate.holdGets = false;
+  await gate.answerGet(initialEmpty);
+  await page.waitFor(`document.querySelector('[data-testid=draft-empty]')`, 'authorized unfiltered empty dashboard');
   await page.key('Enter');
   await page.waitFor(`document.querySelector('[data-testid=draft-no-results]')`, 'empty filtered result is still a search miss');
   await page.click('#clear-draft-search');
