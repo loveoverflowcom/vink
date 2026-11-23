@@ -116,6 +116,23 @@ class Packages(unittest.TestCase):
 
 
 class Recovery(unittest.TestCase):
+    def test_browser_launcher_selects_correct_smoke_case(self):
+        reader = "33333333-3333-4333-8333-333333333333"
+        user = SimpleNamespace(pw_uid=501, pw_gid=50)
+        with patch.object(release.pwd, "getpwnam", return_value=user), patch.object(release.os, "chown"), \
+                patch.object(release.subprocess, "run") as launch, patch.dict(os.environ, {"VINK_RELEASE_NODE": "/node22"}):
+            release.browser_check(Path("/chrome"), None, A, empty_catalog=True)
+            empty = launch.call_args.args[0]
+            self.assertEqual(empty[0], "/node22")
+            self.assertEqual(empty[empty.index("--empty-catalog") + 1], "true")
+            self.assertNotIn("--reader", empty)
+            self.assertNotIn(None, empty)
+            self.assertEqual(launch.call_args.kwargs["user"], user.pw_uid)
+            release.browser_check(Path("/chrome"), reader, A)
+            populated = launch.call_args.args[0]
+            self.assertEqual(populated[populated.index("--reader") + 1], reader)
+            self.assertNotIn("--empty-catalog", populated)
+
     def test_podman_probe_joins_only_the_running_postgres_namespace(self):
         origin = release.maintenance.Origin.__new__(release.maintenance.Origin)
         origin.postgres = "9" * 12

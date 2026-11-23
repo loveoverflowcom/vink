@@ -229,9 +229,10 @@ def browser_check(chrome, reader, rev, *, empty_catalog=False):
     repo = HERE.parents[2]
     with tempfile.TemporaryDirectory(prefix="vink-browser-") as tmp:
         os.chown(tmp, user.pw_uid, user.pw_gid)
-        subprocess.run(["node", repo / "apps/vink-web/e2e/browser-smoke.mjs", "--phase", "production-edge",
-                        "--chrome", chrome, "--state", Path(tmp) / "browser.json", "--revision", rev,
-                        "--reader", reader, "--base", "https://vink.forum"], check=True, cwd=repo,
+        case = ["--empty-catalog", "true"] if empty_catalog else ["--reader", reader]
+        subprocess.run([os.environ.get("VINK_RELEASE_NODE", "node"), repo / "apps/vink-web/e2e/browser-smoke.mjs",
+                        "--phase", "production-edge", "--chrome", chrome, "--state", Path(tmp) / "browser.json",
+                        "--revision", rev, *case, "--base", "https://vink.forum"], check=True, cwd=repo,
                        user=user.pw_uid, group=user.pw_gid, extra_groups=[],
                        env=browser_env(repo, tmp))
 
