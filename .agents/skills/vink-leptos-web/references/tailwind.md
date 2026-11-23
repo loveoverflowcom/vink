@@ -165,9 +165,9 @@ Cả `web.css` và `preview.css` dùng chung thứ tự layer:
    >
    ```
    *Mẹo:* dùng cặp loại trừ nhau (`rounded-none=banner` / `rounded-vk-md=!banner`) để tránh phụ
-   thuộc thứ tự khai báo trong `@layer utilities`. Cú pháp `class:<ident>=cond` chỉ dùng được cho
-   tên class gồm chữ/số/gạch ngang; khi tên class chứa `:`, `[`, `]`, `/`, `.` (như
-   `forced-colors:border` hay `pt-[0.125em]`), phải dùng tuple `class=("...", cond)`.
+   thuộc thứ tự khai báo trong `@layer utilities`. Ví dụ từ [DraftResume](../../../../packages/vink-patterns/leptos/src/lib.rs)
+   dùng `class:vk-draft-resume__title=true`. Với utility có variant hoặc arbitrary value như
+   `forced-colors:border` và `pt-[0.125em]`, dùng tuple `class=("...", cond)`.
 3. **Tuple `class=("...", cond)` chỉ nhận ĐÚNG MỘT class token:** trong Leptos 0.8, cú pháp tuple
    gọi `DOMTokenList` (`classList.add/remove`), sẽ ném `InvalidCharacterError` ở trình duyệt nếu
    chuỗi chứa khoảng trắng!

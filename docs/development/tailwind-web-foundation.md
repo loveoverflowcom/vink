@@ -224,8 +224,9 @@ và layout live của ví dụ trên browser là `NOT_RUN`.
 | #417 AC-01/04/05/07 | CSS payload, token/layer và asset contract ở mức source/compile/unit; còn phép đo đầy đủ, theme/runtime, đóng gói artifact release và UX pilot | `PARTIAL` |
 | #417 AC-08 | Đối chiếu lại docs và registry giữ đúng owner và trạng thái PENDING; cần tích hợp cập nhật docs | `PARTIAL` |
 | #418 AC-04 | Mô tả default/markdown, stable EditorView, ranh giới format extension/convert, CSS giữ lại và test hooks khớp với source đã tích hợp | `PASS` ở phạm vi tài liệu |
-| #418 AC-01/02/03/05 | Các chỉnh lý canonical guide, ví dụ pin, guard và lệnh verification đã đối chiếu với source thực | Source/compile đã kiểm; chờ review và tích hợp |
-| #418 AC-06 | Walkthrough S1 thực hiện được thao tác thay variant và cho ra CSS. Review tài liệu độc lập do S2 phụ trách | `PARTIAL` tới khi có review và tích hợp |
+| #418 AC-01/03/05 | Các chỉnh lý canonical guide, guard và lệnh verification đã đối chiếu với source thực | Chờ tích hợp |
+| #418 AC-02 | Fixture qua `rstml` và Tailwind. Còn kiểm bằng macro `view!` của Leptos với `banner=true` và `banner=false` | `PARTIAL` |
+| #418 AC-06 | Walkthrough S1 thay variant và sinh CSS. S2 đã review độc lập docs ở `5614b77f`. Guide cập nhật ví dụ `class:` theo review | Đủ bằng chứng tài liệu, ghi nhận sau khi tích hợp |
 
 Các gate sau đã chuyển sang hai lượt kiểm cuối: tooltip rail, editor SSR/hydration, full quick,
 full Web/preview và perf release CSS/HTML/WASM trên cùng máy/browser/profile/corpus. Giữ
