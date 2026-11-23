@@ -1,3 +1,5 @@
+import { wakeDesk } from './desk-lifecycle.mjs';
+
 // #214. Real provider/Reader anchor check, then explicitly fabricated state/race/geometry cases.
 export async function authorWorks(page, {args,check,DraftGate,sleep}) {
   console.log('Author works #214: current-public facts, readonly metrics, failure and reflow:');
@@ -21,7 +23,7 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
   const gate=new DraftGate(page); gate.list={raw:true,body:{works,next_cursor:null}};await gate.enable();
   const settled=()=>page.waitFor(`document.querySelector('[data-testid=draft-content]')?.getAttribute('aria-busy')==='false'`,'author summary settles');
   try {
-    await page.click('#refresh-drafts');await settled();
+    await wakeDesk(page);await settled();
     check(await page.eval(`document.querySelectorAll('[data-testid=draft-row]').length===6 && document.querySelectorAll('[data-testid=author-work-metrics]').length===3`), 'private/unknown rows hide metrics; known zero and unavailable remain distinct');
     check(await page.eval(`document.querySelector('#draft-row-${works[5].work_id} .vk-author-work__status').textContent.startsWith('Chỉ mình tôi') && document.querySelector('#draft-row-${works[5].work_id}').textContent.includes('Không có bản nháp để sửa') && !document.querySelector('#draft-row-${works[5].work_id} a')`), 'a private work without a draft has truthful status and no fabricated editor target');
     check(await page.eval(`document.querySelector('#draft-row-${works[0].work_id}').textContent.includes('Đã đăng · Có bản sửa') && document.querySelector('#draft-row-${works[2].work_id}').textContent.includes('không được duyệt')`), 'public pointer coexists with pending/rejected newer revisions');
@@ -47,13 +49,14 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
     await page.capture('author-works-metrics-390-dark-200',{boundary:'fabricated-author-summary-real-hydration',scenario:'#214-readable-public-metrics'});
     await page.eval(`[...document.querySelectorAll('.vk-author-work__reader')].at(-1).focus();[...document.querySelectorAll('.vk-author-work__reader')].at(-1).scrollIntoView({block:'center'})`);
     check(await page.eval(`(()=>{const r=document.activeElement.getBoundingClientRect(),bar=document.querySelector('.vk-ui-bottom-nav');return r.height>=44&&r.top>=0&&r.bottom<=(bar?.getClientRects().length?bar.getBoundingClientRect().top:innerHeight)&&r.right<=innerWidth;})()`),'last public-reader target is reachable above bottom navigation at 390/text200');
+    await page.click('#open-draft-search');
     await page.viewport(390);await page.eval(`document.documentElement.style.fontSize='100%';document.querySelector('#draft-search').focus();document.querySelector('#draft-search').setSelectionRange(0,0);window.__authorInput=document.querySelector('#draft-search');window.__authorEditor=document.querySelector('.vk-draft-row__link')`);
     gate.list={raw:true,body:{works:[{...works[0],publication:{...state,current_public:{revision_id:'r2',title:'Bản mới công khai',tham:8,comments:2},has_draft_changes:false,intent_revision_id:'r2',intent_moderation:'approved'}}],next_cursor:null}};
-    await page.eval(`document.querySelector('#refresh-drafts').click()`);await settled();
+    await wakeDesk(page);await settled();
     check(await page.eval(`document.querySelector('[data-testid=author-work-metrics]').textContent==='Thấm 8 · Nhận xét 2' && !document.querySelector('#draft-results').textContent.includes('Có bản sửa') && document.querySelector('#draft-search')===window.__authorInput && document.activeElement===window.__authorInput && document.querySelector('.vk-draft-row__link')===window.__authorEditor`), 'refresh replaces pointer+counts together without remounting input or stealing focus');
-    gate.holdGets=true;await page.click('#refresh-drafts');const held=await gate.next('gets');await gate.fulfill(held,503,{error:{code:'dependency_unavailable'}});await settled();
+    gate.holdGets=true;await wakeDesk(page);const held=await gate.next('gets');await gate.fulfill(held,503,{error:{code:'dependency_unavailable'}});await settled();
     check(await page.eval(`!!document.querySelector('[data-testid=author-work-stale]') && !!document.querySelector('.vk-draft-row__link')`),'read outage retains same-account snapshot with an explicit stale label');
-    await page.eval(`document.querySelector('#refresh-drafts').click()`);const denied=await gate.next('gets');await gate.fulfill(denied,403,{error:{code:'forbidden'}});
+    await wakeDesk(page);const denied=await gate.next('gets');await gate.fulfill(denied,403,{error:{code:'forbidden'}});
     await page.waitFor(`document.querySelector('[data-testid=desk-access]')`,'#308 scoped access refusal');
     check(await page.eval(`!document.querySelector('#draft-search, #retry-drafts, [data-testid=draft-row]')`),'authority refusal clears summaries, metrics and private controls immediately');
     check(gate.postCount===0,'all summary refreshes remain read-only');

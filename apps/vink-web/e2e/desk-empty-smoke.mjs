@@ -1,5 +1,6 @@
 // #259: use the existing CDP runner and private-list transport gate. These fixtures
 // prove presentation/interaction, not database search or publication semantics.
+import { wakeDesk } from './desk-lifecycle.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
@@ -129,7 +130,7 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
   const settled = () => page.waitFor(`document.querySelector('[data-testid=draft-content]')?.getAttribute('aria-busy') === 'false'`, 'empty-state read settles');
   const refresh = async body => {
     gate.list = { raw: true, body };
-    await page.click('#refresh-drafts');
+    await wakeDesk(page);
     await settled();
   };
   const geometry = [];
@@ -153,6 +154,7 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
     const initial = await gate.next('gets');
     await page.waitFor(`document.querySelector('[data-testid=draft-loading]')`, 'held initial read');
     check(network.length === 0 && await page.eval(`!document.querySelector('[data-testid=draft-empty], [data-testid=draft-no-results], #create-draft')`), '#259 loading requests no artwork and claims no empty corpus');
+    await page.click('#open-draft-search');
     await page.eval(`window.__emptySearch=document.querySelector('#draft-search'); window.__emptySearch.focus(); window.__emptySearch.value='không khớp'; window.__emptySearch.dispatchEvent(new InputEvent('input',{bubbles:true})); window.__emptySearch.setSelectionRange(2,5)`);
     gate.holdGets = false;
     await gate.answerGet(initial);
@@ -165,7 +167,7 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
     // qualifier) instead of removing and re-adding the slot.
     await watchNodes(page, 'missRemoved', '[data-testid=draft-no-results]', 'removedNodes');
     gate.holdGets = true;
-    await page.click('#refresh-drafts');
+    await wakeDesk(page);
     const sameQuery = await gate.next('gets');
     check(await page.eval(`window.__missRemoved.length===0 && !!document.querySelector('[data-testid=draft-no-results]') && !!document.querySelector('[data-testid=author-work-stale]')`), 'audit: retained no-results stays, labelled stale, while the same query refreshes');
     gate.holdGets = false;
@@ -244,7 +246,7 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
       await page.eval(`const img=document.querySelector('[data-testid=draft-empty] img'); img.src=${JSON.stringify(original)}; img.decode()`);
       // Retained successful empty is labelled while pending; an error remains an error.
       gate.holdGets = true;
-      await page.click('#refresh-drafts');
+      await wakeDesk(page);
       const pending = await gate.next('gets');
       check(await page.eval(`document.querySelector('[data-testid=draft-empty]') && document.querySelector('#draft-scope [data-testid=author-work-stale]') && document.querySelector('#create-draft').getAttribute('aria-disabled')!=='true'`), '#259 retained empty during refresh keeps its stale qualifier and allows create');
       await gate.fulfill(pending, 503, {error:{code:'dependency_unavailable'}});
@@ -255,10 +257,10 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
       await page.click('#retry-drafts'); await settled();
       check(await page.eval(`!document.querySelector('[data-testid=draft-empty], [data-testid=draft-no-results], #drafts img') && document.querySelector('[data-testid=desk-error]') && document.querySelector('[data-testid=author-work-stale]')`), '#259 empty page with continuation is rejected by existing PageChain; remains an error, never first-use');
       // A proxy 502 (or 429) is `Unexpected`, not `Unavailable`: it may pass on the next try.
-      // The rejected chain is `Invalid` (no panel retry); the toolbar refresh stays available.
-      check(await page.eval(`!document.querySelector('[data-testid=desk-error] #retry-drafts') && !!document.querySelector('#refresh-drafts')`), '#308 a rejected page chain offers the toolbar refresh, not a panel retry');
+      // The rejected chain is `Invalid` (no panel retry); a stale visibility wake still rechecks the list.
+      check(await page.eval(`!document.querySelector('[data-testid=desk-error] #retry-drafts')`), '#308 a rejected page chain has no transient error-panel retry');
       gate.holdGets = true;
-      await page.click('#refresh-drafts');
+      await wakeDesk(page);
       await gate.fulfill(await gate.next('gets'), 502, {error:{code:'bad_gateway'}});
       gate.holdGets = false;
       await settled();

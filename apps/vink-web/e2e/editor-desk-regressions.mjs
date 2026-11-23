@@ -13,7 +13,7 @@ export async function firstDraftFormat(page, { args, check }) {
     document.querySelectorAll('#create-draft').length === 1 && document.querySelector('${picker}').value === 'default'`),
   '#262 first-use owns one format picker and one CTA, initially Mặc định');
   await page.eval(`document.documentElement.dataset.text = '200'; document.documentElement.dataset.theme = '${format === 'markdown' ? 'dark' : 'light'}'`);
-  await page.eval("document.querySelector('#refresh-drafts').focus()");
+  await page.eval("document.querySelector('#draft-sort').focus()");
   await page.key('Tab');
   await page.waitFor(`document.activeElement === document.querySelector('${picker}')`, 'first-use Select focused by Tab');
   const focus = await page.eval(`(() => {
