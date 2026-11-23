@@ -774,9 +774,15 @@
     },
     {
       "path": "apps/vink-web/style/vink.css",
+      "declaration": "font-size: 150%",
+      "owner": "Web appearance preference (#413)",
+      "reason": "User-selected Large (150%) root text scale relative to the browser default. Component typography still resolves through the shared tokens."
+    },
+    {
+      "path": "apps/vink-web/style/vink.css",
       "declaration": "font-size: 200%",
-      "owner": "Web appearance preference",
-      "reason": "User-selected root text scale relative to the browser default. Component typography still resolves through the shared tokens."
+      "owner": "Web 200% reflow stress harness",
+      "reason": "Retained for isolated 200% geometry/stress verification (dom-override-geometry-only) after #413 changed the Web appearance setting to 150%."
     },
     {
       "path": "apps/vink-web/style/vink.css",

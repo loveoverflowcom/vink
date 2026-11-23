@@ -39,10 +39,11 @@ preference (mở rộng 220 px, thu gọn 96 px). Điều hướng không đổi
 
 [DQ-11](../redesign-r4-ban-viet-kham-pha.md#8-sửa-theo-thiết-kế-hiện-hành-vs-cần-quyết-định)
 giữ hai lựa chọn: bác thẻ tài khoản ở chân rail và dùng nền trang cho mục Tôi khi mục này có chữ.
-[#413](https://github.com/loveoverflowcom/vink/issues/413) thay riêng phần “giữ Giao diện”. Đích
-là bỏ nút ở rail mở rộng, thu gọn và hộp thoại, chỉnh Giao diện tại Tôi. Source đã pin còn
-`RailAppearance` và mức 100%/200%. Thiết kế đích dùng Mặc định 100%, Lớn 150%, preference cũ
-200 → Lớn 150%. Stress 200% có phương pháp và metadata riêng.
+[#413](https://github.com/loveoverflowcom/vink/issues/413) thay riêng phần “giữ Giao diện”. Web #413
+bỏ nút ở rail mở rộng, thu gọn và hộp thoại. Trên Web, khách và người đã đăng nhập chỉnh
+Giao diện tại Tôi. Mặc định 100%, Lớn 150%; bootstrap chuyển preference cũ 200 → Lớn 150%
+trước CSS và hydration. Stress 200% có phương pháp và metadata riêng. Source đã pin ở đầu tài
+liệu ghi lại baseline trước #413.
 
 [#427 AC-04](https://github.com/loveoverflowcom/vink/issues/427#acceptance) giữ tên đích và
 `aria-current="page"`, dùng icon outlined cho đích chưa chọn và filled cho đích đang chọn.

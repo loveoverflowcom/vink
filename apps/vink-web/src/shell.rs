@@ -7,15 +7,13 @@ use leptos::prelude::*;
 use leptos_router::hooks::use_location;
 use vink_ui::{
     AdaptiveScaffold, BottomNavigation, CloseReason, IconName, NavContext, NavDestination, NavItem,
-    NavLayout, NavUtility, NavigationRail, OverlayLayer, WindowClass,
+    NavLayout, NavigationRail, OverlayLayer, WindowClass,
 };
 
-use crate::appearance::{
-    AccountAvatar, Appearance, AppearanceChoices, AppearanceTitle, RAIL_BOOTSTRAP,
-};
+use crate::appearance::{AccountAvatar, Appearance, RAIL_BOOTSTRAP};
 use crate::navigation::use_navigation_guard;
 
-const PROFILE: &str = "profile-menu";
+// Giao diện lives only on Tôi (`/toi`); the rail carries no appearance utility (#413).
 const RAIL_MODAL: &str = "navigation-modal";
 
 /// Vink's destinations. Reader pages belong to Khám phá, the editor to Bàn viết. Order is a
@@ -100,22 +98,9 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
         NavLayout::resolve(window_class.get(), context.get(), appearance.rail.get())
     });
     let overlays = RwSignal::new(OverlayLayer::default());
-    let profile_open = Memo::new(move |_| overlays.with(|layer| layer.is_open(PROFILE)));
     let rail_open = Memo::new(move |_| overlays.with(|layer| layer.is_open(RAIL_MODAL)));
-    let profile = NodeRef::<html::Dialog>::new();
     let rail_modal = NodeRef::<html::Dialog>::new();
     let page_scroll = StoredValue::new(0.0);
-    let profile_trigger = StoredValue::new("profile-trigger");
-    let close_profile = move |reason| {
-        close_dialog(
-            PROFILE,
-            reason,
-            overlays,
-            profile,
-            profile_trigger.get_value(),
-            page_scroll,
-        )
-    };
     let close_rail = move |reason| {
         close_dialog(
             RAIL_MODAL,
@@ -128,8 +113,7 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
     };
     let navigation = use_navigation_guard();
     // Back/forward and real navigations close the overlay before the editor's check runs.
-    let overlay_closer =
-        navigation.set_overlay(move |reason| close_rail(reason) || close_profile(reason));
+    let overlay_closer = navigation.set_overlay(close_rail);
     on_cleanup(move || navigation.clear_overlay(overlay_closer));
 
     #[cfg(feature = "hydrate")]
@@ -139,9 +123,6 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
             window_class.set(class);
             if class != WindowClass::Medium {
                 close_rail(CloseReason::Resize);
-            }
-            if class == WindowClass::Compact {
-                close_profile(CloseReason::Resize);
             }
         });
         on_cleanup(move || listener.remove());
@@ -160,35 +141,6 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
             })
             .collect::<Vec<_>>()
     };
-    let open_profile = Callback::new(move |()| {
-        let from_modal = close_rail(CloseReason::Dismiss);
-        profile_trigger.set_value(if from_modal {
-            "navigation-toggle"
-        } else {
-            "profile-trigger"
-        });
-        let opened = show_dialog(PROFILE, overlays, profile, page_scroll);
-        #[cfg(feature = "hydrate")]
-        if opened {
-            if let Some(body) = document().get_element_by_id("profile-body") {
-                body.set_scroll_top(0);
-                let visible_choice = body
-                    .query_selector("#overlay-theme input:checked")
-                    .ok()
-                    .flatten()
-                    .filter(|choice| {
-                        choice.get_bounding_client_rect().bottom()
-                            <= body.get_bounding_client_rect().bottom()
-                    });
-                focus_without_scroll(
-                    visible_choice.or_else(|| document().get_element_by_id("profile-close")),
-                );
-            }
-            restore_scroll(page_scroll);
-        }
-        #[cfg(not(feature = "hydrate"))]
-        let _ = opened;
-    });
     let toggle = Callback::new(move |()| {
         // Match CSS at the time of activation, including clicks between resize and its event.
         match current_window_class() {
@@ -238,7 +190,6 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
                     on_toggle=toggle
                     destinations=primary(false)
                     account=move || view! {
-                        <RailAppearance id="profile-trigger" expanded=profile_open.into() on_open=open_profile />
                         <AccountLink guest=guest.into() current=active(Destination::Me) />
                     }
                 />
@@ -265,38 +216,15 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
                         on_toggle=Callback::new(move |()| { close_rail(CloseReason::Dismiss); })
                         destinations=primary(true)
                         account=move || view! {
-                            <RailAppearance id="navigation-expanded-appearance" expanded=profile_open.into() on_open=open_profile />
                             <AccountLink guest=guest.into()
                                 current=Signal::derive(move || rail_open.get() && current.get() == Some(Destination::Me)) />
                         }
                     />
                 </ShellDialog>
-                <ShellDialog id=PROFILE class="vk-profile-menu" label="Giao diện" labelledby="profile-title"
-                    dialog=profile on_close=Callback::new(move |reason| { close_profile(reason); })>
-                    <header class="vk-profile-heading">
-                        <AppearanceTitle id="profile-title" />
-                        <vink_ui::IconButton icon=IconName::Close label="Đóng Giao diện" id="profile-close"
-                            on_press=Callback::new(move |()| { close_profile(CloseReason::Dismiss); }) />
-                    </header>
-                    <div id="profile-body" class="vk-profile-body"><AppearanceChoices prefix="overlay" /></div>
-                </ShellDialog>
             }
         >
             {children()}
         </AdaptiveScaffold>
-    }
-}
-
-#[component]
-fn RailAppearance(
-    id: &'static str,
-    expanded: Signal<bool>,
-    on_open: Callback<()>,
-) -> impl IntoView {
-    view! {
-        <NavUtility id label="Giao diện" icon=IconName::Person
-            leading=move || view! { <span class="vk-ui-icon" data-appearance-icon="palette" aria-hidden="true"></span> }
-            controls=PROFILE expanded on_open />
     }
 }
 
@@ -323,13 +251,12 @@ fn ShellDialog(
     id: &'static str,
     class: &'static str,
     label: &'static str,
-    #[prop(optional)] labelledby: Option<&'static str>,
     dialog: NodeRef<html::Dialog>,
     on_close: Callback<CloseReason>,
     children: Children,
 ) -> impl IntoView {
     view! {
-        <dialog id=id class=class aria-label=label aria-labelledby=labelledby data-testid=id node_ref=dialog
+        <dialog id=id class=class aria-label=label data-testid=id node_ref=dialog
             on:keydown=move |event| trap_dialog_tab(event, dialog)
             on:cancel=move |event: leptos::ev::Event| {
                 event.prevent_default();
@@ -357,16 +284,16 @@ fn ShellDialog(
     }
 }
 
-/// Keep keyboard traversal inside the utility even when a browser would send an edge Tab to
+/// Keep keyboard traversal inside the dialog even when a browser would send an edge Tab to
 /// its own chrome. Unchecked radios are one native tab stop with the checked option.
-fn trap_dialog_tab(event: leptos::ev::KeyboardEvent, profile: NodeRef<html::Dialog>) {
+fn trap_dialog_tab(event: leptos::ev::KeyboardEvent, dialog: NodeRef<html::Dialog>) {
     #[cfg(feature = "hydrate")]
     {
         use wasm_bindgen::JsCast;
         if event.key() != "Tab" {
             return;
         }
-        let Some(dialog) = profile.get_untracked() else {
+        let Some(dialog) = dialog.get_untracked() else {
             return;
         };
         let Ok(stops) =
@@ -394,7 +321,7 @@ fn trap_dialog_tab(event: leptos::ev::KeyboardEvent, profile: NodeRef<html::Dial
         }
     }
     #[cfg(not(feature = "hydrate"))]
-    let _ = (event, profile);
+    let _ = (event, dialog);
 }
 
 fn show_dialog(

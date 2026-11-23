@@ -178,7 +178,8 @@ export function classifyTextScaleLane({ rootInlineFontSize, dataText, explicitLa
   if (typeof rootInlineFontSize === 'string' && rootInlineFontSize.trim().length > 0) {
     return 'dom-override-geometry-only';
   }
-  if (dataText === '200') return 'app-appearance-control';
+  if (dataText === '200') return 'dom-override-geometry-only';
+  if (dataText === '150') return 'app-appearance-control';
   return 'default-100';
 }
 
@@ -393,7 +394,6 @@ export function buildOverflowInspectionScript({
     '.vk-ui-bottom-nav a',
     '.vk-ui-rail a, .vk-ui-rail button',
     '.vk-me button, .vk-me a, .vk-me summary',
-    '#profile-menu button, #profile-menu a, #profile-menu input:checked',
     '#leave-editor button, #draft-preview button',
     '.vk-editor-recovery button, .vk-editor-recovery summary',
     '.vk-discussion-root button',
@@ -413,7 +413,6 @@ export function buildOverflowInspectionScript({
     '.vk-account',
     '.vk-account-status',
     '.vk-appearance-card',
-    '#profile-menu',
     '#leave-editor',
     '#draft-preview',
     '#desk',

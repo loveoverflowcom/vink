@@ -1,20 +1,27 @@
-# Giao diện R1 — panel và trang Tôi (#209)
+# Giao diện R1 — trang Tôi (#209, cập nhật bởi #413)
 
-Phạm vi UX-01 và thao tác đổi giao diện khi đang viết (WR-01/WR-02).
+Phạm vi UX-01 và thao tác đổi giao diện (WR-01/WR-02).
 [#209](https://github.com/loveoverflowcom/vink/issues/209) tiếp nối
 [dialog editor R1](dialog-anatomy-r1-208.md) trên nền `develop@ef7da9d1981ef9c0864af8d9c26a8c5b6d919aa3`.
 [Concept](https://drive.google.com/file/d/12I8UnUh5dAVloglTfpavfIF5pOFn-Pof/view) và
 [LayoutSpec nguồn](https://drive.google.com/file/d/1T25IrfdL3pjWoQekdkXKB_OuIs7tslYO/view)
-là tham chiếu ứng viên. Fidelity `NO_APPROVED_REFERENCE`.
+là tham chiếu ứng viên lịch sử của `#209`. Fidelity `NO_APPROVED_REFERENCE`.
+
+> **Cập nhật theo [#413](https://github.com/loveoverflowcom/vink/issues/413) (23/11/2026):**
+> Thay thế có phạm vi đối với phần rail/overlay của `#209`: bỏ nút **Giao diện** ở nav rail và bỏ
+> overlay `#profile-menu` (`#open-me`, `#overlay-*`); không ghép lại vào thẻ tài khoản hay tạo
+> trigger ẩn. `/toi` (`#page-appearance`) là điểm chỉnh Giao diện duy nhất trên Web cho cả khách
+> và người đã đăng nhập. Nhóm **Cỡ chữ** (`#page-text`) chỉ còn hai lựa chọn **Mặc định**
+> (`100%`) và **Lớn** (`150%`, thay cho `200%`), và bootstrap tự chuẩn hóa `vink.ui.text=200` cũ
+> sang `150` trước CSS/first paint. Bằng chứng lịch sử của `#209` bên dưới giữ nguyên bối cảnh cũ.
 
 ```text
-Overlay #profile-menu — modal neo theo rail hiệu lực, một vùng cuộn
-  Row #profile-title / #profile-close — Giao diện / Đóng Giao diện
-  Region AppearanceChoices — #overlay-theme → #overlay-text → #overlay-rail
-  Action #open-me — Mở trang Tôi + SVG, ngoài route /toi
-Screen /toi — đích Tôi của thanh điều hướng mobile
-  Region .vk-appearance-card — Giao diện
-    Region AppearanceChoices — #page-theme → #page-text → #page-rail
+Screen /toi — đích Tôi trên rail và thanh điều hướng mobile (điểm chỉnh Giao diện duy nhất từ #413)
+  Region .vk-appearance-card — Giao diện (#page-appearance)
+    Region AppearanceChoices — #page-theme → #page-text (Mặc định 100% | Lớn 150%) → #page-rail
+
+Lịch sử trước #413 (#209): từng có Overlay #profile-menu neo theo rail hiệu lực (#profile-title,
+#profile-close, #overlay-theme → #overlay-text → #overlay-rail, #open-me ngoài route /toi).
 ```
 
 - **CHOICE-01 A.** Dùng flex-wrap theo kích thước nội dung. Cả hai nơi đặt tên nhóm

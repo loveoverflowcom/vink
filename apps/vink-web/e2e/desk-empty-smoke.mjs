@@ -82,9 +82,8 @@ export async function deskGuest(page, {args, check}, signInOpen) {
       }
     }
     await page.eval("document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme; document.querySelector('#navigation-primary a[href=\"/ban-viet\"]').focus()");
-    await page.key('Tab');
-    check(await page.eval(`document.activeElement.matches('#profile-trigger:focus-visible')`),
-      'the appearance shortcut has keyboard focus before the guest account link');
+    check(await page.eval(`!document.querySelector('#profile-trigger, #navigation .vk-ui-nav-utility')`),
+      'no appearance utility button remains on the rail');
     await page.key('Tab');
     check(await page.eval(`document.activeElement.matches('#navigation-account a:focus-visible') &&
       parseFloat(getComputedStyle(document.activeElement).outlineWidth)>0`), '#308 guest rail link is keyboard reachable with a focus ring');

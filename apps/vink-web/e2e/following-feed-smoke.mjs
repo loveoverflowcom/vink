@@ -101,7 +101,7 @@ async function layout(page, check, textContrast) {
       const navRect = bar.getBoundingClientRect();
       return { rail: rail.getBoundingClientRect().width, mobile: navRect.height > 0,
         railTargets: [...rail.querySelectorAll('#navigation-primary a')].map(item => item.getAttribute('href')),
-        railAccount: Boolean(rail.querySelector('#profile-trigger')), count: items.length, current: current?.getAttribute('href'),
+        railAccount: Boolean(rail.querySelector('#navigation-account a[href="/toi"]')) && !rail.querySelector('#profile-trigger, .vk-ui-nav-utility'), count: items.length, current: current?.getAttribute('href'),
         pill: current?.querySelector('.vk-ui-nav-item__indicator')?.getBoundingClientRect().toJSON(),
         iconDelta: icons.every(Boolean) ? Math.max(...icons.map(r => r.top + r.height / 2)) - Math.min(...icons.map(r => r.top + r.height / 2)) : null,
         axisDelta: icons.every(Boolean) ? Math.max(...icons.map((r, i) => {

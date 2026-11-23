@@ -74,6 +74,19 @@ Proposal này ở trạng thái `PENDING` (chưa có signoff đúng revision/SHA
 inventory, pilot và bằng chứng nằm tại
 [docs/development/tailwind-web-foundation.md](../docs/development/tailwind-web-foundation.md).
 
+## Giao diện Web (Shell & Cỡ chữ)
+
+[VDR-WEB-APPEARANCE@r1](proposals/VDR-WEB-APPEARANCE.r1.toml) (`PENDING`, SHA-256
+`e49d51487417906adb3e866e15cf63cd61a647942c534aafacb8928c1d7f7570`) ghi nhận quyết định ngày
+23/11/2026 trong [issue #413](https://github.com/loveoverflowcom/vink/issues/413): bỏ nút
+“Giao diện” và dialog `#profile-menu` khỏi mọi nav rail Web, giữ `/toi` làm điểm chỉnh Giao diện
+duy nhất trên Web, rút nhóm Cỡ chữ thành hai lựa chọn `Mặc định` (100%) và `Lớn` (150%, tự quy
+đổi giá trị cũ `vink.ui.text=200` sang `150` trong bootstrap trước CSS/first paint, theo lựa chọn kỹ
+thuật `CHOICE-01 A`), và chỉ thay thế có phạm vi phần giữ nút Giao diện trên rail của
+`#403`/`DQ-11` và `#209`. Theo `VDR-DECISION-SIGNOFF@r1`, proposal này giữ trạng thái `PENDING`
+trong registry TOML và chưa gắn marker pin kích hoạt cho tới khi có file signoff trích đúng
+revision/SHA-256.
+
 ## Tra cứu theo phạm vi công việc
 
 [Đối soát PR 15–16/11/2026](../docs/development/verification-reconciliation-20261116.md#quyết-định-toml-mới)
