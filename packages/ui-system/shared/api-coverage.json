@@ -767,6 +767,12 @@
   ],
   "style_exceptions": [
     {
+      "path": "packages/vink-patterns/leptos/patterns.css",
+      "declaration": "font-variant-numeric: tabular-nums",
+      "owner": "AuthorWorkRow public counters (#410)",
+      "reason": "Equal-width digits keep Thấm and comment counts aligned as their values change. The label type scale still comes from shared tokens."
+    },
+    {
       "path": "apps/vink-web/style/vink.css",
       "declaration": "font-size: 200%",
       "owner": "Web appearance preference",

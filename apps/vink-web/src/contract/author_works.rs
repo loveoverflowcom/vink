@@ -39,6 +39,10 @@ pub struct CurrentPublicSummary {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn labels(summary: &crate::ui::patterns::AuthorWorkSummary) -> Vec<&'static str> {
+        summary.status.iter().map(|label| label.short).collect()
+    }
+
     #[test]
     fn author_work_fixture_and_unknowns_never_invent_private_published_or_zero() {
         let raw = include_str!(
@@ -57,21 +61,20 @@ mod tests {
             Some(0)
         );
         let facts = crate::ui::adapters::author_work_summary(&page.works[0]);
-        assert!(
-            facts.status.contains("Đã đăng · Có bản sửa") && facts.status.contains("chờ duyệt")
-        );
-        assert_eq!(facts.metrics.as_deref(), Some("Thấm 0 · Nhận xét 12"));
         assert_eq!(
-            facts.public_context.as_deref(),
-            Some("Bản công khai: Tên bản đang công khai")
+            labels(&facts),
+            ["Đã đăng", "Có bản sửa", "Bản mới chờ duyệt"]
         );
+        let public = facts.public.unwrap();
+        assert_eq!((public.tham, public.comments), (Some(0), Some(12)));
+        assert_eq!(public.title.as_deref(), Some("Tên bản đang công khai"));
         let unknown = raw
             .replace("\"public\"", "\"future-audience\"")
             .replace("\"pending\"", "\"future-decision\"");
         let page: AuthorWorkList = serde_json::from_str(&unknown).unwrap();
         let facts = crate::ui::adapters::author_work_summary(&page.works[0]);
-        assert!(facts.status.contains("Chưa xác định"));
-        assert!(facts.metrics.is_none());
+        assert_eq!(labels(&facts), ["Chưa rõ"]);
+        assert!(facts.public.is_none());
     }
     #[test]
     fn author_work_axes_unavailable_private_and_missing_draft_are_distinct() {
@@ -88,29 +91,26 @@ mod tests {
             .unwrap()
             .tham = None;
         let facts = crate::ui::adapters::author_work_summary(w);
-        assert_eq!(facts.metrics.as_deref(), Some("Thấm — · Nhận xét 12"));
-        assert!(facts.public_context.unwrap().contains("Chưa tải được"));
+        let public = facts.public.unwrap();
+        assert_eq!((public.tham, public.comments), (None, Some(12)));
         w.publication.as_mut().unwrap().audience = Audience::Private;
         w.publication.as_mut().unwrap().current_public = None;
         w.publication.as_mut().unwrap().intent_revision_id = None;
         w.publication.as_mut().unwrap().latest_moderation = Some(Decision::Rejected);
         let facts = crate::ui::adapters::author_work_summary(w);
-        assert!(facts.status.contains("Chỉ mình tôi") && facts.status.contains("không được duyệt"));
-        assert!(facts.metrics.is_none());
+        assert_eq!(labels(&facts), ["Chỉ mình tôi", "Bản mới không được duyệt"]);
+        assert!(facts.public.is_none());
         w.draft_version = None;
         let p = w.publication.as_mut().unwrap();
         p.generation = 1;
         p.latest_revision_id = None;
         p.latest_moderation = None;
         let facts = crate::ui::adapters::author_work_summary(w);
-        assert!(facts.status.starts_with("Chỉ mình tôi"));
-        assert!(facts.status.contains("Không có bản nháp để sửa"));
-        assert!(facts.editor_href.is_none() && facts.metrics.is_none());
+        assert_eq!(labels(&facts), ["Chỉ mình tôi"]);
+        assert!(facts.editor_href.is_none() && facts.public.is_none());
         w.publication = None;
         let facts = crate::ui::adapters::author_work_summary(w);
-        assert!(facts.editor_href.is_none() && facts.metrics.is_none());
-        assert!(
-            facts.status.contains("Chưa xác định") && facts.status.contains("Không có bản nháp")
-        );
+        assert!(facts.editor_href.is_none() && facts.public.is_none());
+        assert_eq!(labels(&facts), ["Chưa rõ"]);
     }
 }

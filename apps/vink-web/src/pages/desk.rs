@@ -664,7 +664,7 @@ fn DraftListView(
                         else if stale() { "Đang xem kết quả cũ.".into() }
                         else if load_error.with(Option::is_some) { "Chưa tải được kết quả.".into() }
                         else if no_results.get() { "Không có kết quả".into() }
-                        else { format!("{} tác phẩm", pages.with(|p| p.drafts.len())) }}
+                        else { format!("Hiển thị {} tác phẩm", pages.with(|p| p.drafts.len())) }}
                     </span>
                 </p>
                 <div id="draft-tools" class="vk-draft-tools" hidden=move || dock_open.get()>

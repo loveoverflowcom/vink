@@ -907,7 +907,8 @@ a {
 .vk-draft-search .vk-ui-input { padding-block: 0; }
 #draft-scope, .vk-draft-sort-help { margin: 0; font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
 /* DraftRow owns equal insets; the list owns one quiet surface, with space between links. */
-.vk-draft-rows { display: grid; gap: var(--vk-space-1); margin: 0; padding: var(--vk-space-1) 0; list-style: none; border-radius: var(--vk-radius-lg); background: var(--vk-bg-content); }
+.vk-draft-rows { display: grid; gap: var(--vk-space-2); margin: 0; padding: 0; list-style: none; }
+.vk-draft-rows > li { min-inline-size: 0; }
 .vk-draft-rows:empty { display: none; }
 .vk-draft-sort-help { flex-basis: 100%; text-align: end; }
 .vk-desk-privacy { margin-top: var(--vk-space-8); font-size: var(--vk-type-label-size); }

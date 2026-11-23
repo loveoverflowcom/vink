@@ -432,109 +432,104 @@ mod discussion_tests {
 pub fn author_work_summary(
     work: &crate::contract::author_works::AuthorWorkCard,
 ) -> super::patterns::AuthorWorkSummary {
+    use super::patterns::{AuthorWorkLabel, AuthorWorkPublic};
     use crate::contract::publication::{Audience, Decision, Lifecycle};
-    let mut status = "Chưa xác định trạng thái".to_string();
-    let mut metrics = None;
-    let mut public_context = None;
-    let mut reader_href = None;
-    if let Some(p) = &work.publication {
-        let known = p.audience != Audience::Unknown && p.lifecycle != Lifecycle::Unknown;
-        if known {
-            status = match p.lifecycle {
-                Lifecycle::AuthorDeleted => "Đã xóa bởi tác giả".into(),
-                Lifecycle::Removed => "Đã gỡ".into(),
-                Lifecycle::Active => {
-                    if p.current_public.is_some() && p.audience == Audience::Public {
-                        if p.has_draft_changes == Some(true) {
-                            "Đã đăng · Có bản sửa"
-                        } else {
-                            "Đã đăng"
-                        }
-                    } else if p.review_withdrawn {
-                        "Đã ẩn sau kiểm duyệt"
-                    } else if p.audience == Audience::Private {
-                        if work.draft_version.is_some()
-                            && p.generation == 1
-                            && p.latest_revision_id.is_none()
-                        {
-                            "Bản nháp"
-                        } else {
-                            "Chỉ mình tôi"
-                        }
-                    } else {
-                        "Chưa có bản công khai"
-                    }
-                    .into()
-                }
-                Lifecycle::Unknown => unreachable!(),
-            };
-            if p.lifecycle == Lifecycle::Active {
-                let decision = if p.intent_revision_id.is_some() {
-                    p.intent_moderation
-                } else {
-                    p.latest_moderation
-                };
-                let different = p.current_public.as_ref().is_none_or(|public| {
-                    p.intent_revision_id
-                        .as_ref()
-                        .or(p.latest_revision_id.as_ref())
-                        != Some(&public.revision_id)
-                });
-                if different {
-                    let label = match decision {
-                        Some(Decision::Pending) => Some("Bản mới đang chờ duyệt"),
-                        Some(Decision::NeedsAdmin) => Some("Bản mới cần người duyệt"),
-                        Some(Decision::Rejected) => Some("Bản mới không được duyệt"),
-                        Some(Decision::Unknown) => Some("Chưa rõ trạng thái bản mới"),
-                        _ => None,
-                    };
-                    if let Some(label) = label {
-                        status.push_str(" · ");
-                        status.push_str(label);
-                    }
-                }
-                if let Some(public) = &p.current_public
-                    && p.audience == Audience::Public
+    use vink_ui::IconName;
+    let label = AuthorWorkLabel::new;
+    let mut status = vec![label("Chưa rõ", "Chưa xác định trạng thái", IconName::Help)];
+    let mut public = None;
+    if let Some(p) = &work.publication
+        && p.audience != Audience::Unknown
+        && p.lifecycle != Lifecycle::Unknown
+    {
+        let current_public = p
+            .current_public
+            .as_ref()
+            .filter(|_| p.audience == Audience::Public);
+        status[0] = match p.lifecycle {
+            Lifecycle::AuthorDeleted => label("Đã xóa", "Đã xóa bởi tác giả", IconName::Cancel),
+            Lifecycle::Removed => label("Đã gỡ", "Đã gỡ", IconName::Block),
+            Lifecycle::Active if current_public.is_some() => {
+                label("Đã đăng", "Đã đăng", IconName::Check)
+            }
+            Lifecycle::Active if p.review_withdrawn => {
+                label("Đã ẩn", "Đã ẩn sau kiểm duyệt", IconName::VisibilityOff)
+            }
+            Lifecycle::Active if p.audience == Audience::Private => {
+                if work.draft_version.is_some()
+                    && p.generation == 1
+                    && p.latest_revision_id.is_none()
                 {
-                    let count = |n: Option<i64>| {
-                        n.filter(|n| *n >= 0)
-                            .map(|n| n.to_string())
-                            .unwrap_or_else(|| "—".into())
-                    };
-                    metrics = Some(format!(
-                        "Thấm {} · Nhận xét {}",
-                        count(public.tham),
-                        count(public.comments)
-                    ));
-                    public_context = Some(if public.title == work.title {
-                        "Của bản đang công khai".into()
-                    } else {
-                        format!("Bản công khai: {}", public.title)
-                    });
-                    if public.tham.is_none_or(|n| n < 0) || public.comments.is_none_or(|n| n < 0) {
-                        public_context
-                            .as_mut()
-                            .unwrap()
-                            .push_str(" · Chưa tải được số liệu");
-                    }
-                    reader_href = Some(format!("/tac-pham/{}", work.work_id));
+                    label("Nháp", "Bản nháp", IconName::Edit)
+                } else {
+                    label("Chỉ mình tôi", "Chỉ mình tôi", IconName::Lock)
                 }
+            }
+            Lifecycle::Active => label(
+                "Chưa có bản công khai",
+                "Chưa có bản công khai",
+                IconName::VisibilityOff,
+            ),
+            Lifecycle::Unknown => unreachable!(),
+        };
+        if p.lifecycle == Lifecycle::Active {
+            if let Some(revision) = current_public {
+                if p.has_draft_changes == Some(true) {
+                    status.push(label("Có bản sửa", "Đã đăng · Có bản sửa", IconName::Edit));
+                }
+                public = Some(AuthorWorkPublic {
+                    href: format!("/tac-pham/{}", work.work_id),
+                    title: (revision.title != work.title)
+                        .then(|| crate::draft_list::display_title(&revision.title)),
+                    tham: revision.tham.filter(|n| *n >= 0),
+                    comments: revision.comments.filter(|n| *n >= 0),
+                });
+            }
+            let (revision, decision) = if p.intent_revision_id.is_some() {
+                (&p.intent_revision_id, p.intent_moderation)
+            } else {
+                (&p.latest_revision_id, p.latest_moderation)
+            };
+            // An on-record decision for the current public revision is not a newer revision.
+            if p.current_public
+                .as_ref()
+                .is_none_or(|published| revision.as_ref() != Some(&published.revision_id))
+            {
+                status.extend(match decision {
+                    Some(Decision::Pending) => Some(label(
+                        "Bản mới chờ duyệt",
+                        "Bản mới đang chờ duyệt",
+                        IconName::Schedule,
+                    )),
+                    Some(Decision::NeedsAdmin) => Some(label(
+                        "Bản mới cần người duyệt",
+                        "Bản mới cần người duyệt",
+                        IconName::Person,
+                    )),
+                    Some(Decision::Rejected) => Some(label(
+                        "Bản mới không được duyệt",
+                        "Bản mới không được duyệt",
+                        IconName::Cancel,
+                    )),
+                    Some(Decision::Unknown) => Some(label(
+                        "Chưa rõ bản mới",
+                        "Chưa rõ trạng thái bản mới",
+                        IconName::Help,
+                    )),
+                    _ => None,
+                });
             }
         }
     }
-    if work.draft_version.is_none() {
-        status.push_str(" · Không có bản nháp để sửa");
-    }
     super::patterns::AuthorWorkSummary {
         title: crate::draft_list::display_title(&work.title),
+        untitled: work.title.is_empty(),
         updated_at: work.updated_at.clone(),
         editor_href: work
             .draft_version
             .filter(|v| *v >= 1)
             .map(|_| format!("/ban-viet/{}", work.work_id)),
         status,
-        metrics,
-        public_context,
-        reader_href,
+        public,
     }
 }

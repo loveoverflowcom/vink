@@ -2078,7 +2078,7 @@ async function textContrast(page, theme, surface = 'shell', targets) {
     return list;
   })() : {
     outline: ['#editor-outline-title', '.vk-editor-outline__item--title', '#editor-outline-panel [aria-current="location"] button'],
-    desk: ['.vk-desk-create .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-search input', '#draft-sort', '#draft-sort-label', '#draft-scope'],
+    desk: ['.vk-desk-create .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-search input', '#draft-sort', '#draft-sort-label', '#draft-scope'],
     explore: ['#public-query', '#explore-heading h1', '#open-tag-filters', '.vk-public-row__eyebrow', '.vk-feed-date', '.vk-public-row__title', '.vk-public-row__byline .vk-ui-byline__name', '.vk-public-row__byline .vk-ui-avatar', '.vk-public-row__excerpt', '.vk-public-scope'],
     filter: ['#modal-tag-help', '#tag-selection-count', '#modal-tag-form legend', '#modal-tag-form .vk-ui-choice__label', '#modal-tag-form button[type=submit]'],
     empty: ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-button'],
@@ -3420,7 +3420,7 @@ async function draftR6Hierarchy(page) {
   }));
   const gate = new DraftGate(page); gate.list = {body:{drafts:cards}}; await gate.enable();
   await page.goto(`${args.base}/ban-viet`);
-  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length===3 && document.querySelector('#draft-scope').textContent.trim()==='3 tác phẩm'`, 'compact R6 fixture');
+  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length===3 && document.querySelector('#draft-scope').textContent.trim()==='Hiển thị 3 tác phẩm'`, 'compact R6 fixture');
   for (const [width, scale, theme] of [[390,100,'light'], [320,200,'dark'], [1440,100,'light'], [1280,100,'light'], [1440,200,'dark'], [1280,200,'dark']]) {
     await page.viewport(width);
     await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:0,y:0});
@@ -3431,12 +3431,13 @@ async function draftR6Hierarchy(page) {
     check(await page.eval(`(() => {
       const rows=[...document.querySelectorAll('.vk-draft-row__link')], list=document.querySelector('#draft-results');
       return !document.querySelector('#resume, #resume-title-toggle') && document.documentElement.scrollWidth<=innerWidth &&
-        getComputedStyle(list).backgroundColor!=='rgba(0, 0, 0, 0)' && rows.every((row,i)=>
+        getComputedStyle(list).backgroundColor==='rgba(0, 0, 0, 0)' && rows.every((row,i)=>
+          getComputedStyle(row.closest('.vk-author-work')).backgroundColor!=='rgba(0, 0, 0, 0)' &&
           row.getAttribute('href')==='/ban-viet/'+${JSON.stringify(cards)}[i].work_id &&
           row.querySelector('.vk-draft-row__title').textContent===${JSON.stringify(cards)}[i].title &&
           !row.textContent.includes('Phiên bản') && getComputedStyle(row).paddingLeft===getComputedStyle(row).paddingRight &&
           row.querySelectorAll('a,button,input').length===0);
-    })()`), `#213 ${width}/${scale}/${theme}: no resume, one list surface, full Unicode titles and exact IDs`);
+    })()`), `#213 ${width}/${scale}/${theme}: no resume, separate card surfaces, full Unicode titles and exact IDs`);
     await page.eval(`document.querySelector('#drafts').scrollIntoView({block:'start'})`);
     await page.capture(`r6-list-${width}-${scale}-${theme}`);
     await textContrast(page, theme, 'desk');
@@ -3495,7 +3496,7 @@ async function draftDashboard(page) {
   const firstHref = `/ban-viet/${cards[0].work_id}`;
   check(await page.eval(`!document.querySelector('#resume, #resume-title-toggle, [data-testid=draft-resume]') && document.querySelector('.vk-draft-row__link').getAttribute('href')===${JSON.stringify(firstHref)}`), 'removed resume has no replacement or disclosure; first row opens the authorized work');
   check(gate.requests.length===2 && gate.requests.every(u=>new URL(u).searchParams.get('limit')==='24'), 'failed initial read and retry each use only the page read');
-  check(await page.eval(`document.querySelector('#draft-scope').textContent.trim()==='24 tác phẩm' && document.querySelector('#draft-search-help').textContent === 'Theo tên bản thảo; gồm cả tác phẩm đã đăng'`), 'scope counts the visible page while search retains its description');
+  check(await page.eval(`document.querySelector('#draft-scope').textContent.trim()==='Hiển thị 24 tác phẩm' && document.querySelector('#draft-search-help').textContent === 'Theo tên bản thảo; gồm cả tác phẩm đã đăng'`), 'scope counts the visible page while search retains its description');
   check(await page.eval(`[...document.querySelectorAll('[data-testid=draft-row]')].every((row, i) => row.querySelector('a').getAttribute('href') === '/ban-viet/' + ${JSON.stringify(cards)}[i].work_id && !row.textContent.includes('Phiên bản') && row.querySelector('time').dateTime === '2026-11-01T08:30:00Z')`), 'every row keeps the provider work_id and raw update instant, with no visible version');
   check(manuscriptRequests === 0, 'list never fetches full manuscripts (no N+1)');
   check(await page.eval(`!document.querySelector('#desk').textContent.match(/Chưa đăng|Đã đăng|góp ý|thể loại|D-05|VINK_DEV_PRINCIPAL/)`), 'no invented publication/profile/feedback state or implementation copy');
@@ -3544,7 +3545,7 @@ async function draftDashboard(page) {
     check(await page.eval(`(() => {
       const row=document.querySelector('.vk-draft-row__link'), arrow=row.querySelector('.vk-draft-row__open');
       const targets=['#draft-sort','#open-draft-search'].map(s=>document.querySelector(s).getBoundingClientRect());
-      return arrow.getAttribute('aria-hidden')==='true' && (${scale}===200 || ${width}===320 || getComputedStyle(arrow).display!=='none') && targets.every(r=>r.left>=0 && r.right<=innerWidth && r.width>=48 && r.height>=48);
+      return !arrow && targets.every(r=>r.left>=0 && r.right<=innerWidth && r.width>=48 && r.height>=48);
     })()`), `#213 ${width}/${scale}: sort/search targets fit without shrinking`);
     check(await page.eval(`(() => {
       const create=document.querySelector('#create-draft');
@@ -3794,7 +3795,7 @@ async function draftDashboard(page) {
   const editorLink = '.vk-draft-row__link[href="/ban-viet/' + created[0] + '"]';
   for (const [width,height] of [[768,1024], [360,800], [390,844]]) {
     await page.viewport(width,height);
-    check(await page.eval(`getComputedStyle(document.querySelector(${JSON.stringify(editorLink + ' .vk-draft-row__open')})).display!=='none'`), `F-13 the editor link shows its arrow at ${width}×${height}`);
+    check(await page.eval(`!document.querySelector(${JSON.stringify(editorLink + ' .vk-draft-row__open')})`), `#410 the editor link has no decorative arrow at ${width}×${height}`);
   }
   await page.click(editorLink + ' .vk-author-work__status');
   await page.waitFor(`${EDITOR_READY} && ${TAGS_READY} && location.pathname === '/ban-viet/${created[0]}'`, 'row opens the real draft and its tags');
