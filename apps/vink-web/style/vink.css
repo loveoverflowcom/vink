@@ -1682,34 +1682,13 @@ a {
   cursor: pointer;
   font-weight: var(--vk-type-label-weight);
 }
-.vk-discovery-filter-form { display: grid; gap: var(--vk-space-4); min-width: 0; margin: 0; }
 .vk-discovery-filter-form p, .vk-discovery-catalog-error p { margin: 0; color: var(--vk-on-surface-variant); overflow-wrap: anywhere; }
-.vk-discovery-catalog-error { display: grid; justify-items: start; gap: var(--vk-space-3); }
-.vk-discovery-filter-form fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
-.vk-discovery-filter-form legend { margin-bottom: var(--vk-space-2); font-weight: var(--vk-type-label-weight); }
-/* R4.2 (#406, DQ-07): text-width wrapping chips, 12px radius, primary selected + symmetric
- * check tracks so toggling never changes a chip's bounding rect (>1 CSS px). */
-.vk-discovery-options { display: flex; flex-wrap: wrap; gap: var(--vk-space-2); }
-.vk-discovery-filter-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--vk-space-3);
-  margin-block-start: var(--vk-space-1);
-  font-size: var(--vk-type-label-size);
-}
-.vk-discovery-filter-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--vk-space-2);
-  max-inline-size: 100%;
-  --vk-ui-control-radius: var(--vk-radius-control-48);
-}
+.vk-discovery-filter-footer { font-size: var(--vk-type-label-size); }
+.vk-discovery-filter-actions { --vk-ui-control-radius: var(--vk-radius-control-48); }
 .vk-discovery-filter-actions .vk-ui-button--text { padding-inline: var(--vk-space-3); }
 
-.vk-discovery-option { min-width: 0; max-inline-size: 100%; }
+/* R4.2 (#406, DQ-07): text-width wrapping chips, 12px radius, primary selected + symmetric
+ * check tracks so toggling never changes a chip's bounding rect (>1 CSS px). */
 .vk-discovery-option .vk-ui-choice { min-inline-size: 0; max-inline-size: 100%; }
 /* Equal fixed mark/end tracks center the label itself, independent of checked state. */
 .vk-discovery-option .vk-ui-choice__target { display:inline-grid; grid-template-columns:1em minmax(0,1fr) 1em; align-items:center; inline-size:fit-content; min-inline-size:var(--vk-density-control-height); max-inline-size:100%; min-block-size:var(--vk-density-control-height); gap:var(--vk-space-1); padding:var(--vk-space-2); border-radius:var(--vk-radius-control-40); background:var(--vk-surface-container-highest); color:var(--vk-on-surface); }
