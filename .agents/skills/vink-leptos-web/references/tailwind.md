@@ -7,7 +7,8 @@ skill khác dẫn về tài liệu này thay vì lặp lại luật compiler, `@
   `@tailwindcss/cli = 4.3.5` (`packages/ui-system/leptos/tailwind/package.json` +
   `package-lock.json`, cài bằng `npm ci --ignore-scripts --no-audit --no-fund`).
 - **Ngưỡng tối thiểu Tailwind cho Leptos:** `>= 4.1.8` (bản sửa trích xuất cú pháp `class:` của
-  Leptos, `tailwindlabs/tailwindcss#18093`, khóa cứng tại `xtask/src/tailwind.rs::MIN_VERSION`).
+  Leptos, [Tailwind #18093](https://github.com/tailwindlabs/tailwindcss/pull/18093), phát hành ở
+  [v4.1.8](https://github.com/tailwindlabs/tailwindcss/releases/tag/v4.1.8), khóa tại `xtask/src/tailwind.rs::MIN_VERSION`).
 - **Ranh giới nền tảng:** Chỉ áp dụng cho Web (`apps/vink-web`, `packages/ui-system/leptos`,
   `packages/vink-patterns/leptos`, `packages/ui-system/leptos/preview`). Không đổi Compose
   Multiplatform (`packages/ui-system/cmp`), không chuyển sang `cargo-leptos`, không thêm CSS
@@ -112,10 +113,10 @@ Cả `web.css` và `preview.css` dùng chung thứ tự layer:
   `text-vk-caption`, `text-vk-body`, …) đặt đồng thời 4 thuộc tính `font-size`, `line-height`,
   `letter-spacing` và `font-weight` của type role (nhưng không đặt `font-family` — dùng thêm
   `font-vk-ui` / `font-vk-reading` / `font-vk-code` khi cần). Nếu chỉ cần token kích thước chữ đơn
-  lẻ (`text.*` trong `tokens.json`), dùng `text-vk-size-*` (`text-vk-size-draft-title`, …); nếu dùng
-  `text-vk-<role>` trên phần tử kế thừa weight/leading/tracking khác (như `StatusBadge` giữ weight
-  400 của body), ghép tường minh `font-vk-role-body tracking-normal` hoặc
-  `leading-[var(--vk-type-body-line-height)]`. Các utility `duration-vk-short` và
+  lẻ (`text.*` trong `tokens.json`), dùng `text-vk-size-*` (`text-vk-size-draft-title`, …). Khi
+  migrate từng thuộc tính, giữ đúng các giá trị kế thừa của selector cũ. Ví dụ, `StatusBadge` dùng
+  `text-[length:var(--vk-type-label-size)]` và `leading-[var(--vk-type-label-line-height)]` để đặt
+  size và leading, đồng thời giữ weight/tracking kế thừa. Các utility `duration-vk-short` và
   `duration-vk-medium` được sinh qua directive `@utility` ở cuối `tailwind-theme.css`.
 - **Guard hai lớp (CHOICE-04 B):**
   1. `tailwind-theme.css` xóa namespace mặc định (`--color-*: initial`, `--font-*: initial`,
@@ -126,7 +127,7 @@ Cả `web.css` và `preview.css` dùng chung thứ tự layer:
      `packages/ui-system/leptos/tailwind/{web,preview}.css`) và mọi literal chuỗi / `class:<token>=`
      trong 5 thư mục nguồn Rust UI (`apps/vink-web/src`, `packages/ui-system/leptos/src`,
      `packages/vink-patterns/leptos/src`, `packages/ui-system/leptos/preview/{src,examples}`, bỏ qua
-     file sinh tự động và khối `#[cfg(test)] mod tests` ở cuối file), **từ chối cứng**:
+     file sinh tự động và thân module `#[cfg(test)]`), **từ chối cứng**:
      - Bảng màu mặc định Tailwind (`bg-red-500`, `text-slate-600`, `bg-white`, `text-black`) và
        màu arbitrary (`bg-[#fff]`, `text-[rgb(...)]`, `hsl(`, `oklch(`).
      - Cỡ chữ / họ chữ / độ đậm ngoài token (`text-sm`, `text-[14px]`, `font-sans`, `font-semibold`,
@@ -136,7 +137,8 @@ Cả `web.css` và `preview.css` dùng chung thứ tự layer:
        `shadow-md`, `shadow-[...]`). Được phép: `duration-vk-*`, `duration-0`, `delay-0`,
        `ease-vk-*`, `ease-linear`, `shadow-vk-raised`, `shadow-none`.
      - Arbitrary CSS property chứa literal (`[color:#fff]`, `[font-size:14px]`,
-       `[transition-duration:123ms]`).
+       `[transition-duration:123ms]`). Màu có tên trong shorthand `background`/`border`, như
+       `[background:red]`, cũng bị chặn. Cùng guard kiểm các declaration CSS giữ lại.
      - Được phép: geometry/layout (`w-[320px]`, `min-h-[48px]`, `flex-[1_1_14rem]`, `gap-[6px]`),
        biến Vink (`bg-[var(--vk-surface)]`, `text-(--vk-on-surface)`), màu hệ thống forced-colors
        (`forced-colors:border-[CanvasText]`, `forced-colors:outline-[Highlight]`), hoặc ngoại lệ có
@@ -149,7 +151,7 @@ Cả `web.css` và `preview.css` dùng chung thứ tự layer:
 
 1. **Class tĩnh đầy đủ:** đặt trực tiếp trong `class="..."` hoặc `const` chuỗi tĩnh.
    ```rust
-   <p class="vk-ui-list-end flex items-center gap-vk-3 m-0 font-vk-ui text-vk-caption tracking-normal text-vk-on-surface-variant">
+   <p class="vk-ui-list-end flex items-center gap-vk-3 m-0 [font-family:var(--vk-type-caption-font)] text-[length:var(--vk-type-caption-size)] leading-[var(--vk-type-caption-line-height)] text-vk-on-surface-variant">
    ```
 2. **Bật/tắt một token bằng `class:` (không cần khoảng trắng giả ở Tailwind >= 4.1.8):**
    ```rust
@@ -234,3 +236,22 @@ Cả `web.css` và `preview.css` dùng chung thứ tự layer:
 - Mọi nhận xét về dung lượng CSS/WASM/SSR HTML hay thời gian build phải trích số đo thực từ cùng
   máy/cấu hình (xem [docs/development/tailwind-web-foundation.md](../../../../docs/development/tailwind-web-foundation.md));
   không đưa ra tuyên bố định lượng chưa đo (ví dụ lợi ích hiệu suất AI chưa có thí nghiệm đo).
+
+## 8. Walkthrough một variant dùng chung Web và preview
+
+1. Từ [source map](../../vink-ui-design/references/source-map.md), tìm `Notice` trong
+   [feedback.rs](../../../../packages/ui-system/leptos/src/feedback.rs). `InlineNotice` truyền
+   `banner=false` và `Banner` truyền `banner=true`. Giữ `vk-ui-notice`, `data-tone` và
+   `role=live_role(announce)` để CSS, trạng thái và smoke dùng chung hợp đồng.
+2. Trong worktree thử, thêm `class=("sm:gap-x-vk-6", banner)` cạnh các class điều kiện.
+   Chỉ `Banner` nhận class khi `banner=true`. Hai entry cùng quét owner này. Token
+   `--vk-space-6` vẫn lấy từ SSOT.
+3. Kiểm selector `.sm\:gap-x-vk-6`, media query 40rem và `column-gap: var(--vk-space-6)`
+   trong CSS cả Web và preview. `xtask` là owner build. Khi có môi trường phù hợp, dùng
+   `cargo xtask build web --release` và `cargo xtask build preview` để đối chiếu hai artifact.
+4. Muốn xác nhận hành vi, mở cả hai trạng thái ở `state.notice/default` và
+   `state.notice/banner`. Kiểm `Banner` ở dưới/trên breakpoint, `InlineNotice` giữ gap cũ,
+   role và tone vẫn đúng. Ghi riêng kết quả browser, CSS build và phép đo hình học.
+
+Walkthrough trên `develop@2712145b` đã kiểm parser và lifecycle sinh CSS. Chi tiết SHA,
+fixture và phần browser còn chờ nằm trong [bảng đối chiếu](../../../../docs/development/tailwind-web-foundation.md#9-đối-chiếu-sau-squash-431).
