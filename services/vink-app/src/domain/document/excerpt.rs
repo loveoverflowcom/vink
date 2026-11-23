@@ -135,11 +135,15 @@ pub fn public_excerpt(document: &Document) -> Option<String> {
     let len = text.chars().count();
     if len > MAX_EXCERPT_CHARS || (excerpt.truncated && len == MAX_EXCERPT_CHARS) {
         Some(truncate_with_ellipsis(&text, MAX_EXCERPT_CHARS))
-    } else if excerpt.truncated && !text.ends_with('…') {
+    } else if excerpt.truncated && !ends_sentence(&text) {
         Some(format!("{text}…"))
     } else {
         Some(text)
     }
+}
+
+fn ends_sentence(text: &str) -> bool {
+    text.ends_with(['.', '!', '?', '…'])
 }
 
 fn truncate_with_ellipsis(text: &str, max_chars: usize) -> String {
@@ -168,7 +172,7 @@ fn truncate_with_ellipsis(text: &str, max_chars: usize) -> String {
     };
 
     let mut out = base.to_string();
-    if !out.ends_with('…') {
+    if !ends_sentence(&out) {
         out.push('…');
     }
     out
@@ -243,8 +247,21 @@ mod tests {
         let md = "# Mưa trên **phố** cũ\n\n## Khúc mở\n\nGiọt *mưa* rơi khẽ\nQua hàng [hiên xưa](https://example.com) với `tiếng` lá.\n\nĐoạn kết ngắn.";
         assert_eq!(
             public_excerpt(&markdown_doc(md)).as_deref(),
-            Some("Khúc mở\n\nGiọt mưa rơi khẽ\nQua hàng hiên xưa với tiếng lá.…")
+            Some("Khúc mở\n\nGiọt mưa rơi khẽ\nQua hàng hiên xưa với tiếng lá.")
         );
+    }
+
+    #[test]
+    fn terminal_punctuation_survives_line_and_character_cutoffs() {
+        for ending in [".", "!", "?", "…"] {
+            let stanza = format!("Bến cũ\n\nChiều về\nVen sông{ending}");
+            let source = format!("{stanza}\nDòng kế").nfd().collect::<String>();
+            assert_eq!(public_excerpt(&default_doc(&source)), Some(stanza));
+
+            let prefix = format!("{}{ending}", "a".repeat(MAX_EXCERPT_CHARS - 2));
+            let source = format!("{prefix} câu tiếp theo");
+            assert_eq!(public_excerpt(&default_doc(&source)), Some(prefix));
+        }
     }
 
     #[test]
