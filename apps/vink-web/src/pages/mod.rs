@@ -247,7 +247,7 @@ fn ReplacementView(
             </vink_ui::Link>
             <article id="reader-paper" class="vk-reader vk-reader--replacement" data-testid=test_id>
                 <header id="reader-header" class="vk-reader__header">
-                    <p class="vk-reader-replacement-badge">
+                    <p class="vk-reader-replacement-badge inline-flex items-center gap-[6px] py-[4px] px-[12px] rounded-vk-full bg-vk-surface-container-high text-vk-on-surface-variant text-vk-caption font-vk-role-label tracking-normal leading-[var(--vk-type-body-line-height)]">
                         <Icon name=IconName::VisibilityOff size=vink_ui::IconSize::Small />
                         <span>{badge}</span>
                     </p>

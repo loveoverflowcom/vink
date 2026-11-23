@@ -1,0 +1,80 @@
+/* Vink Web stylesheet entry (/pkg/vink.css).
+ *
+ * Cascade coexistence contract (CHOICE-02 A):
+ * - No Tailwind Preflight: existing Vink resets, prose, CodeMirror and native controls stay intact.
+ * - Explicit layer order lets Tailwind utilities (@layer utilities) override legacy CSS (@layer legacy)
+ *   without `!important`, while `!important` rules in @layer legacy (reduced-motion fallback) still
+ *   outrank normal utilities by CSS Cascade Layers `!important` reversal.
+ * - CodeMirror 6 injects an unlayered `<style>` sheet at runtime via `style-mod`. Because unlayered
+ *   CSS outranks any `@layer`, Vink's `.vk-editor-body .cm-editor` host overrides live unlayered at
+ *   the bottom of this entry.
+ * - `source(none)` disables repository-wide scanning; only allowlisted Rust UI source roots are
+ *   scanned so docs, fixtures, SQL, skills and target artifacts never pollute the stylesheet.
+ */
+@layer theme, base, legacy, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "../style/tailwind-theme.css";
+@import "../style/tokens.css" layer(base);
+@import "../style/vink-ui.css" layer(legacy);
+@import "../../../vink-patterns/leptos/patterns.css" layer(legacy);
+@import "../../../../apps/vink-web/style/vink.css" layer(legacy);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+
+@source "../../../../apps/vink-web/src";
+@source "../src";
+@source "../../../vink-patterns/leptos/src";
+
+/* Unlayered CodeMirror 6 host overrides: must stay outside `@layer legacy` to outrank CodeMirror's
+ * runtime-injected unlayered `style-mod` base theme (e.g. `.cm-editor.cm-focused` dotted outline). */
+.vk-editor-body .cm-editor.cm-focused {
+  outline: none;
+}
+
+.vk-editor-body .cm-editor .cm-scroller {
+  font-family: var(--vk-font-reading);
+  font-size: var(--vk-text-reading);
+  line-height: var(--vk-leading-reading);
+}
+
+.vk-editor-body .cm-editor .cm-content {
+  min-height: 50vh;
+  padding: var(--vk-space-6);
+  caret-color: var(--vk-primary);
+}
+
+.vk-editor-paper .vk-editor-body .cm-editor .cm-content {
+  padding: var(--vk-space-2) 0 var(--vk-space-6);
+}
+
+.vk-editor-body .cm-editor .cm-line {
+  padding: 0;
+}
+
+.vk-editor-body .cm-line.cm-writing-h1 {
+  padding-block: 0.35em 0.15em;
+}
+
+.vk-editor-body .cm-line.cm-writing-h2 {
+  padding-block: 0.3em 0.12em;
+}
+
+.vk-editor-body .cm-line.cm-writing-h3 {
+  padding-block: 0.25em 0.1em;
+}
+
+.vk-editor-body .cm-line.cm-writing-quote {
+  padding-inline-start: var(--vk-space-4);
+}
+
+.vk-editor-body .cm-editor .cm-content ::selection {
+  background: var(--vk-primary-container);
+  color: var(--vk-on-primary-container);
+}
+
+@media (max-width: 30rem) {
+  .vk-editor-body .cm-editor .cm-content {
+    padding: var(--vk-space-4) var(--vk-space-3);
+  }
+}
+

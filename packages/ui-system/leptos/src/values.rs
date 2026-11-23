@@ -222,4 +222,18 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn tailwind_theme_maps_every_color_role_via_css_var() {
+        let theme = include_str!("../style/tailwind-theme.css");
+        for role in ColorRole::ALL {
+            let var = role.css_var();
+            let stem = var.strip_prefix("--vk-").expect("--vk- prefix");
+            let expected = format!("--color-vk-{stem}: var({var});");
+            assert!(
+                theme.contains(&expected),
+                "{role:?} missing `{expected}` in tailwind-theme.css"
+            );
+        }
+    }
 }

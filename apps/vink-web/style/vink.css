@@ -473,22 +473,11 @@ a {
 .vk-discussion [role="status"]:empty:not(.vk-discussion-live) { display: none; }
 .vk-discussion-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--vk-space-2) var(--vk-space-4); }
 .vk-discussion-head .vk-ui-heading { margin: 0; }
-.vk-discussion-order { font-size: var(--vk-type-caption-size); color: var(--vk-on-surface-variant); }
+/* .vk-discussion-order and .vk-reader-replacement-badge migrated to Tailwind utilities (W01 pilot). */
 
 .vk-reader--replacement { background: var(--vk-surface-container-low); border-radius: var(--vk-radius-xl); padding: 20px; }
 .vk-reader--replacement .vk-reader__header { margin-bottom: 0; display: grid; gap: var(--vk-space-3); justify-items: start; }
 .vk-reader--replacement p { margin: 0; }
-.vk-reader-replacement-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
-  border-radius: var(--vk-radius-full);
-  background: var(--vk-surface-container-high);
-  color: var(--vk-on-surface-variant);
-  font-size: var(--vk-type-caption-size);
-  font-weight: var(--vk-type-label-weight);
-}
 .vk-discussion-readonly-notice {
   display: flex;
   align-items: flex-start;
@@ -1078,7 +1067,7 @@ a {
 .vk-desk--editor .vk-notice__actions .vk-ui-button__label { overflow-wrap: normal; }
 .vk-editor-recovery { display: grid; gap: var(--vk-space-2); min-inline-size: 0; padding: var(--vk-space-4); border-radius: var(--vk-radius-lg); background: var(--vk-error-container); color: var(--vk-on-error-container); }
 .vk-editor-recovery[data-tone="warning"] { background: var(--vk-warning-container); color: var(--vk-on-warning-container); }
-.vk-editor-recovery > .vk-ui-notice { padding: 0; background: transparent; color: inherit; }
+/* Child .vk-ui-notice reset and icon hide moved to utility variants on .vk-editor-recovery (W01 cascade coexistence). */
 .vk-desk--editor .vk-editor-recovery .vk-notice__actions { margin: 0; }
 .vk-editor-recovery :is(.vk-ui-button--text, .vk-ui-supporting-details > summary) { color: inherit; }
 .vk-editor-recovery .vk-ui-supporting-details > summary { background: transparent; justify-self: start; }
@@ -1087,7 +1076,6 @@ a {
 .vk-editor-recovery .vk-ui-supporting-details__content > p + p { margin-block-start: var(--vk-space-2); }
 
 .vk-editor > .vk-editor-recovery { padding: var(--vk-space-3); }
-.vk-editor > .vk-editor-recovery .vk-ui-notice__icon { display: none; }
 .vk-editor > .vk-editor-recovery :is(.vk-ui-button, summary) { padding-inline: var(--vk-space-2); }
 .vk-editor > .vk-editor-recovery .vk-ui-button { padding-block: var(--vk-space-1); }
 

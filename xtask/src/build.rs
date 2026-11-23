@@ -72,7 +72,7 @@ pub fn bundle(release: bool, perf_probe: bool) -> Result<(), String> {
     process::run(&mut bindgen, "wasm-bindgen → target/site/pkg")?;
     editor_runtime(&root, &pkg.join("vink-editor.js"))?;
     expressions::build(&root, &pkg.join("expressions"))?;
-    stylesheet(&root, &pkg.join("vink.css"))?;
+    stylesheet(&root, &pkg.join("vink.css"), release)?;
     copy_fonts(&root.join(checks::FONTS_DIR), &pkg.join("fonts"))?;
     copy_brand(&root.join(checks::BRAND_DIR), &pkg.join("brand"))?;
     copy_empty_artwork(&root, &pkg.join("empty"))?;
@@ -86,7 +86,8 @@ pub fn bundle(release: bool, perf_probe: bool) -> Result<(), String> {
 
 /// Server binaries plus
 /// `target/site/pkg/{vink.js, vink_bg.wasm, snippets/, vink-editor.js, vink.css, fonts/}`;
-/// `vink.css` is the generated `tokens.css`, the UI system's `vink-ui.css`, then the app's `vink.css`.
+/// `vink.css` is compiled by the pinned Tailwind v4 CLI from `packages/ui-system/leptos/tailwind/web.css`
+/// (layering generated `tailwind-theme.css` + `tokens.css`, legacy CSS, and allowlisted utilities).
 pub fn legacy(env: &env::Env, release: bool) -> Result<(), String> {
     let _ = env;
     bundle(release, false)?;
@@ -96,27 +97,12 @@ pub fn legacy(env: &env::Env, release: bool) -> Result<(), String> {
     Ok(())
 }
 
-/// The UI system renderer styles (scoped `.vk-ui`/`vk-ui-*`; the app shell uses its navigation).
-const UI_CSS: &str = "packages/ui-system/leptos/style/vink-ui.css";
-
-/// `/pkg/vink.css`: the generated UI tokens (checked against their source first, so a stale
-/// file is never served), the UI system's renderer styles, then the web app's own styles.
-/// One request, one order.
-fn stylesheet(root: &Path, out: &Path) -> Result<(), String> {
+/// `/pkg/vink.css`: checks generated UI tokens first (so a stale `tokens.css` or
+/// `tailwind-theme.css` is never served), then compiles `packages/ui-system/leptos/tailwind/web.css`
+/// with the pinned Tailwind v4 CLI into one stylesheet (`--minify` in release).
+fn stylesheet(root: &Path, out: &Path, release: bool) -> Result<(), String> {
     ui_tokens::run(root, true)?;
-    let mut css = String::new();
-    for part in [
-        ui_tokens::CSS_OUT,
-        UI_CSS,
-        "packages/vink-patterns/leptos/patterns.css",
-        "apps/vink-web/style/vink.css",
-    ] {
-        let text =
-            std::fs::read_to_string(root.join(part)).map_err(|e| format!("read {part}: {e}"))?;
-        css.push_str(&text);
-        css.push('\n');
-    }
-    std::fs::write(out, css).map_err(|e| format!("write {}: {e}", out.display()))
+    crate::tailwind::compile(root, &root.join(crate::tailwind::WEB_ENTRY), out, release)
 }
 
 /// The CodeMirror runtime (`apps/vink-web/editor`): installs the locked npm dependencies when the

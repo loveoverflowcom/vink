@@ -232,7 +232,7 @@ pub fn App() -> impl IntoView {
                             catalog::CATALOG_VERSION,
                         )}
                     </p>
-                    <p class="vkp-offline" data-testid="offline-note">
+                    <p class="vkp-offline m-0 py-vk-1 px-vk-3 rounded-vk-md bg-vk-info-container text-vk-on-info-container text-vk-caption tracking-normal" data-testid="offline-note">
                         {format!(
                             "Không kết nối dịch vụ · dữ liệu [Mẫu] · đồng hồ cố định {}",
                             fixture::CLOCK,

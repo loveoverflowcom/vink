@@ -153,10 +153,12 @@ pub struct DraftSummary {
     pub href: String,
 }
 
+const DRAFT_META_CLASS: &str = "vk-draft-meta flex flex-wrap gap-vk-1 text-vk-on-surface-variant text-vk-caption leading-[var(--vk-type-body-line-height)] tracking-normal [&>span]:min-w-0 [&>span]:wrap-anywhere";
+
 #[component]
 pub fn DraftMetadata(version: i64, updated_at: String) -> impl IntoView {
     view! {
-        <span class="vk-draft-meta">
+        <span class=DRAFT_META_CLASS>
             <span>"Phiên bản " {version}</span>
             <span><span aria-hidden="true">"· "</span><span class="vk-ui-visually-hidden">"Cập nhật "</span><Timestamp instant=updated_at /></span>
         </span>
@@ -200,7 +202,7 @@ pub fn DraftRow(draft: DraftSummary) -> impl IntoView {
         <Link href=draft.href attr:class="vk-draft-row__link" variant=LinkVariant::Standalone>
             <span class="vk-draft-row__text">
                 <span class="vk-draft-row__title">{draft.title}</span>
-                <span class="vk-draft-meta"><span>"Cập nhật " <Timestamp instant=draft.updated_at /></span></span>
+                <span class=DRAFT_META_CLASS><span>"Cập nhật " <Timestamp instant=draft.updated_at /></span></span>
             </span>
             <span class="vk-draft-row__open" aria-hidden="true">
                 <Icon name=IconName::ArrowBack />
@@ -267,7 +269,7 @@ pub fn AuthorWorkRow(#[prop(into)] work: Signal<AuthorWorkSummary>) -> impl Into
         view! {
             <div class="vk-draft-row__text">
                 <span class="vk-draft-row__title" class:vk-author-work__untitled=move || work.with(|w| w.untitled)>{move || work.get().title}</span>
-                <div class="vk-draft-meta vk-author-work__status">
+                <div class="vk-draft-meta vk-author-work__status text-vk-on-surface-variant text-vk-caption leading-[var(--vk-type-body-line-height)] tracking-normal [&>span]:min-w-0 [&>span]:wrap-anywhere">
                     {move || work.get().status.into_iter().map(|label| view! {
                         <span class="vk-author-work__label" title=label.detail>
                             <Icon name=label.icon size=IconSize::Small />

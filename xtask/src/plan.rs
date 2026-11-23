@@ -189,10 +189,8 @@ impl Plan {
             T::Unit(_) => unreachable!(),
         };
         if matches!(r.target, T::Web | T::Preview) {
-            plan.tools.extend([P::WasmTarget, P::Bindgen]);
-        }
-        if r.target == T::Web {
-            plan.tools.extend([P::Node, P::Npm]);
+            plan.tools
+                .extend([P::WasmTarget, P::Bindgen, P::Node, P::Npm]);
         }
         if r.operation == O::Verify && r.target == T::Web {
             plan.scenarios = Scenario::SELECTABLE
@@ -212,7 +210,7 @@ impl Plan {
                 plan.migrations.push("Identity scratch");
             }
         } else if r.operation == O::Verify && r.target == T::Preview {
-            plan.tools.extend([P::Node, P::Chrome]);
+            plan.tools.push(P::Chrome);
             plan.services.push(S::Preview);
         } else if r.operation == O::Dev {
             match r.target {
@@ -391,5 +389,31 @@ mod tests {
         let p = Plan::resolve(r);
         assert_eq!(p.artifacts, vec![Artifact::Worker, Artifact::App]);
         assert_eq!(p.services, vec![Service::Worker]);
+    }
+    #[test]
+    fn preview_requires_node_and_npm_for_tailwind_without_duplicating_tools() {
+        let build = Plan::resolve(request(Operation::Build, Target::Preview));
+        assert_eq!(
+            build.tools,
+            vec![
+                Tool::Rust,
+                Tool::WasmTarget,
+                Tool::Bindgen,
+                Tool::Node,
+                Tool::Npm,
+            ]
+        );
+        let verify = Plan::resolve(request(Operation::Verify, Target::Preview));
+        assert_eq!(
+            verify.tools,
+            vec![
+                Tool::Rust,
+                Tool::WasmTarget,
+                Tool::Bindgen,
+                Tool::Node,
+                Tool::Npm,
+                Tool::Chrome,
+            ]
+        );
     }
 }

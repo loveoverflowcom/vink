@@ -65,6 +65,8 @@ pub fn verify(env: &Env, renderer: &str) -> std::process::ExitCode {
 fn leptos_build(root: &Path) -> Result<(), String> {
     crate::ui_tokens::run(root, true)?;
     crate::doctor::require_wasm_bindgen(root)?;
+    crate::doctor::node_version()?;
+    crate::doctor::npm_version()?;
     let mut wasm = cargo(root);
     wasm.args([
         "build",
@@ -87,20 +89,24 @@ fn leptos_build(root: &Path) -> Result<(), String> {
         .arg(&pkg)
         .arg(root.join("target/wasm32-unknown-unknown/debug/vink_ui_preview.wasm"));
     process::run(&mut bindgen, "wasm-bindgen → target/ui-preview/leptos/pkg")?;
-    for (from, to) in [
-        ("preview/index.html", "index.html"),
-        ("style/tokens.css", "tokens.css"),
-        ("style/vink-ui.css", "vink-ui.css"),
-        ("preview/style/preview.css", "preview.css"),
-    ] {
-        std::fs::copy(root.join(LEPTOS_DIR).join(from), out.join(to))
-            .map_err(|e| format!("copy {from}: {e}"))?;
-    }
     std::fs::copy(
-        root.join("packages/vink-patterns/leptos/patterns.css"),
-        out.join("patterns.css"),
+        root.join(LEPTOS_DIR).join("preview/index.html"),
+        out.join("index.html"),
     )
-    .map_err(|e| format!("copy patterns: {e}"))?;
+    .map_err(|e| format!("copy preview/index.html: {e}"))?;
+    // Remove unbundled legacy CSS files from earlier builds so only `vink-preview.css` is served.
+    for stale in ["tokens.css", "vink-ui.css", "patterns.css", "preview.css"] {
+        let path = out.join(stale);
+        if path.exists() {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+    crate::tailwind::compile(
+        root,
+        &root.join(crate::tailwind::PREVIEW_ENTRY),
+        &out.join("vink-preview.css"),
+        false,
+    )?;
     let fixtures = out.join("fixtures");
     std::fs::create_dir_all(&fixtures).map_err(|e| format!("create preview fixtures: {e}"))?;
     std::fs::write(

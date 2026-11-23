@@ -39,8 +39,7 @@ fn main() -> std::io::Result<()> {
         path,
         format!(
             "<!doctype html><html lang=\"vi\"><head><meta charset=\"utf-8\">\
-             <link rel=\"stylesheet\" href=\"/tokens.css\">\
-             <link rel=\"stylesheet\" href=\"/vink-ui.css\"></head><body>{html}</body></html>"
+             <link rel=\"stylesheet\" href=\"/vink-preview.css\"></head><body>{html}</body></html>"
         ),
     )
 }

@@ -21,8 +21,10 @@ Leptos **0.8** (workspace pin, không hạ về 0.7 của Cantos). Crate không 
 | `src/theme.rs` | `ThemePreference`, `Density`, `MotionPreference`, `Preferences`, `RoleOverride`, precedence |
 | `src/root.rs` | `UiRoot`, `ThemeScope` |
 | `style/tokens.css` | **Sinh ra.** `@font-face`, `:root`, theme/scope, recipe theo scope, density, motion |
-| `style/vink-ui.css` | CSS renderer: gốc `.vk-ui` và class `vk-ui-*` của component; không selector tag toàn cục. Phần shell/điều hướng tự mang kiểu chữ/focus ring nên app dùng được dưới token cấp document (`<html data-theme>`, `:root[data-rail]`) trước khi có `UiRoot`; app gộp file này vào `/pkg/vink.css` |
-| `preview/` | crate `vink-ui-preview` (CSR, feature `csr`), `index.html`, `style/preview.css`, `e2e/preview-smoke.mjs` |
+| `style/tailwind-theme.css` | **Sinh ra.** Ánh xạ `@theme inline` từ `--vk-*` sang namespace Tailwind v4 (`--color-vk-*`, `--font-vk-*`, `--text-vk-*`, `--spacing-vk-*`, `--radius-vk-*`, `--shadow-vk-*`, `--ease-vk-*`, `@utility duration-vk-*`) và xóa bảng màu/chữ mặc định |
+| `style/vink-ui.css` | CSS renderer legacy: gốc `.vk-ui` và class `vk-ui-*` chưa migrate; không selector tag toàn cục. Phần shell/điều hướng tự mang kiểu chữ/focus ring nên app dùng được dưới token cấp document (`<html data-theme>`, `:root[data-rail]`) trước khi có `UiRoot` |
+| `tailwind/` | Package compiler pin (`package.json`, `package-lock.json` với `tailwindcss` + `@tailwindcss/cli` `4.3.5`) cùng `web.css` và `preview.css` (`@layer` không Preflight + `source(none)` allowlist) |
+| `preview/` | crate `vink-ui-preview` (CSR, feature `csr`), `index.html` (nạp `vink-preview.css`), `style/preview.css`, `e2e/preview-smoke.mjs` |
 
 `tokens.rs`/`catalog.rs` được `#[rustfmt::skip]` ở khai báo module: `--check` so byte với generator
 nên formatter không được đổi chúng.

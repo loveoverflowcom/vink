@@ -3,8 +3,39 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
-import { readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { brotliCompressSync, constants as zlibConstants, gzipSync } from 'node:zlib';
 import { assertNoHydrationRead, countTransport, recordTransport } from './web-request-ledger.mjs';
+
+export const COMPRESSION_PARAMETERS = Object.freeze({
+  gzip: { library: 'node:zlib', level: 6 },
+  brotli_dynamic: { library: 'node:zlib', quality: 6 },
+  brotli_static: { library: 'node:zlib', quality: 11 },
+});
+
+export function measureCompressedBytes(input) {
+  const buf = Buffer.isBuffer(input) ? input : Buffer.from(input);
+  return {
+    raw: buf.length,
+    gzip_6: gzipSync(buf, { level: COMPRESSION_PARAMETERS.gzip.level }).length,
+    brotli_6: brotliCompressSync(buf, {
+      params: { [zlibConstants.BROTLI_PARAM_QUALITY]: COMPRESSION_PARAMETERS.brotli_dynamic.quality },
+    }).length,
+    brotli_11: brotliCompressSync(buf, {
+      params: { [zlibConstants.BROTLI_PARAM_QUALITY]: COMPRESSION_PARAMETERS.brotli_static.quality },
+    }).length,
+    sha256: createHash('sha256').update(buf).digest('hex'),
+  };
+}
+
+export function measureBundleArtifacts(pkgDir = 'target/site/pkg') {
+  const files = {};
+  for (const name of ['vink.css', 'vink_bg.wasm', 'vink.js', 'vink-editor.js']) {
+    const file = join(pkgDir, name);
+    if (existsSync(file)) files[name] = measureCompressedBytes(readFileSync(file));
+  }
+  return { compression: COMPRESSION_PARAMETERS, files };
+}
 
 import { measureReaderLifecycle, measureUncachedReader, readOwnerCounts } from './web-perf-controls.mjs';
 
@@ -228,6 +259,8 @@ export async function webPerfBaseline(page, { args, check }) {
       rustc: tool('rustc', '--version'), wasm_bindgen: tool('wasm-bindgen', '--version'),
       build_profile: args['build-profile'],
       wasm_file_bytes: statSync('target/site/pkg/vink_bg.wasm').size,
+      bundle_artifacts: measureBundleArtifacts('target/site/pkg'),
+      ssr_html_artifacts: {},
       network: 'loopback / no throttling', cpu_throttle_rate: 1,
       cache_cold: 'CDP clearBrowserCache before each full-document navigation; OS/PG process remain warm',
       viewport: '1280x900 CSS px / DPR 1 (see measured values)', text_scale: 'browser default',
@@ -251,6 +284,15 @@ export async function webPerfBaseline(page, { args, check }) {
   });
   try {
     await page.viewport(1280, 900);
+    for (const [label, routePath] of [['discovery_filtered', QUERY], ['reader_hot', '/tac-pham/' + HOT_WORK]]) {
+      const response = await fetch(args.base + routePath, { headers: { Accept: 'text/html' } });
+      if (response.ok) {
+        const html = Buffer.from(await response.arrayBuffer());
+        results.configuration.ssr_html_artifacts[label] = {
+          route: routePath, status: response.status, ...measureCompressedBytes(html),
+        };
+      }
+    }
     // Each cold sample uses a new document and an empty Chrome HTTP cache; the database is not restarted.
     for (let i = 0; i < ITERATIONS; i++) {
       phase.current = 'cold-' + i;

@@ -27,6 +27,7 @@ pub fn run(root: &Path) -> Result<(), String> {
     fonts(root, &mut problems);
     brand(root, &mut problems);
     editor_packages(root, &mut problems);
+    crate::tailwind::check(root, &mut problems);
     crate::ui_qualification::check(root, &mut problems);
     secrets(root, &mut problems);
     safety(root, &mut problems);

@@ -62,6 +62,17 @@ revision hiện hành là `PRODUCT_CONFIRMED`. OQ-1..OQ-4 và CHOICE-01..06 vẫ
 [đặc tả](../docs/architecture/work-views.md), mức triển khai ở
 [registry](../docs/development/work-views.md).
 
+## Nền tảng Tailwind CSS v4 cho Web
+
+[VDR-WEB-TAILWIND-FOUNDATION@r1](proposals/VDR-WEB-TAILWIND-FOUNDATION.r1.toml) ghi bốn lựa chọn
+kỹ thuật của [#417](https://github.com/loveoverflowcom/vink/issues/417) (`CHOICE-01 B` compiler pin
+`4.3.5` trong `packages/ui-system/leptos/tailwind`, `CHOICE-02 A` không Preflight + `@layer` +
+`source(none)` allowlist, `CHOICE-03 A` sinh `tailwind-theme.css` từ `cargo xtask ui-tokens`,
+`CHOICE-04 B` xóa bảng màu/chữ mặc định + mở rộng guard `ui_qualification.rs` cho Rust UI và 4 CSS).
+Proposal này ở trạng thái `PENDING` (chưa có signoff đúng revision/SHA-256). Chi tiết baseline,
+inventory, pilot và bằng chứng nằm tại
+[docs/development/tailwind-web-foundation.md](../docs/development/tailwind-web-foundation.md).
+
 ## Tra cứu theo phạm vi công việc
 
 [Đối soát PR 15–16/11/2026](../docs/development/verification-reconciliation-20261116.md#quyết-định-toml-mới)

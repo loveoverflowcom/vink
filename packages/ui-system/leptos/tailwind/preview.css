@@ -1,0 +1,19 @@
+/* Vink Leptos UI Preview stylesheet entry (vink-preview.css).
+ *
+ * Shares the exact same `@layer` order, `@theme inline` token mapping and `source(none)` contract
+ * as `web.css`, swapping only the final legacy leaf from `vink.css` to `preview.css`.
+ */
+@layer theme, base, legacy, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "../style/tailwind-theme.css";
+@import "../style/tokens.css" layer(base);
+@import "../style/vink-ui.css" layer(legacy);
+@import "../../../vink-patterns/leptos/patterns.css" layer(legacy);
+@import "../preview/style/preview.css" layer(legacy);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+
+@source "../src";
+@source "../preview/src";
+@source "../preview/examples";
+@source "../../../vink-patterns/leptos/src";

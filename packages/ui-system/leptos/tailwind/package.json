@@ -1,0 +1,9 @@
+{
+  "name": "@vink/tailwind-css",
+  "private": true,
+  "description": "Pinned Tailwind CSS v4 compiler owner for Vink Web (/pkg/vink.css) and Leptos UI preview (vink-preview.css)",
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.5",
+    "tailwindcss": "4.3.5"
+  }
+}

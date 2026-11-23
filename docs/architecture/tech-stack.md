@@ -16,6 +16,14 @@
 > lịch sử; hướng đích ở các đặc tả được DecisionDelta dẫn tới. Không thêm Redis, search service hay
 > provider AI nào vì các quyết định này.
 
+> **Cập nhật 23/11/2026 — CSS Web với Tailwind v4 (#417):** pipeline Web và Leptos preview tích
+> hợp compiler `tailwindcss` + `@tailwindcss/cli` `4.3.5` qua `xtask` (`packages/ui-system/leptos/tailwind`),
+> giữ `packages/ui-system/shared/tokens.json` là nguồn token duy nhất (sinh `tailwind-theme.css`
+> dạng `@theme inline`), `@layer` không Preflight để song hành CSS cũ và `source(none)` + `@source`
+> allowlist. Không đổi Leptos SSR/Axum, `xtask` hay CMP; proposal kiến trúc
+> [`VDR-WEB-TAILWIND-FOUNDATION@r1`](../../decisions/proposals/VDR-WEB-TAILWIND-FOUNDATION.r1.toml)
+> ở trạng thái `PENDING` (xem [nền tảng Tailwind Web](../development/tailwind-web-foundation.md)).
+
 ## 1. Khuyến nghị chính
 
 Vink sở hữu **cả nội dung văn học lẫn thảo luận** (hướng C ở mục 2, áp dụng cho bình luận theo quyết định 03/11/2026). Khởi đầu bằng **một ứng dụng Rust có các module rõ ràng**, chạy Leptos SSR và Axum, cùng một worker nền. Không cần tách BFF, Literary API, Curation và Moderation thành bốn dịch vụ mạng.

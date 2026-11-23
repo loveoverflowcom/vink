@@ -1,0 +1,16 @@
+version = 1
+id = "VDR-WEB-TAILWIND-FOUNDATION"
+revision = 1
+
+[content]
+kind = "architecture"
+domain = "ui-system"
+title = "Nền tảng Tailwind CSS v4 cho Web và Leptos preview"
+resolution = "CHOICE-01 B pin chính xác tailwindcss và @tailwindcss/cli 4.3.5 trong package CSS riêng packages/ui-system/leptos/tailwind (cài bằng npm ci --ignore-scripts) và chạy qua xtask/src/tailwind.rs cho cả Web (/pkg/vink.css, --minify khi --release) lẫn preview (vink-preview.css). CHOICE-02 A không bật Tailwind Preflight; dùng @layer theme, base, legacy, components, utilities với source(none) và @source allowlist chỉ gồm các thư mục nguồn Rust UI. CHOICE-03 A mở rộng cargo xtask ui-tokens sinh thêm packages/ui-system/leptos/style/tailwind-theme.css (@theme inline ánh xạ tới var(--vk-*), không sao chép giá trị bảng màu). CHOICE-04 B xóa namespace màu/chữ/bóng/easing mặc định của Tailwind và mở rộng xtask/src/ui_qualification.rs kiểm nguồn Rust UI cùng 4 file CSS. Giữ nguyên CMP, Leptos SSR/Axum và không tự hạ sàn trình duyệt; phần chênh Firefox 121-127 so với sàn Tailwind v4 (Safari 16.4+/Chrome 111+/Firefox 128+) và trạng thái chưa tích hợp #413 được ghi thành gap tường minh."
+rationale = "Thực thi #417 (Epic #416) trên nền develop@126095a (đã gồm R4.2 #415, tokens.json 0.8.0). Tận dụng Node 24/npm đã bắt buộc ở editor/expressions/Containerfile mà không trộn dependency vào editor; @theme inline giữ nearest-scope ThemeScope, RoleOverride, density và reduced motion; @layer không Preflight giữ nguyên prose Markdown, CodeMirror 6 và native controls; pilot 4 consumer (InlineNotice/Banner, StatusBadge, ListEnd, DraftMetadata, .vk-reader-replacement-badge, .vk-discussion-order, .vkp-offline) kiểm chứng computed-style và ảnh trước-sau. Proposal này ở trạng thái PENDING cho tới khi chủ sản phẩm signoff đúng revision/SHA-256."
+related_ids = [
+    "UIS-01",
+    "UIS-02",
+    "UIS-03",
+    "UX-01",
+]

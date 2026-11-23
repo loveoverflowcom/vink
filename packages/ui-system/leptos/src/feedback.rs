@@ -416,9 +416,19 @@ fn live_role(announce: Announce) -> Option<&'static str> {
     }
 }
 
+fn notice_tone_classes(tone: Tone) -> &'static str {
+    match tone {
+        Tone::Neutral => "bg-vk-surface-container-high text-vk-on-surface",
+        Tone::Error => "bg-vk-error-container text-vk-on-error-container",
+        Tone::Warning => "bg-vk-warning-container text-vk-on-warning-container",
+        Tone::Info => "bg-vk-info-container text-vk-on-info-container",
+        Tone::Success => "bg-vk-success-container text-vk-on-success-container",
+    }
+}
+
 #[component]
 fn Notice(
-    class: &'static str,
+    banner: bool,
     tone: Tone,
     message: String,
     title: Option<String>,
@@ -427,14 +437,27 @@ fn Notice(
     on_recover: Option<Callback<RecoveryIntent>>,
     on_dismiss: Option<Callback<()>>,
 ) -> impl IntoView {
+    let base_class = format!(
+        "vk-ui-notice flex flex-wrap items-start gap-y-vk-2 gap-x-vk-3 py-vk-3 {}",
+        notice_tone_classes(tone)
+    );
     view! {
-        <div class=class data-tone=tone.id() role=live_role(announce)>
-            <span class="vk-ui-notice__icon">
+        <div
+            class=base_class
+            class:vk-ui-notice--banner=banner
+            class:rounded-none=banner
+            class:rounded-vk-md=!banner
+            class:px-vk-6=banner
+            class:px-vk-4=!banner
+            data-tone=tone.id()
+            role=live_role(announce)
+        >
+            <span class="vk-ui-notice__icon inline-grid flex-none pt-[0.125em]">
                 <Icon name=tone.icon() />
             </span>
-            <div class="vk-ui-notice__body">
-                {title.map(|t| view! { <p class="vk-ui-notice__title">{t}</p> })}
-                <p class="vk-ui-notice__message">{message}</p>
+            <div class="vk-ui-notice__body grid flex-[1_1_14rem] gap-vk-1 min-w-0">
+                {title.map(|t| view! { <p class="vk-ui-notice__title m-0 wrap-break-word font-vk-role-label">{t}</p> })}
+                <p class="vk-ui-notice__message m-0 wrap-break-word">{message}</p>
             </div>
             {action.map(|a| {
                 let intent = a.intent;
@@ -467,7 +490,7 @@ pub fn InlineNotice(
 ) -> impl IntoView {
     view! {
         <Notice
-            class="vk-ui-notice"
+            banner=false
             tone=tone
             message=message
             title=title
@@ -493,7 +516,7 @@ pub fn Banner(
 ) -> impl IntoView {
     view! {
         <Notice
-            class="vk-ui-notice vk-ui-notice--banner"
+            banner=true
             tone=tone
             message=message
             title=title
@@ -529,13 +552,23 @@ pub fn StatusBadge(
     };
     view! {
         <span
-            class="vk-ui-status"
+            class="vk-ui-status inline-flex items-center gap-vk-2 max-w-full font-vk-ui text-vk-label font-vk-role-body tracking-normal"
+            class:text-vk-on-surface=move || matches!(phase.get().tone(), Tone::Warning | Tone::Error)
+            class:text-vk-on-surface-variant=move || !matches!(phase.get().tone(), Tone::Warning | Tone::Error)
             role="status"
             data-phase=move || phase.get().id()
             data-tone=move || phase.get().tone().id()
         >
-            <span class="vk-ui-status__symbol">{symbol}</span>
-            <span class="vk-ui-status__label">{move || label.get()}</span>
+            <span
+                class="vk-ui-status__symbol inline-grid flex-none"
+                class:text-vk-success=move || phase.get().tone() == Tone::Success
+                class:text-vk-warning=move || phase.get().tone() == Tone::Warning
+                class:text-vk-error=move || phase.get().tone() == Tone::Error
+                class:text-vk-tertiary=move || phase.get().tone() == Tone::Info
+            >
+                {symbol}
+            </span>
+            <span class="vk-ui-status__label min-w-0 wrap-break-word">{move || label.get()}</span>
         </span>
     }
 }
@@ -544,7 +577,7 @@ pub fn StatusBadge(
 #[component]
 pub fn ListEnd(#[prop(optional, into)] label: Option<String>) -> impl IntoView {
     view! {
-        <p class="vk-ui-list-end">
+        <p class="vk-ui-list-end flex items-center gap-vk-3 m-0 font-vk-ui text-vk-caption tracking-normal text-vk-on-surface-variant">
             <span>{label.unwrap_or_else(|| "Đã hết danh sách".into())}</span>
         </p>
     }
@@ -891,7 +924,7 @@ pub fn ContentRegion(
             })}
             {move || notice().map(|(tone, title, message, action)| view! {
                 <Notice
-                    class="vk-ui-notice"
+                    banner=false
                     tone=tone
                     title=title
                     message=message
@@ -1059,6 +1092,32 @@ mod tests {
                 .into_any()
         });
         assert!(!off.contains("role="), "{off}");
+        assert!(
+            polite.contains("bg-vk-info-container") && polite.contains("rounded-vk-md"),
+            "{polite}"
+        );
+        assert!(
+            assertive.contains("vk-ui-notice--banner")
+                && assertive.contains("rounded-none")
+                && assertive.contains("px-vk-6"),
+            "{assertive}"
+        );
+
+        let status = render(|| {
+            view! { <StatusBadge phase=Signal::stored(ActionPhase::Failed(ProblemKind::Network)) label=Signal::stored("Lỗi".to_string()) /> }.into_any()
+        });
+        assert!(
+            status.contains("vk-ui-status")
+                && status.contains("text-vk-on-surface")
+                && status.contains("text-vk-error"),
+            "{status}"
+        );
+
+        let end = render(|| view! { <ListEnd /> }.into_any());
+        assert!(
+            end.contains("vk-ui-list-end") && end.contains("text-vk-caption"),
+            "{end}"
+        );
     }
 
     #[test]
