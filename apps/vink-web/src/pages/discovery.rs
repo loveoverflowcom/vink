@@ -27,6 +27,11 @@ use vink_ui::{
 
 mod feed;
 
+const EXPLORE_TOP_CLASS: &str = "vk-explore__top flex-wrap items-center gap-x-vk-3 gap-y-vk-2";
+const EXPLORE_HEADING_CLASS: &str = "vk-explore__heading flex-auto [min-inline-size:0]";
+const DISCOVERY_TOOLBAR_CLASS: &str =
+    "vk-discovery-toolbar ms-auto flex flex-wrap items-center [min-inline-size:0]";
+
 fn query_from(params: &leptos_router::params::ParamsMap) -> ExploreQuery {
     ExploreQuery::new(
         params.get("q").unwrap_or_default(),
@@ -306,11 +311,11 @@ fn DiscoveryScope(
 #[component]
 pub(super) fn ExploreTitleRow(title: &'static str) -> impl IntoView {
     view! {
-        <div class="vk-explore__top">
-            <header id="explore-heading" class="vk-explore__heading">
+        <div class=EXPLORE_TOP_CLASS>
+            <header id="explore-heading" class=EXPLORE_HEADING_CLASS>
                 <h1 class="vk-ui-heading vk-ui-type-page-title">{title}</h1>
             </header>
-            <div class="vk-discovery-toolbar"><ExploreBrand /></div>
+            <div class=DISCOVERY_TOOLBAR_CLASS><ExploreBrand /></div>
         </div>
     }
 }
@@ -318,7 +323,7 @@ pub(super) fn ExploreTitleRow(title: &'static str) -> impl IntoView {
 #[component]
 fn ExploreBrand() -> impl IntoView {
     view! {
-        <div id="discovery-tools" class="vk-discovery-tools"><a class="vk-brand" href="/" aria-label="Vink — trang chủ">
+        <div id="discovery-tools" class="vk-discovery-tools flex-none items-center"><a class="vk-brand" href="/" aria-label="Vink — trang chủ">
             <span class="vk-brand__lockup" aria-hidden="true"></span></a></div>
     }
 }
@@ -630,8 +635,8 @@ fn DiscoveryChrome(
             }
             data-enhanced=move || enhanced.get().to_string()
             data-search=move || if search_open.get() { "open" } else { "closed" }>
-            <div class="vk-explore__top">
-                <Suspense fallback=move || view! { <header id="explore-heading" class="vk-explore__heading">
+            <div class=EXPLORE_TOP_CLASS>
+                <Suspense fallback=move || view! { <header id="explore-heading" class=EXPLORE_HEADING_CLASS>
                     <PageTitle is_tag>
                         {if is_tag { "Đang mở thẻ…" } else if search_open.get() { "Tìm tác phẩm" } else { "Khám phá" }}
                     </PageTitle>
@@ -645,8 +650,8 @@ fn DiscoveryChrome(
                         })
                     }}
                 </Suspense>
-                <div class="vk-discovery-toolbar">
-                    <form method="get" action=action.clone() on:submit=submit_search role="search" id="public-search" class="vk-public-search">
+                <div class=DISCOVERY_TOOLBAR_CLASS>
+                    <form method="get" action=action.clone() on:submit=submit_search role="search" id="public-search" class="vk-public-search [min-inline-size:0] [max-inline-size:none]">
                         {hidden_tags.into_iter().map(|tag| view! { <HiddenField name="tag" value=Signal::stored(tag) /> }).collect_view()}
                         <SearchField id="public-query"
                             label=if is_tag { "Tìm trong thẻ" } else { "Tìm theo tên hoặc tác giả" }
@@ -676,7 +681,7 @@ fn DiscoveryChrome(
                             expanded=Signal::from(search_open) on_press=open_search />
                     })}
                     {catalog.map(|catalog| view! {
-                        <Suspense fallback=|| view! { <p class="vk-muted" role="status" data-testid="tag-catalog-loading">"Đang tải danh mục thẻ…"</p> }>
+                        <Suspense fallback=|| view! { <p class="vk-muted m-0" role="status" data-testid="tag-catalog-loading">"Đang tải danh mục thẻ…"</p> }>
                             <Show when=move || catalog.map(|result| !matches!(result, Ok(list) if list.tags.is_empty())).unwrap_or(false)>
                                 <span class="vk-tag-launcher" data-count=applied_count>
                                     <IconButton id="open-tag-filters" icon=IconName::FilterList label=filter_label.get_value()
@@ -796,7 +801,7 @@ fn DiscoveryHeader(
                 <Title text="Chưa tải được kết quả — Vink" />
                 <Meta name="robots" content="noindex" />
                 <Link rel="canonical" href=crate::canonical_url(&context.tag_page.as_deref().map(tag_href).unwrap_or_else(|| "/".into())) />
-                <header id="explore-heading" class="vk-explore__heading">
+                <header id="explore-heading" class=EXPLORE_HEADING_CLASS>
                     <PageTitle is_tag>"Khám phá"</PageTitle>
                 </header>
             }.into_any();
@@ -863,7 +868,7 @@ fn DiscoveryHeader(
         <Title text={ let title = title.clone(); move || format!("{} — Vink", title.get()) } />
         <Meta name="description" content="Tìm tác phẩm công khai theo tên, tác giả và thẻ trên Vink." />
         <Link rel="canonical" href=crate::canonical_url(&canonical.href(None)) />
-        <header id="explore-heading" class="vk-explore__heading">
+        <header id="explore-heading" class=EXPLORE_HEADING_CLASS>
             {is_tag.then(|| view! { <a class="vk-ui-link" href="/">"Về Khám phá"</a> })}
             <PageTitle is_tag>
                 {move || if is_tag {
