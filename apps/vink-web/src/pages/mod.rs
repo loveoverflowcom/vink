@@ -31,6 +31,9 @@ use vink_ui::{
 
 const READER_PAGE_CLASS: &str = "vk-reader-page mx-auto mb-0 [max-inline-size:var(--vk-measure)] [margin-block-start:var(--vk-space-4)] [@media(max-width:759px)]:[margin-block-start:min(var(--vk-space-4),16px)]";
 
+const READER_RETURN_CLASS: &str = "gap-vk-2 mb-vk-6 [&_.vk-ui-icon]:m-0 [@media(max-width:759px)]:[margin-block-end:min(var(--vk-space-6),24px)]";
+const READER_FRESHNESS_NOTICE_CLASS: &str = "[margin-block:calc(-1*var(--vk-space-2))_var(--vk-space-6)] [@media(max-width:759px)]:[margin-block:-8px_min(var(--vk-space-6),24px)]";
+
 /// HTTP status for the server response; a no-op in the browser.
 #[derive(Clone)]
 struct ResponseStatus(#[cfg(feature = "ssr")] Option<leptos_axum::ResponseOptions>);
@@ -244,7 +247,7 @@ fn ReplacementView(
         <Title text=format!("{notice} — Vink") />
         <Meta name="robots" content="noindex" />
         <div id="reader" class=READER_PAGE_CLASS data-state=state>
-            <vink_ui::Link attr:id="reader-return" variant=vink_ui::LinkVariant::Standalone href=return_href>
+            <vink_ui::Link attr:id="reader-return" attr:class=READER_RETURN_CLASS variant=vink_ui::LinkVariant::Standalone href=return_href>
                 <Icon name=IconName::ArrowBack /> {move || if context.get().query.q.is_empty() { "Khám phá" } else { "Về kết quả tìm kiếm" }}
             </vink_ui::Link>
             <article id="reader-paper" class="vk-reader vk-reader--replacement min-w-0 rounded-vk-xl bg-vk-surface-container-low p-[20px] [&_p]:m-0" data-testid=test_id>
@@ -303,15 +306,15 @@ fn PublicationContent(
         <Meta property="og:url" content=canonical.clone() />
         <Link rel="canonical" href=canonical />
         <div id="reader" class=READER_PAGE_CLASS>
-        <vink_ui::Link attr:id="reader-return" variant=vink_ui::LinkVariant::Standalone href=return_href>
+        <vink_ui::Link attr:id="reader-return" attr:class=READER_RETURN_CLASS variant=vink_ui::LinkVariant::Standalone href=return_href>
             <Icon name=IconName::ArrowBack /> {move || if context.get().query.q.is_empty() { "Khám phá" } else { "Về kết quả tìm kiếm" }}
         </vink_ui::Link>
         <div id="reader-freshness" class="vk-reader-freshness" data-refreshing=move || refreshing.get().to_string()>
             <Show when=move || cached.get() && !failed.get() && !update.get()>
-                <p class="vk-muted" data-testid="reader-cached" role="status">"Đang đọc bản đã tải trước đó."</p>
+                <p class=READER_FRESHNESS_NOTICE_CLASS class:vk-muted=true data-testid="reader-cached" role="status">"Đang đọc bản đã tải trước đó."</p>
             </Show>
             <Show when=move || update.get()>
-                <div data-testid="reader-update">
+                <div class=READER_FRESHNESS_NOTICE_CLASS data-testid="reader-update">
                     <InlineNotice tone=Tone::Info title="Tác phẩm vừa có bản cập nhật."
                         message="Bạn vẫn đang đọc bản đã mở. Chọn “Xem bản mới” khi muốn chuyển; trang sẽ về đầu tác phẩm."
                         action=RecoveryAction { intent: RecoveryIntent::Reconcile, label: "Xem bản mới".into() }
@@ -322,7 +325,7 @@ fn PublicationContent(
                 </div>
             </Show>
             <Show when=move || failed.get() && !update.get()>
-                <div data-testid="reader-refresh-failed">
+                <div class=READER_FRESHNESS_NOTICE_CLASS data-testid="reader-refresh-failed">
                     <InlineNotice tone=Tone::Warning
                         message="Chưa kiểm tra được bản mới. Bạn vẫn đang đọc bản đã tải trước đó."
                         action=RecoveryAction { intent: RecoveryIntent::Retry, label: "Thử lại".into() }
