@@ -2123,12 +2123,12 @@ a {
   .vk-empty-state__art { visibility: hidden; }
 }
 
-/* Địa chỉ tác giả, theo preview được duyệt ở #290. */
-.vk-handle-page, .vk-author-public {
+/* Địa chỉ tác giả, theo preview được duyệt ở #290. Keep the shared page insets here. */
+.vk-handle-page, .vk-author-public { padding: clamp(1rem, 4vw, 4rem); }
+.vk-author-public {
   box-sizing: border-box;
   max-inline-size: 74rem;
   margin-inline: auto;
-  padding: clamp(1rem, 4vw, 4rem);
   overflow-wrap: anywhere;
   container-type: inline-size;
 }
@@ -2217,11 +2217,8 @@ a {
 
 .vk-main:has(> .vk-handle-page, > .vk-author-public) { padding-inline: 0; max-inline-size: 80rem; }
 .vk-handle-page, .vk-author-public { padding-inline: clamp(16px, 4.4vw, 68px); }
-.vk-handle-brand { display: none; }
 @media (max-width: 759px) {
   .vk-handle-page, .vk-author-public { padding: 0 16px var(--vk-space-4); }
-  .vk-handle-brand { display: inline-flex; margin-block-end: 1rem; }
-  .vk-handle-back { display: none; }
   .vk-handle-page h1 { margin-block-start: .25rem; }
 }
 
@@ -2321,10 +2318,6 @@ a {
   font: var(--vk-type-section-weight) var(--vk-text-profile-edit-heading)/var(--vk-type-headline-line-height) var(--vk-type-section-font);
   letter-spacing: 0;
 }
-.vk-profile-form, .vk-profile-form fieldset, .vk-profile-field { display: grid; min-inline-size: 0; }
-.vk-profile-form { gap: var(--vk-space-6); margin-block-start: var(--vk-space-6); }
-.vk-profile-field { gap: var(--vk-space-3); }
-.vk-profile-form fieldset { gap: var(--vk-space-1); margin: 0; padding: 0; border: 0; }
 .vk-profile-form legend {
   padding: 0;
   margin-block-end: var(--vk-space-2);
@@ -2366,16 +2359,12 @@ a {
 .vk-profile-policy__value .vk-ui-icon { flex: none; inline-size: 18px; block-size: 18px; }
 .vk-profile-note { margin: 0; font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
 .vk-profile-handle-row {
-  display: flex;
-  align-items: center;
-  gap: var(--vk-space-3);
   min-block-size: 4rem;
   padding-block: var(--vk-space-2);
   border-block: 1px solid var(--vk-outline-variant);
   color: var(--vk-on-surface);
   text-decoration: none;
 }
-.vk-profile-handle-row__text { display: flex; flex-direction: column; flex: 1; min-inline-size: 0; }
 .vk-profile-handle-row__title { font: var(--vk-type-label-weight) var(--vk-type-body-size)/var(--vk-type-label-line-height) var(--vk-type-label-font); }
 .vk-profile-handle-row__value { color: var(--vk-on-surface-variant); font-size: var(--vk-type-label-size); overflow-wrap: anywhere; }
 .vk-profile-handle-row:hover .vk-profile-handle-row__title { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
@@ -2388,18 +2377,9 @@ a {
   position: sticky;
   inset-block-end: 0;
   z-index: 1;
-  display: grid;
-  gap: var(--vk-space-2);
   background: var(--vk-bg-page);
   padding-block: var(--vk-space-3) var(--vk-space-4);
   border-block-start: 1px solid var(--vk-outline-variant);
-}
-.vk-profile-actions > div { display: flex; flex-wrap: wrap; gap: var(--vk-space-3); align-items: center; }
-.vk-profile-conflict {
-  overflow-wrap: anywhere;
-  padding: var(--vk-space-3);
-  border-radius: var(--vk-radius-md);
-  background: var(--vk-surface-container);
 }
 .vk-profile-conflict dd { white-space: pre-wrap; margin-inline-start: 0; }
 .vk-profile-conflict dt { font-weight: var(--vk-type-label-weight); }
