@@ -3512,6 +3512,13 @@ async function draftDashboard(page) {
   await page.key('Escape');
   await page.waitFor(`document.activeElement.id==='open-draft-search' && document.querySelector('#draft-sort').getClientRects().length`,
     'Escape closes the dock and restores launcher focus');
+  // Give the isolated smoke document a same-route predecessor for a real browser traversal.
+  await page.eval(`history.pushState(null, '', location.href)`);
+  await page.click('#open-draft-search');
+  await page.eval(`history.back()`);
+  await page.waitFor(`location.pathname==='/ban-viet' && document.activeElement.id==='open-draft-search' &&
+    document.querySelector('.vk-draft-search').hidden`, 'Back closes the private dock on its current route');
+
   for (const theme of ['light','dark']) for (const scale of [100,200]) for (const width of [1536,1440,1280,1024,834,390,320]) {
     await page.viewport(width);
     await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:0,y:0});

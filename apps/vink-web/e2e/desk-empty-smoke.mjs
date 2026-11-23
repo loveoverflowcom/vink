@@ -191,6 +191,7 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
         await settled();
         await page.waitFor(`document.querySelector('[data-testid=draft-empty]')`, 'clear search returns to first-use');
         check(await page.eval(`document.querySelector('#draft-search')===window.__emptySearch && document.activeElement===window.__emptySearch && window.__emptySearch.value===''`), '#259 clear keeps input identity and restores search focus');
+        await page.click('#close-draft-search');
       }
       const target = state === 'first-draft' ? '[data-testid=draft-empty]' : '[data-testid=draft-no-results]';
       const action = state === 'first-draft' ? '#create-draft' : '#clear-draft-search';
@@ -219,7 +220,7 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
         await page.eval(`document.querySelector(${JSON.stringify(action)}).focus(); document.querySelector(${JSON.stringify(action)}).scrollIntoView({block:'center'})`);
         check(await page.eval(`(() => {const r=document.querySelector(${JSON.stringify(action)}).getBoundingClientRect(),b=document.querySelector('.vk-ui-bottom-nav'),limit=b?.getClientRects().length?b.getBoundingClientRect().top:innerHeight; return r.top>=0 && r.bottom<=limit+1 && r.width>=44 && r.height>=44;})()`), `#259 ${state} ${width}/${theme}/${scale}: recovery reachable above navigation`);
         await page.eval(`scrollTo(0,document.documentElement.scrollHeight)`);
-        check(await page.eval(`(() => {const p=document.querySelector('.vk-desk-privacy'),r=p.getBoundingClientRect(),b=document.querySelector('.vk-ui-bottom-nav'),limit=b?.getClientRects().length?b.getBoundingClientRect().top:innerHeight;return r.bottom<=limit+1 && r.top>=0 && p.textContent.includes('Bản nháp chỉ bạn đọc được');})()`), `#259 ${state} ${width}/${theme}/${scale}: privacy copy reachable above navigation`);
+        check(await page.eval(`(() => {const p=document.querySelector('.vk-desk-privacy'),r=p.getBoundingClientRect(),b=document.querySelector('.vk-ui-bottom-nav'),limit=b?.getClientRects().length?b.getBoundingClientRect().top:innerHeight;return r.bottom<=limit+1 && r.top>=0 && p.textContent.includes('bản đang công khai') && document.querySelector('#heading [title="Bản nháp chỉ bạn đọc được"]');})()`), `#259 ${state} ${width}/${theme}/${scale}: list caption is reachable and the header explains draft privacy`);
         if (width < 760 && scale === 200) await page.capture(`desk-art-${state}-${width}-${theme}-${scale}-privacy`, { scenario: '#259-private-copy', state, target: '.vk-desk-privacy', boundary: 'intercepted-private-summary-transport', requestedScene: {width,height:900,theme,scale} });
       }
       if (!baseline) check(network.length===beforeMatrix, `#259 ${state}: viewport, text scale and theme changes request no additional artwork`);
@@ -265,6 +266,7 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
       gate.holdGets = false;
       await settled();
       check(await page.eval(`!!document.querySelector('[data-testid=desk-error] #retry-drafts') && document.querySelector('#draft-search')===window.__emptySearch`), '#308 a transient 502 keeps the error-panel retry and the search input');
+      await page.click('#open-draft-search');
       await page.eval(`window.__emptySearch.focus(); window.__emptySearch.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true})); window.__emptySearch.setSelectionRange(0,0)`);
       const before = gate.requests.length;
       await page.key('Enter');
