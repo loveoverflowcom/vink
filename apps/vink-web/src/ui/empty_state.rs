@@ -23,7 +23,9 @@ impl EmptyArtwork {
 /// Opt into a polite status only when the caller has no other result announcement.
 #[component]
 pub fn EmptyState(
-    artwork: EmptyArtwork,
+    #[prop(optional)] artwork: Option<EmptyArtwork>,
+    #[prop(optional)] icon: Option<vink_ui::IconName>,
+    #[prop(default = vink_ui::HeadingLevel::H3)] heading: vink_ui::HeadingLevel,
     #[prop(optional)] title: Option<&'static str>,
     #[prop(into)] message: String,
     #[prop(optional)] announce: bool,
@@ -31,9 +33,14 @@ pub fn EmptyState(
 ) -> impl IntoView {
     view! {
         <div class="vk-empty-state">
-            <img class="vk-empty-state__art" src=crate::asset_url(artwork.src()) alt="" width="512" height="427" decoding="async" />
+            {artwork.map(|artwork| view! {
+                <img class="vk-empty-state__art" src=crate::asset_url(artwork.src()) alt="" width="512" height="427" decoding="async" />
+            })}
+            {icon.map(|name| view! {
+                <span class="vk-empty-state__icon"><vink_ui::Icon name /></span>
+            })}
             {title.map(|title| view! { <vink_ui::Heading class:vk-empty-state__title=true
-                level=vink_ui::HeadingLevel::H3 role=vink_ui::TypeRole::Title>{title}</vink_ui::Heading> })}
+                level=heading role=vink_ui::TypeRole::Title>{title}</vink_ui::Heading> })}
             <p class="vk-empty-state__message" role=announce.then_some("status") aria-atomic=announce.then_some("true")>{message}</p>
             {children.map(|children| view! { <div class="vk-empty-state__actions">{children()}</div> })}
         </div>

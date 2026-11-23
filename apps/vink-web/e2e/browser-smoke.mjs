@@ -3666,7 +3666,7 @@ async function draftDashboard(page) {
   await gate.answerGet(pendingRefresh);
   await page.waitFor(`document.querySelector('[data-testid=desk-error]')`, 'dependency failure');
   check(await page.eval(`!document.querySelector('[data-testid=draft-empty]') && document.querySelectorAll('[data-testid=draft-row]').length === 2 && document.querySelector('#draft-search').value === 'duong ve' && document.querySelector('[data-testid=desk-error]').textContent.includes('tải thành công gần nhất') && window.__draftSearchInput === document.querySelector('#draft-search')`), 'temporary refresh failure preserves the labelled last-success list, query and input identity');
-  check(await page.eval(`!!document.querySelector('[data-testid=desk-error] .vk-ui-panel__actions #retry-drafts')`), 'draft retry belongs to the error panel');
+  check(await page.eval(`!!document.querySelector('[data-testid=desk-error] .vk-empty-state__actions #retry-drafts')`), 'draft retry belongs to the error panel');
   await captureRecovery(page, 'desk-unavailable', '[data-testid=desk-error]');
   for (const theme of ['light', 'dark']) {
     await page.eval(`document.documentElement.dataset.theme = '${theme}'`);
