@@ -300,14 +300,16 @@ extern "C" {
 #[component]
 pub fn Manage() -> impl IntoView {
     view! { <Title text="Địa chỉ tác giả · Vink" /><Meta name="robots" content="noindex" />
-    <section class="vk-handle-page"><MobileBrand /><a class="vk-handle-back" href="/toi#dia-chi-tac-gia">"Tôi"</a>
+    <section class="vk-handle-page box-border mx-auto [max-inline-size:74rem] wrap-anywhere [container-type:inline-size]">
+        <MobileBrand />
+        <a class="vk-handle-back [@media(max-width:759px)]:hidden" href="/toi#dia-chi-tac-gia">"Tôi"</a>
         <h1>"Địa chỉ tác giả"</h1><p>"Đây là liên kết để người đọc tìm đến bạn trên Vink."</p>
         <HandleRegion entry=false /></section> }
 }
 
 #[component]
 fn MobileBrand() -> impl IntoView {
-    view! { <a class="vk-brand vk-handle-brand" href="/" aria-label="Vink — trang chủ">
+    view! { <a class="vk-brand vk-handle-brand hidden [@media(max-width:759px)]:inline-flex [@media(max-width:759px)]:[margin-block-end:1rem]" href="/" aria-label="Vink — trang chủ">
     <span class="vk-brand__lockup" aria-hidden="true"></span></a> }
 }
 

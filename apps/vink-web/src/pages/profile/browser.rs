@@ -319,7 +319,7 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
         }
     });
     view! {
-        <form class="vk-profile-form" autocomplete="off" novalidate
+        <form class="vk-profile-form grid [min-inline-size:0] gap-vk-6 [margin-block-start:var(--vk-space-6)]" autocomplete="off" novalidate
             on:compositionstart=move |_| form.composing.set(true)
             on:compositionend=move |_| form.composing.set(false)
             on:submit=move |event| { event.prevent_default(); form.save(session); }>
@@ -327,12 +327,12 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
                 on_input=typed(form.name) error=error_for("profile-pen-name")
                 help="Luôn công khai. Bút danh có thể trùng với người khác." />
             <PolicyField form label="Quyền xem ảnh đại diện" id="profile-avatar-policy" access=|p| &mut p.avatar />
-            <div class="vk-profile-field">
+            <div class="vk-profile-field grid [min-inline-size:0] gap-vk-3">
                 <TextArea id="profile-bio" label="Bio" value=form.bio rows=4
                     on_input=typed(form.bio) error=error_for("profile-bio") />
                 <PolicyField form label="Quyền xem Bio" id="profile-bio-policy" access=|p| &mut p.bio />
             </div>
-            <fieldset>
+            <fieldset class="grid [min-inline-size:0] gap-vk-1 m-0 p-0 [border:0]">
                 <legend>"Quyền xem quan hệ"</legend>
                 <PolicyField form label="Danh sách người theo dõi" id="profile-followers-list" access=|p| &mut p.followers_list />
                 <PolicyField form label="Số người theo dõi" id="profile-followers-count" access=|p| &mut p.followers_count />
@@ -341,8 +341,8 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
             </fieldset>
             <p class="vk-muted vk-profile-note">"Trường đã đặt Chỉ mình tôi hiện chưa thể công khai lại."</p>
             // A separate task (#290): a navigation row, independent of Lưu hồ sơ.
-            <a class="vk-profile-handle-row" href="/toi/dia-chi">
-                <span class="vk-profile-handle-row__text">
+            <a class="vk-profile-handle-row flex items-center gap-vk-3" href="/toi/dia-chi">
+                <span class="vk-profile-handle-row__text flex flex-col flex-1 [min-inline-size:0]">
                     <span class="vk-profile-handle-row__title">"Địa chỉ tác giả"</span>
                     <span class="vk-profile-handle-row__value">{move || format!("@{}", form.base.with(|base| base.handle.clone()))}</span>
                 </span>
@@ -351,9 +351,9 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
             {move || form.conflict.get().map(|current| view! {
                 <Conflict form current />
             })}
-            <div class="vk-profile-actions">
+            <div class="vk-profile-actions grid gap-vk-2">
                 <p id="profile-message" role="status" aria-atomic="true">{move || form.message.get()}</p>
-                <div>
+                <div class="flex flex-wrap items-center gap-vk-3">
                     <Button id="profile-save" kind=ButtonKind::Submit state=save_state
                         described_by="profile-message">"Lưu hồ sơ"</Button>
                     <Show when=move || form.reconcile.with(Option::is_some) && !form.busy.get()>
@@ -437,7 +437,7 @@ fn Conflict(form: Form, current: OwnProfile) -> impl IntoView {
     let stored = current.clone();
     let p = current.policies;
     view! {
-        <section class="vk-profile-conflict" aria-labelledby="profile-conflict-heading">
+        <section class="vk-profile-conflict wrap-anywhere p-vk-3 rounded-vk-md bg-vk-surface-container" aria-labelledby="profile-conflict-heading">
             <h2 id="profile-conflict-heading">"Bản đang lưu trên Vink"</h2>
             <dl>
                 <dt>"Bút danh"</dt><dd>{current.pen_name}</dd>
