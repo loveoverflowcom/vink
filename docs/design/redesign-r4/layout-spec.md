@@ -37,15 +37,19 @@ Thứ tự Khám phá → Bàn viết, mục Tôi ở cuối. Dưới 760 px dù
 760–1099 px giữ rail 96 px, mở điều hướng đầy đủ bằng hộp thoại. Từ 1100 px theo chế độ rail và
 preference (mở rộng 220 px, thu gọn 96 px). Điều hướng không đổi route mặc định `/`.
 
-[#413](https://github.com/loveoverflowcom/vink/issues/413) thay phần “giữ Giao diện” của DQ-11.
-Đích yêu cầu là bỏ nút Giao diện ở rail mở rộng, thu gọn và hộp thoại, không chuyển nút vào thẻ
-tài khoản, chỉnh ở Tôi. Tại source đã pin, `RailAppearance` và mức 100%/200% vẫn hiện diện.
-Thiết kế đích là Mặc định 100%, Lớn 150%, preference cũ 200 → Lớn 150%. Stress 200% có phương
-pháp và metadata riêng. Không suy phê duyệt lại thẻ/avatar từ phạm vi #413.
+[DQ-11](../redesign-r4-ban-viet-kham-pha.md#8-sửa-theo-thiết-kế-hiện-hành-vs-cần-quyết-định)
+giữ hai lựa chọn: bác thẻ tài khoản ở chân rail và dùng nền trang cho mục Tôi khi mục này có chữ.
+[#413](https://github.com/loveoverflowcom/vink/issues/413) thay riêng phần “giữ Giao diện”. Đích
+là bỏ nút ở rail mở rộng, thu gọn và hộp thoại, chỉnh Giao diện tại Tôi. Source đã pin còn
+`RailAppearance` và mức 100%/200%. Thiết kế đích dùng Mặc định 100%, Lớn 150%, preference cũ
+200 → Lớn 150%. Stress 200% có phương pháp và metadata riêng.
 
-Giữ tên đích và `aria-current`. Tín hiệu hình icon outlined/filled thuộc [#427](https://github.com/loveoverflowcom/vink/issues/427),
-phối hợp #413 để chỉ thêm icon một lần ở catalog. Việc đổi Giao diện qua Tôi trong khi đang viết đi
-qua guard rời editor. Thiết kế lối tắt và canvas editor thuộc [#428](https://github.com/loveoverflowcom/vink/issues/428).
+[#427 AC-04](https://github.com/loveoverflowcom/vink/issues/427#acceptance) giữ tên đích và
+`aria-current="page"`, dùng icon outlined cho đích chưa chọn và filled cho đích đang chọn.
+Áp dụng cho ba đích Khám phá (`explore`), Bàn viết (`edit`) và Tôi (`person`). Phối hợp #413 để
+thêm biến thể outlined một lần vào [catalog icon](../../../packages/ui-system/shared/icons.json),
+ghi nguồn Material Icons Outlined cùng commit upstream và kiểm generated output. Việc đổi
+Giao diện qua Tôi trong khi đang viết đi qua guard rời editor. Thiết kế lối tắt và canvas editor thuộc [#428](https://github.com/loveoverflowcom/vink/issues/428).
 
 ## 4. Khám phá
 
@@ -58,9 +62,13 @@ qua guard rời editor. Thiết kế lối tắt và canvas editor thuộc [#428
 - Sheet dùng chip theo bề rộng chữ, bo 12 px, trạng thái chọn có dấu. “Bỏ chọn” chỉ xóa draft của
   sheet. “Áp dụng” submit GET, tối đa 4 thẻ, kết hợp AND. Link xóa các thẻ đã áp dụng giữ q, bỏ
   cursor cũ. Giữ fallback GET trước JS.
-- **R4-INV-06.** URL Khám phá có q thì dock hiện q. Đóng bằng nút hoặc Esc bỏ q và cursor, giữ bộ lọc thẻ
-  có hiệu lực và trả focus theo ngữ cảnh. [#427](https://github.com/loveoverflowcom/vink/issues/427)
-  sở hữu việc chứng minh SSR/dock, link ẩn và các ngưỡng phụ thuộc cờ 200% sau #413.
+- **R4-INV-06.** Ở chế độ Tất cả, SSR `/?q=…` mở dock và hiện q. Đóng bằng nút hoặc Esc bỏ q
+  và cursor, giữ bộ lọc thẻ đã áp dụng và trả focus theo ngữ cảnh. Trang chi tiết `/the/:slug`
+  dùng trường “Tìm trong thẻ” riêng, ngoài hợp đồng mở/đóng dock này.
+- **#427 AC-01/02.** Ở 320/390 px, Mặc định 100% và Lớn 150%, nhóm chế độ vừa một hàng nối
+  liền hoặc gập thành menu. Khi dock đóng, logo, nút Tìm và nút Lọc thẻ cùng một hàng, trang
+  không cuộn ngang. Ở mỗi bề rộng chỉ một bộ link chế độ nhận Tab và xuất hiện trong cây trợ
+  năng. Kiểm stress 200% riêng.
 
 ## 5. Bàn viết
 
@@ -100,7 +108,7 @@ sibling của link editor, mở đúng bản công khai. DQ-05 (giờ) và DQ-10
 | Luồng | Lỗi/phục hồi cần kiểm | Owner |
 | --- | --- | --- |
 | Bàn viết | Đổi phiên/401/403, lỗi trước và sau khi tải, lần tạo mất phản hồi, cursor hết hiệu lực, clear/retry làm gì với focus và query | #408/#411, cùng [registry tác giả](../../development/desk-author-feedback.md) |
-| Khám phá | Deep link q, Back khỏi Reader, space/tab trên hai bộ link, đóng/rời dock, GET filter và cursor lỗi | #404/#406 và phần còn lại #427 |
+| Khám phá | SSR `/?q=…` ở Tất cả rồi đóng bằng nút/Esc, Back khỏi Reader, chỉ một bộ link có trong Tab/AX, logo + hai nút một hàng ở 320/390 px tại 100%/150%, GET filter và cursor lỗi | #404/#406 và phần còn lại #427 |
 | Shell/cỡ chữ | 320/390/834/1440, cả hai theme, 100/150 theo #413 và stress 200 riêng. Kiểm keyboard, focus và AX đúng bề mặt | #403/#413/#427 |
 
 Ghi kết quả Functional, Geometry, Visual, Accessibility–Responsive và Interaction theo từng

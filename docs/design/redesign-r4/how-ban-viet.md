@@ -4,9 +4,13 @@ Source tại `develop@2712145b08a6a4c7a12c1d57033ecd2a5bd33b26`. Người viết
 mở kính lúp, nhập “đường về”, chọn sắp xếp và mở một bản thảo. Nếu mạng rớt sau khi đã tải,
 họ vẫn xem được kết quả trước đó trong cùng phiên và có cách thử lại.
 
-1. [DeskIndex / DeskSession](../../../apps/vink-web/src/pages/desk.rs#L40) phân luồng phiên.
-   SSR có khung, trạng thái phù hợp và dùng `DeskAccess` khi thiếu quyền. Facts của tác giả
-   không được serialize cùng HTML. `DeskWorks` chỉ phát đọc riêng từ phía hydrate với phiên đủ quyền.
+1. **SSR.** [Session::provide](../../../apps/vink-web/src/account.rs#L78) khởi tạo phiên `Unknown`,
+   chưa có scope riêng. [DeskIndex](../../../apps/vink-web/src/pages/desk.rs#L40) render heading,
+   thông báo `noscript` và [DeskLoading](../../../apps/vink-web/src/pages/desk.rs#L131). Skeleton
+   có trong markup nhưng ẩn. HTML không serialize dữ kiện của tác giả.
+   **Sau hydrate.** `browser::watch` kiểm phiên. [DeskSession](../../../apps/vink-web/src/pages/desk.rs#L79)
+   dùng `DeskAccess` cho khách, người thiếu bút danh, phiên bị khóa hoặc không kiểm tra được. Khi
+   xác nhận scope riêng, `DeskIndex` mount `DeskWorks` theo scope và mới phát GET danh sách.
 2. [DeskWorks](../../../apps/vink-web/src/pages/desk.rs#L149) giữ `query` (ô nhập), `applied`
    (query đã submit), `sort` và dock state. Mở dock focus `#draft-search`. Form được ẩn bằng
    `hidden` khi đóng. Enter/submit đang composition bị chặn. Submit lấy `query`, đổi scope đọc

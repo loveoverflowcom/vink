@@ -7,7 +7,8 @@ dùng Back. Chữ đang soạn và lựa chọn chưa áp dụng sống ở giao
 1. [Home / DiscoveryPage](../../../apps/vink-web/src/pages/discovery.rs#L193) đọc mode,
    q, tag và cursor từ router. `DiscoveryScope` dispatch Works, Following hoặc Authors.
    [DiscoveryChrome](../../../apps/vink-web/src/pages/discovery.rs#L404) khởi đầu buffer từ
-   q. Dock ở Tất cả mở theo context q, hash tìm hoặc trạng thái mở. [ExploreModes](../../../apps/vink-web/src/pages/discovery.rs#L326)
+   q. Ở Tất cả, `/?q=…` có dock mở ngay từ SSR. Context q, hash tìm hoặc trạng thái mở đều
+   có thể mở dock. Trang `/the/:slug` giữ ô “Tìm trong thẻ” riêng. [ExploreModes](../../../apps/vink-web/src/pages/discovery.rs#L326)
    render link thật cho nhóm và menu, giữ `aria-current` và flag của Đang theo dõi.
 2. [works_resource](../../../apps/vink-web/src/api.rs#L579) ở SSR gọi `SharedPublicReads` trực
    tiếp. [PublicReadsAdapter::works](../../../services/vink-app/src/http/ssr.rs#L152) gọi
@@ -37,5 +38,6 @@ dùng Back. Chữ đang soạn và lựa chọn chưa áp dụng sống ở giao
 
 [Smoke source](../../../apps/vink-web/e2e/browser-smoke.mjs#L1715) phân biệt 422 input/cursor và
 đọc SSR trước JS. [#427](https://github.com/loveoverflowcom/vink/issues/427) giữ các ca chưa đủ
-bằng chứng: deep link q rồi đóng trên SSR/hydrate, một bộ link hiện trong Tab/AX, ngưỡng sau
-#413 và tín hiệu active rail. Browser và ảnh ở source mới `NOT_RUN`.
+bằng chứng: SSR `/?q=…` ở Tất cả rồi đóng dock bằng nút hoặc Esc sau hydrate, một bộ link hiện
+trong Tab/AX, logo + hai nút cùng hàng ở 320/390 px tại 100%/150%, và tín hiệu active rail.
+Browser và ảnh ở source mới `NOT_RUN`.
