@@ -494,8 +494,7 @@
 
 /* Fields -------------------------------------------------------------------------------------- */
 
-.vk-ui-field,
-.vk-ui-choice {
+.vk-ui-field {
   display: flex;
   flex-direction: column;
   gap: var(--vk-space-1);
@@ -709,13 +708,12 @@
   .vk-ui-search__clear:focus-visible { outline-color: Highlight; }
 }
 
-/* R1.5 (#135): reserve one fixed trailing slot as text grows. Native option labels
- * use the shared label recipe; rem-scaled insets otherwise consume their measure at 200%. */
+/* R1.5 (#135): native option labels use the shared label recipe. SelectVariant in field.rs
+ * reserves the text inset in CSS pixels so the trailing slot does not consume the label measure at 200%. */
 .vk-ui-select {
   -webkit-appearance: none;
   appearance: none;
   background-image: none;
-  padding-inline: 12px calc(12px + 18px + 8px);
   font-size: var(--vk-type-label-size);
   font-weight: var(--vk-type-label-weight);
   line-height: var(--vk-type-label-line-height);
@@ -728,12 +726,8 @@
   inset-inline: auto 12px;
 }
 
-/* #262 opt-in: the existing 18/12/8 default above remains the shared baseline.
- * The larger 52px reserve leaves 20px between the content box and the 16px icon.
- * Keep these in CSS pixels at text200; logical properties also support RTL hosts. */
-.vk-ui-field__control--select[data-select-variant="inset-16"] > .vk-ui-select {
-  padding-inline-end: 52px;
-}
+/* #262 opt-in: the fixed 16px icon and 16px inset match the 52px text reserve.
+ * Logical properties also support RTL hosts. */
 .vk-ui-field__control--select[data-select-variant="inset-16"] > .vk-ui-icon {
   inline-size: 16px;
   block-size: 16px;
@@ -804,26 +798,19 @@
   .vk-ui-field .vk-ui-input[aria-invalid="true"] { outline-color: Highlight; }
 }
 
+/* Appearance and tag filters override the shared target layout and state colors. */
 .vk-ui-choice__target {
   display: inline-flex;
-  align-items: center;
   gap: var(--vk-space-3);
-  inline-size: fit-content;
-  max-inline-size: 100%;
   min-block-size: var(--vk-density-control-height);
   color: var(--vk-on-surface);
   cursor: pointer;
 }
 
-.vk-ui-choice__label { overflow-wrap: anywhere; }
-
+/* Switch, Appearance and tag filters set different sizes on the same native input. */
 .vk-ui-choice__input {
-  flex: none;
   inline-size: 1.25rem;
   block-size: 1.25rem;
-  margin: 0;
-  accent-color: var(--vk-primary);
-  cursor: inherit;
 }
 
 .vk-ui-choice[data-invalid] .vk-ui-choice__input,
@@ -887,14 +874,10 @@
   font-size: var(--vk-type-caption-size);
 }
 
+/* The Appearance region overrides group direction and gap. */
 .vk-ui-group {
-  display: flex;
   flex-direction: column;
   gap: var(--vk-space-1);
-  min-inline-size: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
 }
 
 .vk-ui-group > legend { margin-block-end: var(--vk-space-1); }

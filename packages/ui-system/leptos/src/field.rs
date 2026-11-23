@@ -642,6 +642,12 @@ fn resync_checked(ev: &leptos::ev::Event, checked: bool) {
     }
 }
 
+const CHOICE_TARGET_CLASS: &str =
+    "vk-ui-choice__target items-center [inline-size:fit-content] [max-inline-size:100%]";
+const CHOICE_INPUT_CLASS: &str =
+    "vk-ui-choice__input flex-none m-0 accent-vk-primary [cursor:inherit]";
+const CHOICE_LABEL_CLASS: &str = "vk-ui-choice__label wrap-anywhere";
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Toggle {
     Checkbox,
@@ -668,18 +674,20 @@ fn toggle(
         move || described_by(&id, has_help, invalid.get())
     };
     let class = match kind {
-        Toggle::Checkbox => "vk-ui-choice",
-        Toggle::Switch => "vk-ui-choice vk-ui-choice--switch",
+        Toggle::Checkbox => "vk-ui-choice flex flex-col gap-vk-1 [min-inline-size:0]",
+        Toggle::Switch => {
+            "vk-ui-choice vk-ui-choice--switch flex flex-col gap-vk-1 [min-inline-size:0]"
+        }
     };
     view! {
         <div class=class data-invalid=move || invalid.get().then_some("true")>
-            <label class="vk-ui-choice__target">
+            <label class=CHOICE_TARGET_CLASS>
                 <input
                     type="checkbox"
                     name=name
                     value=value
                     id=id.clone()
-                    class="vk-ui-choice__input"
+                    class=CHOICE_INPUT_CLASS
                     role=(kind == Toggle::Switch).then_some("switch")
                     checked=checked.get_untracked()
                     prop:checked=move || checked.get()
@@ -691,7 +699,7 @@ fn toggle(
                         resync_checked(&ev, checked.get_untracked());
                     }
                 />
-                <span class="vk-ui-choice__label">{label}</span>
+                <span class=CHOICE_LABEL_CLASS>{label}</span>
                 {(kind == Toggle::Switch).then(|| view! {
                     <span class="vk-ui-choice__state" aria-hidden="true">
                         {move || if checked.get() { "Bật" } else { "Tắt" }}
@@ -779,7 +787,7 @@ pub fn RadioGroup(
     let group_id = id.clone();
     view! {
         <fieldset
-            class="vk-ui-group"
+            class="vk-ui-group flex [min-inline-size:0] m-0 p-0 [border:0]"
             id=group_id
             role="radiogroup"
             aria-required=required.then_some("true")
@@ -797,10 +805,10 @@ pub fn RadioGroup(
                     let selected = move || value.with(|v| v.as_deref() == Some(current.as_str()));
                     let initially = selected();
                     view! {
-                        <label class="vk-ui-choice__target">
+                        <label class=CHOICE_TARGET_CLASS>
                             <input
                                 type="radio"
-                                class="vk-ui-choice__input"
+                                class=CHOICE_INPUT_CLASS
                                 name=name.clone()
                                 value=option.value
                                 checked=initially
@@ -811,7 +819,7 @@ pub fn RadioGroup(
                                     resync_checked(&ev, selected());
                                 }
                             />
-                            <span class="vk-ui-choice__label">{option.label}</span>
+                            <span class=CHOICE_LABEL_CLASS>{option.label}</span>
                         </label>
                     }
                 })
@@ -824,6 +832,7 @@ pub fn RadioGroup(
 /// Native select geometry. This is presentation only; format/capability policy belongs to hosts.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum SelectVariant {
+    /// Fixed CSS pixels: 18px icon, 12px inline-end inset, 38px reserved for trailing content.
     #[default]
     Standard,
     /// Fixed CSS pixels: 16px icon, 16px inline-end inset, 52px reserved for trailing content.
@@ -864,7 +873,10 @@ pub fn Select(
             >
                 <select
                     id=id.clone()
-                    class="vk-ui-input vk-ui-select"
+                    class=match variant {
+                        SelectVariant::Standard => "vk-ui-input vk-ui-select [padding-inline:12px_38px]",
+                        SelectVariant::Inset16 => "vk-ui-input vk-ui-select [padding-inline:12px_52px]",
+                    }
                     prop:value=move || value.get().unwrap_or_default()
                     disabled=move || disabled.get()
                     aria-invalid=move || invalid.get().then_some("true")
