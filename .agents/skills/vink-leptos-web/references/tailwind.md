@@ -58,18 +58,17 @@ Cả `web.css` và `preview.css` dùng chung thứ tự layer:
 
 - **Không bật Tailwind Preflight:** giữ nguyên reset hiện hành của Vink, prose Markdown,
   CodeMirror 6 và native `<select>`/`<input>`/`<dialog>`.
-- **Ưu tiên cascade khi song hành:** `@layer utilities` đứng sau `@layer legacy` nên utility thường
-  thắng rule thường ở `@layer legacy` không cần `!important`. Ngược lại, trong CSS Cascade Layers,
-  `!important` **đảo ngược thứ tự layer** (`@layer legacy !important` thắng `@layer utilities !important`),
-  nên các rule reduced-motion fallback có `!important` trong `vink.css` / `preview.css` vẫn giữ độ
-  ưu tiên cao nhất; nhưng các rule `@media (forced-colors: active)` **không** có `!important` trong
-  `@layer legacy` sẽ thua `@layer utilities` (component chuyển sang utility phải tự mang
-  `forced-colors:*` khi cần).
-- **DOM bên thứ ba bơm `<style>` không layer ở runtime (CodeMirror 6 `style-mod`):** Theo chuẩn CSS
-  Cascade Layers, mọi rule không nằm trong `@layer` đều thắng mọi `@layer`. Do CodeMirror 6 bơm
-  `<style>` không layer vào `document.head` khi mount (ví dụ `.cm-editor.cm-focused` có viền chấm),
-  các rule trực tiếp lên DOM editor (focus, scroller, line và Markdown Live Preview) phải đặt ở phần **không layer** cuối
-  `packages/ui-system/leptos/tailwind/web.css`.
+- **Ưu tiên cascade khi song hành.** Trong cùng origin và context, declaration thường ở
+  `@layer utilities` thắng declaration thường ở `@layer legacy`. Kiểm `forced-colors:*` khi
+  chuyển một thuộc tính đang có fallback `forced-colors` thường ở legacy. Với `!important`,
+  thứ tự layer đảo ngược. Fallback reduced-motion `!important` trong legacy thắng utility
+  thường và utility `!important` trong layer đứng sau. Declaration thường ngoài layer thắng
+  declaration thường trong layer. Declaration `!important` trong layer thắng declaration
+  `!important` ngoài layer. [CSS Cascade Level 5](https://www.w3.org/TR/css-cascade-5/#cascade-sort)
+- **DOM CodeMirror 6.** `style-mod` đưa `<style>` ngoài layer vào `document.head` khi mount.
+  Các override thường của Vink cho focus, scroller, line và Markdown Live Preview nằm cùng
+  mức ngoài layer ở cuối [entry Web](../../../../packages/ui-system/leptos/tailwind/web.css).
+  Với cùng mức cascade, kiểm specificity và thứ tự nguồn để xác nhận selector thắng.
 - **Bẫy cascade bắt buộc phải kiểm khi migrate con trước cha:** Một selector hậu duệ ở
   `@layer legacy` (ví dụ `.vk-editor-recovery > .vk-ui-notice { padding: 0; background: transparent; }`
   hoặc flex/gap của `.vk-author-work__status`) sẽ **THUA** utility của component con trong
@@ -230,9 +229,13 @@ Cả `web.css` và `preview.css` dùng chung thứ tự layer:
 - `cargo xtask verify quick` chứng minh token match, pin package/lockfile, `source(none)` allowlist,
   unit test compiler/guard và clippy server/hydrate/preview — **không** chứng minh giao diện trên
   trình duyệt hay kích thước/hiệu năng thực.
-- `cargo xtask verify preview` và `cargo xtask verify web --scenario ...` chứng minh render/hydration/
-  tương tác trên headless Chrome; kết luận thị giác đòi hỏi **mở trực tiếp ảnh PNG** trước/sau trên
-  cùng kịch bản.
+- `cargo xtask verify preview` kiểm Leptos preview render phía client, tương tác và fixture
+  media hydration riêng trong headless Chrome (`target/ui-preview/leptos/captures/`).
+  `cargo xtask verify web --scenario NAME` kiểm Web theo kịch bản đã chọn, gồm SSR,
+  hydration và tương tác nếu kịch bản có các assertion đó (`target/verify-web/<run-id>/`).
+  Xem [tooling local](../../../../docs/development/feature-map.md#tooling-local-có-phạm-vi-184).
+  Kết luận thị giác cần mở ảnh PNG trước/sau cùng kịch bản. Input tổng hợp trong Chrome
+  và phép đo geometry có phạm vi riêng với IME hệ điều hành và thiết bị thật.
 - Mọi nhận xét về dung lượng CSS/WASM/SSR HTML hay thời gian build phải trích số đo thực từ cùng
   máy/cấu hình (xem [docs/development/tailwind-web-foundation.md](../../../../docs/development/tailwind-web-foundation.md));
   không đưa ra tuyên bố định lượng chưa đo (ví dụ lợi ích hiệu suất AI chưa có thí nghiệm đo).

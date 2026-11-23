@@ -52,13 +52,15 @@ Tài liệu nguồn có cả đề xuất lịch sử: chỉ mang phương pháp
 
 ## Owner map cho bàn giao code
 
-Những đường dẫn sau được nêu trong owner docs tại snapshot; đọc file thực trước
-khi khẳng định root cause, line hoặc patch cụ thể. Tất cả đường dẫn `src/...` dưới
-đây đều có gốc `apps/vink-web/`.
+Bảng dưới định tuyến theo owner hiện hành. Các link pin ở phần trên giữ provenance
+của snapshot. Đọc file thực trước khi khẳng định nguyên nhân hoặc sửa code. Đường
+dẫn rút gọn `src/...` dưới đây tính từ `apps/vink-web/`.
 
 | Phần | Owner được nguồn ghi nhận |
 | --- | --- |
-| Shell, routes, hydration | `apps/vink-web/src/lib.rs` |
+| Router và hydration | [lib.rs](../../../../apps/vink-web/src/lib.rs) |
+| Shell và điều hướng | [shell.rs](../../../../apps/vink-web/src/shell.rs) dùng primitive [vink-ui navigation](../../../../packages/ui-system/leptos/src/navigation.rs) |
+| Giao diện `/toi` | [appearance.rs](../../../../apps/vink-web/src/appearance.rs) giữ bootstrap và preference, [me.rs](../../../../apps/vink-web/src/pages/me.rs) giữ điểm chỉnh |
 | Home/reader/not found | `apps/vink-web/src/pages/mod.rs` |
 | Bàn viết | `apps/vink-web/src/pages/desk.rs` |
 | Pure save state, leave intent | `apps/vink-web/src/desk_state.rs` |
@@ -68,6 +70,7 @@ khi khẳng định root cause, line hoặc patch cụ thể. Tất cả đườ
 | Consumer API, transport, SSR read seam | `apps/vink-web/src/contract.rs`, `src/api.rs`, `src/server.rs` |
 | Semantic token values (since UIS-01) | `packages/ui-system/shared/tokens.json` → generated `packages/ui-system/leptos/style/{tokens.css,tailwind-theme.css}`, Rust, Kotlin |
 | Web UI styling & Tailwind v4 pipeline | 3 owners: primitives `packages/ui-system/leptos/{src,style/vink-ui.css}`, compositions `packages/vink-patterns/leptos/{src,patterns.css}`, page layout/prose `apps/vink-web/{src,style/vink.css}`; CodeMirror DOM overrides in the unlayered section of `packages/ui-system/leptos/tailwind/web.css`; compiled via `packages/ui-system/leptos/tailwind/{web,preview}.css` and `xtask/src/tailwind.rs` ([Tailwind guide](../../vink-leptos-web/references/tailwind.md)) |
+| Leptos preview | [Host preview](../../../../packages/ui-system/leptos/preview) dùng UI System và patterns, CSS host ở [preview.css](../../../../packages/ui-system/leptos/preview/style/preview.css). |
 | Browser smoke | `apps/vink-web/e2e/browser-smoke.mjs` |
 | Domain/application/HTTP/persistence | `services/vink-app/src/` theo owner trong docs development |
 
