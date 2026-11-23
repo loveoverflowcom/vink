@@ -874,6 +874,7 @@ a {
 }
 .vk-desk-loading { margin: 0; }
 .vk-desk-create {
+  --vk-ui-control-radius: var(--vk-radius-control-48);
   display: flex;
   flex-wrap: wrap;
   align-items: end;
@@ -881,6 +882,7 @@ a {
   max-inline-size: 100%;
   min-inline-size: 0;
 }
+.vk-desk-create .vk-ui-select { border-radius: var(--vk-ui-control-radius); }
 .vk-desk-create > .vk-ui-field {
   margin: 0;
   flex: 0 1 auto;
