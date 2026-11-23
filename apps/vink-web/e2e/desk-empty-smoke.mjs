@@ -166,8 +166,36 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
   await page.send('Network.clearBrowserCache');
   await gate.enable();
   try {
-    await page.viewport(390);
-    await page.goto(args.base + '/ban-viet');
+    if (!baseline) {
+      await page.viewport(1440);
+      await page.goto(args.base + '/ban-viet');
+      const rail = '#navigation-primary a[href="/ban-viet"]';
+      for (const selector of ['#open-draft-search', '#draft-sort', rail]) {
+        const held = await gate.next('gets');
+        const target = JSON.stringify(selector);
+        await page.eval(`window.__heldSearch = document.querySelector('#draft-search');
+          document.querySelector(${target}).focus()`);
+        check(await page.eval(`document.activeElement === document.querySelector(${target})`),
+          `#411 focus starts on ${selector} before the empty page returns`);
+        await gate.answerGet(held);
+        await settled();
+        await page.waitFor(`document.querySelector('[data-testid=draft-empty]') && document.activeElement ===
+          document.querySelector(${selector === rail ? target : "'#desk-title'"})`,
+          `#411 initial empty result settles focus from ${selector}`);
+        if (selector !== rail) {
+          await page.key('Tab');
+          check(await page.eval(`document.activeElement?.id === 'create-draft-format'`),
+            `#411 from ${selector}, Tab reaches the format Select after recovery`);
+        }
+        check(await page.eval(`document.querySelector('#draft-search') === window.__heldSearch`),
+          '#411 the initial empty response leaves the search node mounted');
+        await page.reload();
+      }
+      await page.viewport(390);
+    } else {
+      await page.viewport(390);
+      await page.goto(args.base + '/ban-viet');
+    }
     loader = (await page.send('Page.getFrameTree')).frameTree.frame.loaderId;
     const initial = await gate.next('gets');
     await page.waitFor(`document.querySelector('[data-testid=draft-loading]')`, 'held initial read');

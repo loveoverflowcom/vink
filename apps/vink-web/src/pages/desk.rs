@@ -281,6 +281,10 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                     let anchor = (intent == Intent::Refresh)
                         .then(capture_desk_anchor)
                         .flatten();
+                    // Capture focus before applying the page, which can hide the tools.
+                    let focused_tool = document().active_element().filter(|element| {
+                        matches!(element.id().as_str(), "open-draft-search" | "draft-sort")
+                    });
                     let result = result.and_then(|page| {
                         if pages.try_update(|p| reads.with_value(|r| p.accept(r, &ticket, page)))
                             != Some(true)
@@ -345,6 +349,10 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                             super::focus_recovery("draft-list-title");
                         } else if recover {
                             focus_search_or_heading();
+                        } else if let Some(tool) =
+                            focused_tool.filter(|_| !show_tools.get_untracked())
+                        {
+                            recover_hidden_tool_focus(tool, show_tools);
                         } else if let Some(anchor) = anchor {
                             restore_desk_anchor(anchor);
                         }
@@ -516,6 +524,27 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
             </section>
         </Show>
     }.into_any()
+}
+
+#[cfg(feature = "hydrate")]
+fn recover_hidden_tool_focus(tool: web_sys::Element, show_tools: Signal<bool>) {
+    use wasm_bindgen::JsCast;
+
+    request_animation_frame(move || {
+        let document = document();
+        // Hiding a focused control can move focus to body. A different focused element
+        // belongs to a newer interaction; a detached tool belongs to a departed scope.
+        if tool.is_connected()
+            && show_tools.try_get_untracked() == Some(false)
+            && document
+                .active_element()
+                .is_none_or(|active| active == tool || active.tag_name() == "BODY")
+            && let Some(title) = document.get_element_by_id("desk-title")
+            && let Ok(title) = title.dyn_into::<web_sys::HtmlElement>()
+        {
+            let _ = title.focus();
+        }
+    });
 }
 
 #[cfg(feature = "hydrate")]
