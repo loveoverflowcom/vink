@@ -155,13 +155,53 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
     let sort = RwSignal::new(DraftSort::Recent);
     let composing = RwSignal::new(false);
     let dock_open = RwSignal::new(false);
+    let creation = RwSignal::new(CreateState::Ready);
+    let create_format = RwSignal::new(DocumentFormatDto::Default);
+    let loading = RwSignal::new(true);
+    let appending = RwSignal::new(false);
+    let recovery_focus = RwSignal::new(false);
+    let ready = RwSignal::new(false);
+    let pages = RwSignal::new(DraftPages::default());
+    let load_error = RwSignal::new(None::<ApiError>);
+    let page_error = RwSignal::new(None::<ApiError>);
+    let access_error = RwSignal::new(None::<ApiError>);
+    let restarted = RwSignal::new(false);
+    // Emptiness needs a successful head page; a failed or unanswered read never establishes it.
+    // A retained empty head stays while the same scope refreshes (UIS-03 `Empty + Loading`):
+    // a new scope resets `pages`, so its stale answer cannot be shown as the new one.
+    let empty_head = move || {
+        load_error.get().is_none() && pages.with(|p| p.loaded && p.part == 1 && p.drafts.is_empty())
+    };
+    // Only an unfiltered head without continuation describes an empty corpus. A filtered
+    // miss says nothing about whether this owner has drafts.
+    let first_use = Signal::derive(move || {
+        ready.get()
+            && empty_head()
+            && crate::draft_list::search_key(&applied.get()).is_empty()
+            && pages.with(|p| p.chain.next_cursor.is_none())
+    });
+    let no_results = Signal::derive(move || !first_use.get() && empty_head());
+    // The dock still replaces the closed controls. Only confirmed, unfiltered first-use
+    // hides those controls when the search buffer is blank; a draft query is kept as typed.
+    let show_tools = Signal::derive(move || {
+        !dock_open.get() && (!first_use.get() || query.with(|text| !text.trim().is_empty()))
+    });
+    let focus_search_or_heading = move || {
+        super::focus_recovery(if dock_open.get_untracked() {
+            "draft-search"
+        } else if show_tools.get_untracked() {
+            "open-draft-search"
+        } else {
+            "desk-title"
+        });
+    };
     let open_dock = Callback::new(move |()| {
         dock_open.set(true);
         super::focus_recovery("draft-search");
     });
     let close_dock = Callback::new(move |()| {
         dock_open.set(false);
-        super::focus_recovery("open-draft-search");
+        focus_search_or_heading();
     });
     #[cfg(feature = "hydrate")]
     {
@@ -175,17 +215,6 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
         });
         on_cleanup(move || guard.clear_overlay(registration));
     }
-    let creation = RwSignal::new(CreateState::Ready);
-    let create_format = RwSignal::new(DocumentFormatDto::Default);
-    let loading = RwSignal::new(true);
-    let appending = RwSignal::new(false);
-    let recovery_focus = RwSignal::new(false);
-    let ready = RwSignal::new(false);
-    let pages = RwSignal::new(DraftPages::default());
-    let load_error = RwSignal::new(None::<ApiError>);
-    let page_error = RwSignal::new(None::<ApiError>);
-    let access_error = RwSignal::new(None::<ApiError>);
-    let restarted = RwSignal::new(false);
     let scope = StoredValue::new(scope);
     let reads = StoredValue::new(ReadOwner::new((String::new(), DraftSort::Recent)));
     let wake = StoredValue::new(crate::read_events::WakePolicy::default());
@@ -315,11 +344,7 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                         if next_part {
                             super::focus_recovery("draft-list-title");
                         } else if recover {
-                            super::focus_recovery(if dock_open.get_untracked() {
-                                "draft-search"
-                            } else {
-                                "open-draft-search"
-                            });
+                            focus_search_or_heading();
                         } else if let Some(anchor) = anchor {
                             restore_desk_anchor(anchor);
                         }
@@ -395,10 +420,11 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
         } else {
             applied.set(String::new());
         }
+        // A new unfiltered response may hide the launcher after clearing a closed dock.
         super::focus_recovery(if dock_open.get_untracked() {
             "draft-search"
         } else {
-            "open-draft-search"
+            "desk-title"
         });
     });
     let can_create = Signal::derive(move || {
@@ -443,25 +469,10 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
             });
         }
     });
-    // Emptiness needs a successful head page; a failed or unanswered read never establishes it.
-    // A retained empty head stays while the same scope refreshes (UIS-03 `Empty + Loading`):
-    // a new scope resets `pages`, so its stale answer cannot be shown as the new one.
-    let empty_head = move || {
-        load_error.get().is_none() && pages.with(|p| p.loaded && p.part == 1 && p.drafts.is_empty())
-    };
-    // Only an unfiltered head without continuation describes an empty corpus. A filtered
-    // miss says nothing about whether this owner has drafts.
-    let first_use = Signal::derive(move || {
-        ready.get()
-            && empty_head()
-            && crate::draft_list::search_key(&applied.get()).is_empty()
-            && pages.with(|p| p.chain.next_cursor.is_none())
-    });
-    let no_results = Signal::derive(move || !first_use.get() && empty_head());
     view! {
         <DeskHeading private=true>
             <Show when=move || access_error.with(Option::is_none)>
-                <div class="vk-desk-heading__actions" hidden=move || dock_open.get()>
+                <div class="vk-desk-heading__actions" hidden=move || !show_tools.get()>
                     <SearchDockLauncher id="open-draft-search" label="Tìm tác phẩm" expanded=dock_open.into() on_press=open_dock />
                     <Show when=move || ready.get() && !first_use.get()>
                         <CreateDraftControls creation can_create create create_format />
@@ -498,7 +509,7 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                     aria-busy=move || if loading.get() { "true" } else { "false" }>
                     <CreateNotice creation loading refresh />
                     // The tools/input retain one owner through loading, empty, query and error.
-                    <DraftListView pages dock_open sort loading appending ready page_error load_error restarted
+                    <DraftListView pages show_tools sort loading appending ready page_error load_error restarted
                         first_use no_results creation can_create create create_format clear more refresh refresh_disabled />
                 </div>
                 <p class="vk-desk-privacy vk-muted">"Số Thấm và Nhận xét thuộc bản đang công khai."</p>
@@ -632,7 +643,7 @@ fn DraftListView(
     can_create: Signal<bool>,
     create: Callback<()>,
     create_format: RwSignal<DocumentFormatDto>,
-    dock_open: RwSignal<bool>,
+    show_tools: Signal<bool>,
     sort: RwSignal<DraftSort>,
     loading: RwSignal<bool>,
     appending: RwSignal<bool>,
@@ -667,13 +678,13 @@ fn DraftListView(
                         else { format!("Hiển thị {} tác phẩm", pages.with(|p| p.drafts.len())) }}
                     </span>
                 </p>
-                <div id="draft-tools" class="vk-draft-tools" hidden=move || dock_open.get()>
+                <div id="draft-tools" class="vk-draft-tools" hidden=move || !show_tools.get()>
                     <Select id="draft-sort" label="Sắp xếp" required=true variant=SelectVariant::Inset16
                         options=vec![ChoiceOption::new("recent", "Mới nhất"), ChoiceOption::new("title", "Tên A–Z")]
                         value=Signal::derive(move || Some(if sort.get() == DraftSort::Title { "title" } else { "recent" }.to_string()))
                         on_change={move |value: Option<String>| sort.set(if value.as_deref() == Some("title") { DraftSort::Title } else { DraftSort::Recent })} />
                 </div>
-                <Show when=move || !dock_open.get() && sort.get() == DraftSort::Title>
+                <Show when=move || show_tools.get() && sort.get() == DraftSort::Title>
                     <p class="vk-draft-sort-help vk-muted">"Bỏ qua dấu khi sắp xếp."</p>
                 </Show>
             </div>
