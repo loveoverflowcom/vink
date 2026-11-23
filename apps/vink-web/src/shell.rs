@@ -204,7 +204,7 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
                 />
             }
             overlays=move || view! {
-                <ShellDialog id=RAIL_MODAL class="vk-rail-modal" label="Điều hướng chính"
+                <ShellDialog id=RAIL_MODAL class="vk-rail-modal m-0 p-0 [border:0] [max-inline-size:100%] [max-block-size:100%]" label="Điều hướng chính"
                     dialog=rail_modal on_close=Callback::new(move |reason| { close_rail(reason); })>
                     <NavigationRail
                         id="navigation-expanded"

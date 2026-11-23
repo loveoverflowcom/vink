@@ -108,7 +108,7 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <HydrationScripts options root=option_env!("VINK_ASSET_PREFIX").unwrap_or("").to_string() />
                 <MetaTags />
             </head>
-            <body>
+            <body class="m-0 flex min-h-screen flex-col">
                 <App />
             </body>
         </html>
@@ -158,7 +158,7 @@ fn Chrome() -> impl IntoView {
     }
     view! {
         <AdaptiveShell>
-            <main id="noi-dung" class="vk-main" tabindex="-1">
+            <main id="noi-dung" class="vk-main w-full [margin:0_auto]" tabindex="-1">
                 <Routes fallback=NotFound>
                     <Route path=path!("/") view=Home ssr=SsrMode::Async />
                     <Route path=path!("/the/:slug") view=TagDetail ssr=SsrMode::Async />
