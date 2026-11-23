@@ -27,7 +27,7 @@ pub(crate) fn EditProfile() -> impl IntoView {
     view! {
         <Title text="Chỉnh hồ sơ · Vink" />
         <Meta name="robots" content="noindex" />
-        <section class="vk-me vk-profile-edit" aria-labelledby="edit-profile-heading">
+        <section class="vk-me vk-profile-edit grid gap-vk-6" aria-labelledby="edit-profile-heading">
             <Link href="/toi#edit-profile-link">"Tôi"</Link>
             <Heading id="edit-profile-heading" level=HeadingLevel::H1 attr:tabindex="-1">
                 "Chỉnh hồ sơ"

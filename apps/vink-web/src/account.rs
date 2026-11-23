@@ -265,11 +265,11 @@ pub(crate) fn AccountPanel(id: &'static str) -> impl IntoView {
     };
     let lifetime = session.epoch;
     view! {
-        <section id=id class="vk-account" aria-label="Tài khoản">
+        <section id=id class="vk-account grid gap-vk-4" aria-label="Tài khoản">
             <Show when=move || !entry()>
-                <div class="vk-account-status">
+                <div class="vk-account-status relative flex flex-wrap items-center gap-vk-3 [min-block-size:96px] p-[16px] rounded-vk-lg bg-vk-surface-container-low">
                     <crate::appearance::AccountAvatar />
-                    <div>
+                    <div class="[min-inline-size:0] flex-[1_1_12em]">
                         <vink_ui::Heading level=vink_ui::HeadingLevel::H2 role=vink_ui::TypeRole::Title>"Tài khoản"</vink_ui::Heading>
                         <vink_ui::Text tone=vink_ui::TextTone::Muted>
                             {move || standing.with(summary)}
