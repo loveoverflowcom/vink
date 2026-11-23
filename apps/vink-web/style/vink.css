@@ -1911,7 +1911,9 @@ a {
 .vk-discovery-catalog-error { display: grid; justify-items: start; gap: var(--vk-space-3); }
 .vk-discovery-filter-form fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .vk-discovery-filter-form legend { margin-bottom: var(--vk-space-2); font-weight: var(--vk-type-label-weight); }
-.vk-discovery-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr)); gap: var(--vk-space-2); }
+/* R4.2 (#406, DQ-07): text-width wrapping chips, 12px radius, primary selected + symmetric
+ * check tracks so toggling never changes a chip's bounding rect (>1 CSS px). */
+.vk-discovery-options { display: flex; flex-wrap: wrap; gap: var(--vk-space-2); }
 .vk-discovery-filter-footer {
   display: flex;
   flex-wrap: wrap;
@@ -1921,28 +1923,42 @@ a {
   margin-block-start: var(--vk-space-1);
   font-size: var(--vk-type-label-size);
 }
+.vk-discovery-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vk-space-2);
+  max-inline-size: 100%;
+  --vk-ui-control-radius: var(--vk-radius-control-48);
+}
+.vk-discovery-filter-actions .vk-ui-button--text { padding-inline: var(--vk-space-3); }
 
 .vk-discovery-option { min-width: 0; max-inline-size: 100%; }
+.vk-discovery-option .vk-ui-choice { min-inline-size: 0; max-inline-size: 100%; }
 /* Equal fixed mark/end tracks center the label itself, independent of checked state. */
-.vk-discovery-option .vk-ui-choice__target { display:grid; grid-template-columns:1em minmax(0,1fr) 1em; width:100%; min-block-size:var(--vk-density-control-height); gap:var(--vk-space-1); padding:var(--vk-space-2); border-radius:var(--vk-radius-md); background:var(--vk-surface-container-low); }
+.vk-discovery-option .vk-ui-choice__target { display:inline-grid; grid-template-columns:1em minmax(0,1fr) 1em; align-items:center; inline-size:fit-content; min-inline-size:var(--vk-density-control-height); max-inline-size:100%; min-block-size:var(--vk-density-control-height); gap:var(--vk-space-1); padding:var(--vk-space-2); border-radius:var(--vk-radius-control-40); background:var(--vk-surface-container-highest); color:var(--vk-on-surface); }
 .vk-discovery-option .vk-ui-choice__input { position:absolute; inline-size:1px; block-size:1px; opacity:0; }
 .vk-discovery-option .vk-ui-choice__label { min-width:0; text-align:center; overflow-wrap:anywhere; font-weight:var(--vk-type-label-weight); }
 .vk-discovery-option .vk-ui-choice__target::before { content:"✓" / ""; inline-size:1em; visibility:hidden; }
 .vk-discovery-option .vk-ui-choice__target::after { content:""; inline-size:1em; }
-.vk-discovery-option .vk-ui-choice__target:has(input:checked) { background:var(--vk-primary-container); color:var(--vk-on-primary-container); }
+.vk-discovery-option .vk-ui-choice__target:has(input:checked) { background:var(--vk-primary); color:var(--vk-on-primary); }
 .vk-discovery-option .vk-ui-choice__target:has(input:checked)::before { visibility:visible; }
 .vk-discovery-option .vk-ui-choice__target:has(input:focus-visible) { outline:var(--vk-size-focus-ring) solid var(--vk-focus-ring); outline-offset:var(--vk-size-focus-offset); }
 .vk-discovery-option .vk-ui-choice__target:has(input:disabled) { opacity:0.6; cursor:default; }
+@media (forced-colors: active) {
+  .vk-discovery-option .vk-ui-choice__target { border: 1px solid ButtonText; }
+  .vk-discovery-option .vk-ui-choice__target:has(input:checked) { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: Highlight; }
+}
 .vk-discovery[data-enhanced=true] .vk-tag-dock { display: none; }
 .vk-discovery[data-enhanced=true] .vk-tag-launcher { display: inline-flex; }
-#tag-picker { inline-size: min(30rem, calc(100% - 2 * var(--vk-overlay-margin))); }
+#tag-picker { inline-size: min(30rem, calc(100% - 2 * var(--vk-overlay-margin))); background-color: var(--vk-bg-content); }
 #tag-picker .vk-ui-dialog__panel {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   row-gap: var(--vk-space-4);
 }
 #tag-picker .vk-ui-dialog__title { font-family: var(--vk-font-ui); }
-#tag-picker .vk-ui-dialog__header-action .vk-ui-icon-button { background-color: var(--vk-surface-container-low); }
+#tag-picker .vk-ui-dialog__header-action .vk-ui-icon-button { background-color: var(--vk-bg-inset); }
 #tag-picker .vk-ui-dialog__content { grid-column: 1 / -1; min-inline-size: 0; }
 /* R4.2 mode group (#404, DQ-03): one connected row of links that never wraps; when it would
  * not fit, the same links open from a menu. The threshold scales with text size (rem). */

@@ -217,6 +217,10 @@ giữ IME và URL có `q` mở sẵn dock. Thẻ Khám phá R4.2 (#405, DQ-08/DQ
 bo 20 cách 8 px (cả Tất cả, Đang theo dõi và chế độ Tác giả), dòng `Thể loại · ngày công khai đầu`
 màu `tertiary` theo múi giờ `Asia/Ho_Chi_Minh` ở mọi chế độ, giữ avatar tròn (#352), khách ở
 Đang theo dõi có nút filled “Đăng nhập”, không kết quả nhắc từ khóa kèm lối “Tìm tác giả “q””.
+Sheet Lọc thẻ R4.2 (#406, DQ-07): `discoveryChipGeometry` và `discoveryReading` kiểm nền
+`bg-content`, chip theo bề rộng chữ tự xuống dòng bo 12, chọn `primary` + dấu chọn không dịch
+rect >1 CSS px, nút “Bỏ chọn” chỉ xóa nháp phía client, mở bằng con trỏ không vẽ viền tiêu đề,
+mở bằng bàn phím có vòng focus ≥3:1 và Escape trả focus về nút Lọc thẻ.
 Xem ảnh `brand-before-hydration-*`, `rail-r1-*` và `explore-real-*` từ runner Web.
 
 | Luồng | Đường đi / thao tác | Kết quả và trạng thái hiện có | Owner |

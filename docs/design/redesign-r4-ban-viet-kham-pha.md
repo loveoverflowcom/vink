@@ -224,12 +224,14 @@ tertiary/nền 6.08/10.61; on-surface-variant/highest 5.05. Cần đo lại trê
 (chỉ đổi role ở consumer — vẫn cần DQ-10 cho tertiary), KP-08, KP-09, KP-11, KP-12, KP-14, BV-03,
 BV-04, BV-06, BV-07, BV-08, BV-10, BV-11, BV-12, BV-13, BV-14, NAV-01, NAV-02, MF-01.
 
-**Chủ sản phẩm trả lời ngày 23/11/2026 khi nhận PR lát 1–4 (#402–#405)** — trích lựa chọn của
+**Chủ sản phẩm trả lời ngày 23/11/2026 khi nhận PR lát 1–5 (#402–#406)** — trích lựa chọn của
 chủ sản phẩm; chưa ghi vào registry `decisions/`:
 
 - DQ-01: “Hiện tiêu đề” — tiêu đề “Khám phá” hiện ở chế độ Tất cả (thay #308 r1).
 - DQ-03: “Button group + gập menu” — nhóm chế độ nối liền, chọn = primary + dấu chọn, gập thành
   menu khi không vừa một dòng; giữ tên Tất cả / Đang theo dõi / Tác giả.
+- DQ-07: “Chip theo bề rộng chữ tự xuống dòng, bo 12, chọn = primary + dấu chọn, thêm nút “Bỏ
+  chọn” (chỉ client)” — thay lưới hai cột #260 CHOICE-02 A trong sheet Lọc thẻ.
 - DQ-08: “Hiện dòng “Thể loại · ngày công khai đầu” ở mọi chế độ (Tất cả + Đang theo dõi)” — ngày
   từ `published_at` theo múi giờ `Asia/Ho_Chi_Minh` đồng bộ giữa SSR và browser.
 - DQ-09: “Giữ avatar tròn như hiện tại (#352)” — không đổi avatar sang bo vuông.
@@ -239,7 +241,7 @@ chủ sản phẩm; chưa ghi vào registry `decisions/`:
   nền nhé” — không làm thẻ tài khoản ở chân rail; giữ Giao diện và Tôi, mục Tôi dùng nền trang.
 
 **Cần chủ sản phẩm chốt (còn lại):** DQ-04 ẩn công cụ khi kho rỗng · DQ-05 định dạng giờ ·
-DQ-06 định dạng trong menu nút tạo · DQ-07 chip theo bề rộng · DQ-10 phần nhãn “Chờ duyệt”.
+DQ-06 định dạng trong menu nút tạo · DQ-10 phần nhãn “Chờ duyệt”.
 DQ-02 (search dock mọi cỡ màn) và DQ-12 (ít chữ) đã được chọn trong vòng duyệt canvas (xem Epic #401).
 
 ## 9. Khả thi trên Leptos / UI System

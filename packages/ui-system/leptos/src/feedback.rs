@@ -619,6 +619,7 @@ pub fn Dialog(
     #[prop(optional)] children: Option<Children>,
 ) -> impl IntoView {
     let node = NodeRef::<leptos::html::Dialog>::new();
+    let open_modality = RwSignal::new(None::<&'static str>);
     let title_id = format!("{id}-title");
     let context_id = context.as_ref().map(|_| format!("{id}-context"));
     let (title_target, context_target) = (title_id.clone(), context_id.clone());
@@ -630,15 +631,19 @@ pub fn Dialog(
             let want = open.get();
             let Some(el) = node.get() else { return };
             if want && !el.open() {
+                let active = document().active_element();
+                let keyboard = active
+                    .as_ref()
+                    .is_some_and(|e| e.matches(":focus-visible").unwrap_or(false));
+                open_modality.set(Some(if keyboard { "keyboard" } else { "pointer" }));
                 returned.set_value(
-                    document()
-                        .active_element()
-                        .and_then(|e| e.dyn_into::<leptos::web_sys::HtmlElement>().ok()),
+                    active.and_then(|e| e.dyn_into::<leptos::web_sys::HtmlElement>().ok()),
                 );
                 if el.show_modal().is_ok() {
                     focus_initial(&el);
                 }
             } else if !want && el.open() {
+                open_modality.set(None);
                 el.close();
                 if let Some(target) = returned.try_update_value(Option::take).flatten()
                     && target.is_connected()
@@ -709,6 +714,12 @@ pub fn Dialog(
                 DismissPolicy::Explicit => "explicit",
                 DismissPolicy::EscapeOnly => "escape",
                 DismissPolicy::EscapeAndOutside => "escape-outside",
+            }
+            data-open-modality=move || open_modality.get()
+            on:keydown=move |_| {
+                if open_modality.get_untracked() == Some("pointer") {
+                    open_modality.set(None);
+                }
             }
             on:cancel=cancel
             on:click=backdrop

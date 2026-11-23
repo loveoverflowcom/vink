@@ -345,7 +345,19 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await page.click('#modal-tag-form label:has(input:disabled)');
   check(await page.eval("document.querySelectorAll('#modal-tag-form input:checked').length===4 && window.__action225Submits===0"), '#225 attempting a fifth tag cannot select or submit');
   await captureSelection(4);
-  for (const id of choices.slice(1)) await page.click('label:has(#'+id+')');
+  check(await page.eval(`(() => {
+    const clear = document.querySelector('#clear-tag-draft');
+    return clear?.type === 'button' && clear.textContent === 'Bỏ chọn' && clear.getAttribute('aria-disabled') !== 'true';
+  })()`), '#406 AC-02 Bỏ chọn is enabled when draft has selections');
+  await page.click('#clear-tag-draft');
+  check(await page.eval(`document.querySelectorAll('#modal-tag-form input[type=checkbox]:checked').length===0 &&
+    document.querySelectorAll('#modal-tag-form input[type=checkbox]:disabled').length===0 &&
+    document.querySelector('#tag-selection-count').textContent.trim()==='Đã chọn 0/4' &&
+    document.querySelector('#clear-tag-draft').getAttribute('aria-disabled')==='true' &&
+    document.querySelector('#modal-tag-form button[type=submit]').getAttribute('aria-disabled')==='true' &&
+    window.__action225Submits===0 && location.href===${JSON.stringify(before)}`),
+    '#406 AC-02 Bỏ chọn clears draft in sheet without submitting GET and disables Apply');
+  await page.click('label:has(#'+choices[0]+')');
   await page.click('label:has(#'+choices[0]+')');
   check(await page.eval(`document.querySelectorAll('#modal-tag-form input[type=checkbox]:checked').length===0 &&
     document.querySelector('#modal-tag-form button[type=submit]').getAttribute('aria-disabled')==='true'`),

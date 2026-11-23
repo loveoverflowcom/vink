@@ -993,10 +993,23 @@ fn FilterForm(
                         {move || format!("Đã chọn {}/4", draft.with(Vec::len))}
                     </p> })}
                 </div>
-                <Button kind=ButtonKind::Submit variant=ButtonVariant::Filled
-                    state=Signal::derive(move || if modal && !changed.get() { ActionState::Disabled { reason: None } } else { ActionState::Enabled })>
-                    "Áp dụng"
-                </Button>
+                <div class="vk-discovery-filter-actions">
+                    {modal.then(|| view! {
+                        <Button id="clear-tag-draft" variant=ButtonVariant::Text
+                            state=Signal::derive(move || if draft.with(Vec::is_empty) {
+                                ActionState::Disabled { reason: None }
+                            } else {
+                                ActionState::Enabled
+                            })
+                            on_press=move |_| draft.update(Vec::clear)>
+                            "Bỏ chọn"
+                        </Button>
+                    })}
+                    <Button kind=ButtonKind::Submit variant=ButtonVariant::Filled
+                        state=Signal::derive(move || if modal && !changed.get() { ActionState::Disabled { reason: None } } else { ActionState::Enabled })>
+                        "Áp dụng"
+                    </Button>
+                </div>
             </div>
         </Form>
     }.into_any()
@@ -1468,6 +1481,68 @@ mod tests {
         assert!(
             search_html.contains("vk-public-row__excerpt\">Mưa rơi nhẹ qua phố cổ.</p>"),
             "{search_html}"
+        );
+    }
+
+    #[test]
+    fn filter_form_exposes_client_clear_only_in_modal_sheet() {
+        let tag_list = TagList {
+            tags: vec![TagDto {
+                tag_id: "11111111-1111-4111-8111-111111111111".into(),
+                facet: "form".into(),
+                label: "Thơ".into(),
+                slug: "tho".into(),
+                description: None,
+                status: "active".into(),
+                successor: None,
+            }],
+            truncated: false,
+        };
+        let render_form = |modal: bool, selected: Vec<String>| {
+            let list = tag_list.clone();
+            Owner::new().with(|| {
+                provide_context(leptos_router::location::RequestUrl::new("/"));
+                let draft = RwSignal::new(selected);
+                let initial = StoredValue::new(Vec::<String>::new());
+                let open = RwSignal::new(true);
+                view! {
+                    <leptos_router::components::Router>
+                        <FilterForm id=if modal { "modal" } else { "dock" } q=String::new() draft initial list open modal />
+                    </leptos_router::components::Router>
+                }
+                .to_html()
+            })
+        };
+        let dock = render_form(false, vec![]);
+        assert!(
+            !dock.contains("clear-tag-draft") && !dock.contains("Bỏ chọn"),
+            "{dock}"
+        );
+
+        let empty_modal = render_form(true, vec![]);
+        assert!(
+            empty_modal.contains("id=\"clear-tag-draft\"")
+                && empty_modal.contains("type=\"button\"")
+                && empty_modal.contains("Bỏ chọn")
+                && empty_modal.contains("aria-disabled=\"true\""),
+            "{empty_modal}"
+        );
+
+        let picked_modal = render_form(true, vec!["tho".into()]);
+        let clear_button = picked_modal
+            .split("id=\"clear-tag-draft\"")
+            .next()
+            .and_then(|before| before.rsplit('<').next())
+            .unwrap_or_default();
+        let clear_tail = picked_modal
+            .split("id=\"clear-tag-draft\"")
+            .nth(1)
+            .and_then(|after| after.split('>').next())
+            .unwrap_or_default();
+        assert!(
+            clear_button.contains("type=\"button\"")
+                && !clear_tail.contains("aria-disabled=\"true\""),
+            "{picked_modal}"
         );
     }
 }

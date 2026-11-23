@@ -1590,6 +1590,25 @@ a.vk-ui-byline__identity:focus-visible {
   overflow-wrap: break-word;
 }
 
+/* #406 (KP-14): pointer-opened dialogs focus their title for assistive technology and Tab order
+ * without painting an input-like border; keyboard opening keeps a visible >=3:1 focus ring. */
+.vk-ui-dialog__title:focus:not(:focus-visible),
+.vk-ui-dialog[data-open-modality="pointer"] .vk-ui-dialog__title:focus {
+  outline: none;
+}
+
+.vk-ui-dialog[data-open-modality="keyboard"] .vk-ui-dialog__title:focus {
+  outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
+  outline-offset: var(--vk-size-focus-offset);
+  border-radius: var(--vk-radius-sm);
+}
+
+@media (forced-colors: active) {
+  .vk-ui-dialog[data-open-modality="keyboard"] .vk-ui-dialog__title:focus {
+    outline-color: Highlight;
+  }
+}
+
 .vk-ui-dialog__context {
   margin: 0;
   color: var(--vk-on-surface-variant);
