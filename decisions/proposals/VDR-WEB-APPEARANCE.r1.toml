@@ -1,0 +1,25 @@
+version = 1
+id = "VDR-WEB-APPEARANCE"
+revision = 1
+
+[content]
+kind = "product"
+domain = "ui-system"
+title = "Web Giao diện: bỏ nút Giao diện ở nav rail; cỡ chữ Mặc định 100% và Lớn 150%"
+resolution = """
+Chốt theo yêu cầu trực tiếp của chủ sản phẩm ngày 23/11/2026 trong issue #413 (https://github.com/loveoverflowcom/vink/issues/413):
+1. Bỏ nút “Giao diện” và dialog `#profile-menu` khỏi mọi nav rail Web (rail mở rộng, rail thu gọn và rail modal); không ghép lại vào thẻ tài khoản hay tạo trigger ẩn.
+2. Giữ `/toi` (`#page-appearance`) làm điểm chỉnh Giao diện duy nhất trên Web cho cả khách và người đã đăng nhập; giữ nguyên ba nhóm (Chế độ màu, Cỡ chữ, Thanh điều hướng).
+3. Nhóm “Cỡ chữ” có đúng hai lựa chọn: “Mặc định” (hệ số 1.0 / 100%) và “Lớn” (hệ số 1.5 / 150%, thay cho mức 200% trước đây).
+4. Thiết bị đã lưu `vink.ui.text=200` trước #413 được hiểu là “Lớn” (150%): chuẩn hóa sang `150` ngay trong bootstrap trước CSS/first paint và trước hydration, ghi lại storage khi được phép; nếu storage bị chặn ghi, lựa chọn trong phiên vẫn áp dụng ở mức 150%.
+5. Lựa chọn kỹ thuật CHOICE-01 A: giữ biểu diễn `data-text="150"` và khóa `vink.ui.text="150"` cho Lớn (vắng giá trị = Mặc định 100%).
+6. Phạm vi thay thế: chỉ thay thế phần giữ nút Giao diện trên rail (kể cả gợi ý ghép thẻ tài khoản) của #403/DQ-11 và #209; không mở lại các phần khác của DQ-11, không đổi chính sách kiểm duyệt/accessibility phóng chữ 200% trên trình duyệt/OS hoặc ghi đè bằng chứng lịch sử.
+"""
+rationale = """
+Chủ sản phẩm quyết định trực tiếp ngày 23/11/2026 trong #413: “bỏ nút giao diện ở nav rail đi”, “1. Mặc định”, “2. Lớn (Thì quy đổi sang 150% thay vì 200%)”, “Nhớ sủa ssot, toml, ...”. CHOICE-01 A giữ hợp đồng CSS/bootstrap hiện có với delta nhỏ và nhất quán, tách biệt tùy chọn sản phẩm 150% khỏi harness kiểm stress phóng chữ 200% (`dom-override-geometry-only`).
+"""
+related_ids = [
+    "UX-01",
+    "WR-01",
+    "WR-02",
+]

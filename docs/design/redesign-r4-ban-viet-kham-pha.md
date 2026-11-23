@@ -108,7 +108,7 @@ missing functionality. Không có P0 (không mất dữ liệu, không chặn t�
 | BV-10 | Khách / phiên | `desk.guest--*`: thẻ tonal + ổ khóa, căn trên | UX | P2 | `DeskAccess` khác `EmptyState` | Anatomy EmptyState căn giữa; một filled “Đăng nhập” + text “Khám phá tác phẩm” |
 | BV-11 | Gutter hẹp | Bàn viết 8 px ở 320 (vink.css 833); Khám phá 32 px khi 200% (rem) | IM | P2 | Hai cách tính gutter | `size.gutter-narrow` 16 px cố định |
 | BV-12 | Tiêu đề trang | Bàn viết/Tôi Be Vietnam 600; Khám phá (khi hiện)/Reader Literata | UX | P2 | `#desk-title` ghi đè font UI (vink.css 905); Khám phá dùng `type.display` | Một vai trò `type.page-title`: Be Vietnam Pro 600, 24 px (mobile 22), cho Khám phá/Bàn viết/Tôi |
-| NAV-01 | Chân rail | `nav.appearance-panel--*`: “Giao diện” có pill nền như đích đang chọn | UX | P2 | `NavUtility` dùng cùng indicator khi `expanded` | Tiện ích: viền 2 px quanh icon khi mở, không tô nền |
+| NAV-01 | Chân rail | `nav.appearance-panel--*`: “Giao diện” có pill nền như đích đang chọn | UX | P2 | `NavUtility` dùng cùng indicator khi `expanded` | Lịch sử `#403`: viền 2 px quanh icon khi mở; **từ #413 (23/11/2026) đã bỏ nút Giao diện ở rail** |
 | KP-07 | Chip Lọc thẻ | Lưới hai cột, mục lẻ; chip chưa chọn giống nút | UX | P3 | CHOICE-02 A #260 | Chip theo bề rộng chữ, chọn = pill primary (DQ-07) |
 | KP-09 | Trích đoạn | “…ven sông.…” | UX | P3 | `services/vink-app/src/domain/document/excerpt.rs:171` luôn thêm “…” | Không thêm “…” sau dấu câu kết thúc, hoặc thay dấu chấm |
 | KP-13 | Không kết quả | Không nhắc từ khóa, không gợi ý chế độ Tác giả | OP | P3 | `PublicResults` empty copy | “Không có tác phẩm khớp “q”.” + “Tìm tác giả “q”” |
@@ -158,8 +158,8 @@ nhất trên khung tô nhẹ, hàng tác vụ icon + số, thẻ tài khoản �
 ## 5. LayoutSpec R4.1
 
 ```text
-Shell (giữ #394)
-  Rail ≥760: toggle 48 → Khám phá → Bàn viết … [chân] Giao diện (tiện ích) → Tôi
+Shell (giữ #394, cập nhật bởi #413 ngày 23/11/2026)
+  Rail ≥760: toggle 48 → Khám phá → Bàn viết … [chân] Tôi (không còn nút Giao diện hay thẻ tài khoản; /toi là điểm chỉnh Giao diện duy nhất)
   Thanh dưới <760: Khám phá → Bàn viết → Tôi (pill 64×32, nhãn dưới)
 PageColumn 48rem, căn giữa phần còn lại sau rail; gutter <760 = 16 px cố định
 Khám phá /
@@ -183,7 +183,7 @@ Bàn viết /ban-viet
 | WorkRow | Flat, max 680 | Dòng trên tertiary 13/600 → nhan đề Literata 26/23 → trích đoạn 17/1.6 → byline 600 + @handle | Không nền | Nhan đề là link duy nhất; byline một link (#352) | Byline xuống dòng tự nhiên; không `overflow-wrap:anywhere` cho từ thường | cached/refresh giữ hành vi `public_reads` |
 | DraftRow | Padding 14/20, khe 2 | Nhan đề Literata 20/19; dòng trạng thái 13/600; giờ caption | `surface-container`; nhãn có nền chỉ cho chờ duyệt (tertiary-container), lỗi (error-container), đã đăng (success-container) | Một link editor; “Đọc bản công khai” link riêng ≥44 | Dòng trạng thái wrap | Copy trạng thái giữ nguyên `adapters.rs` |
 | Empty/Guest/Error | Căn giữa vùng còn lại (#276) | Ảnh 192/240 → tiêu đề (tùy) → một câu → ≤1 filled | Nền trang | Filled vuông bo 16 | 200%: hành động tới được bằng cuộn | Khách Bàn viết: “Đăng nhập” + “Khám phá tác phẩm”, 0 request riêng tư |
-| Rail | 220/96 giữ token; nền = nền trang | Mở rộng: đích 56 icon + nhãn ngang, thẻ tài khoản (avatar, bút danh, @handle, nút Giao diện). Thu gọn 96 (760–1099 hoặc khi người dùng thu): nút ☰ “Mở rộng điều hướng”, đích dọc 80 px (chỉ báo 56×32 bo 12 + nhãn 12 px), chân rail là thẻ dọc [Giao diện, avatar 44 “Tôi”] | Đích hiện hành `primary-container` (chỉ báo bao icon khi thu gọn) | Giao diện: `aria-expanded` → viền 2 px primary, không tô nền; tooltip bên phải toggle; avatar thu gọn có tên truy cập “Tôi — {bút danh}” | Artboard: Khám phá/Bàn viết 1440 (mở rộng) và 1024 (thu gọn), sáng/tối | — |
+| Rail | 220/96 giữ token; nền = nền trang | Đề xuất R4 trước chốt: mở rộng có thẻ tài khoản/nút Giao diện, thu gọn 96 có `[Giao diện, avatar 44 “Tôi”]`. **DQ-11 bỏ thẻ tài khoản; từ #413 (23/11/2026) bỏ luôn nút Giao diện trên rail** (chỉ còn `Tôi` ở chân rail; `/toi` chỉnh Giao diện) | Đích hiện hành `primary-container` (chỉ báo bao icon khi thu gọn); mục `Tôi` dùng nền trang | Tooltip bên phải toggle; không gắn thẻ tài khoản hay nút Giao diện ở chân rail (#413) | Artboard: Khám phá/Bàn viết 1440 (mở rộng) và 1024 (thu gọn), sáng/tối | — |
 
 Motion: đổi hình (chip, nút nhấn, mục chế độ) dùng `duration.short/medium` + `ease.spatial`;
 `prefers-reduced-motion` đổi tức thì. Không thêm vòng lặp.
@@ -239,7 +239,10 @@ chủ sản phẩm; chưa ghi vào registry `decisions/`:
 - DQ-10: “Dùng tertiary” — Lọc thẻ là nút icon `tertiary-container`, dòng thể loại · ngày trên thẻ
   Khám phá dùng `tertiary`; nhãn “Chờ duyệt” vẫn thuộc lát 9.
 - DQ-11: “Không, ẩn”, “với background của me / nút tôi khi có chữ, thì để background giống màu
-  nền nhé” — không làm thẻ tài khoản ở chân rail; giữ Giao diện và Tôi, mục Tôi dùng nền trang.
+  nền nhé” — không làm thẻ tài khoản ở chân rail; mục Tôi dùng nền trang. **Cập nhật có phạm vi
+  theo [#413](https://github.com/loveoverflowcom/vink/issues/413) (23/11/2026):** bỏ phần giữ nút
+  Giao diện ở chân rail (không gắn lại vào thẻ tài khoản hay nút ẩn); các quyết định còn lại của
+  DQ-11 giữ nguyên.
 
 **DQ-06 · [#409](https://github.com/loveoverflowcom/vink/issues/409).** Ngày 23/11/2026, khi được hỏi về
 menu định dạng cạnh “Tạo bản thảo”, chủ sản phẩm chọn “Giữ Select hiện tại”. Bàn viết tiếp tục dùng
@@ -270,7 +273,7 @@ Bộ thiết kế (27 PNG artboard, README, tài liệu này, nguồn canvas, 12
 | # | Issue | Phụ thuộc | Findings |
 | --- | --- | --- | --- |
 | 1 | [#402](https://github.com/loveoverflowcom/vink/issues/402) Token R4.2 (UI System) | — | X-01, BV-11, BV-12, BV-03, KP-02 |
-| 2 | [#403](https://github.com/loveoverflowcom/vink/issues/403) Rail mở rộng/thu gọn + thanh dưới | 1, DQ-11 | NAV-01, NAV-02 |
+| 2 | [#403](https://github.com/loveoverflowcom/vink/issues/403) Rail mở rộng/thu gọn + thanh dưới (phần giữ nút Giao diện ở rail được [#413](https://github.com/loveoverflowcom/vink/issues/413) thay thế có phạm vi ngày 23/11/2026) | 1, DQ-11 | NAV-01, NAV-02 |
 | 3 | [#404](https://github.com/loveoverflowcom/vink/issues/404) Khám phá: tiêu đề, search dock, Lọc thẻ, chế độ | 1, DQ-01/02/03/10 | KP-01/02/03/05/06/10 |
 | 4 | [#405](https://github.com/loveoverflowcom/vink/issues/405) Khám phá: thẻ rời, ngày, tác giả, trạng thái | 1, #352, DQ-08/09 | KP-08/11/12/13 |
 | 5 | [#406](https://github.com/loveoverflowcom/vink/issues/406) Khám phá: sheet Lọc thẻ | 1, 3, DQ-07 | KP-07/14, MF-01 |

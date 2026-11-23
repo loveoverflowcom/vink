@@ -5,12 +5,16 @@ use leptos::prelude::*;
 pub(crate) const THEME_KEY: &str = "vink.ui.theme";
 pub(crate) const RAIL_KEY: &str = "vink.ui.rail";
 const TEXT_KEY: &str = "vink.ui.text";
+/// Stored and root (`data-text`) value of Lớn; Mặc định is the absent value (#413).
+const LARGE_TEXT: &str = "150";
 
 // Runs before CSS; only mutates the document root outside the hydrated app. Hydration adopts
 // all three preferences synchronously from that root. Storage denial keeps defaults intact.
 // Head links are outside the hydrated body. Observe the existing theme authority so explicit
 // choices, system changes and storage-denied sessions share one icon/manifest selection.
-pub(crate) const BOOTSTRAP: &str = r#"try{for(const [key,attr,allowed] of [['vink.ui.theme','data-theme',['light','dark']],['vink.ui.rail','data-rail',['expanded','compact']],['vink.ui.text','data-text',['200']]]){const v=localStorage.getItem(key);if(allowed.includes(v))document.documentElement.setAttribute(attr,v)}}catch{}
+// Text size: `150` is the canonical Lớn value (#413). A pre-#413 `200` means the same choice, so
+// it is normalized here, before CSS and first paint, and rewritten when storage allows.
+pub(crate) const BOOTSTRAP: &str = r#"try{for(const [key,attr,allowed] of [['vink.ui.theme','data-theme',['light','dark']],['vink.ui.rail','data-rail',['expanded','compact']],['vink.ui.text','data-text',['150','200']]]){let v=localStorage.getItem(key);if(!allowed.includes(v))continue;if(key==='vink.ui.text'&&v!=='150'){v='150';try{localStorage.setItem(key,v)}catch{}}document.documentElement.setAttribute(attr,v)}}catch{}
 (()=>{const root=document.documentElement,media=matchMedia('(prefers-color-scheme: dark)');const dir=document.getElementById('vink-favicon').getAttribute('href').replace(/[^/]+$/,'');const sync=()=>{const theme=root.dataset.theme||(media.matches?'dark':'light');document.getElementById('vink-favicon').setAttribute('href',dir+'vpen-r1-mark-'+theme+'.svg');document.getElementById('vink-manifest').setAttribute('href',dir+'vpen-r1-manifest-'+theme+'.webmanifest')};sync();new MutationObserver(sync).observe(root,{attributes:true,attributeFilter:['data-theme']});media.addEventListener('change',sync)})()"#;
 
 // The head bootstrap cannot see SSR controls yet. Run directly after each group's markup,
@@ -57,7 +61,7 @@ impl Appearance {
             (
                 Theme::parse(preference("data-theme").as_deref().unwrap_or_default()),
                 Rail::parse(preference("data-rail").as_deref().unwrap_or_default()),
-                preference("data-text").as_deref() == Some("200"),
+                matches!(preference("data-text").as_deref(), Some(LARGE_TEXT | "200")),
             )
         };
         #[cfg(not(feature = "hydrate"))]
@@ -87,7 +91,7 @@ impl Appearance {
 
     fn set_large_text(self, large: bool) {
         self.large_text.set(large);
-        apply(TEXT_KEY, "data-text", large.then_some("200"));
+        apply(TEXT_KEY, "data-text", large.then_some(LARGE_TEXT));
     }
 }
 
@@ -156,9 +160,9 @@ pub(crate) fn AppearanceChoices(prefix: &'static str) -> impl IntoView {
                 value=Signal::derive(move || Some(appearance.theme.get().value().to_owned()))
                 on_change=Callback::new(move |value: String| appearance.set_theme(Theme::parse(&value))) />
             <AppearanceRow prefix preference="text" label="Cỡ chữ" icon="100"
-                options=&[("100", "100%"), ("200", "200%")]
-                value=Signal::derive(move || Some(if appearance.large_text.get() { "200" } else { "100" }.to_owned()))
-                on_change=Callback::new(move |value: String| appearance.set_large_text(value == "200")) />
+                options=&[("100", "Mặc định"), (LARGE_TEXT, "Lớn")]
+                value=Signal::derive(move || Some(if appearance.large_text.get() { LARGE_TEXT } else { "100" }.to_owned()))
+                on_change=Callback::new(move |value: String| appearance.set_large_text(value == LARGE_TEXT)) />
             <AppearanceRow prefix preference="rail" label="Thanh điều hướng" icon="rail"
                 options=&[("auto", "Tự động"), ("expanded", "Mở rộng"), ("compact", "Thu gọn")]
                 value=Signal::derive(move || Some(appearance.rail.get().map_or("auto", Rail::value).to_owned()))
@@ -168,7 +172,7 @@ pub(crate) fn AppearanceChoices(prefix: &'static str) -> impl IntoView {
 }
 
 // RadioGroup owns the accessible group name, native inputs and checked state.
-// The visible heading and glyph identify the group in both appearance surfaces.
+// The visible heading and glyph identify the group on Tôi, the only appearance surface (#413).
 #[component]
 fn AppearanceRow(
     prefix: &'static str,
@@ -223,5 +227,12 @@ mod tests {
         assert_eq!(Theme::parse("dark"), Theme::Dark);
         assert_eq!(Rail::parse("220"), None);
         assert_eq!(Rail::parse("compact"), Some(Rail::Compact));
+    }
+
+    #[test]
+    fn bootstrap_normalizes_legacy_200_text_preference_to_150() {
+        assert_eq!(LARGE_TEXT, "150");
+        assert!(BOOTSTRAP.contains("['vink.ui.text','data-text',['150','200']]"));
+        assert!(BOOTSTRAP.contains("if(key==='vink.ui.text'&&v!=='150'){v='150'"));
     }
 }

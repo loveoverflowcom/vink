@@ -773,11 +773,10 @@ class Page {
           overflowY: ownerStyle.overflowY,
         },
         userAgent: navigator.userAgent,
-        appearance: { effectiveTheme: root.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), osTheme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light', hydrated: root.dataset.hydrated === 'true', rail: geometry('.vk-ui-rail'), railScrollWidth: document.querySelector('.vk-ui-rail')?.scrollWidth, railClientWidth: document.querySelector('.vk-ui-rail')?.clientWidth, pageChoice: document.querySelector('#page-theme input:checked')?.value, overlayChoice: document.querySelector('#overlay-theme input:checked')?.value, overlayOpen: document.querySelector('#profile-menu')?.open, overlayScroll: document.querySelector('#profile-menu')?.scrollTop, overlay: geometry('#profile-menu'), account: geometry('#page-account'), themeGroup: geometry('#page-theme') },
+        appearance: { effectiveTheme: root.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), osTheme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light', hydrated: root.dataset.hydrated === 'true', rail: geometry('.vk-ui-rail'), railScrollWidth: document.querySelector('.vk-ui-rail')?.scrollWidth, railClientWidth: document.querySelector('.vk-ui-rail')?.clientWidth, pageChoice: document.querySelector('#page-theme input:checked')?.value, account: geometry('#page-account'), themeGroup: geometry('#page-theme') },
         mePanel: (() => {
-          const panel = document.querySelector('#profile-menu');
-          const prefix = panel?.open ? 'overlay' : document.querySelector('#me') ? 'page' : null;
-          if (!prefix) return null;
+          if (!document.querySelector('#me')) return null;
+          const prefix = 'page';
           const bounds = selector => {
             const el = document.querySelector(selector);
             if (!el || !el.getClientRects().length) return null;
@@ -789,28 +788,27 @@ class Page {
               paddingLeft: s.paddingLeft, paddingRight: s.paddingRight,
               textLines: new Set([...range.getClientRects()].filter(r => r.width > 0).map(r => Math.round(r.top))).size };
           };
-          const preferenceSurface = prefix === 'page' ? '.vk-appearance-card' : '#profile-body';
+          const preferenceSurface = '.vk-appearance-card';
           const surface = document.querySelector(preferenceSurface);
           const surfaceStyle = getComputedStyle(surface);
           const region = surface.querySelector('.vk-appearance-region');
           const rows = [...region.querySelectorAll('.vk-appearance-row')];
-          const illEl = document.querySelector('#' + prefix + '-account .vk-account-illustration');
+          const illEl = document.querySelector('#page-account .vk-account-illustration');
           const illStyle = illEl ? getComputedStyle(illEl) : null;
           const illVisible = Boolean(illEl && illEl.getClientRects().length > 0 && illStyle.display !== 'none');
           const illRect = illVisible ? illEl.getBoundingClientRect().toJSON() : null;
-          const textBox = document.querySelector('#' + prefix + '-account .vk-account-status > div');
+          const textBox = document.querySelector('#page-account .vk-account-status > div');
           const textStyle = textBox ? getComputedStyle(textBox) : null;
           const textBoxRect = textBox ? textBox.getBoundingClientRect() : null;
-          const h2Rect = document.querySelector('#' + prefix + '-account h2')?.getBoundingClientRect();
-          const helpRect = document.querySelector('#' + prefix + '-account .vk-ui-tone-muted')?.getBoundingClientRect();
+          const h2Rect = document.querySelector('#page-account h2')?.getBoundingClientRect();
+          const helpRect = document.querySelector('#page-account .vk-ui-tone-muted')?.getBoundingClientRect();
           const textRight = Math.max(h2Rect?.right ?? 0, helpRect?.right ?? 0);
-          return { prefix, surface: bounds(prefix === 'page' ? '#me' : '#profile-menu'),
+          return { prefix, surface: bounds('#me'),
             preferences: {
               surface: bounds(preferenceSurface),
-              padding: ['Top', 'Right', 'Bottom', 'Left'].map(side =>
-                parseFloat(surfaceStyle['padding' + side]) + (panel?.open ? parseFloat(surfaceStyle['margin' + side]) : 0)),
-              background: panel?.open ? getComputedStyle(panel).backgroundColor : surfaceStyle.backgroundColor,
-              radius: parseFloat(panel?.open ? getComputedStyle(panel).borderRadius : surfaceStyle.borderRadius),
+              padding: ['Top', 'Right', 'Bottom', 'Left'].map(side => parseFloat(surfaceStyle['padding' + side])),
+              background: surfaceStyle.backgroundColor,
+              radius: parseFloat(surfaceStyle.borderRadius),
               scroll: { top: surface.scrollTop, height: surface.scrollHeight, clientHeight: surface.clientHeight },
               rowGap: parseFloat(getComputedStyle(region).rowGap),
               rows: rows.map((row, index) => {
@@ -830,13 +828,13 @@ class Page {
                 };
               }),
             },
-            heading: bounds(prefix === 'page' ? '#me-title' : '.vk-profile-heading'),
-            account: bounds('#' + prefix + '-account'), identity: bounds('#' + prefix + '-account .vk-account-status'),
-            identityContainerWidth: document.querySelector('#' + prefix + '-account .vk-account-status')?.clientWidth ?? null,
-            avatar: bounds('#' + prefix + '-account .vk-ui-avatar'),
-            accountText: bounds('#' + prefix + '-account .vk-account-status > div'),
-            accountLabel: bounds('#' + prefix + '-account h2'),
-            accountHelp: bounds('#' + prefix + '-account .vk-ui-tone-muted'),
+            heading: bounds('#me-title'),
+            account: bounds('#page-account'), identity: bounds('#page-account .vk-account-status'),
+            identityContainerWidth: document.querySelector('#page-account .vk-account-status')?.clientWidth ?? null,
+            avatar: bounds('#page-account .vk-ui-avatar'),
+            accountText: bounds('#page-account .vk-account-status > div'),
+            accountLabel: bounds('#page-account h2'),
+            accountHelp: bounds('#page-account .vk-ui-tone-muted'),
             illustration: illEl ? {
               present: true,
               visible: illVisible,
@@ -855,9 +853,9 @@ class Page {
               illustrationLeft: illRect?.left ?? null,
               textOverlapsIllustration: Boolean(illVisible && illRect && textRight > illRect.left + 1),
             } : null,
-            appearanceHeading: bounds(prefix === 'page' ? '#page-appearance-title' : '#profile-title'),
-            choices: bounds((prefix === 'page' ? '#me' : '#profile-menu') + ' .vk-appearance-region'),
-            group: bounds('#' + prefix + '-theme') };
+            appearanceHeading: bounds('#page-appearance-title'),
+            choices: bounds('#me .vk-appearance-region'),
+            group: bounds('#page-theme') };
         })(),
         desk: { heading: geometry('#heading'), resume: geometry('#resume'), title: geometry('#resume h2'), disclosure: geometry('#resume-title-toggle'), metadata: geometry('#resume .vk-draft-meta'), cta: geometry('[data-testid=resume-draft]'), list: geometry('#drafts'), tools: geometry('#draft-tools'), search: geometry('#draft-search'), sort: geometry('#draft-sort'), searchLauncher: geometry('#open-draft-search'), scope: geometry('#draft-scope'), firstRow: geometry('[data-testid=draft-row]'), rowLink: geometry('.vk-draft-row__link'), rowTitle: geometry('.vk-draft-row__title'), rowTitleLines: titleLines, rowMetadata: geometry('.vk-draft-row .vk-draft-meta'), rowOpen: geometry('.vk-draft-row__open'), results: geometry('#draft-results'), listHeading: geometry('#draft-list-title'), searchField: geometry('.vk-draft-search > .vk-ui-field'), sortField: geometry('#draft-tools > .vk-ui-field:nth-child(2)') },
         reader: { title: geometry('#reader-header h1'), header: geometry('#reader-header'), body: geometry('.vk-reader .vk-document') },
@@ -1801,18 +1799,12 @@ async function serverHtml() {
 }
 
 const RAIL_WIDTH = `Math.round(document.querySelector('.vk-ui-rail').getBoundingClientRect().width)`;
-const PROFILE_OPEN = `document.querySelector('[data-testid=profile-menu]').open`;
 const RAIL_MODAL_OPEN = `document.querySelector('#navigation-modal').matches(':modal')`;
 const RAIL_ME = '#navigation a[href="/toi"]';
 // Poll live transitions. Waiting on a snapshot of Animation.finished promises
 // can stall DevTools after a dirty editor resize.
 const APPEARANCE_SETTLED = `!document.getAnimations().some(a =>
   a instanceof CSSTransition && (a.pending || a.playState === 'running'))`;
-
-async function openProfile(page) {
-  await page.click('#profile-trigger');
-  await page.waitFor(PROFILE_OPEN, 'Giao diện dialog');
-}
 
 /** R4.2 (#402): Khám phá and Bàn viết share one page column and a fixed narrow gutter; the
  * resolved background/text pairs are measured and logged in both themes. Ends on /ban-viet. */
@@ -1831,12 +1823,16 @@ async function r4PageColumns(page) {
     const desk = await left('#desk-title');
     check(Math.abs(explore - desk) <= 1, `#402 AC-03 ${width}px: Khám phá and Bàn viết titles share a left edge (${explore} / ${desk} CSS px)`);
   }
-  for (const width of [320, 390]) for (const scale of [100, 200]) {
+  for (const width of [320, 390]) for (const scale of [100, 150, 200]) {
     await page.viewport(width);
-    await page.eval(`(() => { try { ${scale === 200 ? "localStorage.setItem('vink.ui.text', '200')" : "localStorage.removeItem('vink.ui.text')"}; } catch {} })()`);
+    await page.eval(`(() => {
+      document.documentElement.style.fontSize = '';
+      try { ${scale === 150 ? "localStorage.setItem('vink.ui.text', '150')" : "localStorage.removeItem('vink.ui.text')"}; } catch {}
+    })()`);
     const gutters = {};
     for (const [path, ready, box] of [['/', '#explore-heading h1', '#explore > .vk-explore__top'], ['/ban-viet', '#desk-title', '#desk']]) {
       await open(path, ready);
+      if (scale === 200) await page.eval(`document.documentElement.dataset.text = '200'`);
       gutters[path] = await page.eval(`(() => { const r = document.querySelector(${JSON.stringify(box)}).getBoundingClientRect();
         return { text: document.documentElement.dataset.text ?? '100', left: r.left, right: document.documentElement.clientWidth - r.right,
           overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }; })()`);
@@ -1844,7 +1840,7 @@ async function r4PageColumns(page) {
     check(Object.values(gutters).every(g => g.text === String(scale) && Math.abs(g.left - 16) <= 1 && Math.abs(g.right - 16) <= 1 && g.overflow <= 0),
       `#402 AC-03 ${width}px / ${scale}%: Khám phá and Bàn viết keep a 16px gutter (${JSON.stringify(gutters)})`);
   }
-  await page.eval(`(() => { try { localStorage.removeItem('vink.ui.text'); } catch {} })()`);
+  await page.eval(`(() => { delete document.documentElement.dataset.text; try { localStorage.removeItem('vink.ui.text'); } catch {} })()`);
   await page.viewport(1440);
   await open('/ban-viet', '#create-draft');
   const before = await page.eval('document.documentElement.dataset.theme ?? null');
@@ -1874,30 +1870,26 @@ async function r4PageColumns(page) {
   await page.eval(`(() => { const theme = ${JSON.stringify(before)}; if (theme === null) delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = theme; })()`);
 }
 
-/** R4.2 (#403): rail = page = bottom-bar background; only the current destination is filled,
- * and the open Giao diện utility is a 2px primary ring without a fill. Call with Giao diện open. */
+/** R4.2 (#403, updated #413): rail = page = bottom-bar background; only the current destination
+ * is filled, and no Giao diện utility button/dialog exists on any rail. */
 async function railR4Surfaces(page, theme) {
   // The current destination's fill transitions in after navigation; measure settled colours.
   await page.waitFor(APPEARANCE_SETTLED, `${theme} rail colours settled`);
   const facts = await page.eval(`(() => {
     const probe = document.createElement('span'); document.body.append(probe);
     const resolve = token => { probe.style.background = 'var(' + token + ')'; return getComputedStyle(probe).backgroundColor; };
-    const page = resolve('--vk-bg-page'), primary = resolve('--vk-primary'), selected = resolve('--vk-primary-container');
+    const page = resolve('--vk-bg-page'), selected = resolve('--vk-primary-container');
     probe.remove();
     const bg = selector => getComputedStyle(document.querySelector(selector)).backgroundColor;
-    const utility = document.querySelector('#profile-trigger'), style = getComputedStyle(utility);
     const filled = [...document.querySelectorAll('#navigation .vk-ui-nav-item, #navigation .vk-ui-nav-item__indicator')]
       .filter(el => getComputedStyle(el).backgroundColor === selected)
       .map(el => (el.closest('a,button')?.getAttribute('aria-current') === 'page'));
-    return { page, body: bg('body'), rail: bg('#navigation'), bar: bg('#bottom-navigation'),
-      expanded: utility.getAttribute('aria-expanded'), utilityBg: style.backgroundColor,
-      ring: style.boxShadow.includes(primary) && style.boxShadow.includes('2px'),
-      filled };
+    const noUtility = !document.querySelector('#profile-trigger, #navigation-expanded-appearance, #profile-menu, .vk-ui-nav-utility');
+    return { page, body: bg('body'), rail: bg('#navigation'), bar: bg('#bottom-navigation'), noUtility, filled };
   })()`);
   check(facts.body === facts.page && facts.rail === facts.page && facts.bar === facts.page &&
-    facts.expanded === 'true' && facts.utilityBg === 'rgba(0, 0, 0, 0)' && facts.ring &&
-    facts.filled.length >= 1 && facts.filled.every(Boolean),
-    `${theme}: rail, page and bottom bar share bg-page; only the current destination is filled; open Giao diện is a primary ring (${JSON.stringify(facts)})`);
+    facts.noUtility && facts.filled.length >= 1 && facts.filled.every(Boolean),
+    `${theme}: rail, page and bottom bar share bg-page; only the current destination is filled; rail has no Giao diện utility (${JSON.stringify(facts)})`);
 }
 
 async function waitForPageAccount(page) {
@@ -1907,7 +1899,7 @@ async function waitForPageAccount(page) {
   await page.eval('document.fonts.ready');
 }
 
-async function chooseTheme(page, value, group = 'overlay-theme') {
+async function chooseTheme(page, value, group = 'page-theme') {
   if (group === 'page-theme') await waitForPageAccount(page);
   const selector = `label:has(input[name="${group}"][value="${value}"])`;
   try {
@@ -2085,8 +2077,7 @@ async function textContrast(page, theme, surface = 'shell', targets) {
     'desk-empty': ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-button', '.vk-desk-privacy'],
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
     me: ['#me-title', '#page-account h2', '#page-account .vk-ui-tone-muted', '#page-appearance-title', '#page-theme-title', '#page-text-title', '#page-rail-title', ...['light', 'dark', 'system'].map(value => `#page-theme label:has([value="${value}"])`)],
-    account: ['#profile-title', '#overlay-theme-title', '#overlay-text-title', '#overlay-rail-title', ...['light', 'dark', 'system'].map(value => `#overlay-theme label:has([value="${value}"])`)],
-  }[surface] ?? ['#navigation-toggle', '#navigation-primary a', '#profile-trigger', '#profile-title', '#profile-menu .vk-ui-choice__target:has(:checked)', '#profile-close']);
+  }[surface] ?? ['#navigation-toggle', '#navigation-primary a', RAIL_ME]);
   const pairs = await page.eval(`(() => {
     const rgb = value => value.match(/[\\d.]+/g).map(Number);
     const luminance = color => rgb(color).slice(0, 3).map(v => v / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
@@ -2152,15 +2143,15 @@ function accountLayoutGeometry(context, scenario) {
   }
 }
 
-function appearanceRows(page, prefix) {
+function appearanceRows(page, prefix = 'page') {
   return page.eval(`(() => {
-    const scope = document.querySelector(${JSON.stringify(prefix === 'page' ? '#me' : '#profile-menu')});
+    const scope = document.querySelector('#me');
     const rows = [...scope.querySelectorAll('.vk-appearance-row')];
     const colors = document.createElement('canvas').getContext('2d');
     const root = getComputedStyle(document.documentElement);
     const asColor = value => { colors.fillStyle = value.trim(); return colors.fillStyle; };
     const selectedColors = ['--vk-primary-container', '--vk-on-primary-container'].map(name => asColor(root.getPropertyValue(name)));
-    const choices = [['Hệ thống', 'Sáng', 'Tối'], ['100%', '200%'], ['Tự động', 'Mở rộng', 'Thu gọn']];
+    const choices = [['Hệ thống', 'Sáng', 'Tối'], ['Mặc định', 'Lớn'], ['Tự động', 'Mở rộng', 'Thu gọn']];
     return rows.length === choices.length && rows.every((row, index) => {
       const heading = row.querySelector('h3'), group = row.querySelector('fieldset');
       const icon = heading.querySelector('[aria-hidden=true]');
@@ -2187,11 +2178,12 @@ function appearanceRows(page, prefix) {
   })()`);
 }
 
-async function chooseTextSize(page, scale, group) {
+async function chooseTextSize(page, scale, group = 'page-text') {
   if (!await page.eval(`document.querySelector('#${group} input:checked')?.value === '${scale}'`)) {
     await page.click(`#${group} label:has([value="${scale}"])`);
   }
-  await page.waitFor(`getComputedStyle(document.documentElement).fontSize === '${scale === 200 ? 32 : 16}px' &&
+  const expectedPx = `${16 * scale / 100}px`;
+  await page.waitFor(`getComputedStyle(document.documentElement).fontSize === '${expectedPx}' &&
     document.querySelector('#${group} input:checked')?.value === '${scale}' && ${APPEARANCE_SETTLED}`, `${group} applies ${scale}% text`);
 }
 
@@ -2240,41 +2232,8 @@ async function preferenceSurfaces(page) {
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'hydration restored after the native build detail');
 }
 
-async function shortAppearanceStart(page) {
-  for (const height of [320, 280]) {
-    await page.viewport(834, height);
-    await openProfile(page);
-    const opened = await page.eval(`(() => {
-      const panel = document.querySelector('#profile-menu');
-      const { top, bottom } = panel.getBoundingClientRect();
-      const visible = selector => {
-        const r = panel.querySelector(selector).getBoundingClientRect();
-        return r.top >= top && r.bottom <= bottom;
-      };
-      return { scrollTop: panel.querySelector('#profile-body').scrollTop, title: visible('#profile-title'),
-        close: visible('#profile-close'), focused: document.activeElement.id };
-    })()`);
-    check(opened.scrollTop <= 1 && opened.title && opened.close && opened.focused === 'profile-close',
-      `834×${height}/200%: opening keeps the title and focused Close visible ${JSON.stringify(opened)}`);
-    await page.capture(`account-overlay-834-${height}-compact-dark-text200-start`);
-    await page.key('Tab');
-    check(await page.eval(`(() => {
-      const choice = document.querySelector('#overlay-theme input[value=dark]:checked');
-      if (document.activeElement !== choice) return false;
-      const r = choice.getBoundingClientRect();
-      const panel = document.querySelector('#profile-menu').getBoundingClientRect();
-      return r.top >= panel.top && r.bottom <= panel.bottom &&
-        choice === document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-    })()`), `834×${height}/200%: Tab reveals and focuses the selected radio`);
-    await page.key('Escape');
-    check(await page.eval(`!${PROFILE_OPEN} && document.activeElement.id === 'profile-trigger'`),
-      `834×${height}/200%: Escape returns focus to Tôi`);
-  }
-  await page.viewport(834, 360);
-}
-
 async function accountAppearance(page) {
-  console.log('shared account presentation and bounded appearance overlay:');
+  console.log('shared account presentation and /toi appearance preferences:');
   await page.viewport(1440);
   await page.goto(`${args.base}/toi`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'canonical Tôi route for the appearance matrix');
@@ -2288,275 +2247,163 @@ async function accountAppearance(page) {
       body.display_name === document.querySelector('#page-account p').textContent &&
       Object.keys(body).sort().join(',') === 'display_name,principal_id';
   })`), 'current account is read from the private session endpoint');
-  await page.eval(`document.querySelector('#profile-trigger').focus()`);
-  await page.key('Enter');
-  await page.waitFor(`${PROFILE_OPEN} && document.activeElement?.name === 'overlay-theme'`, 'Giao diện opens the shared modal on /toi');
-  await page.click('#overlay-text label:has([value="200"])');
-  await page.click('#overlay-rail label:has([value="compact"])');
-  await page.waitFor(`document.querySelector('#page-text input:checked')?.value === '200' &&
-    document.querySelector('#page-rail input:checked')?.value === 'compact' &&
-    getComputedStyle(document.documentElement).fontSize === '32px' &&
-    ${RAIL_WIDTH} === 96`, 'panel updates page radios, text size and rail immediately');
-  check(await page.eval(`(() => {
-    const rail = document.querySelector('#navigation').getBoundingClientRect();
-    const panel = document.querySelector('#profile-menu').getBoundingClientRect();
-    return document.activeElement === document.querySelector('#overlay-rail input:checked') &&
-      Math.abs(panel.left - rail.right - 16) <= 1;
-  })()`), 'changing the rail moves the open panel without moving radio focus');
-  await page.key('Escape');
-  check(await page.eval(`document.activeElement?.id === 'profile-trigger'`), 'Escape returns to the trigger on /toi');
-  await page.reload();
-  await page.waitFor(`document.documentElement.dataset.hydrated === 'true' &&
-    document.querySelector('#page-text input:checked')?.value === '200' &&
-    document.querySelector('#page-rail input:checked')?.value === 'compact'`, 'text and rail choices survive reload');
-  await waitForPageAccount(page);
-  await page.click('#page-text label:has([value="100"])');
-  await page.waitFor(`!document.documentElement.dataset.text`, '100% text applied before changing the rail');
-  await page.click('#page-rail label:has([value="auto"])');
-  await page.waitFor(`!document.documentElement.dataset.text && !document.documentElement.dataset.rail &&
-    localStorage.getItem('vink.ui.text') === null && localStorage.getItem('vink.ui.rail') === null &&
-    ${RAIL_WIDTH} === 220 && document.querySelector('#overlay-rail input:checked')?.value === 'auto'`, '100% and automatic clear overrides and sync the panel');
-  await chooseTheme(page, 'system', 'page-theme');
-  await page.eval(`document.querySelector('#page-theme input:checked').focus()`);
-  await page.key('ArrowRight');
-  await page.waitFor(`document.querySelector('#page-theme input:checked')?.value === 'light' && document.documentElement.dataset.theme === 'light'`, 'native Arrow updates page preference');
-  await page.click('#page-text label:has([value="200"])');
-  await page.waitFor(`document.documentElement.dataset.text === '200' && getComputedStyle(document.documentElement).fontSize === '32px' && localStorage.getItem('vink.ui.text') === '200'`, 'real 200% control applies root font scale on /toi');
-  const meOverflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript()));
-  check(meOverflow.ok, `AC-04 real-control 200% /toi has no unintended overflow (${meOverflow.reasons.join('; ')})`);
-  await page.click('.vk-ui-rail a[href="/"]');
-  await page.waitFor(`location.pathname === '/' && document.documentElement.dataset.text === '200' && getComputedStyle(document.documentElement).fontSize === '32px'`, '200% preference persists across client route to /');
-  const exploreOverflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript()));
-  check(exploreOverflow.ok, `AC-04 real-control 200% / has no unintended overflow (${exploreOverflow.reasons.join('; ')})`);
-  await page.click('.vk-ui-rail a[href="/ban-viet"]');
-  await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('#create-draft') && document.documentElement.dataset.text === '200' && getComputedStyle(document.documentElement).fontSize === '32px'`, '200% preference persists across client route to /ban-viet');
-  await page.reload();
-  await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.documentElement.dataset.text === '200' && getComputedStyle(document.documentElement).fontSize === '32px'`, '200% preference survives reload on /ban-viet');
-  await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);
-  await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.documentElement.dataset.text === '200' && getComputedStyle(document.documentElement).fontSize === '32px'`, '200% preference persists to reader route');
-  await openProfile(page);
-  check(await page.eval(`(() => {
-    const checked = document.querySelector('#overlay-text input:checked');
-    const face = checked?.closest('label');
-    return checked?.value === '200' && Boolean(face) && getComputedStyle(face, '::after').opacity === '1';
-  })()`), 'work route overlay preserves selected 200% control and visible ::after check');
-  const workOverlayAx = await page.send('Accessibility.getFullAXTree');
-  check(workOverlayAx.nodes.some(node => !node.ignored && node.role?.value === 'radio' && node.name?.value === '200%' &&
-    node.properties?.some(prop => prop.name === 'checked' && String(prop.value?.value) === 'true')),
-    'Chrome AX exposes checked=true on 200% radio after multi-route persistence and reload');
-  const workOverflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({ containers: ['#profile-menu'] })));
-  check(workOverflow.ok, `AC-04 real-control 200% work route has no unintended overflow (${workOverflow.reasons.join('; ')})`);
-  await page.capture('appearance-control-200-work', {
-    scenario: 'AC-04-app-appearance-control',
-    state: 'text-200-route-persisted',
-    textScaleLane: 'app-appearance-control',
-    requestedScene: { width: 1440, height: 900, scale: 200, theme: 'light' },
-    requiredTargets: ['#profile-menu', '#overlay-text'],
-    boundary: 'real-local-postgresql-with-fixture-identity',
-  });
-  await page.click('#overlay-text label:has([value="100"])');
-  await page.waitFor(`!document.documentElement.dataset.text && getComputedStyle(document.documentElement).fontSize === '16px' && localStorage.getItem('vink.ui.text') === null`, 'restoring 100% via real control clears text scale');
-  await page.key('Escape');
-  await page.waitFor(`!${PROFILE_OPEN}`, 'close appearance overlay after real-control persistence test');
-  EVIDENCE_STATE.lanes.appAppearanceControl = 'PASS';
-  await page.goto(`${args.base}/ban-viet`);
-  await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'appearance utility host');
-  await openProfile(page);
-  check(await page.eval(`document.querySelector('#profile-title').textContent === 'Giao diện' &&
-    document.querySelector('#profile-title [aria-hidden=true] [data-appearance-icon=palette]') &&
-    document.querySelector('#profile-trigger').getAttribute('aria-haspopup') === 'dialog' &&
-    document.querySelector('#profile-trigger').getAttribute('aria-controls') === 'profile-menu' &&
-    document.querySelector('#navigation-primary a[href="/ban-viet"]').getAttribute('aria-current') === 'page' &&
-    !document.querySelector('#profile-menu .vk-account-status, #profile-menu a[href="/toi"]')`), 'appearance dialog identifies its purpose and preserves the active route');
-  check(await appearanceRows(page, 'overlay'), 'panel uses the same three native groups, glyphs and selection checks');
+  check(await page.eval(`!document.querySelector('#profile-trigger, #navigation-expanded-appearance, #profile-menu, .vk-ui-nav-utility') &&
+    document.querySelector('#page-appearance-title')?.textContent === 'Giao diện' &&
+    document.querySelector('#page-appearance-title [aria-hidden=true] [data-appearance-icon=palette]')`),
+    '/toi owns Giao diện while rail/overlays carry no appearance button or modal');
+  await railR4Surfaces(page, await page.eval(`matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'`));
   const { nodes } = await page.send('Accessibility.getFullAXTree');
   const visible = nodes.filter(node => !node.ignored);
   const hasName = (role, name) => visible.some(node => node.role.value === role && node.name?.value === name);
   const checked = visible.filter(node => node.role.value === 'radio' &&
     node.properties?.some(prop => prop.name === 'checked' && String(prop.value.value) === 'true'));
-  check(hasName('dialog', 'Giao diện') && hasName('button', 'Đóng Giao diện') &&
-    ['Chế độ màu', 'Cỡ chữ', 'Thanh điều hướng'].every(name => hasName('radiogroup', name)) &&
-    ['Hệ thống', 'Sáng', 'Tối', '100%', '200%', 'Tự động', 'Mở rộng', 'Thu gọn'].every(name => hasName('radio', name)) &&
-    checked.length === 3 && ['Sáng', '100%', 'Tự động'].every(name => checked.some(node => node.name?.value === name)),
-    'Chrome AX exposes the named modal, actions and full native radio groups with checked state');
-  await chooseTheme(page, 'system');
-  const choicePositions = () => page.eval(`[...document.querySelectorAll('#overlay-theme .vk-ui-choice__label')].map(el => {
+  check(['Chế độ màu', 'Cỡ chữ', 'Thanh điều hướng'].every(name => hasName('radiogroup', name)) &&
+    ['Hệ thống', 'Sáng', 'Tối', 'Mặc định', 'Lớn', 'Tự động', 'Mở rộng', 'Thu gọn'].every(name => hasName('radio', name)) &&
+    checked.length === 3 && ['Hệ thống', 'Mặc định', 'Tự động'].every(name => checked.some(node => node.name?.value === name)),
+    'Chrome AX exposes the three /toi native radio groups with Mặc định / Lớn and checked state');
+
+  await page.click('#page-text label:has([value="150"])');
+  await page.click('#page-rail label:has([value="compact"])');
+  await page.waitFor(`document.querySelector('#page-text input:checked')?.value === '150' &&
+    document.querySelector('#page-rail input:checked')?.value === 'compact' &&
+    getComputedStyle(document.documentElement).fontSize === '24px' &&
+    ${RAIL_WIDTH} === 96`, '/toi updates text size (1.5x -> 24px) and rail immediately');
+  await page.reload();
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true' &&
+    document.querySelector('#page-text input:checked')?.value === '150' &&
+    document.querySelector('#page-rail input:checked')?.value === 'compact' &&
+    getComputedStyle(document.documentElement).fontSize === '24px'`, 'Lớn (150%) and rail choices survive reload');
+  await waitForPageAccount(page);
+  await page.click('#page-text label:has([value="100"])');
+  await page.waitFor(`!document.documentElement.dataset.text && getComputedStyle(document.documentElement).fontSize === '16px' &&
+    document.querySelector('#page-rail input:checked')?.value === 'compact' && ${RAIL_WIDTH} === 96`,
+    'Mặc định restores 16px baseline without resetting rail or theme');
+  await page.click('#page-rail label:has([value="auto"])');
+  await page.waitFor(`!document.documentElement.dataset.text && !document.documentElement.dataset.rail &&
+    localStorage.getItem('vink.ui.text') === null && localStorage.getItem('vink.ui.rail') === null &&
+    ${RAIL_WIDTH} === 220`, 'Mặc định and Tự động clear overrides');
+  await chooseTheme(page, 'system', 'page-theme');
+  const choicePositions = () => page.eval(`[...document.querySelectorAll('#page-theme .vk-ui-choice__label')].map(el => {
     const { x, y, width, height } = el.getBoundingClientRect();
     return [x, y, width, height];
   })`);
   const beforeArrow = await choicePositions();
-  await page.eval(`document.querySelector('#overlay-theme input:checked').focus()`);
+  await page.eval(`document.querySelector('#page-theme input:checked').focus()`);
   await page.key('ArrowRight');
-  await page.waitFor(`document.querySelector('#overlay-theme input:checked')?.value === 'light' && document.documentElement.dataset.theme === 'light'`, 'native Arrow updates utility preference');
-  check(JSON.stringify(await choicePositions()) === JSON.stringify(beforeArrow),
-    'selection keeps each theme label in place');
+  await page.waitFor(`document.querySelector('#page-theme input:checked')?.value === 'light' && document.documentElement.dataset.theme === 'light'`, 'native Arrow updates page preference');
+  check(JSON.stringify(await choicePositions()) === JSON.stringify(beforeArrow), 'selection keeps each theme label in place');
   check(await page.eval(`(() => { const input = document.activeElement, face = input.closest('label'), style = getComputedStyle(face); return input.checked && input.matches(':focus-visible') && style.outlineStyle === 'solid' && parseFloat(style.outlineWidth) === 2 && style.outlineOffset === '-2px' && style.boxShadow === 'none' && getComputedStyle(face, '::after').opacity === '1'; })()`), 'native keyboard focus paints one flush 2px perimeter independently of the selected check');
   await page.key('ArrowLeft');
-  await page.waitFor(`${PROFILE_OPEN} && document.querySelector('#overlay-theme input:checked')?.value === 'system'`, 'native ArrowLeft keeps panel open');
-  await page.eval(`document.querySelector('#overlay-theme input[value=dark]').focus()`);
+  await page.waitFor(`document.querySelector('#page-theme input:checked')?.value === 'system'`, 'native ArrowLeft returns to Hệ thống');
+  await page.eval(`document.querySelector('#page-theme input[value=dark]').focus()`);
   await page.key('Space');
-  await page.waitFor(`${PROFILE_OPEN} && document.querySelector('#overlay-theme input:checked')?.value === 'dark'`, 'native Space selects the focused choice');
-  await page.eval(`(() => { for (const value of ['light', 'system', 'dark']) document.querySelector('#overlay-theme input[value="' + value + '"]').click(); })()`);
-  await page.waitFor(`${PROFILE_OPEN} && document.querySelector('#overlay-theme input:checked')?.value === 'dark' && document.documentElement.dataset.theme === 'dark'`, 'rapid theme intents settle on the final preference');
-  check(await page.eval(`(() => {
-    const close = document.querySelector('#profile-close'), r = close.getBoundingClientRect();
-    const dialog = document.querySelector('#profile-menu'), s = getComputedStyle(dialog);
-    const scrollers = [...dialog.querySelectorAll('*')].filter(el => ['auto','scroll'].includes(getComputedStyle(el).overflowY));
-    return r.width >= 48 && r.height >= 48 && close.getAttribute('aria-label') === 'Đóng Giao diện' &&
-      close.querySelector('[data-icon=close]') && s.backgroundColor.startsWith('rgb(') &&
-      s.overflowY === 'clip' && s.borderRadius === '28px' &&
-      getComputedStyle(dialog, '::backdrop').backgroundColor !== 'rgba(0, 0, 0, 0)' &&
-      scrollers.length === 1 && scrollers[0].id === 'profile-body';
-  })()`), 'rounded opaque panel, visible scrim, one inner scroller and named close icon target >=48px');
+  await page.waitFor(`document.querySelector('#page-theme input:checked')?.value === 'dark'`, 'native Space selects the focused choice');
+  await page.eval(`(() => { for (const value of ['light', 'system', 'dark']) document.querySelector('#page-theme input[value="' + value + '"]').click(); })()`);
+  await page.waitFor(`document.querySelector('#page-theme input:checked')?.value === 'dark' && document.documentElement.dataset.theme === 'dark'`, 'rapid theme intents settle on the final preference');
+
   await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM, { name: 'forced-colors', value: 'active' }, { name: 'prefers-reduced-motion', value: 'reduce' }] });
-  await page.eval(`document.querySelector('#overlay-theme input:checked').focus()`);
+  await page.eval(`document.querySelector('#page-theme input:checked').focus()`);
   await page.key('ArrowRight');
   // CDP media/key acknowledgments do not guarantee style recalculation has settled.
   // Keep every focus/check/motion condition, with a bounded wait and a second-frame check.
-  const forcedColorsReady = `(() => { const input = document.activeElement, face = input.closest('label'), style = getComputedStyle(face); return input.checked && input.matches(':focus-visible') && style.forcedColorAdjust === 'none' && style.outlineStyle === 'solid' && style.outlineWidth === '2px' && parseFloat(style.transitionDuration) <= 0.001 && getComputedStyle(face, '::after').opacity === '1' && [...document.querySelectorAll('#overlay-theme label')].every(el => getComputedStyle(el, '::before').forcedColorAdjust === 'none'); })()`;
+  const forcedColorsReady = `(() => { const input = document.activeElement, face = input.closest('label'), style = getComputedStyle(face); return input.checked && input.matches(':focus-visible') && style.forcedColorAdjust === 'none' && style.outlineStyle === 'solid' && style.outlineWidth === '2px' && parseFloat(style.transitionDuration) <= 0.001 && getComputedStyle(face, '::after').opacity === '1' && [...document.querySelectorAll('#page-theme label')].every(el => getComputedStyle(el, '::before').forcedColorAdjust === 'none'); })()`;
   await page.waitFor(forcedColorsReady, 'forced-colors retains selected check and keyboard focus; reduced-motion reduces transitions below 1ms', 2000);
   await editorLayoutReady(page);
   check(await page.eval(forcedColorsReady), 'forced-colors retains selected check and keyboard focus; reduced-motion reduces transitions below 1ms');
   await appearanceFocusContrast(page, 'forced-colors');
   await page.capture('appearance-forced-colors-reduced-motion');
   await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM] });
-  await page.key('Escape');
 
-  for (const { width, rail, height } of [
-    { width: 1440, rail: 'expanded', height: 900 },
-    { width: 1440, rail: 'compact', height: 900 },
-    { width: 1024, rail: 'compact', height: 900 },
-    { width: 834, rail: 'compact', height: 900 },
-    { width: 1440, rail: 'expanded', height: 360 },
-    { width: 1440, rail: 'compact', height: 360 },
-    { width: 1280, rail: 'expanded', height: 480 },
-    { width: 1280, rail: 'expanded', height: 380 },
-    { width: 834, rail: 'compact', height: 360 },
-  ]) {
-    await page.viewport(width, height);
-    if ((await page.eval(RAIL_WIDTH)) !== (rail === 'expanded' ? 220 : 96)) await page.click('#navigation-toggle');
-    for (const theme of ['system', 'light', 'dark']) {
-      for (const scale of [100, 200]) {
-        await openProfile(page);
-        await chooseTextSize(page, scale, 'overlay-text');
-        await chooseTheme(page, theme);
-        await page.key('Escape');
-        await openProfile(page);
-        const scenario = `${width}-${height}-${rail}-${theme}-text${scale}`;
-        check(await page.eval(`(() => { const rail = document.querySelector('.vk-ui-rail'); return rail.scrollWidth <= rail.clientWidth; })()`), `${scenario}: the rail needs no horizontal scrolling`);
-        check(await page.eval(`(() => {
-          const dialog = document.querySelector('#profile-menu'), r = dialog.getBoundingClientRect();
-          return dialog.matches(':modal') && r.left >= document.querySelector('.vk-ui-rail').getBoundingClientRect().right &&
-            r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight &&
-            dialog.scrollWidth <= dialog.clientWidth && document.documentElement.scrollWidth <= innerWidth &&
-            document.querySelector('#profile-trigger').getAttribute('aria-expanded') === 'true';
-        })()`), `${scenario}: modal stays beside the rail, within the viewport, without internal horizontal overflow`);
-        const initial = await page.eval(`(() => {
-          const panel = document.querySelector('#profile-menu'), rect = panel.getBoundingClientRect();
-          const title = document.querySelector('#profile-title').getBoundingClientRect();
-          const body = panel.querySelector('#profile-body'), choice = panel.querySelector('#overlay-theme input:checked');
-          const choiceVisible = choice.getBoundingClientRect().bottom <= body.getBoundingClientRect().bottom;
-          return { scrollTop: body.scrollTop, outerScrollTop: panel.scrollTop,
-            titleVisible: title.top >= rect.top && title.bottom <= rect.bottom,
-            titleTop: title.top, panelTop: rect.top,
-            focus: document.activeElement === choice ? 'choice' : document.activeElement?.id, choiceVisible };
-        })()`);
-        check(initial.scrollTop <= 1 && initial.outerScrollTop === 0 && initial.titleVisible &&
-          initial.focus === (initial.choiceVisible ? 'choice' : 'profile-close'),
-          `${scenario}: title and initial focus are visible at the start of the panel (${JSON.stringify(initial)})`);
-        if (height === 900 && width === 1440 && scale === 100 && theme !== 'system') await textContrast(page, theme, 'account');
-        check(await appearanceRows(page, 'overlay'), `${scenario}: compact panel groups keep whole labels and touch targets`);
-        accountLayoutGeometry(await page.capture(`account-overlay-${scenario}`), scenario);
-        if (width === 834 && height === 360 && scale === 200) {
-          check(await page.eval(`(() => {
-            const panel = document.querySelector('#profile-menu');
-            const targets = [...panel.querySelectorAll('.vk-ui-choice__target')];
-            const reachable = targets.every(target => {
-              target.scrollIntoView({ block: 'nearest', behavior: 'instant' });
-              const r = target.getBoundingClientRect();
-              return target.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
-            });
-            panel.querySelector('#profile-body').scrollTop = 0;
-            return reachable;
-          })()`), `${scenario}: every radio hit target can be revealed in the scrollport`);
-        }
-        await page.eval(`document.querySelector('#profile-close').focus()`);
-        await page.key('Tab', SHIFT);
-        check(await page.eval(`(() => {
-          const dialog = document.querySelector('#profile-menu'), el = document.activeElement;
-          const r = el.getBoundingClientRect(), body = dialog.querySelector('#profile-body').getBoundingClientRect();
-          const close = dialog.querySelector('#profile-close').getBoundingClientRect();
-          return el === dialog.querySelector('#overlay-rail input:checked') &&
-            r.top >= body.top && r.bottom <= body.bottom && r.height >= 44 &&
-            close.top >= dialog.getBoundingClientRect().top && close.bottom <= body.top &&
-            el === document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-        })()`), `${scenario}: Shift+Tab reveals the last radio without scrolling Close away`);
-        if (await page.eval(`document.querySelector('#profile-body').scrollTop > 0`)) await page.capture(`account-overlay-${scenario}-bottom`);
-        await page.key('Tab');
-        check(await page.eval(`(() => {
-          const el = document.activeElement, r = el.getBoundingClientRect(), d = document.querySelector('#profile-menu').getBoundingClientRect();
-          return el.id === 'profile-close' && r.top >= d.top && r.bottom <= d.bottom &&
-            el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
-        })()`), `${scenario}: Tab reveals the close action and its hit target`);
-        if (width === 834 && height === 360 && scale === 200) {
-          await page.capture(`account-overlay-${scenario}-close`);
-        }
-        await page.key('Escape');
-        check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.id === 'profile-trigger'`), `${scenario}: Escape restores the account utility focus`);
-      }
-    }
-  }
-  // The matrix ends on the compact rail, dark theme and 200% text.
-  await shortAppearanceStart(page);
-  await openProfile(page);
-  await chooseTextSize(page, 100, 'overlay-text');
-  await page.key('Escape');
+  await chooseTheme(page, 'light', 'page-theme');
+  await page.click('#page-text label:has([value="150"])');
+  await page.waitFor(`document.documentElement.dataset.text === '150' && getComputedStyle(document.documentElement).fontSize === '24px' && localStorage.getItem('vink.ui.text') === '150'`, 'real Lớn (150%) control applies root font scale 1.5x on /toi');
+  const meOverflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript()));
+  check(meOverflow.ok, `AC-03 real-control 150% /toi has no unintended overflow (${meOverflow.reasons.join('; ')})`);
+  await page.click('.vk-ui-rail a[href="/"]');
+  await page.waitFor(`location.pathname === '/' && document.documentElement.dataset.text === '150' && getComputedStyle(document.documentElement).fontSize === '24px'`, '150% preference persists across client route to /');
+  const exploreOverflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript()));
+  check(exploreOverflow.ok, `AC-03 real-control 150% / has no unintended overflow (${exploreOverflow.reasons.join('; ')})`);
+  await page.click('.vk-ui-rail a[href="/ban-viet"]');
+  await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('#create-draft') && document.documentElement.dataset.text === '150' && getComputedStyle(document.documentElement).fontSize === '24px'`, '150% preference persists across client route to /ban-viet');
+  await page.reload();
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.documentElement.dataset.text === '150' && getComputedStyle(document.documentElement).fontSize === '24px'`, '150% preference survives reload on /ban-viet');
+  await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.documentElement.dataset.text === '150' && getComputedStyle(document.documentElement).fontSize === '24px'`, '150% preference persists to reader route');
+  await page.click(RAIL_ME);
+  await page.waitFor(`location.pathname === '/toi' && document.documentElement.dataset.text === '150' && getComputedStyle(document.documentElement).fontSize === '24px'`, 'returning to /toi preserves Lớn (150%)');
+  await waitForPageAccount(page);
+  check(await page.eval(`(() => {
+    const checked = document.querySelector('#page-text input:checked');
+    const face = checked?.closest('label');
+    return checked?.value === '150' && Boolean(face) && getComputedStyle(face, '::after').opacity === '1';
+  })()`), '/toi preserves selected Lớn control and visible ::after check after multi-route persistence and reload');
+  const meAx = await page.send('Accessibility.getFullAXTree');
+  check(meAx.nodes.some(node => !node.ignored && node.role?.value === 'radio' && node.name?.value === 'Lớn' &&
+    node.properties?.some(prop => prop.name === 'checked' && String(prop.value?.value) === 'true')),
+    'Chrome AX exposes checked=true on Lớn radio after multi-route persistence and reload');
+  await page.capture('appearance-control-150-me', {
+    scenario: 'AC-03-app-appearance-control',
+    state: 'text-150-route-persisted',
+    textScaleLane: 'app-appearance-control',
+    requestedScene: { width: 1440, height: 900, scale: 150, theme: 'light' },
+    requiredTargets: ['#me-title', '#page-text'],
+    boundary: 'real-local-postgresql-with-fixture-identity',
+  });
+  await page.click('#page-text label:has([value="100"])');
+  await page.waitFor(`!document.documentElement.dataset.text && getComputedStyle(document.documentElement).fontSize === '16px' &&
+    localStorage.getItem('vink.ui.text') === null && document.documentElement.dataset.theme === 'light'`, 'restoring Mặc định via /toi clears text scale while keeping theme');
+  await chooseTheme(page, 'system', 'page-theme');
+  EVIDENCE_STATE.lanes.appAppearanceControl = 'PASS';
   await page.eval(`localStorage.removeItem('vink.ui.rail')`);
   await page.viewport(1440);
   await page.goto(`${args.base}/toi`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'canonical Me restored');
 }
 
-// Fragment history still belongs to the shell overlay; with no overlay it remains an
-// ordinary in-page traversal and must not ask the dirty editor's leave guard.
+// Fragment history still belongs to active shell overlays (the Medium modal rail); with no overlay
+// it remains an ordinary in-page traversal and must not ask the dirty editor's leave guard.
 async function shellFragmentHistory(page) {
+  await page.viewport(768);
   await page.goto(`${args.base}/ban-viet`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'fragment history hydration');
   await page.eval(`location.hash = 'shell-fragment'`);
   await page.waitFor(`location.hash === '#shell-fragment'`, 'fragment history entry');
   await sleep(100);
-  await openProfile(page);
-  await page.capture('1440-fragment-overlay-before-back');
+  await page.click('#navigation-toggle');
+  await page.waitFor(RAIL_MODAL_OPEN, 'Medium rail opens for fragment Back check');
+  await page.capture('768-fragment-overlay-before-back');
   await page.eval(`history.back()`);
-  await page.waitFor(`!${PROFILE_OPEN}`, 'fragment Back closes Giao diện');
+  await page.waitFor(`!${RAIL_MODAL_OPEN}`, 'fragment Back closes Medium rail modal');
   await sleep(100);
-  check(await page.eval(`location.pathname === '/ban-viet' && location.hash === '#shell-fragment' && document.activeElement?.id === 'profile-trigger'`), 'fragment Back closes the overlay, retains the current URL and restores trigger focus');
-  await page.capture('1440-fragment-overlay-after-back');
+  check(await page.eval(`location.pathname === '/ban-viet' && location.hash === '#shell-fragment' && document.activeElement?.id === 'navigation-toggle'`), 'fragment Back closes the modal rail, retains the current URL and restores toggle focus');
+  await page.capture('768-fragment-overlay-after-back');
   await page.eval(`history.back()`);
   await page.waitFor(`location.hash === ''`, 'next Back traverses the fragment');
   await page.eval(`history.forward()`);
   await page.waitFor(`location.hash === '#shell-fragment'`, 'Forward traverses the fragment without an overlay');
-  check(await page.eval(`location.pathname === '/ban-viet' && !${PROFILE_OPEN}`), 'plain fragment Back/Forward leaves the route and overlay unchanged');
+  check(await page.eval(`location.pathname === '/ban-viet' && !${RAIL_MODAL_OPEN}`), 'plain fragment Back/Forward leaves the route and modal rail unchanged');
   await page.eval(`history.back()`);
-  await page.waitFor(`location.hash === ''`, 'prepare fragment Forward with overlay');
-  await openProfile(page);
+  await page.waitFor(`location.hash === ''`, 'prepare fragment Forward with modal rail');
+  await page.click('#navigation-toggle');
+  await page.waitFor(RAIL_MODAL_OPEN, 'Medium rail opens for fragment Forward check');
   await page.eval(`history.forward()`);
-  await page.waitFor(`!${PROFILE_OPEN}`, 'fragment Forward closes Giao diện');
+  await page.waitFor(`!${RAIL_MODAL_OPEN}`, 'fragment Forward closes Medium rail modal');
   await sleep(100);
-  check(await page.eval(`location.pathname === '/ban-viet' && location.hash === '' && document.activeElement?.id === 'profile-trigger'`), 'fragment Forward also closes the overlay before changing the current URL');
+  check(await page.eval(`location.pathname === '/ban-viet' && location.hash === '' && document.activeElement?.id === 'navigation-toggle'`), 'fragment Forward also closes the modal rail before changing the current URL');
 
-  await page.viewport(1440, 360);
+  await page.viewport(768, 360);
   await page.eval(`document.documentElement.style.fontSize = '200%'; location.hash = 'shell-scroll'`);
   await sleep(100);
   await page.eval(`scrollTo(0, 500)`);
   const scroll = await page.eval(`scrollY`);
   check(scroll > 0, 'fragment scroll probe starts below the top of the page');
-  await openProfile(page);
+  await page.click('#navigation-toggle');
+  await page.waitFor(RAIL_MODAL_OPEN, 'Medium rail opens for scrolled fragment Back check');
   await page.eval(`history.back()`);
-  await page.waitFor(`!${PROFILE_OPEN}`, 'scrolled fragment Back closes Giao diện');
+  await page.waitFor(`!${RAIL_MODAL_OPEN}`, 'scrolled fragment Back closes Medium rail modal');
   await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
-  check(await page.eval(`scrollY === ${scroll} && location.hash === '#shell-scroll' && document.activeElement?.id === 'profile-trigger'`), 'held fragment Back preserves nonzero page scroll after native history restoration');
-  await page.capture('1440x360-fragment-scroll-text200');
+  check(await page.eval(`scrollY === ${scroll} && location.hash === '#shell-scroll' && document.activeElement?.id === 'navigation-toggle'`), 'held fragment Back preserves nonzero page scroll after native history restoration');
+  await page.capture('768x360-fragment-scroll-text200');
   await page.eval(`document.documentElement.style.fontSize = ''; scrollTo(0, 0)`);
   await page.viewport(1440);
 }
@@ -2579,8 +2426,9 @@ async function railReview(page) {
     await page.waitFor(APPEARANCE_SETTLED, `${name}: rail state-layer transitions settle`);
     const railNav = await page.eval(buildNavInspectionScript('#navigation'));
     check(railNav.present && railNav.items.filter(item => item.href).length === 3 &&
-      railNav.items.some(item => item.id === 'profile-trigger' && !item.href),
-      `${name}: #navigation renders three links and the separate appearance control`);
+      railNav.items.length === 3 &&
+      (await page.eval(`!document.querySelector('#profile-trigger, #navigation .vk-ui-nav-utility')`)),
+      `${name}: #navigation renders only the three destination links with no Giao diện utility`);
     const baseLabel = railNav.items[0];
     check(railNav.items.every(item => item.wordsIntact && item.lineCount <= 2 && item.labelScrollWidth <= item.labelClientWidth + 1 &&
       item.labelFont === baseLabel?.labelFont && item.labelLineHeight === baseLabel?.labelLineHeight),
@@ -2588,8 +2436,6 @@ async function railReview(page) {
     const axProfile = await collectElementAccessibility(page, RAIL_ME);
     const axProfileEval = evaluateAccessibleElement(axProfile, { role: 'link', name: 'Tôi', excludeSubstrings: ['TT', '•'] });
     check(axProfileEval.ok, `${name}: account link AX exposes 'Tôi' without decorative badges (${axProfileEval.reasons.join('; ')})`);
-    const appearanceAx = await collectElementAccessibility(page, '#profile-trigger');
-    check(evaluateAccessibleElement(appearanceAx, { role: 'button', name: 'Giao diện' }).ok, `${name}: Giao diện has a separate accessible button`);
     const railOverflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({ containers: ['#navigation'] })));
     check(railOverflow.ok, `${name}: rail and page have no unintended/hidden horizontal overflow (${railOverflow.reasons.join('; ')})`);
     check(await page.eval(`(() => {
@@ -2613,7 +2459,7 @@ async function railReview(page) {
       scenario: 'rail-r1',
       requestedScene: { width, height, scale, theme },
       textScaleLane: 'dom-override-geometry-only',
-      requiredTargets: ['#navigation', '#navigation-toggle', '#profile-trigger'],
+      requiredTargets: ['#navigation', '#navigation-toggle', RAIL_ME],
       railNav: { itemCount: railNav.items.length, fonts: railNav.items.map(i => i.labelFont), lineCounts: railNav.items.map(i => i.lineCount) },
       profileAx: axProfile.ax,
     });
@@ -2623,7 +2469,7 @@ async function railReview(page) {
       const r = toggle.getBoundingClientRect();
       const glyph = [...toggle.querySelectorAll('svg')].find(icon => icon.getClientRects().length).getBoundingClientRect();
       const navIcons = [...rail.querySelectorAll('.vk-ui-nav-item .vk-ui-icon')];
-      const aligned = navIcons.length === 4 && navIcons.every(icon =>
+      const aligned = navIcons.length === 3 && navIcons.every(icon =>
         Math.abs(centerX(glyph) - centerX(icon.getBoundingClientRect())) <= 1);
       const wordsFit = [...rail.querySelectorAll('.vk-ui-nav-item__label')].every(label =>
         [...label.textContent.matchAll(/\\S+/g)].every(word => {
@@ -2657,7 +2503,7 @@ async function railReview(page) {
         requiredTargets: ['#navigation', '#navigation-tooltip'],
       });
       await page.key('Escape');
-      for (let i = 0; i < 4; i++) await page.key('Tab');
+      for (let i = 0; i < 3; i++) await page.key('Tab');
       check(await page.eval(`(() => {
         const link = document.querySelector(${JSON.stringify(RAIL_ME)}), r = link.getBoundingClientRect();
         return document.activeElement === link && r.top >= 0 && r.bottom <= innerHeight;
@@ -2666,7 +2512,7 @@ async function railReview(page) {
         scenario: 'rail-r1-account',
         requestedScene: { width, height, scale, theme },
         textScaleLane: 'dom-override-geometry-only',
-        requiredTargets: ['#navigation', '#profile-trigger'],
+        requiredTargets: ['#navigation', RAIL_ME],
       });
     }
   }
@@ -2699,9 +2545,10 @@ async function mediumRail(page) {
     return document.activeElement?.id === 'navigation-expanded-toggle' &&
       document.querySelector('#navigation-toggle').getAttribute('aria-expanded') === 'true' &&
       document.querySelector('#navigation-expanded').getBoundingClientRect().width === 220 &&
+      !dialog.querySelector('#navigation-expanded-appearance, .vk-ui-nav-utility') &&
       getComputedStyle(dialog, '::backdrop').backgroundColor !== 'rgba(0, 0, 0, 0)' &&
       window.__mediumRailMain === document.querySelector('#noi-dung');
-  })()`), 'Medium rail renders a scrim, traps focus and retains the same main element');
+  })()`), 'Medium rail renders a scrim, traps focus, omits Giao diện and retains the same main element');
   await page.key('Tab', SHIFT);
   check(await page.eval(`document.activeElement === document.querySelector('#navigation-expanded a[href="/toi"]')`), 'Medium Shift+Tab wraps to the last link');
   await page.key('Tab');
@@ -2714,11 +2561,6 @@ async function mediumRail(page) {
   await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 760, y: 20, button: 'left', clickCount: 1 });
   await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 760, y: 20, button: 'left', clickCount: 1 });
   await page.waitFor(`!${RAIL_MODAL_OPEN} && document.activeElement?.id === 'navigation-toggle'`, 'Medium scrim dismisses and restores the base toggle');
-  await page.click(toggle);
-  await page.click('#navigation-expanded-appearance');
-  await page.waitFor(`${PROFILE_OPEN} && !${RAIL_MODAL_OPEN}`, 'Giao diện replaces the expanded rail without stacking dialogs');
-  await page.key('Escape');
-  await page.waitFor(`!${PROFILE_OPEN} && document.activeElement?.id === 'navigation-toggle'`, 'Giao diện reached through the modal restores its base toggle');
   await page.click(toggle);
   await page.click(modal);
   await page.waitFor(`!${RAIL_MODAL_OPEN} && document.activeElement?.id === 'navigation-toggle'`, 'explicit Medium collapse restores the base toggle');
@@ -2856,63 +2698,31 @@ async function adaptiveShell(page) {
   await page.waitFor(`location.pathname === '/' && document.querySelector('#discovery-tools .vk-brand')`, 'back to Khám phá with its brand');
   await assertBrandPlacement(page);
 
-  await openProfile(page);
-  check(await page.eval(`document.activeElement?.name === 'overlay-theme' && document.activeElement.value === 'system'`), 'overlay initially focuses the selected appearance option');
-  check(await page.eval(`document.querySelector('#profile-title').textContent === 'Giao diện' && !document.querySelector('#profile-menu .vk-account-status')`), 'appearance utility contains preferences');
+  await page.click(RAIL_ME);
+  await page.waitFor(`location.pathname === '/toi' && document.querySelector('#me-title')`, 'Tôi route renders Giao diện');
+  await waitForPageAccount(page);
   await railR4Surfaces(page, await page.eval(`matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'`));
-  await page.eval(`document.querySelector('#profile-close').focus()`);
-  await page.key('Tab', SHIFT);
-  check(await page.eval(`document.activeElement === document.querySelector('#overlay-rail input:checked')`), 'Shift+Tab wraps from Close to the last radio');
-  await page.key('Tab');
-  check(await page.eval(`document.activeElement?.id === 'profile-close'`), 'Tab is contained at the end of the modal');
-  await chooseTheme(page, 'dark');
-  await textContrast(page, 'dark');
+  await chooseTheme(page, 'dark', 'page-theme');
+  await textContrast(page, 'dark', 'me');
   await railR4Surfaces(page, 'dark');
-  await page.capture('1440-overlay-dark');
-  await page.key('Escape');
-  check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.id === 'profile-trigger'`), 'Escape closes Giao diện and restores trigger focus');
+  await page.capture('1440-toi-dark');
   await page.reload();
   check(await page.eval(`document.documentElement.dataset.theme === 'dark'`), 'theme preference survives reload');
   await assertBrand(page, 'dark');
-  await openProfile(page);
-  await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 1400, y: 20, button: 'left', clickCount: 1 });
-  await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 1400, y: 20, button: 'left', clickCount: 1 });
-  check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.id === 'profile-trigger'`), 'outside click closes Giao diện and restores focus');
-  await openProfile(page);
-  await page.click('#profile-close');
-  check(await page.eval(`!${PROFILE_OPEN}`), 'explicit close works');
-  await page.eval(`(() => {
-    // Close and reopen in the same task, before the native queued close event is dispatched.
-    document.querySelector('#profile-trigger').click();
-    document.querySelector('#profile-close').click();
-    document.querySelector('#profile-trigger').click();
-  })()`);
-  await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
-  check(await page.eval(`${PROFILE_OPEN} && document.querySelector('#profile-trigger').getAttribute('aria-expanded') === 'true'`), 'stale close events leave the reopened overlay and its expanded state intact');
-  await page.key('Escape');
-  check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.id === 'profile-trigger' && document.querySelector('#profile-trigger').getAttribute('aria-expanded') === 'false'`), 'reopened overlay still dismisses and restores focus');
+  await page.click('#navigation-primary a[href="/"]');
+  await page.waitFor(`location.pathname === '/'`, 'return to Khám phá before testing RAIL_ME navigation');
+  await assertBrand(page, 'dark');
   await page.click(RAIL_ME);
   await page.waitFor(`location.pathname === '/toi' && document.querySelector('#me-title')`, 'real Tôi destination');
-  check(await page.eval(`document.querySelector(${JSON.stringify(RAIL_ME)}).getAttribute('aria-current') === 'page' && !${PROFILE_OPEN}`), 'the rail account link goes straight to /toi and marks its route active');
-  await page.eval(`document.querySelector('#profile-trigger').focus()`);
-  await page.key('Enter');
-  check(await page.eval(`${PROFILE_OPEN} && document.activeElement?.name === 'overlay-theme'`), '/toi can open the separate appearance panel');
-  await page.key('Escape');
-  await page.click('#navigation-primary a[href="/"]');
-  await page.waitFor(`location.pathname === '/'`, 'overlay history host');
-  await openProfile(page);
-  await page.eval(`history.back()`);
-  await page.waitFor(`!${PROFILE_OPEN}`, 'Back closes utility');
-  await sleep(200);
-  check(await page.eval(`location.pathname === '/' && document.activeElement?.id === 'profile-trigger'`), 'Back closes panel before leaving its host route and restores focus');
-  await page.eval(`history.back()`);
-  await page.waitFor(`location.pathname === '/toi'`, 'next Back leaves host');
-  await page.eval(`history.forward()`);
-  await page.waitFor(`location.pathname === '/'`, 'Forward returns to host');
+  check(await page.eval(`document.querySelector(${JSON.stringify(RAIL_ME)}).getAttribute('aria-current') === 'page' &&
+    !document.querySelector('#profile-trigger, #profile-menu, .vk-ui-nav-utility')`),
+    'the rail account link goes straight to /toi and marks its route active without a rail utility');
   await shellFragmentHistory(page);
-  await openProfile(page);
+  await page.viewport(768);
+  await page.click('#navigation-toggle');
+  await page.waitFor(RAIL_MODAL_OPEN, 'Medium rail opens before mobile resize');
   await page.viewport(390);
-  await page.waitFor(`!${PROFILE_OPEN}`, 'resize closes overlay');
+  await page.waitFor(`!${RAIL_MODAL_OPEN}`, 'resize closes modal rail');
   check(await page.eval(`location.pathname === '/ban-viet' && document.activeElement?.id === 'noi-dung'`), 'resize retains host route and focuses visible main');
   check(await page.eval(`[...document.querySelectorAll('.vk-ui-bottom-nav a')].map(a => a.querySelector('.vk-ui-nav-item__label').textContent).join('|') === 'Khám phá|Bàn viết|Tôi'`), 'mobile destination order is Khám phá, Bàn viết, Tôi');
   await page.click('.vk-ui-bottom-nav a[href="/toi"]');
@@ -2937,26 +2747,31 @@ async function adaptiveShell(page) {
   const { identifier } = await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `for (const method of ['getItem','setItem','removeItem']) Storage.prototype[method] = () => { throw new DOMException('Storage denied', 'SecurityError'); };` });
   await page.reload();
   await chooseTheme(page, 'dark', 'page-theme');
+  await chooseTextSize(page, 150, 'page-text');
   await page.viewport(1440);
   await page.click('#navigation-toggle');
-  check(await page.eval(`document.documentElement.dataset.theme === 'dark' && document.documentElement.dataset.rail === 'compact'`), 'storage-denied theme and rail still work in memory');
+  check(await page.eval(`document.documentElement.dataset.theme === 'dark' &&
+    document.documentElement.dataset.rail === 'compact' &&
+    document.documentElement.dataset.text === '150' &&
+    getComputedStyle(document.documentElement).fontSize === '24px'`), 'storage-denied theme, text 150% and rail still work in memory');
   await assertBrand(page, 'dark');
   // Client navigation retains the session preference even while storage is unavailable.
   await page.click('#navigation-primary a[href="/"]');
-  await page.waitFor(`location.pathname === '/'`, 'storage-denied panel host');
-  await openProfile(page);
-  check(await page.eval(`document.activeElement?.value === 'dark'`), 'storage denial keeps utility on the session-local preference');
-  await page.capture('appearance-storage-denied-overlay-dark');
-  await chooseTheme(page, 'system');
-  await chooseTextSize(page, 200, 'overlay-text');
-  await page.key('Escape');
+  await page.waitFor(`location.pathname === '/' && document.documentElement.dataset.text === '150' && getComputedStyle(document.documentElement).fontSize === '24px'`, 'storage-denied host keeps session text scale');
   await page.click(RAIL_ME);
+  await page.waitFor(`location.pathname === '/toi' && document.querySelector('#page-theme input:checked')?.value === 'dark' &&
+    document.querySelector('#page-text input:checked')?.value === '150' &&
+    document.querySelector('#page-rail input:checked')?.value === 'compact'`, 'storage-denied dark, 150% and compact rail survive client navigation');
+  await page.capture('appearance-storage-denied-page-dark');
+  await chooseTheme(page, 'system', 'page-theme');
+  await chooseTextSize(page, 100, 'page-text');
+  await page.click('#page-rail label:has([value="auto"])');
   await page.waitFor(`location.pathname === '/toi' && document.querySelector('#page-theme input:checked')?.value === 'system' &&
-    document.querySelector('#page-text input:checked')?.value === '200'`, 'storage-denied System and text size survive client navigation');
+    document.querySelector('#page-text input:checked')?.value === '100'`, 'storage-denied System and Mặc định update cleanly');
   await page.capture('appearance-storage-denied-page-system');
   await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
   await page.reload();
-  await page.eval(`localStorage.removeItem('vink.ui.rail'); localStorage.removeItem('vink.ui.theme')`);
+  await page.eval(`localStorage.removeItem('vink.ui.rail'); localStorage.removeItem('vink.ui.theme'); localStorage.removeItem('vink.ui.text')`);
   await page.reload();
 
   await accountAppearance(page);
@@ -2968,7 +2783,7 @@ async function adaptiveShell(page) {
     for (const theme of ['system', 'light', 'dark']) {
       await chooseTheme(page, theme, 'page-theme');
       if (width === 1440 && theme !== 'system') await textContrast(page, theme, 'me');
-      for (const scale of [100, 200]) {
+      for (const scale of [100, 150]) {
         await chooseTextSize(page, scale, 'page-text');
         await page.eval(`scrollTo(0, 0)`);
         await bottomNavigationAlignment(page, `shell ${width}px/${scale}%/${theme}`);
@@ -2990,7 +2805,7 @@ async function adaptiveShell(page) {
         check(meOverflow.ok, `${width}px/${scale}% ${theme}: /toi has no unintended or hidden overflow (${meOverflow.reasons.join('; ')})`);
         check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), `${width}px/${scale}% ${theme}: no horizontal overflow`);
         check(await appearanceRows(page, 'page'), `${width}px/${scale}% ${theme}: appearance choices keep whole labels and touch targets`);
-        if (width < 760 && scale === 200) {
+        if (width < 760 && scale === 150) {
           await page.eval(`document.querySelector('#page-theme-title').scrollIntoView({ block: 'start' })`);
           await page.capture(`${width}-me-${theme}-text${scale}-appearance`, {
             ...meMeta,
@@ -3015,7 +2830,8 @@ async function adaptiveShell(page) {
     }
   }
   await page.viewport(1024);
-  await chooseTextSize(page, 200, 'page-text');
+  await chooseTheme(page, 'dark', 'page-theme');
+  await page.eval(`document.documentElement.style.fontSize = '200%'; scrollTo(0, 0)`);
   const compactWords = await page.eval(`(() => {
     const labels = [...document.querySelectorAll('#navigation .vk-ui-nav-item__label')].filter((el) => el.textContent === 'Khám phá');
     return { count: labels.length, intact: labels.every((el) => [[0,4],[5,8]].every(([a,b]) => {
@@ -3023,24 +2839,49 @@ async function adaptiveShell(page) {
       return range.getClientRects().length === 1;
     })) };
   })()`);
-  check(compactWords.count > 0 && compactWords.intact, '1024px / 200% text keeps compact rail Vietnamese words intact');
-  await page.capture('1024-compact-words-text200');
+  check(compactWords.count > 0 && compactWords.intact, '1024px / 200% stress text keeps compact rail Vietnamese words intact');
+  await page.capture('1024-compact-words-text200', {
+    scenario: 'shell-rail-stress-200',
+    requestedScene: { width: 1024, height: 900, scale: 200, theme: 'dark' },
+    textScaleLane: 'dom-override-geometry-only',
+    requiredTargets: ['#navigation'],
+  });
   await page.viewport(320);
-  await page.capture('320-me-dark-text200-after-rail-reflow');
-  check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), '320px / 200% text reflows without horizontal overflow');
+  await page.capture('320-me-dark-text200-after-rail-reflow', {
+    scenario: 'shell-me-stress-200',
+    requestedScene: { width: 320, height: 900, scale: 200, theme: 'dark' },
+    textScaleLane: 'dom-override-geometry-only',
+    requiredTargets: ['#me-title', '.vk-appearance-card'],
+  });
+  check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), '320px / 200% stress text reflows without horizontal overflow');
   await page.eval(`scrollTo(0, document.documentElement.scrollHeight)`);
   await page.waitFor(`parseFloat(getComputedStyle(document.querySelector('.vk-ui-scaffold')).getPropertyValue('--vk-ui-bar-height')) === document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().height`, 'measured bottom clearance');
-  check(await page.eval(`document.querySelector('.vk-me').getBoundingClientRect().bottom <= document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().top`), 'bottom bar clears the end of page content at 320px / 200% text');
-  await page.capture('320-me-dark-text200-bottom');
+  check(await page.eval(`document.querySelector('.vk-me').getBoundingClientRect().bottom <= document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().top`), 'bottom bar clears the end of page content at 320px / 200% stress text');
+  await page.capture('320-me-dark-text200-bottom', {
+    scenario: 'shell-me-stress-200-bottom',
+    requestedScene: { width: 320, height: 900, scale: 200, theme: 'dark' },
+    textScaleLane: 'dom-override-geometry-only',
+    requiredTargets: ['.vk-ui-bottom-nav', '#page-text'],
+  });
   await page.click('.vk-ui-bottom-nav a[href="/ban-viet"]');
   await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('#create-draft')`, 'mobile desk destination');
-  await page.capture('320-desk-dark-text200');
+  await page.capture('320-desk-dark-text200', {
+    scenario: 'shell-desk-stress-200',
+    requestedScene: { width: 320, height: 900, scale: 200, theme: 'dark' },
+    textScaleLane: 'dom-override-geometry-only',
+    requiredTargets: ['#desk-title', '#create-draft'],
+  });
+  await page.eval(`document.documentElement.style.fontSize = ''; scrollTo(0, 0)`);
+  await page.click('.vk-ui-bottom-nav a[href="/toi"]');
+  await page.waitFor(`location.pathname === '/toi'`, 'mobile Tôi to set Lớn 150%');
+  await waitForPageAccount(page);
+  await chooseTextSize(page, 150, 'page-text');
   await page.click('.vk-ui-bottom-nav a[href="/"]');
   await page.waitFor(`location.pathname === '/' && document.querySelector('#discovery-tools .vk-brand') && document.querySelector('#open-tag-filters')`, 'mobile discovery destination');
   await assertBrandPlacement(page);
   await page.eval(`document.querySelector('.vk-ui-skip-link').focus()`);
   await page.key('Tab');
-  check(await page.eval(`document.activeElement.matches('#open-public-search:focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'`), 'at 320px / 200% text, Tab reaches the search icon with a visible focus ring (#404 order: tìm → Lọc thẻ → logo)');
+  check(await page.eval(`document.activeElement.matches('#open-public-search:focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'`), 'at 320px / 150% Lớn text, Tab reaches the search icon with a visible focus ring (#404 order: tìm → Lọc thẻ → logo)');
   await page.key('Tab');
   check(await page.eval(`document.activeElement.matches('#open-tag-filters:focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'`), 'the next Tab reaches Lọc thẻ with a visible focus ring');
   await page.key('Tab');
@@ -3104,7 +2945,7 @@ async function appearanceFirstPaint(page) {
           const axBeforeEval = evaluateAccessibleElement(axBefore, { role: 'link', name: guestLabel, excludeSubstrings: ['TT', '•'] });
           check(axBeforeEval.ok, `${name}: SSR exposes the account link with the guest label (${axBeforeEval.reasons.join('; ')})`);
         }
-        const state = await page.eval(`({ hydrated: document.documentElement.dataset.hydrated === 'true', theme: document.documentElement.dataset.theme || 'system', choices: ['page-theme', 'overlay-theme'].map(id => document.querySelector('#' + id + ' input:checked')?.value) })`);
+        const state = await page.eval(`({ hydrated: document.documentElement.dataset.hydrated === 'true', theme: document.documentElement.dataset.theme || 'system', choices: ['page-theme'].map(id => document.querySelector('#' + id + ' input:checked')?.value) })`);
         if (state.hydrated || state.theme !== theme || state.choices.some(value => value !== theme)) mismatches.push({ name, expected: theme, ...state });
       }
       await page.send('Network.setBlockedURLs', { urls: [] });
@@ -3114,7 +2955,7 @@ async function appearanceFirstPaint(page) {
       const axAfter = await collectElementAccessibility(page, toiNavSelector);
       const axAfterEval = evaluateAccessibleElement(axAfter, { role: 'link', name: 'Tôi', excludeSubstrings: ['TT', '•'] });
       check(axAfterEval.ok, `first-paint reload ${theme}/${os}/${width}: Tôi AX exposes 'Tôi' after hydration (${axAfterEval.reasons.join('; ')})`);
-      const hydrated = await page.eval(`({ theme: document.documentElement.dataset.theme || 'system', choices: ['page-theme', 'overlay-theme'].map(id => document.querySelector('#' + id + ' input:checked')?.value), paints: window.__appearancePaints })`);
+      const hydrated = await page.eval(`({ theme: document.documentElement.dataset.theme || 'system', choices: ['page-theme'].map(id => document.querySelector('#' + id + ' input:checked')?.value), paints: window.__appearancePaints })`);
       if (hydrated.theme !== theme || hydrated.choices.some(value => value !== theme) || hydrated.paints.some(value => value !== `${theme}:${theme}`)) mismatches.push({ name: 'hydration-' + theme + '-' + width, expected: theme, ...hydrated });
     }
   }
@@ -3124,11 +2965,103 @@ async function appearanceFirstPaint(page) {
   check(blocked.length === navigations && blocked.every(error => error === `TypeError: Failed to fetch dynamically imported module: ${args.base}/pkg/vink.js`), 'blocked hydration produces only the expected import failures');
   await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
   await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM] });
-  check(mismatches.length === 0, `first paint and both native selections agree with the preference before hydration: ${JSON.stringify(mismatches)}`);
+  check(mismatches.length === 0, `first paint and native selection agree with the preference before hydration: ${JSON.stringify(mismatches)}`);
+
+  // AC-04 compatibility matrix: legacy 200 -> Lớn 150, canonical 150, absent, invalid, and read-only/setItem-blocked storage
+  // before CSS / first paint (zero frames at 200%/32px or Mặc định/16px) and after hydration/reload.
+  await page.viewport(1440);
+  const { identifier: paintWatch } = await page.send('Page.addScriptToEvaluateOnNewDocument', {
+    source: `window.__textPaints = [];
+      const recordTextPaint = () => {
+        const root = document.documentElement;
+        const checked = document.querySelector('#page-text input:checked')?.value || null;
+        if (checked !== null) {
+          const sig = (root.dataset.text || 'null') + ':' + getComputedStyle(root).fontSize + ':' + checked;
+          if (!window.__textPaints.includes(sig)) window.__textPaints.push(sig);
+        }
+        if (root.dataset.hydrated !== 'true') requestAnimationFrame(recordTextPaint);
+      };
+      requestAnimationFrame(recordTextPaint);`,
+  });
+  try {
+    for (const [label, stored, expectedAttr, expectedPx, expectedChoice, expectedStored] of [
+      ['legacy-200', '200', '150', '24px', '150', '150'],
+      ['new-150', '150', '150', '24px', '150', '150'],
+      ['absent', null, null, '16px', '100', null],
+      ['invalid', 'broken', null, '16px', '100', 'broken'],
+    ]) {
+      await page.eval(stored === null
+        ? `localStorage.removeItem('vink.ui.text')`
+        : `localStorage.setItem('vink.ui.text', ${JSON.stringify(stored)})`);
+      await page.send('Network.setBlockedURLs', { urls: [`${args.base}/pkg/vink.js*`, `${args.base}/pkg/vink_bg.wasm*`] });
+      await page.goto(`${args.base}/toi`);
+      await page.waitFor(`Boolean(document.querySelector('#page-text input:checked')) && window.__textPaints?.length > 0`, `AC-04 ${label} pre-hydration paint`);
+      const preHydration = await page.eval(`({
+        hydrated: document.documentElement.dataset.hydrated === 'true',
+        attr: document.documentElement.dataset.text || null,
+        fontSize: getComputedStyle(document.documentElement).fontSize,
+        choice: document.querySelector('#page-text input:checked')?.value || null,
+        stored: localStorage.getItem('vink.ui.text'),
+        paints: window.__textPaints,
+      })`);
+      check(!preHydration.hydrated &&
+        preHydration.attr === expectedAttr &&
+        preHydration.fontSize === expectedPx &&
+        preHydration.choice === expectedChoice &&
+        preHydration.stored === expectedStored &&
+        preHydration.paints.length > 0 &&
+        preHydration.paints.every(sig => sig === `${expectedAttr ?? 'null'}:${expectedPx}:${expectedChoice}`),
+        `AC-04 ${label} before hydration: ${JSON.stringify(preHydration)}`);
+      await page.send('Network.setBlockedURLs', { urls: [] });
+      await page.reload();
+      await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, `AC-04 ${label} hydrated`);
+      const postHydration = await page.eval(`({
+        attr: document.documentElement.dataset.text || null,
+        fontSize: getComputedStyle(document.documentElement).fontSize,
+        choice: document.querySelector('#page-text input:checked')?.value || null,
+        stored: localStorage.getItem('vink.ui.text'),
+        paints: window.__textPaints,
+      })`);
+      check(postHydration.attr === expectedAttr &&
+        postHydration.fontSize === expectedPx &&
+        postHydration.choice === expectedChoice &&
+        postHydration.stored === expectedStored &&
+        postHydration.paints.every(sig => sig === `${expectedAttr ?? 'null'}:${expectedPx}:${expectedChoice}`),
+        `AC-04 ${label} after hydration/reload (no flash): ${JSON.stringify(postHydration)}`);
+    }
+    const readOnlyLegacy = await page.send('Page.addScriptToEvaluateOnNewDocument', {
+      source: `Storage.prototype.getItem = (k) => (k === 'vink.ui.text' ? '200' : null);
+        Storage.prototype.setItem = () => { throw new DOMException('QuotaExceededError', 'QuotaExceededError'); };
+        Storage.prototype.removeItem = () => { throw new DOMException('SecurityError', 'SecurityError'); };`,
+    });
+    try {
+      await page.goto(`${args.base}/toi`);
+      await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'AC-04 read-only legacy200 hydrated');
+      const roState = await page.eval(`({
+        attr: document.documentElement.dataset.text || null,
+        fontSize: getComputedStyle(document.documentElement).fontSize,
+        choice: document.querySelector('#page-text input:checked')?.value || null,
+        paints: window.__textPaints,
+      })`);
+      check(roState.attr === '150' && roState.fontSize === '24px' && roState.choice === '150' &&
+        roState.paints.every(sig => sig === '150:24px:150'),
+        `AC-04 legacy-200 with setItem blocked still applies Lớn 150% without throwing: ${JSON.stringify(roState)}`);
+      await page.click('#page-text label:has([value="100"])');
+      await page.waitFor(`!document.documentElement.dataset.text && getComputedStyle(document.documentElement).fontSize === '16px'`, 'in-session switch works even when removeItem throws');
+    } finally {
+      await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier: readOnlyLegacy });
+    }
+  } finally {
+    await page.send('Network.setBlockedURLs', { urls: [] });
+    await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier: paintWatch });
+    for (const deadline = Date.now() + 3000; page.errors.length < errorsBefore + 4 && Date.now() < deadline;) await sleep(50);
+    page.errors.splice(errorsBefore);
+    await page.eval(`localStorage.removeItem('vink.ui.text')`);
+  }
 
   // Another tab can write a preference after the bootstrap has applied this document's snapshot.
   await page.viewport(1440);
-  await chooseTextSize(page, 200, 'page-text');
+  await chooseTextSize(page, 150, 'page-text');
   await page.eval(`localStorage.removeItem('vink.ui.theme');
     localStorage.setItem('vink.ui.rail', 'compact');`);
   const { identifier: changeRailStorage } = await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `
@@ -3142,10 +3075,9 @@ async function appearanceFirstPaint(page) {
     await page.reload();
     await page.waitFor(`document.documentElement.dataset.hydrated === 'true' &&
       localStorage.getItem('vink.ui.rail') === 'expanded' && ${RAIL_WIDTH} === 96 &&
-      getComputedStyle(document.documentElement).fontSize === '32px' &&
-      ['page', 'overlay'].every(prefix =>
-        document.querySelector('#' + prefix + '-rail input:checked')?.value === 'compact' &&
-        document.querySelector('#' + prefix + '-text input:checked')?.value === '200')`, 'hydration keeps the bootstrapped rail and text preferences even if storage changes');
+      getComputedStyle(document.documentElement).fontSize === '24px' &&
+      document.querySelector('#page-rail input:checked')?.value === 'compact' &&
+      document.querySelector('#page-text input:checked')?.value === '150'`, 'hydration keeps the bootstrapped rail and text preferences even if storage changes');
   } finally {
     await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier: changeRailStorage });
     await page.eval(`localStorage.removeItem('vink.ui.rail'); localStorage.removeItem('vink.ui.text');`);
@@ -3168,41 +3100,26 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   await page.click('#navigation-toggle');
   await page.tabToBody();
   await page.waitFor(`${selected} === ${JSON.stringify(LAST_LINE)}`, 'selection after rail changes');
-  await openProfile(page);
-  check(!(await page.dialogOpen('leave-editor')), 'opening Giao diện does not invoke the leave guard');
-  await page.click('#overlay-text label:has([value="200"])');
-  await page.waitFor(`getComputedStyle(document.documentElement).fontSize === '32px'`, 'panel enlarges text in the dirty editor');
-  await page.click('#overlay-rail label:has([value="expanded"])');
-  await page.waitFor(`${RAIL_WIDTH} === 220`, 'explicit rail wins in the dirty editor');
-  await page.click('#overlay-rail label:has([value="auto"])');
-  await page.waitFor(`${RAIL_WIDTH} === 96`, 'automatic rail restores the focused editor default');
-  await page.click('#overlay-text label:has([value="100"])');
-  await page.waitFor(`getComputedStyle(document.documentElement).fontSize === '16px'`, 'panel restores the text size');
-  for (const theme of ['light', 'system', 'dark']) {
-    await chooseTheme(page, theme);
-    await page.key('Escape');
-    await openProfile(page);
-  }
-  await chooseTheme(page, 'dark');
-  await page.capture('1280-editor-dirty-overlay-dark');
-  await page.key('Escape');
+  check(await page.eval(`!document.querySelector('#profile-trigger, #profile-menu, .vk-ui-nav-utility')`), 'editor rail has no Giao diện utility button');
   await page.eval(`location.hash = 'editor-fragment'`);
   await page.waitFor(`location.hash === '#editor-fragment'`, 'dirty editor fragment entry');
   await sleep(100);
-  await openProfile(page);
+  await page.viewport(768);
+  await page.click('#navigation-toggle');
+  await page.waitFor(RAIL_MODAL_OPEN, 'Medium modal rail opens in dirty editor');
+  check(!(await page.dialogOpen('leave-editor')), 'opening Medium modal rail does not invoke the leave guard');
   await page.eval(`history.back()`);
-  await page.waitFor(`!${PROFILE_OPEN}`, 'Back closes appearance before dirty editor navigation');
-  check(await page.eval(`location.pathname === '${editorPath}' && location.hash === '#editor-fragment' && !document.querySelector('[data-testid=leave-editor]').open`), 'fragment Back closes appearance and keeps the dirty editor URL without opening a second dialog');
+  await page.waitFor(`!${RAIL_MODAL_OPEN}`, 'Back closes Medium modal rail before dirty editor navigation');
+  check(await page.eval(`location.pathname === '${editorPath}' && location.hash === '#editor-fragment' && !document.querySelector('[data-testid=leave-editor]').open`), 'fragment Back closes modal rail and keeps the dirty editor URL without opening a second dialog');
   await page.eval(`history.back()`);
   await page.waitFor(`location.hash === ''`, 'plain fragment Back in dirty editor');
   check(await page.eval(`location.pathname === '${editorPath}' && !document.querySelector('[data-testid=leave-editor]').open`), 'plain fragment Back does not invoke the dirty editor leave guard');
-  await openProfile(page);
-  await page.key('Escape');
+  await page.viewport(1440);
   await page.tabToBody();
-  await page.waitFor(`${selected} === ${JSON.stringify(LAST_LINE)}`, 'selection after appearance utility');
+  await page.waitFor(`${selected} === ${JSON.stringify(LAST_LINE)}`, 'selection after modal rail traversal');
   await page.eval(`(() => { const content = document.querySelector('.cm-content'); content.blur(); content.focus(); })()`);
   check((await page.eval(selected)) === LAST_LINE, 'native content focus immediately restores the CodeMirror selection');
-  check(await page.eval(view) && (await page.eval(selected)) === LAST_LINE && (await page.body()) === written && (await page.status()) === 'unsaved' && (await page.eval(`document.querySelector('input[name=title]').value`)) === TITLE, 'rail, text size and theme preserve EditorView, selection, text and dirty state');
+  check(await page.eval(view) && (await page.eval(selected)) === LAST_LINE && (await page.body()) === written && (await page.status()) === 'unsaved' && (await page.eval(`document.querySelector('input[name=title]').value`)) === TITLE, 'rail changes preserve EditorView, selection, text and dirty state');
 
   const focusedSelection = `document.activeElement?.matches('.cm-content') && ${selected} === ${JSON.stringify(LAST_LINE)}`;
   const selectionAfterEscape = `!document.querySelector('[data-testid=leave-editor]').open && ${focusedSelection}`;
@@ -3215,7 +3132,7 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
       await page.click(`#navigation-primary a[href="${destination}"]`);
     }
     await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, `dirty guard to ${destination}`);
-    check(await page.eval(`!${PROFILE_OPEN} && location.pathname === '${editorPath}'`), `real ${destination} navigation consults the existing guard`);
+    check(await page.eval(`location.pathname === '${editorPath}'`), `real ${destination} navigation consults the existing guard`);
     await page.key('Escape');
     await page.waitFor(selectionAfterEscape, `selection after cancelling navigation to ${destination}`);
   }
@@ -3228,10 +3145,10 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   await page.key('Escape');
   await page.waitFor(selectionAfterEscape, 'cancelling the Medium account link restores the editor selection');
   check(await page.eval(view) && (await page.body()) === written, 'Medium rail and the leave guard keep the same editor and text');
-  await page.viewport(1440);
-  await openProfile(page);
+  await page.click('#navigation-toggle');
+  await page.waitFor(RAIL_MODAL_OPEN, 'Medium rail opens before mobile resize');
   await page.viewport(390);
-  await page.waitFor(`!${PROFILE_OPEN}`, 'editor overlay closes on mobile resize');
+  await page.waitFor(`!${RAIL_MODAL_OPEN}`, 'editor modal rail closes on mobile resize');
   check(await page.eval(view) && (await page.body()) === written && await page.eval(`location.pathname === '${editorPath}' && getComputedStyle(document.querySelector('.vk-ui-bottom-nav')).display === 'none'`), 'mobile resize retains editor and hides bottom bar');
   await page.capture('390-editor-dirty-dark');
   await assertBrandPlacement(page);
@@ -3242,14 +3159,11 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   await page.viewport(1280);
   await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
   await page.waitFor(`innerWidth === 1280 && ${focusedSelection}`, 'selection after mobile resize');
-  check((await page.eval(selected)) === LAST_LINE && writes === 0, 'utility changes sent no draft writes and retained the caret selection');
+  check((await page.eval(selected)) === LAST_LINE && writes === 0, 'shell changes sent no draft writes and retained the caret selection');
   check((await page.draft(workId)).version === serverVersion, 'shell and fragment traversal preserve the confirmed draft version');
   page.cdp.listeners.splice(page.cdp.listeners.indexOf(listener), 1);
-  await openProfile(page);
-  await chooseTheme(page, 'system');
-  await page.key('Escape');
   await page.tabToBody();
-  await page.waitFor(`${selected} === ${JSON.stringify(LAST_LINE)}`, 'selection after returning to system appearance');
+  await page.waitFor(`${selected} === ${JSON.stringify(LAST_LINE)}`, 'selection after dirty shell checks');
 }
 
 // State anatomy and recovery targets at the same fixture, theme and CSS text scale.
@@ -4263,7 +4177,7 @@ async function setEditorScene(page, { width, height, scale, theme }) {
 }
 
 async function editorChrome(page) {
-  await editorPaperFirst(page, { args, check, openProfile, chooseTheme, editorTarget, fitsEditorAction });
+  await editorPaperFirst(page, { args, check, editorTarget, fitsEditorAction });
   await editorWriting(page, { args, check, setEditorScene, captureEditorScene, editorTarget, fitsEditorAction });
   console.log('editor chrome: reflow, save races and recovery:');
   await page.viewport(1440);
@@ -4996,12 +4910,12 @@ async function mainPhase(page) {
   const serverAfterConflict = await page.draft(workId);
   check(serverAfterConflict.title === 'Tab khác' && serverAfterConflict.version === 3, 'stale save wrote nothing');
   await page.eval(`document.querySelector('.cm-editor').__appearanceConflictView = 'kept'`);
-  await openProfile(page);
-  await chooseTheme(page, 'dark');
-  await page.key('Escape');
+  await page.click('#navigation-toggle');
+  check((await page.eval(RAIL_WIDTH)) === 220, 'expanding rail in conflicted editor leaves editor intact');
+  await page.click('#navigation-toggle');
   await page.click(RAIL_ME);
   await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'profile navigation from a conflicted editor uses the guard');
-  check(await page.eval(`location.pathname === '/ban-viet/${workId}' && document.querySelector('.cm-editor').__appearanceConflictView === 'kept'`) && (await page.body()) === BODY + TAIL && (await page.status()) === 'conflict', 'appearance and guarded Tôi navigation retain the conflicted editor and text');
+  check(await page.eval(`location.pathname === '/ban-viet/${workId}' && document.querySelector('.cm-editor').__appearanceConflictView === 'kept'`) && (await page.body()) === BODY + TAIL && (await page.status()) === 'conflict', 'rail toggles and guarded Tôi navigation retain the conflicted editor and text');
   await page.key('Escape');
   await page.click('#keep-mine');
   await page.waitStatus('saved', 'explicit overwrite');
@@ -5136,12 +5050,11 @@ async function mainPhase(page) {
     await page.waitFor(`!document.querySelector('[data-testid=leave-editor]').open`, 'stayed while saving');
     const pendingText = await page.body();
     await page.eval(`document.querySelector('.cm-editor').__appearancePendingView = 'kept'`);
-    await openProfile(page);
-    await chooseTheme(page, 'light');
-    await page.key('Escape');
+    await page.click('#navigation-toggle');
+    await page.click('#navigation-toggle');
     await page.click(RAIL_ME);
     await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'profile navigation during a pending save uses the guard');
-    check(await page.eval(`location.pathname === '${editorPath}' && document.querySelector('.cm-editor').__appearancePendingView === 'kept'`) && (await page.body()) === pendingText && (await page.status()) === 'saving' && gate.held.length === 0, 'appearance keeps the same pending editor protected without starting another save');
+    check(await page.eval(`location.pathname === '${editorPath}' && document.querySelector('.cm-editor').__appearancePendingView === 'kept'`) && (await page.body()) === pendingText && (await page.status()) === 'saving' && gate.held.length === 0, 'rail toggle keeps the same pending editor protected without starting another save');
     await page.key('Escape');
     await gate.release(held);
     await page.waitStatus('saved', 'late acknowledgement');
@@ -6394,6 +6307,8 @@ try {
   const exited = chrome.child.exitCode !== null ? null : new Promise((resolve) => chrome.child.once('exit', resolve));
   chrome.child.kill();
   await Promise.race([exited, sleep(5000)]);
-  rmSync(chrome.profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  try {
+    rmSync(chrome.profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  } catch {}
 }
 process.exit(exitCode);

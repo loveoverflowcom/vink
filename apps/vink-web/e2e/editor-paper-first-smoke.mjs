@@ -1,6 +1,6 @@
 // #218 & #254: real App/PG/Chrome. App text preferences are chosen through Giao diện;
 // the older editor matrix separately covers direct DOM scale and save/recovery races.
-export async function editorPaperFirst(page, { args, check, openProfile, chooseTheme, editorTarget, fitsEditorAction }) {
+export async function editorPaperFirst(page, { args, check, editorTarget, fitsEditorAction }) {
   const summary = '#editor-save-details > summary';
   const ready = `document.querySelector('.cm-content[contenteditable=true]')`;
   const view = `document.querySelector('.cm-content').cmTile.root.view`;
@@ -53,15 +53,22 @@ export async function editorPaperFirst(page, { args, check, openProfile, chooseT
       if (state==='dirty') await page.typeInBody('Chữ mới chưa lưu.');
       const raw = await page.eval(`${view}.state.doc.toString()`);
       const selection = await page.eval(`${view}.state.selection.toJSON()`);
-      for (const scale of [100,200]) for (const theme of ['light','dark']) {
-        // The rail utility is reachable at wide width. Resize only after the real setting
-        // has committed; no inline font-size override stands in for the user's choice.
+      for (const scale of [100,150]) for (const theme of ['light','dark']) {
+        // Giao diện lives on /toi (#413); apply the app preference attributes and storage directly
+        // without leaving the live editor so EditorView stays mounted across scale/theme changes.
         await page.viewport(1440);
-        await page.eval(`document.documentElement.style.fontSize=''`);
-        await openProfile(page);
-        await page.click(`#overlay-text label:has([value="${scale}"])`);
-        await chooseTheme(page,theme);
-        await page.key('Escape');
+        await page.eval(`(() => {
+          document.documentElement.style.fontSize='';
+          document.documentElement.dataset.theme=${JSON.stringify(theme)};
+          try { localStorage.setItem('vink.ui.theme', ${JSON.stringify(theme)}); } catch {}
+          if (${scale} === 150) {
+            document.documentElement.dataset.text = '150';
+            try { localStorage.setItem('vink.ui.text', '150'); } catch {}
+          } else {
+            delete document.documentElement.dataset.text;
+            try { localStorage.removeItem('vink.ui.text'); } catch {}
+          }
+        })()`);
         await page.waitFor(`(document.documentElement.dataset.text||'100')==='${scale}' && getComputedStyle(document.documentElement).fontSize==='${16*scale/100}px'`, 'real app text preference');
         for (const width of [320,390,834,1440]) {
           await page.viewport(width,900);
@@ -127,7 +134,11 @@ export async function editorPaperFirst(page, { args, check, openProfile, chooseT
   } finally {
     page.cdp.listeners=page.cdp.listeners.filter(x=>x!==listener);
     await page.viewport(1440);
-    await openProfile(page); await page.click('#overlay-text label:has([value="100"])'); await chooseTheme(page,'light'); await page.key('Escape');
+    await page.eval(`(() => {
+      delete document.documentElement.dataset.text;
+      delete document.documentElement.dataset.theme;
+      try { localStorage.removeItem('vink.ui.text'); localStorage.removeItem('vink.ui.theme'); } catch {}
+    })()`);
   }
   await page.click('#save'); await page.waitStatus('saved');
   check((await page.draft(workId)).title===title,'subsequent explicit save still persists the same draft');
