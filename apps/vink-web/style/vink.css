@@ -425,14 +425,11 @@ a {
 .vk-discussion [role="status"]:empty:not(.vk-discussion-live) { display: none; }
 /* .vk-discussion-order and .vk-reader-replacement-badge migrated to Tailwind utilities (W01 pilot). */
 
-/* R4 (#360 ảnh 08): 5-state author bar + reader status/refresh bar. */
+/* R4 (#360 ảnh 08): app mode surfaces share the cascade with the later data-tone rules. */
 .vk-discussion-mode {
-  display: grid;
-  gap: var(--vk-space-2);
   padding: 12px 14px;
   border-radius: var(--vk-radius-lg);
   background: var(--vk-surface-container-low);
-  min-width: 0;
 }
 .vk-discussion-mode[data-mode-kind="reader"] {
   padding: 8px 0;
@@ -448,9 +445,6 @@ a {
 .vk-discussion-mode[data-mode-kind="system-locked"] {
   background: var(--vk-surface-container-highest);
 }
-.vk-discussion-mode__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--vk-space-2) var(--vk-space-3); min-width: 0; }
-.vk-discussion-mode__status { display: flex; align-items: flex-start; gap: 10px; flex: 1 1 14rem; min-width: 0; }
-.vk-discussion-mode__status > .vk-ui-icon { flex-shrink: 0; margin-block-start: 3px; }
 .vk-discussion-mode__dot {
   inline-size: 10px;
   block-size: 10px;
@@ -460,11 +454,6 @@ a {
   margin-block-start: 6px;
 }
 .vk-discussion-mode__dot--subtle { background: var(--vk-outline); }
-.vk-discussion-mode__copy { min-width: 0; }
-.vk-discussion-mode__copy > p { margin: 0; overflow-wrap: anywhere; }
-.vk-discussion-mode__copy > p:first-child { font-weight: var(--vk-type-label-weight); }
-.vk-discussion-mode__copy > .vk-muted { font-size: var(--vk-type-caption-size); }
-.vk-discussion-mode__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-2); }
 .vk-discussion-fixture-note, .vk-discussion-mode__alert { margin: 0; overflow-wrap: anywhere; }
 .vk-discussion-mode__alert { color: inherit; font-size: var(--vk-type-caption-size); }
 
