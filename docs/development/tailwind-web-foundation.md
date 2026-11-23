@@ -196,3 +196,39 @@ hành trình release trên cùng corpus/profile vẫn thiếu. Budget tổng tru
   ở môi trường được phép có trần tổng RAM 12 GB cho cây tiến trình và scratch service.
   Full quick, ma trận Web rộng và bộ đo release cùng corpus chuyển sang hai lượt cuối.
   Proposal `VDR-WEB-TAILWIND-FOUNDATION@r1` vẫn `PENDING`.
+
+## 9. Đối chiếu sau squash #431
+
+`develop@2712145b08a6a4c7a12c1d57033ecd2a5bd33b26` có cùng tree với
+`5e8fbd840ad83f662f17c22df416f47a67e78acf`. Bằng chứng tại mục 7–8 giữ provenance lúc
+#431 còn là Draft. `VDR-WEB-TAILWIND-FOUNDATION@r1` vẫn `PENDING`.
+
+Walkthrough tự kiểm của S1 dùng ví dụ `Notice` có thật tại `packages/ui-system/leptos/src/feedback.rs`.
+Chèn tạm `class=("sm:gap-x-vk-6", banner)` vào opening tag, parse bằng `rstml 0.13.1` mà
+`leptos_macro 0.8.19` đang khóa, rồi chạy adapter `xtask/src/tailwind.rs::compile` cho Web
+minify và preview dev. CSS ở cả hai entry sinh media query 40rem và
+`column-gap: var(--vk-space-6)`. Build lặp cho cùng bytes, hoàn nguyên fixture trả lại SHA-256
+Web `c9c99ee74083fced523c68c038608ee2c28fafd00eef96f71edb6b4f7b137cd5` và preview
+`0380a51bb97028e02763075ff864539fe4f1ccfed0eb2a2ca11f4506a8b692bb`.
+
+Harness cô lập chạy `cargo test --offline --manifest-path <harness>/Cargo.toml --target-dir
+<harness>/target -- --test-threads=1` với một job. Đạt 37 test, gồm token drift và guard trên
+tree thật, fixture stale style exception và vòng compile mới/lặp/hoàn nguyên. RSS cao nhất đo
+được là 353.533.952 B trên Mac arm64. Với tuple, source `tachys 0.2.19` nối class khi
+điều kiện đúng và `rebuild` chỉ thêm/bỏ token. Phần đó là source inspection. Render, hydration
+và layout live của ví dụ trên browser là `NOT_RUN`.
+
+| Issue / tiêu chí | Phạm vi đã đối chiếu | Trạng thái |
+| --- | --- | --- |
+| #417 AC-02/03/06 | Compiler pin, hai entry thật, đủ source roots, compile lặp và lỗi stale output, guard Rust/CSS và stale exception qua `ui_qualification::check` | `PASS` |
+| #417 AC-01/04/05/07 | CSS payload, token/layer và asset contract ở mức source/compile/unit; còn phép đo đầy đủ, theme/runtime, đóng gói artifact release và UX pilot | `PARTIAL` |
+| #417 AC-08 | Đối chiếu lại docs và registry giữ đúng owner và trạng thái PENDING; cần tích hợp cập nhật docs | `PARTIAL` |
+| #418 AC-04 | Mô tả default/markdown, stable EditorView, ranh giới format extension/convert, CSS giữ lại và test hooks khớp với source đã tích hợp | `PASS` ở phạm vi tài liệu |
+| #418 AC-01/03/05 | Các chỉnh lý canonical guide, guard và lệnh verification đã đối chiếu với source thực | Chờ tích hợp |
+| #418 AC-02 | Fixture qua `rstml` và Tailwind. Còn kiểm bằng macro `view!` của Leptos với `banner=true` và `banner=false` | `PARTIAL` |
+| #418 AC-06 | Walkthrough S1 thay variant và sinh CSS. S2 đã review độc lập docs ở `5614b77f`. Guide cập nhật ví dụ `class:` theo review | Đủ bằng chứng tài liệu, ghi nhận sau khi tích hợp |
+
+Các gate sau đã chuyển sang hai lượt kiểm cuối: tooltip rail, editor SSR/hydration, full quick,
+full Web/preview và perf release CSS/HTML/WASM trên cùng máy/browser/profile/corpus. Giữ
+`NOT_RUN` khi thiếu lượt chạy đúng ranh giới. Kiểm trực tiếp ảnh trước/sau, forced-colors và
+stress 200% trong lượt UX tương ứng. App tại baseline vẫn dùng lựa chọn 100%/200%.
