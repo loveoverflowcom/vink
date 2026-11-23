@@ -78,6 +78,31 @@ impl ButtonVariant {
         Self::DangerText,
     ];
 
+    /// Shared geometry and variant hook for a Button or a native link styled as one.
+    /// The element still owns its behavior and accessible name.
+    pub const fn classes(self) -> &'static str {
+        match self {
+            Self::Filled => {
+                "vk-ui-button vk-ui-button--filled relative box-border inline-flex items-center gap-vk-2"
+            }
+            Self::Tonal => {
+                "vk-ui-button vk-ui-button--tonal relative box-border inline-flex items-center gap-vk-2"
+            }
+            Self::Outlined => {
+                "vk-ui-button vk-ui-button--outlined relative box-border inline-flex items-center gap-vk-2"
+            }
+            Self::Text => {
+                "vk-ui-button vk-ui-button--text relative box-border inline-flex items-center gap-vk-2"
+            }
+            Self::Danger => {
+                "vk-ui-button vk-ui-button--danger relative box-border inline-flex items-center gap-vk-2"
+            }
+            Self::DangerText => {
+                "vk-ui-button vk-ui-button--danger-text relative box-border inline-flex items-center gap-vk-2"
+            }
+        }
+    }
+
     pub const fn id(self) -> &'static str {
         match self {
             Self::Filled => "filled",
@@ -171,7 +196,7 @@ pub fn Button(
                     ButtonKind::Submit => "submit",
                 }
                 id=id
-                class=move || format!("vk-ui-button vk-ui-button--{}", variant.get().id())
+                class=move || variant.get().classes()
                 data-state=move || state.with(ActionState::id)
                 aria-disabled=move || (!state.with(ActionState::is_enabled)).then_some("true")
                 aria-busy=move || state.with(|s| matches!(s, ActionState::Pending { .. })).then_some("true")
@@ -406,6 +431,36 @@ mod tests {
             "(mở tab mới)",
         ] {
             assert!(html.contains(needle), "{needle} in {html}");
+        }
+    }
+
+    #[test]
+    fn button_recipe_preserves_native_targets_and_all_variant_hooks() {
+        for variant in ButtonVariant::ALL {
+            let button = render(move || view! { <Button variant>"Mở"</Button> }.into_any());
+            let anchor = render(move || {
+                view! { <Link href="/toi" attr:class=variant.classes()>"Mở"</Link> }.into_any()
+            });
+            let hook = format!("vk-ui-button--{}", variant.id());
+            assert!(
+                button.contains("<button") && button.contains("type=\"button\""),
+                "{button}"
+            );
+            assert!(
+                anchor.starts_with("<a ") && anchor.contains("href=\"/toi\""),
+                "{anchor}"
+            );
+            for token in [
+                hook.as_str(),
+                "relative",
+                "box-border",
+                "inline-flex",
+                "items-center",
+                "gap-vk-2",
+            ] {
+                assert!(button.contains(token), "{token}: {button}");
+                assert!(anchor.contains(token), "{token}: {anchor}");
+            }
         }
     }
 

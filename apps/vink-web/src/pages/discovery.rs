@@ -1107,10 +1107,10 @@ fn PublicResults(
                                 });
                                 view! { <div data-testid=if page_empty { "public-empty-page" } else if filtered { "public-no-results" } else { "public-empty" }>
                                     <EmptyState artwork=if filtered || page_empty { EmptyArtwork::NoResults } else { EmptyArtwork::NoPublicWorks } message announce=true>
-                                        {has_tags.then(|| view! { <a id="clear-public-tags" class="vk-ui-button vk-ui-button--tonal" href=no_tags.href(None)>"Bỏ lọc thẻ"</a> })}
-                                        {has_query.then(|| view! { <a id="clear-public-results" class="vk-ui-button vk-ui-button--tonal" href=no_query.href(None)>"Xóa tìm kiếm"</a> })}
-                                        {find_authors.map(|(href, label)| view! { <a id="find-authors-for-query" class="vk-ui-button vk-ui-button--text" href=href>{label}</a> })}
-                                        {(!filtered && !page_empty).then(|| view! { <a class="vk-ui-button vk-ui-button--tonal" href="/ban-viet">"Đến Bàn viết"</a> })}
+                                        {has_tags.then(|| view! { <a id="clear-public-tags" class=ButtonVariant::Tonal.classes() href=no_tags.href(None)>"Bỏ lọc thẻ"</a> })}
+                                        {has_query.then(|| view! { <a id="clear-public-results" class=ButtonVariant::Tonal.classes() href=no_query.href(None)>"Xóa tìm kiếm"</a> })}
+                                        {find_authors.map(|(href, label)| view! { <a id="find-authors-for-query" class=ButtonVariant::Text.classes() href=href>{label}</a> })}
+                                        {(!filtered && !page_empty).then(|| view! { <a class=ButtonVariant::Tonal.classes() href="/ban-viet">"Đến Bàn viết"</a> })}
                                     </EmptyState>
                                 </div> }.into_any()
                             }

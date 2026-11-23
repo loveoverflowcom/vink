@@ -130,6 +130,20 @@ pub enum Measure {
 }
 
 impl Measure {
+    const fn classes(self) -> &'static str {
+        match self {
+            Self::Reading => {
+                "vk-ui-container vk-ui-container--reading box-border mx-auto [inline-size:100%] [max-inline-size:var(--vk-measure)]"
+            }
+            Self::Wide => {
+                "vk-ui-container vk-ui-container--wide box-border mx-auto [inline-size:100%] [max-inline-size:var(--vk-measure-wide)]"
+            }
+            Self::Full => {
+                "vk-ui-container vk-ui-container--full box-border mx-auto [inline-size:100%]"
+            }
+        }
+    }
+
     pub const fn id(self) -> &'static str {
         match self {
             Self::Reading => "reading",
@@ -143,7 +157,7 @@ impl Measure {
 #[component]
 pub fn Container(#[prop(optional)] measure: Measure, children: Children) -> impl IntoView {
     view! {
-        <div class=format!("vk-ui-container vk-ui-container--{}", measure.id())>{children()}</div>
+        <div class=measure.classes()>{children()}</div>
     }
 }
 
@@ -239,6 +253,38 @@ pub fn Divider(#[prop(optional)] decorative: bool) -> impl IntoView {
 mod tests {
     use super::*;
     use crate::tests::render;
+
+    #[test]
+    fn container_preserves_all_three_measures_without_side_padding() {
+        for (measure, max_inline) in [
+            (
+                Measure::Reading,
+                Some("[max-inline-size:var(--vk-measure)]"),
+            ),
+            (
+                Measure::Wide,
+                Some("[max-inline-size:var(--vk-measure-wide)]"),
+            ),
+            (Measure::Full, None),
+        ] {
+            let html =
+                render(move || view! { <Container measure>"Nội dung"</Container> }.into_any());
+            let hook = format!("vk-ui-container--{}", measure.id());
+            assert!(
+                html.contains(&hook) && html.contains("[inline-size:100%]"),
+                "{html}"
+            );
+            assert!(
+                html.contains("box-border") && html.contains("mx-auto"),
+                "{html}"
+            );
+            assert!(!html.contains("px-") && !html.contains("padding"), "{html}");
+            match max_inline {
+                Some(max_inline) => assert!(html.contains(max_inline), "{html}"),
+                None => assert!(!html.contains("max-inline-size"), "{html}"),
+            }
+        }
+    }
 
     #[test]
     fn layout_uses_named_tokens_only() {
