@@ -126,6 +126,7 @@ pub struct PublicCardFacts {
     pub excerpt: Option<String>,
     pub author: crate::application::profile::AuthorAttribution,
     pub published_at: OffsetDateTime,
+    pub first_published_at: Option<OffsetDateTime>,
     /// The metadata snapshot bound in the same publication row; `None`: published without one.
     pub snapshot: Option<MetadataSnapshot>,
 }

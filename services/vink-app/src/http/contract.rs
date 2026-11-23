@@ -104,6 +104,11 @@ pub struct WorkCard {
     pub author: AuthorProjection,
     #[serde(with = "time::serde::rfc3339")]
     pub published_at: OffsetDateTime,
+    #[serde(
+        with = "time::serde::rfc3339::option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub first_published_at: Option<OffsetDateTime>,
     /// Form first, then themes, in the snapshot's order.
     pub tags: Vec<PublicTag>,
 }
@@ -1025,6 +1030,7 @@ impl From<&PublicWorkSummary> for WorkCard {
             author_display_name: work.author.label().to_owned(),
             author: (&work.author).into(),
             published_at: work.published_at,
+            first_published_at: work.first_published_at,
             tags: work.tags.iter().map(PublicTag::from).collect(),
         }
     }
@@ -1774,6 +1780,7 @@ mod tests {
                 excerpt: Some("Mưa rơi nhẹ qua phố cũ.".into()),
                 author: "Tác giả mẫu (dữ liệu phát triển)".into(),
                 published_at: AT,
+                first_published_at: Some(AT - time::Duration::days(1)),
                 tags: vec![],
             }],
             next: None,
@@ -2761,6 +2768,7 @@ mod tests {
                 excerpt: excerpt.map(str::to_string),
                 author: author.clone().into(),
                 published_at: AT - time::Duration::minutes(minutes),
+                first_published_at: None,
                 tags,
             };
             let works = vec![

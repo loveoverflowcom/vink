@@ -77,6 +77,7 @@ fn card(n: u128, snapshot: Option<MetadataSnapshot>) -> PublicCardFacts {
         excerpt: Some(format!("Trích đoạn mẫu {n}")),
         author: "Tác giả".into(),
         published_at: NEWEST - time::Duration::minutes(n as i64),
+        first_published_at: None,
         snapshot,
     }
 }

@@ -364,6 +364,49 @@ async fn walk(app: &Router, q: Option<&str>, tags: &[&str], limit: usize) -> Vec
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn discovery_keeps_first_public_date_across_pointer_changes(pool: PgPool) {
+    let app = setup(&pool).await;
+    let id = work(1);
+    let owner = dev_seed::SAMPLE_AUTHOR;
+    let path = "/api/v1/works";
+
+    publish(&pool, id, owner, "Bài đầu", BASE, Meta::Untagged).await;
+    let original = get(&app, path, None).await.json();
+    let first = original["works"][0]["first_published_at"].as_str().unwrap();
+    assert_eq!(original["works"][0]["published_at"], "2026-10-01T00:00:00Z");
+
+    publish(
+        &pool,
+        id,
+        owner,
+        "Bản mới",
+        BASE + Duration::days(1),
+        Meta::Untagged,
+    )
+    .await;
+    let revised = get(&app, path, None).await.json();
+    assert_eq!(revised["works"][0]["title"], "Bản mới");
+    assert_eq!(revised["works"][0]["published_at"], "2026-10-02T00:00:00Z");
+    assert_eq!(revised["works"][0]["first_published_at"], first);
+
+    withdraw(&pool, id).await;
+    assert!(get(&app, path, None).await.ids().is_empty());
+
+    publish(
+        &pool,
+        id,
+        owner,
+        "Công khai lại",
+        BASE + Duration::days(2),
+        Meta::Untagged,
+    )
+    .await;
+    let restored = get(&app, path, None).await.json();
+    assert_eq!(restored["works"][0]["published_at"], "2026-10-03T00:00:00Z");
+    assert_eq!(restored["works"][0]["first_published_at"], first);
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
 async fn search_finds_works_beyond_the_first_twelve_in_bounded_ordered_pages(pool: PgPool) {
     let app = setup(&pool).await;
     // 30 public works, one hour apart (n = 1 newest); 10, 11 and 12 share one timestamp.

@@ -1197,11 +1197,12 @@ fn WorkCardRow(
                 #[cfg(feature = "hydrate")]
                 let following = context.mode == ExploreMode::Following;
                 // R4.2 (#405, DQ-08): show first-public date in Asia/Ho_Chi_Minh across all modes.
-                let date = first_public_date_hcm(&work.published_at);
-                let separate_metadata = primary_tag.is_some() && date.is_some();
-                let date = date.map(|label| view! {
-                    <time class="vk-feed-date" datetime=work.published_at.clone() title="Công khai lần đầu">{label}</time>
+                let date = work.first_published_at.as_deref().and_then(|instant| {
+                    first_public_date_hcm(instant).map(|label| view! {
+                        <time class="vk-feed-date" datetime=instant.to_owned() title="Công khai lần đầu">{label}</time>
+                    })
                 });
+                let separate_metadata = primary_tag.is_some() && date.is_some();
                 #[cfg(feature = "hydrate")]
                 let author_return = work.work_id.clone();
                 // Placeholder labels are not author names: never mark them as search matches.
@@ -1428,6 +1429,7 @@ mod tests {
             author_display_name: "Lê Thu Mưa".into(),
             author: None,
             published_at: "2026-10-30T08:00:00Z".into(),
+            first_published_at: Some("2026-10-28T18:00:00Z".into()),
             tags: vec![PublicTagDto {
                 tag_id: "11111111-1111-4111-8111-111111111111".into(),
                 facet: "form".into(),
@@ -1456,8 +1458,8 @@ mod tests {
         );
         assert!(
             home_html.contains(" · ")
-                && home_html.contains("datetime=\"2026-10-30T08:00:00Z\"")
-                && home_html.contains(">30/10/2026</time>"),
+                && home_html.contains("datetime=\"2026-10-28T18:00:00Z\"")
+                && home_html.contains(">29/10/2026</time>"),
             "DQ-08 first-public date renders on Tất cả SSR: {home_html}"
         );
         assert!(!home_html.contains("<mark"), "{home_html}");

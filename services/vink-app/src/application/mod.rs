@@ -66,6 +66,8 @@ pub struct PublicWorkSummary {
     pub excerpt: Option<String>,
     pub author: crate::application::profile::AuthorAttribution,
     pub published_at: OffsetDateTime,
+    /// The immutable first-public instant, when the publication history can establish it.
+    pub first_published_at: Option<OffsetDateTime>,
     /// As in [`PublicWork::tags`].
     pub tags: Vec<CatalogTag>,
 }

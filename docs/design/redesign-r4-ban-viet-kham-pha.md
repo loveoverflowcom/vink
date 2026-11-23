@@ -233,7 +233,8 @@ chủ sản phẩm; chưa ghi vào registry `decisions/`:
 - DQ-07: “Chip theo bề rộng chữ tự xuống dòng, bo 12, chọn = primary + dấu chọn, thêm nút “Bỏ
   chọn” (chỉ client)” — thay lưới hai cột #260 CHOICE-02 A trong sheet Lọc thẻ.
 - DQ-08: “Hiện dòng “Thể loại · ngày công khai đầu” ở mọi chế độ (Tất cả + Đang theo dõi)” — ngày
-  từ `published_at` theo múi giờ `Asia/Ho_Chi_Minh` đồng bộ giữa SSR và browser.
+  từ `first_published_at` theo múi giờ `Asia/Ho_Chi_Minh` đồng bộ giữa SSR và browser. Bài
+  có lịch sử chưa xác định được lần công khai đầu chỉ hiện thể loại nếu có.
 - DQ-09: “Giữ avatar tròn như hiện tại (#352)” — không đổi avatar sang bo vuông.
 - DQ-10: “Dùng tertiary” — Lọc thẻ là nút icon `tertiary-container`, dòng thể loại · ngày trên thẻ
   Khám phá dùng `tertiary`; nhãn “Chờ duyệt” vẫn thuộc lát 9.

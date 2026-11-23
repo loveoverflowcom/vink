@@ -49,11 +49,13 @@ use crate::domain::taxonomy::{
 /// lets the order index start at the cursor.
 /// Public only so that the measurement test can `EXPLAIN` exactly this statement.
 pub const DISCOVERY_SEARCH_SQL: &str = "
-    SELECT p.work_id, r.title, r.document, a.display_name, a.handle, a.retired, p.published_at, p.metadata_snapshot_id, s.digest
+    SELECT p.work_id, r.title, r.document, a.display_name, a.handle, a.retired,
+           p.published_at, p.metadata_snapshot_id, s.digest, f.first_published_at
       FROM publications p
       JOIN revisions r ON r.work_id = p.work_id AND r.id = p.revision_id
       JOIN works w ON w.id = p.work_id
       JOIN public_author_attribution a ON a.id = w.owner_id
+      LEFT JOIN work_first_publications f ON f.work_id = p.work_id AND f.provenance = 'exact'
       LEFT JOIN work_metadata_snapshots s
              ON s.work_id = p.work_id AND s.id = p.metadata_snapshot_id
      WHERE ($1::text IS NULL
@@ -79,6 +81,7 @@ pub(super) struct CardRow {
     handle: Option<String>,
     retired: bool,
     published_at: OffsetDateTime,
+    first_published_at: Option<OffsetDateTime>,
     metadata_snapshot_id: Option<Uuid>,
     digest: Option<String>,
 }
@@ -230,6 +233,7 @@ pub(super) async fn project_cards(
                 excerpt: public_excerpt(published.document()),
                 author: AuthorAttribution::project(row.display_name, row.handle, row.retired),
                 published_at: row.published_at,
+                first_published_at: row.first_published_at,
                 snapshot: row
                     .metadata_snapshot_id
                     .and_then(|id| snapshots.get(&id).cloned()),

@@ -143,6 +143,7 @@ pub(crate) fn summary(
         excerpt: card.excerpt,
         author: card.author,
         published_at: card.published_at,
+        first_published_at: card.first_published_at,
         tags,
     })
 }
