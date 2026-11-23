@@ -147,26 +147,11 @@
   color: var(--vk-on-primary-container);
 }
 
-.vk-ui-stack {
-  display: flex;
-  flex-direction: column;
-  gap: var(--vk-ui-gap);
-  align-items: var(--vk-ui-align, stretch);
-  min-inline-size: 0;
-}
-
-.vk-ui-stack--row { flex-direction: row; }
+/* Keep child shrinkability at its existing priority so child styles can still override it. */
 .vk-ui-stack > * { min-inline-size: 0; }
 
-.vk-ui-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--vk-ui-min)), 1fr));
-  gap: var(--vk-ui-gap);
-}
-
+/* Reset the native hr border before applying the logical stroke, on both divider variants. */
 .vk-ui-divider {
-  inline-size: 100%;
-  margin: 0;
   border: 0;
   border-block-start: 1px solid var(--vk-outline-variant);
 }
