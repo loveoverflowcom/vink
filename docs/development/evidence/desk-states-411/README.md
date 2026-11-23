@@ -28,3 +28,10 @@ có ảnh sau trong lượt này.
 - [Skeleton khi giữ phản hồi, 390 × 900, sáng, 100%](sau-dang-tai-390-sang-100.png)
 - [Lỗi với kết quả rỗng được giữ, 1440 × 900, sáng, 100%](sau-loi-1440-sang-100.png)
 - [Đã cuộn tới nút Thử lại, 320 × 900, tối, stress 200%](sau-thu-lai-320-toi-200.png)
+
+### Kiểm bổ sung khi bật đăng nhập
+
+Ca Chrome `desk-guest-open` dùng App SSR trên `03730853`, bundle hydrate của
+`b4fe62fa`, CSS tại `3356c271`, Identity native và PostgreSQL thử nghiệm. PASS cả
+24 tổ hợp kích thước, theme và cỡ chữ. Trang khách gửi 0 request danh sách riêng,
+có một nút chính “Đăng nhập” tới `/toi?next=/ban-viet` và liên kết “Khám phá tác phẩm”.

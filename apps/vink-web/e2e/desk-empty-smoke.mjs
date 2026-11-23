@@ -29,6 +29,14 @@ export async function deskGuest(page, {args, check}, signInOpen) {
       && document.querySelector('.vk-desk-access .vk-empty-state__actions a[href="/"]')?.textContent==='Khám phá tác phẩm'
       && document.querySelectorAll('.vk-desk-access .vk-empty-state__actions a').length===${signInOpen ? 2 : 1}`),
       '#308 guest actions reflect this deployment’s sign-in capability');
+    if (signInOpen) {
+      check(await page.eval(`(() => {
+        const login=document.querySelector('#desk-sign-in');
+        return login.textContent.trim()==='Đăng nhập' && login.getAttribute('href')==='/toi?next=/ban-viet' &&
+          login.classList.contains('vk-ui-button--filled') &&
+          document.querySelectorAll('.vk-desk-access .vk-ui-button--filled').length===1;
+      })()`), '#411 the primary guest action signs in and returns to the Desk');
+    }
     const label = signInOpen ? 'Đăng nhập' : 'Tài khoản';
     const { root } = await page.send('DOM.getDocument');
     for (const width of [320,390,834,1440]) for (const theme of ['light','dark']) for (const scale of [100,150,200]) {

@@ -6356,7 +6356,7 @@ try {
   else if (args.phase === 'author-works') await authorWorks(page, {args,check,DraftGate,sleep});
   else if (args.phase === 'desk-pagination') await draftPagination(page, {args, check, DraftGate, sleep});
   else if (args.phase === 'desk-empty') await deskEmptyState(page, {args,check,DraftGate,textContrast});
-  else if (args.phase === 'desk-guest') await deskGuest(page, {args,check}, false);
+  else if (args.phase === 'desk-guest' || args.phase === 'desk-guest-open') await deskGuest(page, {args,check}, args.phase === 'desk-guest-open');
   else if (args.phase === 'desk-empty-context') { await draftDashboard(page); await deskEmptyState(page, {args,check,DraftGate,textContrast}); }
   else if (args.phase === 'desk-layout') { await draftDashboard(page); await draftR6Hierarchy(page); await timestampPresentation(page); await publicReading(page); }
   else if (args.phase === 'bottom-navigation') await bottomNavigationRegression(page);
