@@ -2,6 +2,7 @@
 // The mail carrier is a local outbox. Faults delay/drop a real response or explicitly inject
 // a refusal; no synthetic success is used. Don't log request bodies, credentials or cookies.
 
+import { wakeDesk } from './desk-lifecycle.mjs';
 import { followingFeed } from './following-feed-smoke.mjs';
 import { authorFollows } from './author-follow-smoke.mjs';
 import { authorHandles } from './author-handle-smoke.mjs';
@@ -167,7 +168,7 @@ async function expiredDesk(page, {base, check, openPage}) {
     check(reads.count()===1, '#308 active scope starts exactly one initial read');
     const late = await holdAnswer(desk, 'GET', '/api/v1/author/works');
     await desk.send('Network.deleteCookies', {name:sessionCookie, url:base});
-    await desk.click('#refresh-drafts');
+    await wakeDesk(desk);
     check(await late.held()===401, '#308 holding the real 401 from a private refresh after session loss');
     await late.finish();
     await desk.waitFor(q('#desk-sign-in'), '#308 late 401 reconciles through the session owner');

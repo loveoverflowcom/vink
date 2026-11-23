@@ -9,6 +9,7 @@
 // Input.dispatchKeyEvent, which is programmatic input, not a real OS IME or keyboard layout. One
 // headless Chrome is used at desktop/tablet/mobile CSS viewport sizes. Save responses are held or failed with the Fetch domain.
 
+import { wakeDesk } from './desk-lifecycle.mjs';
 import { defaultDocument, paragraphs } from './document.mjs';
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -140,7 +141,7 @@ async function searchBarGeometry(page, selector, scenario) {
       ok: a.width >= 100 && s.height >= ${selector === '#draft-search' ? 48 : 56} && a.left >= s.left && a.right <= s.right &&
         controls.every(el => { const r=el.getBoundingClientRect(); return r.width>=48 && r.height>=48 &&
           r.left>=s.left && r.right<=s.right && r.top>=s.top && r.bottom<=s.bottom && (r.right<=a.left || r.left>=a.right); }) &&
-        input.placeholder===label.textContent && l.width<=1 && l.height<=1 && hidden.position==='absolute' && hidden.display!=='none' &&
+        input.placeholder==='Tìm theo tên' && label.textContent==='Tìm tác phẩm' && l.width<=1 && l.height<=1 && hidden.position==='absolute' && hidden.display!=='none' &&
         input.getAttribute('aria-label')===null && input.getAttribute('aria-hidden')===null &&
         !shell.querySelector('.vk-ui-field__help,details,[aria-haspopup]') &&
         shell.querySelectorAll('input').length===1 && shell.querySelectorAll('button[type=submit]').length===1 &&
@@ -858,7 +859,7 @@ class Page {
             choices: bounds((prefix === 'page' ? '#me' : '#profile-menu') + ' .vk-appearance-region'),
             group: bounds('#' + prefix + '-theme') };
         })(),
-        desk: { heading: geometry('#heading'), resume: geometry('#resume'), title: geometry('#resume h2'), disclosure: geometry('#resume-title-toggle'), metadata: geometry('#resume .vk-draft-meta'), cta: geometry('[data-testid=resume-draft]'), list: geometry('#drafts'), tools: geometry('#draft-tools'), search: geometry('#draft-search'), sort: geometry('#draft-sort'), refresh: geometry('#refresh-drafts'), scope: geometry('#draft-scope'), firstRow: geometry('[data-testid=draft-row]'), rowLink: geometry('.vk-draft-row__link'), rowTitle: geometry('.vk-draft-row__title'), rowTitleLines: titleLines, rowMetadata: geometry('.vk-draft-row .vk-draft-meta'), rowOpen: geometry('.vk-draft-row__open'), results: geometry('#draft-results'), listHeading: geometry('#draft-list-title'), searchField: geometry('.vk-draft-search > .vk-ui-field'), sortField: geometry('#draft-tools > .vk-ui-field:nth-child(2)') },
+        desk: { heading: geometry('#heading'), resume: geometry('#resume'), title: geometry('#resume h2'), disclosure: geometry('#resume-title-toggle'), metadata: geometry('#resume .vk-draft-meta'), cta: geometry('[data-testid=resume-draft]'), list: geometry('#drafts'), tools: geometry('#draft-tools'), search: geometry('#draft-search'), sort: geometry('#draft-sort'), searchLauncher: geometry('#open-draft-search'), scope: geometry('#draft-scope'), firstRow: geometry('[data-testid=draft-row]'), rowLink: geometry('.vk-draft-row__link'), rowTitle: geometry('.vk-draft-row__title'), rowTitleLines: titleLines, rowMetadata: geometry('.vk-draft-row .vk-draft-meta'), rowOpen: geometry('.vk-draft-row__open'), results: geometry('#draft-results'), listHeading: geometry('#draft-list-title'), searchField: geometry('.vk-draft-search > .vk-ui-field'), sortField: geometry('#draft-tools > .vk-ui-field:nth-child(2)') },
         reader: { title: geometry('#reader-header h1'), header: geometry('#reader-header'), body: geometry('.vk-reader .vk-document') },
         editor: { status: document.querySelector('[data-testid=save-status]')?.dataset.status, textSetting: document.documentElement.dataset.text,
           toolbar: geometry('#editor-toolbar'), statusReadout: geometry('[data-testid=save-status]'), save: geometry('#save'), tools: geometry('#editor-save-details > summary'),
@@ -3419,7 +3420,7 @@ async function draftR6Hierarchy(page) {
   }));
   const gate = new DraftGate(page); gate.list = {body:{drafts:cards}}; await gate.enable();
   await page.goto(`${args.base}/ban-viet`);
-  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length===3 && document.querySelector('#draft-scope').textContent.trim()==='Hiển thị 3 tác phẩm'`, 'compact R6 fixture');
+  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length===3 && document.querySelector('#draft-scope').textContent.trim()==='3 tác phẩm'`, 'compact R6 fixture');
   for (const [width, scale, theme] of [[390,100,'light'], [320,200,'dark'], [1440,100,'light'], [1280,100,'light'], [1440,200,'dark'], [1280,200,'dark']]) {
     await page.viewport(width);
     await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:0,y:0});
@@ -3494,26 +3495,30 @@ async function draftDashboard(page) {
   const firstHref = `/ban-viet/${cards[0].work_id}`;
   check(await page.eval(`!document.querySelector('#resume, #resume-title-toggle, [data-testid=draft-resume]') && document.querySelector('.vk-draft-row__link').getAttribute('href')===${JSON.stringify(firstHref)}`), 'removed resume has no replacement or disclosure; first row opens the authorized work');
   check(gate.requests.length===2 && gate.requests.every(u=>new URL(u).searchParams.get('limit')==='24'), 'failed initial read and retry each use only the page read');
-  check(await page.eval(`document.querySelector('#draft-scope').textContent.trim()==='Hiển thị 24 tác phẩm' && document.querySelector('#draft-search-help').textContent === 'Theo tên bản thảo; gồm cả tác phẩm đã đăng'`), 'scope counts the visible page while search retains its description');
+  check(await page.eval(`document.querySelector('#draft-scope').textContent.trim()==='24 tác phẩm' && document.querySelector('#draft-search-help').textContent === 'Theo tên bản thảo; gồm cả tác phẩm đã đăng'`), 'scope counts the visible page while search retains its description');
   check(await page.eval(`[...document.querySelectorAll('[data-testid=draft-row]')].every((row, i) => row.querySelector('a').getAttribute('href') === '/ban-viet/' + ${JSON.stringify(cards)}[i].work_id && !row.textContent.includes('Phiên bản') && row.querySelector('time').dateTime === '2026-11-01T08:30:00Z')`), 'every row keeps the provider work_id and raw update instant, with no visible version');
   check(manuscriptRequests === 0, 'list never fetches full manuscripts (no N+1)');
   check(await page.eval(`!document.querySelector('#desk').textContent.match(/Chưa đăng|Đã đăng|góp ý|thể loại|D-05|VINK_DEV_PRINCIPAL/)`), 'no invented publication/profile/feedback state or implementation copy');
-  await page.eval(`document.querySelector('#create-draft').focus()`);
-  await page.key('Tab');
-  check(await page.eval(`document.activeElement.matches('.vk-draft-search button[type=submit]:focus-visible')`), 'keyboard order moves from create to the leading search submit');
-  await page.key('Tab');
-  check(await page.eval(`document.activeElement?.id === 'draft-search' && document.activeElement.matches(':focus-visible')`), 'keyboard continues to the stable search input with visible focus');
-  await page.key('Tab');
-  check(await page.eval(`document.activeElement?.id === 'draft-sort'`), 'empty search has no clear target; sort follows in keyboard order');
-  await page.key('Tab');
-  await page.waitFor(`!document.querySelector('#refresh-drafts-tooltip').hidden`, 'refresh tooltip on keyboard focus');
-  check(await page.eval(`document.activeElement.id === 'refresh-drafts' && document.querySelector('#refresh-drafts').getAttribute('aria-label') === 'Tải lại' && !document.querySelector('#refresh-drafts-tooltip :is(button,a,input,[tabindex])')`), 'refresh has its own name and the shared tooltip never takes focus');
-  await page.key('Escape');
-  check(await page.eval(`document.querySelector('#refresh-drafts-tooltip').hidden && document.activeElement.id === 'refresh-drafts'`), 'Escape dismisses only the tooltip and keeps trigger focus');
+  await page.eval(`document.querySelector('#open-draft-search').focus()`);
+  await page.key('Enter');
+  await page.waitFor(`document.activeElement.id==='draft-search'`, 'keyboard opens the search dock');
+  check(await page.eval(`document.querySelector('#draft-search').placeholder==='Tìm theo tên' &&
+    !document.querySelector('#draft-sort').getClientRects().length && !document.querySelector('#refresh-drafts')`),
+    '#408 open dock hides sort and retains a labelled search input');
   await page.viewport(390);
   const { nodes: deskAX } = await page.send('Accessibility.getFullAXTree');
   check(deskAX.some(node=>node.role?.value==='searchbox' && node.name?.value==='Tìm tác phẩm'), 'searchbox retains its native label');
   check(deskAX.some(node=>node.role?.value==='link' && node.name?.value.includes(cards[0].title)) && !deskAX.some(node=>node.role?.value==='button' && node.name?.value==='Xem đủ tên bản thảo'), 'accessibility tree retains the full clamped title without resume disclosure');
+  await page.key('Escape');
+  await page.waitFor(`document.activeElement.id==='open-draft-search' && document.querySelector('#draft-sort').getClientRects().length`,
+    'Escape closes the dock and restores launcher focus');
+  // Give the isolated smoke document a same-route predecessor for a real browser traversal.
+  await page.eval(`history.pushState(null, '', location.href)`);
+  await page.click('#open-draft-search');
+  await page.eval(`history.back()`);
+  await page.waitFor(`location.pathname==='/ban-viet' && document.activeElement.id==='open-draft-search' &&
+    document.querySelector('.vk-draft-search').hidden`, 'Back closes the private dock on its current route');
+
   for (const theme of ['light','dark']) for (const scale of [100,200]) for (const width of [1536,1440,1280,1024,834,390,320]) {
     await page.viewport(width);
     await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:0,y:0});
@@ -3527,20 +3532,22 @@ async function draftDashboard(page) {
         title.textContent===${JSON.stringify(cards[0].title)} && getComputedStyle(title).webkitLineClamp==='2' &&
         t.height<=2*parseFloat(getComputedStyle(title).lineHeight)+1 && m.top>=t.bottom-1 && m.bottom<=r.bottom &&
         !row.textContent.includes('Phiên bản') && row.getAttribute('href')===${JSON.stringify(firstHref)} && row.querySelectorAll('a,button,input').length===0 &&
-        ['#drafts','.vk-draft-controls','#draft-results','.vk-draft-search .vk-ui-search__shell'].every(s=>Math.abs(document.querySelector(s).getBoundingClientRect().left-h.left)<1);
+        ['#drafts','.vk-draft-controls','#draft-results'].every(s=>Math.abs(document.querySelector(s).getBoundingClientRect().left-h.left)<1);
     })()`), `#213 ${theme} ${width}/${scale}: two-line default, complete DOM title, metadata and common list/search axis`);
     await page.eval(`document.querySelector('#drafts').scrollIntoView({block:'start'})`);
+    await page.click('#open-draft-search');
     await searchBarGeometry(page,'#draft-search',`Desk ${width}/${scale}/${theme}`);
+    await page.click('#close-draft-search');
     await quietListSurfaces(page,'.vk-draft-row__link',`Desk ${width}/${scale}/${theme}`);
     await textContrast(page,theme,'desk');
     await page.capture(`desk-list-${width}-${scale}-${theme}`);
     check(await page.eval(`(() => {
       const row=document.querySelector('.vk-draft-row__link'), arrow=row.querySelector('.vk-draft-row__open');
-      const targets=['#draft-sort','#refresh-drafts'].map(s=>document.querySelector(s).getBoundingClientRect());
+      const targets=['#draft-sort','#open-draft-search'].map(s=>document.querySelector(s).getBoundingClientRect());
       return arrow.getAttribute('aria-hidden')==='true' && (${scale}===200 || ${width}===320 || getComputedStyle(arrow).display!=='none') && targets.every(r=>r.left>=0 && r.right<=innerWidth && r.width>=48 && r.height>=48);
-    })()`), `#213 ${width}/${scale}: sort/refresh targets fit without shrinking`);
+    })()`), `#213 ${width}/${scale}: sort/search targets fit without shrinking`);
     check(await page.eval(`(() => {
-      const create=document.querySelector('#create-draft'), refresh=document.querySelector('#refresh-drafts');
+      const create=document.querySelector('#create-draft');
       const r=create.getBoundingClientRect(), label=create.querySelector('.vk-ui-button__label');
       const range=document.createRange(); range.selectNodeContents(label);
       const picks=['#create-draft-format','#draft-sort'].map(s=>document.querySelector(s));
@@ -3553,11 +3560,9 @@ async function draftDashboard(page) {
         create.querySelectorAll('svg[data-icon=add][aria-hidden=true]').length===1 &&
         r.width>=48 && r.height>=48 && r.left>=0 && r.right<=innerWidth &&
         [...range.getClientRects()].every(t=>t.left>=r.left-1 && t.right<=r.right+1 && t.top>=r.top-1 && t.bottom<=r.bottom+1) &&
-        refresh.type==='button' && refresh.getAttribute('aria-label')==='Tải lại' && refresh.dataset.surface==='tonal' &&
-        getComputedStyle(refresh).backgroundColor!=='rgba(0, 0, 0, 0)' &&
-        !refresh.hasAttribute('aria-pressed') && !create.querySelector('button,a,input') &&
+        !create.querySelector('button,a,input') &&
         document.querySelector('#draft-sort').tagName==='SELECT';
-    })()`), `#225 ${width}/${scale}/${theme}: full create label + one Add target, native Select/refresh and no fake pressed`);
+    })()`), `#225 ${width}/${scale}/${theme}: full create label + one Add target, native Select and no fake pressed`);
     if (width<=390 && scale===200) {
       await page.eval(`document.querySelector('.vk-draft-row__link').focus()`); await page.key('Tab'); await page.key('Tab',SHIFT);
       check(await page.eval(`getComputedStyle(document.querySelector('.vk-draft-row__title')).overflow==='visible' && document.activeElement.matches('.vk-draft-row__link:focus-visible')`), 'keyboard reveals the entire title at 200%');
@@ -3568,26 +3573,26 @@ async function draftDashboard(page) {
       await page.capture(`desk-last-${width}-${scale}-${theme}`);
     }
   }
-  await page.viewport(320,800);
-  await page.eval(`document.documentElement.style.fontSize=''; document.documentElement.dataset.text='200'; scrollTo(0,0); document.fonts.ready`);
-  check(await page.eval(`(() => {
-    const search=document.querySelector('.vk-draft-search .vk-ui-search__shell').getBoundingClientRect();
-    const create=document.querySelector('.vk-desk-create').getBoundingClientRect();
-    const heading=document.querySelector('#desk-title').getBoundingClientRect();
-    const nav=document.querySelector('#bottom-navigation').getBoundingClientRect();
-    return getComputedStyle(document.documentElement).fontSize==='32px' && document.documentElement.scrollWidth<=innerWidth &&
-      search.top>=0 && search.bottom<=nav.top+1 && Math.abs(create.left-heading.left)<=1;
-  })()`), 'F-15 search is visible above navigation on the first 320×800 app-text200 viewport');
-  await page.capture('desk-audit-320x800-text200', {
-    requestedScene: { width: 320, height: 800, theme: 'dark', scale: 200 },
-    requiredTargets: ['#heading', '#draft-search', '#bottom-navigation'],
-    boundary: 'Chrome-CDP viewport and in-app root text scale',
-  });
+  for (const [width,height] of [[320,800],[390,844]]) {
+    await page.viewport(width,height);
+    await page.eval(`document.documentElement.style.fontSize=''; document.documentElement.dataset.text='200'; scrollTo(0,0); document.fonts.ready`);
+    const layout = await page.eval(`(() => {
+      const row = document.querySelector('.vk-draft-row').getBoundingClientRect();
+      return { top:row.top, left:row.left, nav:document.querySelector('#bottom-navigation').getBoundingClientRect().top,
+        font:getComputedStyle(document.documentElement).fontSize, overflow:document.documentElement.scrollWidth>innerWidth };
+    })()`);
+    check(layout.font==='32px' && !layout.overflow && Math.abs(layout.left-16)<=1 && layout.top>=0 && layout.top<layout.nav,
+      `#408 first row at ${width}×${height}/200%: ${JSON.stringify(layout)}`);
+    await page.capture(`desk-header-${width}-text200`, {
+      requestedScene: { width,height,theme:'dark',scale:200 }, requiredTargets:['#heading','.vk-draft-row','#bottom-navigation'],
+      boundary:'Chrome-CDP viewport and in-app root text scale',
+    });
+  }
   await page.eval(`delete document.documentElement.dataset.text`);
   // Blank and unbroken titles retain their full accessible value and one real destination.
   for (const [variant,title] of [['blank',''],['word','[Fixture] '+'Đườngỹỷữợ'.repeat(20)]]) {
     gate.list={body:{drafts:[{...cards[0],title}]}};
-    await page.click('#refresh-drafts');
+    await wakeDesk(page);
     await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length===1 && document.querySelector('.vk-draft-row__title').textContent===${JSON.stringify(title||'Chưa đặt tên')}`,`one ${variant} row`);
     await page.viewport(320);
     for (const scale of [100,200]) {
@@ -3598,21 +3603,20 @@ async function draftDashboard(page) {
   }
   await page.eval(`document.documentElement.style.fontSize = ''`);
   await page.viewport(1440);
-  check(await page.eval(`(() => {
-    const rects=['.vk-draft-search .vk-ui-search__shell','#draft-sort','#refresh-drafts'].map(s=>document.querySelector(s).getBoundingClientRect());
-    return rects.every(r=>Math.abs(r.top-rects[0].top)<=1 && Math.abs(r.height-48)<=1);
-  })()`), 'F-10 Search, Sort and Refresh share the 48px desktop row');
   gate.list = { body: { drafts: cards } };
-  await page.click('#refresh-drafts');
+  await wakeDesk(page);
   await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 24`, 'restore 24 loaded rows');
   const search = async text => {
+    if (await page.eval(`document.querySelector('.vk-draft-search').hidden`)) {
+      await page.click('#open-draft-search');
+    }
     const requestsBefore = gate.requests.length;
     await page.eval(`document.querySelector('#draft-search').focus(); document.querySelector('#draft-search').select()`);
     await page.send('Input.insertText', { text });
     check(gate.requests.length === requestsBefore, 'unsubmitted search text does not issue a read');
     await page.key('Enter');
   };
-  await page.waitFor(`document.querySelector('[data-testid=draft-result-count]').textContent.includes('Hiển thị 24')`, 'settled inventory before typing');
+  await page.waitFor(`document.querySelector('[data-testid=draft-result-count]').textContent.includes('24 tác phẩm')`, 'settled inventory before typing');
   await page.eval(`window.__resultAnnouncements=[]; window.__resultObserver = new MutationObserver(() => window.__resultAnnouncements.push(document.querySelector('[data-testid=draft-result-count]').textContent)); window.__resultObserver.observe(document.querySelector('[data-testid=draft-result-count]'), {childList:true,subtree:true,characterData:true})`);
   await search('duong ve');
   await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 2`, 'accentless Vietnamese results');
@@ -3633,6 +3637,7 @@ async function draftDashboard(page) {
   await page.click('#clear-draft-search');
   await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 24`, 'clear query');
   await page.waitFor(`document.activeElement?.id === 'draft-search'`, 'clearing draft results restores search focus');
+  await page.click('#close-draft-search');
   await page.eval(`const sort = document.querySelector('#draft-sort'); sort.value = 'title'; sort.dispatchEvent(new Event('change', { bubbles: true }))`);
   await page.waitFor(`document.querySelector('[data-testid=draft-row]').textContent.includes('[Fixture] Bản thảo 10')`, 'title sort');
   check(await page.eval(`[...document.querySelectorAll('[data-testid=draft-row]')].every(row=>!row.textContent.includes('Phiên bản') && row.querySelector('time').dateTime==='2026-11-01T08:30:00Z')`), 'sorting preserves raw instants and compact metadata');
@@ -3650,11 +3655,10 @@ async function draftDashboard(page) {
   gate.holdGets = true;
   const rowTop = `document.querySelector('#draft-results').getBoundingClientRect().top + scrollY`;
   const beforeRefresh = await page.eval(rowTop);
-  await page.click('#refresh-drafts');
+  await wakeDesk(page);
   const pendingRefresh = await gate.next('gets');
   check(await page.eval(`document.querySelector('[data-testid=draft-content]').getAttribute('aria-busy') === 'true' && document.querySelectorAll('[data-testid=draft-row]').length === 2 && window.__draftSearchInput === document.querySelector('#draft-search') && document.querySelector('#draft-search').value === 'duong ve' && !location.search`), 'pending refresh keeps loaded rows and private query/input without URL persistence');
   check(Math.abs(await page.eval(rowTop) - beforeRefresh) <= 1 && await page.eval(`
-    document.querySelector('#refresh-drafts').getAttribute('aria-busy')==='true' &&
     document.querySelector('#draft-scope [data-testid=author-work-stale]').textContent==='Đang tải lại…' &&
     document.querySelector('#create-draft').getAttribute('aria-disabled')!=='true' &&
     !document.querySelector('#create-draft-format').disabled`), 'F-17 refresh keeps list geometry, marks the action busy and permits independent creation');
@@ -3681,7 +3685,9 @@ async function draftDashboard(page) {
   gate.holdGets = true;
   const beforeReconnectPosts = gate.postCount;
   const beforeBackgroundRefresh = await page.eval(rowTop);
-  await page.eval(`window.__deskNow = performance.now.bind(performance); performance.now = () => window.__deskNow() + 121000; document.querySelector('#draft-search').focus(); for (const name of ['online','focus','visibilitychange','pageshow']) (name === 'visibilitychange' ? document : window).dispatchEvent(new Event(name))`);
+  await page.eval(`document.querySelector('#draft-search').focus()`);
+  await wakeDesk(page);
+  await page.eval(`for (const name of ['online','focus','pageshow']) window.dispatchEvent(new Event(name))`);
   const backgroundList = await gate.next('gets');
   await sleep(150);
   check(gate.gets.length === 0 && gate.postCount === beforeReconnectPosts, 'Desk reconnect burst coalesces one GET and sends no mutation');
@@ -3691,9 +3697,8 @@ async function draftDashboard(page) {
   await page.waitFor(`document.querySelector('[data-testid=draft-content]').getAttribute('aria-busy') === 'false'`, 'background Desk refresh accepted');
   check(Math.abs(await page.eval(rowTop) - beforeBackgroundRefresh)<=1, 'F-17 an accepted refresh of the same rows keeps the list position');
   check(await page.eval(`document.activeElement === window.__draftSearchInput`), 'background completion does not move focus');
-  await page.eval(`performance.now = window.__deskNow; delete window.__deskNow`);
   gate.list = { status: 403, body: { error: { code: 'forbidden', message: 'test fixture' } } };
-  await page.click('#refresh-drafts');
+  await wakeDesk(page);
   await page.waitFor(`document.querySelector('[data-testid=desk-access]')?.textContent.includes('không có quyền')`, 'forbidden dashboard');
   check(await page.eval(`!document.querySelector('[data-testid=draft-empty], #draft-list-title, #draft-search, #retry-drafts, #create-draft')`), 'forbidden clears the private heading and controls and keeps a distinct access state');
   await captureRecovery(page, 'desk-forbidden', '[data-testid=desk-access]');
@@ -3706,7 +3711,7 @@ async function draftDashboard(page) {
   await page.reload();
   await page.waitFor(`document.querySelector('#draft-results .vk-draft-row')`, 'list restored before a session-loss race');
   gate.holdGets = true;
-  await page.click('#refresh-drafts');
+  await wakeDesk(page);
   const expiredRefresh = await gate.next('gets');
   await page.click('#create-draft');
   const lateCreate = await gate.next('posts');
@@ -3720,6 +3725,7 @@ async function draftDashboard(page) {
   gate.list = { body: { drafts: [] } };
   await page.reload();
   await page.waitFor(`document.querySelector('[data-testid=draft-empty]')`, 'authorized unfiltered empty dashboard');
+  await page.click('#open-draft-search');
   await page.typeAtEnd('#draft-search', 'duong ve');
   await page.key('Enter');
   await page.waitFor(`document.querySelector('[data-testid=draft-no-results]')`, 'empty filtered result is still a search miss');
@@ -3752,7 +3758,7 @@ async function draftDashboard(page) {
   const before = await page.eval(`fetch('/api/v1/drafts').then(r => r.json()).then(list => list.drafts.map(d => d.work_id))`);
   const priorSnapshot = await page.eval(`fetch('/api/v1/author/works?limit=24').then(r=>r.json())`);
   gate.holdGets = true;
-  await page.click('#refresh-drafts');
+  await wakeDesk(page);
   const earlierRead = await gate.next('gets');
   await page.click('#create-draft');
   const lost = await gate.next('posts');
@@ -3761,7 +3767,7 @@ async function draftDashboard(page) {
   await page.eval(`document.querySelector('#create-draft').focus()`);
   await page.key('Enter'); await page.key('Space');
   check(gate.postCount===postsBefore, '#225 pending native Enter/Space cannot dispatch another create POST');
-  check(await page.eval(`document.querySelector('#create-draft').getAttribute('aria-disabled') === 'true' && document.querySelector('#refresh-drafts').getAttribute('aria-disabled') === 'true'`), 'create and refresh are disabled during the single POST');
+  check(await page.eval(`document.querySelector('#create-draft').getAttribute('aria-disabled') === 'true'`), 'create is disabled during the single POST');
   gate.dropAck = true;
   await page.send('Fetch.continueRequest', { requestId: lost });
   await page.waitFor(`document.querySelector('[data-testid=create-notice]')?.textContent.includes('có thể đã được tạo')`, 'uncertain create after lost 201');
@@ -3780,7 +3786,7 @@ async function draftDashboard(page) {
   gate.list = null;
   await page.click('#reconcile-drafts');
   await page.waitFor(`document.querySelector('#create-draft')?.textContent === 'Tạo thêm bản thảo'`, 'successful list reconciliation');
-  await page.waitFor(`document.activeElement?.id === 'draft-search'`, 'GET reconciliation restores focus to the loaded search');
+  await page.waitFor(`document.activeElement?.id === 'open-draft-search'`, 'GET reconciliation restores focus to the search launcher');
   const after = await page.eval(`fetch('/api/v1/drafts').then(r => r.json()).then(list => list.drafts.map(d => d.work_id))`);
   const created = after.filter(id => !before.includes(id));
   check(created.length === 1 && gate.postCount === postsBefore, 'GET reconciliation found the committed draft without retrying POST');
@@ -5162,6 +5168,7 @@ async function mainPhase(page) {
     await page.waitFor(`document.querySelector('#draft-search') && document.querySelector('[data-testid=draft-content]')?.getAttribute('aria-busy') === 'false'`, 'desk first page');
     // Other tests create more than one page. Find the intended draft through the real query.
     const otherDraft = await page.draft(SAMPLE_WORK);
+    await page.click('#open-draft-search');
     await page.eval(`document.querySelector('#draft-search').focus(); document.querySelector('#draft-search').select()`);
     await page.send('Input.insertText', { text: otherDraft.title });
     await page.key('Enter');
@@ -6347,6 +6354,7 @@ try {
   else if (args.phase === 'public-search') await publicReading(page);
   else if (args.phase === 'public-cache') await tracePublicReadLifecycle(page);
   else if (args.phase === 'author-works') await authorWorks(page, {args,check,DraftGate,sleep});
+  else if (args.phase === 'desk-pagination') await draftPagination(page, {args, check, DraftGate, sleep});
   else if (args.phase === 'desk-empty') await deskEmptyState(page, {args,check,DraftGate,textContrast});
   else if (args.phase === 'desk-guest') await deskGuest(page, {args,check}, false);
   else if (args.phase === 'desk-empty-context') { await draftDashboard(page); await deskEmptyState(page, {args,check,DraftGate,textContrast}); }

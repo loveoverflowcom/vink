@@ -6,6 +6,7 @@ use crate::discovery::{
     ExploreContext, ExploreMode, ExploreQuery, author_search_href, requested_slug, tag_href,
 };
 use crate::public_reads;
+use crate::ui::search_dock::{SearchDockBack, SearchDockLauncher};
 use crate::ui::{
     adapters,
     empty_state::{EmptyArtwork, EmptyState},
@@ -656,10 +657,7 @@ fn DiscoveryChrome(
                             value=buffer on_input=move |input: vink_ui::TextInput| buffer.set(input.value)
                             input_ref=query_input
                             leading=move || (!is_tag).then(|| view! {
-                                <span class="vk-search-close">
-                                    <IconButton id="close-public-search" label="Về Khám phá" icon=IconName::ArrowBack
-                                        on_press=close_search />
-                                </span>
+                                <SearchDockBack id="close-public-search" label="Về Khám phá" on_press=close_search />
                             })
                             clear_href clear_id="clear-public-search" on_clear=move |_| {
                                 if !is_tag {
@@ -674,10 +672,8 @@ fn DiscoveryChrome(
                             } />
                     </form>
                     {(!is_tag).then(|| view! {
-                        <span class="vk-search-launcher">
-                            <IconButton id="open-public-search" label="Tìm tác phẩm" icon=IconName::Search
-                                expanded=Signal::from(search_open) on_press=open_search />
-                        </span>
+                        <SearchDockLauncher id="open-public-search" label="Tìm tác phẩm"
+                            expanded=Signal::from(search_open) on_press=open_search />
                     })}
                     {catalog.map(|catalog| view! {
                         <Suspense fallback=|| view! { <p class="vk-muted" role="status" data-testid="tag-catalog-loading">"Đang tải danh mục thẻ…"</p> }>

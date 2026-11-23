@@ -2,3 +2,4 @@
 pub mod adapters;
 pub mod empty_state;
 pub use vink_patterns as patterns;
+pub mod search_dock;

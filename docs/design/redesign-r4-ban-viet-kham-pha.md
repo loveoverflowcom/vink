@@ -241,8 +241,13 @@ chủ sản phẩm; chưa ghi vào registry `decisions/`:
 - DQ-11: “Không, ẩn”, “với background của me / nút tôi khi có chữ, thì để background giống màu
   nền nhé” — không làm thẻ tài khoản ở chân rail; giữ Giao diện và Tôi, mục Tôi dùng nền trang.
 
+**DQ-06 · [#409](https://github.com/loveoverflowcom/vink/issues/409).** Ngày 23/11/2026, khi được hỏi về
+menu định dạng cạnh “Tạo bản thảo”, chủ sản phẩm chọn “Giữ Select hiện tại”. Bàn viết tiếp tục dùng
+Select “Định dạng bản thảo” cạnh nút tạo, kể cả khi viết bản đầu tiên. Cả hai control dùng token
+`radius.control-48`. Quyết định này thay đề xuất SplitButton trong artboard và LayoutSpec ở trên.
+
 **Cần chủ sản phẩm chốt (còn lại):** DQ-04 ẩn công cụ khi kho rỗng · DQ-05 định dạng giờ ·
-DQ-06 định dạng trong menu nút tạo · DQ-10 phần nhãn “Chờ duyệt”.
+DQ-10 phần nhãn “Chờ duyệt”.
 DQ-02 (search dock mọi cỡ màn) và DQ-12 (ít chữ) đã được chọn trong vòng duyệt canvas (xem Epic #401).
 
 ## 9. Khả thi trên Leptos / UI System

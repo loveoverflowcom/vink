@@ -825,20 +825,26 @@ a {
 @media (max-width: 759px) {
   .vk-main:is(:has(> .vk-desk--index), :has(> .vk-explore)) { padding-inline: var(--vk-size-gutter-narrow); }
 }
-.vk-desk-heading {
-  display: grid;
-  justify-items: start;
-  gap: min(var(--vk-space-3), 12px);
-  margin-block: min(var(--vk-space-4), 16px) min(var(--vk-space-6), 24px);
+.vk-desk-heading, .vk-desk-heading__title, .vk-desk-heading__actions, .vk-draft-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-inline-size: 0;
 }
+.vk-desk-heading, .vk-draft-controls { justify-content: space-between; }
+.vk-desk-heading {
+  margin-block: 16px 24px;
+  --vk-ui-search-radius: var(--vk-radius-control-56);
+}
+.vk-desk-heading :is(.vk-search-launcher, .vk-search-close) { --vk-ui-control-radius: var(--vk-radius-control-48); }
+.vk-desk-heading__privacy { display: inline-flex; color: var(--vk-on-surface-variant); }
+.vk-desk-heading__actions { max-inline-size: 100%; }
+.vk-desk-heading .vk-search-launcher, .vk-desk-heading .vk-search-close { display: inline-flex; }
+.vk-desk-heading [hidden], .vk-draft-controls [hidden] { display: none; }
+.vk-desk-heading__actions > .vk-desk-create { flex: 0 1 auto; }
 .vk-drafts-region, .vk-desk-works, .vk-draft-list { display: grid; min-inline-size: 0; }
 .vk-desk-works, .vk-draft-list { gap: var(--vk-space-3); }
-.vk-drafts-region > .vk-ui-heading {
-  margin-block-end: min(var(--vk-space-3), 12px);
-  font-family: var(--vk-font-ui);
-  font-size: var(--vk-type-body-size);
-  font-weight: var(--vk-type-title-weight);
-}
 .vk-desk-access {
   display: grid;
   justify-items: center;
@@ -874,6 +880,7 @@ a {
 }
 .vk-desk-loading { margin: 0; }
 .vk-desk-create {
+  --vk-ui-control-radius: var(--vk-radius-control-48);
   display: flex;
   flex-wrap: wrap;
   align-items: end;
@@ -881,6 +888,7 @@ a {
   max-inline-size: 100%;
   min-inline-size: 0;
 }
+.vk-desk-create .vk-ui-select { border-radius: var(--vk-ui-control-radius); }
 .vk-desk-create > .vk-ui-field {
   margin: 0;
   flex: 0 1 auto;
@@ -894,47 +902,22 @@ a {
 /* The format has a preselected value. Keep the disabled placeholder out of the choice set. */
 .vk-desk-create .vk-ui-field__required { display: none; }
 .vk-desk-create .vk-ui-button { padding-inline: min(var(--vk-space-6), 24px); }
-.vk-desk-create #create-draft-note, .vk-draft-tools #refresh-drafts-note { display: none; }
-.vk-draft-controls { display: grid; gap: min(var(--vk-space-2), 8px) var(--vk-space-3); min-inline-size: 0; }
-.vk-draft-tools {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--vk-space-1) min(var(--vk-space-1), 4px);
-  min-inline-size: 0;
+.vk-desk-create #create-draft-note { display: none; }
+.vk-draft-tools { max-inline-size: 100%; }
+.vk-draft-tools > .vk-ui-field { margin: 0; }
+.vk-draft-tools .vk-ui-select { border-radius: var(--vk-radius-control-48); }
+.vk-draft-tools label, .vk-draft-search #draft-search-help {
+  position: absolute; inline-size: 1px; block-size: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
 }
-.vk-draft-tools > .vk-ui-field {
-  display: grid;
-  grid-row: 1 / span 2;
-  grid-template-rows: subgrid;
-}
-/* Share the Select body row even when its label needs a separate line. */
-.vk-draft-tools > .vk-ui-plain-tooltip { grid-column: 2; grid-row: 2; align-self: center; }
-/* At large text sizes the selected option needs the full width of a narrow Desk. */
-@container vk-desk-index (max-width: 9.5rem) {
-  .vk-draft-tools { grid-template-columns: minmax(0, 1fr); }
-  .vk-draft-tools > .vk-ui-plain-tooltip { grid-column: 1; grid-row: 3; justify-self: start; }
-}
-.vk-draft-search { min-inline-size: 0; margin: 0; }
+.vk-draft-search { flex: 1 1 16rem; min-inline-size: 0; margin: 0; }
 .vk-draft-search .vk-ui-search__shell { min-block-size: var(--vk-density-control-height); padding-block: 0; }
 .vk-draft-search .vk-ui-input { padding-block: 0; }
-/* Keep the native search description without repeating the visible scope/status line. */
-.vk-draft-search #draft-search-help { position: absolute; inline-size: 1px; block-size: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 #draft-scope, .vk-draft-sort-help { margin: 0; font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
 /* DraftRow owns equal insets; the list owns one quiet surface, with space between links. */
 .vk-draft-rows { display: grid; gap: var(--vk-space-1); margin: 0; padding: var(--vk-space-1) 0; list-style: none; border-radius: var(--vk-radius-lg); background: var(--vk-bg-content); }
 .vk-draft-rows:empty { display: none; }
-/* The label joins the controls only when the Desk has room for its text and both targets. */
-@container vk-desk-index (min-width: 18.5rem) {
-  .vk-draft-tools { column-gap: var(--vk-space-3); }
-  .vk-draft-tools > .vk-ui-field { grid-row: 1; grid-template: auto / auto minmax(0, 1fr); align-items: center; column-gap: var(--vk-space-2); }
-  .vk-draft-tools > .vk-ui-plain-tooltip { grid-row: 1; }
-}
-@container vk-desk-index (min-width: 48rem) {
-  .vk-desk-heading { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
-  .vk-draft-controls { grid-template-columns: minmax(0, 1fr) max-content; align-items: center; }
-  .vk-draft-sort-help { grid-column: 2; grid-row: 2; }
-}
+.vk-draft-sort-help { flex-basis: 100%; text-align: end; }
 .vk-desk-privacy { margin-top: var(--vk-space-8); font-size: var(--vk-type-label-size); }
 /* The first-use CTA drops its icon to keep the full label measure at 320px/text200. */
 .vk-empty-state__actions #create-draft > .vk-ui-icon { display: none; }

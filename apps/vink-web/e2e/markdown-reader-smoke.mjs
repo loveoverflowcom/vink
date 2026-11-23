@@ -267,6 +267,7 @@ export async function markdownReader(page, { args, check, textContrast }) {
 
     await page.goto(author + '/ban-viet');
     await page.waitFor(`${ready} && document.querySelector('#draft-search')`, 'Desk search');
+    await page.click('#open-draft-search');
     await page.typeAtEnd('#draft-search', privateTitle);
     await page.click('.vk-draft-search button[type=submit]');
     const deskRow = `[data-testid="draft-row"] a[href="/ban-viet/${work}"]`;

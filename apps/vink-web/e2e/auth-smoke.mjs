@@ -12,6 +12,7 @@
 // D-05 stays Provisional: this qualifies the Web flow in a test environment, not production
 // authentication (no production mail transport is exercised here).
 
+import { wakeDesk } from './desk-lifecycle.mjs';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { contextualReaderAuth } from './reader-auth-smoke.mjs';
@@ -324,7 +325,7 @@ export async function authWeb(page, { args, check, openPage }) {
   await desk.goto(`${base}/ban-viet`);
   await desk.waitFor(`${q('[data-testid=draft-row]')} && document.body.textContent.includes(${JSON.stringify(TITLE_A)})`, "A's desk in a third tab");
   await gate.enable();
-  await desk.click('#refresh-drafts');
+  await wakeDesk(desk);
   const held = await gate.held();
   check(held.status === 200, "A's desk lists the draft; a second list answer (200) is held before the page receives it");
   const out = await signOut(other, base);

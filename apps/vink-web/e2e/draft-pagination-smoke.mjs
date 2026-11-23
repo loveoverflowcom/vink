@@ -1,3 +1,5 @@
+import { wakeDesk } from './desk-lifecycle.mjs';
+
 // #201. The corpus and paging checks use real HTTP/PostgreSQL. DraftGate is used only
 // for explicit delayed/error transport cases. No private text is persisted by the UI.
 export async function draftPagination(page, { args, check, DraftGate, sleep }) {
@@ -31,6 +33,7 @@ export async function draftPagination(page, { args, check, DraftGate, sleep }) {
   await page.goto(args.base + '/ban-viet');
   await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 24`, 'first real page is bounded');
   await settled();
+  await page.click('#open-draft-search');
   await search('  Đường  về xa  '.normalize('NFD'));
   check(JSON.stringify(await rows()) === JSON.stringify([corpus[0].work_id]), 'browser finds the old draft without loading intermediate pages');
   check(await page.eval(`!document.querySelector('#resume') && !!document.querySelector('#create-draft')`), 'filtered result keeps create available with no resume');
@@ -44,6 +47,7 @@ export async function draftPagination(page, { args, check, DraftGate, sleep }) {
   await page.viewport(1440); await page.eval(`document.documentElement.style.fontSize=''`);
   for (const sort of ['recent', 'title']) {
     if (sort === 'title') {
+      await page.click('#close-draft-search');
       await page.eval(`const s = document.querySelector('#draft-sort'); s.value='title'; s.dispatchEvent(new Event('change',{bubbles:true}))`);
       await settled();
     }
@@ -64,7 +68,8 @@ export async function draftPagination(page, { args, check, DraftGate, sleep }) {
   }
   check(await page.eval(`!document.querySelector('#resume') && !document.querySelector('#draft-results').textContent.includes('Phiên bản')`), 'Title traversal retains the compact list contract');
 
-  await page.click('#refresh-drafts'); await settled();
+  await page.click('#first-draft-page'); await settled();
+  await page.click('#open-draft-search');
   const gate = new DraftGate(page); gate.holdWhen = url => new URL(url).searchParams.get('limit') === '24';
   await gate.enable();
   try {
@@ -84,7 +89,9 @@ export async function draftPagination(page, { args, check, DraftGate, sleep }) {
     // A refresh supersedes an in-flight append in the same query scope.
     gate.holdGets = true; await page.click('#load-more-drafts');
     const lateAppend = await gate.next('gets');
-    await page.click('#refresh-drafts');
+    await wakeDesk(page);
+    check(gate.gets.length === 0, 'visibility wake coalesces with an in-flight append');
+    await page.click('.vk-draft-search button[type=submit]');
     const freshHead = await gate.next('gets');
     check(!new URL(gate.getURLs.get(freshHead)).searchParams.has('cursor'), 'refresh starts at the head while append is delayed');
     gate.holdGets = false; await gate.answerGet(freshHead); await settled();
@@ -96,13 +103,14 @@ export async function draftPagination(page, { args, check, DraftGate, sleep }) {
 
     // A successful head read discards old tails, even while input has an unsubmitted edit.
     await type('Chữ chưa gửi ỹ ỷ');
-    await page.eval(`window.__deskInput=document.querySelector('#draft-search'); window.__deskInput.setSelectionRange(3,7); window.__deskInput.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true})); window.__deskClock=performance.now.bind(performance); performance.now=()=>window.__deskClock()+121000;`);
+    await page.eval(`window.__deskInput=document.querySelector('#draft-search'); window.__deskInput.setSelectionRange(3,7); window.__deskInput.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}));`);
     const requestsBefore = gate.requests.length;
+    await wakeDesk(page);
     await page.eval(`window.dispatchEvent(new Event('online')); window.dispatchEvent(new Event('focus'))`);
     await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length===24`, 'reconnect replaces the whole visible chain'); await settled();
     check(gate.requests.slice(requestsBefore).filter(u => new URL(u).searchParams.get('limit') === '24').length === 1, 'reconnect/focus burst coalesces one head request');
     check(await page.eval(`document.querySelector('#draft-search')===window.__deskInput && window.__deskInput.value==='Chữ chưa gửi ỹ ỷ' && window.__deskInput.selectionStart===3 && window.__deskInput.selectionEnd===7`), 'reconnect preserves input node, unsubmitted text and selection during simulated composition');
-    await page.eval(`window.__deskInput.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true})); performance.now=window.__deskClock;`);
+    await page.eval(`window.__deskInput.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true}));`);
     check(gate.postCount === 0, 'read lifecycle never replays a create mutation');
 
     // Query A -> B -> A: the old A response must not overwrite the newer A generation.

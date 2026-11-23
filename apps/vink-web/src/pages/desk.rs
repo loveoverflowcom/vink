@@ -7,10 +7,10 @@ use leptos_meta::{Meta, Title};
 use leptos_router::hooks::use_params_map;
 
 use vink_ui::{
-    ActionState, ActionSurface, Announce, Button, ButtonKind, ButtonVariant, ChoiceOption,
-    FieldVariant, Heading, HeadingLevel, IconButton, IconName, InlineNotice, PanelContent,
-    PanelKind, PlainTooltip, ProblemKind, SearchField, SearchVariant, Select, SelectVariant,
-    StatePanel, SupportingDetails, TextField, Tone, TooltipIconButton, TypeRole,
+    ActionState, Announce, Button, ButtonKind, ButtonVariant, ChoiceOption, FieldVariant, Heading,
+    HeadingLevel, IconButton, IconName, InlineNotice, PanelContent, PanelKind, PlainTooltip,
+    ProblemKind, SearchField, SearchVariant, Select, SelectVariant, StatePanel, SupportingDetails,
+    TextField, Tone, TooltipIconButton, TypeRole,
 };
 
 use crate::contract::{ApiError, DocumentDto, DocumentFormatDto, Draft};
@@ -30,6 +30,7 @@ use crate::ui::{
     adapters,
     empty_state::{EmptyArtwork, EmptyState},
     patterns::AuthorWorkRow,
+    search_dock::{SearchDockBack, SearchDockLauncher},
 };
 
 const DESK_UNAVAILABLE_SSR: &str = "Bàn viết cần JavaScript để mở bản nháp riêng.";
@@ -55,10 +56,20 @@ pub fn DeskIndex() -> impl IntoView {
 }
 
 #[component]
-fn DeskHeading(#[prop(optional)] children: Option<Children>) -> impl IntoView {
+fn DeskHeading(
+    #[prop(optional)] private: bool,
+    #[prop(optional)] children: Option<Children>,
+) -> impl IntoView {
     view! {
         <header id="heading" class="vk-desk-heading">
+            <div class="vk-desk-heading__title">
             <h1 id="desk-title" class="vk-ui-heading vk-ui-type-page-title" tabindex="-1">"Bàn viết"</h1>
+            {private.then(|| view! {
+                <span class="vk-desk-heading__privacy" title="Bản nháp chỉ bạn đọc được">
+                    <vink_ui::Icon name=IconName::Lock /><span class="vk-ui-visually-hidden">"Bản nháp chỉ bạn đọc được"</span>
+                </span>
+            })}
+            </div>
             {children.map(|slot| slot())}
         </header>
     }
@@ -136,6 +147,27 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
     let applied = RwSignal::new(String::new());
     let sort = RwSignal::new(DraftSort::Recent);
     let composing = RwSignal::new(false);
+    let dock_open = RwSignal::new(false);
+    let open_dock = Callback::new(move |()| {
+        dock_open.set(true);
+        super::focus_recovery("draft-search");
+    });
+    let close_dock = Callback::new(move |()| {
+        dock_open.set(false);
+        super::focus_recovery("open-draft-search");
+    });
+    #[cfg(feature = "hydrate")]
+    {
+        let guard = expect_context::<NavigationGuard>();
+        let registration = guard.set_overlay(move |reason| {
+            if dock_open.get_untracked() && reason == vink_ui::CloseReason::Back {
+                close_dock.run(());
+                return true;
+            }
+            false
+        });
+        on_cleanup(move || guard.clear_overlay(registration));
+    }
     let creation = RwSignal::new(CreateState::Ready);
     let create_format = RwSignal::new(DocumentFormatDto::Default);
     let loading = RwSignal::new(true);
@@ -276,7 +308,11 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                         if next_part {
                             super::focus_recovery("draft-list-title");
                         } else if recover {
-                            super::focus_recovery("draft-search");
+                            super::focus_recovery(if dock_open.get_untracked() {
+                                "draft-search"
+                            } else {
+                                "open-draft-search"
+                            });
                         } else if let Some(anchor) = anchor {
                             restore_desk_anchor(anchor);
                         }
@@ -321,7 +357,8 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
         recovery_focus.set(
             load_error.get_untracked().is_some()
                 || page_error.get_untracked().is_some()
-                || creation.get_untracked() == CreateState::Uncertain,
+                || creation.get_untracked() == CreateState::Uncertain
+                || pages.with_untracked(|p| p.part > 1),
         );
         read_list.run(Intent::Refresh);
     });
@@ -351,7 +388,11 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
         } else {
             applied.set(String::new());
         }
-        super::focus_recovery("draft-search");
+        super::focus_recovery(if dock_open.get_untracked() {
+            "draft-search"
+        } else {
+            "open-draft-search"
+        });
     });
     let can_create = Signal::derive(move || {
         ready.get() && access_error.with(Option::is_none) && creation.with(CreateState::can_begin)
@@ -411,9 +452,30 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
     });
     let no_results = Signal::derive(move || !first_use.get() && empty_head());
     view! {
-        <DeskHeading>
-            <Show when=move || ready.get() && !first_use.get() && access_error.with(Option::is_none)>
-                <CreateDraftControls creation can_create create create_format />
+        <DeskHeading private=true>
+            <Show when=move || access_error.with(Option::is_none)>
+                <div class="vk-desk-heading__actions" hidden=move || dock_open.get()>
+                    <SearchDockLauncher id="open-draft-search" label="Tìm tác phẩm" expanded=dock_open.into() on_press=open_dock />
+                    <Show when=move || ready.get() && !first_use.get()>
+                        <CreateDraftControls creation can_create create create_format />
+                    </Show>
+                </div>
+                <form role="search" class="vk-draft-search" hidden=move || !dock_open.get()
+                    on:keydown=move |event| {
+                        if event.key() == "Escape" && !event.is_composing() && event.key_code() != 229 && !composing.get_untracked() {
+                            event.prevent_default();
+                            close_dock.run(());
+                        }
+                    } on:submit=move |event| {
+                    event.prevent_default(); submit.run(());
+                }>
+                    <SearchField id="draft-search" label="Tìm tác phẩm" placeholder="Tìm theo tên"
+                        leading=move || view! { <SearchDockBack id="close-draft-search" label="Về Bàn viết" on_press=close_dock /> } value=query variant=SearchVariant::Bar
+                        help="Theo tên bản thảo; gồm cả tác phẩm đã đăng" on_clear=clear
+                        on_input=move |input: vink_ui::TextInput| {
+                            composing.set(input.composing); query.set(input.value);
+                        } />
+                </form>
             </Show>
         </DeskHeading>
         {move || access_error.get().map(|error| view! {
@@ -423,8 +485,8 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
             </DeskAccess>
         })}
         <Show when=move || access_error.with(Option::is_none)>
-            <section id="drafts" class="vk-drafts-region" aria-labelledby="draft-list-title">
-                <Heading id="draft-list-title" level=HeadingLevel::H2 role=TypeRole::Title attr:tabindex="-1">"Tác phẩm của bạn"</Heading>
+            <section id="drafts" class="vk-drafts-region" aria-label="Tác phẩm của bạn">
+                <h2 id="draft-list-title" class="vk-ui-visually-hidden" tabindex="-1">"Tác phẩm của bạn"</h2>
                 <div class="vk-desk-works" data-testid="draft-content"
                     aria-busy=move || if loading.get() { "true" } else { "false" }>
                     <CreateNotice creation loading refresh />
@@ -438,10 +500,10 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                             error retry_disabled=refresh_disabled retained=pages.with(|p| p.loaded) />
                     })}
                     // The tools/input retain one owner through loading, empty, query and error.
-                    <DraftListView pages query sort composing loading appending ready page_error load_error restarted
-                        first_use no_results creation can_create create create_format submit clear more refresh refresh_disabled />
+                    <DraftListView pages dock_open sort loading appending ready page_error load_error restarted
+                        first_use no_results creation can_create create create_format clear more refresh refresh_disabled />
                 </div>
-                <p class="vk-desk-privacy vk-muted">"Bản nháp chỉ bạn đọc được. Số Thấm và Nhận xét thuộc bản đang công khai; lưu nháp không gửi duyệt hay công khai."</p>
+                <p class="vk-desk-privacy vk-muted">"Số Thấm và Nhận xét thuộc bản đang công khai."</p>
             </section>
         </Show>
     }.into_any()
@@ -572,16 +634,14 @@ fn DraftListView(
     can_create: Signal<bool>,
     create: Callback<()>,
     create_format: RwSignal<DocumentFormatDto>,
-    query: RwSignal<String>,
+    dock_open: RwSignal<bool>,
     sort: RwSignal<DraftSort>,
-    composing: RwSignal<bool>,
     loading: RwSignal<bool>,
     appending: RwSignal<bool>,
     ready: RwSignal<bool>,
     page_error: RwSignal<Option<ApiError>>,
     load_error: RwSignal<Option<ApiError>>,
     restarted: RwSignal<bool>,
-    submit: Callback<()>,
     clear: Callback<()>,
     more: Callback<()>,
     refresh: Callback<()>,
@@ -598,26 +658,6 @@ fn DraftListView(
     view! {
         <div class="vk-draft-list">
             <div class="vk-draft-controls">
-                <form role="search" class="vk-draft-search" on:submit=move |event| {
-                    event.prevent_default(); submit.run(());
-                }>
-                    <SearchField id="draft-search" label="Tìm tác phẩm" value=query variant=SearchVariant::Bar
-                        help="Theo tên bản thảo; gồm cả tác phẩm đã đăng" on_clear=clear
-                        on_input=move |input: vink_ui::TextInput| {
-                            composing.set(input.composing); query.set(input.value);
-                        } />
-                </form>
-                <div id="draft-tools" class="vk-draft-tools">
-                    <Select id="draft-sort" label="Sắp xếp" variant=SelectVariant::Inset16
-                        options=vec![ChoiceOption::new("recent", "Mới cập nhật"), ChoiceOption::new("title", "Tên A–Z")]
-                        value=Signal::derive(move || Some(if sort.get() == DraftSort::Title { "title" } else { "recent" }.to_string()))
-                        on_change={move |value: Option<String>| sort.set(if value.as_deref() == Some("title") { DraftSort::Title } else { DraftSort::Recent })} />
-                    <TooltipIconButton icon=IconName::Refresh label="Tải lại" id="refresh-drafts"
-                        surface=ActionSurface::Tonal
-                        state=Signal::derive(move || if loading.get() && !appending.get() {
-                            ActionState::pending("Đang tải lại…")
-                        } else { blocked(refresh_disabled.get()) }) on_press=move |_| refresh.run(()) />
-                </div>
                 <p id="draft-scope" class="vk-muted" class:vk-ui-visually-hidden=move || first_use.get()
                     hidden=opening role=move || (!opening()).then_some("status") aria-atomic="true" data-testid="draft-result-count">
                     <span data-testid=move || stale().then_some("author-work-stale")>
@@ -626,10 +666,16 @@ fn DraftListView(
                         else if stale() { "Đang xem kết quả cũ.".into() }
                         else if load_error.with(Option::is_some) { "Chưa tải được kết quả.".into() }
                         else if no_results.get() { "Không có kết quả".into() }
-                        else { format!("Hiển thị {} tác phẩm", pages.with(|p| p.drafts.len())) }}
+                        else { format!("{} tác phẩm", pages.with(|p| p.drafts.len())) }}
                     </span>
                 </p>
-                <Show when=move || sort.get() == DraftSort::Title>
+                <div id="draft-tools" class="vk-draft-tools" hidden=move || dock_open.get()>
+                    <Select id="draft-sort" label="Sắp xếp" required=true variant=SelectVariant::Inset16
+                        options=vec![ChoiceOption::new("recent", "Mới nhất"), ChoiceOption::new("title", "Tên A–Z")]
+                        value=Signal::derive(move || Some(if sort.get() == DraftSort::Title { "title" } else { "recent" }.to_string()))
+                        on_change={move |value: Option<String>| sort.set(if value.as_deref() == Some("title") { DraftSort::Title } else { DraftSort::Recent })} />
+                </div>
+                <Show when=move || !dock_open.get() && sort.get() == DraftSort::Title>
                     <p class="vk-draft-sort-help vk-muted">"Bỏ qua dấu khi sắp xếp."</p>
                 </Show>
             </div>
@@ -685,10 +731,9 @@ fn DraftListView(
                     <p id="draft-end" class="vk-muted">"Đã xem hết kết quả."</p>
                 </Show>
                 <Show when=move || pages.with(|p| p.part > 1)>
-                    <p class="vk-muted">{move || format!("Đang xem phần {}. Chọn Tải lại để về đầu danh sách.", pages.with(|p| p.part))}</p>
-                </Show>
-                <Show when=move || pages.with(|p| p.loaded && !p.drafts.is_empty())>
-                    <p class="vk-muted">"Tác phẩm có thể đổi vị trí khi bản nháp được sửa. Tải lại để xem các cập nhật mới nhất."</p>
+                    <p class="vk-muted">{move || format!("Đang xem phần {}.", pages.with(|p| p.part))}</p>
+                    <Button variant=ButtonVariant::Text id="first-draft-page" on_press=move |_| refresh.run(())
+                        state=Signal::derive(move || blocked(refresh_disabled.get()))>"Về phần đầu"</Button>
                 </Show>
             </div>
         </div>
@@ -742,7 +787,7 @@ fn DeskError(
             <StatePanel content=PanelContent { kind: PanelKind::Error(kind), title: title.into(), message: detail.into(), actions: vec![], code: None }>
                 {refresh.map(|refresh| view! {
                     <Button variant=ButtonVariant::Filled id="retry-drafts" on_press=move |_| refresh.run(())
-                        state=Signal::derive(move || blocked(retry_disabled.get()))>"Thử mở lại"</Button>
+                        state=Signal::derive(move || blocked(retry_disabled.get()))>"Thử lại"</Button>
                 })}
                 {sign_in.then(|| view! {
                     <vink_ui::Link href=DESK_SIGN_IN variant=vink_ui::LinkVariant::Standalone attr:id="desk-sign-in">"Đăng nhập ở mục Tôi"</vink_ui::Link>

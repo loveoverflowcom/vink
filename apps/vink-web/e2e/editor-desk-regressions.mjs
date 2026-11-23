@@ -13,7 +13,7 @@ export async function firstDraftFormat(page, { args, check }) {
     document.querySelectorAll('#create-draft').length === 1 && document.querySelector('${picker}').value === 'default'`),
   '#262 first-use owns one format picker and one CTA, initially Mặc định');
   await page.eval(`document.documentElement.dataset.text = '200'; document.documentElement.dataset.theme = '${format === 'markdown' ? 'dark' : 'light'}'`);
-  await page.eval("document.querySelector('#refresh-drafts').focus()");
+  await page.eval("document.querySelector('#draft-sort').focus()");
   await page.key('Tab');
   await page.waitFor(`document.activeElement === document.querySelector('${picker}')`, 'first-use Select focused by Tab');
   const focus = await page.eval(`(() => {
@@ -26,6 +26,14 @@ export async function firstDraftFormat(page, { args, check }) {
     await selectCharacter(page, 'm');
     await page.waitFor(`document.querySelector('${picker}').value === 'markdown'`, 'native Markdown option selected by keyboard');
   }
+  check(await page.eval(`(() => {
+    const radius = getComputedStyle(document.querySelector('#create-draft')).getPropertyValue('--vk-radius-control-48').trim();
+    return ['#create-draft-format', '#create-draft'].every(id => {
+      const style = getComputedStyle(document.querySelector(id));
+      return ['borderTopLeftRadius','borderTopRightRadius','borderBottomLeftRadius','borderBottomRightRadius']
+        .every(corner => style[corner] === radius);
+    });
+  })()`), '#409 native format Select and create use the symmetric R4 control radius');
   await checkSelectGeometry(page, picker, check, '#262 first draft at 320px / text200', { icon: 16, inset: 16, reserve: 52, gap: 20 });
   await page.key('Tab');
   check(await page.eval(`(() => {
