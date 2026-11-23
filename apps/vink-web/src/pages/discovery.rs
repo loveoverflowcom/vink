@@ -9,7 +9,7 @@ use crate::public_reads;
 use crate::ui::{
     adapters,
     empty_state::{EmptyArtwork, EmptyState},
-    patterns::{AuthorIdentity, TagChip, TagFacts},
+    patterns::{AuthorIdentity, TagChip, TagFacts, first_public_date_hcm},
 };
 use leptos::prelude::*;
 use leptos_meta::{Link, Meta, Title};
@@ -20,7 +20,7 @@ use vink_ui::{
     ActionState, ActionSurface, Button, ButtonKind, ButtonVariant, Checkbox, HiddenField,
 };
 use vink_ui::{
-    Dialog, DialogKind, Heading, HeadingLevel, Icon, IconButton, IconName, InlineNotice,
+    Dialog, DialogKind, Heading, HeadingLevel, Icon, IconButton, IconName, IconSize, InlineNotice,
     RecoveryAction, RecoveryIntent, SearchField, SearchVariant, Tone, TypeRole,
 };
 
@@ -133,6 +133,29 @@ fn focus_no_scroll(id: &str) {
     }
 }
 
+/// Escape closes the in-place dock only from inside it; the phone dock owns the whole screen.
+#[cfg(feature = "hydrate")]
+fn in_dock(event: &leptos::ev::KeyboardEvent) -> bool {
+    use wasm_bindgen::JsCast;
+    event
+        .target()
+        .and_then(|target| target.dyn_into::<web_sys::Element>().ok())
+        .and_then(|element| element.closest(".vk-discovery-toolbar").ok().flatten())
+        .is_some()
+}
+
+/// The focused element takes text, so “/” belongs to it.
+#[cfg(feature = "hydrate")]
+fn typing_target() -> bool {
+    use wasm_bindgen::JsCast;
+    document().active_element().is_some_and(|element| {
+        matches!(element.tag_name().as_str(), "INPUT" | "TEXTAREA" | "SELECT")
+            || element
+                .dyn_into::<web_sys::HtmlElement>()
+                .is_ok_and(|element| element.is_content_editable())
+    })
+}
+
 #[cfg(feature = "hydrate")]
 fn any_modal_dialog_open() -> bool {
     document()
@@ -211,16 +234,19 @@ fn DiscoveryPage(#[prop(optional)] tag_page: Option<Memo<String>>) -> AnyView {
             tag_page,
         }
     });
-    let mobile_search_open = RwSignal::new(false);
+    let dock_open = RwSignal::new(false);
     let browse_scroll_y = RwSignal::new(None::<f64>);
     #[cfg(feature = "hydrate")]
     if tag_page.is_none() {
         let guard = expect_context::<crate::navigation::NavigationGuard>();
-        // The tag picker registers later and handles Back first. Let the router perform
-        // real history traversal, including Forward into the empty search entry.
+        // A normal link drops the manually opened dock. A destination with a query or the
+        // search fragment opens it from its URL. The tag picker handles Back before the dock.
         let registration = guard.set_overlay(move |reason| {
+            if reason == vink_ui::CloseReason::Navigate {
+                dock_open.set(false);
+                return false;
+            }
             if reason == vink_ui::CloseReason::Back
-                && is_narrow_viewport()
                 && let Ok(href) = window().location().href()
                 && let Ok(next) = url::Url::parse(&href)
             {
@@ -234,9 +260,9 @@ fn DiscoveryPage(#[prop(optional)] tag_page: Option<Memo<String>>) -> AnyView {
                             .any(|(k, v)| k == "q" && !v.trim().is_empty()));
                 let previous = context.get_untracked();
                 let was_search = previous.mode == ExploreMode::Works
-                    && (mobile_search_open.get_untracked() || !previous.query.q.is_empty());
-                mobile_search_open.set(next.path() == "/" && search);
-                if was_search && !search && next.path() == "/" {
+                    && (dock_open.get_untracked() || !previous.query.q.is_empty());
+                dock_open.set(next.path() == "/" && search);
+                if was_search && !search && next.path() == "/" && is_narrow_viewport() {
                     restore_browse(browse_scroll_y);
                 }
             }
@@ -248,7 +274,7 @@ fn DiscoveryPage(#[prop(optional)] tag_page: Option<Memo<String>>) -> AnyView {
     // suspended view immediately; B never waits for A's outstanding transport.
     view! {
         <For each=move || vec![context.get()] key=|context| context.href(None)
-            children=move |context| view! { <DiscoveryScope context mobile_search_open browse_scroll_y /> } />
+            children=move |context| view! { <DiscoveryScope context dock_open browse_scroll_y /> } />
     }
     .into_any()
 }
@@ -256,7 +282,7 @@ fn DiscoveryPage(#[prop(optional)] tag_page: Option<Memo<String>>) -> AnyView {
 #[component]
 fn DiscoveryScope(
     context: ExploreContext,
-    mobile_search_open: RwSignal<bool>,
+    dock_open: RwSignal<bool>,
     browse_scroll_y: RwSignal<Option<f64>>,
 ) -> AnyView {
     match context.mode {
@@ -271,22 +297,104 @@ fn DiscoveryScope(
     let query = Memo::new(move |_| initial_query.clone());
     let catalog = context.tag_page.is_none().then(api::catalog_resource);
     let works = api::works_resource(query);
-    view! { <DiscoveryChrome context works catalog status=ResponseStatus::capture() mobile_search_open browse_scroll_y /> }.into_any()
+    view! { <DiscoveryChrome context works catalog status=ResponseStatus::capture() dock_open browse_scroll_y /> }.into_any()
 }
 
+/// R4.2 header row of the Following and Authors modes (#404): the same page title role and
+/// V-pen logo as Tất cả. Their own search/filter actions are out of this slice (#354, #355).
+#[component]
+pub(super) fn ExploreTitleRow(title: &'static str) -> impl IntoView {
+    view! {
+        <div class="vk-explore__top">
+            <header id="explore-heading" class="vk-explore__heading">
+                <h1 class="vk-ui-heading vk-ui-type-page-title">{title}</h1>
+            </header>
+            <div class="vk-discovery-toolbar"><ExploreBrand /></div>
+        </div>
+    }
+}
+
+#[component]
+fn ExploreBrand() -> impl IntoView {
+    view! {
+        <div id="discovery-tools" class="vk-discovery-tools"><a class="vk-brand" href="/" aria-label="Vink — trang chủ">
+            <span class="vk-brand__lockup" aria-hidden="true"></span></a></div>
+    }
+}
+
+/// R4.2 mode group (#404, DQ-03): a connected group of real links; the current mode is primary
+/// with a check mark and `aria-current`. When the group would not fit on one line, CSS shows the
+/// same links in a `details` menu instead (works before hydration; Escape closes it after).
 #[component]
 pub(super) fn ExploreModes(
     mode: ExploreMode,
     #[prop(optional)] author_query: String,
 ) -> impl IntoView {
+    let mut modes = vec![(ExploreMode::Works, "works", "/".to_owned(), "Tất cả")];
+    if api::following_feed_enabled() {
+        modes.push((
+            ExploreMode::Following,
+            "following",
+            ExploreMode::FOLLOWING_HREF.to_owned(),
+            "Đang theo dõi",
+        ));
+    }
+    modes.push((
+        ExploreMode::Authors,
+        "authors",
+        author_search_href(&author_query, None),
+        "Tác giả",
+    ));
+    let current = modes
+        .iter()
+        .find(|(entry, ..)| *entry == mode)
+        .map_or("Tất cả", |(.., label)| *label);
+    let links = |prefix: &'static str| {
+        modes
+            .iter()
+            .map(|(entry, key, href, label)| {
+                let selected = *entry == mode;
+                view! {
+                    <a id=format!("{prefix}-{key}") href=href.clone() aria-current=selected.then_some("page")>
+                        {selected.then(|| view! { <Icon name=IconName::Check size=IconSize::Small /> })}
+                        <span>{*label}</span>
+                    </a>
+                }
+            })
+            .collect_view()
+    };
     view! {
         <nav class="vk-explore-modes" aria-label="Chế độ Khám phá">
-            <a id="explore-mode-works" href="/" aria-current=(mode == ExploreMode::Works).then_some("page")>"Tất cả"</a>
-            {api::following_feed_enabled().then(|| view! {
-                <a id="explore-mode-following" href=ExploreMode::FOLLOWING_HREF aria-current=(mode == ExploreMode::Following).then_some("page")>"Đang theo dõi"</a>
-            })}
-            <a id="explore-mode-authors" href=author_search_href(&author_query, None)
-                aria-current=(mode == ExploreMode::Authors).then_some("page")>"Tác giả"</a>
+            <div class="vk-explore-modes__group">{links("explore-mode")}</div>
+            <details id="explore-mode-menu" class="vk-explore-modes__menu"
+                on:keydown=move |event: leptos::ev::KeyboardEvent| {
+                    #[cfg(feature = "hydrate")]
+                    {
+                        use wasm_bindgen::JsCast;
+                        if event.key() == "Escape"
+                            && let Some(menu) = event.current_target().and_then(|t| t.dyn_into::<web_sys::Element>().ok())
+                            && menu.has_attribute("open")
+                        {
+                            event.prevent_default();
+                            event.stop_propagation();
+                            let _ = menu.remove_attribute("open");
+                            if let Ok(Some(summary)) = menu.query_selector("summary")
+                                && let Ok(summary) = summary.dyn_into::<web_sys::HtmlElement>()
+                            {
+                                let _ = summary.focus();
+                            }
+                        }
+                    }
+                    #[cfg(not(feature = "hydrate"))]
+                    let _ = event;
+                }>
+                <summary id="explore-mode-menu-button">
+                    <span class="vk-ui-visually-hidden">"Chế độ: "</span>
+                    <span>{current}</span>
+                    <Icon name=IconName::ExpandMore size=IconSize::Small />
+                </summary>
+                <div class="vk-explore-modes__list">{links("explore-menu")}</div>
+            </details>
         </nav>
     }
 }
@@ -297,7 +405,7 @@ fn DiscoveryChrome(
     works: Resource<(ExploreQuery, Result<WorkList, LoadError>)>,
     catalog: Option<Resource<Result<TagList, LoadError>>>,
     status: ResponseStatus,
-    mobile_search_open: RwSignal<bool>,
+    dock_open: RwSignal<bool>,
     browse_scroll_y: RwSignal<Option<f64>>,
 ) -> AnyView {
     let stream = NodeRef::<leptos::html::Section>::new();
@@ -312,7 +420,7 @@ fn DiscoveryChrome(
     let has_query = !context.query.q.is_empty();
     let location = leptos_router::hooks::use_location();
     let search_open = Memo::new(move |_| {
-        !is_tag && (mobile_search_open.get() || has_query || location.hash.get() == "#tim-kiem")
+        !is_tag && (dock_open.get() || has_query || location.hash.get() == "#tim-kiem")
     });
     let toolbar_status = RwSignal::new(None::<String>);
     let dismiss = move || {
@@ -323,7 +431,7 @@ fn DiscoveryChrome(
         dismiss();
         #[cfg(feature = "hydrate")]
         if document().get_element_by_id("open-tag-filters").is_none() {
-            if !search_open.get_untracked() && is_narrow_viewport() {
+            if !search_open.get_untracked() {
                 focus_recovery("open-public-search");
             } else {
                 focus_recovery("public-query");
@@ -344,6 +452,12 @@ fn DiscoveryChrome(
         .filter(|tag| Some(*tag) != context.tag_page.as_ref())
         .cloned()
         .collect::<Vec<_>>();
+    let applied_count = hidden_tags.len();
+    let filter_label = StoredValue::new(if applied_count == 0 {
+        "Lọc thẻ".to_owned()
+    } else {
+        format!("Lọc thẻ, đã chọn {applied_count} thẻ")
+    });
     let filter_query = StoredValue::new(context.query.q.clone());
     let filter_retry = StoredValue::new(context.href(None));
     let mut cleared = context.clone();
@@ -352,6 +466,10 @@ fn DiscoveryChrome(
     let clear_href = cleared.href(None);
     let clear_nav = clear_href.clone();
     let navigate = leptos_router::hooks::use_navigate();
+    // R4.2 search dock (#404, DQ-02): the search icon opens it at every width. On a phone it is
+    // a full-screen history entry (`#tim-kiem`, #325); on wider windows it replaces the icon
+    // cluster in place. Closing drops unsent text and any submitted query, then returns focus
+    // to the search icon.
     let close_search = {
         let navigate = navigate.clone();
         let href = clear_href.clone();
@@ -365,15 +483,17 @@ fn DiscoveryChrome(
             {
                 return;
             }
-            mobile_search_open.set(false);
-            navigate(
-                &href,
-                leptos_router::NavigateOptions {
-                    replace: true,
-                    scroll: false,
-                    ..Default::default()
-                },
-            );
+            dock_open.set(false);
+            if has_query || location.hash.get_untracked() == "#tim-kiem" {
+                navigate(
+                    &href,
+                    leptos_router::NavigateOptions {
+                        replace: true,
+                        scroll: false,
+                        ..Default::default()
+                    },
+                );
+            }
             #[cfg(feature = "hydrate")]
             restore_browse(browse_scroll_y);
         })
@@ -385,17 +505,29 @@ fn DiscoveryChrome(
             #[cfg(feature = "hydrate")]
             {
                 buffer.set(String::new());
-                browse_scroll_y.set(Some(window().scroll_y().unwrap_or_default()));
-                mobile_search_open.set(true);
-                navigate(
-                    &href,
-                    leptos_router::NavigateOptions {
-                        scroll: false,
-                        ..Default::default()
-                    },
-                );
-                window().scroll_to_with_x_and_y(0.0, 0.0);
-                request_animation_frame(move || focus_no_scroll("public-query"));
+                dock_open.set(true);
+                if is_narrow_viewport() {
+                    browse_scroll_y.set(Some(window().scroll_y().unwrap_or_default()));
+                    navigate(
+                        &href,
+                        leptos_router::NavigateOptions {
+                            scroll: false,
+                            ..Default::default()
+                        },
+                    );
+                    window().scroll_to_with_x_and_y(0.0, 0.0);
+                }
+                let opened_input = query_input.get_untracked();
+                request_animation_frame(move || {
+                    // A submit can replace this scope before the opening frame. Leave the
+                    // result focus intent in charge when that original field is gone.
+                    if opened_input
+                        .as_ref()
+                        .is_some_and(|input| input.is_connected())
+                    {
+                        focus_no_scroll("public-query");
+                    }
+                });
             }
             #[cfg(not(feature = "hydrate"))]
             let _ = (&navigate, &href, browse_scroll_y);
@@ -432,6 +564,32 @@ fn DiscoveryChrome(
         }
     };
     let composing = StoredValue::new(false);
+    // “/” opens the dock (or returns to its field) unless the person is typing elsewhere, a
+    // dialog is open or an IME composition is in progress.
+    #[cfg(feature = "hydrate")]
+    if !is_tag {
+        let shortcut = window_event_listener(leptos::ev::keydown, move |event| {
+            if event.key() != "/"
+                || event.default_prevented()
+                || event.is_composing()
+                || event.ctrl_key()
+                || event.meta_key()
+                || event.alt_key()
+                || composing.get_value()
+                || any_modal_dialog_open()
+                || typing_target()
+            {
+                return;
+            }
+            event.prevent_default();
+            if search_open.get_untracked() {
+                focus_no_scroll("public-query");
+            } else {
+                open_search.run(());
+            }
+        });
+        on_cleanup(move || shortcut.remove());
+    }
     #[cfg(feature = "hydrate")]
     if catalog.is_some() {
         let guard = expect_context::<crate::navigation::NavigationGuard>();
@@ -459,8 +617,9 @@ fn DiscoveryChrome(
             on:keydown=move |event| {
                 #[cfg(feature = "hydrate")]
                 if event.key() == "Escape" && !event.default_prevented() && !event.is_composing()
-                    && event.key_code() != 229 && !composing.get_value() && is_narrow_viewport()
+                    && event.key_code() != 229 && !composing.get_value()
                     && search_open.get_untracked() && !any_modal_dialog_open()
+                    && (is_narrow_viewport() || in_dock(&event))
                 {
                     event.prevent_default();
                     close_search.run(());
@@ -470,72 +629,74 @@ fn DiscoveryChrome(
             }
             data-enhanced=move || enhanced.get().to_string()
             data-search=move || if search_open.get() { "open" } else { "closed" }>
-            <Suspense fallback=move || view! { <header id="explore-heading" class="vk-explore__heading" class:vk-ui-visually-hidden=!is_tag>
-                <Heading level=HeadingLevel::H1 role=TypeRole::Display>
-                    {if is_tag { "Đang mở thẻ…" } else if search_open.get() { "Tìm tác phẩm" } else { "Khám phá" }}
-                </Heading>
-            </header> }>
-                {move || {
-                    let context = heading_context.clone();
-                    let status = status.clone();
-                    Suspend::new(async move {
-                        let (_, result) = works.await;
-                        view! { <DiscoveryHeader context result status search_open=Signal::from(search_open) /> }
-                    })
-                }}
-            </Suspense>
-            <div class="vk-discovery-toolbar">
-                {catalog.map(|catalog| view! {
-                    <Suspense fallback=|| view! { <p class="vk-muted" role="status" data-testid="tag-catalog-loading">"Đang tải danh mục thẻ…"</p> }>
-                        <Show when=move || catalog.map(|result| !matches!(result, Ok(list) if list.tags.is_empty())).unwrap_or(false)>
-                            <span class="vk-tag-launcher">
-                                <Button id="open-tag-filters" variant=ButtonVariant::Tonal leading=IconName::FilterList expanded=Signal::from(open)
-                                    on_press=move |_| open.set(true)>"Lọc thẻ"</Button>
-                            </span>
-                        </Show>
-                    </Suspense>
-                })}
-                {(!is_tag).then(|| view! {
-                    <p class="vk-discovery-toolbar-status" aria-hidden="true">{move || toolbar_status.get().unwrap_or_default()}</p>
-                })}
-                <form method="get" action=action.clone() on:submit=submit_search role="search" id="public-search" class="vk-public-search">
-                    {hidden_tags.into_iter().map(|tag| view! { <HiddenField name="tag" value=Signal::stored(tag) /> }).collect_view()}
-                    <SearchField id="public-query"
-                        label=if is_tag { "Tìm trong thẻ" } else { "Tìm theo tên hoặc tác giả" }
-                        placeholder=if is_tag { "Tìm trong thẻ" } else { "Tìm tác phẩm hoặc tác giả" }
-                        compact_placeholder=if is_tag { "Tìm trong thẻ" } else { "Tìm tác phẩm" }
-                        name="q"
-                        variant=SearchVariant::Bar
-                        value=buffer on_input=move |input: vink_ui::TextInput| buffer.set(input.value)
-                        input_ref=query_input
-                        leading=move || (!is_tag).then(|| view! {
-                            <span class="vk-search-close">
-                                <IconButton id="close-public-search" label="Về Khám phá" icon=IconName::ArrowBack
-                                    on_press=close_search />
-                            </span>
+            <div class="vk-explore__top">
+                <Suspense fallback=move || view! { <header id="explore-heading" class="vk-explore__heading">
+                    <PageTitle is_tag>
+                        {if is_tag { "Đang mở thẻ…" } else if search_open.get() { "Tìm tác phẩm" } else { "Khám phá" }}
+                    </PageTitle>
+                </header> }>
+                    {move || {
+                        let context = heading_context.clone();
+                        let status = status.clone();
+                        Suspend::new(async move {
+                            let (_, result) = works.await;
+                            view! { <DiscoveryHeader context result status search_open=Signal::from(search_open) /> }
                         })
-                        clear_href clear_id="clear-public-search" on_clear=move |_| {
-                            #[cfg(feature = "hydrate")]
-                            let mobile = !is_tag && is_narrow_viewport();
-                            #[cfg(not(feature = "hydrate"))]
-                            let mobile = false;
-                            if mobile {
-                                mobile_search_open.set(true);
-                            }
-                            navigate(&clear_nav, leptos_router::NavigateOptions { replace: mobile, scroll: false, ..Default::default() });
-                            focus_recovery("public-query");
-                        } />
-                </form>
-                {(!is_tag).then(|| view! {
-                    <span class="vk-search-launcher">
-                        <IconButton id="open-public-search" label="Tìm tác phẩm" icon=IconName::Search
-                            surface=ActionSurface::Tonal on_press=open_search />
-                    </span>
-                })}
-                {(!is_tag).then(|| view! {
-                    <div id="discovery-tools" class="vk-discovery-tools"><a class="vk-brand" href="/" aria-label="Vink — trang chủ">
-                        <span class="vk-brand__lockup" aria-hidden="true"></span></a></div>
-                })}
+                    }}
+                </Suspense>
+                <div class="vk-discovery-toolbar">
+                    <form method="get" action=action.clone() on:submit=submit_search role="search" id="public-search" class="vk-public-search">
+                        {hidden_tags.into_iter().map(|tag| view! { <HiddenField name="tag" value=Signal::stored(tag) /> }).collect_view()}
+                        <SearchField id="public-query"
+                            label=if is_tag { "Tìm trong thẻ" } else { "Tìm theo tên hoặc tác giả" }
+                            placeholder=if is_tag { "Tìm trong thẻ" } else { "Tìm tác phẩm hoặc tác giả" }
+                            compact_placeholder=if is_tag { "Tìm trong thẻ" } else { "Tìm tác phẩm" }
+                            name="q"
+                            variant=SearchVariant::Bar
+                            value=buffer on_input=move |input: vink_ui::TextInput| buffer.set(input.value)
+                            input_ref=query_input
+                            leading=move || (!is_tag).then(|| view! {
+                                <span class="vk-search-close">
+                                    <IconButton id="close-public-search" label="Về Khám phá" icon=IconName::ArrowBack
+                                        on_press=close_search />
+                                </span>
+                            })
+                            clear_href clear_id="clear-public-search" on_clear=move |_| {
+                                if !is_tag {
+                                    dock_open.set(true);
+                                }
+                                #[cfg(feature = "hydrate")]
+                                let mobile = !is_tag && is_narrow_viewport();
+                                #[cfg(not(feature = "hydrate"))]
+                                let mobile = false;
+                                navigate(&clear_nav, leptos_router::NavigateOptions { replace: mobile, scroll: false, ..Default::default() });
+                                focus_recovery("public-query");
+                            } />
+                    </form>
+                    {(!is_tag).then(|| view! {
+                        <span class="vk-search-launcher">
+                            <IconButton id="open-public-search" label="Tìm tác phẩm" icon=IconName::Search
+                                expanded=Signal::from(search_open) on_press=open_search />
+                        </span>
+                    })}
+                    {catalog.map(|catalog| view! {
+                        <Suspense fallback=|| view! { <p class="vk-muted" role="status" data-testid="tag-catalog-loading">"Đang tải danh mục thẻ…"</p> }>
+                            <Show when=move || catalog.map(|result| !matches!(result, Ok(list) if list.tags.is_empty())).unwrap_or(false)>
+                                <span class="vk-tag-launcher" data-count=applied_count>
+                                    <IconButton id="open-tag-filters" icon=IconName::FilterList label=filter_label.get_value()
+                                        expanded=Signal::from(open) on_press=move |_| open.set(true) />
+                                    {(applied_count > 0).then(|| view! {
+                                        <span class="vk-tag-launcher__badge" aria-hidden="true">{applied_count}</span>
+                                    })}
+                                </span>
+                            </Show>
+                        </Suspense>
+                    })}
+                    {(!is_tag).then(|| view! {
+                        <p class="vk-discovery-toolbar-status" aria-hidden="true">{move || toolbar_status.get().unwrap_or_default()}</p>
+                    })}
+                    {(!is_tag).then(|| view! { <ExploreBrand /> })}
+                </div>
             </div>
             {catalog.map(|catalog| view! {
                 <Suspense fallback=|| ()>
@@ -581,6 +742,7 @@ fn DiscoveryChrome(
                     </Suspense>
                 </Dialog>
             })}
+            {(!is_tag).then(|| view! { <ExploreModes mode=ExploreMode::Works author_query=context.query.q.clone() /> })}
             <Suspense fallback=|| ()>
                 {move || {
                     let context = chip_context.clone();
@@ -590,7 +752,6 @@ fn DiscoveryChrome(
                     })
                 }}
             </Suspense>
-            {(!is_tag).then(|| view! { <ExploreModes mode=ExploreMode::Works author_query=context.query.q.clone() /> })}
             <section node_ref=stream id="community-stream" aria-label="Tác phẩm khám phá" tabindex="-1">
                 <Suspense fallback=|| view! { <p role="status" data-testid="discovery-loading">"Đang tải kết quả…"</p> }>
                     {move || {
@@ -612,6 +773,17 @@ fn DiscoveryChrome(
     }.into_any()
 }
 
+/// Tất cả uses the R4.2 page title (#402/#404); a tag page keeps its Display heading.
+#[component]
+fn PageTitle(is_tag: bool, children: Children) -> AnyView {
+    if is_tag {
+        view! { <Heading level=HeadingLevel::H1 role=TypeRole::Display>{children()}</Heading> }
+            .into_any()
+    } else {
+        view! { <h1 class="vk-ui-heading vk-ui-type-page-title">{children()}</h1> }.into_any()
+    }
+}
+
 #[component]
 fn DiscoveryHeader(
     context: ExploreContext,
@@ -628,8 +800,8 @@ fn DiscoveryHeader(
                 <Title text="Chưa tải được kết quả — Vink" />
                 <Meta name="robots" content="noindex" />
                 <Link rel="canonical" href=crate::canonical_url(&context.tag_page.as_deref().map(tag_href).unwrap_or_else(|| "/".into())) />
-                <header id="explore-heading" class="vk-explore__heading" class:vk-ui-visually-hidden=!is_tag>
-                    <Heading level=HeadingLevel::H1 role=TypeRole::Display>"Khám phá"</Heading>
+                <header id="explore-heading" class="vk-explore__heading">
+                    <PageTitle is_tag>"Khám phá"</PageTitle>
                 </header>
             }.into_any();
         }
@@ -695,9 +867,9 @@ fn DiscoveryHeader(
         <Title text={ let title = title.clone(); move || format!("{} — Vink", title.get()) } />
         <Meta name="description" content="Tìm tác phẩm công khai theo tên, tác giả và thẻ trên Vink." />
         <Link rel="canonical" href=crate::canonical_url(&canonical.href(None)) />
-        <header id="explore-heading" class="vk-explore__heading" class:vk-ui-visually-hidden=!is_tag>
+        <header id="explore-heading" class="vk-explore__heading">
             {is_tag.then(|| view! { <a class="vk-ui-link" href="/">"Về Khám phá"</a> })}
-            <Heading level=HeadingLevel::H1 role=TypeRole::Display>
+            <PageTitle is_tag>
                 {move || if is_tag {
                     title.get()
                 } else if search_open.get() {
@@ -705,7 +877,7 @@ fn DiscoveryHeader(
                 } else {
                     "Khám phá".into()
                 }}
-            </Heading>
+            </PageTitle>
             {move || if is_tag {
                 match tag.get() {
                     Some(filter) if filter.resolution == "not_found" => view! { <p>"Không tìm thấy thẻ này. Hãy quay về Khám phá để chọn thẻ khác."</p> }.into_any(),
@@ -738,6 +910,14 @@ fn AppliedFilters(context: ExploreContext, list: Option<WorkList>) -> AnyView {
         return ().into_any();
     }
     let live = list.map(|list| public_reads::follow_works(context.query.clone(), list));
+    // R4.2 AppliedRow (#404): one link clears every applied tag and keeps the query.
+    let mut cleared = context.clone();
+    cleared
+        .query
+        .tags
+        .retain(|tag| Some(tag) == context.tag_page.as_ref());
+    cleared.query.cursor = None;
+    let clear_all = cleared.href(None);
     view! {
         <div id="applied-filters" class="vk-applied-filters">
             {move || {
@@ -758,6 +938,7 @@ fn AppliedFilters(context: ExploreContext, list: Option<WorkList>) -> AnyView {
                     </a> }
                 }).collect_view()
             }}
+            <a id="clear-applied-tags" class="vk-ui-link vk-applied-filters__clear" href=clear_all>"Xóa lọc"</a>
         </div>
     }.into_any()
 }
@@ -824,10 +1005,23 @@ fn FilterForm(
                         {move || format!("Đã chọn {}/4", draft.with(Vec::len))}
                     </p> })}
                 </div>
-                <Button kind=ButtonKind::Submit variant=ButtonVariant::Filled
-                    state=Signal::derive(move || if modal && !changed.get() { ActionState::Disabled { reason: None } } else { ActionState::Enabled })>
-                    "Áp dụng"
-                </Button>
+                <div class="vk-discovery-filter-actions">
+                    {modal.then(|| view! {
+                        <Button id="clear-tag-draft" variant=ButtonVariant::Text
+                            state=Signal::derive(move || if draft.with(Vec::is_empty) {
+                                ActionState::Disabled { reason: None }
+                            } else {
+                                ActionState::Enabled
+                            })
+                            on_press=move |_| draft.update(Vec::clear)>
+                            "Bỏ chọn"
+                        </Button>
+                    })}
+                    <Button kind=ButtonKind::Submit variant=ButtonVariant::Filled
+                        state=Signal::derive(move || if modal && !changed.get() { ActionState::Disabled { reason: None } } else { ActionState::Enabled })>
+                        "Áp dụng"
+                    </Button>
+                </div>
             </div>
         </Form>
     }.into_any()
@@ -885,7 +1079,8 @@ fn PublicResults(
                     <div id="public-results">
                         {move || if works.read().is_empty() {
                             let has_tags = !empty_context.query.tags.is_empty();
-                            let has_query = !empty_context.query.q.is_empty();
+                            let trimmed_q = empty_context.query.q.trim().to_owned();
+                            let has_query = !trimmed_q.is_empty();
                             let filtered = has_tags || has_query;
                             // A page tail or unresolved tag never establishes an empty public corpus.
                             let unavailable_tag = data.with(|list| list.filters.tags.iter().any(|tag| matches!(tag.resolution.as_str(), "not_found" | "retired")));
@@ -900,15 +1095,25 @@ fn PublicResults(
                                 </div> }.into_any()
                             } else {
                                 let message = if page_empty {
-                                    if continuation { "Trang này chưa có tác phẩm; bạn có thể xem trang tiếp." } else { "Trang này không còn tác phẩm." }
-                                } else if filtered { "Chưa có tác phẩm phù hợp." } else { "Chưa có tác phẩm công khai." };
+                                    if continuation { "Trang này chưa có tác phẩm; bạn có thể xem trang tiếp.".to_owned() } else { "Trang này không còn tác phẩm.".to_owned() }
+                                } else if has_query {
+                                    format!("Không có tác phẩm khớp “{trimmed_q}”.")
+                                } else if has_tags {
+                                    "Chưa có tác phẩm phù hợp.".to_owned()
+                                } else {
+                                    "Chưa có tác phẩm công khai.".to_owned()
+                                };
                                 let message = if cached_unverified.get() || refreshing.get() || failed.get() {
                                     format!("Bản đã tải: {message}")
-                                } else { message.to_owned() };
+                                } else { message };
+                                let find_authors = (has_query && !page_empty).then(|| {
+                                    (author_search_href(&trimmed_q, None), format!("Tìm tác giả “{trimmed_q}”"))
+                                });
                                 view! { <div data-testid=if page_empty { "public-empty-page" } else if filtered { "public-no-results" } else { "public-empty" }>
                                     <EmptyState artwork=if filtered || page_empty { EmptyArtwork::NoResults } else { EmptyArtwork::NoPublicWorks } message announce=true>
                                         {has_tags.then(|| view! { <a id="clear-public-tags" class="vk-ui-button vk-ui-button--tonal" href=no_tags.href(None)>"Bỏ lọc thẻ"</a> })}
                                         {has_query.then(|| view! { <a id="clear-public-results" class="vk-ui-button vk-ui-button--tonal" href=no_query.href(None)>"Xóa tìm kiếm"</a> })}
+                                        {find_authors.map(|(href, label)| view! { <a id="find-authors-for-query" class="vk-ui-button vk-ui-button--text" href=href>{label}</a> })}
                                         {(!filtered && !page_empty).then(|| view! { <a class="vk-ui-button vk-ui-button--tonal" href="/ban-viet">"Đến Bàn viết"</a> })}
                                     </EmptyState>
                                 </div> }.into_any()
@@ -1001,12 +1206,15 @@ fn WorkCardRow(
                 let author = adapters::card_author(&work, cached_unverified.get());
                 let primary_tag = work.tags.first().map(|tag| tag.label.clone());
                 let excerpt = work.excerpt.clone();
+                #[cfg(feature = "hydrate")]
                 let following = context.mode == ExploreMode::Following;
-                let date = following.then(|| first_public_date(&work.published_at)).flatten();
-                let separate_metadata = primary_tag.is_some() && date.is_some();
-                let date = date.map(|label| view! {
-                    <time class="vk-feed-date" datetime=work.published_at.clone() title="Công khai lần đầu">{label}</time>
+                // R4.2 (#405, DQ-08): show first-public date in Asia/Ho_Chi_Minh across all modes.
+                let date = work.first_published_at.as_deref().and_then(|instant| {
+                    first_public_date_hcm(instant).map(|label| view! {
+                        <time class="vk-feed-date" datetime=instant.to_owned() title="Công khai lần đầu">{label}</time>
+                    })
                 });
+                let separate_metadata = primary_tag.is_some() && date.is_some();
                 #[cfg(feature = "hydrate")]
                 let author_return = work.work_id.clone();
                 // Placeholder labels are not author names: never mark them as search matches.
@@ -1054,25 +1262,6 @@ fn WorkCardRow(
                 }
             })}
         </li>
-    }
-}
-
-fn first_public_date(value: &str) -> Option<String> {
-    #[cfg(feature = "hydrate")]
-    {
-        use wasm_bindgen::JsValue;
-        let date = js_sys::Date::new(&JsValue::from_str(value));
-        let options = js_sys::Object::new();
-        js_sys::Reflect::set(&options, &"timeZone".into(), &"Asia/Ho_Chi_Minh".into()).ok()?;
-        date.get_time()
-            .is_finite()
-            .then(|| date.to_locale_date_string("vi-VN", &options).as_string())
-            .flatten()
-    }
-    #[cfg(not(feature = "hydrate"))]
-    {
-        let _ = value;
-        None
     }
 }
 
@@ -1174,11 +1363,25 @@ mod tests {
         assert!(corpus.contains("/pkg/empty/vink-empty-no-public-works.webp"));
         assert!(corpus.contains("href=\"/ban-viet\""));
         let filtered = render(context("mưa", None), empty(), false, false);
-        assert!(filtered.contains("Chưa có tác phẩm phù hợp."));
+        assert!(
+            filtered.contains("Không có tác phẩm khớp “mưa”."),
+            "{filtered}"
+        );
         assert!(filtered.contains("/pkg/empty/vink-empty-no-results.webp"));
         assert!(filtered.contains("id=\"clear-public-results\""));
+        assert!(filtered.contains("id=\"find-authors-for-query\""));
+        assert!(filtered.contains("Tìm tác giả “mưa”"));
+        assert!(
+            filtered.contains("href=\"/?mode=authors&amp;q=m%C6%B0a\""),
+            "{filtered}"
+        );
         assert!(!filtered.contains("Chưa có tác phẩm công khai."));
-        for html in [corpus, filtered] {
+        let mut tag_only = context("", None);
+        tag_only.query.tags.push("tho".into());
+        let tag_miss = render(tag_only, empty(), false, false);
+        assert!(tag_miss.contains("Chưa có tác phẩm phù hợp."), "{tag_miss}");
+        assert!(!tag_miss.contains("find-authors-for-query"), "{tag_miss}");
+        for html in [corpus, filtered, tag_miss] {
             assert_eq!(html.matches("role=\"status\"").count(), 1);
             assert!(html.contains("alt=\"\""));
             assert!(!html.contains("<h3") && !html.contains("Trang này: 0"));
@@ -1221,7 +1424,10 @@ mod tests {
     fn retained_empty_keeps_refresh_failure_facts_and_removed_snapshot_has_no_art() {
         let stale = render(context("mưa", None), empty(), true, false);
         assert!(stale.contains("public-refresh-failed") && stale.contains("bản đã tải"));
-        assert!(stale.contains("Bản đã tải: Chưa có tác phẩm phù hợp."));
+        assert!(
+            stale.contains("Bản đã tải: Không có tác phẩm khớp “mưa”."),
+            "{stale}"
+        );
         let removed = render(context("", None), empty(), false, true);
         assert!(!removed.contains("/pkg/empty/"));
         assert!(removed.contains("id=\"restart-public\""));
@@ -1235,6 +1441,7 @@ mod tests {
             author_display_name: "Lê Thu Mưa".into(),
             author: None,
             published_at: "2026-10-30T08:00:00Z".into(),
+            first_published_at: Some("2026-10-28T18:00:00Z".into()),
             tags: vec![PublicTagDto {
                 tag_id: "11111111-1111-4111-8111-111111111111".into(),
                 facet: "form".into(),
@@ -1261,6 +1468,12 @@ mod tests {
             home_html.contains("vk-public-row__tag\">Thơ</span>"),
             "{home_html}"
         );
+        assert!(
+            home_html.contains(" · ")
+                && home_html.contains("datetime=\"2026-10-28T18:00:00Z\"")
+                && home_html.contains(">29/10/2026</time>"),
+            "DQ-08 first-public date renders on Tất cả SSR: {home_html}"
+        );
         assert!(!home_html.contains("<mark"), "{home_html}");
         assert!(
             home_html.contains("vk-public-row__excerpt\">Mưa rơi nhẹ qua phố cổ.</p>"),
@@ -1282,6 +1495,68 @@ mod tests {
         assert!(
             search_html.contains("vk-public-row__excerpt\">Mưa rơi nhẹ qua phố cổ.</p>"),
             "{search_html}"
+        );
+    }
+
+    #[test]
+    fn filter_form_exposes_client_clear_only_in_modal_sheet() {
+        let tag_list = TagList {
+            tags: vec![TagDto {
+                tag_id: "11111111-1111-4111-8111-111111111111".into(),
+                facet: "form".into(),
+                label: "Thơ".into(),
+                slug: "tho".into(),
+                description: None,
+                status: "active".into(),
+                successor: None,
+            }],
+            truncated: false,
+        };
+        let render_form = |modal: bool, selected: Vec<String>| {
+            let list = tag_list.clone();
+            Owner::new().with(|| {
+                provide_context(leptos_router::location::RequestUrl::new("/"));
+                let draft = RwSignal::new(selected);
+                let initial = StoredValue::new(Vec::<String>::new());
+                let open = RwSignal::new(true);
+                view! {
+                    <leptos_router::components::Router>
+                        <FilterForm id=if modal { "modal" } else { "dock" } q=String::new() draft initial list open modal />
+                    </leptos_router::components::Router>
+                }
+                .to_html()
+            })
+        };
+        let dock = render_form(false, vec![]);
+        assert!(
+            !dock.contains("clear-tag-draft") && !dock.contains("Bỏ chọn"),
+            "{dock}"
+        );
+
+        let empty_modal = render_form(true, vec![]);
+        assert!(
+            empty_modal.contains("id=\"clear-tag-draft\"")
+                && empty_modal.contains("type=\"button\"")
+                && empty_modal.contains("Bỏ chọn")
+                && empty_modal.contains("aria-disabled=\"true\""),
+            "{empty_modal}"
+        );
+
+        let picked_modal = render_form(true, vec!["tho".into()]);
+        let clear_button = picked_modal
+            .split("id=\"clear-tag-draft\"")
+            .next()
+            .and_then(|before| before.rsplit('<').next())
+            .unwrap_or_default();
+        let clear_tail = picked_modal
+            .split("id=\"clear-tag-draft\"")
+            .nth(1)
+            .and_then(|after| after.split('>').next())
+            .unwrap_or_default();
+        assert!(
+            clear_button.contains("type=\"button\"")
+                && !clear_tail.contains("aria-disabled=\"true\""),
+            "{picked_modal}"
         );
     }
 }

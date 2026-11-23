@@ -135,9 +135,14 @@ storage lỗi, nhưng không hứa giữ sau reload.
 | `focus` | `#7250b4` | `#d4bbff` | Vòng focus 3 px |
 | `inverse-surface` / `inverse-on-surface` | `#241d2d` / `#fffaff` | `#f0e7f8` / `#17121d` | Tooltip, snackbar sau này |
 | `state-hover`, `scrim`, `shadow` | primary 8 %, tối 44 %, bóng 0 12 40 | primary 10 %, đen 58 %, bóng 0 16 48 | Trạng thái, lớp phủ, độ nổi |
+| `bg-page` = `bg-nav` (R4.2) | `#efe8f6` (`surface-container`) | `#17121d` (`surface`) | Nền trang, Navigation Rail, thanh dưới — một màu |
+| `bg-content` / `bg-inset` (R4.2) | `#f7f2fa` / `#e8e0f0` | `#211b29` / `#372e42` | Thẻ, hàng, sheet, menu (sáng hơn nền một bậc) / avatar chữ, nút icon trong thẻ |
 
 Nhóm nội dung bằng fill và khoảng cách: thẻ, empty và notice bỏ viền; viền chỉ còn ở input
-(nhận biết control), focus và đường phân cách footer.
+(nhận biết control), focus và đường phân cách footer. Từ R4.2 (#402, `DESIGN_PROPOSED`, token
+0.8.0) nền trang, rail và thanh dưới dùng chung `bg-page`; thẻ rời bo `radius.card` 20, cách
+`space.card-gap` 8; tiêu đề trang công cụ dùng `type.page-title`; control bán vuông bo
+`radius.control-56/48/40` theo chiều cao ([R4](redesign-r4-ban-viet-kham-pha.md)).
 
 ## Chữ, hình, chuyển động
 

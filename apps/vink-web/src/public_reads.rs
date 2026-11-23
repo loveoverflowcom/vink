@@ -152,7 +152,8 @@ pub fn snapshot_weight_bytes(snapshot: &Snapshot) -> usize {
                     .saturating_add(opt_str_len(&card.excerpt))
                     .saturating_add(card.author_display_name.len())
                     .saturating_add(card.author.as_ref().map_or(0, author_bytes))
-                    .saturating_add(card.published_at.len());
+                    .saturating_add(card.published_at.len())
+                    .saturating_add(opt_str_len(&card.first_published_at));
                 for tag in &card.tags {
                     bytes = bytes.saturating_add(public_tag_bytes(tag));
                 }
@@ -1444,6 +1445,7 @@ mod tests {
             author_display_name: "Author".into(),
             author: None,
             published_at: "2026-11-15T00:00:00Z".into(),
+            first_published_at: None,
             tags: vec![],
         }
     }
@@ -2976,6 +2978,7 @@ mod tests {
                                 + c.excerpt.as_ref().map_or(0, String::len)
                                 + c.author_display_name.len()
                                 + c.published_at.len()
+                                + c.first_published_at.as_ref().map_or(0, String::len)
                                 + c.tags
                                     .iter()
                                     .map(|t| {
@@ -3009,6 +3012,7 @@ mod tests {
                         author_display_name: "Tác giả kiểm thử".into(),
                         author: None,
                         published_at: "2026-11-17T00:00:00Z".into(),
+                        first_published_at: Some("2026-11-16T00:00:00Z".into()),
                         tags: vec![
                             PublicTagDto {
                                 tag_id: "00000000-0000-4000-8000-000000000010".into(),

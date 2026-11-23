@@ -21,6 +21,19 @@ pub fn updated_at_label(timestamp: &str) -> String {
     )
 }
 
+/// First-public calendar date in `Asia/Ho_Chi_Minh` (UTC+7, no DST), formatted identically to
+/// `Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })` on both SSR and browser.
+pub fn first_public_date_hcm(timestamp: &str) -> Option<String> {
+    let instant = OffsetDateTime::parse(timestamp, &Rfc3339).ok()?;
+    let hcm = instant.to_offset(UtcOffset::from_hms(7, 0, 0).ok()?);
+    Some(format!(
+        "{}/{}/{}",
+        hcm.day(),
+        hcm.month() as u8,
+        hcm.year()
+    ))
+}
+
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen::prelude::wasm_bindgen(inline_js = "
 export function vinkLocalTimestamp(instant, fallback) {
@@ -89,5 +102,25 @@ mod tests {
             "{html}"
         );
         assert!(html.contains("01/11/2026, 17:30 UTC"), "{html}");
+    }
+
+    #[test]
+    fn first_public_date_hcm_matches_vi_vn_ho_chi_minh_zone() {
+        for (source, expected) in [
+            ("2026-10-30T08:00:00Z", Some("30/10/2026")),
+            ("2026-11-05T18:00:00Z", Some("6/11/2026")),
+            ("2026-01-01T00:00:00Z", Some("1/1/2026")),
+            ("2026-12-31T17:00:00Z", Some("1/1/2027")),
+            ("2024-02-28T17:30:00Z", Some("29/2/2024")),
+            ("2026-11-02T00:30:00+07:00", Some("2/11/2026")),
+            ("invalid", None),
+            ("", None),
+        ] {
+            assert_eq!(
+                first_public_date_hcm(source).as_deref(),
+                expected,
+                "{source}"
+            );
+        }
     }
 }

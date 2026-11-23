@@ -78,7 +78,8 @@ const CARDS_SQL: &str = concat!(
     ),
     ")
     SELECT p.work_id, r.title, r.document, a.display_name, a.handle, a.retired,
-           p.first_published_at AS published_at, p.metadata_snapshot_id, s.digest
+           p.first_published_at AS published_at, p.metadata_snapshot_id, s.digest,
+           p.first_published_at
       FROM eligible p
       JOIN revisions r ON r.work_id = p.work_id AND r.id = p.revision_id
       JOIN public_author_attribution a ON a.id = p.owner_id

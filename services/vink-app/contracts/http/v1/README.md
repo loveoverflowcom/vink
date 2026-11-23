@@ -140,6 +140,8 @@ page. Choices, plans and measurements: [discovery](../../../../../docs/developme
   catalog `tag` (with `description` and, when retired, the `successor` hint; `null` for
   `not_found`). A client moves a `redirect` URL to `tag.slug`. `next_cursor` is present only when
   another matching work was read after this page; `null` is the end. There is **no total count**.
+- `first_published_at` is the immutable RFC 3339 first-public instant, present only when the
+  publication history establishes it. `published_at` still dates the current pointer on this endpoint.
 - **Order and pages.** Newest `published_at` first, then `work_id` ascending. A page is one
   database snapshot; the list across pages is not: a work published after page 1 is not inserted
   into later pages, a withdrawn one disappears, a republished one moves to the top (it may be

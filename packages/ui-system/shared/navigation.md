@@ -83,9 +83,14 @@ Leptos chỉ render wrapper brand khi host truyền slot. Toggle dùng cặp ico
 heading, nên Web shell bỏ TopBar. Specimen TopBar độc lập và Compose giữ contract hiện có.
 
 Rail dùng `size.rail-expanded` 220 và `size.rail-compact` 96 (px Web, dp CMP). Mục rail Web ở
-hàng ngang cao tối thiểu 56 px. Khi xếp dọc, indicator 56×32 px bao biểu tượng và nhãn nằm
-bên dưới. Pane rail cuộn khi cửa sổ thấp. Tooltip đặt ngoài vùng cuộn, dưới nút và trong bề
-rộng rail. Lớp z: rail/thanh 5 < tooltip/skip-link 10 < dialog native (top layer).
+hàng ngang cao tối thiểu 56 px, bo `radius.control-56`. Khi xếp dọc, indicator 56×32 px bo
+`radius.control-40` bao biểu tượng và nhãn 12 px (`text.rail-label`) nằm bên dưới; thanh dưới
+dùng cùng indicator. Từ
+R4.2 (#403) rail và thanh dưới dùng `color.bg-nav` (= `color.bg-page`, cùng màu nền trang);
+chỉ đích hiện hành có nền `primary-container`, tiện ích đang mở (Giao diện) chỉ có viền 2 px
+`primary`. Pane rail cuộn khi cửa sổ thấp. Tooltip đặt ngoài vùng cuộn, bên phải nút toggle
+trên cùng hàng, không che đích đầu tiên. Lớp z: rail/thanh 5 < tooltip/skip-link 10 < dialog
+native (top layer).
 
 ## Lớp phủ (`OverlayLayer`)
 

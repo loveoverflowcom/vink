@@ -16,6 +16,7 @@ export async function discoveryChipGeometry(page, { args, check }) {
       const text=range.getBoundingClientRect(), s=getComputedStyle(target), mark=getComputedStyle(target,'::before');
       const reserved=parseFloat(s.paddingLeft)+parseFloat(s.borderLeftWidth)+parseFloat(mark.width);
       return {target:local(t),label:local(l),text:label.textContent,checked:input.checked,disabled:input.disabled,
+        radius:s.borderTopLeftRadius, bg:s.backgroundColor, color:s.color,
         centerError:Math.abs(l.x+l.width/2-t.x-t.width/2),
         textCenterError:Math.abs((text.left+text.right)/2-t.x-t.width/2),
         textFits:text.left>=l.x-1 && text.right<=l.x+l.width+1 && text.top>=l.y-1 && text.bottom<=l.y+l.height+1,
@@ -24,10 +25,20 @@ export async function discoveryChipGeometry(page, { args, check }) {
         native:input.type==='checkbox' && input.name==='tag' && !!input.value && input.labels.length===1 && !input.hasAttribute('role'),
         inside:l.x>=t.x && l.x+l.width<=t.x+t.width+1};
     });
+    const probe=document.createElement('span');
+    probe.style.background='var(--vk-primary)'; probe.style.color='var(--vk-on-primary)';
+    document.body.append(probe);
+    const primary={bg:getComputedStyle(probe).backgroundColor, color:getComputedStyle(probe).color};
+    probe.remove();
+    const dialog=form.closest('dialog'), dr=dialog.getBoundingClientRect();
+    const actions=[...form.querySelectorAll('.vk-discovery-filter-actions button')].map(b=>{
+      const r=b.getBoundingClientRect();
+      return {id:b.id, fits:r.width>=48 && r.height>=48 && r.left>=dr.left-1 && r.right<=dr.right+1};
+    });
     const overlap=chips.some((a,i)=>chips.slice(i+1).some(b=>
       Math.min(a.target.x+a.target.width,b.target.x+b.target.width)-Math.max(a.target.x,b.target.x)>1 &&
       Math.min(a.target.y+a.target.height,b.target.y+b.target.height)-Math.max(a.target.y,b.target.y)>1));
-    return {chips,overlap,viewport:{width:innerWidth,height:innerHeight,clientWidth:document.documentElement.clientWidth,dpr:devicePixelRatio},
+    return {chips,primary,actions,overlap,viewport:{width:innerWidth,height:innerHeight,clientWidth:document.documentElement.clientWidth,dpr:devicePixelRatio},
       font:getComputedStyle(form.querySelector('.vk-ui-choice__label')).font,theme:document.documentElement.dataset.theme,
       overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,
       formOverflow:form.scrollWidth-form.clientWidth,selected:chips.filter(c=>c.checked).length};
@@ -35,10 +46,12 @@ export async function discoveryChipGeometry(page, { args, check }) {
   const unchanged = (a,b) => a.chips.every((chip,i)=>['target','label'].every(key=>
     ['x','y','width','height'].every(axis=>Math.abs(chip[key][axis]-b.chips[i][key][axis])<=1)));
   const geometry = (m,scene) => {
-    console.log('  ..  #260 measurements '+scene+' '+JSON.stringify(m));
-    check(m.chips.length>=6 && m.chips.every(c=>c.centerError<=1 && c.textCenterError<=1 && c.target.width>=48 && c.target.height>=48 &&
+    console.log('  ..  #260/#406 measurements '+scene+' '+JSON.stringify(m));
+    check(m.chips.length>=6 && m.chips.every(c=>c.radius==='12px' && (!c.checked || (c.bg===m.primary.bg && c.color===m.primary.color)) &&
+      c.centerError<=1 && c.textCenterError<=1 && c.target.width>=48 && c.target.height>=48 &&
       c.textFits && c.markClear && c.inside && c.native && c.markVisible===c.checked) &&
-      !m.overlap && m.overflow<=1 && m.formOverflow<=1, '#260 centered label, separate mark, >=48px nonoverlapping targets and reflow '+scene);
+      m.actions.length===2 && m.actions.every(a=>a.fits) &&
+      !m.overlap && m.overflow<=1 && m.formOverflow<=1, '#260/#406 text-width bo-12 primary chips, footer actions fit, >=48px nonoverlapping targets and reflow '+scene);
   };
   for (const [width,height] of [[1440,900],[320,900],[390,844],[800,1112]]) {
     for (const theme of ['light','dark']) for (const scale of [100,200]) {
@@ -53,14 +66,23 @@ export async function discoveryChipGeometry(page, { args, check }) {
       await page.waitFor(`document.querySelector('#tag-picker').open && document.querySelector('#modal-tag-form input[type=checkbox]')`, 'chip dialog');
       check(await page.eval(`(() => {
         const dialog=document.querySelector('#tag-picker'), r=dialog.getBoundingClientRect();
+        const title=document.querySelector('#tag-picker-title'), ts=getComputedStyle(title);
+        const probe=document.createElement('span'); probe.style.background='var(--vk-bg-content)'; document.body.append(probe);
+        const bgContent=getComputedStyle(probe).backgroundColor; probe.remove();
         const viewportWidth=document.documentElement.clientWidth;
         const centered=Math.abs((r.left+r.right-viewportWidth)/2)<=1 && Math.abs((r.top+r.bottom-innerHeight)/2)<=1;
         const sheet=r.left===0 && Math.abs(r.right-viewportWidth)<=1 && Math.abs(r.bottom-innerHeight)<=1;
-        return getComputedStyle(dialog).borderTopWidth==='0px' && dialog.scrollTop===0 &&
-          document.activeElement?.id==='tag-picker-title' && (innerWidth<760 ? sheet : centered);
-      })()`), '#308 tonal dialog or bottom sheet opens at its title '+scene);
+        const noPointerRing=ts.outlineStyle==='none' || parseFloat(ts.outlineWidth)===0;
+        return getComputedStyle(dialog).borderTopWidth==='0px' && getComputedStyle(dialog).backgroundColor===bgContent &&
+          dialog.scrollTop===0 && document.activeElement?.id==='tag-picker-title' && noPointerRing &&
+          (innerWidth<760 ? sheet : centered);
+      })()`), '#308/#406 bg-content dialog/sheet opens at title without pointer outline '+scene);
       await settle();
       const initial=await inspect(form), url=await page.eval('location.href');
+      if (width === 1440 && scale === 100) {
+        const widths = new Set(initial.chips.map(c => Math.round(c.target.width)));
+        check(widths.size >= 2, '#406 DQ-07 chips size to their text width instead of fixed equal columns ' + JSON.stringify([...widths]));
+      }
       await page.capture('chip260-'+scene+'-0',{boundary:'real-FilterForm-native-Checkbox',scenario:'discovery-chip-geometry'});
       geometry(initial,scene+'/0');
       check(initial.selected===0, '#260 initial selection is empty '+scene);
@@ -101,6 +123,28 @@ export async function discoveryChipGeometry(page, { args, check }) {
   await page.viewport(390,844);
   await page.goto(args.base+'/');
   await page.waitFor(`document.documentElement.dataset.hydrated==='true' && document.querySelector('#open-tag-filters')`, 'keyboard chip catalog');
+  // #406 AC-03: keyboard opening shows a >=3:1 focus ring on #tag-picker-title and Escape returns focus.
+  for (const theme of ['light', 'dark']) {
+    await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}`);
+    await settle();
+    await page.eval(`document.querySelector('#open-public-search').focus()`);
+    await page.key('Tab');
+    await page.waitFor(`document.activeElement?.id==='open-tag-filters'`, 'Tab reaches Lọc thẻ');
+    await page.key('Enter');
+    await page.waitFor(`document.querySelector('#tag-picker')?.open && document.activeElement?.id==='tag-picker-title'`, 'keyboard opens sheet at title');
+    const kb = await page.eval(`(() => {
+      const dialog=document.querySelector('#tag-picker'), title=document.querySelector('#tag-picker-title');
+      const s=getComputedStyle(title), bg=getComputedStyle(dialog).backgroundColor;
+      const lum=c=>c.match(/[\\d.]+/g).slice(0,3).map(v=>v/255).map(v=>v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4).reduce((a,v,i)=>a+v*[0.2126,0.7152,0.0722][i],0);
+      const [hi,lo]=[lum(s.outlineColor),lum(bg)].sort((a,b)=>b-a);
+      return {modality:dialog.dataset.openModality, style:s.outlineStyle, width:parseFloat(s.outlineWidth), ratio:(hi+0.05)/(lo+0.05)};
+    })()`);
+    check(kb.modality==='keyboard' && kb.style==='solid' && kb.width>=2 && kb.ratio>=3,
+      `#406 AC-03 keyboard-opened sheet title shows visible >=3:1 focus ring (${theme}: ${JSON.stringify(kb)})`);
+    await page.key('Escape');
+    await page.waitFor(`!document.querySelector('#tag-picker').open && document.activeElement?.id==='open-tag-filters'`, '#406 AC-03 Escape returns focus to Lọc thẻ');
+  }
+  await page.eval(`document.documentElement.dataset.theme='light'`);
   await page.click('#open-tag-filters');
   await page.waitFor(`document.querySelector('#modal-tag-form input[type=checkbox]')`, 'keyboard chips');
   const form='#modal-tag-form';

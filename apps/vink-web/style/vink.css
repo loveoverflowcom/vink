@@ -30,7 +30,9 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--vk-surface);
+  /* R4.2 (#402): page, Navigation Rail and bottom bar share one background; content cards are
+   * one tonal step lighter (bg-content). */
+  background: var(--vk-bg-page);
   color: var(--vk-on-surface);
   font-family: var(--vk-font-ui);
   font-size: var(--vk-type-body-size);
@@ -64,18 +66,12 @@ a {
   block-size: 100dvh;
   max-inline-size: 100%;
   max-block-size: 100%;
-  background: var(--vk-surface-container-low);
+  background: var(--vk-bg-nav);
   overflow: hidden;
 }
 
 .vk-rail-modal::backdrop { background: var(--vk-scrim); }
 .vk-rail-modal .vk-ui-rail { position: static; overscroll-behavior: contain; }
-
-#shell .vk-ui-rail .vk-ui-nav-utility[aria-expanded="true"],
-#shell .vk-ui-rail .vk-ui-nav-utility[aria-expanded="true"] .vk-ui-nav-item__indicator {
-  background: var(--vk-surface-container-highest);
-  color: var(--vk-on-surface);
-}
 
 .vk-brand {
   display: inline-flex;
@@ -384,9 +380,10 @@ a {
   line-height: var(--vk-type-label-line-height);
 }
 
-/* H1 stays one step above the stream's Title H2; Display on wide pages, Headline when narrow. */
+/* A Display H1 (tag pages) stays one step above the stream's Title H2; Headline when narrow.
+ * Khám phá's own modes use the R4.2 page title instead. */
 @media (max-width: 759px) {
-  .vk-explore__heading > .vk-ui-heading {
+  .vk-explore__heading > .vk-ui-heading:not(.vk-ui-type-page-title) {
     font-size: var(--vk-type-headline-size);
     line-height: var(--vk-type-headline-line-height);
     letter-spacing: var(--vk-type-headline-tracking);
@@ -420,9 +417,6 @@ a {
 #community-stream [data-testid^=public-] .vk-ui-panel__actions { justify-content: center; }
 
 .vk-public-search { margin: 0; }
-@media (max-width: 759px) {
-  .vk-explore { margin-inline: min(0px, calc(16px - var(--vk-space-4))); }
-}
 /* Give the single-line placeholder room at 320px / 200% without shrinking either target. */
 @container vk-explore (max-width: 10rem) {
   .vk-public-search .vk-ui-search__shell { padding-inline: min(var(--vk-space-1), 4px); column-gap: 0; }
@@ -823,14 +817,13 @@ a {
   margin: 0 auto;
 }
 
-/* Bàn viết: create at the heading, then one compact list. */
-.vk-desk--index { max-width: 64rem; container: vk-desk-index / inline-size; }
-/* On phones, text enlargement should use the content measure instead of doubling the gutters. */
+/* Bàn viết: create at the heading, then one compact list. R4.2 (#402): the same page column as
+ * Khám phá, so both titles share a left edge. */
+.vk-desk--index { max-width: var(--vk-size-page-column); container: vk-desk-index / inline-size; }
+/* R4.2 (#402): one fixed narrow gutter for Khám phá and Bàn viết; text enlargement uses the
+ * content measure instead of doubling the gutters. */
 @media (max-width: 759px) {
-  .vk-main:has(> .vk-desk--index) { padding-inline: min(var(--vk-space-4), 16px); }
-}
-@media (max-width: 359px) {
-  .vk-main:has(> .vk-desk--index) { padding-inline: min(var(--vk-space-2), 8px); }
+  .vk-main:is(:has(> .vk-desk--index), :has(> .vk-explore)) { padding-inline: var(--vk-size-gutter-narrow); }
 }
 .vk-desk-heading {
   display: grid;
@@ -902,7 +895,6 @@ a {
 .vk-desk-create .vk-ui-field__required { display: none; }
 .vk-desk-create .vk-ui-button { padding-inline: min(var(--vk-space-6), 24px); }
 .vk-desk-create #create-draft-note, .vk-draft-tools #refresh-drafts-note { display: none; }
-.vk-desk--index #desk-title { font-family: var(--vk-font-ui); font-size: var(--vk-type-headline-size); font-weight: var(--vk-type-headline-weight); }
 .vk-draft-controls { display: grid; gap: min(var(--vk-space-2), 8px) var(--vk-space-3); min-inline-size: 0; }
 .vk-draft-tools {
   display: grid;
@@ -930,10 +922,10 @@ a {
 .vk-draft-search #draft-search-help { position: absolute; inline-size: 1px; block-size: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 #draft-scope, .vk-draft-sort-help { margin: 0; font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
 /* DraftRow owns equal insets; the list owns one quiet surface, with space between links. */
-.vk-draft-rows { display: grid; gap: var(--vk-space-1); margin: 0; padding: var(--vk-space-1) 0; list-style: none; border-radius: var(--vk-radius-lg); background: var(--vk-surface-container-low); }
+.vk-draft-rows { display: grid; gap: var(--vk-space-1); margin: 0; padding: var(--vk-space-1) 0; list-style: none; border-radius: var(--vk-radius-lg); background: var(--vk-bg-content); }
 .vk-draft-rows:empty { display: none; }
 /* The label joins the controls only when the Desk has room for its text and both targets. */
-@container vk-desk-index (min-width: 17rem) {
+@container vk-desk-index (min-width: 18.5rem) {
   .vk-draft-tools { column-gap: var(--vk-space-3); }
   .vk-draft-tools > .vk-ui-field { grid-row: 1; grid-template: auto / auto minmax(0, 1fr); align-items: center; column-gap: var(--vk-space-2); }
   .vk-draft-tools > .vk-ui-plain-tooltip { grid-row: 1; }
@@ -1788,46 +1780,103 @@ a {
 .vk-discovery:not(.vk-discovery--tag) {
   margin-block-start: 0;
   inline-size: 100%;
-  max-inline-size: 48rem;
+  max-inline-size: var(--vk-size-page-column);
   margin-inline: auto;
 }
+/* R4.2 header row (#404): page title left; [tìm][Lọc thẻ] + logo right. The search dock
+ * (`data-search="open"`) replaces the icon cluster; on phones it takes the whole screen. */
+.vk-explore__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vk-space-2) var(--vk-space-3);
+  padding-block: 16px 12px;
+  background: var(--vk-bg-page);
+}
+.vk-explore__top > .vk-explore__heading { flex: 1 1 auto; min-inline-size: 0; margin: 0; }
 .vk-discovery-toolbar {
-  position: sticky;
-  top: 0;
-  z-index: 4;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 12px;
-  background: var(--vk-surface);
-  padding-block: 16px 20px;
+  gap: 8px 12px;
+  min-inline-size: 0;
+  margin-inline-start: auto;
+  --vk-ui-control-radius: var(--vk-radius-control-56);
+  --vk-ui-search-radius: var(--vk-radius-control-56);
+}
+/* Desktop keeps the header in reach while reading; never on phones or at 200% text. */
+@media (min-width: 760px) {
+  :root:not([data-text="200"]) .vk-discovery:not(.vk-discovery--tag) > .vk-explore__top { position: sticky; top: 0; z-index: 4; }
 }
 .vk-discovery-toolbar > [role="status"] { margin: 0; }
-.vk-discovery .vk-public-search { flex: 0 1 328px; min-inline-size: 0; max-inline-size: none; }
+.vk-discovery .vk-public-search { flex: 0 1 328px; min-inline-size: 0; max-inline-size: none; --vk-ui-control-radius: var(--vk-radius-control-48); }
 .vk-discovery .vk-public-search > .vk-ui-field { margin: 0; }
 .vk-discovery:not(.vk-discovery--tag) .vk-public-search .vk-ui-search__shell {
-  min-block-size: var(--vk-density-control-height);
-  padding: 0 6px;
-  background: var(--vk-surface-container-high);
+  min-block-size: 56px;
+  padding: 0 4px;
+  background: var(--vk-surface-container-highest);
 }
+.vk-discovery--tag .vk-explore__top { display: block; padding-block: 0; }
+.vk-discovery--tag .vk-explore__top > .vk-explore__heading { margin-block-end: var(--vk-space-6); }
 .vk-discovery--tag .vk-discovery-toolbar {
-  position: static;
   justify-content: flex-start;
-  padding-block: 0;
   margin-block-end: var(--vk-space-2);
+  --vk-ui-control-radius: initial;
+  --vk-ui-search-radius: initial;
 }
-.vk-discovery--tag .vk-public-search { flex: 1 1 16rem; }
+.vk-discovery--tag .vk-public-search { flex: 1 1 16rem; --vk-ui-control-radius: initial; }
 .vk-discovery-tools { display: inline-flex; align-items: center; flex: none; }
 .vk-search-launcher,
 .vk-search-close,
 .vk-discovery-toolbar-status { display: none; }
+/* Square icon actions: 56 px on wide windows, 48 px on phones (R4.2 semi-square). */
+.vk-search-launcher .vk-ui-icon-button,
+.vk-tag-launcher .vk-ui-icon-button { inline-size: 56px; block-size: 56px; }
+.vk-search-launcher .vk-ui-icon-button { background: var(--vk-surface-container-highest); color: var(--vk-on-surface); }
+/* DQ-10: Lọc thẻ is the tertiary (rose) action; its badge counts the applied tags. */
+.vk-tag-launcher .vk-ui-icon-button { background: var(--vk-tertiary-container); color: var(--vk-on-tertiary-container); }
+.vk-tag-launcher { position: relative; }
+.vk-tag-launcher__badge {
+  position: absolute;
+  inset-block-start: -4px;
+  inset-inline-end: -4px;
+  box-sizing: border-box;
+  min-inline-size: 20px;
+  block-size: 20px;
+  padding-inline: 5px;
+  border-radius: 6px;
+  background: var(--vk-tertiary);
+  color: var(--vk-on-tertiary);
+  box-shadow: 0 0 0 2px var(--vk-bg-page);
+  /* A fixed 12px count inside the fixed 20px badge (half the icon box), like the icon it marks. */
+  font-family: var(--vk-font-ui);
+  font-size: calc(var(--vk-size-icon) / 2);
+  font-weight: var(--vk-type-page-title-weight);
+  line-height: 20px;
+  text-align: center;
+  pointer-events: none;
+}
+.vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="closed"] .vk-public-search { display: none; }
+.vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="closed"] .vk-search-launcher { display: inline-flex; }
+.vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] .vk-discovery-toolbar { flex: 1 1 24rem; }
+.vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] .vk-public-search { flex: 1 1 14rem; }
+.vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] .vk-search-close { display: inline-flex; }
+.vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] #public-search button[type="submit"] { display: none; }
+.vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] :is(.vk-search-launcher, .vk-discovery-tools) { display: none; }
+@media (forced-colors: active) {
+  .vk-tag-launcher__badge { forced-color-adjust: none; background: Highlight; color: HighlightText; box-shadow: none; }
+}
 .vk-discovery #community-stream { display: block; align-items: stretch; }
 .vk-discovery #public-collection, .vk-discovery #public-results { display: block; }
 .vk-discovery .vk-public-scope { text-align: start; margin-block: 0 var(--vk-space-2); }
+/* R4.2 AppliedRow (#404): the count follows the chips and “Xóa lọc”, aligned to the start. */
+.vk-discovery #public-results > .vk-public-scope { text-align: start; }
 .vk-discovery #public-results > .vk-public-list { margin-top: 0; }
-.vk-discovery .vk-public-list { display: grid; gap: calc(var(--vk-space-8) + var(--vk-space-2)); margin: 0; padding: 0; list-style: none; }
-.vk-applied-filters { display: flex; flex-wrap: wrap; align-items: start; gap: var(--vk-space-2); margin-block: 0 var(--vk-space-3); }
+/* R4.2 (#405): separate bg-content cards, equal 20px corners and an 8px gap of page background. */
+.vk-discovery .vk-public-list { display: grid; gap: var(--vk-space-card-gap); margin: 0; padding: 0; list-style: none; }
+.vk-applied-filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-2); margin-block: 0 var(--vk-space-3); }
+.vk-applied-filters__clear { display: inline-flex; align-items: center; min-block-size: var(--vk-size-hit-target); padding-inline: var(--vk-space-2); }
 .vk-applied-tag { display: inline-flex; align-items: center; min-width: 0; max-width: 100%; color: var(--vk-on-secondary-container); text-decoration: none; }
 .vk-applied-tag:not(:has(.vk-tag-chip__note)) {
   min-block-size: var(--vk-density-control-height);
@@ -1859,7 +1908,9 @@ a {
 .vk-discovery-catalog-error { display: grid; justify-items: start; gap: var(--vk-space-3); }
 .vk-discovery-filter-form fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .vk-discovery-filter-form legend { margin-bottom: var(--vk-space-2); font-weight: var(--vk-type-label-weight); }
-.vk-discovery-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr)); gap: var(--vk-space-2); }
+/* R4.2 (#406, DQ-07): text-width wrapping chips, 12px radius, primary selected + symmetric
+ * check tracks so toggling never changes a chip's bounding rect (>1 CSS px). */
+.vk-discovery-options { display: flex; flex-wrap: wrap; gap: var(--vk-space-2); }
 .vk-discovery-filter-footer {
   display: flex;
   flex-wrap: wrap;
@@ -1869,62 +1920,111 @@ a {
   margin-block-start: var(--vk-space-1);
   font-size: var(--vk-type-label-size);
 }
+.vk-discovery-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vk-space-2);
+  max-inline-size: 100%;
+  --vk-ui-control-radius: var(--vk-radius-control-48);
+}
+.vk-discovery-filter-actions .vk-ui-button--text { padding-inline: var(--vk-space-3); }
 
 .vk-discovery-option { min-width: 0; max-inline-size: 100%; }
+.vk-discovery-option .vk-ui-choice { min-inline-size: 0; max-inline-size: 100%; }
 /* Equal fixed mark/end tracks center the label itself, independent of checked state. */
-.vk-discovery-option .vk-ui-choice__target { display:grid; grid-template-columns:1em minmax(0,1fr) 1em; width:100%; min-block-size:var(--vk-density-control-height); gap:var(--vk-space-1); padding:var(--vk-space-2); border-radius:var(--vk-radius-md); background:var(--vk-surface-container-low); }
+.vk-discovery-option .vk-ui-choice__target { display:inline-grid; grid-template-columns:1em minmax(0,1fr) 1em; align-items:center; inline-size:fit-content; min-inline-size:var(--vk-density-control-height); max-inline-size:100%; min-block-size:var(--vk-density-control-height); gap:var(--vk-space-1); padding:var(--vk-space-2); border-radius:var(--vk-radius-control-40); background:var(--vk-surface-container-highest); color:var(--vk-on-surface); }
 .vk-discovery-option .vk-ui-choice__input { position:absolute; inline-size:1px; block-size:1px; opacity:0; }
 .vk-discovery-option .vk-ui-choice__label { min-width:0; text-align:center; overflow-wrap:anywhere; font-weight:var(--vk-type-label-weight); }
 .vk-discovery-option .vk-ui-choice__target::before { content:"✓" / ""; inline-size:1em; visibility:hidden; }
 .vk-discovery-option .vk-ui-choice__target::after { content:""; inline-size:1em; }
-.vk-discovery-option .vk-ui-choice__target:has(input:checked) { background:var(--vk-primary-container); color:var(--vk-on-primary-container); }
+.vk-discovery-option .vk-ui-choice__target:has(input:checked) { background:var(--vk-primary); color:var(--vk-on-primary); }
 .vk-discovery-option .vk-ui-choice__target:has(input:checked)::before { visibility:visible; }
 .vk-discovery-option .vk-ui-choice__target:has(input:focus-visible) { outline:var(--vk-size-focus-ring) solid var(--vk-focus-ring); outline-offset:var(--vk-size-focus-offset); }
 .vk-discovery-option .vk-ui-choice__target:has(input:disabled) { opacity:0.6; cursor:default; }
+@media (forced-colors: active) {
+  .vk-discovery-option .vk-ui-choice__target { border: 1px solid ButtonText; }
+  .vk-discovery-option .vk-ui-choice__target:has(input:checked) { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: Highlight; }
+}
 .vk-discovery[data-enhanced=true] .vk-tag-dock { display: none; }
 .vk-discovery[data-enhanced=true] .vk-tag-launcher { display: inline-flex; }
-#tag-picker { inline-size: min(30rem, calc(100% - 2 * var(--vk-overlay-margin))); }
+#tag-picker { inline-size: min(30rem, calc(100% - 2 * var(--vk-overlay-margin))); background-color: var(--vk-bg-content); }
 #tag-picker .vk-ui-dialog__panel {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   row-gap: var(--vk-space-4);
 }
 #tag-picker .vk-ui-dialog__title { font-family: var(--vk-font-ui); }
-#tag-picker .vk-ui-dialog__header-action .vk-ui-icon-button { background-color: var(--vk-surface-container-low); }
+#tag-picker .vk-ui-dialog__header-action .vk-ui-icon-button { background-color: var(--vk-bg-inset); }
 #tag-picker .vk-ui-dialog__content { grid-column: 1 / -1; min-inline-size: 0; }
+/* R4.2 mode group (#404, DQ-03): one connected row of links that never wraps; when it would
+ * not fit, the same links open from a menu. The threshold scales with text size (rem). */
 .vk-explore-modes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  margin-block: var(--vk-space-3) var(--vk-space-6);
+  container: vk-explore-modes / inline-size;
+  margin-block: var(--vk-space-2) var(--vk-space-6);
 }
-.vk-explore-modes a {
+.vk-explore-modes__group { display: flex; flex-wrap: nowrap; gap: 2px; inline-size: max-content; max-inline-size: 100%; }
+.vk-explore-modes__group a,
+.vk-explore-modes__list a,
+.vk-explore-modes__menu > summary {
+  position: relative;
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-block-size: 44px;
+  gap: var(--vk-space-2);
+  min-block-size: 48px;
   min-inline-size: 0;
   padding: var(--vk-space-2) var(--vk-space-4);
   border-radius: var(--vk-radius-sm);
-  background: var(--vk-surface-container);
+  background: var(--vk-surface-container-highest);
   color: var(--vk-on-surface);
   font-weight: var(--vk-type-label-weight);
-  overflow-wrap: anywhere;
   text-decoration: none;
+  white-space: nowrap;
+  transition: background-color var(--vk-duration-short) var(--vk-ease-emphasized);
 }
-.vk-explore-modes a:first-child { border-start-start-radius: 999px; border-end-start-radius: 999px; }
-.vk-explore-modes a:last-child { border-start-end-radius: 999px; border-end-end-radius: 999px; }
-.vk-explore-modes a[aria-current] {
-  background: var(--vk-primary);
-  color: var(--vk-on-primary);
-}
-@media (max-width: 759px) {
-  .vk-explore-modes a { flex: 1 1 auto; }
-}
-.vk-explore-modes a:hover { text-decoration: underline; }
-.vk-explore-modes a:focus-visible {
+.vk-explore-modes__group a:first-child { border-start-start-radius: var(--vk-radius-control-48); border-end-start-radius: var(--vk-radius-control-48); }
+.vk-explore-modes__group a:last-child { border-start-end-radius: var(--vk-radius-control-48); border-end-end-radius: var(--vk-radius-control-48); }
+.vk-explore-modes a[aria-current] { background: var(--vk-primary); color: var(--vk-on-primary); font-weight: var(--vk-type-page-title-weight); }
+.vk-explore-modes a:not([aria-current]):hover,
+.vk-explore-modes__menu > summary:hover { background-image: linear-gradient(var(--vk-state-hover), var(--vk-state-hover)); }
+.vk-explore-modes a:focus-visible,
+.vk-explore-modes__menu > summary:focus-visible {
   outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
   outline-offset: var(--vk-size-focus-offset);
+}
+.vk-explore-modes__menu { display: none; }
+.vk-explore-modes__menu > summary { border-radius: var(--vk-radius-control-48); list-style: none; cursor: pointer; }
+.vk-explore-modes__menu > summary::-webkit-details-marker { display: none; }
+.vk-explore-modes__menu[open] > summary > .vk-ui-icon { transform: rotate(180deg); }
+.vk-explore-modes__list {
+  display: grid;
+  gap: 2px;
+  inline-size: min(100%, 20rem);
+  margin-block-start: var(--vk-space-1);
+  padding: 4px;
+  border-radius: var(--vk-radius-card);
+  background: var(--vk-bg-content);
+}
+.vk-explore-modes__list a { justify-content: flex-start; border-radius: var(--vk-radius-control-48); background: transparent; white-space: normal; overflow-wrap: anywhere; }
+/* At the base font size the connected row needs 349px before forced-color borders. */
+@container vk-explore-modes (max-width: 22rem) {
+  .vk-explore-modes__group { display: none; }
+  .vk-explore-modes__menu { display: block; }
+}
+@media (forced-colors: active) {
+  @container vk-explore-modes (max-width: calc(22rem + 6px)) {
+    .vk-explore-modes__group { display: none; }
+    .vk-explore-modes__menu { display: block; }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vk-explore-modes a, .vk-explore-modes__menu > summary { transition: none; }
+}
+@media (forced-colors: active) {
+  .vk-explore-modes a[aria-current] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
+  .vk-explore-modes a, .vk-explore-modes__menu > summary { border: 1px solid ButtonText; }
 }
 #following-feed-heading {
   inline-size: fit-content;
@@ -1940,17 +2040,37 @@ a {
 .vk-feed-state, .vk-feed-paging {
   margin-block: var(--vk-space-6);
 }
+.vk-feed-state {
+  display: grid;
+  justify-items: start;
+  gap: var(--vk-space-3);
+  --vk-ui-control-radius: var(--vk-radius-control-56);
+}
+.vk-feed-state > p { margin: 0; }
+.vk-feed-state > a.vk-ui-button {
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
 .vk-feed-date {
-  color: var(--vk-on-surface-variant);
+  color: inherit;
   font-size: var(--vk-type-caption-size);
+  font-weight: var(--vk-type-caption-weight);
 }
 
-.vk-discovery .vk-public-row { position: relative; border-bottom: 0; scroll-margin-block-start: 5.5rem; }
-/* The title link covers the flat row. The byline sits above it and opens the author profile. */
+/* R4.2 (#405): separate bg-content cards, equal 20px corners, 8px gap, no divider lines. */
+.vk-discovery .vk-public-row {
+  position: relative;
+  border-bottom: 0;
+  border-radius: var(--vk-radius-card);
+  background: var(--vk-bg-content);
+  scroll-margin-block-start: 5.5rem;
+}
+/* The title link covers the card. The byline sits above it and opens the author profile. */
 .vk-discovery .vk-public-row__card {
   position: relative;
   display: block;
-  padding: 0;
+  padding: min(var(--vk-space-4), 16px) clamp(16px, 4vw, 20px);
   color: var(--vk-on-surface);
   text-align: start;
 }
@@ -1959,12 +2079,12 @@ a {
   text-decoration: none;
   scroll-margin-block-start: 5.5rem;
 }
-/* Extend into the gap between rows while keeping the hit area inside the list width. */
+/* Cover the rounded card itself without bleeding into the 8px gap between cards. */
 .vk-discovery .vk-public-row__link::after {
   content: "";
   position: absolute;
-  inset: calc(var(--vk-space-2) * -1) 0;
-  border-radius: var(--vk-radius-md);
+  inset: 0;
+  border-radius: var(--vk-radius-card);
 }
 /* The title's overlay spans the card; as a scroll anchor it would let a late title font in a
    row above push the restored row. Anchoring uses the byline, excerpt or row instead. */
@@ -1979,15 +2099,15 @@ a {
   outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
   outline-offset: var(--vk-size-focus-offset);
 }
-/* Reading order on screen: form tag → title → excerpt → byline. The DOM keeps the heading first. */
+/* Reading order on screen: form tag · date → title → excerpt → byline. The DOM keeps the heading first. */
 .vk-public-row__main { display: flex; flex-direction: column; min-inline-size: 0; }
 .vk-public-row__main > .vk-public-row__eyebrow { order: -1; margin: 0 0 var(--vk-space-1); }
 .vk-public-row__main > .vk-public-row__excerpt { margin-block-start: var(--vk-space-2); }
 .vk-public-row__main > .vk-public-row__byline { margin-block-start: var(--vk-space-4); }
 .vk-public-row__eyebrow {
-  color: var(--vk-secondary);
+  color: var(--vk-tertiary);
   font-size: var(--vk-type-caption-size);
-  font-weight: var(--vk-type-label-weight);
+  font-weight: var(--vk-type-section-weight);
   line-height: var(--vk-type-caption-line-height);
   overflow-wrap: anywhere;
 }
@@ -2054,23 +2174,16 @@ a {
   .vk-main:has(> .vk-reader-page) { padding-inline: 16px; }
   .vk-reader-page, .vk-discovery--tag { margin-block-start: min(var(--vk-space-4), 16px); }
   .vk-discovery:not(.vk-discovery--tag) { margin-block-start: 0; }
-  .vk-discovery:not(.vk-discovery--tag) .vk-discovery-toolbar { padding-block: 8px 12px; gap: 8px; }
-  .vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="closed"] .vk-tag-launcher { margin-inline-end: auto; }
-  .vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="closed"] .vk-public-search { display: none; }
-  .vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="closed"] .vk-search-launcher { display: inline-flex; }
-  .vk-discovery:not(.vk-discovery--tag) .vk-search-launcher .vk-ui-icon-button {
-    inline-size: var(--vk-density-control-height);
-    block-size: var(--vk-density-control-height);
-    border-radius: var(--vk-radius-full);
-    background: var(--vk-surface-container-high);
-    color: var(--vk-on-surface);
+  .vk-discovery:not(.vk-discovery--tag) > .vk-explore__top { padding-block: 8px 12px; }
+  .vk-discovery-toolbar { gap: 8px; --vk-ui-control-radius: var(--vk-radius-control-48); }
+  .vk-search-launcher .vk-ui-icon-button,
+  .vk-tag-launcher .vk-ui-icon-button { inline-size: 48px; block-size: 48px; }
+  /* Full-screen dock: the field takes the first row, Lọc thẻ and the count follow. */
+  .vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] > .vk-explore__top > .vk-explore__heading {
+    position: absolute; inline-size: 1px; block-size: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
   }
-  .vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] .vk-discovery-toolbar { justify-content: flex-start; }
+  .vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] .vk-discovery-toolbar { flex: 1 1 100%; justify-content: flex-start; }
   .vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] .vk-public-search { order: -1; flex: 1 0 100%; }
-  .vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] .vk-search-close { display: inline-flex; }
-  .vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] #public-search button[type="submit"] { display: none; }
-  .vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] .vk-search-launcher,
-  .vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] .vk-discovery-tools { display: none; }
   .vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] .vk-tag-launcher { margin-inline-end: 4px; }
   .vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] .vk-discovery-toolbar-status {
     display: block;
@@ -2115,8 +2228,8 @@ a {
     scroll-margin-block-start: 8.5rem;
     scroll-margin-block-end: 1rem;
   }
-  /* R3 (#336): flat rows keep the full title and excerpt roles on phones. */
-  .vk-discovery .vk-public-list { gap: var(--vk-space-8); }
+  /* R4.2 (#405): separate cards keep the 8px gap on phones too. */
+  .vk-discovery .vk-public-list { gap: var(--vk-space-card-gap); }
   /* Recovery links are direct children of the stream on a failed read. */
   .vk-discovery #community-stream > .vk-ui-link {
     display: block;
@@ -2126,6 +2239,18 @@ a {
 }
 @media (max-width: 359px) {
   .vk-main:has(> .vk-reader-page) { padding-inline: 12px; }
+  /* R4.2 (#404): at 200% text the title stays for assistive technology only, so the icon
+   * actions and the logo share one row and the first work reaches the first screen. */
+  :root[data-text="200"] .vk-discovery:not(.vk-discovery--tag) > .vk-explore__top > .vk-explore__heading {
+    position: absolute; inline-size: 1px; block-size: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  :root[data-text="200"] .vk-discovery:not(.vk-discovery--tag) .vk-discovery-toolbar { column-gap: 4px; }
+  /* Leave room for both 48px controls even with a classic scrollbar at 320px. */
+  :root[data-text="200"] .vk-discovery .vk-discovery-tools .vk-brand__lockup {
+    inline-size: 160px;
+    block-size: auto;
+    aspect-ratio: 1018 / 410;
+  }
 }
 
 /* Own comment bodies preserve authored lines at every text size. */
@@ -2192,6 +2317,7 @@ a {
 .vk-empty-state__title { margin-block-end: calc(-1 * var(--vk-space-3)); }
 .vk-discovery .vk-empty-state { gap: var(--vk-space-2); }
 .vk-discovery .vk-empty-state__message { color: var(--vk-on-surface); font-weight: var(--vk-type-title-weight); }
+.vk-discovery .vk-empty-state__actions { --vk-ui-control-radius: var(--vk-radius-control-56); }
 @media (min-width: 760px) {
   .vk-discovery .vk-empty-state__art { inline-size: min(216px, 100%); }
 }
@@ -2477,7 +2603,7 @@ a {
   z-index: 1;
   display: grid;
   gap: var(--vk-space-2);
-  background: var(--vk-surface);
+  background: var(--vk-bg-page);
   padding-block: var(--vk-space-3) var(--vk-space-4);
   border-block-start: 1px solid var(--vk-outline-variant);
 }
@@ -2676,22 +2802,27 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
   }
 }
 
+.vk-main:has(> .vk-author-search) { padding-block-start: 0; }
 .vk-author-search {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--vk-space-4);
+  margin-block-start: 0;
+  inline-size: 100%;
+  max-inline-size: var(--vk-size-page-column);
+  margin-inline: auto;
 }
 .vk-author-search .vk-explore-modes { margin-block: 0; }
 .vk-author-search #author-search {
-  max-inline-size: var(--vk-measure);
   min-inline-size: 0;
+  --vk-ui-control-radius: var(--vk-radius-control-48);
+  --vk-ui-search-radius: var(--vk-radius-control-56);
 }
 .vk-author-search__results {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--vk-space-3);
   min-inline-size: 0;
-  max-inline-size: var(--vk-measure);
   overflow-wrap: anywhere;
 }
 .vk-author-search__results > .vk-ui-heading {
@@ -2709,14 +2840,15 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
   font-size: var(--vk-type-label-size);
   font-weight: var(--vk-type-label-weight);
 }
+/* R4.2 (#405): author rows share the separate bg-content card language and 8px gap. */
 .vk-author-search__list {
-  gap: var(--vk-space-1);
+  gap: var(--vk-space-card-gap);
 }
 .vk-author-search__row {
-  background: var(--vk-surface-container-low);
+  background: var(--vk-bg-content);
   border: 0;
-  border-radius: var(--vk-radius-sm);
-  padding-inline: var(--vk-space-3);
+  border-radius: var(--vk-radius-card);
+  padding: min(var(--vk-space-3), 14px) clamp(16px, 4vw, 20px);
 }
 .vk-author-search__row .vk-ui-byline,
 .vk-author-search__follow {

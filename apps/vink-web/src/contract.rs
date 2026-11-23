@@ -105,6 +105,8 @@ pub struct WorkCard {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub author: Option<AuthorProjection>,
     pub published_at: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_published_at: Option<String>,
     pub tags: Vec<PublicTagDto>,
 }
 

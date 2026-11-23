@@ -56,6 +56,19 @@
   letter-spacing: var(--vk-type-headline-tracking);
 }
 
+/* R4.2 (#402): the small, bold title of a tool page (Khám phá, Bàn viết). A recipe class, not a
+ * TypeRole yet: hosts put it on their page H1; 22px below the shell's 760px breakpoint. */
+.vk-ui-type-page-title {
+  font-family: var(--vk-type-page-title-font);
+  font-size: var(--vk-type-page-title-size);
+  font-weight: var(--vk-type-page-title-weight);
+  line-height: var(--vk-type-page-title-line-height);
+  letter-spacing: var(--vk-type-page-title-tracking);
+}
+@media (width < 760px) {
+  .vk-ui-type-page-title { font-size: var(--vk-text-page-title-narrow); }
+}
+
 .vk-ui-type-title {
   font-family: var(--vk-type-title-font);
   font-size: var(--vk-type-title-size);
@@ -238,7 +251,7 @@
 
 .vk-ui-button {
   padding: var(--vk-density-control-padding) var(--vk-space-6);
-  border-radius: var(--vk-radius-full);
+  border-radius: var(--vk-ui-control-radius, var(--vk-radius-full));
   background-color: var(--vk-action-primary-container);
   color: var(--vk-action-primary-content);
 }
@@ -306,7 +319,7 @@
 
 .vk-ui-icon-button {
   padding: 0;
-  border-radius: var(--vk-radius-full);
+  border-radius: var(--vk-ui-control-radius, var(--vk-radius-full));
   background-color: transparent;
   color: var(--vk-on-surface-variant);
 }
@@ -400,7 +413,7 @@
   outline: 2px solid var(--vk-focus-ring);
   outline-offset: 0;
 }
-.vk-ui-button:focus-visible, .vk-ui-icon-button:focus-visible { border-radius: var(--vk-radius-full); }
+.vk-ui-button:focus-visible, .vk-ui-icon-button:focus-visible { border-radius: var(--vk-ui-control-radius, var(--vk-radius-full)); }
 .vk-ui-chip > span { min-inline-size: 0; overflow-wrap: anywhere; }
 .vk-ui-chip__check { flex-shrink: 0; }
 
@@ -645,7 +658,7 @@
   min-block-size: 56px;
   padding: var(--vk-space-1) min(var(--vk-space-2), 8px);
   gap: min(var(--vk-space-1), 4px);
-  border-radius: var(--vk-radius-full);
+  border-radius: var(--vk-ui-search-radius, var(--vk-radius-full));
   background: var(--vk-field-container);
   outline: 0;
 }
@@ -696,7 +709,7 @@
   min-inline-size: 48px;
   inline-size: 48px;
   min-block-size: 48px;
-  border-radius: var(--vk-radius-full);
+  border-radius: var(--vk-ui-control-radius, var(--vk-radius-full));
   color: var(--vk-on-surface-variant);
 }
 .vk-ui-search__clear:hover { background: var(--vk-state-hover); }
@@ -705,7 +718,7 @@
 .vk-ui-search__shell .vk-ui-search__clear:focus-visible {
   outline: 2px solid var(--vk-focus-ring);
   outline-offset: -2px;
-  border-radius: var(--vk-radius-full);
+  border-radius: var(--vk-ui-control-radius, var(--vk-radius-full));
 }
 .vk-ui-search .vk-ui-field__help { margin-inline: var(--vk-space-4); }
 @media (forced-colors: active) {
@@ -1577,6 +1590,25 @@ a.vk-ui-byline__identity:focus-visible {
   overflow-wrap: break-word;
 }
 
+/* #406 (KP-14): pointer-opened dialogs focus their title for assistive technology and Tab order
+ * without painting an input-like border; keyboard opening keeps a visible >=3:1 focus ring. */
+.vk-ui-dialog__title:focus:not(:focus-visible),
+.vk-ui-dialog[data-open-modality="pointer"] .vk-ui-dialog__title:focus {
+  outline: none;
+}
+
+.vk-ui-dialog[data-open-modality="keyboard"] .vk-ui-dialog__title:focus {
+  outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
+  outline-offset: var(--vk-size-focus-offset);
+  border-radius: var(--vk-radius-sm);
+}
+
+@media (forced-colors: active) {
+  .vk-ui-dialog[data-open-modality="keyboard"] .vk-ui-dialog__title:focus {
+    outline-color: Highlight;
+  }
+}
+
 .vk-ui-dialog__context {
   margin: 0;
   color: var(--vk-on-surface-variant);
@@ -1728,7 +1760,8 @@ a.vk-ui-byline__identity:focus-visible {
   /* Cap the inline inset so enlarged labels keep their room in the fixed-width rail. */
   padding: var(--vk-space-4) min(var(--vk-space-3), 12px);
   scroll-padding-block: var(--vk-space-2);
-  background: var(--vk-surface-container-low);
+  /* R4.2 (#403): the rail, the bottom bar and the page share one background. */
+  background: var(--vk-bg-nav);
   container: vk-ui-rail / inline-size;
   z-index: 5;
 }
@@ -1755,7 +1788,7 @@ a.vk-ui-byline__identity:focus-visible {
   block-size: var(--vk-density-control-height);
   padding: 0;
   border: 0;
-  border-radius: var(--vk-radius-full);
+  border-radius: var(--vk-radius-control-48);
   color: var(--vk-on-surface-variant);
   background: transparent;
   cursor: pointer;
@@ -1784,7 +1817,7 @@ a.vk-ui-byline__identity:focus-visible {
   min-inline-size: 0;
   padding: var(--vk-space-3);
   border: 0;
-  border-radius: var(--vk-radius-xl);
+  border-radius: var(--vk-radius-control-56);
   background: transparent;
   color: var(--vk-on-surface-variant);
   font: inherit;
@@ -1800,10 +1833,19 @@ a.vk-ui-byline__identity:focus-visible {
 .vk-ui-nav-item__label { overflow-wrap: anywhere; min-inline-size: 0; }
 .vk-ui-nav-item:hover { background: var(--vk-state-hover); }
 
-.vk-ui-nav-item[aria-current="page"],
-.vk-ui-nav-utility[aria-expanded="true"] {
+.vk-ui-nav-item[aria-current="page"] {
   background: var(--vk-primary-container);
   color: var(--vk-on-primary-container);
+}
+
+/* An open utility is not a destination: a 2px primary ring, never the selected fill (R4.2 #403). */
+.vk-ui-nav-utility[aria-expanded="true"] {
+  box-shadow: inset 0 0 0 2px var(--vk-primary);
+  color: var(--vk-on-surface);
+}
+/* Forced colors drop box-shadow; keep the open state visible as a system-colour outline. */
+@media (forced-colors: active) {
+  .vk-ui-nav-utility[aria-expanded="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
 }
 
 /* Compact rails and expanded rails at 200% stack the label below the icon. */
@@ -1824,21 +1866,26 @@ a.vk-ui-byline__identity:focus-visible {
     inline-size: min(56px, 100%);
     block-size: 32px;
     flex: none;
-    border-radius: var(--vk-radius-full);
+    border-radius: var(--vk-radius-control-40);
   }
 
   .vk-ui-rail .vk-ui-nav-item__label { max-inline-size: 100%; }
 
   .vk-ui-rail .vk-ui-nav-item[aria-current="page"]:not(:hover),
   .vk-ui-rail .vk-ui-nav-utility[aria-expanded="true"]:not(:hover) { background: transparent; }
+  .vk-ui-rail .vk-ui-nav-utility[aria-expanded="true"] { box-shadow: none; }
 
   .vk-ui-rail .vk-ui-nav-item:is([aria-current="page"], [aria-expanded="true"]):hover {
     background: var(--vk-state-hover);
   }
 
-  .vk-ui-rail .vk-ui-nav-item:is([aria-current="page"], [aria-expanded="true"]) .vk-ui-nav-item__indicator {
+  .vk-ui-rail .vk-ui-nav-item[aria-current="page"] .vk-ui-nav-item__indicator {
     background: var(--vk-primary-container);
     color: var(--vk-on-primary-container);
+  }
+
+  .vk-ui-rail .vk-ui-nav-utility[aria-expanded="true"] .vk-ui-nav-item__indicator {
+    box-shadow: inset 0 0 0 2px var(--vk-primary);
   }
 
   @media (forced-colors: active) {
@@ -1854,19 +1901,21 @@ a.vk-ui-byline__identity:focus-visible {
   .vk-ui-rail .vk-ui-nav-item {
     /* Leave 3px for the ring while recovering label width beside a classic scrollbar. */
     margin-inline: -9px;
-    font-size: var(--vk-type-caption-size);
+    font-size: var(--vk-text-rail-label);
   }
   .vk-ui-rail .vk-ui-nav-item:focus-visible { outline-offset: 0; }
 }
 
-/* Below the toggle, within the rail's inline bounds, outside its scroll containment. */
+/* Beside the toggle (R4.2 #403): to its right on the same row, so it never covers the first
+ * destination; outside the rail's scroll containment. */
 .vk-ui-tooltip {
   position: fixed;
   box-sizing: border-box;
-  left: calc(var(--vk-ui-tooltip-left, 0px) + var(--vk-ui-tooltip-width, var(--vk-ui-rail-width)) / 2);
-  top: calc(var(--vk-ui-tooltip-top, 4rem) + 4px);
-  transform: translateX(-50%);
-  max-inline-size: calc(var(--vk-ui-tooltip-width, var(--vk-ui-rail-width)) - 8px);
+  left: calc(var(--vk-ui-tooltip-left, var(--vk-ui-rail-width)) + 8px);
+  top: var(--vk-ui-tooltip-top, 2.5rem);
+  transform: translateY(-50%);
+  inline-size: max-content;
+  max-inline-size: min(16rem, calc(100vw - var(--vk-ui-tooltip-left, var(--vk-ui-rail-width)) - 16px));
   padding: 4px 8px;
   border-radius: var(--vk-radius-sm);
   background: var(--vk-inverse-surface);
@@ -1944,7 +1993,7 @@ a.vk-ui-byline__identity:focus-visible {
   /* Content determines growth at large text sizes; the minimum is a touch/shell size. */
   min-block-size: var(--vk-size-bottom-bar);
   padding: var(--vk-space-1) max(var(--vk-space-2), env(safe-area-inset-right)) calc(var(--vk-space-1) + env(safe-area-inset-bottom)) max(var(--vk-space-2), env(safe-area-inset-left));
-  background: var(--vk-surface-container-low);
+  background: var(--vk-bg-nav);
   z-index: 5;
 }
 
@@ -1967,7 +2016,7 @@ a.vk-ui-byline__identity:focus-visible {
   place-items: center;
   inline-size: min(100%, 64px);
   min-block-size: 32px;
-  border-radius: var(--vk-radius-full);
+  border-radius: var(--vk-radius-control-40);
   transition: background-color var(--vk-duration-short) var(--vk-ease-emphasized),
     box-shadow var(--vk-duration-short) var(--vk-ease-emphasized);
 }

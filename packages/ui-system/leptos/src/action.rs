@@ -213,6 +213,9 @@ pub fn IconButton(
     /// Optional supporting information; the accessible name remains `label`.
     #[prop(optional, into)]
     described_by: Option<String>,
+    /// Disclosure state (`aria-expanded`) when the button opens a region or dialog.
+    #[prop(optional, into)]
+    expanded: Option<Signal<bool>>,
     #[prop(optional, into)] on_press: Option<Callback<()>>,
 ) -> impl IntoView {
     let note_id = id.as_ref().map(|id| format!("{id}-note"));
@@ -225,6 +228,7 @@ pub fn IconButton(
                 class="vk-ui-icon-button"
                 data-surface=move || surface.get().id()
                 aria-label=label
+                aria-expanded=move || expanded.map(|value| value.get().to_string())
                 aria-pressed=move || pressed.map(|p| if p.get() { "true" } else { "false" })
                 data-state=move || state.with(ActionState::id)
                 aria-disabled=move || (!state.with(ActionState::is_enabled)).then_some("true")
@@ -495,6 +499,17 @@ mod tests {
             html.contains("aria-hidden=\"true\""),
             "icon is decorative: {html}"
         );
+        assert!(
+            !html.contains("aria-expanded"),
+            "no disclosure unless asked: {html}"
+        );
+        let html = render(|| {
+            view! {
+                <IconButton icon=IconName::Search label="Tìm tác phẩm" expanded=Signal::stored(false) />
+            }
+            .into_any()
+        });
+        assert!(html.contains("aria-expanded=\"false\""), "{html}");
         let html = render(|| {
             view! { <FilterChip label="Thơ" selected=Signal::stored(true) on_toggle=|_| {} /> }
                 .into_any()
