@@ -417,6 +417,8 @@ a {
 
 /* Reader */
 
+#reader-return { gap: var(--vk-space-2); margin-bottom: var(--vk-space-6); }
+#reader-return .vk-ui-icon { margin: 0; }
 /* LVE #73: the work's endorsement closes the text, quiet and start-aligned, before discussion. */
 .vk-reader-endorsement { display: flex; margin-block: var(--vk-space-6) 0; min-width: 0; }
 .vk-discussion { margin-block: var(--vk-space-8); padding-block-start: var(--vk-space-6); border-block-start: 1px solid var(--vk-outline-variant); min-width: 0; display: grid; gap: var(--vk-space-3); }
@@ -1985,7 +1987,7 @@ a {
   .vk-ui-scaffold[data-layout="auto"]:has(.vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"]) .vk-ui-bottom-nav { display: none; }
   .vk-ui-scaffold[data-layout="auto"]:has(.vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"]) .vk-ui-scaffold__content { padding-block-end: 0; }
 
-  .vk-discovery--tag .vk-explore__heading { margin-block-end: min(var(--vk-space-6), 24px); }
+  #reader-return, .vk-discovery--tag .vk-explore__heading { margin-block-end: min(var(--vk-space-6), 24px); }
   .vk-reader__header { margin-block-end: min(var(--vk-space-6), 24px); }
   .vk-reader-tags { margin-block: 0 min(var(--vk-space-4), 16px); }
   .vk-reader-tags:not(:has(> li)) { display: none; }
