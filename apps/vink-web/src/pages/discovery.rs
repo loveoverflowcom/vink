@@ -517,7 +517,17 @@ fn DiscoveryChrome(
                     );
                     window().scroll_to_with_x_and_y(0.0, 0.0);
                 }
-                request_animation_frame(move || focus_no_scroll("public-query"));
+                let opened_input = query_input.get_untracked();
+                request_animation_frame(move || {
+                    // A submit can replace this scope before the opening frame. Leave the
+                    // result focus intent in charge when that original field is gone.
+                    if opened_input
+                        .as_ref()
+                        .is_some_and(|input| input.is_connected())
+                    {
+                        focus_no_scroll("public-query");
+                    }
+                });
             }
             #[cfg(not(feature = "hydrate"))]
             let _ = (&navigate, &href, browse_scroll_y);
