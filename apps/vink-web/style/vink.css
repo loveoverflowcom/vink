@@ -421,24 +421,9 @@ a {
 #reader-return .vk-ui-icon { margin: 0; }
 /* LVE #73: the work's endorsement closes the text, quiet and start-aligned, before discussion. */
 .vk-reader-endorsement { display: flex; margin-block: var(--vk-space-6) 0; min-width: 0; }
-.vk-discussion { margin-block: var(--vk-space-8); padding-block-start: var(--vk-space-6); border-block-start: 1px solid var(--vk-outline-variant); min-width: 0; display: grid; gap: var(--vk-space-3); }
+/* Discussion keeps its live announcement region available when empty. */
 .vk-discussion [role="status"]:empty:not(.vk-discussion-live) { display: none; }
-.vk-discussion-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--vk-space-2) var(--vk-space-4); }
-.vk-discussion-head .vk-ui-heading { margin: 0; }
 /* .vk-discussion-order and .vk-reader-replacement-badge migrated to Tailwind utilities (W01 pilot). */
-
-.vk-discussion-readonly-notice {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: var(--vk-radius-lg);
-  background: var(--vk-surface-container-high);
-  color: var(--vk-on-surface);
-}
-.vk-discussion-readonly-notice > .vk-ui-icon { flex-shrink: 0; margin-block-start: 2px; color: var(--vk-on-surface-variant); }
-.vk-discussion-readonly-notice strong { display: block; font-size: var(--vk-type-label-size); font-weight: var(--vk-type-section-weight); }
-.vk-discussion-readonly-notice p { margin: 2px 0 0; font-size: var(--vk-type-caption-size); color: var(--vk-on-surface-variant); }
 
 /* R4 (#360 ảnh 08): 5-state author bar + reader status/refresh bar. */
 .vk-discussion-mode {
@@ -492,7 +477,6 @@ a {
 
 /* R4 (#360 ảnh 07): static skeleton after 300ms delay, distinct error card and empty card. */
 .vk-discussion-load:not([hidden]) { display: contents; }
-.vk-discussion-skeleton-list { display: grid; gap: var(--vk-space-3); }
 .vk-discussion-loading .vk-ui-skeleton { animation: none; border-radius: var(--vk-radius-xl); background: var(--vk-surface-container-low); }
 .vk-discussion-state-card,
 .vk-discussion-empty,

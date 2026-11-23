@@ -418,7 +418,7 @@ fn DiscussionSkeleton() -> impl IntoView {
     view! {
         <div class="vk-discussion-loading">
             <p role="status" class="vk-ui-visually-hidden">"Đang tải nhận xét…"</p>
-            <div class="vk-discussion-skeleton-list" aria-hidden="true">
+            <div class="vk-discussion-skeleton-list grid gap-vk-3" aria-hidden="true">
                 <Skeleton shape=SkeletonShape::Card />
                 <Skeleton shape=SkeletonShape::Card />
             </div>
@@ -455,18 +455,19 @@ pub fn Discussion(work_id: String, #[prop(optional)] read_only: bool) -> impl In
     let initial_loading = RwSignal::new(true);
     let initial_skeleton = discussion_skeleton_visibility(initial_loading.into());
     view! {
-        <section id="feedback-region" class="vk-discussion" aria-labelledby="feedback-heading"
+        <section id="feedback-region" class="vk-discussion grid min-w-0 gap-vk-3 [margin-block:var(--vk-space-8)] [padding-block-start:var(--vk-space-6)] [border-block-start:1px_solid_var(--vk-outline-variant)]" aria-labelledby="feedback-heading"
             data-readonly=read_only.then_some("true")>
-            <div class="vk-discussion-head">
+            <div class="vk-discussion-head flex flex-wrap items-baseline justify-between gap-x-vk-4 gap-y-vk-2 [&_.vk-ui-heading]:m-0">
                 <Heading level=HeadingLevel::H2 role=TypeRole::Title id="feedback-heading" attr:tabindex="-1">"Nhận xét"</Heading>
                 <span class="vk-discussion-order text-[length:var(--vk-type-caption-size)] text-vk-on-surface-variant">"Cũ đến mới"</span>
             </div>
             {read_only.then(|| view! {
-                <div class="vk-discussion-readonly-notice" role="note" data-testid="discussion-readonly-notice">
+                <div class="vk-discussion-readonly-notice flex items-start gap-[12px] [padding:14px_16px] rounded-vk-lg bg-vk-surface-container-high text-vk-on-surface [&>.vk-ui-icon]:shrink-0 [&>.vk-ui-icon]:[margin-block-start:2px] [&>.vk-ui-icon]:text-vk-on-surface-variant"
+                    role="note" data-testid="discussion-readonly-notice">
                     <Icon name=IconName::Lock size=IconSize::Small />
                     <div>
-                        <strong>"Trang này chỉ đọc"</strong>
-                        <p>"Không gửi nhận xét mới hoặc bấm Ưng tại đây. Bạn vẫn đọc được nhận xét cũ và gỡ nhận xét của chính mình nếu còn quyền."</p>
+                        <strong class="block text-[length:var(--vk-type-label-size)] font-vk-role-section">"Trang này chỉ đọc"</strong>
+                        <p class="[margin:2px_0_0] text-[length:var(--vk-type-caption-size)] text-vk-on-surface-variant">"Không gửi nhận xét mới hoặc bấm Ưng tại đây. Bạn vẫn đọc được nhận xét cũ và gỡ nhận xét của chính mình nếu còn quyền."</p>
                     </div>
                 </div>
             })}
