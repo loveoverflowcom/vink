@@ -23,7 +23,11 @@ product requirements and architecture proposals describe intent, not executed be
 - For web flows, distinguish server HTML, hydration and later browser requests. Trace the
   server's principal resolver, application port, PostgreSQL operation and response handling
   only as far as the question requires. SSR public reads through `PublicReads` do not make
-  an HTTP request back to the same server.
+  an HTTP request back to the same server. For Web/Preview styling questions, trace the full chain:
+  `packages/ui-system/shared/tokens.json` → `cargo xtask ui-tokens` (`tokens.css`, `tailwind-theme.css`)
+  → `packages/ui-system/leptos/tailwind/{web,preview}.css` via `xtask/src/tailwind.rs` → served
+  `/pkg/vink.css` or `vink-preview.css` → the owning Leptos component (`vink-ui`, `vink-patterns` or
+  `apps/vink-web`; see [tailwind.md](../vink-leptos-web/references/tailwind.md)).
 - Identify where the actual guarantee lives: document validation, owner/version predicate,
   database constraint, or UI state transition. A disabled button is not server authorization;
   the local principal fixture is not production authentication.

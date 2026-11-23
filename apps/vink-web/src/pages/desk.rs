@@ -1733,7 +1733,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                         on_press=move |_| open_preview() />
             </crate::ui::patterns::EditorToolbar>
             <Show when=move || matches!(status(), SaveStatus::Failed(_)) && !title_invalid()>
-                <section class="vk-editor-recovery" data-testid="save-failed" data-tone="error" aria-label="Phục hồi lưu nháp">
+                <section class=r"vk-editor-recovery [&>.vk-ui-notice]:p-0 [&>.vk-ui-notice]:bg-transparent [&>.vk-ui-notice]:text-inherit [&_.vk-ui-notice\_\_icon]:hidden" data-testid="save-failed" data-tone="error" aria-label="Phục hồi lưu nháp">
                     // The toolbar is the sole polite announcement owner for this state.
                     {move || view! { <InlineNotice tone=Tone::Error announce=Announce::Off
                         title=status_text(status()) message="Nội dung đang viết vẫn còn trên trang này. Chọn Thử lại hoặc giữ trang mở." /> }}
@@ -1749,7 +1749,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                 </section>
             </Show>
             <Show when=move || matches!(status(), SaveStatus::Conflict { .. })>
-                <section id="editor-text-conflict" tabindex="-1" class="vk-editor-recovery"
+                <section id="editor-text-conflict" tabindex="-1" class=r"vk-editor-recovery [&>.vk-ui-notice]:p-0 [&>.vk-ui-notice]:bg-transparent [&>.vk-ui-notice]:text-inherit [&_.vk-ui-notice\_\_icon]:hidden"
                     data-testid="conflict" data-tone="warning" aria-label="Xung đột bản nháp">
                     <InlineNotice tone=Tone::Warning announce=Announce::Off title="Có bản mới trên máy chủ."
                         message="Nội dung đang viết vẫn còn trên trang này. Bạn có thể lưu đè hoặc ở lại đối chiếu." />

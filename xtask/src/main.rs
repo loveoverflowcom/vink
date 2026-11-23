@@ -23,6 +23,7 @@ mod pgurl;
 mod plan;
 mod process;
 mod provision;
+mod tailwind;
 mod ui_navigation;
 mod ui_preview;
 mod ui_qualification;

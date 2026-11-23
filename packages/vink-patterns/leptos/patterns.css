@@ -29,7 +29,7 @@
   .vk-draft-row__text { grid-column: 1 / -1; }
   .vk-draft-row__open { display: none; }
 }
-.vk-draft-meta { display: flex; flex-wrap: wrap; gap: var(--vk-space-1); color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); font-weight: var(--vk-type-caption-weight); }
+/* .vk-draft-meta migrated to Tailwind utilities in packages/vink-patterns/leptos/src/lib.rs (W01 pilot). */
 .vk-draft-resume { container: vk-draft-resume / inline-size; min-width: 0; }
 .vk-draft-resume > .vk-ui-surface, .vk-draft-resume__content { display: grid; justify-items: start; gap: var(--vk-space-2); min-width: 0; }
 @container vk-draft-resume (max-width: 480px) {
@@ -246,7 +246,6 @@
 .vk-draft-row__title { font-family: var(--vk-type-title-font); font-size: var(--vk-type-title-size); font-weight: var(--vk-type-title-weight); line-height: var(--vk-type-title-line-height); overflow-wrap: anywhere; }
 
 .vk-draft-row__link:hover { text-decoration: none; background: var(--vk-surface-container); }
-.vk-draft-meta > span { min-width: 0; overflow-wrap: anywhere; }
 
 /* EndorsementAction (LVE #73): sits with the target's other interactions, never as the CTA. */
 .vk-endorsement { display: inline-flex; max-inline-size: 100%; }

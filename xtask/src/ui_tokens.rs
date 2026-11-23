@@ -23,6 +23,7 @@ pub const ICONS: &str = "packages/ui-system/shared/icons.json";
 pub const IDENTITY: &str = "packages/ui-system/shared/fixtures/identity.json";
 
 pub const CSS_OUT: &str = "packages/ui-system/leptos/style/tokens.css";
+pub const TAILWIND_THEME_OUT: &str = "packages/ui-system/leptos/style/tailwind-theme.css";
 pub const RUST_TOKENS_OUT: &str = "packages/ui-system/leptos/src/tokens.rs";
 pub const RUST_CATALOG_OUT: &str = "packages/ui-system/leptos/src/catalog.rs";
 pub const KOTLIN_TOKENS_OUT: &str =
@@ -148,6 +149,7 @@ pub fn generate(
             KOTLIN_CATALOG_OUT,
             kotlin_catalog(&source, &catalog, &fixtures),
         ),
+        (TAILWIND_THEME_OUT, tailwind_theme(&source)),
     ])
 }
 
@@ -1646,6 +1648,144 @@ fn css(source: &Source) -> String {
     out
 }
 
+/// Tailwind v4 `@theme inline` adapter referencing only the generated `--vk-*` custom properties.
+/// Using `inline` ensures every utility resolves against the nearest `.vk-scope`, `data-theme`,
+/// `data-density`, `data-motion`, and inline `RoleOverride` rather than freezing values at `:root`.
+/// Default Tailwind colour/font/type/shadow/easing scales are cleared so semantic roles stay SSOT.
+fn tailwind_theme(source: &Source) -> String {
+    let mut out = String::new();
+    let _ = write!(
+        out,
+        "/*\n{}{} */\n\n",
+        header(" *", &source.version),
+        [
+            " *",
+            " * Tailwind v4 semantic token adapter (`@theme inline`): references `--vk-*` custom",
+            " * properties from tokens.css without copying palette/type/motion values. Keeps",
+            " * nearest-scope theming, density, reduced motion and RoleOverride intact.",
+            "",
+        ]
+        .join("\n")
+    );
+
+    let mut theme = vec![
+        "--color-*: initial;".to_string(),
+        "--color-transparent: transparent;".to_string(),
+        "--color-current: currentColor;".to_string(),
+        "--color-inherit: inherit;".to_string(),
+    ];
+    let mut fonts = vec!["--font-*: initial;".to_string()];
+    let mut texts = vec!["--text-*: initial;".to_string()];
+    let mut weights = vec![
+        "--font-weight-*: initial;".to_string(),
+        "--font-weight-normal: normal;".to_string(),
+        "--font-weight-bold: bold;".to_string(),
+    ];
+    let mut spacing = Vec::new();
+    let mut radii = Vec::new();
+    let mut shadows = vec!["--shadow-*: initial;".to_string()];
+    let mut easings = vec!["--ease-*: initial;".to_string()];
+    let mut leadings = Vec::new();
+    let mut durations = Vec::new();
+
+    for token in source.tokens.values() {
+        let vk_stem = token.css.strip_prefix("--vk-").unwrap_or(&token.css);
+        match &token.def {
+            Def::Color { .. } | Def::ColorAlias(_) => {
+                theme.push(format!("--color-vk-{vk_stem}: var({});", token.css));
+            }
+            Def::Font { .. } => {
+                let stem = token.id.strip_prefix("font.").unwrap_or(&token.id);
+                fonts.push(format!("--font-vk-{stem}: var({});", token.css));
+            }
+            Def::Type(_) => {
+                let role = token.id.strip_prefix("type.").unwrap_or(&token.id);
+                texts.push(format!("--text-vk-{role}: var({}-size);", token.css));
+                texts.push(format!(
+                    "--text-vk-{role}--line-height: var({}-line-height);",
+                    token.css
+                ));
+                texts.push(format!(
+                    "--text-vk-{role}--letter-spacing: var({}-tracking);",
+                    token.css
+                ));
+                texts.push(format!(
+                    "--text-vk-{role}--font-weight: var({}-weight);",
+                    token.css
+                ));
+                weights.push(format!(
+                    "--font-weight-vk-role-{role}: var({}-weight);",
+                    token.css
+                ));
+            }
+            Def::Dimension(_) => {
+                if let Some(stem) = token.id.strip_prefix("space.") {
+                    spacing.push(format!("--spacing-vk-{stem}: var({});", token.css));
+                } else if let Some(stem) = token.id.strip_prefix("density.") {
+                    spacing.push(format!("--spacing-vk-density-{stem}: var({});", token.css));
+                } else if let Some(stem) = token.id.strip_prefix("size.") {
+                    spacing.push(format!("--spacing-vk-size-{stem}: var({});", token.css));
+                } else if token.id == "measure" || token.id == "measure-wide" {
+                    spacing.push(format!("--spacing-vk-{}: var({});", token.id, token.css));
+                } else if let Some(stem) = token.id.strip_prefix("radius.") {
+                    radii.push(format!("--radius-vk-{stem}: var({});", token.css));
+                } else if let Some(stem) = token.id.strip_prefix("text.") {
+                    texts.push(format!("--text-vk-size-{stem}: var({});", token.css));
+                }
+            }
+            Def::Shadow { .. } => {
+                let stem = token.id.strip_prefix("shadow.").unwrap_or(&token.id);
+                shadows.push(format!("--shadow-vk-{stem}: var({});", token.css));
+            }
+            Def::Bezier(_) => {
+                let stem = token.id.strip_prefix("ease.").unwrap_or(&token.id);
+                easings.push(format!("--ease-vk-{stem}: var({});", token.css));
+            }
+            Def::Number(_) => {
+                if let Some(stem) = token.id.strip_prefix("leading.") {
+                    leadings.push(format!("--leading-vk-{stem}: var({});", token.css));
+                }
+            }
+            Def::Duration {
+                reduced: Some(_), ..
+            } => {
+                let stem = token.id.strip_prefix("duration.").unwrap_or(&token.id);
+                durations.push((stem.to_string(), token.css.clone()));
+            }
+            Def::Duration { reduced: None, .. } | Def::Iterations => {}
+        }
+    }
+
+    let mut lines = Vec::new();
+    lines.extend(theme);
+    lines.extend(fonts);
+    lines.extend(texts);
+    lines.extend(weights);
+    lines.extend(spacing);
+    lines.extend(radii);
+    lines.extend(shadows);
+    lines.extend(easings);
+    lines.extend(leadings);
+    if source.tokens.contains_key("duration.short") {
+        lines.push("--default-transition-duration: var(--vk-duration-short);".to_string());
+    }
+    if source.tokens.contains_key("ease.emphasized") {
+        lines.push("--default-transition-timing-function: var(--vk-ease-emphasized);".to_string());
+    }
+    block(&mut out, "@theme inline", &lines);
+
+    for (stem, css_var) in durations {
+        let _ = writeln!(
+            out,
+            "@utility duration-vk-{stem} {{\n  --tw-duration: var({css_var});\n  transition-duration: var({css_var});\n}}\n"
+        );
+    }
+    if out.ends_with("\n\n") {
+        out.pop();
+    }
+    out
+}
+
 // ---------------------------------------------------------------------------------------------
 // Rust
 
@@ -2849,7 +2989,7 @@ mod tests {
         let first = generate(&tokens, &catalog, &fixtures).expect("valid source");
         let second = generate(&tokens, &catalog, &fixtures).expect("valid source");
         assert_eq!(first, second);
-        assert_eq!(first.len(), 5);
+        assert_eq!(first.len(), 6);
     }
 
     #[test]
@@ -3069,5 +3209,56 @@ mod tests {
                     && line.trim_end().ends_with('{')),
             "tokens never style global tags"
         );
+    }
+
+    #[test]
+    fn tailwind_theme_references_only_generated_vk_vars_without_literal_palette_copies() {
+        let (tokens, catalog, fixtures) = sources();
+        let outputs = generate(&tokens, &catalog, &fixtures).unwrap();
+        let tokens_css = &outputs[0].1;
+        let tw = outputs
+            .iter()
+            .find(|(path, _)| *path == TAILWIND_THEME_OUT)
+            .map(|(_, text)| text)
+            .expect("tailwind-theme.css output");
+        assert!(tw.contains("@theme inline {"), "{tw}");
+        for expected in [
+            "--color-*: initial;",
+            "--font-*: initial;",
+            "--text-*: initial;",
+            "--shadow-*: initial;",
+            "--ease-*: initial;",
+            "--color-vk-surface: var(--vk-surface);",
+            "--color-vk-bg-page: var(--vk-bg-page);",
+            "--color-vk-action-primary-container: var(--vk-action-primary-container);",
+            "--font-vk-ui: var(--vk-font-ui);",
+            "--text-vk-label: var(--vk-type-label-size);",
+            "--text-vk-label--line-height: var(--vk-type-label-line-height);",
+            "--text-vk-label--font-weight: var(--vk-type-label-weight);",
+            "--font-weight-vk-role-label: var(--vk-type-label-weight);",
+            "--spacing-vk-2: var(--vk-space-2);",
+            "--spacing-vk-density-control-padding: var(--vk-density-control-padding);",
+            "--radius-vk-md: var(--vk-radius-md);",
+            "--shadow-vk-raised: var(--vk-shadow);",
+            "--ease-vk-emphasized: var(--vk-ease-emphasized);",
+            "--default-transition-duration: var(--vk-duration-short);",
+            "@utility duration-vk-short {",
+        ] {
+            assert!(tw.contains(expected), "missing `{expected}`");
+        }
+        // Never copy hex/rgb colours into the Tailwind adapter: every reference must resolve to tokens.css.
+        assert!(!tw.contains('#'), "adapter must not contain hex literals");
+        assert!(
+            !tw.contains("rgb("),
+            "adapter must not contain rgb() literals"
+        );
+        // Every referenced `--vk-*` variable must exist in generated tokens.css.
+        for part in tw.split("var(").skip(1) {
+            let var_name = part.split(')').next().unwrap().trim();
+            assert!(
+                tokens_css.contains(&format!("{var_name}:")),
+                "tailwind-theme.css references missing variable `{var_name}`"
+            );
+        }
     }
 }

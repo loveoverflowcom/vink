@@ -16,7 +16,8 @@ require a full-stack run for documentation changes.
 | --- | --- |
 | User journey, route, preconditions, observable states, check coverage | [Feature map](../../../docs/development/feature-map.md) |
 | Setup, supported commands, prerequisites and lane limits | [Development guide](../../../docs/development/README.md) |
-| Executable commands and process setup | [xtask](../../../xtask/src/main.rs), [web runner](../../../xtask/src/web.rs), [CI](../../../.github/workflows/ci.yml) |
+| Executable commands and process setup | [xtask](../../../xtask/src/main.rs), [web runner](../../../xtask/src/web.rs), [Tailwind compiler](../../../xtask/src/tailwind.rs), [UI token/API guard](../../../xtask/src/ui_qualification.rs), [CI](../../../.github/workflows/ci.yml) |
+| Web CSS/WASM/SSR baseline & Tailwind rollout evidence | [Web perf baseline](../../../docs/development/web-perf-baseline.md), [Tailwind Web foundation](../../../docs/development/tailwind-web-foundation.md), [perf harness](../../../apps/vink-web/e2e/web-perf-baseline.mjs) |
 | Which evidence a claim requires; result vocabulary | [Verification guide](../vink-engineering/references/verification.md) |
 | UI review criteria, visual reference classes, fix-round budget, five-dimension result table | [UX quality](../vink-ui-design/references/ux-quality.md); approved references in the [visual anchor register](../../../docs/design/visual-anchors.md) |
 | UI capture bundle, optional anchor measurements | [Evidence contract](../vink-ui-capture/references/evidence-contract.md); recorded runs in [qualification evidence](../../../docs/development/ui-system-qualification-evidence.md) |

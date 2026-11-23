@@ -22,14 +22,14 @@ do not inherit Cantos's CSR/Trunk setup.
 | The web app's own API v1 types and error classification | `src/contract.rs` (checked against the provider fixtures) |
 | Data access: SSR through `server::PublicReads`, browser through `/api/v1` | `src/api.rs`, `src/server.rs` |
 | Save-state and leave-intent machines (pure, unit-tested) | `src/desk_state.rs` |
-| Canonical document (`default_document`, Reader `paragraphs`, `DocumentView`) | `src/document.rs` |
+| Canonical document (`default` & `markdown` `#255`/`#263`, Reader `paragraphs`, `DocumentView`) | `src/document.rs`, `src/document/markdown.rs` |
 | CodeMirror 6 body editor: wasm-bindgen bridge, `BodySource::snapshot` | `src/editor.rs`; runtime in `editor/` (TypeScript, pinned npm, built to `/pkg/vink-editor.js`) |
 | Shared leave guard for links, back/forward and programmatic exits | `src/navigation.rs` (`NavigationGuard`) |
-| Token values (generated `tokens.css`, typed Rust); theme scope types | `packages/ui-system/shared/tokens.json` → `cargo xtask ui-tokens`; crate `vink-ui` (`packages/ui-system/leptos`) |
-| Shared controls/patterns; page glue and fonts | `packages/ui-system/leptos/style/vink-ui.css` + `packages/vink-patterns/leptos/patterns.css`; app `style/vink.css` owns page layout/CodeMirror only; build serves them with generated `tokens.css` as `/pkg/vink.css`; `assets/fonts` → `/pkg/fonts/` |
+| Token values (generated `tokens.css`, `tailwind-theme.css`, typed Rust); theme scope types | `packages/ui-system/shared/tokens.json` → `cargo xtask ui-tokens`; crate `vink-ui` (`packages/ui-system/leptos`) |
+| Styling, Tailwind v4 compiler & token guard | `packages/ui-system/leptos/tailwind/{package.json,web.css,preview.css}` + `xtask/src/tailwind.rs` compile generated tokens, legacy CSS (`vink-ui.css`, `patterns.css`, `vink.css` / `preview.css`) and allowlisted utilities into `/pkg/vink.css` / `vink-preview.css`; `xtask/src/ui_qualification.rs` enforces Vink tokens across CSS and Rust UI sources; `assets/fonts` → `/pkg/fonts/`. Canonical rules: [Tailwind v4 + Leptos 0.8](references/tailwind.md) |
 | Browser smoke over the DevTools Protocol | `e2e/browser-smoke.mjs` (run by `verify web`) |
 
-Leptos is pinned at 0.8 (see `Cargo.lock`); check that version's docs when unsure of an API.
+Leptos is pinned at 0.8 (see `Cargo.lock`, currently `0.8.22`); check that version's docs when unsure of an API. For Tailwind v4 styling, `@layer` coexistence, `source(none)` allowlists, token utilities and Leptos 0.8 `class:` / tuple syntax, follow [references/tailwind.md](references/tailwind.md).
 `ssr` and `hydrate` are separate builds of one crate: never enable both, gate server-only code
 with `#[cfg(feature = "ssr")]` and DOM/fetch code with `#[cfg(feature = "hydrate")]`, and keep
 the build without either feature compiling. `vink-app` provides `PublicReads` and `SiteOrigin`
@@ -82,8 +82,10 @@ real consumer and no private data crosses into the browser build.
 ## Editor and async state
 
 Treat WR-01–WR-03 and S-01 as the acceptance boundary. The desk edits the exact source of a canonical
-`default` document (`{format, source}`, #255) in CodeMirror 6 with manual save; it does not complete S-01 (no autosave, real-IME or device
-evidence). Reuse `EditorSession` for autosave instead of adding a second save-state model, and
+`default` or `markdown` document (`{format, source}`, #255/#263) on one CodeMirror 6 `EditorView` with manual save. Reconfiguring the Markdown extension keeps the
+buffer and selection. A server-confirmed format conversion applies the converted source and moves
+the cursor to the beginning. S-01 still needs named OS IME and device evidence. Reuse `EditorSession`
+for autosave, and
 read the body only through `BodySource::snapshot`. New exits from the editor (rail, profile,
 menus) go through `NavigationGuard` so `LeaveGuard` can hold them. Choose the canonical
 document/schema version through the scoped design; derived HTML/text must not become competing

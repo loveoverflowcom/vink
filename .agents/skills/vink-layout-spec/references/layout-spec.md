@@ -12,7 +12,8 @@ tự đọc dự kiến; ghi rõ nếu vị trí thị giác khác, giữ DOM/fo
 dự kiến phải tách khỏi tên đã có trong source. Không bịa component từ screenshot.
 
 Nguồn hiện hành cần kiểm: [token source](../../../../packages/ui-system/shared/tokens.json),
-[component CSS](../../../../apps/vink-web/style/vink.css),
+[Tailwind v4 + Leptos 0.8](../../vink-leptos-web/references/tailwind.md) cùng ba owner styling Web
+(`packages/ui-system/leptos`, `packages/vink-patterns/leptos`, `apps/vink-web`),
 [routes/shell](../../../../apps/vink-web/src/lib.rs), phần page liên quan và
 [requirements](../../../../prd/requirements.md). Dùng
 [hệ thiết kế](../../vink-ui-design/references/design-system.md) cho tiêu chí thẩm mỹ;

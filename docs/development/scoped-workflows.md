@@ -22,8 +22,8 @@ Tất cả ví dụ chạy ở repo root. Dùng `cargo xtask --help` để xem c
 | Identity riêng | `cargo xtask dev identity` | Identity DB đã migrate, runtime role | Chỉ Identity native/socket/local outbox |
 | Web thử tay | `cargo xtask dev web --auth identity` | App/Identity DB, wasm target/bindgen, Node/npm | App SSR + assets và Identity; không Chrome E2E |
 | Web bằng dữ liệu mẫu | `cargo xtask dev web --auth fixture --seed` | App DB đã migrate; frontend tools | Principal từ `VINK_DEV_PRINCIPAL`; seed rõ ràng, không phải auth thật |
-| Preview Leptos | `cargo xtask dev preview` | wasm target/bindgen | Static host của preview, không App/Identity/DB |
-| Kiểm preview | `cargo xtask verify preview` | wasm target/bindgen, Node, Chrome | Giữ toàn bộ assertion preview hiện hữu |
+| Preview Leptos | `cargo xtask dev preview` | wasm target/bindgen, Node/npm (Tailwind v4 CLI) | Static host của preview (`vink-preview.css`), không App/Identity/DB |
+| Kiểm preview | `cargo xtask verify preview` | wasm target/bindgen, Node/npm, Chrome | Giữ toàn bộ assertion preview hiện hữu trên `vink-preview.css` |
 | Một Web scenario | `cargo xtask verify web --scenario password` | Web tools + Chrome, test PG credential | App + Identity và scratch của scenario; không worker |
 | Web regression đầy đủ | `cargo xtask verify web` | Web tools + Chrome, test PG credential | Toàn bộ 10 selector bên dưới (storage đã nằm trong main, không lặp) |
 | Regression hiện hữu | `cargo xtask verify all` | Theo từng lane | Vẫn quick → discussion → expressions → postgres → web; Kani riêng |

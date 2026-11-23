@@ -1411,89 +1411,14 @@ a.vk-ui-byline__identity:focus-visible {
 
 .vk-ui-panel__code code { font-family: var(--vk-type-code-font); overflow-wrap: anywhere; }
 
-/* InlineNotice and Banner ---------------------------------------------------------------------- */
-
-.vk-ui-notice {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: var(--vk-space-2) var(--vk-space-3);
-  padding: var(--vk-space-3) var(--vk-space-4);
-  border-radius: var(--vk-radius-md);
-  background-color: var(--vk-surface-container-high);
-  color: var(--vk-on-surface);
-}
-
-.vk-ui-notice[data-tone="error"] { background-color: var(--vk-error-container); color: var(--vk-on-error-container); }
-.vk-ui-notice[data-tone="warning"] { background-color: var(--vk-warning-container); color: var(--vk-on-warning-container); }
-.vk-ui-notice[data-tone="info"] { background-color: var(--vk-info-container); color: var(--vk-on-info-container); }
-.vk-ui-notice[data-tone="success"] { background-color: var(--vk-success-container); color: var(--vk-on-success-container); }
-
-.vk-ui-notice--banner {
-  border-radius: 0;
-  padding-inline: var(--vk-space-6);
-}
-
-.vk-ui-notice__icon {
-  display: inline-grid;
-  flex: none;
-  padding-block-start: 0.125em;
-}
-
-.vk-ui-notice__body {
-  display: grid;
-  flex: 1 1 14rem;
-  gap: var(--vk-space-1);
-  min-inline-size: 0;
-}
-
-.vk-ui-notice__title,
-.vk-ui-notice__message {
-  margin: 0;
-  overflow-wrap: break-word;
-}
-
-.vk-ui-notice__title { font-weight: var(--vk-type-label-weight); }
-
-/* Actions take the notice's own on-container colour, which meets its contrast pair. */
+/* InlineNotice and Banner (W01 pilot migrated to Tailwind utilities in feedback.rs).
+ * Residual cross-component action styling stays until Button/IconButton migrate in W03. */
 .vk-ui-notice .vk-ui-button--text,
 .vk-ui-notice .vk-ui-icon-button { color: inherit; }
 
 .vk-ui-notice .vk-ui-button--text .vk-ui-button__label { text-decoration: underline; text-underline-offset: 0.2em; }
 
-/* StatusBadge and ListEnd ---------------------------------------------------------------------- */
-
-.vk-ui-status {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--vk-space-2);
-  max-inline-size: 100%;
-  font-family: var(--vk-type-label-font);
-  font-size: var(--vk-type-label-size);
-  line-height: var(--vk-type-label-line-height);
-  color: var(--vk-on-surface-variant);
-}
-
-.vk-ui-status__symbol { display: inline-grid; flex: none; }
-.vk-ui-status__label { min-inline-size: 0; overflow-wrap: break-word; }
-
-.vk-ui-status[data-tone="success"] .vk-ui-status__symbol { color: var(--vk-success); }
-.vk-ui-status[data-tone="warning"] .vk-ui-status__symbol { color: var(--vk-warning); }
-.vk-ui-status[data-tone="error"] .vk-ui-status__symbol { color: var(--vk-error); }
-.vk-ui-status[data-tone="info"] .vk-ui-status__symbol { color: var(--vk-tertiary); }
-.vk-ui-status[data-tone="warning"],
-.vk-ui-status[data-tone="error"] { color: var(--vk-on-surface); }
-
-.vk-ui-list-end {
-  display: flex;
-  align-items: center;
-  gap: var(--vk-space-3);
-  margin: 0;
-  font-family: var(--vk-type-caption-font);
-  font-size: var(--vk-type-caption-size);
-  line-height: var(--vk-type-caption-line-height);
-  color: var(--vk-on-surface-variant);
-}
+/* StatusBadge and ListEnd migrated to Tailwind utilities in feedback.rs (W01 pilot). */
 
 /* Snackbar ------------------------------------------------------------------------------------- */
 

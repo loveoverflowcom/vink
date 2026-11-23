@@ -62,12 +62,12 @@ khi khẳng định root cause, line hoặc patch cụ thể. Tất cả đườ
 | Home/reader/not found | `apps/vink-web/src/pages/mod.rs` |
 | Bàn viết | `apps/vink-web/src/pages/desk.rs` |
 | Pure save state, leave intent | `apps/vink-web/src/desk_state.rs` |
-| Document/source text/render/export | `apps/vink-web/src/document.rs` |
+| Document/source text/render/export | `apps/vink-web/src/document.rs`, `apps/vink-web/src/document/markdown.rs` |
 | CodeMirror bridge; runtime | `apps/vink-web/src/editor.rs`; `apps/vink-web/editor/` |
 | Leave guard for navigation | `apps/vink-web/src/navigation.rs` |
 | Consumer API, transport, SSR read seam | `apps/vink-web/src/contract.rs`, `src/api.rs`, `src/server.rs` |
-| Semantic token values (since UIS-01) | `packages/ui-system/shared/tokens.json` → generated `packages/ui-system/leptos/style/tokens.css`, Rust, Kotlin |
-| Web component CSS | `apps/vink-web/style/vink.css` |
+| Semantic token values (since UIS-01) | `packages/ui-system/shared/tokens.json` → generated `packages/ui-system/leptos/style/{tokens.css,tailwind-theme.css}`, Rust, Kotlin |
+| Web UI styling & Tailwind v4 pipeline | 3 owners: primitives `packages/ui-system/leptos/{src,style/vink-ui.css}`, compositions `packages/vink-patterns/leptos/{src,patterns.css}`, page layout/prose `apps/vink-web/{src,style/vink.css}`; CodeMirror DOM overrides in the unlayered section of `packages/ui-system/leptos/tailwind/web.css`; compiled via `packages/ui-system/leptos/tailwind/{web,preview}.css` and `xtask/src/tailwind.rs` ([Tailwind guide](../../vink-leptos-web/references/tailwind.md)) |
 | Browser smoke | `apps/vink-web/e2e/browser-smoke.mjs` |
 | Domain/application/HTTP/persistence | `services/vink-app/src/` theo owner trong docs development |
 

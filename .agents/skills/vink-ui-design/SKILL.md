@@ -59,8 +59,12 @@ extend actual components and semantic tokens. Token values have one authoring pl
 [`packages/ui-system/shared/tokens.json`](../../../packages/ui-system/shared/tokens.json):
 Vink's Lavender palette in light/dark (system default, `data-theme` override), type roles,
 radius/space/density/motion scales and contrast pairs. `cargo xtask ui-tokens` generates the
-CSS custom properties, Rust and Kotlin accessors; never edit generated files. Web `vk-*`
-components stay in `apps/vink-web/style/vink.css`; the
+CSS custom properties (`tokens.css`), Tailwind v4 `@theme inline` adapter (`tailwind-theme.css`),
+Rust and Kotlin accessors; never edit generated files. Web styling has three explicit source owners —
+primitives in `packages/ui-system/leptos`, shared compositions in `packages/vink-patterns/leptos`,
+and page glue/CodeMirror in `apps/vink-web` — compiled with pinned Tailwind v4 via
+`packages/ui-system/leptos/tailwind/{web,preview}.css` (see
+[Tailwind v4 + Leptos 0.8](../vink-leptos-web/references/tailwind.md)); the
 [UI system](../../../packages/ui-system/README.md) owns renderers and previews, and the
 [design baseline](../../../docs/design/README.md) records sources and measured contrast.
 Add a role to `tokens.json` before adding a one-off color. Be Vietnam Pro (UI) and Literata (reading)

@@ -680,7 +680,7 @@ pub fn PublicationPanel(
         let checking = controller.with(Controller::checking);
         let can_resume = controller.with(Controller::can_resume_captured);
         Some(view! {
-            <section class="vk-editor-recovery" id="publication-recovery" data-testid="publication-recovery"
+            <section class="vk-editor-recovery [&>.vk-ui-notice]:p-0 [&>.vk-ui-notice]:bg-transparent [&>.vk-ui-notice]:text-inherit" id="publication-recovery" data-testid="publication-recovery"
                 data-tone=if tone == Tone::Error { "error" } else { "warning" } aria-label="Phục hồi công khai">
                 <InlineNotice tone announce=Announce::Polite title message />
                 <div class="vk-notice__actions">

@@ -27,7 +27,9 @@ làm mốc để tuyên bố tăng tốc. Đây là kiểm thử lab, không ph�
   Catalog, actor, own và endorsement tách khỏi Reader/list. Path dữ liệu mẫu, tên tham số và mã
   key là đủ cho đối soát; không ghi giá trị query, header, cookie hoặc body.
 - Raw RUM-free: TTFB, thời điểm hàng đầu tiên/hydration, main text Reader, readiness của reload
-  thảo luận, bytes tài liệu/bundle, long task, layout shift và Event Timing (≥16 ms) khi Chrome
+  thảo luận, bytes tài liệu/bundle (bao gồm raw, `gzip -6`, `brotli q6`, `brotli q11` và SHA-256
+  cho `vink.css`, `vink_bg.wasm`, `vink.js`, `vink-editor.js` cùng kích thước SSR HTML thực của
+  `discovery_filtered` và `reader_hot` từ #417), long task, layout shift và Event Timing (≥16 ms) khi Chrome
   hỗ trợ. Milestone warm chứa chi phí CDP/poll. DOM/listener counters và V8 heap chỉ là proxy;
   probe release đo owner/timer trực tiếp. RSS và WASM heap attribution có giới hạn ghi ở báo cáo. Báo median/range/p95 lab;
   không dùng p95 với 10 mẫu làm gate, không suy field p75.

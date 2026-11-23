@@ -1,7 +1,7 @@
 // Pure invariants for #234's opt-in lab analyzer (no server, Chrome or database required).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { distribution } from './web-perf-baseline.mjs';
+import { COMPRESSION_PARAMETERS, distribution, measureCompressedBytes } from './web-perf-baseline.mjs';
 import { assertNoHydrationRead, classifyTransport, countTransport, createTransportLedger } from './web-request-ledger.mjs';
 
 test('lab summary reports the raw sample size, true median, nearest-rank p95 and spread', () => {
@@ -63,4 +63,19 @@ test('a single excess list GET trips the SSR oracle independently of catalog and
   assert.throws(() => assertNoHydrationRead([
     ...sideReads, { phase: 'cold-0', kind: 'public-list', method: 'GET' },
   ], 'cold-0', 'public-list'), /1 unexpected public-list GET/);
+});
+
+test('artifact compression helper reports exact raw, gzip-6, brotli-6, brotli-11 and sha256 deterministically', () => {
+  const sample = Buffer.from('.bg-vk-surface{background-color:var(--vk-surface);}\n'.repeat(20));
+  const first = measureCompressedBytes(sample);
+  const second = measureCompressedBytes(sample);
+  assert.deepEqual(first, second);
+  assert.equal(first.raw, sample.length);
+  assert.ok(first.gzip_6 > 0 && first.gzip_6 < first.raw);
+  assert.ok(first.brotli_6 > 0 && first.brotli_6 < first.raw);
+  assert.ok(first.brotli_11 > 0 && first.brotli_11 < first.raw);
+  assert.equal(first.sha256.length, 64);
+  assert.equal(COMPRESSION_PARAMETERS.gzip.level, 6);
+  assert.equal(COMPRESSION_PARAMETERS.brotli_dynamic.quality, 6);
+  assert.equal(COMPRESSION_PARAMETERS.brotli_static.quality, 11);
 });

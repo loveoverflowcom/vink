@@ -26,12 +26,14 @@ Enso và Leptos 0.8.
 | App (`apps/vink-web`) | Key `vink.ui.theme`/`vink.ui.rail`, bootstrap trước CSS, khi nào ghi storage, route/copy/dữ liệu, đích Vink và thứ tự, `NavigationGuard`, lớp phủ Tôi | Giữ nguyên owner; shell render bằng primitive UIS-04 |
 
 Một role chỉ có một owner. `apps/vink-web/style/vink.css` không còn khai báo giá trị token: build
-phục vụ `tokens.css` (sinh) rồi `vink.css` (component web) thành một `/pkg/vink.css`.
+biên dịch `tailwind-theme.css` (`@theme inline`) + `tokens.css` (sinh), CSS legacy theo layer và
+utilities đã allowlist qua `packages/ui-system/leptos/tailwind/{web,preview}.css` thành `/pkg/vink.css`
+(Web) và `vink-preview.css` (preview). Xem [nền tảng Tailwind Web](../../docs/development/tailwind-web-foundation.md).
 
 ```text
 shared/tokens.json + preview-catalog.json + fixtures/ + icons.json   (không runtime, không backend)
-  ├─ cargo xtask ui-tokens → leptos/style/tokens.css, leptos/src/{tokens,catalog,icons,identity_vectors}.rs
-  │                            → vink-ui (UiRoot, ThemeScope, component) → vink-web pilot, preview Leptos
+  ├─ cargo xtask ui-tokens → leptos/style/{tokens.css,tailwind-theme.css}, leptos/src/{tokens,catalog,icons,identity_vectors}.rs
+  │                            → vink-ui (UiRoot, ThemeScope, component) + Tailwind v4 CLI → vink-web, preview Leptos
   └─ cargo xtask ui-tokens → cmp/ui/src/commonMain/.../{VinkTokens,VinkCatalog,VinkIcons,VinkIdentityVectors}.kt
                                → :ui (VinkTheme, VinkScope, Vink*) → :preview (Compose Desktop)
 preview = public API của renderer; không clone component, không DOM chung với Compose, không WebView
@@ -43,7 +45,7 @@ Nguồn lệnh duy nhất vẫn là [docs/development](../../docs/development/RE
 
 | Lệnh | Việc |
 | --- | --- |
-| `cargo xtask ui-tokens` | Validate các nguồn shared rồi ghi 15 file sinh ra (chỉ ghi file thay đổi) |
+| `cargo xtask ui-tokens` | Validate các nguồn shared rồi ghi 16 file sinh ra (chỉ ghi file thay đổi, gồm `tailwind-theme.css`) |
 | `cargo xtask ui-tokens --check` | Không ghi; lỗi khi thiếu hoặc lệch. Chạy trong `verify quick` và trước mọi build web/preview |
 | `cargo xtask ui-preview leptos build\|run\|verify` | Bundle wasm (`csr`) vào `target/ui-preview/leptos`; `run` phục vụ ở `VINK_UI_PREVIEW_BIND` (mặc định `127.0.0.1:3019`); `verify` chạy Chrome headless và ghi ảnh vào `target/ui-preview/leptos/captures/` |
 | `cargo xtask ui-preview cmp build\|run\|verify` | Gradle wrapper 8.14.3; `run` mở cửa sổ desktop; `verify` chạy test common + desktop và ghi ảnh vào `cmp/preview/build/captures/` |
