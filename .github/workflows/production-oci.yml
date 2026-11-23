@@ -10,6 +10,8 @@ on:
       - infra/test/auth-resend.compose.yaml
       - infra/test/compose.yaml
       - services/postgres/compose.yaml
+      - services/postgres/provision.sh
+      - services/postgres/provision/**
       - infra/Containerfile
       - infra/cloudflare/production/**
 permissions:
