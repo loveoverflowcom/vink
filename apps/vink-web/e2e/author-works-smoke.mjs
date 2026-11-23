@@ -52,6 +52,7 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
       const shape=getComputedStyle(first);
       return shape.borderRadius==='20px' && shape.backgroundColor!=='rgba(0, 0, 0, 0)' &&
         getComputedStyle(document.querySelector('#draft-results')).rowGap==='8px' &&
+        getComputedStyle(tham).fontVariantNumeric==='tabular-nums' &&
         tham.title==='0 Thấm' && comments.title==='123456789 nhận xét' &&
         tham.querySelector('[data-icon=pen-flight]').getBoundingClientRect().width===26 &&
         comments.querySelector('[data-icon=chat-bubble-outline]').getBoundingClientRect().width===24 &&
