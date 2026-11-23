@@ -58,7 +58,7 @@ pub fn Me() -> impl IntoView {
     view! {
         <Title text="Tôi — Vink" />
         <Meta name="robots" content="noindex" />
-        <section id="me" class="vk-me" aria-labelledby="me-title">
+        <section id="me" class="vk-me grid gap-vk-6" aria-labelledby="me-title">
             <vink_ui::Heading id="me-title" level=vink_ui::HeadingLevel::H1 attr:tabindex="-1">"Tôi"</vink_ui::Heading>
             <AccountPanel id="page-account" />
             {move || (session.profile_scope.get().is_some())
