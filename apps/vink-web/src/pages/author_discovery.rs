@@ -102,7 +102,7 @@ pub(super) fn AuthorSearch(q: String, cursor: Option<String>) -> impl IntoView {
                     value=buffer on_input=move |input: vink_ui::TextInput| buffer.set(input.value)
                     clear_href=author_search_href("", None) on_clear=move |_| clear.run(()) />
             </form>
-            <section aria-labelledby=RESULTS_HEADING class="vk-author-search__results">
+            <section aria-labelledby=RESULTS_HEADING class="vk-author-search__results grid [grid-template-columns:minmax(0,1fr)] gap-vk-3 [min-inline-size:0] wrap-anywhere">
                 {q.with_value(|q| results_heading(q))}
                 <Show when=move || return_notice.get()>
                     <p id="author-search-notice" role="status" class="vk-author-search__note">
@@ -190,7 +190,7 @@ fn SearchError(
         ),
     };
     view! {
-        <div class="vk-author-search__error" id="author-search-error" role="alert">
+        <div class="vk-author-search__error grid gap-vk-2" id="author-search-error" role="alert">
             {if can_retry {
                 view! {
                     <Heading level=HeadingLevel::H3 role=TypeRole::Title>{message}</Heading>
@@ -217,7 +217,7 @@ fn SearchError(
 fn SearchEmpty(q: StoredValue<String>, clear: Callback<()>) -> impl IntoView {
     let q = q.get_value();
     if q.trim().is_empty() {
-        return view! { <p id="author-search-empty" role="status">"Chưa có gợi ý tác giả."</p> }
+        return view! { <p id="author-search-empty" class="grid gap-vk-2" role="status">"Chưa có gợi ý tác giả."</p> }
             .into_any();
     }
     let works = ExploreContext {
@@ -225,12 +225,12 @@ fn SearchEmpty(q: StoredValue<String>, clear: Callback<()>) -> impl IntoView {
         ..Default::default()
     };
     view! {
-        <div class="vk-author-search__empty">
-            <div id="author-search-empty" role="status">
+        <div class="vk-author-search__empty grid gap-vk-2">
+            <div id="author-search-empty" class="grid gap-vk-2" role="status">
                 <p>{format!("Chưa có tác giả khớp “{q}”.")}</p>
                 <p class="vk-author-search__note">"Thử bút danh khác, hoặc nhập chính xác @handle."</p>
             </div>
-            <div class="vk-author-search__actions">
+            <div class="vk-author-search__actions flex flex-wrap [align-items:start] gap-y-vk-1 gap-x-vk-4">
                 <a id="author-search-in-works" class="vk-ui-link vk-author-search__in-works" href=works.href(None)>"Tìm trong tác phẩm"</a>
                 <a id="author-search-clear" class="vk-ui-link" href=author_search_href("", None)
                     on:click=move |event| {
@@ -290,7 +290,8 @@ fn AuthorResults(
         <Show when=move || results.with(|state| state.rows.is_empty())>
             <SearchEmpty q clear />
         </Show>
-        <ul class="vk-rel-list vk-author-search__list" id="author-search-list" role="list">
+        // R4.2 (#405): separate author cards use bg-content and the card gap.
+        <ul class="vk-rel-list vk-author-search__list gap-vk-card-gap" id="author-search-list" role="list">
             <For each=move || results.with(|state| state.rows.clone())
                 key=|row| (row.author.handle.clone(), row.author.pen_name.clone())
                 children=move |row| {
@@ -299,7 +300,7 @@ fn AuthorResults(
                     let id = format!("search-author-{handle}");
                     let identity = q.with_value(|q| search_author_identity(author, id, q));
                     view! {
-                        <li class="vk-rel-item vk-author-search__row" data-author-cursor=row.cursor>
+                        <li class="vk-rel-item vk-author-search__row [background:var(--vk-bg-content)] [border:0] rounded-vk-card [padding:min(var(--vk-space-3),14px)_clamp(16px,4vw,20px)]" data-author-cursor=row.cursor>
                             {identity}
                             {
                                 #[cfg(feature = "hydrate")]
@@ -319,7 +320,7 @@ fn AuthorResults(
                         ("Danh sách đã thay đổi. Hãy tìm lại từ trang đầu.", true),
                     _ => ("Chưa tải thêm được tác giả.", false),
                 };
-                view! { <div class="vk-author-search__error" role="alert">
+                view! { <div class="vk-author-search__error grid gap-vk-2" role="alert">
                     <p>{message}</p>
                     {restart.then(|| view! { <FirstSearchPage q on_restart /> })}
                 </div> }

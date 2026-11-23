@@ -2191,8 +2191,6 @@ a {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.vk-author-public section { margin-block-start: calc(var(--vk-space-8) + var(--vk-space-2)); }
-.vk-author-works { list-style: none; margin: 0 0 var(--vk-space-4); padding: 0; }
 .vk-author-works > li { border-block-end: 1px solid var(--vk-outline-variant); }
 .vk-author-works .vk-ui-link {
   display: flex;
@@ -2219,7 +2217,6 @@ a {
   border-inline-end: 2px solid var(--vk-on-surface-variant);
   transform: rotate(-45deg);
 }
-.vk-author-public section > .vk-ui-link { display: inline-block; margin-inline-end: var(--vk-space-3); }
 @container (min-width: 40rem) {
   .vk-author-public .vk-author-identity > .vk-author-seal { inline-size: 5.5rem; block-size: 5.5rem; font-size: var(--vk-text-profile-monogram-wide); }
   .vk-author-public .vk-follow-region,
@@ -2479,13 +2476,6 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
   --vk-ui-control-radius: var(--vk-radius-control-48);
   --vk-ui-search-radius: var(--vk-radius-control-56);
 }
-.vk-author-search__results {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--vk-space-3);
-  min-inline-size: 0;
-  overflow-wrap: anywhere;
-}
 .vk-author-search__results > .vk-ui-heading {
   overflow-wrap: anywhere;
 }
@@ -2501,16 +2491,6 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
   font-size: var(--vk-type-label-size);
   font-weight: var(--vk-type-label-weight);
 }
-/* R4.2 (#405): author rows share the separate bg-content card language and 8px gap. */
-.vk-author-search__list {
-  gap: var(--vk-space-card-gap);
-}
-.vk-author-search__row {
-  background: var(--vk-bg-content);
-  border: 0;
-  border-radius: var(--vk-radius-card);
-  padding: min(var(--vk-space-3), 14px) clamp(16px, 4vw, 20px);
-}
 .vk-author-search__row .vk-ui-byline,
 .vk-author-search__follow {
   min-inline-size: 0;
@@ -2518,18 +2498,6 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
 .vk-author-search__follow {
   margin-inline-start: auto;
   max-inline-size: 100%;
-}
-.vk-author-search__empty,
-.vk-author-search__error,
-.vk-author-search #author-search-empty {
-  display: grid;
-  gap: var(--vk-space-2);
-}
-.vk-author-search__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: start;
-  gap: var(--vk-space-1) var(--vk-space-4);
 }
 .vk-author-search__results .vk-ui-link {
   display: inline-flex;
