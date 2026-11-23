@@ -501,6 +501,9 @@ fn RelationshipListProjection(
     }
 }
 
+const RELATIONSHIP_PAGE_CLASS: &str =
+    "vk-rel-page grid gap-vk-3 [max-inline-size:var(--vk-measure)] mx-auto py-vk-4";
+
 #[component]
 fn RelationshipResults(
     handle: String,
@@ -581,7 +584,7 @@ fn RelationshipResults(
         } else {
             view! { <Link rel="canonical" href=canonical /> }.into_any()
         }}
-        <section id="relationship-list" class="vk-rel-page" aria-labelledby="relationship-title">
+        <section id="relationship-list" class=RELATIONSHIP_PAGE_CLASS aria-labelledby="relationship-title">
             <UiLink
                 variant=LinkVariant::Standalone
                 attr:id="rel-back-profile"
@@ -594,7 +597,7 @@ fn RelationshipResults(
             </Heading>
             <RelationshipDirections handle direction is_own append_generation />
             {move || count.get().map(|n| view! {
-                <p id="relationship-count" class="vk-rel-count">{count_copy(direction, n)}</p>
+                <p id="relationship-count" class="vk-rel-count m-0 text-vk-on-surface-variant">{count_copy(direction, n)}</p>
             })}
             <Show when=move || rows.with(Vec::is_empty) fallback=move || view! {
                 <ul class="vk-rel-list">
@@ -650,7 +653,7 @@ fn RelationshipResults(
                             </UiLink>
                         })
                     }>
-                        <p class="vk-rel-append-error" role="status">
+                        <p class="vk-rel-append-error m-0 text-vk-error" role="status">
                             {move || if failed.get() {
                                 "Chưa tải thêm được danh sách. Bạn có thể thử lại tại đây."
                             } else { "" }}
@@ -664,6 +667,9 @@ fn RelationshipResults(
         </section>
     }
 }
+
+const RELATIONSHIP_DIRECTIONS_CLASS: &str =
+    "vk-rel-directions flex flex-wrap items-center gap-x-vk-4 gap-y-vk-2";
 
 // The public author projection already carries the two independent list grants.
 #[component]
@@ -716,7 +722,7 @@ fn RelationshipDirections(
                 };
                 match result {
                     Some(Ok(true)) => view! {
-                        <nav class="vk-rel-directions" aria-label="Danh sách theo dõi">
+                        <nav class=RELATIONSHIP_DIRECTIONS_CLASS aria-label="Danh sách theo dõi">
                             <span aria-current="page">{current_label}</span>
                             <UiLink variant=LinkVariant::Standalone attr:id="rel-other-direction"
                                 attr:data-profile-return="true" href=expected.clone()>
@@ -725,7 +731,7 @@ fn RelationshipDirections(
                         </nav>
                     }.into_any(),
                     Some(Err(())) => view! {
-                        <div class="vk-rel-directions">
+                        <div class=RELATIONSHIP_DIRECTIONS_CLASS>
                             <p role="status">"Chưa kiểm tra được danh sách theo dõi còn lại."</p>
                             <Button id="rel-direction-retry" variant=ButtonVariant::Tonal
                                 on_press=Callback::new(move |()| advance.update(|n| *n += 1))>
@@ -764,7 +770,7 @@ fn render_list_status(
             let list_url = format!("/@{}/{}", author.handle, direction.web_segment());
             view! {
                 <Title text="Danh sách theo dõi · Vink" />
-                <section id="relationship-list" class="vk-rel-page" aria-labelledby="relationship-title">
+                <section id="relationship-list" class=RELATIONSHIP_PAGE_CLASS aria-labelledby="relationship-title">
                     <Heading id="relationship-title" level=HeadingLevel::H1 attr:tabindex="-1">
                         "Danh sách đã thay đổi"
                     </Heading>
@@ -780,7 +786,7 @@ fn render_list_status(
             view! {
                 <Title text="Danh sách riêng tư · Vink" />
                 <Meta name="robots" content="noindex" />
-                <section id="relationship-list" class="vk-rel-page" aria-labelledby="relationship-title">
+                <section id="relationship-list" class=RELATIONSHIP_PAGE_CLASS aria-labelledby="relationship-title">
                     <Heading id="relationship-title" level=HeadingLevel::H1 attr:tabindex="-1">
                         "Danh sách ở chế độ Chỉ mình tôi"
                     </Heading>
@@ -794,7 +800,7 @@ fn render_list_status(
             status.set(410);
             view! {
                 <Title text="Hồ sơ không còn trên Vink" />
-                <section id="relationship-list" class="vk-rel-page" aria-labelledby="relationship-title">
+                <section id="relationship-list" class=RELATIONSHIP_PAGE_CLASS aria-labelledby="relationship-title">
                     <Heading id="relationship-title" level=HeadingLevel::H1 attr:tabindex="-1">
                         "Hồ sơ không còn trên Vink"
                     </Heading>
@@ -808,7 +814,7 @@ fn render_list_status(
             status.set(404);
             view! {
                 <Title text="Không tìm thấy hồ sơ · Vink" />
-                <section id="relationship-list" class="vk-rel-page" aria-labelledby="relationship-title">
+                <section id="relationship-list" class=RELATIONSHIP_PAGE_CLASS aria-labelledby="relationship-title">
                     <Heading id="relationship-title" level=HeadingLevel::H1 attr:tabindex="-1">
                         "Không tìm thấy hồ sơ"
                     </Heading>
@@ -823,7 +829,7 @@ fn render_list_status(
             let path = format!("/@{name}/{}", direction.web_segment());
             view! {
                 <Title text="Chưa tải được danh sách · Vink" />
-                <section id="relationship-list" class="vk-rel-page" aria-labelledby="relationship-title">
+                <section id="relationship-list" class=RELATIONSHIP_PAGE_CLASS aria-labelledby="relationship-title">
                     <Heading id="relationship-title" level=HeadingLevel::H1 attr:tabindex="-1">
                         "Chưa tải được danh sách"
                     </Heading>
