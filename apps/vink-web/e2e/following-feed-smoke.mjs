@@ -110,8 +110,9 @@ async function layout(page, check, textContrast) {
         })) : null,
       };
     })(),
-    targets: Array.from(document.querySelectorAll('.vk-explore-modes a, #following-cards .vk-ui-byline__identity'))
-      .slice(0,4).map(el => [el.getBoundingClientRect().width, el.getBoundingClientRect().height])
+    // R4.2 (#404): the mode group collapses into a menu when it would not fit; measure what shows.
+    targets: Array.from(document.querySelectorAll('.vk-explore-modes a, .vk-explore-modes summary, #following-cards .vk-ui-byline__identity'))
+      .filter(el => el.getClientRects().length > 0).slice(0,4).map(el => [el.getBoundingClientRect().width, el.getBoundingClientRect().height])
   }))()`;
   for (const width of [320, 390, 834, 1024, 1440]) {
     await page.viewport(width, 900);

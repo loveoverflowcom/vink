@@ -83,3 +83,17 @@ consumer product mới.
 Auth Web R2 (#327/#328): token 0.7.0 bổ sung hai kích thước tiêu đề
 `text.auth-heading` và `text.auth-dialog-heading`, giữ nguyên kích thước đã duyệt trong Tôi
 và Reader. Không đổi thang chữ chung, component, catalog, API hay giao diện CMP.
+
+Redesign R4.2 (#402–#404, 23/11/2026): token 0.8.0 chỉ thêm, không đổi giá trị cũ: alias nền
+`color.bg-page` (Sáng = `surface-container`, Tối = `surface`), `color.bg-nav` (= `bg-page`),
+`color.bg-content` (= `surface-container-low`), `color.bg-inset` (= `surface-container-high`);
+`radius.control-56/48/40` = 16/14/12, `radius.card` 20 + `space.card-gap` 8; `type.page-title`
+(Be Vietnam Pro 600, 24/1.3) + `text.page-title-narrow` 22, `text.rail-label` 12 (nhãn rail thu
+gọn); `size.page-column` 48rem,
+`size.gutter-narrow` 16 px. Không thêm màu tonal. Leptos: `IconButton` thêm prop tùy chọn
+`expanded` (`aria-expanded`); recipe CSS `.vk-ui-type-page-title`, biến opt-in
+`--vk-ui-control-radius`/`--vk-ui-search-radius` (mặc định giữ pill nên caller cũ không đổi
+hình). Rail và thanh dưới đổi nền sang `bg-nav`, mục rail bo `control-56`, indicator dọc bo
+`control-40`, tiện ích đang mở là viền 2 px `primary` thay vì nền đích chọn, tooltip toggle đặt
+bên phải nút. CMP chỉ nhận token sinh chung (`VinkTokens.kt`), chưa có consumer mới; không
+publish binary ABI.

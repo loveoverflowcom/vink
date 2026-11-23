@@ -2854,7 +2854,7 @@ mod tests {
 
     #[test]
     fn committed_outputs_match_the_source() {
-        const TOKEN_VERSION: &str = "0.7.0";
+        const TOKEN_VERSION: &str = "0.8.0";
         let root = crate::root();
         let (tokens, catalog, fixtures) = sources();
         let (icons, identity) = asset_sources();

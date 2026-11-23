@@ -502,18 +502,18 @@ pub fn NavigationRail(
     }
 }
 
-/// Anchors the tooltip below the toggle and within the rail's inline bounds, clear of main.
+/// Anchors the tooltip to the right of the toggle, centred on its row, so it never covers the
+/// first destination below it (R4.2 #403).
 fn place_tooltip(toggle: NodeRef<html::Button>, tip: NodeRef<html::Span>) {
     #[cfg(target_arch = "wasm32")]
     if let (Some(toggle), Some(tip)) = (toggle.get_untracked(), tip.get_untracked()) {
         let rect = toggle.get_bounding_client_rect();
-        if let Ok(Some(rail)) = toggle.closest(".vk-ui-rail") {
-            let rail = rail.get_bounding_client_rect();
-            let style = web_sys::HtmlElement::style(&tip);
-            let _ = style.set_property("--vk-ui-tooltip-left", &format!("{}px", rail.left()));
-            let _ = style.set_property("--vk-ui-tooltip-width", &format!("{}px", rail.width()));
-            let _ = style.set_property("--vk-ui-tooltip-top", &format!("{}px", rect.bottom()));
-        }
+        let style = web_sys::HtmlElement::style(&tip);
+        let _ = style.set_property("--vk-ui-tooltip-left", &format!("{}px", rect.right()));
+        let _ = style.set_property(
+            "--vk-ui-tooltip-top",
+            &format!("{}px", rect.top() + rect.height() / 2.0),
+        );
     }
     #[cfg(not(target_arch = "wasm32"))]
     let _ = (toggle, tip);

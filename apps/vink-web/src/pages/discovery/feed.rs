@@ -60,9 +60,7 @@ pub(super) fn FollowingFeed(context: ExploreContext) -> impl IntoView {
         <Meta name="robots" content="noindex" />
         <Link rel="canonical" href=crate::canonical_url("/") />
         <div id="explore" class="vk-explore vk-discovery vk-discovery--following">
-            <header class="vk-explore__heading">
-                <Heading level=HeadingLevel::H1>"Khám phá"</Heading>
-            </header>
+            <super::ExploreTitleRow title="Khám phá" />
             <super::ExploreModes mode=ExploreMode::Following />
             <section node_ref=stream id="community-stream" aria-labelledby="following-feed-heading" tabindex="-1">
                 <Heading id="following-feed-heading" level=HeadingLevel::H2 role=vink_ui::TypeRole::Title attr:tabindex="-1">"Đang theo dõi"</Heading>

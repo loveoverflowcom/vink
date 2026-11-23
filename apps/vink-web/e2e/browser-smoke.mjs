@@ -98,6 +98,7 @@ const KEYS = {
   Escape: { code: 'Escape', keyCode: 27 },
   Tab: { code: 'Tab', keyCode: 9 },
   Space: { code: 'Space', keyCode: 32, key: ' ', text: ' ' },
+  '/': { code: 'Slash', keyCode: 191, text: '/' },
   End: { code: 'End', keyCode: 35 },
   Home: { code: 'Home', keyCode: 36 },
   ArrowDown: { code: 'ArrowDown', keyCode: 40 },
@@ -1812,6 +1813,92 @@ async function openProfile(page) {
   await page.waitFor(PROFILE_OPEN, 'Giao diện dialog');
 }
 
+/** R4.2 (#402): Khám phá and Bàn viết share one page column and a fixed narrow gutter; the
+ * resolved background/text pairs are measured and logged in both themes. Ends on /ban-viet. */
+async function r4PageColumns(page) {
+  const open = async (path, ready) => {
+    await page.goto(`${args.base}${path}`);
+    await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector(${JSON.stringify(ready)})`, `R4 column ${path}`);
+    await page.eval('document.fonts.ready.then(() => true)');
+  };
+  const left = selector => page.eval(`document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect().left`);
+  for (const width of [834, 1440]) {
+    await page.viewport(width);
+    await open('/', '#explore-heading h1');
+    const explore = await left('#explore-heading h1');
+    await open('/ban-viet', '#desk-title');
+    const desk = await left('#desk-title');
+    check(Math.abs(explore - desk) <= 1, `#402 AC-03 ${width}px: Khám phá and Bàn viết titles share a left edge (${explore} / ${desk} CSS px)`);
+  }
+  for (const width of [320, 390]) for (const scale of [100, 200]) {
+    await page.viewport(width);
+    await page.eval(`(() => { try { ${scale === 200 ? "localStorage.setItem('vink.ui.text', '200')" : "localStorage.removeItem('vink.ui.text')"}; } catch {} })()`);
+    const gutters = {};
+    for (const [path, ready, box] of [['/', '#explore-heading h1', '#explore > .vk-explore__top'], ['/ban-viet', '#desk-title', '#desk']]) {
+      await open(path, ready);
+      gutters[path] = await page.eval(`(() => { const r = document.querySelector(${JSON.stringify(box)}).getBoundingClientRect();
+        return { text: document.documentElement.dataset.text ?? '100', left: r.left, right: document.documentElement.clientWidth - r.right,
+          overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }; })()`);
+    }
+    check(Object.values(gutters).every(g => g.text === String(scale) && Math.abs(g.left - 16) <= 1 && Math.abs(g.right - 16) <= 1 && g.overflow <= 0),
+      `#402 AC-03 ${width}px / ${scale}%: Khám phá and Bàn viết keep a 16px gutter (${JSON.stringify(gutters)})`);
+  }
+  await page.eval(`(() => { try { localStorage.removeItem('vink.ui.text'); } catch {} })()`);
+  await page.viewport(1440);
+  await open('/ban-viet', '#create-draft');
+  const before = await page.eval('document.documentElement.dataset.theme ?? null');
+  for (const theme of ['light', 'dark']) {
+    const pairs = await page.eval(`(() => {
+      document.documentElement.dataset.theme = ${JSON.stringify(theme)};
+      const probe = document.createElement('span'); document.body.append(probe);
+      const color = token => { probe.style.color = 'var(' + token + ')'; return getComputedStyle(probe).color.match(/[\\d.]+/g).slice(0, 3).map(Number); };
+      const lum = rgb => rgb.map(v => v / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+      const ratio = (a, b) => { const [x, y] = [lum(color(a)), lum(color(b))].sort((p, q) => q - p); return Math.round(((x + 0.05) / (y + 0.05)) * 100) / 100; };
+      const out = {
+        content_page: ratio('--vk-bg-content', '--vk-bg-page'),
+        text_page: ratio('--vk-on-surface', '--vk-bg-page'), text_content: ratio('--vk-on-surface', '--vk-bg-content'),
+        meta_page: ratio('--vk-on-surface-variant', '--vk-bg-page'), meta_content: ratio('--vk-on-surface-variant', '--vk-bg-content'),
+        on_primary: ratio('--vk-on-primary', '--vk-primary'),
+        focus_page: ratio('--vk-focus', '--vk-bg-page'), focus_content: ratio('--vk-focus', '--vk-bg-content'),
+        nav_page: getComputedStyle(document.querySelector('#navigation')).backgroundColor === getComputedStyle(document.body).backgroundColor,
+      };
+      probe.remove();
+      return out;
+    })()`);
+    console.log(`  ..  #402 AC-02 resolved contrast ${theme} ${JSON.stringify(pairs)}`);
+    check(pairs.content_page >= 1.05 && pairs.content_page <= 1.15 && pairs.text_page >= 4.5 && pairs.text_content >= 4.5 &&
+      pairs.meta_page >= 4.5 && pairs.meta_content >= 4.5 && pairs.on_primary >= 4.5 && pairs.focus_page >= 3 && pairs.focus_content >= 3 && pairs.nav_page,
+      `#402 AC-02 ${theme}: text >=4.5:1 on bg-page/bg-content, on-primary >=4.5:1, focus >=3:1, content one step above the page`);
+  }
+  await page.eval(`(() => { const theme = ${JSON.stringify(before)}; if (theme === null) delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = theme; })()`);
+}
+
+/** R4.2 (#403): rail = page = bottom-bar background; only the current destination is filled,
+ * and the open Giao diện utility is a 2px primary ring without a fill. Call with Giao diện open. */
+async function railR4Surfaces(page, theme) {
+  // The current destination's fill transitions in after navigation; measure settled colours.
+  await page.waitFor(APPEARANCE_SETTLED, `${theme} rail colours settled`);
+  const facts = await page.eval(`(() => {
+    const probe = document.createElement('span'); document.body.append(probe);
+    const resolve = token => { probe.style.background = 'var(' + token + ')'; return getComputedStyle(probe).backgroundColor; };
+    const page = resolve('--vk-bg-page'), primary = resolve('--vk-primary'), selected = resolve('--vk-primary-container');
+    probe.remove();
+    const bg = selector => getComputedStyle(document.querySelector(selector)).backgroundColor;
+    const utility = document.querySelector('#profile-trigger'), style = getComputedStyle(utility);
+    const filled = [...document.querySelectorAll('#navigation .vk-ui-nav-item, #navigation .vk-ui-nav-item__indicator')]
+      .filter(el => getComputedStyle(el).backgroundColor === selected)
+      .map(el => (el.closest('a,button')?.getAttribute('aria-current') === 'page'));
+    return { page, body: bg('body'), rail: bg('#navigation'), bar: bg('#bottom-navigation'),
+      expanded: utility.getAttribute('aria-expanded'), utilityBg: style.backgroundColor,
+      ring: style.boxShadow.includes(primary) && style.boxShadow.includes('2px'),
+      filled };
+  })()`);
+  check(facts.body === facts.page && facts.rail === facts.page && facts.bar === facts.page &&
+    facts.expanded === 'true' && facts.utilityBg === 'rgba(0, 0, 0, 0)' && facts.ring &&
+    facts.filled.length >= 1 && facts.filled.every(Boolean),
+    `${theme}: rail, page and bottom bar share bg-page; only the current destination is filled; open Giao diện is a primary ring (${JSON.stringify(facts)})`);
+}
+
 async function waitForPageAccount(page) {
   // Hydration can finish before the account panel above the choices changes height.
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true' &&
@@ -2515,9 +2602,10 @@ async function railReview(page) {
       const label = active.querySelector('.vk-ui-nav-item__label');
       const item = getComputedStyle(active), pill = getComputedStyle(indicator);
       const r = indicator.getBoundingClientRect(), text = label.getBoundingClientRect();
-      if (item.borderRadius !== '28px' || parseFloat(getComputedStyle(toggle).borderRadius) < 24) return false;
+      // R4.2 (#403): semi-square rail item (16), toggle (14) and vertical indicator (12).
+      if (item.borderRadius !== '16px' || getComputedStyle(toggle).borderRadius !== '14px') return false;
       if (item.flexDirection === 'row') return active.getBoundingClientRect().height >= 56 && pill.display === 'contents';
-      return r.width === 56 && r.height === 32 && text.top - r.bottom >= 4 &&
+      return r.width === 56 && r.height === 32 && pill.borderRadius === '12px' && text.top - r.bottom >= 4 &&
         item.backgroundColor === 'rgba(0, 0, 0, 0)' && pill.backgroundColor !== 'rgba(0, 0, 0, 0)';
     })()`), `${name}: active indicator follows rail orientation and controls keep their own radii`);
     await page.capture(name, {
@@ -2554,11 +2642,13 @@ async function railReview(page) {
       await page.key('Tab');
       check(await page.eval(`(() => {
         const tip = document.querySelector('#navigation-tooltip');
-        const r = tip.getBoundingClientRect();
+        const r = tip.getBoundingClientRect(), toggle = document.querySelector('#navigation-toggle').getBoundingClientRect();
+        const first = document.querySelector('#navigation-primary a').getBoundingClientRect();
+        const overlaps = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
         return document.activeElement?.id === 'navigation-toggle' && !tip.hidden &&
-          r.right <= document.querySelector('#navigation').getBoundingClientRect().right &&
-          r.top >= 0 && r.bottom <= innerHeight;
-      })()`), `${name}: the focus tooltip clears the short rail`);
+          r.left >= toggle.right && r.top < toggle.bottom && r.bottom > toggle.top && !overlaps(r, first) &&
+          r.top >= 0 && r.bottom <= innerHeight && r.right <= innerWidth;
+      })()`), `${name}: the focus tooltip sits right of the toggle and clears the first destination (#403)`);
       await page.capture(`${name}-tooltip`, {
         scenario: 'rail-r1-tooltip',
         requestedScene: { width, height, scale, theme },
@@ -2664,23 +2754,28 @@ async function adaptiveShell(page) {
   `Tab reaches a visible toggle focus ring in forced colors and reduced motion: ${JSON.stringify(forcedFocus)}`);
   await page.capture('rail-r1-1440-forced-colors-focus');
   await page.eval(`window.__exploreRailProbe = {
-    brand: document.querySelector('.vk-brand'), input: document.querySelector('#public-query'),
-    top: document.querySelector('.vk-brand').getBoundingClientRect().top
+    brand: document.querySelector('.vk-brand'), input: document.querySelector('#public-query')
   };
-  window.__exploreRailProbe.input.focus()`);
+  (() => {
+    const b = document.querySelector('.vk-brand').getBoundingClientRect(), row = document.querySelector('.vk-public-row').getBoundingClientRect();
+    window.__exploreRailProbe.aligned = Math.abs(b.right - row.right) <= 1;
+  })();
+  document.querySelector('#open-public-search').click()`);
+  await page.waitFor(`document.activeElement?.id === 'public-query'`, 'rail probe opens the search dock');
   await page.send('Input.insertText', { text: 'Mưa trên phố' });
   await page.eval(`document.querySelector('#navigation-toggle').focus()`);
   await page.key('Enter');
   check((await page.eval(RAIL_WIDTH)) === 96 && await page.eval(`document.activeElement === window.__railToggle`), 'Enter collapses once and retains the toggle');
   check(await page.eval(`(() => {
-    const { brand, input, top } = window.__exploreRailProbe;
+    const { brand, input, aligned } = window.__exploreRailProbe;
     const toolbar = document.querySelector('.vk-discovery-toolbar').getBoundingClientRect();
     const row = document.querySelector('.vk-public-row').getBoundingClientRect();
-    const b = brand.getBoundingClientRect();
-    return brand === document.querySelector('.vk-brand') && Math.abs(b.top - top) <= 1 &&
-      Math.abs(b.right - toolbar.right) <= 1 && Math.abs(b.right - row.right) <= 1 &&
+    const title = document.querySelector('#explore-heading h1').getBoundingClientRect();
+    return aligned && brand === document.querySelector('.vk-brand') &&
+      Math.abs(toolbar.right - row.right) <= 1 && Math.abs(title.left - row.left) <= 1 &&
+      document.querySelector('#explore').dataset.search === 'open' &&
       input === document.querySelector('#public-query') && input.value === 'Mưa trên phố' && !location.search;
-  })()`), 'collapsing the rail keeps the brand aligned and retains the unsubmitted search');
+  })()`), 'collapsing the rail keeps the header on the column edges and retains the unsubmitted search in the dock');
   await page.key('Space');
   check((await page.eval(RAIL_WIDTH)) === 220 && await page.eval(`document.activeElement === window.__railToggle`), 'Space expands once and retains the toggle');
   await page.click('#clear-public-search');
@@ -2703,10 +2798,13 @@ async function adaptiveShell(page) {
   await page.waitFor(`!document.querySelector('[role=tooltip]').hidden`, 'hover tooltip');
   check(await page.eval(`(() => {
     const r = document.querySelector('#navigation-tooltip').getBoundingClientRect();
-    const rail = document.querySelector('#navigation').getBoundingClientRect();
     const toggle = document.querySelector('#navigation-toggle').getBoundingClientRect();
-    return r.left >= rail.left && r.right <= rail.right && r.top >= toggle.bottom;
-  })()`), 'hover tooltip stays below the toggle inside the rail width, clear of the page heading');
+    const first = document.querySelector('#navigation-primary a').getBoundingClientRect();
+    const overlaps = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    return r.left >= toggle.right && Math.abs((r.top + r.bottom) / 2 - (toggle.top + toggle.bottom) / 2) <= 1 &&
+      !overlaps(r, first) && r.right <= innerWidth &&
+      document.querySelector('#navigation-tooltip').innerText.trim() === 'Mở rộng điều hướng';
+  })()`), '#403 hover tooltip sits right of the toggle on its row and never covers Khám phá');
   await page.capture('1440-rail-tooltip-light');
   await page.key('Escape');
   check(await page.eval(`document.querySelector('[role=tooltip]').hidden`), 'Escape also dismisses a hover tooltip without trigger focus');
@@ -2752,6 +2850,7 @@ async function adaptiveShell(page) {
   await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('#create-draft')`, 'rapid navigations settle on the last intent');
   check(await page.eval(`document.querySelector('#navigation-primary a[href="/ban-viet"]').getAttribute('aria-current') === 'page' && [...document.querySelectorAll('[aria-current=page]')].filter(el => el.getClientRects().length).length === 1`), 'rapid navigations leave exactly the final destination active');
   await assertBrandPlacement(page);
+  await r4PageColumns(page);
   await page.click('#navigation-primary a[href="/"]');
   await page.waitFor(`location.pathname === '/' && document.querySelector('#discovery-tools .vk-brand')`, 'back to Khám phá with its brand');
   await assertBrandPlacement(page);
@@ -2759,6 +2858,7 @@ async function adaptiveShell(page) {
   await openProfile(page);
   check(await page.eval(`document.activeElement?.name === 'overlay-theme' && document.activeElement.value === 'system'`), 'overlay initially focuses the selected appearance option');
   check(await page.eval(`document.querySelector('#profile-title').textContent === 'Giao diện' && !document.querySelector('#profile-menu .vk-account-status')`), 'appearance utility contains preferences');
+  await railR4Surfaces(page, await page.eval(`matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'`));
   await page.eval(`document.querySelector('#profile-close').focus()`);
   await page.key('Tab', SHIFT);
   check(await page.eval(`document.activeElement === document.querySelector('#overlay-rail input:checked')`), 'Shift+Tab wraps from Close to the last radio');
@@ -2766,6 +2866,7 @@ async function adaptiveShell(page) {
   check(await page.eval(`document.activeElement?.id === 'profile-close'`), 'Tab is contained at the end of the modal');
   await chooseTheme(page, 'dark');
   await textContrast(page, 'dark');
+  await railR4Surfaces(page, 'dark');
   await page.capture('1440-overlay-dark');
   await page.key('Escape');
   check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.id === 'profile-trigger'`), 'Escape closes Giao diện and restores trigger focus');
@@ -2938,9 +3039,9 @@ async function adaptiveShell(page) {
   await assertBrandPlacement(page);
   await page.eval(`document.querySelector('.vk-ui-skip-link').focus()`);
   await page.key('Tab');
-  check(await page.eval(`document.activeElement.matches('#open-tag-filters:focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'`), 'at 320px / 200% text, Tab reaches the filter launcher with a visible focus ring');
+  check(await page.eval(`document.activeElement.matches('#open-public-search:focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'`), 'at 320px / 200% text, Tab reaches the search icon with a visible focus ring (#404 order: tìm → Lọc thẻ → logo)');
   await page.key('Tab');
-  check(await page.eval(`document.activeElement.matches('#open-public-search:focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'`), 'the next Tab reaches the mobile search launcher with a visible focus ring');
+  check(await page.eval(`document.activeElement.matches('#open-tag-filters:focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'`), 'the next Tab reaches Lọc thẻ with a visible focus ring');
   await page.key('Tab');
   check(await page.eval(`document.activeElement.matches('.vk-brand:focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'`), 'the next Tab reaches the Explore brand with a visible focus ring');
   await page.click('.vk-ui-bottom-nav a[href="/toi"]');

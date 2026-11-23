@@ -5,9 +5,10 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   const ready = async () => page.waitFor("document.documentElement.dataset.hydrated === 'true' && document.querySelector('#public-query')", 'discovery hydration');
   const goto = async path => { await page.goto(args.base + path); await ready(); };
   const submit = async q => {
+    // R4.2 (#404): the search icon opens the dock at every width.
     await page.eval(`(() => {
       const open = document.querySelector('#open-public-search');
-      if (innerWidth < 760 && open && open.getClientRects().length > 0) open.click();
+      if (open && open.getClientRects().length > 0) open.click();
     })()`);
     await page.waitFor("document.querySelector('#public-query').getClientRects().length > 0", 'visible search field');
     await page.eval("document.querySelector('#public-query').focus(); document.querySelector('#public-query').select()");
@@ -55,7 +56,8 @@ export async function discoveryReading(page, { args, check, textContrast }) {
       const r=art.getBoundingClientRect(), m=message.getBoundingClientRect();
       const region=document.querySelector('#community-stream').getBoundingClientRect();
       const state=art.closest('.vk-empty-state').getBoundingClientRect();
-      const tools=document.querySelector('.vk-discovery-toolbar').getBoundingClientRect();
+      // R4.2 (#404): the header row spans the column; the toolbar is only its right cluster.
+      const tools=document.querySelector('#explore > .vk-explore__top').getBoundingClientRect();
       return {width:r.width, height:r.height, font:getComputedStyle(message).fontSize,
         overflow:document.documentElement.scrollWidth-innerWidth,
         order:r.bottom<=m.top && m.bottom<=document.querySelector('.vk-empty-state__actions').getBoundingClientRect().top,
@@ -91,50 +93,88 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     await page.eval("document.documentElement.dataset.theme=" + JSON.stringify(theme) + "; document.documentElement.style.fontSize=" + JSON.stringify(scale + '%') + "; scrollTo(0,0); document.fonts.ready");
     await page.eval("Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))");
     check(await page.eval("document.documentElement.scrollWidth <= innerWidth"), 'Explore reflows ' + [theme,width,scale].join('/'));
-    if (width===1440 && scale===100) {
-      check(await page.eval(`(() => {
-        const toolbar=document.querySelector('.vk-discovery-toolbar');
-        const filter=document.querySelector('#open-tag-filters').getBoundingClientRect();
-        const search=document.querySelector('#public-search').getBoundingClientRect();
-        const brand=document.querySelector('#discovery-tools .vk-brand').getBoundingClientRect();
-        const row=document.querySelector('.vk-public-row').getBoundingClientRect();
-        const tRect=toolbar.getBoundingClientRect();
-        const modes=document.querySelector('.vk-explore-modes').getBoundingClientRect();
-        return modes.top >= tRect.bottom && row.top >= modes.bottom && Math.abs(filter.top - search.top) < 4 && Math.abs(search.top - brand.top) < 4 &&
-          Math.abs(search.left - filter.right - 12) <= 1 && Math.abs(brand.left - search.right - 12) <= 1 &&
-          Math.abs(tRect.height - 84) <= 2 &&
-          getComputedStyle(document.querySelector('.vk-public-scope')).width === '1px';
-      })()`), '#308 r1 desktop keeps its 84px toolbar above the mode picker and results');
-    }
-    if (width===390 && scale===100) {
-      check(await page.eval(`(() => {
+    if ([390,1440].includes(width) && scale===100) {
+      const wide = width === 1440;
+      const header = await page.eval(`(() => {
         const explore=document.querySelector('#explore');
         const input=document.querySelector('#public-query');
-        const launcher=document.querySelector('#open-public-search').getBoundingClientRect();
+        const top=document.querySelector('.vk-explore__top').getBoundingClientRect();
+        const h1=document.querySelector('#explore-heading h1'), title=h1.getBoundingClientRect(), font=getComputedStyle(h1);
+        const launcherEl=document.querySelector('#open-public-search'), launcher=launcherEl.getBoundingClientRect();
         const filter=document.querySelector('#open-tag-filters').getBoundingClientRect();
         const brand=document.querySelector('#discovery-tools .vk-brand').getBoundingClientRect();
         const row=document.querySelector('.vk-public-row').getBoundingClientRect();
-        const toolbar=document.querySelector('.vk-discovery-toolbar').getBoundingClientRect();
         const modes=document.querySelector('.vk-explore-modes').getBoundingClientRect();
-        return modes.top >= toolbar.bottom && row.top >= modes.bottom && explore.dataset.search==='closed' && input.getClientRects().length===0 &&
-          filter.right <= launcher.left && Math.abs(brand.left - launcher.right - 8) <= 1 &&
-          Math.abs(launcher.width-48)<1 && Math.abs(launcher.height-48)<1 &&
-          Math.abs(toolbar.height - 68) <= 2 &&
-          input.labels[0].textContent==='Tìm theo tên hoặc tác giả';
-      })()`), '#308 r1 mobile keeps its 68px toolbar above the mode picker and results, with inline search hidden');
+        const mid=r=>(r.top+r.bottom)/2;
+        return {order: modes.top >= top.bottom - 1 && row.top >= modes.bottom,
+          closed: explore.dataset.search==='closed' && input.getClientRects().length===0 && launcherEl.getAttribute('aria-expanded')==='false' && launcherEl.getAttribute('aria-label')==='Tìm tác phẩm',
+          title: h1.textContent==='Khám phá' && font.fontWeight==='600' && font.fontFamily.startsWith('"Be Vietnam Pro"') && font.fontSize===(${wide}?'24px':'22px') && title.width>1,
+          row: title.right < launcher.left && Math.abs(mid(title)-mid(launcher))<=2 && Math.abs(launcher.top-filter.top)<1 && Math.abs(mid(brand)-mid(launcher))<=2,
+          gaps: [filter.left-launcher.right, brand.left-filter.right],
+          size: [launcher.width, launcher.height, filter.width, filter.height],
+          radius: getComputedStyle(launcherEl).borderTopLeftRadius,
+          label: input.labels[0].textContent==='Tìm theo tên hoặc tác giả'};
+      })()`);
+      const gap = wide ? 12 : 8, side = wide ? 56 : 48;
+      check(header.order && header.closed && header.title && header.row && header.label &&
+        header.gaps.every(value => Math.abs(value - gap) <= 1) && header.size.every(value => Math.abs(value - side) < 1) &&
+        header.radius === (wide ? '16px' : '14px'),
+        '#404 header: page title left, [tìm][Lọc thẻ] + logo on one row above the mode group and results ' + [theme,width,JSON.stringify(header)].join('/'));
+    }
+    if (width === 320 && scale === 200) {
+      const narrow = await page.eval(`(() => {
+        const top=document.querySelector('.vk-explore__top').getBoundingClientRect();
+        const h1=document.querySelector('#explore-heading h1').getBoundingClientRect();
+        const items=['#open-public-search','#open-tag-filters','#discovery-tools .vk-brand'].map(s=>document.querySelector(s).getBoundingClientRect());
+        const first=document.querySelector('.vk-public-row__title').getBoundingClientRect();
+        return {hidden: h1.width<=1, oneRow: items.every(r=>Math.abs(r.top+r.height/2-(items[0].top+items[0].height/2))<=2),
+          firstTop: first.top + scrollY, usable: innerHeight - (document.querySelector('#bottom-navigation')?.getBoundingClientRect().height ?? 0), top: top.height};
+      })()`);
+      check(narrow.hidden && narrow.oneRow && narrow.firstTop < narrow.usable,
+        '#404 320px / 200%: title kept for assistive technology, icons + logo share one row, first work starts on the first screen ' + [theme, JSON.stringify(narrow)].join('/'));
     }
     if ([320,390,834,1440].includes(width)) {
       check(await page.eval(`(() => {
         const button=document.querySelector('#open-tag-filters'), r=button.getBoundingClientRect();
         const icon=button.querySelector('svg[data-icon=filter-list][aria-hidden=true]');
-        return button.type==='button' && button.textContent==='Lọc thẻ' && !!icon &&
-          button.querySelectorAll('svg').length===1 && button.classList.contains('vk-ui-button--tonal') &&
+        const probe=document.createElement('span'); probe.style.background='var(--vk-tertiary-container)'; document.body.append(probe);
+        const tertiary=getComputedStyle(probe).backgroundColor; probe.remove();
+        return button.type==='button' && button.getAttribute('aria-label')==='Lọc thẻ' && button.textContent==='' && !!icon &&
+          button.querySelectorAll('svg').length===1 && button.classList.contains('vk-ui-icon-button') &&
+          getComputedStyle(button).backgroundColor===tertiary && button.getAttribute('aria-expanded')==='false' &&
+          !document.querySelector('.vk-tag-launcher__badge') &&
           icon.getBoundingClientRect().left>=r.left && icon.getBoundingClientRect().right<=r.right &&
           !button.hasAttribute('aria-pressed') && !button.querySelector('button,a,input') &&
           r.width>=48 && r.height>=48 && r.left>=0 && r.right<=innerWidth;
-      })()`), '#225 filter launcher keeps one named native target >=48px '+[theme,width,scale].join('/'));
+      })()`), '#225/#404 Lọc thẻ is one named tertiary icon target >=48px '+[theme,width,scale].join('/'));
     }
-    check(await page.eval("(() => { const heading=document.querySelector('#explore-heading h1'), walker=document.createTreeWalker(heading,NodeFilter.SHOW_TEXT); for(let node=walker.nextNode();node;node=walker.nextNode()) for(const word of node.textContent.matchAll(/\\S+/g)) { const range=document.createRange(); range.setStart(node,word.index); range.setEnd(node,word.index+word[0].length); const rects=[...range.getClientRects()]; if(rects.some(r=>Math.abs(r.top-rects[0].top)>1)) return false; } return true; })()"), 'Vietnamese heading words remain intact '+[theme,width,scale].join('/'));
+    check(await page.eval("(() => { const heading=document.querySelector('#explore-heading h1'); if(heading.getBoundingClientRect().width<=1) return true; const walker=document.createTreeWalker(heading,NodeFilter.SHOW_TEXT); for(let node=walker.nextNode();node;node=walker.nextNode()) for(const word of node.textContent.matchAll(/\\S+/g)) { const range=document.createRange(); range.setStart(node,word.index); range.setEnd(node,word.index+word[0].length); const rects=[...range.getClientRects()]; if(rects.some(r=>Math.abs(r.top-rects[0].top)>1)) return false; } return true; })()"), 'Vietnamese heading words remain intact '+[theme,width,scale].join('/'));
+
+    // R4.2 (#404 AC-03, DQ-03): one unbroken connected row with correct outer corners, or the menu.
+    const modes = await page.eval(`(() => {
+      const group=document.querySelector('.vk-explore-modes__group'), menu=document.querySelector('#explore-mode-menu');
+      const links=[...group.querySelectorAll('a')], shown=group.getClientRects().length>0;
+      const current=links.find(a=>a.getAttribute('aria-current')==='page');
+      const r=links.map(a=>getComputedStyle(a));
+      return {shown, menu: menu.getClientRects().length>0,
+        oneRow: links.every(a=>Math.abs(a.getBoundingClientRect().top-links[0].getBoundingClientRect().top)<1),
+        corners: shown ? [r[0].borderTopLeftRadius, r[0].borderTopRightRadius, r.at(-1).borderTopRightRadius, r.at(-1).borderBottomLeftRadius] : [],
+        current: current?.id==='explore-mode-works' && !!current.querySelector('svg[data-icon=check]') && links.filter(a=>a.querySelector('svg')).length===1,
+        summary: document.querySelector('#explore-mode-menu-button').textContent.includes('Tất cả')};
+    })()`);
+    check(modes.current && modes.shown !== modes.menu &&
+      (modes.shown ? modes.oneRow && modes.corners.join() === '14px,8px,14px,8px' : modes.summary),
+      '#404 mode group stays one connected row or folds into the menu ' + [theme,width,scale,JSON.stringify(modes)].join('/'));
+    if (width === 320 && scale === 200) {
+      check(modes.menu, '#404 320px / 200%: modes fold into the menu');
+      await page.eval("document.querySelector('#explore-mode-menu-button').focus(); document.querySelector('#explore-mode-menu-button').click()");
+      await page.waitFor("document.querySelector('#explore-mode-menu').open", '#404 mode menu opens');
+      await page.eval("document.querySelector('#explore-menu-authors').focus()");
+      await page.key('Escape');
+      check(await page.eval("!document.querySelector('#explore-mode-menu').open && document.activeElement?.id==='explore-mode-menu-button' && document.querySelector('#explore').dataset.search==='closed'"),
+        '#404 Escape closes the mode menu and returns focus to its button');
+    }
+    if (width === 1440) check(modes.shown, '#404 1440px keeps the connected mode group ' + [theme,scale].join('/'));
 
     const dock = await page.eval("document.querySelector('#tag-dock').getBoundingClientRect().width>0");
     check(!dock, '#308 hydrated discovery has no filter column ' + [theme,width,scale].join('/'));
@@ -180,6 +220,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     }
     if ([320,390,834,1440].includes(width)) await page.capture('discovery-' + [theme,width,scale].join('-'), { boundary: 'real-public-api', scenario: 'TAG-PR-06' });
   }
+  await desktopSearchDock(page, {args, check, ready});
   await page.viewport(390);
   await page.eval("document.documentElement.style.fontSize='100%'");
 
@@ -465,7 +506,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   for (const width of [390, 1440]) {
     await page.viewport(width);
     await goto('/');
-    await submittedReadKeepsTyping(page, {args, check, mobile: width < 760});
+    await submittedReadKeepsTyping(page, {args, check});
   }
   await goto('/');
 }
@@ -520,20 +561,15 @@ async function catalogRecovery(page, {args, check, goto}) {
   }
 }
 
-async function submittedReadKeepsTyping(page, {args, check, mobile}) {
+async function submittedReadKeepsTyping(page, {args, check}) {
   const query='pending-submit-258', draft='chữ đang gõ trong lúc tìm kiếm';
   const response=await (await fetch(args.base+'/api/v1/works?q='+query)).json();
-  if (mobile) {
-    await page.click('#open-public-search');
-    await page.waitFor("document.activeElement?.id==='public-query'", 'mobile search input ready for typing');
-  }
+  // R4.2 (#404): the search dock opens from its icon at every width; Enter submits.
+  await page.click('#open-public-search');
+  await page.waitFor("document.activeElement?.id==='public-query'", 'search dock input ready for typing');
   const commit = async () => {
-    if (mobile) {
-      await page.eval("document.querySelector('#public-query').focus()");
-      await page.key('Enter');
-    } else {
-      await page.click('#public-search button[type=submit]');
-    }
+    await page.eval("document.querySelector('#public-query').focus()");
+    await page.key('Enter');
   };
   const held=[];
   const gate=({sessionId,method,params})=>{
@@ -569,6 +605,59 @@ async function submittedReadKeepsTyping(page, {args, check, mobile}) {
     page.cdp.listeners=page.cdp.listeners.filter(listener=>listener!==gate);
     await page.eval('delete window.__pending258Input');
   }
+}
+
+// R4.2 search dock on wide windows (#404 AC-01): opens in place of the icon cluster from the icon
+// or “/”, never while typing elsewhere; Escape closes it, drops unsent text and returns focus.
+async function desktopSearchDock(page, {args, check, ready}) {
+  await page.viewport(1440);
+  await page.eval("document.documentElement.dataset.theme='light'; document.documentElement.style.fontSize='100%'; scrollTo(0,0)");
+  await page.goto(args.base + '/');
+  await ready();
+  const url = await page.eval('location.href');
+  await page.eval("const probe=document.createElement('input'); probe.id='dock-probe'; document.body.append(probe); probe.focus()");
+  await page.key('/');
+  check(await page.eval("document.querySelector('#explore').dataset.search==='closed' && document.activeElement.id==='dock-probe' && document.activeElement.value==='/'"),
+    '#404 “/” typed in another field stays text and does not open the dock');
+  await page.eval("document.querySelector('#dock-probe').remove(); document.activeElement?.blur()");
+  await page.key('/');
+  await page.waitFor("document.querySelector('#explore').dataset.search==='open' && document.activeElement?.id==='public-query'", '#404 “/” opens the dock and focuses its field');
+  const dock = await page.eval(`(() => {
+    const top=document.querySelector('.vk-explore__top').getBoundingClientRect();
+    const field=document.querySelector('#public-search .vk-ui-search__shell'), shell=field.getBoundingClientRect();
+    const filter=document.querySelector('#open-tag-filters').getBoundingClientRect();
+    const close=document.querySelector('#close-public-search');
+    const h1=document.querySelector('#explore-heading h1').getBoundingClientRect();
+    return {url: location.href, height: shell.height, radius: getComputedStyle(field).borderTopLeftRadius,
+      replaces: document.querySelector('#open-public-search').getClientRects().length===0 && document.querySelector('#discovery-tools').getClientRects().length===0,
+      order: close.getClientRects().length>0 && shell.right <= filter.left && Math.abs((shell.top+shell.bottom)/2-(filter.top+filter.bottom)/2)<=2 && h1.right <= shell.left,
+      inTop: shell.top >= top.top && shell.bottom <= top.bottom,
+      submitHidden: getComputedStyle(document.querySelector('#public-search button[type=submit]')).display==='none',
+      bottomBar: document.querySelector('#bottom-navigation') ? getComputedStyle(document.querySelector('#bottom-navigation')).display : 'none'};
+  })()`);
+  check(dock.url === url && Math.abs(dock.height - 56) < 1 && dock.radius === '16px' && dock.replaces && dock.order && dock.inTop && dock.submitHidden,
+    '#404 dock replaces the icon cluster in place: ← | field 56 bo 16 | Lọc thẻ, no history entry ' + JSON.stringify(dock));
+  await page.capture('discovery-r4-dock-1440-light', { boundary: 'real-public-api', scenario: 'r4-search-dock' });
+  await page.send('Input.insertText', { text: 'chưa gửi' });
+  await page.eval("document.querySelector('#public-query').dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}))");
+  await page.key('Escape');
+  await page.eval("new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))");
+  check(await page.eval("document.querySelector('#explore').dataset.search==='open'"), '#404 Escape during IME composition keeps the dock open');
+  await page.eval("document.querySelector('#public-query').dispatchEvent(new CompositionEvent('compositionend',{bubbles:true}))");
+  await page.key('Escape');
+  await page.waitFor(`document.querySelector('#explore').dataset.search==='closed' && document.activeElement?.id==='open-public-search' && location.href===${JSON.stringify(url)}`,
+    '#404 Escape closes the dock and returns focus to the search icon');
+  await page.eval("document.querySelector('#open-public-search').click()");
+  await page.waitFor("document.querySelector('#explore').dataset.search==='open' && document.activeElement?.id==='public-query'", '#404 the icon reopens the dock');
+  check(await page.eval("document.querySelector('#public-query').value===''"), '#404 closing dropped the unsent text');
+  await page.click('#close-public-search');
+  await page.waitFor("document.querySelector('#explore').dataset.search==='closed' && document.activeElement?.id==='open-public-search'", '#404 ← closes the dock and returns focus');
+  await page.goto(args.base + '/?q=mua');
+  await ready();
+  check(await page.eval("document.querySelector('#explore').dataset.search==='open' && document.querySelector('#public-query').value==='mua' && document.querySelector('#public-query').getClientRects().length>0"),
+    '#404 a URL with q opens the dock with the query kept');
+  await page.goto(args.base + '/');
+  await ready();
 }
 
 // Revalidation changes freshness text, not the identity of focused recovery controls.
@@ -659,17 +748,13 @@ export async function discoveryCorpus(page, { args, check }) {
   await page.viewport(390);
   await page.eval('scrollTo(0, 360)');
   await page.waitFor('Math.abs(scrollY - 360) <= 2', 'scrolled browse feed');
-  const stickyTrigger = await page.eval(`(() => {
-    const el = document.querySelector('#open-public-search');
-    const r = el.getBoundingClientRect();
-    const x = r.x + r.width / 2, y = r.y + r.height / 2;
-    const hit = document.elementFromPoint(x, y);
-    return r.top >= 0 && r.bottom <= innerHeight && hit && el.contains(hit) && Math.abs(scrollY - 360) <= 2 ? { x, y } : null;
-  })()`);
-  check(!!stickyTrigger, '#308 r1 sticky mobile search launcher stays hit-testable while scrolled');
-  for (const type of ['mousePressed', 'mouseReleased']) {
-    await page.send('Input.dispatchMouseEvent', { type, x: stickyTrigger.x, y: stickyTrigger.y, button: 'left', clickCount: 1 });
-  }
+  // R4.2 (#404): the phone header scrolls with the page (no sticky band); opening search from it
+  // still remembers and restores the browse position.
+  check(await page.eval(`(() => {
+    const r = document.querySelector('#open-public-search').getBoundingClientRect();
+    return r.bottom <= 0 && getComputedStyle(document.querySelector('.vk-explore__top')).position === 'static' && Math.abs(scrollY - 360) <= 2;
+  })()`), '#404 phone header is not sticky while scrolled');
+  await page.eval("document.querySelector('#open-public-search').click()");
   await page.waitFor("document.querySelector('#explore').dataset.search==='open' && scrollY === 0 && document.activeElement?.id==='public-query'", '#308 r1 mobile search scrolls to top on open');
   await page.click('#close-public-search');
   await page.waitFor("document.querySelector('#explore').dataset.search==='closed' && Math.abs(scrollY - 360) <= 2 && document.activeElement?.id==='open-public-search'", '#308 r1 closing mobile search restores browse scrollY and trigger focus');

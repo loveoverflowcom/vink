@@ -58,7 +58,7 @@ pub fn DeskIndex() -> impl IntoView {
 fn DeskHeading(#[prop(optional)] children: Option<Children>) -> impl IntoView {
     view! {
         <header id="heading" class="vk-desk-heading">
-            <Heading level=HeadingLevel::H1 id="desk-title" attr:tabindex="-1">"Bàn viết"</Heading>
+            <h1 id="desk-title" class="vk-ui-heading vk-ui-type-page-title" tabindex="-1">"Bàn viết"</h1>
             {children.map(|slot| slot())}
         </header>
     }

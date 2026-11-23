@@ -90,8 +90,8 @@ pub(super) fn AuthorSearch(q: String, cursor: Option<String>) -> impl IntoView {
         <Meta name="description" content="Tìm tác giả Vink theo bút danh hoặc @handle." />
         <Link rel="canonical" href=canonical />
         <div id="explore" class="vk-explore vk-author-search">
+            <super::discovery::ExploreTitleRow title="Tìm tác giả" />
             <super::discovery::ExploreModes mode=ExploreMode::Authors author_query=q.get_value() />
-            <Heading level=HeadingLevel::H1 role=TypeRole::Display>"Tìm tác giả"</Heading>
             <form method="get" action="/" role="search" id="author-search"
                 on:compositionstart=move |_| composing.set(true)
                 on:compositionend=move |_| composing.set(false)
