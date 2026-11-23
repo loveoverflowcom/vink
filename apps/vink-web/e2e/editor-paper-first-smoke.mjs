@@ -1,6 +1,6 @@
-// #218 & #254: real App/PG/Chrome. App text preferences are chosen through Giao diện;
-// the older editor matrix separately covers direct DOM scale and save/recovery races.
-export async function editorPaperFirst(page, { args, check, openProfile, chooseTheme, editorTarget, fitsEditorAction }) {
+// #218 & #254: real App/PG/Chrome. Scale and theme overrides keep the editor mounted.
+// The /toi tests exercise the actual app preference.
+export async function editorPaperFirst(page, { args, check, editorTarget, fitsEditorAction }) {
   const summary = '#editor-save-details > summary';
   const ready = `document.querySelector('.cm-content[contenteditable=true]')`;
   const view = `document.querySelector('.cm-content').cmTile.root.view`;
@@ -53,16 +53,12 @@ export async function editorPaperFirst(page, { args, check, openProfile, chooseT
       if (state==='dirty') await page.typeInBody('Chữ mới chưa lưu.');
       const raw = await page.eval(`${view}.state.doc.toString()`);
       const selection = await page.eval(`${view}.state.selection.toJSON()`);
-      for (const scale of [100,200]) for (const theme of ['light','dark']) {
-        // The rail utility is reachable at wide width. Resize only after the real setting
-        // has committed; no inline font-size override stands in for the user's choice.
+      for (const scale of [100,150]) for (const theme of ['light','dark']) {
+        // The live editor cannot reach Giao diện without leaving. Override the DOM for geometry
+        // only; accountAppearance exercises the real radio and persistence on /toi.
         await page.viewport(1440);
-        await page.eval(`document.documentElement.style.fontSize=''`);
-        await openProfile(page);
-        await page.click(`#overlay-text label:has([value="${scale}"])`);
-        await chooseTheme(page,theme);
-        await page.key('Escape');
-        await page.waitFor(`(document.documentElement.dataset.text||'100')==='${scale}' && getComputedStyle(document.documentElement).fontSize==='${16*scale/100}px'`, 'real app text preference');
+        await page.eval('document.documentElement.style.fontSize="' + scale + '%"; document.documentElement.dataset.theme="' + theme + '"');
+        await page.waitFor('getComputedStyle(document.documentElement).fontSize==="' + (16 * scale / 100) + 'px"', 'editor root font-size fixture');
         for (const width of [320,390,834,1440]) {
           await page.viewport(width,900);
           await page.eval(`document.activeElement?.blur(); scrollTo(0,0); document.fonts.ready.then(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))))`);
@@ -82,8 +78,8 @@ export async function editorPaperFirst(page, { args, check, openProfile, chooseT
           })()`);
           check(geometry.transparent && geometry.inFlow && geometry.paperSurface!==geometry.canvas && geometry.backFilled && !geometry.overflow && geometry.h1===1 && geometry.oneStatus && geometry.summaryVisible && geometry.noBannerOrHelpOrExport,
             `${stem}: quiet editor keeps chromeless tools, tonal icon Back aligned with paper, separate paper, one H1/readout, visible native trigger and removes banner/help/export ${JSON.stringify(geometry)}`);
-          check(await page.eval(same) && await page.eval(`${view}.state.doc.toString()`)===raw && JSON.stringify(await page.eval(`${view}.state.selection.toJSON()`))===JSON.stringify(selection), `${stem}: actual preference/resize retains raw NFD, stanzas, selection and EditorView`);
-          await page.capture(stem,{scenario:'Editor Paper First',scaleMechanism:'app-setting',fixture:{title,raw},geometry});
+          check(await page.eval(same) && await page.eval(`${view}.state.doc.toString()`)===raw && JSON.stringify(await page.eval(`${view}.state.selection.toJSON()`))===JSON.stringify(selection), `${stem}: root-scale override and resize retain raw NFD, stanzas, selection and EditorView`);
+          await page.capture(stem,{scenario:'Editor Paper First',textScaleLane:'dom-override-geometry-only',fixture:{title,raw},geometry});
           await page.eval(`document.querySelector('.vk-editor-heading__back').focus()`);
           const backTarget=await editorTarget(page,'.vk-editor-heading__back');
           check(fitsEditorAction(backTarget) && backTarget.focused && backTarget.focusRing && backTarget.rect.width>=48 && backTarget.rect.height>=48, `${stem}: tonal Back pill fits with visible focus ring`);
@@ -93,7 +89,7 @@ export async function editorPaperFirst(page, { args, check, openProfile, chooseT
           check(fitsEditorAction(toolsTarget) && toolsTarget.focused && toolsTarget.focusRing && toolsTarget.rect.width>=48 && toolsTarget.rect.height>=48 && !await page.eval(`Boolean(document.querySelector('#editor-save-details button'))`), `${stem}: opened tools keep server details without download action`);
           await page.key('Escape');
           check(await page.eval(`document.querySelector('#editor-save-details').open && document.activeElement.matches('${summary}') && !document.querySelector('#draft-preview').open`), `${stem}: Escape respects native disclosure semantics`);
-          await page.capture(stem+'-tools',{scenario:'Editor native tools',scaleMechanism:'app-setting',action:toolsTarget});
+          await page.capture(stem+'-tools',{scenario:'Editor native tools',textScaleLane:'dom-override-geometry-only',action:toolsTarget});
           await page.key('Space');
           check(await page.eval(`!document.querySelector('#editor-save-details').open && document.activeElement.matches('${summary}')`), `${stem}: Space closes native disclosure on trigger`);
         }
@@ -107,6 +103,7 @@ export async function editorPaperFirst(page, { args, check, openProfile, chooseT
     await page.eval(`__hiddenTools.replaceWith(document.querySelector('#editor-save-details'))`);
 
     await page.viewport(320,420);
+    await page.eval("document.documentElement.style.fontSize='200%'");
     await page.eval(`document.querySelector('${summary}').scrollIntoView({block:'center'})`);
     const point=await page.eval(`(() => {const r=document.querySelector('${summary}').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`);
     await page.send('Emulation.setTouchEmulationEnabled',{enabled:true});
@@ -127,7 +124,7 @@ export async function editorPaperFirst(page, { args, check, openProfile, chooseT
   } finally {
     page.cdp.listeners=page.cdp.listeners.filter(x=>x!==listener);
     await page.viewport(1440);
-    await openProfile(page); await page.click('#overlay-text label:has([value="100"])'); await chooseTheme(page,'light'); await page.key('Escape');
+    await page.eval("document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme");
   }
   await page.click('#save'); await page.waitStatus('saved');
   check((await page.draft(workId)).title===title,'subsequent explicit save still persists the same draft');

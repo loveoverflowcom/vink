@@ -50,7 +50,8 @@ a {
 }
 
 /* Shell geometry, rail, bars, skip link and tooltip come from the UI system (vink-ui.css,
- * shared/navigation.md). The app owns the Medium overlay, Giao diện and the Khám phá brand. */
+ * shared/navigation.md). The app owns the Medium overlay and the Khám phá brand; Giao diện
+ * lives only on Tôi (#413). */
 
 @media (760px <= width < 1100px) {
   #shell { --vk-ui-rail-width: var(--vk-size-rail-compact); }
@@ -104,7 +105,10 @@ a {
   }
 }
 
-/* Tôi and the rail utility share one appearance recipe on native RadioGroup. */
+/* Tôi owns the appearance recipe on native RadioGroup. Lớn is 150% of the browser root size
+ * (#413); the head bootstrap maps a stored pre-#413 `200` to `150` before this rule applies.
+ * `data-text="200"` remains only for isolated 200% stress-test harnesses (`dom-override-geometry-only`). */
+:root[data-text="150"] { font-size: 150%; }
 :root[data-text="200"] { font-size: 200%; }
 
 .vk-appearance-card {
@@ -113,45 +117,6 @@ a {
   background: var(--vk-surface-container-high);
   color: var(--vk-on-surface);
 }
-
-.vk-profile-menu {
-  --vk-profile-inset: clamp(var(--vk-space-3), 8vw, min(32px, var(--vk-space-6)));
-  position: fixed;
-  inset: auto;
-  inset-inline-start: calc(var(--vk-ui-rail-width) + 16px);
-  inset-block-end: 16px;
-  margin: 0;
-  inline-size: min(30rem, 540px, calc(100vw - var(--vk-ui-rail-width) - 32px));
-  max-block-size: calc(100dvh - 32px);
-  overflow: hidden;
-  overflow: clip;
-  padding: 0;
-  border: 0;
-  border-radius: var(--vk-radius-xl);
-  background: var(--vk-surface-container-high);
-  color: var(--vk-on-surface);
-}
-.vk-profile-menu::backdrop { background: var(--vk-scrim); }
-.vk-profile-menu[open] { display: flex; flex-direction: column; }
-.vk-profile-heading {
-  display: flex;
-  flex: none;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--vk-space-2);
-  padding: var(--vk-profile-inset) var(--vk-profile-inset) 0;
-}
-.vk-profile-body {
-  min-block-size: 0;
-  margin-inline: 8px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-block: var(--vk-profile-inset);
-  padding-inline: calc(var(--vk-profile-inset) - 8px);
-  scrollbar-color: var(--vk-outline) transparent;
-  scroll-padding-block: var(--vk-space-2);
-}
-.vk-profile-heading .vk-ui-icon-button { flex: none; min-inline-size: 48px; min-block-size: 48px; }
 
 .vk-appearance-title {
   display: flex; align-items: center; gap: var(--vk-space-3);
@@ -162,9 +127,6 @@ a {
   border-radius: var(--vk-radius-md); color: var(--vk-on-primary-container);
   background: var(--vk-primary-container);
 }
-.vk-profile-heading .vk-appearance-title { gap: 8px; }
-.vk-profile-heading .vk-appearance-mark { inline-size: 32px; block-size: 32px; border-radius: var(--vk-radius-sm); }
-.vk-profile-heading .vk-appearance-mark > span { inline-size: 20px; block-size: 20px; }
 .vk-appearance-card { display: grid; gap: var(--vk-space-6); min-inline-size: 0; }
 .vk-appearance-region { display: grid; gap: var(--vk-space-6); min-inline-size: 0; }
 .vk-appearance-row { display: grid; gap: var(--vk-space-2); min-inline-size: 0; }
@@ -205,13 +167,12 @@ a {
 .vk-appearance-row label:has([value="light"])::before { mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22M12%202v2m0%2016v2M2%2012h2m16%200h2M4.9%204.9l1.4%201.4m11.4%2011.4%201.4%201.4m0-14.2-1.4%201.4M6.3%2017.7l-1.4%201.4M17%2012a5%205%200%201%201-10%200%205%205%200%200%201%2010%200Z%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E"); }
 .vk-appearance-row label:has([value="dark"])::before { mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22M20.8%2014.3A8.8%208.8%200%200%201%209.7%203.2a9%209%200%201%200%2011.1%2011.1Z%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E"); }
 [data-appearance-icon="100"], .vk-appearance-row label:has([value="100"])::before { mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20transform%3D%22translate%2812%2012%29%20scale%28.82%29%20translate%28-12%20-12%29%22%20fill-rule%3D%22evenodd%22%20d%3D%22M10.5%203h3l7%2018h-3.2l-1.8-5h-7l-1.8%205H3.5zm-1%2010.5h5L12%206.8z%22%2F%3E%3C%2Fsvg%3E"); }
-.vk-appearance-row label:has([value="200"])::before { mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20transform%3D%22translate%2812%2012%29%20scale%281%29%20translate%28-12%20-12%29%22%20fill-rule%3D%22evenodd%22%20d%3D%22M10.5%203h3l7%2018h-3.2l-1.8-5h-7l-1.8%205H3.5zm-1%2010.5h5L12%206.8z%22%2F%3E%3C%2Fsvg%3E"); }
+.vk-appearance-row label:has([value="150"])::before { mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20transform%3D%22translate%2812%2012%29%20scale%281%29%20translate%28-12%20-12%29%22%20fill-rule%3D%22evenodd%22%20d%3D%22M10.5%203h3l7%2018h-3.2l-1.8-5h-7l-1.8%205H3.5zm-1%2010.5h5L12%206.8z%22%2F%3E%3C%2Fsvg%3E"); }
 [data-appearance-icon="rail"] { mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22M8%205v14M4%205h16a1.5%201.5%200%200%201%201.5%201.5v11A1.5%201.5%200%200%201%2020%2019H4a1.5%201.5%200%200%201-1.5-1.5v-11A1.5%201.5%200%200%201%204%205Z%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E"); }
 .vk-appearance-row label:has([value="auto"])::before { mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22M4%205h16M4%2010h16M4%2015h16M4%2020h16%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E"); }
 .vk-appearance-row label:has([value="expanded"])::before { mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22M3%207h18M10%207v13M5%204h14a2%202%200%200%201%202%202v12a2%202%200%200%201-2%202H5a2%202%200%200%201-2-2V6a2%202%200%200%201%202-2Z%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E"); }
 .vk-appearance-row label:has([value="compact"])::before { mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22M3%207h18M7%207v13M5%204h14a2%202%200%200%201%202%202v12a2%202%200%200%201-2%202H5a2%202%200%200%201-2-2V6a2%202%200%200%201%202-2Z%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E"); }
 [data-appearance-icon="palette"] { mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22M12%203a9%209%200%201%200%200%2018c1.2%200%202-.8%202-1.8%200-.8-.5-1.2-.5-2%200-1.1.9-2%202-2H17a4%204%200%200%200%204-4c0-4.4-4-8.2-9-8.2ZM7.5%2011h.1m2.4-3h.1m4.2-.5h.1m3.4%202.4h.1%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E"); }
-[data-appearance-icon="forward"] { mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22M5%2012h14m-6-6%206%206-6%206%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E"); }
 .vk-appearance-row label::after { mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22m5%2012%204%204L19%206%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E"); }
 
 .vk-appearance-region label:has(:checked) { background: var(--vk-primary-container); color: var(--vk-on-primary-container); }
@@ -225,7 +186,6 @@ a {
   .vk-appearance-region label { transition: none; }
 }
 @media (forced-colors: active) {
-  .vk-profile-menu { outline: 1px solid CanvasText; }
   .vk-appearance-region label { border: 1px solid ButtonText; }
   .vk-appearance-region label::before,
   .vk-appearance-region label::after,
@@ -1479,7 +1439,7 @@ a {
 }
 
 @media (min-width: 1024px) {
-  html:not([data-text="200"]) .vk-desk--editor:has(.vk-editor[data-format="markdown"][data-outline-open="true"]) {
+  html:not([data-text="150"]):not([data-text="200"]) .vk-desk--editor:has(.vk-editor[data-format="markdown"][data-outline-open="true"]) {
     max-width: min(100%, calc(var(--vk-measure) + 17rem + 24px + 2 * var(--vk-space-6)));
   }
 
@@ -1639,9 +1599,9 @@ a {
   --vk-ui-control-radius: var(--vk-radius-control-56);
   --vk-ui-search-radius: var(--vk-radius-control-56);
 }
-/* Desktop keeps the header in reach while reading; never on phones or at 200% text. */
+/* Desktop keeps the header in reach while reading; never on phones or at enlarged text. */
 @media (min-width: 760px) {
-  :root:not([data-text="200"]) .vk-discovery:not(.vk-discovery--tag) > .vk-explore__top { position: sticky; top: 0; z-index: 4; }
+  :root:not([data-text="150"]):not([data-text="200"]) .vk-discovery:not(.vk-discovery--tag) > .vk-explore__top { position: sticky; top: 0; z-index: 4; }
 }
 .vk-discovery-toolbar > [role="status"] { margin: 0; }
 .vk-discovery .vk-public-search { flex: 0 1 328px; min-inline-size: 0; max-inline-size: none; --vk-ui-control-radius: var(--vk-radius-control-48); }
@@ -2073,13 +2033,13 @@ a {
 }
 @media (max-width: 359px) {
   .vk-main:has(> .vk-reader-page) { padding-inline: 12px; }
-  /* R4.2 (#404): at 200% text the title stays for assistive technology only, so the icon
-   * actions and the logo share one row and the first work reaches the first screen. */
-  :root[data-text="200"] .vk-discovery:not(.vk-discovery--tag) > .vk-explore__top > .vk-explore__heading {
+  /* R4.2 (#404, #413): at enlarged text the title stays for assistive technology only, so the
+   * icon actions and the logo share one row and the first work reaches the first screen. */
+  :root:is([data-text="150"], [data-text="200"]) .vk-discovery:not(.vk-discovery--tag) > .vk-explore__top > .vk-explore__heading {
     position: absolute; inline-size: 1px; block-size: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
   }
-  :root[data-text="200"] .vk-discovery:not(.vk-discovery--tag) .vk-discovery-toolbar { column-gap: 4px; }
-  /* Leave room for both 48px controls even with a classic scrollbar at 320px. */
+  :root:is([data-text="150"], [data-text="200"]) .vk-discovery:not(.vk-discovery--tag) .vk-discovery-toolbar { column-gap: 4px; }
+  /* Leave room for both 48px controls even with a classic scrollbar at 320px under 200% stress. */
   :root[data-text="200"] .vk-discovery .vk-discovery-tools .vk-brand__lockup {
     inline-size: 160px;
     block-size: auto;

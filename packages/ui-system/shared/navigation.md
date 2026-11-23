@@ -19,7 +19,7 @@ AdaptiveScaffold #shell                   — .vk-ui-scaffold[data-layout][data-
     Slot #brand                           — tùy chọn, host cấp; Web Vink bỏ slot (#102)
     RailToggle #rail-toggle               — disclosure thường trực: aria-expanded, aria-controls, tên + tooltip
     NavList #nav-primary                  — <nav aria-label>: NavItem* theo thứ tự host
-    Slot #account                         — chân rail: Giao diện (NavUtility), Tôi (NavItem)
+    Slot #account                         — chân rail: Tôi (NavItem); từ #413 Web không đặt nút Giao diện (NavUtility) ở rail
   Column #content
     TopBar #top-bar                       — tùy host; chỉ hiện ở layout Bar
     Slot #main                            — <main id tabindex=-1> của host; giữ instance khi đổi khung
@@ -68,14 +68,16 @@ Preview và CMP đặt `NavLayout` tường minh (`data-layout="rail:compact"`�
 | --- | --- | --- | --- |
 | `NavDestination` | `{ key, label, icon, href }` | `NavDestination(key, label, icon)` | `key` ổn định cho test/active; Web có `href` thật |
 | `NavItem` | `<a href aria-current=page>` | `onNavigate(key)` | Web: không chặn click — router/guard của host nhận link; modifier/middle click, copy link, tab mới giữ nguyên |
-| `NavUtility` | `<button aria-haspopup=dialog aria-expanded>` | `onOpen()` | Nút Giao diện mở dialog ở chân rail Web. |
+| `NavUtility` | `<button aria-haspopup=dialog aria-expanded>` | `onOpen()` | Primitive nút tiện ích chung trên rail; từng mở dialog Giao diện ở chân rail Web trước #413. |
 | `NavigationRail` | `expanded: Signal<bool>`, `on_toggle` | `expanded`, `onToggle` | Toggle luôn hiện (cả khi thu), ≥44 CSS px / 48dp, nhãn + tooltip hover/focus, Escape ẩn tooltip; icon `menu` ↔ `menu-open` |
 | `BottomNavigation` | ≥`size.bottom-bar`, safe-area, đo chiều cao → `--vk-ui-bar-height` | `NavigationBar` | Đích chia đều, nhãn xuống dòng, không cắt chữ 200% |
 | `TopBar` | `<header>` brand + actions | `VinkTopBar` | Không chứa đích chính |
 | `AdaptiveScaffold` | `ScaffoldLayout::Auto { context }` \| `Fixed(NavLayout)` | `layout: NavLayout` | Đổi khung chỉ đổi khung: `#main` và editor không remount |
 
-Web Vink (#102) bắt đầu rail bằng toggle, sau đó đến danh sách đích. Chân rail có nút Giao diện
-và liên kết tới `/toi`. Khách có thể đổi giao diện từ rail hoặc vùng Giao diện trên `/toi`.
+Web Vink (#102, cập nhật bởi #413 ngày 23/11/2026) bắt đầu rail bằng toggle, sau đó đến danh
+sách đích. Chân rail chỉ giữ liên kết tới `/toi` (không còn nút Giao diện hay dialog
+`#profile-menu`); `/toi` (`#page-appearance`) là điểm chỉnh Giao diện duy nhất cho cả khách và
+người đã đăng nhập. Primitive `NavUtility` và `OverlayLayer` vẫn được giữ trong `ui-system` dùng chung.
 Trên thanh dưới Web, indicator Lavender bao icon hoặc avatar của đích hiện tại. Nhãn luôn
 nằm trên hàng riêng bên dưới và toàn bộ liên kết vẫn là vùng bấm. [Web #131](https://github.com/loveoverflowcom/vink/issues/131) và [CMP #132](https://github.com/loveoverflowcom/vink/issues/132) theo dõi hai renderer.
 Leptos chỉ render wrapper brand khi host truyền slot. Toggle dùng cặp icon hiện có ở cỡ
@@ -85,12 +87,12 @@ heading, nên Web shell bỏ TopBar. Specimen TopBar độc lập và Compose gi
 Rail dùng `size.rail-expanded` 220 và `size.rail-compact` 96 (px Web, dp CMP). Mục rail Web ở
 hàng ngang cao tối thiểu 56 px, bo `radius.control-56`. Khi xếp dọc, indicator 56×32 px bo
 `radius.control-40` bao biểu tượng và nhãn 12 px (`text.rail-label`) nằm bên dưới; thanh dưới
-dùng cùng indicator. Từ
-R4.2 (#403) rail và thanh dưới dùng `color.bg-nav` (= `color.bg-page`, cùng màu nền trang);
-chỉ đích hiện hành có nền `primary-container`, tiện ích đang mở (Giao diện) chỉ có viền 2 px
-`primary`. Pane rail cuộn khi cửa sổ thấp. Tooltip đặt ngoài vùng cuộn, bên phải nút toggle
-trên cùng hàng, không che đích đầu tiên. Lớp z: rail/thanh 5 < tooltip/skip-link 10 < dialog
-native (top layer).
+dùng cùng indicator. Từ R4.2 (#403, phần nút Giao diện ở chân rail được #413 thay thế có
+phạm vi ngày 23/11/2026) rail và thanh dưới dùng `color.bg-nav` (= `color.bg-page`, cùng màu
+nền trang); chỉ đích hiện hành có nền `primary-container`, tiện ích mở dialog nếu host có
+mount `NavUtility` dùng viền 2 px `primary` (Web không còn mount từ #413). Pane rail cuộn khi
+cửa sổ thấp. Tooltip đặt ngoài vùng cuộn, bên phải nút toggle trên cùng hàng, không che đích đầu
+tiên. Lớp z: rail/thanh 5 < tooltip/skip-link 10 < dialog native (top layer).
 
 ## Lớp phủ (`OverlayLayer`)
 

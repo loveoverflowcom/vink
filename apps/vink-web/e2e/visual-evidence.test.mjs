@@ -382,7 +382,15 @@ test('AC-02: modal oracle enforces all can_discard/confirm branches and catches 
 
 test('AC-04 & AC-05: separates DOM override from app controls and validates Me illustration reservation', () => {
   assert.equal(classifyTextScaleLane({ rootInlineFontSize: '200%', dataText: null }), 'dom-override-geometry-only');
-  assert.equal(classifyTextScaleLane({ rootInlineFontSize: '', dataText: '200' }), 'app-appearance-control');
+  assert.equal(classifyTextScaleLane({ rootInlineFontSize: '', dataText: '200' }), 'dom-override-geometry-only');
+  assert.equal(classifyTextScaleLane({ rootInlineFontSize: '', dataText: '150' }), 'app-appearance-control');
+  assert.equal(classifyTextScaleLane({ rootInlineFontSize: '200%', dataText: '150' }), 'dom-override-geometry-only');
+  assert.equal(classifyTextScaleLane({
+    rootInlineFontSize: '', dataText: '200', explicitLane: 'app-appearance-control',
+  }), 'dom-override-geometry-only');
+  assert.equal(classifyTextScaleLane({
+    rootInlineFontSize: '200%', dataText: '150', explicitLane: 'app-appearance-control',
+  }), 'dom-override-geometry-only');
   assert.equal(classifyTextScaleLane({ rootInlineFontSize: '', dataText: null }), 'default-100');
 
   // Me page (>= 32rem container): action is null, illustration visible 210px, paddingInlineEnd 225px -> PASS!
