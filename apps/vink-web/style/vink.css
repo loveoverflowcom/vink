@@ -1550,21 +1550,13 @@ a {
  * (`data-search="open"`) replaces the icon cluster; on phones it takes the whole screen. */
 .vk-explore__top {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--vk-space-2) var(--vk-space-3);
   padding-block: 16px 12px;
   background: var(--vk-bg-page);
 }
-.vk-explore__top > .vk-explore__heading { flex: 1 1 auto; min-inline-size: 0; margin: 0; }
+.vk-explore__top > .vk-explore__heading { margin: 0; }
 .vk-discovery-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
   justify-content: flex-end;
   gap: 8px 12px;
-  min-inline-size: 0;
-  margin-inline-start: auto;
   --vk-ui-control-radius: var(--vk-radius-control-56);
   --vk-ui-search-radius: var(--vk-radius-control-56);
 }
@@ -1572,8 +1564,7 @@ a {
 @media (min-width: 760px) {
   :root:not([data-text="150"]):not([data-text="200"]) .vk-discovery:not(.vk-discovery--tag) > .vk-explore__top { position: sticky; top: 0; z-index: 4; }
 }
-.vk-discovery-toolbar > [role="status"] { margin: 0; }
-.vk-discovery .vk-public-search { flex: 0 1 328px; min-inline-size: 0; max-inline-size: none; --vk-ui-control-radius: var(--vk-radius-control-48); }
+.vk-discovery .vk-public-search { flex: 0 1 328px; --vk-ui-control-radius: var(--vk-radius-control-48); }
 .vk-discovery .vk-public-search > .vk-ui-field { margin: 0; }
 .vk-discovery:not(.vk-discovery--tag) .vk-public-search .vk-ui-search__shell {
   min-block-size: 56px;
@@ -1589,7 +1580,7 @@ a {
   --vk-ui-search-radius: initial;
 }
 .vk-discovery--tag .vk-public-search { flex: 1 1 16rem; --vk-ui-control-radius: initial; }
-.vk-discovery-tools { display: inline-flex; align-items: center; flex: none; }
+.vk-discovery-tools { display: inline-flex; }
 .vk-search-launcher,
 .vk-search-close,
 .vk-discovery-toolbar-status { display: none; }
