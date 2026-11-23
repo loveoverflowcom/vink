@@ -6,7 +6,7 @@
   theo yêu cầu chủ sản phẩm tại [Epic #416](https://github.com/loveoverflowcom/vink/issues/416);
   giữ nguyên thiết kế M3 Expressive / Lavender, token SSOT `tokens.json` (`0.8.0`, gồm R4.2 #415),
   Leptos SSR/hydration, quyền/dữ liệu và CMP. Issue `#413` (đổi tùy chọn cỡ chữ sang Mặc định 100% /
-  Lớn 150%, bỏ Giao diện khỏi rail) **chưa được tích hợp** tại `develop@126095a`
+  Lớn 150%, bỏ Giao diện khỏi rail) **chưa được tích hợp** tại baseline `126095a` và đối chứng `develop@da1bc260`
   (`apps/vink-web/src/appearance.rs` hiện vẫn giữ `100%` / `200%` với `data-text="200"`); lát này
   không tự nhận phần sản phẩm của `#413`.
 - **Quyết định kiến trúc:** Proposal
@@ -25,13 +25,13 @@
 | `CHOICE-01` | **B — Pin `tailwindcss` + `@tailwindcss/cli` `4.3.5` trong package CSS riêng `packages/ui-system/leptos/tailwind`** | Tận dụng Node 24/npm đã bắt buộc ở `apps/vink-web/editor`, `packages/expressions` và `infra/Containerfile`; cô lập khỏi editor; không dùng `npx latest`; một adapter `xtask/src/tailwind.rs` phục vụ cả Web, preview và OCI build. Lockfile giữ đầy đủ native binaries đa nền tảng (`@tailwindcss/oxide-*`, `lightningcss-*`). Đánh đổi: thêm 1 `package.json`/`package-lock.json` nhỏ (28 packages, `npm ci --ignore-scripts` ~0,8 s) và `build preview` cần Node/npm. | `tailwind::tests::repeated_compile_is_deterministic_and_failure_never_keeps_stale_output`, `tailwind::check`, `cargo xtask build web --release`, `cargo xtask build preview`. |
 | `CHOICE-02` | **A — Không bật Tailwind Preflight; định nghĩa `@layer theme, base, legacy, components, utilities;` + `source(none)` và `@source` allowlist** | Giữ nguyên reset hiện hành của Vink, prose Markdown, CodeMirror 6 và native `<select>`/`<input>`/`<dialog>`. Utility trong `@layer utilities` thắng `@layer legacy` mà không cần `!important`, còn `!important` không nằm trong layer (reduced motion, forced colors) giữ ưu tiên cao nhất. Đánh đổi: khi migrate component con trước cha (như `.vk-editor-recovery > .vk-ui-notice` hay `.vk-author-work__status`), phải chuyển override ở cha sang utility cùng lát. | `tailwind::tests::source_none_extracts_leptos_syntaxes_rebuilds_new_utilities_and_ignores_excluded_dirs`, computed-style diff 10 ca preview (0 diff màu/bố cục/hình học). |
 | `CHOICE-03` | **A — Sinh `packages/ui-system/leptos/style/tailwind-theme.css` từ `cargo xtask ui-tokens` (`@theme inline`)** | `tokens.json` (`0.8.0`) đã có gần 100 role/recipe (gồm R4.2 `#415`); tự động sinh bằng `@theme inline` tham chiếu trực tiếp `var(--vk-*)` loại bỏ drift thủ công mà không sao chép giá trị bảng màu ra `:root`, giữ nguyên `ThemeScope`, `RoleOverride`, density và reduced motion. 15 file sinh cũ (`tokens.css`, `tokens.rs`, `VinkTokens.kt`…) giữ nguyên byte-for-byte. | `cargo xtask ui-tokens --check`, `ui_tokens::tests::tailwind_theme_references_only_generated_vk_vars_without_literal_palette_copies`, `vink_ui::values::tests::tailwind_theme_maps_every_color_role_via_css_var`. |
-| `CHOICE-04` | **B — Xóa namespace mặc định trong `tailwind-theme.css` + mở rộng `xtask/src/ui_qualification.rs` quét nguồn Rust UI và 4 file CSS** | Xóa `--color-*: initial`, `--font-*: initial`, `--text-*: initial`, `--font-weight-*: initial`, `--shadow-*: initial`, `--ease-*: initial` ngăn sinh CSS cho bảng màu/chữ mặc định, nhưng chỉ xóa theme sẽ khiến `bg-red-500` âm thầm mất CSS mà không lỗi build. Guard `ui_qualification.rs` (chạy trong `verify quick`) báo lỗi rõ ngay khi nguồn Rust UI hoặc 4 file CSS (thêm `preview.css`) dùng màu/chữ/bóng/motion literal hay arbitrary bypass, đồng thời cho phép `*-vk-*`, `var(--vk-*)`, geometry structural (`w-[320px]`), `forced-colors:*-[CanvasText]` và `style_exceptions` có kiểm stale. | `ui_qualification::tests::rejects_tailwind_default_palette_type_shadow_and_motion_but_allows_vink_tokens_and_layout`, `rust_utility_guard_flags_literals_in_strings_and_class_directives_while_skipping_tests`. |
+| `CHOICE-04` | **B — Xóa namespace mặc định trong `tailwind-theme.css` + mở rộng `xtask/src/ui_qualification.rs` quét nguồn Rust UI và 6 file CSS** | Xóa `--color-*: initial`, `--font-*: initial`, `--text-*: initial`, `--font-weight-*: initial`, `--shadow-*: initial`, `--ease-*: initial` ngăn sinh CSS cho bảng màu/chữ mặc định, nhưng chỉ xóa theme sẽ khiến `bg-red-500` âm thầm mất CSS mà không lỗi build. Guard `ui_qualification.rs` (chạy trong `verify quick`) báo lỗi rõ ngay khi nguồn Rust UI hoặc 6 file CSS (4 stylesheet giữ lại và 2 entry) dùng màu/chữ/bóng/motion literal hay arbitrary bypass, đồng thời cho phép `*-vk-*`, `var(--vk-*)`, geometry structural (`w-[320px]`), `forced-colors:*-[CanvasText]` và `style_exceptions` có kiểm stale. | `ui_qualification::tests::rejects_tailwind_default_palette_type_shadow_and_motion_but_allows_vink_tokens_and_layout`, `rust_utility_guard_flags_literals_in_strings_and_class_directives_while_skipping_tests`. |
 
 ## 3. Baseline trước thay đổi (`develop@126095a`) và so sánh sau W01
 
 ### Môi trường và tham số đo
 
-- **Base chưa sửa:** `develop@126095a36ae8a7d302e819a8c47c4538f953d4` (`feat(web): áp R4.2 cho rail, Khám phá và sheet Lọc thẻ (#415)`).
+- **Base chưa sửa:** `develop@126095a36ae8a7d302e819a8c47c4538f39953d4` (`feat(web): áp R4.2 cho rail, Khám phá và sheet Lọc thẻ (#415)`).
 - **Máy & toolchain:** Linux x86_64, `rustc 1.99.1 (58cf8f9c3 2026-10-13)`, `leptos 0.8.22`,
   `wasm-bindgen 0.2.129`, `Node v24.22.3`, `npm 11.19.1`, `tailwindcss` + `@tailwindcss/cli` `4.3.5`,
   `Google Chrome 158.0.8127.36`.
@@ -49,7 +49,7 @@
 | `apps/vink-web/style/vink.css` | 124,688 / 19,342 B | 124,321 / 19,360 B | Đã xóa `.vk-reader-replacement-badge`, `.vk-discussion-order`, 2 rule `.vk-editor-recovery` child override |
 | `packages/ui-system/leptos/preview/style/preview.css` | 15,481 / 2,746 B | 15,492 / 2,762 B | Đổi 4 font literal sang `var(--vk-type-*)` + xóa `.vkp-offline` |
 
-### Kích thước artifact phục vụ thực tế (`--release` Web / `dev` Preview)
+### Số đo lịch sử trước rebase (`--release` Web / `dev` Preview)
 
 | Artifact | Trước (`126095a`) raw / gzip6 / br6 / br11 | Sau W01 raw / gzip6 / br6 / br11 | Delta br11 |
 | --- | --- | --- | --- |
@@ -57,9 +57,9 @@
 | `target/site/pkg/vink_bg.wasm` | 7,982,079 / 2,337,228 / 1,884,052 / **1,633,658 B** | 7,985,457 / 2,338,392 / 1,885,771 / **1,638,019 B** | **+4,361 B (+0,27%)** (chuỗi class utility trong Rust pilot) |
 | `target/site/pkg/vink.js` | 97,786 / 14,382 / 13,169 / **11,687 B** | 97,786 / 14,382 / 13,169 / **11,687 B** | 0 B (trùng SHA-256) |
 | `target/site/pkg/vink-editor.js` | 370,014 / 126,699 / 119,876 / **107,353 B** | 370,014 / 126,699 / 119,876 / **107,353 B** | 0 B (trùng SHA-256) |
-| Preview CSS (`4 file gộp` → `vink-preview.css`, dev) | 128,611 / 22,707 / 21,174 / **18,655 B** | 130,051 / 17,725 / 16,634 / **14,558 B** | **-4,097 B (-22,0%)** (1 request thay 4) |
+| Preview CSS (`4 file gộp` → `vink-preview.css`, dev) | 128,611 / 24,455 / 22,978 / **20,527 B** | 130,051 / 17,725 / 16,634 / **14,558 B** | **-5,969 B (-29,1%)** (tổng bốn response nén riêng → một response) |
 
-### Thời gian build lặp (warm cache, cùng máy)
+### Thời gian build lặp lịch sử (warm cache, cùng máy Linux)
 
 | Lệnh | Trước (`126095a`) | Sau W01 | Delta |
 | --- | --- | --- | --- |
@@ -104,7 +104,7 @@ mở rộng từng lát W03–W06, mỗi PR phải đối chiếu trên cùng m�
 | `packages/ui-system/leptos/style/tailwind-theme.css` (233 dòng, 12.5 KB) | `@theme inline`, `@utility duration-vk-*` | `tailwind/{web,preview}.css`, `values.rs` test | `ui-tokens --check`, `tailwind::tests` | **Giữ lại (sinh tự động):** adapter không sao chép giá trị bảng màu. |
 | `packages/ui-system/leptos/style/vink-ui.css` (2,026 dòng, 64.9 KB) | `.vk-ui` root/type/tone/layout (`text`/`layout`), controls (`button`/`icon-button`/`link`/`chip`/`toggle`), inputs (`field`/`input`/`select`/`choice`/`search`/`summary`), media (`icon`/`avatar`/`byline`/`frame`), feedback (`skeleton`/`arc`/`edge`/`panel`/`snackbar`/`dialog`/`region`), navigation (`scaffold`/`rail`/`bottom-nav`/`top-bar`/`tooltip`/`skip-link`/`supporting-details`) | `packages/ui-system/leptos/src/*.rs` | `preview-smoke.mjs` (61 class hooks: `.vk-ui-button`, `.vk-ui-rail`, `.vk-ui-dialog`, `.vk-ui-notice`, …), `browser-smoke.mjs` | **W01 pilot xong:** `InlineNotice`/`Banner` (giữ 2 rule nút con chờ W03), `StatusBadge`, `ListEnd`. **W03:** primitives `text`/`layout`/`action`/`field`/`media`/`feedback`/`navigation`; giữ `@keyframes`, `::backdrop`, `:focus-visible`, `@container` đặc thù khi cần. |
 | `packages/vink-patterns/leptos/patterns.css` (370 dòng, 27.1 KB) | `.vk-work-card`, `.vk-draft-row`/`resume`, `.vk-author-work`, `.vk-editor-toolbar`, `.vk-endorsement`, `.vk-tag-*`, `.vk-discussion-*`, `.vk-feedback-*` | `packages/vink-patterns/leptos/src/{lib,tags,discussion}.rs` | `browser-smoke.mjs` (`.vk-draft-row__link`, `.vk-draft-meta`, `.vk-tag-chip`, `.vk-discussion-root`), `preview-smoke.mjs` | **W01 pilot xong:** `.vk-draft-meta` (`DraftMetadata`/`DraftRow`/`AuthorWorkRow`). **W04:** compositions còn lại; giữ `@container` phức tạp nếu utility giảm rõ ràng. |
-| `apps/vink-web/style/vink.css` (2,874 dòng, 124.3 KB) | Base reset / `:root[data-text/rail]` / `:focus-visible` / reduced motion; CodeMirror `.cm-*`; Markdown prose `.vk-markdown`/`.vk-reader__body`; các màn Explore/Discovery/Filter sheet, Reader/Replacement/Discussion, Desk/Editor/WorkInfo/Publication, Me/Auth/Profile/Handle/Relationships/Appearance, Moderation, Expressions | `apps/vink-web/src/**/*.rs`, `apps/vink-web/editor/` | `browser-smoke.mjs` (177 class hooks), `preview-smoke.mjs:667` (đọc trực tiếp `:focus-visible` trong `vink.css`), `publication-author-smoke.mjs`, `visual-evidence.mjs` | **W01 pilot xong:** `.vk-reader-replacement-badge`, `.vk-discussion-order`, 2 rule `.vk-editor-recovery` child override. **W05–W06:** trang Khám phá, Reader/Thảo luận, Bàn viết/Editor/Công khai, Tôi/Hồ sơ/Kiểm duyệt. **Giữ lại:** `:root` bootstrap, `:focus-visible`, reduced-motion fallback (`style_exceptions`), `.cm-*` CodeMirror, `.vk-markdown`/`.vk-reader__body` prose. |
+| `apps/vink-web/style/vink.css` (2,874 dòng, 124.3 KB) | Base reset / `:root[data-text/rail]` / `:focus-visible` / reduced motion; vỏ editor; Markdown prose `.vk-markdown`/`.vk-reader__body`; các màn Explore/Discovery/Filter sheet, Reader/Replacement/Discussion, Desk/Editor/WorkInfo/Publication, Me/Auth/Profile/Handle/Relationships/Appearance, Moderation, Expressions | `apps/vink-web/src/**/*.rs`, `apps/vink-web/editor/` | `browser-smoke.mjs` (177 class hooks), `preview-smoke.mjs:667` (đọc trực tiếp `:focus-visible` trong `vink.css`), `publication-author-smoke.mjs`, `visual-evidence.mjs` | **W01 pilot xong:** `.vk-reader-replacement-badge`, `.vk-discussion-order`, 2 rule `.vk-editor-recovery` child override. **W05–W06:** trang Khám phá, Reader/Thảo luận, Bàn viết/Editor/Công khai, Tôi/Hồ sơ/Kiểm duyệt. **Giữ lại:** `:root` bootstrap, `:focus-visible`, reduced-motion fallback (`style_exceptions`), `.vk-markdown`/`.vk-reader__body` prose. |
 | `packages/ui-system/leptos/preview/style/preview.css` (683 dòng, 15.5 KB) | `.vkp-*` preview workbench, sidebar, controls, inspector, swatches, motion demos | `packages/ui-system/leptos/preview/src/*.rs` | `preview-smoke.mjs` | **W01 pilot xong:** `.vkp-offline` + chuyển 4 font literal sang `var(--vk-type-*)`. **W03/W06:** migrate chrome preview hoặc giữ gọn phần demo animation `.vkp-mover`/`.vkp-loop`. |
 
 ## 5. Hỗ trợ trình duyệt và khoảng trống cần lưu ý
@@ -117,7 +117,7 @@ mở rộng từng lát W03–W06, mỗi PR phải đối chiếu trên cùng m�
   - `@container`, `@layer`, `100dvh`.
 - **Yêu cầu chính thức của Tailwind CSS v4:** **Safari 16.4+, Chrome 111+, Firefox 128+** (`@property`
   và cascade layers).
-- **Chênh lệch duy nhất:** Firefox 121–127 (cũ hơn Firefox 128). Lát này **không tự hạ sàn hỗ trợ**
+- **Khoảng trống cần kiểm:** Firefox 121–127 (cũ hơn Firefox 128 theo [Tailwind](https://tailwindcss.com/docs/compatibility#browser-support)). Lát này giữ nguyên chính sách hỗ trợ
   và ghi rõ khoảng trống thiếu chính sách sàn trình duyệt chính thức để chủ sản phẩm chốt nếu cần hỗ
   trợ Firefox < 128.
 
@@ -138,7 +138,7 @@ Pilot W01 — giữ nguyên anatomy, geometry, màu, chữ và semantics hiện 
      - StatusBadge (.vk-ui-status): inline-flex, reactive class:text-vk-on-surface / variant + symbol tone
      - ListEnd (.vk-ui-list-end): flex quiet caption
   2. vink-patterns (packages/vink-patterns/leptos/src/lib.rs)
-     - DraftMetadata / DraftRow / AuthorWorkRow (.vk-draft-meta; AuthorWorkRow giữ display: block)
+     - DraftMetadata / DraftRow / AuthorWorkRow (.vk-draft-meta; thẻ AuthorWorkRow giữ DOM, flex-wrap, nhãn, số liệu và link của #429)
   3. apps/vink-web (src/pages/mod.rs, src/pages/discussion.rs)
      - .vk-reader-replacement-badge (trang thay thế SSR)
      - .vk-discussion-order ("Cũ đến mới" trên Reader SSR/hydrate)
@@ -146,17 +146,53 @@ Pilot W01 — giữ nguyên anatomy, geometry, màu, chữ và semantics hiện 
      - .vkp-offline (header preview)
 ```
 
-## 7. Bảng kết quả UX năm chiều (pilot W01)
+## 7. Kiểm sau rebase lên develop
 
-| Chiều | Kịch bản / target | Kết quả | Ghi chú |
+Rebase giữ #426/#429/#430. Đối chứng `da1bc2602de87034ba88a4cb9a7a4a1bd03542c1` có Bàn viết
+mới và ưu tiên cỡ chữ 100/200%. Ghi phép thử stress 200% thành ca riêng. So sánh CSS dưới đây dùng
+cùng Mac arm64, Node 22.15.0, zlib gzip 6 và Brotli q6/q11. Hai cột đối chứng tái tạo luồng ghép
+Web của xtask từ các blob đã pin. Preview cũ đo từng response; preview mới dùng một stylesheet
+Tailwind. Số đo này là payload CSS local, trước HTTP overhead.
+
+| CSS | Baseline `126095a` raw / gzip6 / br6 / br11 (B) | Đối chứng `da1bc260` | W01 sau rebase |
 | --- | --- | --- | --- |
-| **Functional** | Preview `state.notice/{default,banner}`, `state.status/default`, `state.empty/end-of-list`, `screen.desk/default`; Web `main` & `review` | `PASS` (preview pilot + Web sau khi hoàn tất lượt `verify web`) | Giữ nguyên `role="status"`/`alert`, `data-tone`, `data-phase`, semantic hooks; 0 console/runtime errors. |
-| **Geometry** | Computed styles & bounding boxes trước/sau 10 ca preview (`1440`/`390`/`320`, `100%`/`200%`) | `PASS` | 0 diff `w`/`h`/`padding`/`margin`/`gap`/`borderRadius` ở toàn bộ phần tử; duy nhất `flexWrap`/`gap` vô hiệu trên `AuthorWorkRow` (`display: block`). |
-| **Visual** | So sánh trực tiếp PNG trước (`126095a`) vs sau (W01) bằng đọc ảnh thực (`SCREENSHOT_INSPECTED`) | `PASS` | `state.notice` (sáng 1440 + tối 390 + banner), `state.status`, `state.empty/end-of-list`, `screen.desk` khớp từng thẻ màu, viền, chữ tiếng Việt. `fidelity: REGRESSION_BASELINE` (so với `126095a`). |
-| **Accessibility / Responsive** | Sáng/tối, `320`/`390`/`1440`, `200%` text scale, `forced-colors: active` | `PASS` (pilot); `#413` 150% `NOT_APPLICABLE` | `#413` chưa tích hợp tại `126095a`; `200%` stress của preview không wrap vỡ hay cắt dấu tiếng Việt; `forced-colors` giữ nguyên computed color/border. |
-| **Interaction** | Reactive `StatusBadge` phase transitions, preview controls, Web hydration/editor/recovery | `PASS` (pilot preview + `verify web`) | Không đổi DOM mount/focus; **lưu ý độc lập:** `preview-smoke.mjs:1475` (`focus shows the tooltip outside the rail with the same name`) đã **FAIL sẵn trên `origin/develop@126095a`** do PR `#415` đổi vị trí `.vk-ui-tooltip` sang phải nút toggle (`80px < 96px` mép phải rail) mà chưa cập nhật assertion; lỗi có sẵn này không thuộc phạm vi #417/#418 nên giữ nguyên để không trộn sửa ngoài scope. |
+| Web | 237.822 / 42.685 / 38.763 / 33.591 | 238.186 / 42.730 / 38.853 / 33.633 | 200.293 / 30.569 / 27.800 / 24.949 |
+| Preview | 128.611 / 24.455 / 22.978 / 20.527 | 129.618 / 24.630 / 23.158 / 20.667 | 131.475 / 17.942 / 16.838 / 14.742 |
 
-## 8. Ghi nhận kiểm chứng
+R4 sau #415 thay đổi CSS Web **+42 B br11** trên cùng cách ghép cũ. W01 sau rebase thay đổi CSS
+Web **−8.684 B br11** so với đối chứng, có cả hiệu ứng minify. CLI Web chạy hai lần,
+`--input web.css --output <file> --minify`, trả cùng SHA-256
+`c9c99ee74083fced523c68c038608ee2c28fafd00eef96f71edb6b4f7b137cd5`.
+Preview dùng `--input preview.css --output <file>` cho SHA-256
+`0380a51bb97028e02763075ff864539fe4f1ccfed0eb2a2ca11f4506a8b692bb`.
+Hai lượt Web lần này mất 0,15 và 0,14 s wall, riêng CLI. Build lặp đầy đủ, HTML SSR, WASM và
+hành trình release trên cùng corpus/profile vẫn thiếu. Budget tổng truyền tải ở mục 3 còn mở.
 
-- Chi tiết lệnh chạy và kết quả cuối được cập nhật tại commit cuối trước khi mở Draft PR.
-- Đóng gói production local: `python3 -m unittest discover -s infra/cloudflare/production -p 'test_*.py'` **PASS (19/19)**; `artifacts.inventory(Path("target/site/pkg"))` ghi nhận `vink.css` hợp lệ (`199,873 B`, `text/css`, 82 assets). Không build/push OCI hay deploy production.
+| Chiều UX | Kiểm đã có trên source/CSS sau rebase | Browser trên revision này |
+| --- | --- | --- |
+| Functional | Giữ vai trò và hook, cấu trúc thẻ #429, CSS Web/preview biên dịch | `NOT_RUN` SSR và hydration |
+| Geometry | Giữ kế thừa typography; đưa toàn bộ rule DOM CodeMirror về cùng cascade không layer, theo thứ tự cũ | `NOT_RUN` computed geometry ở app và preview |
+| Visual | Số liệu CSS và ảnh pilot lịch sử có provenance riêng | `NOT_RUN` cặp ảnh trước/sau trên đối chứng mới |
+| Accessibility / Responsive | Oracle tooltip theo R4.2 kiểm ngoài vùng cuộn, tên hiển thị và không che đích đầu | `NOT_RUN` browser, forced colors, root stress 200% |
+| Interaction | Giữ lifecycle của EditorView, thêm oracle focus, Escape, hover và icon recovery | `NOT_RUN` tooltip và editor sau hydration |
+
+## 8. Kiểm chứng và bàn giao
+
+- **#417 AC-02/03/04/06:** Harness nhỏ trên Mac dùng trực tiếp module compiler, token và guard
+  của xtask với lock offline và một job. Test compiler gọi Tailwind thật; 35 test đạt, gồm
+  generated token drift, nguồn Rust/CSS trong worktree thật, ký tự `'đ'`, production sau module
+  test, literal màu/thời lượng, root thiếu hoặc sai entry, lệch manifest/lock khi cache nóng/lạnh
+  và output stale khi setup hoặc compile lỗi. Đây là lượt kiểm phạm vi module.
+- **#417 AC-05:** 19 test unit đóng gói local đạt. CSS Web đầu ra giữ đường tương đối tới font và
+  brand. Runtime /pkg/ và kiểm build container thuộc lượt tích hợp.
+- **#418 walkthrough:** Lần theo hướng dẫn từ `desk.rs` (hai ca lưu lỗi/xung đột) và preview entry
+  đến Tailwind compiler và CSS đã sinh. Kiểm raw string Rust giữ đủ dấu thoát cho selector cha
+  `[&_.vk-ui-notice\_\_icon]:hidden` và selector con `.vk-ui-notice__icon`. Fixture Rust
+  của `tailwind::tests::source_none_extracts_leptos_syntaxes_rebuilds_new_utilities_and_ignores_excluded_dirs`
+  kiểm class tĩnh, `class:`, tuple, rebuild và canary loại trừ. Phần trạng thái đã hydrate trong
+  smoke preview/Web còn thiếu bằng chứng. Canonical guide và source map phản ánh owner hiện hành.
+- **#417 AC-01/07 và #418 AC-06:** `PARTIAL`. Giữ Draft để review độc lập trên SHA mới.
+  Ưu tiên tooltip preview và editor Web (hình học, nội dung, forced-colors, focus, recovery và SSR)
+  ở môi trường được phép có trần tổng RAM 12 GB cho cây tiến trình và scratch service.
+  Full quick, ma trận Web rộng và bộ đo release cùng corpus chuyển sang hai lượt cuối.
+  Proposal `VDR-WEB-TAILWIND-FOUNDATION@r1` vẫn `PENDING`.

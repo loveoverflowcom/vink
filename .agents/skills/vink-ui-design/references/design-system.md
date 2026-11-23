@@ -5,7 +5,8 @@
 Chủ giá trị token: `packages/ui-system/shared/tokens.json` (sinh `tokens.css`, `tailwind-theme.css`,
 Rust và Kotlin bằng `cargo xtask ui-tokens`); chủ primitive Web: `packages/ui-system/leptos`
 (`src/` + `style/vink-ui.css`); composition: `packages/vink-patterns/leptos` (`src/` + `patterns.css`);
-`apps/vink-web` (`src/` + `style/vink.css`) giữ page layout/CodeMirror. Quy ước utility Tailwind v4
+`apps/vink-web` (`src/` + `style/vink.css`) giữ page layout và prose. Rule trực tiếp lên DOM CodeMirror nằm ngoài layer ở cuối
+`packages/ui-system/leptos/tailwind/web.css`. Quy ước utility Tailwind v4
 và guard token nằm tại [Tailwind v4 + Leptos 0.8](../../vink-leptos-web/references/tailwind.md). Dùng
 `--vk-*` / utility `*-vk-*` và semantic hook `.vk-*`; không tạo palette thứ hai trong feature hay renderer. [Baseline thiết kế](../../../../docs/design/README.md)
 ghi nguồn, bảng role sáng/tối, cơ chế theme và tương phản đã đo; đọc giá trị hiện hành

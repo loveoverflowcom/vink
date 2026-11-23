@@ -67,21 +67,21 @@ Cả `web.css` và `preview.css` dùng chung thứ tự layer:
 - **DOM bên thứ ba bơm `<style>` không layer ở runtime (CodeMirror 6 `style-mod`):** Theo chuẩn CSS
   Cascade Layers, mọi rule không nằm trong `@layer` đều thắng mọi `@layer`. Do CodeMirror 6 bơm
   `<style>` không layer vào `document.head` khi mount (ví dụ `.cm-editor.cm-focused` có viền chấm),
-  các rule host `.vk-editor-body .cm-editor...` phải đặt ở phần **không layer** cuối
+  các rule trực tiếp lên DOM editor (focus, scroller, line và Markdown Live Preview) phải đặt ở phần **không layer** cuối
   `packages/ui-system/leptos/tailwind/web.css`.
 - **Bẫy cascade bắt buộc phải kiểm khi migrate con trước cha:** Một selector hậu duệ ở
   `@layer legacy` (ví dụ `.vk-editor-recovery > .vk-ui-notice { padding: 0; background: transparent; }`
-  hoặc `.vk-author-work__status { display: block; }`) sẽ **THUA** utility của component con trong
+  hoặc flex/gap của `.vk-author-work__status`) sẽ **THUA** utility của component con trong
   `@layer utilities` bất kể specificity! Trước khi xóa rule legacy của một component, hãy grep
   toàn bộ các file CSS nguồn (`packages/ui-system/leptos/style/vink-ui.css`,
   `packages/vink-patterns/leptos/patterns.css`, `apps/vink-web/style/vink.css`,
   `packages/ui-system/leptos/preview/style/preview.css`) tìm mọi rule cha/modifier đè lên class đó
   và chuyển override sang utility của cha (ví dụ `[&>.vk-ui-notice]:p-0 [&>.vk-ui-notice]:bg-transparent [&>.vk-ui-notice]:text-inherit`)
   hoặc xóa rule xung đột cùng lát.
-- **Thoát dấu gạch dưới kép (`__`) của BEM trong arbitrary variant `[...]`:** Tailwind v4 biến mọi
-  dấu `_` không thoát trong `[...]` thành khoảng trắng! Khi viết selector chứa class BEM `foo__bar`
-  bên trong `[...]`, bắt buộc thoát thành `\_\_` (trong chuỗi Rust thường là `\\_\\_`, ví dụ
-  `"[&_.vk-ui-notice\\_\\_icon]:hidden"` để sinh đúng `.vk-ui-notice__icon`).
+- **Thoát dấu gạch dưới kép của BEM trong arbitrary variant:** Tailwind đọc nguyên văn nguồn.
+  Viết raw string Rust `class=r"[&_.vk-ui-notice\_\_icon]:hidden"` để extractor và Leptos
+  nhận cùng token. Dấu gạch chéo trong chuỗi Rust thường phải thoát lần nữa, khiến class mà
+  Tailwind nhìn thấy khác class Leptos render. Kiểm selector lớp cha và selector hậu duệ từ CSS đã sinh.
 
 ## 3. Quét nguồn có kiểm soát (`source(none)` + allowlist `@source`)
 
@@ -93,7 +93,7 @@ Cả `web.css` và `preview.css` dùng chung thứ tự layer:
   - Preview (`preview.css`): `packages/ui-system/leptos/src`,
     `packages/ui-system/leptos/preview/src`, `packages/ui-system/leptos/preview/examples`,
     `packages/vink-patterns/leptos/src`.
-- `tailwind::check` trong `verify quick` từ chối mọi `@source` trỏ ra ngoài allowlist trên (docs,
+- `tailwind::check` trong `verify quick` yêu cầu đúng tập `@source` của từng entry (docs,
   skills, fixtures, SQL, `target/` không bao giờ bị quét vào stylesheet).
 
 ## 4. Token ngữ nghĩa (`@theme inline`) và guard chống literal (`ui_qualification.rs`)
@@ -213,7 +213,7 @@ Cả `web.css` và `preview.css` dùng chung thứ tự layer:
   - Không dùng `@apply` trừ trường hợp bất khả kháng cho third-party DOM không gắn class Rust được.
 - **Phạm vi CSS nên giữ lại (không ép chuyển sang utility):**
   - Token sinh ra (`tokens.css`, `tailwind-theme.css`) và `@font-face`.
-  - Rule cho DOM ngoài Leptos: CodeMirror 6 (`.cm-*`), nội dung Markdown render bởi `pulldown-cmark`
+  - Rule cho DOM ngoài Leptos: CodeMirror 6 (`.cm-*`, cuối `tailwind/web.css`), nội dung Markdown render bởi `pulldown-cmark`
     (`.vk-reader__body`), `:root` / `data-theme` / `data-rail` / `data-text` bootstrap.
   - `@keyframes` animation phức tạp, container query hoặc `::backdrop` đặc thù khi utility khó đọc
     hoặc giảm rõ ràng.

@@ -1469,12 +1469,51 @@ async function navigation(page) {
   const toggles = ((await page.log()).match(/toggle →/g) ?? []).length;
   check(toggles - initialToggles === 4 && await page.eval(`document.activeElement === window.__railToggle`), 'four activations dispatch four intents and retain the focused toggle');
 
-  // Tooltip: focus/hover, outside the rail, Escape hides it.
+  // R4.2: the tooltip sits beside its toggle, outside the rail's scroll container.
   await page.eval(`document.querySelector('${toggle}').blur(); document.querySelector('${toggle}').focus()`);
   await page.settle();
-  check(await page.eval(`(() => { const t = document.getElementById('nav-rail-tooltip'); const r = t.getBoundingClientRect(); return !t.hidden && r.left >= document.getElementById('nav-rail').getBoundingClientRect().right && t.textContent === document.querySelector('${toggle}').getAttribute('aria-label'); })()`), 'focus shows the tooltip outside the rail with the same name');
+  const tooltip = await page.eval(`(() => {
+    const button = document.querySelector('${toggle}'), rail = document.getElementById('nav-rail');
+    const tip = document.getElementById('nav-rail-tooltip');
+    const first = rail.querySelector('#nav-rail-primary a').getBoundingClientRect();
+    const b = button.getBoundingClientRect(), t = tip.getBoundingClientRect();
+    return {
+      visible: !tip.hidden && t.width > 0 && t.height > 0 && getComputedStyle(tip).visibility === 'visible',
+      sibling: rail.nextElementSibling === tip,
+      described: tip.getAttribute('role') === 'tooltip' && button.getAttribute('aria-describedby') === tip.id,
+      named: tip.innerText.trim() === button.getAttribute('aria-label'),
+      gap: t.left - b.right,
+      centerDelta: (t.top + t.bottom - b.top - b.bottom) / 2,
+      clearsDestination: t.bottom <= first.top + 1,
+      inViewport: t.left >= 0 && t.right <= innerWidth + 1,
+    };
+  })()`);
+  check(tooltip.visible && tooltip.sibling && tooltip.described && tooltip.named &&
+    Math.abs(tooltip.gap - 8) <= 1 && Math.abs(tooltip.centerDelta) <= 1 &&
+    tooltip.clearsDestination && tooltip.inViewport,
+    `focus shows the named tooltip beside the toggle, clear of the first destination (${JSON.stringify(tooltip)})`);
+  await page.capture('navigation.scaffold--tooltip--light--1440--96');
   await page.key('Escape');
-  check(await page.eval(`document.getElementById('nav-rail-tooltip').hidden`), 'Escape hides the tooltip');
+  check(await page.eval(`document.getElementById('nav-rail-tooltip').hidden &&
+    document.activeElement === document.querySelector('${toggle}') &&
+    !document.activeElement.hasAttribute('aria-describedby')`), 'Escape hides the tooltip and keeps focus on the toggle');
+  const points = await page.eval(`(() => {
+    const center = node => {
+      const r = node.getBoundingClientRect();
+      return { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 };
+    };
+    const button = document.querySelector('${toggle}');
+    button.blur();
+    return { toggle: center(button), destination: center(document.querySelector('#nav-rail-primary a')) };
+  })()`);
+  const movePointer = coordinates => page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...coordinates });
+  await movePointer(points.destination);
+  await movePointer(points.toggle);
+  await page.waitFor(`!document.getElementById('nav-rail-tooltip').hidden &&
+    document.getElementById('nav-rail-tooltip').innerText.trim() ===
+      document.querySelector('${toggle}').getAttribute('aria-label')`, 'hover shows the same tooltip');
+  await movePointer(points.destination);
+  await page.waitFor(`document.getElementById('nav-rail-tooltip').hidden`, 'moving to the first destination dismisses the tooltip');
 
   // Overlay layer: one modal, Back closes it before leaving.
   await page.open('navigation.overlay', 'busy');

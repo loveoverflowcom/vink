@@ -82,8 +82,10 @@ real consumer and no private data crosses into the browser build.
 ## Editor and async state
 
 Treat WR-01–WR-03 and S-01 as the acceptance boundary. The desk edits the exact source of a canonical
-`default` or `markdown` document (`{format, source}`, #255/#263) on one CodeMirror 6 `EditorView` with manual save; it does not complete S-01 (no autosave, real-IME or device
-evidence). Reuse `EditorSession` for autosave instead of adding a second save-state model, and
+`default` or `markdown` document (`{format, source}`, #255/#263) on one CodeMirror 6 `EditorView` with manual save. Reconfiguring the Markdown extension keeps the
+buffer and selection. A server-confirmed format conversion applies the converted source and moves
+the cursor to the beginning. S-01 still needs named OS IME and device evidence. Reuse `EditorSession`
+for autosave, and
 read the body only through `BodySource::snapshot`. New exits from the editor (rail, profile,
 menus) go through `NavigationGuard` so `LeaveGuard` can hold them. Choose the canonical
 document/schema version through the scoped design; derived HTML/text must not become competing

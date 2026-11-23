@@ -1,13 +1,13 @@
 /*
- * Vink page/layout glue and the CodeMirror host. Shared primitives live in vink-ui. Material 3 Expressive in Vink's
+ * Vink page/layout glue. Shared primitives live in vink-ui. Material 3 Expressive in Vink's
  * Lavender palette; docs/design/README.md records the baseline and sources. Reading and writing
  * surfaces stay quiet; expression is concentrated in headings, shape and the primary action.
  *
  * Token values (`--vk-*` colour, type, shape, spacing, density and motion roles, light/dark and
  * the self-hosted @font-face rules) are NOT authored here: they come from
  * packages/ui-system/shared/tokens.json through `cargo xtask ui-tokens`, which writes
- * packages/ui-system/leptos/style/tokens.css. `cargo xtask build` serves that file followed by
- * this one as /pkg/vink.css. Components consume roles; add a role to tokens.json before a
+ * packages/ui-system/leptos/style/tokens.css. The Tailwind Web entry combines this file and
+ * the other style owners into /pkg/vink.css. Components consume roles; add a role to tokens.json before a
  * one-off colour.
  *
  * Theme: light by default; dark follows the system unless `<html data-theme="light|dark">`
@@ -1031,7 +1031,6 @@ a {
 .vk-editor-paper > .vk-ui-field .vk-ui-input { padding-inline: 0; }
 .vk-editor-paper > .vk-field { min-inline-size: 0; }
 .vk-editor-paper .vk-editor-body { background: transparent; }
-.vk-editor-paper .vk-editor-body .cm-editor .cm-content { padding: var(--vk-space-2) 0 var(--vk-space-6); }
 .vk-editor-title-measure {
   position: absolute;
   inline-size: 0;
@@ -1133,7 +1132,7 @@ a {
   font-size: var(--vk-type-label-size);
 }
 
-/* CodeMirror host. Selectors repeat `.cm-editor` to outrank CodeMirror's injected base theme. */
+/* CodeMirror host shell. Rules targeting the injected editor live in the unlayered Web entry. */
 .vk-editor-body {
   border: 0;
   border-radius: var(--vk-radius-lg);
@@ -1154,31 +1153,6 @@ a {
 @media (forced-colors: active) {
   .vk-editor-body { border: 1px solid ButtonText; }
   .vk-editor-body:focus-within { outline-color: Highlight; }
-}
-
-.vk-editor-body .cm-editor.cm-focused {
-  outline: none;
-}
-
-.vk-editor-body .cm-editor .cm-scroller {
-  font-family: var(--vk-font-reading);
-  font-size: var(--vk-text-reading);
-  line-height: var(--vk-leading-reading);
-}
-
-.vk-editor-body .cm-editor .cm-content {
-  min-height: 50vh;
-  padding: var(--vk-space-6);
-  caret-color: var(--vk-primary);
-}
-
-.vk-editor-body .cm-editor .cm-line {
-  padding: 0;
-}
-
-.vk-editor-body .cm-editor .cm-content ::selection {
-  background: var(--vk-primary-container);
-  color: var(--vk-on-primary-container);
 }
 
 .vk-editor-body__pending {
@@ -1394,101 +1368,6 @@ a {
   text-align: start;
 }
 
-/* CodeMirror Live Preview inline/block styling (#256). */
-.vk-editor-body .cm-line.cm-writing-h1 {
-  font-family: var(--vk-font-reading);
-  font-size: var(--vk-type-headline-size);
-  font-weight: bold;
-  line-height: var(--vk-type-headline-line-height);
-  letter-spacing: var(--vk-type-headline-tracking);
-  padding-block: 0.35em 0.15em;
-}
-
-.vk-editor-body .cm-line.cm-writing-h2 {
-  font-family: var(--vk-font-reading);
-  font-size: var(--vk-type-title-size);
-  font-weight: var(--vk-type-title-weight);
-  line-height: var(--vk-type-title-line-height);
-  padding-block: 0.3em 0.12em;
-}
-
-.vk-editor-body .cm-line.cm-writing-h3 {
-  font-family: var(--vk-font-reading);
-  font-size: var(--vk-text-reading);
-  font-weight: var(--vk-type-title-weight);
-  line-height: var(--vk-type-title-line-height);
-  padding-block: 0.25em 0.1em;
-}
-
-.vk-editor-body .cm-line.cm-writing-h4 {
-  font-family: var(--vk-font-reading);
-  font-size: calc(var(--vk-type-body-size) * 1.08);
-  font-weight: var(--vk-type-label-weight);
-  line-height: var(--vk-type-label-line-height);
-}
-
-.vk-editor-body .cm-line.cm-writing-h5 {
-  font-family: var(--vk-font-reading);
-  font-size: calc(var(--vk-type-body-size) * 1.02);
-  font-weight: var(--vk-type-label-weight);
-  line-height: var(--vk-type-label-line-height);
-}
-
-.vk-editor-body .cm-line.cm-writing-h6 {
-  font-family: var(--vk-font-reading);
-  font-size: calc(var(--vk-type-body-size) * 0.96);
-  font-weight: var(--vk-type-label-weight);
-  color: var(--vk-on-surface-variant);
-  line-height: var(--vk-type-label-line-height);
-}
-
-.vk-editor-body .cm-markdown-marker {
-  font-family: var(--vk-font-code);
-  font-size: var(--vk-type-caption-size);
-  font-weight: var(--vk-type-label-weight);
-  color: var(--vk-on-surface-variant);
-}
-
-.vk-editor-body .cm-writing-bold {
-  font-weight: bold;
-}
-
-.vk-editor-body .cm-writing-italic {
-  font-style: italic;
-}
-
-.vk-editor-body .cm-writing-code {
-  padding: 0.08em 0.32em;
-  border-radius: var(--vk-radius-sm);
-  background: var(--vk-surface-container-low);
-  font-family: var(--vk-font-code);
-  font-size: var(--vk-type-code-size);
-}
-
-.vk-editor-body .cm-line.cm-writing-code-block {
-  background: var(--vk-surface-container-low);
-  font-family: var(--vk-font-code);
-  font-size: var(--vk-type-code-size);
-  line-height: var(--vk-type-code-line-height);
-}
-
-.vk-editor-body .cm-writing-link {
-  color: var(--vk-primary);
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.18em;
-}
-
-.vk-editor-body .cm-line.cm-writing-quote {
-  border-inline-start: 3px solid var(--vk-primary);
-  padding-inline-start: var(--vk-space-4);
-  color: var(--vk-on-surface-variant);
-}
-
-.vk-editor-body .cm-writing-rule {
-  color: var(--vk-outline);
-}
-
 /* Mục lục Cách 1 (#257): overlay sheet on phones/tablet/200%, sticky 17rem aside on desktop. */
 .vk-editor-outline::backdrop {
   background: var(--vk-scrim);
@@ -1697,15 +1576,6 @@ a {
     padding-left: var(--vk-space-8);
     padding-right: var(--vk-space-8);
   }
-
-}
-
-@media (max-width: 30rem) {
-  /* Enlarged text needs the width more than the inner margin. */
-  .vk-editor-body .cm-editor .cm-content {
-    padding: var(--vk-space-4) var(--vk-space-3);
-  }
-
 
 }
 

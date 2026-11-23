@@ -459,7 +459,7 @@ pub fn Discussion(work_id: String, #[prop(optional)] read_only: bool) -> impl In
             data-readonly=read_only.then_some("true")>
             <div class="vk-discussion-head">
                 <Heading level=HeadingLevel::H2 role=TypeRole::Title id="feedback-heading" attr:tabindex="-1">"Nhận xét"</Heading>
-                <span class="vk-discussion-order text-vk-caption tracking-normal leading-[var(--vk-type-body-line-height)] text-vk-on-surface-variant">"Cũ đến mới"</span>
+                <span class="vk-discussion-order text-[length:var(--vk-type-caption-size)] text-vk-on-surface-variant">"Cũ đến mới"</span>
             </div>
             {read_only.then(|| view! {
                 <div class="vk-discussion-readonly-notice" role="note" data-testid="discussion-readonly-notice">

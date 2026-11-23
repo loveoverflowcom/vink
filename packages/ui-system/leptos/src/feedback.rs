@@ -552,7 +552,7 @@ pub fn StatusBadge(
     };
     view! {
         <span
-            class="vk-ui-status inline-flex items-center gap-vk-2 max-w-full font-vk-ui text-vk-label font-vk-role-body tracking-normal"
+            class="vk-ui-status inline-flex items-center gap-vk-2 max-w-full [font-family:var(--vk-type-label-font)] text-[length:var(--vk-type-label-size)] leading-[var(--vk-type-label-line-height)]"
             class:text-vk-on-surface=move || matches!(phase.get().tone(), Tone::Warning | Tone::Error)
             class:text-vk-on-surface-variant=move || !matches!(phase.get().tone(), Tone::Warning | Tone::Error)
             role="status"
@@ -577,7 +577,7 @@ pub fn StatusBadge(
 #[component]
 pub fn ListEnd(#[prop(optional, into)] label: Option<String>) -> impl IntoView {
     view! {
-        <p class="vk-ui-list-end flex items-center gap-vk-3 m-0 font-vk-ui text-vk-caption tracking-normal text-vk-on-surface-variant">
+        <p class="vk-ui-list-end flex items-center gap-vk-3 m-0 [font-family:var(--vk-type-caption-font)] text-[length:var(--vk-type-caption-size)] leading-[var(--vk-type-caption-line-height)] text-vk-on-surface-variant">
             <span>{label.unwrap_or_else(|| "Đã hết danh sách".into())}</span>
         </p>
     }
@@ -1115,7 +1115,8 @@ mod tests {
 
         let end = render(|| view! { <ListEnd /> }.into_any());
         assert!(
-            end.contains("vk-ui-list-end") && end.contains("text-vk-caption"),
+            end.contains("vk-ui-list-end")
+                && end.contains("text-[length:var(--vk-type-caption-size)]"),
             "{end}"
         );
     }

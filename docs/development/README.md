@@ -430,7 +430,8 @@ apps/vink-web/            crate vink-web: view Leptos, route, DTO riêng của w
   src/navigation.rs       NavigationGuard dùng chung cho link, back/forward, điều hướng bằng code;
                           hỏi lớp phủ shell trước (Back đóng Tôi, điều hướng thật đóng rồi đi tiếp)
   editor/                 runtime CodeMirror 6 (TypeScript, npm pin, esbuild) → /pkg/vink-editor.js
-  style/vink.css          page layout/CodeMirror `vk-*`; `xtask/src/tailwind.rs` biên dịch cùng `tailwind-theme.css`, `tokens.css`, `vink-ui.css`, `patterns.css` và utilities đã allowlist thành `/pkg/vink.css`
+  style/vink.css          page layout, prose và vỏ editor; rule DOM CodeMirror nằm ở phần không layer cuối
+                          packages/ui-system/leptos/tailwind/web.css. xtask/src/tailwind.rs biên dịch cùng `tailwind-theme.css`, `tokens.css`, `vink-ui.css`, `patterns.css` và utilities đã allowlist thành `/pkg/vink.css`
   assets/fonts/           WOFF2 tự host, OFL, provenance.json (phục vụ tại /pkg/fonts/)
   assets/brand/           Logo selected #34 SVG/PNG, manifest, provenance (phục vụ tại /pkg/brand/)
   e2e/browser-smoke.mjs   kiểm trình duyệt qua Chrome DevTools Protocol
@@ -611,7 +612,9 @@ production đỏ; model mutant tạo OFF→old ON resurrection. Harness và kế
 
 ## Việc tiếp theo
 
-1. **S-01 Editor + SSR:** CodeMirror 6 đang sửa source nguyên văn của document `default`;
+1. **S-01 Editor + SSR:** CodeMirror 6 sửa source nguyên văn của `default` và `markdown`
+   trên cùng một `EditorView`. Cấu hình lại extension giữ buffer và selection. Chuyển định dạng đã
+   được server xác nhận áp dụng source chuyển đổi và đưa con trỏ về đầu văn bản.
    còn IME thật trên macOS/Windows/Android/iOS, paste, autosave dùng lại `EditorSession`, hai tab,
    mobile, và quyết định có cần rich text (D-04).
 2. **S-03 Identity:** chọn auth authority, thay `LocalFixture` bằng resolver thật giữ nguyên

@@ -297,7 +297,30 @@ fn style_literal(declaration: &str) -> bool {
         return false;
     };
     let property = property.trim();
-    let value = value.trim();
+    let value = value.trim().trim_end_matches("!important").trim();
+    if matches!(
+        property,
+        "color"
+            | "background-color"
+            | "border-color"
+            | "outline-color"
+            | "caret-color"
+            | "fill"
+            | "stroke"
+            | "text-decoration-color"
+    ) && is_css_named_color(value)
+    {
+        return true;
+    }
+    if matches!(
+        property,
+        "transition" | "animation" | "transition-delay" | "animation-delay"
+    ) && value
+        .split(|ch: char| ch.is_ascii_whitespace() || ch == ',')
+        .any(nonzero_css_time)
+    {
+        return true;
+    }
     if property == "font"
         && value
             .split_whitespace()
@@ -324,17 +347,110 @@ fn style_literal(declaration: &str) -> bool {
             && value != "0ms")
 }
 
+fn nonzero_css_time(token: &str) -> bool {
+    token
+        .strip_suffix("ms")
+        .or_else(|| token.strip_suffix('s'))
+        .and_then(|time| time.parse::<f64>().ok())
+        .is_some_and(|time| time != 0.0)
+}
+
+// CSS named colours are bare identifiers. Admit inherited/transparent and platform colour roles.
+fn is_css_named_color(value: &str) -> bool {
+    !value.is_empty()
+        && value.bytes().all(|b| b.is_ascii_alphabetic() || b == b'-')
+        && !matches!(
+            value.to_ascii_lowercase().as_str(),
+            "auto"
+                | "none"
+                | "currentcolor"
+                | "transparent"
+                | "inherit"
+                | "initial"
+                | "unset"
+                | "revert"
+                | "revert-layer"
+                | "accentcolor"
+                | "accentcolortext"
+                | "activetext"
+                | "buttonborder"
+                | "buttonface"
+                | "buttontext"
+                | "canvas"
+                | "canvastext"
+                | "field"
+                | "fieldtext"
+                | "graytext"
+                | "highlight"
+                | "highlighttext"
+                | "linktext"
+                | "mark"
+                | "marktext"
+                | "selecteditem"
+                | "selecteditemtext"
+                | "visitedtext"
+        )
+}
+
+const TEST_ONLY: &str = "#[cfg(test)]";
+
+fn test_module_body(source: &str, start: usize) -> Option<usize> {
+    let after = source.get(start..)?.strip_prefix(TEST_ONLY)?.trim_start();
+    let header = after
+        .strip_prefix("pub ")
+        .unwrap_or(after)
+        .strip_prefix("mod ")?;
+    let (name, body) = header.split_once('{')?;
+    let name = name.trim();
+    if name.is_empty() || !name.chars().all(|ch| ch.is_alphanumeric() || ch == '_') {
+        return None;
+    }
+    Some(source.len() - body.len())
+}
+
+fn char_literal_end(source: &str, start: usize) -> Option<usize> {
+    let body = source.get(start + 1..)?;
+    let value_len = if let Some(escaped) = body.strip_prefix('\\') {
+        if escaped.starts_with("u{") {
+            escaped.find('}')? + 2
+        } else if escaped.starts_with('x') {
+            4
+        } else {
+            2
+        }
+    } else {
+        body.chars().next()?.len_utf8()
+    };
+    (body.as_bytes().get(value_len) == Some(&b'\'')).then_some(start + value_len + 2)
+}
+
 /// Extracts candidate utility tokens from production Rust UI source (string literals and Leptos
-/// `class:<token>=` directives), skipping comments and trailing `#[cfg(test)]` modules.
+/// `class:<token>=` directives), skipping comments and `#[cfg(test)]` module bodies.
 fn rust_utility_candidates(source: &str) -> Vec<(usize, String)> {
-    let prod = strip_cfg_test_tail(source);
-    let bytes = prod.as_bytes();
+    let bytes = source.as_bytes();
     let len = bytes.len();
     let mut i = 0usize;
     let mut line = 1usize;
     let mut out = Vec::new();
+    let mut test_depth = 0;
 
     while i < len {
+        if test_depth == 0
+            && bytes[i..].starts_with(TEST_ONLY.as_bytes())
+            && let Some(body) = test_module_body(source, i)
+        {
+            line += bytes[i..body].iter().filter(|&&byte| byte == b'\n').count();
+            i = body;
+            test_depth = 1;
+            continue;
+        }
+        if bytes[i] == b'\''
+            && let Some(end) = char_literal_end(source, i)
+        {
+            i = end;
+            continue;
+        }
+
         // Line comment `//...`
         if bytes[i] == b'/' && i + 1 < len && bytes[i + 1] == b'/' {
             while i < len && bytes[i] != b'\n' {
@@ -384,8 +500,13 @@ fn rust_utility_candidates(source: &str) -> Vec<(usize, String)> {
                         && j + hashes < len
                         && bytes[j + 1..=j + hashes].iter().all(|&b| b == b'#')
                     {
-                        let literal = &prod[content_start..j];
-                        push_tokens_from_literal(literal, start_line, &mut out);
+                        if test_depth == 0 {
+                            push_tokens_from_literal(
+                                &source[content_start..j],
+                                start_line,
+                                &mut out,
+                            );
+                        }
                         j += 1 + hashes;
                         break;
                     }
@@ -412,8 +533,9 @@ fn rust_utility_candidates(source: &str) -> Vec<(usize, String)> {
                     line += 1;
                 }
                 if bytes[i] == b'"' {
-                    let literal = &prod[content_start..i];
-                    push_tokens_from_literal(literal, start_line, &mut out);
+                    if test_depth == 0 {
+                        push_tokens_from_literal(&source[content_start..i], start_line, &mut out);
+                    }
                     i += 1;
                     break;
                 }
@@ -422,7 +544,8 @@ fn rust_utility_candidates(source: &str) -> Vec<(usize, String)> {
             continue;
         }
         // Leptos `class:<token>=` attribute syntax outside strings.
-        if prod[i..].starts_with("class:")
+        if test_depth == 0
+            && bytes[i..].starts_with(b"class:")
             && (i == 0 || !(bytes[i - 1].is_ascii_alphanumeric() || bytes[i - 1] == b'_'))
         {
             let start = i + "class:".len();
@@ -434,32 +557,20 @@ fn rust_utility_candidates(source: &str) -> Vec<(usize, String)> {
                 j += 1;
             }
             if j > start {
-                out.push((line, prod[start..j].to_string()));
+                out.push((line, source[start..j].to_string()));
             }
             i = j;
             continue;
         }
-        if bytes[i] == b'\n' {
-            line += 1;
+        match bytes[i] {
+            b'\n' => line += 1,
+            b'{' if test_depth > 0 => test_depth += 1,
+            b'}' if test_depth > 0 => test_depth -= 1,
+            _ => {}
         }
         i += 1;
     }
     out
-}
-
-fn strip_cfg_test_tail(source: &str) -> &str {
-    let mut offset = 0usize;
-    for line in source.split_inclusive('\n') {
-        let trimmed = line.trim();
-        if trimmed == "#[cfg(test)]" {
-            let rest = source[offset + line.len()..].trim_start();
-            if rest.starts_with("mod tests") || rest.starts_with("pub mod tests") {
-                return &source[..offset];
-            }
-        }
-        offset += line.len();
-    }
-    source
 }
 
 fn push_tokens_from_literal(literal: &str, start_line: usize, out: &mut Vec<(usize, String)>) {
@@ -708,6 +819,22 @@ fn is_arbitrary_color_literal(val: &str) -> bool {
         || lower.starts_with("lch(")
         || lower.starts_with("color:")
         || lower.starts_with("color-mix(")
+        || is_css_named_color(arb)
+            && !matches!(
+                lower.as_str(),
+                "auto"
+                    | "center"
+                    | "cover"
+                    | "contain"
+                    | "left"
+                    | "right"
+                    | "top"
+                    | "bottom"
+                    | "inset"
+                    | "min-content"
+                    | "max-content"
+                    | "fit-content"
+            )
 }
 
 #[cfg(test)]
@@ -737,6 +864,8 @@ mod tests {
             "background: rgb(0 0 0 / .5)",
             "font-size: 14px",
             "transition-duration: 123ms",
+            "transition: opacity 150ms",
+            "color: red",
         ] {
             assert!(style_literal(s), "{s}");
         }
@@ -744,6 +873,8 @@ mod tests {
             "font-size: var(--vk-type-body-size)",
             "width: 320px",
             "background: var(--vk-surface)",
+            "color: CanvasText",
+            "transition: opacity var(--vk-duration-short) var(--vk-ease-emphasized)",
         ] {
             assert!(!style_literal(s), "{s}");
         }
@@ -755,13 +886,25 @@ mod tests {
         for dir in [
             "packages/ui-system/shared",
             "packages/ui-system/leptos/src",
-            "apps/vink-web",
+            "apps/vink-web/style",
         ] {
             std::fs::create_dir_all(root.join(dir)).unwrap();
         }
         std::fs::write(
             root.join("packages/ui-system/leptos/src/new.rs"),
-            "#[component]\npub fn Unregistered() -> impl IntoView {}\n",
+            r#"#[cfg(test)]
+mod fixtures { const CLASSES: &str = "[color:blue]"; }
+#[component]
+pub fn Unregistered() -> impl IntoView {
+    let tiếng = 'đ';
+    view! { <p class="[color:red] text-vk-caption w-[320px]" /> }
+}
+"#,
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("apps/vink-web/style/vink.css"),
+            ".card { transition: opacity 150ms; color: var(--vk-on-surface); }",
         )
         .unwrap();
         std::fs::write(root.join(COVERAGE), r#"{"format":1,"components":[{"renderer":"leptos","source":"missing.rs","symbol":"Stale","entry":"missing"}]}"#).unwrap();
@@ -775,6 +918,15 @@ mod tests {
         std::fs::remove_dir_all(root).unwrap();
         assert!(problems.iter().any(|p| p.contains("Unregistered")));
         assert!(problems.iter().any(|p| p.contains("Stale")));
+        assert!(problems.iter().any(|p| p.contains("[color:red]")));
+        assert!(
+            problems
+                .iter()
+                .any(|p| p.contains("transition: opacity 150ms"))
+        );
+        assert!(!problems.iter().any(|p| p.contains("[color:blue]")
+            || p.contains("text-vk-caption")
+            || p.contains("w-[320px]")));
         assert!(
             problems
                 .iter()
@@ -809,6 +961,9 @@ mod tests {
             "shadow-md",
             "shadow-[0_2px_8px_rgba(0,0,0,0.2)]",
             "[color:#fff]",
+            "[color:red]",
+            "bg-[red]",
+            "[transition:opacity_150ms]",
             "[font-size:14px]",
             "[transition-duration:123ms]",
             "[&>.vk-ui-notice]:bg-red-500",
@@ -864,6 +1019,7 @@ mod tests {
     fn rust_utility_guard_flags_literals_in_strings_and_class_directives_while_skipping_tests() {
         let sample = r#"
             fn view_fn(err: bool) {
+                let tiếng = 'đ';
                 // bg-red-500 inside comment must be ignored
                 let _ = "flex bg-vk-surface text-vk-body";
                 let _ = "bg-red-500 text-sm duration-150";
@@ -871,7 +1027,11 @@ mod tests {
             }
             #[cfg(test)]
             mod tests {
-                const IGNORED: &str = "bg-green-500 text-lg";
+                const IGNORED: &str = "bg-green-500 text-lg }";
+                const BRACE: char = '}';
+            }
+            fn after_tests() {
+                let _ = view! { <div class:text-red-500=true /> };
             }
         "#;
         let flagged: Vec<String> = rust_utility_candidates(sample)
@@ -881,7 +1041,13 @@ mod tests {
             .collect();
         assert_eq!(
             flagged,
-            vec!["bg-red-500", "text-sm", "duration-150", "bg-blue-500"]
+            vec![
+                "bg-red-500",
+                "text-sm",
+                "duration-150",
+                "bg-blue-500",
+                "text-red-500"
+            ]
         );
     }
 }

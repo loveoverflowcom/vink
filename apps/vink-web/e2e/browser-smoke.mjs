@@ -3978,6 +3978,10 @@ async function editorRecoveryScene(page, selector, scene, stem) {
   await editorLayoutReady(page);
   const before = await page.eval(buildTargetGeometryScript(selector));
   check(before.present, `${stem}: recovery target exists before scrolling`);
+  check(await page.eval(`(() => {
+    const icon = document.querySelector('${selector} .vk-ui-notice__icon');
+    return Boolean(icon && getComputedStyle(icon).display === 'none');
+  })()`), `${stem}: editor recovery keeps the redundant notice icon hidden`);
   await page.eval(`document.querySelector('${selector}').scrollIntoView({block:'start',behavior:'instant'})`);
   await editorLayoutReady(page);
   const recovery = await page.eval(buildTargetGeometryScript(selector));

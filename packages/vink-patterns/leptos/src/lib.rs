@@ -153,7 +153,7 @@ pub struct DraftSummary {
     pub href: String,
 }
 
-const DRAFT_META_CLASS: &str = "vk-draft-meta flex flex-wrap gap-vk-1 text-vk-on-surface-variant text-vk-caption leading-[var(--vk-type-body-line-height)] tracking-normal [&>span]:min-w-0 [&>span]:wrap-anywhere";
+const DRAFT_META_CLASS: &str = "vk-draft-meta flex flex-wrap gap-vk-1 text-vk-on-surface-variant text-[length:var(--vk-type-caption-size)] font-vk-role-caption [&>span]:min-w-0 [&>span]:wrap-anywhere";
 
 #[component]
 pub fn DraftMetadata(version: i64, updated_at: String) -> impl IntoView {
@@ -269,7 +269,7 @@ pub fn AuthorWorkRow(#[prop(into)] work: Signal<AuthorWorkSummary>) -> impl Into
         view! {
             <div class="vk-draft-row__text">
                 <span class="vk-draft-row__title" class:vk-author-work__untitled=move || work.with(|w| w.untitled)>{move || work.get().title}</span>
-                <div class="vk-draft-meta vk-author-work__status text-vk-on-surface-variant text-vk-caption leading-[var(--vk-type-body-line-height)] tracking-normal [&>span]:min-w-0 [&>span]:wrap-anywhere">
+                <div class="vk-draft-meta vk-author-work__status text-vk-on-surface-variant text-[length:var(--vk-type-caption-size)] font-vk-role-caption [&>span]:min-w-0 [&>span]:wrap-anywhere">
                     {move || work.get().status.into_iter().map(|label| view! {
                         <span class="vk-author-work__label" title=label.detail>
                             <Icon name=label.icon size=IconSize::Small />

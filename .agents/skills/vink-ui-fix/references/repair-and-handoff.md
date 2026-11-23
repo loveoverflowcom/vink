@@ -30,7 +30,7 @@ Tra [source map](../../vink-ui-design/references/source-map.md) và đọc sourc
 `packages/ui-system/shared/tokens.json` sở hữu giá trị token (sinh `tokens.css`, `tailwind-theme.css`,
 Rust và Kotlin bằng `cargo xtask ui-tokens`); `packages/ui-system/leptos` (`src/` + `style/vink-ui.css`)
 sở hữu primitive Web, `packages/vink-patterns/leptos` (`src/` + `patterns.css`) sở hữu pattern dùng chung,
-và `apps/vink-web` (`src/` + `style/vink.css`) sở hữu page layout/CodeMirror (biên dịch qua Tailwind v4
+và `apps/vink-web` (`src/` + `style/vink.css`) sở hữu page layout và prose. Rule DOM CodeMirror nằm ngoài layer ở cuối Web entry (biên dịch qua Tailwind v4
 tại `packages/ui-system/leptos/tailwind/{web,preview}.css`, xem [Tailwind v4 + Leptos 0.8](../../vink-leptos-web/references/tailwind.md)); `src/desk_state.rs` trong web crate
 sở hữu pure save-state/leave machine; `src/document.rs` và `src/document/markdown.rs` sở hữu chữ nguồn/document rendering;
 `src/editor.rs` và `editor/` sở hữu CodeMirror.

@@ -1780,6 +1780,9 @@ fn tailwind_theme(source: &Source) -> String {
             "@utility duration-vk-{stem} {{\n  --tw-duration: var({css_var});\n  transition-duration: var({css_var});\n}}\n"
         );
     }
+    if out.ends_with("\n\n") {
+        out.pop();
+    }
     out
 }
 

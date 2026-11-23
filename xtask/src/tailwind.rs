@@ -3,6 +3,7 @@
 //! package (`packages/ui-system/leptos/tailwind`) with `npm ci --ignore-scripts`, explicit
 //! `@layer` coexistence, and `source(none)` + allowlisted `@source` roots.
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Mutex;
@@ -26,17 +27,16 @@ pub fn ensure_installed(root: &Path) -> Result<PathBuf, String> {
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     let dir = root.join(DIR);
-    let lock = std::fs::read(dir.join("package-lock.json"))
-        .map_err(|e| format!("read {DIR}/package-lock.json: {e}"))?;
+    let inputs = package_inputs(&dir)?;
     let bin = dir.join("node_modules/.bin/tailwindcss");
-    let stamp = dir.join("node_modules/.vink-installed-lock.json");
-    if !bin.is_file() || std::fs::read(&stamp).ok().as_ref() != Some(&lock) {
+    let stamp = dir.join("node_modules/.vink-tailwind-inputs");
+    if !bin.is_file() || std::fs::read(&stamp).ok().as_ref() != Some(&inputs) {
         let mut install = Command::new("npm");
         install
             .current_dir(&dir)
             .args(["ci", "--ignore-scripts", "--no-audit", "--no-fund"]);
         process::run(&mut install, "npm ci (Tailwind v4 compiler, locked)")?;
-        std::fs::write(&stamp, &lock).map_err(|e| format!("write {}: {e}", stamp.display()))?;
+        std::fs::write(&stamp, &inputs).map_err(|e| format!("write {}: {e}", stamp.display()))?;
     }
     if !bin.is_file() {
         return Err(format!(
@@ -52,7 +52,6 @@ pub fn ensure_installed(root: &Path) -> Result<PathBuf, String> {
 /// Removes any pre-existing `output` before compiling and writes via a sibling temporary file so
 /// a compiler failure can never leave stale CSS behind as a successful build artifact.
 pub fn compile(root: &Path, input: &Path, output: &Path, minify: bool) -> Result<(), String> {
-    let bin = ensure_installed(root)?;
     let parent = output
         .parent()
         .ok_or_else(|| format!("invalid CSS output path: {}", output.display()))?;
@@ -61,6 +60,7 @@ pub fn compile(root: &Path, input: &Path, output: &Path, minify: bool) -> Result
         std::fs::remove_file(output)
             .map_err(|e| format!("remove stale {}: {e}", output.display()))?;
     }
+    let bin = ensure_installed(root)?;
     let stamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_nanos())
@@ -108,128 +108,144 @@ pub fn compile(root: &Path, input: &Path, output: &Path, minify: bool) -> Result
     Ok(())
 }
 
-/// Repository check: exact package/lockfile pins (>= 4.1.8) and allowlisted `source(none)` entries.
-pub fn check(root: &Path, problems: &mut Vec<String>) {
-    let read = |path: &Path| std::fs::read_to_string(path).ok();
-    let parse = |name: &str, problems: &mut Vec<String>| -> Option<serde_json::Value> {
-        match read(&root.join(DIR).join(name)).map(|t| serde_json::from_str(&t)) {
-            Some(Ok(value)) => Some(value),
-            Some(Err(error)) => {
-                problems.push(format!("{DIR}/{name}: {error}"));
-                None
-            }
-            None => {
-                problems.push(format!("{DIR}/{name} is missing"));
-                None
-            }
-        }
+/// Validate exact pins before consulting either a cold or a warm npm cache.
+fn package_inputs(dir: &Path) -> Result<Vec<u8>, String> {
+    let read_json = |name: &str| -> Result<_, String> {
+        let path = dir.join(name);
+        let bytes = std::fs::read(&path).map_err(|e| format!("read {}: {e}", path.display()))?;
+        let json: serde_json::Value =
+            serde_json::from_slice(&bytes).map_err(|e| format!("parse {}: {e}", path.display()))?;
+        Ok((bytes, json))
     };
-    if let (Some(manifest), Some(lock)) = (
-        parse("package.json", problems),
-        parse("package-lock.json", problems),
-    ) {
-        let mut versions = std::collections::BTreeMap::new();
-        for section in ["dependencies", "devDependencies"] {
-            let declared = manifest[section].as_object().cloned().unwrap_or_default();
-            for (name, version) in &declared {
-                let version = version.as_str().unwrap_or_default();
-                if let Some(parsed) = parse_exact_semver(version) {
-                    versions.insert(name.clone(), (version.to_string(), parsed));
-                } else {
-                    problems.push(format!(
-                        "{DIR}/package.json: {name} must pin an exact version, not `{version}`"
-                    ));
-                }
-            }
-            if lock["packages"][""][section] != manifest[section] {
-                problems.push(format!(
-                    "{DIR}/package-lock.json: {section} differ from package.json; run `npm install --ignore-scripts` in {DIR}"
-                ));
-            }
+    let (mut manifest_bytes, manifest) = read_json("package.json")?;
+    let (lock_bytes, lock) = read_json("package-lock.json")?;
+    let mut versions = BTreeMap::new();
+    for section in ["dependencies", "devDependencies"] {
+        if manifest[section] != lock["packages"][""][section] {
+            return Err(format!(
+                "{DIR}/package-lock.json: {section} differ from package.json"
+            ));
         }
-        match (
-            versions.get("tailwindcss"),
-            versions.get("@tailwindcss/cli"),
-        ) {
-            (Some((tw_s, tw_v)), Some((cli_s, _))) => {
-                if tw_s != cli_s {
-                    problems.push(format!(
-                        "{DIR}/package.json: tailwindcss ({tw_s}) and @tailwindcss/cli ({cli_s}) must pin the exact same version"
-                    ));
-                }
-                if *tw_v < MIN_VERSION {
-                    problems.push(format!(
-                        "{DIR}/package.json: tailwindcss {tw_s} is below {}.{}.{} (required for Leptos `class:` extraction)",
-                        MIN_VERSION.0, MIN_VERSION.1, MIN_VERSION.2
-                    ));
-                }
-            }
-            _ => problems.push(format!(
-                "{DIR}/package.json: must pin both `tailwindcss` and `@tailwindcss/cli`"
+        for (name, version) in manifest[section].as_object().into_iter().flatten() {
+            let pin = version.as_str().unwrap_or_default();
+            let parsed = parse_exact_semver(pin).ok_or_else(|| {
+                format!("{DIR}/package.json: {name} must pin an exact version, not {version}")
+            })?;
+            versions.insert(name.as_str(), (pin, parsed));
+        }
+    }
+    let (Some(&(tw, minimum)), Some(&(cli, _))) = (
+        versions.get("tailwindcss"),
+        versions.get("@tailwindcss/cli"),
+    ) else {
+        return Err(format!(
+            "{DIR}/package.json: must pin tailwindcss and @tailwindcss/cli"
+        ));
+    };
+    if tw != cli || minimum < MIN_VERSION {
+        return Err(format!(
+            "{DIR}/package.json: Tailwind core/CLI must use the same version and require at least {}.{}.{} (found {tw}/{cli})",
+            MIN_VERSION.0, MIN_VERSION.1, MIN_VERSION.2
+        ));
+    }
+    for (name, (pin, _)) in versions {
+        if lock["packages"][format!("node_modules/{name}")]["version"].as_str() != Some(pin) {
+            return Err(format!(
+                "{DIR}/package-lock.json: resolved {name} does not match pin {pin}"
+            ));
+        }
+    }
+    manifest_bytes.push(0);
+    manifest_bytes.extend(lock_bytes);
+    Ok(manifest_bytes)
+}
+
+/// Repository check: exact package/lockfile pins and per-entry Rust UI source roots.
+pub fn check(root: &Path, problems: &mut Vec<String>) {
+    if let Err(error) = package_inputs(&root.join(DIR)) {
+        problems.push(error);
+    }
+
+    let expected = [
+        (
+            WEB_ENTRY,
+            &[
+                "apps/vink-web/src",
+                "packages/ui-system/leptos/src",
+                "packages/vink-patterns/leptos/src",
+            ][..],
+        ),
+        (
+            PREVIEW_ENTRY,
+            &[
+                "packages/ui-system/leptos/src",
+                "packages/ui-system/leptos/preview/src",
+                "packages/ui-system/leptos/preview/examples",
+                "packages/vink-patterns/leptos/src",
+            ][..],
+        ),
+    ];
+    for (entry, required) in expected {
+        check_entry(root, entry, required, problems);
+    }
+}
+
+fn check_entry(root: &Path, entry: &str, required: &[&str], problems: &mut Vec<String>) {
+    let entry_path = root.join(entry);
+    let Ok(text) = std::fs::read_to_string(&entry_path) else {
+        problems.push(format!("{entry} is missing"));
+        return;
+    };
+    if !text.contains("@layer theme, base, legacy, components, utilities;") {
+        problems.push(format!(
+            "{entry}: must declare the agreed cascade layer order"
+        ));
+    }
+    if !text.contains("@import \"tailwindcss/utilities.css\" layer(utilities) source(none);") {
+        problems.push(format!(
+            "{entry}: must scope scanning with source(none) plus explicit @source roots"
+        ));
+    }
+    let Ok(repo) = std::fs::canonicalize(root) else {
+        problems.push(format!(
+            "{entry}: cannot resolve repository root {}",
+            root.display()
+        ));
+        return;
+    };
+    let mut seen = BTreeSet::new();
+    for (line, directive) in text.lines().enumerate() {
+        let Some(target) = directive.trim().strip_prefix("@source ") else {
+            continue;
+        };
+        let target = target
+            .trim_end_matches(';')
+            .trim()
+            .trim_matches(['"', '\'']);
+        let dir = entry_path.parent().unwrap().join(target);
+        let canonical = std::fs::canonicalize(dir).ok();
+        let relative = canonical
+            .as_ref()
+            .filter(|path| path.is_dir())
+            .and_then(|path| path.strip_prefix(&repo).ok());
+        let allowed = required
+            .iter()
+            .copied()
+            .find(|candidate| relative == Some(Path::new(candidate)));
+        match allowed {
+            Some(path) if seen.insert(path) => {}
+            Some(path) => problems.push(format!(
+                "{entry}:{}: repeated @source root {path}",
+                line + 1
+            )),
+            None => problems.push(format!(
+                "{entry}:{}: @source {target} is outside the Rust UI allowlist",
+                line + 1
             )),
         }
     }
-
-    for entry in [WEB_ENTRY, PREVIEW_ENTRY] {
-        let entry_path = root.join(entry);
-        let Some(text) = read(&entry_path) else {
-            problems.push(format!("{entry} is missing"));
-            continue;
-        };
-        if !text.contains("@layer theme, base, legacy, components, utilities;") {
-            problems.push(format!(
-                "{entry}: must declare `@layer theme, base, legacy, components, utilities;`"
-            ));
-        }
-        if !text.contains("@import \"tailwindcss/utilities.css\" layer(utilities) source(none);") {
-            problems.push(format!(
-                "{entry}: must scope scanning with `source(none)` plus explicit `@source` roots"
-            ));
-        }
-        let mut source_count = 0usize;
-        for (line_no, line) in text.lines().enumerate() {
-            let trimmed = line.trim();
-            if let Some(rest) = trimmed.strip_prefix("@source ") {
-                source_count += 1;
-                let target = rest
-                    .trim_end_matches(';')
-                    .trim()
-                    .trim_matches('"')
-                    .trim_matches('\'');
-                let resolved = entry_path.parent().map(|p| p.join(target));
-                let canonical = resolved
-                    .as_ref()
-                    .and_then(|p| std::fs::canonicalize(p).ok());
-                let root_canon = std::fs::canonicalize(root).ok();
-                match (canonical, root_canon) {
-                    (Some(dir), Some(repo)) if dir.is_dir() && dir.starts_with(&repo) => {
-                        let rel = dir
-                            .strip_prefix(&repo)
-                            .unwrap_or(&dir)
-                            .to_string_lossy()
-                            .replace('\\', "/");
-                        let allowed = rel == "apps/vink-web/src"
-                            || rel == "packages/ui-system/leptos/src"
-                            || rel == "packages/ui-system/leptos/preview/src"
-                            || rel == "packages/ui-system/leptos/preview/examples"
-                            || rel == "packages/vink-patterns/leptos/src";
-                        if !allowed {
-                            problems.push(format!(
-                                "{entry}:{}: @source `{target}` resolves to `{rel}`, outside the Rust UI allowlist",
-                                line_no + 1
-                            ));
-                        }
-                    }
-                    _ => problems.push(format!(
-                        "{entry}:{}: @source `{target}` does not resolve to an existing directory inside the repository",
-                        line_no + 1
-                    )),
-                }
-            }
-        }
-        if source_count == 0 {
-            problems.push(format!("{entry}: must declare at least one `@source` root"));
-        }
+    for missing in required.iter().filter(|path| !seen.contains(**path)) {
+        problems.push(format!("{entry}: missing required @source root {missing}"));
     }
 }
 
@@ -295,6 +311,12 @@ mod tests {
             !stale.exists(),
             "failed compile must never leave stale CSS behind"
         );
+        std::fs::write(&stale, "/* stale CSS before compiler setup */").unwrap();
+        let missing_package_root = dir.join("missing-package-root");
+        let err = compile(&missing_package_root, &broken, &stale, false).unwrap_err();
+        assert!(err.contains("package.json"), "{err}");
+        assert!(!stale.exists(), "failed setup must not leave stale CSS");
+
         std::fs::remove_dir_all(dir).unwrap();
     }
 
@@ -348,6 +370,7 @@ mod tests {
                 // Real Leptos `view!` `class:` syntax (no whitespace workaround) and tuple syntax:
                 let _ = view! {
                     <div
+                        class=r"[&_.vk-ui-notice\_\_icon]:hidden"
                         class:rounded-none=banner
                         class:bg-vk-warning-container=err
                         class=("forced-colors:border", true)
@@ -379,6 +402,8 @@ mod tests {
             ".hover\\:underline:hover",
             ".focus-visible\\:outline-\\[3px\\]:focus-visible",
             ".forced-colors\\:border",
+            r".\[\&_\.vk-ui-notice\\_\\_icon\]\:hidden",
+            ".vk-ui-notice__icon",
         ] {
             assert!(css.contains(expected), "missing `{expected}` in:\n{css}");
         }
@@ -410,6 +435,80 @@ mod tests {
         );
 
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn source_roots_are_required_by_each_entry() {
+        let root = crate::root();
+        let mut problems = Vec::new();
+        check(&root, &mut problems);
+        assert!(problems.is_empty(), "{problems:?}");
+
+        let alternate = temp_dir("roots");
+        let dir = alternate.join(DIR);
+        std::fs::create_dir_all(&dir).unwrap();
+        for path in ["apps/vink-web/src", "packages/ui-system/leptos/src"] {
+            std::fs::create_dir_all(alternate.join(path)).unwrap();
+        }
+        std::fs::write(
+            alternate.join(WEB_ENTRY),
+            "@layer theme, base, legacy, components, utilities;\n\
+             @import \"tailwindcss/utilities.css\" layer(utilities) source(none);\n\
+             @source \"../src\";\n\
+             @source \"../../../../apps/vink-web/src\";\n",
+        )
+        .unwrap();
+        check_entry(
+            &alternate,
+            WEB_ENTRY,
+            &[
+                "packages/ui-system/leptos/src",
+                "packages/vink-patterns/leptos/src",
+            ],
+            &mut problems,
+        );
+        std::fs::remove_dir_all(alternate).unwrap();
+        assert!(
+            problems
+                .iter()
+                .any(|p| p.contains("outside the Rust UI allowlist")),
+            "{problems:?}"
+        );
+        assert!(
+            problems
+                .iter()
+                .any(|p| p
+                    .contains("missing required @source root packages/vink-patterns/leptos/src")),
+            "{problems:?}"
+        );
+    }
+
+    #[test]
+    fn rejects_manifest_lock_drift_with_or_without_a_cached_install() {
+        let root = crate::root();
+        let alternate = temp_dir("pin-drift");
+        let dir = alternate.join(DIR);
+        std::fs::create_dir_all(&dir).unwrap();
+        for name in ["package.json", "package-lock.json"] {
+            std::fs::copy(root.join(DIR).join(name), dir.join(name)).unwrap();
+        }
+        let original = package_inputs(&dir).unwrap();
+        let manifest = dir.join("package.json");
+        let mut changed: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&manifest).unwrap()).unwrap();
+        changed["devDependencies"]["tailwindcss"] = serde_json::json!("4.1.8");
+        std::fs::write(manifest, serde_json::to_vec(&changed).unwrap()).unwrap();
+
+        for cached in [false, true] {
+            if cached {
+                std::fs::create_dir_all(dir.join("node_modules/.bin")).unwrap();
+                std::fs::write(dir.join("node_modules/.bin/tailwindcss"), []).unwrap();
+                std::fs::write(dir.join("node_modules/.vink-tailwind-inputs"), &original).unwrap();
+            }
+            let err = ensure_installed(&alternate).unwrap_err();
+            assert!(err.contains("differ from package.json"), "{err}");
+        }
+        std::fs::remove_dir_all(alternate).unwrap();
     }
 
     #[test]

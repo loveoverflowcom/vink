@@ -68,7 +68,8 @@ revision hiện hành là `PRODUCT_CONFIRMED`. OQ-1..OQ-4 và CHOICE-01..06 vẫ
 kỹ thuật của [#417](https://github.com/loveoverflowcom/vink/issues/417) (`CHOICE-01 B` compiler pin
 `4.3.5` trong `packages/ui-system/leptos/tailwind`, `CHOICE-02 A` không Preflight + `@layer` +
 `source(none)` allowlist, `CHOICE-03 A` sinh `tailwind-theme.css` từ `cargo xtask ui-tokens`,
-`CHOICE-04 B` xóa bảng màu/chữ mặc định + mở rộng guard `ui_qualification.rs` cho Rust UI và 4 CSS).
+`CHOICE-04 B` xóa bảng màu/chữ mặc định + mở rộng guard `ui_qualification.rs` cho Rust UI và CSS giữ lại). Phạm vi triển khai hiện tại gồm 5 thư mục Rust UI,
+4 stylesheet giữ lại và 2 entry CSS. Payload r1 giữ phạm vi ghi trong đề xuất ban đầu.
 Proposal này ở trạng thái `PENDING` (chưa có signoff đúng revision/SHA-256). Chi tiết baseline,
 inventory, pilot và bằng chứng nằm tại
 [docs/development/tailwind-web-foundation.md](../docs/development/tailwind-web-foundation.md).
