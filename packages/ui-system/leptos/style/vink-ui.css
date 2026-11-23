@@ -1245,56 +1245,14 @@ a.vk-ui-byline__identity:focus-visible {
 
 /* SurfacePulse --------------------------------------------------------------------------------- */
 
+/* The discussion list overrides the outer radius, surface and animation. */
 .vk-ui-skeleton {
-  display: grid;
-  gap: var(--vk-space-3);
-  padding: var(--vk-space-4);
   border-radius: var(--vk-radius-lg);
   background-color: var(--vk-surface-container-low);
   animation: vk-ui-pulse var(--vk-duration-pulse) ease-in-out var(--vk-loop-iterations);
 }
 
-.vk-ui-skeleton--text {
-  padding: 0;
-  background-color: transparent;
-}
-
-.vk-ui-skeleton__line,
-.vk-ui-skeleton__avatar {
-  display: block;
-  block-size: 1em;
-  border-radius: var(--vk-radius-sm);
-  background-color: var(--vk-surface-container-highest);
-}
-
-.vk-ui-skeleton__line--title {
-  inline-size: 70%;
-  block-size: 1.5em;
-}
-
-.vk-ui-skeleton__line--meta { inline-size: 40%; }
-.vk-ui-skeleton__line--short { inline-size: 60%; }
-
-.vk-ui-skeleton__byline {
-  display: flex;
-  align-items: center;
-  gap: var(--vk-space-3);
-}
-
-.vk-ui-skeleton__byline .vk-ui-skeleton__line--meta { flex: 0 1 40%; }
-
-.vk-ui-skeleton__avatar {
-  flex: none;
-  inline-size: var(--vk-size-avatar-sm);
-  block-size: var(--vk-size-avatar-sm);
-  border-radius: var(--vk-radius-full);
-}
-
-.vk-ui-skeleton__stack {
-  display: grid;
-  flex: 1;
-  gap: var(--vk-space-2);
-}
+.vk-ui-skeleton--text { background-color: transparent; }
 
 [data-active="false"] .vk-ui-arc svg,
 .vk-ui-arc[data-active="false"] svg,
