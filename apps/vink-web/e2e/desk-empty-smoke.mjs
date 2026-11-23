@@ -270,11 +270,13 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
         check(await page.eval(`(() => {
           const error=document.querySelector('#drafts .vk-draft-list [role=alert] .vk-empty-state');
           const retry=error?.querySelector('#retry-drafts');
-          if (!retry || document.documentElement.scrollWidth>innerWidth) return false;
+          if (!retry || retry.getAttribute('aria-disabled')==='true' || document.documentElement.scrollWidth>innerWidth) return false;
           retry.scrollIntoView({block:'center'});
           const rect=retry.getBoundingClientRect(), bottom=document.querySelector('.vk-ui-bottom-nav');
           return rect.top>=0 && rect.height>=48 && rect.bottom<=(bottom?.getClientRects().length?bottom.getBoundingClientRect().top:innerHeight)+1;
         })()`), `#411 error offers a reachable retry at ${width}/${theme}/text${scale}`);
+        await page.eval(`Promise.all(document.getAnimations().filter(a => Number.isFinite(a.effect.getComputedTiming().endTime)).map(a => a.finished.catch(() => {})))`);
+        await textContrast(page, theme, 'desk-retry', ['#retry-drafts .vk-ui-button__label']);
         await page.capture(`desk-list-error-${width}-${theme}-${scale}`, {scenario:'#411-retained-error',target:'[data-testid=desk-error]',boundary:'intercepted-private-summary-transport'});
       }
       await page.viewport(390);

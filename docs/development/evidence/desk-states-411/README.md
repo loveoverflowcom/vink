@@ -35,3 +35,9 @@ Ca Chrome `desk-guest-open` dùng App SSR trên `03730853`, bundle hydrate của
 `b4fe62fa`, CSS tại `3356c271`, Identity native và PostgreSQL thử nghiệm. PASS cả
 24 tổ hợp kích thước, theme và cỡ chữ. Trang khách gửi 0 request danh sách riêng,
 có một nút chính “Đăng nhập” tới `/toi?next=/ban-viet` và liên kết “Khám phá tác phẩm”.
+
+Trên bản ghép `79e0d632` (đã có #429), SSR, WASM và CSS được dựng lại.
+Chrome qua `desk-guest-open`, `desk-guest`, `desk-empty` và `author-works`.
+Hai ảnh lỗi trong bảng dùng bản ghép này. Ca chụp đợi hiệu ứng đổi theme kết thúc
+và đo tương phản chữ “Thử lại” trên nút đang bật, đạt 8,16:1 ở 320 px tối/200%
+và 6,98:1 ở 1440 px sáng/100%.
