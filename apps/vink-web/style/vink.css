@@ -781,8 +781,8 @@ a {
 .vk-desk-heading .vk-search-launcher, .vk-desk-heading .vk-search-close { display: inline-flex; }
 .vk-desk-heading [hidden], .vk-draft-controls [hidden] { display: none; }
 .vk-desk-heading__actions > .vk-desk-create { flex: 0 1 auto; }
-.vk-drafts-region, .vk-desk-works, .vk-draft-list { display: grid; min-inline-size: 0; }
-.vk-desk-works, .vk-draft-list { gap: var(--vk-space-3); }
+/* The loading and empty-state placement rules switch these wrappers to flex. */
+.vk-drafts-region, .vk-desk-works, .vk-draft-list { display: grid; }
 .vk-empty-state__actions > a {
   max-inline-size: 100%;
   overflow-wrap: anywhere;
@@ -844,10 +844,6 @@ a {
 .vk-draft-search .vk-ui-search__shell { min-block-size: var(--vk-density-control-height); padding-block: 0; }
 .vk-draft-search .vk-ui-input { padding-block: 0; }
 #draft-scope, .vk-draft-sort-help { margin: 0; font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
-/* DraftRow owns equal insets; the list owns one quiet surface, with space between links. */
-.vk-draft-rows { display: grid; gap: var(--vk-space-2); margin: 0; padding: 0; list-style: none; }
-.vk-draft-rows > li { min-inline-size: 0; }
-.vk-draft-rows:empty { display: none; }
 .vk-draft-sort-help { flex-basis: 100%; text-align: end; }
 .vk-desk-privacy { margin-top: var(--vk-space-8); font-size: var(--vk-type-label-size); }
 /* The first-use CTA drops its icon to keep the full label measure at 320px/text200. */

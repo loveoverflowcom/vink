@@ -511,9 +511,9 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
             </DeskAccess>
         })}
         <Show when=move || access_error.with(Option::is_none)>
-            <section id="drafts" class="vk-drafts-region" aria-label="Tác phẩm của bạn">
+            <section id="drafts" class="vk-drafts-region [min-inline-size:0]" aria-label="Tác phẩm của bạn">
                 <h2 id="draft-list-title" class="vk-ui-visually-hidden" tabindex="-1">"Tác phẩm của bạn"</h2>
-                <div class="vk-desk-works" data-testid="draft-content"
+                <div class="vk-desk-works gap-vk-3 [min-inline-size:0]" data-testid="draft-content"
                     aria-busy=move || if loading.get() { "true" } else { "false" }>
                     <CreateNotice creation loading refresh />
                     // The tools/input retain one owner through loading, empty, query and error.
@@ -694,7 +694,7 @@ fn DraftListView(
     };
     let opening = move || !ready.get() && loading.get();
     view! {
-        <div class="vk-draft-list">
+        <div class="vk-draft-list gap-vk-3 [min-inline-size:0]">
             <div class="vk-draft-controls">
                 <p id="draft-scope" class="vk-muted" class:vk-ui-visually-hidden=move || first_use.get()
                     hidden=opening role=move || (!opening()).then_some("status") aria-atomic="true" data-testid="draft-result-count">
@@ -756,7 +756,7 @@ fn DraftListView(
                     </div>
                 }
             })}
-            <ul id="draft-results" class="vk-draft-rows" aria-label="Tác phẩm đã tải" role="list">
+            <ul id="draft-results" class="vk-draft-rows grid gap-vk-2 m-0 p-0 [list-style:none] empty:hidden" aria-label="Tác phẩm đã tải" role="list">
                 <For each=move || pages.with(|p| p.drafts.clone())
                     key=|draft| draft.work_id.clone()
                     children=move |draft| {
@@ -765,7 +765,7 @@ fn DraftListView(
                         let work = Signal::derive(move || pages.with(|p| p.drafts.iter().find(|d| d.work_id == id)
                             .map(adapters::author_work_summary).unwrap_or_else(|| fallback.clone())));
                         view! {
-                            <li id=format!("draft-row-{}", draft.work_id) class="vk-draft-row" data-testid="draft-row">
+                            <li id=format!("draft-row-{}", draft.work_id) class="vk-draft-row [min-inline-size:0]" data-testid="draft-row">
                                 <AuthorWorkRow work />
                             </li>
                         }
