@@ -2,9 +2,12 @@
 
 ## Chủ nguồn và baseline
 
-Chủ giá trị token: `packages/ui-system/shared/tokens.json` (CSS/Rust/Kotlin sinh bằng
-`cargo xtask ui-tokens`); chủ primitive web: `packages/ui-system/leptos/style/vink-ui.css`; composition: `packages/vink-patterns/leptos/patterns.css`; `apps/vink-web/style/vink.css` giữ page layout/CodeMirror. Dùng `--vk-*` và
-`.vk-*`; không tạo palette thứ hai trong feature hay renderer. [Baseline thiết kế](../../../../docs/design/README.md)
+Chủ giá trị token: `packages/ui-system/shared/tokens.json` (sinh `tokens.css`, `tailwind-theme.css`,
+Rust và Kotlin bằng `cargo xtask ui-tokens`); chủ primitive Web: `packages/ui-system/leptos`
+(`src/` + `style/vink-ui.css`); composition: `packages/vink-patterns/leptos` (`src/` + `patterns.css`);
+`apps/vink-web` (`src/` + `style/vink.css`) giữ page layout/CodeMirror. Quy ước utility Tailwind v4
+và guard token nằm tại [Tailwind v4 + Leptos 0.8](../../vink-leptos-web/references/tailwind.md). Dùng
+`--vk-*` / utility `*-vk-*` và semantic hook `.vk-*`; không tạo palette thứ hai trong feature hay renderer. [Baseline thiết kế](../../../../docs/design/README.md)
 ghi nguồn, bảng role sáng/tối, cơ chế theme và tương phản đã đo; đọc giá trị hiện hành
 trong CSS thay vì chép lại ở đây. Baseline không phải phê duyệt thương hiệu production.
 

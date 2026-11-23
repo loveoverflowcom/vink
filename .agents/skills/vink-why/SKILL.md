@@ -45,6 +45,9 @@ temporary decisions; compare those conditions to the current task.
 
 Separate **recorded rationale**, **inference from code/history** and **unknown**. For each
 material reason, cite the decision section, commit/path or exact PR/comment that supports it.
+For Web styling / Tailwind v4 architecture questions, cite the owning decision record
+(`VDR-WEB-TAILWIND-FOUNDATION@r1`), [tailwind-web-foundation.md](../../../docs/development/tailwind-web-foundation.md)
+and recorded before/after measurements rather than unmeasured productivity or size claims.
 If sources disagree, explain their dates and scopes instead of silently choosing the story
 that best fits the current code. Absence of a recorded reason is not proof that none existed.
 
