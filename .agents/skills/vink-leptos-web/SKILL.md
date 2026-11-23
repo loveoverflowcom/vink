@@ -17,7 +17,7 @@ do not inherit Cantos's CSR/Trunk setup.
 
 | Concern | Owner |
 | --- | --- |
-| Shell, routes, hydration entry (`hydrate()`) | `apps/vink-web/src/lib.rs` |
+| Routes and hydration entry (`hydrate()`), adaptive shell | `apps/vink-web/src/lib.rs` for routing and boot, `src/shell.rs` for the app shell. See the [owner map](../vink-ui-design/references/source-map.md#owner-map-cho-bàn-giao-code) for appearance and shared navigation. |
 | Pages: home, reader, not-found; Bàn viết | `src/pages/mod.rs`, `src/pages/desk.rs` |
 | The web app's own API v1 types and error classification | `src/contract.rs` (checked against the provider fixtures) |
 | Data access: SSR through `server::PublicReads`, browser through `/api/v1` | `src/api.rs`, `src/server.rs` |
