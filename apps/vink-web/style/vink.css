@@ -2267,10 +2267,9 @@ a {
 .vk-main:has(.vk-empty-state, .vk-desk-loading) > :is(.vk-desk--index, .vk-discovery) { inline-size: 100%; }
 .vk-main :is(#public-results, .vk-draft-list) > :has(> .vk-empty-state) { margin-block: auto; }
 .vk-desk--index > :is(.vk-desk-access, .vk-desk-loading),
-.vk-draft-list > :is(.vk-desk-loading, .vk-desk-list-error:not(.vk-desk-list-error--retained)) {
-  margin-block: auto;
-}
-.vk-draft-list > .vk-desk-list-error--retained { margin-block: 0; }
+.vk-draft-list > .vk-desk-loading { margin-block: auto; }
+/* Only real rows need room below the error. Empty retained results still center the state. */
+.vk-draft-list:has(> #draft-results:not(:empty)) > .vk-desk-list-error--retained { margin-block: 0; }
 /* Flex keeps the margins block layout used to collapse, so a nav without links must not offset it. */
 .vk-main:has(.vk-empty-state, .vk-desk-loading) .vk-public-pagination:empty { display: none; }
 .vk-empty-state {

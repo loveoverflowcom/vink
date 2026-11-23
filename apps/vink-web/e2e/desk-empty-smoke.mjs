@@ -256,6 +256,21 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
       await gate.fulfill(pending, 503, {error:{code:'dependency_unavailable'}});
       await settled();
       check(await page.eval(`document.querySelector('[data-testid=desk-error]') && document.querySelector('[data-testid=author-work-stale]') && !document.querySelector('#drafts img')`), '#259 load error preserves warning and is not artwork empty');
+      for (const [width, theme, scale] of [[320, 'dark', 200], [1440, 'light', 100]]) {
+        await page.viewport(width);
+        await page.eval(`document.documentElement.dataset.theme='${theme}'; document.documentElement.style.fontSize='${scale}%'; scrollTo(0,0); document.fonts.ready`);
+        check(await page.eval(`(() => {
+          const error=document.querySelector('#drafts .vk-draft-list [role=alert] .vk-empty-state');
+          const retry=error?.querySelector('#retry-drafts');
+          if (!retry || document.documentElement.scrollWidth>innerWidth) return false;
+          retry.scrollIntoView({block:'center'});
+          const rect=retry.getBoundingClientRect(), bottom=document.querySelector('.vk-ui-bottom-nav');
+          return rect.top>=0 && rect.height>=48 && rect.bottom<=(bottom?.getClientRects().length?bottom.getBoundingClientRect().top:innerHeight)+1;
+        })()`), `#411 error offers a reachable retry at ${width}/${theme}/text${scale}`);
+        await page.capture(`desk-list-error-${width}-${theme}-${scale}`, {scenario:'#411-retained-error',target:'[data-testid=desk-error]',boundary:'intercepted-private-summary-transport'});
+      }
+      await page.viewport(390);
+      await page.eval(`document.documentElement.style.fontSize='100%'; document.documentElement.dataset.theme='light'; scrollTo(0,0)`);
       gate.holdGets = false;
       gate.list = { raw:true, body:{drafts:[],next_cursor:'fixture:24'} };
       await page.click('#retry-drafts'); await settled();
