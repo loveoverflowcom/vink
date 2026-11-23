@@ -195,12 +195,20 @@ fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
                     <DraftRow draft=draft(long) />
                     <AuthorWorkRow work=AuthorWorkSummary {
                         title: "[Dữ liệu mẫu] Bản đã đăng có bản sửa".into(),
+                        untitled: false,
                         updated_at: "2026-11-15T12:00:00Z".into(),
                         editor_href: Some("#sample-editor".into()),
-                        status: "Đã đăng · Có bản sửa · Bản mới đang chờ duyệt".into(),
-                        metrics: Some("Thấm 0 · Nhận xét 12".into()),
-                        public_context: Some("Của bản đang công khai · Dữ liệu mẫu".into()),
-                        reader_href: Some("#sample-reader".into()),
+                        status: vec![
+                            AuthorWorkLabel::new("Đã đăng", "Đã đăng", IconName::Check),
+                            AuthorWorkLabel::new("Có bản sửa", "Đã đăng · Có bản sửa", IconName::Edit),
+                            AuthorWorkLabel::new("Bản mới chờ duyệt", "Bản mới đang chờ duyệt", IconName::Schedule),
+                        ],
+                        public: Some(AuthorWorkPublic {
+                            href: "#sample-reader".into(),
+                            title: Some("[Dữ liệu mẫu] Bản đang công khai".into()),
+                            tham: Some(0),
+                            comments: Some(12),
+                        }),
                     } />
                 </Surface>
             }.into_any(),

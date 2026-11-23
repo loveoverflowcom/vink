@@ -60,7 +60,10 @@ Owner chỉ từ Actor/session; cursor là vị trí, không quyền. Route nằ
 Browser chỉ tải sau hydration; không serialize author facts trong SSR, không public/IndexedDB
 cache. ReadOwner scope/generation chống late reply/ABA, xóa khi 401/403/đổi account/logout.
 Same-account retained snapshot báo stale; reconnect không replay create/publish/endorsement.
-Tên public khác tên draft có context rõ; count là text, link đọc là sibling của link editor.
+Tên public khác tên draft có context rõ. [R4 #410](https://github.com/loveoverflowcom/vink/issues/410)
+hiển thị mỗi tác phẩm trên thẻ riêng, chuyển các trạng thái thành tối đa ba nhãn có icon
+và dùng icon kèm số cho Thấm/Nhận xét. Số chưa tải được có dấu “—” kèm tên chỉ số.
+“Đọc” mở bản công khai qua một liên kết bên cạnh liên kết editor.
 
 ## Owners và kiểm chứng
 

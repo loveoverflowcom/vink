@@ -14,32 +14,57 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
     const endorsements=await page.eval(`fetch('/api/v1/works/${published.work_id}/endorsements').then(r=>r.json())`);
     check(endorsements.work.count===published.publication.current_public.tham, 'real Reader and Desk share the revision-scoped Thấm count');
     check(await page.eval(`document.querySelector('#draft-row-${published.work_id} [data-testid=author-work-metrics]').textContent.includes('Thấm')`), 'real public metrics render in Desk');
+    await page.click(`#draft-row-${published.work_id} .vk-author-work__reader`);
+    await page.waitFor(`location.pathname==='/tac-pham/${published.work_id}' && document.querySelector('.vk-reader')?.dataset.revision==='${reader.revision_id}'`, '#410 the separate action opens the current public revision');
+    await page.eval('history.back()');
+    await page.waitFor(`location.pathname==='/ban-viet' && document.querySelector('#draft-row-${published.work_id} .vk-author-work__reader') && document.querySelector('[data-testid=draft-content]')?.getAttribute('aria-busy')==='false'`, '#410 browser Back restores the Desk and the public action');
   }
   const title='Những ngày mưa ở khuỷu đường cũ, nơi người trở về vẫn nhớ tiếng Việt và những khổ thơ chưa kịp đặt tên'.normalize('NFD');
   const state={audience:'public',lifecycle:'active',generation:3,intent_revision_id:'r2',intent_moderation:'pending',latest_revision_id:'r2',latest_moderation:'pending',review_withdrawn:false,has_draft_changes:true,current_public:{revision_id:'r1',title:'Tên của bản đang công khai',tham:0,comments:123456789}};
   const card=(i,publication=state)=>({work_id:`88888888-8888-4888-8888-${String(i).padStart(12,'0')}`,title:i===0?title:`[214] Tác phẩm ${i}`,draft_version:3,updated_at:'2026-11-15T12:00:00Z',publication});
   const works=[card(0),card(1,{...state,audience:'private',current_public:null,intent_revision_id:null,intent_moderation:null,latest_revision_id:null,latest_moderation:null,generation:1}),card(2,{...state,intent_moderation:'rejected',latest_moderation:'rejected'}),card(3,{...state,audience:'future'}),card(4,{...state,current_public:{...state.current_public,tham:null,comments:null}})];
+  works[1].title = "";
   works.push({...card(5,works[1].publication),draft_version:null});
   const gate=new DraftGate(page); gate.list={raw:true,body:{works,next_cursor:null}};await gate.enable();
   const settled=()=>page.waitFor(`document.querySelector('[data-testid=draft-content]')?.getAttribute('aria-busy')==='false'`,'author summary settles');
   try {
     await wakeDesk(page);await settled();
     check(await page.eval(`document.querySelectorAll('[data-testid=draft-row]').length===6 && document.querySelectorAll('[data-testid=author-work-metrics]').length===3`), 'private/unknown rows hide metrics; known zero and unavailable remain distinct');
-    check(await page.eval(`document.querySelector('#draft-row-${works[5].work_id} .vk-author-work__status').textContent.startsWith('Chỉ mình tôi') && document.querySelector('#draft-row-${works[5].work_id}').textContent.includes('Không có bản nháp để sửa') && !document.querySelector('#draft-row-${works[5].work_id} a')`), 'a private work without a draft has truthful status and no fabricated editor target');
+    check(await page.eval(`(() => {
+      const row=document.querySelector('#draft-row-${works[1].work_id}');
+      const title=row.querySelector('.vk-draft-row__title'), time=row.querySelector('time');
+      return title.textContent==='Chưa đặt tên' && getComputedStyle(title).fontStyle==='italic' &&
+        time.dateTime==='2026-11-15T12:00:00Z' && time.title===time.dateTime && time.textContent.includes('15/11/2026');
+    })()`), '#410 untitled works use an italic placeholder and retain the authoritative timestamp');
+    check(await page.eval(`document.querySelector('#draft-row-${works[5].work_id} .vk-author-work__status').querySelector('[title="Chỉ mình tôi"]') && document.querySelector('#draft-row-${works[5].work_id}').textContent.includes('Không có bản nháp để sửa') && !document.querySelector('#draft-row-${works[5].work_id} a')`), 'a private work without a draft has truthful status and no fabricated editor target');
     check(await page.eval(`document.querySelector('#draft-row-${works[0].work_id}').textContent.includes('Đã đăng · Có bản sửa') && document.querySelector('#draft-row-${works[2].work_id}').textContent.includes('không được duyệt')`), 'public pointer coexists with pending/rejected newer revisions');
-    check(await page.eval(`document.querySelector('#draft-row-${works[4].work_id}').textContent.includes('Thấm —') && !!document.querySelector('#draft-row-${works[4].work_id} a[href^="/ban-viet/"]')`), 'unavailable metrics keep the editor link usable');
+    check(await page.eval(`document.querySelector('#draft-row-${works[4].work_id}').querySelector('[title="Chưa tải được số Thấm"]') && !!document.querySelector('#draft-row-${works[4].work_id} a[href^="/ban-viet/"]')`), 'unavailable metrics keep the editor link usable');
     check(await page.eval(`document.querySelectorAll('#draft-results a a, #draft-results a button, #draft-results button').length===0`), 'readonly counters offer no endorsement mutation or nested targets');
     check(await page.eval(`(() => {
       const row=document.querySelector('#draft-row-${works[0].work_id}');
       const title=row.querySelector('.vk-draft-row__title'), metadata=row.querySelector('.vk-author-work__status');
       const editor=row.querySelector('.vk-draft-row__link'), reader=row.querySelector('.vk-author-work__reader');
-      return editor.contains(title) && editor.contains(metadata) && reader.closest('a')===reader && !editor.contains(reader);
+      return editor.contains(title) && editor.contains(metadata) && reader.closest('a')===reader && !editor.contains(reader) && reader.textContent==='Đọc' && reader.getAttribute('aria-label')==='Đọc bản công khai của Tên của bản đang công khai';
     })()`), 'F-13 editor covers status and title, and published works retain an independent reader link');
-    for (const width of [320,390,834,1440]) for (const theme of ['light','dark']) for (const scale of [100,200]) {
+    check(await page.eval(`(() => {
+      const cards=[...document.querySelectorAll('.vk-author-work')], first=cards[0];
+      const [tham,comments]=first.querySelectorAll('.vk-author-work__count');
+      const shape=getComputedStyle(first);
+      return shape.borderRadius==='20px' && shape.backgroundColor!=='rgba(0, 0, 0, 0)' &&
+        getComputedStyle(document.querySelector('#draft-results')).rowGap==='8px' &&
+        getComputedStyle(tham).fontVariantNumeric==='tabular-nums' &&
+        tham.title==='0 Thấm' && comments.title==='123456789 nhận xét' &&
+        tham.querySelector('[data-icon=pen-flight]').getBoundingClientRect().width===26 &&
+        comments.querySelector('[data-icon=chat-bubble-outline]').getBoundingClientRect().width===24 &&
+        first.querySelectorAll('.vk-author-work__label').length===3 &&
+        first.querySelector('.vk-author-work__reader').getBoundingClientRect().height>=48;
+    })()`), '#410 separate 20px cards with an 8px gap, factual badges and public counters');
+    for (const width of [320,390,834,1440]) for (const theme of ['light','dark']) for (const scale of [100,150,200]) {
       await page.viewport(width);
       await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:0,y:0});
       await page.eval(`document.documentElement.dataset.theme='${theme}';document.documentElement.style.fontSize='${scale}%';document.querySelector('#drafts').scrollIntoView({block:'start'})`);
-      await page.eval(`document.fonts.ready`);
+      await page.eval(`document.fonts.ready.then(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))))`);
+      await page.eval(`Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))`);
       check(await page.eval(`document.documentElement.scrollWidth<=innerWidth && [...document.querySelectorAll('.vk-author-work')].every(e=>e.getBoundingClientRect().right<=innerWidth+1)`), `author rows reflow ${width}/${theme}/text${scale}`);
       await page.capture(`author-works-${width}-${theme}-${scale}`,{boundary:'fabricated-author-summary-real-hydration',scenario:'#214-states-reflow'});
     }
@@ -53,7 +78,7 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
     await page.viewport(390);await page.eval(`document.documentElement.style.fontSize='100%';document.querySelector('#draft-search').focus();document.querySelector('#draft-search').setSelectionRange(0,0);window.__authorInput=document.querySelector('#draft-search');window.__authorEditor=document.querySelector('.vk-draft-row__link')`);
     gate.list={raw:true,body:{works:[{...works[0],publication:{...state,current_public:{revision_id:'r2',title:'Bản mới công khai',tham:8,comments:2},has_draft_changes:false,intent_revision_id:'r2',intent_moderation:'approved'}}],next_cursor:null}};
     await wakeDesk(page);await settled();
-    check(await page.eval(`document.querySelector('[data-testid=author-work-metrics]').textContent==='Thấm 8 · Nhận xét 2' && !document.querySelector('#draft-results').textContent.includes('Có bản sửa') && document.querySelector('#draft-search')===window.__authorInput && document.activeElement===window.__authorInput && document.querySelector('.vk-draft-row__link')===window.__authorEditor`), 'refresh replaces pointer+counts together without remounting input or stealing focus');
+    check(await page.eval(`[...document.querySelectorAll('[data-testid=author-work-metrics] .vk-author-work__count')].map(c=>c.title).join('|')==='8 Thấm|2 nhận xét' && !document.querySelector('#draft-results').textContent.includes('Có bản sửa') && document.querySelector('#draft-search')===window.__authorInput && document.activeElement===window.__authorInput && document.querySelector('.vk-draft-row__link')===window.__authorEditor`), 'refresh replaces pointer+counts together without remounting input or stealing focus');
     gate.holdGets=true;await wakeDesk(page);const held=await gate.next('gets');await gate.fulfill(held,503,{error:{code:'dependency_unavailable'}});await settled();
     check(await page.eval(`!!document.querySelector('[data-testid=author-work-stale]') && !!document.querySelector('.vk-draft-row__link')`),'read outage retains same-account snapshot with an explicit stale label');
     await wakeDesk(page);const denied=await gate.next('gets');await gate.fulfill(denied,403,{error:{code:'forbidden'}});
