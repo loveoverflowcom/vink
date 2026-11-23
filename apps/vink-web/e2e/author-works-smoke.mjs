@@ -14,6 +14,10 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
     const endorsements=await page.eval(`fetch('/api/v1/works/${published.work_id}/endorsements').then(r=>r.json())`);
     check(endorsements.work.count===published.publication.current_public.tham, 'real Reader and Desk share the revision-scoped Thấm count');
     check(await page.eval(`document.querySelector('#draft-row-${published.work_id} [data-testid=author-work-metrics]').textContent.includes('Thấm')`), 'real public metrics render in Desk');
+    await page.click(`#draft-row-${published.work_id} .vk-author-work__reader`);
+    await page.waitFor(`location.pathname==='/tac-pham/${published.work_id}' && document.querySelector('.vk-reader')?.dataset.revision==='${reader.revision_id}'`, '#410 the separate action opens the current public revision');
+    await page.eval('history.back()');
+    await page.waitFor(`location.pathname==='/ban-viet' && document.querySelector('#draft-row-${published.work_id} .vk-author-work__reader') && document.querySelector('[data-testid=draft-content]')?.getAttribute('aria-busy')==='false'`, '#410 browser Back restores the Desk and the public action');
   }
   const title='Những ngày mưa ở khuỷu đường cũ, nơi người trở về vẫn nhớ tiếng Việt và những khổ thơ chưa kịp đặt tên'.normalize('NFD');
   const state={audience:'public',lifecycle:'active',generation:3,intent_revision_id:'r2',intent_moderation:'pending',latest_revision_id:'r2',latest_moderation:'pending',review_withdrawn:false,has_draft_changes:true,current_public:{revision_id:'r1',title:'Tên của bản đang công khai',tham:0,comments:123456789}};
