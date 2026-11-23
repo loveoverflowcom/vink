@@ -296,35 +296,42 @@ pub fn EdgeProgress(
 /// the region around it names the loading state.
 #[component]
 pub fn Skeleton(#[prop(optional)] shape: Option<SkeletonShape>) -> impl IntoView {
+    const LINE: &str =
+        "vk-ui-skeleton__line block [block-size:1em] rounded-vk-sm bg-vk-surface-container-highest";
+    const SHORT_LINE: &str = "vk-ui-skeleton__line vk-ui-skeleton__line--short block [block-size:1em] [inline-size:60%] rounded-vk-sm bg-vk-surface-container-highest";
+    const META_LINE: &str = "vk-ui-skeleton__line vk-ui-skeleton__line--meta block [block-size:1em] [inline-size:40%] flex-[0_1_40%] rounded-vk-sm bg-vk-surface-container-highest";
+    const BYLINE: &str = "vk-ui-skeleton__byline flex items-center gap-vk-3";
+    const AVATAR: &str = "vk-ui-skeleton__avatar block flex-none [inline-size:var(--vk-size-avatar-sm)] [block-size:var(--vk-size-avatar-sm)] rounded-vk-full bg-vk-surface-container-highest";
+
     let shape = shape.unwrap_or(SkeletonShape::Card);
     let line = |class: &'static str| view! { <span class=class></span> };
     let body = match shape {
         SkeletonShape::Text { lines } => (0..lines.max(1))
             .map(|i| {
                 line(if i + 1 == lines.max(1) {
-                    "vk-ui-skeleton__line vk-ui-skeleton__line--short"
+                    SHORT_LINE
                 } else {
-                    "vk-ui-skeleton__line"
+                    LINE
                 })
             })
             .collect_view()
             .into_any(),
         SkeletonShape::Card => view! {
-            <span class="vk-ui-skeleton__line vk-ui-skeleton__line--title"></span>
-            <span class="vk-ui-skeleton__byline">
-                <span class="vk-ui-skeleton__avatar"></span>
-                <span class="vk-ui-skeleton__line vk-ui-skeleton__line--meta"></span>
+            <span class="vk-ui-skeleton__line vk-ui-skeleton__line--title block [inline-size:70%] [block-size:1.5em] rounded-vk-sm bg-vk-surface-container-highest"></span>
+            <span class=BYLINE>
+                <span class=AVATAR></span>
+                <span class=META_LINE></span>
             </span>
-            <span class="vk-ui-skeleton__line"></span>
-            <span class="vk-ui-skeleton__line vk-ui-skeleton__line--short"></span>
+            <span class=LINE></span>
+            <span class=SHORT_LINE></span>
         }
         .into_any(),
         SkeletonShape::Byline => view! {
-            <span class="vk-ui-skeleton__byline">
-                <span class="vk-ui-skeleton__avatar"></span>
-                <span class="vk-ui-skeleton__stack">
-                    <span class="vk-ui-skeleton__line vk-ui-skeleton__line--meta"></span>
-                    <span class="vk-ui-skeleton__line vk-ui-skeleton__line--short"></span>
+            <span class=BYLINE>
+                <span class=AVATAR></span>
+                <span class="vk-ui-skeleton__stack grid flex-1 gap-vk-2">
+                    <span class=META_LINE></span>
+                    <span class=SHORT_LINE></span>
                 </span>
             </span>
         }
@@ -332,7 +339,11 @@ pub fn Skeleton(#[prop(optional)] shape: Option<SkeletonShape>) -> impl IntoView
     };
     view! {
         <div
-            class=format!("vk-ui-skeleton vk-ui-skeleton--{}", shape.id())
+            class=match shape {
+                SkeletonShape::Text { .. } => "vk-ui-skeleton vk-ui-skeleton--text grid gap-vk-3 p-0",
+                SkeletonShape::Card => "vk-ui-skeleton vk-ui-skeleton--card grid gap-vk-3 p-vk-4",
+                SkeletonShape::Byline => "vk-ui-skeleton vk-ui-skeleton--byline grid gap-vk-3 p-vk-4",
+            }
             aria-hidden="true"
             data-active=active_attr()
         >
