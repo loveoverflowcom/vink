@@ -921,11 +921,8 @@ a {
 /* Keep the native search description without repeating the visible scope/status line. */
 .vk-draft-search #draft-search-help { position: absolute; inline-size: 1px; block-size: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 #draft-scope, .vk-draft-sort-help { margin: 0; font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
-/* DraftRow owns equal insets. R4.2 (#402): each row is a separate bg-content card, equal 20px
- * corners and an 8px gap of page background; no list surface or divider. */
-.vk-draft-rows { display: grid; gap: var(--vk-space-card-gap); margin: 0; padding: 0; list-style: none; }
-.vk-draft-rows > li { min-inline-size: 0; border-radius: var(--vk-radius-card); background: var(--vk-bg-content); }
-.vk-draft-rows .vk-draft-row__link { border-radius: var(--vk-radius-card); }
+/* DraftRow owns equal insets; the list owns one quiet surface, with space between links. */
+.vk-draft-rows { display: grid; gap: var(--vk-space-1); margin: 0; padding: var(--vk-space-1) 0; list-style: none; border-radius: var(--vk-radius-lg); background: var(--vk-bg-content); }
 .vk-draft-rows:empty { display: none; }
 /* The label joins the controls only when the Desk has room for its text and both targets. */
 @container vk-desk-index (min-width: 17rem) {
@@ -2011,9 +2008,16 @@ a {
   background: var(--vk-bg-content);
 }
 .vk-explore-modes__list a { justify-content: flex-start; border-radius: var(--vk-radius-control-48); background: transparent; white-space: normal; overflow-wrap: anywhere; }
-@container vk-explore-modes (max-width: 21rem) {
+/* At the base font size the connected row needs 349px before forced-color borders. */
+@container vk-explore-modes (max-width: 22rem) {
   .vk-explore-modes__group { display: none; }
   .vk-explore-modes__menu { display: block; }
+}
+@media (forced-colors: active) {
+  @container vk-explore-modes (max-width: calc(22rem + 6px)) {
+    .vk-explore-modes__group { display: none; }
+    .vk-explore-modes__menu { display: block; }
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .vk-explore-modes a, .vk-explore-modes__menu > summary { transition: none; }

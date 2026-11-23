@@ -88,9 +88,13 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     await page.eval("Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))");
     await textContrast(page, theme, 'explore');
   }
-  for (const theme of ['light', 'dark']) for (const width of [320,390,834,1024,1200,1440]) for (const scale of [100,200]) {
-    await page.viewport(width);
-    await page.eval("document.documentElement.dataset.theme=" + JSON.stringify(theme) + "; document.documentElement.style.fontSize=" + JSON.stringify(scale + '%') + "; scrollTo(0,0); document.fonts.ready");
+  for (const theme of ['light', 'dark']) for (const width of [320,374,390,834,1024,1200,1440]) for (const scale of [100,200]) {
+    await page.viewport(width, width === 320 ? 800 : width === 390 ? 844 : 900);
+    await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)};
+      if (${scale} === 200) document.documentElement.dataset.text = '200';
+      else delete document.documentElement.dataset.text;
+      document.documentElement.style.fontSize = '';
+      scrollTo(0,0); document.fonts.ready`);
     await page.eval("Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))");
     check(await page.eval("document.documentElement.scrollWidth <= innerWidth"), 'Explore reflows ' + [theme,width,scale].join('/'));
     if ([390,1440].includes(width) && scale===100) {
@@ -121,7 +125,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
         header.radius === (wide ? '16px' : '14px'),
         '#404 header: page title left, [tìm][Lọc thẻ] + logo on one row above the mode group and results ' + [theme,width,JSON.stringify(header)].join('/'));
     }
-    if (width === 320 && scale === 200) {
+    if ([320,390].includes(width) && scale === 200) {
       const narrow = await page.eval(`(() => {
         const top=document.querySelector('.vk-explore__top').getBoundingClientRect();
         const h1=document.querySelector('#explore-heading h1').getBoundingClientRect();
@@ -130,8 +134,8 @@ export async function discoveryReading(page, { args, check, textContrast }) {
         return {hidden: h1.width<=1, oneRow: items.every(r=>Math.abs(r.top+r.height/2-(items[0].top+items[0].height/2))<=2),
           firstTop: first.top + scrollY, usable: innerHeight - (document.querySelector('#bottom-navigation')?.getBoundingClientRect().height ?? 0), top: top.height};
       })()`);
-      check(narrow.hidden && narrow.oneRow && narrow.firstTop < narrow.usable,
-        '#404 320px / 200%: title kept for assistive technology, icons + logo share one row, first work starts on the first screen ' + [theme, JSON.stringify(narrow)].join('/'));
+      check(narrow.firstTop < narrow.usable && (width !== 320 || narrow.hidden && narrow.oneRow),
+        '#404 mobile / 200%: first work starts above the bottom bar, and at 320px the title is visually hidden with the icons and logo on one row ' + [theme,width,JSON.stringify(narrow)].join('/'));
     }
     if ([320,390,834,1440].includes(width)) {
       check(await page.eval(`(() => {
@@ -165,6 +169,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     check(modes.current && modes.shown !== modes.menu &&
       (modes.shown ? modes.oneRow && modes.corners.join() === '14px,8px,14px,8px' : modes.summary),
       '#404 mode group stays one connected row or folds into the menu ' + [theme,width,scale,JSON.stringify(modes)].join('/'));
+    if (width === 374 && scale === 100) check(modes.menu, '#404 374px: the menu replaces a row whose labels would clip their padding');
     if (width === 320 && scale === 200) {
       check(modes.menu, '#404 320px / 200%: modes fold into the menu');
       await page.eval("document.querySelector('#explore-mode-menu-button').focus(); document.querySelector('#explore-mode-menu-button').click()");
@@ -237,6 +242,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     }
     if ([320,390,834,1440].includes(width)) await page.capture('discovery-' + [theme,width,scale].join('-'), { boundary: 'real-public-api', scenario: 'TAG-PR-06' });
   }
+  await page.eval("delete document.documentElement.dataset.text");
   await desktopSearchDock(page, {args, check, ready});
   await page.viewport(390);
   await page.eval("document.documentElement.style.fontSize='100%'");
