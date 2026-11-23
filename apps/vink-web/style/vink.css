@@ -1436,45 +1436,12 @@ a {
   }
 }
 
-/* Format switcher & preview (#262). */
-.vk-editor-format {
-  display: grid;
-  gap: var(--vk-space-3);
-  min-inline-size: 0;
-  padding: clamp(var(--vk-space-3), 3vw, var(--vk-space-6));
-  border-radius: var(--vk-radius-lg);
-  background: var(--vk-surface-container-low);
-}
-
-.vk-editor-format__head > .vk-ui-heading {
-  margin: 0;
-  font-family: var(--vk-font-ui);
-  font-size: var(--vk-type-body-size);
-  font-weight: var(--vk-type-label-weight);
-  overflow-wrap: anywhere;
-}
-
-.vk-editor-format__hint {
-  margin: 0;
-  font-size: var(--vk-type-label-size);
-}
-
+/* Format conversion (#262): the app owns the confirmation dialog’s reading measure. */
 #format-convert-dialog {
   inline-size: min(calc(var(--vk-measure) + 2 * var(--vk-overlay-gutter)), calc(100% - 2 * var(--vk-overlay-margin)));
 }
 
-.vk-format-preview {
-  display: grid;
-  gap: var(--vk-space-3);
-  min-inline-size: 0;
-}
-
-.vk-format-preview__target,
-.vk-format-preview__title {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
+/* Raw conversion source keeps its own scrolling and whitespace. */
 .vk-format-preview__source {
   margin: 0;
   max-block-size: 14rem;
