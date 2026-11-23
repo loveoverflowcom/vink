@@ -696,11 +696,11 @@ fn DiscussionLoaded(
         state.loading && state.page.roots.is_empty()
     }));
     view! {
-        <div id="comments-mode" class="vk-discussion-mode"
+        <div id="comments-mode" class="vk-discussion-mode grid gap-vk-2 min-w-0"
             data-mode-kind=move || mode_kind.get()
             data-tone=move || (state.read().unavailable || state.read().error.is_some()).then_some("adverse")>
-            <div class="vk-discussion-mode__row">
-                <div class="vk-discussion-mode__status">
+            <div class="vk-discussion-mode__row flex flex-wrap items-center justify-between gap-x-vk-3 gap-y-vk-2 min-w-0">
+                <div class="vk-discussion-mode__status flex items-start gap-[10px] flex-[1_1_14rem] min-w-0 [&>.vk-ui-icon]:shrink-0 [&>.vk-ui-icon]:[margin-block-start:3px]">
                     {move || match mode_kind.get() {
                         "open" => view! { <span class="vk-discussion-mode__dot" aria-hidden="true"></span> }.into_any(),
                         "changing" => view! { <LoadingIndicator /> }.into_any(),
@@ -709,8 +709,8 @@ fn DiscussionLoaded(
                         "system-locked" => view! { <Icon name=IconName::VerifiedUser size=IconSize::Small /> }.into_any(),
                         _ => view! { <span class="vk-discussion-mode__dot vk-discussion-mode__dot--subtle" aria-hidden="true"></span> }.into_any(),
                     }}
-                    <div class="vk-discussion-mode__copy">
-                        <p role="status">{move || match mode_kind.get() {
+                    <div class="vk-discussion-mode__copy min-w-0">
+                        <p role="status" class="m-0 wrap-anywhere [font-weight:var(--vk-type-label-weight)]">{move || match mode_kind.get() {
                             "changing" => "Đang cập nhật thiết lập bình luận…",
                             "system-locked" => "Hệ thống đang khóa bình luận",
                             "conflict" if !state.read().unavailable => "Chưa xác nhận được trạng thái bình luận",
@@ -728,10 +728,10 @@ fn DiscussionLoaded(
                             } else {
                                 None
                             }
-                        }.map(|detail| view! { <p class="vk-muted">{detail}</p> })}
+                        }.map(|detail| view! { <p class="vk-muted m-0 wrap-anywhere text-[length:var(--vk-type-caption-size)]">{detail}</p> })}
                     </div>
                 </div>
-                <div class="vk-discussion-mode__actions">
+                <div class="vk-discussion-mode__actions flex flex-wrap items-center gap-vk-2">
                     <Show when=move || !read_only && !state.read().unavailable && state.read().own.author>
                         <Button id="discussion-mode-toggle" variant=ButtonVariant::Tonal state=write_state on_press=move |_| change_mode(state, controller, lve)>
                             {move || if controller.read().settings.comments_open { "Tắt bình luận" } else { "Mở bình luận" }}
