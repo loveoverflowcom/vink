@@ -126,7 +126,8 @@ fn render_profile(
                         on_retry=Callback::new(move |()| on_summary.run(None))
                     />
                     {bio.map(|text| view! { <p class="vk-author-bio">{text}</p> })}
-                    <section aria-labelledby="author-works-heading">
+                    <section aria-labelledby="author-works-heading"
+                        class="[margin-block-start:calc(var(--vk-space-8)_+_var(--vk-space-2))] [&>.vk-ui-link]:inline-block [&>.vk-ui-link]:[margin-inline-end:var(--vk-space-3)]">
                         <h2 id="author-works-heading" tabindex="-1">"Tác phẩm công khai"</h2>
                         {match publications {
                             Some(ProfileWorks::Page { works, next_cursor }) => {
@@ -142,7 +143,7 @@ fn render_profile(
                                     {empty.then(|| view! { <p>{if continued {
                                         "Trang này không còn tác phẩm."
                                     } else { "Chưa có tác phẩm công khai." }}</p> })}
-                                    {(!empty).then(|| view! { <ul class="vk-author-works">{items}</ul> })}
+                                    {(!empty).then(|| view! { <ul class="vk-author-works [list-style:none] [margin:0_0_var(--vk-space-4)] p-0">{items}</ul> })}
                                     {next.map(|href| view! { <UiLink href>"Trang tiếp"</UiLink> })}
                                     {continued.then(|| view! { <UiLink href=author.href>"Về trang đầu"</UiLink> })}
                                 }.into_any()
