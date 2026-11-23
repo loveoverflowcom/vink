@@ -26,6 +26,14 @@ export async function firstDraftFormat(page, { args, check }) {
     await selectCharacter(page, 'm');
     await page.waitFor(`document.querySelector('${picker}').value === 'markdown'`, 'native Markdown option selected by keyboard');
   }
+  check(await page.eval(`(() => {
+    const radius = getComputedStyle(document.querySelector('#create-draft')).getPropertyValue('--vk-radius-control-48').trim();
+    return ['#create-draft-format', '#create-draft'].every(id => {
+      const style = getComputedStyle(document.querySelector(id));
+      return ['borderTopLeftRadius','borderTopRightRadius','borderBottomLeftRadius','borderBottomRightRadius']
+        .every(corner => style[corner] === radius);
+    });
+  })()`), '#409 native format Select and create use the symmetric R4 control radius');
   await checkSelectGeometry(page, picker, check, '#262 first draft at 320px / text200', { icon: 16, inset: 16, reserve: 52, gap: 20 });
   await page.key('Tab');
   check(await page.eval(`(() => {
