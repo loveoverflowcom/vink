@@ -925,7 +925,7 @@ a {
 .vk-draft-rows { display: grid; gap: var(--vk-space-1); margin: 0; padding: var(--vk-space-1) 0; list-style: none; border-radius: var(--vk-radius-lg); background: var(--vk-bg-content); }
 .vk-draft-rows:empty { display: none; }
 /* The label joins the controls only when the Desk has room for its text and both targets. */
-@container vk-desk-index (min-width: 17rem) {
+@container vk-desk-index (min-width: 18.5rem) {
   .vk-draft-tools { column-gap: var(--vk-space-3); }
   .vk-draft-tools > .vk-ui-field { grid-row: 1; grid-template: auto / auto minmax(0, 1fr); align-items: center; column-gap: var(--vk-space-2); }
   .vk-draft-tools > .vk-ui-plain-tooltip { grid-row: 1; }
