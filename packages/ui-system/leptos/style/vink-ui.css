@@ -147,15 +147,6 @@
   color: var(--vk-on-primary-container);
 }
 
-.vk-ui-container {
-  box-sizing: border-box;
-  inline-size: 100%;
-  margin-inline: auto;
-}
-
-.vk-ui-container--reading { max-inline-size: var(--vk-measure); }
-.vk-ui-container--wide { max-inline-size: var(--vk-measure-wide); }
-
 .vk-ui-stack {
   display: flex;
   flex-direction: column;
@@ -198,15 +189,22 @@
   color: var(--vk-on-surface-variant);
 }
 
-.vk-ui-button,
+/* Button geometry uses the typed recipe in action.rs, also used by native link callers.
+ * Keep paint, hit targets, padding and alignment overrides in the existing cascade so the
+ * Notice, dialog, tag, recovery and discussion recipes keep their scoped precedence. */
 .vk-ui-icon-button,
 .vk-ui-chip {
   position: relative;
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: var(--vk-space-2);
+}
+
+.vk-ui-button,
+.vk-ui-icon-button,
+.vk-ui-chip {
+  justify-content: center;
   max-inline-size: 100%;
   min-block-size: var(--vk-density-control-height);
   min-inline-size: var(--vk-density-control-height);

@@ -84,23 +84,23 @@ fn DeskSession(session: crate::account::Session) -> impl IntoView {
         Standing::Unknown => view! { <DeskLoading /> }.into_any(),
         Standing::Anonymous if sign_in_open => view! {
             <DeskAccess title="Đăng nhập để mở Bàn viết" message="Viết và mở bản thảo riêng của bạn.">
-                <a id="desk-sign-in" class="vk-ui-button vk-ui-button--filled" href=DESK_SIGN_IN>"Đăng nhập"</a>
+                <a id="desk-sign-in" class=ButtonVariant::Filled.classes() href=DESK_SIGN_IN>"Đăng nhập"</a>
                 <vink_ui::Link href="/" variant=vink_ui::LinkVariant::Standalone>"Khám phá tác phẩm"</vink_ui::Link>
             </DeskAccess>
         }.into_any(),
         Standing::Anonymous => view! {
             <DeskAccess title="Vink chưa mở đăng nhập" message="Trong lúc này, bạn có thể đọc các tác phẩm công khai.">
-                <a class="vk-ui-button vk-ui-button--filled" href="/">"Khám phá tác phẩm"</a>
+                <a class=ButtonVariant::Filled.classes() href="/">"Khám phá tác phẩm"</a>
             </DeskAccess>
         }.into_any(),
         Standing::NeedsPrincipal => view! {
             <DeskAccess title="Đặt bút danh để bắt đầu" message="Hoàn tất bút danh trong Tài khoản để viết và mở bản thảo của bạn.">
-                <a id="desk-pen-name" class="vk-ui-button vk-ui-button--filled" href=DESK_SIGN_IN>"Đặt bút danh"</a>
+                <a id="desk-pen-name" class=ButtonVariant::Filled.classes() href=DESK_SIGN_IN>"Đặt bút danh"</a>
             </DeskAccess>
         }.into_any(),
         Standing::Suspended => view! {
             <DeskAccess title="Tài khoản đang bị tạm khóa" message="Hãy mở Tài khoản để xem thông tin về phiên của bạn.">
-                <a class="vk-ui-button vk-ui-button--filled" href="/toi">"Mở Tài khoản"</a>
+                <a class=ButtonVariant::Filled.classes() href="/toi">"Mở Tài khoản"</a>
             </DeskAccess>
         }.into_any(),
         Standing::Unavailable => view! {
@@ -488,7 +488,7 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
         {move || access_error.get().map(|error| view! {
             <DeskAccess title=if error == ApiError::Unauthenticated { "Phiên đăng nhập cần được kiểm tra lại" } else { "Bạn không có quyền xem danh sách tác phẩm" }
                 message="Mở Tài khoản để kiểm tra phiên hiện tại.">
-                <a class="vk-ui-button vk-ui-button--filled" href="/toi">"Mở Tài khoản"</a>
+                <a class=ButtonVariant::Filled.classes() href="/toi">"Mở Tài khoản"</a>
             </DeskAccess>
         })}
         <Show when=move || access_error.with(Option::is_none)>
