@@ -300,7 +300,10 @@ pub fn AuthorWorkRow(#[prop(into)] work: Signal<AuthorWorkSummary>) -> impl Into
             <Show when=move || work.with(|w| w.public.is_some())>
                 <Link href=Signal::derive(move || work.get().public.map(|p| p.href).unwrap_or_default())
                     attr:class="vk-author-work__reader vk-ui-button vk-ui-button--tonal"
-                    attr:aria-label=move || format!("Đọc bản công khai của {}", work.get().title)>
+                    attr:aria-label=move || work.with(|w| {
+                        let title = w.public.as_ref().and_then(|p| p.title.as_deref()).unwrap_or(&w.title);
+                        format!("Đọc bản công khai của {title}")
+                    })>
                     <Icon name=IconName::Visibility />"Đọc"
                 </Link>
             </Show>

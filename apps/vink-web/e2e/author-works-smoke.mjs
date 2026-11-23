@@ -44,7 +44,7 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
       const row=document.querySelector('#draft-row-${works[0].work_id}');
       const title=row.querySelector('.vk-draft-row__title'), metadata=row.querySelector('.vk-author-work__status');
       const editor=row.querySelector('.vk-draft-row__link'), reader=row.querySelector('.vk-author-work__reader');
-      return editor.contains(title) && editor.contains(metadata) && reader.closest('a')===reader && !editor.contains(reader) && reader.textContent==='Đọc' && reader.getAttribute('aria-label').startsWith('Đọc bản công khai của ');
+      return editor.contains(title) && editor.contains(metadata) && reader.closest('a')===reader && !editor.contains(reader) && reader.textContent==='Đọc' && reader.getAttribute('aria-label')==='Đọc bản công khai của Tên của bản đang công khai';
     })()`), 'F-13 editor covers status and title, and published works retain an independent reader link');
     check(await page.eval(`(() => {
       const cards=[...document.querySelectorAll('.vk-author-work')], first=cards[0];
