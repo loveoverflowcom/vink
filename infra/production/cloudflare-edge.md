@@ -7,7 +7,7 @@
 - `vink.forum` và `www.vink.forum` chạy trên Pages `vink-production`, nhánh `main`. Bản
   `69fff7eb-88ce-40e9-a3a5-1dc9207f3bd7` chứa 82 asset byte-for-byte từ image
   `a9d6a4f9fb0a35b1e0e56f843132d4e3fe5dbb20` và bản vá riêng của Worker để giữ strong ETag.
-  Bản vá đang chạy cần được áp dụng vào source trước khi đóng gói lại từ `develop`.
+  Bản vá `no-transform` được giữ trong source của Worker production.
 - Nameserver là `carlane.ns.cloudflare.com` và `drew.ns.cloudflare.com`. DS `2371/13/2` đã
   được cả bốn máy chủ `.forum` công bố. Cloudflare DNS, Google Public DNS và Quad9 đều xác
   thực bản ghi apex. Caddy trả `403` khi gọi thẳng apex qua IP VPS hoặc khi gọi origin riêng
@@ -80,8 +80,9 @@ HTML/JS/CSS/WASM và lazy imports giữ namespace `/_v/<sha>/pkg/`. Cả A và B
 
 SSR/API dùng fetch bypass cache. Phản hồi riêng tư, có session hoặc có Set-Cookie dùng
 `no-store`. Chỉ các route READ-01 có `private, no-cache` từ App mới giữ revalidation.
-Worker đang triển khai thêm `no-transform` vào các phản hồi này để Pages giữ strong ETag khi
-trình duyệt chấp nhận gzip hoặc Brotli. Giữ rule nén của zone theo cấu hình API. Range chưa
+Worker thêm `no-transform` vào các phản hồi này để Pages giữ strong ETag khi trình duyệt
+chấp nhận gzip hoặc Brotli. Smoke so body, ETag và 304 qua `identity`, `gzip` và `br`, rồi kiểm
+`no-store` với request có cookie thử. Giữ rule nén của zone theo cấu hình API. Range chưa
 được bật ở asset adapter. GET trả toàn bộ file và HEAD không có body. Bypass cache cho SSR/API,
 không áp Cache Everything, Always Online hoặc HTML fallback. Kiểm cookie, 304, TTL và header
 tại domain thật. Chrome/workerd ở loopback chỉ kiểm hợp đồng cục bộ.
@@ -89,6 +90,66 @@ tại domain thật. Chrome/workerd ở loopback chỉ kiểm hợp đồng cụ
 Khi origin trả `404` cho `/robots.txt`, Cloudflare Free có thể trả `200` với thông báo Content Signals chỉ chứa dòng chú thích. Smoke qua edge chấp nhận thông báo này nếu không có chỉ dẫn crawler. [Content Signals Policy](https://developers.cloudflare.com/bots/additional-configurations/managed-robots-txt/#content-signals-policy).
 
 Rule ở zone giữ redirect `308` cho HTTP apex, giữ đường dẫn và query. Phản hồi HTTPS apex giữ HSTS `max-age=31536000`, `X-Content-Type-Options: nosniff` và `Referrer-Policy: strict-origin-when-cross-origin` như cấu hình Caddy trực tiếp trước cutover.
+
+## Nâng cấp trong cửa sổ bảo trì
+
+Dùng đường local trên controller khi cả hai owner là App và Identity và image cũ không đạt trên
+ledger mới. Chế độ mặc định vẫn yêu cầu `old_on_result=PASS` và `new_on_result=PASS`. Cửa sổ bảo
+trì phải có lệnh `--maintenance`, báo cáo `--schema-review` khớp đúng SHA/digest và người vận
+hành trực tiếp. Receiver SSH không tự vào chế độ này. Lên lịch cho phép HTTP động gián đoạn
+trong khi origin đóng. Asset hai SHA đã stage sẵn vẫn được phục vụ trên Pages.
+
+1. Trước cửa sổ, cài và đọc lại `ExecStartPre` trong unit Vink từ release đã duyệt. Chốt cấm
+   unit khởi động lại trong lúc có `/var/lib/vink-production-release/origin-maintenance.json`.
+   Giữ `podman-restart.service` bất hoạt trên host và xác nhận không có job khác khởi động App,
+   Worker hay Identity ngoài controller. Kiểm PostgreSQL và volume riêng của Vink, chỉ đúng hai
+   owner. Hai cây dưới `/opt/vink-prod/releases/<sha>` cần là checkout Git sạch, có đủ migrations.
+   Với cây bootstrap chỉ chứa file vận hành, đối chiếu và chuẩn bị cây cũ ở đúng SHA trong một
+   bước riêng trước cửa sổ. Giữ manifest đang dùng và đọc lại container, overlay và readiness.
+   Chuẩn bị Chrome, tài khoản smoke và UUID Reader theo quy trình trên. Catalog rỗng vẫn chạy
+   được smoke READ-01 qua `/api/v1/works`. Bài Chrome Reader có dữ liệu cần tác phẩm công khai thật.
+2. Diễn tập với backup đã kiểm checksum trong 24 giờ, đúng cặp digest và schema sở hữu. Báo cáo
+   dùng `action: "maintenance"`, `from` và `to` theo SHA, `images: {"from": {...}, "to": {...}}`
+   theo đúng map Web/Worker/Identity của hai receipt, và `backup_sha256` là SHA-256 của
+   `SHA256SUMS` trong `VINK_VERIFIED_BACKUP`. Mỗi owner cần `new_on_result: "PASS"`,
+   `old_on_restored: "PASS"` và `rehearsal` trỏ tới kết quả đọc/ghi và phục hồi. Ghi
+   `old_on_result` theo kết quả thực đo được, ít nhất một owner phải là `FAIL`. Controller so
+   phiên bản và checksum SHA-384 của ledger trước/sau, rồi so backup với báo cáo.
+3. Với mốc Pages thủ công chưa có `active.json`, giữ nguyên receipt đã xác nhận ở kho riêng
+   và truyền `--bootstrap-receipt <file>`. Controller so ID canonical, metadata SHA và kiểm
+   từng byte ở URL deployment và apex trước khi chấp nhận archive của predecessor. Sau khi
+   Pages đã chuyển, resume giữ cùng hash receipt trong journal. Chỉ ghi `active.json` mới
+   sau khi các kiểm tra cuối đạt. Đối soát TLS preview, asset retained và marker ở Pages
+   theo [quy trình khôi phục](#cutover-và-khôi-phục).
+4. Dùng đúng cùng bộ tham số cho `plan` rồi `apply`, thêm `--maintenance` và báo cáo schema.
+   Sau khi Pages có asset cả hai bản, controller ghi chốt trước khi dừng App, Worker và
+   Identity. Chỉ tiếp tục khi cả ba thoát sạch và hai DB hết kết nối. Controller tạo cặp dump
+   mới sau drain, kiểm checksum, giữ một bản sao PostgreSQL của từng owner với kết nối bị
+   khóa, rồi mới migrate. Candidate chạy probe App trên loopback và Identity trên socket
+   riêng với password authority, Worker vẫn dừng. Kiểm ledger và readiness phải đạt trước
+   khi journal báo `origin_prepared`. Ở pha này `resume` vẫn giữ origin đóng.
+5. Sau khi xem trạng thái và quyết định mở ghi, dùng `open` với cùng bộ tham số. Controller
+   ghi `origin_opening` trước khi đổi manifest/image và bắt đầu service công khai. Nếu mất ACK
+   từ lúc này, coi ghi có thể đã mở. Dùng `status`, đối chiếu container và ledger rồi
+   `resume` theo chiều tiến. Không dùng bản sao trước cửa sổ để thay dữ liệu mới.
+6. Trước `origin_opening`, dùng `rollback-origin` để quay về image cũ. Nếu controller đã ghi
+   `origin_switch_started` còn origin chưa có journal, lệnh chỉ ghi nhận rollback khi đã xác
+   minh môi trường, ledger và readiness của predecessor. Nếu thấy chốt hoặc dấu vết khác
+   của bảo trì, lệnh dừng và giữ pha cũ để đối soát. Nếu đã bắt đầu migration, một transaction đổi tên **cả hai** bản sao về tên canonical, giữ riêng hai DB
+   đã migrate với kết nối bị khóa. Đối chiếu OID, ledger và readiness private trước khi mở
+   lại App cũ. Mất ACK ở đây dùng `resume` để hoàn tất đúng ý định rollback, kiểm lại OID
+   trước khi làm thêm. Controller ghi `origin_rolled_back` và giữ journal vì Pages vẫn chứa
+   asset của cả hai SHA. Đối soát lại provider/receipt trước khi bắt đầu lượt mới. Giữ cặp
+   backup, cả hai DB giữ lại và journal đến khi người vận hành quyết định vòng đời của chúng.
+
+Chốt systemd ngăn khởi động sau reboot trong lúc bảo trì. Backup timer thường không chạy qua
+chốt; cặp dump mới nằm trong thư mục maintenance riêng dưới archive controller. Giữ chốt khi
+kiểm tra bất kỳ lệnh nào có kết quả chưa rõ. Nếu probe private bị ngắt, xác minh container
+`vink-release-probe-<16 ký tự đầu SHA>` là probe của lượt này rồi dừng nó trước khi resume.
+Nếu service dừng cưỡng bức, ledger sai hoặc cặp OID không khớp, giữ nguyên journal và điều tra.
+Cổng đăng nhập và transport được đối chiếu với cả ba process và unit. Cấu hình đã xác minh ở
+mốc hiện tại có nhãn Compose nền trên App/Worker, nhãn overlay trên Identity và unit dùng
+overlay Resend. Lệnh mở dùng đúng tập Compose của unit đã đối chiếu.
 
 ## Cutover và khôi phục
 

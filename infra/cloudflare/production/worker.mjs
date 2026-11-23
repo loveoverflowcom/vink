@@ -87,7 +87,12 @@ export function handler(inventory, originFetch = fetch, assetFetch = fetch) {
       const publicRead = /^\/api\/v1\/works(?:\/[0-9a-f-]+\/(?:reader|publication))?$/.test(url.pathname);
       if (!publicRead || !["GET", "HEAD"].includes(request.method) || headers.has("cookie") ||
           headers.has("authorization") || result.headers.has("set-cookie") ||
-          result.headers.get("cache-control") !== "private, no-cache") result.headers.set("cache-control", "no-store");
+          result.headers.get("cache-control") !== "private, no-cache") {
+        result.headers.set("cache-control", "no-store");
+      } else {
+        // Prevent Pages from re-encoding the response and weakening its body-hash ETag.
+        result.headers.set("cache-control", "private, no-cache, no-transform");
+      }
       return result;
     } catch { return textError(502, "Origin unavailable"); }
   };

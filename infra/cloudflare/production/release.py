@@ -12,6 +12,7 @@ import tempfile
 from urllib.request import Request, urlopen
 
 from artifacts import PROJECT, encode, record, require, sha, stage, validate
+import maintenance
 
 HERE = Path(__file__).resolve().parent
 STATE = Path("/var/lib/vink-production-release")
@@ -29,6 +30,7 @@ def store(path, value):
         f.flush()
         os.fsync(f.fileno())
     os.replace(tmp, path)
+    maintenance.sync_dir(path.parent)
 
 
 def project(account):
@@ -90,23 +92,56 @@ def verify_assets(host, rev, manifest):
                     sha(body.read()) == entry["sha256"], "Pages asset mismatch: " + name)
 
 
-def schema_action(old, new, review, releases=Path("/opt/vink-prod/releases")):
+def schema_action(old, new, review, releases=Path("/opt/vink-prod/releases"), *, window=False):
     if not review:
+        require(not window, "maintenance requires an explicit schema review")
         return "same"
     evidence = json.loads(review.read_bytes())
-    require(evidence["from"] == old and evidence["to"] == new and evidence["action"] in ("expand", "keep"),
+    action = evidence["action"]
+    require(evidence["from"] == old and evidence["to"] == new and action in ("expand", "keep", "maintenance"),
             "schema review must match source, destination and migration direction")
+    require(window == (action == "maintenance"), "maintenance requires explicit opt-in and matching review")
+    incompatible = False
+    adds_migrations = False
     for owner in ("vink-app", "vink-identity"):
-        require(evidence[owner]["old_on_result"] == "PASS" and evidence[owner]["new_on_result"] == "PASS"
-                and evidence[owner]["rehearsal"], "both binaries require rehearsal on the resulting schema")
-        def migrations(rev):
-            directory = releases / rev / "services" / owner / "migrations"
-            require(directory.is_dir(), "missing migrations directory")
-            return {p.name: sha(p.read_bytes()) for p in directory.glob("*.sql")}
-        before, after = migrations(old), migrations(new)
-        older, newer = (before, after) if evidence["action"] == "expand" else (after, before)
-        require(older.items() <= newer.items(), "edited or divergent applied migration")
-    return evidence["action"]
+        report = evidence[owner]
+        require(report["new_on_result"] == "PASS" and report["rehearsal"],
+                "candidate requires rehearsal on the resulting schema")
+        if window:
+            require(report["old_on_result"] in ("PASS", "FAIL") and report["old_on_restored"] == "PASS",
+                    "maintenance requires the actual old outcome and a rehearsal of the restored predecessor")
+            incompatible |= report["old_on_result"] == "FAIL"
+        else:
+            require(report["old_on_result"] == "PASS", "both binaries require rehearsal on the resulting schema")
+        before = maintenance.ledger_files(releases, old, owner)
+        after = maintenance.ledger_files(releases, new, owner)
+        older, newer = (after, before) if action == "keep" else (before, after)
+        require(list(older.items()) == list(newer.items())[:len(older)], "edited or divergent applied migration")
+        adds_migrations |= len(newer) > len(older)
+    require(not window or (incompatible and adds_migrations), "maintenance requires an incompatible forward migration")
+    return action
+
+
+def bootstrap_baseline(path, predecessor, old, platform, archive, active):
+    data = json.loads(path.read_bytes())
+    require(data["pages_deployment"] == predecessor and data["source_sha"] == old and
+            data["project"] == PROJECT and data["public_origin"] == "https://vink.forum",
+            "bootstrap receipt differs from predecessor")
+    manifest = json.loads((archive / old / "manifest.json").read_bytes())
+    spec = {"environment": "production", "public_origin": data["public_origin"], "source_sha": old,
+            "platform": platform, "images": data["images"]}
+    require(record(archive / old / "pkg", spec) == manifest and manifest["asset_digest"] == data["asset_digest"],
+            "bootstrap receipt differs from retained bytes")
+    if active:
+        metadata = active["deployment_trigger"]["metadata"]
+        require(active["id"] == predecessor and active["environment"] == "production"
+                and active["latest_stage"]["status"] == "success" and metadata["commit_hash"] == old,
+                "provider does not confirm the bootstrap deployment")
+        host = active["url"]
+        require(re.fullmatch(r"https://[a-z0-9-]+\.vink-production\.pages\.dev", host), "wrong provider host")
+        verify_assets(host, old, manifest)
+        verify_assets("https://vink.forum", old, manifest)
+    return data["images"]
 
 
 def browser_check(chrome, reader, rev):
@@ -133,10 +168,47 @@ def matching(active, rev, marker):
             and metadata["commit_hash"] == rev and metadata["commit_message"] == marker)
 
 
+def advance_origin(origin, journal, result, mode, evidence):
+    """Return whether the origin can enter ordinary public verification."""
+    if mode == "rollback-origin":
+        require(result["phase"] in {"origin_switch_started", "origin_prepared",
+                                    "origin_rollback_started", "origin_rolled_back"},
+                "origin may have accepted writes; rollback is unavailable")
+        if result["phase"] in {"origin_switch_started", "origin_prepared"}:
+            started = origin.rollback_started(evidence, prepared=result["phase"] == "origin_prepared")
+            if not started:
+                # The predecessor is still serving; acknowledge rollback without inventing origin state.
+                result.update(phase="origin_rolled_back", origin_release=result["previous_origin"])
+                store(journal, result)
+                return False
+            result["phase"] = "origin_rollback_started"
+            store(journal, result)
+    if result["phase"] == "origin_rollback_started":
+        origin.operate("rollback", evidence)
+        result.update(phase="origin_rolled_back", origin_release=result["previous_origin"])
+        store(journal, result)
+    if result["phase"] == "origin_rolled_back":
+        return False
+    if result["phase"] == "origin_switch_started":
+        origin.operate("prepare", evidence)
+        result["phase"] = "origin_prepared"
+        store(journal, result)
+    if result["phase"] == "origin_prepared":
+        if mode != "open":
+            return False
+        result["phase"] = "origin_opening"
+        store(journal, result)
+    if result["phase"] == "origin_opening":
+        origin.operate("open", evidence)
+    return True
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("mode", choices=["plan", "apply", "resume", "status"])
+    p.add_argument("mode", choices=["plan", "apply", "resume", "open", "rollback-origin", "status"])
     p.add_argument("release", type=Path, help="public JSON copied from qualified GHCR publish receipt")
+    p.add_argument("--maintenance", action="store_true", help="prepare origin offline and require an explicit open")
+    p.add_argument("--bootstrap-receipt", type=Path, help="reconcile a manually verified Pages predecessor")
     p.add_argument("--schema-review", type=Path, help="rehearsal evidence when migrations differ")
     p.add_argument("--account", required=True)
     p.add_argument("--reader", help="public production work UUID for browser qualification")
@@ -158,14 +230,17 @@ def main():
         current = deployment(remote)
         if a.mode == "status":
             print(json.dumps({"edge": current, "origin_tree": str(Path("/opt/vink-prod/current").resolve()),
-                              "pending": json.loads(journal.read_bytes()) if journal.exists() else None}))
+                              "pending": json.loads(journal.read_bytes()) if journal.exists() else None,
+                              "origin_maintenance": maintenance.GUARD.exists()}))
             return
         require(a.reader and re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", a.reader),
                 "supply an existing public reader UUID")
         chrome = Path(os.environ["VINK_RELEASE_CHROME"])
         require(chrome.is_absolute() and os.access(chrome, os.X_OK), "read-only guest browser required")
         require(pwd.getpwnam("vink-release-check").pw_uid > 0, "dedicated browser user required")
-        resume = a.mode == "resume"
+        resume = a.mode in {"resume", "open", "rollback-origin"}
+        require(not (a.bootstrap_receipt or a.mode in {"open", "rollback-origin"}) or a.maintenance,
+                "manual origin commands require maintenance opt-in")
         require(resume == journal.exists(), "pending release requires status/resume; new release requires apply")
         pending = json.loads(journal.read_bytes()) if resume else None
         predecessor = a.previous_edge if a.previous_edge != "none" else None
@@ -189,17 +264,34 @@ def main():
                 journal.unlink()
                 print(json.dumps(completed))
                 return
-        if predecessor:
+        old_images = None
+        if a.bootstrap_receipt:
+            require(predecessor and not previous.exists(), "bootstrap receipt is only for the first controller release")
+            active_predecessor = remote["canonical_deployment"] if current == predecessor else None
+            old_images = bootstrap_baseline(a.bootstrap_receipt, predecessor, a.previous_origin, spec["platform"],
+                                            archive, active_predecessor)
+            legacy = a.previous_origin
+        elif predecessor:
             require(previous.exists(), "restore the previous release receipt and archives")
             last = json.loads(previous.read_bytes())
             require(last["edge"] == predecessor and last["account"] == a.account
                     and last["origin_release"] == a.previous_origin, "active edge differs from receipt")
             legacy = last["legacy_assets"]
+            old_images = last["release"]["images"]
             for release, digest in last["retained"].items():
                 require(sha((archive / release / "manifest.json").read_bytes()) == digest, "lost retained release")
         manifest = export(spec, archive)
         images = spec["images"]
-        schema = schema_action(a.previous_origin, rev, a.schema_review)
+        schema = schema_action(a.previous_origin, rev, a.schema_review, window=a.maintenance)
+        evidence = None
+        origin = None
+        if a.maintenance:
+            evidence = json.loads(a.schema_review.read_bytes())
+            require(old_images and evidence["images"] == {"from": old_images, "to": spec["images"]},
+                    "schema rehearsal does not match the two image sets")
+            origin = maintenance.Origin(a.previous_origin, spec, old_images)
+            if not resume:
+                origin.preflight(evidence)
         origin_args = [a.previous_origin, rev, images["web"], images["worker"], images["identity"], spec["platform"], schema]
         if not resume:
             run(HERE / "origin.sh", "plan", *origin_args)
@@ -211,12 +303,20 @@ def main():
                       "previous_origin": a.previous_origin, "asset_digest": manifest["asset_digest"],
                       "legacy_assets": legacy, "worker_digest": worker_digest, "retained": retained,
                       "schema_action": schema, "schema_review": sha(a.schema_review.read_bytes()) if a.schema_review else None}
+            if a.bootstrap_receipt:
+                result["bootstrap_receipt"] = sha(a.bootstrap_receipt.read_bytes())
             if a.mode == "plan":
                 print(json.dumps(result))
                 return
             if resume:
                 require(all(pending.get(k) == v for k, v in result.items()), "release bytes or target changed")
                 result = pending
+                if a.mode == "open":
+                    require(result["phase"] in {"origin_prepared", "origin_opening"}, "origin is not prepared")
+                if a.mode == "rollback-origin":
+                    require(result["phase"] in {"origin_switch_started", "origin_prepared",
+                                                "origin_rollback_started", "origin_rolled_back"},
+                            "origin may have accepted writes; rollback is unavailable")
             else:
                 require(deployment(project(a.account)) == predecessor, "Pages changed during staging")
                 result["phase"] = "preview_upload_started"
@@ -252,7 +352,11 @@ def main():
                 run(HERE / "origin.sh", "plan", *origin_args)
                 result["phase"] = "origin_switch_started"
                 store(journal, result)
-                run(HERE / "origin.sh", "apply", *origin_args)
+                if not origin:
+                    run(HERE / "origin.sh", "apply", *origin_args)
+            if origin and not advance_origin(origin, journal, result, a.mode, evidence):
+                print(json.dumps(result))
+                return
             # Read the actual container IDs, revision, digests and readiness before accepting a lost ACK.
             run(HERE / "origin.sh", "observe", rev, rev, *origin_args[2:])
             result.update(origin_release=rev, phase="origin_ready")
@@ -266,6 +370,7 @@ def main():
             store(STATE / (active["id"] + ".json"), result)
             store(previous, result)
             journal.unlink()
+            maintenance.sync_dir(journal.parent)
             print(json.dumps(result))
 
 

@@ -63,7 +63,10 @@ fetch() {
   actual_status=$(curl --noproxy '*' --no-progress-meter --show-error --compressed \
     --connect-timeout 10 --max-time 120 --max-filesize 180000000 \
     --dump-header "$tmp/headers" --output "$tmp/body" --write-out '%{http_code}' "$@" "$url")
-  [ "$actual_status" = "$expected_status" ] || fail "HTTP $actual_status, expected $expected_status"
+  case ",$expected_status," in
+    *,"$actual_status",*) ;;
+    *) fail "HTTP $actual_status, expected $expected_status" ;;
+  esac
 
   if [ -n "$expected_type" ]; then
     content_type=$(header Content-Type)
@@ -127,25 +130,54 @@ if observed.get("status") != "ready" or any(checks.get(key) != value for key, va
     sys.exit(f"FAIL readiness: {observed}")
 PY
 
-fetch "$apex" https /api/v1/works 200 application/json
-[ -z "$(header Content-Encoding)" ] || fail 'API encoding differs from direct Caddy'
+fetch "$apex" https /api/v1/works 200 application/json --header 'Accept-Encoding: identity'
 etag=$(header ETag)
-cache_control=$(header Cache-Control)
 case "$etag" in
   \"*\" ) ;;
   *) fail 'API response is missing a strong ETag' ;;
 esac
-[ "$cache_control" = 'private, no-cache' ] || fail "unexpected API Cache-Control: $cache_control"
-fetch "$apex" https /api/v1/works 304 '' --header "If-None-Match: $etag"
-[ ! -s "$tmp/body" ] || fail '304 has a body'
-[ "$(header ETag)" = "$etag" ] || fail '304 changed ETag'
-[ "$(header Cache-Control)" = "$cache_control" ] || fail '304 changed Cache-Control'
+cache_control='private, no-cache'
+if [ "$mode" = edge ]; then
+  cache_control='private, no-cache, no-transform'
+fi
+cp "$tmp/body" "$tmp/public-body"
+digest=$(openssl dgst -sha256 -r "$tmp/public-body")
+expected_etag=$(printf '"%.32s"' "${digest%% *}")
+[ "$etag" = "$expected_etag" ] || fail 'ETag is not the first 128 bits of the body SHA-256'
+for encoding in identity gzip br; do
+  fetch "$apex" https /api/v1/works 200 application/json --header "Accept-Encoding: $encoding"
+  [ -z "$(header Content-Encoding)" ] || fail "public API was re-encoded for $encoding"
+  [ "$(header ETag)" = "$etag" ] || fail "strong ETag changed for $encoding"
+  [ "$(header Cache-Control)" = "$cache_control" ] || fail "unexpected Cache-Control for $encoding"
+  cmp -s "$tmp/public-body" "$tmp/body" || fail "public API body changed for $encoding"
+
+  fetch "$apex" https /api/v1/works 304 '' --header "Accept-Encoding: $encoding" --header "If-None-Match: $etag"
+  [ ! -s "$tmp/body" ] || fail '304 has a body'
+  [ "$(header ETag)" = "$etag" ] || fail '304 changed ETag'
+  [ "$(header Cache-Control)" = "$cache_control" ] || fail '304 changed Cache-Control'
+done
+if [ "$mode" = edge ]; then
+  fetch "$apex" https /api/v1/works 200 application/json --header 'Cookie: vink-edge-smoke=guest'
+  [ "$(header Cache-Control)" = 'no-store' ] || fail 'cookie-bearing read is cacheable'
+fi
 
 fetch "$apex" https /api/v1/__vink_edge_probe__ 404 application/json
 fetch "$apex" https /__vink_edge_probe__ 404 text/html
 fetch "$apex" https /tac-pham/00000000-0000-0000-0000-000000000000 404 text/html
 fetch "$apex" https /pkg/__vink_edge_probe__.js 404 ''
-fetch "$apex" https /robots.txt 404 ''
+if [ "$mode" = edge ]; then
+  fetch "$apex" https /robots.txt 404,200 ''
+  if [ "$actual_status" = 200 ]; then
+    # Cloudflare Free can return a comment-only Content Signals notice for an origin 404.
+    content_type=$(header Content-Type)
+    [ "${content_type%%;*}" = text/plain ] &&
+      grep -Fqi 'content signals' "$tmp/body" &&
+      ! grep -Eq '^[[:space:]]*[^#[:space:]]' "$tmp/body" ||
+      fail 'edge robots.txt has unexpected content or crawling directives'
+  fi
+else
+  fetch "$apex" https /robots.txt 404 ''
+fi
 fetch "$apex" https /sitemap.xml 404 ''
 
 for asset in 'vink.js text/javascript' 'vink.css text/css' 'vink_bg.wasm application/wasm' \

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { handler } from './worker.mjs';
 
 const rev = 'a'.repeat(40), path = `/_v/${rev}/pkg/vink.js`;
@@ -33,6 +34,8 @@ test('inventory and retained fallback read only static bytes', async () => {
 
 test('canonical host and dynamic request preserve contracts and isolate private reads', async () => {
   const calls = [];
+  const publicBody = '{"works":[]}';
+  const publicTag = '"' + createHash('sha256').update(publicBody).digest('hex').slice(0, 32) + '"';
   const serve = handler({}, async (req, options) => {
     calls.push(req);
     assert.equal(options.cache, 'no-store');
@@ -46,8 +49,15 @@ test('canonical host and dynamic request preserve contracts and isolate private 
       assert.equal(await req.text(), 'body');
       return new Response(null, {status:303, headers:{location:'/toi', 'set-cookie':'one=1; Secure'}});
     }
-    if (new URL(req.url).pathname === '/api/v1/works') return new Response(null, {
-      status:304, headers:{etag:'"public"', 'cache-control':'private, no-cache'} });
+    const url = new URL(req.url);
+    if (url.pathname === '/api/v1/works') {
+      const unchanged = req.headers.get('if-none-match') === publicTag;
+      const headers = {etag:publicTag, 'cache-control':'private, no-cache'};
+      if (url.searchParams.has('issue-cookie')) headers['set-cookie'] = 'new=1; Secure';
+      return new Response(unchanged || req.method === 'HEAD' ? null : publicBody, {
+        status: unchanged ? 304 : 200, headers,
+      });
+    }
     return new Response(req.headers.get('cookie') || 'guest', {headers:{'cache-control':'public', 'x-robots-tag':'noindex'}});
   });
   for (const cookie of ['a=one','b=two','']) {
@@ -60,15 +70,39 @@ test('canonical host and dynamic request preserve contracts and isolate private 
   assert.equal(write.status,303);
   assert.equal(write.headers.get('location'),'/toi');
   assert.match(write.headers.get('set-cookie'),/one=1/);
-  const pub = await send(serve,'/api/v1/works',{headers:{'if-none-match':'"public"'}});
-  assert.equal(pub.status,304);
-  assert.equal(pub.headers.get('etag'),'"public"');
-  assert.equal(pub.headers.get('x-robots-tag'),null);
+  for (const encoding of ['identity', 'gzip', 'br']) {
+    const pub = await send(serve, '/api/v1/works', {headers:{'accept-encoding':encoding}});
+    assert.equal(pub.status, 200);
+    assert.equal(await pub.text(), publicBody);
+    assert.equal(pub.headers.get('etag'), publicTag);
+    assert.equal(pub.headers.get('cache-control'), 'private, no-cache, no-transform');
+    assert.equal(pub.headers.get('content-encoding'), null);
+    assert.equal(pub.headers.get('x-robots-tag'), null);
+    const unchanged = await send(serve, '/api/v1/works', {
+      headers:{'accept-encoding':encoding, 'if-none-match':pub.headers.get('etag')},
+    });
+    assert.equal(unchanged.status, 304);
+    assert.equal(await unchanged.text(), '');
+    assert.equal(unchanged.headers.get('etag'), pub.headers.get('etag'));
+    assert.equal(unchanged.headers.get('cache-control'), pub.headers.get('cache-control'));
+  }
+  for (const [pathname, headers] of [
+    ['/api/v1/works', {cookie:'session=one'}],
+    ['/api/v1/works', {authorization:'Bearer scratch'}],
+    ['/api/v1/works?issue-cookie', {}],
+  ]) {
+    const privateRead = await send(serve, pathname, {headers});
+    assert.equal(privateRead.headers.get('cache-control'), 'no-store');
+  }
   assert.equal((await serve(new Request('https://www.vink.forum//other.example/x?q=1'),env)).headers.get('location'),'https://vink.forum//other.example/x?q=1');
   assert.equal((await serve(new Request('https://preview.pages.dev/toi'),env)).status,404);
   assert.equal((await send(serve,'/',{headers:{'x-vink-edge-hop':'1'}})).status,508);
   assert.equal((await send(handler({},()=>{throw Error()}),'/')).status,502);
-  assert.equal(calls.length,5);
+  const offline = handler({}, () => new Response('Origin in maintenance', {status:503}));
+  const waiting = await send(offline, '/api/v1/works', {headers:{'if-none-match':publicTag}});
+  assert.equal(waiting.status, 503);
+  assert.equal(waiting.headers.get('cache-control'), 'no-store');
+  assert.equal(calls.length,13);
 });
 
 test('retirement returns 410 for old URLs and sensitive methods without redirect', async () => {
