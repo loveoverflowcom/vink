@@ -49,9 +49,10 @@ Bổ sung [#218 — Editor Paper First](ui-editor-paper-first-218.md): công c�
 và [#254 — Giao diện Editor yên tĩnh](editor-quiet-254.md): bỏ footer `#build-info`, hướng dẫn dài và toàn bộ nút tải `.txt`, làm lại nút về Bàn viết Tonal + icon.
 Thêm native trong flow, paper/canvas scoped và giữ save/recovery/focus của #217.
 
-Bổ sung [R4 — audit và redesign Bàn viết + Khám phá](redesign-r4-ban-viet-kham-pha.md): findings
-P1–P3 có bằng chứng runtime `develop@7ca0dd0d`, ba phương án, R4.1 Expressive `DESIGN_PROPOSED`,
-LayoutSpec, token delta, các quyết định DQ-01…DQ-10 và kế hoạch PR; chưa đổi code.
+[LayoutSpec R4.3 — Bàn viết, Khám phá và rail](redesign-r4/layout-spec.md) là đầu mối thiết kế
+hiện hành (`DESIGN_PROPOSED`). [Bàn giao #414](redesign-r4/review-414.md) ghi HOW/WHY, evidence
+và owner cho các phần còn mở. [Audit R4.1/R4.2](redesign-r4-ban-viet-kham-pha.md) giữ ba phương
+án và findings có provenance lịch sử `develop@7ca0dd0d`.
 
 Bổ sung [#262 — selector định dạng](editor-format-picker-262.md): geometry native Select
 opt-in đã tách khỏi prerequisite source/title/provider/Reader; mẫu gallery không bật Markdown
