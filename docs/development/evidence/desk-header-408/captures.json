@@ -1,0 +1,131 @@
+[
+  {
+    "file": "truoc-320.png",
+    "scenario": "desk-audit-320x800-text200",
+    "captured_at": "2026-11-22T15:11:41.336Z",
+    "source_commit": "e60593c0798ebce582ba050749b004be00f76920",
+    "working_tree_modified": true,
+    "viewport": {
+      "width": 320,
+      "height": 800,
+      "layoutWidth": 305,
+      "clientWidth": 305,
+      "clientHeight": 800,
+      "dpr": 1
+    },
+    "effective_theme": "dark",
+    "root_font_size": "32px",
+    "first_row": {
+      "x": 8,
+      "y": 816.953125,
+      "width": 289,
+      "height": 336.75,
+      "fontSize": "32px",
+      "lineHeight": "51.2px"
+    },
+    "bottom_navigation": {
+      "x": 0,
+      "y": 656,
+      "width": 305,
+      "height": 144,
+      "fontSize": "32px",
+      "lineHeight": "51.2px"
+    },
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36"
+  },
+  {
+    "file": "sau-320.png",
+    "scenario": "desk-header-320-text200",
+    "captured_at": "2026-11-23T13:13:50.294Z",
+    "source_commit": "cd8c5b06277d004d21001fd686e52234ba18add5",
+    "working_tree_modified": true,
+    "viewport": {
+      "width": 320,
+      "height": 800,
+      "layoutWidth": 305,
+      "clientWidth": 305,
+      "clientHeight": 800,
+      "dpr": 1
+    },
+    "effective_theme": "dark",
+    "root_font_size": "32px",
+    "first_row": {
+      "x": 16,
+      "y": 596.5625,
+      "width": 273,
+      "height": 336.75,
+      "fontSize": "32px",
+      "lineHeight": "51.2px"
+    },
+    "bottom_navigation": {
+      "x": 0,
+      "y": 656,
+      "width": 305,
+      "height": 144,
+      "fontSize": "32px",
+      "lineHeight": "51.2px"
+    },
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36"
+  },
+  {
+    "file": "sau-390.png",
+    "scenario": "desk-header-390-text200",
+    "captured_at": "2026-11-23T13:13:50.413Z",
+    "source_commit": "cd8c5b06277d004d21001fd686e52234ba18add5",
+    "working_tree_modified": true,
+    "viewport": {
+      "width": 390,
+      "height": 844,
+      "layoutWidth": 375,
+      "clientWidth": 375,
+      "clientHeight": 844,
+      "dpr": 1
+    },
+    "effective_theme": "dark",
+    "root_font_size": "32px",
+    "first_row": {
+      "x": 16,
+      "y": 596.5625,
+      "width": 343,
+      "height": 295.15625,
+      "fontSize": "32px",
+      "lineHeight": "51.2px"
+    },
+    "bottom_navigation": {
+      "x": 0,
+      "y": 700,
+      "width": 375,
+      "height": 144,
+      "fontSize": "32px",
+      "lineHeight": "51.2px"
+    },
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36"
+  },
+  {
+    "file": "sau-1440.png",
+    "scenario": "desk-long-1440-100-light",
+    "captured_at": "2026-11-23T13:13:38.995Z",
+    "source_commit": "cd8c5b06277d004d21001fd686e52234ba18add5",
+    "working_tree_modified": true,
+    "viewport": {
+      "width": 1440,
+      "height": 900,
+      "layoutWidth": 1425,
+      "clientWidth": 1425,
+      "clientHeight": 900,
+      "dpr": 1
+    },
+    "effective_theme": "light",
+    "root_font_size": "16px",
+    "first_row": {
+      "x": 438.5,
+      "y": 192.296875,
+      "width": 768,
+      "height": 105.984375,
+      "fontSize": "16px",
+      "lineHeight": "25.6px"
+    },
+    "bottom_navigation": null,
+    "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36"
+  }
+]
