@@ -58,7 +58,8 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
       await page.viewport(width);
       await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:0,y:0});
       await page.eval(`document.documentElement.dataset.theme='${theme}';document.documentElement.style.fontSize='${scale}%';document.querySelector('#drafts').scrollIntoView({block:'start'})`);
-      await page.eval(`document.fonts.ready`);
+      await page.eval(`document.fonts.ready.then(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))))`);
+      await page.eval(`Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))`);
       check(await page.eval(`document.documentElement.scrollWidth<=innerWidth && [...document.querySelectorAll('.vk-author-work')].every(e=>e.getBoundingClientRect().right<=innerWidth+1)`), `author rows reflow ${width}/${theme}/text${scale}`);
       await page.capture(`author-works-${width}-${theme}-${scale}`,{boundary:'fabricated-author-summary-real-hydration',scenario:'#214-states-reflow'});
     }

@@ -360,7 +360,15 @@
 .vk-draft-row__link:is(:focus, :hover) .vk-draft-row__title { display: block; -webkit-line-clamp: unset; overflow: visible; }
 
 /* R4: each work owns its surface and its independent reader link. */
-.vk-author-work { min-inline-size: 0; background: var(--vk-bg-content); border-radius: var(--vk-radius-card); }
+.vk-author-work {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-inline-size: 0;
+  background: var(--vk-bg-content);
+  border-radius: var(--vk-radius-card);
+}
+.vk-author-work > :is(.vk-draft-row__link, .vk-draft-row__text) { flex: 1 1 24rem; }
 .vk-author-work > .vk-draft-row__text { padding: var(--vk-space-3) var(--vk-space-4); }
 .vk-author-work > .vk-draft-row__text > .vk-draft-row__title { display: block; overflow: visible; -webkit-line-clamp: unset; }
 .vk-author-work .vk-draft-row__link { grid-template-columns: minmax(0, 1fr); min-block-size: 48px; border-radius: inherit; }
