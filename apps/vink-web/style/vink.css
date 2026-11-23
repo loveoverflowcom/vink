@@ -1932,14 +1932,6 @@ a {
 /* Own comment bodies preserve authored lines at every text size. */
 .vk-discussion-own-body { white-space: pre-wrap; overflow-wrap: anywhere; }
 
-/* Private moderation pages follow the shared controls and reader typography. */
-.vk-moderation { max-inline-size: 54rem; margin-inline: auto; display: grid; gap: var(--vk-space-6); min-inline-size: 0; }
-.vk-moderation > section { display: grid; gap: var(--vk-space-4); }
-.vk-moderation__list { display: grid; gap: var(--vk-space-4); padding-inline-start: var(--vk-space-6); }
-.vk-moderation__list > li { min-inline-size: 0; overflow-wrap: anywhere; }
-.vk-moderation__actions, .vk-moderation__feedback { display: flex; flex-wrap: wrap; gap: var(--vk-space-3); align-items: center; }
-.vk-moderation__snapshot { min-inline-size: 0; padding-block: var(--vk-space-4); overflow-wrap: anywhere; }
-
 /* Queue status has no reserved blank row after a settled read (#205). */
 .vk-moderation__queue > p:empty { display: none; }
 

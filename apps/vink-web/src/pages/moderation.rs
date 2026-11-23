@@ -11,6 +11,14 @@ use leptos_router::hooks::{use_location, use_params_map};
 use serde_json::json;
 use vink_ui::{ActionState, Button, ButtonVariant, Heading, HeadingLevel, Link, TextArea};
 
+const MODERATION_PAGE_CLASS: &str =
+    "mx-auto grid gap-vk-6 [max-inline-size:54rem] [min-inline-size:0]";
+const MODERATION_LIST_CLASS: &str = "grid gap-vk-4 ps-vk-6";
+const MODERATION_LIST_ITEM_CLASS: &str = "[min-inline-size:0] wrap-anywhere";
+const MODERATION_ACTIONS_CLASS: &str = "flex flex-wrap items-center gap-vk-3";
+const MODERATION_SNAPSHOT_CLASS: &str =
+    "vk-moderation__snapshot [min-inline-size:0] py-vk-4 wrap-anywhere";
+
 #[derive(Clone, Copy)]
 struct Actions {
     busy: RwSignal<bool>,
@@ -115,7 +123,7 @@ fn state_label(state: &str) -> &'static str {
 }
 #[component]
 fn Feedback(actions: Actions) -> impl IntoView {
-    view! { <div class="vk-moderation__feedback"><p role="status">{move || actions.message.get()}</p><Button variant=ButtonVariant::Text on_press=move |_| actions.reload.update(|n| *n += 1) state=actions.state()>"Tải lại"</Button></div> }
+    view! { <div class=MODERATION_ACTIONS_CLASS><p role="status">{move || actions.message.get()}</p><Button variant=ButtonVariant::Text on_press=move |_| actions.reload.update(|n| *n += 1) state=actions.state()>"Tải lại"</Button></div> }
 }
 #[component]
 pub fn ModerationHome() -> impl IntoView {
@@ -146,7 +154,7 @@ pub fn ModerationHome() -> impl IntoView {
     });
     view! {
         <Title text="Kiểm duyệt — Vink"/><Meta name="robots" content="noindex"/>
-        <section class="vk-moderation" id="moderation-home">
+        <section class=MODERATION_PAGE_CLASS id="moderation-home">
             <Heading level=HeadingLevel::H1>"Kiểm duyệt"</Heading>
             <p>"Xem đúng bản đã gửi và ghi rõ căn cứ cho từng quyết định."</p>
             <QueuePanel appeals=false reload=actions.reload admin_allowed/>
@@ -438,17 +446,17 @@ fn QueuePanel(
         }
     });
     view! {
-        <section class="vk-moderation__queue" id=prefix aria-busy=move ||busy.get().to_string()>
+        <section class="vk-moderation__queue grid gap-vk-4" id=prefix aria-busy=move ||busy.get().to_string()>
             <Heading id=format!("{prefix}-title") level=HeadingLevel::H2>{if appeals {"Phản đối cần xem xét"} else {"Ca tác phẩm"}}</Heading>
             <Button id=format!("{prefix}-refresh") state=refresh_state on_press=move |_|load.run(Intent::Refresh)>{if appeals {"Tải lại phản đối"} else {"Tải lại ca tác phẩm"}}</Button>
             <p role="status">{move || if busy.get() {"Đang tải hàng chờ…"} else if !ready.get() && error.get().is_none() {loading_text(session,"Đang kiểm tra quyền…")} else if restarted.get() {"Đã tải lại từ đầu. Các trang sau được bỏ để đối chiếu trạng thái mới."} else {""}}</p>
             {move || error.get().map(|e|view! {<p role="alert">{if matches!(e,ApiError::Invalid{..}) {"Vị trí hoặc phạm vi hàng chờ đã thay đổi. Bắt đầu lại để đối chiếu."} else {error_text(&e)}}</p>})}
-            <ul class="vk-moderation__list"><For each=move ||rows.get() key=|r|r.id.clone() children=move |r| {
+            <ul class=MODERATION_LIST_CLASS><For each=move ||rows.get() key=|r|r.id.clone() children=move |r| {
                 // The key preserves the link/focus; refreshed facts must remain reactive.
                 let label = Signal::derive(move || rows.with(|current| current.iter()
                     .find(|row| row.id == r.id).map(|row| row.label.clone())
                     .unwrap_or_else(|| r.label.clone())));
-                view! {<li><Link href=r.href>{move || label.get()}</Link></li>}
+                view! {<li class=MODERATION_LIST_ITEM_CLASS><Link href=r.href>{move || label.get()}</Link></li>}
             }/></ul>
             {move || (ready.get() && rows.with(|r|r.is_empty())).then(||view!{<p>"Không có hồ sơ đang chờ trong phạm vi của bạn."</p>})}
             <Show when=move ||more.get()><Button id=format!("{prefix}-more") state on_press=move |_|load.run(Intent::Append)>{if appeals {"Tải thêm phản đối"} else {"Tải thêm ca tác phẩm"}}</Button></Show>
@@ -464,7 +472,7 @@ fn AutomationControls(
     reason: RwSignal<String>,
 ) -> impl IntoView {
     let paused = automation.mode == "paused";
-    view! { <section aria-labelledby="automation-title"><Heading id="automation-title" level=HeadingLevel::H2>"Duyệt tự động"</Heading>
+    view! { <section class="grid gap-vk-4" aria-labelledby="automation-title"><Heading id="automation-title" level=HeadingLevel::H2>"Duyệt tự động"</Heading>
         <p>{if paused { "Đang dừng. Các lượt đã chuyển sang người duyệt vẫn ở hàng chờ." } else { "Đang bật cho lượt gửi mới. Khi không có kết quả đánh giá, người duyệt xử lý." }}</p>
         <TextArea id="automation-reason" label="Lý do thay đổi" value=reason on_input=move |i: vink_ui::TextInput| reason.set(i.value)/>
         <Button id="automation-toggle" state=actions.state() on_press=move |_| actions.run.run(("/api/v1/moderation/automation/mode".into(), json!({"expected_version":automation.version,"mode":if paused {"enabled"} else {"paused"},"reason":reason.get_untracked()})))>{if paused { "Bật cho lượt gửi mới" } else { "Dừng duyệt tự động" }}</Button>
@@ -494,7 +502,7 @@ pub fn CasePage() -> impl IntoView {
         }
     });
     view! { <Title text="Ca kiểm duyệt — Vink"/><Meta name="robots" content="noindex"/>
-        <section class="vk-moderation" id="moderation-case"><Link href="/kiem-duyet">"Hàng chờ kiểm duyệt"</Link><Feedback actions/>
+        <section class=MODERATION_PAGE_CLASS id="moderation-case"><Link href="/kiem-duyet">"Hàng chờ kiểm duyệt"</Link><Feedback actions/>
             {move || match data.get() {
                 Some((scope,id,result)) if scope.is_some() && scope==session.scope.get() && Some(id.clone())==params.read().get("id") => match result {
                     Ok(case) => view! { <CaseContent case actions reason note/> }.into_any(),
@@ -526,14 +534,14 @@ fn CaseContent(
     let body = document.map(|document| document.render(&title));
     view! { {(!title_in_body).then(|| view! { <Heading level=HeadingLevel::H1>{title}</Heading> })}
         <p>{format!("{} · Phiên bản ca {} · Quyết định {}",state_label(&case.state),version,case.decision_version)}</p>
-        {body.map(|body| view! { <article class="vk-moderation__snapshot">{body}</article> })}
-        {(!closed).then(|| view! { <div class="vk-moderation__actions">
+        {body.map(|body| view! { <article class=MODERATION_SNAPSHOT_CLASS>{body}</article> })}
+        {(!closed).then(|| view! { <div class=MODERATION_ACTIONS_CLASS>
             {queued.then(|| view! { <Button id="case-claim" state=actions.state() on_press=move |_| actions.run.run((format!("{}/claim",base.get_value()),json!({"expected_version":version})))>"Nhận ca"</Button> })}
             {holds.then(|| view! { <Button state=actions.state() on_press=move |_| actions.run.run((format!("{}/release",base.get_value()),json!({"expected_version":version})))>"Trả ca"</Button>
             <Button state=actions.state() on_press=move |_| actions.run.run((format!("{}/escalate",base.get_value()),json!({"expected_version":version})))>"Chuyển quản trị viên"</Button> })}
         </div>
         <TextArea id="case-reason" label="Lý do quyết định gửi người viết" value=reason on_input=move |i:vink_ui::TextInput| reason.set(i.value)/>
-        <div class="vk-moderation__actions">
+        <div class=MODERATION_ACTIONS_CLASS>
             {holds.then(|| view! { <Button id="case-approve" variant=ButtonVariant::Filled state=actions.state() on_press=move |_| actions.run.run((format!("{}/conclude",base.get_value()),json!({"expected_version":version,"verdict":"approved","reason":reason.get_untracked()})))>"Duyệt bản này"</Button>
             <Button id="case-reject" state=actions.state() on_press=move |_| actions.run.run((format!("{}/conclude",base.get_value()),json!({"expected_version":version,"verdict":"rejected","reason":reason.get_untracked()})))>"Bác bản này"</Button> })}
             {(admin && !holds).then(|| view! { <Button state=actions.state() on_press=move |_| actions.run.run((format!("{}/takeover",base.get_value()),json!({"expected_version":version,"reason":reason.get_untracked()})))>"Quản trị viên nhận ca"</Button> })}
@@ -566,7 +574,7 @@ pub fn AppealPage() -> impl IntoView {
         }
     });
     view! { <Title text="Xem xét phản đối — Vink"/><Meta name="robots" content="noindex"/>
-        <section class="vk-moderation" id="moderation-appeal"><Link href="/kiem-duyet">"Hàng chờ kiểm duyệt"</Link><Feedback actions/>
+        <section class=MODERATION_PAGE_CLASS id="moderation-appeal"><Link href="/kiem-duyet">"Hàng chờ kiểm duyệt"</Link><Feedback actions/>
             {move || match data.get() {
                 Some((scope,id,result)) if scope.is_some() && scope==session.scope.get() && Some(id.clone())==params.read().get("id") => match result {
                     Ok(detail) => view! { <AppealContent detail actions reason/> }.into_any(), Err(e) => view! { <p>{error_text(&e)}</p> }.into_any(),
@@ -588,9 +596,9 @@ fn AppealContent(
     let body = document.render(&detail.title);
     view! { {(!title_in_body).then(|| view! { <Heading level=HeadingLevel::H1>{detail.title}</Heading> })}
         <p>"Kết luận của quản trị viên là quyết định cuối cùng. Chưa có thông báo được gửi."</p>
-        <article class="vk-moderation__snapshot">{body}</article>
+        <article class=MODERATION_SNAPSHOT_CLASS>{body}</article>
         <TextArea id="appeal-reason" label="Căn cứ kết luận" value=reason on_input=move |i:vink_ui::TextInput| reason.set(i.value)/>
-        <div class="vk-moderation__actions">
+        <div class=MODERATION_ACTIONS_CLASS>
             <Button id="appeal-uphold" state=actions.state() on_press=move |_| actions.run.run((format!("/api/v1/moderation/appeals/{}/conclude",id.get_value()),json!({"expected_decision_version":version,"verdict":"uphold","reason":reason.get_untracked()})))>"Giữ quyết định"</Button>
             <Button id="appeal-reverse" variant=ButtonVariant::Filled state=actions.state() on_press=move |_| actions.run.run((format!("/api/v1/moderation/appeals/{}/conclude",id.get_value()),json!({"expected_decision_version":version,"verdict":"reverse","reason":reason.get_untracked()})))>"Đảo quyết định"</Button>
         </div>
@@ -615,12 +623,12 @@ pub fn AuthorReviews() -> impl IntoView {
         }
     });
     view! { <Title text="Kiểm duyệt bài của tôi — Vink"/><Meta name="robots" content="noindex"/>
-        <section class="vk-moderation" id="author-reviews"><Heading level=HeadingLevel::H1>"Kiểm duyệt bài của tôi"</Heading>
+        <section class=MODERATION_PAGE_CLASS id="author-reviews"><Heading level=HeadingLevel::H1>"Kiểm duyệt bài của tôi"</Heading>
             <Link href=move || format!("/ban-viet/{}",params.read().get("id").unwrap_or_default())>"Về bản nháp"</Link><Feedback actions/>
             <p>"Yêu cầu được ghi nhận tại Vink để quản trị viên xem xét. Chưa có thông báo nào được gửi."</p>
             {move || match data.get() {
                 Some((scope,id,Ok(state),Ok(appeals))) if scope.is_some() && scope==session.scope.get() && Some(id.clone())==params.read().get("id") => view! {
-                    <ul class="vk-moderation__list">{state.revisions.into_iter().map(|r| {
+                    <ul class=MODERATION_LIST_CLASS>{state.revisions.into_iter().map(|r| {
                         let path=format!("/api/v1/works/{}/revisions/{}/appeals",state.work_id,r.revision_id);
                         let version=r.decision_version;
                         let already_filed=appeals.iter().any(|a|a.revision_id==r.revision_id && Some(a.decision_version)==version);
@@ -628,7 +636,7 @@ pub fn AuthorReviews() -> impl IntoView {
                         // One wording of a decision (shared with the editor's publication region);
                         // "Đang công khai" comes only from the public pointer, never from a decision.
                         let public = state.pointer.as_ref().is_some_and(|p| p.revision_id == r.revision_id);
-                        view! { <li><Heading level=HeadingLevel::H2>{r.title}</Heading><p>{super::publication::decision_label(r.moderation)}</p>
+                        view! { <li class=MODERATION_LIST_ITEM_CLASS><Heading level=HeadingLevel::H2>{r.title}</Heading><p>{super::publication::decision_label(r.moderation)}</p>
                             {public.then(|| view! { <p>"Đang công khai."</p> })}
                             {r.decision_reason.map(|r| view! { <p>{r}</p> })}
                             {can_appeal.then(|| view! { <Button id=format!("file-appeal-{}",r.revision_id) state=actions.state() on_press=move |_| actions.run.run((path.clone(),json!({"expected_decision_version":version})))>"Yêu cầu quản trị viên xem xét"</Button> })}
