@@ -213,26 +213,80 @@ pub fn DraftRow(draft: DraftSummary) -> impl IntoView {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AuthorWorkSummary {
     pub title: String,
+    pub untitled: bool,
     pub updated_at: String,
     pub editor_href: Option<String>,
-    pub status: String,
-    pub metrics: Option<String>,
-    pub public_context: Option<String>,
-    pub reader_href: Option<String>,
+    pub status: Vec<AuthorWorkLabel>,
+    pub public: Option<AuthorWorkPublic>,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AuthorWorkLabel {
+    pub short: &'static str,
+    pub detail: &'static str,
+    pub icon: IconName,
+}
+
+impl AuthorWorkLabel {
+    pub const fn new(short: &'static str, detail: &'static str, icon: IconName) -> Self {
+        Self {
+            short,
+            detail,
+            icon,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AuthorWorkPublic {
+    pub href: String,
+    pub title: Option<String>,
+    pub tham: Option<i64>,
+    pub comments: Option<i64>,
+}
+
+#[component]
+fn AuthorWorkCount(name: &'static str, icon: IconName, count: Option<i64>) -> impl IntoView {
+    view! {
+        <span class="vk-author-work__count" title=count.map_or_else(
+            || format!("Chưa tải được số {name}"),
+            |n| format!("{n} {name}"),
+        )>
+            <Icon name=icon />
+            {match count {
+                Some(n) => view! { <span>{n}<span class="vk-ui-visually-hidden">" " {name}</span></span> }.into_any(),
+                None => view! { <span>"— " {name}<span class="vk-ui-visually-hidden">" (chưa tải được)"</span></span> }.into_any(),
+            }}
+        </span>
+    }
+}
+
 #[component]
 pub fn AuthorWorkRow(#[prop(into)] work: Signal<AuthorWorkSummary>) -> impl IntoView {
     let details = move || {
         view! {
             <div class="vk-draft-row__text">
-                <span class="vk-draft-row__title">{move || work.get().title}</span>
-                <p class="vk-draft-meta vk-author-work__status">{move || work.get().status}<span>" · Cập nhật " {move || view! { <Timestamp instant=work.get().updated_at /> }}</span></p>
-                <Show when=move || work.with(|w| w.metrics.is_some())>
-                    <p class="vk-author-work__metrics" data-testid="author-work-metrics">{move || work.get().metrics}</p>
+                <span class="vk-draft-row__title" class:vk-author-work__untitled=move || work.with(|w| w.untitled)>{move || work.get().title}</span>
+                <div class="vk-draft-meta vk-author-work__status">
+                    {move || work.get().status.into_iter().map(|label| view! {
+                        <span class="vk-author-work__label" title=label.detail>
+                            <Icon name=label.icon size=IconSize::Small />
+                            <span aria-hidden="true">{label.short}</span>
+                            <span class="vk-ui-visually-hidden">{label.detail}</span>
+                        </span>
+                    }).collect_view()}
+                    <span>"Cập nhật " {move || view! { <Timestamp instant=work.get().updated_at /> }}</span>
+                </div>
+                <Show when=move || work.with(|w| w.editor_href.is_none())>
+                    <p class="vk-author-work__context">"Không có bản nháp để sửa"</p>
                 </Show>
-                <Show when=move || work.with(|w| w.public_context.is_some())>
-                    <p class="vk-author-work__context">{move || work.get().public_context}</p>
-                </Show>
+                {move || work.get().public.map(|public| view! {
+                    <p class="vk-author-work__metrics" data-testid="author-work-metrics">
+                        <AuthorWorkCount name="Thấm" icon=IconName::PenFlight count=public.tham />
+                        <AuthorWorkCount name="nhận xét" icon=IconName::ChatBubbleOutline count=public.comments />
+                    </p>
+                    {public.title.map(|title| view! { <p class="vk-author-work__context">"Bản công khai: " {title}</p> })}
+                })}
             </div>
         }
     };
@@ -241,11 +295,14 @@ pub fn AuthorWorkRow(#[prop(into)] work: Signal<AuthorWorkSummary>) -> impl Into
             <Show when=move || work.with(|w| w.editor_href.is_some()) fallback=details>
                 <Link href=Signal::derive(move || work.get().editor_href.unwrap_or_default()) attr:class="vk-draft-row__link" variant=LinkVariant::Standalone>
                     {details()}
-                    <span class="vk-draft-row__open" aria-hidden="true"><Icon name=IconName::ArrowBack /></span>
                 </Link>
             </Show>
-            <Show when=move || work.with(|w| w.reader_href.is_some())>
-                <Link href=Signal::derive(move || work.get().reader_href.unwrap_or_default()) variant=LinkVariant::Inline attr:class="vk-author-work__reader">"Đọc bản công khai"<span class="vk-ui-visually-hidden">{move || format!(" của {}",work.get().title)}</span></Link>
+            <Show when=move || work.with(|w| w.public.is_some())>
+                <Link href=Signal::derive(move || work.get().public.map(|p| p.href).unwrap_or_default())
+                    attr:class="vk-author-work__reader vk-ui-button vk-ui-button--tonal"
+                    attr:aria-label=move || format!("Đọc bản công khai của {}", work.get().title)>
+                    <Icon name=IconName::Visibility />"Đọc"
+                </Link>
             </Show>
         </div>
     }
