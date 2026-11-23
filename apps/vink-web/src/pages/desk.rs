@@ -83,9 +83,9 @@ fn DeskSession(session: crate::account::Session) -> impl IntoView {
         match session.standing.get() {
         Standing::Unknown => view! { <DeskLoading /> }.into_any(),
         Standing::Anonymous if sign_in_open => view! {
-            <DeskAccess title="Bạn chưa đăng nhập" message="Đăng nhập để viết và mở bản thảo riêng của bạn.">
+            <DeskAccess title="Đăng nhập để mở Bàn viết" message="Viết và mở bản thảo riêng của bạn.">
                 <a id="desk-sign-in" class="vk-ui-button vk-ui-button--filled" href=DESK_SIGN_IN>"Đăng nhập"</a>
-                <a class="vk-ui-button vk-ui-button--text" href="/">"Khám phá tác phẩm"</a>
+                <vink_ui::Link href="/" variant=vink_ui::LinkVariant::Standalone>"Khám phá tác phẩm"</vink_ui::Link>
             </DeskAccess>
         }.into_any(),
         Standing::Anonymous => view! {
@@ -120,20 +120,27 @@ fn DeskSession(session: crate::account::Session) -> impl IntoView {
 fn DeskAccess(title: &'static str, message: &'static str, children: Children) -> impl IntoView {
     view! {
         <div class="vk-desk-access" data-testid="desk-access">
-            <span class="vk-desk-access__icon"><vink_ui::Icon name=IconName::Lock /></span>
-            <div>
-                <Heading level=HeadingLevel::H2 role=TypeRole::Title>{title}</Heading>
-                <p class="vk-muted">{message}</p>
-            </div>
-            <div class="vk-desk-access__actions">{children()}</div>
+            <EmptyState icon=IconName::Lock heading=HeadingLevel::H2 title message>
+                {children()}
+            </EmptyState>
         </div>
     }
 }
 
 #[component]
 fn DeskLoading() -> impl IntoView {
+    #[cfg(feature = "hydrate")]
+    let visible = vink_ui::use_loading_gate(Signal::stored(true), vink_ui::Clock::Browser).visible;
+    #[cfg(not(feature = "hydrate"))]
+    let visible = Signal::stored(false);
+
     view! {
-        <p class="vk-desk-loading vk-muted" role="status" data-testid="draft-loading">"Đang mở Bàn viết…"</p>
+        <div class="vk-desk-loading" data-testid="draft-loading">
+            <p class="vk-ui-visually-hidden" role="status">"Đang mở Bàn viết…"</p>
+            <div class="vk-desk-loading__placeholder" aria-hidden="true" hidden=move || !visible.get()>
+                <vink_ui::Skeleton />
+            </div>
+        </div>
     }
 }
 
@@ -490,15 +497,6 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                 <div class="vk-desk-works" data-testid="draft-content"
                     aria-busy=move || if loading.get() { "true" } else { "false" }>
                     <CreateNotice creation loading refresh />
-                    <Show when=move || !ready.get() && loading.get()>
-                        <DeskLoading />
-                    </Show>
-                    {move || load_error.get().map(|error| view! {
-                        // Retrying helps only an answer that may change: a proxy 5xx or 429 arrives
-                        // as `Unexpected`. A missing principal or invalid query would fail again.
-                        <DeskError refresh=matches!(error, ApiError::Unavailable | ApiError::Network | ApiError::Unexpected { .. }).then_some(refresh)
-                            error retry_disabled=refresh_disabled retained=pages.with(|p| p.loaded) />
-                    })}
                     // The tools/input retain one owner through loading, empty, query and error.
                     <DraftListView pages dock_open sort loading appending ready page_error load_error restarted
                         first_use no_results creation can_create create create_format clear more refresh refresh_disabled />
@@ -696,6 +694,28 @@ fn DraftListView(
                     </EmptyState>
                 </div>
             </Show>
+            <Show when=opening>
+                <DeskLoading />
+            </Show>
+            {move || load_error.get().map(|error| {
+                let retryable = matches!(error, ApiError::Unavailable | ApiError::Network | ApiError::Unexpected { .. });
+                let retained = pages.with(|p| p.loaded);
+                let (title, message) = if retained {
+                    ("Chưa tải lại được tác phẩm", "Đang giữ kết quả tải thành công gần nhất và chữ tìm kiếm.")
+                } else {
+                    ("Chưa tải được tác phẩm", "Hãy kiểm tra kết nối hoặc mở lại Bàn viết sau.")
+                };
+                view! {
+                    <div class="vk-desk-list-error" class:vk-desk-list-error--retained=retained data-testid="desk-error" role="alert">
+                        <EmptyState icon=IconName::Error title message>
+                            {retryable.then(|| view! {
+                                <Button variant=ButtonVariant::Filled id="retry-drafts" on_press=move |_| refresh.run(())
+                                    state=Signal::derive(move || blocked(refresh_disabled.get()))>"Thử lại"</Button>
+                            })}
+                        </EmptyState>
+                    </div>
+                }
+            })}
             <ul id="draft-results" class="vk-draft-rows" aria-label="Tác phẩm đã tải" role="list">
                 <For each=move || pages.with(|p| p.drafts.clone())
                     key=|draft| draft.work_id.clone()
@@ -741,12 +761,7 @@ fn DraftListView(
 }
 
 #[component]
-fn DeskError(
-    error: ApiError,
-    #[prop(optional_no_strip)] refresh: Option<Callback<()>>,
-    #[prop(optional, into)] retry_disabled: Signal<bool>,
-    #[prop(optional)] retained: bool,
-) -> impl IntoView {
+fn DeskError(error: ApiError) -> impl IntoView {
     let kind = match error {
         ApiError::Unauthenticated => ProblemKind::AuthRequired,
         ApiError::Forbidden => ProblemKind::Forbidden,
@@ -756,10 +771,6 @@ fn DeskError(
     // Only where this deployment accepts sign-in; elsewhere the old wording stays truthful.
     let sign_in = error == ApiError::Unauthenticated && crate::api::sign_in_open();
     let (title, detail) = match error {
-        ApiError::Unavailable | ApiError::Network if retained => (
-            "Chưa tải lại được bản thảo.",
-            "Đang giữ danh sách tải thành công gần nhất và chữ tìm kiếm. Hãy thử tải lại.",
-        ),
         ApiError::Unauthenticated if sign_in => (
             "Bạn chưa đăng nhập.",
             "Đăng nhập ở mục Tôi để mở bản thảo riêng. Trang này tự tải lại khi phiên sẵn sàng.",
@@ -785,10 +796,6 @@ fn DeskError(
     view! {
         <div data-testid="desk-error" role="alert">
             <StatePanel content=PanelContent { kind: PanelKind::Error(kind), title: title.into(), message: detail.into(), actions: vec![], code: None }>
-                {refresh.map(|refresh| view! {
-                    <Button variant=ButtonVariant::Filled id="retry-drafts" on_press=move |_| refresh.run(())
-                        state=Signal::derive(move || blocked(retry_disabled.get()))>"Thử lại"</Button>
-                })}
                 {sign_in.then(|| view! {
                     <vink_ui::Link href=DESK_SIGN_IN variant=vink_ui::LinkVariant::Standalone attr:id="desk-sign-in">"Đăng nhập ở mục Tôi"</vink_ui::Link>
                 })}

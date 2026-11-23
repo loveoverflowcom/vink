@@ -845,40 +845,32 @@ a {
 .vk-desk-heading__actions > .vk-desk-create { flex: 0 1 auto; }
 .vk-drafts-region, .vk-desk-works, .vk-draft-list { display: grid; min-inline-size: 0; }
 .vk-desk-works, .vk-draft-list { gap: var(--vk-space-3); }
-.vk-desk-access {
-  display: grid;
-  justify-items: center;
-  gap: var(--vk-space-4);
-  padding: clamp(var(--vk-space-3), 6vw, calc(var(--vk-space-8) + var(--vk-space-2)));
-  border-radius: var(--vk-radius-lg);
-  background: var(--vk-surface-container-low);
-  text-align: center;
+.vk-empty-state__actions > a {
+  max-inline-size: 100%;
   overflow-wrap: anywhere;
 }
-.vk-desk-access__icon {
+.vk-empty-state__actions > a.vk-ui-button { text-decoration: none; }
+.vk-desk--index .vk-empty-state__actions:empty { display: none; }
+.vk-desk--index .vk-empty-state__actions { --vk-ui-control-radius: var(--vk-radius-control-48); }
+.vk-empty-state__icon {
   display: grid;
   place-items: center;
-  inline-size: calc(var(--vk-size-hit-target) + var(--vk-space-2));
-  block-size: calc(var(--vk-size-hit-target) + var(--vk-space-2));
-  border-radius: var(--vk-radius-full);
-  background: var(--vk-primary-container);
-  color: var(--vk-on-primary-container);
+  inline-size: 56px;
+  block-size: 56px;
+  border-radius: var(--vk-radius-control-56);
+  background: var(--vk-bg-inset);
+  color: var(--vk-on-surface-variant);
 }
-.vk-desk-access p { margin: var(--vk-space-1) 0 0; }
-.vk-desk-access__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  max-inline-size: 100%;
-  gap: var(--vk-space-2);
+.vk-desk-list-error .vk-empty-state__icon {
+  background: var(--vk-error-container);
+  color: var(--vk-on-error-container);
 }
-.vk-desk-access__actions > a, .vk-empty-state__actions > a.vk-ui-button {
-  max-inline-size: 100%;
-  overflow-wrap: anywhere;
-  text-decoration: none;
+.vk-desk-loading {
+  inline-size: min(100%, 24rem);
+  align-self: center;
+  margin-inline: auto;
 }
-.vk-desk-loading { margin: 0; }
+.vk-desk-loading__placeholder[hidden] { display: none; }
 .vk-desk-create {
   --vk-ui-control-radius: var(--vk-radius-control-48);
   display: flex;
@@ -2262,21 +2254,25 @@ a {
  * viewport arithmetic. Only a screen that renders one becomes a column flex chain. Its auto
  * margins fall back to top alignment when content is taller. Page scroll stays the only scroll:
  * no fixed height, overlay or nested scroller. */
-.vk-main:has(.vk-empty-state),
-.vk-main:has(.vk-empty-state) :is(.vk-desk--index, .vk-drafts-region, .vk-desk-works, .vk-draft-list,
+.vk-main:has(.vk-empty-state, .vk-desk-loading),
+.vk-main:has(.vk-empty-state, .vk-desk-loading) :is(.vk-desk--index, .vk-drafts-region, .vk-desk-works, .vk-draft-list,
   .vk-discovery, #community-stream, #public-collection, #public-results) {
   display: flex;
   flex-direction: column;
 }
-.vk-main:has(.vk-empty-state) :is(.vk-desk--index, .vk-drafts-region, .vk-desk-works, .vk-draft-list,
+.vk-main:has(.vk-empty-state, .vk-desk-loading) :is(.vk-desk--index, .vk-drafts-region, .vk-desk-works, .vk-draft-list,
   .vk-discovery, #community-stream, #public-collection, #public-results) {
   flex: 1 0 auto;
 }
 /* Auto inline margins disable flex stretch, so keep Desk and Discovery measure instead of shrinking to content. */
-.vk-main:has(.vk-empty-state) > :is(.vk-desk--index, .vk-discovery) { inline-size: 100%; }
+.vk-main:has(.vk-empty-state, .vk-desk-loading) > :is(.vk-desk--index, .vk-discovery) { inline-size: 100%; }
 .vk-main :is(#public-results, .vk-draft-list) > :has(> .vk-empty-state) { margin-block: auto; }
+.vk-desk--index > :is(.vk-desk-access, .vk-desk-loading),
+.vk-draft-list > .vk-desk-loading { margin-block: auto; }
+/* Only real rows need room below the error. Empty retained results still center the state. */
+.vk-draft-list:has(> #draft-results:not(:empty)) > .vk-desk-list-error--retained { margin-block: 0; }
 /* Flex keeps the margins block layout used to collapse, so a nav without links must not offset it. */
-.vk-main:has(.vk-empty-state) .vk-public-pagination:empty { display: none; }
+.vk-main:has(.vk-empty-state, .vk-desk-loading) .vk-public-pagination:empty { display: none; }
 .vk-empty-state {
   display: grid;
   justify-items: center;
