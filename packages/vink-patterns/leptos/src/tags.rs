@@ -136,9 +136,9 @@ pub fn TagChip(
         .zip(on_replace)
         .filter(|_| tag.retired || tag.problem.is_some());
     view! {
-        <span class="vk-tag-chip" data-status=status id=id.clone()>
-            <span class="vk-tag-chip__body">
-                <span class="vk-tag-chip__label">{tag.label.clone()}</span>
+        <span class="vk-tag-chip inline-grid gap-vk-1 [min-inline-size:0] [max-inline-size:100%]" data-status=status id=id.clone()>
+            <span class="vk-tag-chip__body inline-flex flex-wrap items-center gap-x-vk-2 gap-y-0 [min-inline-size:0] ps-vk-3 rounded-vk-sm">
+                <span class="vk-tag-chip__label [min-inline-size:0] wrap-anywhere">{tag.label.clone()}</span>
                 {tag.retired.then(|| view! { <span class="vk-tag-chip__badge">"Đã ngừng dùng"</span> })}
                 {on_remove.map(|remove| {
                     let button = format!("{id}-remove");
@@ -154,7 +154,7 @@ pub fn TagChip(
                 })}
             </span>
             {note.map(|text| view! {
-                <span class="vk-tag-chip__note" id=note_id.clone()>
+                <span class="vk-tag-chip__note flex items-start gap-vk-1 [max-inline-size:var(--vk-measure)] wrap-anywhere" id=note_id.clone()>
                     <Icon name=if tag.problem.is_some() { IconName::Error } else { IconName::Info } size=IconSize::Small />
                     <span>{text}</span>
                 </span>
@@ -162,7 +162,7 @@ pub fn TagChip(
             {replace.map(|(successor, replace)| {
                 let target = successor.id.clone();
                 view! {
-                    <span class="vk-tag-chip__replace">
+                    <span class="vk-tag-chip__replace flex">
                         <Button variant=ButtonVariant::Text id=format!("{id}-replace")
                             on_press=move |_| replace.run(target.clone())>
                             {format!("Thay bằng “{}”", successor.label)}
@@ -189,6 +189,13 @@ fn focus_id(id: &str) -> bool {
     let _ = id;
     false
 }
+
+const TAG_GROUP_CLASS: &str = "vk-tag-group grid gap-vk-3 [min-inline-size:0] m-0 p-0 [border:0]";
+const TAG_LEGEND_CLASS: &str = "vk-tag-group__legend p-0 [margin-block-end:var(--vk-space-1)]";
+const TAG_HELP_CLASS: &str = "vk-tag-group__help m-0 wrap-anywhere";
+const TAG_CHIPS_CLASS: &str = "vk-tag-chips flex flex-wrap items-start gap-vk-2 [min-inline-size:0] m-0 p-0 [list-style:none]";
+const TAG_OPTIONS_CLASS: &str =
+    "vk-tag-options grid gap-vk-1 [min-inline-size:0] p-0 [list-style:none]";
 
 /// The author's form and themes for one work.
 ///
@@ -278,7 +285,7 @@ pub fn TagSelector(
             }
             .into_any(),
             CatalogFacts::Ready { forms, .. } => view! {
-                <div class="vk-tag-chips">
+                <div class=TAG_CHIPS_CLASS>
                     {forms
                         .into_iter()
                         .map(|tag| {
@@ -300,7 +307,7 @@ pub fn TagSelector(
     let form_description = move || {
         form.get().and_then(|f| {
             f.description
-                .map(|d| view! { <p class="vk-tag-group__help">{format!("{}: {d}", f.label)}</p> })
+                .map(|d| view! { <p class=TAG_HELP_CLASS>{format!("{}: {d}", f.label)}</p> })
         })
     };
 
@@ -317,7 +324,7 @@ pub fn TagSelector(
             }
             let count = list.len();
             view! {
-                <ul class="vk-tag-chips" aria-label="Chủ đề đã chọn">
+                <ul class=TAG_CHIPS_CLASS aria-label="Chủ đề đã chọn">
                     {list
                         .into_iter()
                         .enumerate()
@@ -329,7 +336,7 @@ pub fn TagSelector(
                             let id = id.clone();
                             let query_id = query_id.clone();
                             view! {
-                                <li>
+                                <li class="flex [min-inline-size:0] [max-inline-size:100%]">
                                     <TagChip id=chip tag remove_label=label
                                         on_remove=move |_| {
                                             on_remove_theme.run(removed.clone());
@@ -391,9 +398,9 @@ pub fn TagSelector(
             .into_any()
         };
         view! {
-            <li class="vk-tag-option">
+            <li class="vk-tag-option grid [min-inline-size:0] rounded-vk-md [background:var(--vk-surface-container-low)]">
                 {action}
-                {tag.description.map(|d| view! { <p class="vk-tag-option__description" id=description_id>{d}</p> })}
+                {tag.description.map(|d| view! { <p class="vk-tag-option__description m-0 wrap-anywhere" id=description_id>{d}</p> })}
             </li>
         }
     };
@@ -402,7 +409,7 @@ pub fn TagSelector(
         let options_id = options_id.clone();
         move || match options.get() {
             TagOptions::Ready(found) if !found.is_empty() => Some(view! {
-                <ul class="vk-tag-options" id=options_id.clone() aria-label="Gợi ý chủ đề">
+                <ul class=TAG_OPTIONS_CLASS id=options_id.clone() aria-label="Gợi ý chủ đề">
                     {found
                         .into_iter()
                         .enumerate()
@@ -426,7 +433,7 @@ pub fn TagSelector(
                 Some(view! {
                     <div class="vk-tag-browse">
                         <SupportingDetails id=format!("{id}-browse") summary=format!("Xem các chủ đề có sẵn ({count})")>
-                            <ul class="vk-tag-options" aria-label="Các chủ đề có sẵn">
+                            <ul class=TAG_OPTIONS_CLASS aria-label="Các chủ đề có sẵn">
                                 {all
                                     .into_iter()
                                     .enumerate()
@@ -434,7 +441,7 @@ pub fn TagSelector(
                                     .collect_view()}
                             </ul>
                             {truncated.then(|| view! {
-                                <p class="vk-tag-group__help">"Danh mục còn nhiều chủ đề hơn; gõ để tìm."</p>
+                                <p class=TAG_HELP_CLASS>"Danh mục còn nhiều chủ đề hơn; gõ để tìm."</p>
                             })}
                         </SupportingDetails>
                     </div>
@@ -482,25 +489,25 @@ pub fn TagSelector(
     };
 
     view! {
-        <div class="vk-tag-selector" id=id.clone()>
-            <fieldset class="vk-tag-group" id=format!("{id}-form")>
-                <legend class="vk-tag-group__legend">
+        <div class="vk-tag-selector grid gap-vk-6 [min-inline-size:0]" id=id.clone()>
+            <fieldset class=TAG_GROUP_CLASS id=format!("{id}-form")>
+                <legend class=TAG_LEGEND_CLASS>
                     "Dạng bài" <span class="vk-tag-group__count">" · chọn 1"</span>
                 </legend>
                 {form_chip}
                 {form_choices}
                 {form_description}
             </fieldset>
-            <fieldset class="vk-tag-group" id=format!("{id}-themes")>
-                <legend class="vk-tag-group__legend">
+            <fieldset class=TAG_GROUP_CLASS id=format!("{id}-themes")>
+                <legend class=TAG_LEGEND_CLASS>
                     "Chủ đề" <span class="vk-tag-group__count">{move || format!(" · {}/{THEME_LIMIT}", themes.with(Vec::len))}</span>
                 </legend>
                 {theme_chips}
-                <div class="vk-tag-query" on:keydown=on_keydown>
+                <div class="vk-tag-query grid gap-vk-2 [min-inline-size:0]" on:keydown=on_keydown>
                     <SearchField id=query_id.clone() label="Tìm chủ đề" value=query on_input=on_query
                         on_submit=submit input_ref=input
                         help="Gõ tên chủ đề hoặc tên gọi khác, rồi chọn trong gợi ý. Enter chỉ chọn khi gõ đúng tên." />
-                    <p class="vk-tag-query__status" id=status_id role="status" aria-live="polite">
+                    <p class="vk-tag-query__status m-0 wrap-anywhere" id=status_id role="status" aria-live="polite">
                         {move || options_status(&options.get(), &query.get(), themes.with(Vec::len))}
                     </p>
                     {candidates}
