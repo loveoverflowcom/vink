@@ -49,9 +49,10 @@ Bổ sung [#218 — Editor Paper First](ui-editor-paper-first-218.md): công c�
 và [#254 — Giao diện Editor yên tĩnh](editor-quiet-254.md): bỏ footer `#build-info`, hướng dẫn dài và toàn bộ nút tải `.txt`, làm lại nút về Bàn viết Tonal + icon.
 Thêm native trong flow, paper/canvas scoped và giữ save/recovery/focus của #217.
 
-Bổ sung [R4 — audit và redesign Bàn viết + Khám phá](redesign-r4-ban-viet-kham-pha.md): findings
-P1–P3 có bằng chứng runtime `develop@7ca0dd0d`, ba phương án, R4.1 Expressive `DESIGN_PROPOSED`,
-LayoutSpec, token delta, các quyết định DQ-01…DQ-10 và kế hoạch PR; chưa đổi code.
+[LayoutSpec R4.3 — Bàn viết, Khám phá và rail](redesign-r4/layout-spec.md) là đầu mối thiết kế
+hiện hành (`DESIGN_PROPOSED`). [Bàn giao #414](redesign-r4/review-414.md) ghi HOW/WHY, evidence
+và owner cho các phần còn mở. [Audit R4.1/R4.2](redesign-r4-ban-viet-kham-pha.md) giữ ba phương
+án và findings có provenance lịch sử `develop@7ca0dd0d`.
 
 Bổ sung [#262 — selector định dạng](editor-format-picker-262.md): geometry native Select
 opt-in đã tách khỏi prerequisite source/title/provider/Reader; mẫu gallery không bật Markdown
@@ -60,8 +61,9 @@ trong Bàn viết.
 ## Hồ sơ tác giả và Theo dõi (#289)
 
 [LayoutSpec Social r2](social-289.md) đặc tả chín bề mặt Web từ bút danh tới hồ sơ,
-Theo dõi và Khám phá. Hướng điều hướng v4 cập nhật thanh dưới, đích Tôi → Giao diện
-và vị trí logo. [HTTP Social r1](../../services/vink-app/contracts/http/v1/social-graph.md)
+Theo dõi và Khám phá. Hướng điều hướng v4 ghi lịch sử của thanh dưới, đích Tôi → Giao diện
+và vị trí logo. Phạm vi Web đã được R4 cập nhật dẫn tới [LayoutSpec R4.3](redesign-r4/layout-spec.md).
+[HTTP Social r1](../../services/vink-app/contracts/http/v1/social-graph.md)
 sở hữu ma trận quyền, projection và lỗi. [Bàn giao #288](../development/social-graph.md)
 ghi gate theo từng màn.
 
@@ -77,8 +79,8 @@ và danh mục bàn giao cho `Epic AC-16`/`AC-17` nằm tại [bảng bàn giao]
 
 | Nguồn | Dùng cho |
 | --- | --- |
-| [Quiet Lavender R1 / #66](https://github.com/loveoverflowcom/vink/issues/66), [Expressive Lavender R2 / #67](https://github.com/loveoverflowcom/vink/issues/67), [LayoutSpec R2](https://drive.google.com/file/d/1ChFchoWsrc9XFtkW5BvP5XUfr6GAAbKy/view) | Yêu cầu thiết kế hiện hành: R1 cho shared fields/actions/search/Explore/Desk/editor (PR #74, #76); R2 cho appearance/account (PR #77). Giữ phân biệt giữa tham chiếu thiết kế và dữ liệu/quyền thật trên runtime |
-| [Current design 02/11](https://drive.google.com/file/d/1cNYQh-iukYP-nP0cphLOGdywROAmtkSr/view), [amendment v4](https://drive.google.com/file/d/1PQeLmEbwkNiFquI-Qgb6gaEV3i0OZWSn/view) | Tham chiếu thị giác Khám phá hiện hành; phạm vi dữ liệu thật và đối chiếu vùng ở [UI-REPAIR-02](ui-repair-02.md) |
+| [Quiet Lavender R1 / #66](https://github.com/loveoverflowcom/vink/issues/66), [Expressive Lavender R2 / #67](https://github.com/loveoverflowcom/vink/issues/67), [LayoutSpec R2](https://drive.google.com/file/d/1ChFchoWsrc9XFtkW5BvP5XUfr6GAAbKy/view) | Nguồn lịch sử cho shared fields/actions/search/Explore/Desk/editor (R1, #74/#76) và appearance/account (R2, #77). Dùng [R4.3](redesign-r4/layout-spec.md) cho phần Bàn viết, Khám phá và điều hướng đã được R4 cập nhật. Giữ phân biệt giữa thiết kế và dữ liệu/quyền runtime |
+| [Current design 02/11](https://drive.google.com/file/d/1cNYQh-iukYP-nP0cphLOGdywROAmtkSr/view), [amendment v4](https://drive.google.com/file/d/1PQeLmEbwkNiFquI-Qgb6gaEV3i0OZWSn/view) | Tham chiếu thị giác lịch sử của Khám phá. Phạm vi dữ liệu thật và đối chiếu vùng tại thời điểm đó ở [UI-REPAIR-02](ui-repair-02.md) |
 | [LayoutSpec Khám phá v3](https://drive.google.com/file/d/1F2tieZPb2-PsR7Tn3vD0xvIlEwBQf2Ne/view), cập nhật [#9](https://github.com/loveoverflowcom/vink/issues/9#issuecomment-6556317033) / [#14](https://github.com/loveoverflowcom/vink/issues/14) | Khám phá và reader thay bố cục spotlight v2.3; capability delta ở [spec lớp đọc](public-reading.md) |
 | [Design index v2.3](https://drive.google.com/file/d/16OqseJ0uCdbEtF2H3XZyNzfG33QLLFZC/view), [tokens/typography](https://drive.google.com/file/d/1JiIH3GCsLxCJf766hN7RBU_doQ8xui9K/view), [handoff](https://drive.google.com/file/d/1anrbq2AsNhNIXFCfO72B1yKddgQrVAep/view) | Palette Lavender sáng/tối, Be Vietnam Pro + Literata, shape/motion, owner map |
 | [Quyết định 31/10/2026 về điều hướng và logo](https://drive.google.com/file/d/1xfV44hh0oe5b5ZopTFnEzcZD7xYXyI48/view) | Khám phá trước Bàn viết; logo chưa chốt |
@@ -87,8 +89,9 @@ và danh mục bàn giao cho `Epic AC-16`/`AC-17` nằm tại [bảng bàn giao]
 | [Logo Enso 01/11/2026](https://github.com/loveoverflowcom/vink/issues/10), PR #17 | Lịch sử đã được selected pack #34 thay thế; không còn là source artwork hiện hành |
 
 Thứ tự ưu tiên: chỉ dẫn hiện tại của người dùng > quyết định mới hơn đúng phạm vi > spec còn hiệu lực.
-Khám phá theo thị giác v4 trong dữ liệu thật đã có; semantics v3/r2 về đọc/search/return
-giữ hiệu lực. Palette và phần Bàn viết chưa bị thay thế tiếp tục theo v2.3.
+Với phần thiết kế Bàn viết, Khám phá và rail được cập nhật, dùng [R4.3](redesign-r4/layout-spec.md).
+Hợp đồng đọc, tìm và quay lại từ v3/r2 còn hiệu lực ở phần R4 không sửa. Palette và các phần
+còn lại của Bàn viết tiếp tục theo nguồn sở hữu tương ứng.
 Ảnh tham chiếu không ghi đè quyền của server hay ngữ nghĩa lưu/transport. `source/tokens.css` của
 prototype là nơi lấy giá trị ban đầu; từ nay sửa role trong `tokens.json`, không đồng bộ ngược từ
 prototype. Lavender là palette riêng của Vink do người dùng chọn, không phải thương hiệu Cantos.
@@ -233,8 +236,13 @@ reader có tên và cài đặt reduced-motion của hệ điều hành. Ảnh t
 
 ## Shell thích ứng #7
 
-**Điều hướng Web sau audit Bàn viết ngày 22/11/2026.** Mục **Tôi** trên rail và thanh dưới
-dẫn tới `/toi`. Nút **Giao diện** trên rail cho phép đổi tùy chọn ngay trong trang đang xem.
+**Phạm vi hiện hành.** Dùng [LayoutSpec R4.3 §3](redesign-r4/layout-spec.md#3-shell-rail-và-thanh-dưới)
+và [#413](https://github.com/loveoverflowcom/vink/issues/413) cho rail, Giao diện và cỡ chữ Web.
+#413 yêu cầu đưa Giao diện về Tôi và dùng Mặc định 100% / Lớn 150%. Trạng thái runtime tại base
+được ghi trong LayoutSpec.
+
+**Lịch sử R1/v4 và audit ngày 22/11/2026.** Phần dưới lưu thiết kế và bằng chứng cũ, gồm chế độ
+Giao diện trên rail. Mục **Tôi** trên rail và thanh dưới dẫn tới `/toi`.
 Ở 760–1099px, rail thu gọn dành 96px cho điều hướng. Khi mở rộng, hộp thoại phủ lên nội dung
 để giữ nguyên bề rộng của Bàn viết. Escape hoặc bấm nền đóng danh sách và trả focus về nút mở.
 Ở rail xếp dọc, nền chọn bao quanh biểu tượng, nhãn nằm bên dưới và cả mục đều bấm được.
@@ -277,7 +285,7 @@ dấu câu đứng riêng); không có tên thật thì trả dấu trung tính.
 - Dưới 760px rail ẩn và bottom bar có ba đích. Editor ẩn bottom bar,
   giữ đường Về Bàn viết hiện có. `ResizeObserver` đo chiều cao bar (gồm safe area) để dành đáy,
   cả khi tăng chữ 200%; không dùng chiều cao cứng làm khoảng bù.
-- [Giao diện R1 (#209)](me-preferences-r1-209.md) dùng cùng ba nhóm radio ở `/toi` và panel
+- **Lịch sử.** [Giao diện R1 (#209)](me-preferences-r1-209.md) dùng cùng ba nhóm radio ở `/toi` và panel
   **Giao diện**. Tên nhóm đứng trên lựa chọn. Các lựa chọn tự xuống dòng theo độ rộng nhãn,
   với nền tonal và dấu check cho mục đã chọn. Trang có thẻ **Tài khoản** và minh họa sách–bút.
   Mobile dùng đích Tôi trên thanh dưới để tới `/toi`.

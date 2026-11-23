@@ -1,5 +1,9 @@
 # R4 · Bàn viết + Khám phá — audit, redesign và bàn giao
 
+> **Hồ sơ lịch sử R4.1/R4.2.** Dùng [LayoutSpec R4.3](redesign-r4/layout-spec.md) cho phần
+> thiết kế hiện hành của Bàn viết, Khám phá và rail. Lời chốt, ảnh và các phương án bên dưới
+> giữ provenance của từng lượt. [Bàn giao #414](redesign-r4/review-414.md) đối chiếu runtime và DQ.
+
 **23/11/2026 · R4.2 · `DESIGN_PROPOSED` · `fidelity: NO_APPROVED_REFERENCE`.** Đối chiếu
 `develop@7ca0dd0d3ecb4c5d5ae92e5a415f91d16d345298`. Phạm vi: `/ban-viet`, `/`, Navigation Rail,
 thanh dưới và component dùng chung. Không sửa code UI, không tạo issue, không merge/deploy trong
@@ -157,6 +161,8 @@ nhất trên khung tô nhẹ, hàng tác vụ icon + số, thẻ tài khoản �
 
 ## 5. LayoutSpec R4.1
 
+**Lịch sử.** Xem [LayoutSpec R4.3](redesign-r4/layout-spec.md) cho đặc tả hiện hành.
+
 ```text
 Shell (giữ #394)
   Rail ≥760: toggle 48 → Khám phá → Bàn viết … [chân] Giao diện (tiện ích) → Tôi
@@ -206,6 +212,8 @@ tertiary/nền 6.08/10.61; on-surface-variant/highest 5.05. Cần đo lại trê
 
 ## 7. Current code → current design → proposed
 
+**Lịch sử.** Bảng này dùng code và đề xuất tại thời điểm audit.
+
 | Vùng | Code (develop) | Thiết kế hiện hành | R4.1 |
 | --- | --- | --- | --- |
 | Khám phá đầu trang | H1 ẩn; Lọc thẻ · tìm 328 · logo căn phải; mobile kính lúp | #308 r1/#325: H1 ẩn, một hàng công cụ | H1 page-title hiện + [tìm] [Lọc thẻ] logo; tìm mở search dock ở mọi cỡ màn (DQ-01, DQ-02) |
@@ -219,6 +227,9 @@ tertiary/nền 6.08/10.61; on-surface-variant/highest 5.05. Cần đo lại trê
 | Rail | Giao diện tô pill khi mở; tooltip phủ | #394 | Viền tiện ích; tooltip bên phải |
 
 ## 8. Sửa theo thiết kế hiện hành vs cần quyết định
+
+Danh sách sửa ngay bên dưới thuộc lượt audit. Xem [bàn giao #414](redesign-r4/review-414.md)
+để áp lời chốt theo từng phạm vi và giữ phần còn mở.
 
 **Sửa được ngay, không đổi quyết định:** KP-02 (bo/dấu chọn, không đổi cấu trúc), KP-05, KP-06
 (chỉ đổi role ở consumer — vẫn cần DQ-10 cho tertiary), KP-08, KP-09, KP-11, KP-12, KP-14, BV-03,
