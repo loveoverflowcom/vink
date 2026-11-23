@@ -296,7 +296,8 @@ fn style_literal(declaration: &str) -> bool {
     let Some((property, value)) = declaration.split_once(':') else {
         return false;
     };
-    let property = property.trim();
+    let property = property.trim().to_ascii_lowercase();
+    let property = property.as_str();
     let value = value.trim().trim_end_matches("!important").trim();
     if matches!(
         property,
@@ -309,6 +310,7 @@ fn style_literal(declaration: &str) -> bool {
             | "stroke"
             | "text-decoration-color"
     ) && is_css_named_color(value)
+        || shorthand_has_named_color(property, value)
     {
         return true;
     }
@@ -345,6 +347,97 @@ fn style_literal(declaration: &str) -> bool {
             && !value.contains("var(")
             && value != "0s"
             && value != "0ms")
+}
+
+fn shorthand_has_named_color(property: &str, value: &str) -> bool {
+    let structural: &[&str] = match property {
+        "background" => &[
+            "bottom",
+            "center",
+            "left",
+            "right",
+            "top",
+            "contain",
+            "cover",
+            "repeat",
+            "repeat-x",
+            "repeat-y",
+            "no-repeat",
+            "round",
+            "space",
+            "fixed",
+            "local",
+            "scroll",
+            "border-box",
+            "border-area",
+            "content-box",
+            "padding-box",
+            "text",
+        ],
+        "border"
+        | "border-top"
+        | "border-right"
+        | "border-bottom"
+        | "border-left"
+        | "border-block"
+        | "border-block-start"
+        | "border-block-end"
+        | "border-inline"
+        | "border-inline-start"
+        | "border-inline-end" => &[
+            "thin", "medium", "thick", "hidden", "dotted", "dashed", "solid", "double", "groove",
+            "ridge", "inset", "outset",
+        ],
+        _ => return false,
+    };
+    let is_literal = |part: &str| {
+        is_css_named_color(part)
+            && !structural
+                .iter()
+                .any(|token| part.eq_ignore_ascii_case(token))
+    };
+
+    // Only inspect top-level shorthand components. Functions, quoted URLs and comments
+    // can contain colour-like words that are not the declaration's named colour.
+    let mut chars = value.char_indices().peekable();
+    let mut start = 0;
+    let mut depth = 0usize;
+    let mut quote = None;
+    while let Some((end, ch)) = chars.next() {
+        match ch {
+            '\\' => {
+                chars.next();
+            }
+            _ if quote == Some(ch) => quote = None,
+            _ if quote.is_some() => {}
+            '"' | '\'' => quote = Some(ch),
+            '(' => depth += 1,
+            ')' => depth = depth.saturating_sub(1),
+            '/' if chars.next_if(|&(_, next)| next == '*').is_some() => {
+                if depth == 0 && is_literal(&value[start..end]) {
+                    return true;
+                }
+                while let Some((_, part)) = chars.next() {
+                    if part == '*'
+                        && let Some((close, _)) = chars.next_if(|&(_, next)| next == '/')
+                    {
+                        if depth == 0 {
+                            start = close + 1;
+                        }
+                        break;
+                    }
+                }
+            }
+            ch if depth == 0 && (ch.is_ascii_whitespace() || matches!(ch, ',' | '/')) => {
+                if is_literal(&value[start..end]) {
+                    return true;
+                }
+                start = end + ch.len_utf8();
+            }
+            _ => {}
+        }
+    }
+    is_literal(&value[start..])
 }
 
 fn nonzero_css_time(token: &str) -> bool {
@@ -866,6 +959,10 @@ mod tests {
             "transition-duration: 123ms",
             "transition: opacity 150ms",
             "color: red",
+            "background: red url(cover.svg) center / cover no-repeat",
+            "background: url(layer.svg) no-repeat, rebeccapurple",
+            "border: RED solid 1px",
+            "border-inline-start: 1px solid/* side */red",
         ] {
             assert!(style_literal(s), "{s}");
         }
@@ -873,6 +970,10 @@ mod tests {
             "font-size: var(--vk-type-body-size)",
             "width: 320px",
             "background: var(--vk-surface)",
+            "background: /* red is only a comment */ var(--vk-surface)",
+            "background: color-mix(in srgb, var(--vk-primary) 25%, transparent)",
+            "background: center / cover url(cover.svg) no-repeat",
+            "border-block: Thin Dashed ButtonText",
             "color: CanvasText",
             "transition: opacity var(--vk-duration-short) var(--vk-ease-emphasized)",
         ] {
@@ -897,14 +998,20 @@ mod fixtures { const CLASSES: &str = "[color:blue]"; }
 #[component]
 pub fn Unregistered() -> impl IntoView {
     let tiếng = 'đ';
-    view! { <p class="[color:red] text-vk-caption w-[320px]" /> }
+    view! { <p class="[color:red] [background:red] [border:1px_solid_red]
+        [background:var(--vk-surface)] [border:1px_solid_CanvasText]
+        text-vk-caption w-[320px]" /> }
 }
 "#,
         )
         .unwrap();
         std::fs::write(
             root.join("apps/vink-web/style/vink.css"),
-            ".card { transition: opacity 150ms; color: var(--vk-on-surface); }",
+            r#".card { transition: opacity 150ms; background: red; border: 1px solid red; }
+                .token { background: var(--vk-surface); border: 1px solid var(--vk-outline); }
+                .system { background: Highlight; border: 1px solid CanvasText; }
+                .image { background: url("red (and blue).svg") center / contain no-repeat; }
+            "#,
         )
         .unwrap();
         std::fs::write(root.join(COVERAGE), r#"{"format":1,"components":[{"renderer":"leptos","source":"missing.rs","symbol":"Stale","entry":"missing"}]}"#).unwrap();
@@ -918,7 +1025,32 @@ pub fn Unregistered() -> impl IntoView {
         std::fs::remove_dir_all(root).unwrap();
         assert!(problems.iter().any(|p| p.contains("Unregistered")));
         assert!(problems.iter().any(|p| p.contains("Stale")));
-        assert!(problems.iter().any(|p| p.contains("[color:red]")));
+        for rejected in [
+            "[color:red]",
+            "[background:red]",
+            "[border:1px_solid_red]",
+            "background: red",
+            "border: 1px solid red",
+        ] {
+            assert!(
+                problems.iter().any(|problem| problem.contains(rejected)),
+                "{rejected} missing from {problems:?}"
+            );
+        }
+        for accepted in [
+            "[background:var(--vk-surface)]",
+            "[border:1px_solid_CanvasText]",
+            "background: var(--vk-surface)",
+            "border: 1px solid var(--vk-outline)",
+            "background: Highlight",
+            "border: 1px solid CanvasText",
+            "url(",
+        ] {
+            assert!(
+                problems.iter().all(|problem| !problem.contains(accepted)),
+                "{accepted} rejected in {problems:?}"
+            );
+        }
         assert!(
             problems
                 .iter()
