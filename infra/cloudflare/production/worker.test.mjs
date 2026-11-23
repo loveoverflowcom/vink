@@ -14,8 +14,10 @@ const send = (serve, pathname, options = {}, bindings = env) => serve(new Reques
 
 test('inventory and retained fallback read only static bytes', async () => {
   const serve = handler(index, assert.fail, req => {
-    assert.equal(new URL(req.url).host, 'r-' + 'b'.repeat(40) + '.vink-production.pages.dev');
+    assert.equal(new URL(req.url).host, 'r-' + 'b'.repeat(26) + '.vink-production.pages.dev');
+    assert.equal(new URL(req.url).pathname, `/_v/${'b'.repeat(40)}/pkg/vink-editor.js`);
     assert.equal(req.headers.has('cookie'), false);
+    assert.equal(req.headers.has('authorization'), false);
     return new Response('B', { headers: { 'x-vink-asset-revision': 'b'.repeat(40) } });
   });
   const js = await send(serve, path, { headers: { cookie: 'one' } });
@@ -25,7 +27,12 @@ test('inventory and retained fallback read only static bytes', async () => {
   assert.match(js.headers.get('cache-control'), /immutable/);
   assert.equal((await send(serve, path, { headers: { 'if-none-match': js.headers.get('etag') } })).status, 304);
   assert.equal((await send(serve, path, { method: 'HEAD' })).body, null);
-  assert.equal(await (await send(serve, path.replace(rev, 'b'.repeat(40)))).text(), 'B');
+  assert.equal(js.headers.get('x-vink-asset-route'), 'inventory/r26');
+  const lazy = await send(serve, `/_v/${'b'.repeat(40)}/pkg/vink-editor.js`, {
+    headers: { cookie: 'one', authorization: 'Bearer scratch' },
+  });
+  assert.equal(await lazy.text(), 'B');
+  assert.equal(lazy.headers.get('x-vink-asset-route'), 'fallback/r26');
   assert.equal((await send(serve, '/pkg/absent.wasm')).status, 404);
   assert.equal((await send(serve, path, { method: 'POST', body: 'private' })).status, 405);
   assert.equal((await send(serve, path, {}, { ASSETS: { fetch: () => new Response('<html>', {headers:{'content-type':'text/html'}}) } })).status, 502);

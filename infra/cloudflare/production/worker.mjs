@@ -30,7 +30,7 @@ export function handler(inventory, originFetch = fetch, assetFetch = fetch) {
         // The pre-staged release alias serves inventory bytes only, never production SSR.
         if (preview || !match || known.has(match[1])) return textError(404, "Asset not found");
         try {
-          const pinned = new URL(url.pathname, `https://r-${match[1]}.vink-production.pages.dev`);
+          const pinned = new URL(url.pathname, `https://r-${match[1].slice(0, 26)}.vink-production.pages.dev`);
           const headers = new Headers();
           if (request.headers.has("If-None-Match")) headers.set("If-None-Match", request.headers.get("If-None-Match"));
           const found = await assetFetch(new Request(pinned, { method: request.method, headers, redirect: "manual" }));
@@ -41,6 +41,7 @@ export function handler(inventory, originFetch = fetch, assetFetch = fetch) {
           const result = new Response(found.body, found);
           result.headers.delete("X-Robots-Tag");
           result.headers.delete("Set-Cookie");
+          result.headers.set("X-Vink-Asset-Route", "fallback/r26");
           return result;
         } catch { return textError(502, "Release storage unavailable"); }
       }
@@ -56,6 +57,7 @@ export function handler(inventory, originFetch = fetch, assetFetch = fetch) {
         const headers = new Headers({ "Content-Type": entry.type, ETag: '"' + entry.sha256 + '"',
           "Cache-Control": entry.path ? "no-cache" : "public, max-age=31536000, immutable, no-transform",
           "X-Vink-Asset-Revision": (entry.path || url.pathname).split("/")[2],
+          "X-Vink-Asset-Route": "inventory/r26",
           "X-Content-Type-Options": "nosniff" });
         if (preview) headers.set("X-Robots-Tag", "noindex, nofollow");
         const conditions = (request.headers.get("if-none-match") || "").split(",").map(x => x.trim().replace(/^W\//, ""));

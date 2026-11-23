@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import artifacts as art
@@ -115,6 +116,181 @@ class Packages(unittest.TestCase):
 
 
 class Recovery(unittest.TestCase):
+    def test_fallback_requires_two_distinct_pops_and_matching_bytes(self):
+        with TemporaryDirectory() as tmp, patch.object(release.time, "time", return_value=1000):
+            path = Path(tmp) / "proof.json"
+            manifest = package(Path(tmp) / "archives", B)
+            expected = manifest["assets"]["vink-editor.js"]
+            first = {"cf_ray": "0123456789abcdef-SIN", "status": 200, "route": "fallback/r26",
+                     "sha256": expected["sha256"], "mime": expected["type"], "revision": B}
+            second = first | {"cf_ray": "123456789abcdef0-HKG"}
+            evidence = {"predecessor": "previous", "preview_deployment": "preview", "revision": B,
+                        "measured_at": 999, "asset": "vink-editor.js", "observations": [first, second]}
+            current = {"previous_edge": "previous", "preview_deployment": "preview", "release": spec(B)}
+            path.write_bytes(art.encode(evidence))
+            self.assertEqual(release.fallback_proof(path, current, manifest)["pops"], ["HKG", "SIN"])
+            for change, error in (
+                ({"observations": [first, first]}, "two distinct"),
+                ({"observations": [first, second | {"sha256": "wrong"}]}, "differs from manifest"),
+                ({"observations": [first, second | {"route": "inventory/r26"}]}, "differs from manifest"),
+                ({"measured_at": 99}, "older than"),
+            ):
+                path.write_bytes(art.encode(evidence | change))
+                with self.subTest(change=change), self.assertRaisesRegex(ValueError, error):
+                    release.fallback_proof(path, current, manifest)
+
+    def test_pages_only_bridge_preserves_rollback_after_lost_ack(self):
+        with TemporaryDirectory() as tmp, contextlib.ExitStack() as stack:
+            root = Path(tmp)
+            archive = root / "archives"
+            manifests = {rev: package(archive, rev) for rev in (A, B)}
+            retained = {rev: art.sha(art.encode(manifest)) for rev, manifest in manifests.items()}
+            receipt = root / "request.json"
+            receipt.touch()
+            schema = root / "review.json"
+            schema.write_bytes(art.encode({"rehearsed": True}))
+            journal = root / "pending.json"
+            failed_digest = "f" * 64
+            original = art.encode({"release": spec(B), "phase": "origin_rolled_back", "project": art.PROJECT,
+                                   "previous_origin": A, "origin_release": A, "edge": "failed-edge",
+                                   "previous_edge": "previous", "legacy_assets": A, "account": ACCOUNT,
+                                   "worker_digest": failed_digest, "retained": retained,
+                                   "schema_review": art.sha(schema.read_bytes())})
+            journal.write_bytes(original)
+
+            def deployment(edge, rev, marker):
+                return {"id": edge, "url": f"https://{edge}.vink-production.pages.dev",
+                        "environment": "production", "latest_stage": {"status": "success"},
+                        "deployment_trigger": {"metadata": {"commit_hash": rev, "commit_message": marker}}}
+
+            remote = {"canonical_deployment": deployment("failed-edge", B, "vink-release-" + failed_digest)}
+            origin = SimpleNamespace(
+                before={"verified": True}, state_key=lambda evidence: evidence,
+                read_state=lambda _: {"phase": "rolled_back"}, check_ledgers=lambda _: None,
+                container=lambda name, running: name,
+            )
+            calls = []
+            verified = []
+
+            def upload(_, branch, rev, marker):
+                self.assertEqual((branch, rev), ("main", A))
+                calls.append(marker)
+                remote["canonical_deployment"] = deployment("bridge-edge", A, marker)
+                raise OSError("lost bridge ACK")
+
+            def local(*argv):
+                if "rev-parse" in argv:
+                    return B
+                if "origin.sh" in str(argv[0]):
+                    self.assertEqual(argv[1], "observe")
+                return ""
+
+            for name, value in {"STATE": root, "WRANGLER": receipt, "project": lambda _: remote, "publish": upload,
+                                "run": local, "verify_assets": lambda host, rev, *_, **__: verified.append((host, rev))}.items():
+                stack.enter_context(patch.object(release, name, value))
+            stack.enter_context(patch.object(release.maintenance, "GUARD", root / "guard"))
+            stack.enter_context(patch.object(release.maintenance, "Origin", return_value=origin))
+            stack.enter_context(patch.object(release.subprocess, "run"))
+            args = SimpleNamespace(account=ACCOUNT, previous_edge="failed-edge", previous_origin=A, schema_review=schema)
+            with self.assertRaisesRegex(OSError, "lost bridge ACK"):
+                release.bridge(args, spec(B), remote, journal)
+            self.assertEqual(journal.read_bytes(), original)
+            self.assertFalse((root / "active.json").exists())
+            active = remote["canonical_deployment"]
+            remote["canonical_deployment"] = deployment("failed-edge", B, "vink-release-" + failed_digest)
+            with self.assertRaisesRegex(ValueError, "uncertain"):
+                release.bridge(args, spec(B), remote, journal)
+            remote["canonical_deployment"] = active
+            result = release.bridge(args, spec(B), remote, journal)
+            self.assertEqual(result["phase"], "edge_bridge_verified")
+            self.assertEqual(result["origin_release"], A)
+            self.assertEqual((root / "incidents" / result["rollback_archive"]).read_bytes(), original)
+            self.assertEqual(json.loads((root / "active.json").read_bytes()), result)
+            self.assertFalse(journal.exists())
+            self.assertEqual(release.bridge(args, spec(B), remote, journal), result)
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(set(verified), {(host, rev) for host in (active["url"], spec(A)["public_origin"]) for rev in (A, B)})
+
+    def test_preview_receipt_requires_exact_revision_and_assigned_alias(self):
+        ident = "2243f07a-acfb-4225-bc62-962a976578d7"
+        immutable = f"https://{ident[:8]}.vink-production.pages.dev"
+        alias = f"https://r-{B[:26]}.vink-production.pages.dev"
+        item = {"id": ident, "url": immutable, "environment": "preview",
+                "latest_stage": {"status": "success"}, "aliases": [alias],
+                "deployment_trigger": {"metadata": {"branch": f"r-{B[:26]}",
+                                                    "commit_hash": B, "commit_message": "marker"}}}
+        with patch.object(release, "pages_read", return_value=[item]) as read:
+            self.assertEqual(release.preview_receipt(ACCOUNT, B, "marker"),
+                             {"preview_deployment": ident, "preview_url": immutable, "preview_alias": alias})
+            read.assert_called_once_with(ACCOUNT, "/deployments?env=preview")
+            item["aliases"] = [immutable]
+            with self.assertRaisesRegex(ValueError, "did not attach"):
+                release.preview_receipt(ACCOUNT, B, "marker")
+
+    def test_legacy_404_stops_before_promotion_or_origin_switch(self):
+        with TemporaryDirectory() as tmp, contextlib.ExitStack() as stack:
+            root = Path(tmp)
+            receipt = root / "request.json"
+            receipt.write_bytes(art.encode(spec(B)))
+            archive = root / "archives"
+            old = package(archive, A)
+            manifest = package(archive, B)
+            alias = f"https://r-{B[:26]}.vink-production.pages.dev"
+            long_alias = f"https://r-{B}.vink-production.pages.dev"
+            immutable = "https://2243f07a.vink-production.pages.dev"
+            predecessor = "https://69fff7eb.vink-production.pages.dev"
+            prior = {"id": "previous", "url": predecessor}
+            (root / "active.json").write_bytes(art.encode(
+                {"edge": prior["id"], "account": ACCOUNT, "origin_release": A, "legacy_assets": A,
+                 "release": spec(A), "retained": {A: art.sha(art.encode(old))}}
+            ))
+            calls = []
+            approved_old = False
+            apex_body = None
+
+            def local(*argv):
+                calls.append(list(map(str, argv)))
+                return B if "rev-parse" in argv else ""
+
+            def fetch(url):
+                host, asset = url.split("/_v/")
+                rev, name = asset.split("/pkg/")
+                if host == long_alias or (host == spec(B)["public_origin"] and apex_body is None):
+                    return "404", "text/plain", "", "", b"not found"
+                if host == spec(B)["public_origin"]:
+                    return "200", art.TYPES[Path(name).suffix], rev, "fallback/r26", apex_body
+                self.assertIn(host, {immutable, alias, predecessor})
+                route = "inventory/r26" if approved_old else ""
+                return "200", art.TYPES[Path(name).suffix], rev, route, (rev + name).encode()
+
+            for name, value in {
+                "STATE": root, "WRANGLER": receipt, "project": lambda _: {"canonical_deployment": prior},
+                "export": lambda *_: manifest, "read_asset": fetch, "run": local, "browser_preflight": lambda _: None,
+                "preview_receipt": lambda *_: {"preview_deployment": "preview",
+                                                "preview_url": immutable, "preview_alias": alias},
+            }.items():
+                stack.enter_context(patch.object(release, name, value))
+            stack.enter_context(patch.object(release.subprocess, "run", side_effect=lambda argv, **_: calls.append(argv)))
+            stack.enter_context(patch.object(release.pwd, "getpwnam", return_value=type("User", (), {"pw_uid": 501})()))
+            stack.enter_context(patch.dict(os.environ, {"CLOUDFLARE_ACCOUNT_ID": ACCOUNT, "VINK_RELEASE_CHROME": "/bin/sh"}))
+            args = [str(receipt), "--account", ACCOUNT, "--previous-origin", A, "--previous-edge", prior["id"],
+                    "--reader", "33333333-3333-4333-8333-333333333333"]
+            with self.assertRaisesRegex(ValueError, r"HTTP 404"):
+                release.verify_assets(long_alias, B, manifest)
+            with patch("sys.argv", ["release.py", "apply", *args]), self.assertRaisesRegex(ValueError, "short-alias route"):
+                release.main()
+            approved_old = True
+            with patch("sys.argv", ["release.py", "resume", *args]), self.assertRaisesRegex(ValueError, r"HTTP 404"):
+                release.main()
+            apex_body = b"wrong bytes"
+            with patch("sys.argv", ["release.py", "resume", *args]), self.assertRaisesRegex(ValueError, r"HTTP 200"):
+                release.main()
+            pending = json.loads((root / "pending.json").read_bytes())
+            self.assertEqual(pending["phase"], "preview_verified")
+            uploads = [cmd[cmd.index("--branch") + 1] for cmd in calls if "--branch" in cmd]
+            self.assertEqual(uploads, [f"r-{B[:26]}"])
+            self.assertFalse(any("apply" in cmd for cmd in calls))
+
     def test_lost_production_ack_reads_remote_before_switch(self):
         with TemporaryDirectory() as tmp, contextlib.ExitStack() as stack:
             root = Path(tmp)
@@ -134,8 +310,11 @@ class Recovery(unittest.TestCase):
                 calls.append(list(map(str,argv)))
                 return B if "rev-parse" in argv else ""
             for name, value in {"STATE":root, "WRANGLER":receipt, "project":lambda _:remote,
-                                "export":lambda *_:manifest, "verify_assets":lambda *_:None,
-                                "browser_check":lambda *_:None, "run":local}.items():
+                                "export":lambda *_:manifest, "verify_assets":lambda *_, **__:None,
+                                "preview_receipt":lambda *_: {"preview_deployment": "preview",
+                                    "preview_url": "https://2243f07a.vink-production.pages.dev",
+                                    "preview_alias": f"https://r-{B[:26]}.vink-production.pages.dev"},
+                                "browser_check":lambda *_:None, "browser_preflight":lambda _:None, "run":local}.items():
                 stack.enter_context(patch.object(release,name,value))
             stack.enter_context(patch.object(release.subprocess,"run", side_effect=invoke))
             stack.enter_context(patch.object(release.pwd,"getpwnam",return_value=type("User",(),{"pw_uid":501})()))
