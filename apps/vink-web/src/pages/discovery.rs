@@ -9,7 +9,7 @@ use crate::public_reads;
 use crate::ui::{
     adapters,
     empty_state::{EmptyArtwork, EmptyState},
-    patterns::{AuthorIdentity, TagChip, TagFacts},
+    patterns::{AuthorIdentity, TagChip, TagFacts, first_public_date_hcm},
 };
 use leptos::prelude::*;
 use leptos_meta::{Link, Meta, Title};
@@ -1054,7 +1054,8 @@ fn PublicResults(
                     <div id="public-results">
                         {move || if works.read().is_empty() {
                             let has_tags = !empty_context.query.tags.is_empty();
-                            let has_query = !empty_context.query.q.is_empty();
+                            let trimmed_q = empty_context.query.q.trim().to_owned();
+                            let has_query = !trimmed_q.is_empty();
                             let filtered = has_tags || has_query;
                             // A page tail or unresolved tag never establishes an empty public corpus.
                             let unavailable_tag = data.with(|list| list.filters.tags.iter().any(|tag| matches!(tag.resolution.as_str(), "not_found" | "retired")));
@@ -1069,15 +1070,25 @@ fn PublicResults(
                                 </div> }.into_any()
                             } else {
                                 let message = if page_empty {
-                                    if continuation { "Trang này chưa có tác phẩm; bạn có thể xem trang tiếp." } else { "Trang này không còn tác phẩm." }
-                                } else if filtered { "Chưa có tác phẩm phù hợp." } else { "Chưa có tác phẩm công khai." };
+                                    if continuation { "Trang này chưa có tác phẩm; bạn có thể xem trang tiếp.".to_owned() } else { "Trang này không còn tác phẩm.".to_owned() }
+                                } else if has_query {
+                                    format!("Không có tác phẩm khớp “{trimmed_q}”.")
+                                } else if has_tags {
+                                    "Chưa có tác phẩm phù hợp.".to_owned()
+                                } else {
+                                    "Chưa có tác phẩm công khai.".to_owned()
+                                };
                                 let message = if cached_unverified.get() || refreshing.get() || failed.get() {
                                     format!("Bản đã tải: {message}")
-                                } else { message.to_owned() };
+                                } else { message };
+                                let find_authors = (has_query && !page_empty).then(|| {
+                                    (author_search_href(&trimmed_q, None), format!("Tìm tác giả “{trimmed_q}”"))
+                                });
                                 view! { <div data-testid=if page_empty { "public-empty-page" } else if filtered { "public-no-results" } else { "public-empty" }>
                                     <EmptyState artwork=if filtered || page_empty { EmptyArtwork::NoResults } else { EmptyArtwork::NoPublicWorks } message announce=true>
                                         {has_tags.then(|| view! { <a id="clear-public-tags" class="vk-ui-button vk-ui-button--tonal" href=no_tags.href(None)>"Bỏ lọc thẻ"</a> })}
                                         {has_query.then(|| view! { <a id="clear-public-results" class="vk-ui-button vk-ui-button--tonal" href=no_query.href(None)>"Xóa tìm kiếm"</a> })}
+                                        {find_authors.map(|(href, label)| view! { <a id="find-authors-for-query" class="vk-ui-button vk-ui-button--text" href=href>{label}</a> })}
                                         {(!filtered && !page_empty).then(|| view! { <a class="vk-ui-button vk-ui-button--tonal" href="/ban-viet">"Đến Bàn viết"</a> })}
                                     </EmptyState>
                                 </div> }.into_any()
@@ -1170,8 +1181,10 @@ fn WorkCardRow(
                 let author = adapters::card_author(&work, cached_unverified.get());
                 let primary_tag = work.tags.first().map(|tag| tag.label.clone());
                 let excerpt = work.excerpt.clone();
+                #[cfg(feature = "hydrate")]
                 let following = context.mode == ExploreMode::Following;
-                let date = following.then(|| first_public_date(&work.published_at)).flatten();
+                // R4.2 (#405, DQ-08): show first-public date in Asia/Ho_Chi_Minh across all modes.
+                let date = first_public_date_hcm(&work.published_at);
                 let separate_metadata = primary_tag.is_some() && date.is_some();
                 let date = date.map(|label| view! {
                     <time class="vk-feed-date" datetime=work.published_at.clone() title="Công khai lần đầu">{label}</time>
@@ -1223,25 +1236,6 @@ fn WorkCardRow(
                 }
             })}
         </li>
-    }
-}
-
-fn first_public_date(value: &str) -> Option<String> {
-    #[cfg(feature = "hydrate")]
-    {
-        use wasm_bindgen::JsValue;
-        let date = js_sys::Date::new(&JsValue::from_str(value));
-        let options = js_sys::Object::new();
-        js_sys::Reflect::set(&options, &"timeZone".into(), &"Asia/Ho_Chi_Minh".into()).ok()?;
-        date.get_time()
-            .is_finite()
-            .then(|| date.to_locale_date_string("vi-VN", &options).as_string())
-            .flatten()
-    }
-    #[cfg(not(feature = "hydrate"))]
-    {
-        let _ = value;
-        None
     }
 }
 
@@ -1343,11 +1337,25 @@ mod tests {
         assert!(corpus.contains("/pkg/empty/vink-empty-no-public-works.webp"));
         assert!(corpus.contains("href=\"/ban-viet\""));
         let filtered = render(context("mưa", None), empty(), false, false);
-        assert!(filtered.contains("Chưa có tác phẩm phù hợp."));
+        assert!(
+            filtered.contains("Không có tác phẩm khớp “mưa”."),
+            "{filtered}"
+        );
         assert!(filtered.contains("/pkg/empty/vink-empty-no-results.webp"));
         assert!(filtered.contains("id=\"clear-public-results\""));
+        assert!(filtered.contains("id=\"find-authors-for-query\""));
+        assert!(filtered.contains("Tìm tác giả “mưa”"));
+        assert!(
+            filtered.contains("href=\"/?mode=authors&amp;q=m%C6%B0a\""),
+            "{filtered}"
+        );
         assert!(!filtered.contains("Chưa có tác phẩm công khai."));
-        for html in [corpus, filtered] {
+        let mut tag_only = context("", None);
+        tag_only.query.tags.push("tho".into());
+        let tag_miss = render(tag_only, empty(), false, false);
+        assert!(tag_miss.contains("Chưa có tác phẩm phù hợp."), "{tag_miss}");
+        assert!(!tag_miss.contains("find-authors-for-query"), "{tag_miss}");
+        for html in [corpus, filtered, tag_miss] {
             assert_eq!(html.matches("role=\"status\"").count(), 1);
             assert!(html.contains("alt=\"\""));
             assert!(!html.contains("<h3") && !html.contains("Trang này: 0"));
@@ -1390,7 +1398,10 @@ mod tests {
     fn retained_empty_keeps_refresh_failure_facts_and_removed_snapshot_has_no_art() {
         let stale = render(context("mưa", None), empty(), true, false);
         assert!(stale.contains("public-refresh-failed") && stale.contains("bản đã tải"));
-        assert!(stale.contains("Bản đã tải: Chưa có tác phẩm phù hợp."));
+        assert!(
+            stale.contains("Bản đã tải: Không có tác phẩm khớp “mưa”."),
+            "{stale}"
+        );
         let removed = render(context("", None), empty(), false, true);
         assert!(!removed.contains("/pkg/empty/"));
         assert!(removed.contains("id=\"restart-public\""));
@@ -1429,6 +1440,12 @@ mod tests {
         assert!(
             home_html.contains("vk-public-row__tag\">Thơ</span>"),
             "{home_html}"
+        );
+        assert!(
+            home_html.contains(" · ")
+                && home_html.contains("datetime=\"2026-10-30T08:00:00Z\"")
+                && home_html.contains(">30/10/2026</time>"),
+            "DQ-08 first-public date renders on Tất cả SSR: {home_html}"
         );
         assert!(!home_html.contains("<mark"), "{home_html}");
         assert!(

@@ -509,8 +509,18 @@ export async function authorSearch(page, { args, check, textContrast }) {
             Number.isFinite(animation.effect?.getComputedTiming().endTime))
             .map(animation => animation.finished.catch(() => {})));
           const link = ${q(row(currentAuthor))};
+          const list = document.querySelector('#author-search-list');
+          const rowEl = link.closest('li');
+          const rowStyle = getComputedStyle(rowEl);
+          const probe = document.createElement('span');
+          probe.style.background = 'var(--vk-bg-content)';
+          document.body.append(probe);
+          const bgContent = getComputedStyle(probe).backgroundColor;
+          probe.remove();
+          const cardOk = rowStyle.borderTopLeftRadius === '20px' && rowStyle.backgroundColor === bgContent
+            && rowStyle.borderBottomWidth === '0px' && getComputedStyle(list).rowGap === '8px';
           const targets = [link, ${q(INPUT)}, ${action}];
-          return root.scrollWidth <= root.clientWidth + 1 && targets.every(element => {
+          return cardOk && root.scrollWidth <= root.clientWidth + 1 && targets.every(element => {
             const rect = element.getBoundingClientRect();
             return rect.width > 0 && rect.left >= -1 && rect.right <= root.clientWidth + 1;
           });

@@ -120,9 +120,9 @@ fn SignIn(#[prop(optional)] expired: bool, #[prop(optional)] needs_name: bool) -
                     else { "Vink chưa mở đăng nhập." }}
             </p>
             {(sign_in_open || needs_name).then(|| view! {
-                <UiLink attr:id="feed-sign-in" href=href>
+                <a id="feed-sign-in" class="vk-ui-button vk-ui-button--filled" href=href>
                     {if needs_name { "Hoàn tất bút danh" } else { "Đăng nhập" }}
-                </UiLink>
+                </a>
             })}
         </div>
     }

@@ -6,7 +6,7 @@ use vink_ui::*;
 
 mod timestamp;
 use timestamp::Timestamp;
-pub use timestamp::updated_at_label;
+pub use timestamp::{first_public_date_hcm, updated_at_label};
 
 mod tags;
 pub use tags::{

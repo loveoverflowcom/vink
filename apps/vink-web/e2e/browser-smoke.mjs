@@ -2078,7 +2078,7 @@ async function textContrast(page, theme, surface = 'shell', targets) {
   })() : {
     outline: ['#editor-outline-title', '.vk-editor-outline__item--title', '#editor-outline-panel [aria-current="location"] button'],
     desk: ['.vk-desk-create .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-search input', '#draft-sort', '#draft-sort-label', '#draft-scope'],
-    explore: ['#public-query', '#explore-heading h1', '#open-tag-filters', '.vk-public-row__title', '.vk-public-row__byline .vk-ui-byline__name', '.vk-public-row__byline .vk-ui-avatar', '.vk-public-row__excerpt', '.vk-public-scope'],
+    explore: ['#public-query', '#explore-heading h1', '#open-tag-filters', '.vk-public-row__eyebrow', '.vk-feed-date', '.vk-public-row__title', '.vk-public-row__byline .vk-ui-byline__name', '.vk-public-row__byline .vk-ui-avatar', '.vk-public-row__excerpt', '.vk-public-scope'],
     filter: ['#modal-tag-help', '#tag-selection-count', '#modal-tag-form legend', '#modal-tag-form .vk-ui-choice__label', '#modal-tag-form button[type=submit]'],
     empty: ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-button'],
     'desk-empty': ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-button', '.vk-desk-privacy'],

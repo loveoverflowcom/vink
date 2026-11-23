@@ -26,8 +26,8 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   check(await page.eval("document.querySelector('#public-query').placeholder === 'Tìm tác phẩm hoặc tác giả' && document.querySelector('#public-query').labels[0]?.textContent === 'Tìm theo tên hoặc tác giả' && !document.querySelector('#public-query-help, #explore-heading p')"), '#308 r1 search keeps distinct placeholder and accessible label without duplicate scope copy');
   await submit('không có tác phẩm này #100');
   await page.waitFor("document.querySelector('[data-testid=public-no-results]')", 'real no-results');
-  check(await page.eval("document.querySelectorAll('#public-results [role=status]').length===1 && document.querySelector('.vk-empty-state__message').textContent==='Chưa có tác phẩm phù hợp.'"), '#225/#258 empty page has one truthful result announcement without redundant 0-count');
-  check(await page.eval("!!document.querySelector('#clear-public-results')"), 'no-results offers query recovery');
+  check(await page.eval("document.querySelectorAll('#public-results [role=status]').length===1 && document.querySelector('.vk-empty-state__message').textContent==='Không có tác phẩm khớp “không có tác phẩm này #100”.'"), '#225/#258/#405 empty page names the query in one truthful result announcement without redundant 0-count');
+  check(await page.eval("!!document.querySelector('#clear-public-results') && document.querySelector('#find-authors-for-query')?.textContent==='Tìm tác giả “không có tác phẩm này #100”' && new URL(document.querySelector('#find-authors-for-query').href).searchParams.get('mode')==='authors' && new URL(document.querySelector('#find-authors-for-query').href).searchParams.get('q')==='không có tác phẩm này #100'"), '#405 no-results offers query recovery and Tìm tác giả “q” link');
   await page.waitFor("document.querySelector('.vk-empty-state__art')?.complete", '#258 empty artwork completes');
   check(await page.eval(`(async () => {
     const art = document.querySelector('.vk-empty-state__art'); await art.decode();
@@ -180,19 +180,36 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     check(!dock, '#308 hydrated discovery has no filter column ' + [theme,width,scale].join('/'));
 
     const cardLayout = await page.eval(`(() => {
+      const list = document.querySelector('.vk-discovery .vk-public-list');
       const row = document.querySelector('.vk-public-row');
+      const rowStyle = getComputedStyle(row);
+      const probe = document.createElement('span');
+      probe.style.background = 'var(--vk-bg-content)';
+      probe.style.color = 'var(--vk-tertiary)';
+      document.body.append(probe);
+      const expectedBg = getComputedStyle(probe).backgroundColor;
+      const expectedTertiary = getComputedStyle(probe).color;
+      probe.remove();
       const title = row.querySelector('h2.vk-public-row__title');
-      // #352: the card uses the shared AuthorByline cluster (avatar → pen name → @handle).
+      const eyebrow = row.querySelector('.vk-public-row__eyebrow');
+      const time = row.querySelector('.vk-public-row__eyebrow time.vk-feed-date');
+      // #352/#405 (DQ-09): circular AuthorByline cluster; separate bg-content card bo 20, gap 8.
       const avatar = row.querySelector('.vk-public-row__byline .vk-ui-avatar');
       const circle = avatar.getBoundingClientRect();
       const initials = document.createRange();
       initials.selectNodeContents(avatar.querySelector('.vk-ui-avatar__initials'));
       const ink = initials.getBoundingClientRect();
       const excerpt = row.querySelector('.vk-public-row__excerpt').getBoundingClientRect();
+      const expectedDate = time ? new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(time.dateTime)) : null;
       return {
         named: document.getElementById(row.querySelector('a').getAttribute('aria-labelledby')) === title,
-        // R3 (#336): form tag above the title, then excerpt, then the byline; no chevron.
-        ordered: (row.querySelector('.vk-public-row__eyebrow')?.getBoundingClientRect().bottom ?? -Infinity) <= title.getBoundingClientRect().top + 1
+        card: rowStyle.borderTopLeftRadius === '20px' && rowStyle.borderBottomRightRadius === '20px'
+          && rowStyle.backgroundColor === expectedBg && rowStyle.borderBottomWidth === '0px'
+          && getComputedStyle(list).rowGap === '8px' && row.querySelectorAll('a a').length === 0,
+        date: !!time && !time.closest('a') && time.textContent === expectedDate
+          && getComputedStyle(eyebrow).color === expectedTertiary,
+        // R3/R4 (#336/#405): form tag · date above the title, then excerpt, then the byline; no chevron.
+        ordered: (eyebrow?.getBoundingClientRect().bottom ?? -Infinity) <= title.getBoundingClientRect().top + 1
           && title.getBoundingClientRect().bottom <= excerpt.top + 1 && excerpt.height > 0
           && excerpt.bottom <= row.querySelector('.vk-public-row__byline .vk-ui-byline__name').getBoundingClientRect().top + 1
           && !row.querySelector('.vk-public-row__chevron'),
@@ -201,8 +218,8 @@ export async function discoveryReading(page, { args, check, textContrast }) {
           && ink.top >= circle.top - 1 && ink.bottom <= circle.bottom + 1,
       };
     })()`);
-    check(cardLayout.named && cardLayout.ordered && cardLayout.square && cardLayout.fits && Math.abs(cardLayout.diameter - 36 * scale / 100) < 1,
-      '#308/#336 title names the row and both initials fit at the chosen text size ' + [theme,width,scale,JSON.stringify(cardLayout)].join('/'));
+    check(cardLayout.named && cardLayout.card && cardLayout.date && cardLayout.ordered && cardLayout.square && cardLayout.fits && Math.abs(cardLayout.diameter - 36 * scale / 100) < 1,
+      '#308/#336/#405 separate bg-content card bo 20 gap 8, tertiary eyebrow with HCM date, title and initials fit ' + [theme,width,scale,JSON.stringify(cardLayout)].join('/'));
     if (width === 320 && scale === 200) {
       const card = await page.eval(`(() => {
         const row = document.querySelector('.vk-public-row');
@@ -412,7 +429,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   check(await page.eval("document.querySelector('#navigation-primary a[href=\"/\"]')?.getAttribute('aria-current')==='page'"), 'tag detail belongs to Explore');
   await goto(route+'?q=no-match-empty-258');
   await page.waitFor("document.querySelector('.vk-empty-state__art')?.complete && document.querySelector('.vk-empty-state__art')?.naturalWidth===512", '#258 tag empty artwork');
-  check(await page.eval("document.querySelectorAll('#public-results [role=status]').length===1 && !document.querySelector('#community-stream h2,#community-stream h3') && document.querySelector('.vk-empty-state__message').textContent==='Chưa có tác phẩm phù hợp.'"), '#258 tag empty keeps one concise status without heading stack');
+  check(await page.eval("document.querySelectorAll('#public-results [role=status]').length===1 && !document.querySelector('#community-stream h2,#community-stream h3') && document.querySelector('.vk-empty-state__message').textContent==='Không có tác phẩm khớp “no-match-empty-258”.'"), '#258/#405 tag empty keeps one concise status naming the query without heading stack');
   await emptyMatrix('tag');
   await page.viewport(1440);
   await page.eval("document.documentElement.style.fontSize='100%'");
@@ -455,7 +472,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     for (const type of ['mousePressed','mouseReleased']) await page.send('Input.dispatchMouseEvent', {type,...point,button:'left',clickCount:1});
     await page.waitFor("new URL(location.href).searchParams.get('q')==='khong-co-ket-qua-100' && document.querySelector('[data-testid=public-no-results]')", 'native GET result');
     await page.waitFor("document.querySelector('.vk-empty-state__art')?.complete", '#258 blocked artwork finishes with failure');
-    check(await page.eval("document.querySelector('.vk-empty-state__art').naturalWidth===0 && document.documentElement.dataset.hydrated!=='true' && document.querySelector('.vk-empty-state__message').textContent==='Chưa có tác phẩm phù hợp.' && document.querySelector('#clear-public-results').getAttribute('href')==='/' && document.querySelectorAll('#public-results [role=status]').length===1"), '#258 blocked artwork before hydration leaves useful HTML and GET recovery');
+    check(await page.eval("document.querySelector('.vk-empty-state__art').naturalWidth===0 && document.documentElement.dataset.hydrated!=='true' && document.querySelector('.vk-empty-state__message').textContent==='Không có tác phẩm khớp “khong-co-ket-qua-100”.' && document.querySelector('#clear-public-results').getAttribute('href')==='/' && document.querySelectorAll('#public-results [role=status]').length===1"), '#258/#405 blocked artwork before hydration leaves useful HTML and GET recovery');
     // page.click waits for animation frames; those callbacks do not run with page JS disabled.
     // Use the same native pointer path as the no-JS search above, without a JS click fallback.
     for (const selector of ['#tag-dock summary', '#dock-tag-form label:has(input[type=checkbox])', '#dock-tag-form button[type=submit]']) {
@@ -484,7 +501,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
       check(await page.eval(`(() => {
         const art=document.querySelector('.vk-empty-state__art'), box=art.getBoundingClientRect();
         return art.naturalWidth===0 && box.width>0 && Math.abs(box.height/box.width-427/512)<0.01 &&
-          document.querySelector('.vk-empty-state__message').textContent==='Chưa có tác phẩm phù hợp.' &&
+          document.querySelector('.vk-empty-state__message').textContent==='Không có tác phẩm khớp “corrupt-art-258”.' &&
           document.querySelector('#clear-public-results').getAttribute('href')==='/' &&
           document.querySelectorAll('#public-results [role=status]').length===1;
       })()`), '#258 corrupt image before hydration keeps reserved space, one HTML status and real recovery');
@@ -682,7 +699,7 @@ async function emptyRefreshFocus(page, {args, check}) {
     await page.waitFor("document.querySelector('#public-collection').dataset.refreshing==='true'", '#258 retained empty refreshing');
     const stable = () => page.eval(`document.querySelector('#clear-public-results')===window.__empty258.recovery &&
       document.activeElement===window.__empty258.recovery && document.querySelector('.vk-empty-state__art')===window.__empty258.art &&
-      document.querySelector('.vk-empty-state__message').textContent==='Bản đã tải: Chưa có tác phẩm phù hợp.' &&
+      document.querySelector('.vk-empty-state__message').textContent==='Bản đã tải: Không có tác phẩm khớp “không có tác phẩm này #100”.' &&
       document.querySelectorAll('#public-results [role=status]').length===1`);
     check(await stable(), '#258 retained empty refresh preserves recovery focus, artwork node and one qualified status');
     await page.send('Fetch.fulfillRequest', {requestId:held.shift(), responseCode:503,

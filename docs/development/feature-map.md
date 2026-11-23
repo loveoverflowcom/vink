@@ -213,7 +213,10 @@ dưới cùng `bg-page`, chỉ đích hiện hành có nền và Giao diện đa
 Đầu trang Khám phá R4.2 (#404): `discoveryReading` đo tiêu đề page-title, cụm [tìm][Lọc thẻ] +
 logo một hàng ở 390/1440, ẩn thị giác tiêu đề ở 320/chữ 200%; `desktopSearchDock` kiểm dock mở
 bằng nút hoặc “/” (không khi đang gõ ô khác), Escape/← đóng, bỏ chữ chưa gửi, trả focus về nút,
-giữ IME và URL có `q` mở sẵn dock.
+giữ IME và URL có `q` mở sẵn dock. Thẻ Khám phá R4.2 (#405, DQ-08/DQ-09): thẻ rời `bg-content`
+bo 20 cách 8 px (cả Tất cả, Đang theo dõi và chế độ Tác giả), dòng `Thể loại · ngày công khai đầu`
+màu `tertiary` theo múi giờ `Asia/Ho_Chi_Minh` ở mọi chế độ, giữ avatar tròn (#352), khách ở
+Đang theo dõi có nút filled “Đăng nhập”, không kết quả nhắc từ khóa kèm lối “Tìm tác giả “q””.
 Xem ảnh `brand-before-hydration-*`, `rail-r1-*` và `explore-real-*` từ runner Web.
 
 | Luồng | Đường đi / thao tác | Kết quả và trạng thái hiện có | Owner |

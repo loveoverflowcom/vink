@@ -167,6 +167,8 @@ export async function followingFeed(control, other, {base, openPage, check, hold
   await guest.key('Enter');
   await guest.waitFor(state('guest'), 'keyboard opens the guest Feed gate');
   const target = await guest.eval(`${q('#feed-sign-in')}.getAttribute('href')`);
+  check(await guest.eval(`${q('#feed-sign-in')}.classList.contains('vk-ui-button--filled')`),
+    '#405 guest Feed sign-in uses a filled primary button like guest Desk');
   check(new URL(target, base).searchParams.get('next') === FEED, 'guest sign-in maintains the Feed return context');
   await guest.click('#feed-sign-in');
   await guest.waitFor("location.pathname==='/toi' && !!document.querySelector('#password-login')", 'CTA reaches real auth');
