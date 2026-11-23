@@ -726,7 +726,7 @@ fn DiscoveryChrome(
                                 <FilterForm id="modal" q=filter_query.get_value() draft initial list open modal=true />
                             }.into_any(),
                             Err(_) => view! {
-                                <div class="vk-discovery-catalog-error">
+                                <div class="vk-discovery-catalog-error grid justify-items-start gap-vk-3">
                                     <p role="alert">"Chưa tải được danh mục thẻ. Các thẻ đang áp dụng vẫn được giữ."</p>
                                     <Button variant=ButtonVariant::Tonal id="retry-tag-catalog" on_press=move |_| {
                                         focus_recovery("tag-picker-title");
@@ -962,21 +962,21 @@ fn FilterForm(
             drop_unnamed_submitter(data);
             focus_submitted_results(data);
             open.set(false);
-        }) attr:class="vk-discovery-filter-form" attr:id=format!("{id}-tag-form") attr:aria-describedby=format!("{id}-tag-help")>
+        }) attr:class="vk-discovery-filter-form m-0 grid min-w-0 gap-vk-4" attr:id=format!("{id}-tag-form") attr:aria-describedby=format!("{id}-tag-help")>
             <HiddenField name="q" value=Signal::stored(q) />
             {move || draft.get().into_iter().filter(|slug| !known.contains(slug))
                 .map(|slug| view! { <HiddenField name="tag" value=Signal::stored(slug) /> }).collect_view()}
             {["form", "theme"].into_iter().filter_map(|facet| {
                 let options: Vec<TagDto> = list.tags.iter().filter(|tag| tag.facet == facet).cloned().collect();
                 (!options.is_empty()).then(|| view! {
-                    <fieldset>
-                        <legend>{if facet == "form" { "Dạng bài" } else { "Chủ đề" }}</legend>
-                        <div class="vk-discovery-options">
+                    <fieldset class="m-0 min-w-0 p-0 [border:0]">
+                        <legend class="mb-vk-2 font-vk-role-label">{if facet == "form" { "Dạng bài" } else { "Chủ đề" }}</legend>
+                        <div class="vk-discovery-options flex flex-wrap gap-vk-2">
                             {options.into_iter().map(|tag| {
                                 let slug = tag.slug.clone();
                                 let checked_slug = slug.clone();
                                 let disabled_slug = slug.clone();
-                                view! { <span class="vk-discovery-option">
+                                view! { <span class="vk-discovery-option min-w-0 [max-inline-size:100%]">
                                     <Checkbox id=format!("{id}-tag-{}", tag.tag_id) label=tag.label name="tag" value=tag.slug
                                         checked=Signal::derive(move || draft.with(|tags| tags.contains(&checked_slug)))
                                         // Native GET still submits freely. The server validates the four-tag limit.
@@ -994,14 +994,14 @@ fn FilterForm(
                 })
             }).collect_view()}
             {list.truncated.then(|| view! { <p>"Danh mục đang hiển thị 200 thẻ đầu. Thẻ khác vẫn có thể mở từ tác phẩm hoặc đường dẫn riêng."</p> })}
-            <div class="vk-discovery-filter-footer">
+            <div class="vk-discovery-filter-footer flex flex-wrap items-center justify-between gap-vk-3 [margin-block-start:var(--vk-space-1)]">
                 <div>
                     <p id=format!("{id}-tag-help")>{if modal { "Khớp tất cả thẻ" } else { "Khớp tất cả thẻ · Tối đa 4" }}</p>
                     {modal.then(|| view! { <p id="tag-selection-count" role="status" aria-atomic="true">
                         {move || format!("Đã chọn {}/4", draft.with(Vec::len))}
                     </p> })}
                 </div>
-                <div class="vk-discovery-filter-actions">
+                <div class="vk-discovery-filter-actions flex flex-wrap items-center gap-vk-2 [max-inline-size:100%]">
                     {modal.then(|| view! {
                         <Button id="clear-tag-draft" variant=ButtonVariant::Text
                             state=Signal::derive(move || if draft.with(Vec::is_empty) {
