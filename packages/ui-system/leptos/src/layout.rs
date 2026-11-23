@@ -200,8 +200,12 @@ pub fn Stack(
     children: Children,
 ) -> impl IntoView {
     let class = match direction {
-        Direction::Column => "vk-ui-stack",
-        Direction::Row => "vk-ui-stack vk-ui-stack--row",
+        Direction::Column => {
+            "vk-ui-stack flex flex-col [min-inline-size:0] [gap:var(--vk-ui-gap)] [align-items:var(--vk-ui-align,stretch)]"
+        }
+        Direction::Row => {
+            "vk-ui-stack vk-ui-stack--row flex flex-row [min-inline-size:0] [gap:var(--vk-ui-gap)] [align-items:var(--vk-ui-align,stretch)]"
+        }
     };
     let style = format!(
         "--vk-ui-gap: {}; --vk-ui-align: {};{}",
@@ -236,16 +240,21 @@ pub fn Grid(
     children: Children,
 ) -> impl IntoView {
     let style = format!("--vk-ui-gap: {}; --vk-ui-min: {};", gap.var(), min.var());
-    view! { <div class="vk-ui-grid" style=style>{children()}</div> }
+    view! {
+        <div class="vk-ui-grid grid [gap:var(--vk-ui-gap)] [grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--vk-ui-min)),1fr))]" style=style>
+            {children()}
+        </div>
+    }
 }
 
 /// `<hr>` separates content; a decorative divider is hidden from assistive technology.
 #[component]
 pub fn Divider(#[prop(optional)] decorative: bool) -> impl IntoView {
+    let class = "vk-ui-divider m-0 [inline-size:100%]";
     if decorative {
-        view! { <div class="vk-ui-divider" aria-hidden="true"></div> }.into_any()
+        view! { <div class=class aria-hidden="true"></div> }.into_any()
     } else {
-        view! { <hr class="vk-ui-divider" /> }.into_any()
+        view! { <hr class=class /> }.into_any()
     }
 }
 
@@ -287,6 +296,43 @@ mod tests {
     }
 
     #[test]
+    fn stack_and_grid_keep_their_layout_inputs_in_ssr() {
+        let column =
+            render(|| view! { <Stack><span>"A"</span><span>"B"</span></Stack> }.into_any());
+        assert!(column.contains("flex-col"), "{column}");
+        let (_, after_first) = column.split_once("<span>A</span>").expect("first child");
+        assert!(after_first.contains("<span>B</span>"), "{column}");
+        assert!(!column.contains("flex-wrap:"), "{column}");
+
+        let row = render(|| {
+            view! { <Stack direction=Direction::Row align=Align::End gap=Space::Density wrap=true>"A"</Stack> }
+                .into_any()
+        });
+        for token in [
+            "vk-ui-stack--row",
+            "flex-row",
+            "[align-items:var(--vk-ui-align,stretch)]",
+            "--vk-ui-align: flex-end",
+            "--vk-ui-gap: var(--vk-density-stack-gap)",
+            "flex-wrap: wrap",
+        ] {
+            assert!(row.contains(token), "{token}: {row}");
+        }
+
+        let grid =
+            render(|| view! { <Grid min=GridMin::Small gap=Space::S3>"A"</Grid> }.into_any());
+        for token in [
+            "vk-ui-grid grid",
+            "[gap:var(--vk-ui-gap)]",
+            "[grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--vk-ui-min)),1fr))]",
+            "--vk-ui-gap: var(--vk-space-3)",
+            "--vk-ui-min: var(--vk-size-grid-min-sm)",
+        ] {
+            assert!(grid.contains(token), "{token}: {grid}");
+        }
+    }
+
+    #[test]
     fn layout_uses_named_tokens_only() {
         let html = render(|| {
             view! {
@@ -302,6 +348,18 @@ mod tests {
         assert!(html.contains("var(--vk-radius-lg)"), "{html}");
         let divider = render(|| view! { <Divider decorative=true /> }.into_any());
         assert!(divider.contains("aria-hidden=\"true\""), "{divider}");
-        assert!(render(|| view! { <Divider /> }.into_any()).starts_with("<hr"));
+        assert!(
+            divider.contains("vk-ui-divider m-0 [inline-size:100%]"),
+            "{divider}"
+        );
+        let rule = render(|| view! { <Divider /> }.into_any());
+        assert!(
+            rule.starts_with("<hr") && !rule.contains("aria-hidden"),
+            "{rule}"
+        );
+        assert!(
+            rule.contains("vk-ui-divider m-0 [inline-size:100%]"),
+            "{rule}"
+        );
     }
 }
