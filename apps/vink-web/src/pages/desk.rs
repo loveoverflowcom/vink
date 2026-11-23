@@ -2060,11 +2060,11 @@ fn Editor(draft: Draft) -> impl IntoView {
             </div>
             <section
                 id="editor-format-region"
-                class="vk-editor-format"
+                class="vk-editor-format grid gap-vk-3 [min-inline-size:0] [padding:clamp(var(--vk-space-3),3vw,var(--vk-space-6))] rounded-vk-lg bg-vk-surface-container-low"
                 data-testid="editor-format-region"
                 aria-labelledby="editor-format-heading"
             >
-                <div class="vk-editor-format__head">
+                <div class="vk-editor-format__head [&>.vk-ui-heading]:m-0 [&>.vk-ui-heading]:[font-family:var(--vk-font-ui)] [&>.vk-ui-heading]:text-[length:var(--vk-type-body-size)] [&>.vk-ui-heading]:[font-weight:var(--vk-type-label-weight)] [&>.vk-ui-heading]:wrap-anywhere">
                     <Heading level=HeadingLevel::H2 role=TypeRole::Title id="editor-format-heading">
                         "Định dạng bản thảo"
                     </Heading>
@@ -2081,7 +2081,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                 {move || conversion_notice.get().map(|text| view! {
                     <p data-testid="conversion-notice" role="alert">{text}</p>
                 })}
-                <p class="vk-muted vk-editor-format__hint">
+                <p class="vk-muted vk-editor-format__hint m-0 text-[length:var(--vk-type-label-size)]">
                     "Mặc định giữ tiêu đề riêng; Markdown bật Live Preview và lấy H1 đầu tiên làm tên tác phẩm."
                 </p>
             </section>
@@ -2274,11 +2274,11 @@ fn Editor(draft: Draft) -> impl IntoView {
                     };
                     let title_label = untitled(&p.title);
                     view! {
-                        <div class="vk-format-preview">
-                            <p class="vk-format-preview__target">
+                        <div class="vk-format-preview grid gap-vk-3 [min-inline-size:0]">
+                            <p class="vk-format-preview__target m-0 wrap-anywhere">
                                 <strong>"Đích: "</strong>{target_name}
                             </p>
-                            <p class="vk-format-preview__title">
+                            <p class="vk-format-preview__title m-0 wrap-anywhere">
                                 <strong>"Tiêu đề sau chuyển đổi: "</strong>{title_label}
                             </p>
                             {p.title_too_long().then(|| view! {
