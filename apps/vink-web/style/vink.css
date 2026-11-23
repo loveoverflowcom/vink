@@ -421,12 +421,9 @@ a {
 
 /* Reader */
 
-.vk-reader-page { max-width: var(--vk-measure); margin: var(--vk-space-4) auto 0; }
-
 #reader-return { gap: var(--vk-space-2); margin-bottom: var(--vk-space-6); }
 #reader-return .vk-ui-icon { margin: 0; }
 .vk-reader-freshness > [data-testid] { margin-block: calc(-1 * var(--vk-space-2)) var(--vk-space-6); }
-.vk-reader { min-width: 0; }
 /* LVE #73: the work's endorsement closes the text, quiet and start-aligned, before discussion. */
 .vk-reader-endorsement { display: flex; margin-block: var(--vk-space-6) 0; min-width: 0; }
 .vk-discussion { margin-block: var(--vk-space-8); padding-block-start: var(--vk-space-6); border-block-start: 1px solid var(--vk-outline-variant); min-width: 0; display: grid; gap: var(--vk-space-3); }
@@ -435,9 +432,6 @@ a {
 .vk-discussion-head .vk-ui-heading { margin: 0; }
 /* .vk-discussion-order and .vk-reader-replacement-badge migrated to Tailwind utilities (W01 pilot). */
 
-.vk-reader--replacement { background: var(--vk-surface-container-low); border-radius: var(--vk-radius-xl); padding: 20px; }
-.vk-reader--replacement .vk-reader__header { margin-bottom: 0; display: grid; gap: var(--vk-space-3); justify-items: start; }
-.vk-reader--replacement p { margin: 0; }
 .vk-discussion-readonly-notice {
   display: flex;
   align-items: flex-start;
@@ -1949,7 +1943,6 @@ a {
 }
 .vk-public-pagination { display: flex; flex-wrap: wrap; gap: var(--vk-space-4); margin-block: var(--vk-space-6); }
 .vk-reader-tags { display: flex; flex-wrap: wrap; list-style: none; padding: 0; gap: var(--vk-space-2) var(--vk-space-4); margin-block: var(--vk-space-3) var(--vk-space-6); }
-.vk-reader-page { max-inline-size: 42rem; }
 .vk-discovery--tag { inline-size: 100%; max-inline-size: 52rem; margin-inline: auto; }
 @media (max-width: 759px) {
   #tag-picker { inline-size: 100%; max-block-size: 90dvh; padding-block-end: env(safe-area-inset-bottom); }
@@ -1966,7 +1959,7 @@ a {
 /* Public reading on phones: use the extra height for text, keeping the shared control sizes. */
 @media (max-width: 759px) {
   .vk-main:has(> .vk-reader-page) { padding-inline: 16px; }
-  .vk-reader-page, .vk-discovery--tag { margin-block-start: min(var(--vk-space-4), 16px); }
+  .vk-discovery--tag { margin-block-start: min(var(--vk-space-4), 16px); }
   .vk-discovery:not(.vk-discovery--tag) { margin-block-start: 0; }
   .vk-discovery:not(.vk-discovery--tag) > .vk-explore__top { padding-block: 8px 12px; }
   .vk-discovery-toolbar { gap: 8px; --vk-ui-control-radius: var(--vk-radius-control-48); }

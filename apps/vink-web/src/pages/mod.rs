@@ -29,6 +29,8 @@ use vink_ui::{
     RecoveryAction, RecoveryIntent, StatePanel, Text, TextTone, Tone, TypeRole,
 };
 
+const READER_PAGE_CLASS: &str = "vk-reader-page mx-auto mb-0 [max-inline-size:var(--vk-measure)] [margin-block-start:var(--vk-space-4)] [@media(max-width:759px)]:[margin-block-start:min(var(--vk-space-4),16px)]";
+
 /// HTTP status for the server response; a no-op in the browser.
 #[derive(Clone)]
 struct ResponseStatus(#[cfg(feature = "ssr")] Option<leptos_axum::ResponseOptions>);
@@ -241,12 +243,12 @@ fn ReplacementView(
     view! {
         <Title text=format!("{notice} — Vink") />
         <Meta name="robots" content="noindex" />
-        <div id="reader" class="vk-reader-page" data-state=state>
+        <div id="reader" class=READER_PAGE_CLASS data-state=state>
             <vink_ui::Link attr:id="reader-return" variant=vink_ui::LinkVariant::Standalone href=return_href>
                 <Icon name=IconName::ArrowBack /> {move || if context.get().query.q.is_empty() { "Khám phá" } else { "Về kết quả tìm kiếm" }}
             </vink_ui::Link>
-            <article id="reader-paper" class="vk-reader vk-reader--replacement" data-testid=test_id>
-                <header id="reader-header" class="vk-reader__header">
+            <article id="reader-paper" class="vk-reader vk-reader--replacement min-w-0 rounded-vk-xl bg-vk-surface-container-low p-[20px] [&_p]:m-0" data-testid=test_id>
+                <header id="reader-header" class="vk-reader__header mb-0 grid justify-items-start gap-vk-3">
                     <p class="vk-reader-replacement-badge inline-flex items-center gap-[6px] py-[4px] px-[12px] rounded-vk-full bg-vk-surface-container-high text-vk-on-surface-variant text-[length:var(--vk-type-caption-size)] font-vk-role-label">
                         <Icon name=IconName::VisibilityOff size=vink_ui::IconSize::Small />
                         <span>{badge}</span>
@@ -300,7 +302,7 @@ fn PublicationContent(
         <Meta property="og:type" content="article" />
         <Meta property="og:url" content=canonical.clone() />
         <Link rel="canonical" href=canonical />
-        <div id="reader" class="vk-reader-page">
+        <div id="reader" class=READER_PAGE_CLASS>
         <vink_ui::Link attr:id="reader-return" variant=vink_ui::LinkVariant::Standalone href=return_href>
             <Icon name=IconName::ArrowBack /> {move || if context.get().query.q.is_empty() { "Khám phá" } else { "Về kết quả tìm kiếm" }}
         </vink_ui::Link>
@@ -331,7 +333,7 @@ fn PublicationContent(
                 </div>
             </Show>
         </div>
-        <article id="reader-paper" class="vk-reader" data-revision=publication.revision_id>
+        <article id="reader-paper" class="vk-reader min-w-0" data-revision=publication.revision_id>
             <ReaderHeader title=publication.title author=Signal::from(author) title_in_body />
             <discovery::PublicTags tags=publication.tags />
             {body}
