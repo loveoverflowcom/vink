@@ -244,10 +244,23 @@ class Origin:
         observed = self.db_oids()
         return {db: [originals[db], observed[self.names[db][0]]] for db in OWNERS}
 
+    def container_network(self):
+        pod, pid, namespace = readback(["podman", "inspect", "--format",
+                                        "{{.Pod}}|{{.State.Pid}}|{{.NetworkSettings.SandboxKey}}", self.postgres]).split("|")
+        if not pod:
+            return f"container:{self.postgres}"
+        require(re.fullmatch(r"[0-9a-f]{64}", pod) and re.fullmatch(r"[1-9][0-9]*", pid)
+                and re.fullmatch(r"/run/netns/netns-[0-9a-f-]+", namespace),
+                "invalid PostgreSQL pod network namespace")
+        require(os.path.samestat(os.stat(namespace), os.stat(f"/proc/{pid}/ns/net")),
+                "PostgreSQL network namespace does not match its running process")
+        # Podman rejects container:<db> for dependencies inside a pod. Join its exact network namespace.
+        return f"ns:{namespace}"
+
     def container_args(self, envfile):
         return ["podman", "run", "--rm", "--pull=never", "--read-only", "--cap-drop=ALL",
                 "--security-opt=no-new-privileges", "--user", "10001:10001", "--cpu-shares=128",
-                "--network", f"container:{self.postgres}", "--env-file", str(RUNTIME / envfile)]
+                "--network", self.container_network(), "--env-file", str(RUNTIME / envfile)]
 
     def migrate(self):
         for db, (_, role) in OWNERS.items():
@@ -411,6 +424,7 @@ class Origin:
         require(self.sql("SELECT count(*) FROM pg_database WHERE datname='vink_notifications';") == "0",
                 "this maintenance path supports App and Identity only")
         require(set(self.db_oids()) == set(OWNERS), "rollback database names already exist")
+        self.container_network()
         require(checked_backup() == evidence["backup_sha256"], "backup differs from restore rehearsal")
         data = int(self.sql("SELECT sum(pg_database_size(datname)) FROM pg_database "
                             "WHERE datname IN ('vink','vink_identity');"))

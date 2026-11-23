@@ -3,7 +3,9 @@ import { readFileSync } from 'node:fs';
 // A read-only journey for the release controller and its isolated qualification host.
 export async function productionEdge(page, { args, check }) {
   const reader = args.reader;
-  check(/^[0-9a-f-]{36}$/.test(reader) && /^[0-9a-f]{40}$/.test(args.revision), 'reader and release provided');
+  const emptyCatalog = args['empty-catalog'] === 'true';
+  check(/^[0-9a-f]{40}$/.test(args.revision) &&
+    (emptyCatalog ? reader === undefined : /^[0-9a-f-]{36}$/.test(reader)), 'explicit guest smoke case and release provided');
   if (args['cached-html']) {
     check(new URL(args.base).hostname === '127.0.0.1' && /^[0-9a-f]{40}$/.test(args['cached-revision']),
       'stale document replay is local only');
@@ -28,13 +30,22 @@ export async function productionEdge(page, { args, check }) {
   }
   const prefix = `/_v/${args.revision}/pkg/`;
   const hydrated = "document.documentElement.dataset.hydrated === 'true'";
-  for (const route of ['/', `/tac-pham/${reader}`, '/ban-viet', '/toi']) {
+  const routes = emptyCatalog ? ['/', '/ban-viet', '/toi'] : ['/', `/tac-pham/${reader}`, '/ban-viet', '/toi'];
+  for (const route of routes) {
     await page.goto(args.base + route);
     await page.waitFor(hydrated, `hydrated ${route}`);
     check(await page.eval(`document.querySelector('link[rel=modulepreload]').getAttribute("href") === ${JSON.stringify(prefix + 'vink.js')}`),
       `SSR and browser load the selected JS on ${route}`);
     const paths = await page.eval("performance.getEntriesByType('resource').map(e => new URL(e.name).pathname)");
     check(paths.includes(prefix + 'vink_bg.wasm') && paths.includes(prefix + 'vink.css'), 'versioned WASM and CSS loaded');
+    if (emptyCatalog && route === '/') {
+      check(await page.eval(`(async () => {
+        const answer = await fetch('/api/v1/works', { cache: 'no-store' });
+        if (!answer.ok) return false;
+        const catalog = await answer.json();
+        return Array.isArray(catalog.works) && catalog.works.length === 0 && catalog.next_cursor === null;
+      })()`), 'guest catalog is empty; Reader with a published work NOT_RUN');
+    }
     if (route.startsWith('/tac-pham/')) {
       check(await page.eval(`(async () => (await fetch('/api/v1/works/${reader}/reader')).ok)()`), 'reader has public API data');
       await page.reload();

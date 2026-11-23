@@ -14,8 +14,10 @@ const send = (serve, pathname, options = {}, bindings = env) => serve(new Reques
 
 test('inventory and retained fallback read only static bytes', async () => {
   const serve = handler(index, assert.fail, req => {
-    assert.equal(new URL(req.url).host, 'r-' + 'b'.repeat(40) + '.vink-production.pages.dev');
+    assert.equal(new URL(req.url).host, 'r-' + 'b'.repeat(26) + '.vink-production.pages.dev');
+    assert.equal(new URL(req.url).pathname, `/_v/${'b'.repeat(40)}/pkg/vink-editor.js`);
     assert.equal(req.headers.has('cookie'), false);
+    assert.equal(req.headers.has('authorization'), false);
     return new Response('B', { headers: { 'x-vink-asset-revision': 'b'.repeat(40) } });
   });
   const js = await send(serve, path, { headers: { cookie: 'one' } });
@@ -25,11 +27,34 @@ test('inventory and retained fallback read only static bytes', async () => {
   assert.match(js.headers.get('cache-control'), /immutable/);
   assert.equal((await send(serve, path, { headers: { 'if-none-match': js.headers.get('etag') } })).status, 304);
   assert.equal((await send(serve, path, { method: 'HEAD' })).body, null);
-  assert.equal(await (await send(serve, path.replace(rev, 'b'.repeat(40)))).text(), 'B');
+  assert.equal(js.headers.get('x-vink-asset-route'), 'inventory/r26');
+  const lazy = await send(serve, `/_v/${'b'.repeat(40)}/pkg/vink-editor.js`, {
+    headers: { cookie: 'one', authorization: 'Bearer scratch' },
+  });
+  assert.equal(await lazy.text(), 'B');
+  assert.equal(lazy.headers.get('x-vink-asset-route'), 'fallback/r26');
   assert.equal((await send(serve, '/pkg/absent.wasm')).status, 404);
   assert.equal((await send(serve, path, { method: 'POST', body: 'private' })).status, 405);
   assert.equal((await send(serve, path, {}, { ASSETS: { fetch: () => new Response('<html>', {headers:{'content-type':'text/html'}}) } })).status, 502);
   assert.equal((await send(serve, path, {}, { ASSETS: { fetch: () => { throw Error(); } } })).status, 502);
+});
+
+test('an open tab retains its lazy asset on both Workers during the bridge', async () => {
+  const next = 'b'.repeat(40);
+  const lazy = `/_v/${rev}/pkg/vink-editor.js`;
+  const body = 'old lazy asset';
+  const fallback = () => assert.fail('retained old lazy asset must come from inventory');
+  const previous = { ...index, [lazy]: { sha256: createHash('sha256').update(body).digest('hex'), type: 'text/javascript' } };
+  const after = { ...previous, [path.replace(rev, next)]: index[path] };
+  const bindings = { ASSETS: { fetch: request => {
+    assert.equal(new URL(request.url).pathname, lazy);
+    return new Response(body);
+  } } };
+  for (const inventory of [previous, after]) {
+    const response = await send(handler(inventory, assert.fail, fallback), lazy, {}, bindings);
+    assert.equal(await response.text(), body);
+    assert.equal(response.headers.get('x-vink-asset-revision'), rev);
+  }
 });
 
 test('canonical host and dynamic request preserve contracts and isolate private reads', async () => {

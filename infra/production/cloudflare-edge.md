@@ -74,9 +74,19 @@ python3 "$r" status "$@"
 
 `plan` kiểm API read-only, predecessor, backup/schema, platform, repo và revision label của cả ba digest. Nó pull image, tạo container export chưa start, lấy riêng `/opt/vink/site/pkg`, lưu archive cục bộ và tính SHA-256/MIME/byte của từng file. Mọi tệp phải thuộc inventory public của build; sai target, symlink, thiếu artifact, khác bytes cùng SHA hay vượt trần đều dừng. Nó không publish hoặc thay runtime. Tách credential khỏi bước build.
 
-`apply` giữ host lock qua toàn bộ đợt đổi. Trước tiên xác minh từng byte ở alias preview riêng cho release. Sau đó publish bundle gồm cả release trước lên `main` và đọc lại deployment ID, commit và marker. Sau khi kiểm từng asset của candidate qua URL HTTPS theo deployment ID, controller mới thay ba image, giữ nguyên PostgreSQL, auth overlay, env và volume. Từng thay thế file/link là riêng lẻ; nhật ký ghi pha trước mutation. HTTP smoke kiểm HTML có SHA của release, ETag/304, canonical/index và lỗi; Chrome khách đọc trang chủ, Reader, Bàn viết, Tài khoản và reload/navigation. Receipt ghi riêng origin revision sau khi đối chiếu ID container/image, ba digest, asset digest, worker digest và Pages deployment ID.
+`apply` giữ host lock qua toàn bộ đợt đổi. Stage nhánh `r-` cộng 26 ký tự đầu Git SHA. API Pages phải trả
+đúng SHA đầy đủ, marker, deployment ID, URL bất biến và alias dự kiến. Kiểm HTTP 200, MIME, revision
+đầy đủ và SHA-256 của từng asset ở URL bất biến lẫn alias. HTML/API trả 404 trên preview theo thiết kế.
+Nếu có predecessor, kiểm marker đường phục vụ trên asset của chính deployment đó, rồi kiểm từng asset
+candidate tại apex qua Worker đang phục vụ. Chỉ sau đó mới publish bundle giữ cả hai bộ asset lên
+`main`. Đọc lại deployment ID, commit và marker, kiểm lại URL deployment, alias và apex trước khi thay
+image hoặc drain App, Worker, Identity. Kiểm lại alias và apex trước khi tiếp tục một lượt bảo trì
+đang dừng trước mở ghi. Từng thay thế file/link là riêng lẻ; nhật ký ghi pha trước mutation. HTTP smoke kiểm HTML có SHA của release, ETag/304, canonical/index và lỗi; Chrome khách đọc trang chủ, Reader, Bàn viết, Tài khoản và reload/navigation. Receipt ghi riêng origin revision sau khi đối chiếu ID container/image, ba digest, asset digest, worker digest và Pages deployment ID.
 
-HTML/JS/CSS/WASM và lazy imports giữ namespace `/_v/<sha>/pkg/`. Cả A và B tồn tại khi activate B hoặc khi quay lại A. Nếu request đến PoP còn Worker cũ, nó chỉ lấy byte ở alias Pages của SHA đã stage, không gửi cookie. Alias `/pkg/` tương thích cũ trỏ bộ asset bootstrap với revalidation. Khi lần đầu thay HTML **chưa có namespace**, kiểm tab của release cũ và chờ cửa sổ chuyển đổi trước khi tháo origin cũ. Giữ archive và alias còn caller; khi gần giới hạn file/worker, dừng, đo và duyệt chính sách retention trước release tiếp. [Preview aliases](https://developers.cloudflare.com/pages/configuration/preview-deployments/).
+HTML/JS/CSS/WASM và lazy imports giữ namespace `/_v/<sha>/pkg/`. Cả A và B tồn tại khi activate B hoặc khi quay lại A. Nếu request đến PoP còn Worker tiền nhiệm đã hỗ trợ alias ngắn, nó lấy asset ở alias
+`r-<26 ký tự>` và yêu cầu `X-Vink-Asset-Revision` khớp SHA đầy đủ. Fallback chỉ chuyển request asset,
+không gửi cookie hay Authorization. Kiểm `X-Vink-Asset-Route: fallback/r26` để phân biệt lần đọc qua
+alias với `inventory/r26` khi Worker có sẵn asset. Alias `/pkg/` tương thích cũ trỏ bộ asset bootstrap với revalidation. Khi lần đầu thay HTML **chưa có namespace**, kiểm tab của release cũ và chờ cửa sổ chuyển đổi trước khi tháo origin cũ. Giữ archive và alias còn caller; khi gần giới hạn file/worker, dừng, đo và duyệt chính sách retention trước release tiếp. [Preview aliases](https://developers.cloudflare.com/pages/configuration/preview-deployments/).
 
 SSR/API dùng fetch bypass cache. Phản hồi riêng tư, có session hoặc có Set-Cookie dùng
 `no-store`. Chỉ các route READ-01 có `private, no-cache` từ App mới giữ revalidation.
@@ -90,6 +100,44 @@ tại domain thật. Chrome/workerd ở loopback chỉ kiểm hợp đồng cụ
 Khi origin trả `404` cho `/robots.txt`, Cloudflare Free có thể trả `200` với thông báo Content Signals chỉ chứa dòng chú thích. Smoke qua edge chấp nhận thông báo này nếu không có chỉ dẫn crawler. [Content Signals Policy](https://developers.cloudflare.com/bots/additional-configurations/managed-robots-txt/#content-signals-policy).
 
 Rule ở zone giữ redirect `308` cho HTTP apex, giữ đường dẫn và query. Phản hồi HTTPS apex giữ HSTS `max-age=31536000`, `X-Content-Type-Options: nosniff` và `Referrer-Policy: strict-origin-when-cross-origin` như cấu hình Caddy trực tiếp trước cutover.
+
+
+## Chuyển Worker cũ sang alias ngắn
+
+Worker đã phát hành dùng hostname `r-<40 ký tự>.vink-production.pages.dev`. Stage lại cùng nhánh vẫn
+tạo alias rút ngắn. Đọc `aliases` từ API Pages và kiểm byte của URL thực tế, kể cả khi URL deployment
+bất biến đã đạt. [Tài liệu preview Pages](https://developers.cloudflare.com/pages/configuration/preview-deployments/#preview-aliases) ·
+[Trường aliases của API Pages](https://developers.cloudflare.com/api/resources/pages/subresources/projects/subresources/deployments/methods/get/).
+
+Nếu Worker đang phục vụ còn gọi alias dài, cần một lần phát hành **chỉ đổi Pages** được duyệt trong
+lúc origin cũ tiếp tục phục vụ. Bundle cầu nối giữ toàn bộ archive còn caller, alias `/pkg/`, SSR/API
+proxy và cache policy hiện hành. Để thử đường fallback thật, stage một SHA ứng dụng mới chưa có trong
+inventory của cầu nối. Trước bảo trì, đối chiếu deployment ID/marker và thử qua apex từ nhiều PoP thực,
+ghi `CF-Ray`, SHA đầy đủ, marker `fallback/r26`, MIME và hash ở các asset tải muộn, WASM và CSS.
+Giữ một tab từ bản cũ để kiểm lazy-load sau khi chuyển Pages. Các mẫu PoP không xác nhận toàn bộ mạng.
+Dừng nếu còn PoP chạy Worker cũ hoặc chưa xác nhận được chuyển đổi theo quy trình của nhà cung cấp.
+
+Với `origin_rolled_back`, đọc `status` bằng controller và input gốc. So VPS, ledger, marker và canonical
+Pages ID với journal. `resume` của lượt rollback giữ nguyên kết quả rollback. Khi deployment cũ thiếu
+asset đã công bố, dùng lệnh riêng `bridge <qualified.json>` từ checkout cầu nối sạch. Truyền
+`--account`, `--previous-origin` là SHA origin đã khôi phục, `--previous-edge` là Pages ID của lần
+rollback và `--schema-review` là báo cáo gốc. Lệnh xác minh origin và ledger cũ, giữ A+B,
+publish Pages với commit metadata của origin đang phục vụ, rồi kiểm asset và HTTP. Receipt
+`edge_bridge_verified` ghi ID mới và hash của journal rollback được lưu nguyên byte vào `incidents/`.
+Lệnh chỉ tác động Pages và receipt. Nếu mất ACK thì đọc lại đúng marker trước khi tiếp tục với cùng
+input. Không tự upload lại khi chưa rõ kết quả. SHA ứng dụng mới phải khác SHA đã rollback để bảo
+toàn journal và hai DB giữ lại gắn với SHA cũ.
+
+Với lần bảo trì kế tiếp dùng `apply --maintenance --preview-only` để stage mà chưa promote. Nếu mất
+ACK khi stage thì dùng `resume --maintenance --preview-only`. Thu kết quả GET của một asset đã có
+trong manifest tại apex từ ít nhất hai hậu tố `CF-Ray` khác nhau. Receipt JSON gồm `predecessor`,
+`preview_deployment`, `revision`, `measured_at` (Unix giây), `asset` và `observations`. Mỗi quan sát
+gồm `cf_ray`, `status`, `route`, `sha256`, `mime`, `revision`; chỉ nhận HTTP 200 từ
+`fallback/r26`, hash của body và revision khớp. Truyền `--fallback-proof` vào `resume` trong 15 phút.
+Receipt không thay bước controller tự tải đủ asset từ alias và apex. Khi catalog thật rỗng,
+`--empty-catalog` giữ smoke Chrome khách cho /, /ban-viet và /toi, ghi Reader tác phẩm công khai
+`NOT_RUN`. Controller kiểm Git index và binary bằng chính tài khoản smoke trước stage.
+
 
 ## Nâng cấp trong cửa sổ bảo trì
 
