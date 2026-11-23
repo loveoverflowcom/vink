@@ -116,6 +116,23 @@ class Packages(unittest.TestCase):
 
 
 class Recovery(unittest.TestCase):
+    def test_podman_probe_joins_only_the_running_postgres_namespace(self):
+        origin = release.maintenance.Origin.__new__(release.maintenance.Origin)
+        origin.postgres = "9" * 12
+        with patch.object(release.maintenance, "readback", return_value="|1|") as read:
+            self.assertEqual(origin.container_network(), f"container:{origin.postgres}")
+            read.assert_called_once()
+        namespace = "/run/netns/netns-25b063fc-4411-337a-220b-8e1aac00a5d5"
+        with patch.object(release.maintenance, "readback", return_value=f"{A + A[:24]}|802400|{namespace}"), \
+                patch.object(release.maintenance.os, "stat", side_effect=lambda p: {
+                    namespace: SimpleNamespace(st_dev=2, st_ino=3),
+                    "/proc/802400/ns/net": SimpleNamespace(st_dev=2, st_ino=3),
+                }[p]) as observe:
+            self.assertEqual(origin.container_network(), f"ns:{namespace}")
+            observe.side_effect = lambda _: SimpleNamespace(st_dev=2, st_ino=observe.call_count)
+            with self.assertRaisesRegex(ValueError, "does not match"):
+                origin.container_network()
+
     def test_fallback_requires_two_distinct_pops_and_matching_bytes(self):
         with TemporaryDirectory() as tmp, patch.object(release.time, "time", return_value=1000):
             path = Path(tmp) / "proof.json"

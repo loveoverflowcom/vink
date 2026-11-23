@@ -39,6 +39,24 @@ test('inventory and retained fallback read only static bytes', async () => {
   assert.equal((await send(serve, path, {}, { ASSETS: { fetch: () => { throw Error(); } } })).status, 502);
 });
 
+test('an open tab retains its lazy asset on both Workers during the bridge', async () => {
+  const next = 'b'.repeat(40);
+  const lazy = `/_v/${rev}/pkg/vink-editor.js`;
+  const body = 'old lazy asset';
+  const fallback = () => assert.fail('retained old lazy asset must come from inventory');
+  const previous = { ...index, [lazy]: { sha256: createHash('sha256').update(body).digest('hex'), type: 'text/javascript' } };
+  const after = { ...previous, [path.replace(rev, next)]: index[path] };
+  const bindings = { ASSETS: { fetch: request => {
+    assert.equal(new URL(request.url).pathname, lazy);
+    return new Response(body);
+  } } };
+  for (const inventory of [previous, after]) {
+    const response = await send(handler(inventory, assert.fail, fallback), lazy, {}, bindings);
+    assert.equal(await response.text(), body);
+    assert.equal(response.headers.get('x-vink-asset-revision'), rev);
+  }
+});
+
 test('canonical host and dynamic request preserve contracts and isolate private reads', async () => {
   const calls = [];
   const publicBody = '{"works":[]}';
