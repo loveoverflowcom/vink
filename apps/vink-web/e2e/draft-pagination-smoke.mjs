@@ -103,13 +103,14 @@ export async function draftPagination(page, { args, check, DraftGate, sleep }) {
 
     // A successful head read discards old tails, even while input has an unsubmitted edit.
     await type('Chữ chưa gửi ỹ ỷ');
-    await page.eval(`window.__deskInput=document.querySelector('#draft-search'); window.__deskInput.setSelectionRange(3,7); window.__deskInput.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true})); window.__deskClock=performance.now.bind(performance); performance.now=()=>window.__deskClock()+121000;`);
+    await page.eval(`window.__deskInput=document.querySelector('#draft-search'); window.__deskInput.setSelectionRange(3,7); window.__deskInput.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}));`);
     const requestsBefore = gate.requests.length;
+    await wakeDesk(page);
     await page.eval(`window.dispatchEvent(new Event('online')); window.dispatchEvent(new Event('focus'))`);
     await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length===24`, 'reconnect replaces the whole visible chain'); await settled();
     check(gate.requests.slice(requestsBefore).filter(u => new URL(u).searchParams.get('limit') === '24').length === 1, 'reconnect/focus burst coalesces one head request');
     check(await page.eval(`document.querySelector('#draft-search')===window.__deskInput && window.__deskInput.value==='Chữ chưa gửi ỹ ỷ' && window.__deskInput.selectionStart===3 && window.__deskInput.selectionEnd===7`), 'reconnect preserves input node, unsubmitted text and selection during simulated composition');
-    await page.eval(`window.__deskInput.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true})); performance.now=window.__deskClock;`);
+    await page.eval(`window.__deskInput.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true}));`);
     check(gate.postCount === 0, 'read lifecycle never replays a create mutation');
 
     // Query A -> B -> A: the old A response must not overwrite the newer A generation.

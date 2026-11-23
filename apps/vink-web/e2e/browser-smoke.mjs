@@ -3685,7 +3685,9 @@ async function draftDashboard(page) {
   gate.holdGets = true;
   const beforeReconnectPosts = gate.postCount;
   const beforeBackgroundRefresh = await page.eval(rowTop);
-  await page.eval(`window.__deskNow = performance.now.bind(performance); performance.now = () => window.__deskNow() + 121000; document.querySelector('#draft-search').focus(); for (const name of ['online','focus','visibilitychange','pageshow']) (name === 'visibilitychange' ? document : window).dispatchEvent(new Event(name))`);
+  await page.eval(`document.querySelector('#draft-search').focus()`);
+  await wakeDesk(page);
+  await page.eval(`for (const name of ['online','focus','pageshow']) window.dispatchEvent(new Event(name))`);
   const backgroundList = await gate.next('gets');
   await sleep(150);
   check(gate.gets.length === 0 && gate.postCount === beforeReconnectPosts, 'Desk reconnect burst coalesces one GET and sends no mutation');
@@ -3695,7 +3697,6 @@ async function draftDashboard(page) {
   await page.waitFor(`document.querySelector('[data-testid=draft-content]').getAttribute('aria-busy') === 'false'`, 'background Desk refresh accepted');
   check(Math.abs(await page.eval(rowTop) - beforeBackgroundRefresh)<=1, 'F-17 an accepted refresh of the same rows keeps the list position');
   check(await page.eval(`document.activeElement === window.__draftSearchInput`), 'background completion does not move focus');
-  await page.eval(`performance.now = window.__deskNow; delete window.__deskNow`);
   gate.list = { status: 403, body: { error: { code: 'forbidden', message: 'test fixture' } } };
   await wakeDesk(page);
   await page.waitFor(`document.querySelector('[data-testid=desk-access]')?.textContent.includes('không có quyền')`, 'forbidden dashboard');
@@ -6353,6 +6354,7 @@ try {
   else if (args.phase === 'public-search') await publicReading(page);
   else if (args.phase === 'public-cache') await tracePublicReadLifecycle(page);
   else if (args.phase === 'author-works') await authorWorks(page, {args,check,DraftGate,sleep});
+  else if (args.phase === 'desk-pagination') await draftPagination(page, {args, check, DraftGate, sleep});
   else if (args.phase === 'desk-empty') await deskEmptyState(page, {args,check,DraftGate,textContrast});
   else if (args.phase === 'desk-guest') await deskGuest(page, {args,check}, false);
   else if (args.phase === 'desk-empty-context') { await draftDashboard(page); await deskEmptyState(page, {args,check,DraftGate,textContrast}); }
