@@ -78,7 +78,8 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await page.eval("document.documentElement.style.fontSize='100%'");
 
   await page.click('#clear-public-results');
-  await page.waitFor("location.search === '' && document.querySelector('.vk-public-row')", 'query recovery');
+  await page.waitFor("location.search === '' && document.querySelector('#explore').dataset.search === 'closed' && document.querySelector('.vk-public-row')",
+    '#404 clearing the query from no-results restores the browse header');
   check(await page.eval("!document.querySelector('.vk-empty-state__art') && performance.getEntriesByType('resource').filter(r=>r.name.includes('/pkg/empty/')).every(r=>r.name.endsWith('vink-empty-no-results.webp'))"), '#258 ready branch mounts no artwork and never fetches unrelated illustrations');
   await page.waitFor("document.querySelector('#open-tag-filters')", 'public tag catalog ready');
 

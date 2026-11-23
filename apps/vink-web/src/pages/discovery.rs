@@ -239,11 +239,13 @@ fn DiscoveryPage(#[prop(optional)] tag_page: Option<Memo<String>>) -> AnyView {
     #[cfg(feature = "hydrate")]
     if tag_page.is_none() {
         let guard = expect_context::<crate::navigation::NavigationGuard>();
-        // The tag picker registers later and handles Back first. Let the router perform
-        // real history traversal, including Forward into the empty search entry. The search
-        // dock follows the URL at every width (R4.2 #404); only the full-screen phone dock
-        // restores the browse position it covered.
+        // A normal link drops the manually opened dock. A destination with a query or the
+        // search fragment opens it from its URL. The tag picker handles Back before the dock.
         let registration = guard.set_overlay(move |reason| {
+            if reason == vink_ui::CloseReason::Navigate {
+                dock_open.set(false);
+                return false;
+            }
             if reason == vink_ui::CloseReason::Back
                 && let Ok(href) = window().location().href()
                 && let Ok(next) = url::Url::parse(&href)
