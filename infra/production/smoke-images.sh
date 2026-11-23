@@ -32,6 +32,16 @@ cleanup() {
 }
 trap cleanup EXIT
 python3 infra/production/create-runtime-files.py "$root/runtime"
+# The shared provisioner checks all owners. Generate Notifications passwords only
+# for this disposable PostgreSQL fixture.
+python3 - "$root/runtime/provision.env" <<'PYTHON'
+import secrets
+import sys
+
+with open(sys.argv[1], "a", encoding="utf-8") as fixture:
+    for role in ("MIGRATOR", "RUNTIME"):
+        fixture.write(f"VINK_NOTIFICATIONS_{role}_PASSWORD={secrets.token_hex(32)}\n")
+PYTHON
 sudo install -d -m 0700 -o 10001 -g 10001 "$root/identity"
 cat > "$root/public.env" <<SETTINGS
 VINK_PROD_POSTGRES_IMAGE=docker.io/library/postgres@sha256:e5d2edd28b1f8d40a0a6c0c9cdc545b19b56a0d5d88f94bc11a97d970d4700d0
