@@ -174,11 +174,11 @@ export function parseSceneFilenameExpectations(name) {
 }
 
 export function classifyTextScaleLane({ rootInlineFontSize, dataText, explicitLane } = {}) {
-  if (explicitLane) return explicitLane;
   if (typeof rootInlineFontSize === 'string' && rootInlineFontSize.trim().length > 0) {
     return 'dom-override-geometry-only';
   }
   if (dataText === '200') return 'dom-override-geometry-only';
+  if (explicitLane) return explicitLane;
   if (dataText === '150') return 'app-appearance-control';
   return 'default-100';
 }

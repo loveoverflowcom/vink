@@ -923,7 +923,7 @@ class Page {
       png: pngMeta,
       ...context,
       captured_at: new Date().toISOString(),
-      evidence: { build: BUILD_SHA, dirty: BUILD_DIRTY, textScaleLane, ...evidence },
+      evidence: { build: BUILD_SHA, dirty: BUILD_DIRTY, ...evidence, textScaleLane },
     };
     contexts[name] = record;
     writeFileSync(manifest, JSON.stringify(contexts, null, 2));
@@ -1885,11 +1885,31 @@ async function railR4Surfaces(page, theme) {
       .filter(el => getComputedStyle(el).backgroundColor === selected)
       .map(el => (el.closest('a,button')?.getAttribute('aria-current') === 'page'));
     const noUtility = !document.querySelector('#profile-trigger, #navigation-expanded-appearance, #profile-menu, .vk-ui-nav-utility');
-    return { page, body: bg('body'), rail: bg('#navigation'), bar: bg('#bottom-navigation'), noUtility, filled };
+    const me = document.querySelector('#navigation-account a[data-destination=me]');
+    const meIndicator = me?.querySelector('.vk-ui-nav-item__indicator');
+    const meRow = me && getComputedStyle(me).backgroundColor;
+    const meSelection = meIndicator && getComputedStyle(meIndicator);
+    const meRail = me && {
+      selected: me.getAttribute('aria-current') === 'page',
+      label: me.querySelector('.vk-ui-nav-item__label').textContent,
+      rowBackground: meRow,
+      effectiveRowBackground: meRow === 'rgba(0, 0, 0, 0)' ? bg('#navigation') : meRow,
+      indicatorBackground: meSelection?.backgroundColor,
+      indicatorHasBox: Boolean(meSelection && meSelection.display !== 'contents'),
+    };
+    return { page, selected, body: bg('body'), rail: bg('#navigation'), bar: bg('#bottom-navigation'), noUtility, filled, meRail };
   })()`);
   check(facts.body === facts.page && facts.rail === facts.page && facts.bar === facts.page &&
     facts.noUtility && facts.filled.length >= 1 && facts.filled.every(Boolean),
-    `${theme}: rail, page and bottom bar share bg-page; only the current destination is filled; rail has no Giao diện utility (${JSON.stringify(facts)})`);
+    `${theme}: rail, page and bottom bar share bg-page; only the current destination is filled; rail has no Giao diện utility`);
+  if (facts.meRail?.selected) {
+    // DQ-11 is a separate visual contract. The existing expanded rail paints selection on
+    // the row itself. #427 tracks this drift and the selected icon signal.
+    console.log(`  .. DQ-11 /toi rail row and selected signal (diagnostic, #427): ${JSON.stringify({
+      ...facts.meRail, expectedRowBackground: facts.page, selectionToken: facts.selected,
+      rowMatchesPage: facts.meRail.effectiveRowBackground === facts.page,
+    })}`);
+  }
 }
 
 async function waitForPageAccount(page) {
@@ -2869,6 +2889,11 @@ async function adaptiveShell(page) {
     requiredTargets: ['#me-title', '.vk-appearance-card'],
   });
   check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), '320px / 200% stress text reflows without horizontal overflow');
+  const stressOverflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({
+    containers: ['.vk-me', '.vk-account', '.vk-account-status', '.vk-appearance-card'],
+  })));
+  check(stressOverflow.ok, `320px / 200% stress: /toi has no clipped controls (${stressOverflow.reasons.join('; ')})`);
+  check(await appearanceRows(page, 'page'), '320px / 200% stress: appearance controls keep whole Vietnamese labels and 48px targets');
   await page.eval(`scrollTo(0, document.documentElement.scrollHeight)`);
   await page.waitFor(`parseFloat(getComputedStyle(document.querySelector('.vk-ui-scaffold')).getPropertyValue('--vk-ui-bar-height')) === document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().height`, 'measured bottom clearance');
   check(await page.eval(`document.querySelector('.vk-me').getBoundingClientRect().bottom <= document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().top`), 'bottom bar clears the end of page content at 320px / 200% stress text');
@@ -5509,6 +5534,48 @@ async function markdownLivePreviewAndFormatPicker(page) {
   await page.click('#save');
   await page.waitStatus('saved');
 
+  // The earlier matrix forces DOM sizes to test CSS. Reopen the saved Markdown draft
+  // under both actual preferences set on Tôi, without an inline font-size override.
+  await page.viewport(1440);
+  await page.click(RAIL_ME);
+  await page.waitFor(`location.pathname === '/toi' && document.querySelector('#page-text input:checked')`, 'Tôi opens from the saved editor');
+  try {
+    for (const scale of [100, 150]) {
+      await chooseTextSize(page, scale);
+      await page.viewport(1023, 900);
+      await page.goto(`${args.base}/ban-viet/${closingWork}`);
+      await page.waitFor(`${EDITOR_READY} && document.querySelector('#outline-toggle')`, 'saved Markdown opens with the chosen text preference');
+      await page.click('#outline-toggle');
+      for (const width of [1023, 1024]) {
+        const modal = scale === 150 || width < 1024;
+        await page.viewport(width, 900);
+        await page.waitFor(`(() => {
+          const root = document.documentElement, panel = document.querySelector('#editor-outline-panel[open]');
+          const expectedText = ${scale === 150 ? "'150'" : 'undefined'};
+          return root.dataset.text === expectedText && !root.style.fontSize &&
+            getComputedStyle(root).fontSize === '${16 * scale / 100}px' && root.scrollWidth <= innerWidth &&
+            panel && panel.matches(':modal') === ${modal} &&
+            getComputedStyle(panel).position === '${modal ? 'fixed' : 'sticky'}' &&
+            panel.getAttribute('role') === ${modal ? 'null' : "'complementary'"};
+        })()`, `Mục lục at ${width}px with the app's ${scale}% text preference`);
+      }
+      if (scale === 150) {
+        await page.key('Escape');
+        await page.waitFor(`!document.querySelector('#editor-outline-panel') && document.activeElement?.id === 'outline-toggle'`,
+          'Escape returns focus to Mục lục at Lớn 150%');
+      }
+      await page.viewport(1440);
+      await page.click(RAIL_ME);
+      await page.waitFor(`location.pathname === '/toi' && document.querySelector('#page-text input:checked')`, 'return to Tôi from the saved Markdown draft');
+    }
+  } finally {
+    if (await page.eval("location.pathname !== '/toi'")) {
+      await page.viewport(1440);
+      await page.goto(`${args.base}/toi`);
+      await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('#page-text input:checked')`, 'restore app text preference');
+    }
+    await chooseTextSize(page, 100);
+  }
 }
 
 const TAGS_READY = `document.querySelector('[data-testid=tag-status]') && document.querySelector('#work-tags-query')`;

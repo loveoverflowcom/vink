@@ -385,6 +385,12 @@ test('AC-04 & AC-05: separates DOM override from app controls and validates Me i
   assert.equal(classifyTextScaleLane({ rootInlineFontSize: '', dataText: '200' }), 'dom-override-geometry-only');
   assert.equal(classifyTextScaleLane({ rootInlineFontSize: '', dataText: '150' }), 'app-appearance-control');
   assert.equal(classifyTextScaleLane({ rootInlineFontSize: '200%', dataText: '150' }), 'dom-override-geometry-only');
+  assert.equal(classifyTextScaleLane({
+    rootInlineFontSize: '', dataText: '200', explicitLane: 'app-appearance-control',
+  }), 'dom-override-geometry-only');
+  assert.equal(classifyTextScaleLane({
+    rootInlineFontSize: '200%', dataText: '150', explicitLane: 'app-appearance-control',
+  }), 'dom-override-geometry-only');
   assert.equal(classifyTextScaleLane({ rootInlineFontSize: '', dataText: null }), 'default-100');
 
   // Me page (>= 32rem container): action is null, illustration visible 210px, paddingInlineEnd 225px -> PASS!

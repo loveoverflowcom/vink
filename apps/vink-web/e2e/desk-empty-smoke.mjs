@@ -100,6 +100,15 @@ export async function deskGuest(page, {args, check}, signInOpen) {
       await page.waitFor(`location.hash === '#page-appearance' && document.querySelector('#page-theme input')`,
         '#327 sign-in-disabled Appearance anchor reaches actual choices');
     }
+    await page.eval(`document.querySelector('#page-text input[value="100"]').focus()`);
+    await page.key('ArrowRight');
+    await page.waitFor(`document.activeElement?.matches('#page-text input[value="150"]:checked:focus-visible') &&
+      document.documentElement.dataset.text === '150' && getComputedStyle(document.documentElement).fontSize === '24px'`,
+      '#413 the guest can select Lớn with the native radio keyboard');
+    await page.key('ArrowLeft');
+    await page.waitFor(`document.activeElement?.matches('#page-text input[value="100"]:checked') &&
+      !document.documentElement.dataset.text && getComputedStyle(document.documentElement).fontSize === '16px'`,
+      '#413 the guest can return to Mặc định');
   } finally {
     page.cdp.listeners = page.cdp.listeners.filter(handler=>handler!==observe);
   }
