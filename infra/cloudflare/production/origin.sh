@@ -71,6 +71,7 @@ case "$schema_action" in
             diff -qr "$current/services/$owner/migrations" "$target/services/$owner/migrations" >/dev/null
         done;;
     expand|keep) ;; # release.py checked the direction and exact migration inventory.
+    maintenance) [[ $mode == plan ]] ;; # Only the journaled maintenance adapter can switch.
     *) exit 2;;
 esac
 backup=$(realpath "${VINK_VERIFIED_BACKUP:?recent pair of verified Vink dumps required}")

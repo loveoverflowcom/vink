@@ -162,3 +162,112 @@ class Recovery(unittest.TestCase):
             self.assertEqual(sum("apply" in c for c in calls),1)
             self.assertEqual(json.loads((root/"active.json").read_bytes())["origin_release"],B)
             self.assertFalse((root/"pending.json").exists())
+
+
+class Maintenance(unittest.TestCase):
+    def test_incompatible_schema_requires_explicit_opt_in_and_restore(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            evidence = {"from": A, "to": B, "action": "maintenance"}
+            for owner in ("vink-app", "vink-identity"):
+                evidence[owner] = {"old_on_result": "PASS", "new_on_result": "PASS",
+                                   "old_on_restored": "PASS", "rehearsal": "scratch"}
+                for rev in (A, B):
+                    path = root / rev / "services" / owner / "migrations"
+                    path.mkdir(parents=True)
+                    (path / "1_initial.sql").write_text("first")
+            app = root / B / "services/vink-app/migrations"
+            (app / "2_add.sql").write_text("add")
+            evidence["vink-app"]["old_on_result"] = "FAIL"
+            review = root / "review.json"
+            review.write_bytes(art.encode(evidence))
+            self.assertEqual(release.schema_action(A, B, review, root, window=True), "maintenance")
+            with self.assertRaisesRegex(ValueError, "opt-in"):
+                release.schema_action(A, B, review, root)
+            review.write_bytes(art.encode(evidence | {"action": "expand"}))
+            with self.assertRaisesRegex(ValueError, "both binaries"):
+                release.schema_action(A, B, review, root)
+            evidence["vink-app"]["old_on_restored"] = "FAIL"
+            review.write_bytes(art.encode(evidence))
+            with self.assertRaisesRegex(ValueError, "restored predecessor"):
+                release.schema_action(A, B, review, root, window=True)
+
+    def test_bootstrap_is_observed_and_bound_to_existing_assets(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = package(root, A)
+            receipt = root / "bootstrap.json"
+            receipt.write_bytes(art.encode({"pages_deployment": "existing-id", "source_sha": A,
+                "project": art.PROJECT, "public_origin": manifest["public_origin"], "images": manifest["images"],
+                "asset_digest": manifest["asset_digest"]}))
+            active = {"id": "existing-id", "environment": "production", "latest_stage": {"status": "success"},
+                      "deployment_trigger": {"metadata": {"commit_hash": A}},
+                      "url": "https://abcd.vink-production.pages.dev"}
+            with patch.object(release, "verify_assets") as verify:
+                self.assertEqual(release.bootstrap_baseline(receipt, active["id"], A, "linux/amd64", root, active),
+                                 manifest["images"])
+                self.assertEqual([call.args[0] for call in verify.call_args_list],
+                                 [active["url"], "https://vink.forum"])
+            (root / A / "pkg/vink.js").write_text("drift")
+            with self.assertRaisesRegex(ValueError, "retained bytes"):
+                release.bootstrap_baseline(receipt, active["id"], A, "linux/amd64", root, active)
+
+    def test_open_intent_is_durable_and_can_only_resume_forward(self):
+        with TemporaryDirectory() as tmp:
+            journal = Path(tmp) / "pending.json"
+            result = {"phase": "origin_switch_started", "previous_origin": A}
+            ops = []
+
+            class Stub:
+                def operate(self, command, _):
+                    ops.append(command)
+                    if command == "open" and ops.count("open") == 1:
+                        self.assert_durable_open()
+                        raise OSError("lost open ACK")
+
+                def assert_durable_open(self):
+                    assert json.loads(journal.read_bytes())["phase"] == "origin_opening"
+
+            origin = Stub()
+            self.assertFalse(release.advance_origin(origin, journal, result, "apply", {}))
+            self.assertEqual(ops, ["prepare"])
+            self.assertEqual(json.loads(journal.read_bytes())["phase"], "origin_prepared")
+            self.assertFalse(release.advance_origin(origin, journal, result, "resume", {}))
+            with self.assertRaisesRegex(OSError, "lost open ACK"):
+                release.advance_origin(origin, journal, result, "open", {})
+            with self.assertRaisesRegex(ValueError, "may have accepted writes"):
+                release.advance_origin(origin, journal, result, "rollback-origin", {})
+            self.assertTrue(release.advance_origin(origin, journal, result, "resume", {}))
+            self.assertEqual(ops, ["prepare", "open", "open"])
+
+    def test_rollback_intent_is_durable_and_preserves_combined_edge(self):
+        with TemporaryDirectory() as tmp:
+            journal = Path(tmp) / "pending.json"
+            result = {"phase": "origin_prepared", "edge": "new-asset-bundle", "previous_origin": A}
+
+            class Stub:
+                def operate(self, command, _):
+                    assert command == "rollback"
+                    assert json.loads(journal.read_bytes())["phase"] == "origin_rollback_started"
+
+            self.assertFalse(release.advance_origin(Stub(), journal, result, "rollback-origin", {}))
+            self.assertEqual(json.loads(journal.read_bytes()), result | {"phase": "origin_rolled_back",
+                                  "edge": "new-asset-bundle", "origin_release": A})
+            self.assertFalse(release.advance_origin(Stub(), journal, result, "resume", {}))
+
+    def test_unit_overlay_preserves_mixed_live_compose_labels(self):
+        from maintenance import CURRENT, observed_overlay
+
+        paths = [str(CURRENT / value) for value in ("services/postgres/compose.yaml",
+                 "infra/production/compose.yaml", "infra/production/auth-resend.compose.yaml")]
+        unit = "podman compose " + " ".join("-f " + path for path in paths)
+        base = ",".join(paths[:2])
+        labels = {"app": base, "worker": base, "identity": ",".join(paths)}
+        flags = {"app": {"VINK_AUTH_SIGN_IN": "enabled"}, "worker": {"VINK_AUTH_SIGN_IN": "disabled"},
+                 "identity": {"VINK_IDENTITY_AUTHORITY": "native", "VINK_IDENTITY_MAIL_TRANSPORT": "resend-api"}}
+        env = b"VINK_PROD_AUTH_SIGN_IN=enabled\n"
+        self.assertTrue(observed_overlay(unit, labels, flags, env))
+        with self.assertRaisesRegex(ValueError, "Compose labels"):
+            observed_overlay(unit, labels | {"identity": base}, flags, env)
+        with self.assertRaisesRegex(ValueError, "startup Compose"):
+            observed_overlay(unit + " -f /unexpected.yaml", labels, flags, env)

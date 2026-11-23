@@ -7,6 +7,8 @@ cd /opt/vink-prod/current
 install -d -m 0700 "$root"
 exec 9> "$root/.lock"
 flock -n 9
+# The maintenance window retains a separate pair taken after draining writers.
+test ! -e /var/lib/vink-production-release/origin-maintenance.json
 # Leave at least 5 GiB available before using the shared host filesystem for a dump.
 (( $(df -Pk "$root" | awk 'NR == 2 {print $4}') >= 5 * 1024 * 1024 ))
 work=$(mktemp -d "$root/.incomplete.XXXXXXXX")
