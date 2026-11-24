@@ -119,10 +119,7 @@ fn owner_rules_match_workspace_manifests_and_selector_packages() {
     use crate::plan::UnitOwner;
     let root = crate::root();
     let manifest = |dir: &Path| -> toml::Value {
-        fs::read_to_string(dir.join("Cargo.toml"))
-            .unwrap()
-            .parse()
-            .unwrap()
+        toml::from_str(&fs::read_to_string(dir.join("Cargo.toml")).unwrap()).unwrap()
     };
     let ws = manifest(&root);
     let members: BTreeSet<_> = ws["workspace"]["members"]
