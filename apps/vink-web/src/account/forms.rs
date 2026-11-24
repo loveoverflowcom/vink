@@ -211,10 +211,10 @@ enum Mode {
 #[component]
 pub(super) fn AuthHeading(title: &'static str) -> impl IntoView {
     if use_context::<ReaderPresentation>().is_some() {
-        view! { <h2 id="reader-auth-title" class="vk-reader-auth-title">{title}</h2> }.into_any()
+        view! { <h2 id="reader-auth-title" class="vk-reader-auth-title m-0 wrap-anywhere">{title}</h2> }.into_any()
     } else {
         view! {
-            <header class="vk-auth-heading">
+            <header class="vk-auth-heading grid justify-items-center text-center">
                 <span class="vk-brand__lockup" role="img" aria-label="Vink"></span>
                 <h2>{title}</h2>
             </header>
@@ -450,7 +450,7 @@ fn GuestPassword(
             </div>
         </form>
         <div class="vk-auth-alternatives">
-            <div class="vk-auth-switch">
+            <div class="vk-auth-switch flex flex-wrap items-center justify-center [gap:0_var(--vk-space-1)] text-center text-vk-on-surface-variant text-[length:var(--vk-type-label-size)]">
                 {if is_register {
                     view! { <Button id="use-password" variant=ButtonVariant::Text
                         on_press=move |_| switch.run(Mode::Login)>"Quay lại đăng nhập"</Button> }.into_any()
