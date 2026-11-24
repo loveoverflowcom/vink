@@ -136,12 +136,13 @@ export async function documentBudget(page, { args, check }) {
           v.dispatch({selection:{anchor:mid,head:mid+1}});
           await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
           const held=v.state.selection.toJSON(),raw=v.state.doc.toString();
-          document.querySelector('#preview').click();await new Promise(r=>requestAnimationFrame(r));
-          document.querySelector('#draft-preview').close();await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+          const options=document.querySelector('#work-options');
+          options.open=!options.open;await new Promise(r=>requestAnimationFrame(r));
+          options.open=!options.open;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
           return {same_view:v===${view},same_text:raw===v.state.doc.toString(),same_selection:JSON.stringify(held)===JSON.stringify(v.state.selection.toJSON()),
             rendered_cm_lines:document.querySelectorAll('.cm-line').length,total_lines:v.state.doc.lines,
             horizontal_overflow:document.documentElement.scrollWidth>innerWidth+1};})()`);
-        check(scene.same_view && scene.same_text && scene.same_selection, `${fixture.case}/${width}/${scale}: preview retains buffer, view and selection anchor`);
+        check(scene.same_view && scene.same_text && scene.same_selection, `${fixture.case}/${width}/${scale}: article options retain buffer, view and selection anchor`);
         row.scenes.push({ width, scale, ...scene });
       }
       // A real server save, followed by an intentionally stale version. Rejected requests must

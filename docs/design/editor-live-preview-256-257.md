@@ -1,5 +1,7 @@
 # Bàn viết Markdown Live Preview (#256), Mục lục Cách 1 (#257), Chọn/Đổi định dạng (#262) & Nút Gửi/Lưu
 
+> [Editor R4 và delta #475](editor-r4.md) bỏ nút con mắt và hộp thoại Xem trước bản nháp trong cây lịch sử bên dưới. Markdown Live Preview, Mục lục và xem trước chuyển định dạng tiếp tục có hiệu lực.
+
 Ngày: 18/11/2026 · Base tích hợp: `origin/develop@fd4cb980` · Nhánh: `codex/editor-live-preview`
 
 ## Bốn chiều trạng thái

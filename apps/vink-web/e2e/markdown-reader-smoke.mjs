@@ -111,7 +111,7 @@ async function matrix(page, check, textContrast, mode, selector) {
 }
 
 export async function markdownReader(page, { args, check, textContrast }) {
-  console.log('#264 Markdown reader / preview / snapshot on App and PostgreSQL:');
+  console.log('#264 Markdown reader / snapshot on App and PostgreSQL:');
   const admin = args.base;
   const author = args['author-base'];
   const reviewer = args['reviewer-base'];
@@ -151,26 +151,10 @@ export async function markdownReader(page, { args, check, textContrast }) {
     check(publicBefore.status === 404 && publicBefore.cache === 'no-store' && !publicBefore.etag, 'a private Markdown work has no public validator');
     check(!draftHtml.text.includes(poem.title) && !draftHtml.text.includes(networkHost), 'the private draft is absent from SSR and hydration strings');
     await page.goto(author + '/ban-viet/' + work);
-    await page.waitFor(`${ready} && document.querySelector('.cm-content') && document.querySelector('#preview')?.checkVisibility()`, 'real Markdown editor');
-    await page.click('#preview');
-    await page.waitFor("document.querySelector('#draft-preview[open] .vk-markdown')", 'Markdown preview');
-    const preview = await view(page, '#draft-preview .vk-preview');
-    check(preview.format === 'markdown' && preview.headings[0][0] === 'muc-1'
-      && preview.headings.filter(([, text]) => text === poem.title).length === 1
-      && preview.text.indexOf('Lời đề') < preview.text.indexOf(poem.title), 'private preview shows the canonical H1 once and at its source position');
-    check(!preview.executable && equal(preview.alt, ['Ảnh bên ngoài', 'Ảnh'])
-      && equal(preview.links.map(([href]) => href), ['#muc-2', `https://${networkHost}/link`, '/', '#muc-1'])
-      && preview.links.every(([, text, rel]) => text && rel.includes('noreferrer'))
-      && preview.text.includes('<vink-inline') && preview.text.includes('<img src='),
-    'only named safe links remain; raw HTML and image alt are inert');
-    check(preview.structure.some(([tag, , start]) => tag === 'OL' && start === '3')
-      && preview.structure.some(([tag]) => tag === 'BR') && preview.text.includes('Dòng đầu ❤️‍🔥\ndòng tiếp.')
-      && preview.text.includes('| --- | --- |') && preview.text.includes('[ ] Việc vẫn bằng chữ'),
-    'CommonMark structure, line breaks and unsupported extensions match the shared corpus');
-    geometry.preview = await matrix(page, check, textContrast, 'preview', '#draft-preview');
-    await page.key('Escape');
-    await page.waitFor("!document.querySelector('#draft-preview').open", 'the preview closes via Escape');
-    check(await page.eval("document.activeElement.id === 'preview'"), 'focus returns to the preview trigger');
+    await page.waitFor(`${ready} && document.querySelector('.cm-content')`, 'real Markdown editor');
+    check(!draftHtml.text.includes('id="draft-preview"') && !draftHtml.text.includes('id="preview"')
+      && await page.eval("!document.querySelector('#preview, #draft-preview') && document.querySelector('.cm-content').textContent.includes('Lời đề')"),
+    'SSR and hydrated Markdown retain the live editor without a standalone preview');
 
     const capture = (version, metadata, name) => post(author, workApi + '/snapshots', {
       command_key: name, expected_draft_version: version, expected_metadata_version: metadata,
@@ -215,7 +199,19 @@ export async function markdownReader(page, { args, check, textContrast }) {
     await page.goto(admin + casePath);
     await page.waitFor(`${ready} && document.querySelector('.vk-moderation__snapshot .vk-markdown')`, 'hydrated Markdown review snapshot');
     const staff = await view(page, '#moderation-case .vk-moderation__snapshot');
-    check(equal(staff, preview), 'case and draft preview produce the same safe semantic document');
+    check(staff.format === 'markdown' && staff.headings[0][0] === 'muc-1'
+      && staff.headings.filter(([, text]) => text === poem.title).length === 1
+      && staff.text.indexOf('Lời đề') < staff.text.indexOf(poem.title), 'private case shows the canonical H1 once and at its source position');
+    check(!staff.executable && equal(staff.alt, ['Ảnh bên ngoài', 'Ảnh'])
+      && equal(staff.links.map(([href]) => href), ['#muc-2', `https://${networkHost}/link`, '/', '#muc-1'])
+      && staff.links.every(([, text, rel]) => text && rel.includes('noreferrer'))
+      && staff.text.includes('<vink-inline') && staff.text.includes('<img src='),
+    'only named safe links remain; raw HTML and image alt are inert');
+    check(staff.structure.some(([tag, , start]) => tag === 'OL' && start === '3')
+      && staff.structure.some(([tag]) => tag === 'BR') && staff.text.includes('Dòng đầu ❤️‍🔥\ndòng tiếp.')
+      && staff.text.includes('| --- | --- |') && staff.text.includes('[ ] Việc vẫn bằng chữ'),
+    'CommonMark structure, line breaks and unsupported extensions match the shared corpus');
+
     geometry.review = await matrix(page, check, textContrast, 'review', '#moderation-case');
     await page.click('#case-claim');
     await page.waitFor("document.querySelector('#case-approve')", 'the claimed case can be concluded');
@@ -237,7 +233,7 @@ export async function markdownReader(page, { args, check, textContrast }) {
     await page.waitFor(`${ready} && document.querySelector('#reader-paper .vk-markdown')`, 'hydrated real Markdown Reader');
     const beforeWasm = await view(page, '#reader-paper', ssr.text);
     const afterWasm = await view(page, '#reader-paper');
-    check(equal(preview, beforeWasm) && equal(beforeWasm, afterWasm), 'the real SSR HTML, hydrated Reader, preview and case have identical projections');
+    check(equal(staff, beforeWasm) && equal(beforeWasm, afterWasm), 'the real SSR HTML, hydrated Reader and case have identical projections');
     const expectedTitle = JSON.stringify(poem.title + ' — Vink');
     check(await page.eval(`new DOMParser().parseFromString(${JSON.stringify(ssr.text)}, 'text/html').title === ${expectedTitle}
       && document.title === ${expectedTitle}
@@ -256,7 +252,7 @@ export async function markdownReader(page, { args, check, textContrast }) {
     check(await page.eval("document.activeElement.matches(':focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'"), 'keyboard focus is visible on a named document link');
     await page.key('Enter');
     await page.waitFor("location.hash === '#muc-2' && document.querySelector('#muc-2')", 'fragment link lands at the projected heading');
-    check(!network.length, 'no external manuscript request across preview, staff and published Reader');
+    check(!network.length, 'no external manuscript request across editor, staff and published Reader');
 
     await page.goto(reviewer + '/?q=' + encodeURIComponent('mua tren bac cua'));
     const exploreLink = `a.vk-public-row__link[href^="${readerPath}"]`;

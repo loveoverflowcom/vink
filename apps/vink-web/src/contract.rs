@@ -873,6 +873,7 @@ pub enum ApiError {
         observed: follow::FollowObserved,
     },
     FollowKeyReused,
+    HandleRefused(profile::HandleRefusal),
     Invalid {
         field: Option<String>,
     },
@@ -996,6 +997,16 @@ impl ApiError {
                 }) => Self::VersionConflict { current_version },
                 _ => Self::Unexpected { status },
             },
+            (409, Some("handle_taken")) => Self::HandleRefused(profile::HandleRefusal::Taken),
+            (409, Some("handle_alias_reserved")) => {
+                Self::HandleRefused(profile::HandleRefusal::OwnAlias)
+            }
+            (409, Some("handle_quota_exhausted")) => {
+                Self::HandleRefused(profile::HandleRefusal::Exhausted)
+            }
+            (409, Some("handle_command_reused")) => {
+                Self::HandleRefused(profile::HandleRefusal::KeyReused)
+            }
             (409, Some("tag_retired")) => {
                 Self::TagRefused(TagRefusal::from_body(TagRefusalCode::Retired, body))
             }

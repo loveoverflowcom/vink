@@ -1,0 +1,152 @@
+{
+  "counts": [
+    {
+      "freshness": {
+        "status": "fresh",
+        "unseen_group_count": 3,
+        "as_of_snapshot": "s1.42.9f2c41d07a6be38815c0e2d4a7b1f630",
+        "count_is_lower_bound": false,
+        "max_staleness_seconds": 60
+      }
+    },
+    {
+      "freshness": {
+        "status": "stale",
+        "last_known_count": 3,
+        "count_is_lower_bound": false,
+        "as_of_snapshot": "s1.42.9f2c41d07a6be38815c0e2d4a7b1f630",
+        "max_staleness_seconds": 60,
+        "age_seconds": 35,
+        "reason": "dependency_unavailable"
+      }
+    },
+    {
+      "error": {
+        "code": "dependency_unavailable",
+        "message": "Không thể kiểm tra số thông báo chưa xem lúc này."
+      }
+    }
+  ],
+  "inbox": {
+    "inbox_snapshot": "s1.45.0b6e1d9c2f7a48e3a1c5d6e7f8091a2b",
+    "items": [
+      {
+        "group_id": "019a9b20-1111-7000-8000-000000000001",
+        "group_version": 5,
+        "type": "work.endorsement.tham.changed",
+        "is_read": false,
+        "is_unseen": true,
+        "item_count": 0,
+        "actor_count": 4,
+        "actors_preview": [
+          {
+            "kind": "linked",
+            "pen_name": "Lan Phương",
+            "handle": "lan-phuong-12",
+            "href": "/@lan-phuong-12"
+          },
+          {
+            "kind": "linked",
+            "pen_name": "Minh Khôi",
+            "handle": "minh-khoi-08",
+            "href": "/@minh-khoi-08"
+          },
+          {
+            "kind": "deleted",
+            "label": "Tài khoản đã xóa"
+          }
+        ],
+        "target": {
+          "kind": "work_endorsement",
+          "work_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "revision_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+          "work_title": "Chiều qua bến cũ"
+        },
+        "summary": {
+          "kind": "work_tham_rollup",
+          "total_actors": 4,
+          "action_required": false
+        },
+        "created_at": "2026-11-18T10:00:00Z",
+        "updated_at": "2026-11-20T02:15:00Z",
+        "expires_at": "2027-05-17T10:00:00Z"
+      },
+      {
+        "group_id": "019a9b20-1111-7000-8000-000000000002",
+        "group_version": 1,
+        "type": "work.moderation.decided",
+        "is_read": false,
+        "is_unseen": false,
+        "item_count": 1,
+        "actor_count": 0,
+        "actors_preview": [],
+        "target": {
+          "kind": "work_moderation_decision",
+          "work_id": "ffffffff-ffff-4fff-8fff-ffffffffffff",
+          "revision_id": "99999999-9999-4999-8999-999999999999",
+          "decision_version": 3,
+          "work_title": "Mùa gió chướng"
+        },
+        "summary": {
+          "kind": "work_moderation_rejected",
+          "action_required": true
+        },
+        "created_at": "2026-11-20T02:05:00Z",
+        "updated_at": "2026-11-20T02:05:00Z",
+        "expires_at": "2027-05-19T02:05:00Z"
+      }
+    ],
+    "next_cursor": "n1.40.019a9b20111170008000000000000002.5d0c7f3e9a1b2c4d6e8f00112233aa44",
+    "continuation_reason": "more_items"
+  },
+  "decisions": [
+    {
+      "kind": "work_moderation_decision",
+      "work_id": "ffffffff-ffff-4fff-8fff-ffffffffffff",
+      "work_title": "Mùa gió chướng",
+      "revision_id": "99999999-9999-4999-8999-999999999999",
+      "decision_version": 3,
+      "outcome": "rejected",
+      "action_required": true,
+      "reason": {
+        "code": "safety_policy",
+        "message": "Nội dung vi phạm chính sách an toàn cộng đồng ở khổ thứ ba."
+      },
+      "can_appeal": true,
+      "is_current": true,
+      "decided_at": "2026-11-20T02:05:00Z"
+    },
+    {
+      "kind": "work_moderation_decision",
+      "work_id": "ffffffff-ffff-4fff-8fff-ffffffffffff",
+      "work_title": "Mùa gió chướng",
+      "revision_id": "99999999-9999-4999-8999-999999999999",
+      "decision_version": 4,
+      "outcome": "approved",
+      "action_required": false,
+      "reason": {
+        "code": "appeal_reversed",
+        "message": "Phản đối được chấp nhận; phiên bản đã được duyệt lại."
+      },
+      "can_appeal": false,
+      "is_current": true,
+      "decided_at": "2026-11-20T02:20:00Z"
+    },
+    {
+      "kind": "comment_moderation_decision",
+      "work_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "work_title": null,
+      "comment_id": "77777777-7777-4777-8777-777777777777",
+      "moderation_version": 4,
+      "outcome": "removed",
+      "action_required": false,
+      "comment_body": null,
+      "reason": {
+        "code": null,
+        "message": "Bình luận chứa lời lẽ công kích cá nhân không phù hợp tiêu chuẩn cộng đồng."
+      },
+      "is_current": true,
+      "decided_at": "2026-11-20T02:12:00Z"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+# infra/production/smoke-edge.sh edge --release e98725569657502e5701afeb3499c8b87ed1d84d
+# 2026-11-24T08:06:37.107Z, worktree fix/487 (smoke mới), edge live chạy Worker cũ
+edge 308 http://vink.forum/toi?edge_smoke=1
+edge 301 https://www.vink.forum/toi?edge_smoke=1
+edge 200 https://vink.forum/
+edge 200 https://vink.forum/toi
+edge 200 https://vink.forum/ban-viet
+edge 200 https://vink.forum/health/live
+edge 200 https://vink.forum/health/ready
+edge 200 https://vink.forum/api/v1/works
+edge 200 https://vink.forum/api/v1/works
+edge 304 https://vink.forum/api/v1/works
+edge 200 https://vink.forum/api/v1/works
+edge 304 https://vink.forum/api/v1/works
+edge 200 https://vink.forum/api/v1/works
+edge 304 https://vink.forum/api/v1/works
+edge 200 https://vink.forum/api/v1/works
+edge 404 https://vink.forum/api/v1/__vink_edge_probe__
+edge 404 https://vink.forum/__vink_edge_probe__
+edge 404 https://vink.forum/tac-pham/00000000-0000-0000-0000-000000000000
+edge 404 https://vink.forum/pkg/__vink_edge_probe__.js
+edge 200 https://vink.forum/robots.txt
+edge 404 https://vink.forum/sitemap.xml
+edge 200 https://vink.forum/_v/e98725569657502e5701afeb3499c8b87ed1d84d/pkg/vink.js
+asset /_v/e98725569657502e5701afeb3499c8b87ed1d84d/pkg/vink.js 3b77801ef9a9ee4853406ad86e8147d66c5b33aaa6649b55693fb80a12a909b2
+encoding /_v/e98725569657502e5701afeb3499c8b87ed1d84d/pkg/vink.js 
+edge 200 https://vink.forum/_v/e98725569657502e5701afeb3499c8b87ed1d84d/pkg/vink.js
+FAIL https://vink.forum/_v/e98725569657502e5701afeb3499c8b87ed1d84d/pkg/vink.js unexpected Cache-Control for identity
+exit=1

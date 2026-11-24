@@ -78,7 +78,6 @@ pub fn Me() -> impl IntoView {
                     </vink_ui::Link>
                 })}
             <super::profile::ProfileEntry />
-            <super::handle::HandleRegion entry=true />
             {move || {
                 let scope = session.profile_scope.get()?;
                 (review_access.get().flatten().as_ref() == Some(&scope)).then(|| view! {

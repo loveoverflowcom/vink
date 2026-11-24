@@ -747,6 +747,30 @@
       "entry": "composition.tag-selector"
     },
     {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/notification.rs",
+      "symbol": "NotificationBadge",
+      "entry": "composition.notifications"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/notification.rs",
+      "symbol": "ShapeMark",
+      "entry": "composition.notifications"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/notification.rs",
+      "symbol": "NotificationGroup",
+      "entry": "composition.notifications"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/notification.rs",
+      "symbol": "NotificationRow",
+      "entry": "composition.notifications"
+    },
+    {
       "renderer": "cmp",
       "source": "packages/vink-patterns/cmp/src/commonMain/kotlin/vink/patterns/Tags.kt",
       "symbol": "TagChip",
@@ -771,6 +795,12 @@
       "declaration": "font-variant-numeric: tabular-nums",
       "owner": "AuthorWorkRow public counters (#410)",
       "reason": "Equal-width digits keep Thấm and comment counts aligned as their values change. The label type scale still comes from shared tokens."
+    },
+    {
+      "path": "packages/ui-system/leptos/style/vink-ui.css",
+      "declaration": "font-variant-numeric: tabular-nums",
+      "owner": "NotificationBadge count (#485)",
+      "reason": "Equal-width digits keep the bell badge from changing width as the unseen count changes. The caption type scale still comes from shared tokens."
     },
     {
       "path": "apps/vink-web/style/vink.css",

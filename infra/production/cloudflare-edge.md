@@ -88,6 +88,23 @@ HTML/JS/CSS/WASM và lazy imports giữ namespace `/_v/<sha>/pkg/`. Cả A và B
 không gửi cookie hay Authorization. Kiểm `X-Vink-Asset-Route: fallback/r26` để phân biệt lần đọc qua
 alias với `inventory/r26` khi Worker có sẵn asset. Alias `/pkg/` tương thích cũ trỏ bộ asset bootstrap với revalidation. Khi lần đầu thay HTML **chưa có namespace**, kiểm tab của release cũ và chờ cửa sổ chuyển đổi trước khi tháo origin cũ. Giữ archive và alias còn caller; khi gần giới hạn file/worker, dừng, đo và duyệt chính sách retention trước release tiếp. [Preview aliases](https://developers.cloudflare.com/pages/configuration/preview-deployments/).
 
+Asset `/_v/<sha>/pkg/` trả `public, max-age=31536000, immutable`. Với loại nén được (JS, CSS,
+WASM, SVG, manifest/JSON và text), Worker bỏ `no-transform` và thêm `Vary: Accept-Encoding` để zone
+nén Brotli hoặc gzip theo `Accept-Encoding` của trình duyệt. Worker không tự nén và không chuyển
+header của client sang Pages, nên một byte inventory phục vụ mọi biến thể; byte sau giải nén vẫn có
+SHA-256 bằng ETag. Khi nén, Cloudflare đổi ETag thành `W/"<sha256>"`. Worker so `If-None-Match`
+theo phép so yếu nên vẫn trả 304. Font và ảnh đã nén sẵn giữ `no-transform` để byte không đổi.
+Đo ngày 24/11/2026 trên live `e9872556`, cùng nhánh Worker: `no-transform` là thứ duy nhất chặn
+nén, còn việc không gửi `Accept-Encoding` tới Pages không ảnh hưởng
+([#487](https://github.com/loveoverflowcom/vink/issues/487),
+[evidence](../../docs/development/evidence/web-compress-487/README.md)). Mức nén do zone quyết định
+(quan sát tương đương Brotli q4, cửa sổ 128 KiB). `smoke-edge.sh edge --release <sha>` kiểm ba biến
+thể `identity`, `gzip`, `br` của `vink.js`, `vink.css` và `vink_bg.wasm`: `Content-Encoding`,
+`Cache-Control`, `Vary`, ETag bằng SHA-256 của byte giải nén và 304 với ETag vừa nhận. Font phải giữ
+`no-transform` và không có `Content-Encoding`. Đổi cấu hình nén hoặc ETag của zone thì chạy lại
+lệnh này. Muốn quay lại hành vi cũ, phát hành lại tree trước theo [rollback](#cutover-và-khôi-phục).
+Bản cache cũ ở trình duyệt vẫn dùng được vì URL và byte giải nén không đổi.
+
 SSR/API dùng fetch bypass cache. Phản hồi riêng tư, có session hoặc có Set-Cookie dùng
 `no-store`. Chỉ các route READ-01 có `private, no-cache` từ App mới giữ revalidation.
 Worker thêm `no-transform` vào các phản hồi này để Pages giữ strong ETag khi trình duyệt

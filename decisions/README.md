@@ -25,6 +25,10 @@ Cả ba revision đang `PENDING`. Lệnh `cargo xtask decision query USER-01 --h
 ghi nguồn #290/#291 cho hai lựa chọn đã chốt trong phạm vi issue. Duyệt preview và merge tài liệu
 không thay signoff đúng revision/hash theo [VDR-DECISION-SIGNOFF@r1](signoffs/VDR-DECISION-SIGNOFF.r1.toml).
 
+[VDR-SOCIAL-GRAPH@r2](proposals/VDR-SOCIAL-GRAPH.r2.toml) bổ sung delta Web [#480](https://github.com/loveoverflowcom/vink/issues/480).
+Thiết lập và đổi địa chỉ trong Chỉnh hồ sơ. Revision r2 còn `PENDING` theo cùng quy trình
+signoff. [LayoutSpec delta](../docs/design/profile-inline-handle-480.md).
+
 ## Thông báo (Notifications v1)
 
 [#345](https://github.com/loveoverflowcom/vink/issues/345) đưa R1–R3 của [Epic #305](https://github.com/loveoverflowcom/vink/issues/305)
@@ -39,6 +43,10 @@ vào [PRD §16](../prd/requirements.md#16-thông-báo-cộng-đồng-và-danh-s�
 (trích đoạn nhận xét và thông báo Ưng) cùng lựa chọn kỹ thuật `#348`; cả hai revision giữ `PENDING`.
 [LVE-PR-02-03-CHOICE-12@r2](proposals/LVE-PR-02-03-CHOICE-12.r2.toml) đề xuất mở danh sách người Thấm công khai có phân trang (`WorkId + RevisionId`), giữ nguyên phần bình luận của `LVE-PR-02-03-CHOICE-12@r1` (`DESIGN_PROPOSED`, vẫn đang hiện hành khi `@r2` còn `PENDING`).
 Cả ba proposal mới đang ở trạng thái `PENDING` và chờ signoff đúng revision/SHA-256 theo [VDR-DECISION-SIGNOFF@r1](signoffs/VDR-DECISION-SIGNOFF.r1.toml).
+
+[VDR-NOTIFICATIONS-DESIGN@r1](proposals/VDR-NOTIFICATIONS-DESIGN.r1.toml) đề xuất badge đỏ
+và đặt chuông dưới Bàn viết theo [LayoutSpec R4](../docs/design/notifications.md).
+Revision này `PENDING` chờ signoff đúng revision/SHA-256.
 
 ## Nhận xét R4
 
@@ -91,6 +99,22 @@ thuật `CHOICE-01 A`), và chỉ thay thế có phạm vi phần giữ nút Gia
 `#403`/`DQ-11` và `#209`. Theo `VDR-DECISION-SIGNOFF@r1`, proposal này giữ trạng thái `PENDING`
 trong registry TOML và chưa gắn marker pin kích hoạt cho tới khi có file signoff trích đúng
 revision/SHA-256.
+
+## Editor R4
+
+[VDR-EDITOR-R4@r1](proposals/VDR-EDITOR-R4.r1.toml) ghi delta ngày 24/11 trong
+[#475](https://github.com/loveoverflowcom/vink/issues/475) về việc bỏ hộp thoại xem trước bản nháp.
+Proposal còn `PENDING` đến khi có signoff đúng revision theo
+[VDR-DECISION-SIGNOFF@r1](signoffs/VDR-DECISION-SIGNOFF.r1.toml).
+[LayoutSpec delta R4](../docs/design/editor-r4.md) ánh xạ hành vi vào Web.
+
+## Nén asset Web production
+
+[VDR-EDGE-ASSET-COMPRESSION@r1](proposals/VDR-EDGE-ASSET-COMPRESSION.r1.toml) ghi `CHOICE-01 A` của
+[#487](https://github.com/loveoverflowcom/vink/issues/487): Worker production bỏ `no-transform` cho
+asset `/_v/<sha>/pkg/` nén được để zone Cloudflare nén Brotli/gzip, giữ `no-transform` cho font,
+ảnh và READ-01. Tiền nén lúc build (B) chuyển sang #491. Proposal đang `PENDING`. Số đo và giới hạn
+nằm ở [evidence](../docs/development/evidence/web-compress-487/README.md).
 
 ## Tra cứu theo phạm vi công việc
 

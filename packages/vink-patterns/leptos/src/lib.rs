@@ -4,6 +4,11 @@
 use leptos::prelude::*;
 use vink_ui::*;
 
+mod notification;
+pub use notification::{
+    NotificationGroup, NotificationLeading, NotificationRow, NotificationRowFacts,
+};
+
 mod timestamp;
 use timestamp::Timestamp;
 pub use timestamp::{first_public_date_hcm, updated_at_label};
@@ -335,15 +340,27 @@ pub fn EditorToolbar(
     /// Opt-in quiet composition. The default toolbar and its consumers keep their anatomy.
     #[prop(default = false)]
     paper_first: bool,
+    #[prop(optional)] compact_details: bool,
     #[prop(optional)] utilities: Option<ChildrenFn>,
-    children: Children,
+    #[prop(optional)] children: Option<Children>,
 ) -> impl IntoView {
     let problem = move || status_problem.and_then(|value| value.get());
     view! {
-        <div class="vk-editor-toolbar flex flex-wrap items-center justify-between gap-y-vk-2 gap-x-vk-4 min-w-0" class:vk-editor-toolbar--paper-first=paper_first>
+        <div
+            class=if compact_details {
+                "vk-editor-toolbar flex flex-wrap items-center justify-start gap-y-vk-2 gap-x-vk-4 min-w-0"
+            } else {
+                "vk-editor-toolbar flex flex-wrap items-center justify-between gap-y-vk-2 gap-x-vk-4 min-w-0"
+            }
+            class:vk-editor-toolbar--paper-first=paper_first
+        >
             <div
                 id="save-slot"
-                class="vk-editor-toolbar__status vk-save-slot flex flex-wrap items-center gap-vk-2 flex-[1_1_7rem] min-w-0"
+                class=if compact_details {
+                    "vk-editor-toolbar__status vk-save-slot flex flex-wrap items-center gap-vk-2 flex-[0_1_auto] min-w-0"
+                } else {
+                    "vk-editor-toolbar__status vk-save-slot flex flex-wrap items-center gap-vk-2 flex-[1_1_7rem] min-w-0"
+                }
                 data-status=move || status_token.get()
                 data-problem=problem
             >
@@ -382,7 +399,7 @@ pub fn EditorToolbar(
                         {move || status.get()}
                     </p>
                 </span>
-                {save_action.map(|action| view! { <div class="vk-save-slot__action flex-[0_1_auto] items-center min-w-0">{action()}</div> })}
+                {save_action.map(|action| view! { <div class="vk-save-slot__action flex-wrap items-center gap-vk-2 flex-[0_1_auto] min-w-0">{action()}</div> })}
                 {status_detail.filter(|_| !paper_first).map(|detail| view! {
                     <SupportingDetails id="editor-save-details" summary="Chi tiết trạng thái lưu" compact=true>
                         <p>{move || detail.get()}</p>
@@ -390,14 +407,24 @@ pub fn EditorToolbar(
                 })}
             </div>
             <div class="vk-editor-toolbar__actions flex-wrap items-center min-w-0 gap-vk-1">
-                {children()}
+                {children.map(|children| children())}
                 {paper_first.then(|| view! {
                     // Native disclosure, not an ARIA menu/overlay: Enter/Space toggle, Tab
                     // reaches ordinary actions, Escape leaves it open. Its summary is always
                     // visible, including when a focused Save disappears after an ACK (#217).
                     <details id="editor-save-details" class="vk-editor-tools [min-inline-size:0]">
-                        <summary>"Thêm"<Icon name=IconName::ExpandMore size=IconSize::Small /></summary>
-                        <div class="vk-editor-tools__content flex flex-col [align-items:start] gap-vk-2 [padding-block:var(--vk-space-2)]">
+                        {if compact_details {
+                            view! {
+                                <summary aria-label="Chi tiết lưu" title="Chi tiết lưu"><span aria-hidden="true">"…"</span></summary>
+                            }.into_any()
+                        } else {
+                            view! { <summary>"Thêm"<Icon name=IconName::ExpandMore size=IconSize::Small /></summary> }.into_any()
+                        }}
+                        <div class=if compact_details {
+                            "vk-editor-tools__content flex flex-col [align-items:start] gap-vk-2 p-vk-3"
+                        } else {
+                            "vk-editor-tools__content flex flex-col [align-items:start] gap-vk-2 [padding-block:var(--vk-space-2)]"
+                        }>
                             {utilities.map(|actions| actions())}
                             {status_detail.map(|detail| view! {
                                 <p><strong>"Trạng thái lưu. "</strong>{move || detail.get()}</p>

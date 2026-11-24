@@ -6,8 +6,8 @@
 
 use leptos::prelude::*;
 use vink_ui::{
-    Announce, Button, ButtonVariant, Heading, HeadingLevel, IconName, InlineNotice,
-    SupportingDetails, Text, TextInput, TextTone, Tone, TypeRole,
+    Announce, Button, ButtonVariant, IconName, InlineNotice, Text, TextInput, TextTone, Tone,
+    TypeRole,
 };
 
 use crate::contract::TagSuggestion;
@@ -192,12 +192,12 @@ pub fn WorkInfo(
 
     view! {
         <section
-            class="vk-work-info grid gap-vk-3 [min-inline-size:0] [padding:clamp(var(--vk-space-3),3vw,var(--vk-space-6))] rounded-vk-lg bg-vk-surface-container-low"
-            aria-labelledby="work-info-heading"
+            class="vk-work-info grid gap-vk-2 min-w-0"
+            aria-label="Dạng bài và chủ đề"
+            id="work-info"
             data-testid="work-info"
         >
-            <div class="vk-work-info__heading flex flex-wrap items-baseline justify-between gap-x-vk-4 gap-y-vk-1 [min-inline-size:0] [&>.vk-ui-heading]:m-0 [&>.vk-ui-heading]:[font-family:var(--vk-font-ui)] [&>.vk-ui-heading]:text-[length:var(--vk-type-body-size)] [&>.vk-ui-heading]:[font-weight:var(--vk-type-label-weight)] [&>.vk-ui-heading]:wrap-anywhere">
-                <Heading level=HeadingLevel::H2 role=TypeRole::Title id="work-info-heading">"Thông tin tác phẩm"</Heading>
+            <div class="vk-work-info__heading flex flex-wrap items-baseline justify-between gap-x-vk-4 gap-y-vk-1 [min-inline-size:0] empty:hidden">
                 {move || status.get().map(|status| view! {
                     <span
                         class="vk-work-info__status text-[length:var(--vk-type-label-size)] [font-weight:var(--vk-type-label-weight)]"
@@ -208,9 +208,6 @@ pub fn WorkInfo(
                     </span>
                 })}
             </div>
-            <Text role=TypeRole::Caption tone=TextTone::Muted>
-                "Chỉ bạn thấy. Lưu thẻ chỉ lưu vào bản nháp, không công khai tác phẩm."
-            </Text>
             <Show when=loaded fallback=move || match tag_load.get() {
                 TagLoad::Failed(failure) => view! {
                     <section class="vk-editor-recovery [&>.vk-ui-notice]:p-0 [&>.vk-ui-notice]:bg-transparent [&>.vk-ui-notice]:text-inherit" data-tone="error" data-testid="tags-unavailable" aria-label="Không tải được thẻ">
@@ -225,13 +222,7 @@ pub fn WorkInfo(
                 .into_any(),
                 _ => view! { <Text role=TypeRole::Caption tone=TextTone::Muted>"Đang tải thẻ…"</Text> }.into_any(),
             }>
-                <Text role=TypeRole::Caption class:vk-work-info__selection=true attr:data-testid="tag-selection-summary">
-                    {move || selection.get().map(|s| format!("Thẻ: {}.", labels.with(|l| l.names(&s))))}
-                </Text>
-                // Native disclosure keeps the same mounted selector/query and EditorView.
-                // Save failures and conflict actions remain visible even while it is closed.
-                <SupportingDetails id="work-tags-edit" summary="Chỉnh thẻ">
-                <TagSelector id="work-tags" form themes catalog query=raw options exact
+                <TagSelector id="work-tags" compact=true form themes catalog query=raw options exact
                     on_form=Callback::new(move |id: Option<String>| edit(&|t| t.choose_form(id.clone())))
                     on_add_theme=Callback::new(move |id: String| {
                         edit(&|t| { let _ = t.add_theme(&id); });
@@ -241,7 +232,6 @@ pub fn WorkInfo(
                     on_remove_theme=Callback::new(move |id: String| edit(&|t| t.remove_theme(&id)))
                     on_replace_theme=Callback::new(move |(old, new): (String, String)| edit(&|t| t.replace_theme(&old, &new)))
                     on_query />
-                </SupportingDetails>
                 {notice}
             </Show>
         </section>

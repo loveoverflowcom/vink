@@ -583,6 +583,7 @@ pub fn error_message(error: &ApiError) -> &'static str {
         | ApiError::ProfileGone
         | ApiError::FollowActorUnavailable
         | ApiError::FollowConflict { .. }
+        | ApiError::HandleRefused(_)
         | ApiError::FollowKeyReused => {
             "Thiết lập đã thay đổi ở nơi khác. Tải lại trước khi đổi tiếp."
         }

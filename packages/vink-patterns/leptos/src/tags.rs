@@ -209,6 +209,9 @@ pub fn TagSelector(
     /// Prefix of every element id inside.
     #[prop(into)]
     id: String,
+    /// Compact editor options use a native form select and a persistent, toggled search.
+    #[prop(optional)]
+    compact: bool,
     #[prop(into)] form: Signal<Option<TagFacts>>,
     #[prop(into)] themes: Signal<Vec<TagFacts>>,
     #[prop(into)] catalog: Signal<CatalogFacts>,
@@ -227,6 +230,8 @@ pub fn TagSelector(
 ) -> impl IntoView {
     let input = NodeRef::<leptos::html::Input>::new();
     let query_id = format!("{id}-query");
+    let query_toggle_id = format!("{id}-query-toggle");
+    let search_open = RwSignal::new(!compact);
     let status_id = format!("{id}-status");
     let options_id = format!("{id}-options");
     let option_id = {
@@ -284,6 +289,20 @@ pub fn TagSelector(
                 <Text role=TypeRole::Caption tone=TextTone::Muted>"Danh mục chưa có dạng bài nào."</Text>
             }
             .into_any(),
+            CatalogFacts::Ready { forms, .. } if compact => {
+                let options = forms
+                    .into_iter()
+                    .map(|tag| ChoiceOption::new(tag.id, tag.label))
+                    .collect::<Vec<_>>();
+                view! {
+                    <Select id=format!("{id}-form-select") label="Dạng bài" placeholder="Chưa chọn"
+                        variant=SelectVariant::Inset16
+                        options
+                        value=Signal::derive(move || form.get().map(|tag| tag.id))
+                        on_change=on_form />
+                }
+                .into_any()
+            }
             CatalogFacts::Ready { forms, .. } => view! {
                 <div class=TAG_CHIPS_CLASS>
                     {forms
@@ -335,6 +354,7 @@ pub fn TagSelector(
                             let label = format!("Bỏ chủ đề {}", tag.label);
                             let id = id.clone();
                             let query_id = query_id.clone();
+                            let query_toggle_id = format!("{id}-query-toggle");
                             view! {
                                 <li class="flex [min-inline-size:0] [max-inline-size:100%]">
                                     <TagChip id=chip tag remove_label=label
@@ -343,6 +363,7 @@ pub fn TagSelector(
                                             // The next chip takes this index; else the previous; else the field.
                                             let id = id.clone();
                                             let query_id = query_id.clone();
+                                            let query_toggle_id = query_toggle_id.clone();
                                             request_animation_frame(move || {
                                                 let next = format!("{id}-theme-{index}-remove");
                                                 let previous = index
@@ -350,7 +371,7 @@ pub fn TagSelector(
                                                     .map(|i| format!("{id}-theme-{i}-remove"));
                                                 let _ = (index + 1 < count && focus_id(&next))
                                                     || previous.is_some_and(|p| focus_id(&p))
-                                                    || focus_id(&query_id);
+                                                    || focus_id(if search_open.get_untracked() { &query_id } else { &query_toggle_id });
                                             });
                                         }
                                         on_replace=move |successor: String| on_replace_theme.run((retired.clone(), successor)) />
@@ -454,6 +475,7 @@ pub fn TagSelector(
     let on_keydown = {
         let option_id = option_id.clone();
         let query_id = query_id.clone();
+        let query_toggle_id = query_toggle_id.clone();
         move |ev: leptos::ev::KeyboardEvent| {
             if ev.is_composing() || ev.key_code() == 229 {
                 return;
@@ -463,6 +485,12 @@ pub fn TagSelector(
                 _ => 0,
             });
             let target = event_target::<leptos::web_sys::Element>(&ev).id();
+            if compact && ev.key() == "Escape" && target == query_id {
+                ev.prevent_default();
+                search_open.set(false);
+                focus_id(&query_toggle_id);
+                return;
+            }
             let current = (0..count).find(|i| option_id(*i) == target);
             let next = match (ev.key().as_str(), current) {
                 ("ArrowDown", None) if target == query_id && count > 0 => Some(option_id(0)),
@@ -489,10 +517,19 @@ pub fn TagSelector(
     };
 
     view! {
-        <div class="vk-tag-selector grid gap-vk-6 [min-inline-size:0]" id=id.clone()>
+        <div
+            class=if compact {
+                "vk-tag-selector grid gap-vk-3 [min-inline-size:0]"
+            } else {
+                "vk-tag-selector grid gap-vk-6 [min-inline-size:0]"
+            }
+            data-compact=compact.then_some("true")
+            id=id.clone()
+            tabindex=compact.then_some("-1")
+        >
             <fieldset class=TAG_GROUP_CLASS id=format!("{id}-form")>
-                <legend class=TAG_LEGEND_CLASS>
-                    "Dạng bài" <span class="vk-tag-group__count">" · chọn 1"</span>
+                <legend class=TAG_LEGEND_CLASS class:sr-only=compact>
+                    "Dạng bài" {(!compact).then(|| view! { <span class="vk-tag-group__count">" · chọn 1"</span> })}
                 </legend>
                 {form_chip}
                 {form_choices}
@@ -502,8 +539,21 @@ pub fn TagSelector(
                 <legend class=TAG_LEGEND_CLASS>
                     "Chủ đề" <span class="vk-tag-group__count">{move || format!(" · {}/{THEME_LIMIT}", themes.with(Vec::len))}</span>
                 </legend>
-                {theme_chips}
-                <div class="vk-tag-query grid gap-vk-2 [min-inline-size:0]" on:keydown=on_keydown>
+                <div class="vk-tag-themes__controls" class:contents=!compact>
+                    {theme_chips}
+                    {compact.then(|| view! {
+                        <IconButton id=query_toggle_id icon=IconName::Add label="Tìm chủ đề"
+                            expanded=Signal::derive(move || search_open.get())
+                            on_press=move |_| {
+                                search_open.update(|open| *open = !*open);
+                                if search_open.get_untracked() {
+                                    focus_query();
+                                }
+                            } />
+                    })}
+                </div>
+                <div class="vk-tag-query gap-vk-2 [min-inline-size:0]"
+                    hidden=move || !search_open.get() on:keydown=on_keydown>
                     <SearchField id=query_id.clone() label="Tìm chủ đề" value=query on_input=on_query
                         on_submit=submit input_ref=input
                         help="Gõ tên chủ đề hoặc tên gọi khác, rồi chọn trong gợi ý. Enter chỉ chọn khi gõ đúng tên." />
@@ -511,8 +561,8 @@ pub fn TagSelector(
                         {move || options_status(&options.get(), &query.get(), themes.with(Vec::len))}
                     </p>
                     {candidates}
+                    {browse}
                 </div>
-                {browse}
             </fieldset>
         </div>
     }
@@ -608,5 +658,36 @@ mod tests {
         }]);
         assert!(options_status(&one, "a", THEME_LIMIT).contains("Đã đủ 3 chủ đề"));
         assert!(options_status(&TagOptions::Unavailable, "a", 0).contains("Tạm thời"));
+    }
+
+    #[test]
+    fn compact_selector_uses_form_select_and_starts_with_hidden_theme_search() {
+        let html = render(|| {
+            view! {
+                <TagSelector id="work-tags"
+                    compact=true
+                    form=Signal::stored(Some(TagFacts::active("tan-van", "Tản văn")))
+                    themes=Signal::stored(vec![TagFacts::active("ky-uc", "Ký ức")])
+                    catalog=Signal::stored(CatalogFacts::Ready {
+                        forms: vec![TagFacts::active("tan-van", "Tản văn"), TagFacts::active("tho", "Thơ")],
+                        themes: vec![TagFacts::active("ky-uc", "Ký ức")],
+                        truncated: false,
+                    })
+                    query=Signal::stored(String::new())
+                    options=Signal::stored(TagOptions::Idle)
+                    on_form=|_| {} on_add_theme=|_| {} on_remove_theme=|_| {}
+                    on_replace_theme=|_| {} on_query=|_| {} />
+            }
+            .into_any()
+        });
+        assert!(html.contains("id=\"work-tags-form-select\""), "{html}");
+        assert!(html.contains("id=\"work-tags-query-toggle\""), "{html}");
+        assert!(html.contains("aria-expanded=\"false\""), "{html}");
+        assert!(html.contains("gap-vk-3"), "{html}");
+        assert!(
+            html.contains("class=\"vk-tag-query gap-vk-2 [min-inline-size:0]\"")
+                && html.contains(" hidden"),
+            "compact search must start hidden without grid utility override: {html}"
+        );
     }
 }

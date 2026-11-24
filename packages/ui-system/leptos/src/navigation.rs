@@ -354,6 +354,11 @@ pub fn NavUtility(
     #[prop(into)] id: String,
     #[prop(into)] label: String,
     icon: IconName,
+    /// Filled icon for an open or current utility.
+    #[prop(optional)]
+    active_icon: Option<IconName>,
+    #[prop(optional, into)] badge: Option<ViewFn>,
+    #[prop(optional, into)] accessible_label: Option<Signal<String>>,
     #[prop(optional, into)] leading: Option<ViewFn>,
     /// The overlay element this button opens.
     #[prop(into)]
@@ -365,12 +370,15 @@ pub fn NavUtility(
     on_open: Callback<()>,
     #[prop(optional)] node_ref: NodeRef<html::Button>,
 ) -> impl IntoView {
+    let selected = move || expanded.get() || current.get();
     view! {
         <button
             type="button"
             id=id
             class="vk-ui-nav-item vk-ui-nav-utility"
+            class:vk-ui-nav-utility--tonal=active_icon.is_some()
             node_ref=node_ref
+            aria-label=move || accessible_label.map(|label| label.get())
             aria-haspopup="dialog"
             aria-controls=controls
             aria-expanded=move || expanded.get().to_string()
@@ -378,9 +386,16 @@ pub fn NavUtility(
             on:click=move |_| on_open.run(())
         >
             <span class="vk-ui-nav-item__indicator">
-                {leading.map_or_else(|| view! { <Icon name=icon /> }.into_any(), |leading| leading.run())}
+                {match leading {
+                    Some(leading) => leading.run(),
+                    None => (move || {
+                        let name = active_icon.filter(|_| selected()).unwrap_or(icon);
+                        view! { <Icon name=name /> }
+                    }).into_any(),
+                }}
             </span>
             <span class="vk-ui-nav-item__label">{label}</span>
+            {badge.map(|badge| view! { <span class="vk-ui-nav-utility__badge">{badge.run()}</span> })}
         </button>
     }
 }

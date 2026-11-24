@@ -40,7 +40,7 @@ Bảng dưới tách rõ phần nền đã có trên `develop@1a0c4e31` và ph�
 | **Publication & Moderation** | `request_public`, `set_private` ([publication.rs](../../services/vink-app/src/persistence/publication.rs)), `finish_job` ([evaluation.rs](../../services/vink-app/src/persistence/evaluation.rs)), `conclude_case` ([moderation.rs](../../services/vink-app/src/persistence/moderation.rs)), `appeals::conclude` ([appeals.rs](../../services/vink-app/src/persistence/appeals.rs)); [lịch sử quyết định theo revision](../../services/vink-app/src/persistence/moderation_write.rs) và điều kiện thông báo đúng đợt công khai trong `Publication::should_notify_author` ([domain/publication.rs](../../services/vink-app/src/domain/publication.rs)); trang `review_withdrawn` (`O-17@r2`) và `hidden` (`PUB-07`). | Producer `work.moderation.decided` (`P-11a/b`), đường đọc chi tiết quyết định riêng `P-12A` qua Gateway (`#346`, `#348`); runtime `PUB-04` tác giả xóa bài & `PUB-05 C` admin gỡ toàn bài (vẫn là phụ thuộc vòng đời bài). |
 | **Endorsement (Thấm)** | `set_endorsement`, `endorsement_summaries` (tổng số), `own_endorsements` trên `work_endorsements` & `comment_endorsements` ([persistence/endorsement.rs](../../services/vink-app/src/persistence/endorsement.rs), [HTTP v1](../../services/vink-app/contracts/http/v1/README.md#literary-endorsement-lve-73)); pure `decide_endorsement` trả `EndorsementDelta` ([domain/endorsement.rs](../../services/vink-app/src/domain/endorsement.rs)). | Producer `work.endorsement.tham.changed` (chỉ Thấm, bỏ `None`, bỏ Hữu ích — `#346`); endpoint danh sách người Thấm công khai có phân trang cho khách `P-08` (`#348`). |
 | **Profile, Follow & Identity** | `identity::Resolution` ([identity/mod.rs](../../services/vink-app/src/identity/mod.rs)), [view public_author_attribution](../../services/vink-app/migrations/20261125010000_public_author_attribution.sql) và [phép chiếu AuthorAttribution](../../services/vink-app/src/application/profile.rs). [PR #331](https://github.com/loveoverflowcom/vink/pull/331) đã triển khai Follow của #294. Thông báo Follow vẫn `DEFERRED`. `services/postgres/provision.sh` (chỉ có DB `vink` & `vink_identity`) và `infra/production/backup.sh`. | DB PostgreSQL riêng + role migrate/runtime + binary `vink-notifications` + backup manifest mở rộng (`#347`, phần đầu đã có, xem §7); giao thức nội bộ xác thực peer/service (`T-07`, §7.1); `SOC-DEP-01` xóa tài khoản hai DB & `D-05` mở khóa đăng nhập production. |
-| **Web / Design / CMP** | Shell thích ứng, Reader `/tac-pham/:id`, Explore `/`, `/toi` (`Auth Web`). | Toàn bộ `LayoutSpec`, chuông/badge, popover/trang inbox, chi tiết riêng cho quyết định bình luận, UI danh sách Thấm công khai, bộ điều phối polling 30–60s (`LAYOUT_SPEC: NOT_CREATED`; CMP/native `DEFERRED`). |
+| **Web / Design / CMP** | Shell thích ứng, Reader `/tac-pham/:id`, Explore `/`, `/toi`. [LayoutSpec R4](../design/notifications.md) và primitive trong preview ở §10. | Chuông trên shell, popover/trang inbox, chi tiết riêng cho quyết định bình luận, UI danh sách Thấm và polling 30–60s thuộc lát Web. CMP/native `DEFERRED`. |
 
 ---
 
@@ -108,7 +108,7 @@ Bảng dưới tách rõ phần nền đã có trên `develop@1a0c4e31` và ph�
 | `AC-13` | `P-06A` tuổi 180 ngày không gia hạn, `P-13B` purge & receipt horizon, không backfill. | `#346` + `#347` | Controlled clock + PG + restore test | `NOT_RUN` |
 | `AC-14` | `P-05` định nghĩa type quản trị dành trước (`TYPE_ONLY_NOW`); gửi thực tế `DEFERRED`. | **`#345`** (contract) + `#347` (type enum) | Contract (**PASS ở `#345`**) · Type enum (`#347`: `NOT_RUN`) | Phần hợp đồng xong ở `#345`; enum code chờ `#347`. |
 | `AC-15` | Diễn tập migration/backout, backup/restore lệch mốc App/Notification, query/storage budget. | `#347` (+ `#346` replay) | Bản sao DB thật + `pg_dump`/`pg_restore` + EXPLAIN | `NOT_RUN` |
-| `AC-16` | **SSOT/PRD/TOML/spec/inventory/registry trước code (`#345`);** LayoutSpec (`Design`). | **`#345`** (SSOT & UX bằng chữ) + Design sau | Repo checks + `decision validate` (**PASS phần SSOT ở `#345`**); LayoutSpec `NOT_CREATED` | Phần SSOT của `#345` hoàn tất; phần `LayoutSpec` chờ giai đoạn Design. |
+| `AC-16` | **SSOT/PRD/TOML/spec/inventory/registry trước code (`#345`);** LayoutSpec (`Design`). | **`#345`** (SSOT & UX bằng chữ) + Design sau | Repo checks + `decision validate` (**PASS phần SSOT ở `#345`**); specimen R4 `NOT_RUN` | [LayoutSpec R4](../design/notifications.md) đã ghi, chờ signoff và bằng chứng ở §10. |
 | `AC-17` | Web qua Gateway, polling 30–60s, ẩn/offline, logout/đổi tài khoản, phím/chạm/focus/100–200%. | `#348` (tiền đề BE & handoff polling) + Design/Web | Chrome headless (`verify web`) | `NOT_RUN` (chờ Design/Web; đã mô tả yêu cầu ở `#345`). |
 | `AC-18` | `P-08` R3 danh sách người Thấm công khai phân trang cho khách/user/chủ bài, độc lập 180d inbox. | **`#345`** (spec/contract/TOML `PENDING`) + `#348` (API) + Design/Web | HTTP/PG (`#348`) + Browser (Design/Web) | Đặc tả & contract xong ở `#345`; API & UI `NOT_RUN`. |
 | `AC-19` | `P-14A` API/model/fixture dùng lại cho CMP/mobile ngoài Web; tách public vs phiên. | **`#345`** (ví dụ hợp đồng) + `#348` (fixture HTTP ngoài Web) | Non-Web HTTP client test (`#348`) | Hợp đồng & 5 bộ ví dụ JSON xong ở `#345`; fixture chạy thật chờ `#348`; CMP UI `DEFERRED`. |
@@ -139,7 +139,7 @@ Giữ nguyên hợp đồng riêng của quyết định bình luận, API Gatew
 ## 5. Bàn giao riêng cho giai đoạn Design & Web (`Epic AC-16` & `AC-17`)
 
 Sau khi `#345` hoàn tất đặc tả bằng chữ và `#348` cung cấp API/fixtures, giai đoạn Design/Web cần
-thực hiện đủ các mục sau (**hiện toàn bộ ở trạng thái `NOT_CREATED` / `NOT_RUN`**):
+thực hiện các mục sau. Tình trạng của LayoutSpec và specimen ở [§10](#10-nền-tảng-thiết-kế-r4-485).
 
 1. **Tài liệu LayoutSpec (`vink-layout-spec`, `vink-ui-design` — phần còn lại của `Epic AC-16`):**
    - Chọn vị trí chuông và badge trên desktop/mobile, thể hiện từng trạng thái `fresh`, `stale`, `unavailable` và số 0 đã xác minh.
@@ -546,3 +546,12 @@ loại mới, migration `20261202000000` đã nới cả hai), `cargo test -p vi
 `RUST_TEST_THREADS=4 cargo xtask verify postgres` PASS 41/41 (App 292, Identity 55, Notifications 30).
 `verify discussion` không chạy: lõi `domain::endorsement` không đổi.
 
+
+## 10. Nền tảng thiết kế R4 (#485)
+
+| Chiều | Trạng thái |
+| --- | --- |
+| Sản phẩm | [VDR-NOTIFICATIONS-DESIGN@r1](../../decisions/proposals/VDR-NOTIFICATIONS-DESIGN.r1.toml) `PENDING`. Badge đỏ và chuông dưới Bàn viết chờ signoff cho đúng revision. |
+| Thiết kế | [LayoutSpec R4](../design/notifications.md) `DESIGN_PROPOSED`, `NO_APPROVED_REFERENCE`. Preview dùng hướng Final. |
+| Triển khai | `web` ở mức primitive và specimen. Badge, dấu và chuông trong `vink-ui`; nhóm/dòng trong `vink-patterns`. Dùng fixture Ví dụ 2–4 và mẫu Ưng. Tích hợp shell, route, popover và polling vẫn thuộc lát Web. |
+| Bằng chứng | Chạy generator `cargo xtask ui-tokens`. Build, test, ảnh và số đo ma trận specimen `NOT_RUN` theo yêu cầu của chủ sản phẩm cho lượt này. |

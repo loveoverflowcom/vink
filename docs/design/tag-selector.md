@@ -1,5 +1,7 @@
 # Bộ chọn thẻ và Thông tin tác phẩm — TAG-PR-05
 
+> [Editor R4](editor-r4.md) dùng Dạng bài dạng select, nút cộng mở tìm Chủ đề và một bộ trường trong bảng tùy chọn. Quy tắc thẻ và giao thức giữ nguyên. Cây bên dưới ghi thiết kế TAG-PR-05 ban đầu.
+
 Triển khai có phạm vi cho [#99](https://github.com/loveoverflowcom/vink/issues/99) (một phần của epic
 [#94](https://github.com/loveoverflowcom/vink/issues/94)), base `develop@f23df33` (sau #95–#97). Đây là
 lựa chọn của agent trong phạm vi được giao, chưa có usability test hay quyết định user-approved. VinkDesign

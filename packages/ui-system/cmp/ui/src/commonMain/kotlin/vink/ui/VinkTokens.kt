@@ -49,6 +49,8 @@ enum class ColorRole(val token: String, val cssVar: String, val light: Long, val
     Avatar6("color.avatar-6", "--vk-avatar-6", 0xFFD6E6FF, 0xFF22466D),
     /** New in UIS-02: avatar without a stable identity key or name; never implies a person. */
     AvatarNeutral("color.avatar-neutral", "--vk-avatar-neutral", 0xFFE3D8EC, 0xFF44394F),
+    /** Notification count badge (R4, #485). */
+    Badge("color.badge", "--vk-badge", 0xFFBA1A1A, 0xFFFFB4AB),
     /** R4.2 (#402, 23/11/2026): cards, rows, reading areas, sheets and menus: one tonal step lighter than bg-page (1.09:1 light / 1.10:1 dark), never near-white. */
     BgContent("color.bg-content", "--vk-bg-content", 0xFFF7F2FA, 0xFF211B29),
     /** R4.2 (#402, 23/11/2026): letter avatars and icon buttons inside a bg-content card so they do not sink into it. */
@@ -86,6 +88,8 @@ enum class ColorRole(val token: String, val cssVar: String, val light: Long, val
     OnAvatar6("color.on-avatar-6", "--vk-on-avatar-6", 0xFF0F2F52, 0xFFD6E6FF),
     /** New in UIS-02: neutral mark on the neutral avatar. */
     OnAvatarNeutral("color.on-avatar-neutral", "--vk-on-avatar-neutral", 0xFF241D2D, 0xFFF0E7F8),
+    /** Notification count badge (R4, #485). */
+    OnBadge("color.on-badge", "--vk-on-badge", 0xFFFFFFFF, 0xFF690005),
     OnError("color.on-error", "--vk-on-error", 0xFFFFFFFF, 0xFF690005),
     OnErrorContainer("color.on-error-container", "--vk-on-error-container", 0xFF410002, 0xFFFFDAD6),
     /** New in UIS-01 to complete the status/action role set; not consumed by Web yet. */
@@ -168,9 +172,11 @@ enum class ColorRole(val token: String, val cssVar: String, val light: Long, val
             ActionToggleSelectedContent -> OnSecondaryContainer
             ActionTonalContainer -> SecondaryContainer
             ActionTonalContent -> OnSecondaryContainer
+            Badge -> Error
             BgContent -> SurfaceContainerLow
             BgInset -> SurfaceContainerHigh
             BgNav -> BgPage
+            OnBadge -> OnError
             FieldContainer -> SurfaceContainerHigh
             FieldOutline -> Outline
             FocusRing -> Focus
@@ -230,6 +236,8 @@ val VinkContrastPairs: List<ContrastPair> = listOf(
     ContrastPair(ColorRole.OnSurfaceVariant, ColorRole.BgContent, 4.5, "R4.2 metadata on content cards"),
     ContrastPair(ColorRole.Focus, ColorRole.BgPage, 3.0, "R4.2 focus ring on the page background"),
     ContrastPair(ColorRole.Focus, ColorRole.BgContent, 3.0, "R4.2 focus ring on content cards"),
+    ContrastPair(ColorRole.Badge, ColorRole.BgPage, 3.0, "Notification badge on the page and rail"),
+    ContrastPair(ColorRole.OnBadge, ColorRole.Badge, 4.5, "Notification badge count"),
 )
 
 /** Font stacks; native renderers map `native` until a TTF/OTF pipeline exists. */
@@ -285,6 +293,14 @@ object VinkDimens {
     val SizeIconSm = 20.dp
     val SizeIndicator = 20.dp
     val SizeNavItem = 52.dp
+    val SizeNotificationBadge = 18.dp
+    val SizeNotificationColumn = 640.dp
+    val SizeNotificationDot = 10.dp
+    val SizeNotificationGlyph = 34.dp
+    val SizeNotificationIcon = 16.dp
+    val SizeNotificationMark = 44.dp
+    val SizeNotificationSegmentGap = 3.dp
+    val SizeNotificationSystemIcon = 22.dp
     val SizePageColumn = 768.dp
     val SizeRailCompact = 96.dp
     val SizeRailExpanded = 220.dp

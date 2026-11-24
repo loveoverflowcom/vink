@@ -182,6 +182,12 @@ pub fn Button(
     /// Disclosure state belongs on the focusable button, not its action-note wrapper.
     #[prop(optional, into)]
     expanded: Option<Signal<bool>>,
+    /// Overrides the visible label when the target needs context (it must start with it).
+    #[prop(optional, into)]
+    accessible_label: Option<Signal<String>>,
+    /// `aria-haspopup` for a button that opens an overlay, e.g. `"dialog"`.
+    #[prop(optional)]
+    has_popup: Option<&'static str>,
     #[prop(optional)] button_ref: NodeRef<leptos::html::Button>,
     children: Children,
 ) -> impl IntoView {
@@ -201,6 +207,8 @@ pub fn Button(
                 aria-disabled=move || (!state.with(ActionState::is_enabled)).then_some("true")
                 aria-busy=move || state.with(|s| matches!(s, ActionState::Pending { .. })).then_some("true")
                 aria-expanded=move || expanded.map(|value| value.get().to_string())
+                aria-haspopup=has_popup
+                aria-label=move || accessible_label.map(|label| label.get())
                 aria-describedby=move || {
                     let mut ids = described_by.clone().into_iter().collect::<Vec<_>>();
                     if let Some(note) = state.with(ActionState::note).and(described.clone()) { ids.push(note); }

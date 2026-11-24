@@ -13,6 +13,7 @@ mod components;
 mod endorsement;
 pub mod expressions;
 mod navigation;
+mod notifications;
 mod screens;
 mod states;
 mod tags;
@@ -27,7 +28,7 @@ use vink_ui::{Density, MotionPreference, Preferences, ThemePreference, ThemeScop
 pub use components::EventLog;
 
 /// Catalog IDs this preview renders; a test keeps it equal to the shared catalog.
-pub const REGISTERED: [&str; 53] = [
+pub const REGISTERED: [&str; 54] = [
     "foundation.color-roles",
     "foundation.typography",
     "foundation.shape-spacing",
@@ -81,6 +82,7 @@ pub const REGISTERED: [&str; 53] = [
     "composition.endorsement",
     "composition.tag-selector",
     "composition.interaction",
+    "composition.notifications",
 ];
 
 /// Custom properties the inspector reads back from the rendered specimen scope.
@@ -485,6 +487,7 @@ pub fn specimen(id: &str, scenario: &str) -> AnyView {
         "foundation.motion" => motion_specimen(),
         other => screens::specimen(other, scenario)
             .or_else(|| endorsement::specimen(other, scenario))
+            .or_else(|| notifications::specimen(other, scenario))
             .or_else(|| tags::specimen(other, scenario))
             .or_else(|| components::specimen(other, scenario))
             .unwrap_or_else(|| view! { <p>"Chưa đăng ký trong preview Leptos."</p> }.into_any()),

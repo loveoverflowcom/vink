@@ -88,7 +88,7 @@ file khóa để vượt một lượt đang chạy.
 | `discovery` | Seed/catalog + corpus SQL riêng | `discovery-corpus` |
 | `restart` | **Dependency `main`** lưu nháp/state; stop → retire tag → start | `after-restart`, version/text/tag/export và graceful stop |
 | `endorsement` | Seed/catalog; App tác giả + reader có moderator grant trong scratch | `endorsement`, không cần Identity |
-| `review` | Seed/catalog, tác giả + admin + reviewer trong scratch | `review-withdrawn`, queue continuation/recovery #205 và #264 (Markdown qua preview, case, Reader, hai revision và chuyển riêng tư) |
+| `review` | Seed/catalog, tác giả + admin + reviewer trong scratch | `review-withdrawn`, queue continuation/recovery #205 và #264 (Markdown editor, case, Reader, hai revision và chuyển riêng tư) |
 | `auth` | App scratch migrate/seed + Identity scratch/local outbox | `auth` với session thật |
 | `password` | App password scratch migrate + Identity native scratch/local outbox | `auth-password`, không cần phase auth/main |
 | `author-search` | App password scratch và Identity native, fixture hồ sơ với bút danh trùng | `author-search`, SSR/no-JS, IME mô phỏng, Back, phân trang và Theo dõi theo phiên |

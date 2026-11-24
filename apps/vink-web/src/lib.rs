@@ -170,7 +170,7 @@ fn Chrome() -> impl IntoView {
                     <Route path=path!("/ban-viet/:id/kiem-duyet") view=pages::desk_review::LegacyDeskReview />
                     <Route path=path!("/toi") view=Me />
                     <Route path=path!("/toi/chinh-ho-so") view=pages::profile::EditProfile />
-                    <Route path=path!("/toi/dia-chi") view=pages::handle::Manage />
+                    <Route path=path!("/toi/dia-chi") view=pages::profile::LegacyHandle />
                     <Route path=path!("/:author") view=pages::handle::Author ssr=SsrMode::Async />
                     <Route path=path!("/:author/nguoi-theo-doi") view=pages::follow::FollowersList ssr=SsrMode::Async />
                     <Route path=path!("/:author/dang-theo-doi") view=pages::follow::FollowingList ssr=SsrMode::Async />

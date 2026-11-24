@@ -85,11 +85,6 @@ pub fn bundle(release: bool, perf_probe: bool) -> Result<(), String> {
     copy_fonts(&root.join(checks::FONTS_DIR), &pkg.join("fonts"))?;
     copy_brand(&root.join(checks::BRAND_DIR), &pkg.join("brand"))?;
     copy_empty_artwork(&root, &pkg.join("empty"))?;
-    std::fs::copy(
-        root.join("apps/vink-web/profile/landscape.webp"),
-        pkg.join("author-landscape.webp"),
-    )
-    .map_err(|e| format!("copy author profile artwork: {e}"))?;
     crate::web_boundary::artifacts(&pkg)
 }
 

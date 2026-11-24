@@ -864,7 +864,7 @@ class Page {
           fonts: { ui: document.fonts.check('16px "Be Vietnam Pro"'), reading: document.fonts.check('16px Literata') },
           colors: Object.fromEntries(['.vk-ui-scaffold','.vk-editor-paper','#editor-toolbar','[data-testid=save-status]','#editor-save-details > summary'].flatMap(selector => {
             const el=document.querySelector(selector); if (!el) return []; const s=getComputedStyle(el); return [[selector,{color:s.color,background:s.backgroundColor}]];
-          })), preview: geometry('#draft-preview[open]'), leave: geometry('#leave-editor[open]') },
+          })), conflict: geometry('#editor-text-conflict[open]'), leave: geometry('#leave-editor[open]') },
         explore: { heading: geometry('#explore-heading'), toolbar: geometry('.vk-discovery-toolbar'), tools: geometry('#discovery-tools'), brand: geometry('.vk-brand'), search: geometry('#public-search'), input: geometry('#public-query'), label: geometry('#public-query-label'), shell: geometry('#public-search .vk-ui-search__shell'), clear: geometry('#clear-public-search'), submit: geometry('#public-search button[type=submit]'), stream: geometry('#community-stream'), firstRow: geometry('.vk-public-row'), byline: geometry('.vk-public-row__byline'), author: geometry('.vk-public-row__byline .vk-ui-byline__name'), title: geometry('.vk-public-row__title'), excerpt: geometry('.vk-public-row__excerpt'), context: geometry('#context') },
         navigation: {
           bar: geometry('.vk-ui-bottom-nav'),
@@ -2083,7 +2083,7 @@ async function brandAssets(page) {
 
 async function textContrast(page, theme, surface = 'shell', targets) {
   const selectors = targets ?? (surface.startsWith('editor-') ? (() => {
-    const list = ['.vk-editor-heading__back', '[data-testid=save-status]', '#editor-save-details > summary', '#preview', '#draft-title', '#editor-body-label', '#editor-body-hint', '[data-testid=editor-body]'];
+    const list = ['.vk-editor-heading__back', '[data-testid=save-status]', '#editor-save-details > summary', '#work-options-toggle', '#draft-title', '#editor-body-label', '#editor-body-hint', '[data-testid=editor-body]'];
     if (surface === 'editor-dirty' || surface === 'editor-saving' || surface === 'editor-failed') list.push('#save');
     if (surface === 'editor-conflict') list.push('#save-recovery-jump');
     return list;
@@ -3978,93 +3978,40 @@ const editorSceneName = (stem, { width, height, scale, theme }) => `${stem}-${wi
 const captureEditorScene = (page, stem, editorScene, evidence) =>
   page.capture(editorSceneName(stem, editorScene), { editorScene, boundary: 'CDP root font override; synthetic LocalFixture', ...evidence });
 
-async function editorRecoveryScene(page, selector, scene, stem) {
-  const actions = selector.includes('save-failed')
-    ? ['#retry-save', '#save-failure-details > summary']
-    : ['#keep-mine', '#save-conflict-details > summary'];
-  const detailSelector = selector.includes('save-failed') ? '#save-failure-details' : '#save-conflict-details';
-  await page.eval(`scrollTo(0, 0)`);
-  await editorLayoutReady(page);
-  const before = await page.eval(buildTargetGeometryScript(selector));
-  check(before.present, `${stem}: recovery target exists before scrolling`);
-  check(await page.eval(`(() => {
-    const icon = document.querySelector('${selector} .vk-ui-notice__icon');
-    return Boolean(icon && getComputedStyle(icon).display === 'none');
-  })()`), `${stem}: editor recovery keeps the redundant notice icon hidden`);
-  await page.eval(`document.querySelector('${selector}').scrollIntoView({block:'start',behavior:'instant'})`);
-  await editorLayoutReady(page);
-  const recovery = await page.eval(buildTargetGeometryScript(selector));
-  const recoveryCheck = evaluateTargetGeometry(recovery, { requireFull: false, requireHit: false });
-  const warning = await page.eval(buildTargetGeometryScript(`${selector} .vk-ui-notice__message`));
-  const warningCheck = evaluateTargetGeometry(warning, { requireFull: true, requireHit: false });
-  check(recoveryCheck.ok && warningCheck.ok && recovery.scrollWidth <= recovery.clientWidth + 1,
-    `${stem}: warning is visible and recovery fits horizontally ${JSON.stringify({ recovery, warning, reasons: [...recoveryCheck.reasons, ...warningCheck.reasons] })}`);
-  if ([320, 390].includes(scene.width)) {
-    await captureEditorScene(page, `${stem}-warning`, scene, {
-      state: 'recovery-warning',
-      target: selector,
-      requiredTargets: [selector, `${selector} .vk-ui-notice__message`],
-      scrollOwner: recovery.owner,
-      before,
-      recovery,
-      warning,
-    });
+async function openTextConflict(page) {
+  if (!await page.eval("document.querySelector('#editor-text-conflict')?.open")) {
+    await page.click('#save-recovery-jump');
+    await page.waitFor("document.querySelector('#editor-text-conflict')?.open", 'open conflict confirmation');
   }
-  const actionSummaries = [];
-  for (const action of actions) {
-    await page.eval(`document.querySelector(${JSON.stringify(action)}).scrollIntoView({block:'center',behavior:'instant'})`);
-    await editorLayoutReady(page);
-    const revealed = await page.eval(buildTargetGeometryScript(action));
-    const actionCheck = evaluateTargetGeometry(revealed, { requireFull: true, requireHit: true, minWidth: 44, minHeight: 44 });
-    check(fitsEditorAction(revealed) && actionCheck.ok, `${stem}: ${action} is visible and hit-testable ${JSON.stringify({ revealed, reasons: actionCheck.reasons })}`);
-    actionSummaries.push({
-      selector: action,
-      id: revealed.id,
-      visible: revealed.visible,
-      full: revealed.full,
-      hit: revealed.hit,
-      disabled: revealed.disabled,
-      disabledReason: revealed.description,
-      rect: revealed.rect,
-      scrollOwner: revealed.owner,
-    });
-    if ([320, 390].includes(scene.width)) {
-      await captureEditorScene(page, `${stem}-${action.split(' ')[0].slice(1)}`, scene, {
-        state: `recovery-action-${action.split(' ')[0].slice(1)}`,
-        target: action,
-        requiredTargets: [selector, action],
-        scrollOwner: revealed.owner,
-        before,
-        recovery: await page.eval(buildTargetGeometryScript(selector)),
-        action: revealed,
-        actions: actionSummaries,
-      });
-    }
-  }
-  await page.eval(`document.querySelector(${JSON.stringify(actions[0])}).focus()`);
-  for (const action of actions.slice(1)) {
+}
+
+async function editorRecoveryScene(page, kind, scene, stem) {
+  const conflict = kind === 'conflict';
+  const trigger = conflict ? '#save-recovery-jump' : '#save';
+  const workspace = "() => ['#editor-paper', '#work-options'].map(s => { const r = document.querySelector(s).getBoundingClientRect(); return [r.x, r.y + scrollY, r.width]; })";
+  await page.eval(`document.querySelector('${trigger}').scrollIntoView({block:'start'})`);
+  await editorLayoutReady(page);
+  check(fitsEditorAction(await editorTarget(page, trigger)), `${stem}: toolbar recovery fits`);
+  const before = await page.eval(`(${workspace})()`);
+  if (conflict) {
+    await openTextConflict(page);
+    await page.waitFor("document.activeElement.id === 'editor-text-conflict-title'", 'conflict title receives initial focus');
     await page.key('Tab');
-    const focused = await page.eval(buildTargetGeometryScript(action));
-    check(fitsEditorAction(focused) && focused.focused && focused.focusRing,
-      `${stem}: Tab reveals ${action} ${JSON.stringify(focused)}`);
+    check(await page.eval("document.activeElement.id === 'conflict-stay'"), 'Tab reaches the safe conflict action');
+    await page.key('Tab');
+    check(await page.eval("document.activeElement.id === 'keep-mine'"), 'overwrite remains a separate explicit action');
+  } else {
+    await page.click('#editor-save-details > summary');
+    await page.waitFor("document.querySelector('#editor-save-details').open", 'retry details open');
   }
-  for (const action of actions.slice(0, -1).reverse()) {
-    await page.key('Tab', SHIFT);
-    const focused = await page.eval(buildTargetGeometryScript(action));
-    check(fitsEditorAction(focused) && focused.focused && focused.focusRing,
-      `${stem}: Shift+Tab reveals ${action} ${JSON.stringify(focused)}`);
+  check(JSON.stringify(await page.eval(`(${workspace})()`)) === JSON.stringify(before), `${stem}: recovery leaves paper and options geometry intact`);
+  await captureEditorScene(page, stem, scene, { target: conflict ? '#editor-text-conflict' : '#editor-save-details' });
+  if (conflict) {
+    await page.key('Escape');
+    await page.waitFor("!document.querySelector('#editor-text-conflict').open && document.activeElement.id === 'save-recovery-jump'", 'Escape restores conflict trigger focus');
+  } else {
+    await page.click('#editor-save-details > summary');
   }
-  const detailBefore = await page.eval(`Boolean(document.querySelector('${detailSelector}')?.open)`);
-  await page.click(`${detailSelector} > summary`);
-  await editorLayoutReady(page);
-  const detailAfterOpen = await page.eval(`Boolean(document.querySelector('${detailSelector}')?.open)`);
-  const detailOverflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({ containers: [selector, detailSelector] })));
-  check(detailAfterOpen === !detailBefore && detailOverflow.ok,
-    `${stem}: toggling recovery details updates state cleanly without overflow (${detailOverflow.reasons.join('; ')})`);
-  await page.click(`${detailSelector} > summary`);
-  await editorLayoutReady(page);
-  const detailAfterRestore = await page.eval(`Boolean(document.querySelector('${detailSelector}')?.open)`);
-  check(detailAfterRestore === detailBefore, `${stem}: restoring recovery details returns to initial open=${detailBefore}`);
 }
 
 async function leaveActionScene(page, scene, stage, expected, disabled = []) {
@@ -4364,20 +4311,22 @@ async function editorChrome(page) {
           });
           if (state === 'clean') {
             await page.waitFor(TAGS_READY, 'metadata loaded');
-            check(await page.eval(`(() => {
-              const paper=document.querySelector('.vk-editor-paper').getBoundingClientRect(), toolbar=document.querySelector('#editor-toolbar').getBoundingClientRect(), info=document.querySelector('[data-testid=work-info]').getBoundingClientRect();
-              const trigger=document.querySelector('#work-tags-edit > summary').getBoundingClientRect();
-              return Math.abs(paper.left-toolbar.left)<1 && Math.abs(paper.width-toolbar.width)<1 && Math.abs(info.left-paper.left)<1 && Math.abs(info.width-paper.width)<1 && info.top>=paper.bottom && trigger.width>=48 && trigger.height>=48 && !document.querySelector('#work-tags-edit').open;
-            })()`), `${scenario}: one aligned column with compact metadata after the manuscript`);
-            await page.eval(`document.querySelector('#work-tags-edit > summary').focus(); window.__metadataQuery=document.querySelector('#work-tags-query')`);
+            await page.waitFor(`(() => {
+              const options = document.querySelector('#work-options');
+              const paper = document.querySelector('#editor-paper').getBoundingClientRect();
+              const box = options.getBoundingClientRect();
+              const docked = getComputedStyle(options).getPropertyValue('--vk-editor-options-docked').trim() === '1';
+              return docked ? box.left > paper.right && Math.abs(box.top - paper.top) < 1 : box.top >= paper.bottom && Math.abs(box.left - paper.left) < 1;
+            })()`, `${scenario}: article options dock beside or below the paper`);
+            await page.eval("window.__metadataQuery=document.querySelector('#work-tags-query')");
+            const wasOpen = await page.eval("document.querySelector('#work-options').open");
+            await page.eval("document.querySelector('#work-options-toggle').focus()");
             await page.key('Enter');
-            check(await page.eval(`document.querySelector('#work-tags-edit').open && window.__metadataQuery===document.querySelector('#work-tags-query') && ${live} && document.documentElement.scrollWidth<=innerWidth`), `${scenario}: metadata opens in place without overflow or remount`);
+            check(await page.eval(`document.querySelector('#work-options').open !== ${wasOpen} && window.__metadataQuery===document.querySelector('#work-tags-query') && ${live}`),
+              `${scenario}: options toggle without remounting the editor or tag search`);
             await page.key('Space');
-            check(await page.eval(`!document.querySelector('#work-tags-edit').open && document.activeElement.matches('#work-tags-edit > summary')`), `${scenario}: metadata closes with visible trigger focus`);
-            if (width===1440 || width<=390) {
-              await page.eval(`document.querySelector('[data-testid=work-info]').scrollIntoView({block:'center'})`);
-              await page.capture(`${scenario}-metadata`);
-            }
+            check(await page.eval(`document.querySelector('#work-options').open === ${wasOpen} && document.activeElement.id === 'work-options-toggle'`),
+              `${scenario}: options restore their initial state with focus`);
           }
           if (width <= 390 && scale === 200) {
             await page.eval(`document.querySelector('#draft-title').scrollIntoView({block:'start'})`);
@@ -4386,13 +4335,9 @@ async function editorChrome(page) {
             await page.capture(`${scenario}-writing`);
           }
           if (state === 'failed' || state === 'conflict') {
-            const recovery = state === 'failed' ? '[data-testid=save-failed]' : '[data-testid=conflict]';
-            await page.eval(`document.querySelector('${recovery}').scrollIntoView({block:'start'})`);
-            check(await page.eval(`(() => {
-              const r = document.querySelector('${recovery}');
-              return [...r.querySelectorAll('button')].every(b => { const t = b.getBoundingClientRect(); return t.width >= 44 && t.height >= 44 && t.left >= 0 && t.right <= innerWidth; });
-            })()`), `${scenario}: persistent recovery remains reachable`);
-            await page.capture(`${scenario}-recovery`);
+            const recovery = state === 'failed' ? '#save' : '#save-recovery-jump';
+            check(await page.eval(`document.querySelector('${recovery}')?.checkVisibility()`),
+              `${scenario}: recovery is reachable in the toolbar`);
           }
         }
       }
@@ -4421,19 +4366,10 @@ async function editorChrome(page) {
   await sleep(200);
   page.cdp.listeners = page.cdp.listeners.filter((item) => item !== cleanPutListener);
   check(cleanWrites === 0 && (await page.status()) === 'saved', 'clean save slot, clean Ctrl/Cmd+S and clean title Enter issue zero PUT writes');
-  // Preview is direct and precedes Thêm; closed details reach the native title directly.
-  await page.eval(`document.querySelector('#preview').focus()`);
+  await page.eval("document.querySelector('#editor-save-details > summary').focus()");
   await page.key('Tab');
-  check(await page.eval(`document.activeElement.matches('#editor-save-details > summary') && document.activeElement.checkVisibility()`), 'clean Tab reaches the visible tools trigger');
-  await page.key('Tab');
-  check(await page.eval(`document.activeElement.id === 'draft-title'`), 'closed Thêm reaches the native title directly');
-  for (const id of ['preview']) {
-    await page.eval(`document.querySelector('#${id}').focus()`);
-    await page.waitFor(`!document.querySelector('#${id}-tooltip').hidden && getComputedStyle(document.querySelector('#${id}-tooltip')).visibility === 'visible'`, `${id} focus tooltip`);
-    check(await page.eval(`document.querySelector('#${id}').getAttribute('aria-describedby').includes('${id}-tooltip') && document.querySelector('#${id}-tooltip').getAttribute('role') === 'tooltip' && document.activeElement.id === '${id}'`), `${id} has its own native description and focus tooltip`);
-    await page.key('Escape');
-    check(await page.eval(`document.querySelector('#${id}-tooltip').hidden && document.activeElement.id === '${id}'`), `${id} Escape dismisses only the tooltip`);
-  }
+  check(await page.eval("document.activeElement.id === 'draft-title' && !document.querySelector('#preview, #draft-preview')"),
+    'Tab moves from the closed save details to the title without a standalone preview');
   for (const forced of [false, true]) {
     await page.send('Emulation.setEmulatedMedia', {features:[LIGHT_SYSTEM,{name:'forced-colors',value:forced?'active':'none'}]});
     await page.eval(`document.querySelector('#draft-title').focus()`);
@@ -4511,28 +4447,30 @@ async function editorChrome(page) {
     { width: 1440, height: 900, scale: 100, theme: 'dark' },
   ]) {
     await setEditorScene(page, scene);
-    await editorRecoveryScene(page, '[data-testid=save-failed]', scene, 'editor-failed');
+    await editorRecoveryScene(page, 'failed', scene, 'editor-failed');
   }
   await setEditorScene(page, { width: 1440, height: 900, scale: 100, theme: 'light' });
-  check(await page.eval(`document.querySelector('[data-testid=save-failed]').textContent.includes('chưa rõ') && document.querySelector('[data-testid=save-failed] .vk-ui-notice__message').textContent === 'Nội dung đang viết vẫn còn trên trang này. Chọn Thử lại hoặc giữ trang mở.' && !document.querySelector('#save-failure-details').open && !document.querySelector('#save-failure-details').contains(document.querySelector('#retry-save')) && !document.querySelector('#export-failed')`), 'unconfirmed notice keeps stay/retry guidance and recovery actions outside optional detail without download');
-  await page.click('#save-failure-details > summary');
-  check(await page.eval(`document.querySelector('#save-failure-details').open && document.querySelector('#save-failure-details').textContent.includes('chưa có bản khôi phục tự động') && ${live}`), 'pointer opens truthful native failure detail without remounting the editor');
+  check(await page.eval(`document.querySelector('#editor-save-details').textContent.includes('chưa rõ') &&
+    !document.querySelector('#editor-save-details').open && !document.querySelector('#editor-save-details').contains(document.querySelector('#save')) &&
+    !document.querySelector('#export-failed')`), 'retry stays in the toolbar and uncertain save details remain available');
+  await page.click('#editor-save-details > summary');
+  check(await page.eval(`document.querySelector('#editor-save-details').open && document.querySelector('#editor-save-details').textContent.includes('chưa có bản khôi phục tự động') && ${live}`), 'pointer opens truthful native failure detail without remounting the editor');
   await page.key('Space');
-  check(await page.eval(`!document.querySelector('#save-failure-details').open && document.activeElement.matches('#save-failure-details > summary')`), 'Space closes native detail while retaining its trigger focus');
+  check(await page.eval(`!document.querySelector('#editor-save-details').open && document.activeElement.matches('#editor-save-details > summary')`), 'Space closes native detail while retaining its trigger focus');
   await page.viewport(320);
-  await page.eval(`document.documentElement.style.fontSize='200%';document.querySelector('#save-failure-details > summary').scrollIntoView({block:'center'})`);
-  const detailPoint = await page.eval(`(() => {const r=document.querySelector('#save-failure-details > summary').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()`);
+  await page.eval(`document.documentElement.style.fontSize='200%';document.querySelector('#editor-save-details > summary').scrollIntoView({block:'center'})`);
+  const detailPoint = await page.eval(`(() => {const r=document.querySelector('#editor-save-details > summary').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()`);
   await page.send('Emulation.setTouchEmulationEnabled', {enabled:true});
   await page.send('Input.dispatchTouchEvent', {type:'touchStart',touchPoints:[{...detailPoint,id:1}]});
   await page.send('Input.dispatchTouchEvent', {type:'touchEnd',touchPoints:[]});
-  await page.waitFor(`document.querySelector('#save-failure-details').open`, 'touch opens failure detail');
+  await page.waitFor(`document.querySelector('#editor-save-details').open`, 'touch opens failure detail');
   check(await page.eval(`document.documentElement.scrollWidth<=innerWidth && ${live}`), 'native recovery detail supports touch and complete 200% text at 320px without losing the editor');
   await page.capture('editor-failure-detail-touch-320-200-light');
   await page.send('Emulation.setTouchEmulationEnabled', {enabled:false});
-  await page.eval(`document.querySelector('#save-failure-details').open=false;document.documentElement.style.fontSize=''`);
+  await page.eval(`document.querySelector('#editor-save-details').open=false;document.documentElement.style.fontSize=''`);
   await page.viewport(1440);
 
-  await page.click('#retry-save');
+  await page.click('#save');
   await gate.release(await gate.next());
   await page.waitStatus('saved');
   check(paragraphs((await page.draft(workId)).document).at(-1).lines.at(-1).endsWith('Gõ tiếp khi chờ.'), 'deliberate retry saves the current text after reconciliation');
@@ -4546,9 +4484,9 @@ async function editorChrome(page) {
   });
   await page.waitStatus('failed');
   check(await page.eval(`document.querySelector('[data-testid=save-status]').textContent === 'Chưa xác nhận lưu.' &&
-    document.querySelector('#save-failure-details').textContent.includes('Máy chủ tạm không phục vụ')`) &&
+    document.querySelector('#editor-save-details').textContent.includes('Máy chủ tạm không phục vụ')`) &&
     (await page.draft(workId)).version === savedBeforeUnavailable, 'injected 503 leaves text unconfirmed and identifies the unavailable server');
-  await page.click('#retry-save');
+  await page.click('#save');
   await gate.release(await gate.next());
   await page.waitStatus('saved');
   await gate.disable();
@@ -4577,40 +4515,40 @@ async function editorChrome(page) {
   };
   page.cdp.listeners.push(listener);
   await page.send('Fetch.enable', { patterns: [{ urlPattern: '*/api/v1/drafts/*', requestStage: 'Request' }] });
-  await page.click('#retry-save');
-  await page.waitFor(`document.querySelector('[data-testid=save-failed]')?.textContent.includes('bị từ chối')`, 'failed reconciliation remains visible');
+  await page.click('#save');
+  await page.waitFor(`document.querySelector('#editor-save-details')?.textContent.includes('bị từ chối')`, 'failed reconciliation remains visible');
   check(await page.eval(`document.querySelector('[data-testid=save-status]').textContent === 'Chưa lưu được.'`), 'rejected write is distinguishable from an unconfirmed response');
   check(writes === 0, 'failed reconciliation cannot write');
   await page.typeInBody(' Chữ còn trên trang.');
-  await page.click('#retry-save');
+  await page.click('#save');
   await page.waitStatus('conflict');
   check(writes === 0, 'retry after a failed reconciliation still reads before writing');
   await page.send('Fetch.disable');
   page.cdp.listeners = page.cdp.listeners.filter(item => item !== listener);
   await geometry('conflict');
-  await page.eval(`document.querySelector('#save-recovery-jump').focus()`);
+  await page.eval("document.querySelector('#save-recovery-jump').focus()");
   await page.key('Enter');
-  check(await page.eval(`document.activeElement?.id === 'editor-text-conflict'`), 'conflict toolbar jump focuses the recovery region before its choices');
+  await page.waitFor("document.querySelector('#editor-text-conflict').open && document.activeElement.id === 'editor-text-conflict-title'", 'toolbar opens the recovery dialog at its title');
   await page.key('Enter');
-  check((await page.draft(workId)).version === committed.version, 'another Enter on the recovery region cannot confirm overwrite');
-  await page.key('Tab');
-  check(await page.eval(`document.activeElement?.id === 'keep-mine'`), 'the explicit overwrite remains next in keyboard order');
+  check((await page.draft(workId)).version === committed.version, 'Enter on the conflict title cannot confirm overwrite');
+  await page.key('Escape');
+  await page.waitFor("!document.querySelector('#editor-text-conflict').open", 'conflict dialog closes');
   check((await page.draft(workId)).version === committed.version, 'unknown outcome never blindly replays an already committed save');
   for (const scene of [
     { width: 320, height: 800, scale: 200, theme: 'light' },
     { width: 390, height: 844, scale: 200, theme: 'dark' },
   ]) {
     await setEditorScene(page, scene);
-    await editorRecoveryScene(page, '[data-testid=conflict]', scene, 'editor-conflict');
+    await editorRecoveryScene(page, 'conflict', scene, 'editor-conflict');
   }
   await setEditorScene(page, { width: 1440, height: 900, scale: 100, theme: 'light' });
 
-  // Dialogs use current unsaved text and retain focus/scroll/body through close and reopen.
-  for (const kind of ['preview', 'leave']) {
-    await page.click(kind === 'preview' ? '#preview' : '.vk-editor-heading__back');
-    const dialog = kind === 'preview' ? '#draft-preview' : '#leave-editor';
+  // Both dialogs preserve the live document and keep background actions inert.
+  for (const kind of ['conflict', 'leave']) {
+    const dialog = kind === 'conflict' ? '#editor-text-conflict' : '#leave-editor';
+    if (kind === 'conflict') await openTextConflict(page);
+    else await page.click('.vk-editor-heading__back');
     await page.waitFor(`document.querySelector('${dialog}').open`, `${kind} dialog`);
-    if (kind === 'preview') check(await page.eval(`document.querySelector('#draft-preview').textContent.includes('Chữ còn trên trang.') && document.querySelector('#draft-preview-context')?.classList.contains('vk-ui-dialog__context') && document.querySelector('#preview-close')?.classList.contains('vk-ui-button--tonal')`), 'preview reads unsaved text during conflict and uses shared context + Tonal close');
     for (const width of [1440, 1024, 834, 390, 320]) for (const scale of [100, 200]) for (const theme of ['light', 'dark']) {
       await page.viewport(width);
       await page.eval(`document.documentElement.style.fontSize = '${scale}%'; document.documentElement.dataset.theme = '${theme}'; document.querySelector('${dialog}').scrollTop = 0`);
@@ -4619,7 +4557,7 @@ async function editorChrome(page) {
       check(await page.eval(`(() => { const d = document.querySelector('${dialog}'), r = d.getBoundingClientRect(), p = parseFloat(getComputedStyle(d.querySelector('.vk-ui-dialog__panel')).paddingLeft); return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight && d.scrollWidth <= d.clientWidth + 1 && (${width} >= 390 && ${scale} === 100 ? p >= 23.5 : p >= 11.5) && ${live}; })()`), `${kind} ${width}/${scale}/${theme}: dialog fits, shared gutter holds and text view survives`);
       await page.eval(`document.querySelector('${dialog} .vk-ui-dialog__title').focus()`);
       await page.key('Tab');
-      check(await page.eval(`document.activeElement.id === '${kind === 'preview' ? 'preview-close' : 'leave-stay'}'`), `${kind}: Tab reaches the safe action`);
+      check(await page.eval(`document.activeElement.id === '${kind === 'conflict' ? 'conflict-stay' : 'leave-stay'}'`), `${kind}: Tab reaches the safe action`);
       await page.capture(`editor-${kind}-${width}-${scale}-${theme}-actions`);
       check(await page.eval(`(() => { const r = document.activeElement.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; })()`), `${kind} ${width}/${scale}/${theme}: keyboard reveals safe action`);
     }
@@ -4722,6 +4660,7 @@ async function editorChrome(page) {
   await page.eval(`document.documentElement.dataset.theme = 'light'; document.querySelector('#draft-title').focus(); document.querySelector('#draft-title').scrollIntoView({block:'start'})`);
   check(await page.eval(`document.querySelector('#draft-title').getBoundingClientRect().top >= document.querySelector('#editor-toolbar').getBoundingClientRect().bottom`), 'document-flow tools do not cover the focused title');
   await page.capture('editor-sticky-title-1440');
+  await openTextConflict(page);
   await page.click('#keep-mine');
   await page.waitStatus('saved');
   await page.reload();
@@ -4814,7 +4753,7 @@ async function editorChrome(page) {
   };
   page.cdp.listeners.push(holdRead);
   await page.send('Fetch.enable', { patterns: [{ urlPattern: `*/api/v1/drafts/${workId}`, requestStage: 'Request' }] });
-  await page.click('#retry-save');
+  await page.click('#save');
   const deadline = Date.now() + 10000;
   while (!heldRead && Date.now() < deadline) await sleep(50);
   check(heldRead !== null, 'reconciliation GET is pending before navigation');
@@ -5054,6 +4993,7 @@ async function mainPhase(page) {
   await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'profile navigation from a conflicted editor uses the guard');
   check(await page.eval(`location.pathname === '/ban-viet/${workId}' && document.querySelector('.cm-editor').__appearanceConflictView === 'kept'`) && (await page.body()) === BODY + TAIL && (await page.status()) === 'conflict', 'rail toggles and guarded Tôi navigation retain the conflicted editor and text');
   await page.key('Escape');
+  await openTextConflict(page);
   await page.click('#keep-mine');
   await page.waitStatus('saved', 'explicit overwrite');
   const final = await page.draft(workId);
@@ -5085,21 +5025,9 @@ async function mainPhase(page) {
   check(await page.eval(view), 'theme change kept the same EditorView');
   check((await page.eval(selected)) === LAST_LINE, 'theme change kept the selection');
 
-  await page.eval(`scrollTo(0, document.documentElement.scrollHeight)`);
-  const scrolled = await page.eval(`scrollY`);
-  await page.eval(`document.querySelector('#preview').click()`);
-  await page.waitFor(`document.querySelector('[data-testid=draft-preview]').open`, 'preview dialog');
-  const preview = await page.eval(`[...document.querySelectorAll('[data-testid=draft-preview] .vk-block')].map((b) => b.textContent)`);
-  check(preview.length === 3 && preview[2] === 'Khổ mới chưa lưu,\n  dòng thụt vào,\nlời cuối ở đây.', 'preview shows the unsaved stanza with its line breaks');
-  check((await page.eval(`document.querySelector('[data-testid=draft-preview] .vk-preview h2').textContent`)) === TITLE, 'preview shows the current title');
-  check((await page.status()) === 'unsaved' && (await page.draft(workId)).version === 4, 'preview neither saved nor marked saved');
-  await page.capture('1280-preview-long-title-dark');
-  await page.key('Escape');
-  await page.waitFor(`!document.querySelector('[data-testid=draft-preview]').open`, 'preview closed by Escape');
-  check(await page.eval(view), 'preview kept the same EditorView');
-  check(scrolled > 0 && Math.abs((await page.eval(`scrollY`)) - scrolled) < 2, `closing the preview kept the page scroll (${scrolled}px)`);
-  await page.eval(`document.querySelector('[data-testid=editor-body] .cm-content').focus()`);
-  check((await page.eval(selected)) === LAST_LINE, 'selection is back when the text regains focus');
+  check(await page.eval(`!document.querySelector('#preview, #draft-preview') && ${view}`)
+    && (await page.draft(workId)).version === 4 && (await page.body()) === written,
+  'theme and shell changes preserve the unsaved stanza without recreating standalone preview');
 
   await page.click('#navigation-primary a[href="/"]');
   await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'leave dialog from the Khám phá rail link');
@@ -5681,31 +5609,36 @@ async function draftTags(page, workId) {
   check((await tagStatus(page)) === 'saved' && (await page.status()) === 'saved', 'a draft without tags starts saved');
   const html = await (await fetch(`${args.base}${editorPath}`)).text();
   check(!html.includes('Thông tin tác phẩm') && !html.includes('work-tags'), 'SSR never renders the private tag section or its data');
-  await page.waitFor(`document.querySelectorAll('#work-tags-form .vk-ui-chip').length === 2`, 'form choices from the real catalog');
+  await page.waitFor(`document.querySelector('#work-tags-form-select')?.options.length === 3`, 'form choices from the real catalog');
   await page.eval(`document.querySelector('.cm-editor').__vinkTagsView = 'kept'`);
   const view = `document.querySelector('.cm-editor')?.__vinkTagsView === 'kept' && document.querySelectorAll('.cm-editor').length === 1`;
   const bodyBefore = await page.body();
-  check(await page.eval(`!document.querySelector('#work-tags-edit').open && document.querySelector('[data-testid=tag-selection-summary]').textContent.includes('không có thẻ')`), 'metadata starts compact with its current selection visible');
-  await page.eval(`window.__tagQuery = document.querySelector('#work-tags-query'); document.querySelector('#work-tags-edit > summary').focus()`);
+  await page.waitFor("document.querySelector('#work-options').open", 'desktop options open by default');
+  await page.click('#work-options-toggle');
+  check(await page.eval("!document.querySelector('#work-options').open && document.querySelector('#work-tags-form-select').value === ''"),
+    'collapsed options retain the mounted initial selection');
+  await page.eval(`window.__tagQuery = document.querySelector('#work-tags-query'); document.querySelector('#work-options-toggle').focus()`);
   await page.key('Enter');
-  check(await page.eval(`document.querySelector('#work-tags-edit').open && window.__tagQuery===document.querySelector('#work-tags-query') && ${view}`), 'Enter opens the existing TagSelector in place');
+  check(await page.eval(`document.querySelector('#work-options').open && window.__tagQuery===document.querySelector('#work-tags-query') && ${view}`), 'Enter opens the existing TagSelector in place');
   await page.key('Space');
-  check(await page.eval(`!document.querySelector('#work-tags-edit').open && document.activeElement.matches('#work-tags-edit > summary') && ${view}`), 'Space closes metadata without losing focus, selector or EditorView');
+  check(await page.eval(`!document.querySelector('#work-options').open && document.activeElement.matches('#work-options-toggle') && ${view}`), 'Space closes metadata without losing focus, selector or EditorView');
   await page.key('Enter');
 
   // A metadata-only change is unsaved work: the toolbar says so and leaving is held.
-  await page.click('#work-tags-form .vk-ui-chip');
+  await page.eval(`const select = document.querySelector('#work-tags-form-select');
+    select.value = [...select.options].find(o => o.textContent.trim() === 'Tản văn').value;
+    select.dispatchEvent(new Event('change', { bubbles: true }));`);
   await waitTagStatus(page, 'unsaved');
   check((await page.status()) === 'unsaved', 'the toolbar status covers a tag-only change');
-  await page.click('#work-tags-edit > summary');
-  check(await page.eval(`!document.querySelector('#work-tags-edit').open && document.querySelector('[data-testid=tag-selection-summary]').textContent.includes('Tản văn')`), 'closing metadata keeps the unsaved selection visible');
+  await page.click('#work-options-toggle');
+  check(await page.eval(`!document.querySelector('#work-options').open && document.querySelector('#work-tags-form-select').selectedOptions[0].textContent.trim() === 'Tản văn'`), 'closing options retains the mounted unsaved selection');
   await page.click('#navigation-primary a[href="/"]');
   await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'leave dialog for a tag-only change');
   check((await page.eval(`document.querySelector('#leave-editor-context').textContent`)).includes('Thẻ đã chọn'), 'the dialog names the unsaved tags');
   await page.key('Escape');
   await page.waitFor(`!document.querySelector('[data-testid=leave-editor]').open`, 'stayed');
   check((await page.eval(`location.pathname`)) === editorPath, 'a tag-only change held the navigation');
-  check(await page.eval(`!document.querySelector('#work-tags-edit').open && document.activeElement.matches('#work-tags-edit > summary')`), 'staying returns focus to the visible closed metadata trigger');
+  check(await page.eval(`!document.querySelector('#work-options').open && document.activeElement.matches('#work-options-toggle')`), 'staying returns focus to the visible closed metadata trigger');
   await page.key('Enter');
 
   // IME: Enter while composing neither chooses a theme nor submits the editor form.
@@ -5714,12 +5647,19 @@ async function draftTags(page, workId) {
     if (message.sessionId === page.sessionId && message.method === 'Network.requestWillBeSent' && message.params.request.method === 'PUT') puts++;
   };
   page.cdp.listeners.push(countPuts);
+  await page.click('#work-tags-query-toggle');
   await page.eval(`document.getElementById('work-tags-query').focus()`);
   await page.send('Input.imeSetComposition', { text: 'hồ', selectionStart: 2, selectionEnd: 2 });
   await page.key('Enter');
   check(puts === 0 && (await chipLabels(page)).length === 0, 'Enter during composition chose nothing and saved nothing');
   await page.send('Input.insertText', { text: 'hồi' });
   await page.waitFor(`document.getElementById('work-tags-status').textContent.includes('gợi ý cho “hồi”')`, 'suggestions for the committed query');
+  await page.viewport(390, 844);
+  await page.waitFor("!document.querySelector('#work-options').open && document.activeElement.id === 'work-options-toggle'", 'resize collapses options and returns focus');
+  await page.viewport(1440, 900);
+  await page.waitFor("document.querySelector('#work-options').open", 'wide options reopen');
+  check(await page.eval(`window.__tagQuery === document.querySelector('#work-tags-query') && window.__tagQuery.value === 'hồi' && ${view}`)
+    && puts === 0, 'resize retains the live tag search, editor and zero mutations');
   const alias = await page.eval(`[...document.querySelectorAll('#work-tags-options .vk-ui-button')].find((b) => b.textContent.includes('Ký ức'))?.textContent ?? ''`);
   check(alias.includes('qua tên “Hồi ức”'), `the alias that matched is named (${alias})`);
   await page.eval(`[...document.querySelectorAll('#work-tags-options .vk-ui-button')].find((b) => b.textContent.includes('Ký ức')).id = 'tag-pick-ky-uc'`);
@@ -5775,10 +5715,9 @@ async function draftTags(page, workId) {
   await page.send('Page.reload');
   await page.waitFor(`window.__vinkBeforeReload === undefined && ${EDITOR_READY} && ${TAGS_READY} && document.documentElement.dataset.hydrated === 'true'`, 'editor after reload');
   await page.waitFor(`document.querySelectorAll('#work-tags-themes .vk-tag-chip').length === 2`, 'tags restored');
-  check((await chipLabels(page)).join() === 'Ký ức,Đô thị' && await page.eval(`(() => { const pressed = [...document.querySelectorAll('#work-tags-form .vk-ui-chip[aria-pressed=true]')]; return pressed.length === 1 && pressed[0].textContent.includes('Tản văn'); })()`), 'reload shows the confirmed tags');
+  check((await chipLabels(page)).join() === 'Ký ức,Đô thị' && await page.eval(`document.querySelector('#work-tags-form-select').selectedOptions[0].textContent.trim() === 'Tản văn'`), 'reload shows the confirmed tags');
 
-  check(await page.eval(`!document.querySelector('#work-tags-edit').open && document.querySelector('[data-testid=tag-selection-summary]').textContent.includes('Tản văn, Ký ức, Đô thị')`), 'reloaded metadata shows acknowledged names while compact');
-  await page.click('#work-tags-edit > summary');
+  await page.waitFor("document.querySelector('#work-options').open", 'desktop options reopen on reload');
 
   // Another tab saves first: the stale save writes nothing; the author chooses.
   const mua = (await page.eval(`fetch('/api/v1/tags?facet=theme').then((r) => r.json())`)).tags.find((t) => t.label === 'Mùa');
@@ -5808,8 +5747,10 @@ async function draftTags(page, workId) {
   const tagConflictScene = { width: 320, height: 800, scale: 200, theme: 'dark' };
   const beforeScene = await page.eval(`({width:innerWidth,height:innerHeight,font:document.documentElement.style.fontSize,theme:document.documentElement.dataset.theme ?? null})`);
   await setEditorScene(page, tagConflictScene);
-  check(await page.eval(`!document.querySelector('#export-tags') && document.querySelector('#tags-keep-mine')?.checkVisibility() && !document.querySelector('#tags-keep-mine').closest('details,dialog')`),
-    'tag-only conflict removes export and keeps direct overwrite outside closed tools');
+  await page.waitFor("!document.querySelector('#work-options').open", 'narrow options fold on resize');
+  await page.click('#save-recovery-jump');
+  check(await page.eval("!document.querySelector('#export-tags') && document.querySelector('#work-options').open && document.querySelector('#tags-keep-mine')?.checkVisibility()"),
+    'toolbar recovery reveals the deliberate tag overwrite without exporting');
   await page.click('.vk-editor-heading__back');
   await page.waitFor(`document.querySelector('#leave-editor').open`, 'leave with tag conflict');
   await leaveActionScene(page, tagConflictScene, 'tag-conflict',
@@ -5820,22 +5761,21 @@ async function draftTags(page, workId) {
   check(await page.eval(`document.querySelector('#leave-editor').open`) && (await draftTagsOf(page, workId)).version === 3,
     'disabled save-and-leave preserves tag conflict and stored version');
   await page.key('Escape');
-  await page.waitFor(`!document.querySelector('#leave-editor').open && document.activeElement.id === 'work-tags-query'`, 'Escape returns from tag conflict to its writing context');
+  await page.waitFor(`!document.querySelector('#leave-editor').open && ['work-tags-query', 'work-tags-query-toggle'].includes(document.activeElement.id)`, 'Escape returns from tag conflict to its writing context');
   await page.viewport(beforeScene.width, beforeScene.height);
   await page.eval(`document.documentElement.style.fontSize=${JSON.stringify(beforeScene.font)};
     ${beforeScene.theme ? 'document.documentElement.dataset.theme=' + JSON.stringify(beforeScene.theme) : 'delete document.documentElement.dataset.theme'}`);
-  await page.click('#work-tags-edit > summary');
-  check(await page.eval(`!document.querySelector('#work-tags-edit').open && !document.querySelector('#work-tags-edit').contains(document.querySelector('[data-testid=tag-conflict]')) && document.querySelector('#tags-keep-mine').getClientRects().length>0`), 'tag conflict and deliberate recovery stay visible outside the closed disclosure');
+  await page.waitFor("document.querySelector('#work-options').open", 'wide options are open for explicit tag recovery');
   await page.click('#tags-keep-mine');
   await waitTagStatus(page, 'saved', 'explicit tag overwrite');
-  await page.click('#work-tags-edit > summary');
   stored = await draftTagsOf(page, workId);
   check(stored.version === 4 && stored.form?.label === 'Tản văn' && stored.themes.map((t) => t.label).join() === 'Đô thị', 'the author chose their selection: version 4');
 
   // While the acknowledgement is held, undo the selection that the server already committed.
   const responses = new SaveGate(page, 'Response');
   await responses.enable();
-  await page.eval(`document.getElementById('work-tags-query').focus()`);
+  await page.click('#work-tags-query-toggle');
+  await page.eval("document.getElementById('work-tags-query').focus()");
   await page.send('Input.insertText', { text: 'Gia đình' });
   await page.waitFor(`document.getElementById('work-tags-status').textContent.includes('“Gia đình”')`, 'exact suggestion');
   await page.key('Enter');
@@ -5883,7 +5823,7 @@ async function retiredTagAfterRestart(page, workId) {
   await page.waitFor(`${TAGS_READY} && document.querySelector('#work-tags-theme-0')`, 'tags after restart');
   check(await page.eval(`(() => { const chip = document.getElementById('work-tags-theme-0'); return chip.dataset.status === 'retired' && chip.textContent.includes('Đô thị') && chip.textContent.includes('Đã ngừng dùng'); })()`), 'the retired tag is kept and written as retired');
   check((await tagStatus(page)) === 'saved' && (await page.status()) === 'saved', 'a kept retired tag is not an unsaved change');
-  await page.click('#work-tags-edit > summary');
+  await page.eval("const options=document.querySelector('#work-options'); if (!options.open) options.querySelector('summary').click()");
   await page.click('#work-tags-theme-0-replace');
   await waitTagStatus(page, 'unsaved');
   check((await chipLabels(page)).join() === 'Mùa', 'the curator\'s successor replaced it in place');

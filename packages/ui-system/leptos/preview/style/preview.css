@@ -627,3 +627,22 @@ body:has(.vk-expression-fixture) { background: var(--vk-bg-page); color: var(--v
 .vk-expression-grid .vk-ui-button__label { white-space: normal; overflow-wrap: anywhere; }
 .vk-expression-status { min-height: 3em; margin-bottom: 0; font-size: var(--vk-type-label-size); color: var(--vk-on-surface-variant); }
 .vk-expression-attribution { border-top: 1px solid var(--vk-outline-variant); padding-top: var(--vk-space-4); color: var(--vk-on-surface-variant); font-size: var(--vk-type-label-size); }
+
+.vk-notif-preview-inbox {
+  box-sizing: border-box;
+  max-inline-size: var(--vk-size-notification-column);
+  background: var(--vk-bg-page);
+}
+
+.vk-notif-preview-rail.vk-ui-rail {
+  position: relative;
+  inset: auto;
+  inline-size: min(100%, var(--vk-size-rail-expanded));
+  block-size: auto;
+  gap: var(--vk-space-2);
+  overflow: visible;
+}
+
+@media (max-width: 759.98px) {
+  .vk-notif-preview-rail.vk-ui-rail { inline-size: var(--vk-size-rail-compact); }
+}

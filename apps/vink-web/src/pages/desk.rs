@@ -9,15 +9,15 @@ use leptos_router::hooks::use_params_map;
 use vink_ui::{
     ActionState, Announce, Button, ButtonKind, ButtonVariant, ChoiceOption, FieldVariant, Heading,
     HeadingLevel, IconButton, IconName, InlineNotice, PanelContent, PanelKind, PlainTooltip,
-    ProblemKind, SearchField, SearchVariant, Select, SelectVariant, StatePanel, SupportingDetails,
-    TextField, Tone, TooltipIconButton, TypeRole,
+    ProblemKind, SearchField, SearchVariant, Select, SelectVariant, StatePanel, TextField, Tone,
+    TypeRole,
 };
 
-use crate::contract::{ApiError, DocumentDto, DocumentFormatDto, Draft};
+use crate::contract::{ApiError, DocumentFormatDto, Draft};
 use crate::desk_state::{
     DraftSession, DraftTicket, Failure, LeaveGuard, LeaveNotice, LeaveStage, SaveStatus, SaveTicket,
 };
-use crate::document::{ConversionPreview, NotEditable, ReadingDocument};
+use crate::document::{ConversionPreview, NotEditable};
 use crate::draft_list::{CreateState, DraftSort, display_title as untitled};
 use crate::editor::{
     BODY_HINT_ID, BODY_LABEL_ID, BODY_TITLE_ERROR_ID, BodyEditor, BodySource, BodyState,
@@ -85,7 +85,10 @@ fn DeskSession(session: crate::account::Session) -> impl IntoView {
     let sign_in = move || match target.get() {
         Some(Ok(target)) => format!(
             "/toi?next={}",
-            percent_encoding::utf8_percent_encode(&target.href(), percent_encoding::NON_ALPHANUMERIC),
+            percent_encoding::utf8_percent_encode(
+                &target.href(),
+                percent_encoding::NON_ALPHANUMERIC
+            ),
         ),
         _ => DESK_SIGN_IN.to_owned(),
     };
@@ -777,11 +780,12 @@ fn DraftListView(
                         let fallback = adapters::author_work_summary(&draft);
                         let work = Signal::derive(move || pages.with(|p| p.drafts.iter().find(|d| d.work_id == id)
                             .map(adapters::author_work_summary).unwrap_or_else(|| fallback.clone())));
+                        let review_work_id = draft.work_id.clone();
                         view! {
                             <li id=format!("draft-row-{}", draft.work_id) class="vk-draft-row [min-inline-size:0]" data-testid="draft-row">
-                                <AuthorWorkRow work review_action=move || view! {
-                                    <ReviewTrigger work_id=draft.work_id.clone() title=Signal::derive(move || work.with(|w| w.title.clone())) open=open_review />
-                                } />
+                                <AuthorWorkRow work review_action=Box::new(move || view! {
+                                    <ReviewTrigger work_id=review_work_id title=Signal::derive(move || work.with(|w| w.title.clone())) open=open_review />
+                                }.into_any()) />
                             </li>
                         }
                     } />
@@ -930,17 +934,10 @@ pub fn DraftEditor() -> impl IntoView {
         <Title text="Bản nháp — Bàn viết — Vink" />
         <Meta name="robots" content="noindex" />
         <section class="vk-desk vk-desk--editor" aria-labelledby="editor-heading">
-            <header class="vk-editor-heading flex flex-wrap items-center gap-x-vk-3 gap-y-vk-2 m-0 [&>.vk-ui-heading]:[font-family:var(--vk-font-ui)] [&>.vk-ui-heading]:m-0 [&>.vk-ui-heading]:text-vk-on-surface-variant [&>.vk-ui-heading]:text-[length:var(--vk-type-body-size)] [&>.vk-ui-heading]:[font-weight:var(--vk-type-label-weight)]">
-                <a class="vk-editor-heading__back" href="/ban-viet">
-                    <vink_ui::Icon name=IconName::ArrowBack size=vink_ui::IconSize::Small />
-                    <span>"Bàn viết"</span>
-                </a>
-                <Heading level=HeadingLevel::H1 role=TypeRole::Title id="editor-heading" class:vk-editor-heading__title=true>"Bản nháp"</Heading>
-            </header>
             <noscript>
                 <p class="vk-desk-noscript">{DESK_UNAVAILABLE_SSR}</p>
             </noscript>
-            <Suspense fallback=|| view! { <p class="vk-muted">"Đang mở bản nháp…"</p> }>
+            <Suspense fallback=|| view! { <EditorHeading label=Signal::stored("Bản nháp") /><p class="vk-muted">"Đang mở bản nháp…"</p> }>
                 {move || Suspend::new(async move {
                     match draft.await {
                         // The editor saves its buffer verbatim as a default document. A draft it
@@ -948,13 +945,26 @@ pub fn DraftEditor() -> impl IntoView {
                         // endings that CodeMirror normalizes) is not opened.
                         Ok(draft) => match crate::document::desk_editable(&draft.document) {
                             Ok(()) => view! { <Editor draft /> }.into_any(),
-                            Err(reason) => view! { <FormatNotEditable reason /> }.into_any(),
+                            Err(reason) => view! { <EditorHeading label=Signal::stored("Bản nháp") /><FormatNotEditable reason /> }.into_any(),
                         },
-                        Err(error) => view! { <DeskError error /> }.into_any(),
+                        Err(error) => view! { <EditorHeading label=Signal::stored("Bản nháp") /><DeskError error /> }.into_any(),
                     }
                 })}
             </Suspense>
         </section>
+    }
+}
+
+#[component]
+fn EditorHeading(#[prop(into)] label: Signal<&'static str>) -> impl IntoView {
+    view! {
+        <div class="vk-editor-heading flex flex-wrap items-center gap-x-vk-3 gap-y-vk-2 m-0 [&>.vk-ui-heading]:[font-family:var(--vk-font-ui)] [&>.vk-ui-heading]:m-0 [&>.vk-ui-heading]:text-vk-on-surface-variant [&>.vk-ui-heading]:text-[length:var(--vk-type-body-size)] [&>.vk-ui-heading]:[font-weight:var(--vk-type-label-weight)]">
+            <a id="back-to-desk" class="vk-editor-heading__back" href="/ban-viet">
+                <vink_ui::Icon name=IconName::ArrowBack size=vink_ui::IconSize::Small />
+                <span>"Bàn viết"</span>
+            </a>
+            <Heading level=HeadingLevel::H1 role=TypeRole::Title id="editor-heading">{move || label.get()}</Heading>
+        </div>
     }
 }
 
@@ -985,7 +995,18 @@ fn Editor(draft: Draft) -> impl IntoView {
     let leave_discard = NodeRef::<html::Button>::new();
     let last_field = StoredValue::new(Field::Body);
     let page_scroll = StoredValue::new(0.0_f64);
-    let preview = RwSignal::new(None::<(String, DocumentDto)>);
+    let conflict_open = RwSignal::new(false);
+    let heading = Memo::new(move |_| {
+        if session.with(|s| s.text.acknowledged_version()) == 1 {
+            "Bài viết mới"
+        } else {
+            "Bản nháp"
+        }
+    });
+    let options_panel = NodeRef::<html::Details>::new();
+    let review_pending = RwSignal::new(false);
+    #[cfg(feature = "hydrate")]
+    observe_editor_options(options_panel);
     let outline_open = RwSignal::new(false);
     let outline_panel = NodeRef::<html::Dialog>::new();
     #[cfg(feature = "hydrate")]
@@ -1260,18 +1281,23 @@ fn Editor(draft: Draft) -> impl IntoView {
         Field::Title | Field::Body => body.focus(),
         Field::Tags => {
             #[cfg(feature = "hydrate")]
-            if let Some(input) = document()
-                .get_element_by_id("work-tags-edit")
-                .filter(|details| !details.has_attribute("open"))
-                .and_then(|details| details.query_selector("summary").ok().flatten())
-                .or_else(|| document().get_element_by_id(crate::pages::work_info::QUERY_ID))
             {
-                use wasm_bindgen::JsCast;
-                if let Ok(input) = input.dyn_into::<web_sys::HtmlElement>() {
-                    let options = web_sys::FocusOptions::new();
-                    options.set_prevent_scroll(true);
-                    let _ = input.focus_with_options(&options);
-                }
+                let target = if document()
+                    .get_element_by_id("work-options")
+                    .is_some_and(|details| !details.has_attribute("open"))
+                {
+                    "work-options-toggle"
+                } else if document()
+                    .get_element_by_id("work-tags-query-toggle")
+                    .is_some_and(|button| {
+                        button.get_attribute("aria-expanded").as_deref() == Some("false")
+                    })
+                {
+                    "work-tags-query-toggle"
+                } else {
+                    crate::pages::work_info::QUERY_ID
+                };
+                focus_element_by_id(target);
             }
         }
     };
@@ -1347,28 +1373,6 @@ fn Editor(draft: Draft) -> impl IntoView {
             }
         }
     };
-    let open_preview = move || {
-        // Close the in-flow tools before opening the modal. Preview stays a direct, live
-        // trigger, so Dialog never restores focus into a collapsed disclosure.
-        #[cfg(feature = "hydrate")]
-        if let Some(tools) = document().get_element_by_id("editor-save-details") {
-            let _ = tools.remove_attribute("open");
-        }
-        let source = body.snapshot();
-        let (preview_title, document) = match format.get_untracked() {
-            DocumentFormatDto::Default => (
-                title.get_untracked(),
-                crate::document::default_document(&source),
-            ),
-            DocumentFormatDto::Markdown => (
-                crate::document::markdown_first_h1(&source),
-                crate::document::markdown_document(&source),
-            ),
-        };
-        preview.set(Some((preview_title, document)));
-        remember_scroll(page_scroll);
-    };
-
     if let Some(navigation) = navigation {
         let registration = navigation.register(move |destination| {
             let held = leave
@@ -1424,6 +1428,22 @@ fn Editor(draft: Draft) -> impl IntoView {
         session.try_update(|s| s.text.edited());
     });
 
+    let restore_format_focus = move || {
+        #[cfg(feature = "hydrate")]
+        if options_panel
+            .get_untracked()
+            .is_some_and(|panel| !panel.has_attribute("open"))
+        {
+            request_animation_frame(move || {
+                let lost = document()
+                    .active_element()
+                    .is_none_or(|active| active.tag_name() == "BODY");
+                if lost {
+                    focus_element_by_id("work-options-toggle");
+                }
+            });
+        }
+    };
     let cancel_conversion = move || {
         if converting.get_untracked() {
             return;
@@ -1431,6 +1451,7 @@ fn Editor(draft: Draft) -> impl IntoView {
         convert_preview.set(None);
         reset_format_select();
         restore_scroll(page_scroll);
+        restore_format_focus();
     };
     let on_format_change = Callback::new(move |selected: Option<String>| {
         if converting.get_untracked() {
@@ -1580,6 +1601,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                 convert_preview.set(None);
                 reset_format_select();
                 restore_scroll(page_scroll);
+                restore_format_focus();
                 settle_leave();
             });
         }
@@ -1612,11 +1634,21 @@ fn Editor(draft: Draft) -> impl IntoView {
                     }
                     return;
                 }
-                RecoveryTarget::TextConflict => "#editor-text-conflict",
+                RecoveryTarget::TextConflict => {
+                    conflict_open.set(true);
+                    return;
+                }
                 RecoveryTarget::TagConflict => "#editor-tag-conflict",
-                RecoveryTarget::TagRefused => "#work-tags-edit > summary",
+                RecoveryTarget::TagRefused => "#work-tags",
                 RecoveryTarget::TagLoad => "#tags-reload",
             };
+            if matches!(
+                target,
+                RecoveryTarget::TagConflict | RecoveryTarget::TagRefused | RecoveryTarget::TagLoad
+            ) && let Some(panel) = options_panel.get_untracked()
+            {
+                let _ = panel.set_attribute("open", "");
+            }
             if let Some(el) = doc
                 .query_selector(selector)
                 .ok()
@@ -1627,7 +1659,7 @@ fn Editor(draft: Draft) -> impl IntoView {
             }
         }
         #[cfg(not(feature = "hydrate"))]
-        let _ = target;
+        let _ = (target, options_panel);
     };
     let on_jump_recovery = Callback::new(jump_to_recovery);
 
@@ -1688,7 +1720,7 @@ fn Editor(draft: Draft) -> impl IntoView {
         Signal::derive(move || converting.get() || session.with(|s| !s.can_convert()));
     view! {
         <form
-            class="vk-editor flex flex-col gap-vk-6"
+            class="vk-editor flex flex-col gap-vk-4"
             aria-labelledby="editor-heading"
             data-format=move || format.get().as_str()
             data-outline-open=move || if outline_open.get() { "true" } else { "false" }
@@ -1715,114 +1747,85 @@ fn Editor(draft: Draft) -> impl IntoView {
                 }
             }
         >
-            <crate::ui::patterns::EditorToolbar attr:id=TOOLBAR_ID attr:data-testid="editor-toolbar"
-                paper_first=true
-                status=Signal::derive(move || status_label.get())
-                status_token=Signal::derive(move || status_token.get())
-                status_problem=Signal::derive(move || status_problem.get())
-                status_detail=Signal::derive(move || slot_detail.get())
-                save_action=std::sync::Arc::new(move || view! {
-                    <>
-                        <Show when=action_is_save_or_retry>
-                            <PlainTooltip id="save-tooltip" text=Signal::derive(move || shortcut.get())>
-                                <Button
-                                    variant=Signal::derive(move || match slot_action.get() {
-                                        SaveSlotAction::Retry { .. } => ButtonVariant::Tonal,
-                                        _ => ButtonVariant::Filled,
-                                    })
-                                    kind=ButtonKind::Submit
-                                    id="save"
-                                    described_by="save-tooltip"
-                                    state=Signal::derive(move || match slot_action.get() {
-                                        SaveSlotAction::Save { pending: true, .. }
-                                        | SaveSlotAction::Retry { pending: true, .. } => ActionState::pending(""),
-                                        _ => ActionState::Enabled,
-                                    })
-                                >
-                                    <span
-                                        class="vk-draft-action-content"
-                                        data-draft-icon=move || match slot_action.get() {
-                                            SaveSlotAction::Save { icon, .. }
-                                            | SaveSlotAction::Retry { icon, .. } => icon.id(),
-                                            _ => DraftActionIcon::Save.id(),
-                                        }
+            <header class="vk-editor-topbar flex flex-wrap items-center justify-between gap-vk-3">
+                <EditorHeading label=Signal::derive(move || heading.get()) />
+                <crate::ui::patterns::EditorToolbar attr:id=TOOLBAR_ID attr:data-testid="editor-toolbar"
+                    paper_first=true compact_details=true
+                    status=Signal::derive(move || status_label.get())
+                    status_token=Signal::derive(move || status_token.get())
+                    status_problem=Signal::derive(move || status_problem.get())
+                    status_detail=Signal::derive(move || slot_detail.get())
+                    save_action=std::sync::Arc::new(move || view! {
+                        <>
+                            <Show when=action_is_save_or_retry>
+                                <PlainTooltip id="save-tooltip" text=Signal::derive(move || shortcut.get())>
+                                    <Button
+                                        variant=Signal::derive(move || match slot_action.get() {
+                                            SaveSlotAction::Retry { .. } => ButtonVariant::Tonal,
+                                            _ => ButtonVariant::Filled,
+                                        })
+                                        kind=ButtonKind::Submit
+                                        id="save"
+                                        described_by="save-tooltip"
+                                        state=Signal::derive(move || match slot_action.get() {
+                                            SaveSlotAction::Save { pending: true, .. }
+                                            | SaveSlotAction::Retry { pending: true, .. } => ActionState::pending(""),
+                                            _ => ActionState::Enabled,
+                                        })
                                     >
-                                        {move || match slot_action.get() {
-                                            SaveSlotAction::Save { icon, .. }
-                                            | SaveSlotAction::Retry { icon, .. } => {
-                                                render_draft_action_icon(icon).into_any()
+                                        <span
+                                            class="vk-draft-action-content"
+                                            data-draft-icon=move || match slot_action.get() {
+                                                SaveSlotAction::Save { icon, .. }
+                                                | SaveSlotAction::Retry { icon, .. } => icon.id(),
+                                                _ => DraftActionIcon::Save.id(),
                                             }
-                                            _ => render_draft_action_icon(DraftActionIcon::Save).into_any(),
-                                        }}
-                                        <span>
+                                        >
                                             {move || match slot_action.get() {
-                                                SaveSlotAction::Save { label, .. } => label,
-                                                SaveSlotAction::Retry { label, .. } => label,
-                                                _ => "Đang lưu…",
+                                                SaveSlotAction::Save { icon, .. }
+                                                | SaveSlotAction::Retry { icon, .. } => {
+                                                    render_draft_action_icon(icon).into_any()
+                                                }
+                                                _ => render_draft_action_icon(DraftActionIcon::Save).into_any(),
                                             }}
+                                            <span>
+                                                {move || match slot_action.get() {
+                                                    SaveSlotAction::Save { label, .. } => label,
+                                                    SaveSlotAction::Retry { label, .. } => label,
+                                                    _ => "Đang lưu…",
+                                                }}
+                                            </span>
                                         </span>
-                                    </span>
-                                </Button>
-                            </PlainTooltip>
-                        </Show>
-                        <Show when=action_is_recover>
-                            <Button
-                                variant=ButtonVariant::Tonal
-                                id="save-recovery-jump"
-                                on_press=move |_| {
-                                    if let SaveSlotAction::Recover { target, .. } = slot_action.get_untracked() {
-                                        on_jump_recovery.run(target);
+                                    </Button>
+                                </PlainTooltip>
+                            </Show>
+                            <Show when=action_is_recover>
+                                <Button
+                                    variant=ButtonVariant::Tonal
+                                    id="save-recovery-jump"
+                                    on_press=move |_| {
+                                        if let SaveSlotAction::Recover { target, .. } = slot_action.get_untracked() {
+                                            on_jump_recovery.run(target);
+                                        }
                                     }
-                                }
-                            >
-                                {move || match slot_action.get() {
-                                    SaveSlotAction::Recover { label, .. } => label,
-                                    _ => "",
-                                }}
-                            </Button>
-                        </Show>
-                    </>
-                }.into_any())
-                >
-                    <TooltipIconButton id="preview" icon=IconName::Visibility label="Xem trước"
-                        on_press=move |_| open_preview() />
-            </crate::ui::patterns::EditorToolbar>
-            <Show when=move || matches!(status(), SaveStatus::Failed(_)) && !title_invalid()>
-                <section class=r"vk-editor-recovery [&>.vk-ui-notice]:p-0 [&>.vk-ui-notice]:bg-transparent [&>.vk-ui-notice]:text-inherit [&_.vk-ui-notice\_\_icon]:hidden" data-testid="save-failed" data-tone="error" aria-label="Phục hồi lưu nháp">
-                    // The toolbar is the sole polite announcement owner for this state.
-                    {move || view! { <InlineNotice tone=Tone::Error announce=Announce::Off
-                        title=status_text(status()) message="Nội dung đang viết vẫn còn trên trang này. Chọn Thử lại hoặc giữ trang mở." /> }}
-                    <div class="vk-notice__actions">
-                        <Button variant=ButtonVariant::Text id="retry-save" on_press=move |_| save()>"Thử lại"</Button>
-                    </div>
-                    <SupportingDetails id="save-failure-details" summary="Chi tiết">
-                        <p>{move || match status() {
-                            SaveStatus::Failed(failure) => failure_detail(failure),
-                            _ => String::new(),
-                        }}</p>
-                    </SupportingDetails>
-                </section>
-            </Show>
-            <Show when=move || matches!(status(), SaveStatus::Conflict { .. })>
-                <section id="editor-text-conflict" tabindex="-1" class=r"vk-editor-recovery [&>.vk-ui-notice]:p-0 [&>.vk-ui-notice]:bg-transparent [&>.vk-ui-notice]:text-inherit [&_.vk-ui-notice\_\_icon]:hidden"
-                    data-testid="conflict" data-tone="warning" aria-label="Xung đột bản nháp">
-                    <InlineNotice tone=Tone::Warning announce=Announce::Off title="Có bản mới trên máy chủ."
-                        message="Nội dung đang viết vẫn còn trên trang này. Bạn có thể lưu đè hoặc ở lại đối chiếu." />
-                    <div class="vk-notice__actions">
-                        <Button variant=ButtonVariant::Text id="keep-mine"
-                            on_press=move |_| {
-                                session.update(|s| s.text.keep_local_text());
-                                save();
-                            }>"Lưu đè bằng nội dung đang viết"</Button>
-                    </div>
-                    <SupportingDetails id="save-conflict-details" summary="Chi tiết">
-                        <p>{move || status_detail(status())}</p>
-                        <p>"Nội dung còn trên trang này; chưa có bản khôi phục tự động. Lưu đè sẽ thay bản trên máy chủ bằng nội dung đang viết."</p>
-                    </SupportingDetails>
-                </section>
-            </Show>
+                                >
+                                    {move || match slot_action.get() {
+                                        SaveSlotAction::Recover { label, .. } => label,
+                                        _ => "",
+                                    }}
+                                </Button>
+                            </Show>
+                            <Show when=move || matches!(status(), SaveStatus::Conflict { .. })
+                                && !matches!(slot_action.get(), SaveSlotAction::Recover { target: RecoveryTarget::TextConflict, .. })>
+                                <Button variant=ButtonVariant::Tonal id="editor-text-conflict-action"
+                                    on_press=move |_| conflict_open.set(true)>"Xử lý xung đột chữ"</Button>
+                            </Show>
+                        </>
+                    }.into_any())
+                />
+            </header>
             <div class="vk-editor-workspace">
-                <div class="vk-editor-paper">
+                <article id="editor-paper" class="vk-editor-paper rounded-vk-card bg-vk-bg-content">
                     <Show when=move || format.get() == DocumentFormatDto::Markdown>
                         <div
                             id="editor-markdown-toolbar"
@@ -1987,122 +1990,132 @@ fn Editor(draft: Draft) -> impl IntoView {
                                 attr:data-testid="editor-failed" />
                         </Show>
                     </div>
-                </div>
-                <Show when=move || format.get() == DocumentFormatDto::Markdown && outline_open.get()>
-                    <dialog
-                        node_ref=outline_panel
-                        id="editor-outline-panel"
-                        class="vk-editor-outline"
-                        aria-labelledby="editor-outline-title"
-                        on:cancel=move |ev: leptos::ev::Event| {
-                            ev.prevent_default();
-                            close_outline();
-                        }
-                        on:click=move |ev: leptos::ev::MouseEvent| {
-                            #[cfg(feature = "hydrate")]
-                            if let Some(panel) = outline_panel.get_untracked()
-                                && ev.target().as_ref() == Some(panel.as_ref())
-                            {
-                                let r = panel.get_bounding_client_rect();
-                                let (x, y) = (f64::from(ev.client_x()), f64::from(ev.client_y()));
-                                if x < r.left() || x >= r.right() || y < r.top() || y >= r.bottom() {
-                                    close_outline();
-                                }
-                            }
-                            #[cfg(not(feature = "hydrate"))]
-                            let _ = ev;
-                        }
-                        on:keydown=move |ev| {
-                            if ev.key() == "Escape" {
+                </article>
+                <div class="vk-editor-side grid gap-vk-4 min-w-0">
+                    <Show when=move || format.get() == DocumentFormatDto::Markdown && outline_open.get()>
+                        <dialog
+                            node_ref=outline_panel
+                            id="editor-outline-panel"
+                            class="vk-editor-outline"
+                            aria-labelledby="editor-outline-title"
+                            on:cancel=move |ev: leptos::ev::Event| {
                                 ev.prevent_default();
-                                ev.stop_propagation();
                                 close_outline();
                             }
-                        }
-                    >
-                        <div class="vk-editor-outline__head">
-                            <h2 id="editor-outline-title" class="vk-editor-outline__heading">"Mục lục"</h2>
-                            <IconButton
-                                id="editor-outline-close"
-                                icon=IconName::Close
-                                label="Đóng mục lục"
-                                on_press=move |_| {
+                            on:click=move |ev: leptos::ev::MouseEvent| {
+                                #[cfg(feature = "hydrate")]
+                                if let Some(panel) = outline_panel.get_untracked()
+                                    && ev.target().as_ref() == Some(panel.as_ref())
+                                {
+                                    let r = panel.get_bounding_client_rect();
+                                    let (x, y) = (f64::from(ev.client_x()), f64::from(ev.client_y()));
+                                    if x < r.left() || x >= r.right() || y < r.top() || y >= r.bottom() {
+                                        close_outline();
+                                    }
+                                }
+                                #[cfg(not(feature = "hydrate"))]
+                                let _ = ev;
+                            }
+                            on:keydown=move |ev| {
+                                if ev.key() == "Escape" {
+                                    ev.prevent_default();
+                                    ev.stop_propagation();
                                     close_outline();
                                 }
-                            />
-                        </div>
-                        {move || {
-                            let snapshot = body.outline.get();
-                            if body.state.get() == BodyState::Failed {
-                                view! { <p class="vk-editor-outline__empty">"Không mở được mục lục. Hãy tải lại trang."</p> }.into_any()
-                            } else if body.state.get() != BodyState::Ready || (snapshot.items.is_empty() && snapshot.status == OutlineStatus::Partial) {
-                                view! {
-                                    <p class="vk-editor-outline__empty">"Đang đọc mục lục…"</p>
-                                }
-                                .into_any()
-                            } else if snapshot.items.is_empty() {
-                                view! {
-                                    <p class="vk-editor-outline__empty">
-                                        "Chưa có đề mục. Dùng # hoặc nút H để tạo mục lục."
-                                    </p>
-                                }
-                                .into_any()
-                            } else {
-                                let partial = snapshot.status == OutlineStatus::Partial;
-                                view! {
-                                    <nav class="vk-editor-outline__nav" aria-labelledby="editor-outline-title">
-                                        {render_outline_items(
-                                            snapshot.items,
-                                            snapshot.generation,
-                                            snapshot.active_from,
-                                            body,
-                                            outline_open,
-                                        )}
-                                        <Show when=move || partial>
-                                            <p class="vk-editor-outline__empty">"Đang cập nhật phần còn lại…"</p>
-                                        </Show>
-                                    </nav>
-                                }
-                                .into_any()
                             }
-                        }}
-                    </dialog>
-                </Show>
-            </div>
-            <div class="vk-editor-work-info" on:focusin=move |_| last_field.set_value(Field::Tags)>
-                <crate::pages::work_info::WorkInfo work_id=work_id.get_value() session labels
-                    on_save=Callback::new(move |()| save()) tag_load=tag_load />
-            </div>
-            <section
-                id="editor-format-region"
-                class="vk-editor-format grid gap-vk-3 [min-inline-size:0] [padding:clamp(var(--vk-space-3),3vw,var(--vk-space-6))] rounded-vk-lg bg-vk-surface-container-low"
-                data-testid="editor-format-region"
-                aria-labelledby="editor-format-heading"
-            >
-                <div class="vk-editor-format__head [&>.vk-ui-heading]:m-0 [&>.vk-ui-heading]:[font-family:var(--vk-font-ui)] [&>.vk-ui-heading]:text-[length:var(--vk-type-body-size)] [&>.vk-ui-heading]:[font-weight:var(--vk-type-label-weight)] [&>.vk-ui-heading]:wrap-anywhere">
-                    <Heading level=HeadingLevel::H2 role=TypeRole::Title id="editor-format-heading">
-                        "Định dạng bản thảo"
-                    </Heading>
+                        >
+                            <div class="vk-editor-outline__head">
+                                <h2 id="editor-outline-title" class="vk-editor-outline__heading">"Mục lục"</h2>
+                                <IconButton
+                                    id="editor-outline-close"
+                                    icon=IconName::Close
+                                    label="Đóng mục lục"
+                                    on_press=move |_| {
+                                        close_outline();
+                                    }
+                                />
+                            </div>
+                            {move || {
+                                let snapshot = body.outline.get();
+                                if body.state.get() == BodyState::Failed {
+                                    view! { <p class="vk-editor-outline__empty">"Không mở được mục lục. Hãy tải lại trang."</p> }.into_any()
+                                } else if body.state.get() != BodyState::Ready || (snapshot.items.is_empty() && snapshot.status == OutlineStatus::Partial) {
+                                    view! {
+                                        <p class="vk-editor-outline__empty">"Đang đọc mục lục…"</p>
+                                    }
+                                    .into_any()
+                                } else if snapshot.items.is_empty() {
+                                    view! {
+                                        <p class="vk-editor-outline__empty">
+                                            "Chưa có đề mục. Dùng # hoặc nút H để tạo mục lục."
+                                        </p>
+                                    }
+                                    .into_any()
+                                } else {
+                                    let partial = snapshot.status == OutlineStatus::Partial;
+                                    view! {
+                                        <nav class="vk-editor-outline__nav" aria-labelledby="editor-outline-title">
+                                            {render_outline_items(
+                                                snapshot.items,
+                                                snapshot.generation,
+                                                snapshot.active_from,
+                                                body,
+                                                outline_open,
+                                            )}
+                                            <Show when=move || partial>
+                                                <p class="vk-editor-outline__empty">"Đang cập nhật phần còn lại…"</p>
+                                            </Show>
+                                        </nav>
+                                    }
+                                    .into_any()
+                                }
+                            }}
+                        </dialog>
+                    </Show>
+                    <details id="work-options" node_ref=options_panel class="vk-work-options rounded-vk-card bg-vk-bg-content min-w-0">
+                        <summary id="work-options-toggle" class="vk-work-options__toggle">
+                            <vink_ui::Icon name=IconName::FilterList size=vink_ui::IconSize::Small />
+                            <span>"Tùy chọn bài viết"</span>
+                            <Show when=move || review_pending.get()>
+                                <span class="vk-work-options__review">"Chờ duyệt"</span>
+                            </Show>
+                            <vink_ui::Icon name=IconName::ExpandMore size=vink_ui::IconSize::Small />
+                        </summary>
+                        <div class="vk-work-options__body grid gap-vk-3 min-w-0">
+                            <div on:focusin=move |_| last_field.set_value(Field::Tags)>
+                                {view! {
+                                    <crate::pages::work_info::WorkInfo work_id=work_id.get_value() session labels
+                                        on_save=Callback::new(move |()| save()) tag_load=tag_load />
+                                }.into_any()}
+                            </div>
+                            <section
+                                id="editor-format-region"
+                                class="grid gap-vk-2 min-w-0"
+                                data-testid="editor-format-region"
+                                aria-labelledby="editor-format-select-label"
+                            >
+                                <Select
+                                    id="editor-format-select"
+                                    label="Định dạng"
+                                    options=format_options.clone()
+                                    value=selected_format
+                                    variant=SelectVariant::Inset16
+                                    disabled=format_select_disabled
+                                    on_change=on_format_change
+                                />
+                                {move || conversion_notice.get().map(|text| view! {
+                                    <p data-testid="conversion-notice" role="alert">{text}</p>
+                                })}
+                            </section>
+                            {view! {
+                                <crate::pages::publication::PublicationPanel work_id=work_id.get_value() session review_pending
+                                    on_save=Callback::new(move |()| save())
+                                    is_composing=Callback::new(move |()| body.is_composing()) />
+                            }.into_any()}
+                        </div>
+                    </details>
                 </div>
-                <Select
-                    id="editor-format-select"
-                    label="Chọn định dạng bản thảo"
-                    options=format_options.clone()
-                    value=selected_format
-                    variant=SelectVariant::Inset16
-                    disabled=format_select_disabled
-                    on_change=on_format_change
-                />
-                {move || conversion_notice.get().map(|text| view! {
-                    <p data-testid="conversion-notice" role="alert">{text}</p>
-                })}
-                <p class="vk-muted vk-editor-format__hint m-0 text-[length:var(--vk-type-label-size)]">
-                    "Mặc định giữ tiêu đề riêng; Markdown bật Live Preview và lấy H1 đầu tiên làm tên tác phẩm."
-                </p>
-            </section>
-            <crate::pages::publication::PublicationPanel work_id=work_id.get_value() session
-                on_save=Callback::new(move |()| save())
-                is_composing=Callback::new(move |()| body.is_composing()) />
+            </div>
         </form>
         {
             let confirming = move || stage() == Some(LeaveStage::ConfirmingDiscard);
@@ -2194,45 +2207,25 @@ fn Editor(draft: Draft) -> impl IntoView {
                     attr:data-testid="leave-editor" />
             }
         }
-        <vink_ui::Dialog id="draft-preview" open=Signal::derive(move || preview.with(Option::is_some))
-            title="Xem trước bản nháp"
-            context="Dùng chữ đang có trên trang, kể cả phần chưa lưu. Chỉ bạn thấy; chưa gửi duyệt, chưa công khai."
+        <vink_ui::Dialog id="editor-text-conflict"
+            open=Signal::derive(move || conflict_open.get() && matches!(status(), SaveStatus::Conflict { .. }))
+            title="Có bản mới trên máy chủ."
+            context="Chữ đang viết vẫn còn trên trang. Lưu đè sẽ thay bản trên máy chủ bằng nội dung đang viết."
             focus_title=true
             dismiss=vink_ui::DismissPolicy::EscapeOnly
-            on_dismiss=move |_| { preview.set(None); restore_scroll(page_scroll); }
+            on_dismiss=move |_| conflict_open.set(false)
             actions=move || view! {
-                <Button variant=ButtonVariant::Tonal
-                    id="preview-close"
+                <Button variant=ButtonVariant::Tonal id="conflict-stay"
+                    on_press=move |_| conflict_open.set(false)>"Ở lại viết"</Button>
+                <Button variant=ButtonVariant::Danger id="keep-mine"
                     on_press=move |_| {
-                        preview.set(None);
-                        restore_scroll(page_scroll);
-                    }
-                >
-                    "Đóng"
-                </Button>
+                        conflict_open.set(false);
+                        session.update(|s| s.text.keep_local_text());
+                        save();
+                    }>"Lưu đè bản của tôi"</Button>
             }
-            attr:data-testid="draft-preview">
-            {move || {
-                preview
-                    .get()
-                    .map(|(title, document)| {
-                        let empty = !crate::document::has_text(&document);
-                        let document = ReadingDocument::new(&document);
-                        let title_in_body = document.title_in_body();
-                        let title = untitled(&title);
-                        let body = if empty {
-                            view! { <p class="vk-muted">"Chưa có nội dung."</p> }.into_any()
-                        } else {
-                            document.render(&title)
-                        };
-                        view! {
-                            <article class="vk-preview" lang="vi">
-                                {(!title_in_body).then(|| view! { <Heading level=HeadingLevel::H2 role=TypeRole::Headline>{title}</Heading> })}
-                                {body}
-                            </article>
-                        }
-                    })
-            }}
+            attr:data-testid="conflict">
+            <p>{move || status_detail(status())}</p>
         </vink_ui::Dialog>
         <vink_ui::Dialog
             id="format-convert-dialog"
@@ -2388,6 +2381,56 @@ fn outline_item_tier(level: u8, is_first_h1: bool) -> (&'static str, u8) {
     }
 }
 
+// The same container query lays out the sidebar and sets the default disclosure state.
+#[cfg(feature = "hydrate")]
+fn observe_editor_options(node: NodeRef<html::Details>) {
+    use std::cell::Cell;
+    use wasm_bindgen::{JsCast, closure::Closure};
+
+    Effect::new(move |_| {
+        let Some(panel) = node.get() else { return };
+        let docked = Cell::new(None);
+        let sync = move || {
+            let Some(panel) = node.get_untracked() else {
+                return;
+            };
+            let wide = window()
+                .get_computed_style(&panel)
+                .ok()
+                .flatten()
+                .and_then(|css| css.get_property_value("--vk-editor-options-docked").ok())
+                .is_some_and(|value| value.trim() == "1");
+            if docked.replace(Some(wide)) == Some(wide) {
+                return;
+            }
+            if wide {
+                let _ = panel.set_attribute("open", "");
+            } else {
+                if document()
+                    .active_element()
+                    .is_some_and(|active| panel.contains(Some(&active)))
+                {
+                    focus_element_by_id("work-options-toggle");
+                }
+                let _ = panel.remove_attribute("open");
+            }
+        };
+        sync();
+        let callback = Closure::<dyn FnMut()>::new(sync);
+        if let Ok(observer) = web_sys::ResizeObserver::new(callback.as_ref().unchecked_ref()) {
+            observer.observe(&panel);
+            if let Ok(Some(page)) = panel.closest(".vk-desk--editor") {
+                observer.observe(&page);
+            }
+            let cleanup = send_wrapper::SendWrapper::new((observer, callback));
+            on_cleanup(move || {
+                let (observer, _callback) = cleanup.take();
+                observer.disconnect();
+            });
+        }
+    });
+}
+
 // The CSS container query owns the breakpoint. Native modal focus containment follows the
 // actual painted layout, including changes to the rail width or text scale while open.
 #[cfg(feature = "hydrate")]
@@ -2427,8 +2470,8 @@ fn observe_outline_layout(node: NodeRef<html::Dialog>) {
         if let Ok(observer) = web_sys::ResizeObserver::new(callback.as_ref().unchecked_ref()) {
             if let Some(panel) = node.get_untracked() {
                 observer.observe(&panel);
-                if let Some(parent) = panel.parent_element() {
-                    observer.observe(&parent);
+                if let Ok(Some(page)) = panel.closest(".vk-desk--editor") {
+                    observer.observe(&page);
                 }
             }
             let cleanup = send_wrapper::SendWrapper::new((observer, callback));
@@ -2621,18 +2664,6 @@ fn restore_scroll(page_scroll: StoredValue<f64>) {
     }
     #[cfg(not(feature = "hydrate"))]
     let _ = page_scroll;
-}
-
-fn status_text(status: SaveStatus) -> String {
-    match status {
-        SaveStatus::Saved { .. } => "Đã lưu",
-        SaveStatus::Unsaved => "Chưa lưu",
-        SaveStatus::Saving => "Đang lưu…",
-        SaveStatus::Conflict { .. } => "Có bản mới trên máy chủ.",
-        failed @ SaveStatus::Failed(_) if save_is_uncertain(failed) => "Chưa xác nhận lưu.",
-        SaveStatus::Failed(_) => "Chưa lưu được.",
-    }
-    .into()
 }
 
 fn status_detail(status: SaveStatus) -> String {
@@ -2870,8 +2901,7 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
         (None, TagLoad::Loading, _) => "Đang tải thông tin thẻ từ máy chủ.".into(),
         (None, TagLoad::Ready, _) => "Chưa có thông tin thẻ.".into(),
         (None, TagLoad::Failed(_), _) => {
-            "Không tải được thông tin thẻ từ máy chủ; kiểm tra mục Thông tin tác phẩm bên dưới."
-                .into()
+            "Không tải được thông tin thẻ từ máy chủ; kiểm tra mục Tùy chọn bài viết.".into()
         }
     };
 
@@ -3211,7 +3241,7 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
 
 /// The toolbar's one status line for both parts. Text states keep their words; tag states are
 /// named as tags, so a saved text never reads as saved tags.
-#[cfg_attr(not(test), allow(dead_code))]
+#[cfg(test)]
 fn draft_status_text(text: SaveStatus, tags: Option<&TagStatus>) -> String {
     project_save_slot(&SaveSlotFacts {
         text,
@@ -3228,7 +3258,7 @@ fn draft_status_text(text: SaveStatus, tags: Option<&TagStatus>) -> String {
     .status_text
 }
 
-#[cfg_attr(not(test), allow(dead_code))]
+#[cfg(test)]
 fn draft_status_token(text: SaveStatus, tags: Option<&TagStatus>) -> &'static str {
     project_save_slot(&SaveSlotFacts {
         text,
@@ -3245,7 +3275,7 @@ fn draft_status_token(text: SaveStatus, tags: Option<&TagStatus>) -> &'static st
     .status_token
 }
 
-#[cfg_attr(not(test), allow(dead_code))]
+#[cfg(test)]
 fn draft_status_detail(text: SaveStatus, tags: Option<&TagStatus>) -> String {
     project_save_slot(&SaveSlotFacts {
         text,
@@ -3333,6 +3363,7 @@ pub(crate) fn failure(error: &ApiError) -> Failure {
         | ApiError::FollowActorUnavailable
         | ApiError::FollowConflict { .. }
         | ApiError::FollowKeyReused
+        | ApiError::HandleRefused(_)
         | ApiError::Unexpected { .. } => Failure::Unexpected,
     }
 }
@@ -3687,16 +3718,23 @@ mod editor_presentation_tests {
 
     #[test]
     fn compact_saved_status_keeps_only_the_acknowledged_version_in_detail() {
+        let saved_tags = TagStatus::Saved { version: 1 };
         let mut session = EditorSession::loaded(6);
         session.edited();
         let ticket = session.begin_save().expect("edited snapshot");
         session.edited();
         session.save_succeeded(ticket, 7);
-        assert_eq!(status_text(session.status()), "Chưa lưu");
+        assert_eq!(
+            draft_status_text(session.status(), Some(&saved_tags)),
+            "Chưa lưu chữ"
+        );
         assert!(!status_detail(session.status()).contains("Đã lưu"));
         let ticket = session.begin_save().expect("newer text still needs saving");
         session.save_succeeded(ticket, 8);
-        assert_eq!(status_text(session.status()), "Đã lưu");
+        assert_eq!(
+            draft_status_text(session.status(), Some(&saved_tags)),
+            "Đã lưu"
+        );
         assert_eq!(
             status_detail(session.status()),
             "Đã lưu bản nháp phiên bản 8."
@@ -3705,9 +3743,10 @@ mod editor_presentation_tests {
 
     #[test]
     fn unknown_rejected_and_conflict_have_distinct_truthful_recovery_copy() {
+        let saved_tags = TagStatus::Saved { version: 1 };
         for failure in [Failure::Network, Failure::Unavailable, Failure::Unexpected] {
             assert_eq!(
-                status_text(SaveStatus::Failed(failure)),
+                draft_status_text(SaveStatus::Failed(failure), Some(&saved_tags)),
                 "Chưa xác nhận lưu."
             );
             assert!(failure_detail(failure).contains("Máy chủ chưa xác nhận."));
@@ -3718,7 +3757,10 @@ mod editor_presentation_tests {
             Failure::NotFound,
             Failure::Invalid,
         ] {
-            assert_eq!(status_text(SaveStatus::Failed(failure)), "Chưa lưu được.");
+            assert_eq!(
+                draft_status_text(SaveStatus::Failed(failure), Some(&saved_tags)),
+                "Chưa lưu được."
+            );
             assert!(failure_detail(failure).starts_with(failure_reason(failure)));
             assert!(!failure_detail(failure).contains("Máy chủ chưa xác nhận."));
         }
@@ -3729,7 +3771,10 @@ mod editor_presentation_tests {
             );
         }
         let conflict = SaveStatus::Conflict { server_version: 9 };
-        assert_eq!(status_text(conflict), "Có bản mới trên máy chủ.");
+        assert_eq!(
+            draft_status_text(conflict, Some(&saved_tags)),
+            "Có bản mới trên máy chủ."
+        );
         assert!(status_detail(conflict).contains("phiên bản 9"));
         assert!(status_detail(conflict).contains("chưa được lưu vào bản đó"));
     }

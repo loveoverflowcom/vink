@@ -59,7 +59,7 @@ export async function editorPaperFirst(page, { args, check, editorTarget, fitsEd
         await page.viewport(1440);
         await page.eval('document.documentElement.style.fontSize="' + scale + '%"; document.documentElement.dataset.theme="' + theme + '"');
         await page.waitFor('getComputedStyle(document.documentElement).fontSize==="' + (16 * scale / 100) + 'px"', 'editor root font-size fixture');
-        for (const width of [320,390,834,1440]) {
+        for (const width of [320,390,1024,1440]) {
           await page.viewport(width,900);
           await page.eval(`document.activeElement?.blur(); scrollTo(0,0); document.fonts.ready.then(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))))`);
           const stem=`paper-${state}-${width}-${scale}-${theme}`;
@@ -91,7 +91,7 @@ export async function editorPaperFirst(page, { args, check, editorTarget, fitsEd
           check(fitsEditorAction(backTarget) && backTarget.focused && backTarget.focusRing &&
             backTarget.rect.width>=48 && backTarget.rect.height>=48 &&
             backOutline.outlineStyle==='solid' && backOutline.outlineWidth==='2px',
-            `${stem}: Tab reaches the tonal Back pill with a visible 2 px outline ${JSON.stringify({backTarget, backOutline})}`);
+            `${stem}: Tab reaches the tonal Back control with a visible 2 px outline ${JSON.stringify({backTarget, backOutline})}`);
 
           const summaryFocused = `document.activeElement?.matches(${JSON.stringify(summary)})`;
           for (let step = 0; step < 8 && !await page.eval(summaryFocused); step++) await page.key('Tab');
@@ -104,7 +104,7 @@ export async function editorPaperFirst(page, { args, check, editorTarget, fitsEd
           const toolsTarget=await editorTarget(page,summary);
           check(fitsEditorAction(toolsTarget) && toolsTarget.focused && toolsTarget.focusRing && toolsTarget.rect.width>=48 && toolsTarget.rect.height>=48 && !await page.eval(`Boolean(document.querySelector('#editor-save-details button'))`), `${stem}: opened tools keep server details without download action`);
           await page.key('Escape');
-          check(await page.eval(`document.querySelector('#editor-save-details').open && document.activeElement.matches('${summary}') && !document.querySelector('#draft-preview').open`), `${stem}: Escape respects native disclosure semantics`);
+          check(await page.eval(`document.querySelector('#editor-save-details').open && document.activeElement.matches('${summary}') && !document.querySelector('#draft-preview, #preview')`), `${stem}: Escape respects native disclosure semantics`);
           await page.capture(stem+'-tools',{scenario:'Editor native tools',textScaleLane:'dom-override-geometry-only',action:toolsTarget});
           await page.key('Space');
           check(await page.eval(`!document.querySelector('#editor-save-details').open && document.activeElement.matches('${summary}')`), `${stem}: Space closes native disclosure on trigger`);
@@ -129,14 +129,14 @@ export async function editorPaperFirst(page, { args, check, editorTarget, fitsEd
     await page.send('Emulation.setTouchEmulationEnabled',{enabled:false});
     await page.typeInBody(' Lấy chữ mới khi công cụ còn mở.');
     check(await page.eval(`document.querySelector('#editor-save-details').open`),'typing leaves the native tools open');
-    await page.click('#preview'); await page.waitFor(`document.querySelector('#draft-preview').open`,'preview after open tools');
-    check(await page.eval(`!document.querySelector('#editor-save-details').open && document.querySelector('#draft-preview').textContent.includes('Lấy chữ mới khi công cụ còn mở.')`),'preview closes tools and reads current text');
-    await page.key('Escape');
-    await page.waitFor(`document.activeElement.id==='preview'`,'preview returns to its visible direct trigger');
-    check(await page.eval(`document.activeElement.checkVisibility() && ${same}`),'preview dismiss never returns into collapsed tools');
+    check(await page.eval(`!document.querySelector('#preview, #draft-preview') && ${same} && ${view}.state.doc.toString().endsWith(' Lấy chữ mới khi công cụ còn mở.')`),
+      'tools retain unsaved text and the only EditorView while standalone preview is absent');
     const {nodes}=await page.send('Accessibility.getFullAXTree');
-    check(nodes.some(n=>n.name?.value==='Thêm' && n.role?.value==='DisclosureTriangle') && nodes.some(n=>n.name?.value==='Xem trước' && n.role?.value==='button') && nodes.some(n=>n.name?.value==='Bàn viết' && n.role?.value==='link'),'AX tree exposes native disclosure, direct preview and Bàn viết back link');
-    check(writes===0 && await page.status()==='unsaved','tools, appearance and preview perform no mutation or accidental form submit');
+    check(nodes.some(n=>n.name?.value==='Chi tiết lưu' && n.role?.value==='DisclosureTriangle')
+      && !nodes.some(n=>/^Xem trước(?: bản nháp)?$/.test(n.name?.value ?? ''))
+      && nodes.some(n=>n.name?.value==='Bàn viết' && n.role?.value==='link'),
+    'AX exposes the save disclosure and Back link without a standalone preview action');
+    check(writes===0 && await page.status()==='unsaved','tools, resize and typing perform no mutation');
   } finally {
     page.cdp.listeners=page.cdp.listeners.filter(x=>x!==listener);
     await page.viewport(1440);
