@@ -1,0 +1,111 @@
+Local Vink, arm64, 2026-11-24 UTC. Selected original stdout lines.
+wall: whole command. largest_child_maxrss: KiB. cgroup_cumulative_peak: bytes across a container session.
+Browser: fresh profile and scratch data. All browser timings include their selected build/fixture/runtime/teardown.
+Full logs and SHA-256 manifest in private handoff.
+
+source 888b7534f39725da553b57221f8be78151aba65c
+restart-fresh
+==> wasm-bindgen: MISS (receipt missing or invalid)
+browser-smoke: PASS (restart-prepare)
+browser-smoke: PASS (after-restart)
+wall=22.425s largest_child_maxrss=4111640 KiB cgroup_cumulative_peak=4295897088 bytes exit=0
+
+restart-reused
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: PASS (restart-prepare)
+browser-smoke: PASS (after-restart)
+wall=15.657s largest_child_maxrss=1146488 KiB cgroup_cumulative_peak=4295897088 bytes exit=0
+
+standalone-fresh
+==> wasm-bindgen: MISS (receipt missing or invalid)
+browser-smoke: FAIL timed out waiting for the second account can open the public author profile
+  FAIL  scenario standalone (real Identity/local outbox): browser smoke --phase standalone: exited with exit status: 1
+  (later steps NOT_RUN)
+wall=267.630s largest_child_maxrss=3013180 KiB cgroup_cumulative_peak=4295897088 bytes exit=1
+
+standalone-reused
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: PASS (standalone)
+  PASS  scenario standalone (real Identity/local outbox)
+wall=22.064s largest_child_maxrss=809716 KiB cgroup_cumulative_peak=4295897088 bytes exit=0
+
+default-web-union
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: PASS (editor-first-draft)
+browser-smoke: PASS (editor-first-draft)
+  PASS  first-use draft formats with fresh scratch principals
+  FAIL  scenario reader (reader): interrupted; owned command group stopped
+  (later steps NOT_RUN)
+wall=323.138s largest_child_maxrss=2302880 KiB cgroup_cumulative_peak=4295897088 bytes exit=1
+
+selected-pg
+  PASS  shared store: migration lifecycle and error classes
+wall=5.172s largest_child_maxrss=484456 KiB cgroup_cumulative_peak=4295897088 bytes exit=0
+
+source 6e38dc98c4d454e4d4b4613b61ed90049146dadf
+current-editor
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: FAIL uncertain tag save removes export and keeps direct retry outside tools
+  FAIL  scenario editor (editor): browser smoke --phase editor --build-profile dev: exited with exit status: 1
+  (later steps NOT_RUN)
+wall=60.197s largest_child_maxrss=1813124 KiB cgroup_cumulative_peak=4295020544 bytes exit=1
+
+first-draft-full
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: PASS (editor-first-draft)
+browser-smoke: PASS (editor-first-draft)
+  PASS  first-use draft formats with fresh scratch principals
+wall=17.121s largest_child_maxrss=1146480 KiB cgroup_cumulative_peak=4295020544 bytes exit=0
+
+first-draft-checks
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: PASS (editor-first-draft)
+browser-smoke: PASS (editor-first-draft)
+  PASS  first-use draft formats with fresh scratch principals
+wall=17.280s largest_child_maxrss=1146384 KiB cgroup_cumulative_peak=4295020544 bytes exit=0
+
+csr-final-fresh
+==> wasm-bindgen: MISS (receipt missing or invalid)
+browser-smoke: PASS (standalone)
+  PASS  scenario standalone (real Identity/local outbox)
+wall=68.140s largest_child_maxrss=3013108 KiB cgroup_cumulative_peak=4295217152 bytes exit=0
+
+csr-final-reused
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: PASS (standalone)
+  PASS  scenario standalone (real Identity/local outbox)
+wall=23.494s largest_child_maxrss=809980 KiB cgroup_cumulative_peak=4295749632 bytes exit=0
+
+release-perf
+  FAIL  selected artifacts: build browser bundle (vink-web, perf-probe): exited with exit status: 101
+  (later steps NOT_RUN)
+wall=494.369s largest_child_maxrss=4068488 KiB cgroup_cumulative_peak=4295749632 bytes exit=1
+
+reused-release-perf
+  FAIL  selected artifacts: interrupted; owned command group stopped
+  (later steps NOT_RUN)
+wall=44.062s largest_child_maxrss=81332 KiB cgroup_cumulative_peak=4295749632 bytes exit=1
+
+csr-controlled-miss
+==> wasm-bindgen: MISS (receipt missing or invalid)
+browser-smoke: PASS (standalone)
+  PASS  scenario standalone (real Identity/local outbox)
+wall=29.022s largest_child_maxrss=3013188 KiB cgroup_cumulative_peak=4295372800 bytes exit=0
+
+csr-controlled-hit
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: PASS (standalone)
+  PASS  scenario standalone (real Identity/local outbox)
+wall=23.294s largest_child_maxrss=809940 KiB cgroup_cumulative_peak=4295372800 bytes exit=0
+
+current-desk
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: FAIL readonly counters offer no endorsement mutation or nested targets
+  FAIL  scenario desk (desk): browser smoke --phase desk --build-profile dev: exited with exit status: 1
+  (later steps NOT_RUN)
+wall=45.042s largest_child_maxrss=2303640 KiB cgroup_cumulative_peak=4295372800 bytes exit=1
+
+sha256(package file checksum list) restart-fresh-hydrate 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+sha256(package file checksum list) restart-reused-hydrate 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+sha256(package file checksum list) csr-controlled-miss-csr 2d2bf171f6c65c0d3a22d20a936287d4b2129619244c62b7615b59d7efc181f9
+sha256(package file checksum list) csr-controlled-hit-csr 2d2bf171f6c65c0d3a22d20a936287d4b2129619244c62b7615b59d7efc181f9

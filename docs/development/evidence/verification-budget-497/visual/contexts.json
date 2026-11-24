@@ -1,0 +1,130 @@
+[
+  {
+    "file": "desk-controls-1440.png",
+    "run": "1795541819815304232-913/desk",
+    "capture": "failure",
+    "source": {
+      "sourceSHA": "6e38dc98c4d454e4d4b4613b61ed90049146dadf",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "e81e12d537c70f0560969b089426e2b46d7803b41a6cb1bb5468f708bf87c162"
+    },
+    "route": "/ban-viet",
+    "scenarioId": "failure",
+    "executionPhase": "desk",
+    "captureStatus": "CAPTURED",
+    "viewport": {
+      "width": 1440,
+      "height": 900,
+      "layoutWidth": 1425,
+      "clientWidth": 1425,
+      "clientHeight": 900,
+      "dpr": 1
+    },
+    "effectiveTheme": "light",
+    "textScale": 100,
+    "textScaleLane": "default-100",
+    "png": {
+      "width": 1440,
+      "height": 900,
+      "byteSize": 129017,
+      "sha256": "7cd083755cea4f39b317f6ae0230e6476ac52c5efb874b382fa58a0e83b154ff"
+    }
+  },
+  {
+    "file": "editor-dark-390.png",
+    "run": "1795541005873216042-70/editor",
+    "capture": "390-editor-dirty-dark",
+    "source": {
+      "sourceSHA": "6e38dc98c4d454e4d4b4613b61ed90049146dadf",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "e81e12d537c70f0560969b089426e2b46d7803b41a6cb1bb5468f708bf87c162"
+    },
+    "route": "/ban-viet/01a20e95-813b-7445-a04d-b2d479964229",
+    "scenarioId": "390-editor-dirty-dark",
+    "executionPhase": "editor",
+    "captureStatus": "CAPTURED",
+    "viewport": {
+      "width": 390,
+      "height": 900,
+      "layoutWidth": 375,
+      "clientWidth": 375,
+      "clientHeight": 900,
+      "dpr": 1
+    },
+    "effectiveTheme": "dark",
+    "textScale": 100,
+    "textScaleLane": "default-100",
+    "png": {
+      "width": 390,
+      "height": 900,
+      "byteSize": 48561,
+      "sha256": "3a8248d6b89b5adfcd7f4cb7236cb5d51bc35ae8c88e6f7a55c25b0f8cc2d472"
+    }
+  },
+  {
+    "file": "first-draft-default-320.png",
+    "run": "1795541033317424150-514/editor-first-draft/default",
+    "capture": "first-draft-default-320-200",
+    "source": {
+      "sourceSHA": "6e38dc98c4d454e4d4b4613b61ed90049146dadf",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "e81e12d537c70f0560969b089426e2b46d7803b41a6cb1bb5468f708bf87c162"
+    },
+    "route": "/ban-viet",
+    "scenarioId": "first-draft-format",
+    "executionPhase": "editor-first-draft",
+    "captureStatus": "CAPTURED",
+    "viewport": {
+      "width": 320,
+      "height": 900,
+      "layoutWidth": 305,
+      "clientWidth": 305,
+      "clientHeight": 900,
+      "dpr": 1
+    },
+    "effectiveTheme": "light",
+    "textScale": 200,
+    "textScaleLane": "dom-override-geometry-only",
+    "png": {
+      "width": 320,
+      "height": 900,
+      "byteSize": 53826,
+      "sha256": "baabc021ea99549648dfdc074f4477d558cd525786c1ea1d56efcf086d1120a3"
+    }
+  },
+  {
+    "file": "first-draft-markdown-320.png",
+    "run": "1795541033317424150-514/editor-first-draft/markdown",
+    "capture": "first-draft-markdown-320-200",
+    "source": {
+      "sourceSHA": "6e38dc98c4d454e4d4b4613b61ed90049146dadf",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "e81e12d537c70f0560969b089426e2b46d7803b41a6cb1bb5468f708bf87c162"
+    },
+    "route": "/ban-viet",
+    "scenarioId": "first-draft-format",
+    "executionPhase": "editor-first-draft",
+    "captureStatus": "CAPTURED",
+    "viewport": {
+      "width": 320,
+      "height": 900,
+      "layoutWidth": 305,
+      "clientWidth": 305,
+      "clientHeight": 900,
+      "dpr": 1
+    },
+    "effectiveTheme": "dark",
+    "textScale": 200,
+    "textScaleLane": "dom-override-geometry-only",
+    "png": {
+      "width": 320,
+      "height": 900,
+      "byteSize": 55584,
+      "sha256": "e1f37b957f558dfef583dbb53154b4413f37ea23bcee8f995068cd133b3eb0f2"
+    }
+  }
+]
