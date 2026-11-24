@@ -3565,9 +3565,16 @@ async function draftDashboard(page) {
   // Give the isolated smoke document a same-route predecessor for a real browser traversal.
   await page.eval(`history.pushState(null, '', location.href)`);
   await page.click('#open-draft-search');
+  await page.waitFor(`!document.querySelector('.vk-draft-search').hidden && document.activeElement.id === 'draft-search'`,
+    'the reopened dock owns focus before Back');
   await page.eval(`history.back()`);
   await page.waitFor(`location.pathname==='/ban-viet' && document.activeElement.id==='open-draft-search' &&
     document.querySelector('.vk-draft-search').hidden`, 'Back closes the private dock on its current route');
+  // Back restores focus on the rendering frame. Start the independent viewport matrix
+  // after that frame and Chrome's traversal, including when capture omits PNG painting.
+  await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
+  check(await page.eval(`document.activeElement.id === 'open-draft-search' && document.querySelector('.vk-draft-search').hidden`),
+    'Back leaves the closed dock and its launcher focus stable after paint');
 
   for (const theme of ['light','dark']) for (const scale of [100,200]) for (const width of [1536,1440,1280,1024,834,390,320]) {
     await page.viewport(width);
