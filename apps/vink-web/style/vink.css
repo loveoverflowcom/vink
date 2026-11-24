@@ -748,11 +748,54 @@ a {
 .vk-empty-state__actions #create-draft > .vk-ui-icon { display: none; }
 .vk-empty-state__actions > .vk-desk-create { justify-content: center; text-align: start; }
 
-/* Paper First (#218): quiet context/tools in flow; the manuscript owns the surface. */
+/* R4 editor (#475): the manuscript and article options share one workspace. */
 
-.vk-ui-scaffold:has(.vk-desk--editor) { background: var(--vk-surface-container-low); }
+.vk-ui-scaffold:has(.vk-desk--editor) { background: var(--vk-bg-page); }
 
-.vk-desk--editor { max-width: calc(var(--vk-measure) + 2 * var(--vk-space-6)); margin-inline: auto; container: vk-editor-page / inline-size; }
+.vk-desk--editor {
+  --vk-editor-column-gap: calc(var(--vk-space-4) + var(--vk-space-1));
+  max-inline-size: calc(48rem + 17rem + var(--vk-editor-column-gap));
+  margin-inline: auto;
+  container: vk-editor-page / inline-size;
+}
+
+.vk-editor-topbar {
+  inline-size: 100%;
+  max-inline-size: 48rem;
+  margin-inline: auto;
+  --vk-ui-control-radius: var(--vk-radius-control-48);
+}
+
+.vk-editor-topbar .vk-editor-toolbar { justify-content: flex-start; }
+.vk-editor-topbar .vk-save-slot { flex: 0 1 auto; }
+.vk-editor-topbar .vk-editor-tools { position: relative; }
+.vk-editor-topbar .vk-editor-tools[open] { flex-basis: auto; }
+.vk-editor-topbar .vk-editor-tools > summary {
+  justify-content: center;
+  min-inline-size: var(--vk-density-control-height);
+  padding-inline: var(--vk-space-2);
+  border-radius: var(--vk-radius-control-48);
+  background: var(--vk-bg-inset);
+}
+.vk-editor-topbar .vk-editor-tools__content {
+  position: absolute;
+  inset: calc(100% + var(--vk-space-1)) 0 auto auto;
+  z-index: 20;
+  inline-size: min(16rem, 45vw);
+  box-sizing: border-box;
+  padding: var(--vk-space-3);
+  border: 1px solid var(--vk-outline-variant);
+  border-radius: var(--vk-radius-card);
+  background: var(--vk-bg-content);
+}
+@container vk-editor-page (max-width: 32rem) {
+  .vk-editor-topbar .vk-editor-tools { position: static; }
+  .vk-editor-topbar { position: relative; }
+  .vk-editor-topbar .vk-editor-tools__content {
+    inline-size: min(16rem, 100%);
+  }
+}
+.vk-editor-topbar .vk-draft-action-icon { inline-size: 18px; block-size: 18px; }
 
 .vk-editor-heading__back {
   position: relative;
@@ -767,7 +810,7 @@ a {
   margin-inline-start: 0;
   padding: var(--vk-density-control-padding) var(--vk-space-4) var(--vk-density-control-padding) var(--vk-space-3);
   border: 1px solid transparent;
-  border-radius: var(--vk-radius-full);
+  border-radius: var(--vk-radius-control-48);
   background-color: var(--vk-action-tonal-container);
   color: var(--vk-action-tonal-content);
   font-family: var(--vk-type-label-font);
@@ -835,11 +878,9 @@ a {
 .vk-editor-paper {
   display: flex;
   flex-direction: column;
-  gap: var(--vk-space-6);
+  gap: var(--vk-space-4);
   min-inline-size: 0;
-  padding: clamp(var(--vk-space-3), 3vw, var(--vk-space-6));
-  border-radius: var(--vk-radius-lg);
-  background: var(--vk-surface);
+  padding: clamp(var(--vk-space-4), 3vw, var(--vk-space-6));
 }
 
 .vk-editor-paper > .vk-ui-field { margin: 0; }
@@ -878,9 +919,9 @@ a {
 }
 /* Bound decoration on phones independently of the user's text size. The page and paper
    each retain a token gutter for focus; desktop writing measure and all targets stay intact. */
-@media (max-width: 47.999rem) {
-  .vk-main:has(> .vk-desk--editor) { padding-inline: min(var(--vk-space-2), 8px); }
-  .vk-desk--editor .vk-editor-paper { padding-inline: min(var(--vk-space-2), 8px); }
+@media (max-width: 759px) {
+  .vk-main:has(> .vk-desk--editor) { padding-inline: var(--vk-size-gutter-narrow); }
+  .vk-desk--editor .vk-editor-paper { padding-inline: min(var(--vk-space-4), 5vw); }
 }
 .vk-desk--editor .vk-notice__actions { margin-top: var(--vk-space-2); }
 .vk-desk--editor .vk-notice__actions > .vk-ui-action { flex: 0 1 auto; min-width: 0; }
@@ -895,19 +936,22 @@ a {
 .vk-editor-recovery .vk-ui-supporting-details__content > p { margin: 0; overflow-wrap: break-word; }
 .vk-editor-recovery .vk-ui-supporting-details__content > p + p { margin-block-start: var(--vk-space-2); }
 
-.vk-editor > .vk-editor-recovery { padding: var(--vk-space-3); }
-.vk-editor > .vk-editor-recovery :is(.vk-ui-button, summary) { padding-inline: var(--vk-space-2); }
-.vk-editor > .vk-editor-recovery .vk-ui-button { padding-block: var(--vk-space-1); }
-
-/* Thông tin tác phẩm (TAG-PR-05): the sheet geometry lives in WorkInfo. Keep the status color
-   cascade and the composition rules for Text, TagSelector and SupportingDetails here. */
+/* WorkInfo keeps the taxonomy status and recovery inside the article options. */
+.vk-work-info__heading:empty { display: none; }
 .vk-work-info__status { color: var(--vk-on-surface-variant); }
 .vk-work-info__status:is([data-status="failed"], [data-status="refused"]) { color: var(--vk-error); }
-.vk-work-info > .vk-ui-text { margin: 0; }
-.vk-work-info .vk-tag-selector { margin-block-start: var(--vk-space-2); }
-.vk-work-info__selection { overflow-wrap: anywhere; }
-.vk-work-info > .vk-ui-supporting-details > summary { width: fit-content; max-width: 100%; }
-.vk-work-info > .vk-ui-supporting-details > .vk-ui-supporting-details__content { padding: 0; background: transparent; }
+.vk-work-options .vk-tag-selector { gap: var(--vk-space-3); }
+.vk-work-options .vk-tag-query[hidden] { display: none; }
+.vk-work-options .vk-tag-themes__controls {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--vk-space-2);
+}
+.vk-work-options .vk-tag-themes__controls > ul { margin: 0; }
+.vk-work-options :is(.vk-tag-chip, .vk-tag-themes__controls .vk-ui-button) {
+  --vk-ui-control-radius: var(--vk-radius-control-40);
+}
 
 /* Publication (PUB-AUTHOR-WEB-01): paragraph flow also covers shared notice/action content.
    Keep the live region visibility and recovery composition with the panel container rules. */
@@ -1096,14 +1140,51 @@ a {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: 24px;
+  gap: var(--vk-editor-column-gap);
+  inline-size: 100%;
+  max-inline-size: 48rem;
+  margin-inline: auto;
   min-inline-size: 0;
 }
+
+.vk-work-options {
+  --vk-editor-options-docked: 0;
+  --vk-ui-control-radius: var(--vk-radius-control-48);
+}
+.vk-work-options__toggle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  min-block-size: var(--vk-density-control-height);
+  gap: var(--vk-space-2);
+  padding-inline: var(--vk-space-3);
+  border-radius: var(--vk-radius-card);
+  cursor: pointer;
+  list-style: none;
+  font-weight: var(--vk-type-label-weight);
+  overflow-wrap: anywhere;
+}
+.vk-work-options__toggle::-webkit-details-marker { display: none; }
+.vk-work-options__toggle:focus-visible {
+  outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
+  outline-offset: var(--vk-size-focus-offset);
+}
+.vk-work-options__toggle > .vk-ui-icon:last-child { margin-inline-start: auto; }
+.vk-work-options[open] > .vk-work-options__toggle > .vk-ui-icon:last-child { transform: rotate(180deg); }
+.vk-work-options[open] .vk-work-options__review { display: none; }
+.vk-work-options__review { color: var(--vk-on-surface-variant); font-size: var(--vk-type-label-size); }
+.vk-work-options__body { padding: 0 var(--vk-space-3) var(--vk-space-3); }
+.vk-work-options__body > :not(:first-child) {
+  border-block-start: 1px solid var(--vk-outline-variant);
+  padding-block-start: var(--vk-space-3);
+}
+.vk-work-options .vk-ui-select { border-radius: var(--vk-radius-control-48); }
+.vk-work-options .vk-publication__choice { flex: 1 1 auto; }
 
 .vk-md-toolbar .vk-ui-button {
   min-inline-size: var(--vk-density-control-height);
   padding-inline: var(--vk-space-3);
-  border-radius: var(--vk-radius-md);
+  border-radius: var(--vk-radius-control-40);
 }
 
 #md-bold .vk-ui-button__label {
@@ -1260,33 +1341,31 @@ a {
   color: var(--vk-on-primary-container);
 }
 
-@media (min-width: 1024px) {
-  html:not([data-text="150"]):not([data-text="200"]) .vk-desk--editor:has(.vk-editor[data-format="markdown"][data-outline-open="true"]) {
-    max-width: min(100%, calc(var(--vk-measure) + 17rem + 24px + 2 * var(--vk-space-6)));
+@container vk-editor-page (min-width: 50rem) {
+  .vk-editor-workspace {
+    max-inline-size: none;
+    grid-template-columns: minmax(0, 1fr) 17rem;
   }
 
-  @container vk-editor-page (min-width: 50rem) {
-    .vk-editor[data-format="markdown"][data-outline-open="true"] .vk-editor-workspace {
-      grid-template-columns: minmax(0, 1fr) 17rem;
-    }
-
-    .vk-editor[data-format="markdown"][data-outline-open="true"] .vk-editor-outline {
-      --outline-step: 16px;
-      position: sticky;
-      inset-block-start: var(--vk-space-4);
-      inset-inline: auto;
-      inset-block-end: auto;
-      z-index: auto;
-      max-block-size: calc(100dvh - 2 * var(--vk-space-4));
-      padding: var(--vk-space-4);
-      border-radius: var(--vk-radius-lg);
-      background: var(--vk-surface-container-low);
-    }
-
-    .vk-editor[data-format="markdown"][data-outline-open="true"] #editor-outline-close {
-      display: none;
-    }
+  .vk-editor-topbar {
+    max-inline-size: none;
+    inline-size: calc(100% - 17rem - var(--vk-editor-column-gap));
+    margin-inline-start: 0;
   }
+
+  .vk-work-options { --vk-editor-options-docked: 1; }
+
+  .vk-editor-outline {
+    --outline-step: 16px;
+    position: static;
+    inset: auto;
+    z-index: auto;
+    max-block-size: calc(100dvh - 2 * var(--vk-space-4));
+    border-radius: var(--vk-radius-card);
+    background: var(--vk-bg-content);
+  }
+
+  #editor-outline-close { display: none; }
 }
 
 /* Format conversion (#262): the app owns the confirmation dialog’s reading measure. */
@@ -1311,13 +1390,8 @@ a {
 
 /* Dialogs: shared surface, gutter, scroll and action layout live in vink-ui.css.
    Only the manuscript preview sets a reading measure for its content. */
-#draft-preview {
   inline-size: min(calc(var(--vk-measure) + 2 * var(--vk-overlay-gutter)), calc(100% - 2 * var(--vk-overlay-margin)));
 }
-#draft-preview .vk-ui-dialog__content { min-inline-size: 0; }
-.vk-preview { margin: var(--vk-space-1) 0 0; }
-.vk-preview .vk-block:last-child { margin-bottom: 0; }
-#draft-preview .vk-preview > h2 { margin-top: 0; overflow-wrap: anywhere; }
 
 
 @media (min-width: 48rem) {

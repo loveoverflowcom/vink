@@ -188,8 +188,10 @@ async function titleValidation(page, { args, check }) {
   page.cdp.listeners.push(observe);
   try {
     await page.key('s', page.mod);
-    await page.click('#work-tags-edit > summary');
-    await page.click('#work-tags-form .vk-ui-chip');
+    await page.eval(`const options = document.querySelector('#work-options'); if (!options.open) options.querySelector('summary').click();
+      const select = document.querySelector('#work-tags-form-select');
+      select.value = select.options[1].value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));`);
     await page.waitFor("document.querySelector('#save')?.textContent.includes('Lưu thẻ')", 'the eligible save action names the tags');
     await page.click(SAVE);
     await page.waitFor("document.querySelector('#save-recovery-jump')?.textContent.includes('Sửa tiêu đề')", 'saving tags preserves title recovery');
@@ -212,10 +214,7 @@ async function titleValidation(page, { args, check }) {
     const saved = await page.draft(id);
     check(saved.title === '' && saved.document.source === untitled,
       '#263 an empty first H1 or absent H1 saves as an untitled draft with its exact source');
-    await page.click('#preview');
-    await page.waitFor("document.querySelector('#draft-preview[open]')?.textContent.includes('Chưa đặt tên')", 'placeholder is visible in the private preview');
-    await page.key('Escape');
-    await page.waitFor("!document.querySelector('#draft-preview[open]')", 'private preview closes');
+    check(await page.eval("!document.querySelector('#preview, #draft-preview')"), 'untitled drafts have no standalone preview');
     await expectMissingSnapshotTitle(page, check, id, saved.version);
   }
 
@@ -300,6 +299,8 @@ async function outlineOffsets(page, { args, check }) {
   check(await page.eval(`${SAME_VIEW} && ${SOURCE} === ${JSON.stringify(source)}`), '#257 a version conflict preserves the local source and editor');
   await page.click('#outline-toggle');
   await page.waitFor(at(tail), 'the local outline remains usable during a save conflict');
+  await page.click('#save-recovery-jump');
+  await page.waitFor("document.querySelector('#editor-text-conflict')?.open", 'text conflict confirmation');
   await page.click('#keep-mine');
   await page.waitStatus('saved');
   await page.reload();

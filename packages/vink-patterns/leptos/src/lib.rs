@@ -335,6 +335,7 @@ pub fn EditorToolbar(
     /// Opt-in quiet composition. The default toolbar and its consumers keep their anatomy.
     #[prop(default = false)]
     paper_first: bool,
+    #[prop(optional)] compact_details: bool,
     #[prop(optional)] utilities: Option<ChildrenFn>,
     children: Children,
 ) -> impl IntoView {
@@ -396,7 +397,13 @@ pub fn EditorToolbar(
                     // reaches ordinary actions, Escape leaves it open. Its summary is always
                     // visible, including when a focused Save disappears after an ACK (#217).
                     <details id="editor-save-details" class="vk-editor-tools [min-inline-size:0]">
-                        <summary>"Thêm"<Icon name=IconName::ExpandMore size=IconSize::Small /></summary>
+                        {if compact_details {
+                            view! {
+                                <summary aria-label="Chi tiết lưu" title="Chi tiết lưu"><span aria-hidden="true">"…"</span></summary>
+                            }.into_any()
+                        } else {
+                            view! { <summary>"Thêm"<Icon name=IconName::ExpandMore size=IconSize::Small /></summary> }.into_any()
+                        }}
                         <div class="vk-editor-tools__content flex flex-col [align-items:start] gap-vk-2 [padding-block:var(--vk-space-2)]">
                             {utilities.map(|actions| actions())}
                             {status_detail.map(|detail| view! {

@@ -1,5 +1,7 @@
 # Giao diện Editor yên tĩnh — #254 (Editor 1/7)
 
+> Bàn giao lịch sử. [Editor R4 và delta #475 ngày 24/11](editor-r4.md) bỏ hộp thoại xem trước bản nháp độc lập và mô tả bố cục hiện tại. Các bằng chứng bên dưới giữ nguyên phạm vi và thời điểm gốc.
+
 ## Trạng thái trên bốn trục độc lập
 
 - **Product decision:** `PRODUCT_CONFIRMED` theo yêu cầu chủ sản phẩm ngày 16/11/2026 tại [Issue #254](https://github.com/loveoverflowcom/vink/issues/254) (cập nhật delta `WR-01` trong [PRD](../../prd/requirements.md): bỏ `"Bản thử nghiệm"`, hướng dẫn ngắt dòng dài và toàn bộ nút tải bản thảo `.txt`, giữ cơ chế chống mất nội dung; làm lại nút quay về Bàn viết dạng Tonal + icon `ArrowBack`).

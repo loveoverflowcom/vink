@@ -174,12 +174,11 @@ export async function editorWriting(page, { args, check, setEditorScene, capture
     await replace(nfd);
     await page.key('s',page.mod); await page.waitStatus('saved');
     check((await page.draft(workId)).title===nfd.normalize('NFC') && await page.eval(`__writingTitle.value`)===nfd,'shortcut saves NFC at server without overwriting the live NFD title');
-    await page.click('#preview'); await page.waitFor(`document.querySelector('#draft-preview').open`,'title preview');
-    check(await page.eval(`document.querySelector('#draft-preview').textContent.includes(${JSON.stringify(nfd)})`),'preview reads the current title state');
-    await page.key('Escape');
+    check(await page.eval(`!document.querySelector('#preview, #draft-preview') && __writingTitle.value === ${JSON.stringify(nfd)}`),
+      'the live title retains its exact source without a standalone preview action');
     check(!await page.eval(`Boolean(document.querySelector('#export, #export-failed, #export-conflict, #export-tags'))`), 'no draft export button remains in quiet editor');
 
-    check(await page.eval(raw)===beforeRaw && await page.eval(same),'title corpus, preview and save do not change raw body or view');
+    check(await page.eval(raw)===beforeRaw && await page.eval(same),'title corpus and save do not change raw body or view');
     const beforeEnter=writes;
     const tail='\n  Dòng cuối thụt vào';
     await page.typeInBody(tail);

@@ -1,5 +1,7 @@
 # Phân loại tác phẩm — bộ chọn thẻ và Thông tin tác phẩm TAG-PR-05
 
+> [#475](../design/editor-r4.md) tích hợp WorkInfo trong Tùy chọn bài viết, dùng select và tìm chủ đề có disclosure mà vẫn giữ owner lưu thẻ. Bằng chứng runtime R4 đang `NOT_RUN`; các lượt kiểm TAG-PR-05 bên dưới thuộc SHA gốc.
+
 **Ngày:** 09/11/2026. **Nguồn:** [#99](https://github.com/loveoverflowcom/vink/issues/99) (TAG-PR-05, một
 phần của epic [#94](https://github.com/loveoverflowcom/vink/issues/94)), baseline `develop@f23df33` (sau
 #95–#97; không phụ thuộc code discovery #98/PR #119). **Trạng thái:** consumer Web đầu tiên của thẻ nháp,

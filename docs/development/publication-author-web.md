@@ -1,5 +1,7 @@
 # Vùng công khai của Bàn viết — PUB-AUTHOR-WEB-01
 
+> [#475](../design/editor-r4.md) dùng công tắc Công khai trong bảng tùy chọn, giữ controller hiện có. Công tắc biểu thị ý định, chỉ kích hoạt gửi duyệt/chuyển riêng tư qua nút xác nhận. Bằng chứng runtime R4 đang `NOT_RUN`.
+
 **Phạm vi:** consumer Web của API publication tác giả ([publication-runtime](publication-runtime.md),
 #158) và của chi tiết kiểm duyệt trong Bàn viết ([moderation-runtime](moderation-runtime.md), #159/#170):
 chọn “Chỉ mình tôi”/“Công khai”, lưu → chụp snapshot → gửi duyệt đúng bản, theo dõi kết quả, chuyển

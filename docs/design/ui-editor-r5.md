@@ -1,5 +1,7 @@
 # Editor — Quiet UI R4 và Surface R5 (#101)
 
+> Bàn giao lịch sử. [Editor R4 và delta #475 ngày 24/11](editor-r4.md) bỏ hộp thoại xem trước bản nháp độc lập và mô tả bố cục hiện tại. Các bằng chứng bên dưới giữ nguyên phạm vi và thời điểm gốc.
+
 Delta hiện hành [Paper First #218](ui-editor-paper-first-218.md) bỏ container/sticky của
 toolbar và đổi surface scoped Editor. R4/R5 bên dưới giữ làm lịch sử.
 
