@@ -117,7 +117,7 @@ const args = Object.fromEntries(
     return pairs;
   }, []),
 );
-args.capture ??= 'full';
+if (!Object.hasOwn(args, 'capture')) args.capture = 'full';
 if (!['full', 'checks'].includes(args.capture)) fail(`unknown --capture ${args.capture}`);
 for (const key of ['base', 'chrome', 'state', 'phase']) {
   if (!args[key]) fail(`missing --${key}`);
@@ -4848,7 +4848,7 @@ async function editorChrome(page) {
   await page.eval(`document.documentElement.style.fontSize=''; document.documentElement.dataset.theme='light'`);
 }
 
-async function readerPhase(page) {
+async function readerRoutingAndPrivacy(page) {
   await serverHtml();
   await readerBeforeHydration(page, { args, check });
   await conditionalPublicReads(page);
@@ -4892,7 +4892,9 @@ async function readerPhase(page) {
   await page.waitFor(`location.pathname === ${JSON.stringify(formerPilot)} &&
     window.__beforeFormerPilot === true && document.querySelector('main h1')?.textContent.includes('Không tìm thấy trang này.') &&
     !document.querySelector('#expression-pilot, #author-profile-heading')`, 'client navigation reaches product not-found');
-  await publicReading(page);
+}
+
+async function readerRendering(page) {
   console.log('reader in the browser:');
   await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'hydration');
@@ -4910,7 +4912,13 @@ async function readerPhase(page) {
   check(served === '200 font/woff2', 'font files are served as font/woff2');
   const editorOnReader = await page.eval(`performance.getEntriesByType('resource').some((e) => e.name.endsWith('/pkg/vink-editor.js'))`);
   check(!editorOnReader, 'the public reader does not load the editor runtime');
+}
 
+async function readerPhase(page) {
+  await readerRoutingAndPrivacy(page);
+  await publicReading(page);
+  await page.viewport(1440, 900);
+  await readerRendering(page);
 }
 
 async function discussionPhase(page) {
@@ -4947,10 +4955,12 @@ async function deskPhase(page) {
 }
 
 async function editorPhase(page) {
-  // The original scenario entered Desk from a hydrated Reader via the client router.
-  await page.viewport(1440, 900);
-  await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);
-  await page.waitFor("document.documentElement.dataset.hydrated === 'true'", 'hydrated Reader before client navigation');
+  // The scoped caller creates its own Reader context. Legacy main already reached it.
+  if (args.phase !== 'main') {
+    await page.viewport(1440, 900);
+    await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);
+    await page.waitFor("document.documentElement.dataset.hydrated === 'true'", 'hydrated Reader before client navigation');
+  }
   console.log('client navigation and draft creation:');
   await page.eval(`window.__vinkNavigation = 'kept'`);
   await page.click('#navigation-primary a[href="/ban-viet"]');
@@ -5201,18 +5211,19 @@ async function editorPhase(page) {
   }
 
   await draftTags(page, workId);
-  if (args.phase === 'main') await writeRestartState(page, workId);
+  return workId;
 }
 
 async function editorFormatPhase(page) {
-  await page.viewport(1440, 900);
-  await page.goto(`${args.base}/ban-viet`);
-  await page.waitFor("document.documentElement.dataset.hydrated === 'true'", 'hydrated Desk before opening format fixtures');
+  if (args.phase !== 'main') {
+    await page.viewport(1440, 900);
+    await page.goto(`${args.base}/ban-viet`);
+    await page.waitFor("document.documentElement.dataset.hydrated === 'true'", 'hydrated Desk before opening format fixtures');
+  }
   await deskRefusesLossyOpen(page);
   await markdownLivePreviewAndFormatPicker(page);
   await editorDeskRegressions(page, { args, check });
   await markdownBudget(page, { args, check });
-
 }
 
 async function writeRestartState(page, workId) {
@@ -5224,13 +5235,16 @@ async function writeRestartState(page, workId) {
 // Compatibility for callers of the direct browser smoke CLI. xtask resolves the main alias
 // to these suites and runs each with a fresh Chrome profile and evidence directory.
 async function mainPhase(page) {
-  await readerPhase(page);
+  await readerRoutingAndPrivacy(page);
   await discussionPhase(page);
   await appearanceShellPhase(page);
   await deskPhase(page);
+  await publicReading(page);
   await editorChrome(page);
-  await editorPhase(page);
+  await readerRendering(page);
+  const workId = await editorPhase(page);
   await editorFormatPhase(page);
+  await writeRestartState(page, workId);
 }
 
 // #255/#263/#256: Markdown opens in Live Preview without a separate title box, while CRLF
