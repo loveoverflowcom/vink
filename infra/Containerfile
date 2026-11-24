@@ -25,7 +25,9 @@ ARG RUST_VERSION
 ENV RUSTUP_TOOLCHAIN=${RUST_VERSION}
 
 FROM backend-source AS api-build
-RUN cargo xtask build api --release
+RUN cargo xtask build api --release \
+ && install -m 0755 target/release/vink-app /usr/local/bin/vink-app \
+ && rm -rf target "$CARGO_HOME/registry"
 FROM backend-source AS worker-build
 RUN cargo xtask build worker --release
 FROM backend-source AS identity-build
@@ -42,7 +44,7 @@ WORKDIR /opt/vink
 USER 10001:10001
 
 FROM runtime AS api
-COPY --from=api-build /src/target/release/vink-app /usr/local/bin/vink-app
+COPY --from=api-build /usr/local/bin/vink-app /usr/local/bin/vink-app
 ENTRYPOINT ["/usr/local/bin/vink-app"]
 CMD ["serve-api"]
 
