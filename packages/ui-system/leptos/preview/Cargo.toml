@@ -24,7 +24,6 @@ vink-ui = { path = ".." }
 unicode-normalization = "0.1.26"
 wasm-bindgen = { workspace = true, optional = true }
 js-sys = { version = "0.3.106", optional = true }
-serde_json = { workspace = true, optional = true }
 wasm-bindgen-futures = { version = "0.4.79", optional = true }
 console_error_panic_hook = { version = "0.1.7", optional = true }
 web-sys = { version = "0.3.106", optional = true, features = [
@@ -37,4 +36,4 @@ leptos = { workspace = true, features = ["ssr"] }
 
 [features]
 csr = ["leptos/csr", "dep:wasm-bindgen", "dep:console_error_panic_hook", "dep:web-sys"]
-media-hydrate = ["leptos/hydrate", "dep:wasm-bindgen", "dep:console_error_panic_hook", "dep:web-sys", "dep:js-sys", "dep:wasm-bindgen-futures", "dep:serde_json"]
+media-hydrate = ["leptos/hydrate", "dep:wasm-bindgen", "dep:console_error_panic_hook", "dep:web-sys", "dep:js-sys", "dep:wasm-bindgen-futures"]

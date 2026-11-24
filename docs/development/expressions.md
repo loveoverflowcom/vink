@@ -45,7 +45,7 @@ Screen #expression-pilot — Một chút biểu cảm · Mẫu
 ```
 
 Đọc/focus theo DOM. Grid auto-fit theo phần rộng còn lại, cell tối thiểu 11rem nhưng không vượt
-100% ở màn hẹp; artwork 6rem giữ chỗ trước hydration. Trang cuộn chính, không overlay/cuộn lồng. Gutter ngang do `.vkp-expression-fixture` sở hữu, pilot chỉ thêm
+100% ở màn hẹp; artwork 6rem giữ chỗ trước hydration. Trang cuộn chính, không overlay/cuộn lồng. Gutter ngang do `.vk-expression-fixture` sở hữu, pilot chỉ thêm
 padding theo trục dọc để tránh padding lồng ở chữ 200%.
 Token surface/container/on-surface/outline/primary/focus và font của UI system; không thêm palette.
 320/390/834/1024/1440px, Sáng/Tối/Hệ thống, 200% chữ; nút native được Enter/Space/touch kích hoạt,

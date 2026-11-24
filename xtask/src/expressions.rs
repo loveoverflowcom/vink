@@ -35,7 +35,9 @@ fn install(root: &Path, relative: &str) -> Result<(), String> {
 pub fn build(root: &Path, out: &Path) -> Result<(), String> {
     install(root, PREVIEW_RUNTIME)?;
     let mut node = Command::new("node");
-    node.current_dir(root.join(PREVIEW_RUNTIME)).arg("build.mjs").arg(out);
+    node.current_dir(root.join(PREVIEW_RUNTIME))
+        .arg("build.mjs")
+        .arg(out);
     process::run(
         &mut node,
         "expression runtime: pinned, self-hosted software renderer",
@@ -65,11 +67,8 @@ pub fn verify(report: &mut Report) -> bool {
         command.args(["test", "--locked", "-p", "vink-expressions", "--lib", "--"]);
         command
     };
-    report.step(
-        "expressions: shared Rust policy and trace replay",
-        || {
-            process::require_tests(&mut replay(), "expression replay", &[REPLAY])?;
-            process::run(&mut replay(), "expression shared policy seam")
-        },
-    )
+    report.step("expressions: shared Rust policy and trace replay", || {
+        process::require_tests(&mut replay(), "expression replay", &[REPLAY])?;
+        process::run(&mut replay(), "expression shared policy seam")
+    })
 }

@@ -205,9 +205,7 @@ mod tests {
     #[test]
     fn fixture_is_static_named_and_preserves_source_unicode() {
         let owner = Owner::new();
-        let html = owner.with(|| {
-            specimen().to_html()
-        });
+        let html = owner.with(|| specimen().to_html());
         assert_eq!(html.matches("data-expression-index=").count(), COUNT);
         assert!(html.contains(UNICODE_SAMPLE));
         assert!(!html.contains("<canvas"));
