@@ -22,9 +22,9 @@ def spec(rev):
                                                  for k in ("web", "worker", "identity")}}
 
 
-def package(archives, rev):
+def package(archives, rev, extra=()):
     pkg = archives / rev / "pkg"
-    for name in art.REQUIRED:
+    for name in art.REQUIRED.union(extra):
         file = pkg / name
         file.parent.mkdir(parents=True, exist_ok=True)
         file.write_bytes((rev + name).encode())
@@ -38,13 +38,18 @@ class Packages(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             archives = root / "archives"
-            for rev in (A, B):
-                package(archives, rev)
+            old_handle_assets = ("author-landscape.webp", "snippets/vink-web-abc/profile/handle.js")
+            old = package(archives, A, old_handle_assets)
+            new = package(archives, B)
+            self.assertTrue(set(old_handle_assets) <= old["assets"].keys())
+            self.assertTrue(set(old_handle_assets).isdisjoint(new["assets"]))
             for rev in (B, A):
                 output = root / rev
                 art.stage(archives, rev, output, A)
                 for keep in (A, B):
                     self.assertEqual((output / "_v" / keep / "pkg/vink.js").read_text(), keep + "vink.js")
+                for name in old_handle_assets:
+                    self.assertEqual((output / "_v" / A / "pkg" / name).read_text(), A + name)
             (archives / A / "pkg/vink.css").write_text("drift")
             with self.assertRaisesRegex(ValueError, "drift"):
                 art.stage(archives, A, root / "drift")
