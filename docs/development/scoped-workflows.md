@@ -90,7 +90,11 @@ lệnh được đề xuất nêu owner, dependency, chi phí hoặc phạm vi. 
 contract, lockfile, feature và source dùng chung mở rộng phạm vi và yêu cầu review
 các consumer. Kiểm tra các lane opt-in, CMP, formal và gate thực tế của AC. Diff rỗng
 chỉ cho biết không có path trong phạm vi. Sau khi đổi input, lập lại plan và chạy
-selector đã chọn từ checkout tương ứng. Không có lệnh chạy lại một plan đã lưu.
+selector từ checkout tương ứng. Có thể nối hậu tố do plan in ra vào lệnh nguyên gốc,
+ví dụ `cargo xtask verify static docs --from-diff BASE_SHA HEAD_SHA committed`.
+Xtask đọc lại diff trước khi giao lệnh cho executor hiện hữu. Chế độ `committed` đòi
+đúng HEAD và cây sạch, `worktree` tính lại các selector theo input hiện tại. Lệnh chỉ
+chạy một selector; các selector còn lại vẫn cần evidence theo AC.
 
 Ví dụ, sửa guide này chọn `verify static docs`. Sửa fixture phân trang Desk chọn
 `verify web --scenario desk`. Sửa cả hai chọn cả hai ranh giới. Migration App mở

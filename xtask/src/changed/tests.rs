@@ -177,6 +177,42 @@ fn repository_inputs_are_recomputed_and_both_sides_of_moves_are_selected() {
     assert!(describe(&dir, &local).unwrap().contains("no changed paths"));
     g(&["mv", old, "new selector"]);
     g(&["-c", "commit.gpgsign=false", "commit", "-qm", "move"]);
+    let base = commit(&dir, "HEAD~1").unwrap();
+    let head = commit(&dir, "HEAD").unwrap();
+    let desk = ["verify", "web", "--scenario", "desk"];
+    revalidate(&dir, &desk, &base, &head, "committed").unwrap();
+    assert!(revalidate(&dir, &desk, &base, &base, "committed").is_err());
+    assert!(
+        revalidate(
+            &dir,
+            &["verify", "static", "docs"],
+            &base,
+            &head,
+            "committed"
+        )
+        .is_err()
+    );
+    fs::remove_file(dir.join("AGENTS.md")).unwrap();
+    assert!(revalidate(&dir, &desk, &base, &head, "committed").is_err());
+    revalidate(
+        &dir,
+        &["verify", "static", "docs"],
+        &head,
+        &head,
+        "worktree",
+    )
+    .unwrap();
+    fs::write(dir.join("AGENTS.md"), "policy\n").unwrap();
+    assert!(
+        revalidate(
+            &dir,
+            &["verify", "static", "docs"],
+            &head,
+            &head,
+            "worktree"
+        )
+        .is_err()
+    );
     fs::remove_file(dir.join("AGENTS.md")).unwrap();
     fs::write(dir.join("Cargo.lock"), "shared").unwrap();
     g(&["add", "Cargo.lock"]);

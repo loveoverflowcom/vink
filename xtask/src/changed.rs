@@ -374,7 +374,27 @@ pub fn describe(root: &Path, args: &[&str]) -> Result<String, String> {
     };
     let base = commit(root, base_ref)?;
     let head = commit(root, head_ref)?;
-    let committed = diff(root, &[&base, &head])?;
+    let (selection, mut out, _) = inspect(root, &base, &head, worktree)?;
+    if selection.commands.is_empty() {
+        return Ok(out);
+    }
+    selection.describe(&mut out)?;
+    let scope = if worktree { "worktree" } else { "committed" };
+    writeln!(
+        out,
+        "to revalidate and execute one selected command, append: --from-diff {base} {head} {scope}"
+    )
+    .unwrap();
+    Ok(out)
+}
+
+fn inspect(
+    root: &Path,
+    base: &str,
+    head: &str,
+    worktree: bool,
+) -> Result<(Selection, String, bool), String> {
+    let committed = diff(root, &[base, head])?;
     let mut inputs = changes(&committed, "committed")?;
     let (index, unstaged, untracked);
     if worktree {
@@ -384,7 +404,7 @@ pub fn describe(root: &Path, args: &[&str]) -> Result<String, String> {
         }) {
             return Err("worktree has skip-worktree/assume-unchanged entries; inspect those inputs explicitly".into());
         }
-        index = diff(root, &["--cached", &head])?;
+        index = diff(root, &["--cached", head])?;
         unstaged = diff(root, &[])?;
         untracked = git(root, &["ls-files", "--others", "--exclude-standard", "-z"])?;
         inputs.extend(changes(&index, "index")?);
@@ -405,11 +425,12 @@ pub fn describe(root: &Path, args: &[&str]) -> Result<String, String> {
     let mut out = format!(
         "base={base} head={head}\nrange: endpoint trees ({mode})\nevidence: NOT_RUN; advisory plan, recompute after input changes. Cargo bootstrap may compile/link xtask.\n"
     );
+    let dirty = inputs.iter().any(|input| input.layer != "committed");
     if inputs.is_empty() {
         out.push_str(
             "no changed paths in this scope; no checks selected and no coverage established.\n",
         );
-        return Ok(out);
+        return Ok((Selection::default(), out, dirty));
     }
     let mut selected = Selection::default();
     for change in inputs {
@@ -421,8 +442,37 @@ pub fn describe(root: &Path, args: &[&str]) -> Result<String, String> {
             selected.fallback("fallback: file type changed or index is unmerged");
         }
     }
-    selected.describe(&mut out)?;
-    Ok(out)
+    Ok((selected, out, dirty))
+}
+
+/// The normal explicit command still owns admission, locking and execution. This optional
+/// suffix only checks that the requested selector belongs to the current diff.
+pub fn revalidate(
+    root: &Path,
+    command: &[&str],
+    base: &str,
+    head: &str,
+    mode: &str,
+) -> Result<(), String> {
+    if !matches!(mode, "committed" | "worktree") {
+        return Err("expected --from-diff BASE_SHA HEAD_SHA committed|worktree".into());
+    }
+    if commit(root, base)? != base || commit(root, "HEAD")? != head {
+        return Err("pinned base or checked-out HEAD differs; generate a new diff plan".into());
+    }
+    let (selection, _, dirty) = inspect(root, base, head, true)?;
+    if mode == "committed" && dirty {
+        return Err("committed plan has dirty inputs; replan with --worktree".into());
+    }
+    if !selection.commands.contains_key(&command.join(" ")) {
+        return Err("command is not selected by the current diff; generate a new plan".into());
+    }
+    println!(
+        "revalidated {mode} at {head}; current selected roots: {:?}; executing only: {}",
+        selection.commands.keys().collect::<Vec<_>>(),
+        command.join(" ")
+    );
+    Ok(())
 }
 
 #[cfg(test)]
