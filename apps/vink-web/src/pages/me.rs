@@ -15,10 +15,15 @@ pub fn Me() -> impl IntoView {
         let navigation = crate::navigation::use_navigation_guard();
         let desk_auth_entry = StoredValue::new(false);
         Effect::new(move |_| {
-            if query.read().get("next").as_deref() != Some("/ban-viet") {
+            let next = query.with(|query| {
+                query
+                    .get_str("next")
+                    .and_then(super::desk_review::desk_return_href)
+            });
+            let Some(next) = next else {
                 desk_auth_entry.set_value(false);
                 return;
-            }
+            };
             if matches!(
                 session.standing.get(),
                 Standing::Anonymous | Standing::NeedsPrincipal
@@ -31,7 +36,7 @@ pub fn Me() -> impl IntoView {
             {
                 // An already-active visit (including Back) can stay on Tôi.
                 desk_auth_entry.set_value(false);
-                navigation.navigate("/ban-viet");
+                navigation.navigate(&next);
             }
         });
     }

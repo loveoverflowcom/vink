@@ -91,7 +91,10 @@ impl AppealRecord {
     }
 }
 
-async fn records(conn: &mut PgConnection, work: WorkId) -> Result<Vec<AppealRecord>, StoreError> {
+pub(super) async fn records(
+    conn: &mut PgConnection,
+    work: WorkId,
+) -> Result<Vec<AppealRecord>, StoreError> {
     query_as("SELECT * FROM work_appeals WHERE work_id = $1 ORDER BY created_at, id")
         .bind(work.as_uuid())
         .fetch_all(conn)

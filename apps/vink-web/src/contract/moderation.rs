@@ -1,5 +1,6 @@
 //! Browser-owned representations of the private moderation API.
 use super::DocumentDto;
+use super::publication::{AuthorPublicationState, Decision};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -25,7 +26,7 @@ pub struct Case {
 pub struct Note {
     pub note: String,
 }
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Appeal {
     pub id: String,
     pub work_id: String,
@@ -53,12 +54,58 @@ pub struct Filed {
     pub replayed: bool,
 }
 
+/// The owner's outcome and permitted reason for one concluded decision.
+#[derive(Clone, Debug, Deserialize)]
+pub struct AuthorWorkDecision {
+    pub revision_id: String,
+    pub decision_version: i64,
+    pub outcome: Decision,
+    pub is_current: bool,
+    pub can_appeal: bool,
+    pub reason: Option<String>,
+    pub decided_at: String,
+}
+
+/// The Desk detail reads these facts together from one snapshot.
+#[derive(Clone, Debug, Deserialize)]
+pub struct AuthorWorkReview {
+    pub state: AuthorPublicationState,
+    pub appeals: Vec<Appeal>,
+    pub decisions: Vec<AuthorWorkDecision>,
+}
+
 /// Queue envelope, distinct from the author's unpaged appeal history.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct QueuePage<T> {
     pub authority_key: String,
     pub items: Vec<T>,
     pub next_cursor: Option<String>,
+}
+
+#[cfg(test)]
+#[test]
+fn decision_history_preserves_the_previous_outcome() {
+    let review: AuthorWorkReview = serde_json::from_str(include_str!(
+        "../../../../services/vink-app/contracts/http/v1/fixtures/publication.review.json"
+    ))
+    .unwrap();
+    let [current, previous] = review.decisions.as_slice() else {
+        panic!("expected two decision versions")
+    };
+    assert!(current.is_current && !previous.is_current);
+    assert_eq!(current.revision_id, previous.revision_id);
+    assert_eq!(
+        (current.decision_version, current.outcome),
+        (3, Decision::Approved)
+    );
+    assert_eq!(
+        (previous.decision_version, previous.outcome),
+        (2, Decision::Rejected)
+    );
+    assert_eq!(previous.reason.as_deref(), Some("Cần xem lại chính sách"));
+    assert_eq!(review.state.revisions[0].decision_version, Some(3));
+    assert_eq!(review.appeals[0].decision_version, previous.decision_version);
+    assert_eq!(review.appeals[0].state, "reversed");
 }
 
 #[cfg(test)]

@@ -287,7 +287,7 @@ export async function publicationAuthor(page, { args, check, openPage }) {
   check(card && card.title === TITLE_1 && card.tags.some((t) => t.label === FORM_TAG), 'Explore lists the card with the same title and tag');
   const html = await (await fetch(`${base}/tac-pham/${work}`)).text();
   check(html.includes(TITLE_1) && html.includes(LINE_1A) && html.includes(FORM_TAG), 'the reader page renders that revision and its tag');
-  check(await author.eval(`document.querySelector('#editor-review-status')?.textContent.includes('kiểm duyệt')`), 'the link to the existing review page stays in the region');
+  check(await author.eval(`document.querySelector('#editor-review-status')?.textContent.includes('kiểm duyệt')`), 'the link to Desk review stays in the region');
 
   await rest({ author, mod, work, r1, base, ctx, check, openPage });
 }
@@ -353,14 +353,54 @@ async function rest(env) {
   await author.click('#publication-refresh');
   await author.waitFor(`document.querySelector('#publication-requested')?.innerText.includes('Bị từ chối. Lý do: Nội dung cần chỉnh theo chính sách')`, 'the rejection and its reason from the server');
   check((await panelText(author)).includes(`Đang công khai: «${TITLE_1}».`) && (await publicRead(base, work)).body.revision_id === r1, 'r1 is still the public revision after r2 is rejected');
-  check(await author.eval(`document.querySelector('#editor-review-status')?.textContent.trim() === 'Xem lý do và gửi phản đối'`), 'the link says a reason and an appeal exist');
+  const deskReview = `/ban-viet?review=${work}`;
+  check(await author.eval(`document.querySelector('#editor-review-status')?.getAttribute('href') === '${deskReview}'`), 'the Editor links to the selected work in Desk');
   await author.click('#editor-review-status');
-  await author.waitFor(`location.pathname === '${editorPath}/kiem-duyet' && document.querySelector('#author-reviews') && document.querySelector('[id^="file-appeal-"]')`, 'the existing review page offers the appeal');
-  const reviewText = await author.eval(`document.querySelector('#author-reviews').innerText`);
-  check(reviewText.includes('Đã được duyệt') && reviewText.includes('Đang công khai.') && reviewText.includes('Bị từ chối') && reviewText.includes('Nội dung cần chỉnh theo chính sách'), 'the review page uses the same words: approved, public, rejected with its reason');
+  await author.waitFor(`location.pathname + location.search === '${deskReview}' && document.querySelector('#desk-review').open && document.querySelector('[id^="file-appeal-"]')`, 'the Desk dialog offers the appeal');
+  const reviewText = await author.eval(`document.querySelector('#desk-review-content').innerText`);
+  check(reviewText.includes('vẫn đang công khai') && reviewText.includes('Bị từ chối') && reviewText.includes('Nội dung cần chỉnh theo chính sách'), 'Desk distinguishes public r1 from rejected r2 and shows its reason');
+  await author.click('#desk-review-content summary');
+  check(await author.eval(`document.querySelector('#desk-review-content details').innerText.includes('Đang công khai.')`), 'history identifies the public revision');
   await author.click('[id^="file-appeal-"]');
-  await author.waitFor(`document.querySelector('#author-reviews')?.textContent.includes('Đã ghi nhận, chờ quản trị viên')`, 'the appeal is recorded through the existing flow');
-  check(true, 'can_appeal and decision_version lead to the existing appeal flow (no second form)');
+  await author.waitFor(`document.querySelector('#desk-review-content')?.textContent.includes('Đã ghi nhận, chờ quản trị viên') && !document.querySelector('[id^="file-appeal-"]')`, 'the receipt shows the appeal and removes the duplicate action');
+  await author.click('#desk-review-close');
+  await author.waitFor(`location.pathname === '/ban-viet' && location.search === '' && !document.querySelector('#desk-review').open`, 'closing the Editor entry leaves the Desk list');
+  const wire = new Wire(author);
+  try {
+    const trigger = `#desk-review-trigger-${work}`;
+    await author.goto(`${base}/ban-viet`);
+    await author.waitFor(`document.querySelector('${trigger}')`, 'the work has its own review trigger');
+    const countDetails = () => wire.count('GET', '/publication/review') +
+      wire.count('GET', '/publication/state') +
+      wire.count('GET', '/appeals');
+    check(countDetails() === 0, 'opening the list issues no per-card review reads');
+    await author.click(trigger);
+    await author.waitFor(`location.search === '?review=${work}' && document.querySelector('#desk-review').open && document.querySelector('#desk-review-content')?.textContent.includes('Đã ghi nhận, chờ quản trị viên')`, 'opening the card keeps Desk and reads its recorded appeal');
+    check(countDetails() === 1 && wire.count('GET', `/works/${work}/publication/review`) === 1, 'the card reads one consistent detail snapshot for the selected work');
+    await author.key('Escape');
+    await author.waitFor(`location.search === '' && !document.querySelector('#desk-review').open && document.activeElement?.matches('${trigger}')`, 'Escape restores the work card trigger');
+    await author.eval(`history.forward()`);
+    await author.waitFor(`location.search === '?review=${work}' && document.querySelector('#desk-review').open`, 'Forward reopens the same detail');
+    check(await author.eval(`(() => {
+      const back = history.back;
+      let traversals = 0;
+      history.back = () => {
+        traversals++;
+        back.call(history);
+      };
+      const close = document.querySelector('#desk-review-close');
+      try {
+        close.click();
+        close.click();
+        return traversals === 1;
+      } finally {
+        history.back = back;
+      }
+    })()`), 'repeated dismissal requests one history step');
+    await author.waitFor(`location.search === '' && !document.querySelector('#desk-review').open`, 'the one history step closes the detail in Desk');
+  } finally {
+    await wire.close();
+  }
   await readsAfterSession({ author, base, editorPath, check });
   await reopen(author);
   await exactVersion({ ...env, reopen, editorPath });

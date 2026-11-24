@@ -2,7 +2,7 @@
 //! and commands are fenced by the tab's session scope; server versions decide every write.
 use crate::{
     api,
-    contract::{ApiError, moderation::*, publication::AuthorPublicationState},
+    contract::{ApiError, moderation::*},
     document::ReadingDocument,
 };
 use leptos::prelude::*;
@@ -602,51 +602,5 @@ fn AppealContent(
             <Button id="appeal-uphold" state=actions.state() on_press=move |_| actions.run.run((format!("/api/v1/moderation/appeals/{}/conclude",id.get_value()),json!({"expected_decision_version":version,"verdict":"uphold","reason":reason.get_untracked()})))>"Giữ quyết định"</Button>
             <Button id="appeal-reverse" variant=ButtonVariant::Filled state=actions.state() on_press=move |_| actions.run.run((format!("/api/v1/moderation/appeals/{}/conclude",id.get_value()),json!({"expected_decision_version":version,"verdict":"reverse","reason":reason.get_untracked()})))>"Đảo quyết định"</Button>
         </div>
-    }
-}
-#[component]
-pub fn AuthorReviews() -> impl IntoView {
-    let params = use_params_map();
-    let actions = Actions::new();
-    let session = crate::account::Session::current();
-    let data = LocalResource::new(move || {
-        let id = params.read().get("id").unwrap_or_default();
-        let scope = session.scope.get();
-        actions.reload.track();
-        async move {
-            let state =
-                api::moderation_get::<AuthorPublicationState>(&api::publication_state_path(&id))
-                    .await;
-            let appeals =
-                api::moderation_get::<Vec<Appeal>>(&format!("/api/v1/works/{id}/appeals")).await;
-            (scope, id, state, appeals)
-        }
-    });
-    view! { <Title text="Kiểm duyệt bài của tôi — Vink"/><Meta name="robots" content="noindex"/>
-        <section class=MODERATION_PAGE_CLASS id="author-reviews"><Heading level=HeadingLevel::H1>"Kiểm duyệt bài của tôi"</Heading>
-            <Link href=move || format!("/ban-viet/{}",params.read().get("id").unwrap_or_default())>"Về bản nháp"</Link><Feedback actions/>
-            <p>"Yêu cầu được ghi nhận tại Vink để quản trị viên xem xét. Chưa có thông báo nào được gửi."</p>
-            {move || match data.get() {
-                Some((scope,id,Ok(state),Ok(appeals))) if scope.is_some() && scope==session.scope.get() && Some(id.clone())==params.read().get("id") => view! {
-                    <ul class=MODERATION_LIST_CLASS>{state.revisions.into_iter().map(|r| {
-                        let path=format!("/api/v1/works/{}/revisions/{}/appeals",state.work_id,r.revision_id);
-                        let version=r.decision_version;
-                        let already_filed=appeals.iter().any(|a|a.revision_id==r.revision_id && Some(a.decision_version)==version);
-                        let can_appeal=r.can_appeal && version.is_some() && !already_filed;
-                        // One wording of a decision (shared with the editor's publication region);
-                        // "Đang công khai" comes only from the public pointer, never from a decision.
-                        let public = state.pointer.as_ref().is_some_and(|p| p.revision_id == r.revision_id);
-                        view! { <li class=MODERATION_LIST_ITEM_CLASS><Heading level=HeadingLevel::H2>{r.title}</Heading><p>{super::publication::decision_label(r.moderation)}</p>
-                            {public.then(|| view! { <p>"Đang công khai."</p> })}
-                            {r.decision_reason.map(|r| view! { <p>{r}</p> })}
-                            {can_appeal.then(|| view! { <Button id=format!("file-appeal-{}",r.revision_id) state=actions.state() on_press=move |_| actions.run.run((path.clone(),json!({"expected_decision_version":version})))>"Yêu cầu quản trị viên xem xét"</Button> })}
-                        </li> }
-                    }).collect_view()}</ul>
-                    <Heading level=HeadingLevel::H2>"Hồ sơ đã ghi nhận"</Heading><ul>{appeals.into_iter().map(|a|view! { <li>{state_label(&a.state)}{a.resolution_reason.map(|r|view! { <p>{r}</p> })}</li> }).collect_view()}</ul>
-                }.into_any(),
-                Some((scope,_,Err(e),_)) | Some((scope,_,_,Err(e))) if scope.is_some() && scope==session.scope.get() => view! { <p>{error_text(&e)}</p> }.into_any(),
-                _ => view! { <p role="status">{loading_text(session, "Đang tải trạng thái kiểm duyệt…")}</p> }.into_any(),
-            }}
-        </section>
     }
 }

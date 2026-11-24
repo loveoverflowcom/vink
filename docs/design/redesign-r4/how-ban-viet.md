@@ -30,6 +30,14 @@ họ vẫn xem được kết quả trước đó trong cùng phiên và có cá
    liên kết công khai là sibling và gắn ngữ cảnh bản công khai. [Registry tác giả](../../development/desk-author-feedback.md)
    sở hữu quy tắc các số liệu và quyền.
 
+## Mở chi tiết kiểm duyệt (#477)
+
+Từ hàng tác phẩm, “Xem kiểm duyệt” mở `/ban-viet?review={WorkId}`. Cùng một chi tiết nhận liên
+kết từ Editor, URL cũ và đích thông báo có thêm `revision` cùng `decision`. Component
+[DeskReview](../../../apps/vink-web/src/pages/desk_review.rs) tải một tác phẩm theo phiên đã
+xác nhận, độc lập với phần danh sách đang hiển thị. Khi đóng, bộ lọc và vị trí trên Bàn viết
+vẫn thuộc owner danh sách. [LayoutSpec R4.4](desk-moderation.md) ghi trạng thái và cách điều hướng.
+
 ## Failure và phục hồi
 
 - [Nhánh hoàn thành](../../../apps/vink-web/src/pages/desk.rs#L270) bỏ response sai ticket/phiên.

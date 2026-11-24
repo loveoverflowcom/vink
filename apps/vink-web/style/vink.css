@@ -677,6 +677,17 @@ a {
 @media (max-width: 759px) {
   .vk-main:is(:has(> .vk-desk--index), :has(> .vk-explore)) { padding-inline: var(--vk-size-gutter-narrow); }
 }
+.vk-desk-review-action {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  padding-inline: var(--vk-space-4);
+  padding-block-end: var(--vk-space-3);
+}
+
+.vk-desk-review-action .vk-ui-button__label { overflow-wrap: anywhere; }
+#desk-review-content :is(p, ol) { margin-block: 0; }
+#desk-review-feedback:empty { margin-block-end: calc(-1 * var(--vk-space-3)); }
+
 .vk-desk-heading { --vk-ui-search-radius: var(--vk-radius-control-56); }
 /* Keep display in legacy so the Desk [hidden] rule below can hide the action row. */
 .vk-desk-heading__actions { display: flex; }

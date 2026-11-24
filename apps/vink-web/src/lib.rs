@@ -168,7 +168,7 @@ fn Chrome() -> impl IntoView {
                     <Route path=path!("/kiem-duyet") view=pages::moderation::ModerationHome />
                     <Route path=path!("/kiem-duyet/ca/:id") view=pages::moderation::CasePage />
                     <Route path=path!("/kiem-duyet/phan-doi/:id") view=pages::moderation::AppealPage />
-                    <Route path=path!("/ban-viet/:id/kiem-duyet") view=pages::moderation::AuthorReviews />
+                    <Route path=path!("/ban-viet/:id/kiem-duyet") view=pages::desk_review::LegacyDeskReview />
                     <Route path=path!("/toi") view=Me />
                     <Route path=path!("/toi/chinh-ho-so") view=pages::profile::EditProfile />
                     <Route path=path!("/toi/dia-chi") view=pages::handle::Manage />

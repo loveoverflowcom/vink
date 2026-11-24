@@ -1,7 +1,7 @@
 # Vùng công khai của Bàn viết — LayoutSpec r2
 
 Phạm vi: **PUB-AUTHOR-WEB-01**. Vùng nối Bàn viết với API publication có sẵn
-([publication-runtime](../development/publication-runtime.md)) và trang kiểm duyệt của tác giả
+([publication-runtime](../development/publication-runtime.md)) và [chi tiết kiểm duyệt trong Bàn viết](redesign-r4/desk-moderation.md)
 ([moderation-runtime](../development/moderation-runtime.md#7-web-kiểm-duyệt)). Không đổi quyết định
 sản phẩm; không phải signoff. Spec này do agent triển khai viết **trước** khi có mã UI, ở trạng
 thái `proposed` (không có người duyệt riêng); phần “Kết quả đối chiếu” ghi những gì đã thực sự
@@ -43,7 +43,7 @@ Screen #draft-editor — /ban-viet/{id}
       help: “Máy chủ đang áp dụng: …” (tách lựa chọn đang chọn khỏi trạng thái đã xác nhận)
     Region #publication-actions — đúng một hành động chính theo trạng thái + “Tải lại”
     Region #publication-recovery — thông báo mất phản hồi/xung đột/lỗi kèm đúng hành động phục hồi
-    Region #review-detail — Link “Xem kết quả kiểm duyệt và phản đối” → /ban-viet/{id}/kiem-duyet
+    Region #review-detail — Link “Xem kết quả kiểm duyệt trong Bàn viết” → /ban-viet?review={id}
 ```
 
 ## Phương án đã chọn (và phương án bỏ)

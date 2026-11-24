@@ -944,6 +944,21 @@ pub fn publication_state_path(work_id: &str) -> String {
     author_work_path(work_id, "publication/state")
 }
 
+pub(crate) fn author_work_review_path(work_id: &str) -> String {
+    author_work_path(work_id, "publication/review")
+}
+
+pub(crate) fn file_appeal_path(work_id: &str, revision_id: &str) -> String {
+    use percent_encoding::utf8_percent_encode;
+    author_work_path(
+        work_id,
+        &format!(
+            "revisions/{}/appeals",
+            utf8_percent_encode(revision_id, &DISCUSSION_ID)
+        ),
+    )
+}
+
 pub fn snapshots_path(work_id: &str) -> String {
     author_work_path(work_id, "snapshots")
 }

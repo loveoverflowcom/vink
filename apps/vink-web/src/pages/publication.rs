@@ -27,7 +27,7 @@ const PRIVATE: &str = "private";
 const PUBLICATION_NOTE_CLASS: &str =
     "vk-publication__muted text-vk-on-surface-variant text-[length:var(--vk-type-label-size)]";
 
-/// The one wording of a revision's decision, shared with the author's review page. A value this
+/// The one wording of a revision's decision, shared with the Desk review details. A value this
 /// build does not know is named as such, never read as pending or approved.
 pub(crate) fn decision_label(decision: Decision) -> &'static str {
     match decision {
@@ -721,20 +721,6 @@ pub fn PublicationPanel(
         })
     };
 
-    let review_label = move || {
-        let appeal = summary.get().is_some_and(|s| {
-            s.requested
-                .as_ref()
-                .or(s.public.as_ref())
-                .is_some_and(|r| r.can_appeal)
-        });
-        if appeal {
-            "Xem lý do và gửi phản đối"
-        } else {
-            "Xem kết quả kiểm duyệt và phản đối"
-        }
-    };
-
     view! {
         <section id="publication" class="vk-publication grid gap-vk-3 [min-inline-size:0] [padding:clamp(var(--vk-space-3),3vw,var(--vk-space-6))] rounded-vk-lg bg-vk-surface-container-low" aria-labelledby="publication-title"
             data-testid="publication" data-phase=move || phase_token(phase.get())>
@@ -811,8 +797,8 @@ pub fn PublicationPanel(
                     "Gửi duyệt chụp đúng bản đã lưu. Phần gõ thêm sau đó không nằm trong bản đã gửi."
                 </p>
             </Show>
-            <vink_ui::Link variant=vink_ui::LinkVariant::Standalone attr:id="editor-review-status" href=format!("/ban-viet/{}/kiem-duyet", work.get_value())>
-                {review_label}
+            <vink_ui::Link variant=vink_ui::LinkVariant::Standalone attr:id="editor-review-status" href=super::desk_review::work_review_href(&work.get_value())>
+                "Xem kết quả kiểm duyệt trong Bàn viết"
             </vink_ui::Link>
         </section>
     }

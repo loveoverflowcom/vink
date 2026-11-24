@@ -3209,8 +3209,8 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
 
   const focusedSelection = `document.activeElement?.matches('.cm-content') && ${selected} === ${JSON.stringify(LAST_LINE)}`;
   const selectionAfterEscape = `!document.querySelector('[data-testid=leave-editor]').open && ${focusedSelection}`;
-  for (const destination of ['/', '/ban-viet', '/toi', `${editorPath}/kiem-duyet`]) {
-    if (destination.endsWith('/kiem-duyet')) {
+  for (const destination of ['/', '/ban-viet', '/toi', `/ban-viet?review=${editorPath.split('/').at(-1)}`]) {
+    if (destination.includes('?review=')) {
       await page.click('#editor-review-status');
     } else if (destination === '/toi') {
       await page.click(RAIL_ME);
