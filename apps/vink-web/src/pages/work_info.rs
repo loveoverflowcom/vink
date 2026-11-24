@@ -191,11 +191,19 @@ pub fn WorkInfo(
     };
 
     view! {
-        <section class="vk-work-info" aria-labelledby="work-info-heading" data-testid="work-info">
-            <div class="vk-work-info__heading">
+        <section
+            class="vk-work-info grid gap-vk-3 [min-inline-size:0] [padding:clamp(var(--vk-space-3),3vw,var(--vk-space-6))] rounded-vk-lg bg-vk-surface-container-low"
+            aria-labelledby="work-info-heading"
+            data-testid="work-info"
+        >
+            <div class="vk-work-info__heading flex flex-wrap items-baseline justify-between gap-x-vk-4 gap-y-vk-1 [min-inline-size:0] [&>.vk-ui-heading]:m-0 [&>.vk-ui-heading]:[font-family:var(--vk-font-ui)] [&>.vk-ui-heading]:text-[length:var(--vk-type-body-size)] [&>.vk-ui-heading]:[font-weight:var(--vk-type-label-weight)] [&>.vk-ui-heading]:wrap-anywhere">
                 <Heading level=HeadingLevel::H2 role=TypeRole::Title id="work-info-heading">"Thông tin tác phẩm"</Heading>
                 {move || status.get().map(|status| view! {
-                    <span class="vk-work-info__status" data-testid="tag-status" data-status=status.token()>
+                    <span
+                        class="vk-work-info__status text-[length:var(--vk-type-label-size)] [font-weight:var(--vk-type-label-weight)]"
+                        data-testid="tag-status"
+                        data-status=status.token()
+                    >
                         {super::desk::tag_status_label(&status)}
                     </span>
                 })}
