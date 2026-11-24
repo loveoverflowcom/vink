@@ -2,6 +2,10 @@
 const releases = /*VINK_ASSETS*/ {};
 const publicHost = "vink.forum";
 const origin = "https://origin-prod.vink.forum";
+// The zone may compress these for transfer: decoded bytes still match the inventory SHA-256.
+// Fonts and images are already compressed and keep no-transform, so their bytes stay exact.
+const encodable = new Set(["text/javascript", "text/css", "application/wasm", "image/svg+xml",
+  "application/manifest+json", "application/json", "text/plain"]);
 const textError = (status, message) => new Response(message, {
   status, headers: { "cache-control": "no-store", "content-type": "text/plain; charset=utf-8",
     "x-robots-tag": "noindex", "x-content-type-options": "nosniff" },
@@ -54,12 +58,15 @@ export function handler(inventory, originFetch = fetch, assetFetch = fetch) {
         if (response.status !== 200 || response.headers.get("content-type")?.includes("text/html")) {
           return textError(502, "Published asset unavailable");
         }
+        const encoded = encodable.has(entry.type);
         const headers = new Headers({ "Content-Type": entry.type, ETag: '"' + entry.sha256 + '"',
-          "Cache-Control": entry.path ? "no-cache" : "public, max-age=31536000, immutable, no-transform",
+          "Cache-Control": entry.path ? "no-cache" : "public, max-age=31536000, immutable" + (encoded ? "" : ", no-transform"),
           "X-Vink-Asset-Revision": (entry.path || url.pathname).split("/")[2],
           "X-Vink-Asset-Route": "inventory/r26",
           "X-Content-Type-Options": "nosniff" });
+        if (encoded) headers.set("Vary", "Accept-Encoding");
         if (preview) headers.set("X-Robots-Tag", "noindex, nofollow");
+        // A compressed edge response carries W/"sha256"; If-None-Match uses weak comparison.
         const conditions = (request.headers.get("if-none-match") || "").split(",").map(x => x.trim().replace(/^W\//, ""));
         const unchanged = conditions.includes("*") || conditions.includes(headers.get("ETag"));
         if (unchanged || request.method === "HEAD") await response.body?.cancel();
