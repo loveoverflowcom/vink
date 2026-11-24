@@ -24,6 +24,19 @@ Lịch sử trước #413 (#209): từng có Overlay #profile-menu neo theo rail
 #profile-close, #overlay-theme → #overlay-text → #overlay-rail, #open-me ngoài route /toi).
 ```
 
+## Kiểm chứng Web hiện hành từ #413
+
+Dùng lựa chọn native trên `/toi` để kiểm Mặc định 100% và Lớn 150% ở 320/390/834/1440 px
+với giao diện sáng và tối. Kiểm tên nhóm, phím mũi tên, Tab, dấu chọn, focus và điều kiện
+ghi nhớ qua reload. Kiểm profile cũ `vink.ui.text=200` trước CSS và qua hydration ở mức 150%.
+Ca stress 200% dùng ghi đè DOM riêng với metadata `dom-override-geometry-only`. Xem
+[coverage Web và bootstrap](../development/feature-map.md#assertion-hiện-có-và-phần-còn-thiếu) và
+[Shell R4.3](redesign-r4/layout-spec.md#3-shell-rail-và-thanh-dưới).
+
+## Lịch sử panel và trang Tôi trước #413
+
+Các layout, selector và lượt kiểm dưới đây dùng cho hai bề mặt ở thời #209/#219.
+
 - **CHOICE-01 A.** Dùng flex-wrap theo kích thước nội dung. Cả hai nơi đặt tên nhóm
   trên lựa chọn, giữ thứ tự DOM, nhãn tiếng Việt và các glyph hiện có. Ở 320 px và
   chữ 200%, các lựa chọn có thể xuống hàng riêng mà vẫn dùng chiều rộng còn lại.
