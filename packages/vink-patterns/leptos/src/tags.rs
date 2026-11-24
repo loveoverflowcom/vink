@@ -289,13 +289,20 @@ pub fn TagSelector(
                 <Text role=TypeRole::Caption tone=TextTone::Muted>"Danh mục chưa có dạng bài nào."</Text>
             }
             .into_any(),
-            CatalogFacts::Ready { forms, .. } if compact => view! {
-                <Select id=format!("{id}-form-select") label="Dạng bài" placeholder="Chưa chọn"
-                    variant=SelectVariant::Inset16
-                    options=forms.into_iter().map(|tag| ChoiceOption::new(tag.id, tag.label)).collect::<Vec<_>>()
-                    value=Signal::derive(move || form.get().map(|tag| tag.id))
-                    on_change=on_form />
-            }.into_any(),
+            CatalogFacts::Ready { forms, .. } if compact => {
+                let options = forms
+                    .into_iter()
+                    .map(|tag| ChoiceOption::new(tag.id, tag.label))
+                    .collect::<Vec<_>>();
+                view! {
+                    <Select id=format!("{id}-form-select") label="Dạng bài" placeholder="Chưa chọn"
+                        variant=SelectVariant::Inset16
+                        options
+                        value=Signal::derive(move || form.get().map(|tag| tag.id))
+                        on_change=on_form />
+                }
+                .into_any()
+            }
             CatalogFacts::Ready { forms, .. } => view! {
                 <div class=TAG_CHIPS_CLASS>
                     {forms
@@ -356,6 +363,7 @@ pub fn TagSelector(
                                             // The next chip takes this index; else the previous; else the field.
                                             let id = id.clone();
                                             let query_id = query_id.clone();
+                                            let query_toggle_id = query_toggle_id.clone();
                                             request_animation_frame(move || {
                                                 let next = format!("{id}-theme-{index}-remove");
                                                 let previous = index
@@ -509,7 +517,16 @@ pub fn TagSelector(
     };
 
     view! {
-        <div class="vk-tag-selector grid gap-vk-6 [min-inline-size:0]" data-compact=compact.then_some("true") id=id.clone() tabindex=compact.then_some("-1")>
+        <div
+            class=if compact {
+                "vk-tag-selector grid gap-vk-3 [min-inline-size:0]"
+            } else {
+                "vk-tag-selector grid gap-vk-6 [min-inline-size:0]"
+            }
+            data-compact=compact.then_some("true")
+            id=id.clone()
+            tabindex=compact.then_some("-1")
+        >
             <fieldset class=TAG_GROUP_CLASS id=format!("{id}-form")>
                 <legend class=TAG_LEGEND_CLASS class:sr-only=compact>
                     "Dạng bài" {(!compact).then(|| view! { <span class="vk-tag-group__count">" · chọn 1"</span> })}
@@ -535,7 +552,7 @@ pub fn TagSelector(
                             } />
                     })}
                 </div>
-                <div class="vk-tag-query grid gap-vk-2 [min-inline-size:0]"
+                <div class="vk-tag-query gap-vk-2 [min-inline-size:0]"
                     hidden=move || !search_open.get() on:keydown=on_keydown>
                     <SearchField id=query_id.clone() label="Tìm chủ đề" value=query on_input=on_query
                         on_submit=submit input_ref=input
@@ -641,5 +658,36 @@ mod tests {
         }]);
         assert!(options_status(&one, "a", THEME_LIMIT).contains("Đã đủ 3 chủ đề"));
         assert!(options_status(&TagOptions::Unavailable, "a", 0).contains("Tạm thời"));
+    }
+
+    #[test]
+    fn compact_selector_uses_form_select_and_starts_with_hidden_theme_search() {
+        let html = render(|| {
+            view! {
+                <TagSelector id="work-tags"
+                    compact=true
+                    form=Signal::stored(Some(TagFacts::active("tan-van", "Tản văn")))
+                    themes=Signal::stored(vec![TagFacts::active("ky-uc", "Ký ức")])
+                    catalog=Signal::stored(CatalogFacts::Ready {
+                        forms: vec![TagFacts::active("tan-van", "Tản văn"), TagFacts::active("tho", "Thơ")],
+                        themes: vec![TagFacts::active("ky-uc", "Ký ức")],
+                        truncated: false,
+                    })
+                    query=Signal::stored(String::new())
+                    options=Signal::stored(TagOptions::Idle)
+                    on_form=|_| {} on_add_theme=|_| {} on_remove_theme=|_| {}
+                    on_replace_theme=|_| {} on_query=|_| {} />
+            }
+            .into_any()
+        });
+        assert!(html.contains("id=\"work-tags-form-select\""), "{html}");
+        assert!(html.contains("id=\"work-tags-query-toggle\""), "{html}");
+        assert!(html.contains("aria-expanded=\"false\""), "{html}");
+        assert!(html.contains("gap-vk-3"), "{html}");
+        assert!(
+            html.contains("class=\"vk-tag-query gap-vk-2 [min-inline-size:0]\"")
+                && html.contains(" hidden"),
+            "compact search must start hidden without grid utility override: {html}"
+        );
     }
 }

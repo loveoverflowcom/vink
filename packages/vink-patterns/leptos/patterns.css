@@ -232,6 +232,8 @@
 .vk-tag-chip__note { color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
 .vk-tag-chip[data-status="problem"] .vk-tag-chip__note { color: var(--vk-error); }
 .vk-tag-chip__note .vk-ui-icon { flex: none; margin-block-start: 0.1em; }
+.vk-tag-query { display: grid; }
+.vk-tag-query[hidden] { display: none; }
 .vk-tag-query__status { color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
 .vk-tag-query__status:empty { display: none; }
 /* Browsing adds a logical start margin to the same options list. */

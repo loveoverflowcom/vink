@@ -9,8 +9,8 @@ use leptos_router::hooks::use_params_map;
 use vink_ui::{
     ActionState, Announce, Button, ButtonKind, ButtonVariant, ChoiceOption, FieldVariant, Heading,
     HeadingLevel, IconButton, IconName, InlineNotice, PanelContent, PanelKind, PlainTooltip,
-    ProblemKind, SearchField, SearchVariant, Select, SelectVariant, StatePanel, SupportingDetails,
-    TextField, Tone, TooltipIconButton, TypeRole,
+    ProblemKind, SearchField, SearchVariant, Select, SelectVariant, StatePanel, TextField, Tone,
+    TypeRole,
 };
 
 use crate::contract::{ApiError, DocumentFormatDto, Draft};
@@ -1278,12 +1278,16 @@ fn Editor(draft: Draft) -> impl IntoView {
         Field::Tags => {
             #[cfg(feature = "hydrate")]
             {
-                let target = if document().get_element_by_id("work-options")
+                let target = if document()
+                    .get_element_by_id("work-options")
                     .is_some_and(|details| !details.has_attribute("open"))
                 {
                     "work-options-toggle"
-                } else if document().get_element_by_id("work-tags-query-toggle")
-                    .is_some_and(|button| button.get_attribute("aria-expanded").as_deref() == Some("false"))
+                } else if document()
+                    .get_element_by_id("work-tags-query-toggle")
+                    .is_some_and(|button| {
+                        button.get_attribute("aria-expanded").as_deref() == Some("false")
+                    })
                 {
                     "work-tags-query-toggle"
                 } else {
@@ -1422,9 +1426,14 @@ fn Editor(draft: Draft) -> impl IntoView {
 
     let restore_format_focus = move || {
         #[cfg(feature = "hydrate")]
-        if options_panel.get_untracked().is_some_and(|panel| !panel.has_attribute("open")) {
+        if options_panel
+            .get_untracked()
+            .is_some_and(|panel| !panel.has_attribute("open"))
+        {
             request_animation_frame(move || {
-                let lost = document().active_element().is_none_or(|active| active.tag_name() == "BODY");
+                let lost = document()
+                    .active_element()
+                    .is_none_or(|active| active.tag_name() == "BODY");
                 if lost {
                     focus_element_by_id("work-options-toggle");
                 }
@@ -1743,7 +1752,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                     status_problem=Signal::derive(move || status_problem.get())
                     status_detail=Signal::derive(move || slot_detail.get())
                     save_action=std::sync::Arc::new(move || view! {
-                        <div class="flex flex-wrap items-center gap-vk-2">
+                        <>
                             <Show when=action_is_save_or_retry>
                                 <PlainTooltip id="save-tooltip" text=Signal::derive(move || shortcut.get())>
                                     <Button
@@ -1807,11 +1816,9 @@ fn Editor(draft: Draft) -> impl IntoView {
                                 <Button variant=ButtonVariant::Tonal id="editor-text-conflict-action"
                                     on_press=move |_| conflict_open.set(true)>"Xử lý xung đột chữ"</Button>
                             </Show>
-                        </div>
+                        </>
                     }.into_any())
-                    >
-                    <></>
-                </crate::ui::patterns::EditorToolbar>
+                />
             </header>
             <div class="vk-editor-workspace">
                 <article id="editor-paper" class="vk-editor-paper rounded-vk-card bg-vk-bg-content">
@@ -2072,8 +2079,10 @@ fn Editor(draft: Draft) -> impl IntoView {
                         </summary>
                         <div class="vk-work-options__body grid gap-vk-3 min-w-0">
                             <div class="vk-editor-work-info" on:focusin=move |_| last_field.set_value(Field::Tags)>
-                                <crate::pages::work_info::WorkInfo work_id=work_id.get_value() session labels
-                                    on_save=Callback::new(move |()| save()) tag_load=tag_load />
+                                {view! {
+                                    <crate::pages::work_info::WorkInfo work_id=work_id.get_value() session labels
+                                        on_save=Callback::new(move |()| save()) tag_load=tag_load />
+                                }.into_any()}
                             </div>
                             <section
                                 id="editor-format-region"
@@ -2094,9 +2103,11 @@ fn Editor(draft: Draft) -> impl IntoView {
                                     <p data-testid="conversion-notice" role="alert">{text}</p>
                                 })}
                             </section>
-                            <crate::pages::publication::PublicationPanel work_id=work_id.get_value() session review_pending
-                                on_save=Callback::new(move |()| save())
-                                is_composing=Callback::new(move |()| body.is_composing()) />
+                            {view! {
+                                <crate::pages::publication::PublicationPanel work_id=work_id.get_value() session review_pending
+                                    on_save=Callback::new(move |()| save())
+                                    is_composing=Callback::new(move |()| body.is_composing()) />
+                            }.into_any()}
                         </div>
                     </details>
                 </div>
@@ -2376,7 +2387,9 @@ fn observe_editor_options(node: NodeRef<html::Details>) {
         let Some(panel) = node.get() else { return };
         let docked = Cell::new(None);
         let sync = move || {
-            let Some(panel) = node.get_untracked() else { return };
+            let Some(panel) = node.get_untracked() else {
+                return;
+            };
             let wide = window()
                 .get_computed_style(&panel)
                 .ok()
@@ -2389,7 +2402,10 @@ fn observe_editor_options(node: NodeRef<html::Details>) {
             if wide {
                 let _ = panel.set_attribute("open", "");
             } else {
-                if document().active_element().is_some_and(|active| panel.contains(Some(&active))) {
+                if document()
+                    .active_element()
+                    .is_some_and(|active| panel.contains(Some(&active)))
+                {
                     focus_element_by_id("work-options-toggle");
                 }
                 let _ = panel.remove_attribute("open");
@@ -2646,18 +2662,6 @@ fn restore_scroll(page_scroll: StoredValue<f64>) {
     let _ = page_scroll;
 }
 
-fn status_text(status: SaveStatus) -> String {
-    match status {
-        SaveStatus::Saved { .. } => "Đã lưu",
-        SaveStatus::Unsaved => "Chưa lưu",
-        SaveStatus::Saving => "Đang lưu…",
-        SaveStatus::Conflict { .. } => "Có bản mới trên máy chủ.",
-        failed @ SaveStatus::Failed(_) if save_is_uncertain(failed) => "Chưa xác nhận lưu.",
-        SaveStatus::Failed(_) => "Chưa lưu được.",
-    }
-    .into()
-}
-
 fn status_detail(status: SaveStatus) -> String {
     match status {
         SaveStatus::Saved { version } => format!("Đã lưu bản nháp phiên bản {version}."),
@@ -2893,8 +2897,7 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
         (None, TagLoad::Loading, _) => "Đang tải thông tin thẻ từ máy chủ.".into(),
         (None, TagLoad::Ready, _) => "Chưa có thông tin thẻ.".into(),
         (None, TagLoad::Failed(_), _) => {
-            "Không tải được thông tin thẻ từ máy chủ; kiểm tra mục Tùy chọn bài viết."
-                .into()
+            "Không tải được thông tin thẻ từ máy chủ; kiểm tra mục Tùy chọn bài viết.".into()
         }
     };
 
@@ -3711,16 +3714,23 @@ mod editor_presentation_tests {
 
     #[test]
     fn compact_saved_status_keeps_only_the_acknowledged_version_in_detail() {
+        let saved_tags = TagStatus::Saved { version: 1 };
         let mut session = EditorSession::loaded(6);
         session.edited();
         let ticket = session.begin_save().expect("edited snapshot");
         session.edited();
         session.save_succeeded(ticket, 7);
-        assert_eq!(status_text(session.status()), "Chưa lưu");
+        assert_eq!(
+            draft_status_text(session.status(), Some(&saved_tags)),
+            "Chưa lưu chữ"
+        );
         assert!(!status_detail(session.status()).contains("Đã lưu"));
         let ticket = session.begin_save().expect("newer text still needs saving");
         session.save_succeeded(ticket, 8);
-        assert_eq!(status_text(session.status()), "Đã lưu");
+        assert_eq!(
+            draft_status_text(session.status(), Some(&saved_tags)),
+            "Đã lưu"
+        );
         assert_eq!(
             status_detail(session.status()),
             "Đã lưu bản nháp phiên bản 8."
@@ -3729,9 +3739,10 @@ mod editor_presentation_tests {
 
     #[test]
     fn unknown_rejected_and_conflict_have_distinct_truthful_recovery_copy() {
+        let saved_tags = TagStatus::Saved { version: 1 };
         for failure in [Failure::Network, Failure::Unavailable, Failure::Unexpected] {
             assert_eq!(
-                status_text(SaveStatus::Failed(failure)),
+                draft_status_text(SaveStatus::Failed(failure), Some(&saved_tags)),
                 "Chưa xác nhận lưu."
             );
             assert!(failure_detail(failure).contains("Máy chủ chưa xác nhận."));
@@ -3742,7 +3753,10 @@ mod editor_presentation_tests {
             Failure::NotFound,
             Failure::Invalid,
         ] {
-            assert_eq!(status_text(SaveStatus::Failed(failure)), "Chưa lưu được.");
+            assert_eq!(
+                draft_status_text(SaveStatus::Failed(failure), Some(&saved_tags)),
+                "Chưa lưu được."
+            );
             assert!(failure_detail(failure).starts_with(failure_reason(failure)));
             assert!(!failure_detail(failure).contains("Máy chủ chưa xác nhận."));
         }
@@ -3753,7 +3767,10 @@ mod editor_presentation_tests {
             );
         }
         let conflict = SaveStatus::Conflict { server_version: 9 };
-        assert_eq!(status_text(conflict), "Có bản mới trên máy chủ.");
+        assert_eq!(
+            draft_status_text(conflict, Some(&saved_tags)),
+            "Có bản mới trên máy chủ."
+        );
         assert!(status_detail(conflict).contains("phiên bản 9"));
         assert!(status_detail(conflict).contains("chưa được lưu vào bản đó"));
     }

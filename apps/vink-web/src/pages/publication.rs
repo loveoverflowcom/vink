@@ -442,11 +442,17 @@ fn restore_lost_focus() {
         if !lost {
             return;
         }
-        let target = ["publication-primary", "audience-public", "work-options-toggle"]
-            .into_iter()
-            .filter_map(|id| document().get_element_by_id(id))
-            .find(|element| !element.has_attribute("disabled") && element.get_bounding_client_rect().height() > 0.0)
-            .and_then(|element| element.dyn_into::<web_sys::HtmlElement>().ok());
+        let target = [
+            "publication-primary",
+            "audience-public",
+            "work-options-toggle",
+        ]
+        .into_iter()
+        .filter_map(|id| document().get_element_by_id(id))
+        .find(|element| {
+            !element.has_attribute("disabled") && element.get_bounding_client_rect().height() > 0.0
+        })
+        .and_then(|element| element.dyn_into::<web_sys::HtmlElement>().ok());
         if let Some(target) = target {
             let options = web_sys::FocusOptions::new();
             options.set_prevent_scroll(true);
@@ -561,9 +567,12 @@ pub fn PublicationPanel(
     let summary = Memo::new(move |_| controller.with(|c| c.facts().map(Summary::of)));
     Effect::new(move |_| {
         review_pending.set(summary.with(|facts| {
-            facts.as_ref().and_then(|s| s.requested.as_ref()).is_some_and(|revision| {
-                matches!(revision.decision, Decision::Pending | Decision::NeedsAdmin)
-            })
+            facts
+                .as_ref()
+                .and_then(|s| s.requested.as_ref())
+                .is_some_and(|revision| {
+                    matches!(revision.decision, Decision::Pending | Decision::NeedsAdmin)
+                })
         }));
     });
     let pointer = Memo::new(move |_| {

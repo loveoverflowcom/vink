@@ -6,8 +6,8 @@
 
 use leptos::prelude::*;
 use vink_ui::{
-    Announce, Button, ButtonVariant, IconName, InlineNotice,
-    Text, TextInput, TextTone, Tone, TypeRole,
+    Announce, Button, ButtonVariant, IconName, InlineNotice, Text, TextInput, TextTone, Tone,
+    TypeRole,
 };
 
 use crate::contract::TagSuggestion;
@@ -197,7 +197,7 @@ pub fn WorkInfo(
             id="work-info"
             data-testid="work-info"
         >
-            <div class="vk-work-info__heading flex flex-wrap items-baseline justify-between gap-x-vk-4 gap-y-vk-1 [min-inline-size:0] [&>.vk-ui-heading]:m-0 [&>.vk-ui-heading]:[font-family:var(--vk-font-ui)] [&>.vk-ui-heading]:text-[length:var(--vk-type-body-size)] [&>.vk-ui-heading]:[font-weight:var(--vk-type-label-weight)] [&>.vk-ui-heading]:wrap-anywhere">
+            <div class="vk-work-info__heading flex flex-wrap items-baseline justify-between gap-x-vk-4 gap-y-vk-1 [min-inline-size:0] empty:hidden">
                 {move || status.get().map(|status| view! {
                     <span
                         class="vk-work-info__status text-[length:var(--vk-type-label-size)] [font-weight:var(--vk-type-label-weight)]"

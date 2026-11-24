@@ -766,8 +766,6 @@ a {
   --vk-ui-control-radius: var(--vk-radius-control-48);
 }
 
-.vk-editor-topbar .vk-editor-toolbar { justify-content: flex-start; }
-.vk-editor-topbar .vk-save-slot { flex: 0 1 auto; }
 .vk-editor-topbar .vk-editor-tools { position: relative; }
 .vk-editor-topbar .vk-editor-tools[open] { flex-basis: auto; }
 .vk-editor-topbar .vk-editor-tools > summary {
@@ -783,7 +781,6 @@ a {
   z-index: 20;
   inline-size: min(16rem, 45vw);
   box-sizing: border-box;
-  padding: var(--vk-space-3);
   border: 1px solid var(--vk-outline-variant);
   border-radius: var(--vk-radius-card);
   background: var(--vk-bg-content);
@@ -937,11 +934,8 @@ a {
 .vk-editor-recovery .vk-ui-supporting-details__content > p + p { margin-block-start: var(--vk-space-2); }
 
 /* WorkInfo keeps the taxonomy status and recovery inside the article options. */
-.vk-work-info__heading:empty { display: none; }
 .vk-work-info__status { color: var(--vk-on-surface-variant); }
 .vk-work-info__status:is([data-status="failed"], [data-status="refused"]) { color: var(--vk-error); }
-.vk-work-options .vk-tag-selector { gap: var(--vk-space-3); }
-.vk-work-options .vk-tag-query[hidden] { display: none; }
 .vk-work-options .vk-tag-themes__controls {
   display: flex;
   align-items: flex-start;
@@ -1388,10 +1382,7 @@ a {
   overflow-wrap: anywhere;
 }
 
-/* Dialogs: shared surface, gutter, scroll and action layout live in vink-ui.css.
-   Only the manuscript preview sets a reading measure for its content. */
-  inline-size: min(calc(var(--vk-measure) + 2 * var(--vk-overlay-gutter)), calc(100% - 2 * var(--vk-overlay-margin)));
-}
+/* Dialogs: shared surface, gutter, scroll and action layout live in vink-ui.css. */
 
 
 @media (min-width: 48rem) {
