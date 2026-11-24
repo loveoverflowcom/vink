@@ -16,7 +16,7 @@ Cargo/rustc/xtask/Gradle đang chạy và slot không có session record.
 - [Log quan sát theo từng lượt](samples.txt) giữ kết quả, số mẫu, đơn vị, exit và pressure/swap.
   Đường dẫn riêng của máy đã rút gọn. [Chính sách admission](../../local-resource-budget.md).
 
-## Phép đo đã chạy
+## Bước nhẹ trên macOS
 
 | Bước và input | Wall ngoài (s) | Wall session (s) | RSS | Cache và phạm vi |
 | --- | ---: | ---: | --- | --- |
@@ -54,7 +54,69 @@ trong môi trường child, kiểm cả hai field rồi chuyển argv sang rustf
 
 Cả ba lượt exit 0, thư mục shared vẫn vắng, pressure normal và swap used 351,62 MiB.
 Phép đo bao gồm probe và fmt trên crate nhỏ; mẫu RSS duy nhất rơi sát lúc spawn.
-Số hit/miss của compiler, số object reuse và thời gian rebuild xuyên worktree là `NOT_RUN`.
+Ba lượt fmt/metadata không chạy compiler. Số rebuild trên source Vink thật nằm ở phép đo guest dưới đây.
+
+## Rust trong Vink VM, giới hạn 2 GiB
+
+Đo trên cùng Mac mini, trong VM riêng `vink-419-verification` (AppleHV, 2 vCPU,
+6 GiB, đĩa 16 GiB). Guest Fedora CoreOS Linux arm64 7.2.5 có 5,4 GiB đĩa trống
+trước khi đưa dữ liệu vào và không có swap. VM Cantos dùng đĩa khác và vẫn tắt.
+Số liệu guest có hệ điều hành, kiến trúc phần mềm và phạm vi đo riêng.
+
+**Nguồn và cache.** Hai worktree Git guest A/B cùng commit Vink
+`5008ffd9d4009fd5967d561c82dbc56c95e5681b`, cùng `Cargo.lock` ở trên.
+Mỗi worktree ban đầu sạch, có `target` riêng và được mount vào cùng đường dẫn
+`/src` ở các container chạy tuần tự. Cargo home thử nghiệm có sparse index
+và các archive crates.io đã khóa, được giữ giữa tất cả lượt. Ở hàng *cold*, target
+trống. Page cache guest và registry đã giải nén có thể ấm, nhất là khi đến B.
+Image đã có sẵn `rust:1.99.1-bookworm`, ID
+`10513cd0b64b1e7470d965645f4ac257a45c2b8b66b394cf775a15102b799e74`.
+Rustc `58cf8f9c3`, Cargo `5f94df478`, target `aarch64-unknown-linux-gnu`.
+
+**Giới hạn.** Giữ khóa admission trên Mac trong suốt lượt. Guest không có container
+cạnh tranh. Mỗi điều kiện có một container rootless mới, network tắt, image và
+source chỉ đọc trong container, target và Cargo home ghi được. Trước khi gọi
+Cargo, đọc lại `memory.max=2147483648`, `memory.swap.max=0`, `cpu.max=100000 100000`
+và `pids.max=128` của chính cgroup. Các dịch vụ guest cũng nằm trong RAM 6 GiB của VM. Bài đo cgroup độc lập này chưa triển khai adapter Linux strict của launcher.
+
+**Workload.** Một compiler job, một libtest thread, Cargo mặc định test profile
+và features của package. Chỉ hai hàng `debug0` đặt `CARGO_PROFILE_TEST_DEBUG=0`.
+`CARGO_TARGET_DIR` và `CARGO_BUILD_BUILD_DIR` cùng là `/src/target`.
+Đo wall của lệnh dưới đây rồi lấy đúng `executable` của test từ JSON của Cargo
+và chạy trực tiếp với `--test-threads=1`.
+
+```sh
+cargo test --locked --offline -p vink-expressions --lib --no-run --message-format=json
+```
+
+| Lượt theo thứ tự chạy | Cargo compile+link (s) | Libtest (s) | Wall hai bước (s) | Cargo fresh | Test đạt | RSS KiB (số mẫu) | Peak cgroup MiB | Target sau lượt KiB |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| a-cold | 1.661 | 0.269 | 1.937 | 0/9 | 8 | 337000 (19) | 598.9 | 45548 |
+| a-warm | 0.039 | 0.272 | 0.312 | 9/9 | 8 | 7296 (4) | 42.3 | 45548 |
+| b-cold | 1.483 | 0.254 | 1.739 | 0/9 | 8 | 354032 (18) | 232.3 | 45548 |
+| b-warm | 0.036 | 0.254 | 0.292 | 9/9 | 8 | 7288 (3) | 42.4 | 45548 |
+| b-debug0 | 1.272 | 0.199 | 1.473 | 0/9 | 8 | 318344 (15) | 215.1 | 67648 |
+| b-debug0-warm | 0.036 | 0.208 | 0.246 | 9/9 | 8 | 7228 (3) | 42.3 | 67648 |
+| b-dirty | 0.174 | 0.253 | 0.428 | 8/9 | 9 | 216812 (5) | 132.6 | 69740 |
+
+Wall hai bước gồm cả khoảng đọc tên executable. Cargo bao gồm resolve/fingerprint,
+build scripts khi cần, compile và link; chưa đo riêng linker. Cột *fresh* đếm
+`compiler-artifact.fresh` do Cargo trả. Trên B, đổi debug info làm cả 9 artifact
+được build lại. Lượt cuối bỏ override, thêm đúng một test rỗng có tên riêng **chỉ
+ở B trong guest**. Cargo dùng lại 8 artifact, build lại 1 và binary chạy đủ 9 test.
+Thư mục target B chứa cả hai profile variant nên số cuối là dung lượng cộng dồn.
+
+RSS là tổng trang resident trong PID namespace container (gồm sampler/shell), lấy
+mẫu khoảng 100 ms, có thể cộng trùng hoặc hụt đỉnh. Kernel `memory.peak` đo toàn
+cgroup từ khởi động container và có tính phần file cache bị charge cho cgroup.
+PSI memory guest và container đều báo 0 trong các mẫu, swap current và OOM kill
+đều bằng 0. Pressure và swap của host macOS chưa được lấy mẫu trong bảy lượt guest.
+Release flags, assertions và cấu hình VM giữ nguyên.
+
+Với owner này, compiler đã làm lại 9/9 artifact ở B lạnh dù A có target ấm.
+Trong cùng worktree, Cargo dùng lại 9/9 và libtest chiếm phần lớn thời gian còn lại.
+Mỗi hàng là một quan sát. Số đo chưa đủ để đổi debug mặc định hay kết luận cho
+workspace, browser, PostgreSQL hoặc sccache. [Log thô từng lượt](rust-guest.txt).
 
 ## Kiểm kê bước và khoảng trống
 
@@ -73,22 +135,16 @@ Với #497, chọn đo từng lệnh con qua launcher hiện hữu. Ghi mẫu s�
 đang phục vụ giám sát. Chỉ cần thêm timer ở `xtask::process` hoặc `Report` khi phải phân bổ
 thời gian giữa nhiều bước trong cùng một lần chạy. Các bảng trên không phân rã compile và link.
 
-1. Giữ target và incremental theo checkout. Bootstrap của launcher và Cargo con dùng chung
-   nơi chứa sản phẩm cuối và intermediate. Bằng chứng ở trên xác nhận cách giải quyết đường dẫn.
-   Compiler wrapper như sccache còn `UNSUPPORTED` do tiến trình server có thể ngoài session;
-   không có số hit/miss, dung lượng cache hoặc rebuild cho biến thể dirty/toolchain/features.
-2. Giữ profile hiện tại và giới hạn lịch chạy của #250. Giảm debuginfo có thể giảm dữ liệu
-   linker nhưng làm mất thông tin debug. Số đo fmt và Node chưa xác định được compile/link
-   chiếm bao nhiêu thời gian hoặc RAM; chưa có cơ sở chọn giảm debuginfo hay thay số job.
-3. Lượt benchmark này được giao trần cứng **toàn workload ≤14 GB** và một owner tại một thời điểm.
-   macOS launcher chỉ có soft admission. Hai Podman VM có sẵn đều đang tắt. Điều kiện để tiếp tục đo
-   build trên máy này là xác minh trần của môi trường được cấp và quyền sở hữu workload.
-   Browser/CMP/native/OCI và Linux strict giữ trạng thái trong SSOT; chạy các lane này ở
-   lượt riêng sau khi có owner, readback giới hạn và bằng chứng cancel/teardown tương ứng.
-4. Khi đủ điều kiện, đo `cargo xtask verify unit store` với SHA, lockfile, toolchain,
-   feature, jobs và profile cố định. Dùng target trống của checkout thử, lặp ngay trên cùng
-   target, rồi đo ở worktree thử thứ hai. Ghi riêng discovery/compile+link và execution,
-   số test được chọn, wall/RSS, pressure/swap, kích thước target, compiler hit/miss nếu có.
-   Để so sánh debuginfo và scheduling, chỉ đổi một yếu tố mỗi lần. Thử dirty source,
-   toolchain, feature, profile và hủy/khởi động lại trước khi kết luận về artifact reuse.
-   Giữ cache giữa các lượt cùng điều kiện. Lưu log ngoài target trước khi owner thu hồi dung lượng.
+1. Giữ target và incremental riêng cho từng checkout. Cargo báo 9/9 artifact fresh ở hai
+   lượt ấm mặc định và 0/9 ở mỗi target trống. Compiler wrapper như sccache còn
+   `UNSUPPORTED` trong launcher do server có thể nằm ngoài session. Chưa đo cache hit/miss
+   của sccache hay invalidation khi đổi toolchain hoặc feature.
+2. Giữ profile và lịch chạy mặc định của #250. Trên B, test profile bỏ debug info build
+   trong 1,272 s; target B tăng thêm 22.100 KiB vì đã có artifact profile mặc định. Cấu hình
+   này giảm thông tin cho debugger. Một owner nhỏ và một lượt mỗi điều kiện chưa đủ chọn
+   cấu hình chung. Có thể bỏ biến `CARGO_PROFILE_TEST_DEBUG` để về profile trước đó.
+3. Browser, CMP/native, OCI và Linux strict có phạm vi và điều kiện riêng trong SSOT.
+   Baseline guest chỉ bao phủ build test và libtest của `vink-expressions`. `unit store`,
+   workspace, PostgreSQL, SSR/WASM/bundle, browser runtime và invalidation #500 còn mở.
+   Khi có môi trường đủ chỗ cho graph lớn hơn, giữ cùng SHA, inputs, coverage và trần RAM,
+   so compiler/linker, fixture và runtime trên đúng lane đó.
