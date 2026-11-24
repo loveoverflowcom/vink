@@ -461,7 +461,7 @@ impl Notifications {
 }
 
 pub(super) fn fence_session(session: Session, error: &ApiError) -> bool {
-    if matches!(error, ApiError::Unauthenticated) {
+    if matches!(error, ApiError::Unauthenticated | ApiError::Forbidden) {
         session.fence_profile();
         true
     } else {
