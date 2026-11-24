@@ -201,13 +201,8 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
         !dock_open.get() && (!first_use.get() || query.with(|text| !text.trim().is_empty()))
     });
     let focus_search_or_heading = move || {
-        super::focus_recovery(if dock_open.get_untracked() {
-            "draft-search"
-        } else if show_tools.get_untracked() {
-            "open-draft-search"
-        } else {
-            "desk-title"
-        });
+        #[cfg(feature = "browser")]
+        recover_desk_search_focus(dock_open, show_tools);
     };
     let open_dock = Callback::new(move |()| {
         dock_open.set(true);
@@ -337,6 +332,12 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                         // The HTTP adapter already asks the shared session owner to reconcile
                         // a 401 or suspension. Hide this scope immediately while it checks.
                         Err(error @ (ApiError::Unauthenticated | ApiError::Forbidden)) => {
+                            if document()
+                                .active_element()
+                                .is_some_and(|el| el.closest("#desk").ok().flatten().is_some())
+                            {
+                                focus_search_or_heading();
+                            }
                             access_error.try_set(Some(error));
                             pages.try_set(DraftPages::default());
                         }
@@ -539,6 +540,45 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
             <DeskReview session />
         </Show>
     }.into_any()
+}
+
+#[cfg(feature = "browser")]
+fn recover_desk_search_focus(dock_open: RwSignal<bool>, show_tools: Signal<bool>) {
+    use wasm_bindgen::JsCast;
+
+    request_animation_frame(move || {
+        if window().location().pathname().as_deref() != Ok("/ban-viet") {
+            return;
+        }
+        let doc = document();
+        let available = |el: &web_sys::Element| {
+            el.closest("[hidden], [inert], :disabled")
+                .ok()
+                .flatten()
+                .is_none()
+        };
+        // The closing dock or retry control can disappear during render. A live
+        // control that already has focus owns it, even on the same route.
+        if doc
+            .active_element()
+            .is_some_and(|el| !matches!(el.tag_name().as_str(), "BODY" | "HTML") && available(&el))
+        {
+            return;
+        }
+        let id = match dock_open.try_get_untracked() {
+            Some(true) => "draft-search",
+            Some(false) if show_tools.try_get_untracked() == Some(true) => "open-draft-search",
+            _ => "desk-title",
+        };
+        if let Some(control) = doc
+            .get_element_by_id(id)
+            .filter(available)
+            .or_else(|| doc.get_element_by_id("desk-title"))
+            .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
+        {
+            let _ = control.focus();
+        }
+    });
 }
 
 #[cfg(feature = "browser")]

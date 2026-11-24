@@ -3777,6 +3777,7 @@ async function draftDashboard(page) {
   await wakeDesk(page);
   await page.waitFor(`document.querySelector('[data-testid=desk-access]')?.textContent.includes('không có quyền')`, 'forbidden dashboard');
   check(await page.eval(`!document.querySelector('[data-testid=draft-empty], #draft-list-title, #draft-search, #retry-drafts, #create-draft')`), 'forbidden clears the private heading and controls and keeps a distinct access state');
+  await page.waitFor(`document.activeElement.id === 'desk-title'`, 'revoking the focused private search falls back to the Desk heading');
   await captureRecovery(page, 'desk-forbidden', '[data-testid=desk-access]');
   gate.list = { status: 401, body: { error: { code: 'unauthenticated', message: 'test fixture' } } };
   await page.reload();
