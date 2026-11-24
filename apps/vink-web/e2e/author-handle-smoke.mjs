@@ -1,6 +1,6 @@
 // HANDLE-03/04. One real account, two owner tabs and an isolated guest in Chrome.
 import { authorFixtureSql } from './author-fixtures.mjs';
-import { fill, openAccount } from './auth-smoke.mjs';
+import { fabricate, fill, openAccount } from './auth-smoke.mjs';
 
 const field = '#author-handle';
 const submit = '#author-handle-submit';
@@ -9,6 +9,7 @@ const dialog = '#author-handle-dialog';
 const saved = '#handle-saved[data-setup="true"]';
 const canonical = '/toi/chinh-ho-so#dia-chi-tac-gia';
 const has = (s) => 'document.querySelector(' + JSON.stringify(s) + ')';
+const enabled = (s) => has(s + ':not([aria-disabled="true"])');
 const own = (page) => page.eval('fetch("/api/v1/me/handle").then(r=>r.json())');
 
 async function matrix(page, check, textContrast) {
@@ -67,7 +68,7 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
   const bio = 'Bản nháp Bio trong khi đổi địa chỉ';
   await fill(page, '#profile-bio', bio);
   await page.click('#author-handle-refresh');
-  await page.waitFor(`${has(edit)} && !${has(edit)}.disabled`, 'retry loads the Handle row');
+  await page.waitFor(enabled(edit), 'retry loads the Handle row');
   await page.click(edit);
   await page.waitFor(has(dialog + '[open] ' + field), 'setup dialog with the suggested handle');
   const initial = (await own(page)).handle;
@@ -104,7 +105,7 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
   await page.waitFor(`location.pathname === ${JSON.stringify('/@' + initial)} && ${has('#author-profile-heading')}`,
     'open the public profile from the Handle row');
   await page.eval('history.back()');
-  await page.waitFor(`location.pathname === '/toi/chinh-ho-so' && ${has(edit)} && !${has(edit)}.disabled`,
+  await page.waitFor(`location.pathname === '/toi/chinh-ho-so' && ${enabled(edit)}`,
     'return to the hydrated profile form');
   const unchangedProfile = await page.eval("fetch('/api/v1/me/profile').then(r => r.json())");
   check(afterSetup.remaining_changes === 2 && unchangedProfile.profile_version === beforeProfile.profile_version
@@ -115,30 +116,22 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
   check(await page.eval(`${has(saved)}?.textContent === ${JSON.stringify('@' + initial)}`) &&
     (await own(page)).version === afterSetup.version, 'profile save runs independently and keeps the confirmed address');
 
-  await page.waitFor(`${has(edit)} && !${has(edit)}.disabled`, 'profile save revalidation settles');
+  await page.waitFor(enabled(edit), 'profile save revalidation settles');
   await page.click(edit);
   await page.waitFor(has(dialog + '[open]'), 'open an edit before the address becomes unavailable');
   await fill(page, field, 'can-doi-chieu');
-  check(/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(initial), 'the scratch Handle fixture has a canonical address');
-  const hideAddress = authorFixtureSql(`UPDATE author_profiles SET current_handle=NULL
-    WHERE current_handle='${initial}' RETURNING principal_id;`);
-  check(hideAddress === afterSetup.principal_id, 'withdraw only this scratch address');
-  try {
-    await page.click(submit);
-    await page.waitFor(`${has('#author-handle-dialog-status')}?.textContent.includes('Không tìm thấy')
-      && !${has('#author-handle-receipt')}`, 'a missing address declines the write without entering receipt recovery');
-    check(await page.eval(`!sessionStorage.getItem(${JSON.stringify('vink.handle.pending.' + hideAddress)})`),
-      'a definite 404 clears the stored command');
-  } finally {
-    check(authorFixtureSql(`UPDATE author_profiles SET current_handle='${initial}'
-      WHERE principal_id=(SELECT principal_id FROM author_handle_names WHERE handle='${initial}')
-        AND current_handle IS NULL RETURNING principal_id;`) === hideAddress,
-    'restore the scratch address');
-  }
+  // Inject one definitive refusal. The real tombstone is terminal and covered at the end.
+  const declined = await fabricate(page, 'POST', '/api/v1/me/handle', 404, { error: { code: 'not_found' } });
+  await page.click(submit);
+  await declined();
+  await page.waitFor(`${has('#author-handle-dialog-status')}?.textContent.includes('Không tìm thấy')
+    && !${has('#author-handle-receipt')}`, 'a missing address declines the write without entering receipt recovery');
+  check(await page.eval(`!sessionStorage.getItem(${JSON.stringify('vink.handle.pending.' + afterSetup.principal_id)})`),
+    'a definite 404 clears the stored command');
   await page.key('Escape');
   await page.waitFor(has('#author-handle-refresh'), 'the unavailable row stays recoverable');
   await page.click('#author-handle-refresh');
-  await page.waitFor(`${has(edit)} && !${has(edit)}.disabled`, 'reload after a definitive refusal');
+  await page.waitFor(enabled(edit), 'reload after a definitive refusal');
 
   const legacy = await fetch(base + '/toi/dia-chi', { redirect: 'manual' });
   check(legacy.status === 308 && legacy.headers.get('location') === canonical
@@ -146,7 +139,7 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
   const tab = await openPage();
   await tab.goto(base + '/toi/dia-chi');
   await tab.waitFor(`location.pathname + location.hash === ${JSON.stringify(canonical)}
-    && document.activeElement?.id === 'dia-chi-tac-gia' && ${has(edit)}`, 'legacy link focuses the owner row');
+    && document.activeElement?.id === 'dia-chi-tac-gia' && ${enabled(edit)}`, 'legacy link focuses the owner row');
   await tab.click(edit);
   await tab.waitFor(has(dialog + '[open]'), 'second owner dialog');
   const refresh = await holdAnswer(tab, 'GET', '/api/v1/me/handle');
@@ -156,7 +149,7 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
     channel.close();
   })()`);
   check(await refresh.held() === 200, 'a profile change starts a Handle refresh in the open dialog');
-  await tab.waitFor(`${has(submit)}?.disabled`, 'submission waits for the Handle refresh');
+  await tab.waitFor(has(submit + '[aria-disabled="true"]'), 'submission waits for the Handle refresh');
   await fill(tab, field, 'mua-ngo');
   check(await tab.eval(`!${has(field)}.readOnly && ${has(field)}.value === 'mua-ngo'`),
     'the background read leaves the field editable');
@@ -169,7 +162,7 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
   check((await own(page)).remaining_changes === 2, 'no-op keeps both turns');
   await fill(page, field, 'admin');
   await page.click(submit);
-  await page.waitFor(`${has('#author-handle-error')} && !${has(submit)}.disabled`, 'reserved name is rejected');
+  await page.waitFor(`${has('#author-handle-error')} && ${enabled(submit)}`, 'reserved name is rejected');
   check((await own(page)).remaining_changes === 2, 'reserved name keeps both turns');
   await fill(page, field, 'dem-mua');
   const held = await holdAnswer(page, 'POST', '/api/v1/me/handle');
@@ -178,14 +171,14 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
   await held.finish(true);
   await page.waitFor(`${has('#author-handle-dialog-status')}?.textContent.includes('Chưa nhận')`, 'uncertain response');
   await page.reload();
-  await page.waitFor(`${has(edit)}?.textContent.includes('Kiểm tra kết quả') && !${has(edit)}.disabled`,
+  await page.waitFor(`${enabled(edit)}?.textContent.includes('Kiểm tra kết quả')`,
     'pending command survives reload');
   await page.click(edit);
   await page.waitFor(has(dialog + '[open] input[readonly]'), 'pending command keeps its original payload');
   await page.click('#author-handle-receipt');
   await page.waitFor(`${has(saved)}?.textContent === '@dem-mua' && !${has(dialog + '[open]')}`, 'receipt and current state settle');
   check((await own(page)).remaining_changes === 1, 'receipt recovery spends exactly one change');
-  await tab.waitFor(`!${has(submit)}?.disabled`, 'other tab can attempt the stale command');
+  await tab.waitFor(enabled(submit), 'other tab can attempt the stale command');
   await tab.click(submit);
   await tab.waitFor(`${has('#author-handle-error')}?.textContent.includes('phiên khác')`,
     'stale tab reconciles the current version');

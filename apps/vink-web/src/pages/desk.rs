@@ -3318,6 +3318,7 @@ pub(crate) fn failure(error: &ApiError) -> Failure {
         | ApiError::FollowActorUnavailable
         | ApiError::FollowConflict { .. }
         | ApiError::FollowKeyReused
+        | ApiError::HandleRefused(_)
         | ApiError::Unexpected { .. } => Failure::Unexpected,
     }
 }

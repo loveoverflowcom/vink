@@ -1,7 +1,4 @@
-use crate::{
-    account::Session,
-    contract::{AuthorResolution, ProfileWorks},
-};
+use crate::contract::{AuthorResolution, ProfileWorks};
 use leptos::prelude::*;
 use leptos_meta::{Link, Meta, Title};
 use leptos_router::hooks::{use_params_map, use_query_map};

@@ -54,6 +54,7 @@ impl SaveProfile {
 }
 
 /// Private Handle projection. Its version and quota belong to a different command from SaveProfile.
+#[cfg(feature = "hydrate")]
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct OwnHandle {
     pub principal_id: String,
@@ -64,6 +65,7 @@ pub(crate) struct OwnHandle {
     pub aliases: Vec<String>,
 }
 
+#[cfg(feature = "hydrate")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum HandleIntent {
@@ -72,6 +74,7 @@ pub(crate) enum HandleIntent {
 }
 
 /// This wire shape also reads commands left in sessionStorage by the former Handle page.
+#[cfg(feature = "hydrate")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct HandleCommand {
     pub principal_id: String,
@@ -81,6 +84,7 @@ pub(crate) struct HandleCommand {
     pub handle: String,
 }
 
+#[cfg(feature = "hydrate")]
 #[derive(Debug, Deserialize)]
 pub(crate) struct HandleReceipt {
     pub command_id: String,
@@ -88,7 +92,8 @@ pub(crate) struct HandleReceipt {
     pub handle: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum HandleRefusal {
     Taken,
     OwnAlias,
