@@ -11,8 +11,8 @@ use super::publication::decision_label;
 use crate::account::Session;
 use crate::contract::{
     ApiError,
-    moderation::{Appeal, AuthorWorkDecision, Filed},
-    publication::{AuthorPublicationState, AuthorRevision},
+    moderation::{Appeal, AuthorWorkDecision, AuthorWorkReview, Filed},
+    publication::AuthorRevision,
 };
 use crate::{api, draft_list};
 
@@ -187,17 +187,24 @@ pub(super) fn ReviewTrigger(
 pub(super) fn DeskReview(session: Session) -> impl IntoView {
     let target = use_review_target();
     let open = Signal::derive(move || target.with(Option::is_some));
+    #[cfg(feature = "hydrate")]
+    let closing = StoredValue::new(false);
     let close = Callback::new({
         #[cfg(feature = "hydrate")]
         let navigate = leptos_router::hooks::use_navigate();
         move |()| {
             #[cfg(feature = "hydrate")]
             {
-                if row_history_entry()
-                    && let Ok(history) = window().history()
-                    && history.back().is_ok()
-                {
+                if closing.get_value() {
                     return;
+                }
+                // History traversal is asynchronous. Repeated dismissals must consume one entry.
+                if row_history_entry() && let Ok(history) = window().history() {
+                    closing.set_value(true);
+                    if history.back().is_ok() {
+                        return;
+                    }
+                    closing.set_value(false);
                 }
                 navigate(
                     "/ban-viet",
@@ -214,6 +221,7 @@ pub(super) fn DeskReview(session: Session) -> impl IntoView {
     #[cfg(feature = "hydrate")]
     Effect::new(move |previous: Option<(bool, Option<String>)>| {
         let current = target.get();
+        closing.set_value(false);
         if current.is_none()
             && let Some((true, trigger)) = previous
         {
@@ -280,41 +288,21 @@ fn recover_desk_focus(trigger: Option<String>, target: Memo<Option<Result<Review
     });
 }
 
-#[derive(Clone)]
-struct ReviewData {
-    state: AuthorPublicationState,
-    appeals: Vec<Appeal>,
-    decisions: Vec<AuthorWorkDecision>,
-}
-
 async fn fetch_review(
     work: &str,
     still_current: impl Fn() -> bool,
-) -> Result<ReviewData, ApiError> {
+) -> Result<AuthorWorkReview, ApiError> {
     if !still_current() {
         return Err(ApiError::Unauthenticated);
     }
-    let state: AuthorPublicationState =
-        api::moderation_get(&api::publication_state_path(work)).await?;
-    if state.work_id != work {
+    let review: AuthorWorkReview = api::moderation_get(&api::author_work_review_path(work)).await?;
+    if !still_current() {
+        return Err(ApiError::Unauthenticated);
+    }
+    if review.state.work_id != work {
         return Err(ApiError::NotFound);
     }
-    if !still_current() {
-        return Err(ApiError::Unauthenticated);
-    }
-    let decisions = api::moderation_get(&api::author_decisions_path(work)).await?;
-    if !still_current() {
-        return Err(ApiError::Unauthenticated);
-    }
-    let appeals = api::moderation_get(&api::author_appeals_path(work)).await?;
-    if !still_current() {
-        return Err(ApiError::Unauthenticated);
-    }
-    Ok(ReviewData {
-        state,
-        appeals,
-        decisions,
-    })
+    Ok(review)
 }
 
 #[derive(Clone, Copy)]
@@ -488,7 +476,7 @@ fn read_error(error: &ApiError) -> &'static str {
     }
 }
 
-fn review_content(data: ReviewData, target: &ReviewTarget, actions: AppealActions) -> AnyView {
+fn review_content(data: AuthorWorkReview, target: &ReviewTarget, actions: AppealActions) -> AnyView {
     let revisions = &data.state.revisions;
     let selected = if let Some((revision_id, version)) = &target.decision {
         let index = revisions
@@ -586,7 +574,7 @@ fn review_content(data: ReviewData, target: &ReviewTarget, actions: AppealAction
 }
 
 fn revision_review(
-    data: &ReviewData,
+    data: &AuthorWorkReview,
     index: usize,
     decision: Option<&AuthorWorkDecision>,
     actions: AppealActions,

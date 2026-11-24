@@ -370,16 +370,34 @@ async function rest(env) {
     const trigger = `#desk-review-trigger-${work}`;
     await author.goto(`${base}/ban-viet`);
     await author.waitFor(`document.querySelector('${trigger}')`, 'the work has its own review trigger');
-    const countDetails = () => wire.count('GET', '/publication/state') +
-      wire.count('GET', '/publication/decisions') + wire.count('GET', '/appeals');
+    const countDetails = () => wire.count('GET', '/publication/review') +
+      wire.count('GET', '/publication/state') +
+      wire.count('GET', '/appeals');
     check(countDetails() === 0, 'opening the list issues no per-card review reads');
     await author.click(trigger);
     await author.waitFor(`location.search === '?review=${work}' && document.querySelector('#desk-review').open && document.querySelector('#desk-review-content')?.textContent.includes('Đã ghi nhận, chờ quản trị viên')`, 'opening the card keeps Desk and reads its recorded appeal');
-    check(countDetails() === 3 && wire.requests.filter(r => r.path.startsWith('/api/v1/works/')).every(r => r.path.includes(work)), 'the card opens a single work detail without fetching other cards');
+    check(countDetails() === 1 && wire.count('GET', `/works/${work}/publication/review`) === 1, 'the card reads one consistent detail snapshot for the selected work');
     await author.key('Escape');
     await author.waitFor(`location.search === '' && !document.querySelector('#desk-review').open && document.activeElement?.matches('${trigger}')`, 'Escape restores the work card trigger');
     await author.eval(`history.forward()`);
     await author.waitFor(`location.search === '?review=${work}' && document.querySelector('#desk-review').open`, 'Forward reopens the same detail');
+    check(await author.eval(`(() => {
+      const back = history.back;
+      let traversals = 0;
+      history.back = () => {
+        traversals++;
+        back.call(history);
+      };
+      const close = document.querySelector('#desk-review-close');
+      try {
+        close.click();
+        close.click();
+        return traversals === 1;
+      } finally {
+        history.back = back;
+      }
+    })()`), 'repeated dismissal requests one history step');
+    await author.waitFor(`location.search === '' && !document.querySelector('#desk-review').open`, 'the one history step closes the detail in Desk');
   } finally {
     await wire.close();
   }

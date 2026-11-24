@@ -8,6 +8,7 @@ use axum::routing::{delete, get, post, put};
 use axum::{Json, Router};
 use tower_http::set_header::SetResponseHeaderLayer;
 
+use super::appeals::AppealDto;
 use super::conditional::{self, PUBLIC_ERROR_CACHE_CONTROL};
 use super::contract::{
     AddNoteReq, AuthorPublicationState, AuthorRevisionView, AutomationStateDto,
@@ -30,6 +31,7 @@ use crate::application::catalog::SearchTags;
 use crate::application::discovery::DiscoverWorks;
 use crate::application::discussion::{ModerateComment, SetCommentsMode, SubmitComment};
 use crate::application::endorsement::{SetCommentEndorsement, SetWorkEndorsement};
+use crate::application::ports::AuthorPublicationStateFacts;
 use crate::application::taxonomy::SaveWorkTags;
 use crate::application::{InvalidInput, SaveDraft};
 use crate::domain::discovery::MAX_FILTER_REFS;
@@ -162,8 +164,8 @@ pub fn routes(state: AppState) -> Router<AppState> {
             get(get_author_publication_state),
         )
         .route(
-            "/works/{work_id}/publication/decisions",
-            get(get_author_work_decisions),
+            "/works/{work_id}/publication/review",
+            get(get_author_work_review),
         )
         .route(
             "/works/{work_id}/publication/me",
@@ -577,20 +579,30 @@ struct AuthorWorkDecisionView {
     decided_at: OffsetDateTime,
 }
 
-async fn get_author_work_decisions(
+#[derive(serde::Serialize)]
+struct AuthorWorkReviewView {
+    state: AuthorPublicationState,
+    decisions: Vec<AuthorWorkDecisionView>,
+    appeals: Vec<AppealDto>,
+}
+
+async fn get_author_work_review(
     State(state): State<AppState>,
     Actor(actor): Actor,
     Path(raw): Path<String>,
-) -> Result<Json<Vec<AuthorWorkDecisionView>>, ApiError> {
+) -> Result<Json<AuthorWorkReviewView>, ApiError> {
     let actor = actor.ok_or(ApiError::Unauthenticated)?;
-    let decisions = state
+    let work = work_id(&raw)?;
+    let review = state
         .vink
         .store()
-        .author_work_decisions(actor, work_id(&raw)?)
+        .author_work_review(actor, work)
         .await?
         .ok_or(ApiError::NotFound)?;
-    Ok(Json(
-        decisions
+    Ok(Json(AuthorWorkReviewView {
+        state: author_publication_state_view(work, review.state)?,
+        decisions: review
+            .decisions
             .into_iter()
             .map(|decision| AuthorWorkDecisionView {
                 revision_id: decision.revision_id,
@@ -605,7 +617,8 @@ async fn get_author_work_decisions(
                 decided_at: decision.detail.decided_at,
             })
             .collect(),
-    ))
+        appeals: review.appeals.into_iter().map(AppealDto::from).collect(),
+    }))
 }
 
 async fn get_author_publication_state(
@@ -618,7 +631,13 @@ async fn get_author_publication_state(
         .vink
         .load_author_publication_state(actor, work)
         .await?;
+    author_publication_state_view(work, facts).map(Json)
+}
 
+fn author_publication_state_view(
+    work: WorkId,
+    facts: AuthorPublicationStateFacts,
+) -> Result<AuthorPublicationState, ApiError> {
     let pub_facts = facts.publication.facts();
     let mod_facts = facts.moderation.facts();
 
@@ -717,7 +736,7 @@ async fn get_author_publication_state(
             policy_version: j.policy.get(),
         });
 
-    Ok(Json(AuthorPublicationState {
+    Ok(AuthorPublicationState {
         work_id: work.to_string(),
         audience,
         lifecycle,
@@ -726,7 +745,7 @@ async fn get_author_publication_state(
         pointer,
         revisions,
         open_ticket,
-    }))
+    })
 }
 
 async fn save_draft(

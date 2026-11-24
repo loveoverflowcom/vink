@@ -182,9 +182,10 @@ lý do và tải lại trạng thái để đối chiếu. UI không cấp quy�
 Chưa có UI cấp grant/nhóm, điều tra riêng, ca bình luận hoặc sửa policy. Chọn audience/gửi duyệt/chuyển
 riêng tư nằm ở [vùng công khai của Bàn viết](publication-author-web.md). Chi tiết
 [#477](https://github.com/loveoverflowcom/vink/issues/477) dùng chung DTO trạng thái và nhãn quyết định
-với vùng đó. Khi mở chi tiết mới đọc `GET …/publication/state`, `GET …/publication/decisions`
-và `GET …/appeals`. Đường đọc lịch sử chỉ trả quyết định đã kết luận, theo đúng revision/version
-và phép chiếu lý do dành cho tác giả của P-12A. API dùng `no-store` và trả `404` ngoài phạm vi sở hữu.
+với vùng đó. Khi mở chi tiết, `GET …/publication/review` trả trạng thái công khai, lịch sử quyết định
+và hồ sơ phản đối từ cùng một snapshot PostgreSQL. Lịch sử chỉ trả quyết định đã kết luận, theo đúng
+revision/version và phép chiếu lý do dành cho tác giả của P-12A. API dùng `no-store` và trả `404`
+ngoài phạm vi sở hữu.
 URL thông báo tác phẩm thêm `revision` và `decision` vào URL chi tiết. Xem
 [LayoutSpec R4.4](../design/redesign-r4/desk-moderation.md).
 

@@ -182,13 +182,16 @@ export async function reviewWithdrawnPage(page, { args, check, captureMatrix }) 
   const deskHtml = await fetch(`${author.base}${historicalPath}`);
   check(deskHtml.headers.get('cache-control') === 'no-store' && /name="robots"[^>]+content="noindex"/.test(await deskHtml.clone().text()), 'private Desk SSR is no-store and noindex');
   check(!(await deskHtml.text()).includes('Cần xem lại chính sách'), 'private reasons are absent from SSR');
-  const decisionsPath = `/api/v1/works/${work}/publication/decisions`;
-  const ownHistory = await api(author, decisionsPath);
-  const deniedHistory = await api(admin, decisionsPath);
-  check(ownHistory.status === 200 && ownHistory.cache === 'no-store' &&
-    ownHistory.body.some(d => d.revision_id === revision && d.decision_version === appeal.decision_version && !d.is_current && d.outcome === 'rejected'),
-    'the author history retains the superseded rejection at its exact version');
-  check(deniedHistory.status === 404 && deniedHistory.cache === 'no-store', 'the staff account cannot read the private author history');
+  const reviewPath = `/api/v1/works/${work}/publication/review`;
+  const ownReview = await api(author, reviewPath);
+  const deniedReview = await api(admin, reviewPath);
+  check(ownReview.status === 200 && ownReview.cache === 'no-store' &&
+    ownReview.body.state.pointer?.revision_id === revision &&
+    ownReview.body.decisions.some(d => d.revision_id === revision && d.decision_version === appeal.decision_version && !d.is_current && d.outcome === 'rejected') &&
+    ownReview.body.decisions.some(d => d.revision_id === revision && d.is_current && d.outcome === 'approved') &&
+    ownReview.body.appeals.some(a => a.id === appeal.id && a.decision_version === appeal.decision_version && a.state === 'reversed'),
+    'the author review pairs the public pointer, exact decision history and resolved appeal');
+  check(deniedReview.status === 404 && deniedReview.cache === 'no-store', 'the staff account cannot read the private author review');
   await page.goto(`${author.base}${historicalPath}`);
   await page.waitFor(`document.querySelector('#desk-review-content')?.innerText.includes('Quyết định trước đây')`, 'an exact historical decision opens without looking up a Desk row');
   check(await page.eval(`document.querySelector('#desk-review-content').innerText.includes('Cần xem lại chính sách')

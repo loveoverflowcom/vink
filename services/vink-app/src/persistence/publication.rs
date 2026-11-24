@@ -8,9 +8,12 @@ use sqlx::{PgConnection, query, query_as, query_scalar};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::appeals::{self, AppealRecord};
+use super::discussion::read_snapshot;
 use super::moderation_write::{
     DecisionSource, apply_pointer_effect, locked_automation_mode, open_work_case, write_decision,
 };
+use super::notification_reads::{VersionedWorkDecision, author_work_decisions};
 use super::postgres::{PgStore, classify, integrity};
 use super::principal::locked_standing;
 use super::taxonomy::{SnapshotCapture, capture_metadata_snapshot};
@@ -526,50 +529,71 @@ async fn load_paired_facts<C>(
     Ok((publication_facts, mod_facts, metadata_list))
 }
 
+async fn read_author_state(
+    conn: &mut PgConnection,
+    actor: PrincipalId,
+    work_id: WorkId,
+) -> Result<Option<AuthorPublicationStateFacts>, StoreError> {
+    let owner: Option<Uuid> = query_scalar("SELECT owner_id FROM works WHERE id = $1")
+        .bind(work_id.as_uuid())
+        .fetch_optional(&mut *conn)
+        .await
+        .map_err(classify)?;
+    if owner != Some(actor.as_uuid()) {
+        return Ok(None);
+    }
+
+    let (p, m, revision_metadata) =
+        load_paired_facts(conn, actor, work_id, STATE_REVISIONS_SQL, revision_binding).await?;
+    let publication = crate::domain::publication::PublicationState::restore(p)
+        .map_err(|e| integrity("publication state restore failed", e))?;
+    let moderation = crate::domain::moderation::ModerationState::restore(&publication, m)
+        .map_err(|e| integrity("moderation state restore failed", e))?;
+    Ok(Some(AuthorPublicationStateFacts {
+        publication,
+        moderation,
+        revision_metadata,
+    }))
+}
+
+pub(crate) struct AuthorWorkReview {
+    pub state: AuthorPublicationStateFacts,
+    pub decisions: Vec<VersionedWorkDecision>,
+    pub appeals: Vec<AppealRecord>,
+}
+
+impl PgStore {
+    pub(crate) async fn author_work_review(
+        &self,
+        actor: PrincipalId,
+        work_id: WorkId,
+    ) -> Result<Option<AuthorWorkReview>, StoreError> {
+        let mut tx = read_snapshot(self.pool()).await?;
+        let Some(state) = read_author_state(&mut tx, actor, work_id).await? else {
+            tx.commit().await.map_err(classify)?;
+            return Ok(None);
+        };
+        let decisions = author_work_decisions(&mut tx, actor, work_id).await?;
+        let appeals = appeals::records(&mut tx, work_id).await?;
+        tx.commit().await.map_err(classify)?;
+        Ok(Some(AuthorWorkReview {
+            state,
+            decisions,
+            appeals,
+        }))
+    }
+}
+
 impl AuthorPublicationStore for PgStore {
     async fn load_author_publication_state(
         &self,
         actor: PrincipalId,
         work_id: WorkId,
     ) -> Result<Option<AuthorPublicationStateFacts>, StoreError> {
-        let mut tx = self.pool().begin().await.map_err(classify)?;
-        // All facts belong to one snapshot, without locking a writer or granting authority.
-        query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
-            .execute(&mut *tx)
-            .await
-            .map_err(classify)?;
-        let owner: Option<Uuid> = query_scalar("SELECT owner_id FROM works WHERE id = $1")
-            .bind(work_id.as_uuid())
-            .fetch_optional(&mut *tx)
-            .await
-            .map_err(classify)?;
-
-        let Some(owner) = owner else {
-            tx.commit().await.map_err(classify)?;
-            return Ok(None);
-        };
-
-        if owner != actor.as_uuid() {
-            tx.commit().await.map_err(classify)?;
-            return Ok(None);
-        }
-
-        let (p, m, revision_metadata) =
-            load_paired_facts(&mut tx, actor, work_id, STATE_REVISIONS_SQL, |rev| {
-                revision_binding(rev)
-            })
-            .await?;
-        let publication = crate::domain::publication::PublicationState::restore(p)
-            .map_err(|e| integrity("publication state restore failed", e))?;
-        let moderation = crate::domain::moderation::ModerationState::restore(&publication, m)
-            .map_err(|e| integrity("moderation state restore failed", e))?;
+        let mut tx = read_snapshot(self.pool()).await?;
+        let state = read_author_state(&mut tx, actor, work_id).await?;
         tx.commit().await.map_err(classify)?;
-
-        Ok(Some(AuthorPublicationStateFacts {
-            publication,
-            moderation,
-            revision_metadata,
-        }))
+        Ok(state)
     }
 
     fn capture_snapshot(

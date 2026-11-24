@@ -1,0 +1,61 @@
+{
+  "state": {
+    "work_id": "33333333-3333-4333-8333-333333333333",
+    "audience": "public",
+    "lifecycle": "active",
+    "generation": 3,
+    "intent": {
+      "revision_id": "0192f3a1-0000-7000-8000-0000000000b1",
+      "generation": 3
+    },
+    "pointer": {
+      "revision_id": "0192f3a1-0000-7000-8000-0000000000b1",
+      "intent_generation": 3
+    },
+    "revisions": [
+      {
+        "can_appeal": false,
+        "decision_reason": "Đã xem xét lại",
+        "revision_id": "0192f3a1-0000-7000-8000-0000000000b1",
+        "title": "[Mẫu] Mưa trên phố cũ",
+        "content_hash": "b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1",
+        "moderation": "approved",
+        "decision_version": 3,
+        "metadata_snapshot_id": "0192f3a1-0000-7000-8000-0000000000e1",
+        "created_at": "2026-10-30T08:00:00Z"
+      }
+    ]
+  },
+  "decisions": [
+    {
+      "revision_id": "0192f3a1-0000-7000-8000-0000000000b1",
+      "decision_version": 3,
+      "outcome": "approved",
+      "is_current": true,
+      "can_appeal": false,
+      "reason": "Đã xem xét lại",
+      "decided_at": "2026-11-24T10:15:00Z"
+    },
+    {
+      "revision_id": "0192f3a1-0000-7000-8000-0000000000b1",
+      "decision_version": 2,
+      "outcome": "rejected",
+      "is_current": false,
+      "can_appeal": false,
+      "reason": "Cần xem lại chính sách",
+      "decided_at": "2026-11-24T09:00:00Z"
+    }
+  ],
+  "appeals": [
+    {
+      "id": "0192f400-0000-7000-8000-000000000099",
+      "work_id": "33333333-3333-4333-8333-333333333333",
+      "revision_id": "0192f3a1-0000-7000-8000-0000000000b1",
+      "decision_version": 2,
+      "state": "reversed",
+      "notice": "not_sent",
+      "resolution_reason": "Đã xem xét lại",
+      "created_at": "2026-11-24T09:15:00Z"
+    }
+  ]
+}

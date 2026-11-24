@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 
-use sqlx::Row;
+use sqlx::{PgConnection, Row};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -113,6 +113,27 @@ fn work_decision_from_row(row: &sqlx::postgres::PgRow) -> Result<WorkDecisionDet
         is_current: row.try_get("is_current").map_err(classify)?,
         decided_at: row.try_get("created_at").map_err(classify)?,
     })
+}
+
+/// The same author-visible projection as the notification detail, using the caller's snapshot.
+pub(super) async fn author_work_decisions(
+    conn: &mut PgConnection,
+    viewer: PrincipalId,
+    work: WorkId,
+) -> Result<Vec<VersionedWorkDecision>, StoreError> {
+    work_decision_query(viewer, work, None, None)
+        .fetch_all(conn)
+        .await
+        .map_err(classify)?
+        .iter()
+        .map(|row| {
+            Ok(VersionedWorkDecision {
+                revision_id: row.try_get("revision_id").map_err(classify)?,
+                decision_version: row.try_get("decision_version").map_err(classify)?,
+                detail: work_decision_from_row(row)?,
+            })
+        })
+        .collect()
 }
 
 /// The private detail of an adverse comment decision for its writer (P-12A).
@@ -321,42 +342,6 @@ impl PgStore {
             .map_err(classify)?;
         tx.commit().await.map_err(classify)?;
         row.as_ref().map(work_decision_from_row).transpose()
-    }
-
-    /// The same author-safe projection for all concluded versions of an owned work.
-    pub async fn author_work_decisions(
-        &self,
-        viewer: PrincipalId,
-        work: WorkId,
-    ) -> Result<Option<Vec<VersionedWorkDecision>>, StoreError> {
-        let mut tx = read_snapshot(self.pool()).await?;
-        let owned: bool = sqlx::query_scalar(
-            "SELECT EXISTS (SELECT 1 FROM works WHERE id = $1 AND owner_id = $2)",
-        )
-        .bind(work.as_uuid())
-        .bind(viewer.as_uuid())
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(classify)?;
-        if !owned {
-            return Ok(None);
-        }
-        let rows = work_decision_query(viewer, work, None, None)
-            .fetch_all(&mut *tx)
-            .await
-            .map_err(classify)?;
-        tx.commit().await.map_err(classify)?;
-        let history = rows
-            .iter()
-            .map(|row| {
-                Ok(VersionedWorkDecision {
-                    revision_id: row.try_get("revision_id").map_err(classify)?,
-                    decision_version: row.try_get("decision_version").map_err(classify)?,
-                    detail: work_decision_from_row(row)?,
-                })
-            })
-            .collect::<Result<_, StoreError>>()?;
-        Ok(Some(history))
     }
 
     /// The writer's private detail of one adverse decision on their comment; `None` for anyone

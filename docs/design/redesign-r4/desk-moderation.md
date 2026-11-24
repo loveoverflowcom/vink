@@ -41,7 +41,7 @@ chưa được xem. DQ-05 và DQ-10 vẫn `OPEN`.
 | --- | --- | --- |
 | CHOICE-01 | Hộp thoại/sheet thay vì mở rộng hàng | Primitive hiện có quản lý Escape, focus, nền inert và cuộn. Chi tiết dài dùng disclosure ngay trong overlay, không đẩy hàng khỏi vị trí. |
 | CHOICE-02 | URL chuẩn `/ban-viet?review={WorkId}`; đích quyết định thêm `revision={RevisionId}&decision={DecisionVersion}` | URL tra đích độc lập với danh sách đã tải. URL cũ chuyển đến URL chuẩn. Mở từ thẻ thêm một mục history, Đóng/Escape đi Back. Đóng liên kết trực tiếp thay URL bằng Bàn viết. |
-| Dữ liệu lịch sử | Đọc theo nhu cầu trong phạm vi tác giả | Trạng thái công khai hiện có chỉ trả quyết định hiện hành của mỗi revision. Lịch sử riêng tư trả các quyết định duyệt/từ chối theo phiên bản và cùng phép chiếu lý do được phép đọc của Gateway thông báo. |
+| Dữ liệu chi tiết | Đọc theo nhu cầu trong phạm vi tác giả | Một snapshot gồm trạng thái công khai, lịch sử quyết định duyệt/từ chối và hồ sơ phản đối. Lịch sử dùng cùng phép chiếu lý do dành cho tác giả của Gateway thông báo. |
 
 Focus ban đầu vào tiêu đề hộp thoại. Khi đóng, primitive trả focus về nút đã mở;
 Bàn viết dùng tiêu đề làm đích khi nút đó không hiện diện. Tìm/sắp xếp/phân trang không phụ thuộc
