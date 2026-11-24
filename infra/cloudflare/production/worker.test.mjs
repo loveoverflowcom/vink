@@ -223,6 +223,8 @@ test('standalone documents work with the API offline and only API/probes reach o
   }
   assert.equal((await send(serve, '/toi', {method:'POST'}, bindings)).status, 405);
   assert.equal((await send(serve, '/toi', {headers:{accept:'application/json'}}, bindings)).status, 404);
+  assert.equal((await send(serve, '/toi', {headers:{accept:'text/html;q=0, */*'}}, bindings)).status, 404);
+  assert.equal((await send(serve, '/toi', {headers:{accept:'text/html;Q=0.5'}}, bindings)).status, 200);
   assert.equal((await send(serve, '/api/v1/not-found', {}, bindings)).status, 502);
   assert.equal((await send(serve, '/health/ready', {}, bindings)).status, 502);
   assert.deepEqual(apiCalls, ['/api/v1/not-found', '/health/ready']);

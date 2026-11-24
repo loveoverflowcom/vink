@@ -16,7 +16,7 @@ if (listenPort === apiPort) throw Error('Frontend and API require separate ports
 const host = '127.0.0.1';
 const types = {'.js':'text/javascript', '.css':'text/css', '.wasm':'application/wasm',
   '.woff2':'font/woff2', '.svg':'image/svg+xml', '.webp':'image/webp', '.png':'image/png',
-  '.webmanifest':'application/manifest+json', '.txt':'text/plain', '.html':'text/html; charset=utf-8'};
+  '.webmanifest':'application/manifest+json', '.json':'application/json', '.md':'text/plain', '.txt':'text/plain', '.html':'text/html; charset=utf-8'};
 
 createServer(async (req, res) => {
   const fail = (status, message) => {

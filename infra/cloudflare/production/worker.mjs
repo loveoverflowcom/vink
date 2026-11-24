@@ -16,7 +16,12 @@ export function spaRoute(path, method, accept) {
   if (/^\/api\/v1(?:\/|$)/.test(path) || /^\/health\/(live|ready)$/.test(path)) return "api";
   if (/^\/(api|health|pkg|_v)(?:\/|$)/.test(path) || /\.[^/]+\/?$/.test(path)) return "missing";
   if (method !== "GET" && method !== "HEAD") return "method";
-  return accept?.split(",").some(type => type.split(";")[0].trim() === "text/html") ? "document" : "missing";
+  const acceptsHtml = accept?.split(",").some(range => {
+    const [type, ...params] = range.toLowerCase().split(";").map(part => part.trim());
+    const quality = params.find(param => /^q\s*=/.test(param));
+    return type === "text/html" && (!quality || Number(quality.split("=")[1]) > 0);
+  });
+  return acceptsHtml ? "document" : "missing";
 }
 
 export function handler(inventory, originFetch = fetch, assetFetch = fetch) {

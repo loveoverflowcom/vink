@@ -336,7 +336,7 @@ fn alive(child: &mut Guard) -> Result<(), String> {
     }
     Ok(())
 }
-fn ready(child: &mut Guard, mut probe: impl FnMut() -> bool) -> Result<(), String> {
+pub(crate) fn ready(child: &mut Guard, mut probe: impl FnMut() -> bool) -> Result<(), String> {
     ready_with_timeout(child, &mut probe, Duration::from_secs(25))
 }
 fn ready_with_timeout(

@@ -913,6 +913,11 @@ export async function standalone(page, {args, check}) {
   await page.click('#retry-public');
   await page.waitFor(q('.vk-document'), 'retry obtains the current publication');
 
+  await page.goto(base + '/the/' + encodeURIComponent('ký-ức'));
+  await page.waitFor(`document.querySelector('main h1')?.textContent.includes('Ký ức')`, 'public tag deep link');
+  await page.goto(base + '/@nguoi-chua-co');
+  await page.waitFor(q('#profile-unavailable'), 'unknown author has a settled profile state');
+
   await page.goto(base + '/toi');
   await page.waitFor(q('#use-registration'), 'anonymous password form');
   await page.click('#use-registration');
@@ -920,6 +925,8 @@ export async function standalone(page, {args, check}) {
   await credentials(page, REGISTER, username, SECRET_A);
   await page.click(REGISTER + '-submit');
   await setPenName(page, 'Người viết SPA');
+  const author = await read(page, '/api/v1/me/profile');
+  check(author.status === 200 && Boolean(author.data?.handle), 'new author has a public handle');
   const id = await createDraft(page, 'Bản thảo trên Vink');
   check(await page.body() === DRAFT_TEXT, 'saved Vietnamese draft reopens after a full document reload');
   await page.typeInBody(' Chưa lưu.');
@@ -929,6 +936,27 @@ export async function standalone(page, {args, check}) {
   check((await page.body()).endsWith(' Chưa lưu.'), 'staying in the editor keeps the unsaved text');
   await page.click('#save');
   await page.waitStatus('saved');
+  await page.waitFor(q('#audience-public'), 'author publication controls');
+  await page.eval("document.querySelector('#audience-public').click()");
+  await page.waitFor(q('#publication-primary'), 'request review of the saved revision');
+  await page.eval("document.querySelector('#publication-primary').click()");
+  await page.waitFor(`document.querySelector('#publication')?.dataset.phase === 'reconciled' && document.querySelector('#publication-requested')`, 'pending review');
+  const publication = await read(page, '/api/v1/works/' + id + '/publication/state');
+  check(publication.data?.revisions.length === 1 && publication.data.revisions[0].moderation === 'pending' && !publication.data.pointer,
+    'author submission records one pending revision without publishing it');
+  await page.goto(reader);
+  await page.waitFor(q('#root-composer'), 'signed-in discussion composer');
+  const comment = 'Lời nhận xét đang chờ duyệt.';
+  await page.typeAtEnd('#root-composer', comment);
+  await page.click('#root-composer-send');
+  await page.waitFor(`document.querySelector('#own-comments')?.textContent.includes(${JSON.stringify(comment)})`, 'own pending comment');
+  const discussion = await read(page, '/api/v1/works/' + work + '/discussion/public');
+  check(discussion.status === 200 && !JSON.stringify(discussion.data).includes(comment),
+    'a submitted comment appears only in its author’s overlay before approval');
+  await page.goto(base + '/kiem-duyet');
+  await page.waitFor(q('#moderation-home'), 'moderation deep link');
+  check((await read(page, '/api/v1/moderation/automation')).status === 403,
+    'the ordinary account cannot read the administrator’s automation controls');
   await page.goto(base + '/toi');
   await page.waitFor(q('#sign-out'), 'signed-in account');
   await signOut(page, base);
@@ -941,4 +969,9 @@ export async function standalone(page, {args, check}) {
   await setPenName(page, 'Bạn đọc SPA');
   check((await read(page, '/api/v1/drafts/' + id)).status === 404,
     'the second account cannot read the first account’s private draft');
+  await page.goto(base + '/@' + encodeURIComponent(author.data.handle));
+  await page.waitFor(`document.querySelector('#author-profile-heading')?.textContent.includes('Người viết SPA')`,
+    'the second account can open the public author profile');
+  check(!await page.eval("document.body.textContent.includes('Bản thảo trên Vink')"),
+    'a pending work stays off the public author profile');
 }

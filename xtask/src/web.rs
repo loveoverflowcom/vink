@@ -467,17 +467,39 @@ fn auth_web(
         }
         let mut command = Command::new("node");
         crate::env::clear_capabilities(&mut command);
-        let child = command
-            .current_dir(root)
-            .args([
-                "apps/vink-web/dev-server.mjs",
-                crate::build::SPA_SCRATCH_SITE,
-            ])
-            .arg(port.to_string())
-            .arg(app.port.to_string())
-            .spawn()
-            .map_err(|e| e.to_string())?;
-        frontend = Some(Guard(Some(child)));
+        command.current_dir(root);
+        if std::env::var("VINK_STANDALONE_WORKERD").as_deref() == Ok("1") {
+            let staged = dir.join("pages");
+            let mut pack = Command::new("python3");
+            pack.current_dir(root)
+                .args([
+                    "-B",
+                    "infra/cloudflare/production/artifacts.py",
+                    "--spa",
+                    crate::build::SPA_SCRATCH_SITE,
+                    "--out",
+                ])
+                .arg(&staged);
+            crate::process::run(&mut pack, "stage standalone Pages deployment")?;
+            command
+                .arg("infra/cloudflare/production/local-edge.mjs")
+                .arg(staged)
+                .arg(format!("http://127.0.0.1:{}", app.port))
+                .arg(port.to_string());
+        } else {
+            command
+                .args([
+                    "apps/vink-web/dev-server.mjs",
+                    crate::build::SPA_SCRATCH_SITE,
+                ])
+                .arg(port.to_string())
+                .arg(app.port.to_string());
+        }
+        let mut host = Guard(Some(command.spawn().map_err(|e| e.to_string())?));
+        crate::workflow::ready(&mut host, || {
+            std::net::TcpStream::connect(("127.0.0.1", port)).is_ok()
+        })?;
+        frontend = Some(host);
         origin
     } else {
         format!("http://127.0.0.1:{}", app.port)
@@ -601,6 +623,13 @@ fn native_auth_scratch(
     let result = (|| {
         let app = server.with_database(PASSWORD_AUTH_DATABASE)?;
         prepare_app(root, &app, matches!(phase, IdentityPhase::Standalone))?;
+        if matches!(phase, IdentityPhase::Standalone) {
+            seed_tag_catalog(root, &app)?;
+            crate::process::run(
+                &mut app.command(root, &["principal", "backfill-handles"]),
+                "provision public handles in standalone scratch",
+            )?;
+        }
         auth_web(root, &app, admin_url, chrome, state, phase)
     })();
     let _ = crate::identity::sql(admin_url, &drop);

@@ -63,9 +63,14 @@ jobs:
           [[ "$READER" =~ ^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$ ]]
       - name: Build clean source without registry credentials
         run: |
-          rustup toolchain install
           options=()
-          if [[ "$APP_IMAGE" == api ]]; then options+=(--api-only); fi
+          if [[ "$APP_IMAGE" == api ]]; then
+            export RUSTUP_TOOLCHAIN="$(sed -n 's/^channel = "\([^"]*\)"/\1/p' rust-toolchain.toml)"
+            rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+            options+=(--api-only)
+          else
+            rustup toolchain install
+          fi
           cargo xtask infra build-images docker "$PLATFORM" "${options[@]}"
       - name: Qualify built images against isolated PostgreSQL and Identity
         run: infra/production/smoke-images.sh "$GITHUB_SHA" "$PLATFORM" "$APP_IMAGE"
