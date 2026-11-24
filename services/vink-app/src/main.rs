@@ -1120,6 +1120,7 @@ async fn serve(config: Config, api_only: bool) -> Result<(), Failure> {
     .with_trusted_proxies(config.trusted_proxies.clone())
     .with_identity_probe(probe)
     .with_restricted_role_required(config.profile == Profile::Production);
+    #[cfg(feature = "legacy-ssr")]
     if !api_only && !config.site_root.join("pkg").join("vink.js").exists() {
         tracing::warn!(
             site_root = %config.site_root.display(),

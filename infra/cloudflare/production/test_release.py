@@ -2,6 +2,7 @@ import contextlib
 import io
 import json
 import os
+import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -34,6 +35,32 @@ def package(archives, rev, extra=()):
 
 
 class Packages(unittest.TestCase):
+    def test_standalone_promote_rollback_and_immutable_assets(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for rev in (A, B):
+                site = root / rev
+                package(site / "_v", rev)
+                (site / "index.html").write_text(f'<script src="/_v/{rev}/pkg/vink.js"></script>')
+            for current, previous in ((B, A), (A, B)):
+                output = root / ("pages-" + current)
+                art.stage_spa(root / current, [root / previous], output)
+                self.assertEqual((output / "index.html").read_bytes(), (root / current / "index.html").read_bytes())
+                for rev in (current, previous):
+                    self.assertEqual((output / "_v" / rev / "pkg/vink-editor.js").read_bytes(),
+                                     (root / rev / "_v" / rev / "pkg/vink-editor.js").read_bytes())
+            archive = root / "legacy"
+            c = "c" * 40
+            package(archive, c)
+            art.stage_spa(root / B, [archive / c], root / "transition")
+            self.assertTrue((root / "transition" / "_v" / c / "pkg/vink-editor.js").is_file())
+            copy = root / "copy"
+            shutil.copytree(root / A, copy)
+            (copy / "_v" / A / "pkg/vink.js").write_text("different")
+            with self.assertRaisesRegex(ValueError, "immutable release"):
+                art.stage_spa(root / A, [copy], root / "bad")
+            self.assertFalse((root / "bad").exists())
+
     def test_inventory_and_rollback(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

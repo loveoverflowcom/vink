@@ -16,7 +16,7 @@ use crate::{
 };
 
 fn use_clock() -> ReadSignal<Millis> {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         let (now, set_now) = signal(super::browser::now());
         if let Ok(handle) = set_interval_with_handle(
@@ -27,12 +27,12 @@ fn use_clock() -> ReadSignal<Millis> {
         }
         now
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     signal(0).0
 }
 
 fn instant(at: Millis) -> String {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         let date = js_sys::Date::new(&wasm_bindgen::JsValue::from_f64(at as f64));
         format!(
@@ -41,7 +41,7 @@ fn instant(at: Millis) -> String {
             date.get_minutes()
         )
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     {
         let _ = at;
         String::new()
@@ -63,7 +63,7 @@ impl InputValue {
             missing: RwSignal::new(false),
         };
         // Drop the actual value even if a browser still holds the detached input briefly.
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         on_cleanup(move || this.clear());
         this
     }
@@ -86,7 +86,7 @@ impl InputValue {
     }
 
     fn focus(self) {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         if let Some(Some(node)) = self.node.try_get_untracked() {
             let _ = node.focus();
         }
@@ -99,7 +99,7 @@ impl InputValue {
     }
 
     fn focus_on_mount(self, enabled: bool) {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         if enabled {
             let pending = StoredValue::new(true);
             Effect::new(move |_| {
@@ -112,7 +112,7 @@ impl InputValue {
                 }
             });
         }
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let _ = enabled;
     }
 }
@@ -122,14 +122,14 @@ fn empty_value() -> Signal<String> {
 }
 
 pub(super) fn focus_within(selector: &str) -> bool {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         document()
             .active_element()
             .and_then(|element| element.closest(selector).ok().flatten())
             .is_some()
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     {
         let _ = selector;
         false

@@ -142,9 +142,9 @@ fn DeskAccess(title: &'static str, message: &'static str, children: Children) ->
 
 #[component]
 fn DeskLoading() -> impl IntoView {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let visible = vink_ui::use_loading_gate(Signal::stored(true), vink_ui::Clock::Browser).visible;
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let visible = Signal::stored(false);
 
     view! {
@@ -160,7 +160,7 @@ fn DeskLoading() -> impl IntoView {
 #[component]
 fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
     use crate::draft_list::paging::DraftPages;
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     use crate::draft_list::paging::PAGE_SIZE;
     use crate::read_lifecycle::{Intent, ReadOwner};
     let open_review = desk_review::use_open_review();
@@ -217,7 +217,7 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
         dock_open.set(false);
         focus_search_or_heading();
     });
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         let guard = expect_context::<NavigationGuard>();
         let registration = guard.set_overlay(move |reason| {
@@ -232,7 +232,7 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
     let scope = StoredValue::new(scope);
     let reads = StoredValue::new(ReadOwner::new((String::new(), DraftSort::Recent)));
     let wake = StoredValue::new(crate::read_events::WakePolicy::default());
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let in_scope = move || {
         scope.try_with_value(|bound| {
             session
@@ -240,10 +240,10 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                 .try_with_untracked(|now| now.as_ref() == Some(bound))
         }) == Some(Some(true))
     };
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let transport_owner = StoredValue::new(Owner::current().map(|o| o.downgrade()));
     let read_list = Callback::new(move |intent: Intent| {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         {
             if (intent == Intent::Refresh && creation.get_untracked() == CreateState::Pending)
                 || access_error.with_untracked(Option::is_some)
@@ -374,10 +374,10 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                 })
             });
         }
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let _ = intent;
     });
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         Effect::new(move |_| {
             let requested = (applied.get(), sort.get());
@@ -399,7 +399,7 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
             reads.try_update_value(|r| r.dispose());
         });
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = (session, scope, reads, wake, recovery_focus);
     let refresh_disabled = Signal::derive(move || {
         (loading.get() && !appending.get()) || creation.get() == CreateState::Pending
@@ -452,10 +452,10 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
     let can_create = Signal::derive(move || {
         ready.get() && access_error.with(Option::is_none) && creation.with(CreateState::can_begin)
     });
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let navigate = leptos_router::hooks::use_navigate();
     let create = Callback::new(move |()| {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         {
             if !in_scope()
                 || !can_create.get_untracked()
@@ -541,7 +541,7 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
     }.into_any()
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn recover_hidden_tool_focus(tool: web_sys::Element, show_tools: Signal<bool>) {
     use wasm_bindgen::JsCast;
 
@@ -562,7 +562,7 @@ fn recover_hidden_tool_focus(tool: web_sys::Element, show_tools: Signal<bool>) {
     });
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn capture_desk_anchor() -> Option<(String, f64)> {
     use wasm_bindgen::JsCast;
     let rows = document().query_selector_all(".vk-draft-row").ok()?;
@@ -575,7 +575,7 @@ fn capture_desk_anchor() -> Option<(String, f64)> {
     }
     None
 }
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn restore_desk_anchor((id, top): (String, f64)) {
     let path = window().location().pathname().ok();
     request_animation_frame(move || {
@@ -898,13 +898,13 @@ pub fn DraftEditor() -> impl IntoView {
         let id = work_id();
         reload.track();
         async move {
-            #[cfg(feature = "hydrate")]
+            #[cfg(feature = "browser")]
             {
                 let result = crate::api::load_draft(id).await;
                 load_failed.try_set_value(result.is_err());
                 result
             }
-            #[cfg(not(feature = "hydrate"))]
+            #[cfg(not(feature = "browser"))]
             {
                 let _ = (id, load_failed);
                 Err(ApiError::Unavailable)
@@ -1005,14 +1005,14 @@ fn Editor(draft: Draft) -> impl IntoView {
     });
     let options_panel = NodeRef::<html::Details>::new();
     let review_pending = RwSignal::new(false);
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     observe_editor_options(options_panel);
     let outline_open = RwSignal::new(false);
     let outline_panel = NodeRef::<html::Dialog>::new();
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     observe_outline_layout(outline_panel);
     let close_outline = move || {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         if let Some(panel) = outline_panel.get_untracked() {
             panel.close();
         }
@@ -1025,14 +1025,14 @@ fn Editor(draft: Draft) -> impl IntoView {
     let conversion_notice = RwSignal::new(None::<String>);
     let format_select_sync = RwSignal::new(0_u32);
     let just_saved = RwSignal::new(false);
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     type JustSavedTimer = Option<(i32, wasm_bindgen::closure::Closure<dyn FnMut()>)>;
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let just_saved_timer: StoredValue<JustSavedTimer, LocalStorage> = StoredValue::new_local(None);
 
     let clear_just_saved = move || {
         just_saved.try_set(false);
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         just_saved_timer.try_update_value(|slot| {
             if let Some((handle, _)) = slot.take() {
                 window().clear_timeout_with_handle(handle);
@@ -1042,7 +1042,7 @@ fn Editor(draft: Draft) -> impl IntoView {
     let arm_just_saved = move || {
         clear_just_saved();
         just_saved.try_set(true);
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         {
             use wasm_bindgen::JsCast;
             let callback = wasm_bindgen::closure::Closure::<dyn FnMut()>::new(move || {
@@ -1056,7 +1056,7 @@ fn Editor(draft: Draft) -> impl IntoView {
             }
         }
     };
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     on_cleanup(move || {
         just_saved_timer.try_update_value(|slot| {
             if let Some((handle, _)) = slot.take() {
@@ -1067,7 +1067,7 @@ fn Editor(draft: Draft) -> impl IntoView {
 
     let reset_format_select = move || {
         format_select_sync.update(|n| *n = n.wrapping_add(1));
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         {
             use wasm_bindgen::JsCast;
             if let Some(el) = document()
@@ -1110,7 +1110,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                 document: crate::document::markdown_document(&source),
             },
         };
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         {
             let id = work_id.get_value();
             leptos::task::spawn_local(async move {
@@ -1173,7 +1173,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                 settle_leave();
             });
         }
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let _ = (request, work_id, reconcile, settle_leave, arm_just_saved);
     };
     // Sends exactly the selection the ticket recorded. A lost answer is reconciled by the next
@@ -1189,7 +1189,7 @@ fn Editor(draft: Draft) -> impl IntoView {
         }) else {
             return;
         };
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         {
             let id = work_id.get_value();
             leptos::task::spawn_local(async move {
@@ -1236,7 +1236,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                 settle_leave();
             });
         }
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let _ = (request, settle_leave, arm_just_saved);
     };
     let send = move |ticket: DraftTicket, reconcile: bool| {
@@ -1271,7 +1271,7 @@ fn Editor(draft: Draft) -> impl IntoView {
     };
     let focus_last_field = move || match last_field.get_value() {
         Field::Title if format.get_untracked() == DocumentFormatDto::Default => {
-            #[cfg(feature = "hydrate")]
+            #[cfg(feature = "browser")]
             if let Some(input) = title_input.get_untracked() {
                 let options = web_sys::FocusOptions::new();
                 options.set_prevent_scroll(true);
@@ -1280,7 +1280,7 @@ fn Editor(draft: Draft) -> impl IntoView {
         }
         Field::Title | Field::Body => body.focus(),
         Field::Tags => {
-            #[cfg(feature = "hydrate")]
+            #[cfg(feature = "browser")]
             {
                 let target = if document()
                     .get_element_by_id("work-options")
@@ -1393,7 +1393,7 @@ fn Editor(draft: Draft) -> impl IntoView {
         on_cleanup(move || navigation.unregister(registration));
     }
 
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         let guard = window_event_listener(leptos::ev::beforeunload, move |event| {
             let unsaved =
@@ -1429,7 +1429,7 @@ fn Editor(draft: Draft) -> impl IntoView {
     });
 
     let restore_format_focus = move || {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         if options_panel
             .get_untracked()
             .is_some_and(|panel| !panel.has_attribute("open"))
@@ -1520,7 +1520,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                 document: crate::document::markdown_document(&conversion.source),
             },
         };
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         {
             let id = work_id.get_value();
             leptos::task::spawn_local(async move {
@@ -1605,12 +1605,12 @@ fn Editor(draft: Draft) -> impl IntoView {
                 settle_leave();
             });
         }
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let _ = (request, work_id, arm_just_saved);
     };
 
     let jump_to_recovery = move |target: RecoveryTarget| {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         {
             use wasm_bindgen::JsCast;
             let doc = document();
@@ -1658,7 +1658,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                 let _ = el.focus();
             }
         }
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let _ = (target, options_panel);
     };
     let on_jump_recovery = Callback::new(jump_to_recovery);
@@ -1681,7 +1681,7 @@ fn Editor(draft: Draft) -> impl IntoView {
     let slot_detail = Memo::new(move |_| slot_view.with(|v| v.detail_text.clone()));
     let slot_action = Memo::new(move |_| slot_view.with(|v| v.action));
     let shortcut = RwSignal::new("Lưu nháp (Ctrl/⌘ + S)".to_string());
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     Effect::new(move |_| {
         let platform = js_sys::Reflect::get(&js_sys::global(), &"navigator".into())
             .ok()
@@ -2003,7 +2003,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                                 close_outline();
                             }
                             on:click=move |ev: leptos::ev::MouseEvent| {
-                                #[cfg(feature = "hydrate")]
+                                #[cfg(feature = "browser")]
                                 if let Some(panel) = outline_panel.get_untracked()
                                     && ev.target().as_ref() == Some(panel.as_ref())
                                 {
@@ -2013,7 +2013,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                                         close_outline();
                                     }
                                 }
-                                #[cfg(not(feature = "hydrate"))]
+                                #[cfg(not(feature = "browser"))]
                                 let _ = ev;
                             }
                             on:keydown=move |ev| {
@@ -2306,7 +2306,7 @@ fn Editor(draft: Draft) -> impl IntoView {
 fn TitleDisclosure(title: RwSignal<String>, input: NodeRef<html::Input>) -> impl IntoView {
     let details = NodeRef::<html::Details>::new();
     let measure = NodeRef::<html::Span>::new();
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     Effect::new(move |_| {
         use wasm_bindgen::{JsCast, closure::Closure};
 
@@ -2357,11 +2357,11 @@ fn TitleDisclosure(title: RwSignal<String>, input: NodeRef<html::Input>) -> impl
             <summary>"Xem trọn tiêu đề"</summary>
             <p id="draft-title-full">{move || title.get()}</p>
             <Button id="edit-full-title" variant=ButtonVariant::Text on_press=move |_| {
-                #[cfg(feature = "hydrate")]
+                #[cfg(feature = "browser")]
                 if let Some(input) = input.get_untracked() {
                     let _ = input.focus();
                 }
-                #[cfg(not(feature = "hydrate"))]
+                #[cfg(not(feature = "browser"))]
                 let _ = input;
             }>"Chỉnh tiêu đề"</Button>
         </details>
@@ -2382,7 +2382,7 @@ fn outline_item_tier(level: u8, is_first_h1: bool) -> (&'static str, u8) {
 }
 
 // The same container query lays out the sidebar and sets the default disclosure state.
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn observe_editor_options(node: NodeRef<html::Details>) {
     use std::cell::Cell;
     use wasm_bindgen::{JsCast, closure::Closure};
@@ -2433,7 +2433,7 @@ fn observe_editor_options(node: NodeRef<html::Details>) {
 
 // The CSS container query owns the breakpoint. Native modal focus containment follows the
 // actual painted layout, including changes to the rail width or text scale while open.
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn observe_outline_layout(node: NodeRef<html::Dialog>) {
     use wasm_bindgen::{JsCast, closure::Closure};
     Effect::new(move |_| {
@@ -2484,7 +2484,7 @@ fn observe_outline_layout(node: NodeRef<html::Dialog>) {
 }
 
 fn focus_element_by_id(id: &str) {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         use wasm_bindgen::JsCast;
         if let Some(el) = document()
@@ -2496,7 +2496,7 @@ fn focus_element_by_id(id: &str) {
             let _ = el.focus_with_options(&options);
         }
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = id;
 }
 
@@ -2548,7 +2548,7 @@ fn render_outline_level(
                 <Button variant=ButtonVariant::Text attr:aria-current=(active_from == Some(from)).then_some("location")
                     on_press=move |_| {
                         if body.jump_to_heading(from, generation) {
-                            #[cfg(feature = "hydrate")]
+                            #[cfg(feature = "browser")]
                             if let Some(panel) = document().get_element_by_id("editor-outline-panel")
                                 && panel.matches(":modal").unwrap_or(false) {
                                 use wasm_bindgen::JsCast;
@@ -2556,7 +2556,7 @@ fn render_outline_level(
                                 outline_open.set(false);
                                 body.focus();
                             }
-                            #[cfg(not(feature = "hydrate"))]
+                            #[cfg(not(feature = "browser"))]
                             let _ = outline_open;
                         }
                     }>
@@ -2651,18 +2651,18 @@ fn render_draft_action_icon(icon: DraftActionIcon) -> AnyView {
 }
 
 fn remember_scroll(page_scroll: StoredValue<f64>) {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     page_scroll.set_value(window().scroll_y().unwrap_or_default());
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = page_scroll;
 }
 
 fn restore_scroll(page_scroll: StoredValue<f64>) {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     if let Some(y) = page_scroll.try_get_value() {
         window().scroll_to_with_x_and_y(window().scroll_x().unwrap_or_default(), y);
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = page_scroll;
 }
 
@@ -2828,12 +2828,12 @@ impl SaveSlotFacts {
     }
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn active_element_id_is(id: &str) -> bool {
     document().active_element().is_some_and(|el| el.id() == id)
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn sync_save_slot_focus(
     was_save_focused: bool,
     session: RwSignal<DraftSession>,
@@ -3330,7 +3330,7 @@ pub(crate) fn tag_failure_reason(failure: Failure) -> &'static str {
     }
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) fn failure(error: &ApiError) -> Failure {
     match error {
         ApiError::Network => Failure::Network,

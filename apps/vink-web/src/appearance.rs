@@ -14,8 +14,8 @@ const LARGE_TEXT: &str = "150";
 // choices, system changes and storage-denied sessions share one icon/manifest selection.
 // Text size: `150` is the canonical Lớn value (#413). A pre-#413 `200` means the same choice, so
 // it is normalized here, before CSS and first paint, and rewritten when storage allows.
-pub(crate) const BOOTSTRAP: &str = r#"try{for(const [key,attr,allowed] of [['vink.ui.theme','data-theme',['light','dark']],['vink.ui.rail','data-rail',['expanded','compact']],['vink.ui.text','data-text',['150','200']]]){let v=localStorage.getItem(key);if(!allowed.includes(v))continue;if(key==='vink.ui.text'&&v!=='150'){v='150';try{localStorage.setItem(key,v)}catch{}}document.documentElement.setAttribute(attr,v)}}catch{}
-(()=>{const root=document.documentElement,media=matchMedia('(prefers-color-scheme: dark)');const dir=document.getElementById('vink-favicon').getAttribute('href').replace(/[^/]+$/,'');const sync=()=>{const theme=root.dataset.theme||(media.matches?'dark':'light');document.getElementById('vink-favicon').setAttribute('href',dir+'vpen-r1-mark-'+theme+'.svg');document.getElementById('vink-manifest').setAttribute('href',dir+'vpen-r1-manifest-'+theme+'.webmanifest')};sync();new MutationObserver(sync).observe(root,{attributes:true,attributeFilter:['data-theme']});media.addEventListener('change',sync)})()"#;
+#[cfg(not(feature = "csr"))]
+pub(crate) const BOOTSTRAP: &str = include_str!("../appearance.js");
 
 // The head bootstrap cannot see SSR controls yet. Run directly after each group's markup,
 // before the parser yields to paint, and change properties only (not the hydrated DOM shape).
@@ -54,7 +54,7 @@ pub(crate) struct Appearance {
 
 impl Appearance {
     pub fn provide() -> Self {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         let (theme, rail, large_text) = {
             let root = document().document_element();
             let preference = |name| root.as_ref().and_then(|root| root.get_attribute(name));
@@ -64,7 +64,7 @@ impl Appearance {
                 preference("data-text").as_deref() == Some(LARGE_TEXT),
             )
         };
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let (theme, rail, large_text) = (Theme::System, None, false);
         let state = Self {
             theme: RwSignal::new(theme),
@@ -96,7 +96,7 @@ impl Appearance {
 }
 
 fn apply(key: &str, attribute: &str, value: Option<&str>) {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         if let Some(root) = document().document_element() {
             if let Some(value) = value {
@@ -112,7 +112,7 @@ fn apply(key: &str, attribute: &str, value: Option<&str>) {
             };
         }
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = (key, attribute, value);
 }
 

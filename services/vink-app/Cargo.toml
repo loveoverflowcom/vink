@@ -11,12 +11,15 @@ default-run = "vink-app"
 [lints]
 workspace = true
 
+[features]
+default = ["legacy-ssr"]
+legacy-ssr = ["dep:vink-web", "dep:leptos", "dep:leptos_axum", "vink-web/ssr"]
+
 [dependencies]
-vink-web = { path = "../../apps/vink-web", features = ["ssr"] }
+vink-web = { path = "../../apps/vink-web", optional = true }
 vink-store-postgres = { path = "../../packages/store-postgres" }
-leptos = { workspace = true, features = ["ssr"] }
-leptos_meta = { workspace = true, features = ["ssr"] }
-leptos_axum.workspace = true
+leptos = { workspace = true, features = ["ssr"], optional = true }
+leptos_axum = { workspace = true, optional = true }
 axum.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal", "net", "time"] }
 tower.workspace = true
@@ -41,5 +44,10 @@ unicode-normalization = "0.1.26"
 vink-markdown-text = { path = "../../packages/markdown-text" }
 
 [dev-dependencies]
+vink-web = { path = "../../apps/vink-web" }
 leptos_router.workspace = true
 tower = { workspace = true, features = ["util"] }
+
+[[test]]
+name = "ssr_boundary"
+required-features = ["legacy-ssr"]

@@ -36,7 +36,7 @@ fn PublicProfile(name: String, cursor: Option<String>) -> impl IntoView {
     let data = crate::api::author_resource(name.clone(), cursor.clone(), generation);
     let status = super::ResponseStatus::capture();
     status.set_no_store();
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         super::profile::observe_changes(renew);
         crate::read_events::observe(move || {
@@ -60,7 +60,7 @@ fn PublicProfile(name: String, cursor: Option<String>) -> impl IntoView {
                         cursor.clone(),
                         own_relationships,
                         move || {
-                            #[cfg(feature = "hydrate")]
+                            #[cfg(feature = "browser")]
                             retry_focus.set(document().active_element().is_some_and(|el| el.id() == "profile-retry"));
                             renew();
                         },
@@ -215,7 +215,7 @@ fn profile_summary(
 ) {
     use super::follow::RelationshipSummary;
     let (summary, set_summary) = signal(RelationshipSummary::Ready(initial));
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let publish = {
         let ticket = RwSignal::new(0u64);
         Callback::new(
@@ -244,7 +244,7 @@ fn profile_summary(
             },
         )
     };
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let publish = Callback::new(
         move |_: Option<crate::contract::follow::PublicRelationships>| {
             let _ = (&handle, set_summary);
@@ -283,12 +283,12 @@ pub(super) fn redirect_alias(status: &super::ResponseStatus, source_path: &str, 
         opts.set_status(http::StatusCode::MOVED_PERMANENTLY);
         opts.insert_header(http::header::LOCATION, url);
     }
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     replace_profile_alias(source_path, href);
     let _ = (status, source_path, href);
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 #[wasm_bindgen::prelude::wasm_bindgen(module = "/profile/navigation.js")]
 extern "C" {
     #[wasm_bindgen(js_name = replaceProfileAlias)]

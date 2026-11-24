@@ -10,7 +10,7 @@ function inlineScript(name) {
   return result[1];
 }
 
-const bootstrap = inlineScript('BOOTSTRAP');
+const bootstrap = readFileSync(new URL('../appearance.js', import.meta.url), 'utf8');
 const choiceBootstrap = inlineScript('CHOICE_BOOTSTRAP');
 
 function beforeHydration(storedText, {denyRead = false, denyWrite = false} = {}) {

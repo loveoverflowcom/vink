@@ -15,10 +15,10 @@ use crate::ui::patterns::{CommentEndorsements, EndorsementAction, EndorsementKin
 pub(crate) struct Endorsements {
     controller: RwSignal<EndorsementController>,
     /// Asks READ-02 to revalidate the publication when the server names a newer revision.
-    #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+    #[cfg_attr(not(feature = "browser"), allow(dead_code))]
     on_superseded: Callback<()>,
     /// The reader's owner: transports survive comment re-renders and end with the page.
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     owner: StoredValue<leptos::reactive::owner::WeakOwner>,
 }
 
@@ -32,7 +32,7 @@ impl Endorsements {
         let this = Self {
             controller: RwSignal::new(EndorsementController::new(scope)),
             on_superseded,
-            #[cfg(feature = "hydrate")]
+            #[cfg(feature = "browser")]
             owner: StoredValue::new(
                 Owner::current()
                     .expect("Endorsements::provide runs in a component")
@@ -40,7 +40,7 @@ impl Endorsements {
             ),
         };
         provide_context(this);
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         if crate::api::local_discussion_fixture_scope().is_none() {
             // The tab's session owner decides who is acting. Another session starts empty
             // (`change_scope`): counts and own states are read again, nothing is carried over.
@@ -98,9 +98,9 @@ impl Endorsements {
 
     /// Reads public summaries (when `counts`) and the viewer's own states of `targets` in the
     /// browser, at most 100 comments per request. A guest reads counts only.
-    #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+    #[cfg_attr(not(feature = "browser"), allow(dead_code))]
     pub(crate) fn read(&self, targets: Vec<TargetKey>, counts: bool) {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         {
             let (work, comments): (Vec<_>, Vec<_>) = targets
                 .into_iter()
@@ -139,24 +139,24 @@ impl Endorsements {
                 this.read_own(batch);
             }
         }
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let _ = (targets, counts);
     }
 
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     fn work_id(&self) -> String {
         self.controller
             .with_untracked(|c| c.scope().work_id.clone())
     }
 
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     fn spawn(&self, task: impl std::future::Future<Output = ()> + 'static) {
         if let Some(owner) = self.owner.try_get_value().and_then(|owner| owner.upgrade()) {
             owner.with(|| leptos::task::spawn_local_scoped_with_cancellation(task));
         }
     }
 
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     fn read_own(&self, targets: Vec<TargetKey>) {
         let Some(Some(ticket)) = self.controller.try_update(|c| c.begin_own(targets)) else {
             return;
@@ -164,7 +164,7 @@ impl Endorsements {
         self.send_own_read(ticket);
     }
 
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     fn send_own_read(&self, ticket: crate::endorsement_state::ReadTicket) {
         let this = *self;
         let work_id = this.work_id();
@@ -179,7 +179,7 @@ impl Endorsements {
 
     /// `ToggleAction` requires the target to be pending before this returns.
     fn press(&self, target: TargetKey, desired: bool) {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         {
             let Some(command_key) = random_key() else {
                 return;
@@ -192,12 +192,12 @@ impl Endorsements {
             };
             self.send(command);
         }
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let _ = (target, desired);
     }
 
     fn recover(&self, target: TargetKey) {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         {
             use crate::endorsement_state::Recovery;
             match self.controller.try_update(|c| c.recover(&target)) {
@@ -206,11 +206,11 @@ impl Endorsements {
                 Some(Recovery::Nothing) | None => {}
             }
         }
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let _ = target;
     }
 
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     fn send(&self, command: crate::endorsement_state::Command) {
         use crate::endorsement_state::Completion;
         let this = *self;
@@ -226,7 +226,7 @@ impl Endorsements {
 }
 
 /// A random version-4 UUID from the browser's CSPRNG; `None` sends nothing.
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn random_key() -> Option<String> {
     let mut random = [0_u8; 16];
     web_sys::window()?
@@ -249,7 +249,7 @@ pub(crate) fn WorkEndorsement(
     };
     let target = TargetKey::Work { revision_id };
     endorsements.seed(vec![target.clone()], summaries.as_ref());
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         // After hydration: the viewer's own state (fixture only), and counts if SSR had none
         // or they describe another revision.
@@ -306,7 +306,7 @@ mod tests {
             provide_context(Endorsements {
                 controller,
                 on_superseded: Callback::new(|()| {}),
-                #[cfg(feature = "hydrate")]
+                #[cfg(feature = "browser")]
                 owner: StoredValue::new(Owner::current().unwrap().downgrade()),
             });
             view! { <WorkEndorsement revision_id="r1".to_string() summaries=summary /> }.to_html()

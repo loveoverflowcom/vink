@@ -18,7 +18,7 @@ use crate::{api, draft_list};
 
 const CONTENT_CLASS: &str = "grid gap-vk-3 [min-inline-size:0] wrap-anywhere";
 const HISTORY_CLASS: &str = "grid gap-vk-4 ps-vk-6";
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 const ROW_ENTRY: &str = "vink-desk-review";
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -107,7 +107,7 @@ pub(super) fn use_review_target() -> Memo<Option<Result<ReviewTarget, ()>>> {
     Memo::new(move |_| search.with(|query| parse_target(query)))
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(super) fn desk_return_href(next: &str) -> Option<String> {
     if next == "/ban-viet" {
         return Some(next.into());
@@ -123,7 +123,7 @@ pub fn LegacyDeskReview() -> impl IntoView {
     let params = use_params_map();
     let href = Memo::new(move |_| work_review_href(&params.read().get("id").unwrap_or_default()));
     super::ResponseStatus::capture().redirect(&href.get_untracked());
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         let navigate = leptos_router::hooks::use_navigate();
         Effect::new(move |_| {
@@ -143,10 +143,10 @@ pub fn LegacyDeskReview() -> impl IntoView {
 }
 
 pub(super) fn use_open_review() -> Callback<ReviewTarget> {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let navigate = leptos_router::hooks::use_navigate();
     Callback::new(move |target: ReviewTarget| {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         navigate(
             &target.href(),
             leptos_router::NavigateOptions {
@@ -155,7 +155,7 @@ pub(super) fn use_open_review() -> Callback<ReviewTarget> {
                 ..Default::default()
             },
         );
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let _ = target;
     })
 }
@@ -190,13 +190,13 @@ pub(super) fn ReviewTrigger(
 pub(super) fn DeskReview(session: Session) -> impl IntoView {
     let target = use_review_target();
     let open = Signal::derive(move || target.with(Option::is_some));
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let closing = StoredValue::new(false);
     let close = Callback::new({
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         let navigate = leptos_router::hooks::use_navigate();
         move |()| {
-            #[cfg(feature = "hydrate")]
+            #[cfg(feature = "browser")]
             {
                 if closing.get_value() {
                     return;
@@ -223,7 +223,7 @@ pub(super) fn DeskReview(session: Session) -> impl IntoView {
         }
     });
 
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     Effect::new(move |previous: Option<(bool, Option<String>)>| {
         let current = target.get();
         closing.set_value(false);
@@ -255,7 +255,7 @@ pub(super) fn DeskReview(session: Session) -> impl IntoView {
     }
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn row_history_entry() -> bool {
     window()
         .history()
@@ -266,7 +266,7 @@ fn row_history_entry() -> bool {
         == Some(ROW_ENTRY)
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn recover_desk_focus(trigger: Option<String>, target: Memo<Option<Result<ReviewTarget, ()>>>) {
     use wasm_bindgen::JsCast;
     request_animation_frame(move || {
@@ -380,7 +380,7 @@ fn ReviewDetails(target: ReviewTarget, session: Session) -> impl IntoView {
                         && filed.appeal.revision_id == revision
                         && filed.appeal.decision_version == version =>
                 {
-                    #[cfg(feature = "hydrate")]
+                    #[cfg(feature = "browser")]
                     let held_focus = document().active_element().is_some_and(|element| {
                         element.id() == format!("file-appeal-{revision}-{version}")
                     });
@@ -390,7 +390,7 @@ fn ReviewDetails(target: ReviewTarget, session: Session) -> impl IntoView {
                     } else {
                         "Vink đã ghi nhận yêu cầu xem xét."
                     });
-                    #[cfg(feature = "hydrate")]
+                    #[cfg(feature = "browser")]
                     if held_focus {
                         let feedback = document().get_element_by_id("desk-review-feedback");
                         request_animation_frame(move || {

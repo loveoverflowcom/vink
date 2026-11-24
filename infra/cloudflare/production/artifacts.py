@@ -1,9 +1,10 @@
-"""Public Pages inputs only. Called after extracting /opt/vink/site/pkg from an OCI digest."""
+"""Validate public asset inventories and package Pages deployments for SSR or standalone CSR."""
 import hashlib
 import json
 from pathlib import Path
 import re
 import shutil
+import tempfile
 
 SHA = re.compile(r"[0-9a-f]{40}")
 PROJECT = "vink-production"
@@ -82,16 +83,22 @@ def record(pkg, spec, *, retained=False):
     return {**spec, "assets": entries, "asset_digest": sha(encode(entries))}
 
 
+def read_archive(archive):
+    """Revalidate a pre-cutover, image-qualified asset archive against its receipt."""
+    require(SHA.fullmatch(archive.name) and not archive.is_symlink(), "invalid archive name")
+    receipt = json.loads((archive / "manifest.json").read_bytes())
+    spec = {key: receipt[key] for key in ("environment", "public_origin", "source_sha", "platform", "images")}
+    pkg = archive / "pkg"
+    require(archive.name == spec["source_sha"] and record(pkg, spec, retained=True) == receipt, "archive drift")
+    return pkg, receipt
+
+
 def stage(archives, target, output, legacy=None):
     """Rebuild the edge inventory from retained immutable packages, including on rollback."""
     index = {}
     require(not output.exists(), "staging directory exists")
     for archive in sorted(archives.iterdir()):
-        require(SHA.fullmatch(archive.name) and not archive.is_symlink(), "invalid archive name")
-        receipt = json.loads((archive / "manifest.json").read_bytes())
-        spec = {key: receipt[key] for key in ("environment", "public_origin", "source_sha", "platform", "images")}
-        pkg = archive / "pkg"
-        require(archive.name == spec["source_sha"] and record(pkg, spec, retained=True) == receipt, "archive drift")
+        pkg, receipt = read_archive(archive)
         prefix = f"_v/{archive.name}/pkg"
         shutil.copytree(pkg, output / prefix)
         for name, item in receipt["assets"].items():
@@ -100,7 +107,11 @@ def stage(archives, target, output, legacy=None):
             if archive.name == (legacy or target):
                 index[f"/pkg/{name}"] = {**item, "path": path}
     require(f"/_v/{target}/pkg/vink.js" in index, "release missing")
-    require(len(index) + 3 <= 20000, "Pages file limit; review retention before proceeding")
+    return write_worker(output, index)
+
+
+def write_worker(output, index):
+    require(len(index) + 4 <= 20000, "Pages file limit; review retention before proceeding")
     template = Path(__file__).with_name("worker.mjs").read_text()
     require(template.count("/*VINK_ASSETS*/ {}") == 1, "worker template drift")
     worker = template.replace("/*VINK_ASSETS*/ {}", encode(index).decode().strip())
@@ -108,3 +119,55 @@ def stage(archives, target, output, legacy=None):
     (output / "_routes.json").write_bytes(encode({"version": 1, "include": ["/*"], "exclude": []}))
     (output / "404.html").write_text("Not found")
     return sha(worker.encode())
+
+
+def spa_entry(site):
+    shell = (site / "index.html").read_bytes()
+    namespaces = set(re.findall(rb'/_v/([0-9a-f]{40})/pkg/', shell))
+    require(len(namespaces) == 1, "entry point must pin exactly one release")
+    revision = namespaces.pop().decode()
+    require(b'{{' not in shell and f'/_v/{revision}/pkg/vink.js'.encode() in shell,
+            "entry point lacks pinned bootstrap")
+    return shell, revision
+
+
+def stage_spa(active, retained, output):
+    """Package the selected shell and explicit rollback assets, without contacting the VPS."""
+    require(not output.exists(), "staging directory exists")
+    shell, _ = spa_entry(active)
+    index = {"/": {"sha256": sha(shell), "type": "text/html"}}
+    packages = {}
+    for site in [active, *retained]:
+        if site != active and (site / "manifest.json").is_file():
+            pkg, receipt = read_archive(site)
+            version, entries = site.name, receipt["assets"]
+        else:
+            _, version = spa_entry(site)
+            namespace = site / "_v" / version
+            require(not namespace.is_symlink() and not namespace.parent.is_symlink(), "symlink in release path")
+            pkg = namespace / "pkg"
+            entries = inventory(pkg)
+        if version in packages:
+            require(entries == packages[version][1], "different bytes for immutable release")
+        packages[version] = (pkg, entries)
+    with tempfile.TemporaryDirectory(dir=output.parent) as temp:
+        build = Path(temp) / "stage"
+        for version, (pkg, entries) in packages.items():
+            prefix = f"_v/{version}/pkg"
+            shutil.copytree(pkg, build / prefix)
+            for name, entry in entries.items():
+                index[f"/{prefix}/{name}"] = entry
+        (build / "index.html").write_bytes(shell)
+        digest = write_worker(build, index)
+        build.rename(output)
+    return digest
+
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="Stage the standalone frontend for Pages")
+    parser.add_argument("--spa", type=Path, required=True)
+    parser.add_argument("--retain", type=Path, action="append", default=[])
+    parser.add_argument("--out", type=Path, required=True)
+    args = parser.parse_args()
+    print(stage_spa(args.spa, args.retain, args.out))

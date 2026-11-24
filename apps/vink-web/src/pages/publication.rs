@@ -305,7 +305,7 @@ fn pending_label(phase: Phase) -> &'static str {
 
 /// 16 random bytes for command keys; `None` when the browser offers none.
 fn entropy() -> Option<[u8; 16]> {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         let mut bytes = [0_u8; 16];
         web_sys::window()?
@@ -315,7 +315,7 @@ fn entropy() -> Option<[u8; 16]> {
             .ok()?;
         Some(bytes)
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     {
         Some([0; 16])
     }
@@ -345,9 +345,9 @@ impl Runner {
                     self.read(ticket);
                 }
             }
-            #[cfg_attr(not(feature = "hydrate"), allow(unused_variables))]
+            #[cfg_attr(not(feature = "browser"), allow(unused_variables))]
             Step::Capture(ticket, command) => {
-                #[cfg(feature = "hydrate")]
+                #[cfg(feature = "browser")]
                 {
                     use crate::contract::publication::CaptureSnapshotRequest;
                     let id = self.work_id.get_value();
@@ -362,9 +362,9 @@ impl Runner {
                     });
                 }
             }
-            #[cfg_attr(not(feature = "hydrate"), allow(unused_variables))]
+            #[cfg_attr(not(feature = "browser"), allow(unused_variables))]
             Step::RequestPublic(ticket, command) => {
-                #[cfg(feature = "hydrate")]
+                #[cfg(feature = "browser")]
                 {
                     use crate::contract::publication::RequestPublicRequest;
                     let id = self.work_id.get_value();
@@ -379,9 +379,9 @@ impl Runner {
                     });
                 }
             }
-            #[cfg_attr(not(feature = "hydrate"), allow(unused_variables))]
+            #[cfg_attr(not(feature = "browser"), allow(unused_variables))]
             Step::SetPrivate(ticket, command) => {
-                #[cfg(feature = "hydrate")]
+                #[cfg(feature = "browser")]
                 {
                     use crate::contract::publication::SetPrivateRequest;
                     let id = self.work_id.get_value();
@@ -398,7 +398,7 @@ impl Runner {
         }
     }
 
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     fn finish(self, apply: impl FnOnce(&mut Controller) -> Step) {
         // `None`: the editor was closed (the owner disposed the signal); nothing more to do.
         if let Some(step) = self.controller.try_update(apply) {
@@ -407,7 +407,7 @@ impl Runner {
     }
 
     fn read(self, ticket: crate::publication_state::ReadTicket) {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         {
             let id = self.work_id.get_value();
             leptos::task::spawn_local(async move {
@@ -415,7 +415,7 @@ impl Runner {
                 self.finish(|c| c.read_finished(ticket, result));
             });
         }
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let _ = ticket;
     }
 
@@ -433,7 +433,7 @@ impl Runner {
 /// when there still is one, else to the audience control or its disclosure. Focus that is anywhere else is never
 /// taken, and the page does not scroll.
 fn restore_lost_focus() {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     request_animation_frame(move || {
         use wasm_bindgen::JsCast;
         let lost = document()
@@ -537,7 +537,7 @@ pub fn PublicationPanel(
     });
 
     // Returning to the tab or window: read again, at most every two seconds, never mid-command.
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         let last = StoredValue::new(0.0_f64);
         let on_return = move || {

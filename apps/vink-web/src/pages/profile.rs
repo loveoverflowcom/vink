@@ -14,7 +14,7 @@ pub(crate) fn LegacyHandle() -> impl IntoView {
     let status = super::ResponseStatus::capture();
     status.set_no_store();
     status.redirect(HANDLE_PATH);
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         let navigate = leptos_router::hooks::use_navigate();
         Effect::new(move |_| {
@@ -72,17 +72,17 @@ pub(crate) fn EditProfile() -> impl IntoView {
 
 #[component]
 fn OwnProfileHost(scope: String) -> impl IntoView {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     return view! { <browser::OwnProfileHost scope /> };
     // SSR renders nothing here: the own overlay is fetched no-store after hydration.
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = scope;
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 const CHANNEL: &str = "vink-profile-changes";
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) fn observe_changes(on_change: impl Fn() + 'static) {
     use send_wrapper::SendWrapper;
     use wasm_bindgen::{JsCast, closure::Closure};
@@ -103,5 +103,5 @@ pub(crate) fn observe_changes(on_change: impl Fn() + 'static) {
     }
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) mod browser;

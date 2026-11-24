@@ -118,10 +118,7 @@ nằm ở [evidence](../docs/development/evidence/web-compress-487/README.md).
 
 ## Frontend Web trên Cloudflare
 
-[VDR-EDGE-FRONTEND@r1](proposals/VDR-EDGE-FRONTEND.r1.toml) ghi hướng đi của Epic
-[#504](https://github.com/loveoverflowcom/vink/issues/504): Cloudflare sở hữu toàn bộ frontend
-(HTML, SSR, hydration, asset), VPS chỉ chạy backend/API. `CHOICE-01` (chiến lược render) và
-`CHOICE-02` (hình dạng phát hành) còn `OPEN` tới khi spike có số đo. Proposal đang `PENDING`.
+[VDR-EDGE-FRONTEND@r2](proposals/VDR-EDGE-FRONTEND.r2.toml) đề xuất SPA Leptos CSR độc lập trên Pages, API cùng origin trên VPS và metadata chung trước JavaScript theo hướng mới của [#504](https://github.com/loveoverflowcom/vink/issues/504). Revision r2 đang `PENDING`. [Revision r1](proposals/VDR-EDGE-FRONTEND.r1.toml) lưu phương án SSR ban đầu.
 [ADR](../docs/architecture/edge-frontend.md) · [route và bằng chứng](../docs/development/edge-frontend.md).
 
 ## Tra cứu theo phạm vi công việc

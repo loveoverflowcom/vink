@@ -1,6 +1,7 @@
 # Same source/toolchain as local xtask. Build has no DB, provider, DNS or SSH input.
+ARG RUST_VERSION=1.99.1
 FROM docker.io/library/node:24-bookworm-slim AS node
-FROM docker.io/library/rust:1.99.1-bookworm AS source
+FROM docker.io/library/rust:${RUST_VERSION}-bookworm AS source
 WORKDIR /src
 COPY . .
 FROM source AS app-build
@@ -17,9 +18,19 @@ RUN test "$(printf %s "$SOURCE_REVISION" | grep -Ec '^[0-9a-f]{40}$')" = 1 \
  && printf '%s\n' "$SOURCE_REVISION" > /src/target/site-release \
  && mkdir -p "/src/target/site/_v/$SOURCE_REVISION" \
  && ln -s ../../pkg "/src/target/site/_v/$SOURCE_REVISION/pkg"
-FROM source AS worker-build
+# The development override also installs the browser target. Backend images use the
+# native toolchain already supplied by the pinned Rust base image.
+FROM source AS backend-source
+ARG RUST_VERSION
+ENV RUSTUP_TOOLCHAIN=${RUST_VERSION}
+
+FROM backend-source AS api-build
+RUN cargo xtask build api --release \
+ && install -m 0755 target/release/vink-app /usr/local/bin/vink-app \
+ && rm -rf target "$CARGO_HOME/registry"
+FROM backend-source AS worker-build
 RUN cargo xtask build worker --release
-FROM source AS identity-build
+FROM backend-source AS identity-build
 RUN cargo xtask build identity --release
 
 FROM docker.io/library/debian:bookworm-slim AS runtime
@@ -32,6 +43,12 @@ LABEL org.opencontainers.image.source="https://github.com/loveoverflowcom/vink" 
 WORKDIR /opt/vink
 USER 10001:10001
 
+FROM runtime AS api
+COPY --from=api-build /usr/local/bin/vink-app /usr/local/bin/vink-app
+ENTRYPOINT ["/usr/local/bin/vink-app"]
+CMD ["serve-api"]
+
+# Pre-cutover backend for the deployed, image-coupled controller.
 FROM runtime AS web
 COPY --from=app-build /src/target/release/vink-app /usr/local/bin/vink-app
 COPY --from=app-build /src/target/site /opt/vink/site

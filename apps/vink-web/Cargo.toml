@@ -55,5 +55,7 @@ http = { version = "1.4.0", optional = true }
 [features]
 # Counts only, for the two opt-in browser qualification scenarios.
 perf-probe = ["hydrate"]
-hydrate = ["leptos/hydrate", "dep:wasm-bindgen", "dep:console_error_panic_hook", "dep:gloo-net", "dep:web-sys", "dep:js-sys", "dep:wasm-bindgen-futures", "dep:send_wrapper", "dep:futures-channel"]
+csr = ["leptos/csr", "browser"]
+hydrate = ["leptos/hydrate", "browser"]
+browser = ["dep:wasm-bindgen", "dep:console_error_panic_hook", "dep:gloo-net", "dep:web-sys", "dep:js-sys", "dep:wasm-bindgen-futures", "dep:send_wrapper", "dep:futures-channel"]
 ssr = ["leptos/ssr", "leptos_meta/ssr", "leptos_router/ssr", "dep:leptos_axum", "dep:http", "dep:html-escape"]

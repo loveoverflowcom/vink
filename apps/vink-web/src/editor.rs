@@ -58,7 +58,7 @@ pub struct OutlineSnapshot {
 pub struct BodySource {
     format: StoredValue<DocumentFormatDto>,
     loaded: StoredValue<String>,
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     view: StoredValue<Option<bridge::EditorHandle>, LocalStorage>,
     pub state: RwSignal<BodyState>,
     pub outline: RwSignal<OutlineSnapshot>,
@@ -69,7 +69,7 @@ impl BodySource {
         Self {
             format: StoredValue::new(format),
             loaded: StoredValue::new(loaded),
-            #[cfg(feature = "hydrate")]
+            #[cfg(feature = "browser")]
             view: StoredValue::new_local(None),
             state: RwSignal::new(BodyState::Loading),
             outline: RwSignal::new(OutlineSnapshot::default()),
@@ -78,7 +78,7 @@ impl BodySource {
 
     /// The text being written right now. Before the view mounts nothing can have changed it.
     pub fn snapshot(&self) -> String {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         if let Some(text) = self
             .view
             .try_with_value(|view| view.as_ref().map(bridge::EditorHandle::text))
@@ -90,7 +90,7 @@ impl BodySource {
     }
 
     pub fn focus(&self) {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         self.view.try_with_value(|view| {
             if let Some(view) = view {
                 view.focus();
@@ -100,7 +100,7 @@ impl BodySource {
 
     /// True while an input method composes text that is not committed yet.
     pub fn is_composing(&self) -> bool {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         {
             self.view
                 .try_with_value(|view| {
@@ -109,7 +109,7 @@ impl BodySource {
                 })
                 .unwrap_or(false)
         }
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         {
             false
         }
@@ -118,7 +118,7 @@ impl BodySource {
     #[allow(dead_code)]
     pub fn set_format(&self, format: DocumentFormatDto) {
         self.format.try_set_value(format);
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         self.view.try_with_value(|view| {
             if let Some(view) = view {
                 view.set_format(format);
@@ -129,7 +129,7 @@ impl BodySource {
     pub fn apply_converted_document(&self, format: DocumentFormatDto, text: &str) {
         self.format.try_set_value(format);
         self.loaded.try_set_value(text.to_owned());
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         self.view.try_with_value(|view| {
             if let Some(view) = view {
                 view.apply_converted_document(format, text);
@@ -138,13 +138,13 @@ impl BodySource {
     }
 
     pub fn apply_heading(&self, level: u8) -> bool {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         {
             self.view
                 .try_with_value(|view| view.as_ref().is_some_and(|v| v.apply_heading(level)))
                 .unwrap_or(false)
         }
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         {
             let _ = level;
             false
@@ -152,13 +152,13 @@ impl BodySource {
     }
 
     pub fn apply_inline_format(&self, kind: &str) -> bool {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         {
             self.view
                 .try_with_value(|view| view.as_ref().is_some_and(|v| v.apply_inline_format(kind)))
                 .unwrap_or(false)
         }
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         {
             let _ = kind;
             false
@@ -166,7 +166,7 @@ impl BodySource {
     }
 
     pub fn jump_to_heading(&self, from: usize, generation: u64) -> bool {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         {
             self.view
                 .try_with_value(|view| {
@@ -175,7 +175,7 @@ impl BodySource {
                 })
                 .unwrap_or(false)
         }
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         {
             let _ = (from, generation);
             false
@@ -193,7 +193,7 @@ pub fn BodyEditor(
     on_ready: Callback<()>,
 ) -> impl IntoView {
     let host = NodeRef::<html::Div>::new();
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         use std::sync::Arc;
         use std::sync::atomic::{AtomicBool, Ordering};
@@ -249,7 +249,7 @@ pub fn BodyEditor(
             });
         });
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = (on_change, on_ready);
     view! {
         <div
@@ -265,7 +265,7 @@ pub fn BodyEditor(
     }
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 mod bridge {
     use js_sys::{Object, Reflect};
     use wasm_bindgen::closure::Closure;

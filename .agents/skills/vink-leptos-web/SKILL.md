@@ -10,14 +10,13 @@ Read [AGENTS.md](../../../AGENTS.md), the relevant
 [frontend/editor proposal](../../../docs/architecture/tech-stack.md).
 Use [vink-ui-design](../vink-ui-design/SKILL.md) for visual criteria and
 [vink-engineering](../vink-engineering/SKILL.md) for durable decisions.
-The target is Leptos SSR with a bounded JavaScript editor integration, subject to S-01;
-do not inherit Cantos's CSR/Trunk setup.
+For #504 the standalone target mounts the same Leptos router in the browser. See the [CSR build, API boundary and rollout](../../../docs/development/edge-frontend.md). The deployed SSR path still owns legacy qualification.
 
 ## The implemented web app
 
 | Concern | Owner |
 | --- | --- |
-| Routes and hydration entry (`hydrate()`), adaptive shell | `apps/vink-web/src/lib.rs` for routing and boot, `src/shell.rs` for the app shell. See the [owner map](../vink-ui-design/references/source-map.md#owner-map-cho-bàn-giao-code) for appearance and shared navigation. |
+| Routes, standalone `mount()` and legacy `hydrate()`, adaptive shell | `apps/vink-web/src/lib.rs` for routing and boot, `src/shell.rs` for the app shell. See the [owner map](../vink-ui-design/references/source-map.md#owner-map-cho-bàn-giao-code) for appearance and shared navigation. |
 | Pages: home, reader, not-found; Bàn viết | `src/pages/mod.rs`, `src/pages/desk.rs` |
 | The web app's own API v1 types and error classification | `src/contract.rs` (checked against the provider fixtures) |
 | Data access: SSR through `server::PublicReads`, browser through `/api/v1` | `src/api.rs`, `src/server.rs` |
@@ -30,8 +29,7 @@ do not inherit Cantos's CSR/Trunk setup.
 | Browser smoke over the DevTools Protocol | `e2e/browser-smoke.mjs` (run by `verify web`) |
 
 Leptos is pinned at 0.8 (see `Cargo.lock`, currently `0.8.22`); check that version's docs when unsure of an API. For Tailwind v4 styling, `@layer` coexistence, `source(none)` allowlists, token utilities and Leptos 0.8 `class:` / tuple syntax, follow [references/tailwind.md](references/tailwind.md).
-`ssr` and `hydrate` are separate builds of one crate: never enable both, gate server-only code
-with `#[cfg(feature = "ssr")]` and DOM/fetch code with `#[cfg(feature = "hydrate")]`, and keep
+Build `csr`, `hydrate` and `ssr` separately. Gate DOM/fetch adapters with `#[cfg(feature = "browser")]`, server-only code with `#[cfg(feature = "ssr")]`, and keep
 the build without either feature compiling. `vink-app` provides `PublicReads` and `SiteOrigin`
 through context; this crate never imports the service. Public pages use `Resource` with
 `SsrMode::Async` so status and metadata are final before streaming; account-scoped pages use

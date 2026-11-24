@@ -110,7 +110,7 @@ pub struct WorkCard {
     pub tags: Vec<PublicTagDto>,
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 #[derive(Debug, Deserialize)]
 #[serde(tag = "state", rename_all = "snake_case")]
 pub(crate) enum FeedResponse {
@@ -128,7 +128,7 @@ pub(crate) enum FeedResponse {
     Restart,
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 impl FeedResponse {
     pub(crate) fn viewer(&self) -> Option<&str> {
         match self {
@@ -1078,7 +1078,7 @@ pub enum AuthorProjection {
     Unsupported,
 }
 
-#[cfg(any(feature = "hydrate", test))]
+#[cfg(any(feature = "browser", test))]
 impl AuthorProjection {
     pub(crate) fn is_linked(&self) -> bool {
         matches!(self, Self::Linked(_))

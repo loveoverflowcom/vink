@@ -76,7 +76,7 @@ fn editor_context(path: &str) -> NavContext {
 pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
     let appearance = Appearance::provide();
     let session = crate::account::Session::provide();
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         crate::pages::profile::observe_changes(crate::public_reads::invalidate_author_attribution);
         crate::pages::profile::browser::provide_draft(session);
@@ -116,7 +116,7 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
     let overlay_closer = navigation.set_overlay(close_rail);
     on_cleanup(move || navigation.clear_overlay(overlay_closer));
 
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         let listener = window_event_listener(leptos::ev::resize, move |_| {
             let class = current_window_class();
@@ -147,7 +147,7 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
             WindowClass::Compact => {}
             WindowClass::Medium => {
                 if show_dialog(RAIL_MODAL, overlays, rail_modal, page_scroll) {
-                    #[cfg(feature = "hydrate")]
+                    #[cfg(feature = "browser")]
                     {
                         focus_without_scroll(
                             document().get_element_by_id("navigation-expanded-toggle"),
@@ -269,7 +269,7 @@ fn ShellDialog(
                 }
             }
             on:click=move |event: leptos::ev::MouseEvent| {
-                #[cfg(feature = "hydrate")]
+                #[cfg(feature = "browser")]
                 if event.target() == event.current_target() && let Some(dialog) = dialog.get_untracked() {
                     let rect = dialog.get_bounding_client_rect();
                     let (x, y) = (f64::from(event.client_x()), f64::from(event.client_y()));
@@ -277,7 +277,7 @@ fn ShellDialog(
                         on_close.run(CloseReason::Outside);
                     }
                 }
-                #[cfg(not(feature = "hydrate"))]
+                #[cfg(not(feature = "browser"))]
                 let _ = event;
             }
         >{children()}</dialog>
@@ -287,7 +287,7 @@ fn ShellDialog(
 /// Keep keyboard traversal inside the dialog even when a browser would send an edge Tab to
 /// its own chrome. Unchecked radios are one native tab stop with the checked option.
 fn trap_dialog_tab(event: leptos::ev::KeyboardEvent, dialog: NodeRef<html::Dialog>) {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         use wasm_bindgen::JsCast;
         if event.key() != "Tab" {
@@ -320,7 +320,7 @@ fn trap_dialog_tab(event: leptos::ev::KeyboardEvent, dialog: NodeRef<html::Dialo
             let _ = target.focus();
         }
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = (event, dialog);
 }
 
@@ -330,7 +330,7 @@ fn show_dialog(
     dialog: NodeRef<html::Dialog>,
     page_scroll: StoredValue<f64>,
 ) -> bool {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         if let Some(dialog) = dialog.get_untracked().filter(|node| !node.open())
             && overlays
@@ -346,7 +346,7 @@ fn show_dialog(
             });
         }
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = (id, overlays, dialog, page_scroll);
     false
 }
@@ -368,7 +368,7 @@ fn close_dialog(
     if let Some(dialog) = dialog.get_untracked() {
         dialog.close();
     }
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         let trigger = document()
             .get_element_by_id(trigger)
@@ -382,12 +382,12 @@ fn close_dialog(
         focus_without_scroll(target);
         restore_scroll(page_scroll);
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = (closed, trigger, page_scroll);
     true
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn focus_without_scroll(target: Option<web_sys::Element>) {
     use wasm_bindgen::JsCast;
     if let Some(target) = target.and_then(|node| node.dyn_into::<web_sys::HtmlElement>().ok()) {
@@ -397,13 +397,13 @@ fn focus_without_scroll(target: Option<web_sys::Element>) {
     }
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn restore_scroll(scroll: StoredValue<f64>) {
     window().scroll_to_with_x_and_y(window().scroll_x().unwrap_or_default(), scroll.get_value());
 }
 
 fn current_window_class() -> WindowClass {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         let (medium, expanded) = WindowClass::CSS_PX;
         let at_least = |width| {
@@ -421,7 +421,7 @@ fn current_window_class() -> WindowClass {
             WindowClass::Compact
         }
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     WindowClass::Expanded
 }
 

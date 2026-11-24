@@ -529,7 +529,7 @@ impl FollowController {
     }
 }
 
-#[cfg(any(feature = "hydrate", test))]
+#[cfg(any(feature = "browser", test))]
 pub(crate) fn own_relationship_list_matches(
     result: &crate::contract::follow::OwnRelationshipList,
     handle: &str,

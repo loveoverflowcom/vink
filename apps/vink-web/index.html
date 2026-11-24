@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="vi" data-render-mode="csr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Vink — Việt Ink</title>
+  {{FEATURES}}
+  <link id="vink-favicon" rel="icon" href="{{PREFIX}}/pkg/brand/vpen-r1-favicon.svg">
+  <link id="vink-manifest" rel="manifest" href="{{PREFIX}}/pkg/brand/vpen-r1-manifest-light.webmanifest">
+  <script>{{APPEARANCE}}</script>
+  <link rel="stylesheet" href="{{PREFIX}}/pkg/vink.css">
+  <link rel="modulepreload" href="{{PREFIX}}/pkg/vink.js">
+  <link rel="preload" as="fetch" type="application/wasm" crossorigin href="{{PREFIX}}/pkg/vink_bg.wasm">
+</head>
+<body class="m-0 flex min-h-screen flex-col">
+  <noscript>Bật JavaScript để đọc và sử dụng Vink.</noscript>
+  <script type="module">
+    const status = document.createElement('p');
+    status.setAttribute('role', 'status');
+    status.textContent = 'Đang mở Vink…';
+    document.body.prepend(status);
+    try {
+      const { default: init, mount } = await import('{{PREFIX}}/pkg/vink.js');
+      await init();
+      mount();
+      status.remove();
+    } catch {
+      status.textContent = 'Chưa mở được Vink. ';
+      const retry = document.createElement('a');
+      retry.href = location.href;
+      retry.textContent = 'Tải lại trang';
+      status.append(retry);
+    }
+  </script>
+</body>
+</html>

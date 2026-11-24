@@ -41,7 +41,7 @@ pub struct NavigationGuard {
 struct RouterHooks {
     navigate: Box<dyn Fn(&str) + Send + Sync>,
     /// Read by the browser's history listener only.
-    #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+    #[cfg_attr(not(feature = "browser"), allow(dead_code))]
     location: Location,
 }
 
@@ -57,7 +57,7 @@ impl NavigationGuard {
             router: StoredValue::new(None),
         };
         provide_context(guard);
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         dom::listen(guard);
         guard
     }
@@ -146,7 +146,7 @@ impl NavigationGuard {
     }
 
     /// The route the router shows, as path, query and hash in the browser's own format.
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     fn router_href(&self) -> Option<String> {
         self.router
             .try_with_value(|router| router.as_ref().map(|router| href(&router.location)))
@@ -158,7 +158,7 @@ pub fn use_navigation_guard() -> NavigationGuard {
     expect_context::<NavigationGuard>()
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn href(location: &Location) -> String {
     let search = location.search.get_untracked();
     let hash = location.hash.get_untracked();
@@ -174,7 +174,7 @@ fn href(location: &Location) -> String {
     href
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 mod dom {
     use send_wrapper::SendWrapper;
     use wasm_bindgen::JsCast;

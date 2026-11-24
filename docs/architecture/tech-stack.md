@@ -132,7 +132,9 @@ Lưu tài liệu có cấu trúc, schema version, snapshot revision và cân nh�
 
 ## 7. Frontend và editor
 
-### Leptos SSR là lựa chọn có chủ đích
+### Frontend standalone và triển khai SSR trước cutover
+
+[#504](edge-frontend.md) đưa cùng router sang CSR và tách API khỏi frontend. Phần dưới ghi lý do của topology SSR đã triển khai.
 
 Trang tác phẩm, tác giả và Tạp Chí cần HTML nội dung, canonical URL, metadata chia sẻ và liên kết để đọc ngay từ server. Leptos hỗ trợ SSR với Axum; server build và browser hydration build là hai mục tiêu biên dịch khác nhau. [T1], [T2]
 

@@ -67,6 +67,16 @@ pub fn execute(plan: &Plan, env: &Env) -> Result<(), String> {
 pub fn artifacts(plan: &Plan) -> Result<(), String> {
     for artifact in &plan.artifacts {
         match artifact {
+            Artifact::Spa => build::spa(
+                plan.request.release,
+                plan.scenarios.contains(&Scenario::Standalone),
+            )?,
+            Artifact::App
+                if plan.request.target == Target::Api
+                    || plan.scenarios == [Scenario::Standalone] =>
+            {
+                build::api(plan.request.release)?
+            }
             Artifact::Bundle => build::bundle(
                 plan.request.release,
                 plan.scenarios
@@ -326,7 +336,7 @@ fn alive(child: &mut Guard) -> Result<(), String> {
     }
     Ok(())
 }
-fn ready(child: &mut Guard, mut probe: impl FnMut() -> bool) -> Result<(), String> {
+pub(crate) fn ready(child: &mut Guard, mut probe: impl FnMut() -> bool) -> Result<(), String> {
     ready_with_timeout(child, &mut probe, Duration::from_secs(25))
 }
 fn ready_with_timeout(

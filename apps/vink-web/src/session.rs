@@ -92,7 +92,7 @@ impl SessionOwner {
     /// A signal about the browser session is stronger than a focus refresh. A new cookie can
     /// represent the same principal; fence that principal's earlier private operations once
     /// the server has confirmed who is now acting.
-    #[cfg(any(test, feature = "hydrate"))]
+    #[cfg(any(test, feature = "browser"))]
     pub(crate) fn expect_session_change(&mut self) {
         self.session_may_have_changed = true;
     }

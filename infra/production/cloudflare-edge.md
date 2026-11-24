@@ -2,9 +2,7 @@
 
 `https://vink.forum` là URL chính thức. Pages Advanced Mode phục vụ asset từ image Web đã qua qualification. Worker gửi SSR, deep link, health và API đến `https://origin-prod.vink.forum`. Caddy chuyển tiếp đến App. Identity, session và hai database ở VPS. Mỗi đợt phát hành cần một lệnh riêng.
 
-Đề xuất chuyển cả SSR và document route lên Cloudflare, VPS chỉ chạy API, nằm ở
-[ADR edge frontend](../../docs/architecture/edge-frontend.md) (#504, `DESIGN_PROPOSED`, chưa
-triển khai). Runbook này mô tả topology đang chạy.
+[Runbook SPA #504](../../docs/development/edge-frontend.md) mô tả artifact CSR, đóng gói A+B, diễn tập và rollback frontend độc lập. Controller ghép image/asset dưới đây phục vụ topology trước cutover.
 
 ## Mốc triển khai ngày 22/11/2026
 

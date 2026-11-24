@@ -44,6 +44,18 @@ pub fn check(root: &Path) -> Result<(), String> {
                 "wasm32-unknown-unknown",
             ],
         ),
+        (
+            "Web CSR",
+            &[
+                "-p",
+                "vink-web",
+                "-F",
+                "csr",
+                "--target",
+                "wasm32-unknown-unknown",
+            ],
+        ),
+        ("API only", &["-p", "vink-app", "--no-default-features"]),
         ("App default", &["-p", "vink-app"]),
     ] {
         let output = cargo(root)
@@ -58,6 +70,16 @@ pub fn check(root: &Path) -> Result<(), String> {
                 "{label} cargo tree: {}",
                 String::from_utf8_lossy(&output.stderr)
             ));
+        }
+        if label == "API only"
+            && String::from_utf8_lossy(&output.stdout).lines().any(|line| {
+                matches!(
+                    line.split_whitespace().next(),
+                    Some("leptos" | "leptos_axum" | "vink-web")
+                )
+            })
+        {
+            return Err("API-only normal graph contains a frontend dependency".into());
         }
         graph(root, &String::from_utf8_lossy(&output.stdout))
             .map_err(|error| format!("{label}: {error}"))?;

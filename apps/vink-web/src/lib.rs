@@ -1,7 +1,5 @@
-//! Vink web: Leptos views rendered on the server (`ssr`) and hydrated in the browser (`hydrate`).
-//!
-//! The two features are separate builds; never enable both. The browser build contains views,
-//! the web app's own API representations and a fetch client — no service, persistence or secrets.
+//! One Leptos router for the standalone browser app and the pre-cutover SSR host.
+//! The CSR bundle mounts on a static document. The legacy browser entry hydrates an SSR body.
 
 // Composition slots increase the hydration type depth without changing runtime state.
 #![recursion_limit = "256"]
@@ -38,7 +36,9 @@ pub mod tag_state;
 pub mod ui;
 
 use leptos::prelude::*;
-use leptos_meta::{MetaTags, provide_meta_context};
+#[cfg(not(feature = "csr"))]
+use leptos_meta::MetaTags;
+use leptos_meta::provide_meta_context;
 use leptos_router::components::{Route, Router, Routes};
 use leptos_router::{SsrMode, path};
 
@@ -53,6 +53,7 @@ fn asset_url(path: &str) -> String {
 
 // An SSR document can be at an earlier history entry when hydration starts.
 // Identify its route without reflecting the requested path, query or retired Handle into HTML.
+#[cfg(not(feature = "csr"))]
 fn route_fingerprint(path: &str, query: &str) -> String {
     use sha2::{Digest, Sha256};
     let mut hash = Sha256::new();
@@ -66,6 +67,7 @@ fn route_fingerprint(path: &str, query: &str) -> String {
 }
 
 /// HTML document around the app, rendered on the server only.
+#[cfg(not(feature = "csr"))]
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     let fixture = api::local_discussion_fixture_scope();
     let rendered_route = use_context::<leptos_router::location::RequestUrl>()
@@ -117,6 +119,7 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
 #[component]
 pub fn App() -> impl IntoView {
     provide_meta_context();
+    #[cfg(feature = "hydrate")]
     mark_hydrated();
     navigation::NavigationGuard::provide();
     view! {
@@ -145,7 +148,7 @@ fn format_page_title(title: String) -> String {
 #[component]
 fn Chrome() -> impl IntoView {
     navigation::use_navigation_guard().connect_router();
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         use wasm_bindgen::prelude::*;
         #[wasm_bindgen(module = "/profile/navigation.js")]
@@ -193,19 +196,19 @@ pub(crate) fn canonical_url(path: &str) -> String {
 
 #[cfg(not(feature = "ssr"))]
 fn browser_origin() -> String {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         window().location().origin().unwrap_or_default()
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     {
         String::new()
     }
 }
 
 /// Sets `data-hydrated` on `<html>` once the browser app is live (used by browser checks).
+#[cfg(feature = "hydrate")]
 fn mark_hydrated() {
-    #[cfg(feature = "hydrate")]
     Effect::new(|_| {
         if let Some(root) = document().document_element() {
             let _ = root.set_attribute("data-hydrated", "true");
@@ -235,4 +238,12 @@ pub fn hydrate() {
     }
     console_error_panic_hook::set_once();
     leptos::mount::hydrate_body(App);
+}
+
+/// A static document has no server-rendered nodes or hydration payload.
+#[cfg(feature = "csr")]
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn mount() {
+    console_error_panic_hook::set_once();
+    leptos::mount::mount_to_body(App);
 }

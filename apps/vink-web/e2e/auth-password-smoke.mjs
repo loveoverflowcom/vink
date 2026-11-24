@@ -875,3 +875,103 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   })()`), 'no test credentials in script-visible cookies, storage or the URL');
   check(other.errors.length === 0 && tab.errors.length === 0, 'no console exceptions in the extra password tabs');
 }
+
+// Same Chrome driver and real password/editor journeys against the standalone host.
+export async function standalone(page, {args, check}) {
+  const base = args.base;
+  const work = '33333333-3333-4333-8333-333333333333';
+  const reader = base + '/tac-pham/' + work;
+  const line = 'Phố cũ mưa giăng sợi mỏng,';
+  const documentResponse = await fetch(reader, {headers: {accept:'text/html'}});
+  const html = await documentResponse.text();
+  check(documentResponse.ok && html.includes('<noscript>') && !html.includes(line),
+    'direct Reader response is the static shell with the no-JS notice');
+  await page.goto(reader);
+  await page.waitFor(`document.querySelector('.vk-document')?.textContent.includes(${JSON.stringify(line)})`,
+    'Reader text from the scratch publication API');
+  check(await page.eval(`performance.getEntriesByType('resource').some(e => new URL(e.name).pathname === '/api/v1/works/${work}/reader')`),
+    'Reader loaded the authorized HTTP projection');
+  await page.goto(base + '/?q=' + encodeURIComponent('mưa'));
+  await page.waitFor(q('.vk-public-row__link'), 'search results');
+  await page.click('.vk-public-row__link');
+  await page.waitFor(q('.vk-document'), 'client navigation to Reader');
+  await page.eval('history.back()');
+  await page.waitFor(q('.vk-public-row__link'), 'Back to search');
+  await page.eval('history.forward()');
+  await page.waitFor(q('.vk-document'), 'Forward to Reader');
+
+  // A revisited work must wait for the current authority even if its earlier body was cached.
+  await page.eval('history.back()');
+  await page.waitFor(q('.vk-public-row__link'), 'cached search on Back');
+  const outage = await fabricate(page, 'GET', '/api/v1/works/' + work + '/reader', 503,
+    {error:{code:'dependency_unavailable'}});
+  await page.click('.vk-public-row__link');
+  await page.waitFor(q('[data-testid=public-unavailable]'), 'Reader API outage');
+  await outage();
+  check(!await page.eval(`document.body.textContent.includes(${JSON.stringify(line)})`),
+    'failed revalidation keeps the old publication body out of the Reader');
+  await page.click('#retry-public');
+  await page.waitFor(q('.vk-document'), 'retry obtains the current publication');
+
+  await page.goto(base + '/the/' + encodeURIComponent('ký-ức'));
+  await page.waitFor(`document.querySelector('main h1')?.textContent.includes('Ký ức')`, 'public tag deep link');
+  await page.goto(base + '/@nguoi-chua-co');
+  await page.waitFor(q('#profile-unavailable'), 'unknown author has a settled profile state');
+
+  await page.goto(base + '/toi');
+  await page.waitFor(q('#use-registration'), 'anonymous password form');
+  await page.click('#use-registration');
+  const username = 'spa' + Date.now().toString(36);
+  await credentials(page, REGISTER, username, SECRET_A);
+  await page.click(REGISTER + '-submit');
+  await setPenName(page, 'Người viết SPA');
+  const author = await read(page, '/api/v1/me/profile');
+  check(author.status === 200 && Boolean(author.data?.handle), 'new author has a public handle');
+  const id = await createDraft(page, 'Bản thảo trên Vink');
+  check(await page.body() === DRAFT_TEXT, 'saved Vietnamese draft reopens after a full document reload');
+  await page.typeInBody(' Chưa lưu.');
+  await page.click('.vk-editor-heading__back');
+  await page.waitFor(`document.querySelector('[data-testid=leave-editor]')?.open`, 'unsaved exit guard');
+  await page.click('#leave-stay');
+  check((await page.body()).endsWith(' Chưa lưu.'), 'staying in the editor keeps the unsaved text');
+  await page.click('#save');
+  await page.waitStatus('saved');
+  await page.waitFor(q('#audience-public'), 'author publication controls');
+  await page.eval("document.querySelector('#audience-public').click()");
+  await page.waitFor(q('#publication-primary'), 'request review of the saved revision');
+  await page.eval("document.querySelector('#publication-primary').click()");
+  await page.waitFor(`document.querySelector('#publication')?.dataset.phase === 'reconciled' && document.querySelector('#publication-requested')`, 'pending review');
+  const publication = await read(page, '/api/v1/works/' + id + '/publication/state');
+  check(publication.data?.revisions.length === 1 && publication.data.revisions[0].moderation === 'pending' && !publication.data.pointer,
+    'author submission records one pending revision without publishing it');
+  await page.goto(reader);
+  await page.waitFor(q('#root-composer'), 'signed-in discussion composer');
+  const comment = 'Lời nhận xét đang chờ duyệt.';
+  await page.typeAtEnd('#root-composer', comment);
+  await page.click('#root-composer-send');
+  await page.waitFor(`document.querySelector('#own-comments')?.textContent.includes(${JSON.stringify(comment)})`, 'own pending comment');
+  const discussion = await read(page, '/api/v1/works/' + work + '/discussion/public');
+  check(discussion.status === 200 && !JSON.stringify(discussion.data).includes(comment),
+    'a submitted comment appears only in its author’s overlay before approval');
+  await page.goto(base + '/kiem-duyet');
+  await page.waitFor(q('#moderation-home'), 'moderation deep link');
+  check((await read(page, '/api/v1/moderation/automation')).status === 403,
+    'the ordinary account cannot read the administrator’s automation controls');
+  await page.goto(base + '/toi');
+  await page.waitFor(q('#sign-out'), 'signed-in account');
+  await signOut(page, base);
+  const result = await read(page, '/api/v1/drafts/' + id);
+  check(result.status === 401, 'logout revokes the private draft read on the same origin');
+  await page.waitFor(q('#use-registration'), 'account switch');
+  await page.click('#use-registration');
+  await credentials(page, REGISTER, username + 'b', SECRET_B);
+  await page.click(REGISTER + '-submit');
+  await setPenName(page, 'Bạn đọc SPA');
+  check((await read(page, '/api/v1/drafts/' + id)).status === 404,
+    'the second account cannot read the first account’s private draft');
+  await page.goto(base + '/@' + encodeURIComponent(author.data.handle));
+  await page.waitFor(`document.querySelector('#author-profile-heading')?.textContent.includes('Người viết SPA')`,
+    'the second account can open the public author profile');
+  check(!await page.eval("document.body.textContent.includes('Bản thảo trên Vink')"),
+    'a pending work stays off the public author profile');
+}

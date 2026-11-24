@@ -1,0 +1,31 @@
+version = 1
+id = "VDR-EDGE-FRONTEND"
+revision = 2
+
+[base]
+revision = 1
+sha256 = "ead0972af48240150f679a211ddbb0565de4f6d43b678414e095ec2174624355"
+
+[content]
+kind = "architecture"
+domain = "platform"
+title = "Frontend Leptos CSR độc lập trên Cloudflare Pages, API v1 trên VPS"
+resolution = """
+CHOICE-01. Một App/router Leptos mount trong trình duyệt từ index.html và bộ JS/WASM/CSS/font/editor cùng revision. Document tải được khi API dừng. Reader chỉ có văn bản sau khi API xác nhận quyền đọc, hiển thị lỗi có thể thử lại khi API lỗi. PRD §9 cần phê duyệt thay đổi tiêu chí no-JS trước cutover.
+CHOICE-02. Giữ Pages và kho asset phiên bản A+B nhằm hỗ trợ tab cũ tải editor và rollback. Đóng gói từ artifact frontend độc lập với image backend.
+CHOICE-03. Browser gọi /api/v1 cùng origin. Worker chuyển API và health tới ingress hiện có. Identity, session, cookie, kiểm tra Origin và quyền nghiệp vụ thuộc VPS. Index tĩnh chỉ mang cấu hình hiển thị công khai.
+CHOICE-04. Dùng metadata site trước JS, cập nhật title/canonical và trạng thái route trong trình duyệt. GET/HEAD document hợp lệ trả shell HTTP 200. Client không có JS chỉ thấy hướng dẫn bật JavaScript. Không bảo đảm SEO hoặc preview riêng theo tác phẩm trước khi script chạy.
+Gate phát hành: signoff đúng revision/hash, kiểm chứng trình duyệt và hiệu năng Reader, xác minh hợp đồng API v1, kho asset rollback và quota trên tài khoản thật trước cutover production.
+"""
+rationale = "Chủ sản phẩm đổi hướng tại https://github.com/loveoverflowcom/vink/issues/504 ngày 24/11/2026: FE single page có thể standalone deploy lên Cloudflare để gọi API từ VPS. Cùng origin tái sử dụng cookie host-only, CSRF, ETag và kiểm tra ingress. Pages hiện hữu cho phép giữ một frontend và không cần thêm renderer. TTFB document không bao gồm thời gian tải WASM và đợi dữ liệu; mốc nghiệm thu Reader là khi văn bản hiện ra."
+requires = [
+    "VDR-DECISION-SIGNOFF@r1",
+    "VDR-EDGE-ASSET-COMPRESSION@r1",
+]
+related_ids = [
+    "COM-03",
+    "D-01",
+    "INV-01",
+    "NOTIF-07",
+    "PUB-03",
+]
