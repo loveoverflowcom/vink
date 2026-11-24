@@ -1,7 +1,7 @@
 # Kiểm kê tích hợp Tailwind Web và Leptos preview (#423)
 
 Nguồn đối chiếu là [develop@5da8bcf6](https://github.com/loveoverflowcom/vink/commit/5da8bcf6e639c6fbef18a850177cf86cc324fd8d), đã gồm #466–#468.
-Bảng ghi phần đã chuyển trong source, CSS giữ có chủ đích và các mục còn mở. Bằng chứng compile trỏ về đúng lát đã chạy. Hai lượt kiểm tích hợp ở cuối trang chưa có kết quả gắn vào bản đối chiếu này.
+Bảng ghi phần đã chuyển trong source, CSS giữ có chủ đích và các mục còn mở. Bằng chứng compile trỏ về đúng lát đã chạy. Ledger cuối trang ghi các kết quả S6/A4 theo đúng profile và mức kiểm đã quan sát.
 [Issue #423](https://github.com/loveoverflowcom/vink/issues/423) · [Epic #416](https://github.com/loveoverflowcom/vink/issues/416) · [Baseline W01](tailwind-web-foundation.md#3-baseline-trước-thay-đổi-develop126095a-và-so-sánh-sau-w01)
 
 ## Nguồn build và ranh giới renderer
@@ -55,22 +55,60 @@ Bảng ghi phần đã chuyển trong source, CSS giữ có chủ đích và cá
 | #467 App Discovery/Following cards | `77c4ea9e` → `578dace5` → `82eb07cd` | 9 ca list/card, giữ thứ tự legacy và rule link/focus/scroll anchor. App base khớp bundle #466, Preview có allowlist riêng. [#467](https://github.com/loveoverflowcom/vink/pull/467) |
 | #468 Shared + preview | `82eb07cd` → `812c05b4` → `5da8bcf6` | App 9 recipe/23 ca giữ rule và Preview 15 recipe/25 ca giữ rule. Base App khớp bundle #467; đối chiếu giữ cascade #466–#467 và classifier cục bộ. [#468](https://github.com/loveoverflowcom/vink/pull/468) |
 
-| Tiêu chí | Phạm vi đã có | Bằng chứng tích hợp còn cần |
+## Kết quả hai lượt kiểm tích hợp
+
+Hai lượt khóa source `5da8bcf6e639c6fbef18a850177cf86cc324fd8d`, tree `7acb3586ebbf0649f54251b897d3f77b1314284b`. Ledger dựa trên `900df75b820f073a753cd5e9790df64667767fa2`, đã gồm tài liệu #469 và sửa probe E2E #471 sau hai lượt kiểm. #470 vẫn là draft. Tên file bằng chứng dưới đây tính từ thư mục báo cáo tương ứng.
+
+| Lượt và bằng chứng gốc | Kết quả đúng phạm vi |
+| --- | --- |
+| S6 · `vink-416-final-web-evidence/REPORT.md`, SHA-256 `9432a6a7815130290f03d02ff7e57efebf74c9e38fda0cec7208633e8e603099` | Prerequisites, 9/9 kiểm oracle và bundle `wasm-release` qua, archive 82/82 file khớp checksum. Guardian chặn build App SSR release khi guest dùng 5.240.647.680 B, vượt ngưỡng dừng 5.234.491.392 B. Peak 5.335.146.496 B, không ghi nhận kernel OOM trong lượt S6. App/Identity, các scenario đã chọn và visual đều `NOT_RUN` trong lượt S6. Exit 0 từ cleanup có mâu thuẫn với SIGTERM và guard marker. Xem `guest-control.log`, `guest-post-run.txt` và `archived/release-bundle.sha256`. |
+| A4 · `vink-416-final-a4-evidence/REPORT.md`, SHA-256 `1b62da2e376fd038aab5eaa57a41c2e52d423bf8d22b80cc1e018e38fe9d1862` | Lượt `PARTIAL`. Bundle dev hydrate đã sinh, lần build App dev đầu bị watchdog dừng. Runtime sau đó dùng binary SSR dev `debug=0` từ bước Reader SSR của quick, PostgreSQL migrate/seed thật và 82 asset lab S6. App SHA-256 `d0a1b470c01887cca598e958d4bfd3fd574a5e8d2ef89c952ea01917ee16f773`. Xem `verified/runtime/native-binary.sha256`, `verified/runtime/migrate.log` và `verified/runtime-final/ledger`. |
+
+## Kết quả theo hành vi và gate còn đỏ
+
+| Phạm vi | Bằng chứng quan sát trên source đã pin | Giới hạn và việc còn lại |
 | --- | --- | --- |
-| #417 và #418 | Pin/allowlist/rollback/guard #417 AC-02/03/06; tài liệu #418 và walkthrough #432/#452. Hai VDR r1 tiếp tục `PENDING`. | #417 AC-01/04/05/07/08 cần comparator đầy đủ, scope/theme, asset/packaging, pilot trên Web/Preview và ledger sau evidence. #418 AC-02 `PARTIAL`: chạy macro `view!` thật với `banner=true` và `false`; parser/CSS đã có bằng chứng riêng. [Ledger W01/W02](tailwind-web-foundation.md#9-đối-chiếu-sau-squash-431) · [Registry](../../decisions/README.md) |
-| #419–#422 | Bản đồ owner và các run CSS theo PR. Các cột “còn mở” ghi phần chưa đủ bằng chứng để đổi layer hoặc disposition cuối. | SSR/hydration, privilege/session, keyboard/focus, form/selection/composition, history/cursor, ACK/recovery và ảnh trước/sau trên candidate. #427/#428 và OS IME theo phạm vi riêng. |
-| #411 và #413 | #411 có run Chrome/PostgreSQL lịch sử #430 và compile #438. #413 có Node bootstrap, SSR compile và validator/refs #435; hook/spec đã đối chiếu #452/#465. | #411 guest bật/tắt, 0 private GET, first use, skeleton 300ms và lỗi retained sau các lát Desk. #413 first paint 16→24px, storage denied/reload, AX/keyboard, rail modal/Back và dirty Editor. [#430](https://github.com/loveoverflowcom/vink/pull/430) · [#435](https://github.com/loveoverflowcom/vink/pull/435) |
-| #423 AC-01/02/07/08 | Inventory, retain/delete, source và đường dẫn bằng chứng tại candidate. | Review độc lập owner/caller, xác nhận các mục còn mở và điền SHA/run cuối. Chưa đánh dấu hoàn tất hay thay trạng thái issue. |
-| #423 AC-03/06 | Compile CSS theo lát, pin và source của các runner. | `NOT_RUN` trong bản này cho full quick/Preview, release asset checks, SSR/hydration/browser và paired captures. |
-| #423 AC-04/05 | Baseline lịch sử có ở W01; các phép đo CSS theo lát có phạm vi riêng. | `NOT_RUN` cho comparator release tích hợp. Cần CSS + WASM + HTML SSR raw/gzip6/br6/br11 và timing trên cùng máy/browser/corpus/profile. Giữ budget W01 và ghi nhiễu. [Perf owner](web-perf-baseline.md) |
+| Token, guard và quick | `ui-tokens --check` 16 file, xtask 94 unit + 1 integration, 1 test PostgreSQL opt-in ignored. Các guard `tailwind::check` và `ui_qualification::check` qua ở lượt riêng. Quick qua token, artwork, expressions, oracle, fmt, Clippy server/hydrate/preview, doctest và Reader SSR. | Quick `PARTIAL`, cgroup `oom-kill` lúc compile unit/contract workspace, trước repository checks của full lane. Parent peak 4.028.841.984 B, 1 OOM kill. Xem A4 `verified/quick-final/quick.log`, `verified/quick-final/resource-final` và `verified/complement/guards-css.log`. |
+| #418 AC-02 | Fixture macro `view!` thật render `Banner` có một token `sm:gap-x-vk-6`, `InlineNotice` có 0. Web và Preview sinh media 40rem với `column-gap:var(--vk-space-6)`. Issue đã tick AC-02. | Fixture hydrate riêng `NOT_RUN`. Lượt parser/CSS trước đó giữ lịch sử. Xem A4 `verified/macro.log` và `verified/complement/fixture-{web,preview}.css`. [Checklist #418](https://github.com/loveoverflowcom/vink/issues/418) |
+| Preview và tooltip #431/R4.2 | Build Preview CSR và media hydration fixture qua. Tooltip R4.2 qua focus/hover/Escape, gap 8px và không lệch tâm. | Full Preview của A4 trước sửa `FAIL` tại FloatingTonal với probe cũ. #471 xác nhận probe E2E chèn fallback App `:focus-visible` ngoài `@layer legacy`, làm input có thêm outline 3px. Fixture Chrome với CSS phát từ hai entry không tái hiện vòng input thừa. Full replay Leptos và full Preview sau sửa vẫn `NOT_RUN`. Xem A4 `verified/preview.log`, `verified/tooltip.log` và `verified/complement/preview-focus-diagnostic.log`. [Oracle FloatingTonal](https://github.com/loveoverflowcom/vink/blob/5da8bcf6e639c6fbef18a850177cf86cc324fd8d/packages/ui-system/leptos/preview/e2e/preview-smoke.mjs#L684) |
+| #411 Bàn viết | `desk-guest` và `desk-empty` exit 0. Khách có 0 GET riêng. First-use, search/sort, focus, retained/retry qua. Request giữ mở có callback sau **300,7 ms**. Skeleton hiện trong DOM sau **304,3 ms**, tính từ timestamp làm tròn 524,1 − 219,8 ms trong log. | Phạm vi chỉ gồm các ca A4 đã chạy. Xem `verified/runtime/desk-guest/check.log`, `verified/runtime/desk-empty/check.log` và `verified/runtime-final/a4-delay/check.log`. |
+| #413 Giao diện | Radio thật 100%/150% đọc ra 16/24px qua reload. Legacy 200→150, canonical/absent/invalid, chặn ghi và chặn đọc có quan sát. Race rail qua trong document sạch. | `first-paint` exit 1 ở cleanup vì prototype Storage vẫn ném trong document hiện tại sau khi gỡ preload. Các assertion trước điểm dừng giữ kết quả. Stress 200% là override riêng, dữ kiện 200→150 không thuộc ca stress. Xem A4 `verified/runtime-final/first-paint/check.log`, `verified/runtime-extra/a4-{pref,rail-pref}/check.log`. [Dòng cleanup](https://github.com/loveoverflowcom/vink/blob/5da8bcf6e639c6fbef18a850177cf86cc324fd8d/apps/vink-web/e2e/browser-smoke.mjs#L3121) |
+| Reader và CodeMirror #431/#421 | Reader SSR/headless browser với App/PG có native GET return, hold WASM 200/1000ms và 503; history khách trên 14 publication fixture giữ đúng một lần revalidate. Format A4 qua Markdown live preview, selection, IME mô phỏng, hủy/apply sang Default cùng EditorView và outline. | Lab `return-position` và OS IME vẫn `NOT_RUN`. Full các journey Reader/Editor/Nhận xét còn thiếu. Xem A4 `verified/runtime/a4-{reader,format}/check.log` và `verified/runtime-final/reader-guest-history/check.log`. |
+| Paper First · 32 ô hình học | 2 trạng thái clean/dirty × 2 mức 100%/150% × 2 theme × 4 viewport. Harness đặt font gốc bằng DOM override. Ô đầu clean/320/100%/sáng qua geometry, NFD, stanza, selection và identity; sau đó oracle Back dùng `.focus()` trong pointer modality dừng với `:focus-visible=false`. Probe Tab/Shift+Tab riêng thấy outline solid 2px trên Back 115×48px. | 0/32 ô hoàn tất mọi assertion. 31 ô còn lại, phần tools sau lỗi ở ô đầu, negative control sau vòng lặp và stress 320×420/200% đều `NOT_RUN`. Probe bàn phím hẹp chưa phải replay matrix. Xem A4 `verified/runtime/a4-paper/check.log`, `verified/runtime-keyboard/a4-paper/check.log`. [Matrix gốc](https://github.com/loveoverflowcom/vink/blob/5da8bcf6e639c6fbef18a850177cf86cc324fd8d/apps/vink-web/e2e/editor-paper-first-smoke.mjs#L52) |
 
-## Hai lượt tích hợp cần bổ sung bằng chứng
+[#470](https://github.com/loveoverflowcom/vink/pull/470) tại head `0f0cd51ff8a920713dbcb939a3061b500f682faf` trên `b7eef56c` đề xuất hai sửa oracle E2E. Một sửa phục hồi Storage descriptor trong document hiện tại. Một sửa dùng Tab thật vào Back và nút Thêm. Node syntax/tĩnh đã qua theo PR. Replay `first-paint` và `editor-chrome` với App/PG/Chrome trên head đó vẫn `NOT_RUN`.
 
-| Lượt | Cần ghi khi có kết quả | Trạng thái trong bản audit |
-| --- | --- | --- |
-| Web runtime và parity | SHA nguồn, run ID, profile, fixture, SSR/hydration và các scenario thực chạy. Ưu tiên `main`/`discovery`, `auth`/`password`/`author-search`, `endorsement`, `publication`/`review`. `password` đã gọi Following. Dùng `return-position` khi cần oracle Back chuyên biệt. Mở paired captures, ghi viewport/theme, keyboard/AX và gap OS IME. | `NOT_RUN` |
-| Qualification, assets và perf | SHA nguồn, `verify quick`, `verify preview`, macro `view!` hai trạng thái, asset prefix/hash/MIME/fonts và bằng chứng stale-output. So sánh `perf-baseline --release` cùng comparator. Ghi rõ boundary nếu thiếu packaging production hoặc comparator. | `NOT_RUN` |
+[#471](https://github.com/loveoverflowcom/vink/pull/471) chỉ sửa Preview smoke. Review head `cd0d8a13121e238da3cafb965df0bb38f0c7b639` đã tích hợp tại `900df75b820f073a753cd5e9790df64667767fa2`. Probe hẹp trên Chrome 158.0.8127.37 với fixture HTML và CSS phát thật `PASS`. Probe cũ tái hiện input 3px. Hai entry thật và Preview với probe chuyển vào `legacy` giữ shell outline 2px offset −2px và input 0px, kể cả forced colors. Positive control là input native nhận outline 3px offset +2px. Full replay fixture Leptos và Preview sau sửa vẫn `NOT_RUN`. Xem `vink-416-preview-focus-probe-evidence/REPORT.md` (SHA-256 `f6c1fdea6a943fd8b52d6a6ee531d47ace30e49c3870f3bf5c769aa4ad8ce65e`), `computed-style.json` và `css.sha256` trong cùng thư mục.
 
-Dùng tùy chọn app **Mặc định 100%** và **Lớn 150%** trên `/toi`. Ca legacy 200 → 150 đo first paint/hydration. Stress 200% dùng override riêng và metadata `dom-override-geometry-only`. Các harness cũ dùng root override cần ghi đúng lane. [Spec Giao diện](../design/me-preferences-r1-209.md#kiểm-chứng-web-hiện-hành-từ-413)
+## Số byte đã đo và điều kiện còn thiếu
 
-Hai lượt dùng slot tuần tự theo ngân sách ≤12 GB. Lưu log, hash, ảnh và metadata ngoài `target` trước khi dọn đúng target của lượt. Bằng chứng native/CMP, OS IME và browser ngoài host đã chạy tiếp tục ghi theo boundary. [Giới hạn runner](local-resource-budget.md)
+Archive release S6 gồm `wasm-release + perf-probe`. `ReturnPosition` được chọn trong plan và binary export `public_read_counts`, khớp điều kiện build. Các hàng HTML là HTTP 200 từ SSR dev thực. Đo tệp/body riêng bằng Node 22.15.0 với gzip 6 và Brotli 6/11 trước overhead. Xem A4 `verified/lab-feature-proof.txt`, `verified/bundle.log`, `verified/runtime/dev-ssr-bytes.json`. [Điều kiện build](https://github.com/loveoverflowcom/vink/blob/5da8bcf6e639c6fbef18a850177cf86cc324fd8d/xtask/src/workflow.rs#L67)
+
+| Mẫu | Raw B | gzip 6 B | br6 B | br11 B |
+| --- | ---: | ---: | ---: | ---: |
+| Lab release · vink.css | 188.026 | 29.643 | 27.061 | 24.410 |
+| Lab release · vink_bg.wasm | 8.055.883 | 2.359.566 | 1.900.245 | 1.649.182 |
+| Lab release · vink.js | 96.655 | 14.467 | 13.241 | 11.710 |
+| Lab release · vink-editor.js | 370.014 | 126.699 | 119.876 | 107.353 |
+| Dev SSR · /toi | 18.216 | 4.308 | 3.927 | 3.524 |
+| Dev SSR · /ban-viet | 12.734 | 3.214 | 2.900 | 2.622 |
+| Dev SSR · Reader mẫu | 23.306 | 6.265 | 5.822 | 5.270 |
+
+Payload release hydrate thuần, HTML release, full App SSR release, `perf-baseline`, lab `return-position`, timing build/journey và so baseline/control/final cùng runner/profile/corpus đều `NOT_RUN`. Các số trên ghi nhận artifact và probe theo profile. Budget W01 giữ nguyên, kết luận tăng/giảm và mức đạt budget còn mở. [Perf owner](web-perf-baseline.md)
+
+Các lượt S6/A4 đã dọn đúng target sau khi giữ evidence. Host chỉ có số lấy mẫu, hard cap Mac chưa xác lập. Cap 14 GB chưa áp dụng cho lane nào. Preflight Mac chặn trước bootstrap khi SSD còn khoảng 1,49 GB. Lần đọc volume Data khi soạn ledger ghi 1.186.832 KiB, xấp xỉ 1,22 GB thập phân. Cloud chưa đủ điều kiện qualification vì thiếu Rust/Cargo, PostgreSQL và cap cgroup đã xác minh. Cloud fallback và lượt 14 GB đều `NOT_RUN`. [Giới hạn runner](local-resource-budget.md)
+
+## Đối chiếu checklist #423 và bàn giao Epic
+
+| AC #423 | Bằng chứng và disposition ở mốc này |
+| --- | --- |
+| AC-01 | Inventory #469 có route và family theo owner. Giữ mở vì wrapper shared và hai hook App trong patterns còn disposition cuối cần review theo caller. |
+| AC-02 | #466–#468 chứng minh selector đã chuyển/xóa và các rule giữ lại theo scope. Giữ mở khi audit dead CSS/import/shim toàn cây và semantic/test consumer trên runtime chưa đủ. |
+| AC-03 | Pin/allowlist/stale guard và compile bundle có evidence. Full production build và asset contract còn thiếu. Full Preview trước sửa `FAIL` với probe FloatingTonal cũ. Probe Chrome hẹp của #471 `PASS`. Full Leptos/Preview sau sửa `NOT_RUN`. Giữ mở. |
+| AC-04 | Bảng byte lab và dev SSR có provenance. Còn thiếu so sánh release cùng comparator và build/journey metrics. Giữ mở. |
+| AC-05 | Ranh giới ngân sách và blocker đã ghi cụ thể. Có thể đề nghị ghi nhận theo nhánh “có blocker chưa nghiệm thu rõ” sau khi ledger được review, với budget vẫn chưa nghiệm thu và nguyên ngưỡng W01. |
+| AC-06 | A4 có ca SSR/hydration và hành vi cục bộ. Còn replay #470 và #471, 31 ô Paper First và stress riêng, keyboard/AX/theme/recovery cùng các consumer chưa chạy. Giữ mở. |
+| AC-07 | #418, #452, #465 và #469 đối chiếu guide, source scan, registry và HOW/WHY. Hai VDR r1 vẫn `PENDING`. Giữ mở cho disposition/exception cuối cùng và cập nhật theo head sau xử lý finding. [Registry](../../decisions/README.md) |
+| AC-08 | Ledger này ghi AC→evidence/gap và readiness tạm thời. Có thể đề nghị ghi nhận phần handoff sau review và hợp nhất ledger. Release, runtime matrix và performance chưa sẵn sàng nghiệm thu. |
+
+Đối với #416, AC-01/09 có inventory và điều phối owner, còn disposition cuối. AC-02/03 có pin, guard và token checks, còn full release/asset và runtime scope. AC-04/05 có #411, #413, Reader và Editor theo các ca ở trên, còn gate đỏ, matrix và OS IME. AC-06 có guide và macro #418. AC-07 thiếu comparator/profile release. AC-08 giữ kết quả theo target và tách source, compile, browser, visual và interaction. Checklist issue giữ nguyên. [#416](https://github.com/loveoverflowcom/vink/issues/416) · [#423](https://github.com/loveoverflowcom/vink/issues/423)
