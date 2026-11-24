@@ -40,7 +40,7 @@ const phase = (page) => page.eval(`document.querySelector('${PUBLICATION}')?.dat
 const waitPhase = (page, wanted, what, timeout) =>
   page.waitFor(`document.querySelector('${PUBLICATION}')?.dataset.phase === ${JSON.stringify(wanted)}`, what ?? `publication ${wanted}`, timeout);
 const panelText = (page) => page.eval(`document.querySelector('${PUBLICATION}')?.innerText ?? ''`);
-const choose = (page, value) => page.eval(`document.querySelector('input[name=audience][value=${value}]').click()`);
+const choose = (page, value) => page.eval(`(() => { const switchInput = document.querySelector('#audience-public'); if (switchInput.checked !== (${JSON.stringify(value)} === 'public')) switchInput.click(); })()`);
 const primary = (page) => page.eval(`document.querySelector('#publication-primary')?.innerText ?? null`);
 const storedText = (draft) => draft.document.source;
 const publicRead = async (base, work) => {
@@ -163,9 +163,11 @@ async function newDraft(page, base, title, body) {
 }
 
 async function pickFormTag(page) {
-  await page.waitFor(`${q('#work-tags-form .vk-ui-chip')}`, 'form tags from the catalog');
-  await page.click('#work-tags-edit > summary');
-  await page.click('#work-tags-form .vk-ui-chip');
+  await page.waitFor("document.querySelector('#work-tags-form-select')?.options.length > 1", 'form tags from the catalog');
+  await page.eval(`const options = document.querySelector('#work-options'); if (!options.open) options.querySelector('summary').click();
+    const select = document.querySelector('#work-tags-form-select');
+    select.value = [...select.options].find(option => option.textContent === 'Tản văn').value;
+    select.dispatchEvent(new Event('change', { bubbles: true }));`);
   await page.waitFor(`document.querySelector('[data-testid=tag-status]')?.dataset.status === 'unsaved'`, 'the chosen tag is unsaved');
 }
 
@@ -646,7 +648,7 @@ async function twoTabs({ author, mod, work, base, check, openPage, reopen, edito
   await author.waitFor(`!document.querySelector('#publication-recovery')`, 'the notice is gone');
   await sleep(300);
   const dismissed = await focusKept(author);
-  check(dismissed.kept && dismissed.at === 'publication-title', `dismissing with no primary action left returns focus to the region heading (focus: ${dismissed.at})`);
+  check(dismissed.kept && dismissed.at === 'audience-public', `dismissing with no primary action left returns focus to the audience switch (focus: ${dismissed.at})`);
 
   // Back to a pending public submission, then a second slow request that is sent again on purpose.
   await choose(author, 'public');
@@ -767,7 +769,13 @@ async function matrix(page, name, check) {
     for (const scale of [100, 200]) {
       for (const width of SHOTS) {
         await page.viewport(width, scale === 200 ? (width < 700 ? 4200 : 2600) : 1300);
-        await page.eval(`document.documentElement.dataset.theme = ${JSON.stringify(theme)}; document.documentElement.style.fontSize = '${scale}%'; document.querySelector('#publication').scrollIntoView({ block: 'start' })`);
+        await page.eval(`document.documentElement.dataset.theme = ${JSON.stringify(theme)}; document.documentElement.style.fontSize = '${scale}%';`);
+        await page.eval(`(async () => {
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          const options = document.querySelector('#work-options');
+          if (!options.open) options.querySelector('summary').click();
+          document.querySelector('#publication').scrollIntoView({ block: 'start' });
+        })()`);
         await sleep(150);
         const geo = await geometry(page);
         const cell = `${width}px ${theme} ${scale}%`;

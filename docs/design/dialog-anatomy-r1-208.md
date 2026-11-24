@@ -1,5 +1,7 @@
 # Chuẩn hóa anatomy, gutter và phân cấp hành động Dialog Editor — R1 (#208)
 
+> Bàn giao lịch sử. [Editor R4 và delta #475 ngày 24/11](editor-r4.md) bỏ hộp thoại xem trước bản nháp độc lập và mô tả bố cục hiện tại. Các bằng chứng bên dưới giữ nguyên phạm vi và thời điểm gốc.
+
 **Trạng thái:**
 - **Product / UX:** `DESIGN_PROPOSED` (PR 1/2 thuộc phạm vi [#208](https://github.com/loveoverflowcom/vink/issues/208); không tự đánh dấu `Accepted`/`approved` hay thay thế chủ nguồn nghiệp vụ).
 - **Reference class:** `NO_APPROVED_REFERENCE` (hình ảnh đích `R1` chỉ là phác thảo bố cục nội bộ; không dùng làm chuẩn pixel bắt buộc).

@@ -1,0 +1,15 @@
+version = 1
+id = "VDR-EDITOR-R4"
+revision = 1
+
+[content]
+kind = "product"
+domain = "editor"
+title = "Editor R4: bỏ hộp thoại xem trước bản nháp"
+resolution = """
+Trên /ban-viet/{id}, bỏ nút xem trước độc lập và hộp thoại render lại chữ đang viết. Không đưa hành động này vào Chi tiết lưu, không thay bằng Đọc thử hoặc một chế độ viết thứ hai. Giữ Markdown Live Preview trong một EditorView, xem trước và xác nhận khi đổi định dạng, Reader, và render snapshot đã gửi cho nhân sự kiểm duyệt. Nháp vẫn riêng tư, không tính lượt xem. Lưu nháp và gửi duyệt là hai hành động riêng.
+"""
+rationale = """
+Ngày 24/11/2026, chủ sản phẩm hỏi “Tại sao cần cái tính năng xem trước bản nháp nhỉ ?” rồi yêu cầu “Để cập nhật ssot và sửa lại, clean code cũ”. Delta trong issue #475 (https://github.com/loveoverflowcom/vink/issues/475) thay thế nút con mắt trong bàn giao R4 ngày 23/11 của #428. Giữ quy tắc Giao diện chỉ tại /toi theo VDR-WEB-APPEARANCE@r1; đề xuất này không thay revision đó. Chưa có signoff cho nội dung của revision này theo VDR-DECISION-SIGNOFF@r1.
+"""
+related_ids = ["WR-01", "WR-02", "PUB-01", "VIEW-05"]

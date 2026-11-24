@@ -304,7 +304,7 @@ export async function authWeb(page, { args, check, openPage }) {
   check(other.errors.length === 0, `the 204 is not parsed as JSON${other.errors.length ? `: ${other.errors.join(' | ')}` : ''}`);
   await page.click('#save');
   await page.waitStatus('failed', 'save after the session ended');
-  check(await page.eval(`${q('[data-testid=save-failed]')}.textContent.includes('Phiên đăng nhập đã hết')`) && (await page.body()).endsWith(UNSAVED_LINE), 'the editor in the other tab keeps the unsaved stanza and says the session ended');
+  check(await page.eval(`${q('#editor-save-details')}.textContent.includes('Phiên đăng nhập đã hết')`) && (await page.body()).endsWith(UNSAVED_LINE), 'the editor in the other tab keeps the unsaved stanza and says the session ended');
 
   console.log('Auth Web: the same person returns:');
   await signIn(other, ctx, mailA);
@@ -313,7 +313,7 @@ export async function authWeb(page, { args, check, openPage }) {
   check(returned.body.principal_id === principalA && returned.body.display_name === PEN_NAME_A && !(await other.eval(`Boolean(${q('#pen-name-form')})`)), 'a returning address gets the same principal and no second pen-name step');
   await sleep(500);
   check((await page.body()).endsWith(UNSAVED_LINE), 'the text typed before the session ended is still in the editor');
-  await page.click('#retry-save');
+  await page.click('#save');
   await page.waitStatus('saved', 'save after signing in again');
   check(storedText(await page.draft(workA)) === BODY_A + UNSAVED, 'and is saved once the same account is back');
 

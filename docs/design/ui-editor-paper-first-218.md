@@ -1,5 +1,7 @@
 # Editor Paper First — #218
 
+> Bàn giao lịch sử. [Editor R4 và delta #475 ngày 24/11](editor-r4.md) bỏ hộp thoại xem trước bản nháp độc lập và mô tả bố cục hiện tại. Các bằng chứng bên dưới giữ nguyên phạm vi và thời điểm gốc.
+
 *(Delta [#254](editor-quiet-254.md) ngày 17/11/2026: giữ nguyên Paper First / `#editor-save-details` ("Thêm") chứa chi tiết trạng thái máy chủ, nhưng bỏ nút `#export` (“Tải bản thảo (.txt)”), `#export-failed`, `#export-conflict`, `#export-tags`, `#leave-export` và `.vk-editor-help`. Các kết quả dưới đây là lịch sử của #218.)*
 
 Base thực thi: `develop@a78c9ff5138a0df26e9febe4fdf6146f5915d28a`, đã có

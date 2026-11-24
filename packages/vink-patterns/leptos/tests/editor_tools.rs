@@ -51,3 +51,25 @@ fn standard_toolbar_keeps_the_existing_detail_anatomy() {
     assert!(!html.contains("vk-editor-toolbar--paper-first"));
     assert_eq!(html.matches("role=\"status\"").count(), 1);
 }
+
+#[test]
+fn compact_details_uses_accessible_save_details_summary_without_children() {
+    let html = Owner::new().with(|| {
+        view! {
+            <EditorToolbar
+                status="Đã lưu"
+                status_token="saved"
+                status_detail="Phiên bản 2 trên máy chủ."
+                paper_first=true
+                compact_details=true
+            />
+        }
+        .to_html()
+    });
+    assert_eq!(html.matches("id=\"editor-save-details\"").count(), 1);
+    assert!(html.contains("aria-label=\"Chi tiết lưu\""), "{html}");
+    assert!(html.contains("Phiên bản 2 trên máy chủ."), "{html}");
+    assert!(!html.contains("Thêm"), "{html}");
+    assert!(html.contains("justify-start"), "{html}");
+    assert!(html.contains("p-vk-3"), "{html}");
+}

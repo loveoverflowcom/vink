@@ -5,14 +5,14 @@
 //! - It owns no save logic. "Lưu và gửi duyệt" calls the editor's own save and only *watches* the
 //!   editor's [`DraftSession`]; the snapshot is taken for exactly what the server acknowledged.
 //! - It owns no authority. What it says about the work comes from `GET …/publication/state`; the
-//!   radio selection is the author's intent, never the work's state.
+//!   switch selection is the author's intent, never the work's state.
 //! - Private data is read in the browser only (never in the server-rendered HTML), is bound to the
 //!   tab's session scope and the route, and is never stored: not the manuscript, not a token.
 
 use leptos::prelude::*;
 use vink_ui::{
-    ActionState, Announce, Button, ButtonVariant, ChoiceOption, Heading, HeadingLevel, IconName,
-    InlineNotice, RadioGroup, Tone, TooltipIconButton, TypeRole,
+    ActionState, Announce, Button, ButtonVariant, IconName, InlineNotice, Switch, Tone,
+    TooltipIconButton,
 };
 
 use crate::contract::publication::{Audience, Decision};
@@ -430,7 +430,7 @@ impl Runner {
 /// A control that held focus can be gone after the region re-rendered: the primary action once a
 /// withdrawal left nothing to press, "Đã hiểu" once it was dismissed. Focus then falls to the
 /// document body, which a keyboard user cannot tell from the page's start. Return it to the action
-/// when there still is one, else to the region's heading. Focus that is anywhere else is never
+/// when there still is one, else to the audience control or its disclosure. Focus that is anywhere else is never
 /// taken, and the page does not scroll.
 fn restore_lost_focus() {
     #[cfg(feature = "hydrate")]
@@ -442,10 +442,17 @@ fn restore_lost_focus() {
         if !lost {
             return;
         }
-        let target = ["publication-primary", "publication-title"]
-            .into_iter()
-            .find_map(|id| document().get_element_by_id(id))
-            .and_then(|element| element.dyn_into::<web_sys::HtmlElement>().ok());
+        let target = [
+            "publication-primary",
+            "audience-public",
+            "work-options-toggle",
+        ]
+        .into_iter()
+        .filter_map(|id| document().get_element_by_id(id))
+        .find(|element| {
+            !element.has_attribute("disabled") && element.get_bounding_client_rect().height() > 0.0
+        })
+        .and_then(|element| element.dyn_into::<web_sys::HtmlElement>().ok());
         if let Some(target) = target {
             let options = web_sys::FocusOptions::new();
             options.set_prevent_scroll(true);
@@ -458,6 +465,7 @@ fn restore_lost_focus() {
 pub fn PublicationPanel(
     work_id: String,
     session: RwSignal<DraftSession>,
+    review_pending: RwSignal<bool>,
     #[prop(into)] on_save: Callback<()>,
     /// Whether an input method is composing in the body. A press then waits for the commit, like
     /// the save shortcut: half a syllable is never the text that gets frozen and sent.
@@ -557,6 +565,16 @@ pub fn PublicationPanel(
     let phase = Memo::new(move |_| controller.with(Controller::phase));
     let facts_audience = Memo::new(move |_| controller.with(|c| c.facts().map(|f| f.audience)));
     let summary = Memo::new(move |_| controller.with(|c| c.facts().map(Summary::of)));
+    Effect::new(move |_| {
+        review_pending.set(summary.with(|facts| {
+            facts
+                .as_ref()
+                .and_then(|s| s.requested.as_ref())
+                .is_some_and(|revision| {
+                    matches!(revision.decision, Decision::Pending | Decision::NeedsAdmin)
+                })
+        }));
+    });
     let pointer = Memo::new(move |_| {
         controller.with(|c| {
             c.facts()
@@ -564,7 +582,7 @@ pub fn PublicationPanel(
         })
     });
 
-    // The radio follows the server when the server's audience changes (another tab, a command),
+    // The switch follows the server when the server's audience changes (another tab, a command),
     // and starts at it; the author's own pending selection is never reset by a plain refresh.
     Effect::new(move |previous: Option<Option<Audience>>| {
         let now = facts_audience.get();
@@ -722,10 +740,15 @@ pub fn PublicationPanel(
     };
 
     view! {
-        <section id="publication" class="vk-publication grid gap-vk-3 [min-inline-size:0] [padding:clamp(var(--vk-space-3),3vw,var(--vk-space-6))] rounded-vk-lg bg-vk-surface-container-low" aria-labelledby="publication-title"
+        <section id="publication" class="vk-publication grid gap-vk-2 min-w-0" aria-label="Công khai"
             data-testid="publication" data-phase=move || phase_token(phase.get())>
-            <div class="vk-publication__heading flex flex-wrap items-center justify-between gap-x-vk-4 gap-y-vk-1 [min-inline-size:0] [&>.vk-ui-heading]:m-0 [&>.vk-ui-heading]:[font-family:var(--vk-font-ui)] [&>.vk-ui-heading]:text-[length:var(--vk-type-body-size)] [&>.vk-ui-heading]:[font-weight:var(--vk-type-label-weight)] [&>.vk-ui-heading]:wrap-anywhere">
-                <Heading level=HeadingLevel::H2 role=TypeRole::Title id="publication-title" attr:tabindex="-1">"Công khai"</Heading>
+            <div class="vk-publication__heading flex flex-wrap items-center justify-between gap-vk-2 min-w-0">
+                <div class="vk-publication__choice min-w-0" id="audience-choice">
+                    <Switch id="audience-public" label="Công khai"
+                        checked=Signal::derive(move || choice.with(|value| value == PUBLIC))
+                        disabled=Signal::derive(move || working.get() || facts_audience.get().is_none())
+                        on_change=move |checked| choice.set(if checked { PUBLIC } else { PRIVATE }.into()) />
+                </div>
                 <TooltipIconButton icon=IconName::Refresh label="Tải lại trạng thái công khai" id="publication-refresh"
                     state=Signal::derive(move || if controller.with(Controller::reading) { ActionState::Disabled { reason: None } } else { ActionState::Enabled })
                     on_press=move |_| reload.run(()) />
@@ -753,23 +776,13 @@ pub fn PublicationPanel(
                 {stale_note}
             </div>
             {notice}
-            <div class="vk-publication__choice grid gap-vk-2 [min-inline-size:0]" id="audience-choice">
-                <RadioGroup id="audience" legend="Ai đọc được tác phẩm"
-                    options=vec![ChoiceOption::new(PRIVATE, "Chỉ mình tôi"), ChoiceOption::new(PUBLIC, "Công khai")]
-                    value=Signal::derive(move || {
-                        let value = choice.get();
-                        (!value.is_empty()).then_some(value)
-                    })
-                    disabled=Signal::derive(move || working.get() || facts_audience.get().is_none())
-                    on_change=move |value: String| choice.set(value) />
-                <p class=PUBLICATION_NOTE_CLASS id="audience-applied" data-testid="audience-applied">
-                    {move || match facts_audience.get() {
-                        Some(Audience::Public) => "Máy chủ đang áp dụng: Công khai.",
-                        Some(Audience::Private) => "Máy chủ đang áp dụng: Chỉ mình tôi.",
-                        _ => "Chưa đọc được lựa chọn đã áp dụng.",
-                    }}
-                </p>
-            </div>
+            <p class=PUBLICATION_NOTE_CLASS id="audience-applied" data-testid="audience-applied">
+                {move || match facts_audience.get() {
+                    Some(Audience::Public) => "Máy chủ đang áp dụng: Công khai.",
+                    Some(Audience::Private) => "Máy chủ đang áp dụng: Chỉ mình tôi.",
+                    _ => "Chưa đọc được lựa chọn đã áp dụng.",
+                }}
+            </p>
             <div class="vk-publication__actions flex flex-wrap items-center gap-vk-3 [min-inline-size:0] empty:hidden" id="publication-actions">
                 <Show when=move || primary.get() != Primary::Nothing
                     fallback=move || view! {

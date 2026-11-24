@@ -91,6 +91,14 @@ thuật `CHOICE-01 A`), và chỉ thay thế có phạm vi phần giữ nút Gia
 trong registry TOML và chưa gắn marker pin kích hoạt cho tới khi có file signoff trích đúng
 revision/SHA-256.
 
+## Editor R4
+
+[VDR-EDITOR-R4@r1](proposals/VDR-EDITOR-R4.r1.toml) ghi delta ngày 24/11 trong
+[#475](https://github.com/loveoverflowcom/vink/issues/475) về việc bỏ hộp thoại xem trước bản nháp.
+Proposal còn `PENDING` đến khi có signoff đúng revision theo
+[VDR-DECISION-SIGNOFF@r1](signoffs/VDR-DECISION-SIGNOFF.r1.toml).
+[LayoutSpec delta R4](../docs/design/editor-r4.md) ánh xạ hành vi vào Web.
+
 ## Tra cứu theo phạm vi công việc
 
 [Đối soát PR 15–16/11/2026](../docs/development/verification-reconciliation-20261116.md#quyết-định-toml-mới)

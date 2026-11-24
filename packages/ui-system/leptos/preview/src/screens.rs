@@ -264,26 +264,24 @@ fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
                     Some(save_action) => view! {
                         <EditorToolbar
                             paper_first=true
+                            compact_details=true
                             status_detail="Mẫu · Chưa nối dữ liệu máy chủ."
                             status=sample_label
                             status_token=sample_token
                             status_problem=Signal::stored(sample_problem)
                             save_action=save_action
-                        >
-                            <Button variant=ButtonVariant::Text on_press=move |_| record("editor → preview (sample)")>"Xem trước"</Button>
-                        </EditorToolbar>
+                        />
                     }
                     .into_any(),
                     None => view! {
                         <EditorToolbar
                             paper_first=true
+                            compact_details=true
                             status_detail="Mẫu · Chưa nối dữ liệu máy chủ."
                             status=sample_label
                             status_token=sample_token
                             status_problem=Signal::stored(sample_problem)
-                        >
-                            <Button variant=ButtonVariant::Text on_press=move |_| record("editor → preview (sample)")>"Xem trước"</Button>
-                        </EditorToolbar>
+                        />
                     }
                     .into_any(),
                 };
