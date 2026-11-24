@@ -278,10 +278,19 @@ impl Server {
     }
 }
 
+struct Browser {
+    chrome: String,
+    capture: crate::plan::Capture,
+}
+
+fn scenario_state(state: &Path, scenario: &str) -> std::path::PathBuf {
+    state.with_file_name(scenario).join("smoke-state.json")
+}
+
 fn smoke(
     root: &Path,
     node_args: &[&str],
-    chrome: &str,
+    chrome: &Browser,
     base: &str,
     state: &Path,
 ) -> Result<(), String> {
@@ -293,7 +302,7 @@ fn smoke(
 fn smoke_with_env(
     root: &Path,
     node_args: &[&str],
-    chrome: &str,
+    chrome: &Browser,
     base: &str,
     state: &Path,
     envs: &[(String, String)],
@@ -303,7 +312,15 @@ fn smoke_with_env(
     command
         .current_dir(root)
         .arg(root.join("apps/vink-web/e2e/browser-smoke.mjs"))
-        .args(["--base", base, "--chrome", chrome, "--state"])
+        .args([
+            "--base",
+            base,
+            "--chrome",
+            &chrome.chrome,
+            "--capture",
+            chrome.capture.name(),
+            "--state",
+        ])
         .arg(state)
         .args(node_args)
         .envs(
@@ -340,7 +357,7 @@ fn auth_web(
     root: &Path,
     server: &Server,
     admin_url: &str,
-    chrome: &str,
+    chrome: &Browser,
     state: &Path,
     phase: IdentityPhase,
 ) -> Result<(), String> {
@@ -576,7 +593,7 @@ fn publication_author(
     root: &Path,
     server: &Server,
     admin_url: &str,
-    chrome: &str,
+    chrome: &Browser,
     state: &Path,
 ) -> Result<(), String> {
     let drop = format!("DROP DATABASE IF EXISTS {PUBLICATION_DATABASE} WITH (FORCE)");
@@ -609,7 +626,7 @@ fn native_auth_scratch(
     root: &Path,
     server: &Server,
     admin_url: &str,
-    chrome: &str,
+    chrome: &Browser,
     state: &Path,
     phase: IdentityPhase,
 ) -> Result<(), String> {
@@ -688,7 +705,10 @@ pub fn verify_selected(report: &mut Report, env: &Env, plan: &Plan) -> bool {
     let url = env
         .get(crate::TEST_DATABASE_URL)
         .expect("preflight checked");
-    let chrome = doctor::chrome_binary(env).expect("preflight checked");
+    let chrome = Browser {
+        chrome: doctor::chrome_binary(env).expect("preflight checked"),
+        capture: plan.request.capture,
+    };
     let _scratch_lock = match crate::lifecycle::ScratchLock::acquire(&url) {
         Ok(lock) => lock,
         Err(e) => {
@@ -717,11 +737,12 @@ pub fn verify_selected(report: &mut Report, env: &Env, plan: &Plan) -> bool {
             return false;
         }
     };
+    println!("==> Web run evidence: {}", out.display());
+    let primary = plan
+        .scenarios
+        .iter()
+        .any(|s| !s.identity() || *s == Scenario::Auth);
     let result = (|| -> Result<bool, String> {
-        let primary = plan
-            .scenarios
-            .iter()
-            .any(|s| !s.identity() || *s == Scenario::Auth);
         let scratch_url = if primary {
             recreate_scratch_database(&url)?
         } else {
@@ -779,6 +800,7 @@ pub fn verify_selected(report: &mut Report, env: &Env, plan: &Plan) -> bool {
             if !ok {
                 break;
             }
+            let state = scenario_state(&state, scenario.name());
             ok = report.step(
                 &format!("scenario {} (real Identity/local outbox)", scenario.name()),
                 || match scenario {
@@ -792,7 +814,7 @@ pub fn verify_selected(report: &mut Report, env: &Env, plan: &Plan) -> bool {
                             &["--phase", "reader-auth-closed"],
                             &chrome,
                             &origin,
-                            &state,
+                            &scenario_state(&state, "reader-auth-closed"),
                         );
                         let _ = guard.terminate(Duration::from_secs(15));
                         result
@@ -827,11 +849,29 @@ pub fn verify_selected(report: &mut Report, env: &Env, plan: &Plan) -> bool {
         Ok(ok)
     })();
     // Only fixed, reserved scratch names, while holding the shared DB lock. Never DATABASE_URL.
-    drop_identity_scratch(&url);
-    for db in [PUBLICATION_DATABASE, PASSWORD_AUTH_DATABASE] {
-        let _ = crate::identity::sql(&url, &format!("DROP DATABASE IF EXISTS {db} WITH (FORCE)"));
+    if plan.scenarios.iter().any(|scenario| scenario.identity()) {
+        drop_identity_scratch(&url);
     }
-    drop_scratch_database(&url);
+    if plan.scenarios.contains(&Scenario::Publication) {
+        let _ = crate::identity::sql(
+            &url,
+            &format!("DROP DATABASE IF EXISTS {PUBLICATION_DATABASE} WITH (FORCE)"),
+        );
+    }
+    if plan.scenarios.iter().any(|scenario| {
+        matches!(
+            scenario,
+            Scenario::Password | Scenario::AuthorSearch | Scenario::Standalone
+        )
+    }) {
+        let _ = crate::identity::sql(
+            &url,
+            &format!("DROP DATABASE IF EXISTS {PASSWORD_AUTH_DATABASE} WITH (FORCE)"),
+        );
+    }
+    if primary {
+        drop_scratch_database(&url);
+    }
     let _ = crate::identity::sql(&url, &format!("DROP ROLE IF EXISTS {APP_ROLE}"));
     match result {
         Ok(ok) => ok,
@@ -878,7 +918,7 @@ fn prepare_app(root: &Path, server: &Server, seed: bool) -> Result<(), String> {
 
 /// Tag IDs the browser phases need from the seeded catalog.
 struct TagSeed {
-    /// Đô thị: saved on a draft in the main phase, retired before the after-restart phase.
+    /// Đô thị: saved on the restart probe draft, then retired.
     city: String,
     /// Mùa: the curator's successor for Đô thị.
     season: String,
@@ -958,6 +998,16 @@ fn seed_tag_catalog(root: &Path, server: &Server) -> Result<TagSeed, String> {
         city: ids[5].clone(),
         season: ids[4].clone(),
         version,
+    })
+}
+
+fn seed_restart_tags(root: &Path, server: &Server) -> Result<TagSeed, String> {
+    let season = tag_command(root, server, &["create", "1", "theme", "Mùa"])?;
+    let city = tag_command(root, server, &["create", "2", "theme", "Đô thị"])?;
+    Ok(TagSeed {
+        season: changed_tag_id(&season).ok_or("restart successor tag ID missing")?,
+        city: changed_tag_id(&city).ok_or("restart tag ID missing")?,
+        version: 3,
     })
 }
 
@@ -1054,7 +1104,7 @@ fn seed_perf_journey(server: &Server) -> Result<(), String> {
 fn editor_first_drafts(
     root: &Path,
     server: &Server,
-    chrome: &str,
+    chrome: &Browser,
     state: &Path,
 ) -> Result<(), String> {
     let (_, url) = server
@@ -1071,14 +1121,21 @@ fn editor_first_drafts(
             ),
         )?;
         let mut fixture = server.with_principal(&principal, free_port()?);
-        fixture.log = state.with_file_name(format!("editor-first-{format}.log"));
+        let state = scenario_state(state, format);
+        std::fs::create_dir_all(
+            state
+                .parent()
+                .ok_or("first-draft evidence directory missing")?,
+        )
+        .map_err(|error| error.to_string())?;
+        fixture.log = state.with_file_name("server.log");
         let mut running = fixture.start(root)?;
         smoke(
             root,
             &["--phase", "editor-first-draft", "--first-format", format],
             chrome,
             &format!("http://127.0.0.1:{}", fixture.port),
-            &state.with_file_name(format!("editor-first-{format}.json")),
+            &state,
         )?;
         let status = running.terminate(Duration::from_secs(15))?;
         if !status.success() {
@@ -1092,32 +1149,44 @@ fn run_web_checks(
     report: &mut Report,
     root: &Path,
     server: &Server,
-    chrome: &str,
+    chrome: &Browser,
     origin: &str,
     state: &Path,
     selected: &[Scenario],
 ) -> bool {
-    let seed = match seed_tag_catalog(root, server) {
-        Ok(seed) => seed,
-        Err(e) => {
-            report.fail("scratch database: tag catalog through `vink-app tag`", &e);
-            return false;
-        }
-    };
-    if selected.contains(&Scenario::Main)
+    let restart = selected.contains(&Scenario::Restart);
+    let mut seed = None;
+    if (restart || selected.iter().any(|s| s.tag_catalog()))
         && !report.step(
-            "first-use draft formats with fresh scratch principals",
-            || editor_first_drafts(root, server, chrome, state),
+            "scratch database: tag catalog through `vink-app tag`",
+            || {
+                seed = Some(if selected.iter().any(|s| s.tag_catalog()) {
+                    seed_tag_catalog(root, server)?
+                } else {
+                    seed_restart_tags(root, server)?
+                });
+                Ok(())
+            },
         )
     {
         return false;
     }
-    if selected.iter().any(|s| {
-        matches!(
-            s,
-            Scenario::Main | Scenario::Storage | Scenario::Discovery | Scenario::Restart
+    if selected.contains(&Scenario::EditorFirstDraft)
+        && !report.step(
+            "first-use draft formats with fresh scratch principals",
+            || {
+                editor_first_drafts(
+                    root,
+                    server,
+                    chrome,
+                    &scenario_state(state, "editor-first-draft"),
+                )
+            },
         )
-    }) {
+    {
+        return false;
+    }
+    if restart || selected.iter().any(|s| s.primary_phase().is_some()) {
         let mut guard = match server.start(root) {
             Ok(guard) => guard,
             Err(e) => {
@@ -1125,36 +1194,42 @@ fn run_web_checks(
                 return false;
             }
         };
-        if selected.contains(&Scenario::Main) && !report.step(
-        "SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview, draft tags",
-        || smoke(root, &["--phase", "main", "--build-profile", server.profile_name()], chrome, origin, state),
-    ) {
-        return false;
-    }
-        if selected.contains(&Scenario::Storage)
-            && !selected.contains(&Scenario::Main)
+        for scenario in selected {
+            let Some(phase) = scenario.primary_phase() else {
+                continue;
+            };
+            if !report.step(&format!("scenario {} ({phase})", scenario.name()), || {
+                if *scenario == Scenario::Discovery {
+                    seed_discovery_fixture(server)?;
+                }
+                smoke(
+                    root,
+                    &["--phase", phase, "--build-profile", server.profile_name()],
+                    chrome,
+                    origin,
+                    &scenario_state(state, scenario.name()),
+                )
+            }) {
+                return false;
+            }
+        }
+        let restart_state = scenario_state(state, "restart");
+        if restart
             && !report.step(
-                "public IndexedDB: transactions, failure, multi-tab, migration and profile reopen",
-                || smoke(root, &["--phase", "public-storage"], chrome, origin, state),
+                "restart dependency: browser saves and reloads draft text and tag",
+                || {
+                    smoke(
+                        root,
+                        &["--phase", "restart-prepare"],
+                        chrome,
+                        origin,
+                        &restart_state,
+                    )
+                },
             )
         {
             return false;
         }
-        if selected.contains(&Scenario::Discovery) && !report.step(
-        "discovery: SQL fixture corpus, real pagination/SSR/reader return and transport race",
-        || {
-            seed_discovery_fixture(server)?;
-            smoke(
-                root,
-                &["--phase", "discovery-corpus"],
-                chrome,
-                origin,
-                state,
-            )
-        },
-    ) {
-        return false;
-    }
         if !report.step("server stops gracefully on SIGTERM", || {
             let status = guard.terminate(Duration::from_secs(15))?;
             status
@@ -1164,10 +1239,16 @@ fn run_web_checks(
         }) {
             return false;
         }
-        if selected.contains(&Scenario::Main)
+        if selected.contains(&Scenario::Desk)
             && !report.step("guest Desk with sign-in disabled", || {
                 let mut guest = server.as_guest().start(root)?;
-                let result = smoke(root, &["--phase", "desk-guest"], chrome, origin, state);
+                let result = smoke(
+                    root,
+                    &["--phase", "desk-guest"],
+                    chrome,
+                    origin,
+                    &scenario_state(&scenario_state(state, "desk"), "guest"),
+                );
                 let stopped = guest.terminate(Duration::from_secs(15))?;
                 result?;
                 stopped
@@ -1178,36 +1259,39 @@ fn run_web_checks(
         {
             return false;
         }
-        if selected.contains(&Scenario::Restart) {
-            // The curator retires a tag the main phase saved on a draft; it must stay there.
-            if let Err(e) = tag_command(
-                root,
-                server,
-                &[
-                    "retire",
-                    &seed.version.to_string(),
-                    &seed.city,
-                    &seed.season,
-                ],
-            ) {
-                report.fail("scratch database: retire a tag through `vink-app tag`", &e);
-                return false;
-            }
-            let mut restarted = match server.start(root) {
-                Ok(guard) => guard,
-                Err(e) => {
-                    report.fail("server restarts", &e);
-                    return false;
-                }
-            };
-            let ok = report.step(
-        "confirmed draft survives server restart (browser reload), retired tag kept, unsaved buffer",
-        || smoke(root, &["--phase", "after-restart"], chrome, origin, state),
-    );
-            let _ = restarted.terminate(Duration::from_secs(15));
-            if !ok {
-                return false;
-            }
+        if restart
+            && !report.step(
+                "restart: confirmed draft, retired tag, unsaved buffer and graceful stop",
+                || {
+                    let seed = seed.as_ref().ok_or("restart catalog was not seeded")?;
+                    tag_command(
+                        root,
+                        server,
+                        &[
+                            "retire",
+                            &seed.version.to_string(),
+                            &seed.city,
+                            &seed.season,
+                        ],
+                    )?;
+                    let mut restarted = server.start(root)?;
+                    let result = smoke(
+                        root,
+                        &["--phase", "after-restart"],
+                        chrome,
+                        origin,
+                        &restart_state,
+                    );
+                    let status = restarted.terminate(Duration::from_secs(15))?;
+                    result?;
+                    status
+                        .success()
+                        .then_some(())
+                        .ok_or_else(|| format!("restarted App exited with {status}"))
+                },
+            )
+        {
+            return false;
         }
     }
     if selected
@@ -1236,7 +1320,7 @@ fn run_web_checks(
                             ],
                             chrome,
                             origin,
-                            state,
+                            &scenario_state(state, scenario.name()),
                         )?;
                     }
                 }
@@ -1330,7 +1414,7 @@ fn run_web_checks(
                     &["--phase", "endorsement", "--author-base", origin],
                     chrome,
                     &reader_origin,
-                    state,
+                    &scenario_state(state, "endorsement"),
                 )
             },
         );
@@ -1343,7 +1427,7 @@ fn run_web_checks(
                     &["--phase", "review-withdrawn", "--author-base", origin, "--reviewer-base", &reviewer_origin],
                     chrome,
                     &reader_origin,
-                    state,
+                    &scenario_state(state, "review"),
                 )
             },
         ));

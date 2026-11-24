@@ -26,7 +26,26 @@ fn inspection_and_invalid_selection_never_call_executor_or_reveal_credentials() 
     for (args, code) in [
         (vec!["dev", "api", "--plan"], 0),
         (vec!["verify", "web", "--scenario", "restart", "--plan"], 0),
+        (vec!["verify", "static", "docs", "--plan"], 0),
+        (
+            vec!["verify", "check", "web", "--target", "hydrate", "--plan"],
+            0,
+        ),
+        (
+            vec![
+                "verify",
+                "postgres",
+                "store",
+                "--filter",
+                "fresh_database",
+                "--plan",
+            ],
+            0,
+        ),
+        (vec!["verify", "postgres", "--plan"], 0),
         (vec!["verify", "web", "--scenario", ""], 2),
+        (vec!["verify", "postgres", "lifecycle", "--filter", "x"], 2),
+        (vec!["verify", "check", "store", "--target", "csr"], 2),
     ] {
         let out = Command::new(env!("CARGO_BIN_EXE_xtask"))
             .args(args)
@@ -36,6 +55,10 @@ fn inspection_and_invalid_selection_never_call_executor_or_reveal_credentials() 
             .env(
                 "DATABASE_URL",
                 "postgres://secret:private-marker-local-only@host/dev",
+            )
+            .env(
+                "VINK_TEST_DATABASE_URL",
+                "postgres://private-marker@host/test",
             )
             .env("VINK_BIND", "private-marker")
             .output()

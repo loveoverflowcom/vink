@@ -18,11 +18,7 @@ pub const BRAND_DIR: &str = "apps/vink-web/assets/brand";
 
 pub fn run(root: &Path) -> Result<(), String> {
     let mut problems = Vec::new();
-    skills(root, &mut problems);
-    if let Err(problem) = crate::decision::check(root) {
-        problems.push(problem);
-    }
-    links(root, &mut problems);
+    docs_problems(root, &mut problems);
     boundaries(root, &mut problems);
     fonts(root, &mut problems);
     brand(root, &mut problems);
@@ -34,14 +30,32 @@ pub fn run(root: &Path) -> Result<(), String> {
     }
     secrets(root, &mut problems);
     safety(root, &mut problems);
+    finish("repository", problems)
+}
+
+pub fn docs(root: &Path) -> Result<(), String> {
+    let mut problems = Vec::new();
+    docs_problems(root, &mut problems);
+    finish("documentation", problems)
+}
+
+fn docs_problems(root: &Path, problems: &mut Vec<String>) {
+    skills(root, problems);
+    if let Err(problem) = crate::decision::check(root) {
+        problems.push(problem);
+    }
+    links(root, problems);
+}
+
+fn finish(label: &str, problems: Vec<String>) -> Result<(), String> {
     if problems.is_empty() {
-        println!("==> repository checks: ok");
+        println!("==> {label} checks: ok");
         Ok(())
     } else {
         for problem in &problems {
             eprintln!("  - {problem}");
         }
-        Err(format!("{} repository problem(s)", problems.len()))
+        Err(format!("{} {label} problem(s)", problems.len()))
     }
 }
 

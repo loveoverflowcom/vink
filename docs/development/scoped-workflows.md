@@ -14,6 +14,10 @@ Tất cả ví dụ chạy ở repo root. Dùng `cargo xtask --help` để xem c
 
 | Việc | Lệnh | Prerequisite ngoài Rust | Tiến trình / dữ liệu |
 | --- | --- | --- | --- |
+| Static tài liệu hoặc token | `cargo xtask verify static docs` / `cargo xtask verify static tokens` | — | Chỉ checker nội bộ tương ứng |
+| Compile một package/target | `cargo xtask verify check app --target api` | WASM target chỉ cho `hydrate` hoặc `csr` | Cargo check, không link binary package hay chạy test |
+| PostgreSQL một owner | `cargo xtask verify postgres store --filter fresh_database` | Cluster test qua `VINK_TEST_DATABASE_URL` | Một test target, lock scratch, fixture thật |
+| PostgreSQL lifecycle | `cargo xtask verify postgres lifecycle` | Cluster test, `psql` 15+, `pg_dump`/`pg_restore` | Binary App/Identity/Notifications, config rejection, provision, role fences, backup/restore/recovery |
 | Unit/contract một owner | `cargo xtask verify unit app --filter publication` | Dependency biên dịch thật của package | Test binary, không server/DB/browser; zero match là FAIL |
 | Build FE standalone | `cargo xtask build spa --release` | wasm-bindgen, wasm target, Node/npm | [Index CSR và asset theo revision](edge-frontend.md), độc lập App/DB |
 | Build API | `cargo xtask build api` | Không tool frontend | Chỉ binary `vink-app` |
@@ -26,13 +30,40 @@ Tất cả ví dụ chạy ở repo root. Dùng `cargo xtask --help` để xem c
 | Preview Leptos | `cargo xtask dev preview` | wasm target/bindgen, Node/npm (Tailwind v4 CLI) | Static host của preview (`vink-preview.css`), không App/Identity/DB |
 | Kiểm preview | `cargo xtask verify preview` | wasm target/bindgen, Node/npm, Chrome | Giữ toàn bộ assertion preview hiện hữu trên `vink-preview.css` |
 | Một Web scenario | `cargo xtask verify web --scenario password` | Web tools + Chrome, test PG credential | App + Identity và scratch của scenario; không worker |
-| Web regression đầy đủ | `cargo xtask verify web` | Web tools + Chrome, test PG credential | Toàn bộ 10 selector bên dưới (storage đã nằm trong main, không lặp) |
+| Web regression đầy đủ | `cargo xtask verify web` | Web tools + Chrome, test PG credential | 17 suite mặc định, gồm storage đúng một lần và capture đầy đủ |
 | Regression hiện hữu | `cargo xtask verify all` | Theo từng lane | Vẫn quick → discussion → expressions → postgres → web; Kani riêng |
 
 `build` nhận `api|spa|web|worker|identity|preview`; `--release` áp dụng cho mọi target trừ
-preview. `build web` tạo browser bundle và App, không build Identity/worker. `verify unit` nhận
-`app|identity|store|xtask|web`; `--filter` dùng substring của libtest. Unit App vẫn biên dịch Rust
-SSR do dependency package hiện tại; không yêu cầu Node/npm/bundle hoặc database đang chạy.
+preview. `build web` tạo browser bundle và App.
+
+## Static, compile, unit và PostgreSQL
+
+- `verify static [docs|tokens|assets|visual|perf|fmt|repo|all]` mặc định là `all`. `docs`
+  kiểm skills, kho quyết định và link tương đối. `tokens` so CSS/Rust/Kotlin đã sinh,
+  `assets` kiểm derivative artwork và manifest Expressions. `visual` và `perf` chạy
+  oracle Node tương ứng. `fmt` cần rustfmt. `repo` gồm cả `docs` và các guard repository.
+  `all` chạy các bước static của `quick`, tính `docs` trong `repo` một lần.
+- `verify check OWNER [--target lib|bins|all-targets|api|ssr|hydrate|csr]` gọi
+  `cargo check` với dependency graph của đúng package/target. Mặc định chọn lib/bins
+  hiện hữu của owner. `api` dành cho App không feature `legacy-ssr`, `ssr` dành cho
+  App/Web, `hydrate` cho Web, `csr` cho Web/Preview. Hai target WASM cần Rust target,
+  không cần wasm-bindgen CLI, npm, asset bundle, database hoặc browser.
+- `verify unit OWNER [--filter NAME]` nhận `app|identity|store|xtask|web|notifications|ui|patterns|expressions|markdown|preview`,
+  cùng danh sách owner của `verify check`. Chọn lib/bins theo manifest. Unit App có
+  graph SSR theo feature mặc định và unit của các crate UI dùng đúng dependency Leptos.
+- `verify postgres store|app|identity|notifications [--filter NAME]` chọn đúng
+  `--test postgres`. App giữ feature SSR mặc định vì test target có các ca SSR.
+  Một số integration test còn yêu cầu Cargo build binary cùng package. Lượt `lifecycle`
+  cần binary ba service hiện hữu để kiểm config, provision, migration/role và backup/recovery
+  mà không chạy bốn test target. `verify postgres` không selector chạy cả bốn owner rồi lifecycle.
+
+`--filter` chọn substring libtest. Xtask liệt kê test khớp và test ignored trước khi
+chạy để chặn trường hợp zero match hoặc chỉ khớp test opt-in. PostgreSQL được probe
+sau discovery, với khóa scratch giữ suốt phần chạy DB thật. Số test runnable khác chi phí
+compile/link. Hai lượt list có thể build hoặc xác nhận lại artifact. Kết quả libtest in số thực thi
+theo binary. Cargo bootstrap xtask là chi phí riêng cho cả lệnh `--plan`. Full `quick` giữ fmt,
+clippy workspace và ba cấu hình WASM, doctests, SSR fixture, workspace lib/bins cùng các bước
+static. Full `postgres` giữ nguyên các assertions, fixtures, role fences và race trong từng test.
 
 `dev api|web` mặc định `--auth none`, kể cả `.env`/shell có socket, principal mẫu hoặc sign-in
 được bật. `--auth fixture` đòi principal đã cấu hình; không tự tạo tài khoản, grant hay admin.
@@ -84,12 +115,20 @@ file khóa để vượt một lượt đang chạy.
 
 | Selector | Setup / dependency | Assertion được dùng lại |
 | --- | --- | --- |
-| `main` | App scratch + seed + catalog; fixture tác giả | Toàn bộ phase `main`: SSR/hydration/editor và các kiểm con hiện hữu |
-| `storage` | App scratch + seed/catalog; hai tab Chrome và reopen cùng profile | IndexedDB public envelope/transaction/epoch/quota/migration; cũng chạy trong `main` |
+| `main` (alias) | Hợp các suite từ `editor-first-draft` đến `storage` dưới đây | Tương thích với nhóm legacy kể cả storage và guest Desk |
+| `editor-first-draft` | App đã migrate và hai principal mới, một cho mỗi format | `firstDraftFormat`, CTA/radius/keyboard ở 320px text200, POST và reload |
+| `reader` | Sample work đã công khai, nháp riêng và tag catalog, loopback author | `serverHtml`, `readerBeforeHydration`, `conditionalPublicReads`, `tracePublicReadLifecycle`, 404/asset của Preview, `publicReading`, stanza/font/hydration và không tải editor runtime |
+| `discussion` | Sample work và author, scratch writes cùng response fixture có nhãn | `discussionReadingAndWrites` (lost ACK, CAS, closed/copy, own remove, flat context, paging, theme/geometry) và `endorsementAsAuthor` |
+| `appearance` | Sample App và loopback author | `adaptiveShell` + `bottomNavigationRegression`, brand, hydration/first paint, focus/overflow, theme/text, storage denied, forced colors/reduced motion |
+| `desk` | Sample App/author, response fixture có nhãn, browser context riêng và App khách tắt sign-in | `authorWorks`, `draftDashboard`, `deskEmptyState`, `draftR6Hierarchy`, `timestampPresentation`, `draftPagination`, `selectChevron`, `deskGuest` |
+| `editor-chrome` | Sample App/author, nháp mới và tag catalog | `editorChrome` gọi `editorPaperFirst`, `editorWriting`, reflow, AX, CDP IME, race và recovery matrices |
+| `editor` | Sample App/author và catalog thật | Cùng client navigation Reader → Desk → nháp, Vietnamese input, save/reload, conflict, leave/back, late ACK, undo/redo và `draftTags` |
+| `editor-format` | Sample App/author và nháp fixture tạo qua API/UI | `deskRefusesLossyOpen`, `markdownLivePreviewAndFormatPicker`, `editorDeskRegressions`, `markdownBudget` |
+| `storage` | App scratch, hai tab Chrome và reopen cùng profile | `publicStorage`/`storageReopened`, IndexedDB envelope/transaction/epoch/quota/migration; chạy một lần khi ghép với `main` |
 | `discovery` | Seed/catalog + corpus SQL riêng | `discovery-corpus` |
-| `restart` | **Dependency `main`** lưu nháp/state; stop → retire tag → start | `after-restart`, version/text/tag/export và graceful stop |
-| `endorsement` | Seed/catalog; App tác giả + reader có moderator grant trong scratch | `endorsement`, không cần Identity |
-| `review` | Seed/catalog, tác giả + admin + reviewer trong scratch | `review-withdrawn`, queue continuation/recovery #205 và #264 (Markdown editor, case, Reader, hai revision và chuyển riêng tư) |
+| `restart` | `restart-prepare` lưu và reload nháp riêng, catalog Đô thị/Mùa; stop → retire tag → start | Giữ `afterRestartPhase` và `retiredTagAfterRestart` cho đúng draft/version/title, tag và unsaved buffer |
+| `endorsement` | Sample App; App tác giả + reader có moderator grant trong scratch | `endorsement`, không cần Identity |
+| `review` | Sample App, tác giả + admin + reviewer trong scratch | `review-withdrawn`, queue continuation/recovery #205 và #264 (Markdown editor, case, Reader, hai revision và chuyển riêng tư) |
 | `auth` | App scratch migrate/seed + Identity scratch/local outbox | `auth` với session thật |
 | `password` | App password scratch migrate + Identity native scratch/local outbox | `auth-password`, không cần phase auth/main |
 | `standalone` | Artifact CSR + proxy loopback, API-only, Identity và App DB scratch | Reader, tìm kiếm, lịch sử, mật khẩu, editor, bảo vệ bản nháp |
@@ -103,10 +142,21 @@ scratch. Mặc định vẫn dùng dev. Chọn rõ `perf-baseline` và `return-p
 không chạy hai phép đo này. Xem [phương pháp #234](web-perf-baseline.md) và
 [LayoutSpec #236](../design/discovery-return-position-236.md).
 
-Lặp `--scenario` để hợp thành nhiều kiểm; thứ tự canonical giữ như full lane. Typo, chuỗi rỗng,
-selector trùng và option trái operation bị chặn trước side effects. Selected PASS chỉ có nghĩa
-với các kiểm liệt kê; full lane dùng cùng catalog và giữ tất cả assertions cũ. `main` vẫn là một
-nhóm rộng theo runner hiện hữu, chưa tách các kiểm con như IME/appearance thành selector xtask.
+Lặp `--scenario` để ghép suite. Thứ tự canonical giữ sample Reader trước corpus discovery và
+mỗi scenario chạy được từ scratch mới. Chọn `restart` chỉ chạy setup browser được ghi trong
+bảng. Typo, chuỗi rỗng, selector trùng và cờ sai phạm vi bị từ chối trước khi vào executor.
+Catalog này là mapping từ [phase legacy](../../apps/vink-web/e2e/browser-smoke.mjs) tới các
+lệnh mới. Các nhánh auth thực vẫn dùng Identity và local outbox. Browser cho Notifications
+chưa có consumer/fixture trong base #509. Boundary hiện hữu là PostgreSQL owner/lifecycle.
+
+Mỗi scenario SSR còn cần App binary, WASM hydrate/bindgen, CSS/Tailwind, editor JS,
+Node/npm, bundle guard, Chrome và scratch PostgreSQL. `standalone` dùng CSR và App API.
+Selector và capture giảm công việc sau build. Artifact incremental thuộc #500.
+
+`--capture full` là mặc định toàn lane và từng scenario. `--capture checks` yêu cầu ít nhất
+một `--scenario` tường minh, giữ hành vi, a11y, target và các assertion DOM như kích thước,
+theme, text-scale. Chế độ này bỏ PNG và kiểm pixel, ghi `PNG/visual evidence NOT_RUN`
+trong plan và không tạo manifest visual. Mở PNG và đối chiếu context khi claim visual.
 
 Web dùng `VINK_TEST_DATABASE_URL`, không reset `DATABASE_URL` dev. Credential harness chỉ dùng
 cho setup; App/Identity runtime dùng role scratch hạn chế. Các tên `vink_verify_web*` và
@@ -115,7 +165,10 @@ của test server chặn các lượt Web/PostgreSQL đồng thời, kể cả k
 tự hóa concurrency/race bên trong một test. Không chạy binary xtask từ revision cũ song song:
 revision cũ chưa tham gia khóa.
 
-Evidence nằm ở `target/verify-web/<run-id>/` (log, state, screenshots), không xóa lượt trước.
+Evidence nằm ở `target/verify-web/<run-id>/`. Scenario có subtree riêng cho browser state
+và `screenshots/contexts.json` ở capture đầy đủ. Manifest giữ execution phase, assertion/scenario ID,
+viewport, theme, text scale, required targets và build provenance. Hai format first-draft
+và guest Desk có thư mục con. Giữ log ở ngoài target trước khi dọn target.
 Dev log ở `target/dev-runs/<run-id>/`; kiểm Identity/backup của lane PostgreSQL giữ
 `target/verify-identity/<run-id>/` và `target/verify-backup/<run-id>/`. Socket test có thư mục riêng ngắn dưới `/tmp` cho giới hạn
 macOS, xóa sau khi child dừng. Dev giữ socket cấu hình của người dùng; nếu đã tồn tại thì fail,
