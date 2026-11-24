@@ -3088,10 +3088,25 @@ async function appearanceFirstPaint(page) {
         expectedPaints(postHydration.paints, expectedAttr, expectedPx, expectedChoice),
         `AC-04 ${label} after hydration/reload (no flash): ${JSON.stringify(postHydration)}`);
     }
-    const readOnlyLegacy = await page.send('Page.addScriptToEvaluateOnNewDocument', {
-      source: `Storage.prototype.getItem = (k) => (k === 'vink.ui.text' ? '200' : null);
-        Storage.prototype.setItem = () => { throw new DOMException('QuotaExceededError', 'QuotaExceededError'); };
-        Storage.prototype.removeItem = () => { throw new DOMException('SecurityError', 'SecurityError'); };`,
+    const { identifier: readOnlyLegacy } = await page.send('Page.addScriptToEvaluateOnNewDocument', {
+      source: `(() => {
+        const prototype = Storage.prototype;
+        const original = Object.getOwnPropertyDescriptors(prototype);
+        const overrides = {
+          getItem: k => k === 'vink.ui.text' ? '200' : null,
+          setItem: () => { throw new DOMException('QuotaExceededError', 'QuotaExceededError'); },
+          removeItem: () => { throw new DOMException('SecurityError', 'SecurityError'); },
+        };
+        window.__restoreReadOnlyLegacyStorage = () => {
+          for (const method of Object.keys(overrides)) {
+            Object.defineProperty(prototype, method, original[method]);
+          }
+          delete window.__restoreReadOnlyLegacyStorage;
+        };
+        for (const [method, value] of Object.entries(overrides)) {
+          Object.defineProperty(prototype, method, { ...original[method], value });
+        }
+      })();`,
     });
     try {
       await page.goto(`${args.base}/toi`);
@@ -3101,14 +3116,20 @@ async function appearanceFirstPaint(page) {
         fontSize: getComputedStyle(document.documentElement).fontSize,
         choice: document.querySelector('#page-text input:checked')?.value || null,
         paints: window.__textPaints,
+        stored: localStorage.getItem('vink.ui.text'),
       })`);
       check(roState.attr === '150' && roState.fontSize === '24px' && roState.choice === '150' &&
-        expectedPaints(roState.paints, '150', '24px', '150'),
+        roState.stored === '200' && expectedPaints(roState.paints, '150', '24px', '150'),
         `AC-04 legacy-200 with setItem blocked still applies Lớn 150% without throwing: ${JSON.stringify(roState)}`);
       await page.click('#page-text label:has([value="100"])');
       await page.waitFor(`!document.documentElement.dataset.text && getComputedStyle(document.documentElement).fontSize === '16px'`, 'in-session switch works even when removeItem throws');
     } finally {
-      await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier: readOnlyLegacy });
+      try {
+        await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier: readOnlyLegacy });
+      } finally {
+        // Removing the CDP preload only affects future documents.
+        await page.eval('window.__restoreReadOnlyLegacyStorage?.()');
+      }
     }
   } finally {
     await page.send('Network.setBlockedURLs', { urls: [] });
@@ -3118,7 +3139,10 @@ async function appearanceFirstPaint(page) {
     check(compatibilityErrors.length === compatibilityNavigations &&
       compatibilityErrors.every(error => error === `TypeError: Failed to fetch dynamically imported module: ${args.base}/pkg/vink.js`),
       'AC-04 compatibility captures produce only expected blocked imports');
-    await page.eval(`localStorage.removeItem('vink.ui.text')`);
+    check(await page.eval(`(() => {
+      localStorage.removeItem('vink.ui.text');
+      return localStorage.getItem('vink.ui.text') === null;
+    })()`), 'AC-04 native storage works again in the current document');
   }
 
   // Another tab can write a preference after the bootstrap has applied this document's snapshot.
