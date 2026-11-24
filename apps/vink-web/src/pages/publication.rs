@@ -24,6 +24,8 @@ use crate::publication_state::{
 
 const PUBLIC: &str = "public";
 const PRIVATE: &str = "private";
+const PUBLICATION_NOTE_CLASS: &str =
+    "vk-publication__muted text-vk-on-surface-variant text-[length:var(--vk-type-label-size)]";
 
 /// The one wording of a revision's decision, shared with the author's review page. A value this
 /// build does not know is named as such, never read as pending or approved.
@@ -712,7 +714,7 @@ pub fn PublicationPanel(
             && controller.with(|c| c.read_failure() == Some(ReadFailure::Unreachable));
         kept.then(|| {
             view! {
-                <p class="vk-publication__muted" data-testid="publication-stale">
+                <p class=PUBLICATION_NOTE_CLASS data-testid="publication-stale">
                     "Chưa làm mới được trạng thái; đang giữ lần đọc gần nhất."
                 </p>
             }
@@ -734,9 +736,9 @@ pub fn PublicationPanel(
     };
 
     view! {
-        <section id="publication" class="vk-publication" aria-labelledby="publication-title"
+        <section id="publication" class="vk-publication grid gap-vk-3 [min-inline-size:0] [padding:clamp(var(--vk-space-3),3vw,var(--vk-space-6))] rounded-vk-lg bg-vk-surface-container-low" aria-labelledby="publication-title"
             data-testid="publication" data-phase=move || phase_token(phase.get())>
-            <div class="vk-publication__heading">
+            <div class="vk-publication__heading flex flex-wrap items-center justify-between gap-x-vk-4 gap-y-vk-1 [min-inline-size:0] [&>.vk-ui-heading]:m-0 [&>.vk-ui-heading]:[font-family:var(--vk-font-ui)] [&>.vk-ui-heading]:text-[length:var(--vk-type-body-size)] [&>.vk-ui-heading]:[font-weight:var(--vk-type-label-weight)] [&>.vk-ui-heading]:wrap-anywhere">
                 <Heading level=HeadingLevel::H2 role=TypeRole::Title id="publication-title" attr:tabindex="-1">"Công khai"</Heading>
                 <TooltipIconButton icon=IconName::Refresh label="Tải lại trạng thái công khai" id="publication-refresh"
                     state=Signal::derive(move || if controller.with(Controller::reading) { ActionState::Disabled { reason: None } } else { ActionState::Enabled })
@@ -745,7 +747,7 @@ pub fn PublicationPanel(
             <p class="vk-publication__live" id="publication-live" role="status" aria-atomic="true" data-testid="publication-live">
                 {move || live_text(phase.get())}
             </p>
-            <div class="vk-publication__summary" id="publication-summary" data-testid="publication-summary">
+            <div class="vk-publication__summary grid gap-vk-2 [min-inline-size:0]" id="publication-summary" data-testid="publication-summary">
                 {move || summary.get().map(|summary| {
                     summary_lines(&summary)
                         .into_iter()
@@ -753,19 +755,19 @@ pub fn PublicationPanel(
                         .collect_view()
                 })}
                 <Show when=move || unsaved.get() && summary.with(Option::is_some)>
-                    <p class="vk-publication__muted" id="publication-draft" data-testid="publication-draft">
+                    <p class=PUBLICATION_NOTE_CLASS id="publication-draft" data-testid="publication-draft">
                         "Chữ hoặc thẻ chưa lưu sẽ không nằm trong bản được gửi."
                     </p>
                 </Show>
                 <Show when=move || summary.with(|s| s.as_ref().is_some_and(|s| s.public.is_some())) && !unsaved.get()>
-                    <p class="vk-publication__muted" data-testid="publication-draft-note">
+                    <p class=PUBLICATION_NOTE_CLASS data-testid="publication-draft-note">
                         "Sửa bản nháp không đổi bản đang công khai cho tới khi bạn gửi bản mới và được duyệt."
                     </p>
                 </Show>
                 {stale_note}
             </div>
             {notice}
-            <div class="vk-publication__choice" id="audience-choice">
+            <div class="vk-publication__choice grid gap-vk-2 [min-inline-size:0]" id="audience-choice">
                 <RadioGroup id="audience" legend="Ai đọc được tác phẩm"
                     options=vec![ChoiceOption::new(PRIVATE, "Chỉ mình tôi"), ChoiceOption::new(PUBLIC, "Công khai")]
                     value=Signal::derive(move || {
@@ -774,7 +776,7 @@ pub fn PublicationPanel(
                     })
                     disabled=Signal::derive(move || working.get() || facts_audience.get().is_none())
                     on_change=move |value: String| choice.set(value) />
-                <p class="vk-publication__muted" id="audience-applied" data-testid="audience-applied">
+                <p class=PUBLICATION_NOTE_CLASS id="audience-applied" data-testid="audience-applied">
                     {move || match facts_audience.get() {
                         Some(Audience::Public) => "Máy chủ đang áp dụng: Công khai.",
                         Some(Audience::Private) => "Máy chủ đang áp dụng: Chỉ mình tôi.",
@@ -782,10 +784,10 @@ pub fn PublicationPanel(
                     }}
                 </p>
             </div>
-            <div class="vk-publication__actions" id="publication-actions">
+            <div class="vk-publication__actions flex flex-wrap items-center gap-vk-3 [min-inline-size:0] empty:hidden" id="publication-actions">
                 <Show when=move || primary.get() != Primary::Nothing
                     fallback=move || view! {
-                        <p class="vk-publication__muted" data-testid="publication-nothing">
+                        <p class=PUBLICATION_NOTE_CLASS data-testid="publication-nothing">
                             {move || if facts_audience.get() == Some(Audience::Private) {
                                 "Chỉ bạn đọc được tác phẩm này. Chọn Công khai khi muốn gửi duyệt."
                             } else {
@@ -800,12 +802,12 @@ pub fn PublicationPanel(
                 </Show>
             </div>
             <Show when=move || matches!(primary.get(), Primary::Withdraw)>
-                <p class="vk-publication__muted" data-testid="publication-private-note">
+                <p class=PUBLICATION_NOTE_CLASS data-testid="publication-private-note">
                     "Chuyển riêng tư không xóa bài và không xóa chữ đang viết. Trang công khai ngừng phục vụ nội dung; bản sao ngoài Vink hoặc ở thẻ chưa tải lại có thể còn."
                 </p>
             </Show>
             <Show when=move || matches!(primary.get(), Primary::Submit { .. })>
-                <p class="vk-publication__muted" data-testid="publication-submit-note">
+                <p class=PUBLICATION_NOTE_CLASS data-testid="publication-submit-note">
                     "Gửi duyệt chụp đúng bản đã lưu. Phần gõ thêm sau đó không nằm trong bản đã gửi."
                 </p>
             </Show>

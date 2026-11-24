@@ -915,7 +915,7 @@ pub fn DraftEditor() -> impl IntoView {
         <Title text="Bản nháp — Bàn viết — Vink" />
         <Meta name="robots" content="noindex" />
         <section class="vk-desk vk-desk--editor" aria-labelledby="editor-heading">
-            <header class="vk-editor-heading">
+            <header class="vk-editor-heading flex flex-wrap items-center gap-x-vk-3 gap-y-vk-2 m-0 [&>.vk-ui-heading]:[font-family:var(--vk-font-ui)] [&>.vk-ui-heading]:m-0 [&>.vk-ui-heading]:text-vk-on-surface-variant [&>.vk-ui-heading]:text-[length:var(--vk-type-body-size)] [&>.vk-ui-heading]:[font-weight:var(--vk-type-label-weight)]">
                 <a class="vk-editor-heading__back" href="/ban-viet">
                     <vink_ui::Icon name=IconName::ArrowBack size=vink_ui::IconSize::Small />
                     <span>"Bàn viết"</span>
@@ -1673,7 +1673,7 @@ fn Editor(draft: Draft) -> impl IntoView {
         Signal::derive(move || converting.get() || session.with(|s| !s.can_convert()));
     view! {
         <form
-            class="vk-editor"
+            class="vk-editor flex flex-col gap-vk-6"
             aria-labelledby="editor-heading"
             data-format=move || format.get().as_str()
             data-outline-open=move || if outline_open.get() { "true" } else { "false" }
