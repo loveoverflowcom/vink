@@ -167,7 +167,7 @@ fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
                 <Text>"Đọc một câu chuyện, góp một ý hay, rồi viết tiếp."</Text>
                 <SearchField id="sample-public-search" label="Tìm trong danh sách mẫu" value=search on_input=move |e: TextInput| search.set(e.value) />
                 <Text role=TypeRole::Caption tone=TextTone::Muted>"Mẫu · Chỉ tìm title/tác giả trong danh sách đã tải, tối đa 12 ở app."</Text>
-                <div class="vkp-screen-grid">
+                <div class="vkp-screen-grid flex flex-wrap gap-vk-6">
                     <div class="vk-public-row"><WorkCard title=title.get_untracked() author=author(long) href="#screen.reader/default" /></div>
                     <Surface tone=SurfaceTone::Primary padding=Space::S6 radius=Radius::Lg>
                         <Heading level=HeadingLevel::H2 role=TypeRole::Title>"Một nơi bạn nhớ"</Heading>
@@ -325,7 +325,7 @@ fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
         }.into_any()
     };
     view! {
-        <section class="vkp-screen" data-screen=id data-scenario=scenario>
+        <section class="vkp-screen grid gap-vk-4 [min-inline-size:0] wrap-anywhere" data-screen=id data-scenario=scenario>
             <Text role=TypeRole::Caption tone=TextTone::Muted>"Mẫu · Dữ liệu cố định · Không kết nối dịch vụ"</Text>
             {body}
             <p role="status" data-testid="sample-result">{move || message.get()}</p>

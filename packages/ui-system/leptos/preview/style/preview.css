@@ -656,18 +656,12 @@ body {
 .vkp-topbar-sample .vk-ui-top-bar { display: flex; }
 
 /* Screen recipe geometry; the feature patterns own their anatomy. */
-.vkp-screen { display: grid; gap: var(--vk-space-4); min-inline-size: 0; overflow-wrap: anywhere; }
-.vkp-screen-grid { display: flex; flex-wrap: wrap; gap: var(--vk-space-6); }
 .vkp-screen-grid > * { flex: 1 1 20rem; min-inline-size: 0; }
 
 /* composition.endorsement: flat replies, one indent, each with its own action (sample). */
 .vkp-endorsement-replies {
-  display: grid;
-  gap: var(--vk-space-4);
-  margin: 0;
   padding: 0 0 0 var(--vk-space-4);
   border-inline-start: 2px solid var(--vk-outline-variant);
-  list-style: none;
 }
 .vkp-endorsement-replies > li { display: grid; gap: var(--vk-space-2); justify-items: start; }
 
