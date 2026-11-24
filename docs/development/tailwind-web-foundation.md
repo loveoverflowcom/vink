@@ -233,3 +233,10 @@ full Web/preview và perf release CSS/HTML/WASM trên cùng máy/browser/profile
 `NOT_RUN` khi thiếu lượt chạy đúng ranh giới. Kiểm trực tiếp ảnh trước/sau, forced-colors và
 stress 200% trong lượt UX tương ứng. App tại baseline `2712145b` dùng lựa chọn 100%/200%.
 Từ #413 app dùng 100%/150% và tách stress 200% qua DOM override. [Feature map](feature-map.md#điểm-vào-và-trạng-thái-cần-nhận-biết)
+
+## 10. Kiểm kê tích hợp W07 (#423)
+
+[Kiểm kê Tailwind Web và Leptos preview](tailwind-web-rollout-audit.md) ghi owner,
+caller và các selector đã chuyển hoặc giữ trên candidate sau #468. Dùng bảng ở đó
+để gắn evidence của hai lượt tích hợp. Các số đo và lượt kiểm W01 bên trên giữ
+provenance theo SHA và môi trường ban đầu.
