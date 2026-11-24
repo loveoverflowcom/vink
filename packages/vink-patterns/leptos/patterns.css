@@ -407,13 +407,19 @@
 .vk-notif-row__person .vk-ui-avatar-group > .vk-ui-avatar {
   box-shadow: 0 0 0 2px var(--vk-notif-row-bg);
 }
+.vk-notif-row__person .vk-ui-avatar-group > .vk-ui-avatar:first-child {
+  z-index: 1;
+  transform: translateY(calc(-1 * var(--vk-space-1)));
+}
 .vk-notif-row__person .vk-ui-avatar-group > .vk-ui-avatar + .vk-ui-avatar {
   margin-inline-start: calc(-1 * var(--vk-space-4));
+  transform: translateY(var(--vk-space-1));
 }
 .vk-notif-row--unread .vk-ui-avatar { background-color: var(--vk-surface); color: var(--vk-on-surface); }
 
 .vk-notif-row__person .vk-ui-shape-mark {
   position: absolute;
+  z-index: 2;
   inset-block-end: calc(-1 * var(--vk-space-2));
   inset-inline-end: calc(-1 * var(--vk-space-2));
 }
