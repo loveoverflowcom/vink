@@ -61,11 +61,11 @@ fn DeskHeading(
     #[prop(optional)] children: Option<Children>,
 ) -> impl IntoView {
     view! {
-        <header id="heading" class="vk-desk-heading">
-            <div class="vk-desk-heading__title">
+        <header id="heading" class="vk-desk-heading flex flex-wrap items-center justify-between gap-[8px] [min-inline-size:0] [margin-block:16px_24px]">
+            <div class="vk-desk-heading__title flex flex-wrap items-center gap-[8px] [min-inline-size:0]">
             <h1 id="desk-title" class="vk-ui-heading vk-ui-type-page-title" tabindex="-1">"Bàn viết"</h1>
             {private.then(|| view! {
-                <span class="vk-desk-heading__privacy" title="Bản nháp chỉ bạn đọc được">
+                <span class="vk-desk-heading__privacy inline-flex text-vk-on-surface-variant" title="Bản nháp chỉ bạn đọc được">
                     <vink_ui::Icon name=IconName::Lock /><span class="vk-ui-visually-hidden">"Bản nháp chỉ bạn đọc được"</span>
                 </span>
             })}
@@ -135,7 +135,7 @@ fn DeskLoading() -> impl IntoView {
     let visible = Signal::stored(false);
 
     view! {
-        <div class="vk-desk-loading" data-testid="draft-loading">
+        <div class="vk-desk-loading mx-auto self-center [inline-size:min(100%,24rem)]" data-testid="draft-loading">
             <p class="vk-ui-visually-hidden" role="status">"Đang mở Bàn viết…"</p>
             <div class="vk-desk-loading__placeholder" aria-hidden="true" hidden=move || !visible.get()>
                 <vink_ui::Skeleton />
@@ -480,13 +480,13 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
     view! {
         <DeskHeading private=true>
             <Show when=move || access_error.with(Option::is_none)>
-                <div class="vk-desk-heading__actions" hidden=move || !show_tools.get()>
+                <div class="vk-desk-heading__actions flex-wrap items-center gap-[8px] [min-inline-size:0] [max-inline-size:100%]" hidden=move || !show_tools.get()>
                     <SearchDockLauncher id="open-draft-search" label="Tìm tác phẩm" expanded=dock_open.into() on_press=open_dock />
                     <Show when=move || ready.get() && !first_use.get()>
                         <CreateDraftControls creation can_create create create_format />
                     </Show>
                 </div>
-                <form role="search" class="vk-draft-search" hidden=move || !dock_open.get()
+                <form role="search" class="vk-draft-search m-0 flex-[1_1_16rem] [min-inline-size:0]" hidden=move || !dock_open.get()
                     on:keydown=move |event| {
                         if event.key() == "Escape" && !event.is_composing() && event.key_code() != 229 && !composing.get_untracked() {
                             event.prevent_default();
@@ -582,7 +582,7 @@ fn CreateDraftControls(
     #[prop(default = false)] first: bool,
 ) -> impl IntoView {
     view! {
-        <div class="vk-desk-create">
+        <div class="vk-desk-create flex flex-wrap [align-items:end] [gap:min(var(--vk-space-2),8px)_min(var(--vk-space-3),12px)] [min-inline-size:0] [max-inline-size:100%]">
             <Select id="create-draft-format" label="Định dạng bản thảo"
                 variant=SelectVariant::Inset16 required=true
                 options=vec![ChoiceOption::new("default", "Mặc định"), ChoiceOption::new("markdown", "Markdown")]
@@ -695,7 +695,7 @@ fn DraftListView(
     let opening = move || !ready.get() && loading.get();
     view! {
         <div class="vk-draft-list gap-vk-3 [min-inline-size:0]">
-            <div class="vk-draft-controls">
+            <div class="vk-draft-controls flex flex-wrap items-center justify-between gap-[8px] [min-inline-size:0]">
                 <p id="draft-scope" class="vk-muted" class:vk-ui-visually-hidden=move || first_use.get()
                     hidden=opening role=move || (!opening()).then_some("status") aria-atomic="true" data-testid="draft-result-count">
                     <span data-testid=move || stale().then_some("author-work-stale")>
@@ -707,14 +707,14 @@ fn DraftListView(
                         else { format!("Hiển thị {} tác phẩm", pages.with(|p| p.drafts.len())) }}
                     </span>
                 </p>
-                <div id="draft-tools" class="vk-draft-tools" hidden=move || !show_tools.get()>
+                <div id="draft-tools" class="vk-draft-tools [max-inline-size:100%]" hidden=move || !show_tools.get()>
                     <Select id="draft-sort" label="Sắp xếp" required=true variant=SelectVariant::Inset16
                         options=vec![ChoiceOption::new("recent", "Mới nhất"), ChoiceOption::new("title", "Tên A–Z")]
                         value=Signal::derive(move || Some(if sort.get() == DraftSort::Title { "title" } else { "recent" }.to_string()))
                         on_change={move |value: Option<String>| sort.set(if value.as_deref() == Some("title") { DraftSort::Title } else { DraftSort::Recent })} />
                 </div>
                 <Show when=move || show_tools.get() && sort.get() == DraftSort::Title>
-                    <p class="vk-draft-sort-help vk-muted">"Bỏ qua dấu khi sắp xếp."</p>
+                    <p class="vk-draft-sort-help vk-muted basis-full text-end">"Bỏ qua dấu khi sắp xếp."</p>
                 </Show>
             </div>
             <Show when=move || restarted.get()>

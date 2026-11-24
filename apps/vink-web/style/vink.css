@@ -725,21 +725,10 @@ a {
 @media (max-width: 759px) {
   .vk-main:is(:has(> .vk-desk--index), :has(> .vk-explore)) { padding-inline: var(--vk-size-gutter-narrow); }
 }
-.vk-desk-heading, .vk-desk-heading__title, .vk-desk-heading__actions, .vk-draft-controls {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  min-inline-size: 0;
-}
-.vk-desk-heading, .vk-draft-controls { justify-content: space-between; }
-.vk-desk-heading {
-  margin-block: 16px 24px;
-  --vk-ui-search-radius: var(--vk-radius-control-56);
-}
+.vk-desk-heading { --vk-ui-search-radius: var(--vk-radius-control-56); }
+/* Keep display in legacy so the Desk [hidden] rule below can hide the action row. */
+.vk-desk-heading__actions { display: flex; }
 .vk-desk-heading :is(.vk-search-launcher, .vk-search-close) { --vk-ui-control-radius: var(--vk-radius-control-48); }
-.vk-desk-heading__privacy { display: inline-flex; color: var(--vk-on-surface-variant); }
-.vk-desk-heading__actions { max-inline-size: 100%; }
 .vk-desk-heading .vk-search-launcher, .vk-desk-heading .vk-search-close { display: inline-flex; }
 .vk-desk-heading [hidden], .vk-draft-controls [hidden] { display: none; }
 .vk-desk-heading__actions > .vk-desk-create { flex: 0 1 auto; }
@@ -765,21 +754,8 @@ a {
   background: var(--vk-error-container);
   color: var(--vk-on-error-container);
 }
-.vk-desk-loading {
-  inline-size: min(100%, 24rem);
-  align-self: center;
-  margin-inline: auto;
-}
 .vk-desk-loading__placeholder[hidden] { display: none; }
-.vk-desk-create {
-  --vk-ui-control-radius: var(--vk-radius-control-48);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: min(var(--vk-space-2), 8px) min(var(--vk-space-3), 12px);
-  max-inline-size: 100%;
-  min-inline-size: 0;
-}
+.vk-desk-create { --vk-ui-control-radius: var(--vk-radius-control-48); }
 .vk-desk-create .vk-ui-select { border-radius: var(--vk-ui-control-radius); }
 .vk-desk-create > .vk-ui-field {
   margin: 0;
@@ -795,18 +771,15 @@ a {
 .vk-desk-create .vk-ui-field__required { display: none; }
 .vk-desk-create .vk-ui-button { padding-inline: min(var(--vk-space-6), 24px); }
 .vk-desk-create #create-draft-note { display: none; }
-.vk-draft-tools { max-inline-size: 100%; }
 .vk-draft-tools > .vk-ui-field { margin: 0; }
 .vk-draft-tools .vk-ui-select { border-radius: var(--vk-radius-control-48); }
 .vk-draft-tools label, .vk-draft-search #draft-search-help {
   position: absolute; inline-size: 1px; block-size: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip-path: inset(50%); white-space: nowrap;
 }
-.vk-draft-search { flex: 1 1 16rem; min-inline-size: 0; margin: 0; }
 .vk-draft-search .vk-ui-search__shell { min-block-size: var(--vk-density-control-height); padding-block: 0; }
 .vk-draft-search .vk-ui-input { padding-block: 0; }
 #draft-scope, .vk-draft-sort-help { margin: 0; font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
-.vk-draft-sort-help { flex-basis: 100%; text-align: end; }
 .vk-desk-privacy { margin-top: var(--vk-space-8); font-size: var(--vk-type-label-size); }
 /* The first-use CTA drops its icon to keep the full label measure at 320px/text200. */
 .vk-empty-state__actions #create-draft > .vk-ui-icon { display: none; }
