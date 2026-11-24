@@ -544,7 +544,10 @@ async fn read_author_state(
     }
 
     let (p, m, revision_metadata) =
-        load_paired_facts(conn, actor, work_id, STATE_REVISIONS_SQL, revision_binding).await?;
+        load_paired_facts(conn, actor, work_id, STATE_REVISIONS_SQL, |rev| {
+            revision_binding(rev)
+        })
+        .await?;
     let publication = crate::domain::publication::PublicationState::restore(p)
         .map_err(|e| integrity("publication state restore failed", e))?;
     let moderation = crate::domain::moderation::ModerationState::restore(&publication, m)
