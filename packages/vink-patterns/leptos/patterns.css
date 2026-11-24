@@ -47,7 +47,8 @@
 }
 .vk-feedback-item { padding-block: var(--vk-space-4); border-bottom: 1px solid var(--vk-outline-variant); overflow-wrap: anywhere; }
 .vk-feedback-composer { gap: var(--vk-space-3); }
-.vk-discussion-comment { padding: 0; border: 0; }
+/* Keep the default in legacy so the narrow scaffold can reserve its bottom bar. */
+.vk-discussion-comment { padding: 0; border: 0; scroll-margin-block: var(--vk-space-6); }
 .vk-discussion-thread > .vk-discussion-comment { padding: 0 16px; }
 .vk-discussion-root > .vk-discussion-thread > .vk-discussion-comment { padding: 0; }
 .vk-discussion-comment p { margin: 0; }

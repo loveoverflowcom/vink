@@ -807,7 +807,7 @@ fn discussion_comment(
             && reply_target_id.get().as_deref() == Some(target_match_id.as_str())
     });
     view! {
-        <article id=format!("comment-{}", comment.id) class="vk-feedback-item vk-discussion-comment grid gap-vk-3 min-w-0 [scroll-margin-block:var(--vk-space-6)]" tabindex="-1"
+        <article id=format!("comment-{}", comment.id) class="vk-feedback-item vk-discussion-comment grid gap-vk-3 min-w-0" tabindex="-1"
             data-reply-target=move || is_target.get().then_some("true")>
             <div class="vk-discussion-byline flex flex-wrap items-start justify-between gap-y-vk-1 gap-x-vk-3 min-w-0">
                 <AuthorIdentity author=comment.author id=Some(author_id) size />
