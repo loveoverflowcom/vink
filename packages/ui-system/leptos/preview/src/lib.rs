@@ -222,8 +222,8 @@ pub fn App() -> impl IntoView {
 
     view! {
         <UiRoot preferences=preferences label="Vink UI preview">
-            <div class="vkp-page">
-                <header class="vkp-header">
+            <div class="vkp-page grid [grid-template-columns:minmax(0,1fr)] content-start gap-vk-4 min-h-dvh [padding:min(var(--vk-space-4),4vw)]">
+                <header class="vkp-header flex flex-wrap items-baseline gap-x-vk-4 gap-y-vk-1">
                     <p class="vkp-brand">"Vink UI · preview Leptos"</p>
                     <p class="vkp-meta">
                         {format!(
@@ -251,7 +251,7 @@ pub fn App() -> impl IntoView {
                         </label>
                         <Show
                             when=move || !visible().is_empty()
-                            fallback=|| view! { <p class="vkp-empty">"Không có mục khớp."</p> }
+                            fallback=|| view! { <p class="vkp-empty m-0 text-vk-on-surface-variant">"Không có mục khớp."</p> }
                         >
                             <ul class="vkp-entries">
                                 {move || {
@@ -364,7 +364,7 @@ pub fn App() -> impl IntoView {
                                 }}
                             </div>
                         </section>
-                        <section id="inspector" class="vkp-inspector" aria-label="Inspector">
+                        <section id="inspector" class="vkp-inspector grid [grid-template-columns:minmax(0,1fr)] wrap-anywhere gap-vk-3 [padding:min(var(--vk-space-4),4vw)] rounded-vk-lg bg-vk-surface-container" aria-label="Inspector">
                             <h2>"Inspector"</h2>
                             <dl class="vkp-facts">
                                 <dt>"Catalog ID"</dt>
@@ -382,7 +382,7 @@ pub fn App() -> impl IntoView {
                                 </dd>
                             </dl>
                             <h3>"Giá trị hiệu lực trong specimen"</h3>
-                            <div class="vkp-table">
+                            <div class="vkp-table max-w-full overflow-x-auto">
                             <table class="vkp-effective" data-testid="effective">
                                 <thead>
                                     <tr>
@@ -574,7 +574,7 @@ fn color_roles(nested: bool) -> AnyView {
     }
     view! {
         {swatches()}
-        <div class="vkp-table" tabindex="0" role="region" aria-label="Bảng tương phản">
+        <div class="vkp-table max-w-full overflow-x-auto" tabindex="0" role="region" aria-label="Bảng tương phản">
         <table class="vkp-contrast" data-testid="contrast-table">
             <caption>"Tỉ lệ tương phản tính từ token (WCAG 2.x); không phải chứng nhận màn hình."</caption>
             <thead>

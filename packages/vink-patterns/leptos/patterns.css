@@ -284,9 +284,7 @@
   inline-size: var(--vk-size-icon-sm);
   justify-items: center;
 }
-.vk-discussion-delivery[hidden] { display: none; }
-.vk-discussion-composer-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--vk-space-2); min-width: 0; }
-.vk-discussion-composer-heading > p { margin: 0; overflow-wrap: anywhere; }
+/* .vk-discussion-delivery[hidden] and .vk-discussion-composer-heading moved to App owner (apps/vink-web). */
 /* R4 (#360): the confirmation replaces “Gỡ nhận xét của tôi” in place with an error-bordered
    destructive alert card, and wraps its actions at text 200%. */
 .vk-discussion-remove-confirm {

@@ -795,12 +795,6 @@
       "declaration": "animation-duration: 0.01ms !important",
       "owner": "Web reduced-motion fallback",
       "reason": "Finite iteration compatibility; loops remain stopped by library motion gate."
-    },
-    {
-      "path": "apps/vink-web/style/vink.css",
-      "declaration": "font: italic 1rem/1.8 var(--vk-font-reading)",
-      "owner": "Explore writing prompt quotation",
-      "reason": "Feature-specific italic quotation measure; remove when the quotation becomes a shared pattern with an admitted type recipe."
     }
   ]
 }

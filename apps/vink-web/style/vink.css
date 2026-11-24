@@ -327,13 +327,9 @@ a {
   }
 }
 
-.vk-discover-grid { display: grid; gap: var(--vk-space-6); }
-.vk-discover-grid > * { min-width: 0; }
-
 /* Stream header: H2 and the loaded-count status share a row; DOM order stays heading → count. */
 #community-stream { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-content: start; align-items: baseline; column-gap: var(--vk-space-4); }
 #community-stream > *, #public-collection > *, #public-results > * { grid-column: 1 / -1; }
-#community-stream > #works-title { grid-column: 1; margin: 0; }
 /* READ-02 wrapper (refresh facts) must not become a grid item: the count stays beside the H2. */
 #public-collection, #public-results { display: contents; }
 #public-results > .vk-public-scope { grid-column: 2; grid-row: 1; margin: 0; text-align: end; }
@@ -362,16 +358,6 @@ a {
 .vk-public-list {
   gap: var(--vk-space-3);
   margin: 0;
-}
-
-
-.vk-writing-prompt { overflow-wrap: anywhere; }
-.vk-writing-prompt h2 { margin-block: var(--vk-space-2); font-size: var(--vk-type-title-size); }
-.vk-writing-prompt .vk-eyebrow { letter-spacing: normal; text-transform: none; }
-.vk-reading-note { margin: var(--vk-space-4) 0; font: italic 1rem/1.8 var(--vk-font-reading); color: var(--vk-on-surface-variant); }
-
-@container vk-explore (min-width: 56rem) {
-  .vk-discover-grid { grid-template-columns: minmax(0, 1fr) minmax(14rem, 18rem); }
 }
 
 .vk-eyebrow {
@@ -545,9 +531,10 @@ a {
 .vk-discussion-reply-composer[hidden] { display: none; }
 .vk-discussion-reply-composer > .vk-ui-action { justify-self: start; }
 
-/* Keep delivery display and background in the legacy layer with the shared [hidden]
+/* Keep delivery display and background in the legacy layer with its [hidden]
    selector, the tone rules and the own-card surface override. */
 .vk-discussion-delivery { display: grid; background: var(--vk-surface-container); }
+.vk-discussion-delivery[hidden] { display: none; }
 .vk-discussion-delivery > p { margin: 0; overflow-wrap: anywhere; }
 .vk-discussion-delivery__head { font-weight: var(--vk-type-section-weight); }
 .vk-discussion-delivery__head > .vk-ui-icon { flex-shrink: 0; margin-block-start: 2px; }
@@ -938,11 +925,6 @@ a {
 
 .vk-field__label {
   font-weight: var(--vk-type-label-weight);
-}
-
-.vk-field__hint {
-  color: var(--vk-on-surface-variant);
-  font-size: var(--vk-type-label-size);
 }
 
 /* CodeMirror host shell. Rules targeting the injected editor live in the unlayered Web entry. */
