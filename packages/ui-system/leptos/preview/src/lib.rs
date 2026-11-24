@@ -239,8 +239,8 @@ pub fn App() -> impl IntoView {
                         )}
                     </p>
                 </header>
-                <div class="vkp-workbench">
-                    <nav id="catalog-nav" class="vkp-nav" aria-label="Danh mục preview">
+                <div class="vkp-workbench flex flex-wrap gap-vk-6 items-start">
+                    <nav id="catalog-nav" class="vkp-nav grid [grid-template-columns:minmax(0,1fr)] gap-vk-3 [min-inline-size:0]" aria-label="Danh mục preview">
                         <label class="vkp-search">
                             <span>"Tìm họ, thành phần, kịch bản"</span>
                             <input
@@ -279,8 +279,8 @@ pub fn App() -> impl IntoView {
                             </ul>
                         </Show>
                     </nav>
-                    <main class="vkp-stage">
-                        <section id="preview-controls" class="vkp-controls" aria-label="Điều khiển preview">
+                    <main class="vkp-stage grid [grid-template-columns:minmax(0,1fr)] gap-vk-6 [min-inline-size:0]">
+                        <section id="preview-controls" class="vkp-controls flex flex-wrap gap-vk-3" aria-label="Điều khiển preview">
                             <Choice
                                 legend="Giao diện"
                                 name="theme"
@@ -323,7 +323,7 @@ pub fn App() -> impl IntoView {
                                 on_pick=Callback::new(move |label: &'static str| record(format!("chuyển động → {label}")))
                             />
                         </section>
-                        <section id="specimen" class="vkp-specimen" aria-labelledby="specimen-title">
+                        <section id="specimen" class="vkp-specimen grid [grid-template-columns:minmax(0,1fr)] gap-vk-4 [min-inline-size:0]" aria-labelledby="specimen-title">
                             <div class="vkp-specimen__head">
                                 <h1 id="specimen-title">{move || selection.get().entry.label}</h1>
                                 <p>{move || selection.get().entry.summary}</p>
@@ -352,7 +352,7 @@ pub fn App() -> impl IntoView {
                                 </div>
                             </div>
                             <div
-                                class="vkp-frame"
+                                class="vkp-frame [min-inline-size:0] [max-inline-size:100%] overflow-x-auto"
                                 style=move || match frame.get() {
                                     Frame::Fluid => String::new(),
                                     Frame::Width(px) => format!("inline-size: min(100%, {px}px)"),

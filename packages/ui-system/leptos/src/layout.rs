@@ -98,7 +98,10 @@ pub fn Surface(
     #[prop(optional, into)] label: Option<String>,
     children: Children,
 ) -> impl IntoView {
-    let class = format!("vk-ui-surface vk-ui-surface--{}", tone.id());
+    let class = format!(
+        "vk-ui-surface vk-ui-surface--{} box-border [min-inline-size:0]",
+        tone.id()
+    );
     let style = format!(
         "--vk-ui-radius: {}; --vk-ui-padding: {};",
         radius.var(),

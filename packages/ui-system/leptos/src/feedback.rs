@@ -404,15 +404,15 @@ pub fn StatePanel(
             })
             .collect_view();
         view! {
-            <div class="vk-ui-panel" data-tone=tone data-panel=kind>
-                <span class="vk-ui-panel__symbol">
+            <div class="vk-ui-panel grid gap-vk-3 p-vk-6 rounded-vk-lg" data-tone=tone data-panel=kind>
+                <span class="vk-ui-panel__symbol inline-grid place-items-center [inline-size:3rem] [block-size:3rem] rounded-vk-full">
                     <Icon name=icon />
                 </span>
                 <Heading level=heading>{c.title}</Heading>
-                <p class="vk-ui-panel__message">{c.message}</p>
-                {has_actions.then(|| view! { <div class="vk-ui-panel__actions">{actions}{custom_actions}</div> })}
+                <p class="vk-ui-panel__message m-0 wrap-break-word">{c.message}</p>
+                {has_actions.then(|| view! { <div class="vk-ui-panel__actions flex flex-wrap items-center gap-y-vk-2 gap-x-vk-3">{actions}{custom_actions}</div> })}
                 {c.code.map(|code| view! {
-                    <p class="vk-ui-panel__code">"Mã: "<code>{code.to_string()}</code></p>
+                    <p class="vk-ui-panel__code m-0">"Mã: "<code>{code.to_string()}</code></p>
                 })}
             </div>
         }
@@ -920,7 +920,7 @@ pub fn ContentRegion(
     let shape = skeleton.unwrap_or(SkeletonShape::Card);
     view! {
         <section
-            class="vk-ui-region"
+            class="vk-ui-region relative grid gap-vk-4"
             aria-label=label
             aria-busy=move || loading().then_some("true")
             data-layout=move || match layout.get() {
@@ -931,7 +931,7 @@ pub fn ContentRegion(
             <p class="vk-ui-visually-hidden" role="status">{move || announcement.get()}</p>
             {move || layout.get().is_ok_and(|l| l.progress).then(|| {
                 let c = copy.get_value();
-                view! { <div class="vk-ui-region__progress"><EdgeProgress label=c.loading /></div> }
+                view! { <div class="vk-ui-region__progress absolute [inset-block-start:0] [inset-inline:0]"><EdgeProgress label=c.loading /></div> }
             })}
             {move || notice().map(|(tone, title, message, action)| view! {
                 <Notice
@@ -947,7 +947,7 @@ pub fn ContentRegion(
             })}
             {move || match body.get() {
                 Err(reason) => view! {
-                    <p class="vk-ui-region__unlawful" data-unlawful=reason.id()>
+                    <p class="vk-ui-region__unlawful m-0 p-vk-3 rounded-vk-md" data-unlawful=reason.id()>
                         {format!("Trạng thái không hợp lệ: {}", reason.id())}
                     </p>
                 }
