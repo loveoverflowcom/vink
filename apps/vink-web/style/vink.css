@@ -1677,16 +1677,6 @@ a {
   outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
   outline-offset: var(--vk-size-focus-offset);
 }
-.vk-feed-state, .vk-feed-paging {
-  margin-block: var(--vk-space-6);
-}
-.vk-feed-state {
-  display: grid;
-  justify-items: start;
-  gap: var(--vk-space-3);
-  --vk-ui-control-radius: var(--vk-radius-control-56);
-}
-.vk-feed-state > p { margin: 0; }
 .vk-feed-state > a.vk-ui-button {
   max-inline-size: 100%;
   overflow-wrap: anywhere;
