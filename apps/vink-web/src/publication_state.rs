@@ -1184,7 +1184,6 @@ impl Summary {
                 decision: Decision::Approved,
                 reason: None,
                 created_at: String::new(),
-                can_appeal: false,
             })
         });
         let intent = facts.intent.as_ref().map(|i| i.revision_id.as_str());

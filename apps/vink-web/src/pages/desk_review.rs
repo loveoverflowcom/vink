@@ -22,7 +22,7 @@ const HISTORY_CLASS: &str = "grid gap-vk-4 ps-vk-6";
 const ROW_ENTRY: &str = "vink-desk-review";
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(super) struct ReviewTarget {
+pub(crate) struct ReviewTarget {
     work_id: String,
     decision: Option<(String, i64)>,
 }

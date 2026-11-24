@@ -777,11 +777,12 @@ fn DraftListView(
                         let fallback = adapters::author_work_summary(&draft);
                         let work = Signal::derive(move || pages.with(|p| p.drafts.iter().find(|d| d.work_id == id)
                             .map(adapters::author_work_summary).unwrap_or_else(|| fallback.clone())));
+                        let review_work_id = draft.work_id.clone();
                         view! {
                             <li id=format!("draft-row-{}", draft.work_id) class="vk-draft-row [min-inline-size:0]" data-testid="draft-row">
-                                <AuthorWorkRow work review_action=move || view! {
-                                    <ReviewTrigger work_id=draft.work_id.clone() title=Signal::derive(move || work.with(|w| w.title.clone())) open=open_review />
-                                } />
+                                <AuthorWorkRow work review_action=Box::new(move || view! {
+                                    <ReviewTrigger work_id=review_work_id title=Signal::derive(move || work.with(|w| w.title.clone())) open=open_review />
+                                }.into_any()) />
                             </li>
                         }
                     } />
