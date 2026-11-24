@@ -3576,6 +3576,18 @@ async function draftDashboard(page) {
   check(await page.eval(`document.activeElement.id === 'open-draft-search' && document.querySelector('.vk-draft-search').hidden`),
     'Back leaves the closed dock and its launcher focus stable after paint');
 
+  // Select a row between closing the dock and its deferred focus restoration.
+  await page.click('#open-draft-search');
+  await page.waitFor(`document.activeElement.id === 'draft-search'`, 'search owns focus before the competing action');
+  check(await page.eval(`(async () => {
+    const row = document.querySelector('.vk-draft-row__link');
+    document.querySelector('#close-draft-search').click();
+    row.focus();
+    if (document.activeElement !== row) return false;
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    return document.querySelector('.vk-draft-search').hidden && row.isConnected && document.activeElement === row;
+  })()`), 'closing search preserves a newly focused draft link across the recovery frame');
+
   for (const theme of ['light','dark']) for (const scale of [100,200]) for (const width of [1536,1440,1280,1024,834,390,320]) {
     await page.viewport(width);
     await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:0,y:0});
