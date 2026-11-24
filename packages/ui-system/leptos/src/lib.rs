@@ -21,6 +21,8 @@ pub mod identity_vectors;
 pub mod layout;
 pub mod media;
 pub mod navigation;
+mod notification;
+mod notification;
 #[rustfmt::skip]
 pub mod navigation_vectors;
 pub mod root;
@@ -66,6 +68,7 @@ pub use navigation::{
     NavDestination, NavItem, NavLayout, NavUtility, NavigationRail, OverlayBusy, OverlayLayer,
     RailPreference, TopBar, WindowClass,
 };
+pub use notification::{BadgeState, ExpressiveShape, NotificationBadge, ShapeMark, ShapeTone};
 pub use root::{ThemeScope, UiRoot};
 pub use state::{
     ActionPhase, Announce, Body, Content, DiagnosticCode, DialogKind, DialogRole, Dismiss,

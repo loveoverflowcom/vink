@@ -604,3 +604,22 @@ body {
     border-inline-start: 0;
   }
 }
+
+.vk-notif-preview-inbox {
+  box-sizing: border-box;
+  max-inline-size: var(--vk-size-notification-column);
+  background: var(--vk-bg-page);
+}
+
+.vk-notif-preview-rail.vk-ui-rail {
+  position: relative;
+  inset: auto;
+  inline-size: min(100%, var(--vk-size-rail-expanded));
+  block-size: auto;
+  gap: var(--vk-space-2);
+  overflow: visible;
+}
+
+@media (max-width: 759.98px) {
+  .vk-notif-preview-rail.vk-ui-rail { inline-size: var(--vk-size-rail-compact); }
+}

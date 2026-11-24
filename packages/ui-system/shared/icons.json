@@ -4,7 +4,7 @@
   "source": {
     "repository": "https://github.com/google/material-design-icons",
     "commit": "10ecc14790612ca8fd164e3f4ffe9c16fc50d5b7",
-    "style": "Material Icons (filled), 24px",
+    "style": "Material Icons (filled and outlined), 24px",
     "license": "Apache-2.0",
     "licenseFile": "icons/LICENSE-material-design-icons.txt"
   },
@@ -222,6 +222,40 @@
       "sha256": "a9706960208156a1de89bbfca8abeffa8771ba9332fcb9605e277bfd8b4eb3b8",
       "use": "Cảnh báo, kết quả chưa chắc chắn",
       "path": "M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"
+    },
+    "notifications": {
+      "upstream": "src/social/notifications/materialicons/24px.svg",
+      "sha256": "c43e401f607f9c98627a7c3d6fa5c5a959498adfd419c6d6272c15c559b6965d",
+      "use": "Thông báo đang mở",
+      "path": "M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z",
+      "frame": ""
+    },
+    "notifications-none": {
+      "upstream": "src/social/notifications_none/materialicons/24px.svg",
+      "sha256": "c1f1e1f555e04b9444d6af02d8db242c4dc3d0bb34467f11a6b7c538dfd2f584",
+      "use": "Mở thông báo",
+      "path": "M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"
+    },
+    "explore-outline": {
+      "upstream": "src/action/explore/materialiconsoutlined/24px.svg",
+      "sha256": "2cfc40f7f33e2fe3dc591b4ad68128e9a564e3f0c1c7edc73d0d684d4f038b1d",
+      "use": "Khám phá chưa chọn",
+      "path": "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-5.5-2.5l7.51-3.49L17.5 6.5 9.99 9.99 6.5 17.5zm5.5-6.6c.61 0 1.1.49 1.1 1.1s-.49 1.1-1.1 1.1-1.1-.49-1.1-1.1.49-1.1 1.1-1.1z",
+      "frame": "M0 0h24v24H0V0z"
+    },
+    "edit-outline": {
+      "upstream": "src/image/edit/materialiconsoutlined/24px.svg",
+      "sha256": "df1143921a7b3e43027aaa3d3e6b027e2ca853e4d140ba73c943faaad7fb5ebe",
+      "use": "Bàn viết chưa chọn",
+      "path": "M14.06 9.02l.92.92L5.92 19H5v-.92l9.06-9.06M17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29zm-3.6 3.19L3 17.25V21h3.75L17.81 9.94l-3.75-3.75z",
+      "frame": "M0 0h24v24H0V0z"
+    },
+    "person-outline": {
+      "upstream": "src/social/person/materialiconsoutlined/24px.svg",
+      "sha256": "505afee5ac41b4d8ce4d032645ec56fa0ee64c57781ad33e67a74a21cbdf5e15",
+      "use": "Tôi chưa chọn",
+      "path": "M12 6c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2m0 10c2.7 0 5.8 1.29 6 2H6c.23-.72 3.31-2 6-2m0-12C9.79 4 8 5.79 8 8s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z",
+      "frame": "M0 0h24v24H0V0z"
     }
   }
 }

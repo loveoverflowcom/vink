@@ -1,0 +1,21 @@
+version = 1
+id = "VDR-NOTIFICATIONS-DESIGN"
+revision = 1
+
+[content]
+kind = "product"
+domain = "notifications"
+title = "Badge và vị trí chuông Thông báo R4"
+resolution = """
+1. Dùng cặp color.badge / color.on-badge ánh xạ sang error / on-error để hiển thị số nhóm chưa Seen. Luồng stale và 503 giữ tín hiệu riêng. Chip Cần xử lý và dấu từ chối vẫn dùng mận.
+2. Đặt chuông ngay sau Bàn viết trong nhóm điều hướng trên của rail. Khu vực tài khoản tiếp tục chứa Tôi. Vị trí chuông mobile và ba đích thanh dưới kế thừa thiết kế đã bàn giao.
+"""
+rationale = "Issue #485 (https://github.com/loveoverflowcom/vink/issues/485) mô tả hai thay đổi của R4 so với thiết kế ngày 20/11 trong #363. Đưa chuông cạnh các đích chính giúp người dùng tìm thấy hộp thư trong rail. Cặp error/on-error cho phép lớp đếm nổi bật trên nền R4 ở cả hai giao diện. Q10 và Q11 trong HANDOFF.md vẫn chờ chủ sản phẩm chốt."
+requires = [
+    "VDR-DECISION-SIGNOFF@r1",
+    "VDR-NOTIFICATIONS@r2",
+]
+related_ids = [
+    "NOTIF-06",
+    "NOTIF-10",
+]

@@ -1376,6 +1376,24 @@ pub const ENTRIES: &[CatalogEntry] = &[
         leptos: "unsupported",
         cmp: "implemented-unverified",
     },
+    CatalogEntry {
+        id: "composition.notifications",
+        family: "composition",
+        label: "Thông báo — Mẫu",
+        summary: "Chuông, badge và nhóm thông báo theo LayoutSpec R4. Dữ liệu từ ví dụ hợp đồng Gateway v1.",
+        scenarios: &[
+            Scenario {
+                id: "default",
+                label: "Hộp thư có dòng chưa đọc và đã đọc",
+            },
+            Scenario {
+                id: "badges",
+                label: "Chuông và các trạng thái badge",
+            },
+        ],
+        leptos: "implemented-unverified",
+        cmp: "unsupported",
+    },
 ];
 
 /// Fixed presentation inputs: the same clock, seed and Vietnamese samples in both previews.

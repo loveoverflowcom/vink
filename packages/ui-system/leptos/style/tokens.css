@@ -94,6 +94,14 @@
   --vk-size-icon-sm: 20px;
   --vk-size-indicator: 20px;
   --vk-size-nav-item: 52px;
+  --vk-size-notification-badge: 18px;
+  --vk-size-notification-column: 640px;
+  --vk-size-notification-dot: 10px;
+  --vk-size-notification-glyph: 34px;
+  --vk-size-notification-icon: 16px;
+  --vk-size-notification-mark: 44px;
+  --vk-size-notification-segment-gap: 3px;
+  --vk-size-notification-system-icon: 22px;
   --vk-size-page-column: 48rem;
   --vk-size-rail-compact: 96px;
   --vk-size-rail-expanded: 220px;
@@ -527,9 +535,11 @@
   --vk-action-toggle-selected-content: var(--vk-on-secondary-container);
   --vk-action-tonal-container: var(--vk-secondary-container);
   --vk-action-tonal-content: var(--vk-on-secondary-container);
+  --vk-badge: var(--vk-error);
   --vk-bg-content: var(--vk-surface-container-low);
   --vk-bg-inset: var(--vk-surface-container-high);
   --vk-bg-nav: var(--vk-bg-page);
+  --vk-on-badge: var(--vk-on-error);
   --vk-field-container: var(--vk-surface-container-high);
   --vk-field-outline: var(--vk-outline);
   --vk-focus-ring: var(--vk-focus);
