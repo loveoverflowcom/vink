@@ -187,7 +187,7 @@ export async function authorProfiles(page, other, {base, openPage, check, holdAn
   await page.eval("delete document.documentElement.dataset.theme");
   await page.viewport(320, 580);
   await page.eval("document.documentElement.style.fontSize='200%'");
-  await page.eval(`${q('.vk-profile-form a[href="/toi/dia-chi"]')}.focus()`);
+  await page.eval("const fields = [...document.querySelectorAll('.vk-profile-form select')]; fields.filter(field => !field.disabled && field.checkVisibility()).at(-1)?.focus()");
   await page.key('Tab');
   await page.waitFor(`(() => {
     const save=${q(SAVE)}, nav=${q('.vk-ui-bottom-nav')};

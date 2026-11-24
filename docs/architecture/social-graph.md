@@ -42,6 +42,12 @@ phân loại trước backfill. Chuẩn hóa PenName qua parser của App, giữ
 được cấp, bỏ qua và cần xử lý. Chạy theo batch có checkpoint, chạy lại được, so với tài khoản
 đủ điều kiện sau khi writer mới đã hoạt động. Chỉ mở đường đọc sau khi đối soát được mỗi binding đủ điều kiện với đúng một Profile và một current Handle. Lượt GET không sinh tên hay sửa dữ liệu.
 
+[#480](https://github.com/loveoverflowcom/vink/issues/480) gộp UI Handle vào Chỉnh hồ sơ.
+`GET/POST /api/v1/me/handle` và receipt giữ version của Handle, tách khỏi `PUT /api/v1/me/profile`.
+Một lần ghi ở bên này không thay version hoặc nháp phía kia. URL cũ chỉ chuyển hướng; contract
+`/@handle` cho current, alias, tombstone và missing giữ nguyên.
+[LayoutSpec](../design/profile-inline-handle-480.md).
+
 ```text
 chưa cấp ── provision hợp lệ ──► current H0, chờ setup, còn 2
   chờ setup ── xác nhận giữ H0 ──► đã setup, current H0, còn 2

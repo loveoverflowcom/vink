@@ -1,0 +1,46 @@
+version = 1
+id = "VDR-SOCIAL-GRAPH"
+revision = 2
+
+[base]
+revision = 1
+sha256 = "bdafefdcb99524bd09de5b872292efaa63cf8136a271b629714c9bb190380595"
+
+[content]
+kind = "product"
+domain = "social-graph"
+title = "Danh tính tác giả, quyền từng trường và quan hệ Theo dõi"
+resolution = """
+Ghi lại phạm vi sản phẩm R1–R9 theo #284 §2 trong PRD §15. Tài khoản có binding và bút danh hợp lệ có hồ sơ kể cả chưa đăng bài. PrincipalId giữ ownership và cạnh qua mọi lần đổi credential, tên hiển thị hoặc địa chỉ. Bút danh hiện hành có thể trùng. Handle độc lập, dùng ASCII thường, số và dấu nối. Sinh từ bút danh chuyển ASCII, từ chọn lọc và hậu tố ngẫu nhiên. Một lần setup miễn lượt rồi hai lần đổi suốt đời. Alias 301 tới tên hiện hành, giữ cả tên cũ sau xóa. #290 r2 chốt xác nhận “Dùng địa chỉ này” hoàn tất setup kể cả khi giữ gợi ý.
+Web: đặt thiết lập và đổi Handle tại Tôi → Chỉnh hồ sơ, dùng một hộp thoại tại hàng Địa chỉ tác giả. URL riêng cũ chỉ chuyển hướng tới hàng này. Xác nhận giữ command/version riêng với Lưu hồ sơ. Quy tắc setup, quota, namespace, alias và public resolver giữ nguyên.
+Quyền everyone/self cho từng trường. Bút danh luôn công khai. Avatar, bio, danh sách và số người theo dõi mặc định công khai. Ngày sinh, danh sách và số người mình theo dõi mặc định riêng. Ngày sinh tự nguyện phụ thuộc đề xuất USER-01@r2. Follow tự do, cấm tự theo dõi. Mutual chỉ cấp trực tiếp cho hai đầu cạnh. Follow không cấp thêm quyền đọc tác phẩm. Đang theo dõi trong Khám phá lấy tác phẩm hiện công khai kể cả bài có trước lần Follow, xếp theo lần đầu public, một lần mỗi WorkId. Tìm được người chưa có bài. Gợi ý xếp bằng dữ liệu công khai.
+Hạn chế chỉ đăng/bình luận bảo toàn quyền Social. Xóa tài khoản kết thúc cạnh hai chiều, giữ tên trong namespace, gỡ bài và bỏ ref định danh ở bình luận hợp lệ giữ lại. Account/Identity sở hữu xác minh, retention, điều phối xóa và capability riêng.
+Các lựa chọn sản phẩm còn mở (§6/§11 của #284) chỉ giữ phần việc trực tiếp: SOC-OPEN-01 xác nhận từng trường/gộp, 03 reclaim alias của chính chủ, 04 avatar chữ/upload, 05 tìm theo alias và nơi tìm, 06 lọc gợi ý theo viewer. SOC-OPEN-02 đã chọn xác nhận tường minh trong #290 ngày 18/11. Không đưa Block, Remove, Mute, Follow kín, tài khoản duyệt follower, bạn bè/DM, followers-only hay xếp hạng theo số follower vào phạm vi.
+"""
+rationale = "Nguồn do chủ sản phẩm cung cấp được tổng hợp ở https://github.com/loveoverflowcom/vink/issues/284 (R10, §2, §6, §11), cập nhật riêng mốc setup ở https://github.com/loveoverflowcom/vink/issues/290. Delta ngày 24/11/2026 trong https://github.com/loveoverflowcom/vink/issues/480: chủ sản phẩm nói “Phần này nên để chung trong chỉnh sửa tôi / thông tin cá nhân chứ? Không cần 1 màn riêng”. Hợp đồng liên miền và phép kiểm thuộc #288. Quyết định về brief hoặc preview không phải signoff cho revision này."
+requires = [
+    "D-05@r1",
+    "O-12@r2",
+    "USER-01@r1",
+    "VDR-DECISION-SIGNOFF@r1",
+]
+related_ids = [
+    "ACC-01",
+    "ACC-02",
+    "ACC-03",
+    "COM-06",
+    "SOC-FEED-01",
+    "SOC-FIND-01",
+    "SOC-FOL-01",
+    "SOC-HDL-01",
+    "SOC-ID-01",
+    "SOC-ID-02",
+    "SOC-ID-03",
+    "SOC-ID-04",
+    "SOC-ID-05",
+    "SOC-ID-06",
+    "SOC-LIFE-01",
+    "SOC-LIFE-02",
+    "SOC-PRIV-01",
+    "UX-04",
+]

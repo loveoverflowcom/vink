@@ -25,6 +25,10 @@ Cả ba revision đang `PENDING`. Lệnh `cargo xtask decision query USER-01 --h
 ghi nguồn #290/#291 cho hai lựa chọn đã chốt trong phạm vi issue. Duyệt preview và merge tài liệu
 không thay signoff đúng revision/hash theo [VDR-DECISION-SIGNOFF@r1](signoffs/VDR-DECISION-SIGNOFF.r1.toml).
 
+[VDR-SOCIAL-GRAPH@r2](proposals/VDR-SOCIAL-GRAPH.r2.toml) bổ sung delta Web [#480](https://github.com/loveoverflowcom/vink/issues/480).
+Thiết lập và đổi địa chỉ trong Chỉnh hồ sơ. Revision r2 còn `PENDING` theo cùng quy trình
+signoff. [LayoutSpec delta](../docs/design/profile-inline-handle-480.md).
+
 ## Thông báo (Notifications v1)
 
 [#345](https://github.com/loveoverflowcom/vink/issues/345) đưa R1–R3 của [Epic #305](https://github.com/loveoverflowcom/vink/issues/305)

@@ -1,5 +1,7 @@
 # Lavender R3 · chữ thoáng, ít khối · #336
 
+> [Delta #480](../profile-inline-handle-480.md) thay hàng đi trang Địa chỉ tác giả bằng hộp thoại trong Chỉnh hồ sơ. Canvas và bằng chứng R3 bên dưới giữ nguyên mốc gốc.
+
 **19/11/2026 · [#336](https://github.com/loveoverflowcom/vink/issues/336) · `DESIGN_PROPOSED`.**
 Chủ sản phẩm duyệt hướng thị giác trên canvas ngày 19/11/2026. Mức triển khai: `web` (nhánh
 `feat/336-lavender-r3`, xem [Triển khai Web](#triển-khai-web)); CMP chỉ nhận token sinh lại và font

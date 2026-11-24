@@ -6,6 +6,29 @@ use vink_ui::{Heading, HeadingLevel, Link};
 use crate::account::Session;
 
 pub(super) const EDIT_PATH: &str = "/toi/chinh-ho-so";
+const HANDLE_PATH: &str = "/toi/chinh-ho-so#dia-chi-tac-gia";
+
+/// The old private address only redirects. No profile or Handle request is made here.
+#[component]
+pub(crate) fn LegacyHandle() -> impl IntoView {
+    let status = super::ResponseStatus::capture();
+    status.set_no_store();
+    status.redirect(HANDLE_PATH);
+    #[cfg(feature = "hydrate")]
+    {
+        let navigate = leptos_router::hooks::use_navigate();
+        Effect::new(move |_| {
+            navigate(
+                HANDLE_PATH,
+                leptos_router::NavigateOptions {
+                    replace: true,
+                    ..Default::default()
+                },
+            );
+        });
+    }
+    view! { <Link href=HANDLE_PATH>"Chỉnh địa chỉ tác giả trong hồ sơ"</Link> }
+}
 
 #[component]
 pub(super) fn ProfileEntry() -> impl IntoView {
