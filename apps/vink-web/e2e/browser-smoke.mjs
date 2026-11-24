@@ -3264,7 +3264,19 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   await page.viewport(390);
   await page.waitFor(`!${RAIL_MODAL_OPEN}`, 'editor modal rail closes on mobile resize');
   check(await page.eval(view) && (await page.body()) === written && await page.eval(`location.pathname === '${editorPath}' && getComputedStyle(document.querySelector('.vk-ui-bottom-nav')).display === 'none'`), 'mobile resize retains editor and hides bottom bar');
-  await page.capture('390-editor-dirty-dark');
+  const priorTheme = await page.eval("document.documentElement.getAttribute('data-theme')");
+  try {
+    await page.eval("document.documentElement.dataset.theme = 'dark'");
+    await editorLayoutReady(page);
+    await page.capture('390-editor-dirty-dark', {
+      requestedScene: { width: 390, height: 900, scale: 100, theme: 'dark' },
+      target: '.cm-content',
+      boundary: 'Dirty product editor with a DOM theme override',
+    });
+  } finally {
+    await page.eval(priorTheme === null ? "document.documentElement.removeAttribute('data-theme')"
+      : `document.documentElement.dataset.theme = ${JSON.stringify(priorTheme)}`);
+  }
   await assertBrandPlacement(page);
   await page.click('.vk-editor-heading__back');
   await page.waitFor(`location.pathname === '${editorPath}' && document.querySelector('[data-testid=leave-editor]').open`, 'mobile editor’s Bàn viết link uses the same leave guard');
@@ -5699,6 +5711,7 @@ async function draftTags(page, workId) {
 
   // A metadata-only change is unsaved work: the toolbar says so and leaving is held.
   await page.eval(`const select = document.querySelector('#work-tags-form-select');
+    select.focus();
     select.value = [...select.options].find(o => o.textContent.trim() === 'Tản văn').value;
     select.dispatchEvent(new Event('change', { bubbles: true }));`);
   await waitTagStatus(page, 'unsaved');
