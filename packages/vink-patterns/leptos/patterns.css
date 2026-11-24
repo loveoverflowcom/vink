@@ -1,5 +1,5 @@
 /* Vink feature composition geometry; primitive styles and tokens stay in vink-ui. */
-.vk-work-byline { container: vk-work-byline / inline-size; --vk-work-byline-indent: var(--vk-size-avatar-feed); display: grid; row-gap: min(var(--vk-space-1), 4px); margin-bottom: var(--vk-space-2); min-width: 0; overflow-wrap: anywhere; }
+.vk-work-byline { container: vk-work-byline / inline-size; --vk-work-byline-indent: var(--vk-size-avatar-feed); margin-bottom: var(--vk-space-2); }
 .vk-work-byline[data-size="reader"] { --vk-work-byline-indent: var(--vk-size-avatar-reader); }
 /* #352: the date is the work's metadata, outside the profile link, on the name's track. */
 .vk-work-byline__date { padding-inline-start: calc(var(--vk-work-byline-indent) + var(--vk-space-3)); color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
@@ -11,17 +11,15 @@
   .vk-work-byline__date { padding-inline-start: 0; }
 }
 /* Reader rhythm: context caption → title → byline, each step separated before the body. */
-.vk-reader__header { display: grid; justify-items: start; row-gap: var(--vk-space-2); }
+.vk-reader__header { row-gap: var(--vk-space-2); }
 .vk-reader__header > .vk-ui-heading { margin: 0; overflow-wrap: anywhere; }
 .vk-reader__header > .vk-work-byline { justify-self: stretch; margin: var(--vk-space-2) 0 0; }
-.vk-work-card { container: vk-work-card / inline-size; padding: var(--vk-space-4); border-radius: var(--vk-radius-lg); background: var(--vk-surface-container-low); }
+.vk-work-card { container: vk-work-card / inline-size; }
 .vk-work-card > .vk-ui-heading { margin: 0 0 var(--vk-space-2); font-family: var(--vk-font-reading); overflow-wrap: anywhere; }
 .vk-work-card .vk-public-row__link { color: var(--vk-on-surface); }
-.vk-work-card .vk-work-byline { min-width: 0; }
 /* DraftRow owns equal horizontal insets; its host groups the flat rows on one surface. */
-.vk-draft-row__link { container: vk-draft-row / inline-size; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; min-width: 0; padding: var(--vk-space-3) var(--vk-space-4); border-radius: var(--vk-radius-md); background: transparent; color: var(--vk-on-surface); text-align: start; text-decoration: none; }
-.vk-draft-row__text { display: grid; gap: var(--vk-space-1); min-width: 0; }
-.vk-draft-row__open { display: inline-flex; margin-inline-start: var(--vk-space-3); align-items: center; color: var(--vk-primary); }
+.vk-draft-row__link { container: vk-draft-row / inline-size; grid-template-columns: minmax(0, 1fr) auto; border-radius: var(--vk-radius-md); background: transparent; color: var(--vk-on-surface); text-align: start; text-decoration: none; }
+.vk-draft-row__open { display: inline-flex; color: var(--vk-primary); }
 /* arrow-back mirrored is the registry's forward arrow; no extra icon asset. */
 .vk-draft-row__open .vk-ui-icon { margin: 0; transform: scaleX(-1); }
 .vk-draft-row__link:hover .vk-draft-row__title { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
@@ -30,15 +28,14 @@
   .vk-draft-row__open { display: none; }
 }
 /* .vk-draft-meta migrated to Tailwind utilities in packages/vink-patterns/leptos/src/lib.rs (W01 pilot). */
-.vk-draft-resume { container: vk-draft-resume / inline-size; min-width: 0; }
-.vk-draft-resume > .vk-ui-surface, .vk-draft-resume__content { display: grid; justify-items: start; gap: var(--vk-space-2); min-width: 0; }
+.vk-draft-resume { container: vk-draft-resume / inline-size; }
+.vk-draft-resume > .vk-ui-surface { display: grid; justify-items: start; gap: var(--vk-space-2); min-width: 0; }
 @container vk-draft-resume (max-width: 480px) {
   .vk-draft-resume > .vk-ui-surface { padding: min(var(--vk-space-4), 16px); }
 }
 .vk-draft-resume__title { min-width: 0; overflow-wrap: anywhere; }
 /* Keep the full heading in the accessibility tree; disclosure removes only the clamp. */
 .vk-draft-resume:has(button[aria-expanded="false"]) .vk-draft-resume__title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
-.vk-draft-resume__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-2); max-inline-size: 100%; min-inline-size: 0; }
 .vk-draft-resume__disclosure { min-inline-size: 0; max-inline-size: 100%; text-align: start; }
 .vk-draft-resume__continue { justify-content: center; min-block-size: 48px; max-width: 100%; padding: var(--vk-density-control-padding) var(--vk-space-6); border-radius: var(--vk-radius-full); background: var(--vk-action-primary-container); color: var(--vk-action-primary-content); }
 .vk-draft-resume__continue:hover { background: color-mix(in srgb, var(--vk-action-primary-content) 8%, var(--vk-action-primary-container)); }
@@ -243,7 +240,7 @@
 }
 
 
-.vk-draft-row__title { font-family: var(--vk-type-title-font); font-size: var(--vk-type-title-size); font-weight: var(--vk-type-title-weight); line-height: var(--vk-type-title-line-height); overflow-wrap: anywhere; }
+.vk-draft-row__title { font-family: var(--vk-type-title-font); font-size: var(--vk-type-title-size); font-weight: var(--vk-type-title-weight); line-height: var(--vk-type-title-line-height); }
 
 .vk-draft-row__link:hover { text-decoration: none; background: var(--vk-surface-container); }
 
@@ -351,23 +348,12 @@
 .vk-draft-row__title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .vk-draft-row__link:is(:focus, :hover) .vk-draft-row__title { display: block; -webkit-line-clamp: unset; overflow: visible; }
 
-/* R4: each work owns its surface and its independent reader link. */
-.vk-author-work {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  min-inline-size: 0;
-  background: var(--vk-bg-content);
-  border-radius: var(--vk-radius-card);
-}
+/* R4: keep the distinct linked and unlinked row slots and the independent reader action. */
 .vk-author-work > :is(.vk-draft-row__link, .vk-draft-row__text) { flex: 1 1 24rem; }
 .vk-author-work > .vk-draft-row__text { padding: var(--vk-space-3) var(--vk-space-4); }
 .vk-author-work > .vk-draft-row__text > .vk-draft-row__title { display: block; overflow: visible; -webkit-line-clamp: unset; }
 .vk-author-work .vk-draft-row__link { grid-template-columns: minmax(0, 1fr); min-block-size: 48px; border-radius: inherit; }
 .vk-author-work__untitled { color: var(--vk-on-surface-variant); font-style: italic; }
-.vk-author-work__status, .vk-author-work__metrics, .vk-author-work__context { margin: 0; overflow-wrap: anywhere; }
-.vk-author-work__status, .vk-author-work__metrics { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-1) var(--vk-space-3); }
-.vk-author-work__label, .vk-author-work__count { display: inline-flex; align-items: center; gap: var(--vk-space-1); max-inline-size: 100%; }
 .vk-author-work__label > svg, .vk-author-work__count > svg { flex: none; }
 .vk-author-work__metrics { color: var(--vk-on-surface); font-size: var(--vk-type-label-size); font-variant-numeric: tabular-nums; }
 .vk-author-work__count > .vk-ui-icon { inline-size: 24px; block-size: 24px; margin: 0; }
