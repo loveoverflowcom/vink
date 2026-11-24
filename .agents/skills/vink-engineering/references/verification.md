@@ -101,6 +101,8 @@ Record the source SHA and relevant dirty content, target/feature/profile, toolch
 dependency locks, generator/validator inputs, fixture or corpus, command, original logs and claim.
 For cold/warm comparisons identify which cache began empty, which stayed warm and the measurement
 boundary (process RSS or cgroup peak). Separate an artifact HIT from an executed assertion.
+When copying a source snapshot into a reused build directory, preserved mtimes can predate the
+previous binary. Verify the changed producer with a regression that the old binary fails.
 Mark unresolved inputs `NOT_RUN` or `PARTIAL` and unsupported targets `UNSUPPORTED`.
 
 Compare the tested inputs with the final delta. Rerun an affected check if its code, build,

@@ -1,6 +1,6 @@
 # Kiểm tích hợp theo diff · lượt 4 của #496
 
-[Draft PR #512](https://github.com/loveoverflowcom/vink/pull/512) dùng base `4d97d6a4d57eab22880f9a5c2eaba7897262c5e9`, đã chứa #509, #510 và #511. **Epic còn PARTIAL**. Planner, guard và các selector dùng được. Editor và Desk có lỗi trên sản phẩm thật. Full Web và release/perf-probe chưa hoàn tất trong ngân sách đã cấp.
+Bản ghi đợt 4 GiB trên base `4d97d6a4d57eab22880f9a5c2eaba7897262c5e9`, đã chứa #509–#511. Các lỗi Editor/Desk dưới đây là kết quả của lượt đầu. Xem đối chứng, số đo 4.864 MiB và các blocker hiện tại trong [bàn giao cập nhật #512](work-chat-4-followup.md). [Draft PR](https://github.com/loveoverflowcom/vink/pull/512).
 
 ## Điều kiện đo
 

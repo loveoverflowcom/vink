@@ -1,6 +1,6 @@
 # Baseline verification local · #497 và #502
 
-Số đo Web, PostgreSQL, SSR, planner và các khoảng trống của lượt tích hợp cuối nằm trong [bàn giao #512](work-chat-4.md).
+Số đo Web, PostgreSQL, SSR, planner và các khoảng trống của lượt tích hợp cuối nằm trong [bàn giao #512](work-chat-4-followup.md).
 
 Ngày 24/11/2026, đo trên một Mac mini arm64, macOS 15.6 (Darwin 24.6), RAM 24 GiB,
 còn khoảng 24 GiB đĩa. Worktree Vink riêng, tuần tự, không flush page cache. Hai cụm
