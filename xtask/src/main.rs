@@ -32,6 +32,7 @@ mod ui_toggle;
 mod ui_tokens;
 mod verify;
 mod web;
+mod web_assets;
 mod web_boundary;
 mod workflow;
 

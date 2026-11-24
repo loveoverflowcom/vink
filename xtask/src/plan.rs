@@ -588,7 +588,7 @@ impl Plan {
             }
         }
         format!(
-            "coverage: {coverage}\noperation: {:?}; target: {:?}; auth: {auth}\nbuild: {:?}; profile: {}\nrequired tools: {:?}\nowned services: {:?}\nattached database configuration (values hidden): {:?}\nmigrations: {:?}; dev seed: {} (Web fixtures follow the scenario catalog)\nselected checks: {selected:?}\nalias expansion: {dependencies:?}\nnot selected Web checks: {excluded:?}\n{fixtures}API target isolation: no bundle, no SSR dependencies or static routes.\ndata: dev attaches prepared databases; Web verification owns scratch only. No containers.\nartifacts: build from current source every invocation; no no-build/reuse mode.\n",
+            "coverage: {coverage}\noperation: {:?}; target: {:?}; auth: {auth}\nbuild: {:?}; profile: {}\nrequired tools: {:?}\nowned services: {:?}\nattached database configuration (values hidden): {:?}\nmigrations: {:?}; dev seed: {} (Web fixtures follow the scenario catalog)\nselected checks: {selected:?}\nalias expansion: {dependencies:?}\nnot selected Web checks: {excluded:?}\n{fixtures}API target isolation: no bundle, no SSR dependencies or static routes.\ndata: dev attaches prepared databases; Web verification owns scratch only. No containers.\nartifacts: build from current source; Web bundles may reuse verified bindgen and static outputs.\n",
             self.request.operation,
             self.request.target,
             self.artifacts,
