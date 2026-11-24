@@ -1309,7 +1309,7 @@ fn DiscussionComposer(
                 }
                 on_submit=move |_| { if !blocked { submit(controller, state, key.get_value(), refresh, false); } } >
                 {matches!(key.get_value(), ComposerKey::Replies(_)).then(|| view! {
-                    <div class="vk-discussion-composer-heading">
+                    <div class="vk-discussion-composer-heading flex flex-wrap items-center justify-between gap-vk-2 min-w-0">
                         <Show when=move || matches!(controller.read().reply_target(&key.get_value()), Some(ReplyTarget::Root | ReplyTarget::Reply { .. }))>
                             <span class="vk-discussion-target-chip" data-target=move || match controller.read().reply_target(&key.get_value()) {
                                 Some(ReplyTarget::Root) => "root",

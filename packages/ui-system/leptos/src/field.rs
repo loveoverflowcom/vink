@@ -922,12 +922,12 @@ pub fn FormSummary(
         (!items.is_empty()).then(|| {
             let title = title.clone();
             view! {
-                <div class="vk-ui-summary" role="alert">
-                    <p class="vk-ui-summary__title">
+                <div class="vk-ui-summary p-vk-4 [border-inline-start:4px_solid_var(--vk-error)] rounded-vk-md bg-vk-error-container text-vk-on-error-container [&_.vk-ui-link]:text-inherit" role="alert">
+                    <p class="vk-ui-summary__title flex items-center gap-vk-2 m-0 mb-vk-2 font-vk-ui font-vk-role-label">
                         <Icon name=IconName::Error size=IconSize::Small />
                         <span>{title}</span>
                     </p>
-                    <ul class="vk-ui-summary__items">
+                    <ul class="vk-ui-summary__items m-0 ps-vk-6">
                         {items
                             .into_iter()
                             .map(|(field, message)| {

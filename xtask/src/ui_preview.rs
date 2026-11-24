@@ -148,7 +148,12 @@ fn leptos_verify(report: &mut Report, root: &Path, env: &Env) -> bool {
         return false;
     }
     if !report.step("Leptos preview: build media hydration fixture", || {
-        build_media_hydration(root)
+        build_hydration_fixture(root, "media_hydration", "media-hydration.html")
+    }) {
+        return false;
+    }
+    if !report.step("Leptos preview: build notice hydration fixture", || {
+        build_hydration_fixture(root, "notice_hydration", "notice-hydration.html")
     }) {
         return false;
     }
@@ -192,7 +197,7 @@ fn leptos_verify(report: &mut Report, root: &Path, env: &Env) -> bool {
     )
 }
 
-fn build_media_hydration(root: &Path) -> Result<(), String> {
+fn build_hydration_fixture(root: &Path, example: &str, html_name: &str) -> Result<(), String> {
     let out = root.join(OUT_DIR);
     process::run(
         cargo(root)
@@ -202,11 +207,11 @@ fn build_media_hydration(root: &Path) -> Result<(), String> {
                 "-p",
                 "vink-ui-preview",
                 "--example",
-                "media_hydration",
+                example,
                 "--",
             ])
-            .arg(out.join("media-hydration.html")),
-        "render the preview media hydration fixture as HTML",
+            .arg(out.join(html_name)),
+        &format!("render preview hydration fixture {example} as HTML"),
     )?;
     process::run(
         cargo(root).args([
@@ -215,20 +220,22 @@ fn build_media_hydration(root: &Path) -> Result<(), String> {
             "-p",
             "vink-ui-preview",
             "--example",
-            "media_hydration",
+            example,
             "--target",
             "wasm32-unknown-unknown",
             "--features",
             "media-hydrate",
         ]),
-        "build the preview media hydration bundle",
+        &format!("build preview hydration bundle {example}"),
     )?;
     process::run(
         Command::new("wasm-bindgen")
             .args(["--target", "web", "--no-typescript", "--out-dir"])
             .arg(out.join("pkg"))
-            .arg(root.join("target/wasm32-unknown-unknown/debug/examples/media_hydration.wasm")),
-        "wasm-bindgen → preview media hydration fixture",
+            .arg(root.join(format!(
+                "target/wasm32-unknown-unknown/debug/examples/{example}.wasm"
+            ))),
+        &format!("wasm-bindgen → preview hydration fixture {example}"),
     )
 }
 

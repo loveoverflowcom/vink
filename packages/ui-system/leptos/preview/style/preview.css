@@ -14,22 +14,7 @@ body {
   box-sizing: border-box;
 }
 
-.vkp-page {
-  min-block-size: 100dvh;
-  padding: min(var(--vk-space-4), 4vw);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--vk-space-4);
-  align-content: start;
-}
-
-.vkp-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--vk-space-1) var(--vk-space-4);
-}
-
+/* .vkp-page and .vkp-header layout migrated to Tailwind utilities in preview/src/lib.rs. */
 .vkp-header p {
   margin: 0;
   min-inline-size: 0;
@@ -129,11 +114,6 @@ body {
   font-family: var(--vk-type-code-font);
   font-size: var(--vk-type-caption-size);
   font-weight: var(--vk-type-caption-weight);
-}
-
-.vkp-empty {
-  margin: 0;
-  color: var(--vk-on-surface-variant);
 }
 
 /* Fieldsets default to min-content width; let them shrink and wrap with enlarged text. */
@@ -259,11 +239,6 @@ body {
 .vkp-swatch code {
   font-family: var(--vk-type-code-font);
   font-size: var(--vk-type-caption-size);
-}
-
-.vkp-table {
-  max-inline-size: 100%;
-  overflow-x: auto;
 }
 
 .vkp-contrast,
@@ -472,16 +447,6 @@ body {
   }
 }
 
-.vkp-inspector {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  overflow-wrap: anywhere;
-  gap: var(--vk-space-3);
-  padding: min(var(--vk-space-4), 4vw);
-  border-radius: var(--vk-radius-lg);
-  background: var(--vk-surface-container);
-}
-
 .vkp-inspector :is(h2, h3) {
   margin: 0;
   font-size: var(--vk-type-label-size);
@@ -616,7 +581,6 @@ body {
 }
 
 .vkp-shell-main:focus { outline: none; }
-.vkp-shell-route { margin: 0 0 var(--vk-space-3); font-weight: var(--vk-type-section-weight); }
 .vkp-nav-brand { font-family: var(--vk-type-headline-font); font-size: var(--vk-type-title-size); font-weight: var(--vk-type-section-weight); }
 .vkp-topbar-sample { margin-block-end: var(--vk-space-4); border: 1px dashed var(--vk-outline-variant); border-radius: var(--vk-radius-md); }
 .vkp-topbar-sample .vk-ui-top-bar { display: flex; }

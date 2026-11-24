@@ -880,29 +880,7 @@
 
 .vk-ui-group > legend { margin-block-end: var(--vk-space-1); }
 
-.vk-ui-summary {
-  padding: var(--vk-space-4);
-  border-inline-start: 4px solid var(--vk-error);
-  border-radius: var(--vk-radius-md);
-  background-color: var(--vk-error-container);
-  color: var(--vk-on-error-container);
-}
-
-.vk-ui-summary__title {
-  display: flex;
-  align-items: center;
-  gap: var(--vk-space-2);
-  margin: 0 0 var(--vk-space-2);
-  font-family: var(--vk-type-label-font);
-  font-weight: var(--vk-type-label-weight);
-}
-
-.vk-ui-summary__items {
-  margin: 0;
-  padding-inline-start: var(--vk-space-6);
-}
-
-.vk-ui-summary .vk-ui-link { color: inherit; }
+/* FormSummary migrated to Tailwind utilities in field.rs. */
 
 /* Identity and media -------------------------------------------------------------------------- */
 

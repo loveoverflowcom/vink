@@ -928,6 +928,87 @@ async function mediaHydration(page) {
   console.log('  ok  ImageFrame: truncated source set after hydration falls back, then a valid source recovers');
 }
 
+async function noticeHydration(page) {
+  await page.viewport(1440);
+  await page.send('Page.navigate', { url: new URL('notice-hydration.html', args.base).href });
+  await page.waitFor(`document.readyState === 'complete' && document.getElementById('macro-notice-probe')`,
+    'notice hydration SSR HTML ready');
+  const ssr = await page.eval(`(() => {
+    const inline = document.querySelector('#static-notices .vk-ui-notice:not(.vk-ui-notice--banner)');
+    const banner = document.querySelector('#static-notices .vk-ui-notice--banner');
+    const probe = document.getElementById('macro-notice-probe');
+    window.ssrNotice = probe;
+    const cs = (el) => {
+      const s = getComputedStyle(el);
+      return { radius: s.borderRadius, padLeft: s.paddingLeft, colGap: s.columnGap };
+    };
+    return {
+      inline: cs(inline),
+      banner: cs(banner),
+      probe: cs(probe),
+      hasBanner: probe.classList.contains('vk-ui-notice--banner'),
+      hasTuple: probe.classList.contains('sm:gap-x-vk-6'),
+    };
+  })()`);
+  check(ssr.inline.radius === '12px' && ssr.inline.padLeft === '16px', `Notice SSR InlineNotice computed style: ${JSON.stringify(ssr.inline)}`);
+  check(ssr.banner.radius === '0px' && ssr.banner.padLeft === '24px', `Notice SSR Banner computed style: ${JSON.stringify(ssr.banner)}`);
+  check(ssr.probe.radius === '12px' && ssr.probe.padLeft === '16px' && ssr.probe.colGap === '12px' && !ssr.hasBanner && !ssr.hasTuple,
+    `Notice SSR macro view! initial state: ${JSON.stringify(ssr)}`);
+
+  await page.eval(`(async () => {
+    const { default: init, hydrate } = await import('/pkg/notice_hydration.js');
+    await init();
+    hydrate();
+  })()`);
+  await page.settle();
+  await page.click('#toggle-banner');
+  await page.settle();
+  const afterTrueWide = await page.eval(`(() => {
+    const probe = document.getElementById('macro-notice-probe');
+    const s = getComputedStyle(probe);
+    return {
+      sameNode: window.ssrNotice === probe && probe.isConnected,
+      hasBanner: probe.classList.contains('vk-ui-notice--banner'),
+      hasTuple: probe.classList.contains('sm:gap-x-vk-6'),
+      radius: s.borderRadius,
+      padLeft: s.paddingLeft,
+      colGap: s.columnGap,
+    };
+  })()`);
+  check(afterTrueWide.sameNode && afterTrueWide.hasBanner && afterTrueWide.hasTuple
+    && afterTrueWide.radius === '0px' && afterTrueWide.padLeft === '24px' && afterTrueWide.colGap === '24px',
+    `Notice hydrated banner=true at 1440px (>=40rem): ${JSON.stringify(afterTrueWide)}`);
+
+  await page.viewport(390);
+  await page.settle();
+  const afterTrueNarrow = await page.eval(`(() => {
+    const s = getComputedStyle(document.getElementById('macro-notice-probe'));
+    return { radius: s.borderRadius, padLeft: s.paddingLeft, colGap: s.columnGap };
+  })()`);
+  check(afterTrueNarrow.radius === '0px' && afterTrueNarrow.padLeft === '24px' && afterTrueNarrow.colGap === '12px',
+    `Notice hydrated banner=true at 390px (<40rem): ${JSON.stringify(afterTrueNarrow)}`);
+
+  await page.viewport(1440);
+  await page.click('#toggle-banner');
+  await page.settle();
+  const afterFalse = await page.eval(`(() => {
+    const probe = document.getElementById('macro-notice-probe');
+    const s = getComputedStyle(probe);
+    return {
+      sameNode: window.ssrNotice === probe && probe.isConnected,
+      hasBanner: probe.classList.contains('vk-ui-notice--banner'),
+      hasTuple: probe.classList.contains('sm:gap-x-vk-6'),
+      radius: s.borderRadius,
+      padLeft: s.paddingLeft,
+      colGap: s.columnGap,
+    };
+  })()`);
+  check(afterFalse.sameNode && !afterFalse.hasBanner && !afterFalse.hasTuple
+    && afterFalse.radius === '12px' && afterFalse.padLeft === '16px' && afterFalse.colGap === '12px',
+    `Notice hydrated banner=false restored: ${JSON.stringify(afterFalse)}`);
+  console.log('  ok  Notice macro hydration: SSR, class: and tuple sm:gap-x-vk-6 verified across viewports');
+}
+
 // UIS-03: states, feedback and motion. Programmatic input over CDP; the playground's manual clock
 // makes every timing deterministic. Animation checks read the Web Animations API, not pixels.
 
@@ -1937,7 +2018,10 @@ try {
   await cdp.open();
   page = await openPage(cdp);
   const version = await cdp.send('Browser.getVersion');
-  if (args['overlays-only'] !== '1' && args['actions-only'] !== '1' && args['selects-only'] !== '1') await mediaHydration(page);
+  if (args['overlays-only'] !== '1' && args['actions-only'] !== '1' && args['selects-only'] !== '1') {
+    await mediaHydration(page);
+    await noticeHydration(page);
+  }
   await page.send('Page.navigate', { url: args.base });
   // The debug WASM can be large after the separate hydration fixture. Give bootstrap its own
   // bounded wait; interaction assertions retain the shorter default timeout.
