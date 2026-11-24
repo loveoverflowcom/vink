@@ -262,16 +262,24 @@ Các điểm bám dashboard: `draft-loading`, `draft-content` (`aria-busy`), `dr
 
 Các action đã migrate có ID trên button (`#create-draft`, `#save`, `#preview`,
 `#retry-save`, `#keep-mine`, `#leave-stay`, `#leave-save`, `#leave-discard`,
-`#discard-back`, `#discard-confirm`, `#preview-close`, `#profile-close`, `#open-me`);
+`#discard-back`, `#discard-confirm`, `#preview-close`);
 field có ID `#draft-search`/`#draft-sort`/`#draft-title`. Trạng thái vẫn dùng `data-testid`:
 `save-status`, `editor-toolbar`, `save-failed`, `conflict`, `desk-error`, `editor-failed`;
 `data-testid=editor-body` là host CodeMirror (`data-state=loading|ready|failed`, chữ ở
 `.cm-content`, từng dòng `.cm-line`); `input[name=title]` là trường tiêu đề. Dialog có
 `data-testid=leave-editor|draft-preview`, ngữ cảnh dùng `.vk-ui-dialog__context` (`#leave-editor-context` / `#draft-preview-context`);
 button bên trong dùng các ID đã liệt kê. Bàn viết tự đọc lại khi tab hiện và dữ liệu quá hạn. Từ phần thứ hai, `#first-draft-page` đưa về đầu danh sách. Panel lỗi và panel tạo chưa xác nhận lần lượt dùng `#retry-drafts` và `#reconcile-drafts`.
-Shell có ID `navigation-toggle`, `navigation-primary`, `navigation-tooltip`, `profile-trigger`,
-`bottom-navigation` và `data-testid=profile-menu`; nút tiện ích dùng `#profile-close`, `#open-me`.
-radio theme có `name=overlay-theme|page-theme` và `value=light|dark|system`. `save-status` có `data-status` là `saved`, `unsaved`, `saving`, `failed`, `conflict`.
+Shell dùng `#navigation-toggle`, `#navigation-primary`, `#navigation-account`,
+`#navigation-tooltip`, `#bottom-navigation` và hộp thoại điều hướng `#navigation-modal`.
+Giao diện trên `/toi` dùng `#page-appearance` và các nhóm radio `#page-theme`,
+`#page-text`, `#page-rail`. Radio màu có `name=page-theme` và các giá trị
+`light`, `dark`, `system`. Xem [source shell](../../apps/vink-web/src/shell.rs) và
+[form Tôi](../../apps/vink-web/src/pages/me.rs).
+
+Các hook `#profile-trigger`, `[data-testid="profile-menu"]`, `#profile-close`, `#open-me`
+và `name=overlay-theme` thuộc panel Giao diện trước #413. Xem
+[spec và bằng chứng lịch sử](../design/me-preferences-r1-209.md#lịch-sử-panel-và-trang-tôi-trước-413).
+`save-status` có `data-status` là `saved`, `unsaved`, `saving`, `failed`, `conflict`.
 Đây là điểm tìm phần tử, không thay thế việc kiểm nội dung, version và dữ liệu bền vững.
 
 Editor [#193](../design/editor-writing-reflow-193.md) thêm `#draft-title-details`
