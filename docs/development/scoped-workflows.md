@@ -126,9 +126,11 @@ Tool wrapper, phiên bản bindgen mới, loader injection và WASM có thể th
 Fonts, brand và empty artwork so trực tiếp tập tên tệp và SHA-256 với nguồn. Brand và artwork
 vẫn chạy kiểm provenance mỗi lần. `HIT` tái dùng tệp nội bộ trong cùng checkout, `MISS` tạo
 lại bước tương ứng. Package mới được dựng trong staging rồi chuyển vào đường publish khi đủ tệp
-và qua Web artifact guard. Build lỗi trước khi chuyển giữ package đã hoàn thành trước đó. SPA
-chỉ khôi phục entry sau khi publish thành công. Receipt được rename sau khi cài package. Verify
-vẫn chạy kiểm bí mật, fixture và assertion của scenario đã chọn.
+và qua Web artifact guard. Xtask kiểm tín hiệu hủy trước khi bắt đầu chuyển package. Nếu cập
+nhật receipt lỗi sau khi chuyển, xtask thu hồi package mới và khôi phục bản trước nếu có. Khi
+package và receipt đã được cài, lỗi dọn bản sao cũ sẽ được báo để lượt sau dọn tiếp. SPA chỉ
+khôi phục entry sau khi publish package thành công. Verify vẫn chạy kiểm bí mật, fixture và
+assertion của scenario đã chọn.
 
 Tailwind vẫn biên dịch từ CSS, token và allowlist Rust sau khi kiểm token. Editor vẫn typecheck,
 chạy corpus Markdown và bundle với npm lock. Hai bước giữ npm install stamp hiện hữu.

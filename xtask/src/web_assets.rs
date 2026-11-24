@@ -206,12 +206,10 @@ impl Package {
         Ok(())
     }
 
-    /// Expose only a complete package. The old directory is kept private during the switch so a
-    /// rename error can restore it. Only the artifact-locked caller consumes a successful build.
+    /// Switch a complete package and its optional receipt under the checkout artifact lock.
     pub fn publish(self) -> Result<(), String> {
         let stage = self.stage();
         crate::web_boundary::artifacts(&stage)?;
-        lifecycle::check_cancelled()?;
         let parent = self.active.parent().ok_or("Web package has no parent")?;
         create_dir_all(parent)?;
         let previous = self.state.join("previous");
@@ -221,6 +219,11 @@ impl Package {
             .map_err(|e| path_error(&self.active, e))?;
         if had_active {
             require_dir(&self.active)?;
+        }
+        // Cancellation is observed before changing the active package. Once the switch starts,
+        // finish it or roll it back before returning to the caller.
+        lifecycle::check_cancelled()?;
+        if had_active {
             rename(&self.active, &previous)?;
         }
         if let Err(error) = rename(&stage, &self.active) {
@@ -230,15 +233,30 @@ impl Package {
             }
             return Err(error);
         }
+
         let staged_receipt = self.pending.join("bindgen.json");
         let active_receipt = self.state.join("bindgen.json");
-        if staged_receipt.is_file() {
-            rename(&staged_receipt, &active_receipt)?;
+        let receipt_result = if staged_receipt.is_file() {
+            rename(&staged_receipt, &active_receipt)
         } else {
-            remove_file(&active_receipt)?;
+            remove_file(&active_receipt)
+        };
+        if let Err(error) = receipt_result {
+            // A failed rename/unlink leaves the old receipt in place. Restore its package too.
+            rename(&self.active, &stage)
+                .map_err(|rollback| format!("{error}; withdraw failed package: {rollback}"))?;
+            if had_active {
+                rename(&previous, &self.active)
+                    .map_err(|rollback| format!("{error}; restore previous package: {rollback}"))?;
+            }
+            return Err(error);
         }
-        remove_dir(&previous)?;
-        lifecycle::check_cancelled()
+
+        // Publication is complete. Leave a backup that failed to clean up for the next run.
+        if let Err(error) = remove_dir(&previous) {
+            eprintln!("xtask: Web package published; deferred backup cleanup: {error}");
+        }
+        Ok(())
     }
 }
 
@@ -601,6 +619,42 @@ mod tests {
                 .contains("forbidden product artifact")
         );
         assert!(!fixture.0.join(SSR).join("fixtures").exists());
+    }
+
+    #[test]
+    fn receipt_errors_roll_back_an_existing_or_first_package() {
+        for had_active in [true, false] {
+            for cacheable in [true, false] {
+                let fixture = Fixture::new();
+                if had_active {
+                    let old = fixture.package(SSR);
+                    old.bindgen_step(Some("old"), bindgen_fixture).unwrap();
+                    old.publish().unwrap();
+                }
+                let next = fixture.package(SSR);
+                let previous_outputs = inventory(&next.active, |_| true).ok();
+                let receipt = next.state.join("bindgen.json");
+                remove_file(&receipt).unwrap();
+                // A directory at the receipt path refuses both rename and unlink.
+                fs::create_dir(&receipt).unwrap();
+                let input = cacheable.then_some("new");
+                next.bindgen_step(input, |stage| {
+                    bindgen_fixture(stage)?;
+                    fs::write(stage.join("vink.js"), "new package").unwrap();
+                    Ok(cacheable)
+                })
+                .unwrap();
+                let active = next.active.clone();
+                let backup = next.state.join("previous");
+
+                let error = next.publish().unwrap_err();
+                assert!(error.contains("bindgen.json"), "{error}");
+                assert_eq!(active.exists(), had_active);
+                assert_eq!(inventory(&active, |_| true).ok(), previous_outputs);
+                assert!(receipt.is_dir());
+                assert!(!backup.exists());
+            }
+        }
     }
 
     #[test]
