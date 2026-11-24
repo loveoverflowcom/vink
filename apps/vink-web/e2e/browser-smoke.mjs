@@ -4863,9 +4863,18 @@ async function editorChrome(page) {
 
 async function readerRoutingAndPrivacy(page) {
   await serverHtml();
-  await readerBeforeHydration(page, { args, check });
-  await conditionalPublicReads(page);
-  await tracePublicReadLifecycle(page);
+  // Each contract establishes its own navigation, cache and assertions. Dispose its
+  // documents before the next contract, including any WASM instances kept in history.
+  for (const verify of [readerBeforeHydration, conditionalPublicReads, tracePublicReadLifecycle]) {
+    const { browserContextId } = await page.cdp.send('Target.createBrowserContext');
+    const reader = await openPage(page.cdp, browserContextId);
+    activePage = reader; // Keep the failing document available to the common capture and teardown.
+    await verify(reader, { args, check });
+    check(reader.errors.length === 0, `${verify.name} has no unexpected browser errors: ${reader.errors.join(' | ')}`);
+    await page.cdp.send('Target.disposeBrowserContext', { browserContextId });
+    activePage = page;
+  }
+  await page.send('Page.bringToFront');
   const formerPilot = '/thu-nghiem/bieu-cam';
   const response = await fetch(args.base + formerPilot);
   const missing = await response.text();
