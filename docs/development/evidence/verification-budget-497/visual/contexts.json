@@ -190,5 +190,37 @@
       "byteSize": 45325,
       "sha256": "25d91a62a6b070ef0ebfd2179f83d9bb695a3b47b5680b38474381c5e6a3812d"
     }
+  },
+  {
+    "file": "desk-draft-focus-390-200.png",
+    "run": "1795547341368793575-76/desk",
+    "capture": "desk-title-expanded-390-200-light",
+    "source": {
+      "sourceSHA": "982e780596fc92f621834f3e26acbe23f1162bab",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "8519eec20334183ab5b3c48a4f131768b13ef607e172d8f8c70b5cc2148c5308"
+    },
+    "route": "/ban-viet",
+    "scenarioId": "desk-title-expanded-390-200-light",
+    "executionPhase": "desk",
+    "captureStatus": "CAPTURED",
+    "viewport": {
+      "width": 390,
+      "height": 900,
+      "layoutWidth": 375,
+      "clientWidth": 375,
+      "clientHeight": 900,
+      "dpr": 1
+    },
+    "effectiveTheme": "light",
+    "textScale": 200,
+    "textScaleLane": "dom-override-geometry-only",
+    "png": {
+      "width": 390,
+      "height": 900,
+      "byteSize": 79897,
+      "sha256": "df9914ed4cfbcc82445bfdbfe440a7fec5562bd2242e94221177fc7dd1bad958"
+    }
   }
 ]

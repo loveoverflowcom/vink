@@ -335,3 +335,45 @@ browser-smoke: FAIL keyboard reveals the entire title of the focused draft at 20
   (later steps NOT_RUN)
 wall=20.031s largest_child_maxrss=1146268 KiB cgroup_session_peak=4656046080 oom_kill_start=0 end=0 exit=1
 package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+## Desk focus regression, 4864 MiB per session
+Commands use fresh browser profiles with scratch PostgreSQL. Wall includes build.
+
+before-desk-checks
+$ target/debug/xtask verify web --scenario desk --capture checks
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: FAIL closing search preserves a newly focused draft link across the recovery frame
+wall=18.030s largest_child_maxrss=1146348 KiB cgroup_session_peak=4697227264 oom_kill_start=0 end=0 exit=1
+package manifest sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+after-desk-checks
+$ target/debug/xtask verify web --scenario desk --capture checks
+==> wasm-bindgen: MISS (input changed)
+  ok  closing search preserves a newly focused draft link across the recovery frame
+  ok  keyboard reveals the entire title of the focused draft at 200% ({"href":"/ban-viet/88888888-8888-4888-8888-000000000000","focused":true,"overflow":"visible","clamp":"none"})
+  ok  keyboard reveals the entire title of the focused draft at 200% ({"href":"/ban-viet/88888888-8888-4888-8888-000000000000","focused":true,"overflow":"visible","clamp":"none"})
+  ok  keyboard reveals the entire title of the focused draft at 200% ({"href":"/ban-viet/88888888-8888-4888-8888-000000000000","focused":true,"overflow":"visible","clamp":"none"})
+  ok  keyboard reveals the entire title of the focused draft at 200% ({"href":"/ban-viet/88888888-8888-4888-8888-000000000000","focused":true,"overflow":"visible","clamp":"none"})
+  ok  forbidden clears the private heading and controls and keeps a distinct access state
+browser-smoke: PASS (desk)
+browser-smoke: PASS (desk-guest)
+  PASS  scenario desk (desk)
+  PASS  guest Desk with sign-in disabled
+wall=254.322s largest_child_maxrss=4112916 KiB cgroup_session_peak=5100576768 oom_kill_start=0 end=0 exit=0
+package manifest sha256 a50647d91d616e98f213385545fa64ad14d9ac7d98b396591fee9b242df0a0c7
+
+full-desk-full
+$ target/debug/xtask verify web --scenario desk --capture full
+==> wasm-bindgen: HIT (inputs and output digests match)
+  ok  closing search preserves a newly focused draft link across the recovery frame
+  ok  keyboard reveals the entire title of the focused draft at 200% ({"href":"/ban-viet/88888888-8888-4888-8888-000000000000","focused":true,"overflow":"visible","clamp":"none"})
+  ok  keyboard reveals the entire title of the focused draft at 200% ({"href":"/ban-viet/88888888-8888-4888-8888-000000000000","focused":true,"overflow":"visible","clamp":"none"})
+  ok  keyboard reveals the entire title of the focused draft at 200% ({"href":"/ban-viet/88888888-8888-4888-8888-000000000000","focused":true,"overflow":"visible","clamp":"none"})
+  ok  keyboard reveals the entire title of the focused draft at 200% ({"href":"/ban-viet/88888888-8888-4888-8888-000000000000","focused":true,"overflow":"visible","clamp":"none"})
+  ok  forbidden clears the private heading and controls and keeps a distinct access state
+browser-smoke: PASS (desk)
+browser-smoke: PASS (desk-guest)
+  PASS  scenario desk (desk)
+  PASS  guest Desk with sign-in disabled
+wall=164.243s largest_child_maxrss=1146600 KiB cgroup_session_peak=5100568576 oom_kill_start=0 end=0 exit=0
+package manifest sha256 a50647d91d616e98f213385545fa64ad14d9ac7d98b396591fee9b242df0a0c7

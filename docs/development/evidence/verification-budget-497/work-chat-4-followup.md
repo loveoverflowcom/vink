@@ -1,5 +1,25 @@
 # Đối chứng tích hợp Draft #512
 
+## Cập nhật focus Desk
+
+Trên base `4d97d6a4`, A `a8578e7b` có product của Draft `3bd55127` và regression mới. Khi đóng dock, regression chọn một link bản thảo trước khi callback phục hồi chạy. Chrome xác nhận link ban đầu đã nhận focus; A FAIL vì callback lấy mất focus sau paint. B `982e780596fc92f621834f3e26acbe23f1162bab` chỉ sửa hành vi phục hồi của Desk và thêm kiểm fallback khi quyền đọc bị thu hồi. [Hợp đồng focus Bàn viết](../../../design/redesign-r4/desk-moderation.md).
+
+Trong callback, Desk kiểm lại route, phần tử đang giữ focus và các control hiện có sau khi render. Control đang dùng được giữ focus. Khi control bị gỡ hoặc ẩn, Desk chuyển về ô tìm kiếm, launcher hoặc tiêu đề theo trạng thái hiện hành. Khi nhận 401/403 và focus đang trong Desk, cùng cơ chế xử lý việc vùng riêng bị gỡ. Phép kiểm Escape, Back, Tab/Shift+Tab, WorkId, focus ring và title không bị clamp ở 390 px/200% vẫn chạy.
+
+| Lượt Chrome, App và PG scratch | Wall (s) | Max RSS child (KiB) | Peak cgroup (byte) | oom_kill |
+| --- | ---: | ---: | ---: | --- |
+| A · Desk checks · FAIL tại regression mới | 18.030 | 1146348 | 4697227264 | 0→0 |
+| B · Desk checks · PASS | 254.322 | 4112916 | 5100576768 | 0→0 |
+| B · Desk full · PASS | 164.243 | 1146600 | 5100568576 | 0→0 |
+
+Hai lượt B chạy toàn bộ Desk gồm Desk khách, bốn tổ hợp title 320/390 px ở 200%, hai theme, cùng fallback heading và focus khi search riêng bị thu hồi. Với danh sách rỗng, control đã ẩn rời AX tree, Tab từ heading vẫn vào Select. B build lại WASM và App sau thay đổi Rust. Digest danh sách package A là `4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5`, hai lượt B trùng `a50647d91d616e98f213385545fa64ad14d9ac7d98b396591fee9b242df0a0c7`. Cùng VM 6 GiB, một cgroup 4.864 MiB/1 CPU mỗi lượt, swap 0, Cargo jobs 1. Thời gian ở đây gồm những bước build khác nhau.
+
+Ở ảnh 390 × 900, light/200%, viền focus màu tím bao quanh đúng link bản thảo. Tiêu đề xuống nhiều dòng và còn tiếp dưới mép màn hình. Các assertion Chrome kiểm đúng WorkId, style và clamp ở cả bốn tổ hợp. [Ảnh focus Desk](visual/desk-draft-focus-390-200.png) · [Manifest ảnh](visual/contexts.json).
+
+**Trạng thái.** Blocker focus của Desk trên #512 đã có đối chứng FAIL/PASS. Planner, guard và hướng dẫn có evidence riêng ở các mục dưới. Epic #496 còn thiếu full Web union và phần runtime của Reader, Editor Format, Appearance theo từng biên đã ghi. App release native đã compile/link; WASM release/perf-probe trước đây FAIL do OOM, publish/browser release và 10 cold/10 warm NOT_RUN. Phần release cần chạy profile nguyên bản trên môi trường đủ RAM dưới ngân sách đã cấp. Các kết quả bên dưới mô tả lượt trước bản sửa focus.
+
+## Đối chứng trước bản sửa focus
+
 Fetch lại `origin/develop` cho `4d97d6a4d57eab22880f9a5c2eaba7897262c5e9`. Hai predicate gây lỗi có mặt nguyên văn trên develop và A. Product source của Editor/Desk, App và Leptos patterns giống nhau từ develop đến B. A là `3d69c648bb9521d2e98363983c061eadacdad68f`; B là `8bfacb47f42148a1338be8b5716203bf21b947c3`.
 
 | Cùng lệnh trên A và B | A | B | Dữ kiện |
@@ -54,7 +74,7 @@ Các lượt dưới chạy `cargo xtask verify web --scenario NAME --capture MO
 | `dec9dc90` | desk | checks | FAIL | 20.038 | 1,146,300 |
 | `ab1ecd5a` | desk | checks | FAIL | 20.031 | 1,146,268 |
 
-**Desk, capture checks.** Lỗi counter/review ban đầu đã được giải quyết ở B. Kiểm sâu hơn phát hiện một lỗi khác ở tiêu đề dài, 390 px/200%. Trace của Chrome ghi thứ tự: focus vào action cùng WorkId → callback WASM `pages::focus_recovery` đưa focus về `open-draft-search` → Shift+Tab bắt đầu từ launcher và kết thúc ở skip link `#noi-dung`. Các control liền kề trong DOM đúng là sort, link bản thảo, nút review và link kế tiếp. Các thử nghiệm focus có commit chẩn đoán riêng; code trên PR giữ nguyên yêu cầu keyboard focus, đúng WorkId, title không bị clamp, bổ sung precondition mở dock thực và chờ Back trả focus sau paint. Mode checks trên ab1ecd5a FAIL: keyboard reveals the entire title of the focused draft at 200% ({"href":"#noi-dung","focused":false,"overflow":"hidden","clamp":"2"}). Mode full trên ab1ecd5a NOT_RUN; đã có lượt full PASS trên 8bfacb47. Hai precondition mới về mở/đóng dock và focus sau paint đều đạt. Phạm vi sửa tiếp nằm ở policy focus trên Desk: giữ trả focus mặc định nếu người dùng còn ở control đóng hoặc body; nếu control khác đã nhận focus, đề xuất giữ đích mới và kiểm lại cả Escape/Back, error recovery, Tab/Shift+Tab. Caller và stack được giữ trong evidence ngoài target. Lệnh tái hiện: `cargo xtask verify web --scenario desk --capture checks`.
+**Desk, capture checks.** Lỗi counter/review ban đầu đã được giải quyết ở B. Kiểm sâu hơn phát hiện một lỗi khác ở tiêu đề dài, 390 px/200%. Trace của Chrome ghi thứ tự: focus vào action cùng WorkId → callback WASM `pages::focus_recovery` đưa focus về `open-draft-search` → Shift+Tab bắt đầu từ launcher và kết thúc ở skip link `#noi-dung`. Các control liền kề trong DOM đúng là sort, link bản thảo, nút review và link kế tiếp. Các thử nghiệm focus có commit chẩn đoán riêng; code trên PR giữ nguyên yêu cầu keyboard focus, đúng WorkId, title không bị clamp, bổ sung precondition mở dock thực và chờ Back trả focus sau paint. Mode checks trên ab1ecd5a FAIL: keyboard reveals the entire title of the focused draft at 200% ({"href":"#noi-dung","focused":false,"overflow":"hidden","clamp":"2"}). Mode full trên ab1ecd5a NOT_RUN; đã có lượt full PASS trên 8bfacb47. Hai precondition mới về mở/đóng dock và focus sau paint đều đạt. Trace ở lượt này xác định contract cho bản sửa focus đã kiểm ở đầu báo cáo: giữ trả focus mặc định nếu người dùng còn ở control đóng hoặc body; nếu control khác đã nhận focus, đề xuất giữ đích mới và kiểm lại cả Escape/Back, error recovery, Tab/Shift+Tab. Caller và stack được giữ trong evidence ngoài target. Lệnh tái hiện trên bản cũ là `cargo xtask verify web --scenario desk --capture checks`.
 
 **Editor Format.** Ở 1023 px fixture cũ dùng viewport 1024 px và đòi `position:sticky`. #475 quy định column theo bề rộng nội dung 50rem. Cả CSS và `observe_outline_layout` trên develop đã theo container. Bản sửa đo theo vùng Editor sau padding, đòi sidebar ở cạnh trang viết, kiểm dialog/role, focus, overflow, text scale và cả hai cực compact/docked. Sau khi sửa nốt cùng giả định ở preference đã lưu trên trang Tôi, lượt B qua 36 cảnh, preference thật, kiểm conversion, Markdown/title tới snapshot 422. Khi mở bản thảo Markdown dài trong `outlineOffsets`, cgroup OOM. Các assertion sau chưa chạy đủ. Tiếp tục trên môi trường đủ RAM bằng `cargo xtask verify web --scenario editor-format --capture full`.
 
@@ -84,7 +104,7 @@ cargo xtask verify web --scenario perf-baseline --release --capture full
 | #496 | PARTIAL. Đã có planner/guard, selector thực, kết quả Store, SSR, restart, CSR, Editor và Desk. Thiếu full Web và release/perf; số đo workspace và cross-worktree vẫn giới hạn như baseline. |
 | #497 | Inventory, RSS, peak, cấu hình và cold/warm tách theo workload. Chưa có profile release browser hoặc số liệu đại diện mọi bước của workspace. |
 | #498 | Giữ bằng chứng selector static/check/Store, 5 unit, PG scratch và SSR. Full quick và full postgres không được chạy lại ở scope này. |
-| #499 | Hai lỗi ban đầu Editor/Desk đã giải quyết qua A/B trên app thật. Các kết quả scoped và ảnh ở trên. Union sạch end-to-end còn thiếu; direct monolithic main chưa nghiệm thu runtime. |
+| #499 | Hai oracle ban đầu Editor/Desk và lỗi focus thật ở Desk đã có đối chứng A/B. Bản sửa focus qua cả Desk checks và full, gồm phiên khách và fallback khi mất quyền. Union sạch end-to-end còn thiếu; direct monolithic main chưa nghiệm thu runtime. |
 | #500 | Bindgen dev có receipt, digest và bằng chứng chạy sản phẩm fresh/reused. App native release build đạt. WASM release build FAIL tài nguyên, publish/runtime NOT_RUN. CSS/Editor tiếp tục chạy tokens, typecheck và corpus; chưa đủ closure để cache output. |
 | #501 | Có fixture owner, range/worktree, negative control, mapping Desk và guard từ chối các biến chuyển hướng Git. CLI black-box chạy trên binary được build lại sau khi kiểm SHA input nguồn. |
 | #502 | Admission, swap 0, target riêng và huỷ đúng nhóm child được kiểm. Mức máy hiện có vẫn chặn hai workload lớn. Tình trạng compiler cache/cross-toolchain theo baseline. |
