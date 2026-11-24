@@ -199,8 +199,14 @@ impl Selection {
             "apps/vink-web/e2e/discovery-return-position.mjs" => {
                 Some("verify web --scenario return-position --release")
             }
-            "apps/vink-web/e2e/draft-pagination-smoke.mjs"
-            | "apps/vink-web/e2e/desk-empty-smoke.mjs" => Some("verify web --scenario desk"),
+            "apps/vink-web/e2e/draft-pagination-smoke.mjs" => Some("verify web --scenario desk"),
+            "apps/vink-web/e2e/desk-empty-smoke.mjs" => {
+                self.add(
+                    "verify web --scenario password",
+                    "dependency: passwordAuth uses the signed-out Desk fixture before sign-in",
+                );
+                Some("verify web --scenario desk")
+            }
             "apps/vink-web/e2e/editor-paper-first-smoke.mjs"
             | "apps/vink-web/e2e/editor-writing-smoke.mjs" => {
                 Some("verify web --scenario editor-chrome")

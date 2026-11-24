@@ -6,6 +6,13 @@ fn rules_keep_required_owner_and_transitive_commands() {
     let cases: &[(&str, &[&str])] = &[
         ("AGENTS.md", &["verify static docs"]),
         (
+            "apps/vink-web/e2e/desk-empty-smoke.mjs",
+            &[
+                "verify web --scenario desk",
+                "verify web --scenario password",
+            ],
+        ),
+        (
             "apps/vink-web/e2e/web-perf-baseline.mjs",
             &[
                 "verify static perf",
