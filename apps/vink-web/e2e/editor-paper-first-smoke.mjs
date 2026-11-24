@@ -80,10 +80,26 @@ export async function editorPaperFirst(page, { args, check, editorTarget, fitsEd
             `${stem}: quiet editor keeps chromeless tools, tonal icon Back aligned with paper, separate paper, one H1/readout, visible native trigger and removes banner/help/export ${JSON.stringify(geometry)}`);
           check(await page.eval(same) && await page.eval(`${view}.state.doc.toString()`)===raw && JSON.stringify(await page.eval(`${view}.state.selection.toJSON()`))===JSON.stringify(selection), `${stem}: root-scale override and resize retain raw NFD, stanzas, selection and EditorView`);
           await page.capture(stem,{scenario:'Editor Paper First',textScaleLane:'dom-override-geometry-only',fixture:{title,raw},geometry});
-          await page.eval(`document.querySelector('.vk-editor-heading__back').focus()`);
+          // Start at the skip-link destination, then let Chrome perform native tab navigation.
+          await page.eval("document.querySelector('#noi-dung').focus({ preventScroll: true })");
+          await page.key('Tab');
           const backTarget=await editorTarget(page,'.vk-editor-heading__back');
-          check(fitsEditorAction(backTarget) && backTarget.focused && backTarget.focusRing && backTarget.rect.width>=48 && backTarget.rect.height>=48, `${stem}: tonal Back pill fits with visible focus ring`);
-          await page.eval(`document.querySelector('${summary}').focus()`); await page.key('Enter');
+          const backOutline=await page.eval(`(() => {
+            const { outlineStyle, outlineWidth } = getComputedStyle(document.querySelector('.vk-editor-heading__back'));
+            return { outlineStyle, outlineWidth };
+          })()`);
+          check(fitsEditorAction(backTarget) && backTarget.focused && backTarget.focusRing &&
+            backTarget.rect.width>=48 && backTarget.rect.height>=48 &&
+            backOutline.outlineStyle==='solid' && backOutline.outlineWidth==='2px',
+            `${stem}: Tab reaches the tonal Back pill with a visible 2 px outline ${JSON.stringify({backTarget, backOutline})}`);
+
+          const summaryFocused = `document.activeElement?.matches(${JSON.stringify(summary)})`;
+          for (let step = 0; step < 8 && !await page.eval(summaryFocused); step++) await page.key('Tab');
+          const closedToolsTarget=await editorTarget(page,summary);
+          check(fitsEditorAction(closedToolsTarget) && closedToolsTarget.focused && closedToolsTarget.focusRing &&
+            closedToolsTarget.rect.width>=48 && closedToolsTarget.rect.height>=48,
+            `${stem}: Tab reaches the closed tools trigger with visible focus ${JSON.stringify(closedToolsTarget)}`);
+          await page.key('Enter');
           await page.waitFor(`document.querySelector('#editor-save-details').open`, 'native tools open');
           const toolsTarget=await editorTarget(page,summary);
           check(fitsEditorAction(toolsTarget) && toolsTarget.focused && toolsTarget.focusRing && toolsTarget.rect.width>=48 && toolsTarget.rect.height>=48 && !await page.eval(`Boolean(document.querySelector('#editor-save-details button'))`), `${stem}: opened tools keep server details without download action`);
