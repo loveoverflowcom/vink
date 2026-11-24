@@ -116,6 +116,14 @@ asset `/_v/<sha>/pkg/` nén được để zone Cloudflare nén Brotli/gzip, gi�
 ảnh và READ-01. Tiền nén lúc build (B) chuyển sang #491. Proposal đang `PENDING`. Số đo và giới hạn
 nằm ở [evidence](../docs/development/evidence/web-compress-487/README.md).
 
+## Frontend Web trên Cloudflare
+
+[VDR-EDGE-FRONTEND@r1](proposals/VDR-EDGE-FRONTEND.r1.toml) ghi hướng đi của Epic
+[#504](https://github.com/loveoverflowcom/vink/issues/504): Cloudflare sở hữu toàn bộ frontend
+(HTML, SSR, hydration, asset), VPS chỉ chạy backend/API. `CHOICE-01` (chiến lược render) và
+`CHOICE-02` (hình dạng phát hành) còn `OPEN` tới khi spike có số đo. Proposal đang `PENDING`.
+[ADR](../docs/architecture/edge-frontend.md) · [route và bằng chứng](../docs/development/edge-frontend.md).
+
 ## Tra cứu theo phạm vi công việc
 
 [Đối soát PR 15–16/11/2026](../docs/development/verification-reconciliation-20261116.md#quyết-định-toml-mới)
