@@ -3267,6 +3267,7 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   const priorTheme = await page.eval("document.documentElement.getAttribute('data-theme')");
   try {
     await page.eval("document.documentElement.dataset.theme = 'dark'");
+    await page.waitFor(APPEARANCE_SETTLED, 'dirty editor dark colours settled');
     await editorLayoutReady(page);
     await page.capture('390-editor-dirty-dark', {
       requestedScene: { width: 390, height: 900, scale: 100, theme: 'dark' },

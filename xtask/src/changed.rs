@@ -181,7 +181,24 @@ impl Selection {
             );
             return "Web stylesheet feeds SSR and standalone; review affected visual routes";
         }
+        if path == "apps/vink-web/e2e/web-perf-baseline.test.mjs" {
+            self.add(
+                "verify static perf",
+                "selected: Node performance analyzer and negative controls",
+            );
+            return "performance analyzer test; browser measurements use a separate fixture";
+        }
         let browser = match path {
+            "apps/vink-web/e2e/web-perf-baseline.mjs" => {
+                self.add(
+                    "verify static perf",
+                    "dependency: Node analyzer imports the browser performance module",
+                );
+                Some("verify web --scenario perf-baseline --release")
+            }
+            "apps/vink-web/e2e/discovery-return-position.mjs" => {
+                Some("verify web --scenario return-position --release")
+            }
             "apps/vink-web/e2e/draft-pagination-smoke.mjs"
             | "apps/vink-web/e2e/desk-empty-smoke.mjs" => Some("verify web --scenario desk"),
             "apps/vink-web/e2e/editor-paper-first-smoke.mjs"

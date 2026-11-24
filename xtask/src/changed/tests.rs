@@ -6,6 +6,17 @@ fn rules_keep_required_owner_and_transitive_commands() {
     let cases: &[(&str, &[&str])] = &[
         ("AGENTS.md", &["verify static docs"]),
         (
+            "apps/vink-web/e2e/web-perf-baseline.mjs",
+            &[
+                "verify static perf",
+                "verify web --scenario perf-baseline --release",
+            ],
+        ),
+        (
+            "apps/vink-web/e2e/discovery-return-position.mjs",
+            &["verify web --scenario return-position --release"],
+        ),
+        (
             "packages/store-postgres/src/pool.rs",
             &[
                 "verify unit xtask",
