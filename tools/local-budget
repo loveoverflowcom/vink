@@ -136,8 +136,15 @@ def validate_command(argv, threads):
         if option == "--target-dir":
             if not sep and index + 1 < len(cargo_args):
                 value = cargo_args[index + 1]
-            if not value or (ROOT / value).resolve() != ROOT / "target":
+            target = ROOT / "target"
+            if not value or (ROOT / value).resolve() != target:
                 raise Refusal("--target-dir must select this checkout's target")
+            # Cargo gives the CLI priority over the environment. Forward the checked path,
+            # so it never has to traverse an alias or a parent component in the input again.
+            if sep:
+                argv[index + 2] = f"--target-dir={target}"
+            else:
+                argv[index + 3] = str(target)
         if arg == "--config" or arg.startswith(("--config=", "-Z")):
             raise Refusal("Cargo config and unstable flag overrides are outside this profile")
         if arg == "--jobs" or arg.startswith(("--jobs=", "-j")):
@@ -386,7 +393,7 @@ def main():
         raise Refusal("UNSUPPORTED: macOS requires Python 3.13+ with os.waitid", UNSUPPORTED)
     jobs, threads = settings(os.environ, ROOT)
     target = ROOT / "target"
-    if target.resolve() != target:
+    if target.is_symlink():
         raise Refusal("checkout target resolves through a symlink; choose an isolated checkout")
     log(f"SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs={jobs} libtest_threads={threads} "
         "managed_target=10–12 GiB (advisory) hard_cap=none; "

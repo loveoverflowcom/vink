@@ -129,9 +129,20 @@ class Profile(unittest.TestCase):
                 budget.validate_command(["--", "cargo", "test", *args], 2)
 
     def test_explicit_local_target_directory(self):
-        for args in (["--target-dir=target"], ["--target-dir", str(budget.ROOT / "target")]):
-            argv = ["cargo", "check", *args]
-            self.assertEqual(budget.validate_command(["--", *argv], 2), argv)
+        with TemporaryDirectory() as temp:
+            root = Path(temp).resolve()
+            (root / "target").mkdir()
+            (root / "alias").symlink_to(root / "target", target_is_directory=True)
+            with patch.object(budget, "ROOT", root):
+                for value in ("target", str(root / "target"), "alias", "missing/../target"):
+                    for args, expected in (
+                        (["--target-dir", value], ["--target-dir", str(root / "target")]),
+                        ([f"--target-dir={value}"], [f"--target-dir={root / 'target'}"]),
+                    ):
+                        with self.subTest(args=args):
+                            cmd = ["--", "cargo", "check", *args]
+                            self.assertEqual(budget.validate_command(cmd, 2),
+                                             ["cargo", "check", *expected])
 
     def test_argv_plan_follows_xtask_last_argument_rule(self):
         # xtask's cli::parse inspects only when `--plan` is last; the launcher mirrors that.
@@ -216,13 +227,13 @@ class Lifecycle(unittest.TestCase):
                         CARGO_HOME=temp.name, CARGO_BUILD_JOBS="1", RUST_TEST_THREADS="7")
         self.env.pop(budget.MARKER, None)
 
-    def launch(self, operation, checkout=0, timeout=None, samples=False):
+    def launch(self, operation, *cargo_args, checkout=0, timeout=None, samples=False):
         options = ["--timeout", str(timeout)] if timeout is not None else []
         if samples:
             options.append("--samples")
         child = subprocess.Popen(
             [sys.executable, "-c", ENTRY, self.launchers[checkout], self.slot, "run",
-             *options, "--", "cargo", "test", operation],
+             *options, "--", "cargo", "test", operation, *cargo_args],
             env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
         )
         self.addCleanup(self.reap, child)
@@ -252,19 +263,26 @@ class Lifecycle(unittest.TestCase):
         self.env.update(dict.fromkeys(budget.CARGO_DIRECTORIES, str(self.root / "shared")))
         for index, launcher in enumerate(self.launchers):
             root = launcher.parents[1]
-            output = self.result(self.launch("ok", checkout=index), 0)
+            (root / "alias").symlink_to("target", target_is_directory=True)
+            output = self.result(self.launch("ok", "--target-dir=alias", checkout=index), 0)
             self.assertNotIn("sample elapsed=", output)
             expected = str(root.resolve() / "target")
+            invocation = json.loads((root / "invocation.json").read_text())
+            self.assertEqual(invocation[0], ["test", "ok", f"--target-dir={expected}"])
             self.assertIn(f"cargo_target_dir={expected} cargo_build_dir={expected}", output)
             self.assertEqual(json.loads((root / "cargo-dirs.json").read_text()), [expected] * 3)
         self.assertFalse((self.root / "shared").exists())
 
     def test_symlinked_shared_target_refused_before_admission(self):
         checkout = self.launchers[0].parents[1]
-        (checkout / "target").symlink_to(self.root, target_is_directory=True)
-        self.assertIn("symlink", self.result(self.launch("ok"), 2))
-        self.assertFalse(self.slot.exists())
-        self.assertFalse((checkout / "invocation.json").exists())
+        target = checkout / "target"
+        for destination in (self.root, self.root / "absent", "target"):
+            with self.subTest(destination=destination):
+                target.symlink_to(destination, target_is_directory=True)
+                self.assertIn("symlink", self.result(self.launch("ok"), 2))
+                self.assertFalse(self.slot.exists())
+                self.assertFalse((checkout / "invocation.json").exists())
+                target.unlink()
 
     def test_cross_checkout_cancel_and_nested(self):
         owner = self.launch("linger")

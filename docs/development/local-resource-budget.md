@@ -38,7 +38,8 @@ Cargo bootstrap. Planner và executor [#184](scoped-workflows.md) giữ quyền 
 - Từ bootstrap, launcher đặt `CARGO_TARGET_DIR`, `CARGO_BUILD_TARGET_DIR` và
   `CARGO_BUILD_BUILD_DIR` vào `target` của checkout. Cả artifact cuối và file biên dịch
   trung gian ở lại đó khi chạy lại. Launcher từ chối `--target-dir` trỏ nơi khác,
-  symlink ở chính `target` và Cargo `[env]` đặt các biến này. Profile và debug info vẫn do
+  mọi symlink ở chính `target` (kể cả link hỏng hay vòng) và Cargo `[env]` đặt các biến này.
+  Với `--target-dir` hợp lệ, Cargo nhận đường dẫn tuyệt đối đã kiểm tra. Profile và debug info vẫn do
   Cargo chọn theo lệnh. [Cấu hình target-dir và build-dir](https://doc.rust-lang.org/cargo/reference/config.html#buildtarget-dir).
 - Mốc 10–12 GiB là mục tiêu quan sát trên máy 24 GiB, để chừa khoảng 12–14 GiB cho macOS, IDE,
   trình duyệt và dịch vụ có sẵn. Profile thử hai compiler job và hai libtest thread để giảm
@@ -61,7 +62,7 @@ Dùng đúng lệnh con trong lane cần đo. Ví dụ sau đo bước định d
 thành viên sống. Khi mọi lần quan sát đều trống, peak cũng là `UNKNOWN`. Wall của launcher
 bao gồm spawn và drain. Wall từ `time` còn gồm cả Python và admission. Khi chạy cả lane,
 số liệu session thuộc toàn lệnh. Chỉ gán chi phí cho compile/link/test khi đo được ranh giới đó.
-Giữ log bên ngoài target trước khi bàn giao. [Baseline macOS, số thô và phần chưa đo](evidence/verification-budget-497/README.md).
+Giữ log bên ngoài target trước khi bàn giao. [Baseline macOS và Rust trong VM, số thô và phần chưa đo](evidence/verification-budget-497/README.md).
 
 ## Phạm vi tiến trình
 
