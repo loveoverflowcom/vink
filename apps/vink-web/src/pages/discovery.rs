@@ -28,6 +28,7 @@ use vink_ui::{
 mod feed;
 
 const EXPLORE_TOP_CLASS: &str = "vk-explore__top flex-wrap items-center gap-x-vk-3 gap-y-vk-2";
+const EXPLORE_WORK_LIST_CLASS: &str = "vk-public-list grid p-0 [list-style:none]";
 const EXPLORE_HEADING_CLASS: &str = "vk-explore__heading flex-auto [min-inline-size:0]";
 const DISCOVERY_TOOLBAR_CLASS: &str =
     "vk-discovery-toolbar ms-auto flex flex-wrap items-center [min-inline-size:0]";
@@ -1126,7 +1127,7 @@ fn PublicResults(
                                 <p class="[font-size:var(--vk-type-caption-size)] vk-muted vk-public-scope" class:vk-ui-visually-hidden=!show_inline_scope role="status" aria-atomic="true">
                                     {move || format!("Trang này: {} tác phẩm", works.read().len())}
                                 </p>
-                                <ul class="vk-public-list" role="list">
+                                <ul class=EXPLORE_WORK_LIST_CLASS role="list">
                                     <For each=move || works.with(|works| works.iter().map(|work| work.work_id.clone()).collect::<Vec<_>>()) key=Clone::clone
                                         children=move |work_id| view! { <ResultRow work_id data cached_unverified context=context.clone() /> } />
                                 </ul>
@@ -1193,7 +1194,7 @@ fn WorkCardRow(
     #[cfg(feature = "hydrate")]
     let feed_scope = use_context::<feed::ReturnScope>();
     view! {
-        <li id=crate::public_list::work_anchor(&work_id) class="vk-public-row" data-work-id=work_id>
+        <li id=crate::public_list::work_anchor(&work_id) class="vk-public-row wrap-anywhere" data-work-id=work_id>
             {move || work.get().map(|work| {
                 let href = context.reader_href(&work.work_id);
                 let title_id = format!("work-title-{}", work.work_id);
@@ -1222,7 +1223,7 @@ fn WorkCardRow(
                 // Placeholder labels are not author names: never mark them as search matches.
                 let author_text = (!author.neutral).then(|| highlighted_text(&author.name, &query));
                 let byline = view! {
-                    <div class="vk-public-row__byline" on:click=move |_event| {
+                    <div class="vk-public-row__byline [min-inline-size:0] [margin-block-start:var(--vk-space-4)]" on:click=move |_event| {
                         #[cfg(feature = "hydrate")]
                         if following && super::is_primary_link_click(&_event)
                             && event_target::<leptos::web_sys::Element>(&_event)
@@ -1236,10 +1237,10 @@ fn WorkCardRow(
                     </div>
                 };
                 view! {
-                    <div class="vk-public-row__card">
-                        <div class="vk-public-row__main">
+                    <div class="vk-public-row__card block text-start">
+                        <div class="vk-public-row__main flex flex-col [min-inline-size:0]">
                             // Heading first in the DOM (heading navigation, Tab: work → author).
-                            <h2 class="vk-public-row__title" id=title_id>
+                            <h2 class="vk-public-row__title m-0 [min-inline-size:0] wrap-anywhere" id=title_id>
                                 <a class="vk-public-row__link" href=href aria-labelledby=title_label on:click=move |_event| {
                                     #[cfg(feature = "hydrate")]
                                     {
@@ -1251,13 +1252,13 @@ fn WorkCardRow(
                                 }>{highlighted_text(&work.title, &query)}</a>
                             </h2>
                             {(primary_tag.is_some() || date.is_some()).then(|| view! {
-                                <p class="vk-public-row__eyebrow">
+                                <p class="vk-public-row__eyebrow -order-1 [margin:0_0_var(--vk-space-1)] wrap-anywhere">
                                     {primary_tag.map(|tag| view! { <span class="vk-public-row__tag">{tag}</span> })}
                                     {separate_metadata.then_some(" · ")}
                                     {date}
                                 </p>
                             })}
-                            {excerpt.map(|text| view! { <p class="vk-public-row__excerpt">{text}</p> })}
+                            {excerpt.map(|text| view! { <p class="[max-inline-size:58ch] wrap-anywhere whitespace-pre-wrap vk-public-row__excerpt">{text}</p> })}
                             {byline}
                         </div>
                     </div>
