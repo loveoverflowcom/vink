@@ -125,8 +125,6 @@
 /* Layout -------------------------------------------------------------------------------------- */
 
 .vk-ui-surface {
-  box-sizing: border-box;
-  min-inline-size: 0;
   padding: var(--vk-ui-padding, 0);
   border-radius: var(--vk-ui-radius, 0);
   background-color: var(--vk-surface);
@@ -1246,22 +1244,13 @@ a.vk-ui-byline__identity:focus-visible {
 
 .vk-ui-panel {
   container: vk-state-panel / inline-size;
-  display: grid;
   justify-items: start;
-  gap: var(--vk-space-3);
   max-inline-size: var(--vk-measure);
-  padding: var(--vk-space-6);
-  border-radius: var(--vk-radius-lg);
   background-color: var(--vk-surface-container);
   color: var(--vk-on-surface);
 }
 
 .vk-ui-panel__symbol {
-  display: inline-grid;
-  place-items: center;
-  inline-size: 3rem;
-  block-size: 3rem;
-  border-radius: var(--vk-radius-full);
   background-color: var(--vk-surface-container-high);
   color: var(--vk-on-surface-variant);
 }
@@ -1273,18 +1262,7 @@ a.vk-ui-byline__identity:focus-visible {
 
 .vk-ui-panel .vk-ui-heading { margin: 0; }
 
-.vk-ui-panel__message {
-  margin: 0;
-  overflow-wrap: break-word;
-  color: var(--vk-on-surface-variant);
-}
-
-.vk-ui-panel__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--vk-space-2) var(--vk-space-3);
-}
+.vk-ui-panel__message { color: var(--vk-on-surface-variant); }
 
 /* Primary recovery: with no typed action, the caller's leading standalone link (a GET recovery
  * that must work before hydration) takes the filled emphasis typed action 0 would have. Later
@@ -1322,7 +1300,6 @@ a.vk-ui-byline__identity:focus-visible {
 }
 
 .vk-ui-panel__code {
-  margin: 0;
   font-family: var(--vk-type-caption-font);
   font-size: var(--vk-type-caption-size);
   line-height: var(--vk-type-caption-line-height);
@@ -1501,18 +1478,7 @@ a.vk-ui-byline__identity:focus-visible {
 /* ContentRegion -------------------------------------------------------------------------------- */
 
 /* The progress edge has reserved space, so starting or ending a refresh never moves content. */
-.vk-ui-region {
-  position: relative;
-  display: grid;
-  gap: var(--vk-space-4);
-  padding-block-start: calc(var(--vk-size-edge-progress) + var(--vk-space-2));
-}
-
-.vk-ui-region__progress {
-  position: absolute;
-  inset-block-start: 0;
-  inset-inline: 0;
-}
+.vk-ui-region { padding-block-start: calc(var(--vk-size-edge-progress) + var(--vk-space-2)); }
 
 .vk-ui-region__progress .vk-ui-edge__label {
   justify-self: end;
@@ -1525,10 +1491,7 @@ a.vk-ui-byline__identity:focus-visible {
 .vk-ui-region__skeleton[data-shown="false"] { visibility: hidden; }
 
 .vk-ui-region__unlawful {
-  margin: 0;
-  padding: var(--vk-space-3);
   border: 1px dashed var(--vk-outline);
-  border-radius: var(--vk-radius-md);
   font-family: var(--vk-type-code-font);
   color: var(--vk-on-surface);
 }

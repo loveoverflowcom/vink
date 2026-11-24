@@ -53,13 +53,6 @@ body {
 
 /* Sidebar pattern: the stage wraps below the catalog when both no longer fit, which also
    happens at large text sizes because the bases are in rem. */
-.vkp-workbench {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--vk-space-6);
-  align-items: flex-start;
-}
-
 .vkp-workbench > .vkp-nav {
   flex: 1 1 16rem;
   max-inline-size: 100%;
@@ -70,10 +63,6 @@ body {
 }
 
 .vkp-nav {
-  min-inline-size: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--vk-space-3);
   padding: min(var(--vk-space-4), 4vw);
   border-radius: var(--vk-radius-lg);
   background: var(--vk-surface-container-low);
@@ -147,19 +136,6 @@ body {
   color: var(--vk-on-surface-variant);
 }
 
-.vkp-stage {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--vk-space-6);
-  min-inline-size: 0;
-}
-
-.vkp-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--vk-space-3);
-}
-
 /* Fieldsets default to min-content width; let them shrink and wrap with enlarged text. */
 .vkp-choice {
   min-inline-size: 0;
@@ -191,13 +167,6 @@ body {
   block-size: 1.25rem;
   margin: 0;
   accent-color: var(--vk-primary);
-}
-
-.vkp-specimen {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--vk-space-4);
-  min-inline-size: 0;
 }
 
 .vkp-specimen__head h1 {
@@ -233,9 +202,6 @@ body {
 }
 
 .vkp-frame {
-  min-inline-size: 0;
-  max-inline-size: 100%;
-  overflow-x: auto;
   border-radius: var(--vk-radius-xl);
   outline: 1px dashed var(--vk-outline-variant);
   outline-offset: var(--vk-space-1);
