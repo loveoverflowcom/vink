@@ -58,11 +58,16 @@ async function matrix(page, check, textContrast) {
 export async function authorHandles(page, { base, openPage, check, holdAnswer, textContrast }) {
   await page.waitFor(has('#edit-profile-link'), 'owner profile entry');
   check(await page.eval("!document.querySelector('a[href=\"/toi/dia-chi\"]')"), 'Tôi has one entry to edit identity');
+  const unavailable = await holdAnswer(page, 'GET', '/api/v1/me/handle');
   await page.click('#edit-profile-link');
-  await page.waitFor(has(edit), 'profile Handle row');
+  check(await unavailable.held() === 200, 'the initial Handle read reached the real app');
+  await unavailable.finish(true);
+  await page.waitFor(has('#author-handle-refresh'), 'Handle read failure offers a local retry');
   const beforeProfile = await page.eval("fetch('/api/v1/me/profile').then(r => r.json())");
   const bio = 'Bản nháp Bio trong khi đổi địa chỉ';
   await fill(page, '#profile-bio', bio);
+  await page.click('#author-handle-refresh');
+  await page.waitFor(`${has(edit)} && !${has(edit)}.disabled`, 'retry loads the Handle row');
   await page.click(edit);
   await page.waitFor(has(dialog + '[open] ' + field), 'setup dialog with the suggested handle');
   const initial = (await own(page)).handle;
@@ -95,14 +100,45 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
   await page.click(submit);
   await page.waitFor(`${has(saved)} && !${has(dialog + '[open]')}`, 'suggestion accepted');
   const afterSetup = await own(page);
+  await page.click('#own-handle-public-link');
+  await page.waitFor(`location.pathname === ${JSON.stringify('/@' + initial)} && ${has('#author-profile-heading')}`,
+    'open the public profile from the Handle row');
+  await page.eval('history.back()');
+  await page.waitFor(`location.pathname === '/toi/chinh-ho-so' && ${has(edit)} && !${has(edit)}.disabled`,
+    'return to the hydrated profile form');
   const unchangedProfile = await page.eval("fetch('/api/v1/me/profile').then(r => r.json())");
   check(afterSetup.remaining_changes === 2 && unchangedProfile.profile_version === beforeProfile.profile_version
     && await page.eval(`document.querySelector('#profile-bio').value === ${JSON.stringify(bio)}`),
-    'Handle setup keeps both turns and leaves the profile draft and version intact');
+    'setup and a visit to the public profile leave the draft, version and both turns intact');
   await page.click('#profile-save');
   await page.waitFor("document.querySelector('#profile-message')?.textContent === 'Đã lưu hồ sơ.'", 'separate profile save');
   check(await page.eval(`${has(saved)}?.textContent === ${JSON.stringify('@' + initial)}`) &&
     (await own(page)).version === afterSetup.version, 'profile save runs independently and keeps the confirmed address');
+
+  await page.waitFor(`${has(edit)} && !${has(edit)}.disabled`, 'profile save revalidation settles');
+  await page.click(edit);
+  await page.waitFor(has(dialog + '[open]'), 'open an edit before the address becomes unavailable');
+  await fill(page, field, 'can-doi-chieu');
+  check(/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(initial), 'the scratch Handle fixture has a canonical address');
+  const hideAddress = authorFixtureSql(`UPDATE author_profiles SET current_handle=NULL
+    WHERE current_handle='${initial}' RETURNING principal_id;`);
+  check(hideAddress === afterSetup.principal_id, 'withdraw only this scratch address');
+  try {
+    await page.click(submit);
+    await page.waitFor(`${has('#author-handle-dialog-status')}?.textContent.includes('Không tìm thấy')
+      && !${has('#author-handle-receipt')}`, 'a missing address declines the write without entering receipt recovery');
+    check(await page.eval(`!sessionStorage.getItem(${JSON.stringify('vink.handle.pending.' + hideAddress)})`),
+      'a definite 404 clears the stored command');
+  } finally {
+    check(authorFixtureSql(`UPDATE author_profiles SET current_handle='${initial}'
+      WHERE principal_id=(SELECT principal_id FROM author_handle_names WHERE handle='${initial}')
+        AND current_handle IS NULL RETURNING principal_id;`) === hideAddress,
+    'restore the scratch address');
+  }
+  await page.key('Escape');
+  await page.waitFor(has('#author-handle-refresh'), 'the unavailable row stays recoverable');
+  await page.click('#author-handle-refresh');
+  await page.waitFor(`${has(edit)} && !${has(edit)}.disabled`, 'reload after a definitive refusal');
 
   const legacy = await fetch(base + '/toi/dia-chi', { redirect: 'manual' });
   check(legacy.status === 308 && legacy.headers.get('location') === canonical
@@ -113,7 +149,18 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
     && document.activeElement?.id === 'dia-chi-tac-gia' && ${has(edit)}`, 'legacy link focuses the owner row');
   await tab.click(edit);
   await tab.waitFor(has(dialog + '[open]'), 'second owner dialog');
+  const refresh = await holdAnswer(tab, 'GET', '/api/v1/me/handle');
+  await page.eval(`(() => {
+    const channel = new BroadcastChannel('vink-profile-changes');
+    channel.postMessage(null);
+    channel.close();
+  })()`);
+  check(await refresh.held() === 200, 'a profile change starts a Handle refresh in the open dialog');
+  await tab.waitFor(`${has(submit)}?.disabled`, 'submission waits for the Handle refresh');
   await fill(tab, field, 'mua-ngo');
+  check(await tab.eval(`!${has(field)}.readOnly && ${has(field)}.value === 'mua-ngo'`),
+    'the background read leaves the field editable');
+  await refresh.finish(false, true);
   await page.click(edit);
   await page.waitFor(has(dialog + '[open]'), 'rename dialog');
   await fill(page, field, initial);
@@ -173,7 +220,8 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
   await tab.waitFor(has(dialog + '[open]'), 'last rename confirmation');
   await tab.capture('handle-final-confirm-390', { scenario: 'handle-last-rename', textScale: 100 });
   await tab.click(submit);
-  await tab.waitFor(`${has(saved)}?.textContent === '@mua-ngo' && !${has(dialog + '[open]')}`, 'final rename');
+  await tab.waitFor(`${has(saved)}?.textContent === '@mua-ngo' && !${has(dialog + '[open]')}
+    && document.activeElement?.id === 'dia-chi-tac-gia'`, 'final rename restores focus to the row');
   check(
     (await own(tab)).remaining_changes === 0 && !(await tab.eval(`Boolean(${has(edit)})`)),
     'exhaustion removes rename action',

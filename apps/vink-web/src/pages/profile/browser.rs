@@ -285,9 +285,11 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
             }));
         }
     });
-    let handle = handle::Controller::new(session, scope, form.base.with_untracked(|base| {
-        base.principal_id.clone()
-    }));
+    let handle = handle::Controller::new(
+        session,
+        scope,
+        form.base.with_untracked(|base| base.principal_id.clone()),
+    );
     // A successful profile save may carry an old Handle snapshot or race a Handle write.
     // Refresh the dedicated Handle endpoint without adopting any of its fields into this draft.
     let profile_version = Memo::new(move |_| form.base.with(|base| base.profile_version));

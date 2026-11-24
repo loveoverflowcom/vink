@@ -20,7 +20,10 @@ pub(crate) fn LegacyHandle() -> impl IntoView {
         Effect::new(move |_| {
             navigate(
                 HANDLE_PATH,
-                leptos_router::NavigateOptions { replace: true, ..Default::default() },
+                leptos_router::NavigateOptions {
+                    replace: true,
+                    ..Default::default()
+                },
             );
         });
     }

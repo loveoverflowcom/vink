@@ -1533,7 +1533,11 @@ pub(crate) async fn save_handle(
 pub(crate) async fn load_handle_receipt(
     command_id: &str,
 ) -> Result<crate::contract::profile::HandleReceipt, ApiError> {
-    http::get(&format!("/api/v1/me/handle/receipts/{}", encode_segment(command_id))).await
+    http::get(&format!(
+        "/api/v1/me/handle/receipts/{}",
+        encode_segment(command_id)
+    ))
+    .await
 }
 
 fn encode_segment(value: &str) -> String {

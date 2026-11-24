@@ -60,7 +60,12 @@ impl Controller {
 
     fn live(self) -> bool {
         self.scope.try_get_value().is_some_and(|scope| {
-            self.session.profile_scope.try_get_untracked().flatten().as_ref() == Some(&scope)
+            self.session
+                .profile_scope
+                .try_get_untracked()
+                .flatten()
+                .as_ref()
+                == Some(&scope)
                 && self.session.principal.try_get_untracked().flatten()
                     == self.principal.try_get_value()
         })
@@ -80,11 +85,14 @@ impl Controller {
         spawn_local(async move {
             let result = api::load_own_handle().await;
             if self.live() {
-                let recovering = self.unavailable.get_untracked() && self.opened.get_untracked()
+                let recovering = self.unavailable.get_untracked()
                     && self.pending.with_untracked(Option::is_none);
                 if let Some(own) = self.accept_read(result) {
                     if recovering {
-                        self.editing.set(Some(own.clone()));
+                        if self.opened.get_untracked() {
+                            self.editing.set(Some(own.clone()));
+                        }
+                        self.message.set("");
                     }
                     self.confirmed.set(Some(own));
                 }
@@ -96,7 +104,9 @@ impl Controller {
     fn accept_read(self, result: Result<OwnHandle, ApiError>) -> Option<OwnHandle> {
         match result {
             Ok(own)
-                if self.principal.with_value(|expected| *expected == own.principal_id)
+                if self
+                    .principal
+                    .with_value(|expected| *expected == own.principal_id)
                     && valid_handle(&own.handle)
                     && own.version >= 0
                     && (0..=2).contains(&own.remaining_changes)
@@ -107,7 +117,11 @@ impl Controller {
                 self.unavailable.set(false);
                 Some(own)
             }
-            Ok(own) if self.principal.with_value(|expected| *expected != own.principal_id) => {
+            Ok(own)
+                if self
+                    .principal
+                    .with_value(|expected| *expected != own.principal_id) =>
+            {
                 self.session.fence_profile();
                 None
             }
@@ -136,7 +150,9 @@ impl Controller {
 
     fn remember(self, command: Option<HandleCommand>) {
         if let Ok(Some(storage)) = window().session_storage() {
-            let key = self.principal.with_value(|principal| storage_key(principal));
+            let key = self
+                .principal
+                .with_value(|principal| storage_key(principal));
             match &command {
                 Some(command) => {
                     if let Ok(json) = serde_json::to_string(command) {
@@ -158,12 +174,16 @@ impl Controller {
         }
         let pending = self.pending.get_untracked();
         let own = self.confirmed.get_untracked();
-        let editable = own.as_ref().is_some_and(|own| !own.setup_complete || own.remaining_changes > 0);
+        let editable = own
+            .as_ref()
+            .is_some_and(|own| !own.setup_complete || own.remaining_changes > 0);
         if pending.is_none() && (!editable || self.unavailable.get_untracked()) {
             return;
         }
         self.draft.set(
-            pending.as_ref().map(|command| command.handle.clone())
+            pending
+                .as_ref()
+                .map(|command| command.handle.clone())
                 .or_else(|| own.as_ref().map(|own| own.handle.clone()))
                 .unwrap_or_default(),
         );
@@ -183,7 +203,9 @@ impl Controller {
         self.composing.set(false);
         request_animation_frame(move || {
             if self.live()
-                && document().active_element().is_none_or(|active| active.tag_name() == "BODY")
+                && document()
+                    .active_element()
+                    .is_none_or(|active| active.tag_name() == "BODY")
             {
                 super::super::super::focus_recovery(ROW);
             }
@@ -200,7 +222,9 @@ impl Controller {
         {
             return;
         }
-        let Some(own) = self.editing.get_untracked() else { return };
+        let Some(own) = self.editing.get_untracked() else {
+            return;
+        };
         let handle = self.draft.get_untracked();
         let intent = if own.setup_complete {
             if own.remaining_changes == 0 {
@@ -220,7 +244,8 @@ impl Controller {
             return;
         }
         let Some(command_id) = command_id() else {
-            self.message.set("Trình duyệt chưa tạo được mã lệnh. Hãy thử lại.");
+            self.message
+                .set("Trình duyệt chưa tạo được mã lệnh. Hãy thử lại.");
             return;
         };
         self.error.set(None);
@@ -242,13 +267,19 @@ impl Controller {
     }
 
     fn dispatch(self, receipt_only: bool) {
-        let Some(command) = self.pending.get_untracked() else { return };
+        let Some(command) = self.pending.get_untracked() else {
+            return;
+        };
         if self.busy.get_untracked() || !self.live() {
             return;
         }
         self.retryable.set(false);
         self.busy.set(true);
-        self.message.set(if receipt_only { "Đang kiểm tra kết quả…" } else { "Đang lưu địa chỉ…" });
+        self.message.set(if receipt_only {
+            "Đang kiểm tra kết quả…"
+        } else {
+            "Đang lưu địa chỉ…"
+        });
         spawn_local(async move {
             let result = if receipt_only {
                 api::load_handle_receipt(&command.command_id).await
@@ -256,9 +287,15 @@ impl Controller {
                 api::save_handle(&command).await
             };
             // The committed public address may have changed even if this owner's form is gone.
-            if result.is_ok() || (!receipt_only && matches!(
-                &result, Err(ApiError::Network | ApiError::Unavailable | ApiError::Unexpected { .. })
-            )) {
+            if result.is_ok()
+                || (!receipt_only
+                    && matches!(
+                        &result,
+                        Err(ApiError::Network
+                            | ApiError::Unavailable
+                            | ApiError::Unexpected { .. })
+                    ))
+            {
                 super::announce_change();
             }
             if !self.live() {
@@ -288,7 +325,16 @@ impl Controller {
                 }
                 Err(ApiError::NotFound) if receipt_only => {
                     self.retryable.set(true);
-                    self.message.set("Chưa tìm thấy biên nhận. Bạn có thể gửi lại đúng yêu cầu này.");
+                    self.message
+                        .set("Chưa tìm thấy biên nhận. Bạn có thể gửi lại đúng yêu cầu này.");
+                }
+                Err(ApiError::NotFound) => {
+                    self.remember(None);
+                    self.confirmed.set(None);
+                    self.editing.set(None);
+                    self.unavailable.set(true);
+                    self.message
+                        .set("Không tìm thấy địa chỉ tác giả. Hãy tải lại để kiểm tra.");
                 }
                 Err(refused) if !receipt_only && refusal_message(&refused).is_some() => {
                     self.remember(None);
@@ -302,16 +348,21 @@ impl Controller {
                     }
                     if self.live() {
                         let message = refusal_message(&refused).unwrap_or_default();
-                        self.message.set(message);
+                        self.message.set("");
                         self.field_error(message);
                     }
                 }
-                _ => self.message.set("Chưa nhận được xác nhận. Hãy kiểm tra kết quả trước khi đổi tiếp."),
+                _ => self
+                    .message
+                    .set("Chưa nhận được xác nhận. Hãy kiểm tra kết quả trước khi đổi tiếp."),
             }
             self.finished();
-            if self.live() && self.opened.get_untracked()
+            if self.live()
+                && self.opened.get_untracked()
                 && self.pending.with_untracked(Option::is_some)
-                && document().active_element().is_none_or(|active| active.tag_name() == "BODY")
+                && document()
+                    .active_element()
+                    .is_none_or(|active| active.tag_name() == "BODY")
             {
                 super::super::super::focus_recovery("author-handle-receipt");
             }
@@ -322,24 +373,40 @@ impl Controller {
 fn refusal_message(error: &ApiError) -> Option<&'static str> {
     Some(match error {
         ApiError::Invalid { .. } => RULE,
-        ApiError::VersionConflict { .. } => "Địa chỉ đã thay đổi ở phiên khác. Hãy kiểm tra lại trước khi lưu.",
-        ApiError::HandleRefused(HandleRefusal::Taken) => "Địa chỉ này đã có người dùng. Hãy chọn tên khác.",
-        ApiError::HandleRefused(HandleRefusal::OwnAlias) => "Đây là địa chỉ cũ của bạn. Hiện chưa thể dùng lại.",
+        ApiError::VersionConflict { .. } => {
+            "Địa chỉ đã thay đổi ở phiên khác. Hãy kiểm tra lại trước khi lưu."
+        }
+        ApiError::HandleRefused(HandleRefusal::Taken) => {
+            "Địa chỉ này đã có người dùng. Hãy chọn tên khác."
+        }
+        ApiError::HandleRefused(HandleRefusal::OwnAlias) => {
+            "Đây là địa chỉ cũ của bạn. Hiện chưa thể dùng lại."
+        }
         ApiError::HandleRefused(HandleRefusal::Exhausted) => "Bạn đã dùng hết hai lượt đổi.",
-        ApiError::HandleRefused(HandleRefusal::KeyReused) => "Yêu cầu này đã dùng. Hãy kiểm tra địa chỉ hiện tại.",
+        ApiError::HandleRefused(HandleRefusal::KeyReused) => {
+            "Yêu cầu này đã dùng. Hãy kiểm tra địa chỉ hiện tại."
+        }
         _ => return None,
     })
 }
 
 fn valid_handle(text: &str) -> bool {
-    text.len() <= 40 && text.split('-').all(|part| {
-        !part.is_empty() && part.bytes().all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit())
-    })
+    text.len() <= 40
+        && text.split('-').all(|part| {
+            !part.is_empty()
+                && part
+                    .bytes()
+                    .all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit())
+        })
 }
 
 fn command_id() -> Option<String> {
     let mut bytes = [0; 16];
-    window().crypto().ok()?.get_random_values_with_u8_array(&mut bytes).ok()?;
+    window()
+        .crypto()
+        .ok()?
+        .get_random_values_with_u8_array(&mut bytes)
+        .ok()?;
     Some(crate::endorsement_state::uuid_v4(bytes))
 }
 
@@ -351,13 +418,18 @@ fn pending_for(principal: &str) -> Option<HandleCommand> {
     let storage = window().session_storage().ok()??;
     let raw = storage.get_item(&storage_key(principal)).ok()??;
     let command: HandleCommand = serde_json::from_str(&raw).ok()?;
-    (command.principal_id == principal && command.expected_version >= 0
+    (command.principal_id == principal
+        && command.expected_version >= 0
         && valid_handle(&command.handle)
         && command.command_id.len() == 36
         && command.command_id.bytes().enumerate().all(|(index, byte)| {
-            if matches!(index, 8 | 13 | 18 | 23) { byte == b'-' } else { byte.is_ascii_hexdigit() }
+            if matches!(index, 8 | 13 | 18 | 23) {
+                byte == b'-'
+            } else {
+                byte.is_ascii_hexdigit()
+            }
         }))
-        .then_some(command)
+    .then_some(command)
 }
 
 fn matches_receipt(command: &HandleCommand, receipt: &HandleReceipt) -> bool {
@@ -373,19 +445,27 @@ pub(super) fn HandleRow(controller: Controller) -> impl IntoView {
     let row = NodeRef::<leptos::html::Section>::new();
     Effect::new(move |_| {
         if let Some(row) = row.get()
-            && window().location().hash().is_ok_and(|hash| hash == "#dia-chi-tac-gia")
+            && window()
+                .location()
+                .hash()
+                .is_ok_and(|hash| hash == "#dia-chi-tac-gia")
             && document().active_element().is_none_or(|active| {
-                active.tag_name() == "BODY" || matches!(active.id().as_str(), "noi-dung" | "edit-profile-heading")
+                active.tag_name() == "BODY"
+                    || matches!(active.id().as_str(), "noi-dung" | "edit-profile-heading")
             })
         {
             row.scroll_into_view();
             let _ = row.focus();
         }
     });
-    let can_open = move || controller.pending.with(Option::is_some)
-        || (!controller.unavailable.get() && controller.confirmed.with(|own| {
-            own.as_ref().is_some_and(|own| !own.setup_complete || own.remaining_changes > 0)
-        }));
+    let can_open = move || {
+        controller.pending.with(Option::is_some)
+            || (!controller.unavailable.get()
+                && controller.confirmed.with(|own| {
+                    own.as_ref()
+                        .is_some_and(|own| !own.setup_complete || own.remaining_changes > 0)
+                }))
+    };
     view! {
         <section id=ROW node_ref=row tabindex="-1" aria-labelledby="author-handle-heading"
             class="grid min-w-0 gap-vk-2 p-vk-4 rounded-vk-card bg-vk-bg-content wrap-anywhere focus-visible:[outline:var(--vk-size-focus-ring)_solid_var(--vk-focus-ring)]">
@@ -438,13 +518,17 @@ pub(super) fn HandleRow(controller: Controller) -> impl IntoView {
             </Show>
             {move || controller.confirmed.get().filter(|own| own.setup_complete).map(|own| view! {
                 <div class="flex flex-wrap items-start gap-vk-2 min-w-0">
-                    <Link attr:rel="external" href=format!("/@{}", own.handle)>"Xem trang tác giả"</Link>
+                    <Link attr:id="own-handle-public-link" attr:data-profile-return="true"
+                        href=format!("/@{}", own.handle)>"Xem trang tác giả"</Link>
                     {(!own.aliases.is_empty()).then(|| view! {
                         <vink_ui::SupportingDetails summary=format!("Liên kết cũ ({})", own.aliases.len()) id="author-handle-history">
                             <ul class="m-0 list-none p-0">
                                 {own.aliases.into_iter().filter(|handle| valid_handle(handle)).map(|name| {
                                     let href = format!("/@{name}");
-                                    view! { <li><Link attr:rel="external" href=href.clone()>{href}</Link></li> }
+                                    view! {
+                                        <li><Link attr:id=format!("own-handle-alias-{name}")
+                                            attr:data-profile-return="true" href=href.clone()>{href}</Link></li>
+                                    }
                                 }).collect_view()}
                             </ul>
                         </vink_ui::SupportingDetails>
@@ -456,15 +540,24 @@ pub(super) fn HandleRow(controller: Controller) -> impl IntoView {
 }
 
 fn button_state(disabled: bool) -> ActionState {
-    if disabled { ActionState::Disabled { reason: None } } else { ActionState::Enabled }
+    if disabled {
+        ActionState::Disabled { reason: None }
+    } else {
+        ActionState::Enabled
+    }
 }
 
 #[component]
 pub(super) fn HandleDialog(controller: Controller) -> impl IntoView {
-    let setup = move || controller.editing.with(|own| own.as_ref().is_some_and(|own| !own.setup_complete));
+    let setup = move || {
+        controller
+            .editing
+            .with(|own| own.as_ref().is_some_and(|own| !own.setup_complete))
+    };
     let pending = move || controller.pending.with(Option::is_some);
     let busy = move || controller.busy.get();
-    let locked = move || controller.busy.get_untracked() || controller.pending.with_untracked(Option::is_some);
+    // A background read can block a submit, but must not interrupt editing or composition.
+    let locked = move || controller.pending.with_untracked(Option::is_some);
     view! {
         <Dialog id="author-handle-dialog"
             open=controller.opened
@@ -512,7 +605,7 @@ pub(super) fn HandleDialog(controller: Controller) -> impl IntoView {
             >
                 <TextField id=FIELD label="Tên trong liên kết" value=controller.draft
                     autocomplete="off" help=RULE error=Signal::derive(move || controller.error.get())
-                    mode=Signal::derive(move || if busy() || pending() { FieldMode::ReadOnly } else { FieldMode::Editable })
+                    mode=Signal::derive(move || if pending() { FieldMode::ReadOnly } else { FieldMode::Editable })
                     on_input=move |input: TextInput| {
                         controller.composing.set(input.composing);
                         if !locked() {
@@ -528,8 +621,9 @@ pub(super) fn HandleDialog(controller: Controller) -> impl IntoView {
                     }}</p>
                 })}
                 <p class="m-0" id="author-handle-proposed">{move || format!("@{}", controller.draft.get())}</p>
-                <p id="author-handle-dialog-status" role="status" aria-atomic="true" class="m-0 empty:hidden">
-                    {move || controller.message.get()}
+                <p id="author-handle-dialog-status" role="status" aria-atomic="true" class="m-0"
+                    class:vk-ui-visually-hidden=move || controller.error.with(Option::is_some) || controller.message.get().is_empty()>
+                    {move || controller.error.get().unwrap_or_else(|| controller.message.get().to_string())}
                 </p>
                 <Show when=move || controller.unavailable.get() && !pending()>
                     <Button variant=ButtonVariant::Text state=Signal::derive(move || button_state(busy()))
