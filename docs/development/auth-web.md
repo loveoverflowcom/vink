@@ -69,7 +69,11 @@ và thanh dưới dẫn tới `/toi`, nơi cũng có các lựa chọn Giao di�
 là điểm gắn duy nhất của form khách/bút danh trên trang: đọc `Session::standing` và epoch của
 cùng tab, không nhận trạng thái phiên từ host. Đổi bước chủ động hủy form cũ; refresh nền cùng
 standing/epoch không dựng lại input. CHOICE-01: dùng một view chung bọc các owner form hiện có,
-gồm cả đường đọc lại phiên sau lỗi, không sao chép dispatch, AuthGate hay input state. Tôi sở hữu Giao diện, đăng xuất và điều hướng;
+gồm cả đường đọc lại phiên sau lỗi, không sao chép dispatch, AuthGate hay input state. Tôi sở hữu
+Giao diện, đăng xuất và điều hướng. Từ [#483](https://github.com/loveoverflowcom/vink/issues/483),
+`#auth-appearance` dùng kiểu Text của UI system trên liên kết fragment native. Hai scenario
+`password` và `auth` kiểm bố cục, focus, input đang nhập và vòng đời tùy chọn theo
+[LayoutSpec Auth R2](../design/auth-password-web.md).
 Reader [#328](https://github.com/loveoverflowcom/vink/issues/328) gắn cùng view trong
 [host nhận xét](../../apps/vink-web/src/pages/discussion/auth.rs), không chạy qua `/toi`.
 Root và reply đều chỉ hiện hành động đăng nhập/bút danh khi môi trường mở, bài cho phép nhận

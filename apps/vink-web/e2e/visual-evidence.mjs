@@ -173,6 +173,11 @@ export function parseSceneFilenameExpectations(name) {
   };
 }
 
+// Poll live transitions. Waiting on a snapshot of Animation.finished promises
+// can stall DevTools after a dirty editor resize.
+export const APPEARANCE_SETTLED = `!document.getAnimations().some(a =>
+  a instanceof CSSTransition && (a.pending || a.playState === 'running'))`;
+
 export function classifyTextScaleLane({ rootInlineFontSize, dataText, explicitLane } = {}) {
   if (typeof rootInlineFontSize === 'string' && rootInlineFontSize.trim().length > 0) {
     return 'dom-override-geometry-only';

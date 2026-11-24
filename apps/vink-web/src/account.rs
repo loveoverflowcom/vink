@@ -316,7 +316,12 @@ pub(crate) fn AccountPanel(id: &'static str) -> impl IntoView {
                 <Show when=move || !entry()><SessionRetry /></Show>
                 <Show when=entry>
                     // Let the browser scroll *and focus* the target instead of the router only scrolling it.
-                    <a id="auth-appearance" class="vk-ui-link vk-ui-link--standalone" rel="external" href="#page-appearance">"Giao diện"</a>
+                    <a id="auth-appearance" class=ButtonVariant::Text.classes()
+                        class=("min-[760px]:absolute", true)
+                        rel="external" href="#page-appearance">
+                        <span data-appearance-icon="palette" aria-hidden="true"></span>
+                        <span class="vk-ui-button__label">"Giao diện"</span>
+                    </a>
                 </Show>
             </div>
             <noscript><p class="vk-muted">"Đăng nhập cần JavaScript. Bạn vẫn có thể đọc các tác phẩm công khai."</p></noscript>

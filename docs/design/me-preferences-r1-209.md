@@ -24,6 +24,10 @@ Lịch sử trước #413 (#209): từng có Overlay #profile-menu neo theo rail
 #profile-close, #overlay-theme → #overlay-text → #overlay-rail, #open-me ngoài route /toi).
 ```
 
+Trong vùng Auth của `/toi`, liên kết **Giao diện** đưa người dùng tới cùng
+`#page-appearance` và chuyển focus đến vùng chỉnh. Vị trí, trạng thái tương tác và kiểm chứng
+của liên kết theo [LayoutSpec Auth R2](auth-password-web.md).
+
 ## Kiểm chứng Web hiện hành từ #413
 
 Dùng lựa chọn native trên `/toi` để kiểm Mặc định 100% và Lớn 150% ở 320/390/834/1440 px
