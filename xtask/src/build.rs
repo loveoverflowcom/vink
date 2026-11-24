@@ -1,7 +1,7 @@
 //! Artifact adapters: no migrations, servers or tests.
 use crate::plan::Artifact;
 use crate::process::cargo;
-use crate::{checks, doctor, env, process, root, ui_tokens};
+use crate::{checks, doctor, env, process, root, ui_tokens, web_assets::Package};
 use std::path::Path;
 const EDITOR_RUNTIME_DIR: &str = "apps/vink-web/editor";
 
@@ -101,6 +101,7 @@ pub fn spa(release: bool, scratch: bool) -> Result<(), String> {
         );
     // The artifact lock serializes builders. A failed rebuild cannot leave a
     // publishable entry that refers to a partially replaced package.
+    crate::web_assets::require_local_path(&root, &pkg)?;
     let entry = site.join("index.html");
     match std::fs::remove_file(&entry) {
         Ok(()) => (),
@@ -116,8 +117,9 @@ pub fn spa(release: bool, scratch: bool) -> Result<(), String> {
 
 fn bundle_at(release: bool, feature: &str, pkg: &Path, prefix: Option<&str>) -> Result<(), String> {
     let root = root();
+    let package = Package::new(&root, pkg)?;
     crate::web_boundary::check(&root)?;
-    doctor::require_wasm_bindgen(&root)?;
+    let bindgen = doctor::require_wasm_bindgen(&root)?;
     doctor::node_version()?;
     doctor::npm_version()?;
     let profile = if release { "wasm-release" } else { "dev" };
@@ -147,38 +149,45 @@ fn bundle_at(release: bool, feature: &str, pkg: &Path, prefix: Option<&str>) -> 
         .join("target/wasm32-unknown-unknown")
         .join(out_dir)
         .join("vink_web.wasm");
-    // Both are generated. Bindgen does not prune obsolete snippet hashes, and previous
-    // Web builds could have left the complete Preview payload here.
-    for stale in [pkg.join("expressions"), pkg.join("snippets")] {
-        match std::fs::remove_dir_all(&stale) {
-            Ok(()) => {}
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-            Err(error) => return Err(format!("clear generated {}: {error}", stale.display())),
+    package.bindgen(&wasm_file, feature, profile, prefix, &bindgen, release)?;
+    let stage = package.stage();
+    editor_runtime(&root, &stage.join("vink-editor.js"))?;
+    stylesheet(&root, &stage.join("vink.css"), release)?;
+    for output in ["vink-editor.js", "vink.css"] {
+        let metadata = std::fs::symlink_metadata(stage.join(output))
+            .map_err(|error| format!("missing Web output {output}: {error}"))?;
+        if !metadata.is_file() || metadata.len() == 0 {
+            return Err(format!("Web output {output} must be a nonempty file"));
         }
     }
-    std::fs::create_dir_all(pkg).map_err(|e| format!("create {}: {e}", pkg.display()))?;
-    let mut bindgen = std::process::Command::new("wasm-bindgen");
-    bindgen
-        .args([
-            "--target",
-            "web",
-            "--no-typescript",
-            "--out-name",
-            "vink",
-            "--out-dir",
-        ])
-        .arg(pkg)
-        .arg(&wasm_file);
-    if release {
-        bindgen.arg("--remove-name-section");
+    package.static_files("fonts", &root.join(checks::FONTS_DIR), |path| {
+        path.file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.ends_with(".woff2") || name.starts_with("OFL"))
+    })?;
+    let mut problems = Vec::new();
+    checks::brand(&root, &mut problems);
+    if !problems.is_empty() {
+        return Err(problems.join("\n"));
     }
-    process::run(&mut bindgen, "wasm-bindgen public package")?;
-    editor_runtime(&root, &pkg.join("vink-editor.js"))?;
-    stylesheet(&root, &pkg.join("vink.css"), release)?;
-    copy_fonts(&root.join(checks::FONTS_DIR), &pkg.join("fonts"))?;
-    copy_brand(&root.join(checks::BRAND_DIR), &pkg.join("brand"))?;
-    copy_empty_artwork(&root, &pkg.join("empty"))?;
-    crate::web_boundary::artifacts(pkg)
+    package.static_files("brand", &root.join(checks::BRAND_DIR), |path| {
+        matches!(
+            path.extension().and_then(|ext| ext.to_str()),
+            Some("png" | "svg" | "webmanifest")
+        )
+    })?;
+    check_empty_artwork(&root)?;
+    package.static_files("empty", &root.join("apps/vink-web/assets/empty"), |path| {
+        matches!(
+            path.file_name().and_then(|n| n.to_str()),
+            Some(
+                "vink-empty-no-results.webp"
+                    | "vink-empty-no-public-works.webp"
+                    | "vink-empty-first-draft.webp"
+            )
+        )
+    })?;
+    package.publish()
 }
 
 /// Server binaries plus
@@ -229,72 +238,12 @@ fn editor_runtime(root: &Path, outfile: &Path) -> Result<(), String> {
     )
 }
 
-/// Font faces and their licenses, served next to `vink.css` at `/pkg/fonts/`. The directory is
-/// recreated so a removed face is not served from an earlier build.
-fn copy_fonts(from: &Path, to: &Path) -> Result<(), String> {
-    if to.exists() {
-        std::fs::remove_dir_all(to).map_err(|e| format!("clear {}: {e}", to.display()))?;
-    }
-    std::fs::create_dir_all(to).map_err(|e| format!("create {}: {e}", to.display()))?;
-    let entries = std::fs::read_dir(from).map_err(|e| format!("read {}: {e}", from.display()))?;
-    for entry in entries.filter_map(Result::ok) {
-        let name = entry.file_name();
-        let name = name.to_string_lossy();
-        if name.ends_with(".woff2") || name.starts_with("OFL") {
-            std::fs::copy(entry.path(), to.join(name.as_ref()))
-                .map_err(|e| format!("copy font {name}: {e}"))?;
-        }
-    }
-    Ok(())
-}
-
-/// Serve committed brand assets only; the selected ZIP and review boards stay outside the site.
-fn copy_brand(from: &Path, to: &Path) -> Result<(), String> {
-    let mut problems = Vec::new();
-    checks::brand(&root(), &mut problems);
-    if !problems.is_empty() {
-        return Err(problems.join("\n"));
-    }
-    if to.exists() {
-        std::fs::remove_dir_all(to).map_err(|e| format!("clear {}: {e}", to.display()))?;
-    }
-    std::fs::create_dir_all(to).map_err(|e| format!("create {}: {e}", to.display()))?;
-    for entry in std::fs::read_dir(from).map_err(|e| format!("read brand: {e}"))? {
-        let path = entry.map_err(|e| format!("read brand entry: {e}"))?.path();
-        if matches!(
-            path.extension().and_then(|ext| ext.to_str()),
-            Some("png" | "svg" | "webmanifest")
-        ) {
-            std::fs::copy(&path, to.join(path.file_name().expect("brand file name")))
-                .map_err(|e| format!("copy brand {}: {e}", path.display()))?;
-        }
-    }
-    Ok(())
-}
-
 /// Only verified runtime derivatives enter /pkg; sources, boards and scripts stay out.
 pub(crate) fn check_empty_artwork(root: &Path) -> Result<(), String> {
     process::run(
         std::process::Command::new("node").arg(root.join("apps/vink-web/assets/empty/verify.mjs")),
         "empty artwork: WebP container, dimensions, SHA-256 and byte budget",
     )
-}
-
-fn copy_empty_artwork(root: &Path, to: &Path) -> Result<(), String> {
-    check_empty_artwork(root)?;
-    if to.exists() {
-        std::fs::remove_dir_all(to).map_err(|e| format!("clear {}: {e}", to.display()))?;
-    }
-    std::fs::create_dir_all(to).map_err(|e| format!("create {}: {e}", to.display()))?;
-    for name in ["no-results", "no-public-works", "first-draft"] {
-        let file = format!("vink-empty-{name}.webp");
-        std::fs::copy(
-            root.join("apps/vink-web/assets/empty").join(&file),
-            to.join(&file),
-        )
-        .map_err(|e| format!("copy empty artwork {file}: {e}"))?;
-    }
-    Ok(())
 }
 
 #[cfg(test)]

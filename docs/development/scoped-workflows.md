@@ -111,6 +111,31 @@ hay lấy lại bundle từ checkout khác. Cargo child dùng `target` của che
 worktree khác có target riêng. File khóa được giữ lại, khóa OS tự nhả khi process chết; không xóa
 file khóa để vượt một lượt đang chạy.
 
+### Build package Web
+
+`build web`, `dev web` và các kịch bản SSR dùng `target/site/pkg`. CSR phát hành dùng
+`target/spa/_v/<revision>/pkg`, CSR verification dùng `target/verify-spa/_v/<revision>/pkg`.
+Các lệnh vẫn gọi Cargo với profile, feature, Cargo.lock, environment và dependency graph hiện hành.
+Cargo quyết định freshness của WASM thô. Package có thể tái dùng đầu ra wasm-bindgen khi
+WASM thô, executable bindgen đã kiểm version, cờ, feature, profile, prefix và biến
+`WASM_BINDGEN_*` cùng đường loader do Cargo truyền khớp, đồng thời đủ tệp và SHA-256 khớp.
+Tool wrapper, phiên bản bindgen mới, loader injection và WASM có thể tham chiếu `package.json`
+đều chạy bindgen mỗi lượt. Mỗi đường package có một receipt trong `target/.xtask-web`, ngoài cây
+được phục vụ.
+
+Fonts, brand và empty artwork so trực tiếp tập tên tệp và SHA-256 với nguồn. Brand và artwork
+vẫn chạy kiểm provenance mỗi lần. `HIT` tái dùng tệp nội bộ trong cùng checkout, `MISS` tạo
+lại bước tương ứng. Package mới được dựng trong staging rồi chuyển vào đường publish khi đủ tệp
+và qua Web artifact guard. Build lỗi trước khi chuyển giữ package đã hoàn thành trước đó. SPA
+chỉ khôi phục entry sau khi publish thành công. Receipt được rename sau khi cài package. Verify
+vẫn chạy kiểm bí mật, fixture và assertion của scenario đã chọn.
+
+Tailwind vẫn biên dịch từ CSS, token và allowlist Rust sau khi kiểm token. Editor vẫn typecheck,
+chạy corpus Markdown và bundle với npm lock. Hai bước giữ npm install stamp hiện hữu.
+Preview vẫn dùng owner và thư mục riêng. #501 dùng các owner này để chọn scope bảo thủ.
+#503 giữ kiểm browser và số đo trên môi trường tích hợp. Cần xác minh closure nhập CSS và nguồn
+TypeScript, dependency npm đã cài và các kiểm dữ liệu Editor trước khi thêm reuse cho hai bước đó.
+
 ## Scenario Web và setup
 
 | Selector | Setup / dependency | Assertion được dùng lại |
@@ -151,7 +176,7 @@ chưa có consumer/fixture trong base #509. Boundary hiện hữu là PostgreSQL
 
 Mỗi scenario SSR còn cần App binary, WASM hydrate/bindgen, CSS/Tailwind, editor JS,
 Node/npm, bundle guard, Chrome và scratch PostgreSQL. `standalone` dùng CSR và App API.
-Selector và capture giảm công việc sau build. Artifact incremental thuộc #500.
+Selector và capture giảm công việc sau build. Cache artifact áp dụng theo hợp đồng package ở trên.
 
 `--capture full` là mặc định toàn lane và từng scenario. `--capture checks` yêu cầu ít nhất
 một `--scenario` tường minh, giữ hành vi, a11y, target và các assertion DOM như kích thước,
