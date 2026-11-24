@@ -245,7 +245,7 @@ Chọn theo nhu cầu trong [hướng dẫn workflow có phạm vi](scoped-workf
 `build api`, `dev api --auth identity`, `dev worker`, `dev web`, `dev preview`,
 `verify unit app --filter …`, `verify web --scenario password`; thêm `--plan` để xem phụ thuộc,
 hoặc `doctor` trước lệnh để kiểm prerequisite. Những lệnh tổng hợp bên dưới giữ compatibility.
-API mode bỏ bundle và SSR/static routes, vẫn biên dịch dependency Rust SSR.
+API mode dùng App không bật feature `legacy-ssr`. Xem [các workflow theo scope và diff](scoped-workflows.md).
 
 | Lệnh | Việc thực hiện | Thoát khác 0 khi |
 | --- | --- | --- |

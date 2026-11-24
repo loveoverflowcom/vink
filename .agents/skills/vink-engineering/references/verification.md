@@ -29,7 +29,7 @@ For a focused local task, use the [scoped workflow guide](../../../../docs/devel
 and `doctor <scoped command>`. `--capture checks` on explicit Web scenarios leaves PNG/visual
 evidence `NOT_RUN`. Cite runnable test count separately from Cargo compile/link cost.
 Inspect dependencies with trailing `--plan`. A selected result is not a full lane PASS; `restart`
-includes `main` as setup. Full lanes and formal-method obligations below remain unchanged.
+creates its own draft and carries its ID across the App restart. Full lanes and formal-method obligations below remain unchanged.
 
 ## Scoped completion claims
 
@@ -41,19 +41,23 @@ Keep these scoped claims distinct alongside the four status dimensions in [AGENT
 
 A child PR may satisfy its own acceptance without claiming `OUTCOME_COMPLETE` for a multi-PR parent journey. Journey completion does not imply deployment, and verification does not require automatic GitHub labels or issue-state changes.
 
-## Pick lanes by change
+## Select scope during edit, review and integration
 
-| Change | Lanes | Notes |
+A Draft PR can carry a focused result and an explicit gap. During review, trace each changed
+caller and the original evidence inputs. Before integration or release, run the outstanding
+cross-owner checks and the gates required for that target. Open the feature map for opt-in
+performance, native, formal, IME, security and visual obligations. An empty diff, inspected
+plan or artifact HIT establishes no test result.
+
+| Change | First check during an edit | Evidence for the boundary |
 | --- | --- | --- |
-| Docs, skills, metadata only | `verify static docs` or a diff/link review | No app run needed |
-| Domain, application, contract, config, `desk_state` | `quick` | Add a focused unit or fixture test |
-| D2T-01 structural core/model/trace fixture | `quick` + `discussion` | Generated model state is oracle only; replay command inputs through production Rust |
-| Discussion lifecycle, schema or adapter (D2T-02a) | `quick` + `postgres` | Direct-SQL negatives and explicit-lock races; a recording store proves only use-case wiring |
-| SQL, migration, transaction, ownership, seed | `quick` + `postgres` | A fake store is not evidence of PostgreSQL semantics |
-| Expression catalog/policy/model | `quick` + `expressions` + `kani` (+ `web` for the adapter) | CMP contract checks are separate; see the development guide |
-| Discussion lifecycle/settings/visibility arithmetic or refined scalar | `quick` + `discussion` + `kani` | Kani covers single decisions over whole input domains; sequences stay in Quint, races in `postgres` |
-| Leptos view, route, SSR, hydration, desk interaction | `quick` + `web` (+ `postgres` if data access changed) | Also open captures for visual claims |
-| Worker or process lifecycle | `quick` + `postgres` | The lane starts/stops the worker and checks config exit codes |
+| Contributor docs or skills | `verify static docs`, inspect the affected links and CLI | Run changed examples against their owner or its plan |
+| CSS or shared component | `verify static tokens` and relevant repository guards | Product route at affected themes/sizes plus opened captures. Shared sources also feed Preview and may feed CMP |
+| Rust module | `verify check OWNER` for types, then `verify unit OWNER --filter NAME` for a decision | Record the matched runnable tests. Cargo can still compile and link the entire selected test target |
+| SQL, roles or migration | `verify postgres OWNER` on a disposable cluster | Add lifecycle, rollback, races or full PostgreSQL when shared schema or provisioning changes |
+| Auth or shared HTTP contract | Start at the owning service tests and a scoped PostgreSQL fixture | Verify actual Web and service consumers, including disabled auth and negative access cases |
+| Editor, SSR or hydration | Select the affected Web scenario | Exercise the real hydrated route, save/reload, focus and IME as the claim requires |
+| Refined arithmetic, discussion or expressions model | Focused owner regression | Select the owning Quint and Kani lanes for sequence and exhaustive-domain claims, retain bounds |
 
 ## Select evidence by the claim
 
@@ -92,6 +96,12 @@ comparison. For a run, give its original SHA/build and relevant dirty inputs, co
 target, fixture mode, result and log/capture reference. A real database or browser can use isolated
 synthetic data. A component preview can establish how that component rendered in the preview.
 An AC on a product route needs evidence from that route.
+
+Record the source SHA and relevant dirty content, target/feature/profile, toolchain and flags,
+dependency locks, generator/validator inputs, fixture or corpus, command, original logs and claim.
+For cold/warm comparisons identify which cache began empty, which stayed warm and the measurement
+boundary (process RSS or cgroup peak). Separate an artifact HIT from an executed assertion.
+Mark unresolved inputs `NOT_RUN` or `PARTIAL` and unsupported targets `UNSUPPORTED`.
 
 Compare the tested inputs with the final delta. Rerun an affected check if its code, build,
 fixture or target changed in a relevant way. If the delta is unrelated, record why the original

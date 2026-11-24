@@ -40,7 +40,7 @@ Extend the same block when the work needs more context:
   fix budget that apply. Check 100% and 200% text when affected. Omit UX_CRITERIA for a copy or
   single-property fix with an obvious check.
 - **VERIFY and BLOCKERS.** Select an existing command or inspection from the
-  [scoped workflows](../../../../docs/development/scoped-workflows.md). Give the target, fixture
+  [scoped workflows](../../../../docs/development/scoped-workflows.md). For a mixed diff, carry the base/head or worktree scope and the selected command. Record actual execution beside its AC. Give the target, fixture
   and prerequisite when they affect the claim. If a dependency or decision blocks an AC,
   identify the dependent check, work that can proceed and the condition for resuming it.
 - **HANDOFF.** Use the [verification guide](../../vink-engineering/references/verification.md#evidence-handoff-and-provenance)
