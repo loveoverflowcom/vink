@@ -399,7 +399,7 @@ pub(super) fn ActiveFeed(
                 }
             }}
             <Show when=move || !ids.with(Vec::is_empty)>
-                <ul class="vk-public-list" id="following-cards" role="list">
+                <ul class=super::super::EXPLORE_WORK_LIST_CLASS id="following-cards" role="list">
                     <For each=move || ids.get() key=Clone::clone children={
                         let context = context.clone();
                         move |id| {

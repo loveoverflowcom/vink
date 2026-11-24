@@ -360,14 +360,9 @@ a {
 .vk-public-row { scroll-margin-block: var(--vk-space-4); }
 
 .vk-public-list {
-  display: grid;
   gap: var(--vk-space-3);
   margin: 0;
-  padding: 0;
-  list-style: none;
 }
-
-.vk-public-row { overflow-wrap: anywhere; }
 
 
 .vk-writing-prompt { overflow-wrap: anywhere; }
@@ -1460,7 +1455,7 @@ a {
 .vk-discovery #public-results > .vk-public-scope { text-align: start; }
 .vk-discovery #public-results > .vk-public-list { margin-top: 0; }
 /* R4.2 (#405): separate bg-content cards, equal 20px corners and an 8px gap of page background. */
-.vk-discovery .vk-public-list { display: grid; gap: var(--vk-space-card-gap); margin: 0; padding: 0; list-style: none; }
+.vk-discovery .vk-public-list { gap: var(--vk-space-card-gap); margin: 0; }
 .vk-applied-tag { color: var(--vk-on-secondary-container); text-decoration: none; }
 .vk-applied-tag:not(:has(.vk-tag-chip__note)) {
   min-block-size: var(--vk-density-control-height);
@@ -1610,10 +1605,8 @@ a {
 /* The title link covers the card. The byline sits above it and opens the author profile. */
 .vk-discovery .vk-public-row__card {
   position: relative;
-  display: block;
   padding: min(var(--vk-space-4), 16px) clamp(16px, 4vw, 20px);
   color: var(--vk-on-surface);
-  text-align: start;
 }
 .vk-discovery .vk-public-row__link {
   color: inherit;
@@ -1640,21 +1633,15 @@ a {
   outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
   outline-offset: var(--vk-size-focus-offset);
 }
-/* Reading order on screen: form tag · date → title → excerpt → byline. The DOM keeps the heading first. */
-.vk-public-row__main { display: flex; flex-direction: column; min-inline-size: 0; }
-.vk-public-row__main > .vk-public-row__eyebrow { order: -1; margin: 0 0 var(--vk-space-1); }
 .vk-public-row__main > .vk-public-row__excerpt { margin-block-start: var(--vk-space-2); }
-.vk-public-row__main > .vk-public-row__byline { margin-block-start: var(--vk-space-4); }
 .vk-public-row__eyebrow {
   color: var(--vk-tertiary);
   font-size: var(--vk-type-caption-size);
   font-weight: var(--vk-type-section-weight);
   line-height: var(--vk-type-caption-line-height);
-  overflow-wrap: anywhere;
 }
 /* #352: the byline is the shared AuthorByline cluster; the card keeps its 36 px (2.25rem)
    recipe so the avatar follows enlarged text like the rest of the row. */
-.vk-public-row__byline { min-inline-size: 0; }
 .vk-public-row__byline .vk-ui-avatar { --vk-ui-avatar-size: 2.25rem; }
 /* Above the title link's overlay, which covers the flat row. */
 .vk-public-row__byline a.vk-ui-byline__identity {
@@ -1664,9 +1651,6 @@ a {
 }
 .vk-public-row__tag { color: inherit; }
 .vk-public-row__title {
-  margin: 0;
-  min-inline-size: 0;
-  overflow-wrap: anywhere;
   font-family: var(--vk-type-title-font);
   font-size: var(--vk-type-title-size);
   font-weight: var(--vk-type-title-weight);
@@ -1676,9 +1660,6 @@ a {
 }
 .vk-public-row__excerpt {
   margin: 0;
-  max-inline-size: 58ch;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
   color: var(--vk-on-surface);
   font-family: var(--vk-type-excerpt-font);
   font-size: var(--vk-type-excerpt-size);
