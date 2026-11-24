@@ -399,8 +399,6 @@ a {
 
 #reader-return { gap: var(--vk-space-2); margin-bottom: var(--vk-space-6); }
 #reader-return .vk-ui-icon { margin: 0; }
-/* LVE #73: the work's endorsement closes the text, quiet and start-aligned, before discussion. */
-.vk-reader-endorsement { display: flex; margin-block: var(--vk-space-6) 0; min-width: 0; }
 /* Discussion keeps its live announcement region available when empty. */
 .vk-discussion [role="status"]:empty:not(.vk-discussion-live) { display: none; }
 /* .vk-discussion-order and .vk-reader-replacement-badge migrated to Tailwind utilities (W01 pilot). */
@@ -552,17 +550,11 @@ a {
 .vk-discussion-reply-composer[hidden] { display: none; }
 .vk-discussion-reply-composer > .vk-ui-action { justify-self: start; }
 
-.vk-discussion-delivery {
-  display: grid;
-  justify-items: start;
-  gap: var(--vk-space-2);
-  padding: 14px 16px;
-  border-radius: var(--vk-radius-lg);
-  background: var(--vk-surface-container);
-  min-width: 0;
-}
+/* Keep delivery display and background in the legacy layer with the shared [hidden]
+   selector, the tone rules and the own-card surface override. */
+.vk-discussion-delivery { display: grid; background: var(--vk-surface-container); }
 .vk-discussion-delivery > p { margin: 0; overflow-wrap: anywhere; }
-.vk-discussion-delivery__head { display: flex; align-items: flex-start; gap: 8px; font-weight: var(--vk-type-section-weight); min-width: 0; }
+.vk-discussion-delivery__head { font-weight: var(--vk-type-section-weight); }
 .vk-discussion-delivery__head > .vk-ui-icon { flex-shrink: 0; margin-block-start: 2px; }
 .vk-discussion-delivery__head > p { margin: 0; overflow-wrap: anywhere; }
 .vk-discussion [data-tone="waiting"] { background: var(--vk-warning-container); color: var(--vk-on-warning-container); }
@@ -570,33 +562,19 @@ a {
 .vk-discussion [data-tone="adverse"] { background: var(--vk-error-container); color: var(--vk-on-error-container); }
 .vk-discussion [data-tone="success"] { background: var(--vk-success-container); color: var(--vk-on-success-container); }
 .vk-discussion [data-tone="neutral"] { background: var(--vk-surface-container-highest); color: var(--vk-on-surface-variant); }
-.vk-discussion-own-card { background: var(--vk-surface-container-low); color: var(--vk-on-surface); border-radius: var(--vk-radius-lg); }
-.vk-discussion-own-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--vk-space-2); }
+.vk-discussion-own-card { background: var(--vk-surface-container-low); color: var(--vk-on-surface); }
 .vk-discussion-own-head .vk-ui-heading,
 .vk-discussion-own-head p { margin: 0; }
 .vk-discussion-own-head .vk-muted { font-size: var(--vk-type-caption-size); }
-.vk-discussion-own-card__meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--vk-space-2); inline-size: 100%; }
 .vk-discussion-own-card__meta > .vk-muted { margin: 0; font-size: var(--vk-type-caption-size); }
 .vk-discussion-own-chip {
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  padding: 4px 10px 4px 8px;
-  border-radius: var(--vk-radius-full);
   font-size: var(--vk-type-caption-size);
   font-weight: var(--vk-type-label-weight);
 }
-.vk-discussion-own-rejection {
-  inline-size: 100%;
-  box-sizing: border-box;
-  padding: 10px 12px;
-  border-radius: var(--vk-radius-md);
-  font-size: var(--vk-type-caption-size);
-}
+.vk-discussion-own-rejection { font-size: var(--vk-type-caption-size); }
 .vk-discussion-own-rejection__label { display: block; font-weight: var(--vk-type-section-weight); margin-block-end: 2px; }
 .vk-discussion-own-rejection p { margin: 0; overflow-wrap: anywhere; }
-.vk-discussion-own-card__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-2); inline-size: 100%; }
 
 .vk-discussion-reply-kept {
   display: inline-flex;
@@ -614,7 +592,8 @@ a {
 .vk-discussion-reply-kept > p { margin: 0; font-size: var(--vk-type-caption-size); font-weight: var(--vk-type-label-weight); }
 .vk-discussion-recovered { border-block-start: 1px solid var(--vk-outline-variant); padding-block: var(--vk-space-4); display: grid; gap: var(--vk-space-3); }
 .vk-discussion-tools-note { font-size: var(--vk-type-caption-size); margin: 0; }
-.vk-discussion-pagination { display: grid; justify-items: center; gap: var(--vk-space-2); margin-block: var(--vk-space-4); min-width: 0; }
+/* Keep pager display in the same layer as its [hidden] rule below. */
+.vk-discussion-pagination { display: grid; }
 .vk-discussion-pagination > p { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 359px) {
   .vk-discussion-root { padding-inline: 12px; }
@@ -1131,30 +1110,6 @@ a {
   align-items: start;
   gap: 24px;
   min-inline-size: 0;
-}
-
-.vk-md-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--vk-space-2);
-  min-inline-size: 0;
-  padding-block-end: var(--vk-space-3);
-  border-block-end: 1px solid var(--vk-outline-variant);
-}
-
-.vk-md-toolbar__formats {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--vk-space-2);
-  min-inline-size: 0;
-}
-
-.vk-md-heading-wrap {
-  position: relative;
-  max-inline-size: 100%;
 }
 
 .vk-md-toolbar .vk-ui-button {
@@ -1740,7 +1695,8 @@ a {
   padding-inline: 2px;
 }
 .vk-public-pagination { display: flex; }
-.vk-reader-tags { display: flex; flex-wrap: wrap; list-style: none; padding: 0; gap: var(--vk-space-2) var(--vk-space-4); margin-block: var(--vk-space-3) var(--vk-space-6); }
+/* Reader tag display and margins share a layer with their 759px overrides below. */
+.vk-reader-tags { display: flex; margin-block: var(--vk-space-3) var(--vk-space-6); }
 .vk-discovery--tag { inline-size: 100%; max-inline-size: 52rem; margin-inline: auto; }
 @media (max-width: 759px) {
   #tag-picker { inline-size: 100%; max-block-size: 90dvh; padding-block-end: env(safe-area-inset-bottom); }

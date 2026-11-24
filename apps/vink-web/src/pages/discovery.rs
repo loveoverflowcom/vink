@@ -1269,7 +1269,7 @@ fn WorkCardRow(
 
 #[component]
 pub(super) fn PublicTags(tags: Vec<PublicTagDto>) -> impl IntoView {
-    view! { <ul class="vk-reader-tags" aria-label="Thẻ tác phẩm">
+    view! { <ul class="vk-reader-tags flex-wrap [list-style:none] p-0 gap-x-vk-4 gap-y-vk-2" aria-label="Thẻ tác phẩm">
         {tags.into_iter().map(|tag| view! { <li><a class="vk-ui-link" href=tag_href(&tag.slug)>{tag.label}</a></li> }).collect_view()}
     </ul> }
 }
