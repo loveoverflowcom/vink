@@ -1033,12 +1033,12 @@ fn bounded(path: &str) -> bool {
 }
 
 #[cfg(feature = "browser")]
-pub(crate) async fn notification_request<B: Serialize, T: serde::de::DeserializeOwned>(
+pub(crate) fn notification_request<B: Serialize, T: serde::de::DeserializeOwned>(
     path: &str,
     scope: &str,
     body: Option<&B>,
-) -> Result<T, ApiError> {
-    http::notification(path, scope, body).await
+) -> impl std::future::Future<Output = Result<T, ApiError>> + use<B, T> {
+    http::notification(path, scope, body)
 }
 
 #[cfg(feature = "browser")]
@@ -1175,29 +1175,43 @@ mod http {
         ))
     }
 
-    pub(super) async fn notification<B: Serialize, T: DeserializeOwned>(
+    pub(super) fn notification<B: Serialize, T: DeserializeOwned>(
         path: &str,
         scope: &str,
         body: Option<&B>,
-    ) -> Result<T, ApiError> {
-        let deadline = Deadline::new()?;
-        let signal = deadline.controller.signal();
-        let builder = if body.is_some() {
-            Request::post(path)
-        } else {
-            Request::get(path)
+    ) -> impl std::future::Future<Output = Result<T, ApiError>> + use<B, T> {
+        // Read starts fetch in the click handler. The future owns only the response and
+        // deadline, so navigation can take place immediately after the request starts.
+        let started = (|| {
+            let deadline = Deadline::new()?;
+            let signal = deadline.controller.signal();
+            let builder = if body.is_some() {
+                Request::post(path)
+            } else {
+                Request::get(path)
+            }
+            .abort_signal(Some(&signal))
+            .cache(web_sys::RequestCache::NoStore)
+            .header("accept", "application/json")
+            .header("x-vink-notification-scope", scope);
+            let request = match body {
+                Some(body) => builder.json(body),
+                None => builder.build(),
+            }
+            .map_err(|_| ApiError::Network)?;
+            let window = web_sys::window().ok_or(ApiError::Network)?;
+            let response = window.fetch_with_request(&request.into());
+            Ok::<_, ApiError>((deadline, response, path.to_owned()))
+        })();
+        async move {
+            let (_deadline, response, path) = started?;
+            let response = wasm_bindgen_futures::JsFuture::from(response)
+                .await
+                .map_err(|_| ApiError::Network)?
+                .dyn_into::<web_sys::Response>()
+                .map_err(|_| ApiError::Network)?;
+            decode(&path, Response::from(response)).await
         }
-        .abort_signal(Some(&signal))
-        .cache(web_sys::RequestCache::NoStore)
-        .header("accept", "application/json")
-        .header("x-vink-notification-scope", scope);
-        let request = match body {
-            Some(body) => builder.json(body),
-            None => builder.build(),
-        }
-        .map_err(|_| ApiError::Network)?;
-        let response = request.send().await.map_err(|_| ApiError::Network)?;
-        decode(path, response).await
     }
 
     pub async fn get<T: DeserializeOwned>(path: &str) -> Result<T, ApiError> {

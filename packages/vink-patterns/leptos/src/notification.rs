@@ -124,7 +124,8 @@ pub fn NotificationRow(
                 class="vk-notif-row__link"
                 href=facts.href
                 aria-label=name
-                on:click=move |event| {
+                data-vink-managed-navigation=on_activate.is_some().then_some("")
+                on:click:capture=move |event| {
                     if let Some(activate) = on_activate {
                         activate.run(event);
                     }

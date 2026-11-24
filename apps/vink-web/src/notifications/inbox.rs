@@ -93,6 +93,8 @@ fn ReadAll(owner: Notifications) -> impl IntoView {
 
 #[component]
 fn InboxBody(owner: Notifications) -> impl IntoView {
+    #[cfg(feature = "hydrate")]
+    let navigation = crate::navigation::use_navigation_guard();
     let groups = Memo::new(move |_| {
         owner.inbox.with(|inbox| {
             let mut groups: Vec<(&'static str, Vec<Row>)> = Vec::new();
@@ -186,11 +188,19 @@ fn InboxBody(owner: Notifications) -> impl IntoView {
                         view! { <NotificationGroup label=day
                             show_heading_when=Signal::derive(move || groups.with(|groups| groups.len() > 1))>
                             <For each=move || rows.get() key=Clone::clone children=move |row: Row| {
+                                #[cfg(feature = "hydrate")]
+                                let href = row.facts.href.clone();
                                 view! { <NotificationRow facts=row.facts on_activate=Callback::new(move |event: leptos::ev::MouseEvent| {
+                                    #[cfg(feature = "hydrate")]
                                     if event.button() == 0 && !event.default_prevented() {
-                                        #[cfg(feature = "hydrate")]
                                         owner.read(row.group_id.clone(), row.version);
+                                        if !(event.meta_key() || event.ctrl_key() || event.shift_key() || event.alt_key()) {
+                                            event.prevent_default();
+                                            navigation.navigate(&href);
+                                        }
                                     }
+                                    #[cfg(not(feature = "hydrate"))]
+                                    let _ = event;
                                 }) /> }
                             } />
                         </NotificationGroup> }

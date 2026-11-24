@@ -333,15 +333,16 @@ impl Notifications {
         let Some(command_key) = command_key() else {
             return;
         };
-        // The router may unmount the surface immediately. This command owns only the observed
-        // version and survives that unmount; it cannot write against another session's cookie.
+        let command = ReadCommand {
+            command_key,
+            group_id,
+            observed_group_version,
+        };
+        // Fetch starts before navigation. The receipt outlives the inbox surface and can
+        // only apply to the displayed version under this credential.
+        let attempt = api::notification_request(&format!("{INBOX}/read"), &scope.1, Some(&command));
         spawn_local(async move {
-            let command = ReadCommand {
-                command_key,
-                group_id,
-                observed_group_version,
-            };
-            let mut result = post("read", &scope.1, &command).await;
+            let mut result = attempt.await;
             if matches!(result, Err(ApiError::Network | ApiError::Unavailable))
                 && self.scope().as_ref() == Some(&scope)
             {

@@ -96,6 +96,8 @@ async function fixture(page) {
       response = [200, { seen_snapshot: snapshot(scope, state.seen) }];
     } else if (path === read) {
       response = [200, { group_id: body.group_id, group_version: body.observed_group_version, is_read: true }];
+      held.set('read', () => reply(requestId, ...response));
+      return;
     } else if (path === `${inbox}/mark-all-read`) {
       const answer = () => {
         state.marked = true;
@@ -315,11 +317,23 @@ export async function notifications(page, { args, check }) {
 
   const clicked = controlled.rows.find(item => item.target.kind === 'work_comment_thread');
   const selector = `${popup} .vk-notif-row__link[href*="nhan-xet=${clicked.target.comment_id}"]`;
+  await page.eval(`(() => {
+    const fetch = window.fetch;
+    window.fetch = function (resource, ...options) {
+      if (new URL(resource.url ?? resource, location.href).pathname === '${read}') {
+        window.fetch = fetch;
+        window.readStartedAt = location.pathname;
+      }
+      return fetch.call(this, resource, ...options);
+    };
+  })()`);
   await page.click(selector);
-  await eventually(() => latest(read), 'Read command');
+  await eventually(() => held.get('read'), 'Read command');
   check(latest(read).body.group_id === clicked.group_id && latest(read).body.observed_group_version === clicked.group_version,
-    'AC-03 Read submits the displayed group/version before navigating to an unavailable Reader');
-  await page.waitFor(`location.pathname === '/tac-pham/${clicked.target.work_id}' && !document.body.textContent.includes('${privateTitle}')`, 'typed Reader destination without the inbox data');
+    'AC-03 Read submits the displayed group/version');
+  await page.waitFor(`location.pathname === '/tac-pham/${clicked.target.work_id}' && !document.body.textContent.includes('${privateTitle}')`, 'typed Reader destination before Read receipt');
+  check(await page.eval("window.readStartedAt === '/'"), 'AC-03 Read starts before navigation even when the destination is unavailable');
+  await held.get('read')();
 
   await page.goto(`${args.base}/`);
   await page.waitFor(visible(bell), 'rail again');
