@@ -17,7 +17,6 @@ import { checkSelectGeometry, selectCharacter } from '../../../packages/ui-syste
 import { discoveryReading, discoveryCorpus } from './discovery-smoke.mjs';
 import { authorSearch } from './author-search-smoke.mjs';
 import { discoveryChipGeometry } from './discovery-chip-geometry.mjs';
-import { expressionPilot } from './expressions-smoke.mjs';
 import { endorsementAsAuthor, endorsementAsReader } from './endorsement-smoke.mjs';
 import { authWeb } from './auth-smoke.mjs';
 import { readerAuthClosed } from './reader-auth-smoke.mjs';
@@ -4893,7 +4892,45 @@ async function mainPhase(page) {
   await readerBeforeHydration(page, { args, check });
   await conditionalPublicReads(page);
   await tracePublicReadLifecycle(page);
-  await expressionPilot(page, args, check);
+  const formerPilot = '/thu-nghiem/bieu-cam';
+  const response = await fetch(args.base + formerPilot);
+  const missing = await response.text();
+  check(response.status === 404 && missing.includes('Không tìm thấy trang này.') &&
+    !missing.includes('expression-pilot') && !missing.includes('author-profile-heading'),
+  'the former expression URL is a product not-found on direct HTTP');
+  for (const path of ['/pkg/expressions/pilot.js', '/pkg/expressions/NOTICE.txt']) {
+    check((await fetch(args.base + path)).status === 404, `product does not serve ${path}`);
+  }
+  const expressionRequests = [];
+  const recordExpressionRequest = message => {
+    if (message.sessionId === page.sessionId && message.method === 'Network.requestWillBeSent' &&
+        /\/pkg\/.*(?:expressions|expression_hydration|dotlottie)/.test(message.params.request.url)) {
+      expressionRequests.push(message.params.request.url);
+    }
+  };
+  page.cdp.listeners.push(recordExpressionRequest);
+  try {
+    await page.send('Network.enable');
+    for (const route of ['/tac-pham/33333333-3333-4333-8333-333333333333', '/']) {
+      await page.goto(args.base + route);
+      await page.waitFor("document.documentElement.dataset.hydrated === 'true'", 'hydrate product route');
+    }
+    check(expressionRequests.length === 0, 'Explore and Reader make no Preview runtime requests');
+  } finally {
+    page.cdp.listeners.splice(page.cdp.listeners.indexOf(recordExpressionRequest), 1);
+  }
+  await page.eval(`(() => {
+    const link = document.createElement('a');
+    link.id = 'former-pilot-link';
+    link.href = ${JSON.stringify(formerPilot)};
+    link.textContent = 'Former preview URL';
+    document.querySelector('main').prepend(link);
+    window.__beforeFormerPilot = true;
+  })()`);
+  await page.click('#former-pilot-link');
+  await page.waitFor(`location.pathname === ${JSON.stringify(formerPilot)} &&
+    window.__beforeFormerPilot === true && document.querySelector('main h1')?.textContent.includes('Không tìm thấy trang này.') &&
+    !document.querySelector('#expression-pilot, #author-profile-heading')`, 'client navigation reaches product not-found');
   await discussionReadingAndWrites(page);
   await endorsementAsAuthor(page, { args, check });
   await adaptiveShell(page);

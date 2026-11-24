@@ -70,6 +70,25 @@ class Packages(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "limit"):
                 art.inventory(pkg)
 
+    def test_blocks_pilot_in_candidate_but_replays_retained_archive(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            archives = root / "archives"
+            package(archives, A)
+            package(archives, B)
+            pkg = archives / A / "pkg"
+            for name in ("expressions/pilot.js", "snippets/vink-web-ab12/expressions/bridge.js"):
+                file = pkg / name
+                file.parent.mkdir(parents=True, exist_ok=True)
+                file.write_text("historical asset")
+                with self.subTest(asset=name), self.assertRaisesRegex(ValueError, "Preview asset"):
+                    art.record(pkg, spec(A))
+            (pkg.parent / "manifest.json").write_bytes(art.encode(art.record(pkg, spec(A), retained=True)))
+            output = root / "staging"
+            art.stage(archives, B, output)
+            self.assertFalse((output / "_v" / B / "pkg/expressions/pilot.js").exists())
+            self.assertTrue((output / "_v" / A / "pkg/expressions/pilot.js").exists())
+
     def test_schema_review_checks_both_histories_and_direction(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

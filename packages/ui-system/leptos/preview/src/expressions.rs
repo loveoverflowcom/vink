@@ -1,17 +1,16 @@
-//! Isolated EMO-01A consumer. Static SSR and exact Unicode, no comment/reaction authority.
+//! Isolated EMO-01A consumer. Static Preview fixture and exact Unicode, no comment/reaction authority.
 use leptos::{html, prelude::*};
-use leptos_meta::{Meta, Title};
 use vink_expressions::catalog::{ASSETS, COUNT};
 use vink_ui::{Button, ButtonVariant, Heading, HeadingLevel, TypeRole};
 
-pub const UNICODE_SAMPLE: &str =
+const UNICODE_SAMPLE: &str =
     "Một câu thơ còn ấm ❤️‍🔥\n  lời cảm ơn vẫn nguyên vẹn 🙏 👍🏽\n\nTrang sách có cả 👩‍👩‍👧‍👦, 🇻🇳 và 1️⃣.";
 
 #[component]
-pub fn ExpressionPilot() -> impl IntoView {
+fn ExpressionPilot(on_exit: Callback<()>) -> impl IntoView {
     let host = NodeRef::<html::Div>::new();
     let failed = RwSignal::new(false);
-    #[cfg(feature = "hydrate")]
+    #[cfg(all(target_arch = "wasm32", feature = "media-hydrate"))]
     {
         use std::sync::{
             Arc,
@@ -46,14 +45,17 @@ pub fn ExpressionPilot() -> impl IntoView {
         });
     }
     view! {
-        <Title text="Thử biểu cảm · Mẫu — Vink" />
-        <Meta name="robots" content="noindex" />
         <div id="expression-pilot" class="vk-expression-pilot" node_ref=host data-ready="false">
             <header id="pilot-heading">
                 <p class="vk-eyebrow">"Thử nghiệm độc lập · Mẫu"</p>
                 <Heading level=HeadingLevel::H1 role=TypeRole::Headline>"Một chút biểu cảm"</Heading>
                 <p id="pilot-hint">"Hình luôn hiện tĩnh trước. Chọn một biểu cảm để phát một lần; tối đa hai lượt cùng lúc. Khi giảm chuyển động, hình giữ nguyên tĩnh."</p>
-                <vink_ui::Link href="/">"Về Khám phá"</vink_ui::Link>
+                <a id="expression-exit" class="vk-ui-link" href="/" on:click=move |ev| {
+                    if !ev.ctrl_key() && !ev.meta_key() && !ev.shift_key() && !ev.alt_key() {
+                        ev.prevent_default();
+                        on_exit.run(());
+                    }
+                }>"Về thư viện mẫu"</a>
             </header>
             <section id="unicode-sample" aria-labelledby="unicode-title">
                 <Heading level=HeadingLevel::H2 role=TypeRole::Title id="unicode-title">"Câu chữ vẫn nguyên vẹn"</Heading>
@@ -67,7 +69,7 @@ pub fn ExpressionPilot() -> impl IntoView {
                         <li data-expression-index=index data-phase="static" data-generation="0">
                             <div class="vk-expression-art" aria-hidden="true">
                                 <span class="vk-expression-unicode">{asset.unicode}</span>
-                                <img src=crate::asset_url(&format!("/pkg/expressions/assets/{}", asset.poster)) alt=asset.unicode width="96" height="96" />
+                                <img src=format!("/pkg/expressions/assets/{}", asset.poster) alt=asset.unicode width="96" height="96" />
                             </div>
                             <Button id=format!("expression-{index}") variant=ButtonVariant::Tonal>{asset.label_vi}</Button>
                             <p class="vk-expression-status" data-player-status>"Phát một lần"</p>
@@ -89,14 +91,14 @@ pub fn ExpressionPilot() -> impl IntoView {
                 <p>
                     <a href="https://googlefonts.github.io/noto-emoji-files/?view=docs">"Nguồn Google"</a>" · "
                     <a href="https://creativecommons.org/licenses/by/4.0/">"CC BY 4.0"</a>" · "
-                    <a href=crate::asset_url("/pkg/expressions/NOTICE.txt")>"Giấy phép và ghi công"</a>
+                    <a href="/pkg/expressions/NOTICE.txt">"Giấy phép và ghi công"</a>
                 </p>
             </footer>
         </div>
     }
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(all(target_arch = "wasm32", feature = "media-hydrate"))]
 mod bridge {
     use super::{ASSETS, COUNT};
     use vink_expressions::policy::{Admission, Policy};
@@ -183,15 +185,28 @@ mod bridge {
     }
 }
 
+/// Shared entry for the static renderer and its browser hydration example.
+pub fn specimen() -> impl IntoView {
+    let mounted = RwSignal::new(true);
+    view! {
+        <main class="vk-ui vk-scope vk-expression-fixture">
+            <Show when=move || mounted.get() fallback=|| view! {
+                <p id="expression-closed"><a class="vk-ui-link" href="/">"Về thư viện mẫu"</a></p>
+            }>
+                <ExpressionPilot on_exit=Callback::new(move |()| mounted.set(false)) />
+            </Show>
+        </main>
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
-    fn ssr_is_static_named_and_preserves_source_unicode() {
+    fn fixture_is_static_named_and_preserves_source_unicode() {
         let owner = Owner::new();
         let html = owner.with(|| {
-            leptos_meta::provide_meta_context();
-            view! { <ExpressionPilot /> }.to_html()
+            specimen().to_html()
         });
         assert_eq!(html.matches("data-expression-index=").count(), COUNT);
         assert!(html.contains(UNICODE_SAMPLE));

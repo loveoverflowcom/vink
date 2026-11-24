@@ -23,7 +23,7 @@ FILES = re.compile(
     r"assets/noto-[\w-]+\.(?:svg|json)|runtime/dotlottie-[\w-]+\.(?:wasm|js))", re.ASCII)
 REQUIRED = {"vink.js", "vink.css", "vink_bg.wasm", "vink-editor.js", "author-landscape.webp",
             "fonts/be-vietnam-pro-400.woff2", "fonts/literata-variable.woff2",
-            "brand/vpen-r1-favicon.svg", "expressions/pilot.js", "empty/vink-empty-first-draft.webp"}
+            "brand/vpen-r1-favicon.svg", "empty/vink-empty-first-draft.webp"}
 
 
 def require(ok, reason):
@@ -52,7 +52,13 @@ def validate(spec):
                 f"wrong {name} image")
 
 
-def inventory(pkg):
+def is_preview_asset(name):
+    parts = name.split("/")
+    return any(part in {"expressions", "preview", "fixtures"} or part.startswith(
+        ("vink-ui-preview-", "vink_ui_preview", "expression_hydration")) for part in parts)
+
+
+def inventory(pkg, *, retained=False):
     entries = {}
     require(pkg.is_dir() and not pkg.is_symlink(), "expected pkg directory")
     for file in sorted(pkg.rglob("*")):
@@ -60,6 +66,8 @@ def inventory(pkg):
         if file.is_dir():
             continue
         name = file.relative_to(pkg).as_posix()
+        if not retained:
+            require(not is_preview_asset(name), f"Preview asset in product package {name}")
         require(file.is_file() and FILES.fullmatch(name), f"unexpected public asset {name}")
         size = file.stat().st_size
         require(0 < size <= MAX_FILE, f"Pages file limit or empty asset: {name} ({size})")
@@ -68,9 +76,9 @@ def inventory(pkg):
     return entries
 
 
-def record(pkg, spec):
+def record(pkg, spec, *, retained=False):
     validate(spec)
-    entries = inventory(pkg)
+    entries = inventory(pkg, retained=retained)
     return {**spec, "assets": entries, "asset_digest": sha(encode(entries))}
 
 
@@ -83,7 +91,7 @@ def stage(archives, target, output, legacy=None):
         receipt = json.loads((archive / "manifest.json").read_bytes())
         spec = {key: receipt[key] for key in ("environment", "public_origin", "source_sha", "platform", "images")}
         pkg = archive / "pkg"
-        require(archive.name == spec["source_sha"] and record(pkg, spec) == receipt, "archive drift")
+        require(archive.name == spec["source_sha"] and record(pkg, spec, retained=True) == receipt, "archive drift")
         prefix = f"_v/{archive.name}/pkg"
         shutil.copytree(pkg, output / prefix)
         for name, item in receipt["assets"].items():

@@ -24,6 +24,9 @@ already owned by the requirement, or clearly declared as provisional experiment 
 
 ## Implement at the existing seam
 
+Put experiments in independent Preview or an owner-local test fixture. Review the conditions for promoting a real caller.
+See the [Web/Preview boundary](../../../docs/development/web-preview-boundary.md).
+
 For an experiment that creates or changes UI, present the appropriate
 [LayoutSpec](../vink-layout-spec/SKILL.md) before UI code, a generation script or
 preview. A new screen/redesign without a selected direction uses the Design workflow's

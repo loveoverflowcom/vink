@@ -74,6 +74,11 @@ Proposal này ở trạng thái `PENDING` (chưa có signoff đúng revision/SHA
 inventory, pilot và bằng chứng nằm tại
 [docs/development/tailwind-web-foundation.md](../docs/development/tailwind-web-foundation.md).
 
+## Ranh giới Web và Preview
+
+[VDR-WEB-PREVIEW-BOUNDARY@r1](proposals/VDR-WEB-PREVIEW-BOUNDARY.r1.toml) (`PENDING`)
+ghi #479. [Owner và kiểm](../docs/development/web-preview-boundary.md).
+
 ## Giao diện Web (Shell & Cỡ chữ)
 
 [VDR-WEB-APPEARANCE@r1](proposals/VDR-WEB-APPEARANCE.r1.toml) (`PENDING`, SHA-256

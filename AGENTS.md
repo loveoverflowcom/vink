@@ -36,7 +36,7 @@ those registries rather than duplicating long status narratives across skills.
   and Lossy WebP fixtures exist for qualification only; **no native product app exists**
   ([qualification evidence](docs/development/ui-system-qualification-evidence.md)).
 - **Expressions (`packages/expressions`):** 16-asset Google Noto manifest, pure admission/generation
-  policy on `/thu-nghiem/bieu-cam`, lazy dotLottie Software renderer on Web, Quint (`verify
+  policy and lazy dotLottie Software renderer in independent Leptos Preview, Quint (`verify
   expressions`) and Kani (`verify kani`) coverage; CMP is contract/Unicode fallback only
   ([expression scope](docs/development/expressions.md)).
 - **Literary endorsement (`domain::endorsement`, LVE #73):** pure revision/comment endorsement core
@@ -199,6 +199,11 @@ The following boundaries guide work within the selected scope:
   an evaluator result carries no authority, a failure or timeout never approves, an admin
   decision on a revision beats a late evaluator result, and no real provider, admin channel or
   auto-approval is enabled.
+
+Production routes, normal dependencies and packaged assets need a real product caller.
+Showcases and spikes run in Preview; verification fixtures use their test lane. Use the
+[Web/Preview boundary and ownership inventory](docs/development/web-preview-boundary.md)
+before adding a route, moving a prototype or changing an artifact manifest.
 
 ## Work and verification
 

@@ -1,0 +1,12 @@
+version = 1
+id = "VDR-WEB-PREVIEW-BOUNDARY"
+revision = 1
+
+[content]
+kind = "architecture"
+domain = "ui-system"
+title = "Ranh giới Web production, Preview và Test"
+resolution = "Production Web chứa route, dependency và artifact có caller sản phẩm. Demo chạy trong Preview, fixture kiểm thử chạy trong lane owner. Hai bên được dùng thư viện chung. #479 chuyển EMO-01A sang fixture tĩnh/hydrate thuộc Preview và giữ contract, model và browser assertions. Guard kiểm router, normal graph và output/manifest. Promotion cần caller, authority, fallback và kiểm chứng phù hợp."
+rationale = "Yêu cầu ngày 24/11/2026 tại https://github.com/loveoverflowcom/vink/issues/479. Host Preview giữ no-JS và browser lifecycle, docs/development/web-preview-boundary.md giữ inventory. Chưa có signoff đúng revision theo VDR-DECISION-SIGNOFF@r1."
+requires = ["VDR-DECISION-SIGNOFF@r1"]
+related_ids = ["UX-01", "WR-02"]

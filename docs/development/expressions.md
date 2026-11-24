@@ -1,8 +1,8 @@
-# EMO-01A — Google Noto, policy Rust và Web pilot
+# EMO-01A — Google Noto, policy Rust và fixture Preview
 
 **Phạm vi:** lát cắt độc lập của [#25](https://github.com/loveoverflowcom/vink/issues/25), nền
 `develop@27927c462244f2a70e36a686a37c8c95690775b6`. Chưa hoàn thành toàn bộ issue.
-[Development guide](README.md#biểu-cảm-google-noto-emo-01a) sở hữu lệnh; PR ghi SHA và kết quả chạy.
+[Development guide](README.md#biểu-cảm-google-noto-emo-01a) sở hữu lệnh. [#479](web-preview-boundary.md) chuyển fixture sang Preview; PR ghi SHA và kết quả chạy.
 
 ## HOW và WHY
 
@@ -20,7 +20,7 @@ Google SVG (commit pin) + animation (snapshot SHA-256)
 manifest dùng chung và không dựng authority thảo luận thứ hai. [Registry #41](discussion-core.md)
 giữ D2T-INV; D2T-INV-11 dẫn tới registry EMO dưới đây, không copy luật bình luận.
 
-Chọn crate thuần `vink-expressions` vì Web WASM thực sự gọi policy và Kani biên dịch cùng source;
+Chọn crate thuần `vink-expressions` vì Preview WASM thực sự gọi policy và Kani biên dịch cùng source;
 đặt trong service sẽ kéo sai dependency vào browser. Generated contract CMP dùng lại manifest,
 không nhận là Rust FFI/Kani proof của Kotlin. Thêm service/DB không giải quyết việc phát asset
 chỉ đọc; không chọn phương án đó. Engine JS quản lý DOM/network, không giữ policy thứ hai. Host đọc lại media/foreground và
@@ -31,12 +31,12 @@ không được ship trong bundle. Full benchmark/thiết bị và quyết đị
 
 ## LayoutSpec r1 — hướng đã chọn trước khi viết UI
 
-Trang có nhãn Mẫu, route `/thu-nghiem/bieu-cam`, dùng shell có sẵn. Người thử xem artwork và
+Fixture `/expressions.html` có nhãn Mẫu trong Leptos Preview và dùng UI system chung. Người thử xem artwork và
 chủ động phát một lần; không có submit, recent, picker sản phẩm hoặc trạng thái persisted.
 
 ```text
 Screen #expression-pilot — Một chút biểu cảm · Mẫu
-  Region #pilot-heading — mục đích, giới hạn, link về Khám phá
+  Region #pilot-heading — mục đích, giới hạn, link về gallery Preview
   Region #unicode-sample — thơ Việt giữ nguyên FE0F/ZWJ/modifier/flag/keycap
   Grid #emoji-catalog — 16 poster; tên/nút shared Button; trạng thái yên tĩnh
   Region #expression-status — thông báo thao tác, không announce từng frame
@@ -45,7 +45,7 @@ Screen #expression-pilot — Một chút biểu cảm · Mẫu
 ```
 
 Đọc/focus theo DOM. Grid auto-fit theo phần rộng còn lại, cell tối thiểu 11rem nhưng không vượt
-100% ở màn hẹp; artwork 6rem giữ chỗ trước hydration. Trang cuộn chính, không overlay/cuộn lồng. Gutter ngang do `.vk-main` sở hữu, pilot chỉ thêm
+100% ở màn hẹp; artwork 6rem giữ chỗ trước hydration. Trang cuộn chính, không overlay/cuộn lồng. Gutter ngang do `.vkp-expression-fixture` sở hữu, pilot chỉ thêm
 padding theo trục dọc để tránh padding lồng ở chữ 200%.
 Token surface/container/on-surface/outline/primary/focus và font của UI system; không thêm palette.
 320/390/834/1024/1440px, Sáng/Tối/Hệ thống, 200% chữ; nút native được Enter/Space/touch kích hoạt,
@@ -60,7 +60,7 @@ status gắn `aria-describedby`. Root `noindex`; không đưa diagnostics vào r
 | Giảm chuyển động/hidden/offscreen | Poster hoặc Unicode | Hủy/pause rồi destroy; thu hồi slot; trở lại không autoplay |
 | Module/WASM/JSON lỗi hoặc timeout | Poster + thử lại | Release và destroy; không đi CDN khác |
 | Poster lỗi | Unicode của đúng sequence | Tên/nội dung vẫn đọc được |
-| Route unmount/dispose | View được dọn | Abort fetch; observers/listeners/timers/canvas/player bị dọn; callback muộn bị chặn |
+| Unmount/dispose | View được dọn | Abort fetch; observers/listeners/timers/canvas/player bị dọn; callback muộn bị chặn |
 
 ## Catalog, licensing và loader
 
@@ -82,9 +82,9 @@ CDN URL bằng local hash URL, gọi `setWasmUrl` trước khởi tạo. Không 
 font hay arbitrary user URL. Hỏng WASM chỉ retry buffered cùng origin. Build và browser kiểm
 fallback không thoát sang CDN. `build.json` ghi byte thô; đây không phải benchmark transfer/FPS.
 
-Tiny wasm-bindgen bridge được ship cùng app, controller chỉ tải trên route pilot; engine/WASM
-chỉ tải sau admission từ activation qua event người dùng tin cậy (`isTrusted`). Không tuyên bố toàn feature +0KB: Rust/catalog/glue/CSS
-vẫn có overhead. Reader/Explore không yêu cầu engine, WASM hoặc controller route.
+Wasm-bindgen bridge nằm trong fixture Preview. Controller, engine và WASM chỉ tải sau admission
+qua event người dùng tin cậy (`isTrusted`). [Ranh giới Web/Preview](web-preview-boundary.md) ghi
+các guard về route, dependency và artifact production.
 
 ## Registry EMO — một model lifecycle
 

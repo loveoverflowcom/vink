@@ -1,6 +1,6 @@
 // Uses the existing CDP host and real hydrated Rust policy. No simulated playback reducer.
 export async function expressionPilot(page, args, check) {
-  const url = `${args.base}/thu-nghiem/bieu-cam`;
+  const url = new URL('expressions.html', args.base).href;
   const sample = 'Một câu thơ còn ấm ❤️‍🔥\n  lời cảm ơn vẫn nguyên vẹn 🙏 👍🏽\n\nTrang sách có cả 👩‍👩‍👧‍👦, 🇻🇳 và 1️⃣.';
   const requests = [];
   const record = m => { if (m.sessionId === page.sessionId && m.method === 'Network.requestWillBeSent') requests.push(m.params.request.url); };
@@ -9,8 +9,13 @@ export async function expressionPilot(page, args, check) {
   const cell = i => `[data-expression-index="${i}"]`;
   const phase = i => `document.querySelector('${cell(i)}').dataset.phase`;
   const active = `Number(document.querySelector('#expression-pilot').dataset.activePlayers)`;
+  async function go() {
+    await page.send('Page.navigate', { url });
+    await page.waitFor(`location.href === ${JSON.stringify(url)} && document.readyState === 'complete'`,
+      'load expression fixture', 60000);
+  }
   async function open() {
-    await page.goto(url);
+    await go();
     await page.waitFor(`document.querySelector('#expression-pilot')?.dataset.ready === 'true'`, 'expression controller');
     await page.eval(`scrollTo(0, 0)`);
   }
@@ -27,23 +32,19 @@ export async function expressionPilot(page, args, check) {
   }
   async function click(index) { await page.click(`#expression-${index}`); }
   async function reduce(value) {
-    await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: value ? 'reduce' : 'no-preference' }] });
+    await page.emulate('prefers-reduced-motion', value ? 'reduce' : 'no-preference');
   }
   console.log('Noto expressions: exact Unicode, static SSR, lazy real runtime and Rust lifecycle:');
   try {
+    await page.send('Network.enable');
     await page.send('Network.setCacheDisabled', { cacheDisabled: true });
+    await page.send('Emulation.setFocusEmulationEnabled', { enabled: true });
     await page.viewport(1440, 1200);
     const html = await fetch(url).then(r => r.text());
-    check((html.match(/data-expression-index=/g) ?? []).length === 16 && !html.includes('<canvas'), 'pilot SSR contains sixteen static named assets and no canvas');
-    check(html.includes(sample) && !html.includes('/expressions/runtime/'), 'SSR preserves ZWJ/selector/modifier/flag/keycap source and contains no animation engine');
-    for (const route of ['/', '/tac-pham/33333333-3333-4333-8333-333333333333']) {
-      await page.goto(`${args.base}${route}`);
-      await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'static route hydration');
-    }
-    check(!requests.some(engineRequest) && !requests.some(u => u.endsWith('/expressions/pilot.js')), 'plain Explore/reader do not request animation engine, WASM or pilot controller');
-
+    check((html.match(/data-expression-index=/g) ?? []).length === 16 && !html.includes('<canvas'), 'fixture HTML contains sixteen static named assets and no canvas');
+    check(html.includes(sample) && !html.includes('/expressions/runtime/'), 'fixture HTML preserves ZWJ/selector/modifier/flag/keycap source and contains no animation engine');
     await page.send('Emulation.setScriptExecutionDisabled', { value: true });
-    await page.goto(url);
+    await go();
     check(await page.eval(`document.querySelectorAll('#emoji-catalog img').length === 16 && !document.querySelector('canvas') && document.querySelector('#expression-pilot').dataset.ready === 'false'`), 'actual no-JS pilot retains static artwork');
     await page.capture('expressions-no-js-1440-light');
     await page.send('Emulation.setScriptExecutionDisabled', { value: false });
@@ -84,11 +85,11 @@ export async function expressionPilot(page, args, check) {
     check(await page.eval(`${active} === 0`) && !requests.some(engineRequest), 'untrusted scripted click cannot load the animation engine');
     await page.eval(`delete document.documentElement.dataset.theme`);
     const lightSurface = await page.eval('getComputedStyle(document.body).backgroundColor');
-    await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
+    await page.emulate('prefers-color-scheme', 'dark');
     check(await page.eval('getComputedStyle(document.body).backgroundColor') !== lightSurface, 'system theme follows OS dark without loading an animation');
     await page.eval(`new Promise(r => setTimeout(r, 300))`);
     await page.capture('expressions-system-dark-1440');
-    await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
+    await page.emulate('prefers-color-scheme', 'light');
     await page.eval(`new Promise(r => setTimeout(r, 300))`);
     await page.eval(`document.querySelector('#expression-0').focus()`);
     await page.key('Enter');
@@ -127,11 +128,11 @@ export async function expressionPilot(page, args, check) {
     const releaseRoute = await holdAnimations();
     await click(0);
     await page.waitFor(`${phase(0)} === 'loading'`, 'in-flight load before route disposal');
-    await page.click('#pilot-heading a[href="/"]');
-    await page.waitFor(`location.pathname === '/' && !document.querySelector('#expression-pilot')`, 'real Leptos owner disposal');
+    await page.click('#expression-exit');
+    await page.waitFor(`document.querySelector('#expression-closed') && !document.querySelector('#expression-pilot')`, 'real Leptos owner disposal within the fixture');
     await releaseRoute();
     await page.eval(`new Promise(r => setTimeout(r, 200))`);
-    check(await page.eval(`!document.querySelector('canvas')`), 'late load after route exit cannot resurrect a disposed player');
+    check(await page.eval(`!document.querySelector('canvas')`), 'late load after owner disposal cannot resurrect a player');
 
     // Inject a newer host fact without delivering its notification, to exercise the exact
     // load-callback race. The separate tab test below still uses real Chrome visibility.
@@ -241,6 +242,7 @@ export async function expressionPilot(page, args, check) {
     await reduce(false);
     await page.send('Emulation.setTouchEmulationEnabled', { enabled: false });
     await page.viewport(1440, 1000);
+    await page.send('Emulation.setFocusEmulationEnabled', { enabled: false });
     page.cdp.listeners.splice(page.cdp.listeners.indexOf(record), 1);
   }
 }

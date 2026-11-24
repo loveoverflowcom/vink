@@ -19,7 +19,9 @@ docker run --rm --entrypoint sh "ghcr.io/loveoverflowcom/vink-web:sha-$revision"
     test -s /opt/vink/site/pkg/vink.js && test -s /opt/vink/site/pkg/vink_bg.wasm &&
     test -s /opt/vink/site/pkg/vink-editor.js && test -s /opt/vink/site/pkg/vink.css &&
     test -d /opt/vink/site/pkg/fonts && test -d /opt/vink/site/pkg/brand &&
-    test -d /opt/vink/site/pkg/expressions && test ! -e /src && test ! -e /opt/vink/.env'
+    test ! -e /opt/vink/site/pkg/expressions &&
+    test -z "$(find /opt/vink/site/pkg -type d -name expressions -print -quit)" &&
+    test ! -e /src && test ! -e /opt/vink/.env'
 root=$(mktemp -d)
 project=vink-oci-smoke
 compose=(docker compose --project-name "$project" --env-file "$root/public.env"

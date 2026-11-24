@@ -29,6 +29,9 @@ pub fn run(root: &Path) -> Result<(), String> {
     editor_packages(root, &mut problems);
     crate::tailwind::check(root, &mut problems);
     crate::ui_qualification::check(root, &mut problems);
+    if let Err(error) = crate::web_boundary::check(root) {
+        problems.push(error);
+    }
     secrets(root, &mut problems);
     safety(root, &mut problems);
     if problems.is_empty() {

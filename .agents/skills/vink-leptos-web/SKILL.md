@@ -42,6 +42,9 @@ commands (`cargo xtask build`, wasm-bindgen version pin) are in
 
 ## Place the change
 
+Select the host before editing a route or manifest. Web hosts real reader/writer operations; example fixtures belong to Preview.
+See the [Web/Preview boundary](../../../docs/development/web-preview-boundary.md).
+
 For UI changes, consume the selected [LayoutSpec](../vink-layout-spec/SKILL.md).
 If absent, complete the appropriate full/short spec and show it before editing
 components/CSS/JS or generating a preview. Reuse a still-current spec already shown;

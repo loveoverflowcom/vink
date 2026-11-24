@@ -158,3 +158,9 @@ compatibility. Main chỉ dispatch. Không đổi state machine nghiệp vụ, v
 Quint mới; lifecycle OS/SQL/browser cần kiểm đúng boundary thay cho model.
 
 Bằng chứng lượt triển khai và phần chưa chạy: [scoped-workflows-evidence](scoped-workflows-evidence.md).
+
+### Fixture thử biểu cảm
+
+Dùng `cargo xtask build preview`, `cargo xtask dev preview` và mở Thử biểu cảm · Mẫu trong gallery.
+`cargo xtask verify preview` chạy coverage Chrome cho fixture. Web quick/build kiểm route, dependency
+và package. [Ranh giới Web/Preview](web-preview-boundary.md) ghi chi tiết.

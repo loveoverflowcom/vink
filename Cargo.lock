@@ -3517,11 +3517,15 @@ name = "vink-ui-preview"
 version = "0.1.0"
 dependencies = [
  "console_error_panic_hook",
+ "js-sys",
  "leptos",
+ "serde_json",
  "unicode-normalization",
+ "vink-expressions",
  "vink-patterns",
  "vink-ui",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "web-sys",
 ]
 
@@ -3546,7 +3550,6 @@ dependencies = [
  "sha2 0.11.1",
  "unicode-normalization",
  "url",
- "vink-expressions",
  "vink-markdown-text",
  "vink-patterns",
  "vink-ui",

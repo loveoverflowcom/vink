@@ -3,11 +3,11 @@ import { readFileSync, writeFileSync, mkdirSync, rmSync, copyFileSync } from 'no
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
-import { validate, sha256 } from '../../../packages/expressions/generate.mjs';
+import { validate, sha256 } from '../../../../expressions/generate.mjs';
 
-const dir = dirname(fileURLToPath(import.meta.url)), root = resolve(dir, '../../..');
-const out = resolve(process.argv[2] ?? join(root, 'target/site/pkg/expressions'));
-assert.equal(out, join(root, 'target/site/pkg/expressions'), 'Expression output must be this checkout target/site/pkg/expressions');
+const dir = dirname(fileURLToPath(import.meta.url)), root = resolve(dir, '../../../../..');
+const out = resolve(process.argv[2] ?? join(root, 'target/ui-preview/leptos/pkg/expressions'));
+assert.equal(out, join(root, 'target/ui-preview/leptos/pkg/expressions'), 'Expression output must be this checkout target/ui-preview/leptos/pkg/expressions');
 const catalogDir = join(root, 'packages/expressions');
 const manifest = validate(JSON.parse(readFileSync(join(catalogDir, 'shared/catalog.json'))), name => readFileSync(join(catalogDir, 'assets', name)));
 const provenance = JSON.parse(readFileSync(join(dir, 'runtime-provenance.json')));
