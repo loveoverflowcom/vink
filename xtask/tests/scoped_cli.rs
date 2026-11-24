@@ -74,3 +74,46 @@ fn inspection_and_invalid_selection_never_call_executor_or_reveal_credentials() 
     }
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn changed_plan_and_guard_reject_redirected_git_inputs() {
+    let bin = env!("CARGO_BIN_EXE_xtask");
+    for key in [
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_COMMON_DIR",
+        "GIT_INDEX_FILE",
+    ] {
+        for args in [
+            &[
+                "verify",
+                "changed",
+                "--base",
+                "HEAD",
+                "--worktree",
+                "--plan",
+            ][..],
+            &[
+                "verify",
+                "static",
+                "docs",
+                "--from-diff",
+                "HEAD",
+                "HEAD",
+                "committed",
+            ],
+        ] {
+            let out = Command::new(bin)
+                .args(args)
+                .env(key, "a-different-checkout-or-index")
+                .output()
+                .unwrap();
+            assert!(!out.status.success());
+            assert!(
+                String::from_utf8_lossy(&out.stderr)
+                    .contains(&format!("{key} overrides Git inputs"))
+            );
+            assert!(out.stdout.is_empty());
+        }
+    }
+}

@@ -83,7 +83,8 @@ Hai SHA là hai cây đầu cuối. Với nhánh phân kỳ, truyền merge base
 `--base` nếu muốn chỉ xét phần nhánh. `--worktree` ghim HEAD rồi lấy hợp của diff
 commit, index, tệp sửa và tệp mới chưa ignore. Rename xét cả hai tên, deletion giữ
 owner cũ. Chế độ `--head` chỉ xét commit. Tệp bị Git ignore, toolchain, môi trường
-và fixture ngoài Git cần khai báo riêng. Giữ inputs ổn định khi lấy plan.
+và fixture ngoài Git cần khai báo riêng. Giữ inputs ổn định khi lấy plan. Planner từ chối các biến chuyển hướng checkout/index
+(`GIT_DIR`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, `GIT_INDEX_FILE`) để diff và executor cùng đọc một worktree.
 
 Planner đọc Git local và giải các selector bằng cùng parser/plan với executor. Mỗi
 lệnh được đề xuất nêu owner, dependency, chi phí hoặc phạm vi. Mapping chưa rõ,

@@ -22,6 +22,20 @@ const OWNER_DIRS: &[(&str, &str)] = &[
 ];
 
 fn git(root: &Path, args: &[&str]) -> Result<Vec<u8>, String> {
+    // The executor always uses its compiled checkout. A hook or exported alternate index
+    // must not supply a different set of Git inputs for a coverage claim about that tree.
+    for key in [
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_COMMON_DIR",
+        "GIT_INDEX_FILE",
+    ] {
+        if std::env::var_os(key).is_some() {
+            return Err(format!(
+                "{key} overrides Git inputs; rerun from the intended checkout without that override"
+            ));
+        }
+    }
     let out = Command::new("git")
         .env("GIT_NO_LAZY_FETCH", "1")
         .args(["--no-optional-locks", "-c", "core.fsmonitor=false"])
