@@ -1,4 +1,4 @@
-// Tiny wasm-bindgen glue; the pilot controller is imported only by its mounted route.
+// Tiny wasm-bindgen glue; the pilot controller is imported only by its mounted Preview fixture.
 let modulePromise;
 export function loadPilotModule() {
   modulePromise ??= import(new URL('../../../expressions/pilot.js', import.meta.url).href).catch(error => { modulePromise = undefined; throw error; });

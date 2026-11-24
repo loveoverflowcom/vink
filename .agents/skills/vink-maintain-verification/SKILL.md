@@ -31,6 +31,9 @@ board. A test's presence is coverage intent; only a run on identified inputs is 
 
 ## Reconcile a bounded slice
 
+Classify assertions and artifacts by owner. Move assertions with the fixture; retain product checks for removed routes and assets.
+See the [Web/Preview boundary](../../../docs/development/web-preview-boundary.md).
+
 1. Identify the changed feature or unreliable check and pin branch/SHA plus relevant local
    changes. For a general refresh, enumerate current routes, HTTP contracts and command owners
    first; do not derive implemented features from requirements alone.

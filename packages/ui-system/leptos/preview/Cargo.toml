@@ -16,15 +16,18 @@ crate-type = ["cdylib", "rlib"]
 # Depends on the renderer's public API only. Without `csr` the crate compiles (and tests) on the
 # host so workspace clippy/test cover it; `cargo xtask ui-preview leptos build` enables `csr`.
 [dependencies]
+vink-expressions = { path = "../../../expressions" }
 vink-patterns = { path = "../../../vink-patterns/leptos" }
 leptos.workspace = true
 serde_json.workspace = true
 vink-ui = { path = ".." }
 unicode-normalization = "0.1.26"
 wasm-bindgen = { workspace = true, optional = true }
+js-sys = { version = "0.3.106", optional = true }
+wasm-bindgen-futures = { version = "0.4.79", optional = true }
 console_error_panic_hook = { version = "0.1.7", optional = true }
 web-sys = { version = "0.3.106", optional = true, features = [
-    "Window", "Location", "Document", "Element", "CssStyleDeclaration", "HashChangeEvent",
+    "Window", "Location", "Document", "Element", "HtmlElement", "CssStyleDeclaration", "HashChangeEvent",
     "MediaQueryList", "EventTarget", "ResizeObserver",
 ] }
 
@@ -33,4 +36,4 @@ leptos = { workspace = true, features = ["ssr"] }
 
 [features]
 csr = ["leptos/csr", "dep:wasm-bindgen", "dep:console_error_panic_hook", "dep:web-sys"]
-media-hydrate = ["leptos/hydrate", "dep:wasm-bindgen", "dep:console_error_panic_hook"]
+media-hydrate = ["leptos/hydrate", "dep:wasm-bindgen", "dep:console_error_panic_hook", "dep:web-sys", "dep:js-sys", "dep:wasm-bindgen-futures"]

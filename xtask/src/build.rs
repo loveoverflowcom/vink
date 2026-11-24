@@ -1,7 +1,7 @@
 //! Artifact adapters: no migrations, servers or tests.
 use crate::plan::Artifact;
 use crate::process::cargo;
-use crate::{checks, doctor, env, expressions, process, root, ui_tokens};
+use crate::{checks, doctor, env, process, root, ui_tokens};
 use std::path::Path;
 const EDITOR_RUNTIME_DIR: &str = "apps/vink-web/editor";
 
@@ -28,6 +28,7 @@ fn binary_command(artifact: Artifact, release: bool) -> Result<std::process::Com
 
 pub fn bundle(release: bool, perf_probe: bool) -> Result<(), String> {
     let root = root();
+    crate::web_boundary::check(&root)?;
     doctor::require_wasm_bindgen(&root)?;
     doctor::node_version()?;
     doctor::npm_version()?;
@@ -53,6 +54,15 @@ pub fn bundle(release: bool, perf_probe: bool) -> Result<(), String> {
         .join(out_dir)
         .join("vink_web.wasm");
     let pkg = root.join("target/site/pkg");
+    // Both are generated. Bindgen does not prune obsolete snippet hashes, and previous
+    // Web builds could have left the complete Preview payload here.
+    for stale in [pkg.join("expressions"), pkg.join("snippets")] {
+        match std::fs::remove_dir_all(&stale) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(format!("clear generated {}: {error}", stale.display())),
+        }
+    }
     std::fs::create_dir_all(&pkg).map_err(|e| format!("create {}: {e}", pkg.display()))?;
     let mut bindgen = std::process::Command::new("wasm-bindgen");
     bindgen
@@ -71,12 +81,11 @@ pub fn bundle(release: bool, perf_probe: bool) -> Result<(), String> {
     }
     process::run(&mut bindgen, "wasm-bindgen → target/site/pkg")?;
     editor_runtime(&root, &pkg.join("vink-editor.js"))?;
-    expressions::build(&root, &pkg.join("expressions"))?;
     stylesheet(&root, &pkg.join("vink.css"), release)?;
     copy_fonts(&root.join(checks::FONTS_DIR), &pkg.join("fonts"))?;
     copy_brand(&root.join(checks::BRAND_DIR), &pkg.join("brand"))?;
     copy_empty_artwork(&root, &pkg.join("empty"))?;
-    Ok(())
+    crate::web_boundary::artifacts(&pkg)
 }
 
 /// Server binaries plus

@@ -50,3 +50,6 @@ Extend the same block when the work needs more context:
 Keep review-only, prompt-only and execution grants explicit. Preserve a commit or push grant
 already given for the task. When the grant includes a branch, commit or PR, the receiver follows
 [vink-git-workflow](../../vink-git-workflow/SKILL.md) unless the user fixed a branch name.
+
+For Web/Preview/Test work, pin the host, real caller, resolved normal edges and artifact manifest.
+See the [Web/Preview boundary](../../../../docs/development/web-preview-boundary.md).

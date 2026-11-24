@@ -126,6 +126,8 @@ fn leptos_build(root: &Path) -> Result<(), String> {
                 .map_err(|e| format!("copy font {name}: {e}"))?;
         }
     }
+    crate::expressions::build(root, &pkg.join("expressions"))?;
+    build_hydration_fixture(root, "expression_hydration", "expressions.html")?;
     println!("==> preview ready in {OUT_DIR}");
     Ok(())
 }
@@ -311,6 +313,9 @@ fn content_type(file: &Path) -> &'static str {
         Some("wasm") => "application/wasm",
         Some("woff2") => "font/woff2",
         Some("webp") => "image/webp",
+        Some("svg") => "image/svg+xml",
+        Some("json") => "application/json",
+        Some("md") => "text/plain; charset=utf-8",
         Some("txt") => "text/plain; charset=utf-8",
         _ => "application/octet-stream",
     }

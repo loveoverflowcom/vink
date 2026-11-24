@@ -9,6 +9,8 @@ import shutil
 import tomllib
 from urllib.parse import urlsplit
 
+from production.artifacts import is_preview_asset
+
 def digest(data):
     return hashlib.sha256(data).hexdigest()
 
@@ -45,7 +47,8 @@ def main():
             continue
         rel = file.relative_to(site).as_posix()
         assert rel.startswith("pkg/") and all(not x.startswith(".") for x in Path(rel).parts)
-        assert file.suffix in (".js", ".css", ".wasm", ".woff2", ".svg", ".png", ".webmanifest", ".json", ".txt") or rel == "pkg/expressions/LICENSE-ANIMATED.md", rel
+        assert not is_preview_asset(rel), f"Preview asset in Web package {rel}"
+        assert file.suffix in (".js", ".css", ".wasm", ".woff2", ".svg", ".png", ".webmanifest", ".json", ".txt"), rel
         data = file.read_bytes()
         delivery = "pages" if len(data) <= 25 * 1024 * 1024 else "origin"
         assert delivery == "pages" or rel == "pkg/vink_bg.wasm", "unexpected oversized asset"

@@ -126,6 +126,11 @@ a sourced gap or an explicit historical citation. Route proposals for migrated I
 exact revision; a proposal without one stays `PENDING` and never becomes current. A clear fix with
 settled rules goes straight to its owner.
 
+## Chọn host trước khi triển khai Web
+
+[Web/Preview boundary](../../docs/development/web-preview-boundary.md) ghi caller thật, host của
+prototype, test lane và release artifact. Dùng khi đổi route, dependency hoặc package.
+
 ## Shared conventions
 
 - Keep product/architecture proposals, owner product decisions (`PRODUCT_CONFIRMED` / `DEFERRED` /

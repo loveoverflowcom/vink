@@ -28,7 +28,7 @@ ghi ETag mạnh trên đúng byte JSON, `private, no-cache`, thứ tự lỗi tr
 ghi owner snapshot của tab trình duyệt cho hai public read: render snapshot trước, kiểm tra lại
 ~120 s khi màn hiển thị, giữ last-success khi lỗi tạm, xóa khi 404; CMP/native chưa triển khai.
 
-[Biểu cảm Google Noto](expressions.md) bổ sung manifest + policy Rust + Web pilot độc lập EMO-01A;
+[Biểu cảm Google Noto](expressions.md) bổ sung manifest + policy Rust + fixture Preview độc lập EMO-01A;
 chưa tích hợp composer/reaction/sticker persistence.
 
 [Discovery Web](discovery-ui.md) (#100): GET/SSR tìm toàn thư viện, bộ lọc thẻ, trang thẻ và reader return.
@@ -629,16 +629,20 @@ production đỏ; model mutant tạo OFF→old ON resurrection. Harness và kế
 
 ## Biểu cảm Google Noto (EMO-01A)
 
-Pilot có nhãn Mẫu tại `/thu-nghiem/bieu-cam`, không cần principal hoặc ghi database. Catalog
-16 asset, nguồn/hash/license, policy production Rust và traceability ở
-[expressions](expressions.md); [manifest owner](../../packages/expressions/README.md).
-Build cài npm lockfile riêng ở `apps/vink-web/expressions`, self-host controller/Software JS,
-WASM và asset có hash dưới `/pkg/expressions/`. Reader/Explore không import animation engine.
+Mở Thử biểu cảm · Mẫu từ Leptos Preview hoặc vào `/expressions.html` trên Preview host.
+Catalog 16 asset, nguồn/hash/license, policy Rust và traceability nằm ở
+[expressions](expressions.md) và [manifest owner](../../packages/expressions/README.md).
+Build Preview dùng npm lockfile riêng ở `packages/ui-system/leptos/preview/expressions` và
+host controller/Software JS, WASM, asset có hash dưới `/pkg/expressions/`.
+[Ranh giới Web/Preview](web-preview-boundary.md) ghi điều kiện đóng gói và đường dẫn cũ trả 404.
 
 ```sh
 node packages/expressions/generate.mjs --check
 node --test packages/expressions/validate.test.mjs
 cargo xtask verify expressions
+cargo xtask build preview
+cargo xtask dev preview
+cargo xtask verify preview
 cargo xtask verify quick
 cargo xtask verify web
 ```
@@ -653,11 +657,11 @@ Ba harness Kani của policy chạy qua `cargo xtask verify kani` bằng manifes
 `packages/expressions/kani` (cùng lane với manifest của App); cài đặt,
 bounds và giới hạn ở [mục Kani](#kani).
 
-`web` gọi `expressionPilot` trong `e2e/expressions-smoke.mjs`: no-JS/SSR/hydration, network tĩnh,
+`verify preview` gọi `expressionPilot` trong Preview `e2e/expressions-smoke.mjs`: no-JS/SSR/hydration, network tĩnh,
 keyboard/touch, one-shot, cap 2/idempotency, delayed-load/unmount, motion/visibility, missing
 module/WASM/JSON/poster, source Unicode, responsive/theme/text scale và same-origin fallback.
 Một test inject CSP trên response (`worker-src 'none'`, connect self, wasm-unsafe-eval); không
-phải production CSP của toàn app. Browser tạo PNG qua capture helper chuẩn và context JSON.
+phải production CSP của toàn app. Browser tạo PNG qua capture helper Preview. Web smoke kiểm HTTP 404 và hydrated NotFound cho URL Web cũ.
 Native chỉ generated contract/Unicode vectors trong module `:ui`; kiểm JVM bằng:
 
 ```sh

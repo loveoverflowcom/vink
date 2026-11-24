@@ -9,6 +9,7 @@
 // Root font size 200% stands in for a user text-size setting. Captures are written for a person
 // to open; this script asserts structure and computed values, not visual quality.
 
+import { expressionPilot } from './expressions-smoke.mjs';
 import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -227,8 +228,8 @@ class Page {
         width: innerWidth,
         dpr: devicePixelRatio,
         rootFontSize: getComputedStyle(document.documentElement).fontSize,
-        theme: document.querySelector('.vk-ui').dataset.theme,
-        surface: getComputedStyle(document.getElementById('specimen-scope')).getPropertyValue('--vk-surface').trim(),
+        theme: document.documentElement.dataset.theme ?? document.querySelector('.vk-ui')?.dataset.theme ?? 'system',
+        surface: getComputedStyle(document.getElementById('specimen-scope') ?? document.querySelector('.vk-ui') ?? document.documentElement).getPropertyValue('--vk-surface').trim(),
         fonts: ['16px "Be Vietnam Pro"', '16px "Literata"'].map((f) => [f, document.fonts.check(f)]),
       })`);
       this.contexts[name] = { ...context, media: { ...this.media } };
@@ -2021,6 +2022,7 @@ try {
   if (args['overlays-only'] !== '1' && args['actions-only'] !== '1' && args['selects-only'] !== '1') {
     await mediaHydration(page);
     await noticeHydration(page);
+    await expressionPilot(page, args, check);
   }
   await page.send('Page.navigate', { url: args.base });
   // The debug WASM can be large after the separate hydration fixture. Give bootstrap its own

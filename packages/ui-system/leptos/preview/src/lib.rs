@@ -11,6 +11,7 @@
 
 mod components;
 mod endorsement;
+pub mod expressions;
 mod navigation;
 mod notifications;
 mod screens;
@@ -243,6 +244,7 @@ pub fn App() -> impl IntoView {
                 </header>
                 <div class="vkp-workbench flex flex-wrap gap-vk-6 items-start">
                     <nav id="catalog-nav" class="vkp-nav grid [grid-template-columns:minmax(0,1fr)] gap-vk-3 [min-inline-size:0]" aria-label="Danh mục preview">
+                        <a href="/expressions.html" class="vk-ui-link">"Thử biểu cảm · Mẫu"</a>
                         <label class="vkp-search">
                             <span>"Tìm họ, thành phần, kịch bản"</span>
                             <input

@@ -2,9 +2,9 @@
 use crate::process::{self, Report, cargo};
 use std::path::Path;
 use std::process::Command;
-const WEB: &str = "apps/vink-web/expressions";
+const PREVIEW_RUNTIME: &str = "packages/ui-system/leptos/preview/expressions";
 const MODEL: &str = "packages/expressions/behavior";
-/// Feeds model inputs to the production policy. Its absence fails the lane.
+/// Feeds model inputs to the shared policy. Its absence fails the lane.
 const REPLAY: &str = "tests::quint_inputs_replay_through_the_real_policy";
 
 pub fn check(root: &Path) -> Result<(), String> {
@@ -33,9 +33,11 @@ fn install(root: &Path, relative: &str) -> Result<(), String> {
 }
 
 pub fn build(root: &Path, out: &Path) -> Result<(), String> {
-    install(root, WEB)?;
+    install(root, PREVIEW_RUNTIME)?;
     let mut node = Command::new("node");
-    node.current_dir(root.join(WEB)).arg("build.mjs").arg(out);
+    node.current_dir(root.join(PREVIEW_RUNTIME))
+        .arg("build.mjs")
+        .arg(out);
     process::run(
         &mut node,
         "expression runtime: pinned, self-hosted software renderer",
@@ -65,11 +67,8 @@ pub fn verify(report: &mut Report) -> bool {
         command.args(["test", "--locked", "-p", "vink-expressions", "--lib", "--"]);
         command
     };
-    report.step(
-        "expressions: production Rust policy and trace replay",
-        || {
-            process::require_tests(&mut replay(), "expression replay", &[REPLAY])?;
-            process::run(&mut replay(), "expression production seam")
-        },
-    )
+    report.step("expressions: shared Rust policy and trace replay", || {
+        process::require_tests(&mut replay(), "expression replay", &[REPLAY])?;
+        process::run(&mut replay(), "expression shared policy seam")
+    })
 }

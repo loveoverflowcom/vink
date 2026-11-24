@@ -236,7 +236,7 @@ Xem ảnh `brand-before-hydration-*`, `rail-r1-*` và `explore-real-*` từ runn
 
 | Luồng | Đường đi / thao tác | Kết quả và trạng thái hiện có | Owner |
 | --- | --- | --- | --- |
-| Thử biểu cảm · Mẫu | `/thu-nghiem/bieu-cam` → chọn một hình để phát một lần | 16 poster tĩnh; Unicode nguyên bản, cap 2, reduced/hidden/offscreen và lỗi quay về poster/Unicode; không lưu reaction/sticker. Không có picker sản phẩm. | [expressions.rs](../../apps/vink-web/src/expressions.rs), [catalog/policy](../../packages/expressions/README.md), [LayoutSpec/registry](expressions.md) |
+| Thử biểu cảm · Mẫu (Preview) | `/expressions.html` trên Preview host → chọn một hình để phát một lần | 16 poster tĩnh; Unicode nguyên bản, cap 2, reduced/hidden/offscreen và lỗi quay về poster/Unicode. | [Adapter Preview](../../packages/ui-system/leptos/preview/src/expressions.rs), [catalog/policy](../../packages/expressions/README.md), [LayoutSpec/registry](expressions.md) |
 | Khám phá tác phẩm công khai | /?q=…&tag=…&tag=…&cursor=…; /the/:slug | Discovery toàn thư viện qua API #98, AND tối đa 4 thẻ, GET/SSR, danh sách hữu hạn và link trang kế. Alias canonical theo server. #308 dùng dialog/sheet có lối GET trước hydration, bỏ nút khi danh mục rỗng, giữ lối gỡ thẻ đã áp dụng và căn placeholder WebP #258 theo toàn vùng kết quả. | [pages/discovery.rs](../../apps/vink-web/src/pages/discovery.rs), [discovery.rs](../../apps/vink-web/src/discovery.rs), [TAG-PR-06](discovery-ui.md) |
 | Khám phá tác giả | `/?mode=authors[&q=…&cursor=…]` → `/@handle` | Gợi ý công khai hoặc tìm bút danh/Handle hiện hành, kể cả người chưa có bài. SSR và form GET có sẵn. Chrome tải phần Theo dõi theo phiên. | [#295](social-graph.md#tìm-và-gợi-ý-tác-giả-295) |
 | Đọc tác phẩm | /tac-pham/:id?q=…&tag=…&cursor=…&from_tag=… | Giữ toàn bộ ngữ cảnh discovery/trang thẻ và focus hàng; nếu hàng mất thì focus landmark kết quả có tên (#258). Canonical reader bỏ query; metadata thẻ lấy từ snapshot công khai. | [pages/mod.rs](../../apps/vink-web/src/pages/mod.rs), [discovery UI](discovery-ui.md) |
@@ -323,8 +323,7 @@ kiểm tra overflow không lộ `scrollX`, AX Chrome riêng với DOM `textConte
 [visual-evidence.test.mjs](../../apps/vink-web/e2e/visual-evidence.test.mjs));
 `serverHtml`, `conditionalPublicReads`, `cacheFirstPublicReads`, `brandAssets`, `adaptiveShell` (gọi
 `shellFragmentHistory`), `accountAppearance`, `appearanceFirstPaint`, `shellWithDirtyEditor`,
-`draftDashboard`, `nativeExploreSearch`, `publicReading`, `editorChrome`, `mainPhase` (gọi
-`expressionPilot`), `discussionReadingAndWrites` và `afterRestartPhase` là các phần trong script,
+`draftDashboard`, `nativeExploreSearch`, `publicReading`, `editorChrome`, `mainPhase` (kiểm URL Web cũ của EMO-01A), `discussionReadingAndWrites` và `afterRestartPhase` là các phần trong script,
 không phải lệnh CLI mới. Nguồn kiểm PostgreSQL là [tests/postgres.rs](../../services/vink-app/tests/postgres.rs),
 [store tests](../../packages/store-postgres/tests/postgres.rs) và [provision.rs](../../xtask/src/provision.rs).
 Chọn lệnh chạy từ hướng dẫn phát triển, không chạy thao tác phá dữ liệu trên database sử dụng thật.
@@ -576,8 +575,8 @@ Android/iOS runtime, OS IME hay screen reader. Kết quả và ảnh ở
 
 ## Coverage EMO-01A
 
-Nền `27927c4`, nguồn/assertion cho #25: `expressionPilot` được `verify web` gọi trong main phase,
-kiểm SSR/no-JS/hydration không có engine trên route tĩnh; phát thật Software qua keyboard/touch;
+Từ #479, [fixture Preview](web-preview-boundary.md) và `verify preview` sở hữu `expressionPilot`,
+kiểm SSR/no-JS/hydration không có engine khi chưa tương tác; phát thật Software qua keyboard/touch;
 shared Rust budget, callback sau hủy/unmount, motion/offscreen/tab hidden, fallback engine/WASM/
 JSON/poster, CSP cùng origin được inject ở test. Các ảnh `expressions-*` dùng context capture
 hiện hữu. Chữ 200% ở 320px; năm viewport × hai theme. Source invariants/fixtures/model và bounds

@@ -16,6 +16,9 @@ every task run a fixed discovery ceremony.
 
 ## Frame the choice through usage
 
+Choose the execution host and trace product authority, normal dependencies and shipped assets.
+See the [Web/Preview boundary](../../../docs/development/web-preview-boundary.md).
+
 Describe the intended experience, caller or API usage first, including an important failure
 case. Turn vague feedback into an observable problem before accepting its suggested fix.
 For an API or library seam, a short proposed usage example or contract sketch can reveal the

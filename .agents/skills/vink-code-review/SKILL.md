@@ -12,6 +12,9 @@ not a reason to expand scope or impose every possible check.
 
 ## Pin and trace
 
+Trace new routes, reverse dependencies and generated files before approving deletion or promotion.
+See the [Web/Preview boundary](../../../docs/development/web-preview-boundary.md).
+
 Identify BASE/HEAD and merge-base for a branch/PR, or the exact patch/local tree being reviewed.
 When the task excludes CI inspection, request the PR refs and diff with an explicit field
 selection that omits check statuses.
