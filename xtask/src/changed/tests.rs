@@ -124,10 +124,15 @@ fn rules_keep_required_owner_and_transitive_commands() {
         }
         plan.describe(&mut String::new()).unwrap();
     }
-    let mut plan = Selection::default();
-    plan.path("apps/vink-web/e2e/draft-pagination-smoke.mjs");
-    assert_eq!(plan.commands.len(), 1);
-    assert!(plan.commands.contains_key("verify web --scenario desk"));
+    for input in [
+        "apps/vink-web/e2e/draft-pagination-smoke.mjs",
+        "apps/vink-web/e2e/author-works-smoke.mjs",
+    ] {
+        let mut plan = Selection::default();
+        plan.path(input);
+        assert_eq!(plan.commands.len(), 1);
+        assert!(plan.commands.contains_key("verify web --scenario desk"));
+    }
     let mut docs = Selection::default();
     docs.path("docs/development/scoped-workflows.md");
     assert_eq!(docs.commands.len(), 1);

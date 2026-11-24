@@ -201,7 +201,8 @@ impl Selection {
             "apps/vink-web/e2e/discovery-return-position.mjs" => {
                 Some("verify web --scenario return-position --release")
             }
-            "apps/vink-web/e2e/draft-pagination-smoke.mjs" => Some("verify web --scenario desk"),
+            "apps/vink-web/e2e/author-works-smoke.mjs"
+            | "apps/vink-web/e2e/draft-pagination-smoke.mjs" => Some("verify web --scenario desk"),
             "apps/vink-web/e2e/desk-empty-smoke.mjs" => {
                 self.add(
                     "verify web --scenario password",

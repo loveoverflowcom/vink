@@ -5882,8 +5882,12 @@ async function draftTags(page, workId) {
   check(stored.version === 5, 'the dropped answer belonged to a committed save');
   check((await page.eval(`location.pathname`)) === editorPath, 'a lost tag acknowledgement keeps the author in the editor');
   await page.click('#leave-stay');
-  check(await page.eval(`!document.querySelector('#export-tags') && document.querySelector('[data-testid=tag-failed] #tags-retry')?.checkVisibility() && !document.querySelector('#tags-retry').closest('details,dialog')`),
-    'uncertain tag save removes export and keeps direct retry outside tools');
+  check(await page.eval(`(() => {
+    const options = document.querySelector('#work-options[open]');
+    const retry = options?.querySelector('[data-testid=tag-failed] button#tags-retry');
+    return !document.querySelector('#export-tags') && retry?.checkVisibility() && !retry.disabled &&
+      retry.closest('details') === options && !retry.closest('dialog');
+  })()`), 'uncertain tags expose direct retry in open work options without export or another disclosure');
   await page.click('#tags-retry');
   await waitTagStatus(page, 'unsaved', 'reconciled version with a newer local selection');
   stored = await draftTagsOf(page, workId);
