@@ -12,7 +12,7 @@ TYPES = {".js": "text/javascript", ".css": "text/css", ".wasm": "application/was
          ".woff2": "font/woff2", ".webp": "image/webp", ".png": "image/png",
          ".svg": "image/svg+xml", ".webmanifest": "application/manifest+json",
          ".json": "application/json", ".txt": "text/plain", ".md": "text/plain"}
-# Only public build products. Do not publish arbitrary config, source maps or dotfiles.
+# Only public build products. The old Handle assets remain allowlisted for retained rollback packages.
 FILES = re.compile(
     r"vink(?:-editor)?\.js|vink\.css|vink_bg\.wasm|author-landscape\.webp|"
     r"snippets/vink-web-[a-f0-9]+/(?:(?:editor|expressions)/bridge|public-cache/indexeddb|profile/(?:navigation|handle))\.js|"
@@ -21,7 +21,7 @@ FILES = re.compile(
     r"empty/vink-empty-[\w-]+\.webp|expressions/(?:build\.json|pilot\.js|NOTICE\.txt|"
     r"LICENSE-(?:STATIC|DOTLOTTIE|THIRD-PARTY)\.txt|LICENSE-ANIMATED\.md|"
     r"assets/noto-[\w-]+\.(?:svg|json)|runtime/dotlottie-[\w-]+\.(?:wasm|js))", re.ASCII)
-REQUIRED = {"vink.js", "vink.css", "vink_bg.wasm", "vink-editor.js", "author-landscape.webp",
+REQUIRED = {"vink.js", "vink.css", "vink_bg.wasm", "vink-editor.js",
             "fonts/be-vietnam-pro-400.woff2", "fonts/literata-variable.woff2",
             "brand/vpen-r1-favicon.svg", "expressions/pilot.js", "empty/vink-empty-first-draft.webp"}
 

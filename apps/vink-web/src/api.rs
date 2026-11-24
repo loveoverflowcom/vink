@@ -1006,6 +1006,8 @@ fn bounded(path: &str) -> bool {
         || path.starts_with("/api/v1/author/works")
         || path.starts_with("/api/v1/me/following-feed")
         || path == "/api/v1/me/profile"
+        || path == "/api/v1/me/handle"
+        || path.starts_with("/api/v1/me/handle/receipts/")
         || path.starts_with("/api/v1/me/follows/")
         || path.starts_with("/api/v1/me/relationships/")
         || path.starts_with("/api/v1/authors/")
@@ -1513,6 +1515,25 @@ pub(crate) async fn save_profile(
     request: &crate::contract::profile::SaveProfile,
 ) -> Result<crate::contract::profile::OwnProfile, ApiError> {
     http::send("PUT", "/api/v1/me/profile", Some(request)).await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn load_own_handle() -> Result<crate::contract::profile::OwnHandle, ApiError> {
+    http::get("/api/v1/me/handle").await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn save_handle(
+    command: &crate::contract::profile::HandleCommand,
+) -> Result<crate::contract::profile::HandleReceipt, ApiError> {
+    http::send("POST", "/api/v1/me/handle", Some(command)).await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn load_handle_receipt(
+    command_id: &str,
+) -> Result<crate::contract::profile::HandleReceipt, ApiError> {
+    http::get(&format!("/api/v1/me/handle/receipts/{}", encode_segment(command_id))).await
 }
 
 fn encode_segment(value: &str) -> String {

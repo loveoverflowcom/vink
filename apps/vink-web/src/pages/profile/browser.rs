@@ -1,3 +1,5 @@
+mod handle;
+
 use leptos::{prelude::*, task::spawn_local};
 use unicode_normalization::UnicodeNormalization;
 use vink_ui::{
@@ -283,6 +285,17 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
             }));
         }
     });
+    let handle = handle::Controller::new(session, scope, form.base.with_untracked(|base| {
+        base.principal_id.clone()
+    }));
+    // A successful profile save may carry an old Handle snapshot or race a Handle write.
+    // Refresh the dedicated Handle endpoint without adopting any of its fields into this draft.
+    let profile_version = Memo::new(move |_| form.base.with(|base| base.profile_version));
+    Effect::new(move |_| {
+        profile_version.track();
+        handle.refresh();
+    });
+    super::observe_changes(move || handle.refresh());
     let blocked = move || form.busy.get() || form.reconcile.with(Option::is_some);
     // Shared fields keep a stable native control; the in-flight lock is applied to it here so
     // the text that is being saved cannot change under the request.
@@ -326,6 +339,7 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
             <TextField id="profile-pen-name" label="Bút danh" value=form.name
                 on_input=typed(form.name) error=error_for("profile-pen-name")
                 help="Luôn công khai. Bút danh có thể trùng với người khác." />
+            <handle::HandleRow controller=handle />
             <PolicyField form label="Quyền xem ảnh đại diện" id="profile-avatar-policy" access=|p| &mut p.avatar />
             <div class="vk-profile-field grid [min-inline-size:0] gap-vk-3">
                 <TextArea id="profile-bio" label="Bio" value=form.bio rows=4
@@ -340,14 +354,6 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
                 <PolicyField form label="Số người đang theo dõi" id="profile-following-count" access=|p| &mut p.following_count />
             </fieldset>
             <p class="vk-muted vk-profile-note">"Trường đã đặt Chỉ mình tôi hiện chưa thể công khai lại."</p>
-            // A separate task (#290): a navigation row, independent of Lưu hồ sơ.
-            <a class="vk-profile-handle-row flex items-center gap-vk-3" href="/toi/dia-chi">
-                <span class="vk-profile-handle-row__text flex flex-col flex-1 [min-inline-size:0]">
-                    <span class="vk-profile-handle-row__title">"Địa chỉ tác giả"</span>
-                    <span class="vk-profile-handle-row__value">{move || format!("@{}", form.base.with(|base| base.handle.clone()))}</span>
-                </span>
-                <span class="vk-profile-handle-row__open" aria-hidden="true"><Icon name=IconName::ArrowBack /></span>
-            </a>
             {move || form.conflict.get().map(|current| view! {
                 <Conflict form current />
             })}
@@ -364,6 +370,7 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
                 </div>
             </div>
         </form>
+        <handle::HandleDialog controller=handle />
     }
 }
 

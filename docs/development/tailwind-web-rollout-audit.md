@@ -68,6 +68,13 @@ Mã sản phẩm và build inputs dùng [develop@5da8bcf6](https://github.com/lo
 | Desk/Giao diện release · `vink-411-413-release-smoke-evidence/REPORT.md`, SHA-256 `287e20ee1165d392eed94606f845b0febf9fd7ca5749e990e75c36ba6493dd93` | Cùng byte App/site release, Chrome 158.0.8127.36, PostgreSQL 17.11 scratch và driver `57b0238f` với overlay bổ sung lưu kèm. Khách và tác giả fixture. `appearance` nguyên bản exit 0 sau khi seed đúng catalog thẻ. Xem `seeded/out/{ledger,appearance/check.log}`, `recheck/out/ledger` và `matrix/out/a4-shell-matrix/check.log`. |
 | Identity release · `vink-411-413-identity-release-evidence/REPORT.md`, SHA-256 `f799fbfe1942c59b8d6d3301b20c8915e764241948b2732260154f3971384825` | Identity build release exit 0 từ `57b0238f`, SHA-256 `00fa428f1de645f26c717a6b948340995fe78631877def7495f6567ac460ede9`. Cùng byte App/site release `5da8bcf6`, Chrome 158.0.8127.36, hai DB scratch, Unix socket Identity và email code từ local outbox. Ba pha exit 0, gồm `desk-guest-open` nguyên bản và hai pha scratch `a4-identity-guest`, `a4-identity-signed`. Xem `app-inputs-diff.log`, `build/out/ledger`, `smoke/out/{ledger,identity-ready.log}` và các `check.log` tương ứng. |
 
+## Địa chỉ tác giả trong Chỉnh hồ sơ
+
+[#480](../design/profile-inline-handle-480.md) thay màn chủ sở hữu `/toi/dia-chi` bằng hàng và dialog
+Leptos/Tailwind. CSS và tài sản preview của màn cũ được gỡ khỏi build mới. Các tài sản cũ vẫn được
+chấp nhận khi đọc lại gói phát hành đã lưu để rollback. Bằng chứng #441/#444/#451 thuộc các SHA gốc.
+Build và browser của #480 `NOT_RUN`.
+
 ## Kết quả theo hành vi và gate còn đỏ
 
 | Phạm vi | Bằng chứng và ranh giới |

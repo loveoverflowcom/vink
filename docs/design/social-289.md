@@ -184,6 +184,9 @@ Mỗi vùng dùng sizing, theme, thứ tự focus, overlay và các trạng thá
 
 ### 3. Xác nhận và đổi Handle · `#handle`
 
+> [Delta #480 ngày 24/11](profile-inline-handle-480.md) chuyển tác vụ vào Chỉnh hồ sơ.
+> Phần dưới lưu quyết định setup/quota và bố cục gốc của Social R2.
+
 - **Entry và Back.** Sau khi có bút danh, chính chủ vào thiết lập hoặc đổi từ vùng địa
   chỉ trong Tôi. Trước setup, hiện Handle đã sinh và cho sửa. Sau setup hiện địa chỉ
   hiện hành và số lượt còn lại. Công khai chỉ đọc Handle hiện tại qua ref. Quay lại

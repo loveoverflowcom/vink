@@ -299,49 +299,7 @@ extern "C" {
 }
 
 #[component]
-pub fn Manage() -> impl IntoView {
-    view! { <Title text="Địa chỉ tác giả · Vink" /><Meta name="robots" content="noindex" />
-    <section class="vk-handle-page box-border mx-auto [max-inline-size:74rem] wrap-anywhere [container-type:inline-size]">
-        <MobileBrand />
-        <a class="vk-handle-back [@media(max-width:759px)]:hidden" href="/toi#dia-chi-tac-gia">"Tôi"</a>
-        <h1>"Địa chỉ tác giả"</h1><p>"Đây là liên kết để người đọc tìm đến bạn trên Vink."</p>
-        <HandleRegion entry=false /></section> }
-}
-
-#[component]
 fn MobileBrand() -> impl IntoView {
     view! { <a class="vk-brand vk-handle-brand hidden [@media(max-width:759px)]:inline-flex [@media(max-width:759px)]:[margin-block-end:1rem]" href="/" aria-label="Vink — trang chủ">
     <span class="vk-brand__lockup" aria-hidden="true"></span></a> }
-}
-
-/// Remount for each session generation. Pending replies belong to their originating element.
-#[component]
-pub(super) fn HandleRegion(entry: bool) -> impl IntoView {
-    let session = Session::current();
-    let fixture = crate::api::local_discussion_fixture_scope().is_some();
-    view! { <For each=move || if fixture { vec![] } else { session.scope.get().into_iter().collect::<Vec<_>>() }
-    key=Clone::clone children=move |_| view!{ <HandleHost entry principal=session.principal.get_untracked().unwrap_or_default() /> } />
-    {move || (!entry && session.scope.get().is_none()).then(|| view!{<p>"Mở Tài khoản trong Tôi để kiểm tra phiên của bạn."</p>})} }
-}
-
-#[component]
-fn HandleHost(entry: bool, principal: String) -> impl IntoView {
-    let host = NodeRef::<leptos::html::Div>::new();
-    #[cfg(feature = "hydrate")]
-    {
-        use wasm_bindgen::prelude::*;
-        #[wasm_bindgen(module = "/profile/handle.js")]
-        extern "C" {
-            #[wasm_bindgen(js_name=mountHandle)]
-            fn mount_handle(host: &web_sys::HtmlElement, principal: &str, entry: bool);
-        }
-        Effect::new(move |_| {
-            if let Some(node) = host.get() {
-                mount_handle(&node, &principal, entry);
-            }
-        });
-    }
-    #[cfg(not(feature = "hydrate"))]
-    let _ = (principal, entry);
-    view! { <div id="dia-chi-tac-gia" node_ref=host></div> }
 }
