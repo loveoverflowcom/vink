@@ -927,11 +927,7 @@ a {
 .vk-editor-recovery[data-tone="warning"] { background: var(--vk-warning-container); color: var(--vk-on-warning-container); }
 /* Child .vk-ui-notice reset and icon hide moved to utility variants on .vk-editor-recovery (W01 cascade coexistence). */
 .vk-desk--editor .vk-editor-recovery .vk-notice__actions { margin: 0; }
-.vk-editor-recovery :is(.vk-ui-button--text, .vk-ui-supporting-details > summary) { color: inherit; }
-.vk-editor-recovery .vk-ui-supporting-details > summary { background: transparent; justify-self: start; }
-.vk-editor-recovery .vk-ui-supporting-details__content { background: transparent; padding: 0; }
-.vk-editor-recovery .vk-ui-supporting-details__content > p { margin: 0; overflow-wrap: break-word; }
-.vk-editor-recovery .vk-ui-supporting-details__content > p + p { margin-block-start: var(--vk-space-2); }
+.vk-editor-recovery .vk-ui-button--text { color: inherit; }
 
 /* WorkInfo keeps the taxonomy status and recovery inside the article options. */
 .vk-work-info__status { color: var(--vk-on-surface-variant); }

@@ -959,7 +959,7 @@ fn EditorHeading(#[prop(into)] label: Signal<&'static str>) -> impl IntoView {
                 <vink_ui::Icon name=IconName::ArrowBack size=vink_ui::IconSize::Small />
                 <span>"Bàn viết"</span>
             </a>
-            <Heading level=HeadingLevel::H1 role=TypeRole::Title id="editor-heading" class:vk-editor-heading__title=true>{move || label.get()}</Heading>
+            <Heading level=HeadingLevel::H1 role=TypeRole::Title id="editor-heading">{move || label.get()}</Heading>
         </div>
     }
 }
@@ -2078,7 +2078,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                             <vink_ui::Icon name=IconName::ExpandMore size=vink_ui::IconSize::Small />
                         </summary>
                         <div class="vk-work-options__body grid gap-vk-3 min-w-0">
-                            <div class="vk-editor-work-info" on:focusin=move |_| last_field.set_value(Field::Tags)>
+                            <div on:focusin=move |_| last_field.set_value(Field::Tags)>
                                 {view! {
                                     <crate::pages::work_info::WorkInfo work_id=work_id.get_value() session labels
                                         on_save=Callback::new(move |()| save()) tag_load=tag_load />
@@ -2086,7 +2086,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                             </div>
                             <section
                                 id="editor-format-region"
-                                class="vk-editor-format grid gap-vk-2 min-w-0"
+                                class="grid gap-vk-2 min-w-0"
                                 data-testid="editor-format-region"
                                 aria-labelledby="editor-format-select-label"
                             >
@@ -3237,7 +3237,7 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
 
 /// The toolbar's one status line for both parts. Text states keep their words; tag states are
 /// named as tags, so a saved text never reads as saved tags.
-#[cfg_attr(not(test), allow(dead_code))]
+#[cfg(test)]
 fn draft_status_text(text: SaveStatus, tags: Option<&TagStatus>) -> String {
     project_save_slot(&SaveSlotFacts {
         text,
@@ -3254,7 +3254,7 @@ fn draft_status_text(text: SaveStatus, tags: Option<&TagStatus>) -> String {
     .status_text
 }
 
-#[cfg_attr(not(test), allow(dead_code))]
+#[cfg(test)]
 fn draft_status_token(text: SaveStatus, tags: Option<&TagStatus>) -> &'static str {
     project_save_slot(&SaveSlotFacts {
         text,
@@ -3271,7 +3271,7 @@ fn draft_status_token(text: SaveStatus, tags: Option<&TagStatus>) -> &'static st
     .status_token
 }
 
-#[cfg_attr(not(test), allow(dead_code))]
+#[cfg(test)]
 fn draft_status_detail(text: SaveStatus, tags: Option<&TagStatus>) -> String {
     project_save_slot(&SaveSlotFacts {
         text,
