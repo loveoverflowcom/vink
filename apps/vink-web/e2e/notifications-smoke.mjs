@@ -376,6 +376,8 @@ export async function notifications(page, { args, check }) {
   await page.goto(`${args.base}/thong-bao/nhan-xet/${comment.comment_id}/${comment.moderation_version}`);
   await page.waitFor(`document.body.textContent.includes('Lý do riêng của nhận xét')`, 'private comment decision');
   check(await page.eval(`!document.body.textContent.includes('Không được xuất hiện')`), 'AC-04 removed comment body never renders');
+  check(await page.eval(`parseFloat(getComputedStyle(document.querySelector('.vk-notif-decision__panel')).paddingInlineStart) >= 20`),
+    'AC-05 decision panel preserves R4 inset');
   await screenshot('notifications-comment-decision', 1440, 100, 'light');
   await controlled.change(null);
   await page.waitFor(`!document.querySelector('${bell}') && !document.body.textContent.includes('Lý do riêng của nhận xét')`, 'logout discards decision and bell');

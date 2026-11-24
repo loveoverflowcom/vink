@@ -2417,7 +2417,7 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
   overflow-wrap: anywhere;
 }
 .vk-notif-page__top { justify-content: space-between; min-block-size: 48px; }
-.vk-notif-page__head { margin-block: var(--vk-space-2) var(--vk-space-5); }
+.vk-notif-page__head { margin-block: var(--vk-space-2) calc(var(--vk-space-4) + var(--vk-space-1)); }
 .vk-notif-title {
   margin-block: 0;
   font-family: var(--vk-type-headline-font);
@@ -2435,7 +2435,7 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
   line-height: var(--vk-type-caption-line-height);
 }
 
-.vk-notif-body { display: grid; gap: var(--vk-space-5); min-inline-size: 0; }
+.vk-notif-body { display: grid; gap: calc(var(--vk-space-4) + var(--vk-space-1)); min-inline-size: 0; }
 .vk-notif-updates {
   position: sticky;
   inset-block-start: 0;
@@ -2485,7 +2485,7 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
 .vk-notif-decision__panel {
   display: grid;
   gap: var(--vk-space-3);
-  padding: var(--vk-space-5);
+  padding: calc(var(--vk-space-4) + var(--vk-space-1));
   background: var(--vk-bg-content);
   overflow-wrap: anywhere;
 }
