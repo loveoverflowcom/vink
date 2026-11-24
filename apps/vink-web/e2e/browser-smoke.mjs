@@ -2737,7 +2737,15 @@ async function adaptiveShell(page) {
     check(await page.eval(`document.querySelectorAll('[aria-current=page]').length === 0`), `${path} marks no destination active`);
     await assertBrandPlacement(page);
   }
-  await page.goto(args.base + '/ban-viet/33333333-3333-4333-8333-333333333333/kiem-duyet');
+  const legacyWork = '33333333-3333-4333-8333-333333333333';
+  const legacyReview = `${args.base}/ban-viet/${legacyWork}/kiem-duyet`;
+  const canonicalReview = `/ban-viet?review=${legacyWork}`;
+  const redirect = await fetch(legacyReview, { redirect: 'manual' });
+  check(redirect.status === 308 && redirect.headers.get('location') === canonicalReview,
+    'legacy review permanently redirects to the Desk with the same work selected');
+  await page.send('Page.navigate', { url: legacyReview });
+  await page.waitFor(`location.pathname + location.search === ${JSON.stringify(canonicalReview)} &&
+    document.readyState === 'complete'`, 'legacy navigation reaches the canonical Desk review');
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true' &&
     document.querySelector('#navigation a[href="/ban-viet"]').getAttribute('aria-current') === 'page'`, 'author review activates Desk on the rail');
   await page.viewport(390);
@@ -3607,7 +3615,14 @@ async function draftDashboard(page) {
     })()`), `#225 ${width}/${scale}/${theme}: full create label + one Add target, native Select and no fake pressed`);
     if (width<=390 && scale===200) {
       await page.eval(`document.querySelector('.vk-draft-row__link').focus()`); await page.key('Tab'); await page.key('Tab',SHIFT);
-      check(await page.eval(`getComputedStyle(document.querySelector('.vk-draft-row__title')).overflow==='visible' && document.activeElement.matches('.vk-draft-row__link:focus-visible')`), 'keyboard reveals the entire title at 200%');
+      const expanded = await page.eval(`(() => {
+        const link = document.querySelector('.vk-draft-row__link'), active = document.activeElement;
+        const title = link.querySelector('.vk-draft-row__title'), style = getComputedStyle(title);
+        return { href: active.getAttribute('href'), focused: active === link && link.matches(':focus-visible'),
+          overflow: style.overflow, clamp: style.webkitLineClamp };
+      })()`);
+      check(expanded.href === firstHref && expanded.focused && expanded.overflow === 'visible' && expanded.clamp === 'none',
+        `keyboard reveals the entire title of the focused draft at 200% (${JSON.stringify(expanded)})`);
       await page.capture(`desk-title-expanded-${width}-${scale}-${theme}`);
       await page.eval(`document.querySelector('.vk-draft-row:last-child a').focus()`);
       await page.key('Tab'); await page.key('Tab',SHIFT);
@@ -4435,12 +4450,12 @@ async function editorChrome(page) {
   await page.eval(`document.querySelector('.cm-content').dispatchEvent(new KeyboardEvent('keydown', {key:'s',ctrlKey:true,isComposing:true,bubbles:true,cancelable:true}))`);
   check((await page.status()) === 'unsaved', 'composing shortcut never saves a partial syllable (synthetic guard check)');
   check(!await page.eval(`Boolean(document.querySelector('.vk-editor-help'))`), 'quiet editor removes long line-break writing help');
-  // Save -> direct preview -> visible native tools -> title, full-title disclosure, body.
+  // Editor R4 keeps Save and its native details adjacent in the dirty toolbar.
   await page.eval(`document.querySelector('#save').focus()`);
   await page.key('Tab');
-  check(await page.eval(`document.activeElement.id==='preview'`), 'dirty editor Tab reaches direct preview after Save');
-  await page.key('Tab');
-  check(await page.eval(`document.activeElement.matches('#editor-save-details > summary') && document.activeElement.checkVisibility()`), 'dirty editor Tab reaches visible tools');
+  check(await page.eval(`!document.querySelector('#preview, #draft-preview') &&
+    document.activeElement.matches('#editor-save-details > summary') && document.activeElement.checkVisibility()`),
+    'dirty editor Tab goes directly from Save to visible tools with no standalone preview');
   await page.key('Tab');
   check(await page.eval(`document.activeElement.id==='draft-title'`), 'dirty closed Thêm reaches the native title directly');
   await page.key('Tab');
