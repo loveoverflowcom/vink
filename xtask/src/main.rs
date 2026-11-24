@@ -6,6 +6,7 @@
 //! failure with a fix hint, never as a pass.
 
 mod build;
+mod changed;
 mod checks;
 mod cli;
 mod decision;
@@ -91,6 +92,9 @@ fn main() -> ExitCode {
     if matches!(args.as_slice(), ["--help"] | ["help"] | ["-h"]) {
         println!("{}\n{USAGE}", cli::HELP);
         return ExitCode::SUCCESS;
+    }
+    if let ["verify", "changed", rest @ ..] = args.as_slice() {
+        return finish(changed::describe(&root(), rest).map(|plan| print!("{plan}")));
     }
     if let ["infra", rest @ ..] = args.as_slice() {
         if matches!(rest, ["build-images", ..]) {
