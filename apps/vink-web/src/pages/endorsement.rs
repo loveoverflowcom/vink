@@ -353,7 +353,11 @@ mod tests {
         assert!(html.contains("1.234"), "grouped public count: {html}");
         assert!(html.contains("Cần đăng nhập để Thấm."), "{html}");
         assert!(html.contains("aria-disabled=\"true\""), "{html}");
-        assert!(!html.contains("href"), "no fake login link: {html}");
+        assert!(!html.contains("href=\"/toi"), "no fake login link: {html}");
+        assert!(
+            html.contains("href=\"/tac-pham/w/tham/r1\""),
+            "a guest can open the real public list: {html}"
+        );
         assert!(!html.contains("Kiểm tra lại"), "{html}");
     }
 
