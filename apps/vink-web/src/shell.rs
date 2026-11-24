@@ -409,6 +409,9 @@ fn show_dialog(
     #[cfg(feature = "browser")]
     {
         if let Some(dialog) = dialog.get_untracked().filter(|node| !node.open())
+            && document()
+                .query_selector("dialog:modal")
+                .is_ok_and(|modal| modal.is_none())
             && overlays
                 .try_update(|layer| layer.open(id))
                 .is_some_and(|result| result.is_ok())
@@ -464,7 +467,7 @@ fn close_dialog(
 }
 
 #[cfg(feature = "browser")]
-fn focus_without_scroll(target: Option<web_sys::Element>) {
+pub(crate) fn focus_without_scroll(target: Option<web_sys::Element>) {
     use wasm_bindgen::JsCast;
     if let Some(target) = target.and_then(|node| node.dyn_into::<web_sys::HtmlElement>().ok()) {
         let options = web_sys::FocusOptions::new();

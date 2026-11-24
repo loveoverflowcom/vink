@@ -152,7 +152,16 @@ async function preferences(page, width, theme, scale) {
   await page.send('Emulation.setEmulatedMedia', { features: [
     { name: 'prefers-color-scheme', value: theme }, { name: 'prefers-reduced-motion', value: 'reduce' },
   ] });
-  await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
+  await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 });
+  await page.eval(`(async () => {
+    document.documentElement.style.fontSize = '${scale}%';
+    scrollTo(0, 0);
+    await document.fonts.ready;
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  })()`);
+  await page.waitFor(`innerWidth === ${width}
+    && Math.round(parseFloat(getComputedStyle(document.documentElement).fontSize) / 16 * 100) === ${scale}
+    && matchMedia('(prefers-color-scheme: ${theme})').matches`, 'painted capture preferences');
 }
 
 const hydrated = `document.documentElement.dataset.hydrated === 'true'`;
@@ -186,6 +195,7 @@ export async function notifications(page, { args, check }) {
   }
 
   await page.waitFor(`${visible(bell)} && document.querySelector('${bell} .vk-ui-badge').textContent === '3'`, 'fresh rail badge');
+  await screenshot('notifications-badge-fresh', 1440, 100, 'light');
   check(await page.eval(`document.querySelector('${bell}').previousElementSibling.dataset.destination === 'desk'
     && document.querySelector('#navigation-account').children.length === 1`), 'AC-01 bell directly below Desk, Me alone in account');
   check(calls.filter(x => x.path.startsWith(inbox)).every(x => x.path === `${inbox}/count`),
@@ -247,8 +257,10 @@ export async function notifications(page, { args, check }) {
   await page.waitFor(`document.querySelector('main .vk-notif-more [role=alert]')`, 'pagination error below list');
   check(await page.eval(`document.querySelectorAll('main ${row}').length === 3`), 'AC-03 failed continuation keeps the previous page');
   state.moreFailure = false;
-  await page.click('main .vk-notif-more [role=alert] button');
+  await page.eval(`document.querySelector('main .vk-notif-more [role=alert] button').focus()`);
+  await page.key('Enter');
   await page.waitFor(`document.querySelectorAll('main ${row}').length > 3`, 'same continuation succeeds');
+  await page.waitFor(focused('main .vk-notif-row__link'), 'focus moves to the newly loaded page after the continuation ends');
   state.holdMark = true;
   await page.click('main #notification-read-all');
   await eventually(() => held.get('mark'), 'held MarkAllRead');
@@ -314,9 +326,11 @@ export async function notifications(page, { args, check }) {
   state.countMode = 'stale';
   await page.eval(`window.dispatchEvent(new Event('online'))`);
   await page.waitFor(`document.querySelector('${bell} .vk-ui-badge[data-state=stale]')?.textContent === '8'`, 'stale badge');
+  await screenshot('notifications-badge-stale', 1440, 100, 'light');
   state.countMode = 'unavailable';
   await page.eval(`window.dispatchEvent(new Event('online'))`);
   await page.waitFor(`document.querySelector('${bell} .vk-ui-badge[data-state=unknown]')?.textContent === ''`, '503 ring without fake zero');
+  await screenshot('notifications-badge-unavailable', 1440, 100, 'light');
   state.countMode = 'fresh';
   state.holdCount = true;
   await page.eval(`window.dispatchEvent(new Event('online'))`);
@@ -325,11 +339,14 @@ export async function notifications(page, { args, check }) {
   await eventually(() => latest(`${inbox}/count`)?.scope === 'B', 'B count');
   await page.click(bell);
   await page.waitFor(`document.querySelector('${popup}').textContent.includes('Thông báo của tài khoản B')`, 'B inbox');
+  state.seen = state.snapshot;
   await controlled.change('A');
   await page.waitFor(`!document.querySelector('${popup}').open && !document.body.textContent.includes('Thông báo của tài khoản B')`, 'B inbox cleared synchronously');
   await eventually(() => latest(`${inbox}/count`)?.scope === 'A', 'new A count');
   await held.get('count')().catch(() => {}); // An old A result may already have been cancelled.
-  check(await page.eval(`!document.body.textContent.includes('Thông báo của tài khoản B')`), 'AC-02 A→B→A fences old private DOM and replies');
+  await sleep(150);
+  check(await page.eval(`!document.body.textContent.includes('Thông báo của tài khoản B')
+    && document.querySelector('${bell} .vk-ui-badge')?.hidden`), 'AC-02 A→B→A fences old private DOM and replies');
 
   const selectedWork = controlled.rows[0].target;
   await page.goto(`${args.base}/ban-viet?review=${selectedWork.work_id}&revision=${selectedWork.revision_id}&decision=3`);

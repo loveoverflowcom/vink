@@ -52,20 +52,12 @@ impl Inbox {
         }
     }
 
-    pub fn observe(&mut self, count: &Freshness) {
-        if let Freshness::Fresh {
-            as_of_snapshot,
-            unseen_group_count,
-            count_is_lower_bound,
-        } = count
-            && (*unseen_group_count > 0 || *count_is_lower_bound)
-            && self
-                .snapshot
-                .as_ref()
-                .is_some_and(|shown| shown != as_of_snapshot)
-        {
-            self.updates = true;
-        }
+    pub fn has_new_signal(&self, count: &Freshness) -> bool {
+        !self.updates
+            && matches!(count, Freshness::Fresh {
+                as_of_snapshot, unseen_group_count, count_is_lower_bound
+            } if (*unseen_group_count > 0 || *count_is_lower_bound)
+                && self.snapshot.as_ref().is_some_and(|shown| shown != as_of_snapshot))
     }
 }
 
@@ -166,16 +158,15 @@ mod tests {
 
     #[test]
     fn an_unseen_signal_after_the_open_snapshot_prompts_without_mutating_rows() {
-        let mut inbox = Inbox {
+        let inbox = Inbox {
             snapshot: Some("old".into()),
             ..Inbox::default()
         };
-        inbox.observe(&Freshness::Fresh {
+        assert!(inbox.has_new_signal(&Freshness::Fresh {
             unseen_group_count: 120,
             count_is_lower_bound: true,
             as_of_snapshot: "new".into(),
-        });
-        assert!(inbox.updates);
+        }));
         assert!(inbox.items.is_empty());
         assert_eq!(inbox.snapshot.as_deref(), Some("old"));
         assert_eq!(stale(BadgeState::Count(0)).digits(), None);
