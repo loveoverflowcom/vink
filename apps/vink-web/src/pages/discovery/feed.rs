@@ -15,6 +15,8 @@ mod browser;
 #[cfg(feature = "hydrate")]
 pub(super) use browser::ReturnScope;
 
+const FEED_STATE_CLASS: &str = "vk-feed-state my-vk-6 grid justify-items-start gap-vk-3 [--vk-ui-control-radius:var(--vk-radius-control-56)]";
+
 #[component]
 pub(super) fn FollowingFeed(context: ExploreContext) -> impl IntoView {
     let session = Session::current();
@@ -74,8 +76,8 @@ pub(super) fn FollowingFeed(context: ExploreContext) -> impl IntoView {
                                 Standing::NeedsPrincipal => view! { <SignIn needs_name=true /> }.into_any(),
                                 Standing::Suspended => view! { <Restricted /> }.into_any(),
                                 Standing::Unavailable if !session.checking() => view! {
-                                    <div class="vk-feed-state" data-feed-state="unavailable">
-                                        <p role="status">"Chưa kiểm tra được phiên đăng nhập."</p>
+                                    <div class=FEED_STATE_CLASS data-feed-state="unavailable">
+                                        <p class="m-0" role="status">"Chưa kiểm tra được phiên đăng nhập."</p>
                                         <Button variant=ButtonVariant::Tonal on_press=move |_| session.refresh()>"Thử lại"</Button>
                                     </div>
                                 }.into_any(),
@@ -112,8 +114,8 @@ fn SignIn(#[prop(optional)] expired: bool, #[prop(optional)] needs_name: bool) -
     let sign_in_open = api::sign_in_open();
     let href = format!("/toi?next={}", encode(ExploreMode::FOLLOWING_HREF));
     view! {
-        <div class="vk-feed-state" data-feed-state=if expired { "expired" } else { "guest" }>
-            <p role="status">
+        <div class=FEED_STATE_CLASS data-feed-state=if expired { "expired" } else { "guest" }>
+            <p class="m-0" role="status">
                 {if needs_name { "Hoàn tất bút danh để xem tác phẩm đang theo dõi." }
                     else if expired { "Phiên đã hết. Đăng nhập lại để xem tác phẩm đang theo dõi." }
                     else if sign_in_open { "Đăng nhập để xem tác phẩm của các tác giả bạn theo dõi." }
@@ -131,8 +133,8 @@ fn SignIn(#[prop(optional)] expired: bool, #[prop(optional)] needs_name: bool) -
 #[component]
 fn Restricted() -> impl IntoView {
     view! {
-        <div class="vk-feed-state" data-feed-state="restricted">
-            <p role="status">"Tài khoản hiện chưa có quyền xem Đang theo dõi."</p>
+        <div class=FEED_STATE_CLASS data-feed-state="restricted">
+            <p class="m-0" role="status">"Tài khoản hiện chưa có quyền xem Đang theo dõi."</p>
             <UiLink href="/toi">"Mở Tài khoản"</UiLink>
         </div>
     }
@@ -141,8 +143,8 @@ fn Restricted() -> impl IntoView {
 #[component]
 fn FeedOff() -> impl IntoView {
     view! {
-        <div class="vk-feed-state" data-feed-state="disabled">
-            <p role="status">"Đang theo dõi hiện chưa khả dụng."</p>
+        <div class=FEED_STATE_CLASS data-feed-state="disabled">
+            <p class="m-0" role="status">"Đang theo dõi hiện chưa khả dụng."</p>
             <UiLink href="/">"Khám phá tác phẩm"</UiLink>
         </div>
     }

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use leptos::{prelude::*, task::spawn_local};
 use vink_ui::{ActionState, Button, ButtonVariant, Link};
 
-use super::{FeedOff, Restricted, SignIn};
+use super::{FEED_STATE_CLASS, FeedOff, Restricted, SignIn};
 use crate::{
     account::Session,
     api,
@@ -374,8 +374,8 @@ pub(super) fn ActiveFeed(
             {move || match phase.get() {
                 Phase::Loading => view! { <p role="status" data-feed-state="loading">"Đang tải tác phẩm…"</p> }.into_any(),
                 Phase::Ready { has_following } if ids.with(Vec::is_empty) => view! {
-                    <div class="vk-feed-state" data-feed-state=if has_following { "no-works" } else { "no-follows" }>
-                        <p role="status">{if has_following { "Chưa có tác phẩm công khai đủ điều kiện." }
+                    <div class=FEED_STATE_CLASS data-feed-state=if has_following { "no-works" } else { "no-follows" }>
+                        <p class="m-0" role="status">{if has_following { "Chưa có tác phẩm công khai đủ điều kiện." }
                         else { "Bạn chưa theo dõi tác giả nào." }}</p>
                         {(!has_following).then(|| view! { <Link href=ExploreMode::AUTHORS_HREF>"Tìm tác giả"</Link> })}
                     </div>
@@ -387,8 +387,8 @@ pub(super) fn ActiveFeed(
                 Phase::Restart | Phase::Unavailable => {
                     let cursor_expired = phase.get_untracked() == Phase::Restart;
                     view! {
-                        <div class="vk-feed-state" data-feed-state=if cursor_expired { "restart" } else { "error" }>
-                            <p role="alert">{if cursor_expired { "Danh sách đã thay đổi. Hãy tải lại từ đầu." }
+                        <div class=FEED_STATE_CLASS data-feed-state=if cursor_expired { "restart" } else { "error" }>
+                            <p class="m-0" role="alert">{if cursor_expired { "Danh sách đã thay đổi. Hãy tải lại từ đầu." }
                             else { "Chưa tải được tác phẩm đang theo dõi." }}</p>
                             <Button id="feed-restart" variant=ButtonVariant::Tonal
                                 on_press=move |_| restart()>
@@ -414,7 +414,7 @@ pub(super) fn ActiveFeed(
                 </ul>
             </Show>
             <Show when=move || can_append.get()>
-                <div class="vk-feed-paging">
+                <div class="my-vk-6">
                     <Button id="feed-load-more" variant=ButtonVariant::Tonal
                         state=Signal::derive(move || if appending.get() { ActionState::pending("Đang tải thêm") } else { ActionState::Enabled })
                         on_press=move |_| read.run(Intent::Append)>"Tải thêm"</Button>
