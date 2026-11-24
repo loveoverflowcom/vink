@@ -663,9 +663,29 @@ async function components(page) {
   const next = await page.eval(`[...document.querySelectorAll('.vk-ui-chip')].indexOf(document.activeElement)`);
   check(chip === 'true' && next === 1, 'FilterChip: Space toggles aria-pressed and Tab moves to the next chip');
 
-  // Exercise the opt-in control against the app's actual global focus fallback as well.
-  const appFocus = readFileSync(new URL('../../../../../apps/vink-web/style/vink.css', import.meta.url), 'utf8').match(/:focus-visible\s*\{[^}]+\}/)[0];
-  await page.eval(`(() => { const s = document.createElement('style'); s.id = 'app-focus-probe'; s.textContent = ${JSON.stringify(appFocus)}; document.head.append(s); })()`);
+  // Both the App fallback and the shared field CSS use the legacy layer in the Web entry.
+  const appFocus = readFileSync(new URL('../../../../../apps/vink-web/style/vink.css', import.meta.url), 'utf8')
+    .match(/^:focus-visible\s*\{[^}]+\}/m)?.[0];
+  check(appFocus, 'FloatingTonal: Web global focus fallback exists');
+  const probePaint = await page.eval(`(() => {
+    const probe = document.createElement('style');
+    probe.id = 'app-focus-probe';
+    probe.textContent = '@layer legacy {' + ${JSON.stringify(appFocus)} + '}';
+    document.head.append(probe);
+    const input = document.createElement('input');
+    input.tabIndex = -1;
+    input.setAttribute('aria-label', 'Kiểm tra focus mặc định');
+    document.body.append(input);
+    input.focus();
+    const paint = getComputedStyle(input);
+    const result = [probe.sheet.cssRules[0]?.name, input.matches(':focus-visible'),
+      paint.outlineWidth, paint.outlineOffset, paint.outlineStyle];
+    input.remove();
+    return result;
+  })()`);
+  check(probePaint[0] === 'legacy' && probePaint[1] && probePaint[2] === '3px'
+    && probePaint[3] === '2px' && probePaint[4] === 'solid',
+  `FloatingTonal: Web fallback paints a native input in the legacy layer (${JSON.stringify(probePaint)})`);
   await page.open('field.text-field');
   const fieldPaint = () => page.eval(`(() => {
     const i = document.getElementById('title'), shell = i.parentElement;
