@@ -2,6 +2,10 @@ version = 1
 id = "VDR-SOCIAL-GRAPH"
 revision = 2
 
+[base]
+revision = 1
+sha256 = "bdafefdcb99524bd09de5b872292efaa63cf8136a271b629714c9bb190380595"
+
 [content]
 kind = "product"
 domain = "social-graph"
