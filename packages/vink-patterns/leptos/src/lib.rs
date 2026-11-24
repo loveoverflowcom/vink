@@ -95,7 +95,7 @@ pub fn WorkByline(
 ) -> impl IntoView {
     let published_at = author.published_at.clone();
     view! {
-        <div class="vk-work-byline" data-size=size.id()>
+        <div class="vk-work-byline grid [row-gap:min(var(--vk-space-1),4px)] min-w-0 wrap-anywhere" data-size=size.id()>
             <AuthorIdentity author id=profile_id size />
             // Outside the profile link: time is metadata of the work, not of the person.
             <span class="vk-work-byline__date"><Timestamp instant=published_at /></span>
@@ -113,7 +113,7 @@ pub fn WorkCard(
     #[prop(optional, into)] on_open: Option<Callback<leptos::ev::MouseEvent>>,
 ) -> impl IntoView {
     view! {
-        <div class="vk-work-card">
+        <div class="vk-work-card p-vk-4 rounded-vk-lg [background:var(--vk-surface-container-low)]">
             <Heading level=HeadingLevel::H3 role=TypeRole::Title>
                 <Link href variant=LinkVariant::Standalone attr:class="vk-public-row__link"
                     on:click=move |event| {
@@ -137,7 +137,7 @@ pub fn ReaderHeader(
     #[prop(optional)] title_in_body: bool,
 ) -> impl IntoView {
     view! {
-        <header id="reader-header" class="vk-reader__header">
+        <header id="reader-header" class="vk-reader__header grid justify-items-start">
             <Text role=TypeRole::Caption tone=TextTone::Muted>"Bản công khai"</Text>
             {(!title_in_body).then(|| view! { <Heading level=HeadingLevel::H1 role=TypeRole::Display>{title}</Heading> })}
             {move || view! { <WorkByline author=author.get() profile_id=Some("reader-author".into()) size=AvatarSize::Reader /> }}
@@ -171,14 +171,14 @@ pub fn DraftResume(draft: DraftSummary) -> impl IntoView {
     let expandable = draft.title.chars().count() > 60;
     let expanded = RwSignal::new(false);
     view! {
-        <div class="vk-draft-resume">
+        <div class="vk-draft-resume min-w-0">
             <Surface tone=SurfaceTone::Container radius=Radius::Xl padding=Space::S4>
-                <div class="vk-draft-resume__content">
+                <div class="vk-draft-resume__content grid justify-items-start gap-vk-2 min-w-0">
                     <Text role=TypeRole::Label id="resume-label">"Bản thảo gần nhất"</Text>
                     <Heading level=HeadingLevel::H2 role=TypeRole::Title class:vk-draft-resume__title=true>{draft.title}</Heading>
                     <DraftMetadata version=draft.version updated_at=draft.updated_at />
                 </div>
-                <div class="vk-draft-resume__actions">
+                <div class="vk-draft-resume__actions flex flex-wrap items-center gap-vk-2 [max-inline-size:100%] [min-inline-size:0]">
                     <Link variant=LinkVariant::Standalone class:vk-draft-resume__continue=true
                         attr:data-testid="resume-draft" href=draft.href>"Viết tiếp"</Link>
                     {expandable.then(|| view! {
@@ -195,16 +195,21 @@ pub fn DraftResume(draft: DraftSummary) -> impl IntoView {
     }
 }
 
+const DRAFT_ROW_LINK_CLASS: &str =
+    "vk-draft-row__link grid items-center min-w-0 [padding:var(--vk-space-3)_var(--vk-space-4)]";
+const DRAFT_ROW_TEXT_CLASS: &str = "vk-draft-row__text grid gap-vk-1 min-w-0";
+const DRAFT_ROW_TITLE_CLASS: &str = "vk-draft-row__title wrap-anywhere";
+
 /// One flat navigation target. The complete title stays in the DOM; version stays in facts.
 #[component]
 pub fn DraftRow(draft: DraftSummary) -> impl IntoView {
     view! {
-        <Link href=draft.href attr:class="vk-draft-row__link" variant=LinkVariant::Standalone>
-            <span class="vk-draft-row__text">
-                <span class="vk-draft-row__title">{draft.title}</span>
+        <Link href=draft.href attr:class=DRAFT_ROW_LINK_CLASS variant=LinkVariant::Standalone>
+            <span class=DRAFT_ROW_TEXT_CLASS>
+                <span class=DRAFT_ROW_TITLE_CLASS>{draft.title}</span>
                 <span class=DRAFT_META_CLASS><span>"Cập nhật " <Timestamp instant=draft.updated_at /></span></span>
             </span>
-            <span class="vk-draft-row__open" aria-hidden="true">
+            <span class="vk-draft-row__open ms-vk-3 items-center" aria-hidden="true">
                 <Icon name=IconName::ArrowBack />
             </span>
         </Link>
@@ -247,10 +252,12 @@ pub struct AuthorWorkPublic {
     pub comments: Option<i64>,
 }
 
+const AUTHOR_WORK_CONTEXT_CLASS: &str = "vk-author-work__context m-0 wrap-anywhere";
+
 #[component]
 fn AuthorWorkCount(name: &'static str, icon: IconName, count: Option<i64>) -> impl IntoView {
     view! {
-        <span class="vk-author-work__count" title=count.map_or_else(
+        <span class="vk-author-work__count inline-flex items-center gap-vk-1 [max-inline-size:100%]" title=count.map_or_else(
             || format!("Chưa tải được số {name}"),
             |n| format!("{n} {name}"),
         )>
@@ -267,11 +274,11 @@ fn AuthorWorkCount(name: &'static str, icon: IconName, count: Option<i64>) -> im
 pub fn AuthorWorkRow(#[prop(into)] work: Signal<AuthorWorkSummary>) -> impl IntoView {
     let details = move || {
         view! {
-            <div class="vk-draft-row__text">
-                <span class="vk-draft-row__title" class:vk-author-work__untitled=move || work.with(|w| w.untitled)>{move || work.get().title}</span>
-                <div class="vk-draft-meta vk-author-work__status text-vk-on-surface-variant text-[length:var(--vk-type-caption-size)] font-vk-role-caption [&>span]:min-w-0 [&>span]:wrap-anywhere">
+            <div class=DRAFT_ROW_TEXT_CLASS>
+                <span class=DRAFT_ROW_TITLE_CLASS class:vk-author-work__untitled=move || work.with(|w| w.untitled)>{move || work.get().title}</span>
+                <div class="vk-draft-meta vk-author-work__status flex flex-wrap items-center gap-y-vk-1 gap-x-vk-3 m-0 wrap-anywhere text-vk-on-surface-variant text-[length:var(--vk-type-caption-size)] font-vk-role-caption [&>span]:min-w-0 [&>span]:wrap-anywhere">
                     {move || work.get().status.into_iter().map(|label| view! {
-                        <span class="vk-author-work__label" title=label.detail>
+                        <span class="vk-author-work__label inline-flex items-center gap-vk-1 [max-inline-size:100%]" title=label.detail>
                             <Icon name=label.icon size=IconSize::Small />
                             <span aria-hidden="true">{label.short}</span>
                             <span class="vk-ui-visually-hidden">{label.detail}</span>
@@ -280,22 +287,22 @@ pub fn AuthorWorkRow(#[prop(into)] work: Signal<AuthorWorkSummary>) -> impl Into
                     <span>"Cập nhật " {move || view! { <Timestamp instant=work.get().updated_at /> }}</span>
                 </div>
                 <Show when=move || work.with(|w| w.editor_href.is_none())>
-                    <p class="vk-author-work__context">"Không có bản nháp để sửa"</p>
+                    <p class=AUTHOR_WORK_CONTEXT_CLASS>"Không có bản nháp để sửa"</p>
                 </Show>
                 {move || work.get().public.map(|public| view! {
-                    <p class="vk-author-work__metrics" data-testid="author-work-metrics">
+                    <p class="vk-author-work__metrics flex flex-wrap items-center gap-y-vk-1 gap-x-vk-3 m-0 wrap-anywhere" data-testid="author-work-metrics">
                         <AuthorWorkCount name="Thấm" icon=IconName::PenFlight count=public.tham />
                         <AuthorWorkCount name="nhận xét" icon=IconName::ChatBubbleOutline count=public.comments />
                     </p>
-                    {public.title.map(|title| view! { <p class="vk-author-work__context">"Bản công khai: " {title}</p> })}
+                    {public.title.map(|title| view! { <p class=AUTHOR_WORK_CONTEXT_CLASS>"Bản công khai: " {title}</p> })}
                 })}
             </div>
         }
     };
     view! {
-        <div class="vk-author-work">
+        <div class="vk-author-work flex flex-wrap items-center [min-inline-size:0] [background:var(--vk-bg-content)] rounded-vk-card">
             <Show when=move || work.with(|w| w.editor_href.is_some()) fallback=details>
-                <Link href=Signal::derive(move || work.get().editor_href.unwrap_or_default()) attr:class="vk-draft-row__link" variant=LinkVariant::Standalone>
+                <Link href=Signal::derive(move || work.get().editor_href.unwrap_or_default()) attr:class=DRAFT_ROW_LINK_CLASS variant=LinkVariant::Standalone>
                     {details()}
                 </Link>
             </Show>
