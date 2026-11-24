@@ -232,6 +232,9 @@ export async function notifications(page, { args, check }) {
   check(await page.eval(`Math.abs(document.querySelector('${popup}').getBoundingClientRect().top -
       document.querySelector('${bell}').getBoundingClientRect().top) <= 2`), 'AC-01 popover starts at the bell');
   check(await page.eval(focused('#notification-popover-title')), 'AC-01 opening moves focus to the title');
+  check(await page.eval(`[...document.querySelectorAll('${popup} .vk-ui-avatar-group .vk-ui-avatar__initials')]
+    .some(initials => initials.textContent.trim() === 'LP' && getComputedStyle(initials).visibility === 'visible')`),
+    'AC-05 the shared avatar group shows fallback initials');
   await page.key('Tab');
   check(await page.eval(`document.querySelector('${popup}').contains(document.activeElement)`), 'AC-05 Tab stays in the dialog');
   await page.key('Escape');

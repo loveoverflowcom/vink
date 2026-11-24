@@ -2,7 +2,9 @@
 
 use leptos::ev::MouseEvent;
 use leptos::prelude::*;
-use vink_ui::{Avatar, AvatarSize, ExpressiveShape, IconName, Person, ShapeMark, ShapeTone};
+use vink_ui::{
+    Avatar, AvatarGroup, AvatarSize, ExpressiveShape, IconName, Person, ShapeMark, ShapeTone,
+};
 
 /// The visible actors and their type glyph, or a mark for a system decision.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -90,27 +92,26 @@ pub fn NotificationRow(
     let name = facts.accessible_name(excerpt.as_deref());
     let leading = match facts.leading {
         NotificationLeading::People { people, glyph } => {
-            let grouped = people.len() > 1;
-            let size = if grouped {
-                AvatarSize::Small
+            let actors = if people.len() > 1 {
+                view! { <AvatarGroup people label="Người đọc" max_visible=2 /> }.into_any()
             } else {
-                AvatarSize::Reader
+                let person = people.into_iter().next().unwrap_or_default();
+                view! {
+                    <Avatar
+                        name=person.name.unwrap_or_default()
+                        identity_key=person.key.unwrap_or_default()
+                        image=Signal::stored(person.image)
+                        size=AvatarSize::Reader
+                        decorative=true
+                    />
+                }
+                .into_any()
             };
             view! {
-                <span class="vk-notif-row__person" class:vk-notif-row__person--group=grouped>
-                    <span class="vk-notif-row__avatars">
-                        {people.into_iter().take(2).map(|person| view! {
-                            <Avatar
-                                name=person.name.unwrap_or_default()
-                                identity_key=person.key.unwrap_or_default()
-                                image=Signal::stored(person.image)
-                                size=size
-                                decorative=true
-                            />
-                        }).collect_view()}
-                    </span>
+                <div class="vk-notif-row__person">
+                    {actors}
                     <ShapeMark shape=ExpressiveShape::Cookie icon=glyph glyph=true />
-                </span>
+                </div>
             }
             .into_any()
         }
@@ -131,7 +132,7 @@ pub fn NotificationRow(
                     }
                 }
             >
-                <span class="vk-notif-row__leading" aria-hidden="true">{leading}</span>
+                <div class="vk-notif-row__leading" aria-hidden="true">{leading}</div>
                 <span class="vk-notif-row__text">
                     <span class="vk-notif-row__sentence">
                         {facts.actors.map(|actors| view! { <strong>{actors}</strong>" " })}

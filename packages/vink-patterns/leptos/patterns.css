@@ -398,14 +398,18 @@
 .vk-notif-row__leading { grid-area: lead; }
 .vk-notif-row__person {
   position: relative;
-  display: inline-block;
+  display: inline-grid;
+  align-items: center;
   inline-size: var(--vk-size-avatar-reader);
   block-size: var(--vk-size-avatar-reader);
 }
 
-.vk-notif-row__avatars { display: flex; align-items: center; block-size: 100%; }
-.vk-notif-row__person--group .vk-ui-avatar + .vk-ui-avatar { margin-inline-start: calc(-1 * var(--vk-space-4)); }
-.vk-notif-row__person--group .vk-ui-avatar__initials { visibility: hidden; }
+.vk-notif-row__person .vk-ui-avatar-group > .vk-ui-avatar {
+  box-shadow: 0 0 0 2px var(--vk-notif-row-bg);
+}
+.vk-notif-row__person .vk-ui-avatar-group > .vk-ui-avatar + .vk-ui-avatar {
+  margin-inline-start: calc(-1 * var(--vk-space-4));
+}
 .vk-notif-row--unread .vk-ui-avatar { background-color: var(--vk-surface); color: var(--vk-on-surface); }
 
 .vk-notif-row__person .vk-ui-shape-mark {
