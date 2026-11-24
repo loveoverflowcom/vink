@@ -24,7 +24,10 @@ instructions or repeated checking workflows, use
 [vink-maintain-verification](../../vink-maintain-verification/SKILL.md).
 
 For a focused local task, use the [scoped workflow guide](../../../../docs/development/scoped-workflows.md):
-`verify unit <owner> [--filter NAME]`, `verify web --scenario NAME`, `verify preview`, and `doctor <scoped command>`.
+`verify static`, `verify check <owner>`, `verify unit <owner> [--filter NAME]`,
+`verify postgres <owner> [--filter NAME]`, `verify web --scenario NAME`, `verify preview`
+and `doctor <scoped command>`. `--capture checks` on explicit Web scenarios leaves PNG/visual
+evidence `NOT_RUN`. Cite runnable test count separately from Cargo compile/link cost.
 Inspect dependencies with trailing `--plan`. A selected result is not a full lane PASS; `restart`
 includes `main` as setup. Full lanes and formal-method obligations below remain unchanged.
 
@@ -42,7 +45,7 @@ A child PR may satisfy its own acceptance without claiming `OUTCOME_COMPLETE` fo
 
 | Change | Lanes | Notes |
 | --- | --- | --- |
-| Docs, skills, metadata only | `quick` (repository checks) or a diff/link review | No app run needed |
+| Docs, skills, metadata only | `verify static docs` or a diff/link review | No app run needed |
 | Domain, application, contract, config, `desk_state` | `quick` | Add a focused unit or fixture test |
 | D2T-01 structural core/model/trace fixture | `quick` + `discussion` | Generated model state is oracle only; replay command inputs through production Rust |
 | Discussion lifecycle, schema or adapter (D2T-02a) | `quick` + `postgres` | Direct-SQL negatives and explicit-lock races; a recording store proves only use-case wiring |

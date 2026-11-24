@@ -429,3 +429,17 @@ test('AC-04 & AC-05: separates DOM override from app controls and validates Me i
   assert.equal(summary.lanes.realDevice.status, 'NOT_RUN');
   assert.equal(summary.fullWebVerify, 'NOT_RUN');
 });
+
+test('geometry-only capture still rejects a wrong viewport, theme or scale', () => {
+  const name = 'reader-320x800-dark';
+  const requestedScene = { width: 320, height: 800, theme: 'dark', textScale: 200 };
+  const actual = { width: 320, height: 800, dpr: 1, theme: 'dark', fontSize: '32px' };
+  const input = { name, requestedScene, actual, pngMeta: null };
+  assert.doesNotThrow(() => validateCaptureScene({ ...input, checkPng: false }));
+  for (const [field, value] of [['height', 900], ['theme', 'light'], ['fontSize', '16px']]) {
+    assert.throws(() => validateCaptureScene({
+      ...input, actual: { ...actual, [field]: value }, checkPng: false,
+    }), /capture scene mismatch/);
+  }
+  assert.throws(() => validateCaptureScene(input), /invalid PNG dimensions/);
+});

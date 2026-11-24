@@ -295,7 +295,7 @@ Input một dòng vẫn sở hữu chỉnh sửa; bản đọc wrap dùng trực
 `editorChrome` gọi [editorWriting](../../apps/vink-web/e2e/editor-writing-smoke.mjs)
 để kiểm reflow, raw buffer/view, native selection/undo/composition, no-write,
 UTF-16 so với trim/NFC/scalar ở API, preview và focus. Cũng chạy trong
-`verify web --scenario main`; không là scenario xtask riêng.
+`verify web --scenario editor-chrome` và trong alias `main`.
 
 ## Phần việc còn lại của quyết định sản phẩm 10/11/2026
 
@@ -390,7 +390,7 @@ ngưỡng đề xuất và giới hạn host nằm ở báo cáo #229.
 
 Web runner chuẩn bị database thử, server và Chrome; khi chạy tới bước tương ứng, nó ghi
 `target/verify-web/<run-id>/server.log` và `smoke-state.json`. Mỗi lượt có thư mục riêng; không xóa bằng chứng lượt trước. `adaptiveShell`, `publicReading`, `editorChrome`
-và `shellWithDirtyEditor` ghi PNG tại `target/verify-web/<run-id>/screenshots/` (1440/1024/834/390/320px,
+và `shellWithDirtyEditor` ghi PNG tại `target/verify-web/<run-id>/<scenario>/screenshots/` (1440/1024/834/390/320px,
 sáng/tối, 320px chữ 200%, editor dirty và overlay). Manifest `contexts.json` ghi route, viewport, DPR, theme, root font và user agent. Không có video hay performance trace.
 Assertions DOM và ảnh chưa mở không chứng minh bố cục đẹp.
 
@@ -714,7 +714,7 @@ Owner và quyết định kỹ thuật: [publication-author-web](publication-aut
 | Reducer: lưu → chụp → gửi, đúng phiên bản, ghim generation, key, mất ACK, rút bài thắng, fence phiên | `publication_state::tests` (`quick`, 36 test): chữ gõ thêm khi đang lưu dừng gửi, mỗi bước mất ACK, replay chỉ khi generation đã ghim còn đứng, hai lệnh chồng, đổi scope, đọc lệch thứ tự, giá trị lạ | Thuần; không có DOM/transport |
 | Bằng chứng DB cho đối soát | `author_web_recovery_contract_on_real_rows` (`postgres`): snapshot bất biến khi nháp đổi tiếp, replay snapshot sau khi nháp đã sang version khác, `409` nêu đúng field, replay request/private sau khi tab khác đổi không hồi sinh ý định, key dùng lại khác payload `422`, mọi khẳng định đọc lại từ hàng DB | Một tác phẩm seed; không đo song song nhiều tab |
 | Luồng thật qua Web | phase `publication-author` (`web`, real Identity, ba principal): đăng nhập bằng mã email, viết/gắn thẻ/gửi, người duyệt có grant kết luận bằng trang, Khám phá/reader đúng revision + thẻ, r1/r2, lưu-khi-gõ-tiếp, xung đột nháp/thẻ ở bước chụp, nhấn đôi, mất ACK ở snapshot/request/private, hai tab, rút bài khi còn chữ chưa lưu (ETag cũ `404`, reader ẩn), phiên hết/đổi tài khoản, IME mô phỏng | Chrome headless, một máy; IME là mô phỏng CDP, không phải OS IME; `503`/`403` đọc state là câu trả lời có nhãn “fabricated” |
-| Hình học và ảnh theo trạng thái | `matrix` trong phase trên: 5 trạng thái × (320/390/1024 × sáng/tối × chữ 100%/200%): không cuộn ngang, không nằm ngoài vùng, không cắt/ellipsis; `refreshInvariant`: đọc lại không remount editor, không đổi cuộn/focus | Ảnh ở output `verify web` (`target/verify-web/<run-id>/screenshots`); `NO_APPROVED_REFERENCE` |
+| Hình học và ảnh theo trạng thái | `matrix` trong phase trên: 5 trạng thái × (320/390/1024 × sáng/tối × chữ 100%/200%): không cuộn ngang, không nằm ngoài vùng, không cắt/ellipsis; `refreshInvariant`: đọc lại không remount editor, không đổi cuộn/focus | Ảnh ở output `verify web` (`target/verify-web/<run-id>/publication/screenshots`); `NO_APPROVED_REFERENCE` |
 
 ## Hậu kiểm do operator yêu cầu
 
@@ -767,14 +767,15 @@ chỉ ghi những boundary thực sự chạy ở lượt này.
 
 [Workflow guide](scoped-workflows.md) sở hữu cú pháp, dependencies, defaults và recovery.
 [Planner](../../xtask/src/plan.rs) và [CLI tests](../../xtask/tests/scoped_cli.rs) kiểm selection,
-restart → main, invalid/empty input và đường inspection không gọi executor hoặc lộ credentials.
+restart → browser setup riêng, invalid/empty input và đường inspection không gọi executor hoặc lộ credentials.
 [Workflow tests](../../xtask/src/workflow.rs) kiểm env runtime không mang fixture/socket/migrator
 ngoài lựa chọn; [lifecycle](../../xtask/src/lifecycle.rs) kiểm duplicate lock/reaped child.
 `api_composition_has_no_ssr_or_static_routes_and_keeps_private_guard` ở HTTP owner kiểm router
 mode; source/test presence không thay bằng chứng PostgreSQL/process/browser thật.
 
-`verify web` giữ full coverage của các bảng trên. `--scenario main|storage|discovery|restart|endorsement|review|auth|password|publication`
-chỉ chạy coverage được chọn và dependency khai báo; `restart` kéo `main`. `verify preview` là
+`verify web` chạy toàn bộ [catalog mặc định](scoped-workflows.md#scenario-web-và-setup).
+`main` mở rộng sang các suite Reader, shell, Desk, editor, discussion và storage. `restart`
+tự chuẩn bị draft/tag. `verify preview` là
 alias có plan cho Leptos preview hiện hữu; CMP/native không đổi. Evidence theo lượt nằm trong
 [registry triển khai](scoped-workflows-evidence.md), không coi selected PASS là full PASS.
 

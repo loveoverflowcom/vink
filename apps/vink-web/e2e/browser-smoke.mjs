@@ -117,6 +117,8 @@ const args = Object.fromEntries(
     return pairs;
   }, []),
 );
+if (!Object.hasOwn(args, 'capture')) args.capture = 'full';
+if (!['full', 'checks'].includes(args.capture)) fail(`unknown --capture ${args.capture}`);
 for (const key of ['base', 'chrome', 'state', 'phase']) {
   if (!args[key]) fail(`missing --${key}`);
 }
@@ -656,12 +658,16 @@ class Page {
 
   async capture(name, evidence = {}) {
     await this.eval(`document.fonts.ready`);
-    const { data } = await this.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
     const dir = join(dirname(args.state), 'screenshots');
-    mkdirSync(dir, { recursive: true });
-    const png = Buffer.from(data, 'base64');
-    writeFileSync(join(dir, `${name}.png`), png);
-    const pngMeta = parsePngMetadata(png);
+    const checkPng = args.capture === 'full';
+    let pngMeta = null;
+    if (checkPng) {
+      const { data } = await this.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+      mkdirSync(dir, { recursive: true });
+      const png = Buffer.from(data, 'base64');
+      writeFileSync(join(dir, `${name}.png`), png);
+      pngMeta = parsePngMetadata(png);
+    }
     const requiredTargets = Array.isArray(evidence.requiredTargets)
       ? evidence.requiredTargets
       : typeof evidence.target === 'string'
@@ -878,8 +884,6 @@ class Page {
         targets: { required: requiredResults },
       };
     })()`);
-    const manifest = join(dir, 'contexts.json');
-    const contexts = readdirSync(dir).includes('contexts.json') ? JSON.parse(readFileSync(manifest, 'utf8')) : {};
     const missingTargets = (context.targets?.required ?? []).filter((t) => !t.present || !t.visible);
     const captureStatus = missingTargets.length ? 'INCOMPLETE' : 'CAPTURED';
     const targetError = missingTargets.length
@@ -892,7 +896,15 @@ class Page {
         editorScene: evidence.editorScene,
         actual: context,
         pngMeta,
+        checkPng,
       });
+    }
+    if (!checkPng) {
+      if (targetError && !evidence.allowIncomplete) {
+        throw new Error(`capture geometry incomplete for ${name}: ${targetError}`);
+      }
+      // Callers still consume rendered geometry and every assertion remains active.
+      return context;
     }
     const textScaleLane = classifyTextScaleLane({
       rootInlineFontSize: context.rootInlineFontSize,
@@ -907,6 +919,7 @@ class Page {
     const record = {
       schemaVersion: MANIFEST_SCHEMA_VERSION,
       scenarioId: evidence.scenario ?? evidence.sceneId ?? name,
+      executionPhase: args.phase,
       captureStatus,
       targetError,
       state: evidence.state ?? (context.hydrated ? 'hydrated' : 'before-hydration'),
@@ -927,6 +940,8 @@ class Page {
       captured_at: new Date().toISOString(),
       evidence: { build: BUILD_SHA, dirty: BUILD_DIRTY, ...evidence, textScaleLane },
     };
+    const manifest = join(dir, 'contexts.json');
+    const contexts = readdirSync(dir).includes('contexts.json') ? JSON.parse(readFileSync(manifest, 'utf8')) : {};
     contexts[name] = record;
     writeFileSync(manifest, JSON.stringify(contexts, null, 2));
     writeFileSync(
@@ -1227,30 +1242,39 @@ async function launchChrome(existingProfile) {
   if (process.env.CI || process.env.VINK_CHROME_NO_SANDBOX) flags.push('--no-sandbox');
   // Linux headless can report hover:none even when CDP injects mouse events. The navigation
   // mouse probe uses Blink's hover-capable fine pointer types (hover = 2, fine = 4).
-  if (['main', 'bottom-navigation'].includes(args.phase)) {
+  if (['main', 'appearance-shell', 'bottom-navigation'].includes(args.phase)) {
     flags.push('--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4');
   }
   // #234 measures a new SSR document with back_forward navigation timing, not a BFCache hit.
   if (['perf-baseline','reader-guest-history'].includes(args.phase)) flags.push('--disable-back-forward-cache');
   const child = spawn(args.chrome, flags, { stdio: ['ignore', 'ignore', 'pipe'] });
   let output = '';
-  let exited = null;
+  let exited = false;
+  let launchError;
+  child.on('error', (error) => (launchError = error));
   child.stderr.on('data', (chunk) => (output += chunk));
-  child.on('exit', (code) => (exited = code));
+  child.on('exit', (code, signal) => (exited = `${code ?? signal}`));
   // Chrome writes "<port>\n<browser path>" to DevToolsActivePort once the endpoint is open.
   const deadline = Date.now() + 20000;
-  while (Date.now() < deadline) {
-    if (exited !== null) throw new Error(`Chrome exited (${exited}): ${output}`);
-    try {
-      const [port, path] = readFileSync(join(profile, 'DevToolsActivePort'), 'utf8').split('\n');
-      if (port && path) return { child, profile, url: `ws://127.0.0.1:${port.trim()}${path.trim()}` };
-    } catch {
-      // Not written yet.
+  try {
+    while (Date.now() < deadline) {
+      if (launchError) throw launchError;
+      if (exited) throw new Error(`Chrome exited (${exited}): ${output}`);
+      try {
+        const [port, path] = readFileSync(join(profile, 'DevToolsActivePort'), 'utf8').split('\n');
+        if (port && path) return { child, profile, url: `ws://127.0.0.1:${port.trim()}${path.trim()}` };
+      } catch {
+        // Not written yet.
+      }
+      await sleep(100);
     }
-    await sleep(100);
+    throw new Error(`Chrome did not open DevTools within 20s: ${output}`);
+  } catch (error) {
+    child.kill();
+    if (!existingProfile) removeChromeProfile(profile);
+    throw error;
   }
-  child.kill();
-  throw new Error(`Chrome did not open DevTools within 20s: ${output}`);
+
 }
 
 async function openPage(cdp, browserContextId) {
@@ -4824,7 +4848,7 @@ async function editorChrome(page) {
   await page.eval(`document.documentElement.style.fontSize=''; document.documentElement.dataset.theme='light'`);
 }
 
-async function mainPhase(page) {
+async function readerRoutingAndPrivacy(page) {
   await serverHtml();
   await readerBeforeHydration(page, { args, check });
   await conditionalPublicReads(page);
@@ -4868,32 +4892,9 @@ async function mainPhase(page) {
   await page.waitFor(`location.pathname === ${JSON.stringify(formerPilot)} &&
     window.__beforeFormerPilot === true && document.querySelector('main h1')?.textContent.includes('Không tìm thấy trang này.') &&
     !document.querySelector('#expression-pilot, #author-profile-heading')`, 'client navigation reaches product not-found');
-  await discussionReadingAndWrites(page);
-  await endorsementAsAuthor(page, { args, check });
-  await adaptiveShell(page);
-  await bottomNavigationRegression(page);
-  // The nav matrix persists its last page-theme choice; later main steps start from the
-  // system preference that adaptiveShell restored, not from a leaked explicit theme.
-  await page.viewport(1440, 900);
-  await page.eval(`localStorage.removeItem('vink.ui.theme'); document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme; scrollTo(0, 0)`);
-  await authorWorks(page, {args,check,DraftGate,sleep});
-  await draftDashboard(page);
-  // Session-generation fixtures must not broadcast into subsequent real Desk scenarios.
-  const { browserContextId: emptyContext } = await page.cdp.send('Target.createBrowserContext');
-  try {
-    const emptyPage = await openPage(page.cdp, emptyContext);
-    await deskEmptyState(emptyPage, {args,check,DraftGate,textContrast});
-    check(emptyPage.errors.length === 0, '#259 isolated empty-state context has no console errors');
-  } finally {
-    await page.cdp.send('Target.disposeBrowserContext', { browserContextId: emptyContext });
-  }
-  await draftR6Hierarchy(page);
-  await timestampPresentation(page);
-  await draftPagination(page, { args, check, DraftGate, sleep });
-  await selectChevron(page);
-  await publicReading(page);
-  await editorChrome(page);
+}
 
+async function readerRendering(page) {
   console.log('reader in the browser:');
   await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'hydration');
@@ -4911,7 +4912,55 @@ async function mainPhase(page) {
   check(served === '200 font/woff2', 'font files are served as font/woff2');
   const editorOnReader = await page.eval(`performance.getEntriesByType('resource').some((e) => e.name.endsWith('/pkg/vink-editor.js'))`);
   check(!editorOnReader, 'the public reader does not load the editor runtime');
+}
 
+async function readerPhase(page) {
+  await readerRoutingAndPrivacy(page);
+  await publicReading(page);
+  await page.viewport(1440, 900);
+  await readerRendering(page);
+}
+
+async function discussionPhase(page) {
+  await discussionReadingAndWrites(page);
+  await endorsementAsAuthor(page, { args, check });
+}
+
+async function appearanceShellPhase(page) {
+  await adaptiveShell(page);
+  await bottomNavigationRegression(page);
+  // The nav matrix persists its last page-theme choice; later main steps start from the
+  // system preference that adaptiveShell restored, not from a leaked explicit theme.
+  await page.viewport(1440, 900);
+  await page.eval(`localStorage.removeItem('vink.ui.theme'); document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme; scrollTo(0, 0)`);
+}
+
+async function deskPhase(page) {
+  await page.viewport(1440, 900);
+  await authorWorks(page, {args,check,DraftGate,sleep});
+  await draftDashboard(page);
+  // Session-generation fixtures must not broadcast into subsequent real Desk scenarios.
+  const { browserContextId: emptyContext } = await page.cdp.send('Target.createBrowserContext');
+  try {
+    const emptyPage = await openPage(page.cdp, emptyContext);
+    await deskEmptyState(emptyPage, {args,check,DraftGate,textContrast});
+    check(emptyPage.errors.length === 0, '#259 isolated empty-state context has no console errors');
+  } finally {
+    await page.cdp.send('Target.disposeBrowserContext', { browserContextId: emptyContext });
+  }
+  await draftR6Hierarchy(page);
+  await timestampPresentation(page);
+  await draftPagination(page, { args, check, DraftGate, sleep });
+  await selectChevron(page);
+}
+
+async function editorPhase(page) {
+  // The scoped caller creates its own Reader context. Legacy main already reached it.
+  if (args.phase !== 'main') {
+    await page.viewport(1440, 900);
+    await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);
+    await page.waitFor("document.documentElement.dataset.hydrated === 'true'", 'hydrated Reader before client navigation');
+  }
   console.log('client navigation and draft creation:');
   await page.eval(`window.__vinkNavigation = 'kept'`);
   await page.click('#navigation-primary a[href="/ban-viet"]');
@@ -5162,14 +5211,40 @@ async function mainPhase(page) {
   }
 
   await draftTags(page, workId);
+  return workId;
+}
+
+async function editorFormatPhase(page) {
+  if (args.phase !== 'main') {
+    await page.viewport(1440, 900);
+    await page.goto(`${args.base}/ban-viet`);
+    await page.waitFor("document.documentElement.dataset.hydrated === 'true'", 'hydrated Desk before opening format fixtures');
+  }
   await deskRefusesLossyOpen(page);
   await markdownLivePreviewAndFormatPicker(page);
   await editorDeskRegressions(page, { args, check });
   await markdownBudget(page, { args, check });
+}
 
+async function writeRestartState(page, workId) {
   const kept = await page.draft(workId);
   const text = kept.document.source;
   writeFileSync(args.state, JSON.stringify({ workId, title: kept.title, text, version: kept.version }));
+}
+
+// Compatibility for callers of the direct browser smoke CLI. xtask resolves the main alias
+// to these suites and runs each with a fresh Chrome profile and evidence directory.
+async function mainPhase(page) {
+  await readerRoutingAndPrivacy(page);
+  await discussionPhase(page);
+  await appearanceShellPhase(page);
+  await deskPhase(page);
+  await publicReading(page);
+  await editorChrome(page);
+  await readerRendering(page);
+  const workId = await editorPhase(page);
+  await editorFormatPhase(page);
+  await writeRestartState(page, workId);
 }
 
 // #255/#263/#256: Markdown opens in Live Preview without a separate title box, while CRLF
@@ -6327,6 +6402,37 @@ async function captureDiscussionMatrix(page, name, anchor, boundary) {
   await page.viewport(1280);
 }
 
+async function prepareRestartPhase(page) {
+  await page.viewport(1440, 900);
+  await page.goto(`${args.base}/ban-viet`);
+  await page.waitFor("document.documentElement.dataset.hydrated === 'true' && document.querySelector('#create-draft')", 'restart fixture Desk');
+  await page.click('#create-draft');
+  await page.waitFor(`${EDITOR_READY} && ${TAGS_READY}`, 'new restart fixture draft');
+  const workId = await page.eval("location.pathname.split('/').pop()");
+  await page.typeAtEnd('#draft-title', TITLE);
+  await page.typeInBody(BODY);
+  await page.waitFor("document.querySelector('#work-options').open", 'restart fixture options');
+  await page.click('#work-tags-query-toggle');
+  await page.eval("document.querySelector('#work-tags-query').focus()");
+  await page.send('Input.insertText', { text: 'Đô thị' });
+  await page.waitFor("document.getElementById('work-tags-status').textContent.includes('“Đô thị”')", 'restart fixture tag suggestion');
+  await page.key('Enter');
+  await page.waitFor("document.querySelector('#work-tags-theme-0')?.textContent.includes('Đô thị')", 'restart fixture active tag selection');
+  await page.click('#save');
+  await page.waitStatus('saved', 'confirmed restart fixture text');
+  await waitTagStatus(page, 'saved', 'confirmed restart fixture tag');
+  const saved = await page.draft(workId);
+  const tags = await draftTagsOf(page, workId);
+  check(saved.version === 2 && saved.title === TITLE && saved.document.source === BODY &&
+    tags.themes.map(tag => `${tag.label}:${tag.status}`).join() === 'Đô thị:active',
+  'restart fixture text and active tag were persisted in real PostgreSQL');
+  await page.reload();
+  await page.waitFor(`${EDITOR_READY} && ${TAGS_READY} && document.querySelector('#work-tags-theme-0')`, 'reloaded restart fixture');
+  check(await page.body() === BODY && (await chipLabels(page)).join() === 'Đô thị',
+    'restart fixture restored text and active tag on a fresh page');
+  await writeRestartState(page, workId);
+}
+
 async function afterRestartPhase(page) {
   const state = JSON.parse(readFileSync(args.state, 'utf8'));
   console.log('after server restart:');
@@ -6345,11 +6451,18 @@ async function afterRestartPhase(page) {
   check((await page.status()) === 'unsaved', 'typing after restart marks draft unsaved');
 }
 
-mkdirSync(dirname(args.state), { recursive: true });
-const chrome = await launchChrome();
+function removeChromeProfile(profile) {
+  try {
+    rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  } catch { /* Cleanup must not replace the browser result. */ }
+}
+
+let chrome;
 let exitCode = 0;
 let activePage;
 try {
+  mkdirSync(dirname(args.state), { recursive: true });
+  chrome = await launchChrome();
   const cdp = new Cdp(chrome.url);
   await cdp.open();
   cdp.listeners.push(message => {
@@ -6379,6 +6492,13 @@ try {
   else if (args.phase === 'editor-first-draft') await firstDraftFormat(page, { args, check });
   else if (args.phase === 'reader-guest-history') await readerGuestHistory(page, { args, check });
   else if (args.phase === 'main') await mainPhase(page);
+  else if (args.phase === 'reader') await readerPhase(page);
+  else if (args.phase === 'discussion') await discussionPhase(page);
+  else if (args.phase === 'appearance-shell') await appearanceShellPhase(page);
+  else if (args.phase === 'desk') await deskPhase(page);
+  else if (args.phase === 'editor') await editorPhase(page);
+  else if (args.phase === 'editor-format') await editorFormatPhase(page);
+  else if (args.phase === 'restart-prepare') await prepareRestartPhase(page);
   else if (args.phase === 'public-storage') { /* exercised below, with profile reopen */ }
   else if (args.phase === 'after-restart') await afterRestartPhase(page);
   else if (args.phase === 'endorsement') await endorsementAsReader(page, { args, check, captureMatrix: captureDiscussionMatrix });
@@ -6436,12 +6556,13 @@ try {
   console.error(`browser-smoke: FAIL ${error.message}`);
   exitCode = 1;
 } finally {
-  // Chrome may still be writing its profile; removing it must not replace the smoke's result.
-  const exited = chrome.child.exitCode !== null ? null : new Promise((resolve) => chrome.child.once('exit', resolve));
-  chrome.child.kill();
-  await Promise.race([exited, sleep(5000)]);
-  try {
-    rmSync(chrome.profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
-  } catch {}
+  if (chrome) {
+    // Chrome may still be writing its profile. Wait for the owned process before removal.
+    const exited = chrome.child.exitCode !== null || chrome.child.signalCode !== null
+      ? null : new Promise((resolve) => chrome.child.once('exit', resolve));
+    chrome.child.kill();
+    await Promise.race([exited, sleep(5000)]);
+    removeChromeProfile(chrome.profile);
+  }
 }
 process.exit(exitCode);

@@ -192,14 +192,14 @@ export function classifyTextScaleLane({ rootInlineFontSize, dataText, explicitLa
  * Verifies capture filename, requested scene parameters, actual DOM geometry/theme/hydration
  * state and PNG pixel dimensions together so 900-height captures can never pass as 800-height.
  */
-export function validateCaptureScene({ name, requestedScene, editorScene, actual, pngMeta }) {
+export function validateCaptureScene({ name, requestedScene, editorScene, actual, pngMeta, checkPng = true }) {
   const reasons = [];
   if (!actual || !Number.isFinite(actual.width) || !Number.isFinite(actual.height) || actual.width <= 0 || actual.height <= 0) {
     reasons.push(`invalid actual viewport dimensions: ${JSON.stringify(actual)}`);
   }
-  if (!pngMeta || !Number.isInteger(pngMeta.width) || !Number.isInteger(pngMeta.height) || pngMeta.width <= 0 || pngMeta.height <= 0) {
+  if (checkPng && (!pngMeta || !Number.isInteger(pngMeta.width) || !Number.isInteger(pngMeta.height) || pngMeta.width <= 0 || pngMeta.height <= 0)) {
     reasons.push(`invalid PNG dimensions: ${JSON.stringify(pngMeta)}`);
-  } else if (actual && Number.isFinite(actual.dpr)) {
+  } else if (checkPng && actual && Number.isFinite(actual.dpr)) {
     const expectedPxW = Math.round(actual.width * actual.dpr);
     const expectedPxH = Math.round(actual.height * actual.dpr);
     if (pngMeta.width !== expectedPxW || pngMeta.height !== expectedPxH) {
@@ -216,7 +216,7 @@ export function validateCaptureScene({ name, requestedScene, editorScene, actual
         `mismatched viewport filename: ${name} declares ${filenameDims.width}x${filenameDims.height} but actual viewport is ${actual.width}x${actual.height}`,
       );
     }
-    if (pngMeta && Number.isFinite(actual.dpr)) {
+    if (checkPng && pngMeta && Number.isFinite(actual.dpr)) {
       const expectedPxW = Math.round(filenameDims.width * actual.dpr);
       const expectedPxH = Math.round(filenameDims.height * actual.dpr);
       if (pngMeta.width !== expectedPxW || pngMeta.height !== expectedPxH) {

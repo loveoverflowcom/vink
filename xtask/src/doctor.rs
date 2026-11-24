@@ -297,6 +297,10 @@ pub fn scoped(plan: &crate::plan::Plan, env: &Env) -> Result<(), String> {
             Tool::Bindgen => require_wasm_bindgen(&root()),
             Tool::Node => node_version(),
             Tool::Npm => npm_version(),
+            Tool::Psql => crate::provision::psql_version(),
+            Tool::PgBackup => crate::provision::backup_clients(),
+            Tool::Rustfmt => output("cargo", &["fmt", "--version"], &root())
+                .ok_or_else(|| "rustfmt is unavailable for the pinned toolchain".into()),
             Tool::Chrome => {
                 chrome_binary(env).ok_or_else(|| "Chrome not found; set VINK_CHROME".into())
             }

@@ -92,7 +92,7 @@ pub fn verify(report: &mut Report, root: &Path, admin_url: &str) -> bool {
     };
     if !report.step(
         "psql 15+ available (services/postgres/provision.sh)",
-        psql_version,
+        || psql_version().map(|_| ()),
     ) || !report.step("scratch owners absent before the run", || run.cleanup())
     {
         return false;
@@ -102,7 +102,7 @@ pub fn verify(report: &mut Report, root: &Path, admin_url: &str) -> bool {
     ok && cleaned
 }
 
-fn psql_version() -> Result<(), String> {
+pub fn psql_version() -> Result<String, String> {
     let out = Command::new("psql")
         .arg("--version")
         .output()
@@ -114,10 +114,34 @@ fn psql_version() -> Result<(), String> {
         .unwrap_or(0);
     if major >= 15 {
         println!("==> {text}");
-        Ok(())
+        Ok(text)
     } else {
         Err(format!("psql 15+ is required (\\getenv); found `{text}`"))
     }
+}
+
+fn backup_client(name: &str) -> Result<(Command, String), String> {
+    let program = std::env::var_os("VINK_PG_BIN")
+        .map(|dir| Path::new(&dir).join(name))
+        .unwrap_or_else(|| name.into());
+    let command = Command::new(program);
+    let version = Command::new(command.get_program())
+        .arg("--version")
+        .output()
+        .map_err(|_| format!("{name} not found; install a PostgreSQL client or set VINK_PG_BIN"))?;
+    if !version.status.success() {
+        return Err(format!("{name} --version exited with {}", version.status));
+    }
+    Ok((
+        command,
+        String::from_utf8_lossy(&version.stdout).trim().to_string(),
+    ))
+}
+
+pub fn backup_clients() -> Result<String, String> {
+    let (_, dump) = backup_client("pg_dump")?;
+    let (_, restore) = backup_client("pg_restore")?;
+    Ok(format!("{dump}, {restore}"))
 }
 
 fn block_on<T>(future: impl Future<Output = Result<T, String>>) -> Result<T, String> {
@@ -521,16 +545,7 @@ impl Run<'_> {
     /// `pg_dump`/`pg_restore` from `VINK_PG_BIN` or PATH; their major version must not be older
     /// than the server's, or the dump is refused.
     fn pg_tool(&self, name: &str) -> Result<Command, String> {
-        let program = std::env::var_os("VINK_PG_BIN")
-            .map(|dir| Path::new(&dir).join(name))
-            .unwrap_or_else(|| name.into());
-        let version = Command::new(&program)
-            .arg("--version")
-            .output()
-            .map_err(|_| {
-                format!("{name} not found; install a PostgreSQL client or set VINK_PG_BIN")
-            })?;
-        let text = String::from_utf8_lossy(&version.stdout).to_string();
+        let (mut command, text) = backup_client(name)?;
         let major: u32 = text
             .split_whitespace()
             .find_map(|w| w.split('.').next()?.parse().ok())
@@ -548,7 +563,6 @@ impl Run<'_> {
                 "{name} {major} cannot dump PostgreSQL {server}; set VINK_PG_BIN to a {server}+ client"
             ));
         }
-        let mut command = Command::new(program);
         command
             .current_dir(self.root)
             .env_clear()

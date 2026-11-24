@@ -5,7 +5,7 @@ use crate::{
     identity,
     lifecycle::{self, Guard, Lock},
     plan::*,
-    process, root, ui_preview, web,
+    process, root, ui_preview, verify, web,
 };
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -25,9 +25,20 @@ pub fn execute(plan: &Plan, env: &Env) -> Result<(), String> {
             Err("selected Web verification failed (later checks NOT_RUN)".into())
         };
     }
+    if let Target::Postgres(scope) = plan.request.target {
+        return verify::selected_postgres(scope, env, plan.request.filter.as_deref());
+    }
     doctor::scoped(plan, env)?;
-    if let Target::Unit(owner) = plan.request.target {
-        return unit(owner, plan.request.filter.as_deref());
+    match plan.request.target {
+        Target::Unit(owner) => return verify::unit(owner, plan.request.filter.as_deref()),
+        Target::Static(scope) => return verify::static_checks(scope),
+        Target::Check(owner, target) => {
+            let mut command = process::cargo(&root());
+            command.args(target.args(owner));
+            env::clear_capabilities(&mut command);
+            return process::run(&mut command, "selected compile check");
+        }
+        _ => {}
     }
     // Validate endpoint/capability configuration before building or migrating anything.
     let config =
@@ -88,41 +99,6 @@ pub fn artifacts(plan: &Plan) -> Result<(), String> {
         }
     }
     Ok(())
-}
-
-fn unit(owner: UnitOwner, filter: Option<&str>) -> Result<(), String> {
-    let mut args = vec!["test", "--locked", "-p", owner.package()];
-    args.extend_from_slice(owner.test_targets());
-    let mut list = process::cargo(&root());
-    list.args(&args);
-    if let Some(filter) = filter {
-        list.arg(filter);
-    }
-    list.args(["--", "--list"]);
-    env::clear_capabilities(&mut list);
-    let out = process::output(&mut list, "discover selected unit tests")?;
-    if !out.status.success() {
-        eprintln!("{}", String::from_utf8_lossy(&out.stderr));
-        return Err("unit test discovery failed".into());
-    }
-    let count = String::from_utf8_lossy(&out.stdout)
-        .lines()
-        .filter(|line| line.ends_with(": test"))
-        .count();
-    if count == 0 {
-        return Err("unit selection matched zero tests; refusing empty PASS".into());
-    }
-    println!(
-        "==> selected {count} unit/contract tests for {}; database/browser checks NOT_SELECTED",
-        owner.package()
-    );
-    let mut command = process::cargo(&root());
-    command.args(&args);
-    if let Some(filter) = filter {
-        command.arg(filter);
-    }
-    env::clear_capabilities(&mut command);
-    process::run(&mut command, "selected unit tests")
 }
 
 struct Local {
