@@ -267,7 +267,7 @@ pub(crate) fn WorkEndorsement(
     };
     let (set_target, recover_target) = (target.clone(), target);
     view! {
-        <div id="work-endorsement" class="vk-reader-endorsement">
+        <div id="work-endorsement" class="vk-reader-endorsement flex [margin-block:var(--vk-space-6)_0] min-w-0">
             <EndorsementAction
                 id="endorse-work"
                 kind=EndorsementKind::Work

@@ -1811,16 +1811,16 @@ fn Editor(draft: Draft) -> impl IntoView {
                     <Show when=move || format.get() == DocumentFormatDto::Markdown>
                         <div
                             id="editor-markdown-toolbar"
-                            class="vk-md-toolbar"
+                            class="vk-md-toolbar flex flex-wrap items-center justify-between gap-vk-2 [min-inline-size:0] [padding-block-end:var(--vk-space-3)] [border-block-end:1px_solid_var(--vk-outline-variant)]"
                             role="toolbar"
                             aria-label="Công cụ soạn thảo Markdown"
                         >
                             <div
-                                class="vk-md-toolbar__formats"
+                                class="vk-md-toolbar__formats flex flex-wrap items-center gap-vk-2 [min-inline-size:0]"
                                 on:mousedown=move |ev| ev.prevent_default()
                             >
                                 <div
-                                    class="vk-md-heading-wrap"
+                                    class="vk-md-heading-wrap relative [max-inline-size:100%]"
                                     on:keydown=move |ev| {
                                         if ev.key() == "Escape" && heading_menu_open.get_untracked() {
                                             ev.prevent_default();

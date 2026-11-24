@@ -787,7 +787,7 @@ fn DiscussionLoaded(
                     children=move |root| view! { <RootThreadView root controller state refresh write_state lve read_only /> } />
             </div>
             <Show when=move || state.read().page.next_cursor.is_some()>
-                <div id="root-pagination" class="vk-discussion-pagination">
+                <div id="root-pagination" class="vk-discussion-pagination justify-items-center gap-vk-2 my-vk-4 min-w-0">
                     <Show when=move || state.read().page_error.is_some()>
                         <div class="vk-discussion-inline-error" data-tone="adverse">
                             <Icon name=IconName::Error size=IconSize::Small />
@@ -834,7 +834,7 @@ fn OwnComments(
     view! {
         <Show when=move || !state.read().unavailable && controller.read().scope.session.is_some()>
             <section id="own-comments" class="vk-discussion-recovered" aria-labelledby="own-comments-heading">
-                <div class="vk-discussion-own-head">
+                <div class="vk-discussion-own-head flex flex-wrap items-baseline justify-between gap-vk-2">
                     <div>
                         <Heading level=HeadingLevel::H3 role=TypeRole::Title id="own-comments-heading" attr:tabindex="-1">"Bạn đã gửi"</Heading>
                         <p class="vk-muted">"Chỉ bạn thấy trước khi được duyệt."</p>
@@ -852,10 +852,10 @@ fn OwnComments(
                     children=move |id| {
                         let id = StoredValue::new(id);
                         view! {
-                            <article class="vk-discussion-delivery vk-discussion-own-card" data-own-comment=move || id.get_value()>
-                                <div class="vk-discussion-own-card__meta">
+                            <article class="vk-discussion-delivery vk-discussion-own-card justify-items-start gap-vk-2 [padding:14px_16px] rounded-vk-lg min-w-0" data-own-comment=move || id.get_value()>
+                                <div class="vk-discussion-own-card__meta flex flex-wrap items-center justify-between gap-vk-2 [inline-size:100%]">
                                     {move || state.read().own.comments.get(&id.get_value()).map(|c| OwnChip::of(c.status)).map(|chip| view! {
-                                        <p role="status" class="vk-discussion-own-chip" data-tone=chip.tone().id()>
+                                        <p role="status" class="vk-discussion-own-chip items-center gap-[6px] m-0 [padding:4px_10px_4px_8px] rounded-vk-full" data-tone=chip.tone().id()>
                                             <Icon name=own_chip_icon(chip) size=IconSize::Small />
                                             <span>{chip.label()}</span>
                                         </p>
@@ -870,12 +870,12 @@ fn OwnComments(
                                 {move || state.read().own.comments.get(&id.get_value())
                                     .and_then(|c| (c.status == CommentStatus::Rejected).then(|| c.rejection_reason.clone()).flatten())
                                     .map(|reason| view! {
-                                        <div class="vk-discussion-own-rejection" data-tone="adverse">
+                                        <div class="vk-discussion-own-rejection [inline-size:100%] box-border [padding:10px_12px] rounded-vk-md" data-tone="adverse">
                                             <span class="vk-discussion-own-rejection__label">"Lý do chỉ bạn thấy"</span>
                                             <p>{reason}</p>
                                         </div>
                                     })}
-                                <div class="vk-discussion-own-card__actions">
+                                <div class="vk-discussion-own-card__actions flex flex-wrap items-center gap-vk-2 [inline-size:100%]">
                                     <Show when=move || state.read().own.comments.get(&id.get_value()).is_some_and(|c| c.status == CommentStatus::Approved)>
                                         <Button variant=ButtonVariant::Tonal
                                             state=Signal::derive(move || if state.read().loading { ActionState::pending("Đang tải lại…") } else { ActionState::Enabled })
@@ -1147,7 +1147,7 @@ fn RootThreadView(
                 reply_target_id
                 has_more_replies=Signal::derive(move || next_reply_cursor(&state.read(), &root.get_value()).is_some())
                 reply_footer=std::sync::Arc::new(move || view! {
-            <div class="vk-discussion-pagination" hidden=move || next_reply_cursor(&state.read(), &root.get_value()).is_none() && !state.read().reply_errors.contains_key(&root.get_value())>
+            <div class="vk-discussion-pagination justify-items-center gap-vk-2 my-vk-4 min-w-0" hidden=move || next_reply_cursor(&state.read(), &root.get_value()).is_none() && !state.read().reply_errors.contains_key(&root.get_value())>
             <Show when=move || state.read().reply_errors.contains_key(&root.get_value())>
                 <div class="vk-discussion-inline-error" data-tone="adverse">
                     <Icon name=IconName::Error size=IconSize::Small />
@@ -1396,12 +1396,12 @@ fn DiscussionComposer(
                     </div>
                 </Show>
             </FeedbackComposer>
-            <div class="vk-discussion-delivery" hidden=move || controller.read().draft(&key.get_value()).receipt.is_none() && !matches!(controller.read().draft(&key.get_value()).delivery, Delivery::Uncertain(_))
+            <div class="vk-discussion-delivery justify-items-start gap-vk-2 [padding:14px_16px] rounded-vk-lg min-w-0" hidden=move || controller.read().draft(&key.get_value()).receipt.is_none() && !matches!(controller.read().draft(&key.get_value()).delivery, Delivery::Uncertain(_))
                 data-tone=move || {
                     let draft = controller.read().draft(&key.get_value());
                     if matches!(draft.delivery, Delivery::Uncertain(_)) { NoticeTone::Unknown.id() } else { draft.receipt.map_or(NoticeTone::Neutral, |r| r.tone()).id() }
                 }>
-            <div class="vk-discussion-delivery__head">
+            <div class="vk-discussion-delivery__head flex items-start gap-[8px] min-w-0">
                 {move || {
                     let draft = controller.read().draft(&key.get_value());
                     let tone = if matches!(draft.delivery, Delivery::Uncertain(_)) {
