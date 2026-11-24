@@ -15,7 +15,7 @@ ngữ nghĩa envelope, receipt/ACK, snapshot/version, cursor, lỗi và ví dụ
 | --- | --- |
 | Quyết định sản phẩm | `PRODUCT_CONFIRMED` trong brief `#305` R1–R3 (`N1–N8`, `P-01..P-14` / `NOTIF-01..10`). Proposal [VDR-NOTIFICATIONS@r1](../../decisions/proposals/VDR-NOTIFICATIONS.r1.toml) đang `PENDING` chờ signoff theo `VDR-DECISION-SIGNOFF@r1`. |
 | Quyết định kiến trúc | `DESIGN_PROPOSED` (`ARCHITECTURE_DIRECTION_CONFIRMED` cho `K1–K6` từ lời chủ sản phẩm, chưa phải ADR/TOML `ACCEPTED`). Proposal [VDR-NOTIFICATIONS-CONTRACT@r1](../../decisions/proposals/VDR-NOTIFICATIONS-CONTRACT.r1.toml) và [LVE-PR-02-03-CHOICE-12@r2](../../decisions/proposals/LVE-PR-02-03-CHOICE-12.r2.toml) đang `PENDING`; `LVE-PR-02-03-CHOICE-12@r1` (`DESIGN_PROPOSED`) vẫn là revision hiện hành. `T-01..T-08` là `TECHNICAL_OPEN` giao `#346`–`#348`. |
-| Mức triển khai | `#346`: producer phía App (năm nhóm v1 + invalidation), outbox thông báo có kích hoạt và relay ACK có fence ở mức `persistence-api` ([registry §6](../development/notifications.md#6-hiện-trạng-346-producer-outbox-và-relay-phía-app)); relay chưa chạy trong `vink-worker` vì chưa có transport `T-07` (#347). `NOT_IMPLEMENTED` cho Notification DB/service, Gateway inbox/`Seen`/`Read`/chi tiết quyết định, danh sách người Thấm công khai, LayoutSpec và UI Web. |
+| Mức triển khai | `#346`: producer phía App (năm nhóm v1 + invalidation), outbox thông báo có kích hoạt và relay ACK có fence ở mức `persistence-api` ([registry §6](../development/notifications.md#6-hiện-trạng-346-producer-outbox-và-relay-phía-app)); relay chưa chạy trong `vink-worker` vì chưa có transport `T-07` (#347). `NOT_IMPLEMENTED` cho Notification DB/service, Gateway inbox/`Seen`/`Read`/chi tiết quyết định, danh sách người Thấm công khai, LayoutSpec và UI Web ở mốc #346. Xem [LayoutSpec R4](../design/notifications.md) và registry cho hiện trạng sau mốc này. |
 | Bằng chứng | Đối chiếu source trên `develop@1a0c4e31`, kiểm định kho TOML, link và ranh giới tài liệu qua `verify quick`. Kiểm thử runtime/unit/PostgreSQL/HTTP/browser/CMP cho Notifications: `NOT_RUN`. |
 
 <!-- vdr: active D-05@r1 -->
@@ -200,8 +200,8 @@ ghi nghĩa vụ invalidation/đối soát cho số đếm và đóng góp của 
 ## 5. Đặc tả UX hành vi bằng chữ — Chuông, Inbox, `Seen`/`Read` và Chi tiết quyết định (`AC-03`)
 
 > **Ranh giới thiết kế:** Phần này là **đặc tả UX bằng chữ** về hành vi người dùng nhìn thấy và trạng thái
-> logic; **chưa phải LayoutSpec** (`LAYOUT_SPEC: NOT_CREATED`) và chưa chọn hình dạng nút, bảng màu hay
-> component Web/CMP.
+> logic. [LayoutSpec R4](../design/notifications.md) mô tả bố cục Web, token và component ở trạng thái
+> `DESIGN_PROPOSED` ([#485](https://github.com/loveoverflowcom/vink/issues/485)).
 
 ### 5.1. Hành trình trọn vòng: Chuông → Mở inbox → Xem chi tiết / Mở đích → Quay lại
 

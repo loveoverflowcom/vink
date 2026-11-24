@@ -28,6 +28,7 @@
   --color-vk-avatar-5: var(--vk-avatar-5);
   --color-vk-avatar-6: var(--vk-avatar-6);
   --color-vk-avatar-neutral: var(--vk-avatar-neutral);
+  --color-vk-badge: var(--vk-badge);
   --color-vk-bg-content: var(--vk-bg-content);
   --color-vk-bg-inset: var(--vk-bg-inset);
   --color-vk-bg-nav: var(--vk-bg-nav);
@@ -48,6 +49,7 @@
   --color-vk-on-avatar-5: var(--vk-on-avatar-5);
   --color-vk-on-avatar-6: var(--vk-on-avatar-6);
   --color-vk-on-avatar-neutral: var(--vk-on-avatar-neutral);
+  --color-vk-on-badge: var(--vk-on-badge);
   --color-vk-on-error: var(--vk-on-error);
   --color-vk-on-error-container: var(--vk-on-error-container);
   --color-vk-on-info: var(--vk-on-info);
@@ -189,6 +191,14 @@
   --spacing-vk-size-icon-sm: var(--vk-size-icon-sm);
   --spacing-vk-size-indicator: var(--vk-size-indicator);
   --spacing-vk-size-nav-item: var(--vk-size-nav-item);
+  --spacing-vk-size-notification-badge: var(--vk-size-notification-badge);
+  --spacing-vk-size-notification-column: var(--vk-size-notification-column);
+  --spacing-vk-size-notification-dot: var(--vk-size-notification-dot);
+  --spacing-vk-size-notification-glyph: var(--vk-size-notification-glyph);
+  --spacing-vk-size-notification-icon: var(--vk-size-notification-icon);
+  --spacing-vk-size-notification-mark: var(--vk-size-notification-mark);
+  --spacing-vk-size-notification-segment-gap: var(--vk-size-notification-segment-gap);
+  --spacing-vk-size-notification-system-icon: var(--vk-size-notification-system-icon);
   --spacing-vk-size-page-column: var(--vk-size-page-column);
   --spacing-vk-size-rail-compact: var(--vk-size-rail-compact);
   --spacing-vk-size-rail-expanded: var(--vk-size-rail-expanded);

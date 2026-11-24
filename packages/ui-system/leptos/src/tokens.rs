@@ -47,6 +47,8 @@ pub enum ColorRole {
     Avatar6,
     /// New in UIS-02: avatar without a stable identity key or name; never implies a person.
     AvatarNeutral,
+    /// Notification count badge (R4, #485).
+    Badge,
     /// R4.2 (#402, 23/11/2026): cards, rows, reading areas, sheets and menus: one tonal step lighter than bg-page (1.09:1 light / 1.10:1 dark), never near-white.
     BgContent,
     /// R4.2 (#402, 23/11/2026): letter avatars and icon buttons inside a bg-content card so they do not sink into it.
@@ -84,6 +86,8 @@ pub enum ColorRole {
     OnAvatar6,
     /// New in UIS-02: neutral mark on the neutral avatar.
     OnAvatarNeutral,
+    /// Notification count badge (R4, #485).
+    OnBadge,
     OnError,
     OnErrorContainer,
     /// New in UIS-01 to complete the status/action role set; not consumed by Web yet.
@@ -156,7 +160,7 @@ pub enum ColorRole {
 }
 
 impl ColorRole {
-    pub const ALL: [ColorRole; 78] = [
+    pub const ALL: [ColorRole; 80] = [
         ColorRole::ActionNeutralContainer,
         ColorRole::ActionNeutralContent,
         ColorRole::ActionPrimaryContainer,
@@ -173,6 +177,7 @@ impl ColorRole {
         ColorRole::Avatar5,
         ColorRole::Avatar6,
         ColorRole::AvatarNeutral,
+        ColorRole::Badge,
         ColorRole::BgContent,
         ColorRole::BgInset,
         ColorRole::BgNav,
@@ -193,6 +198,7 @@ impl ColorRole {
         ColorRole::OnAvatar5,
         ColorRole::OnAvatar6,
         ColorRole::OnAvatarNeutral,
+        ColorRole::OnBadge,
         ColorRole::OnError,
         ColorRole::OnErrorContainer,
         ColorRole::OnInfo,
@@ -255,6 +261,7 @@ impl ColorRole {
             ColorRole::Avatar5 => "color.avatar-5",
             ColorRole::Avatar6 => "color.avatar-6",
             ColorRole::AvatarNeutral => "color.avatar-neutral",
+            ColorRole::Badge => "color.badge",
             ColorRole::BgContent => "color.bg-content",
             ColorRole::BgInset => "color.bg-inset",
             ColorRole::BgNav => "color.bg-nav",
@@ -275,6 +282,7 @@ impl ColorRole {
             ColorRole::OnAvatar5 => "color.on-avatar-5",
             ColorRole::OnAvatar6 => "color.on-avatar-6",
             ColorRole::OnAvatarNeutral => "color.on-avatar-neutral",
+            ColorRole::OnBadge => "color.on-badge",
             ColorRole::OnError => "color.on-error",
             ColorRole::OnErrorContainer => "color.on-error-container",
             ColorRole::OnInfo => "color.on-info",
@@ -338,6 +346,7 @@ impl ColorRole {
             ColorRole::Avatar5 => "--vk-avatar-5",
             ColorRole::Avatar6 => "--vk-avatar-6",
             ColorRole::AvatarNeutral => "--vk-avatar-neutral",
+            ColorRole::Badge => "--vk-badge",
             ColorRole::BgContent => "--vk-bg-content",
             ColorRole::BgInset => "--vk-bg-inset",
             ColorRole::BgNav => "--vk-bg-nav",
@@ -358,6 +367,7 @@ impl ColorRole {
             ColorRole::OnAvatar5 => "--vk-on-avatar-5",
             ColorRole::OnAvatar6 => "--vk-on-avatar-6",
             ColorRole::OnAvatarNeutral => "--vk-on-avatar-neutral",
+            ColorRole::OnBadge => "--vk-on-badge",
             ColorRole::OnError => "--vk-on-error",
             ColorRole::OnErrorContainer => "--vk-on-error-container",
             ColorRole::OnInfo => "--vk-on-info",
@@ -421,6 +431,7 @@ impl ColorRole {
             ColorRole::Avatar5 => Rgba::new(215, 239, 222, 1.0),
             ColorRole::Avatar6 => Rgba::new(214, 230, 255, 1.0),
             ColorRole::AvatarNeutral => Rgba::new(227, 216, 236, 1.0),
+            ColorRole::Badge => Rgba::new(186, 26, 26, 1.0),
             ColorRole::BgContent => Rgba::new(247, 242, 250, 1.0),
             ColorRole::BgInset => Rgba::new(232, 224, 240, 1.0),
             ColorRole::BgNav => Rgba::new(239, 232, 246, 1.0),
@@ -441,6 +452,7 @@ impl ColorRole {
             ColorRole::OnAvatar5 => Rgba::new(33, 75, 48, 1.0),
             ColorRole::OnAvatar6 => Rgba::new(15, 47, 82, 1.0),
             ColorRole::OnAvatarNeutral => Rgba::new(36, 29, 45, 1.0),
+            ColorRole::OnBadge => Rgba::new(255, 255, 255, 1.0),
             ColorRole::OnError => Rgba::new(255, 255, 255, 1.0),
             ColorRole::OnErrorContainer => Rgba::new(65, 0, 2, 1.0),
             ColorRole::OnInfo => Rgba::new(255, 255, 255, 1.0),
@@ -504,6 +516,7 @@ impl ColorRole {
             ColorRole::Avatar5 => Rgba::new(36, 70, 49, 1.0),
             ColorRole::Avatar6 => Rgba::new(34, 70, 109, 1.0),
             ColorRole::AvatarNeutral => Rgba::new(68, 57, 79, 1.0),
+            ColorRole::Badge => Rgba::new(255, 180, 171, 1.0),
             ColorRole::BgContent => Rgba::new(33, 27, 41, 1.0),
             ColorRole::BgInset => Rgba::new(55, 46, 66, 1.0),
             ColorRole::BgNav => Rgba::new(23, 18, 29, 1.0),
@@ -524,6 +537,7 @@ impl ColorRole {
             ColorRole::OnAvatar5 => Rgba::new(199, 235, 209, 1.0),
             ColorRole::OnAvatar6 => Rgba::new(214, 230, 255, 1.0),
             ColorRole::OnAvatarNeutral => Rgba::new(240, 231, 248, 1.0),
+            ColorRole::OnBadge => Rgba::new(105, 0, 5, 1.0),
             ColorRole::OnError => Rgba::new(105, 0, 5, 1.0),
             ColorRole::OnErrorContainer => Rgba::new(255, 218, 214, 1.0),
             ColorRole::OnInfo => Rgba::new(0, 48, 96, 1.0),
@@ -587,6 +601,7 @@ impl ColorRole {
             ColorRole::Avatar5 => None,
             ColorRole::Avatar6 => None,
             ColorRole::AvatarNeutral => None,
+            ColorRole::Badge => Some(ColorRole::Error),
             ColorRole::BgContent => Some(ColorRole::SurfaceContainerLow),
             ColorRole::BgInset => Some(ColorRole::SurfaceContainerHigh),
             ColorRole::BgNav => Some(ColorRole::BgPage),
@@ -607,6 +622,7 @@ impl ColorRole {
             ColorRole::OnAvatar5 => None,
             ColorRole::OnAvatar6 => None,
             ColorRole::OnAvatarNeutral => None,
+            ColorRole::OnBadge => Some(ColorRole::OnError),
             ColorRole::OnError => None,
             ColorRole::OnErrorContainer => None,
             ColorRole::OnInfo => None,
@@ -955,6 +971,18 @@ pub const CONTRAST: &[ContrastPair] = &[
         min: 3.0,
         usage: "R4.2 focus ring on content cards",
     },
+    ContrastPair {
+        fg: ColorRole::Badge,
+        bg: ColorRole::BgPage,
+        min: 3.0,
+        usage: "Notification badge on the page and rail",
+    },
+    ContrastPair {
+        fg: ColorRole::OnBadge,
+        bg: ColorRole::Badge,
+        min: 4.5,
+        usage: "Notification badge count",
+    },
 ];
 
 /// Shadows: CSS value per theme.
@@ -1302,6 +1330,70 @@ pub mod dim {
         compact: None,
         web: WebUnit::Px,
     };
+    pub const SIZE_NOTIFICATION_BADGE: Dimension = Dimension {
+        token: "size.notification-badge",
+        css_var: "--vk-size-notification-badge",
+        value: 18.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Px,
+    };
+    pub const SIZE_NOTIFICATION_COLUMN: Dimension = Dimension {
+        token: "size.notification-column",
+        css_var: "--vk-size-notification-column",
+        value: 640.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Px,
+    };
+    pub const SIZE_NOTIFICATION_DOT: Dimension = Dimension {
+        token: "size.notification-dot",
+        css_var: "--vk-size-notification-dot",
+        value: 10.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Px,
+    };
+    pub const SIZE_NOTIFICATION_GLYPH: Dimension = Dimension {
+        token: "size.notification-glyph",
+        css_var: "--vk-size-notification-glyph",
+        value: 34.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Px,
+    };
+    pub const SIZE_NOTIFICATION_ICON: Dimension = Dimension {
+        token: "size.notification-icon",
+        css_var: "--vk-size-notification-icon",
+        value: 16.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Px,
+    };
+    pub const SIZE_NOTIFICATION_MARK: Dimension = Dimension {
+        token: "size.notification-mark",
+        css_var: "--vk-size-notification-mark",
+        value: 44.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Px,
+    };
+    pub const SIZE_NOTIFICATION_SEGMENT_GAP: Dimension = Dimension {
+        token: "size.notification-segment-gap",
+        css_var: "--vk-size-notification-segment-gap",
+        value: 3.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Px,
+    };
+    pub const SIZE_NOTIFICATION_SYSTEM_ICON: Dimension = Dimension {
+        token: "size.notification-system-icon",
+        css_var: "--vk-size-notification-system-icon",
+        value: 22.0,
+        max: None,
+        compact: None,
+        web: WebUnit::Px,
+    };
     pub const SIZE_PAGE_COLUMN: Dimension = Dimension {
         token: "size.page-column",
         css_var: "--vk-size-page-column",
@@ -1479,7 +1571,7 @@ pub mod dim {
         web: WebUnit::Rem,
     };
 
-    pub const ALL: [Dimension; 58] = [
+    pub const ALL: [Dimension; 66] = [
         DENSITY_CONTROL_HEIGHT,
         DENSITY_CONTROL_PADDING,
         DENSITY_STACK_GAP,
@@ -1516,6 +1608,14 @@ pub mod dim {
         SIZE_ICON_SM,
         SIZE_INDICATOR,
         SIZE_NAV_ITEM,
+        SIZE_NOTIFICATION_BADGE,
+        SIZE_NOTIFICATION_COLUMN,
+        SIZE_NOTIFICATION_DOT,
+        SIZE_NOTIFICATION_GLYPH,
+        SIZE_NOTIFICATION_ICON,
+        SIZE_NOTIFICATION_MARK,
+        SIZE_NOTIFICATION_SEGMENT_GAP,
+        SIZE_NOTIFICATION_SYSTEM_ICON,
         SIZE_PAGE_COLUMN,
         SIZE_RAIL_COMPACT,
         SIZE_RAIL_EXPANDED,

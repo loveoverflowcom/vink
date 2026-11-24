@@ -30,12 +30,16 @@ pub enum IconName {
     Download,
     /// Sửa
     Edit,
+    /// Bàn viết chưa chọn
+    EditOutline,
     /// Lỗi field, tóm tắt lỗi
     Error,
     /// Mở danh sách chọn
     ExpandMore,
     /// Điểm đến Khám phá
     Explore,
+    /// Khám phá chưa chọn
+    ExploreOutline,
     /// Mở bộ lọc thẻ
     FilterList,
     /// Ưng nhận xét — đã chọn (tim đặc)
@@ -54,12 +58,18 @@ pub enum IconName {
     Menu,
     /// Thu gọn rail điều hướng
     MenuOpen,
+    /// Thông báo đang mở
+    Notifications,
+    /// Mở thông báo
+    NotificationsNone,
     /// Link mở tab mới
     OpenInNew,
     /// Thấm tác phẩm — Pen Flight R2 A · Mềm
     PenFlight,
     /// Avatar/khung ảnh trung tính
     Person,
+    /// Tôi chưa chọn
+    PersonOutline,
     /// Thử lại, làm mới
     Refresh,
     /// Trả lời nhận xét
@@ -81,7 +91,7 @@ pub enum IconName {
 }
 
 impl IconName {
-    pub const ALL: [IconName; 34] = [Self::Add, Self::ArrowBack, Self::Block, Self::Cancel, Self::ChatBubbleOutline, Self::Check, Self::Close, Self::ContentCopy, Self::Download, Self::Edit, Self::Error, Self::ExpandMore, Self::Explore, Self::FilterList, Self::Heart, Self::HeartOutline, Self::Help, Self::Image, Self::Info, Self::Lock, Self::Menu, Self::MenuOpen, Self::OpenInNew, Self::PenFlight, Self::Person, Self::Refresh, Self::Reply, Self::Schedule, Self::Search, Self::Send, Self::VerifiedUser, Self::Visibility, Self::VisibilityOff, Self::Warning];
+    pub const ALL: [IconName; 39] = [Self::Add, Self::ArrowBack, Self::Block, Self::Cancel, Self::ChatBubbleOutline, Self::Check, Self::Close, Self::ContentCopy, Self::Download, Self::Edit, Self::EditOutline, Self::Error, Self::ExpandMore, Self::Explore, Self::ExploreOutline, Self::FilterList, Self::Heart, Self::HeartOutline, Self::Help, Self::Image, Self::Info, Self::Lock, Self::Menu, Self::MenuOpen, Self::Notifications, Self::NotificationsNone, Self::OpenInNew, Self::PenFlight, Self::Person, Self::PersonOutline, Self::Refresh, Self::Reply, Self::Schedule, Self::Search, Self::Send, Self::VerifiedUser, Self::Visibility, Self::VisibilityOff, Self::Warning];
 
     pub const fn id(self) -> &'static str {
         match self {
@@ -95,9 +105,11 @@ impl IconName {
             Self::ContentCopy => "content-copy",
             Self::Download => "download",
             Self::Edit => "edit",
+            Self::EditOutline => "edit-outline",
             Self::Error => "error",
             Self::ExpandMore => "expand-more",
             Self::Explore => "explore",
+            Self::ExploreOutline => "explore-outline",
             Self::FilterList => "filter-list",
             Self::Heart => "heart",
             Self::HeartOutline => "heart-outline",
@@ -107,9 +119,12 @@ impl IconName {
             Self::Lock => "lock",
             Self::Menu => "menu",
             Self::MenuOpen => "menu-open",
+            Self::Notifications => "notifications",
+            Self::NotificationsNone => "notifications-none",
             Self::OpenInNew => "open-in-new",
             Self::PenFlight => "pen-flight",
             Self::Person => "person",
+            Self::PersonOutline => "person-outline",
             Self::Refresh => "refresh",
             Self::Reply => "reply",
             Self::Schedule => "schedule",
@@ -134,9 +149,11 @@ impl IconName {
             Self::ContentCopy => "M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z",
             Self::Download => "M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z",
             Self::Edit => "M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z",
+            Self::EditOutline => "M14.06 9.02l.92.92L5.92 19H5v-.92l9.06-9.06M17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29zm-3.6 3.19L3 17.25V21h3.75L17.81 9.94l-3.75-3.75z",
             Self::Error => "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z",
             Self::ExpandMore => "M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z",
             Self::Explore => "M12 10.9c-.61 0-1.1.49-1.1 1.1s.49 1.1 1.1 1.1c.61 0 1.1-.49 1.1-1.1s-.49-1.1-1.1-1.1zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm2.19 12.19L6 18l3.81-8.19L18 6l-3.81 8.19z",
+            Self::ExploreOutline => "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-5.5-2.5l7.51-3.49L17.5 6.5 9.99 9.99 6.5 17.5zm5.5-6.6c.61 0 1.1.49 1.1 1.1s-.49 1.1-1.1 1.1-1.1-.49-1.1-1.1.49-1.1 1.1-1.1z",
             Self::FilterList => "M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z",
             Self::Heart => "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z",
             Self::HeartOutline => "M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z",
@@ -146,9 +163,12 @@ impl IconName {
             Self::Lock => "M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z",
             Self::Menu => "M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z",
             Self::MenuOpen => "M3 18h13v-2H3v2zm0-5h10v-2H3v2zm0-7v2h13V6H3zm18 9.59L17.42 12 21 8.41 19.59 7l-5 5 5 5L21 15.59z",
+            Self::Notifications => "M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z",
+            Self::NotificationsNone => "M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z",
             Self::OpenInNew => "M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z",
             Self::PenFlight => "M11.33 2.88a.75.75 0 0 1 1.34 0l7.52 15.04a.75.75 0 0 1-.67 1.08h-4.1l-1.3 2.43a.75.75 0 0 1-.66.4h-2.92a.75.75 0 0 1-.66-.4L8.58 19h-4.1a.75.75 0 0 1-.67-1.08ZM12 5.5 6.15 17.2h3.53l1.48 2.83h1.68l1.48-2.83h3.53ZM11.2 5.15h1.6v6.98a2 2 0 1 1-1.6 0Z",
             Self::Person => "M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z",
+            Self::PersonOutline => "M12 6c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2m0 10c2.7 0 5.8 1.29 6 2H6c.23-.72 3.31-2 6-2m0-12C9.79 4 8 5.79 8 8s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z",
             Self::Refresh => "M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z",
             Self::Reply => "M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z",
             Self::Schedule => "M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z",
@@ -173,9 +193,11 @@ impl IconName {
             Self::ContentCopy => "src/content/content_copy/materialicons/24px.svg",
             Self::Download => "src/file/file_download/materialicons/24px.svg",
             Self::Edit => "src/image/edit/materialicons/24px.svg",
+            Self::EditOutline => "src/image/edit/materialiconsoutlined/24px.svg",
             Self::Error => "src/alert/error/materialicons/24px.svg",
             Self::ExpandMore => "src/navigation/expand_more/materialicons/24px.svg",
             Self::Explore => "src/action/explore/materialicons/24px.svg",
+            Self::ExploreOutline => "src/action/explore/materialiconsoutlined/24px.svg",
             Self::FilterList => "src/content/filter_list/materialicons/24px.svg",
             Self::Heart => "src/action/favorite/materialicons/24px.svg",
             Self::HeartOutline => "src/action/favorite_border/materialicons/24px.svg",
@@ -185,9 +207,12 @@ impl IconName {
             Self::Lock => "src/action/lock/materialicons/24px.svg",
             Self::Menu => "src/navigation/menu/materialicons/24px.svg",
             Self::MenuOpen => "src/navigation/menu_open/materialicons/24px.svg",
+            Self::Notifications => "src/social/notifications/materialicons/24px.svg",
+            Self::NotificationsNone => "src/social/notifications_none/materialicons/24px.svg",
             Self::OpenInNew => "src/action/open_in_new/materialicons/24px.svg",
             Self::PenFlight => "https://drive.google.com/file/d/1KeBVl1G0HwP8T91z2L38ELpgngLaiGKI/view",
             Self::Person => "src/social/person/materialicons/24px.svg",
+            Self::PersonOutline => "src/social/person/materialiconsoutlined/24px.svg",
             Self::Refresh => "src/navigation/refresh/materialicons/24px.svg",
             Self::Reply => "src/content/reply/materialicons/24px.svg",
             Self::Schedule => "src/action/schedule/materialiconsoutlined/24px.svg",

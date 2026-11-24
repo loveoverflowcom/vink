@@ -67,9 +67,9 @@ và vị trí logo. Phạm vi Web đã được R4 cập nhật dẫn tới [Lay
 sở hữu ma trận quyền, projection và lỗi. [Bàn giao #288](../development/social-graph.md)
 ghi gate theo từng màn.
 
-## Thông báo và danh sách Thấm công khai (#345 — chờ giai đoạn design)
+## Thông báo và danh sách Thấm công khai (#485)
 
-`LAYOUT_SPEC: NOT_CREATED` (chờ đợt Design/Web sau khi `#345` và nhánh BE cung cấp hợp đồng/API).
+[LayoutSpec Thông báo R4](notifications.md) mô tả chuông, hộp thư, quyết định và danh sách người Thấm. Specimen Leptos dùng dữ liệu mẫu. Thiết kế giữ `DESIGN_PROPOSED`.
 Hành vi `Seen`, `Read`, “Đọc tất cả” và mở quyết định riêng (`P-12A`) nằm ở [đặc tả chuông và inbox](../architecture/notifications.md#5-đặc-tả-ux-hành-vi-bằng-chữ--chuông-inbox-seenread-và-chi-tiết-quyết-định-ac-03).
 Phân trang, tải lại, thao tác phím/chạm, trả focus và chữ 100%–200% nằm ở [đặc tả danh sách Thấm công khai](../architecture/notifications.md#6-đặc-tả-ux-hành-vi-bằng-chữ--danh-sách-người-thấm-công-khai-ac-04-p-08-r3).
 Hợp đồng dữ liệu/lỗi/polling nằm tại [HTTP v1](../../services/vink-app/contracts/http/v1/notifications.md)

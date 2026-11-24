@@ -27,7 +27,12 @@ hiện hành và publication theo mốc đầu, tải riêng theo phiên. Web đ
 từ Reader hoặc hồ sơ rồi trả focus về link còn hợp lệ, hoặc tiêu đề Feed nếu mất anchor.
 [Owner, thiết kế kỹ thuật và quay lui](social-graph.md#đang-theo-dõi-trong-khám-phá-296).
 
-## Thông báo cộng đồng và danh sách Thấm (#345, #346)
+## Thông báo cộng đồng và danh sách Thấm
+
+**#485 (Design R4):** [LayoutSpec](../design/notifications.md) và specimen
+`composition.notifications` dùng fixture cho badge, chuông và hộp thư.
+[Registry §10](notifications.md#10-nền-tảng-thiết-kế-r4-485) ghi quyết định chờ signoff
+và phạm vi preview. Luồng trên Web dựa vào Gateway và phiên hiện hành.
 
 **#346 (phía App):** producer cho năm nhóm v1 + invalidation, outbox thông báo có kích hoạt theo epoch
 tại commit và relay ACK có fence ở mức `persistence-api` (relay là thư viện trong App, chưa chạy trong
@@ -35,7 +40,7 @@ tại commit và relay ACK có fence ở mức `persistence-api` (relay là thư
 fixture; chưa có hai process/hai DB. Chi tiết, lựa chọn `T-01`/`T-02` và khoảng trống ở
 [registry Notifications §6](notifications.md#6-hiện-trạng-346-producer-outbox-và-relay-phía-app).
 
-**Mức triển khai Notification Service, inbox/Gateway và danh sách người Thấm công khai là `NOT_IMPLEMENTED`.**
+**Service, inbox/Gateway và danh sách người Thấm công khai:** xem hiện trạng #347, #348 và #365 trong [registry Notifications](notifications.md).
 Hợp đồng và SSOT cho `#346`–`#348` cùng giai đoạn Design/Web được ghi tại
 [PRD §16](../../prd/requirements.md#16-thông-báo-cộng-đồng-và-danh-sách-thấm-công-khai-notifications-v1),
 [đặc tả miền & UX bằng chữ](../architecture/notifications.md),
@@ -43,7 +48,7 @@ Hợp đồng và SSOT cho `#346`–`#348` cùng giai đoạn Design/Web đượ
 [bảng truy vết & bàn giao](notifications.md).
 Lượt `#345` chỉ có bằng chứng tài liệu, kho quyết định (`VDR-NOTIFICATIONS@r1`,
 `VDR-NOTIFICATIONS-CONTRACT@r1`, `LVE-PR-02-03-CHOICE-12@r2` đều `PENDING`) và liên kết;
-kiểm thử PostgreSQL, hai process/DB, HTTP Gateway và browser thuộc `#346`, `#347`, `#348` và đợt Design/Web (`NOT_RUN`).
+bằng chứng PostgreSQL, hai process/DB và HTTP Gateway được ghi theo từng lát trong registry. Browser cho specimen R4 `NOT_RUN`.
 
 **Đối soát có phạm vi ngày 16/11/2026, `develop@6e07806`:** [20 PR gần đây, proposal và gap](verification-reconciliation-20261116.md). Các mốc ở phần mở đầu dưới đây là lịch sử theo lát, không phải ngày kiểm lại toàn bộ bản đồ. [Model/replay ReadOwner/PageChain](../../apps/vink-web/behavior/README.md) bổ sung coverage thuần; không refresh evidence browser/PG cũ.
 

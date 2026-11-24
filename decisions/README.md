@@ -44,6 +44,10 @@ vào [PRD §16](../prd/requirements.md#16-thông-báo-cộng-đồng-và-danh-s�
 [LVE-PR-02-03-CHOICE-12@r2](proposals/LVE-PR-02-03-CHOICE-12.r2.toml) đề xuất mở danh sách người Thấm công khai có phân trang (`WorkId + RevisionId`), giữ nguyên phần bình luận của `LVE-PR-02-03-CHOICE-12@r1` (`DESIGN_PROPOSED`, vẫn đang hiện hành khi `@r2` còn `PENDING`).
 Cả ba proposal mới đang ở trạng thái `PENDING` và chờ signoff đúng revision/SHA-256 theo [VDR-DECISION-SIGNOFF@r1](signoffs/VDR-DECISION-SIGNOFF.r1.toml).
 
+[VDR-NOTIFICATIONS-DESIGN@r1](proposals/VDR-NOTIFICATIONS-DESIGN.r1.toml) đề xuất badge đỏ
+và đặt chuông dưới Bàn viết theo [LayoutSpec R4](../docs/design/notifications.md).
+Revision này `PENDING` chờ signoff đúng revision/SHA-256.
+
 ## Nhận xét R4
 
 [VDR-DISCUSSION-R4@r1](proposals/VDR-DISCUSSION-R4.r1.toml) ghi bốn lựa chọn chủ sản phẩm chọn trong

@@ -2372,8 +2372,9 @@ struct Icons {
 const DEFAULT_FRAME: &str = "M0 0h24v24H0z";
 /// Other transparent frames spelled differently in pinned upstream Material Icons SVGs
 /// (e.g. `menu_open`, `schedule` outlined, `visibility_off`).
-const FRAMES: [&str; 3] = [
+const FRAMES: [&str; 4] = [
     DEFAULT_FRAME,
+    "", // The filled notifications icon has no transparent frame.
     "M0 0h24v24H0V0z",
     "M0 0h24v24H0zm0 0h24v24H0zm0 0h24v24H0zm0 0h24v24H0z",
 ];
@@ -2381,8 +2382,13 @@ const FRAMES: [&str; 3] = [
 /// Material Icons files share this exact wrapper; rebuilding it lets the generator compare the
 /// recorded upstream SHA-256 without vendoring the SVG files.
 fn upstream_svg(frame: &str, path: &str) -> String {
+    let transparent = if frame.is_empty() {
+        String::new()
+    } else {
+        format!(r#"<path d="{frame}" fill="none"/>"#)
+    };
     format!(
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" height=\"24\" viewBox=\"0 0 24 24\" width=\"24\"><path d=\"{frame}\" fill=\"none\"/><path d=\"{path}\"/></svg>"
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" height=\"24\" viewBox=\"0 0 24 24\" width=\"24\">{transparent}<path d=\"{path}\"/></svg>"
     )
 }
 
