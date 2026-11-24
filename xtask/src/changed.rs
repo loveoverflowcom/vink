@@ -23,6 +23,7 @@ const OWNER_DIRS: &[(&str, &str)] = &[
 
 fn git(root: &Path, args: &[&str]) -> Result<Vec<u8>, String> {
     let out = Command::new("git")
+        .env("GIT_NO_LAZY_FETCH", "1")
         .args(["--no-optional-locks", "-c", "core.fsmonitor=false"])
         .args(args)
         .current_dir(root)
@@ -310,7 +311,15 @@ impl Selection {
     }
 
     fn describe(&self, out: &mut String) -> Result<(), String> {
-        for (cmd, reasons) in &self.commands {
+        let mut commands: Vec<_> = self.commands.iter().collect();
+        // Print the cheap edit loop first. The list is advisory and never executed as a batch.
+        commands.sort_by_key(|(cmd, _)| match cmd.split_ascii_whitespace().nth(1) {
+            Some("static") => 0,
+            Some("check") => 1,
+            Some("unit") => 2,
+            _ => 3,
+        });
+        for (cmd, reasons) in commands {
             writeln!(out, "\nselected: cargo xtask {cmd}").unwrap();
             for reason in reasons {
                 writeln!(out, "  {reason}").unwrap();
