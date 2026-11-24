@@ -46,33 +46,28 @@
   .vk-draft-resume:has(button[aria-expanded="false"]) .vk-draft-resume__title { display: block; overflow: visible; -webkit-line-clamp: unset; }
 }
 .vk-feedback-item { padding-block: var(--vk-space-4); border-bottom: 1px solid var(--vk-outline-variant); overflow-wrap: anywhere; }
-.vk-feedback-composer { display: grid; gap: var(--vk-space-3); }
-.vk-discussion-thread { display: grid; gap: var(--vk-space-3); min-width: 0; }
-.vk-discussion-comment { display: grid; gap: var(--vk-space-3); min-width: 0; padding: 0; border: 0; scroll-margin-block: var(--vk-space-6); }
+.vk-feedback-composer { gap: var(--vk-space-3); }
+.vk-discussion-comment { padding: 0; border: 0; }
 .vk-discussion-thread > .vk-discussion-comment { padding: 0 16px; }
 .vk-discussion-root > .vk-discussion-thread > .vk-discussion-comment { padding: 0; }
 .vk-discussion-comment p { margin: 0; }
 /* #352: author cluster on the start edge, time at the end outside the link; time wraps under
    the cluster at narrow widths or enlarged text. */
-.vk-discussion-byline { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--vk-space-1) var(--vk-space-3); min-width: 0; }
 .vk-discussion-byline > .vk-ui-byline { flex: 0 1 auto; min-width: 0; }
 .vk-discussion-byline > time { margin-inline-start: auto; padding-block-start: min(var(--vk-space-1), 4px); color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
 /* The reply context belongs to the byline above it, closer than the comment's own rhythm. */
 .vk-discussion-byline + .vk-discussion-context { margin-block-start: calc(min(var(--vk-space-2), 8px) * -1); }
-.vk-discussion-reply-group { padding: 14px 14px 10px; border-radius: var(--vk-radius-lg); background: var(--vk-surface-container); min-width: 0; }
+.vk-discussion-reply-group { padding: 14px 14px 10px; border-radius: var(--vk-radius-lg); background: var(--vk-surface-container); }
 .vk-discussion-reply-heading { margin: 0 0 var(--vk-space-3); font-size: var(--vk-type-caption-size); color: var(--vk-on-surface-variant); font-weight: var(--vk-type-label-weight); }
 .vk-discussion-shared-reason { margin: 0; padding-inline: 16px; font-size: var(--vk-type-caption-size); color: var(--vk-on-surface-variant); }
 .vk-discussion-root > .vk-discussion-thread > .vk-discussion-shared-reason { padding-inline: 0; }
 .vk-discussion-comment:focus { outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring); outline-offset: var(--vk-size-focus-offset); }
 .vk-discussion-comment[data-reply-target="true"] { padding: 12px; border-radius: var(--vk-radius-md); background: color-mix(in srgb, var(--vk-primary-container) 32%, transparent); box-shadow: inset 0 0 0 2px var(--vk-primary); }
 .vk-discussion-target-badge { justify-self: start; display: inline-flex; align-items: center; padding: 2px 10px; border-radius: var(--vk-radius-full); background: var(--vk-primary-container); color: var(--vk-on-primary-container); font-size: var(--vk-type-caption-size); font-weight: var(--vk-type-section-weight); }
-.vk-discussion-replies { display: grid; gap: 16px; list-style: none; padding: 0; margin: 0; border: 0; }
-.vk-discussion-replies > li { min-width: 0; }
 .vk-discussion-body { white-space: pre-wrap; overflow-wrap: anywhere; }
-.vk-discussion-context { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--vk-space-1) var(--vk-space-2); color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); }
+.vk-discussion-context { color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); }
 .vk-discussion-status { color: var(--vk-on-surface); font-weight: var(--vk-type-label-weight); }
-.vk-discussion-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-2); min-width: 0; }
-.vk-discussion-action-segment { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-1); max-inline-size: 100%; min-width: 0; }
+.vk-discussion-action-segment { gap: var(--vk-space-1); }
 .vk-discussion-action-segment[data-root="true"] { gap: 2px; }
 /* Pen Flight and comment hearts share the 48px endorsement target, including compact density. */
 .vk-endorsement .vk-ui-toggle__control {
@@ -139,11 +134,6 @@
   color: var(--vk-on-primary-container);
 }
 .vk-discussion-static-endorsement {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: var(--vk-radius-full);
   background: var(--vk-surface-container-high);
   color: var(--vk-on-surface-variant);
   font-size: var(--vk-type-label-size);
@@ -175,29 +165,14 @@
 }
 
 .vk-editor-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--vk-space-2) var(--vk-space-4);
-  min-width: 0;
   padding: var(--vk-space-2) var(--vk-space-3);
   border-radius: var(--vk-radius-lg);
   background: var(--vk-surface-container-high);
 }
 
-.vk-editor-toolbar__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  min-width: 0;
-  gap: var(--vk-space-1);
-}
+.vk-editor-toolbar__actions { display: flex; }
 
-.vk-editor-toolbar__status { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-2); flex: 1 1 7rem; min-width: 0; }
-.vk-save-slot__readout { display: inline-flex; align-items: center; gap: var(--vk-space-2); flex: 0 1 auto; min-width: 0; }
-.vk-save-slot__icon { display: inline-flex; flex: none; align-items: center; }
-.vk-save-slot__action { display: inline-flex; flex: 0 1 auto; align-items: center; min-width: 0; }
+.vk-save-slot__action { display: inline-flex; }
 .vk-save-slot__action:not(:has(*)) { display: none; }
 .vk-save-slot__action > :is(.vk-ui-action, .vk-ui-plain-tooltip) { flex: 0 1 auto; min-width: 0; }
 .vk-editor-toolbar__status > details[open] { flex-basis: 100%; }
@@ -211,7 +186,6 @@
    Keep a single status/action owner; native tools expand in document flow. */
 .vk-editor-toolbar--paper-first { padding: 0; border-radius: 0; background: transparent; }
 .vk-editor-toolbar--paper-first .vk-editor-toolbar__actions { display: contents; }
-.vk-editor-tools { min-inline-size: 0; }
 .vk-editor-tools[open] { flex-basis: 100%; }
 .vk-editor-tools > summary {
   display: flex;
@@ -233,7 +207,6 @@
 .vk-editor-tools > summary:active { background: var(--vk-state-pressed); }
 .vk-editor-tools > summary:focus-visible { outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring); outline-offset: var(--vk-size-focus-offset); }
 .vk-editor-tools[open] > summary > .vk-ui-icon { transform: rotate(180deg); }
-.vk-editor-tools__content { display: flex; flex-direction: column; align-items: start; gap: var(--vk-space-2); padding-block: var(--vk-space-2); }
 .vk-editor-tools__content > p { margin: 0; color: var(--vk-on-surface-variant); overflow-wrap: break-word; }
 @media (forced-colors: active) {
   .vk-editor-tools > summary:focus-visible { outline-color: Highlight; }
@@ -243,9 +216,6 @@
 .vk-draft-row__title { font-family: var(--vk-type-title-font); font-size: var(--vk-type-title-size); font-weight: var(--vk-type-title-weight); line-height: var(--vk-type-title-line-height); }
 
 .vk-draft-row__link:hover { text-decoration: none; background: var(--vk-surface-container); }
-
-/* EndorsementAction (LVE #73): sits with the target's other interactions, never as the CTA. */
-.vk-endorsement { display: inline-flex; max-inline-size: 100%; }
 
 /* TagSelector / TagChip (TAG-PR-05): two groups in flow, wrapping chips, candidates as a list.
    Keep chip paint and height here so applied filters can override them within the legacy layer. */
@@ -291,14 +261,14 @@
 .vk-feedback-composer--tonal .vk-ui-input--area { min-height: 48px; resize: vertical; }
 .vk-feedback-composer--tonal:focus-within .vk-ui-input--area,
 .vk-feedback-composer--tonal[data-filled] .vk-ui-input--area { min-height: 4lh; }
-.vk-feedback-composer__footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--vk-space-2); padding-inline: 4px; min-width: 0; }
+.vk-feedback-composer__footer { justify-content: space-between; }
 .vk-feedback-composer:not(.vk-feedback-composer--tonal) .vk-feedback-composer__footer { justify-content: flex-end; }
 .vk-feedback-composer__footer:not(:has(.vk-feedback-policy)) { justify-content: flex-end; }
-.vk-feedback-policy { display: inline-flex; align-items: center; gap: 6px; margin: 0; color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); min-width: 0; }
+.vk-feedback-policy { display: inline-flex; color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); }
 .vk-feedback-composer--tonal:has(.vk-ui-action__note) .vk-feedback-policy { display: none; }
 .vk-feedback-composer--tonal .vk-feedback-composer__footer > .vk-ui-action { flex: 1 1 auto; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--vk-space-2); max-width: 100%; }
 .vk-feedback-composer--tonal .vk-ui-action__note { order: -1; margin-inline-end: auto; overflow-wrap: anywhere; }
-.vk-feedback-draft-note { margin: 0; padding-inline: 6px; color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); }
+.vk-feedback-draft-note { color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); }
 @media (max-width: 359px) {
   .vk-discussion-thread > .vk-discussion-comment, .vk-discussion-shared-reason { padding-inline: 12px; }
   .vk-discussion-root > .vk-discussion-thread > .vk-discussion-comment { padding-inline: 0; }
@@ -319,19 +289,13 @@
 /* R4 (#360): the confirmation replaces “Gỡ nhận xét của tôi” in place with an error-bordered
    destructive alert card, and wraps its actions at text 200%. */
 .vk-discussion-remove-confirm {
-  inline-size: 100%;
-  box-sizing: border-box;
-  display: grid;
-  gap: var(--vk-space-2);
   padding: 12px 14px;
   border: 2px solid var(--vk-error);
   border-radius: var(--vk-radius-lg);
   background: color-mix(in srgb, var(--vk-error-container) 28%, var(--vk-surface));
-  min-width: 0;
 }
 .vk-discussion-remove-confirm > p { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: var(--vk-on-surface); font-weight: var(--vk-type-label-weight); overflow-wrap: anywhere; }
 .vk-discussion-remove-confirm > p > .vk-ui-icon { color: var(--vk-error); flex-shrink: 0; margin-block-start: 2px; }
-.vk-discussion-remove-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--vk-space-2); }
 
 .vk-discussion-context { line-height: var(--vk-type-caption-line-height); }
 .vk-discussion-thread > .vk-muted { margin: 0; padding-inline: 16px; }

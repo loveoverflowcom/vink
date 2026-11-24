@@ -336,21 +336,21 @@ pub fn EditorToolbar(
 ) -> impl IntoView {
     let problem = move || status_problem.and_then(|value| value.get());
     view! {
-        <div class="vk-editor-toolbar" class:vk-editor-toolbar--paper-first=paper_first>
+        <div class="vk-editor-toolbar flex flex-wrap items-center justify-between gap-y-vk-2 gap-x-vk-4 min-w-0" class:vk-editor-toolbar--paper-first=paper_first>
             <div
                 id="save-slot"
-                class="vk-editor-toolbar__status vk-save-slot"
+                class="vk-editor-toolbar__status vk-save-slot flex flex-wrap items-center gap-vk-2 flex-[1_1_7rem] min-w-0"
                 data-status=move || status_token.get()
                 data-problem=problem
             >
-                <span class="vk-save-slot__readout">
+                <span class="vk-save-slot__readout inline-flex items-center gap-vk-2 flex-[0_1_auto] min-w-0">
                     <Show when=move || {
                         matches!(
                             status_token.get().as_str(),
                             "saved" | "failed" | "conflict"
                         )
                     }>
-                        <span class="vk-save-slot__icon" aria-hidden="true">
+                        <span class="vk-save-slot__icon inline-flex flex-none items-center" aria-hidden="true">
                             {move || {
                                 let token = status_token.get();
                                 let kind = problem();
@@ -378,22 +378,22 @@ pub fn EditorToolbar(
                         {move || status.get()}
                     </p>
                 </span>
-                {save_action.map(|action| view! { <div class="vk-save-slot__action">{action()}</div> })}
+                {save_action.map(|action| view! { <div class="vk-save-slot__action flex-[0_1_auto] items-center min-w-0">{action()}</div> })}
                 {status_detail.filter(|_| !paper_first).map(|detail| view! {
                     <SupportingDetails id="editor-save-details" summary="Chi tiết trạng thái lưu" compact=true>
                         <p>{move || detail.get()}</p>
                     </SupportingDetails>
                 })}
             </div>
-            <div class="vk-editor-toolbar__actions">
+            <div class="vk-editor-toolbar__actions flex-wrap items-center min-w-0 gap-vk-1">
                 {children()}
                 {paper_first.then(|| view! {
                     // Native disclosure, not an ARIA menu/overlay: Enter/Space toggle, Tab
                     // reaches ordinary actions, Escape leaves it open. Its summary is always
                     // visible, including when a focused Save disappears after an ACK (#217).
-                    <details id="editor-save-details" class="vk-editor-tools">
+                    <details id="editor-save-details" class="vk-editor-tools [min-inline-size:0]">
                         <summary>"Thêm"<Icon name=IconName::ExpandMore size=IconSize::Small /></summary>
-                        <div class="vk-editor-tools__content">
+                        <div class="vk-editor-tools__content flex flex-col [align-items:start] gap-vk-2 [padding-block:var(--vk-space-2)]">
                             {utilities.map(|actions| actions())}
                             {status_detail.map(|detail| view! {
                                 <p><strong>"Trạng thái lưu. "</strong>{move || detail.get()}</p>
@@ -519,17 +519,17 @@ pub fn FeedbackComposer(
         }
     });
     view! {
-        <section class="vk-feedback-composer" class:vk-feedback-composer--tonal=tonal data-filled=move || (!value.get().is_empty()).then_some("true")>
+        <section class="vk-feedback-composer grid" class:vk-feedback-composer--tonal=tonal data-filled=move || (!value.get().is_empty()).then_some("true")>
             {children.map(|header| header())}
             {intent.label().map(|label| view! { <Text role=TypeRole::Label>{label}</Text> })}
             <TextArea id label=if intent == FeedbackIntent::Technique { "Góp ý kỹ thuật có ngữ cảnh" } else { "Nhận xét của bạn" }
                 value on_input mode=field_mode variant=if tonal { FieldVariant::FloatingTonal } else { FieldVariant::ExternalLabel }
                 rows=if tonal { 1 } else { 4 }
                 help=if tonal { "Tối đa 4.000 ký tự, 200 dòng. Enter xuống dòng." } else { "Tối đa 4.000 ký tự, 200 dòng. Enter xuống dòng; chỉ gửi khi bấm nút." } />
-            <Show when=move || tonal && !value.get().is_empty() && !comments_closed.get()><p class="vk-feedback-draft-note">"Rời trang có thể mất nháp."</p></Show>
-            <div class="vk-feedback-composer__footer">
+            <Show when=move || tonal && !value.get().is_empty() && !comments_closed.get()><p class="vk-feedback-draft-note m-0 [padding-inline:6px]">"Rời trang có thể mất nháp."</p></Show>
+            <div class="vk-feedback-composer__footer flex flex-wrap items-center gap-vk-2 [padding-inline:4px] min-w-0">
                 <Show when=move || tonal && !comments_closed.get() && !show_alternative.get()>
-                    <p class="vk-feedback-policy">
+                    <p class="vk-feedback-policy items-center gap-[6px] m-0 min-w-0">
                         <Icon name=IconName::VerifiedUser size=IconSize::Small />
                         <span>"Duyệt trước khi hiện công khai"</span>
                     </p>
@@ -621,12 +621,12 @@ pub fn OwnRemoveAction(
     move || {
         if confirming.get() {
             view! {
-                <div class="vk-discussion-remove-confirm" role="group" aria-labelledby=prompt_id.clone()>
+                <div class="vk-discussion-remove-confirm [inline-size:100%] box-border grid gap-vk-2 min-w-0" role="group" aria-labelledby=prompt_id.clone()>
                     <p id=prompt_id.clone()>
                         <Icon name=IconName::Warning size=IconSize::Small />
                         <span>"Gỡ nhận xét này? Sau khi gỡ, bạn không thể khôi phục."</span>
                     </p>
-                    <div class="vk-discussion-remove-actions">
+                    <div class="vk-discussion-remove-actions flex flex-wrap justify-end gap-vk-2">
                         <Button id=cancel_id.clone() variant=ButtonVariant::Text on_press=on_cancel>"Giữ lại"</Button>
                         <Button id=confirm_id.clone() variant=ButtonVariant::Danger state on_press=on_confirm>"Gỡ"</Button>
                     </div>
@@ -699,16 +699,16 @@ pub fn DiscussionThread(
         reply_target_id,
     };
     view! {
-        <div class="vk-discussion-thread">
+        <div class="vk-discussion-thread grid gap-vk-3 min-w-0">
             {move || root.get().map(|comment| discussion_comment(comment, true, reply_expanded, ctx))
                 .unwrap_or_else(|| view! { <p class="vk-muted">"Bình luận gốc không còn hiển thị."</p> }.into_any())}
-            <div class="vk-discussion-reply-group" hidden=move || facts.get().replies.is_empty() && !has_more_replies.get()>
+            <div class="vk-discussion-reply-group min-w-0" hidden=move || facts.get().replies.is_empty() && !has_more_replies.get()>
             <p class="vk-discussion-reply-heading">"Phản hồi"</p>
-            <ul class="vk-discussion-replies" aria-label="Phản hồi theo thứ tự cũ đến mới">
+            <ul class="vk-discussion-replies grid gap-[16px] [list-style:none] p-0 m-0 [border:0]" aria-label="Phản hồi theo thứ tự cũ đến mới">
                 <For each=move || { facts.get().replies.into_iter().map(|comment| comment.id).collect::<Vec<_>>() } key=|id| id.clone()
                     children=move |id| {
                         let comment = Memo::new(move |_| facts.get().replies.into_iter().find(|comment| comment.id == id));
-                        view! { <li>{move || comment.get().map(|comment| discussion_comment(comment, false, Signal::stored(false), ctx))}</li> }
+                        view! { <li class="min-w-0">{move || comment.get().map(|comment| discussion_comment(comment, false, Signal::stored(false), ctx))}</li> }
                     } />
             </ul>
             {reply_footer.map(|footer| footer())}
@@ -761,6 +761,9 @@ struct ThreadCommentCtx {
     reply_target_id: Signal<Option<String>>,
 }
 
+const DISCUSSION_CONTEXT_CLASS: &str =
+    "vk-discussion-context flex flex-wrap items-baseline gap-y-vk-1 gap-x-vk-2";
+
 fn discussion_comment(
     comment: DiscussionComment,
     is_root: bool,
@@ -804,9 +807,9 @@ fn discussion_comment(
             && reply_target_id.get().as_deref() == Some(target_match_id.as_str())
     });
     view! {
-        <article id=format!("comment-{}", comment.id) class="vk-feedback-item vk-discussion-comment" tabindex="-1"
+        <article id=format!("comment-{}", comment.id) class="vk-feedback-item vk-discussion-comment grid gap-vk-3 min-w-0 [scroll-margin-block:var(--vk-space-6)]" tabindex="-1"
             data-reply-target=move || is_target.get().then_some("true")>
-            <div class="vk-discussion-byline">
+            <div class="vk-discussion-byline flex flex-wrap items-start justify-between gap-y-vk-1 gap-x-vk-3 min-w-0">
                 <AuthorIdentity author=comment.author id=Some(author_id) size />
                 // Outside the profile link.
                 <Timestamp instant=published_at />
@@ -815,10 +818,10 @@ fn discussion_comment(
                 <p class="vk-discussion-target-badge">"Đang là đích trả lời"</p>
             </Show>
             {comment.context.map(|context| match context {
-                DiscussionContext::Root => view! { <p class="vk-discussion-context">"Trả lời bình luận gốc"</p> }.into_any(),
-                DiscussionContext::Unavailable => view! { <p class="vk-discussion-context">"Bình luận được trả lời không còn hiển thị"</p> }.into_any(),
+                DiscussionContext::Root => view! { <p class=DISCUSSION_CONTEXT_CLASS>"Trả lời bình luận gốc"</p> }.into_any(),
+                DiscussionContext::Unavailable => view! { <p class=DISCUSSION_CONTEXT_CLASS>"Bình luận được trả lời không còn hiển thị"</p> }.into_any(),
                 DiscussionContext::Reply { name, href, profile } => view! {
-                    <p class="vk-discussion-context">"Đang trả lời "
+                    <p class=DISCUSSION_CONTEXT_CLASS>"Đang trả lời "
                         <ProfileName name profile id=context_id />
                         {href.map(|href| view! { <Link href>"Đến bình luận"</Link> })}
                     </p>
@@ -826,14 +829,14 @@ fn discussion_comment(
             })}
             {comment.status.map(|status| view! { <p class="vk-discussion-status">{status}</p> })}
             <p class="vk-discussion-body">{comment.body}</p>
-            <div class="vk-discussion-actions">
-                <div class="vk-discussion-action-segment" data-root=is_root.then_some("true")
+            <div class="vk-discussion-actions flex flex-wrap items-center gap-vk-2 min-w-0">
+                <div class="vk-discussion-action-segment inline-flex flex-wrap items-center [max-inline-size:100%] min-w-0" data-root=is_root.then_some("true")
                     role=move || (!read_only.get()).then_some("group")
                     aria-label=move || (!read_only.get()).then(|| format!("Thao tác với nhận xét của {author_label}"))>
                     {move || {
                         if read_only.get() {
                             view! {
-                                <span class="vk-discussion-static-endorsement" data-endorsement-readonly=endorsement_id.clone()>
+                                <span class="vk-discussion-static-endorsement inline-flex items-center gap-[6px] [padding:6px_12px] rounded-vk-full" data-endorsement-readonly=endorsement_id.clone()>
                                     <Icon name=IconName::HeartOutline size=IconSize::Small />
                                     <span>"Ưng"</span>
                                 </span>
@@ -1021,7 +1024,7 @@ pub fn EndorsementAction(
         EndorsementKind::Comment => "comment",
     };
     view! {
-        <span class="vk-endorsement" data-kind=kind_id>
+        <span class="vk-endorsement inline-flex [max-inline-size:100%]" data-kind=kind_id>
             <ToggleAction
                 surface
                 id

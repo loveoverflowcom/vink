@@ -465,7 +465,7 @@ fn endorsement(scenario: &str) -> AnyView {
                     <Text>"Đoạn mở đầu giữ nhịp rất tốt; câu thứ ba hơi dài."</Text>
                     <EndorsementAction id="endorse-root" kind=EndorsementKind::Comment facts=root
                         on_set=logged_set("endorse-root") on_recover=logged_recover("endorse-root") />
-                    <ul class="vkp-endorsement-replies" aria-label="Phản hồi theo thứ tự cũ đến mới">
+                    <ul class="vkp-endorsement-replies grid gap-vk-4 m-0 [list-style:none]" aria-label="Phản hồi theo thứ tự cũ đến mới">
                         <li>
                             <Text tag=TextTag::Strong>"An Nhiên — phản hồi (Mẫu)"</Text>
                             <Text>"Cảm ơn, mình sẽ ngắt câu đó."</Text>
