@@ -7,9 +7,10 @@ import { followingFeed } from './following-feed-smoke.mjs';
 import { authorFollows } from './author-follow-smoke.mjs';
 import { authorHandles } from './author-handle-smoke.mjs';
 import { authorProfiles } from './author-profile-smoke.mjs';
-import { EDITOR_READY, STANDING, account, cookies, fabricate, fill, mailedCode, openAccount, q, signIn, signOut } from './auth-smoke.mjs';
+import { EDITOR_READY, HYDRATED, STANDING, account, cookies, fabricate, fill, mailedCode, openAccount, q, signIn, signOut } from './auth-smoke.mjs';
 import { deskGuest } from './desk-empty-smoke.mjs';
 import { captureRequest, holdAnswer } from './auth-browser-network.mjs';
+import { APPEARANCE_SETTLED } from './visual-evidence.mjs';
 
 const API = '/api/v1/auth/password';
 const PANEL = '#account-session';
@@ -180,19 +181,44 @@ async function expiredDesk(page, {base, check, openPage}) {
   }
 }
 
+async function chooseAppearance(page, group, value) {
+  const selected = `document.querySelector('#page-${group} input:checked')?.value === '${value}'`;
+  if (!await page.eval(selected)) await page.click(`#page-${group} label:has(input[value="${value}"])`);
+  await page.waitFor(selected, `Appearance ${group} applies ${value}`);
+}
+
 async function matrix(page, scenario, anchor, check) {
   const path = JSON.stringify(anchor);
-  const r2 = ['login', 'registration', 'pen-name'].includes(scenario);
   const actions = ({
     login: ['#password-login-submit', '#use-registration', '#use-email-code'],
     registration: ['#password-register-submit', '#use-password', '#use-email-code'],
+    email: ['#sign-in-send', '#use-password'],
     'pen-name': ['#pen-name-save'],
+    closed: [],
   })[scenario];
-  for (const width of [320, 390, 1280]) for (const theme of ['light', 'dark']) for (const scale of [100, 200]) {
-    await page.viewport(width);
+  const r2 = actions !== undefined;
+  const boundary = scenario === 'closed' ? 'App (sign-in disabled) + scratch PostgreSQL' :
+    'native Identity + App + scratch PostgreSQL';
+  const widths = r2 ? [320, 390, 834, 1280] : [320, 390, 1280];
+  const scales = r2 ? [100, 150, 200] : [100, 200];
+  const initial = await page.eval(`({
+    theme: document.querySelector('#page-theme input:checked')?.value,
+    text: document.querySelector('#page-text input:checked')?.value,
+    themeAttribute: document.documentElement.getAttribute('data-theme'),
+  })`);
+  for (const width of widths) for (const theme of ['light', 'dark']) for (const scale of scales) {
+    await page.viewport(width, width === 834 ? 600 : 900);
+    await page.eval("document.documentElement.style.fontSize = ''");
+    if (r2) {
+      await chooseAppearance(page, 'theme', theme);
+      await chooseAppearance(page, 'text', scale === 200 ? 150 : scale);
+      await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 0, y: 0 });
+    }
+    await page.waitFor(APPEARANCE_SETTLED, 'Auth appearance colours settle');
+    const endTarget = actions?.at(-1) ?? anchor;
     const measured = await page.eval(`(async () => {
-      document.documentElement.dataset.theme = '${theme}';
-      document.documentElement.style.fontSize = '${scale}%';
+      if (!${r2}) document.documentElement.dataset.theme = '${theme}';
+      if (!${r2} || ${scale} === 200) document.documentElement.style.fontSize = '${scale}%';
       const panel = ${q(PANEL)}, section = document.querySelector(${path});
       if (${r2}) scrollTo({top: 0, behavior: 'instant'});
       else section.scrollIntoView({block: 'start', behavior: 'instant'});
@@ -210,22 +236,23 @@ async function matrix(page, scenario, anchor, check) {
       const toRgb = (value) => value.match(/[0-9.]+/g)?.slice(0, 3).map(Number);
       const luminance = (rgb) => rgb.map(c => (c /= 255) <= .04045 ? c/12.92 : ((c+.055)/1.055)**2.4)
         .reduce((sum, c, i) => sum + c * [.2126, .7152, .0722][i], 0);
+      const contrast = el => {
+        const text = toRgb(getComputedStyle(el).color);
+        let background;
+        for (let p = el; p && !background; p = p.parentElement) {
+          const value = getComputedStyle(p).backgroundColor;
+          if (value !== 'rgba(0, 0, 0, 0)' && value !== 'transparent') background = toRgb(value);
+        }
+        if (!background) return null;
+        const [a,b] = [luminance(text), luminance(background)].sort((x,y)=>y-x);
+        return (a+.05)/(b+.05);
+      };
       const contrasts = [...section.querySelectorAll('label,.vk-account-error,.vk-ui-field__help,.vk-ui-field__error')]
-        .filter(el => !el.classList.contains('vk-ui-visually-hidden')).map(el => {
-          const text = toRgb(getComputedStyle(el).color);
-          let background;
-          for (let p = el; p && !background; p = p.parentElement) {
-            const value = getComputedStyle(p).backgroundColor;
-            if (value !== 'rgba(0, 0, 0, 0)' && value !== 'transparent') background = toRgb(value);
-          }
-          if (!background) return null;
-          const [a,b] = [luminance(text), luminance(background)].sort((x,y)=>y-x);
-          return (a+.05)/(b+.05);
-        }).filter(r => r !== null);
+        .filter(el => !el.classList.contains('vk-ui-visually-hidden')).map(contrast).filter(r => r !== null);
       const entry = document.querySelector('.vk-auth-entry');
       const logo = entry?.querySelector('.vk-brand__lockup');
       const logoAsset = logo ? getComputedStyle(logo).backgroundImage : '';
-      const target = document.querySelector('${r2 ? actions.at(-1) : anchor}');
+      const target = document.querySelector('${endTarget}');
       const bottomNav = document.querySelector('#bottom-navigation');
       const barTop = bottomNav?.getClientRects().length ? bottomNav.getBoundingClientRect().top : innerHeight;
       const fields = [...section.querySelectorAll('input:not([type=hidden])')].map(el => el.getBoundingClientRect());
@@ -233,9 +260,45 @@ async function matrix(page, scenario, anchor, check) {
         Math.abs(r.left - fields[0].left) <= 1 && r.top >= fields[i-1].bottom);
       const ordered = ${JSON.stringify(actions ?? [])}.map(sel => document.querySelector(sel)?.getBoundingClientRect())
         .every((r, i, rects) => r && r.width > 0 && r.height > 0 && (!i || r.top >= rects[i-1].bottom - 1));
+      const appearance = document.getElementById('auth-appearance');
+      let link = null;
+      if (${r2}) {
+        const style = getComputedStyle(appearance), bounds = appearance.getBoundingClientRect();
+        const icon = appearance.querySelector('[data-appearance-icon="palette"]');
+        const iconRect = icon?.getBoundingClientRect();
+        const label = appearance.querySelector('.vk-ui-button__label');
+        const labelRect = label?.getBoundingClientRect();
+        const auth = entry.getBoundingClientRect();
+        const account = panel.getBoundingClientRect();
+        const colors = document.createElement('canvas').getContext('2d');
+        colors.fillStyle = style.color;
+        const foreground = colors.fillStyle;
+        colors.fillStyle = style.getPropertyValue('--vk-primary').trim();
+        link = {
+          native: appearance.matches('a[href="#page-appearance"][rel=external]') && appearance.tabIndex === 0 &&
+            appearance.textContent.trim() === 'Giao diện' && !appearance.hasAttribute('role') &&
+            !appearance.hasAttribute('aria-expanded') && !appearance.hasAttribute('aria-haspopup') &&
+            document.querySelectorAll('a[href="#page-appearance"]').length === 1 &&
+            document.querySelectorAll('#page-appearance').length === 1 &&
+            !document.querySelector('#profile-trigger, #profile-menu, .vk-ui-nav-utility'),
+          icon: icon?.getAttribute('aria-hidden') === 'true' && getComputedStyle(icon).maskImage !== 'none' &&
+            iconRect.width === 24 && iconRect.height === 24 && label?.checkVisibility() && iconRect.right <= labelRect.left,
+          idle: style.backgroundColor === 'rgba(0, 0, 0, 0)' && style.textDecorationLine === 'none' &&
+            style.borderTopWidth === '0px' && style.boxShadow === 'none' &&
+            getComputedStyle(appearance, '::after').opacity === '0',
+          primary: colors.fillStyle === foreground,
+          contrast: contrast(appearance),
+          width: bounds.width, height: bounds.height,
+          placed: bounds.left >= -1 && bounds.right <= innerWidth + 1 &&
+            (innerWidth < 760 ? bounds.top >= auth.bottom - 1 :
+              bounds.bottom <= auth.top + 1 && bounds.top >= account.top && Math.abs(bounds.right - account.right) <= 1),
+          inView: bounds.top >= 0 && bounds.bottom <= barTop + 1,
+        };
+      }
       return { logoAsset, logoVisible: Boolean(logo?.checkVisibility()), singleColumn, ordered,
         minContrast: contrasts.length ? Math.min(...contrasts) : null, ok: !!rect.width && !clipped && document.documentElement.scrollWidth <= innerWidth + 1 && font,
-        width: rect.width, left: rect.left, font, device: devicePixelRatio,
+        width: rect.width, left: rect.left, font, device: devicePixelRatio, link,
+        rootSize: getComputedStyle(document.documentElement).fontSize,
         focus: document.activeElement?.id,
         partial: (target?.getBoundingClientRect().bottom ?? rect.bottom) > barTop };
     })()`);
@@ -243,38 +306,158 @@ async function matrix(page, scenario, anchor, check) {
     if (measured.minContrast !== null) check(measured.minContrast >= 4.5, `${scenario}: measured label/help/error contrast ≥ 4.5:1`);
     if (r2) check(measured.logoVisible && measured.logoAsset.includes(`/brand/vpen-r1-lockup-${theme}.svg`) &&
       measured.singleColumn && measured.ordered, `#327 ${scenario} ${width}/${theme}/${scale}: theme asset and one-column reading order`);
+    if (r2) {
+      const link = measured.link;
+      check(measured.rootSize === `${16 * scale / 100}px` && link.native && link.icon && link.idle &&
+        link.primary && link.contrast >= 4.5 && link.width >= 48 && link.height >= 48 && link.placed,
+        `#483 ${scenario} ${width}/${theme}/${scale}: native Appearance text action, placement and ≥4.5:1 contrast (${JSON.stringify(link)})`);
+    }
+    const textScaleLane = r2 && scale !== 200 ? 'app-appearance-control' : 'dom-override-geometry-only';
     if (scenario === 'login' || (width === 390 && scale === 100) || (width === 320 && scale === 200 && theme === 'dark') ||
         (width === 1280 && scale === 100 && theme === 'light')) {
       await page.capture(`auth-password-${scenario}-${width}-${theme}-${scale}`, {
-        boundary: 'native Identity + App + scratch PostgreSQL',
-        scenario, textScale: scale, font: 'Be Vietnam Pro', ...measured,
+        boundary,
+        requiredTargets: measured.link?.inView ? ['#auth-appearance'] : [],
+        scenario, textScale: scale, textScaleLane, font: 'Be Vietnam Pro', ...measured,
       });
       if (measured.partial) {
         await page.eval(`(() => {
-          const end = document.querySelector('${r2 ? actions.at(-1) : anchor}');
+          const end = document.querySelector('${endTarget}');
           end.scrollIntoView({block:'center',behavior:'instant'});
         })()`);
         await page.capture(`auth-password-${scenario}-${width}-${theme}-${scale}-end`, {
-          boundary: 'native Identity + App + scratch PostgreSQL', scenario, textScale: scale, font: 'Be Vietnam Pro',
+          boundary, scenario, textScale: scale, textScaleLane, font: 'Be Vietnam Pro',
         });
       }
     }
-    if (r2 && width <= 390 && scale === 200) {
+    if (r2) {
       check(await page.eval(`(() => {
-        const nav = document.querySelector('#bottom-navigation'), barTop = nav.getBoundingClientRect().top;
-        return ${JSON.stringify(r2 ? [...actions, '#auth-appearance'] : [])}.every(sel => {
+        const nav = document.querySelector('#bottom-navigation'), barTop = nav?.getClientRects().length ? nav.getBoundingClientRect().top : innerHeight;
+        const targets = ${JSON.stringify(width <= 390 && scale === 200 ? [...actions, '#auth-appearance'] : ['#auth-appearance'])};
+        return targets.every(sel => {
           const action = document.querySelector(sel);
           action.scrollIntoView({block:'center',behavior:'instant'});
           const r = action.getBoundingClientRect();
           return r.top >= 0 && r.bottom <= barTop + 1 &&
             action.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
         });
-      })()`), `#327 ${scenario} action targets are reachable above mobile navigation: ${width}/${theme}/${scale}`);
+      })()`), `#483 ${scenario} Appearance is reachable without navigation covering it: ${width}/${theme}/${scale}`);
     }
   }
-  await page.eval("document.documentElement.style.fontSize = ''; delete document.documentElement.dataset.theme");
+  await page.eval("document.documentElement.style.fontSize = ''");
+  if (r2) {
+    await chooseAppearance(page, 'theme', initial.theme);
+    await chooseAppearance(page, 'text', initial.text);
+  } else {
+    await page.eval(initial.themeAttribute === null
+      ? "document.documentElement.removeAttribute('data-theme')"
+      : `document.documentElement.dataset.theme = ${JSON.stringify(initial.themeAttribute)}`);
+  }
   await page.viewport(1280);
   await page.eval("scrollTo({top:0,behavior:'instant'})");
+}
+
+async function appearanceFragment(page) {
+  await page.waitFor(`location.hash === '#page-appearance' && document.activeElement?.id === 'page-appearance'`,
+    '#483 native activation focuses the Appearance section');
+}
+
+async function probeAppearanceInput(page, selector, value) {
+  await fill(page, selector, value);
+  await page.eval(`(() => {
+    const input = ${q(selector)};
+    const probe = window.appearanceProbe = { input, value: ${JSON.stringify(value)}, submitted: false };
+    input.form.addEventListener('submit', () => { probe.submitted = true; }, { once: true });
+  })()`);
+}
+
+async function preservedAppearanceInput(page, selector, check, method) {
+  check(await page.eval(`(() => {
+    const probe = window.appearanceProbe;
+    const input = ${q(selector)};
+    const section = document.getElementById('page-appearance').getBoundingClientRect();
+    return input === probe?.input && input.value === probe.value && !probe.submitted &&
+      section.top >= -1 && section.top < innerHeight && !document.querySelector('dialog[open]');
+  })()`), `#483 ${method} scrolls in the same document without submitting or remounting the typed field`);
+  await page.eval(`history.replaceState(history.state, '', location.pathname + location.search)`);
+  await fill(page, selector, '');
+}
+
+async function appearancePoint(page) {
+  return page.eval(`(() => {
+    const link = ${q('#auth-appearance')};
+    link.scrollIntoView({ block: 'center', behavior: 'instant' });
+    const r = link.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  })()`);
+}
+
+async function pointerAppearance(page, check) {
+  const field = REGISTER + '-username';
+  await probeAppearanceInput(page, field, 'tam-thoi');
+  const point = await appearancePoint(page);
+  const opacity = `getComputedStyle(${q('#auth-appearance')}, '::after').opacity`;
+  await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
+  await page.waitFor(`${opacity} === '0.08'`, '#483 hover state layer');
+  await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', clickCount: 1 });
+  await page.waitFor(`${opacity} === '0.12'`, '#483 pressed state layer');
+  await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...point, button: 'left', clickCount: 1 });
+  await appearanceFragment(page);
+  await preservedAppearanceInput(page, field, check, 'pointer');
+}
+
+async function emailAppearance(page, check) {
+  await page.click('#use-email-code');
+  await page.waitFor(`document.activeElement?.id === 'sign-in-address'`, 'email mode focuses its input');
+  await matrix(page, 'email', '#sign-in-email', check);
+  await page.viewport(390);
+  await probeAppearanceInput(page, '#sign-in-address', 'thu@vi-du.vn');
+  const point = await appearancePoint(page);
+  await page.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
+  await page.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await appearanceFragment(page);
+  await preservedAppearanceInput(page, '#sign-in-address', check, 'touch');
+  await page.click('#use-password');
+  await page.waitFor(q(LOGIN), 'password mode after email');
+  await page.viewport(1280);
+}
+
+const STORED_APPEARANCE = `document.documentElement.dataset.theme === 'dark' &&
+  document.documentElement.dataset.text === '150' &&
+  localStorage.getItem('vink.ui.theme') === 'dark' && localStorage.getItem('vink.ui.text') === '150'`;
+
+async function appearanceReload(page, check) {
+  await chooseAppearance(page, 'theme', 'dark');
+  await chooseAppearance(page, 'text', 150);
+  check(await page.eval(STORED_APPEARANCE), '#483 Appearance choices apply and persist from the Auth host');
+  await page.eval("localStorage.setItem('vink.ui.text', '200')");
+  const { identifier } = await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `
+    const observer = new MutationObserver(() => {
+      if (document.documentElement?.dataset.text !== '150') return;
+      window.appearanceBeforeHydration = document.documentElement.dataset.hydrated !== 'true' &&
+        localStorage.getItem('vink.ui.text') === '150';
+      observer.disconnect();
+    });
+    observer.observe(document, { subtree: true, attributes: true, attributeFilter: ['data-text'] });
+  ` });
+  await page.reload();
+  await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
+  await page.waitFor(q(LOGIN), 'guest form after Appearance reload');
+  check(await page.eval(`window.appearanceBeforeHydration && ${STORED_APPEARANCE} &&
+    document.querySelector('#page-text input:checked')?.value === '150' &&
+    document.querySelector('#page-theme input:checked')?.value === 'dark'`),
+    '#483 legacy 200 normalizes to 150 before hydration and the choices retain dark and 150 after reload');
+}
+
+export async function closedAccountAppearance(page, { args, check }) {
+  await page.goto(args.base + '/toi');
+  await page.waitFor(`${HYDRATED} && ${q('#sign-in-closed')} && ${q('#auth-appearance')}`, 'closed sign-in on Tôi');
+  check(await page.eval(`!${q('#password-login, #password-register, #sign-in-email, #pen-name-form')} &&
+    ${q('#sign-in-closed')}.textContent.includes('Vink chưa mở đăng nhập')`), '#327 closed gate has no Auth form');
+  await matrix(page, 'closed', '#sign-in-closed', check);
+  await page.eval(`${q('#auth-appearance')}.focus()`);
+  await page.key('Enter');
+  await appearanceFragment(page);
 }
 
 async function authR2Login(page, check) {
@@ -291,18 +474,24 @@ async function authR2Login(page, check) {
       && ${q('#use-email-code')}.textContent.trim() === 'Dùng mã email';
   })()`), '#327 login renders one R2 form, without the old guest status card, a premature pen-name step, duplicated actions, or autofocus');
   await matrix(page, 'login', LOGIN, check);
-  await page.eval(`${q(LOGIN + '-username')}.focus()`);
+  await probeAppearanceInput(page, LOGIN + '-username', 'tam-thoi');
   for (const id of [LOGIN + '-password', LOGIN + '-password-reveal', LOGIN + '-submit', '#use-registration', '#use-email-code', '#auth-appearance']) {
     await page.key('Tab');
     check(await page.eval(`document.activeElement === ${q(id)} && document.activeElement.matches(':focus-visible')`), `#327 keyboard order and focus-visible: ${id}`);
   }
+  await page.waitFor(`(() => {
+    const link = ${q('#auth-appearance')}, style = getComputedStyle(link);
+    return style.outlineStyle === 'solid' && parseFloat(style.outlineWidth) >= 2 &&
+      getComputedStyle(link, '::after').opacity === '0.12';
+  })()`, '#483 visible keyboard focus with the state layer');
   await page.key('Enter');
-  await page.waitFor(`location.hash === '#page-appearance' && document.activeElement?.id === 'page-appearance'`,
-    '#327 keyboard activation focuses the retained Appearance section');
+  await appearanceFragment(page);
   await page.key('Tab');
   check(await page.eval(`document.activeElement.matches('#page-theme input[type=radio]:focus-visible')`),
     '#327 the next Tab reaches an Appearance radio with visible keyboard focus');
-  await page.eval(`history.replaceState(history.state, '', location.pathname)`);
+  await preservedAppearanceInput(page, LOGIN + '-username', check, 'keyboard');
+  await emailAppearance(page, check);
+  await appearanceReload(page, check);
 }
 
 export async function passwordAuth(page, { args, check, openPage, textContrast }) {
@@ -366,7 +555,9 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   await page.key('Enter');
   await page.waitFor(`document.activeElement?.id === 'password-register-username'`, 'explicit mode switch focuses first field');
   check(await page.eval(`!${q(LOGIN)} && ${q(REGISTER + '-password')}.autocomplete === 'new-password'`), 'registration asks for username and password without email');
+  check(await page.eval(STORED_APPEARANCE), '#483 Appearance survives switching from login to registration');
   await matrix(page, 'registration', REGISTER, check);
+  await pointerAppearance(page, check);
   // DOM autofill simulation: set the actual values, without input events.
   await page.eval(`(() => {
     ${q(REGISTER + '-username')}.value = ${JSON.stringify(userA.toUpperCase())};
@@ -452,6 +643,10 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   await openAccount(page, base, 'active');
   check(await writerReview.held() === 403, 'F-18 the bodyless authorization check refuses an ordinary writer');
   await writerReview.finish(false, true);
+  check(await page.eval(`${STORED_APPEARANCE} && !${q('#auth-appearance')} && !!${q('#page-appearance')}`),
+    '#483 the same stored Appearance applies after real sign-in and pen-name completion');
+  await chooseAppearance(page, 'theme', 'system');
+  await chooseAppearance(page, 'text', 100);
   check(await page.eval(`!${q('#me-moderation-link')}`), 'F-18 Tôi offers no moderation link to an ordinary writer');
   await page.click('#password-credential');
   await page.waitFor(contains('đã có thông tin đăng nhập'), 'credential already present');

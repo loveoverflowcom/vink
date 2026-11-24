@@ -20,7 +20,7 @@ import { discoveryChipGeometry } from './discovery-chip-geometry.mjs';
 import { endorsementAsAuthor, endorsementAsReader } from './endorsement-smoke.mjs';
 import { authWeb } from './auth-smoke.mjs';
 import { readerAuthClosed } from './reader-auth-smoke.mjs';
-import { passwordAuth } from './auth-password-smoke.mjs';
+import { closedAccountAppearance, passwordAuth } from './auth-password-smoke.mjs';
 import { publicationAuthor } from './publication-author-smoke.mjs';
 import { reviewWithdrawnPage } from './review-withdrawn-smoke.mjs';
 import { markdownReader } from './markdown-reader-smoke.mjs';
@@ -51,6 +51,7 @@ import {
   buildNavInspectionScript,
   buildOverflowInspectionScript,
   buildTargetGeometryScript,
+  APPEARANCE_SETTLED,
   classifyTextScaleLane,
   collectElementAccessibility,
   collectSourceIdentity,
@@ -94,6 +95,7 @@ const CTRL = 2;
 const META = 4;
 const SHIFT = 8;
 const KEYS = {
+  Backspace: { code: 'Backspace', keyCode: 8 },
   Enter: { code: 'Enter', keyCode: 13, text: '\r' },
   Escape: { code: 'Escape', keyCode: 27 },
   Tab: { code: 'Tab', keyCode: 9 },
@@ -1800,11 +1802,6 @@ async function serverHtml() {
 const RAIL_WIDTH = `Math.round(document.querySelector('.vk-ui-rail').getBoundingClientRect().width)`;
 const RAIL_MODAL_OPEN = `document.querySelector('#navigation-modal').matches(':modal')`;
 const RAIL_ME = '#navigation a[href="/toi"]';
-// Poll live transitions. Waiting on a snapshot of Animation.finished promises
-// can stall DevTools after a dirty editor resize.
-const APPEARANCE_SETTLED = `!document.getAnimations().some(a =>
-  a instanceof CSSTransition && (a.pending || a.playState === 'running'))`;
-
 /** R4.2 (#402): Khám phá and Bàn viết share one page column and a fixed narrow gutter; the
  * resolved background/text pairs are measured and logged in both themes. Ends on /ban-viet. */
 async function r4PageColumns(page) {
@@ -6386,7 +6383,10 @@ try {
     await markdownReader(page, { args, check, textContrast });
   }
   else if (args.phase === 'auth') await authWeb(page, { args, check, openPage: (isolated) => openPage(cdp, isolated) });
-  else if (args.phase === 'reader-auth-closed') await readerAuthClosed(page, { args, check });
+  else if (args.phase === 'reader-auth-closed') {
+    await closedAccountAppearance(page, { args, check });
+    await readerAuthClosed(page, { args, check });
+  }
   else if (args.phase === 'auth-password') await passwordAuth(page, { args, check, textContrast, openPage: (isolated) => openPage(cdp, isolated) });
   else if (args.phase === 'publication-author') await publicationAuthor(page, { args, check, openPage: (isolated) => openPage(cdp, isolated), capture: (target, name, evidence) => target.capture(name, evidence) });
   else if (args.phase === 'author-search') await authorSearch(page, { args, check, textContrast });

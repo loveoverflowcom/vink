@@ -17,14 +17,19 @@ Mỗi bước cho thấy một việc chính có thể làm ngay.
     #password-register       chỉ hai trường và hướng dẫn → Tạo tài khoản
     #sign-in-email / -code   một form ở mỗi bước; quay lại dùng mật khẩu
     #pen-name-form           chỉ khi máy chủ yêu cầu: Bút danh + trợ giúp → Lưu bút danh
-  #auth-appearance           Giao diện → lựa chọn thật trên cùng trang
+  #auth-appearance           icon bảng màu + Giao diện → #page-appearance
   Đã hoạt động               trạng thái, Bàn viết, thêm mật khẩu, đăng xuất như trước
 ```
 
 **Responsive.** Cột form căn giữa phần nội dung, tối đa 24rem, lề mobile 20px tại 390px.
 Logo và tiêu đề Literata căn giữa; trường, nút chính và nút email cùng trục/cùng bề rộng.
-Giao diện ở dưới nhóm đăng nhập trên mobile, góc phải trên desktop. Bút danh giữ thao tác
-thoát phiên ngoài form. Cuộn theo trang; ở 200% ưu tiên reflow, lỗi và mọi hành động tới
+Giao diện nằm dưới nhóm form trên mobile và ở góc trên bên phải vùng Auth từ 760 CSS px.
+Theo [#483](https://github.com/loveoverflowcom/vink/issues/483), liên kết dùng kiểu Text của UI
+system với biểu tượng bảng màu 24 px đứng trước nhãn, màu primary và vùng bấm tối thiểu
+48 × 48 CSS px. Ở trạng thái nghỉ, nền trong suốt, chữ không gạch chân và liên kết không có
+viền hay bóng. Hover, nhấn và focus bàn phím có lớp phản hồi. Liên kết dùng chung cho đăng
+nhập, đăng ký, mã email, bút danh và trạng thái đóng đăng nhập. Bút danh giữ thao tác thoát
+phiên ngoài form. Cuộn theo trang; ở 200% ưu tiên reflow, lỗi và mọi hành động tới
 được bằng bàn phím thay vì ép toàn bộ vào một màn hình. Không thêm stepper hay link recovery.
 
 **States.** Spinner giữ chỗ trong nút đang gửi, có trạng thái truy cập. Lỗi tên đăng nhập, mật khẩu
@@ -39,10 +44,15 @@ nền giữ focus và chữ khi phiên không đổi. Nhãn HTML và mô tả n�
 và trạng thái nhấn, không submit; click khi đang nhập giữ focus/selection, bàn phím giữ focus ở
 nút. Enter gửi đúng form ngoài composition; paste và giá trị do autofill điền được đọc từ input.
 Không autosubmit mã. Disclosure ở ngay trong trang, không tạo modal hoặc chiếm Escape/Back.
+Enter, bấm hoặc chạm Giao diện dùng fragment native để cuộn và chuyển focus đến
+[`#page-appearance`](me-preferences-r1-209.md). Tab tiếp tới lựa chọn màu. Form cùng trang giữ
+input đang nhập.
 Rời bước xóa input; request đã đi vẫn cần đối soát với máy chủ.
 
-**Invariants và Compare.** Dùng Chrome ở 320/390/1280 CSS px × sáng/tối × chữ gốc 100/200%:
-không tràn ngang quá 1 CSS px, không mất nhãn/hành động/lỗi, font Be Vietnam Pro đã tải.
+**Invariants và Compare.** Dùng Chrome ở 320/390/834/1280 CSS px × sáng/tối × Mặc định 100%
+và Lớn 150% qua lựa chọn thật, thêm lượt stress 200% bằng ghi đè cỡ chữ gốc. Kiểm không tràn
+ngang quá 1 CSS px, không mất nhãn/hành động/lỗi, font Be Vietnam Pro đã tải và Giao diện có
+tương phản chữ tối thiểu 4,5:1.
 Đối chiếu vị trí và phân cấp khi mở ảnh viewport; ảnh không thay kiểm focus, motion hoặc lưu dữ
 liệu. [Auth Web](../development/auth-web.md#kiểm-chứng) giữ bảng kiểm, artifact và giới hạn.
 
