@@ -1,0 +1,29 @@
+version = 1
+id = "VDR-EDGE-FRONTEND"
+revision = 1
+
+[content]
+kind = "architecture"
+domain = "platform"
+title = "Toàn bộ frontend Web chạy trên Cloudflare, VPS chỉ chạy backend/API"
+resolution = """
+Hướng đi của Epic #504 (lát 1, docs/architecture/edge-frontend.md):
+- Cloudflare sở hữu document HTML, routing/deep link, SSR, hydration, asset và trang lỗi frontend. VPS giữ vink-app serve-api, Identity/session, vink-worker, PostgreSQL và ingress API/health. Không chuyển database, authority Identity hay luật nghiệp vụ.
+- Bất biến EF-INV-01..08: Reader công khai có văn bản, title, canonical và status trước JavaScript (không CSR-only); render ở edge không có actor, không chuyển Cookie/Authorization vào lời đọc public; quyền do backend quyết định mỗi lần đọc, không cache chia sẻ HTML hay JSON có thể bị rút/gỡ; HTML SSR và WASM hydrate cùng một build <sha>, giữ asset A+B; một bộ view/router Leptos; secret chỉ ở binding Worker; origin vẫn đòi ORIGIN_KEY và IP client do edge cấp; lỗi backend cho trạng thái lỗi trung thực.
+- Seam: giữ port vink_web::server::PublicReads; thêm composition root edge (đề xuất apps/vink-edge, wasm32) cài PublicReads bằng HTTP tới /api/v1, đối xứng với PublicReadsAdapter in-process của vink-app. Không thêm domain handler.
+- CHOICE-01 (OPEN): A SSR Leptos trên Rust Worker cho mọi document route, hoặc B shell tĩnh + SSR edge cho route công khai. Khuyến nghị đưa vào spike: A.
+- CHOICE-02 (OPEN): A giữ Pages vink-production với _worker.js gồm router JS + renderer WASM, hoặc B gộp vào một Worker có Static Assets. Khuyến nghị đưa vào spike: A. Không tách renderer sang Worker riêng qua service binding.
+- Chọn CHOICE-01/02 bằng spike Home + Reader trên workerd với backend scratch theo giao thức trong docs/development/edge-frontend.md, ghi ở revision sau. Cutover production và chi phí gói Workers cần quyền riêng của chủ dự án.
+"""
+rationale = "Yêu cầu của người dùng ngày 24/11/2026 tại https://github.com/loveoverflowcom/vink/issues/504 (“Mang hết sang cloudflare phần FE giúp tôi”). Hiện trạng develop@276d142: Pages chỉ phục vụ asset, Worker gửi SSR/deep link/API về origin; SSR đọc in-process qua PublicReads, không đọc cookie ở trang riêng tư (LocalResource); leptos_axum 0.8.10 có feature wasm. #473 đo edge 82 ms, Worker → origin → App 173 ms, SSR trang chủ 243 ms median: trang không có dữ liệu SSR bỏ được chặng origin, Reader có thể tới 3 lượt origin tuần tự nên phải đo trước khi chọn. Workers limits đọc 24/11/2026: Free 10 ms CPU, Paid 30 s mặc định, 128 MB, 64 MiB chưa nén, startup 1 s; gói account UNKNOWN. Loại CSR-only cho Reader (PRD §9), proxy SSR về VPS làm kết quả cuối, viết lại frontend và đưa dữ liệu/authority lên edge. Spike, build và production đều NOT_RUN. Proposal PENDING đến khi chủ sản phẩm signoff đúng revision/SHA-256 theo VDR-DECISION-SIGNOFF@r1."
+requires = [
+    "VDR-DECISION-SIGNOFF@r1",
+    "VDR-EDGE-ASSET-COMPRESSION@r1",
+]
+related_ids = [
+    "COM-03",
+    "D-01",
+    "INV-01",
+    "NOTIF-07",
+    "PUB-03",
+]
