@@ -403,7 +403,7 @@
 
 .vk-notif-row__avatars { display: flex; align-items: center; block-size: 100%; }
 .vk-notif-row__person--group .vk-ui-avatar + .vk-ui-avatar { margin-inline-start: calc(-1 * var(--vk-space-4)); }
-.vk-notif-row__person--group .vk-ui-avatar__initials { font-size: 0; }
+.vk-notif-row__person--group .vk-ui-avatar__initials { visibility: hidden; }
 .vk-notif-row--unread .vk-ui-avatar { background-color: var(--vk-surface); color: var(--vk-on-surface); }
 
 .vk-notif-row__person .vk-ui-shape-mark {

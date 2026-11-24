@@ -79,9 +79,9 @@ pub const REGISTERED: [&str; 54] = [
     "screen.me",
     "composition.feedback",
     "composition.endorsement",
-    "composition.notifications",
     "composition.tag-selector",
     "composition.interaction",
+    "composition.notifications",
 ];
 
 /// Custom properties the inspector reads back from the rendered specimen scope.

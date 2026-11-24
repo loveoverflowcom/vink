@@ -21,10 +21,9 @@ pub mod identity_vectors;
 pub mod layout;
 pub mod media;
 pub mod navigation;
-mod notification;
-mod notification;
 #[rustfmt::skip]
 pub mod navigation_vectors;
+mod notification;
 pub mod root;
 pub mod state;
 pub mod support;

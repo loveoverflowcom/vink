@@ -165,3 +165,69 @@ pub fn ShapeMark(
         </span>
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn no_badge_state_shows_the_digit_zero() {
+        for state in [
+            BadgeState::Hidden,
+            BadgeState::Count(0),
+            BadgeState::Stale(0),
+            BadgeState::Unknown,
+        ] {
+            assert_eq!(state.digits(), None, "{state:?}");
+        }
+        assert_eq!(BadgeState::Count(0).id(), "hidden");
+        assert_eq!(BadgeState::Stale(0).id(), "stale");
+        assert_eq!(BadgeState::Unknown.id(), "unknown");
+    }
+
+    #[test]
+    fn counts_cap_at_ninety_nine_plus() {
+        assert_eq!(BadgeState::Count(7).digits().as_deref(), Some("7"));
+        assert_eq!(BadgeState::Count(99).digits().as_deref(), Some("99"));
+        assert_eq!(BadgeState::Count(100).digits().as_deref(), Some("99+"));
+        assert_eq!(BadgeState::Stale(250).digits().as_deref(), Some("99+"));
+        assert_eq!(BadgeState::LowerBound.digits().as_deref(), Some("99+"));
+        assert_eq!(BadgeState::StaleLowerBound.digits().as_deref(), Some("99+"));
+    }
+
+    #[test]
+    fn trigger_name_follows_the_layout_spec() {
+        let name = |state: BadgeState| state.trigger_name("Thông báo");
+        assert_eq!(name(BadgeState::Hidden), "Thông báo");
+        assert_eq!(name(BadgeState::Count(0)), "Thông báo");
+        assert_eq!(name(BadgeState::Count(3)), "Thông báo, 3 mục mới");
+        assert_eq!(name(BadgeState::Count(120)), "Thông báo, hơn 99 mục mới");
+        assert_eq!(name(BadgeState::LowerBound), "Thông báo, hơn 99 mục mới");
+        assert_eq!(
+            name(BadgeState::Stale(3)),
+            "Thông báo, 3 mục mới, có thể chưa cập nhật"
+        );
+        assert_eq!(
+            name(BadgeState::Stale(0)),
+            "Thông báo, có thể chưa cập nhật"
+        );
+        assert_eq!(
+            name(BadgeState::StaleLowerBound),
+            "Thông báo, hơn 99 mục mới, có thể chưa cập nhật"
+        );
+        assert_eq!(
+            name(BadgeState::Unknown),
+            "Thông báo, chưa kiểm tra được mục mới"
+        );
+    }
+
+    #[test]
+    fn hidden_badge_renders_without_digits() {
+        let html = Owner::new().with(|| {
+            view! { <NotificationBadge state=Signal::stored(BadgeState::Count(0)) /> }.to_html()
+        });
+        assert!(html.contains("data-state=\"hidden\""), "{html}");
+        assert!(html.contains(" hidden"), "{html}");
+        assert!(!html.contains(">0<"), "{html}");
+    }
+}
