@@ -303,7 +303,11 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
   try {
     await page.reload();
     await page.waitFor(`${note('endorse-work')}.includes('Cần đăng nhập để Thấm.') && ${note(`endorse-comment-${reply}`)}.includes('Cần đăng nhập để Ưng.')`, 'signed-out reasons');
-    check(await page.eval(`${count('endorse-work')}.startsWith('1') && ${button('endorse-work')}.dataset.pressed==='unknown' && !document.querySelector('#work-endorsement a, #feedback-region a[href*="dang-nhap"]')`), 'public counts stay; no own state and no fake login');
+    check(await page.eval(`${count('endorse-work')}.startsWith('1')
+      && ${button('endorse-work')}.dataset.pressed === 'unknown'
+      && !!document.querySelector('#work-endorsement a[href="/tac-pham/${SAMPLE_WORK}/tham/${SAMPLE_REVISION}"]')
+      && !document.querySelector('#work-endorsement a[href="/toi"], #work-endorsement a[href*="dang-nhap"], #feedback-region a[href*="dang-nhap"]')`),
+    'public count and Thấm list stay visible, without own state or a fake login');
     await page.capture('lve-signed-out-reason', { scenario: 'LVE-UC-01', boundary: 'real-local-postgresql-own-read-answered-401-by-interception' });
   } finally {
     await page.send('Fetch.disable');
