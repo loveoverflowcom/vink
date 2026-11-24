@@ -146,7 +146,8 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
   check(legacy.status === 308 && legacy.headers.get('location') === canonical
     && legacy.headers.get('cache-control')?.includes('no-store'), 'old private URL redirects to the canonical row');
   const tab = await openPage();
-  await tab.goto(base + '/toi/dia-chi');
+  // goto waits for the exact source URL. Here the destination must change.
+  await tab.send('Page.navigate', { url: base + '/toi/dia-chi' });
   await tab.waitFor(`location.pathname + location.hash === ${JSON.stringify(canonical)}
     && document.activeElement?.id === 'dia-chi-tac-gia' && ${enabled(edit)}`, 'legacy link focuses the owner row');
   await tab.click(edit);
@@ -197,9 +198,10 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
   const context = await page.cdp.send('Target.createBrowserContext', { disposeOnDetach: false });
   const guest = await openPage(context.browserContextId);
   await openAccount(guest, base, 'anonymous');
-  await guest.goto(base + '/toi/dia-chi');
+  await guest.send('Page.navigate', { url: base + '/toi/dia-chi' });
   await guest.waitFor(`location.pathname + location.hash === ${JSON.stringify(canonical)}
-    && !${has(edit)} && !${has(field)}`, 'guest redirect exposes no own Handle controls');
+    && ${has('.vk-profile-edit a[href="/toi"]')}?.textContent.includes('Mở Tài khoản') && !${has(edit)} && !${has(field)}`,
+    'guest redirect exposes no own Handle controls');
   async function visit(alias, target) {
     await guest.send('Page.navigate', { url: base + '/@' + alias + '?next=elsewhere#doc' });
     await guest.waitFor(
