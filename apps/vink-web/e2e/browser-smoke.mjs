@@ -641,9 +641,9 @@ class Page {
     throw new Error(`timed out waiting for ${what}`);
   }
 
-  async goto(url) {
+  async goto(url, expectedUrl = url) {
     await this.send('Page.navigate', { url });
-    await this.waitFor(`location.href === ${JSON.stringify(url)} && document.readyState === 'complete'`, `load ${url}`);
+    await this.waitFor(`location.href === ${JSON.stringify(expectedUrl)} && document.readyState === 'complete'`, `load ${expectedUrl} from ${url}`);
   }
 
   async reload() {
