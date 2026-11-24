@@ -24,6 +24,7 @@ use crate::editor::{
     OutlineItem, OutlineStatus, TOOLBAR_ID,
 };
 use crate::navigation::NavigationGuard;
+use crate::pages::desk_review::{self, DeskReview, ReviewTarget, ReviewTrigger};
 use crate::pages::work_info::TagLoad;
 use crate::tag_state::{TagStatus, TagTicket};
 use crate::ui::{
@@ -38,6 +39,7 @@ const DESK_SIGN_IN: &str = "/toi?next=/ban-viet";
 
 #[component]
 pub fn DeskIndex() -> impl IntoView {
+    super::ResponseStatus::capture().set_no_store();
     let session = crate::account::Session::current();
     view! {
         <Title text="Bàn viết — Vink" />
@@ -79,12 +81,20 @@ fn DeskHeading(
 fn DeskSession(session: crate::account::Session) -> impl IntoView {
     use crate::session::Standing;
     let sign_in_open = crate::api::sign_in_open();
+    let target = desk_review::use_review_target();
+    let sign_in = move || match target.get() {
+        Some(Ok(target)) => format!(
+            "/toi?next={}",
+            percent_encoding::utf8_percent_encode(&target.href(), percent_encoding::NON_ALPHANUMERIC),
+        ),
+        _ => DESK_SIGN_IN.to_owned(),
+    };
     move || {
         match session.standing.get() {
         Standing::Unknown => view! { <DeskLoading /> }.into_any(),
         Standing::Anonymous if sign_in_open => view! {
             <DeskAccess title="Đăng nhập để mở Bàn viết" message="Viết và mở bản thảo riêng của bạn.">
-                <a id="desk-sign-in" class=ButtonVariant::Filled.classes() href=DESK_SIGN_IN>"Đăng nhập"</a>
+                <a id="desk-sign-in" class=ButtonVariant::Filled.classes() href=sign_in>"Đăng nhập"</a>
                 <vink_ui::Link href="/" variant=vink_ui::LinkVariant::Standalone>"Khám phá tác phẩm"</vink_ui::Link>
             </DeskAccess>
         }.into_any(),
@@ -95,7 +105,7 @@ fn DeskSession(session: crate::account::Session) -> impl IntoView {
         }.into_any(),
         Standing::NeedsPrincipal => view! {
             <DeskAccess title="Đặt bút danh để bắt đầu" message="Hoàn tất bút danh trong Tài khoản để viết và mở bản thảo của bạn.">
-                <a id="desk-pen-name" class=ButtonVariant::Filled.classes() href=DESK_SIGN_IN>"Đặt bút danh"</a>
+                <a id="desk-pen-name" class=ButtonVariant::Filled.classes() href=sign_in>"Đặt bút danh"</a>
             </DeskAccess>
         }.into_any(),
         Standing::Suspended => view! {
@@ -150,6 +160,7 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
     #[cfg(feature = "hydrate")]
     use crate::draft_list::paging::PAGE_SIZE;
     use crate::read_lifecycle::{Intent, ReadOwner};
+    let open_review = desk_review::use_open_review();
     let query = RwSignal::new(String::new());
     let applied = RwSignal::new(String::new());
     let sort = RwSignal::new(DraftSort::Recent);
@@ -518,10 +529,11 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                     <CreateNotice creation loading refresh />
                     // The tools/input retain one owner through loading, empty, query and error.
                     <DraftListView pages show_tools sort loading appending ready page_error load_error restarted
-                        first_use no_results creation can_create create create_format clear more refresh refresh_disabled />
+                        first_use no_results creation can_create create create_format clear more refresh refresh_disabled open_review />
                 </div>
                 <p class="vk-desk-privacy vk-muted">"Số Thấm và Nhận xét thuộc bản đang công khai."</p>
             </section>
+            <DeskReview session />
         </Show>
     }.into_any()
 }
@@ -684,6 +696,7 @@ fn DraftListView(
     more: Callback<()>,
     refresh: Callback<()>,
     refresh_disabled: Signal<bool>,
+    open_review: Callback<ReviewTarget>,
 ) -> AnyView {
     let invalid_page = move || page_error.with(|e| matches!(e, Some(ApiError::Invalid { .. })));
     let stale = move || {
@@ -766,7 +779,9 @@ fn DraftListView(
                             .map(adapters::author_work_summary).unwrap_or_else(|| fallback.clone())));
                         view! {
                             <li id=format!("draft-row-{}", draft.work_id) class="vk-draft-row [min-inline-size:0]" data-testid="draft-row">
-                                <AuthorWorkRow work />
+                                <AuthorWorkRow work review_action=move || view! {
+                                    <ReviewTrigger work_id=draft.work_id.clone() title=Signal::derive(move || work.with(|w| w.title.clone())) open=open_review />
+                                } />
                             </li>
                         }
                     } />

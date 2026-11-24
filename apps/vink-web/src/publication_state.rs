@@ -1138,7 +1138,6 @@ pub struct RevisionLine {
     pub decision: Decision,
     pub reason: Option<String>,
     pub created_at: String,
-    pub can_appeal: bool,
 }
 
 impl RevisionLine {
@@ -1149,7 +1148,6 @@ impl RevisionLine {
             decision: revision.moderation,
             reason: revision.decision_reason.clone(),
             created_at: revision.created_at.clone(),
-            can_appeal: revision.can_appeal,
         }
     }
 }

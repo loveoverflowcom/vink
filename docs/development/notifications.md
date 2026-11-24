@@ -40,7 +40,7 @@ Bảng dưới tách rõ phần nền đã có trên `develop@1a0c4e31` và ph�
 | **Publication & Moderation** | `request_public`, `set_private` ([publication.rs](../../services/vink-app/src/persistence/publication.rs)), `finish_job` ([evaluation.rs](../../services/vink-app/src/persistence/evaluation.rs)), `conclude_case` ([moderation.rs](../../services/vink-app/src/persistence/moderation.rs)), `appeals::conclude` ([appeals.rs](../../services/vink-app/src/persistence/appeals.rs)); [lịch sử quyết định theo revision](../../services/vink-app/src/persistence/moderation_write.rs) và điều kiện thông báo đúng đợt công khai trong `Publication::should_notify_author` ([domain/publication.rs](../../services/vink-app/src/domain/publication.rs)); trang `review_withdrawn` (`O-17@r2`) và `hidden` (`PUB-07`). | Producer `work.moderation.decided` (`P-11a/b`), đường đọc chi tiết quyết định riêng `P-12A` qua Gateway (`#346`, `#348`); runtime `PUB-04` tác giả xóa bài & `PUB-05 C` admin gỡ toàn bài (vẫn là phụ thuộc vòng đời bài). |
 | **Endorsement (Thấm)** | `set_endorsement`, `endorsement_summaries` (tổng số), `own_endorsements` trên `work_endorsements` & `comment_endorsements` ([persistence/endorsement.rs](../../services/vink-app/src/persistence/endorsement.rs), [HTTP v1](../../services/vink-app/contracts/http/v1/README.md#literary-endorsement-lve-73)); pure `decide_endorsement` trả `EndorsementDelta` ([domain/endorsement.rs](../../services/vink-app/src/domain/endorsement.rs)). | Producer `work.endorsement.tham.changed` (chỉ Thấm, bỏ `None`, bỏ Hữu ích — `#346`); endpoint danh sách người Thấm công khai có phân trang cho khách `P-08` (`#348`). |
 | **Profile, Follow & Identity** | `identity::Resolution` ([identity/mod.rs](../../services/vink-app/src/identity/mod.rs)), [view public_author_attribution](../../services/vink-app/migrations/20261125010000_public_author_attribution.sql) và [phép chiếu AuthorAttribution](../../services/vink-app/src/application/profile.rs). [PR #331](https://github.com/loveoverflowcom/vink/pull/331) đã triển khai Follow của #294. Thông báo Follow vẫn `DEFERRED`. `services/postgres/provision.sh` (chỉ có DB `vink` & `vink_identity`) và `infra/production/backup.sh`. | DB PostgreSQL riêng + role migrate/runtime + binary `vink-notifications` + backup manifest mở rộng (`#347`, phần đầu đã có, xem §7); giao thức nội bộ xác thực peer/service (`T-07`, §7.1); `SOC-DEP-01` xóa tài khoản hai DB & `D-05` mở khóa đăng nhập production. |
-| **Web / Design / CMP** | Shell thích ứng, Reader `/tac-pham/:id`, Explore `/`, `/toi` (`Auth Web`). | Toàn bộ `LayoutSpec`, chuông/badge, popover/trang inbox, màn chi tiết quyết định riêng, UI danh sách Thấm công khai, bộ điều phối polling 30–60s (`LAYOUT_SPEC: NOT_CREATED`; CMP/native `DEFERRED`). |
+| **Web / Design / CMP** | Shell thích ứng, Reader `/tac-pham/:id`, Explore `/`, `/toi` (`Auth Web`). | Toàn bộ `LayoutSpec`, chuông/badge, popover/trang inbox, chi tiết riêng cho quyết định bình luận, UI danh sách Thấm công khai, bộ điều phối polling 30–60s (`LAYOUT_SPEC: NOT_CREATED`; CMP/native `DEFERRED`). |
 
 ---
 
@@ -126,6 +126,15 @@ Khi hợp đồng ở `#345` được đưa vào nhánh, ba nhánh backend bắt
 | **[#348 · Thông báo 4/4](https://github.com/loveoverflowcom/vink/issues/348)**<br>`feat/348-notification-gateway-reads` | App Gateway `/api/v1/*`: badge freshness, trang inbox, `Seen`/`Read`/`MarkAllRead`, màn chi tiết quyết định riêng (`P-12A`), **endpoint danh sách Thấm công khai có phân trang (`P-08 R3`)**, batch authz/hydration & fixtures ngoài Web. | **`T-06 / CHOICE-20`**<br>(phối hợp `#347` về badge freshness và dùng `T-07` của service) | **Có thể làm ngay sau `#345`:** hợp đồng & endpoint danh sách Thấm công khai (`work_endorsements` + `public_author_attribution`), endpoint chi tiết quyết định riêng (`P-12A`) và fixtures HTTP ngoài Web. Ghép inbox thật khi `#347` sẵn sàng; kiểm E2E từ nghiệp vụ thật cùng `#346` + `#347`. | `cargo xtask verify quick` + `cargo xtask verify postgres` (session, origin, standing fence, query count / `EXPLAIN (ANALYZE, BUFFERS)` có skew, HTTP client ngoài Leptos). |
 
 ---
+
+### Hợp đồng đích Web cho quyết định tác phẩm (#477)
+
+Khi #364 xử lý target `work_moderation_decision`, truyền `work_id`, `revision_id` và
+`decision_version` vào URL `/ban-viet?review={work_id}&revision={revision_id}&decision={decision_version}`.
+[DeskReview](../../apps/vink-web/src/pages/desk_review.rs) mở đúng quyết định trong phạm vi chủ
+tác phẩm, kể cả khi một bản khác đang công khai hoặc mục không nằm trong trang danh sách đã tải.
+Giữ nguyên hợp đồng riêng của quyết định bình luận, API Gateway và Seen/Read. Inbox → Bàn viết
+`NOT_RUN`.
 
 ## 5. Bàn giao riêng cho giai đoạn Design & Web (`Epic AC-16` & `AC-17`)
 

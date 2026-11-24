@@ -271,7 +271,10 @@ fn AuthorWorkCount(name: &'static str, icon: IconName, count: Option<i64>) -> im
 }
 
 #[component]
-pub fn AuthorWorkRow(#[prop(into)] work: Signal<AuthorWorkSummary>) -> impl IntoView {
+pub fn AuthorWorkRow(
+    #[prop(into)] work: Signal<AuthorWorkSummary>,
+    #[prop(optional)] review_action: Option<Children>,
+) -> impl IntoView {
     let details = move || {
         view! {
             <div class=DRAFT_ROW_TEXT_CLASS>
@@ -316,6 +319,7 @@ pub fn AuthorWorkRow(#[prop(into)] work: Signal<AuthorWorkSummary>) -> impl Into
                     <Icon name=IconName::Visibility />"Đọc"
                 </Link>
             </Show>
+            {review_action.map(|action| action())}
         </div>
     }
 }

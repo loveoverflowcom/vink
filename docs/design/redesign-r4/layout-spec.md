@@ -103,6 +103,7 @@ kết quả. Mỗi sự thật có một nhãn ngắn kèm icon (tối đa ba), 
 lấy state. Dùng 0 cho số 0, dấu “—” có tên chỉ số khi chưa tải được. Liên kết Tonal “Đọc” là
 sibling của link editor, mở đúng bản công khai. DQ-05 (giờ) và DQ-10 (nhãn “Chờ duyệt”) còn
 `OPEN`. Giữ giờ theo #213 và tone trung tính đang có cho phần nhãn chờ.
+[Xem delta R4.4](desk-moderation.md) cho chi tiết kiểm duyệt mở từ thẻ.
 
 ## 6. Interaction và kiểm lại theo owner
 

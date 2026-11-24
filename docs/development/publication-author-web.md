@@ -1,11 +1,16 @@
 # Vùng công khai của Bàn viết — PUB-AUTHOR-WEB-01
 
 **Phạm vi:** consumer Web của API publication tác giả ([publication-runtime](publication-runtime.md),
-#158) và của trang trạng thái kiểm duyệt ([moderation-runtime](moderation-runtime.md), #159/#170):
+#158) và của chi tiết kiểm duyệt trong Bàn viết ([moderation-runtime](moderation-runtime.md), #159/#170):
 chọn “Chỉ mình tôi”/“Công khai”, lưu → chụp snapshot → gửi duyệt đúng bản, theo dõi kết quả, chuyển
 riêng tư, đối soát khi mất phản hồi, hai tab và đổi phiên. Không có store, authority, job queue,
 route hay migration mới. Layout: [LayoutSpec](../design/publication-author.md). Liên quan (không
 đóng): [#174](https://github.com/loveoverflowcom/vink/issues/174).
+
+[#477](https://github.com/loveoverflowcom/vink/issues/477) đổi đích liên kết của PublicationPanel
+sang [chi tiết kiểm duyệt trong Bàn viết](../design/redesign-r4/desk-moderation.md).
+Liên kết đi qua cùng leave guard của Editor. Bảng bằng chứng bên dưới ghi đích trước #477 theo
+đúng SHA đã chạy.
 
 ## Bốn chiều trạng thái
 
@@ -37,7 +42,7 @@ lại, và vùng nói rõ điều đó.
 
 | Lớp | Owner | Ghi chú |
 | --- | --- | --- |
-| DTO và phân loại lỗi | [contract/publication.rs](../../apps/vink-web/src/contract/publication.rs), `ApiError` trong [contract.rs](../../apps/vink-web/src/contract.rs) | Một DTO `AuthorPublicationState` duy nhất (trang `…/kiem-duyet` dùng lại; DTO cũ chỉ đọc một phần đã bỏ). `audience`/`lifecycle`/`moderation` có `Unknown`: giá trị lạ khóa mọi lệnh và hiện câu an toàn, không suy ra “riêng tư/đã duyệt/rỗng” |
+| DTO và phân loại lỗi | [contract/publication.rs](../../apps/vink-web/src/contract/publication.rs), `ApiError` trong [contract.rs](../../apps/vink-web/src/contract.rs) | Một DTO `AuthorPublicationState` duy nhất (chi tiết Bàn viết dùng lại; DTO cũ chỉ đọc một phần đã bỏ). `audience`/`lifecycle`/`moderation` có `Unknown`: giá trị lạ khóa mọi lệnh và hiện câu an toàn, không suy ra “riêng tư/đã duyệt/rỗng” |
 | Transport | [api.rs](../../apps/vink-web/src/api.rs) | `publication_state_path`, `snapshots_path`, `request_public_path`, `set_private_path` (work id là một segment mã hóa); `bounded()` nay phủ cả ba lệnh |
 | State owner (thuần) | [publication_state.rs](../../apps/vink-web/src/publication_state.rs) | Reducer `Controller`: pha client, ticket, key, fence; trả `Step`, không I/O |
 | Adapter + view | [pages/publication.rs](../../apps/vink-web/src/pages/publication.rs) | `PublicationPanel`, `Runner` thực thi `Step`; câu chữ (`notice_text`, `summary_lines`, `decision_label`) |

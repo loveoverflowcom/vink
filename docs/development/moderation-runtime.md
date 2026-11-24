@@ -170,7 +170,8 @@ ràng buộc duy nhất `(work_id, revision_id, decision_version)`; lịch sử 
 | `/kiem-duyet` | Hàng ca trong phạm vi của người duyệt; admin thêm hàng phản đối và chế độ tự động. |
 | `/kiem-duyet/ca/{id}` | Snapshot đã gửi, trạng thái/version, nhận/trả/chuyển admin, ghi chú và kết luận có lý do. |
 | `/kiem-duyet/phan-doi/{id}` | Admin đọc snapshot, giữ nguyên hoặc đảo quyết định có lý do. |
-| `/ban-viet/{id}/kiem-duyet` | Tác giả xem trạng thái bản gửi/lý do, gửi phản đối và xem lịch sử. |
+| `/ban-viet?review={id}` | Tác giả mở chi tiết trong Bàn viết để xem trạng thái, lý do, lịch sử quyết định và phản đối. |
+| `/ban-viet/{id}/kiem-duyet` | URL tương thích chuyển đến chi tiết trong Bàn viết. |
 
 Đọc riêng tư bằng `LocalResource`, kết quả gắn session scope và route; phản hồi của tài khoản cũ
 không được hiển thị. Chỉ dựng nội dung và control riêng tư sau khi tab xác nhận scope tài khoản;
@@ -179,8 +180,13 @@ khi xác nhận phiên hoàn tất. Browser scenario giữ chậm response tài 
 cùng tài khoản giữ nguyên ô lý do, chữ và focus. Nút pending khóa gửi trùng, không đổi quyết định lạc quan. Lỗi mạng/CAS giữ
 lý do và tải lại trạng thái để đối chiếu. UI không cấp quyền: server vẫn kiểm mọi lệnh.
 Chưa có UI cấp grant/nhóm, điều tra riêng, ca bình luận hoặc sửa policy. Chọn audience/gửi duyệt/chuyển
-riêng tư nằm ở [vùng công khai của Bàn viết](publication-author-web.md); trang
-`/ban-viet/{id}/kiem-duyet` dùng cùng một DTO trạng thái và cùng lời gọi tên quyết định với vùng đó.
+riêng tư nằm ở [vùng công khai của Bàn viết](publication-author-web.md). Chi tiết
+[#477](https://github.com/loveoverflowcom/vink/issues/477) dùng chung DTO trạng thái và nhãn quyết định
+với vùng đó. Khi mở chi tiết mới đọc `GET …/publication/state`, `GET …/publication/decisions`
+và `GET …/appeals`. Đường đọc lịch sử chỉ trả quyết định đã kết luận, theo đúng revision/version
+và phép chiếu lý do dành cho tác giả của P-12A. API dùng `no-store` và trả `404` ngoài phạm vi sở hữu.
+URL thông báo tác phẩm thêm `revision` và `decision` vào URL chi tiết. Xem
+[LayoutSpec R4.4](../design/redesign-r4/desk-moderation.md).
 
 ## 8. Rollout
 

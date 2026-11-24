@@ -24,7 +24,7 @@ trên màn hình hẹp, nên chưa dùng trong lát cắt này.
 | `/kiem-duyet` | Tiêu đề → ca tác phẩm → phản đối (admin) → chế độ tự động (admin). |
 | `/kiem-duyet/ca/{id}` | Quay về → tiêu đề/trạng thái/version → snapshot → nhận/trả/chuyển → lý do/kết luận → ghi chú/lịch sử. |
 | `/kiem-duyet/phan-doi/{id}` | Quay về → tiêu đề/snapshot → lý do → giữ nguyên/đảo quyết định. |
-| `/ban-viet/{id}/kiem-duyet` | Về bản viết → các revision/trạng thái/lý do → gửi phản đối khi được phép → lịch sử. |
+| Bàn viết | Trạng thái bản gửi, lý do, phản đối và lịch sử nằm trong [chi tiết R4.4](redesign-r4/desk-moderation.md). URL `/ban-viet/{id}/kiem-duyet` chuyển đến chi tiết này. |
 | Reader thay thế | Về Khám phá → thông báo (tên tác giả chỉ ở review-withdrawn) → thảo luận. |
 
 ## Kích thước, token và tương tác

@@ -52,6 +52,69 @@ pub struct WorkDecisionDetail {
     pub decided_at: OffsetDateTime,
 }
 
+/// The revision/version identity of one item in the author's decision history.
+pub struct VersionedWorkDecision {
+    pub revision_id: Uuid,
+    pub decision_version: i64,
+    pub detail: WorkDecisionDetail,
+}
+
+fn work_decision_query(
+    viewer: PrincipalId,
+    work: WorkId,
+    revision: Option<RevisionId>,
+    decision_version: Option<i64>,
+) -> sqlx::query::Query<'static, sqlx::Postgres, sqlx::postgres::PgArguments> {
+    sqlx::query(
+            "SELECT h.revision_id, h.decision_version, h.moderation, h.provenance_kind, h.policy_reason_code, h.reason, h.created_at,
+                    r.title,
+                    (m.decision_version = h.decision_version) AS is_current,
+                    (m.decision_version = h.decision_version AND m.moderation = 'rejected'
+                     AND m.provenance_kind IN ('ai_rejected', 'moderator')
+                     AND wp.audience = 'public' AND wp.lifecycle = 'active') AS can_appeal
+             FROM work_revision_decision_history h
+             JOIN works w ON w.id = h.work_id AND w.owner_id = $4
+             JOIN revisions r ON r.work_id = h.work_id AND r.id = h.revision_id
+             JOIN work_revision_moderation m
+               ON m.work_id = h.work_id AND m.revision_id = h.revision_id
+             LEFT JOIN work_publications wp ON wp.work_id = h.work_id
+             WHERE h.work_id = $1 AND ($2::uuid IS NULL OR h.revision_id = $2)
+               AND ($3::bigint IS NULL OR h.decision_version = $3)
+               AND h.moderation IN ('approved', 'rejected')
+             ORDER BY h.revision_id, h.decision_version DESC",
+    )
+    .bind(work.as_uuid())
+    .bind(revision.map(|id| id.as_uuid()))
+    .bind(decision_version)
+    .bind(viewer.as_uuid())
+}
+
+fn work_decision_from_row(row: &sqlx::postgres::PgRow) -> Result<WorkDecisionDetail, StoreError> {
+    let moderation: String = row.try_get("moderation").map_err(classify)?;
+    let provenance: String = row.try_get("provenance_kind").map_err(classify)?;
+    let rejected = moderation == "rejected";
+    // Only what the author already sees on their publication state (MOD-04): the policy
+    // code of an AI rejection, or the human reviewer's stated reason. Never who decided.
+    let (reason_code, reason_message) = match provenance.as_str() {
+        "ai_rejected" => (row.try_get("policy_reason_code").map_err(classify)?, None),
+        "admin" | "moderator" => (None, row.try_get("reason").map_err(classify)?),
+        _ => (None, None),
+    };
+    Ok(WorkDecisionDetail {
+        title: row.try_get("title").map_err(classify)?,
+        outcome: if rejected { "rejected" } else { "approved" },
+        action_required: rejected,
+        reason_code,
+        reason_message,
+        can_appeal: row
+            .try_get::<Option<bool>, _>("can_appeal")
+            .map_err(classify)?
+            .unwrap_or(false),
+        is_current: row.try_get("is_current").map_err(classify)?,
+        decided_at: row.try_get("created_at").map_err(classify)?,
+    })
+}
+
 /// The private detail of an adverse comment decision for its writer (P-12A).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommentDecisionDetail {
@@ -243,9 +306,7 @@ impl PgStore {
         tx.commit().await.map_err(classify)
     }
 
-    /// The owner's private detail of one work decision version; `None` for anyone else, an
-    /// unknown version, or a version that concluded nothing for the author (pending, needs
-    /// admin).
+    /// The owner's private detail of one concluded decision version (notification P-12A).
     pub async fn work_decision_detail(
         &self,
         viewer: PrincipalId,
@@ -254,54 +315,48 @@ impl PgStore {
         decision_version: i64,
     ) -> Result<Option<WorkDecisionDetail>, StoreError> {
         let mut tx = read_snapshot(self.pool()).await?;
-        let row = sqlx::query(
-            "SELECT h.moderation, h.provenance_kind, h.policy_reason_code, h.reason, h.created_at,
-                    r.title,
-                    (m.decision_version = h.decision_version) AS is_current,
-                    (m.decision_version = h.decision_version AND m.moderation = 'rejected'
-                     AND m.provenance_kind IN ('ai_rejected', 'moderator')
-                     AND wp.audience = 'public' AND wp.lifecycle = 'active') AS can_appeal
-             FROM work_revision_decision_history h
-             JOIN works w ON w.id = h.work_id AND w.owner_id = $4
-             JOIN revisions r ON r.work_id = h.work_id AND r.id = h.revision_id
-             JOIN work_revision_moderation m
-               ON m.work_id = h.work_id AND m.revision_id = h.revision_id
-             LEFT JOIN work_publications wp ON wp.work_id = h.work_id
-             WHERE h.work_id = $1 AND h.revision_id = $2 AND h.decision_version = $3
-               AND h.moderation IN ('approved', 'rejected')",
+        let row = work_decision_query(viewer, work, Some(revision), Some(decision_version))
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(classify)?;
+        tx.commit().await.map_err(classify)?;
+        row.as_ref().map(work_decision_from_row).transpose()
+    }
+
+    /// The same author-safe projection for all concluded versions of an owned work.
+    pub async fn author_work_decisions(
+        &self,
+        viewer: PrincipalId,
+        work: WorkId,
+    ) -> Result<Option<Vec<VersionedWorkDecision>>, StoreError> {
+        let mut tx = read_snapshot(self.pool()).await?;
+        let owned: bool = sqlx::query_scalar(
+            "SELECT EXISTS (SELECT 1 FROM works WHERE id = $1 AND owner_id = $2)",
         )
         .bind(work.as_uuid())
-        .bind(revision.as_uuid())
-        .bind(decision_version)
         .bind(viewer.as_uuid())
-        .fetch_optional(&mut *tx)
+        .fetch_one(&mut *tx)
         .await
         .map_err(classify)?;
+        if !owned {
+            return Ok(None);
+        }
+        let rows = work_decision_query(viewer, work, None, None)
+            .fetch_all(&mut *tx)
+            .await
+            .map_err(classify)?;
         tx.commit().await.map_err(classify)?;
-        let Some(row) = row else { return Ok(None) };
-        let moderation: String = row.try_get("moderation").map_err(classify)?;
-        let provenance: String = row.try_get("provenance_kind").map_err(classify)?;
-        let rejected = moderation == "rejected";
-        // Only what the author already sees on their publication state (MOD-04): the policy
-        // code of an AI rejection, or the human reviewer's stated reason. Never who decided.
-        let (reason_code, reason_message) = match provenance.as_str() {
-            "ai_rejected" => (row.try_get("policy_reason_code").map_err(classify)?, None),
-            "admin" | "moderator" => (None, row.try_get("reason").map_err(classify)?),
-            _ => (None, None),
-        };
-        Ok(Some(WorkDecisionDetail {
-            title: row.try_get("title").map_err(classify)?,
-            outcome: if rejected { "rejected" } else { "approved" },
-            action_required: rejected,
-            reason_code,
-            reason_message,
-            can_appeal: row
-                .try_get::<Option<bool>, _>("can_appeal")
-                .map_err(classify)?
-                .unwrap_or(false),
-            is_current: row.try_get("is_current").map_err(classify)?,
-            decided_at: row.try_get("created_at").map_err(classify)?,
-        }))
+        let history = rows
+            .iter()
+            .map(|row| {
+                Ok(VersionedWorkDecision {
+                    revision_id: row.try_get("revision_id").map_err(classify)?,
+                    decision_version: row.try_get("decision_version").map_err(classify)?,
+                    detail: work_decision_from_row(row)?,
+                })
+            })
+            .collect::<Result<_, StoreError>>()?;
+        Ok(Some(history))
     }
 
     /// The writer's private detail of one adverse decision on their comment; `None` for anyone

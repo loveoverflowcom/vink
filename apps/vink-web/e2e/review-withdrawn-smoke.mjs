@@ -158,11 +158,11 @@ export async function reviewWithdrawnPage(page, { args, check, captureMatrix }) 
   const refused = await post(author, `/api/v1/works/${work}/discussion/comments`, { target_id: null, body: 'Bình luận mới.', command_key: crypto.randomUUID() });
   check(refused.status === 404, 'a new comment on the removed revision is refused at the server');
 
-  // The author files an appeal from their own status page; admin resolves the stored case.
+  // The old link opens the same Desk dialog. The admin resolves the stored case.
   await page.goto(`${author.base}/ban-viet/${work}/kiem-duyet`);
-  await page.waitFor(`document.querySelector('[id^="file-appeal"]')`, 'author appeal action');
+  await page.waitFor(`location.pathname === '/ban-viet' && location.search === '?review=${work}' && document.querySelector('#desk-review').open && document.querySelector('[id^="file-appeal"]')`, 'legacy URL redirects to the author appeal action in Desk');
   await page.click('[id^="file-appeal"]');
-  await page.waitFor(`document.querySelector('#author-reviews')?.textContent.includes('Đã ghi nhận, chờ quản trị viên')`, 'appeal recorded');
+  await page.waitFor(`document.querySelector('#desk-review-content')?.textContent.includes('Đã ghi nhận, chờ quản trị viên')`, 'appeal recorded');
   check(await page.eval(`document.body.textContent.includes('Chưa có thông báo nào được gửi')`), 'author is told that no notification was sent');
   const appealQueue = await api(admin, '/api/v1/moderation/appeals');
   const appeal = appealQueue.body.find(a => a.work_id === work);
@@ -176,6 +176,27 @@ export async function reviewWithdrawnPage(page, { args, check, captureMatrix }) 
   await page.click('#appeal-reverse');
   await page.waitFor(`document.querySelector('#moderation-appeal')?.textContent.includes('Đã ghi nhận.')`, 'appeal conclusion acknowledged');
   check((await api(admin, `/api/v1/works/${work}/publication`)).status === 200, 'appeal reversal republishes the exact current intent');
+
+  // A notification for the earlier rejection retains its identity after the reversal.
+  const historicalPath = `/ban-viet?review=${work}&revision=${revision}&decision=${appeal.decision_version}`;
+  const deskHtml = await fetch(`${author.base}${historicalPath}`);
+  check(deskHtml.headers.get('cache-control') === 'no-store' && /name="robots"[^>]+content="noindex"/.test(await deskHtml.clone().text()), 'private Desk SSR is no-store and noindex');
+  check(!(await deskHtml.text()).includes('Cần xem lại chính sách'), 'private reasons are absent from SSR');
+  const decisionsPath = `/api/v1/works/${work}/publication/decisions`;
+  const ownHistory = await api(author, decisionsPath);
+  const deniedHistory = await api(admin, decisionsPath);
+  check(ownHistory.status === 200 && ownHistory.cache === 'no-store' &&
+    ownHistory.body.some(d => d.revision_id === revision && d.decision_version === appeal.decision_version && !d.is_current && d.outcome === 'rejected'),
+    'the author history retains the superseded rejection at its exact version');
+  check(deniedHistory.status === 404 && deniedHistory.cache === 'no-store', 'the staff account cannot read the private author history');
+  await page.goto(`${author.base}${historicalPath}`);
+  await page.waitFor(`document.querySelector('#desk-review-content')?.innerText.includes('Quyết định trước đây')`, 'an exact historical decision opens without looking up a Desk row');
+  check(await page.eval(`document.querySelector('#desk-review-content').innerText.includes('Cần xem lại chính sách')
+    && document.querySelector('#desk-review-content').innerText.includes('Quản trị viên đảo quyết định')
+    && !document.querySelector('[id^="file-appeal"]')`), 'history renders the old reason and resolved appeal, without a new action');
+  await page.goto(`${admin.base}${historicalPath}`);
+  await page.waitFor(`document.querySelector('#desk-review-content')?.innerText.includes('Không mở được tác phẩm')`, 'the same link cannot display another author’s decision');
+  check(await page.eval(`!document.querySelector('#desk-review-content').textContent.includes('Cần xem lại chính sách')`), 'the denied detail shows no reason');
 
   // PUB-07: hiding a public work serves only the notice and eligible discussion.
   const beforeHide = await api(author, `/api/v1/works/${work}/publication/state`);

@@ -162,6 +162,10 @@ pub fn routes(state: AppState) -> Router<AppState> {
             get(get_author_publication_state),
         )
         .route(
+            "/works/{work_id}/publication/decisions",
+            get(get_author_work_decisions),
+        )
+        .route(
             "/works/{work_id}/publication/me",
             get(get_author_publication_state),
         )
@@ -559,6 +563,49 @@ async fn set_private(
         generation: outcome.generation.get(),
         replayed: outcome.replayed,
     }))
+}
+
+#[derive(serde::Serialize)]
+struct AuthorWorkDecisionView {
+    revision_id: uuid::Uuid,
+    decision_version: i64,
+    outcome: &'static str,
+    is_current: bool,
+    can_appeal: bool,
+    reason: Option<String>,
+    #[serde(with = "time::serde::rfc3339")]
+    decided_at: OffsetDateTime,
+}
+
+async fn get_author_work_decisions(
+    State(state): State<AppState>,
+    Actor(actor): Actor,
+    Path(raw): Path<String>,
+) -> Result<Json<Vec<AuthorWorkDecisionView>>, ApiError> {
+    let actor = actor.ok_or(ApiError::Unauthenticated)?;
+    let decisions = state
+        .vink
+        .store()
+        .author_work_decisions(actor, work_id(&raw)?)
+        .await?
+        .ok_or(ApiError::NotFound)?;
+    Ok(Json(
+        decisions
+            .into_iter()
+            .map(|decision| AuthorWorkDecisionView {
+                revision_id: decision.revision_id,
+                decision_version: decision.decision_version,
+                outcome: decision.detail.outcome,
+                is_current: decision.detail.is_current,
+                can_appeal: decision.detail.can_appeal,
+                reason: decision
+                    .detail
+                    .reason_message
+                    .or(decision.detail.reason_code),
+                decided_at: decision.detail.decided_at,
+            })
+            .collect(),
+    ))
 }
 
 async fn get_author_publication_state(

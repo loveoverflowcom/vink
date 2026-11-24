@@ -5,7 +5,7 @@ Lựa chọn read-model được đưa vào [VDR-AUTHOR-WORK-FEEDBACK@r1](../../
 Một lát dọc `persistence-api` + `web`, sau #213 tại base
 `b28e4bdd42eb84c1f45a7ebff4b983cfbc9f9567`. Giữ nguyên API nháp cũ; không thêm tracking,
 xếp hạng, native, danh sách người Thấm, kế thừa vote hoặc policy tích lũy.
-[LayoutSpec](../design/desk-author-feedback.md) sở hữu bố cục.
+[LayoutSpec](../design/desk-author-feedback.md) sở hữu bố cục. [Delta R4.4](../design/redesign-r4/desk-moderation.md) bổ sung chi tiết kiểm duyệt mở theo nhu cầu từ mỗi thẻ.
 
 ## Quyết định và phạm vi
 
