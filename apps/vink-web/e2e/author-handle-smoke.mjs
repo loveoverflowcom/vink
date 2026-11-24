@@ -97,6 +97,11 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
     await page.eval(`document.querySelector('#profile-bio').value === ${JSON.stringify(bio)}`), 'cancel leaves both drafts and quota alone');
   await page.click(edit);
   await page.waitFor(has(dialog + '[open] ' + field), 'reopened setup');
+  await page.eval('history.back()');
+  await page.waitFor(`location.pathname === '/toi/chinh-ho-so' && !${has(dialog + '[open]')}
+    && document.activeElement === ${has(edit)}`, 'Back closes the dialog without leaving the form');
+  await page.click(edit);
+  await page.waitFor(has(dialog + '[open] ' + field), 'setup opens again after Back');
   await fill(page, field, initial);
   await page.click(submit);
   await page.waitFor(`${has(saved)} && !${has(dialog + '[open]')}`, 'suggestion accepted');

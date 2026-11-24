@@ -549,6 +549,17 @@ fn button_state(disabled: bool) -> ActionState {
 
 #[component]
 pub(super) fn HandleDialog(controller: Controller) -> impl IntoView {
+    let guard = expect_context::<crate::navigation::NavigationGuard>();
+    let registration = guard.set_overlay(move |reason| {
+        if reason != vink_ui::CloseReason::Back
+            || controller.opened.try_get_untracked() != Some(true)
+        {
+            return false;
+        }
+        controller.close();
+        true
+    });
+    on_cleanup(move || guard.clear_overlay(registration));
     let setup = move || {
         controller
             .editing

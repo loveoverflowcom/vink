@@ -10,7 +10,7 @@ Mốc UI mới chưa có ảnh app được duyệt.
 - `#dia-chi-tac-gia` cạnh bút danh. Giá trị đã đọc, số lượt, lối thiết lập hoặc đổi khi đủ quyền.
   Hết lượt hiển thị địa chỉ, trang tác giả và lịch sử liên kết. Nếu tải lỗi, Thử lại chỉ tác động hàng này.
 - Một `Dialog` M3 cho setup/đổi, có tên trường, địa chỉ dạng @, quyết định quota/liên kết cũ và
-  hành động xác nhận. Form dialog là anh em của form Chỉnh hồ sơ. Hủy/Escape trả focus về hành
+  hành động xác nhận. Form dialog là anh em của form Chỉnh hồ sơ. Hủy, Escape và Back trả focus về hành
   động hoặc hàng nếu hết lượt. IME chưa commit thì Enter không gửi.
 - Chọn CHOICE-01 A. Controller Handle riêng sử dụng `profile_scope` của form, không thay nháp Profile.
   Refresh Handle sau Profile ACK và khi nhận thông báo thay đổi từ tab khác. Receipt và lần đọc
