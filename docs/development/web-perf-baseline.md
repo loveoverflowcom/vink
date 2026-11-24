@@ -48,3 +48,10 @@ tiếp theo [local-resource-budget](local-resource-budget.md). Runtime cần `VI
 ## Kết quả release ngày 18/11/2026
 
 Năm AC đã được kiểm trên corpus ngắn và corpus 200.000 đoạn. Median click → article khi Reader chưa cache là 43,05 ms ở bài ngắn và 1.240,55 ms ở bài dài trong phép giữ discussion bằng CDP. Phần release hiện đo trực tiếp số owner và timer của READ-02. Chi phí thân hai observer trên lượt cold bài ngắn có median 0,85 ms. [Số đo, giới hạn, cách chạy và kết luận từng AC](evidence/web-perf-234-canonical/README.md).
+
+## Tải lại và mở lại trên production (#473)
+
+“Warm” ở trên là điều hướng SPA trong cùng document, không phải reload hay mở lại. Ngày 24/11/2026
+đã đo normal reload, mở lại tab, mở lại trình duyệt, Back, hard reload và SPA trên release live
+`e9872556`, kèm so sánh với Cantos, phân rã TTFB theo chặng và đối chứng nén cục bộ.
+[Số đo, kết luận và đề xuất sửa](evidence/web-reload-473/README.md).
