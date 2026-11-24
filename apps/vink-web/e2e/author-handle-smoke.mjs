@@ -33,13 +33,17 @@ async function matrix(page, check, textContrast) {
             facts.primaryHeight >= 44,
           `handle reflow at ${width}px, ${theme}, root text ${scale}% ${JSON.stringify(facts)}`,
         );
-        if (width === 1440 && scale === 100)
+        if (width === 1440 && scale === 100) {
+          await page.waitFor(`!document.getAnimations().some(a => a.playState === 'running' &&
+            a.effect.target?.checkVisibility() && Number.isFinite(a.effect.getComputedTiming().endTime))`,
+            'Handle colors settled after changing theme');
           await textContrast(page, theme, 'handle', [
             '#author-handle',
             '#author-handle-help',
             '#author-handle-submit',
             '#author-handle-proposed',
           ]);
+        }
         if (
           (width === 1440 && theme === 'light' && scale === 100) ||
           (width === 320 && theme === 'dark' && scale === 200)
@@ -167,7 +171,8 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
   check((await own(page)).remaining_changes === 2, 'no-op keeps both turns');
   await fill(page, field, 'admin');
   await page.click(submit);
-  await page.waitFor(`${has('#author-handle-error')} && ${enabled(submit)}`, 'reserved name is rejected');
+  await page.waitFor(`${has('#author-handle-error')}?.textContent.includes('dành riêng') && ${enabled(submit)}`,
+    'reserved name is rejected with a useful explanation');
   check((await own(page)).remaining_changes === 2, 'reserved name keeps both turns');
   await fill(page, field, 'dem-mua');
   const held = await holdAnswer(page, 'POST', '/api/v1/me/handle');

@@ -372,7 +372,7 @@ impl Controller {
 
 fn refusal_message(error: &ApiError) -> Option<&'static str> {
     Some(match error {
-        ApiError::Invalid { .. } => RULE,
+        ApiError::Invalid { .. } => "Địa chỉ không hợp lệ hoặc được dành riêng. Hãy chọn tên khác.",
         ApiError::VersionConflict { .. } => {
             "Địa chỉ đã thay đổi ở phiên khác. Hãy kiểm tra lại trước khi lưu."
         }
