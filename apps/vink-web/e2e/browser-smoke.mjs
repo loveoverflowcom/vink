@@ -5484,24 +5484,37 @@ async function markdownLivePreviewAndFormatPicker(page) {
   try {
     for (const scene of [320, 390, 834, 1023, 1024, 1440].flatMap(width =>
       ['100', '150', '200'].flatMap(scale => ['light', 'dark'].map(theme => ({
-        width, scale, theme, overlay: width < 1024 || scale !== '100',
+        width, scale, theme,
       }))))) {
       await page.viewport(scene.width, 900);
       await page.eval(`document.documentElement.dataset.text = '${scene.scale}'; document.documentElement.dataset.theme = '${scene.theme}'; new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))`);
-      await page.waitFor(`document.querySelector('#editor-outline-panel[open]')?.matches(':modal') === ${scene.overlay}`, 'outline switches between sheet and sidebar');
+      // Editor R4 (#475) docks the outline at 50rem of available editor content.
+      const overlay = await page.eval(`(() => {
+        const editor = document.querySelector('.vk-desk--editor');
+        const style = getComputedStyle(editor);
+        const width = editor.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+        return width < 50 * parseFloat(getComputedStyle(document.documentElement).fontSize);
+      })()`);
+      if (scene.width === 320 || (scene.width === 1440 && scene.scale === '100')) {
+        check(overlay === (scene.width === 320), `outline matrix covers compact and docked layouts at ${scene.width}/${scene.scale}`);
+      }
+      await page.waitFor(`document.querySelector('#editor-outline-panel[open]')?.matches(':modal') === ${overlay}`,
+        `outline switches between sheet and sidebar at ${scene.width}/${scene.scale}/${scene.theme}`);
       const layout = await page.eval(`(() => {
         const panel = document.querySelector('#editor-outline-panel');
         return {
           overflow: document.documentElement.scrollWidth > innerWidth,
           pos: panel ? getComputedStyle(panel).position : null,
+          besidePaper: panel?.closest('.vk-editor-side') != null &&
+            panel.getBoundingClientRect().left >= document.querySelector('#editor-paper').getBoundingClientRect().right,
           modal: panel?.matches(':modal'),
           role: panel?.getAttribute('role'),
           rootFont: parseFloat(getComputedStyle(document.documentElement).fontSize),
         };
       })()`);
       check(!layout.overflow && layout.rootFont === 16 * Number(scene.scale) / 100 &&
-        (scene.overlay ? layout.pos === 'fixed' && layout.modal && layout.role === null
-          : layout.pos === 'sticky' && !layout.modal && layout.role === 'complementary'),
+        (overlay ? layout.pos === 'fixed' && layout.modal && layout.role === null
+          : layout.pos === 'static' && layout.besidePaper && !layout.modal && layout.role === 'complementary'),
         `Markdown + Mục lục scene ${scene.width}/${scene.scale}/${scene.theme} has no horizontal overflow (${JSON.stringify(layout)})`);
       if ((scene.width === 320 && scene.scale === '200' && scene.theme === 'dark') ||
           (scene.width === 1440 && scene.scale === '100' && scene.theme === 'light') ||
