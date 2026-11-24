@@ -103,6 +103,14 @@ Proposal còn `PENDING` đến khi có signoff đúng revision theo
 [VDR-DECISION-SIGNOFF@r1](signoffs/VDR-DECISION-SIGNOFF.r1.toml).
 [LayoutSpec delta R4](../docs/design/editor-r4.md) ánh xạ hành vi vào Web.
 
+## Nén asset Web production
+
+[VDR-EDGE-ASSET-COMPRESSION@r1](proposals/VDR-EDGE-ASSET-COMPRESSION.r1.toml) ghi `CHOICE-01 A` của
+[#487](https://github.com/loveoverflowcom/vink/issues/487): Worker production bỏ `no-transform` cho
+asset `/_v/<sha>/pkg/` nén được để zone Cloudflare nén Brotli/gzip, giữ `no-transform` cho font,
+ảnh và READ-01. Tiền nén lúc build (B) chuyển sang #491. Proposal đang `PENDING`. Số đo và giới hạn
+nằm ở [evidence](../docs/development/evidence/web-compress-487/README.md).
+
 ## Tra cứu theo phạm vi công việc
 
 [Đối soát PR 15–16/11/2026](../docs/development/verification-reconciliation-20261116.md#quyết-định-toml-mới)

@@ -39,6 +39,64 @@ test('inventory and retained fallback read only static bytes', async () => {
   assert.equal((await send(serve, path, {}, { ASSETS: { fetch: () => { throw Error(); } } })).status, 502);
 });
 
+test('versioned assets let the zone compress text and WebAssembly but keep binary bytes exact', async () => {
+  const types = {
+    'vink_bg.wasm': 'application/wasm', 'vink.js': 'text/javascript', 'vink.css': 'text/css',
+    'brand/vpen-r1-favicon.svg': 'image/svg+xml', 'brand/vpen-r1-site.webmanifest': 'application/manifest+json',
+    'expressions/build.json': 'application/json', 'fonts/OFL-literata.txt': 'text/plain',
+    'fonts/literata-variable.woff2': 'font/woff2', 'author-landscape.webp': 'image/webp',
+    'brand/vpen-r1-icon-192.png': 'image/png',
+  };
+  const exact = new Set(['font/woff2', 'image/webp', 'image/png']);
+  const inventory = {};
+  for (const [name, type] of Object.entries(types)) {
+    const entry = { sha256: createHash('sha256').update(name).digest('hex'), type };
+    inventory[`/_v/${rev}/pkg/${name}`] = entry;
+    inventory[`/pkg/${name}`] = { ...entry, path: `/_v/${rev}/pkg/${name}` };
+  }
+  const bindings = { ASSETS: { fetch(request) {
+    // Pages never sees client headers, so it cannot pick an encoding the Worker would mislabel.
+    assert.equal(request.headers.has('accept-encoding'), false);
+    assert.equal(request.headers.has('if-none-match'), false);
+    return new Response(new URL(request.url).pathname.split('/pkg/')[1]);
+  } } };
+  const serve = handler(inventory, assert.fail, assert.fail);
+  for (const [name, type] of Object.entries(types)) {
+    const path = `/_v/${rev}/pkg/${name}`, tag = '"' + inventory[path].sha256 + '"';
+    const cache = 'public, max-age=31536000, immutable' + (exact.has(type) ? ', no-transform' : '');
+    const vary = exact.has(type) ? null : 'Accept-Encoding';
+    for (const encoding of ['br, gzip, zstd', 'gzip', 'identity', null]) {
+      const headers = encoding ? { 'accept-encoding': encoding } : {};
+      const response = await send(serve, path, { headers }, bindings);
+      assert.equal(response.status, 200);
+      // The Worker never encodes: the edge compresses, so one inventory body serves every variant.
+      assert.equal(await response.text(), name);
+      assert.equal(response.headers.get('content-encoding'), null);
+      assert.equal(response.headers.get('content-type'), type);
+      assert.equal(response.headers.get('cache-control'), cache);
+      assert.equal(response.headers.get('vary'), vary);
+      assert.equal(response.headers.get('etag'), tag);
+      assert.equal(response.headers.get('x-vink-asset-revision'), rev);
+    }
+    for (const condition of [tag, 'W/' + tag, '"other", W/' + tag, '*']) {
+      const unchanged = await send(serve, path, { headers: { 'if-none-match': condition, 'accept-encoding': 'br' } }, bindings);
+      assert.equal(unchanged.status, 304);
+      assert.equal(unchanged.body, null);
+      assert.equal(unchanged.headers.get('etag'), tag);
+      assert.equal(unchanged.headers.get('cache-control'), cache);
+      assert.equal(unchanged.headers.get('vary'), vary);
+    }
+    assert.equal((await send(serve, path, { headers: { 'if-none-match': 'W/"' + '0'.repeat(64) + '"' } }, bindings)).status, 200);
+    const head = await send(serve, path, { method: 'HEAD', headers: { 'accept-encoding': 'br' } }, bindings);
+    assert.equal(head.body, null);
+    assert.equal(head.headers.get('cache-control'), cache);
+    const alias = await send(serve, `/pkg/${name}`, { headers: { 'accept-encoding': 'br' } }, bindings);
+    assert.equal(alias.headers.get('cache-control'), 'no-cache');
+    assert.equal(alias.headers.get('vary'), vary);
+    assert.equal(alias.headers.get('x-vink-asset-revision'), rev);
+  }
+});
+
 test('an open tab retains its lazy asset on both Workers during the bridge', async () => {
   const next = 'b'.repeat(40);
   const lazy = `/_v/${rev}/pkg/vink-editor.js`;

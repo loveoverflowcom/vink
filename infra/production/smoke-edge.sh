@@ -180,13 +180,41 @@ else
 fi
 fetch "$apex" https /sitemap.xml 404 ''
 
+# Without brotli support curl cannot decode br; the br variant is then checked by headers only.
+curl_br=
+if curl --version | grep -qi '^features:.*brotli'; then curl_br=1; fi
 for asset in 'vink.js text/javascript' 'vink.css text/css' 'vink_bg.wasm application/wasm' \
   'fonts/be-vietnam-pro-400.woff2 font/woff2' 'fonts/literata-variable.woff2 font/woff2'; do
-  path=${asset% *}
+  # fetch() assigns the global path, so keep the asset name in its own variable.
+  name=${asset% *}
   type=${asset##* }
-  fetch "$apex" https "${release:+/_v/$release}/pkg/$path" 200 "$type"
+  fetch "$apex" https "${release:+/_v/$release}/pkg/$name" 200 "$type"
   [ -s "$tmp/body" ] || fail 'empty asset body'
   digest=$(openssl dgst -sha256 -r "$tmp/body")
-  printf 'asset %s %s\n' "$path" "${digest%% *}"
+  digest=${digest%% *}
+  printf 'asset %s %s\n' "$path" "$digest"
   printf 'encoding %s %s\n' "$path" "$(header Content-Encoding)"
+  [ "$mode" = edge ] && [ -n "$release" ] || continue
+  # Versioned text and WebAssembly are compressed by the zone; fonts keep exact bytes (#487).
+  compressed=1 asset_cache='public, max-age=31536000, immutable'
+  case "$type" in font/*) compressed= asset_cache="$asset_cache, no-transform" ;; esac
+  for encoding in identity gzip br; do
+    fetch "$apex" https "/_v/$release/pkg/$name" 200 "$type" --header "Accept-Encoding: $encoding"
+    expected=
+    if [ -n "$compressed" ] && [ "$encoding" != identity ]; then expected=$encoding; fi
+    [ "$(header Content-Encoding)" = "$expected" ] ||
+      fail "Content-Encoding '$(header Content-Encoding)' for $encoding, expected '$expected'"
+    [ "$(header Cache-Control)" = "$asset_cache" ] || fail "unexpected Cache-Control for $encoding"
+    if [ -n "$compressed" ]; then
+      header Vary | grep -qi 'accept-encoding' || fail "missing Vary: Accept-Encoding for $encoding"
+    fi
+    asset_etag=$(header ETag)
+    [ "${asset_etag#W/}" = "\"$digest\"" ] || fail "ETag is not the SHA-256 of the decoded bytes for $encoding"
+    if [ "$encoding" != br ] || [ -n "$curl_br" ]; then
+      decoded=$(openssl dgst -sha256 -r "$tmp/body")
+      [ "${decoded%% *}" = "$digest" ] || fail "decoded bytes differ for $encoding"
+    fi
+    fetch "$apex" https "/_v/$release/pkg/$name" 304 '' --header "Accept-Encoding: $encoding" --header "If-None-Match: $asset_etag"
+    [ ! -s "$tmp/body" ] || fail '304 has a body'
+  done
 done
