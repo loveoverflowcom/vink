@@ -28,6 +28,8 @@ TERM_GRACE = 10.0
 KILL_GRACE = 3.0
 RETRY = 75
 UNSUPPORTED = 69
+# Pin final and intermediate Cargo artifacts from bootstrap through nested commands.
+CARGO_DIRECTORIES = ("CARGO_TARGET_DIR", "CARGO_BUILD_TARGET_DIR", "CARGO_BUILD_BUILD_DIR")
 
 
 class Refusal(Exception):
@@ -66,8 +68,8 @@ def cargo_jobs(environ, root):
             config = tomllib.load(source)
         if "include" in config:
             raise Refusal(f"Cargo includes in {path} are not supported by this profile")
-        for key in (*env_keys, "CARGO_BUILD_RUSTC_WRAPPER", "CARGO_BUILD_RUSTC_WORKSPACE_WRAPPER",
-                    "RUST_TEST_THREADS", "CARGO_MAKEFLAGS", "MAKEFLAGS", "MFLAGS", MARKER):
+        for key in (*env_keys, *CARGO_DIRECTORIES, "CARGO_BUILD_RUSTC_WRAPPER",
+                    "CARGO_BUILD_RUSTC_WORKSPACE_WRAPPER", "RUST_TEST_THREADS", "CARGO_MAKEFLAGS", "MAKEFLAGS", "MFLAGS", MARKER):
             if key in config.get("env", {}):
                 raise Refusal(f"Cargo [env] {key} can override the local-budget environment")
         build = config.get("build", {})
@@ -129,7 +131,13 @@ def validate_command(argv, threads):
     if "--" in cargo_args:
         split = cargo_args.index("--")
         cargo_args, test_args = cargo_args[:split], cargo_args[split + 1:]
-    for arg in cargo_args:
+    for index, arg in enumerate(cargo_args):
+        option, sep, value = arg.partition("=")
+        if option == "--target-dir":
+            if not sep and index + 1 < len(cargo_args):
+                value = cargo_args[index + 1]
+            if not value or (ROOT / value).resolve() != ROOT / "target":
+                raise Refusal("--target-dir must select this checkout's target")
         if arg == "--config" or arg.startswith(("--config=", "-Z")):
             raise Refusal("Cargo config and unstable flag overrides are outside this profile")
         if arg == "--jobs" or arg.startswith(("--jobs=", "-j")):
@@ -235,8 +243,8 @@ def signal_group(pid, sig):
     return True
 
 
-def supervise(child, started, timeout, cancellation):
-    sampled_peak, samples, next_sample = 0, 0, started
+def supervise(child, started, timeout, cancellation, trace_samples):
+    sampled_peak, samples, next_sample = None, 0, started
     stop_started = None
     drain_started = None
     escalated = False
@@ -257,7 +265,12 @@ def supervise(child, started, timeout, cancellation):
             if exited and not members and not signal_group(child.pid, 0):
                 break
             if now >= next_sample:
-                sampled_peak = max(sampled_peak, sum(members.values()))
+                rss = sum(members.values()) if members else None
+                if rss is not None:
+                    sampled_peak = max(sampled_peak or 0, rss)
+                if trace_samples:
+                    log(f"sample elapsed={now - started:.3f}s members={len(members)} "
+                        f"rss_sum={rss if rss is not None else 'UNKNOWN'} KiB")
                 samples += 1
                 next_sample = now + SAMPLE_INTERVAL
             if exited and stop_started is None:
@@ -278,7 +291,8 @@ def supervise(child, started, timeout, cancellation):
         time.sleep(0.05)
 
     result = child.wait()
-    log(f"wall={time.monotonic() - started:.2f}s sampled_peak_rss_sum={sampled_peak} KiB "
+    peak = sampled_peak if sampled_peak is not None else "UNKNOWN"
+    log(f"wall={time.monotonic() - started:.2f}s sampled_peak_rss_sum={peak} KiB "
         f"samples={samples} interval={SAMPLE_INTERVAL:g}s")
     if cancellation[0]:
         return 128 + cancellation[0]
@@ -289,7 +303,7 @@ def supervise(child, started, timeout, cancellation):
     return result or forced_status or 0
 
 
-def execute(argv, environ, timeout):
+def execute(argv, environ, timeout, trace_samples):
     cancellation = [None]
 
     def cancel(sig, _frame):
@@ -328,7 +342,7 @@ def execute(argv, environ, timeout):
                     child.wait(timeout=KILL_GRACE)
             raise
         try:
-            result = supervise(child, started, timeout, cancellation)
+            result = supervise(child, started, timeout, cancellation, trace_samples)
         except (OSError, ValueError, subprocess.SubprocessError, Refusal):
             # No unverified release on a failed observation. The next invocation checks state.
             if child.returncode is None:
@@ -357,10 +371,11 @@ def main():
     sub = parser.add_subparsers(dest="action", required=True)
     plan = sub.add_parser("plan", help="show limits without Cargo or locks")
     run = sub.add_parser("run", help="admit and supervise one Cargo invocation")
+    run.add_argument("--samples", action="store_true", help="log each owned-session RSS sample")
+    run.add_argument("--timeout", metavar="SECONDS", help="optional deadline including bootstrap")
     for command in (plan, run):
         command.add_argument("--mode", choices=("soft", "strict"), default="soft")
-    run.add_argument("--timeout", metavar="SECONDS", help="optional deadline including bootstrap")
-    run.add_argument("cargo", nargs=argparse.REMAINDER, help="-- cargo <command> [args]")
+        command.add_argument("cargo", nargs=argparse.REMAINDER, help="-- cargo <command> [args]")
     args = parser.parse_args()
     if MARKER in os.environ:
         raise Refusal("nested launcher refused; invoke child tools inside the owning run")
@@ -370,10 +385,17 @@ def main():
     if not hasattr(os, "waitid"):
         raise Refusal("UNSUPPORTED: macOS requires Python 3.13+ with os.waitid", UNSUPPORTED)
     jobs, threads = settings(os.environ, ROOT)
+    target = ROOT / "target"
+    if target.resolve() != target:
+        raise Refusal("checkout target resolves through a symlink; choose an isolated checkout")
     log(f"SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs={jobs} libtest_threads={threads} "
-        "managed_target=10–12 GiB (advisory); "
+        "managed_target=10–12 GiB (advisory) hard_cap=none; "
         "Cargo bootstrap included; preflight requires normal pressure; retries manual")
+    log(f"cargo_target_dir={target} cargo_build_dir={target}; compiler wrappers unsupported")
     if args.action == "plan":
+        if args.cargo:
+            validate_command(args.cargo, threads)
+            log("command passes resource policy; xtask plan, prerequisites and slot not checked")
         log("managed scope: owned session; external: reused services and detached processes; "
             "Gradle/CMP, native diagnostics, browser verification and OCI builds unsupported")
         return 0
@@ -381,7 +403,8 @@ def main():
     argv = validate_command(args.cargo, threads)
     environ = dict(os.environ, CARGO_BUILD_JOBS=str(jobs), RUST_TEST_THREADS=str(threads),
                    VINK_LOCAL_BUDGET="local-24g")
-    return execute(argv, environ, timeout)
+    environ.update(dict.fromkeys(CARGO_DIRECTORIES, str(target)))
+    return execute(argv, environ, timeout, args.samples)
 
 
 if __name__ == "__main__":
