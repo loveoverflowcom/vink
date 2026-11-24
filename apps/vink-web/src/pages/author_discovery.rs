@@ -12,7 +12,7 @@ use crate::contract::{PublicAuthorPage, PublicAuthorRef};
 use crate::discovery::{ExploreContext, ExploreMode, ExploreQuery, author_search_href};
 use crate::ui::patterns::{Author, AuthorIdentity, ProfileLink, profile_label};
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 mod browser;
 
 const RESULTS_HEADING: &str = "author-search-results-heading";
@@ -29,15 +29,15 @@ pub(super) fn AuthorSearch(q: String, cursor: Option<String>) -> impl IntoView {
     let composing = RwSignal::new(false);
     let renew = move || generation.update(|value| *value += 1);
     let resource = api::author_search_resource(q, active_cursor, generation);
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     browser::observe(active_cursor, renew);
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let return_notice = browser::return_notice(resource, active_cursor, generation);
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let return_notice = RwSignal::new(false);
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let own_handle = browser::own_handle();
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let own_handle = Signal::stored(None);
 
     let canonical = crate::canonical_url(&author_search_href(&q.get_value(), None));
@@ -47,7 +47,7 @@ pub(super) fn AuthorSearch(q: String, cursor: Option<String>) -> impl IntoView {
         let navigate = navigate.clone();
         move |()| {
             return_notice.set(false);
-            #[cfg(feature = "hydrate")]
+            #[cfg(feature = "browser")]
             super::clear_profile_return();
             if url_has_cursor {
                 q.with_value(|q| navigate(&author_search_href(q, None), Default::default()));
@@ -280,9 +280,9 @@ fn AuthorResults(
         appending: false,
         append_error: None,
     });
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let (append, membership) = browser::enhance(q, results);
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = (on_refresh, own_handle);
 
     let has_cursor = cursor.is_some();
@@ -303,9 +303,9 @@ fn AuthorResults(
                         <li class="vk-rel-item vk-author-search__row [background:var(--vk-bg-content)] [border:0] rounded-vk-card [padding:min(var(--vk-space-3),14px)_clamp(16px,4vw,20px)]" data-author-cursor=row.cursor>
                             {identity}
                             {
-                                #[cfg(feature = "hydrate")]
+                                #[cfg(feature = "browser")]
                                 { view! { <browser::AuthorFollow handle membership own_handle on_refresh /> } }
-                                #[cfg(not(feature = "hydrate"))]
+                                #[cfg(not(feature = "browser"))]
                                 { let _ = handle; }
                             }
                         </li>
@@ -333,11 +333,11 @@ fn AuthorResults(
                     aria-disabled=move || results.with(|state| state.appending).then_some("true")
                     href=move || results.with(|state| q.with_value(|q| author_search_href(q, state.next.as_deref())))
                     on:click=move |event| {
-                        #[cfg(feature = "hydrate")]
+                        #[cfg(feature = "browser")]
                         if ordinary_click(&event) && append() {
                             event.prevent_default();
                         }
-                        #[cfg(not(feature = "hydrate"))]
+                        #[cfg(not(feature = "browser"))]
                         let _ = event;
                     }>
                     {move || results.with(|state| if state.append_error.is_some() {

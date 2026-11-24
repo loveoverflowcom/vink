@@ -38,7 +38,7 @@ enum Step {
 
 // Only explicit transitions may transfer focus, and never from another focused control.
 fn owns_focus() -> bool {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         document().active_element().is_some_and(|element| {
             element
@@ -48,12 +48,12 @@ fn owns_focus() -> bool {
                 .is_some()
         })
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     false
 }
 
 fn focus_after_render(step: RwSignal<Step>, id: &'static str) {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         use wasm_bindgen::JsCast;
         request_animation_frame(move || {
@@ -72,7 +72,7 @@ fn focus_after_render(step: RwSignal<Step>, id: &'static str) {
             }
         });
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = (step, id);
 }
 

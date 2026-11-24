@@ -239,13 +239,17 @@ impl Server {
     }
 
     fn start(&self, root: &Path) -> Result<Guard, String> {
+        self.start_command(root, "serve")
+    }
+
+    fn start_command(&self, root: &Path, verb: &str) -> Result<Guard, String> {
         let log = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
             .open(&self.log)
             .map_err(|e| format!("{}: {e}", self.log.display()))?;
         let child = self
-            .command(root, &["serve"])
+            .command(root, &[verb])
             .stdout(Stdio::null())
             .stderr(log)
             .spawn()
@@ -320,6 +324,7 @@ enum IdentityPhase {
     Auth,
     /// AUTH-PASSWORD-WEB-01: the same App against native Identity with both methods.
     PasswordAuth,
+    Standalone,
     /// Author discovery with separate public and session-scoped projections.
     AuthorSearch,
     /// PUB-AUTHOR-WEB-01: the author's whole publication path with a second, granted moderator.
@@ -405,7 +410,9 @@ fn auth_web(
         .env(
             "VINK_IDENTITY_AUTHORITY",
             match phase {
-                IdentityPhase::PasswordAuth | IdentityPhase::AuthorSearch => "native",
+                IdentityPhase::PasswordAuth
+                | IdentityPhase::AuthorSearch
+                | IdentityPhase::Standalone => "native",
                 _ => "email-code",
             },
         )
@@ -448,11 +455,46 @@ fn auth_web(
             include_str!("../../apps/vink-web/e2e/fixtures/reader-contextual-auth.sql"),
         )?;
     }
-    let app = server.with_identity(free_port()?, &socket, uid);
-    let mut guard = app.start(root)?;
-    let origin = format!("http://127.0.0.1:{}", app.port);
+    let mut app = server.with_identity(free_port()?, &socket, uid);
+    let mut frontend = None;
+    let origin = if matches!(phase, IdentityPhase::Standalone) {
+        let port = free_port()?;
+        let origin = format!("http://127.0.0.1:{port}");
+        for (key, value) in &mut app.env {
+            if key == "VINK_PUBLIC_ORIGIN" {
+                value.clone_from(&origin);
+            }
+        }
+        let mut command = Command::new("node");
+        crate::env::clear_capabilities(&mut command);
+        let child = command
+            .current_dir(root)
+            .args([
+                "apps/vink-web/dev-server.mjs",
+                crate::build::SPA_SCRATCH_SITE,
+            ])
+            .arg(port.to_string())
+            .arg(app.port.to_string())
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        frontend = Some(Guard(Some(child)));
+        origin
+    } else {
+        format!("http://127.0.0.1:{}", app.port)
+    };
+    let mut guard = app.start_command(
+        root,
+        if frontend.is_some() {
+            "serve-api"
+        } else {
+            "serve"
+        },
+    )?;
     let outbox = outbox.display().to_string();
     let result = match phase {
+        IdentityPhase::Standalone => {
+            smoke(root, &["--phase", "standalone"], chrome, &origin, state)
+        }
         IdentityPhase::Auth => smoke(
             root,
             &["--phase", "auth", "--outbox", &outbox],
@@ -558,7 +600,7 @@ fn native_auth_scratch(
     .map_err(|e| format!("password auth scratch database: {e}"))?;
     let result = (|| {
         let app = server.with_database(PASSWORD_AUTH_DATABASE)?;
-        prepare_app(root, &app, false)?;
+        prepare_app(root, &app, matches!(phase, IdentityPhase::Standalone))?;
         auth_web(root, &app, admin_url, chrome, state, phase)
     })();
     let _ = crate::identity::sql(admin_url, &drop);
@@ -629,7 +671,13 @@ pub fn verify_selected(report: &mut Report, env: &Env, plan: &Plan) -> bool {
         return false;
     }
     if !report.step("browser bundle contains no credentials", || {
-        bundle_secrets(&root.join("target/site/pkg"))
+        if plan.artifacts.contains(&crate::plan::Artifact::Spa) {
+            bundle_secrets(&root.join(crate::build::SPA_SCRATCH_SITE))?;
+        }
+        if plan.artifacts.contains(&crate::plan::Artifact::Bundle) {
+            bundle_secrets(&root.join("target/site/pkg"))?;
+        }
+        Ok(())
     }) {
         return false;
     }
@@ -720,6 +768,14 @@ pub fn verify_selected(report: &mut Report, env: &Env, plan: &Plan) -> bool {
                         let _ = guard.terminate(Duration::from_secs(15));
                         result
                     }
+                    Scenario::Standalone => native_auth_scratch(
+                        &root,
+                        &server,
+                        &url,
+                        &chrome,
+                        &state,
+                        IdentityPhase::Standalone,
+                    ),
                     Scenario::Password | Scenario::AuthorSearch => native_auth_scratch(
                         &root,
                         &server,

@@ -388,7 +388,7 @@ fn Unavailable(
             <StatePanel heading content=PanelContent { kind: PanelKind::Error(ProblemKind::Unavailable), title: "Tạm thời chưa đọc được nội dung.".into(), message: message.into(), actions: vec![], code: None }>
                 <vink_ui::Link href=retry_href attr:rel="external" attr:id="retry-public" variant=vink_ui::LinkVariant::Standalone
                     on:click=move |_event: leptos::ev::MouseEvent| {
-                        #[cfg(feature = "hydrate")]
+                        #[cfg(feature = "browser")]
                         if _event.button() == 0 && !_event.meta_key() && !_event.ctrl_key() && !_event.shift_key() && !_event.alt_key() {
                             // A same-URL link with a fragment only scrolls. This intent always
                             // reloads the GET document while retaining its query AND fragment.
@@ -414,7 +414,7 @@ fn drop_unnamed_submitter(data: &leptos::web_sys::FormData) {
 /// after that render; never scroll a different route in response to a stale frame.
 fn focus_recovery(id: impl Into<String>) {
     let id = id.into();
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         use wasm_bindgen::JsCast;
         let path = window().location().pathname().ok();
@@ -427,11 +427,11 @@ fn focus_recovery(id: impl Into<String>) {
             }
         });
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = id;
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 #[wasm_bindgen::prelude::wasm_bindgen(module = "/profile/navigation.js")]
 extern "C" {
     #[wasm_bindgen(js_name = hasProfileReturn)]
@@ -444,7 +444,7 @@ extern "C" {
     fn profile_return_href() -> Option<String>;
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn is_primary_link_click(event: &web_sys::MouseEvent) -> bool {
     !event.default_prevented()
         && event.button() == 0
@@ -455,7 +455,7 @@ fn is_primary_link_click(event: &web_sys::MouseEvent) -> bool {
 }
 
 /// Mark only the current history entry. A new tab/modifier click must not move it.
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn remember_public_position(
     event: &web_sys::MouseEvent,
     context: &crate::discovery::ExploreContext,
@@ -485,7 +485,7 @@ fn remember_public_position(
     }
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 #[derive(Clone, PartialEq, Eq)]
 enum ExploreRestore {
     Public,
@@ -497,13 +497,13 @@ enum ExploreRestore {
 }
 
 /// Restore a row fragment once for the settled route, not on background list refresh.
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn restore_public_position(stream: NodeRef<leptos::html::Section>, settled: Memo<bool>) {
     let ready = Signal::derive(move || settled.get().then_some(ExploreRestore::Public));
     restore_explore_position(stream, ready, None);
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn restore_explore_position(
     stream: NodeRef<leptos::html::Section>,
     ready: Signal<Option<ExploreRestore>>,

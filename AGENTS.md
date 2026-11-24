@@ -23,7 +23,7 @@ registries in `docs/development/` before claiming a capability; keep slice-by-sl
 those registries rather than duplicating long status narratives across skills.
 
 - **Core app, database and web shell:** `services/vink-app` (domain/application/PostgreSQL/Axum),
-  `apps/vink-web` (Leptos SSR + hydration, CodeMirror 6 editor in `apps/vink-web/editor`),
+  `apps/vink-web` ([standalone Leptos CSR and pre-cutover SSR/hydration](docs/development/edge-frontend.md), CodeMirror 6 editor in `apps/vink-web/editor`),
   `packages/store-postgres` (shared pool/migrator) and `services/postgres` (App `vink` and
   Identity `vink_identity` databases with split migrator/runtime roles). Public reads support
   strong body-hash `ETag`/`304` (`READ-01`) and a browser-tab memory-only cache-first pilot on Web

@@ -198,3 +198,32 @@ test('retirement returns 410 for old URLs and sensitive methods without redirect
     if (method === 'HEAD') assert.equal(response.body, null);
   }
 });
+
+test('standalone documents work with the API offline and only API/probes reach origin', async () => {
+  const apiCalls = [];
+  const serve = handler({ ...index, '/': {type:'text/html'} }, req => {
+    apiCalls.push(new URL(req.url).pathname);
+    throw Error('offline');
+  }, assert.fail);
+  const bindings = { ...env, ASSETS: { fetch(req) {
+    assert.equal(new URL(req.url).pathname, '/');
+    assert.equal([...req.headers].length, 0);
+    return new Response(req.method === 'HEAD' ? null : 'SPA', {headers: {'content-type': 'text/html'}});
+  } } };
+  for (const path of ['/', '/ban-viet/123', '/@tacgia', '/tac-pham/123', '/duong-dan-la']) {
+    for (const method of ['GET', 'HEAD']) {
+      const res = await send(serve, path, {method, headers: {accept: 'text/html', cookie: 'private'}}, bindings);
+      assert.equal(res.status, 200);
+      assert.equal(res.headers.get('cache-control'), 'no-store');
+      assert.equal(await res.text(), method === 'GET' ? 'SPA' : '');
+    }
+  }
+  for (const path of ['/api', '/api/v2/absent', '/health/unknown', '/pkg/not.js', '/missing.wasm', '/_v/missing']) {
+    assert.equal((await send(serve, path, {headers: {accept: 'text/html'}}, bindings)).status, 404);
+  }
+  assert.equal((await send(serve, '/toi', {method:'POST'}, bindings)).status, 405);
+  assert.equal((await send(serve, '/toi', {headers:{accept:'application/json'}}, bindings)).status, 404);
+  assert.equal((await send(serve, '/api/v1/not-found', {}, bindings)).status, 502);
+  assert.equal((await send(serve, '/health/ready', {}, bindings)).status, 502);
+  assert.deepEqual(apiCalls, ['/api/v1/not-found', '/health/ready']);
+});

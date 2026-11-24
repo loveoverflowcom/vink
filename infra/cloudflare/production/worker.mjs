@@ -11,6 +11,14 @@ const textError = (status, message) => new Response(message, {
     "x-robots-tag": "noindex", "x-content-type-options": "nosniff" },
 });
 
+// Reserve API, probes and asset-like paths even when opened in the address bar.
+export function spaRoute(path, method, accept) {
+  if (/^\/api\/v1(?:\/|$)/.test(path) || /^\/health\/(live|ready)$/.test(path)) return "api";
+  if (/^\/(api|health|pkg|_v)(?:\/|$)/.test(path) || /\.[^/]+\/?$/.test(path)) return "missing";
+  if (method !== "GET" && method !== "HEAD") return "method";
+  return accept?.split(",").some(type => type.split(";")[0].trim() === "text/html") ? "document" : "missing";
+}
+
 export function handler(inventory, originFetch = fetch, assetFetch = fetch) {
   const known = new Set(Object.keys(inventory).filter(p => p.startsWith("/_v/")).map(p => p.split("/")[2]));
   return async (request, env) => {
@@ -77,6 +85,24 @@ export function handler(inventory, originFetch = fetch, assetFetch = fetch) {
     }
     // Provider and preview URLs may qualify public bytes, never read production sessions.
     if (preview) return textError(404, "Use the canonical site");
+    // Only the standalone packager emits a root document in the inventory.
+    if (Object.hasOwn(inventory, "/")) {
+      const route = spaRoute(url.pathname, request.method, request.headers.get("accept"));
+      if (route === "method") return textError(405, "Read-only document");
+      if (route === "missing") return textError(404, "Not found");
+      if (route === "document") {
+        try {
+          const page = await env.ASSETS.fetch(new Request(new URL("/", url), { method: request.method }));
+          if (page.status !== 200 || !page.headers.get("content-type")?.startsWith("text/html")) {
+            return textError(502, "Published document unavailable");
+          }
+          return new Response(request.method === "HEAD" ? null : page.body, { headers: {
+            "content-type": "text/html; charset=utf-8", "cache-control": "no-store",
+            "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin",
+          } });
+        } catch { return textError(502, "Document storage unavailable"); }
+      }
+    }
     if (!env.ORIGIN_KEY || !request.headers.get("CF-Connecting-IP")) return textError(503, "Origin ingress unavailable");
     const headers = new Headers(request.headers);
     for (const name of [...headers.keys()]) {

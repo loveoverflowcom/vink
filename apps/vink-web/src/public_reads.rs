@@ -10,7 +10,7 @@
 
 use leptos::prelude::*;
 
-#[cfg(any(feature = "hydrate", test))]
+#[cfg(any(feature = "browser", test))]
 use crate::api::LoadError;
 use crate::contract::{Publication, ReaderResponse, WorkList};
 use crate::freshness::Rejection;
@@ -31,7 +31,7 @@ pub enum Snapshot {
     Control(ReaderResponse),
 }
 
-#[cfg(any(feature = "hydrate", test))]
+#[cfg(any(feature = "browser", test))]
 impl Snapshot {
     fn clear_attribution(&mut self) {
         use crate::contract::AuthorProjection;
@@ -208,9 +208,9 @@ pub struct Live<T: Send + Sync + 'static> {
 impl<T: Send + Sync + 'static> Live<T> {
     /// Explicit refresh: skips the stale threshold and backoff, still one request at a time.
     pub fn refresh(&self) {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         browser::check(&self.key, crate::freshness::Trigger::Manual);
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let _ = &self.key;
     }
 }
@@ -252,29 +252,29 @@ pub fn follow_reader(work_id: String, initial: ReaderResponse) -> Live<ReaderRes
 /// Call after withdrawing or hiding a work: purge its cached publication, drop its card from
 /// cached searches, and wake observed owners promptly.
 pub fn invalidate_withdrawn(work_id: &str) {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     browser::invalidate_withdrawn(work_id);
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = work_id;
 }
 
 /// Call after a confirmed publication change so observed publication/list views revalidate without
 /// waiting for the 120s timer. Unlike [`invalidate_withdrawn`] no card is optimistically removed.
 pub fn invalidate_publication(work_id: &str) {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     browser::invalidate_publication(work_id);
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = work_id;
 }
 
 /// Reserved for a policy-approved public-device-cache control; no private storage is touched.
 /// The boolean acknowledges only durable completion. No UI claims a save/clear yet.
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn clear_device_cache() -> bool {
     browser::clear_device_cache().await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub fn invalidate_author_attribution() {
     browser::invalidate_author_attribution();
 }
@@ -288,7 +288,7 @@ fn follow<T>(
 where
     T: Clone + PartialEq + Send + Sync + 'static,
 {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         let status = browser::follow(key.clone(), wrap(initial.clone()));
         let data = Memo::new(move |previous: Option<&T>| {
@@ -316,7 +316,7 @@ where
             key,
         }
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     {
         let _ = (wrap, unwrap);
         Live {
@@ -333,12 +333,12 @@ where
 
 /// The value a public `Resource` resolves to in the browser: a permitted cached snapshot at
 /// once, otherwise the (shared) request's result.
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn load(key: PublicKey) -> Result<Snapshot, LoadError> {
     browser::load(key).await
 }
 
-#[cfg(any(feature = "hydrate", test))]
+#[cfg(any(feature = "browser", test))]
 mod coordinator {
     use std::collections::BTreeMap;
 
@@ -413,7 +413,13 @@ mod coordinator {
     impl<C: SnapshotCache<PublicKey, Snapshot>> Coordinator<C> {
         pub fn with_cache(policy: Policy, cache: C) -> Self {
             Self {
-                store: Store::with_cache(policy, cache, |s| !matches!(s, Snapshot::Control(_))),
+                store: Store::with_cache(policy, cache, |snapshot| match snapshot {
+                    Snapshot::Works(_) => true,
+                    // On a new SPA Reader visit the server must confirm that the
+                    // publication is still accessible before its body can appear.
+                    Snapshot::Publication(_) => !cfg!(feature = "csr"),
+                    Snapshot::Control(_) => false,
+                }),
                 waiters: BTreeMap::new(),
                 withdrawn: BTreeMap::new(),
                 next_waiter: 1,
@@ -497,6 +503,7 @@ mod coordinator {
             }
         }
 
+        #[cfg(any(test, not(feature = "csr")))]
         pub fn follow_seed(
             &mut self,
             key: PublicKey,
@@ -977,7 +984,7 @@ mod coordinator {
     }
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 mod browser {
     use std::cell::RefCell;
     use std::collections::BTreeMap;
@@ -1041,6 +1048,7 @@ mod browser {
     /// Lower bound for when the server read the snapshot this page hydrated with: the
     /// navigation start (`performance.now()` = 0). A back/forward document may come from the
     /// HTTP cache with unknown age, so it is treated as stale.
+    #[cfg(not(feature = "csr"))]
     fn rendered_at() -> Millis {
         let back_forward = window()
             .performance()
@@ -1172,9 +1180,12 @@ mod browser {
         let at = now();
         let has_linked_attribution = initial.carries_linked_attribution();
         with(|owner| {
+            #[cfg(not(feature = "csr"))]
             owner
                 .coord
                 .follow_seed(key.clone(), initial, rendered_at(), at);
+            #[cfg(feature = "csr")]
+            owner.coord.store.observe(&key, at);
         });
         listen();
         // After hydration, never during it: a refresh flag set mid-hydration would disagree

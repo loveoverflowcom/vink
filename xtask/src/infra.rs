@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-pub const HELP: &str = "infra check <inventory.toml>\ninfra render-env <inventory.toml>\ninfra build-images <podman|docker> <linux/amd64|linux/arm64>\ninfra dns-plan <inventory.toml> <snapshot.json>\ninfra dns-check <plan.json> <fresh-snapshot.json>\ninfra dns-rollback <plan.json> <fresh-snapshot.json>\nNo command publishes, changes DNS, migrates or deploys. See infra/test/README.md.";
+pub const HELP: &str = "infra check <inventory.toml>\ninfra render-env <inventory.toml>\ninfra build-images <podman|docker> <linux/amd64|linux/arm64> [--api-only]\ninfra dns-plan <inventory.toml> <snapshot.json>\ninfra dns-check <plan.json> <fresh-snapshot.json>\ninfra dns-rollback <plan.json> <fresh-snapshot.json>\nNo command publishes, changes DNS, migrates or deploys. See infra/test/README.md.";
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -299,7 +299,7 @@ impl Drop for ContextArchive {
         let _ = std::fs::remove_file(&self.0);
     }
 }
-fn build_images(root: &Path, engine: &str, target: &str) -> Result<(), String> {
+fn build_images(root: &Path, engine: &str, target: &str, app_image: &str) -> Result<(), String> {
     if !matches!(engine, "podman" | "docker") || !platform(target) {
         return Err("explicit podman|docker and linux/amd64|linux/arm64 required".into());
     }
@@ -333,7 +333,7 @@ fn build_images(root: &Path, engine: &str, target: &str) -> Result<(), String> {
         "archive committed source only",
     )?;
     let _cleanup = ContextArchive(context.clone());
-    for image in ["web", "worker", "identity"] {
+    for image in [app_image, "worker", "identity"] {
         let mut cmd = std::process::Command::new(engine);
         cmd.stdin(std::fs::File::open(&context).map_err(|e| e.to_string())?)
             .current_dir(root)
@@ -377,7 +377,8 @@ pub fn run(root: &Path, args: &[&str]) -> Result<(), String> {
             print!("{}", c.env()?);
             Ok(())
         }
-        ["build-images", engine, target] => build_images(root, engine, target),
+        ["build-images", engine, target] => build_images(root, engine, target, "web"),
+        ["build-images", engine, target, "--api-only"] => build_images(root, engine, target, "api"),
         ["dns-plan", config, snapshot] => print_json(&plan(&read(config)?, &read(snapshot)?)?),
         ["dns-check", p, fresh] => print_json(&check_plan(&read(p)?, &read(fresh)?, false)?),
         ["dns-rollback", p, fresh] => print_json(&check_plan(&read(p)?, &read(fresh)?, true)?),

@@ -13,7 +13,7 @@ use crate::{
 const DIALOG: &str = "reader-auth";
 const CLOSE: &str = "reader-auth-close";
 
-#[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+#[cfg_attr(not(feature = "browser"), allow(dead_code))]
 #[derive(Clone, Copy)]
 pub(super) struct ReaderAuth {
     dialog: NodeRef<html::Dialog>,
@@ -37,7 +37,7 @@ impl ReaderAuth {
     }
 
     pub(super) fn open(self, composer: String) {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         if self.origin.get_untracked().is_none()
             && let Some(dialog) = self.dialog.get_untracked()
         {
@@ -58,11 +58,11 @@ impl ReaderAuth {
                 restore_scroll(self.scroll.get_value());
             }
         }
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let _ = (self, composer);
     }
 
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     pub(super) fn is_open(self) -> bool {
         self.origin.get_untracked().is_some()
     }
@@ -76,7 +76,7 @@ impl ReaderAuth {
         if let Some(dialog) = self.dialog.get_untracked() {
             dialog.close();
         }
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         if reason != CloseReason::Navigate {
             let cycle = self.cycle.get_value();
             let scroll = self.scroll.get_value();
@@ -121,7 +121,7 @@ impl ReaderAuth {
                 request_animation_frame(restore);
             }
         }
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let _ = (composer, reason, authenticated);
         true
     }
@@ -137,7 +137,7 @@ pub(super) fn ReaderAuthDialog(
     let overlay = navigation.set_overlay(move |reason| host.close(reason, false));
     on_cleanup(move || navigation.clear_overlay(overlay));
 
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         // CSS prevents user scrolling of the inert page. Native focus/scrollIntoView
         // can still advance the viewport when an Auth field or error changes; only
@@ -155,7 +155,7 @@ pub(super) fn ReaderAuthDialog(
         on_cleanup(move || scroll.remove());
     }
 
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     Effect::new(move |_| {
         // Only return after the session owner has confirmed an active account AND
         // DiscussionController has applied that scope (which may discard another owner's draft).
@@ -167,7 +167,7 @@ pub(super) fn ReaderAuthDialog(
             host.close(CloseReason::Dismiss, true);
         }
     });
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = controller;
     view! {
         <dialog id=DIALOG
@@ -200,7 +200,7 @@ pub(super) fn ReaderAuthDialog(
     }
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn focus(id: &str) -> bool {
     use wasm_bindgen::JsCast;
     let Some(target) = document()
@@ -215,13 +215,13 @@ fn focus(id: &str) -> bool {
     target.focus_with_options(&options).is_ok()
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn restore_scroll((x, y): (f64, f64)) {
     window().scroll_to_with_x_and_y(x, y);
 }
 
 fn trap_tab(event: leptos::ev::KeyboardEvent, node: NodeRef<html::Dialog>) {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         use wasm_bindgen::JsCast;
         if event.key() != "Tab" || event.is_composing() {
@@ -254,6 +254,6 @@ fn trap_tab(event: leptos::ev::KeyboardEvent, node: NodeRef<html::Dialog>) {
         event.prevent_default();
         let _ = target.focus();
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = (event, node);
 }

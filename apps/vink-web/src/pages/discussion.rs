@@ -13,7 +13,7 @@ use vink_ui::{
     ActionState, Button, ButtonVariant, FieldMode, Heading, HeadingLevel, Icon, IconButton,
     IconName, IconSize, ListEnd, LoadingIndicator, Skeleton, SkeletonShape, TextInput, TypeRole,
 };
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 use vink_ui::{Clock, use_loading_gate};
 
 use super::endorsement::Endorsements;
@@ -24,7 +24,7 @@ use crate::discussion_state::{
     Scope, SendEmphasis, Target,
 };
 use crate::endorsement_state::page_targets;
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 use crate::endorsement_state::public_targets;
 use crate::ui::{
     adapters,
@@ -33,11 +33,11 @@ use crate::ui::{
     },
 };
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 #[derive(Clone)]
 struct TransportOwner(leptos::reactive::owner::WeakOwner);
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn spawn_transport(task: impl std::future::Future<Output = ()> + 'static) {
     // A button/composer owner may disappear on collapse or projection refresh. The feature
     // owner survives those presentation changes and cancels only when this reader ends.
@@ -48,13 +48,13 @@ fn spawn_transport(task: impl std::future::Future<Output = ()> + 'static) {
 
 // Separate cancellable read owners. Replacing one drops its fetch future and deadline;
 // writes stay under TransportOwner because aborting a write cannot undo a server commit.
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 #[derive(Clone, Copy)]
 struct PrivateTransports {
     own: StoredValue<Option<Owner>>,
     capability: StoredValue<Option<Owner>>,
 }
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn spawn_private(capability: bool, task: impl std::future::Future<Output = ()> + 'static) {
     let transports = expect_context::<PrivateTransports>();
     let slot = if capability {
@@ -71,7 +71,7 @@ fn spawn_private(capability: bool, task: impl std::future::Future<Output = ()> +
         slot.set_value(Some(owner));
     }
 }
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn cancel_private() {
     let t = expect_context::<PrivateTransports>();
     for slot in [t.own, t.capability] {
@@ -85,7 +85,7 @@ fn cancel_private() {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum DiscussionMutation {
     ChangeMode,
-    #[cfg_attr(not(any(feature = "hydrate", test)), allow(dead_code))]
+    #[cfg_attr(not(any(feature = "browser", test)), allow(dead_code))]
     RemoveOwn,
 }
 
@@ -93,34 +93,34 @@ enum DiscussionMutation {
 struct ViewState {
     page: DiscussionPage,
     roots_read: crate::read_lifecycle::ReadOwner<Scope>,
-    #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+    #[cfg_attr(not(feature = "browser"), allow(dead_code))]
     roots_chain: crate::read_lifecycle::PageChain,
     restarted_tail: bool,
-    #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+    #[cfg_attr(not(feature = "browser"), allow(dead_code))]
     wake: crate::read_events::WakePolicy,
     own: OwnState,
     /// IDs of previously public rows fenced by a current private observation.
     redacted: BTreeSet<String>,
     replies: BTreeMap<String, ReplyList>,
     reply_loading: BTreeMap<String, bool>,
-    #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+    #[cfg_attr(not(feature = "browser"), allow(dead_code))]
     reply_chains: BTreeMap<String, crate::read_lifecycle::PageChain>,
     reply_errors: BTreeMap<String, String>,
     loading: bool,
-    #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+    #[cfg_attr(not(feature = "browser"), allow(dead_code))]
     refresh_queued: bool,
     error: Option<String>,
     /// A failed "load more roots" read, shown beside the control that started it.
     page_error: Option<String>,
     unavailable: bool,
-    #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+    #[cfg_attr(not(feature = "browser"), allow(dead_code))]
     epoch: u64,
     mutation: Option<DiscussionMutation>,
     mutation_message: Option<String>,
     mutation_needs_refresh: bool,
 }
 
-#[cfg_attr(not(any(feature = "hydrate", test)), allow(dead_code))]
+#[cfg_attr(not(any(feature = "browser", test)), allow(dead_code))]
 impl ViewState {
     fn change_session(&mut self, scope: Scope) {
         self.roots_read.change_scope(scope.clone());
@@ -137,7 +137,7 @@ impl ViewState {
         self.mutation_needs_refresh = false;
         self.page.viewer_is_work_author = false;
     }
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     fn invalidate_attribution(&mut self) {
         use crate::contract::{AuthorProjection, CommentDto, OwnPlacement, ReplyTo, RootView};
         fn context(reply_to: &mut ReplyTo) {
@@ -364,7 +364,7 @@ fn copy_draft_text(
     text: String,
     status: RwSignal<Option<(bool, &'static str)>>,
 ) {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         use wasm_bindgen::JsCast;
         // Invoke writeText during the user gesture. navigator.clipboard can be absent
@@ -395,18 +395,18 @@ fn copy_draft_text(
             }
         });
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     {
         let _ = (editor_id, text, status);
     }
 }
 
 fn discussion_skeleton_visibility(loading: Signal<bool>) -> Signal<bool> {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         use_loading_gate(loading, Clock::Browser).visible
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     {
         let _ = loading;
         Signal::stored(false)
@@ -429,20 +429,20 @@ fn DiscussionSkeleton() -> impl IntoView {
 fn ask_remove(state: RwSignal<ViewState>, id: String) {
     let mut asked = false;
     state.update(|s| asked = s.own.ask_remove(&id));
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     if asked {
         // The least destructive choice takes focus; Enter keeps the comment.
         focus_discussion_control(format!("cancel-remove-comment-{id}"));
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = asked;
 }
 
 fn cancel_remove(state: RwSignal<ViewState>, id: String) {
     state.update(|s| s.own.cancel_remove());
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     focus_discussion_control(format!("remove-comment-{id}"));
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = id;
 }
 
@@ -509,7 +509,7 @@ pub fn Discussion(work_id: String, #[prop(optional)] read_only: bool) -> impl In
 // Each control owner schedules its effect after rendering, preserving hydration parity.
 fn client_action_ready() -> RwSignal<bool> {
     let ready = RwSignal::new(false);
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     Effect::new(move |_| ready.set(true));
     ready
 }
@@ -537,7 +537,7 @@ fn DiscussionLoaded(
     read_only: bool,
 ) -> impl IntoView {
     let client_ready = client_action_ready();
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     if let Some(owner) = Owner::current() {
         provide_context(TransportOwner(owner.downgrade()));
         provide_context(PrivateTransports {
@@ -550,7 +550,7 @@ fn DiscussionLoaded(
     if let Some(lve) = lve {
         lve.seed(page_targets(&page), endorsements.as_ref().ok());
         // A fixture session refreshes the page after hydration, which reads own states too.
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         if fixture.is_none() && endorsements.is_err() {
             let targets = page_targets(&page);
             spawn_transport(async move { lve.read(targets, true) });
@@ -565,11 +565,11 @@ fn DiscussionLoaded(
     ));
     controller.update_untracked(|c| c.sign_in_open = api::sign_in_open());
     let reader_auth = ReaderAuth::provide();
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let work_id = page.work_id.clone();
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let wake = crate::read_events::WakePolicy::confirmed(crate::read_events::now());
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let wake = crate::read_events::WakePolicy::confirmed(0.0);
     let state = RwSignal::new(ViewState {
         own: OwnState::new(controller.get_untracked().scope),
@@ -596,12 +596,12 @@ fn DiscussionLoaded(
     let refresh = Callback::new(move |()| {
         read_roots(state, controller, lve, false);
     });
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let fence_attribution = move || {
         state.update(ViewState::invalidate_attribution);
         state.with_untracked(|s| revalidate_targets(s, controller));
     };
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     crate::read_events::observe_lifecycle(move |hint| {
         if hint == crate::read_events::Hint::HistoryRestored {
             fence_attribution();
@@ -618,13 +618,13 @@ fn DiscussionLoaded(
             read_roots(state, controller, lve, false);
         }
     });
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     super::profile::observe_changes(move || {
         fence_attribution();
         refresh.run(());
     });
     // Viewer-private projections only arrive after hydration through the no-store API.
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     if fixture.is_some() {
         spawn_transport(async move {
             refresh.run(());
@@ -909,7 +909,7 @@ fn read_private(
     append: bool,
 ) {
     read_own(state, controller, append);
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         let scope = controller.get_untracked().scope;
         if scope.session.is_none() {
@@ -957,7 +957,7 @@ fn read_private(
 }
 
 fn read_own(state: RwSignal<ViewState>, controller: RwSignal<DiscussionController>, append: bool) {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         let cursor = if append {
             state.read_untracked().own.next_cursor.clone()
@@ -1037,7 +1037,7 @@ fn read_own(state: RwSignal<ViewState>, controller: RwSignal<DiscussionControlle
             state.try_update(|s| s.own.finish(&ticket, None));
         });
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = (state, controller, append);
 }
 
@@ -1091,7 +1091,7 @@ fn RootThreadView(
             });
         if let Some(target) = target {
             controller.update(|c| c.reply(root.get_value(), target));
-            #[cfg(feature = "hydrate")]
+            #[cfg(feature = "browser")]
             focus_discussion_control(format!("reply-composer-{}", root.get_value()));
         }
     });
@@ -1166,7 +1166,7 @@ fn RootThreadView(
                     <Button id=format!("reopen-reply-{}", root.get_value()) variant=ButtonVariant::Text
                         on_press=move |_| {
                         controller.update(|c| c.reopen(&key.get_value()));
-                        #[cfg(feature = "hydrate")]
+                        #[cfg(feature = "browser")]
                         focus_discussion_control(format!("reply-composer-{}", root.get_value()));
                     }>"Mở lại"<span class="vk-ui-visually-hidden">" bình luận"</span></Button>
                 </div>
@@ -1329,7 +1329,7 @@ fn DiscussionComposer(
                                         let ComposerKey::Replies(root) = key.get_value() else { return };
                                         if let Some(target) = root_target.get_untracked() {
                                             controller.update(|c| c.reply(root.clone(), target));
-                                            #[cfg(feature = "hydrate")]
+                                            #[cfg(feature = "browser")]
                                             focus_discussion_control(format!("reply-composer-{root}"));
                                         }
                                     } />
@@ -1338,10 +1338,10 @@ fn DiscussionComposer(
                         </Show>
                         {(!blocked).then(|| view! {
                             <Button variant=ButtonVariant::Text attr:aria-label="Thu ô trả lời · Giữ chữ" on_press=move |_| {
-                                #[cfg(feature = "hydrate")]
+                                #[cfg(feature = "browser")]
                                 let draft = controller.read().draft(&key.get_value());
                                 controller.update(|c| c.close_reply(&key.get_value()));
-                                #[cfg(feature = "hydrate")]
+                                #[cfg(feature = "browser")]
                                 if let ComposerKey::Replies(root) = key.get_value() {
                                     let focus = draft.target.filter(|_| draft.target_available)
                                         .map(|target| format!("reply-to-{}", target.id))
@@ -1367,7 +1367,7 @@ fn DiscussionComposer(
                                     <Button variant=ButtonVariant::Tonal on_press=move |_| refresh.run(())>"Tải lại nhận xét"</Button>
                                 }>
                                     <Button variant=ButtonVariant::Filled on_press=move |_| {
-                                        #[cfg(feature = "hydrate")]
+                                        #[cfg(feature = "browser")]
                                         if let Some(id) = reselect_id.get_untracked() {
                                             focus_discussion_control(format!("reply-to-{id}"));
                                         }
@@ -1434,7 +1434,7 @@ fn DiscussionComposer(
     }
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn focus_discussion_control(id: String) {
     use wasm_bindgen::JsCast;
     request_animation_frame(move || {
@@ -1460,7 +1460,7 @@ fn next_reply_cursor(state: &ViewState, root: &str) -> Option<String> {
         .and_then(|thread| thread.preview_next_cursor.clone())
 }
 
-#[cfg(any(feature = "hydrate", test))]
+#[cfg(any(feature = "browser", test))]
 fn merge_comments(
     current: &mut Vec<crate::contract::CommentDto>,
     incoming: Vec<crate::contract::CommentDto>,
@@ -1479,7 +1479,7 @@ fn merge_comments(
     // key when fractional precision varies; keep its exact order and update duplicates.
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn revalidate_targets(state: &ViewState, controller: RwSignal<DiscussionController>) {
     let mut visible = Vec::new();
     for thread in &state.page.roots {
@@ -1514,7 +1514,7 @@ fn read_roots(
     lve: Option<Endorsements>,
     append: bool,
 ) {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         if state.read_untracked().mutation.is_some() {
             return;
@@ -1635,7 +1635,7 @@ fn read_roots(
             }
         });
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     {
         let _ = (state, controller, lve, append);
     }
@@ -1647,7 +1647,7 @@ fn read_replies(
     lve: Option<Endorsements>,
     root: String,
 ) {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         let before = state.get_untracked();
         if before.loading
@@ -1756,7 +1756,7 @@ fn read_replies(
             }
         });
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     {
         let _ = (state, controller, lve, root);
     }
@@ -1769,7 +1769,7 @@ fn submit(
     refresh: Callback<()>,
     reconcile: bool,
 ) {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         if state.read_untracked().unavailable
             || state.read_untracked().loading
@@ -1812,7 +1812,7 @@ fn submit(
             }
         });
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     {
         let _ = (controller, state, key, refresh, reconcile);
     }
@@ -1823,7 +1823,7 @@ fn change_mode(
     controller: RwSignal<DiscussionController>,
     lve: Option<Endorsements>,
 ) {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         let c = controller.get_untracked();
         let s = state.get_untracked();
@@ -1870,7 +1870,7 @@ fn change_mode(
             read_private(state, controller, false);
         });
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     {
         let _ = (state, controller, lve);
     }
@@ -1882,7 +1882,7 @@ fn remove_own(
     lve: Option<Endorsements>,
     id: String,
 ) {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         let c = controller.get_untracked();
         let s = state.get_untracked();
@@ -1948,7 +1948,7 @@ fn remove_own(
             read_private(state, controller, false);
         });
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     {
         let _ = (state, controller, lve, id);
     }

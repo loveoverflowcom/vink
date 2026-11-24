@@ -20,6 +20,9 @@ fn binary_command(artifact: Artifact, release: bool) -> Result<std::process::Com
     };
     let mut command = cargo(&root());
     command.args(["build", "--locked", "-p", package, "--bin", bin]);
+    if artifact == Artifact::Worker {
+        command.arg("--no-default-features");
+    }
     if release {
         command.arg("--release");
     }
@@ -27,6 +30,91 @@ fn binary_command(artifact: Artifact, release: bool) -> Result<std::process::Com
 }
 
 pub fn bundle(release: bool, perf_probe: bool) -> Result<(), String> {
+    bundle_at(
+        release,
+        if perf_probe { "perf-probe" } else { "hydrate" },
+        &root().join("target/site/pkg"),
+        None,
+    )
+}
+
+pub fn api(release: bool) -> Result<(), String> {
+    let mut command = binary_command(Artifact::App, release)?;
+    command.arg("--no-default-features");
+    process::run(&mut command, "build API without SSR")
+}
+
+pub const SPA_SCRATCH_SITE: &str = "target/verify-spa";
+
+pub fn spa(release: bool, scratch: bool) -> Result<(), String> {
+    let root = root();
+    let revision = match std::env::var("VINK_SPA_REVISION") {
+        Ok(revision) => revision,
+        Err(_) => {
+            let out = std::process::Command::new("git")
+                .current_dir(&root)
+                .args(["rev-parse", "HEAD"])
+                .output()
+                .map_err(|e| e.to_string())?;
+            String::from_utf8_lossy(&out.stdout).trim().to_owned()
+        }
+    };
+    if revision.len() != 40
+        || !revision
+            .bytes()
+            .all(|c| c.is_ascii_digit() || (b'a'..=b'f').contains(&c))
+    {
+        return Err("VINK_SPA_REVISION requires a full lowercase Git SHA".into());
+    }
+    let site = root.join(if scratch {
+        SPA_SCRATCH_SITE
+    } else {
+        "target/spa"
+    });
+    let prefix = format!("/_v/{revision}");
+    let pkg = site.join("_v").join(&revision).join("pkg");
+    // These public presentation hints never grant access. The API enforces both flags.
+    let mut features = String::new();
+    for (key, name) in [
+        ("VINK_SPA_SIGN_IN", "vink-sign-in"),
+        ("VINK_SPA_FOLLOWING_FEED", "vink-following-feed"),
+    ] {
+        let value = if scratch {
+            Ok("enabled".to_owned())
+        } else {
+            std::env::var(key)
+        };
+        match value.as_deref() {
+            Ok("enabled") => {
+                features.push_str(&format!(r#"<meta name="{name}" content="enabled">"#))
+            }
+            Ok("disabled") | Err(std::env::VarError::NotPresent) => (),
+            _ => return Err(format!("{key} must be enabled or disabled")),
+        }
+    }
+    let index = include_str!("../../apps/vink-web/index.html")
+        .replace("{{PREFIX}}", &prefix)
+        .replace("{{FEATURES}}", &features)
+        .replace(
+            "{{APPEARANCE}}",
+            include_str!("../../apps/vink-web/appearance.js"),
+        );
+    // The artifact lock serializes builders. A failed rebuild cannot leave a
+    // publishable entry that refers to a partially replaced package.
+    let entry = site.join("index.html");
+    match std::fs::remove_file(&entry) {
+        Ok(()) => (),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
+        Err(e) => return Err(format!("clear {}: {e}", entry.display())),
+    }
+    bundle_at(release, "csr", &pkg, Some(&prefix))?;
+    let pending = site.join("index.tmp");
+    std::fs::write(&pending, index)
+        .and_then(|()| std::fs::rename(pending, entry))
+        .map_err(|e| e.to_string())
+}
+
+fn bundle_at(release: bool, feature: &str, pkg: &Path, prefix: Option<&str>) -> Result<(), String> {
     let root = root();
     crate::web_boundary::check(&root)?;
     doctor::require_wasm_bindgen(&root)?;
@@ -34,6 +122,9 @@ pub fn bundle(release: bool, perf_probe: bool) -> Result<(), String> {
     doctor::npm_version()?;
     let profile = if release { "wasm-release" } else { "dev" };
     let mut wasm = cargo(&root);
+    if let Some(prefix) = prefix {
+        wasm.env("VINK_ASSET_PREFIX", prefix);
+    }
     wasm.args([
         "build",
         "--locked",
@@ -43,17 +134,19 @@ pub fn bundle(release: bool, perf_probe: bool) -> Result<(), String> {
         "--target",
         "wasm32-unknown-unknown",
         "--features",
-        if perf_probe { "perf-probe" } else { "hydrate" },
+        feature,
         "--profile",
         profile,
     ]);
-    process::run(&mut wasm, "build browser bundle (vink-web, hydrate)")?;
+    process::run(
+        &mut wasm,
+        &format!("build browser bundle (vink-web, {feature})"),
+    )?;
     let out_dir = if release { "wasm-release" } else { "debug" };
     let wasm_file = root
         .join("target/wasm32-unknown-unknown")
         .join(out_dir)
         .join("vink_web.wasm");
-    let pkg = root.join("target/site/pkg");
     // Both are generated. Bindgen does not prune obsolete snippet hashes, and previous
     // Web builds could have left the complete Preview payload here.
     for stale in [pkg.join("expressions"), pkg.join("snippets")] {
@@ -63,7 +156,7 @@ pub fn bundle(release: bool, perf_probe: bool) -> Result<(), String> {
             Err(error) => return Err(format!("clear generated {}: {error}", stale.display())),
         }
     }
-    std::fs::create_dir_all(&pkg).map_err(|e| format!("create {}: {e}", pkg.display()))?;
+    std::fs::create_dir_all(pkg).map_err(|e| format!("create {}: {e}", pkg.display()))?;
     let mut bindgen = std::process::Command::new("wasm-bindgen");
     bindgen
         .args([
@@ -74,18 +167,18 @@ pub fn bundle(release: bool, perf_probe: bool) -> Result<(), String> {
             "vink",
             "--out-dir",
         ])
-        .arg(&pkg)
+        .arg(pkg)
         .arg(&wasm_file);
     if release {
         bindgen.arg("--remove-name-section");
     }
-    process::run(&mut bindgen, "wasm-bindgen → target/site/pkg")?;
+    process::run(&mut bindgen, "wasm-bindgen public package")?;
     editor_runtime(&root, &pkg.join("vink-editor.js"))?;
     stylesheet(&root, &pkg.join("vink.css"), release)?;
     copy_fonts(&root.join(checks::FONTS_DIR), &pkg.join("fonts"))?;
     copy_brand(&root.join(checks::BRAND_DIR), &pkg.join("brand"))?;
     copy_empty_artwork(&root, &pkg.join("empty"))?;
-    crate::web_boundary::artifacts(&pkg)
+    crate::web_boundary::artifacts(pkg)
 }
 
 /// Server binaries plus
@@ -216,7 +309,11 @@ mod tests {
         ] {
             let cmd = binary_command(artifact, false).unwrap();
             let args: Vec<_> = cmd.get_args().map(|a| a.to_str().unwrap()).collect();
-            assert_eq!(args, vec!["build", "--locked", "-p", package, "--bin", bin]);
+            let mut expected = vec!["build", "--locked", "-p", package, "--bin", bin];
+            if artifact == Artifact::Worker {
+                expected.push("--no-default-features");
+            }
+            assert_eq!(args, expected);
         }
     }
 }

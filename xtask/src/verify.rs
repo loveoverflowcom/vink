@@ -36,7 +36,7 @@ pub fn verify(lanes: &[Lane], env: &env::Env) -> ExitCode {
 
 fn quick(report: &mut Report) -> bool {
     let root = root();
-    let steps: [(&str, &[&str]); 7] = [
+    let steps: [(&str, &[&str]); 8] = [
         ("fmt", &["fmt", "--all", "--", "--check"]),
         (
             "clippy server (workspace, ssr)",
@@ -62,6 +62,23 @@ fn quick(report: &mut Report) -> bool {
                 "wasm32-unknown-unknown",
                 "--features",
                 "hydrate",
+                "--",
+                "-D",
+                "warnings",
+            ],
+        ),
+        (
+            "clippy standalone Web (vink-web, csr, wasm32)",
+            &[
+                "clippy",
+                "--locked",
+                "-p",
+                "vink-web",
+                "--lib",
+                "--target",
+                "wasm32-unknown-unknown",
+                "--features",
+                "csr",
                 "--",
                 "-D",
                 "warnings",

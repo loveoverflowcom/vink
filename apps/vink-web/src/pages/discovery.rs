@@ -44,7 +44,7 @@ fn query_from(params: &leptos_router::params::ParamsMap) -> ExploreQuery {
 
 /// A submit owns one focus intent, not subsequent typing or an async read completion.
 fn focus_submitted_results(data: &leptos::web_sys::FormData) {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         use wasm_bindgen::JsCast;
         let path = window().location().pathname().ok();
@@ -90,7 +90,7 @@ fn focus_submitted_results(data: &leptos::web_sys::FormData) {
             }
         });
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = data;
 }
 
@@ -120,7 +120,7 @@ pub(super) fn reader_context() -> Memo<ExploreContext> {
     })
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn is_narrow_viewport() -> bool {
     window()
         .inner_width()
@@ -129,7 +129,7 @@ fn is_narrow_viewport() -> bool {
         .is_some_and(|width| width < 760.0)
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn focus_no_scroll(id: &str) {
     use wasm_bindgen::JsCast;
     if let Some(target) = document().get_element_by_id(id)
@@ -142,7 +142,7 @@ fn focus_no_scroll(id: &str) {
 }
 
 /// Escape closes the in-place dock only from inside it; the phone dock owns the whole screen.
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn in_dock(event: &leptos::ev::KeyboardEvent) -> bool {
     use wasm_bindgen::JsCast;
     event
@@ -153,7 +153,7 @@ fn in_dock(event: &leptos::ev::KeyboardEvent) -> bool {
 }
 
 /// The focused element takes text, so “/” belongs to it.
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn typing_target() -> bool {
     use wasm_bindgen::JsCast;
     document().active_element().is_some_and(|element| {
@@ -164,7 +164,7 @@ fn typing_target() -> bool {
     })
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn any_modal_dialog_open() -> bool {
     document()
         .query_selector("dialog[open]")
@@ -173,7 +173,7 @@ fn any_modal_dialog_open() -> bool {
         .is_some()
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn restore_browse(browse_scroll_y: RwSignal<Option<f64>>) {
     // Native traversal restores its scroll after popstate. Focus only the mounted browse view.
     request_animation_frame(move || {
@@ -244,7 +244,7 @@ fn DiscoveryPage(#[prop(optional)] tag_page: Option<Memo<String>>) -> AnyView {
     });
     let dock_open = RwSignal::new(false);
     let browse_scroll_y = RwSignal::new(None::<f64>);
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     if tag_page.is_none() {
         let guard = expect_context::<crate::navigation::NavigationGuard>();
         // A normal link drops the manually opened dock. A destination with a query or the
@@ -376,7 +376,7 @@ pub(super) fn ExploreModes(
             <div class="vk-explore-modes__group flex-nowrap gap-[2px] [inline-size:max-content] [max-inline-size:100%]">{links("explore-mode")}</div>
             <details id="explore-mode-menu" class="vk-explore-modes__menu"
                 on:keydown=move |event: leptos::ev::KeyboardEvent| {
-                    #[cfg(feature = "hydrate")]
+                    #[cfg(feature = "browser")]
                     {
                         use wasm_bindgen::JsCast;
                         if event.key() == "Escape"
@@ -393,7 +393,7 @@ pub(super) fn ExploreModes(
                             }
                         }
                     }
-                    #[cfg(not(feature = "hydrate"))]
+                    #[cfg(not(feature = "browser"))]
                     let _ = event;
                 }>
                 <summary id="explore-mode-menu-button" class=EXPLORE_MODE_CONTROL_CLASS>
@@ -418,7 +418,7 @@ fn DiscoveryChrome(
 ) -> AnyView {
     let stream = NodeRef::<leptos::html::Section>::new();
     let query_input = NodeRef::<leptos::html::Input>::new();
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     super::restore_public_position(stream, Memo::new(move |_| works.with(Option::is_some)));
     let buffer = RwSignal::new(context.query.q.clone());
     let open = RwSignal::new(false);
@@ -437,7 +437,7 @@ fn DiscoveryChrome(
     };
     let dismiss_picker = move || {
         dismiss();
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         if document().get_element_by_id("open-tag-filters").is_none() {
             if !search_open.get_untracked() {
                 focus_recovery("open-public-search");
@@ -483,7 +483,7 @@ fn DiscoveryChrome(
         let href = clear_href.clone();
         Callback::new(move |()| {
             buffer.set(String::new());
-            #[cfg(feature = "hydrate")]
+            #[cfg(feature = "browser")]
             if browse_scroll_y.get_untracked().is_some()
                 && location.hash.get_untracked() == "#tim-kiem"
                 && let Ok(history) = window().history()
@@ -502,7 +502,7 @@ fn DiscoveryChrome(
                     },
                 );
             }
-            #[cfg(feature = "hydrate")]
+            #[cfg(feature = "browser")]
             restore_browse(browse_scroll_y);
         })
     };
@@ -510,7 +510,7 @@ fn DiscoveryChrome(
         let navigate = navigate.clone();
         let href = format!("{}#tim-kiem", context.href(None));
         Callback::new(move |()| {
-            #[cfg(feature = "hydrate")]
+            #[cfg(feature = "browser")]
             {
                 buffer.set(String::new());
                 dock_open.set(true);
@@ -537,7 +537,7 @@ fn DiscoveryChrome(
                     }
                 });
             }
-            #[cfg(not(feature = "hydrate"))]
+            #[cfg(not(feature = "browser"))]
             let _ = (&navigate, &href, browse_scroll_y);
         })
     };
@@ -552,9 +552,9 @@ fn DiscoveryChrome(
             next.query.q = data.get("q").as_string().unwrap_or_default();
             next.query.cursor = None;
             let mut url = next.href(None);
-            #[cfg(feature = "hydrate")]
+            #[cfg(feature = "browser")]
             let mobile = !is_tag && is_narrow_viewport();
-            #[cfg(not(feature = "hydrate"))]
+            #[cfg(not(feature = "browser"))]
             let mobile = false;
             if mobile && next.query.q.is_empty() {
                 url.push_str("#tim-kiem");
@@ -574,7 +574,7 @@ fn DiscoveryChrome(
     let composing = StoredValue::new(false);
     // “/” opens the dock (or returns to its field) unless the person is typing elsewhere, a
     // dialog is open or an IME composition is in progress.
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     if !is_tag {
         let shortcut = window_event_listener(leptos::ev::keydown, move |event| {
             if event.key() != "/"
@@ -598,7 +598,7 @@ fn DiscoveryChrome(
         });
         on_cleanup(move || shortcut.remove());
     }
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     if catalog.is_some() {
         let guard = expect_context::<crate::navigation::NavigationGuard>();
         let registration = guard.set_overlay(move |reason| {
@@ -623,7 +623,7 @@ fn DiscoveryChrome(
             on:compositionstart=move |_| composing.set_value(true)
             on:compositionend=move |_| composing.set_value(false)
             on:keydown=move |event| {
-                #[cfg(feature = "hydrate")]
+                #[cfg(feature = "browser")]
                 if event.key() == "Escape" && !event.default_prevented() && !event.is_composing()
                     && event.key_code() != 229 && !composing.get_value()
                     && search_open.get_untracked() && !any_modal_dialog_open()
@@ -632,7 +632,7 @@ fn DiscoveryChrome(
                     event.prevent_default();
                     close_search.run(());
                 }
-                #[cfg(not(feature = "hydrate"))]
+                #[cfg(not(feature = "browser"))]
                 let _ = event;
             }
             data-enhanced=move || enhanced.get().to_string()
@@ -670,9 +670,9 @@ fn DiscoveryChrome(
                                 if !is_tag {
                                     dock_open.set(true);
                                 }
-                                #[cfg(feature = "hydrate")]
+                                #[cfg(feature = "browser")]
                                 let mobile = !is_tag && is_narrow_viewport();
-                                #[cfg(not(feature = "hydrate"))]
+                                #[cfg(not(feature = "browser"))]
                                 let mobile = false;
                                 navigate(&clear_nav, leptos_router::NavigateOptions { replace: mobile, scroll: false, ..Default::default() });
                                 focus_recovery("public-query");
@@ -812,7 +812,7 @@ fn DiscoveryHeader(
     let canonical = context.canonical(&list);
     if canonical.href(None) != context.href(None) {
         status.redirect(&canonical.href(None));
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         {
             let href = canonical.href(None);
             let navigate = leptos_router::hooks::use_navigate();
@@ -1189,9 +1189,9 @@ fn WorkCardRow(
     cached_unverified: Signal<bool>,
     context: ExploreContext,
 ) -> impl IntoView {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let navigate = leptos_router::hooks::use_navigate();
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let feed_scope = use_context::<feed::ReturnScope>();
     view! {
         <li id=crate::public_list::work_anchor(&work_id) class="vk-public-row wrap-anywhere" data-work-id=work_id>
@@ -1199,17 +1199,17 @@ fn WorkCardRow(
                 let href = context.reader_href(&work.work_id);
                 let title_id = format!("work-title-{}", work.work_id);
                 let title_label = title_id.clone();
-                #[cfg(feature = "hydrate")]
+                #[cfg(feature = "browser")]
                 let card_context = context.clone();
-                #[cfg(feature = "hydrate")]
+                #[cfg(feature = "browser")]
                 let return_id = work.work_id.clone();
-                #[cfg(feature = "hydrate")]
+                #[cfg(feature = "browser")]
                 let navigate = navigate.clone();
                 let query = context.query.q.clone();
                 let author = adapters::card_author(&work, cached_unverified.get());
                 let primary_tag = work.tags.first().map(|tag| tag.label.clone());
                 let excerpt = work.excerpt.clone();
-                #[cfg(feature = "hydrate")]
+                #[cfg(feature = "browser")]
                 let following = context.mode == ExploreMode::Following;
                 // R4.2 (#405, DQ-08): show first-public date in Asia/Ho_Chi_Minh across all modes.
                 let date = work.first_published_at.as_deref().and_then(|instant| {
@@ -1218,13 +1218,13 @@ fn WorkCardRow(
                     })
                 });
                 let separate_metadata = primary_tag.is_some() && date.is_some();
-                #[cfg(feature = "hydrate")]
+                #[cfg(feature = "browser")]
                 let author_return = work.work_id.clone();
                 // Placeholder labels are not author names: never mark them as search matches.
                 let author_text = (!author.neutral).then(|| highlighted_text(&author.name, &query));
                 let byline = view! {
                     <div class="vk-public-row__byline [min-inline-size:0] [margin-block-start:var(--vk-space-4)]" on:click=move |_event| {
-                        #[cfg(feature = "hydrate")]
+                        #[cfg(feature = "browser")]
                         if following && super::is_primary_link_click(&_event)
                             && event_target::<leptos::web_sys::Element>(&_event)
                                 .closest("a[data-profile-return]").ok().flatten().is_some()
@@ -1242,7 +1242,7 @@ fn WorkCardRow(
                             // Heading first in the DOM (heading navigation, Tab: work → author).
                             <h2 class="vk-public-row__title m-0 [min-inline-size:0] wrap-anywhere" id=title_id>
                                 <a class="vk-public-row__link" href=href aria-labelledby=title_label on:click=move |_event| {
-                                    #[cfg(feature = "hydrate")]
+                                    #[cfg(feature = "browser")]
                                     {
                                         if super::is_primary_link_click(&_event) && let Some(scope) = feed_scope {
                                             scope.remember(&return_id);

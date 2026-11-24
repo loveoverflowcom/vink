@@ -5,7 +5,7 @@
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 use crate::contract::{ApiError, Draft, DraftList, SaveDraftRequest, SavedDraft};
 use crate::contract::{EndorsementSummaries, Publication, WorkList};
 
@@ -17,7 +17,7 @@ pub fn local_discussion_fixture_scope() -> Option<String> {
     {
         use_context::<crate::server::LocalDiscussionFixture>().map(|scope| scope.0)
     }
-    #[cfg(all(feature = "hydrate", not(feature = "ssr")))]
+    #[cfg(all(feature = "browser", not(feature = "ssr")))]
     {
         web_sys::window()?
             .document()?
@@ -25,7 +25,7 @@ pub fn local_discussion_fixture_scope() -> Option<String> {
             .ok()??
             .get_attribute("content")
     }
-    #[cfg(not(any(feature = "ssr", feature = "hydrate")))]
+    #[cfg(not(any(feature = "ssr", feature = "browser")))]
     {
         None
     }
@@ -38,7 +38,7 @@ pub fn sign_in_open() -> bool {
     {
         use_context::<crate::server::SignInOpen>().is_some_and(|open| open.0)
     }
-    #[cfg(all(feature = "hydrate", not(feature = "ssr")))]
+    #[cfg(all(feature = "browser", not(feature = "ssr")))]
     {
         web_sys::window()
             .and_then(|window| window.document())
@@ -50,7 +50,7 @@ pub fn sign_in_open() -> bool {
             })
             .is_some()
     }
-    #[cfg(not(any(feature = "ssr", feature = "hydrate")))]
+    #[cfg(not(any(feature = "ssr", feature = "browser")))]
     {
         false
     }
@@ -61,7 +61,7 @@ pub(crate) fn following_feed_enabled() -> bool {
     {
         use_context::<crate::server::FollowingFeedEnabled>().is_some_and(|flag| flag.0)
     }
-    #[cfg(all(feature = "hydrate", not(feature = "ssr")))]
+    #[cfg(all(feature = "browser", not(feature = "ssr")))]
     {
         document()
             .query_selector("meta[name='vink-following-feed']")
@@ -69,13 +69,13 @@ pub(crate) fn following_feed_enabled() -> bool {
             .flatten()
             .is_some()
     }
-    #[cfg(not(any(feature = "ssr", feature = "hydrate")))]
+    #[cfg(not(any(feature = "ssr", feature = "browser")))]
     {
         false
     }
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn load_following_feed(
     query: &str,
     return_scope: Option<&str>,
@@ -83,19 +83,19 @@ pub(crate) async fn load_following_feed(
     http::following_feed(&format!("/api/v1/me/following-feed{query}"), return_scope).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn current_account()
 -> Result<crate::contract::CurrentAccount, crate::session::AuthError> {
     http::auth::<(), _>("GET", "/api/v1/auth/session/account", &[200], None).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn session_state()
 -> Result<crate::contract::SessionState, crate::session::AuthError> {
     http::auth::<(), _>("GET", "/api/v1/auth/session", &[200], None).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn request_sign_in_code(
     email: String,
 ) -> Result<crate::contract::ChallengeSent, crate::session::AuthError> {
@@ -108,7 +108,7 @@ pub(crate) async fn request_sign_in_code(
     .await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn complete_sign_in(
     code: String,
 ) -> Result<crate::contract::SessionState, crate::session::AuthError> {
@@ -121,7 +121,7 @@ pub(crate) async fn complete_sign_in(
     .await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn register_password(
     credentials: crate::contract::PasswordCredentials,
 ) -> Result<crate::contract::SessionState, crate::session::AuthError> {
@@ -134,7 +134,7 @@ pub(crate) async fn register_password(
     .await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn login_password(
     credentials: crate::contract::PasswordCredentials,
 ) -> Result<crate::contract::SessionState, crate::session::AuthError> {
@@ -147,10 +147,10 @@ pub(crate) async fn login_password(
     .await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 const ENROLL_PASSWORD: &str = "/api/v1/auth/password/enroll";
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn request_enrollment_code()
 -> Result<crate::contract::ChallengeSent, crate::session::AuthError> {
     http::auth::<(), _>(
@@ -162,29 +162,29 @@ pub(crate) async fn request_enrollment_code()
     .await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn enroll_password(
     proof: crate::contract::EnrollPasswordRequest,
 ) -> Result<crate::contract::PasswordEnrollmentStatus, crate::session::AuthError> {
     http::auth("POST", ENROLL_PASSWORD, &[200], Some(&proof)).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn password_enrollment_status()
 -> Result<crate::contract::PasswordEnrollmentStatus, crate::session::AuthError> {
     http::auth::<(), _>("GET", ENROLL_PASSWORD, &[200], None).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 const EMAIL_ATTACHMENT: &str = "/api/v1/auth/email/attachment";
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn email_attachment_status()
 -> Result<crate::contract::EmailAttachmentStatus, crate::session::AuthError> {
     http::auth::<(), _>("GET", EMAIL_ATTACHMENT, &[200], None).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn request_email_attachment(
     input: crate::contract::StartEmailAttachment,
 ) -> Result<crate::contract::EmailAttachmentChallenge, crate::session::AuthError> {
@@ -197,7 +197,7 @@ pub(crate) async fn request_email_attachment(
     .await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn complete_email_attachment(
     input: crate::contract::CompleteEmailAttachment,
 ) -> Result<(), crate::session::AuthError> {
@@ -210,7 +210,7 @@ pub(crate) async fn complete_email_attachment(
     .await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn provision_principal(
     pen_name: String,
 ) -> Result<crate::contract::ProvisionedPrincipal, crate::session::AuthError> {
@@ -224,13 +224,13 @@ pub(crate) async fn provision_principal(
 }
 
 /// `DELETE /auth/session` answers `204` only when the session is revoked (or there was none).
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn sign_out() -> Result<(), crate::session::AuthError> {
     http::auth::<(), ()>("DELETE", "/api/v1/auth/session", &[204], None).await
 }
 
 /// Called when a private request is answered `401`: the session owner re-reads the session.
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) fn on_unauthenticated(hook: impl Fn() + 'static) {
     http::UNAUTHENTICATED.with(|slot| *slot.borrow_mut() = Some(Box::new(hook)));
 }
@@ -357,7 +357,7 @@ pub fn endorsement_path(work: &str, comment: Option<&str>) -> String {
     }
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn load_endorsement_summaries(
     work: &str,
     comment_ids: &[String],
@@ -365,7 +365,7 @@ pub async fn load_endorsement_summaries(
     http::get(&endorsements_path(work, false, comment_ids)).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn load_own_endorsements(
     work: &str,
     comment_ids: &[String],
@@ -373,7 +373,7 @@ pub async fn load_own_endorsements(
     http::get(&endorsements_path(work, true, comment_ids)).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn set_endorsement(
     work: &str,
     request: &crate::endorsement_state::Request,
@@ -430,7 +430,7 @@ pub fn own_comments_path(work: &str, cursor: Option<&str>, ids: Option<&[String]
     }
     path
 }
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn load_own_comments(
     work: &str,
     cursor: Option<&str>,
@@ -438,14 +438,14 @@ pub async fn load_own_comments(
 ) -> Result<crate::contract::OwnCommentList, ApiError> {
     http::get(&own_comments_path(work, cursor, ids)).await
 }
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn load_discussion_capability(
     work: &str,
 ) -> Result<crate::contract::DiscussionCapability, ApiError> {
     http::get(&format!("{}?limit=1", discussion_path(work, None, None))).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn load_discussion(
     work: &str,
     cursor: Option<&str>,
@@ -455,7 +455,7 @@ pub async fn load_discussion(
         .map(Into::into)
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn load_replies(
     work: &str,
     root: &str,
@@ -466,7 +466,7 @@ pub async fn load_replies(
         .map(Into::into)
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn submit_comment(
     work: &str,
     request: &crate::contract::SubmitCommentRequest,
@@ -479,7 +479,7 @@ pub async fn submit_comment(
     .await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn remove_comment(
     work: &str,
     comment: &str,
@@ -497,7 +497,7 @@ pub async fn remove_comment(
     .await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn set_comments_mode(
     work: &str,
     request: &crate::contract::CommentsSettingsRequest,
@@ -569,7 +569,7 @@ pub(crate) async fn load_author_search(
     public_get(path).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn load_follow_membership(
     handles: &[String],
 ) -> Result<crate::contract::follow::MembershipBatch, ApiError> {
@@ -719,11 +719,11 @@ pub fn reader_resource(
 fn browser<F: std::future::Future + 'static>(
     future: F,
 ) -> impl std::future::Future<Output = F::Output> + Send {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         send_wrapper::SendWrapper::new(future)
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     {
         // Neither ssr nor hydrate: a library build for tooling only.
         drop(future);
@@ -734,7 +734,7 @@ fn browser<F: std::future::Future + 'static>(
 /// Discussion stays `no-store` and outside the READ-02 store.
 #[cfg(not(feature = "ssr"))]
 async fn public_get<T: serde::de::DeserializeOwned>(path: String) -> Result<T, LoadError> {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         http::get(&path).await.map_err(|error| match error {
             ApiError::NotFound => LoadError::NotFound,
@@ -751,7 +751,7 @@ async fn public_get<T: serde::de::DeserializeOwned>(path: String) -> Result<T, L
             _ => LoadError::Unavailable,
         })
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     {
         let _ = path;
         Err(LoadError::Unavailable)
@@ -763,11 +763,11 @@ async fn public_get<T: serde::de::DeserializeOwned>(path: String) -> Result<T, L
 async fn public(
     key: crate::public_reads::PublicKey,
 ) -> Result<crate::public_reads::Snapshot, LoadError> {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         crate::public_reads::load(key).await
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     {
         let _ = key;
         Err(LoadError::Unavailable)
@@ -775,14 +775,14 @@ async fn public(
 }
 
 /// One public read for the READ-02 owner, revalidated through the browser HTTP cache.
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn fetch_public<T: serde::de::DeserializeOwned>(
     path: &str,
 ) -> crate::freshness::Outcome<T> {
     http::public(path).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn list_drafts() -> Result<DraftList, ApiError> {
     http::get("/api/v1/drafts").await
 }
@@ -810,7 +810,7 @@ pub fn drafts_path(
     path
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn search_author_works(
     q: &str,
     sort: crate::draft_list::DraftSort,
@@ -822,7 +822,7 @@ pub async fn search_author_works(
     http::get(&path).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn search_drafts(
     q: &str,
     sort: crate::draft_list::DraftSort,
@@ -848,12 +848,12 @@ mod private_draft_paths {
     }
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn create_draft() -> Result<Draft, ApiError> {
     create_draft_with_format(crate::contract::DocumentFormatDto::Default).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn create_draft_with_format(
     format: crate::contract::DocumentFormatDto,
 ) -> Result<Draft, ApiError> {
@@ -870,12 +870,12 @@ pub async fn create_draft_with_format(
     }
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn load_draft(work_id: String) -> Result<Draft, ApiError> {
     http::get(&format!("/api/v1/drafts/{work_id}")).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn save_draft(
     work_id: String,
     request: SaveDraftRequest,
@@ -904,12 +904,12 @@ pub fn tag_suggestions_path(q: &str, facet: &str) -> String {
 }
 
 /// The active catalog (forms first, at most 200, `truncated` beyond). Public, no actor.
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn load_tag_catalog() -> Result<crate::contract::TagList, ApiError> {
     http::get("/api/v1/tags").await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn suggest_tags(
     q: &str,
     facet: &str,
@@ -917,12 +917,12 @@ pub async fn suggest_tags(
     http::get(&tag_suggestions_path(q, facet)).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn load_draft_tags(work_id: &str) -> Result<crate::contract::DraftTags, ApiError> {
     http::get(&draft_tags_path(work_id)).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn save_draft_tags(
     work_id: &str,
     request: &crate::contract::SaveDraftTagsRequest,
@@ -972,7 +972,7 @@ pub fn set_private_path(work_id: &str) -> String {
 }
 
 /// The author's own publication state. Private (`no-store`) and read only in the browser.
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn load_publication_state(
     work_id: &str,
 ) -> Result<crate::contract::publication::AuthorPublicationState, ApiError> {
@@ -981,7 +981,7 @@ pub async fn load_publication_state(
 
 /// Freezes the saved draft and tags. Every call carries a `command_key`; a replay with the same
 /// key and versions returns the first revision and writes nothing.
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn capture_snapshot(
     work_id: &str,
     request: &crate::contract::publication::CaptureSnapshotRequest,
@@ -989,7 +989,7 @@ pub async fn capture_snapshot(
     http::send("POST", &snapshots_path(work_id), Some(request)).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn request_public(
     work_id: &str,
     request: &crate::contract::publication::RequestPublicRequest,
@@ -997,7 +997,7 @@ pub async fn request_public(
     http::send("POST", &request_public_path(work_id), Some(request)).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub async fn set_private(
     work_id: &str,
     request: &crate::contract::publication::SetPrivateRequest,
@@ -1007,7 +1007,7 @@ pub async fn set_private(
 
 /// Calls that end after 30 s: a lost answer to a write is then uncertain, never a rejection.
 /// Aborting a request proves nothing about the server, which may have committed it.
-#[cfg_attr(not(any(test, feature = "hydrate")), allow(dead_code))]
+#[cfg_attr(not(any(test, feature = "browser")), allow(dead_code))]
 fn bounded(path: &str) -> bool {
     let publication_command = path.ends_with("/snapshots")
         || path.ends_with("/publication/request-public")
@@ -1031,7 +1031,7 @@ fn bounded(path: &str) -> bool {
         || path.starts_with("/api/v1/auth/")
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 mod http {
     use gloo_net::http::{Method, Request, RequestBuilder, Response};
     use serde::Serialize;
@@ -1440,22 +1440,22 @@ mod separated_discussion_paths {
 
 /// Private moderation transports. Called only by LocalResource or explicit intents; no SSR data.
 pub(crate) async fn can_read_work_review_queue() -> bool {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         http::can_read_work_review_queue().await
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     false
 }
 
 pub(crate) async fn moderation_get<T: serde::de::DeserializeOwned>(
     _path: &str,
 ) -> Result<T, crate::contract::ApiError> {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         http::get(_path).await
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     {
         Err(crate::contract::ApiError::Unavailable)
     }
@@ -1464,11 +1464,11 @@ pub(crate) async fn moderation_post(
     _path: &str,
     _body: &serde_json::Value,
 ) -> Result<serde_json::Value, crate::contract::ApiError> {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         http::send("POST", _path, Some(_body)).await
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     {
         Err(crate::contract::ApiError::Unavailable)
     }
@@ -1520,31 +1520,31 @@ pub(crate) fn author_resource(
     }
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn load_own_profile() -> Result<crate::contract::profile::OwnProfile, ApiError> {
     http::get("/api/v1/me/profile").await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn save_profile(
     request: &crate::contract::profile::SaveProfile,
 ) -> Result<crate::contract::profile::OwnProfile, ApiError> {
     http::send("PUT", "/api/v1/me/profile", Some(request)).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn load_own_handle() -> Result<crate::contract::profile::OwnHandle, ApiError> {
     http::get("/api/v1/me/handle").await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn save_handle(
     command: &crate::contract::profile::HandleCommand,
 ) -> Result<crate::contract::profile::HandleReceipt, ApiError> {
     http::send("POST", "/api/v1/me/handle", Some(command)).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn load_handle_receipt(
     command_id: &str,
 ) -> Result<crate::contract::profile::HandleReceipt, ApiError> {
@@ -1640,7 +1640,7 @@ pub(crate) fn author_relationships_resource(
             move |generation| {
                 let path = path.clone();
                 browser(async move {
-                    #[cfg(feature = "hydrate")]
+                    #[cfg(feature = "browser")]
                     {
                         let result = match http::get::<
                             crate::contract::follow::PublicRelationshipList,
@@ -1668,7 +1668,7 @@ pub(crate) fn author_relationships_resource(
                         };
                         (generation, result)
                     }
-                    #[cfg(not(feature = "hydrate"))]
+                    #[cfg(not(feature = "browser"))]
                     {
                         let _ = &path;
                         (generation, Err(LoadError::Unavailable))
@@ -1679,14 +1679,14 @@ pub(crate) fn author_relationships_resource(
     }
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn load_viewer_relationship(
     handle: &str,
 ) -> Result<crate::contract::follow::ViewerRelationship, ApiError> {
     http::get(&viewer_relationship_path(handle)).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn set_follow(
     handle: &str,
     request: &crate::contract::follow::SetFollowRequest,
@@ -1694,14 +1694,14 @@ pub(crate) async fn set_follow(
     http::send("PUT", &viewer_relationship_path(handle), Some(request)).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn load_follow_receipt(
     command_id: &str,
 ) -> Result<crate::contract::follow::FollowReceipt, ApiError> {
     http::get(&follow_receipt_path(command_id)).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn load_public_relationships(
     handle: &str,
     direction: crate::contract::follow::FollowDirection,
@@ -1710,7 +1710,7 @@ pub(crate) async fn load_public_relationships(
     http::get(&author_relationships_path(handle, direction, cursor)).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn load_own_relationships(
     direction: crate::contract::follow::FollowDirection,
     cursor: Option<&str>,
@@ -1718,7 +1718,7 @@ pub(crate) async fn load_own_relationships(
     http::get(&own_relationships_path(direction, cursor)).await
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(crate) async fn load_author_relationships_summary(
     handle: &str,
 ) -> Result<crate::contract::follow::PublicRelationships, ApiError> {

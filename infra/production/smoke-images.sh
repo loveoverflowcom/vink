@@ -4,24 +4,32 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 revision=${1:?source SHA required}
 platform=${2:?platform required}
+app_image=${3:-web}
+[[ $app_image == web || $app_image == api ]]
 # Opt-in auth Compose renders with stand-ins only; image smoke below retains auth disabled.
 ruby infra/auth-mail/check-static.rb
 bash infra/auth-mail/check-render.sh
 [[ $revision =~ ^[a-f0-9]{40}$ && $platform =~ ^linux/(amd64|arm64)$ ]]
-for service in web worker identity; do
+for service in "$app_image" worker identity; do
     image="ghcr.io/loveoverflowcom/vink-$service:sha-$revision"
     docker run --rm --entrypoint sh "$image" -c 'test "$(id -u)" -ne 0'
     status=0
     docker run --rm "$image" >/dev/null 2>&1 || status=$?
     test "$status" = 2
 done
-docker run --rm --entrypoint sh "ghcr.io/loveoverflowcom/vink-web:sha-$revision" -c '
-    test -s /opt/vink/site/pkg/vink.js && test -s /opt/vink/site/pkg/vink_bg.wasm &&
-    test -s /opt/vink/site/pkg/vink-editor.js && test -s /opt/vink/site/pkg/vink.css &&
-    test -d /opt/vink/site/pkg/fonts && test -d /opt/vink/site/pkg/brand &&
-    test ! -e /opt/vink/site/pkg/expressions &&
-    test -z "$(find /opt/vink/site/pkg -type d -name expressions -print -quit)" &&
-    test ! -e /src && test ! -e /opt/vink/.env'
+if [[ $app_image == api ]]; then
+    docker run --rm --entrypoint sh "ghcr.io/loveoverflowcom/vink-api:sha-$revision" -c '
+        test ! -e /opt/vink/site && test ! -e /opt/vink/site-release &&
+        test ! -e /src && test ! -e /opt/vink/.env'
+else
+    docker run --rm --entrypoint sh "ghcr.io/loveoverflowcom/vink-web:sha-$revision" -c '
+        test -s /opt/vink/site/pkg/vink.js && test -s /opt/vink/site/pkg/vink_bg.wasm &&
+        test -s /opt/vink/site/pkg/vink-editor.js && test -s /opt/vink/site/pkg/vink.css &&
+        test -d /opt/vink/site/pkg/fonts && test -d /opt/vink/site/pkg/brand &&
+        test ! -e /opt/vink/site/pkg/expressions &&
+        test -z "$(find /opt/vink/site/pkg -type d -name expressions -print -quit)" &&
+        test ! -e /src && test ! -e /opt/vink/.env'
+fi
 root=$(mktemp -d)
 project=vink-oci-smoke
 compose=(docker compose --project-name "$project" --env-file "$root/public.env"
@@ -54,7 +62,7 @@ VINK_PROD_DB_NETWORK=$project-db
 VINK_PROD_EDGE_NETWORK=$project-ingress
 VINK_PROD_SECRETS_DIR=$root/runtime
 VINK_PROD_SOCKET_DIR=$root/identity
-VINK_PROD_APP_IMAGE=ghcr.io/loveoverflowcom/vink-web:sha-$revision
+VINK_PROD_APP_IMAGE=ghcr.io/loveoverflowcom/vink-$app_image:sha-$revision
 VINK_PROD_WORKER_IMAGE=ghcr.io/loveoverflowcom/vink-worker:sha-$revision
 VINK_PROD_IDENTITY_IMAGE=ghcr.io/loveoverflowcom/vink-identity:sha-$revision
 SETTINGS
@@ -80,8 +88,14 @@ done
 "${compose[@]}" up -d --wait app identity worker
 app() { "${compose[@]}" exec -T app curl --max-time 10 --silent --show-error "$@"; }
 app --fail http://127.0.0.1:3000/health/ready | jq -e '.status == "ready" and .checks == {database:"ok", role:"restricted", schema:"current"}'
-app --fail http://127.0.0.1:3000/ > "$root/index.html"
-grep -q 'Khám phá' "$root/index.html"
+if [[ $app_image == api ]]; then
+    for path in / /toi /pkg/vink.js; do
+        [[ $(app -o /dev/null -w '%{http_code}' "http://127.0.0.1:3000$path") == 404 ]]
+    done
+else
+    app --fail http://127.0.0.1:3000/ > "$root/index.html"
+    grep -q 'Khám phá' "$root/index.html"
+fi
 app --fail http://127.0.0.1:3000/api/v1/works | jq -e 'type == "object"'
 app --fail --unix-socket /run/vink-identity/identity.sock http://identity/health/ready |
     jq -e '.status == "ready" and .checks.database == "ok" and .checks.schema == "current" and .checks.role == "restricted"'

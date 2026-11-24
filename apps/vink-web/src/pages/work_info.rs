@@ -17,11 +17,11 @@ use crate::ui::adapters::{self, TagLabels};
 use crate::ui::patterns::{CatalogFacts, TagSelector};
 
 /// The theme query field; “Ở lại” returns focus here when the author was choosing tags.
-#[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+#[cfg_attr(not(feature = "browser"), allow(dead_code))]
 pub const QUERY_ID: &str = "work-tags-query";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+#[cfg_attr(not(feature = "browser"), allow(dead_code))]
 pub enum TagLoad {
     Loading,
     Ready,
@@ -43,7 +43,7 @@ pub fn WorkInfo(
     // Never replaces a loaded session: retrying is offered only while no tags are loaded.
     let load_tags = move || {
         tag_load.set(TagLoad::Loading);
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         leptos::task::spawn_local(async move {
             match crate::api::load_draft_tags(&work_id.get_value()).await {
                 Ok(tags) => {
@@ -66,7 +66,7 @@ pub fn WorkInfo(
     };
     let load_catalog = move || {
         catalog.set(CatalogFacts::Loading);
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         leptos::task::spawn_local(async move {
             let next = match crate::api::load_tag_catalog().await {
                 Ok(list) => {
@@ -78,7 +78,7 @@ pub fn WorkInfo(
             catalog.try_set(next);
         });
     };
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = work_id;
     load_tags();
     load_catalog();
@@ -87,7 +87,7 @@ pub fn WorkInfo(
         let request = query
             .try_update(|q| q.input(&input.value, input.composing))
             .flatten();
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         if let Some(request) = request {
             leptos::task::spawn_local(async move {
                 use crate::tag_state::QueryFailure;
@@ -102,7 +102,7 @@ pub fn WorkInfo(
                 query.try_update(|q| q.settle(&request, answer));
             });
         }
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let _ = request;
     });
 

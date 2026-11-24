@@ -209,10 +209,10 @@ fn QueuePanel(
     let error = RwSignal::new(None::<ApiError>);
     let restarted = RwSignal::new(false);
     let wake = StoredValue::new(crate::read_events::WakePolicy::default());
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let transport = StoredValue::new(Owner::current().map(|o| o.downgrade()));
     let load = Callback::new(move |intent: Intent| {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         {
             if session.scope.get_untracked().is_none() {
                 return;
@@ -380,10 +380,10 @@ fn QueuePanel(
                 })
             });
         }
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let _ = intent;
     });
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         Effect::new(move |_| {
             let scope = session.scope.get();
@@ -419,9 +419,9 @@ fn QueuePanel(
             reads.try_update_value(|r| r.dispose());
         });
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = admin_allowed;
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = (
         chain,
         authority,

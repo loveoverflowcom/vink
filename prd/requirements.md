@@ -129,7 +129,7 @@ Không đưa một số hiệu suất tùy ý thành lời hứa. Trước publi
 
 | Hạng mục | Đại lượng cần đo | Điều kiện quyết định |
 | --- | --- | --- |
-| Reader/SSR | Thời gian có nội dung, lỗi hydration, dung lượng tải | Đọc được phần văn bản cốt lõi khi interactivity chưa sẵn sàng |
+| Reader | Thời gian tới văn bản, tải lỗi, byte ban đầu và tương tác | Tiêu chí SSR đang phát hành: đọc được văn bản trước interactivity. Delta SPA #504 chờ signoff r2: văn bản xuất hiện sau khi trình duyệt khởi động và API xác nhận quyền, shell có trạng thái tải/lỗi và hướng dẫn bật JS. Document tĩnh trả 200 và preview chung trước JS. [ADR](../docs/architecture/edge-frontend.md) |
 | Editor | Độ trễ gõ/undo, autosave, tài liệu dài và memory | Không phá IME, selection, dấu hoặc trạng thái đã lưu |
 | Moderation | Thời gian machine queue, human queue, tỷ lệ lỗi và đảo quyết định | Không đồng nhất model latency với tổng thời gian được đăng |
 | Đồng bộ | Outbox age, webhook lag, topic duplicates, reconciliation lag | Có cách phát hiện và sửa trạng thái lệch |

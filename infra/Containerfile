@@ -17,6 +17,8 @@ RUN test "$(printf %s "$SOURCE_REVISION" | grep -Ec '^[0-9a-f]{40}$')" = 1 \
  && printf '%s\n' "$SOURCE_REVISION" > /src/target/site-release \
  && mkdir -p "/src/target/site/_v/$SOURCE_REVISION" \
  && ln -s ../../pkg "/src/target/site/_v/$SOURCE_REVISION/pkg"
+FROM source AS api-build
+RUN cargo xtask build api --release
 FROM source AS worker-build
 RUN cargo xtask build worker --release
 FROM source AS identity-build
@@ -32,6 +34,12 @@ LABEL org.opencontainers.image.source="https://github.com/loveoverflowcom/vink" 
 WORKDIR /opt/vink
 USER 10001:10001
 
+FROM runtime AS api
+COPY --from=api-build /src/target/release/vink-app /usr/local/bin/vink-app
+ENTRYPOINT ["/usr/local/bin/vink-app"]
+CMD ["serve-api"]
+
+# Pre-cutover backend for the deployed, image-coupled controller.
 FROM runtime AS web
 COPY --from=app-build /src/target/release/vink-app /usr/local/bin/vink-app
 COPY --from=app-build /src/target/site /opt/vink/site

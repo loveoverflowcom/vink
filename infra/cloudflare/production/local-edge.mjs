@@ -15,7 +15,9 @@ const mf = new Miniflare(convertV4MiniflareOptions({
   modules: true, script: readFileSync(resolve(staged, '_worker.js'), 'utf8'),
   compatibilityDate: '2026-10-01', host: '127.0.0.1', cf: false,
   bindings: { ORIGIN_KEY: 'local-edge-scratch' },
-  serviceBindings: { ASSETS: { disk: { path: resolve(staged) } } },
+  assets: { directory: resolve(staged), binding: 'ASSETS', run_worker_first: true,
+    routerConfig: { has_user_worker: true },
+    assetConfig: { html_handling: 'auto-trailing-slash', not_found_handling: 'none' } },
   outboundService: async req => {
     const url = new URL(req.url);
     if (url.origin !== 'https://origin-prod.vink.forum' || req.headers.get('x-vink-origin-key') !== 'local-edge-scratch') {

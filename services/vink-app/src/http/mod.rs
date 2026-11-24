@@ -16,6 +16,7 @@ mod health;
 mod moderation_queue;
 pub mod notifications;
 mod profile;
+#[cfg(feature = "legacy-ssr")]
 mod ssr;
 
 use std::net::SocketAddr;
@@ -23,8 +24,9 @@ use std::path::Path;
 use std::sync::Arc;
 
 use axum::Router;
-use axum::extract::{ConnectInfo, FromRef, FromRequestParts};
+use axum::extract::{ConnectInfo, FromRequestParts};
 use axum::http::request::Parts;
+#[cfg(feature = "legacy-ssr")]
 use leptos::config::LeptosOptions;
 use sha2::{Digest, Sha256};
 use tower_http::trace::TraceLayer;
@@ -60,6 +62,7 @@ pub struct AppState {
     /// Readiness refuses a database role that can change schema or roles (production profile).
     pub require_restricted_role: bool,
     pub public_origin: Arc<str>,
+    #[cfg(feature = "legacy-ssr")]
     pub leptos: LeptosOptions,
     /// The Notification Service inbox (#348); `None` answers `503 dependency_unavailable`.
     pub notifications: Option<Arc<dyn crate::notification_inbox::NotificationInbox>>,
@@ -67,7 +70,8 @@ pub struct AppState {
     pub badges: Arc<notifications::BadgeCache>,
 }
 
-impl FromRef<AppState> for LeptosOptions {
+#[cfg(feature = "legacy-ssr")]
+impl axum::extract::FromRef<AppState> for LeptosOptions {
     fn from_ref(state: &AppState) -> Self {
         state.leptos.clone()
     }
@@ -80,6 +84,9 @@ impl AppState {
         public_origin: &str,
         site_root: &Path,
     ) -> Self {
+        #[cfg(not(feature = "legacy-ssr"))]
+        let _ = site_root;
+        #[cfg(feature = "legacy-ssr")]
         let leptos = LeptosOptions::builder()
             .output_name("vink")
             .site_root(site_root.to_string_lossy().into_owned())
@@ -98,6 +105,7 @@ impl AppState {
             identity_probe: None,
             require_restricted_role: false,
             public_origin: Arc::from(public_origin),
+            #[cfg(feature = "legacy-ssr")]
             leptos,
             notifications: None,
             badges: Arc::default(),
@@ -219,6 +227,10 @@ pub fn api_router(state: AppState) -> Router {
         .with_state(state)
 }
 
+#[cfg(not(feature = "legacy-ssr"))]
+pub use api_router as router;
+
+#[cfg(feature = "legacy-ssr")]
 pub fn router(state: AppState) -> Router {
     routes(&state)
         .merge(ssr::routes(&state))

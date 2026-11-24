@@ -7,6 +7,10 @@ on:
         description: Publish to GHCR (develop only); false runs qualification without pushing
         type: boolean
         default: true
+      api_only:
+        description: Build backend-only api/worker/identity images for the standalone frontend
+        type: boolean
+        default: false
       platform:
         description: Verified target platform
         required: true
@@ -39,6 +43,7 @@ jobs:
       packages: write
     env:
       PLATFORM: ${{ inputs.platform }}
+      APP_IMAGE: ${{ inputs.api_only && 'api' || 'web' }}
     steps:
       # Same verified checkout pin as existing CI; no unpinned third-party actions.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -52,16 +57,18 @@ jobs:
           OLD_EDGE: ${{ inputs.previous_edge }}
           READER: ${{ inputs.reader }}
         run: |
-          [[ "$GITHUB_REF" == refs/heads/develop && "$PUBLISH" == true ]]
+          [[ "$GITHUB_REF" == refs/heads/develop && "$PUBLISH" == true && "$APP_IMAGE" == web ]]
           [[ "$OLD_ORIGIN" =~ ^[a-f0-9]{40}$ ]]
           [[ "$OLD_EDGE" == none || "$OLD_EDGE" =~ ^[a-f0-9-]{36}$ ]]
           [[ "$READER" =~ ^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$ ]]
       - name: Build clean source without registry credentials
         run: |
           rustup toolchain install
-          cargo xtask infra build-images docker "$PLATFORM"
+          options=()
+          if [[ "$APP_IMAGE" == api ]]; then options+=(--api-only); fi
+          cargo xtask infra build-images docker "$PLATFORM" "${options[@]}"
       - name: Qualify built images against isolated PostgreSQL and Identity
-        run: infra/production/smoke-images.sh "$GITHUB_SHA" "$PLATFORM"
+        run: infra/production/smoke-images.sh "$GITHUB_SHA" "$PLATFORM" "$APP_IMAGE"
       - id: registry
         name: Publish explicitly and record remote digests
         if: github.ref == 'refs/heads/develop' && inputs.publish
@@ -73,7 +80,7 @@ jobs:
           printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           printf '```toml\nsource_revision = "%s"\nplatform = "%s"\n' "$GITHUB_SHA" "$PLATFORM" >> "$GITHUB_STEP_SUMMARY"
           refs=$(mktemp)
-          for name in web worker identity; do
+          for name in "$APP_IMAGE" worker identity; do
             image="ghcr.io/loveoverflowcom/vink-$name:sha-$GITHUB_SHA"
             docker push "$image"
             digest=$(docker image inspect --format '{{index .RepoDigests 0}}' "$image")
@@ -88,7 +95,7 @@ jobs:
           images = dict(line.split() for line in Path(sys.argv[1]).read_text().splitlines())
           receipt = {"environment": "production", "public_origin": "https://vink.forum",
                      "source_sha": os.environ["GITHUB_SHA"], "platform": os.environ["PLATFORM"], "images": images}
-          print("Input for release.py (image publication only)\n```json")
+          print(("Backend-only image receipt" if "api" in images else "Input for release.py (image publication only)") + "\n```json")
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               print("release=" + json.dumps(receipt, separators=(",", ":")), file=output)
           print(json.dumps(receipt, indent=2))

@@ -18,9 +18,9 @@ use crate::contract::follow::{
 use crate::follow_state::{format_vi_count, safe_profile_return};
 use crate::session::Standing;
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 mod browser;
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(super) use browser::{announce_follow_changed, generate_command_id, observe_changes};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,7 +32,7 @@ pub(super) struct RelationshipPersonRow {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum LiveListState {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     Loading,
     Page {
         author: PublicAuthorRef,
@@ -108,9 +108,9 @@ fn encode_next_target(handle: &str) -> String {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum RelationshipSummary {
     Ready(PublicRelationships),
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     Reading,
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     Unavailable,
 }
 
@@ -124,13 +124,13 @@ pub(super) fn ProfileActionRegion(
     let sign_in_open = crate::api::sign_in_open();
     let stored_handle = StoredValue::new(handle);
 
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     Effect::new(move |_| {
         if session.profile_scope.get().is_none() {
             own_relationships.set(None);
         }
     });
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = (on_summary, own_relationships);
 
     view! {
@@ -164,7 +164,7 @@ pub(super) fn ProfileActionRegion(
                     }.into_any()
                 }
                 Standing::Active(_) => {
-                    #[cfg(feature = "hydrate")]
+                    #[cfg(feature = "browser")]
                     {
                         let scoped_session = move || session.profile_scope.get().into_iter().collect::<Vec<_>>();
                         view! {
@@ -182,7 +182,7 @@ pub(super) fn ProfileActionRegion(
                             />
                         }.into_any()
                     }
-                    #[cfg(not(feature = "hydrate"))]
+                    #[cfg(not(feature = "browser"))]
                     {
                         view! { <span class="vk-follow-ssr-placeholder"></span> }.into_any()
                     }
@@ -213,9 +213,9 @@ pub(super) fn ProfileRelationships(
                 own_rel.valid_following_href().map(str::to_owned),
             ))
         } else {
-            #[cfg(not(feature = "hydrate"))]
+            #[cfg(not(feature = "browser"))]
             let RelationshipSummary::Ready(pub_rel) = public.get();
-            #[cfg(feature = "hydrate")]
+            #[cfg(feature = "browser")]
             let pub_rel = match public.get() {
                 RelationshipSummary::Ready(rel) => rel,
                 RelationshipSummary::Reading => return Err(false),
@@ -388,13 +388,13 @@ fn RelationshipListPage(
     status.set_no_store();
 
     let renew = move || {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         reload_trigger.update(|n| *n += 1);
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         _advance.update(|n| *n += 1);
     };
 
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         Effect::new(move |_| {
             hydrated.set(true);
@@ -407,7 +407,7 @@ fn RelationshipListPage(
     view! {
         <div class="vk-rel-wrapper">
             {
-                #[cfg(feature = "hydrate")]
+                #[cfg(feature = "browser")]
                 {
                     view! {
                         <browser::ListSyncHost
@@ -422,7 +422,7 @@ fn RelationshipListPage(
                         />
                     }.into_any()
                 }
-                #[cfg(not(feature = "hydrate"))]
+                #[cfg(not(feature = "browser"))]
                 {
                     let _ = (&cursor, &append_trigger, &reload_trigger);
                     view! { <span></span> }.into_any()
@@ -755,7 +755,7 @@ fn render_list_status(
     retry_initial: impl Fn() + Copy + Send + Sync + 'static,
 ) -> AnyView {
     match state {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         LiveListState::Loading => view! { <p role="status">"Đang tải danh sách…"</p> }.into_any(),
         LiveListState::Page { .. } => ().into_any(),
         LiveListState::Alias { href } => {

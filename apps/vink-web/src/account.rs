@@ -1,7 +1,7 @@
 //! The reactive session owner of the tab and the account region of “Tôi”.
 //! The shell provides one owner; the views and forms render its server-confirmed facts.
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 mod browser;
 mod flow;
 mod forms;
@@ -19,7 +19,7 @@ use flow::{AuthGate, Operation};
 use forms::{AuthHeading, GuestAuth, PenName, SignOut, SignedIn};
 
 // Auth inputs exist only in the mounted form and the request that consumes them.
-#[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+#[cfg_attr(not(feature = "browser"), allow(dead_code))]
 enum Command {
     Login(PasswordCredentials),
     Register(PasswordCredentials),
@@ -50,7 +50,7 @@ impl Command {
     }
 }
 
-#[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+#[cfg_attr(not(feature = "browser"), allow(dead_code))]
 enum Reply {
     Done,
     Challenge(Millis),
@@ -61,7 +61,7 @@ enum Reply {
     },
 }
 
-#[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+#[cfg_attr(not(feature = "browser"), allow(dead_code))]
 #[derive(Clone, Copy)]
 pub(crate) struct Session {
     owner: RwSignal<SessionOwner>,
@@ -90,7 +90,7 @@ impl Session {
             profile_scope: Memo::new(move |_| owner.with(SessionOwner::profile_scope)),
         };
         provide_context(this);
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         browser::watch(this);
         this
     }
@@ -100,11 +100,11 @@ impl Session {
     }
 
     pub(crate) fn refresh(self) {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         browser::refresh(self);
     }
 
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     pub(crate) fn fence_profile(self) {
         self.owner.update(SessionOwner::expect_session_change);
         self.refresh();
@@ -120,9 +120,9 @@ impl Session {
         command: Command,
         complete: impl FnOnce(Result<Reply, AuthError>) + 'static,
     ) {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         browser::dispatch(self, epoch, command, complete);
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let _ = (epoch, command.operation(), complete);
     }
 
@@ -132,9 +132,9 @@ impl Session {
         live: impl Fn() -> bool + 'static,
         complete: impl FnOnce(Result<bool, AuthError>) + 'static,
     ) {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         browser::enrollment_status(self, epoch, live, complete);
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let _ = (epoch, live, complete);
     }
 
@@ -144,9 +144,9 @@ impl Session {
         live: impl Fn() -> bool + 'static,
         complete: impl FnOnce(Result<EmailAttachmentStatus, AuthError>) + 'static,
     ) {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         browser::attachment_status(self, epoch, live, complete);
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let _ = (epoch, live, complete);
     }
 

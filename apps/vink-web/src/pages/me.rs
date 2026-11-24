@@ -9,7 +9,7 @@ pub fn Me() -> impl IntoView {
     let query = leptos_router::hooks::use_query_map();
     let session = crate::account::Session::current();
     let feed_enabled = crate::api::following_feed_enabled();
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         use crate::session::Standing;
         let navigation = crate::navigation::use_navigation_guard();

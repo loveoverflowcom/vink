@@ -10,9 +10,9 @@ use crate::{
     session::Standing,
 };
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 mod browser;
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(super) use browser::ReturnScope;
 
 const FEED_STATE_CLASS: &str = "vk-feed-state my-vk-6 grid justify-items-start gap-vk-3 [--vk-ui-control-radius:var(--vk-radius-control-56)]";
@@ -23,11 +23,11 @@ pub(super) fn FollowingFeed(context: ExploreContext) -> impl IntoView {
     let enabled = api::following_feed_enabled();
     let expired = RwSignal::new(false);
     let stream = NodeRef::<leptos::html::Section>::new();
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let restore = RwSignal::new(None::<super::super::ExploreRestore>);
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let return_completed = RwSignal::new(false);
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         use super::super::ExploreRestore;
 
@@ -54,7 +54,7 @@ pub(super) fn FollowingFeed(context: ExploreContext) -> impl IntoView {
             Some(("following-feed-heading", return_completed)),
         );
     }
-    #[cfg(not(feature = "hydrate"))]
+    #[cfg(not(feature = "browser"))]
     let _ = context;
 
     view! {
@@ -88,7 +88,7 @@ pub(super) fn FollowingFeed(context: ExploreContext) -> impl IntoView {
                             }}
                         </Show>
                         {
-                            #[cfg(feature = "hydrate")]
+                            #[cfg(feature = "browser")]
                             {
                                 let context = context.clone();
                                 view! {
@@ -99,7 +99,7 @@ pub(super) fn FollowingFeed(context: ExploreContext) -> impl IntoView {
                                         } />
                                 }.into_any()
                             }
-                            #[cfg(not(feature = "hydrate"))]
+                            #[cfg(not(feature = "browser"))]
                             ()
                         }
                     }.into_any()

@@ -1,6 +1,6 @@
 //! One lifecycle listener set per browser tab; only mounted owners subscribe.
 //! This dispatches read hints, never commands or cache scans.
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 mod browser {
     use leptos::prelude::*;
     use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
@@ -83,7 +83,7 @@ mod browser {
 }
 #[cfg(feature = "perf-probe")]
 pub(crate) use browser::subscriptions;
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub use browser::{Hint, now, observe, observe_lifecycle, register, visible};
 
 /// Signal throttling/backoff for no-store owners. Initial/manual reads bypass the deadline;

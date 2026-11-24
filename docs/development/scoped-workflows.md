@@ -15,6 +15,7 @@ Tất cả ví dụ chạy ở repo root. Dùng `cargo xtask --help` để xem c
 | Việc | Lệnh | Prerequisite ngoài Rust | Tiến trình / dữ liệu |
 | --- | --- | --- | --- |
 | Unit/contract một owner | `cargo xtask verify unit app --filter publication` | Dependency biên dịch thật của package | Test binary, không server/DB/browser; zero match là FAIL |
+| Build FE standalone | `cargo xtask build spa --release` | wasm-bindgen, wasm target, Node/npm | [Index CSR và asset theo revision](edge-frontend.md), độc lập App/DB |
 | Build API | `cargo xtask build api` | Không tool frontend | Chỉ binary `vink-app` |
 | API công khai | `cargo xtask dev api` | App DB đã migrate, role runtime | App với health + API, ẩn danh |
 | API với đăng nhập thật | `cargo xtask dev api --auth identity` | App/Identity DB đã migrate, runtime roles | Identity native + App; local mail outbox, không gửi ra ngoài |
@@ -28,7 +29,7 @@ Tất cả ví dụ chạy ở repo root. Dùng `cargo xtask --help` để xem c
 | Web regression đầy đủ | `cargo xtask verify web` | Web tools + Chrome, test PG credential | Toàn bộ 10 selector bên dưới (storage đã nằm trong main, không lặp) |
 | Regression hiện hữu | `cargo xtask verify all` | Theo từng lane | Vẫn quick → discussion → expressions → postgres → web; Kani riêng |
 
-`build` nhận `api|web|worker|identity|preview`; `--release` dùng cho bốn target server, không
+`build` nhận `api|spa|web|worker|identity|preview`; `--release` áp dụng cho mọi target trừ
 preview. `build web` tạo browser bundle và App, không build Identity/worker. `verify unit` nhận
 `app|identity|store|xtask|web`; `--filter` dùng substring của libtest. Unit App vẫn biên dịch Rust
 SSR do dependency package hiện tại; không yêu cầu Node/npm/bundle hoặc database đang chạy.
@@ -69,7 +70,7 @@ mẫu hiện hữu; người dùng phải chọn rõ. Runtime không dùng URL m
 
 API isolation chọn mức **không bundle và không mount SSR/static routes**: binary chạy
 `serve-api`, dùng cùng router API, health và authorization. Các URL Web/static trả 404. Cargo
-graph vẫn có Leptos SSR; chưa có claim loại dependency Rust SSR. `serve` và Web mặc định giữ
+graph của `build api` và worker cũng loại Leptos SSR qua Cargo feature (#504). `serve` và Web mặc định giữ
 SSR/hydration hiện hữu. Không thêm binary/service/domain handler song song.
 
 Mọi build/dev/verify đều build theo source hiện tại (Cargo có cache chuẩn); không có `--no-build`
@@ -91,6 +92,7 @@ file khóa để vượt một lượt đang chạy.
 | `review` | Seed/catalog, tác giả + admin + reviewer trong scratch | `review-withdrawn`, queue continuation/recovery #205 và #264 (Markdown editor, case, Reader, hai revision và chuyển riêng tư) |
 | `auth` | App scratch migrate/seed + Identity scratch/local outbox | `auth` với session thật |
 | `password` | App password scratch migrate + Identity native scratch/local outbox | `auth-password`, không cần phase auth/main |
+| `standalone` | Artifact CSR + proxy loopback, API-only, Identity và App DB scratch | Reader, tìm kiếm, lịch sử, mật khẩu, editor, bảo vệ bản nháp |
 | `author-search` | App password scratch và Identity native, fixture hồ sơ với bút danh trùng | `author-search`, SSR/no-JS, IME mô phỏng, Back, phân trang và Theo dõi theo phiên |
 | `publication` | App publication scratch migrate/seed/catalog + Identity scratch/local outbox | `publication-author` |
 | `perf-baseline` | App scratch + catalog + 200 public works/1.000 comments tổng hợp, phiên khách | 10 cold SSR/hydration + 10 warm Reader/Back, ledger CDP, history và secondary; **opt-in** |
@@ -144,8 +146,7 @@ không có nghĩa start process: dev cũ không bật PostgreSQL hay worker. UI 
 business stack. Không có baseline RAM/thời gian để công bố phần trăm cải thiện.
 
 - CHOICE-01 A: mở rộng verb + target hiện có; không thêm `stack up`/daemon/session store.
-- CHOICE-02 A: cùng App binary, router composition API/Web. Dependency Rust SSR vẫn còn;
-  optional SSR feature là phương án sau nếu có số đo đủ để đánh đổi thêm build combinations.
+- CHOICE-02 A: cùng App binary, router composition API/Web. SSR trước đây là dependency bắt buộc. #504 tách feature `legacy-ssr`.
 - CHOICE-03 A: typed `Request`/`Plan`/`Scenario`; không registry shell/DSL hay task graph tổng quát.
 - CHOICE-04 A: attach PG đã provision, supervise foreground; không quản lý volume/container.
 

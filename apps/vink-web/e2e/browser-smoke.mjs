@@ -20,7 +20,7 @@ import { discoveryChipGeometry } from './discovery-chip-geometry.mjs';
 import { endorsementAsAuthor, endorsementAsReader } from './endorsement-smoke.mjs';
 import { authWeb } from './auth-smoke.mjs';
 import { readerAuthClosed } from './reader-auth-smoke.mjs';
-import { closedAccountAppearance, passwordAuth } from './auth-password-smoke.mjs';
+import { closedAccountAppearance, passwordAuth, standalone } from './auth-password-smoke.mjs';
 import { publicationAuthor } from './publication-author-smoke.mjs';
 import { reviewWithdrawnPage } from './review-withdrawn-smoke.mjs';
 import { markdownReader } from './markdown-reader-smoke.mjs';
@@ -646,7 +646,8 @@ class Page {
   async reload() {
     await this.eval(`window.__beforeReload = true`);
     await this.send('Page.reload');
-    await this.waitFor(`!window.__beforeReload && document.documentElement.dataset.hydrated === 'true'`, 'fresh hydrated document');
+    await this.waitFor(`!window.__beforeReload && (document.documentElement.dataset.hydrated === 'true' ||
+      (document.documentElement.dataset.renderMode === 'csr' && document.querySelector('#noi-dung')))`, 'fresh application document');
   }
 
   viewport(width, height = 900) {
@@ -6364,6 +6365,10 @@ try {
     const { productionEdge } = await import('../../../infra/cloudflare/production/browser.mjs');
     await productionEdge(page, { args, check });
   }
+  else if (args.phase === 'reader-startup') {
+    const { readerStartup } = await import('./reader-startup.mjs');
+    await readerStartup(page, {args, check, newPage: () => openPage(cdp)});
+  }
   else if (args.phase === 'document-budget') await documentBudget(page, { args, check });
   else if (args.phase === 'reader-intent-cost') await readerIntentCost(page, { args, check });
   else if (args.phase === 'perf-baseline') await webPerfBaseline(page, { args, check });
@@ -6387,6 +6392,7 @@ try {
     await closedAccountAppearance(page, { args, check });
     await readerAuthClosed(page, { args, check });
   }
+  else if (args.phase === 'standalone') await standalone(page, { args, check });
   else if (args.phase === 'auth-password') await passwordAuth(page, { args, check, textContrast, openPage: (isolated) => openPage(cdp, isolated) });
   else if (args.phase === 'publication-author') await publicationAuthor(page, { args, check, openPage: (isolated) => openPage(cdp, isolated), capture: (target, name, evidence) => target.capture(name, evidence) });
   else if (args.phase === 'author-search') await authorSearch(page, { args, check, textContrast });

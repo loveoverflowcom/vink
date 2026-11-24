@@ -8,6 +8,7 @@ pub enum Operation {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Target {
     Api,
+    Spa,
     Web,
     Worker,
     Identity,
@@ -53,6 +54,7 @@ pub enum Artifact {
     Worker,
     Identity,
     Bundle,
+    Spa,
     Preview,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -85,6 +87,7 @@ pub enum Scenario {
     Publication,
     PerfBaseline,
     ReturnPosition,
+    Standalone,
 }
 impl Scenario {
     pub const ALL: [Self; 10] = [
@@ -100,7 +103,7 @@ impl Scenario {
         Self::Publication,
     ];
     /// Default full regression intentionally excludes the longer lab measurements.
-    pub const SELECTABLE: [Self; 12] = [
+    pub const SELECTABLE: [Self; 13] = [
         Self::Main,
         Self::Storage,
         Self::Discovery,
@@ -113,9 +116,11 @@ impl Scenario {
         Self::Publication,
         Self::PerfBaseline,
         Self::ReturnPosition,
+        Self::Standalone,
     ];
     pub fn name(self) -> &'static str {
         match self {
+            Self::Standalone => "standalone",
             Self::Main => "main",
             Self::Storage => "storage",
             Self::Discovery => "discovery",
@@ -139,7 +144,7 @@ impl Scenario {
     pub fn identity(self) -> bool {
         matches!(
             self,
-            Self::Auth | Self::Password | Self::AuthorSearch | Self::Publication
+            Self::Auth | Self::Password | Self::AuthorSearch | Self::Publication | Self::Standalone
         )
     }
 }
@@ -182,13 +187,14 @@ impl Plan {
         }
         plan.artifacts = match r.target {
             T::Api => vec![A::App],
+            T::Spa => vec![A::Spa],
             T::Web => vec![A::Bundle, A::App],
             T::Worker => vec![A::Worker],
             T::Identity => vec![A::Identity],
             T::Preview => vec![A::Preview],
             T::Unit(_) => unreachable!(),
         };
-        if matches!(r.target, T::Web | T::Preview) {
+        if matches!(r.target, T::Web | T::Spa | T::Preview) {
             plan.tools
                 .extend([P::WasmTarget, P::Bindgen, P::Node, P::Npm]);
         }
@@ -200,6 +206,13 @@ impl Plan {
                         || (*s == Scenario::Main && r.scenarios.contains(&Scenario::Restart))
                 })
                 .collect();
+            if plan.scenarios.contains(&Scenario::Standalone) {
+                if plan.scenarios.len() == 1 {
+                    plan.artifacts = vec![A::Spa, A::App];
+                } else {
+                    plan.artifacts.push(A::Spa);
+                }
+            }
             plan.tools.push(P::Chrome);
             plan.databases.push("VINK_TEST_DATABASE_URL");
             plan.migrations.push("App scratch");
@@ -224,7 +237,7 @@ impl Plan {
                 }
                 T::Identity => {}
                 T::Preview => plan.services.push(S::Preview),
-                T::Unit(_) => unreachable!(),
+                T::Spa | T::Unit(_) => unreachable!(),
             }
             if r.auth == Auth::Identity || r.target == T::Identity {
                 if !plan.artifacts.contains(&A::Identity) {
@@ -283,7 +296,7 @@ impl Plan {
             .map(|s| s.name())
             .collect();
         format!(
-            "coverage: {coverage}\noperation: {:?}; target: {:?}; auth: {auth}\nbuild: {:?}; profile: {}\nrequired tools: {:?}\nowned services: {:?}\nattached database configuration (values hidden): {:?}\nmigrations: {:?}; dev seed: {} (Web fixtures follow the scenario catalog)\nselected checks: {:?}; filter: {:?}\ndependency checks: {:?} (restart requires main's saved draft and browser state)\nnot selected Web checks: {:?}\nAPI target isolation: no bundle, no SSR/static routes; Rust SSR dependencies remain compiled.\ndata: dev attaches prepared databases; Web verification owns scratch only. No containers.\nartifacts: build from current source every invocation; no no-build/reuse mode.\n",
+            "coverage: {coverage}\noperation: {:?}; target: {:?}; auth: {auth}\nbuild: {:?}; profile: {}\nrequired tools: {:?}\nowned services: {:?}\nattached database configuration (values hidden): {:?}\nmigrations: {:?}; dev seed: {} (Web fixtures follow the scenario catalog)\nselected checks: {:?}; filter: {:?}\ndependency checks: {:?} (restart requires main's saved draft and browser state)\nnot selected Web checks: {:?}\nAPI target isolation: no bundle, no SSR dependencies or static routes.\ndata: dev attaches prepared databases; Web verification owns scratch only. No containers.\nartifacts: build from current source every invocation; no no-build/reuse mode.\n",
             self.request.operation,
             self.request.target,
             self.artifacts,

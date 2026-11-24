@@ -17,7 +17,7 @@ pub(super) enum Operation {
     SignOut,
 }
 
-#[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+#[cfg_attr(not(feature = "browser"), allow(dead_code))]
 impl Operation {
     pub(super) fn status(self) -> &'static str {
         match self {
@@ -90,7 +90,7 @@ pub(super) struct Ticket {
     operation: Operation,
 }
 
-#[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+#[cfg_attr(not(feature = "browser"), allow(dead_code))]
 #[derive(Default)]
 pub(super) struct AuthGate {
     epoch: u64,
@@ -103,7 +103,7 @@ pub(super) struct AuthGate {
     needs_check: bool,
 }
 
-#[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+#[cfg_attr(not(feature = "browser"), allow(dead_code))]
 impl AuthGate {
     pub(super) fn epoch(&self) -> u64 {
         self.epoch

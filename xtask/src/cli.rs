@@ -1,7 +1,7 @@
 //! Parse and reject incompatible selections before any executor is entered.
 use crate::plan::*;
 pub const HELP: &str = "Scoped workflows (PostgreSQL is attached, never started):
-  build api|web|worker|identity|preview [--release] [--plan]
+  build api|spa|web|worker|identity|preview [--release] [--plan]
   dev api|web [--auth none|identity|fixture] [--migrate] [--seed] [--plan]
   dev worker|identity [--migrate] [--plan]
   dev preview [--plan]                 Leptos UI preview, no business services
@@ -11,7 +11,7 @@ pub const HELP: &str = "Scoped workflows (PostgreSQL is attached, never started)
   doctor <scoped command above>         check only that command's prerequisites
 
 Web scenarios: main, storage, discovery, restart, endorsement, review, auth, password, publication,
-  perf-baseline and return-position (explicit opt-in, excluded from full regression).
+  standalone (CSR + API), perf-baseline and return-position (explicit opt-in).
 No selector means full Web regression. restart depends on main. --plan performs no task I/O.
 Auth defaults to none, independent of .env. fixture requires explicit VINK_DEV_PRINCIPAL.
 identity uses native credentials and local mail outbox; no fixture fallback or external mail.
@@ -68,6 +68,7 @@ pub fn parse(args: &[&str]) -> Result<Option<Invocation>, String> {
             r.target = match *target {
                 "api" => Target::Api,
                 "web" => Target::Web,
+                "spa" if r.operation == Operation::Build => Target::Spa,
                 "worker" => Target::Worker,
                 "identity" => Target::Identity,
                 "preview" => Target::Preview,

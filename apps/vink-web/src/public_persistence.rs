@@ -137,7 +137,7 @@ impl Envelope {
     }
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub mod browser {
     use super::*;
     use wasm_bindgen::prelude::*;
