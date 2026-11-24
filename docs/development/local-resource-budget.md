@@ -9,16 +9,16 @@ sau khi có quyền vào slot. [Issue #250](https://github.com/loveoverflowcom/v
 
 ```sh
 ./tools/local-budget plan
+./tools/local-budget plan -- cargo xtask verify unit store
 ./tools/local-budget run -- cargo xtask build api --plan
 ./tools/local-budget run -- cargo xtask verify unit store
 CARGO_BUILD_JOBS=1 RUST_TEST_THREADS=1 ./tools/local-budget run --timeout 600 -- cargo test --locked -p xtask
 ```
 
-`plan` đọc effective profile mà không gọi Cargo, tạo lock hay chạy workload. Thêm
-`--plan` vào lệnh scoped của xtask để xem dependencies, ví dụ
-`./tools/local-budget run -- cargo xtask verify web --scenario main --plan`.
-Lệnh đó vẫn qua Cargo bootstrap. Planner và executor [#184](scoped-workflows.md) giữ quyền chọn
-việc. Launcher nhận `cargo xtask|test|build|check|clippy|fmt` từ gốc checkout của chính launcher.
+`plan` đọc profile mà không lấy lock hay gọi Cargo. `plan -- cargo …` xét thêm chính sách tài
+nguyên cho lệnh đã nhập (mã 69 khi lane chưa được hỗ trợ). Muốn xem dependency do xtask chọn,
+chạy `./tools/local-budget run -- cargo xtask verify web --scenario main --plan`. Lệnh đó có
+Cargo bootstrap. Planner và executor [#184](scoped-workflows.md) giữ quyền chọn việc. Launcher nhận `cargo xtask|test|build|check|clippy|fmt` từ gốc checkout của chính launcher.
 
 - Một slot dùng chung tại `/tmp/vink-local-budget-<uid>/admission.lock`. Checkout đang giữ slot
   có thể gọi Cargo con trực tiếp qua xtask. Gọi lồng launcher trả mã 2. Thứ tự lấy khóa là slot
@@ -35,6 +35,11 @@ việc. Launcher nhận `cargo xtask|test|build|check|clippy|fmt` từ gốc che
   biến ngân sách, jobserver từ một orchestrator đang chạy, alias xtask bị ghi đè và rustc wrapper
   có thể gọi compiler bên ngoài. Các cấu hình này có thể hợp lệ khi chạy Cargo thông thường.
   [Tham chiếu Cargo](https://doc.rust-lang.org/cargo/reference/config.html#buildjobs).
+- Từ bootstrap, launcher đặt `CARGO_TARGET_DIR`, `CARGO_BUILD_TARGET_DIR` và
+  `CARGO_BUILD_BUILD_DIR` vào `target` của checkout. Cả artifact cuối và file biên dịch
+  trung gian ở lại đó khi chạy lại. Launcher từ chối `--target-dir` trỏ nơi khác,
+  symlink ở chính `target` và Cargo `[env]` đặt các biến này. Profile và debug info vẫn do
+  Cargo chọn theo lệnh. [Cấu hình target-dir và build-dir](https://doc.rust-lang.org/cargo/reference/config.html#buildtarget-dir).
 - Mốc 10–12 GiB là mục tiêu quan sát trên máy 24 GiB, để chừa khoảng 12–14 GiB cho macOS, IDE,
   trình duyệt và dịch vụ có sẵn. Profile thử hai compiler job và hai libtest thread để giảm
   số đỉnh đồng thời mà vẫn giữ một ít song song. Một compiler/solver có thể dùng nhiều RAM hơn
@@ -42,6 +47,21 @@ việc. Launcher nhận `cargo xtask|test|build|check|clippy|fmt` từ gốc che
   và ghi RSS cộng theo session từ `ps` mỗi khoảng 1 giây. Số mẫu lớn nhất có thể bỏ qua đỉnh ngắn
   và tính lặp shared pages. Nó không phải RAM vật lý duy nhất hay trần RAM.
   [Chỉ báo pressure trên macOS](https://github.com/apple-oss-distributions/xnu/blob/main/doc/vm/memorystatus_notify.md).
+
+## Đo một verification step
+
+Dùng đúng lệnh con trong lane cần đo. Ví dụ sau đo bước định dạng thuộc `verify quick`.
+
+```sh
+/usr/bin/time -lp python3.13 -B tools/local-budget run --samples -- cargo fmt --all -- --check
+```
+
+`--samples` ghi thời gian từ lúc bắt đầu, số tiến trình sống cùng UID/session và tổng RSS
+(KiB) ở từng lần quan sát. Log dùng stderr. `UNKNOWN` cho biết lần quan sát không thấy
+thành viên sống. Khi mọi lần quan sát đều trống, peak cũng là `UNKNOWN`. Wall của launcher
+bao gồm spawn và drain. Wall từ `time` còn gồm cả Python và admission. Khi chạy cả lane,
+số liệu session thuộc toàn lệnh. Chỉ gán chi phí cho compile/link/test khi đo được ranh giới đó.
+Giữ log bên ngoài target trước khi bàn giao. [Baseline macOS, số thô và phần chưa đo](evidence/verification-budget-497/README.md).
 
 ## Phạm vi tiến trình
 

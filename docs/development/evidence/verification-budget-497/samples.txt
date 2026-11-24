@@ -1,0 +1,399 @@
+Observed command output, 2026-11-24. Paths, supervisor/session IDs and slot UID redacted.
+time -lp is Darwin /usr/bin/time. See README.md for source, exact commands and scope.
+
+--- fmt-first (exit 0) ---
+local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=2 libtest_threads=2 managed_target=10–12 GiB (advisory); Cargo bootstrap included; preflight requires normal pressure; retries manual
+local-budget: pressure=normal; swap: total = 2048.00M  used = 351.62M  free = 1696.38M  (encrypted)
+local-budget: wall=1.36s sampled_peak_rss_sum=96640 KiB samples=2 interval=1s
+local-budget: pressure=normal; swap: total = 2048.00M  used = 351.62M  free = 1696.38M  (encrypted)
+real 1.40
+user 1.28
+sys 0.07
+           100696064  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               21946  page reclaims
+                   9  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                  42  voluntary context switches
+                 366  involuntary context switches
+           334560049  instructions retired
+           136930182  cycles elapsed
+            12271976  peak memory footprint
+
+--- fmt-repeat (exit 0) ---
+local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=2 libtest_threads=2 managed_target=10–12 GiB (advisory); Cargo bootstrap included; preflight requires normal pressure; retries manual
+local-budget: pressure=normal; swap: total = 2048.00M  used = 351.62M  free = 1696.38M  (encrypted)
+local-budget: wall=1.31s sampled_peak_rss_sum=94208 KiB samples=2 interval=1s
+local-budget: pressure=normal; swap: total = 2048.00M  used = 351.62M  free = 1696.38M  (encrypted)
+real 1.34
+user 1.27
+sys 0.06
+            95436800  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               21375  page reclaims
+                   8  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                  11  voluntary context switches
+                 343  involuntary context switches
+           332549241  instructions retired
+           136118002  cycles elapsed
+            12091800  peak memory footprint
+
+--- fmt-direct (exit 0) ---
+real 1.27
+user 1.23
+sys 0.03
+            95076352  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               11551  page reclaims
+                   0  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   2  voluntary context switches
+                 309  involuntary context switches
+           326476018  instructions retired
+            95638661  cycles elapsed
+             1229040  peak memory footprint
+
+--- node-cold (exit 0) ---
+kern.memorystatus_vm_pressure_level: 1
+vm.swapusage: total = 2048.00M  used = 351.62M  free = 1696.38M  (encrypted)
+0	target/bench-497-node
+       0
+TAP version 13
+# Subtest: lab summary reports the raw sample size, true median, nearest-rank p95 and spread
+ok 1 - lab summary reports the raw sample size, true median, nearest-rank p95 and spread
+  ---
+  duration_ms: 0.479208
+  type: 'test'
+  ...
+# Subtest: ledger joins wire extras delivered before the request and after completion without retaining values
+ok 2 - ledger joins wire extras delivered before the request and after completion without retaining values
+  ---
+  duration_ms: 0.2795
+  type: 'test'
+  ...
+# Subtest: redirects do not overwrite earlier attempts or attribute ambiguous extra info to either hop
+ok 3 - redirects do not overwrite earlier attempts or attribute ambiguous extra info to either hop
+  ---
+  duration_ms: 0.16075
+  type: 'test'
+  ...
+# Subtest: a single excess list GET trips the SSR oracle independently of catalog and own overlays
+ok 4 - a single excess list GET trips the SSR oracle independently of catalog and own overlays
+  ---
+  duration_ms: 0.358292
+  type: 'test'
+  ...
+# Subtest: artifact compression helper reports exact raw, gzip-6, brotli-6, brotli-11 and sha256 deterministically
+ok 5 - artifact compression helper reports exact raw, gzip-6, brotli-6, brotli-11 and sha256 deterministically
+  ---
+  duration_ms: 1.246208
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 34.052125
+real 0.05
+user 0.04
+sys 0.01
+            48414720  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                6310  page reclaims
+                   3  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                  35  messages sent
+                   7  messages received
+                   0  signals received
+                   1  voluntary context switches
+                 154  involuntary context switches
+           343034160  instructions retired
+           115784430  cycles elapsed
+            14501808  peak memory footprint
+20	target/bench-497-node
+       4
+kern.memorystatus_vm_pressure_level: 1
+vm.swapusage: total = 2048.00M  used = 351.62M  free = 1696.38M  (encrypted)
+
+--- node-warm (exit 0) ---
+kern.memorystatus_vm_pressure_level: 1
+vm.swapusage: total = 2048.00M  used = 351.62M  free = 1696.38M  (encrypted)
+20	target/bench-497-node
+       4
+TAP version 13
+# Subtest: lab summary reports the raw sample size, true median, nearest-rank p95 and spread
+ok 1 - lab summary reports the raw sample size, true median, nearest-rank p95 and spread
+  ---
+  duration_ms: 0.477458
+  type: 'test'
+  ...
+# Subtest: ledger joins wire extras delivered before the request and after completion without retaining values
+ok 2 - ledger joins wire extras delivered before the request and after completion without retaining values
+  ---
+  duration_ms: 0.287792
+  type: 'test'
+  ...
+# Subtest: redirects do not overwrite earlier attempts or attribute ambiguous extra info to either hop
+ok 3 - redirects do not overwrite earlier attempts or attribute ambiguous extra info to either hop
+  ---
+  duration_ms: 0.163208
+  type: 'test'
+  ...
+# Subtest: a single excess list GET trips the SSR oracle independently of catalog and own overlays
+ok 4 - a single excess list GET trips the SSR oracle independently of catalog and own overlays
+  ---
+  duration_ms: 0.624417
+  type: 'test'
+  ...
+# Subtest: artifact compression helper reports exact raw, gzip-6, brotli-6, brotli-11 and sha256 deterministically
+ok 5 - artifact compression helper reports exact raw, gzip-6, brotli-6, brotli-11 and sha256 deterministically
+  ---
+  duration_ms: 1.329833
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 32.401875
+real 0.05
+user 0.04
+sys 0.00
+            48381952  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                6347  page reclaims
+                   1  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                  35  messages sent
+                   6  messages received
+                   0  signals received
+                   0  voluntary context switches
+                 151  involuntary context switches
+           342395877  instructions retired
+           117382362  cycles elapsed
+            15108040  peak memory footprint
+20	target/bench-497-node
+       4
+kern.memorystatus_vm_pressure_level: 1
+vm.swapusage: total = 2048.00M  used = 351.62M  free = 1696.38M  (encrypted)
+
+--- fmt-new-default (exit 0) ---
+local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=2 libtest_threads=2 managed_target=10–12 GiB (advisory) hard_cap=none; Cargo bootstrap included; preflight requires normal pressure; retries manual
+local-budget: cargo_target_dir=<checkout>/target cargo_build_dir=<checkout>/target; compiler wrappers unsupported
+local-budget: pressure=normal; swap: total = 2048.00M  used = 351.62M  free = 1696.38M  (encrypted)
+local-budget: wall=1.31s sampled_peak_rss_sum=91968 KiB samples=2 interval=1s
+local-budget: pressure=normal; swap: total = 2048.00M  used = 351.62M  free = 1696.38M  (encrypted)
+real 1.34
+user 1.27
+sys 0.06
+            92962816  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               21356  page reclaims
+                  38  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                  11  voluntary context switches
+                 375  involuntary context switches
+           335110666  instructions retired
+           139067026  cycles elapsed
+            12222872  peak memory footprint
+
+--- fmt-new-samples (exit 0) ---
+local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=2 libtest_threads=2 managed_target=10–12 GiB (advisory) hard_cap=none; Cargo bootstrap included; preflight requires normal pressure; retries manual
+local-budget: cargo_target_dir=<checkout>/target cargo_build_dir=<checkout>/target; compiler wrappers unsupported
+local-budget: pressure=normal; swap: total = 2048.00M  used = 351.62M  free = 1696.38M  (encrypted)
+local-budget: sample elapsed=0.001s members=1 rss_sum=2000 KiB
+local-budget: sample elapsed=1.016s members=2 rss_sum=89520 KiB
+local-budget: wall=1.33s sampled_peak_rss_sum=89520 KiB samples=2 interval=1s
+local-budget: pressure=normal; swap: total = 2048.00M  used = 351.62M  free = 1696.38M  (encrypted)
+real 1.36
+user 1.28
+sys 0.06
+            91521024  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               21323  page reclaims
+                   8  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                  11  voluntary context switches
+                 348  involuntary context switches
+           326443422  instructions retired
+           139948504  cycles elapsed
+            12419432  peak memory footprint
+
+--- cargo-path-probe/a-first (exit 0) ---
+local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=2 libtest_threads=2 managed_target=10–12 GiB (advisory) hard_cap=none; Cargo bootstrap included; preflight requires normal pressure; retries manual
+local-budget: cargo_target_dir=<evidence>/cargo-path-probe/a/target cargo_build_dir=<evidence>/cargo-path-probe/a/target; compiler wrappers unsupported
+local-budget: pressure=normal; swap: total = 2048.00M  used = 351.62M  free = 1696.38M  (encrypted)
+local-budget: sample elapsed=0.001s members=1 rss_sum=2096 KiB
+cargo metadata {"build_directory": "<evidence>/cargo-path-probe/a/target", "target_directory": "<evidence>/cargo-path-probe/a/target"}
+local-budget: wall=0.49s sampled_peak_rss_sum=2096 KiB samples=1 interval=1s
+local-budget: pressure=normal; swap: total = 2048.00M  used = 351.62M  free = 1696.38M  (encrypted)
+real 0.52
+user 0.09
+sys 0.05
+            30097408  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               16604  page reclaims
+                   7  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                  11  voluntary context switches
+                 262  involuntary context switches
+           328480205  instructions retired
+           134445473  cycles elapsed
+            12042576  peak memory footprint
+
+--- cargo-path-probe/a-repeat (exit 0) ---
+local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=2 libtest_threads=2 managed_target=10–12 GiB (advisory) hard_cap=none; Cargo bootstrap included; preflight requires normal pressure; retries manual
+local-budget: cargo_target_dir=<evidence>/cargo-path-probe/a/target cargo_build_dir=<evidence>/cargo-path-probe/a/target; compiler wrappers unsupported
+local-budget: pressure=normal; swap: total = 2048.00M  used = 351.62M  free = 1696.38M  (encrypted)
+local-budget: sample elapsed=0.001s members=1 rss_sum=2016 KiB
+cargo metadata {"build_directory": "<evidence>/cargo-path-probe/a/target", "target_directory": "<evidence>/cargo-path-probe/a/target"}
+local-budget: wall=0.13s sampled_peak_rss_sum=2016 KiB samples=1 interval=1s
+local-budget: pressure=normal; swap: total = 2048.00M  used = 351.62M  free = 1696.38M  (encrypted)
+real 0.17
+user 0.07
+sys 0.04
+            30097408  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               16550  page reclaims
+                   7  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                  10  voluntary context switches
+                 256  involuntary context switches
+           318926955  instructions retired
+           129475518  cycles elapsed
+            12124640  peak memory footprint
+
+--- cargo-path-probe/b-first (exit 0) ---
+local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=2 libtest_threads=2 managed_target=10–12 GiB (advisory) hard_cap=none; Cargo bootstrap included; preflight requires normal pressure; retries manual
+local-budget: cargo_target_dir=<evidence>/cargo-path-probe/b/target cargo_build_dir=<evidence>/cargo-path-probe/b/target; compiler wrappers unsupported
+local-budget: pressure=normal; swap: total = 2048.00M  used = 351.62M  free = 1696.38M  (encrypted)
+local-budget: sample elapsed=0.001s members=1 rss_sum=1808 KiB
+cargo metadata {"build_directory": "<evidence>/cargo-path-probe/b/target", "target_directory": "<evidence>/cargo-path-probe/b/target"}
+local-budget: wall=0.14s sampled_peak_rss_sum=1808 KiB samples=1 interval=1s
+local-budget: pressure=normal; swap: total = 2048.00M  used = 351.62M  free = 1696.38M  (encrypted)
+real 0.17
+user 0.07
+sys 0.04
+            30097408  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               16452  page reclaims
+                   7  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                  10  voluntary context switches
+                 250  involuntary context switches
+           319377897  instructions retired
+           131977093  cycles elapsed
+            12255712  peak memory footprint
+
+--- unit-policy (exit 0) ---
+local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=2 libtest_threads=2 managed_target=10–12 GiB (advisory) hard_cap=none; Cargo bootstrap included; preflight requires normal pressure; retries manual
+local-budget: cargo_target_dir=<checkout>/target cargo_build_dir=<checkout>/target; compiler wrappers unsupported
+local-budget: command passes resource policy; xtask plan, prerequisites and slot not checked
+local-budget: managed scope: owned session; external: reused services and detached processes; Gradle/CMP, native diagnostics, browser verification and OCI builds unsupported
+
+--- web-plan-policy (exit 0) ---
+local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=2 libtest_threads=2 managed_target=10–12 GiB (advisory) hard_cap=none; Cargo bootstrap included; preflight requires normal pressure; retries manual
+local-budget: cargo_target_dir=<checkout>/target cargo_build_dir=<checkout>/target; compiler wrappers unsupported
+local-budget: command passes resource policy; xtask plan, prerequisites and slot not checked
+local-budget: managed scope: owned session; external: reused services and detached processes; Gradle/CMP, native diagnostics, browser verification and OCI builds unsupported
+
+--- browser-policy (exit 69) ---
+local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=2 libtest_threads=2 managed_target=10–12 GiB (advisory) hard_cap=none; Cargo bootstrap included; preflight requires normal pressure; retries manual
+local-budget: cargo_target_dir=<checkout>/target cargo_build_dir=<checkout>/target; compiler wrappers unsupported
+local-budget: UNSUPPORTED: browser process ownership is unqualified
+
+--- strict-policy (exit 69) ---
+local-budget: UNSUPPORTED: this checkout provides macOS SOFT_MANAGED only; no strict workload was started
+
+--- launcher-tests-final (exit 0) ---
+test_bootstrap_uses_each_checkout_target (test_local_budget.Lifecycle.test_bootstrap_uses_each_checkout_target) ... ok
+test_crash_fences_orphan_even_after_leader_exits (test_local_budget.Lifecycle.test_crash_fences_orphan_even_after_leader_exits) ... ok
+test_cross_checkout_cancel_and_nested (test_local_budget.Lifecycle.test_cross_checkout_cancel_and_nested) ... ok
+test_pressure_refuses_before_cargo (test_local_budget.Lifecycle.test_pressure_refuses_before_cargo) ... ok
+test_success_with_persistent_child_is_a_failure (test_local_budget.Lifecycle.test_success_with_persistent_child_is_a_failure) ... ok
+test_symlinked_shared_target_refused_before_admission (test_local_budget.Lifecycle.test_symlinked_shared_target_refused_before_admission) ... ok
+test_timeout_and_command_failure_propagate (test_local_budget.Lifecycle.test_timeout_and_command_failure_propagate) ... ok
+test_argv_plan_follows_xtask_last_argument_rule (test_local_budget.Profile.test_argv_plan_follows_xtask_last_argument_rule) ... ok
+test_argv_preserves_narrower_libtest_flag_and_refuses_overrides (test_local_budget.Profile.test_argv_preserves_narrower_libtest_flag_and_refuses_overrides) ... ok
+test_explicit_local_target_directory (test_local_budget.Profile.test_explicit_local_target_directory) ... ok
+test_light_plan_and_strict_do_not_bootstrap (test_local_budget.Profile.test_light_plan_and_strict_do_not_bootstrap) ... ok
+test_no_live_sample_has_unknown_peak (test_local_budget.Profile.test_no_live_sample_has_unknown_peak) ... ok
+test_source_precedence_and_invalid_caps (test_local_budget.Profile.test_source_precedence_and_invalid_caps) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 20.453s
+
+OK
