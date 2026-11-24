@@ -57,3 +57,5 @@ tương phản chữ tối thiểu 4,5:1.
 liệu. [Auth Web](../development/auth-web.md#kiểm-chứng) giữ bảng kiểm, artifact và giới hạn.
 
 [Ảnh Chrome và kết quả theo AC của R2](evidence/auth-r2-327/README.md).
+
+[Ảnh trước/sau và kết quả kiểm Chrome #483](evidence/auth-appearance-483/README.md).
