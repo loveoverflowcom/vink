@@ -104,7 +104,10 @@ fn decision_history_preserves_the_previous_outcome() {
     );
     assert_eq!(previous.reason.as_deref(), Some("Cần xem lại chính sách"));
     assert_eq!(review.state.revisions[0].decision_version, Some(3));
-    assert_eq!(review.appeals[0].decision_version, previous.decision_version);
+    assert_eq!(
+        review.appeals[0].decision_version,
+        previous.decision_version
+    );
     assert_eq!(review.appeals[0].state, "reversed");
 }
 

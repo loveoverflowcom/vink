@@ -173,12 +173,15 @@ pub(super) fn ReviewTrigger(
     let target = StoredValue::new(ReviewTarget::work(work_id.clone()));
     view! {
         <div class="vk-desk-review-action">
-            <button type="button" id=trigger_id(&work_id) class=ButtonVariant::Text.classes()
-                aria-haspopup="dialog"
-                aria-label=move || format!("Xem kiểm duyệt của {}", title.get())
-                on:click=move |_| open.run(target.get_value())>
-                <span class="vk-ui-button__label">"Xem kiểm duyệt"</span>
-            </button>
+            <Button
+                id=trigger_id(&work_id)
+                variant=ButtonVariant::Text
+                has_popup="dialog"
+                accessible_label=Signal::derive(move || format!("Xem kiểm duyệt của {}", title.get()))
+                on_press=Callback::new(move |()| open.run(target.get_value()))
+            >
+                "Xem kiểm duyệt"
+            </Button>
         </div>
     }
 }
@@ -199,7 +202,9 @@ pub(super) fn DeskReview(session: Session) -> impl IntoView {
                     return;
                 }
                 // History traversal is asynchronous. Repeated dismissals must consume one entry.
-                if row_history_entry() && let Ok(history) = window().history() {
+                if row_history_entry()
+                    && let Ok(history) = window().history()
+                {
                     closing.set_value(true);
                     if history.back().is_ok() {
                         return;
@@ -476,7 +481,11 @@ fn read_error(error: &ApiError) -> &'static str {
     }
 }
 
-fn review_content(data: AuthorWorkReview, target: &ReviewTarget, actions: AppealActions) -> AnyView {
+fn review_content(
+    data: AuthorWorkReview,
+    target: &ReviewTarget,
+    actions: AppealActions,
+) -> AnyView {
     let revisions = &data.state.revisions;
     let selected = if let Some((revision_id, version)) = &target.decision {
         let index = revisions

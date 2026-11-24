@@ -85,7 +85,10 @@ fn DeskSession(session: crate::account::Session) -> impl IntoView {
     let sign_in = move || match target.get() {
         Some(Ok(target)) => format!(
             "/toi?next={}",
-            percent_encoding::utf8_percent_encode(&target.href(), percent_encoding::NON_ALPHANUMERIC),
+            percent_encoding::utf8_percent_encode(
+                &target.href(),
+                percent_encoding::NON_ALPHANUMERIC
+            ),
         ),
         _ => DESK_SIGN_IN.to_owned(),
     };
