@@ -19,6 +19,7 @@ import { authorSearch } from './author-search-smoke.mjs';
 import { discoveryChipGeometry } from './discovery-chip-geometry.mjs';
 import { endorsementAsAuthor, endorsementAsReader } from './endorsement-smoke.mjs';
 import { authWeb } from './auth-smoke.mjs';
+import { notifications } from './notifications-smoke.mjs';
 import { readerAuthClosed } from './reader-auth-smoke.mjs';
 import { closedAccountAppearance, passwordAuth, standalone } from './auth-password-smoke.mjs';
 import { publicationAuthor } from './publication-author-smoke.mjs';
@@ -6587,6 +6588,7 @@ try {
     await markdownReader(page, { args, check, textContrast });
   }
   else if (args.phase === 'auth') await authWeb(page, { args, check, openPage: (isolated) => openPage(cdp, isolated) });
+  else if (args.phase === 'notifications') await notifications(page, { args, check });
   else if (args.phase === 'reader-auth-closed') {
     await closedAccountAppearance(page, { args, check });
     await readerAuthClosed(page, { args, check });

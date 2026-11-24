@@ -175,6 +175,23 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
     await gate.release(first);
     await page.waitFor(`${button('endorse-work')}.dataset.pressed==='true' && ${count('endorse-work')}.startsWith('1')`, 'confirmed selection');
     await sameTarget('endorse-work', 'confirmed On');
+    await page.viewport(1440);
+    await page.click('#work-endorsement a[href*="/tham/"]');
+    await page.waitFor(`document.querySelector('#work-endorsers')?.open
+      && document.querySelector('#work-endorsers .vk-notif-endorsers li')`, 'real public Thấm membership in desktop dialog');
+    await page.key('Escape');
+    await page.waitFor(`!document.querySelector('#work-endorsers').open
+      && document.activeElement?.matches('#work-endorsement a[href*="/tham/"]')`, 'Thấm dialog restores focus');
+    await page.viewport(390);
+    await page.click('#work-endorsement a[href*="/tham/"]');
+    await page.waitFor(`location.pathname.endsWith('/tham/${SAMPLE_REVISION}')
+      && document.querySelector('main .vk-notif-endorsers li')
+      && !document.querySelector('#notification-bell-mobile')`, 'real public Thấm membership on the mobile route');
+    await page.viewport(1440);
+    await page.eval('history.back()');
+    await page.waitFor(`location.pathname.endsWith('${SAMPLE_WORK}') && (${ready})`, 'return to the Reader');
+    await rememberTarget('endorse-work');
+
     check(await page.eval(`${button('endorse-work')}.getAttribute('aria-label')==='Bỏ Thấm' && !!document.querySelector('#endorse-work .vk-ui-toggle__mark svg, #endorse-work .vk-ui-toggle__mark .vk-ui-icon')`), 'after the ACK: accessible name “Bỏ Thấm” and the check mark');
 
     await glyphs('confirmed');

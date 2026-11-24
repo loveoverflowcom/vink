@@ -124,11 +124,11 @@ pub fn initials(display_name: Option<&str>) -> String {
 }
 
 #[component]
-pub(crate) fn AccountAvatar(#[prop(optional)] navigation: bool) -> impl IntoView {
+pub(crate) fn AccountAvatar() -> impl IntoView {
     // Account data stays out of SSR and browser storage; the tab's session owner supplies it.
     let standing = crate::account::Session::current().standing;
     view! {
-        <span class=if navigation { "vk-ui-icon vk-nav-account-avatar" } else { "vk-account-avatar" } aria-hidden="true">
+        <span class="vk-account-avatar" aria-hidden="true">
             {move || {
                 let (name, key) = match standing.get() {
                     crate::session::Standing::Active(profile) => (profile.display_name, profile.principal_id),

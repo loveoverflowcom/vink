@@ -341,14 +341,24 @@ pub fn NavItem(
             }
         >
             <span class="vk-ui-nav-item__indicator">
-                {leading.map_or_else(|| view! { <Icon name=icon /> }.into_any(), |leading| leading.run())}
+                {leading.map_or_else(|| (move || {
+                    let name = if active.get() { icon } else {
+                        match icon {
+                            IconName::Explore => IconName::ExploreOutline,
+                            IconName::Edit => IconName::EditOutline,
+                            IconName::Person => IconName::PersonOutline,
+                            _ => icon,
+                        }
+                    };
+                    view! { <Icon name=name /> }
+                }).into_any(), |leading| leading.run())}
             </span>
             <span class="vk-ui-nav-item__label">{move || visible_label.get()}</span>
         </a>
     }
 }
 
-/// A shell utility that opens an overlay, not a route.
+/// A shell utility that opens an overlay or links to a route when the layout requires it.
 #[component]
 pub fn NavUtility(
     #[prop(into)] id: String,
@@ -368,35 +378,52 @@ pub fn NavUtility(
     #[prop(optional, into)]
     current: Signal<bool>,
     on_open: Callback<()>,
+    #[prop(optional)] href: Option<&'static str>,
     #[prop(optional)] node_ref: NodeRef<html::Button>,
 ) -> impl IntoView {
     let selected = move || expanded.get() || current.get();
-    view! {
-        <button
-            type="button"
-            id=id
-            class="vk-ui-nav-item vk-ui-nav-utility"
-            class:vk-ui-nav-utility--tonal=active_icon.is_some()
-            node_ref=node_ref
-            aria-label=move || accessible_label.map(|label| label.get())
-            aria-haspopup="dialog"
-            aria-controls=controls
-            aria-expanded=move || expanded.get().to_string()
-            aria-current=move || current.get().then_some("page")
-            on:click=move |_| on_open.run(())
-        >
-            <span class="vk-ui-nav-item__indicator">
-                {match leading {
-                    Some(leading) => leading.run(),
-                    None => (move || {
-                        let name = active_icon.filter(|_| selected()).unwrap_or(icon);
-                        view! { <Icon name=name /> }
-                    }).into_any(),
-                }}
-            </span>
-            <span class="vk-ui-nav-item__label">{label}</span>
-            {badge.map(|badge| view! { <span class="vk-ui-nav-utility__badge">{badge.run()}</span> })}
-        </button>
+    let content = view! {
+        <span class="vk-ui-nav-item__indicator">
+            {match leading {
+                Some(leading) => leading.run(),
+                None => (move || {
+                    let name = active_icon.filter(|_| selected()).unwrap_or(icon);
+                    view! { <Icon name=name /> }
+                }).into_any(),
+            }}
+        </span>
+        <span class="vk-ui-nav-item__label">{label}</span>
+        {badge.map(|badge| view! { <span class="vk-ui-nav-utility__badge">{badge.run()}</span> })}
+    };
+    let name = move || accessible_label.map(|label| label.get());
+    let current = move || current.get().then_some("page");
+    if let Some(href) = href {
+        view! {
+            <a id=id href=href class="vk-ui-nav-item vk-ui-nav-utility"
+                class:vk-ui-nav-utility--tonal=active_icon.is_some()
+                aria-label=name aria-current=current
+                on:keydown=move |event: leptos::ev::KeyboardEvent| {
+                    if event.key() == " " && !event.repeat() {
+                        event.prevent_default();
+                        #[cfg(target_arch = "wasm32")]
+                        {
+                            use leptos::wasm_bindgen::JsCast;
+                            if let Some(link) = event.current_target().and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok()) {
+                                link.click();
+                            }
+                        }
+                    }
+                }>{content}</a>
+        }.into_any()
+    } else {
+        view! {
+            <button type="button" id=id class="vk-ui-nav-item vk-ui-nav-utility"
+                class:vk-ui-nav-utility--tonal=active_icon.is_some()
+                node_ref=node_ref aria-label=name aria-haspopup="dialog" aria-controls=controls
+                aria-expanded=move || expanded.get().to_string() aria-current=current
+                on:click=move |_| on_open.run(())>{content}</button>
+        }
+        .into_any()
     }
 }
 
@@ -438,6 +465,7 @@ pub fn NavigationRail(
     #[prop(optional)] on_navigate: Option<Callback<String>>,
     #[prop(optional, into)] brand: Option<ViewFn>,
     #[prop(optional, into)] account: ViewFn,
+    #[prop(optional, into)] utility: Option<ViewFn>,
 ) -> impl IntoView {
     let tooltip = RwSignal::new(false);
     let toggle = NodeRef::<html::Button>::new();
@@ -507,6 +535,7 @@ pub fn NavigationRail(
             </button>
             <nav id=primary_id class="vk-ui-rail__primary" aria-label=nav_label>
                 {primary}
+                {utility.map(|utility| utility.run())}
             </nav>
             <div id=account_id class="vk-ui-rail__account">{account.run()}</div>
         </aside>

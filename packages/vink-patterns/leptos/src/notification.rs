@@ -5,7 +5,7 @@ use leptos::prelude::*;
 use vink_ui::{Avatar, AvatarSize, ExpressiveShape, IconName, Person, ShapeMark, ShapeTone};
 
 /// The visible actors and their type glyph, or a mark for a system decision.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum NotificationLeading {
     People {
         people: Vec<Person>,
@@ -18,7 +18,7 @@ pub enum NotificationLeading {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct NotificationRowFacts {
     pub href: String,
     pub leading: NotificationLeading,
@@ -65,13 +65,13 @@ impl NotificationRowFacts {
 pub fn NotificationGroup(
     #[prop(into)] label: String,
     #[prop(optional)] show_heading: bool,
+    #[prop(optional, into)] show_heading_when: Option<Signal<bool>>,
     children: Children,
 ) -> impl IntoView {
+    let title = label.clone();
     view! {
         <div class="vk-notif-group">
-            {show_heading.then(|| view! {
-                <h3 class="vk-notif-group__heading">{label.clone()}</h3>
-            })}
+            <h3 class="vk-notif-group__heading" hidden=move || !show_heading_when.map_or(show_heading, |when| when.get())>{title}</h3>
             <ul class="vk-notif-group__list" aria-label=label>{children()}</ul>
         </div>
     }

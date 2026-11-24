@@ -347,27 +347,29 @@ impl From<PublicDiscussionPage> for DiscussionPage {
             settings: p.settings,
             viewer_is_work_author: false,
             next_cursor: p.next_cursor,
-            roots: p
-                .roots
-                .into_iter()
-                .map(|r| RootThread {
-                    root: match r.root {
-                        PublicRootView::Comment { comment } => RootView::Comment {
-                            comment: comment.into(),
-                        },
-                        PublicRootView::Anchor {
-                            comment_id,
-                            created_at,
-                        } => RootView::Anchor {
-                            comment_id,
-                            created_at,
-                        },
-                    },
-                    public_replies: r.public_replies,
-                    preview: r.preview.into_iter().map(Into::into).collect(),
-                    preview_next_cursor: r.preview_next_cursor,
-                })
-                .collect(),
+            roots: p.roots.into_iter().map(RootThread::from).collect(),
+        }
+    }
+}
+
+impl From<PublicRootThread> for RootThread {
+    fn from(r: PublicRootThread) -> Self {
+        Self {
+            root: match r.root {
+                PublicRootView::Comment { comment } => RootView::Comment {
+                    comment: comment.into(),
+                },
+                PublicRootView::Anchor {
+                    comment_id,
+                    created_at,
+                } => RootView::Anchor {
+                    comment_id,
+                    created_at,
+                },
+            },
+            public_replies: r.public_replies,
+            preview: r.preview.into_iter().map(Into::into).collect(),
+            preview_next_cursor: r.preview_next_cursor,
         }
     }
 }
@@ -696,6 +698,8 @@ pub struct ErrorBody {
 pub struct CurrentAccount {
     pub principal_id: String,
     pub display_name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notification_scope: Option<String>,
 }
 
 /// The server's decision about a presented or newly issued session. Never a credential.

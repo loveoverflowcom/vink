@@ -673,6 +673,83 @@ pub(super) async fn read_snapshot(pool: &PgPool) -> Result<Transaction<'_, Postg
     Ok(tx)
 }
 
+impl PgStore {
+    /// One public, still-visible comment in its real two-tier thread. Exact links should
+    /// not scan all older roots and replies to land on a notification.
+    pub(crate) async fn linked_public_comment(
+        &self,
+        work_id: WorkId,
+        comment_id: CommentId,
+    ) -> Result<Option<RootItem>, StoreError> {
+        let mut tx = read_snapshot(self.pool()).await?;
+        let Some((_, Some(thread))) = readable_thread(&mut tx, work_id).await? else {
+            return Ok(None);
+        };
+        let selected: Option<ItemRow> = sqlx::query_as(AssertSqlSafe(format!(
+            "SELECT {ITEM_COLUMNS}, x.review AS context_review, x.removal AS context_removal,
+                    x.moderation_version AS context_version, xa.display_name AS context_author_name,
+                    xa.handle AS context_author_handle, xa.retired AS context_author_retired,
+                    {PUBLIC_REPLIES} AS public_replies
+               FROM comments c JOIN public_author_attribution a ON a.id = c.author_id
+               LEFT JOIN comments x ON x.id = c.reply_to_id
+               LEFT JOIN public_author_attribution xa ON xa.id = x.author_id
+              WHERE c.thread_id = $1 AND {VISIBLE_TO_VIEWER} AND c.id = $3"
+        )))
+        .bind(thread.id)
+        .bind(None::<Uuid>)
+        .bind(comment_id.as_uuid())
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(classify)?;
+        let Some(selected) = selected else {
+            return Ok(None);
+        };
+        let (entry, replies, public_replies) = if let Some(root_id) = selected.root_id {
+            let root: ItemRow = sqlx::query_as(AssertSqlSafe(format!(
+                "SELECT {ITEM_COLUMNS}, NULL::text AS context_review, NULL::text AS context_removal,
+                        NULL::bigint AS context_version, NULL::text AS context_author_name,
+                        NULL::text AS context_author_handle, NULL::bool AS context_author_retired,
+                        {PUBLIC_REPLIES} AS public_replies
+                   FROM comments c JOIN public_author_attribution a ON a.id = c.author_id
+                  WHERE c.id = $1 AND c.thread_id = $2 AND c.kind = 'root'"
+            )))
+            .bind(root_id)
+            .bind(thread.id)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(classify)?;
+            let entry = match root_listing(root.view(None)?, root.public_replies) {
+                Some(RootListing::Shown(_)) => {
+                    RootEntry::Comment(root.item(None, ReplyContext::Root)?)
+                }
+                Some(RootListing::Anchor) => RootEntry::Anchor {
+                    id: CommentId::from_uuid(root.id),
+                    created_at: root.created_at,
+                },
+                None => return Ok(None),
+            };
+            (
+                entry,
+                vec![selected.item(None, selected.context()?)?],
+                root.public_replies,
+            )
+        } else {
+            (
+                RootEntry::Comment(selected.item(None, ReplyContext::Root)?),
+                Vec::new(),
+                selected.public_replies,
+            )
+        };
+        tx.commit().await.map_err(classify)?;
+        Ok(Some(RootItem {
+            entry,
+            public_replies,
+            preview: replies,
+            preview_next: None,
+        }))
+    }
+}
+
 fn page_bounds(after: Option<PageCursor>) -> (Option<OffsetDateTime>, Option<Uuid>) {
     match after {
         Some(cursor) => (Some(cursor.created_at()), Some(cursor.id().as_uuid())),

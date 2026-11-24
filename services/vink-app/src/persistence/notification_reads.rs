@@ -249,7 +249,7 @@ impl PgStore {
                 .map(|(w, r)| (w.as_uuid(), r.as_uuid()))
                 .unzip();
             let rows = sqlx::query(
-                "SELECT r.id, r.title
+                "SELECT r.id, r.title, r.created_at
                  FROM unnest($1::uuid[], $2::uuid[]) AS wanted(work_id, revision_id)
                  JOIN revisions r ON r.work_id = wanted.work_id AND r.id = wanted.revision_id
                  JOIN works w ON w.id = r.work_id AND w.owner_id = $3",
@@ -261,10 +261,13 @@ impl PgStore {
             .await
             .map_err(classify)?;
             for row in rows {
-                facts.revision_titles.insert(
-                    RevisionId::from_uuid(row.try_get("id").map_err(classify)?),
-                    row.try_get("title").map_err(classify)?,
-                );
+                let revision = RevisionId::from_uuid(row.try_get("id").map_err(classify)?);
+                facts
+                    .revision_titles
+                    .insert(revision, row.try_get("title").map_err(classify)?);
+                facts
+                    .revision_dates
+                    .insert(revision, row.try_get("created_at").map_err(classify)?);
             }
         }
         if !comment_decisions.is_empty() {

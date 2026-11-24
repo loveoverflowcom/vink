@@ -193,6 +193,18 @@ pub(super) struct PrivateSession {
     pub digest: [u8; 32],
 }
 
+impl PrivateSession {
+    fn from_credential(actor: PrincipalId, credential: &str) -> Self {
+        let mut hasher = Sha256::new();
+        hasher.update(b"vink-follow-own-session-v1");
+        hasher.update(credential.as_bytes());
+        Self {
+            actor,
+            digest: hasher.finalize().into(),
+        }
+    }
+}
+
 impl FromRequestParts<AppState> for PrivateSession {
     type Rejection = ApiError;
 
@@ -201,13 +213,7 @@ impl FromRequestParts<AppState> for PrivateSession {
         let actor = actor.ok_or(ApiError::Unauthenticated)?;
         let credential =
             crate::identity::presented_credential(parts).ok_or(ApiError::Unauthenticated)?;
-        let mut hasher = Sha256::new();
-        hasher.update(b"vink-follow-own-session-v1");
-        hasher.update(credential.as_bytes());
-        Ok(Self {
-            actor,
-            digest: hasher.finalize().into(),
-        })
+        Ok(Self::from_credential(actor, credential))
     }
 }
 

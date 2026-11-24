@@ -1268,29 +1268,31 @@ impl PublicDiscussionPage {
         Self {
             work_id: work_id.to_string(),
             settings: page.settings.into(),
-            roots: page
-                .roots
-                .iter()
-                .map(|root| PublicRootThread {
-                    root: match &root.entry {
-                        RootEntry::Comment(item) => PublicRootView::Comment {
-                            comment: PublicComment::new(item, true),
-                        },
-                        RootEntry::Anchor { id, created_at } => PublicRootView::Anchor {
-                            comment_id: id.to_string(),
-                            created_at: *created_at,
-                        },
-                    },
-                    public_replies: root.public_replies,
-                    preview: root
-                        .preview
-                        .iter()
-                        .map(|item| PublicComment::new(item, false))
-                        .collect(),
-                    preview_next_cursor: root.preview_next.map(|cursor| cursor.encode()),
-                })
-                .collect(),
+            roots: page.roots.iter().map(PublicRootThread::from).collect(),
             next_cursor: page.next.map(|cursor| cursor.encode()),
+        }
+    }
+}
+
+impl From<&crate::application::discussion::RootItem> for PublicRootThread {
+    fn from(root: &crate::application::discussion::RootItem) -> Self {
+        Self {
+            root: match &root.entry {
+                RootEntry::Comment(item) => PublicRootView::Comment {
+                    comment: PublicComment::new(item, true),
+                },
+                RootEntry::Anchor { id, created_at } => PublicRootView::Anchor {
+                    comment_id: id.to_string(),
+                    created_at: *created_at,
+                },
+            },
+            public_replies: root.public_replies,
+            preview: root
+                .preview
+                .iter()
+                .map(|item| PublicComment::new(item, false))
+                .collect(),
+            preview_next_cursor: root.preview_next.map(|cursor| cursor.encode()),
         }
     }
 }

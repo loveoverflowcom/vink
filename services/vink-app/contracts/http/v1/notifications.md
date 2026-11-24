@@ -126,6 +126,12 @@ endpoint nào nối trực tiếp tới Notification Service (`K5`).
 | Badge count, trang Inbox, ACK `Seen`, `Read`, `MarkAllRead`, Chi tiết quyết định riêng | Notification Service (dữ liệu nhóm/con trỏ) + App Gateway (authz/hydration) | Bắt buộc phiên thật (`__Host-vink_session` hoặc `Authorization: Bearer`). Server tự giải `PrincipalId`. Khách nhận `401`. Mọi lệnh ghi qua Gateway, kể cả bằng Bearer, đòi `Origin` bằng `VINK_PUBLIC_ORIGIN` và kiểm standing khi ghi. | `Cache-Control: no-store` (mọi phản hồi 2xx và lỗi). Không `ETag`, không dùng chung cache giữa các phiên. |
 | Danh sách người Thấm công khai (`WorkId + RevisionId`) | App / Endorsement (`work_endorsements` + phép chiếu hồ sơ công khai) | Actor-free (không bắt đăng nhập); khách vẫn xem được khi tác phẩm có `publications` đúng `RevisionId` đó. Không có bản công khai hiện hành trả `404`. | `200`/`304`: `Cache-Control: private, no-cache` kèm strong `ETag` trên đúng byte phản hồi (kiểm lại visibility, membership và projection trước `If-None-Match`, giống `READ-01`). Mọi lỗi: `no-store`. |
 
+**Scope Web (#486).** `GET /auth/session/account` có thể trả `notification_scope`, một dấu MAC
+tách mục đích theo principal và credential đã xác nhận. Web gửi `X-Vink-Notification-Scope` trên
+mọi request riêng `/me/notifications…`. Header sai scope trả `401` trước khi đọc/ghi hộp thư, kể
+cả cùng principal dùng cookie mới. Client dùng dấu này cùng generation trong bộ nhớ. Dấu scope
+không xác lập quyền. Client v1 cũ không gửi header tiếp tục dùng xác thực và quy tắc token gốc.
+
 ### 2.2. `inbox_snapshot`, `group_version`, `signal_version` và ACK đơn điệu
 
 Để bảo đảm các bất biến `N5`, `N6`, `P-09A`, `P-10A` qua nhiều tab, retry và mất ACK:
@@ -248,6 +254,15 @@ giữ phạm vi Thấm tác phẩm (`P-08a`); không có danh sách người Ưn
   viết thấy theo MOD-04. `is_current = false` khi một quyết định mới hơn trên cùng revision/bình
   luận đã thay thế quyết định này (đảo quyết định); `can_appeal` chỉ `true` với quyết định hiện hành
   đủ điều kiện kháng nghị. Phiên bản `pending`/`needs_admin` hoặc lần duyệt bình luận trả `404`.
+
+**Hiển thị Web R4 (#486).** Dòng quyết định tác phẩm có thể kèm
+`target.revision_created_at` (RFC 3339 của đúng revision). Dòng phản hồi có thể kèm
+`summary.reply_to_viewer` khi Gateway biết người nhận là người được trả lời trực tiếp hay chủ
+chuỗi. Các trường này không đi vào event hoặc rollup. Reader mở đúng nhận xét bằng
+`GET /works/{work_id}/discussion/public/comments/{comment_id}`, trả một `PublicRootThread`
+cùng nhận xét đã duyệt còn hiện hành. Với đích là phản hồi, `preview` chỉ có phản hồi được
+liên kết, root bị gỡ hiện anchor nếu còn hợp lệ. Cùng phép chiếu public, `404` khi đích không
+còn đọc được và `no-store` trên mọi phản hồi.
 
 ### 2.5. Phân trang (`Cursor`) & Continuation hữu hạn (`T-06`)
 

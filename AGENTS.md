@@ -118,7 +118,9 @@ those registries rather than duplicating long status narratives across skills.
   excerpts (#365) and the public Thấm list; `verify postgres` drives it through real processes
   (four `vink-app` with loopback dev principals, service, worker relay; recovery gate → 503/stale).
   #365 adds Ưng on comments (`comment.endorsement.ung.changed`: Endorsement producer, `ung_marks`
-  rollup, writer-only Gateway rows, no excerpt). No Web UI (#364) or production image yet;
+  rollup, writer-only Gateway rows, no excerpt). #486 adds the R4 bell, popover, inbox and decision
+  screens, precise Reader links and the public Thấm dialog/page
+  ([Web evidence](docs/development/notifications.md#11-web-r4-486)). The production image is pending.
   `admin.notice.reserved` stays type-only.
 - **Work views (“Lượt xem”, #340–#343; [spec](docs/architecture/work-views.md),
   [registry](docs/development/work-views.md)):** `VDR-WORK-VIEWS@r1` is `PRODUCT_CONFIRMED`. #341

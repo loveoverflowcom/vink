@@ -44,6 +44,11 @@ ghi delta và giữ `PENDING`.
 · [AC của #365](https://github.com/loveoverflowcom/vink/issues/365)
 · [hợp đồng HTTP](../../services/vink-app/contracts/http/v1/notifications.md#24-typed-target--chi-tiết-quyết-định-riêng-p-12a-p-14a).
 
+**Web R4 (#486).** Route riêng và popover dùng một inbox trong bộ nhớ tab. API kiểm dấu scope
+theo credential đã xác nhận ở `/auth/session/account`. Đích nhận xét chính xác dùng phép chiếu
+public Discussion hiện có. Xem [hợp đồng Gateway](../../services/vink-app/contracts/http/v1/notifications.md)
+và [hiện trạng Web](../development/notifications.md#11-web-r4-486).
+
 ## 1. Mục tiêu, phạm vi v1 và thu hẹp R3
 
 1. **Mục tiêu:** Cung cấp hộp thư thông báo riêng cho từng tác giả/người dùng qua một Notification

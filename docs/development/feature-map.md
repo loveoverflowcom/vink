@@ -41,6 +41,8 @@ fixture; chưa có hai process/hai DB. Chi tiết, lựa chọn `T-01`/`T-02` v�
 [registry Notifications §6](notifications.md#6-hiện-trạng-346-producer-outbox-và-relay-phía-app).
 
 **Service, inbox/Gateway và danh sách người Thấm công khai:** xem hiện trạng #347, #348 và #365 trong [registry Notifications](notifications.md).
+**Web R4 (#486):** chuông, popover, `/thong-bao`, các đích quyết định và Thấm dùng Gateway.
+Kiểm tra bằng `cargo xtask verify web --scenario notifications`. Xem [runtime và chứng cứ](notifications.md#11-web-r4-486).
 Hợp đồng và SSOT cho `#346`–`#348` cùng giai đoạn Design/Web được ghi tại
 [PRD §16](../../prd/requirements.md#16-thông-báo-cộng-đồng-và-danh-sách-thấm-công-khai-notifications-v1),
 [đặc tả miền & UX bằng chữ](../architecture/notifications.md),

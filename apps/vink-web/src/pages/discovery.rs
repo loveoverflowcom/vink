@@ -318,6 +318,7 @@ pub(super) fn ExploreTitleRow(title: &'static str) -> impl IntoView {
                 <h1 class="vk-ui-heading vk-ui-type-page-title">{title}</h1>
             </header>
             <div class=DISCOVERY_TOOLBAR_CLASS><ExploreBrand /></div>
+            <crate::notifications::MobileBell />
         </div>
     }
 }
@@ -652,6 +653,7 @@ fn DiscoveryChrome(
                         })
                     }}
                 </Suspense>
+                {(!is_tag).then(|| view! { <crate::notifications::MobileBell /> })}
                 <div class=DISCOVERY_TOOLBAR_CLASS>
                     <form method="get" action=action.clone() on:submit=submit_search role="search" id="public-search" class="vk-public-search [min-inline-size:0] [max-inline-size:none]">
                         {hidden_tags.into_iter().map(|tag| view! { <HiddenField name="tag" value=Signal::stored(tag) /> }).collect_view()}
