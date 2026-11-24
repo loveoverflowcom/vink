@@ -39,9 +39,12 @@ từ đầu điều hướng, ghi median (min–max). Không báo p95 vì n = 10
    `Content-Encoding`** dù request chấp nhận `br, gzip, zstd`. Hai điểm trong Worker khớp với
    triệu chứng: Worker [đặt `no-transform`](../../../../infra/cloudflare/production/worker.mjs)
    cho `/_v/<sha>/` và gọi `env.ASSETS.fetch` không kèm `Accept-Encoding`. HTML cùng zone (không
-   có `no-transform`) vẫn được trả Brotli. Chưa thử bỏ từng điểm trên production, nên tầng edge
-   nào bỏ nén vẫn cần kiểm khi sửa (mục đề xuất 1). Namespace đổi theo SHA nên mỗi phát hành làm
-   mọi URL asset mới, kể cả font và ảnh không đổi. Brotli q11 sẽ giảm ba file này còn 1,63 MB / 31,7 KB / 11,7 KB. Ở phép đối
+   có `no-transform`) vẫn được trả Brotli. **Kiểm riêng sau điều tra
+   ([#487](https://github.com/loveoverflowcom/vink/issues/487)):** alias `/pkg/` đi cùng nhánh
+   Worker `inventory/r26` nhưng có `no-cache` thay cho `no-transform`, và được Cloudflare nén
+   Brotli/gzip (WASM bootstrap 7.872.530 → 2.164.348 byte br), còn `/_v/<sha>/` luôn trả identity.
+   `no-transform` là nguyên nhân. Việc không gửi `Accept-Encoding` tới Pages không ảnh hưởng.
+   Namespace đổi theo SHA nên mỗi phát hành làm mọi URL asset mới, kể cả font và ảnh không đổi. Brotli q11 sẽ giảm ba file này còn 1,63 MB / 31,7 KB / 11,7 KB. Ở phép đối
    chứng cục bộ dùng đúng byte live, mạng mô phỏng 10 Mbps, hydrated giảm từ 7.322 ms xuống
    2.081 ms. FCP cũng giảm từ 924 ms xuống 396 ms, vì preload WASM chiếm băng thông của CSS
    render-blocking.
@@ -238,7 +241,8 @@ trong thư mục evidence này, giống #234/#235.
 
 ## Việc sửa đề xuất, theo thứ tự tác động đã đo
 
-1. **Nén asset `/_v/<sha>/`** (cold và lần đầu sau mỗi phát hành). Owner:
+1. **Nén asset `/_v/<sha>/`** (cold và lần đầu sau mỗi phát hành), triển khai ở
+   [#487](https://github.com/loveoverflowcom/vink/issues/487). Owner:
    `infra/cloudflare/production/worker.mjs`, runbook `infra/production/cloudflare-edge.md`, và
    bundle của `xtask` nếu chọn tiền nén. Hai hướng khả thi:
    - *Bỏ `no-transform` chỉ cho asset immutable* để zone tự nén. Thay đổi nhỏ nhất. ETag có thể
@@ -256,17 +260,20 @@ trong thư mục evidence này, giống #234/#235.
      `node --test infra/cloudflare/production/worker.test.mjs`, cùng smoke ETag/304 qua
      `identity`/`gzip`/`br` theo runbook.
    - Rủi ro: nén hai lần, ETag/304 sai, Pages trả HTML thay asset. Rollback bằng Worker trước đó.
-2. **Giảm việc main thread sau khi nội dung đã hiện, trên máy chậm.** Trước hết đo trên Android
+2. **Giảm việc main thread sau khi nội dung đã hiện, trên máy chậm**
+   ([#490](https://github.com/loveoverflowcom/vink/issues/490)). Trước hết đo trên Android
    thật. Hướng: thử `wasm-opt`, tìm crate chiếm code section, tách phần không cần cho trang đầu.
    Kiểm bằng long task Σ và hydrated của mở lại tab/trình duyệt trên mobile; không đổi SSR/no-JS.
-3. **Đo phiên đăng nhập trên Bàn viết trước khi sửa.** Cần một phiên production do chủ sở hữu cho
+3. **Đo phiên đăng nhập trên Bàn viết trước khi sửa**
+   ([#492](https://github.com/loveoverflowcom/vink/issues/492)). Cần một phiên production do chủ sở hữu cho
    phép, hoặc App/PostgreSQL scratch có latency injection. Nếu ba round trip nối tiếp được xác nhận,
    các hướng là gộp state và account vào một response, hoặc để SSR cung cấp standing đã kiểm. Phải
    giữ session fencing, `no-store` và không trộn principal.
 4. **Không đề xuất** cache HTML ở edge hay bỏ `no-store` để bật BFCache nếu chưa có quyết định
    privacy/withdrawal riêng. Streaming SSR đã dừng ở #235.
 5. Sau mục 1: hash theo từng file sẽ giữ cache cho font/ảnh không đổi giữa các phát hành (khoảng
-   0,4 MB). WASM hầu như đổi ở mỗi build.
+   0,4 MB). WASM hầu như đổi ở mỗi build
+   ([#491](https://github.com/loveoverflowcom/vink/issues/491)).
 
 ## AC → bằng chứng → gap
 
@@ -275,7 +282,7 @@ trong thư mục evidence này, giống #234/#235.
 | 01 | Live `e9872556` (HTML, `X-Vink-Asset-Revision`, ETag = SHA-256), source `7baae1e`, máy/mạng/Chrome, route `/`, catalog trống, phiên khách | Reader có dữ liệu thật, phiên đăng nhập |
 | 02 | Cold, reload, mở lại tab, mở lại trình duyệt, SPA, Back (`back_forward`, BFCache có nhãn), hard reload; n = 10, median/min–max; FCP và hydrated | Thiết bị di động thật |
 | 03 | Phân rã HTML/origin (edge-*.json, Navigation Timing), asset/mã hóa (header, `assets.json`), WASM/main thread (probe, trace), session khách | Waterfall Bàn viết khi đăng nhập |
-| 04 | Đối chứng identity/Brotli cùng byte; reload so với hard reload; SSR so với `/health/live`; Cantos cùng điều kiện | Mức nén thật của Cloudflare; mạng di động thật |
+| 04 | Đối chứng identity/Brotli cùng byte; reload so với hard reload; SSR so với `/health/live`; Cantos cùng điều kiện | Mạng di động thật. Mức nén thật của Cloudflare đo sau ở #487 (tương đương Brotli q4) |
 | 05 | Cantos: URL, route, máy, mạng, Chrome và script giống nhau | VOTHub `NOT_RUN` (DNS); Cantos không xen kẽ từng mẫu với Vink |
 | 06 | Thứ tự sửa, owner, hướng, ràng buộc, kiểm xác nhận, rủi ro/rollback ở trên | Không triển khai; mục 2–3 cần đo trước |
 
