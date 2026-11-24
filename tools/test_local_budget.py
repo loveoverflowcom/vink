@@ -12,6 +12,7 @@ import sys
 from tempfile import TemporaryDirectory
 import time
 import unittest
+from unittest.mock import Mock, patch
 
 LAUNCHER = Path(__file__).with_name("local-budget").resolve()
 SPEC = spec_from_loader("local_budget", SourceFileLoader("local_budget", str(LAUNCHER)))
@@ -51,6 +52,9 @@ if operation in ("linger", "orphan", "stubborn"):
     pathlib.Path("child").write_text(str(descendant.pid))
     if operation != "orphan":
         descendant.wait()
+pathlib.Path("cargo-dirs.json").write_text(json.dumps([
+    os.environ["CARGO_TARGET_DIR"], os.environ["CARGO_BUILD_TARGET_DIR"],
+    os.environ["CARGO_BUILD_BUILD_DIR"]]))
 pathlib.Path("invocation.json").write_text(json.dumps(
     [sys.argv[1:], os.environ["CARGO_BUILD_JOBS"], os.environ["RUST_TEST_THREADS"]]))
 sys.exit(7 if operation == "failure" else 0)
@@ -94,6 +98,10 @@ class Profile(unittest.TestCase):
                 budget.settings(env, root)
             self.assertEqual(error.exception.code, 69)
             self.assertEqual(budget.settings(dict(env, RUSTC_WRAPPER=""), root), (1, 1))
+            for key in budget.CARGO_DIRECTORIES:
+                local.write_text(f'[env]\n{key} = {{ value = "/shared", force = true }}\n')
+                with self.subTest(key=key), self.assertRaisesRegex(budget.Refusal, key):
+                    budget.settings(env, root)
             local.unlink()
             with self.assertRaisesRegex(budget.Refusal, "CARGO_ALIAS_XTASK"):
                 budget.settings(dict(env, CARGO_ALIAS_XTASK="run"), root)
@@ -108,6 +116,9 @@ class Profile(unittest.TestCase):
                 budget.validate_command(["--", "cargo", "xtask", *command], 2)
             self.assertEqual(error.exception.code, 69)
         for args in [
+            ["--target-dir", "../shared"],
+            ["--target-dir=/shared"],
+            ["--target-dir"],
             ["--jobs", "8"],
             ["-j8"],
             ["-qj8"],
@@ -116,6 +127,22 @@ class Profile(unittest.TestCase):
         ]:
             with self.subTest(args=args), self.assertRaises(budget.Refusal):
                 budget.validate_command(["--", "cargo", "test", *args], 2)
+
+    def test_explicit_local_target_directory(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp).resolve()
+            (root / "target").mkdir()
+            (root / "alias").symlink_to(root / "target", target_is_directory=True)
+            with patch.object(budget, "ROOT", root):
+                for value in ("target", str(root / "target"), "alias", "missing/../target"):
+                    for args, expected in (
+                        (["--target-dir", value], ["--target-dir", str(root / "target")]),
+                        ([f"--target-dir={value}"], [f"--target-dir={root / 'target'}"]),
+                    ):
+                        with self.subTest(args=args):
+                            cmd = ["--", "cargo", "check", *args]
+                            self.assertEqual(budget.validate_command(cmd, 2),
+                                             ["cargo", "check", *expected])
 
     def test_argv_plan_follows_xtask_last_argument_rule(self):
         # xtask's cli::parse inspects only when `--plan` is last; the launcher mirrors that.
@@ -152,7 +179,32 @@ class Profile(unittest.TestCase):
             )
             self.assertEqual(strict.returncode, 69, strict.stderr)
             self.assertIn("UNSUPPORTED", strict.stderr)
+            if sys.platform == "darwin":
+                for args, status, message in (
+                    (["xtask", "verify", "unit", "store"], 0, "command passes resource policy"),
+                    (["xtask", "verify", "web", "--scenario", "discovery"], 69, "UNSUPPORTED"),
+                    (["test", "--jobs=8"], 2, "CARGO_BUILD_JOBS"),
+                ):
+                    checked = subprocess.run(
+                        [sys.executable, LAUNCHER, "plan", "--", "cargo", *args],
+                        env=env, capture_output=True, text=True, timeout=5)
+                    self.assertEqual(checked.returncode, status, checked.stderr)
+                    self.assertIn(message, checked.stderr)
+                    self.assertIn("hard_cap=none", checked.stderr)
             self.assertEqual(list(Path(temp).iterdir()), [])
+
+    def test_no_live_sample_has_unknown_peak(self):
+        child = Mock(pid=12)
+        child.wait.return_value = 0
+        with (patch.object(budget, "exit_seen", side_effect=[False, True]),
+              patch.object(budget, "session_members", return_value={}),
+              patch.object(budget, "signal_group", return_value=False),
+              patch.object(budget, "log") as log):
+            result = budget.supervise(child, time.monotonic(), None, [None], True)
+        self.assertEqual(result, 0)
+        messages = [call.args[0] for call in log.call_args_list]
+        self.assertTrue(any("members=0 rss_sum=UNKNOWN" in line for line in messages))
+        self.assertTrue(any("sampled_peak_rss_sum=UNKNOWN" in line for line in messages))
 
 
 @unittest.skipUnless(sys.platform == "darwin", "needs macOS session and pressure probes")
@@ -175,11 +227,13 @@ class Lifecycle(unittest.TestCase):
                         CARGO_HOME=temp.name, CARGO_BUILD_JOBS="1", RUST_TEST_THREADS="7")
         self.env.pop(budget.MARKER, None)
 
-    def launch(self, operation, checkout=0, timeout=None):
+    def launch(self, operation, *cargo_args, checkout=0, timeout=None, samples=False):
         options = ["--timeout", str(timeout)] if timeout is not None else []
+        if samples:
+            options.append("--samples")
         child = subprocess.Popen(
             [sys.executable, "-c", ENTRY, self.launchers[checkout], self.slot, "run",
-             *options, "--", "cargo", "test", operation],
+             *options, "--", "cargo", "test", operation, *cargo_args],
             env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
         )
         self.addCleanup(self.reap, child)
@@ -204,6 +258,31 @@ class Lifecycle(unittest.TestCase):
                 return int(pid)
             time.sleep(0.03)
         self.fail("fixture child failed to report readiness")
+
+    def test_bootstrap_uses_each_checkout_target(self):
+        self.env.update(dict.fromkeys(budget.CARGO_DIRECTORIES, str(self.root / "shared")))
+        for index, launcher in enumerate(self.launchers):
+            root = launcher.parents[1]
+            (root / "alias").symlink_to("target", target_is_directory=True)
+            output = self.result(self.launch("ok", "--target-dir=alias", checkout=index), 0)
+            self.assertNotIn("sample elapsed=", output)
+            expected = str(root.resolve() / "target")
+            invocation = json.loads((root / "invocation.json").read_text())
+            self.assertEqual(invocation[0], ["test", "ok", f"--target-dir={expected}"])
+            self.assertIn(f"cargo_target_dir={expected} cargo_build_dir={expected}", output)
+            self.assertEqual(json.loads((root / "cargo-dirs.json").read_text()), [expected] * 3)
+        self.assertFalse((self.root / "shared").exists())
+
+    def test_symlinked_shared_target_refused_before_admission(self):
+        checkout = self.launchers[0].parents[1]
+        target = checkout / "target"
+        for destination in (self.root, self.root / "absent", "target"):
+            with self.subTest(destination=destination):
+                target.symlink_to(destination, target_is_directory=True)
+                self.assertIn("symlink", self.result(self.launch("ok"), 2))
+                self.assertFalse(self.slot.exists())
+                self.assertFalse((checkout / "invocation.json").exists())
+                target.unlink()
 
     def test_cross_checkout_cancel_and_nested(self):
         owner = self.launch("linger")
@@ -238,10 +317,12 @@ class Lifecycle(unittest.TestCase):
         self.assertFalse((self.slot / "session").exists())
 
     def test_timeout_and_command_failure_propagate(self):
-        stubborn = self.launch("stubborn", timeout=1)
+        stubborn = self.launch("stubborn", timeout=1, samples=True)
         self.ready()
         sid = int((self.slot / "session").read_text().split()[1])
-        self.assertIn("timeout", self.result(stubborn, 124))
+        output = self.result(stubborn, 124)
+        self.assertIn("timeout", output)
+        self.assertRegex(output, r"sample elapsed=[0-9.]+s members=[1-9][0-9]* rss_sum=[0-9]+ KiB")
         self.assertFalse(budget.session_members(sid))
         self.result(self.launch("failure"), 7)
 
