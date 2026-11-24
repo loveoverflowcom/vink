@@ -170,12 +170,14 @@ pub(super) fn ReaderAuthDialog(
     #[cfg(not(feature = "hydrate"))]
     let _ = controller;
     view! {
-        <dialog id=DIALOG class="vk-reader-auth" aria-label="Đăng nhập để nhận xét" aria-labelledby="reader-auth-title"
+        <dialog id=DIALOG
+            class="vk-reader-auth box-border [max-inline-size:none] [border:0] overscroll-contain overflow-auto"
+            aria-label="Đăng nhập để nhận xét" aria-labelledby="reader-auth-title"
             node_ref=host.dialog
             data-standing=move || session.standing.with(standing_id)
             on:cancel=move |event: leptos::ev::Event| { event.prevent_default(); host.close(CloseReason::Escape, false); }
             on:keydown=move |event| trap_tab(event, host.dialog)>
-            <header class="vk-reader-auth-bar">
+            <header class="vk-reader-auth-bar flex justify-between items-center gap-vk-3 [margin-block-end:var(--vk-space-3)]">
                 <span class="vk-brand__lockup" role="img" aria-label="Vink"></span>
                 <IconButton icon=IconName::Close label="Đóng" id=CLOSE
                     on_press=move |_| { host.close(CloseReason::Dismiss, false); } />
@@ -185,7 +187,7 @@ pub(super) fn ReaderAuthDialog(
                 {move || match session.standing.get() {
                     Standing::Anonymous | Standing::NeedsPrincipal => None,
                     standing => Some(view! {
-                        <h2 id="reader-auth-title" class="vk-reader-auth-title">"Đăng nhập để nhận xét"</h2>
+                        <h2 id="reader-auth-title" class="vk-reader-auth-title m-0 wrap-anywhere">"Đăng nhập để nhận xét"</h2>
                         <p role="status">{if standing == Standing::Suspended {
                             "Tài khoản đang bị tạm khóa trên Vink."
                         } else {

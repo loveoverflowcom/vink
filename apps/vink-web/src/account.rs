@@ -247,7 +247,9 @@ pub(crate) fn AuthEntry(#[prop(optional)] reader: bool) -> impl IntoView {
             },
             _ => return None,
         };
-        Some(view! { <div class="vk-auth-entry">{body}<SessionRetry /></div> })
+        Some(
+            view! { <div class="vk-auth-entry grid [min-inline-size:0] wrap-anywhere">{body}<SessionRetry /></div> },
+        )
     }
 }
 

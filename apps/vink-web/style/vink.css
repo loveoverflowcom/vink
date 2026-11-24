@@ -236,11 +236,8 @@ a {
 }
 
 /* Auth Web R2. The form owns its fields and actions; only Tôi owns the viewport and rail. */
-.vk-auth-entry {
-  display: grid; gap: var(--vk-space-6); inline-size: min(100%, 24rem);
-  min-inline-size: 0; overflow-wrap: anywhere;
-}
-.vk-auth-heading { display: grid; justify-items: center; gap: var(--vk-space-6); text-align: center; }
+.vk-auth-entry { gap: var(--vk-space-6); inline-size: min(100%, 24rem); }
+.vk-auth-heading { gap: var(--vk-space-6); }
 .vk-auth-heading .vk-brand__lockup { height: 2.5rem; width: calc(2.5rem * 1018 / 410); max-width: 100%; }
 .vk-auth-heading h2 {
   margin: 0; font: var(--vk-type-display-weight) var(--vk-text-auth-heading)/var(--vk-type-display-line-height) var(--vk-font-reading);
@@ -250,11 +247,6 @@ a {
 .vk-auth-entry .vk-account-actions, .vk-auth-alternatives { display: grid; gap: var(--vk-space-3); }
 .vk-auth-entry .vk-account-actions { margin-block-start: var(--vk-space-1); }
 .vk-auth-entry :is(.vk-account-actions, .vk-auth-alternatives) > .vk-ui-action { align-items: stretch; }
-.vk-auth-switch {
-  display: flex; justify-content: center; align-items: center; flex-wrap: wrap;
-  gap: 0 var(--vk-space-1); text-align: center; color: var(--vk-on-surface-variant);
-  font-size: var(--vk-type-label-size);
-}
 .vk-auth-switch .vk-ui-button { padding-inline: var(--vk-space-2); }
 .vk-main:has(> .vk-me .vk-auth-entry) {
   max-inline-size: none; padding-inline: clamp(16px, 5vw, 32px);
@@ -2355,33 +2347,19 @@ a {
  * Native top-layer inertness keeps the mounted Reader and its editor out of the tab order. */
 html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
 .vk-reader-auth {
-  box-sizing: border-box;
   inline-size: min(30rem, calc(100% - 48px));
-  max-inline-size: none;
   max-block-size: calc(100dvh - 48px);
   padding: 24px;
-  border: 0;
   border-radius: var(--vk-radius-xl);
-  overscroll-behavior: contain;
-  overflow: auto;
   background: var(--vk-surface-container-high);
   color: var(--vk-on-surface);
   color-scheme: inherit;
 }
 .vk-reader-auth::backdrop { background: color-mix(in srgb, var(--vk-scrim) 76%, transparent); }
-.vk-reader-auth-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--vk-space-3);
-  margin-block-end: var(--vk-space-3);
-}
 .vk-reader-auth-bar .vk-brand__lockup { inline-size: 4.5rem; block-size: 1.8125rem; max-inline-size: 55%; }
 .vk-reader-auth-title {
-  margin: 0;
   font: var(--vk-type-display-weight) var(--vk-text-auth-dialog-heading)/var(--vk-type-display-line-height) var(--vk-font-reading);
   letter-spacing: var(--vk-type-display-tracking);
-  overflow-wrap: anywhere;
 }
 .vk-reader-auth .vk-auth-entry { inline-size: 100%; gap: var(--vk-space-4); }
 .vk-reader-auth .vk-auth-entry:has(#password-login) .vk-auth-alternatives {
