@@ -5336,6 +5336,16 @@ async function deskRefusesLossyOpen(page) {
 
 // #256/#257/#262 + nut-gui-luu: Markdown format choice, single-editor Live Preview,
 // AST Mục lục (Cách 1), Send/Save state icon transitions and conversion dialog.
+// Editor R4 (#475) docks the outline at 50rem of available editor content.
+async function outlineNeedsSheet(page) {
+  return page.eval(`(() => {
+    const editor = document.querySelector('.vk-desk--editor');
+    const style = getComputedStyle(editor);
+    const width = editor.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    return width < 50 * parseFloat(getComputedStyle(document.documentElement).fontSize);
+  })()`);
+}
+
 async function markdownLivePreviewAndFormatPicker(page) {
   console.log('editor live preview (#256), outline (#257), format picker (#262) & send/save button:');
   const cmView = `document.querySelector('.cm-content').cmTile.root.view`;
@@ -5503,13 +5513,7 @@ async function markdownLivePreviewAndFormatPicker(page) {
       }))))) {
       await page.viewport(scene.width, 900);
       await page.eval(`document.documentElement.dataset.text = '${scene.scale}'; document.documentElement.dataset.theme = '${scene.theme}'; new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))`);
-      // Editor R4 (#475) docks the outline at 50rem of available editor content.
-      const overlay = await page.eval(`(() => {
-        const editor = document.querySelector('.vk-desk--editor');
-        const style = getComputedStyle(editor);
-        const width = editor.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-        return width < 50 * parseFloat(getComputedStyle(document.documentElement).fontSize);
-      })()`);
+      const overlay = await outlineNeedsSheet(page);
       if (scene.width === 320 || (scene.width === 1440 && scene.scale === '100')) {
         check(overlay === (scene.width === 320), `outline matrix covers compact and docked layouts at ${scene.width}/${scene.scale}`);
       }
@@ -5662,15 +5666,15 @@ async function markdownLivePreviewAndFormatPicker(page) {
       await page.waitFor(`${EDITOR_READY} && document.querySelector('#outline-toggle')`, 'saved Markdown opens with the chosen text preference');
       await page.click('#outline-toggle');
       for (const width of [1023, 1024]) {
-        const modal = scale === 150 || width < 1024;
         await page.viewport(width, 900);
+        const modal = await outlineNeedsSheet(page);
         await page.waitFor(`(() => {
           const root = document.documentElement, panel = document.querySelector('#editor-outline-panel[open]');
           const expectedText = ${scale === 150 ? "'150'" : 'undefined'};
           return root.dataset.text === expectedText && !root.style.fontSize &&
             getComputedStyle(root).fontSize === '${16 * scale / 100}px' && root.scrollWidth <= innerWidth &&
             panel && panel.matches(':modal') === ${modal} &&
-            getComputedStyle(panel).position === '${modal ? 'fixed' : 'sticky'}' &&
+            getComputedStyle(panel).position === '${modal ? 'fixed' : 'static'}' &&
             panel.getAttribute('role') === ${modal ? 'null' : "'complementary'"};
         })()`, `Mục lục at ${width}px with the app's ${scale}% text preference`);
       }
