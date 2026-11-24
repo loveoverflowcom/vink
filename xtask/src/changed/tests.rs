@@ -80,6 +80,8 @@ fn rules_keep_required_owner_and_transitive_commands() {
                 "verify postgres",
                 "verify web",
                 "verify kani",
+                "verify web --scenario perf-baseline --release",
+                "verify web --scenario return-position --release",
             ],
         ),
         (

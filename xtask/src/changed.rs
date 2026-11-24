@@ -134,6 +134,8 @@ impl Selection {
             "verify web",
             "verify preview",
             "verify web --scenario standalone",
+            "verify web --scenario perf-baseline --release",
+            "verify web --scenario return-position --release",
         ] {
             self.add(cmd, reason);
         }
