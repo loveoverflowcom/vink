@@ -673,6 +673,24 @@ pub(super) async fn read_snapshot(pool: &PgPool) -> Result<Transaction<'_, Postg
     Ok(tx)
 }
 
+async fn root_for_replies(
+    tx: &mut Transaction<'_, Postgres>,
+    thread_id: Uuid,
+    root_id: Uuid,
+) -> Result<Option<ItemRow>, StoreError> {
+    sqlx::query_as(AssertSqlSafe(format!(
+            "SELECT {ITEM_COLUMNS}, NULL::text AS context_review, NULL::text AS context_removal,
+                    NULL::bigint AS context_version, NULL::text AS context_author_name, NULL::text AS context_author_handle, NULL::bool AS context_author_retired, {PUBLIC_REPLIES} AS public_replies
+               FROM comments c JOIN public_author_attribution a ON a.id = c.author_id
+              WHERE c.id = $1 AND c.thread_id = $2 AND c.kind = 'root'"
+        )))
+        .bind(root_id)
+        .bind(thread_id)
+        .fetch_optional(&mut **tx)
+        .await
+        .map_err(classify)
+}
+
 impl PgStore {
     /// One public, still-visible comment in its real two-tier thread. Exact links should
     /// not scan all older roots and replies to land on a notification.
@@ -705,19 +723,9 @@ impl PgStore {
             return Ok(None);
         };
         let (entry, replies, public_replies) = if let Some(root_id) = selected.root_id {
-            let root: ItemRow = sqlx::query_as(AssertSqlSafe(format!(
-                "SELECT {ITEM_COLUMNS}, NULL::text AS context_review, NULL::text AS context_removal,
-                        NULL::bigint AS context_version, NULL::text AS context_author_name,
-                        NULL::text AS context_author_handle, NULL::bool AS context_author_retired,
-                        {PUBLIC_REPLIES} AS public_replies
-                   FROM comments c JOIN public_author_attribution a ON a.id = c.author_id
-                  WHERE c.id = $1 AND c.thread_id = $2 AND c.kind = 'root'"
-            )))
-            .bind(root_id)
-            .bind(thread.id)
-            .fetch_one(&mut *tx)
-            .await
-            .map_err(classify)?;
+            let Some(root) = root_for_replies(&mut tx, thread.id, root_id).await? else {
+                return Ok(None);
+            };
             let entry = match root_listing(root.view(None)?, root.public_replies) {
                 Some(RootListing::Shown(_)) => {
                     RootEntry::Comment(root.item(None, ReplyContext::Root)?)
@@ -1468,17 +1476,7 @@ impl DiscussionStore for PgStore {
             return Ok(None);
         };
         let viewer_id = viewer.map(|viewer| viewer.as_uuid());
-        let root: Option<ItemRow> = sqlx::query_as(AssertSqlSafe(format!(
-            "SELECT {ITEM_COLUMNS}, NULL::text AS context_review, NULL::text AS context_removal,
-                    NULL::bigint AS context_version, NULL::text AS context_author_name, NULL::text AS context_author_handle, NULL::bool AS context_author_retired, {PUBLIC_REPLIES} AS public_replies
-               FROM comments c JOIN public_author_attribution a ON a.id = c.author_id
-              WHERE c.id = $1 AND c.thread_id = $2 AND c.kind = 'root'"
-        )))
-        .bind(root_id.as_uuid())
-        .bind(thread.id)
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(classify)?;
+        let root = root_for_replies(&mut tx, thread.id, root_id.as_uuid()).await?;
         // Replies of a root the viewer cannot list (hidden, no public replies) are not readable.
         let Some(root) = root else {
             return Ok(None);
