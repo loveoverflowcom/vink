@@ -31,6 +31,7 @@ const EXPLORE_TOP_CLASS: &str = "vk-explore__top flex-wrap items-center gap-x-vk
 const EXPLORE_HEADING_CLASS: &str = "vk-explore__heading flex-auto [min-inline-size:0]";
 const DISCOVERY_TOOLBAR_CLASS: &str =
     "vk-discovery-toolbar ms-auto flex flex-wrap items-center [min-inline-size:0]";
+const EXPLORE_MODE_CONTROL_CLASS: &str = "relative box-border inline-flex items-center gap-vk-2 [min-block-size:48px] [min-inline-size:0] [padding:var(--vk-space-2)_var(--vk-space-4)]";
 
 fn query_from(params: &leptos_router::params::ParamsMap) -> ExploreQuery {
     ExploreQuery::new(
@@ -361,7 +362,7 @@ pub(super) fn ExploreModes(
             .map(|(entry, key, href, label)| {
                 let selected = *entry == mode;
                 view! {
-                    <a id=format!("{prefix}-{key}") href=href.clone() aria-current=selected.then_some("page")>
+                    <a id=format!("{prefix}-{key}") class=EXPLORE_MODE_CONTROL_CLASS href=href.clone() aria-current=selected.then_some("page")>
                         {selected.then(|| view! { <Icon name=IconName::Check size=IconSize::Small /> })}
                         <span>{*label}</span>
                     </a>
@@ -371,7 +372,7 @@ pub(super) fn ExploreModes(
     };
     view! {
         <nav class="vk-explore-modes" aria-label="Chế độ Khám phá">
-            <div class="vk-explore-modes__group">{links("explore-mode")}</div>
+            <div class="vk-explore-modes__group flex-nowrap gap-[2px] [inline-size:max-content] [max-inline-size:100%]">{links("explore-mode")}</div>
             <details id="explore-mode-menu" class="vk-explore-modes__menu"
                 on:keydown=move |event: leptos::ev::KeyboardEvent| {
                     #[cfg(feature = "hydrate")]
@@ -394,12 +395,12 @@ pub(super) fn ExploreModes(
                     #[cfg(not(feature = "hydrate"))]
                     let _ = event;
                 }>
-                <summary id="explore-mode-menu-button">
+                <summary id="explore-mode-menu-button" class=EXPLORE_MODE_CONTROL_CLASS>
                     <span class="vk-ui-visually-hidden">"Chế độ: "</span>
                     <span>{current}</span>
                     <Icon name=IconName::ExpandMore size=IconSize::Small />
                 </summary>
-                <div class="vk-explore-modes__list">{links("explore-menu")}</div>
+                <div class="vk-explore-modes__list grid gap-[2px] p-[4px] [inline-size:min(100%,20rem)] [margin-block-start:var(--vk-space-1)]">{links("explore-menu")}</div>
             </details>
         </nav>
     }
@@ -920,7 +921,7 @@ fn AppliedFilters(context: ExploreContext, list: Option<WorkList>) -> AnyView {
     cleared.query.cursor = None;
     let clear_all = cleared.href(None);
     view! {
-        <div id="applied-filters" class="vk-applied-filters">
+        <div id="applied-filters" class="vk-applied-filters flex flex-wrap items-center gap-vk-2 [margin-block:0_var(--vk-space-3)]">
             {move || {
                 let resolved = live.as_ref().map(|live| live.data.with(|list| list.filters.tags.clone())).unwrap_or_default();
                 tags.iter().map(|slug| {
@@ -933,13 +934,13 @@ fn AppliedFilters(context: ExploreContext, list: Option<WorkList>) -> AnyView {
                         facts.retired = filter.resolution == "retired";
                         if filter.resolution == "not_found" { facts.problem = Some("Không tìm thấy thẻ này.".into()); }
                     }
-                    view! { <a class="vk-applied-tag" href=without.href(None) aria-label=format!("Bỏ lọc {label}")>
+                    view! { <a class="vk-applied-tag inline-flex items-center min-w-0 max-w-full" href=without.href(None) aria-label=format!("Bỏ lọc {label}")>
                         <TagChip id=format!("applied-{}", crate::discovery::encode(slug)) tag=facts remove_label=format!("Bỏ lọc {label}") />
                         <Icon name=IconName::Close />
                     </a> }
                 }).collect_view()
             }}
-            <a id="clear-applied-tags" class="vk-ui-link vk-applied-filters__clear" href=clear_all>"Xóa lọc"</a>
+            <a id="clear-applied-tags" class="vk-ui-link vk-applied-filters__clear inline-flex items-center px-vk-2 [min-block-size:var(--vk-size-hit-target)]" href=clear_all>"Xóa lọc"</a>
         </div>
     }.into_any()
 }
@@ -1122,7 +1123,7 @@ fn PublicResults(
                         } else {
                             let context = list_context.clone();
                             view! {
-                                <p class="vk-muted vk-public-scope" class:vk-ui-visually-hidden=!show_inline_scope role="status" aria-atomic="true">
+                                <p class="[font-size:var(--vk-type-caption-size)] vk-muted vk-public-scope" class:vk-ui-visually-hidden=!show_inline_scope role="status" aria-atomic="true">
                                     {move || format!("Trang này: {} tác phẩm", works.read().len())}
                                 </p>
                                 <ul class="vk-public-list" role="list">
@@ -1131,7 +1132,7 @@ fn PublicResults(
                                 </ul>
                             }.into_any()
                         }}
-                        <nav class="vk-public-pagination" aria-label="Trang kết quả">
+                        <nav class="vk-public-pagination flex-wrap gap-vk-4 [margin-block:var(--vk-space-6)]" aria-label="Trang kết quả">
                             {
                                 let page_context = page_context.clone();
                                 move || data.with(|list| list.next_cursor.clone()).map(|cursor| {
