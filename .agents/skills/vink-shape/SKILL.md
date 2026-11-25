@@ -12,7 +12,10 @@ với code hiện hành, [requirements](../../../prd/requirements.md),
 [decision log](../../../docs/architecture/decisions.md),
 [registry triển khai và bằng chứng](../../../docs/development/product-decisions-registry.md) và
 [bản đồ miền Vink](references/domain-lenses.md). Chỉ dùng revision lịch sử để giải thích bối cảnh.
-Khi kết quả là `OPEN`, giữ câu hỏi và ghi rõ phần việc phụ thuộc vào lựa chọn đó.
+Với ID đã có, chạy `cargo xtask decision query <ID>` và đọc nội dung revision hiện hành trước
+khi hỏi. Áp dụng phần đã chốt, kể cả khi ID còn `OPEN` một phần. Chỉ hỏi về phần chưa quyết định
+nếu câu trả lời làm thay đổi kết quả của task. Đối với câu hỏi “đã triển khai chưa”, tra registry
+và mã của nền tảng đang xét.
 
 Không biến mọi tác vụ thành thủ tục hỏi đáp: một bản sửa lỗi giao diện rõ nghĩa, refactor kỹ thuật
 hoặc lát cắt đã có đủ quyết định đi thẳng tới [vink-work-item](../vink-work-item/SKILL.md) hoặc
@@ -73,9 +76,9 @@ phải nêu:
 3. **Một khuyến nghị** kèm lý do gắn với nguyên tắc Vink hiện có.
 
 Ví dụ chuẩn:
-> **Tình huống:** Một bình luận đã có 20 lượt “Hữu ích”. Sau đó người viết sửa nội dung bình luận và bản sửa được duyệt.
-> - **Phương án A:** Giữ nguyên 20 lượt “Hữu ích” trên bình luận sau khi sửa (phù hợp sửa chính tả, nhưng nếu đổi hẳn ý thì 20 lượt cũ tạo cảm giác cộng đồng đồng tình với nội dung mới).
-> - **Phương án B (Khuyến nghị):** Gắn “Hữu ích” với đúng phiên bản đã được ghi nhận; khi bản sửa mới hiển thị công khai, số đếm công khai bắt đầu lại cho phiên bản đó, còn dữ liệu cũ vẫn giữ để đối chiếu (nhất quán với `LVE-FR-04` và `O-06`).
+> **Tình huống:** Một bình luận đã có 20 lượt “Ưng”. Sau đó người viết sửa nội dung bình luận và bản sửa được duyệt.
+> - **Phương án A:** Giữ nguyên 20 lượt “Ưng” trên bình luận sau khi sửa (phù hợp sửa chính tả, nhưng nếu đổi hẳn ý thì 20 lượt cũ tạo cảm giác cộng đồng đồng tình với nội dung mới).
+> - **Phương án B (Khuyến nghị):** Gắn “Ưng” với đúng phiên bản đã được ghi nhận; khi bản sửa mới hiển thị công khai, số đếm công khai bắt đầu lại cho phiên bản đó, còn dữ liệu cũ vẫn giữ để đối chiếu (phương án đề xuất cho `O-06` theo `LVE-FR-04`).
 
 ## 4. Đầu ra và chuyển tiếp
 
