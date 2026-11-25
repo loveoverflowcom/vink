@@ -1671,7 +1671,8 @@ html:has(.vk-discovery:not(.vk-discovery--tag)) { scrollbar-gutter: stable; }
   display: grid;
   place-items: center;
   min-block-size: var(--vk-size-hit-target);
-  padding: var(--vk-space-2);
+  padding-block: var(--vk-space-2);
+  padding-inline: min(var(--vk-space-1), 4px);
   color: var(--vk-on-surface-variant);
   font-size: var(--vk-type-label-size);
   font-weight: var(--vk-type-label-weight);
@@ -1877,9 +1878,9 @@ html:has(.vk-discovery:not(.vk-discovery--tag)) { scrollbar-gutter: stable; }
     position: absolute; inline-size: 1px; block-size: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
   }
   :root:is([data-text="150"], [data-text="200"]) .vk-discovery:not(.vk-discovery--tag) .vk-discovery-toolbar { column-gap: 4px; }
-  /* Leave room for both 48px controls even with a classic scrollbar at 320px under 200% stress. */
-  :root[data-text="200"] .vk-discovery .vk-discovery-tools .vk-brand__lockup {
-    inline-size: 160px;
+  /* Leave room for both tools at 320px with enlarged browser or app text. */
+  .vk-discovery .vk-discovery-tools .vk-brand__lockup {
+    inline-size: min(160px, calc(2.25rem * 1018 / 410));
     block-size: auto;
     aspect-ratio: 1018 / 410;
   }

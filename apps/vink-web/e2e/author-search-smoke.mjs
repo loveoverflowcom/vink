@@ -130,12 +130,22 @@ async function discoveryModeStability(page, base, check) {
           sameNodes: nodes.length === after.length && nodes.every((node, index) => node === after[index]),
           sameDocument: performance.timeOrigin === origin,
           fits: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+          wordsIntact: [...document.querySelectorAll('.vk-explore-modes a')].every(link => {
+            const text = [...link.childNodes].find(node => node.nodeType === Node.TEXT_NODE);
+            return Boolean(text) && [...text.textContent.matchAll(/\\S+/g)].every(word => {
+              const range = document.createRange();
+              range.setStart(text, word.index);
+              range.setEnd(text, word.index + word[0].length);
+              const lines = [...range.getClientRects()];
+              return lines.every(line => Math.abs(line.top - lines[0].top) <= 1);
+            });
+          }),
         };
       };
     })()`);
     const stable = async label => {
       const got = await page.eval('window.discoverySnapshot()');
-      check(got.sameNodes && got.sameDocument && got.fits && got.shift <= 1,
+      check(got.sameNodes && got.sameDocument && got.fits && got.wordsIntact && got.shift <= 1,
         `#473 ${width}px / ${scale}% ${label} (${JSON.stringify(got)})`);
     };
 
