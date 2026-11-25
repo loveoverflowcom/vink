@@ -126,14 +126,17 @@ async function discoveryModeStability(page, base, check) {
     await page.eval(`window.discoverySnapshot = (() => {
       const selector = 'header.vk-explore__top, #explore-heading h1, .vk-brand__lockup, .vk-explore-modes, .vk-explore-modes a';
       const nodes = [...document.querySelectorAll(selector)];
-      const rects = nodes.map(node => node.getBoundingClientRect());
+      // History may restore a different scroll offset while the result panel paints.
+      const position = node => {
+        const {top, left, right, height} = node.getBoundingClientRect();
+        return [top + scrollY, left, right, height];
+      };
+      const positions = nodes.map(position);
       const origin = performance.timeOrigin;
       return () => {
         const after = [...document.querySelectorAll(selector)];
-        const shift = Math.max(...after.flatMap((node, index) => {
-          const landed = node.getBoundingClientRect();
-          return ['top', 'left', 'right', 'height'].map(edge => Math.abs(landed[edge] - rects[index][edge]));
-        }));
+        const shift = Math.max(...after.flatMap((node, index) =>
+          position(node).map((value, edge) => Math.abs(value - positions[index][edge]))));
         return {
           shift,
           scrollY,

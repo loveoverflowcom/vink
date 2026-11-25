@@ -2664,8 +2664,18 @@ async function mediumRail(page) {
   await page.waitFor(`!${RAIL_MODAL_OPEN} && document.activeElement?.id === 'navigation-toggle'`, 'Medium Escape dismisses and restores the base toggle');
   await page.key('Enter');
   await page.waitFor(RAIL_MODAL_OPEN, 'Medium Enter opens rail');
-  await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 760, y: 20, button: 'left', clickCount: 1 });
-  await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 760, y: 20, button: 'left', clickCount: 1 });
+  const scrim = await page.eval(`(() => {
+    const dialog = document.querySelector('#navigation-modal');
+    const right = dialog.getBoundingClientRect().right;
+    const edge = document.documentElement.clientWidth;
+    const x = Math.floor((right + edge) / 2);
+    const y = Math.floor(innerHeight / 2);
+    return {x, y, hitsBackdrop: x > right && x < edge && document.elementFromPoint(x, y) === dialog};
+  })()`);
+  check(scrim.hitsBackdrop, 'Medium scrim point hits the modal backdrop within the content viewport');
+  for (const type of ['mousePressed', 'mouseReleased']) {
+    await page.send('Input.dispatchMouseEvent', {type, x: scrim.x, y: scrim.y, button: 'left', clickCount: 1});
+  }
   await page.waitFor(`!${RAIL_MODAL_OPEN} && document.activeElement?.id === 'navigation-toggle'`, 'Medium scrim dismisses and restores the base toggle');
   await page.click(toggle);
   await page.click(modal);
