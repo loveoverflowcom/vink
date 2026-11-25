@@ -282,7 +282,7 @@ Mỗi vùng dùng sizing, theme, thứ tự focus, overlay và các trạng thá
 #### Following Empty CTA R1 · #355
 
 Chỉ hiện khi lượt đọc theo phiên trả về trạng thái sẵn sàng, danh sách rỗng và
-`has_following=false`. Vùng `community-stream` vẫn có tên “Đang theo dõi”. Cây hiển thị:
+`has_following=false`. Vùng `community-stream` vẫn có tên “Đang theo dõi”. Cây hiển thị gồm hai phần.
 
 - **Khám phá** → nhóm chọn mode → **Đang theo dõi**.
 - **Vùng kết quả** → biểu tượng người trang trí → H2 “Chưa theo dõi tác giả nào”
@@ -292,11 +292,13 @@ Chỉ hiện khi lượt đọc theo phiên trả về trạng thái sẵn sàng
 Khối căn giữa trực tiếp trên nền trang. Tiêu đề của vùng chỉ dùng để đặt tên cho
 `community-stream` trong trạng thái này. CTA không gạch chân, cao tối thiểu 48 CSS px,
 bo góc `radius.control-48` và xuống dòng khi cần. Kiểm sáng/tối ở 320/390/834 CSS px
-với cỡ chữ gốc 100/200%. Enter mở mode Tác giả qua link gốc. Khi Back từ Reader
+ở cỡ mặc định 100%, cỡ Lớn 150% của ứng dụng và stress riêng với font gốc 200%.
+Thanh tab cố định tuân theo LayoutSpec #530. Enter mở mode Tác giả với Search Dock
+đóng. Khi Back từ Reader
 và lượt đọc lại xác nhận đã mất anchor vì không còn theo dõi ai, focus về H2 của
 trạng thái rỗng. Nếu vẫn có tác giả theo dõi, dùng heading Feed hiện hành.
 
-**CHOICE-02 (triển khai Web):** composition cục bộ bằng Heading, Icon và
+**CHOICE-02 (triển khai Web)** dùng composition cục bộ với Heading, Icon và
 ButtonVariant::Tonal. Tiêu đề của trạng thái là đích khôi phục focus dành cho
 Feed. Cách này tránh mở rộng API của `EmptyState` và vẫn dùng kiểu biểu tượng,
 lời nhắn và nút từ hệ hiện hành. Catalog hiện có dùng biểu tượng người và tìm kiếm.

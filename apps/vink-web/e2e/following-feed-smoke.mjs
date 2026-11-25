@@ -133,6 +133,16 @@ async function noFollowsLayout(page, check, textContrast) {
         check(got.checked && got.overflow === 0 && got.centerDelta <= 1 && got.height >= 48 &&
           got.radius === '14px' && got.decoration === 'none' && got.title === 'Chưa theo dõi tác giả nào' &&
           got.link === 'Khám phá tác giả', `${name}: centered empty state and tonal link (${JSON.stringify(got)})`);
+        const inView = await page.eval(`(() => {
+          const action = ${q(DISCOVER_AUTHORS)};
+          const bar = ${q('#bottom-navigation')}.getBoundingClientRect();
+          const limit = bar.height > 0 ? bar.top : innerHeight;
+          if (action.getBoundingClientRect().bottom > limit) action.scrollIntoView({block: 'end'});
+          const rect = action.getBoundingClientRect();
+          return rect.top >= 0 && rect.bottom <= limit &&
+            action.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+        })()`);
+        check(inView, `${name}: the full link can scroll clear of the bottom bar`);
         await page.capture(name, {requiredTargets: [EMPTY_HEADING, DISCOVER_AUTHORS]});
         await textContrast(page, theme, 'following-empty', [EMPTY_HEADING, NO_FOLLOWS + ' p', DISCOVER_AUTHORS]);
         await page.eval(`${q(DISCOVER_AUTHORS)}.focus()`);

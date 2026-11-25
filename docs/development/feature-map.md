@@ -24,7 +24,8 @@ kiểm lần đầu commit, writer cạnh tranh, rollback, rút/tái đăng và 
 
 **Đang theo dõi #296** · Mode riêng `/?mode=following` trong Khám phá. Feed lấy cạnh
 hiện hành và publication theo mốc đầu, tải riêng theo phiên. Web đọc lại quyền khi Back
-từ Reader hoặc hồ sơ rồi trả focus về link còn hợp lệ, hoặc tiêu đề Feed nếu mất anchor.
+từ Reader hoặc hồ sơ rồi trả focus về link còn hợp lệ, hoặc H2 của trạng thái hiện hành
+nếu mất anchor. Khi chưa theo dõi ai, nút “Khám phá tác giả” mở mode Tác giả.
 [Owner, thiết kế kỹ thuật và quay lui](social-graph.md#đang-theo-dõi-trong-khám-phá-296).
 
 ## Thông báo cộng đồng và danh sách Thấm
