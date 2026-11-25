@@ -1,6 +1,6 @@
 # HOW · Bàn viết tìm, đọc và khôi phục danh sách
 
-Source tại `develop@2712145b08a6a4c7a12c1d57033ecd2a5bd33b26`. Người viết đã vào `/ban-viet`,
+Trace gốc tại `develop@2712145b08a6a4c7a12c1d57033ecd2a5bd33b26`. Người viết đã vào `/ban-viet`,
 mở kính lúp, nhập “đường về”, chọn sắp xếp và mở một bản thảo. Nếu mạng rớt sau khi đã tải,
 họ vẫn xem được kết quả trước đó trong cùng phiên và có cách thử lại.
 
@@ -11,13 +11,14 @@ họ vẫn xem được kết quả trước đó trong cùng phiên và có cá
    **Sau hydrate.** `browser::watch` kiểm phiên. [DeskSession](../../../apps/vink-web/src/pages/desk.rs#L79)
    dùng `DeskAccess` cho khách, người thiếu bút danh, phiên bị khóa hoặc không kiểm tra được. Khi
    xác nhận scope riêng, `DeskIndex` mount `DeskWorks` theo scope và mới phát GET danh sách.
-2. [DeskWorks](../../../apps/vink-web/src/pages/desk.rs#L149) giữ `query` (ô nhập), `applied`
-   (query đã submit), `sort` và dock state. Mở dock focus `#draft-search`. Form được ẩn bằng
-   `hidden` khi đóng. Enter/submit đang composition bị chặn. Submit lấy `query`, đổi scope đọc
-   hoặc refresh cùng scope. [Đóng dock](../../../apps/vink-web/src/pages/desk.rs#L162) bằng nút,
-   Esc hoặc Back trả focus về launcher và hiện vẫn giữ `query`/`applied`. Đó là khác biệt với
-   đề xuất #414 cho kho rỗng và đóng dock, chưa có kết quả runtime mới hay quyết định áp dụng
-   hết các delta.
+2. [DeskWorks](../../../apps/vink-web/src/pages/desk.rs) giữ `query` của ô nhập, `applied`
+   của danh sách và `sort` trong scope phiên. Theo [delta #531](layout-spec.md#51-header-tìm-và-phục-hồi),
+   mở dock đưa focus vào `#draft-search` ở hàng riêng. Nút mở/đóng, chọn định dạng, tạo và sort
+   vẫn ở vị trí cũ. Form đóng thu về hàng cao 0 và dùng `inert` để giữ node, buffer và thứ tự Tab. Submit sau composition
+   mới đổi scope đọc hoặc refresh cùng scope. Nút đóng, Escape và Back giữ nguyên hai chuỗi.
+   `#draft-filter` hiện cụm đã áp dụng dù người dùng đang sửa ô nhập hoặc đã thu gọn.
+   “Bỏ lọc” trả danh sách về đầu với sort đang chọn. Khi form đã đóng, focus phục hồi về
+   launcher, hoặc H1 nếu công cụ bị ẩn. Một thao tác lấy focus sau đó được ưu tiên.
 3. [read_list](../../../apps/vink-web/src/pages/desk.rs#L202) nhận ticket `ReadOwner` cho
    scope/intent và cursor. [Client](../../../apps/vink-web/src/api.rs#L814) gửi GET tới
    `/api/v1/author/works`. [HTTP](../../../services/vink-app/src/http/api.rs#L401) lấy owner

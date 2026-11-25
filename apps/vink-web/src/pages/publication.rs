@@ -971,9 +971,12 @@ mod tests {
         assert!(show_review_link(Some(&with_ticket), Phase::Ready));
 
         let mut rejected_private = state(Audience::Private);
-        rejected_private
-            .revisions
-            .push(revision("r1", "Bản một", Decision::Rejected, Some("Lý do")));
+        rejected_private.revisions.push(revision(
+            "r1",
+            "Bản một",
+            Decision::Rejected,
+            Some("Lý do"),
+        ));
         assert!(show_review_link(Some(&rejected_private), Phase::Ready));
     }
 

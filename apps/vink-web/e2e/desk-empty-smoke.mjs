@@ -276,8 +276,8 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
         await page.click('#close-draft-search');
         if (!baseline) {
           await page.waitFor(`document.activeElement?.id === 'desk-title' &&
-            ['#open-draft-search', '#draft-sort', '#draft-search'].every(selector =>
-              document.querySelector(selector)?.checkVisibility() === false)`,
+            document.querySelector('#desk-search-form').inert &&
+            ['#open-draft-search', '#draft-sort'].every(selector => !document.querySelector(selector).checkVisibility())`,
             '#411 closing a blank first-use dock focuses the heading and hides search and sort');
           const { nodes } = await page.send('Accessibility.getFullAXTree');
           check(!nodes.some(node => !node.ignored && ['Tìm tác phẩm', 'Sắp xếp'].includes(node.name?.value)),

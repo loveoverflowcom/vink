@@ -19,6 +19,20 @@ và [PR #415](https://github.com/loveoverflowcom/vink/pull/415). Source được
 | Rail, Giao diện và cỡ chữ (DQ-11) | **RECORDED.** [#413](https://github.com/loveoverflowcom/vink/issues/413) thay phần “giữ Giao diện”: chỉnh trong Tôi, Mặc định 100% / Lớn 150%, legacy 200 → Lớn. | Đổi preference tác động ngưỡng #415 và lối đổi trong lúc viết. #427 giữ phép kiểm riêng, #428 giữ phần thiết kế editor. **UNKNOWN.** Không có lời chốt lối tắt mới trong editor tại đây. |
 | CHOICE-01 B · LayoutSpec riêng | **RECORDED.** [Comment kết quả #414](https://github.com/loveoverflowcom/vink/issues/414#issuecomment-7102229465) chọn một spec hiện hành nhỏ, tách khỏi audit dài. | **RECORDED.** Thêm một file và duy trì banner ở audit. **INFERRED.** Dẫn cùng spec từ audit, design index và handoff giúp người đọc tránh dùng hai anatomy song song. Bản gốc `2c4f5fb` vẫn unavailable. |
 
+## Tìm trong Bàn viết (#531)
+
+- **RECORDED.** #404/DQ-02 chọn kính lúp mở tìm ở mọi cỡ màn. #408 dùng khoảng trống của nhóm
+  thao tác và ẩn sort để dành chỗ cho ô. DQ-06 giữ Select native và hai định dạng. #522 chỉnh
+  trục 48 px ở trạng thái đóng. [Yêu cầu và lịch sử #531](https://github.com/loveoverflowcom/vink/issues/531).
+- **Lựa chọn triển khai (CHOICE-01/04).** Dùng một hàng riêng để có thể giữ nguyên chỗ của tiêu đề,
+  nút tạo, Select và chuông kể cả khi phóng chữ. Chi phí là đẩy kết quả xuống một hàng khi mở.
+  Ô giãn ngang giữa tiêu đề và các nút phụ thuộc vào bề rộng thực của chúng. Nút đóng ở đúng vị trí
+  nút mở, để lại chỗ trong ô cho chữ, nút gửi và xóa. [Bố cục và trạng thái](layout-spec.md#51-header-tìm-và-phục-hồi).
+- **OPEN (CHOICE-02/03).** Chưa có lời chốt cho xóa q lúc đóng hay tự gửi khi gõ.
+  Giữ hai chuỗi giúp mở lại phần đang sửa. Nhãn bộ lọc lấy từ query đã gửi để người viết biết
+  vì sao chỉ thấy một phần kho. Enter/nút gửi giữ số lần đọc độc lập với số phím gõ tiếng Việt.
+  Ảnh trong issue chưa xác định build và viewport. Mốc fidelity vẫn là `NO_APPROVED_REFERENCE`.
+
 ## Quyết định và sổ nguồn
 
 - DQ nêu trên có phạm vi UI issue và lời chốt dẫn từ audit. LayoutSpec R4.3 vẫn `DESIGN_PROPOSED`,

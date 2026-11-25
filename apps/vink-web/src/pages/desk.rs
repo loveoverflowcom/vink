@@ -32,7 +32,6 @@ use crate::ui::{
     adapters,
     empty_state::{EmptyArtwork, EmptyState},
     patterns::AuthorWorkRow,
-    search_dock::{SearchDockBack, SearchDockLauncher},
 };
 use vink_markdown_text::submission::{SubmissionBody, SubmissionIssues, check_submission};
 
@@ -204,19 +203,35 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
             && pages.with(|p| p.chain.next_cursor.is_none())
     });
     let no_results = Signal::derive(move || !first_use.get() && empty_head());
-    // The dock still replaces the closed controls. Only confirmed, unfiltered first-use
-    // hides those controls when the search buffer is blank; a draft query is kept as typed.
-    let show_tools = Signal::derive(move || {
-        !dock_open.get() && (!first_use.get() || query.with(|text| !text.trim().is_empty()))
-    });
+    let show_tools =
+        Signal::derive(move || !first_use.get() || query.with(|text| !text.trim().is_empty()));
     let focus_search_or_heading = move || {
         #[cfg(feature = "browser")]
         recover_desk_search_focus(dock_open, show_tools);
     };
-    let open_dock = Callback::new(move |()| {
+    let open_dock = move || {
         dock_open.set(true);
-        super::focus_recovery("draft-search");
-    });
+        #[cfg(feature = "browser")]
+        {
+            use wasm_bindgen::JsCast;
+            let trigger = document().active_element();
+            request_animation_frame(move || {
+                // A just-closed dock may restore focus to this same toggle before the frame.
+                let active = document().active_element();
+                let on_toggle = active
+                    .as_ref()
+                    .is_some_and(|el| el.id() == "close-draft-search");
+                if dock_open.try_get_untracked() == Some(true)
+                    && (active == trigger || on_toggle)
+                    && let Some(input) = document()
+                        .get_element_by_id("draft-search")
+                        .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
+                {
+                    let _ = input.focus();
+                }
+            });
+        }
+    };
     let close_dock = Callback::new(move |()| {
         dock_open.set(false);
         focus_search_or_heading();
@@ -230,7 +245,10 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                     explainer_open.set(false);
                     return true;
                 }
-                if dock_open.get_untracked() {
+                // Review consumes its own history entry; shell dialogs own their Back.
+                if dock_open.get_untracked()
+                    && matches!(document().query_selector("dialog:modal"), Ok(None))
+                {
                     close_dock.run(());
                     return true;
                 }
@@ -453,17 +471,10 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
             return;
         }
         query.set(String::new());
-        if applied.get_untracked().is_empty() {
-            read_list.run(Intent::Refresh);
-        } else {
+        if !applied.get_untracked().is_empty() {
             applied.set(String::new());
         }
-        // A new unfiltered response may hide the launcher after clearing a closed dock.
-        super::focus_recovery(if dock_open.get_untracked() {
-            "draft-search"
-        } else {
-            "desk-title"
-        });
+        focus_search_or_heading();
     });
     let can_create = Signal::derive(move || {
         ready.get() && access_error.with(Option::is_none) && creation.with(CreateState::can_begin)
@@ -510,13 +521,22 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
     view! {
         <DeskHeading private=true>
             <Show when=move || access_error.with(Option::is_none)>
-                <div class="vk-desk-heading__actions flex-wrap items-center gap-[8px] [min-inline-size:0] [max-inline-size:100%]" hidden=move || !show_tools.get()>
-                    <SearchDockLauncher id="open-draft-search" label="Tìm tác phẩm" expanded=dock_open.into() on_press=open_dock />
+                <div class="vk-desk-heading__actions flex-wrap items-center gap-[8px] [min-inline-size:0] [max-inline-size:100%]" hidden=move || !show_tools.get() && !dock_open.get()>
+                    <span class="vk-search-launcher">
+                        <button type="button" class="vk-ui-icon-button"
+                            id=move || if dock_open.get() { "close-draft-search" } else { "open-draft-search" }
+                            aria-label=move || if dock_open.get() { "Đóng ô tìm tác phẩm" } else { "Tìm tác phẩm" }
+                            aria-expanded=move || dock_open.get().to_string() aria-controls="desk-search-form"
+                            on:click=move |_| if dock_open.get_untracked() { close_dock.run(()) } else { open_dock() }>
+                            {move || view! { <vink_ui::Icon name=if dock_open.get() { IconName::ArrowBack } else { IconName::Search } /> }}
+                        </button>
+                    </span>
                     <Show when=move || ready.get() && !first_use.get()>
                         <CreateDraftControls creation can_create create create_format />
                     </Show>
                 </div>
-                <form role="search" class="vk-draft-search m-0 flex-[1_1_16rem] [min-inline-size:0]" hidden=move || !dock_open.get()
+                <form id="desk-search-form" role="search" class="vk-draft-search basis-full [min-inline-size:0]"
+                    inert=move || !dock_open.get()
                     on:keydown=move |event| {
                         if event.key() == "Escape" && !event.is_composing() && event.key_code() != 229 && !composing.get_untracked() {
                             event.prevent_default();
@@ -525,12 +545,14 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                     } on:submit=move |event| {
                     event.prevent_default(); submit.run(());
                 }>
-                    <SearchField id="draft-search" label="Tìm tác phẩm" placeholder="Tìm theo tên"
-                        leading=move || view! { <SearchDockBack id="close-draft-search" label="Về Bàn viết" on_press=close_dock /> } value=query variant=SearchVariant::Bar
-                        help="Theo tên bản thảo; gồm cả tác phẩm đã đăng" on_clear=clear
-                        on_input=move |input: vink_ui::TextInput| {
-                            composing.set(input.composing); query.set(input.value);
-                        } />
+                    <div class="vk-draft-search__clip">
+                        <SearchField id="draft-search" label="Tìm tác phẩm" placeholder="Tìm theo tên"
+                            value=query variant=SearchVariant::Bar
+                            help="Theo tên bản thảo; gồm cả tác phẩm đã đăng" on_clear=clear
+                            on_input=move |input: vink_ui::TextInput| {
+                                composing.set(input.composing); query.set(input.value);
+                            } />
+                    </div>
                 </form>
             </Show>
         </DeskHeading>
@@ -545,6 +567,12 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                 <h2 id="draft-list-title" class="vk-ui-visually-hidden" tabindex="-1">"Tác phẩm của bạn"</h2>
                 <div class="vk-desk-works gap-vk-3 [min-inline-size:0]" data-testid="draft-content"
                     aria-busy=move || if loading.get() { "true" } else { "false" }>
+                    <Show when=move || applied.with(|q| !crate::draft_list::search_key(q).is_empty())>
+                        <div id="draft-filter" class="flex flex-wrap items-center gap-x-vk-2">
+                            <span class="wrap-anywhere">"Đang lọc theo “"{move || applied.get()}"”"</span>
+                            <Button id="clear-draft-filter" variant=ButtonVariant::Text on_press=move |_| clear.run(())>"Bỏ lọc"</Button>
+                        </div>
+                    </Show>
                     <CreateNotice creation loading refresh />
                     // The tools/input retain one owner through loading, empty, query and error.
                     <DraftListView pages show_tools sort loading appending ready page_error load_error restarted
