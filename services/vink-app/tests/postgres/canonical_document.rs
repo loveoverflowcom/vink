@@ -203,9 +203,12 @@ async fn rejected_markdown_preserves_the_previous_public_revision(pool: PgPool) 
     let vink = seeded(&pool).await;
     let work = sample_work();
     let before = vink.publication(work).await.unwrap();
-    vink.save_draft(author(), markdown(work, 1, "# Bản sửa riêng"))
-        .await
-        .unwrap();
+    vink.save_draft(
+        author(),
+        markdown(work, 1, "# Bản sửa riêng\n\nMưa còn rơi trên mái hiên."),
+    )
+    .await
+    .unwrap();
     let capture = vink
         .capture_snapshot(author(), work, "private-markdown", 2, 1)
         .await
