@@ -95,6 +95,9 @@ engagement. Feedback intent is context, not a star-score ranking or an exemption
 
 ## Accessibility, evidence and references
 
+For the Web writing canvas, use the [Editor R4 focus delta](../../../docs/design/editor-r4.md#focus-trên-mặt-viết-526)
+for the Default title and both body formats. Keep the static title label and local marker visible at narrow widths.
+
 Check semantic headings/landmarks, named controls, visible focus, keyboard reachability,
 dialog focus restoration and alternatives to gestures/drag. Use text/icon/state as well as
 color; measure contrast for actual themes. Allow text enlargement and reduced motion without

@@ -128,6 +128,8 @@ revision/SHA-256.
 [#475](https://github.com/loveoverflowcom/vink/issues/475) về việc bỏ hộp thoại xem trước bản nháp.
 Proposal còn `PENDING` đến khi có signoff đúng revision theo
 [VDR-DECISION-SIGNOFF@r1](signoffs/VDR-DECISION-SIGNOFF.r1.toml).
+[VDR-EDITOR-R4@r2](proposals/VDR-EDITOR-R4.r2.toml) bổ sung focus cục bộ trên mặt viết theo
+[#526](https://github.com/loveoverflowcom/vink/issues/526), trạng thái `PENDING`.
 [LayoutSpec delta R4](../docs/design/editor-r4.md) ánh xạ hành vi vào Web.
 
 ## Nén asset Web production

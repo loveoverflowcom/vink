@@ -979,12 +979,48 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
 
 .vk-editor-paper > .vk-ui-field { margin: 0; }
 .vk-editor-paper :is(#draft-title, .vk-editor-title-measure > span) { font-family: var(--vk-font-reading); font-size: var(--vk-text-draft-title); font-weight: var(--vk-type-headline-weight); line-height: var(--vk-type-headline-line-height); }
-.vk-editor-paper .vk-field__label { color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
-/* The title retains the shared native field/label contract, while the sheet owns its fill.
-   Focus perimeters remain local to the focused control, including in forced colours. */
-.vk-editor-paper > .vk-ui-field .vk-ui-field__control { background: transparent; }
-.vk-editor-paper > .vk-ui-field .vk-ui-field__label { margin-inline: 0; }
-.vk-editor-paper > .vk-ui-field .vk-ui-input { padding-inline: 0; }
+.vk-editor-paper :is(#draft-title-label, .vk-field__label) {
+  color: var(--vk-on-surface-variant);
+  font-size: var(--vk-type-caption-size);
+  line-height: var(--vk-type-caption-line-height);
+}
+
+.vk-editor-paper #draft-title {
+  background: transparent;
+  padding-inline: 0;
+  caret-color: var(--vk-primary);
+}
+
+/* Only the two writing surfaces trade their normal ring for a mark in the paper gutter.
+   The native field continues to own its invalid and forced-colors outlines. */
+@media (forced-colors: none) {
+  .vk-editor-paper #draft-title:focus:not([aria-invalid="true"]) { outline: 0; }
+
+  .vk-editor-paper .vk-ui-field__control:has(> #draft-title:focus)::before,
+  .vk-editor-body:focus-within::before {
+    content: "";
+    pointer-events: none;
+    inline-size: var(--vk-size-focus-ring);
+    block-size: var(--vk-space-4);
+    border-radius: var(--vk-radius-full);
+    background: var(--vk-focus-ring);
+  }
+
+  .vk-editor-paper .vk-ui-field__control:has(> #draft-title:focus)::before {
+    position: absolute;
+    inset-inline-start: calc(-1 * var(--vk-space-2));
+  }
+
+  /* A zero-net-height sticky marker stays beside long text as the document scrolls. */
+  .vk-editor-body:focus-within::before {
+    display: block;
+    position: sticky;
+    inset-block-start: var(--vk-space-2);
+    margin-inline-start: calc(-1 * var(--vk-space-2));
+    margin-block-end: calc(-1 * var(--vk-space-4));
+    transform: translateY(var(--vk-space-2));
+  }
+}
 .vk-editor-paper > .vk-field { min-inline-size: 0; }
 #submission-body-errors { flex-direction: column; }
 #submission-body-errors p { margin: 0; }
@@ -1103,14 +1139,12 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
   display: none;
 }
 
-.vk-editor-body:focus-within {
-  outline: 2px solid var(--vk-focus-ring);
-  outline-offset: -2px;
-}
-
 @media (forced-colors: active) {
   .vk-editor-body { border: 1px solid ButtonText; }
-  .vk-editor-body:focus-within { outline-color: Highlight; }
+  .vk-editor-body:focus-within {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
 }
 
 .vk-editor-body__pending {

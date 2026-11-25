@@ -8,9 +8,9 @@ use leptos_router::hooks::use_params_map;
 
 use vink_ui::{
     ActionState, Announce, Button, ButtonKind, ButtonVariant, ChoiceOption, Dialog, DialogKind,
-    DismissPolicy, FieldVariant, Heading, HeadingLevel, IconButton, IconName, InlineNotice,
-    PanelContent, PanelKind, PlainTooltip, ProblemKind, SearchField, SearchVariant, Select,
-    SelectVariant, StatePanel, TextField, Tone, TypeRole,
+    DismissPolicy, Heading, HeadingLevel, IconButton, IconName, InlineNotice, PanelContent,
+    PanelKind, PlainTooltip, ProblemKind, SearchField, SearchVariant, Select, SelectVariant,
+    StatePanel, TextField, Tone, TypeRole,
 };
 
 use crate::contract::{ApiError, DocumentFormatDto, Draft};
@@ -2218,7 +2218,6 @@ fn Editor(draft: Draft) -> impl IntoView {
                     </Show>
                     <Show when=move || format.get() == DocumentFormatDto::Default>
                         <TextField id="draft-title" label="Tiêu đề" name="title" max_length=200 input_ref=title_input
-                            variant=FieldVariant::FloatingTonal
                             placeholder="Chưa đặt tên" autocomplete="off" value=title
                             error=Signal::derive(move || if title_invalid() {
                                 Some("Tiêu đề cần tối đa 200 ký tự trên một dòng. Hãy bỏ ký tự điều khiển.".to_owned())

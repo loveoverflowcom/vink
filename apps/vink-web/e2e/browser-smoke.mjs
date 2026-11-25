@@ -31,7 +31,7 @@ import { draftPagination } from './draft-pagination-smoke.mjs';
 import { authorWorks } from './author-works-smoke.mjs';
 import { editorAutosave, holdEditorDebounce } from './editor-autosave.mjs';
 import { editorWriting } from './editor-writing-smoke.mjs';
-import { editorPaperFirst } from './editor-paper-first-smoke.mjs';
+import { editorPaperFirst, writingFocus } from './editor-paper-first-smoke.mjs';
 import { editorDeskRegressions, firstDraftFormat } from './editor-desk-regressions.mjs';
 import { markdownBudget } from './editor-markdown-budget.mjs';
 import { documentBudget } from './document-budget.mjs';
@@ -4486,7 +4486,7 @@ async function setEditorScene(page, { width, height, scale, theme }) {
 }
 
 async function editorChrome(page) {
-  await editorPaperFirst(page, { args, check, editorTarget, fitsEditorAction, holdEditorDebounce });
+  await editorPaperFirst(page, { args, check, editorTarget, fitsEditorAction, holdEditorDebounce, setEditorScene, shift: SHIFT });
   await editorWriting(page, { args, check, setEditorScene, captureEditorScene, editorTarget, fitsEditorAction });
   console.log('editor chrome: reflow, save races and recovery:');
   await page.viewport(1440);
@@ -4498,7 +4498,7 @@ async function editorChrome(page) {
   const title = 'Những ngày mưa ở khuỷu đường cũ — '.repeat(6).slice(0, 200);
   const poem = Array.from({ length: 8 }, (_, i) => `Khổ ${i + 1} — Sáng nay trời đổ mưa rào,\n  ngõ nhỏ ướt mềm từng viên gạch cũ.\nNgười về còn nhớ tiếng Việt không?`).join('\n\n');
   await page.eval(`window.__titleInput = document.querySelector('#draft-title'); window.__titleInput.focus()`);
-  check(await page.eval(`window.__titleInput.closest('.vk-ui-field--floating') && window.__titleInput.name === 'title' && window.__titleInput.maxLength === 200 && window.__titleInput.labels[0].textContent === 'Tiêu đề'`), 'editor title consumes the shared FloatingTonal contract with the same native name, limit and label');
+  check(await page.eval(`window.__titleInput.name === 'title' && window.__titleInput.maxLength === 200 && window.__titleInput.labels[0].textContent === 'Tiêu đề'`), 'editor title consumes the shared TextField contract with the same native name, limit and label');
   await page.send('Input.imeSetComposition', { text: 'd', selectionStart: 1, selectionEnd: 1 });
   await page.send('Input.imeSetComposition', { text: 'đ', selectionStart: 1, selectionEnd: 1 });
   await page.send('Input.insertText', { text: 'đ' });
@@ -4646,12 +4646,14 @@ async function editorChrome(page) {
   await page.key('Tab');
   check(await page.eval("document.activeElement.id === 'draft-title' && !document.querySelector('#preview, #draft-preview')"),
     'Tab moves from the closed save details to the title without a standalone preview');
-  for (const forced of [false, true]) {
-    await page.send('Emulation.setEmulatedMedia', {features:[LIGHT_SYSTEM,{name:'forced-colors',value:forced?'active':'none'}]});
-    await page.eval(`document.querySelector('#draft-title').focus()`);
-    check(await page.eval(`(() => { const s=getComputedStyle(document.querySelector('#draft-title').closest('.vk-ui-field__control')); return s.outlineStyle==='solid' && parseFloat(s.outlineWidth)===2; })()`), `title focus remains visible with forced-colors=${forced}`);
-    await page.eval(`document.querySelector('.cm-content').focus()`);
-    check(await page.eval(`(() => { const s=getComputedStyle(document.querySelector('[data-testid=editor-body]')), cm=getComputedStyle(document.querySelector('.cm-editor')); return s.outlineStyle==='solid' && parseFloat(s.outlineWidth)===2 && (cm.outlineStyle==='none'||parseFloat(cm.outlineWidth)===0); })()`), `body has one visible focus perimeter with forced-colors=${forced}`);
+  await page.send('Emulation.setEmulatedMedia', {features:[LIGHT_SYSTEM,{name:'forced-colors',value:'active'}]});
+  for (const [field, ring] of [['#draft-title', '#draft-title'], ['.cm-content', '.vk-editor-body']]) {
+    await page.eval(`document.querySelector('${field}').focus()`);
+    check(await page.eval(`(() => {
+      const s = getComputedStyle(document.querySelector('${ring}'));
+      return s.outlineStyle === 'solid' && parseFloat(s.outlineWidth) >= 2;
+    })()`), field + ': system focus outline in forced colors');
+    await page.capture('writing-forced-' + (field === '#draft-title' ? 'title' : 'body'), {target:field});
   }
   await page.send('Emulation.setEmulatedMedia', {features:[LIGHT_SYSTEM,{name:'forced-colors',value:'none'}]});
   await holdEditorDebounce(page);
@@ -4688,14 +4690,7 @@ async function editorChrome(page) {
   await page.key('Tab');
   check(await page.eval(`document.activeElement.matches('#draft-title-details > summary') && !document.querySelector('#draft-title-details').open`), 'editor Tab reaches the collapsed full-title disclosure');
   await page.key('Tab');
-  check(await page.eval(`(() => {
-    const body = document.querySelector('[data-testid=editor-body]'), style = getComputedStyle(body);
-    return document.activeElement.classList.contains('cm-content') &&
-      parseFloat(style.borderTopWidth) === 0 &&
-      style.outlineStyle === 'solid' &&
-      parseFloat(style.outlineWidth) === 2 &&
-      style.outlineOffset === '-2px';
-  })()`), 'editor Tab reaches the text box with a borderless tonal surface and one flush 2px focus perimeter');
+  check(await page.eval("document.activeElement.matches('.cm-content')"), 'Tab reaches the body after the full-title disclosure');
   const gate = new SaveGate(page);
   await gate.enable();
   await page.eval(`document.querySelector('#save').focus()`);
@@ -5598,6 +5593,7 @@ async function markdownLivePreviewAndFormatPicker(page) {
   const workId = await page.eval(`location.pathname.split('/').pop()`);
   check(await page.eval(`document.querySelector('.vk-editor')?.dataset.format === 'markdown' && Boolean(document.querySelector('#editor-markdown-toolbar')) && !document.querySelector('#draft-title')`), 'created Markdown draft opens directly in Markdown Live Preview');
   await page.eval(`window.__mdView = ${cmView}; true`);
+  await writingFocus(page, { check, setEditorScene, shift: SHIFT, format: 'markdown' });
 
   const sample = '# Tiếng mưa qua hiên\n\n## Hiên nhà\n\nMái ngói **gạch ướt** và *thưa dần* bên [Vink](https://vink.vn).\n\nĐoạn văn thường giữ nguyên.\n\n```\n# Không phải heading\n```\n';
   await page.typeInBody(sample);
@@ -5638,6 +5634,7 @@ async function markdownLivePreviewAndFormatPicker(page) {
     const savedV2 = await page.draft(workId);
     check(savedV2.version === 2 && savedV2.title === 'Tiếng mưa qua hiên' && savedV2.document.format === 'markdown',
       'v1 Gửi commits Markdown draft and derives title from first H1');
+    await writingFocus(page, { check, setEditorScene, shift: SHIFT, format: 'markdown', filled: true });
 
     // v2 edit transitions to Lưu + save floppy icon -> Đang lưu…
     await page.typeInBody('Dòng thêm ở bản 2.\n');

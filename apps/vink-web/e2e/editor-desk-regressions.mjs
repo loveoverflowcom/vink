@@ -238,6 +238,13 @@ async function titleValidation(page, { args, check }) {
   await page.click('#save-recovery-jump');
   check(await page.eval("document.activeElement?.id === 'draft-title'") && (await page.draft(plainId)).title === 'Tên riêng',
     '#263 Default title refusal and recovery stay on its own field');
+  const invalid = await page.eval(`(() => {
+    const title = document.querySelector('#draft-title'), style = getComputedStyle(title);
+    return style.outlineStyle === 'solid' && parseFloat(style.outlineWidth) >= 2 &&
+      title.getAttribute('aria-describedby').split(/\\s+/).some(id => document.getElementById(id)?.textContent.includes('200'));
+  })()`);
+  check(invalid, 'rejected title retains both its visible error outline and linked guidance');
+  await page.capture('writing-invalid-title', {target:'#draft-title'});
   await changeTitle('Tên riêng đã sửa');
   await save(page);
   check((await page.draft(plainId)).title === 'Tên riêng đã sửa' && await page.eval(`${SAME_VIEW} && ${SOURCE} === ${JSON.stringify(plain)}`),

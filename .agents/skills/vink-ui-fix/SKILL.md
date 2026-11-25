@@ -67,6 +67,8 @@ Không dùng animation hay spinner để che đậy tìm kiếm giật lag (ph�
 Khi sửa sheet/dialog: kiểm tra contract hủy, nested scroll, dismiss outside và host insets;
 nếu dialog đóng do điều hướng (navigate) thì không trả focus về trang cũ đã rời đi.
 Không biến “gọn hơn” thành giấu blocker, lỗi hoặc chưa lưu trong tooltip.
+Khi sửa focus trên giấy, đối chiếu [delta Editor R4](../../../docs/design/editor-r4.md#focus-trên-mặt-viết-526):
+kiểm vạch cục bộ bằng chuột và Tab, viền lỗi và forced-colors, rồi đối chiếu với control ngoài mặt viết.
 Giữ dữ liệu nhập khi lỗi/xung đột, focus/selection và IME composition tiếng Việt.
 
 Với phương án user đã chọn, chuyển đúng layout/hành vi/states sang owner Vink;
