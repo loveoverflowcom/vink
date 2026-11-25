@@ -174,7 +174,10 @@ pub(super) async fn record_work_view(
 
     let actor = match state.identity.resolve(&parts, peer).await {
         Resolution::Unavailable => return Err(ApiError::DependencyUnavailable),
-        other => other.principal(),
+        // CHOICE-03: reading is not an authority-bearing write, so a suspended session still
+        // identifies its bound principal (preventing author self-view and keeping 24h dedupe).
+        Resolution::Principal(principal) | Resolution::Suspended(principal) => Some(principal),
+        Resolution::Anonymous | Resolution::Unbound(_) => None,
     };
     let (viewer, issue_guest_cookie) = match actor {
         Some(principal) => (Viewer::Member(principal), None),

@@ -740,13 +740,15 @@ không đưa `views` hay `Set-Cookie` sang đường `GET` công khai (`READ-01`
 - **Speculative / Prefetch:** header `Sec-Purpose`, `Purpose` hoặc `X-Purpose` mang `prefetch` hoặc
   `prerender` (`is_speculative`) trả ngay `204` không ghi DB, không trừ `INGEST_LIMIT` và không cấp
   cookie khách.
-- **Định danh & Privacy (`CHOICE-03`):** `Actor` hợp lệ → `Viewer::Member(id)` (không cấp/gia hạn
-  cookie khách). Nếu client mang credential phiên nhưng `IdentityResolver` trả `Unavailable` →
-  fail-closed `503 dependency_unavailable` để client giữ nguyên `event_id` và thử lại sau (tránh
-  đếm nhầm thành viên/tác giả thành khách). Khách (hoặc session bị đình chỉ/unbound) dùng cookie
-  `__Host-vink_guest` (UUIDv4, `Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`, cố định
-  theo `GUEST_TOKEN_TTL`, không làm mới khi cookie hiện có còn hợp lệ; thiếu, trùng hoặc hỏng thì
-  cấp token mới kèm `Set-Cookie` khi trả `204`).
+- **Định danh & Privacy (`CHOICE-03`):** phiên gắn `PrincipalId` (`Principal` hoặc `Suspended`, vì
+  đọc không phải ghi có thẩm quyền) → `Viewer::Member(id)` (không cấp/gia hạn cookie khách, giữ
+  loại tự xem `VIEW-05` và chống trùng 24 giờ theo `PrincipalId`). Nếu client mang credential phiên
+  nhưng `IdentityResolver` trả `Unavailable` → fail-closed `503 dependency_unavailable` để client
+  giữ nguyên `event_id` và thử lại sau (tránh đếm nhầm thành viên/tác giả thành khách). Khách hoặc
+  phiên chưa gắn principal (`Anonymous` / `Unbound`) dùng cookie `__Host-vink_guest` (UUIDv4,
+  `Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`, cố định theo `GUEST_TOKEN_TTL`, không làm
+  mới khi cookie hiện có còn hợp lệ; thiếu, trùng hoặc hỏng thì cấp token mới kèm `Set-Cookie` khi
+  trả `204`).
 - **Rate limit & Digest key (`CHOICE-06 A`):** quá `INGEST_LIMIT` (120 request / 600 giây / `Network`
   trong bộ nhớ theo `abuse::client_address`) trả lặng lẽ `204` trước khi chạm DB. Trong
   `VINK_PROFILE=production`, nếu chưa cấu hình `VINK_WORK_VIEW_DIGEST_KEY` (64 chữ số hex), route

@@ -185,6 +185,10 @@ async fn http_view_intake_drives_guest_member_dedup_retry_privacy_and_author_rea
             "sess-suspended".into(),
             Resolution::Suspended(PrincipalId::from_uuid(suspended_id)),
         ),
+        (
+            "sess-suspended-author".into(),
+            Resolution::Suspended(author().unwrap()),
+        ),
     ]);
     let (_, app) = app_with_peer(
         &pool,
@@ -498,7 +502,9 @@ async fn http_view_intake_drives_guest_member_dedup_retry_privacy_and_author_rea
         4
     );
 
-    // 11. Suspended principal carries no principal authority (falls back to guest intake +0/mints guest cookie without leaking).
+    // 11. Suspended principal still resolves as Viewer::Member (CHOICE-03): counts once by
+    // PrincipalId without minting a guest cookie, deduplicates repeat views, and suspended author
+    // self-views are skipped (+0).
     let (status, cookies, _, _) = post_view_req(
         &app,
         work.as_uuid(),
@@ -507,7 +513,36 @@ async fn http_view_intake_drives_guest_member_dedup_retry_privacy_and_author_rea
     )
     .await;
     assert_eq!(status, StatusCode::NO_CONTENT);
-    assert!(extract_guest_cookie(&cookies).is_some());
+    assert!(
+        cookies.is_empty(),
+        "suspended member must not mint guest cookie: {cookies:?}"
+    );
+    assert_eq!(
+        author_work_views(&app, work, "sess-author").await["count"],
+        5
+    );
+    let (status, cookies, _, _) = post_view_req(
+        &app,
+        work.as_uuid(),
+        &event_at(now),
+        Some(&format!("{SESSION_COOKIE}=sess-suspended")),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    assert!(cookies.is_empty());
+    assert_eq!(
+        author_work_views(&app, work, "sess-author").await["count"],
+        5
+    );
+    let (status, cookies, _, _) = post_view_req(
+        &app,
+        work.as_uuid(),
+        &event_at(now),
+        Some(&format!("{SESSION_COOKIE}=sess-suspended-author")),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    assert!(cookies.is_empty());
     assert_eq!(
         author_work_views(&app, work, "sess-author").await["count"],
         5
