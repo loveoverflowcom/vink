@@ -23,7 +23,7 @@ Tất cả ví dụ chạy ở repo root. Dùng `cargo xtask --help` để xem c
 | Build API | `cargo xtask build api` | Không tool frontend | Chỉ binary `vink-app` |
 | API công khai | `cargo xtask dev api` | App DB đã migrate, role runtime | App với health + API, ẩn danh |
 | API với đăng nhập thật | `cargo xtask dev api --auth identity` | App/Identity DB đã migrate, runtime roles | Identity native + App; local mail outbox, không gửi ra ngoài |
-| Worker | `cargo xtask dev worker` | App DB đã migrate, runtime role | Chỉ `vink-worker`; outbox/retention, evaluation không tự bật |
+| Worker | `cargo xtask dev worker` | App DB đã migrate, runtime role | Chỉ `vink-worker`; outbox/retention, evaluation chạy mock `approve` mặc định (#536), `VINK_EVALUATOR=manual` để chuyển người duyệt |
 | Identity riêng | `cargo xtask dev identity` | Identity DB đã migrate, runtime role | Chỉ Identity native/socket/local outbox |
 | Web thử tay | `cargo xtask dev web --auth identity` | App/Identity DB, wasm target/bindgen, Node/npm | App SSR + assets và Identity; không Chrome E2E |
 | Web bằng dữ liệu mẫu | `cargo xtask dev web --auth fixture --seed` | App DB đã migrate; frontend tools | Principal từ `VINK_DEV_PRINCIPAL`; seed rõ ràng, không phải auth thật |

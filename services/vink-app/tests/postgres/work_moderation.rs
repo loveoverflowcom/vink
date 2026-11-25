@@ -9,6 +9,8 @@
 //! 6. Moderator grants (Works capability) and admin provisioning.
 //! 7. Automation mode transitions (enabled <-> paused), job rerouting and review case creation.
 //! 8. Bug 1 & Bug 2 regressions: set-private withdraws jobs/cases, re-request-public handles conflicts idempotently.
+//! 9. #536 bootstrap: production default mock approve, admin pause precedence, manual opt-out, approve-only
+//!    production verdicts, withdrawal and human-decision fences.
 
 use axum::http::StatusCode;
 use serde_json::json;
@@ -2043,4 +2045,372 @@ async fn conclude_human_policy_rereview(pool: PgPool, use_work_grant: bool) {
         )
     );
     assert_eq!(first_publication::exact_time(&pool, work).await, first);
+}
+
+// ---------------------------------------------------------------------------
+// #536: the owner's bootstrap of 25/11/2026 runs the scripted mock approve by default in every
+// profile, production included. These tests use the production settings the worker builds from
+// an empty environment (or the explicit opt-out) and the real claim/finish path.
+// ---------------------------------------------------------------------------
+
+fn production_settings(
+    pairs: &'static [(&'static str, &'static str)],
+) -> vink_app::evaluation_worker::EvaluationSettings {
+    let mut settings = vink_app::evaluation_worker::EvaluationSettings::from_lookup(
+        vink_app::config::Profile::Production,
+        |key| {
+            pairs
+                .iter()
+                .find(|(k, _)| *k == key)
+                .map(|(_, v)| (*v).to_owned())
+        },
+    )
+    .unwrap();
+    settings.retry_backoff = std::time::Duration::ZERO;
+    settings
+}
+
+async fn automation_state(pool: &PgPool) -> (String, i64) {
+    sqlx::query_as("SELECT mode, version FROM moderation_automation_state WHERE id = 1")
+        .fetch_one(pool)
+        .await
+        .unwrap()
+}
+
+async fn public_pointer(pool: &PgPool, work: Uuid) -> Option<Uuid> {
+    sqlx::query_scalar("SELECT revision_id FROM publications WHERE work_id = $1")
+        .bind(work)
+        .fetch_optional(pool)
+        .await
+        .unwrap()
+}
+
+async fn set_automation(app: &Router, admin: Uuid, expected: i64, mode: &str) {
+    let (status, body) = post(
+        app,
+        "/api/v1/moderation/automation/mode",
+        admin,
+        json!({ "expected_version": expected, "mode": mode, "reason": "Bảo trì" }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+}
+
+/// AC-01, AC-02, AC-04: with no variable, the production worker approves a valid request-public
+/// and exactly that revision becomes public through the real reader. Saving a draft and taking
+/// a snapshot create no job. The decision traces to the job whose bound scenario names the mock.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn production_default_mock_approves_exactly_the_submitted_revision(pool: PgPool) {
+    use vink_app::domain::moderation::AppliedEvaluation;
+    use vink_app::persistence::evaluation::JobOutcome;
+
+    let app = app(&pool).await;
+    let work = dev_seed::SAMPLE_WORK;
+    let settings = production_settings(&[]);
+    let jobs = "SELECT count(*) FROM work_evaluation_jobs WHERE work_id = $1";
+
+    let vink = vink_app::application::Vink::new(vink_app::persistence::PgStore::new(pool.clone()));
+    vink.save_draft(
+        author(),
+        save(
+            WorkId::from_uuid(work),
+            1,
+            "Bản gửi thử",
+            doc(&[&["Một khổ thơ mới,", "chưa ai đọc."]]),
+        ),
+    )
+    .await
+    .unwrap();
+    let r2 = snapshot(&app, work, "mock-snapshot", 2).await;
+    let r2_id = Uuid::parse_str(&r2).unwrap();
+    assert_eq!(
+        scalar_i64(&pool, jobs, work).await,
+        0,
+        "no job before request-public"
+    );
+    assert!(
+        EvaluationWorker::pass(&pool, "mock", &settings)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert_ne!(public_pointer(&pool, work).await, Some(r2_id));
+
+    request_public(&app, work, &r2, 2, "mock-submit").await;
+    assert_ne!(
+        public_pointer(&pool, work).await,
+        Some(r2_id),
+        "nothing is public before the verdict"
+    );
+    let outcome = EvaluationWorker::pass(&pool, "mock", &settings)
+        .await
+        .unwrap();
+    assert_eq!(
+        outcome,
+        Some(JobOutcome::Applied(AppliedEvaluation::Published))
+    );
+    assert_eq!(public_pointer(&pool, work).await, Some(r2_id));
+    let (status, page) = reader_status(&app, work).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(page["status"], "published");
+    assert_eq!(page["revision_id"], r2);
+    let (status, _, body) = call(&app, "GET", &public_read_path(work), None, None, None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(json(&body)["title"], "Bản gửi thử");
+
+    // Provenance: history row → evaluation id → job bound to the scripted `approve` on claim.
+    type Trace = (i64, String, Option<String>, String, String);
+    let trace: Vec<Trace> = sqlx::query_as(
+        "SELECT h.decision_version, h.moderation, h.provenance_kind, j.state, j.scenario
+           FROM work_revision_decision_history h
+           JOIN work_evaluation_jobs j ON j.id = h.evaluation_id
+          WHERE h.revision_id = $1
+          ORDER BY h.decision_version",
+    )
+    .bind(r2_id)
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        trace,
+        vec![
+            (
+                1,
+                "pending".into(),
+                None,
+                "applied".into(),
+                "approve".into()
+            ),
+            (
+                2,
+                "approved".into(),
+                Some("ai_approved".into()),
+                "applied".into(),
+                "approve".into()
+            ),
+        ]
+    );
+    assert_eq!(
+        automation_state(&pool).await,
+        ("enabled".into(), 1),
+        "the worker never writes the automation mode"
+    );
+}
+
+/// AC-03 (MOD-14): an admin pause wins over the default mock and survives a restart; re-enabling
+/// does not hand a rerouted job back to the evaluator.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn admin_pause_wins_over_the_default_mock_across_restarts(pool: PgPool) {
+    let app = app(&pool).await;
+    let work = dev_seed::SAMPLE_WORK;
+    let admin = new_principal(&pool, "Quản trị").await;
+    seat_admin(&pool, admin).await;
+    let r2 = snapshot(&app, work, "pause-snapshot", 1).await;
+    let r2_id = Uuid::parse_str(&r2).unwrap();
+    request_public(&app, work, &r2, 2, "pause-submit").await;
+    set_automation(&app, admin, 1, "paused").await;
+
+    // Two worker starts with the bootstrap defaults: nothing is claimed or decided.
+    for worker in ["first-start", "after-restart"] {
+        let settings = production_settings(&[]);
+        assert!(
+            EvaluationWorker::pass(&pool, worker, &settings)
+                .await
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(automation_state(&pool).await, ("paused".into(), 2));
+    }
+    assert_ne!(public_pointer(&pool, work).await, Some(r2_id));
+    assert_eq!(
+        scalar_i64(
+            &pool,
+            "SELECT count(*) FROM moderation_cases WHERE work_id = $1 AND origin = 'automation_paused' AND state = 'queued'",
+            work
+        )
+        .await,
+        1
+    );
+
+    set_automation(&app, admin, 2, "enabled").await;
+    assert!(
+        EvaluationWorker::pass(&pool, "re-enabled", &production_settings(&[]))
+            .await
+            .unwrap()
+            .is_none(),
+        "the rerouted job stays with people"
+    );
+    assert_ne!(public_pointer(&pool, work).await, Some(r2_id));
+    assert_eq!(
+        scalar_i64(&pool, "SELECT count(*) FROM work_revision_moderation WHERE work_id = $1 AND moderation = 'pending' AND provenance_kind IS NULL", work).await,
+        1
+    );
+}
+
+/// AC-01, AC-03, AC-04: `VINK_EVALUATOR=manual` keeps the consumer running and sends the job to
+/// people instead of leaving it open, and it never reuses a scenario bound while the mock ran.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn manual_mode_routes_to_people_and_ignores_a_bound_mock_verdict(pool: PgPool) {
+    use vink_app::persistence::evaluation::{JobOutcome, claim_job};
+
+    let app = app(&pool).await;
+    let work = dev_seed::SAMPLE_WORK;
+    let mock = production_settings(&[]);
+    let manual = production_settings(&[("VINK_EVALUATOR", "manual")]);
+    let r2 = snapshot(&app, work, "manual-snapshot", 1).await;
+    let r2_id = Uuid::parse_str(&r2).unwrap();
+    request_public(&app, work, &r2, 2, "manual-submit").await;
+
+    // The mock claims (binding `approve`) and dies before finishing; the operator switches to
+    // manual and the lease expires.
+    let lost = claim_job(&pool, "mock-crashed", 30, mock.default_scenario())
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(lost.scenario.as_deref(), Some("approve"));
+    sqlx::query(
+        "UPDATE work_evaluation_jobs SET lease_expires_at = now() - interval '1 second' WHERE id = $1",
+    )
+    .bind(lost.id)
+    .execute(&pool)
+    .await
+    .unwrap();
+    let outcome = EvaluationWorker::pass(&pool, "manual", &manual)
+        .await
+        .unwrap();
+    assert_eq!(outcome, Some(JobOutcome::Rerouted));
+    assert_ne!(public_pointer(&pool, work).await, Some(r2_id));
+    let state: String = sqlx::query_scalar("SELECT state FROM work_evaluation_jobs WHERE id = $1")
+        .bind(lost.id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(state, "rerouted");
+    assert_eq!(
+        scalar_i64(
+            &pool,
+            "SELECT count(*) FROM moderation_cases WHERE work_id = $1 AND origin = 'evaluator_uncertain' AND state = 'queued'",
+            work
+        )
+        .await,
+        1
+    );
+    assert_eq!(
+        scalar_i64(&pool, "SELECT count(*) FROM work_revision_decision_history WHERE work_id = $1 AND provenance_kind LIKE 'ai_%'", work).await,
+        0,
+        "no evaluator decision is recorded"
+    );
+}
+
+/// AC-03: production honours only `approve`; another verdict bound to a job goes to people
+/// rather than rejecting anything.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn production_mock_never_applies_a_non_approve_verdict(pool: PgPool) {
+    use vink_app::persistence::evaluation::JobOutcome;
+
+    let app = app(&pool).await;
+    let work = dev_seed::SAMPLE_WORK;
+    let r2 = snapshot(&app, work, "reject-snapshot", 1).await;
+    request_public(&app, work, &r2, 2, "reject-submit").await;
+    set_scenario(&pool, work, "reject").await;
+    let outcome = EvaluationWorker::pass(&pool, "mock", &production_settings(&[]))
+        .await
+        .unwrap();
+    assert_eq!(outcome, Some(JobOutcome::Rerouted));
+    assert_eq!(
+        scalar_i64(&pool, "SELECT count(*) FROM work_revision_moderation WHERE work_id = $1 AND moderation = 'rejected'", work).await,
+        0
+    );
+    assert_eq!(
+        scalar_i64(
+            &pool,
+            "SELECT count(*) FROM moderation_cases WHERE work_id = $1 AND state = 'queued'",
+            work
+        )
+        .await,
+        1
+    );
+}
+
+/// AC-03: a private withdrawal before the claim, and a human decision while the mock holds the
+/// claim, both keep the mock from publishing the revision.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn default_mock_never_publishes_after_withdrawal_or_human_decision(pool: PgPool) {
+    use vink_app::domain::moderation::EvaluationRefusal;
+    use vink_app::persistence::evaluation::{JobOutcome, claim_job, finish_job, scripted_outcome};
+
+    let app = app(&pool).await;
+    let work = dev_seed::SAMPLE_WORK;
+    let admin = dev_seed::OTHER_PRINCIPAL;
+    seat_admin(&pool, admin).await;
+    let settings = production_settings(&[]);
+    let r2 = snapshot(&app, work, "fence-snapshot", 1).await;
+    let r2_id = Uuid::parse_str(&r2).unwrap();
+
+    // Withdrawn before the worker runs: the job is closed and nothing becomes public.
+    let generation = request_public(&app, work, &r2, 2, "fence-submit").await;
+    let (status, body) = post(
+        &app,
+        &set_private_path(work),
+        dev_seed::SAMPLE_AUTHOR,
+        json!({ "expected_generation": generation, "command_key": "fence-private" }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let generation = json(&body)["generation"].as_i64().unwrap();
+    assert!(
+        EvaluationWorker::pass(&pool, "mock", &settings)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert_ne!(public_pointer(&pool, work).await, Some(r2_id));
+
+    // Submitted again; the mock claims as `pass` does, then an admin rejects first.
+    request_public(&app, work, &r2, generation, "fence-resubmit").await;
+    let claim = claim_job(&pool, "mock", 60, settings.default_scenario())
+        .await
+        .unwrap()
+        .unwrap();
+    let (status, body) = post(
+        &app,
+        &format!("/api/v1/moderation/works/{work}/revisions/{r2}/cases"),
+        admin,
+        json!({}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+    let case = json(&body)["case_id"].as_str().unwrap().to_owned();
+    let path = format!("/api/v1/moderation/works/cases/{case}");
+    let (status, body) = post(
+        &app,
+        &format!("{path}/claim"),
+        admin,
+        json!({ "expected_version": 1 }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let (status, body) = post(
+        &app,
+        &format!("{path}/conclude"),
+        admin,
+        json!({ "expected_version": 2, "verdict": "rejected", "reason": "Vi phạm chính sách" }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let verdict = scripted_outcome(&claim, settings.honoured_scenarios());
+    assert!(verdict.is_some(), "the mock would approve");
+    assert_eq!(
+        finish_job(&pool, "mock", &claim, verdict, 0).await.unwrap(),
+        JobOutcome::Refused(EvaluationRefusal::Overridden)
+    );
+    assert_ne!(public_pointer(&pool, work).await, Some(r2_id));
+    let last: (String, String) = sqlx::query_as(
+        "SELECT moderation, provenance_kind FROM work_revision_moderation WHERE revision_id = $1",
+    )
+    .bind(r2_id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(last, ("rejected".into(), "admin".into()));
 }

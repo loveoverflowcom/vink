@@ -62,6 +62,14 @@ không có revision TOML riêng (như #213).
 
 [VDR-SAVED-WORKS@r1](proposals/VDR-SAVED-WORKS.r1.toml) ghi SAV-01..04, D1–D12 và vòng đời từ [Epic #384 §8](https://github.com/loveoverflowcom/vink/issues/384). Revision còn `PENDING`. [Registry Lưu bài](../docs/development/saved-works.md) ghi hash và phạm vi signoff còn chờ.
 
+## Mock evaluator bootstrap
+
+[VDR-WORK-MOCK-EVALUATOR-BOOTSTRAP@r1](proposals/VDR-WORK-MOCK-EVALUATOR-BOOTSTRAP.r1.toml) ghi
+ngoại lệ bootstrap của MOD-06 theo lời chủ sản phẩm trong [#536](https://github.com/loveoverflowcom/vink/issues/536)
+ngày 25/11/2026. Mock kịch bản `approve` duyệt mặc định cho tác phẩm ở mọi môi trường, kể cả
+production. Operator có opt-out `manual`, và admin dừng tự động thắng cấu hình. Revision còn
+`PENDING`. [Vận hành và provenance](../docs/development/moderation-runtime.md#31-mock-bootstrap-và-công-tắc-vận-hành-536).
+
 ## Lượt xem tác phẩm
 
 [VDR-WORK-VIEWS@r1](proposals/VDR-WORK-VIEWS.r1.toml) ghi P-01..P-11 của

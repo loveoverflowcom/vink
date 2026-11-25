@@ -291,8 +291,8 @@ Giữ project, volume/DB, session, credentials và vòng đời của hai hệ t
    Kiểm Identity qua Unix socket, peer đúng/sai UID, restart Identity, App/worker lifecycle và
    SIGTERM. App `/health/ready` báo DB/schema/role, còn trạng thái Identity ở đó mang tính
    thông tin. Kiểm HTML SSR với JavaScript tắt, API và hydration/assets. Sau đó gắn vhost và
-   làm kiểm DNS/TLS ở phần 3. Giữ `VINK_AUTH_SIGN_IN=disabled` và `VINK_WORKER_EVALUATION=disabled`
-   theo manifest. Luồng cần đăng nhập là `NOT_RUN` trong cấu hình này.
+   làm kiểm DNS/TLS ở phần 3. Giữ `VINK_AUTH_SIGN_IN=disabled` theo manifest. Từ #536, worker mặc định
+   chạy mock `approve`; đặt `VINK_TEST_EVALUATOR=manual` nếu phiên kiểm cần mọi bài qua người. Luồng cần đăng nhập là `NOT_RUN` trong cấu hình này.
    [App serve](../../services/vink-app/src/main.rs#L910),
    [Health handler](../../services/vink-app/src/http/health.rs),
    [Socket và quy trình](../../infra/test/README.md#secrets-và-uid).

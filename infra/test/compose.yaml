@@ -42,7 +42,10 @@ services:
     environment:
       VINK_PROFILE: production
       VINK_PUBLIC_ORIGIN: ${VINK_PUBLIC_ORIGIN:?}
-      VINK_WORKER_EVALUATION: disabled
+      # #536 owner bootstrap: scripted mock approve by default (not an AI review). Opt out with
+      # VINK_TEST_EVALUATOR=manual (people decide) or VINK_TEST_WORKER_EVALUATION=disabled.
+      VINK_WORKER_EVALUATION: ${VINK_TEST_WORKER_EVALUATION:-enabled}
+      VINK_EVALUATOR: ${VINK_TEST_EVALUATOR:-mock}
       VINK_AUTH_SIGN_IN: disabled
       VINK_LOG_FORMAT: json
     stop_grace_period: 20s

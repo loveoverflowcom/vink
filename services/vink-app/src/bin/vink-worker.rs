@@ -4,7 +4,9 @@
 //! for shadow admission observations and explicit operator post-review (never approval), and
 //! an hourly housekeeping pass: expired sign-in rate-limit windows (D-05) and discussion events
 //! whose deliveries all finished more than [`EVENT_RETENTION_DAYS`] days ago and owe no review
-//! finalization. Admission post-review has no producer; no AI provider is configured.
+//! finalization. Admission post-review has no producer; no AI provider is configured. The work
+//! evaluation consumer (`vink_app::evaluation_worker`) runs the scripted mock approve by default
+//! (#536); `VINK_EVALUATOR=manual` routes every job to people instead.
 //! Acknowledged Notifications v1 events (#346) are pruned after their replay horizon, and work
 //! view windows and receipts (#341) once older than 24 hours (VIEW-11). The
 //! notification relay (`vink_app::notification_relay`, T-02 CHOICE-16 A) is a loop of this
@@ -139,8 +141,14 @@ async fn run(
         database,
         outbox = status,
         outbox_concurrency = settings.concurrency,
-        evaluation = eval_settings.enabled,
-        evaluation_mock = eval_settings.mock_scenario.as_deref().unwrap_or("none"),
+        // #536: the scripted mock approves without reading content; it is not an AI review.
+        evaluation = if eval_settings.enabled {
+            "enabled"
+        } else {
+            "disabled"
+        },
+        evaluator = eval_settings.evaluator.as_str(),
+        evaluation_mock = eval_settings.default_scenario().unwrap_or("none"),
         consumers = vink_app::domain::discussion::outbox::Consumer::ALL
             .map(|consumer| consumer.code())
             .join(","),

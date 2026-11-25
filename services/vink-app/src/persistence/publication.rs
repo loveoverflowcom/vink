@@ -1085,7 +1085,7 @@ impl AuthorPublicationStore for PgStore {
                         work_id.as_uuid(),
                     ));
                 };
-                // The scripted verdict (local/test only) is bound by the worker on first claim.
+                // The worker binds the scripted mock verdict, if any, on first claim (#536).
                 query(
                     "INSERT INTO work_evaluation_jobs (
                          id, work_id, revision_id, content_digest, policy_version, state,

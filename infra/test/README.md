@@ -79,7 +79,9 @@ Tạo các file env riêng mode0600 ngoài repository, không chép URL mẫu/pa
 | `postgres-bootstrap-password` | Bootstrap password độc lập; không phải credential service |
 
 Không đặt migrator, `VINK_TEST_DATABASE_URL`, dev principal, mock scenario hoặc local mail outbox
-trong env runtime. PostgreSQL roles được provision bằng owner script với database/role test riêng,
+trong env runtime. Từ #536, worker mặc định chạy mock `approve` (không phải AI). Đặt
+`VINK_TEST_EVALUATOR=manual` hoặc `VINK_TEST_WORKER_EVALUATION=disabled` trong env render khi
+cần ([vận hành](../../docs/development/moderation-runtime.md#31-mock-bootstrap-và-công-tắc-vận-hành-536)). PostgreSQL roles được provision bằng owner script với database/role test riêng,
 không dùng superuser cho App/Identity; readiness phải báo schema current và role restricted.
 
 Manifest dùng cùng UID non-root cho hai socket peer để ít quyền hơn so với chown/privileged init

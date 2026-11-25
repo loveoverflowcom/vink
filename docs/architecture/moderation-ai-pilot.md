@@ -95,9 +95,9 @@ Tại commit `4ff33bf4`, hệ thống đã có toàn bộ hạ tầng bản th�
   │    - Chiếm lease 30 giây (`lease_duration = 30s`), tăng `claim_generation`
   │    - `ClaimedJob` KHÔNG tải `revisions.title` hay `revisions.document`
   ├─ `evaluate`:
-  │    - Nếu bật `allow_mock` (`profile != Production`) và có `VINK_MOCK_EVALUATION_SCENARIO`
-  │      hoặc `job.scenario` hợp lệ → `scripted_outcome`
-  │    - Ngược lại (không có mock) → trả về `None`
+  │    - `VINK_EVALUATOR=mock` (mặc định từ #536, mọi profile): `scripted_outcome` của
+  │      `job.scenario` đã gắn khi claim (mặc định `approve`; production chỉ nhận `approve`)
+  │    - `VINK_EVALUATOR=manual` hoặc kịch bản không được nhận → trả về `None`
   └─ `finish_job`:
        - Nếu `outcome == None` → chuyển `work_evaluation_jobs.state = 'rerouted'`
          và gọi `open_work_case(..., CaseOrigin::EvaluatorUncertain)` để mở ca cho người duyệt
@@ -114,7 +114,7 @@ Tại commit `4ff33bf4`, hệ thống đã có toàn bộ hạ tầng bản th�
 
 **Hai sự thật quan trọng từ mã nguồn hiện tại:**
 1. **`ClaimedJob` hoàn toàn mù nội dung tác phẩm:** [`claim_job`](../../services/vink-app/src/persistence/evaluation.rs) không đọc `revisions.title` hay `revisions.document` — việc tách bạch này xác nhận nguyên tắc không chuyển văn bản sang evaluator khi chưa có đường ống và kiểm soát rõ ràng.
-2. **Nhánh không có mock hiện tại rẽ ngay sang `rerouted`:** Ở [`EvaluationWorker::evaluate`](../../services/vink-app/src/evaluation_worker.rs), khi không có kịch bản mock thì kết quả là `None` và `finish_job` chuyển job ngay sang `'rerouted'` để mở [`moderation_cases`](../../services/vink-app/src/persistence/moderation_write.rs) với `CaseOrigin::EvaluatorUncertain`. Đường này chỉ hoạt động khi worker chính enabled, không mock và có tiến độ; cấu hình mặc định worker disabled không bảo đảm ca tự mở. Preflight pilot ở Mục 2.3 phải xác minh đường ca người duyệt độc lập.
+2. **Nhánh không có mock hiện tại rẽ ngay sang `rerouted`:** Ở [`EvaluationWorker::evaluate`](../../services/vink-app/src/evaluation_worker.rs), khi không có kịch bản mock thì kết quả là `None` và `finish_job` chuyển job ngay sang `'rerouted'` để mở [`moderation_cases`](../../services/vink-app/src/persistence/moderation_write.rs) với `CaseOrigin::EvaluatorUncertain`. Đường này chỉ hoạt động khi worker chính enabled, ở `VINK_EVALUATOR=manual` và có tiến độ. Từ #536, mặc định là mock `approve`, nên pilot phải đặt `manual` hoặc dừng tự động một cách tường minh. Preflight pilot ở Mục 2.3 phải xác minh đường ca người duyệt độc lập.
 
 ### 2.2 Phân tích `CHOICE-01`: Phương án A vs Phương án B
 
@@ -365,7 +365,7 @@ Mỗi ca lệch giữa AI và người duyệt (hoặc lỗi xử lý) chỉ đ�
 
 ### 7.1 Ranh giới cấu hình cô lập (`Config::from_lookup` fail-closed)
 
-Bộ biến môi trường pilot tách biệt hoàn toàn khỏi `VINK_WORKER_EVALUATION` và `VINK_MOCK_EVALUATION_SCENARIO` hiện hữu trong [`Config::from_lookup`](../../services/vink-app/src/config.rs) và [`EvaluationSettings`](../../services/vink-app/src/evaluation_worker.rs):
+Bộ biến môi trường pilot tách biệt hoàn toàn khỏi `VINK_WORKER_EVALUATION`, `VINK_EVALUATOR` (#536) và `VINK_MOCK_EVALUATION_SCENARIO` hiện hữu trong [`Config::from_lookup`](../../services/vink-app/src/config.rs) và [`EvaluationSettings`](../../services/vink-app/src/evaluation_worker.rs):
 
 | Biến môi trường đề xuất | Mặc định an toàn | Kiểm tra fail-closed khi khởi động |
 | --- | --- | --- |
