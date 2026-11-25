@@ -935,6 +935,18 @@ export async function standalone(page, {args, check}) {
   await setPenName(page, 'Người viết SPA');
   const author = await read(page, '/api/v1/me/profile');
   check(author.status === 200 && Boolean(author.data?.handle), 'new author has a public handle');
+  await page.goto(base + '/?mode=following');
+  const discoveryLink = q('[data-feed-state="no-follows"] a[href="/?mode=authors"]');
+  await page.waitFor(`${discoveryLink}?.textContent.trim() === 'Khám phá tác giả'`, 'signed-in CSR shows the empty Following CTA');
+  const documentStart = await page.eval('performance.timeOrigin');
+  await page.eval(`${discoveryLink}.focus()`);
+  await page.key('Enter');
+  await page.waitFor(`location.search === '?mode=authors' &&
+    ${q('#explore-mode-authors')}?.getAttribute('aria-current') === 'page' &&
+    ${q('#explore')}?.dataset.search === 'closed'`, 'CSR Enter opens Authors with Search Dock closed');
+  check(await page.eval(`performance.timeOrigin === ${documentStart}`), 'the Following CTA uses CSR navigation');
+  await page.eval('history.back()');
+  await page.waitFor(`location.search === '?mode=following' && ${discoveryLink}`, 'CSR Back returns to the no-follows state');
   const id = await createDraft(page, 'Bản thảo trên Vink');
   check(await page.body() === DRAFT_TEXT, 'saved Vietnamese draft reopens after a full document reload');
   await page.typeInBody(' Chưa lưu.');
