@@ -13,10 +13,10 @@ Nguồn: [Epic #323](https://github.com/loveoverflowcom/vink/issues/323),
 
 | Chiều | Trạng thái |
 | --- | --- |
-| Quyết định sản phẩm | VIEW-01..12 `r1` là `PRODUCT_CONFIRMED` ngày 21/11/2026 ([VDR-WORK-VIEWS@r1](../../decisions/proposals/VDR-WORK-VIEWS.r1.toml) + [signoff](../../decisions/signoffs/VDR-WORK-VIEWS.r1.toml), revision đang kích hoạt của marker VDR). Delta 25/11/2026 (`#323`/`#340`: ngưỡng 5 giây foreground cấu hình tập trung, `OQ-1=A`, `OQ-2`, `OQ-3A/B`, `OQ-4`, `UX-01..10`, giữ riêng tư, `D-01` Thấm → Nhận xét → Lượt xem, `D-02` bỏ nút Đọc ở Bàn viết, kế hoạch 2 PR) được chủ sản phẩm chốt trên issue và ghi thành [VDR-WORK-VIEWS@r2](../../decisions/proposals/VDR-WORK-VIEWS.r2.toml) (`PENDING` chờ signoff đúng payload/SHA-256 theo `VDR-DECISION-SIGNOFF@r1`). |
-| Quyết định kiến trúc | CHOICE-02 A, CHOICE-03 và CHOICE-06 A `DESIGN_PROPOSED` bởi #341 (§7.1); CHOICE-05 A `DESIGN_PROPOSED` bởi #342 (§9.1); CHOICE-01, CHOICE-04 và CHOICE-POLICY `DESIGN_PROPOSED` bởi #343 (§10). Chưa lựa chọn nào `Accepted`. |
-| Mức triển khai | Đường ghi #341: `core` + PostgreSQL + dọn hạn `vink-worker`. Đọc #342: `persistence-api` (`views` của `GET /api/v1/author/works`). #343 (PR1): đang triển khai `vink-work-view-policy` + HTTP `POST /api/v1/works/{work_id}/views` + cookie khách + Reader visibility tracker & retry hữu hạn. UI Bàn viết và đồng bộ design R4/Work Views thuộc `#514` (PR2/2). |
-| Bằng chứng | #340 r1: kiểm tài liệu (§6); #341: unit + PostgreSQL (§7.6); #342: unit/contract + PostgreSQL qua HTTP (§9.5); #343 & delta 25/11: cập nhật ở §10.3 sau khi chạy scoped checks + Chrome thực trên `HEAD` mới. |
+| Quyết định sản phẩm | VIEW-01..12 `r1` là `PRODUCT_CONFIRMED` ngày 21/11/2026 ([VDR-WORK-VIEWS@r1](../../decisions/proposals/VDR-WORK-VIEWS.r1.toml) + [signoff](../../decisions/signoffs/VDR-WORK-VIEWS.r1.toml), revision đang kích hoạt của marker VDR). Delta 25/11/2026 (`#323`/`#340`: ngưỡng 5 giây foreground cấu hình tập trung, `OQ-1=A`, `OQ-2`, `OQ-3A/B`, `OQ-4`, `UX-01..10`, giữ riêng tư, `D-01` Thấm → Nhận xét → Lượt xem, `D-02` bỏ nút Đọc ở Bàn viết) được chủ sản phẩm chốt trên issue và ghi thành [VDR-WORK-VIEWS@r2](../../decisions/proposals/VDR-WORK-VIEWS.r2.toml) (`PENDING` chờ signoff đúng payload/SHA-256 theo `VDR-DECISION-SIGNOFF@r1`). |
+| Quyết định kiến trúc | CHOICE-02 A, CHOICE-03 và CHOICE-06 A `DESIGN_PROPOSED` bởi #341 (§7.1); CHOICE-05 A `DESIGN_PROPOSED` bởi #342 (§9.1); CHOICE-01, CHOICE-04 và CHOICE-POLICY `DESIGN_PROPOSED` bởi #343 (§10). Thiết kế r3 Bàn viết ([LayoutSpec](../design/work-views.md)) giữ `DESIGN_PROPOSED`; `DQ-05` và `DQ-10` giữ `OPEN`. Chưa lựa chọn kiến trúc nào `Accepted`. |
+| Mức triển khai | Đường ghi #341: `core` + PostgreSQL + dọn hạn `vink-worker`. Đọc #342: `persistence-api` (`views` của `GET /api/v1/author/works`). #343: `vink-work-view-policy` + HTTP `POST /api/v1/works/{work_id}/views` + cookie khách + Reader visibility tracker & retry hữu hạn. #514 (ghép thêm commit trong PR #519 theo yêu cầu chủ sản phẩm): UI Bàn viết Design r3 (`AuthorWorkRow`, `DeskIndex`, `#views-explainer`), bỏ nút Đọc (`D-02`), thứ tự `Thấm → Nhận xét → Lượt xem` (`D-01`), và đồng bộ `docs/design/*`. |
+| Bằng chứng | #340 r1: kiểm tài liệu (§6); #341: unit + PostgreSQL (§7.6); #342: unit/contract + PostgreSQL qua HTTP (§9.5); #343 & #514: cập nhật tại §10.3 và §11 sau khi chạy scoped checks + Chrome thực trên `HEAD` cuối. |
 
 ## 2. Snapshot quyết định
 
@@ -48,12 +48,12 @@ revision hay signoff mới; người tiếp tục tra lại.
 | VIEW-04 | `core` + PostgreSQL (#341); cookie `__Host-vink_guest` ở PR1 (#343) | #341, #343 (cấp cookie) | `GuestToken` UUID v4, thời hạn 24 giờ cố định, không làm mới. |
 | VIEW-05 | `core` + PostgreSQL (#341) | #341 | So principal với `works.owner_id` tại lúc ghi; client hủy nếu đổi authority phiên. |
 | VIEW-06 | Khóa ghi: `core` + PostgreSQL (#341). Đọc: `persistence-api` (#342) | #341 (khóa ghi), #342 (đọc không reset) | Mọi bảng khóa theo `WorkId`; revision chỉ là căn cứ ghi trong receipt. Đọc không nhìn revision. |
-| VIEW-07 | `persistence-api` (#342); UI Bàn viết + D-01/D-02 thuộc `#514` (PR2) | #342, #514 | Chỉ `GET /api/v1/author/works` của phiên chủ; không API công khai; D-01 thứ tự Thấm → Nhận xét → Lượt xem; D-02 bỏ nút “Đọc”. |
-| VIEW-08 | Phía ghi: `core` + PostgreSQL (#341). Đọc: `persistence-api` (#342) | #342 (đọc), #341 (không tăng khi hết công khai) | Tổng không bao giờ giảm khi ẩn/rút/admin gỡ cả bài (`OQ-4`). Bài riêng tư giữ số cũ theo `OQ-1 = A`. |
-| VIEW-09 | Mốc lưu ở `work_view_counting` (#341). Dữ liệu nhãn: `persistence-api` (`counted_since`, #342). Nhãn hiển thị: `#514` (PR2) | #342, #514 | Không backfill; mốc là lần quyết định sự kiện đầu tiên. |
-| VIEW-10 | Idempotency: `core` + PostgreSQL (#341). Retry hữu hạn: PR1 (#343) | #343 (retry), #341 (idempotency) | Kỳ vọng khoảng 1 phút, không SLA. Retry cùng UUIDv7 trong tab; lỗi thống kê không cản đọc. |
+| VIEW-07 | `persistence-api` (#342) + `web` (#514) | #342, #514 | Chỉ `GET /api/v1/author/works` của phiên chủ; không API công khai; D-01 thứ tự Thấm → Nhận xét → Lượt xem; D-02 bỏ hẳn nút “Đọc” trên Bàn viết. |
+| VIEW-08 | Phía ghi: `core` + PostgreSQL (#341). Đọc: `persistence-api` (#342) + `web` (#514) | #342 (đọc), #341 (không tăng khi hết công khai), #514 (hiển thị lịch sử) | Tổng không bao giờ giảm khi ẩn/rút/admin gỡ cả bài (`OQ-4`). Bài riêng tư/ẩn giữ số cũ theo `OQ-1 = A`. |
+| VIEW-09 | Mốc lưu ở `work_view_counting` (#341). Dữ liệu nhãn: `persistence-api` (`counted_since`, #342). Nhãn hiển thị: `web` (#514) | #342, #514 | Không backfill; mốc là lần quyết định sự kiện đầu tiên; hiển thị “Tính từ dd/mm/yyyy” theo `Asia/Ho_Chi_Minh`. |
+| VIEW-10 | Idempotency: `core` + PostgreSQL (#341). Retry hữu hạn: `web` (#343) | #343 (retry), #341 (idempotency) | Kỳ vọng khoảng 1 phút, không SLA. Retry cùng UUIDv7 trong tab; lỗi thống kê không cản đọc. |
 | VIEW-11 | `core` + PostgreSQL + `vink-worker` (#341) | #341, PR có route xóa (`OQ-2`) | Ba loại dữ liệu; cửa sổ và receipt xóa sau 24 giờ (chu kỳ dọn mỗi giờ). Xóa theo `WorkId` có hàm `erase_work`, route xóa thuộc PR xóa tác phẩm/tài khoản tương lai (`OQ-2`). |
-| VIEW-12 | Trạng thái dữ liệu: `persistence-api` (`views.state`, #342). UI + copy + popover: `#514` (PR2) | #342 (dữ liệu), #514 (hiển thị & UX-01..10) | Giải thích `UX-07` lấy ngưỡng từ cùng nguồn `vink-work-view-policy`. |
+| VIEW-12 | Trạng thái dữ liệu: `persistence-api` (`views.state`, #342). UI + copy + dialog giải thích: `web` (#514) | #342 (dữ liệu), #514 (hiển thị & UX-01..10) | Giải thích `UX-07` (`#views-explainer`) lấy ngưỡng từ cùng nguồn `vink-work-view-policy`. |
 
 ## 4. Bản đồ P/CHOICE sang issue và kế hoạch 2 PR
 
@@ -61,10 +61,10 @@ revision hay signoff mới; người tiếp tục tra lại.
 | --- | --- | --- | --- | --- |
 | [#341](https://github.com/loveoverflowcom/vink/issues/341) Ghi và chống trùng (đã merge) | Use case ghi, migration, adapter PostgreSQL, purge mã hết hạn | P-03, P-04, P-05, P-11 (P-06, P-01/P-08 tại commit) | CHOICE-02, CHOICE-03, CHOICE-06 | `OQ-2` (sẵn sàng `erase_work` theo `WorkId`) |
 | [#342](https://github.com/loveoverflowcom/vink/issues/342) Đọc theo quyền (API đã merge) | Query/read-model, DTO, contract đọc của tác giả (`views`) | P-07, P-08, P-09 (P-06, VIEW-12 dữ liệu) | CHOICE-05 (A, §9.1) | `OQ-1 = A`, `OQ-4` (giữ số khi còn quyền); giữ mở tới khi có route xóa/admin remove (`OQ-2`) |
-| **PR1:** [#340](https://github.com/loveoverflowcom/vink/issues/340) delta + [#343](https://github.com/loveoverflowcom/vink/issues/343) Reader & HTTP | Delta SSOT + `VDR-WORK-VIEWS@r2` (`PENDING`), `vink-work-view-policy`, HTTP intake + `__Host-vink_guest`, Reader 5s visibility tracker + retry hữu hạn, kiểm xuyên suốt qua API `#342` | P-01 (5s), P-02, P-04 (cookie), P-10, D-01/D-02 SSOT | CHOICE-01, CHOICE-03 (cookie/`503`), CHOICE-04, CHOICE-06 (HTTP), CHOICE-POLICY | `OQ-3A/B`, cấu hình ngưỡng 5s dùng chung |
-| **PR2:** [#514](https://github.com/loveoverflowcom/vink/issues/514) UI Bàn viết & Design sync | Đồng bộ LayoutSpec R4/R4.3/R4.4 + `docs/design/desk-author-feedback.md` + design Work Views (thứ tự `Thấm → Nhận xét → Lượt xem`, bỏ hẳn nút “Đọc” / vùng giữ chỗ), hiển thị `Lượt xem` + “0”/“—” + “Tính từ” + popover giải thích (`UX-01..10`) trên Bàn viết và giữ `#410` không tái tạo nút | VIEW-07, VIEW-09, VIEW-12, D-01, D-02 | — | `OQ-1 = A`, `UX-01..10`, `D-01/D-02` |
+| **PR1 (`#340` + `#343`)** | Delta SSOT + `VDR-WORK-VIEWS@r2` (`PENDING`), `vink-work-view-policy`, HTTP intake + `__Host-vink_guest`, Reader 5s visibility tracker + retry hữu hạn, kiểm xuyên suốt qua API `#342` | P-01 (5s), P-02, P-04 (cookie), P-10, D-01/D-02 SSOT | CHOICE-01, CHOICE-03 (cookie/`503`), CHOICE-04, CHOICE-06 (HTTP), CHOICE-POLICY | `OQ-3A/B`, cấu hình ngưỡng 5s dùng chung |
+| **PR2 (`#514`, ghép commit vào PR #519)** | Đồng bộ [LayoutSpec Lượt xem r3](../design/work-views.md) + R4.3/R4.4 + `docs/design/desk-author-feedback.md`, tích hợp Work Views Design r3 vào `AuthorWorkRow` và `DeskIndex` (thứ tự `Thấm → Nhận xét → Lượt xem`, bỏ hẳn nút “Đọc”, icon `visibility-outline`, định dạng `1.234`, `counted`/`not_started`/`never_public`/`unavailable`, `Tính từ dd/mm/yyyy`, lịch sử `OQ-1=A`, nút + sheet `#views-explainer`) | VIEW-07, VIEW-09, VIEW-12, D-01, D-02 | — | `OQ-1 = A`, `UX-01..10`, `D-01/D-02` (`DQ-05`/`DQ-10` giữ `OPEN`) |
 
-Thứ tự còn lại theo điều phối ngày 25/11/2026: **PR1 (`#340` delta + `#343`) trước → review & merge → PR2 (`#514`)**.
+Kế hoạch ban đầu ngày 25/11/2026 tách 2 PR (`#340+#343` rồi `#514`); theo chỉ dẫn trực tiếp của chủ sản phẩm, phần triển khai `#514` được bổ sung bằng commit kế tiếp trên cùng PR `#519` (`feat/343-work-views-intake`) rồi rà soát và merge vào `develop`.
 
 ## 5. Kịch bản nghiệm thu xuyên suốt
 
@@ -91,7 +91,7 @@ Tổng là số tác giả đọc được qua `GET /api/v1/author/works` (`view
 | 14 | Làm lỗi nguồn số liệu khi đọc | `unavailable` (“—” kèm lý do); tên, trạng thái, link sửa còn | L-05 | #342, #514 |
 | 15 | Làm lỗi đường ghi khi A ở lại đủ 5s | Reader đọc bình thường; retry hữu hạn cùng `event_id`; +1 nếu thành công, +0 nếu hết lượt, không bao giờ +2 | E-32, E-33 | #343 |
 | 16 | Tác phẩm khác V công khai trước mốc bật | Số kèm `counted_since` (“Tính từ dd/mm/yyyy”) | L-12 | #342, #514 |
-| 17 | Override `WorkViewPolicy` sang giá trị khác mặc định (ví dụ `1.200 ms`) | Ngưỡng đếm và chuỗi giải thích `UX-07` đổi đồng bộ | E-43 | #343 unit |
+| 17 | Override `WorkViewDurationPolicy` sang giá trị khác mặc định (ví dụ `1.200 ms`) | Ngưỡng đếm và chuỗi giải thích `UX-07` đổi đồng bộ | E-43 | #343, #514 unit |
 
 ## 6. Bằng chứng của PR tài liệu #340
 
@@ -392,12 +392,7 @@ giá trị) của phản hồi HTTP sinh từ dữ liệu đường ghi thật v
   ngay sau commit; không có trạng thái “chưa hội tụ”.
 - Tải lại danh sách là cách duy nhất để thấy số mới; không validator, không `304`. `ETag` của
   Reader, danh sách công khai và `/publication` không phụ thuộc số (§9.5).
-- Consumer Web (`apps/vink-web/src/contract/author_works.rs`) hiện bỏ qua `views` (decoder không
-  từ chối field lạ). PR2 (`#514`) sẽ gắn representation Bàn viết theo `D-01` (**Thấm → Nhận xét →
-  Lượt xem**, Lượt xem cuối), `D-02` (bỏ hẳn nút/link “Đọc” / “Đọc bản công khai”), `UX-01..10`
-  (icon mắt `visibility`, định dạng `1.234`, “—” kèm lý do cho ba trạng thái không số, “Tính từ
-  dd/mm/yyyy” theo `Asia/Ho_Chi_Minh`, giải thích theo ngưỡng cấu hình chung) và đồng bộ
-  `docs/design/`.
+- Consumer Web (`apps/vink-web/src/contract/author_works.rs`, `ui::adapters::author_work_summary`, `AuthorWorkRow`, `DeskIndex`) đã nối `views` theo `#514` ([§11](#11-giao-diện-bàn-viết-design-r3-514) và [LayoutSpec Lượt xem r3](../design/work-views.md)): `D-01` (**Thấm → Nhận xét → Lượt xem**), `D-02` (bỏ hẳn nút/link “Đọc” / “Đọc bản công khai”), `UX-01..10` (icon `visibility-outline`, định dạng `1.234`, “—” kèm lý do cho `not_started`/`unavailable` và nhãn ẩn cho `never_public`, “Tính từ dd/mm/yyyy” theo `Asia/Ho_Chi_Minh`, giải thích `#views-explainer` dùng ngưỡng `WorkViewDurationPolicy::DEFAULT`).
 
 ### 9.5 Bằng chứng và nghiệm thu
 
@@ -430,9 +425,9 @@ Merge code không làm các lựa chọn dưới đây thành `Accepted`.
 
 | CHOICE | Lựa chọn đã chọn | Lý do | Giới hạn đã biết |
 | --- | --- | --- | --- |
-| **CHOICE-POLICY** | **A — crate thuần dùng chung `packages/work-view-policy` (`vink-work-view-policy`)** chứa hằng số typed duy nhất `WORK_VIEW_MIN_VISIBLE_MS = 5_000` (`DEFAULT_POLICY`), validator `WorkViewPolicy::from_millis(...)` và helper sinh giải thích `UX-07` (`explanation_text`). Cả `vink-app` và `vink-web` (CSR standalone lẫn SSR/hydrate) dùng chung nguồn này; đổi ngưỡng chỉ sửa 1 dòng trong `packages/work-view-policy/src/lib.rs` rồi build lại workspace. | Không thêm HTTP call hay trường JSON vào `/reader` → giữ nguyên `ETag`/`304` (`READ-01`/`READ-02`), không tăng độ trễ mở bài, không lệch giữa CSR standalone và SSR, không cần service/DB cấu hình riêng. Khi rolling deploy nếu client cũ giữ ngưỡng 5s còn API mới vẫn nhận `POST /views` với `event_id` hợp lệ thì tương thích ngược hoàn toàn. | Đổi ngưỡng cần rebuild workspace; browser không tin tham số thời lượng do client tự khai làm bằng chứng server. |
-| **CHOICE-01** | **Tách state machine thuần (`apps/vink-web/src/work_view.rs::WorkViewTracker`) nối tại `ReaderLoaded` / `PublicationView` trong `apps/vink-web/src/pages/mod.rs`.** | Cho phép unit test thuần đầy đủ trên đồng hồ monotonic giả lập (ngưỡng, `< threshold`, ẩn/hiện, `OQ-3A/B`, hủy đổi tác phẩm/revision/`Session`), trong khi UI chỉ khởi tạo một `Timeout` thích ứng (không polling/heartbeat định kỳ) khi `PublicationView` thực sự render thân bài công khai ở tab visible & `!document.prerendering`. | Phụ thuộc API `visibilityState`/`prerendering`/`performance.now` của trình duyệt (browser tắt JS không đếm theo `VIEW-02`). |
-| **CHOICE-04** | **Retry hữu hạn trong tab (`RetryPolicy`: tối đa 3 lần retry = 4 lần gửi, backoff `1s → 3s → 9s`) với cùng UUIDv7 `event_id`.** | Không dựng hàng đợi bền qua đóng tab; thử lại khi lỗi mạng/`5xx`/`503` (bao gồm lúc `IdentityResolver` trả `Unavailable`), dừng ngay khi `204`, `4xx` (`403`/`404`/`422`), unmount, đổi bài/revision, ẩn/rút hoặc đổi phiên; thất bại không bao giờ hiện lên UI Reader hay chặn điều hướng. | Đóng tab hoặc offline quá cửa sổ ~13s sẽ mất lượt (`VIEW-10` chấp nhận), nhưng không bao giờ cộng trùng vì cùng `event_id`. |
+| **CHOICE-POLICY** | **A — crate thuần dùng chung `packages/work-view-policy` (`vink-work-view-policy`)** chứa hằng số typed duy nhất `WORK_VIEW_MIN_VISIBLE_MS = 5_000` (`WorkViewDurationPolicy::DEFAULT`), validator `WorkViewDurationPolicy::from_millis(...)` và helper sinh giải thích `UX-07` (`ux_explanation_vi`). Cả `vink-app` và `vink-web` (CSR standalone lẫn SSR/hydrate) dùng chung nguồn này; đổi ngưỡng chỉ sửa 1 dòng trong `packages/work-view-policy/src/lib.rs` rồi build lại workspace. | Không thêm HTTP call hay trường JSON vào `/reader` → giữ nguyên `ETag`/`304` (`READ-01`/`READ-02`), không tăng độ trễ mở bài, không lệch giữa CSR standalone và SSR, không cần service/DB cấu hình riêng. Khi rolling deploy nếu client cũ giữ ngưỡng 5s còn API mới vẫn nhận `POST /views` với `event_id` hợp lệ thì tương thích ngược hoàn toàn. | Đổi ngưỡng cần rebuild workspace; browser không tin tham số thời lượng do client tự khai làm bằng chứng server. |
+| **CHOICE-01** | **Tách state machine thuần (`apps/vink-web/src/work_view.rs::ViewVisitTracker`) nối tại `ReaderLoaded` / `PublicationView` trong `apps/vink-web/src/pages/mod.rs`.** | Cho phép unit test thuần đầy đủ trên đồng hồ monotonic giả lập (ngưỡng, `< threshold`, ẩn/hiện, `OQ-3A/B`, hủy đổi tác phẩm/revision/`Session`), trong khi UI chỉ khởi tạo một `Timeout` thích ứng (không polling/heartbeat định kỳ) khi `PublicationView` thực sự render thân bài công khai ở tab visible & `!document.prerendering`. | Phụ thuộc API `visibilityState`/`prerendering`/`performance.now` của trình duyệt (browser tắt JS không đếm theo `VIEW-02`). |
+| **CHOICE-04** | **Retry hữu hạn trong tab (`RetryPlan`: tối đa 3 lần retry = 4 lần gửi, backoff `1s → 3s → 9s`) với cùng UUIDv7 `event_id`.** | Không dựng hàng đợi bền qua đóng tab; thử lại khi lỗi mạng/`5xx`/`503` (bao gồm lúc `IdentityResolver` trả `Unavailable`), dừng ngay khi `204`, `4xx` (`403`/`404`/`422`), unmount, đổi bài/revision, ẩn/rút hoặc đổi phiên; thất bại không bao giờ hiện lên UI Reader hay chặn điều hướng. | Đóng tab hoặc offline quá cửa sổ ~13s sẽ mất lượt (`VIEW-10` chấp nhận), nhưng không bao giờ cộng trùng vì cùng `event_id`. |
 
 ### 10.2 Cấu hình và định danh HTTP (`CHOICE-03`, `CHOICE-06`)
 
@@ -441,29 +436,56 @@ Merge code không làm các lựa chọn dưới đây thành `Accepted`.
   - Nếu có giá trị nhưng sai định dạng → App thoát mã `2` (`ConfigError`) ngay lúc khởi động.
   - Ở `VINK_PROFILE=local`: nếu bỏ trống, dùng khóa phát triển cố định nội bộ (không bao giờ lọt vào bundle client hay log).
   - Ở `VINK_PROFILE=production`: nếu bỏ trống, `Config.work_view_digest_key` là `None` và `POST /api/v1/works/{work_id}/views` **fail-closed `503 dependency_unavailable`** thay vì dùng khóa yếu cố định (giữ nguyên tương thích boot với các manifest hiện hữu trước khi operator cấp secret).
-- **Identity & Cookie khách:** `Actor` hợp lệ → `Viewer::Member(id)`. Khi `IdentityResolver` trả `Resolution::Unavailable` → trả `503 dependency_unavailable` để không đếm nhầm thành viên/tác giả thành khách. Khách hoặc session bị đình chỉ/chưa gắn principal dùng cookie `__Host-vink_guest` (UUIDv4, `Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`, cố định theo `GUEST_TOKEN_TTL`, **không gia hạn** khi còn hạn; thiếu, trùng nhiều header hoặc hỏng mới cấp cookie mới kèm `Set-Cookie` khi ghi thành công/204).
+- **Identity & Cookie khách:** `Resolution::Principal(id)` và `Resolution::Suspended(id)` đều dùng `Viewer::Member(id)` (khớp CHOICE-03 §7.1 và `VIEW-05`: thành viên bị đình chỉ vẫn chống trùng 24 giờ theo `PrincipalId` mà không cấp cookie khách, và tác giả bị đình chỉ vẫn không tự đếm lượt bài mình). Khi `IdentityResolver` trả `Resolution::Unavailable` → trả `503 dependency_unavailable` để không đếm nhầm thành viên/tác giả thành khách. Khách hoặc session không có/chưa gắn principal dùng cookie `__Host-vink_guest` (UUIDv4, `Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`, cố định theo `GUEST_TOKEN_TTL`, **không gia hạn** khi còn hạn; thiếu, trùng nhiều header hoặc hỏng mới cấp cookie mới kèm `Set-Cookie` khi ghi thành công/204).
 - **Speculative & Rate limit:** `is_speculative` (`Sec-Purpose`/`Purpose`/`X-Purpose`) trả `204` trước khi đụng DB hay cấp cookie; vượt `INGEST_LIMIT` (120 req / 600s / `Network` trong bộ nhớ tiến trình theo `abuse::client_address`) trả `204` lặng lẽ không đụng DB.
 - **Ẩn trạng thái riêng tư:** mọi `Ok(_)` (`Counted`, `Skipped(_)`, `Replayed(_)`, `Ignored(_)`, bao gồm `NotPublic` và `WorkNotFound`) đều trả cùng `204 No Content` + `no-store` (+ `Set-Cookie` đồng nhất nếu cần cấp cookie khách mới) để không tạo existence oracle.
 
 ### 10.3 Bằng chứng và trạng thái nghiệm thu PR1
 
-Chạy trên nhánh `feat/343-work-views-intake` (base `origin/develop@922656c3`), macOS, PostgreSQL 17 qua `./tools/local-budget run --` cho các bước sửa sau vòng review độc lập trên PR #519 (Draft):
+Chạy trên nhánh `feat/343-work-views-intake` (base `origin/develop@922656c3`), macOS aarch64, PostgreSQL 17.11:
 
 | Phép kiểm | Ranh giới | Kết quả thực tế |
 | --- | --- | --- |
-| `cargo fmt --all -- --check` | formatting | PASS trên mã Rust sau sửa P1/P3 |
+| `cargo fmt --all -- --check` | formatting | PASS trên toàn bộ mã Rust hiện có |
 | `cargo test --locked -p vink-work-view-policy` | unit (`vink-work-view-policy`) | PASS, 3/3 test (hằng số 5s, override động, boundary) |
-| `cargo xtask verify check app --target api` | compile/typecheck | PASS (`vink-app`) |
-| `cargo xtask verify check web --target csr` | compile/typecheck wasm CSR | PASS (`vink-web --features csr`) |
-| `cargo xtask verify check web --target hydrate` | compile/typecheck wasm hydrate | PASS (`vink-web --features hydrate`) |
+| `cargo xtask verify check app --target api`, `web --target csr`, `web --target hydrate`, `preview` | compile/typecheck | PASS cả 4 target |
 | `cargo xtask verify unit app --filter work_view` | unit/contract (`vink-app`) | PASS, 26/26 test (domain, config, limiter eviction `MAX_LIMITER_ENTRIES`, `http::work_views`) |
-| `cargo xtask verify unit app --filter config` | unit (`vink-app`) | PASS, 12/12 test (8 lib + 4 bin) |
-| `cargo xtask verify unit web --filter work_view` | unit/contract (`vink-web` SSR) | PASS, 7/7 test (`ViewVisitTracker`, `RetryPlan`, `format_uuid_v7`, policy override) |
-| `VINK_TEST_DATABASE_URL=… cargo xtask verify postgres app --filter work_view` | PostgreSQL + router Axum | PASS, 22/22 test (`work_view`, `work_view_intake`, `work_view_reads`; lưu ý lần chạy ngay trước đó với `RUST_TEST_THREADS=2` gặp flake tracing `views_read_is_one_batch_statement_for_any_page_size` từ #342 và đã PASS sạch khi chạy lại) |
-| `cargo xtask verify static repo` | static/docs/decisions | PASS (`decisions`, `skills`, `links`, `boundaries`, `fonts`, `editor packages`) |
-| `cargo xtask verify web --scenario reader --capture checks` & `--scenario standalone --capture checks` | Google Chrome + App + PG thật | `NOT_RUN` / đã dừng giữa chừng theo lệnh người dùng sau vòng sửa P1/P3 (`apps/vink-web/src/work_view.rs`, `apps/vink-web/e2e/work-views-smoke.mjs`); lần chạy đầy đủ ngay trước vòng review (trước khi tách `countdown_timer`/`retry_timer` và chờ `ExtraInfo`) đã PASS cả `reader` (gồm `reader-views`) lẫn `standalone` |
+| `cargo xtask verify unit app --filter config` | unit (`vink-app`) | PASS, 12/12 test (8 lib + 4 bin, trên commit `742c5bc2`) |
+| `cargo xtask verify unit web --filter work_view` | unit/contract (`vink-web` SSR) | PASS, 8/8 test (`ViewVisitTracker`, `RetryPlan`, `format_uuid_v7`, policy override, fixtures `views`) |
+| `VINK_TEST_DATABASE_URL=… cargo xtask verify postgres app --filter work_view` | PostgreSQL + router Axum | PASS 22/22 tại `742c5bc2`; **NOT_RUN** trên commit sửa P2 (`Resolution::Suspended` giữ `Viewer::Member` ở `services/vink-app/src/http/work_views.rs` và `tests/postgres/work_view_intake.rs`), cần chạy lại trước khi merge |
+| `cargo xtask verify static tokens` & `cargo xtask verify static repo` | static/tokens/docs/decisions | PASS (`ui-tokens --check`, `decisions`, `skills`, `links`, `boundaries`, `fonts`, `editor packages`, Tailwind/CSS guard `ui_qualification.rs`) |
+| `cargo xtask verify web --scenario reader --capture checks` & `--scenario standalone --capture checks` | Google Chrome + App + Identity + PG thật | **NOT_RUN** trên commit ghép `#514` (lượt đang chạy bị dừng theo lệnh bàn giao của người dùng; `reader` từng timeout chờ hydration ở trang `/` trong lúc máy chịu tải swap cao). Lần đầy đủ trên nhánh trước P1/P3 đã PASS; phiên review cuối cần chạy lại trọn gói `desk`, `reader`, `standalone` |
 
 **Phần còn mở / bàn giao:**
-- Chưa chạy lại Chrome E2E (`reader`, `standalone`) trên commit sau sửa P1/P3; PR #519 giữ trạng thái **Draft** chờ người dùng review và chạy nốt Chrome E2E trước khi ready/merge.
+- Chưa chạy lại `VINK_TEST_DATABASE_URL=… cargo xtask verify postgres app --filter work_view` sau sửa P2 (`Resolution::Suspended` → `Viewer::Member`).
+- Chưa chạy xong `cargo xtask verify web --scenario desk --scenario reader --scenario standalone --capture checks` trên `HEAD` cuối; chờ phiên review kế tiếp chạy trước khi ready/merge.
 - Kiểm thử đổi `Session` giữa chừng trên Reader: mới có unit test thuần trên `Session::settled_authority` + `ViewVisitTracker::on_authority_update`, chưa có ca E2E bật/tắt phiên trực tiếp giữa lúc đếm ở Chrome.
-- Giao diện Bàn viết (`D-01`/`D-02`, `UX-01..10`) và đồng bộ `docs/design/*` thuộc PR 2 (`#514`). Route xóa tác phẩm/tài khoản (`OQ-2`) và admin gỡ cả bài (`OQ-4`) chưa có ở runtime.
+- Route xóa tác phẩm/tài khoản (`OQ-2`) và admin gỡ cả bài (`OQ-4`) chưa có ở runtime; signoff `VDR-WORK-VIEWS@r2` (`PENDING`) và `DQ-05`/`DQ-10` (`OPEN`) giữ nguyên chờ chủ sản phẩm.
+
+## 11. Giao diện Bàn viết Design r3 (#514)
+
+Theo chỉ dẫn trực tiếp của chủ sản phẩm ngày 25/11/2026, phần giao diện Bàn viết (`#514`) được ghép thêm commit lên cùng PR `#519` trên nhánh `feat/343-work-views-intake` (không nâng `VDR-WORK-VIEWS@r2` khỏi `PENDING`, không nâng `CHOICE-*` khỏi `DESIGN_PROPOSED`, giữ `DQ-05` và `DQ-10` ở trạng thái `OPEN`).
+
+### 11.1 Thay đổi chính theo r3
+
+- **Icon & token:** bổ sung `visibility-outline` từ `google/material-design-icons@10ecc14790612ca8fd164e3f4ffe9c16fc50d5b7` vào [`icons.json`](../../packages/ui-system/shared/icons.json) (đối chiếu SHA-256) và tái sinh `icons.rs`/`VinkIcons.kt` bằng `cargo xtask ui-tokens`; bổ sung helper `work_view_date_hcm` (`Asia/Ho_Chi_Minh`) trong [`timestamp.rs`](../../packages/vink-patterns/leptos/src/timestamp.rs) và `format_vi_count` trong [`vink-patterns`](../../packages/vink-patterns/leptos/src/lib.rs).
+- **Hàng tác phẩm `AuthorWorkRow` (`D-01`/`D-02`):** giữ thứ tự cố định **Thấm → Nhận xét → Lượt xem** (`pen-flight` 22px, `chat-bubble-outline` 20px, `visibility-outline` 20px), bỏ hoàn toàn nút/link “Đọc” / “Đọc bản công khai”, vùng giữ chỗ và tab stop cũ (`.vk-author-work__reader`); nối API thật cho 4 trạng thái `counted` (gồm `0` và `Tính từ dd/mm/yyyy`), `not_started` (`— Chưa bắt đầu thống kê`), `never_public` (ẩn khỏi dòng số liệu, giữ nhãn ẩn screen reader) và `unavailable` (`— Chưa tải được`); giữ số lịch sử (`OQ-1 = A`) ở bài riêng tư/đã ẩn sau kiểm duyệt; dùng tonal chọn lọc cho nhãn trạng thái và nâng cấp nút `Xem kiểm duyệt` sang `ButtonVariant::Tonal` + icon `verified-user`.
+- **Giải thích độ phủ (`UX-07`):** thêm nút `#views-explainer-trigger` (chỉ hiện khi danh sách có tác phẩm không ở `never_public`) và sheet `#views-explainer` (`DialogKind::Sheet`, trả focus về trigger khi đóng/Escape/Back), đọc ngưỡng động từ `WorkViewDurationPolicy::DEFAULT` của `vink-work-view-policy` để giữ một nguồn cấu hình duy nhất.
+
+### 11.2 Bằng chứng đơn vị, E2E và tự kiểm UI năm chiều
+
+| Phép kiểm | Ranh giới | Kết quả thực tế |
+| --- | --- | --- |
+| `cargo test --locked -p vink-patterns --lib` | unit/SSR (`vink-patterns`) | PASS, 22/22 test (`format_vi_count`, `work_view_date_hcm`, `AuthorWorkRow` với thứ tự D-01, bỏ Đọc D-02, 4 trạng thái views, lịch sử `OQ-1=A`) |
+| `cargo xtask verify unit web --filter author_work` | unit/contract (`vink-web` SSR) | PASS, 3/3 test (fixtures `author.works.views*.json`, enum lạ, count âm, `views = None`) |
+| `cargo xtask verify unit ui` | unit (`vink-ui`) | PASS, 70/70 test |
+| `cargo xtask verify web --scenario desk --capture full` | Chrome + App + PG + Tailwind | PASS toàn bộ scenario `desk` tại run `1795597787117725000-33327`. Sau sửa 1 dòng CSS ở `#views-explainer-trigger` (`margin-inline-start`), pha `authorWorks` PASS (gồm assertion 1 dòng 44–48px tại 1440px, 24 ma trận `320/390/834/1440 × light/dark × 100/150/200%`, mở/đóng sheet `#views-explainer`) tại run `1795599062264813000-43827`; `draftDashboard` cùng run gặp timeout hydration dưới tải swap. |
+| `cargo xtask verify web --scenario desk --scenario reader --scenario standalone --capture checks` | Chrome đầy đủ | **NOT_RUN** (đã dừng tác vụ nền để bàn giao theo yêu cầu người dùng). |
+
+| Chiều UX | Kết quả / giới hạn |
+| --- | --- |
+| Functional | **PASS** unit/SSR/contract (`vink-patterns` 22/22, `author_work` 3/3) và Chrome `authorWorks` trước/sau sửa trigger; ca tích hợp end-to-end trong `work-views-smoke.mjs` (`reader` + `standalone`) cần chạy lại ở phiên review. |
+| Geometry | **PASS** 24 cấu hình trong `authorWorks` (`320/390/834/1440 × light/dark × text100/150/200%`): không tràn ngang, card bo 20px khe 8px, icon 22/20/20px, trigger `#views-explainer-trigger` 44–48px một dòng ở 1440px và nút `Xem kiểm duyệt` nằm trên bottom bar tại 390/text200%. |
+| Visual | **SCREENSHOT_INSPECTED** (mở trực tiếp PNG từ run `1795599062264813000-43827` đối chiếu bộ r3 `DESIGN_SPEC` / `LAYOUT_SPEC`): `1440` sáng/tối, `390` sáng, `320/150%` sáng, `320/200%` tối, `no-draft 390/200%` tối; kết hợp kiểm sheet `#views-explainer` `1440` sáng và `390` tối ở run `1795597787117725000-33327`. Giữ `DESIGN_PROPOSED`; giữ `DQ-05` (`<Timestamp>` đầy đủ) và `DQ-10` (secondary-container, không dùng tertiary) đang `OPEN`. |
+| Accessibility/Responsive | **PASS** tương phản CSS token từ runner `desk` (tối thiểu ≥ 4,5), focus title trên sheet `#views-explainer`, Escape/Close trả focus về `#views-explainer-trigger`, văn bản ẩn screen reader cho `never_public` và nhãn trạng thái. Screen reader có tên, OS touch/mobile thật, zoom trình duyệt thật: **NOT_RUN**. |
+| Interaction | **PASS** mở/đóng sheet `#views-explainer` bằng phím Enter/Escape và click, refresh thay đồng bộ `publication` + `views` không cướp focus khỏi `#draft-search`, 503 giữ snapshot stale, 403 xóa dữ kiện riêng. OS IME thật: **NOT_RUN**. |

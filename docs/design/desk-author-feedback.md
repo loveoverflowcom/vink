@@ -1,5 +1,11 @@
 # Bàn viết — trạng thái và số liệu bản công khai (#214)
 
+> **Cập nhật 25/11/2026 (#323 / #514 / Work Views r3):** hàng tác phẩm Bàn viết hiện theo
+> [LayoutSpec Lượt xem r3](work-views.md) và [R4.3 §5.3](redesign-r4/layout-spec.md#53-thẻ-tác-phẩm):
+> cụm số liệu cố định thứ tự **Thấm → Nhận xét → Lượt xem** (`D-01`), bỏ hẳn liên kết sibling
+> “Đọc bản công khai” (`D-02`), bài riêng tư/ẩn giữ số Lượt xem lịch sử (`OQ-1 = A`), và nút giải
+> thích “Cách tính lượt xem” mở sheet ở đầu danh sách. Phần dưới đây giữ lịch sử LayoutSpec r1 của #214.
+
 LayoutSpec r1, hướng triển khai theo issue #214, kế thừa compact R6/#213. Mục tiêu: tác giả
 quét được trạng thái và hai số riêng trên từng tác phẩm; điểm chính vẫn là mở bản nháp để viết.
 Nguồn: `develop@b28e4bdd42eb84c1f45a7ebff4b983cfbc9f9567`, `DeskIndex`, pattern

@@ -34,6 +34,19 @@ pub fn first_public_date_hcm(timestamp: &str) -> Option<String> {
     ))
 }
 
+/// Zero-padded calendar date (`dd/mm/yyyy`) in `Asia/Ho_Chi_Minh` (UTC+7, no DST) for work-view
+/// “Tính từ dd/mm/yyyy” labels (`VIEW-09`, `UX-10`).
+pub fn work_view_date_hcm(timestamp: &str) -> Option<String> {
+    let instant = OffsetDateTime::parse(timestamp, &Rfc3339).ok()?;
+    let hcm = instant.to_offset(UtcOffset::from_hms(7, 0, 0).ok()?);
+    Some(format!(
+        "{:02}/{:02}/{:04}",
+        hcm.day(),
+        hcm.month() as u8,
+        hcm.year()
+    ))
+}
+
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen::prelude::wasm_bindgen(inline_js = "
 export function vinkLocalTimestamp(instant, fallback) {
@@ -121,6 +134,21 @@ mod tests {
                 expected,
                 "{source}"
             );
+        }
+    }
+
+    #[test]
+    fn work_view_date_hcm_zero_pads_and_respects_utc_plus_7_boundaries() {
+        for (source, expected) in [
+            ("2026-12-01T01:00:00Z", Some("01/12/2026")),
+            ("2026-11-30T17:00:00Z", Some("01/12/2026")),
+            ("2026-11-30T16:59:59Z", Some("30/11/2026")),
+            ("2026-01-01T00:00:00Z", Some("01/01/2026")),
+            ("2026-12-31T17:00:00Z", Some("01/01/2027")),
+            ("invalid", None),
+            ("", None),
+        ] {
+            assert_eq!(work_view_date_hcm(source).as_deref(), expected, "{source}");
         }
     }
 }

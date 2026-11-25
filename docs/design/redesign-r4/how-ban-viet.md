@@ -26,9 +26,11 @@ họ vẫn xem được kết quả trước đó trong cùng phiên và có cá
    no-store với dữ kiện riêng. Cursor là vị trí đọc chứ không cấp quyền. Đổi account hoặc scope
    làm kết quả muộn mất hiệu lực. Tìm/sắp xếp và phân trang vẫn do provider thực hiện.
 4. [DraftListView](../../../apps/vink-web/src/pages/desk.rs#L627) render danh sách đã đọc và
-   `AuthorWorkRow` key bằng Work ID. Trang 24 mục, tối đa 240 mục mỗi phần. Hàng mở bản thảo,
-   liên kết công khai là sibling và gắn ngữ cảnh bản công khai. [Registry tác giả](../../development/desk-author-feedback.md)
-   sở hữu quy tắc các số liệu và quyền.
+   `AuthorWorkRow` key bằng Work ID. Trang 24 mục, tối đa 240 mục mỗi phần. Hàng mở bản thảo;
+   không còn liên kết “Đọc” trên thẻ theo `D-02` ([LayoutSpec Lượt xem r3](../work-views.md)),
+   hàng số liệu theo thứ tự `Thấm → Nhận xét → Lượt xem` (`D-01`) kèm giải thích `#views-explainer`
+   và [registry Lượt xem](../../development/work-views.md). [Registry tác giả](../../development/desk-author-feedback.md)
+   sở hữu quy tắc Thấm/Nhận xét và quyền.
 
 ## Mở chi tiết kiểm duyệt (#477)
 

@@ -50,7 +50,8 @@ và [#254 — Giao diện Editor yên tĩnh](editor-quiet-254.md): bỏ footer `
 Thêm native trong flow, paper/canvas scoped và giữ save/recovery/focus của #217.
 
 [LayoutSpec R4.3 — Bàn viết, Khám phá và rail](redesign-r4/layout-spec.md) là đầu mối thiết kế
-hiện hành (`DESIGN_PROPOSED`). [Bàn giao #414](redesign-r4/review-414.md) ghi HOW/WHY, evidence
+hiện hành (`DESIGN_PROPOSED`); phần hàng tác phẩm Bàn viết và Lượt xem được cập nhật bởi
+[LayoutSpec Lượt xem r3](work-views.md) (`#323`/`#514`, `D-01`/`D-02`, `DQ-05`/`DQ-10` còn `OPEN`). [Bàn giao #414](redesign-r4/review-414.md) ghi HOW/WHY, evidence
 và owner cho các phần còn mở. [Audit R4.1/R4.2](redesign-r4-ban-viet-kham-pha.md) giữ ba phương
 án và findings có provenance lịch sử `develop@7ca0dd0d`.
 

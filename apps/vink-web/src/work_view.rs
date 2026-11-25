@@ -23,6 +23,15 @@ pub fn explanation_for_policy(policy: WorkViewDurationPolicy) -> String {
     policy.ux_explanation_vi()
 }
 
+/// First paragraph of the Desk “Cách tính lượt xem” sheet (`DESIGN_SPEC §4`), driven directly
+/// by the shared [`WorkViewDurationPolicy`] so the threshold is never hardcoded a second time.
+pub fn views_explainer_lead_vi(policy: WorkViewDurationPolicy) -> String {
+    format!(
+        "Số lần bài được mở đọc và hiển thị ít nhất {}, mỗi người tối đa một lần trong 24 giờ.",
+        policy.threshold_label_vi()
+    )
+}
+
 /// Lifecycle state of a single intentional public Reader open in one tab.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VisitState {
@@ -688,6 +697,13 @@ mod tests {
         assert!(custom_copy.contains("1,2 giây"), "{custom_copy}");
         assert!(!custom_copy.contains("5 giây"), "{custom_copy}");
         assert!(ux_explanation_vi().contains("5 giây"));
+
+        let custom_lead = views_explainer_lead_vi(custom);
+        assert!(custom_lead.contains("ít nhất 1,2 giây"), "{custom_lead}");
+        assert!(!custom_lead.contains("5 giây"), "{custom_lead}");
+        assert!(
+            views_explainer_lead_vi(WorkViewDurationPolicy::DEFAULT).contains("ít nhất 5 giây")
+        );
     }
 
     #[test]

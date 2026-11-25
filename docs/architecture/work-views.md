@@ -31,8 +31,8 @@ revision/SHA-256 theo `VDR-DECISION-SIGNOFF@r1`); `@r1` vẫn là marker active 
 | Chiều | Trạng thái |
 | --- | --- |
 | Quyết định sản phẩm | `r1` (`P-01..P-11`, `VIEW-01..12`): `PRODUCT_CONFIRMED` ngày 21/11/2026 ([signoff](../../decisions/signoffs/VDR-WORK-VIEWS.r1.toml)). Delta 25/11/2026 (`#323`/`#340`: ngưỡng 5s cấu hình chung, `OQ-1=A`, `OQ-2`, `OQ-3A/B`, `OQ-4`, `UX-01..10`, `D-01`/`D-02`, 2 PR) được chủ sản phẩm chốt trên issue; proposal [VDR-WORK-VIEWS@r2](../../decisions/proposals/VDR-WORK-VIEWS.r2.toml) `PENDING` chờ signoff đúng payload/SHA-256. |
-| Quyết định kiến trúc | #341 đề xuất CHOICE-02 A, CHOICE-03 và CHOICE-06 A (`DESIGN_PROPOSED`, [registry §7](../development/work-views.md#7-đường-ghi-341)); #342 đề xuất CHOICE-05 A ([registry §9.1](../development/work-views.md#91-choice-05-design_proposed)); #343 (PR1) đề xuất CHOICE-01, CHOICE-04 và CHOICE-POLICY ([registry §10](../development/work-views.md#10-thu-nhận-http-và-tín-hiệu-reader-343)). Chưa lựa chọn nào `Accepted`. |
-| Mức triển khai | Xem [registry phát triển](../development/work-views.md) cho mức hiện tại của `#341`, `#342`, `#343` (PR1) và phần giao diện Bàn viết `#514` (PR2). |
+| Quyết định kiến trúc | #341 đề xuất CHOICE-02 A, CHOICE-03 và CHOICE-06 A (`DESIGN_PROPOSED`, [registry §7](../development/work-views.md#7-đường-ghi-341)); #342 đề xuất CHOICE-05 A ([registry §9.1](../development/work-views.md#91-choice-05-design_proposed)); #343 đề xuất CHOICE-01, CHOICE-04 và CHOICE-POLICY ([registry §10](../development/work-views.md#10-thu-nhận-http-và-tín-hiệu-reader-343--pr1)); #514 ghi [LayoutSpec r3](../design/work-views.md) (`DESIGN_PROPOSED`, `DQ-05`/`DQ-10` giữ `OPEN`). Chưa lựa chọn nào `Accepted`. |
+| Mức triển khai | Xem [registry phát triển](../development/work-views.md) cho mức hiện tại của `#341`, `#342`, `#343` và `#514`. |
 | Bằng chứng | Xem [registry phát triển](../development/work-views.md). |
 
 Các luật đã có và đặc tả này giữ nguyên: WR-01 (nháp riêng), UX-01 (Reader có HTML từ server),
@@ -78,8 +78,8 @@ xóa khi hết cửa sổ (P-11). Đúng mốc 24 giờ (08:00:00 thứ Ba) vẫ
 | Mã chống trùng đã băm | `ReaderDigest` (HMAC theo khóa server `VINK_WORK_VIEW_DIGEST_KEY`), bảng `work_view_windows` | có (core + PostgreSQL) | Dạng băm của người đọc gắn với tác phẩm; tự xóa khi hết cửa sổ. |
 | Mã sự kiện | `ViewEventId` (UUIDv7), receipt `work_view_receipts` | có (core + PostgreSQL) | Phát một lần tại đúng ngưỡng; gửi lại cùng mã không bao giờ cộng thêm (P-03, P-10). |
 | Tổng theo tác phẩm, tổng theo ngày | `work_view_totals`, `work_view_days` | có (PostgreSQL); tổng đọc qua API tác giả (#342), tổng ngày chưa đọc | Không theo người (P-11). |
-| Mốc bật | `work_view_counting.started_at` | có (PostgreSQL); `views.counted_since` (#342); nhãn hiển thị thuộc #514 | Ngày bắt đầu đếm; nhãn “Tính từ dd/mm/yyyy” (P-09). |
-| Bàn viết | `/ban-viet`, `GET /api/v1/author/works` ([read-model](../development/desk-author-feedback.md)) | có sẵn (API); UI Lượt xem + `D-01/D-02` ở #514 | Nơi tác giả thấy số; thứ tự cố định Thấm → Nhận xét → Lượt xem, bỏ nút “Đọc”. |
+| Mốc bật | `work_view_counting.started_at` | có (PostgreSQL #341; `views.counted_since` #342; nhãn Web #514) | Ngày bắt đầu đếm; nhãn “Tính từ dd/mm/yyyy” (P-09). |
+| Bàn viết | `/ban-viet`, `GET /api/v1/author/works` ([read-model](../development/desk-author-feedback.md), [LayoutSpec r3](../design/work-views.md)) | có (`persistence-api` #342 + `web` #514) | Nơi tác giả thấy số; thứ tự cố định Thấm → Nhận xét → Lượt xem, bỏ nút “Đọc”. |
 
 ## 3. Bảng quyết định P-01..P-11
 
@@ -187,7 +187,7 @@ Reader không có gì mới.
 
 Độc giả luôn đọc được bài khi thống kê lỗi, dù lỗi ghi hay lỗi đọc số.
 
-| # | Trạng thái tác phẩm | Độc giả mở URL | Lượt có thể tăng? | Tác giả thấy ở Bàn viết (khi #514 lên UI; D-01/D-02) |
+| # | Trạng thái tác phẩm | Độc giả mở URL | Lượt có thể tăng? | Tác giả thấy ở Bàn viết (`#514`, `D-01`/`D-02`) |
 | --- | --- | --- | --- | --- |
 | L-01 | Nháp chưa từng công khai, kể cả đang chờ duyệt lần đầu | Không tìm thấy (404, PUB-05 D) | Không | Ẩn metric hoặc “—” kèm lý do chưa công khai; không hiện “0”. Không có nút “Đọc”. |
 | L-02 | Công khai sau mốc bật, chưa ai xem | Thân bài | Có (sau ≥ ngưỡng 5s) | “0” thật, chỉ khi đọc số thành công (`Thấm → Nhận xét → Lượt xem`). Không có nút “Đọc”. |
@@ -207,9 +207,8 @@ Reader không có gì mới.
 ## 8. Trải nghiệm người dùng (nghĩa và quy ước UX-01..10)
 
 Các ID `UX-01..UX-10` dưới đây là ID **cục bộ của Epic #323** (khác với `UX-01` nền tảng Reader
-của PRD §4). Giao diện Bàn viết thuộc `#514` (PR2/2); thiết kế chi tiết (`LayoutSpec`, artboard)
-được `#514` đồng bộ với delta 25/11 (`D-01`/`D-02`, không dùng PNG R1 cũ có nút “Đọc” hoặc thứ tự
-khác làm chuẩn):
+của PRD §4). Giao diện Bàn viết (`#514`) triển khai theo [LayoutSpec Lượt xem r3](../design/work-views.md)
+(đồng bộ delta 25/11 `D-01`/`D-02`, không dùng bản thiết kế r1/r2 cũ):
 
 - **Thứ tự và bỏ nút Đọc (`D-01`, `D-02`, `UX-01..03`):** trong hàng tác phẩm Bàn viết, các
   metric được phép hiển thị giữ thứ tự cố định **Thấm → Nhận xét → Lượt xem** (Lượt xem đứng cuối),
@@ -258,7 +257,7 @@ khác làm chuẩn):
 Các lựa chọn do issue tương ứng chọn bằng bằng chứng (`DESIGN_PROPOSED`, chưa `Accepted`).
 #341 đề xuất `CHOICE-02 A`, `CHOICE-03` và `CHOICE-06 A` ([registry §7](../development/work-views.md#7-đường-ghi-341));
 #342 đề xuất `CHOICE-05 A` ([registry §9.1](../development/work-views.md#91-choice-05-design_proposed));
-#343 (PR1) đề xuất `CHOICE-01`, `CHOICE-04` và `CHOICE-POLICY` ([registry §10](../development/work-views.md#10-thu-nhận-http-và-tín-hiệu-reader-343)).
+#343 đề xuất `CHOICE-01`, `CHOICE-04` và `CHOICE-POLICY` ([registry §10](../development/work-views.md#10-thu-nhận-http-và-tín-hiệu-reader-343--pr1)).
 Lựa chọn nào làm đổi nghĩa số, quyền riêng tư, độ trễ hay khả năng mất lượt thì quay lại chủ
 sản phẩm.
 
@@ -292,6 +291,7 @@ tương ứng). Các mục này cần quyết định/PR riêng trước khi là
 | Bản ghi quyết định | [VDR-WORK-VIEWS@r1](../../decisions/proposals/VDR-WORK-VIEWS.r1.toml) (`PRODUCT_CONFIRMED`, active), [VDR-WORK-VIEWS@r2](../../decisions/proposals/VDR-WORK-VIEWS.r2.toml) (`PENDING`, delta 25/11) |
 | Mức triển khai, bản đồ issue, kịch bản xuyên suốt | [Registry phát triển](../development/work-views.md) |
 | Policy ngưỡng dùng chung | `packages/work-view-policy` (`vink-work-view-policy`) |
-| Code triển khai | `services/vink-app` (domain, application, PostgreSQL, HTTP intake & author read), `apps/vink-web` (tín hiệu Reader; Bàn viết ở `#514`), `services/vink-app/contracts/http/v1` |
+| Thiết kế Bàn viết r3 | [LayoutSpec Lượt xem r3](../design/work-views.md) (`DESIGN_PROPOSED`) |
+| Code triển khai | `services/vink-app` (domain, application, PostgreSQL, HTTP intake & author read), `packages/vink-patterns` (`AuthorWorkRow`), `apps/vink-web` (tín hiệu Reader & giao diện Bàn viết `#514`), `services/vink-app/contracts/http/v1` |
 
 Bằng chứng (kiểm tài liệu, unit, PostgreSQL, browser) ghi ở registry.

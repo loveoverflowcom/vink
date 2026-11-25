@@ -11,7 +11,7 @@ pub use notification::{
 
 mod timestamp;
 use timestamp::Timestamp;
-pub use timestamp::{first_public_date_hcm, updated_at_label};
+pub use timestamp::{first_public_date_hcm, updated_at_label, work_view_date_hcm};
 
 mod tags;
 pub use tags::{
@@ -221,6 +221,25 @@ pub fn DraftRow(draft: DraftSummary) -> impl IntoView {
     }
 }
 
+/// Formats a non-negative integer using Vietnamese dot thousands grouping (`1.234`, `1.234.567`),
+/// never abbreviating counts (`VIEW-12`, `UX-04`, `D-04`).
+pub fn format_vi_count(count: i64) -> String {
+    let negative = count < 0;
+    let digits = count.unsigned_abs().to_string();
+    let len = digits.len();
+    let mut out = String::with_capacity(len + len / 3 + usize::from(negative));
+    if negative {
+        out.push('-');
+    }
+    for (idx, ch) in digits.chars().enumerate() {
+        if idx > 0 && (len - idx).is_multiple_of(3) {
+            out.push('.');
+        }
+        out.push(ch);
+    }
+    out
+}
+
 /// Read-only facts supplied by the host; no DTO, request or endorsement command.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AuthorWorkSummary {
@@ -230,6 +249,42 @@ pub struct AuthorWorkSummary {
     pub editor_href: Option<String>,
     pub status: Vec<AuthorWorkLabel>,
     pub public: Option<AuthorWorkPublic>,
+    pub views: AuthorWorkViews,
+}
+
+/// Selective tonal emphasis for Work Views r3 status badges (no tertiary while DQ-10 is OPEN).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AuthorWorkLabelTone {
+    Quiet,
+    Ok,
+    Attn,
+    Bad,
+}
+
+impl AuthorWorkLabelTone {
+    pub const fn id(self) -> &'static str {
+        match self {
+            Self::Quiet => "quiet",
+            Self::Ok => "ok",
+            Self::Attn => "attn",
+            Self::Bad => "bad",
+        }
+    }
+
+    const fn classes(self) -> &'static str {
+        match self {
+            Self::Quiet => "py-[3px] ps-0 pe-vk-1 text-vk-on-surface-variant",
+            Self::Ok => {
+                "py-[3px] ps-vk-2 pe-[10px] rounded-vk-sm bg-vk-success-container text-vk-on-success-container"
+            }
+            Self::Attn => {
+                "py-[3px] ps-vk-2 pe-[10px] rounded-vk-sm bg-vk-secondary-container text-vk-on-secondary-container"
+            }
+            Self::Bad => {
+                "py-[3px] ps-vk-2 pe-[10px] rounded-vk-sm bg-vk-error-container text-vk-on-error-container"
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -237,37 +292,67 @@ pub struct AuthorWorkLabel {
     pub short: &'static str,
     pub detail: &'static str,
     pub icon: IconName,
+    pub tone: AuthorWorkLabelTone,
 }
 
 impl AuthorWorkLabel {
-    pub const fn new(short: &'static str, detail: &'static str, icon: IconName) -> Self {
+    pub const fn new(
+        short: &'static str,
+        detail: &'static str,
+        icon: IconName,
+        tone: AuthorWorkLabelTone,
+    ) -> Self {
         Self {
             short,
             detail,
             icon,
+            tone,
         }
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AuthorWorkPublic {
-    pub href: String,
     pub title: Option<String>,
     pub tham: Option<i64>,
     pub comments: Option<i64>,
 }
 
+/// Author-private view totals (`VIEW-07..12`, `UX-01..10`), independent of `current_public`
+/// so historical totals survive when a work becomes private or withdrawn (`OQ-1 = A`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AuthorWorkViews {
+    Counted {
+        count: i64,
+        counted_since: Option<String>,
+    },
+    NotStarted,
+    NeverPublic,
+    Unavailable,
+}
+
+impl AuthorWorkViews {
+    pub fn shows_in_metrics(&self) -> bool {
+        !matches!(self, Self::NeverPublic)
+    }
+}
+
+const AUTHOR_WORK_LINK_CLASS: &str = "vk-draft-row__link grid items-center min-w-0 py-vk-4 [padding-inline:calc(var(--vk-space-4)_+_var(--vk-space-1))]";
+const AUTHOR_WORK_STATIC_TEXT_CLASS: &str = "vk-draft-row__text grid gap-vk-2 min-w-0 py-vk-4 [padding-inline:calc(var(--vk-space-4)_+_var(--vk-space-1))]";
+const AUTHOR_WORK_TEXT_CLASS: &str = "vk-draft-row__text grid gap-vk-2 min-w-0";
 const AUTHOR_WORK_CONTEXT_CLASS: &str = "vk-author-work__context m-0 wrap-anywhere";
 
 #[component]
 fn AuthorWorkCount(name: &'static str, icon: IconName, count: Option<i64>) -> impl IntoView {
+    let formatted = count.map(format_vi_count);
+    let title = formatted.as_ref().map_or_else(
+        || format!("Chưa tải được số {name}"),
+        |n| format!("{n} {name}"),
+    );
     view! {
-        <span class="vk-author-work__count inline-flex items-center gap-vk-1 [max-inline-size:100%]" title=count.map_or_else(
-            || format!("Chưa tải được số {name}"),
-            |n| format!("{n} {name}"),
-        )>
+        <span class="vk-author-work__count inline-flex items-center [gap:6px] whitespace-nowrap [max-inline-size:100%]" title=title>
             <Icon name=icon />
-            {match count {
+            {match formatted {
                 Some(n) => view! { <span>{n}<span class="vk-ui-visually-hidden">" " {name}</span></span> }.into_any(),
                 None => view! { <span>"— " {name}<span class="vk-ui-visually-hidden">" (chưa tải được)"</span></span> }.into_any(),
             }}
@@ -276,52 +361,150 @@ fn AuthorWorkCount(name: &'static str, icon: IconName, count: Option<i64>) -> im
 }
 
 #[component]
+fn AuthorWorkViewsMetric(views: AuthorWorkViews, historical: bool) -> impl IntoView {
+    match views {
+        AuthorWorkViews::Counted {
+            count,
+            counted_since,
+        } => {
+            let formatted = format_vi_count(count);
+            let title = match &counted_since {
+                Some(date) => format!("{formatted} lượt xem, tính từ {date}"),
+                None => format!("{formatted} lượt xem"),
+            };
+            view! {
+                <span
+                    class="vk-author-work__count vk-author-work__views inline-flex flex-wrap items-center gap-y-vk-1 [column-gap:8px] [max-inline-size:100%]"
+                    class:vk-author-work__views--historical=historical
+                    data-testid="author-work-views"
+                    data-views-state="counted"
+                    title=title
+                >
+                    <span class="vk-author-work__views-value inline-flex items-center [gap:6px] whitespace-nowrap">
+                        <Icon name=IconName::VisibilityOutline />
+                        <span class="wrap-anywhere whitespace-normal">
+                            {formatted}
+                            <span class="vk-ui-visually-hidden">" lượt xem"</span>
+                        </span>
+                    </span>
+                    {counted_since.map(|date| view! {
+                        <span class="vk-author-work__views-since whitespace-nowrap">{format!("Tính từ {date}")}</span>
+                    })}
+                </span>
+            }
+            .into_any()
+        }
+        AuthorWorkViews::NotStarted => view! {
+            <span
+                class="vk-author-work__count vk-author-work__views vk-author-work__views--off inline-flex flex-wrap items-center gap-y-vk-1 [column-gap:8px] [max-inline-size:100%]"
+                data-testid="author-work-views"
+                data-views-state="not_started"
+                title="Lượt xem: chưa bắt đầu thống kê"
+            >
+                <span class="vk-author-work__views-value inline-flex items-center [gap:6px] whitespace-nowrap">
+                    <Icon name=IconName::VisibilityOutline />
+                    <span aria-hidden="true">"—"</span>
+                </span>
+                <span class="vk-author-work__views-reason">
+                    <span class="vk-ui-visually-hidden">"Lượt xem: "</span>
+                    "Chưa bắt đầu thống kê"
+                </span>
+            </span>
+        }
+        .into_any(),
+        AuthorWorkViews::Unavailable => view! {
+            <span
+                class="vk-author-work__count vk-author-work__views vk-author-work__views--off inline-flex flex-wrap items-center gap-y-vk-1 [column-gap:8px] [max-inline-size:100%]"
+                data-testid="author-work-views"
+                data-views-state="unavailable"
+                title="Lượt xem: chưa tải được"
+            >
+                <span class="vk-author-work__views-value inline-flex items-center [gap:6px] whitespace-nowrap">
+                    <Icon name=IconName::VisibilityOutline />
+                    <span aria-hidden="true">"—"</span>
+                </span>
+                <span class="vk-author-work__views-reason">
+                    <span class="vk-ui-visually-hidden">"Lượt xem: "</span>
+                    "Chưa tải được"
+                </span>
+            </span>
+        }
+        .into_any(),
+        AuthorWorkViews::NeverPublic => ().into_any(),
+    }
+}
+
+#[component]
 pub fn AuthorWorkRow(
     #[prop(into)] work: Signal<AuthorWorkSummary>,
     #[prop(optional)] review_action: Option<Children>,
 ) -> impl IntoView {
-    let details = move || {
+    let details = move |padded: bool| {
+        let text_class = if padded {
+            AUTHOR_WORK_STATIC_TEXT_CLASS
+        } else {
+            AUTHOR_WORK_TEXT_CLASS
+        };
         view! {
-            <div class=DRAFT_ROW_TEXT_CLASS>
+            <div class=text_class>
                 <span class=DRAFT_ROW_TITLE_CLASS class:vk-author-work__untitled=move || work.with(|w| w.untitled)>{move || work.get().title}</span>
-                <div class="vk-draft-meta vk-author-work__status flex flex-wrap items-center gap-y-vk-1 gap-x-vk-3 m-0 wrap-anywhere text-vk-on-surface-variant text-[length:var(--vk-type-caption-size)] font-vk-role-caption [&>span]:min-w-0 [&>span]:wrap-anywhere">
-                    {move || work.get().status.into_iter().map(|label| view! {
-                        <span class="vk-author-work__label inline-flex items-center gap-vk-1 [max-inline-size:100%]" title=label.detail>
-                            <Icon name=label.icon size=IconSize::Small />
-                            <span aria-hidden="true">{label.short}</span>
-                            <span class="vk-ui-visually-hidden">{label.detail}</span>
-                        </span>
+                <div class="vk-draft-meta vk-author-work__status flex flex-wrap items-center gap-y-vk-2 [column-gap:10px] m-0 wrap-anywhere text-vk-on-surface-variant text-[length:var(--vk-type-caption-size)] font-vk-role-caption [&>span]:min-w-0 [&>span]:wrap-anywhere">
+                    {move || work.get().status.into_iter().map(|label| {
+                        let class = format!(
+                            "vk-author-work__label inline-flex items-center gap-vk-1 [max-inline-size:100%] {}",
+                            label.tone.classes()
+                        );
+                        view! {
+                            <span class=class data-tone=label.tone.id() title=label.detail>
+                                <Icon name=label.icon size=IconSize::Small />
+                                <span aria-hidden="true">{label.short}</span>
+                                <span class="vk-ui-visually-hidden">{label.detail}</span>
+                            </span>
+                        }
                     }).collect_view()}
-                    <span>"Cập nhật " {move || view! { <Timestamp instant=work.get().updated_at /> }}</span>
+                    <span class="vk-author-work__time">"Cập nhật " {move || view! { <Timestamp instant=work.get().updated_at /> }}</span>
                 </div>
                 <Show when=move || work.with(|w| w.editor_href.is_none())>
                     <p class=AUTHOR_WORK_CONTEXT_CLASS>"Không có bản nháp để sửa"</p>
                 </Show>
-                {move || work.get().public.map(|public| view! {
-                    <p class="vk-author-work__metrics flex flex-wrap items-center gap-y-vk-1 gap-x-vk-3 m-0 wrap-anywhere" data-testid="author-work-metrics">
-                        <AuthorWorkCount name="Thấm" icon=IconName::PenFlight count=public.tham />
-                        <AuthorWorkCount name="nhận xét" icon=IconName::ChatBubbleOutline count=public.comments />
-                    </p>
-                    {public.title.map(|title| view! { <p class=AUTHOR_WORK_CONTEXT_CLASS>"Bản công khai: " {title}</p> })}
-                })}
+                {move || {
+                    let current = work.get();
+                    let has_metrics = current.public.is_some() || current.views.shows_in_metrics();
+                    let historical = current.public.is_none();
+                    let public_title = current.public.as_ref().and_then(|p| p.title.clone());
+                    let never_public = current.views == AuthorWorkViews::NeverPublic;
+                    view! {
+                        {has_metrics.then(|| {
+                            let public = current.public.clone();
+                            let views = current.views.clone();
+                            view! {
+                                <p class="vk-author-work__metrics flex flex-wrap items-center gap-y-vk-1 [column-gap:20px] mt-vk-1 mb-0 mx-0 wrap-anywhere" data-testid="author-work-metrics">
+                                    {public.map(|p| view! {
+                                        <AuthorWorkCount name="Thấm" icon=IconName::PenFlight count=p.tham />
+                                        <AuthorWorkCount name="nhận xét" icon=IconName::ChatBubbleOutline count=p.comments />
+                                    })}
+                                    <AuthorWorkViewsMetric views historical />
+                                </p>
+                            }
+                        })}
+                        {never_public.then(|| view! {
+                            <span class="vk-ui-visually-hidden" data-testid="author-work-views-never-public">
+                                "Lượt xem: chưa có số vì tác phẩm chưa từng công khai"
+                            </span>
+                        })}
+                        {public_title.map(|title| view! {
+                            <p class=AUTHOR_WORK_CONTEXT_CLASS>"Bản công khai: " {title}</p>
+                        })}
+                    }
+                }}
             </div>
         }
     };
     view! {
         <div class="vk-author-work flex flex-wrap items-center [min-inline-size:0] [background:var(--vk-bg-content)] rounded-vk-card">
-            <Show when=move || work.with(|w| w.editor_href.is_some()) fallback=details>
-                <Link href=Signal::derive(move || work.get().editor_href.unwrap_or_default()) attr:class=DRAFT_ROW_LINK_CLASS variant=LinkVariant::Standalone>
-                    {details()}
-                </Link>
-            </Show>
-            <Show when=move || work.with(|w| w.public.is_some())>
-                <Link href=Signal::derive(move || work.get().public.map(|p| p.href).unwrap_or_default())
-                    attr:class=format!("vk-author-work__reader {}", ButtonVariant::Tonal.classes())
-                    attr:aria-label=move || work.with(|w| {
-                        let title = w.public.as_ref().and_then(|p| p.title.as_deref()).unwrap_or(&w.title);
-                        format!("Đọc bản công khai của {title}")
-                    })>
-                    <Icon name=IconName::Visibility />"Đọc"
+            <Show when=move || work.with(|w| w.editor_href.is_some()) fallback=move || details(true)>
+                <Link href=Signal::derive(move || work.get().editor_href.unwrap_or_default()) attr:class=AUTHOR_WORK_LINK_CLASS variant=LinkVariant::Standalone>
+                    {details(false)}
                 </Link>
             </Show>
             {review_action.map(|action| action())}
@@ -1599,6 +1782,126 @@ mod tests {
                 && html.contains("pen-flight")
                 && html.contains("Kiểm tra lại"),
             "{html}"
+        );
+    }
+
+    #[test]
+    fn format_vi_count_uses_vietnamese_dot_grouping() {
+        assert_eq!(format_vi_count(0), "0");
+        assert_eq!(format_vi_count(42), "42");
+        assert_eq!(format_vi_count(999), "999");
+        assert_eq!(format_vi_count(1_000), "1.000");
+        assert_eq!(format_vi_count(1_234), "1.234");
+        assert_eq!(format_vi_count(12_345), "12.345");
+        assert_eq!(format_vi_count(123_456_789), "123.456.789");
+    }
+
+    #[test]
+    fn author_work_row_enforces_d01_order_d02_no_read_and_all_view_states() {
+        let base = |public: Option<AuthorWorkPublic>, views: AuthorWorkViews| AuthorWorkSummary {
+            title: "Mưa trên phố cũ".into(),
+            untitled: false,
+            updated_at: "2026-11-25T10:00:00Z".into(),
+            editor_href: Some("/ban-viet/w1".into()),
+            status: vec![
+                AuthorWorkLabel::new(
+                    "Đã đăng",
+                    "Đã đăng",
+                    IconName::Check,
+                    AuthorWorkLabelTone::Ok,
+                ),
+                AuthorWorkLabel::new(
+                    "Bản mới chờ duyệt",
+                    "Bản mới chờ duyệt",
+                    IconName::Schedule,
+                    AuthorWorkLabelTone::Attn,
+                ),
+                AuthorWorkLabel::new(
+                    "Có bản sửa",
+                    "Đã đăng · Có bản sửa",
+                    IconName::Edit,
+                    AuthorWorkLabelTone::Quiet,
+                ),
+            ],
+            public,
+            views,
+        };
+        let render = |summary: AuthorWorkSummary| {
+            Owner::new().with(|| view! { <AuthorWorkRow work=Signal::stored(summary) /> }.to_html())
+        };
+
+        let public_counted = render(base(
+            Some(AuthorWorkPublic {
+                title: None,
+                tham: Some(1_004),
+                comments: Some(25),
+            }),
+            AuthorWorkViews::Counted {
+                count: 12_345,
+                counted_since: Some("01/12/2026".into()),
+            },
+        ));
+        let idx_tham = public_counted.find("data-icon=\"pen-flight\"").unwrap();
+        let idx_comments = public_counted
+            .find("data-icon=\"chat-bubble-outline\"")
+            .unwrap();
+        let idx_views = public_counted
+            .find("data-icon=\"visibility-outline\"")
+            .unwrap();
+        assert!(
+            idx_tham < idx_comments && idx_comments < idx_views,
+            "D-01 order Thấm -> Nhận xét -> Lượt xem: {public_counted}"
+        );
+        assert!(
+            !public_counted.contains("vk-author-work__reader")
+                && !public_counted.contains("Đọc bản công khai"),
+            "D-02 removes Read link completely: {public_counted}"
+        );
+        assert!(
+            public_counted.contains("1.004")
+                && public_counted.contains("12.345")
+                && public_counted.contains("Tính từ 01/12/2026")
+                && public_counted.contains("data-views-state=\"counted\"")
+                && public_counted.contains("data-tone=\"ok\"")
+                && public_counted.contains("data-tone=\"attn\"")
+                && public_counted.contains("data-tone=\"quiet\""),
+            "{public_counted}"
+        );
+
+        let private_historical = render(base(
+            None,
+            AuthorWorkViews::Counted {
+                count: 3,
+                counted_since: None,
+            },
+        ));
+        assert!(
+            private_historical.contains("vk-author-work__views--historical")
+                && private_historical.contains("data-icon=\"visibility-outline\"")
+                && !private_historical.contains("data-icon=\"pen-flight\"")
+                && !private_historical.contains("data-icon=\"chat-bubble-outline\""),
+            "OQ-1=A keeps historical views without Thấm/Nhận xét: {private_historical}"
+        );
+
+        let not_started = render(base(None, AuthorWorkViews::NotStarted));
+        assert!(
+            not_started.contains("data-views-state=\"not_started\"")
+                && not_started.contains("Chưa bắt đầu thống kê"),
+            "{not_started}"
+        );
+
+        let unavailable = render(base(None, AuthorWorkViews::Unavailable));
+        assert!(
+            unavailable.contains("data-views-state=\"unavailable\"")
+                && unavailable.contains("Chưa tải được"),
+            "{unavailable}"
+        );
+
+        let never_public = render(base(None, AuthorWorkViews::NeverPublic));
+        assert!(
+            !never_public.contains("data-testid=\"author-work-metrics\"")
+                && never_public.contains("data-testid=\"author-work-views-never-public\""),
+            "{never_public}"
         );
     }
 }

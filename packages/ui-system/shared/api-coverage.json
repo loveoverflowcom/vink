@@ -793,8 +793,8 @@
     {
       "path": "packages/vink-patterns/leptos/patterns.css",
       "declaration": "font-variant-numeric: tabular-nums",
-      "owner": "AuthorWorkRow public counters (#410)",
-      "reason": "Equal-width digits keep Thấm and comment counts aligned as their values change. The label type scale still comes from shared tokens."
+      "owner": "AuthorWorkRow counters (#410, #514)",
+      "reason": "Equal-width digits keep Thấm, comment and work-view counts aligned as their values change. The label type scale still comes from shared tokens."
     },
     {
       "path": "packages/ui-system/leptos/style/vink-ui.css",

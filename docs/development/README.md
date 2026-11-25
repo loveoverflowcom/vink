@@ -596,13 +596,13 @@ production đỏ; model mutant tạo OFF→old ON resurrection. Harness và kế
 - UI kiểm duyệt bình luận, báo cáo/khiếu nại, thông báo, inbox, hậu kiểm theo admission,
   reconciliation (D-08, S-02, S-04). Outbox có consumer shadow/audit riêng và hậu kiểm operator có authority, mặc định tắt request mới ([runbook](discussion-post-review.md)); chưa có producer admission đăng-trước.
   Discourse không còn trong phạm vi (Vink sở hữu bình luận).
-- Lượt xem tác phẩm ([#323](https://github.com/loveoverflowcom/vink/issues/323), [#340](https://github.com/loveoverflowcom/vink/issues/340), [#343](https://github.com/loveoverflowcom/vink/issues/343)): [đặc tả](../architecture/work-views.md)
+- Lượt xem tác phẩm ([#323](https://github.com/loveoverflowcom/vink/issues/323), [#340](https://github.com/loveoverflowcom/vink/issues/340), [#343](https://github.com/loveoverflowcom/vink/issues/343), [#514](https://github.com/loveoverflowcom/vink/issues/514)): [đặc tả](../architecture/work-views.md), [LayoutSpec r3](../design/work-views.md)
   và [registry](work-views.md) ghi luật đếm (kèm delta 25/11/2026: ngưỡng 5 giây foreground cấu hình
   tập trung qua `vink-work-view-policy`, `OQ-1..4`, `UX-01..10`, `D-01` Thấm → Nhận xét → Lượt xem và
   `D-02` bỏ nút Đọc ở Bàn viết; [VDR-WORK-VIEWS@r2](../../decisions/proposals/VDR-WORK-VIEWS.r2.toml) `PENDING`).
   #341 có đường ghi `domain::work_view` + bảng `work_view_*` + dọn hạn trong `vink-worker`; #342 có đọc
   của tác giả (`views` trong `GET /api/v1/author/works`); #343 nối HTTP intake, cookie khách, Reader
-  visibility tracker và retry hữu hạn. UI Bàn viết và đồng bộ design R4 thuộc `#514` (PR2/2).
+  visibility tracker và retry hữu hạn; #514 tích hợp giao diện Bàn viết Design r3 (`AuthorWorkRow`, `#views-explainer`) và đồng bộ `docs/design/*`. Route xóa tác phẩm/tài khoản (`OQ-2`) và admin gỡ cả bài (`OQ-4`) chưa có ở runtime.
 - Autosave, bản khôi phục cục bộ, paste từ Word/Docs, IME thật trên thiết bị (WR-01/WR-02, S-01).
   Undo/redo và composition mô phỏng đã có trong editor CodeMirror, chưa phải bằng chứng IME hệ
   điều hành.

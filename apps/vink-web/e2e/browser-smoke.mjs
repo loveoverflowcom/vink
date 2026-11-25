@@ -1180,7 +1180,8 @@ class DraftGate {
     if (body?.drafts) body = { works: body.drafts.map(d => ({ ...d, draft_version: d.version,
       publication: d.publication ?? { audience:'private', lifecycle:'active', generation:1,
         intent_revision_id:null, intent_moderation:null, latest_revision_id:null, latest_moderation:null,
-        review_withdrawn:false, has_draft_changes:null, current_public:null } })), next_cursor: body.next_cursor ?? null };
+        review_withdrawn:false, has_draft_changes:null, current_public:null },
+      views: d.views ?? { state:'never_public', count:null, counted_since:null } })), next_cursor: body.next_cursor ?? null };
     return this.page.send('Fetch.fulfillRequest', {
       requestId, responseCode: status,
       responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Cache-Control', value: 'no-store' }],

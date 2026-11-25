@@ -416,6 +416,41 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
       await cdp.send('Target.disposeBrowserContext', { browserContextId });
     }
   }
+
+  // 10. Integrated #514 Desk UI check: real author Desk renders the live counted views total from PG.
+  {
+    const { browserContextId } = await cdp.send('Target.createBrowserContext');
+    const deskPage = await openPage(browserContextId);
+    try {
+      await deskPage.goto(`${authorBase}/ban-viet`);
+      await deskPage.waitFor(
+        `document.querySelector('[data-testid=draft-content]')?.getAttribute('aria-busy')==='false' && Boolean(document.querySelector('#draft-row-${SAMPLE_WORK} [data-testid=author-work-views]'))`,
+        'author Desk hydrated with real work views',
+      );
+      const expected = String(startCount + 3);
+      check(
+        await deskPage.eval(`(() => {
+          const row = document.querySelector('#draft-row-${SAMPLE_WORK}');
+          const views = row?.querySelector('[data-testid=author-work-views]');
+          const icons = [...row.querySelectorAll('[data-testid=author-work-metrics] [data-icon]')].map(el => el.dataset.icon);
+          return views?.dataset.viewsState === 'counted' &&
+            views.title.startsWith(${JSON.stringify(`${expected} lượt xem`)}) &&
+            !row.querySelector('.vk-author-work__reader') &&
+            icons.join(',') === 'pen-flight,chat-bubble-outline,visibility-outline';
+        })()`),
+        `#514 real Desk UI displays live counted views (${expected}) in Thấm -> Nhận xét -> Lượt xem order with no Read link`,
+      );
+      await deskPage.click('#views-explainer-trigger');
+      await deskPage.waitFor(`document.querySelector('#views-explainer')?.open === true`, 'Desk explainer dialog opened');
+      check(
+        await deskPage.eval(`document.querySelector('#views-explainer')?.textContent.includes('5 giây')`),
+        '#514 real Desk explainer shows 5s threshold from shared policy',
+      );
+      check(deskPage.errors.length === 0, 'author Desk real views flow has no console errors');
+    } finally {
+      await cdp.send('Target.disposeBrowserContext', { browserContextId });
+    }
+  }
 }
 
 export async function standaloneWorkViewCheck(page, { args, check }) {

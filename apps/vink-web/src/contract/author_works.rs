@@ -14,6 +14,26 @@ pub struct AuthorWorkCard {
     pub updated_at: String,
     #[serde(default)]
     pub publication: Option<PublicationSummary>,
+    #[serde(default)]
+    pub views: Option<WorkViewsSummary>,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorkViewsSummary {
+    pub state: WorkViewsState,
+    #[serde(default)]
+    pub count: Option<i64>,
+    #[serde(default)]
+    pub counted_since: Option<String>,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum WorkViewsState {
+    Counted,
+    NotStarted,
+    NeverPublic,
+    Unavailable,
+    #[serde(other)]
+    Unknown,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PublicationSummary {
@@ -112,5 +132,99 @@ mod tests {
         let facts = crate::ui::adapters::author_work_summary(w);
         assert!(facts.editor_href.is_none() && facts.public.is_none());
         assert_eq!(labels(&facts), ["Chưa rõ"]);
+        assert_eq!(
+            facts.views,
+            crate::ui::patterns::AuthorWorkViews::Counted {
+                count: 8,
+                counted_since: None,
+            }
+        );
+        w.views = None;
+        let facts = crate::ui::adapters::author_work_summary(w);
+        assert_eq!(
+            facts.views,
+            crate::ui::patterns::AuthorWorkViews::Unavailable
+        );
+    }
+
+    #[test]
+    fn author_work_views_fixtures_cover_counted_zero_historical_not_started_never_public_and_unavailable()
+     {
+        use crate::ui::patterns::AuthorWorkViews;
+        let counted_page: AuthorWorkList = serde_json::from_str(include_str!(
+            "../../../../services/vink-app/contracts/http/v1/fixtures/author.works.views.json"
+        ))
+        .unwrap();
+        assert_eq!(counted_page.works.len(), 6);
+
+        let pub_with_since = crate::ui::adapters::author_work_summary(&counted_page.works[0]);
+        assert_eq!(
+            pub_with_since.views,
+            AuthorWorkViews::Counted {
+                count: 1234,
+                counted_since: Some("01/12/2026".into()),
+            }
+        );
+
+        let pub_zero = crate::ui::adapters::author_work_summary(&counted_page.works[1]);
+        assert_eq!(
+            pub_zero.views,
+            AuthorWorkViews::Counted {
+                count: 0,
+                counted_since: None,
+            }
+        );
+
+        let private_historical = crate::ui::adapters::author_work_summary(&counted_page.works[2]);
+        assert!(private_historical.public.is_none());
+        assert_eq!(
+            private_historical.views,
+            AuthorWorkViews::Counted {
+                count: 3,
+                counted_since: Some("01/12/2026".into()),
+            }
+        );
+
+        let withdrawn_historical = crate::ui::adapters::author_work_summary(&counted_page.works[3]);
+        assert!(withdrawn_historical.public.is_none());
+        assert_eq!(
+            withdrawn_historical.views,
+            AuthorWorkViews::Counted {
+                count: 5,
+                counted_since: None,
+            }
+        );
+
+        let never_public = crate::ui::adapters::author_work_summary(&counted_page.works[4]);
+        assert!(never_public.public.is_none());
+        assert_eq!(never_public.views, AuthorWorkViews::NeverPublic);
+
+        let unavailable = crate::ui::adapters::author_work_summary(&counted_page.works[5]);
+        assert!(unavailable.public.is_some());
+        assert_eq!(unavailable.views, AuthorWorkViews::Unavailable);
+
+        let not_started_page: AuthorWorkList = serde_json::from_str(include_str!(
+            "../../../../services/vink-app/contracts/http/v1/fixtures/author.works.views-not-started.json"
+        ))
+        .unwrap();
+        let not_started = crate::ui::adapters::author_work_summary(&not_started_page.works[0]);
+        assert_eq!(not_started.views, AuthorWorkViews::NotStarted);
+
+        // Unknown future state, missing views, or negative count all degrade safely to Unavailable.
+        let future_json = include_str!(
+            "../../../../services/vink-app/contracts/http/v1/fixtures/author.works.views-not-started.json"
+        )
+        .replace("\"not_started\"", "\"future_state\"");
+        let future_page: AuthorWorkList = serde_json::from_str(&future_json).unwrap();
+        assert_eq!(
+            crate::ui::adapters::author_work_summary(&future_page.works[0]).views,
+            AuthorWorkViews::Unavailable
+        );
+        let mut negative = counted_page.works[0].clone();
+        negative.views.as_mut().unwrap().count = Some(-1);
+        assert_eq!(
+            crate::ui::adapters::author_work_summary(&negative).views,
+            AuthorWorkViews::Unavailable
+        );
     }
 }
