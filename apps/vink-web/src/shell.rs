@@ -10,10 +10,10 @@ use vink_ui::{
     NavLayout, NavigationRail, OverlayLayer, WindowClass,
 };
 
-use crate::appearance::{Appearance, RAIL_BOOTSTRAP};
+use crate::appearance::{AccountAvatar, Appearance, RAIL_BOOTSTRAP};
 use crate::navigation::use_navigation_guard;
 use crate::notifications::{BELL, InboxPopover, Notifications, POPOVER, RailBell};
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 use crate::notifications::{INBOX_PATH, MOBILE_BELL};
 
 // Giao diện lives only on Tôi (`/toi`); the rail carries no appearance utility (#413).
@@ -314,7 +314,9 @@ fn AccountLink(guest: Signal<bool>, current: Signal<bool>) -> impl IntoView {
         if guest.get() {
             view! { <NavItem destination=NavDestination::new(Destination::Me.key(), label, IconName::Person, "/toi") active=current /> }.into_any()
         } else {
-            view! { <NavItem destination=Destination::Me.nav() active=current /> }.into_any()
+            view! { <NavItem destination=Destination::Me.nav() active=current
+            leading=move || view! { <AccountAvatar navigation=true /> } /> }
+            .into_any()
         }
     }
 }
@@ -330,7 +332,7 @@ fn ShellDialog(
     children: Children,
 ) -> impl IntoView {
     view! {
-        <dialog id=id class=class aria-label=label aria-labelledby=labelledby data-testid=id node_ref=dialog
+        <dialog id=id class=class aria-label=labelledby.is_none().then_some(label) aria-labelledby=labelledby data-testid=id node_ref=dialog
             on:keydown=move |event| trap_dialog_tab(event, dialog)
             on:cancel=move |event: leptos::ev::Event| {
                 event.prevent_default();
@@ -481,7 +483,7 @@ fn restore_scroll(scroll: StoredValue<f64>) {
     window().scroll_to_with_x_and_y(window().scroll_x().unwrap_or_default(), scroll.get_value());
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn place_notifications(dialog: NodeRef<html::Dialog>) -> bool {
     let Some(anchor) = document().get_element_by_id(BELL) else {
         return false;
@@ -500,7 +502,7 @@ fn place_notifications(dialog: NodeRef<html::Dialog>) -> bool {
     true
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn observe_notification_text(
     probe: NodeRef<html::Span>,
     large: RwSignal<bool>,

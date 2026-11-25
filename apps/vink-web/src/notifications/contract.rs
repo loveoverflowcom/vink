@@ -1,9 +1,9 @@
 //! Browser representations of the Notifications Gateway contract.
 use serde::Deserialize;
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 use serde::Serialize;
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(super) const INBOX: &str = "/api/v1/me/notifications";
 
 #[derive(Clone, Debug, Deserialize)]
@@ -154,14 +154,14 @@ pub(super) struct Endorser {
     pub author: Author,
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 #[derive(Clone, Debug, Serialize)]
 pub(super) struct SnapshotCommand {
     pub command_key: String,
     pub up_to_snapshot: String,
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 #[derive(Debug, Serialize)]
 pub(super) struct ReadCommand {
     pub command_key: String,

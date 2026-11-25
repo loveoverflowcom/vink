@@ -232,6 +232,9 @@ impl Selection {
                 Some("verify web --scenario editor-format --scenario editor-first-draft")
             }
             "apps/vink-web/e2e/public-storage-smoke.mjs" => Some("verify web --scenario storage"),
+            "apps/vink-web/e2e/notifications-smoke.mjs" => {
+                Some("verify web --scenario notifications")
+            }
             _ => None,
         };
         if let Some(cmd) = browser {

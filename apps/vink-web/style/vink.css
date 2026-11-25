@@ -195,7 +195,7 @@ a {
 .vk-account-status { container: vk-account / inline-size; }
 .vk-account-status h2 { margin: 0; font-family: var(--vk-font-ui); }
 .vk-account-status p { margin: 0; overflow-wrap: anywhere; }
-.vk-account-avatar { display: inline-grid; place-items: center; }
+.vk-account-avatar, .vk-nav-account-avatar { display: inline-grid; place-items: center; }
 .vk-nav-account-avatar .vk-ui-avatar { --vk-ui-avatar-size: var(--vk-size-icon); }
 .vk-account-illustration { display: none; }
 @container vk-account (min-width: 32rem) {

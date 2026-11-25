@@ -20,7 +20,12 @@ pub(crate) fn CommentDecisionPage() -> impl IntoView {
             <a class="vk-ui-link vk-notif-back" href=super::INBOX_PATH>"← Thông báo"</a>
             <Show when=move || session.notification_scope.with(Option::is_none)>
                 {move || match session.standing.get() {
-                    crate::session::Standing::Unknown | crate::session::Standing::Active(_) => view! { <Loading /> }.into_any(),
+                    crate::session::Standing::Unknown => view! { <Loading /> }.into_any(),
+                    crate::session::Standing::Active(account)
+                        if account.notification_scope.is_some() =>
+                    {
+                        view! { <Loading /> }.into_any()
+                    }
                     crate::session::Standing::Unavailable => view! {
                         <Failure message="Chưa kiểm tra được phiên đăng nhập." retry=Callback::new(move |()| session.refresh()) />
                     }.into_any(),
@@ -46,7 +51,7 @@ fn DecisionContent(scope: String, id: String, version: String) -> impl IntoView 
         let path = format!("decisions/comments/{}/{}", segment(&id), segment(&version));
         let scope = scope.clone();
         async move {
-            #[cfg(feature = "hydrate")]
+            #[cfg(feature = "browser")]
             {
                 let result = super::browser::get::<CommentDecision>(&path, &scope).await;
                 if session
@@ -63,7 +68,7 @@ fn DecisionContent(scope: String, id: String, version: String) -> impl IntoView 
                 }
                 result
             }
-            #[cfg(not(feature = "hydrate"))]
+            #[cfg(not(feature = "browser"))]
             {
                 let _ = (session, path, scope);
                 Err::<CommentDecision, _>(ApiError::Unauthenticated)
@@ -136,7 +141,7 @@ pub(crate) fn EndorsersTrigger(
 ) -> impl IntoView {
     let open = RwSignal::new(false);
     let href = endorsers_href(&work, &revision);
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         let navigation = crate::navigation::use_navigation_guard();
         let registration = navigation.set_overlay(move |_| {
@@ -160,14 +165,14 @@ pub(crate) fn EndorsersTrigger(
         <Show when=move || { total.get() > 0 }>
             <a class=ButtonVariant::Text.classes() href=href.clone()
                 on:click=move |event: leptos::ev::MouseEvent| {
-                    #[cfg(feature = "hydrate")]
+                    #[cfg(feature = "browser")]
                     if desktop() && event.button() == 0 && !event.default_prevented()
                         && !(event.meta_key() || event.ctrl_key() || event.shift_key() || event.alt_key())
                     {
                         event.prevent_default();
                         open.set(true);
                     }
-                    #[cfg(not(feature = "hydrate"))]
+                    #[cfg(not(feature = "browser"))]
                     let _ = event;
                 }>{move || format!("{} người đã Thấm", total.get())}</a>
         </Show>
@@ -182,7 +187,7 @@ pub(crate) fn EndorsersTrigger(
     }
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 fn desktop() -> bool {
     window()
         .match_media("(min-width: 760px)")
@@ -225,9 +230,14 @@ fn EndorserList(work: String, revision: String, title: String) -> impl IntoView 
     let problem = RwSignal::new(None::<ApiError>);
     let revision = RwSignal::new(revision);
     let title = RwSignal::new(title);
+    #[cfg(feature = "browser")]
+    let request_gen = RwSignal::new(0_u64);
     let load = Callback::new(move |more: bool| {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         {
+            if more && loading.get_untracked() {
+                return;
+            }
             let path = format!(
                 "/api/v1/works/{}/revisions/{}/endorsers",
                 segment(&work),
@@ -243,11 +253,13 @@ fn EndorserList(work: String, revision: String, title: String) -> impl IntoView 
             } else {
                 path
             };
+            let generation = request_gen.get_untracked().wrapping_add(1);
+            request_gen.set(generation);
             loading.set(true);
             problem.set(None);
             leptos::task::spawn_local(async move {
                 let result = crate::api::endorser_request::<Endorsers>(&path).await;
-                if loading.try_get_untracked().is_none() {
+                if request_gen.try_get_untracked() != Some(generation) {
                     return;
                 }
                 loading.set(false);
@@ -271,10 +283,10 @@ fn EndorserList(work: String, revision: String, title: String) -> impl IntoView 
                 }
             });
         }
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let _ = (&work, &revision, more);
     });
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     Effect::new(move |_| load.run(false));
 
     view! {

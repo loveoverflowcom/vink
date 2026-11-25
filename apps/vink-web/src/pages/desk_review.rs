@@ -197,7 +197,7 @@ pub(super) fn exact_target(target: &Option<Result<ReviewTarget, ()>>) -> Option<
 #[component]
 pub(super) fn ExactDeskDecision(session: Session) -> impl IntoView {
     let target = use_review_target();
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     Effect::new(move |_| {
         if target.with(|target| exact_target(target).is_some()) {
             super::focus_recovery("desk-decision-back");

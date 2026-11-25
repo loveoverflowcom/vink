@@ -40,13 +40,13 @@ pub(crate) fn InboxPage() -> impl IntoView {
 
 #[component]
 pub(super) fn BackButton() -> impl IntoView {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let navigation = crate::navigation::use_navigation_guard();
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let came_from_app = Notifications::current().arrived_from_app;
     view! {
         <IconButton label="Quay lại" icon=IconName::ArrowBack on_press=move |_| {
-            #[cfg(feature = "hydrate")]
+            #[cfg(feature = "browser")]
             super::back_or_explore(navigation, came_from_app.get_untracked());
         } />
     }
@@ -84,7 +84,7 @@ fn ReadAll(owner: Notifications) -> impl IntoView {
                     } else { ActionState::Enabled }
                 }))
                 on_press=move |_| {
-                    #[cfg(feature = "hydrate")]
+                    #[cfg(feature = "browser")]
                     owner.mark_all();
                 }>"Đọc tất cả"</Button>
         </Show>
@@ -93,7 +93,7 @@ fn ReadAll(owner: Notifications) -> impl IntoView {
 
 #[component]
 fn InboxBody(owner: Notifications) -> impl IntoView {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     let navigation = crate::navigation::use_navigation_guard();
     let groups = Memo::new(move |_| {
         owner.inbox.with(|inbox| {
@@ -121,7 +121,7 @@ fn InboxBody(owner: Notifications) -> impl IntoView {
     });
     let offline = owner.offline;
     let refresh = Callback::new(move |()| {
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         {
             owner.load(false);
             owner.poll_now();
@@ -135,7 +135,7 @@ fn InboxBody(owner: Notifications) -> impl IntoView {
             <Show when=move || !offline.get() && matches!(owner.count.get(), vink_ui::BadgeState::Stale(_) | vink_ui::BadgeState::StaleLowerBound)>
                 <p class="vk-notif-note">"Số mới có thể chưa cập nhật."
                     <Button variant=ButtonVariant::Text on_press=move |_| {
-                        #[cfg(feature = "hydrate")]
+                        #[cfg(feature = "browser")]
                         owner.poll_now();
                     }>"Tải lại"</Button>
                 </p>
@@ -150,7 +150,10 @@ fn InboxBody(owner: Notifications) -> impl IntoView {
                 if !owner.available() {
                     use crate::session::Standing;
                     return match owner.session.standing.get() {
-                        Standing::Unknown | Standing::Active(_) => view! { <Loading /> }.into_any(),
+                        Standing::Unknown => view! { <Loading /> }.into_any(),
+                        Standing::Active(account) if account.notification_scope.is_some() => {
+                            view! { <Loading /> }.into_any()
+                        }
                         Standing::Unavailable => view! {
                             <Failure message="Chưa kiểm tra được phiên đăng nhập." retry=Callback::new(move |()| owner.session.refresh()) />
                         }.into_any(),
@@ -188,10 +191,10 @@ fn InboxBody(owner: Notifications) -> impl IntoView {
                         view! { <NotificationGroup label=day
                             show_heading_when=Signal::derive(move || groups.with(|groups| groups.len() > 1))>
                             <For each=move || rows.get() key=Clone::clone children=move |row: Row| {
-                                #[cfg(feature = "hydrate")]
+                                #[cfg(feature = "browser")]
                                 let href = row.facts.href.clone();
                                 view! { <NotificationRow facts=row.facts on_activate=Callback::new(move |event: leptos::ev::MouseEvent| {
-                                    #[cfg(feature = "hydrate")]
+                                    #[cfg(feature = "browser")]
                                     if event.button() == 0 && !event.default_prevented() {
                                         owner.read(row.group_id.clone(), row.version);
                                         if !(event.meta_key() || event.ctrl_key() || event.shift_key() || event.alt_key()) {
@@ -199,7 +202,7 @@ fn InboxBody(owner: Notifications) -> impl IntoView {
                                             navigation.navigate(&href);
                                         }
                                     }
-                                    #[cfg(not(feature = "hydrate"))]
+                                    #[cfg(not(feature = "browser"))]
                                     let _ = event;
                                 }) /> }
                             } />
@@ -208,7 +211,7 @@ fn InboxBody(owner: Notifications) -> impl IntoView {
             </Show>
             <Show when=move || owner.inbox.with(|inbox| inbox.mark == Load::Failed)>
                 <Failure message="Chưa đánh dấu được thông báo." tonal=true retry=Callback::new(move |()| {
-                    #[cfg(feature = "hydrate")]
+                    #[cfg(feature = "browser")]
                     owner.mark_all();
                 }) />
             </Show>
@@ -220,11 +223,11 @@ fn InboxBody(owner: Notifications) -> impl IntoView {
                                 ActionState::pending("Đang tải thêm…")
                             } else { ActionState::Enabled })
                             on_press=move |_| {
-                                #[cfg(feature = "hydrate")]
+                                #[cfg(feature = "browser")]
                                 owner.load(true);
                             }>"Xem thêm"</Button> }>
                         <Failure message="Chưa tải thêm được." tonal=true retry=Callback::new(move |()| {
-                            #[cfg(feature = "hydrate")]
+                            #[cfg(feature = "browser")]
                             owner.load(true);
                         }) />
                     </Show>
@@ -438,7 +441,7 @@ fn row_facts(item: &Item) -> Option<NotificationRowFacts> {
 }
 
 fn time_label(timestamp: &str) -> String {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         let age = ((js_sys::Date::now() - js_sys::Date::parse(timestamp)) / 60_000.0) as i64;
         match age {
@@ -452,7 +455,7 @@ fn time_label(timestamp: &str) -> String {
 }
 
 fn date_group(timestamp: &str) -> &'static str {
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     {
         const DAY: f64 = 86_400_000.0;
         const HCM: f64 = 7.0 * 3_600_000.0;

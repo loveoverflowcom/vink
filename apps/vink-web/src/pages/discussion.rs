@@ -477,11 +477,11 @@ fn LinkedComment(work_id: String, comment: String) -> impl IntoView {
         move || {
             let (work, comment) = (work_id.clone(), comment.clone());
             async move {
-                #[cfg(feature = "hydrate")]
+                #[cfg(feature = "browser")]
                 {
                     api::linked_public_comment(&work, &comment).await
                 }
-                #[cfg(not(feature = "hydrate"))]
+                #[cfg(not(feature = "browser"))]
                 {
                     let _ = (work, comment);
                     Err::<crate::contract::PublicRootThread, _>(ApiError::NotFound)
@@ -500,9 +500,9 @@ fn LinkedComment(work_id: String, comment: String) -> impl IntoView {
                         Ok(root) => {
                             let root = crate::contract::RootThread::from(root);
                             let facts = adapters::discussion_thread(&root, &root.preview);
-                            #[cfg(feature = "hydrate")]
+                            #[cfg(feature = "browser")]
                             super::focus_recovery(anchor);
-                            #[cfg(not(feature = "hydrate"))]
+                            #[cfg(not(feature = "browser"))]
                             let _ = anchor;
                             view! {
                                 <DiscussionThread facts=Signal::stored(facts) read_only=Signal::stored(true)
@@ -510,7 +510,7 @@ fn LinkedComment(work_id: String, comment: String) -> impl IntoView {
                             }.into_any()
                         }
                         Err(ApiError::NotFound) => {
-                            #[cfg(feature = "hydrate")]
+                            #[cfg(feature = "browser")]
                             super::focus_recovery("feedback-heading");
                             view! { <p role="status">"Nhận xét này không còn khả dụng."</p> }.into_any()
                         }

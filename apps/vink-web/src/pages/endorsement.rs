@@ -282,7 +282,7 @@ pub(crate) fn WorkEndorsement(
             )
         })
     });
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     Effect::new(move |_| {
         if search.with(|search| {
             url::form_urlencoded::parse(search.trim_start_matches('?').as_bytes())

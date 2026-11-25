@@ -1,5 +1,5 @@
 //! One in-memory inbox per active surface and confirmed browser session.
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 use super::contract::SnapshotCommand;
 use super::contract::{Freshness, Item, Page};
 use vink_ui::BadgeState;
@@ -22,9 +22,9 @@ pub(super) struct Inbox {
     pub first: Load,
     pub more: Load,
     pub mark: Load,
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     pub mark_command: Option<SnapshotCommand>,
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     pub seen_command: Option<SnapshotCommand>,
     pub updates: bool,
 }

@@ -1,16 +1,16 @@
-//! Web entry points for Notifications. Private data starts only after hydration.
+//! Web entry points for Notifications. Private data starts only in the browser.
 use leptos::prelude::*;
 use vink_ui::{BadgeState, Icon, IconName, NavUtility, NotificationBadge};
 
 use crate::account::Session;
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 mod browser;
-#[cfg_attr(not(any(feature = "hydrate", test)), allow(dead_code))]
+#[cfg_attr(not(any(feature = "browser", test)), allow(dead_code))]
 mod contract;
 mod destinations;
 mod inbox;
-#[cfg_attr(not(any(feature = "hydrate", test)), allow(dead_code))]
+#[cfg_attr(not(any(feature = "browser", test)), allow(dead_code))]
 mod state;
 
 pub(crate) use destinations::{CommentDecisionPage, EndorsersPage, EndorsersTrigger};
@@ -27,12 +27,12 @@ pub(crate) struct Notifications {
     count: RwSignal<BadgeState>,
     offline: RwSignal<bool>,
     large_text: RwSignal<bool>,
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     arrived_from_app: RwSignal<bool>,
     inbox: RwSignal<state::Inbox>,
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     view_generation: RwSignal<u64>,
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     poll: StoredValue<browser::Poll>,
 }
 
@@ -47,16 +47,16 @@ impl Notifications {
             count: RwSignal::new(BadgeState::Hidden),
             offline: RwSignal::new(false),
             large_text,
-            #[cfg(feature = "hydrate")]
+            #[cfg(feature = "browser")]
             arrived_from_app: RwSignal::new(false),
             inbox: RwSignal::new(state::Inbox::default()),
-            #[cfg(feature = "hydrate")]
+            #[cfg(feature = "browser")]
             view_generation: RwSignal::new(0),
-            #[cfg(feature = "hydrate")]
+            #[cfg(feature = "browser")]
             poll: StoredValue::new(browser::Poll::default()),
         };
         provide_context(this);
-        #[cfg(feature = "hydrate")]
+        #[cfg(feature = "browser")]
         {
             this.connect(open);
             let path = leptos_router::hooks::use_location().pathname;
@@ -68,7 +68,7 @@ impl Notifications {
                 current
             });
         }
-        #[cfg(not(feature = "hydrate"))]
+        #[cfg(not(feature = "browser"))]
         let _ = open;
         this
     }
@@ -121,7 +121,7 @@ pub(crate) fn MobileBell() -> impl IntoView {
                 on:keydown=move |event: leptos::ev::KeyboardEvent| {
                     if event.key() == " " && !event.repeat() {
                         event.prevent_default();
-                        #[cfg(feature = "hydrate")]
+                        #[cfg(feature = "browser")]
                         {
                             use leptos::wasm_bindgen::JsCast;
                             if let Some(link) = event.current_target().and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok()) {
@@ -137,7 +137,7 @@ pub(crate) fn MobileBell() -> impl IntoView {
     }
 }
 
-#[cfg(feature = "hydrate")]
+#[cfg(feature = "browser")]
 pub(super) fn back_or_explore(navigation: crate::navigation::NavigationGuard, from_app: bool) {
     let can_go_back = from_app
         || document().referrer().starts_with(&format!(

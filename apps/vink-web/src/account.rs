@@ -112,7 +112,7 @@ impl Session {
         self.refresh();
     }
 
-    #[cfg(feature = "hydrate")]
+    #[cfg(feature = "browser")]
     pub(crate) fn suspend_private_scope(self) {
         self.owner.update(SessionOwner::expect_session_change);
     }
