@@ -190,7 +190,7 @@ async function quietListSurfaces(page, selector, scenario) {
   })()`), `${scenario}: full-row links are separated by space and flat tone, without row rules or endpoint chrome`);
 }
 
-async function bottomNavigationGeometry(page, scenario, accountLabel = 'Tôi') {
+async function bottomNavigationGeometry(page, scenario, accountLabel = 'Tài khoản') {
   if (!await page.eval(`document.querySelector('.vk-ui-bottom-nav').getClientRects().length > 0`)) return;
   const hydrated = await page.eval(`document.documentElement.dataset.hydrated === 'true'`);
   if (hydrated) {
@@ -217,7 +217,7 @@ async function bottomNavigationGeometry(page, scenario, accountLabel = 'Tôi') {
 
 // Compare the icon row and the first rendered text line, never the centre of the
 // whole label: one- and two-line labels intentionally have different heights.
-async function bottomNavigationAlignment(page, scenario, accountLabel = 'Tôi') {
+async function bottomNavigationAlignment(page, scenario, accountLabel = 'Tài khoản') {
   if (!await page.eval(`document.querySelector('.vk-ui-bottom-nav').getClientRects().length > 0`)) return;
   await bottomNavigationGeometry(page, scenario, accountLabel);
   const inspected = await page.eval(buildNavInspectionScript('.vk-ui-bottom-nav'));
@@ -255,6 +255,7 @@ async function bottomNavigationAnatomy(page, route, scenario, hasAccountAvatar =
   `${scenario}: route order and exactly one matching aria-current`);
   check(items.every(item => item.flatTarget), `${scenario}: selected background must not cover the whole destination`);
   const isolated = items.every(item => item.fill === item.expectedFill && item.leadingInside && item.labelOutside) && items[2].avatar === hasAccountAvatar;
+  if (hasAccountAvatar) await accountNavigationGeometry(page, '#bottom-navigation a[href="/toi"]', true, scenario);
   check(isolated, `${scenario}: selected Lavender indicator contains only the icon/avatar; labels sit below` +
     (isolated ? '' : ` (${JSON.stringify(items)})`));
 }
@@ -498,26 +499,29 @@ async function bottomNavigationRegression(page) {
     await page.eval(`document.querySelector('${selected}').style.background = ''`);
   }
 
-  // Browser negative controls: misaligned first line and altered accessible name (Tôi -> TTTôi).
+  // Browser negative controls: misaligned first line and exposed decorative initials.
   try {
     await page.eval(`document.querySelector('.vk-ui-bottom-nav a[href="/toi"] .vk-ui-nav-item__label').style.paddingTop = '18px'`);
     const badNav = await page.eval(buildNavInspectionScript('.vk-ui-bottom-nav'));
     const badNavEval = evaluateNavAlignment(badNav.items, { tolerancePx: 1 });
     check(!badNavEval.ok && badNavEval.reasons.some(r => r.includes('firstLineY')), 'negative control: browser oracle rejects misaligned nav first line');
     await page.eval(`(() => {
-      const av = document.querySelector('.vk-ui-bottom-nav a[href="/toi"] .vk-nav-account-avatar');
+      const link = document.querySelector('.vk-ui-bottom-nav a[href="/toi"]');
+      link.removeAttribute('aria-label');
+      const av = link.querySelector('.vk-nav-account-avatar');
       av.removeAttribute('aria-hidden');
       for (const hidden of av.querySelectorAll('[aria-hidden]')) hidden.removeAttribute('aria-hidden');
     })()`);
     const badAx = await collectElementAccessibility(page, '.vk-ui-bottom-nav a[href="/toi"]');
-    const badAxEval = evaluateAccessibleElement(badAx, { role: 'link', name: 'Tôi', excludeSubstrings: ['TT', '•'] });
+    const badAxEval = evaluateAccessibleElement(badAx, { role: 'link', name: 'Tài khoản', excludeSubstrings: ['TT', '•'] });
     check(!badAxEval.ok && String(badAx.ax.name).includes('TT'), `negative control: Chrome AX oracle catches altered accessible name (${badAx.ax.name})`);
     EVIDENCE_STATE.negativeControls.misalignedNavFirstLine = 'PASS';
     EVIDENCE_STATE.negativeControls.alteredAccessibleName = 'PASS';
   } finally {
     await page.eval(`(() => {
-      const lbl = document.querySelector('.vk-ui-bottom-nav a[href="/toi"] .vk-ui-nav-item__label');
-      if (lbl) lbl.style.paddingTop = '';
+      const link = document.querySelector('.vk-ui-bottom-nav a[href="/toi"]');
+      link.setAttribute('aria-label', 'Tài khoản');
+      link.querySelector('.vk-ui-nav-item__label').style.paddingTop = '';
       const av = document.querySelector('.vk-ui-bottom-nav a[href="/toi"] .vk-nav-account-avatar');
       if (av) {
         av.setAttribute('aria-hidden', 'true');
@@ -792,6 +796,7 @@ class Page {
             const r = el.getBoundingClientRect(), s = getComputedStyle(el);
             const range = document.createRange(); range.selectNodeContents(el);
             return { ...geometry(selector), clientWidth: el.clientWidth, scrollWidth: el.scrollWidth,
+              contentTop: r.top + parseFloat(s.borderTopWidth) + parseFloat(s.paddingTop),
               contentLeft: r.left + parseFloat(s.borderLeftWidth) + parseFloat(s.paddingLeft),
               contentWidth: el.clientWidth - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight),
               paddingLeft: s.paddingLeft, paddingRight: s.paddingRight,
@@ -809,9 +814,9 @@ class Page {
           const textBox = document.querySelector('#page-account .vk-account-status > div');
           const textStyle = textBox ? getComputedStyle(textBox) : null;
           const textBoxRect = textBox ? textBox.getBoundingClientRect() : null;
-          const h2Rect = document.querySelector('#page-account h2')?.getBoundingClientRect();
+          const headingRect = document.querySelector('#page-account .vk-account-status h1')?.getBoundingClientRect();
           const helpRect = document.querySelector('#page-account .vk-ui-tone-muted')?.getBoundingClientRect();
-          const textRight = Math.max(h2Rect?.right ?? 0, helpRect?.right ?? 0);
+          const textRight = Math.max(headingRect?.right ?? 0, helpRect?.right ?? 0);
           return { prefix, surface: bounds('#me'),
             preferences: {
               surface: bounds(preferenceSurface),
@@ -842,7 +847,7 @@ class Page {
             identityContainerWidth: document.querySelector('#page-account .vk-account-status')?.clientWidth ?? null,
             avatar: bounds('#page-account .vk-ui-avatar'),
             accountText: bounds('#page-account .vk-account-status > div'),
-            accountLabel: bounds('#page-account h2'),
+            accountLabel: bounds('#page-account .vk-account-status h1'),
             accountHelp: bounds('#page-account .vk-ui-tone-muted'),
             illustration: illEl ? {
               present: true,
@@ -2118,7 +2123,7 @@ async function textContrast(page, theme, surface = 'shell', targets) {
     empty: ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-button'],
     'desk-empty': ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-button', '.vk-desk-privacy'],
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
-    me: ['#me-title', '#page-account h2', '#page-account .vk-ui-tone-muted', '#page-appearance-title', '#page-theme-title', '#page-text-title', '#page-rail-title', ...['light', 'dark', 'system'].map(value => `#page-theme label:has([value="${value}"])`)],
+    me: ['#me-title', '#page-account .vk-ui-tone-muted', '#page-appearance-title', '#page-theme-title', '#page-text-title', '#page-rail-title', ...['light', 'dark', 'system'].map(value => `#page-theme label:has([value="${value}"])`)],
   }[surface] ?? ['#navigation-toggle', '#navigation-primary a', RAIL_ME]);
   const pairs = await page.eval(`(() => {
     const rgb = value => value.match(/[\\d.]+/g).map(Number);
@@ -2155,8 +2160,11 @@ function accountLayoutGeometry(context, scenario) {
   const m = context.mePanel, near = (a, b) => Math.abs(a - b) <= 1;
   check(Boolean(m), `${scenario}: appearance geometry is present`);
   if (m.prefix === 'page') {
-    check([m.heading, m.account, m.identity].every(r => r && near(r.x, m.surface.contentLeft) && near(r.width, m.surface.contentWidth)),
+    check([m.account, m.identity].every(r => r && near(r.x, m.surface.contentLeft) && near(r.width, m.surface.contentWidth)),
       `${scenario}: appearance uses the available surface width`);
+    check(m.heading && m.accountLabel && near(m.heading.x, m.accountLabel.x) && near(m.heading.y, m.accountLabel.y) &&
+      near(m.identity.y, m.account.y) && near(m.account.y, m.surface.contentTop),
+      `${scenario}: the title is inside the first account card`);
     check([m.accountLabel, m.accountHelp].every(r => r && r.scrollWidth <= r.clientWidth + 1),
       `${scenario}: truthful account text fits without clipping`);
     const reservation = evaluateMePanelReservation(m);
@@ -2252,7 +2260,10 @@ async function preferenceSurfaces(page) {
     await page.capture(`r22-me-${theme}-selected-focus`);
     check(await appearanceRows(page, 'page'), `${theme}: page uses three compact native groups with icons and selection checks`);
     check(await page.eval(`document.querySelectorAll('#build-info').length === 0 &&
-      document.querySelector('#page-account h2').textContent === 'Tài khoản' &&
+      document.querySelectorAll('main h1').length === 1 &&
+      document.querySelector('#me').firstElementChild.id === 'page-account' &&
+      document.querySelector('#page-account').firstElementChild.classList.contains('vk-account-status') &&
+      document.querySelector('#page-account .vk-account-status h1.vk-ui-type-title')?.textContent === 'Tài khoản' &&
       document.querySelector('#page-account p').textContent === 'Tác giả mẫu (dữ liệu phát triển)' &&
       document.querySelector('#page-account .vk-account-illustration').getAttribute('aria-hidden') === 'true'`),
       `${theme}: truthful account without prototype footer banner`);
@@ -2263,7 +2274,7 @@ async function preferenceSurfaces(page) {
   const errorsBefore = page.errors.length;
   try {
     await page.goto(`${args.base}/toi`);
-    check(await page.eval(`document.documentElement.dataset.hydrated!=='true' && document.querySelectorAll('#build-info').length===0 && document.querySelector('#page-account h2')?.textContent==='Tài khoản' && document.querySelector('#page-theme input[type=radio]')!==null`), 'SSR /toi renders without page JavaScript or build-info footer');
+    check(await page.eval(`document.documentElement.dataset.hydrated!=='true' && document.querySelectorAll('#build-info').length===0 && document.querySelector('#page-account .vk-account-status h1')?.textContent==='Tài khoản' && document.querySelector('#page-theme input[type=radio]')!==null`), 'SSR /toi renders without page JavaScript or build-info footer');
   } finally {
     await page.send('Emulation.setScriptExecutionDisabled', { value: false });
     await page.send('Network.setBlockedURLs', { urls: [] });
@@ -2465,6 +2476,22 @@ async function shellFragmentHistory(page) {
   await page.viewport(1440);
 }
 
+async function accountNavigationGeometry(page, selector, labelVisible, scenario) {
+  const account = await page.eval(`(() => {
+    const link = document.querySelector(${JSON.stringify(selector)});
+    const avatar = link.querySelector('[data-kind="account"]');
+    const label = link.querySelector('.vk-ui-nav-item__label');
+    const rect = avatar?.getBoundingClientRect();
+    return { width: rect?.width, height: rect?.height,
+      radius: avatar && parseFloat(getComputedStyle(avatar).borderTopLeftRadius),
+      label: label.textContent, labelVisible: label.getClientRects().length > 0,
+      href: link.getAttribute('href') };
+  })()`);
+  check(account.width === 32 && account.height === 32 && account.radius >= 16 &&
+    account.label === 'Tài khoản' && account.labelVisible === labelVisible && account.href === '/toi',
+  `${scenario}: 32px circular account avatar and expected /toi label (${JSON.stringify(account)})`);
+}
+
 async function railReview(page) {
   const cases = [
     [1440, 900, 100, 'light', 220], [1440, 900, 100, 'light', 96],
@@ -2481,6 +2508,8 @@ async function railReview(page) {
     const name = `rail-r1-${width}x${height}-${railWidth}-${theme}-text${scale}`;
     await assertExploreHeader(page, name);
     await page.waitFor(APPEARANCE_SETTLED, `${name}: rail state-layer transitions settle`);
+    await page.waitFor(`document.querySelector(${JSON.stringify(RAIL_ME + ' [data-kind="account"]')})`, `${name}: account ready`);
+    await accountNavigationGeometry(page, RAIL_ME, railWidth === 220, name);
     const railNav = await page.eval(buildNavInspectionScript('#navigation'));
     check(railNav.present && railNav.items.filter(item => item.href).length === 3 &&
       railNav.items.length === 3 &&
@@ -2491,8 +2520,8 @@ async function railReview(page) {
       item.labelFont === baseLabel?.labelFont && item.labelLineHeight === baseLabel?.labelLineHeight),
       `${name}: rail nav labels keep Vietnamese words intact, consistent font, and <= 2 lines`);
     const axProfile = await collectElementAccessibility(page, RAIL_ME);
-    const axProfileEval = evaluateAccessibleElement(axProfile, { role: 'link', name: 'Tôi', excludeSubstrings: ['TT', '•'] });
-    check(axProfileEval.ok, `${name}: account link AX exposes 'Tôi' without decorative badges (${axProfileEval.reasons.join('; ')})`);
+    const axProfileEval = evaluateAccessibleElement(axProfile, { role: 'link', name: 'Tài khoản', excludeSubstrings: ['TT', '•'] });
+    check(axProfileEval.ok, `${name}: account link AX exposes 'Tài khoản' without decorative badges (${axProfileEval.reasons.join('; ')})`);
     const railOverflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({ containers: ['#navigation'] })));
     check(railOverflow.ok, `${name}: rail and page have no unintended/hidden horizontal overflow (${railOverflow.reasons.join('; ')})`);
     check(await page.eval(`(() => {
@@ -2528,7 +2557,7 @@ async function railReview(page) {
       const navIcons = [...rail.querySelectorAll('.vk-ui-nav-item .vk-ui-icon')];
       const aligned = navIcons.length === 3 && navIcons.every(icon =>
         Math.abs(centerX(glyph) - centerX(icon.getBoundingClientRect())) <= 1);
-      const wordsFit = [...rail.querySelectorAll('.vk-ui-nav-item__label')].every(label =>
+      const wordsFit = [...rail.querySelectorAll('.vk-ui-nav-item__label')].filter(label => label.getClientRects().length).every(label =>
         [...label.textContent.matchAll(/\\S+/g)].every(word => {
           const range = document.createRange();
           range.setStart(label.firstChild, word.index);
@@ -2606,8 +2635,15 @@ async function mediumRail(page) {
       getComputedStyle(dialog, '::backdrop').backgroundColor !== 'rgba(0, 0, 0, 0)' &&
       window.__mediumRailMain === document.querySelector('#noi-dung');
   })()`), 'Medium rail renders a scrim, traps focus, omits Giao diện and retains the same main element');
+  const modalAccount = '#navigation-expanded a[href="/toi"]';
+  await accountNavigationGeometry(page, modalAccount, true, 'Medium modal');
+  const modalAx = evaluateAccessibleElement(await collectElementAccessibility(page, modalAccount),
+    { role: 'link', name: 'Tài khoản', excludeSubstrings: ['TT', '•'] });
+  check(modalAx.ok, `Medium modal account link exposes Tài khoản (${modalAx.reasons.join('; ')})`);
   await page.key('Tab', SHIFT);
-  check(await page.eval(`document.activeElement === document.querySelector('#navigation-expanded a[href="/toi"]')`), 'Medium Shift+Tab wraps to the last link');
+  check(await page.eval(`document.activeElement === document.querySelector(${JSON.stringify(modalAccount)}) &&
+    document.activeElement.matches(':focus-visible') && getComputedStyle(document.activeElement).outlineStyle !== 'none'`),
+  'Medium Shift+Tab reaches the account link with visible focus');
   await page.key('Tab');
   check(await page.eval(`document.activeElement?.id === 'navigation-expanded-toggle'`), 'Medium Tab wraps to the close control');
   await page.capture('768-modal-expanded-rail');
@@ -2782,6 +2818,23 @@ async function adaptiveShell(page) {
   check(await page.eval(`document.querySelector(${JSON.stringify(RAIL_ME)}).getAttribute('aria-current') === 'page' &&
     !document.querySelector('#profile-trigger, #profile-menu, .vk-ui-nav-utility')`),
     'the rail account link goes straight to /toi and marks its route active without a rail utility');
+  await page.viewport(1440);
+  await page.click('#navigation-toggle');
+  await page.waitFor(`${RAIL_WIDTH} === 96`, 'compact active account rail');
+  await page.eval(`document.querySelector('#navigation-primary a[href="/ban-viet"]').focus()`);
+  await page.key('Tab');
+  check(await page.eval(`(() => {
+    const account = document.querySelector(${JSON.stringify(RAIL_ME)});
+    const indicator = account.querySelector('.vk-ui-nav-item__indicator');
+    return account.getAttribute('aria-current') === 'page' &&
+      getComputedStyle(indicator).backgroundColor !== 'rgba(0, 0, 0, 0)' &&
+      document.activeElement === account && account.matches(':focus-visible') &&
+      getComputedStyle(account).outlineStyle !== 'none';
+  })()`), 'compact account link keeps its selected pill and visible Tab focus');
+  await accountNavigationGeometry(page, RAIL_ME, false, 'selected compact rail');
+  await page.capture('1440-account-compact-active-focus');
+  await page.click('#navigation-toggle');
+  await page.waitFor(`${RAIL_WIDTH} === 220`, 'restore expanded active account rail');
   await shellFragmentHistory(page);
   await page.viewport(768);
   await page.click('#navigation-toggle');
@@ -2789,7 +2842,7 @@ async function adaptiveShell(page) {
   await page.viewport(390);
   await page.waitFor(`!${RAIL_MODAL_OPEN}`, 'resize closes modal rail');
   check(await page.eval(`location.pathname === '/ban-viet' && document.activeElement?.id === 'noi-dung'`), 'resize retains host route and focuses visible main');
-  check(await page.eval(`[...document.querySelectorAll('.vk-ui-bottom-nav a')].map(a => a.querySelector('.vk-ui-nav-item__label').textContent).join('|') === 'Khám phá|Bàn viết|Tôi'`), 'mobile destination order is Khám phá, Bàn viết, Tôi');
+  check(await page.eval(`[...document.querySelectorAll('.vk-ui-bottom-nav a')].map(a => a.querySelector('.vk-ui-nav-item__label').textContent).join('|') === 'Khám phá|Bàn viết|Tài khoản'`), 'mobile destination order is Khám phá, Bàn viết, Tài khoản');
   await page.click('.vk-ui-bottom-nav a[href="/toi"]');
   await page.waitFor(`location.pathname === '/toi' && document.querySelector('#page-theme')`, 'compact Tôi goes to canonical route');
 
@@ -2852,6 +2905,9 @@ async function adaptiveShell(page) {
         await chooseTextSize(page, scale, 'page-text');
         await page.eval(`scrollTo(0, 0)`);
         await bottomNavigationAlignment(page, `shell ${width}px/${scale}%/${theme}`);
+        if (width >= 760) {
+          await accountNavigationGeometry(page, RAIL_ME, width >= 1100, `shell ${width}px/${scale}%/${theme}`);
+        }
         // Layout can update before glyphs repaint after a root-text change. The
         // generic capture helper also serves actual no-JS pages, so wait only here.
         await page.eval(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))`);
@@ -3028,8 +3084,8 @@ async function appearanceFirstPaint(page) {
       await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'appearance hydration after reload');
       await waitForPageAccount(page);
       const axAfter = await collectElementAccessibility(page, toiNavSelector);
-      const axAfterEval = evaluateAccessibleElement(axAfter, { role: 'link', name: 'Tôi', excludeSubstrings: ['TT', '•'] });
-      check(axAfterEval.ok, `first-paint reload ${theme}/${os}/${width}: Tôi AX exposes 'Tôi' after hydration (${axAfterEval.reasons.join('; ')})`);
+      const axAfterEval = evaluateAccessibleElement(axAfter, { role: 'link', name: 'Tài khoản', excludeSubstrings: ['TT', '•'] });
+      check(axAfterEval.ok, `first-paint reload ${theme}/${os}/${width}: Tôi AX exposes 'Tài khoản' after hydration (${axAfterEval.reasons.join('; ')})`);
       const hydrated = await page.eval(`({ theme: document.documentElement.dataset.theme || 'system', choices: ['page-theme'].map(id => document.querySelector('#' + id + ' input:checked')?.value), paints: window.__appearancePaints })`);
       if (hydrated.theme !== theme || hydrated.choices.some(value => value !== theme) || hydrated.paints.some(value => value !== `${theme}:${theme}`)) mismatches.push({ name: 'hydration-' + theme + '-' + width, expected: theme, ...hydrated });
     }

@@ -187,6 +187,11 @@ export async function authWeb(page, { args, check, openPage }) {
   check(html.includes('name="vink-sign-in"') && html.includes('data-standing="unknown"') && !html.includes('id="sign-in-email"'), 'SSR says only whether sign-in is open; the standing is unknown until the browser asks');
   await openAccount(page, base, 'anonymous');
   check(await page.eval(`${q('#password-login')} && ${q('#use-email-code')} && !${q('#sign-out')} && ${q('#auth-appearance')} && !${q('#pen-name-form')}`), 'a guest sees password sign-in first and can choose email');
+  check(await page.eval(`document.querySelectorAll('main h1').length === 1 &&
+    document.querySelector('#page-account h1#me-title')?.textContent === 'Tài khoản' &&
+    document.querySelector('.vk-auth-heading h2')?.textContent === 'Đăng nhập' &&
+    !document.querySelector('.vk-account-status, #notification-bell-mobile')`),
+  '#520 guest /toi retains the semantic page title and the visible sign-in heading');
   check(await page.eval(`!document.querySelector('#sign-in-email')`), 'only one guest form is visible');
   // A real email-only deployment: the App gate is open, but the Identity method is unavailable.
   await fill(page, '#password-login-username', 'email_only_fixture');

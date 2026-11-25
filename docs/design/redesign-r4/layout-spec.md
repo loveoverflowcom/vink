@@ -33,24 +33,34 @@ và lời chốt từng DQ. [Review và bàn giao](review-414.md) ghi nguồn, o
 
 ## 3. Shell, rail và thanh dưới
 
-Thứ tự Khám phá → Bàn viết, mục Tôi ở cuối. Dưới 760 px dùng thanh dưới và safe area. Từ
+Thứ tự Khám phá → Bàn viết, mục Tài khoản ở cuối. Dưới 760 px dùng thanh dưới và safe area. Từ
 760–1099 px giữ rail 96 px, mở điều hướng đầy đủ bằng hộp thoại. Từ 1100 px theo chế độ rail và
 preference (mở rộng 220 px, thu gọn 96 px). Điều hướng không đổi route mặc định `/`.
 
 [DQ-11](../redesign-r4-ban-viet-kham-pha.md#8-sửa-theo-thiết-kế-hiện-hành-vs-cần-quyết-định)
-giữ hai lựa chọn: bác thẻ tài khoản ở chân rail và dùng nền trang cho mục Tôi khi mục này có chữ.
+giữ hai lựa chọn: bác thẻ tài khoản ở chân rail và dùng nền trang cho mục Tài khoản khi mục này có chữ.
 [#413](https://github.com/loveoverflowcom/vink/issues/413) thay riêng phần “giữ Giao diện”. Web #413
 bỏ nút ở rail mở rộng, thu gọn và hộp thoại. Trên Web, khách và người đã đăng nhập chỉnh
-Giao diện tại Tôi. Mặc định 100%, Lớn 150%; bootstrap chuyển preference cũ 200 → Lớn 150%
+Giao diện tại Tài khoản (`/toi`). Mặc định 100%, Lớn 150%; bootstrap chuyển preference cũ 200 → Lớn 150%
 trước CSS và hydration. Stress 200% có phương pháp và metadata riêng. Source đã pin ở đầu tài
 liệu ghi lại baseline trước #413.
 
 [#427 AC-04](https://github.com/loveoverflowcom/vink/issues/427#acceptance) giữ tên đích và
 `aria-current="page"`, dùng icon outlined cho đích chưa chọn và filled cho đích đang chọn.
-Áp dụng cho ba đích Khám phá (`explore`), Bàn viết (`edit`) và Tôi (`person`). Phối hợp #413 để
+Áp dụng cho ba đích Khám phá (`explore`), Bàn viết (`edit`) và Tài khoản (`person` khi chưa có avatar). Phối hợp #413 để
 thêm biến thể outlined một lần vào [catalog icon](../../../packages/ui-system/shared/icons.json),
 ghi nguồn Material Icons Outlined cùng commit upstream và kiểm generated output. Việc đổi
-Giao diện qua Tôi trong khi đang viết đi qua guard rời editor. Thiết kế lối tắt và canvas editor thuộc [#428](https://github.com/loveoverflowcom/vink/issues/428).
+Giao diện qua Tài khoản trong khi đang viết đi qua guard rời editor. Thiết kế lối tắt và canvas editor thuộc [#428](https://github.com/loveoverflowcom/vink/issues/428).
+
+[#520](https://github.com/loveoverflowcom/vink/issues/520) cập nhật mục Tài khoản khi đã đăng nhập.
+Rail mở rộng và hộp thoại tablet hiện avatar tròn 32 px cạnh nhãn “Tài khoản”. Rail thu gọn
+chỉ hiện avatar, giữ tên truy cập “Tài khoản”, trạng thái chọn và focus. Thanh dưới hiện avatar
+32 px trong pill, nhãn bên dưới. Khách giữ nhãn và biểu tượng theo khả năng đăng nhập.
+
+Trang `/toi` bắt đầu bằng thẻ Tài khoản. H1 “Tài khoản” dùng `type.title` trong thẻ, cạnh bút
+danh và avatar theo thứ tự đọc, với chuông thông báo trên mobile khi phiên có quyền. Khi hiển thị
+form xác thực, H1 vẫn có trong cây trợ năng và tiêu đề trực quan của form giữ nguyên bố cục.
+Kiểm Chrome ở hai theme, cỡ chữ 100%/150% và stress 200% riêng.
 
 ## 4. Khám phá
 

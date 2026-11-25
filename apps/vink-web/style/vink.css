@@ -187,17 +187,16 @@ a {
 }
 /* The Tôi viewport removes this inset while the full-height auth entry is mounted. */
 .vk-me { padding-block-start: var(--vk-space-8); }
-.vk-me > h1,
-.vk-me #me-title {
-  margin: 0; font: var(--vk-type-display-weight) var(--vk-type-display-size)/var(--vk-type-display-line-height) var(--vk-type-display-font);
-  letter-spacing: var(--vk-type-display-tracking);
-}
 /* Reserve illustration space against the account card query container. */
 .vk-account-status { container: vk-account / inline-size; }
-.vk-account-status h2 { margin: 0; font-family: var(--vk-font-ui); }
+.vk-account-status h1 { margin: 0; font-family: var(--vk-font-ui); overflow-wrap: anywhere; }
 .vk-account-status p { margin: 0; overflow-wrap: anywhere; }
-.vk-account-avatar, .vk-nav-account-avatar { display: inline-grid; place-items: center; }
-.vk-nav-account-avatar .vk-ui-avatar { --vk-ui-avatar-size: var(--vk-size-icon); }
+.vk-account-avatar { display: inline-grid; place-items: center; }
+/* Centre the 32px avatar on the shared icon axis, including in the expanded rail. */
+.vk-nav-account-avatar { display: inline-flex; align-items: center; justify-content: center; }
+@container vk-ui-rail (max-width: 100px) {
+  .vk-ui-nav-item:has(.vk-nav-account-avatar) .vk-ui-nav-item__label { display: none; }
+}
 .vk-account-illustration { display: none; }
 @container vk-account (min-width: 32rem) {
   .vk-account-status > div { padding-inline-end: 225px; }
@@ -253,10 +252,7 @@ a {
   max-inline-size: none; padding-inline: clamp(16px, 5vw, 32px);
 }
 .vk-me:has(.vk-auth-entry) { position: relative; padding-block-start: 0; }
-.vk-me:has(.vk-auth-entry) > :is(#me-title, .vk-notif-me-header) {
-  position: absolute; inline-size: 1px; block-size: 1px; clip-path: inset(50%); overflow: hidden;
-}
-.vk-me:has(.vk-auth-entry) > :not(#page-account, #me-title, .vk-notif-me-header) {
+.vk-me:has(.vk-auth-entry) > :not(#page-account) {
   inline-size: min(100%, 54rem); margin-inline: auto;
 }
 .vk-me .vk-account-session:has(.vk-auth-entry) {
@@ -2299,8 +2295,10 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
     inset-inline-end: 0;
     box-shadow: 0 0 0 2px var(--vk-bg-page);
   }
-  .vk-notif-me-header { display: flex; align-items: center; gap: var(--vk-space-2); }
-  .vk-notif-me-header > #me-title { flex: 1 1 auto; min-inline-size: 0; }
+  .vk-account-status:has(> .vk-notif-mobile-bell) > div { flex-basis: 0; }
+  .vk-account-status:has(> .vk-notif-mobile-bell) > .vk-account-illustration {
+    inset-inline-end: calc(24px + 48px);
+  }
   :is(.vk-explore__top, .vk-desk-heading):has(> .vk-notif-mobile-bell) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto;

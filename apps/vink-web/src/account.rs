@@ -274,16 +274,19 @@ pub(crate) fn AccountPanel(id: &'static str) -> impl IntoView {
     };
     let lifetime = session.epoch;
     view! {
-        <section id=id class="vk-account grid gap-vk-4" aria-label="Tài khoản">
-            <Show when=move || !entry()>
+        <div id=id class="vk-account grid gap-vk-4">
+            <Show when=move || !entry() fallback=|| view! {
+                <h1 id="me-title" class="vk-ui-visually-hidden" tabindex="-1">"Tài khoản"</h1>
+            }>
                 <div class="vk-account-status relative flex flex-wrap items-center gap-vk-3 [min-block-size:96px] p-[16px] rounded-vk-lg bg-vk-surface-container-low">
                     <crate::appearance::AccountAvatar />
                     <div class="[min-inline-size:0] flex-[1_1_12em]">
-                        <vink_ui::Heading level=vink_ui::HeadingLevel::H2 role=vink_ui::TypeRole::Title>"Tài khoản"</vink_ui::Heading>
+                        <vink_ui::Heading id="me-title" level=vink_ui::HeadingLevel::H1 role=vink_ui::TypeRole::Title attr:tabindex="-1">"Tài khoản"</vink_ui::Heading>
                         <vink_ui::Text tone=vink_ui::TextTone::Muted>
                             {move || standing.with(summary)}
                         </vink_ui::Text>
                     </div>
+                    <crate::notifications::MobileBell />
                     <svg class="vk-account-illustration" viewBox="0 0 224 82" aria-hidden="true" focusable="false">
                         <path fill="var(--vk-primary-container)" opacity=".72" d="M9 42c1-8 8-14 16-15 7-11 24-12 31 0 9 0 15 5 15 12 0 5-4 9-11 9H19c-6 0-11-2-10-6ZM155 34c1-6 6-9 12-9 5-10 19-10 24-2 8 0 14 5 14 10 0 6-5 9-11 9h-30c-6 0-10-3-9-8ZM175 69c2-7 9-12 16-11 5-8 17-9 23-2 6 1 10 5 10 10s-5 10-10 10h-33c-5 0-7-3-6-7Z" />
                         <path fill="var(--vk-primary)" opacity=".22" d="M26 75l32-43c23-3 39 2 51 15 16-11 33-12 51-3l-23 31H26Z" />
@@ -332,7 +335,7 @@ pub(crate) fn AccountPanel(id: &'static str) -> impl IntoView {
                 </Show>
             </div>
             <noscript><p class="vk-muted">"Đăng nhập cần JavaScript. Bạn vẫn có thể đọc các tác phẩm công khai."</p></noscript>
-        </section>
+        </div>
     }
 }
 
