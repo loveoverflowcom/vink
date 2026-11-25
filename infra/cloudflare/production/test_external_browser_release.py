@@ -21,6 +21,15 @@ PROOF = "f" * 64
 
 class ExternalBrowserRelease(unittest.TestCase):
     def test_resume_preserves_release_guards_and_does_not_replay_mutations(self):
+        self.exercise_release()
+
+    def test_maintenance_preserves_explicit_open_and_resumes_after_browser_failure(self):
+        self.exercise_release(maintenance=True)
+
+    def test_maintenance_can_roll_back_while_runner_is_offline(self):
+        self.exercise_release(maintenance=True, rollback=True)
+
+    def exercise_release(self, *, maintenance=False, rollback=False):
         with TemporaryDirectory() as tmp, contextlib.ExitStack() as stack:
             state = Path(tmp)
             receipt, journal, active = [state / leaf for leaf in ("request.json", "pending.json", "active.json")]
@@ -36,7 +45,25 @@ class ExternalBrowserRelease(unittest.TestCase):
             external = stack.enter_context(patch.object(release, "RemoteBrowser")).return_value
             binding = {"host": "mac-smoke", "ssh_config_sha256": "a" * 64, "known_hosts_sha256": "b" * 64}
             external.binding = binding
+            mode_flags = []
             calls = []
+            if maintenance:
+                review = state / "schema-review.json"
+                proof_file = state / "fallback-proof.json"
+                review.write_bytes(art.encode({"images": {"from": spec(A)["images"], "to": spec(B)["images"]}}))
+                mode_flags = ["--maintenance", "--schema-review", str(review), "--fallback-proof", str(proof_file)]
+                origin = stack.enter_context(patch.object(release.maintenance, "Origin")).return_value
+                origin.rollback_started.return_value = True
+                fallback = stack.enter_context(patch.object(release, "fallback_proof", return_value=PROOF))
+                stack.enter_context(patch.object(release, "schema_action", return_value="maintenance"))
+
+                def operate(phase, _evidence):
+                    expected = {"prepare": "origin_switch_started", "open": "origin_opening",
+                                "rollback": "origin_rollback_started"}
+                    self.assertEqual(json.loads(journal.read_bytes())["phase"], expected[phase])
+                    calls.append(("maintenance " + phase,))
+
+                origin.operate.side_effect = operate
             available = False
             accept_smoke = False
             change_edge = False
@@ -94,7 +121,7 @@ class ExternalBrowserRelease(unittest.TestCase):
 
             def execute(mode, *flags, external_mode=True):
                 args = ["release.py", mode, str(receipt), "--account", ACCOUNT, "--previous-origin", A,
-                        "--previous-edge", PREVIOUS, "--empty-catalog", *flags]
+                        "--previous-edge", PREVIOUS, "--empty-catalog", *mode_flags, *flags]
                 if external_mode:
                     args += ["--browser-host", "mac-smoke"]
                 with patch("sys.argv", args), contextlib.redirect_stdout(io.StringIO()) as output:
@@ -121,9 +148,31 @@ class ExternalBrowserRelease(unittest.TestCase):
             self.assertNotIn(("publish", "main"), calls)
 
             available = True
+            if maintenance:
+                prepared = execute("resume")
+                self.assertEqual(prepared["phase"], "origin_prepared")
+                fallback.assert_called_once()
+                origin.preflight.assert_called()
+                prepared_journal = journal.read_bytes()
+                available = False
+                with self.assertRaisesRegex(OSError, "runner offline"):
+                    execute("open")
+                self.assertEqual(journal.read_bytes(), prepared_journal)
+                self.assertNotIn(("maintenance open",), calls)
+                if rollback:
+                    restored = execute("rollback-origin")
+                    self.assertEqual(restored["phase"], "origin_rolled_back")
+                    self.assertEqual(restored["origin_release"], A)
+                    self.assertIn(("maintenance rollback",), calls)
+                    self.assertEqual(json.loads(active.read_bytes()), prior)
+                    return
+                available = True
             with self.assertRaisesRegex(ValueError, "browser has not verified"):
-                execute("resume")
+                execute("open" if maintenance else "resume")
             self.assertEqual(json.loads(journal.read_bytes())["phase"], "http_verified")
+            if maintenance:
+                with self.assertRaisesRegex(ValueError, "may have accepted writes"):
+                    execute("rollback-origin")
             self.assertEqual(json.loads(active.read_bytes()), prior)
             smoke = next(i for i, entry in enumerate(calls) if entry[0] == "browser smoke")
             self.assertEqual(calls[smoke-4:smoke], [("assets", preview["preview_url"]),
@@ -142,7 +191,11 @@ class ExternalBrowserRelease(unittest.TestCase):
             self.assertEqual(json.loads(active.read_bytes()), result)
             self.assertFalse(journal.exists())
             self.assertEqual(calls.count(("publish", "main")), 1)
-            self.assertEqual(calls.count(("origin apply",)), 1)
+            self.assertEqual(calls.count(("origin apply",)), int(not maintenance))
+            if maintenance:
+                self.assertEqual(calls.count(("maintenance prepare",)), 1)
+                self.assertEqual(calls.count(("maintenance open",)), 1)
+                self.assertNotIn(("maintenance rollback",), calls)
             self.assertEqual(calls[-2:], [("origin observe",), ("catalog", None)])
             local_browser.assert_not_called()
             local_preflight.assert_not_called()

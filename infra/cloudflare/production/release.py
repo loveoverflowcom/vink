@@ -488,7 +488,7 @@ def main():
     p.add_argument("--empty-catalog", action="store_true", help="verify empty catalog, report published Reader NOT_RUN")
     p.add_argument("--resume-with-reader", metavar="UUID",
                    help="verify a published Reader for one resume attempt of a rolling empty-catalog release")
-    p.add_argument("--browser-host", help="pinned SSH alias for an external rolling release browser")
+    p.add_argument("--browser-host", help="pinned SSH alias for an external release browser")
     p.add_argument("--http-only", metavar="REASON", help="use HTTP smoke only for a same-schema rolling release")
     p.add_argument("--rollback-predecessor", action="store_true",
                    help="with --http-only, use the current release controller to restore its recorded predecessor")
@@ -506,8 +506,9 @@ def main():
     require(not a.rollback_predecessor or browser_coverage, "rolling predecessor rollback requires --http-only")
     final_phase = "http_only_verified" if browser_coverage else "browser_verified"
     if a.browser_host is not None:
-        require(a.mode in {"plan", "apply", "resume"} and not a.maintenance,
-                "external browser only supports rolling plan/apply/resume")
+        require(a.mode in {"plan", "apply", "resume"}
+                or (a.maintenance and a.mode in {"open", "rollback-origin"}),
+                "external browser requires plan/apply/resume or an explicit maintenance origin command")
     if a.resume_with_reader is not None:
         require(a.mode == "resume" and a.empty_catalog and not a.maintenance and not a.preview_only
                 and READER_UUID.fullmatch(a.resume_with_reader),
@@ -622,7 +623,8 @@ def main():
         schema = schema_action(a.previous_origin, rev, a.schema_review, window=a.maintenance)
         require(not a.empty_catalog or a.maintenance or schema == "same",
                 "rolling empty-catalog smoke requires unchanged migrations")
-        require(not external or schema == "same", "external rolling browser requires unchanged migrations")
+        require(not external or schema in {"same", "maintenance"},
+                "external rolling browser requires unchanged migrations")
         manifest = export(spec, archive, retained=True) if rollback_from else export(spec, archive)
         images = spec["images"]
         evidence = None
@@ -752,6 +754,8 @@ def main():
                 if not origin:
                     run(HERE / "origin.sh", "apply", *origin_args)
             elif a.mode != "rollback-origin" and result["phase"] in {"origin_switch_started", "origin_prepared"}:
+                if external and a.mode == "open" and result["phase"] == "origin_prepared":
+                    external.check("preflight", rev)
                 # Asset access may have changed while maintenance was paused. Keep rollback available.
                 verify_assets(result["preview_alias"], rev, manifest)
                 if predecessor:
