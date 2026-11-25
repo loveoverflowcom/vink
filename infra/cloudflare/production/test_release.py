@@ -184,6 +184,250 @@ class Recovery(unittest.TestCase):
             self.assertEqual(populated[populated.index("--reader") + 1], reader)
             self.assertNotIn("--empty-catalog", populated)
 
+    def test_catalog_requires_proof_of_an_empty_final_page(self):
+        for status, mime, body in (
+            ("503", "application/json", b'{"works":[],"next_cursor":null}'),
+            ("200", "text/html", b'{"works":[],"next_cursor":null}'),
+            ("200", "application/json", b'invalid json'),
+            ("200", "application/json", b'[]'),
+            ("200", "application/json", b'{"works":[]}'),
+            ("200", "application/json", b'{"works":[],"next_cursor":"more"}'),
+            ("200", "application/json", b'{"works":[{}],"next_cursor":null}'),
+        ):
+            with self.subTest(status=status, mime=mime, body=body), \
+                    patch.object(release, "read_asset", return_value=(status, mime, "", "", body)), \
+                    self.assertRaises(ValueError):
+                release.assert_empty_catalog()
+
+    def test_same_schema_rolling_empty_catalog_resumes_at_safe_boundaries(self):
+        with TemporaryDirectory() as tmp, contextlib.ExitStack() as stack:
+            root = Path(tmp)
+            archive = root / "archives"
+            old, new = package(archive, A), package(archive, B)
+            receipt = root / "request.json"
+            receipt.write_bytes(art.encode(spec(B)))
+            predecessor = {"id": "previous", "url": "https://69fff7eb.vink-production.pages.dev"}
+            preview = {"preview_deployment": "preview", "preview_url": "https://2243f07a.vink-production.pages.dev",
+                       "preview_alias": f"https://r-{B[:26]}.vink-production.pages.dev"}
+            apex, catalog = spec(B)["public_origin"], "https://vink.forum/api/v1/works"
+            active = root / "active.json"
+            journal = root / "pending.json"
+            active.write_bytes(art.encode({"edge": predecessor["id"], "account": ACCOUNT, "origin_release": A,
+                "legacy_assets": A, "release": spec(A), "retained": {A: art.sha(art.encode(old))}}))
+            remote = {"canonical_deployment": predecessor}
+            calls, asset_hosts = [], set()
+            empty = ("200", "application/json", "", "", b'{"works":[],"next_cursor":null}')
+            outage = ("503", "application/json", "", "", b"{}")
+            listing = outage
+            same_schema = True
+            outage_during_plan = False
+
+            def fetch(url):
+                if url == catalog:
+                    calls.append("catalog")
+                    return listing
+                host, asset = url.split("/_v/")
+                rev, name = asset.split("/pkg/")
+                asset_hosts.add(host)
+                return "200", art.TYPES[Path(name).suffix], rev, "inventory/r26", (rev + name).encode()
+
+            def local(*argv):
+                nonlocal listing
+                if "rev-parse" in argv:
+                    return B
+                if str(argv[0]).endswith("/origin.sh"):
+                    self.assertEqual(argv[-1], "same")
+                    calls.append(f"origin {argv[1]}")
+                    if not same_schema:
+                        raise ValueError("migration trees differ")
+                    if outage_during_plan:
+                        listing = outage
+                return ""
+
+            def publish(public, branch, rev, marker):
+                nonlocal listing
+                self.assertEqual(rev, B)
+                for retained in (A, B):
+                    self.assertEqual((public / "_v" / retained / "pkg/vink.js").read_text(), retained + "vink.js")
+                calls.append(branch)
+                if branch == "main":
+                    remote["canonical_deployment"] = {"id": "new-edge", "environment": "production",
+                        "url": "https://abcd.vink-production.pages.dev", "latest_stage": {"status": "success"},
+                        "deployment_trigger": {"metadata": {"commit_hash": B, "commit_message": marker}}}
+                    listing = outage
+
+            for name, value in {"STATE": root, "WRANGLER": receipt, "project": lambda _: remote,
+                                "export": lambda *_: new, "read_asset": fetch, "run": local,
+                                "publish": publish, "preview_receipt": lambda *_: preview,
+                                "browser_preflight": lambda _: None}.items():
+                stack.enter_context(patch.object(release, name, value))
+            browser = stack.enter_context(patch.object(release, "browser_check"))
+            smoke = stack.enter_context(patch.object(release.subprocess, "run"))
+            stack.enter_context(patch.object(release.pwd, "getpwnam", return_value=SimpleNamespace(pw_uid=501)))
+            stack.enter_context(patch.dict(os.environ, {"CLOUDFLARE_ACCOUNT_ID": ACCOUNT, "VINK_RELEASE_CHROME": "/bin/sh"}))
+            args = [str(receipt), "--account", ACCOUNT, "--previous-origin", A, "--previous-edge", predecessor["id"]]
+
+            def execute(mode, *extra):
+                with patch("sys.argv", ["release.py", mode, *args, "--empty-catalog", *extra]), \
+                        contextlib.redirect_stdout(io.StringIO()) as output:
+                    release.main()
+                return json.loads(output.getvalue())
+
+            with self.assertRaisesRegex(ValueError, "catalog unreachable"):
+                execute("plan")
+            self.assertEqual(calls, ["catalog"])
+            listing = empty
+            with self.assertRaisesRegex(ValueError, "cannot use a reader"):
+                execute("plan", "--reader", "unused")
+            with patch.object(release, "schema_action", return_value="expand"), \
+                    self.assertRaisesRegex(ValueError, "unchanged migrations"):
+                execute("apply", "--preview-only")
+            same_schema = False
+            with self.assertRaisesRegex(ValueError, "migration trees differ"):
+                execute("apply", "--preview-only")
+            self.assertNotIn(f"r-{B[:26]}", calls)
+            self.assertFalse(journal.exists())
+            same_schema = True
+            self.assertEqual(execute("plan")["schema_action"], "same")
+            outage_during_plan = True
+            with self.assertRaisesRegex(ValueError, "catalog unreachable"):
+                execute("apply", "--preview-only")
+            self.assertFalse(journal.exists())
+            self.assertNotIn(f"r-{B[:26]}", calls)
+            outage_during_plan = False
+            listing = empty
+            self.assertEqual(execute("apply", "--preview-only")["phase"], "preview_verified")
+            staged = journal.read_bytes()
+            self.assertEqual(remote["canonical_deployment"], predecessor)
+
+            reader_journal = json.loads(staged)
+            del reader_journal["reader_coverage"]
+            journal.write_bytes(art.encode(reader_journal))
+            with self.assertRaisesRegex(ValueError, "original catalog smoke mode"):
+                execute("resume")
+            journal.write_bytes(staged)
+            listing = ("200", "application/json", "", "", b'{"works":[{}],"next_cursor":null}')
+            with self.assertRaisesRegex(ValueError, "requires an empty public catalog"):
+                execute("resume")
+            self.assertEqual(journal.read_bytes(), staged)
+            self.assertEqual(remote["canonical_deployment"], predecessor)
+            self.assertNotIn("main", calls)
+
+            listing = empty
+            with self.assertRaisesRegex(ValueError, "catalog unreachable"):
+                execute("resume")
+            self.assertEqual(json.loads(journal.read_bytes())["phase"], "edge_promoted")
+            self.assertEqual(calls[-4:], ["catalog", "main", "origin plan", "catalog"])
+            self.assertNotIn("origin apply", calls)
+            self.assertEqual(json.loads(active.read_bytes())["origin_release"], A)
+            listing = empty
+            result = execute("resume")
+            self.assertEqual(result["phase"], "browser_verified")
+            self.assertEqual(result["reader_coverage"], "NOT_RUN: verified empty catalog")
+            self.assertEqual(result["origin_release"], B)
+            self.assertEqual(calls[-4:], ["origin plan", "catalog", "origin apply", "origin observe"])
+            self.assertEqual(calls.count("main"), 1)
+            self.assertEqual(asset_hosts, {predecessor["url"], preview["preview_url"], preview["preview_alias"],
+                                          apex, remote["canonical_deployment"]["url"]})
+            self.assertEqual(json.loads(active.read_bytes()), result)
+            self.assertFalse(journal.exists())
+            browser.assert_called_once_with(Path("/bin/sh"), None, B, empty_catalog=True)
+            smoke.assert_called_once_with([release.HERE.parent.parent / "production/smoke-edge.sh", "edge",
+                                          "--release", B], check=True)
+
+    def test_published_reader_recovers_after_origin_switch_without_replaying(self):
+        with TemporaryDirectory() as tmp, contextlib.ExitStack() as stack:
+            root = Path(tmp)
+            archive = root / "archives"
+            old, new = package(archive, A), package(archive, B)
+            retained = {rev: art.sha(art.encode(manifest)) for rev, manifest in ((A, old), (B, new))}
+            worker_digest = art.stage(archive, B, root / "stage", A)
+            receipt = root / "request.json"
+            receipt.write_bytes(art.encode(spec(B)))
+            active = root / "active.json"
+            prior = art.encode({"edge": "previous", "account": ACCOUNT, "origin_release": A, "legacy_assets": A,
+                                "release": spec(A), "retained": {A: retained[A]}})
+            active.write_bytes(prior)
+            journal = root / "pending.json"
+            pending = {"release": spec(B), "account": ACCOUNT, "project": art.PROJECT,
+                       "previous_edge": "previous", "previous_origin": A, "edge": "new-edge", "origin_release": B,
+                       "asset_digest": new["asset_digest"], "legacy_assets": A, "worker_digest": worker_digest,
+                       "retained": retained, "schema_action": "same", "schema_review": None,
+                       "reader_coverage": release.EMPTY_CATALOG, "phase": "http_verified"}
+            journal.write_bytes(art.encode(pending))
+            remote = {"canonical_deployment": {"id": "new-edge", "environment": "production",
+                "latest_stage": {"status": "success"},
+                "deployment_trigger": {"metadata": {"commit_hash": B,
+                                                     "commit_message": "vink-release-" + worker_digest}}}}
+            reader = "33333333-3333-4333-8333-333333333333"
+            selected = {"status": "published", "work_id": reader}
+            observed = selected
+            calls = []
+
+            def fetch(url):
+                self.assertEqual(url, f"https://vink.forum/api/v1/works/{reader}/reader")
+                return "200", "application/json", "", "", art.encode(observed)
+
+            def local(*argv):
+                if "rev-parse" in argv:
+                    return B
+                if str(argv[0]).endswith("/origin.sh"):
+                    calls.append(tuple(argv[1:4]))
+                return ""
+
+            def execute(*extra):
+                args = [str(receipt), "--account", ACCOUNT, "--previous-origin", A,
+                        "--previous-edge", "previous", "--empty-catalog", *extra]
+                with patch("sys.argv", ["release.py", "resume", *args]), \
+                        contextlib.redirect_stdout(io.StringIO()) as output:
+                    release.main()
+                return json.loads(output.getvalue())
+
+            for name, value in {"STATE": root, "WRANGLER": receipt, "project": lambda _: remote,
+                                "export": lambda *_: new, "read_asset": fetch, "run": local}.items():
+                stack.enter_context(patch.object(release, name, value))
+            publish = stack.enter_context(patch.object(release, "publish"))
+            browser = stack.enter_context(patch.object(release, "browser_check"))
+            stack.enter_context(patch.object(release.subprocess, "run"))
+            stack.enter_context(patch.object(release.pwd, "getpwnam", return_value=SimpleNamespace(pw_uid=501)))
+            stack.enter_context(patch.dict(os.environ, {"CLOUDFLARE_ACCOUNT_ID": ACCOUNT, "VINK_RELEASE_CHROME": "/bin/sh"}))
+            override = ("--resume-with-reader", reader)
+            for options in (("--resume-with-reader", "not-a-UUID"), (*override, "--maintenance"),
+                            (*override, "--preview-only")):
+                with self.subTest(options=options), self.assertRaisesRegex(ValueError, "rolling --empty-catalog resume"):
+                    execute(*options)
+            for observed in ({"status": "hidden", "work_id": reader}, selected | {"work_id": "other-work"}):
+                with self.subTest(observed=observed), self.assertRaisesRegex(ValueError, "selected Reader to be published"):
+                    execute(*override)
+            self.assertEqual(json.loads(journal.read_bytes()), pending)
+            self.assertEqual(calls, [])
+            browser.assert_not_called()
+
+            observed = selected
+            original_store = release.store
+
+            def lose_receipt_ack(path, value):
+                if path == active:
+                    raise OSError("lost active receipt write")
+                original_store(path, value)
+
+            with patch.object(release, "store", side_effect=lose_receipt_ack), \
+                    self.assertRaisesRegex(OSError, "lost active receipt write"):
+                execute(*override)
+            saved = json.loads(journal.read_bytes())
+            self.assertEqual(saved["phase"], "browser_verified")
+            self.assertEqual(saved["reader_coverage"], release.PUBLISHED_READER)
+            self.assertEqual(saved["reader_resume_work"], reader)
+            self.assertEqual(active.read_bytes(), prior)
+
+            result = execute(*override)
+            self.assertEqual(result, saved)
+            self.assertEqual(json.loads(active.read_bytes()), saved)
+            self.assertEqual(calls, [("observe", B, B), ("observe", B, B)])
+            self.assertFalse(journal.exists())
+            publish.assert_not_called()
+            self.assertEqual([call.args for call in browser.call_args_list], [(Path("/bin/sh"), reader, B)] * 2)
+
     def test_podman_probe_joins_only_the_running_postgres_namespace(self):
         origin = release.maintenance.Origin.__new__(release.maintenance.Origin)
         origin.postgres = "9" * 12
