@@ -2737,7 +2737,15 @@ async function adaptiveShell(page) {
     check(await page.eval(`document.querySelectorAll('[aria-current=page]').length === 0`), `${path} marks no destination active`);
     await assertBrandPlacement(page);
   }
-  await page.goto(args.base + '/ban-viet/33333333-3333-4333-8333-333333333333/kiem-duyet');
+  const legacyWork = '33333333-3333-4333-8333-333333333333';
+  const legacyReview = `${args.base}/ban-viet/${legacyWork}/kiem-duyet`;
+  const canonicalReview = `/ban-viet?review=${legacyWork}`;
+  const redirect = await fetch(legacyReview, { redirect: 'manual' });
+  check(redirect.status === 308 && redirect.headers.get('location') === canonicalReview,
+    'legacy review permanently redirects to the Desk with the same work selected');
+  await page.send('Page.navigate', { url: legacyReview });
+  await page.waitFor(`location.pathname + location.search === ${JSON.stringify(canonicalReview)} &&
+    document.readyState === 'complete'`, 'legacy navigation reaches the canonical Desk review');
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true' &&
     document.querySelector('#navigation a[href="/ban-viet"]').getAttribute('aria-current') === 'page'`, 'author review activates Desk on the rail');
   await page.viewport(390);
@@ -3264,7 +3272,20 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   await page.viewport(390);
   await page.waitFor(`!${RAIL_MODAL_OPEN}`, 'editor modal rail closes on mobile resize');
   check(await page.eval(view) && (await page.body()) === written && await page.eval(`location.pathname === '${editorPath}' && getComputedStyle(document.querySelector('.vk-ui-bottom-nav')).display === 'none'`), 'mobile resize retains editor and hides bottom bar');
-  await page.capture('390-editor-dirty-dark');
+  const priorTheme = await page.eval("document.documentElement.getAttribute('data-theme')");
+  try {
+    await page.eval("document.documentElement.dataset.theme = 'dark'");
+    await page.waitFor(APPEARANCE_SETTLED, 'dirty editor dark colours settled');
+    await editorLayoutReady(page);
+    await page.capture('390-editor-dirty-dark', {
+      requestedScene: { width: 390, height: 900, scale: 100, theme: 'dark' },
+      target: '.cm-content',
+      boundary: 'Dirty product editor with a DOM theme override',
+    });
+  } finally {
+    await page.eval(priorTheme === null ? "document.documentElement.removeAttribute('data-theme')"
+      : `document.documentElement.dataset.theme = ${JSON.stringify(priorTheme)}`);
+  }
   await assertBrandPlacement(page);
   await page.click('.vk-editor-heading__back');
   await page.waitFor(`location.pathname === '${editorPath}' && document.querySelector('[data-testid=leave-editor]').open`, 'mobile editor’s Bàn viết link uses the same leave guard');
@@ -3544,9 +3565,28 @@ async function draftDashboard(page) {
   // Give the isolated smoke document a same-route predecessor for a real browser traversal.
   await page.eval(`history.pushState(null, '', location.href)`);
   await page.click('#open-draft-search');
+  await page.waitFor(`!document.querySelector('.vk-draft-search').hidden && document.activeElement.id === 'draft-search'`,
+    'the reopened dock owns focus before Back');
   await page.eval(`history.back()`);
   await page.waitFor(`location.pathname==='/ban-viet' && document.activeElement.id==='open-draft-search' &&
     document.querySelector('.vk-draft-search').hidden`, 'Back closes the private dock on its current route');
+  // Back restores focus on the rendering frame. Start the independent viewport matrix
+  // after that frame and Chrome's traversal, including when capture omits PNG painting.
+  await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
+  check(await page.eval(`document.activeElement.id === 'open-draft-search' && document.querySelector('.vk-draft-search').hidden`),
+    'Back leaves the closed dock and its launcher focus stable after paint');
+
+  // Select a row between closing the dock and its deferred focus restoration.
+  await page.click('#open-draft-search');
+  await page.waitFor(`document.activeElement.id === 'draft-search'`, 'search owns focus before the competing action');
+  check(await page.eval(`(async () => {
+    const row = document.querySelector('.vk-draft-row__link');
+    document.querySelector('#close-draft-search').click();
+    row.focus();
+    if (document.activeElement !== row) return false;
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    return document.querySelector('.vk-draft-search').hidden && row.isConnected && document.activeElement === row;
+  })()`), 'closing search preserves a newly focused draft link across the recovery frame');
 
   for (const theme of ['light','dark']) for (const scale of [100,200]) for (const width of [1536,1440,1280,1024,834,390,320]) {
     await page.viewport(width);
@@ -3594,7 +3634,14 @@ async function draftDashboard(page) {
     })()`), `#225 ${width}/${scale}/${theme}: full create label + one Add target, native Select and no fake pressed`);
     if (width<=390 && scale===200) {
       await page.eval(`document.querySelector('.vk-draft-row__link').focus()`); await page.key('Tab'); await page.key('Tab',SHIFT);
-      check(await page.eval(`getComputedStyle(document.querySelector('.vk-draft-row__title')).overflow==='visible' && document.activeElement.matches('.vk-draft-row__link:focus-visible')`), 'keyboard reveals the entire title at 200%');
+      const expanded = await page.eval(`(() => {
+        const link = document.querySelector('.vk-draft-row__link'), active = document.activeElement;
+        const title = link.querySelector('.vk-draft-row__title'), style = getComputedStyle(title);
+        return { href: active.getAttribute('href'), focused: active === link && link.matches(':focus-visible'),
+          overflow: style.overflow, clamp: style.webkitLineClamp };
+      })()`);
+      check(expanded.href === firstHref && expanded.focused && expanded.overflow === 'visible' && expanded.clamp === 'none',
+        `keyboard reveals the entire title of the focused draft at 200% (${JSON.stringify(expanded)})`);
       await page.capture(`desk-title-expanded-${width}-${scale}-${theme}`);
       await page.eval(`document.querySelector('.vk-draft-row:last-child a').focus()`);
       await page.key('Tab'); await page.key('Tab',SHIFT);
@@ -3730,6 +3777,7 @@ async function draftDashboard(page) {
   await wakeDesk(page);
   await page.waitFor(`document.querySelector('[data-testid=desk-access]')?.textContent.includes('không có quyền')`, 'forbidden dashboard');
   check(await page.eval(`!document.querySelector('[data-testid=draft-empty], #draft-list-title, #draft-search, #retry-drafts, #create-draft')`), 'forbidden clears the private heading and controls and keeps a distinct access state');
+  await page.waitFor(`document.activeElement.id === 'desk-title'`, 'revoking the focused private search falls back to the Desk heading');
   await captureRecovery(page, 'desk-forbidden', '[data-testid=desk-access]');
   gate.list = { status: 401, body: { error: { code: 'unauthenticated', message: 'test fixture' } } };
   await page.reload();
@@ -4422,12 +4470,12 @@ async function editorChrome(page) {
   await page.eval(`document.querySelector('.cm-content').dispatchEvent(new KeyboardEvent('keydown', {key:'s',ctrlKey:true,isComposing:true,bubbles:true,cancelable:true}))`);
   check((await page.status()) === 'unsaved', 'composing shortcut never saves a partial syllable (synthetic guard check)');
   check(!await page.eval(`Boolean(document.querySelector('.vk-editor-help'))`), 'quiet editor removes long line-break writing help');
-  // Save -> direct preview -> visible native tools -> title, full-title disclosure, body.
+  // Editor R4 keeps Save and its native details adjacent in the dirty toolbar.
   await page.eval(`document.querySelector('#save').focus()`);
   await page.key('Tab');
-  check(await page.eval(`document.activeElement.id==='preview'`), 'dirty editor Tab reaches direct preview after Save');
-  await page.key('Tab');
-  check(await page.eval(`document.activeElement.matches('#editor-save-details > summary') && document.activeElement.checkVisibility()`), 'dirty editor Tab reaches visible tools');
+  check(await page.eval(`!document.querySelector('#preview, #draft-preview') &&
+    document.activeElement.matches('#editor-save-details > summary') && document.activeElement.checkVisibility()`),
+    'dirty editor Tab goes directly from Save to visible tools with no standalone preview');
   await page.key('Tab');
   check(await page.eval(`document.activeElement.id==='draft-title'`), 'dirty closed Thêm reaches the native title directly');
   await page.key('Tab');
@@ -4850,9 +4898,18 @@ async function editorChrome(page) {
 
 async function readerRoutingAndPrivacy(page) {
   await serverHtml();
-  await readerBeforeHydration(page, { args, check });
-  await conditionalPublicReads(page);
-  await tracePublicReadLifecycle(page);
+  // Each contract establishes its own navigation, cache and assertions. Dispose its
+  // documents before the next contract, including any WASM instances kept in history.
+  for (const verify of [readerBeforeHydration, conditionalPublicReads, tracePublicReadLifecycle]) {
+    const { browserContextId } = await page.cdp.send('Target.createBrowserContext');
+    const reader = await openPage(page.cdp, browserContextId);
+    activePage = reader; // Keep the failing document available to the common capture and teardown.
+    await verify(reader, { args, check });
+    check(reader.errors.length === 0, `${verify.name} has no unexpected browser errors: ${reader.errors.join(' | ')}`);
+    await page.cdp.send('Target.disposeBrowserContext', { browserContextId });
+    activePage = page;
+  }
+  await page.send('Page.bringToFront');
   const formerPilot = '/thu-nghiem/bieu-cam';
   const response = await fetch(args.base + formerPilot);
   const missing = await response.text();
@@ -5299,6 +5356,16 @@ async function deskRefusesLossyOpen(page) {
 
 // #256/#257/#262 + nut-gui-luu: Markdown format choice, single-editor Live Preview,
 // AST Mục lục (Cách 1), Send/Save state icon transitions and conversion dialog.
+// Editor R4 (#475) docks the outline at 50rem of available editor content.
+async function outlineNeedsSheet(page) {
+  return page.eval(`(() => {
+    const editor = document.querySelector('.vk-desk--editor');
+    const style = getComputedStyle(editor);
+    const width = editor.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    return width < 50 * parseFloat(getComputedStyle(document.documentElement).fontSize);
+  })()`);
+}
+
 async function markdownLivePreviewAndFormatPicker(page) {
   console.log('editor live preview (#256), outline (#257), format picker (#262) & send/save button:');
   const cmView = `document.querySelector('.cm-content').cmTile.root.view`;
@@ -5462,24 +5529,31 @@ async function markdownLivePreviewAndFormatPicker(page) {
   try {
     for (const scene of [320, 390, 834, 1023, 1024, 1440].flatMap(width =>
       ['100', '150', '200'].flatMap(scale => ['light', 'dark'].map(theme => ({
-        width, scale, theme, overlay: width < 1024 || scale !== '100',
+        width, scale, theme,
       }))))) {
       await page.viewport(scene.width, 900);
       await page.eval(`document.documentElement.dataset.text = '${scene.scale}'; document.documentElement.dataset.theme = '${scene.theme}'; new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))`);
-      await page.waitFor(`document.querySelector('#editor-outline-panel[open]')?.matches(':modal') === ${scene.overlay}`, 'outline switches between sheet and sidebar');
+      const overlay = await outlineNeedsSheet(page);
+      if (scene.width === 320 || (scene.width === 1440 && scene.scale === '100')) {
+        check(overlay === (scene.width === 320), `outline matrix covers compact and docked layouts at ${scene.width}/${scene.scale}`);
+      }
+      await page.waitFor(`document.querySelector('#editor-outline-panel[open]')?.matches(':modal') === ${overlay}`,
+        `outline switches between sheet and sidebar at ${scene.width}/${scene.scale}/${scene.theme}`);
       const layout = await page.eval(`(() => {
         const panel = document.querySelector('#editor-outline-panel');
         return {
           overflow: document.documentElement.scrollWidth > innerWidth,
           pos: panel ? getComputedStyle(panel).position : null,
+          besidePaper: panel?.closest('.vk-editor-side') != null &&
+            panel.getBoundingClientRect().left >= document.querySelector('#editor-paper').getBoundingClientRect().right,
           modal: panel?.matches(':modal'),
           role: panel?.getAttribute('role'),
           rootFont: parseFloat(getComputedStyle(document.documentElement).fontSize),
         };
       })()`);
       check(!layout.overflow && layout.rootFont === 16 * Number(scene.scale) / 100 &&
-        (scene.overlay ? layout.pos === 'fixed' && layout.modal && layout.role === null
-          : layout.pos === 'sticky' && !layout.modal && layout.role === 'complementary'),
+        (overlay ? layout.pos === 'fixed' && layout.modal && layout.role === null
+          : layout.pos === 'static' && layout.besidePaper && !layout.modal && layout.role === 'complementary'),
         `Markdown + Mục lục scene ${scene.width}/${scene.scale}/${scene.theme} has no horizontal overflow (${JSON.stringify(layout)})`);
       if ((scene.width === 320 && scene.scale === '200' && scene.theme === 'dark') ||
           (scene.width === 1440 && scene.scale === '100' && scene.theme === 'light') ||
@@ -5612,15 +5686,15 @@ async function markdownLivePreviewAndFormatPicker(page) {
       await page.waitFor(`${EDITOR_READY} && document.querySelector('#outline-toggle')`, 'saved Markdown opens with the chosen text preference');
       await page.click('#outline-toggle');
       for (const width of [1023, 1024]) {
-        const modal = scale === 150 || width < 1024;
         await page.viewport(width, 900);
+        const modal = await outlineNeedsSheet(page);
         await page.waitFor(`(() => {
           const root = document.documentElement, panel = document.querySelector('#editor-outline-panel[open]');
           const expectedText = ${scale === 150 ? "'150'" : 'undefined'};
           return root.dataset.text === expectedText && !root.style.fontSize &&
             getComputedStyle(root).fontSize === '${16 * scale / 100}px' && root.scrollWidth <= innerWidth &&
             panel && panel.matches(':modal') === ${modal} &&
-            getComputedStyle(panel).position === '${modal ? 'fixed' : 'sticky'}' &&
+            getComputedStyle(panel).position === '${modal ? 'fixed' : 'static'}' &&
             panel.getAttribute('role') === ${modal ? 'null' : "'complementary'"};
         })()`, `Mục lục at ${width}px with the app's ${scale}% text preference`);
       }
@@ -5699,6 +5773,7 @@ async function draftTags(page, workId) {
 
   // A metadata-only change is unsaved work: the toolbar says so and leaving is held.
   await page.eval(`const select = document.querySelector('#work-tags-form-select');
+    select.focus();
     select.value = [...select.options].find(o => o.textContent.trim() === 'Tản văn').value;
     select.dispatchEvent(new Event('change', { bubbles: true }));`);
   await waitTagStatus(page, 'unsaved');
@@ -5868,8 +5943,12 @@ async function draftTags(page, workId) {
   check(stored.version === 5, 'the dropped answer belonged to a committed save');
   check((await page.eval(`location.pathname`)) === editorPath, 'a lost tag acknowledgement keeps the author in the editor');
   await page.click('#leave-stay');
-  check(await page.eval(`!document.querySelector('#export-tags') && document.querySelector('[data-testid=tag-failed] #tags-retry')?.checkVisibility() && !document.querySelector('#tags-retry').closest('details,dialog')`),
-    'uncertain tag save removes export and keeps direct retry outside tools');
+  check(await page.eval(`(() => {
+    const options = document.querySelector('#work-options[open]');
+    const retry = options?.querySelector('[data-testid=tag-failed] button#tags-retry');
+    return !document.querySelector('#export-tags') && retry?.checkVisibility() && !retry.disabled &&
+      retry.closest('details') === options && !retry.closest('dialog');
+  })()`), 'uncertain tags expose direct retry in open work options without export or another disclosure');
   await page.click('#tags-retry');
   await waitTagStatus(page, 'unsaved', 'reconciled version with a newer local selection');
   stored = await draftTagsOf(page, workId);

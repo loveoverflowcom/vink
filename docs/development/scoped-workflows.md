@@ -72,6 +72,36 @@ của dịch vụ. Cấu hình gửi ra ngoài hoặc authority khác `native` b
 vẫn được giữ. Workflow local không mở khóa production. Khi cần thử riêng authority email-code
 hay Resend HTTPS API, dùng [runbook auth](auth-operations.md) và binary trực tiếp.
 
+## Lập kế hoạch theo diff
+
+```sh
+cargo xtask verify changed --base origin/develop --worktree --plan
+cargo xtask verify changed --base BASE_SHA --head HEAD_SHA --plan
+```
+
+Hai SHA là hai cây đầu cuối. Với nhánh phân kỳ, truyền merge base đã chọn làm
+`--base` nếu muốn chỉ xét phần nhánh. `--worktree` ghim HEAD rồi lấy hợp của diff
+commit, index, tệp sửa và tệp mới chưa ignore. Rename xét cả hai tên, deletion giữ
+owner cũ. Chế độ `--head` chỉ xét commit. Tệp bị Git ignore, toolchain, môi trường
+và fixture ngoài Git cần khai báo riêng. Giữ inputs ổn định khi lấy plan. Planner từ chối các biến chuyển hướng checkout/index
+(`GIT_DIR`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, `GIT_INDEX_FILE`) để diff và executor cùng đọc một worktree.
+
+Planner đọc Git local và giải các selector bằng cùng parser/plan với executor. Mỗi
+lệnh được đề xuất nêu owner, dependency, chi phí hoặc phạm vi. Mapping chưa rõ,
+contract, lockfile, feature và source dùng chung mở rộng phạm vi và yêu cầu review
+các consumer. Kiểm tra các lane opt-in, CMP, formal và gate thực tế của AC. Diff rỗng
+chỉ cho biết không có path trong phạm vi. Sau khi đổi input, lập lại plan và chạy
+selector từ checkout tương ứng. Có thể nối hậu tố do plan in ra vào lệnh nguyên gốc,
+ví dụ `cargo xtask verify static docs --from-diff BASE_SHA HEAD_SHA committed`.
+Xtask đọc lại diff trước khi giao lệnh cho executor hiện hữu. Chế độ `committed` đòi
+đúng HEAD và cây sạch, `worktree` tính lại các selector theo input hiện tại. Lệnh chỉ
+chạy một selector; các selector còn lại vẫn cần evidence theo AC.
+
+Ví dụ, sửa guide này chọn `verify static docs`. Sửa fixture phân trang Desk chọn
+`verify web --scenario desk`. Sửa cả hai chọn cả hai ranh giới. Migration App mở
+rộng sang PostgreSQL lifecycle và consumer Web. Chính sách bằng chứng ở
+[verification](../../.agents/skills/vink-engineering/references/verification.md).
+
 ## Plan, doctor, dữ liệu và artifact
 
 ```sh
@@ -134,8 +164,7 @@ assertion của scenario đã chọn.
 
 Tailwind vẫn biên dịch từ CSS, token và allowlist Rust sau khi kiểm token. Editor vẫn typecheck,
 chạy corpus Markdown và bundle với npm lock. Hai bước giữ npm install stamp hiện hữu.
-Preview vẫn dùng owner và thư mục riêng. #501 dùng các owner này để chọn scope bảo thủ.
-#503 giữ kiểm browser và số đo trên môi trường tích hợp. Cần xác minh closure nhập CSS và nguồn
+Preview dùng owner và thư mục riêng. Cần xác minh closure nhập CSS và nguồn
 TypeScript, dependency npm đã cài và các kiểm dữ liệu Editor trước khi thêm reuse cho hai bước đó.
 
 ## Scenario Web và setup

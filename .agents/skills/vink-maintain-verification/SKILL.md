@@ -10,6 +10,8 @@ Keep the path from a feature claim to a reproducible check accurate. Read
 This is task-driven maintenance; invoking it does not create a daily schedule, monitor or
 require a full-stack run for documentation changes.
 
+When selectors or their callers change, update the diff mapping and its owner fixtures together. Check the printed plan against the explicit selector in the command guide.
+
 ## Keep one owner for each kind of information
 
 | Information | Owner |

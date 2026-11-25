@@ -6,6 +6,7 @@
 //! failure with a fix hint, never as a pass.
 
 mod build;
+mod changed;
 mod checks;
 mod cli;
 mod decision;
@@ -87,10 +88,19 @@ pub fn root() -> PathBuf {
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+    let mut args: Vec<&str> = args.iter().map(String::as_str).collect();
+    if let [command @ .., "--from-diff", base, head, mode] = args.as_slice() {
+        if let Err(error) = changed::revalidate(&root(), command, base, head, mode) {
+            return finish(Err(error));
+        }
+        args.truncate(command.len());
+    }
     if matches!(args.as_slice(), ["--help"] | ["help"] | ["-h"]) {
         println!("{}\n{USAGE}", cli::HELP);
         return ExitCode::SUCCESS;
+    }
+    if let ["verify", "changed", rest @ ..] = args.as_slice() {
+        return finish(changed::describe(&root(), rest).map(|plan| print!("{plan}")));
     }
     if let ["infra", rest @ ..] = args.as_slice() {
         if matches!(rest, ["build-images", ..]) {

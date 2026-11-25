@@ -1,0 +1,226 @@
+[
+  {
+    "file": "desk-controls-1440.png",
+    "run": "1795541819815304232-913/desk",
+    "capture": "failure",
+    "source": {
+      "sourceSHA": "6e38dc98c4d454e4d4b4613b61ed90049146dadf",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "e81e12d537c70f0560969b089426e2b46d7803b41a6cb1bb5468f708bf87c162"
+    },
+    "route": "/ban-viet",
+    "scenarioId": "failure",
+    "executionPhase": "desk",
+    "captureStatus": "CAPTURED",
+    "viewport": {
+      "width": 1440,
+      "height": 900,
+      "layoutWidth": 1425,
+      "clientWidth": 1425,
+      "clientHeight": 900,
+      "dpr": 1
+    },
+    "effectiveTheme": "light",
+    "textScale": 100,
+    "textScaleLane": "default-100",
+    "png": {
+      "width": 1440,
+      "height": 900,
+      "byteSize": 129017,
+      "sha256": "7cd083755cea4f39b317f6ae0230e6476ac52c5efb874b382fa58a0e83b154ff"
+    }
+  },
+  {
+    "file": "editor-dark-390.png",
+    "run": "1795541005873216042-70/editor",
+    "capture": "390-editor-dirty-dark",
+    "source": {
+      "sourceSHA": "6e38dc98c4d454e4d4b4613b61ed90049146dadf",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "e81e12d537c70f0560969b089426e2b46d7803b41a6cb1bb5468f708bf87c162"
+    },
+    "route": "/ban-viet/01a20e95-813b-7445-a04d-b2d479964229",
+    "scenarioId": "390-editor-dirty-dark",
+    "executionPhase": "editor",
+    "captureStatus": "CAPTURED",
+    "viewport": {
+      "width": 390,
+      "height": 900,
+      "layoutWidth": 375,
+      "clientWidth": 375,
+      "clientHeight": 900,
+      "dpr": 1
+    },
+    "effectiveTheme": "dark",
+    "textScale": 100,
+    "textScaleLane": "default-100",
+    "png": {
+      "width": 390,
+      "height": 900,
+      "byteSize": 48561,
+      "sha256": "3a8248d6b89b5adfcd7f4cb7236cb5d51bc35ae8c88e6f7a55c25b0f8cc2d472"
+    }
+  },
+  {
+    "file": "first-draft-default-320.png",
+    "run": "1795541033317424150-514/editor-first-draft/default",
+    "capture": "first-draft-default-320-200",
+    "source": {
+      "sourceSHA": "6e38dc98c4d454e4d4b4613b61ed90049146dadf",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "e81e12d537c70f0560969b089426e2b46d7803b41a6cb1bb5468f708bf87c162"
+    },
+    "route": "/ban-viet",
+    "scenarioId": "first-draft-format",
+    "executionPhase": "editor-first-draft",
+    "captureStatus": "CAPTURED",
+    "viewport": {
+      "width": 320,
+      "height": 900,
+      "layoutWidth": 305,
+      "clientWidth": 305,
+      "clientHeight": 900,
+      "dpr": 1
+    },
+    "effectiveTheme": "light",
+    "textScale": 200,
+    "textScaleLane": "dom-override-geometry-only",
+    "png": {
+      "width": 320,
+      "height": 900,
+      "byteSize": 53826,
+      "sha256": "baabc021ea99549648dfdc074f4477d558cd525786c1ea1d56efcf086d1120a3"
+    }
+  },
+  {
+    "file": "first-draft-markdown-320.png",
+    "run": "1795541033317424150-514/editor-first-draft/markdown",
+    "capture": "first-draft-markdown-320-200",
+    "source": {
+      "sourceSHA": "6e38dc98c4d454e4d4b4613b61ed90049146dadf",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "e81e12d537c70f0560969b089426e2b46d7803b41a6cb1bb5468f708bf87c162"
+    },
+    "route": "/ban-viet",
+    "scenarioId": "first-draft-format",
+    "executionPhase": "editor-first-draft",
+    "captureStatus": "CAPTURED",
+    "viewport": {
+      "width": 320,
+      "height": 900,
+      "layoutWidth": 305,
+      "clientWidth": 305,
+      "clientHeight": 900,
+      "dpr": 1
+    },
+    "effectiveTheme": "dark",
+    "textScale": 200,
+    "textScaleLane": "dom-override-geometry-only",
+    "png": {
+      "width": 320,
+      "height": 900,
+      "byteSize": 55584,
+      "sha256": "e1f37b957f558dfef583dbb53154b4413f37ea23bcee8f995068cd133b3eb0f2"
+    }
+  },
+  {
+    "file": "verified-desk-1440.png",
+    "run": "1795542826219912869-1421/desk",
+    "capture": "author-works-1440-light-100",
+    "source": {
+      "sourceSHA": "8bfacb47f42148a1338be8b5716203bf21b947c3",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "8b9cd660a42ddba16f2095627acfb5da179aabe366f0a312f6e8a1d1b7177be3"
+    },
+    "route": "/ban-viet",
+    "scenarioId": "#214-states-reflow",
+    "executionPhase": "desk",
+    "captureStatus": "CAPTURED",
+    "viewport": {
+      "width": 1440,
+      "height": 900,
+      "layoutWidth": 1425,
+      "clientWidth": 1425,
+      "clientHeight": 900,
+      "dpr": 1
+    },
+    "effectiveTheme": "light",
+    "textScale": 100,
+    "textScaleLane": "dom-override-geometry-only",
+    "png": {
+      "width": 1440,
+      "height": 900,
+      "byteSize": 134186,
+      "sha256": "b8db8ea2266b9af93ad43b5f0f73a24ed589ca9f1c0338b25b08b17a3dd99935"
+    }
+  },
+  {
+    "file": "verified-editor-320-200.png",
+    "run": "1795542797113403834-1045/editor",
+    "capture": "editor-leave-tag-conflict-top-320x800-200-dark",
+    "source": {
+      "sourceSHA": "8bfacb47f42148a1338be8b5716203bf21b947c3",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "8b9cd660a42ddba16f2095627acfb5da179aabe366f0a312f6e8a1d1b7177be3"
+    },
+    "route": "/ban-viet/01a20eb0-d62d-7446-abe6-ca87fc9e8582",
+    "scenarioId": "editor-leave-tag-conflict-top-320x800-200-dark",
+    "executionPhase": "editor",
+    "captureStatus": "CAPTURED",
+    "viewport": {
+      "width": 320,
+      "height": 800,
+      "layoutWidth": 305,
+      "clientWidth": 305,
+      "clientHeight": 800,
+      "dpr": 1
+    },
+    "effectiveTheme": "dark",
+    "textScale": 200,
+    "textScaleLane": "dom-override-geometry-only",
+    "png": {
+      "width": 320,
+      "height": 800,
+      "byteSize": 45325,
+      "sha256": "25d91a62a6b070ef0ebfd2179f83d9bb695a3b47b5680b38474381c5e6a3812d"
+    }
+  },
+  {
+    "file": "desk-draft-focus-390-200.png",
+    "run": "1795547341368793575-76/desk",
+    "capture": "desk-title-expanded-390-200-light",
+    "source": {
+      "sourceSHA": "982e780596fc92f621834f3e26acbe23f1162bab",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "8519eec20334183ab5b3c48a4f131768b13ef607e172d8f8c70b5cc2148c5308"
+    },
+    "route": "/ban-viet",
+    "scenarioId": "desk-title-expanded-390-200-light",
+    "executionPhase": "desk",
+    "captureStatus": "CAPTURED",
+    "viewport": {
+      "width": 390,
+      "height": 900,
+      "layoutWidth": 375,
+      "clientWidth": 375,
+      "clientHeight": 900,
+      "dpr": 1
+    },
+    "effectiveTheme": "light",
+    "textScale": 200,
+    "textScaleLane": "dom-override-geometry-only",
+    "png": {
+      "width": 390,
+      "height": 900,
+      "byteSize": 79897,
+      "sha256": "df9914ed4cfbcc82445bfdbfe440a7fec5562bd2242e94221177fc7dd1bad958"
+    }
+  }
+]

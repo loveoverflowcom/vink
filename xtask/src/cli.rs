@@ -21,7 +21,9 @@ Web scenarios: main (alias), editor-first-draft, editor-chrome, editor, editor-f
   auth, password, author-search, publication, standalone (CSR + API), perf-baseline, return-position.
 No selector runs full Web regression, excluding standalone and the two performance opt-ins.
 --capture checks requires explicit scenarios; it retains functional/a11y/DOM checks.
---plan performs no selected task I/O.
+--plan performs no selected task I/O. Read-only Git advisory (requires --plan):
+  verify changed --base REV (--head REV | --worktree) --plan
+  Append --from-diff BASE_SHA HEAD_SHA committed|worktree to execute one selected verify command.
 Auth defaults to none, independent of .env. fixture requires explicit VINK_DEV_PRINCIPAL.
 identity uses native credentials and local mail outbox; no fixture fallback or external mail.
 Dev defaults to prepared databases: --migrate explicitly migrates selected owners;

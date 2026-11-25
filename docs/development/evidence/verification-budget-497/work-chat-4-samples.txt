@@ -1,0 +1,379 @@
+Local Vink, arm64, 2026-11-24 UTC. Selected original stdout lines.
+wall: whole command. largest_child_maxrss: KiB. cgroup_cumulative_peak: bytes across a container session.
+Browser: fresh profile and scratch data. All browser timings include their selected build/fixture/runtime/teardown.
+Full logs and SHA-256 manifest in private handoff.
+
+source 888b7534f39725da553b57221f8be78151aba65c
+restart-fresh
+==> wasm-bindgen: MISS (receipt missing or invalid)
+browser-smoke: PASS (restart-prepare)
+browser-smoke: PASS (after-restart)
+wall=22.425s largest_child_maxrss=4111640 KiB cgroup_cumulative_peak=4295897088 bytes exit=0
+
+restart-reused
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: PASS (restart-prepare)
+browser-smoke: PASS (after-restart)
+wall=15.657s largest_child_maxrss=1146488 KiB cgroup_cumulative_peak=4295897088 bytes exit=0
+
+standalone-fresh
+==> wasm-bindgen: MISS (receipt missing or invalid)
+browser-smoke: FAIL timed out waiting for the second account can open the public author profile
+  FAIL  scenario standalone (real Identity/local outbox): browser smoke --phase standalone: exited with exit status: 1
+  (later steps NOT_RUN)
+wall=267.630s largest_child_maxrss=3013180 KiB cgroup_cumulative_peak=4295897088 bytes exit=1
+
+standalone-reused
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: PASS (standalone)
+  PASS  scenario standalone (real Identity/local outbox)
+wall=22.064s largest_child_maxrss=809716 KiB cgroup_cumulative_peak=4295897088 bytes exit=0
+
+default-web-union
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: PASS (editor-first-draft)
+browser-smoke: PASS (editor-first-draft)
+  PASS  first-use draft formats with fresh scratch principals
+  FAIL  scenario reader (reader): interrupted; owned command group stopped
+  (later steps NOT_RUN)
+wall=323.138s largest_child_maxrss=2302880 KiB cgroup_cumulative_peak=4295897088 bytes exit=1
+
+selected-pg
+  PASS  shared store: migration lifecycle and error classes
+wall=5.172s largest_child_maxrss=484456 KiB cgroup_cumulative_peak=4295897088 bytes exit=0
+
+source 6e38dc98c4d454e4d4b4613b61ed90049146dadf
+current-editor
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: FAIL uncertain tag save removes export and keeps direct retry outside tools
+  FAIL  scenario editor (editor): browser smoke --phase editor --build-profile dev: exited with exit status: 1
+  (later steps NOT_RUN)
+wall=60.197s largest_child_maxrss=1813124 KiB cgroup_cumulative_peak=4295020544 bytes exit=1
+
+first-draft-full
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: PASS (editor-first-draft)
+browser-smoke: PASS (editor-first-draft)
+  PASS  first-use draft formats with fresh scratch principals
+wall=17.121s largest_child_maxrss=1146480 KiB cgroup_cumulative_peak=4295020544 bytes exit=0
+
+first-draft-checks
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: PASS (editor-first-draft)
+browser-smoke: PASS (editor-first-draft)
+  PASS  first-use draft formats with fresh scratch principals
+wall=17.280s largest_child_maxrss=1146384 KiB cgroup_cumulative_peak=4295020544 bytes exit=0
+
+csr-final-fresh
+==> wasm-bindgen: MISS (receipt missing or invalid)
+browser-smoke: PASS (standalone)
+  PASS  scenario standalone (real Identity/local outbox)
+wall=68.140s largest_child_maxrss=3013108 KiB cgroup_cumulative_peak=4295217152 bytes exit=0
+
+csr-final-reused
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: PASS (standalone)
+  PASS  scenario standalone (real Identity/local outbox)
+wall=23.494s largest_child_maxrss=809980 KiB cgroup_cumulative_peak=4295749632 bytes exit=0
+
+release-perf
+  FAIL  selected artifacts: build browser bundle (vink-web, perf-probe): exited with exit status: 101
+  (later steps NOT_RUN)
+wall=494.369s largest_child_maxrss=4068488 KiB cgroup_cumulative_peak=4295749632 bytes exit=1
+
+reused-release-perf
+  FAIL  selected artifacts: interrupted; owned command group stopped
+  (later steps NOT_RUN)
+wall=44.062s largest_child_maxrss=81332 KiB cgroup_cumulative_peak=4295749632 bytes exit=1
+
+csr-controlled-miss
+==> wasm-bindgen: MISS (receipt missing or invalid)
+browser-smoke: PASS (standalone)
+  PASS  scenario standalone (real Identity/local outbox)
+wall=29.022s largest_child_maxrss=3013188 KiB cgroup_cumulative_peak=4295372800 bytes exit=0
+
+csr-controlled-hit
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: PASS (standalone)
+  PASS  scenario standalone (real Identity/local outbox)
+wall=23.294s largest_child_maxrss=809940 KiB cgroup_cumulative_peak=4295372800 bytes exit=0
+
+current-desk
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: FAIL readonly counters offer no endorsement mutation or nested targets
+  FAIL  scenario desk (desk): browser smoke --phase desk --build-profile dev: exited with exit status: 1
+  (later steps NOT_RUN)
+wall=45.042s largest_child_maxrss=2303640 KiB cgroup_cumulative_peak=4295372800 bytes exit=1
+
+sha256(package file checksum list) restart-fresh-hydrate 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+sha256(package file checksum list) restart-reused-hydrate 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+sha256(package file checksum list) csr-controlled-miss-csr 2d2bf171f6c65c0d3a22d20a936287d4b2129619244c62b7615b59d7efc181f9
+sha256(package file checksum list) csr-controlled-hit-csr 2d2bf171f6c65c0d3a22d20a936287d4b2129619244c62b7615b59d7efc181f9
+
+## Follow-up A/B, 4864 MiB cgroup, 2026-11-24 UTC
+Per-command RSS KiB, session cgroup peak bytes. Browser drives real local App, PG + Chrome.
+
+3d69c648 A-editor
+$ target/debug/xtask verify web --scenario editor --capture full
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: FAIL uncertain tag save removes export and keeps direct retry outside tools
+  FAIL  scenario editor (editor): browser smoke --phase editor --build-profile dev: exited with exit status: 1
+  (later steps NOT_RUN)
+wall=60.055s largest_child_maxrss=1813008 KiB cgroup_session_peak=5079642112 oom_kill_start=0 end=0 exit=1
+package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+3d69c648 A-desk
+$ target/debug/xtask verify web --scenario desk --capture full
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: FAIL readonly counters offer no endorsement mutation or nested targets
+  FAIL  scenario desk (desk): browser smoke --phase desk --build-profile dev: exited with exit status: 1
+  (later steps NOT_RUN)
+wall=12.023s largest_child_maxrss=1146452 KiB cgroup_session_peak=5079642112 oom_kill_start=0 end=0 exit=1
+package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+8bfacb47 B-editor
+$ target/debug/xtask verify web --scenario editor --capture full
+==> wasm-bindgen: HIT (inputs and output digests match)
+  ok  uncertain tags expose direct retry in open work options without export or another disclosure
+  ok  the retry reconciled through 409 without writing again
+browser-smoke: PASS (editor)
+  PASS  scenario editor (editor)
+wall=28.016s largest_child_maxrss=1146576 KiB cgroup_session_peak=5100273664 oom_kill_start=0 end=0 exit=0
+package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+8bfacb47 B-desk
+$ target/debug/xtask verify web --scenario desk --capture full
+==> wasm-bindgen: HIT (inputs and output digests match)
+  ok  readonly counters offer no endorsement mutation or nested targets
+  ok  each row exposes one independent review button for its own work
+browser-smoke: PASS (desk)
+browser-smoke: PASS (desk-guest)
+  PASS  scenario desk (desk)
+  PASS  guest Desk with sign-in disabled
+wall=164.168s largest_child_maxrss=1146572 KiB cgroup_session_peak=5100560384 oom_kill_start=0 end=0 exit=0
+package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+8bfacb47 reader
+$ target/debug/xtask verify web --scenario reader --capture full
+==> wasm-bindgen: HIT (inputs and output digests match)
+  ok  the second client list read was revalidated on the wire (If-None-Match → 304)
+  ok  hydrated Explore reuses its SSR snapshot: no client list request after hydration
+owned child subsequently idle >45s after OOM kill; cancelling 2047
+  FAIL  scenario reader (reader): interrupted; owned command group stopped
+  (later steps NOT_RUN)
+wall=76.214s largest_child_maxrss=1146684 KiB cgroup_session_peak=5100580864 oom_kill_start=0 end=1 exit=1
+package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+4339ca38 release
+$ target/debug/xtask verify web --scenario perf-baseline --release --capture full
+  FAIL  selected artifacts: build browser bundle (vink-web, perf-probe): exited with exit status: 101
+  (later steps NOT_RUN)
+wall=136.128s largest_child_maxrss=4880276 KiB cgroup_session_peak=5100273664 oom_kill_start=0 end=1 exit=1
+
+4339ca38 release-app
+$ cargo build --release --locked --offline -p vink-app --bin vink-app
+wall=462.433s largest_child_maxrss=3043036 KiB cgroup_session_peak=5100273664 oom_kill_start=1 end=1 exit=0
+
+d6aded51 reader-isolated
+$ target/debug/xtask verify web --scenario reader --capture full
+==> wasm-bindgen: HIT (inputs and output digests match)
+  ok  readerBeforeHydration has no unexpected browser errors:
+  ok  the second client list read was revalidated on the wire (If-None-Match → 304)
+  ok  conditionalPublicReads has no unexpected browser errors:
+  ok  hydrated Explore reuses its SSR snapshot: no client list request after hydration
+  ok  tracePublicReadLifecycle has no unexpected browser errors:
+  FAIL  scenario reader (reader): interrupted; owned command group stopped
+wall=144.194s largest_child_maxrss=1813068 KiB cgroup_session_peak=5100613632 oom_kill_start=0 end=1 exit=1
+
+d6aded51 resume-discussion
+$ target/debug/xtask verify web --scenario discussion --capture full
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: PASS (discussion)
+  PASS  scenario discussion (discussion)
+wall=60.038s largest_child_maxrss=1812952 KiB cgroup_session_peak=5021089792 oom_kill_start=0 end=0 exit=0
+package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+d6aded51 resume-storage
+$ target/debug/xtask verify web --scenario storage --capture full
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: PASS (public-storage)
+  PASS  scenario storage (public-storage)
+wall=18.046s largest_child_maxrss=1146524 KiB cgroup_session_peak=5100326912 oom_kill_start=0 end=0 exit=0
+package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+d6aded51 resume-editor-format
+$ target/debug/xtask verify web --scenario editor-format --capture full
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: FAIL timed out waiting for outline switches between sheet and sidebar
+  FAIL  scenario editor-format (editor-format): browser smoke --phase editor-format --build-profile dev: exited with exit status: 1
+  (later steps NOT_RUN)
+wall=54.117s largest_child_maxrss=1146268 KiB cgroup_session_peak=5100376064 oom_kill_start=0 end=0 exit=1
+package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+d6aded51 coverage-restart-checks
+$ target/debug/xtask verify web --scenario restart --capture checks
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: PASS (restart-prepare)
+browser-smoke: PASS (after-restart)
+wall=144.145s largest_child_maxrss=2708744 KiB cgroup_session_peak=5054418944 oom_kill_start=0 end=0 exit=0
+package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+d6aded51 coverage-editor-checks
+$ target/debug/xtask verify web --scenario editor --capture checks
+==> wasm-bindgen: HIT (inputs and output digests match)
+  ok  uncertain tags expose direct retry in open work options without export or another disclosure
+  ok  the retry reconciled through 409 without writing again
+browser-smoke: PASS (editor)
+  PASS  scenario editor (editor)
+wall=26.020s largest_child_maxrss=1146496 KiB cgroup_session_peak=5100273664 oom_kill_start=0 end=0 exit=0
+package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+d6aded51 coverage-desk-checks
+$ target/debug/xtask verify web --scenario desk --capture checks
+==> wasm-bindgen: HIT (inputs and output digests match)
+  ok  readonly counters offer no endorsement mutation or nested targets
+  ok  each row exposes one independent review button for its own work
+browser-smoke: FAIL keyboard reveals the entire title at 200%
+  FAIL  scenario desk (desk): browser smoke --phase desk --build-profile dev: exited with exit status: 1
+  (later steps NOT_RUN)
+wall=18.028s largest_child_maxrss=1146492 KiB cgroup_session_peak=5100273664 oom_kill_start=0 end=0 exit=1
+package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+d6aded51 coverage-appearance-full
+$ target/debug/xtask verify web --scenario appearance --capture full
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: FAIL timed out waiting for load http://127.0.0.1:32811/ban-viet/33333333-3333-4333-8333-333333333333/kiem-duyet
+  FAIL  scenario appearance (appearance-shell): browser smoke --phase appearance-shell --build-profile dev: exited with exit status: 1
+  (later steps NOT_RUN)
+wall=62.095s largest_child_maxrss=1146524 KiB cgroup_session_peak=5100564480 oom_kill_start=0 end=0 exit=1
+package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+d6aded51 coverage-editor-chrome-full
+$ target/debug/xtask verify web --scenario editor-chrome --capture full
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: FAIL dirty editor Tab reaches direct preview after Save
+  FAIL  scenario editor-chrome (editor-chrome): browser smoke --phase editor-chrome --build-profile dev: exited with exit status: 1
+  (later steps NOT_RUN)
+wall=58.071s largest_child_maxrss=1146364 KiB cgroup_session_peak=5100564480 oom_kill_start=0 end=0 exit=1
+package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+9333c493 outline-B
+$ target/debug/xtask verify web --scenario editor-format --capture full
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: FAIL timed out waiting for Mục lục at 1023px with the app's 100% text preference
+  FAIL  scenario editor-format (editor-format): browser smoke --phase editor-format --build-profile dev: exited with exit status: 1
+  (later steps NOT_RUN)
+wall=60.135s largest_child_maxrss=1146444 KiB cgroup_session_peak=5100273664 oom_kill_start=0 end=0 exit=1
+package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+729cf385 compare-desk-checks
+$ target/debug/xtask verify web --scenario desk --capture checks
+==> wasm-bindgen: HIT (inputs and output digests match)
+  ok  readonly counters offer no endorsement mutation or nested targets
+  ok  each row exposes one independent review button for its own work
+browser-smoke: FAIL keyboard reveals the entire title of the focused draft at 200% ({"href":"#noi-dung","focused":false,"overflow":"hidden","clamp":"2"})
+  FAIL  scenario desk (desk): browser smoke --phase desk --build-profile dev: exited with exit status: 1
+  (later steps NOT_RUN)
+wall=22.017s largest_child_maxrss=1146268 KiB cgroup_session_peak=4655136768 oom_kill_start=0 end=0 exit=1
+package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+729cf385 compare-editor-format-full
+$ target/debug/xtask verify web --scenario editor-format --capture full
+==> wasm-bindgen: HIT (inputs and output digests match)
+owned child subsequently idle >45s after OOM kill; cancelling 429
+  FAIL  scenario editor-format (editor-format): interrupted; owned command group stopped
+  (later steps NOT_RUN)
+wall=78.150s largest_child_maxrss=1146444 KiB cgroup_session_peak=5100519424 oom_kill_start=0 end=1 exit=1
+package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+729cf385 compare-appearance-full
+$ target/debug/xtask verify web --scenario appearance --capture full
+==> wasm-bindgen: HIT (inputs and output digests match)
+owned child subsequently idle >45s after OOM kill; cancelling 805
+  FAIL  scenario appearance (appearance-shell): interrupted; owned command group stopped
+  (later steps NOT_RUN)
+wall=71.098s largest_child_maxrss=1146560 KiB cgroup_session_peak=5100519424 oom_kill_start=1 end=2 exit=1
+package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+729cf385 compare-editor-chrome-full
+$ target/debug/xtask verify web --scenario editor-chrome --capture full
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: PASS (editor-chrome)
+  PASS  scenario editor-chrome (editor-chrome)
+wall=132.122s largest_child_maxrss=1146376 KiB cgroup_session_peak=5100519424 oom_kill_start=2 end=2 exit=0
+package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+763cce7d keyboard-desk-checks
+$ target/debug/xtask verify web --scenario desk --capture checks
+==> wasm-bindgen: HIT (inputs and output digests match)
+  ok  readonly counters offer no endorsement mutation or nested targets
+  ok  each row exposes one independent review button for its own work
+browser-smoke: FAIL keyboard reveals the entire title of the focused draft at 200% ({"href":null,"focused":false,"overflow":"hidden","clamp":"2"})
+  FAIL  scenario desk (desk): browser smoke --phase desk --build-profile dev: exited with exit status: 1
+  (later steps NOT_RUN)
+wall=20.048s largest_child_maxrss=1146244 KiB cgroup_session_peak=4655169536 oom_kill_start=0 end=0 exit=1
+package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+dec9dc90 source-desk-checks
+$ target/debug/xtask verify web --scenario desk --capture checks
+==> wasm-bindgen: HIT (inputs and output digests match)
+  ok  readonly counters offer no endorsement mutation or nested targets
+  ok  each row exposes one independent review button for its own work
+browser-smoke: FAIL keyboard reveals the entire title of the focused draft at 200% ({"href":"#noi-dung","focused":false,"overflow":"hidden","clamp":"2"})
+  FAIL  scenario desk (desk): browser smoke --phase desk --build-profile dev: exited with exit status: 1
+  (later steps NOT_RUN)
+wall=20.038s largest_child_maxrss=1146300 KiB cgroup_session_peak=4650213376 oom_kill_start=0 end=0 exit=1
+package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+ab1ecd5a settled-desk-checks
+$ target/debug/xtask verify web --scenario desk --capture checks
+==> wasm-bindgen: HIT (inputs and output digests match)
+  ok  readonly counters offer no endorsement mutation or nested targets
+  ok  each row exposes one independent review button for its own work
+browser-smoke: FAIL keyboard reveals the entire title of the focused draft at 200% ({"href":"#noi-dung","focused":false,"overflow":"hidden","clamp":"2"})
+  FAIL  scenario desk (desk): browser smoke --phase desk --build-profile dev: exited with exit status: 1
+  (later steps NOT_RUN)
+wall=20.031s largest_child_maxrss=1146268 KiB cgroup_session_peak=4656046080 oom_kill_start=0 end=0 exit=1
+package list sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+## Desk focus regression, 4864 MiB per session
+Commands use fresh browser profiles with scratch PostgreSQL. Wall includes build.
+
+before-desk-checks
+$ target/debug/xtask verify web --scenario desk --capture checks
+==> wasm-bindgen: HIT (inputs and output digests match)
+browser-smoke: FAIL closing search preserves a newly focused draft link across the recovery frame
+wall=18.030s largest_child_maxrss=1146348 KiB cgroup_session_peak=4697227264 oom_kill_start=0 end=0 exit=1
+package manifest sha256 4fdcca126d1464b4a63507f532c5a3f514e44a69966db976d151449d6c9531c5
+
+after-desk-checks
+$ target/debug/xtask verify web --scenario desk --capture checks
+==> wasm-bindgen: MISS (input changed)
+  ok  closing search preserves a newly focused draft link across the recovery frame
+  ok  keyboard reveals the entire title of the focused draft at 200% ({"href":"/ban-viet/88888888-8888-4888-8888-000000000000","focused":true,"overflow":"visible","clamp":"none"})
+  ok  keyboard reveals the entire title of the focused draft at 200% ({"href":"/ban-viet/88888888-8888-4888-8888-000000000000","focused":true,"overflow":"visible","clamp":"none"})
+  ok  keyboard reveals the entire title of the focused draft at 200% ({"href":"/ban-viet/88888888-8888-4888-8888-000000000000","focused":true,"overflow":"visible","clamp":"none"})
+  ok  keyboard reveals the entire title of the focused draft at 200% ({"href":"/ban-viet/88888888-8888-4888-8888-000000000000","focused":true,"overflow":"visible","clamp":"none"})
+  ok  forbidden clears the private heading and controls and keeps a distinct access state
+browser-smoke: PASS (desk)
+browser-smoke: PASS (desk-guest)
+  PASS  scenario desk (desk)
+  PASS  guest Desk with sign-in disabled
+wall=254.322s largest_child_maxrss=4112916 KiB cgroup_session_peak=5100576768 oom_kill_start=0 end=0 exit=0
+package manifest sha256 a50647d91d616e98f213385545fa64ad14d9ac7d98b396591fee9b242df0a0c7
+
+full-desk-full
+$ target/debug/xtask verify web --scenario desk --capture full
+==> wasm-bindgen: HIT (inputs and output digests match)
+  ok  closing search preserves a newly focused draft link across the recovery frame
+  ok  keyboard reveals the entire title of the focused draft at 200% ({"href":"/ban-viet/88888888-8888-4888-8888-000000000000","focused":true,"overflow":"visible","clamp":"none"})
+  ok  keyboard reveals the entire title of the focused draft at 200% ({"href":"/ban-viet/88888888-8888-4888-8888-000000000000","focused":true,"overflow":"visible","clamp":"none"})
+  ok  keyboard reveals the entire title of the focused draft at 200% ({"href":"/ban-viet/88888888-8888-4888-8888-000000000000","focused":true,"overflow":"visible","clamp":"none"})
+  ok  keyboard reveals the entire title of the focused draft at 200% ({"href":"/ban-viet/88888888-8888-4888-8888-000000000000","focused":true,"overflow":"visible","clamp":"none"})
+  ok  forbidden clears the private heading and controls and keeps a distinct access state
+browser-smoke: PASS (desk)
+browser-smoke: PASS (desk-guest)
+  PASS  scenario desk (desk)
+  PASS  guest Desk with sign-in disabled
+wall=164.243s largest_child_maxrss=1146600 KiB cgroup_session_peak=5100568576 oom_kill_start=0 end=0 exit=0
+package manifest sha256 a50647d91d616e98f213385545fa64ad14d9ac7d98b396591fee9b242df0a0c7

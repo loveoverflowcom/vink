@@ -242,6 +242,7 @@ agent runtimes (Codex, Claude Code, Antigravity) load it without truncation.
 For documentation/skill changes, check the diff, relative links, YAML metadata and referenced
 files. For behavior changes, use the cheapest meaningful regression and then the actual
 boundary needed by the claim: real PostgreSQL for transactions and a browser for hydration/editor interactions. Quint evidence is separate from code/I/O evidence.
+Inspect uncertain scope with the read-only diff planner in [scoped workflows](docs/development/scoped-workflows.md). Run the selected boundary on matching inputs. A plan, warm target or asset cache hit supplies no execution evidence.
 Use [the verification guide](.agents/skills/vink-engineering/references/verification.md) to report
 which acceptance criteria the evidence covers and which boundaries still need verification.
 

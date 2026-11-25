@@ -39,7 +39,19 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
     check(await page.eval(`document.querySelector('#draft-row-${works[5].work_id} .vk-author-work__status').querySelector('[title="Chỉ mình tôi"]') && document.querySelector('#draft-row-${works[5].work_id}').textContent.includes('Không có bản nháp để sửa') && !document.querySelector('#draft-row-${works[5].work_id} a')`), 'a private work without a draft has truthful status and no fabricated editor target');
     check(await page.eval(`document.querySelector('#draft-row-${works[0].work_id}').textContent.includes('Đã đăng · Có bản sửa') && document.querySelector('#draft-row-${works[2].work_id}').textContent.includes('không được duyệt')`), 'public pointer coexists with pending/rejected newer revisions');
     check(await page.eval(`document.querySelector('#draft-row-${works[4].work_id}').querySelector('[title="Chưa tải được số Thấm"]') && !!document.querySelector('#draft-row-${works[4].work_id} a[href^="/ban-viet/"]')`), 'unavailable metrics keep the editor link usable');
-    check(await page.eval(`document.querySelectorAll('#draft-results a a, #draft-results a button, #draft-results button').length===0`), 'readonly counters offer no endorsement mutation or nested targets');
+    check(await page.eval(`(() => {
+      const list = document.querySelector('#draft-results');
+      const interactive = 'a, button, input, select, textarea, [role=button], [role=link]';
+      const metrics = [...list.querySelectorAll('[data-testid=author-work-metrics]')];
+      return metrics.every(group => !group.matches(interactive) && !group.querySelector(interactive)) &&
+        [...list.querySelectorAll(interactive)].every(target => !target.querySelector(interactive));
+    })()`), 'readonly counters offer no endorsement mutation or nested targets');
+    check(await page.eval(`[...document.querySelectorAll('#draft-results [data-testid=draft-row]')].every(row => {
+      const buttons = row.querySelectorAll('button');
+      const workId = row.id.slice('draft-row-'.length);
+      return buttons.length === 1 && buttons[0].id === 'desk-review-trigger-' + workId &&
+        buttons[0].getAttribute('aria-haspopup') === 'dialog' && buttons[0].textContent.trim() === 'Xem kiểm duyệt';
+    })`), 'each row exposes one independent review button for its own work');
     check(await page.eval(`(() => {
       const row=document.querySelector('#draft-row-${works[0].work_id}');
       const title=row.querySelector('.vk-draft-row__title'), metadata=row.querySelector('.vk-author-work__status');
