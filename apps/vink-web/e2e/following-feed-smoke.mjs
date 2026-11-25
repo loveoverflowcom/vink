@@ -119,6 +119,8 @@ async function noFollowsLayout(page, check, textContrast) {
       rect(child).right <= rect(parent).right;
     return {
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      tabs: Array.from(document.querySelectorAll('.vk-explore-modes a'), tab =>
+        [tab.id, tab.scrollWidth <= tab.clientWidth, tab.getBoundingClientRect().height >= 44]),
       centerDelta: Math.abs(midpoint(action) - midpoint(region)),
       height: rect(action).height,
       radius: style.borderTopLeftRadius,
@@ -140,6 +142,8 @@ async function noFollowsLayout(page, check, textContrast) {
         const name = `feed-355-r1-after-${width}-${theme}-${text}`;
         await setFeedAppearance(page, theme, text);
         const got = await page.eval(measure);
+        check(got.tabs.map(([id]) => id).join(',') === 'explore-mode-works,explore-mode-following,explore-mode-authors' &&
+          got.tabs.every(([, fits, reachable]) => fits && reachable), `${name}: three persistent tabs fit (${JSON.stringify(got.tabs)})`);
         check(got.checked && got.overflow === 0 && got.centerDelta <= 1 && got.height >= 48 &&
           got.radius === '14px' && got.decoration === 'none' && got.title === 'Chưa theo dõi tác giả nào' &&
           got.link === 'Khám phá tác giả', `${name}: centered empty state and tonal link (${JSON.stringify(got)})`);
@@ -352,21 +356,11 @@ export async function followingFeed(control, other, {base, openPage, check, hold
     'PG exact facts drive order and dates after re-Follow and repost; poem lines and stanza are preserved');
   await layout(page, check, textContrast);
 
-  await page.viewport(834, 900);
-  await page.eval(`${q('#explore-mode-works')}.focus()`);
-  for (const selector of ['#explore-mode-following', '#explore-mode-authors']) {
-    await page.key('Tab');
-    check(await page.eval(`document.activeElement === ${q(selector)}`), `Tab reaches ${selector} once`);
-  }
-
   await page.viewport(390, 900);
   const firstTitle = '#following-cards > li:first-child .vk-public-row__link';
   const firstAuthor = '#following-cards > li:first-child .vk-ui-byline__identity';
-  await page.eval(`(() => {
-    const authors = ${q('#explore-mode-authors')};
-    (authors.getClientRects().length ? authors : ${q('#explore-mode-menu-button')}).focus();
-  })()`);
-  for (const selector of [firstTitle, firstAuthor]) {
+  await page.eval(`${q('#explore-mode-works')}.focus()`);
+  for (const selector of ['#explore-mode-following', '#explore-mode-authors', firstTitle, firstAuthor]) {
     await page.key('Tab');
     check(await page.eval(`document.activeElement === ${q(selector)}`), `Tab reaches ${selector} once`);
   }
