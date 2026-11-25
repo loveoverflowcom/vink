@@ -23,6 +23,26 @@ và [bàn giao 13 ảnh, ZIP](https://github.com/loveoverflowcom/vink/issues/428
   của tôi”. Guard rời hai bước và các lựa chọn xử lý xung đột thẻ tiếp tục dùng các owner hiện có.
   Màu và cỡ chữ (100%/150%) chỉnh tại `/toi`; 200% dùng cho kiểm stress.
 
+## Focus trên mặt viết (#526)
+
+Trong `/ban-viet/{id}`, mặt giấy có hai vùng tương tác ở định dạng Mặc định và một vùng ở Markdown.
+
+| Vùng | Khi đặt con trỏ bằng chuột hoặc bàn phím |
+| --- | --- |
+| Mặc định · Tiêu đề | Nhãn “Tiêu đề” luôn ở trên dòng Literata. Ô trống hiện “Chưa đặt tên”. Caret Lavender và một vạch ngắn ở lề đầu dòng xác định ô đang viết. |
+| Mặc định / Markdown · Nội dung | Cùng một EditorView giữ selection và caret. Một vạch ngắn ở lề đầu vùng viết còn thấy khi cuộn văn bản dài. Markdown lấy tiêu đề từ H1 đầu tiên. |
+
+Vạch dùng token focus trên mặt giấy sáng/tối, nằm trong lề có sẵn cả ở màn hẹp.
+Chuyển focus giữ nguyên nền, vị trí nhãn và kích thước dòng chữ. Lỗi tiêu đề có thông báo
+gắn với input và viền lỗi. Forced-colors dùng viền focus hệ thống. Các control trong thanh
+lưu và Tùy chọn bài viết tiếp tục dùng hợp đồng focus chung.
+
+Đây là delta LayoutSpec của [#526](https://github.com/loveoverflowcom/vink/issues/526).
+[VDR-EDITOR-R4@r2](../../decisions/proposals/VDR-EDITOR-R4.r2.toml) là đề xuất `PENDING`.
+Ảnh concept có trạng thái `NO_APPROVED_REFERENCE`. [Ảnh Web trước/sau](../development/evidence/editor-focus-526/so-sanh.webp)
+ghép ba cặp crop cùng tọa độ từ Chrome 158, giao diện tối, viewport 1440 × 900, DPR 1, chữ 100%.
+Cột trái là focus bằng chuột tại `52e8dbd5`, cột phải là focus bằng Shift+Tab với bản sửa `1e90cbdf`.
+
 ## Delta đối với nút con mắt trong r4
 
 Bỏ nút con mắt và hộp thoại Xem trước bản nháp. Markdown Live Preview vẫn nằm ngay trong

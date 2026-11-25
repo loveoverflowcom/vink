@@ -30,10 +30,10 @@ CHOICE-01 A: trạng thái và actions cùng toolbar, wrap tự nhiên theo bề
 Không giảm target hoặc font để ép một hàng. CHOICE-02 A: dùng `SupportingDetails`
 native từ API #90; cảnh báo mất chữ và actions nằm ngoài disclosure.
 
-Tiêu đề giữ `FloatingTonal`, native input, label và giới hạn 200 ký tự; title/body
+Ở R5 gốc, tiêu đề dùng `FloatingTonal`, native input, label và giới hạn 200 ký tự; title/body
 nhận cùng nền của sheet. Toolbar/notice dùng surface/semantic roles hiện có, không
-stroke, shadow giả viền, gradient hay divider ở trạng thái nghỉ. Focus vẫn có một
-perimeter ở control đang nhận focus; forced-colors giữ dấu hiệu hệ thống.
+stroke, shadow giả viền, gradient hay divider ở trạng thái nghỉ. Các control công cụ dùng viền focus. Riêng tiêu đề và nội dung trên giấy dùng
+[dấu focus cục bộ theo delta #526](editor-r4.md#focus-trên-mặt-viết-526); forced-colors giữ dấu hiệu hệ thống.
 Toolbar chỉ sticky ở desktop đủ rộng/cao; mở Chi tiết thì trả về document flow.
 CodeMirror tiếp tục đo chiều cao sticky để giữ caret rõ.
 

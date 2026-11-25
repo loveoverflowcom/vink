@@ -154,8 +154,10 @@ async function expectMissingSnapshotTitle(page, check, id, version) {
   const { status, body } = await write(page, `/api/v1/works/${id}/snapshots`, 'POST', {
     command_key: 'title-refusal-' + version, expected_draft_version: version, expected_metadata_version: tags.version,
   });
-  check(status === 422 && body.error?.field === 'title' && body.error.message === 'a revision needs a title',
-    '#263 snapshot rejects the saved empty authoritative title with MissingTitle');
+  const error = body.error;
+  check(status === 422 && error?.code === 'submission_validation_failed' &&
+    error.issues?.length === 1 && error.issues[0].field === 'title' && error.issues[0].code === 'missing_title',
+    '#263/#543 snapshot rejects the saved empty authoritative title with a title-only validation issue');
 }
 
 async function titleValidation(page, { args, check }) {
@@ -238,6 +240,13 @@ async function titleValidation(page, { args, check }) {
   await page.click('#save-recovery-jump');
   check(await page.eval("document.activeElement?.id === 'draft-title'") && (await page.draft(plainId)).title === 'Tên riêng',
     '#263 Default title refusal and recovery stay on its own field');
+  const invalid = await page.eval(`(() => {
+    const title = document.querySelector('#draft-title'), style = getComputedStyle(title);
+    return style.outlineStyle === 'solid' && parseFloat(style.outlineWidth) >= 2 &&
+      title.getAttribute('aria-describedby').split(/\\s+/).some(id => document.getElementById(id)?.textContent.includes('200'));
+  })()`);
+  check(invalid, 'rejected title retains both its visible error outline and linked guidance');
+  await page.capture('writing-invalid-title', {target:'#draft-title'});
   await changeTitle('Tên riêng đã sửa');
   await save(page);
   check((await page.draft(plainId)).title === 'Tên riêng đã sửa' && await page.eval(`${SAME_VIEW} && ${SOURCE} === ${JSON.stringify(plain)}`),

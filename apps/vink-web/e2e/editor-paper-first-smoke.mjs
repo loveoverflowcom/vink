@@ -1,6 +1,6 @@
 // #218 & #254: real App/PG/Chrome. Scale and theme overrides keep the editor mounted.
 // The /toi tests exercise the actual app preference.
-export async function editorPaperFirst(page, { args, check, editorTarget, fitsEditorAction, holdEditorDebounce }) {
+export async function editorPaperFirst(page, { args, check, editorTarget, fitsEditorAction, holdEditorDebounce, setEditorScene, shift }) {
   const summary = '#editor-save-details > summary';
   const ready = `document.querySelector('.cm-content[contenteditable=true]')`;
   const view = `document.querySelector('.cm-content').cmTile.root.view`;
@@ -39,9 +39,11 @@ export async function editorPaperFirst(page, { args, check, editorTarget, fitsEd
     await page.send('Network.setBlockedURLs',{urls:[]});
   }
   await page.reload(); await page.waitFor(ready,'editor after load/no-JS probes');
+  await writingFocus(page, { check, setEditorScene, shift, format: 'default' });
   await page.typeAtEnd('#draft-title', title); await page.typeInBody(poem);
   await page.click('#save'); await page.waitStatus('saved');
   await page.eval(`window.__paperView=${view}; window.__paperTitle=document.querySelector('#draft-title')`);
+  await writingFocus(page, { check, setEditorScene, shift, format: 'default', filled: true });
   const same = `__paperView===${view} && __paperTitle===document.querySelector('#draft-title') && document.querySelectorAll('.cm-editor').length===1`;
   let writes = 0;
   const listener = event => {
@@ -149,4 +151,72 @@ export async function editorPaperFirst(page, { args, check, editorTarget, fitsEd
   }
   await page.click('#save'); await page.waitStatus('saved');
   check((await page.draft(workId)).title===title,'subsequent explicit save still persists the same draft');
+}
+
+// #526: measure the live field and its gutter mark on the same mounted editor before/after focus.
+export async function writingFocus(page, { check, setEditorScene, shift, format, filled = false }) {
+  const fields = format === 'markdown' ? ['.cm-content'] : ['#draft-title', '.cm-content'];
+  const scenes = filled ? [[390, 150, 'light'], [320, 200, 'dark']] : [[1440, 100, 'dark'], [1440, 100, 'light']];
+  const previous = await page.eval("({theme: document.documentElement.dataset.theme, size: document.documentElement.style.fontSize})");
+  const { nodes } = await page.send('Accessibility.getFullAXTree');
+  for (const label of format === 'markdown' ? ['Nội dung'] : ['Tiêu đề', 'Nội dung']) {
+    check(nodes.some(n => n.role?.value === 'textbox' && n.name?.value === label), format + ': textbox named ' + label);
+  }
+  try {
+    for (const [width, scale, theme] of scenes) {
+      await setEditorScene(page, { width, height: 900, scale, theme });
+      for (const selector of fields) {
+        const title = selector === '#draft-title';
+        const host = title ? '.vk-ui-field__control' : '.vk-editor-body';
+        const measure = () => page.eval(`(() => {
+          const field = document.querySelector('${selector}'), host = field.closest('${host}');
+          const rect = el => {
+            const r = el.getBoundingClientRect();
+            return [r.left + scrollX, r.top + scrollY, r.width, r.height];
+          };
+          const mark = getComputedStyle(host, '::before');
+          const nodes = [host, field, field.closest('.cm-editor')].filter(Boolean);
+          const styles = nodes.map(n => getComputedStyle(n));
+          return {
+            focused: document.activeElement === field,
+            geometry: [field, document.querySelector('${title ? '#draft-title-label' : '.vk-editor-paper .vk-field__label'}')].map(rect),
+            quiet: styles.every(s => (s.outlineStyle === 'none' || s.outlineWidth === '0px') &&
+              s.borderTopWidth === '0px' && s.boxShadow === 'none'),
+            fills: styles.map(s => s.backgroundColor),
+            mark: mark.content !== 'none' && parseFloat(mark.width) >= 2 && parseFloat(mark.height) >= 12,
+            ink: mark.backgroundColor,
+            paper: getComputedStyle(host.closest('.vk-editor-paper')).backgroundColor,
+            caret: getComputedStyle(field).caretColor
+          };
+        })()`);
+        await page.eval('document.activeElement.blur()');
+        const idle = await measure();
+        await page.click(selector);
+        const active = await measure();
+        const name = `writing-${format}-${title ? 'title' : 'body'}-${width}-${scale}-${theme}`;
+        check(active.focused && !idle.mark && active.mark && active.quiet &&
+          JSON.stringify(active.fills) === JSON.stringify(idle.fills) &&
+          active.geometry.flat().every((n, i) => Math.abs(n - idle.geometry.flat()[i]) <= 1),
+        name + ': pointer reveals a local mark with stable label, text bounds and surface ' + JSON.stringify({idle, active}));
+        const luminance = css => css.match(/[\d.]+/g).slice(0, 3).map(Number)
+          .map(n => n / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
+          .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+        for (const ink of [active.ink, active.caret]) {
+          const [high, low] = [luminance(ink), luminance(active.paper)].sort((a, b) => b - a);
+          check((high + 0.05) / (low + 0.05) >= 3, name + ': mark/caret contrast with paper');
+        }
+        await page.key('Tab');
+        check(!(await measure()).focused, name + ': Tab leaves writing surface');
+        await page.key('Tab', shift);
+        const keyboard = await measure();
+        check(keyboard.focused && keyboard.mark && keyboard.quiet, name + ': Shift+Tab returns to a visible local mark');
+        await page.capture(name, {scenario: 'Writing canvas keyboard focus', target: selector,
+          textScaleLane:'dom-override-geometry-only', geometry: keyboard});
+      }
+    }
+  } finally {
+    await page.viewport(1440, 900);
+    await page.eval(`document.documentElement.style.fontSize = ${JSON.stringify(previous.size)};
+      ${previous.theme ? 'document.documentElement.dataset.theme = ' + JSON.stringify(previous.theme) : 'delete document.documentElement.dataset.theme'}`);
+  }
 }
