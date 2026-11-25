@@ -57,10 +57,27 @@ Rail mở rộng và hộp thoại tablet hiện avatar tròn 32 px cạnh nhãn
 chỉ hiện avatar, giữ tên truy cập “Tài khoản”, trạng thái chọn và focus. Thanh dưới hiện avatar
 32 px trong pill, nhãn bên dưới. Khách giữ nhãn và biểu tượng theo khả năng đăng nhập.
 
-Trang `/toi` bắt đầu bằng thẻ Tài khoản. H1 “Tài khoản” dùng `type.title` trong thẻ, cạnh bút
-danh và avatar theo thứ tự đọc, với chuông thông báo trên mobile khi phiên có quyền. Khi hiển thị
-form xác thực, H1 vẫn có trong cây trợ năng và tiêu đề trực quan của form giữ nguyên bố cục.
-Kiểm Chrome ở hai theme, cỡ chữ 100%/150% và stress 200% riêng.
+### Tài khoản · #521
+
+[#521](https://github.com/loveoverflowcom/vink/issues/521) ghi hướng bố cục chủ sản phẩm đã chọn.
+Trên `/toi` khi phiên hoạt động, avatar chữ 64 px và bút danh làm H1 trong khối đầu. Chuông mobile
+nằm ở mép phải theo quyền phiên. Bên dưới là “Xem hồ sơ” và “Chỉnh hồ sơ”, hai link có icon và
+xuống dòng khi thiếu chỗ. Khách giữ tiêu đề form hiện có và H1 trong cây trợ năng.
+
+- CHOICE-02 dùng một lần đọc hồ sơ chính chủ theo phạm vi phiên và đọc lại khi nhận tín hiệu đổi hồ sơ.
+  “Xem hồ sơ” chỉ hiện khi địa chỉ tác giả đã thiết lập và hợp lệ. Khi thiếu địa chỉ, dẫn bằng lời
+  tới “Chỉnh hồ sơ”. Khi lỗi, hiện trạng thái và cho thử lại.
+- CHOICE-01 gom “Quyền riêng tư”, “Tên đăng nhập và mật khẩu”, email xác minh, “Giao diện” và
+  “Đăng xuất” dưới H2 “Cài đặt” theo quyền hiện có. Quyền riêng tư trỏ thẳng tới vùng policy
+  trong Chỉnh hồ sơ. Khối mật khẩu mở tại chỗ và giữ form đã mở trong cùng phiên. Email hiện
+  trạng thái hoặc tác vụ xác minh có thật. Giao diện dùng vùng điều khiển hiện có và mục nhảy
+  từ form khách. Đăng xuất dùng luồng đọc lại phiên hiện có.
+- Khối nền tonal bo theo token R4 và dùng font UI. Hàng tương tác có vùng bấm tối thiểu 44 CSS px.
+  Ưu tiên một cột ở màn hẹp, giữ thứ tự bàn phím và nhãn tiếng Việt đầy đủ. Kiểm Chrome ở hai
+  theme, 320/390 px và desktop, 100%/150% cùng stress 200% riêng.
+
+Tham chiếu là hướng bố cục đã chọn trong #521. LayoutSpec R4.3 giữ `DESIGN_PROPOSED` và
+[`VDR-SOCIAL-GRAPH@r2`](../../../decisions/proposals/VDR-SOCIAL-GRAPH.r2.toml) vẫn `PENDING`.
 
 ## 4. Khám phá
 

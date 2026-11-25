@@ -184,6 +184,7 @@ export function mountProfileNavigation() {
       /^\/@[^/]+\/(nguoi-theo-doi|dang-theo-doi)(?:[?#]|$)/.test(href) ? 'relationship-title' :
       href.startsWith('/@') ? 'author-profile-heading' :
       href === '/toi/chinh-ho-so' ? 'edit-profile-heading' :
+      href === '/toi/chinh-ho-so#quyen-rieng-tu' ? 'quyen-rieng-tu' :
       href === '/toi#edit-profile-link' ? 'edit-profile-link' : '';
     pendingDestination = {href, heading, source};
     if (!preserve) return;
@@ -206,7 +207,7 @@ export function mountProfileNavigation() {
       entry.id.startsWith('comment-') ? 'feedback-heading' :
       entry.id.startsWith('rel-person-') || ['rel-back-profile', 'rel-other-direction', 'rel-first-page'].includes(entry.id) ? 'relationship-title' :
       entry.id === 'profile-followers-link' || entry.id === 'profile-following-link' || entry.id === 'own-profile-edit-link' || entry.id === 'follow-sign-in' ? 'author-profile-heading' :
-      entry.id === 'edit-profile-link' ? 'me-title' : 'noi-dung';
+      ['edit-profile-link', 'view-profile-link', 'profile-privacy-link'].includes(entry.id) ? 'me-title' : 'noi-dung';
     focusWhenReady(entry.source, () => {
       const node = document.getElementById(entry.id);
       return node?.getAttribute('href') === entry.href ? node : null;
@@ -228,7 +229,7 @@ export function mountProfileNavigation() {
   let reloading = false;
   window.addEventListener('pagehide', event => {
     const path = location.pathname;
-    if (!event.persisted || !(path === '/' || path === '/toi/chinh-ho-so' ||
+    if (!event.persisted || !(path === '/' || path === '/toi' || path === '/toi/chinh-ho-so' ||
         ['/the/', '/tac-pham/', '/@'].some(prefix => path.startsWith(prefix)))) return;
     parked = true;
     const main = document.getElementById('noi-dung');

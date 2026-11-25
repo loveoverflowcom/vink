@@ -1043,56 +1043,6 @@ export function evaluateLeaveModalBranch(modalReport, branchName) {
 }
 
 /**
- * Evaluates Me account card illustration visibility and `padding-inline-end: 225px` reservation.
- * `action === null` on `/toi` is normal and never treated as a bug when the illustration explains
- * the reserved end space.
- */
-export function evaluateMePanelReservation(mePanel) {
-  const reasons = [];
-  if (!mePanel) {
-    return { ok: false, reasons: ['missing mePanel'] };
-  }
-  if (mePanel.prefix !== 'page') {
-    return { ok: true, reasons: [], note: 'overlay utility omits account card' };
-  }
-  const ill = mePanel.illustration;
-  const res = mePanel.reservation;
-  if (!ill || !ill.present) {
-    reasons.push('missing .vk-account-illustration element on /toi');
-    return { ok: false, reasons };
-  }
-  if (!res || !Number.isFinite(res.paddingInlineEnd)) {
-    reasons.push('missing mePanel.reservation metrics');
-    return { ok: false, reasons };
-  }
-  if (ill.ariaHidden !== 'true') {
-    reasons.push(`illustration aria-hidden expected 'true', got ${JSON.stringify(ill.ariaHidden)}`);
-  }
-  if (ill.visible) {
-    if (!ill.rect || ill.rect.width <= 0 || ill.rect.height <= 0) {
-      reasons.push('visible illustration has empty rect');
-    } else if (res.paddingInlineEnd < ill.rect.width) {
-      reasons.push(`accountText paddingInlineEnd (${res.paddingInlineEnd}px) < visible illustration width (${ill.rect.width}px)`);
-    }
-    if (res.textOverlapsIllustration) {
-      reasons.push('accountText overlaps visible .vk-account-illustration');
-    }
-    if (!Number.isFinite(res.accountTextContentWidth) || res.accountTextContentWidth <= 0) {
-      reasons.push(`invalid accountText contentWidth: ${res.accountTextContentWidth}`);
-    }
-  } else if (res.paddingInlineEnd > 1) {
-    reasons.push(`unused reservation: paddingInlineEnd=${res.paddingInlineEnd}px while illustration is hidden`);
-  }
-  return {
-    ok: reasons.length === 0,
-    reasons,
-    illustrationVisible: ill.visible,
-    paddingInlineEnd: res.paddingInlineEnd,
-    accountTextContentWidth: res.accountTextContentWidth,
-  };
-}
-
-/**
  * Builds an honest boundary/lane summary without promoting partial, DOM-override or unavailable
  * lanes to full acceptance.
  */

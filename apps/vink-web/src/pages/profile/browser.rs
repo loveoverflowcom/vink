@@ -333,6 +333,22 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
             ActionState::Enabled
         }
     });
+    let privacy = NodeRef::<leptos::html::Div>::new();
+    Effect::new(move |_| {
+        if let Some(region) = privacy.get()
+            && window()
+                .location()
+                .hash()
+                .is_ok_and(|hash| hash == "#quyen-rieng-tu")
+            && document().active_element().is_none_or(|active| {
+                active.tag_name() == "BODY"
+                    || matches!(active.id().as_str(), "noi-dung" | "edit-profile-heading")
+            })
+        {
+            region.scroll_into_view();
+            let _ = region.focus();
+        }
+    });
     view! {
         <form class="vk-profile-form grid [min-inline-size:0] gap-vk-6 [margin-block-start:var(--vk-space-6)]" autocomplete="off" novalidate
             on:compositionstart=move |_| form.composing.set(true)
@@ -342,19 +358,22 @@ fn ProfileForm(scope: StoredValue<String>, initial: OwnProfile) -> impl IntoView
                 on_input=typed(form.name) error=error_for("profile-pen-name")
                 help="Luôn công khai. Bút danh có thể trùng với người khác." />
             <handle::HandleRow controller=handle />
-            <PolicyField form label="Quyền xem ảnh đại diện" id="profile-avatar-policy" access=|p| &mut p.avatar />
-            <div class="vk-profile-field grid [min-inline-size:0] gap-vk-3">
-                <TextArea id="profile-bio" label="Bio" value=form.bio rows=4
-                    on_input=typed(form.bio) error=error_for("profile-bio") />
-                <PolicyField form label="Quyền xem Bio" id="profile-bio-policy" access=|p| &mut p.bio />
+            <div id="quyen-rieng-tu" node_ref=privacy tabindex="-1" role="group" aria-label="Quyền riêng tư"
+                class="grid min-w-0 gap-vk-6">
+                <PolicyField form label="Quyền xem ảnh đại diện" id="profile-avatar-policy" access=|p| &mut p.avatar />
+                <div class="vk-profile-field grid [min-inline-size:0] gap-vk-3">
+                    <TextArea id="profile-bio" label="Bio" value=form.bio rows=4
+                        on_input=typed(form.bio) error=error_for("profile-bio") />
+                    <PolicyField form label="Quyền xem Bio" id="profile-bio-policy" access=|p| &mut p.bio />
+                </div>
+                <fieldset class="grid [min-inline-size:0] gap-vk-1 m-0 p-0 [border:0]">
+                    <legend>"Quyền xem quan hệ"</legend>
+                    <PolicyField form label="Danh sách người theo dõi" id="profile-followers-list" access=|p| &mut p.followers_list />
+                    <PolicyField form label="Số người theo dõi" id="profile-followers-count" access=|p| &mut p.followers_count />
+                    <PolicyField form label="Danh sách đang theo dõi" id="profile-following-list" access=|p| &mut p.following_list />
+                    <PolicyField form label="Số người đang theo dõi" id="profile-following-count" access=|p| &mut p.following_count />
+                </fieldset>
             </div>
-            <fieldset class="grid [min-inline-size:0] gap-vk-1 m-0 p-0 [border:0]">
-                <legend>"Quyền xem quan hệ"</legend>
-                <PolicyField form label="Danh sách người theo dõi" id="profile-followers-list" access=|p| &mut p.followers_list />
-                <PolicyField form label="Số người theo dõi" id="profile-followers-count" access=|p| &mut p.followers_count />
-                <PolicyField form label="Danh sách đang theo dõi" id="profile-following-list" access=|p| &mut p.following_list />
-                <PolicyField form label="Số người đang theo dõi" id="profile-following-count" access=|p| &mut p.following_count />
-            </fieldset>
             <p class="vk-muted vk-profile-note">"Trường đã đặt Chỉ mình tôi hiện chưa thể công khai lại."</p>
             {move || form.conflict.get().map(|current| view! {
                 <Conflict form current />

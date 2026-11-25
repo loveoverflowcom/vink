@@ -6,6 +6,7 @@ use vink_ui::{Heading, HeadingLevel, Link};
 use crate::account::Session;
 
 pub(super) const EDIT_PATH: &str = "/toi/chinh-ho-so";
+pub(crate) const PRIVACY_PATH: &str = "/toi/chinh-ho-so#quyen-rieng-tu";
 const HANDLE_PATH: &str = "/toi/chinh-ho-so#dia-chi-tac-gia";
 
 /// The old private address only redirects. No profile or Handle request is made here.
@@ -31,15 +32,95 @@ pub(crate) fn LegacyHandle() -> impl IntoView {
 }
 
 #[component]
-pub(super) fn ProfileEntry() -> impl IntoView {
-    let session = Session::current();
+pub(crate) fn ProfileActions() -> impl IntoView {
     view! {
-        <Show when=move || session.profile_scope.get().is_some()>
-            <Link attr:id="edit-profile-link" attr:data-profile-return="true" href=EDIT_PATH>
+        <div class="flex flex-wrap items-center gap-vk-2 min-w-0">
+            <OwnProfileLink />
+            <Link attr:id="edit-profile-link" attr:data-profile-return="true"
+                attr:class="vk-account-link" variant=vink_ui::LinkVariant::Standalone href=EDIT_PATH>
+                <vink_ui::Icon name=vink_ui::IconName::EditOutline />
                 "Chỉnh hồ sơ"
             </Link>
-        </Show>
+        </div>
     }
+}
+
+#[component]
+fn OwnProfileLink() -> impl IntoView {
+    #[cfg(feature = "browser")]
+    {
+        use crate::contract::{ApiError, follow::valid_canonical_handle};
+        use vink_ui::{Button, ButtonVariant, Icon, IconName, LinkVariant};
+
+        let session = Session::current();
+        let revision = RwSignal::new(0u64);
+        let renew = move || revision.update(|value| *value += 1);
+        observe_changes(renew);
+        crate::read_events::observe_lifecycle(move |hint| {
+            if hint == crate::read_events::Hint::HistoryRestored {
+                renew();
+            }
+        });
+        let loaded = LocalResource::new(move || {
+            let stamp = revision.get();
+            let scope = session.profile_scope.get();
+            async move {
+                let scope = scope?;
+                let result = crate::api::load_own_profile().await.map(|profile| {
+                    let href = (profile.handle_setup_complete
+                        && valid_canonical_handle(&profile.handle))
+                    .then(|| format!("/@{}", profile.handle));
+                    (profile.principal_id, href)
+                });
+                Some((scope, stamp, result))
+            }
+        });
+        let loading = || {
+            view! {
+                <p role="status" class="vk-account-profile-note">"Đang tải địa chỉ tác giả…"</p>
+            }
+        };
+        return view! {
+            <Suspense fallback=loading>
+                {move || {
+                    let scope = session.profile_scope.get();
+                    let latest = revision.get();
+                    let Some((_, _, result)) = loaded.get().flatten()
+                        .filter(|(key, stamp, _)| Some(key) == scope.as_ref() && *stamp == latest)
+                    else {
+                        return loading().into_any();
+                    };
+                    match result {
+                        Ok((principal, href)) if session.principal.get().as_ref() == Some(&principal) => match href {
+                            Some(href) => view! {
+                                <Link attr:id="view-profile-link" attr:data-profile-return="true"
+                                    attr:class="vk-account-link vk-account-link--primary"
+                                    variant=LinkVariant::Standalone href=href>
+                                    <Icon name=IconName::PersonOutline />
+                                    "Xem hồ sơ"
+                                </Link>
+                            }.into_any(),
+                            None => view! {
+                                <p role="status" class="vk-account-profile-note">"Thiết lập địa chỉ tác giả trong Chỉnh hồ sơ."</p>
+                            }.into_any(),
+                        },
+                        Err(ApiError::NotFound) => view! {
+                            <p role="status" class="vk-account-profile-note">"Chưa có địa chỉ tác giả. Kiểm tra trong Chỉnh hồ sơ."</p>
+                        }.into_any(),
+                        _ => view! {
+                            <div class="vk-account-profile-note flex flex-wrap items-center gap-vk-2">
+                                <p role="status" class="m-0">"Chưa tải được địa chỉ tác giả."</p>
+                                <Button id="own-profile-link-retry" variant=ButtonVariant::Text
+                                    on_press=move |_| renew()>"Thử lại"</Button>
+                            </div>
+                        }.into_any(),
+                    }
+                }}
+            </Suspense>
+        };
+    }
+    #[cfg(not(feature = "browser"))]
+    ()
 }
 
 #[component]

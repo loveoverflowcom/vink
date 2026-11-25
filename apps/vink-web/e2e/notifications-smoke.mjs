@@ -268,9 +268,8 @@ export async function notifications(page, { args, check }) {
       const title = card.querySelector('#me-title');
       const illustration = card.querySelector('.vk-account-illustration');
       const c = card.getBoundingClientRect(), b = button.getBoundingClientRect(), t = title.getBoundingClientRect();
-      const artFits = !illustration.getClientRects().length || illustration.getBoundingClientRect().right <= b.left;
-      return artFits && title.matches('h1.vk-ui-type-title') && document.querySelectorAll('main h1').length === 1 &&
-        title.textContent === 'Tài khoản' && b.width >= 48 && b.height >= 48 &&
+      return !illustration && title.matches('h1.vk-ui-type-title') && document.querySelectorAll('main h1').length === 1 &&
+        title.textContent.trim().length > 0 && title.textContent !== 'Tài khoản' && b.width >= 48 && b.height >= 48 &&
         b.top >= c.top && b.bottom <= c.bottom && t.right <= b.left &&
         document.documentElement.scrollWidth <= innerWidth;
     })()`), `#520 mobile ${width}px/${scale}% ${theme}: heading and bell fit the card side by side`);

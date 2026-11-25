@@ -1,8 +1,8 @@
 use leptos::prelude::*;
 use leptos_meta::{Meta, Title};
 
-use crate::account::AccountPanel;
-use crate::appearance::{AppearanceChoices, AppearanceTitle};
+use crate::account::{AccountAppearance, AccountHub};
+use crate::session::Standing;
 
 #[component]
 pub fn Me() -> impl IntoView {
@@ -11,7 +11,6 @@ pub fn Me() -> impl IntoView {
     let feed_enabled = crate::api::following_feed_enabled();
     #[cfg(feature = "browser")]
     {
-        use crate::session::Standing;
         let navigation = crate::navigation::use_navigation_guard();
         let desk_auth_entry = StoredValue::new(false);
         Effect::new(move |_| {
@@ -64,29 +63,28 @@ pub fn Me() -> impl IntoView {
         <Title text="Tài khoản — Vink" />
         <Meta name="robots" content="noindex" />
         <section id="me" class="vk-me grid gap-vk-6" aria-labelledby="me-title">
-            <AccountPanel id="page-account" />
-            {move || (session.profile_scope.get().is_some())
-                .then(|| return_href.get())
-                .flatten()
-                .map(|(href, label)| view! {
-                    <vink_ui::Link
-                        variant=vink_ui::LinkVariant::Standalone
-                        attr:id="me-return-link"
-                        href=href>
-                        {label}
-                    </vink_ui::Link>
-                })}
-            <super::profile::ProfileEntry />
-            {move || {
-                let scope = session.profile_scope.get()?;
-                (review_access.get().flatten().as_ref() == Some(&scope)).then(|| view! {
-                    <vink_ui::Link attr:id="me-moderation-link" href="/kiem-duyet">"Kiểm duyệt"</vink_ui::Link>
-                })
-            }}
-            <section id="page-appearance" tabindex="-1" class="vk-appearance-card" aria-labelledby="page-appearance-title">
-                <AppearanceTitle id="page-appearance-title" />
-                <AppearanceChoices prefix="page" />
-            </section>
+            <AccountHub>
+                {move || (session.profile_scope.get().is_some())
+                    .then(|| return_href.get())
+                    .flatten()
+                    .map(|(href, label)| view! {
+                        <vink_ui::Link
+                            variant=vink_ui::LinkVariant::Standalone
+                            attr:id="me-return-link"
+                            href=href>
+                            {label}
+                        </vink_ui::Link>
+                    })}
+                {move || {
+                    let scope = session.profile_scope.get()?;
+                    (review_access.get().flatten().as_ref() == Some(&scope)).then(|| view! {
+                        <vink_ui::Link attr:id="me-moderation-link" href="/kiem-duyet">"Kiểm duyệt"</vink_ui::Link>
+                    })
+                }}
+            </AccountHub>
+            <Show when=move || !matches!(session.standing.get(), Standing::Active(_))>
+                <AccountAppearance />
+            </Show>
         </section>
     }
 }

@@ -652,6 +652,13 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   await page.waitFor(contains('đã có thông tin đăng nhập'), 'credential already present');
   check(await page.eval(`!${q(ENROLL + '-send')}`), 'already-enrolled account has no second enrollment form');
 
+  await page.eval("window.credentialStatus = document.getElementById('password-credential-status')");
+  await page.click('#password-credential');
+  check(await page.eval("window.credentialStatus.closest('[hidden]') && document.activeElement?.id === 'password-credential'"),
+    '#521 closing credentials hides its mounted settings and keeps focus on the row');
+  await page.key('Enter');
+  check(await page.eval("window.credentialStatus === document.getElementById('password-credential-status') && !window.credentialStatus.closest('[hidden]')"),
+    '#521 keyboard reopening retains the same credential settings');
   console.log('Auth password: generic invalid credentials, exact logout and late cookie readback:');
   const refusal = await fabricate(page, 'DELETE', '/api/v1/auth/session', 503, { error: { code: 'dependency_unavailable', message: 'fixture' } });
   await page.click('#sign-out');
