@@ -199,7 +199,8 @@ def assert_empty_catalog():
     status, mime, _, _, body = read_asset("https://vink.forum/api/v1/works")
     require(status == "200" and mime == "application/json", "public catalog unreachable")
     data = json.loads(body)
-    require(data.get("works") == [] and "next_cursor" in data and data["next_cursor"] is None,
+    require(isinstance(data, dict) and data.get("works") == []
+            and "next_cursor" in data and data["next_cursor"] is None,
             "empty-catalog smoke requires an empty public catalog")
 
 
@@ -437,7 +438,7 @@ def main():
             return
         require(not a.preview_only or a.mode in {"apply", "resume"}, "preview-only requires apply or resume")
         if a.empty_catalog:
-            require(a.maintenance and a.reader is None, "empty-catalog smoke requires maintenance and no reader UUID")
+            require(a.reader is None, "empty-catalog smoke cannot use a reader UUID")
         else:
             require(a.reader and re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", a.reader),
                     "supply an existing public reader UUID")
@@ -454,6 +455,8 @@ def main():
             require(pending["release"] == spec and pending["account"] == a.account and
                     pending["previous_origin"] == a.previous_origin and pending["previous_edge"] == predecessor,
                     "resume must use original inputs")
+            require(("reader_coverage" in pending) == a.empty_catalog,
+                    "resume must use the original catalog smoke mode")
         else:
             require(current == predecessor, "Pages predecessor changed")
         require(run("git", "-C", HERE, "rev-parse", "HEAD") == rev, "release checkout differs from input")
@@ -490,9 +493,11 @@ def main():
             old_images = last["release"]["images"]
             for release, digest in last["retained"].items():
                 require(sha((archive / release / "manifest.json").read_bytes()) == digest, "lost retained release")
+        schema = schema_action(a.previous_origin, rev, a.schema_review, window=a.maintenance)
+        require(not a.empty_catalog or a.maintenance or schema == "same",
+                "rolling empty-catalog smoke requires unchanged migrations")
         manifest = export(spec, archive)
         images = spec["images"]
-        schema = schema_action(a.previous_origin, rev, a.schema_review, window=a.maintenance)
         evidence = None
         origin = None
         if a.maintenance:
@@ -533,6 +538,8 @@ def main():
                                                 "origin_rollback_started", "origin_rolled_back"},
                             "origin may have accepted writes; rollback is unavailable")
             else:
+                if a.empty_catalog:
+                    assert_empty_catalog()
                 require(deployment(project(a.account)) == predecessor, "Pages changed during staging")
                 result["phase"] = "preview_upload_started"
                 store(journal, result)
@@ -563,6 +570,8 @@ def main():
                     verify_assets(spec["public_origin"], rev, manifest, serving_edge=True)
                     if a.maintenance:
                         result["fallback_proof"] = fallback_proof(a.fallback_proof, result, manifest)
+                if a.empty_catalog:
+                    assert_empty_catalog()
                 require(deployment(project(a.account)) == predecessor, "Pages predecessor changed during fallback verification")
                 result["phase"] = "production_upload_started"
                 store(journal, result)
@@ -580,10 +589,10 @@ def main():
                 verify_assets(result["preview_alias"], rev, manifest)
                 if predecessor:
                     verify_assets(spec["public_origin"], rev, manifest, serving_edge=True)
+                run(HERE / "origin.sh", "plan", *origin_args)
                 if a.empty_catalog:
                     assert_empty_catalog()
                 require(deployment(project(a.account)) == result["edge"], "Pages changed before origin switch")
-                run(HERE / "origin.sh", "plan", *origin_args)
                 result["phase"] = "origin_switch_started"
                 store(journal, result)
                 if not origin:

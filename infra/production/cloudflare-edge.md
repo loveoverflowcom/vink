@@ -158,6 +158,20 @@ Receipt không thay bước controller tự tải đủ asset từ alias và ape
 `NOT_RUN`. Controller kiểm Git index và binary bằng chính tài khoản smoke trước stage.
 
 
+## Rolling khi catalog công khai rỗng
+
+Với hai cây migration App và Identity giống hệt predecessor, người vận hành trực tiếp có thể dùng
+`--empty-catalog` thay cho `--reader` trong lệnh `plan` ở trên. Sau khi plan đạt, chạy
+`apply --preview-only`, kiểm URL preview bất biến và alias, rồi dùng `resume` với cùng input và
+`--empty-catalog`. Controller vẫn giữ asset cả hai bản và kiểm đường phục vụ ở apex trước khi
+promote Pages và trước khi đổi origin. Đường rolling này dùng `schema=same` nên không chạy migration.
+
+Controller xác nhận API catalog trả `works: []` và `next_cursor: null` trước preview, ngay trước
+promote và trước khi đổi origin. Nếu catalog không còn rỗng hoặc API không xác nhận được, dừng tại
+pha đang ghi. Dùng `status` đối chiếu Pages và origin trước khi quyết định tiếp tục. `resume` giữ
+chế độ smoke đã ghi trong journal. Smoke cuối kiểm trang chủ, Bàn viết và Tài khoản trên Chrome
+khách, với Reader tác phẩm công khai ghi `NOT_RUN`. Receiver SSH tiếp tục dùng UUID công khai thật.
+
 ## Nâng cấp trong cửa sổ bảo trì
 
 Dùng đường local trên controller khi cả hai owner là App và Identity và image cũ không đạt trên
