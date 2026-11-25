@@ -170,8 +170,8 @@ Shell (giữ #394, cập nhật bởi #413 ngày 23/11/2026)
 PageColumn 48rem, căn giữa phần còn lại sau rail; gutter <760 = 16 px cố định
 Khám phá /
   Header: H1 “Khám phá” (page-title BVP 600 24/22) | [🔍 mở dock] [Lọc thẻ, badge số] logo V-pen
-  SearchDock (khi mở hoặc URL có q): ← | SearchField 56 bo 16 | Lọc thẻ — thay chỗ cụm nút
-  ModeGroup (nav, link + aria-current): Tất cả | Đang theo dõi | Tác giả
+  Primary Tabs (nav, link + aria-current): Tất cả | Đang theo dõi | Tác giả
+  SearchDock (khi mở hoặc URL có q): ngay dưới thanh tab, ô tìm theo chế độ
   AppliedRow (khi có thẻ): input chip ×N · Xóa lọc · status “Trang này: N tác phẩm”
   Results: WorkRow × n, cách 40 (32 hẹp) · Pagination “Trang tiếp” medium 56
 Bàn viết /ban-viet
@@ -185,7 +185,7 @@ Bàn viết /ban-viet
 | --- | --- | --- | --- | --- | --- | --- |
 | Header | Hàng flex, wrap; khoảng dưới 24 | H1 `type.page-title` (Be Vietnam Pro 600, 24/22, tracking 0); cụm nút icon phải: tìm (mở dock), Lọc thẻ (Khám phá) hoặc tạo (Bàn viết); không có nút Tải lại | Nền trang | Logo là link “Vink — trang chủ”; SplitButton: trái = POST tạo, phải = menu | Hẹp: hành động xuống dòng dưới H1; 200% + <360: H1 Khám phá ẩn thị giác, logo + Lọc thẻ một hàng | Tạo: pending/uncertain/reconcile giữ StatePanel hiện có |
 | ToolBand | Field 56, nút 56, gap 12 (8 hẹp) | Placeholder ngắn ở 200% | Field `surface-container-highest`; Lọc thẻ `tertiary-container`; nhóm Sắp xếp highest | Enter/composition như R5.1; Lọc thẻ mở dialog/sheet hiện có | Không sticky dưới 760 hoặc khi `data-text=200` | Có thẻ: badge `tertiary` |
-| ModeGroup | Cao 48, khe 2, inner bo 8, outer pill | Nhãn 15/500, chọn 600 | Chọn `primary`/`on-primary` + dấu chọn; chưa chọn highest | Link thật; hover state 8%; focus 3/2 | Không vừa một dòng → `details/summary` “Tất cả ▾” | Feed tắt (`VINK_FOLLOWING_FEED`) → ẩn mục như hiện tại |
+| Primary Tabs | Chia đều theo số chế độ, cao 48 px ở cỡ chữ thường | Cùng font và weight; nhãn chọn dùng màu primary | Nền trang, chỉ báo Lavender 3 px | Link thật với `aria-current="page"`, focus hiện rõ, Back/Forward theo URL | 320 px hoặc chữ 200% cho nhãn xuống dòng và cả hàng tăng chiều cao | Feed tắt (`VINK_FOLLOWING_FEED`) → còn hai cột |
 | WorkRow | Flat, max 680 | Dòng trên tertiary 13/600 → nhan đề Literata 26/23 → trích đoạn 17/1.6 → byline 600 + @handle | Không nền | Nhan đề là link duy nhất; byline một link (#352) | Byline xuống dòng tự nhiên; không `overflow-wrap:anywhere` cho từ thường | cached/refresh giữ hành vi `public_reads` |
 | DraftRow | Padding 14/20, khe 2 | Nhan đề Literata 20/19; dòng trạng thái 13/600; giờ caption | `surface-container`; nhãn có nền chỉ cho chờ duyệt (tertiary-container), lỗi (error-container), đã đăng (success-container) | Một link editor; “Đọc bản công khai” link riêng ≥44 | Dòng trạng thái wrap | Copy trạng thái giữ nguyên `adapters.rs` |
 | Empty/Guest/Error | Căn giữa vùng còn lại (#276) | Ảnh 192/240 → tiêu đề (tùy) → một câu → ≤1 filled | Nền trang | Filled vuông bo 16 | 200%: hành động tới được bằng cuộn | Khách Bàn viết: “Đăng nhập” + “Khám phá tác phẩm”, 0 request riêng tư |
@@ -217,7 +217,7 @@ tertiary/nền 6.08/10.61; on-surface-variant/highest 5.05. Cần đo lại trê
 | Vùng | Code (develop) | Thiết kế hiện hành | R4.1 |
 | --- | --- | --- | --- |
 | Khám phá đầu trang | H1 ẩn; Lọc thẻ · tìm 328 · logo căn phải; mobile kính lúp | #308 r1/#325: H1 ẩn, một hàng công cụ | H1 page-title hiện + [tìm] [Lọc thẻ] logo; tìm mở search dock ở mọi cỡ màn (DQ-01, DQ-02) |
-| Chế độ | Segmented, chọn nền primary, bo sai khi wrap | #354/#355 thêm chế độ, không spec hình | Button group nối liền, gập thành menu (DQ-03) |
+| Chế độ | Segmented, chọn nền primary, bo sai khi wrap | #354/#355 thêm chế độ, không spec hình | Primary Tabs chia đều, chỉ báo Lavender 3 px (DQ-03 cập nhật) |
 | Hàng Khám phá | R3 phẳng, không ngày (Tất cả) | Canvas R3 có ngày | Có ngày; nhan đề 26 |
 | Lọc thẻ | Tonal pill; chip lưới hai cột | #260 CHOICE-01/02 A | Vuông bo tertiary + badge; chip theo bề rộng (DQ-07) |
 | Bàn viết header | H1 UI 28/600; Select + Filled | #394 | Literata; SplitButton (DQ-06) |
@@ -234,6 +234,14 @@ Danh sách sửa ngay bên dưới thuộc lượt audit. Xem [bàn giao #414](r
 **Sửa được ngay, không đổi quyết định:** KP-02 (bo/dấu chọn, không đổi cấu trúc), KP-05, KP-06
 (chỉ đổi role ở consumer — vẫn cần DQ-10 cho tertiary), KP-08, KP-09, KP-11, KP-12, KP-14, BV-03,
 BV-04, BV-06, BV-07, BV-08, BV-10, BV-11, BV-12, BV-13, BV-14, NAV-01, NAV-02, MF-01.
+
+### DQ-03 cập nhật ngày 25/11/2026
+
+Hướng Primary Tabs được chọn cho bản sửa sau [điều tra #473](https://github.com/loveoverflowcom/vink/issues/473), thay cách trình bày “Button group + gập menu” bên dưới. H1 “Khám phá”, nút tìm, logo và thanh tab nằm trong `DiscoverShell` dùng chung. Vị trí Lọc thẻ được dành sẵn và nút chỉ hiện trong Tất cả khi có danh mục hoặc có thể thử tải lại. Thanh tab giữ đủ nhãn ngay cả ở 320 px hoặc chữ 200%. Khi cần, chữ xuống dòng và các ô cao bằng nhau.
+
+Nút tìm mở ô ngay dưới thanh tab. Tất cả tìm tác phẩm, Tác giả tìm theo bút danh hoặc @handle. Tìm từ Đang theo dõi chuyển sang Tất cả khi gửi truy vấn. Panel kết quả thuộc URL hiện hành và có trạng thái chờ riêng. Đang theo dõi giữ H2 làm nhãn vùng và hiện H2 khi nhận focus phục hồi. Các kết quả rỗng dùng minh họa chung với thông điệp và hành động theo chế độ.
+
+Khi đổi chế độ tại cùng viewport và vị trí cuộn, trình duyệt giữ nguyên node header, logo và link tab. Mép trên và mép trái của logo và mỗi tab có dung sai 1 CSS px, cả khi đang chờ API. Chỉ báo trượt trong 240 ms theo token chuyển động. Panel đổi ngay trong bản sửa này. Khi bật giảm chuyển động, chỉ báo đổi vị trí ngay.
 
 **Chủ sản phẩm trả lời ngày 23/11/2026 khi nhận PR lát 1–5 (#402–#406)** — trích lựa chọn của
 chủ sản phẩm; chưa ghi vào registry `decisions/`:

@@ -1497,8 +1497,8 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
   max-inline-size: var(--vk-size-page-column);
   margin-inline: auto;
 }
-/* R4.2 header row (#404): page title left; [tìm][Lọc thẻ] + logo right. The search dock
- * (`data-search="open"`) replaces the icon cluster; on phones it takes the whole screen. */
+/* The discovery header reserves the filter slot in every mode, including while its catalog loads. */
+html:has(.vk-discovery:not(.vk-discovery--tag)) { scrollbar-gutter: stable; }
 .vk-explore__top {
   display: flex;
   padding-block: 16px 12px;
@@ -1533,8 +1533,16 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
 .vk-discovery--tag .vk-public-search { flex: 1 1 16rem; --vk-ui-control-radius: initial; }
 .vk-discovery-tools { display: inline-flex; }
 .vk-search-launcher,
-.vk-search-close,
-.vk-discovery-toolbar-status { display: none; }
+.vk-search-close { display: none; }
+.vk-discovery-filter-slot { min-inline-size: 56px; }
+#discovery-search-dock {
+  margin-block-end: var(--vk-space-4);
+  --vk-ui-search-radius: var(--vk-radius-control-56);
+}
+.vk-discovery[data-enhanced="true"][data-search="closed"] #discovery-search-dock { display: none; }
+.vk-discovery[data-enhanced="true"] .vk-search-launcher,
+.vk-discovery[data-enhanced="true"] #discovery-search-dock .vk-search-close { display: inline-flex; }
+.vk-discovery[data-enhanced="true"] #discovery-search-dock button[type="submit"] { display: none; }
 /* Khám phá keeps its 56 px wide-window and 48 px phone targets (R4.2 semi-square). */
 .vk-search-launcher .vk-ui-icon-button,
 .vk-tag-launcher .vk-ui-icon-button { inline-size: 56px; block-size: 56px; }
@@ -1561,13 +1569,6 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
   text-align: center;
   pointer-events: none;
 }
-.vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="closed"] .vk-public-search { display: none; }
-.vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="closed"] .vk-search-launcher { display: inline-flex; }
-.vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] .vk-discovery-toolbar { flex: 1 1 24rem; }
-.vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] .vk-public-search { flex: 1 1 14rem; }
-.vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] .vk-search-close { display: inline-flex; }
-.vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] #public-search button[type="submit"] { display: none; }
-.vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] :is(.vk-search-launcher, .vk-discovery-tools) { display: none; }
 @media (forced-colors: active) {
   .vk-tag-launcher__badge { forced-color-adjust: none; background: Highlight; color: HighlightText; box-shadow: none; }
 }
@@ -1638,71 +1639,73 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
 #tag-picker .vk-ui-dialog__title { font-family: var(--vk-font-ui); }
 #tag-picker .vk-ui-dialog__header-action .vk-ui-icon-button { background-color: var(--vk-bg-inset); }
 #tag-picker .vk-ui-dialog__content { grid-column: 1 / -1; min-inline-size: 0; }
-/* R4.2 mode group (#404, DQ-03): one connected row of links that never wraps; when it would
- * not fit, the same links open from a menu. The threshold scales with text size (rem). */
+/* DQ-03 primary tabs. The indicator moves independently of the equal-width links. */
 .vk-explore-modes {
-  container: vk-explore-modes / inline-size;
+  --mode-count: 2;
+  --mode-index: 0;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--mode-count), minmax(0, 1fr));
   margin-block: var(--vk-space-2) var(--vk-space-6);
 }
-/* The container queries below own both mode surfaces' visibility. */
-.vk-explore-modes__group { display: flex; }
-.vk-explore-modes__group a,
-.vk-explore-modes__list a,
-.vk-explore-modes__menu > summary {
-  justify-content: center;
-  border-radius: var(--vk-radius-sm);
-  background: var(--vk-surface-container-highest);
-  color: var(--vk-on-surface);
+.vk-explore-modes[data-following="true"] { --mode-count: 3; }
+.vk-explore-modes[data-mode="following"],
+.vk-explore-modes[data-mode="authors"] { --mode-index: 1; }
+.vk-explore-modes[data-following="true"][data-mode="authors"] { --mode-index: 2; }
+.vk-explore-modes::after {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-end: 0;
+  inline-size: calc(100% / var(--mode-count));
+  block-size: 3px;
+  border-start-start-radius: var(--vk-radius-full);
+  border-start-end-radius: var(--vk-radius-full);
+  background: var(--vk-primary);
+  content: "";
+  pointer-events: none;
+  translate: calc(var(--mode-index) * 100%);
+  transition: translate calc((var(--vk-duration-short) + var(--vk-duration-medium)) / 2) var(--vk-ease-emphasized);
+}
+.vk-explore-modes[data-following="false"][data-mode="following"]::after { visibility: hidden; }
+.vk-explore-modes a {
+  display: grid;
+  place-items: center;
+  min-block-size: var(--vk-size-hit-target);
+  padding: var(--vk-space-2);
+  color: var(--vk-on-surface-variant);
+  font-size: var(--vk-type-label-size);
   font-weight: var(--vk-type-label-weight);
+  line-height: var(--vk-type-label-line-height);
+  text-align: center;
   text-decoration: none;
-  white-space: nowrap;
-  transition: background-color var(--vk-duration-short) var(--vk-ease-emphasized);
+  overflow-wrap: anywhere;
 }
-.vk-explore-modes__group a:first-child { border-start-start-radius: var(--vk-radius-control-48); border-end-start-radius: var(--vk-radius-control-48); }
-.vk-explore-modes__group a:last-child { border-start-end-radius: var(--vk-radius-control-48); border-end-end-radius: var(--vk-radius-control-48); }
-.vk-explore-modes a[aria-current] { background: var(--vk-primary); color: var(--vk-on-primary); font-weight: var(--vk-type-page-title-weight); }
-.vk-explore-modes a:not([aria-current]):hover,
-.vk-explore-modes__menu > summary:hover { background-image: linear-gradient(var(--vk-state-hover), var(--vk-state-hover)); }
-.vk-explore-modes a:focus-visible,
-.vk-explore-modes__menu > summary:focus-visible {
+.vk-explore-modes a[aria-current] { color: var(--vk-primary); }
+.vk-explore-modes a:hover { background: var(--vk-state-hover); }
+.vk-explore-modes a:focus-visible {
+  z-index: 1;
   outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
-  outline-offset: var(--vk-size-focus-offset);
-}
-.vk-explore-modes__menu { display: none; }
-.vk-explore-modes__menu > summary { border-radius: var(--vk-radius-control-48); list-style: none; cursor: pointer; }
-.vk-explore-modes__menu > summary::-webkit-details-marker { display: none; }
-.vk-explore-modes__menu[open] > summary > .vk-ui-icon { transform: rotate(180deg); }
-.vk-explore-modes__list {
-  border-radius: var(--vk-radius-card);
-  background: var(--vk-bg-content);
-}
-.vk-explore-modes__list a { justify-content: flex-start; border-radius: var(--vk-radius-control-48); background: transparent; white-space: normal; overflow-wrap: anywhere; }
-/* At the base font size the connected row needs 349px before forced-color borders. */
-@container vk-explore-modes (max-width: 22rem) {
-  .vk-explore-modes__group { display: none; }
-  .vk-explore-modes__menu { display: block; }
-}
-@media (forced-colors: active) {
-  @container vk-explore-modes (max-width: calc(22rem + 6px)) {
-    .vk-explore-modes__group { display: none; }
-    .vk-explore-modes__menu { display: block; }
-  }
+  outline-offset: calc(-1 * var(--vk-size-focus-ring));
 }
 @media (prefers-reduced-motion: reduce) {
-  .vk-explore-modes a, .vk-explore-modes__menu > summary { transition: none; }
+  .vk-explore-modes::after { transition: none; }
 }
 @media (forced-colors: active) {
-  .vk-explore-modes a[aria-current] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
-  .vk-explore-modes a, .vk-explore-modes__menu > summary { border: 1px solid ButtonText; }
+  .vk-explore-modes::after { forced-color-adjust: none; background: Highlight; }
 }
-#following-feed-heading {
-  inline-size: fit-content;
-  max-inline-size: 100%;
-  margin: 0 0 var(--vk-space-4);
-  overflow-wrap: anywhere;
-  scroll-margin-block-start: 5.5rem;
+/* The feed heading names the region and is also the fallback for a failed return. */
+#following-feed-heading:not(:focus) {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 #following-feed-heading:focus {
+  inline-size: fit-content;
+  scroll-margin-block-start: 5.5rem;
   outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
   outline-offset: var(--vk-size-focus-offset);
 }
@@ -1823,29 +1826,14 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
   .vk-discovery-toolbar { gap: 8px; --vk-ui-control-radius: var(--vk-radius-control-48); }
   .vk-search-launcher .vk-ui-icon-button,
   .vk-tag-launcher .vk-ui-icon-button { inline-size: 48px; block-size: 48px; }
-  /* Full-screen dock: the field takes the first row, Lọc thẻ and the count follow. */
-  .vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] > .vk-explore__top > .vk-explore__heading {
-    position: absolute; inline-size: 1px; block-size: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
-  }
-  .vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] .vk-discovery-toolbar { flex: 1 1 100%; justify-content: flex-start; }
-  .vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] .vk-public-search { order: -1; flex: 1 0 100%; }
-  .vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] .vk-tag-launcher { margin-inline-end: 4px; }
-  .vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] .vk-discovery-toolbar-status {
-    display: block;
-    margin: 0;
-    font-size: var(--vk-type-caption-size);
-    line-height: var(--vk-type-caption-line-height);
-    color: var(--vk-on-surface-variant);
-  }
-  .vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] .vk-discovery-toolbar-status:empty { display: none; }
-  .vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"] #public-results > .vk-public-scope {
-    position: absolute;
-    inline-size: 1px;
-    block-size: 1px;
-    margin: 0;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+  .vk-discovery-filter-slot { min-inline-size: 48px; }
+  .vk-discovery[data-enhanced="true"][data-search="open"] .vk-public-scope {
+    position: static;
+    inline-size: auto;
+    block-size: auto;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
   }
   .vk-ui-scaffold[data-layout="auto"]:has(.vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"]) .vk-ui-bottom-nav { display: none; }
   .vk-ui-scaffold[data-layout="auto"]:has(.vk-discovery:not(.vk-discovery--tag)[data-enhanced="true"][data-search="open"]) .vk-ui-scaffold__content { padding-block-end: 0; }
@@ -2301,22 +2289,6 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
   }
 }
 
-.vk-main:has(> .vk-author-search) { padding-block-start: 0; }
-.vk-author-search {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--vk-space-4);
-  margin-block-start: 0;
-  inline-size: 100%;
-  max-inline-size: var(--vk-size-page-column);
-  margin-inline: auto;
-}
-.vk-author-search .vk-explore-modes { margin-block: 0; }
-.vk-author-search #author-search {
-  min-inline-size: 0;
-  --vk-ui-control-radius: var(--vk-radius-control-48);
-  --vk-ui-search-radius: var(--vk-radius-control-56);
-}
 .vk-author-search__results > .vk-ui-heading {
   overflow-wrap: anywhere;
 }
@@ -2409,8 +2381,6 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
       grid-area: 2 / 1 / auto / -1;
     }
   }
-  .vk-discovery[data-search="open"] .vk-explore__top:has(> .vk-notif-mobile-bell) { display: flex; }
-  .vk-discovery[data-search="open"] .vk-explore__top > .vk-notif-mobile-bell { display: none; }
 }
 
 @media (max-width: 759px) {
@@ -2418,7 +2388,7 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
     grid-template-columns: minmax(0, 1fr) 48px;
   }
   :is(.vk-explore__top, .vk-desk-heading) > .vk-notif-mobile-bell[data-large-text="true"] { grid-area: 1 / 2; }
-  .vk-discovery:not(.vk-discovery--tag):not([data-search="open"])
+  .vk-discovery:not(.vk-discovery--tag)
     .vk-explore__top:has(> .vk-notif-mobile-bell) > .vk-explore__heading {
       position: static;
       inline-size: auto;

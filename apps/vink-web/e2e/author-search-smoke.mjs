@@ -95,6 +95,90 @@ async function intercept(page, pattern, handler) {
   };
 }
 
+async function discoveryModeStability(page, base, check) {
+  const works = '#explore-mode-works';
+  const following = '#explore-mode-following';
+  const authors = '#explore-mode-authors';
+  const mode = selector => `${q(selector)}?.getAttribute('aria-current') === 'page'`;
+  for (const [width, scale] of [[1280, 100], [390, 100], [320, 200]]) {
+    await page.viewport(width, 850);
+    await page.goto(base + '/');
+    await page.waitFor(`${HYDRATED} && ${q(following)}`, 'shared discovery header');
+    await page.eval(`document.documentElement.style.fontSize = '${scale}%'; document.fonts.ready`);
+    await page.send('Emulation.setEmulatedMedia', { features: [
+      { name: 'prefers-reduced-motion', value: width === 320 ? 'reduce' : 'no-preference' },
+    ] });
+    await page.eval(`window.discoverySnapshot = (() => {
+      const selector = 'header.vk-explore__top, #explore-heading h1, .vk-brand__lockup, .vk-explore-modes, .vk-explore-modes a';
+      const nodes = [...document.querySelectorAll(selector)];
+      const rects = nodes.map(node => node.getBoundingClientRect());
+      const origin = performance.timeOrigin;
+      return () => {
+        const after = [...document.querySelectorAll(selector)];
+        const shift = Math.max(...after.flatMap((node, index) => {
+          const landed = node.getBoundingClientRect();
+          return ['top', 'left', 'right', 'height'].map(edge => Math.abs(landed[edge] - rects[index][edge]));
+        }));
+        return {
+          shift,
+          sameNodes: nodes.length === after.length && nodes.every((node, index) => node === after[index]),
+          sameDocument: performance.timeOrigin === origin,
+          fits: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+        };
+      };
+    })()`);
+    const stable = async label => {
+      const got = await page.eval('window.discoverySnapshot()');
+      check(got.sameNodes && got.sameDocument && got.fits && got.shift <= 1,
+        `#473 ${width}px / ${scale}% ${label} (${JSON.stringify(got)})`);
+    };
+
+    await page.eval(`${q(works)}.focus()`);
+    await page.key('Tab');
+    check(await page.eval(`document.activeElement === ${q(following)} && ${q(following)}.matches(':focus-visible')`),
+      `#473 ${width}px keyboard reaches Following`);
+    await page.key('Enter');
+    await page.waitFor(`${mode(following)} && ${q('[data-feed-state=guest]')}`, 'guest Following selected');
+    await stable('Following');
+
+    const held = [];
+    const release = await intercept(page, base + SEARCH + '*', params => held.push(params.requestId));
+    try {
+      await page.click(authors);
+      await page.waitFor(`${mode(authors)} && ${q(LOADING)}`, 'Authors selected while its response is pending');
+      const deadline = Date.now() + 5000;
+      while (held.length === 0 && Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, 25));
+      }
+      check(held.length > 0, '#473 author request held at the browser transport');
+      await stable('Authors loading');
+      if (width === 320) {
+        check(await page.eval(`getComputedStyle(${q('.vk-explore-modes')}, '::after').transitionProperty === 'none'`),
+          '#473 reduced motion moves the indicator immediately');
+      }
+      await page.click(works);
+      await page.waitFor(`${mode(works)} && ${q('#public-results')}`, 'Works selected before Authors resolves');
+      for (const requestId of held.splice(0)) {
+        await page.send('Fetch.continueRequest', { requestId }).catch(() => {});
+      }
+      await page.eval('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+      check(await page.eval(`!${q(HEADING)} && ${mode(works)}`), '#473 late Authors result stays outside Works');
+      await stable('Works after a rapid switch');
+    } finally {
+      for (const requestId of held) await page.send('Fetch.continueRequest', { requestId }).catch(() => {});
+      await release();
+    }
+    await page.eval('history.back()');
+    await page.waitFor(`${mode(authors)} && ${HAS_ROWS} === 12`, 'Back restores the Authors URL and results');
+    await stable('Back to Authors');
+    await page.eval('history.forward()');
+    await page.waitFor(mode(works), 'Forward restores Works selection');
+    await stable('Forward to Works');
+  }
+  await page.send('Emulation.setEmulatedMedia', { features: [] });
+  await page.viewport(1280);
+}
+
 async function backThroughUnhydratedProfile(page, base, path, selector, query) {
   await page.send('Network.setCacheDisabled', { cacheDisabled: true });
   const heldWasm = [];
@@ -322,6 +406,7 @@ export async function authorSearch(page, { args, check, textContrast }) {
     await page.send('Network.setBlockedURLs', { urls: [] });
   }
 
+  await discoveryModeStability(page, base, check);
   await page.goto(base + '/');
   const entry = '#explore-mode-authors';
   await page.waitFor(`${HYDRATED} && ${q(entry)}`, 'author search mode in Khám phá');
@@ -334,6 +419,8 @@ export async function authorSearch(page, { args, check, textContrast }) {
     && ${q(NOTE)}?.tagName === 'P' && ${hasCopy(NOTE, COPY.note)}`),
     'S1 suggestions have their own heading and public-list note');
   const guest = await fetch(base + SEARCH + '?q=' + encodeURIComponent(pen)).then(r => r.text());
+  await page.click('#open-public-search');
+  await page.waitFor(`document.activeElement === ${q(INPUT)}`, 'author search launcher focuses its field');
   await page.eval(`${q(INPUT)}.focus()`);
   await page.send('Input.imeSetComposition', { text: 'Đặng', selectionStart: 4, selectionEnd: 4 });
   await page.eval(`${q(INPUT)}.dispatchEvent(new KeyboardEvent('keydown', {

@@ -179,47 +179,28 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     }
     check(await page.eval("(() => { const heading=document.querySelector('#explore-heading h1'); if(heading.getBoundingClientRect().width<=1) return true; const walker=document.createTreeWalker(heading,NodeFilter.SHOW_TEXT); for(let node=walker.nextNode();node;node=walker.nextNode()) for(const word of node.textContent.matchAll(/\\S+/g)) { const range=document.createRange(); range.setStart(node,word.index); range.setEnd(node,word.index+word[0].length); const rects=[...range.getClientRects()]; if(rects.some(r=>Math.abs(r.top-rects[0].top)>1)) return false; } return true; })()"), 'Vietnamese heading words remain intact '+[theme,width,scale].join('/'));
 
-    // R4.2 (#404 AC-03, DQ-03): one unbroken connected row with correct outer corners, or the menu.
     const modes = await page.eval(`(() => {
-      const group=document.querySelector('.vk-explore-modes__group'), menu=document.querySelector('#explore-mode-menu');
-      const links=[...group.querySelectorAll('a')], shown=group.getClientRects().length>0;
-      const current=links.find(a=>a.getAttribute('aria-current')==='page');
-      const r=links.map(a=>getComputedStyle(a));
-      return {shown, menu: menu.getClientRects().length>0,
-        oneRow: links.every(a=>Math.abs(a.getBoundingClientRect().top-links[0].getBoundingClientRect().top)<1),
-        corners: shown ? [r[0].borderTopLeftRadius, r[0].borderTopRightRadius, r.at(-1).borderTopRightRadius, r.at(-1).borderBottomLeftRadius] : [],
-        current: current?.id==='explore-mode-works' && !!current.querySelector('svg[data-icon=check]') && links.filter(a=>a.querySelector('svg')).length===1,
-        summary: document.querySelector('#explore-mode-menu-button').textContent.includes('Tất cả')};
+      const nav = document.querySelector('.vk-explore-modes');
+      const links = [...nav.querySelectorAll('a')];
+      const boxes = links.map(link => link.getBoundingClientRect());
+      const indicator = getComputedStyle(nav, '::after');
+      return {
+        count: links.length,
+        current: nav.querySelector('[aria-current="page"]')?.id,
+        equal: boxes.every(box => Math.abs(box.width - boxes[0].width) <= 1 &&
+          Math.abs(box.top - boxes[0].top) <= 1 && Math.abs(box.height - boxes[0].height) <= 1),
+        fillsRow: Math.abs(boxes.at(-1).right - nav.getBoundingClientRect().right) <= 1,
+        height: boxes[0].height,
+        indicator: indicator.height,
+        icons: nav.querySelectorAll('svg').length,
+      };
     })()`);
-    check(modes.current && modes.shown !== modes.menu &&
-      (modes.shown ? modes.oneRow && modes.corners.join() === '14px,8px,14px,8px' : modes.summary),
-      '#404 mode group stays one connected row or folds into the menu ' + [theme,width,scale,JSON.stringify(modes)].join('/'));
-    if (width === 374 && scale === 100) check(modes.menu, '#404 374px: the menu replaces a row whose labels would clip their padding');
-    if (width === 320 && scale === 100) check(modes.menu, '#427 AC-01 320px / 100%: modes fold into the menu');
-    if (width === 390 && scale === 100) check(modes.shown, '#427 AC-01 390px / 100%: modes stay one connected row');
-    if ([320, 390].includes(width) && scale === 150) {
-      check(modes.menu, `#427 AC-01 ${width}px / 150% (${theme}): modes fold into the menu`);
-      if (theme === 'light') {
-        await page.eval("document.querySelector('#explore-mode-menu-button').focus(); document.querySelector('#explore-mode-menu-button').click()");
-        await page.waitFor("document.querySelector('#explore-mode-menu').open", `#427 mode menu opens at ${width}px / 150%`);
-        await page.eval("document.querySelector('#explore-menu-authors').focus()");
-        await page.key('Escape');
-        check(await page.eval("!document.querySelector('#explore-mode-menu').open && document.activeElement?.id==='explore-mode-menu-button' && document.querySelector('#explore').dataset.search==='closed'"),
-          `#427 Escape closes the mode menu and returns focus to its button at ${width}px / 150%`);
-      }
-    }
-    if (width === 320 && scale === 200) {
-      check(modes.menu, '#404/#427 stress 200% (320px): modes fold into the menu');
-      await page.eval("document.querySelector('#explore-mode-menu-button').focus(); document.querySelector('#explore-mode-menu-button').click()");
-      await page.waitFor("document.querySelector('#explore-mode-menu').open", '#404 mode menu opens');
-      await page.eval("document.querySelector('#explore-menu-authors').focus()");
-      await page.key('Escape');
-      check(await page.eval("!document.querySelector('#explore-mode-menu').open && document.activeElement?.id==='explore-mode-menu-button' && document.querySelector('#explore').dataset.search==='closed'"),
-        '#404 Escape closes the mode menu and returns focus to its button');
-    }
-    if (width === 1440) check(modes.shown, '#404 1440px keeps the connected mode group ' + [theme,scale].join('/'));
-    if (theme === 'light' && ([320, 390, 1440].includes(width) && [100, 150].includes(scale) || width === 320 && scale === 200)) {
-      await checkExploreModesTabAndAx(page, { check, label: `${width}px/${scale}%`, expectMenu: modes.menu });
+    check(modes.current === 'explore-mode-works' && modes.count === 3 && modes.equal && modes.fillsRow &&
+      modes.height >= 48 && (scale !== 100 || modes.height === 48) && modes.indicator === '3px' && modes.icons === 0,
+      'DQ-03 equal-width tabs and independent Lavender indicator ' + [theme,width,scale,JSON.stringify(modes)].join('/'));
+    if (theme === 'light' && ([320,390,1440].includes(width) && [100,150].includes(scale) ||
+        [320,390].includes(width) && scale === 200)) {
+      await checkExploreModesTabAndAx(page, {check, label: `${width}px/${scale}%`});
     }
 
     const dock = await page.eval("document.querySelector('#tag-dock').getBoundingClientRect().width>0");
@@ -297,10 +278,10 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await page.waitFor("document.querySelector('#explore').dataset.search==='open' && document.activeElement?.id==='public-query'", '#308 r1 mobile search opens and focuses query');
   check(await page.eval(`(() => {
     const nav=document.querySelector('#bottom-navigation'), close=document.querySelector('#close-public-search'),
-      sub=document.querySelector('#public-search button[type=submit]'), st=document.querySelector('.vk-discovery-toolbar-status');
+      sub=document.querySelector('#public-search button[type=submit]'), st=document.querySelector('#public-results > .vk-public-scope');
     return getComputedStyle(nav).display==='none' && close.getClientRects().length>0 &&
       getComputedStyle(sub).display==='none' && st.getClientRects().length>0 && st.textContent.includes('Trang này:');
-  })()`), '#308 r1 mobile open search hides bottom nav & submit icon, shows back & row-2 count');
+  })()`), '#308 r1 mobile open search hides bottom nav & submit icon, shows back & result count');
   await page.capture('discovery-mobile-search-open', { boundary: 'real-public-api', scenario: 'r1-mobile-search' });
   await page.eval("document.querySelector('#public-query').dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}))");
   await page.key('Escape');
@@ -328,9 +309,9 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await page.waitFor("document.querySelector('.vk-public-row__title mark.vk-search-mark')", '#308 r1 highlights matched query terms in title/author');
   check(await page.eval(`(() => {
     const excerptMarks = document.querySelectorAll('.vk-public-row__excerpt mark');
-    const st = document.querySelector('.vk-discovery-toolbar-status');
+    const st = document.querySelector('#public-results > .vk-public-scope');
     return excerptMarks.length === 0 && st.getClientRects().length > 0 && st.textContent.includes('Trang này:');
-  })()`), '#308 r1 never highlights inside excerpt and shows toolbar count on mobile search');
+  })()`), '#308 r1 never highlights inside excerpt and shows result count on mobile search');
   await page.waitFor("document.querySelector('#open-tag-filters')", 'catalog for the applied query');
   await page.click('#open-tag-filters');
   await page.waitFor("document.querySelector('#tag-picker')?.open && document.querySelector('#modal-tag-form input[type=checkbox]')", 'tag picker');
@@ -687,8 +668,7 @@ async function submittedReadKeepsTyping(page, {args, check}) {
   }
 }
 
-// R4.2 search dock on wide windows (#404 AC-01): opens in place of the icon cluster from the icon
-// or “/”, never while typing elsewhere; Escape closes it, drops unsent text and returns focus.
+// The dock opens below the tabs from the search icon or “/” and restores focus on Escape.
 async function desktopSearchDock(page, {args, check, ready}) {
   await page.viewport(1440);
   await page.eval("document.documentElement.dataset.theme='light'; document.documentElement.style.fontSize='100%'; scrollTo(0,0)");
@@ -705,18 +685,15 @@ async function desktopSearchDock(page, {args, check, ready}) {
   const dock = await page.eval(`(() => {
     const top=document.querySelector('.vk-explore__top').getBoundingClientRect();
     const field=document.querySelector('#public-search .vk-ui-search__shell'), shell=field.getBoundingClientRect();
-    const filter=document.querySelector('#open-tag-filters').getBoundingClientRect();
+    const modes=document.querySelector('.vk-explore-modes').getBoundingClientRect();
     const close=document.querySelector('#close-public-search');
-    const h1=document.querySelector('#explore-heading h1').getBoundingClientRect();
     return {url: location.href, height: shell.height, radius: getComputedStyle(field).borderTopLeftRadius,
-      replaces: document.querySelector('#open-public-search').getClientRects().length===0 && document.querySelector('#discovery-tools').getClientRects().length===0,
-      order: close.getClientRects().length>0 && shell.right <= filter.left && Math.abs((shell.top+shell.bottom)/2-(filter.top+filter.bottom)/2)<=2 && h1.right <= shell.left,
-      inTop: shell.top >= top.top && shell.bottom <= top.bottom,
-      submitHidden: getComputedStyle(document.querySelector('#public-search button[type=submit]')).display==='none',
-      bottomBar: document.querySelector('#bottom-navigation') ? getComputedStyle(document.querySelector('#bottom-navigation')).display : 'none'};
+      headerVisible: document.querySelector('#open-public-search').getClientRects().length>0 && document.querySelector('#discovery-tools').getClientRects().length>0,
+      order: close.getClientRects().length>0 && top.bottom <= modes.top && modes.bottom <= shell.top,
+      submitHidden: getComputedStyle(document.querySelector('#public-search button[type=submit]')).display==='none'};
   })()`);
-  check(dock.url === url && Math.abs(dock.height - 56) < 1 && dock.radius === '16px' && dock.replaces && dock.order && dock.inTop && dock.submitHidden,
-    '#404 dock replaces the icon cluster in place: ← | field 56 bo 16 | Lọc thẻ, no history entry ' + JSON.stringify(dock));
+  check(dock.url === url && Math.abs(dock.height - 56) < 1 && dock.radius === '16px' && dock.headerVisible && dock.order && dock.submitHidden,
+    'Search opens below stable tabs with a 56px field and no history entry ' + JSON.stringify(dock));
   await page.capture('discovery-r4-dock-1440-light', { boundary: 'real-public-api', scenario: 'r4-search-dock' });
   await page.send('Input.insertText', { text: 'chưa gửi' });
   await page.eval("document.querySelector('#public-query').dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}))");
@@ -744,7 +721,7 @@ async function desktopSearchDock(page, {args, check, ready}) {
 
   await page.goto(args.base + '/?q=mua');
   await ready();
-  check(await page.eval("document.querySelector('#explore').dataset.search==='open' && document.querySelector('#public-query').value==='mua' && document.querySelector('#public-query').getClientRects().length>0 && document.querySelector('#open-public-search').getClientRects().length===0"),
+  check(await page.eval("document.querySelector('#explore').dataset.search==='open' && document.querySelector('#public-query').value==='mua' && document.querySelector('#public-query').getClientRects().length>0 && document.querySelector('#open-public-search').getClientRects().length>0"),
     '#404/#427 AC-03 desktop SSR /?q=mua opens the dock with q kept');
   await page.click('#close-public-search');
   await page.waitFor("location.search==='' && document.querySelector('#explore').dataset.search==='closed' && document.querySelector('#public-query').getClientRects().length===0 && document.activeElement?.id==='open-public-search'",
@@ -799,76 +776,49 @@ async function desktopSearchDock(page, {args, check, ready}) {
   await ready();
 }
 
-// R4.3 (#427 AC-02, KP-R43-02): only the visible mode link surface participates in Tab order
-// and the accessibility tree; the hidden duplicate never leaks into either.
-async function checkExploreModesTabAndAx(page, { check, label, expectMenu }) {
-  const { groupIds, menuIds } = await page.eval(`({
-    groupIds: [...document.querySelectorAll('.vk-explore-modes__group a')].map(a => a.id),
-    menuIds: [...document.querySelectorAll('#explore-mode-menu .vk-explore-modes__list a')].map(a => a.id),
-  })`);
-  const walkModesTab = async () => {
-    await page.eval("document.querySelector('#discovery-tools .vk-brand').focus()");
-    const stops = [];
-    for (let i = 0; i < 8; i++) {
-      await page.key('Tab');
-      const hit = await page.eval(`(() => {
-        const el = document.activeElement;
-        return el?.closest('.vk-explore-modes') ? (el.id || el.tagName) : null;
-      })()`);
-      if (hit) stops.push(hit);
-      else if (stops.length > 0) break;
-    }
-    return stops;
-  };
-  const inspectAx = async (expectedVisibleIds, expectedHiddenIds, expectedNavLinkCount, stateLabel) => {
-    await page.send('Accessibility.enable');
-    for (const id of expectedVisibleIds) {
-      const info = await collectElementAccessibility(page, '#' + id);
-      check(info.present && !info.ax.ignored && Boolean(info.ax.name),
-        `#427 AC-02 ${label} (${stateLabel}): visible mode control #${id} is exposed in AX (${JSON.stringify(info.ax)})`);
-    }
-    for (const id of expectedHiddenIds) {
-      const info = await collectElementAccessibility(page, '#' + id);
-      check(info.present && info.ax.ignored,
-        `#427 AC-02 ${label} (${stateLabel}): hidden mode control #${id} is ignored in AX (${JSON.stringify(info.ax)})`);
-    }
-    const { nodes } = await page.send('Accessibility.getFullAXTree');
-    const byId = new Map(nodes.map(node => [node.nodeId, node]));
-    const navNode = nodes.find(node => !node.ignored && node.role?.value === 'navigation' && node.name?.value === 'Chế độ Khám phá');
-    const exposedLinks = [];
-    if (navNode) {
-      const queue = [...(navNode.childIds ?? [])];
-      while (queue.length) {
-        const node = byId.get(queue.shift());
-        if (!node) continue;
-        if (!node.ignored && node.role?.value === 'link') exposedLinks.push(node.name?.value ?? '');
-        if (node.childIds) queue.push(...node.childIds);
-      }
-    }
-    check(Boolean(navNode) && exposedLinks.length === expectedNavLinkCount,
-      `#427 AC-02 ${label} (${stateLabel}): AX navigation 'Chế độ Khám phá' exposes exactly ${expectedNavLinkCount} link(s) (got ${JSON.stringify(exposedLinks)})`);
-  };
-
-  if (!expectMenu) {
-    const stops = await walkModesTab();
-    check(stops.join(',') === groupIds.join(','),
-      `#427 AC-02 ${label} (group): Tab visits only group links (${JSON.stringify(stops)} vs ${JSON.stringify(groupIds)})`);
-    await inspectAx(groupIds, ['explore-mode-menu-button', ...menuIds], groupIds.length, 'group');
-  } else {
-    const closedStops = await walkModesTab();
-    check(closedStops.join(',') === 'explore-mode-menu-button',
-      `#427 AC-02 ${label} (menu closed): Tab visits only menu summary (${JSON.stringify(closedStops)})`);
-    await inspectAx(['explore-mode-menu-button'], [...groupIds, ...menuIds], 0, 'menu closed');
-
-    await page.eval("document.querySelector('#explore-mode-menu').open = true");
-    const openStops = await walkModesTab();
-    const expectedOpen = ['explore-mode-menu-button', ...menuIds];
-    check(openStops.join(',') === expectedOpen.join(','),
-      `#427 AC-02 ${label} (menu open): Tab visits summary then only menu links (${JSON.stringify(openStops)} vs ${JSON.stringify(expectedOpen)})`);
-    await inspectAx(expectedOpen, groupIds, menuIds.length, 'menu open');
-    await page.eval("document.querySelector('#explore-mode-menu').open = false");
+// #427 AC-02 / DQ-03: the same mode destinations are reachable at every width.
+async function checkExploreModesTabAndAx(page, {check, label}) {
+  const destinations = [
+    ['explore-mode-works', 'Tất cả'],
+    ['explore-mode-following', 'Đang theo dõi'],
+    ['explore-mode-authors', 'Tác giả'],
+  ];
+  const stops = [];
+  await page.eval("document.querySelector('#discovery-tools .vk-brand').focus()");
+  for (let step = 0; step <= destinations.length; step++) {
+    await page.key('Tab');
+    stops.push(await page.eval(`(() => {
+      const active = document.activeElement;
+      return active?.closest('.vk-explore-modes') ? active.id : null;
+    })()`));
   }
-  await page.eval("document.activeElement?.blur(); scrollTo(0, 0)");
+  check(JSON.stringify(stops) === JSON.stringify([...destinations.map(([id]) => id), null]),
+    `#427 AC-02 ${label}: Tab visits each mode once in order and leaves the navigation (${JSON.stringify(stops)})`);
+
+  await page.send('Accessibility.enable');
+  for (const [id, name] of destinations) {
+    const {present, ax, dom} = await collectElementAccessibility(page, '#' + id);
+    check(present && !ax.ignored && ax.role === 'link' && ax.name === name &&
+      dom.ariaCurrent === (id === 'explore-mode-works' ? 'page' : null),
+      `#427 AC-02 ${label}: #${id} has the expected AX link name and current state (${JSON.stringify(ax)})`);
+  }
+  const {nodes} = await page.send('Accessibility.getFullAXTree');
+  const nav = nodes.filter(node => !node.ignored && node.role?.value === 'navigation' &&
+    node.name?.value === 'Chế độ Khám phá');
+  const byId = new Map(nodes.map(node => [node.nodeId, node]));
+  const exposed = [];
+  const queue = [...(nav[0]?.childIds ?? [])];
+  while (queue.length) {
+    const node = byId.get(queue.shift());
+    if (!node) continue;
+    if (!node.ignored && ['link', 'button', 'DisclosureTriangle'].includes(node.role?.value)) {
+      exposed.push([node.role.value, node.name?.value]);
+    }
+    queue.push(...(node.childIds ?? []));
+  }
+  check(nav.length === 1 && JSON.stringify(exposed) === JSON.stringify(destinations.map(([, name]) => ['link', name])),
+    `#427 AC-02 ${label}: AX navigation exposes one set of mode links (${JSON.stringify(exposed)})`);
+  await page.eval("document.activeElement?.blur(); scrollTo(0,0)");
 }
 
 // Revalidation changes freshness text, not the identity of focused recovery controls.

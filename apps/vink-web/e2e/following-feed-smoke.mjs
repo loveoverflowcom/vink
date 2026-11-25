@@ -110,8 +110,7 @@ async function layout(page, check, textContrast) {
         })) : null,
       };
     })(),
-    // R4.2 (#404): the mode group collapses into a menu when it would not fit; measure what shows.
-    targets: Array.from(document.querySelectorAll('.vk-explore-modes a, .vk-explore-modes summary, #following-cards .vk-ui-byline__identity'))
+    targets: Array.from(document.querySelectorAll('.vk-explore-modes a, #following-cards .vk-ui-byline__identity'))
       .filter(el => el.getClientRects().length > 0).slice(0,4).map(el => [el.getBoundingClientRect().width, el.getBoundingClientRect().height])
   }))()`;
   for (const width of [320, 390, 834, 1024, 1440]) {
@@ -132,17 +131,13 @@ async function layout(page, check, textContrast) {
           : !nav.mobile && nav.rail > 0 && nav.railAccount && nav.railTargets.join(',') === '/,/ban-viet',
           `#355 shell destinations and icon alignment ${width}/${theme}/${text}% (${JSON.stringify(nav)})`);
         if ([320, 390].includes(width) || (text === 100 && [834, 1440].includes(width))) {
-          // R4.2 (#404, DQ-03): the connected mode group folds into #explore-mode-menu below 21rem.
-          const folded = await page.eval(`document.querySelector('#explore-mode-following').getClientRects().length === 0`);
-          const modeTargets = folded
-            ? ['#explore-mode-menu-button']
-            : ['#explore-mode-works', '#explore-mode-following', '#explore-mode-authors'];
+          const modeTargets = ['#explore-mode-works', '#explore-mode-following', '#explore-mode-authors'];
           await textContrast(page, theme, 'following-feed', [
             ...modeTargets, '.vk-feed-date',
             '.vk-public-row__title', '.vk-public-row__excerpt', '.vk-public-row__byline .vk-ui-byline__name',
           ]);
           await page.capture(`feed-355-${width}-${theme}-${text}`, {
-            requiredTargets: [folded ? '#explore-mode-menu-button' : '#explore-mode-following', '#following-cards', '.vk-feed-date'],
+            requiredTargets: ['#explore-mode-following', '#following-cards', '.vk-feed-date'],
           });
           if (width === 390 && text === 100) {
             await page.eval(`${q('#explore-mode-works')}.focus()`);
@@ -187,6 +182,7 @@ export async function followingFeed(control, other, {base, openPage, check, hold
   await page.click('[data-feed-state="no-follows"] a');
   await page.waitFor(`location.search === '${AUTHORS.slice(1)}' && ${q('#author-search-query')}`,
     'empty Feed links to the real author-search mode');
+  await page.click('#open-public-search');
   await fill(page, '#author-search-query', '@' + b.handle);
   await page.key('Enter');
   const authorResult = `.vk-author-search a[href="/@${b.handle}"][data-profile-return]`;
@@ -472,13 +468,7 @@ export async function followingFeed(control, other, {base, openPage, check, hold
   await page.click('#bottom-navigation a[href="/"]');
   await page.waitFor(`location.pathname === '/' && !location.search && ${q('#explore-mode-following')}`,
     'Khám phá opens from Reader in the shared shell');
-  if (await page.eval(`document.querySelector('#explore-mode-following').getClientRects().length === 0`)) {
-    await page.click('#explore-mode-menu-button');
-    await page.waitFor(`document.querySelector('#explore-mode-menu')?.open`, 'mode menu opens on 320px/200%');
-    await page.click('#explore-menu-following');
-  } else {
-    await page.click('#explore-mode-following');
-  }
+  await page.click('#explore-mode-following');
   await page.waitFor(`${ROWS}===12 && ${q(workLink)}`, 'an independent Feed entry starts at the first page');
   const newest = await page.eval("document.querySelector('#following-cards > li').dataset.workId");
   await page.click(workLink);
@@ -506,7 +496,7 @@ export async function followingFeed(control, other, {base, openPage, check, hold
   check(await append.held() === 200, 'hold real append before the Graph ACK');
   await toggle(control, base, b.handle, false);
   await page.waitFor(`${state('no-follows')} && ${ROWS}===0`, 'confirmed Unfollow fences the open chain');
-  const modeFocusId = await page.eval(`document.querySelector('#explore-mode-works').getClientRects().length > 0 ? 'explore-mode-works' : 'explore-mode-menu-button'`);
+  const modeFocusId = 'explore-mode-works';
   await page.eval(`document.getElementById(${JSON.stringify(modeFocusId)}).focus()`);
   await append.finish(false, true);
   check(await page.eval(`${ROWS}===0 && document.activeElement?.id===${JSON.stringify(modeFocusId)}`),

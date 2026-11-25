@@ -2352,12 +2352,11 @@ async function accountAppearance(page) {
       const rects = ['#open-public-search', '#open-tag-filters', '#discovery-tools .vk-brand']
         .map(selector => document.querySelector(selector)?.getBoundingClientRect());
       const mid = rect => (rect.top + rect.bottom) / 2;
-      const group = getComputedStyle(document.querySelector('.vk-explore-modes__group')).display !== 'none';
-      const menu = getComputedStyle(document.querySelector('#explore-mode-menu')).display !== 'none';
+      const tabs = [...document.querySelectorAll('.vk-explore-modes a')];
       return rects.every(rect => rect?.width > 0 && rect.left >= 0 && rect.right <= innerWidth) &&
         rects.every(rect => Math.abs(mid(rect) - mid(rects[0])) <= 2) &&
-        group !== menu && document.documentElement.scrollWidth <= innerWidth;
-    })()`), `AC-07 ${width}px at Lớn 150% keeps the logo and both tools in one row and exactly one mode control visible`);
+        tabs.length >= 2 && tabs.every(tab => tab.getBoundingClientRect().height >= 48) && document.documentElement.scrollWidth <= innerWidth;
+    })()`), `AC-07 ${width}px at Lớn 150% keeps the logo and both tools in one row with every mode reachable`);
   }
   await page.viewport(1440);
   await page.click('.vk-ui-rail a[href="/ban-viet"]');
