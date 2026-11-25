@@ -8,8 +8,10 @@ chưa được xem. DQ-05 và DQ-10 vẫn `OPEN`.
 ## Ý định và cây vùng
 
 - `desk` → `draft-results` → một `draft-row-{WorkId}`. Giữ nhan đề, thời gian, tối đa
-  ba nhãn sự thật có icon, số đo và link Đọc riêng. Hành động “Xem kiểm duyệt” đứng cạnh
-  các link, có tên tác phẩm cho công nghệ hỗ trợ.
+  ba nhãn sự thật có icon và cụm số liệu **Thấm → Nhận xét → Lượt xem** (đã bỏ nút/link “Đọc”
+  theo delta 25/11 `D-02`, #323/#514 — xem [LayoutSpec Lượt xem r3](../work-views.md)). Hành động
+  “Xem kiểm duyệt” (Tonal 48 có icon `verified-user` từ r3) đứng cạnh liên kết mở bản thảo, giữ
+  nguyên đích, quyền và tên tác phẩm cho công nghệ hỗ trợ.
 - `desk-review` → tiêu đề hộp thoại và nút Đóng → `desk-review-content` → tên/bản gửi,
   trạng thái, lý do, hồ sơ và hành động hợp lệ → “Lịch sử phiên bản và quyết định”.
 - Bản hiện tại trong hộp thoại mặc định ưu tiên ý định gửi duyệt, sau đó đến bản công khai,

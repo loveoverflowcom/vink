@@ -124,13 +124,20 @@ Màn chờ hiện skeleton UIS-03 sau 300 ms. Lỗi ở vùng kết quả, có T
 
 ### 5.3. Thẻ tác phẩm
 
-Thẻ rời, nhan đề Literata, nhan đề trống dùng chữ nghiêng. Status hiển thị số tác phẩm trong
-kết quả. Mỗi sự thật có một nhãn ngắn kèm icon (tối đa ba), giữ nghĩa của “Chỉ mình tôi”,
-“Chưa có bản công khai”, bản mới và tên bản công khai nếu khác. Không tách chuỗi đã render để
-lấy state. Dùng 0 cho số 0, dấu “—” có tên chỉ số khi chưa tải được. Liên kết Tonal “Đọc” là
-sibling của link editor, mở đúng bản công khai. DQ-05 (giờ) và DQ-10 (nhãn “Chờ duyệt”) còn
-`OPEN`. Giữ giờ theo #213 và tone trung tính đang có cho phần nhãn chờ.
-[Xem delta R4.4](desk-moderation.md) cho chi tiết kiểm duyệt mở từ thẻ.
+Thẻ rời (`bg-content`, bo 20 px, khe 8 px), nhan đề Literata, nhan đề trống dùng chữ nghiêng. Status
+hiển thị số tác phẩm trong kết quả cùng nút chữ “Cách tính lượt xem” mở sheet giải thích (`#514`).
+Mỗi sự thật có một nhãn ngắn kèm icon (tối đa ba; r3 bổ sung tone tonal chọn lọc cho “Đã đăng”,
+nhóm chờ duyệt bằng `secondary-container` và nhóm không được duyệt/ẩn/gỡ bằng `error-container`),
+giữ nghĩa của “Chỉ mình tôi”, “Chưa có bản công khai”, bản mới và tên bản công khai nếu khác. Không
+tách chuỗi đã render để lấy state. Cụm số liệu giữ thứ tự cố định **Thấm → Nhận xét → Lượt xem**
+(delta 25/11 `D-01`, #323/#514): dùng `0` chỉ cho số 0 đo được, dấu “—” kèm lý do/tên chỉ số khi
+chưa bắt đầu hoặc chưa tải được; bài riêng tư/ẩn giữ số Lượt xem lịch sử (`OQ-1 = A`) trong khi
+Thấm/Nhận xét chỉ hiển thị khi có bản công khai. Theo delta `D-02` (#323/#514), **bỏ hẳn** liên kết
+“Đọc” / “Đọc bản công khai” khỏi thẻ tác phẩm Bàn viết (không có nút, vùng giữ chỗ hay tab stop
+thay thế); giữ liên kết mở bản thảo của hàng. DQ-05 (giờ) và DQ-10 (dùng tertiary cho “Chờ duyệt”)
+vẫn `OPEN`: giữ giờ theo #213 và dùng `secondary-container` (không dùng tertiary) cho nhóm chờ duyệt.
+Xem [LayoutSpec Lượt xem r3](../work-views.md) và [delta R4.4](desk-moderation.md) cho chi tiết
+kiểm duyệt mở từ thẻ.
 
 ## 6. Interaction và kiểm lại theo owner
 

@@ -74,6 +74,7 @@ mod tests {
                     title: format!("Bản {id}"),
                     draft_version: Some(1),
                     publication: None,
+                    views: None,
                     updated_at: "2026-11-15T00:00:00Z".into(),
                 })
                 .collect(),

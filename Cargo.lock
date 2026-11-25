@@ -3414,6 +3414,7 @@ dependencies = [
  "vink-markdown-text",
  "vink-store-postgres",
  "vink-web",
+ "vink-work-view-policy",
 ]
 
 [[package]]
@@ -3552,10 +3553,15 @@ dependencies = [
  "vink-markdown-text",
  "vink-patterns",
  "vink-ui",
+ "vink-work-view-policy",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
 ]
+
+[[package]]
+name = "vink-work-view-policy"
+version = "0.1.0"
 
 [[package]]
 name = "walkdir"

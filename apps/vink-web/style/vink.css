@@ -695,13 +695,37 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
   .vk-main:is(:has(> .vk-desk--index), :has(> .vk-explore)) { padding-inline: var(--vk-size-gutter-narrow); }
 }
 .vk-desk-review-action {
+  --vk-ui-control-radius: var(--vk-radius-control-48);
   min-inline-size: 0;
   max-inline-size: 100%;
-  padding-inline: var(--vk-space-4);
-  padding-block-end: var(--vk-space-3);
+  padding-inline: calc(var(--vk-space-4) + var(--vk-space-1));
+  padding-block-end: var(--vk-space-4);
+}
+.vk-author-work { container: vk-author-work / inline-size; }
+@container vk-author-work (min-width: 38rem) {
+  .vk-desk-review-action {
+    padding-inline: 0 calc(var(--vk-space-4) + var(--vk-space-1));
+    padding-block-end: 0;
+  }
 }
 
+.vk-desk-review-action .vk-ui-button { padding-inline: min(var(--vk-space-6), 24px); }
 .vk-desk-review-action .vk-ui-button__label { overflow-wrap: anywhere; }
+#views-explainer-trigger {
+  --vk-ui-control-radius: var(--vk-radius-control-40);
+  min-block-size: var(--vk-size-hit-target);
+  padding-block: 0;
+  padding-inline: min(var(--vk-space-2), 8px);
+  justify-content: flex-start;
+  text-align: start;
+  gap: min(var(--vk-space-2), 6px);
+  font-size: var(--vk-type-caption-size);
+  line-height: var(--vk-type-caption-line-height);
+}
+#views-explainer-trigger .vk-ui-icon {
+  inline-size: 18px;
+  block-size: 18px;
+}
 #desk-review-content :is(p, ol) { margin-block: 0; }
 #desk-review-feedback:empty { margin-block-end: calc(-1 * var(--vk-space-3)); }
 

@@ -174,7 +174,8 @@ pub(super) fn ReviewTrigger(
         <div class="vk-desk-review-action">
             <Button
                 id=trigger_id(&work_id)
-                variant=ButtonVariant::Text
+                variant=ButtonVariant::Tonal
+                leading=IconName::VerifiedUser
                 has_popup="dialog"
                 accessible_label=Signal::derive(move || format!("Xem kiểm duyệt của {}", title.get()))
                 on_press=Callback::new(move |()| open.run(target.get_value()))

@@ -199,16 +199,19 @@ fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
                         updated_at: "2026-11-15T12:00:00Z".into(),
                         editor_href: Some("#sample-editor".into()),
                         status: vec![
-                            AuthorWorkLabel::new("Đã đăng", "Đã đăng", IconName::Check),
-                            AuthorWorkLabel::new("Có bản sửa", "Đã đăng · Có bản sửa", IconName::Edit),
-                            AuthorWorkLabel::new("Bản mới chờ duyệt", "Bản mới đang chờ duyệt", IconName::Schedule),
+                            AuthorWorkLabel::new("Đã đăng", "Đã đăng", IconName::Check, AuthorWorkLabelTone::Ok),
+                            AuthorWorkLabel::new("Có bản sửa", "Đã đăng · Có bản sửa", IconName::Edit, AuthorWorkLabelTone::Quiet),
+                            AuthorWorkLabel::new("Bản mới chờ duyệt", "Bản mới đang chờ duyệt", IconName::Schedule, AuthorWorkLabelTone::Attn),
                         ],
                         public: Some(AuthorWorkPublic {
-                            href: "#sample-reader".into(),
                             title: Some("[Dữ liệu mẫu] Bản đang công khai".into()),
                             tham: Some(0),
                             comments: Some(12),
                         }),
+                        views: AuthorWorkViews::Counted {
+                            count: 1234,
+                            counted_since: Some("01/12/2026".into()),
+                        },
                     } />
                 </Surface>
             }.into_any(),

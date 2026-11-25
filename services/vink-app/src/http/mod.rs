@@ -18,6 +18,7 @@ pub mod notifications;
 mod profile;
 #[cfg(feature = "legacy-ssr")]
 mod ssr;
+mod work_views;
 
 use std::net::SocketAddr;
 use std::path::Path;
@@ -26,6 +27,7 @@ use std::sync::Arc;
 use axum::Router;
 use axum::extract::{ConnectInfo, FromRequestParts};
 use axum::http::request::Parts;
+use axum::http::{HeaderMap, HeaderValue, header};
 #[cfg(feature = "legacy-ssr")]
 use leptos::config::LeptosOptions;
 use sha2::{Digest, Sha256};
@@ -35,10 +37,61 @@ pub use auth::{AdmitFuture, SignInLimiter};
 pub use error::ApiError;
 
 use crate::application::Vink;
-use crate::domain::abuse::TrustedProxies;
+use crate::domain::abuse::{Network, TrustedProxies, client_address};
 use crate::domain::ids::PrincipalId;
+use crate::domain::work_view::ViewDigestKey;
 use crate::identity::{IdentityClient, IdentityResolver, PrincipalDirectory};
 use crate::persistence::PgStore;
+
+/// Resolves the client network bucket from TCP peer and trusted `X-Forwarded-For` headers.
+pub(super) fn client_network(
+    state: &AppState,
+    headers: &HeaderMap,
+    peer: Option<SocketAddr>,
+) -> Option<Network> {
+    let peer = peer?.ip();
+    let forwarded: Vec<&str> = headers
+        .get_all("x-forwarded-for")
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .collect();
+    Some(Network::of(client_address(
+        peer,
+        &forwarded,
+        &state.trusted_proxies,
+    )))
+}
+
+pub(super) fn cookie(
+    name: &str,
+    value: &str,
+    same_site: &str,
+    max_age: i64,
+) -> Option<HeaderValue> {
+    HeaderValue::from_str(&format!(
+        "{name}={value}; Path=/; Secure; HttpOnly; SameSite={same_site}; Max-Age={max_age}"
+    ))
+    .ok()
+}
+
+pub(super) fn single_cookie<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
+    let mut values = cookie_values(headers, name);
+    let value = values.next()?;
+    (values.next().is_none() && !value.is_empty()).then_some(value)
+}
+
+pub(super) fn cookie_values<'a>(
+    headers: &'a HeaderMap,
+    name: &str,
+) -> impl Iterator<Item = &'a str> {
+    headers
+        .get_all(header::COOKIE)
+        .into_iter()
+        .filter_map(|header| header.to_str().ok())
+        .flat_map(|value| value.split(';'))
+        .filter_map(|pair| pair.trim().split_once('='))
+        .filter_map(move |(key, value)| (key == name).then_some(value))
+}
 
 #[derive(Clone)]
 pub struct AppState {
@@ -68,6 +121,11 @@ pub struct AppState {
     pub notifications: Option<Arc<dyn crate::notification_inbox::NotificationInbox>>,
     /// Last verified badge counts, served as `stale` within their bound when a dependency fails.
     pub badges: Arc<notifications::BadgeCache>,
+    /// Server key for HMAC work-view dedupe digests (`VINK_WORK_VIEW_DIGEST_KEY`); `None` in
+    /// production without configuration fails view intake closed (`503 dependency_unavailable`).
+    pub work_view_digest_key: Option<ViewDigestKey>,
+    /// In-memory per-network view intake ceiling (`INGEST_LIMIT`, #343 CHOICE-06 A).
+    pub work_view_limiter: Arc<work_views::IngestLimiter>,
 }
 
 #[cfg(feature = "legacy-ssr")]
@@ -109,7 +167,14 @@ impl AppState {
             leptos,
             notifications: None,
             badges: Arc::default(),
+            work_view_digest_key: None,
+            work_view_limiter: Arc::default(),
         }
+    }
+
+    pub fn with_work_view_digest_key(mut self, key: Option<ViewDigestKey>) -> Self {
+        self.work_view_digest_key = key;
+        self
     }
 
     pub fn with_notification_inbox(
@@ -667,6 +732,7 @@ mod tests {
             ("health.rs", include_str!("health.rs")),
             ("mod.rs", include_str!("mod.rs")),
             ("ssr.rs", include_str!("ssr.rs")),
+            ("work_views.rs", include_str!("work_views.rs")),
         ] {
             assert!(!source.contains(authority), "{file} names {authority}");
             assert!(!source.contains(change), "{file} calls {change}");

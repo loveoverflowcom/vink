@@ -1214,6 +1214,26 @@ mod http {
         }
     }
 
+    pub(super) async fn post_no_content<B: Serialize>(
+        path: &str,
+        body: &B,
+    ) -> super::ViewSendOutcome {
+        let Ok(deadline) = Deadline::new() else {
+            return super::ViewSendOutcome::Retry;
+        };
+        let signal = deadline.controller.signal();
+        let Some(builder) = request("POST", path, Some(&signal)) else {
+            return super::ViewSendOutcome::Stop;
+        };
+        let Ok(built) = builder.cache(web_sys::RequestCache::NoStore).json(body) else {
+            return super::ViewSendOutcome::Stop;
+        };
+        match built.send().await {
+            Ok(resp) => super::classify_view_status(resp.status()),
+            Err(_) => super::ViewSendOutcome::Retry,
+        }
+    }
+
     pub async fn get<T: DeserializeOwned>(path: &str) -> Result<T, ApiError> {
         let deadline = bounded(path).then(Deadline::new).transpose()?;
         let signal = deadline
@@ -1806,6 +1826,36 @@ pub(crate) async fn load_author_relationships_summary(
         | crate::contract::AuthorResolution::Current { .. }
         | crate::contract::AuthorResolution::Alias { .. } => Err(ApiError::NotFound),
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewSendOutcome {
+    Done,
+    Stop,
+    Retry,
+}
+
+pub fn classify_view_status(status: u16) -> ViewSendOutcome {
+    match status {
+        200..=299 => ViewSendOutcome::Done,
+        400..=499 => ViewSendOutcome::Stop,
+        _ => ViewSendOutcome::Retry,
+    }
+}
+
+pub fn work_view_path(work_id: &str) -> String {
+    format!("/api/v1/works/{}/views", encode_segment(work_id))
+}
+
+#[cfg(feature = "browser")]
+#[derive(Serialize)]
+struct RecordWorkViewBody<'a> {
+    event_id: &'a str,
+}
+
+#[cfg(feature = "browser")]
+pub(crate) async fn record_work_view(work_id: &str, event_id: &str) -> ViewSendOutcome {
+    http::post_no_content(&work_view_path(work_id), &RecordWorkViewBody { event_id }).await
 }
 
 #[cfg(test)]

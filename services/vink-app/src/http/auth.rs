@@ -21,7 +21,7 @@ use std::pin::Pin;
 use axum::extract::rejection::JsonRejection;
 use axum::extract::{ConnectInfo, DefaultBodyLimit, FromRequest, State};
 use axum::http::request::Parts;
-use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
+use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -30,14 +30,14 @@ use time::OffsetDateTime;
 use tower_http::set_header::SetResponseHeaderLayer;
 use uuid::Uuid;
 
-use super::{Actor, ApiError, AppState};
+use super::{Actor, ApiError, AppState, client_network, cookie, cookie_values, single_cookie};
 use crate::application::Vink;
 use crate::application::account::AccountError;
 use crate::application::ports::{RateLimitStore, StoreError};
 use crate::domain::abuse::{
     Admission, EMAIL_ATTACH_CHALLENGE, EMAIL_ATTACH_COMPLETE, Network, PASSWORD_ENROLL,
     PASSWORD_ENROLL_CHALLENGE, PASSWORD_LOGIN, PASSWORD_REGISTER, RateLimit, SIGN_IN_CHALLENGE,
-    SIGN_IN_COMPLETE, client_address,
+    SIGN_IN_COMPLETE,
 };
 use crate::domain::ids::PrincipalId;
 use crate::domain::principal::{Standing, SubjectKey};
@@ -243,18 +243,11 @@ fn sign_in_client(state: &AppState) -> Result<&IdentityClient, ApiError> {
 /// The client network of a request: the TCP peer, or behind a trusted proxy the right-most
 /// untrusted `X-Forwarded-For` hop.
 fn network(state: &AppState, parts: &Parts) -> Option<Network> {
-    let peer = parts.extensions.get::<ConnectInfo<SocketAddr>>()?.0.ip();
-    let forwarded: Vec<&str> = parts
-        .headers
-        .get_all("x-forwarded-for")
-        .iter()
-        .filter_map(|value| value.to_str().ok())
-        .collect();
-    Some(Network::of(client_address(
-        peer,
-        &forwarded,
-        &state.trusted_proxies,
-    )))
+    let peer = parts
+        .extensions
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|info| info.0);
+    client_network(state, &parts.headers, peer)
 }
 
 /// Counts this request against `limit`. Fails closed: an unknown peer or an unreachable counter
@@ -295,36 +288,12 @@ async fn json<T: serde::de::DeserializeOwned>(
     json_body(<Json<T> as FromRequest<()>>::from_request(request, &()).await)
 }
 
-fn cookie(name: &str, value: &str, same_site: &str, max_age: i64) -> Option<HeaderValue> {
-    HeaderValue::from_str(&format!(
-        "{name}={value}; Path=/; Secure; HttpOnly; SameSite={same_site}; Max-Age={max_age}"
-    ))
-    .ok()
-}
-
 fn clear(name: &str) -> HeaderValue {
     cookie(name, "", "Lax", 0).expect("static cookie")
 }
 
 fn seconds_until(at: OffsetDateTime) -> i64 {
     (at - OffsetDateTime::now_utc()).whole_seconds().max(0)
-}
-
-/// Exactly one cookie named `name`; zero or several is none.
-fn single_cookie<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
-    let mut values = cookie_values(headers, name);
-    let value = values.next()?;
-    (values.next().is_none() && !value.is_empty()).then_some(value)
-}
-
-fn cookie_values<'a>(headers: &'a HeaderMap, name: &str) -> impl Iterator<Item = &'a str> {
-    headers
-        .get_all(header::COOKIE)
-        .into_iter()
-        .filter_map(|header| header.to_str().ok())
-        .flat_map(|value| value.split(';'))
-        .filter_map(|pair| pair.trim().split_once('='))
-        .filter_map(move |(key, value)| (key == name).then_some(value))
 }
 
 fn json_body<T>(body: Result<Json<T>, JsonRejection>) -> Result<T, ApiError> {
@@ -1309,7 +1278,7 @@ mod tests {
         );
         // A value that could break the header is refused, not written.
         assert!(cookie(SESSION_COOKIE, "a\r\nSet-Cookie: x=y", "Lax", 1).is_none());
-        let mut headers = HeaderMap::new();
+        let mut headers = axum::http::HeaderMap::new();
         headers.append(
             header::COOKIE,
             HeaderValue::from_static("a=1; __Host-vink_sign_in=h1"),

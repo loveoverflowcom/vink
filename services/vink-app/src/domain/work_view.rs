@@ -47,6 +47,8 @@ pub mod count;
 #[cfg(test)]
 mod tests;
 
+pub use vink_work_view_policy::{WORK_VIEW_MIN_VISIBLE_MS, WorkViewDurationPolicy};
+
 /// VIEW-03: one counted view per reader and work per sliding 24 hours.
 pub const VIEW_WINDOW: Duration = Duration::hours(24);
 /// Oldest event time (from its UUIDv7) still decided, relative to the decision clock.

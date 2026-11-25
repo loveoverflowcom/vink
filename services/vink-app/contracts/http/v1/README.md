@@ -69,6 +69,7 @@ The [proposed Notifications v1 contract](notifications.md) (`NOT_IMPLEMENTED`, #
 | `GET /api/v1/works?q=&tag=&tag=&limit=&cursor=` | `200` one page of current publications, newest first (default and home page: the first 12); `304` on a matching `If-None-Match` | `422` (`q`, `tag`, `limit`, `cursor`, `query`), `503` | [default](fixtures/works.list.json), [search](fixtures/works.search.json), [unmatched filters](fixtures/works.search.unmatched.json) |
 | `GET /api/v1/works/{work_id}/publication` | `200` the public snapshot (never the draft) with its public `tags`; `304` on a matching `If-None-Match` | `404`, `503` | [publication.get.json](fixtures/publication.get.json) |
 | `GET /api/v1/works/{work_id}/reader` | `200` `{"status":"published", …publication}` (conditional like `/publication`) or, after a moderator/admin rejected the public revision (`O-17@r2`), `{"status":"review_withdrawn","work_id","author_name"}` with `no-store` and no validator; a public work made private returns `{"status":"hidden","work_id"}` (PUB-07), also `no-store`, with no author, title, body or tags | `404` (never public, private without a hidden page, deleted or removed), `503` | — |
+| `POST /api/v1/works/{work_id}/views` | `204` (`no-store`; sets `__Host-vink_guest` if unauthenticated without a valid guest cookie; `Counted`/`Skipped`/`Replayed`/`Ignored` including `work_not_found`/`not_public` answer identically; speculative headers and over-limit bursts silently `204` without DB writes) | `403` (Origin), `404` (invalid `work_id`), `422` (`event_id`/body), `503` (`dependency_unavailable`) | — |
 | `GET /api/v1/drafts` | `200` trang nháp của actor; `q`, `sort`, `limit`, `cursor` | `401`, `422`, `503` | [legacy/end](fixtures/drafts.list.json), [còn trang](fixtures/drafts.page.json) |
 | `POST /api/v1/drafts` | `201` a new empty draft at version 1 (`{"format":"default"\|"markdown"}` optional; omitted/empty = `default`) | `401`, `403`, `422`, `503` | [draft.get.json](fixtures/draft.get.json) (same shape) |
 | `GET /api/v1/drafts/{work_id}` | `200` the actor's draft | `401`, `404`, `503` | [draft.get.json](fixtures/draft.get.json) |
@@ -724,3 +725,36 @@ Consumer coi `state` lạ là `unavailable`. Ví dụ: [sau mốc đếm](fixtur
 [trước mốc đếm](fixtures/author.works.views-not-started.json). Số đọc trong cùng snapshot với
 trang bằng một câu lệnh batch trong savepoint riêng. Luật đọc và bằng chứng:
 [registry Lượt xem §9](../../../../../docs/development/work-views.md#9-đọc-theo-quyền-342).
+
+### Ghi nhận lượt xem của độc giả (#343, `VIEW-01..06`, `VIEW-08`, `VIEW-10..11`)
+
+`POST /api/v1/works/{work_id}/views` là đường thu nhận sự kiện lượt xem sau khi trình duyệt xác
+nhận thân bài công khai đã hiển thị ở tab foreground tối thiểu theo ngưỡng cấu hình dùng chung
+`WORK_VIEW_MIN_VISIBLE_MS` (`5.000 ms` mặc định trong `packages/work-view-policy`). Endpoint chịu
+layer `Origin == VINK_PUBLIC_ORIGIN` (`403 forbidden`), luôn trả `Cache-Control: no-store` và
+không đưa `views` hay `Set-Cookie` sang đường `GET` công khai (`READ-01`/`READ-02` giữ nguyên).
+
+- **Request body:** `{"event_id": "<UUIDv7>"}` (`deny_unknown_fields`). `work_id` không phải UUID
+  → `404`; JSON sai/dư field hoặc `event_id` không phải RFC 9562 UUIDv7 → `422 validation_failed`
+  (`field: "event_id"`).
+- **Speculative / Prefetch:** header `Sec-Purpose`, `Purpose` hoặc `X-Purpose` mang `prefetch` hoặc
+  `prerender` (`is_speculative`) trả ngay `204` không ghi DB, không trừ `INGEST_LIMIT` và không cấp
+  cookie khách.
+- **Định danh & Privacy (`CHOICE-03`):** phiên gắn `PrincipalId` (`Principal` hoặc `Suspended`, vì
+  đọc không phải ghi có thẩm quyền) → `Viewer::Member(id)` (không cấp/gia hạn cookie khách, giữ
+  loại tự xem `VIEW-05` và chống trùng 24 giờ theo `PrincipalId`). Nếu client mang credential phiên
+  nhưng `IdentityResolver` trả `Unavailable` → fail-closed `503 dependency_unavailable` để client
+  giữ nguyên `event_id` và thử lại sau (tránh đếm nhầm thành viên/tác giả thành khách). Khách hoặc
+  phiên chưa gắn principal (`Anonymous` / `Unbound`) dùng cookie `__Host-vink_guest` (UUIDv4,
+  `Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`, cố định theo `GUEST_TOKEN_TTL`, không làm
+  mới khi cookie hiện có còn hợp lệ; thiếu, trùng hoặc hỏng thì cấp token mới kèm `Set-Cookie` khi
+  trả `204`).
+- **Rate limit & Digest key (`CHOICE-06 A`):** quá `INGEST_LIMIT` (120 request / 600 giây / `Network`
+  trong bộ nhớ theo `abuse::client_address`) trả lặng lẽ `204` trước khi chạm DB. Trong
+  `VINK_PROFILE=production`, nếu chưa cấu hình `VINK_WORK_VIEW_DIGEST_KEY` (64 chữ số hex), route
+  trả `503 dependency_unavailable`.
+- **Idempotency & ẩn riêng tư:** mọi `Ok` (`Counted`, `Skipped(not_public|own_work|within_window)`,
+  `Replayed`, `Ignored(outside_horizon|event_reused|work_not_found)`) đều trả `204 No Content` giống
+  hệt nhau để không lộ tồn tại hay trạng thái riêng tư của bài. Lỗi phụ thuộc (`Unavailable`) trả
+  `503` cho phép browser thử lại hữu hạn trong cùng tab với cùng `event_id` (`VIEW-10`). Chi tiết:
+  [registry Lượt xem §10](../../../../../docs/development/work-views.md#10-thu-nhận-http-và-tín-hiệu-reader-343).

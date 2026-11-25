@@ -1119,7 +1119,8 @@ async fn serve(config: Config, api_only: bool) -> Result<(), Failure> {
     .with_following_feed_enabled(config.following_feed_enabled)
     .with_trusted_proxies(config.trusted_proxies.clone())
     .with_identity_probe(probe)
-    .with_restricted_role_required(config.profile == Profile::Production);
+    .with_restricted_role_required(config.profile == Profile::Production)
+    .with_work_view_digest_key(config.work_view_digest_key.clone());
     #[cfg(feature = "legacy-ssr")]
     if !api_only && !config.site_root.join("pkg").join("vink.js").exists() {
         tracing::warn!(
@@ -1142,6 +1143,7 @@ async fn serve(config: Config, api_only: bool) -> Result<(), Failure> {
         profile = ?config.profile,
         sign_in = if config.sign_in_enabled { "enabled" } else { "disabled" },
         trusted_proxies = !config.trusted_proxies.is_empty(),
+        work_views = if config.work_view_digest_key.is_some() { "configured" } else { "unconfigured" },
         "vink-app listening"
     );
     axum::serve(

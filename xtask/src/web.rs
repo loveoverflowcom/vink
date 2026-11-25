@@ -151,6 +151,20 @@ impl Server {
         }
     }
 
+    fn as_guest_on(&self, port: u16) -> Self {
+        let mut guest = self.as_guest();
+        guest.port = port;
+        for (key, value) in &mut guest.env {
+            match key.as_str() {
+                "VINK_BIND" => *value = format!("127.0.0.1:{port}"),
+                "VINK_PUBLIC_ORIGIN" => *value = format!("http://127.0.0.1:{port}"),
+                _ => {}
+            }
+        }
+        guest.log = self.log.with_file_name("server-reader-guest.log");
+        guest
+    }
+
     /// The same database served to another loopback fixture principal on its own port.
     fn with_principal(&self, principal: &str, port: u16) -> Self {
         let mut env = self.env.clone();
@@ -1212,6 +1226,31 @@ fn run_web_checks(
             }) {
                 return false;
             }
+        }
+        if selected.contains(&Scenario::Reader)
+            && !report.step(
+                "work views intake: threshold, pause/resume, retry, E-37 and author readback (#343)",
+                || {
+                    let guest = server.as_guest_on(free_port()?);
+                    let guest_origin = format!("http://127.0.0.1:{}", guest.port);
+                    let mut guest_guard = guest.start(root)?;
+                    let result = smoke(
+                        root,
+                        &["--phase", "reader-views", "--author-base", origin],
+                        chrome,
+                        &guest_origin,
+                        &scenario_state(state, "reader-views"),
+                    );
+                    let stopped = guest_guard.terminate(Duration::from_secs(15))?;
+                    result?;
+                    stopped
+                        .success()
+                        .then_some(())
+                        .ok_or_else(|| format!("guest App exited with {stopped}"))
+                },
+            )
+        {
+            return false;
         }
         let restart_state = scenario_state(state, "restart");
         if restart

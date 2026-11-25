@@ -7,10 +7,10 @@ use leptos_meta::{Meta, Title};
 use leptos_router::hooks::use_params_map;
 
 use vink_ui::{
-    ActionState, Announce, Button, ButtonKind, ButtonVariant, ChoiceOption, FieldVariant, Heading,
-    HeadingLevel, IconButton, IconName, InlineNotice, PanelContent, PanelKind, PlainTooltip,
-    ProblemKind, SearchField, SearchVariant, Select, SelectVariant, StatePanel, TextField, Tone,
-    TypeRole,
+    ActionState, Announce, Button, ButtonKind, ButtonVariant, ChoiceOption, Dialog, DialogKind,
+    DismissPolicy, FieldVariant, Heading, HeadingLevel, IconButton, IconName, InlineNotice,
+    PanelContent, PanelKind, PlainTooltip, ProblemKind, SearchField, SearchVariant, Select,
+    SelectVariant, StatePanel, TextField, Tone, TypeRole,
 };
 
 use crate::contract::{ApiError, DocumentFormatDto, Draft};
@@ -175,6 +175,7 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
     let sort = RwSignal::new(DraftSort::Recent);
     let composing = RwSignal::new(false);
     let dock_open = RwSignal::new(false);
+    let explainer_open = RwSignal::new(false);
     let creation = RwSignal::new(CreateState::Ready);
     let create_format = RwSignal::new(DocumentFormatDto::Default);
     let loading = RwSignal::new(true);
@@ -222,9 +223,15 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
     {
         let guard = expect_context::<NavigationGuard>();
         let registration = guard.set_overlay(move |reason| {
-            if dock_open.get_untracked() && reason == vink_ui::CloseReason::Back {
-                close_dock.run(());
-                return true;
+            if reason == vink_ui::CloseReason::Back {
+                if explainer_open.get_untracked() {
+                    explainer_open.set(false);
+                    return true;
+                }
+                if dock_open.get_untracked() {
+                    close_dock.run(());
+                    return true;
+                }
             }
             false
         });
@@ -539,10 +546,11 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                     <CreateNotice creation loading refresh />
                     // The tools/input retain one owner through loading, empty, query and error.
                     <DraftListView pages show_tools sort loading appending ready page_error load_error restarted
-                        first_use no_results creation can_create create create_format clear more refresh refresh_disabled open_review />
+                        first_use no_results creation can_create create create_format clear more refresh refresh_disabled open_review explainer_open />
                 </div>
-                <p class="vk-desk-privacy vk-muted">"Số Thấm và Nhận xét thuộc bản đang công khai."</p>
+                <p class="vk-desk-privacy vk-muted">"Bản nháp của bạn là riêng tư. Số liệu chỉ mình bạn thấy; Thấm và Nhận xét thuộc bản đang công khai."</p>
             </section>
+            <ViewsExplainerDialog open=explainer_open pages />
             <DeskReview session />
         </Show>
     }.into_any()
@@ -746,6 +754,7 @@ fn DraftListView(
     refresh: Callback<()>,
     refresh_disabled: Signal<bool>,
     open_review: Callback<ReviewTarget>,
+    explainer_open: RwSignal<bool>,
 ) -> AnyView {
     let invalid_page = move || page_error.with(|e| matches!(e, Some(ApiError::Invalid { .. })));
     let stale = move || {
@@ -755,20 +764,45 @@ fn DraftListView(
                 || (loading.get() && !appending.get()))
     };
     let opening = move || !ready.get() && loading.get();
+    let show_views_explainer = Signal::derive(move || {
+        use crate::contract::author_works::WorkViewsState;
+        !opening()
+            && !first_use.get()
+            && pages.with(|p| {
+                p.drafts.iter().any(|d| {
+                    d.views
+                        .as_ref()
+                        .is_none_or(|v| v.state != WorkViewsState::NeverPublic)
+                })
+            })
+    });
     view! {
         <div class="vk-draft-list gap-vk-3 [min-inline-size:0]">
             <div class="vk-draft-controls flex flex-wrap items-center justify-between gap-[8px] [min-inline-size:0]">
-                <p id="draft-scope" class="vk-muted" class:vk-ui-visually-hidden=move || first_use.get()
-                    hidden=opening role=move || (!opening()).then_some("status") aria-atomic="true" data-testid="draft-result-count">
-                    <span data-testid=move || stale().then_some("author-work-stale")>
-                        {move || if loading.get() && !appending.get() && pages.with(|p| p.loaded) { "Đang tải lại…".into() }
-                        else if loading.get() && !appending.get() { "Đang tìm tác phẩm…".into() }
-                        else if stale() { "Đang xem kết quả cũ.".into() }
-                        else if load_error.with(Option::is_some) { "Chưa tải được kết quả.".into() }
-                        else if no_results.get() { "Không có kết quả".into() }
-                        else { format!("Hiển thị {} tác phẩm", pages.with(|p| p.drafts.len())) }}
-                    </span>
-                </p>
+                <div class="vk-draft-controls__status flex flex-wrap items-center gap-y-vk-1 gap-x-vk-2 [min-inline-size:0]">
+                    <p id="draft-scope" class="vk-muted" class:vk-ui-visually-hidden=move || first_use.get()
+                        hidden=opening role=move || (!opening()).then_some("status") aria-atomic="true" data-testid="draft-result-count">
+                        <span data-testid=move || stale().then_some("author-work-stale")>
+                            {move || if loading.get() && !appending.get() && pages.with(|p| p.loaded) { "Đang tải lại…".into() }
+                            else if loading.get() && !appending.get() { "Đang tìm tác phẩm…".into() }
+                            else if stale() { "Đang xem kết quả cũ.".into() }
+                            else if load_error.with(Option::is_some) { "Chưa tải được kết quả.".into() }
+                            else if no_results.get() { "Không có kết quả".into() }
+                            else { format!("Hiển thị {} tác phẩm", pages.with(|p| p.drafts.len())) }}
+                        </span>
+                    </p>
+                    <Show when=move || show_views_explainer.get()>
+                        <Button
+                            id="views-explainer-trigger"
+                            variant=ButtonVariant::Text
+                            leading=IconName::Info
+                            has_popup="dialog"
+                            on_press=move |_| explainer_open.set(true)
+                        >
+                            "Cách tính lượt xem"
+                        </Button>
+                    </Show>
+                </div>
                 <div id="draft-tools" class="vk-draft-tools [max-inline-size:100%]" hidden=move || !show_tools.get()>
                     <Select id="draft-sort" label="Sắp xếp" required=true variant=SelectVariant::Inset16
                         options=vec![ChoiceOption::new("recent", "Mới nhất"), ChoiceOption::new("title", "Tên A–Z")]
@@ -863,6 +897,54 @@ fn DraftListView(
             </div>
         </div>
     }.into_any()
+}
+
+#[component]
+fn ViewsExplainerDialog(
+    open: RwSignal<bool>,
+    pages: RwSignal<crate::draft_list::paging::DraftPages>,
+) -> impl IntoView {
+    use crate::contract::author_works::WorkViewsState;
+    use vink_work_view_policy::WorkViewDurationPolicy;
+
+    let lead = crate::work_view::views_explainer_lead_vi(WorkViewDurationPolicy::DEFAULT);
+    let counted_since = Signal::derive(move || {
+        pages.with(|p| {
+            p.drafts.iter().find_map(|d| {
+                d.views
+                    .as_ref()
+                    .filter(|v| v.state == WorkViewsState::Counted)
+                    .and_then(|v| v.counted_since.as_deref())
+                    .and_then(crate::ui::patterns::work_view_date_hcm)
+            })
+        })
+    });
+    let close = Callback::new(move |()| open.set(false));
+    view! {
+        <Dialog
+            id="views-explainer"
+            open=Signal::from(open)
+            title="Cách tính lượt xem"
+            kind=DialogKind::Sheet
+            focus_title=true
+            dismiss=DismissPolicy::EscapeAndOutside
+            on_dismiss=move |_| close.run(())
+            actions=move || view! {
+                <Button id="views-explainer-close" variant=ButtonVariant::Tonal on_press=move |_| close.run(())>"Đóng"</Button>
+            }
+        >
+            <div class="vk-views-explainer grid gap-vk-3 [min-inline-size:0]">
+                <p class="m-0">{lead}</p>
+                <p class="m-0">"Khách được tính theo trình duyệt. Lượt bạn tự xem khi đăng nhập và trình duyệt tắt JavaScript không được tính."</p>
+                <p class="m-0">"Số cộng dồn theo tác phẩm, không đặt lại khi bạn sửa hay đăng bản mới. Chỉ bạn thấy số này và nó đổi khi bạn tải lại danh sách."</p>
+                {move || counted_since.get().map(|date| view! {
+                    <p class="vk-views-explainer__since m-0 text-vk-caption text-vk-on-surface-variant">
+                        {format!("Bài đăng trước {date} hiện “Tính từ {date}”: chưa có số cho thời gian trước đó.")}
+                    </p>
+                })}
+            </div>
+        </Dialog>
+    }
 }
 
 #[component]

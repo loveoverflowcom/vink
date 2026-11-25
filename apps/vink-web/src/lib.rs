@@ -35,6 +35,7 @@ pub mod session;
 mod shell;
 pub mod tag_state;
 pub mod ui;
+pub mod work_view;
 
 use leptos::prelude::*;
 #[cfg(not(feature = "csr"))]

@@ -444,46 +444,52 @@ chờ signoff nằm ở [kho quyết định](../decisions/README.md#thông-báo
 Tác giả biết bài của mình được mở đọc ở mức nào qua một con số tham khảo **Lượt xem** tại Bàn
 viết. Phạm vi này trả lời [Epic #323](https://github.com/loveoverflowcom/vink/issues/323)
 (P-01..P-11) qua [#340](https://github.com/loveoverflowcom/vink/issues/340). Ngày 21/11/2026,
-trong phiên làm #340, chủ sản phẩm trả lời “Theo khuyến nghị” cho đúng bộ khuyến nghị
-P-01..P-11 và luật hiển thị ghi dưới đây. Brief do chủ sản phẩm gửi. Định nghĩa, bảng ví dụ và
-vòng đời theo trạng thái nằm ở [đặc tả nghiệp vụ](../docs/architecture/work-views.md). Mức triển
-khai và bản đồ sang #341–#343 nằm ở [registry phát triển](../docs/development/work-views.md).
-[VDR-WORK-VIEWS@r1](../decisions/proposals/VDR-WORK-VIEWS.r1.toml) ghi cùng nội dung; chủ sản
-phẩm đã duyệt đúng revision này cùng ngày ([signoff](../decisions/signoffs/VDR-WORK-VIEWS.r1.toml)),
-nên đây là revision hiện hành.
+trong phiên làm #340, chủ sản phẩm trả lời “Theo khuyến nghị” cho bộ khuyến nghị r1
+(`P-01..P-11`, [VDR-WORK-VIEWS@r1](../decisions/proposals/VDR-WORK-VIEWS.r1.toml), đã
+[signoff](../decisions/signoffs/VDR-WORK-VIEWS.r1.toml) cùng ngày). Ngày 25/11/2026, trong phiên
+làm [#323](https://github.com/loveoverflowcom/vink/issues/323) và `#340`, chủ sản phẩm chốt
+delta hiệu lực mục tiêu: yêu cầu hiển thị thân bài tối thiểu theo ngưỡng cấu hình chung mặc
+định 5 giây (`5.000 ms`), chốt `OQ-1..OQ-4`, bộ luật `UX-01..UX-10` (ID cục bộ Epic #323), giữ
+riêng tư chỉ tác giả thấy, triển khai 2 PR (`#340+#343` rồi `#514`), và hai quyết định cho hàng
+Bàn viết (`D-01`: thứ tự cố định **Thấm → Nhận xét → Lượt xem**, `D-02`: bỏ hẳn nút/link
+“Đọc” / “Đọc bản công khai”). Delta nằm ở [VDR-WORK-VIEWS@r2](../decisions/proposals/VDR-WORK-VIEWS.r2.toml)
+(`PENDING` chờ signoff đúng payload/SHA-256 theo `VDR-DECISION-SIGNOFF@r1`); `@r1` giữ nguyên
+lịch sử đã signoff. Định nghĩa, bảng ví dụ và vòng đời theo trạng thái nằm ở
+[đặc tả nghiệp vụ](../docs/architecture/work-views.md). Mức triển khai và bản đồ sang
+`#341`–`#343` và `#514` nằm ở [registry phát triển](../docs/development/work-views.md).
 
 Các ID dưới đây giữ nguyên WR-01, UX-01, AUD-01/02, PUB-04/05/07, MOD-05, INV-08 và `O-17@r2`
 (trang rút trả HTTP 200; mã HTTP không phải bằng chứng đã xem).
 
-| ID | Nguồn #323 | Quy tắc sản phẩm đã chốt trong brief (`PRODUCT_CONFIRMED`, 21/11/2026) |
+| ID | Nguồn #323 | Quy tắc sản phẩm đã chốt (`r1` 21/11/2026 + delta 25/11/2026) |
 | --- | --- | --- |
-| VIEW-01 | P-01 B | Một lượt được cộng khi thân bài công khai đã hiện sau thao tác mở. Không yêu cầu thời gian ở lại. Bấm rồi hủy, tải lỗi và trang thay thế (trang ẩn của PUB-07, trang rút sau kiểm duyệt của `O-17@r2`, kể cả khi trả HTTP 200) đều không cộng. Tên hiển thị là “Lượt xem”. Đây không phải số người duy nhất và không phải số người đọc hết bài. |
-| VIEW-02 | P-02 B | Link nội bộ, URL trực tiếp, link chia sẻ và tab mới đều tính; mở bằng chuột, chạm hay Enter đều như nhau. Hover, prefetch và bot tạo bản xem trước link không tính. Trình duyệt tắt JavaScript không được đếm, và giới hạn này phải được ghi rõ cho tác giả. |
-| VIEW-03 | P-03 C | Mỗi người đọc được tính tối đa một lượt cho mỗi tác phẩm trong cửa sổ 24 giờ trượt. Refresh, Back/Forward hay mở lại trong cửa sổ không cộng. Gửi trùng kỹ thuật (bấm đúp, gửi lại cùng sự kiện) không bao giờ thành lượt mới. |
-| VIEW-04 | P-04 A | Khách chưa đăng nhập được tính. Chống trùng cho khách dùng mã ngẫu nhiên first-party có thời hạn bằng cửa sổ VIEW-03. Không dùng IP thô, không fingerprint. Chấp nhận đếm lại khi khách xóa cookie, đổi trình duyệt/máy hoặc đăng nhập giữa cửa sổ. |
-| VIEW-05 | P-05 B | Không tính khi phiên đang đăng nhập là tác giả của bài. Màn kiểm duyệt, preview và nháp không bao giờ tính. Admin mở Reader công khai như độc giả thì được tính. Tác giả đã đăng xuất được tính như khách; hệ thống không hứa nhận diện được tác giả trong trường hợp đó. |
+| VIEW-01 | P-01 B + delta 25/11 | Một lượt được cộng khi thân bài công khai đã hiện sau thao tác mở hợp lệ **và** hiển thị ở tab foreground/visible tối thiểu **ngưỡng cấu hình dùng chung mặc định 5 giây (`5.000 ms`)** (đồng hồ monotonic, cộng dồn trong cùng lần mở, tạm dừng khi tab ẩn, tiếp tục khi hiện; hủy/reset khi rời trang/unmount, đổi tác phẩm/revision thực sự, bài mất công khai hoặc đổi authority phiên đọc; đúng ngưỡng phát một ứng viên, dưới ngưỡng không gửi; không tính SSR HTML, hydration, tải trang, prefetch/prerender, re-render hay refresh nền; không yêu cầu đọc hết, cuộn hay bấm thêm). Bấm rồi hủy, tải lỗi và trang thay thế (trang ẩn PUB-07, trang rút `O-17@r2`, kể cả HTTP 200) đều không cộng. Tab mở nền chờ foreground và đủ ngưỡng (`OQ-3B`); trang ẩn/rút tự công khai lại do cập nhật nền không tự đếm mà cần mở mới (`OQ-3A`). Tên hiển thị là “Lượt xem”; không phải số người duy nhất hay số người đọc hết. Ngưỡng phải tách vào một nguồn cấu hình/constant dùng chung cho timer, giải thích UI và test. |
+| VIEW-02 | P-02 B | Link nội bộ, URL trực tiếp, link chia sẻ và tab mới đều tính khi thỏa VIEW-01; mở bằng chuột, chạm hay Enter đều như nhau. Hover, prefetch, prerender và bot tạo bản xem trước link không tính. Trình duyệt tắt JavaScript không được đếm, và giới hạn này phải được ghi rõ cho tác giả. |
+| VIEW-03 | P-03 C | Mỗi người đọc được tính tối đa một lượt cho mỗi tác phẩm trong cửa sổ 24 giờ trượt (neo tại lượt được tính; refresh là lần mở mới và vẫn bị dedup 24h; không cộng dồn thời gian giữa nhiều lần mở hay nhiều tab). Refresh, Back/Forward hay mở lại trong cửa sổ không cộng. Gửi trùng kỹ thuật (bấm đúp, gửi lại cùng sự kiện) không bao giờ thành lượt mới. |
+| VIEW-04 | P-04 A | Khách chưa đăng nhập được tính. Chống trùng cho khách dùng mã ngẫu nhiên first-party có thời hạn cố định bằng cửa sổ VIEW-03 (không gia hạn khi dùng). Không dùng IP thô, không fingerprint. Chấp nhận đếm lại khi khách xóa cookie, đổi trình duyệt/máy hoặc đăng nhập giữa cửa sổ. Thành viên dùng `PrincipalId` từ phiên. |
+| VIEW-05 | P-05 B | Không tính khi phiên đang đăng nhập là tác giả của bài. Màn kiểm duyệt, preview và nháp không bao giờ tính. Admin/moderator mở Reader công khai như độc giả thì được tính (trừ khi là tác giả bài). Tác giả đã đăng xuất được tính như khách; hệ thống không hứa nhận diện được tác giả trong trường hợp đó. |
 | VIEW-06 | P-06 A | Số lượt cộng dồn theo `WorkId` qua sửa, đăng lại và revision mới. Khác với Thấm, vốn gắn với `RevisionId` đang công khai. |
-| VIEW-07 | P-07 A | Bản đầu chỉ tác giả thấy số, tại Bàn viết. Không có số công khai ở Reader, Khám phá hay hồ sơ, và không có danh sách người đã xem. |
-| VIEW-08 | P-08 A | Khi bài bị ẩn hoặc chuyển “Chỉ mình tôi” (trang ẩn, PUB-07) hay bị rút sau kiểm duyệt (`O-17@r2`), tác giả vẫn thấy số cũ và số không tăng thêm. Công khai lại thì đếm tiếp từ số cũ. Mở trang thay thế không tính. |
-| VIEW-09 | P-09 A | Đếm bắt đầu từ ngày bật tính năng. Bài đã công khai trước mốc mang nhãn “Tính từ dd/mm/yyyy”. Không backfill vì chưa từng có nguồn dữ liệu (#214 loại tracking khỏi phạm vi). Không suy lượt xem từ Thấm hay Nhận xét. |
-| VIEW-10 | P-10 A | Lượt xem là số tham khảo. Kỳ vọng tác giả thấy lượt mới trong khoảng 1 phút; đây là kỳ vọng, không phải SLA. Gửi lỗi được thử lại hữu hạn trong cùng tab với cùng mã sự kiện. Đóng tab hoặc offline có thể làm mất lượt, nhưng không bao giờ cộng trùng. Lỗi thống kê không bao giờ cản người đọc mở hay đọc bài. |
-| VIEW-11 | P-11 B | Chỉ lưu tổng theo tác phẩm, tổng theo ngày theo tác phẩm (không theo người, chưa có biểu đồ) và mã chống trùng đã băm, tự xóa khi hết cửa sổ VIEW-03. Xóa tác phẩm hoặc xóa tài khoản thì xóa số liệu tương ứng. |
-| VIEW-12 | UX | Chưa có số hoặc đọc số lỗi hiển thị “—” kèm lý do, khác với “0” thật (theo mẫu của VDR-AUTHOR-WORK-FEEDBACK). Số định dạng kiểu Việt (1.234). Không cập nhật trực tiếp (realtime) và không gửi thông báo. Nhãn phải diễn đạt đúng độ phủ: khách tính theo trình duyệt, trình duyệt không có JavaScript không được đếm, nhãn “Tính từ” cho bài cũ. |
+| VIEW-07 | P-07 A + D-01/D-02 25/11 | Chỉ tác giả thấy số, riêng tư tại Bàn viết. Không có số công khai ở Reader, Khám phá hay hồ sơ, và không có danh sách người đã xem. **Delta 25/11/2026 (`D-01`/`D-02`):** hàng tác phẩm Bàn viết cố định thứ tự các metric được phép hiển thị là **Thấm → Nhận xét → Lượt xem** (Lượt xem cuối) và **bỏ hẳn nút/link “Đọc” / “Đọc bản công khai”** (không thay bằng icon, menu, CTA khác, click số liệu hay vùng giữ chỗ; giữ liên kết mở bản thảo/editor của hàng/nhan đề và giữ nguyên Reader công khai). |
+| VIEW-08 | P-08 A + OQ-1 A + OQ-4 | Khi bài bị ẩn hoặc chuyển “Chỉ mình tôi” (trang ẩn, PUB-07), bị rút sau kiểm duyệt (`O-17@r2`), hay bị admin gỡ cả bài (`PUB-05 C`, **OQ-4** 25/11), tác giả vẫn thấy số Lượt xem cũ nếu còn quyền xem bài mình và số không tăng thêm (dù Thấm/Nhận xét giữ luật ẩn khi riêng tư theo `VDR-AUTHOR-WORK-FEEDBACK`, **OQ-1 = A**). Công khai lại thì đếm tiếp từ số cũ. Mở trang thay thế không tính. Nếu tác phẩm bị xóa thì xóa dữ liệu theo `VIEW-11`/`OQ-2`. |
+| VIEW-09 | P-09 A | Đếm bắt đầu từ ngày bật tính năng. Bài đã công khai trước mốc (`counted_since != null`) mang nhãn “Tính từ dd/mm/yyyy” theo `Asia/Ho_Chi_Minh`. Không backfill vì chưa từng có nguồn dữ liệu (#214 loại tracking khỏi phạm vi). Không suy lượt xem từ Thấm hay Nhận xét. |
+| VIEW-10 | P-10 A | Lượt xem là số tham khảo. Kỳ vọng tác giả thấy lượt mới trong khoảng 1 phút; đây là kỳ vọng, không phải SLA. Khi đạt ngưỡng, client gửi một mã sự kiện UUIDv7 và retry hữu hạn trong cùng tab với cùng mã. Đóng tab hoặc offline có thể làm mất lượt, nhưng không bao giờ cộng trùng. Lỗi thống kê không bao giờ cản người đọc mở, đọc, cuộn, bình luận hay quay lại. |
+| VIEW-11 | P-11 B + OQ-2 | Chỉ lưu tổng theo tác phẩm, tổng theo ngày theo tác phẩm (không theo người, chưa có biểu đồ) và mã chống trùng/biên nhận đã băm, tự xóa khi hết cửa sổ VIEW-03. **OQ-2 (25/11):** PR đầu tiên đưa route xóa tác phẩm (`PUB-04/05`) hoặc xóa tài khoản (`SOC-LIFE-02`) vào runtime phải xóa dữ liệu lượt xem liên quan; không tự mở phạm vi xóa trong Epic #323 và không quyết định `O-08` purge vật lý thay owner. |
+| VIEW-12 | UX-01..10 + D-01/D-02 | Chưa có số hoặc đọc số lỗi hiển thị “—” kèm lý do, khác với “0” thật (theo mẫu của `VDR-AUTHOR-WORK-FEEDBACK`). Số định dạng đầy đủ kiểu Việt (`1.234`), icon mắt Material Symbols (`visibility`), đặt cuối trong **Thấm → Nhận xét → Lượt xem**, giao diện trung tính R4/Tailwind. Tooltip/popover truy cập bằng chạm/bàn phím/screen reader giải thích ngưỡng cấu hình hiện hành (lấy từ cùng nguồn cấu hình), cửa sổ 24 giờ, khách theo trình duyệt, tự xem và trình duyệt tắt JavaScript; nhãn “Tính từ dd/mm/yyyy” theo `Asia/Ho_Chi_Minh`. Cập nhật khi tải lại/làm mới (không realtime, không polling, không biểu đồ/dashboard, không thông báo). |
 
 **Trạng thái bốn chiều và phần còn mở của §17:**
-- *Quyết định sản phẩm:* VIEW-01..12 là `PRODUCT_CONFIRMED` trong brief ngày 21/11/2026.
-  [VDR-WORK-VIEWS@r1](../decisions/proposals/VDR-WORK-VIEWS.r1.toml) ghi cùng nội dung, có
-  [signoff](../decisions/signoffs/VDR-WORK-VIEWS.r1.toml) `PRODUCT_CONFIRMED` ngày 21/11/2026. Còn `OPEN`: OQ-1 (hiện Lượt xem khi bài riêng tư trong khi Thấm/Nhận xét bị ẩn),
-  OQ-2 (luật xóa số liệu chờ route xóa tác phẩm/tài khoản), OQ-3 (thân bài hiện mà không có
-  thao tác mở mới, tab mở nền) và OQ-4 (admin gỡ cả bài, PUB-05 C). Chi tiết ở
-  [đặc tả](../docs/architecture/work-views.md#4-câu-hỏi-còn-mở).
-- *Quyết định kiến trúc:* #341 đề xuất CHOICE-02 A, CHOICE-03 và CHOICE-06 A (`DESIGN_PROPOSED`,
-  chưa `Accepted`; [registry §7](../docs/development/work-views.md#7-đường-ghi-341)). CHOICE-01,
-  04, 05 còn `OPEN`, giao cho #342–#343.
-- *Mức triển khai:* đường ghi VIEW-03..06, 08, 10 (chống trùng), 11 ở mức `core` + adapter
-  PostgreSQL và dọn hạn trong `vink-worker` (#341). Chưa có HTTP thu nhận, API đọc, tín hiệu Web
-  hay UI, nên chưa có lượt nào được đếm trong runtime.
-- *Bằng chứng:* unit (decision vectors, oracle dòng thời gian) và PostgreSQL thật cho đồng thời,
-  mất phản hồi, rollback, khởi động lại, dọn hạn và công khai/rút; chưa có HTTP hay browser.
-- *Ngoài phạm vi §17:* số công khai ở Reader, danh sách người xem, dashboard/biểu đồ, xếp hạng,
-  Notifications, CMP/native, vị trí và thiết kế thị giác của con số (thuộc lượt thiết kế sau).
+- *Quyết định sản phẩm:* `VIEW-01..12` bản `r1` là `PRODUCT_CONFIRMED` ngày 21/11/2026
+  ([VDR-WORK-VIEWS@r1](../decisions/proposals/VDR-WORK-VIEWS.r1.toml) +
+  [signoff](../decisions/signoffs/VDR-WORK-VIEWS.r1.toml)). Delta ngày 25/11/2026 (`#323`/`#340`:
+  ngưỡng 5s cấu hình tập trung, `OQ-1=A`, `OQ-2`, `OQ-3A/B`, `OQ-4`, `UX-01..10`, `D-01`/`D-02`
+  và lộ trình 2 PR) được chủ sản phẩm chốt trên issue; proposal
+  [VDR-WORK-VIEWS@r2](../decisions/proposals/VDR-WORK-VIEWS.r2.toml) giữ trạng thái `PENDING` theo
+  `VDR-DECISION-SIGNOFF@r1` chờ signoff đúng payload/SHA-256.
+- *Quyết định kiến trúc:* `#341` đề xuất `CHOICE-02 A`, `CHOICE-03`, `CHOICE-06 A` (`DESIGN_PROPOSED`);
+  `#342` đề xuất `CHOICE-05 A` (`DESIGN_PROPOSED`); `#343` (PR1) đề xuất `CHOICE-01`, `CHOICE-04`
+  và `CHOICE-POLICY` (chưa `Accepted`; [registry](../docs/development/work-views.md)).
+- *Mức triển khai và bằng chứng:* xem [registry phát triển](../docs/development/work-views.md) cho
+  đường ghi `#341`, đọc tác giả `#342`, thu nhận HTTP + tracker Reader `#343` (PR1) và giao diện
+  Bàn viết `#514` (PR2).
+- *Ngoài phạm vi §17:* số công khai ở Reader/Khám phá/hồ sơ, danh sách người xem,
+  dashboard/biểu đồ, xếp hạng, Notifications, CMP/native và route xóa tác phẩm/tài khoản (`OQ-2` /
+  `O-08`).

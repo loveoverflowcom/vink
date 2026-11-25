@@ -297,25 +297,59 @@
 .vk-draft-row__title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .vk-draft-row__link:is(:focus, :hover) .vk-draft-row__title { display: block; -webkit-line-clamp: unset; overflow: visible; }
 
-/* R4: keep the distinct linked and unlinked row slots and the independent reader action. */
+/* Work Views r3 (#514 / #410): selective tonal status badges, borderless Thấm → Nhận xét →
+   Lượt xem metrics, tonal card hover without borders/shadows, no Desk Read button (D-02). */
+.vk-author-work {
+  transition: background-color var(--vk-duration-short) var(--vk-ease-emphasized);
+}
+.vk-author-work:has(> .vk-draft-row__link:hover) {
+  background-color: color-mix(in srgb, var(--vk-bg-content), var(--vk-primary) 7%);
+}
 .vk-author-work > :is(.vk-draft-row__link, .vk-draft-row__text) { flex: 1 1 24rem; }
-.vk-author-work > .vk-draft-row__text { padding: var(--vk-space-3) var(--vk-space-4); }
+.vk-author-work .vk-draft-row__text { grid-template-columns: minmax(0, 1fr); }
 .vk-author-work > .vk-draft-row__text > .vk-draft-row__title { display: block; overflow: visible; -webkit-line-clamp: unset; }
 .vk-author-work .vk-draft-row__link { grid-template-columns: minmax(0, 1fr); min-block-size: 48px; border-radius: inherit; }
+.vk-author-work .vk-draft-row__link:hover { background: transparent; }
 .vk-author-work__untitled { color: var(--vk-on-surface-variant); font-style: italic; }
-.vk-author-work__label > svg, .vk-author-work__count > svg { flex: none; }
-.vk-author-work__metrics { color: var(--vk-on-surface); font-size: var(--vk-type-label-size); font-variant-numeric: tabular-nums; }
-.vk-author-work__count > .vk-ui-icon { inline-size: 24px; block-size: 24px; margin: 0; }
-.vk-author-work__count > [data-icon="pen-flight"] { inline-size: 26px; block-size: 26px; }
+.vk-author-work__label {
+  font-weight: var(--vk-type-label-weight);
+  line-height: 1.4;
+}
+.vk-author-work__label > .vk-ui-icon { inline-size: 18px; block-size: 18px; flex: none; margin: 0; }
+.vk-author-work__count > svg, .vk-author-work__views-value > svg { flex: none; }
+.vk-author-work__metrics {
+  color: var(--vk-on-surface);
+  font-size: var(--vk-type-label-size);
+  font-weight: var(--vk-type-label-weight);
+  line-height: var(--vk-type-label-line-height);
+  font-variant-numeric: tabular-nums;
+}
+.vk-author-work__count > .vk-ui-icon,
+.vk-author-work__views-value > .vk-ui-icon {
+  inline-size: var(--vk-size-icon-sm);
+  block-size: var(--vk-size-icon-sm);
+  color: var(--vk-on-surface-variant);
+  margin: 0;
+}
+.vk-author-work__count > [data-icon="pen-flight"] { inline-size: 22px; block-size: 22px; }
+.vk-author-work__views--historical,
+.vk-author-work__views--off {
+  color: var(--vk-on-surface-variant);
+}
+.vk-author-work__views-since,
+.vk-author-work__views-reason {
+  color: var(--vk-on-surface-variant);
+  font-size: var(--vk-type-caption-size);
+  font-weight: var(--vk-type-caption-weight);
+  line-height: var(--vk-type-caption-line-height);
+}
 .vk-author-work__context { color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); }
-.vk-author-work__reader.vk-ui-button {
-  --vk-ui-control-radius: var(--vk-radius-control-48);
-  min-inline-size: 48px;
-  min-block-size: 48px;
-  margin-inline: var(--vk-space-4);
-  color: var(--vk-action-tonal-content);
-  text-decoration: none;
-  margin-block-end: var(--vk-space-3);
+@media (forced-colors: active) {
+  .vk-author-work__label[data-tone="ok"],
+  .vk-author-work__label[data-tone="attn"],
+  .vk-author-work__label[data-tone="bad"] {
+    border: 1px solid CanvasText;
+  }
 }
 
 /* R4 Notifications. The list width and text size decide when the row reflows. */

@@ -40,6 +40,7 @@ import { readerContainment } from './reader-containment.mjs';
 import { discoveryReturnPosition } from './discovery-return-position.mjs';
 import { recordTransport } from './web-request-ledger.mjs';
 import { readerBeforeHydration, readerGuestHistory } from './reader-ssr-boundary.mjs';
+import { workViewsE2E } from './work-views-smoke.mjs';
 import { deskEmptyState, deskGuest } from './desk-empty-smoke.mjs';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -1179,7 +1180,8 @@ class DraftGate {
     if (body?.drafts) body = { works: body.drafts.map(d => ({ ...d, draft_version: d.version,
       publication: d.publication ?? { audience:'private', lifecycle:'active', generation:1,
         intent_revision_id:null, intent_moderation:null, latest_revision_id:null, latest_moderation:null,
-        review_withdrawn:false, has_draft_changes:null, current_public:null } })), next_cursor: body.next_cursor ?? null };
+        review_withdrawn:false, has_draft_changes:null, current_public:null },
+      views: d.views ?? { state:'never_public', count:null, counted_since:null } })), next_cursor: body.next_cursor ?? null };
     return this.page.send('Fetch.fulfillRequest', {
       requestId, responseCode: status,
       responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Cache-Control', value: 'no-store' }],
@@ -6595,6 +6597,7 @@ try {
   else if (args.phase === 'reader-guest-history') await readerGuestHistory(page, { args, check });
   else if (args.phase === 'main') await mainPhase(page);
   else if (args.phase === 'reader') await readerPhase(page);
+  else if (args.phase === 'reader-views') await workViewsE2E(page, { cdp, openPage: (isolated) => openPage(cdp, isolated), args, check });
   else if (args.phase === 'discussion') await discussionPhase(page);
   else if (args.phase === 'appearance-shell') await appearanceShellPhase(page);
   else if (args.phase === 'desk') await deskPhase(page);

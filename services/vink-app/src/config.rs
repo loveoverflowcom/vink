@@ -10,6 +10,7 @@ use std::path::PathBuf;
 
 use crate::domain::abuse::TrustedProxies;
 use crate::domain::ids::PrincipalId;
+use crate::domain::work_view::ViewDigestKey;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Profile {
@@ -49,8 +50,15 @@ pub struct Config {
     /// `VINK_TRUSTED_PROXIES`: proxies whose `X-Forwarded-For` attributes a request to a client
     /// network for rate limits. Empty: only the TCP peer counts.
     pub trusted_proxies: TrustedProxies,
+    /// `VINK_WORK_VIEW_DIGEST_KEY`: 32-byte (64-hex) HMAC key for reader view-dedupe digests.
+    /// `VINK_PROFILE=local` falls back to a fixed development key; production leaves `None` unless
+    /// configured so missing secrets fail closed on view intake.
+    pub work_view_digest_key: Option<ViewDigestKey>,
     pub log_format: LogFormat,
 }
+
+/// Loopback/local development key only. Never used in [`Profile::Production`].
+const LOCAL_WORK_VIEW_DIGEST_KEY: ViewDigestKey = ViewDigestKey::from_bytes([0x56; 32]);
 
 /// Where the Identity process listens and which OS user must be serving that socket.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -75,6 +83,10 @@ impl fmt::Debug for Config {
             .field("sign_in_enabled", &self.sign_in_enabled)
             .field("following_feed_enabled", &self.following_feed_enabled)
             .field("trusted_proxies", &self.trusted_proxies)
+            .field(
+                "work_view_digest_key",
+                &self.work_view_digest_key.as_ref().map(|_| "<redacted>"),
+            )
             .field("log_format", &self.log_format)
             .finish()
     }
@@ -250,6 +262,21 @@ impl Config {
             }),
         };
 
+        let work_view_digest_key = match value("VINK_WORK_VIEW_DIGEST_KEY") {
+            Some(raw) => match ViewDigestKey::parse_hex(&raw) {
+                Some(key) => Some(key),
+                None => {
+                    problems.push(
+                        "VINK_WORK_VIEW_DIGEST_KEY: expected 64 hexadecimal digits (32 bytes)"
+                            .into(),
+                    );
+                    None
+                }
+            },
+            None if profile == Profile::Local => Some(LOCAL_WORK_VIEW_DIGEST_KEY),
+            None => None,
+        };
+
         let log_format = log_format(value("VINK_LOG_FORMAT"), &mut problems);
 
         if problems.is_empty() {
@@ -264,6 +291,7 @@ impl Config {
                 sign_in_enabled,
                 following_feed_enabled,
                 trusted_proxies,
+                work_view_digest_key,
                 log_format,
             })
         } else {
@@ -508,6 +536,34 @@ mod tests {
         assert!(
             error.to_string().contains("`*` is not an IP address"),
             "{error}"
+        );
+
+        assert!(
+            production.work_view_digest_key.is_none(),
+            "production fails closed when VINK_WORK_VIEW_DIGEST_KEY is absent"
+        );
+        assert!(
+            with(&[("VINK_PROFILE", "local")])
+                .unwrap()
+                .work_view_digest_key
+                .is_some()
+        );
+        let hex = "ab".repeat(32);
+        let configured = with(&[("VINK_WORK_VIEW_DIGEST_KEY", &hex)]).unwrap();
+        assert_eq!(
+            configured.work_view_digest_key,
+            Some(ViewDigestKey::from_bytes([0xab; 32]))
+        );
+        assert!(
+            !format!("{configured:?}").contains(&hex),
+            "Debug must never expose key material"
+        );
+        let bad_key = with(&[("VINK_WORK_VIEW_DIGEST_KEY", "not-hex")]).unwrap_err();
+        assert!(
+            bad_key
+                .to_string()
+                .contains("VINK_WORK_VIEW_DIGEST_KEY: expected 64 hexadecimal digits"),
+            "{bad_key}"
         );
     }
 

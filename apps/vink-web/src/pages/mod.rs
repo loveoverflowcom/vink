@@ -133,10 +133,13 @@ fn ReaderLoaded(initial: crate::contract::ReaderResponse, return_href: String) -
             work_id.clone()
         }
     };
-    let live = public_reads::follow_reader(id, initial);
+    let live = public_reads::follow_reader(id, initial.clone());
     let data = live.data;
     let removed = live.removed;
     let rejected = live.rejected;
+    // OQ-3A: only an intentional open whose initial settled authority was Published may count;
+    // leaving Published (Hidden / ReviewWithdrawn / Removed / Rejected) permanently disarms it.
+    let visit_eligible = RwSignal::new(matches!(initial, ReaderResponse::Published(_)));
     // Published revision identity is deliberately absent: background updates cannot remount
     // the article, endorsement state or composer and cannot replace a text selection.
     let control = Memo::new(move |_| {
@@ -153,6 +156,12 @@ fn ReaderLoaded(initial: crate::contract::ReaderResponse, return_href: String) -
                 work_id,
                 author_name,
             } => (2, Some((work_id, Some(author_name)))),
+        }
+    });
+    Effect::new(move |_| {
+        let (kind, _) = control.get();
+        if kind != 0 && visit_eligible.get_untracked() {
+            visit_eligible.set(false);
         }
     });
     move || {
@@ -175,7 +184,8 @@ fn ReaderLoaded(initial: crate::contract::ReaderResponse, return_href: String) -
                     rejected: live.rejected,
                     key: live.key.clone(),
                 };
-                view! { <PublicationView publication live=publication_live /> }.into_any()
+                view! { <PublicationView publication live=publication_live visit_eligible /> }
+                    .into_any()
             }
             1 | 2 => {
                 let (work_id, author_name) = replacement.unwrap();
@@ -192,9 +202,16 @@ fn ReaderLoaded(initial: crate::contract::ReaderResponse, return_href: String) -
 fn PublicationView(
     publication: Publication,
     live: public_reads::Live<Publication>,
+    visit_eligible: RwSignal<bool>,
 ) -> impl IntoView {
     let latest = live.data;
+    #[cfg(feature = "browser")]
+    let initial_for_views = publication.clone();
+    #[cfg(not(feature = "browser"))]
+    let _ = visit_eligible;
     let shown = RwSignal::new(publication);
+    #[cfg(feature = "browser")]
+    crate::work_view::track_publication_visit(&initial_for_views, shown, visit_eligible);
     let update = Memo::new(move |_| {
         latest.with(|l| {
             shown.with(|s| {

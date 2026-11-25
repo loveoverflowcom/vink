@@ -432,11 +432,19 @@ mod discussion_tests {
 pub fn author_work_summary(
     work: &crate::contract::author_works::AuthorWorkCard,
 ) -> super::patterns::AuthorWorkSummary {
-    use super::patterns::{AuthorWorkLabel, AuthorWorkPublic};
+    use super::patterns::{
+        AuthorWorkLabel, AuthorWorkLabelTone, AuthorWorkPublic, AuthorWorkViews, work_view_date_hcm,
+    };
+    use crate::contract::author_works::WorkViewsState;
     use crate::contract::publication::{Audience, Decision, Lifecycle};
     use vink_ui::IconName;
     let label = AuthorWorkLabel::new;
-    let mut status = vec![label("Chưa rõ", "Chưa xác định trạng thái", IconName::Help)];
+    let mut status = vec![label(
+        "Chưa rõ",
+        "Chưa xác định trạng thái",
+        IconName::Help,
+        AuthorWorkLabelTone::Quiet,
+    )];
     let mut public = None;
     if let Some(p) = &work.publication
         && p.audience != Audience::Unknown
@@ -447,38 +455,66 @@ pub fn author_work_summary(
             .as_ref()
             .filter(|_| p.audience == Audience::Public);
         status[0] = match p.lifecycle {
-            Lifecycle::AuthorDeleted => label("Đã xóa", "Đã xóa bởi tác giả", IconName::Cancel),
-            Lifecycle::Removed => label("Đã gỡ", "Đã gỡ", IconName::Block),
-            Lifecycle::Active if current_public.is_some() => {
-                label("Đã đăng", "Đã đăng", IconName::Check)
+            Lifecycle::AuthorDeleted => label(
+                "Đã xóa",
+                "Đã xóa bởi tác giả",
+                IconName::Cancel,
+                AuthorWorkLabelTone::Bad,
+            ),
+            Lifecycle::Removed => {
+                label("Đã gỡ", "Đã gỡ", IconName::Block, AuthorWorkLabelTone::Bad)
             }
-            Lifecycle::Active if p.review_withdrawn => {
-                label("Đã ẩn", "Đã ẩn sau kiểm duyệt", IconName::VisibilityOff)
-            }
+            Lifecycle::Active if current_public.is_some() => label(
+                "Đã đăng",
+                "Đã đăng",
+                IconName::Check,
+                AuthorWorkLabelTone::Ok,
+            ),
+            Lifecycle::Active if p.review_withdrawn => label(
+                "Đã ẩn",
+                "Đã ẩn sau kiểm duyệt",
+                IconName::VisibilityOff,
+                AuthorWorkLabelTone::Bad,
+            ),
             Lifecycle::Active if p.audience == Audience::Private => {
                 if work.draft_version.is_some()
                     && p.generation == 1
                     && p.latest_revision_id.is_none()
                 {
-                    label("Nháp", "Bản nháp", IconName::Edit)
+                    label(
+                        "Nháp",
+                        "Bản nháp",
+                        IconName::Edit,
+                        AuthorWorkLabelTone::Quiet,
+                    )
                 } else {
-                    label("Chỉ mình tôi", "Chỉ mình tôi", IconName::Lock)
+                    label(
+                        "Chỉ mình tôi",
+                        "Chỉ mình tôi",
+                        IconName::Lock,
+                        AuthorWorkLabelTone::Quiet,
+                    )
                 }
             }
             Lifecycle::Active => label(
                 "Chưa có bản công khai",
                 "Chưa có bản công khai",
                 IconName::VisibilityOff,
+                AuthorWorkLabelTone::Quiet,
             ),
             Lifecycle::Unknown => unreachable!(),
         };
         if p.lifecycle == Lifecycle::Active {
             if let Some(revision) = current_public {
                 if p.has_draft_changes == Some(true) {
-                    status.push(label("Có bản sửa", "Đã đăng · Có bản sửa", IconName::Edit));
+                    status.push(label(
+                        "Có bản sửa",
+                        "Đã đăng · Có bản sửa",
+                        IconName::Edit,
+                        AuthorWorkLabelTone::Quiet,
+                    ));
                 }
                 public = Some(AuthorWorkPublic {
-                    href: format!("/tac-pham/{}", work.work_id),
                     title: (revision.title != work.title)
                         .then(|| crate::draft_list::display_title(&revision.title)),
                     tham: revision.tham.filter(|n| *n >= 0),
@@ -500,27 +536,46 @@ pub fn author_work_summary(
                         "Bản mới chờ duyệt",
                         "Bản mới đang chờ duyệt",
                         IconName::Schedule,
+                        AuthorWorkLabelTone::Attn,
                     )),
                     Some(Decision::NeedsAdmin) => Some(label(
                         "Bản mới cần người duyệt",
                         "Bản mới cần người duyệt",
                         IconName::Person,
+                        AuthorWorkLabelTone::Attn,
                     )),
                     Some(Decision::Rejected) => Some(label(
                         "Bản mới không được duyệt",
                         "Bản mới không được duyệt",
                         IconName::Cancel,
+                        AuthorWorkLabelTone::Bad,
                     )),
                     Some(Decision::Unknown) => Some(label(
                         "Chưa rõ bản mới",
                         "Chưa rõ trạng thái bản mới",
                         IconName::Help,
+                        AuthorWorkLabelTone::Quiet,
                     )),
                     _ => None,
                 });
             }
         }
     }
+    let views = match work.views.as_ref() {
+        Some(v) => match v.state {
+            WorkViewsState::Counted => match v.count.filter(|n| *n >= 0) {
+                Some(count) => AuthorWorkViews::Counted {
+                    count,
+                    counted_since: v.counted_since.as_deref().and_then(work_view_date_hcm),
+                },
+                None => AuthorWorkViews::Unavailable,
+            },
+            WorkViewsState::NotStarted => AuthorWorkViews::NotStarted,
+            WorkViewsState::NeverPublic => AuthorWorkViews::NeverPublic,
+            WorkViewsState::Unavailable | WorkViewsState::Unknown => AuthorWorkViews::Unavailable,
+        },
+        None => AuthorWorkViews::Unavailable,
+    };
     super::patterns::AuthorWorkSummary {
         title: crate::draft_list::display_title(&work.title),
         untitled: work.title.is_empty(),
@@ -531,5 +586,6 @@ pub fn author_work_summary(
             .map(|_| format!("/ban-viet/{}", work.work_id)),
         status,
         public,
+        views,
     }
 }

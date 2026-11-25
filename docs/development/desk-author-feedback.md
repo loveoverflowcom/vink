@@ -63,7 +63,15 @@ Same-account retained snapshot báo stale; reconnect không replay create/publis
 Tên public khác tên draft có context rõ. [R4 #410](https://github.com/loveoverflowcom/vink/issues/410)
 hiển thị mỗi tác phẩm trên thẻ riêng, chuyển các trạng thái thành tối đa ba nhãn có icon
 và dùng icon kèm số cho Thấm/Nhận xét. Số chưa tải được có dấu “—” kèm tên chỉ số.
-“Đọc” mở bản công khai qua một liên kết bên cạnh liên kết editor.
+Trước delta 25/11/2026, #410 có liên kết “Đọc” mở bản công khai bên cạnh liên kết editor.
+
+**Delta SSOT 25/11/2026 (`#323`/`#340` `D-01`/`D-02`, triển khai UI ở `#514`):**
+- `D-01`: hàng metric cố định thứ tự **Thấm → Nhận xét → Lượt xem** (Lượt xem để cuối); giữ nguyên
+  luật quyền/ẩn khi bài riêng tư (`OQ-1 = A` — [Lượt xem](work-views.md)).
+- `D-02`: bỏ hẳn nút/link “Đọc” / “Đọc bản công khai” trên thẻ tác phẩm Bàn viết (không thay bằng
+  icon, menu, CTA khác, click số liệu hay vùng giữ chỗ; giữ nguyên liên kết mở bản thảo/editor của
+  hàng/nhan đề và giữ nguyên Reader công khai). Giao diện hiện hành triển khai theo
+  [LayoutSpec Lượt xem r3](../design/work-views.md) (đồng bộ R4.3/R4.4 và `docs/design/desk-author-feedback.md`).
 
 ## Owners và kiểm chứng
 
