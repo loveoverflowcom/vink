@@ -30,11 +30,12 @@ Liên kết đi qua cùng leave guard của Editor. Bảng bằng chứng bên d
 
 ## Tác giả làm được gì (và chưa)
 
-Đăng nhập (mã email) → Bàn viết → viết, lưu, chọn thẻ → vùng “Công khai” ở cuối trang: chọn
-**Công khai** → “Lưu và gửi duyệt” (hoặc “Gửi duyệt bản đã lưu” khi đã lưu) → vùng nói bản nào đang
-được đọc, bản nào đang chờ và quyết định → người duyệt có grant kết luận bằng trang hiện hữu →
-tác phẩm hiện ở Khám phá/reader đúng revision và thẻ → tác giả chọn **Chỉ mình tôi** → “Chuyển
-riêng tư” (không cần lưu, không mất chữ đang viết) → trang công khai ngừng phục vụ nội dung.
+Đăng nhập (mã email) → Bàn viết → viết, lưu, chọn thẻ → vùng “Công khai” trong Tùy chọn bài viết:
+bật công tắc **Công khai** → “Lưu và gửi duyệt” (hoặc “Gửi duyệt” khi đã lưu) → một dòng trạng thái
+ngắn gọn phản ánh dữ kiện máy chủ → người duyệt có grant kết luận bằng trang hiện hữu → tác phẩm
+hiện ở Khám phá/reader đúng revision và thẻ → tác giả tắt **Công khai** → “Chuyển riêng tư” (không
+cần lưu, không mất chữ đang viết) → trang công khai ngừng phục vụ nội dung. Liên kết “Xem kết quả
+kiểm duyệt” chỉ hiện khi tác phẩm có ngữ cảnh kiểm duyệt.
 
 Chưa có: công khai lại một revision đã duyệt mà không chụp bản mới (hiện luôn chụp bản mới); polling;
 thông báo; xóa tác phẩm; CMP. Chuyển riêng tư không hứa xóa bản sao ngoài Vink hay ở tab chưa tải
@@ -47,7 +48,7 @@ lại, và vùng nói rõ điều đó.
 | DTO và phân loại lỗi | [contract/publication.rs](../../apps/vink-web/src/contract/publication.rs), `ApiError` trong [contract.rs](../../apps/vink-web/src/contract.rs) | Một DTO `AuthorPublicationState` duy nhất (chi tiết Bàn viết dùng lại; DTO cũ chỉ đọc một phần đã bỏ). `audience`/`lifecycle`/`moderation` có `Unknown`: giá trị lạ khóa mọi lệnh và hiện câu an toàn, không suy ra “riêng tư/đã duyệt/rỗng” |
 | Transport | [api.rs](../../apps/vink-web/src/api.rs) | `publication_state_path`, `snapshots_path`, `request_public_path`, `set_private_path` (work id là một segment mã hóa); `bounded()` nay phủ cả ba lệnh |
 | State owner (thuần) | [publication_state.rs](../../apps/vink-web/src/publication_state.rs) | Reducer `Controller`: pha client, ticket, key, fence; trả `Step`, không I/O |
-| Adapter + view | [pages/publication.rs](../../apps/vink-web/src/pages/publication.rs) | `PublicationPanel`, `Runner` thực thi `Step`; câu chữ (`notice_text`, `summary_lines`, `decision_label`) |
+| Adapter + view | [pages/publication.rs](../../apps/vink-web/src/pages/publication.rs) | `PublicationPanel`, `Runner` thực thi `Step`; câu chữ (`notice_text`, `status_line`, `show_review_link`, `decision_label`) |
 | Editor | [pages/desk.rs](../../apps/vink-web/src/pages/desk.rs) | Chỉ gắn vùng vào khung `.vk-editor`, truyền `save` và `is_composing`. `DraftSession`/`TagSession`/`NavigationGuard` giữ nguyên chủ sở hữu việc lưu, conflict, chữ chưa lưu và rời trang |
 | Cache công khai | [public_reads.rs](../../apps/vink-web/src/public_reads.rs) | `invalidate_withdrawn` (đã có) sau rút bài; `invalidate_publication` (mới, không xóa thẻ) khi con trỏ công khai đổi |
 
@@ -101,7 +102,7 @@ generation của máy chủ xử lý, không phải việc hủy request.
 | --- | --- | --- | --- |
 | CHOICE-01 | **B** — “Lưu và gửi duyệt” gọi hàm lưu của editor và quan sát `DraftSession` | A — bắt bấm “Lưu” riêng | Không sao chép logic lưu, không sửa editor; đảm bảo đúng bản nhờ dấu “đã bấm” + ack đúng phiên bản. A vẫn là hành vi khi thẻ chưa tải hoặc lưu đang lỗi/xung đột (nút khóa kèm lý do) |
 | CHOICE-02 | **A** — vùng gọn tại chỗ | B — dialog | Trạng thái chưa rõ/xung đột phải còn thấy sau khi gửi; ở chữ 200% và 320 CSS px chỉ xếp dọc trong luồng trang, không thêm vùng cuộn hay bẫy focus |
-| CHOICE-03 | **A** — đọc khi mở, khi quay lại cửa sổ (tối đa 2 s một lần, không giữa lệnh), sau mỗi lệnh, nút “Tải lại” | B — thêm polling | Kiểm duyệt không có SLA; polling thêm hẹn giờ, request chồng, rủi ro cướp focus/cuộn. Đảo được nếu có số liệu |
+| CHOICE-03 | **A** — tự động đồng bộ khi mở, đổi phiên, quay lại cửa sổ (`focus`/`visibilitychange`, tối đa 2 s một lần, không giữa lệnh), có mạng trở lại (`online`) và sau mỗi lệnh | B — thêm polling | Kiểm duyệt không có SLA; polling thêm hẹn giờ, request chồng, rủi ro cướp focus/cuộn. Đảo được nếu có số liệu |
 
 ## Quyền riêng tư
 
