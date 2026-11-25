@@ -198,6 +198,37 @@ xác nhận sau khi origin/HTTP đạt, journal giữ `http_verified`. Đọc `s
 sau smoke, sau đó lưu digest reply trong receipt. SSH receiver tự động và luồng
 bảo trì tiếp tục dùng browser cục bộ theo cấu hình hiện có.
 
+## Rolling chỉ dùng HTTP smoke
+
+Người vận hành trực tiếp có thể chọn `--http-only 'lý do đã duyệt'` cho một lượt rolling
+khi đã có predecessor và hai cây migration App/Identity giống hệt nhau. Truyền cùng lý do và bộ
+input cho `plan`, `apply --preview-only` và `resume`. Dùng `--reader` với tác phẩm công khai hoặc
+`--empty-catalog` nếu catalog thật rỗng. Giữ quy trình `--resume-with-reader` nếu catalog có tác
+phẩm trong lúc chờ. Ghi lý do vận hành ngắn, không chứa bí mật.
+
+Controller vẫn kiểm backup, ba image/digest, asset ở preview, alias, apex, origin và HTTP smoke
+của release. Với Reader đã chọn, controller kiểm API công khai trả đúng tác phẩm `published`.
+Chỉ khi các kiểm tra đạt, receipt mới có pha `http_only_verified` và trường `browser_coverage`
+ghi `NOT_RUN` kèm lý do. Coverage này không xác nhận hydration hoặc thao tác trình duyệt.
+Nếu kiểm tra lỗi hoặc mất ACK, dùng `status` và `resume` với mode đã ghi. Quy trình rolling giữ
+asset của cả hai bản khi rollback. Trước promote, giữ bản sao receipt image của predecessor và
+các archive đã đối chiếu. Receiver SSH tự động, bootstrap và bảo trì dùng đường browser hiện hành.
+
+### Quay lại predecessor của lượt HTTP-only
+
+Chạy controller từ checkout sạch của bản đang cần quay lại, kể cả khi predecessor chưa có
+`--http-only`. Dùng `--rollback-predecessor` cùng một `--http-only 'lý do đã duyệt'` cho `plan`,
+`apply --preview-only` và `resume`. File release là receipt image của predecessor cần khôi phục;
+`--previous-origin` và `--previous-edge` là SHA và Pages ID của lượt đang cần đảo chiều. Chọn
+Reader công khai hoặc catalog rỗng như khi phát hành. Controller chỉ nhận predecessor ghi trong
+receipt hoặc journal của lượt HTTP-only mở và kiểm SHA/digest, backup, schema và cả hai bộ asset.
+
+Lượt còn journal phải đã đi tới bước đổi origin. Nếu origin chưa đổi đủ ba container, `plan`
+dừng để đối soát. Khi bắt đầu rollback từ journal đó, controller lưu nguyên bản journal vào
+`incidents/` trước khi ghi lượt rollback. Sau khi khôi phục origin cũ, Pages vẫn phục vụ cả hai bộ
+asset qua Worker đóng gói từ controller hiện hành. Rollback này khôi phục image ứng dụng và byte
+asset, giữ Worker hiện hành để tiếp tục phục vụ các tab đã mở.
+
 ## Rolling khi catalog công khai rỗng
 
 Với hai cây migration App và Identity giống hệt predecessor, người vận hành trực tiếp có thể dùng

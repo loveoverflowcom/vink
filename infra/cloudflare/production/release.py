@@ -23,6 +23,7 @@ SPEC_FIELDS = ("environment", "public_origin", "source_sha", "platform", "images
 READER_UUID = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}")
 EMPTY_CATALOG = "NOT_RUN: verified empty catalog"
 PUBLISHED_READER = "PASS: verified published Reader"
+PUBLISHED_READER_HTTP = "PASS: verified published Reader API over HTTP"
 
 
 def run(*args):
@@ -93,7 +94,7 @@ def preview_receipt(account, rev, marker):
     raise ValueError("matching successful Pages preview not observed; reconcile with provider before resuming")
 
 
-def export(spec, archive):
+def export(spec, archive, *, retained=False):
     rev = spec["source_sha"]
     for image in spec["images"].values():
         run("podman", "pull", "--platform", spec["platform"], image)
@@ -111,7 +112,7 @@ def export(spec, archive):
             run("podman", "cp", container + ":/opt/vink/site/pkg", str(package / "pkg"))
         finally:
             run("podman", "rm", container)
-        manifest = record(package / "pkg", spec)
+        manifest = record(package / "pkg", spec, retained=retained)
         dest = archive / rev
         if dest.exists():
             require(json.loads((dest / "manifest.json").read_bytes()) == manifest, "conflicting release for SHA")
@@ -217,6 +218,61 @@ def verify_catalog_smoke(reader=None):
     data = json.loads(body)
     require(isinstance(data, dict) and data.get("status") == "published" and data.get("work_id") == reader,
             "resume requires the selected Reader to be published")
+
+
+def rollback_baseline(a, spec, archive, active, canonical, pending, interrupted):
+    """Bind a reverse rollout to the immediate predecessor of this controller's rollout."""
+    active_raw = active.read_bytes()
+    saved = pending.get("rollback_from") if pending else None
+    if saved and saved["interrupted"]:
+        require(re.fullmatch(r"[0-9a-f]{64}", saved["sha256"]), "invalid rollback journal fingerprint")
+        interrupted = (STATE / "incidents" / (saved["sha256"] + ".http-rollback.json")).read_bytes()
+    raw = interrupted if interrupted is not None else active_raw
+    source = json.loads(raw)
+    binding = {"sha256": sha(raw), "interrupted": interrupted is not None}
+    require(saved is None or binding == saved, "rollback source changed")
+    prior = spec["source_sha"]
+    controller = a.previous_origin
+    require(prior != controller and source["account"] == a.account and source["project"] == PROJECT
+            and source["edge"] == a.previous_edge and source["previous_origin"] == prior
+            and source["release"]["source_sha"] == controller and source["schema_action"] == "same"
+            and source.get("browser_coverage", {}).get("status") == "NOT_RUN"
+            and "rollback_from" not in source, "rollback requires the immediate predecessor of an HTTP-only rollout")
+    if interrupted is not None:
+        active_receipt = json.loads(active_raw)
+        require(source["phase"] in {"origin_switch_started", "origin_ready", "http_verified"}
+                and source.get("origin_release", controller) == controller
+                and active_receipt["account"] == a.account and active_receipt["edge"] == source["previous_edge"]
+                and active_receipt["origin_release"] == prior and active_receipt["release"] == spec
+                and active_receipt["retained"][prior] == source["retained"][prior],
+                "interrupted rollout must agree with the active predecessor receipt")
+    else:
+        require(source["phase"] == "http_only_verified" and source["origin_release"] == controller,
+                "rollback requires an observed HTTP-only rollout")
+    if not pending:
+        require(matching(canonical, controller, "vink-release-" + source["worker_digest"]),
+                "Pages does not match the rollout being reversed")
+    manifests = {}
+    for expected in (spec, source["release"]):
+        rev = expected["source_sha"]
+        manifest = (archive / rev / "manifest.json").read_bytes()
+        require(sha(manifest) == source["retained"][rev], "rollback archive differs from rollout receipt")
+        manifests[rev] = json.loads(manifest)
+        require({key: manifests[rev][key] for key in SPEC_FIELDS} == expected,
+                "rollback receipt differs from archived release or images")
+    return source, binding, manifests[controller]
+
+
+def preserve_rollback_journal(journal, raw, binding):
+    require(journal.read_bytes() == raw and sha(raw) == binding["sha256"], "rollback source journal changed")
+    incidents = STATE / "incidents"
+    if not incidents.exists():
+        incidents.mkdir()
+        maintenance.sync_dir(STATE)
+    archived = incidents / (binding["sha256"] + ".http-rollback.json")
+    if not archived.exists():
+        maintenance.durable(archived, raw)
+    require(archived.read_bytes() == raw, "rollback archive differs from source journal")
 
 
 def browser_env(repo, home):
@@ -430,9 +486,22 @@ def main():
     p.add_argument("--resume-with-reader", metavar="UUID",
                    help="verify a published Reader for one resume attempt of a rolling empty-catalog release")
     p.add_argument("--browser-host", help="pinned SSH alias for an external rolling release browser")
+    p.add_argument("--http-only", metavar="REASON", help="use HTTP smoke only for a same-schema rolling release")
+    p.add_argument("--rollback-predecessor", action="store_true",
+                   help="with --http-only, use the current release controller to restore its recorded predecessor")
     p.add_argument("--previous-origin", required=True)
     p.add_argument("--previous-edge", required=True, help="observed Pages deployment id or 'none' on bootstrap")
     a = p.parse_args()
+    browser_coverage = None
+    if a.http_only is not None:
+        require(a.mode in {"plan", "apply", "resume"} and not a.maintenance and a.schema_review is None
+                and a.browser_host is None and a.previous_edge != "none",
+                "HTTP-only requires an existing predecessor and a rolling plan/apply/resume without a schema review or browser host")
+        require(1 <= len(a.http_only) <= 240 and a.http_only.isprintable() and a.http_only == a.http_only.strip(),
+                "HTTP-only requires a single-line reason of 1 to 240 characters")
+        browser_coverage = {"status": "NOT_RUN", "reason": a.http_only}
+    require(not a.rollback_predecessor or browser_coverage, "rolling predecessor rollback requires --http-only")
+    final_phase = "http_only_verified" if browser_coverage else "browser_verified"
     if a.browser_host is not None:
         require(a.mode in {"plan", "apply", "resume"} and not a.maintenance,
                 "external browser only supports rolling plan/apply/resume")
@@ -475,10 +544,18 @@ def main():
         resume = a.mode in {"resume", "open", "rollback-origin"}
         require(not (a.bootstrap_receipt or a.mode in {"open", "rollback-origin"}) or a.maintenance,
                 "manual origin commands require maintenance opt-in")
-        require(resume == journal.exists(), "pending release requires status/resume; new release requires apply")
-        pending = json.loads(journal.read_bytes()) if resume else None
+        journal_raw = journal.read_bytes() if journal.exists() else None
+        interrupted = journal_raw if a.rollback_predecessor and not resume else None
+        require(interrupted is not None or resume == (journal_raw is not None),
+                "pending release requires status/resume; new release requires apply")
+        pending = json.loads(journal_raw) if resume else None
         predecessor = a.previous_edge if a.previous_edge != "none" else None
         if resume:
+            require(a.rollback_predecessor == ("rollback_from" in pending), "resume must use the original rollback mode")
+            require(pending.get("browser_coverage") == browser_coverage,
+                    "resume must use the original browser coverage and reason")
+            if browser_coverage:
+                require(pending["http_reader"] == a.reader, "resume must use the original HTTP Reader")
             require(pending.get("browser_runner") == (external.binding if external else None),
                     "resume must use the original browser runner")
             require(pending["release"] == spec and pending["account"] == a.account and
@@ -489,20 +566,23 @@ def main():
                         "resume must use the original catalog smoke mode")
         else:
             require(current == predecessor, "Pages predecessor changed")
-        if not external:
+        if not external and not browser_coverage:
             chrome = Path(os.environ["VINK_RELEASE_CHROME"])
             require(chrome.is_absolute() and os.access(chrome, os.X_OK), "read-only guest browser required")
             require(pwd.getpwnam("vink-release-check").pw_uid > 0, "dedicated browser user required")
-        require(run("git", "-C", HERE, "rev-parse", "HEAD") == rev, "release checkout differs from input")
+        controller = a.previous_origin if a.rollback_predecessor else rev
+        require(run("git", "-C", HERE, "rev-parse", "HEAD") == controller, "release checkout differs from input")
         require(run("git", "-C", HERE, "status", "--porcelain") == "", "release checkout is dirty")
         require(WRANGLER.is_file(), "install the locked Wrangler in infra/cloudflare")
         if not resume:
             if external:
                 external.check("preflight", rev)
-            else:
+            elif not browser_coverage:
                 browser_preflight(chrome)
             if a.empty_catalog:
                 assert_empty_catalog()
+            elif browser_coverage:
+                verify_catalog_smoke(a.reader)
         archive = STATE / "archives"
         archive.mkdir(exist_ok=True)
         # A missing archive after a host loss must not discard assets from the serving deployment.
@@ -510,11 +590,13 @@ def main():
         legacy = rev
         if resume and previous.exists() and pending.get("edge") == current:
             completed = json.loads(previous.read_bytes())
-            if completed.get("phase") == "browser_verified" and completed == pending:
+            if completed.get("phase") == final_phase and completed == pending:
                 journal.unlink()
                 print(json.dumps(completed))
                 return
         old_images = None
+        rollback_from = None
+        rollback_assets = None
         if a.bootstrap_receipt:
             require(predecessor and not previous.exists(), "bootstrap receipt is only for the first controller release")
             active_predecessor = remote["canonical_deployment"] if current == predecessor else None
@@ -523,9 +605,13 @@ def main():
             legacy = a.previous_origin
         elif predecessor:
             require(previous.exists(), "restore the previous release receipt and archives")
-            last = json.loads(previous.read_bytes())
-            require(last["edge"] == predecessor and last["account"] == a.account
-                    and last["origin_release"] == a.previous_origin, "active edge differs from receipt")
+            if a.rollback_predecessor:
+                last, rollback_from, rollback_assets = rollback_baseline(
+                    a, spec, archive, previous, remote["canonical_deployment"], pending, interrupted)
+            else:
+                last = json.loads(previous.read_bytes())
+                require(last["edge"] == predecessor and last["account"] == a.account
+                        and last["origin_release"] == a.previous_origin, "active edge differs from receipt")
             legacy = last["legacy_assets"]
             old_images = last["release"]["images"]
             for release, digest in last["retained"].items():
@@ -534,7 +620,7 @@ def main():
         require(not a.empty_catalog or a.maintenance or schema == "same",
                 "rolling empty-catalog smoke requires unchanged migrations")
         require(not external or schema == "same", "external rolling browser requires unchanged migrations")
-        manifest = export(spec, archive)
+        manifest = export(spec, archive, retained=True) if rollback_from else export(spec, archive)
         images = spec["images"]
         evidence = None
         origin = None
@@ -558,6 +644,10 @@ def main():
                       "schema_action": schema, "schema_review": sha(a.schema_review.read_bytes()) if a.schema_review else None}
             if external:
                 result["browser_runner"] = external.binding
+            if browser_coverage:
+                result.update(browser_coverage=browser_coverage, http_reader=a.reader)
+            if rollback_from:
+                result["rollback_from"] = rollback_from
             if a.bootstrap_receipt:
                 result["bootstrap_receipt"] = sha(a.bootstrap_receipt.read_bytes())
             if a.empty_catalog:
@@ -586,6 +676,8 @@ def main():
                 if a.empty_catalog:
                     assert_empty_catalog()
                 require(deployment(project(a.account)) == predecessor, "Pages changed during staging")
+                if interrupted is not None:
+                    preserve_rollback_journal(journal, interrupted, rollback_from)
                 result["phase"] = "preview_upload_started"
                 store(journal, result)
             marker = "vink-release-" + worker_digest
@@ -596,17 +688,24 @@ def main():
                 # Recover the provider receipt if the upload ACK was lost.
                 result.update(preview_receipt(a.account, rev, marker))
                 verify_assets(result["preview_url"], rev, manifest)
+                if rollback_assets:
+                    verify_assets(result["preview_url"], controller, rollback_assets)
                 result["phase"] = "preview_verified"
                 store(journal, result)
             if result["phase"] == "preview_verified":
                 remote = project(a.account)
                 require(deployment(remote) == predecessor, "Pages predecessor changed")
                 verify_assets(result["preview_alias"], rev, manifest)
+                if rollback_assets:
+                    verify_assets(result["preview_alias"], controller, rollback_assets)
                 if a.preview_only:
                     print(json.dumps(result))
                     return
                 if external:
                     external.check("preflight", rev)
+                elif browser_coverage and resume:
+                    verify_assets(result["preview_url"], rev, manifest)
+                    run(HERE / "origin.sh", "plan", *origin_args)
                 if predecessor:
                     host = remote["canonical_deployment"]["url"]
                     require(re.fullmatch(r"https://[a-z0-9-]+\.vink-production\.pages\.dev", host),
@@ -617,8 +716,8 @@ def main():
                     verify_assets(spec["public_origin"], rev, manifest, serving_edge=True)
                     if a.maintenance:
                         result["fallback_proof"] = fallback_proof(a.fallback_proof, result, manifest)
-                if a.empty_catalog:
-                    verify_catalog_smoke(a.resume_with_reader)
+                if a.empty_catalog or browser_coverage:
+                    verify_catalog_smoke(a.resume_with_reader or a.reader)
                 require(deployment(project(a.account)) == predecessor, "Pages predecessor changed during fallback verification")
                 result["phase"] = "production_upload_started"
                 store(journal, result)
@@ -636,9 +735,12 @@ def main():
                 verify_assets(result["preview_alias"], rev, manifest)
                 if predecessor:
                     verify_assets(spec["public_origin"], rev, manifest, serving_edge=True)
+                if rollback_assets:
+                    verify_assets(host, controller, rollback_assets)
+                    verify_assets(spec["public_origin"], controller, rollback_assets, serving_edge=True)
                 run(HERE / "origin.sh", "plan", *origin_args)
-                if a.empty_catalog:
-                    verify_catalog_smoke(a.resume_with_reader)
+                if a.empty_catalog or browser_coverage:
+                    verify_catalog_smoke(a.resume_with_reader or a.reader)
                 require(deployment(project(a.account)) == result["edge"], "Pages changed before origin switch")
                 result["phase"] = "origin_switch_started"
                 store(journal, result)
@@ -661,31 +763,36 @@ def main():
             result["phase"] = "http_verified"
             store(journal, result)
             reader = a.resume_with_reader or a.reader
-            if external:
+            if external or browser_coverage:
                 verify_assets(result["preview_url"], rev, manifest)
                 verify_assets(result["preview_alias"], rev, manifest)
                 verify_assets(spec["public_origin"], rev, manifest, serving_edge=True)
-            if external or a.resume_with_reader:
+                if rollback_assets:
+                    verify_assets(spec["public_origin"], controller, rollback_assets, serving_edge=True)
+            if external or browser_coverage or a.resume_with_reader:
                 verify_catalog_smoke(reader)
             if external:
-                proof = external.check("smoke", rev, reader=reader, preview=result["preview_deployment"],
-                                       edge=result["edge"])
+                result["browser_receipt_sha256"] = external.check(
+                    "smoke", rev, reader=reader, preview=result["preview_deployment"], edge=result["edge"])
+            elif not browser_coverage:
+                if a.empty_catalog and not reader:
+                    browser_check(chrome, None, rev, empty_catalog=True)
+                else:
+                    browser_check(chrome, reader, rev)
+            if external or browser_coverage:
                 observed = project(a.account)["canonical_deployment"]
                 require(matching(observed, rev, marker) and observed["id"] == result["edge"],
-                        "Pages changed during external browser smoke")
+                        "Pages changed during release smoke")
                 run(HERE / "origin.sh", "observe", rev, rev, *origin_args[2:])
-                result["browser_receipt_sha256"] = proof
-            elif a.empty_catalog and not reader:
-                browser_check(chrome, None, rev, empty_catalog=True)
-            else:
-                browser_check(chrome, reader, rev)
-            if external or a.resume_with_reader:
+            if external or browser_coverage or a.resume_with_reader:
                 verify_catalog_smoke(reader)
             if a.resume_with_reader:
-                result["reader_coverage"] = PUBLISHED_READER
+                result["reader_coverage"] = PUBLISHED_READER_HTTP if browser_coverage else PUBLISHED_READER
             elif a.empty_catalog:
                 result["reader_coverage"] = EMPTY_CATALOG
-            result["phase"] = "browser_verified"
+                if browser_coverage:
+                    result.pop("reader_resume_work", None)
+            result["phase"] = final_phase
             store(journal, result)
             store(STATE / (active["id"] + ".json"), result)
             store(previous, result)
