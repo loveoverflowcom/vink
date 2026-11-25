@@ -93,6 +93,18 @@ async function focusEvidence(page, selector, check, name, {capture = true} = {})
   if (capture) await page.capture(name, { requiredTargets: [selector] });
 }
 
+async function setFeedAppearance(page, theme, text) {
+  await page.eval(`document.documentElement.dataset.theme = '${theme}';
+    if (${text} === 150) document.documentElement.dataset.text = '150';
+    else delete document.documentElement.dataset.text;
+    document.documentElement.style.fontSize = ${text} === 200 ? '200%' : '';
+    scrollTo(0, 0); document.fonts.ready.then(() => true)`);
+  await page.eval(FRAME);
+  // Measure both colors after the background transition has reached the selected theme.
+  await page.eval(`Promise.allSettled(document.querySelector('#explore').getAnimations({subtree: true})
+    .filter(animation => animation instanceof CSSTransition).map(animation => animation.finished)).then(() => true)`);
+}
+
 async function noFollowsLayout(page, check, textContrast) {
   await page.send('Page.bringToFront');
   const measure = `(() => {
@@ -124,11 +136,9 @@ async function noFollowsLayout(page, check, textContrast) {
   for (const width of [320, 390, 834]) {
     await page.viewport(width, 900);
     for (const theme of ['light', 'dark']) {
-      for (const text of [100, 200]) {
+      for (const text of [100, 150, 200]) {
         const name = `feed-355-r1-after-${width}-${theme}-${text}`;
-        await page.eval(`document.documentElement.dataset.theme = '${theme}';
-          document.documentElement.style.fontSize = '${text}%'; scrollTo(0, 0); document.fonts.ready.then(() => true)`);
-        await page.eval(FRAME);
+        await setFeedAppearance(page, theme, text);
         const got = await page.eval(measure);
         check(got.checked && got.overflow === 0 && got.centerDelta <= 1 && got.height >= 48 &&
           got.radius === '14px' && got.decoration === 'none' && got.title === 'Chưa theo dõi tác giả nào' &&
@@ -143,7 +153,10 @@ async function noFollowsLayout(page, check, textContrast) {
             action.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
         })()`);
         check(inView, `${name}: the full link can scroll clear of the bottom bar`);
-        await page.capture(name, {requiredTargets: [EMPTY_HEADING, DISCOVER_AUTHORS]});
+        if (text !== 150 || width === 320) {
+          await page.capture(name, {requiredTargets: [EMPTY_HEADING, DISCOVER_AUTHORS],
+            textScaleLane: text === 200 ? 'dom-override-geometry-only' : 'app-text-scale'});
+        }
         await textContrast(page, theme, 'following-empty', [EMPTY_HEADING, NO_FOLLOWS + ' p', DISCOVER_AUTHORS]);
         await page.eval(`${q(DISCOVER_AUTHORS)}.focus()`);
         await page.key('Tab', 8);
@@ -158,7 +171,7 @@ async function noFollowsLayout(page, check, textContrast) {
     nodes.some(node => node.role?.value === 'heading' && node.name?.value === 'Chưa theo dõi tác giả nào') &&
     nodes.some(node => node.role?.value === 'link' && node.name?.value === 'Khám phá tác giả'),
     'no-follows exposes the named region, current heading and native link in the accessibility tree');
-  await page.eval("document.documentElement.style.fontSize = ''; document.documentElement.dataset.theme = 'light'");
+  await setFeedAppearance(page, 'light', 100);
   await page.viewport(390, 900);
 }
 
@@ -194,12 +207,7 @@ async function layout(page, check, textContrast) {
     await page.viewport(width, 900);
     for (const theme of ['light', 'dark']) {
       for (const text of [100, 150, 200]) {
-        await page.eval(`document.documentElement.dataset.theme = '${theme}';
-          if (${text} === 150) document.documentElement.dataset.text = '150';
-          else delete document.documentElement.dataset.text;
-          document.documentElement.style.fontSize = ${text} === 200 ? '200%' : '';
-          scrollTo(0, 0); document.fonts.ready.then(() => true)`);
-        await page.eval(FRAME);
+        await setFeedAppearance(page, theme, text);
         const got = await page.eval(measure);
         const scaleLabel = text === 200 ? 'stress 200% (root font-size override)' : `app CSS ${text}%`;
         check(got.overflow === 0 && !got.nested && got.gap >= 16 && got.targets.length === 4 &&
@@ -231,7 +239,7 @@ async function layout(page, check, textContrast) {
       }
     }
   }
-  await page.eval("document.documentElement.style.fontSize = ''; delete document.documentElement.dataset.text; document.documentElement.dataset.theme = 'light'");
+  await setFeedAppearance(page, 'light', 100);
   await page.viewport(1280, 900);
 }
 
