@@ -80,7 +80,28 @@ export async function editorAutosave(page, { base, check, openPage, SaveGate, sl
   await page.goto(base + path); await page.waitFor(ready, 'reopen after acknowledged exit');
 
   const other = await openPage();
-  await other.goto(base + path); await other.waitFor(ready, 'second browser tab');
+  // Open a deep link before the tab has received its first private account scope.
+  let holdAccount;
+  const accountPaused = new Promise(resolve => { holdAccount = resolve; });
+  const interceptAccount = event => {
+    if (event.sessionId === other.sessionId && event.method === 'Fetch.requestPaused') {
+      holdAccount(event.params.requestId);
+    }
+  };
+  other.cdp.listeners.push(interceptAccount);
+  await other.send('Fetch.enable', {patterns: [{urlPattern: '*/api/v1/auth/session/account'}]});
+  try {
+    await other.goto(base + path);
+    const accountRequest = await Promise.race([
+      accountPaused, sleep(10000).then(() => { throw Error('account read did not start'); }),
+    ]);
+    check(await other.eval('!(' + ready + ')'), 'deep link waits for its first account before accepting edits');
+    await other.send('Fetch.continueRequest', { requestId: accountRequest });
+  } finally {
+    await other.send('Fetch.disable');
+    other.cdp.listeners = other.cdp.listeners.filter(event => event !== interceptAccount);
+  }
+  await other.waitFor(ready, 'second browser tab');
   await other.typeInBody(' Tab hai.'); await other.waitStatus('saved');
   await page.send('Page.bringToFront');
   await page.typeInBody(' Tab một.'); await page.waitStatus('conflict');
