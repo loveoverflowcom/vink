@@ -32,6 +32,39 @@ Format `<type>/<issue>-<slug>`; bỏ `<issue>-` khi không có issue.
   git worktree add --no-track -b fix/318-tag-save-after-422 ../vink-fix-318 origin/develop
   ```
 
+| Tình huống | Làm |
+| --- | --- |
+| Detached HEAD đã có commit của task | Neo nhánh mới tại HEAD hiện tại (`git switch -c <tên-mới>`), hoặc tiếp tục đúng head PR đã giao; không chuyển sang base làm mất dấu commit |
+| Bắt đầu task mới từ nhánh tích hợp hoặc detached HEAD không có thay đổi cần giữ | Tạo nhánh mới từ `origin/develop` vừa fetch với `--no-track` (worktree riêng nếu checkout đang có việc khác), trừ khi người dùng yêu cầu commit thẳng |
+| Tiền tố công cụ (`codex/`, `claude/`, `ai/`, `agent/`, `copilot/`, `cursor/`, `gemini/`, `antigravity/`…) hoặc sai format, **chưa có trên remote và chưa có PR** | `git branch -m <tên-mới>`, kể cả khi host đặt sẵn tên đó; báo tên mới |
+| Đã có trên remote hoặc đã có PR (gồm các nhánh `codex/*` cũ) | Giữ nguyên, ghi một dòng cảnh báo trong báo cáo. Chỉ đổi khi người dùng yêu cầu |
+| Người dùng chỉ định tên nhánh | Dùng đúng tên đó |
+
+Kiểm đúng ref bằng `git ls-remote --exit-code --heads origin "refs/heads/$branch"` (0: có, 2: không có) và
+`gh pr list --head <nhánh> --state all --json number`. Nếu không tra được remote/PR, giữ nguyên tên.
+Không dựa vào `@{u}`: nhánh tạo từ `origin/develop` thường track sẵn `origin/develop` dù chưa từng push.
+
+## Tra nguồn
+
+Tra theo thứ tự, chỉ dùng nguồn có thật:
+
+1. Hội thoại hiện tại: URL, số issue/PR, ID quyết định, đường dẫn tài liệu người dùng đưa.
+2. Bàn giao của task: issue đọc qua `gh issue view`, prompt `VINK_PROMPT_INPUT_V1` của
+   [vink-prompt](../../vink-prompt/SKILL.md), ngữ cảnh khôi phục bằng
+   [vink-recall](../../vink-recall/SKILL.md).
+3. Số issue trong tên nhánh (`fix/158-…` → `Refs: #158`), xác minh bằng
+   `gh issue view 158 --json number,title,state`.
+4. Trailer đã có trên nhánh: `git log --format='%(trailers:only,unfold)' origin/develop..HEAD`.
+5. Nguồn nằm trong chính diff: ID quyết định trong `decisions/`, PRD hay ADR mà thay đổi chạm
+   tới (tra revision bằng `cargo xtask decision query <ID>`), LayoutSpec, bundle bằng chứng của
+   [vink-ui-capture](../../vink-ui-capture/SKILL.md) hoặc link Drive từ
+   [vink-ui-evidence-drive](../../vink-ui-evidence-drive/SKILL.md).
+
+Cấm placeholder (`#TBD`, `https://drive.google.com/...`, `<link>`), số issue đoán, URL dựng từ
+tiêu đề, revision quyết định chưa tra. Không tìm thấy nguồn: mặc định **fast mode** — bỏ trailer
+và ghi "không có nguồn liên kết" trong báo cáo cuối. **Strict mode** chỉ khi người dùng yêu
+cầu — hỏi một câu ngắn trước khi commit.
+
 ## Commit subject
 
 `type(scope): mô tả` hoặc `type: mô tả` khi thay đổi cắt ngang nhiều owner. Thêm `!` sau type
@@ -133,3 +166,30 @@ docs(skills): sửa link verification guide trong vink-prompt
   Dùng permalink với `owner/repo` lấy từ `gh repo view --json nameWithOwner` và SHA đã push,
   hoặc code span.
 - Không dựng URL từ tiêu đề hay đoán ID tài liệu; không rút gọn URL thành `.../`.
+
+## Đọc lịch sử
+
+- Liệt kê issue/quyết định sau một đường dẫn:
+  `git log --format='%h %s%n%(trailers:key=Refs,key=Decision,key=Spec,valueonly)' -- <path>`.
+- Nếu body squash giữ trailer của từng commit bên trong danh sách `*`, Git có thể không
+  nhận chúng là trailer. Tìm bằng chuỗi cố định:
+  `git log origin/develop -F --grep='Decision: O-17'`, `git log origin/develop -F --grep='#328'`.
+- Số PR ở cuối subject (` (#332)`) mở được bằng `gh pr view 332`. Commit trước skill này dùng
+  `Refs #328` (không dấu `:`) và tiêu đề tiếng Việt không có `type(scope)`; tìm theo `#328`.
+- Trailer chỉ là con trỏ. Lý do và hành vi vẫn phải đọc từ nguồn được trỏ tới.
+
+## Kiểm máy (tuỳ chọn)
+
+```bash
+.agents/skills/vink-git-workflow/scripts/git-lint.sh branch            # nhánh hiện tại
+.agents/skills/vink-git-workflow/scripts/git-lint.sh message MSG_FILE  # commit message
+.agents/skills/vink-git-workflow/scripts/git-lint.sh title "fix(reader): …"
+```
+
+Người dùng có thể tự bật hook (commit-msg kiểm message; pre-push chặn tạo nhánh remote **mới**
+sai tên, không chặn nhánh cũ đã có) bằng
+`git config core.hooksPath .agents/skills/vink-git-workflow/scripts/hooks`. Cấu hình này dùng chung giữa các
+worktree, thay nơi Git tìm hook (không xoá hook cũ).
+Đường dẫn tương đối được tìm trong checkout đang thao tác; revision chưa chứa script thì
+Git không chạy các hook này. Agent không tự bật. Kiểm hồi quy cục bộ, không cần bật hook ở repo thật:
+`python3 .agents/skills/vink-git-workflow/scripts/test_git_lint.py`.

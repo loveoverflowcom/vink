@@ -26,7 +26,8 @@ packages/ui-system/shared/tokens.json (SSOT duy nhất, 0.8.0)
 packages/ui-system/leptos/tailwind/web.css     ──┐
                                                   ├─ xtask/src/tailwind.rs (tailwindcss 4.3.5)
 packages/ui-system/leptos/tailwind/preview.css ──┘
-  ├─ Web:     target/site/pkg/vink.css                (--minify khi --release)
+  ├─ CSR:     target/spa/_v/<git-sha>/pkg/vink.css
+  ├─ SSR:     target/site/pkg/vink.css                (--minify khi --release)
   └─ Preview: target/ui-preview/leptos/vink-preview.css
 ```
 
@@ -199,7 +200,7 @@ Cả `web.css` và `preview.css` dùng chung thứ tự layer:
      văn bản bản thảo (manuscript) của người dùng thành CSS inline, class name hay nguồn quét
      Tailwind.
    - Giữ nguyên ranh giới SSR / `LocalResource` cho dữ liệu riêng tư, không gọi browser DOM API trên
-     server (`#[cfg(target_arch = "wasm32")]` / `#[cfg(feature = "hydrate")]`), và giữ nguyên cấu
+     server (trong `vink-web`, dùng `#[cfg(feature = "browser")]` cho DOM dùng chung ở CSR và hydration), và giữ nguyên cấu
      trúc DOM/focus khi cập nhật class reactive để không làm mất IME composition hoặc vị trí cuộn.
 
 ## 6. Nguyên tắc tái sử dụng, CSS giữ lại và test hook
@@ -231,8 +232,8 @@ Cả `web.css` và `preview.css` dùng chung thứ tự layer:
   trình duyệt hay kích thước/hiệu năng thực.
 - `cargo xtask verify preview` kiểm Leptos preview render phía client, tương tác và fixture
   media hydration riêng trong headless Chrome (`target/ui-preview/leptos/captures/`).
-  `cargo xtask verify web --scenario NAME` kiểm Web theo kịch bản đã chọn, gồm SSR,
-  hydration và tương tác nếu kịch bản có các assertion đó (`target/verify-web/<run-id>/`).
+  `cargo xtask verify web --scenario NAME` kiểm Web theo kịch bản đã chọn. Chọn `standalone` cho CSR,
+  chọn kịch bản của hành trình cho SSR/hydration và tương tác (`target/verify-web/<run-id>/`).
   Xem [tooling local](../../../../docs/development/feature-map.md#tooling-local-có-phạm-vi-184).
   Kết luận thị giác cần mở ảnh PNG trước/sau cùng kịch bản. Input tổng hợp trong Chrome
   và phép đo geometry có phạm vi riêng với IME hệ điều hành và thiết bị thật.

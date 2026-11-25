@@ -37,7 +37,7 @@ branch names, commits and PRs follow [vink-git-workflow](vink-git-workflow/SKILL
 | Run a bounded spike or compare competing implementations | [vink-prototype](vink-prototype/SKILL.md) |
 | Domain, Axum API, PostgreSQL, discussion module, worker and verification | [vink-engineering](vink-engineering/SKILL.md) |
 | Revisions, audiences, moderation, publish intent, pointers and tombstone deletion | [vink-publication](vink-publication/SKILL.md) |
-| Leptos SSR/hydration, routes, browser state and JS editor | [vink-leptos-web](vink-leptos-web/SKILL.md) |
+| Leptos standalone CSR or SSR/hydration, routes, browser state and JS editor | [vink-leptos-web](vink-leptos-web/SKILL.md) |
 | Kotlin Compose Multiplatform `:ui`/`:patterns`, gestures, insets, focus, CMP dependency evaluation, Android/iOS diagnostic hosts and Desktop previews | [vink-cmp-mobile](vink-cmp-mobile/SKILL.md) |
 | Expressive M3 UX, interaction design (gesture/motion/focus/IME/reduced-motion), tokens, Vietnamese typography and accessibility | [vink-ui-design](vink-ui-design/SKILL.md) |
 | Describe and compare UI layout and interaction structure before generating or editing UI | [vink-layout-spec](vink-layout-spec/SKILL.md) |

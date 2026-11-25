@@ -57,7 +57,7 @@ chứa chúng.
 
 - **Tóm tắt** và **Thay đổi chính** gom theo luồng nghiệp vụ hoặc owner, không liệt kê từng file.
 - **Liên kết:** `Closes #N` chỉ khi PR hoàn tất mọi AC của issue; ngược lại `Refs #N`. Mỗi link
-  phải đến từ nguồn đã tra ([thứ tự tra](../SKILL.md#3-resolve-sources)). Không có nguồn thì
+  phải đến từ nguồn đã tra ([thứ tự tra](conventions.md#tra-nguồn)). Không có nguồn thì
   xoá mục.
 - **Kiểm chứng:** mỗi dòng là một lệnh hoặc kịch bản đã chạy thật trong phiên, với kết quả
   `PASS`/`FAIL`/`NOT_RUN`/`UNSUPPORTED`, SHA source đã chạy và boundary (pure, PostgreSQL thật,
@@ -74,24 +74,23 @@ chứa chúng.
 
 ## Draft hay ready
 
-Mặc định mở `--draft`. Nếu được giao mở ready, vẫn giữ draft và nêu lý do khi:
+Khi tạo PR mới, dùng trạng thái người dùng yêu cầu. Với ready, mở bằng `gh pr create`
+và bỏ cờ `--draft`. Nếu người dùng chỉ yêu cầu tạo PR, thêm `--draft`. Với PR đang có,
+giữ trạng thái hiện tại trừ khi được giao chuyển ready (`gh pr ready <n>`) hoặc về draft
+(`gh pr ready <n> --undo`).
 
-- một khẳng định ở tiêu đề hoặc Tóm tắt chưa có bằng chứng (check cần cho khẳng định đó là
-  `NOT_RUN` hoặc `FAIL`);
-- còn câu hỏi sản phẩm hoặc thiết kế mở cần chủ sản phẩm chốt;
-- thay đổi UI cần người xem ảnh/video trước khi review.
-
-Boundary nằm ngoài phạm vi đã nêu rõ (thiết bị thật, native host) và được ghi `NOT_RUN` trong
-Kiểm chứng không tự cản yêu cầu chuyển ready.
+Giới hạn khẳng định ở tiêu đề và Tóm tắt theo bằng chứng hiện có. Ghi phép kiểm còn thiếu
+hoặc thất bại vào **Kiểm chứng**. Nếu cần người xem ảnh UI hoặc còn câu hỏi thiết kế,
+đưa ảnh và câu hỏi cụ thể vào **Cần review thêm**, kể cả khi PR được giao mở ready.
 
 ## Lệnh tạo và kiểm
 
+Ví dụ mở ready với base đã giao và body Markdown trong tệp. Thêm `--draft` khi mở draft.
+
 ```bash
 gh label list --limit 100
-gh pr create --draft --base develop --head "$branch" --title "$title" --body-file - <<'EOF'
-<body>
-EOF
-gh pr view --json number,url,headRefOid,isDraft
+gh pr create --base "$base" --head "$branch" --title "$title" --body-file "$body_file"
+gh pr view --json number,url,baseRefName,headRefName,headRefOid,isDraft
 git rev-parse HEAD
 ```
 
@@ -106,13 +105,13 @@ Sau vòng review đổi phạm vi, thiết kế hoặc thêm commit đáng kể:
 
 1. Đọc lại cả khoảng `origin/develop..HEAD`.
 2. Viết lại Tóm tắt, Thay đổi chính và Kiểm chứng theo HEAD mới; giữ kết quả cũ kèm SHA đã chạy.
-3. `gh pr edit <n> --title '<tiêu đề>' --body-file - <<'EOF'` … `EOF`.
-4. Chỉ đổi draft/ready (`gh pr ready <n>`) khi điều kiện draft ở trên đã hết.
+3. Cập nhật bằng `gh pr edit <n> --title "$title" --body-file "$body_file"`.
 
 Bình luận trả lời review, gắn reviewer hay merge là hành động riêng; làm khi được giao.
 
 ## Khi squash
 
-Người merge giữ tiêu đề PR làm subject. Squash mặc định nối mọi commit message thành danh sách;
+Với cấu hình `COMMIT_OR_PR_TITLE`, squash mặc định dùng subject commit cho PR một commit
+và tiêu đề PR cho PR nhiều commit. Body mặc định nối các commit message. Người merge
 có thể gom các dòng `Refs:`/`Decision:` về đoạn cuối để git đọc được trailer trên `develop`.
 Agent không merge khi chưa được giao.

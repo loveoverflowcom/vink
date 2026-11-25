@@ -5,80 +5,34 @@ description: Deliver a bounded Vink feature, issue, bug fix or continuation from
 
 # Vink work item
 
-Start from [AGENTS.md](../../../AGENTS.md), the user's task, linked issue when relevant,
-the nearest sources in [docs/README.md](../../../docs/README.md) and the implemented layout,
-commands and limits in [docs/development](../../../docs/development/README.md). A formal work
-queue or GitHub Project is not a prerequisite for doing useful work.
+## Define the result
 
-Use the [feature map](../../../docs/development/feature-map.md) to find a journey's entrypoints
-and existing assertions, then confirm them in source. For an unclear mechanism, rationale or
-prior handoff, select `vink-how`, `vink-why` or `vink-recall` from the
-[skill index](../README.md); a small implementation does not need all three.
+Start with the user's request and any linked issue. Describe who takes the action, what they
+should observe and which failure the change must prevent. For a continuation, retain the
+integration owner, dependencies and acceptance criteria from the [task contract](../vink-prompt/references/prompt-template.md).
+Check status, branch and starting SHA in the assigned worktree. [Repository workflow](../../../AGENTS.md#work-and-verification)
 
-## Resolve scope and baseline
+## Change the owning module
 
-1. Trace the requested journey or actual caller to its observable result. A sentence with the
-   affected owner, AC and check suffices for a small fix. For multi-PR work, retain the integration
-   owner, dependencies, closure scenario and any delivery constraints from the
-   [task contract](../vink-prompt/references/prompt-template.md). Route prompt-only requests to
-   [vink-prompt](../vink-prompt/SKILL.md).
-2. Read current code/manifests and decision status. Resolve decisions the task depends on through
-   the [registry](../../../decisions/README.md) for migrated IDs and the PRD/ADR for the rest.
-   Determine what exists, what is proposed and what prerequisite actually affects this slice.
-   Extend the existing skeleton (`apps/vink-web`, `services/vink-app`, `xtask`) rather than
-   scaffolding a competing one.
-   A merged PR is not proof of runtime acceptance; an absent database is not a reason to stop
-   independent pure-code work.
-3. Inspect Git status and pin the starting branch/SHA and requested base. Use the task worktree
-   and branch rules in [AGENTS.md](../../../AGENTS.md#work-and-verification).
-4. Continue with reasonable reversible choices. If an unresolved product/security decision
-   (`OPEN` items resolved in `O-01..O-19`, or a change to authority, public visibility, lifecycle or data
-   meaning) affects correctness, complete independent work and use
-   [vink-shape](../vink-shape/SKILL.md) to classify and ask only the blocking product questions.
-   A small bug fix or clear technical slice proceeds directly without shaping. A prototype
-   records provisional assumptions; it cannot claim the production acceptance it lacks.
+Follow the entrypoint in the [feature map](../../../docs/development/feature-map.md) through its
+caller, module and existing assertions. Confirm the behavior in source. For a bug, reproduce it
+at the affected boundary, then fix the owner. Use the [skill index](../README.md) for guidance
+specific to that module.
 
-Do not require a new issue, planning hierarchy or accepted architecture for a small documentation
-task. Do not silently select an auth provider, automatic moderation policy or withdrawal SLA
-while the corresponding D decision is open.
+Resolve decisions the task depends on in the [registry](../../../decisions/README.md) and the
+owning PRD or ADR. Make reversible implementation choices within scope. If a missing rule changes
+authority, visibility or data meaning, use [vink-shape](../vink-shape/SKILL.md) for that question
+and continue independent work. If the implementation changes a documented behavior or reveals
+drift, use [vink-specify](../vink-specify/SKILL.md) to update the owning record.
 
-## Implement with the relevant owners
+## Verify the result
 
-| Work | Guidance |
-| --- | --- |
-| Clarify product scope, open rules in `O-01..O-19`, owner questions | [vink-shape](../vink-shape/SKILL.md) (only when rules are unclear/open) |
-| Write or reconcile specs, PRD, decision records, registries | [vink-specify](../vink-specify/SKILL.md) |
-| Domain, API, PostgreSQL, worker, integration | [vink-engineering](../vink-engineering/SKILL.md) |
-| Revisions, audiences, moderation, publish/tombstone | [vink-publication](../vink-publication/SKILL.md) |
-| State/guard/race impact or a useful Quint model | [vink-behavior](../vink-behavior/SKILL.md) |
-| Leptos SSR/hydration/editor/browser state | [vink-leptos-web](../vink-leptos-web/SKILL.md) |
-| Visual design, reading/writing UX, accessibility | [vink-ui-design](../vink-ui-design/SKILL.md) |
-| Existing diff review | [vink-code-review](../vink-code-review/SKILL.md) |
+Choose the smallest check that exercises the user's entrypoint and would catch the failure.
+Use real PostgreSQL for transaction guarantees, a browser for editor or hydration behavior,
+and static checks for skill metadata and documentation links. Fix in-scope failures and check
+the final diff. When a prerequisite is missing, run the independent checks and identify the
+specific acceptance criterion still awaiting evidence. [Verification guide](../vink-engineering/references/verification.md)
 
-Read only the references needed for the slice. Keep a claim → failure → owner → check table
-when several durable behaviors change; a sentence is enough for a small edit. For a bug,
-reproduce the behavior and fix its owning layer. For documents, preserve source intent,
-status and provenance while updating links and placement.
-
-## Verify and finish the authorized work
-
-Use [the verification guide](../vink-engineering/references/verification.md) to select and report
-checks on the final diff. Fix in-scope defects. A distinct outcome or explicitly accepted
-limitation can be deferred with its owner, impact and dependency. If a prerequisite is missing,
-complete independently verifiable work and name the remaining check.
-
-Update the owning documentation via [vink-specify](../vink-specify/SKILL.md) if the change
-implements a proposed module, command or behavior, or reveals drift between PRD, ADRs and
-registries (including the affected feature-map entry when the journey or coverage changes).
-Keep the four status dimensions (product decision, architecture decision, implementation level,
-evidence) distinct. Report the scope that this slice completes. Preserve the PRD and existing
-issue-tracking convention.
-
-Use permission already granted in the conversation. When committing is requested, inspect the
-staged diff, stage explicit task paths, commit with the branch, message, trailer and PR rules of
-[vink-git-workflow](../vink-git-workflow/SKILL.md) and verify the resulting commit/status. Push or PR creation follows the user's requested scope; no skill adds a new
-confirmation step for an action already authorized. Posting comments, publishing a site or
-calling a paid provider is not implied by a local implementation request.
-
-Use the [shared handoff](../vink-engineering/references/verification.md#evidence-handoff-and-provenance)
-once. Report the commit when relevant and the next concrete prerequisite for deferred acceptance.
+Report the observable result, command, source SHA, boundary and material gaps once. For a
+requested commit, push or PR, follow [vink-git-workflow](../vink-git-workflow/SKILL.md)
+within the authorization already given.

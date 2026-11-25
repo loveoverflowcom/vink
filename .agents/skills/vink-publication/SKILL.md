@@ -5,8 +5,8 @@ description: Implement or review Vink literary revisions, audiences, moderation 
 
 # Vink publication and moderation
 
-Read [requirements](../../../prd/requirements.md): WR-03, PUB-01–PUB-05, AUD-01/02, MOD-01–MOD-10,
-COM-01–COM-04 and COM-09/10 (`ED-02` magazine curation and `WR-04` multi-chapter works are
+Read [requirements](../../../prd/requirements.md): WR-03, PUB-01–PUB-07, AUD-01/02, MOD-01–MOD-15,
+COM-01–COM-04 and COM-09–COM-11 (`ED-02` magazine curation and `WR-04` multi-chapter works are
 `DEFERRED` since 10/11/2026). Resolve the relevant USER and O IDs in the [TOML registry](../../../decisions/README.md). Read the
 [publication/moderation target](../../../docs/architecture/publication-moderation.md),
 [decision log](../../../docs/architecture/decisions.md) and the owning registries:
@@ -16,14 +16,12 @@ COM-01–COM-04 and COM-09/10 (`ED-02` magazine curation and `WR-04` multi-chapt
 [publication-runtime](../../../docs/development/publication-runtime.md).
 Use [vink-engineering](../vink-engineering/SKILL.md) for boundaries and verification.
 
-When a task introduces or changes rules for audience, moderation, deletion/tombstone, restoration
-or actor authority that are still `OPEN` (`O-04`, `O-08..O-10`, `O-17..O-19`, or a second review of an admin conclusion in `O-15`), route through
-[vink-shape](../vink-shape/SKILL.md) first; when a decision or implementation changes current
-contracts or registries, update the owning files via [vink-specify](../vink-specify/SKILL.md).
-Keep the four status dimensions distinct: product decision (`PRODUCT_CONFIRMED` / `DEFERRED` /
-`OPEN`), architecture status, implementation level (`core` / `persistence-api` / `worker-provider`
-/ `web` / `cmp`), and verification evidence. A safe baseline in pure core (such as `O-04` on
-pending comments at deletion or `O-17` on previous URLs) does not turn an `OPEN` rule into `PRODUCT_CONFIRMED`.
+Resolve each decision ID at the task checkout before sending a question to the owner. Use
+[vink-shape](../vink-shape/SKILL.md) for an unresolved rule that changes the requested behavior.
+Use [vink-specify](../vink-specify/SKILL.md) when the change affects a contract or registry.
+Report the product decision, architecture status, implementation level and verification evidence
+separately. For example, the pure-core behavior for pending comments at deletion is a baseline
+for `O-04`. Check its current revision before treating that behavior as a product requirement.
 
 ## Keep independent facts independent
 
@@ -40,14 +38,14 @@ Preserve the canonical separation examples:
   (`AUD-02`, `PUB-01`, `INV-01`).
 - Saving a private draft or snapshot (`SaveSnapshot`) never creates an evaluation job or sends text
   to an external provider (`MOD-05`, `INV-08`).
-- `Publication::record_review` requires the `WorkModeration` capability witness in domain code AND
-  a commit-time database guard when persisted.
+- `Publication::record_review` accepts a `ReviewedRevision` from the moderation owner. Check actor
+  authority and the decision version again in the transaction that writes the result.
 
 ## Decide and commit
 
-1. Trace public-read and mutation entrypoints across SSR, HTTP API v1, discovery feeds and
-   conditional reads (`READ-01` `If-None-Match` must answer `404`, never `304`, after a work leaves
-   public visibility).
+1. Trace the public pointer, Reader projection, discovery results and cached reads separately.
+   On `GET /api/v1/works/{id}/publication`, check access before comparing the ETag. With the
+   pointer withdrawn, even a matching old validator gets `404` (`READ-01`).
 2. Express eligibility as a pure deterministic decision over explicit restored facts
    (`Publication::restore`, `WorkModeration::restore`). Return actionable blockers; UI previews
    never grant authority.
@@ -68,32 +66,33 @@ deleted/removed work (`PUB-03`, `INV-07`).
 
 Follow `MOD-01` and `MOD-06..10`: literary quality is not a posting permission; model output is
 untrusted data validated against a strict schema. Timeout, provider error or invalid output closes
-the job as retryable or `NeedsAdmin` without publishing (`MOD-08`). Do not promise an SLA, staffed
-queue or connected notification channel while appeals (`MOD-10`) and real providers are unimplemented.
+the job as retryable or `NeedsAdmin` without publishing (`MOD-08`).
 
-## Discussion access and deletion lifecycle (PUB-04, PUB-05, ADM-07, ADM-08)
+An author can file a work appeal against an evaluator or moderator rejection through the API.
+The appeal binds the exact revision and decision version. An admin can uphold or reverse it. Recheck
+current publish intent before restoring a pointer. Recording an appeal and delivering a
+notification are separate events. See the [appeals contract and Web flows](../../../docs/development/moderation-runtime.md#6-phản-đối-quyết-định-tác-phẩm-mod-10).
 
-Vink owns two-tier discussion in PostgreSQL ([ADR](../../../docs/architecture/discussion-ownership.md));
-there is no Discourse integration or remote topic sync. Discussion visibility composes with the
-work's `WorkAccessPlan` (`PublicBody`, `AuthorTombstone`, `AuthorHidden`, `Unavailable`):
+## Reader and discussion access
 
-- **Case A — Author deletes a work that was public (`PUB-04`):** `DeletionProvenance::PublicTombstone`
-  removes the work from discovery/search/hashtags/rankings and hides title/body/metadata, while the
-  old URL serves the replacement notice (“Nội dung đã được tác giả xoá”) and keeps previously
-  approved comments readable. Under `O-03@r2` (`PRODUCT_CONFIRMED`), new comments and replies are
-  blocked (`TombstoneReadOnly`), pending moderation runs its course, while comment writers may still
-  remove their own comments.
-- **Case B — Author switches a previously public work to “Chỉ mình tôi” (`ADM-07`, `ADM-08`, `PUB-07`, `COM-11`):**
-  In pure core, `PublicationFacts::hidden` serves `WorkAccessPlan::AuthorHidden` (“Nội dung đã được ẩn”)
-  and keeps eligible comments readable (`HiddenReadOnly` under `O-03@r2`, blocking new comments/replies);
-  subsequent deletion from this hidden page leaves `DeletionProvenance::PublicTombstone` with comments
-  intact (`O-05@r2` `PRODUCT_CONFIRMED`). Since `#159` the hidden pointer is stored and loaded, but no
-  route or SSR serves the hidden page yet, so after `POST .../set-private` the old URL still answers not found (`404`).
-  The review-withdrawn page of `O-17@r2` (moderator/admin rejected the public revision) is served by
-  `GET /api/v1/works/{id}/reader` and the Web reader ([moderation-runtime](../../../docs/development/moderation-runtime.md)).
-- **Case C (Admin/moderation removal) and Case D (Never public, then deleted):**
-  project `WorkAccessPlan::Unavailable` (`404`); neither the work nor its discussion thread is
-  publicly readable (`PUB-05`). Comments are never cascade-deleted when a work changes state.
+Use the work's `WorkAccessPlan` and the [discussion visibility rules](../../../docs/architecture/discussion-ownership.md)
+together. Check the actor, whether the work was ever public and what happened to its public revision.
+
+- **Author switches a published work to private.** `GET /api/v1/works/{id}/reader` returns
+  the `hidden` projection. The old Reader page serves the hidden notice and eligible comments
+  (HTTP 200, `no-store`, `noindex` on SSR). Omit the author's name, title, body and tags.
+  Comment writers may remove their own comments. Block new comments and replies.
+- **Moderator or admin rejects the public revision.** Apply [O-17@r2](../../../decisions/signoffs/O-17.r2.toml)
+  (`PRODUCT_CONFIRMED`). The Reader keeps the author's name and eligible comments with the
+  review-withdrawn notice. Withhold the rejected text and metadata.
+- **Deletion and removal.** In core, author deletion of a public or author-hidden work
+  keeps a read-only tombstone (`PUB-04`, `O-03@r2`, `O-05@r2`). Admin removal of the whole
+  work and deletion of a never-public work make the old URL and thread unavailable (`PUB-05`).
+  Preserve comment records across work lifecycle changes.
+
+Check the [runtime contract for the old URL](../../../docs/development/moderation-runtime.md#5-trang-ở-url-cũ-o-17r2)
+for endpoint responses, and [publication core](../../../docs/development/publication-core.md) for
+which deletion paths have adapters.
 
 ## Focused acceptance
 

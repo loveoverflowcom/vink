@@ -1,42 +1,34 @@
 ---
 name: vink-leptos-web
-description: Build or change Vink Leptos SSR/hydration, routes, resources, actions, browser state and the JavaScript writing editor. Use for Vietnamese input, autosave, revision conflicts and public/private rendering; discover actual package commands first.
+description: Build or change Vink Leptos routes, browser state and the writing editor in standalone CSR or SSR/hydration. Use for public and private rendering, Vietnamese input, autosave and revision conflicts.
 ---
 
 # Vink Leptos web
 
-Read [AGENTS.md](../../../AGENTS.md), the relevant
-[requirements](../../../prd/requirements.md) and
-[frontend/editor proposal](../../../docs/architecture/tech-stack.md).
-Use [vink-ui-design](../vink-ui-design/SKILL.md) for visual criteria and
-[vink-engineering](../vink-engineering/SKILL.md) for durable decisions.
-For #504 the standalone target mounts the same Leptos router in the browser. See the [CSR build, API boundary and rollout](../../../docs/development/edge-frontend.md). The deployed SSR path still owns legacy qualification.
+## Choose the rendering path
 
-## The implemented web app
+Trace the affected route through [the shared router](../../../apps/vink-web/src/lib.rs) and
+identify how its first document and data arrive.
+
+| Path | Where the route gets its data | What to check |
+| --- | --- | --- |
+| Standalone CSR (`csr`, `mount()`) | A static document boots the router. The browser reads same-origin `/api/v1` from the API-only App. | Direct entry, loading or API failure, then the visible result after mount. Use `cargo xtask build spa` for the bundle and explicitly select the `standalone` browser scenario. [Build, API boundary and rollout](../../../docs/development/edge-frontend.md) |
+| SSR and hydration (`ssr`, then `hydrate`) | Axum provides `PublicReads` and `SiteOrigin`. Public routes using `SsrMode::Async` can set status, content and metadata in the initial HTML. The browser hydrates that DOM and makes later reads over HTTP. | Inspect the first response when changing server status, headers, metadata or no-JS content. Exercise hydration and client navigation for interactive changes. [Build and scenario catalog](../../../docs/development/scoped-workflows.md#scenario-web-và-setup) |
+
+A shared route, component or browser adapter may affect both paths. Put shared DOM and fetch
+code behind `feature = "browser"`, server code behind `feature = "ssr"`, and mode-specific
+boot code behind `csr` or `hydrate`. Keep the featureless build working. Match the APIs to
+the versions in [the manifest](../../../apps/vink-web/Cargo.toml) and the workspace lockfile.
+
+## Find the owner
 
 | Concern | Owner |
 | --- | --- |
-| Routes, standalone `mount()` and legacy `hydrate()`, adaptive shell | `apps/vink-web/src/lib.rs` for routing and boot, `src/shell.rs` for the app shell. See the [owner map](../vink-ui-design/references/source-map.md#owner-map-cho-bàn-giao-code) for appearance and shared navigation. |
-| Pages: home, reader, not-found; Bàn viết | `src/pages/mod.rs`, `src/pages/desk.rs` |
-| The web app's own API v1 types and error classification | `src/contract.rs` (checked against the provider fixtures) |
-| Data access: SSR through `server::PublicReads`, browser through `/api/v1` | `src/api.rs`, `src/server.rs` |
-| Save-state and leave-intent machines (pure, unit-tested) | `src/desk_state.rs` |
-| Canonical document (`default` & `markdown` `#255`/`#263`, Reader `paragraphs`, `DocumentView`) | `src/document.rs`, `src/document/markdown.rs` |
-| CodeMirror 6 body editor: wasm-bindgen bridge, `BodySource::snapshot` | `src/editor.rs`; runtime in `editor/` (TypeScript, pinned npm, built to `/pkg/vink-editor.js`) |
-| Shared leave guard for links, back/forward and programmatic exits | `src/navigation.rs` (`NavigationGuard`) |
-| Token values (generated `tokens.css`, `tailwind-theme.css`, typed Rust); theme scope types | `packages/ui-system/shared/tokens.json` → `cargo xtask ui-tokens`; crate `vink-ui` (`packages/ui-system/leptos`) |
-| Styling, Tailwind v4 compiler & token guard | `packages/ui-system/leptos/tailwind/{package.json,web.css,preview.css}` + `xtask/src/tailwind.rs` compile generated tokens, legacy CSS (`vink-ui.css`, `patterns.css`, `vink.css` / `preview.css`) and allowlisted utilities into `/pkg/vink.css` / `vink-preview.css`; `xtask/src/ui_qualification.rs` enforces Vink tokens across CSS and Rust UI sources; `assets/fonts` → `/pkg/fonts/`. Canonical rules: [Tailwind v4 + Leptos 0.8](references/tailwind.md) |
-| Browser smoke over the DevTools Protocol | `e2e/browser-smoke.mjs` (run by `verify web`) |
-
-Leptos is pinned at 0.8 (see `Cargo.lock`, currently `0.8.22`); check that version's docs when unsure of an API. For Tailwind v4 styling, `@layer` coexistence, `source(none)` allowlists, token utilities and Leptos 0.8 `class:` / tuple syntax, follow [references/tailwind.md](references/tailwind.md).
-Build `csr`, `hydrate` and `ssr` separately. Gate DOM/fetch adapters with `#[cfg(feature = "browser")]`, server-only code with `#[cfg(feature = "ssr")]`, and keep
-the build without either feature compiling. `vink-app` provides `PublicReads` and `SiteOrigin`
-through context; this crate never imports the service. Public pages use `Resource` with
-`SsrMode::Async` so status and metadata are final before streaming; account-scoped pages use
-`LocalResource`, which stays pending on the server, so private data never enters HTML or the
-hydration payload. `Resource` needs `Send` futures: wrap browser fetches in `SendWrapper`. Build
-commands (`cargo xtask build`, wasm-bindgen version pin) are in
-[docs/development](../../../docs/development/README.md).
+| Route, shell and page | `apps/vink-web/src/lib.rs`, `src/shell.rs`, `src/pages/` |
+| Public reads, browser requests and response types | `src/api.rs`, `src/server.rs`, `src/contract.rs`. Reuse the browser fetch wrapper for futures used by a `Resource`. |
+| Draft save state, tags and leave intent | `src/desk_state.rs`, `src/tag_state.rs`, `src/navigation.rs` |
+| Canonical document and CodeMirror 6 bridge | `src/document.rs`, `src/document/markdown.rs`, `src/editor.rs` and the TypeScript runtime under `apps/vink-web/editor/` |
+| Styling and shared components | `packages/ui-system/shared/tokens.json`, `vink-ui` and `vink-patterns`. [Component owners](../vink-ui-design/references/source-map.md#owner-map-cho-bàn-giao-code) · [Tailwind syntax, tokens and cascade](references/tailwind.md) |
 
 ## Place the change
 
@@ -61,16 +53,17 @@ across re-renders.
 
 Keep presentation separate from application and transport: components render typed states
 and dispatch intents; resources/actions coordinate requests; adapters own URLs, DTOs and
-error classification. SSR can call application services directly through the composition root.
+error classification. Use the App-provided context for SSR reads.
 Browser code must not import server persistence or secrets; use actual feature/build boundaries
 for server-only and DOM-only code. Share transport-independent rules only where there is a
 real consumer and no private data crosses into the browser build.
 
 ## Public and private surfaces
 
-- Public reader HTML, canonical URL and metadata come from an authorized publication snapshot.
-  Hydration and later API reloads must enforce the same access policy.
-- Private drafts, staff fields and credentials cannot appear in public HTML, serialized
+- Render the Reader from its authorized projection, including replacement notices. Apply its
+  access rules to SSR metadata, CSR data, later reads and cached content.
+- Use browser-only reads (such as `LocalResource`) for account-scoped data.
+  Private drafts, staff fields and credentials cannot appear in public HTML, serialized
   hydration state, error pages, shared caches or browser configuration. Sanitize document
   rendering and imported rich text; do not trust editor-generated HTML as safe server output.
 - Public content caches need revision identity plus current access/invalidation policy. Keep
@@ -82,15 +75,16 @@ real consumer and no private data crosses into the browser build.
 
 ## Editor and async state
 
-Treat WR-01–WR-03 and S-01 as the acceptance boundary. The desk edits the exact source of a canonical
-`default` or `markdown` document (`{format, source}`, #255/#263) on one CodeMirror 6 `EditorView` with manual save. Reconfiguring the Markdown extension keeps the
-buffer and selection. A server-confirmed format conversion applies the converted source and moves
-the cursor to the beginning. S-01 still needs named OS IME and device evidence. Reuse `EditorSession`
-for autosave, and
-read the body only through `BodySource::snapshot`. New exits from the editor (rail, profile,
-menus) go through `NavigationGuard` so `LeaveGuard` can hold them. Choose the canonical
-document/schema version through the scoped design; derived HTML/text must not become competing
-sources.
+The desk edits the canonical `{format, source}` document (`default` or `markdown`) in one
+CodeMirror 6 `EditorView`. Preserve buffer and selection when reconfiguring the Markdown
+extension. A server-confirmed format conversion applies the converted source and moves the
+cursor to the beginning.
+
+For a new draft, the author triggers the first “Gửi”. Subsequent text edits can autosave.
+Tags have a separate version and require an explicit save. Use `EditorSession` and read
+the body through `BodySource::snapshot`. Route exits through `NavigationGuard` so the
+author can handle pending edits before leaving. [Editor data and save behavior](../../../docs/development/public-read-freshness.md#luồng-và-lifetime-hiện-hành)
+
 The JS editor bridge owns mount, subscriptions, selection and teardown. Preserve the editor
 instance across ordinary reactive updates; dispose listeners and timers when its owner ends.
 Use stable domain IDs for dynamic rows instead of array positions.
@@ -102,7 +96,7 @@ server echo. Validate schema and sanitize at the server boundary as well as in t
 Autosave distinguishes local edits, saving, server-confirmed saved, failed, conflict and
 uncertain outcome. Bind a request to account, document, submitted draft version and request ID.
 A late acknowledgment of version 7 cannot mark newly typed version 8 as saved. A conflict or
-timeout preserves the user's text and offers the relevant retry/reconcile/export action.
+timeout preserves the user's text while the author reconciles versions or retries a safe write.
 Two tabs cannot silently overwrite one another. A local recovery copy is not server persistence;
 if implemented, scope it to the account and consider shared-device cleanup.
 
@@ -113,12 +107,19 @@ an unkeyed write with an unknown remote result requires reconciliation, not blin
 
 ## Verification and handoff
 
-Use the [verification guide](../vink-engineering/references/verification.md). `verify web`
-covers server HTML/privacy, hydration, client navigation, save/reload/conflict and restart
-with programmatic input; extend `e2e/browser-smoke.mjs` for new interactions. Select relevant
-checks for server HTML/privacy, real browser hydration/navigation, resource races and editor
-save/reload/conflicts. Test representative Vietnamese poetry/prose, Word/Docs paste, undo and
-mobile text scaling. Distinguish simulated input from a real named OS IME run.
+Find the journey in the [scenario catalog](../../../docs/development/scoped-workflows.md#scenario-web-và-setup).
+Follow the selected phase through [the dispatcher](../../../apps/vink-web/e2e/browser-smoke.mjs)
+to the function that exercises the behavior. Extend that assertion alongside its fixture.
+For example, the `editor` scenario calls [the autosave tests](../../../apps/vink-web/e2e/editor-autosave.mjs),
+and `standalone` calls [the CSR journey](../../../apps/vink-web/e2e/auth-password-smoke.mjs).
+Run `cargo xtask verify web --scenario <name>` for the affected path. If a shared change
+affects both renderers, select `standalone` and the relevant SSR scenario. The default Web
+suite omits `standalone`.
+
+For editor changes (WR-01–WR-03, S-01), exercise the relevant failure with Vietnamese prose
+or verse. Check composition, paste, undo, late save responses or leaving with unsaved text as
+the change requires. Report synthetic Chrome input and named OS IME runs separately.
+[Verification guide](../vink-engineering/references/verification.md)
 
 For visual changes, drive and open captures of relevant states with viewport/theme/locale;
 inspect focus and keyboard separately. A string render or screenshot does not prove editor
