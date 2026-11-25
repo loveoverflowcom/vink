@@ -1,0 +1,56 @@
+version = 1
+id = "VDR-WORK-VIEWS"
+revision = 2
+
+[base]
+revision = 1
+sha256 = "cfb789cc2c5f7a99a2f8c8e24f0057815d736d7b02cdacde50d327c8a525e008"
+
+[content]
+kind = "product"
+domain = "work-views"
+title = "Lượt xem tác phẩm: ngưỡng hiển thị 5 giây, OQ-1..4, UX-01..10 và D-01/D-02 Bàn viết"
+resolution = """
+Delta ngày 25/11/2026 trên VDR-WORK-VIEWS@r1 cho Epic #323 và #340/#343/#514:
+- VIEW-01 / P-01 (ngưỡng 5 giây): thân bài công khai đã hiện sau thao tác mở hợp lệ và hiển thị ở tab foreground/visible tối thiểu theo ngưỡng cấu hình dùng chung mặc định 5.000 ms (đồng hồ monotonic, cộng dồn trong cùng lần mở, tạm dừng khi ẩn, tiếp tục khi hiện, hủy/reset khi rời/unmount/đổi bài/đổi revision thực sự/bài mất công khai/đổi authority phiên đọc; đúng ngưỡng phát đúng một ứng viên, dưới ngưỡng không gửi; không lấy thời gian tải, prefetch/prerender, SSR HTML, hydration, re-render hay refresh nền; không yêu cầu đọc hết/cuộn; không cộng dồn giữa nhiều lần mở hay nhiều tab; refresh là lần mở mới và vẫn chịu dedup 24h).
+- Nguồn cấu hình ngưỡng: một nguồn cấu hình/constant typed duration dùng chung (WORK_VIEW_MIN_VISIBLE_MS = 5000 mặc định trong packages/work-view-policy) điều khiển nhất quán timer Reader, giải thích UX và test; không hardcode 5 ở nhiều nơi, không tách service/DB riêng, không lưu lịch sử đọc.
+- P-02..P-11 giữ nguyên r1: link nội bộ/direct/chia sẻ/tab mới, JS browser; không prefetch/bot preview; dedup trượt 24h theo (WorkId, reader); khách dùng token first-party 24h cố định không gia hạn; loại tự xem khi phiên là tác giả; tích lũy suốt đời WorkId; chỉ tác giả thấy ở Bàn viết; không backfill; kỳ vọng ~1 phút không SLA; lưu tổng/tác phẩm + tổng theo ngày + mã chống trùng/biên nhận băm có hạn; không IP thô/fingerprint/danh sách người xem.
+- OQ-1 = A: giữ số Lượt xem cũ khi bài riêng tư/rút nếu còn quyền; giữ nguyên luật ẩn Thấm và Nhận xét hiện hành.
+- OQ-2: PR đầu tiên triển khai route xóa tác phẩm hoặc xóa tài khoản phải xóa dữ liệu lượt xem liên quan; không tự mở phạm vi xóa trong Epic #323 và không quyết định O-08 purge vật lý thay owner.
+- OQ-3A: không tự động đếm khi trang ẩn/rút chuyển sang công khai do cập nhật nền; cần thao tác mở mới. OQ-3B: tab mở nền không đếm tới khi được đưa ra foreground, thân bài hiện và đủ ngưỡng; thời gian ẩn không tính.
+- OQ-4: khi admin gỡ cả bài (PUB-05 C), tác giả vẫn giữ số Lượt xem cũ riêng tư khi còn quyền xem và số không tăng; xóa tác phẩm thì xóa dữ liệu theo OQ-2.
+- UX-01..10 (cục bộ Epic #323): icon mắt Material Symbols, cùng hàng số liệu Bàn viết, thứ tự cố định Thấm → Nhận xét → Lượt xem, số Việt đầy đủ (1.234), trung tính R4/Tailwind, counted=0 khác “—” kèm lý do, giải thích chạm/bàn phím/screen reader theo nguồn cấu hình ngưỡng + 24h + khách + tự xem/no-JS, “Tính từ dd/mm/yyyy” theo Asia/Ho_Chi_Minh khi counted_since != null, cập nhật khi tải lại/làm mới, không chart/realtime/poll/thông báo/ranking/CMP hoặc số công khai.
+- D-01 / D-02 Bàn viết và 2 PR: hàng tác phẩm Bàn viết cố định thứ tự Thấm → Nhận xét → Lượt xem (Lượt xem cuối) và bỏ hẳn nút/link “Đọc” / “Đọc bản công khai” (không thay bằng nút, icon, menu, vùng giữ chỗ hay click số liệu; giữ link mở bản thảo/editor của hàng/nhan đề và giữ nguyên Reader công khai). Triển khai tuần tự 2 PR còn lại: #340+#343 rồi #514.
+"""
+rationale = "Chủ sản phẩm chốt ngày 25/11/2026 trên Epic https://github.com/loveoverflowcom/vink/issues/323 và https://github.com/loveoverflowcom/vink/issues/340 (duyệt OQ-1..4, UX-01..10, giữ riêng tư, 2 PR, ngưỡng hiển thị 5 giây tách biến dùng chung, thứ tự Thấm → Nhận xét → Lượt xem và bỏ nút Đọc khỏi Bàn viết). Theo VDR-DECISION-SIGNOFF@r1, proposal r2 giữ PENDING tới khi có signoff trích đúng lời duyệt payload và SHA-256 của VDR-WORK-VIEWS@r2."
+requires = [
+    "LVE-PR-01-CHOICE-02@r1",
+    "O-17@r2",
+    "USER-02@r1",
+    "VDR-DECISION-SIGNOFF@r1",
+]
+related_ids = [
+    "AUD-01",
+    "AUD-02",
+    "INV-08",
+    "MOD-05",
+    "O-08",
+    "PUB-04",
+    "PUB-05",
+    "PUB-07",
+    "SOC-LIFE-02",
+    "UX-01",
+    "VIEW-01",
+    "VIEW-02",
+    "VIEW-03",
+    "VIEW-04",
+    "VIEW-05",
+    "VIEW-06",
+    "VIEW-07",
+    "VIEW-08",
+    "VIEW-09",
+    "VIEW-10",
+    "VIEW-11",
+    "VIEW-12",
+    "WR-01",
+]

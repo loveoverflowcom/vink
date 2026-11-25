@@ -65,9 +65,19 @@ không có revision TOML riêng (như #213).
 trong brief [#340](https://github.com/loveoverflowcom/vink/issues/340): định nghĩa một lượt, chống
 trùng 24 giờ, khách, tác giả, cộng dồn theo `WorkId`, chỉ tác giả thấy số, lưu giữ và xóa. Chủ sản
 phẩm đã signoff đúng revision/SHA-256 ngày 21/11/2026 ([signoff](signoffs/VDR-WORK-VIEWS.r1.toml));
-revision hiện hành là `PRODUCT_CONFIRMED`. OQ-1..OQ-4 và CHOICE-01..06 vẫn `OPEN`. Yêu cầu ở
+revision này giữ làm lịch sử đã ký và vẫn hiện hành cho marker `<!-- vdr: active VDR-WORK-VIEWS@r1 -->`
+cho tới khi revision kế tiếp được signoff.
+
+[VDR-WORK-VIEWS@r2](proposals/VDR-WORK-VIEWS.r2.toml) (`PENDING`, chờ signoff đúng revision/SHA-256
+theo [VDR-DECISION-SIGNOFF@r1](signoffs/VDR-DECISION-SIGNOFF.r1.toml)) ghi nhận các quyết định
+delta ngày 25/11/2026 từ [#323](https://github.com/loveoverflowcom/vink/issues/323) và `#340`:
+`VIEW-01/P-01` thêm ngưỡng hiển thị foreground tối thiểu cấu hình chung (mặc định `5.000 ms`, tách một
+nguồn cấu hình/constant dùng chung), chốt `OQ-1 = A`, `OQ-2` (kích hoạt khi có route xóa),
+`OQ-3A/B`, `OQ-4`, bộ luật `UX-01..10`, giữ số liệu riêng tư và hai quyết định Bàn viết `D-01`
+(thứ tự **Thấm → Nhận xét → Lượt xem**, Lượt xem để cuối) và `D-02` (bỏ hẳn nút/link “Đọc” / “Đọc
+bản công khai”, giữ link mở bản thảo/editor). Yêu cầu ở
 [PRD §17](../prd/requirements.md#17-lượt-xem-tác-phẩm-work-views), luật và ví dụ ở
-[đặc tả](../docs/architecture/work-views.md), mức triển khai ở
+[đặc tả](../docs/architecture/work-views.md), mức triển khai và lựa chọn kỹ thuật ở
 [registry](../docs/development/work-views.md).
 
 ## Nền tảng Tailwind CSS v4 cho Web
