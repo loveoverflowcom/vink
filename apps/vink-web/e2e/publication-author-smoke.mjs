@@ -18,6 +18,7 @@
 import { execFileSync } from 'node:child_process';
 import { EDITOR_READY, HYDRATED, STANDING, account, fabricate, fill, openAccount, q, signIn, signOut } from './auth-smoke.mjs';
 import { paragraphs } from './document.mjs';
+import { holdEditorDebounce } from './editor-autosave.mjs';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -922,22 +923,28 @@ async function sessions({ author, work, base, check, openPage, reopen, ctx }) {
   const other = await openPage();
   await other.goto(`${base}/toi`);
   await other.waitFor(`${HYDRATED_EXPR} && ${STANDING} === 'active'`, 'the same account in a second tab');
-  await author.typeInBody(' [phiên]');
-  await author.waitStatus('unsaved');
+  // Keep this edit dirty while the publication refresh waits out its cooldown.
+  await holdEditorDebounce(author);
   const wire = new Wire(author);
-  wire.holdResponse = { method: 'GET', suffix: '/publication/state' };
-  await wire.enable();
-  await refreshOnReturn(author);
-  await wire.heldAnswer();
-  const out = await signOut(other, base);
-  check(out.includes(204), 'the session ends for real (sign-out in the other tab, 204)');
-  await author.waitFor(`document.querySelector('${PUBLICATION}')?.dataset.phase === 'unavailable'`, 'the first tab learns the session ended');
-  await wire.releaseAnswer();
-  await sleep(500);
-  const late = await panelText(author);
-  check(late.includes('Phiên đăng nhập đã hết') && !late.includes('Đang công khai') && !late.includes('Chưa công khai') && !late.includes(title), 'the late answer of the old session changes nothing: no facts, only the session notice');
-  check((await author.body()).endsWith('[phiên]') && (await author.status()) === 'unsaved', 'the unsaved text stays on the page when the session ends');
-  await wire.close();
+  try {
+    await author.typeInBody(' [phiên]');
+    await author.waitStatus('unsaved');
+    wire.holdResponse = { method: 'GET', suffix: '/publication/state' };
+    await wire.enable();
+    await refreshOnReturn(author);
+    await wire.heldAnswer();
+    const out = await signOut(other, base);
+    check(out.includes(204), 'the session ends for real (sign-out in the other tab, 204)');
+    await author.waitFor(`document.querySelector('${PUBLICATION}')?.dataset.phase === 'unavailable'`, 'the first tab learns the session ended');
+    await wire.releaseAnswer();
+    await sleep(500);
+    const late = await panelText(author);
+    check(late.includes('Phiên đăng nhập đã hết') && !late.includes('Đang công khai') && !late.includes('Chưa công khai') && !late.includes(title), 'the late answer of the old session changes nothing: no facts, only the session notice');
+    check((await author.body()).endsWith('[phiên]') && (await author.status()) === 'unsaved', 'the unsaved text stays on the page when the session ends');
+  } finally {
+    await wire.close();
+    await author.eval('window.__restoreEditorClock?.()');
+  }
 
   // Another account takes the browser: nothing of the author remains.
   const mail = `nguoi-khac-${Date.now().toString(36)}@vi-du.vn`;
