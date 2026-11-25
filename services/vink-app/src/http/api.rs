@@ -79,6 +79,10 @@ pub fn routes(state: AppState) -> Router<AppState> {
             get(get_public_discussion),
         )
         .route(
+            "/works/{work_id}/discussion/public/comments/{comment_id}",
+            get(get_linked_public_comment),
+        )
+        .route(
             "/works/{work_id}/discussion/public/roots/{root_id}/replies",
             get(get_public_replies),
         )
@@ -573,6 +577,7 @@ struct AuthorWorkDecisionView {
     decision_version: i64,
     outcome: &'static str,
     is_current: bool,
+    action_required: bool,
     can_appeal: bool,
     reason: Option<String>,
     #[serde(with = "time::serde::rfc3339")]
@@ -609,6 +614,7 @@ async fn get_author_work_review(
                 decision_version: decision.decision_version,
                 outcome: decision.detail.outcome,
                 is_current: decision.detail.is_current,
+                action_required: decision.detail.action_required,
                 can_appeal: decision.detail.can_appeal,
                 reason: decision
                     .detail
@@ -802,6 +808,19 @@ async fn get_public_discussion(
         .public_discussion(work_id, query.cursor.as_deref(), query.limit)
         .await?;
     Ok(Json(PublicDiscussionPage::new(work_id, &page)))
+}
+
+async fn get_linked_public_comment(
+    State(state): State<AppState>,
+    Path((raw_work, raw_comment)): Path<(String, String)>,
+) -> Result<Json<super::contract::PublicRootThread>, ApiError> {
+    let root = state
+        .vink
+        .store()
+        .linked_public_comment(work_id(&raw_work)?, comment_id(&raw_comment)?)
+        .await?
+        .ok_or(ApiError::NotFound)?;
+    Ok(Json((&root).into()))
 }
 
 async fn get_public_replies(

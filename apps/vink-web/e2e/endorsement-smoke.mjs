@@ -175,6 +175,23 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
     await gate.release(first);
     await page.waitFor(`${button('endorse-work')}.dataset.pressed==='true' && ${count('endorse-work')}.startsWith('1')`, 'confirmed selection');
     await sameTarget('endorse-work', 'confirmed On');
+    await page.viewport(1440);
+    await page.click('#work-endorsement a[href*="/tham/"]');
+    await page.waitFor(`document.querySelector('#work-endorsers')?.open
+      && document.querySelector('#work-endorsers .vk-notif-endorsers li')`, 'real public Thấm membership in desktop dialog');
+    await page.key('Escape');
+    await page.waitFor(`!document.querySelector('#work-endorsers').open
+      && document.activeElement?.matches('#work-endorsement a[href*="/tham/"]')`, 'Thấm dialog restores focus');
+    await page.viewport(390);
+    await page.click('#work-endorsement a[href*="/tham/"]');
+    await page.waitFor(`location.pathname.endsWith('/tham/${SAMPLE_REVISION}')
+      && document.querySelector('main .vk-notif-endorsers li')
+      && !document.querySelector('#notification-bell-mobile')`, 'real public Thấm membership on the mobile route');
+    await page.viewport(1440);
+    await page.eval('history.back()');
+    await page.waitFor(`location.pathname.endsWith('${SAMPLE_WORK}') && (${ready})`, 'return to the Reader');
+    await rememberTarget('endorse-work');
+
     check(await page.eval(`${button('endorse-work')}.getAttribute('aria-label')==='Bỏ Thấm' && !!document.querySelector('#endorse-work .vk-ui-toggle__mark svg, #endorse-work .vk-ui-toggle__mark .vk-ui-icon')`), 'after the ACK: accessible name “Bỏ Thấm” and the check mark');
 
     await glyphs('confirmed');
@@ -286,7 +303,11 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
   try {
     await page.reload();
     await page.waitFor(`${note('endorse-work')}.includes('Cần đăng nhập để Thấm.') && ${note(`endorse-comment-${reply}`)}.includes('Cần đăng nhập để Ưng.')`, 'signed-out reasons');
-    check(await page.eval(`${count('endorse-work')}.startsWith('1') && ${button('endorse-work')}.dataset.pressed==='unknown' && !document.querySelector('#work-endorsement a, #feedback-region a[href*="dang-nhap"]')`), 'public counts stay; no own state and no fake login');
+    check(await page.eval(`${count('endorse-work')}.startsWith('1')
+      && ${button('endorse-work')}.dataset.pressed === 'unknown'
+      && !!document.querySelector('#work-endorsement a[href="/tac-pham/${SAMPLE_WORK}/tham/${SAMPLE_REVISION}"]')
+      && !document.querySelector('#work-endorsement a[href="/toi"], #work-endorsement a[href*="dang-nhap"], #feedback-region a[href*="dang-nhap"]')`),
+    'public count and Thấm list stay visible, without own state or a fake login');
     await page.capture('lve-signed-out-reason', { scenario: 'LVE-UC-01', boundary: 'real-local-postgresql-own-read-answered-401-by-interception' });
   } finally {
     await page.send('Fetch.disable');

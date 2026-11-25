@@ -12,7 +12,7 @@ Theo [quy ước LayoutSpec](../../.agents/skills/vink-layout-spec/references/la
 | --- | --- |
 | Trải nghiệm đích | Thành viên mở chuông, đọc lướt theo nhóm ngày và đi tới đúng nội dung hoặc quyết định. Khách có thể xem danh sách người Thấm theo quyền đọc tác phẩm. |
 | Specimen | `composition.notifications/default` và `composition.notifications/badges` trong preview Leptos. Dữ liệu mẫu từ Ví dụ 2–4 của [hợp đồng Gateway v1](../../services/vink-app/contracts/http/v1/notifications.md) và [fixture dòng nhận xét](../../services/vink-app/contracts/http/v1/fixtures/notifications-gateway.json). Dòng Ưng minh họa theo #365. Chuông trong preview mở dialog mẫu để trình diễn trạng thái và focus. |
-| Điều kiện runtime | Phiên hợp lệ, Gateway, socket inbox và worker relay. Shell, điều hướng, popover neo rail, polling và thao tác Seen/Read thuộc lát Web. Quyền mở quyết định và danh sách Thấm do owner dữ liệu kiểm tra theo hợp đồng. |
+| Điều kiện runtime | Phiên hợp lệ, Gateway, socket inbox và worker relay. Shell, điều hướng, popover neo rail, polling và thao tác Seen/Read của #486 được ghi tại [registry](../development/notifications.md#11-web-r4-486). Quyền mở quyết định và danh sách Thấm do owner dữ liệu kiểm tra theo hợp đồng. |
 
 ## 1. Hướng thiết kế và quyết định mở
 
@@ -87,7 +87,7 @@ Overlays: anchor = #bell; dismiss = Esc / Đóng / bấm ngoài (không scrim l�
   Tab xoay trong popover, đóng → trả focus #bell; resize < 760 → đóng, focus #noi-dung
 Themes: surface + hàng đọc surface-container-low + chưa đọc primary-container (sáng/tối cùng cấu trúc)
 States: tải, trống, 503, stale, offline, new, tải thêm lỗi, đang đánh dấu — comp-states-light/dark
-Interaction: mở → tải trang đầu → Seen(snapshot) → badge 0, dòng vẫn chưa đọc; bấm dòng → Read rồi tới đích;
+Interaction: mở → tải trang đầu → Seen(snapshot) → xác minh lại badge, dòng vẫn chưa đọc; bấm dòng → Read rồi tới đích;
   scale .92 → 1 (320 ms, ease.spatial); reduced-motion: hiện ngay
 Accessibility: role=dialog aria-modal aria-labelledby=#pt; danh sách ul/li, mỗi dòng một link
 Invariants: một modal tại một lúc; popover không nằm trong cây AX khi đóng; Seen không đánh dấu Read

@@ -19,7 +19,7 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use axum::extract::rejection::{JsonRejection, QueryRejection};
-use axum::extract::{Path, Query, State};
+use axum::extract::{FromRequestParts, Path, Query, State};
 use axum::http::{HeaderMap, HeaderValue, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
@@ -39,7 +39,7 @@ use super::{ApiError, AppState, PrivateSession};
 use crate::application::profile::AuthorAttribution;
 use crate::domain::ids::{CommentId, PrincipalId, RevisionId, WorkId};
 use crate::domain::notification_inbox::{
-    Candidate, GroupKind, InboxTarget, ReadFacts, Shown, decide,
+    Candidate, GroupKind, InboxTarget, ReadFacts, ReplyContext, Shown, decide,
 };
 use crate::notification_inbox::{
     InboxCommand, InboxFailure, NotificationInbox, WireGroup, WirePage, parse_snapshot,
@@ -103,6 +103,33 @@ fn token_mac(session: &PrivateSession, purpose: &[u8], payload: &[u8]) -> String
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect()
+}
+
+pub(super) fn browser_scope(session: &PrivateSession) -> String {
+    token_mac(session, b"browser-scope", b"")
+}
+
+/// Older API consumers can omit this header. Web always binds a request to the credential
+/// confirmed by SessionOwner, even during a cookie change the tab has not observed yet.
+struct NotificationSession(PrivateSession);
+
+impl FromRequestParts<AppState> for NotificationSession {
+    type Rejection = ApiError;
+
+    async fn from_request_parts(
+        parts: &mut axum::http::request::Parts,
+        state: &AppState,
+    ) -> Result<Self, ApiError> {
+        let session = PrivateSession::from_request_parts(parts, state).await?;
+        if let Some(scope) = parts.headers.get("x-vink-notification-scope")
+            && !scope
+                .to_str()
+                .is_ok_and(|scope| verify(&session, b"browser-scope", b"", scope))
+        {
+            return Err(ApiError::Unauthenticated);
+        }
+        Ok(Self(session))
+    }
 }
 
 fn verify(session: &PrivateSession, purpose: &[u8], payload: &[u8], tag: &str) -> bool {
@@ -249,6 +276,12 @@ async fn facts_for(
         works.insert(candidate.target.work());
         comments.extend(candidate.comments());
         match candidate.target {
+            InboxTarget::CommentReply {
+                context: ReplyContext::Reply(parent),
+                ..
+            } if identities => {
+                comments.insert(parent);
+            }
             InboxTarget::WorkDecision { work, revision, .. } => {
                 revisions.insert((work, revision));
             }
@@ -433,7 +466,7 @@ async fn verified_count(
 
 async fn count(
     State(state): State<AppState>,
-    session: PrivateSession,
+    NotificationSession(session): NotificationSession,
 ) -> Result<Response, ApiError> {
     let viewer = session.actor;
     match verified_count(&state, viewer).await {
@@ -496,7 +529,7 @@ pub struct ScanStats {
 
 async fn list(
     State(state): State<AppState>,
-    session: PrivateSession,
+    NotificationSession(session): NotificationSession,
     query: Result<Query<InboxQuery>, QueryRejection>,
 ) -> Result<Response, ApiError> {
     let query = query
@@ -538,7 +571,30 @@ async fn list(
             if let Some(candidate) = candidate
                 && let Some(shown) = decide(viewer, candidate, &facts)
             {
-                items.push(item_json(group, candidate.kind, &shown, &identities));
+                let mut item = item_json(group, candidate.kind, &shown, &identities);
+                match shown.target {
+                    InboxTarget::WorkDecision { revision, .. } => {
+                        if let Some(date) = facts.revision_dates.get(&revision) {
+                            item["target"]["revision_created_at"] = json!(rfc3339(*date));
+                        }
+                    }
+                    InboxTarget::CommentReply { context, work, .. } => {
+                        let direct = match context {
+                            ReplyContext::Root => Some(true),
+                            ReplyContext::Reply(parent) => facts
+                                .comments
+                                .get(&parent)
+                                .filter(|comment| comment.work == work)
+                                .map(|comment| comment.author == viewer),
+                            ReplyContext::Purged => None,
+                        };
+                        if let Some(direct) = direct {
+                            item["summary"]["reply_to_viewer"] = json!(direct);
+                        }
+                    }
+                    _ => {}
+                }
+                items.push(item);
                 if items.len() == usize::from(limit) {
                     break;
                 }
@@ -639,7 +695,7 @@ fn answered_snapshot(
 
 async fn seen(
     State(state): State<AppState>,
-    session: PrivateSession,
+    NotificationSession(session): NotificationSession,
     body: Result<Json<SnapshotRequest>, JsonRejection>,
 ) -> Result<Response, ApiError> {
     let request = json_body(body)?;
@@ -655,7 +711,7 @@ async fn seen(
 
 async fn read(
     State(state): State<AppState>,
-    session: PrivateSession,
+    NotificationSession(session): NotificationSession,
     body: Result<Json<ReadRequest>, JsonRejection>,
 ) -> Result<Response, ApiError> {
     let request = json_body(body)?;
@@ -683,7 +739,7 @@ async fn read(
 
 async fn mark_all_read(
     State(state): State<AppState>,
-    session: PrivateSession,
+    NotificationSession(session): NotificationSession,
     body: Result<Json<SnapshotRequest>, JsonRejection>,
 ) -> Result<Response, ApiError> {
     let request = json_body(body)?;
@@ -716,7 +772,7 @@ fn version(raw: &str) -> Result<i64, ApiError> {
 
 async fn work_decision(
     State(state): State<AppState>,
-    session: PrivateSession,
+    NotificationSession(session): NotificationSession,
     Path((work, revision, decision_version)): Path<(String, String, String)>,
 ) -> Result<Response, ApiError> {
     let work = WorkId::parse(&work).ok_or(ApiError::NotFound)?;
@@ -746,7 +802,7 @@ async fn work_decision(
 
 async fn comment_decision(
     State(state): State<AppState>,
-    session: PrivateSession,
+    NotificationSession(session): NotificationSession,
     Path((comment, moderation_version)): Path<(String, String)>,
 ) -> Result<Response, ApiError> {
     let comment = CommentId::parse(&comment).ok_or(ApiError::NotFound)?;

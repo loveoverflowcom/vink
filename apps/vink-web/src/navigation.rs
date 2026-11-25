@@ -274,7 +274,13 @@ mod dom {
         let external = anchor
             .get_attribute("rel")
             .is_some_and(|rel| rel.split_ascii_whitespace().any(|part| part == "external"));
-        if !anchor.target().is_empty() || anchor.has_attribute("download") || external {
+        // A managed link runs its target action first, then calls NavigationGuard::navigate.
+        // The capture listener must leave its overlay and target mounted until then.
+        if !anchor.target().is_empty()
+            || anchor.has_attribute("download")
+            || anchor.has_attribute("data-vink-managed-navigation")
+            || external
+        {
             return None;
         }
         let url = Url::new(&anchor.href()).ok()?;

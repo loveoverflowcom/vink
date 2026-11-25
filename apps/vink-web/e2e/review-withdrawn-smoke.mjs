@@ -159,7 +159,7 @@ export async function reviewWithdrawnPage(page, { args, check, captureMatrix }) 
   check(refused.status === 404, 'a new comment on the removed revision is refused at the server');
 
   // The old link opens the same Desk dialog. The admin resolves the stored case.
-  await page.goto(`${author.base}/ban-viet/${work}/kiem-duyet`);
+  await page.goto(`${author.base}/ban-viet/${work}/kiem-duyet`, `${author.base}/ban-viet?review=${work}`);
   await page.waitFor(`location.pathname === '/ban-viet' && location.search === '?review=${work}' && document.querySelector('#desk-review').open && document.querySelector('[id^="file-appeal"]')`, 'legacy URL redirects to the author appeal action in Desk');
   await page.click('[id^="file-appeal"]');
   await page.waitFor(`document.querySelector('#desk-review-content')?.textContent.includes('Đã ghi nhận, chờ quản trị viên')`, 'appeal recorded');

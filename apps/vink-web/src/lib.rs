@@ -19,6 +19,7 @@ pub mod endorsement_state;
 pub mod follow_state;
 pub mod freshness;
 pub mod navigation;
+mod notifications;
 mod pages;
 pub mod public_list;
 pub mod public_persistence;
@@ -171,6 +172,9 @@ fn Chrome() -> impl IntoView {
                     <Route path=path!("/kiem-duyet/ca/:id") view=pages::moderation::CasePage />
                     <Route path=path!("/kiem-duyet/phan-doi/:id") view=pages::moderation::AppealPage />
                     <Route path=path!("/ban-viet/:id/kiem-duyet") view=pages::desk_review::LegacyDeskReview />
+                    <Route path=path!("/thong-bao") view=notifications::InboxPage />
+                    <Route path=path!("/thong-bao/nhan-xet/:id/:version") view=notifications::CommentDecisionPage />
+                    <Route path=path!("/tac-pham/:id/tham/:revision") view=notifications::EndorsersPage />
                     <Route path=path!("/toi") view=Me />
                     <Route path=path!("/toi/chinh-ho-so") view=pages::profile::EditProfile />
                     <Route path=path!("/toi/dia-chi") view=pages::profile::LegacyHandle />

@@ -3,8 +3,7 @@ use leptos::prelude::*;
 use leptos_meta::{Meta, Title};
 use leptos_router::hooks::{use_location, use_params_map};
 use vink_ui::{
-    ActionState, ActionSurface, Button, ButtonVariant, Dialog, DialogKind, Heading, HeadingLevel,
-    IconButton, IconName,
+    ActionState, ActionSurface, Button, ButtonVariant, Dialog, DialogKind, IconButton, IconName,
 };
 
 use super::publication::decision_label;
@@ -49,7 +48,7 @@ pub(super) fn work_review_href(work: &str) -> String {
     format!("/ban-viet?{}", query.finish())
 }
 
-/// The future inbox uses this URL for a private work_moderation_decision target.
+/// Notifications uses this URL for a private work_moderation_decision target.
 pub(crate) fn decision_review_href(work: &str, revision: &str, version: i64) -> String {
     let mut query = url::form_urlencoded::Serializer::new(String::new());
     query
@@ -183,6 +182,44 @@ pub(super) fn ReviewTrigger(
                 "Xem kiểm duyệt"
             </Button>
         </div>
+    }
+}
+
+pub(super) fn exact_target(target: &Option<Result<ReviewTarget, ()>>) -> Option<ReviewTarget> {
+    target
+        .as_ref()?
+        .as_ref()
+        .ok()
+        .filter(|target| target.decision.is_some())
+        .cloned()
+}
+
+#[component]
+pub(super) fn ExactDeskDecision(session: Session) -> impl IntoView {
+    let target = use_review_target();
+    #[cfg(feature = "browser")]
+    Effect::new(move |_| {
+        if target.with(|target| exact_target(target).is_some()) {
+            super::focus_recovery("desk-decision-back");
+        }
+    });
+    view! {
+        <section class="vk-notif-page vk-notif-decision" aria-label="Kết quả kiểm duyệt">
+            <a id="desk-decision-back" class="vk-ui-link vk-notif-back" href="/ban-viet">"← Kết quả kiểm duyệt"</a>
+            <For each=move || session.profile_scope.get().zip(target.with(exact_target)) key=Clone::clone
+                children=move |(_, target)| view! { <ReviewDetails target session /> } />
+            <Show when=move || session.profile_scope.with(Option::is_none)>
+                {move || match session.standing.get() {
+                    crate::session::Standing::Unknown | crate::session::Standing::Active(_) => view! {
+                        <p role="status">"Đang kiểm tra phiên đăng nhập…"</p>
+                    }.into_any(),
+                    crate::session::Standing::Unavailable => view! {
+                        <Button variant=ButtonVariant::Tonal on_press=move |_| session.refresh()>"Kiểm tra lại phiên"</Button>
+                    }.into_any(),
+                    _ => view! { <p role="status">"Đăng nhập để mở quyết định kiểm duyệt của bạn."</p> }.into_any(),
+                }}
+            </Show>
+        </section>
     }
 }
 
@@ -528,7 +565,7 @@ fn review_content(
         })
     });
 
-    let main = revision_review(&data, index, main_decision, actions);
+    let main = revision_review(&data, index, main_decision, actions, exact.is_some());
     let history = revisions
         .iter()
         .enumerate()
@@ -544,7 +581,7 @@ fn review_content(
                     item.revision_id == revision.revision_id
                         && Some(item.decision_version) == revision.decision_version
                 });
-                items.push(revision_review(&data, position, current, actions));
+                items.push(revision_review(&data, position, current, actions, false));
             }
             items.extend(
                 data.decisions
@@ -557,7 +594,9 @@ fn review_content(
                                     && selected.decision_version == decision.decision_version
                             })
                     })
-                    .map(|decision| revision_review(&data, position, Some(decision), actions)),
+                    .map(|decision| {
+                        revision_review(&data, position, Some(decision), actions, false)
+                    }),
             );
             items
         })
@@ -587,6 +626,7 @@ fn revision_review(
     index: usize,
     decision: Option<&AuthorWorkDecision>,
     actions: AppealActions,
+    exact: bool,
 ) -> AnyView {
     let revision: &AuthorRevision = &data.state.revisions[index];
     let version = decision
@@ -646,20 +686,44 @@ fn revision_review(
         }
     });
 
+    let rejected = status == crate::contract::publication::Decision::Rejected;
+    let action_required = !historical && decision.is_some_and(|decision| decision.action_required);
+    let submitted_date = vink_patterns::first_public_date_hcm(&revision.created_at);
+    let edit_href = format!("/ban-viet/{}", data.state.work_id);
     view! {
-        <article class=CONTENT_CLASS>
-            <Heading level=HeadingLevel::H3>{title}</Heading>
+        <article class=if exact { "vk-notif-decision__panel" } else { CONTENT_CLASS }>
+            {exact.then(|| view! {
+                <div class="vk-notif-decision__chips">
+                    <span class="vk-notif-unread">{if rejected { "Bị từ chối" } else { "Đã được duyệt" }}</span>
+                    {action_required.then(|| view! { <span class="vk-notif-unread vk-notif-unread--attention">"Cần xử lý"</span> })}
+                    {historical.then(|| view! { <span class="vk-notif-unread">"Đã có quyết định mới hơn"</span> })}
+                </div>
+            })}
+            {if exact {
+                view! { <h1 class="vk-ui-heading vk-notif-title">{title}</h1> }.into_any()
+            } else {
+                view! { <h3 class="vk-ui-heading">{title}</h3> }.into_any()
+            }}
             <p>
-                {format!("Bản {} · ", index + 1)}
-                {version.map(|version| format!("Quyết định {version} · "))}
+                {if exact { submitted_date.map_or_else(String::new, |date| format!("Bản gửi ngày {date} · Quyết định lúc ")) }
+                else { format!("Bản {} · {}", index + 1, version.map(|version| format!("Quyết định {version} · ")).unwrap_or_default()) }}
                 <time datetime=date.clone()>{vink_patterns::updated_at_label(&date)}</time>
             </p>
-            <p>{decision_label(status)}{historical.then_some(" · Quyết định trước đây")}</p>
+            {(!exact).then(|| view! { <p>{decision_label(status)}{historical.then_some(" · Quyết định trước đây")}</p> })}
             {public.then(|| view! {
                 <p>{if historical { "Bản này đang công khai theo quyết định hiện hành." } else { "Đang công khai." }}</p>
             })}
-            {reason.filter(|reason| !reason.trim().is_empty()).map(|reason| view! { <p>"Lý do: " {reason}</p> })}
+            {if exact {
+                view! { <div class="vk-notif-decision__reason">
+                    <h4 class="vk-ui-heading">"Lý do"</h4>
+                    <p>{reason.filter(|reason| !reason.trim().is_empty()).unwrap_or_else(|| "Không có lý do kèm theo.".into())}</p>
+                </div> }.into_any()
+            } else {
+                reason.filter(|reason| !reason.trim().is_empty()).map(|reason| view! { <p>"Lý do: " {reason}</p> }).into_any()
+            }}
             {move || display_appeal.get().map(appeal_summary)}
+            <div class="vk-notif-decision__actions">
+            {(exact && action_required).then(|| view! { <a href=edit_href class=ButtonVariant::Filled.classes()>"Sửa trong Bàn viết"</a> })}
             <Show when=move || can_submit && display_appeal.with(Option::is_none)>
                 <Button id=appeal_button_id.get_value()
                     variant=ButtonVariant::Tonal
@@ -673,8 +737,11 @@ fn revision_review(
                         if let Some(target) = appeal_target.get_value() {
                             actions.submit.run(target);
                         }
-                    }>"Yêu cầu quản trị viên xem xét"</Button>
+                    }>{if exact { "Gửi phản đối" } else { "Yêu cầu quản trị viên xem xét" }}</Button>
             </Show>
+            </div>
+            {(exact && !rejected).then(|| view! { <p>"Đã được duyệt không có nghĩa đang công khai."</p> })}
+            {(exact && historical).then(|| view! { <p>"Quyết định trước đây được lưu để đối chiếu."</p> })}
         </article>
     }.into_any()
 }

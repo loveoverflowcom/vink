@@ -41,9 +41,11 @@ const DESK_SIGN_IN: &str = "/toi?next=/ban-viet";
 pub fn DeskIndex() -> impl IntoView {
     super::ResponseStatus::capture().set_no_store();
     let session = crate::account::Session::current();
+    let review_target = desk_review::use_review_target();
     view! {
         <Title text="Bàn viết — Vink" />
         <Meta name="robots" content="noindex" />
+        <Show when=move || review_target.with(|target| desk_review::exact_target(target).is_some()) fallback=move || view! {
         <section id="desk" class="vk-desk vk-desk--index" aria-labelledby="desk-title">
             <Show when=move || session.scope.with(Option::is_none)>
                 <DeskHeading />
@@ -54,6 +56,9 @@ pub fn DeskIndex() -> impl IntoView {
             <For each=move || session.scope.get() key=Clone::clone
                 children=move |scope| view! { <DeskWorks scope session /> } />
         </section>
+        }>
+            <desk_review::ExactDeskDecision session />
+        </Show>
     }
 }
 
@@ -72,6 +77,7 @@ fn DeskHeading(
                 </span>
             })}
             </div>
+            <crate::notifications::MobileBell />
             {children.map(|slot| slot())}
         </header>
     }

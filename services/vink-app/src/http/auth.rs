@@ -203,6 +203,8 @@ pub enum SessionStateKind {
 struct CurrentAccount {
     principal_id: String,
     display_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    notification_scope: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -948,6 +950,7 @@ async fn session_state(
 async fn current_account(
     State(state): State<AppState>,
     Actor(actor): Actor,
+    request: axum::extract::Request,
 ) -> Result<Json<CurrentAccount>, ApiError> {
     let principal = actor.ok_or(ApiError::Unauthenticated)?;
     let display_name = state
@@ -955,9 +958,16 @@ async fn current_account(
         .principal_display_name(principal)
         .await
         .map_err(|_| ApiError::DependencyUnavailable)?;
+    let (parts, _) = request.into_parts();
+    let notification_scope = presented_credential(&parts).map(|credential| {
+        super::notifications::browser_scope(&super::PrivateSession::from_credential(
+            principal, credential,
+        ))
+    });
     Ok(Json(CurrentAccount {
         principal_id: principal.to_string(),
         display_name,
+        notification_scope,
     }))
 }
 
@@ -1088,6 +1098,7 @@ mod tests {
             (
                 "auth.session.account.json",
                 serde_json::to_value(CurrentAccount {
+                    notification_scope: None,
                     principal_id: "11111111-1111-4111-8111-111111111111".into(),
                     display_name: "An Nhiên".into(),
                 })

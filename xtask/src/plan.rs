@@ -215,6 +215,7 @@ pub enum Scenario {
     Password,
     AuthorSearch,
     Publication,
+    Notifications,
     PerfBaseline,
     ReturnPosition,
     Standalone,
@@ -222,7 +223,7 @@ pub enum Scenario {
 
 impl Scenario {
     /// Canonical execution order. Public SSR begins with just the sample publication.
-    pub const ALL: [Self; 17] = [
+    pub const ALL: [Self; 18] = [
         Self::EditorFirstDraft,
         Self::Reader,
         Self::Discussion,
@@ -240,6 +241,7 @@ impl Scenario {
         Self::Password,
         Self::AuthorSearch,
         Self::Publication,
+        Self::Notifications,
     ];
     const OPT_IN: [Self; 3] = [Self::PerfBaseline, Self::ReturnPosition, Self::Standalone];
 
@@ -264,7 +266,6 @@ impl Scenario {
                 | Self::Storage
         )
     }
-
     pub fn name(self) -> &'static str {
         match self {
             Self::Main => "main",
@@ -286,6 +287,7 @@ impl Scenario {
             Self::Password => "password",
             Self::AuthorSearch => "author-search",
             Self::Publication => "publication",
+            Self::Notifications => "notifications",
             Self::PerfBaseline => "perf-baseline",
             Self::ReturnPosition => "return-position",
         }
@@ -330,6 +332,7 @@ impl Scenario {
             Self::EditorFormat => Some("editor-format"),
             Self::Storage => Some("public-storage"),
             Self::Discovery => Some("discovery-corpus"),
+            Self::Notifications => Some("notifications"),
             _ => None,
         }
     }
@@ -376,6 +379,9 @@ impl Scenario {
             }
             Self::Publication => {
                 "dedicated seeded App scratch/tag catalog and real Identity scratch/local outbox"
+            }
+            Self::Notifications => {
+                "sample App scratch with loopback author; Notifications R4 browser contracts and responsive states"
             }
             Self::PerfBaseline | Self::ReturnPosition => {
                 "guest App scratch with discovery/perf corpus; lab/perf artifact"

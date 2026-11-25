@@ -19,6 +19,7 @@ import { authorSearch } from './author-search-smoke.mjs';
 import { discoveryChipGeometry } from './discovery-chip-geometry.mjs';
 import { endorsementAsAuthor, endorsementAsReader } from './endorsement-smoke.mjs';
 import { authWeb } from './auth-smoke.mjs';
+import { notifications } from './notifications-smoke.mjs';
 import { readerAuthClosed } from './reader-auth-smoke.mjs';
 import { closedAccountAppearance, passwordAuth, standalone } from './auth-password-smoke.mjs';
 import { publicationAuthor } from './publication-author-smoke.mjs';
@@ -640,9 +641,9 @@ class Page {
     throw new Error(`timed out waiting for ${what}`);
   }
 
-  async goto(url) {
+  async goto(url, expectedUrl = url) {
     await this.send('Page.navigate', { url });
-    await this.waitFor(`location.href === ${JSON.stringify(url)} && document.readyState === 'complete'`, `load ${url}`);
+    await this.waitFor(`location.href === ${JSON.stringify(expectedUrl)} && document.readyState === 'complete'`, `load ${expectedUrl} from ${url}`);
   }
 
   async reload() {
@@ -6587,6 +6588,7 @@ try {
     await markdownReader(page, { args, check, textContrast });
   }
   else if (args.phase === 'auth') await authWeb(page, { args, check, openPage: (isolated) => openPage(cdp, isolated) });
+  else if (args.phase === 'notifications') await notifications(page, { args, check });
   else if (args.phase === 'reader-auth-closed') {
     await closedAccountAppearance(page, { args, check });
     await readerAuthClosed(page, { args, check });

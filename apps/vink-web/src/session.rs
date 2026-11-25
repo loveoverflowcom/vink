@@ -89,6 +89,16 @@ impl SessionOwner {
         self.scope()
     }
 
+    pub(crate) fn notification_scope(&self) -> Option<String> {
+        if self.session_may_have_changed {
+            return None;
+        }
+        match &self.standing {
+            Standing::Active(account) => account.notification_scope.clone(),
+            _ => None,
+        }
+    }
+
     /// A signal about the browser session is stronger than a focus refresh. A new cookie can
     /// represent the same principal; fence that principal's earlier private operations once
     /// the server has confirmed who is now acting.
@@ -120,10 +130,13 @@ impl SessionOwner {
             Observation::Active(account) => Standing::Active(account),
         };
         let before = self.principal().map(str::to_owned);
+        let before_notification_scope = self.notification_scope();
         self.standing = next;
         let signalled = std::mem::take(&mut self.session_may_have_changed);
         let changed = self.confirmed
-            && (before.as_deref() != self.principal() || signalled && before.is_some());
+            && (before.as_deref() != self.principal()
+                || signalled && before.is_some()
+                || before_notification_scope != self.notification_scope());
         if changed {
             self.generation += 1;
         }
@@ -313,6 +326,7 @@ mod tests {
 
     fn account(id: &str) -> CurrentAccount {
         CurrentAccount {
+            notification_scope: None,
             principal_id: id.into(),
             display_name: format!("Bút danh {id}"),
         }
@@ -321,6 +335,22 @@ mod tests {
     fn settle(owner: &mut SessionOwner, observation: Observation) -> bool {
         let ticket = owner.begin_check();
         owner.settle(ticket, observation)
+    }
+
+    #[test]
+    fn same_principal_with_a_new_notification_scope_advances_the_private_generation() {
+        let mut owner = SessionOwner::default();
+        let mut first = account("author");
+        first.notification_scope = Some("credential-a".into());
+        let ticket = owner.begin_check();
+        owner.settle(ticket, Observation::Active(first));
+        let generation = owner.generation();
+        let mut new = account("author");
+        new.notification_scope = Some("credential-b".into());
+        let ticket = owner.begin_check();
+        assert!(owner.settle(ticket, Observation::Active(new)));
+        assert_eq!(owner.generation(), generation + 1);
+        assert_eq!(owner.notification_scope().as_deref(), Some("credential-b"));
     }
 
     #[test]

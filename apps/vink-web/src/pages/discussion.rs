@@ -446,6 +446,86 @@ fn cancel_remove(state: RwSignal<ViewState>, id: String) {
     let _ = id;
 }
 
+/// A notification opens the exact published comment in its thread, including on later pages.
+#[component]
+pub(super) fn ReaderDiscussion(
+    work_id: String,
+    #[prop(optional)] read_only: bool,
+) -> impl IntoView {
+    let search = leptos_router::hooks::use_location().search;
+    let target = Memo::new(move |_| {
+        search.with(|search| {
+            url::form_urlencoded::parse(search.trim_start_matches('?').as_bytes())
+                .find(|(key, _)| key == "nhan-xet")
+                .map(|(_, value)| value.into_owned())
+        })
+    });
+    move || {
+        if let Some(comment) = target.get() {
+            view! { <LinkedComment work_id=work_id.clone() comment /> }.into_any()
+        } else {
+            view! { <Discussion work_id=work_id.clone() read_only /> }.into_any()
+        }
+    }
+}
+
+#[component]
+fn LinkedComment(work_id: String, comment: String) -> impl IntoView {
+    let show_all = format!("/tac-pham/{work_id}#feedback-heading");
+    let data = LocalResource::new({
+        let comment = comment.clone();
+        move || {
+            let (work, comment) = (work_id.clone(), comment.clone());
+            async move {
+                #[cfg(feature = "browser")]
+                {
+                    api::linked_public_comment(&work, &comment).await
+                }
+                #[cfg(not(feature = "browser"))]
+                {
+                    let _ = (work, comment);
+                    Err::<crate::contract::PublicRootThread, _>(ApiError::NotFound)
+                }
+            }
+        }
+    });
+    let anchor = format!("comment-{comment}");
+    view! {
+        <section id="feedback-region" class="vk-discussion grid min-w-0 gap-vk-3 [margin-block:var(--vk-space-8)]" aria-labelledby="feedback-heading">
+            <Heading level=HeadingLevel::H2 role=TypeRole::Title id="feedback-heading" attr:tabindex="-1">"Nhận xét"</Heading>
+            <Suspense fallback=|| view! { <p role="status">"Đang mở nhận xét…"</p> }>
+                {move || {
+                    let anchor = anchor.clone();
+                    data.get().map(|result| match result {
+                        Ok(root) => {
+                            let root = crate::contract::RootThread::from(root);
+                            let facts = adapters::discussion_thread(&root, &root.preview);
+                            #[cfg(feature = "browser")]
+                            super::focus_recovery(anchor);
+                            #[cfg(not(feature = "browser"))]
+                            let _ = anchor;
+                            view! {
+                                <DiscussionThread facts=Signal::stored(facts) read_only=Signal::stored(true)
+                                    on_reply=Callback::new(|_: String| {}) on_remove=Callback::new(|_: String| {}) />
+                            }.into_any()
+                        }
+                        Err(ApiError::NotFound) => {
+                            #[cfg(feature = "browser")]
+                            super::focus_recovery("feedback-heading");
+                            view! { <p role="status">"Nhận xét này không còn khả dụng."</p> }.into_any()
+                        }
+                        Err(_) => view! {
+                            <p role="alert">"Chưa mở được nhận xét."</p>
+                            <DiscussionLoadRetry on_retry=Callback::new(move |()| data.refetch()) />
+                        }.into_any(),
+                    })
+                }}
+            </Suspense>
+            <a class=ButtonVariant::Tonal.classes() href=show_all>"Xem toàn bộ nhận xét"</a>
+        </section>
+    }
+}
+
 #[component]
 pub fn Discussion(work_id: String, #[prop(optional)] read_only: bool) -> impl IntoView {
     let resource = api::discussion_resource(work_id);

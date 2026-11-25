@@ -73,6 +73,7 @@ pub(crate) struct Session {
     /// Scope of viewer-private state. Its format remains principal/generation.
     pub(crate) scope: Memo<Option<String>>,
     pub(crate) profile_scope: Memo<Option<String>>,
+    pub(crate) notification_scope: Memo<Option<String>>,
 }
 
 impl Session {
@@ -88,6 +89,7 @@ impl Session {
             principal: Memo::new(move |_| owner.with(|o| o.principal().map(str::to_owned))),
             scope: Memo::new(move |_| owner.with(SessionOwner::scope)),
             profile_scope: Memo::new(move |_| owner.with(SessionOwner::profile_scope)),
+            notification_scope: Memo::new(move |_| owner.with(SessionOwner::notification_scope)),
         };
         provide_context(this);
         #[cfg(feature = "browser")]
@@ -106,8 +108,13 @@ impl Session {
 
     #[cfg(feature = "browser")]
     pub(crate) fn fence_profile(self) {
-        self.owner.update(SessionOwner::expect_session_change);
+        self.suspend_private_scope();
         self.refresh();
+    }
+
+    #[cfg(feature = "browser")]
+    pub(crate) fn suspend_private_scope(self) {
+        self.owner.update(SessionOwner::expect_session_change);
     }
 
     pub(crate) fn checking(self) -> bool {
@@ -337,6 +344,7 @@ mod tests {
     #[test]
     fn account_summary_names_every_standing_without_inventing_an_identity() {
         let active = Standing::Active(CurrentAccount {
+            notification_scope: None,
             principal_id: "p".into(),
             display_name: "An Nhiên".into(),
         });

@@ -243,11 +243,18 @@ fn random_key() -> Option<String> {
 pub(crate) fn WorkEndorsement(
     revision_id: String,
     summaries: Option<EndorsementSummaries>,
+    #[prop(optional)] title: String,
+    #[prop(optional)] search: Option<Signal<String>>,
 ) -> impl IntoView {
     let Some(endorsements) = Endorsements::current() else {
         return ().into_any();
     };
-    let target = TargetKey::Work { revision_id };
+    let work_id = endorsements
+        .controller
+        .with_untracked(|owner| owner.scope().work_id.clone());
+    let target = TargetKey::Work {
+        revision_id: revision_id.clone(),
+    };
     endorsements.seed(vec![target.clone()], summaries.as_ref());
     #[cfg(feature = "browser")]
     {
@@ -266,8 +273,26 @@ pub(crate) fn WorkEndorsement(
         Memo::new(move |_| endorsements.facts(&target).unwrap_or_default())
     };
     let (set_target, recover_target) = (target.clone(), target);
+    let search = search.unwrap_or_else(|| Signal::stored(String::new()));
+    let shown_revision = StoredValue::new(revision_id.clone());
+    let previous_revision = Memo::new(move |_| {
+        search.with(|search| {
+            url::form_urlencoded::parse(search.trim_start_matches('?').as_bytes()).any(
+                |(key, value)| key == "ban-tham" && value.as_ref() != shown_revision.get_value(),
+            )
+        })
+    });
+    #[cfg(feature = "browser")]
+    Effect::new(move |_| {
+        if search.with(|search| {
+            url::form_urlencoded::parse(search.trim_start_matches('?').as_bytes())
+                .any(|(key, _)| key == "ban-tham")
+        }) {
+            super::focus_recovery("work-endorsement");
+        }
+    });
     view! {
-        <div id="work-endorsement" class="vk-reader-endorsement flex [margin-block:var(--vk-space-6)_0] min-w-0">
+        <div id="work-endorsement" tabindex="-1" class="vk-reader-endorsement flex [margin-block:var(--vk-space-6)_0] min-w-0">
             <EndorsementAction
                 id="endorse-work"
                 kind=EndorsementKind::Work
@@ -275,6 +300,14 @@ pub(crate) fn WorkEndorsement(
                 on_set=move |desired: bool| endorsements.press(set_target.clone(), desired)
                 on_recover=move |_: RecoveryIntent| endorsements.recover(recover_target.clone())
             />
+            <Show when=move || previous_revision.get()>
+                <p class="vk-notif-note">"Lượt Thấm trong thông báo thuộc một bản trước. Bạn đang xem bản công khai hiện tại."</p>
+            </Show>
+            <crate::notifications::EndorsersTrigger work=work_id revision=revision_id title
+                total=Signal::derive(move || match facts.get().count {
+                    vink_ui::CountFact::Known(count) => count,
+                    _ => 0,
+                }) />
         </div>
     }
     .into_any()
@@ -320,7 +353,11 @@ mod tests {
         assert!(html.contains("1.234"), "grouped public count: {html}");
         assert!(html.contains("Cần đăng nhập để Thấm."), "{html}");
         assert!(html.contains("aria-disabled=\"true\""), "{html}");
-        assert!(!html.contains("href"), "no fake login link: {html}");
+        assert!(!html.contains("href=\"/toi"), "no fake login link: {html}");
+        assert!(
+            html.contains("href=\"/tac-pham/w/tham/r1\""),
+            "a guest can open the real public list: {html}"
+        );
         assert!(!html.contains("Kiểm tra lại"), "{html}");
     }
 

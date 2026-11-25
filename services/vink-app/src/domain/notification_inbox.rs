@@ -353,6 +353,7 @@ pub struct ReadFacts {
     pub comments: HashMap<CommentId, CommentFacts>,
     /// Owner-visible titles of the revisions named by work decisions.
     pub revision_titles: HashMap<RevisionId, String>,
+    pub revision_dates: HashMap<RevisionId, time::OffsetDateTime>,
     /// Adverse comment decisions named by inbox targets: `true` when the comment was removed,
     /// `false` when rejected. Read only for the comment's writer.
     pub comment_decisions: HashMap<(CommentId, i64), bool>,
@@ -445,9 +446,10 @@ pub fn decide(viewer: PrincipalId, candidate: &Candidate, facts: &ReadFacts) -> 
             let InboxTarget::WorkDecision { revision, .. } = candidate.target else {
                 return None;
             };
+            let title = facts.revision_titles.get(&revision)?;
             (work.owner == viewer).then(|| Shown {
                 target: candidate.target,
-                work_title: facts.revision_titles.get(&revision).cloned(),
+                work_title: Some(title.clone()),
                 actors_preview: Vec::new(),
                 actor_count: 0,
                 item_count: candidate.item_count,

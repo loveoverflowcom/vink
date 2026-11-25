@@ -12,6 +12,9 @@ use vink_ui::{
 
 use crate::appearance::{AccountAvatar, Appearance, RAIL_BOOTSTRAP};
 use crate::navigation::use_navigation_guard;
+use crate::notifications::{BELL, InboxPopover, Notifications, POPOVER, RailBell};
+#[cfg(feature = "browser")]
+use crate::notifications::{INBOX_PATH, MOBILE_BELL};
 
 // Giao diện lives only on Tôi (`/toi`); the rail carries no appearance utility (#413).
 const RAIL_MODAL: &str = "navigation-modal";
@@ -30,7 +33,7 @@ impl Destination {
     /// routes in `lib.rs`; anything the router renders as NotFound marks none.
     pub fn for_path(path: &str) -> Option<Self> {
         match segments(path)[..] {
-            [] | ["tac-pham", _] | ["the", _] => Some(Self::Explore),
+            [] | ["tac-pham", _] | ["tac-pham", _, "tham", _] | ["the", _] => Some(Self::Explore),
             ["ban-viet"] | ["ban-viet", _] | ["ban-viet", _, "kiem-duyet"] => Some(Self::Desk),
             ["toi"] | ["toi", "dia-chi" | "chinh-ho-so"] => Some(Self::Me),
             [name] if name.starts_with('@') => Some(Self::Explore),
@@ -81,8 +84,8 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
         crate::pages::profile::observe_changes(crate::public_reads::invalidate_author_attribution);
         crate::pages::profile::browser::provide_draft(session);
     }
-    // SSR and the first browser render use the same anonymous-safe account link. Confirmed
-    // standing can add an avatar later without flashing a signed-in label for a guest.
+    // SSR and the first browser render use the same anonymous-safe account link.
+    // Only confirmed standing changes the label to Tôi.
     let guest = Memo::new(move |_| {
         use crate::session::Standing;
         matches!(
@@ -100,7 +103,30 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
     let overlays = RwSignal::new(OverlayLayer::default());
     let rail_open = Memo::new(move |_| overlays.with(|layer| layer.is_open(RAIL_MODAL)));
     let rail_modal = NodeRef::<html::Dialog>::new();
+    let inbox_route = Memo::new(move |_| {
+        location
+            .pathname
+            .with(|path| segments(path) == ["thong-bao"])
+    });
+    let popover = NodeRef::<html::Dialog>::new();
+    let popover_open = Memo::new(move |_| overlays.with(|layer| layer.is_open(POPOVER)));
+    let large_text = RwSignal::new(false);
+    Notifications::provide(
+        session,
+        Signal::derive(move || inbox_route.get() || popover_open.get()),
+        large_text,
+    );
+    let text_probe = NodeRef::<html::Span>::new();
     let page_scroll = StoredValue::new(0.0);
+    let close_notifications = move |reason| {
+        // Resize is an exit from the overlay layout, including its keyboard target.
+        let trigger = if reason == CloseReason::Resize {
+            "noi-dung"
+        } else {
+            BELL
+        };
+        close_dialog(POPOVER, reason, overlays, popover, trigger, page_scroll)
+    };
     let close_rail = move |reason| {
         close_dialog(
             RAIL_MODAL,
@@ -113,8 +139,21 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
     };
     let navigation = use_navigation_guard();
     // Back/forward and real navigations close the overlay before the editor's check runs.
-    let overlay_closer = navigation.set_overlay(close_rail);
+    let overlay_closer =
+        navigation.set_overlay(move |reason| close_notifications(reason) || close_rail(reason));
     on_cleanup(move || navigation.clear_overlay(overlay_closer));
+
+    let open_notifications = Callback::new(move |()| {
+        #[cfg(feature = "browser")]
+        {
+            if place_notifications(popover) && show_dialog(POPOVER, overlays, popover, page_scroll)
+            {
+                focus_without_scroll(document().get_element_by_id("notification-popover-title"));
+                restore_scroll(page_scroll);
+            }
+        }
+    });
+    let page_only = Signal::derive(move || large_text.get() || inbox_route.get());
 
     #[cfg(feature = "browser")]
     {
@@ -124,8 +163,36 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
             if class != WindowClass::Medium {
                 close_rail(CloseReason::Resize);
             }
+            if class == WindowClass::Compact {
+                close_notifications(CloseReason::Resize);
+            } else if popover_open.get_untracked() {
+                place_notifications(popover);
+            }
         });
         on_cleanup(move || listener.remove());
+        observe_notification_text(text_probe, large_text, close_notifications);
+        Effect::new(move |_| {
+            if session.notification_scope.get().is_none() {
+                close_notifications(CloseReason::Dismiss);
+            }
+        });
+        let path = use_location().pathname;
+        Effect::new(move |was_inbox: Option<bool>| {
+            let current = path.get();
+            if was_inbox == Some(true)
+                && matches!(segments(&current)[..], [] | ["ban-viet"] | ["toi"])
+            {
+                request_animation_frame(move || {
+                    let bell = [MOBILE_BELL, BELL]
+                        .into_iter()
+                        .filter_map(|id| document().get_element_by_id(id))
+                        .find(|bell| bell.get_bounding_client_rect().width() > 0.0)
+                        .or_else(|| document().get_element_by_id("noi-dung"));
+                    focus_without_scroll(bell);
+                });
+            }
+            current.trim_end_matches('/') == INBOX_PATH
+        });
     }
 
     let active =
@@ -189,6 +256,8 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
                     collapse_label="Thu gọn điều hướng"
                     on_toggle=toggle
                     destinations=primary(false)
+                    utility=move || view! { <RailBell current=inbox_route.into() open=popover_open.into()
+                        page_only on_open=open_notifications /> }
                     account=move || view! {
                         <AccountLink guest=guest.into() current=active(Destination::Me) />
                     }
@@ -204,6 +273,12 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
                 />
             }
             overlays=move || view! {
+                <span class="vk-notif-text-probe" aria-hidden="true" node_ref=text_probe></span>
+                <ShellDialog id=POPOVER class="vk-notif-popover" label="Thông báo"
+                    labelledby="notification-popover-title"
+                    dialog=popover on_close=Callback::new(move |reason| { close_notifications(reason); })>
+                    <InboxPopover open=popover_open.into() on_close=Callback::new(move |()| { close_notifications(CloseReason::Dismiss); }) />
+                </ShellDialog>
                 <ShellDialog id=RAIL_MODAL class="vk-rail-modal m-0 p-0 [border:0] [max-inline-size:100%] [max-block-size:100%]" label="Điều hướng chính"
                     dialog=rail_modal on_close=Callback::new(move |reason| { close_rail(reason); })>
                     <NavigationRail
@@ -251,12 +326,13 @@ fn ShellDialog(
     id: &'static str,
     class: &'static str,
     label: &'static str,
+    #[prop(optional)] labelledby: Option<&'static str>,
     dialog: NodeRef<html::Dialog>,
     on_close: Callback<CloseReason>,
     children: Children,
 ) -> impl IntoView {
     view! {
-        <dialog id=id class=class aria-label=label data-testid=id node_ref=dialog
+        <dialog id=id class=class aria-label=labelledby.is_none().then_some(label) aria-labelledby=labelledby data-testid=id node_ref=dialog
             on:keydown=move |event| trap_dialog_tab(event, dialog)
             on:cancel=move |event: leptos::ev::Event| {
                 event.prevent_default();
@@ -308,7 +384,9 @@ fn trap_dialog_tab(event: leptos::ev::KeyboardEvent, dialog: NodeRef<html::Dialo
         ) else {
             return;
         };
-        let target = if event.shift_key() && first.is_same_node(Some(&active)) {
+        let target = if event.shift_key()
+            && (first.is_same_node(Some(&active)) || active.id() == "notification-popover-title")
+        {
             Some(last)
         } else if !event.shift_key() && last.is_same_node(Some(&active)) {
             Some(first)
@@ -333,6 +411,9 @@ fn show_dialog(
     #[cfg(feature = "browser")]
     {
         if let Some(dialog) = dialog.get_untracked().filter(|node| !node.open())
+            && document()
+                .query_selector("dialog:modal")
+                .is_ok_and(|modal| modal.is_none())
             && overlays
                 .try_update(|layer| layer.open(id))
                 .is_some_and(|result| result.is_ok())
@@ -388,7 +469,7 @@ fn close_dialog(
 }
 
 #[cfg(feature = "browser")]
-fn focus_without_scroll(target: Option<web_sys::Element>) {
+pub(crate) fn focus_without_scroll(target: Option<web_sys::Element>) {
     use wasm_bindgen::JsCast;
     if let Some(target) = target.and_then(|node| node.dyn_into::<web_sys::HtmlElement>().ok()) {
         let options = web_sys::FocusOptions::new();
@@ -400,6 +481,65 @@ fn focus_without_scroll(target: Option<web_sys::Element>) {
 #[cfg(feature = "browser")]
 fn restore_scroll(scroll: StoredValue<f64>) {
     window().scroll_to_with_x_and_y(window().scroll_x().unwrap_or_default(), scroll.get_value());
+}
+
+#[cfg(feature = "browser")]
+fn place_notifications(dialog: NodeRef<html::Dialog>) -> bool {
+    let Some(anchor) = document().get_element_by_id(BELL) else {
+        return false;
+    };
+    let Some(rail) = document().get_element_by_id("navigation") else {
+        return false;
+    };
+    let Some(dialog) = dialog.get_untracked() else {
+        return false;
+    };
+    let top = anchor.get_bounding_client_rect().top().max(12.0);
+    let left = rail.get_bounding_client_rect().right() + 8.0;
+    let style = web_sys::HtmlElement::style(&dialog);
+    let _ = style.set_property("--vk-notif-anchor-top", &format!("{top}px"));
+    let _ = style.set_property("--vk-notif-anchor-left", &format!("{left}px"));
+    true
+}
+
+#[cfg(feature = "browser")]
+fn observe_notification_text(
+    probe: NodeRef<html::Span>,
+    large: RwSignal<bool>,
+    close: impl Fn(CloseReason) -> bool + Send + Sync + 'static,
+) {
+    use wasm_bindgen::{JsCast, closure::Closure};
+    let observer = StoredValue::new_local(None);
+    let close = Callback::new(move |reason| {
+        close(reason);
+    });
+    Effect::new(move |_| {
+        let Some(node) = probe.get() else {
+            return;
+        };
+        let measure = move || {
+            let is_large = node.get_bounding_client_rect().width() >= 24.0;
+            if is_large {
+                close.run(CloseReason::Resize);
+            }
+            large.set(is_large);
+        };
+        measure();
+        let callback = Closure::<dyn FnMut()>::new(measure);
+        if let Ok(resize) = web_sys::ResizeObserver::new(callback.as_ref().unchecked_ref()) {
+            if let Some(node) = probe.get_untracked() {
+                resize.observe(&node);
+            }
+            observer.set_value(Some((resize, callback)));
+        }
+    });
+    on_cleanup(move || {
+        observer.try_update_value(|value| {
+            if let Some((resize, _)) = value.take() {
+                resize.disconnect();
+            }
+        });
+    });
 }
 
 fn current_window_class() -> WindowClass {

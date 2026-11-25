@@ -1202,3 +1202,112 @@ async fn endorser_pages_and_batch_facts_stay_on_their_indexes_under_skew(pool: P
     assert_eq!(page.body["total_count"], 18000);
     assert_eq!(page.body["items"].as_array().unwrap().len(), 50);
 }
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn web_scope_rejects_reads_and_writes_under_a_replaced_cookie(pool: PgPool) {
+    let f = fixture(pool).await;
+    let scope = get_as(&f, "/api/v1/auth/session/account", OWNER, SESSION)
+        .await
+        .body["notification_scope"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    assert_eq!(scope.len(), 32);
+    let page = |actor: Uuid, session: (&str, &str), path: &str, body: Option<Value>| {
+        let method = if body.is_some() { "POST" } else { "GET" };
+        let request = Request::builder()
+            .method(method)
+            .uri(path)
+            .header("x-test-principal", actor.to_string())
+            .header(session.0, session.1)
+            .header("x-vink-notification-scope", &scope)
+            .header(header::ORIGIN, ORIGIN)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(body.map_or_else(Body::empty, |body| Body::from(body.to_string())))
+            .unwrap();
+        f.app.clone().oneshot(request)
+    };
+    assert_eq!(
+        page(OWNER, SESSION, "/api/v1/me/notifications/count", None)
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::OK
+    );
+    for (actor, replacement) in [(OWNER, SESSION_B), (reader_id(1), SESSION)] {
+        let count = page(actor, replacement, "/api/v1/me/notifications/count", None)
+            .await
+            .unwrap();
+        assert_eq!(count.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(count.headers()[header::CACHE_CONTROL], "no-store");
+        let result = page(
+            actor, replacement, "/api/v1/me/notifications/read",
+            Some(json!({"command_key": "old-web-read", "group_id": Uuid::now_v7(), "observed_group_version": 1})),
+        ).await.unwrap();
+        assert_eq!(result.status(), StatusCode::UNAUTHORIZED);
+    }
+    assert!(f.inbox.commands.lock().unwrap().is_empty());
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn exact_reader_target_reuses_current_public_discussion_visibility(pool: PgPool) {
+    let f = fixture(pool).await;
+    let root = comment(
+        &f,
+        reader_id(1),
+        "Chữ gốc sẽ bị gỡ",
+        Some(ModerationAction::Approve),
+    )
+    .await;
+    let reply = f
+        .vink
+        .submit_comment(
+            principal(reader_id(2)),
+            SubmitComment {
+                work_id: sample_work(),
+                target: Some(CommentId::from_uuid(root)),
+                body: "Phản hồi vẫn công khai".into(),
+                command_key: "notification-exact-reader-reply".into(),
+            },
+        )
+        .await
+        .unwrap()
+        .comment_id;
+    let path = format!(
+        "/api/v1/works/{}/discussion/public/comments/{}",
+        sample_work(),
+        reply
+    );
+    let root_path = format!(
+        "/api/v1/works/{}/discussion/public/comments/{root}",
+        sample_work()
+    );
+    assert_eq!(
+        send(&f.app, "GET", &path, None, None, false, None, None)
+            .await
+            .status,
+        StatusCode::NOT_FOUND
+    );
+    moderate(&f, reply, 1, ModerationAction::Approve).await;
+    let shown = send(&f.app, "GET", &path, None, None, false, None, None).await;
+    assert_eq!(shown.status, StatusCode::OK);
+    assert_eq!(shown.cache.as_deref(), Some("no-store"));
+    assert_eq!(shown.body["preview"][0]["body"], "Phản hồi vẫn công khai");
+    moderate(&f, CommentId::from_uuid(root), 2, ModerationAction::Remove).await;
+    assert_eq!(
+        send(&f.app, "GET", &root_path, None, None, false, None, None)
+            .await
+            .status,
+        StatusCode::NOT_FOUND
+    );
+    let anchored = send(&f.app, "GET", &path, None, None, false, None, None).await;
+    assert_eq!(anchored.body["root"]["kind"], "anchor");
+    assert!(!anchored.body.to_string().contains("Chữ gốc sẽ bị gỡ"));
+    moderate(&f, reply, 2, ModerationAction::Remove).await;
+    assert_eq!(
+        send(&f.app, "GET", &path, None, None, false, None, None)
+            .await
+            .status,
+        StatusCode::NOT_FOUND
+    );
+}

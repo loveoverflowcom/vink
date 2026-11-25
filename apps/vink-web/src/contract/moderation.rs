@@ -61,6 +61,8 @@ pub struct AuthorWorkDecision {
     pub decision_version: i64,
     pub outcome: Decision,
     pub is_current: bool,
+    #[serde(default)]
+    pub action_required: bool,
     pub can_appeal: bool,
     pub reason: Option<String>,
     pub decided_at: String,

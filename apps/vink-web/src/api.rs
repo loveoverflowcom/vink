@@ -1018,6 +1018,7 @@ fn bounded(path: &str) -> bool {
         || path.contains("/publication/state")
         || path.contains("/discussion")
         || path.contains("/endorsement")
+        || path.contains("/endorsers")
         || path.starts_with("/api/v1/author/works")
         || path.starts_with("/api/v1/me/following-feed")
         || path == "/api/v1/me/profile"
@@ -1029,6 +1030,35 @@ fn bounded(path: &str) -> bool {
         || path.starts_with("/api/v1/authors?")
         || path.contains("/tags")
         || path.starts_with("/api/v1/auth/")
+}
+
+#[cfg(feature = "browser")]
+pub(crate) fn notification_request<B: Serialize, T: serde::de::DeserializeOwned>(
+    path: &str,
+    scope: &str,
+    body: Option<&B>,
+) -> impl std::future::Future<Output = Result<T, ApiError>> + use<B, T> {
+    http::notification(path, scope, body)
+}
+
+#[cfg(feature = "browser")]
+pub(crate) async fn linked_public_comment(
+    work: &str,
+    comment: &str,
+) -> Result<crate::contract::PublicRootThread, ApiError> {
+    http::get(&format!(
+        "/api/v1/works/{}/discussion/public/comments/{}",
+        encode_segment(work),
+        encode_segment(comment)
+    ))
+    .await
+}
+
+#[cfg(feature = "browser")]
+pub(crate) async fn endorser_request<T: serde::de::DeserializeOwned>(
+    path: &str,
+) -> Result<T, ApiError> {
+    http::get(path).await
 }
 
 #[cfg(feature = "browser")]
@@ -1143,6 +1173,45 @@ mod http {
             body.as_ref().and_then(|b| b.field.as_deref()),
             retry_after.as_deref(),
         ))
+    }
+
+    pub(super) fn notification<B: Serialize, T: DeserializeOwned>(
+        path: &str,
+        scope: &str,
+        body: Option<&B>,
+    ) -> impl std::future::Future<Output = Result<T, ApiError>> + use<B, T> {
+        // Read starts fetch in the click handler. The future owns only the response and
+        // deadline, so navigation can take place immediately after the request starts.
+        let started = (|| {
+            let deadline = Deadline::new()?;
+            let signal = deadline.controller.signal();
+            let builder = if body.is_some() {
+                Request::post(path)
+            } else {
+                Request::get(path)
+            }
+            .abort_signal(Some(&signal))
+            .cache(web_sys::RequestCache::NoStore)
+            .header("accept", "application/json")
+            .header("x-vink-notification-scope", scope);
+            let request = match body {
+                Some(body) => builder.json(body),
+                None => builder.build(),
+            }
+            .map_err(|_| ApiError::Network)?;
+            let window = web_sys::window().ok_or(ApiError::Network)?;
+            let response = window.fetch_with_request(&request.into());
+            Ok::<_, ApiError>((deadline, response, path.to_owned()))
+        })();
+        async move {
+            let (_deadline, response, path) = started?;
+            let response = wasm_bindgen_futures::JsFuture::from(response)
+                .await
+                .map_err(|_| ApiError::Network)?
+                .dyn_into::<web_sys::Response>()
+                .map_err(|_| ApiError::Network)?;
+            decode(&path, Response::from(response)).await
+        }
     }
 
     pub async fn get<T: DeserializeOwned>(path: &str) -> Result<T, ApiError> {
@@ -1287,7 +1356,10 @@ mod http {
         let envelope = response.json::<ErrorEnvelope>().await.ok();
         // Refresh only authority refusals, not an ordinary forbidden operation (e.g. self
         // endorsement). The existing tab owner remains the sole session reader.
-        if !is_auth(path) && authority_needs_refresh(status, envelope.as_ref()) {
+        if !is_auth(path)
+            && !path.starts_with("/api/v1/me/notifications")
+            && authority_needs_refresh(status, envelope.as_ref())
+        {
             UNAUTHENTICATED.with(|slot| {
                 if let Some(hook) = slot.borrow().as_ref() {
                     hook();

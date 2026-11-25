@@ -36,11 +36,11 @@ const READER_FRESHNESS_NOTICE_CLASS: &str = "[margin-block:calc(-1*var(--vk-spac
 
 /// HTTP status for the server response; a no-op in the browser.
 #[derive(Clone)]
-struct ResponseStatus(#[cfg(feature = "ssr")] Option<leptos_axum::ResponseOptions>);
+pub(crate) struct ResponseStatus(#[cfg(feature = "ssr")] Option<leptos_axum::ResponseOptions>);
 
 impl ResponseStatus {
     /// Must be called synchronously in a component body, where the request context exists.
-    fn capture() -> Self {
+    pub(crate) fn capture() -> Self {
         Self(
             #[cfg(feature = "ssr")]
             use_context::<leptos_axum::ResponseOptions>(),
@@ -63,7 +63,7 @@ impl ResponseStatus {
         }
     }
 
-    fn set_no_store(&self) {
+    pub(crate) fn set_no_store(&self) {
         #[cfg(feature = "ssr")]
         if let Some(options) = &self.0 {
             options.insert_header(
@@ -263,7 +263,7 @@ fn ReplacementView(
                     <p class="vk-muted">{detail}</p>
                 </header>
             </article>
-            <discussion::Discussion work_id=work_id read_only=true />
+            <discussion::ReaderDiscussion work_id=work_id read_only=true />
         </div>
     }
 }
@@ -297,6 +297,8 @@ fn PublicationContent(
     };
     endorsement::Endorsements::provide(publication.work_id.clone(), on_superseded);
     let work_summary = api::work_endorsement_resource(publication.work_id.clone());
+    let endorsement_title = StoredValue::new(publication.title.clone());
+    let endorsement_search = leptos_router::hooks::use_location().search;
     let revision = publication.revision_id.clone();
     view! {
         <Title text=format!("{} — Vink", publication.title) />
@@ -346,17 +348,17 @@ fn PublicationContent(
                 let revision = revision.clone();
                 Suspend::new(async move {
                     let summaries = work_summary.await.ok();
-                    view! { <endorsement::WorkEndorsement revision_id=revision summaries /> }
+                    view! { <endorsement::WorkEndorsement revision_id=revision summaries title=endorsement_title.get_value() search=Signal::from(endorsement_search) /> }
                 })
             }}
         </Suspense>
-        <discussion::Discussion work_id=discussion_work />
+        <discussion::ReaderDiscussion work_id=discussion_work />
         </div>
     }
 }
 
 #[component]
-fn Unavailable(
+pub(crate) fn Unavailable(
     /// Where to leave to. `None` on Explore itself, whose same-URL link would neither leave
     /// nor refetch the list.
     #[prop(optional, into)]

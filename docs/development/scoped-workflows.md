@@ -30,7 +30,7 @@ Tất cả ví dụ chạy ở repo root. Dùng `cargo xtask --help` để xem c
 | Preview Leptos | `cargo xtask dev preview` | wasm target/bindgen, Node/npm (Tailwind v4 CLI) | Static host của preview (`vink-preview.css`), không App/Identity/DB |
 | Kiểm preview | `cargo xtask verify preview` | wasm target/bindgen, Node/npm, Chrome | Giữ toàn bộ assertion preview hiện hữu trên `vink-preview.css` |
 | Một Web scenario | `cargo xtask verify web --scenario password` | Web tools + Chrome, test PG credential | App + Identity và scratch của scenario; không worker |
-| Web regression đầy đủ | `cargo xtask verify web` | Web tools + Chrome, test PG credential | 17 suite mặc định, gồm storage đúng một lần và capture đầy đủ |
+| Web regression đầy đủ | `cargo xtask verify web` | Web tools + Chrome, test PG credential | 18 suite mặc định, gồm storage đúng một lần và capture đầy đủ |
 | Regression hiện hữu | `cargo xtask verify all` | Theo từng lane | Vẫn quick → discussion → expressions → postgres → web; Kani riêng |
 
 `build` nhận `api|spa|web|worker|identity|preview`; `--release` áp dụng cho mọi target trừ
@@ -190,6 +190,7 @@ TypeScript, dependency npm đã cài và các kiểm dữ liệu Editor trước
 | `standalone` | Artifact CSR + proxy loopback, API-only, Identity và App DB scratch | Reader, tìm kiếm, lịch sử, mật khẩu, editor, bảo vệ bản nháp |
 | `author-search` | App password scratch và Identity native, fixture hồ sơ với bút danh trùng | `author-search`, SSR/no-JS, IME mô phỏng, Back, phân trang và Theo dõi theo phiên |
 | `publication` | App publication scratch migrate/seed/catalog + Identity scratch/local outbox | `publication-author` |
+| `notifications` | Sample App scratch với loopback author | `notifications` (chuông/popover/hộp thư/màn quyết định/ma trận đáp ứng R4) |
 | `perf-baseline` | App scratch + catalog + 200 public works/1.000 comments tổng hợp, phiên khách | 10 cold SSR/hydration + 10 warm Reader/Back, ledger CDP, history và secondary; **opt-in** |
 | `return-position` | Cùng fixture công khai của `perf-baseline` | Back/Forward, liên kết quay về, scope/filter/cursor, 50 vòng và các ca focus; **opt-in** |
 
@@ -202,8 +203,9 @@ Lặp `--scenario` để ghép suite. Thứ tự canonical giữ sample Reader t
 mỗi scenario chạy được từ scratch mới. Chọn `restart` chỉ chạy setup browser được ghi trong
 bảng. Typo, chuỗi rỗng, selector trùng và cờ sai phạm vi bị từ chối trước khi vào executor.
 Catalog này là mapping từ [phase legacy](../../apps/vink-web/e2e/browser-smoke.mjs) tới các
-lệnh mới. Các nhánh auth thực vẫn dùng Identity và local outbox. Browser cho Notifications
-chưa có consumer/fixture trong base #509. Boundary hiện hữu là PostgreSQL owner/lifecycle.
+lệnh mới. Các nhánh auth thực vẫn dùng Identity và local outbox. Scenario `notifications` kiểm
+hành vi trình duyệt R4 trên shell/hộp thư/quyết định; luồng hai process thật với Notification
+Service vẫn nằm ở lane PostgreSQL owner/lifecycle.
 
 Mỗi scenario SSR còn cần App binary, WASM hydrate/bindgen, CSS/Tailwind, editor JS,
 Node/npm, bundle guard, Chrome và scratch PostgreSQL. `standalone` dùng CSR và App API.

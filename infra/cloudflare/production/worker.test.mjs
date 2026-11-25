@@ -141,6 +141,11 @@ test('canonical host and dynamic request preserve contracts and isolate private 
         status: unchanged ? 304 : 200, headers,
       });
     }
+    if (url.pathname === '/api/v1/me/notifications/count') {
+      assert.equal(req.headers.get('x-vink-notification-scope'), 'scope-a');
+      return new Response('{"freshness":{"status":"fresh","unseen_group_count":0,"count_is_lower_bound":false,"as_of_snapshot":"s1.0"}}',
+        {headers:{'cache-control':'no-store'}});
+    }
     return new Response(req.headers.get('cookie') || 'guest', {headers:{'cache-control':'public', 'x-robots-tag':'noindex'}});
   });
   for (const cookie of ['a=one','b=two','']) {
@@ -149,6 +154,11 @@ test('canonical host and dynamic request preserve contracts and isolate private 
     assert.equal(r.headers.get('cache-control'), 'no-store');
     assert.equal(r.headers.get('x-robots-tag'), 'noindex');
   }
+  const scoped = await send(serve, '/api/v1/me/notifications/count', {
+    headers: { cookie: 'a=one', 'x-vink-notification-scope': 'scope-a', 'x-vink-client-ip': 'invented' },
+  });
+  assert.equal(scoped.status, 200);
+  assert.equal(scoped.headers.get('cache-control'), 'no-store');
   const write = await send(serve, '/api/v1/auth/login?v=1', {method:'POST',body:'body',headers:{origin:'https://vink.forum'}});
   assert.equal(write.status,303);
   assert.equal(write.headers.get('location'),'/toi');
@@ -185,7 +195,7 @@ test('canonical host and dynamic request preserve contracts and isolate private 
   const waiting = await send(offline, '/api/v1/works', {headers:{'if-none-match':publicTag}});
   assert.equal(waiting.status, 503);
   assert.equal(waiting.headers.get('cache-control'), 'no-store');
-  assert.equal(calls.length,13);
+  assert.equal(calls.length,14);
 });
 
 test('retirement returns 410 for old URLs and sensitive methods without redirect', async () => {

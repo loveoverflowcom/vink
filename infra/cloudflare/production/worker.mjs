@@ -111,7 +111,12 @@ export function handler(inventory, originFetch = fetch, assetFetch = fetch) {
     if (!env.ORIGIN_KEY || !request.headers.get("CF-Connecting-IP")) return textError(503, "Origin ingress unavailable");
     const headers = new Headers(request.headers);
     for (const name of [...headers.keys()]) {
-      if (/^(host$|forwarded$|x-forwarded-|x-real-ip$|x-vink-|cf-)/i.test(name)) headers.delete(name);
+      if (
+        name.toLowerCase() !== "x-vink-notification-scope" &&
+        /^(host$|forwarded$|x-forwarded-|x-real-ip$|x-vink-|cf-)/i.test(name)
+      ) {
+        headers.delete(name);
+      }
     }
     headers.set("X-Vink-Edge-Hop", "1");
     headers.set("X-Vink-Origin-Key", env.ORIGIN_KEY);

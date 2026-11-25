@@ -133,8 +133,8 @@ Khi #364 xử lý target `work_moderation_decision`, truyền `work_id`, `revisi
 `decision_version` vào URL `/ban-viet?review={work_id}&revision={revision_id}&decision={decision_version}`.
 [DeskReview](../../apps/vink-web/src/pages/desk_review.rs) mở đúng quyết định trong phạm vi chủ
 tác phẩm, kể cả khi một bản khác đang công khai hoặc mục không nằm trong trang danh sách đã tải.
-Giữ nguyên hợp đồng riêng của quyết định bình luận, API Gateway và Seen/Read. Inbox → Bàn viết
-`NOT_RUN`.
+Giữ nguyên hợp đồng riêng cho quyết định bình luận và Seen/Read. #486 dùng URL này để
+mở một màn chi tiết trong Bàn viết. Các liên kết chi tiết chỉ có `review` vẫn mở dialog hiện có.
 
 ## 5. Bàn giao riêng cho giai đoạn Design & Web (`Epic AC-16` & `AC-17`)
 
@@ -555,3 +555,34 @@ loại mới, migration `20261202000000` đã nới cả hai), `cargo test -p vi
 | Thiết kế | [LayoutSpec R4](../design/notifications.md) `DESIGN_PROPOSED`, `NO_APPROVED_REFERENCE`. Preview dùng hướng Final. |
 | Triển khai | `web` ở mức primitive và specimen. Badge, dấu và chuông trong `vink-ui`; nhóm/dòng trong `vink-patterns`. Dùng fixture Ví dụ 2–4 và mẫu Ưng. Tích hợp shell, route, popover và polling vẫn thuộc lát Web. |
 | Bằng chứng | Chạy generator `cargo xtask ui-tokens`. Build, test, ảnh và số đo ma trận specimen `NOT_RUN` theo yêu cầu của chủ sản phẩm cho lượt này. |
+
+## 11. Web R4 (#486)
+
+[LayoutSpec R4](../design/notifications.md) và [bộ thiết kế](https://drive.google.com/drive/folders/1gLJYaMmg35WYpKJ0iXGp-p8JPpUs1Qhn)
+mô tả giao diện. [VDR-NOTIFICATIONS-DESIGN@r1](../../decisions/proposals/VDR-NOTIFICATIONS-DESIGN.r1.toml)
+giữ `PENDING`. Mức triển khai của lát này là `web`. Mốc thị giác giữ
+`NO_APPROVED_REFERENCE`.
+
+- **Shell → hộp thư.** `AdaptiveShell` dùng chung `OverlayLayer` và giữ nguyên main khi đổi
+  kích thước. `Notifications` dùng scope credential từ `SessionOwner` và một owner danh sách
+  cho popover và `/thong-bao`. Scope đổi dọn dữ liệu và bỏ phản hồi đang bay. Khách/SSR nhận
+  shell và skeleton chung. Không lưu nội dung riêng vào Web Storage, IndexedDB hay HTTP cache.
+- **Hộp thư → Gateway.** Một timer đếm khi tab hiện và có mạng. Trang đầu gửi Seen tới snapshot
+  đã nhận. Read sử dụng nhóm/phiên bản đã hiển thị và không đợi đích. Đọc tất cả giữ snapshot và
+  khóa lệnh qua retry, sau ACK đọc lại các trang đã mở để cập nhật trạng thái do Gateway xác nhận.
+  Tín hiệu sau snapshot hiện nút cập nhật. Tải thêm dùng đúng cursor và giữ các trang trước khi lỗi.
+- **Đích.** Reader tìm nhận xét chính xác bằng projection hiện hành cùng owner Discussion
+  (kể cả khi đích nằm ở trang sau). Thấm giữ đích revision, Reader báo khi revision công khai đã đổi.
+  Trang quyết định tác phẩm dùng route và dữ liệu riêng của Bàn viết (#477), giữ thao tác phản đối
+  hiện có. Màn quyết định nhận xét lấy chi tiết riêng từ Gateway. Danh sách người Thấm đọc endpoint
+  công khai theo revision và dọn các trang cũ khi mất quyền hoặc đổi phiên/revision.
+
+### Audit và tự review
+
+| Lớp | Kết quả đối chiếu |
+| --- | --- |
+| Domain và service | Producer/relay, rollup, mốc Seen và Read có owner riêng và giữ retry/idempotency. Lát Web dùng nguyên semantics của các lệnh. |
+| Gateway | Kiểm quyền theo lô và giới hạn continuation có sẵn. Bản Web bổ sung fence credential cho lượt đọc đầu và Read, bỏ work decision nếu revision không còn phép chiếu, dùng lại kiểm quyền Discussion khi mở đích chính xác. |
+| State Web | Thiếu adapter đếm và inbox trên base. Dùng store trong tab gắn generation và phiên bản lượt đọc. Mỗi lượt đếm đã thấy tương tác ghi sẽ tự đối soát lại. Đọc lại sau bulk tỷ lệ theo số trang người dùng đã mở, chỉ sau hành động rõ ràng. |
+| UI | Tái sử dụng primitive từ #485, dialog/focus shell và Bàn viết. Thứ tự rail giữ Bàn viết/Thông báo liền nhau. Avatar tài khoản tiếp tục thuộc Tôi, và nav dùng bộ icon outlined/filled. |
+| Kiểm chứng | Xem lệnh, ma trận, ảnh và ranh giới ở [evidence #486](evidence/notifications-486/README.md). |
