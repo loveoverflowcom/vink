@@ -1832,9 +1832,13 @@ async function r4PageColumns(page) {
     for (const [path, ready, box] of [['/', '#explore-heading h1', '#explore > .vk-explore__top'], ['/ban-viet', '#desk-title', '#desk']]) {
       await open(path, ready);
       if (scale === 200) await page.eval(`document.documentElement.dataset.text = '200'`);
-      gutters[path] = await page.eval(`(() => { const r = document.querySelector(${JSON.stringify(box)}).getBoundingClientRect();
-        return { text: document.documentElement.dataset.text ?? '100', left: r.left, right: document.documentElement.clientWidth - r.right,
-          overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }; })()`);
+      gutters[path] = await page.eval(`(() => {
+        const root = document.documentElement;
+        const r = document.querySelector(${JSON.stringify(box)}).getBoundingClientRect();
+        const layout = root.getBoundingClientRect();
+        return { text: root.dataset.text ?? '100', left: r.left - layout.left, right: layout.right - r.right,
+          overflow: root.scrollWidth - root.clientWidth };
+      })()`);
     }
     check(Object.values(gutters).every(g => g.text === String(scale) && Math.abs(g.left - 16) <= 1 && Math.abs(g.right - 16) <= 1 && g.overflow <= 0),
       `#402 AC-03 ${width}px / ${scale}%: Khám phá and Bàn viết keep a 16px gutter (${JSON.stringify(gutters)})`);

@@ -1497,8 +1497,8 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
   max-inline-size: var(--vk-size-page-column);
   margin-inline: auto;
 }
-/* The discovery header reserves the filter slot in every mode, including while its catalog loads. */
-html:has(.vk-discovery:not(.vk-discovery--tag)) { scrollbar-gutter: stable; }
+/* Stable mode geometry also keeps the R4 page column aligned with the Desk index. */
+html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gutter: stable; }
 .vk-explore__top {
   display: flex;
   padding-block: 16px 12px;
