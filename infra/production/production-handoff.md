@@ -11,8 +11,8 @@ cấu hình được liệt kê rõ.
 | --- | --- | --- |
 | Đăng ký tên miền | Spaceship → `vink.forum` → Nameservers, DNSSEC. Kiểm DS ở parent bằng `dig +trace DS vink.forum` và NS qua `dig +trace NS vink.forum`. | So khớp zone trước khi đổi NS. Gỡ DS của nhà cung cấp cũ và chờ TTL cũ trước khi đổi sang NS Cloudflare. Khi zone Active và DNS trả đúng, bật DNSSEC trong Cloudflare, đặt DS mới ở Spaceship và kiểm DS tại parent. [Checkpoint và thứ tự chuyển DNS](cloudflare-dns-20261119.md). |
 | DNS và TLS | Cloudflare → zone `vink.forum` → DNS Records/Export và SSL/TLS. Đọc từng record và trạng thái proxy trước khi khôi phục. | Production dùng `carlane.ns.cloudflare.com`, `drew.ns.cloudflare.com` và DS `2371/13/2` tại mốc này. Gắn apex và www qua Pages Custom domains, giữ `origin-prod.vink.forum` DNS-only và chứng chỉ đúng hostname. |
-| Pages và asset | Workers & Pages → `vink-production` → Deployments, Custom domains, Settings. Với Wrangler đã đăng nhập đúng account và có quyền Pages, chạy `npx --no-install wrangler pages deployment list --project-name vink-production --environment production` từ `infra/cloudflare` của release đã cài dependencies từ lock. | Giữ Direct Upload, production branch `main`, advanced-mode Worker và binding `ORIGIN_KEY` riêng của production. Lấy asset từ image Web đúng digest và theo trình tự trong [runbook phát hành](cloudflare-edge.md#từ-build-đến-receipt). |
-| Origin Caddy | Đọc vhost trên host ở `/root/cantos-services/edge/vink-origin-prod.caddy` và `vink-prod.caddy`. Container `cantos-edge` mount thư mục này thành `/etc/caddy`. Xem tên và path file riêng qua metadata của container/unit. | Đồng bộ Pages `ORIGIN_KEY` và Caddy `VINK_ORIGIN_KEY`. Pages chỉ cho xem tên binding, nên lấy giá trị từ bản lưu riêng của origin hoặc cấp lại đồng thời hai đầu nếu mất bản lưu. Validate rồi reload Caddy. Giữ origin trả `403` khi thiếu khóa. [Vhost mẫu](origin-prod.caddy.example). |
+| Pages và asset | Workers & Pages → `vink-production` → Deployments, Custom domains, Settings. Nạp token Pages từ [Secret Manager](#credential-phát-hành-và-khôi-phục), rồi chạy `npx --no-install wrangler pages deployment list --project-name vink-production --environment production` từ `infra/cloudflare` của release đã cài dependencies từ lock. | Giữ Direct Upload, production branch `main`, advanced-mode Worker và binding `ORIGIN_KEY` riêng của production. Lấy asset từ image Web đúng digest và theo trình tự trong [runbook phát hành](cloudflare-edge.md#từ-build-đến-receipt). |
+| Origin Caddy | Đọc vhost trên host ở `/root/cantos-services/edge/vink-origin-prod.caddy` và `vink-prod.caddy`. Container `cantos-edge` mount thư mục này thành `/etc/caddy`. Xem tên và path file riêng qua metadata của container/unit. | Đồng bộ Pages `ORIGIN_KEY` và Caddy `VINK_ORIGIN_KEY`. Dùng bản sao `VINK_PROD_ORIGIN_KEY` trong Secret Manager khi khôi phục. Nếu phải đổi giá trị, phối hợp cả hai đầu theo runbook. Validate rồi reload Caddy. Giữ origin trả `403` khi thiếu khóa. [Vhost mẫu](origin-prod.caddy.example). |
 | Runtime và dấu vết phát hành | `readlink -f /opt/vink-prod/current`, `systemctl cat vink-prod.service`, `podman inspect --format '{{.ImageName}}' vink-prod_app_1 vink-prod_identity_1 vink-prod_worker_1`. | Release env ở `/etc/vink-prod/release.env`, env từng service ở `/etc/vink-prod/runtime/`. Lấy cấu hình origin riêng từ `/etc/vink-prod/pages-origin.env` trong phiên quản trị. Receipt thủ công và bản trước cutover ở `/opt/vink-prod/pages-bootstrap/<sha>/`. Dùng manifest theo thứ tự dưới đây và các digest trong receipt. [Khôi phục origin và edge](cloudflare-edge.md#cutover-và-khôi-phục). |
 
 Metadata bổ sung để đối soát từ máy quản trị:
@@ -27,32 +27,95 @@ curl -sS -o /dev/null -w '%{http_code}\n' https://origin-prod.vink.forum/health/
 Lệnh cuối kỳ vọng `403`. So khớp deployment ID trong [mốc Cloudflare](cloudflare-edge.md#mốc-triển-khai-ngày-22112026).
 Kiểm lại Preview và qualification trước khi dùng controller cho bản kế tiếp. [Lệnh Wrangler Pages](https://developers.cloudflare.com/workers/wrangler/commands/pages/).
 
-## Khóa phát hành và khóa gửi thư
+## Credential phát hành và khôi phục
 
-| Secret | Nơi quản lý và cách lấy |
+Project Google Cloud của Vink là `vink-d0846`. Chạy lệnh trên máy quản trị với tài khoản
+đã có quyền đọc secret tương ứng. Kiểm tên và trạng thái phiên bản trước khi lấy payload.
+Dùng phiên bản số đã xác minh khi phục hồi hoặc khi đổi khóa. Đường release thường dùng
+`latest` và dừng nếu phiên bản đó không đọc được hoặc kiểm tra provider thất bại.
+
+| Credential | Nguồn và phạm vi |
 | --- | --- |
-| `VINK_RELEASE_DISPATCH_TOKEN` | GitHub repo → Settings → Secrets and variables → Actions. GitHub chỉ cho xem metadata. Lấy bản sao từ project GCP `vink-d0846`; token cần quyền Actions write đúng repo để dispatch. |
-| `VINK_PROD_RESEND_API_KEY` | Google Secret Manager cùng project, phiên bản đã kiểm lúc triển khai là `1`. Chọn phiên bản enabled khớp với khóa **Vink production OTP** ở Resend → API keys, quyền Sending access, domain `mail.vink.forum`. |
-| `ORIGIN_KEY` / `VINK_ORIGIN_KEY` | Pages production binding và cấu hình origin riêng trên VPS. Hai tên dùng cùng giá trị theo hợp đồng Worker–Caddy. |
+| `VINK_PAGES_API_TOKEN` | Tên dành cho token dịch vụ Cloudflare Pages trong Secret Manager. Chỉ cấp **Cloudflare Pages Edit** trên account `8339afe44b4e8cd2b633a38a77f1db41`. Kiểm project `vink-production` trước khi truyền token cho controller dưới tên `CLOUDFLARE_API_TOKEN`. |
+| `VINK_RELEASE_DISPATCH_TOKEN` | Secret Manager phiên bản `1` tại mốc 25/11/2026. Quyền Actions write trên `loveoverflowcom/vink`. Dùng cho `gh workflow run`. |
+| `VINK_PROD_RESEND_API_KEY` | Secret Manager phiên bản `1` đã đối chiếu với file VPS ngày 25/11/2026. Quyền Sending access cho `mail.vink.forum`. Dùng khi dựng lại hoặc xoay khóa Identity. |
+| `VINK_PROD_ORIGIN_KEY` | Secret Manager phiên bản `1` là bản sao từ `/etc/vink-prod/pages-origin.env` đã kiểm qua origin readiness. Dùng để khôi phục cặp Pages `ORIGIN_KEY` và Caddy `VINK_ORIGIN_KEY` cho hop Worker → origin. |
+| SSH tới VPS | Release thủ công dùng SSH đã pin host key trên máy quản trị. Nếu bật receiver GitHub Actions thì dùng secret `VINK_RELEASE_SSH_KEY` và `VINK_RELEASE_KNOWN_HOSTS` của Environment `vink-production`. Khóa quản trị cá nhân thuộc nơi quản lý SSH của người vận hành. |
+| GHCR | Push dùng `GITHUB_TOKEN` do GitHub cấp theo job. Pull các image Vink công khai theo digest trên VPS. Với registry private, dùng credential pull riêng đã cấu hình trên controller. |
+
+Ngày 23/11/2026, controller nhận OAuth của Wrangler trên Mac mini qua SSH theo từng tiến
+trình. Phiên đăng nhập và refresh token của người vận hành thuộc hồ sơ Wrangler cục bộ.
+Ngày 25/11/2026, OAuth đọc được Pages Vink, còn API quản lý token trả 403. Cần cấp một lần
+token dịch vụ và lưu phiên bản đầu tiên của `VINK_PAGES_API_TOKEN` để dùng đường bên dưới.
+Người có quyền **API Token Provisioning** trên account Vink thực hiện bước này. Chọn [Account API token](https://developers.cloudflare.com/fundamentals/api/get-started/account-owned-tokens/)
+và chỉ chọn quyền Pages Edit. Nhập token qua stdin trên máy quản trị. Dùng `secrets versions add`
+thay cho `secrets create` khi secret đã tồn tại. [Google Secret Manager](https://docs.cloud.google.com/secret-manager/docs/add-secret-version)
+
+```bash
+(
+  set +x
+  set -euo pipefail
+  read -rs -p 'Token dịch vụ Pages Vink: ' pages_token
+  printf '\n' >&2
+  [[ "$pages_token" =~ ^[A-Za-z0-9_.=-]{32,192}$ ]]
+  printf '%s' "$pages_token" | gcloud secrets create VINK_PAGES_API_TOKEN \
+    --project=vink-d0846 --replication-policy=automatic --data-file=-
+)
+```
 
 ```sh
-gh secret list --repo loveoverflowcom/vink
-for name in VINK_RELEASE_DISPATCH_TOKEN VINK_PROD_RESEND_API_KEY; do
+for name in VINK_PAGES_API_TOKEN VINK_RELEASE_DISPATCH_TOKEN VINK_PROD_RESEND_API_KEY VINK_PROD_ORIGIN_KEY; do
   gcloud secrets versions list "$name" --project=vink-d0846 --format='table(name,state)'
 done
 ```
 
-Khi cần dùng khóa để chạy qualification, chọn phiên bản dispatch đã xác minh (biến
-`DISPATCH_VERSION`) và dùng tài khoản có quyền đọc đúng secret. Ví dụ trong Bash với shell
-tracing tắt. `publish=false` và `website=false` chỉ chạy qualification trên GitHub.
+### Kiểm Pages trước mỗi release
+
+Trong một subshell Bash, nạp bí mật từ GCP vào biến cục bộ với tracing tắt, rồi đọc project
+qua HTTPS. Kết quả chỉ in deployment canonical ID. Khi chạy controller trực tiếp trong
+cùng subshell, export `CLOUDFLARE_ACCOUNT_ID` và `CLOUDFLARE_API_TOKEN="$pages_token"` cho lệnh release. Nếu controller
+ở VPS, truyền đúng biến đó qua stdin của SSH đã pin host key. Wrapper VPS đọc một dòng
+bằng `IFS= read -r CLOUDFLARE_API_TOKEN`, export cho tiến trình controller, rồi `exec`
+lệnh trong [runbook](cloudflare-edge.md#từ-build-đến-receipt). Giữ payload trong bộ nhớ
+của tiến trình và ngoài argv của SSH/curl.
 
 ```bash
-set +x
-dispatch_token="$(gcloud secrets versions access "${DISPATCH_VERSION:?chọn phiên bản dispatch}" \
-  --secret=VINK_RELEASE_DISPATCH_TOKEN --project=vink-d0846)" &&
+(
+  set +x
+  set -euo pipefail
+  CLOUDFLARE_ACCOUNT_ID=8339afe44b4e8cd2b633a38a77f1db41
+  pages_token="$(gcloud secrets versions access "${VINK_PAGES_SECRET_VERSION:-latest}" \
+    --secret=VINK_PAGES_API_TOKEN --project=vink-d0846)"
+  [[ "$pages_token" =~ ^[A-Za-z0-9_.=-]{32,192}$ ]]
+  printf 'header = "Authorization: Bearer %s"\n' "$pages_token" |
+    curl -q -fsS --proto '=https' --max-time 15 --config - \
+      "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/vink-production" |
+    jq -er 'select(.success and .result.name == "vink-production" and .result.production_branch == "main")
+      | .result.canonical_deployment.id | strings | select(length > 0)'
+)
+```
+
+Đối chiếu quyền Pages Edit trên hồ sơ token khi cấp. Lệnh HTTPS GET kiểm quyền đọc
+đúng project. Nếu GCP thiếu phiên bản khả dụng, tài khoản thiếu quyền đọc hoặc provider
+trả lỗi, ghi rõ tên secret, phiên bản và mã lỗi. Xử lý blocker đó tại provider hoặc Secret Manager
+trước khi tiếp tục release.
+
+### Chạy qualification hoặc publish OCI
+
+Ví dụ dưới đây chạy qualification. Khi đã duyệt publish OCI, dùng `publish=true` và giữ
+`website=false` để workflow dừng sau GHCR. `VINK_DISPATCH_SECRET_VERSION` cho phép pin
+phiên bản dispatch đã xác minh. Đối chiếu run ID và SHA với GitHub ngay sau khi dispatch.
+
+```bash
+(
+  set +x
+  set -euo pipefail
+  dispatch_token="$(gcloud secrets versions access "${VINK_DISPATCH_SECRET_VERSION:-latest}" \
+    --secret=VINK_RELEASE_DISPATCH_TOKEN --project=vink-d0846)"
+  test -n "$dispatch_token"
   GH_TOKEN="$dispatch_token" gh workflow run publish-images.yml --repo loveoverflowcom/vink \
     --ref develop -f platform=linux/amd64 -f publish=false -f website=false
-unset dispatch_token
+)
 ```
 
 ## Đăng nhập bằng mã email trên VPS
