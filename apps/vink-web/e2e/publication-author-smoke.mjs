@@ -183,6 +183,9 @@ async function submissionStructure(author, base, check) {
     const field = format === 'default' ? '#draft-title' : '.cm-content';
     check(await author.eval(`document.activeElement.matches(${JSON.stringify(field)})`), format + ' first field focused');
     check(await author.eval("document.querySelector('.cm-content').getAttribute('aria-describedby').includes('submission-body-errors')"), 'body description linked');
+    check(await author.eval(`document.querySelector('#publication-live').getAttribute('role') === 'status' && document.querySelector('#publication-live').textContent.trim().length > 0`), 'one polite announcement for the failed attempt');
+    const focusBox = format === 'default' ? '#editor-paper .vk-ui-field__control:has(#draft-title)' : '.vk-editor-body';
+    check(await author.eval(`(() => { const box = document.querySelector(${JSON.stringify(focusBox)}); return getComputedStyle(box).outlineStyle === 'none' && getComputedStyle(box,'::before').width === '3px'; })()`), 'focused invalid field has a local margin mark');
     if (format === 'default') {
       await matrix(author, 'missing-submission', check);
       await fill(author, '#draft-title', 'Chưa đặt tên');
@@ -797,7 +800,9 @@ async function geometry(page) {
       if (r.height < hit - 1) out.small.push(name(el) + ':' + Math.round(r.height));
     }
     for (const el of root.querySelectorAll('p, h2, legend, .vk-ui-button__label, .vk-ui-notice *')) {
-      if (!el.getClientRects().length || getComputedStyle(el).display === 'inline') continue;
+      // This measurement concerns visible text. The polite live region is intentionally
+      // clipped for screen readers while the on-screen summary names the current fields.
+      if (!el.getClientRects().length || el.classList.contains('vk-ui-visually-hidden') || getComputedStyle(el).display === 'inline') continue;
       if (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1) out.clipped.push(name(el));
       if (getComputedStyle(el).textOverflow === 'ellipsis') out.ellipsis.push(name(el));
     }

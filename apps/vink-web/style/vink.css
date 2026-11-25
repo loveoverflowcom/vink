@@ -964,6 +964,27 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
 .vk-editor-paper > .vk-ui-field .vk-ui-field__label { margin-inline: 0; }
 .vk-editor-paper > .vk-ui-field .vk-ui-input { padding-inline: 0; }
 .vk-editor-paper > .vk-field { min-inline-size: 0; }
+#submission-body-errors { flex-direction: column; }
+#submission-body-errors p { margin: 0; }
+#submission-body-errors[hidden], #submission-summary[hidden] { display: none; }
+@media (forced-colors: none) {
+  #editor-paper[data-submission-title] .vk-ui-field__control:has(> #draft-title),
+  #editor-paper[data-submission-body] .vk-editor-body:focus-within {
+    position: relative;
+    outline: none;
+  }
+  #editor-paper[data-submission-title] .vk-ui-field__control:has(> #draft-title:focus)::before,
+  #editor-paper[data-submission-body] .vk-editor-body:focus-within::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: calc(-1 * var(--vk-space-2));
+    inset-block-start: var(--vk-space-1);
+    block-size: 1.25em;
+    inline-size: 3px;
+    border-radius: 2px;
+    background: var(--vk-focus-ring);
+  }
+}
 .vk-editor-title-measure {
   position: absolute;
   inline-size: 0;
