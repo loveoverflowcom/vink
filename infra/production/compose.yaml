@@ -57,7 +57,10 @@ services:
     environment:
       VINK_PROFILE: production
       VINK_PUBLIC_ORIGIN: https://vink.forum
-      VINK_WORKER_EVALUATION: disabled
+      # #536 owner bootstrap: scripted mock approve by default (not an AI review). Opt out with
+      # VINK_PROD_EVALUATOR=manual (people decide) or VINK_PROD_WORKER_EVALUATION=disabled.
+      VINK_WORKER_EVALUATION: ${VINK_PROD_WORKER_EVALUATION:-enabled}
+      VINK_EVALUATOR: ${VINK_PROD_EVALUATOR:-mock}
       VINK_AUTH_SIGN_IN: disabled
       VINK_LOG_FORMAT: json
       VINK_NOTIFICATIONS_INGEST_SOCKET: /run/vink-ingest/ingest.sock

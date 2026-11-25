@@ -73,8 +73,9 @@ those registries rather than duplicating long status narratives across skills.
     ([moderation-runtime](docs/development/moderation-runtime.md)) work revisions have
     persistence-api + worker: admin seats (`vink-app admin`), work/comment grants and groups,
     review cases and pause/enable under `/api/v1/moderation/*`, decision history, and a `vink-worker`
-    evaluation consumer (off by default; only a local/test scripted evaluator, never production;
-    without a verdict every job goes to people). Comment moderation routes
+    evaluation consumer (since #536 on by default in every profile, production included, with the
+    owner's bootstrap scripted mock `approve` that reads no content and is not AI;
+    `VINK_EVALUATOR=manual` sends every job to people, an admin pause wins). Comment moderation routes
     (`/api/v1/moderation/comments*`) also enforce this governance directory (admin seats,
     individual/group `comments` grants with global/`WorkId` scope, inherited legacy grants, recusal
     and decision provenance). `O-17@r2` (`PRODUCT_CONFIRMED`) adds the review-withdrawn page at the
@@ -199,8 +200,8 @@ The following boundaries guide work within the selected scope:
 - AI results are untrusted input. Do not turn manuscript text into tool instructions or send
   private drafts to providers merely because autosave ran. Follow MOD-01–MOD-15 for moderation:
   an evaluator result carries no authority, a failure or timeout never approves, an admin
-  decision on a revision beats a late evaluator result, and no real provider, admin channel or
-  auto-approval is enabled.
+  decision on a revision beats a late evaluator result, and no real provider or admin channel is
+  enabled. The only auto-approval is the #536 scripted mock bootstrap; MOD-06 still gates real AI.
 
 Production routes, normal dependencies and packaged assets need a real product caller.
 Showcases and spikes run in Preview; verification fixtures use their test lane. Use the

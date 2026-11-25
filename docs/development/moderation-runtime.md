@@ -10,11 +10,14 @@ Bốn chiều trạng thái:
 
 1. **Product decision:** MOD-07..15 theo DecisionDelta 10/11 và 11/11; `O-17@r2` là
    `PRODUCT_CONFIRMED`. `O-18@r1` (thời hạn grant mặc định) vẫn `OPEN`. Runtime dùng `expires_at`
-   tùy chọn theo từng grant.
+   tùy chọn theo từng grant. Ngoại lệ bootstrap mock ngày 25/11/2026 ([#536](https://github.com/loveoverflowcom/vink/issues/536),
+   PRD MOD-06) có nguồn là lời chủ sản phẩm trong issue. Proposal
+   [`VDR-WORK-MOCK-EVALUATOR-BOOTSTRAP@r1`](../../decisions/proposals/VDR-WORK-MOCK-EVALUATOR-BOOTSTRAP.r1.toml)
+   giữ `PENDING` tới khi có signoff đúng revision.
 2. **Architecture decision:** không có ADR mới. Thứ tự khóa, lease và hàng ca duyệt dưới đây là
    thiết kế triển khai, không phải quyết định `Accepted`.
-3. **Implementation level:** `persistence-api` + `worker-provider` (chỉ evaluator kịch bản cho
-   local/test) + `web` + governance cho bình luận: reader thay thế, hàng ca tác phẩm, phản đối,
+3. **Implementation level:** `persistence-api` + `worker-provider` (chỉ evaluator kịch bản; từ
+   #536 chạy mặc định ở mọi profile, production chỉ có `approve`) + `web` + governance cho bình luận: reader thay thế, hàng ca tác phẩm, phản đối,
    dừng/bật tự động, và nối quyền kiểm duyệt bình luận (`admin` seat, grant cá nhân/nhóm
    `comments` toàn Vink hoặc theo `WorkId`, kế thừa `discussion_moderator_grants`, hàng chờ theo
    phạm vi + tự né và provenance quyết định). Chưa có AI provider thật, điều tra riêng, ca bình
@@ -92,13 +95,59 @@ dùng bản sửa hoặc migration roll-forward giữ ba dạng audit.
   và có ca `retries_exhausted`.
 - **Không có kết quả** (không có evaluator hoặc đang dừng): job chuyển `rerouted` và người duyệt
   quyết định. Không bao giờ duyệt thay evaluator.
-- **Cấu hình:** consumer tắt mặc định, chỉ bật khi `VINK_WORKER_EVALUATION=enabled`. Nếu
-  `VINK_MOCK_EVALUATION_SCENARIO` được đặt ở profile production, worker từ chối khởi động. Ở
-  production, `scenario` trên job bị bỏ qua.
+- **Cấu hình:** xem [mục 3.1](#31-mock-bootstrap-và-công-tắc-vận-hành-536).
 - **Pilot AI đối chiếu song song (chưa triển khai):** thiết kế cho thử nghiệm AI ngoài trên môi trường
   `App + PostgreSQL` cô lập xem tại [đặc tả pilot AI kiểm duyệt tác phẩm](../architecture/moderation-ai-pilot.md)
   (`DESIGN_PROPOSED`, `NOT_IMPLEMENTED`, proposal [`VDR-WORK-AI-MODERATION-PILOT@r2`](../../decisions/proposals/VDR-WORK-AI-MODERATION-PILOT.r2.toml) `PENDING`);
   worker chính hiện tại vẫn không đọc nội dung bài trong `ClaimedJob` và `/health/ready` giữ `ai_moderation: not_implemented`.
+  Vì mock bật mặc định từ #536, preflight pilot phải đặt tường minh `VINK_EVALUATOR=manual` hoặc
+  admin dừng tự động. Pilot không được dựa vào mặc định.
+
+### 3.1. Mock bootstrap và công tắc vận hành (#536)
+
+Chủ sản phẩm chốt ngày 25/11/2026: “Để tạo PR mock evaluator và cho phép, trên cả vps hay
+production nếu muốn. Mặc định là bật cho mock đã, tôi sửa sau.” ([#536](https://github.com/loveoverflowcom/vink/issues/536)).
+Khi operator không đặt biến nào, consumer chạy với mock kịch bản `approve` ở mọi profile, kể cả
+production. Mock không đọc nội dung, không gọi mạng và không cần khóa API. Nó duyệt mọi lần gửi
+công khai hợp lệ của tác phẩm. Đây **không** phải AI hay kiểm duyệt nội dung. Mọi fence vẫn giữ
+nguyên: validation, auth, standing, ý định công khai, revision/digest, lease, policy, claim và
+quyết định. Lưu nháp và snapshot đơn thuần không tạo job. Bình luận không đổi.
+
+| Biến (compose) | Giá trị | Ý nghĩa |
+| --- | --- | --- |
+| `VINK_WORKER_EVALUATION` (`VINK_PROD_WORKER_EVALUATION` / `VINK_TEST_WORKER_EVALUATION`) | `enabled` (mặc định, cả khi rỗng), `disabled` | Dừng kỹ thuật consumer. Khi `disabled`, job mới nằm `open`, không ai xét và không có ca người cho tới khi consumer chạy lại. |
+| `VINK_EVALUATOR` (`VINK_PROD_EVALUATOR` / `VINK_TEST_EVALUATOR`) | `mock` (mặc định), `manual` | Với `manual`, consumer vẫn chạy nhưng không có evaluator. Mỗi job chuyển `rerouted` và mở ca `evaluator_uncertain`. Kịch bản đã gắn khi mock còn chạy không được dùng lại. |
+| `VINK_MOCK_EVALUATION_SCENARIO` | production: chỉ `approve`; local: thêm `reject`, `needs_admin`, `invalid_output`, `timeout`, `provider_error` | Kịch bản gắn vào job ở lần claim đầu. Đặt cùng `manual` thì worker từ chối khởi động. Ở production, job mang kịch bản khác `approve` được chuyển cho người duyệt. |
+
+Giá trị khác làm `vink-worker` dừng khi khởi động (exit 2). Compose production/test lấy hai biến có
+tiền tố realm từ release env. `environment:` thắng `worker-runtime.env`, nên opt-out phải đặt trong
+release env (`/etc/vink-prod/release.env` hoặc env render của test).
+
+**Dừng nghiệp vụ** dùng admin dừng tự động (MOD-14, `POST /api/v1/moderation/automation/mode`).
+Trạng thái nằm trong `moderation_automation_state`, thắng cấu hình và còn hiệu lực qua restart vì
+worker không ghi bảng này. Khi dừng, job đang chờ chuyển cho người. Bật lại chỉ áp cho lần gửi mới.
+Job đã `rerouted` và ca đã nhận không quay lại mock.
+
+**Provenance.** `provenance_kind = 'ai_approved'` là nhãn vai trò actor evaluator. Nhãn này không
+chứng minh có AI. Truy nguồn theo `work_revision_decision_history.evaluation_id` → `work_evaluation_jobs.id`.
+`scenario` khác `NULL` nghĩa là verdict đến từ mock kịch bản: kịch bản được gắn trong commit claim,
+trước khi áp. Chọn `CHOICE-02 A` (dùng liên kết hiện có, không migration). Job và lịch sử cùng xóa
+theo tác phẩm. PR nối provider thật phải thêm provenance riêng và không dùng `scenario` làm dấu.
+
+```sql
+SELECT h.work_id, h.revision_id, h.decision_version, h.provenance_kind, j.id AS job, j.scenario
+  FROM work_revision_decision_history h
+  JOIN work_evaluation_jobs j ON j.id = h.evaluation_id
+ WHERE h.provenance_kind LIKE 'ai_%';
+```
+
+Log khởi động ghi `evaluation`, `evaluator` (`scripted_mock` hoặc `manual`), `evaluation_mock` và
+`ai_moderation=not_implemented`. Mỗi job ghi `evaluator`, `scripted_verdict`, `scenario` và outcome;
+không ghi nội dung bài hay secret. `/health/ready` của App giữ `ai_moderation: not_implemented`.
+
+**Rủi ro đã nhận:** mọi nội dung qua validation có thể lên công khai, kể cả spam hoặc vi phạm.
+Đường can thiệp hiện có: admin dừng tự động, `manual`, moderator/admin bác bản đang đăng (MOD-13)
+và admin gỡ. Không trình bày kết quả mock là AI đã kiểm duyệt.
 
 ## 4. HTTP API (`no-store`)
 
@@ -191,14 +240,26 @@ URL thông báo tác phẩm thêm `revision` và `decision` vào URL chi tiết.
 
 ## 8. Rollout
 
-Dừng tiến trình ghi cũ trước khi migrate, rồi chạy App và worker cùng phiên bản. Bật consumer khi
-có người duyệt. Khi không có evaluator, mọi lần gửi vào hàng chờ người. Cần theo dõi tuổi backlog
+Dừng tiến trình ghi cũ trước khi migrate, rồi chạy App và worker cùng phiên bản. Từ #536, consumer
+chạy mặc định với mock `approve`. Không có migration hay backfill: ca người đang chờ và job đã
+`rerouted` giữ nguyên. Nếu consumer từng tắt trong khi tự động vẫn bật, các job `open` tích lũy sẽ
+được mock duyệt khi worker mới chạy. Trước khi deploy, đếm
+`SELECT count(*) FROM work_evaluation_jobs WHERE state IN ('open', 'leased')`. Muốn người xét
+backlog đó, admin dừng tự động trước (job chuyển thành ca người), rồi mới chạy worker mới. Muốn mọi
+lần gửi qua người, đặt `VINK_{PROD,TEST}_EVALUATOR=manual`. Quay lui: đặt `manual` hoặc
+`VINK_{PROD,TEST}_WORKER_EVALUATION=disabled` trong release env rồi tạo lại container worker. Cần theo dõi tuổi backlog
 `work_evaluation_jobs`, lease quá hạn, ca `queued`, phản đối `open` và job `quarantined`.
 CLI `vink-app admin add|list|remove` nhả connection trước khi đóng pool; không còn treo sau khi
 đã in kết quả (nguyên nhân lane Web của merge #170 bị hủy sau timeout).
 
 ## 9. Bằng chứng và giới hạn
 
+- #536: `evaluation_worker::tests` phủ ma trận cấu hình (không biến/rỗng, `disabled`, `manual`,
+  kịch bản production/local, giá trị sai, `manual` + kịch bản). `tests/postgres/work_moderation.rs`
+  dùng đúng cài đặt production: request-public → mock → công khai đúng revision và đọc qua reader,
+  provenance theo job, admin dừng qua hai lần khởi động, `manual` không dùng lại kịch bản đã gắn,
+  kịch bản khác `approve` ở production chuyển người, rút riêng tư và quyết định người trước finish.
+  Kết quả chạy theo SHA ghi trong PR.
 - `cargo xtask verify postgres`: `tests/postgres/work_moderation.rs` phủ claim cũ/dừng giữa claim
   và commit, gửi khi dừng, retry, ca/grant/nhóm/tự né; thêm CLI admin có timeout, reader hidden,
   ghi bình luận bị chặn/tự gỡ/công khai lại, phản đối gửi đồng thời, admin final, kết luận đồng

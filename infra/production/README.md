@@ -3,7 +3,9 @@
 `https://vink.forum` dùng Web SSR + API Vink, Worker và Identity qua Unix socket riêng. Caddy
 của Cantos giữ cổng HTTPS công khai. App, Worker và Identity dùng PostgreSQL 17 riêng, với ba
 owner database (App, Identity, Notifications), mỗi owner có role runtime và migrator riêng. Không publish port backend, Identity hay
-PostgreSQL. Sign-in, mail Resend và evaluation giữ tắt theo [Auth operations](../../docs/development/auth-operations.md).
+PostgreSQL. Sign-in và mail Resend giữ tắt theo [Auth operations](../../docs/development/auth-operations.md).
+Từ #536, worker mặc định chạy mock duyệt kịch bản `approve` cho tác phẩm (không phải AI). Opt-out
+và kiểm backlog trước deploy theo [vận hành mock](../../docs/development/moderation-runtime.md#31-mock-bootstrap-và-công-tắc-vận-hành-536).
 Giữ Vink test và Cantos trên mạng và dữ liệu hiện tại.
 
 Điều kiện kết thúc giai đoạn giữ public test là production qua qualification và hoàn tất inventory retirement. Đóng gói frontend từ OCI, phát hành Pages, đổi origin và rollback theo [runbook Cloudflare edge production](cloudflare-edge.md).

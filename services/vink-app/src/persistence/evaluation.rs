@@ -56,7 +56,7 @@ pub enum JobOutcome {
     Refused(EvaluationRefusal),
 }
 
-/// Mock verdicts accepted only where the deployment allows a scripted evaluator (local/test).
+/// Scripted verdicts of the local profile and the test lanes.
 pub const MOCK_SCENARIOS: [&str; 6] = [
     "approve",
     "reject",
@@ -65,6 +65,10 @@ pub const MOCK_SCENARIOS: [&str; 6] = [
     "timeout",
     "provider_error",
 ];
+
+/// The only scripted verdict of the production profile: the owner's bootstrap of 25/11/2026
+/// (#536) approves valid submissions. Any other verdict bound to a job goes to people.
+pub const PRODUCTION_MOCK_SCENARIOS: [&str; 1] = ["approve"];
 
 /// Claim the oldest eligible job while automation is enabled. A job whose lease expired is
 /// reclaimed with the same evaluation id and the next `claim_generation`; every claim counts as
@@ -111,12 +115,15 @@ pub async fn claim_job(
     Ok(job)
 }
 
-/// The scripted verdict for a claim. Without an allowed mock there is no evaluator: `None`.
-pub fn scripted_outcome(claim: &ClaimedJob, allow_mock: bool) -> Option<EvaluatorOutcome> {
-    if !allow_mock {
+/// The scripted verdict for a claim: the job-bound scenario when `honoured` lists it. The mock
+/// reads no content and calls nothing. An empty `honoured` (manual mode) is no evaluator: `None`,
+/// so a scenario bound while the mock ran is never reused after a switch.
+pub fn scripted_outcome(claim: &ClaimedJob, honoured: &[&str]) -> Option<EvaluatorOutcome> {
+    let scenario = claim.scenario.as_deref().map(str::trim)?;
+    if !honoured.contains(&scenario) {
         return None;
     }
-    match claim.scenario.as_deref().map(str::trim)? {
+    match scenario {
         "approve" => Some(EvaluatorOutcome::Approve),
         "reject" => Some(EvaluatorOutcome::Reject(PolicyReasonCode::SafetyPolicy)),
         "needs_admin" => Some(EvaluatorOutcome::Uncertain),

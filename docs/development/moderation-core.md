@@ -86,8 +86,10 @@ Source: [`domain/moderation.rs`](../../services/vink-app/src/domain/moderation.r
   đồng/script trên 9 bước của `evaluator-vectors.json`; bình luận đang chạy vẫn theo `premoderation.v1`.
 - **Appeal & notification (`#153+`):** core thuần của phản đối có từ `ADMIN-CORE-01` bên dưới; chưa
   có bảng, receipt lưu bền hay kênh thông báo (MOD-10).
-- **Production AI & MOD-06:** chưa có provider AI thật, bộ đánh giá tiếng Việt hay cơ chế bật/tắt
-  auto-approval ở production (`/health` và worker tiếp tục báo `ai_moderation: not_implemented`).
+- **Production AI & MOD-06:** chưa có provider AI thật hay bộ đánh giá tiếng Việt (`/health` và
+  worker tiếp tục báo `ai_moderation: not_implemented`). Từ #536, mock kịch bản `approve` của worker
+  chạy mặc định cả production theo ngoại lệ bootstrap của chủ sản phẩm, với opt-out `manual` hoặc
+  dừng consumer ([runtime](moderation-runtime.md#31-mock-bootstrap-và-công-tắc-vận-hành-536)).
 
 ## Admin moderation core — ADMIN-CORE-01
 
@@ -120,8 +122,8 @@ Tên kiểu, mã từ chối và baseline kỹ thuật là `DESIGN_PROPOSED`; lu
 ### Runtime hiện tại và phần còn thiếu
 
 [Moderation runtime](moderation-runtime.md) sở hữu persistence/API cho grant, nhóm, ca tác phẩm,
-phản đối, chế độ tự động, lịch sử quyết định và consumer evaluation (tắt mặc định, chỉ kịch bản
-local/test), cùng Web duyệt tác phẩm/phản đối. `O-17@r2` đã `PRODUCT_CONFIRMED` và có reader.
+phản đối, chế độ tự động, lịch sử quyết định và consumer evaluation (từ #536 bật mặc định với mock
+kịch bản `approve` ở mọi profile, có opt-out `manual`), cùng Web duyệt tác phẩm/phản đối. `O-17@r2` đã `PRODUCT_CONFIRMED` và có reader.
 
 Còn `NOT_IMPLEMENTED`: điều tra riêng/audit đọc snapshot, ca/ẩn bình luận theo governance mới,
 comment evaluator consumer (`#154`), provider thật, UI grant/nhóm và kênh thông báo. O-18 (hạn

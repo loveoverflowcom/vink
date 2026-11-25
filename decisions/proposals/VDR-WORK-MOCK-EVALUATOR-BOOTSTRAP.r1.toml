@@ -1,0 +1,38 @@
+version = 1
+id = "VDR-WORK-MOCK-EVALUATOR-BOOTSTRAP"
+revision = 1
+
+[content]
+kind = "product"
+domain = "moderation"
+title = "Mock evaluator duyệt mặc định cho tác phẩm ở mọi môi trường, kể cả production (bootstrap)"
+resolution = """
+Nguồn: issue #536 (25/11/2026) ghi lời chủ sản phẩm: “Để tạo PR mock evaluator và cho phép, trên cả vps hay production nếu muốn. Mặc định là bật cho mock đã, tôi sửa sau.” Mục tiêu là tạo nhiều tác phẩm trước khi nối API AI thật.
+
+1. Ngoại lệ bootstrap của MOD-06, chỉ cho tác phẩm: consumer đánh giá trong vink-worker chạy mặc định ở mọi profile, kể cả production trên VPS. Evaluator mặc định là mock kịch bản approve. Mock duyệt mọi lần gửi công khai hợp lệ, không đọc nội dung, không gọi mạng và không cần khóa API. Đây không phải AI, không phải heuristic và không phải kiểm duyệt nội dung. Không yêu cầu allowlist tác giả.
+2. Giữ mọi fence hiện có: validation, auth, standing, ý định công khai, revision/digest, lease, policy, claim và quyết định. Lưu nháp và snapshot đơn thuần không tạo job. Không tự công khai nháp, không đổi API contract, không áp cho bình luận.
+3. Opt-out bằng cấu hình rõ ràng: VINK_EVALUATOR=manual giữ consumer chạy và chuyển mọi job cho người duyệt; VINK_WORKER_EVALUATION=disabled là dừng kỹ thuật consumer. Giá trị sai làm worker dừng khi khởi động. Production chỉ nhận kịch bản approve; kịch bản khác đã gắn trên job chuyển cho người duyệt.
+4. Admin dừng tự động (MOD-14) nằm trong cơ sở dữ liệu, thắng cấu hình mặc định và còn hiệu lực qua restart. Bật lại chỉ áp cho lần gửi mới. Không migration hay backfill tự duyệt ca người đang chờ.
+5. Lịch sử truy được nguồn mock theo job: decision history evaluation_id trỏ job có scenario đã gắn khi claim. Log ghi evaluator=scripted_mock; /health giữ ai_moderation=not_implemented. Không trình bày kết quả mock là AI đã kiểm duyệt.
+6. MOD-06 vẫn là cổng trước khi bật auto-approval bằng AI thật. Provider thật không nằm trong quyết định này và phải thêm provenance riêng.
+"""
+rationale = """
+Chủ sản phẩm muốn có nội dung công khai trước khi chọn và nối provider AI. Runtime #159 đã có ScriptedEvaluator, claim/lease và finish_job fence, nên bootstrap chỉ đổi cấu hình mặc định và guard profile, không tạo pipeline xuất bản mới. Rủi ro đã nhận: mọi nội dung qua validation có thể lên công khai, kể cả spam hoặc vi phạm. Đường can thiệp: admin dừng tự động, chế độ manual, moderator/admin bác bản đang đăng (MOD-13) và admin gỡ. Chủ sản phẩm ghi “tôi sửa sau”, nên revision này là bootstrap tạm, không thay hướng AI tự duyệt của USER-14 và không giải quyết VDR-WORK-AI-MODERATION-PILOT. Proposal giữ PENDING tới khi có signoff đúng revision.
+"""
+requires = [
+    "ADM-05@r1",
+    "USER-03@r1",
+    "USER-05@r1",
+    "USER-14@r1",
+]
+related_ids = [
+    "INV-08",
+    "MOD-05",
+    "MOD-06",
+    "MOD-07",
+    "MOD-08",
+    "MOD-09",
+    "MOD-13",
+    "MOD-14",
+    "PUB-06",
+]
