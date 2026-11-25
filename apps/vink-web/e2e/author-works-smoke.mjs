@@ -146,7 +146,9 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
     await page.click('#views-explainer-close');
     await page.waitFor(`document.querySelector('#views-explainer')?.open === false && document.activeElement?.id==='views-explainer-trigger'`, '#514 Close button closes explainer and restores focus');
 
-    // Give Back a same-route predecessor, as in the Desk search overlay check.
+    // The sheet above an open search consumes the first Back.
+    await page.click('#open-draft-search');
+    await page.waitFor(`document.activeElement.id === 'draft-search'`, 'search open below the explainer');
     await page.eval(`history.pushState(null, '', location.href)`);
     await page.click('#views-explainer-trigger');
     await page.waitFor(`document.querySelector('#views-explainer')?.open === true`, '#514 explainer is open before Back');
@@ -156,6 +158,8 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
     await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
     check(await page.eval(`document.activeElement?.id==='views-explainer-trigger' && document.querySelector('#views-explainer')?.open === false`),
       '#514 Back keeps the explainer closed and focus restored after paint');
+    check(await page.eval(`!document.querySelector('#desk-search-form').hidden`), '#531 Back in the sheet preserves open search');
+    await page.click('#close-draft-search');
 
     for (const width of [320,390,834,1024,1440]) for (const theme of ['light','dark']) for (const scale of [100,150,200]) {
       await page.viewport(width);

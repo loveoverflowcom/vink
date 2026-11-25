@@ -237,7 +237,10 @@ màu `tertiary` theo múi giờ `Asia/Ho_Chi_Minh` ở mọi chế độ, giữ 
 Bàn viết có bản thảo, đồng thời dùng nền trong suốt của nút mở tìm ở Bàn viết và Khám phá.
 Select ở vùng lần đầu vẫn có nhãn nhìn thấy. Các tiêu chí về bố cục và trạng thái nằm trong
 [LayoutSpec R4.3](../design/redesign-r4/layout-spec.md#51-header-tìm-và-phục-hồi).
-Assertions Desk/Khám phá mới có bằng chứng review source, runtime `NOT_RUN`.
+[#531](https://github.com/loveoverflowcom/vink/issues/531) mở tìm ở hàng riêng của Bàn viết,
+giữ thao tác tạo/sắp xếp và hiện query đã áp dụng bên cạnh “Bỏ lọc”. Scenario `desk` có
+assertion cho vị trí control khi đóng/mở, focus, reduced motion, forced colors, giữ chữ chưa gửi
+và số GET khi bỏ lọc. [Trace Bàn viết](../design/redesign-r4/how-ban-viet.md).
 
 Sheet Lọc thẻ R4.2 (#406, DQ-07): `discoveryChipGeometry` và `discoveryReading` kiểm nền
 `bg-content`, chip theo bề rộng chữ tự xuống dòng bo 12, chọn `primary` + dấu chọn không dịch

@@ -3650,8 +3650,9 @@ async function draftDashboard(page) {
   await page.key('Enter');
   await page.waitFor(`document.activeElement.id==='draft-search'`, 'keyboard opens the search dock');
   check(await page.eval(`document.querySelector('#draft-search').placeholder==='Tìm theo tên' &&
-    !document.querySelector('#draft-sort').getClientRects().length && !document.querySelector('#refresh-drafts')`),
-    '#408 open dock hides sort and retains a labelled search input');
+    ['#draft-sort','#create-draft-format','#create-draft'].every(s => document.querySelector(s).checkVisibility()) &&
+    document.querySelector('#close-draft-search').getAttribute('aria-controls') === 'desk-search-form'`),
+    '#531 open dock retains sort, format and create');
   await page.viewport(390);
   const { nodes: deskAX } = await page.send('Accessibility.getFullAXTree');
   check(deskAX.some(node=>node.role?.value==='searchbox' && node.name?.value==='Tìm tác phẩm'), 'searchbox retains its native label');
@@ -3659,6 +3660,21 @@ async function draftDashboard(page) {
   await page.key('Escape');
   await page.waitFor(`document.activeElement.id==='open-draft-search' && document.querySelector('#draft-sort').getClientRects().length`,
     'Escape closes the dock and restores launcher focus');
+  await page.send('Emulation.setEmulatedMedia', {features: [
+    {name:'forced-colors',value:'active'}, {name:'prefers-reduced-motion',value:'reduce'}]});
+  await page.eval(`window.__rapidSearch = document.querySelector('#draft-search');
+    document.querySelector('#open-draft-search').click()`);
+  await page.waitFor(`document.activeElement === window.__rapidSearch`, 'rapid open');
+  await page.eval(`document.querySelector('#close-draft-search').click()`);
+  await page.waitFor(`!!document.querySelector('#open-draft-search')`, 'rapid close');
+  await page.eval(`document.querySelector('#open-draft-search').click()`);
+  await page.waitFor(`document.activeElement === window.__rapidSearch &&
+    getComputedStyle(window.__rapidSearch.closest('.vk-ui-search__query')).outlineWidth === '2px' &&
+    !document.querySelector('#desk-search-form').getAnimations().length`,
+    '#531 reduced motion and forced colors preserve the same visibly focused input');
+  await page.key('Escape');
+  await page.waitFor(`document.activeElement.id === 'open-draft-search'`, 'return to launcher after rapid toggles');
+  await page.send('Emulation.setEmulatedMedia', {features:[LIGHT_SYSTEM]});
   // Give the isolated smoke document a same-route predecessor for a real browser traversal.
   await page.eval(`history.pushState(null, '', location.href)`);
   await page.click('#open-draft-search');
@@ -3727,8 +3743,23 @@ async function draftDashboard(page) {
         ['#drafts','.vk-draft-controls','#draft-results'].every(s=>Math.abs(document.querySelector(s).getBoundingClientRect().left-h.left)<1);
     })()`), `#213 ${theme} ${width}/${scale}: two-line default, complete DOM title, metadata and common list/search axis`);
     await page.eval(`document.querySelector('#drafts').scrollIntoView({block:'start'})`);
+    const anchors = `['#desk-title','.vk-desk-heading__privacy','#create-draft-format','#create-draft','.vk-notif-mobile-bell']
+      .map(s => document.querySelector('#heading ' + s)).filter(el => el?.checkVisibility())
+      .map(el => { const r = el.getBoundingClientRect(); return [r.left, r.top + scrollY, r.width, r.height]; }).flat()`;
+    const closed = await page.eval(anchors);
     await page.click('#open-draft-search');
+    await page.waitFor(`document.activeElement.id === 'draft-search'`, 'opened private search');
+    await page.eval(`Promise.all(document.querySelector('.vk-draft-search').getAnimations().map(a=>a.finished.catch(()=>{})))`);
+    const opened = await page.eval(anchors);
+    check(closed.length === opened.length && closed.every((v,i) => Math.abs(v-opened[i]) <= 1),
+      `#531 Desk ${theme} ${width}/${scale}: title, lock, bell, format and creation remain anchored`);
     await searchBarGeometry(page,'#draft-search',`Desk ${width}/${scale}/${theme}`);
+    if ([390,1440].includes(width) && scale === 100 || width === 320 && scale === 200) {
+      await page.eval('scrollTo(0,0)');
+      await page.capture(`desk-search-open-${width}-${scale}-${theme}`, {
+        scenario: '#531-open', requiredTargets: ['#draft-search', '#close-draft-search', '#create-draft-format', '#create-draft'],
+      });
+    }
     await page.click('#close-draft-search');
     await quietListSurfaces(page,'.vk-draft-row__link',`Desk ${width}/${scale}/${theme}`);
     await textContrast(page,theme,'desk');
@@ -3819,6 +3850,23 @@ async function draftDashboard(page) {
   await page.eval(`window.__resultAnnouncements=[]; window.__resultObserver = new MutationObserver(() => window.__resultAnnouncements.push(document.querySelector('[data-testid=draft-result-count]').textContent)); window.__resultObserver.observe(document.querySelector('[data-testid=draft-result-count]'), {childList:true,subtree:true,characterData:true})`);
   await search('duong ve');
   await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 2`, 'accentless Vietnamese results');
+  const filteredReads = gate.requests.length;
+  await page.send('Input.insertText', {text: ' chưa gửi'});
+  await page.key('Escape');
+  await page.waitFor(`document.activeElement.id === 'open-draft-search'`, 'collapse while editing');
+  check(await page.eval(`document.querySelector('#draft-filter').textContent.includes('“duong ve”') &&
+    !document.querySelector('#draft-filter').textContent.includes('chưa gửi') &&
+    document.querySelectorAll('[data-testid=draft-row]').length === 2 &&
+    !location.search`), '#531 collapsed filter names the applied query');
+  await page.key('Enter');
+  await page.waitFor(`document.activeElement.id === 'draft-search' && document.activeElement.value.includes('chưa gửi')`,
+    'reopening restores the unsubmitted buffer');
+  await page.key('Escape');
+  await page.click('#clear-draft-filter');
+  await page.waitFor(`!document.querySelector('#draft-filter') && document.querySelectorAll('[data-testid=draft-row]').length === 24`,
+    'clear the collapsed filter');
+  check(gate.requests.length === filteredReads + 1 && !new URL(gate.requests.at(-1)).searchParams.get('q'),
+    '#531 editing and toggling issue no reads, clear issues one unfiltered read');
   await search('ĐƯỜNG VỀ CÓ NẮNG'.normalize('NFD'));
   await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 1`, 'combining accented results');
   await search('không có tên này');

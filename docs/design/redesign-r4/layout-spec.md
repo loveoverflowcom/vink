@@ -117,10 +117,25 @@ thường trực, giữ `#retry-drafts`, `#reconcile-drafts`, `#restart-drafts` 
 `#first-draft-page` từ phần sau. Ở nhánh phục hồi, bảo đảm focus tới đích còn điều khiển được và
 có tên.
 
-[Delta R4.3 của #408](https://github.com/loveoverflowcom/vink/issues/408#issuecomment-7102205637) nêu
-bỏ q khi đóng, sắp xếp còn thấy khi tìm và focus đích heading nếu dock đóng. #426 hiện giữ q khi
-đóng, ẩn sắp xếp khi dock mở và dùng launcher cho nhiều đường phục hồi. Ba điểm này cần đối soát
-ở owner Desk trước khi sửa runtime. Xem [HOW Bàn viết](how-ban-viet.md) và [disposition](review-414.md).
+**Tìm trong kho riêng (#531, lựa chọn triển khai).** Khi mở, kính lúp đổi thành nút
+“Đóng ô tìm tác phẩm” ở cùng vị trí. H1, khóa, chuông, Select định dạng và nút tạo giữ
+nguyên vị trí (sai số 1 CSS px tại cùng viewport và cỡ chữ). Sort vẫn ở vùng danh sách.
+Form ở hàng kế dưới header, căn cuối, rộng tối đa 32rem và thu theo bề rộng còn lại.
+Áp dụng cho 320/390/834/1440 px, sáng/tối, cỡ chữ 100%/150% và stress 200%. Nền tonal
+dùng token hiện hành. Focus ở phần nhập có gạch dưới 2 px hoặc viền hệ thống khi forced colors.
+Dock đổi chiều cao và độ mờ theo `duration.short` (160 ms, reduced motion 0 ms).
+
+| Trạng thái | Nội dung và thao tác |
+| --- | --- |
+| Đóng, chưa lọc | Nút kính lúp mở và đưa focus vào ô. Lần đầu đã xác nhận kho rỗng và ô trống thì ẩn công cụ theo §5.2. |
+| Mở, trống hoặc đang gõ | Giữ một node nhập. Enter/nút Tìm gửi khi đã kết thúc IME. Chữ đang gõ ở lại khi đóng/mở. |
+| Đã gửi, đang tải hoặc đã trả kết quả | Danh sách ghi “Đang lọc theo …” với cụm đã gửi, kể cả sau khi thu gọn. Trạng thái tải, số kết quả, kết quả rỗng và lỗi vẫn do vùng danh sách báo. |
+| Xóa hoặc bỏ lọc | Xóa chữ đang gõ và bộ lọc, giữ sort. Nếu đã áp dụng query, đọc lại đầu danh sách một lần. Nút trong ô giữ dock mở. |
+| Đóng bằng nút, Escape trong ô hoặc Back | Giữ query và sort. Back ưu tiên lớp phủ đang mở. Focus quay về kính lúp nếu cần, hoặc H1 khi kho rỗng ẩn công cụ. |
+
+[Delta #408](https://github.com/loveoverflowcom/vink/issues/408#issuecomment-7102205637)
+đề xuất xóa q khi đóng. #531 giữ hành vi đang dùng cho đến khi có quyết định về xóa q hoặc
+tìm ngay khi gõ. [HOW Bàn viết](how-ban-viet.md) · [Lý do và đánh đổi](why-r4.md).
 
 **Bố cục header khi có bản thảo · [#522](https://github.com/loveoverflowcom/vink/issues/522).**
 H1 và ổ khóa ở đầu, tiếp theo là hàng Search → Select → “Tạo bản thảo” ở mép cuối.
