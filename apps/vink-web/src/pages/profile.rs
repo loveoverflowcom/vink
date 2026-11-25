@@ -54,7 +54,9 @@ fn OwnProfileLink() -> impl IntoView {
 
         let session = Session::current();
         let revision = RwSignal::new(0u64);
-        let renew = move || revision.update(|value| *value += 1);
+        let renew = move || {
+            revision.try_update(|value| *value += 1);
+        };
         observe_changes(renew);
         crate::read_events::observe_lifecycle(move |hint| {
             if hint == crate::read_events::Hint::HistoryRestored {
@@ -62,9 +64,10 @@ fn OwnProfileLink() -> impl IntoView {
             }
         });
         let loaded = LocalResource::new(move || {
-            let stamp = revision.get();
+            let stamp = revision.try_get();
             let scope = session.profile_scope.get();
             async move {
+                let stamp = stamp?;
                 let scope = scope?;
                 let result = crate::api::load_own_profile().await.map(|profile| {
                     let href = (profile.handle_setup_complete
@@ -83,9 +86,12 @@ fn OwnProfileLink() -> impl IntoView {
         return view! {
             <Suspense fallback=loading>
                 {move || {
+                    // Suspense may get one last wake as the private Account branch is removed.
+                    let Some(latest) = revision.try_get() else {
+                        return ().into_any();
+                    };
                     let scope = session.profile_scope.get();
-                    let latest = revision.get();
-                    let Some((_, _, result)) = loaded.get().flatten()
+                    let Some((_, _, result)) = loaded.try_get().flatten().flatten()
                         .filter(|(key, stamp, _)| Some(key) == scope.as_ref() && *stamp == latest)
                     else {
                         return loading().into_any();
