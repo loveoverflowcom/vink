@@ -158,6 +158,46 @@ Receipt không thay bước controller tự tải đủ asset từ alias và ape
 `NOT_RUN`. Controller kiểm Git index và binary bằng chính tài khoản smoke trước stage.
 
 
+## Browser rolling trên máy kiểm riêng
+
+Sau khi người vận hành chuẩn bị endpoint SSH cho máy kiểm, truyền cùng
+`--browser-host <ssh-alias>` vào `plan`, `apply --preview-only` và `resume`.
+Đường này áp dụng cho rolling có migration không đổi. Controller giữ khóa và các
+bước kiểm Pages preview, alias, apex, digest origin và journal. Browser trên máy
+kiểm chạy smoke khách qua chính apex sau khi origin và HTTP đạt. Preview vẫn kiểm
+byte public trước khi promote. Preview ở trạng thái phục vụ asset và không có HTML
+SSR của candidate để chạy smoke khách ở đó.
+
+Trên controller, đặt `VINK_RELEASE_BROWSER_SSH_CONFIG` và
+`VINK_RELEASE_BROWSER_KNOWN_HOSTS` trỏ đến hai file root-owned ngoài repo, dưới các
+thư mục chỉ root được ghi. Cấu hình alias, endpoint SSH, user riêng, identity riêng
+và host key pin đã kiểm độc lập. Controller kết nối trực tiếp đến endpoint trong
+config, hoặc đến đầu loopback của tunnel do operator quản lý. Cấu hình SSH và host
+key pin phải giữ nguyên trong suốt lượt. File cấu hình có một `Host` đúng alias,
+`HostName`, `User` và `IdentityFile` tuyệt đối, có thể thêm `Port` và `HostKeyAlias`.
+Mỗi dòng chứa một chỉ thị và một giá trị. Controller chỉ gửi request kiểm tra đã
+đóng schema qua stdin. Credential Pages/GHCR và config origin ở controller.
+
+Trên máy kiểm, dùng tài khoản không đặc quyền, checkout sạch đúng SHA do người vận
+hành quản lý và không ghi được bằng tài khoản smoke, Chrome và Node tuyệt đối.
+Trong `authorized_keys`, dùng `restrict,command="…"` cho key với lệnh dưới đây
+và các path tuyệt đối cố định do người vận hành chọn. Dùng trực tiếp script từ revision đã duyệt. Tài khoản này chỉ
+cần truy cập public HTTPS, không cần secret hoặc quyền deploy. Chuẩn bị endpoint
+và quyền mạng qua quy trình vận hành trước khi chọn chế độ SSH.
+Trên macOS, runner dùng profile tạm và keychain thử trong bộ nhớ để chạy tự động.
+
+```sh
+python3 -I -B /secure/browser_runner.py \
+  --repo /secure/qualified-checkout --chrome /secure/chrome --node /secure/node
+```
+
+Controller từ chối reply sai nonce, revision, preview, deployment hoặc Reader.
+Nếu runner mất kết nối trước promote, bản cũ tiếp tục phục vụ. Nếu runner chưa
+xác nhận sau khi origin/HTTP đạt, journal giữ `http_verified`. Đọc `status` rồi dùng
+`resume` với cùng runner và input để kiểm tiếp. Controller kiểm lại Pages và origin
+sau smoke, sau đó lưu digest reply trong receipt. SSH receiver tự động và luồng
+bảo trì tiếp tục dùng browser cục bộ theo cấu hình hiện có.
+
 ## Rolling khi catalog công khai rỗng
 
 Với hai cây migration App và Identity giống hệt predecessor, người vận hành trực tiếp có thể dùng
