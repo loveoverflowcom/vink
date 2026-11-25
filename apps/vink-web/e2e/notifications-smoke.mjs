@@ -259,15 +259,17 @@ export async function notifications(page, { args, check }) {
   await page.waitFor(`location.pathname === '/toi' && document.querySelector('#page-account .vk-account-status ${mobile}')`,
     '#520 mobile account card contains the enabled bell');
   const mobileAccount = '#page-account .vk-account-status';
-  for (const [width, scale, theme] of [[390, 100, 'light'], [390, 150, 'dark'], [320, 200, 'dark']]) {
+  for (const [width, scale, theme] of [[700, 100, 'light'], [390, 100, 'light'], [390, 150, 'dark'], [320, 200, 'dark']]) {
     await page.viewport(width);
     await page.eval(`document.documentElement.dataset.theme = '${theme}'; document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
     check(await page.eval(`(() => {
       const card = document.querySelector('${mobileAccount}');
       const button = card.querySelector('${mobile}');
       const title = card.querySelector('#me-title');
+      const illustration = card.querySelector('.vk-account-illustration');
       const c = card.getBoundingClientRect(), b = button.getBoundingClientRect(), t = title.getBoundingClientRect();
-      return title.matches('h1.vk-ui-type-title') && document.querySelectorAll('main h1').length === 1 &&
+      const artFits = !illustration.getClientRects().length || illustration.getBoundingClientRect().right <= b.left;
+      return artFits && title.matches('h1.vk-ui-type-title') && document.querySelectorAll('main h1').length === 1 &&
         title.textContent === 'Tài khoản' && b.width >= 48 && b.height >= 48 &&
         b.top >= c.top && b.bottom <= c.bottom && t.right <= b.left &&
         document.documentElement.scrollWidth <= innerWidth;

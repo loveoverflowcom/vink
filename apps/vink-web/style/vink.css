@@ -2296,6 +2296,9 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
     box-shadow: 0 0 0 2px var(--vk-bg-page);
   }
   .vk-account-status:has(> .vk-notif-mobile-bell) > div { flex-basis: 0; }
+  .vk-account-status:has(> .vk-notif-mobile-bell) > .vk-account-illustration {
+    inset-inline-end: calc(24px + 48px);
+  }
   :is(.vk-explore__top, .vk-desk-heading):has(> .vk-notif-mobile-bell) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto;
