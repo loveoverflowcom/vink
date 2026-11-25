@@ -146,6 +146,13 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
     await page.click('#views-explainer-close');
     await page.waitFor(`document.querySelector('#views-explainer')?.open === false && document.activeElement?.id==='views-explainer-trigger'`, '#514 Close button closes explainer and restores focus');
 
+    // Give Back a same-route predecessor, as in the Desk search overlay check.
+    await page.eval(`history.pushState(null, '', location.href)`);
+    await page.click('#views-explainer-trigger');
+    await page.waitFor(`document.querySelector('#views-explainer')?.open === true`, '#514 expander is open before Back');
+    await page.eval(`history.back()`);
+    await page.waitFor(`location.pathname==='/ban-viet' && document.querySelector('#views-explainer')?.open === false && document.activeElement?.id==='views-explainer-trigger'`, '#514 Back closes explainer on Desk and restores focus');
+
     for (const width of [320,390,834,1440]) for (const theme of ['light','dark']) for (const scale of [100,150,200]) {
       await page.viewport(width);
       await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:0,y:0});
