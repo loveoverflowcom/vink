@@ -1,8 +1,8 @@
 # Vận hành Vink production
 
 `https://vink.forum` dùng Web SSR + API Vink, Worker và Identity qua Unix socket riêng. Caddy
-của Cantos giữ cổng HTTPS công khai. App, Worker và Identity dùng PostgreSQL 17 riêng, với hai
-owner database, hai role runtime và hai role migrator. Không publish port backend, Identity hay
+của Cantos giữ cổng HTTPS công khai. App, Worker và Identity dùng PostgreSQL 17 riêng, với ba
+owner database (App, Identity, Notifications), mỗi owner có role runtime và migrator riêng. Không publish port backend, Identity hay
 PostgreSQL. Sign-in, mail Resend và evaluation giữ tắt theo [Auth operations](../../docs/development/auth-operations.md).
 Giữ Vink test và Cantos trên mạng và dữ liệu hiện tại.
 
@@ -16,7 +16,7 @@ Chạy [workflow thủ công](../../.github/workflows/publish-images.yml) với 
 VPS đã kiểm CPU. PR thay đổi hạ tầng production có lane `Qualify production OCI` chỉ đọc.
 `publish=false` cũng kiểm tra một branch theo yêu cầu mà không đẩy image. `publish=true` chỉ trên
 `develop` và chỉ sau khi các image vừa build chạy với PostgreSQL scratch, migration riêng theo
-owner, HTTP App, Unix socket Identity, API và SIGTERM. Ghi SHA/run ID, ba GHCR digest và digest
+owner, HTTP App, Unix socket Identity, API và SIGTERM. Ghi SHA/run ID, bốn GHCR digest và digest
 PostgreSQL từ cấu hình release. Kiểm lại revision label và `amd64` sau khi pull. Build ở runner,
 không build trên VPS. Nếu package cần xác thực, dùng đường pull đọc riêng đã được phê duyệt.
 
@@ -28,7 +28,7 @@ Các bước DNS/Caddy trực tiếp bên dưới mô tả nền #304. Khi chuy�
    deploy. Chỉ dùng plan này nếu hai dải IP đang trống. Deploy từ checkout sạch đã pin vào
    `/opt/vink-prod/releases/<sha>`, với các file trong `services/postgres` và `infra/production`.
    Trỏ `/opt/vink-prod/current` vào release đã chọn. Cấu hình `/etc/vink-prod/release.env` từ
-   `release.env.example` với đúng ba digest. Với release tiếp theo, giữ bản env cũ theo SHA.
+   `release.env.example` với đúng bốn digest. Với release tiếp theo, giữ bản env cũ theo SHA.
    Khi sửa riêng manifest vận hành, ghi cả commit manifest và commit được ghi trên image.
 2. Tạo `/etc/vink-prod` mode 0700. Chạy `python3 infra/production/create-runtime-files.py
    /etc/vink-prod/runtime` trên VPS một lần. Script chỉ nhận thư mục mới và tạo mật khẩu riêng,
@@ -46,10 +46,10 @@ Các bước DNS/Caddy trực tiếp bên dưới mô tả nền #304. Khi chuy�
    danh sách `healthcheck.test`. Dùng cùng prefix như trong `vink-prod.service` cho `up -d postgres`.
    Đợi `pg_isready -h 127.0.0.1 -U vink -d postgres` trong container. Dùng `--profile provision`
    cho `run --rm provision` và `run --rm provision --check`, rồi dùng `--profile migration` cho
-   `run --rm migrate-app` và `run --rm migrate-identity`. Podman Compose 1.3 cần profile tường minh
+   `run --rm migrate-app`, `run --rm migrate-identity` và `run --rm migrate-notifications`. Podman Compose 1.3 cần profile tường minh
    cả khi lệnh `run` chỉ đích danh service. Khi chạy từ một script nhận lệnh qua SSH stdin,
    chuyển stdin của các lệnh `compose run` sang `/dev/null` để provider không đọc phần script sau.
-   Kiểm hai lệnh migrate chạy lại no-op. Chỉ bật `vink-prod.service` sau khi hoàn tất migration.
+   Kiểm các lệnh migrate chạy lại no-op. Chỉ bật `vink-prod.service` sau khi hoàn tất migration.
    systemd tạo thư mục socket mode 0700. Start command chuyển owner sang UID 10001 và chạy `up`
    trong cùng tiến trình để systemd không đặt lại owner giữa hai lệnh. Restart policy của container
    xử lý process crash. Không bật `podman-restart.service` toàn VPS.
@@ -64,6 +64,14 @@ Các bước DNS/Caddy trực tiếp bên dưới mô tả nền #304. Khi chuy�
    `@ A <IPv4 VPS>` và `www CNAME vink.forum` nếu hai tên trống. Giữ TTL 300 nếu UI hỗ trợ, lưu
    readback từ hai NS và resolver công cộng. Kiểm HTTPS, chứng chỉ và redirect giữ path/query.
 
+## Bổ sung Notifications vào release ba image đang chạy
+
+1. Lấy bốn digest cùng revision từ workflow đã qua smoke. Cập nhật receiver và `artifacts.py` đã cài trên host để nhận cả receipt cũ và mới. Chuẩn bị env của candidate từ env hiện hành, thêm ba biến Notifications trong [mẫu public](release.env.example). Giữ nguyên cờ auth, mail overlay và credential của App/Identity. Với runtime đã có, chạy `create-runtime-files.py` vào một thư mục riêng mode 0700; lấy riêng hai file `notifications-{runtime,migrator}.env` và hai dòng `VINK_NOTIFICATIONS_{RUNTIME,MIGRATOR}_PASSWORD` tương ứng cho `provision.env`. Khi tiếp tục lượt chuẩn bị dở, dùng lại đúng cặp mật khẩu đã cấp cho DB.
+2. Dùng manifest và env candidate trong bước provision và kiểm role ở trên. Tạo thư mục inbox và ingest riêng, mode 0700, UID/GID của runtime. Kiểm unit systemd **và drop-in Resend** tạo/chown cả hai thư mục khi boot và start/stop service `notifications`. Đưa hai biến đường dẫn vào env dùng bởi controller. Không thay pin image của các tiến trình đang chạy.
+3. Trước lượt chuyển đầu tiên, đối chiếu migrations của `services/vink-notifications` giữa hai SHA. Nếu giống nhau, chạy `migrate-notifications` của candidate trên DB mới, rồi kiểm chạy lại no-op. Nếu khác, chuẩn bị DB ở ledger của predecessor rồi dùng schema review của cả ba owner. Lấy bộ backup mới theo thứ tự Notifications → App → Identity và diễn tập restore trước khi chuyển. Dùng controller cho các migration còn lại và chuyển release theo [runbook edge](cloudflare-edge.md).
+4. Kiểm `/health/ready` qua socket inbox **từ App** và socket ingest **từ worker**. Cả hai phải trả `ready`, `schema=current`, `role=least_privileged`, `recovery=serving`. Kiểm count và inbox bằng phiên test qua HTTPS. Chỉ sau đó bật thu sự kiện bằng `vink-app notifications activate <ghi chú>`. Cutoff lấy tại giao dịch kích hoạt.
+5. Khi backout, dùng `vink-app notifications deactivate <ghi chú>`, kiểm nghĩa vụ relay và giữ DB cùng receipts. Khi restore, đóng cổng recovery trước khi cho đọc và chỉ mở sau đối soát/replay theo [runbook Notifications](../../docs/development/notifications.md#73-retention-sự-kiện-muộn-và-phục-hồi). Khi quay về topology ba image, dừng relay và Notifications trước khi đổi manifest, đồng bộ lại unit/drop-in với release cũ.
+
 ## Kiểm chứng và phục hồi
 
 - Ghi App/Identity `ready` với `database=ok`, `schema=current`, `role=restricted`, UID peer,
@@ -76,8 +84,7 @@ Các bước DNS/Caddy trực tiếp bên dưới mô tả nền #304. Khi chuy�
 - `vink-prod-backup.timer` chạy hằng ngày từ 02:15 UTC. Mỗi lần ghi một custom dump có checksum
   cho từng DB đã provision (`vink_notifications` khi đã có, rồi `vink`, `vink_identity`; dump
   Notification lấy trước để bản restore không bao giờ đi trước App), giữ bảy bộ trên cùng VPS với mode 0700. Không khẳng định offsite hoặc
-  snapshot chung giữa các DB. Image/service `vink-notifications` chưa có trong compose production;
-  khi khôi phục, làm theo [runbook theo loại sự cố](../../docs/development/notifications.md#73-retention-sự-kiện-muộn-và-phục-hồi)
+  snapshot chung giữa các DB. Khi khôi phục, làm theo [runbook theo loại sự cố](../../docs/development/notifications.md#73-retention-sự-kiện-muộn-và-phục-hồi)
   (Notification không bao giờ được phục vụ khi đi trước App; replay lấp khoảng trống).
   Restore rehearsal dùng PostgreSQL 17 riêng và volume tạm, kiểm checksum, replay `pg_restore
   --exit-on-error`, so khớp schema/migrations và số dòng. Vai trò phải tồn tại khi dùng owner/grants
@@ -87,9 +94,9 @@ Các bước DNS/Caddy trực tiếp bên dưới mô tả nền #304. Khi chuy�
   validate, hoàn nguyên đúng hai record theo fresh UI, rồi dừng **chỉ** `vink-prod.service` và timer.
   Giữ volume, backup và bằng chứng. Nếu đã thêm bridge/UFW production, chỉ gỡ chính rule/attachment
   production khi đã xác nhận phạm vi. Không xóa bản ghi hoặc hạ tầng của Cantos/Vink test.
-- Không rollback schema theo image. Chỉ quay về image trước khi readiness của cả hai owner đã được
+- Không rollback schema theo image. Chỉ quay về image trước khi readiness của từng owner đã được
   chứng minh trên bản sao của schema hiện tại. Recovery có khả năng mất writes phải restore vào
-  kho riêng, đối soát hai database rồi xin xác nhận thời điểm và dữ liệu trước khi chuyển hướng.
+  kho riêng, đối soát ba database rồi xin xác nhận thời điểm và dữ liệu trước khi chuyển hướng.
 
 Overlay [Resend HTTPS opt-in](../auth-mail/README.md) là đường chuẩn bị riêng cho native Identity.
 Chỉ thêm overlay sau khi đã thử egress và rollback trên môi trường qualification cô lập. Khi chủ dự án mở cờ,

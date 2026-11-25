@@ -23,7 +23,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function fixture(page) {
   const calls = [];
-  const state = { session: 'A', countMode: 'fresh', count: 3, snapshot: 45, seen: 0,
+  const state = { session: 'A', countMode: 'fresh', staleCount: 8, firstFailure: false, count: 3, snapshot: 45, seen: 0,
     marked: false, moreFailure: true, holdCount: false, holdMark: false };
   const held = new Map();
   const root = gateway.response.items[0];
@@ -78,13 +78,13 @@ async function fixture(page) {
       response = scope === 'A' ? [200, fixture] : [404, denied];
     } else if (path === `${inbox}/count`) {
       response = state.countMode === 'unavailable' ? [503, unavailable]
-        : state.countMode === 'stale' ? [200, { freshness: { status: 'stale', last_known_count: 8, count_is_lower_bound: false } }]
+        : state.countMode === 'stale' ? [200, { freshness: { status: 'stale', last_known_count: state.staleCount, count_is_lower_bound: false } }]
           : [200, { freshness: { status: 'fresh', unseen_group_count: state.seen >= state.snapshot ? 0 : state.count,
             count_is_lower_bound: false, as_of_snapshot: snapshot(scope) } }];
       if (state.holdCount) { state.holdCount = false; held.set('count', () => reply(requestId, ...response)); return; }
     } else if (path === inbox) {
       const more = searchParams.has('cursor');
-      response = more && state.moreFailure ? [503, unavailable] : [200, {
+      response = (more ? state.moreFailure : state.firstFailure) ? [503, unavailable] : [200, {
         inbox_snapshot: snapshot(scope), next_cursor: more ? null : 'next-fixture',
         items: (more ? source.slice(3) : source.slice(0, 3)).map(row => ({
           ...row, is_read: state.marked ? true : row.is_read,
@@ -166,7 +166,8 @@ async function preferences(page, width, theme, scale) {
     && matchMedia('(prefers-color-scheme: ${theme})').matches`, 'painted capture preferences');
 }
 
-const hydrated = `document.documentElement.dataset.hydrated === 'true'`;
+const mounted = `(document.documentElement.dataset.renderMode === 'csr'
+  ? !!document.querySelector('#noi-dung') : document.documentElement.dataset.hydrated === 'true')`;
 const row = '.vk-notif-row';
 const visible = selector => `document.querySelector(${JSON.stringify(selector)})?.getBoundingClientRect().width > 0`;
 const focused = selector => `document.activeElement?.matches(${JSON.stringify(selector)})`;
@@ -178,7 +179,7 @@ export async function notifications(page, { args, check }) {
   const report = [];
   await page.viewport(1440);
   await page.goto(`${args.base}/`);
-  await page.waitFor(hydrated, 'real Web hydration');
+  await page.waitFor(mounted, 'notification shell mounted');
   const screenshot = (name, width, scale, theme) => page.capture(name, {
     scenario: 'notifications-r4', requestedScene: { width, height: 900, scale, theme },
     boundary: 'Chrome-CDP-dom-override-geometry', skipSceneValidation: true,
@@ -295,7 +296,7 @@ export async function notifications(page, { args, check }) {
   check(latest(`${inbox}/mark-all-read`).body.up_to_snapshot === 's1.45.A', 'AC-03 bulk read preserves the first-page snapshot');
 
   await page.goto(`${args.base}/`);
-  await page.waitFor(`${hydrated} && ${visible(mobile)}`, 'mobile home');
+  await page.waitFor(`${mounted} && ${visible(mobile)}`, 'mobile home');
   state.marked = false;
   for (const theme of ['light', 'dark']) {
     for (const width of viewport) {
@@ -364,10 +365,40 @@ export async function notifications(page, { args, check }) {
   await page.eval(`window.dispatchEvent(new Event('online'))`);
   await page.waitFor(`document.querySelector('${bell} .vk-ui-badge[data-state=stale]')?.textContent === '8'`, 'stale badge');
   await screenshot('notifications-badge-stale', 1440, 100, 'light');
+  state.staleCount = 0;
+  await page.eval(`window.dispatchEvent(new Event('online'))`);
+  await page.waitFor(`document.querySelector('${bell} .vk-ui-badge[data-state=stale]')?.hidden`, 'stale zero has no badge');
   state.countMode = 'unavailable';
   await page.eval(`window.dispatchEvent(new Event('online'))`);
-  await page.waitFor(`document.querySelector('${bell} .vk-ui-badge[data-state=unknown]')?.textContent === ''`, '503 ring without fake zero');
+  await page.waitFor(`document.querySelector('${bell} .vk-ui-badge[data-state=unknown]')?.hidden`, '503 hides the badge');
   await screenshot('notifications-badge-unavailable', 1440, 100, 'light');
+  state.firstFailure = true;
+  for (const [width, scale, theme] of [[1440, 100, 'light'], [1440, 100, 'dark'], [390, 100, 'light'], [320, 200, 'dark']]) {
+    await preferences(page, width, theme, scale);
+    const desktop = width >= 760;
+    const surface = desktop ? popup : 'main .vk-notif-page';
+    await page.click(desktop ? bell : mobile);
+    const failure = `${surface} .vk-notif-error`;
+    await page.waitFor(`document.querySelector('${failure}')?.textContent.includes('Chưa tải được thông báo.')`, 'first page failed');
+    check(await page.eval(`!document.querySelector('${surface} .vk-notif-empty') &&
+      getComputedStyle(document.querySelector('${failure}')).backgroundColor === 'rgba(0, 0, 0, 0)'`), 'inline failure on the shared surface');
+    const measure = await geometry(page, surface);
+    check(measure.overflow <= 1 && measure.innerOverflow <= 1 && measure.targets.every(([w, h]) => w >= 44 && h >= 44),
+      `error controls fit at ${width}px/${scale}% ${theme}`);
+    await screenshot(`notifications-first-error-${width}-${scale}-${theme}`, width, scale, theme);
+    state.firstFailure = false;
+    await page.eval(`document.querySelector('${failure} button').focus()`);
+    await page.key('Enter');
+    await page.waitFor(`document.querySelector('${surface} ${row}') && document.querySelector('${surface} .vk-notif-note')?.textContent.includes('Chưa tải được số')`, 'retry restores rows while the count is unavailable');
+    state.firstFailure = true;
+    if (desktop) await page.key('Escape');
+    else {
+      await page.eval('history.back()');
+      await page.waitFor(`location.pathname === '/'`, 'leave inbox');
+    }
+  }
+  state.firstFailure = false;
+  await preferences(page, 1440, 'light', 100);
   state.countMode = 'fresh';
   state.holdCount = true;
   await page.eval(`window.dispatchEvent(new Event('online'))`);

@@ -49,13 +49,13 @@ Screen #shell — ≥ 760: rail + main; < 760: main + bottom bar
     Overlay #notif-popover      — chỉ ≥ 760 và chữ < 150%
   Region #bottom-bar (< 760): đúng 3 đích Khám phá · Bàn viết · Tôi (không có chuông)
 Hierarchy: chuông ngay dưới Bàn viết, cùng chữ, độ đậm, chiều cao (56) và kiểu outlined/filled với các đích rail; badge là điểm nhấn duy nhất của rail
-Sizing: rail 220/96 (size.rail-*), đích 56 bo 16 (radius.control-56); badge 18 / vòng 10
+Sizing: rail 220/96 (size.rail-*), đích 56 bo 16 (radius.control-56); badge số 18
 Responsive: < 760 chuông chuyển lên header trang (§3); 760–1099 rail 96 nhãn dưới icon, badge ở góc icon;
   ≥ 1100 rail 220 badge cuối hàng. Chữ ≥ 150%: chuông là link /thong-bao, không popover
 Themes: nền rail = bg-page; đang mở popover hoặc đang ở /thong-bao = primary-container (như đích đang chọn)
-States: none · fresh n · 99+ · stale · 503 (vòng) — xem comp-badge
+States: fresh/stale dương hiện cùng kiểu số (tối đa 99+); fresh/stale bằng 0 hoặc 503 ẩn badge
 Interaction: Enter/Space → mở (≥760) | điều hướng (mobile, chữ lớn); focus ring 3 px
-Accessibility: name "Thông báo, n mục mới" (+ ", có thể chưa cập nhật" | "chưa kiểm tra được mục mới");
+Accessibility: name "Thông báo, n mục mới" (+ ", có thể chưa cập nhật" khi số cũ dương);
   aria-haspopup=dialog, aria-expanded, aria-controls; aria-current=page ở /thong-bao; không aria-live
 Invariants: chuông không xuất hiện cho khách, Reader, editor, trang con ở mobile; vùng chạm ≥ 44 × 44 CSS px;
   badge không bao giờ là "0" khi 503/stale
@@ -72,11 +72,11 @@ Overlay #notif-popover — dialog modal (OverlayLayer), neo #bell (đỉnh thẳ
       Button #read-all "Đọc tất cả" (tonal; chỉ khi có dòng chưa đọc)
       IconButton #pop-close "Đóng thông báo" (48)
     Region #pop-body — cuộn riêng, đệm 6/8/8
-      InlineNotice #fresh-note (stale | offline)
+      InlineNotice #fresh-note (stale | unavailable | offline)
       Button #new-signal "Có cập nhật mới" (sticky, filled)
       Region #groups — NotificationGroup × (Hôm nay | 7 ngày qua | Cũ hơn)
         List #list — NotificationRow × n
-      Region #state — Skeleton | StatePanel(empty) | StatePanel(error + Thử lại) 
+      Region #state — Skeleton | StatePanel(empty) | thông báo lỗi trên nền chung + Button “Thử lại”
       Region #load-more — Xem thêm | Chưa tải thêm được + Thử lại
     Link #pop-more "Mở trang Thông báo →" (khi còn next_cursor)
 Hierarchy: tiêu đề → dòng chưa đọc → "Có cập nhật mới" (nếu có, điểm nhấn duy nhất) → đọc/đã đọc
@@ -177,8 +177,8 @@ Compare: r-dw-light/mob/var, r-dc-desk/mob, r-tham-d/states/mob, r-gone-d/m
 ## 9. Tên truy cập và trạng thái
 
 - Chuông lúc ẩn badge đọc “Thông báo”. Fresh dương đọc “Thông báo, {n} mục mới” hoặc
-  “Thông báo, hơn 99 mục mới”. Stale thêm “có thể chưa cập nhật”, bỏ số khi count cũ bằng 0.
-  Unknown đọc “Thông báo, chưa kiểm tra được mục mới”. Badge trang trí, không là live region.
+  “Thông báo, hơn 99 mục mới”. Stale dương thêm “có thể chưa cập nhật”. Stale bằng 0 và Unknown chỉ đọc “Thông báo”.
+  Panel nêu tình trạng đồng bộ và có nút thử lại kể cả khi chỉ count lỗi. Badge trang trí, không là live region.
 - Dòng đọc theo thứ tự “Chưa đọc.” (nếu có), câu, nhan đề, trích đoạn trong ngoặc kép nếu có,
   bản gửi, thời gian và “Cần xử lý” nếu có. Trích đoạn dành cho nhận xét gốc hoặc phản hồi
   đã duyệt mà Gateway còn cho phép đọc.

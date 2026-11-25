@@ -213,10 +213,9 @@ ghi nghĩa vụ invalidation/đối soát cho số đếm và đóng góp của 
 1. **Tại thanh điều hướng (Chuông & Badge):**
    - Khách chưa đăng nhập không thấy chuông inbox (hoặc không có dữ liệu inbox).
    - Người dùng đã đăng nhập thấy biểu tượng chuông kèm trạng thái badge của `unseen_group_count`:
-     - *Đã có cập nhật mới (`fresh` & `count > 0`):* hiện số nhóm có tín hiệu mới chưa `Seen` (kèm nhãn đọc được cho trình đọc màn hình). Nếu vượt ngưỡng hiển thị gọn (giai đoạn Design chốt ngưỡng cụ thể như `99+`), vẫn phân biệt được với `0`.
-     - *Không có cập nhật chưa xem (`fresh` & `count == 0`):* không hiện huy hiệu số mới (hoặc trạng thái tĩnh bình thường).
-     - *Dữ liệu cũ quá hạn (`stale`):* vẫn cho thấy số cuối biết được kèm dấu hiệu/chữ cho biết thông tin có thể chưa cập nhật và lối tải lại; **không** tự hạ về `0`.
-     - *Không xác minh được (`unavailable`):* hiện trạng thái chưa tải được số đếm và cho phép thử lại; **tuyệt đối không hiện `0`** như thể không có thông báo.
+     - `fresh`: hiện số nhóm chưa Seen từ 1 tới 99, hiện `99+` khi vượt ngưỡng. Số 0 ẩn badge.
+     - `stale`: giữ số cuối Gateway còn xác minh được trong hạn. Số cũ dương dùng cùng kiểu badge và ngưỡng; số cũ bằng 0 ẩn badge. Panel giải thích số có thể đã cũ và cho tải lại.
+     - `unavailable`: ẩn badge. Panel báo lỗi và cho thử lại. Lỗi riêng của count vẫn cho đọc danh sách tải thành công.
 2. **Khi mở chuông (Mở inbox):**
    - Client tải trang inbox đầu tiên từ App Gateway; trong lúc tải hiện trạng thái đang tải rõ ràng (không giả danh sách trống).
    - Ngay khi trang inbox trả về `inbox_snapshot`, client gửi xác nhận `Seen` cho đúng `inbox_snapshot` vừa nhận (idempotent).

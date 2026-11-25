@@ -47,7 +47,8 @@ def validate(spec):
             "wrong application target")
     require(SHA.fullmatch(spec["source_sha"]) and spec["platform"] in ("linux/amd64", "linux/arm64"),
             "invalid revision/platform")
-    require(set(spec["images"]) == {"web", "worker", "identity"}, "three qualified images required")
+    legacy = {"web", "worker", "identity"}
+    require(set(spec["images"]) in (legacy, legacy | {"notifications"}), "unexpected release image set")
     for name, image in spec["images"].items():
         require(re.fullmatch(f"ghcr.io/loveoverflowcom/vink-{name}@sha256:[a-f0-9]{{64}}", image),
                 f"wrong {name} image")

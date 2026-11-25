@@ -22,6 +22,15 @@ OWNERS = {"vink": ("vink-app", "app"), "vink_identity": ("vink-identity", "ident
 SERVICES = {"app": ("APP", "web"), "worker": ("WORKER", "worker"), "identity": ("IDENTITY", "identity")}
 
 
+def has_notifications(tree):
+    manifest = tree / "infra/production/compose.yaml"
+    return manifest.is_file() and "  notifications:" in manifest.read_text().splitlines()
+
+
+def running_services(images):
+    return dict(SERVICES, notifications=("NOTIFICATIONS", "notifications")) if "notifications" in images else SERVICES
+
+
 def durable(path, data):
     with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as out:
         scratch = Path(out.name)
@@ -98,22 +107,22 @@ def observed_overlay(unit, labels, flags, release_env):
     return enabled
 
 
-def checked_backup():
+def checked_backup(owners):
     backup = Path(os.environ["VINK_VERIFIED_BACKUP"]).resolve()
     require(backup.parent == BACKUPS and re.fullmatch(r"\d{8}T\d{6}Z", backup.name), "invalid verified backup")
     sums = backup / "SHA256SUMS"
     require(0 <= time.time() - sums.stat().st_mtime < 86400, "verified backup is older than 24h")
-    require({line.split()[-1] for line in sums.read_text().splitlines()} == {"vink.dump", "vink_identity.dump"},
-            "backup is not the two-owner production pair")
+    require({line.split()[-1] for line in sums.read_text().splitlines()} == {db + ".dump" for db in owners},
+            "backup database set differs from the production owners")
     subprocess.run(["sha256sum", "--check", "--strict", "SHA256SUMS"], cwd=backup, check=True,
                    stdout=subprocess.DEVNULL)
     return sha(sums.read_bytes())
 
 
 def switch_sql(metadata, names):
-    """Swap both owner DBs atomically; retain the migrated DBs, disconnected."""
+    """Swap the owner DBs atomically; retain the migrated DBs, disconnected."""
     statements = ["BEGIN", "SET LOCAL lock_timeout = '5s'"]
-    for owner in OWNERS:
+    for owner in names:
         saved, failed = names[owner]
         original, copy = metadata[owner]
         statements.append(
@@ -134,10 +143,13 @@ class Origin:
         self.spec, self.old_images = spec, old_images
         self.work = STATE / f"maintenance-{self.new}"
         self.state_path = self.work / "state.json"
-        self.names = {db: (f"{db}_saved_{self.new[:16]}", f"{db}_failed_{self.new[:16]}") for db in OWNERS}
+        self.owners = OWNERS
+        if "notifications" in spec["images"] or "notifications" in old_images:
+            self.owners = {"vink_notifications": ("vink-notifications", "notifications"), **OWNERS}
+        self.names = {db: (f"{db}_saved_{self.new[:16]}", f"{db}_failed_{self.new[:16]}") for db in self.owners}
         self.postgres = self.container("postgres", running=True)
-        self.before = {db: ledger_files(RELEASES, old, owner) for db, (owner, _) in OWNERS.items()}
-        self.after = {db: ledger_files(RELEASES, self.new, owner) for db, (owner, _) in OWNERS.items()}
+        self.before = {db: ledger_files(RELEASES, old, owner) for db, (owner, _) in self.owners.items()}
+        self.after = {db: ledger_files(RELEASES, self.new, owner) for db, (owner, _) in self.owners.items()}
 
     def container(self, name, running=False):
         args = ["podman", "ps", "-q" if running else "-aq",
@@ -162,18 +174,18 @@ class Origin:
         return ledger
 
     def check_ledgers(self, expected):
-        for db in OWNERS:
+        for db in self.owners:
             require(self.ledger(db) == expected[db], f"{db} migration history differs")
 
     def db_oids(self):
-        names = [*OWNERS, *(name for pair in self.names.values() for name in pair)]
+        names = [*self.owners, *(name for pair in self.names.values() for name in pair)]
         names_sql = ", ".join(f"'{name}'" for name in names)
         rows = self.sql(f"SELECT datname, oid FROM pg_database WHERE datname IN ({names_sql});")
         return {name: int(oid) for name, oid in (row.split("|") for row in rows.splitlines())}
 
     def drain(self):
-        for service in SERVICES:
-            ref = self.old_images[SERVICES[service][1]]
+        for service in running_services(self.old_images):
+            ref = self.old_images[running_services(self.old_images)[service][1]]
             cid = self.container(service)
             expected = readback(["podman", "image", "inspect", "--format", "{{.Id}}", ref])
             running, image_id, _ = readback(["podman", "inspect", "--format",
@@ -186,10 +198,10 @@ class Origin:
         self.require_drained()
 
     def require_drained(self):
-        for service in SERVICES:
+        for service in running_services(self.old_images):
             require(readback(["podman", "inspect", "--format", "{{.State.Running}} {{.State.ExitCode}}",
                               self.container(service)]) == "false 0", f"{service} is running or did not drain")
-        require(self.sql("SELECT count(*) FROM pg_stat_activity WHERE datname IN ('vink','vink_identity');") == "0",
+        require(self.sql("SELECT count(*) FROM pg_stat_activity WHERE datname IN ('vink','vink_identity','vink_notifications');") == "0",
                 "owner DB still has clients")
 
     def backup(self):
@@ -199,7 +211,7 @@ class Origin:
                 pair = Path(tmp) / "pair"
                 pair.mkdir()
                 sums = []
-                for db in OWNERS:
+                for db in self.owners:
                     dump = pair / (db + ".dump")
                     with dump.open("wb") as out:
                         subprocess.run(["podman", "exec", self.postgres, "pg_dump", "-Fc", "-U", "vink", db],
@@ -221,7 +233,7 @@ class Origin:
     def clone_rollback(self, originals):
         self.require_drained()
         observed = self.db_oids()
-        for db, (_, role) in OWNERS.items():
+        for db, (_, role) in self.owners.items():
             saved, failed = self.names[db]
             require(observed.get(db) == originals[db] and failed not in observed, "owner database identity changed")
             # Database-level ACL is not copied by CREATE DATABASE TEMPLATE.
@@ -242,7 +254,7 @@ class Origin:
             require(self.sql(f"SELECT NOT datallowconn AND datdba = 'vink'::regrole FROM pg_database "
                              f"WHERE datname='{saved}';") == "t", "rollback copy is not fenced")
         observed = self.db_oids()
-        return {db: [originals[db], observed[self.names[db][0]]] for db in OWNERS}
+        return {db: [originals[db], observed[self.names[db][0]]] for db in self.owners}
 
     def container_network(self):
         pod, pid, namespace = readback(["podman", "inspect", "--format",
@@ -263,7 +275,7 @@ class Origin:
                 "--network", self.container_network(), "--env-file", str(RUNTIME / envfile)]
 
     def migrate(self):
-        for db, (_, role) in OWNERS.items():
+        for db, (_, role) in self.owners.items():
             require(matches_ledger(self.ledger(db), self.before[db], self.after[db]), f"{db} diverged during migration")
             image = self.spec["images"]["web" if role == "app" else role]
             subprocess.run([*self.container_args(role + "-migrator.env"), image, "migrate"],
@@ -283,6 +295,12 @@ class Origin:
                   "-e", "VINK_IDENTITY_SOCKET=/probe/identity.sock", "-e", "VINK_IDENTITY_CALLER_UID=10001"],
                  ["--unix-socket", "/probe/identity.sock", "http://identity/health/ready"]),
             ]
+            if "notifications" in images:
+                modes.append(("notifications", "notifications-runtime.env",
+                              ["-v", f"{socket_dir}:/probe", "-e", "VINK_NOTIFICATIONS_INBOX_SOCKET=/probe/inbox.sock",
+                               "-e", "VINK_NOTIFICATIONS_INGEST_SOCKET=/probe/ingest.sock",
+                               "-e", "VINK_NOTIFICATIONS_GATEWAY_UID=10001", "-e", "VINK_NOTIFICATIONS_RELAY_UID=10001"],
+                              ["--unix-socket", "/probe/inbox.sock", "http://notifications/health/ready"]))
             for image, envfile, args, url in modes:
                 # Never remove an unknown container left by an earlier interrupted command.
                 cid = readback([*self.container_args(envfile), "--detach", "--name", probe, *args, images[image]],
@@ -294,6 +312,8 @@ class Origin:
                         if output.returncode == 0:
                             health = json.loads(output.stdout)
                             expected = {"database": "ok", "schema": "current", "role": "restricted"}
+                            if image == "notifications":
+                                expected["role"] = "least_privileged"
                             require(health["status"] == "ready" and all(
                                 health["checks"].get(key) == value for key, value in expected.items()),
                                 f"private {image} readiness differs")
@@ -309,10 +329,10 @@ class Origin:
         if state["phase"] == "draining":
             self.drain()
             self.check_ledgers(self.before)
-            require(checked_backup() == evidence["backup_sha256"], "backup differs from restore rehearsal")
+            require(checked_backup(self.owners) == evidence["backup_sha256"], "backup differs from restore rehearsal")
             backup_digest = self.backup()
             oids = self.db_oids()
-            require(set(oids) == set(OWNERS), "rollback database names already exist")
+            require(set(oids) == set(self.owners), "rollback database names already exist")
             write_state(self.state_path, state, "copying", originals=oids, backup_sha256=backup_digest)
         if state["phase"] == "copying":
             metadata = self.clone_rollback(state["originals"])
@@ -342,12 +362,19 @@ class Origin:
             name = f"VINK_PROD_{key}_IMAGE"
             old, count = re.subn(rf"(?m)^{name}=.*$", f"{name}={images[image]}", old)
             require(count == 1, "release image variable missing or duplicated")
+        if "notifications" in images:
+            name = "VINK_PROD_NOTIFICATIONS_IMAGE"
+            if re.search(rf"(?m)^{name}=", old):
+                old, count = re.subn(rf"(?m)^{name}=.*$", f"{name}={images['notifications']}", old)
+                require(count == 1, "duplicated Notification image")
+            else:
+                old = old.rstrip("\n") + f"\n{name}={images['notifications']}\n"
         return old.encode()
 
     def observe(self, rev, images):
         args = [images[key] for key in ("web", "worker", "identity")]
         script = RELEASES / self.new / "infra/cloudflare/production/origin.sh"
-        return subprocess.run([script, "observe", rev, rev, *args, self.spec["platform"]],
+        return subprocess.run([script, "observe", rev, rev, *args, self.spec["platform"], "same", images.get("notifications", "")],
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
 
     def start(self, state, rev, images, starting, complete):
@@ -368,7 +395,7 @@ class Origin:
                 sync_dir(CURRENT.parent)
         if not self.observe(rev, images):
             subprocess.run([*self.compose(state["overlay"]), "up", "-d", "--no-build", "--no-deps",
-                            "identity", "app", "worker"], check=True)
+                            *running_services(images)], check=True)
         require(self.observe(rev, images), "origin readiness not observed; resume forward only")
         if state["phase"] == starting:
             write_state(self.state_path, state, complete)
@@ -383,7 +410,7 @@ class Origin:
             require(self.backup() == state["backup_sha256"], "drained backup changed")
             oids = self.db_oids()
             require(all(oids.get(db) == state["databases"][db][0] and
-                        oids.get(self.names[db][0]) == state["databases"][db][1] for db in OWNERS),
+                        oids.get(self.names[db][0]) == state["databases"][db][1] for db in self.owners),
                     "rollback databases are missing or changed")
             self.private_ready(self.spec["images"])
             write_state(self.state_path, state, "opening")
@@ -406,11 +433,11 @@ class Origin:
             metadata = state["databases"]
             observed = self.db_oids()
             if all(observed.get(db) == metadata[db][0] and
-                   observed.get(self.names[db][0]) == metadata[db][1] for db in OWNERS):
+                   observed.get(self.names[db][0]) == metadata[db][1] for db in self.owners):
                 self.sql(switch_sql(metadata, self.names))
             observed = self.db_oids()
             require(all(observed.get(db) == metadata[db][1] and
-                        observed.get(self.names[db][1]) == metadata[db][0] for db in OWNERS),
+                        observed.get(self.names[db][1]) == metadata[db][0] for db in self.owners),
                     "rollback database identities did not match")
             self.check_ledgers(self.before)
         if state["phase"] not in {"rollback_opening", "rolled_back"}:
@@ -421,13 +448,13 @@ class Origin:
     def preflight(self, evidence):
         boot_fence()
         require(CURRENT.resolve() == RELEASES / self.old, "wrong maintenance predecessor")
-        require(self.sql("SELECT count(*) FROM pg_database WHERE datname='vink_notifications';") == "0",
-                "this maintenance path supports App and Identity only")
-        require(set(self.db_oids()) == set(OWNERS), "rollback database names already exist")
+        require(self.sql("SELECT count(*) FROM pg_database WHERE datname='vink_notifications';")
+                == ("1" if "vink_notifications" in self.owners else "0"), "notification database topology differs")
+        require(set(self.db_oids()) == set(self.owners), "rollback database names already exist")
         self.container_network()
-        require(checked_backup() == evidence["backup_sha256"], "backup differs from restore rehearsal")
+        require(checked_backup(self.owners) == evidence["backup_sha256"], "backup differs from restore rehearsal")
         data = int(self.sql("SELECT sum(pg_database_size(datname)) FROM pg_database "
-                            "WHERE datname IN ('vink','vink_identity');"))
+                            "WHERE datname IN ('vink','vink_identity','vink_notifications');"))
         pg_disk = readback(["podman", "exec", self.postgres, "sh", "-c", 'df -Pk "$PGDATA"'])
         require(int(pg_disk.splitlines()[-1].split()[3]) * 1024 >= 5 * 1024**3 + data,
                 "insufficient PostgreSQL disk for maintenance")
@@ -439,7 +466,7 @@ class Origin:
                 <= set(current_env.splitlines()), "unknown runtime env directory or UID")
         labels, flags = {}, {}
         template = '{{index .Config.Labels "com.docker.compose.project.config_files"}}'
-        for service in SERVICES:
+        for service in running_services(self.old_images):
             cid = self.container(service)
             labels[service] = readback(["podman", "inspect", "--format", template, cid])
             values = readback(["podman", "inspect", "--format", "{{range .Config.Env}}{{println .}}{{end}}", cid])
@@ -480,7 +507,7 @@ class Origin:
         saved_env = self.work / "release-before.env"
         require(not saved_env.is_symlink() and (not saved_env.exists() or saved_env.read_bytes() == current_env)
                 and self.env(self.old_images, current_env) == current_env, "predecessor image env drift")
-        require(set(self.db_oids()) == set(OWNERS), "unexpected database copies without an origin journal")
+        require(set(self.db_oids()) == set(self.owners), "unexpected database copies without an origin journal")
         self.check_ledgers(self.before)
         require(self.observe(self.old, self.old_images), "unchanged predecessor readiness not observed")
         return False

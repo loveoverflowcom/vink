@@ -8,7 +8,7 @@ on:
         type: boolean
         default: true
       api_only:
-        description: Build backend-only api/worker/identity images for the standalone frontend
+        description: Build backend-only api/worker/identity/notifications images for the standalone frontend
         type: boolean
         default: false
       platform:
@@ -72,7 +72,7 @@ jobs:
             rustup toolchain install
           fi
           cargo xtask infra build-images docker "$PLATFORM" "${options[@]}"
-      - name: Qualify built images against isolated PostgreSQL and Identity
+      - name: Qualify built images against isolated PostgreSQL, Identity and Notifications
         run: infra/production/smoke-images.sh "$GITHUB_SHA" "$PLATFORM" "$APP_IMAGE"
       - id: registry
         name: Publish explicitly and record remote digests
@@ -85,7 +85,7 @@ jobs:
           printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           printf '```toml\nsource_revision = "%s"\nplatform = "%s"\n' "$GITHUB_SHA" "$PLATFORM" >> "$GITHUB_STEP_SUMMARY"
           refs=$(mktemp)
-          for name in "$APP_IMAGE" worker identity; do
+          for name in "$APP_IMAGE" worker identity notifications; do
             image="ghcr.io/loveoverflowcom/vink-$name:sha-$GITHUB_SHA"
             docker push "$image"
             digest=$(docker image inspect --format '{{index .RepoDigests 0}}' "$image")
@@ -93,7 +93,7 @@ jobs:
             printf '%s %s\n' "$name" "$digest" >> "$refs"
             printf '%s_image = "%s"\n' "$name" "$digest" >> "$GITHUB_STEP_SUMMARY"
           done
-          printf '# Schema compatibility must be reviewed against both owners before rollback.\n```\n' >> "$GITHUB_STEP_SUMMARY"
+          printf '# Schema compatibility must be reviewed against each database owner before rollback.\n```\n' >> "$GITHUB_STEP_SUMMARY"
           python3 - "$refs" >> "$GITHUB_STEP_SUMMARY" <<'PYTHON'
           import json, os, sys
           from pathlib import Path

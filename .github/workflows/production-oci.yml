@@ -31,5 +31,5 @@ jobs:
         run: |
           rustup toolchain install
           cargo xtask infra build-images docker linux/amd64
-      - name: Qualify built images against isolated PostgreSQL and Identity
+      - name: Qualify built images against isolated PostgreSQL, Identity and Notifications
         run: infra/production/smoke-images.sh "$GITHUB_SHA" linux/amd64

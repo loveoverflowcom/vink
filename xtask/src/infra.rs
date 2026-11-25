@@ -333,7 +333,7 @@ fn build_images(root: &Path, engine: &str, target: &str, app_image: &str) -> Res
         "archive committed source only",
     )?;
     let _cleanup = ContextArchive(context.clone());
-    for image in [app_image, "worker", "identity"] {
+    for image in [app_image, "worker", "identity", "notifications"] {
         let mut cmd = std::process::Command::new(engine);
         cmd.stdin(std::fs::File::open(&context).map_err(|e| e.to_string())?)
             .current_dir(root)

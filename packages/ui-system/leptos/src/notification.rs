@@ -20,12 +20,11 @@ pub enum BadgeState {
     Count(u32),
     /// The Gateway supplied a lower bound for a fresh count.
     LowerBound,
-    /// The last verified count while the source cannot be checked (`stale`): outlined; a stale
-    /// zero is an empty outline, never "0".
+    /// The last verified count while the source cannot be checked (`stale`). A stale zero has no badge.
     Stale(u32),
     /// The last known count was a lower bound.
     StaleLowerBound,
-    /// The count could not be verified at all (`503`): an empty ring.
+    /// The count could not be verified at all (`503`). The inbox offers a retry.
     Unknown,
 }
 
@@ -53,19 +52,17 @@ impl BadgeState {
     /// assistive technology so the number is read once, with the bell.
     pub fn trigger_name(self, base: &str) -> String {
         match self {
-            Self::Hidden | Self::Count(0) => base.to_string(),
+            Self::Hidden | Self::Count(0) | Self::Stale(0) | Self::Unknown => base.to_string(),
             Self::LowerBound => format!("{base}, hơn {BADGE_CAP} mục mới"),
             Self::StaleLowerBound => {
                 format!("{base}, hơn {BADGE_CAP} mục mới, có thể chưa cập nhật")
             }
             Self::Count(n) if n > BADGE_CAP => format!("{base}, hơn {BADGE_CAP} mục mới"),
             Self::Count(n) => format!("{base}, {n} mục mới"),
-            Self::Stale(0) => format!("{base}, có thể chưa cập nhật"),
             Self::Stale(n) if n > BADGE_CAP => {
                 format!("{base}, hơn {BADGE_CAP} mục mới, có thể chưa cập nhật")
             }
             Self::Stale(n) => format!("{base}, {n} mục mới, có thể chưa cập nhật"),
-            Self::Unknown => format!("{base}, chưa kiểm tra được mục mới"),
         }
     }
 }
@@ -73,14 +70,15 @@ impl BadgeState {
 /// The badge of a bell. Decorative: the trigger carries [`BadgeState::trigger_name`].
 #[component]
 pub fn NotificationBadge(#[prop(into)] state: Signal<BadgeState>) -> impl IntoView {
+    let digits = Memo::new(move |_| state.get().digits());
     view! {
         <span
             class="vk-ui-badge"
             data-state=move || state.get().id()
-            hidden=move || state.get().id() == "hidden"
+            hidden=move || digits.with(Option::is_none)
             aria-hidden="true"
         >
-            {move || state.get().digits()}
+            {digits}
         </span>
     }
 }
@@ -207,27 +205,25 @@ mod tests {
             name(BadgeState::Stale(3)),
             "Thông báo, 3 mục mới, có thể chưa cập nhật"
         );
-        assert_eq!(
-            name(BadgeState::Stale(0)),
-            "Thông báo, có thể chưa cập nhật"
-        );
+        assert_eq!(name(BadgeState::Stale(0)), "Thông báo");
         assert_eq!(
             name(BadgeState::StaleLowerBound),
             "Thông báo, hơn 99 mục mới, có thể chưa cập nhật"
         );
-        assert_eq!(
-            name(BadgeState::Unknown),
-            "Thông báo, chưa kiểm tra được mục mới"
-        );
+        assert_eq!(name(BadgeState::Unknown), "Thông báo");
     }
 
     #[test]
     fn hidden_badge_renders_without_digits() {
-        let html = Owner::new().with(|| {
-            view! { <NotificationBadge state=Signal::stored(BadgeState::Count(0)) /> }.to_html()
-        });
-        assert!(html.contains("data-state=\"hidden\""), "{html}");
-        assert!(html.contains(" hidden"), "{html}");
-        assert!(!html.contains(">0<"), "{html}");
+        for state in [
+            BadgeState::Count(0),
+            BadgeState::Stale(0),
+            BadgeState::Unknown,
+        ] {
+            let html = Owner::new()
+                .with(|| view! { <NotificationBadge state=Signal::stored(state) /> }.to_html());
+            assert!(html.contains(" hidden"), "{state:?}: {html}");
+            assert!(!html.contains(">0<"), "{html}");
+        }
     }
 }
