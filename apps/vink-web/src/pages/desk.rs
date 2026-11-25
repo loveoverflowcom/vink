@@ -1117,6 +1117,20 @@ fn Editor(draft: Draft) -> impl IntoView {
     let navigation = use_context::<NavigationGuard>();
     let title_input = NodeRef::<html::Input>::new();
     let title_composing = StoredValue::new(false);
+    let composing = RwSignal::new(false);
+    #[cfg(feature = "browser")]
+    let tab = crate::account::Session::current();
+    #[cfg(feature = "browser")]
+    let edit_scope = StoredValue::new((None::<String>, false));
+    let edited = move || {
+        #[cfg(feature = "browser")]
+        edit_scope.set_value((
+            tab.profile_scope.get_untracked(),
+            tab.standing
+                .with_untracked(|s| *s == crate::session::Standing::Unknown),
+        ));
+        session.update(|s| s.text.edited());
+    };
     let leave_open = RwSignal::new(false);
     let keep_editing = NodeRef::<html::Button>::new();
     let leave_stay = NodeRef::<html::Button>::new();
@@ -1242,6 +1256,7 @@ fn Editor(draft: Draft) -> impl IntoView {
         #[cfg(feature = "browser")]
         {
             let id = work_id.get_value();
+            let scope = tab.profile_scope.get_untracked();
             leptos::task::spawn_local(async move {
                 use crate::desk_state::SaveRejection;
                 // A missing response may hide a committed write. Keep the expected version:
@@ -1270,9 +1285,16 @@ fn Editor(draft: Draft) -> impl IntoView {
                 {
                     return;
                 }
+                let same_scope = || tab.profile_scope.try_get_untracked() == Some(scope.clone());
                 let outcome = match ready {
+                    Ok(()) if !same_scope() => Err(ApiError::Unauthenticated),
                     Ok(()) => crate::api::save_draft(id, request).await,
                     Err(error) => Err(error),
+                };
+                let outcome = if same_scope() {
+                    outcome
+                } else {
+                    Err(ApiError::Unauthenticated)
                 };
                 // The editor may have closed while the request was in flight.
                 let was_save_focused = active_element_id_is("save");
@@ -1389,6 +1411,46 @@ fn Editor(draft: Draft) -> impl IntoView {
             send(ticket, reconcile);
         }
     };
+    #[cfg(feature = "browser")]
+    {
+        let params = use_params_map();
+        let candidate = Memo::new(move |_| {
+            let edit = session.with(|s| s.text.autosave_edit())?;
+            let scope = tab.profile_scope.get()?;
+            let same_draft = params.read().get("id").as_deref() == Some(&work_id.get_value());
+            // The draft read can beat the initial account check. Keep that edit and
+            // re-read this private draft under the confirmed account before sending it.
+            let (typed_as, needs_readback) = edit_scope.get_value();
+            (same_draft
+                && (needs_readback || typed_as.as_ref() == Some(&scope))
+                && !composing.get()
+                && !leave_open.get()
+                && convert_preview.with(Option::is_none)
+                && body.state.get() == BodyState::Ready)
+                .then_some((edit, scope, needs_readback))
+        });
+        Effect::new(move |_| {
+            let Some(key) = candidate.get() else { return };
+            let timer = set_timeout_with_handle(
+                move || {
+                    if candidate.try_get_untracked().flatten().as_ref() != Some(&key)
+                        || title_composing.get_value()
+                        || body.is_composing()
+                        || leave.with_untracked(LeaveGuard::released)
+                    {
+                        return;
+                    }
+                    if let Some(ticket) = session.try_update(|s| s.text.begin_save()).flatten() {
+                        send_text(ticket, key.2);
+                    }
+                },
+                std::time::Duration::from_millis(1500),
+            );
+            if let Ok(timer) = timer {
+                on_cleanup(move || timer.clear());
+            }
+        });
+    }
     let focus_last_field = move || match last_field.get_value() {
         Field::Title if format.get_untracked() == DocumentFormatDto::Default => {
             #[cfg(feature = "browser")]
@@ -1429,6 +1491,9 @@ fn Editor(draft: Draft) -> impl IntoView {
         });
     };
     let save_and_leave = move || {
+        if composing.get_untracked() || body.is_composing() || title_composing.get_value() {
+            return;
+        }
         let reconcile = reconcile_after_failure();
         let ticket = leave
             .try_update(|g| session.try_update(|s| g.save_and_leave(s)))
@@ -1437,6 +1502,7 @@ fn Editor(draft: Draft) -> impl IntoView {
         if let Some(ticket) = ticket {
             send(ticket, reconcile);
         }
+        settle_leave();
     };
     let ask_discard = move || {
         leave.update(|g| session.with_untracked(|s| g.ask_discard(s)));
@@ -1540,7 +1606,7 @@ fn Editor(draft: Draft) -> impl IntoView {
     });
     let on_body_change = Callback::new(move |()| {
         clear_just_saved();
-        session.try_update(|s| s.text.edited());
+        edited();
     });
 
     let restore_format_focus = move || {
@@ -1832,6 +1898,8 @@ fn Editor(draft: Draft) -> impl IntoView {
             class="vk-editor flex flex-col gap-vk-4"
             aria-labelledby="editor-heading"
             data-format=move || format.get().as_str()
+            on:compositionstart=move |_| composing.set(true)
+            on:compositionend=move |_| composing.set(false)
             data-outline-open=move || if outline_open.get() { "true" } else { "false" }
             data-just-saved=move || if just_saved.get() { "true" } else { "false" }
             on:submit=move |event| {
@@ -2067,7 +2135,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                                 if title.get_untracked() != input.value {
                                     clear_just_saved();
                                     title.set(input.value);
-                                    session.update(|s| s.text.edited());
+                                    edited();
                                 }
                             } />
                         <TitleDisclosure title input=title_input />
@@ -2793,6 +2861,7 @@ fn failure_detail(failure: Failure) -> String {
 
 pub(crate) fn failure_reason(failure: Failure) -> &'static str {
     match failure {
+        Failure::Offline => "Trình duyệt báo mất kết nối.",
         Failure::Network => "Mất phản hồi từ máy chủ; chưa rõ bản nháp đã được lưu hay chưa.",
         Failure::Unavailable => "Máy chủ tạm không phục vụ.",
         Failure::Unauthenticated => {
@@ -3000,312 +3069,122 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
         text_detail(facts.text, facts.text_pending_newer)
     );
 
-    if matches!(facts.text, SaveStatus::Saving) || matches!(facts.tags, Some(TagStatus::Saving)) {
-        let sending_first = facts.first_send && matches!(facts.text, SaveStatus::Saving);
-        let status_text = match (facts.text, facts.tags.as_ref()) {
-            (SaveStatus::Saving, Some(TagStatus::Saving)) => "Đang lưu chữ và thẻ…",
-            (SaveStatus::Saving, Some(TagStatus::Unsaved)) => "Đang lưu chữ; thẻ chưa lưu…",
-            (
-                SaveStatus::Saving,
-                Some(TagStatus::Conflict { .. } | TagStatus::Refused(_) | TagStatus::Failed(_)),
-            ) => "Đang lưu chữ; thẻ cần kiểm tra…",
-            (SaveStatus::Saving, _) if facts.text_pending_newer && sending_first => {
-                "Đang gửi; có chữ mới…"
-            }
-            (SaveStatus::Saving, _) if facts.text_pending_newer => "Đang lưu; có chữ mới…",
-            (SaveStatus::Saving, None) if matches!(facts.tags_read, TagLoad::Failed(_)) => {
-                "Đang lưu chữ; chưa tải được thẻ."
-            }
-            (SaveStatus::Saving, _) if sending_first => "Đang gửi…",
-            (SaveStatus::Saving, _) => "Đang lưu…",
-            (SaveStatus::Saved { .. }, Some(TagStatus::Saving)) if facts.tags_pending_newer => {
-                "Đang lưu thẻ; có thay đổi mới…"
-            }
-            (SaveStatus::Saved { .. }, Some(TagStatus::Saving)) => "Đang lưu thẻ…",
-            (SaveStatus::Unsaved, Some(TagStatus::Saving)) => "Chưa lưu chữ; đang lưu thẻ…",
-            (_, Some(TagStatus::Saving)) => "Chữ cần kiểm tra; đang lưu thẻ…",
-            _ => "Đang lưu…",
-        };
-        return SaveSlotView {
-            status_text: status_text.into(),
-            status_token: "saving",
-            problem_kind: None,
-            detail_text: detail,
-            action: SaveSlotAction::Save {
-                label: if sending_first {
-                    "Đang gửi…"
-                } else {
-                    "Đang lưu…"
-                },
-                pending: true,
-                icon: DraftActionIcon::Spin,
-            },
-        };
-    }
-
-    let tag_action = match facts.tags {
-        Some(TagStatus::Unsaved) => Some(SaveSlotAction::Save {
+    use SaveSlotAction::{Recover, Retry, Save};
+    let text_dirty = facts.text == SaveStatus::Unsaved;
+    let save = SaveSlotAction::save_or_send(facts.first_send && text_dirty);
+    let retry = Retry {
+        label: "Thử lưu lại",
+        pending: false,
+        icon: DraftActionIcon::Save,
+    };
+    let tags_only = match facts.tags {
+        Some(TagStatus::Unsaved) => Some(Save {
             label: "Lưu thẻ",
             pending: false,
             icon: DraftActionIcon::Save,
         }),
-        Some(TagStatus::Failed(_)) => Some(SaveSlotAction::Retry {
+        Some(TagStatus::Failed(_)) => Some(Retry {
             label: "Thử lưu lại thẻ",
             pending: false,
             icon: DraftActionIcon::Save,
         }),
         _ => None,
     };
-    if let SaveStatus::Conflict { .. } = facts.text {
-        let status_text = match facts.tags.as_ref() {
-            Some(TagStatus::Unsaved) => "Có bản mới hơn trên máy chủ; thẻ chưa lưu.",
-            Some(TagStatus::Failed(_) | TagStatus::Refused(_) | TagStatus::Conflict { .. }) => {
-                "Có bản mới hơn trên máy chủ; thẻ cũng cần xử lý."
-            }
-            _ => "Có bản mới trên máy chủ.",
-        };
-        return SaveSlotView {
-            status_text: status_text.into(),
-            status_token: "conflict",
-            problem_kind: Some("conflict"),
-            detail_text: detail,
-            action: tag_action.unwrap_or(SaveSlotAction::Recover {
-                label: "Xử lý xung đột",
-                target: RecoveryTarget::TextConflict,
-            }),
-        };
-    }
-
-    if let SaveStatus::Failed(failure) = facts.text {
-        let text_uncertain = crate::tag_state::uncertain(failure);
-        let problem_kind = Some(if text_uncertain {
-            "uncertain"
-        } else {
-            "rejected"
-        });
-        let title_invalid = failure == Failure::InvalidTitle;
-        let status_text = if title_invalid {
-            "Tiêu đề chưa hợp lệ."
-        } else if text_uncertain {
-            match facts.tags.as_ref() {
-                None if matches!(facts.tags_read, TagLoad::Failed(_)) => {
-                    "Chưa xác nhận lưu chữ; chưa tải được thẻ."
-                }
-                None | Some(TagStatus::Saved { .. }) => "Chưa xác nhận lưu.",
-                Some(TagStatus::Unsaved) => "Chưa xác nhận lưu chữ; thẻ chưa lưu.",
-                Some(TagStatus::Failed(tag_failure))
-                    if crate::tag_state::uncertain(*tag_failure) =>
-                {
-                    "Chưa xác nhận lưu chữ và thẻ."
-                }
-                Some(TagStatus::Conflict { .. }) => "Chưa xác nhận lưu chữ; thẻ đã đổi ở nơi khác.",
-                Some(TagStatus::Refused(_)) => "Chưa xác nhận lưu chữ; thẻ bị từ chối.",
-                _ => "Chưa xác nhận lưu chữ; thẻ chưa lưu được.",
-            }
-        } else {
-            match facts.tags.as_ref() {
-                None if matches!(facts.tags_read, TagLoad::Failed(_)) => {
-                    "Chưa lưu được chữ; chưa tải được thẻ."
-                }
-                None | Some(TagStatus::Saved { .. }) => "Chưa lưu được.",
-                Some(TagStatus::Unsaved) => "Chưa lưu được chữ; thẻ chưa lưu.",
-                Some(TagStatus::Conflict { .. }) => "Chưa lưu được chữ; thẻ đã đổi ở nơi khác.",
-                Some(TagStatus::Refused(_)) => "Chưa lưu được chữ; thẻ bị từ chối.",
-                Some(TagStatus::Failed(tag_failure))
-                    if crate::tag_state::uncertain(*tag_failure) =>
-                {
-                    "Chưa lưu được chữ; chưa xác nhận lưu thẻ."
-                }
-                _ => "Chưa lưu được chữ và thẻ.",
-            }
-        };
-        return SaveSlotView {
-            status_text: status_text.into(),
-            status_token: "failed",
-            problem_kind,
-            detail_text: detail,
-            action: if title_invalid {
-                tag_action.unwrap_or(SaveSlotAction::Recover {
-                    label: "Sửa tiêu đề",
-                    target: RecoveryTarget::Title,
-                })
-            } else {
-                SaveSlotAction::Retry {
-                    label: "Thử lưu lại",
+    let recover = |label, target| Recover { label, target };
+    let (status_text, status_token, problem_kind, action) = match (&facts.text, &facts.tags) {
+        (SaveStatus::Saving, _) | (_, Some(TagStatus::Saving)) => {
+            let first = facts.first_send && facts.text == SaveStatus::Saving;
+            (
+                "Đang lưu",
+                "saving",
+                None,
+                Save {
+                    label: if first {
+                        "Đang gửi…"
+                    } else {
+                        "Đang lưu…"
+                    },
+                    pending: true,
+                    icon: DraftActionIcon::Spin,
+                },
+            )
+        }
+        (SaveStatus::Conflict { .. }, _) => {
+            let action =
+                tags_only.unwrap_or(recover("Xử lý xung đột", RecoveryTarget::TextConflict));
+            ("Xung đột", "conflict", Some("conflict"), action)
+        }
+        (_, Some(TagStatus::Conflict { .. })) => {
+            let action = if text_dirty {
+                Save {
+                    label: "Lưu chữ",
                     pending: false,
                     icon: DraftActionIcon::Save,
                 }
-            },
-        };
-    }
-
-    let text_dirty = matches!(facts.text, SaveStatus::Unsaved);
-    match facts.tags.as_ref() {
-        Some(TagStatus::Conflict { .. }) => {
-            let (status_text, status_token, action) = if text_dirty {
-                (
-                    "Chưa lưu chữ; thẻ đã đổi ở nơi khác.",
-                    "conflict",
-                    SaveSlotAction::Save {
-                        label: "Lưu chữ",
-                        pending: false,
-                        icon: DraftActionIcon::Save,
-                    },
-                )
             } else {
-                (
-                    "Đã lưu chữ; thẻ đã đổi ở nơi khác.",
-                    "conflict",
-                    SaveSlotAction::Recover {
-                        label: "Xử lý xung đột thẻ",
-                        target: RecoveryTarget::TagConflict,
-                    },
-                )
+                recover("Xử lý xung đột thẻ", RecoveryTarget::TagConflict)
             };
-            SaveSlotView {
-                status_text: status_text.into(),
-                status_token,
-                problem_kind: Some("conflict"),
-                detail_text: detail,
-                action,
-            }
+            ("Xung đột", "conflict", Some("conflict"), action)
         }
-        Some(TagStatus::Refused(_)) => {
-            let (status_text, status_token, action) = if text_dirty {
-                (
-                    "Chưa lưu chữ; thẻ bị từ chối.",
-                    "unsaved",
-                    SaveSlotAction::Save {
-                        label: "Lưu chữ",
-                        pending: false,
-                        icon: DraftActionIcon::Save,
-                    },
-                )
-            } else {
-                (
-                    "Đã lưu chữ; thẻ bị từ chối.",
-                    "failed",
-                    SaveSlotAction::Recover {
-                        label: "Kiểm tra thẻ",
-                        target: RecoveryTarget::TagRefused,
-                    },
-                )
+        (SaveStatus::Failed(reason), _) | (_, Some(TagStatus::Failed(reason))) => {
+            let action = match facts.text {
+                SaveStatus::Failed(Failure::InvalidTitle) => {
+                    tags_only.unwrap_or(recover("Sửa tiêu đề", RecoveryTarget::Title))
+                }
+                SaveStatus::Unsaved => save,
+                _ => retry,
             };
-            SaveSlotView {
-                status_text: status_text.into(),
-                status_token,
-                problem_kind: Some("refused"),
-                detail_text: detail,
-                action,
-            }
+            let label = if *reason == Failure::Offline {
+                "Mất kết nối"
+            } else {
+                "Chưa lưu được"
+            };
+            let problem = if crate::tag_state::uncertain(*reason) {
+                "uncertain"
+            } else {
+                "rejected"
+            };
+            (label, "failed", Some(problem), action)
         }
-        Some(TagStatus::Failed(tag_failure)) => {
-            let uncertain = crate::tag_state::uncertain(*tag_failure);
-            let status_text = match (text_dirty, uncertain) {
-                (false, true) => "Đã lưu chữ; chưa xác nhận lưu thẻ.",
-                (false, false) => "Đã lưu chữ; thẻ chưa lưu được.",
-                (true, true) => "Chưa lưu chữ; chưa xác nhận lưu thẻ.",
-                (true, false) => "Chưa lưu chữ; thẻ chưa lưu được.",
-            };
-            let use_send = facts.first_send && text_dirty;
-            let label = if use_send {
-                "Gửi"
-            } else if text_dirty {
-                "Lưu"
-            } else {
-                "Thử lưu lại"
-            };
-            SaveSlotView {
-                status_text: status_text.into(),
-                status_token: "failed",
-                problem_kind: Some(if uncertain { "uncertain" } else { "rejected" }),
-                detail_text: detail,
-                action: SaveSlotAction::Retry {
-                    label,
+        (_, Some(TagStatus::Refused(_))) => {
+            let action = if text_dirty {
+                Save {
+                    label: "Lưu chữ",
                     pending: false,
-                    icon: if use_send {
-                        DraftActionIcon::Send
-                    } else {
-                        DraftActionIcon::Save
-                    },
-                },
-            }
-        }
-        Some(TagStatus::Unsaved) => {
-            let (status_text, problem_kind) = if text_dirty {
-                ("Chưa lưu chữ và thẻ", None)
+                    icon: DraftActionIcon::Save,
+                }
             } else {
-                ("Đã lưu chữ; chưa lưu thẻ", Some("partial"))
+                recover("Kiểm tra thẻ", RecoveryTarget::TagRefused)
             };
-            SaveSlotView {
-                status_text: status_text.into(),
-                status_token: "unsaved",
-                problem_kind,
-                detail_text: detail,
-                action: SaveSlotAction::save_or_send(facts.first_send && text_dirty),
-            }
+            ("Chưa lưu được", "failed", Some("refused"), action)
         }
-        Some(TagStatus::Saved { .. }) => {
-            if text_dirty {
-                SaveSlotView {
-                    status_text: "Chưa lưu chữ".into(),
-                    status_token: "unsaved",
-                    problem_kind: Some("partial"),
-                    detail_text: detail,
-                    action: SaveSlotAction::save_or_send(facts.first_send),
-                }
+        (_, None) if matches!(facts.tags_read, TagLoad::Failed(_)) => {
+            let action = if text_dirty {
+                save
             } else {
-                let version = match facts.text {
-                    SaveStatus::Saved { version } => version,
-                    _ => 0,
-                };
-                SaveSlotView {
-                    status_text: "Đã lưu".into(),
-                    status_token: "saved",
-                    problem_kind: None,
-                    detail_text: format!(
-                        "Đã lưu bản nháp phiên bản {version} và thẻ đã chọn trên máy chủ."
-                    ),
-                    action: SaveSlotAction::None,
-                }
-            }
-        }
-        Some(TagStatus::Saving) | None => {
-            if text_dirty {
-                SaveSlotView {
-                    status_text: match facts.tags_read {
-                        TagLoad::Failed(_) => "Chưa lưu chữ; chưa tải được thẻ",
-                        _ => "Chưa lưu chữ",
-                    }
-                    .into(),
-                    status_token: "unsaved",
-                    problem_kind: None,
-                    detail_text: detail,
-                    action: SaveSlotAction::save_or_send(facts.first_send),
-                }
+                recover("Kiểm tra tải thẻ", RecoveryTarget::TagLoad)
+            };
+            let label = if facts.tags_read == TagLoad::Failed(Failure::Offline) {
+                "Mất kết nối"
             } else {
-                let (status_text, status_token, action) = match facts.tags_read {
-                    TagLoad::Failed(_) => (
-                        "Đã lưu chữ; chưa tải được thẻ",
-                        "failed",
-                        SaveSlotAction::Recover {
-                            label: "Kiểm tra tải thẻ",
-                            target: RecoveryTarget::TagLoad,
-                        },
-                    ),
-                    TagLoad::Loading | TagLoad::Ready => {
-                        ("Đã lưu chữ; đang tải thẻ…", "loading", SaveSlotAction::None)
-                    }
-                };
-                SaveSlotView {
-                    status_text: status_text.into(),
-                    status_token,
-                    problem_kind: Some("partial"),
-                    detail_text: detail,
-                    action,
-                }
-            }
+                "Chưa lưu được"
+            };
+            (label, "failed", Some("partial"), action)
         }
+        (SaveStatus::Unsaved, _) | (_, Some(TagStatus::Unsaved)) => {
+            ("Chưa lưu", "unsaved", None, save)
+        }
+        (SaveStatus::Saved { .. }, Some(TagStatus::Saved { .. })) => {
+            ("Đã lưu", "saved", None, SaveSlotAction::None)
+        }
+        (_, None) => ("Chưa lưu", "loading", None, SaveSlotAction::None),
+    };
+    SaveSlotView {
+        status_text: status_text.into(),
+        status_token,
+        problem_kind,
+        detail_text: detail,
+        action,
     }
 }
 
@@ -3350,6 +3229,7 @@ pub(crate) fn tag_failure_reason(failure: Failure) -> &'static str {
 #[cfg(feature = "browser")]
 pub(crate) fn failure(error: &ApiError) -> Failure {
     match error {
+        ApiError::Network if !window().navigator().on_line() => Failure::Offline,
         ApiError::Network => Failure::Network,
         ApiError::Unavailable => Failure::Unavailable,
         ApiError::Unauthenticated => Failure::Unauthenticated,
@@ -3425,19 +3305,16 @@ mod editor_presentation_tests {
     }
 
     #[test]
-    fn the_toolbar_names_tag_states_and_keeps_text_words_when_tags_are_saved() {
+    fn toolbar_summarizes_both_resources_and_keeps_versions_in_details() {
         let saved_tags = TagStatus::Saved { version: 2 };
         let text = SaveStatus::Saved { version: 7 };
         assert_eq!(slot_view(text, Some(&saved_tags)).status_text, "Đã lưu");
         assert_eq!(slot_view(text, Some(&saved_tags)).status_token, "saved");
-        assert_eq!(
-            slot_view(text, None).status_text,
-            "Đã lưu chữ; đang tải thẻ…"
-        );
+        assert_eq!(slot_view(text, None).status_text, "Chưa lưu");
         assert_eq!(slot_view(text, None).status_token, "loading");
         assert_eq!(
             slot_view(text, Some(&TagStatus::Unsaved)).status_text,
-            "Đã lưu chữ; chưa lưu thẻ",
+            "Chưa lưu",
             "a tag-only change names the partial state truthfully"
         );
         assert_eq!(
@@ -3446,21 +3323,21 @@ mod editor_presentation_tests {
         );
         assert_eq!(
             slot_view(text, Some(&TagStatus::Failed(Failure::Network))).status_text,
-            "Đã lưu chữ; chưa xác nhận lưu thẻ."
+            "Chưa lưu được"
         );
         assert_eq!(
             slot_view(text, Some(&TagStatus::Failed(Failure::Unauthenticated))).status_text,
-            "Đã lưu chữ; thẻ chưa lưu được."
+            "Chưa lưu được"
         );
         // Text conflict keeps conflict priority while still naming dirty tags truthfully.
         let conflict = SaveStatus::Conflict { server_version: 9 };
         assert_eq!(
             slot_view(conflict, Some(&TagStatus::Unsaved)).status_text,
-            "Có bản mới hơn trên máy chủ; thẻ chưa lưu."
+            "Xung đột"
         );
         assert_eq!(
             slot_view(conflict, Some(&saved_tags)).status_text,
-            "Có bản mới trên máy chủ."
+            "Xung đột"
         );
         let detail = slot_view(text, Some(&TagStatus::Unsaved)).detail_text;
         assert!(detail.contains("phiên bản 7") && detail.contains("Thẻ có thay đổi chưa lưu."));
@@ -3510,11 +3387,11 @@ mod editor_presentation_tests {
                 target: RecoveryTarget::TagLoad,
             }
         );
-        assert_eq!(tag_load_failed.status_text, "Đã lưu chữ; chưa tải được thẻ");
+        assert_eq!(tag_load_failed.status_text, "Chưa lưu được");
 
         // Text dirty + tags saved vs tags dirty + text saved vs both dirty.
         let text_only = project_save_slot(&facts(SaveStatus::Unsaved, Some(saved_tags.clone())));
-        assert_eq!(text_only.status_text, "Chưa lưu chữ");
+        assert_eq!(text_only.status_text, "Chưa lưu");
         assert_eq!(
             text_only.action,
             SaveSlotAction::Save {
@@ -3525,7 +3402,7 @@ mod editor_presentation_tests {
         );
 
         let both_dirty = project_save_slot(&facts(SaveStatus::Unsaved, Some(TagStatus::Unsaved)));
-        assert_eq!(both_dirty.status_text, "Chưa lưu chữ và thẻ");
+        assert_eq!(both_dirty.status_text, "Chưa lưu");
         assert_eq!(both_dirty.problem_kind, None);
 
         // Pending with newer local edits while saving keeps newer edit truth visible.
@@ -3534,7 +3411,7 @@ mod editor_presentation_tests {
             ..facts(SaveStatus::Saving, Some(saved_tags.clone()))
         });
         assert_eq!(pending_newer.status_token, "saving");
-        assert_eq!(pending_newer.status_text, "Đang lưu; có chữ mới…");
+        assert_eq!(pending_newer.status_text, "Đang lưu");
         assert!(pending_newer.detail_text.contains("gõ thêm chữ mới"));
 
         // Refused tags with clean text routes directly to tag fix, never offering fake Save/retry.
@@ -3610,7 +3487,7 @@ mod editor_presentation_tests {
             first_send: true,
             ..facts(SaveStatus::Saving, None)
         });
-        assert_eq!(send_pending.status_text, "Đang gửi…");
+        assert_eq!(send_pending.status_text, "Đang lưu");
         assert_eq!(
             send_pending.action,
             SaveSlotAction::Save {
@@ -3717,7 +3594,7 @@ mod editor_presentation_tests {
         session.save_succeeded(ticket, 7);
         assert_eq!(
             slot_view(session.status(), Some(&saved_tags)).status_text,
-            "Chưa lưu chữ"
+            "Chưa lưu"
         );
         assert!(!text_detail(session.status(), false).contains("Đã lưu"));
         let ticket = session.begin_save().expect("newer text still needs saving");
@@ -3735,10 +3612,14 @@ mod editor_presentation_tests {
     #[test]
     fn unknown_rejected_and_conflict_have_distinct_truthful_recovery_copy() {
         let saved_tags = TagStatus::Saved { version: 1 };
+        assert_eq!(
+            slot_view(SaveStatus::Failed(Failure::Offline), Some(&saved_tags)).status_text,
+            "Mất kết nối"
+        );
         for failure in [Failure::Network, Failure::Unavailable, Failure::Unexpected] {
             assert_eq!(
                 slot_view(SaveStatus::Failed(failure), Some(&saved_tags)).status_text,
-                "Chưa xác nhận lưu."
+                "Chưa lưu được"
             );
             assert!(failure_detail(failure).contains("Máy chủ chưa xác nhận."));
         }
@@ -3750,7 +3631,7 @@ mod editor_presentation_tests {
         ] {
             assert_eq!(
                 slot_view(SaveStatus::Failed(failure), Some(&saved_tags)).status_text,
-                "Chưa lưu được."
+                "Chưa lưu được"
             );
             assert!(failure_detail(failure).starts_with(failure_reason(failure)));
             assert!(!failure_detail(failure).contains("Máy chủ chưa xác nhận."));
@@ -3764,7 +3645,7 @@ mod editor_presentation_tests {
         let conflict = SaveStatus::Conflict { server_version: 9 };
         assert_eq!(
             slot_view(conflict, Some(&saved_tags)).status_text,
-            "Có bản mới trên máy chủ."
+            "Xung đột"
         );
         assert!(text_detail(conflict, false).contains("phiên bản 9"));
         assert!(text_detail(conflict, false).contains("chưa được lưu vào bản đó"));

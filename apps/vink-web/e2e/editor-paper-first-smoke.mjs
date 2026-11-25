@@ -1,6 +1,6 @@
 // #218 & #254: real App/PG/Chrome. Scale and theme overrides keep the editor mounted.
 // The /toi tests exercise the actual app preference.
-export async function editorPaperFirst(page, { args, check, editorTarget, fitsEditorAction }) {
+export async function editorPaperFirst(page, { args, check, editorTarget, fitsEditorAction, holdEditorDebounce }) {
   const summary = '#editor-save-details > summary';
   const ready = `document.querySelector('.cm-content[contenteditable=true]')`;
   const view = `document.querySelector('.cm-content').cmTile.root.view`;
@@ -50,7 +50,10 @@ export async function editorPaperFirst(page, { args, check, editorTarget, fitsEd
   page.cdp.listeners.push(listener);
   try {
     for (const state of ['clean','dirty']) {
-      if (state==='dirty') await page.typeInBody('Chữ mới chưa lưu.');
+      if (state==='dirty') {
+        await holdEditorDebounce(page);
+        await page.typeInBody('Chữ mới chưa lưu.');
+      }
       const raw = await page.eval(`${view}.state.doc.toString()`);
       const selection = await page.eval(`${view}.state.selection.toJSON()`);
       for (const scale of [100,150]) for (const theme of ['light','dark']) {
@@ -63,21 +66,22 @@ export async function editorPaperFirst(page, { args, check, editorTarget, fitsEd
           await page.viewport(width,900);
           await page.eval(`document.activeElement?.blur(); scrollTo(0,0); document.fonts.ready.then(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))))`);
           const stem=`paper-${state}-${width}-${scale}-${theme}`;
+          await page.send('Input.dispatchMouseEvent', {type: 'mouseMoved', x: 0, y: 0});
           const geometry=await page.eval(`(() => {
             const toolbar=document.querySelector('#editor-toolbar'), paper=document.querySelector('.vk-editor-paper'), back=document.querySelector('.vk-editor-heading__back');
             const t=toolbar.getBoundingClientRect(), p=paper.getBoundingClientRect(), b=back.getBoundingClientRect(), s=getComputedStyle(toolbar), bs=getComputedStyle(back);
             return {toolbar:t.toJSON(),paper:p.toJSON(),back:b.toJSON(),width:document.querySelector('.cm-content').getBoundingClientRect().width,
               transparent:s.backgroundColor==='rgba(0, 0, 0, 0)',inFlow:s.position==='static',
               paperSurface:getComputedStyle(paper).backgroundColor,canvas:getComputedStyle(document.querySelector('.vk-ui-scaffold')).backgroundColor,
-              backFilled:bs.backgroundColor!=='rgba(0, 0, 0, 0)' && b.height>=48 && Math.abs(b.left-p.left)<=1.5 && Boolean(back.querySelector('svg')),
+              backQuiet:bs.backgroundColor==='rgba(0, 0, 0, 0)' && getComputedStyle(document.querySelector('${summary}')).backgroundColor===bs.backgroundColor && b.height>=48 && Math.abs(b.left-p.left)<=1.5 && Boolean(back.querySelector('svg')),
               overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+1,
               h1:document.querySelectorAll('.vk-desk--editor h1').length,
               oneStatus:document.querySelectorAll('#editor-toolbar [role=status]').length===1,
               summaryVisible:document.querySelector('${summary}').checkVisibility(),
               noBannerOrHelpOrExport:!document.querySelector('#build-info, .vk-editor-help, #export, #export-failed, #export-conflict, #export-tags')};
           })()`);
-          check(geometry.transparent && geometry.inFlow && geometry.paperSurface!==geometry.canvas && geometry.backFilled && !geometry.overflow && geometry.h1===1 && geometry.oneStatus && geometry.summaryVisible && geometry.noBannerOrHelpOrExport,
-            `${stem}: quiet editor keeps chromeless tools, tonal icon Back aligned with paper, separate paper, one H1/readout, visible native trigger and removes banner/help/export ${JSON.stringify(geometry)}`);
+          check(geometry.transparent && geometry.inFlow && geometry.paperSurface!==geometry.canvas && geometry.backQuiet && !geometry.overflow && geometry.h1===1 && geometry.oneStatus && geometry.summaryVisible && geometry.noBannerOrHelpOrExport,
+            `${stem}: quiet editor keeps chromeless tools, transparent Back aligned with paper, separate paper, one H1/readout, visible native trigger and removes banner/help/export ${JSON.stringify(geometry)}`);
           check(await page.eval(same) && await page.eval(`${view}.state.doc.toString()`)===raw && JSON.stringify(await page.eval(`${view}.state.selection.toJSON()`))===JSON.stringify(selection), `${stem}: root-scale override and resize retain raw NFD, stanzas, selection and EditorView`);
           await page.capture(stem,{scenario:'Editor Paper First',textScaleLane:'dom-override-geometry-only',fixture:{title,raw},geometry});
           // Start at the skip-link destination, then let Chrome perform native tab navigation.
@@ -139,6 +143,7 @@ export async function editorPaperFirst(page, { args, check, editorTarget, fitsEd
     check(writes===0 && await page.status()==='unsaved','tools, resize and typing perform no mutation');
   } finally {
     page.cdp.listeners=page.cdp.listeners.filter(x=>x!==listener);
+    await page.eval('window.__restoreEditorClock?.()');
     await page.viewport(1440);
     await page.eval("document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme");
   }

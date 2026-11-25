@@ -821,14 +821,36 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
   --vk-ui-control-radius: var(--vk-radius-control-48);
 }
 
+.vk-editor-topbar .vk-save-slot__readout {
+  box-sizing: border-box;
+  inline-size: 10rem;
+  max-inline-size: 100%;
+  min-block-size: var(--vk-density-control-height);
+}
+.vk-editor-topbar .vk-save-slot__action {
+  display: inline-flex;
+  inline-size: 10rem;
+  max-inline-size: 100%;
+  /* Reserve the pending button and its line box at the current text scale. */
+  min-block-size: max(var(--vk-density-control-height), 3.5rem);
+}
+@container vk-editor-page (max-width: 38rem) {
+  .vk-editor-topbar .vk-editor-toolbar { inline-size: 100%; flex-wrap: nowrap; }
+  .vk-editor-topbar .vk-save-slot { flex: 1; }
+}
+@container vk-editor-page (max-width: 15rem) {
+  .vk-editor-topbar .vk-save-slot__action .vk-ui-button { padding-inline: var(--vk-space-2); }
+}
 .vk-editor-topbar .vk-editor-tools { position: relative; }
 .vk-editor-topbar .vk-editor-tools[open] { flex-basis: auto; }
 .vk-editor-topbar .vk-editor-tools > summary {
   min-inline-size: var(--vk-density-control-height);
   padding-inline: var(--vk-space-2);
   border-radius: var(--vk-radius-control-48);
-  background: var(--vk-bg-inset);
+  background: transparent;
 }
+.vk-editor-topbar .vk-editor-tools > summary:hover { background: var(--vk-state-hover); }
+.vk-editor-topbar .vk-editor-tools > summary:active { background: var(--vk-state-pressed); }
 .vk-editor-topbar .vk-editor-tools__content {
   position: absolute;
   inset: calc(100% + var(--vk-space-1)) 0 auto auto;
@@ -861,8 +883,8 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
   padding: var(--vk-density-control-padding) var(--vk-space-4) var(--vk-density-control-padding) var(--vk-space-3);
   border: 1px solid transparent;
   border-radius: var(--vk-radius-control-48);
-  background-color: var(--vk-action-tonal-container);
-  color: var(--vk-action-tonal-content);
+  background-color: transparent;
+  color: var(--vk-on-surface);
   font-family: var(--vk-type-label-font);
   font-size: var(--vk-type-label-size);
   font-weight: var(--vk-type-label-weight);

@@ -205,8 +205,15 @@ async function titleValidation(page, { args, check }) {
   await page.waitStatus('unsaved');
   check(await page.eval(`${SAME_VIEW} && document.querySelector('#editor-body-title-error').textContent.trim() === ''`),
     '#263 editing clears the field guidance on the same editor');
-  await save(page);
-  check((await page.draft(id)).title === 'Đã sửa H1' && await page.eval(SAME_VIEW), '#263 corrected H1 persists from the same buffer');
+  await page.waitStatus('saved', 'corrected H1 autosaves');
+  const corrected = await page.draft(id);
+  check(corrected.title === 'Đã sửa H1' && await page.eval(SAME_VIEW), '#263 corrected H1 autosaves from the same buffer');
+  await page.typeInBody(' Dòng mới.');
+  await page.waitStatus('saved', 'body-only Markdown autosave');
+  const bodyOnly = await page.draft(id);
+  check(bodyOnly.version === corrected.version + 1 && bodyOnly.title === corrected.title &&
+    bodyOnly.document.source === corrected.document.source + ' Dòng mới.', 'body-only autosave preserves the Markdown H1');
+
 
   for (const untitled of ['#\n\n# H1 thứ hai\n\n' + notes, notes]) {
     await replaceSource(page, untitled);
