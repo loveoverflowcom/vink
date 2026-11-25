@@ -158,11 +158,11 @@ Receipt không thay bước controller tự tải đủ asset từ alias và ape
 `NOT_RUN`. Controller kiểm Git index và binary bằng chính tài khoản smoke trước stage.
 
 
-## Browser rolling trên máy kiểm riêng
+## Browser trên máy kiểm riêng
 
 Sau khi người vận hành chuẩn bị endpoint SSH cho máy kiểm, truyền cùng
 `--browser-host <ssh-alias>` vào `plan`, `apply --preview-only` và `resume`.
-Đường này áp dụng cho rolling có migration không đổi. Controller giữ khóa và các
+Đường này dùng cho rolling cùng schema và maintenance tường minh. Controller giữ khóa và các
 bước kiểm Pages preview, alias, apex, digest origin và journal. Browser trên máy
 kiểm chạy smoke khách qua chính apex sau khi origin và HTTP đạt. Preview vẫn kiểm
 byte public trước khi promote. Preview ở trạng thái phục vụ asset và không có HTML
@@ -195,8 +195,14 @@ Controller từ chối reply sai nonce, revision, preview, deployment hoặc Rea
 Nếu runner mất kết nối trước promote, bản cũ tiếp tục phục vụ. Nếu runner chưa
 xác nhận sau khi origin/HTTP đạt, journal giữ `http_verified`. Đọc `status` rồi dùng
 `resume` với cùng runner và input để kiểm tiếp. Controller kiểm lại Pages và origin
-sau smoke, sau đó lưu digest reply trong receipt. SSH receiver tự động và luồng
-bảo trì tiếp tục dùng browser cục bộ theo cấu hình hiện có.
+sau smoke, sau đó lưu digest reply trong receipt. SSH receiver tự động tiếp tục dùng browser cục bộ.
+
+Trong maintenance, truyền cùng `--browser-host` và bộ input cho `open` và `rollback-origin`.
+Controller kiểm lại runner ngay trước khi ghi `origin_opening`. Nếu runner mất kết nối tại
+`origin_prepared`, origin vẫn đóng và `rollback-origin` vẫn dùng được với cấu hình SSH đã ghim.
+Sau `origin_opening`, phục hồi theo chiều tiến. Guest browser kiểm ứng viên qua apex thật sau
+`open` và HTTP smoke. Probe riêng khi origin đóng, schema review, backup/restore và bằng chứng
+fallback hai PoP vẫn áp dụng. Preview Pages chỉ phục vụ asset.
 
 ## Rolling chỉ dùng HTTP smoke
 
@@ -266,8 +272,9 @@ trong khi origin đóng. Asset hai SHA đã stage sẵn vẫn được phục v�
    owner. Hai cây dưới `/opt/vink-prod/releases/<sha>` cần là checkout Git sạch, có đủ migrations.
    Với cây bootstrap chỉ chứa file vận hành, đối chiếu và chuẩn bị cây cũ ở đúng SHA trong một
    bước riêng trước cửa sổ. Giữ manifest đang dùng và đọc lại container, overlay và readiness.
-   Chuẩn bị Chrome, tài khoản smoke và UUID Reader theo quy trình trên. Catalog rỗng vẫn chạy
-   được smoke READ-01 qua `/api/v1/works`. Bài Chrome Reader có dữ liệu cần tác phẩm công khai thật.
+   Chuẩn bị browser cục bộ hoặc máy kiểm SSH đã ghim, tài khoản smoke và UUID Reader theo quy
+   trình trên. Catalog rỗng vẫn chạy được smoke READ-01 qua `/api/v1/works`. Bài Chrome Reader
+   có dữ liệu cần tác phẩm công khai thật.
 2. Diễn tập với backup đã kiểm checksum trong 24 giờ, đúng cặp digest và schema sở hữu. Báo cáo
    dùng `action: "maintenance"`, `from` và `to` theo SHA, `images: {"from": {...}, "to": {...}}`
    theo đúng map Web/Worker/Identity của hai receipt, và `backup_sha256` là SHA-256 của
