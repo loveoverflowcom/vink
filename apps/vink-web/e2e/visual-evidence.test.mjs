@@ -9,7 +9,6 @@ import {
   collectSourceIdentity,
   evaluateAccessibleElement,
   evaluateLeaveModalBranch,
-  evaluateMePanelReservation,
   evaluateNavAlignment,
   evaluateOverflowReport,
   evaluateTargetGeometry,
@@ -392,31 +391,6 @@ test('AC-04 & AC-05: separates DOM override from app controls and validates Me i
     rootInlineFontSize: '200%', dataText: '150', explicitLane: 'app-appearance-control',
   }), 'dom-override-geometry-only');
   assert.equal(classifyTextScaleLane({ rootInlineFontSize: '', dataText: null }), 'default-100');
-
-  // Me page (>= 32rem container): action is null, illustration visible 210px, paddingInlineEnd 225px -> PASS!
-  const validWideMe = {
-    prefix: 'page',
-    action: null,
-    illustration: { present: true, visible: true, display: 'block', ariaHidden: 'true', pointerEvents: 'none', rect: { x: 800, y: 150, width: 210, height: 80 } },
-    reservation: { paddingInlineEnd: 225, accountTextContentWidth: 420, textOverlapsIllustration: false },
-  };
-  assert.equal(evaluateMePanelReservation(validWideMe).ok, true);
-
-  // Narrow Me (< 32rem): illustration hidden, paddingInlineEnd 0 -> PASS!
-  const validNarrowMe = {
-    prefix: 'page',
-    action: null,
-    illustration: { present: true, visible: false, display: 'none', ariaHidden: 'true', pointerEvents: 'none', rect: null },
-    reservation: { paddingInlineEnd: 0, accountTextContentWidth: 240, textOverlapsIllustration: false },
-  };
-  assert.equal(evaluateMePanelReservation(validNarrowMe).ok, true);
-
-  // Unused reservation: 225px padding when illustration is NOT visible -> FAIL!
-  const unusedReservation = {
-    ...validNarrowMe,
-    reservation: { paddingInlineEnd: 225, accountTextContentWidth: 15, textOverlapsIllustration: false },
-  };
-  assert.equal(evaluateMePanelReservation(unusedReservation).ok, false);
 
   // Summary keeps unavailable/unrun lanes explicit.
   const summary = buildLaneSummary({

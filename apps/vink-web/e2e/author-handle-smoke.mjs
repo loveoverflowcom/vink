@@ -63,6 +63,16 @@ async function matrix(page, check, textContrast) {
 export async function authorHandles(page, { base, openPage, check, holdAnswer, textContrast }) {
   await page.waitFor(has('#edit-profile-link'), 'owner profile entry');
   check(await page.eval("!document.querySelector('a[href=\"/toi/dia-chi\"]')"), 'Tôi has one entry to edit identity');
+  await page.waitFor("document.querySelector('.vk-account-profile-note')?.textContent.includes('Thiết lập địa chỉ')",
+    '#521 a suggested address does not become a View profile action before setup');
+  check(await page.eval("!document.querySelector('#view-profile-link') && document.querySelectorAll('#edit-profile-link').length === 1"),
+    '#521 setup guidance uses one edit entry and no dead link');
+  await page.click('#profile-privacy-link');
+  await page.waitFor("location.pathname + location.hash === '/toi/chinh-ho-so#quyen-rieng-tu' && document.activeElement?.id === 'quyen-rieng-tu'",
+    '#521 the privacy row focuses the existing policy region');
+  await page.eval('history.back()');
+  await page.waitFor("location.pathname === '/toi' && document.activeElement?.id === 'profile-privacy-link'",
+    '#521 Back restores focus to the settings row');
   const unavailable = await holdAnswer(page, 'GET', '/api/v1/me/handle');
   await page.click('#edit-profile-link');
   check(await unavailable.held() === 200, 'the initial Handle read reached the real app');
@@ -164,6 +174,10 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
   check(await tab.eval(`!${has(field)}.readOnly && ${has(field)}.value === 'mua-ngo'`),
     'the background read leaves the field editable');
   await refresh.finish(false, true);
+  const hub = await openPage();
+  await openAccount(hub, base, 'active');
+  const hubHref = "document.getElementById('view-profile-link')?.getAttribute('href')";
+  await hub.waitFor(hubHref + ' === ' + JSON.stringify('/@' + initial), '#521 hub links to the confirmed canonical address');
   await page.click(edit);
   await page.waitFor(has(dialog + '[open]'), 'rename dialog');
   await fill(page, field, initial);
@@ -189,6 +203,7 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
   await page.click('#author-handle-receipt');
   await page.waitFor(`${has(saved)}?.textContent === '@dem-mua' && !${has(dialog + '[open]')}`, 'receipt and current state settle');
   check((await own(page)).remaining_changes === 1, 'receipt recovery spends exactly one change');
+  await hub.waitFor(hubHref + " === '/@dem-mua'", '#521 hub rereads the canonical address after a rename in another tab');
   await tab.waitFor(enabled(submit), 'other tab can attempt the stale command');
   await tab.click(submit);
   await tab.waitFor(`${has('#author-handle-error')}?.textContent.includes('phiên khác')`,
@@ -231,6 +246,10 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
     (await own(tab)).remaining_changes === 0 && !(await tab.eval(`Boolean(${has(edit)})`)),
     'exhaustion removes rename action',
   );
+  await hub.waitFor(hubHref + " === '/@mua-ngo'", '#521 the hub link follows the final confirmed address');
+  await hub.click('#view-profile-link');
+  await hub.waitFor("location.pathname === '/@mua-ngo' && " + has('#author-profile-heading'),
+    '#521 View profile opens the canonical author route');
   await visit(initial, 'mua-ngo');
   await visit('dem-mua', 'mua-ngo');
   for (const method of ['GET', 'HEAD']) {

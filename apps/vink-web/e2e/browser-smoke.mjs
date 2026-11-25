@@ -58,7 +58,6 @@ import {
   collectSourceIdentity,
   evaluateAccessibleElement,
   evaluateLeaveModalBranch,
-  evaluateMePanelReservation,
   evaluateNavAlignment,
   evaluateOverflowReport,
   evaluateTargetGeometry,
@@ -807,16 +806,6 @@ class Page {
           const surfaceStyle = getComputedStyle(surface);
           const region = surface.querySelector('.vk-appearance-region');
           const rows = [...region.querySelectorAll('.vk-appearance-row')];
-          const illEl = document.querySelector('#page-account .vk-account-illustration');
-          const illStyle = illEl ? getComputedStyle(illEl) : null;
-          const illVisible = Boolean(illEl && illEl.getClientRects().length > 0 && illStyle.display !== 'none');
-          const illRect = illVisible ? illEl.getBoundingClientRect().toJSON() : null;
-          const textBox = document.querySelector('#page-account .vk-account-status > div');
-          const textStyle = textBox ? getComputedStyle(textBox) : null;
-          const textBoxRect = textBox ? textBox.getBoundingClientRect() : null;
-          const headingRect = document.querySelector('#page-account .vk-account-status h1')?.getBoundingClientRect();
-          const helpRect = document.querySelector('#page-account .vk-ui-tone-muted')?.getBoundingClientRect();
-          const textRight = Math.max(headingRect?.right ?? 0, helpRect?.right ?? 0);
           return { prefix, surface: bounds('#me'),
             preferences: {
               surface: bounds(preferenceSurface),
@@ -843,30 +832,10 @@ class Page {
               }),
             },
             heading: bounds('#me-title'),
-            account: bounds('#page-account'), identity: bounds('#page-account .vk-account-status'),
-            identityContainerWidth: document.querySelector('#page-account .vk-account-status')?.clientWidth ?? null,
+            account: bounds('#page-account'), identity: bounds('#page-account .vk-account-hero'),
             avatar: bounds('#page-account .vk-ui-avatar'),
-            accountText: bounds('#page-account .vk-account-status > div'),
             accountLabel: bounds('#page-account .vk-account-status h1'),
-            accountHelp: bounds('#page-account .vk-ui-tone-muted'),
-            illustration: illEl ? {
-              present: true,
-              visible: illVisible,
-              display: illStyle.display,
-              ariaHidden: illEl.getAttribute('aria-hidden'),
-              pointerEvents: illStyle.pointerEvents,
-              rect: illRect,
-            } : { present: false, visible: false, display: null, ariaHidden: null, pointerEvents: null, rect: null },
-            reservation: textBox ? {
-              paddingInlineEnd: parseFloat(textStyle.paddingInlineEnd),
-              accountTextContentWidth: textBox.clientWidth - parseFloat(textStyle.paddingLeft) - parseFloat(textStyle.paddingRight),
-              accountTextScrollWidth: textBox.scrollWidth,
-              accountTextClientWidth: textBox.clientWidth,
-              accountTextContentRight: textBoxRect ? textBoxRect.right - parseFloat(textStyle.paddingRight) : null,
-              textRight,
-              illustrationLeft: illRect?.left ?? null,
-              textOverlapsIllustration: Boolean(illVisible && illRect && textRight > illRect.left + 1),
-            } : null,
+            hasIllustration: Boolean(document.querySelector('#page-account .vk-account-illustration')),
             appearanceHeading: bounds('#page-appearance-title'),
             choices: bounds('#me .vk-appearance-region'),
             group: bounds('#page-theme') };
@@ -2123,7 +2092,7 @@ async function textContrast(page, theme, surface = 'shell', targets) {
     empty: ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-button'],
     'desk-empty': ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-button', '.vk-desk-privacy'],
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
-    me: ['#me-title', '#page-account .vk-ui-tone-muted', '#page-appearance-title', '#page-theme-title', '#page-text-title', '#page-rail-title', ...['light', 'dark', 'system'].map(value => `#page-theme label:has([value="${value}"])`)],
+    me: ['#me-title', '#page-appearance-title', '#page-theme-title', '#page-text-title', '#page-rail-title', ...['light', 'dark', 'system'].map(value => `#page-theme label:has([value="${value}"])`)],
   }[surface] ?? ['#navigation-toggle', '#navigation-primary a', RAIL_ME]);
   const pairs = await page.eval(`(() => {
     const rgb = value => value.match(/[\\d.]+/g).map(Number);
@@ -2165,11 +2134,9 @@ function accountLayoutGeometry(context, scenario) {
     check(m.heading && m.accountLabel && near(m.heading.x, m.accountLabel.x) && near(m.heading.y, m.accountLabel.y) &&
       near(m.identity.y, m.account.y) && near(m.account.y, m.surface.contentTop),
       `${scenario}: the title is inside the first account card`);
-    check([m.accountLabel, m.accountHelp].every(r => r && r.scrollWidth <= r.clientWidth + 1),
-      `${scenario}: truthful account text fits without clipping`);
-    const reservation = evaluateMePanelReservation(m);
-    check(reservation.ok,
-      `${scenario}: Me panel illustration reservation matches text padding (${reservation.reasons.join('; ')})`);
+    check(m.accountLabel.scrollWidth <= m.accountLabel.clientWidth + 1 &&
+      m.avatar?.width === 64 && m.avatar?.height === 64 && !m.hasIllustration,
+      `\${scenario}: the account name fits beside the prominent avatar without reserved artwork`);
     if (context.width < 760) {
       check(near(m.surface.x, 16) && near(m.surface.width, context.layoutWidth - 32),
         `${scenario}: narrow Tôi keeps one 16px gutter on both sides`);
@@ -2262,10 +2229,9 @@ async function preferenceSurfaces(page) {
     check(await page.eval(`document.querySelectorAll('#build-info').length === 0 &&
       document.querySelectorAll('main h1').length === 1 &&
       document.querySelector('#me').firstElementChild.id === 'page-account' &&
-      document.querySelector('#page-account').firstElementChild.classList.contains('vk-account-status') &&
-      document.querySelector('#page-account .vk-account-status h1.vk-ui-type-title')?.textContent === 'Tài khoản' &&
-      document.querySelector('#page-account p').textContent === 'Tác giả mẫu (dữ liệu phát triển)' &&
-      document.querySelector('#page-account .vk-account-illustration').getAttribute('aria-hidden') === 'true'`),
+      document.querySelector('#page-account').firstElementChild.classList.contains('vk-account-hero') &&
+      document.querySelector('#page-account .vk-account-status h1.vk-ui-type-title')?.textContent === 'Tác giả mẫu (dữ liệu phát triển)' &&
+      !document.querySelector('#page-account .vk-account-illustration')`),
       `${theme}: truthful account without prototype footer banner`);
   }
 
@@ -2297,7 +2263,7 @@ async function accountAppearance(page) {
   check(await page.eval(`fetch('/api/v1/auth/session/account').then(async response => {
     const body = await response.json();
     return response.status === 200 && response.headers.get('cache-control') === 'no-store' &&
-      body.display_name === document.querySelector('#page-account p').textContent &&
+      body.display_name === document.querySelector('#me-title').textContent &&
       Object.keys(body).sort().join(',') === 'display_name,principal_id';
   })`), 'current account is read from the private session endpoint');
   check(await page.eval(`!document.querySelector('#profile-trigger, #navigation-expanded-appearance, #profile-menu, .vk-ui-nav-utility') &&

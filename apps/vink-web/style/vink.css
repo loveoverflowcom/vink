@@ -187,23 +187,35 @@ a {
 }
 /* The Tôi viewport removes this inset while the full-height auth entry is mounted. */
 .vk-me { padding-block-start: var(--vk-space-8); }
-/* Reserve illustration space against the account card query container. */
-.vk-account-status { container: vk-account / inline-size; }
-.vk-account-status h1 { margin: 0; font-family: var(--vk-font-ui); overflow-wrap: anywhere; }
-.vk-account-status p { margin: 0; overflow-wrap: anywhere; }
+.vk-account-status :is(h1, p) { margin: 0; }
 .vk-account-avatar { display: inline-grid; place-items: center; }
+#page-account:has(#account-session[data-standing="active"]) .vk-account-avatar .vk-ui-avatar {
+  --vk-ui-avatar-size: calc(2 * var(--vk-size-avatar-sm));
+}
+.vk-account-profile-note {
+  flex-basis: 100%; margin: 0; color: var(--vk-on-surface-variant);
+}
+.vk-account-link {
+  display: inline-flex; gap: var(--vk-space-2); align-items: center; min-inline-size: 0;
+  min-block-size: var(--vk-size-hit-target); padding-inline: var(--vk-space-3);
+  border-radius: var(--vk-radius-full); white-space: normal; overflow-wrap: anywhere;
+  background: var(--vk-surface-container-high); color: var(--vk-on-surface);
+  text-decoration: none;
+}
+.vk-account-link--primary { background: var(--vk-primary-container); color: var(--vk-on-primary-container); }
+.vk-account-link:hover { text-decoration: underline; }
+.vk-account-link .vk-ui-icon { flex: none; }
+.vk-account-setting {
+  border-radius: var(--vk-radius-lg); background: var(--vk-surface-container-low);
+  padding: var(--vk-space-2) var(--vk-space-3); min-inline-size: 0;
+}
+a.vk-account-setting { padding-block: var(--vk-space-2); }
+.vk-account-setting .vk-account-form { margin-block-start: var(--vk-space-2); }
+.vk-account-settings :is(h2, h3) { margin: 0; }
 /* Centre the 32px avatar on the shared icon axis, including in the expanded rail. */
 .vk-nav-account-avatar { display: inline-flex; align-items: center; justify-content: center; }
 @container vk-ui-rail (max-width: 100px) {
   .vk-ui-nav-item:has(.vk-nav-account-avatar) .vk-ui-nav-item__label { display: none; }
-}
-.vk-account-illustration { display: none; }
-@container vk-account (min-width: 32rem) {
-  .vk-account-status > div { padding-inline-end: 225px; }
-  .vk-account-illustration {
-    display: block; position: absolute; inset-inline-end: 24px; inset-block-end: 4px;
-    inline-size: 210px; block-size: 80px; pointer-events: none;
-  }
 }
 .vk-account-session { display: grid; gap: var(--vk-space-3); justify-items: start; }
 .vk-account-session:empty { display: none; }
@@ -230,7 +242,7 @@ a {
 @media (max-width: 759px) {
   .vk-appearance-rail-hint { display: block; }
   .vk-main:has(> .vk-me) { padding-inline: 16px; }
-  .vk-ui-scaffold:not([data-hide-bar]) :is(.vk-me .vk-ui-choice__input, .vk-account :is(input, button, a)) {
+  .vk-ui-scaffold:not([data-hide-bar]) :is(.vk-me .vk-ui-choice__input, .vk-account :is(input, button, a), #quyen-rieng-tu) {
     scroll-margin-block-end: calc(var(--vk-ui-bar-height, 5rem) + 16px);
   }
 }
@@ -2294,10 +2306,6 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
     inset-block-start: 3px;
     inset-inline-end: 0;
     box-shadow: 0 0 0 2px var(--vk-bg-page);
-  }
-  .vk-account-status:has(> .vk-notif-mobile-bell) > div { flex-basis: 0; }
-  .vk-account-status:has(> .vk-notif-mobile-bell) > .vk-account-illustration {
-    inset-inline-end: calc(24px + 48px);
   }
   :is(.vk-explore__top, .vk-desk-heading):has(> .vk-notif-mobile-bell) {
     display: grid;

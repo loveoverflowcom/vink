@@ -5,8 +5,8 @@ mod attachment;
 
 use leptos::{html::Input, prelude::*};
 use vink_ui::{
-    ActionState, Announce, Button, ButtonKind, ButtonVariant, FieldVariant, InlineNotice,
-    TextField, TextInput, TextKind, Tone,
+    ActionState, Announce, Button, ButtonKind, ButtonVariant, FieldVariant, Heading, HeadingLevel,
+    Icon, IconName, InlineNotice, Link, LinkVariant, TextField, TextInput, TextKind, Tone,
 };
 
 use super::{Command, ReaderPresentation, Reply, Session, flow::Operation};
@@ -836,31 +836,59 @@ fn EnrollmentForm(
 }
 
 #[component]
-pub(super) fn SignedIn(epoch: u64) -> impl IntoView {
+pub(super) fn SignedInSettings(epoch: u64, fixture: bool) -> impl IntoView {
     let session = Session::current();
     let opened = RwSignal::new(false);
+    let loaded = RwSignal::new(false);
     let binding_changed = Trigger::new();
     let changed = Callback::new(move |()| binding_changed.notify());
     let now = use_clock();
     view! {
-        <div class="vk-account-actions">
-            <vink_ui::Link href="/ban-viet" variant=vink_ui::LinkVariant::Standalone>"Mở Bàn viết"</vink_ui::Link>
-        </div>
-        <div class="vk-account-form">
-            <div class="vk-account-actions">
-                <Button id="password-credential" variant=ButtonVariant::Text expanded=Signal::derive(move || opened.get())
-                    state=Signal::derive(move || if !opened.get() && session.auth.with(|g| g.needs_check() || g.active().is_some()) {
-                        ActionState::Disabled { reason: None }
-                    } else { ActionState::Enabled })
-                    on_press=move |_| opened.update(|open| *open = !*open)>"Tên đăng nhập và mật khẩu"</Button>
-            </div>
-            {move || opened.get().then(|| view! { <CredentialSettings epoch now changed /> })}
-        </div>
-        {move || {
-            binding_changed.track();
-            view! { <attachment::EmailSettings epoch now /> }
-        }}
-        <SignOut epoch before=move |_| opened.set(false) />
+        <section class="vk-account-settings grid gap-vk-2 w-full min-w-0" aria-labelledby="account-settings-title">
+            <Heading id="account-settings-title" level=HeadingLevel::H2 role=vink_ui::TypeRole::Title>"Cài đặt"</Heading>
+            <Show when=move || session.profile_scope.with(Option::is_some)>
+                <Link attr:id="profile-privacy-link" attr:data-profile-return="true" attr:class="vk-account-link vk-account-setting"
+                    variant=LinkVariant::Standalone href=crate::pages::profile::PRIVACY_PATH>
+                    <Icon name=IconName::Visibility />
+                    "Quyền riêng tư"
+                </Link>
+            </Show>
+            {if fixture {
+                view! { <p class="vk-muted">"Định danh thử trên thiết bị này · Không phải tài khoản thật."</p> }.into_any()
+            } else {
+                view! {
+                    <div class="vk-account-setting">
+                        <Button id="password-credential" variant=ButtonVariant::Text leading=IconName::Lock
+                            expanded=Signal::derive(move || opened.get())
+                            state=Signal::derive(move || if !opened.get() && session.auth.with(|g| g.needs_check() || g.active().is_some()) {
+                                ActionState::Disabled { reason: None }
+                            } else { ActionState::Enabled })
+                            on_press=move |_| {
+                                loaded.set(true);
+                                opened.update(|open| *open = !*open);
+                            }>"Tên đăng nhập và mật khẩu"</Button>
+                        <Show when=move || loaded.get()>
+                            <div hidden=move || !opened.get()>
+                                <CredentialSettings epoch now changed />
+                            </div>
+                        </Show>
+                    </div>
+                    {move || {
+                        binding_changed.track();
+                        view! { <attachment::EmailSettings epoch now /> }
+                    }}
+                }.into_any()
+            }}
+            <super::AccountAppearance />
+            {(!fixture).then(|| view! {
+                <div class="vk-account-setting">
+                    <SignOut epoch before=move |_| {
+                        opened.set(false);
+                        loaded.set(false);
+                    } />
+                </div>
+            })}
+        </section>
     }
 }
 
@@ -914,7 +942,7 @@ pub(super) fn SignOut(
     let state = session.action(Operation::SignOut, now);
     view! {
         <div class="vk-account-actions">
-            <Button id="sign-out" variant=ButtonVariant::Tonal state=state
+            <Button id="sign-out" variant=ButtonVariant::Tonal leading=IconName::Close state=state
                 on_press=move |_| {
                     if let Some(before) = before { before.run(()); }
                     session.dispatch(epoch, Command::SignOut, move |outcome| { error.try_set(outcome.err()); });
