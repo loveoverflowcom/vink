@@ -1,12 +1,12 @@
 # Lưu bài · registry triển khai và bàn giao
 
-| Chiều | Trạng thái tại lát SSOT #385 |
+| Chiều | Trạng thái sau lát domain #386 |
 | --- | --- |
 | Sản phẩm | SAV-01..04 (21/11), D1–D12, vòng đời và phạm vi DEFERRED (25/11) đã được chủ sản phẩm duyệt tại [Epic #384 §8](https://github.com/loveoverflowcom/vink/issues/384). [PRD §18](../../prd/requirements.md#18-lưu-bài-để-đọc-lại-saved-works) sở hữu quy tắc và ví dụ SAV-INV-01..05. |
 | Registry quyết định | [VDR-SAVED-WORKS@r1](../../decisions/proposals/VDR-SAVED-WORKS.r1.toml) · `PENDING` · SHA-256 `7ebf41f88b6b3f91bf2aed1dd10d0f221b133ce30d55027e57d36d3d6e468b45`. Epic ghi “DUYỆT: Duyệt D1–D12 theo phương án đề xuất” và “DUYỆT: Duyệt quy tắc vòng đời dữ liệu”. Chưa có lời duyệt chỉ đích danh revision/hash này theo [quy tắc signoff](../../decisions/signoffs/VDR-DECISION-SIGNOFF.r1.toml). |
-| Kiến trúc | [Contract v1](../../services/vink-app/contracts/http/v1/saved-works.md) là `DESIGN_PROPOSED` cho một owner trong Vink App. Cách lưu fence qua bỏ lưu còn mở ở #386–387. |
-| Triển khai | `NOT_IMPLEMENTED` cho core, persistence/API và Web. [LayoutSpec](../design/saved-works.md) cùng [delta Pen Flight](../design/pen-flight-r2.md) mô tả đích cho Reader và hồ sơ. CMP/native thuộc DEFERRED. |
-| Kiểm chứng | #385 chỉ kiểm tài liệu và registry. Unit, PostgreSQL, Web và hành trình tích hợp chưa chạy cho Lưu bài; kết quả thực thi theo commit ghi tại [#385](https://github.com/loveoverflowcom/vink/issues/385). |
+| Kiến trúc | [Contract v1](../../services/vink-app/contracts/http/v1/saved-works.md) là `DESIGN_PROPOSED` cho một owner trong Vink App. Cách lưu fence trong PostgreSQL thuộc #387. |
+| Triển khai | [Domain Lưu bài](../../services/vink-app/src/domain/saved_work.rs) đạt mức `core`. Persistence/API và Web ở mức `NOT_IMPLEMENTED`. [LayoutSpec](../design/saved-works.md) cùng [delta Pen Flight](../design/pen-flight-r2.md) mô tả đích cho Reader và hồ sơ. CMP/native thuộc DEFERRED. |
+| Kiểm chứng | [#385](https://github.com/loveoverflowcom/vink/issues/385) có bằng chứng tài liệu và registry. [Các ca unit #386](../../services/vink-app/src/domain/saved_work/tests.rs) chạy bằng `cargo xtask verify unit app --filter domain::saved_work`. Kết quả theo SHA ở PR1. Bằng chứng PostgreSQL và Web thuộc #387–389. |
 
 ## Truy vết quyết định và phần cần chứng minh
 
@@ -19,4 +19,6 @@
 
 **Handoff PR1.** Thứ tự là #385 → #386 → #387 trên cùng nhánh tích hợp của Dot. Sau đó PR2 Reader, PR3 Profile và nghiệm thu tích hợp. #376–381 là bộ issue lịch sử trùng; canonical #384–389 theo Epic §9. Trong preview r2, B/G2/đổi nhãn là các nhánh khám phá đã được D1–D3 thay thế. Mốc hình học Thấm bên trong cặp được D5 cập nhật; glyph, count theo revision và quyền Thấm tiếp tục do LVE sở hữu.
 
-**CHOICE-01 kỹ thuật còn mở.** #386–387 có thể dùng trạng thái NotSaved bền cùng owner hoặc tách fence/receipt trong cùng giao dịch. Với cả hai, chỉ membership Saved tính cap, fence có thứ tự do server cấp và tồn tại qua bỏ lưu; cùng một ý định đã chấp nhận không được áp dụng lần hai. Xóa người lưu phải dọn cả dữ liệu chống retry. Việc chọn bảng, khóa và chiến lược giao dịch cần có bằng chứng PostgreSQL.
+**Giao diện cho #387.** App giải principal từ phiên và nạp trạng thái theo `SavedWorkKey`. Cặp mới bắt đầu ở generation 1; khi nạp lại phải phục hồi cả generation của cặp đã bỏ lưu. Gọi `SavedWork::decide` với standing, quyền đọc, số membership hiện hành của chủ và thời điểm server tại commit. `Applied` đổi membership; `Reaffirmed` chỉ ghi fence; `AlreadyCurrent` trả trạng thái hiện tại và không ghi. Chỉ đếm membership có `saved_at`, kể cả bài tạm không xuất hiện. Mỗi lần đọc danh sách, `project` chọn revision được đọc hoặc hàng trung tính; `None` bỏ dòng, không xóa quan hệ. Hạn chế đăng/bình luận vẫn cho phép Lưu khi standing là Active. [Bảng chuyển và lỗi HTTP](../../services/vink-app/contracts/http/v1/saved-works.md).
+
+**CHOICE-01 kỹ thuật còn mở.** #387 có thể dùng trạng thái NotSaved bền cùng owner hoặc tách fence/receipt trong cùng giao dịch. Với cả hai, chỉ membership Saved tính cap, fence có thứ tự do server cấp và tồn tại qua bỏ lưu; cùng một ý định đã chấp nhận không được áp dụng lần hai. Xóa người lưu phải dọn cả dữ liệu chống retry. Việc chọn bảng, khóa và chiến lược giao dịch cần có bằng chứng PostgreSQL.
