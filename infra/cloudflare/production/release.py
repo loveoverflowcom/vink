@@ -13,6 +13,7 @@ import time
 from urllib.request import Request, urlopen
 
 from artifacts import MAX_FILE, PROJECT, encode, record, require, sha, stage, validate
+from browser_runner import RemoteBrowser
 import maintenance
 
 HERE = Path(__file__).resolve().parent
@@ -428,9 +429,13 @@ def main():
     p.add_argument("--empty-catalog", action="store_true", help="verify empty catalog, report published Reader NOT_RUN")
     p.add_argument("--resume-with-reader", metavar="UUID",
                    help="verify a published Reader for one resume attempt of a rolling empty-catalog release")
+    p.add_argument("--browser-host", help="pinned SSH alias for an external rolling release browser")
     p.add_argument("--previous-origin", required=True)
     p.add_argument("--previous-edge", required=True, help="observed Pages deployment id or 'none' on bootstrap")
     a = p.parse_args()
+    if a.browser_host is not None:
+        require(a.mode in {"plan", "apply", "resume"} and not a.maintenance,
+                "external browser only supports rolling plan/apply/resume")
     if a.resume_with_reader is not None:
         require(a.mode == "resume" and a.empty_catalog and not a.maintenance and not a.preview_only
                 and READER_UUID.fullmatch(a.resume_with_reader),
@@ -462,9 +467,11 @@ def main():
         else:
             require(a.reader and READER_UUID.fullmatch(a.reader),
                     "supply an existing public reader UUID")
-        chrome = Path(os.environ["VINK_RELEASE_CHROME"])
-        require(chrome.is_absolute() and os.access(chrome, os.X_OK), "read-only guest browser required")
-        require(pwd.getpwnam("vink-release-check").pw_uid > 0, "dedicated browser user required")
+        external = None
+        chrome = None
+        if a.browser_host is not None:
+            external = RemoteBrowser(a.browser_host, Path(os.environ["VINK_RELEASE_BROWSER_SSH_CONFIG"]),
+                                     Path(os.environ["VINK_RELEASE_BROWSER_KNOWN_HOSTS"]))
         resume = a.mode in {"resume", "open", "rollback-origin"}
         require(not (a.bootstrap_receipt or a.mode in {"open", "rollback-origin"}) or a.maintenance,
                 "manual origin commands require maintenance opt-in")
@@ -472,6 +479,8 @@ def main():
         pending = json.loads(journal.read_bytes()) if resume else None
         predecessor = a.previous_edge if a.previous_edge != "none" else None
         if resume:
+            require(pending.get("browser_runner") == (external.binding if external else None),
+                    "resume must use the original browser runner")
             require(pending["release"] == spec and pending["account"] == a.account and
                     pending["previous_origin"] == a.previous_origin and pending["previous_edge"] == predecessor,
                     "resume must use original inputs")
@@ -480,11 +489,18 @@ def main():
                         "resume must use the original catalog smoke mode")
         else:
             require(current == predecessor, "Pages predecessor changed")
+        if not external:
+            chrome = Path(os.environ["VINK_RELEASE_CHROME"])
+            require(chrome.is_absolute() and os.access(chrome, os.X_OK), "read-only guest browser required")
+            require(pwd.getpwnam("vink-release-check").pw_uid > 0, "dedicated browser user required")
         require(run("git", "-C", HERE, "rev-parse", "HEAD") == rev, "release checkout differs from input")
         require(run("git", "-C", HERE, "status", "--porcelain") == "", "release checkout is dirty")
         require(WRANGLER.is_file(), "install the locked Wrangler in infra/cloudflare")
         if not resume:
-            browser_preflight(chrome)
+            if external:
+                external.check("preflight", rev)
+            else:
+                browser_preflight(chrome)
             if a.empty_catalog:
                 assert_empty_catalog()
         archive = STATE / "archives"
@@ -517,6 +533,7 @@ def main():
         schema = schema_action(a.previous_origin, rev, a.schema_review, window=a.maintenance)
         require(not a.empty_catalog or a.maintenance or schema == "same",
                 "rolling empty-catalog smoke requires unchanged migrations")
+        require(not external or schema == "same", "external rolling browser requires unchanged migrations")
         manifest = export(spec, archive)
         images = spec["images"]
         evidence = None
@@ -539,6 +556,8 @@ def main():
                       "previous_origin": a.previous_origin, "asset_digest": manifest["asset_digest"],
                       "legacy_assets": legacy, "worker_digest": worker_digest, "retained": retained,
                       "schema_action": schema, "schema_review": sha(a.schema_review.read_bytes()) if a.schema_review else None}
+            if external:
+                result["browser_runner"] = external.binding
             if a.bootstrap_receipt:
                 result["bootstrap_receipt"] = sha(a.bootstrap_receipt.read_bytes())
             if a.empty_catalog:
@@ -586,6 +605,8 @@ def main():
                 if a.preview_only:
                     print(json.dumps(result))
                     return
+                if external:
+                    external.check("preflight", rev)
                 if predecessor:
                     host = remote["canonical_deployment"]["url"]
                     require(re.fullmatch(r"https://[a-z0-9-]+\.vink-production\.pages\.dev", host),
@@ -639,16 +660,31 @@ def main():
             subprocess.run([HERE.parent.parent / "production/smoke-edge.sh", "edge", "--release", rev], check=True)
             result["phase"] = "http_verified"
             store(journal, result)
+            reader = a.resume_with_reader or a.reader
+            if external:
+                verify_assets(result["preview_url"], rev, manifest)
+                verify_assets(result["preview_alias"], rev, manifest)
+                verify_assets(spec["public_origin"], rev, manifest, serving_edge=True)
+            if external or a.resume_with_reader:
+                verify_catalog_smoke(reader)
+            if external:
+                proof = external.check("smoke", rev, reader=reader, preview=result["preview_deployment"],
+                                       edge=result["edge"])
+                observed = project(a.account)["canonical_deployment"]
+                require(matching(observed, rev, marker) and observed["id"] == result["edge"],
+                        "Pages changed during external browser smoke")
+                run(HERE / "origin.sh", "observe", rev, rev, *origin_args[2:])
+                result["browser_receipt_sha256"] = proof
+            elif a.empty_catalog and not reader:
+                browser_check(chrome, None, rev, empty_catalog=True)
+            else:
+                browser_check(chrome, reader, rev)
+            if external or a.resume_with_reader:
+                verify_catalog_smoke(reader)
             if a.resume_with_reader:
-                verify_catalog_smoke(a.resume_with_reader)
-                browser_check(chrome, a.resume_with_reader, rev)
-                verify_catalog_smoke(a.resume_with_reader)
                 result["reader_coverage"] = PUBLISHED_READER
             elif a.empty_catalog:
-                browser_check(chrome, None, rev, empty_catalog=True)
                 result["reader_coverage"] = EMPTY_CATALOG
-            else:
-                browser_check(chrome, a.reader, rev)
             result["phase"] = "browser_verified"
             store(journal, result)
             store(STATE / (active["id"] + ".json"), result)
