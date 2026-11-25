@@ -831,7 +831,8 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
   display: inline-flex;
   inline-size: 10rem;
   max-inline-size: 100%;
-  min-block-size: var(--vk-density-control-height);
+  /* Reserve the pending button and its line box at the current text scale. */
+  min-block-size: max(var(--vk-density-control-height), 3.5rem);
 }
 @container vk-editor-page (max-width: 38rem) {
   .vk-editor-topbar .vk-editor-toolbar { inline-size: 100%; flex-wrap: nowrap; }
