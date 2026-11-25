@@ -2461,16 +2461,59 @@ async function accountNavigationGeometry(page, selector, labelVisible, scenario)
   `${scenario}: 32px circular account avatar and expected /toi label (${JSON.stringify(account)})`);
 }
 
+/** R4.3 (#427 AC-04, RAIL-R43-01): active destination uses filled icon, inactive uses outlined icon,
+ * with distinct SVG path geometry besides the background container fill. */
+async function assertNavIcons(page, scope, activeDestination, { guest = false, label }) {
+  const report = await page.eval(`(() => {
+    const root = document.querySelector(${JSON.stringify(scope)});
+    if (!root) return { present: false };
+    const inspect = key => {
+      const link = root.querySelector('a[data-destination=' + JSON.stringify(key) + ']');
+      const svg = link?.querySelector('svg[data-icon]');
+      const path = svg?.querySelector('path:not([fill=none])') ?? [...(svg?.querySelectorAll('path') ?? [])].at(-1);
+      return {
+        present: Boolean(link),
+        current: link?.getAttribute('aria-current') === 'page',
+        icon: svg?.getAttribute('data-icon') ?? null,
+        path: path?.getAttribute('d') ?? null,
+        avatar: Boolean(link?.querySelector('[data-kind="account"]')),
+      };
+    };
+    return { present: true, explore: inspect('explore'), desk: inspect('desk'), me: inspect('me') };
+  })()`);
+  const wantExplore = activeDestination === 'explore' ? 'explore' : 'explore-outline';
+  const wantDesk = activeDestination === 'desk' ? 'edit' : 'edit-outline';
+  const wantMe = activeDestination === 'me' ? 'person' : 'person-outline';
+  const meOk = guest === true
+    ? report.me?.icon === wantMe && Boolean(report.me?.path)
+    : guest === false
+      ? Boolean(report.me?.avatar)
+      : (report.me?.icon === wantMe && Boolean(report.me?.path)) || Boolean(report.me?.avatar);
+  check(report.present &&
+    report.explore?.present && report.desk?.present && report.me?.present &&
+    report.explore.current === (activeDestination === 'explore') &&
+    report.desk.current === (activeDestination === 'desk') &&
+    report.me.current === (activeDestination === 'me') &&
+    report.explore.icon === wantExplore && Boolean(report.explore.path) &&
+    report.desk.icon === wantDesk && Boolean(report.desk.path) &&
+    meOk,
+  `#427 AC-04 ${label}: filled active / outlined inactive nav icons (${JSON.stringify(report)})`);
+  return report;
+}
+
 async function railReview(page) {
   const cases = [
     [1440, 900, 100, 'light', 220], [1440, 900, 100, 'light', 96],
     [1440, 900, 100, 'dark', 220], [1440, 900, 100, 'dark', 96],
+    [1440, 900, 150, 'light', 220], [1440, 900, 150, 'dark', 220],
     [1024, 900, 200, 'light', 96], [1440, 900, 200, 'light', 220],
     [834, 360, 100, 'light', 96], [834, 360, 200, 'light', 96],
   ];
   for (const [width, height, scale, theme, railWidth] of cases) {
     await page.viewport(width, height);
-    await page.eval(`document.documentElement.dataset.theme = '${theme}'; document.documentElement.style.fontSize = '${scale}%'`);
+    await page.eval(`document.documentElement.dataset.theme = '${theme}';
+      if (${scale} === 150) { document.documentElement.dataset.text = '150'; document.documentElement.style.fontSize = ''; }
+      else { delete document.documentElement.dataset.text; document.documentElement.style.fontSize = '${scale}%'; }`);
     if ((await page.eval(RAIL_WIDTH)) !== railWidth) await page.click('#navigation-toggle');
     await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: width - 10, y: 10 });
     await page.eval(`document.activeElement?.blur(); document.querySelector('#navigation').scrollTop = 0`);
@@ -2479,6 +2522,7 @@ async function railReview(page) {
     await page.waitFor(APPEARANCE_SETTLED, `${name}: rail state-layer transitions settle`);
     await page.waitFor(`document.querySelector(${JSON.stringify(RAIL_ME + ' [data-kind="account"]')})`, `${name}: account ready`);
     await accountNavigationGeometry(page, RAIL_ME, railWidth === 220, name);
+    await assertNavIcons(page, '#navigation', 'explore', { guest: false, label: name });
     const railNav = await page.eval(buildNavInspectionScript('#navigation'));
     check(railNav.present && railNav.items.filter(item => item.href).length === 3 &&
       railNav.items.length === 3 &&
@@ -2513,7 +2557,7 @@ async function railReview(page) {
     await page.capture(name, {
       scenario: 'rail-r1',
       requestedScene: { width, height, scale, theme },
-      textScaleLane: 'dom-override-geometry-only',
+      textScaleLane: scale === 200 ? 'dom-override-geometry-only' : 'app-text-scale',
       requiredTargets: ['#navigation', '#navigation-toggle', RAIL_ME],
       railNav: { itemCount: railNav.items.length, fonts: railNav.items.map(i => i.labelFont), lineCounts: railNav.items.map(i => i.lineCount) },
       profileAx: axProfile.ax,
@@ -2572,7 +2616,7 @@ async function railReview(page) {
     }
   }
   await page.viewport(1440);
-  await page.eval(`localStorage.removeItem('vink.ui.rail')`);
+  await page.eval(`delete document.documentElement.dataset.text; document.documentElement.style.fontSize = ''; localStorage.removeItem('vink.ui.rail')`);
   await page.reload();
 }
 
@@ -2606,6 +2650,7 @@ async function mediumRail(page) {
   })()`), 'Medium rail renders a scrim, traps focus, omits Giao diện and retains the same main element');
   const modalAccount = '#navigation-expanded a[href="/toi"]';
   await accountNavigationGeometry(page, modalAccount, true, 'Medium modal');
+  await assertNavIcons(page, '#navigation-expanded', 'explore', { guest: false, label: 'Medium modal' });
   const modalAx = evaluateAccessibleElement(await collectElementAccessibility(page, modalAccount),
     { role: 'link', name: 'Tài khoản', excludeSubstrings: ['TT', '•'] });
   check(modalAx.ok, `Medium modal account link exposes Tài khoản (${modalAx.reasons.join('; ')})`);
@@ -2741,6 +2786,7 @@ async function adaptiveShell(page) {
     await page.goto(`${args.base}${path}`);
     await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('h1')?.textContent === 'Không tìm thấy trang này.'`, `${path} NotFound`);
     check(await page.eval(`document.querySelectorAll('[aria-current=page]').length === 0`), `${path} marks no destination active`);
+    await assertNavIcons(page, '#navigation', null, { guest: 'auto', label: `${path} 404 rail` });
     await assertBrandPlacement(page);
   }
   const legacyWork = '33333333-3333-4333-8333-333333333333';
@@ -2754,11 +2800,16 @@ async function adaptiveShell(page) {
     document.readyState === 'complete'`, 'legacy navigation reaches the canonical Desk review');
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true' &&
     document.querySelector('#navigation a[href="/ban-viet"]').getAttribute('aria-current') === 'page'`, 'author review activates Desk on the rail');
+  const deskIcons = await assertNavIcons(page, '#navigation', 'desk', { guest: 'auto', label: 'desktop rail /ban-viet' });
   await page.viewport(390);
   check(await page.eval(`document.querySelector('#bottom-navigation a[href="/ban-viet"]').getAttribute('aria-current') === 'page'`), 'author review activates Desk on the bottom bar');
+  await assertNavIcons(page, '#bottom-navigation', 'desk', { guest: 'auto', label: 'mobile bottom bar /ban-viet' });
   await page.viewport(1440);
   await page.goto(`${args.base}/`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'shell hydration after unknown routes');
+  const homeIcons = await assertNavIcons(page, '#navigation', 'explore', { guest: 'auto', label: 'desktop rail /' });
+  check(homeIcons.explore.path !== deskIcons.explore.path && homeIcons.desk.path !== deskIcons.desk.path,
+    '#427 AC-04 filled vs outlined Explore and Desk icons render distinct SVG paths');
   await page.eval(`(() => { for (const href of ['/ban-viet', '/', '/ban-viet']) document.querySelector('#navigation-primary a[href="' + href + '"]').click(); })()`);
   await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('#create-draft')`, 'rapid navigations settle on the last intent');
   check(await page.eval(`document.querySelector('#navigation-primary a[href="/ban-viet"]').getAttribute('aria-current') === 'page' && [...document.querySelectorAll('[aria-current=page]')].filter(el => el.getClientRects().length).length === 1`), 'rapid navigations leave exactly the final destination active');
@@ -2771,6 +2822,7 @@ async function adaptiveShell(page) {
   await page.click(RAIL_ME);
   await page.waitFor(`location.pathname === '/toi' && document.querySelector('#me-title')`, 'Tôi route renders Giao diện');
   await waitForPageAccount(page);
+  await assertNavIcons(page, '#navigation', 'me', { guest: false, label: 'desktop rail /toi signed-in' });
   await railR4Surfaces(page, await page.eval(`matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'`));
   await chooseTheme(page, 'dark', 'page-theme');
   await textContrast(page, 'dark', 'me');

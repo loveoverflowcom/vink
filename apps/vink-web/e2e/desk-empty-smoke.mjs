@@ -82,6 +82,22 @@ export async function deskGuest(page, {args, check}, signInOpen) {
       }
     }
     await page.eval("document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme; document.querySelector('#navigation-primary a[href=\"/ban-viet\"]').focus()");
+    const guestIcons = scope => page.eval(`(() => {
+      const root = document.querySelector(${JSON.stringify(scope)});
+      const get = key => {
+        const link = root?.querySelector('a[data-destination=' + JSON.stringify(key) + ']');
+        const svg = link?.querySelector('svg[data-icon]');
+        const path = svg?.querySelector('path:not([fill=none])') ?? [...(svg?.querySelectorAll('path') ?? [])].at(-1);
+        return { current: link?.getAttribute('aria-current') === 'page', icon: svg?.getAttribute('data-icon') ?? null, path: path?.getAttribute('d') ?? null };
+      };
+      return { explore: get('explore'), desk: get('desk'), me: get('me') };
+    })()`);
+    const guestDeskRail = await guestIcons('#navigation');
+    const guestDeskBar = await guestIcons('#bottom-navigation');
+    check(guestDeskRail.explore.icon === 'explore-outline' && guestDeskRail.desk.icon === 'edit' && guestDeskRail.desk.current &&
+      guestDeskRail.me.icon === 'person-outline' && !guestDeskRail.me.current && Boolean(guestDeskRail.me.path) &&
+      guestDeskBar.explore.icon === 'explore-outline' && guestDeskBar.desk.icon === 'edit' && guestDeskBar.me.icon === 'person-outline',
+      `#427 AC-04 guest /ban-viet uses outlined Explore/Account and filled Desk icons (${JSON.stringify({ guestDeskRail, guestDeskBar })})`);
     check(await page.eval(`!document.querySelector('#profile-trigger, #navigation .vk-ui-nav-utility')`),
       'no appearance utility button remains on the rail');
     await page.key('Tab');
@@ -91,6 +107,13 @@ export async function deskGuest(page, {args, check}, signInOpen) {
     await page.key('Enter');
     await page.waitFor(`location.pathname==='/toi' && document.querySelector('#page-appearance-title') &&
       document.querySelector('${signInOpen?'#password-login':'#sign-in-closed'}')`, '#308 rail goes to Account and keeps access to Appearance');
+    const guestMeRail = await guestIcons('#navigation');
+    const guestMeBar = await guestIcons('#bottom-navigation');
+    check(guestMeRail.explore.icon === 'explore-outline' && guestMeRail.desk.icon === 'edit-outline' &&
+      guestMeRail.me.icon === 'person' && guestMeRail.me.current && Boolean(guestMeRail.me.path) &&
+      guestMeRail.me.path !== guestDeskRail.me.path && guestMeRail.desk.path !== guestDeskRail.desk.path &&
+      guestMeBar.explore.icon === 'explore-outline' && guestMeBar.desk.icon === 'edit-outline' && guestMeBar.me.icon === 'person',
+      `#427 AC-04 guest /toi uses filled person icon with distinct SVG path from person-outline (${JSON.stringify({ guestMeRail, guestMeBar })})`);
     if (!signInOpen) {
       check(await page.eval(`!document.querySelector('#account-session form')
         && document.querySelector('#sign-in-closed').textContent.includes('Vink chưa mở đăng nhập')
