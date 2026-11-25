@@ -109,15 +109,20 @@ async function discoveryModeStability(page, base, check) {
     await page.viewport(width, 850);
     await page.goto(base + '/');
     await page.waitFor(`${HYDRATED} && ${q(following)}`, 'shared discovery header');
+    const labelFont = 'parseFloat(getComputedStyle(document.querySelector(".vk-explore-modes a")).fontSize)';
+    const regularLabelFont = await page.eval(labelFont);
     await page.eval(`(() => {
       const root = document.documentElement;
       if (${scale} === 150) root.dataset.text = '150';
       if (${scale} === 200) root.style.fontSize = '200%';
-      return document.fonts.ready;
     })()`);
     await page.send('Emulation.setEmulatedMedia', { features: [
       { name: 'prefers-reduced-motion', value: width === 320 ? 'reduce' : 'no-preference' },
     ] });
+    // The root style can resolve before descendant rem lengths are laid out.
+    await page.waitFor(`Math.abs(${labelFont} - ${regularLabelFont * scale / 100}) < 0.05`,
+      `mode labels reach the ${scale}% text scale before measuring their position`);
+    await page.eval("document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))");
     await page.eval(`window.discoverySnapshot = (() => {
       const selector = 'header.vk-explore__top, #explore-heading h1, .vk-brand__lockup, .vk-explore-modes, .vk-explore-modes a';
       const nodes = [...document.querySelectorAll(selector)];
