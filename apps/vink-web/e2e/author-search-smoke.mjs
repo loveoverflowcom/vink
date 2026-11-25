@@ -100,6 +100,11 @@ async function discoveryModeStability(page, base, check) {
   const following = '#explore-mode-following';
   const authors = '#explore-mode-authors';
   const mode = selector => `${q(selector)}?.getAttribute('aria-current') === 'page'`;
+  const activate = async selector => {
+    // Keep the current scroll position. The click helper centres its target even when visible.
+    await page.eval(`${q(selector)}.focus({preventScroll: true})`);
+    await page.key('Enter');
+  };
   for (const [width, scale] of [[1280, 100], [390, 100], [320, 200]]) {
     await page.viewport(width, 850);
     await page.goto(base + '/');
@@ -121,6 +126,7 @@ async function discoveryModeStability(page, base, check) {
         }));
         return {
           shift,
+          scrollY,
           sameNodes: nodes.length === after.length && nodes.every((node, index) => node === after[index]),
           sameDocument: performance.timeOrigin === origin,
           fits: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
@@ -144,7 +150,7 @@ async function discoveryModeStability(page, base, check) {
     const held = [];
     const release = await intercept(page, base + SEARCH + '*', params => held.push(params.requestId));
     try {
-      await page.click(authors);
+      await activate(authors);
       await page.waitFor(`${mode(authors)} && ${q(LOADING)}`, 'Authors selected while its response is pending');
       const deadline = Date.now() + 5000;
       while (held.length === 0 && Date.now() < deadline) {
@@ -152,11 +158,16 @@ async function discoveryModeStability(page, base, check) {
       }
       check(held.length > 0, '#473 author request held at the browser transport');
       await stable('Authors loading');
+      if (width === 390) {
+        await page.capture('discover-shell-authors-loading-390', {
+          requiredTargets: ['#explore-heading h1', '.vk-brand', authors, LOADING],
+        });
+      }
       if (width === 320) {
         check(await page.eval(`getComputedStyle(${q('.vk-explore-modes')}, '::after').transitionProperty === 'none'`),
           '#473 reduced motion moves the indicator immediately');
       }
-      await page.click(works);
+      await activate(works);
       await page.waitFor(`${mode(works)} && ${q('#public-results')}`, 'Works selected before Authors resolves');
       for (const requestId of held.splice(0)) {
         await page.send('Fetch.continueRequest', { requestId }).catch(() => {});
