@@ -187,7 +187,8 @@ a {
 }
 /* The Tôi viewport removes this inset while the full-height auth entry is mounted. */
 .vk-me { padding-block-start: var(--vk-space-8); }
-.vk-me > h1 {
+.vk-me > h1,
+.vk-me #me-title {
   margin: 0; font: var(--vk-type-display-weight) var(--vk-type-display-size)/var(--vk-type-display-line-height) var(--vk-type-display-font);
   letter-spacing: var(--vk-type-display-tracking);
 }
@@ -252,10 +253,10 @@ a {
   max-inline-size: none; padding-inline: clamp(16px, 5vw, 32px);
 }
 .vk-me:has(.vk-auth-entry) { position: relative; padding-block-start: 0; }
-.vk-me:has(.vk-auth-entry) > #me-title {
+.vk-me:has(.vk-auth-entry) > :is(#me-title, .vk-notif-me-header) {
   position: absolute; inline-size: 1px; block-size: 1px; clip-path: inset(50%); overflow: hidden;
 }
-.vk-me:has(.vk-auth-entry) > :not(#page-account, #me-title) {
+.vk-me:has(.vk-auth-entry) > :not(#page-account, #me-title, .vk-notif-me-header) {
   inline-size: min(100%, 54rem); margin-inline: auto;
 }
 .vk-me .vk-account-session:has(.vk-auth-entry) {
@@ -2316,6 +2317,7 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
     box-shadow: 0 0 0 2px var(--vk-bg-page);
   }
   .vk-notif-me-header { display: flex; align-items: center; gap: var(--vk-space-2); }
+  .vk-notif-me-header > #me-title { flex: 1 1 auto; min-inline-size: 0; }
   :is(.vk-explore__top, .vk-desk-heading):has(> .vk-notif-mobile-bell) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto;
