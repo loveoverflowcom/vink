@@ -39,7 +39,9 @@ lưu và Tùy chọn bài viết tiếp tục dùng hợp đồng focus chung.
 
 Đây là delta LayoutSpec của [#526](https://github.com/loveoverflowcom/vink/issues/526).
 [VDR-EDITOR-R4@r2](../../decisions/proposals/VDR-EDITOR-R4.r2.toml) là đề xuất `PENDING`.
-Ảnh concept có trạng thái `NO_APPROVED_REFERENCE`.
+Ảnh concept có trạng thái `NO_APPROVED_REFERENCE`. [Ảnh Web trước/sau](../development/evidence/editor-focus-526/so-sanh.webp)
+ghép ba cặp crop cùng tọa độ từ Chrome 158, giao diện tối, viewport 1440 × 900, DPR 1, chữ 100%.
+Cột trái là focus bằng chuột tại `52e8dbd5`, cột phải là focus bằng Shift+Tab với bản sửa `1e90cbdf`.
 
 ## Delta đối với nút con mắt trong r4
 
