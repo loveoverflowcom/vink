@@ -50,7 +50,7 @@ async function setPenName(page, penName, { returnToDesk = false } = {}) {
 
 async function createDraft(page, title) {
   if (await page.eval("location.pathname !== '/ban-viet'")) {
-    await page.click('#account-session a[href="/ban-viet"]');
+    await page.click('#navigation-primary a[href="/ban-viet"]');
   }
   await page.waitFor(`location.pathname === '/ban-viet' && ${q('#create-draft')}`, 'own writing desk');
   await page.click('#create-draft');
