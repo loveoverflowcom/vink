@@ -81,9 +81,13 @@ Tham chiếu là hướng bố cục đã chọn trong #521. LayoutSpec R4.3 gi�
 
 ## 4. Khám phá
 
-- Đầu trang gồm H1 Khám phá, nút tìm, nút Lọc thẻ có số đã áp dụng, logo ở phải. Chế độ Tất cả /
-  Đang theo dõi / Tác giả dùng link, giữ feature flag của Đang theo dõi. Nhóm nối liền có selected
-  primary + dấu chọn. Khi không vừa một hàng, dùng menu vẫn giữ đích link và `aria-current`.
+- [Delta DQ-03 của #530](../redesign-r4-ban-viet-kham-pha.md#dq-03-cập-nhật-ngày-25112026) dùng
+  chung H1 Khám phá, nút tìm, vị trí Lọc thẻ và logo. Một thanh Primary Tabs gồm các link Tất cả /
+  Đang theo dõi / Tác giả, giữ feature flag của Đang theo dõi, `aria-current` và node của từng link
+  qua các lần đổi chế độ. Các ô chia đều, cao tối thiểu 48 CSS px, xuống dòng theo từ khi thiếu
+  chỗ. Chỉ báo 3 CSS px dùng màu primary, trượt trong 240 ms và đổi ngay khi giảm chuyển động.
+- Dock mở dưới thanh tab. Tác giả tìm bút danh hoặc @handle. Gửi truy vấn từ Đang theo dõi chuyển
+  sang Tất cả. Hai vùng tìm và kết quả theo chế độ trên URL.
 - Theo [#522](https://github.com/loveoverflowcom/vink/issues/522), nút mở tìm ở Khám phá và Bàn viết
   dùng `IconButton` Standard. Khi nghỉ, icon nằm trực tiếp trên nền cha. Khám phá giữ vùng bấm
   56 px trên desktop và 48 px trên mobile. Nút quay lại và xóa chữ dùng nền của ô tìm đang mở.
@@ -98,10 +102,10 @@ Tham chiếu là hướng bố cục đã chọn trong #521. LayoutSpec R4.3 gi�
 - **R4-INV-06.** Ở chế độ Tất cả, SSR `/?q=…` mở dock và hiện q. Đóng bằng nút hoặc Esc bỏ q
   và cursor, giữ bộ lọc thẻ đã áp dụng và trả focus theo ngữ cảnh. Trang chi tiết `/the/:slug`
   dùng trường “Tìm trong thẻ” riêng, ngoài hợp đồng mở/đóng dock này.
-- **#427 AC-01/02.** Ở 320/390 px, Mặc định 100% và Lớn 150%, nhóm chế độ vừa một hàng nối
-  liền hoặc gập thành menu. Khi dock đóng, logo, nút Tìm và nút Lọc thẻ cùng một hàng, trang
-  không cuộn ngang. Ở mỗi bề rộng chỉ một bộ link chế độ nhận Tab và xuất hiện trong cây trợ
-  năng. Kiểm stress 200% riêng.
+- **#427 AC-01/02, theo delta DQ-03.** Ở 320/390 px, Mặc định 100% và Lớn 150%, thanh tab giữ
+  đủ nhãn. Khi dock đóng ở Tất cả, logo, nút Tìm và nút Lọc thẻ cùng một hàng và trang không
+  cuộn ngang. Chrome Tab lần lượt qua mỗi link một lần. Cây trợ năng có một vùng
+  “Chế độ Khám phá” với đúng các link theo thứ tự. Kiểm stress 200% riêng.
 
 ## 5. Bàn viết
 

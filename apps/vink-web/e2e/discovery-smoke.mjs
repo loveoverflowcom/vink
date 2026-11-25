@@ -735,40 +735,40 @@ async function desktopSearchDock(page, {args, check, ready}) {
     '#427 AC-03 closing desktop /?q=mua via Escape drops q, closes dock and restores launcher focus');
 
   const catalog = await (await fetch(args.base + '/api/v1/tags')).json();
-  const keptTag = catalog.tags.find(t => t.label === 'Ký ức') ?? catalog.tags[0];
-  if (keptTag) {
-    const taggedUrl = `${args.base}/?q=mua&tag=${encodeURIComponent(keptTag.slug)}`;
+  const keptTag = catalog.tags.find(tag => tag.label === 'Ký ức');
+  check(Boolean(keptTag), '#427 AC-03 uses the seeded Ký ức tag');
+  // A stale cursor still belongs to the incoming URL and must be removed when closing the dock.
+  const taggedQuery = new URLSearchParams({q: 'mua', tag: keptTag.slug, cursor: 'stale-discovery'});
+  for (const width of [1440,390]) {
+    await page.viewport(width, 844);
     for (const via of ['button', 'Escape']) {
-      await page.goto(taggedUrl);
+      await page.goto(args.base + '/?' + taggedQuery);
       await ready();
-      check(await page.eval(`document.querySelector('#explore').dataset.search==='open' && document.querySelector('#public-query').value==='mua' && new URL(location.href).searchParams.getAll('tag').includes(${JSON.stringify(keptTag.slug)})`),
-        `#427 AC-03 desktop SSR /?q=mua&tag opens dock before ${via} close`);
+      const label = `${width}px / ${via}`;
+      check(await page.eval(`(() => {
+        const query = new URL(location.href).searchParams;
+        return document.querySelector('#explore').dataset.search === 'open' &&
+          document.querySelector('#public-query').value === 'mua' &&
+          document.querySelector('#public-query').getClientRects().length > 0 &&
+          query.get('tag') === ${JSON.stringify(keptTag.slug)} && query.has('cursor') &&
+          (${width} > 759 || getComputedStyle(document.querySelector('#bottom-navigation')).display === 'none');
+      })()`), `#427 AC-03 ${label}: direct q/tag/cursor URL opens the dock`);
       if (via === 'button') {
         await page.click('#close-public-search');
       } else {
         await page.eval("document.querySelector('#public-query').focus()");
         await page.key('Escape');
       }
-      await page.waitFor(`!new URL(location.href).searchParams.has('q') && !new URL(location.href).searchParams.has('cursor') && new URL(location.href).searchParams.getAll('tag').includes(${JSON.stringify(keptTag.slug)}) && document.querySelector('#explore').dataset.search==='closed' && document.activeElement?.id==='open-public-search'`,
-        `#427 AC-03 closing /?q=mua&tag via ${via} drops q/cursor, keeps applied tag and closes dock`);
+      await page.waitFor(`(() => {
+        const query = new URL(location.href).searchParams;
+        return !query.has('q') && !query.has('cursor') &&
+          query.get('tag') === ${JSON.stringify(keptTag.slug)} &&
+          document.querySelector('#explore').dataset.search === 'closed' &&
+          document.querySelector('#public-query').getClientRects().length === 0 &&
+          document.activeElement?.id === 'open-public-search' &&
+          (${width} > 759 || getComputedStyle(document.querySelector('#bottom-navigation')).display !== 'none');
+      })()`, `#427 AC-03 ${label}: closing drops q/cursor, retains tag and restores launcher focus`);
     }
-  }
-
-  // Mobile SSR /?q=… closes via Escape and #close-public-search back to a query-less URL.
-  await page.viewport(390, 844);
-  for (const via of ['Escape', 'button']) {
-    await page.goto(args.base + '/?q=mua');
-    await ready();
-    check(await page.eval("document.querySelector('#explore').dataset.search==='open' && document.querySelector('#public-query').value==='mua' && document.querySelector('#public-query').getClientRects().length>0 && getComputedStyle(document.querySelector('#bottom-navigation')).display==='none'"),
-      `#427 AC-03 mobile SSR /?q=mua opens full-screen dock before ${via} close`);
-    if (via === 'Escape') {
-      await page.eval("document.querySelector('#public-query').focus()");
-      await page.key('Escape');
-    } else {
-      await page.click('#close-public-search');
-    }
-    await page.waitFor("location.search==='' && document.querySelector('#explore').dataset.search==='closed' && document.activeElement?.id==='open-public-search' && getComputedStyle(document.querySelector('#bottom-navigation')).display!=='none'",
-      `#427 AC-03 closing mobile SSR /?q=mua via ${via} drops q, restores bottom nav and launcher focus`);
   }
 
   await page.viewport(1440);

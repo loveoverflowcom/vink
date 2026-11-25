@@ -105,11 +105,16 @@ async function discoveryModeStability(page, base, check) {
     await page.eval(`${q(selector)}.focus({preventScroll: true})`);
     await page.key('Enter');
   };
-  for (const [width, scale] of [[1280, 100], [390, 100], [320, 200]]) {
+  for (const [width, scale] of [[1280, 100], [390, 100], [390, 150], [320, 150], [320, 200]]) {
     await page.viewport(width, 850);
     await page.goto(base + '/');
     await page.waitFor(`${HYDRATED} && ${q(following)}`, 'shared discovery header');
-    await page.eval(`document.documentElement.style.fontSize = '${scale}%'; document.fonts.ready`);
+    await page.eval(`(() => {
+      const root = document.documentElement;
+      if (${scale} === 150) root.dataset.text = '150';
+      if (${scale} === 200) root.style.fontSize = '200%';
+      return document.fonts.ready;
+    })()`);
     await page.send('Emulation.setEmulatedMedia', { features: [
       { name: 'prefers-reduced-motion', value: width === 320 ? 'reduce' : 'no-preference' },
     ] });
@@ -143,10 +148,11 @@ async function discoveryModeStability(page, base, check) {
         };
       };
     })()`);
+    const scaleLabel = scale === 200 ? 'stress 200% (root font-size override)' : `app CSS ${scale}%`;
     const stable = async label => {
       const got = await page.eval('window.discoverySnapshot()');
       check(got.sameNodes && got.sameDocument && got.fits && got.wordsIntact && got.shift <= 1,
-        `#473 ${width}px / ${scale}% ${label} (${JSON.stringify(got)})`);
+        `#473 ${width}px / ${scaleLabel} ${label} (${JSON.stringify(got)})`);
     };
 
     await page.eval(`${q(works)}.focus()`);

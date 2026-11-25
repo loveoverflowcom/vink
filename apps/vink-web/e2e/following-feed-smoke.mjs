@@ -116,20 +116,24 @@ async function layout(page, check, textContrast) {
   for (const width of [320, 390, 834, 1024, 1440]) {
     await page.viewport(width, 900);
     for (const theme of ['light', 'dark']) {
-      for (const text of [100, 200]) {
+      for (const text of [100, 150, 200]) {
         await page.eval(`document.documentElement.dataset.theme = '${theme}';
-          document.documentElement.style.fontSize = '${text}%'; scrollTo(0, 0); document.fonts.ready.then(() => true)`);
+          if (${text} === 150) document.documentElement.dataset.text = '150';
+          else delete document.documentElement.dataset.text;
+          document.documentElement.style.fontSize = ${text} === 200 ? '200%' : '';
+          scrollTo(0, 0); document.fonts.ready.then(() => true)`);
         await page.eval(FRAME);
         const got = await page.eval(measure);
+        const scaleLabel = text === 200 ? 'stress 200% (root font-size override)' : `app CSS ${text}%`;
         check(got.overflow === 0 && !got.nested && got.gap >= 16 && got.targets.length === 4 &&
           got.targets.every(([w, h]) => w >= 44 && h >= 44),
-          `#296 ${width}/${theme}/${text}% overflow, links and touch targets (${JSON.stringify(got)})`);
+          `#296 ${width}/${theme}/${scaleLabel} overflow, links and touch targets (${JSON.stringify(got)})`);
         const nav = got.nav;
         check(width < 760
           ? nav.mobile && nav.count === 3 && nav.current === '/' && nav.pill &&
             nav.pill.width <= 64 && nav.pill.height <= 32 && nav.axisDelta <= 1 && nav.iconDelta <= 1
           : !nav.mobile && nav.rail > 0 && nav.railAccount && nav.railTargets.join(',') === '/,/ban-viet',
-          `#355 shell destinations and icon alignment ${width}/${theme}/${text}% (${JSON.stringify(nav)})`);
+          `#355 shell destinations and icon alignment ${width}/${theme}/${scaleLabel} (${JSON.stringify(nav)})`);
         if ([320, 390].includes(width) || (text === 100 && [834, 1440].includes(width))) {
           const modeTargets = ['#explore-mode-works', '#explore-mode-following', '#explore-mode-authors'];
           await textContrast(page, theme, 'following-feed', [
@@ -138,6 +142,7 @@ async function layout(page, check, textContrast) {
           ]);
           await page.capture(`feed-355-${width}-${theme}-${text}`, {
             requiredTargets: ['#explore-mode-following', '#following-cards', '.vk-feed-date'],
+            textScaleLane: text === 200 ? 'dom-override-geometry-only' : 'app-text-scale',
           });
           if (width === 390 && text === 100) {
             await page.eval(`${q('#explore-mode-works')}.focus()`);
@@ -149,7 +154,7 @@ async function layout(page, check, textContrast) {
       }
     }
   }
-  await page.eval("document.documentElement.style.fontSize = ''; document.documentElement.dataset.theme = 'light'");
+  await page.eval("document.documentElement.style.fontSize = ''; delete document.documentElement.dataset.text; document.documentElement.dataset.theme = 'light'");
   await page.viewport(1280, 900);
 }
 
