@@ -42,6 +42,28 @@ const waitPhase = (page, wanted, what, timeout) =>
 const panelText = (page) => page.eval(`document.querySelector('${PUBLICATION}')?.innerText ?? ''`);
 const choose = (page, value) => page.eval(`(() => { const switchInput = document.querySelector('#audience-public'); if (switchInput.checked !== (${JSON.stringify(value)} === 'public')) switchInput.click(); })()`);
 const primary = (page) => page.eval(`document.querySelector('#publication-primary')?.innerText ?? null`);
+// R3 refreshes on returning to a visible tab, with a two-second cooldown.
+// Observe the actual GET so a prior visibility event cannot consume the test's return.
+async function refreshOnReturn(page) {
+  let observed = false;
+  const listener = (m) => {
+    if (m.sessionId === page.sessionId && m.method === 'Network.requestWillBeSent' &&
+        m.params.request.method === 'GET' && new URL(m.params.request.url).pathname.endsWith('/publication/state')) observed = true;
+  };
+  page.cdp.listeners.push(listener);
+  try {
+    await page.send('Page.bringToFront');
+    const deadline = Date.now() + 6000;
+    while (!observed && Date.now() < deadline) {
+      await page.eval("window.dispatchEvent(new Event('focus'))");
+      await sleep(120);
+    }
+    if (!observed) throw new Error('publication state was not read on return');
+  } finally {
+    page.cdp.listeners = page.cdp.listeners.filter((item) => item !== listener);
+  }
+}
+
 const storedText = (draft) => draft.document.source;
 const publicRead = async (base, work) => {
   const response = await fetch(`${base}/api/v1/works/${work}/publication`);
@@ -207,7 +229,7 @@ async function submissionStructure(author, base, check) {
     await author.click('#publication-retry');
     await waitPhase(author, 'reconciled', 'short poem submitted after snapshot replay', 30000);
     const confirmed = await stateOf(author, work);
-    check(confirmed.revisions.length === 1 && confirmed.intent?.revision_id === confirmed.revisions[0].revision_id &&
+    check(confirmed.revisions.length === 1 && confirmed.revisions[0].moderation === 'pending' && !confirmed.pointer && confirmed.intent?.revision_id === confirmed.revisions[0].revision_id &&
       wire.count('POST', '/snapshots') === 2 && wire.count('POST', '/publication/request-public') === 1, format + ' one revision and one reviewed intent');
     check((await author.draft(work)).document.source.endsWith('u\u031b\u0301'), 'NFD poem roundtrips exactly');
     await wire.close();
@@ -262,7 +284,6 @@ export async function publicationAuthor(page, { args, check, openPage }) {
   const admin = await openPage(contexts[0]);
   const mod = await openPage(contexts[1]);
   const principalA = await enter(author, ctx, `tac-gia-${stamp}@vi-du.vn`, 'Tác giả [Mẫu]');
-  await submissionStructure(author, base, check);
   const principalAdmin = await enter(admin, ctx, `quan-tri-${stamp}@vi-du.vn`, 'Quản trị [Mẫu]');
   const principalM = await enter(mod, ctx, `nguoi-duyet-${stamp}@vi-du.vn`, 'Người duyệt [Mẫu]');
   check(new Set([principalA, principalAdmin, principalM]).size === 3, 'the author, the admin and the moderator are three real principals with separate sessions');
@@ -295,9 +316,11 @@ export async function publicationAuthor(page, { args, check, openPage }) {
   }
   check(true, 'the admin pauses the automatic evaluator through the page: submissions wait for a person');
 
+  await submissionStructure(author, base, check);
+
   // ---- AC-01: write, tag, submit, approve, read ------------------------------------------------
   console.log('  author writes, tags and submits from Bàn viết:');
-  const work = await newDraft(author, base, TITLE_1, BODY_1);
+  const work = await newDraft(author, base, TITLE_1, '');
   const grant = await post(admin, '/api/v1/moderation/grants', { grantee_kind: 'principal', grantee_id: principalM, capability: 'works', scope_kind: 'work', scope_work_id: work, expires_at: null });
   check(grant.status === 201, 'the admin grants the moderator work moderation for this work');
   await pickFormTag(author);
@@ -305,9 +328,10 @@ export async function publicationAuthor(page, { args, check, openPage }) {
   check((await primary(author)) === null, 'a private draft offers no action before the author chooses');
   const before = await stateOf(author, work);
   check(before.audience === 'private' && before.revisions.length === 0 && !before.pointer, 'the server shows a private draft with no revision before the submission');
+  await author.typeInBody(BODY_1);
   await choose(author, 'public');
   await author.waitFor(`document.querySelector('#publication-primary')?.innerText === 'Lưu và gửi duyệt'`, 'unsaved text and tags: the action says it saves first');
-  check(await author.eval(`document.querySelector('[data-testid=publication-draft]')?.innerText.includes('chưa lưu')`), 'the region tells the author unsaved text is not in the sent version');
+  check(await author.status() === 'unsaved' && await primary(author) === 'Lưu và gửi duyệt', 'the save state and action identify the unsaved revision');
   const wire = new Wire(author);
   await author.click('#publication-primary');
   await waitPhase(author, 'reconciled', 'the submission settles', 30000);
@@ -330,8 +354,8 @@ export async function publicationAuthor(page, { args, check, openPage }) {
 
   console.log('  the author reads the result; Explore and the reader show that revision:');
   check((await publicRead(base, work)).status === 200, 'the work is public after the approval');
-  await author.click('#publication-refresh');
-  await author.waitFor(`document.querySelector('#publication-public')?.innerText.includes(${JSON.stringify(`Đang công khai: «${TITLE_1}»`)})`, 'the region reads the approval from the server');
+  await refreshOnReturn(author);
+  await author.waitFor(`document.querySelector('#publication-status')?.innerText === 'Đang công khai'`, 'the region reads the approval from the server');
   const approved = await stateOf(author, work);
   check(approved.pointer?.revision_id === r1 && approved.revisions[0].moderation === 'approved', 'the server pointer is the captured revision and it is approved');
   const publication = await publicRead(base, work);
@@ -400,14 +424,17 @@ async function rest(env) {
   const r2 = two.intent.revision_id;
   check(two.revisions.length === 2 && r2 !== r1 && two.pointer.revision_id === r1 && two.revisions.find((r) => r.revision_id === r2).moderation === 'pending', 'the server holds r1 as the public pointer and r2 as the pending intent');
   const said = await panelText(author);
-  check(said.includes(`Đang công khai: «${TITLE_1}».`) && said.includes(`Đang gửi: «${TITLE_2}» — Đang chờ kiểm duyệt.`) && said.includes('Người đọc vẫn đọc bản đang công khai.'), 'the region names r1 as read now and r2 as waiting; r1 is not shown as hidden');
+  check(said.includes('Đang công khai · Bản mới: Đang chờ kiểm duyệt'), 'the region distinguishes the public pointer from the pending revision');
   check((await publicRead(base, work)).body.revision_id === r1 && (await publicRead(base, work)).body.title === TITLE_1, 'readers still get r1, text for text');
   await matrix(author, 'public-r1-pending-r2', check);
   await openCase(mod, base, work, r2);
   await conclude(mod, 'rejected', 'Nội dung cần chỉnh theo chính sách (verify web)');
-  await author.click('#publication-refresh');
-  await author.waitFor(`document.querySelector('#publication-requested')?.innerText.includes('Bị từ chối. Lý do: Nội dung cần chỉnh theo chính sách')`, 'the rejection and its reason from the server');
-  check((await panelText(author)).includes(`Đang công khai: «${TITLE_1}».`) && (await publicRead(base, work)).body.revision_id === r1, 'r1 is still the public revision after r2 is rejected');
+  await refreshOnReturn(author);
+  await author.waitFor(`document.querySelector('#publication-status')?.innerText.includes('Đang công khai · Bản mới: Bị từ chối (Nội dung cần chỉnh theo chính sách')`, 'the rejection and its reason from the server');
+  const rejected = await stateOf(author, work);
+  check(rejected.revisions.find((revision) => revision.revision_id === r2)?.moderation === 'rejected' &&
+    rejected.pointer?.revision_id === r1 && (await publicRead(base, work)).body.revision_id === r1,
+    'r2 is rejected while r1 remains the public revision');
   const deskReview = `/ban-viet?review=${work}`;
   check(await author.eval(`document.querySelector('#editor-review-status')?.getAttribute('href') === '${deskReview}'`), 'the Editor links to the selected work in Desk');
   await author.click('#editor-review-status');
@@ -662,8 +689,8 @@ async function retries({ author, mod, work, base, check, reopen }) {
 /** Tab A presses (its request is held before it reaches the server); tab B makes the work private;
  * A's request is then released and refused. Leaves A in a generation conflict. */
 async function slowVersusWithdrawal({ author, other, work, check, label }) {
-  await other.click('#publication-refresh');
-  await other.waitFor(`document.querySelector('#audience-applied')?.innerText.includes('Công khai')`, 'the second tab reads the public state');
+  await refreshOnReturn(other);
+  await other.waitFor(`document.querySelector('#audience-public')?.checked`, 'the second tab reads the public state');
   const wire = new Wire(author);
   wire.hold = { method: 'POST', suffix: '/publication/request-public' };
   await wire.enable();
@@ -696,7 +723,7 @@ async function twoTabs({ author, mod, work, base, check, openPage, reopen, edito
   // First cycle: the author reads the conflict and dismisses it.
   await slowVersusWithdrawal({ author, other, work, check, label: 'cycle 1' });
   check((await panelText(author)).includes('Trạng thái công khai đã đổi ở nơi khác') && (await panelText(author)).includes('bản đã chụp vẫn giữ nguyên'), 'the first tab names a generation conflict and keeps its frozen revision');
-  await author.waitFor(`document.querySelector('#audience-applied')?.innerText.includes('Chỉ mình tôi')`, 'the first tab reads the new state');
+  await author.waitFor(`document.querySelector('#publication-status')?.innerText.startsWith('Chỉ mình tôi')`, 'the first tab reads the new state');
   check(await author.eval(`Boolean(document.querySelector('#publication-resume'))`), 'sending the frozen revision again is an explicit choice');
   await matrix(author, 'conflict', check);
   // The work is private: there is no primary action to return to. Focus must not fall to <body>.
@@ -708,7 +735,7 @@ async function twoTabs({ author, mod, work, base, check, openPage, reopen, edito
 
   // Back to a pending public submission, then a second slow request that is sent again on purpose.
   await choose(author, 'public');
-  await author.waitFor(`document.querySelector('#publication-primary')?.innerText === 'Gửi duyệt bản đã lưu'`, 'the submit action');
+  await author.waitFor(`document.querySelector('#publication-primary')?.innerText === 'Gửi duyệt'`, 'the submit action');
   await press(author);
   await waitPhase(author, 'reconciled', 'a normal submission', 30000);
   const { captured, rev0, wire } = await slowVersusWithdrawal({ author, other, work, check, label: 'cycle 2' });
@@ -729,8 +756,9 @@ async function withdrawal({ author, mod, work, base, check, reopen, editorPath }
   await openCase(mod, base, work, intent);
   await conclude(mod, 'approved', 'Phù hợp (verify web)');
   await reopen(author);
-  const title = (await stateOf(author, work)).revisions.find((r) => r.revision_id === intent).title;
-  check((await panelText(author)).includes(`Đang công khai: «${title}».`), 'the approved revision is the one readers get');
+  const approved = await stateOf(author, work);
+  check((await panelText(author)).includes('Đang công khai') && approved.pointer?.revision_id === intent &&
+    approved.revisions.find((r) => r.revision_id === intent)?.moderation === 'approved', 'the approved revision is the one readers get');
   const before = await publicRead(base, work);
   check(before.status === 200 && before.etag, 'readers have an ETag for it');
   await author.typeInBody(' [chưa lưu]');
@@ -861,10 +889,7 @@ async function refreshInvariant(page, check) {
   const wire = new Wire(page);
   await wire.enable();
   const reads = wire.count('GET', '/publication/state');
-  await page.eval(`window.dispatchEvent(new Event('focus'))`);
-  await page.waitFor(`true`, 'tick');
-  const deadline = Date.now() + 8000;
-  while (wire.count('GET', '/publication/state') === reads && Date.now() < deadline) await sleep(50);
+  await refreshOnReturn(page);
   await sleep(300);
   const after = await page.eval(`({ y: scrollY, active: document.activeElement?.className, mark: document.querySelector('.cm-editor')?.__mark, editors: document.querySelectorAll('.cm-editor').length })`);
   check(wire.count('GET', '/publication/state') > reads && after.mark === 'kept' && after.editors === 1 && after.y === before.y && after.active === before.active, 'returning to the window reads the state again without remounting the editor, moving the scroll or taking the focus');
@@ -881,12 +906,12 @@ async function sessions({ author, work, base, check, openPage, reopen, ctx }) {
   // refusal of the state read. Every other answer in this scenario is real.
   const title = await author.eval(`document.querySelector('#draft-title').value`);
   let done = await fabricate(author, 'GET', `/api/v1/works/${work}/publication/state`, 503, { error: { code: 'dependency_unavailable', message: 'test fixture' } });
-  await author.click('#publication-refresh');
+  await refreshOnReturn(author);
   await done();
   await author.waitFor(`document.querySelector('[data-testid=publication-stale]')`, 'a temporary outage keeps the last facts');
-  check((await panelText(author)).includes('đang giữ lần đọc gần nhất') && (await author.eval(`document.querySelector('#publication-summary').innerText.length > 0`)), '503 on the read (fabricated): the last facts stay and the region says they are the last read');
+  check((await panelText(author)).includes('đang giữ lần đọc gần nhất') && (await author.eval(`document.querySelector('#publication-status')?.innerText.length > 0`)), '503 on the read (fabricated): the last facts stay and the region says they are the last read');
   done = await fabricate(author, 'GET', `/api/v1/works/${work}/publication/state`, 403, { error: { code: 'forbidden', message: 'test fixture' } });
-  await author.click('#publication-refresh');
+  await refreshOnReturn(author);
   await done();
   await author.waitFor(`document.querySelector('${PUBLICATION}')?.dataset.phase === 'unavailable'`, 'a refusal clears the facts');
   check((await panelText(author)).includes('Yêu cầu bị từ chối') && !(await panelText(author)).includes('Chưa công khai') && !(await panelText(author)).includes('Đang công khai'), '403 on the read (fabricated): the facts leave the page and the refusal is named');
@@ -902,7 +927,7 @@ async function sessions({ author, work, base, check, openPage, reopen, ctx }) {
   const wire = new Wire(author);
   wire.holdResponse = { method: 'GET', suffix: '/publication/state' };
   await wire.enable();
-  await author.click('#publication-refresh');
+  await refreshOnReturn(author);
   await wire.heldAnswer();
   const out = await signOut(other, base);
   check(out.includes(204), 'the session ends for real (sign-out in the other tab, 204)');

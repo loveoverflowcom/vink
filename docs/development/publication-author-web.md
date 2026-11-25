@@ -249,7 +249,9 @@ tra IME phím tin cậy ở Khám phá (`discoveryReading`); thay “composition
 
 Bàn viết đọc tiêu đề và buffer CodeMirror ở lần bấm gửi. App và Web dùng chung phép kiểm
 trong `vink-markdown-text::submission` (CHOICE-01 A, CHOICE-03 A). CHOICE-02 B giữ snapshot
-độc lập và áp điều kiện trên revision được nêu ở cả hai route gửi duyệt. Các giới hạn lưu nháp
+độc lập và áp điều kiện trên revision được nêu ở cả hai route gửi duyệt. Job đã vào hàng đợi
+trước thay đổi có thể chứa nội dung chưa qua phép kiểm này. Điều phối release đối chiếu backlog
+trước khi triển khai. Các giới hạn lưu nháp
 và quyền kiểm duyệt thuộc owner hiện có. [LayoutSpec](../design/publication-author.md) ·
 [đặc tả](../architecture/publication-moderation.md#điều-kiện-gửi-duyệt-533) ·
 [fixture HTTP](../../services/vink-app/contracts/http/v1/fixtures/error.submission_validation_failed.json).

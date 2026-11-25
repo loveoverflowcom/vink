@@ -1348,4 +1348,37 @@ async fn publication_submission_validates_exact_revision_without_mutation(pool: 
             .unwrap(),
         before
     );
+
+    // A receipt from before the structural check wins even if both the revision and
+    // its expected generation would now be refused. Replaying it creates no second job.
+    let old_generation = generation - 1;
+    let old_payload = format!("request_public:{revision}:{old_generation}");
+    sqlx::query("INSERT INTO work_publication_command_receipts
+        (actor_id, work_id, operation, command_key, payload_digest, outcome, revision_id, generation)
+        VALUES ($1,$2,'request_public','historic-result',sha256(convert_to($3, 'UTF8')),'submitted',$4,$5)")
+        .bind(dev_seed::SAMPLE_AUTHOR).bind(work).bind(old_payload)
+        .bind(Uuid::parse_str(&revision).unwrap()).bind(generation)
+        .execute(&pool).await.unwrap();
+    let mut retry = request(old_generation);
+    retry["command_key"] = json!("historic-result");
+    let (status, _, body) = call(
+        &app,
+        "POST",
+        &request_public_path(work),
+        owner,
+        Some(ORIGIN),
+        Some(retry),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(json(&body)["replayed"], true);
+    assert_eq!(json(&body)["generation"], generation);
+    let after = sqlx::query_as::<_, (i64, i64, i64, i64, i64)>(counts)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        after,
+        (before.0, before.1, before.2 + 1, before.3, before.4)
+    );
 }
