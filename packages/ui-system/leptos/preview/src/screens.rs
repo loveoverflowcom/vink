@@ -263,8 +263,6 @@ fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
                 let toolbar = match save_action {
                     Some(save_action) => view! {
                         <EditorToolbar
-                            paper_first=true
-                            compact_details=true
                             status_detail="Mẫu · Chưa nối dữ liệu máy chủ."
                             status=sample_label
                             status_token=sample_token
@@ -275,8 +273,6 @@ fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
                     .into_any(),
                     None => view! {
                         <EditorToolbar
-                            paper_first=true
-                            compact_details=true
                             status_detail="Mẫu · Chưa nối dữ liệu máy chủ."
                             status=sample_label
                             status_token=sample_token

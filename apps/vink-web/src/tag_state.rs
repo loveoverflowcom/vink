@@ -181,7 +181,9 @@ impl TagSession {
         }
     }
 
-    /// Back to the last confirmed tags. A save in flight still settles normally.
+    /// Back to the last confirmed tags. A save in flight still settles normally. No editor control
+    /// offers this; tests use it to replay a selection change during a save.
+    #[cfg(test)]
     pub fn revert(&mut self) {
         if self.current != self.saved {
             self.current = self.saved.clone();

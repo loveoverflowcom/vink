@@ -16,6 +16,10 @@ use crate::tag_state::{QueryState, TagSession, TagStatus};
 use crate::ui::adapters::{self, TagLabels};
 use crate::ui::patterns::{CatalogFacts, TagSelector};
 
+/// A recovery card inside the article options (tags here, Công khai in `publication.rs`): the
+/// card paints the tone, so the shared notice inside drops its own padding and fill.
+pub(crate) const RECOVERY_CLASS: &str = "vk-editor-recovery [&>.vk-ui-notice]:p-0 [&>.vk-ui-notice]:bg-transparent [&>.vk-ui-notice]:text-inherit";
+
 /// The theme query field; “Ở lại” returns focus here when the author was choosing tags.
 #[cfg_attr(not(feature = "browser"), allow(dead_code))]
 pub const QUERY_ID: &str = "work-tags-query";
@@ -149,7 +153,7 @@ pub fn WorkInfo(
                 let stored_names = labels.with(|l| l.names(&stored));
                 let mine = labels.with(|l| selection.get().map(|s| l.names(&s)).unwrap_or_default());
                 view! {
-                    <section id="editor-tag-conflict" tabindex="-1" class="vk-editor-recovery [&>.vk-ui-notice]:p-0 [&>.vk-ui-notice]:bg-transparent [&>.vk-ui-notice]:text-inherit"
+                    <section id="editor-tag-conflict" tabindex="-1" class=RECOVERY_CLASS
                         data-tone="warning" data-testid="tag-conflict" aria-label="Xung đột thẻ">
                         <InlineNotice tone=Tone::Warning announce=Announce::Off
                             title="Thẻ đã được lưu khác ở nơi khác."
@@ -167,14 +171,14 @@ pub fn WorkInfo(
                 .into_any()
             }
             TagStatus::Refused(refusal) => view! {
-                <section class="vk-editor-recovery [&>.vk-ui-notice]:p-0 [&>.vk-ui-notice]:bg-transparent [&>.vk-ui-notice]:text-inherit" data-tone="error" data-testid="tag-refused" aria-label="Thẻ bị từ chối">
+                <section class=RECOVERY_CLASS data-tone="error" data-testid="tag-refused" aria-label="Thẻ bị từ chối">
                     <InlineNotice tone=Tone::Error announce=Announce::Off title="Thẻ chưa lưu được."
                         message=adapters::tag_refusal_text(&refusal) />
                 </section>
             }
             .into_any(),
             TagStatus::Failed(failure) => view! {
-                <section class="vk-editor-recovery [&>.vk-ui-notice]:p-0 [&>.vk-ui-notice]:bg-transparent [&>.vk-ui-notice]:text-inherit" data-tone="error" data-testid="tag-failed" aria-label="Phục hồi lưu thẻ">
+                <section class=RECOVERY_CLASS data-tone="error" data-testid="tag-failed" aria-label="Phục hồi lưu thẻ">
                     <InlineNotice tone=Tone::Error announce=Announce::Off
                         title=super::desk::tag_status_label(&TagStatus::Failed(failure))
                         message=super::desk::tag_status_detail(&TagStatus::Failed(failure)) />
@@ -210,7 +214,7 @@ pub fn WorkInfo(
             </div>
             <Show when=loaded fallback=move || match tag_load.get() {
                 TagLoad::Failed(failure) => view! {
-                    <section class="vk-editor-recovery [&>.vk-ui-notice]:p-0 [&>.vk-ui-notice]:bg-transparent [&>.vk-ui-notice]:text-inherit" data-tone="error" data-testid="tags-unavailable" aria-label="Không tải được thẻ">
+                    <section class=RECOVERY_CLASS data-tone="error" data-testid="tags-unavailable" aria-label="Không tải được thẻ">
                         <InlineNotice tone=Tone::Error announce=Announce::Off title="Chưa tải được thẻ của bản nháp."
                             message=format!("{} Chữ vẫn sửa và lưu được.", super::desk::failure_reason(failure)) />
                         <div class="vk-notice__actions">

@@ -1,6 +1,6 @@
 # Vùng công khai của Bàn viết — LayoutSpec r2
 
-> [Editor R4](editor-r4.md) đặt vùng này trong Tùy chọn bài viết và dùng công tắc thay cho RadioGroup. Công tắc đổi ý định; nút xác nhận vẫn gửi lệnh riêng. Các trạng thái và quy tắc snapshot bên dưới tiếp tục áp dụng.
+> [Editor R4](editor-r4.md) đặt vùng này trong Tùy chọn bài viết và dùng công tắc thay cho RadioGroup. Công tắc đổi ý định; nút xác nhận vẫn gửi lệnh riêng. Các trạng thái và quy tắc snapshot bên dưới tiếp tục áp dụng; nút Xem trước trong cây bên dưới đã bỏ theo delta 24/11 (#475).
 
 Phạm vi: **PUB-AUTHOR-WEB-01**. Vùng nối Bàn viết với API publication có sẵn
 ([publication-runtime](../development/publication-runtime.md)) và [chi tiết kiểm duyệt trong Bàn viết](redesign-r4/desk-moderation.md)

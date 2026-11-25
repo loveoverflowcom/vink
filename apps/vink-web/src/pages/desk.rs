@@ -21,7 +21,7 @@ use crate::document::{ConversionPreview, NotEditable};
 use crate::draft_list::{CreateState, DraftSort, display_title as untitled};
 use crate::editor::{
     BODY_HINT_ID, BODY_LABEL_ID, BODY_TITLE_ERROR_ID, BodyEditor, BodySource, BodyState,
-    OutlineItem, OutlineStatus, TOOLBAR_ID,
+    OutlineItem, OutlineStatus,
 };
 use crate::navigation::NavigationGuard;
 use crate::pages::desk_review::{self, DeskReview, ReviewTarget, ReviewTrigger};
@@ -1138,24 +1138,25 @@ fn Editor(draft: Draft) -> impl IntoView {
             }
         }
     };
+    // A text or tag ACK has settled the session: show the brief saved mark, hand focus on from
+    // a vanished Save, and only then let a pending leave go.
+    #[cfg(feature = "browser")]
+    let after_ack = move |saved_clean: bool, was_save_focused: bool| {
+        if saved_clean {
+            arm_just_saved();
+        }
+        sync_save_slot_focus(was_save_focused, session, tag_load);
+        settle_leave();
+    };
     // Sends the text as it is now. The ticket was taken in the same turn, so it covers exactly
     // this text. The outcome settles the session first; only then may the leave intent go.
     let send_text = move |ticket: SaveTicket, reconcile: bool| {
-        let current_format = format.get_untracked();
-        let source = body.snapshot();
-        let request = match current_format {
-            DocumentFormatDto::Default => crate::contract::SaveDraftRequest {
-                expected_version: ticket.expected_version,
-                // Trim only the separate title; keep the live input and exact source.
-                title: Some(title.get_untracked().trim().to_owned()),
-                document: crate::document::default_document(&source),
-            },
-            DocumentFormatDto::Markdown => crate::contract::SaveDraftRequest {
-                expected_version: ticket.expected_version,
-                title: None,
-                document: crate::document::markdown_document(&source),
-            },
-        };
+        let request = save_request(
+            format.get_untracked(),
+            ticket.expected_version,
+            &title.get_untracked(),
+            &body.snapshot(),
+        );
         #[cfg(feature = "browser")]
         {
             let id = work_id.get_value();
@@ -1209,14 +1210,9 @@ fn Editor(draft: Draft) -> impl IntoView {
                     }
                     saved_clean = !crate::desk_state::Guarded::has_unsaved(s);
                 });
-                if applied.is_none() {
-                    return;
+                if applied.is_some() {
+                    after_ack(saved_clean, was_save_focused);
                 }
-                if saved_clean {
-                    arm_just_saved();
-                }
-                sync_save_slot_focus(was_save_focused, session, tag_load);
-                settle_leave();
             });
         }
         #[cfg(not(feature = "browser"))]
@@ -1272,14 +1268,9 @@ fn Editor(draft: Draft) -> impl IntoView {
                     }
                     saved_clean = !crate::desk_state::Guarded::has_unsaved(s);
                 });
-                if applied.is_none() {
-                    return;
+                if applied.is_some() {
+                    after_ack(saved_clean, was_save_focused);
                 }
-                if saved_clean {
-                    arm_just_saved();
-                }
-                sync_save_slot_focus(was_save_focused, session, tag_load);
-                settle_leave();
             });
         }
         #[cfg(not(feature = "browser"))]
@@ -1293,10 +1284,12 @@ fn Editor(draft: Draft) -> impl IntoView {
             send_tags(tags);
         }
     };
+    // After a failed attempt the server may hold the write: the next send reads back first.
+    let reconcile_after_failure =
+        move || session.with_untracked(|s| matches!(s.text.status(), SaveStatus::Failed(_)));
     let save = move || {
         clear_just_saved();
-        let reconcile =
-            session.with_untracked(|s| matches!(s.text.status(), SaveStatus::Failed(_)));
+        let reconcile = reconcile_after_failure();
         if let Some(ticket) = session.try_update(DraftSession::begin_save) {
             send(ticket, reconcile);
         }
@@ -1306,8 +1299,7 @@ fn Editor(draft: Draft) -> impl IntoView {
             return;
         }
         clear_just_saved();
-        let reconcile =
-            session.with_untracked(|s| matches!(s.text.status(), SaveStatus::Failed(_)));
+        let reconcile = reconcile_after_failure();
         if let Some(ticket) = session
             .try_update(DraftSession::begin_manual_save)
             .flatten()
@@ -1318,11 +1310,7 @@ fn Editor(draft: Draft) -> impl IntoView {
     let focus_last_field = move || match last_field.get_value() {
         Field::Title if format.get_untracked() == DocumentFormatDto::Default => {
             #[cfg(feature = "browser")]
-            if let Some(input) = title_input.get_untracked() {
-                let options = web_sys::FocusOptions::new();
-                options.set_prevent_scroll(true);
-                let _ = input.focus_with_options(&options);
-            }
+            crate::shell::focus_without_scroll(title_input.get_untracked().map(Into::into));
         }
         Field::Title | Field::Body => body.focus(),
         Field::Tags => {
@@ -1359,8 +1347,7 @@ fn Editor(draft: Draft) -> impl IntoView {
         });
     };
     let save_and_leave = move || {
-        let reconcile =
-            session.with_untracked(|s| matches!(s.text.status(), SaveStatus::Failed(_)));
+        let reconcile = reconcile_after_failure();
         let ticket = leave
             .try_update(|g| session.try_update(|s| g.save_and_leave(s)))
             .flatten()
@@ -1554,18 +1541,12 @@ fn Editor(draft: Draft) -> impl IntoView {
         conversion_notice.set(None);
         converting.set(true);
         clear_just_saved();
-        let request = match conversion.target_format {
-            DocumentFormatDto::Default => crate::contract::SaveDraftRequest {
-                expected_version: ticket.expected_version,
-                title: Some(conversion.title.trim().to_owned()),
-                document: crate::document::default_document(&conversion.source),
-            },
-            DocumentFormatDto::Markdown => crate::contract::SaveDraftRequest {
-                expected_version: ticket.expected_version,
-                title: None,
-                document: crate::document::markdown_document(&conversion.source),
-            },
-        };
+        let request = save_request(
+            conversion.target_format,
+            ticket.expected_version,
+            &conversion.title,
+            &conversion.source,
+        );
         #[cfg(feature = "browser")]
         {
             let id = work_id.get_value();
@@ -1795,8 +1776,7 @@ fn Editor(draft: Draft) -> impl IntoView {
         >
             <header class="vk-editor-topbar flex flex-wrap items-center justify-between gap-vk-3">
                 <EditorHeading label=Signal::derive(move || heading.get()) />
-                <crate::ui::patterns::EditorToolbar attr:id=TOOLBAR_ID attr:data-testid="editor-toolbar"
-                    paper_first=true compact_details=true
+                <crate::ui::patterns::EditorToolbar attr:id="editor-toolbar" attr:data-testid="editor-toolbar"
                     status=Signal::derive(move || status_label.get())
                     status_token=Signal::derive(move || status_token.get())
                     status_problem=Signal::derive(move || status_problem.get())
@@ -2271,7 +2251,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                     }>"Lưu đè bản của tôi"</Button>
             }
             attr:data-testid="conflict">
-            <p>{move || status_detail(status())}</p>
+            <p>{move || text_detail(status(), false)}</p>
         </vink_ui::Dialog>
         <vink_ui::Dialog
             id="format-convert-dialog"
@@ -2373,9 +2353,7 @@ fn TitleDisclosure(title: RwSignal<String>, input: NodeRef<html::Input>) -> impl
                         .active_element()
                         .is_some_and(|active| details.contains(Some(&active)))
                     {
-                        let options = web_sys::FocusOptions::new();
-                        options.set_prevent_scroll(true);
-                        let _ = input.focus_with_options(&options);
+                        crate::shell::focus_without_scroll(Some(input.clone().into()));
                     }
                     details.set_open(false);
                 }
@@ -2501,14 +2479,12 @@ fn observe_outline_layout(node: NodeRef<html::Dialog>) {
                 panel.close();
             }
             if modal {
+                let _ = panel.remove_attribute("role");
                 let _ = panel.show_modal();
                 focus_element_by_id("editor-outline-close");
             } else {
                 panel.show();
                 let _ = panel.set_attribute("role", "complementary");
-            }
-            if modal {
-                let _ = panel.remove_attribute("role");
             }
         };
         sync();
@@ -2531,17 +2507,7 @@ fn observe_outline_layout(node: NodeRef<html::Dialog>) {
 
 fn focus_element_by_id(id: &str) {
     #[cfg(feature = "browser")]
-    {
-        use wasm_bindgen::JsCast;
-        if let Some(el) = document()
-            .get_element_by_id(id)
-            .and_then(|node| node.dyn_into::<web_sys::HtmlElement>().ok())
-        {
-            let options = web_sys::FocusOptions::new();
-            options.set_prevent_scroll(true);
-            let _ = el.focus_with_options(&options);
-        }
-    }
+    crate::shell::focus_without_scroll(document().get_element_by_id(id));
     #[cfg(not(feature = "browser"))]
     let _ = id;
 }
@@ -2632,67 +2598,66 @@ impl DraftActionIcon {
             Self::Spin => "spin",
         }
     }
+
+    /// 24-unit stroke paths of the primary Send / Save action (nut-gui-luu).
+    fn paths(self) -> &'static [&'static str] {
+        match self {
+            Self::Send => &[
+                "M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z",
+                "m21.854 2.147-10.94 10.939",
+            ],
+            Self::Save => &[
+                "M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z",
+                "M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7",
+                "M7 3v4a1 1 0 0 0 1 1h7",
+            ],
+            Self::Spin => &["M21 12a9 9 0 1 1-6.219-8.56"],
+        }
+    }
 }
 
 fn render_draft_action_icon(icon: DraftActionIcon) -> AnyView {
-    match icon {
-        DraftActionIcon::Send => view! {
-            <svg
-                class="vk-draft-action-icon"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-                focusable="false"
-            >
-                <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
-                <path d="m21.854 2.147-10.94 10.939" />
-            </svg>
-        }
-        .into_any(),
-        DraftActionIcon::Save => view! {
-            <svg
-                class="vk-draft-action-icon"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-                focusable="false"
-            >
-                <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
-                <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7" />
-                <path d="M7 3v4a1 1 0 0 0 1 1h7" />
-            </svg>
-        }
-        .into_any(),
-        DraftActionIcon::Spin => view! {
-            <svg
-                class="vk-draft-action-icon vk-draft-action-icon--spinner"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-                focusable="false"
-            >
-                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-            </svg>
-        }
-        .into_any(),
+    view! {
+        <svg
+            class="vk-draft-action-icon"
+            class:vk-draft-action-icon--spinner=icon == DraftActionIcon::Spin
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            focusable="false"
+        >
+            {icon.paths().iter().map(|d| view! { <path d=*d /> }).collect_view()}
+        </svg>
+    }
+    .into_any()
+}
+
+/// The draft PUT for exactly this text. A default document sends its separate title trimmed (the
+/// live input keeps what was typed) and the source bytes unchanged; Markdown carries its title in
+/// the first H1 of the source (#263).
+fn save_request(
+    format: DocumentFormatDto,
+    expected_version: i64,
+    title: &str,
+    source: &str,
+) -> crate::contract::SaveDraftRequest {
+    let (title, document) = match format {
+        DocumentFormatDto::Default => (
+            Some(title.trim().to_owned()),
+            crate::document::default_document(source),
+        ),
+        DocumentFormatDto::Markdown => (None, crate::document::markdown_document(source)),
+    };
+    crate::contract::SaveDraftRequest {
+        expected_version,
+        title,
+        document,
     }
 }
 
@@ -2712,13 +2677,19 @@ fn restore_scroll(page_scroll: StoredValue<f64>) {
     let _ = page_scroll;
 }
 
-fn status_detail(status: SaveStatus) -> String {
+/// What the server holds for the text: the save details and the text conflict dialog.
+fn text_detail(status: SaveStatus, pending_newer: bool) -> String {
     match status {
-        SaveStatus::Saved { version } => format!("Đã lưu bản nháp phiên bản {version}."),
-        SaveStatus::Unsaved => "Thay đổi trên trang này chưa được lưu lên máy chủ.".into(),
+        SaveStatus::Saved { version } => {
+            format!("Đã lưu bản nháp phiên bản {version} trên máy chủ.")
+        }
+        SaveStatus::Saving if pending_newer => {
+            "Đang chờ máy chủ xác nhận bản đã gửi. Đã gõ thêm chữ mới trong lúc lưu; phần mới vẫn cần được lưu tiếp.".into()
+        }
         SaveStatus::Saving => {
             "Đang chờ máy chủ xác nhận bản nháp đã gửi. Chữ gõ thêm vẫn cần được lưu.".into()
         }
+        SaveStatus::Unsaved => "Thay đổi chữ trên trang này chưa được lưu lên máy chủ.".into(),
         SaveStatus::Conflict { server_version } => format!(
             "Máy chủ đang ở phiên bản {server_version}. Nội dung đang viết chưa được lưu vào bản đó."
         ),
@@ -2727,7 +2698,7 @@ fn status_detail(status: SaveStatus) -> String {
 }
 
 fn failure_detail(failure: Failure) -> String {
-    let uncertainty = if save_is_uncertain(SaveStatus::Failed(failure)) {
+    let uncertainty = if crate::tag_state::uncertain(failure) {
         " Máy chủ chưa xác nhận."
     } else {
         ""
@@ -2735,13 +2706,6 @@ fn failure_detail(failure: Failure) -> String {
     format!(
         "{}{uncertainty} Nội dung còn trên trang này; chưa có bản khôi phục tự động.",
         failure_reason(failure)
-    )
-}
-
-fn save_is_uncertain(status: SaveStatus) -> bool {
-    matches!(
-        status,
-        SaveStatus::Failed(Failure::Network | Failure::Unavailable | Failure::Unexpected)
     )
 }
 
@@ -2839,6 +2803,25 @@ enum SaveSlotAction {
     },
 }
 
+impl SaveSlotAction {
+    /// The idle save button: “Gửi” until the first version is acknowledged, then “Lưu”.
+    fn save_or_send(first_send: bool) -> Self {
+        if first_send {
+            Self::Save {
+                label: "Gửi",
+                pending: false,
+                icon: DraftActionIcon::Send,
+            }
+        } else {
+            Self::Save {
+                label: "Lưu",
+                pending: false,
+                icon: DraftActionIcon::Save,
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct SaveSlotFacts {
     text: SaveStatus,
@@ -2888,7 +2871,6 @@ fn sync_save_slot_focus(
     if !was_save_focused {
         return;
     }
-    use wasm_bindgen::JsCast;
     request_animation_frame(move || {
         let doc = document();
         if doc.get_element_by_id("save").is_some()
@@ -2911,33 +2893,13 @@ fn sync_save_slot_focus(
             SaveSlotAction::Recover { .. } => Some("#save-recovery-jump"),
             SaveSlotAction::Save { .. } | SaveSlotAction::Retry { .. } => None,
         };
-        if let Some(target) = target_selector
-            .and_then(|sel| doc.query_selector(sel).ok().flatten())
-            .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
-        {
-            let options = web_sys::FocusOptions::new();
-            options.set_prevent_scroll(true);
-            let _ = target.focus_with_options(&options);
-        }
+        crate::shell::focus_without_scroll(
+            target_selector.and_then(|sel| doc.query_selector(sel).ok().flatten()),
+        );
     });
 }
 
 fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
-    let text_detail = match (facts.text, facts.text_pending_newer) {
-        (SaveStatus::Saved { version }, _) => {
-            format!("Đã lưu bản nháp phiên bản {version} trên máy chủ.")
-        }
-        (SaveStatus::Saving, true) => {
-            "Đang chờ máy chủ xác nhận bản đã gửi. Đã gõ thêm chữ mới trong lúc lưu; phần mới vẫn cần được lưu tiếp.".into()
-        }
-        (SaveStatus::Saving, false) => {
-            "Đang chờ máy chủ xác nhận bản nháp đã gửi. Chữ gõ thêm vẫn cần được lưu.".into()
-        }
-        (SaveStatus::Unsaved, _) => {
-            "Thay đổi chữ trên trang này chưa được lưu lên máy chủ.".into()
-        }
-        (other, _) => status_detail(other),
-    };
     let tag_detail = match (&facts.tags, facts.tags_read, facts.tags_pending_newer) {
         (Some(tags), _, true) => format!(
             "{} Đã chọn thẻ khác trong lúc chờ; lựa chọn mới nhất vẫn cần được lưu tiếp.",
@@ -2950,6 +2912,11 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
             "Không tải được thông tin thẻ từ máy chủ; kiểm tra mục Tùy chọn bài viết.".into()
         }
     };
+    // Every state except "all saved" reports both parts in the details.
+    let detail = format!(
+        "{} {tag_detail}",
+        text_detail(facts.text, facts.text_pending_newer)
+    );
 
     if matches!(facts.text, SaveStatus::Saving) || matches!(facts.tags, Some(TagStatus::Saving)) {
         let sending_first = facts.first_send && matches!(facts.text, SaveStatus::Saving);
@@ -2981,7 +2948,7 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
             status_text: status_text.into(),
             status_token: "saving",
             problem_kind: None,
-            detail_text: format!("{text_detail} {tag_detail}"),
+            detail_text: detail,
             action: SaveSlotAction::Save {
                 label: if sending_first {
                     "Đang gửi…"
@@ -3019,7 +2986,7 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
             status_text: status_text.into(),
             status_token: "conflict",
             problem_kind: Some("conflict"),
-            detail_text: format!("{text_detail} {tag_detail}"),
+            detail_text: detail,
             action: tag_action.unwrap_or(SaveSlotAction::Recover {
                 label: "Xử lý xung đột",
                 target: RecoveryTarget::TextConflict,
@@ -3028,7 +2995,7 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
     }
 
     if let SaveStatus::Failed(failure) = facts.text {
-        let text_uncertain = save_is_uncertain(SaveStatus::Failed(failure));
+        let text_uncertain = crate::tag_state::uncertain(failure);
         let problem_kind = Some(if text_uncertain {
             "uncertain"
         } else {
@@ -3074,7 +3041,7 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
             status_text: status_text.into(),
             status_token: "failed",
             problem_kind,
-            detail_text: format!("{text_detail} {tag_detail}"),
+            detail_text: detail,
             action: if title_invalid {
                 tag_action.unwrap_or(SaveSlotAction::Recover {
                     label: "Sửa tiêu đề",
@@ -3117,7 +3084,7 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
                 status_text: status_text.into(),
                 status_token,
                 problem_kind: Some("conflict"),
-                detail_text: format!("{text_detail} {tag_detail}"),
+                detail_text: detail,
                 action,
             }
         }
@@ -3146,7 +3113,7 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
                 status_text: status_text.into(),
                 status_token,
                 problem_kind: Some("refused"),
-                detail_text: format!("{text_detail} {tag_detail}"),
+                detail_text: detail,
                 action,
             }
         }
@@ -3170,7 +3137,7 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
                 status_text: status_text.into(),
                 status_token: "failed",
                 problem_kind: Some(if uncertain { "uncertain" } else { "rejected" }),
-                detail_text: format!("{text_detail} {tag_detail}"),
+                detail_text: detail,
                 action: SaveSlotAction::Retry {
                     label,
                     pending: false,
@@ -3188,21 +3155,12 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
             } else {
                 ("Đã lưu chữ; chưa lưu thẻ", Some("partial"))
             };
-            let use_send = facts.first_send && text_dirty;
             SaveSlotView {
                 status_text: status_text.into(),
                 status_token: "unsaved",
                 problem_kind,
-                detail_text: format!("{text_detail} {tag_detail}"),
-                action: SaveSlotAction::Save {
-                    label: if use_send { "Gửi" } else { "Lưu" },
-                    pending: false,
-                    icon: if use_send {
-                        DraftActionIcon::Send
-                    } else {
-                        DraftActionIcon::Save
-                    },
-                },
+                detail_text: detail,
+                action: SaveSlotAction::save_or_send(facts.first_send && text_dirty),
             }
         }
         Some(TagStatus::Saved { .. }) => {
@@ -3211,16 +3169,8 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
                     status_text: "Chưa lưu chữ".into(),
                     status_token: "unsaved",
                     problem_kind: Some("partial"),
-                    detail_text: format!("{text_detail} {tag_detail}"),
-                    action: SaveSlotAction::Save {
-                        label: if facts.first_send { "Gửi" } else { "Lưu" },
-                        pending: false,
-                        icon: if facts.first_send {
-                            DraftActionIcon::Send
-                        } else {
-                            DraftActionIcon::Save
-                        },
-                    },
+                    detail_text: detail,
+                    action: SaveSlotAction::save_or_send(facts.first_send),
                 }
             } else {
                 let version = match facts.text {
@@ -3248,16 +3198,8 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
                     .into(),
                     status_token: "unsaved",
                     problem_kind: None,
-                    detail_text: format!("{text_detail} {tag_detail}"),
-                    action: SaveSlotAction::Save {
-                        label: if facts.first_send { "Gửi" } else { "Lưu" },
-                        pending: false,
-                        icon: if facts.first_send {
-                            DraftActionIcon::Send
-                        } else {
-                            DraftActionIcon::Save
-                        },
-                    },
+                    detail_text: detail,
+                    action: SaveSlotAction::save_or_send(facts.first_send),
                 }
             } else {
                 let (status_text, status_token, action) = match facts.tags_read {
@@ -3277,65 +3219,12 @@ fn project_save_slot(facts: &SaveSlotFacts) -> SaveSlotView {
                     status_text: status_text.into(),
                     status_token,
                     problem_kind: Some("partial"),
-                    detail_text: format!("{text_detail} {tag_detail}"),
+                    detail_text: detail,
                     action,
                 }
             }
         }
     }
-}
-
-/// The toolbar's one status line for both parts. Text states keep their words; tag states are
-/// named as tags, so a saved text never reads as saved tags.
-#[cfg(test)]
-fn draft_status_text(text: SaveStatus, tags: Option<&TagStatus>) -> String {
-    project_save_slot(&SaveSlotFacts {
-        text,
-        text_pending_newer: false,
-        tags: tags.cloned(),
-        tags_read: if tags.is_some() {
-            TagLoad::Ready
-        } else {
-            TagLoad::Loading
-        },
-        tags_pending_newer: false,
-        first_send: false,
-    })
-    .status_text
-}
-
-#[cfg(test)]
-fn draft_status_token(text: SaveStatus, tags: Option<&TagStatus>) -> &'static str {
-    project_save_slot(&SaveSlotFacts {
-        text,
-        text_pending_newer: false,
-        tags: tags.cloned(),
-        tags_read: if tags.is_some() {
-            TagLoad::Ready
-        } else {
-            TagLoad::Loading
-        },
-        tags_pending_newer: false,
-        first_send: false,
-    })
-    .status_token
-}
-
-#[cfg(test)]
-fn draft_status_detail(text: SaveStatus, tags: Option<&TagStatus>) -> String {
-    project_save_slot(&SaveSlotFacts {
-        text,
-        text_pending_newer: false,
-        tags: tags.cloned(),
-        tags_read: if tags.is_some() {
-            TagLoad::Ready
-        } else {
-            TagLoad::Loading
-        },
-        tags_pending_newer: false,
-        first_send: false,
-    })
-    .detail_text
 }
 
 /// The short state shown beside “Thông tin tác phẩm”.
@@ -3429,41 +3318,75 @@ mod editor_presentation_tests {
     use crate::desk_state::EditorSession;
     use crate::tag_state::TagStatus;
 
+    /// Facts with no newer edits pending, a ready tag read and a draft past its first send.
+    fn facts(text: SaveStatus, tags: Option<TagStatus>) -> SaveSlotFacts {
+        SaveSlotFacts {
+            text,
+            text_pending_newer: false,
+            tags,
+            tags_read: TagLoad::Ready,
+            tags_pending_newer: false,
+            first_send: false,
+        }
+    }
+
+    /// The bar as the toolbar shows it; tags are still loading when none are given.
+    fn slot_view(text: SaveStatus, tags: Option<&TagStatus>) -> SaveSlotView {
+        project_save_slot(&SaveSlotFacts {
+            tags_read: if tags.is_some() {
+                TagLoad::Ready
+            } else {
+                TagLoad::Loading
+            },
+            ..facts(text, tags.cloned())
+        })
+    }
+
     #[test]
     fn the_toolbar_names_tag_states_and_keeps_text_words_when_tags_are_saved() {
         let saved_tags = TagStatus::Saved { version: 2 };
         let text = SaveStatus::Saved { version: 7 };
-        assert_eq!(draft_status_text(text, Some(&saved_tags)), "Đã lưu");
-        assert_eq!(draft_status_token(text, Some(&saved_tags)), "saved");
-        assert_eq!(draft_status_text(text, None), "Đã lưu chữ; đang tải thẻ…");
-        assert_eq!(draft_status_token(text, None), "loading");
+        assert_eq!(slot_view(text, Some(&saved_tags)).status_text, "Đã lưu");
+        assert_eq!(slot_view(text, Some(&saved_tags)).status_token, "saved");
         assert_eq!(
-            draft_status_text(text, Some(&TagStatus::Unsaved)),
+            slot_view(text, None).status_text,
+            "Đã lưu chữ; đang tải thẻ…"
+        );
+        assert_eq!(slot_view(text, None).status_token, "loading");
+        assert_eq!(
+            slot_view(text, Some(&TagStatus::Unsaved)).status_text,
             "Đã lưu chữ; chưa lưu thẻ",
             "a tag-only change names the partial state truthfully"
         );
-        assert_eq!(draft_status_token(text, Some(&TagStatus::Saving)), "saving");
         assert_eq!(
-            draft_status_text(text, Some(&TagStatus::Failed(Failure::Network))),
+            slot_view(text, Some(&TagStatus::Saving)).status_token,
+            "saving"
+        );
+        assert_eq!(
+            slot_view(text, Some(&TagStatus::Failed(Failure::Network))).status_text,
             "Đã lưu chữ; chưa xác nhận lưu thẻ."
         );
         assert_eq!(
-            draft_status_text(text, Some(&TagStatus::Failed(Failure::Unauthenticated))),
+            slot_view(text, Some(&TagStatus::Failed(Failure::Unauthenticated))).status_text,
             "Đã lưu chữ; thẻ chưa lưu được."
         );
         // Text conflict keeps conflict priority while still naming dirty tags truthfully.
         let conflict = SaveStatus::Conflict { server_version: 9 };
         assert_eq!(
-            draft_status_text(conflict, Some(&TagStatus::Unsaved)),
+            slot_view(conflict, Some(&TagStatus::Unsaved)).status_text,
             "Có bản mới hơn trên máy chủ; thẻ chưa lưu."
         );
         assert_eq!(
-            draft_status_text(conflict, Some(&saved_tags)),
+            slot_view(conflict, Some(&saved_tags)).status_text,
             "Có bản mới trên máy chủ."
         );
-        let detail = draft_status_detail(text, Some(&TagStatus::Unsaved));
+        let detail = slot_view(text, Some(&TagStatus::Unsaved)).detail_text;
         assert!(detail.contains("phiên bản 7") && detail.contains("Thẻ có thay đổi chưa lưu."));
-        assert!(!draft_status_detail(text, Some(&saved_tags)).contains("phiên bản 2"));
+        assert!(
+            !slot_view(text, Some(&saved_tags))
+                .detail_text
+                .contains("phiên bản 2")
+        );
     }
 
     #[test]
@@ -3480,14 +3403,10 @@ mod editor_presentation_tests {
         });
 
         // Clean state: no prominent Save CTA, explicit server explanation, no local/device save claim.
-        let clean = project_save_slot(&SaveSlotFacts {
-            text: SaveStatus::Saved { version: 5 },
-            text_pending_newer: false,
-            tags: Some(saved_tags.clone()),
-            tags_read: TagLoad::Ready,
-            tags_pending_newer: false,
-            first_send: false,
-        });
+        let clean = project_save_slot(&facts(
+            SaveStatus::Saved { version: 5 },
+            Some(saved_tags.clone()),
+        ));
         assert_eq!(clean.action, SaveSlotAction::None);
         assert_eq!(clean.status_token, "saved");
         assert!(clean.detail_text.contains("phiên bản 5"));
@@ -3499,12 +3418,8 @@ mod editor_presentation_tests {
 
         // Failed tag catalog/draft load while text saved is disclosed truthfully in detail.
         let tag_load_failed = project_save_slot(&SaveSlotFacts {
-            text: SaveStatus::Saved { version: 5 },
-            text_pending_newer: false,
-            tags: None,
             tags_read: TagLoad::Failed(Failure::Unavailable),
-            tags_pending_newer: false,
-            first_send: false,
+            ..facts(SaveStatus::Saved { version: 5 }, None)
         });
         assert_eq!(
             tag_load_failed.action,
@@ -3516,14 +3431,7 @@ mod editor_presentation_tests {
         assert_eq!(tag_load_failed.status_text, "Đã lưu chữ; chưa tải được thẻ");
 
         // Text dirty + tags saved vs tags dirty + text saved vs both dirty.
-        let text_only = project_save_slot(&SaveSlotFacts {
-            text: SaveStatus::Unsaved,
-            text_pending_newer: false,
-            tags: Some(saved_tags.clone()),
-            tags_read: TagLoad::Ready,
-            tags_pending_newer: false,
-            first_send: false,
-        });
+        let text_only = project_save_slot(&facts(SaveStatus::Unsaved, Some(saved_tags.clone())));
         assert_eq!(text_only.status_text, "Chưa lưu chữ");
         assert_eq!(
             text_only.action,
@@ -3534,39 +3442,24 @@ mod editor_presentation_tests {
             }
         );
 
-        let both_dirty = project_save_slot(&SaveSlotFacts {
-            text: SaveStatus::Unsaved,
-            text_pending_newer: false,
-            tags: Some(TagStatus::Unsaved),
-            tags_read: TagLoad::Ready,
-            tags_pending_newer: false,
-            first_send: false,
-        });
+        let both_dirty = project_save_slot(&facts(SaveStatus::Unsaved, Some(TagStatus::Unsaved)));
         assert_eq!(both_dirty.status_text, "Chưa lưu chữ và thẻ");
         assert_eq!(both_dirty.problem_kind, None);
 
         // Pending with newer local edits while saving keeps newer edit truth visible.
         let pending_newer = project_save_slot(&SaveSlotFacts {
-            text: SaveStatus::Saving,
             text_pending_newer: true,
-            tags: Some(saved_tags.clone()),
-            tags_read: TagLoad::Ready,
-            tags_pending_newer: false,
-            first_send: false,
+            ..facts(SaveStatus::Saving, Some(saved_tags.clone()))
         });
         assert_eq!(pending_newer.status_token, "saving");
         assert_eq!(pending_newer.status_text, "Đang lưu; có chữ mới…");
         assert!(pending_newer.detail_text.contains("gõ thêm chữ mới"));
 
         // Refused tags with clean text routes directly to tag fix, never offering fake Save/retry.
-        let refused_clean_text = project_save_slot(&SaveSlotFacts {
-            text: SaveStatus::Saved { version: 5 },
-            text_pending_newer: false,
-            tags: Some(refused.clone()),
-            tags_read: TagLoad::Ready,
-            tags_pending_newer: false,
-            first_send: false,
-        });
+        let refused_clean_text = project_save_slot(&facts(
+            SaveStatus::Saved { version: 5 },
+            Some(refused.clone()),
+        ));
         assert_eq!(
             refused_clean_text.action,
             SaveSlotAction::Recover {
@@ -3577,14 +3470,7 @@ mod editor_presentation_tests {
         assert_eq!(refused_clean_text.problem_kind, Some("refused"));
 
         // Refused tags with dirty text offers saving text only.
-        let refused_dirty_text = project_save_slot(&SaveSlotFacts {
-            text: SaveStatus::Unsaved,
-            text_pending_newer: false,
-            tags: Some(refused),
-            tags_read: TagLoad::Ready,
-            tags_pending_newer: false,
-            first_send: false,
-        });
+        let refused_dirty_text = project_save_slot(&facts(SaveStatus::Unsaved, Some(refused)));
         assert_eq!(
             refused_dirty_text.action,
             SaveSlotAction::Save {
@@ -3595,17 +3481,13 @@ mod editor_presentation_tests {
         );
 
         // Tag conflict with clean text routes to tag conflict recovery; text conflict routes to text recovery.
-        let tag_conflict = project_save_slot(&SaveSlotFacts {
-            text: SaveStatus::Saved { version: 5 },
-            text_pending_newer: false,
-            tags: Some(TagStatus::Conflict {
+        let tag_conflict = project_save_slot(&facts(
+            SaveStatus::Saved { version: 5 },
+            Some(TagStatus::Conflict {
                 server_version: 3,
                 stored: Selection::default(),
             }),
-            tags_read: TagLoad::Ready,
-            tags_pending_newer: false,
-            first_send: false,
-        });
+        ));
         assert_eq!(
             tag_conflict.action,
             SaveSlotAction::Recover {
@@ -3614,14 +3496,10 @@ mod editor_presentation_tests {
             }
         );
 
-        let text_conflict = project_save_slot(&SaveSlotFacts {
-            text: SaveStatus::Conflict { server_version: 9 },
-            text_pending_newer: false,
-            tags: Some(saved_tags),
-            tags_read: TagLoad::Ready,
-            tags_pending_newer: false,
-            first_send: false,
-        });
+        let text_conflict = project_save_slot(&facts(
+            SaveStatus::Conflict { server_version: 9 },
+            Some(saved_tags),
+        ));
         assert_eq!(
             text_conflict.action,
             SaveSlotAction::Recover {
@@ -3634,12 +3512,8 @@ mod editor_presentation_tests {
     #[test]
     fn first_send_uses_gui_label_until_version_two_is_acknowledged() {
         let send_idle = project_save_slot(&SaveSlotFacts {
-            text: SaveStatus::Unsaved,
-            text_pending_newer: false,
-            tags: None,
-            tags_read: TagLoad::Ready,
-            tags_pending_newer: false,
             first_send: true,
+            ..facts(SaveStatus::Unsaved, None)
         });
         assert_eq!(
             send_idle.action,
@@ -3651,12 +3525,8 @@ mod editor_presentation_tests {
         );
 
         let send_pending = project_save_slot(&SaveSlotFacts {
-            text: SaveStatus::Saving,
-            text_pending_newer: false,
-            tags: None,
-            tags_read: TagLoad::Ready,
-            tags_pending_newer: false,
             first_send: true,
+            ..facts(SaveStatus::Saving, None)
         });
         assert_eq!(send_pending.status_text, "Đang gửi…");
         assert_eq!(
@@ -3668,14 +3538,7 @@ mod editor_presentation_tests {
             }
         );
 
-        let subsequent_save = project_save_slot(&SaveSlotFacts {
-            text: SaveStatus::Unsaved,
-            text_pending_newer: false,
-            tags: None,
-            tags_read: TagLoad::Ready,
-            tags_pending_newer: false,
-            first_send: false,
-        });
+        let subsequent_save = project_save_slot(&facts(SaveStatus::Unsaved, None));
         assert_eq!(
             subsequent_save.action,
             SaveSlotAction::Save {
@@ -3771,19 +3634,19 @@ mod editor_presentation_tests {
         session.edited();
         session.save_succeeded(ticket, 7);
         assert_eq!(
-            draft_status_text(session.status(), Some(&saved_tags)),
+            slot_view(session.status(), Some(&saved_tags)).status_text,
             "Chưa lưu chữ"
         );
-        assert!(!status_detail(session.status()).contains("Đã lưu"));
+        assert!(!text_detail(session.status(), false).contains("Đã lưu"));
         let ticket = session.begin_save().expect("newer text still needs saving");
         session.save_succeeded(ticket, 8);
         assert_eq!(
-            draft_status_text(session.status(), Some(&saved_tags)),
+            slot_view(session.status(), Some(&saved_tags)).status_text,
             "Đã lưu"
         );
         assert_eq!(
-            status_detail(session.status()),
-            "Đã lưu bản nháp phiên bản 8."
+            text_detail(session.status(), false),
+            "Đã lưu bản nháp phiên bản 8 trên máy chủ."
         );
     }
 
@@ -3792,7 +3655,7 @@ mod editor_presentation_tests {
         let saved_tags = TagStatus::Saved { version: 1 };
         for failure in [Failure::Network, Failure::Unavailable, Failure::Unexpected] {
             assert_eq!(
-                draft_status_text(SaveStatus::Failed(failure), Some(&saved_tags)),
+                slot_view(SaveStatus::Failed(failure), Some(&saved_tags)).status_text,
                 "Chưa xác nhận lưu."
             );
             assert!(failure_detail(failure).contains("Máy chủ chưa xác nhận."));
@@ -3804,7 +3667,7 @@ mod editor_presentation_tests {
             Failure::Invalid,
         ] {
             assert_eq!(
-                draft_status_text(SaveStatus::Failed(failure), Some(&saved_tags)),
+                slot_view(SaveStatus::Failed(failure), Some(&saved_tags)).status_text,
                 "Chưa lưu được."
             );
             assert!(failure_detail(failure).starts_with(failure_reason(failure)));
@@ -3818,10 +3681,10 @@ mod editor_presentation_tests {
         }
         let conflict = SaveStatus::Conflict { server_version: 9 };
         assert_eq!(
-            draft_status_text(conflict, Some(&saved_tags)),
+            slot_view(conflict, Some(&saved_tags)).status_text,
             "Có bản mới trên máy chủ."
         );
-        assert!(status_detail(conflict).contains("phiên bản 9"));
-        assert!(status_detail(conflict).contains("chưa được lưu vào bản đó"));
+        assert!(text_detail(conflict, false).contains("phiên bản 9"));
+        assert!(text_detail(conflict, false).contains("chưa được lưu vào bản đó"));
     }
 }

@@ -30,8 +30,6 @@ export interface EditorOptions {
   /** Element ids naming and describing the text box (the visible label and hint). */
   labelledBy: string;
   describedBy: string;
-  /** Id of a sticky element above the text (the toolbar); the caret is kept clear of it. */
-  stickyAboveId?: string;
   /** Called after every change to the document, including IME composition updates. */
   onChange: () => void;
   /** Called when the Markdown AST outline or active heading changes. */
@@ -161,12 +159,7 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
       }
       const head = handle.view.state.selection.main.head;
       const coords = handle.view.coordsAtPos(head);
-      const sticky = options.stickyAboveId ? document.getElementById(options.stickyAboveId) : null;
-      const topClearance =
-        sticky && getComputedStyle(sticky).position === 'sticky'
-          ? Math.max(0, sticky.getBoundingClientRect().bottom)
-          : 0;
-      const hidden = !coords || coords.top < topClearance || coords.bottom > window.innerHeight;
+      const hidden = !coords || coords.top < 0 || coords.bottom > window.innerHeight;
       if (hidden && scrollEnsureLeft > 0) {
         scrollEnsureLeft -= 1;
         handle.view.dispatch({ effects: EditorView.scrollIntoView(head) });
@@ -267,11 +260,6 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
           autocorrect: 'off',
           autocapitalize: 'sentences',
         }),
-        EditorView.scrollMargins.of(() => {
-          const sticky = options.stickyAboveId ? document.getElementById(options.stickyAboveId) : null;
-          if (!sticky || getComputedStyle(sticky).position !== 'sticky') return null;
-          return { top: sticky.getBoundingClientRect().height + 16 };
-        }),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             cancelFocusRestore();
@@ -337,19 +325,6 @@ export function focusEditor(handle: EditorHandle): void {
 /** True while an input method is composing; a save shortcut then waits for the commit. */
 export function isComposing(handle: EditorHandle): boolean {
   return handle.view.composing || handle.view.compositionStarted;
-}
-
-/** Reconfigures the Markdown Live Preview extension on the existing EditorView without remounting. */
-export function setFormat(handle: EditorHandle, format: DocumentFormat): void {
-  if (handle.destroyed) return;
-  const next: DocumentFormat = format === 'markdown' ? 'markdown' : 'default';
-  if (handle.format === next) return;
-  handle.format = next;
-  handle.generation += 1;
-  handle.view.dispatch({
-    effects: handle.markdownCompartment.reconfigure(next === 'markdown' ? markdownExtension : []),
-  });
-  handle.emitOutlineNow();
 }
 
 /** Replaces the document and format after an explicit, server-acknowledged conversion. */

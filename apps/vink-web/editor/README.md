@@ -10,14 +10,16 @@ thứ hai: Leptos vẫn sở hữu trang, trạng thái lưu và giao tiếp v�
 | `EditorHandle`, `BodySource::snapshot`, mount/teardown có kiểm owner | [src/editor.rs](../src/editor.rs) |
 | Dirty/saving/saved/conflict, ticket version, ý định rời trang | [src/desk_state.rs](../src/desk_state.rs) (`EditorSession`, `LeaveGuard`) |
 | Chữ nguồn ↔ document v1 | [src/document.rs](../src/document.rs) |
-| Màu, chữ, khoảng cách của editor | `.vk-editor-body` trong [vink.css](../style/vink.css) |
+| Màu, chữ, khoảng cách của editor | `.vk-editor-body` trong [vink.css](../style/vink.css); rule `.cm-*` không layer trong [web.css](../../../packages/ui-system/leptos/tailwind/web.css) |
 
 CodeMirror sửa **chữ nguồn**: đoạn văn và câu thơ ngăn bằng xuống dòng, khổ ngăn bằng dòng trống.
-Runtime không hiểu Markdown, không sinh HTML và không đổi contract document v1. Enter chỉ xuống
+Với bản Markdown, runtime chỉ trang trí Live Preview và đọc mục lục ([markdown.ts](src/markdown.ts));
+không sinh HTML và không đổi contract document v1. Enter chỉ xuống
 dòng (không tự chép thụt lề); Tab để chuyển focus. Mỗi bản nháp đang mở có đúng một `EditorView`;
-đổi theme là thay CSS variables, preview/dialog/thông báo lưu không remount view.
+đổi theme là thay CSS variables; dialog, thông báo lưu và đổi định dạng (`applyConvertedDocument`)
+không remount view.
 
-Save, preview và guard rời trang đều đọc `BodySource::snapshot()`, tức
+Lưu, xem trước đổi định dạng và guard rời trang đều đọc `BodySource::snapshot()`, tức
 `view.state.doc.toString()` tại thời điểm đó. Ctrl/⌘+S chờ IME commit xong.
 
 ## Build
