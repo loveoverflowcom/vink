@@ -1,0 +1,22 @@
+version = 1
+id = "VDR-SUBMISSION-POLICY"
+revision = 1
+
+[content]
+kind = "product"
+domain = "publication"
+title = "Giai đoạn 2 của điều kiện gửi bài duyệt"
+resolution = """
+Chờ chủ sản phẩm chọn sàn chung (10 chữ/số NFC + 2 token, tối đa 80.000 scalar nguồn) hoặc chính sách riêng theo dạng bài. Các bộ ngưỡng minh họa title/body/max nguồn: Thơ 1–120/10 cùng 2 token hoặc 2 dòng/20.000; Đoản văn 1–160/40/15.000; Văn xuôi dài 2–160/150/80.000; Diễn đàn 6–160/50/30.000. Cần map từng dạng tới catalog và duyệt riêng việc bắt buộc Form. Đề xuất title phải có chữ/số, số ảnh tối đa, gợi ý viết hoa/lặp/đoạn dài, bộ đếm, fingerprint theo tác giả 24 giờ, rate limit, retention và ngoại lệ sửa/gửi lại cũng chờ quyết định.
+"""
+rationale = "Issue #533 chọn C trong khi chưa có signoff. Thơ cực ngắn, tiêu đề ký hiệu và điệp ngữ là các ca phải thử. Đòi corpus tiếng Việt, biên min−1/min/max/max+1, kiểm Form đã ngừng dùng, chi phí, riêng tư và retry trước khi áp dụng. Nháp và revision lịch sử giữ hợp đồng gốc."
+requires = [
+    "VDR-DECISION-SIGNOFF@r1",
+    "VDR-DOCUMENT-SOURCE-FORMAT@r2",
+]
+related_ids = [
+    "MOD-05",
+    "PUB-01",
+    "TAG-FR-02",
+    "WR-01",
+]

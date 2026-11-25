@@ -352,3 +352,22 @@ M3 và M4 (quản trị kiểm duyệt, 11/11/2026) có replay qua core thuần.
 bằng chứng model. #158 có migration/API cho snapshot, ý định công khai và trạng thái tác giả; chưa
 có migration cho grant/ca/phản đối/chế độ tự động/điều tra hay trường trang ẩn, chưa có worker,
 evaluator/authority runtime, UI hay kênh thông báo.
+
+## Điều kiện gửi duyệt #533
+
+Áp dụng phương án C của [#533](https://github.com/loveoverflowcom/vink/issues/533) cho lệnh gửi duyệt mới.
+Tiêu đề do định dạng quyết định, giữ giới hạn 200 scalar NFC hiện có. Tên tác giả tự gõ “Chưa đặt tên”
+và tiêu đề bằng ký hiệu vẫn hợp lệ. Thân bài phải có ít nhất một chữ hoặc số hiển thị. Khoảng trắng,
+ký tự vô hình, URL thuần, ảnh Markdown (kể cả alt), HTML, đường phân cách và cấu trúc rỗng
+không cung cấp chữ cho phép kiểm này. Mặc định xét văn bản literal. Markdown dùng CommonMark,
+bỏ đúng H1 đầu tiên dù lồng trong quote/list, giữ cả phần trước/sau H1, nhãn link có nghĩa và chữ trong code.
+Nháp riêng giữ nguyên source, hash và các giới hạn tại [hợp đồng document](document-source-format.md).
+
+App kiểm nội dung của đúng revision bất biến trong transaction sau fence chủ sở hữu, standing,
+biên nhận và generation. Lệnh đã có biên nhận trả kết quả gốc. Lệnh mới thiếu nội dung dừng trước
+khi đổi audience/intent, con trỏ, ca duyệt, job hoặc outbox. Snapshot độc lập giữ ngữ nghĩa đã có.
+
+**Giai đoạn 2.** [VDR-SUBMISSION-POLICY@r1](../../decisions/proposals/VDR-SUBMISSION-POLICY.r1.toml)
+lưu các ngưỡng theo dạng, sàn chung, gợi ý nhẹ và chống trùng/tần suất ở trạng thái PENDING.
+Điều kiện triển khai là signoff đúng revision cùng corpus thơ ngắn, ca biên, đối soát catalog,
+retry và retention. Idempotency hiện chỉ xử lý phát lại cùng lệnh.

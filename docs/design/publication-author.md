@@ -29,6 +29,12 @@ viết mà không đổi domain, API, state machine hay quy tắc kiểm duyệt
   border, không container màu riêng; giữ `tabindex="-1"` làm đích trả focus trong vùng khi nút chính
   và công tắc đang ẩn/khóa.
 
+**Gửi bản rỗng (#533).** Nháp mới và công tắc chưa hiện lỗi. Khi bấm nút gửi, vùng
+`#submission-summary` trong Tùy chọn nêu các trường cần bổ sung. Lỗi hiện sát ô Tiêu đề
+và Nội dung theo thứ tự đọc. Với Markdown, hướng dẫn H1 nằm ở Nội dung. Trường đầu tiên
+nhận focus; bảng mở trên màn hẹp, editor giữ nguyên chữ, undo và vùng chọn. Tác giả có thể
+sửa từng trường, lưu riêng hoặc tắt Công khai. Sau khi sửa đủ, cần bấm gửi lần nữa.
+
 ```text
 LayoutSpec: Vùng công khai tại chỗ, r3 — proposed
 Context: tác giả đã đăng nhập, mở /ban-viet/{id}. Nội dung thật của tác giả không đưa vào tài liệu;

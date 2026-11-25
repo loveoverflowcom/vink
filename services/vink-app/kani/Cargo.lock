@@ -386,6 +386,7 @@ name = "vink-markdown-text"
 version = "0.1.0"
 dependencies = [
  "pulldown-cmark",
+ "unicode-normalization",
 ]
 
 [[package]]

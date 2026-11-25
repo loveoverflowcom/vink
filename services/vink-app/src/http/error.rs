@@ -19,6 +19,7 @@ use crate::domain::ids::{RevisionId, TagId};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ApiError {
     HandleRefused(&'static str),
+    InvalidSubmission(vink_markdown_text::submission::SubmissionIssues),
     Validation {
         field: &'static str,
         message: String,
@@ -165,7 +166,9 @@ impl ApiError {
     pub fn status(&self) -> StatusCode {
         match self {
             Self::HandleRefused(_) => StatusCode::CONFLICT,
-            Self::Validation { .. } => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::Validation { .. } | Self::InvalidSubmission(_) => {
+                StatusCode::UNPROCESSABLE_ENTITY
+            }
             Self::Unauthenticated => StatusCode::UNAUTHORIZED,
             Self::Forbidden
             | Self::NotCommentWriter
@@ -229,6 +232,7 @@ impl ApiError {
 
     pub fn envelope(&self) -> ErrorEnvelope {
         let (code, message, current_version, field) = match self {
+            Self::InvalidSubmission(_) => ("submission_validation_failed", "required submission content is missing".to_owned(), None, None),
             Self::Validation { field, message } => {
                 ("validation_failed", message.clone(), None, Some(*field))
             }
@@ -570,6 +574,19 @@ impl ApiError {
         };
         ErrorEnvelope {
             error: ErrorBody {
+                issues: if let Self::InvalidSubmission(issues) = self {
+                    [
+                        (issues.title_missing, "title", "missing_title"),
+                        (issues.body_missing, "body", "missing_body_text"),
+                    ]
+                    .into_iter()
+                    .filter_map(|(missing, field, code)| {
+                        missing.then_some(super::contract::SubmissionIssue { field, code })
+                    })
+                    .collect()
+                } else {
+                    Vec::new()
+                },
                 code,
                 message,
                 current_version,
@@ -824,10 +841,7 @@ impl From<AuthorPublicationError> for ApiError {
             AuthorPublicationError::Stale { current_generation } => {
                 Self::PublicationConflict { current_generation }
             }
-            AuthorPublicationError::MissingTitle => Self::Validation {
-                field: "title",
-                message: "a revision needs a title".into(),
-            },
+            AuthorPublicationError::InvalidSubmission(issues) => Self::InvalidSubmission(issues),
             AuthorPublicationError::RevisionRejected => Self::RevisionRejected,
             AuthorPublicationError::UnknownRevision => Self::UnknownRevision,
             AuthorPublicationError::WorkUnavailable => Self::WorkUnavailable,

@@ -667,7 +667,15 @@ pub struct ErrorEnvelope {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SubmissionIssueDto {
+    pub field: String,
+    pub code: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ErrorBody {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub issues: Vec<SubmissionIssueDto>,
     pub code: String,
     pub message: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -827,6 +835,10 @@ pub enum ApiError {
     TargetUnavailable,
     /// The same command key was sent with another payload: a client defect, not user input.
     KeyReused,
+    InvalidSubmission {
+        title_missing: bool,
+        body_missing: bool,
+    },
     /// A moderation decision on a removed comment.
     CommentRemoved,
     /// `403 self_endorsement`: the work's author or the comment's writer.
@@ -1025,6 +1037,24 @@ impl ApiError {
             (409, Some("comment_removed")) => Self::CommentRemoved,
             (410, Some("profile_gone")) => Self::ProfileGone,
             (422, Some("idempotency_key_reused")) => Self::KeyReused,
+            (422, Some("submission_validation_failed")) => {
+                let mut issues = vink_markdown_text::submission::SubmissionIssues::default();
+                for item in body.into_iter().flat_map(|b| b.issues) {
+                    match (item.field.as_str(), item.code.as_str()) {
+                        ("title", "missing_title") => issues.title_missing = true,
+                        ("body", "missing_body_text") => issues.body_missing = true,
+                        _ => return Self::Invalid { field: None },
+                    }
+                }
+                if issues.is_empty() {
+                    Self::Invalid { field: None }
+                } else {
+                    Self::InvalidSubmission {
+                        title_missing: issues.title_missing,
+                        body_missing: issues.body_missing,
+                    }
+                }
+            }
             (422, Some("follow_key_reused")) => Self::FollowKeyReused,
             (422, Some("unknown_tag")) => {
                 Self::TagRefused(TagRefusal::from_body(TagRefusalCode::UnknownTag, body))
@@ -1653,6 +1683,13 @@ mod tests {
         assert_eq!(
             classify("error.publication_key_reused.json", 422),
             ApiError::KeyReused
+        );
+        assert_eq!(
+            classify("error.submission_validation_failed.json", 422),
+            ApiError::InvalidSubmission {
+                title_missing: true,
+                body_missing: true
+            }
         );
         // A not-found work stays a plain not found; a draft conflict stays a plain conflict.
         assert_eq!(classify("error.not_found.json", 404), ApiError::NotFound);

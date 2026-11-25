@@ -69,6 +69,12 @@ và cơ chế dừng khi có revision cũ. Viết lại snapshot bất biến (W
 
 PUB-03 cần định nghĩa rõ phạm vi thu hồi trong hệ thống, thời hạn xử lý và cách xử lý lỗi đồng bộ. Không coi việc xóa card ở trang chủ là hoàn tất. Không hứa thu hồi các bản sao đã được người dùng lưu bên ngoài hệ thống.
 
+**Nghiệm thu PUB-01 (#533, giai đoạn 1).** Bàn viết lưu riêng cả nháp trống. Khi gửi duyệt,
+tác giả cần tiêu đề hiển thị được và thân bài có chữ hoặc số ngoài URL. Một chữ thơ là đủ.
+Markdown lấy H1 đầu tiên làm tiêu đề và kiểm phần còn lại theo CommonMark. Máy chủ đối chiếu
+revision đã chụp trước khi ghi ý định hoặc tạo việc duyệt. Dạng bài vẫn tùy chọn.
+[Quy tắc và các ngưỡng chờ duyệt](../docs/architecture/publication-moderation.md#điều-kiện-gửi-duyệt-533).
+
 ## 5. Kiểm duyệt và AI
 
 | ID | Ưu tiên | Yêu cầu | Nghiệm thu tiêu biểu |

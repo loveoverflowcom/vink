@@ -25,6 +25,7 @@ use crate::editor::{
 };
 use crate::navigation::NavigationGuard;
 use crate::pages::desk_review::{self, DeskReview, ReviewTarget, ReviewTrigger};
+use crate::pages::publication::{MISSING_BODY, MISSING_H1, MISSING_TITLE};
 use crate::pages::work_info::TagLoad;
 use crate::tag_state::{TagStatus, TagTicket};
 use crate::ui::{
@@ -33,6 +34,7 @@ use crate::ui::{
     patterns::AuthorWorkRow,
     search_dock::{SearchDockBack, SearchDockLauncher},
 };
+use vink_markdown_text::submission::{SubmissionBody, SubmissionIssues, check_submission};
 
 const DESK_UNAVAILABLE_SSR: &str = "Bàn viết cần JavaScript để mở bản nháp riêng.";
 const DESK_SIGN_IN: &str = "/toi?next=/ban-viet";
@@ -1147,6 +1149,68 @@ fn Editor(draft: Draft) -> impl IntoView {
     });
     let options_panel = NodeRef::<html::Details>::new();
     let review_pending = RwSignal::new(false);
+    let issues = RwSignal::new(SubmissionIssues::default());
+    let validate = Callback::new(move |()| {
+        let source = body.snapshot();
+        match format.get_untracked() {
+            DocumentFormatDto::Default => {
+                title.with_untracked(|t| check_submission(t, SubmissionBody::Literal(&source)))
+            }
+            DocumentFormatDto::Markdown => check_submission(
+                &vink_markdown_text::first_h1_projection(&source),
+                SubmissionBody::Markdown(&source),
+            ),
+        }
+    });
+    let show_issues = Callback::new(move |missing: SubmissionIssues| {
+        issues.set(missing);
+        #[cfg(feature = "browser")]
+        if !missing.is_empty() {
+            if let Some(panel) = options_panel.get_untracked() {
+                panel.set_open(true);
+            }
+            if missing.title_missing && format.get_untracked() == DocumentFormatDto::Default {
+                if let Some(input) = title_input.get_untracked() {
+                    let _ = input.focus();
+                }
+            } else {
+                body.focus();
+                if let Some(label) = document().get_element_by_id(BODY_LABEL_ID) {
+                    label.scroll_into_view_with_bool(true);
+                }
+            }
+        }
+    });
+    // Only revisit reported fields, after a pause. Ordinary typing never parses a whole
+    // manuscript for publication and correcting a field never starts a submission.
+    #[cfg(feature = "browser")]
+    Effect::new(move |_| {
+        let missing = issues.get();
+        if missing.is_empty() {
+            return;
+        }
+        let _edit = session.with(|s| s.text.edits());
+        let _format = format.get();
+        let timer = set_timeout_with_handle(
+            move || {
+                if title_composing.get_value() || body.is_composing() {
+                    return;
+                }
+                let current = validate.run(());
+                let remaining = SubmissionIssues {
+                    title_missing: missing.title_missing && current.title_missing,
+                    body_missing: missing.body_missing && current.body_missing,
+                };
+                if remaining != missing {
+                    issues.set(remaining);
+                }
+            },
+            std::time::Duration::from_millis(240),
+        );
+        if let Ok(timer) = timer {
+            on_cleanup(move || timer.clear());
+        }
+    });
     #[cfg(feature = "browser")]
     observe_editor_options(options_panel);
     let outline_open = RwSignal::new(false);
@@ -2126,9 +2190,9 @@ fn Editor(draft: Draft) -> impl IntoView {
                         <TextField id="draft-title" label="Tiêu đề" name="title" max_length=200 input_ref=title_input
                             variant=FieldVariant::FloatingTonal
                             placeholder="Chưa đặt tên" autocomplete="off" value=title
-                            error=Signal::derive(move || title_invalid().then(||
-                                "Tiêu đề cần tối đa 200 ký tự trên một dòng. Hãy bỏ ký tự điều khiển.".to_owned()
-                            ))
+                            error=Signal::derive(move || if title_invalid() {
+                                Some("Tiêu đề cần tối đa 200 ký tự trên một dòng. Hãy bỏ ký tự điều khiển.".to_owned())
+                            } else { issues.get().title_missing.then(|| MISSING_TITLE.to_owned()) })
                             on_focus=move |_| last_field.set_value(Field::Title)
                             on_input=move |input: vink_ui::TextInput| {
                                 title_composing.set_value(input.composing);
@@ -2156,6 +2220,13 @@ fn Editor(draft: Draft) -> impl IntoView {
                                 "Sửa tiêu đề cấp 1 đầu tiên để có tối đa 200 ký tự trên một dòng. Hãy bỏ ký tự điều khiển."
                             )}
                         </p>
+                        <div id="submission-body-errors" class="vk-ui-field__error" hidden=move || {
+                            let missing = issues.get();
+                            !missing.body_missing && !(missing.title_missing && format.get() == DocumentFormatDto::Markdown)
+                        }>
+                            <Show when=move || format.get() == DocumentFormatDto::Markdown && issues.get().title_missing><p>{MISSING_H1}</p></Show>
+                            <Show when=move || issues.get().body_missing><p>{MISSING_BODY}</p></Show>
+                        </div>
                         <BodyEditor source=body on_change=on_body_change on_ready=on_body_ready />
                         <Show when=move || body.state.get() == BodyState::Loading>
                             <p class="vk-muted vk-editor-body__pending">"Đang mở trình soạn thảo…"</p>
@@ -2284,9 +2355,9 @@ fn Editor(draft: Draft) -> impl IntoView {
                                 })}
                             </section>
                             {view! {
-                                <crate::pages::publication::PublicationPanel work_id=work_id.get_value() session review_pending
+                                <crate::pages::publication::PublicationPanel work_id=work_id.get_value() session review_pending issues validate show_issues
                                     on_save=Callback::new(move |()| save())
-                                    is_composing=Callback::new(move |()| body.is_composing()) />
+                                    is_composing=Callback::new(move |()| title_composing.get_value() || body.is_composing()) />
                             }.into_any()}
                         </div>
                     </details>
@@ -3235,7 +3306,7 @@ pub(crate) fn failure(error: &ApiError) -> Failure {
         ApiError::Unauthenticated => Failure::Unauthenticated,
         ApiError::Forbidden => Failure::Forbidden,
         ApiError::NotFound => Failure::NotFound,
-        ApiError::Invalid { .. } => Failure::Invalid,
+        ApiError::Invalid { .. } | ApiError::InvalidSubmission { .. } => Failure::Invalid,
         // Draft routes never answer the discussion or endorsement codes; treat them like any
         // unexpected reply.
         ApiError::VersionConflict { .. }

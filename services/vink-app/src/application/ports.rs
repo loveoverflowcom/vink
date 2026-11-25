@@ -216,7 +216,7 @@ pub struct AuthorSnapshotCapture {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CaptureSnapshotOutcome {
     Saved(AuthorSnapshotCapture),
-    MissingTitle,
+    InvalidSubmission(vink_markdown_text::submission::SubmissionIssues),
     Conflict {
         current_draft_version: Option<DraftVersion>,
         current_metadata_version: Option<MetadataVersion>,
@@ -236,6 +236,7 @@ pub struct AuthorPublicRequestOutcome {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RequestPublicOutcome {
     Accepted(AuthorPublicRequestOutcome),
+    InvalidSubmission(vink_markdown_text::submission::SubmissionIssues),
     Stale {
         current_generation: IntentGeneration,
     },

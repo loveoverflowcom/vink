@@ -162,6 +162,55 @@ async function newDraft(page, base, title, body) {
   return work;
 }
 
+/** #533: drive the actual editor and count publication writes independently of its copy. */
+async function submissionStructure(author, base, check) {
+  for (const format of ['default', 'markdown']) {
+    await author.goto(base + '/ban-viet');
+    await author.waitFor(HYDRATED + " && document.querySelector('#create-draft-format')", 'draft format');
+    await author.eval(`const select = document.querySelector('#create-draft-format'); select.value = ${JSON.stringify(format)}; select.dispatchEvent(new Event('change', {bubbles:true}))`);
+    await author.click('#create-draft');
+    await author.waitFor(EDITOR_READY + " && document.querySelector('#publication')?.dataset.phase === 'ready'", 'new editor and publication facts');
+    const work = await author.eval("location.pathname.split('/').pop()");
+    await author.eval("document.querySelector('#work-options').open = true");
+    const summary = "document.querySelector('#submission-summary').textContent.trim()";
+    await choose(author, 'public');
+    await author.waitFor("document.querySelector('#publication-primary') && !document.querySelector('#publication-primary').disabled", 'explicit submit enabled');
+    check(await author.eval(summary) === '', format + ' quiet on audience selection');
+    const wire = new Wire(author);
+    await author.eval("document.querySelector('#publication-primary').focus()");
+    await author.key('Enter');
+    await author.waitFor(summary + ".includes('tiêu đề và nội dung')", 'all issues from one press');
+    const field = format === 'default' ? '#draft-title' : '.cm-content';
+    check(await author.eval(`document.activeElement.matches(${JSON.stringify(field)})`), format + ' first field focused');
+    check(await author.eval("document.querySelector('.cm-content').getAttribute('aria-describedby').includes('submission-body-errors')"), 'body description linked');
+    if (format === 'default') {
+      await matrix(author, 'missing-submission', check);
+      await fill(author, '#draft-title', 'Chưa đặt tên');
+    } else {
+      await author.typeInBody('# Mưa\n\n![ảnh](a.jpg)\n<!-- kín -->');
+    }
+    await author.waitFor(summary + " === 'Trước khi gửi duyệt, hãy bổ sung nội dung.'", 'only corrected title clears');
+    await author.click('#publication-primary');
+    check(await author.eval("document.activeElement.matches('.cm-content')"), 'body focused for title-only draft');
+    const privateState = await stateOf(author, work);
+    check(wire.count('POST', '/snapshots') === 0 && wire.count('POST', '/publication/request-public') === 0 && privateState.revisions.length === 0 && !privateState.intent, 'invalid press never captures or submits');
+    await author.typeInBody('\n\nu\u031b\u0301');
+    await author.waitFor(summary + " === ''", 'short poem clears final error');
+    check(wire.count('POST', '/snapshots') === 0, 'correction does not submit');
+    wire.drop = { method: 'POST', suffix: '/snapshots' };
+    await wire.enable();
+    await author.click('#publication-primary');
+    await waitPhase(author, 'uncertain', 'stored snapshot with lost response');
+    await author.click('#publication-retry');
+    await waitPhase(author, 'reconciled', 'short poem submitted after snapshot replay', 30000);
+    const confirmed = await stateOf(author, work);
+    check(confirmed.revisions.length === 1 && confirmed.intent?.revision_id === confirmed.revisions[0].revision_id &&
+      wire.count('POST', '/snapshots') === 2 && wire.count('POST', '/publication/request-public') === 1, format + ' one revision and one reviewed intent');
+    check((await author.draft(work)).document.source.endsWith('u\u031b\u0301'), 'NFD poem roundtrips exactly');
+    await wire.close();
+  }
+}
+
 async function pickFormTag(page) {
   await page.waitFor("document.querySelector('#work-tags-form-select')?.options.length > 1", 'form tags from the catalog');
   await page.eval(`const options = document.querySelector('#work-options'); if (!options.open) options.querySelector('summary').click();
@@ -210,6 +259,7 @@ export async function publicationAuthor(page, { args, check, openPage }) {
   const admin = await openPage(contexts[0]);
   const mod = await openPage(contexts[1]);
   const principalA = await enter(author, ctx, `tac-gia-${stamp}@vi-du.vn`, 'Tác giả [Mẫu]');
+  await submissionStructure(author, base, check);
   const principalAdmin = await enter(admin, ctx, `quan-tri-${stamp}@vi-du.vn`, 'Quản trị [Mẫu]');
   const principalM = await enter(mod, ctx, `nguoi-duyet-${stamp}@vi-du.vn`, 'Người duyệt [Mẫu]');
   check(new Set([principalA, principalAdmin, principalM]).size === 3, 'the author, the admin and the moderator are three real principals with separate sessions');

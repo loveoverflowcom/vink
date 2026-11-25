@@ -11,4 +11,5 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+unicode-normalization = "0.1.26"
 pulldown-cmark = { version = "0.13.6", default-features = false }

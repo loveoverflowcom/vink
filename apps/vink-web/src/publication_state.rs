@@ -218,6 +218,7 @@ pub enum Refusal {
     /// The server saw this key with another payload: a defect, not something to retry.
     KeyReused,
     Invalid,
+    InvalidSubmission(vink_markdown_text::submission::SubmissionIssues),
     /// A success answer that does not describe this command.
     UnexpectedAnswer,
 }
@@ -940,6 +941,7 @@ impl Controller {
                         | Refusal::Forbidden
                         | Refusal::NotFound
                         | Refusal::Invalid
+                        | Refusal::InvalidSubmission(_)
                 );
                 if reads { self.read_step() } else { Step::None }
             }
@@ -1104,6 +1106,15 @@ fn classify(error: &ApiError) -> Answer {
         ApiError::UnknownRevision => Answer::Refused(Refusal::UnknownRevision),
         ApiError::WorkUnavailable => Answer::Refused(Refusal::WorkUnavailable),
         ApiError::KeyReused => Answer::Refused(Refusal::KeyReused),
+        ApiError::InvalidSubmission {
+            title_missing,
+            body_missing,
+        } => Answer::Refused(Refusal::InvalidSubmission(
+            vink_markdown_text::submission::SubmissionIssues {
+                title_missing: *title_missing,
+                body_missing: *body_missing,
+            },
+        )),
         ApiError::Invalid { .. } => Answer::Refused(Refusal::Invalid),
         ApiError::Network | ApiError::Unavailable | ApiError::Unexpected { .. } => Answer::Lost,
         // Discussion, endorsement and tag answers never come from these routes.

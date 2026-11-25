@@ -19,6 +19,12 @@ use crate::publication_state::{
     Summary, UncertainStage,
 };
 
+use vink_markdown_text::submission::SubmissionIssues;
+
+pub(crate) const MISSING_BODY: &str = "Viết ít nhất một chữ hoặc số ngoài tiêu đề và đường dẫn.";
+pub(crate) const MISSING_TITLE: &str = "Thêm tiêu đề cho bài viết.";
+pub(crate) const MISSING_H1: &str = "Thêm chữ vào tiêu đề cấp 1 đầu tiên của bài Markdown.";
+
 const PUBLIC: &str = "public";
 const PRIVATE: &str = "private";
 const PUBLICATION_NOTE_CLASS: &str =
@@ -230,6 +236,7 @@ fn notice_text(phase: Phase, captured: bool) -> Option<(Tone, String, String)> {
             "Mã lệnh không khớp với lần gửi trước.",
             "Máy chủ không ghi gì. Đã đọc lại trạng thái; hãy bắt đầu lại.",
         ),
+        Phase::Failed(Refusal::InvalidSubmission(_)) => None,
         Phase::Failed(Refusal::Invalid) => error(
             "Yêu cầu chưa hợp lệ.",
             "Tải lại trang rồi thử lại.",
@@ -466,6 +473,9 @@ pub fn PublicationPanel(
     work_id: String,
     session: RwSignal<DraftSession>,
     review_pending: RwSignal<bool>,
+    issues: RwSignal<SubmissionIssues>,
+    validate: Callback<(), SubmissionIssues>,
+    show_issues: Callback<SubmissionIssues>,
     #[prop(into)] on_save: Callback<()>,
     /// Whether an input method is composing in the body. A press then waits for the commit, like
     /// the save shortcut: half a syllable is never the text that gets frozen and sent.
@@ -532,6 +542,7 @@ pub fn PublicationPanel(
                 session: scope.clone(),
             });
         });
+        issues.set(SubmissionIssues::default());
         choice.set(String::new());
         runner.refresh();
     });
@@ -621,6 +632,7 @@ pub fn PublicationPanel(
         Primary::Withdraw => controller.with(Controller::can_withdraw),
         Primary::Nothing => Ok(()),
     });
+    let has_issues = Memo::new(move |_| !issues.get().is_empty());
     let working = Memo::new(move |_| controller.with(Controller::working));
     let primary_state = Signal::derive(move || {
         if working.get() {
@@ -633,6 +645,17 @@ pub fn PublicationPanel(
                 Some(note) => ActionState::disabled(note),
                 None => ActionState::Disabled { reason: None },
             },
+        }
+    });
+    // A response refers to the captured revision. New text in the editor may already
+    // correct it; attach field errors only where they still apply.
+    Effect::new(move |_| {
+        if let Phase::Failed(Refusal::InvalidSubmission(reported)) = phase.get() {
+            let current = validate.run(());
+            show_issues.run(SubmissionIssues {
+                title_missing: reported.title_missing && current.title_missing,
+                body_missing: reported.body_missing && current.body_missing,
+            });
         }
     });
     // Set by a press: the pressed control may be gone when the command settles (nothing left to
@@ -658,6 +681,15 @@ pub fn PublicationPanel(
         refocus.set_value(true);
         let step = match primary.get_untracked() {
             Primary::Submit { .. } => {
+                if gate.get_untracked().is_err() {
+                    return;
+                }
+                let missing = validate.run(());
+                if !missing.is_empty() {
+                    refocus.set_value(false);
+                    show_issues.run(missing);
+                    return;
+                }
                 let facts = editor.get_untracked();
                 controller.try_update(|c| c.start_submit(&facts))
             }
@@ -764,17 +796,29 @@ pub fn PublicationPanel(
                     checked=Signal::derive(move || choice.with(|value| value == PUBLIC))
                     disabled=Signal::derive(move || working.get() || facts_audience.get().is_none())
                     show_state=false
-                    on_change=move |checked| choice.set(if checked { PUBLIC } else { PRIVATE }.into())
+                    on_change=move |checked: bool| {
+                        if !checked { issues.set(SubmissionIssues::default()); }
+                        choice.set(if checked { PUBLIC } else { PRIVATE }.into());
+                    }
                 />
             </div>
-            <p class="vk-publication__live" id="publication-live" role="status" aria-atomic="true" data-testid="publication-live">
-                {move || live_text(phase.get())}
+            <p class="vk-publication__live" class:vk-ui-visually-hidden=move || has_issues.get() id="publication-live" role="status" aria-atomic="true" data-testid="publication-live">
+                {move || if has_issues.get() { "Bài còn thiếu thông tin để gửi duyệt." } else { live_text(phase.get()) }}
             </p>
             <Show when=move || status.with(Option::is_some)>
                 <p class=PUBLICATION_NOTE_CLASS id="publication-status" data-testid="publication-status">
                     {move || status.get().unwrap_or_default()}
                 </p>
             </Show>
+            <p id="submission-summary" class="vk-ui-field__error" hidden=move || !has_issues.get() && !matches!(phase.get(), Phase::Failed(Refusal::InvalidSubmission(_)))>
+                {move || match issues.get() {
+                    SubmissionIssues { title_missing: true, body_missing: true } => "Trước khi gửi duyệt, hãy bổ sung tiêu đề và nội dung.",
+                    SubmissionIssues { title_missing: true, .. } => "Trước khi gửi duyệt, hãy bổ sung tiêu đề.",
+                    SubmissionIssues { body_missing: true, .. } => "Trước khi gửi duyệt, hãy bổ sung nội dung.",
+                    _ if matches!(phase.get(), Phase::Failed(Refusal::InvalidSubmission(_))) => "Bản đã chụp thiếu nội dung cần thiết. Hãy gửi lại từ bản đã sửa.",
+                    _ => "",
+                }}
+            </p>
             {stale_note}
             {notice}
             <div class="vk-publication__actions flex flex-wrap items-center gap-vk-2 [min-inline-size:0] empty:hidden" id="publication-actions">

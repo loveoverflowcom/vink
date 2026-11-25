@@ -753,13 +753,15 @@ impl AuthorPublicationStore for PgStore {
             let rev_id = Uuid::now_v7();
             // The snapshot's title comes from the same saved version as its source.
             let draft_content = super::postgres::content(draft.document, &draft.title)?;
-            let content = match RevisionContent::new(draft_content) {
-                Ok(content) => content,
-                Err(crate::domain::revision::RevisionError::MissingTitle) => {
-                    tx.rollback().await.map_err(classify)?;
-                    return Ok(CaptureSnapshotOutcome::MissingTitle);
-                }
-            };
+            // Standalone capture still accepts titled historical shapes. An untitled draft
+            // cannot become a revision; return every structural issue for that exact version.
+            if draft_content.title().is_empty() {
+                let issues = crate::domain::revision::submission_issues(&draft_content);
+                tx.rollback().await.map_err(classify)?;
+                return Ok(CaptureSnapshotOutcome::InvalidSubmission(issues));
+            }
+            let content = RevisionContent::new(draft_content)
+                .map_err(|error| integrity("captured revision title", error))?;
             let hash = content.hash().clone();
 
             query(
@@ -920,14 +922,20 @@ impl AuthorPublicationStore for PgStore {
                 });
             }
 
-            if pub_state
+            let Some(revision) = pub_state
                 .facts()
                 .revisions
                 .iter()
-                .all(|r| r.snapshot.revision != revision_id)
-            {
+                .find(|r| r.snapshot.revision == revision_id)
+            else {
                 tx.rollback().await.map_err(classify)?;
                 return Ok(RequestPublicOutcome::UnknownRevision);
+            };
+            let issues =
+                crate::domain::revision::submission_issues(revision.snapshot.content.content());
+            if !issues.is_empty() {
+                tx.rollback().await.map_err(classify)?;
+                return Ok(RequestPublicOutcome::InvalidSubmission(issues));
             }
 
             // MOD-14: the mode is read under a share lock in this commit, after the actor's
