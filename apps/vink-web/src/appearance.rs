@@ -127,6 +127,11 @@ pub fn initials(display_name: Option<&str>) -> String {
 pub(crate) fn AccountAvatar(#[prop(optional)] navigation: bool) -> impl IntoView {
     // Account data stays out of SSR and browser storage; the tab's session owner supplies it.
     let standing = crate::account::Session::current().standing;
+    let size = if navigation {
+        vink_ui::AvatarSize::Small
+    } else {
+        vink_ui::AvatarSize::Medium
+    };
     view! {
         <span class=if navigation { "vk-ui-icon vk-nav-account-avatar" } else { "vk-account-avatar" } aria-hidden="true">
             {move || {
@@ -134,7 +139,7 @@ pub(crate) fn AccountAvatar(#[prop(optional)] navigation: bool) -> impl IntoView
                     crate::session::Standing::Active(profile) => (profile.display_name, profile.principal_id),
                     _ => Default::default(),
                 };
-                view! { <vink_ui::Avatar name identity_key=key kind=vink_ui::AvatarKind::Account decorative=true fallback_text="—" /> }
+                view! { <vink_ui::Avatar name identity_key=key size=size kind=vink_ui::AvatarKind::Account decorative=true fallback_text="—" /> }
             }}
         </span>
     }

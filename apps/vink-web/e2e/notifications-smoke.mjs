@@ -255,9 +255,28 @@ export async function notifications(page, { args, check }) {
   await page.waitFor(focused('#noi-dung'), 'resize returns focus to main');
   check(await page.eval(`!document.querySelector('${popup}').open && ${visible(mobile)}
     && document.querySelectorAll('.vk-ui-bottom-nav a').length === 3`), 'AC-01 mobile has a header bell and exactly three bottom destinations');
-  await page.eval(`document.querySelector('${mobile}').focus()`);
+  await page.click('#bottom-navigation a[href="/toi"]');
+  await page.waitFor(`location.pathname === '/toi' && document.querySelector('#page-account .vk-account-status ${mobile}')`,
+    '#520 mobile account card contains the enabled bell');
+  const mobileAccount = '#page-account .vk-account-status';
+  for (const [width, scale, theme] of [[390, 100, 'light'], [390, 150, 'dark'], [320, 200, 'dark']]) {
+    await page.viewport(width);
+    await page.eval(`document.documentElement.dataset.theme = '${theme}'; document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
+    check(await page.eval(`(() => {
+      const card = document.querySelector('${mobileAccount}');
+      const button = card.querySelector('${mobile}');
+      const title = card.querySelector('#me-title');
+      const c = card.getBoundingClientRect(), b = button.getBoundingClientRect(), t = title.getBoundingClientRect();
+      return title.matches('h1.vk-ui-type-title') && document.querySelectorAll('main h1').length === 1 &&
+        title.textContent === 'Tài khoản' && b.width >= 48 && b.height >= 48 &&
+        b.top >= c.top && b.bottom <= c.bottom && t.right <= b.left &&
+        document.documentElement.scrollWidth <= innerWidth;
+    })()`), `#520 mobile ${width}px/${scale}% ${theme}: heading and bell fit the card side by side`);
+    await screenshot(`account-mobile-bell-${width}-${scale}-${theme}`, width, scale, theme);
+  }
+  await page.eval(`document.documentElement.style.fontSize = ''; document.querySelector('${mobile}').focus()`);
   await page.key('Space');
-  await page.waitFor(`location.pathname === '/thong-bao' && document.querySelectorAll('main ${row}').length >= 3`, 'mobile opens the inbox');
+  await page.waitFor(`location.pathname === '/thong-bao' && document.querySelectorAll('main ${row}').length >= 3`, 'mobile account bell opens the inbox');
   await page.eval(`[...document.querySelectorAll('main button')].find(el => el.textContent.includes('Xem thêm')).click()`);
   await page.waitFor(`document.querySelector('main .vk-notif-more [role=alert]')`, 'pagination error below list');
   check(await page.eval(`document.querySelectorAll('main ${row}').length === 3`), 'AC-03 failed continuation keeps the previous page');

@@ -56,7 +56,7 @@ impl Destination {
         let (label, icon, href) = match self {
             Self::Explore => ("Khám phá", IconName::Explore, "/"),
             Self::Desk => ("Bàn viết", IconName::Edit, "/ban-viet"),
-            Self::Me => ("Tôi", IconName::Person, "/toi"),
+            Self::Me => ("Tài khoản", IconName::Person, "/toi"),
         };
         NavDestination::new(self.key(), label, icon, href)
     }
@@ -85,7 +85,7 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
         crate::pages::profile::browser::provide_draft(session);
     }
     // SSR and the first browser render use the same anonymous-safe account link.
-    // Only confirmed standing changes the label to Tôi.
+    // The guest label follows sign-in capability until the session standing is known.
     let guest = Memo::new(move |_| {
         use crate::session::Standing;
         matches!(
@@ -314,8 +314,12 @@ fn AccountLink(guest: Signal<bool>, current: Signal<bool>) -> impl IntoView {
         if guest.get() {
             view! { <NavItem destination=NavDestination::new(Destination::Me.key(), label, IconName::Person, "/toi") active=current /> }.into_any()
         } else {
-            view! { <NavItem destination=Destination::Me.nav() active=current
-            leading=move || view! { <AccountAvatar navigation=true /> } /> }
+            let destination = Destination::Me.nav();
+            let label = Signal::stored(destination.label.clone());
+            view! {
+                <NavItem destination active=current visible_label=label
+                    leading=move || view! { <AccountAvatar navigation=true /> } />
+            }
             .into_any()
         }
     }
@@ -630,7 +634,7 @@ mod tests {
             [
                 ("Khám phá".to_string(), "/".to_string()),
                 ("Bàn viết".to_string(), "/ban-viet".to_string()),
-                ("Tôi".to_string(), "/toi".to_string()),
+                ("Tài khoản".to_string(), "/toi".to_string()),
             ]
         );
     }
