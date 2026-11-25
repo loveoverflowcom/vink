@@ -89,10 +89,10 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     await page.eval("Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))");
     await textContrast(page, theme, 'explore');
   }
-  for (const theme of ['light', 'dark']) for (const width of [320,374,390,834,1024,1200,1440]) for (const scale of [100,200]) {
+  for (const theme of ['light', 'dark']) for (const width of [320,374,390,834,1024,1200,1440]) for (const scale of [100,150,200]) {
     await page.viewport(width, width === 320 ? 800 : width === 390 ? 844 : 900);
     await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)};
-      if (${scale} === 200) document.documentElement.dataset.text = '200';
+      if (${scale} !== 100) document.documentElement.dataset.text = '${scale}';
       else delete document.documentElement.dataset.text;
       document.documentElement.style.fontSize = '';
       scrollTo(0,0); document.fonts.ready`);
@@ -139,6 +139,14 @@ export async function discoveryReading(page, { args, check, textContrast }) {
         '#404 mobile / 200%: first work starts above the bottom bar, and at 320px the title is visually hidden with the icons and logo on one row ' + [theme,width,JSON.stringify(narrow)].join('/'));
     }
     if ([320,390,834,1440].includes(width)) {
+      check(await page.eval(`(() => {
+        const launcher = document.querySelector('#open-public-search');
+        const style = getComputedStyle(launcher);
+        const box = launcher.getBoundingClientRect();
+        return style.backgroundColor === 'rgba(0, 0, 0, 0)' && style.borderTopColor === 'rgba(0, 0, 0, 0)' &&
+          style.boxShadow === 'none' && box.width >= 48 && box.height >= 48 &&
+          launcher.getAttribute('aria-expanded') === 'false';
+      })()`), '#522 flat Explore search launcher ' + [theme,width,scale].join('/'));
       check(await page.eval(`(() => {
         const button=document.querySelector('#open-tag-filters'), r=button.getBoundingClientRect();
         const icon=button.querySelector('svg[data-icon=filter-list][aria-hidden=true]');

@@ -3611,12 +3611,38 @@ async function draftDashboard(page) {
     return document.querySelector('.vk-draft-search').hidden && row.isConnected && document.activeElement === row;
   })()`), 'closing search preserves a newly focused draft link across the recovery frame');
 
-  for (const theme of ['light','dark']) for (const scale of [100,200]) for (const width of [1536,1440,1280,1024,834,390,320]) {
+  for (const theme of ['light','dark']) for (const scale of [100,150,200]) for (const width of [1536,1440,1280,1024,834,390,320]) {
     await page.viewport(width);
     await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:0,y:0});
     await page.eval(`document.documentElement.dataset.theme='${theme}'; document.documentElement.style.fontSize='${scale}%'; document.activeElement.blur(); scrollTo(0,0)`);
     await page.eval(`Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))`);
     await page.capture(`desk-long-${width}-${scale}-${theme}`);
+    check(await page.eval(`(() => {
+      const ids = ['open-draft-search', 'create-draft-format', 'create-draft'];
+      const [search, format, create] = ids.map(id => document.getElementById(id));
+      const rects = [search, format, create].map(control => control.getBoundingClientRect());
+      const label = format.labels[0];
+      const labelBox = label.getBoundingClientRect();
+      const [searchBox, formatBox, createBox] = rects;
+      const centerY = box => (box.top + box.bottom) / 2;
+      const aligned = box => Math.abs(centerY(box) - centerY(searchBox)) <= 1;
+      const sameRow = rects.every(aligned);
+      const standard = ${scale} === 100;
+      const searchStyle = getComputedStyle(search);
+      const title = document.querySelector('#desk-title').getBoundingClientRect();
+      const lock = document.querySelector('.vk-desk-heading__privacy').getBoundingClientRect();
+      return rects.every(box => box.width >= 48 && box.height >= 48 && box.left >= 0 && box.right <= innerWidth) &&
+        label.textContent.trim().startsWith('Định dạng bản thảo') && labelBox.width <= 1 && labelBox.height <= 1 &&
+        getComputedStyle(label).display !== 'none' && format.tagName === 'SELECT' &&
+        Array.from(format.options).filter(option => !option.disabled).map(option => option.value).join() === 'default,markdown' &&
+        searchStyle.backgroundColor === 'rgba(0, 0, 0, 0)' && searchStyle.borderTopColor === 'rgba(0, 0, 0, 0)' &&
+        searchStyle.boxShadow === 'none' && search.getAttribute('aria-expanded') === 'false' &&
+        (!standard || searchBox.width === 48 && rects.every(box => Math.abs(box.height - 48) <= 1) &&
+          [search, format, create].every(control => getComputedStyle(control).borderTopLeftRadius === '14px') &&
+          (${width} < 834 || sameRow && aligned(title) && aligned(lock)) &&
+          (!sameRow || Math.abs(formatBox.left - searchBox.right - 8) <= 1 &&
+            Math.abs(createBox.left - formatBox.right - 8) <= 1));
+    })()`), `#522 Desk ${theme} ${width}/${scale}: native format label, flat Search and aligned 48px controls that reflow`);
     check(await page.eval(`(() => {
       const row=document.querySelector('.vk-draft-row__link'), work=row.closest('.vk-author-work'), title=row.querySelector('.vk-draft-row__title'), meta=work.querySelector('.vk-draft-meta');
       const t=title.getBoundingClientRect(), m=meta.getBoundingClientRect(), r=work.getBoundingClientRect(), h=document.querySelector('#heading').getBoundingClientRect();
