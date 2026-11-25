@@ -16,7 +16,7 @@ Nguồn: [Epic #323](https://github.com/loveoverflowcom/vink/issues/323),
 | Quyết định sản phẩm | VIEW-01..12 `r1` là `PRODUCT_CONFIRMED` ngày 21/11/2026 ([VDR-WORK-VIEWS@r1](../../decisions/proposals/VDR-WORK-VIEWS.r1.toml) + [signoff](../../decisions/signoffs/VDR-WORK-VIEWS.r1.toml), revision đang kích hoạt của marker VDR). Delta 25/11/2026 (`#323`/`#340`: ngưỡng 5 giây foreground cấu hình tập trung, `OQ-1=A`, `OQ-2`, `OQ-3A/B`, `OQ-4`, `UX-01..10`, giữ riêng tư, `D-01` Thấm → Nhận xét → Lượt xem, `D-02` bỏ nút Đọc ở Bàn viết, kế hoạch 2 PR) được chủ sản phẩm chốt trên issue và ghi thành [VDR-WORK-VIEWS@r2](../../decisions/proposals/VDR-WORK-VIEWS.r2.toml) (`PENDING` chờ signoff đúng payload/SHA-256 theo `VDR-DECISION-SIGNOFF@r1`). |
 | Quyết định kiến trúc | CHOICE-02 A, CHOICE-03 và CHOICE-06 A `DESIGN_PROPOSED` bởi #341 (§7.1); CHOICE-05 A `DESIGN_PROPOSED` bởi #342 (§9.1); CHOICE-01, CHOICE-04 và CHOICE-POLICY `DESIGN_PROPOSED` bởi #343 (§10). Chưa lựa chọn nào `Accepted`. |
 | Mức triển khai | Đường ghi #341: `core` + PostgreSQL + dọn hạn `vink-worker`. Đọc #342: `persistence-api` (`views` của `GET /api/v1/author/works`). #343 (PR1): đang triển khai `vink-work-view-policy` + HTTP `POST /api/v1/works/{work_id}/views` + cookie khách + Reader visibility tracker & retry hữu hạn. UI Bàn viết và đồng bộ design R4/Work Views thuộc `#514` (PR2/2). |
-| Bằng chứng | #340 r1: kiểm tài liệu (§6); #341: unit + PostgreSQL (§7.6); #342: unit/contract + PostgreSQL qua HTTP (§9.5); #343 & delta 25/11: cập nhật ở §10.6 sau khi chạy scoped checks + Chrome thực trên `HEAD` mới. |
+| Bằng chứng | #340 r1: kiểm tài liệu (§6); #341: unit + PostgreSQL (§7.6); #342: unit/contract + PostgreSQL qua HTTP (§9.5); #343 & delta 25/11: cập nhật ở §10.3 sau khi chạy scoped checks + Chrome thực trên `HEAD` mới. |
 
 ## 2. Snapshot quyết định
 
@@ -447,4 +447,23 @@ Merge code không làm các lựa chọn dưới đây thành `Accepted`.
 
 ### 10.3 Bằng chứng và trạng thái nghiệm thu PR1
 
-Chưa điền kết quả kiểm thử runtime của PR1 tới khi chạy thực tế trên `HEAD` sau cùng; bảng bằng chứng và đối chiếu `AC-01..AC-07` / `AC-05..AC-07` được cập nhật nguyên văn ngay sau khi hoàn tất verify.
+Chạy trên nhánh `feat/343-work-views-intake` (base `origin/develop@922656c3`), macOS, PostgreSQL 17 qua `./tools/local-budget run --` cho các bước sửa sau vòng review độc lập trên PR #519 (Draft):
+
+| Phép kiểm | Ranh giới | Kết quả thực tế |
+| --- | --- | --- |
+| `cargo fmt --all -- --check` | formatting | PASS trên mã Rust sau sửa P1/P3 |
+| `cargo test --locked -p vink-work-view-policy` | unit (`vink-work-view-policy`) | PASS, 3/3 test (hằng số 5s, override động, boundary) |
+| `cargo xtask verify check app --target api` | compile/typecheck | PASS (`vink-app`) |
+| `cargo xtask verify check web --target csr` | compile/typecheck wasm CSR | PASS (`vink-web --features csr`) |
+| `cargo xtask verify check web --target hydrate` | compile/typecheck wasm hydrate | PASS (`vink-web --features hydrate`) |
+| `cargo xtask verify unit app --filter work_view` | unit/contract (`vink-app`) | PASS, 26/26 test (domain, config, limiter eviction `MAX_LIMITER_ENTRIES`, `http::work_views`) |
+| `cargo xtask verify unit app --filter config` | unit (`vink-app`) | PASS, 12/12 test (8 lib + 4 bin) |
+| `cargo xtask verify unit web --filter work_view` | unit/contract (`vink-web` SSR) | PASS, 7/7 test (`ViewVisitTracker`, `RetryPlan`, `format_uuid_v7`, policy override) |
+| `VINK_TEST_DATABASE_URL=… cargo xtask verify postgres app --filter work_view` | PostgreSQL + router Axum | PASS, 22/22 test (`work_view`, `work_view_intake`, `work_view_reads`; lưu ý lần chạy ngay trước đó với `RUST_TEST_THREADS=2` gặp flake tracing `views_read_is_one_batch_statement_for_any_page_size` từ #342 và đã PASS sạch khi chạy lại) |
+| `cargo xtask verify static repo` | static/docs/decisions | PASS (`decisions`, `skills`, `links`, `boundaries`, `fonts`, `editor packages`) |
+| `cargo xtask verify web --scenario reader --capture checks` & `--scenario standalone --capture checks` | Google Chrome + App + PG thật | `NOT_RUN` / đã dừng giữa chừng theo lệnh người dùng sau vòng sửa P1/P3 (`apps/vink-web/src/work_view.rs`, `apps/vink-web/e2e/work-views-smoke.mjs`); lần chạy đầy đủ ngay trước vòng review (trước khi tách `countdown_timer`/`retry_timer` và chờ `ExtraInfo`) đã PASS cả `reader` (gồm `reader-views`) lẫn `standalone` |
+
+**Phần còn mở / bàn giao:**
+- Chưa chạy lại Chrome E2E (`reader`, `standalone`) trên commit sau sửa P1/P3; PR #519 giữ trạng thái **Draft** chờ người dùng review và chạy nốt Chrome E2E trước khi ready/merge.
+- Kiểm thử đổi `Session` giữa chừng trên Reader: mới có unit test thuần trên `Session::settled_authority` + `ViewVisitTracker::on_authority_update`, chưa có ca E2E bật/tắt phiên trực tiếp giữa lúc đếm ở Chrome.
+- Giao diện Bàn viết (`D-01`/`D-02`, `UX-01..10`) và đồng bộ `docs/design/*` thuộc PR 2 (`#514`). Route xóa tác phẩm/tài khoản (`OQ-2`) và admin gỡ cả bài (`OQ-4`) chưa có ở runtime.

@@ -310,20 +310,28 @@ mod browser {
 
     struct Controller {
         tracker: ViewVisitTracker,
-        timer: Option<TimeoutHandle>,
+        countdown_timer: Option<TimeoutHandle>,
+        retry_timer: Option<TimeoutHandle>,
         retry_cancel: Option<oneshot::Sender<()>>,
         started_retry: bool,
     }
 
     impl Controller {
-        fn clear_timer(&mut self) {
-            if let Some(handle) = self.timer.take() {
+        fn clear_countdown_timer(&mut self) {
+            if let Some(handle) = self.countdown_timer.take() {
+                handle.clear();
+            }
+        }
+
+        fn clear_retry_timer(&mut self) {
+            if let Some(handle) = self.retry_timer.take() {
                 handle.clear();
             }
         }
 
         fn cancel(&mut self) {
-            self.clear_timer();
+            self.clear_countdown_timer();
+            self.clear_retry_timer();
             self.tracker.cancel();
             if let Some(tx) = self.retry_cancel.take() {
                 let _ = tx.send(());
@@ -338,7 +346,10 @@ mod browser {
     fn sync_controller(ctrl: StoredValue<Controller, LocalStorage>) {
         let visible = visible_foreground();
         let Some(action) = ctrl.try_update_value(|c| {
-            c.clear_timer();
+            c.clear_countdown_timer();
+            if c.started_retry || c.tracker.state() != VisitState::Tracking {
+                return PollAction::Stopped;
+            }
             c.tracker
                 .poll(read_events::now(), visible, mint_browser_uuid_v7)
         }) else {
@@ -351,10 +362,10 @@ mod browser {
                     Duration::from_millis(u64::from(delay_ms)),
                 ) {
                     let stored = ctrl.try_update_value(|c| {
-                        if c.tracker.is_cancelled() {
+                        if c.started_retry || c.tracker.is_cancelled() {
                             false
                         } else {
-                            c.timer = Some(handle);
+                            c.countdown_timer = Some(handle);
                             true
                         }
                     });
@@ -368,6 +379,7 @@ mod browser {
                     if c.started_retry || c.tracker.is_cancelled() {
                         false
                     } else {
+                        c.clear_countdown_timer();
                         c.started_retry = true;
                         true
                     }
@@ -415,7 +427,7 @@ mod browser {
                                     if c.tracker.is_cancelled() {
                                         false
                                     } else {
-                                        c.timer = Some(handle);
+                                        c.retry_timer = Some(handle);
                                         true
                                     }
                                 });
@@ -424,7 +436,7 @@ mod browser {
                                     break;
                                 }
                                 let _ = rx.await;
-                                ctrl.try_update_value(|c| c.clear_timer());
+                                ctrl.try_update_value(|c| c.clear_retry_timer());
                             }
                             Err(_) => break,
                         }
@@ -446,7 +458,8 @@ mod browser {
                 initial.revision_id.clone(),
                 WorkViewDurationPolicy::DEFAULT,
             ),
-            timer: None,
+            countdown_timer: None,
+            retry_timer: None,
             retry_cancel: None,
             started_retry: false,
         });
@@ -568,13 +581,17 @@ mod tests {
     #[test]
     fn hidden_tab_pauses_and_resumes_cumulative_foreground_duration() {
         let mut t = tracker(WorkViewDurationPolicy::DEFAULT);
-        assert_eq!(t.poll(1_000.0, true, mint), PollAction::WaitMs(5_000));
+        assert_eq!(
+            t.poll(1_000.0, true, mint),
+            PollAction::WaitMs(WORK_VIEW_MIN_VISIBLE_MS)
+        );
         // Hidden at 3_000ms cumulative = 3_000ms -> paused with 2_000ms left.
         assert_eq!(t.poll(4_000.0, false, mint), PollAction::Paused);
         // 10_000ms passes in hidden state -> must not count.
         assert_eq!(t.poll(14_000.0, false, mint), PollAction::Paused);
-        // Back to foreground -> needs exact 2_000ms more.
-        assert_eq!(t.poll(14_000.0, true, mint), PollAction::WaitMs(2_000));
+        // Back to foreground -> needs remaining 2_000ms.
+        let half = WORK_VIEW_MIN_VISIBLE_MS - 3_000;
+        assert_eq!(t.poll(14_000.0, true, mint), PollAction::WaitMs(half));
         assert_eq!(t.poll(15_999.0, true, mint), PollAction::WaitMs(1));
         assert_eq!(
             t.poll(16_000.0, true, mint),
@@ -590,10 +607,20 @@ mod tests {
         let mut t = tracker(WorkViewDurationPolicy::DEFAULT);
         assert_eq!(t.poll(500.0, false, mint), PollAction::Paused);
         assert_eq!(t.poll(60_000.0, false, mint), PollAction::Paused);
-        assert_eq!(t.poll(60_000.0, true, mint), PollAction::WaitMs(5_000));
-        assert_eq!(t.poll(64_999.0, true, mint), PollAction::WaitMs(1));
+        assert_eq!(
+            t.poll(60_000.0, true, mint),
+            PollAction::WaitMs(WORK_VIEW_MIN_VISIBLE_MS)
+        );
+        assert_eq!(
+            t.poll(
+                60_000.0 + f64::from(WORK_VIEW_MIN_VISIBLE_MS) - 1.0,
+                true,
+                mint
+            ),
+            PollAction::WaitMs(1)
+        );
         assert!(matches!(
-            t.poll(65_000.0, true, mint),
+            t.poll(60_000.0 + f64::from(WORK_VIEW_MIN_VISIBLE_MS), true, mint),
             PollAction::Emit { .. }
         ));
     }
@@ -602,7 +629,10 @@ mod tests {
     fn scope_and_session_authority_changes_cancel_cleanly_while_baseline_and_refresh_keep_tracking()
     {
         let mut t = tracker(WorkViewDurationPolicy::DEFAULT);
-        assert_eq!(t.poll(0.0, true, mint), PollAction::WaitMs(5_000));
+        assert_eq!(
+            t.poll(0.0, true, mint),
+            PollAction::WaitMs(WORK_VIEW_MIN_VISIBLE_MS)
+        );
         // Hydration settling initial session from Unsettled -> Anonymous is baseline discovery, not change.
         t.on_authority_update(AuthoritySnapshot::Unsettled);
         t.on_authority_update(AuthoritySnapshot::Settled {
@@ -625,13 +655,19 @@ mod tests {
 
         // Replacing revision ("Xem bản mới", E-37) cancels pre-threshold tracker cleanly.
         let mut rev_switch = tracker(WorkViewDurationPolicy::DEFAULT);
-        assert_eq!(rev_switch.poll(0.0, true, mint), PollAction::WaitMs(5_000));
+        assert_eq!(
+            rev_switch.poll(0.0, true, mint),
+            PollAction::WaitMs(WORK_VIEW_MIN_VISIBLE_MS)
+        );
         rev_switch.on_scope_change("work-1", "rev-2", true);
         assert!(rev_switch.is_cancelled());
 
         // Losing public status (Hidden / ReviewWithdrawn) cancels cleanly.
         let mut withdrawn = tracker(WorkViewDurationPolicy::DEFAULT);
-        assert_eq!(withdrawn.poll(0.0, true, mint), PollAction::WaitMs(5_000));
+        assert_eq!(
+            withdrawn.poll(0.0, true, mint),
+            PollAction::WaitMs(WORK_VIEW_MIN_VISIBLE_MS)
+        );
         withdrawn.on_scope_change("work-1", "rev-1", false);
         assert!(withdrawn.is_cancelled());
     }

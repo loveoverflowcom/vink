@@ -37,6 +37,7 @@ function attachViewLedger(page, origin) {
         url: params.request.url,
         postData: params.request.postData ?? null,
         status: null,
+        extraInfoReceived: false,
         cacheControl: null,
         setCookie: null,
       };
@@ -45,6 +46,7 @@ function attachViewLedger(page, origin) {
     } else if (method === 'Network.responseReceivedExtraInfo' && byId.has(params.requestId)) {
       const entry = byId.get(params.requestId);
       entry.status = params.statusCode;
+      entry.extraInfoReceived = true;
       for (const [k, v] of Object.entries(params.headers ?? {})) {
         const lower = k.toLowerCase();
         if (lower === 'cache-control') entry.cacheControl = v;
@@ -102,7 +104,7 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
       await authorPage.goto(`${authorBase}${readerPath}`);
       await authorPage.waitFor(`document.documentElement.dataset.hydrated==='true' && document.visibilityState==='visible'`, 'author Reader hydrated visible');
       await sleep(5500);
-      await waitForCount(() => ledger.rows.some((r) => r.status === 204), 4000, 'author view intake POST');
+      await waitForCount(() => ledger.rows.some((r) => r.status === 204 && r.extraInfoReceived), 4000, 'author view intake POST');
       const req = ledger.rows[0];
       check(req.status === 204 && req.cacheControl === 'no-store' && !req.setCookie, 'author view POST returns 204 no-store without guest cookie');
       const afterAuthor = await readAuthorWorkViews(authorBase);
@@ -149,7 +151,7 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
       await guest1.goto(`${guestBase}${readerPath}`);
       await guest1.waitFor(`document.documentElement.dataset.hydrated==='true'`, 'guest1 full visit ready');
       await sleep(5200);
-      await waitForCount(() => ledger.rows.length === 1 && ledger.rows[0].status === 204, 4000, 'guest1 first counted view');
+      await waitForCount(() => ledger.rows.length === 1 && ledger.rows[0].status === 204 && ledger.rows[0].extraInfoReceived, 4000, 'guest1 first counted view');
       const { cookies } = await guest1.send('Network.getCookies', { urls: [guestBase] });
       const guestCookie = cookies.find((c) => c.name === '__Host-vink_guest');
       check(Boolean(guestCookie?.httpOnly && guestCookie?.secure && guestCookie?.path === '/'), 'Chrome stored HttpOnly Secure __Host-vink_guest cookie');
@@ -165,7 +167,7 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
       await guest1.click(`a[href^="${readerPath}"]`);
       await guest1.waitFor(`document.querySelector('.vk-reader')`, 'guest1 revisited Reader');
       await sleep(5500);
-      await waitForCount(() => ledger.rows.length >= 2 && ledger.rows[1].status === 204, 4000, 'guest1 revisit POST settled');
+      await waitForCount(() => ledger.rows.length >= 2 && ledger.rows[1].status === 204 && ledger.rows[1].extraInfoReceived, 4000, 'guest1 revisit POST settled');
       check(!ledger.rows[1].setCookie, 'valid __Host-vink_guest cookie is not renewed within 24h');
       const cookiesAfter = (await guest1.send('Network.getCookies', { urls: [guestBase] })).cookies.find((c) => c.name === '__Host-vink_guest');
       check(cookiesAfter?.value === guestCookie.value, 'same guest cookie value preserved on 24h return');
@@ -251,8 +253,17 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
       await guest3.goto(`${guestBase}${readerPath}`);
       await guest3.waitFor(`document.documentElement.dataset.hydrated==='true'`, 'guest3 ready for retry');
       await sleep(5200);
-      await waitForCount(() => postedIds.length >= 2 && ledger.rows.some((r) => r.status === 204), 5000, 'bounded retry recovery');
-      check(postedIds[0] === postedIds[1], 'retry after 503 reuses exact same UUIDv7 event_id');
+      await waitForCount(() => droppedOnce, 4000, 'first attempt hit 503');
+      // Allow 503 response delivery into WASM so 1s retry_timer is actively armed before waking.
+      await sleep(150);
+      // P1 regression: online/focus/visibilitychange during 1s backoff must NOT abort retry timer.
+      await guest3.eval(`
+        window.dispatchEvent(new Event('online'));
+        window.dispatchEvent(new Event('focus'));
+        document.dispatchEvent(new Event('visibilitychange'));
+      `);
+      await waitForCount(() => postedIds.length >= 2 && ledger.rows.some((r) => r.status === 204 && r.extraInfoReceived), 5000, 'bounded retry recovery');
+      check(postedIds[0] === postedIds[1], 'retry after 503 with lifecycle wakes reuses exact same UUIDv7 event_id');
       check((await readAuthorWorkViews(authorBase)).count === startCount + 3, 'retry recovers to +1 without blocking Reader');
       check(guest3.errors.length === 0, 'retry flow raises zero browser/console errors');
     } finally {
@@ -425,7 +436,7 @@ export async function standaloneWorkViewCheck(page, { args, check }) {
     await page.goto(`${base}${path}`);
     await page.waitFor(`Boolean(document.querySelector('.vk-document'))`, 'standalone full visit loaded');
     await sleep(5300);
-    await waitForCount(() => ledger.rows.length === 1 && ledger.rows[0].status === 204, 4000, 'standalone CSR member view POST');
+    await waitForCount(() => ledger.rows.length === 1 && ledger.rows[0].status === 204 && ledger.rows[0].extraInfoReceived, 4000, 'standalone CSR member view POST');
     check(
       ledger.rows[0].status === 204 && ledger.rows[0].cacheControl === 'no-store' && !ledger.rows[0].setCookie,
       'standalone CSR: authenticated non-author member counts via 204 no-store without guest cookie',

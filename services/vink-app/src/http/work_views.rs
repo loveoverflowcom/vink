@@ -69,9 +69,7 @@ impl IngestLimiter {
             .state
             .lock()
             .unwrap_or_else(|poison| poison.into_inner());
-        if guard.next_prune_at.is_none_or(|at| now >= at)
-            || guard.windows.len() >= MAX_LIMITER_ENTRIES
-        {
+        if guard.next_prune_at.is_none_or(|at| now >= at) {
             guard
                 .windows
                 .retain(|_, w| now.saturating_duration_since(w.started) < window_duration);
@@ -278,6 +276,21 @@ mod tests {
 
         let after_window = t0 + Duration::from_secs(u64::from(INGEST_LIMIT.window_seconds));
         assert!(limiter.admit_at(&net_a, after_window));
+    }
+
+    #[test]
+    fn ingest_limiter_caps_table_size_at_max_limiter_entries() {
+        let limiter = IngestLimiter::default();
+        let t0 = Instant::now();
+        for idx in 0..(MAX_LIMITER_ENTRIES + 8) {
+            let b = ((idx >> 16) & 0xff) as u8;
+            let c = ((idx >> 8) & 0xff) as u8;
+            let d = (idx & 0xff) as u8;
+            let net = Network::of(IpAddr::V4(Ipv4Addr::new(10, b, c, d)));
+            assert!(limiter.admit_at(&net, t0), "entry {idx} admitted");
+        }
+        let entries = limiter.state.lock().unwrap().windows.len();
+        assert_eq!(entries, MAX_LIMITER_ENTRIES);
     }
 
     #[tokio::test]
