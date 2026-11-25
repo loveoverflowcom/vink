@@ -352,11 +352,21 @@ export async function followingFeed(control, other, {base, openPage, check, hold
     'PG exact facts drive order and dates after re-Follow and repost; poem lines and stanza are preserved');
   await layout(page, check, textContrast);
 
+  await page.viewport(834, 900);
+  await page.eval(`${q('#explore-mode-works')}.focus()`);
+  for (const selector of ['#explore-mode-following', '#explore-mode-authors']) {
+    await page.key('Tab');
+    check(await page.eval(`document.activeElement === ${q(selector)}`), `Tab reaches ${selector} once`);
+  }
+
   await page.viewport(390, 900);
   const firstTitle = '#following-cards > li:first-child .vk-public-row__link';
   const firstAuthor = '#following-cards > li:first-child .vk-ui-byline__identity';
-  await page.eval(`${q('#explore-mode-works')}.focus()`);
-  for (const selector of ['#explore-mode-following', '#explore-mode-authors', firstTitle, firstAuthor]) {
+  await page.eval(`(() => {
+    const authors = ${q('#explore-mode-authors')};
+    (authors.getClientRects().length ? authors : ${q('#explore-mode-menu-button')}).focus();
+  })()`);
+  for (const selector of [firstTitle, firstAuthor]) {
     await page.key('Tab');
     check(await page.eval(`document.activeElement === ${q(selector)}`), `Tab reaches ${selector} once`);
   }
