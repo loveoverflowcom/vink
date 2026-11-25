@@ -350,7 +350,7 @@ fn AuthorWorkCount(name: &'static str, icon: IconName, count: Option<i64>) -> im
         |n| format!("{n} {name}"),
     );
     view! {
-        <span class="vk-author-work__count inline-flex items-center [gap:6px] whitespace-nowrap [max-inline-size:100%]" title=title>
+        <span class="vk-author-work__count inline-flex items-center [gap:6px] wrap-anywhere [max-inline-size:100%]" title=title>
             <Icon name=icon />
             {match formatted {
                 Some(n) => view! { <span>{n}<span class="vk-ui-visually-hidden">" " {name}</span></span> }.into_any(),
@@ -380,7 +380,7 @@ fn AuthorWorkViewsMetric(views: AuthorWorkViews, historical: bool) -> impl IntoV
                     data-views-state="counted"
                     title=title
                 >
-                    <span class="vk-author-work__views-value inline-flex items-center [gap:6px] whitespace-nowrap">
+                    <span class="vk-author-work__views-value inline-flex items-center [gap:6px] [max-inline-size:100%]">
                         <Icon name=IconName::VisibilityOutline />
                         <span class="wrap-anywhere whitespace-normal">
                             {formatted}
@@ -388,7 +388,7 @@ fn AuthorWorkViewsMetric(views: AuthorWorkViews, historical: bool) -> impl IntoV
                         </span>
                     </span>
                     {counted_since.map(|date| view! {
-                        <span class="vk-author-work__views-since whitespace-nowrap">{format!("Tính từ {date}")}</span>
+                        <span class="vk-author-work__views-since">{format!("Tính từ {date}")}</span>
                     })}
                 </span>
             }
@@ -401,7 +401,7 @@ fn AuthorWorkViewsMetric(views: AuthorWorkViews, historical: bool) -> impl IntoV
                 data-views-state="not_started"
                 title="Lượt xem: chưa bắt đầu thống kê"
             >
-                <span class="vk-author-work__views-value inline-flex items-center [gap:6px] whitespace-nowrap">
+                <span class="vk-author-work__views-value inline-flex items-center [gap:6px] [max-inline-size:100%]">
                     <Icon name=IconName::VisibilityOutline />
                     <span aria-hidden="true">"—"</span>
                 </span>
@@ -419,7 +419,7 @@ fn AuthorWorkViewsMetric(views: AuthorWorkViews, historical: bool) -> impl IntoV
                 data-views-state="unavailable"
                 title="Lượt xem: chưa tải được"
             >
-                <span class="vk-author-work__views-value inline-flex items-center [gap:6px] whitespace-nowrap">
+                <span class="vk-author-work__views-value inline-flex items-center [gap:6px] [max-inline-size:100%]">
                     <Icon name=IconName::VisibilityOutline />
                     <span aria-hidden="true">"—"</span>
                 </span>

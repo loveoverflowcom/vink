@@ -149,17 +149,28 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
     // Give Back a same-route predecessor, as in the Desk search overlay check.
     await page.eval(`history.pushState(null, '', location.href)`);
     await page.click('#views-explainer-trigger');
-    await page.waitFor(`document.querySelector('#views-explainer')?.open === true`, '#514 expander is open before Back');
+    await page.waitFor(`document.querySelector('#views-explainer')?.open === true`, '#514 explainer is open before Back');
     await page.eval(`history.back()`);
     await page.waitFor(`location.pathname==='/ban-viet' && document.querySelector('#views-explainer')?.open === false && document.activeElement?.id==='views-explainer-trigger'`, '#514 Back closes explainer on Desk and restores focus');
 
-    for (const width of [320,390,834,1440]) for (const theme of ['light','dark']) for (const scale of [100,150,200]) {
+    await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
+    check(await page.eval(`document.activeElement?.id==='views-explainer-trigger' && document.querySelector('#views-explainer')?.open === false`),
+      '#514 Back keeps the explainer closed and focus restored after paint');
+
+    for (const width of [320,390,834,1024,1440]) for (const theme of ['light','dark']) for (const scale of [100,150,200]) {
       await page.viewport(width);
       await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:0,y:0});
       await page.eval(`document.documentElement.dataset.theme='${theme}';document.documentElement.style.fontSize='${scale}%';document.querySelector('#drafts').scrollIntoView({block:'start'})`);
       await page.eval(`document.fonts.ready.then(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))))`);
       await page.eval(`Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))`);
-      check(await page.eval(`document.documentElement.scrollWidth<=innerWidth && [...document.querySelectorAll('.vk-author-work')].every(e=>e.getBoundingClientRect().right<=innerWidth+1)`), `author rows reflow ${width}/${theme}/text${scale}`);
+      const overflow = await page.eval(`(() => {
+        const wide = [...document.querySelectorAll('.vk-author-work, .vk-author-work .vk-draft-row__text, .vk-author-work__status, .vk-author-work__metrics')]
+          .filter(e => e.scrollWidth > e.clientWidth + 1 || e.getBoundingClientRect().right > innerWidth + 1)
+          .map(e => ({ block: e.classList[0], scroll: e.scrollWidth, width: e.clientWidth }));
+        if (document.documentElement.scrollWidth > innerWidth) wide.push({ block: 'document' });
+        return wide;
+      })()`);
+      check(overflow.length === 0, `author rows reflow ${width}/${theme}/text${scale} ${JSON.stringify(overflow)}`);
       await page.capture(`author-works-${width}-${theme}-${scale}`,{boundary:'fabricated-author-summary-real-hydration',scenario:'#514-work-views-r3-reflow'});
     }
     await page.viewport(390);await page.eval(`document.documentElement.dataset.theme='dark';document.documentElement.style.fontSize='200%';document.querySelector('#draft-row-${works[5].work_id}').scrollIntoView({block:'center'})`);
