@@ -95,14 +95,18 @@ export async function editorAutosave(page, { base, check, openPage, SaveGate, sl
     const accountRequest = await Promise.race([
       accountPaused, sleep(10000).then(() => { throw Error('account read did not start'); }),
     ]);
-    check(await other.eval('!(' + ready + ')'), 'deep link waits for its first account before accepting edits');
+    await other.waitFor(ready, 'draft may open before first account read completes');
+    const version = (await other.draft(id)).version;
+    await other.typeInBody(' Tab hai.');
+    await sleep(1800);
+    check(await other.status() === 'unsaved' && (await other.draft(id)).version === version,
+      'early edit stays buffered until the account is confirmed');
     await other.send('Fetch.continueRequest', { requestId: accountRequest });
   } finally {
     await other.send('Fetch.disable');
     other.cdp.listeners = other.cdp.listeners.filter(event => event !== interceptAccount);
   }
-  await other.waitFor(ready, 'second browser tab');
-  await other.typeInBody(' Tab hai.'); await other.waitStatus('saved');
+  await other.waitStatus('saved', 'early edit autosaves under the confirmed account');
   await page.send('Page.bringToFront');
   await page.typeInBody(' Tab một.'); await page.waitStatus('conflict');
   check(await page.eval(label) === 'Xung đột' && (await page.body()).endsWith(' Tab một.') &&

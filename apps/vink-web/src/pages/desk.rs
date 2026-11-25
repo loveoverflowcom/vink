@@ -1022,36 +1022,20 @@ pub fn DraftEditor() -> impl IntoView {
     let work_id = move || params.read().get("id").unwrap_or_default();
     let reload = RwSignal::new(0_u32);
     let load_failed = StoredValue::new(false);
-    let session = crate::account::Session::current();
-    // This changes only once at startup. Later session refreshes must preserve live text.
-    let checking_first_session = Memo::new(move |_| {
-        session
-            .standing
-            .with(|s| *s == crate::session::Standing::Unknown)
-    });
-    let draft: LocalResource<Option<Result<Draft, ApiError>>> = LocalResource::new(move || {
+    let draft: LocalResource<Result<Draft, ApiError>> = LocalResource::new(move || {
         let id = work_id();
         reload.track();
-        let pending = checking_first_session.get();
         async move {
-            if pending {
-                return None;
-            }
             #[cfg(feature = "browser")]
             {
-                let result =
-                    if session.standing.get_untracked() == crate::session::Standing::Unavailable {
-                        Err(ApiError::Unavailable)
-                    } else {
-                        crate::api::load_draft(id).await
-                    };
+                let result = crate::api::load_draft(id).await;
                 load_failed.try_set_value(result.is_err());
-                Some(result)
+                result
             }
             #[cfg(not(feature = "browser"))]
             {
                 let _ = (id, load_failed);
-                Some(Err(ApiError::Unavailable))
+                Err(ApiError::Unavailable)
             }
         }
     });
@@ -1060,6 +1044,7 @@ pub fn DraftEditor() -> impl IntoView {
     // another account takes the tab the editor is rebuilt from that account's own read: the
     // earlier text and every reply still on its way go with the old editor. A draft that could
     // not be opened is read again once the session changes.
+    let session = crate::account::Session::current();
     Effect::new(move |previous: Option<(Option<String>, Option<String>)>| {
         let (scope, principal) = (session.scope.get(), session.principal.get());
         let Some((before, typed_as)) = previous else {
@@ -1073,7 +1058,6 @@ pub fn DraftEditor() -> impl IntoView {
         }
         (scope, principal.or(typed_as))
     });
-    let loading = || view! { <EditorHeading label=Signal::stored("Bản nháp") /><p class="vk-muted">"Đang mở bản nháp…"</p> };
     view! {
         <Title text="Bản nháp — Bàn viết — Vink" />
         <Meta name="robots" content="noindex" />
@@ -1081,18 +1065,17 @@ pub fn DraftEditor() -> impl IntoView {
             <noscript>
                 <p class="vk-desk-noscript">{DESK_UNAVAILABLE_SSR}</p>
             </noscript>
-            <Suspense fallback=loading>
+            <Suspense fallback=|| view! { <EditorHeading label=Signal::stored("Bản nháp") /><p class="vk-muted">"Đang mở bản nháp…"</p> }>
                 {move || Suspend::new(async move {
                     match draft.await {
                         // The editor saves its buffer verbatim as a default document. A draft it
                         // could not save back unchanged (Markdown until #256/#262, or CR line
                         // endings that CodeMirror normalizes) is not opened.
-                        None => loading().into_any(),
-                        Some(Ok(draft)) => match crate::document::desk_editable(&draft.document) {
+                        Ok(draft) => match crate::document::desk_editable(&draft.document) {
                             Ok(()) => view! { <Editor draft /> }.into_any(),
                             Err(reason) => view! { <EditorHeading label=Signal::stored("Bản nháp") /><FormatNotEditable reason /> }.into_any(),
                         },
-                        Some(Err(error)) => view! { <EditorHeading label=Signal::stored("Bản nháp") /><DeskError error /> }.into_any(),
+                        Err(error) => view! { <EditorHeading label=Signal::stored("Bản nháp") /><DeskError error /> }.into_any(),
                     }
                 })}
             </Suspense>
@@ -1138,10 +1121,14 @@ fn Editor(draft: Draft) -> impl IntoView {
     #[cfg(feature = "browser")]
     let tab = crate::account::Session::current();
     #[cfg(feature = "browser")]
-    let edit_scope = StoredValue::new(None::<String>);
+    let edit_scope = StoredValue::new((None::<String>, false));
     let edited = move || {
         #[cfg(feature = "browser")]
-        edit_scope.set_value(tab.profile_scope.get_untracked());
+        edit_scope.set_value((
+            tab.profile_scope.get_untracked(),
+            tab.standing
+                .with_untracked(|s| *s == crate::session::Standing::Unknown),
+        ));
         session.update(|s| s.text.edited());
     };
     let leave_open = RwSignal::new(false);
@@ -1431,13 +1418,16 @@ fn Editor(draft: Draft) -> impl IntoView {
             let edit = session.with(|s| s.text.autosave_edit())?;
             let scope = tab.profile_scope.get()?;
             let same_draft = params.read().get("id").as_deref() == Some(&work_id.get_value());
+            // The draft read can beat the initial account check. Keep that edit and
+            // re-read this private draft under the confirmed account before sending it.
+            let (typed_as, needs_readback) = edit_scope.get_value();
             (same_draft
-                && edit_scope.get_value().as_ref() == Some(&scope)
+                && (needs_readback || typed_as.as_ref() == Some(&scope))
                 && !composing.get()
                 && !leave_open.get()
                 && convert_preview.with(Option::is_none)
                 && body.state.get() == BodyState::Ready)
-                .then_some((edit, scope))
+                .then_some((edit, scope, needs_readback))
         });
         Effect::new(move |_| {
             let Some(key) = candidate.get() else { return };
@@ -1451,7 +1441,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                         return;
                     }
                     if let Some(ticket) = session.try_update(|s| s.text.begin_save()).flatten() {
-                        send_text(ticket, false);
+                        send_text(ticket, key.2);
                     }
                 },
                 std::time::Duration::from_millis(1500),
