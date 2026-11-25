@@ -118,7 +118,7 @@ async function noFollowsLayout(page, check, textContrast) {
     const within = (child, parent) => rect(child).left >= rect(parent).left &&
       rect(child).right <= rect(parent).right;
     return {
-      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      overflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
       tabs: Array.from(document.querySelectorAll('.vk-explore-modes a'), tab =>
         [tab.id, tab.scrollWidth <= tab.clientWidth, tab.getBoundingClientRect().height >= 44]),
       centerDelta: Math.abs(midpoint(action) - midpoint(region)),
