@@ -335,6 +335,99 @@ class Recovery(unittest.TestCase):
             smoke.assert_called_once_with([release.HERE.parent.parent / "production/smoke-edge.sh", "edge",
                                           "--release", B], check=True)
 
+    def test_published_reader_recovers_after_origin_switch_without_replaying(self):
+        with TemporaryDirectory() as tmp, contextlib.ExitStack() as stack:
+            root = Path(tmp)
+            archive = root / "archives"
+            old, new = package(archive, A), package(archive, B)
+            retained = {rev: art.sha(art.encode(manifest)) for rev, manifest in ((A, old), (B, new))}
+            worker_digest = art.stage(archive, B, root / "stage", A)
+            receipt = root / "request.json"
+            receipt.write_bytes(art.encode(spec(B)))
+            active = root / "active.json"
+            prior = art.encode({"edge": "previous", "account": ACCOUNT, "origin_release": A, "legacy_assets": A,
+                                "release": spec(A), "retained": {A: retained[A]}})
+            active.write_bytes(prior)
+            journal = root / "pending.json"
+            pending = {"release": spec(B), "account": ACCOUNT, "project": art.PROJECT,
+                       "previous_edge": "previous", "previous_origin": A, "edge": "new-edge", "origin_release": B,
+                       "asset_digest": new["asset_digest"], "legacy_assets": A, "worker_digest": worker_digest,
+                       "retained": retained, "schema_action": "same", "schema_review": None,
+                       "reader_coverage": release.EMPTY_CATALOG, "phase": "http_verified"}
+            journal.write_bytes(art.encode(pending))
+            remote = {"canonical_deployment": {"id": "new-edge", "environment": "production",
+                "latest_stage": {"status": "success"},
+                "deployment_trigger": {"metadata": {"commit_hash": B,
+                                                     "commit_message": "vink-release-" + worker_digest}}}}
+            reader = "33333333-3333-4333-8333-333333333333"
+            selected = {"status": "published", "work_id": reader}
+            observed = selected
+            calls = []
+
+            def fetch(url):
+                self.assertEqual(url, f"https://vink.forum/api/v1/works/{reader}/reader")
+                return "200", "application/json", "", "", art.encode(observed)
+
+            def local(*argv):
+                if "rev-parse" in argv:
+                    return B
+                if str(argv[0]).endswith("/origin.sh"):
+                    calls.append(tuple(argv[1:4]))
+                return ""
+
+            def execute(*extra):
+                args = [str(receipt), "--account", ACCOUNT, "--previous-origin", A,
+                        "--previous-edge", "previous", "--empty-catalog", *extra]
+                with patch("sys.argv", ["release.py", "resume", *args]), \
+                        contextlib.redirect_stdout(io.StringIO()) as output:
+                    release.main()
+                return json.loads(output.getvalue())
+
+            for name, value in {"STATE": root, "WRANGLER": receipt, "project": lambda _: remote,
+                                "export": lambda *_: new, "read_asset": fetch, "run": local}.items():
+                stack.enter_context(patch.object(release, name, value))
+            publish = stack.enter_context(patch.object(release, "publish"))
+            browser = stack.enter_context(patch.object(release, "browser_check"))
+            stack.enter_context(patch.object(release.subprocess, "run"))
+            stack.enter_context(patch.object(release.pwd, "getpwnam", return_value=SimpleNamespace(pw_uid=501)))
+            stack.enter_context(patch.dict(os.environ, {"CLOUDFLARE_ACCOUNT_ID": ACCOUNT, "VINK_RELEASE_CHROME": "/bin/sh"}))
+            override = ("--resume-with-reader", reader)
+            for options in (("--resume-with-reader", "not-a-UUID"), (*override, "--maintenance"),
+                            (*override, "--preview-only")):
+                with self.subTest(options=options), self.assertRaisesRegex(ValueError, "rolling --empty-catalog resume"):
+                    execute(*options)
+            for observed in ({"status": "hidden", "work_id": reader}, selected | {"work_id": "other-work"}):
+                with self.subTest(observed=observed), self.assertRaisesRegex(ValueError, "selected Reader to be published"):
+                    execute(*override)
+            self.assertEqual(json.loads(journal.read_bytes()), pending)
+            self.assertEqual(calls, [])
+            browser.assert_not_called()
+
+            observed = selected
+            original_store = release.store
+
+            def lose_receipt_ack(path, value):
+                if path == active:
+                    raise OSError("lost active receipt write")
+                original_store(path, value)
+
+            with patch.object(release, "store", side_effect=lose_receipt_ack), \
+                    self.assertRaisesRegex(OSError, "lost active receipt write"):
+                execute(*override)
+            saved = json.loads(journal.read_bytes())
+            self.assertEqual(saved["phase"], "browser_verified")
+            self.assertEqual(saved["reader_coverage"], release.PUBLISHED_READER)
+            self.assertEqual(saved["reader_resume_work"], reader)
+            self.assertEqual(active.read_bytes(), prior)
+
+            result = execute(*override)
+            self.assertEqual(result, saved)
+            self.assertEqual(json.loads(active.read_bytes()), saved)
+            self.assertEqual(calls, [("observe", B, B), ("observe", B, B)])
+            self.assertFalse(journal.exists())
+            publish.assert_not_called()
+            self.assertEqual([call.args for call in browser.call_args_list], [(Path("/bin/sh"), reader, B)] * 2)
+
     def test_podman_probe_joins_only_the_running_postgres_namespace(self):
         origin = release.maintenance.Origin.__new__(release.maintenance.Origin)
         origin.postgres = "9" * 12
