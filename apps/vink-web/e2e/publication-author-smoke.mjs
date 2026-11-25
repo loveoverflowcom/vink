@@ -790,7 +790,7 @@ async function withdrawal({ author, mod, work, base, check, reopen, editorPath }
   const reader = await (await fetch(`${base}/api/v1/works/${work}/reader`)).json();
   check(JSON.stringify(Object.keys(reader).sort()) === JSON.stringify(['status', 'work_id']) && reader.status === 'hidden', 'the reader read model is the hidden page: no title, body, tags or author');
   const html = await (await fetch(`${base}/tac-pham/${work}`)).text();
-  check(html.includes('Nội dung đã được ẩn') && !html.includes(title) && !html.includes(LINE_1A), 'the server-rendered reader carries neither title nor body');
+  check(html.includes('Nội dung đã được ẩn') && !html.includes(before.body.title) && !html.includes(LINE_1A), 'the server-rendered reader carries neither title nor body');
   await matrix(author, 'private', check);
 }
 
