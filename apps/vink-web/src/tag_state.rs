@@ -98,7 +98,7 @@ impl TagStatus {
 pub fn uncertain(failure: Failure) -> bool {
     matches!(
         failure,
-        Failure::Network | Failure::Unavailable | Failure::Unexpected
+        Failure::Offline | Failure::Network | Failure::Unavailable | Failure::Unexpected
     )
 }
 

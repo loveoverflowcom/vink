@@ -576,7 +576,7 @@ production đỏ; model mutant tạo OFF→old ON resurrection. Harness và kế
 | REST JSON v1 cho browser, SSR đọc trong tiến trình qua `PublicReads` | Server sở hữu contract; consumer có DTO riêng; không có luật nghiệp vụ thứ hai trong server function | Editor/frontend thay thế (D-04) cần transport khác |
 | Bàn viết chỉ render khung ở server, tải nháp bằng API | Không có đường nào đưa nháp vào HTML/hydration payload | Có auth thật và cần render nháp cho chủ sở hữu ở server |
 | Một document canonical `{format, source}`, source nguyên văn (#255; thay document v1 ngày 17/11/2026) | Giữ đúng chữ tác giả gõ: khổ thơ, dòng trống, thụt lề, CRLF, NFD; title theo format (#263) | Đổi khi #256/#264 cần dialect Markdown khác; lịch sử revision trước cutover chờ kế hoạch được ủy quyền |
-| Lưu thủ công (nút, Enter ở tiêu đề, Ctrl/Cmd+S), chưa autosave | Đủ kiểm CAS và trạng thái lưu; tránh hẹn giờ trước khi chọn editor | Làm WR-01 đầy đủ trong S-01 |
+| Lần đầu bấm Gửi, sau đó tự lưu chữ khi ngừng gõ 1,5 giây. Nút lưu, Enter ở tiêu đề và Ctrl/Cmd+S vẫn dùng được | Chữ và thẻ có phiên bản riêng. Tác giả chủ động lưu lựa chọn thẻ | S-01 kiểm IME trên thiết bị thật |
 | CodeMirror 6 sửa chữ nguồn của nội dung, build bằng npm/esbuild riêng ([#6](https://github.com/loveoverflowcom/vink/issues/6)) | Giữ undo, selection, IME tốt hơn textarea; buffer được gửi nguyên văn; runtime chỉ tải ở editor | S-01 chọn editor/schema dài hạn (D-04), cần rich text hoặc bundle quá lớn |
 | Guard rời editor: hộp thoại riêng cho điều hướng trong app, `beforeunload` cho reload/đóng tab | Router không hủy được back/forward; guard chặn trước router và đẩy URL trang về | Router có API chặn điều hướng, hoặc shell PR 03 cần lối thoát mới |
 | Origin check cho PUT/POST | Seam CSRF trước khi có cookie session | Chọn mô hình session/CSRF cùng D-05 |
@@ -619,7 +619,7 @@ production đỏ; model mutant tạo OFF→old ON resurrection. Harness và kế
 1. **S-01 Editor + SSR:** CodeMirror 6 sửa source nguyên văn của `default` và `markdown`
    trên cùng một `EditorView`. Cấu hình lại extension giữ buffer và selection. Chuyển định dạng đã
    được server xác nhận áp dụng source chuyển đổi và đưa con trỏ về đầu văn bản.
-   còn IME thật trên macOS/Windows/Android/iOS, paste, autosave dùng lại `EditorSession`, hai tab,
+   Còn kiểm IME thật trên macOS/Windows/Android/iOS, paste từ ứng dụng ngoài,
    mobile, và quyết định có cần rich text (D-04).
 2. **S-03 Identity:** chọn auth authority, thay `LocalFixture` bằng resolver thật giữ nguyên
    seam `IdentityResolver`, cookie/CSRF, liên kết principal; thử đổi email, ban, logout.

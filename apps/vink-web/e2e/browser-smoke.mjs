@@ -29,6 +29,7 @@ import { moderationQueues } from './moderation-queue-smoke.mjs';
 import { publicStorage, storageReopened } from './public-storage-smoke.mjs';
 import { draftPagination } from './draft-pagination-smoke.mjs';
 import { authorWorks } from './author-works-smoke.mjs';
+import { editorAutosave, holdEditorDebounce } from './editor-autosave.mjs';
 import { editorWriting } from './editor-writing-smoke.mjs';
 import { editorPaperFirst } from './editor-paper-first-smoke.mjs';
 import { editorDeskRegressions, firstDraftFormat } from './editor-desk-regressions.mjs';
@@ -4344,7 +4345,7 @@ async function setEditorScene(page, { width, height, scale, theme }) {
 }
 
 async function editorChrome(page) {
-  await editorPaperFirst(page, { args, check, editorTarget, fitsEditorAction });
+  await editorPaperFirst(page, { args, check, editorTarget, fitsEditorAction, holdEditorDebounce });
   await editorWriting(page, { args, check, setEditorScene, captureEditorScene, editorTarget, fitsEditorAction });
   console.log('editor chrome: reflow, save races and recovery:');
   await page.viewport(1440);
@@ -4376,10 +4377,11 @@ async function editorChrome(page) {
   await page.waitStatus('saved');
   const live = `window.__chromeEditor === document.querySelector('.cm-editor') && document.querySelectorAll('.cm-editor').length === 1 && window.__titleInput === document.querySelector('#draft-title') && window.__titleInput.value === ${JSON.stringify(title)}`;
   await page.eval(`window.__chromeEditor = document.querySelector('.cm-editor')`);
+  const cleanPositions = new Map();
   const geometry = async state => {
     await page.eval(`document.activeElement?.blur()`);
     for (const width of [1536, 1440, 1024, 834, 390, 360, 320]) {
-      for (const scale of [100, 200]) {
+      for (const scale of [100, 150, 200]) {
         for (const theme of ['light', 'dark']) {
           const height = 900;
           await page.viewport(width, height);
@@ -4409,7 +4411,7 @@ async function editorChrome(page) {
               const s = getComputedStyle(el);
               return ['Top','Right','Bottom','Left'].every(side => parseFloat(s['border'+side+'Width']) === 0) && s.boxShadow === 'none' && s.backgroundImage === 'none' && (s.outlineStyle === 'none' || parseFloat(s.outlineWidth) === 0);
             });
-            const expected = { clean:'Đã lưu', dirty:'Chưa lưu chữ', saving:'Đang lưu; có chữ mới…', failed:'Chưa xác nhận lưu.', conflict:'Có bản mới trên máy chủ.' };
+            const expected = { clean:'Đã lưu', dirty:'Chưa lưu', saving:'Đang lưu', failed:'Chưa lưu được', offline:'Mất kết nối', conflict:'Xung đột' };
             const cleanSlotOk = '${state}' !== 'clean' || (!document.querySelector('#save') && Boolean(document.querySelector('#save-slot .vk-save-slot__icon svg')));
             const problemSlotOk = '${state}' !== 'conflict' || (!document.querySelector('#save') && Boolean(document.querySelector('#save-recovery-jump')));
             return flat && cleanSlotOk && problemSlotOk &&
@@ -4421,6 +4423,18 @@ async function editorChrome(page) {
               !document.querySelector('.vk-editor-paper [aria-invalid=true]') &&
               getComputedStyle(document.querySelector('#editor-body-hint')).position === 'absolute';
           })()`), `${scenario}: one uninterrupted writing sheet, flat resting chrome, complete descriptions and one live status owner`);
+
+          if ([1440, 390].includes(width) && scale <= 150) {
+            const key = [width, scale, theme].join('/');
+            const positions = await page.eval(`['#editor-toolbar', '#editor-paper'].map(s => {
+              const box = document.querySelector(s).getBoundingClientRect();
+              return [box.left + scrollX, box.top + scrollY];
+            }).flat()`);
+            if (state === 'clean') cleanPositions.set(key, positions);
+            const baseline = cleanPositions.get(key);
+            check(positions.every((n, i) => Math.abs(n - baseline[i]) <= 1),
+              `${scenario}: toolbar and paper stay in place ${JSON.stringify({baseline, positions})}`);
+          }
 
           await page.capture(scenario, {
             scenario: `editor-${state}`,
@@ -4499,6 +4513,7 @@ async function editorChrome(page) {
     check(await page.eval(`(() => { const s=getComputedStyle(document.querySelector('[data-testid=editor-body]')), cm=getComputedStyle(document.querySelector('.cm-editor')); return s.outlineStyle==='solid' && parseFloat(s.outlineWidth)===2 && (cm.outlineStyle==='none'||parseFloat(cm.outlineWidth)===0); })()`), `body has one visible focus perimeter with forced-colors=${forced}`);
   }
   await page.send('Emulation.setEmulatedMedia', {features:[LIGHT_SYSTEM,{name:'forced-colors',value:'none'}]});
+  await holdEditorDebounce(page);
   await page.typeInBody('\n\nChữ mới e\u0302\u0301 — chưa lưu.');
   // Give this input its own native history group before the observer's edit/undo pair.
   await sleep(700);
@@ -4546,7 +4561,7 @@ async function editorChrome(page) {
   await page.key('Enter');
   const first = await gate.next();
   await page.waitStatus('saving');
-  check(await page.eval(`document.activeElement?.id === 'save' && document.querySelector('[data-testid=save-status]').textContent === 'Đang lưu…' && document.querySelector('#save').textContent.includes('Đang lưu…')`), 'keyboard Enter on #save preserves focus and Vietnamese pending text');
+  check(await page.eval(`document.activeElement?.id === 'save' && document.querySelector('[data-testid=save-status]').textContent === 'Đang lưu' && document.querySelector('#save').textContent.includes('Đang lưu…')`), 'keyboard Enter on #save preserves focus and Vietnamese pending text');
   await page.eval(`document.querySelector('#save').click(); document.querySelector('#save').click()`);
   await page.key('s', page.mod);
   await page.typeInBody(' Gõ tiếp khi chờ.');
@@ -4604,13 +4619,23 @@ async function editorChrome(page) {
     body: Buffer.from(JSON.stringify({ error: { code: 'dependency_unavailable', message: 'CDP fixture' } })).toString('base64'),
   });
   await page.waitStatus('failed');
-  check(await page.eval(`document.querySelector('[data-testid=save-status]').textContent === 'Chưa xác nhận lưu.' &&
+  check(await page.eval(`document.querySelector('[data-testid=save-status]').textContent === 'Chưa lưu được' &&
     document.querySelector('#editor-save-details').textContent.includes('Máy chủ tạm không phục vụ')`) &&
     (await page.draft(workId)).version === savedBeforeUnavailable, 'injected 503 leaves text unconfirmed and identifies the unavailable server');
   await page.click('#save');
   await gate.release(await gate.next());
   await page.waitStatus('saved');
   await gate.disable();
+
+  const connection = offline => ({offline, latency: 0, downloadThroughput: -1, uploadThroughput: -1});
+  await page.send('Network.emulateNetworkConditions', connection(true));
+  await page.typeInBody(' Viết ngoại tuyến.');
+  await page.click('#save'); await page.waitStatus('failed');
+  check(await page.eval("!navigator.onLine && document.querySelector('[data-testid=save-status]').textContent === 'Mất kết nối'"),
+    'offline indicator requires an observed offline browser');
+  await geometry('offline');
+  await page.send('Network.emulateNetworkConditions', connection(false));
+  await page.click('#save'); await page.waitStatus('saved');
 
   // Response stage: server has really committed. A retry must GET and enter conflict, with
   // no second PUT even when that first reconciliation itself fails (403 here).
@@ -4638,7 +4663,7 @@ async function editorChrome(page) {
   await page.send('Fetch.enable', { patterns: [{ urlPattern: '*/api/v1/drafts/*', requestStage: 'Request' }] });
   await page.click('#save');
   await page.waitFor(`document.querySelector('#editor-save-details')?.textContent.includes('bị từ chối')`, 'failed reconciliation remains visible');
-  check(await page.eval(`document.querySelector('[data-testid=save-status]').textContent === 'Chưa lưu được.'`), 'rejected write is distinguishable from an unconfirmed response');
+  check(await page.eval(`document.querySelector('[data-testid=save-status]').textContent === 'Chưa lưu được'`), 'rejected write is distinguishable from an unconfirmed response');
   check(writes === 0, 'failed reconciliation cannot write');
   await page.typeInBody(' Chữ còn trên trang.');
   await page.click('#save');
@@ -5165,6 +5190,7 @@ async function editorPhase(page) {
   console.log('one EditorView keeps selection and history across theme, preview and dialogs:');
   await page.eval(`document.querySelector('.cm-editor').__vinkView = 'kept'`);
   const view = `document.querySelector('.cm-editor')?.__vinkView === 'kept' && document.querySelectorAll('.cm-editor').length === 1`;
+  await holdEditorDebounce(page);
   await page.typeInBody(STANZA);
   const written = BODY + TAIL + STANZA;
   check((await page.body()) === written, 'new stanza typed with an indented line');
@@ -5318,6 +5344,7 @@ async function editorPhase(page) {
     await gate.disable();
   }
 
+  await page.eval('window.__restoreEditorClock?.()');
   await draftTags(page, workId);
   return workId;
 }
@@ -5462,7 +5489,7 @@ async function markdownLivePreviewAndFormatPicker(page) {
     await page.click('#save');
     const firstPut = await gate.next();
     await page.waitStatus('saving');
-    check(await page.eval(`document.querySelector('#save')?.textContent === 'Đang gửi…' && document.querySelector('#save .vk-draft-action-content')?.dataset.draftIcon === 'spin' && document.querySelector('[data-testid=save-status]')?.textContent === 'Đang gửi…'`),
+    check(await page.eval(`document.querySelector('#save')?.textContent === 'Đang gửi…' && document.querySelector('#save .vk-draft-action-content')?.dataset.draftIcon === 'spin' && document.querySelector('[data-testid=save-status]')?.textContent === 'Đang lưu'`),
       'v1 pending state switches to Đang gửi… with spinner icon');
     await gate.release(firstPut);
     await page.waitStatus('saved');
@@ -5924,7 +5951,7 @@ async function draftTags(page, workId) {
   check(other === 200, 'another tab saved tags version 3');
   await page.click('#work-tags-theme-0-remove');
   await waitTagStatus(page, 'unsaved');
-  check((await page.eval(`document.querySelector('[data-testid=save-status]').textContent`)) === 'Đã lưu chữ; chưa lưu thẻ', 'toolbar truthfully distinguishes saved text with unsaved tags');
+  check((await page.eval(`document.querySelector('[data-testid=save-status]').textContent`)) === 'Chưa lưu', 'toolbar truthfully distinguishes saved text with unsaved tags');
   // Removing a chip restores focus in the next frame. Finish that interaction before
   // moving to the toolbar, then hold the request to observe focus before the 409.
   await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
@@ -5938,7 +5965,7 @@ async function draftTags(page, workId) {
   await waitTagStatus(page, 'conflict', 'tag conflict');
   await pendingTags.disable();
   await page.waitFor(`document.activeElement?.id === 'save-recovery-jump'`, 'tag conflict hands keyboard focus back to the save slot');
-  check((await page.eval(`document.querySelector('[data-testid=save-status]').textContent`)) === 'Đã lưu chữ; thẻ đã đổi ở nơi khác.' && await page.eval(`document.querySelector('#save') === null && document.querySelector('#save-recovery-jump')?.textContent.includes('Xử lý xung đột thẻ')`), 'tag conflict routes to tag recovery instead of blind save retry');
+  check((await page.eval(`document.querySelector('[data-testid=save-status]').textContent`)) === 'Xung đột' && await page.eval(`document.querySelector('#save') === null && document.querySelector('#save-recovery-jump')?.textContent.includes('Xử lý xung đột thẻ')`), 'tag conflict routes to tag recovery instead of blind save retry');
   check((await page.eval(`document.querySelector('[data-testid=tag-conflict]').textContent`)).includes('Đang lưu: Mùa'), 'the conflict shows the stored tags by name');
   stored = await draftTagsOf(page, workId);
   check(stored.version === 3 && stored.themes.map((t) => t.label).join() === 'Mùa', 'the stale tag save wrote nothing');
@@ -5989,7 +6016,7 @@ async function draftTags(page, workId) {
   await responses.fail(lost);
   await responses.disable();
   await waitTagStatus(page, 'failed', 'unconfirmed tag save');
-  check((await page.eval(`document.querySelector('[data-testid=save-status]').textContent`)) === 'Đã lưu chữ; chưa xác nhận lưu thẻ.', 'the toolbar says the text is saved and tag save is unconfirmed');
+  check((await page.eval(`document.querySelector('[data-testid=save-status]').textContent`)) === 'Chưa lưu được', 'the toolbar says the text is saved and tag save is unconfirmed');
   stored = await draftTagsOf(page, workId);
   check(stored.version === 5, 'the dropped answer belonged to a committed save');
   check((await page.eval(`location.pathname`)) === editorPath, 'a lost tag acknowledgement keeps the author in the editor');
@@ -6574,6 +6601,7 @@ async function afterRestartPhase(page) {
   await retiredTagAfterRestart(page, state.workId);
 
   console.log('unsaved edit after restart keeps live buffer without export:');
+  await holdEditorDebounce(page);
   await page.typeInBody(STANZA);
   const current = await page.body();
   check(current === state.text + STANZA, 'unsaved stanza typed after the restart');
@@ -6627,7 +6655,10 @@ try {
   else if (args.phase === 'discussion') await discussionPhase(page);
   else if (args.phase === 'appearance-shell') await appearanceShellPhase(page);
   else if (args.phase === 'desk') await deskPhase(page);
-  else if (args.phase === 'editor') await editorPhase(page);
+  else if (args.phase === 'editor') {
+    await editorPhase(page);
+    await editorAutosave(page, {base: args.base, check, openPage: () => openPage(cdp), SaveGate, sleep});
+  }
   else if (args.phase === 'editor-format') await editorFormatPhase(page);
   else if (args.phase === 'restart-prepare') await prepareRestartPhase(page);
   else if (args.phase === 'public-storage') { /* exercised below, with profile reopen */ }

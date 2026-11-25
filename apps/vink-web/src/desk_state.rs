@@ -12,6 +12,7 @@ use crate::tag_state::{TagSession, TagStatus, TagTicket};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Failure {
+    Offline,
     Network,
     Unavailable,
     Unauthenticated,
@@ -86,6 +87,11 @@ impl EditorSession {
         if self.failure == Some(Failure::InvalidTitle) {
             self.failure = None;
         }
+    }
+
+    /// The first send is explicit. Only a newer edit of an acknowledged draft can arm a timer.
+    pub fn autosave_edit(&self) -> Option<u64> {
+        (self.base_version > 1 && self.status() == SaveStatus::Unsaved).then_some(self.edits)
     }
 
     /// Starts a save of the current edit if its version and title are eligible.
@@ -390,9 +396,8 @@ impl Guarded for DraftSession {
             started.tags = tags.begin_save();
         }
         let awaited = self.in_flight();
-        if awaited.is_empty() {
-            return None;
-        }
+        // An autosave may have finished while the author was choosing. An empty
+        // ticket settles immediately when they explicitly choose to leave.
         Some(((!started.is_empty()).then_some(started), awaited))
     }
 
@@ -843,6 +848,20 @@ mod tests {
         let tags = d.tags.as_mut().unwrap();
         let sent = tags.submitted(ticket.tags.unwrap()).unwrap().clone();
         tags.save_succeeded(ticket.tags.unwrap(), version, sent);
+    }
+
+    #[test]
+    fn autosave_finishing_before_the_leave_choice_needs_no_extra_write() {
+        let mut draft = DraftSession::loaded(2);
+        draft.text.edited();
+        let writing = draft.text.begin_save().unwrap();
+        let mut guard = LeaveGuard::default();
+        assert!(guard.request(&draft, "/ban-viet"));
+        draft.text.save_succeeded(writing, 3);
+        assert_eq!(guard.save_settled(&draft), None);
+        assert_eq!(guard.save_and_leave(&mut draft), None);
+        assert_eq!(guard.save_settled(&draft).as_deref(), Some("/ban-viet"));
+        assert!(draft.in_flight().is_empty());
     }
 
     #[test]
