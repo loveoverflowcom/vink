@@ -2492,13 +2492,12 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
   gap: var(--vk-space-2);
   margin: 0;
 }
-.vk-notif-note,
-.vk-notif-error {
+.vk-notif-note {
   padding: var(--vk-space-3);
   border-radius: var(--vk-radius-lg);
   background: var(--vk-surface-container);
 }
-.vk-notif-error { background: var(--vk-error-container); color: var(--vk-on-error-container); }
+.vk-notif-error { padding-block: var(--vk-space-3); }
 .vk-notif-error p { margin: 0; }
 .vk-notif-more > .vk-notif-error { flex: 1 1 100%; }
 .vk-notif-loading,

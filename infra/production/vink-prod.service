@@ -8,13 +8,13 @@ Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=/opt/vink-prod/current
 Environment=PODMAN_COMPOSE_PROVIDER=/usr/bin/podman-compose
-RuntimeDirectory=vink-prod-identity
+RuntimeDirectory=vink-prod-identity vink-prod-inbox vink-prod-ingest
 RuntimeDirectoryMode=0700
 # The release controller holds this fence across interruptions before opening writes.
 ExecStartPre=/usr/bin/test ! -e /var/lib/vink-production-release/origin-maintenance.json
 # systemd resets RuntimeDirectory ownership when it prepares ExecStart.
-ExecStart=/bin/sh -ec '/usr/bin/chown 10001:10001 /run/vink-prod-identity; exec /usr/bin/podman compose --project-name vink-prod --env-file /etc/vink-prod/release.env -f /opt/vink-prod/current/services/postgres/compose.yaml -f /opt/vink-prod/current/infra/production/compose.yaml up -d postgres identity app worker'
-ExecStop=/usr/bin/podman compose --project-name vink-prod --env-file /etc/vink-prod/release.env -f /opt/vink-prod/current/services/postgres/compose.yaml -f /opt/vink-prod/current/infra/production/compose.yaml stop worker app identity postgres
+ExecStart=/bin/sh -ec '/usr/bin/chown 10001:10001 /run/vink-prod-identity /run/vink-prod-inbox /run/vink-prod-ingest; exec /usr/bin/podman compose --project-name vink-prod --env-file /etc/vink-prod/release.env -f /opt/vink-prod/current/services/postgres/compose.yaml -f /opt/vink-prod/current/infra/production/compose.yaml up -d postgres notifications identity app worker'
+ExecStop=/usr/bin/podman compose --project-name vink-prod --env-file /etc/vink-prod/release.env -f /opt/vink-prod/current/services/postgres/compose.yaml -f /opt/vink-prod/current/infra/production/compose.yaml stop worker app identity notifications postgres
 TimeoutStartSec=180
 TimeoutStopSec=120
 

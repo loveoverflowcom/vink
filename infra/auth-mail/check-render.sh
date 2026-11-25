@@ -3,9 +3,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 fixture=$(mktemp -d)
-trap 'rmdir "$fixture/socket" "$fixture/resend"; unlink "$fixture/public.env"; for name in app-runtime worker-runtime identity-runtime app-migrator identity-migrator provision; do unlink "$fixture/$name.env"; done; rmdir "$fixture"' EXIT
+trap 'rmdir "$fixture/socket" "$fixture/resend"; unlink "$fixture/public.env"; for name in app-runtime worker-runtime identity-runtime app-migrator identity-migrator notifications-runtime notifications-migrator provision; do unlink "$fixture/$name.env"; done; rmdir "$fixture"' EXIT
 mkdir "$fixture/socket" "$fixture/resend"
-for name in app-runtime worker-runtime identity-runtime app-migrator identity-migrator provision; do
+for name in app-runtime worker-runtime identity-runtime app-migrator identity-migrator notifications-runtime notifications-migrator provision; do
     touch "$fixture/$name.env"
 done
 unset VINK_PROD_AUTH_SIGN_IN VINK_TEST_AUTH_SIGN_IN VINK_AUTH_SIGN_IN
@@ -14,6 +14,9 @@ cat > "$fixture/public.env" <<CONF
 VINK_POSTGRES_VOLUME=vink-render-check-postgres
 VINK_PUBLIC_ORIGIN=https://qualification.example.test
 VINK_TEST_HOST_PORT=3300
+VINK_PROD_INBOX_DIR=$fixture/inbox
+VINK_PROD_INGEST_DIR=$fixture/ingest
+VINK_PROD_NOTIFICATIONS_IMAGE=ghcr.io/loveoverflowcom/vink-notifications:render-fixture
 VINK_PROD_DB_NETWORK=vink-render-check-db
 VINK_PROD_EDGE_NETWORK=vink-render-check-edge
 VINK_PROD_POSTGRES_IMAGE=postgres:17

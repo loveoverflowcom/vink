@@ -371,8 +371,7 @@ mỗi lệnh trong scope `systemd-run` `MemoryMax=8G` với `CARGO_BUILD_JOBS=6`
 
 ### 7.6. Còn mở
 
-- Image OCI và service `notifications` trong `infra/production/compose.yaml` (+ mount socket theo phạm vi);
-  theo yêu cầu của chủ dự án, lượt này không build image production.
+- Đường đóng gói OCI và Compose cho Notifications đã có trong [runbook production](../../infra/production/README.md#bổ-sung-notifications-vào-release-ba-image-đang-chạy). Kích hoạt trên VPS thuộc lượt triển khai riêng.
 - ~~Client inbox của Gateway và badge `stale` (`#348`)~~: xem §8 (Gateway lọc nhóm theo quyền hiện
   hành, gồm tác phẩm ẩn và principal đình chỉ; invalidation `work`/`principal` không đổi projection).
 - Số đo trên phần cứng production và WAL/purge lag dưới tải liên tục; số ở §7.7 là máy phát triển.
@@ -586,3 +585,5 @@ giữ `PENDING`. Mức triển khai của lát này là `web`. Mốc thị giác
 | State Web | Thiếu adapter đếm và inbox trên base. Dùng store trong tab gắn generation và phiên bản lượt đọc. Mỗi lượt đếm đã thấy tương tác ghi sẽ tự đối soát lại. Đọc lại sau bulk tỷ lệ theo số trang người dùng đã mở, chỉ sau hành động rõ ràng. |
 | UI | Tái sử dụng primitive từ #485, dialog/focus shell và Bàn viết. Thứ tự rail giữ Bàn viết/Thông báo liền nhau. Avatar tài khoản tiếp tục thuộc Tôi, và nav dùng bộ icon outlined/filled. |
 | Kiểm chứng | Xem lệnh, ma trận, ảnh và ranh giới ở [evidence #486](evidence/notifications-486/README.md). |
+
+Chuông chỉ hiện badge cho số dương còn xác minh được, từ 1 đến `99+`. Số cũ giữ nguyên trong khi đồng bộ; panel trình bày lỗi count hoặc lỗi tải trang và cho thử lại ở đúng phạm vi. Xem [LayoutSpec](../design/notifications.md#9-tên-truy-cập-và-trạng-thái).

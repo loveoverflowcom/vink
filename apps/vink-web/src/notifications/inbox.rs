@@ -140,6 +140,15 @@ fn InboxBody(owner: Notifications) -> impl IntoView {
                     }>"Tải lại"</Button>
                 </p>
             </Show>
+            <Show when=move || !offline.get() && owner.count.get() == vink_ui::BadgeState::Unknown
+                && owner.inbox.with(|inbox| inbox.snapshot.is_some() && inbox.first == Load::Idle)>
+                <p class="vk-notif-note" role="status">"Chưa tải được số thông báo mới."
+                    <Button variant=ButtonVariant::Text on_press=move |_| {
+                        #[cfg(feature = "browser")]
+                        owner.poll_now();
+                    }>"Thử lại"</Button>
+                </p>
+            </Show>
             <Show when=move || owner.inbox.with(|inbox| inbox.updates)>
                 <div class="vk-notif-updates">
                     <Button id="notification-updates" variant=ButtonVariant::Filled leading=IconName::Refresh

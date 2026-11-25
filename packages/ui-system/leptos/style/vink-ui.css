@@ -1905,20 +1905,6 @@ a.vk-ui-byline__identity:focus-visible {
 
 .vk-ui-badge[hidden] { display: none; }
 
-.vk-ui-badge[data-state="stale"] {
-  border: 1.5px solid var(--vk-outline);
-  background: var(--vk-surface);
-  color: var(--vk-on-surface-variant);
-}
-
-.vk-ui-badge[data-state="unknown"] {
-  min-inline-size: var(--vk-size-notification-dot);
-  min-block-size: var(--vk-size-notification-dot);
-  padding: 0;
-  border: 2px solid var(--vk-outline);
-  background: var(--vk-surface);
-}
-
 .vk-ui-shape-mark {
   --vk-ui-shape-size: var(--vk-size-notification-mark);
   --vk-ui-shape-icon-size: var(--vk-size-notification-system-icon);

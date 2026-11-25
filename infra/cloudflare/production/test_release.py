@@ -121,11 +121,34 @@ class Packages(unittest.TestCase):
             self.assertFalse((output / "_v" / B / "pkg/expressions/pilot.js").exists())
             self.assertTrue((output / "_v" / A / "pkg/expressions/pilot.js").exists())
 
-    def test_schema_review_checks_both_histories_and_direction(self):
+    def test_first_notification_release_preserves_predecessor_and_binds_fourth_digest(self):
+        legacy = spec(A)
+        upgraded = spec(B)
+        ref = "ghcr.io/loveoverflowcom/vink-notifications@sha256:" + "f" * 64
+        upgraded["images"]["notifications"] = ref
+        art.validate(legacy)
+        art.validate(upgraded)
+        origin = release.maintenance.Origin.__new__(release.maintenance.Origin)
+        old_env = "".join(f"VINK_PROD_{key}_IMAGE={legacy['images'][image]}\n"
+                          for key, image in release.maintenance.SERVICES.values()).encode()
+        candidate_env = origin.env(upgraded["images"], old_env)
+        self.assertIn(f"VINK_PROD_NOTIFICATIONS_IMAGE={ref}\n".encode(), candidate_env)
+        self.assertEqual(origin.env(upgraded["images"], candidate_env), candidate_env)
+        self.assertEqual(origin.env(legacy["images"], old_env), old_env)
+        self.assertNotIn("notifications", release.maintenance.running_services(legacy["images"]))
+        self.assertIn("notifications", release.maintenance.running_services(upgraded["images"]))
+        upgraded["images"]["notifications"] = upgraded["images"]["worker"]
+        with self.assertRaisesRegex(ValueError, "wrong notifications image"):
+            art.validate(upgraded)
+
+    def test_schema_review_checks_all_owner_histories_and_direction(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             evidence = {"from": A, "to": B, "action": "expand"}
-            for owner in ("vink-app", "vink-identity"):
+            compose = root / B / "infra/production/compose.yaml"
+            compose.parent.mkdir(parents=True)
+            compose.write_text("services:\n  notifications:\n")
+            for owner in ("vink-app", "vink-identity", "vink-notifications"):
                 evidence[owner] = {"old_on_result": "PASS", "new_on_result": "PASS", "rehearsal": "scratch read/write"}
                 for rev in (A, B):
                     path = root / rev / "services" / owner / "migrations"
@@ -754,6 +777,7 @@ class Maintenance(unittest.TestCase):
         origin.spec, origin.old_images = spec(B), spec(A)["images"]
         origin.work = root / "maintenance"
         origin.state_path = origin.work / "state.json"
+        origin.owners = release.maintenance.OWNERS
         origin.before = {"vink": {"1": "old-app"}, "vink_identity": {"1": "old-identity"}}
         env = root / "release.env"
         env.write_text("".join(

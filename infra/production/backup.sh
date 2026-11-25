@@ -1,5 +1,5 @@
 #!/bin/bash
-# Produces one private, complete pair. Keeps the seven most recent Vink-only backups.
+# Produces one private, complete set. Keeps the seven most recent Vink-only backups.
 set -euo pipefail
 umask 077
 root=/var/backups/vink-prod
@@ -7,7 +7,7 @@ cd /opt/vink-prod/current
 install -d -m 0700 "$root"
 exec 9> "$root/.lock"
 flock -n 9
-# The maintenance window retains a separate pair taken after draining writers.
+# The maintenance window retains a separate set taken after draining writers.
 test ! -e /var/lib/vink-production-release/origin-maintenance.json
 # Leave at least 5 GiB available before using the shared host filesystem for a dump.
 (( $(df -Pk "$root" | awk 'NR == 2 {print $4}') >= 5 * 1024 * 1024 ))
@@ -18,14 +18,9 @@ compose=(podman compose --project-name vink-prod --env-file /etc/vink-prod/relea
     -f /opt/vink-prod/current/services/postgres/compose.yaml -f /opt/vink-prod/current/infra/production/compose.yaml)
 # Each owner database is dumped on its own (K1). The Notification dump is taken first, so a
 # restore of this set never leaves Notifications ahead of the App: the App relay's replay from the
-# Notification dump's time fills the gap (docs/development/notifications.md §7.3). A database that
-# is not provisioned yet (vink_notifications before #347 is deployed) is skipped.
+# Notification dump's time fills the gap (docs/development/notifications.md §7.3).
 dumps=()
 for database in vink_notifications vink vink_identity; do
-    if [ "$database" = vink_notifications ] && ! "${compose[@]}" exec -T postgres \
-        psql -U vink -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = 'vink_notifications'" | grep -q 1; then
-        continue
-    fi
     "${compose[@]}" exec -T postgres pg_dump -U vink -Fc "$database" > "$work/$database.dump"
     "${compose[@]}" exec -T postgres pg_restore --list < "$work/$database.dump" > /dev/null
     dumps+=("$database.dump")

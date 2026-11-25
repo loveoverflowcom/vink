@@ -14,7 +14,8 @@ def main():
     os.umask(0o077)
     args.directory.mkdir(mode=0o700)
     passwords = {key: secrets.token_hex(32) for key in (
-        "bootstrap", "app_runtime", "app_migrator", "identity_runtime", "identity_migrator"
+        "bootstrap", "app_runtime", "app_migrator", "identity_runtime", "identity_migrator",
+        "notifications_runtime", "notifications_migrator"
     )}
     host = "10.89.3.10:5432"
     app_url = f"postgres://vink_app_runtime:{passwords['app_runtime']}@{host}/vink"
@@ -34,9 +35,17 @@ def main():
             f"VINK_IDENTITY_MIGRATE_DATABASE_URL=postgres://vink_identity_migrator:"
             f"{passwords['identity_migrator']}@{host}/vink_identity\n"
         ),
+        "notifications-runtime.env": (
+            f"VINK_NOTIFICATIONS_DATABASE_URL=postgres://vink_notifications_runtime:"
+            f"{passwords['notifications_runtime']}@{host}/vink_notifications\n"
+        ),
+        "notifications-migrator.env": (
+            f"VINK_NOTIFICATIONS_MIGRATE_DATABASE_URL=postgres://vink_notifications_migrator:"
+            f"{passwords['notifications_migrator']}@{host}/vink_notifications\n"
+        ),
         "provision.env": f"PGPASSWORD={passwords['bootstrap']}\n" + "".join(
             f"VINK_{key.upper()}_PASSWORD={passwords[key]}\n"
-            for key in ("app_runtime", "app_migrator", "identity_runtime", "identity_migrator")
+            for key in passwords if key != "bootstrap"
         ),
     }
     for name, content in files.items():

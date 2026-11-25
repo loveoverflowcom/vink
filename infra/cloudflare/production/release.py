@@ -159,7 +159,10 @@ def schema_action(old, new, review, releases=Path("/opt/vink-prod/releases"), *,
     require(window == (action == "maintenance"), "maintenance requires explicit opt-in and matching review")
     incompatible = False
     adds_migrations = False
-    for owner in ("vink-app", "vink-identity"):
+    owners = ["vink-app", "vink-identity"]
+    if any(maintenance.has_notifications(releases / rev) for rev in (old, new)):
+        owners.append("vink-notifications")
+    for owner in owners:
         report = evidence[owner]
         require(report["new_on_result"] == "PASS" and report["rehearsal"],
                 "candidate requires rehearsal on the resulting schema")
@@ -384,9 +387,9 @@ def bridge(a, spec, remote, journal):
     rolled_back = origin.read_state(origin.state_key(evidence))
     require(rolled_back["phase"] == "rolled_back", "origin journal has not completed rollback")
     origin.check_ledgers(origin.before)
-    containers = {name: origin.container(name, running=True) for name in maintenance.SERVICES}
+    containers = {name: origin.container(name, running=True) for name in maintenance.running_services(previous["images"])}
     run(HERE / "origin.sh", "observe", old, old, *[previous["images"][k] for k in ("web", "worker", "identity")],
-        previous["platform"])
+        previous["platform"], "same", previous["images"].get("notifications", ""))
     digest = sha(raw)
     incidents.mkdir(exist_ok=True)
     archived = incidents / (digest + ".json")
@@ -632,6 +635,8 @@ def main():
             if not resume:
                 origin.preflight(evidence)
         origin_args = [a.previous_origin, rev, images["web"], images["worker"], images["identity"], spec["platform"], schema]
+        if "notifications" in images:
+            origin_args.append(images["notifications"])
         if not resume:
             run(HERE / "origin.sh", "plan", *origin_args)
         with tempfile.TemporaryDirectory(dir=STATE) as temp:

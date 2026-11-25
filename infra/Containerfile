@@ -30,6 +30,8 @@ RUN cargo xtask build api --release \
  && rm -rf target "$CARGO_HOME/registry"
 FROM backend-source AS worker-build
 RUN cargo xtask build worker --release
+FROM backend-source AS notifications-build
+RUN cargo build --locked --release -p vink-notifications
 FROM backend-source AS identity-build
 RUN cargo xtask build identity --release
 
@@ -64,4 +66,9 @@ ENTRYPOINT ["/usr/local/bin/vink-worker"]
 FROM runtime AS identity
 COPY --from=identity-build /src/target/release/vink-identity /usr/local/bin/vink-identity
 ENTRYPOINT ["/usr/local/bin/vink-identity"]
+CMD ["serve"]
+
+FROM runtime AS notifications
+COPY --from=notifications-build /src/target/release/vink-notifications /usr/local/bin/vink-notifications
+ENTRYPOINT ["/usr/local/bin/vink-notifications"]
 CMD ["serve"]
