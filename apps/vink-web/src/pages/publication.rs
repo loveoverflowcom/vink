@@ -430,8 +430,9 @@ impl Runner {
 /// A control that held focus can be gone after the region re-rendered: the primary action once a
 /// withdrawal left nothing to press, "Đã hiểu" once it was dismissed. Focus then falls to the
 /// document body, which a keyboard user cannot tell from the page's start. Return it to the action
-/// when there still is one, else to the audience control or its disclosure. Focus that is anywhere else is never
-/// taken, and the page does not scroll.
+/// when there still is one, else to the audience switch, else to the region's refresh (the switch
+/// is disabled while a command runs), and to the options disclosure only when the folded panel
+/// hides the region. Focus that is anywhere else is never taken, and the page does not scroll.
 fn restore_lost_focus() {
     #[cfg(feature = "browser")]
     request_animation_frame(move || {
@@ -444,6 +445,7 @@ fn restore_lost_focus() {
         let target = [
             "publication-primary",
             "audience-public",
+            "publication-refresh",
             "work-options-toggle",
         ]
         .into_iter()

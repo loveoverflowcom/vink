@@ -55,6 +55,18 @@ feature `browser`, Preview, bridge JS và oracle browser.
 | `TagSelector` non-compact, `SupportingDetails`, `ReadingDocument`, `IconName::Visibility` | `RETAIN` | `TagSelector` mặc định là pattern TAG-PR-05 dùng chung với CMP (`Tags.kt`, `TagSpecimens.kt`) và có oracle `composition.tag-selector` trong `preview-smoke.mjs`; App dùng `compact=true`. `SupportingDetails` còn Preview/CMP, `ReadingDocument` phục vụ Reader và kiểm duyệt, `Visibility` phục vụ `AuthorWorkRow`. |
 | `.vk-editor-heading__back`, `{view! {…}.into_any()}` quanh `WorkInfo`/`PublicationPanel`, `cfg_attr(not(feature = "browser"), allow(dead_code))` của `QUERY_ID`/`TagLoad` | `RETAIN` | Nút Bàn viết là control R4 mang ngữ nghĩa link trong forced colors (`LinkText`) và padding có icon đứng trước. Đổi sang tonal button chung là đổi giao diện, cần qualification riêng. Type erasure giữ độ sâu kiểu dưới giới hạn đệ quy (#482). Hai mục cfg chỉ có caller trong code trình duyệt. |
 
+### Hồi quy tích hợp phát hiện khi kiểm PR 2
+
+- `restore_lost_focus` (`publication.rs`): #482 bỏ heading `#publication-title` vốn là đích focus
+  dự phòng trong vùng. Khi “Gửi lại bản đã chụp” biến mất lúc lệnh còn chạy, công tắc Công khai
+  bị khóa nên focus rơi ra `#work-options-toggle` ngoài vùng; `publication-author` FAIL cả trên
+  `develop@9e2eac57`. Thứ tự mới: `#publication-primary` → `#audience-public` →
+  `#publication-refresh` (IconButton dùng `aria-disabled`, vẫn nhận focus) → `#work-options-toggle`
+  chỉ khi bảng gập.
+- `exactVersion` trong `publication-author-smoke.mjs` đọc bản trên máy chủ ngay khi vùng chuyển
+  `failed`, tức trước khi PUT vừa thả được trả lời, nên đua với lần commit. Kiểm thử giờ chờ editor
+  nhận ACK (`unsaved`) rồi mới đọc; bốn điều kiện của oracle giữ nguyên.
+
 ## Kiểm chứng và phần tiếp theo
 
 Ảnh bàn giao thuộc preview. Kết quả PR 1 nằm trong [#482](https://github.com/loveoverflowcom/vink/pull/482).
