@@ -478,7 +478,13 @@ mod browser {
         }
 
         if let Some(session) = use_context::<crate::account::Session>() {
+            let cookie_epoch = session.cookie_epoch();
+            let opened_with = cookie_epoch.get_untracked();
             Effect::new(move |_| {
+                if cookie_epoch.get() != opened_with {
+                    cancel_controller(ctrl);
+                    return;
+                }
                 let snapshot = session.settled_authority();
                 let cancelled = ctrl.try_update_value(|c| {
                     c.tracker.on_authority_update(snapshot);

@@ -39,7 +39,7 @@ pub(super) fn watch(session: Session) {
     if let Ok(channel) = web_sys::BroadcastChannel::new(CHANNEL) {
         let heard = Closure::<dyn FnMut(web_sys::MessageEvent)>::new(move |_| {
             session.auth.update(|gate| gate.invalidate(true));
-            session.owner.update(SessionOwner::expect_session_change);
+            session.note_cookie_change();
             refresh(session);
         });
         channel.set_onmessage(Some(heard.as_ref().unchecked_ref()));
@@ -237,7 +237,7 @@ pub(super) fn dispatch(
         }
         if changed_cookie {
             if operation != Operation::SignOut || revoked {
-                session.owner.update(SessionOwner::expect_session_change);
+                session.note_cookie_change();
             }
             announce();
         }

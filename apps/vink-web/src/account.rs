@@ -67,6 +67,8 @@ pub(crate) struct Session {
     owner: RwSignal<SessionOwner>,
     auth: RwSignal<AuthGate>,
     checking: RwSignal<bool>,
+    #[cfg(feature = "browser")]
+    cookie_epoch: RwSignal<u64>,
     epoch: Memo<u64>,
     pub(crate) standing: Memo<Standing>,
     pub(crate) principal: Memo<Option<String>>,
@@ -84,6 +86,8 @@ impl Session {
             owner,
             auth,
             checking: RwSignal::new(false),
+            #[cfg(feature = "browser")]
+            cookie_epoch: RwSignal::new(0),
             epoch: Memo::new(move |_| auth.with(AuthGate::epoch)),
             standing: Memo::new(move |_| owner.with(|o| o.standing().clone())),
             principal: Memo::new(move |_| owner.with(|o| o.principal().map(str::to_owned))),
@@ -119,6 +123,19 @@ impl Session {
 
     pub(crate) fn checking(self) -> bool {
         self.checking.get()
+    }
+
+    /// A real auth action or a cross-tab session signal invalidates visits immediately,
+    /// even while the follow-up session read is pending.
+    #[cfg(feature = "browser")]
+    fn note_cookie_change(self) {
+        self.cookie_epoch.update(|epoch| *epoch += 1);
+        self.suspend_private_scope();
+    }
+
+    #[cfg(feature = "browser")]
+    pub(crate) fn cookie_epoch(self) -> RwSignal<u64> {
+        self.cookie_epoch
     }
 
     #[cfg(feature = "browser")]

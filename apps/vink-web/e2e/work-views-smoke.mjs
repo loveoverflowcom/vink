@@ -476,6 +476,41 @@ export async function standaloneWorkViewCheck(page, { args, check }) {
       ledger.rows[0].status === 204 && ledger.rows[0].cacheControl === 'no-store' && !ledger.rows[0].setCookie,
       'standalone CSR: authenticated non-author member counts via 204 no-store without guest cookie',
     );
+
+    // E-41: hold the real session read after cookie revocation. The signal alone must
+    // cancel the current visit before the timer can send a POST under the guest scope.
+    await page.goto(`${base}${path}`);
+    await page.waitFor(`Boolean(document.querySelector('.vk-document') && document.querySelector('#root-composer'))`,
+      'standalone Reader body and signed-in composer ready');
+    let pendingSession = false;
+    const sessionPath = '/api/v1/auth/session';
+    const holdSession = ({ sessionId, method, params }) => {
+      if (sessionId !== page.sessionId || method !== 'Fetch.requestPaused') return;
+      if (params.request.method === 'GET' && new URL(params.request.url).pathname === sessionPath) {
+        pendingSession = true;
+        return;
+      }
+      page.send('Fetch.continueRequest', { requestId: params.requestId }).catch(() => {});
+    };
+    page.cdp.listeners.push(holdSession);
+    try {
+      await page.send('Fetch.enable', {
+        patterns: [{ urlPattern: `${base}${sessionPath}`, requestStage: 'Response' }],
+      });
+      const revoked = await page.eval(`fetch('${sessionPath}', { method: 'DELETE' }).then(r => r.status)`);
+      check(revoked === 204, 'standalone CSR E-41: real Identity session is revoked');
+      await page.eval(`(() => {
+        const channel = new BroadcastChannel('vink-session');
+        channel.postMessage('changed');
+        channel.close();
+      })()`);
+      await waitForCount(() => pendingSession, 4000, 'held session recheck after the change signal');
+      await sleep(5300);
+      check(ledger.rows.length === 1, 'standalone CSR E-41: session signal cancels the visit before the authority recheck settles');
+    } finally {
+      page.cdp.listeners.splice(page.cdp.listeners.indexOf(holdSession), 1);
+      await page.send('Fetch.disable');
+    }
   } finally {
     ledger.stop();
   }
