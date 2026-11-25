@@ -5,15 +5,16 @@ const SAMPLE_WORK = '33333333-3333-4333-8333-333333333333';
 const DRAFT_LINE = 'Phố cũ mưa giăng sợi mỏng,';
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function readAuthorWorkViews(authorBase, workId = SAMPLE_WORK) {
-  const resp = await fetch(`${authorBase}/api/v1/author/works?limit=100`);
+async function readAuthorWorkViews(authorBase, title) {
+  const query = new URLSearchParams({ q: title });
+  const resp = await fetch(`${authorBase}/api/v1/author/works?${query}`);
   if (!resp.ok) {
     throw new Error(`GET /api/v1/author/works returned ${resp.status}`);
   }
   const data = await resp.json();
-  const card = data.works?.find((w) => w.work_id === workId);
+  const card = data.works?.find((w) => w.work_id === SAMPLE_WORK);
   if (!card) {
-    throw new Error(`work ${workId} missing from author works response`);
+    throw new Error(`work ${SAMPLE_WORK} missing from the author search response`);
   }
   return card.views;
 }
@@ -92,7 +93,13 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
     initialReader.status === 200 && Boolean(initialEtag) && !initialReader.headers.get('set-cookie'),
     'public /reader carries strong ETag and sets no guest cookie',
   );
-  const beforeViews = await readAuthorWorkViews(authorBase);
+  // Earlier Desk paging can add 250 drafts and Reader privacy can edit this draft's title.
+  const draft = await fetch(`${authorBase}/api/v1/drafts/${SAMPLE_WORK}`);
+  if (!draft.ok) throw new Error(`GET sample draft returned ${draft.status}`);
+  const { title } = await draft.json();
+  if (!title) throw new Error('sample draft has no title for the Desk search');
+  const readViews = () => readAuthorWorkViews(authorBase, title);
+  const beforeViews = await readViews();
   const startCount = beforeViews?.count ?? 0;
 
   // 1. Author self-view >= 5s -> +0 and no guest cookie.
@@ -107,7 +114,7 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
       await waitForCount(() => ledger.rows.some((r) => r.status === 204 && r.extraInfoReceived), 4000, 'author view intake POST');
       const req = ledger.rows[0];
       check(req.status === 204 && req.cacheControl === 'no-store' && !req.setCookie, 'author view POST returns 204 no-store without guest cookie');
-      const afterAuthor = await readAuthorWorkViews(authorBase);
+      const afterAuthor = await readViews();
       check(afterAuthor.state === 'counted' && (afterAuthor.count ?? 0) === startCount, `author self-view >= 5s does not increment (${afterAuthor.count})`);
       check(authorPage.errors.length === 0, 'author view flow has no console errors');
     } finally {
@@ -129,7 +136,7 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
     body: JSON.stringify({ event_id: '0193a000-0000-7000-8000-000000000901' }),
   });
   check(prefetch.status === 204 && !prefetch.headers.get('set-cookie'), 'Sec-Purpose prefetch returns 204 without Set-Cookie');
-  check((await readAuthorWorkViews(authorBase)).count === startCount, 'prefetch request does not count');
+  check((await readViews()).count === startCount, 'prefetch request does not count');
 
   // 3-5. Guest context: < 5s early leave -> 0 POSTs; >= 5s -> +1 & __Host-vink_guest; revisit within 24h -> +0 & cookie not renewed; ETag unchanged.
   {
@@ -145,7 +152,7 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
       await guest1.waitFor(`location.pathname==='/'`, 'guest1 left Reader early');
       await sleep(1000);
       check(ledger.rows.length === 0, 'staying < 5s emits zero POST /views');
-      check((await readAuthorWorkViews(authorBase)).count === startCount, '< 5s stay keeps count unchanged');
+      check((await readViews()).count === startCount, '< 5s stay keeps count unchanged');
 
       // Full stay (>= 5s).
       await guest1.goto(`${guestBase}${readerPath}`);
@@ -155,7 +162,7 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
       const { cookies } = await guest1.send('Network.getCookies', { urls: [guestBase] });
       const guestCookie = cookies.find((c) => c.name === '__Host-vink_guest');
       check(Boolean(guestCookie?.httpOnly && guestCookie?.secure && guestCookie?.path === '/'), 'Chrome stored HttpOnly Secure __Host-vink_guest cookie');
-      check((await readAuthorWorkViews(authorBase)).count === startCount + 1, 'guest >= 5s increments author count to +1');
+      check((await readViews()).count === startCount + 1, 'guest >= 5s increments author count to +1');
 
       // Strong ETag on /reader remains invariant after view count incremented.
       const condReader = await fetch(`${guestBase}${readerApiPath}`, { headers: { 'If-None-Match': initialEtag } });
@@ -171,7 +178,7 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
       check(!ledger.rows[1].setCookie, 'valid __Host-vink_guest cookie is not renewed within 24h');
       const cookiesAfter = (await guest1.send('Network.getCookies', { urls: [guestBase] })).cookies.find((c) => c.name === '__Host-vink_guest');
       check(cookiesAfter?.value === guestCookie.value, 'same guest cookie value preserved on 24h return');
-      check((await readAuthorWorkViews(authorBase)).count === startCount + 1, '24h repeat visit does not increment');
+      check((await readViews()).count === startCount + 1, '24h repeat visit does not increment');
       check(guest1.errors.length === 0, 'guest1 flow has no console errors');
     } finally {
       ledger.stop();
@@ -207,7 +214,7 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
       await guest2.eval(`window.__setVis('visible')`);
       await sleep(3400);
       await waitForCount(() => ledger.rows.length === 1 && ledger.rows[0].status === 204, 4000, 'cumulative foreground view');
-      check((await readAuthorWorkViews(authorBase)).count === startCount + 2, 'pause/resume cumulative >= 5s counts +1');
+      check((await readViews()).count === startCount + 2, 'pause/resume cumulative >= 5s counts +1');
       check(guest2.errors.length === 0, 'guest2 pause/resume flow has no console errors');
     } finally {
       await guest2.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
@@ -264,7 +271,7 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
       `);
       await waitForCount(() => postedIds.length >= 2 && ledger.rows.some((r) => r.status === 204 && r.extraInfoReceived), 5000, 'bounded retry recovery');
       check(postedIds[0] === postedIds[1], 'retry after 503 with lifecycle wakes reuses exact same UUIDv7 event_id');
-      check((await readAuthorWorkViews(authorBase)).count === startCount + 3, 'retry recovers to +1 without blocking Reader');
+      check((await readViews()).count === startCount + 3, 'retry recovers to +1 without blocking Reader');
       check(guest3.errors.length === 0, 'retry flow raises zero browser/console errors');
     } finally {
       await guest3.send('Fetch.disable').catch(() => {});
@@ -342,7 +349,7 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
       await guest4.waitFor(`document.querySelector('.vk-reader')?.dataset.revision === '55555555-5555-4555-8555-555555555555'`, 'Xem bản mới applied');
       await sleep(5400);
       check(ledger.rows.length === 0, 'E-37 Xem bản mới cancels view visit permanently (no POST even after 5.4s)');
-      check((await readAuthorWorkViews(authorBase)).count === startCount + 3, 'author view total remains unchanged after E-37');
+      check((await readViews()).count === startCount + 3, 'author view total remains unchanged after E-37');
       check(guest4.errors.length === 0, 'E-37 cancel flow has no console errors');
     } finally {
       await guest4.send('Page.removeScriptToEvaluateOnNewDocument', { identifier }).catch(() => {});
@@ -405,7 +412,7 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
       await guest5.waitFor(`Boolean(document.querySelector('.vk-document'))`, 'background republish rendered after Hidden');
       await sleep(5400);
       check(ledger.rows.length === 0, 'OQ-3A: Hidden -> background republish emits 0 POST /views without intentional reopen');
-      check((await readAuthorWorkViews(authorBase)).count === startCount + 3, 'author view total remains unchanged after OQ-3A');
+      check((await readViews()).count === startCount + 3, 'author view total remains unchanged after OQ-3A');
       check(guest5.errors.length === 0, 'hidden replacement & OQ-3A check has no console errors');
     } finally {
       await guest5.send('Page.removeScriptToEvaluateOnNewDocument', { identifier }).catch(() => {});
@@ -423,6 +430,12 @@ export async function workViewsE2E(_rootPage, { cdp, openPage, args, check }) {
     const deskPage = await openPage(browserContextId);
     try {
       await deskPage.goto(`${authorBase}/ban-viet`);
+      await deskPage.waitFor(`document.querySelector('#open-draft-search') && document.querySelector('[data-testid=draft-content]')?.getAttribute('aria-busy')==='false'`,
+        'author Desk ready to search the real draft corpus');
+      await deskPage.click('#open-draft-search');
+      await deskPage.waitFor(`document.activeElement?.id === 'draft-search'`, 'author Desk search input ready');
+      await deskPage.typeAtEnd('#draft-search', title);
+      await deskPage.key('Enter');
       await deskPage.waitFor(
         `document.querySelector('[data-testid=draft-content]')?.getAttribute('aria-busy')==='false' && Boolean(document.querySelector('#draft-row-${SAMPLE_WORK} [data-testid=author-work-views]'))`,
         'author Desk hydrated with real work views',
