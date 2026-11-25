@@ -3866,9 +3866,12 @@ async function draftDashboard(page) {
   await page.key('Enter');
   await page.waitFor(`document.activeElement.id === 'draft-search' && document.activeElement.value.includes('chưa gửi')`,
     'reopening restores the unsubmitted buffer');
-  await page.key('z', page.mod);
-  await page.waitFor(`document.activeElement.value === 'duong ve' &&
-    document.querySelector('#draft-filter').textContent.includes('“duong ve”')`,
+  // DevTools bypasses the browser's platform shortcut dispatch. Send its native edit command.
+  const undoKey = { key: 'z', code: 'KeyZ', modifiers: page.mod, windowsVirtualKeyCode: 90 };
+  await page.send('Input.dispatchKeyEvent', { ...undoKey, type: 'rawKeyDown', commands: ['undo'] });
+  await page.send('Input.dispatchKeyEvent', { ...undoKey, type: 'keyUp' });
+  check(await page.eval(`document.activeElement.value === 'duong ve' &&
+    document.querySelector('#draft-filter').textContent.includes('“duong ve”')`),
     '#531 native Undo after reopening edits only the unsubmitted buffer');
   await page.key('Escape');
   await page.click('#clear-draft-filter');
@@ -3985,7 +3988,7 @@ async function draftDashboard(page) {
     '#531 create submits the selected Markdown format while search is open');
   await gate.fulfill(expiredRefresh, 401, { error: { code: 'unauthenticated' } });
   await page.waitFor(`document.querySelector('[data-testid=desk-access]') && !document.querySelector('#draft-list-title, #draft-results, #create-draft')`, 'F-17 session loss during refresh immediately clears the private list and create');
-  await gate.fulfill(lateCreate, 201, { ...cards[0], document: { format: 'default', source: '' } });
+  await gate.fulfill(lateCreate, 201, { ...cards[0], document: { format: 'markdown', source: '' } });
   await page.eval('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');
   check(gate.postCount === latePosts && await page.eval(`location.pathname==='/ban-viet' && !document.querySelector('#draft-results, #create-draft')`), 'F-17 a late create acknowledgement cannot restore or navigate a denied session');
   gate.holdGets = true;
