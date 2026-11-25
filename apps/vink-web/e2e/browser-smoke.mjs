@@ -842,7 +842,7 @@ class Page {
             choices: bounds('#me .vk-appearance-region'),
             group: bounds('#page-theme') };
         })(),
-        desk: { heading: geometry('#heading'), resume: geometry('#resume'), title: geometry('#resume h2'), disclosure: geometry('#resume-title-toggle'), metadata: geometry('#resume .vk-draft-meta'), cta: geometry('[data-testid=resume-draft]'), list: geometry('#drafts'), tools: geometry('#draft-tools'), search: geometry('#draft-search'), sort: geometry('#draft-sort'), searchLauncher: geometry('#open-draft-search'), scope: geometry('#draft-scope'), firstRow: geometry('[data-testid=draft-row]'), rowLink: geometry('.vk-draft-row__link'), rowTitle: geometry('.vk-draft-row__title'), rowTitleLines: titleLines, rowMetadata: geometry('.vk-draft-row .vk-draft-meta'), rowOpen: geometry('.vk-draft-row__open'), results: geometry('#draft-results'), listHeading: geometry('#draft-list-title'), searchField: geometry('.vk-draft-search > .vk-ui-field'), sortField: geometry('#draft-tools > .vk-ui-field:nth-child(2)') },
+        desk: { heading: geometry('#heading'), resume: geometry('#resume'), title: geometry('#resume h2'), disclosure: geometry('#resume-title-toggle'), metadata: geometry('#resume .vk-draft-meta'), cta: geometry('[data-testid=resume-draft]'), list: geometry('#drafts'), tools: geometry('#draft-tools'), search: geometry('#draft-search'), sort: geometry('#draft-sort'), searchLauncher: geometry('#open-draft-search'), scope: geometry('#draft-scope'), firstRow: geometry('[data-testid=draft-row]'), rowLink: geometry('.vk-draft-row__link'), rowTitle: geometry('.vk-draft-row__title'), rowTitleLines: titleLines, rowMetadata: geometry('.vk-draft-row .vk-draft-meta'), rowOpen: geometry('.vk-draft-row__open'), results: geometry('#draft-results'), listHeading: geometry('#draft-list-title'), searchField: geometry('.vk-draft-search__clip > .vk-ui-field'), sortField: geometry('#draft-tools > .vk-ui-field:nth-child(2)') },
         reader: { title: geometry('#reader-header h1'), header: geometry('#reader-header'), body: geometry('.vk-reader .vk-document') },
         editor: { status: document.querySelector('[data-testid=save-status]')?.dataset.status, textSetting: document.documentElement.dataset.text,
           toolbar: geometry('#editor-toolbar'), statusReadout: geometry('[data-testid=save-status]'), save: geometry('#save'), tools: geometry('#editor-save-details > summary'),
@@ -3678,15 +3678,15 @@ async function draftDashboard(page) {
   // Give the isolated smoke document a same-route predecessor for a real browser traversal.
   await page.eval(`history.pushState(null, '', location.href)`);
   await page.click('#open-draft-search');
-  await page.waitFor(`!document.querySelector('.vk-draft-search').hidden && document.activeElement.id === 'draft-search'`,
+  await page.waitFor(`!document.querySelector('.vk-draft-search').inert && document.activeElement.id === 'draft-search'`,
     'the reopened dock owns focus before Back');
   await page.eval(`history.back()`);
   await page.waitFor(`location.pathname==='/ban-viet' && document.activeElement.id==='open-draft-search' &&
-    document.querySelector('.vk-draft-search').hidden`, 'Back closes the private dock on its current route');
+    document.querySelector('.vk-draft-search').inert`, 'Back closes the private dock on its current route');
   // Back restores focus on the rendering frame. Start the independent viewport matrix
   // after that frame and Chrome's traversal, including when capture omits PNG painting.
   await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
-  check(await page.eval(`document.activeElement.id === 'open-draft-search' && document.querySelector('.vk-draft-search').hidden`),
+  check(await page.eval(`document.activeElement.id === 'open-draft-search' && document.querySelector('.vk-draft-search').inert`),
     'Back leaves the closed dock and its launcher focus stable after paint');
 
   // Select a row between closing the dock and its deferred focus restoration.
@@ -3698,7 +3698,7 @@ async function draftDashboard(page) {
     row.focus();
     if (document.activeElement !== row) return false;
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    return document.querySelector('.vk-draft-search').hidden && row.isConnected && document.activeElement === row;
+    return document.querySelector('.vk-draft-search').inert && row.isConnected && document.activeElement === row;
   })()`), 'closing search preserves a newly focused draft link across the recovery frame');
 
   for (const theme of ['light','dark']) for (const scale of [100,150,200]) for (const width of [1536,1440,1280,1024,834,390,320]) {
@@ -3837,7 +3837,7 @@ async function draftDashboard(page) {
   await wakeDesk(page);
   await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 24`, 'restore 24 loaded rows');
   const search = async text => {
-    if (await page.eval(`document.querySelector('.vk-draft-search').hidden`)) {
+    if (await page.eval(`document.querySelector('.vk-draft-search').inert`)) {
       await page.click('#open-draft-search');
     }
     const requestsBefore = gate.requests.length;

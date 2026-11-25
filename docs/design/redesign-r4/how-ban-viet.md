@@ -14,7 +14,7 @@ họ vẫn xem được kết quả trước đó trong cùng phiên và có cá
 2. [DeskWorks](../../../apps/vink-web/src/pages/desk.rs) giữ `query` của ô nhập, `applied`
    của danh sách và `sort` trong scope phiên. Theo [delta #531](layout-spec.md#51-header-tìm-và-phục-hồi),
    mở dock đưa focus vào `#draft-search` ở hàng riêng. Nút mở/đóng, chọn định dạng, tạo và sort
-   vẫn ở vị trí cũ. Form đóng dùng `hidden` và `inert`, giữ node và buffer. Submit sau composition
+   vẫn ở vị trí cũ. Form đóng thu về hàng cao 0 và dùng `inert` để giữ node, buffer và thứ tự Tab. Submit sau composition
    mới đổi scope đọc hoặc refresh cùng scope. Nút đóng, Escape và Back giữ nguyên hai chuỗi.
    `#draft-filter` hiện cụm đã áp dụng dù người dùng đang sửa ô nhập hoặc đã thu gọn.
    “Bỏ lọc” trả danh sách về đầu với sort đang chọn. Khi form đã đóng, focus phục hồi về

@@ -796,14 +796,19 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
   overflow: hidden; clip-path: inset(50%); white-space: nowrap;
 }
 .vk-draft-search {
-  interpolate-size: allow-keywords;
-  block-size: auto;
-  overflow: clip;
-  transition: opacity var(--vk-duration-short), block-size var(--vk-duration-short) var(--vk-ease-emphasized), display var(--vk-duration-short) allow-discrete;
+  display: grid;
+  grid-template-rows: 1fr;
+  /* The field supplies the header gap, so a collapsed row takes no space. */
+  margin-block-start: -8px;
+  transition: grid-template-rows var(--vk-duration-short) var(--vk-ease-emphasized), opacity var(--vk-duration-short);
 }
-.vk-draft-search[hidden] { opacity: 0; block-size: 0; }
-@starting-style { .vk-draft-search:not([hidden]) { opacity: 0; block-size: 0; } }
-.vk-draft-search > .vk-ui-field { inline-size: min(100%, 32rem); margin: 0; margin-inline-start: auto; }
+.vk-draft-search[inert] { grid-template-rows: 0fr; opacity: 0; }
+.vk-draft-search__clip { min-block-size: 0; overflow: clip; }
+.vk-draft-search__clip > .vk-ui-field {
+  inline-size: min(100%, 32rem);
+  margin: 8px 0 0;
+  margin-inline-start: auto;
+}
 .vk-draft-search .vk-ui-search__shell { min-block-size: var(--vk-density-control-height); padding-block: 0; }
 .vk-draft-search .vk-ui-input { padding-block: 0; }
 /* Mark the editable part while keeping the adjacent submit and clear targets distinct. */

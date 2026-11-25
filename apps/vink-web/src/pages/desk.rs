@@ -535,8 +535,8 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                         <CreateDraftControls creation can_create create create_format />
                     </Show>
                 </div>
-                <form id="desk-search-form" role="search" class="vk-draft-search m-0 basis-full [min-inline-size:0]"
-                    hidden=move || !dock_open.get() inert=move || !dock_open.get()
+                <form id="desk-search-form" role="search" class="vk-draft-search basis-full [min-inline-size:0]"
+                    inert=move || !dock_open.get()
                     on:keydown=move |event| {
                         if event.key() == "Escape" && !event.is_composing() && event.key_code() != 229 && !composing.get_untracked() {
                             event.prevent_default();
@@ -545,12 +545,14 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
                     } on:submit=move |event| {
                     event.prevent_default(); submit.run(());
                 }>
-                    <SearchField id="draft-search" label="Tìm tác phẩm" placeholder="Tìm theo tên"
-                        value=query variant=SearchVariant::Bar
-                        help="Theo tên bản thảo; gồm cả tác phẩm đã đăng" on_clear=clear
-                        on_input=move |input: vink_ui::TextInput| {
-                            composing.set(input.composing); query.set(input.value);
-                        } />
+                    <div class="vk-draft-search__clip">
+                        <SearchField id="draft-search" label="Tìm tác phẩm" placeholder="Tìm theo tên"
+                            value=query variant=SearchVariant::Bar
+                            help="Theo tên bản thảo; gồm cả tác phẩm đã đăng" on_clear=clear
+                            on_input=move |input: vink_ui::TextInput| {
+                                composing.set(input.composing); query.set(input.value);
+                            } />
+                    </div>
                 </form>
             </Show>
         </DeskHeading>

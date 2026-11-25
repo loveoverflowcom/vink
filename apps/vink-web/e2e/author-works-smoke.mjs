@@ -158,7 +158,7 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
     await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
     check(await page.eval(`document.activeElement?.id==='views-explainer-trigger' && document.querySelector('#views-explainer')?.open === false`),
       '#514 Back keeps the explainer closed and focus restored after paint');
-    check(await page.eval(`!document.querySelector('#desk-search-form').hidden`), '#531 Back in the sheet preserves open search');
+    check(await page.eval(`!document.querySelector('#desk-search-form').inert`), '#531 Back in the sheet preserves open search');
     await page.click('#close-draft-search');
 
     for (const width of [320,390,834,1024,1440]) for (const theme of ['light','dark']) for (const scale of [100,150,200]) {
