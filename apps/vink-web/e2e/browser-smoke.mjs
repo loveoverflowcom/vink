@@ -1104,6 +1104,7 @@ class DraftGate {
     this.getURLs = new Map();
     this.requests = [];
     this.posts = [];
+    this.lastPostBody = null;
     this.postCount = 0;
     this.dropAck = false;
     this.droppedStatus = null;
@@ -1132,6 +1133,7 @@ class DraftGate {
     } else if (request.method === 'POST') {
       this.postCount++;
       this.posts.push(requestId);
+      this.lastPostBody = request.postData;
     } else {
       this.getURLs.set(requestId, request.url);
       this.requests.push(request.url);
@@ -3864,6 +3866,10 @@ async function draftDashboard(page) {
   await page.key('Enter');
   await page.waitFor(`document.activeElement.id === 'draft-search' && document.activeElement.value.includes('chưa gửi')`,
     'reopening restores the unsubmitted buffer');
+  await page.key('z', page.mod);
+  await page.waitFor(`document.activeElement.value === 'duong ve' &&
+    document.querySelector('#draft-filter').textContent.includes('“duong ve”')`,
+    '#531 native Undo after reopening edits only the unsubmitted buffer');
   await page.key('Escape');
   await page.click('#clear-draft-filter');
   await page.waitFor(`!document.querySelector('#draft-filter') && document.querySelectorAll('[data-testid=draft-row]').length === 24`,
@@ -3966,9 +3972,17 @@ async function draftDashboard(page) {
   gate.holdGets = true;
   await wakeDesk(page);
   const expiredRefresh = await gate.next('gets');
+  await page.click('#open-draft-search');
+  await page.waitFor(`document.activeElement.id === 'draft-search'`, 'private search is open during refresh');
+  await page.eval(`const select = document.querySelector('#create-draft-format');
+    select.focus(); select.value = 'markdown'; select.dispatchEvent(new Event('change', {bubbles:true}))`);
+  check(await page.eval(`document.activeElement.id === 'create-draft-format' &&
+    !document.querySelector('#desk-search-form').inert`), '#531 choosing a format leaves the search open');
   await page.click('#create-draft');
   const lateCreate = await gate.next('posts');
   const latePosts = gate.postCount;
+  check(JSON.parse(gate.lastPostBody).format === 'markdown',
+    '#531 create submits the selected Markdown format while search is open');
   await gate.fulfill(expiredRefresh, 401, { error: { code: 'unauthenticated' } });
   await page.waitFor(`document.querySelector('[data-testid=desk-access]') && !document.querySelector('#draft-list-title, #draft-results, #create-draft')`, 'F-17 session loss during refresh immediately clears the private list and create');
   await gate.fulfill(lateCreate, 201, { ...cards[0], document: { format: 'default', source: '' } });
