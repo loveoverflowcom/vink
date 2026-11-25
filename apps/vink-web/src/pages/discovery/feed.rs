@@ -61,51 +61,47 @@ pub(super) fn FollowingFeed(context: ExploreContext) -> impl IntoView {
         <Title text="Đang theo dõi — Vink" />
         <Meta name="robots" content="noindex" />
         <Link rel="canonical" href=crate::canonical_url("/") />
-        <div id="explore" class="vk-explore vk-discovery vk-discovery--following">
-            <super::ExploreTitleRow title="Khám phá" />
-            <super::ExploreModes mode=ExploreMode::Following />
-            <section node_ref=stream id="community-stream" aria-labelledby="following-feed-heading" tabindex="-1">
-                <Heading id="following-feed-heading" level=HeadingLevel::H2 role=vink_ui::TypeRole::Title attr:tabindex="-1">"Đang theo dõi"</Heading>
-                {move || if !enabled {
-                    view! { <FeedOff /> }.into_any()
-                } else {
-                    view! {
-                        <Show when=move || session.profile_scope.get().is_none()>
-                            {move || match session.standing.get() {
-                                Standing::Anonymous => view! { <SignIn expired=expired.get() /> }.into_any(),
-                                Standing::NeedsPrincipal => view! { <SignIn needs_name=true /> }.into_any(),
-                                Standing::Suspended => view! { <Restricted /> }.into_any(),
-                                Standing::Unavailable if !session.checking() => view! {
-                                    <div class=FEED_STATE_CLASS data-feed-state="unavailable">
-                                        <p class="m-0" role="status">"Chưa kiểm tra được phiên đăng nhập."</p>
-                                        <Button variant=ButtonVariant::Tonal on_press=move |_| session.refresh()>"Thử lại"</Button>
-                                    </div>
-                                }.into_any(),
-                                _ => view! {
-                                    <p role="status" data-feed-state="checking">"Đang kiểm tra phiên…"</p>
-                                    <noscript>"Bật JavaScript để mở Đang theo dõi."</noscript>
-                                }.into_any(),
-                            }}
-                        </Show>
+        <section node_ref=stream id="community-stream" aria-labelledby="following-feed-heading" tabindex="-1">
+            <Heading id="following-feed-heading" level=HeadingLevel::H2 role=vink_ui::TypeRole::Title attr:tabindex="-1">"Đang theo dõi"</Heading>
+            {move || if !enabled {
+                view! { <FeedOff /> }.into_any()
+            } else {
+                view! {
+                    <Show when=move || session.profile_scope.get().is_none()>
+                        {move || match session.standing.get() {
+                            Standing::Anonymous => view! { <SignIn expired=expired.get() /> }.into_any(),
+                            Standing::NeedsPrincipal => view! { <SignIn needs_name=true /> }.into_any(),
+                            Standing::Suspended => view! { <Restricted /> }.into_any(),
+                            Standing::Unavailable if !session.checking() => view! {
+                                <div class=FEED_STATE_CLASS data-feed-state="unavailable">
+                                    <p class="m-0" role="status">"Chưa kiểm tra được phiên đăng nhập."</p>
+                                    <Button variant=ButtonVariant::Tonal on_press=move |_| session.refresh()>"Thử lại"</Button>
+                                </div>
+                            }.into_any(),
+                            _ => view! {
+                                <p role="status" data-feed-state="checking">"Đang kiểm tra phiên…"</p>
+                                <noscript>"Bật JavaScript để mở Đang theo dõi."</noscript>
+                            }.into_any(),
+                        }}
+                    </Show>
+                    {
+                        #[cfg(feature = "browser")]
                         {
-                            #[cfg(feature = "browser")]
-                            {
-                                let context = context.clone();
-                                view! {
-                                    <For each=move || session.profile_scope.get().into_iter()
-                                        key=Clone::clone
-                                        children=move |scope| view! {
-                                            <browser::ActiveFeed scope context=context.clone() expired restore return_completed />
-                                        } />
-                                }.into_any()
-                            }
-                            #[cfg(not(feature = "browser"))]
-                            ()
+                            let context = context.clone();
+                            view! {
+                                <For each=move || session.profile_scope.get().into_iter()
+                                    key=Clone::clone
+                                    children=move |scope| view! {
+                                        <browser::ActiveFeed scope context=context.clone() expired restore return_completed />
+                                    } />
+                            }.into_any()
                         }
-                    }.into_any()
-                }}
-            </section>
-        </div>
+                        #[cfg(not(feature = "browser"))]
+                        ()
+                    }
+                }.into_any()
+            }}
+        </section>
     }
 }
 

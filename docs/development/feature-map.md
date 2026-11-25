@@ -221,9 +221,11 @@ dock. `railReview` đo trục icon, vùng bấm, chữ tiếng Việt và focus 
 toggle nằm bên phải nút, không che đích đầu (#403), và xác nhận không còn nút Giao diện
 (`#profile-trigger`, `.vk-ui-nav-utility`) trên rail (#413). `assertNavIcons` (`browser-smoke.mjs`), `deskGuest` (`desk-empty-smoke.mjs`) và unit test `vink-ui` kiểm đích đang chọn dùng icon filled (`explore`, `edit`, `person` khi khách) còn đích chưa chọn dùng outlined (`explore-outline`, `edit-outline`, `person-outline`) có path SVG riêng trên rail, modal tablet và thanh dưới (#427 AC-04). `railR4Surfaces` kiểm rail, trang
 và thanh dưới cùng `bg-page`, chỉ đích hiện hành có nền. DQ‑11 có số đo riêng cho nền hàng Tôi và dấu chọn. CSS hiện hành tô cả hàng Tôi khi đích đang chọn ở rail mở rộng, trong khi DQ‑11 yêu cầu nền trang khi có chữ (chênh lệch có trước #413; #427 giữ nguyên DQ-11).
-Đầu trang Khám phá R4.2 (#404) và bổ sung R4.3 (#427): `discoveryReading` kiểm ở 320/390/1440px và chữ 100%/150% rằng
-logo cùng nút tìm và Lọc thẻ giữ một hàng, không cuộn ngang, nhóm chế độ là một hàng nối liền hoặc gập thành `#explore-mode-menu`, và ở 320px/150% H1 ẩn thị giác để bài đầu tới được trên thanh dưới; ca stress 320/390px/200% qua DOM
-override báo riêng. `checkExploreModesTabAndAx` kiểm bằng phím Tab thật và `Accessibility.getFullAXTree` rằng ở mọi bề rộng chỉ bộ link chế độ đang hiện lọt vào thứ tự Tab và cây trợ năng (#427 AC-02). `desktopSearchDock` kiểm
+Đầu trang Khám phá R4.3 (#427, delta DQ-03 #530): `discoveryReading` kiểm ở 320/390/1440px và chữ 100%/150% rằng
+logo cùng nút tìm và Lọc thẻ giữ một hàng, trang không cuộn ngang và Primary Tabs có các ô bằng nhau.
+Ở 320px/150% H1 ẩn thị giác để bài đầu tới được trên thanh dưới. Ca stress 320/390px/200% qua DOM
+override báo riêng. `checkExploreModesTabAndAx` kiểm bằng phím Tab thật và `Accessibility.getFullAXTree`
+rằng một vùng điều hướng có đúng một bộ link theo thứ tự Tất cả → Đang theo dõi → Tác giả (#427 AC-02). `desktopSearchDock` kiểm
 dock mở bằng nút hoặc “/” (không khi đang gõ ô khác), Escape/← đóng, bỏ chữ chưa gửi, trả focus về nút,
 giữ IME, SSR `/?q=…` mở sẵn dock với `q` và đóng bằng `#close-public-search`/Escape (trên desktop lẫn mobile, có hoặc không có `tag`) điều hướng về URL bỏ `q`/cursor và giữ thẻ đã áp dụng (#427 AC-03). Thẻ Khám phá R4.2 (#405, DQ-08/DQ-09): thẻ rời `bg-content`
 bo 20 cách 8 px (cả Tất cả, Đang theo dõi và chế độ Tác giả), dòng `Thể loại · ngày công khai đầu`

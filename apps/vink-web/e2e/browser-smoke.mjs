@@ -1832,9 +1832,13 @@ async function r4PageColumns(page) {
     for (const [path, ready, box] of [['/', '#explore-heading h1', '#explore > .vk-explore__top'], ['/ban-viet', '#desk-title', '#desk']]) {
       await open(path, ready);
       if (scale === 200) await page.eval(`document.documentElement.dataset.text = '200'`);
-      gutters[path] = await page.eval(`(() => { const r = document.querySelector(${JSON.stringify(box)}).getBoundingClientRect();
-        return { text: document.documentElement.dataset.text ?? '100', left: r.left, right: document.documentElement.clientWidth - r.right,
-          overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }; })()`);
+      gutters[path] = await page.eval(`(() => {
+        const root = document.documentElement;
+        const r = document.querySelector(${JSON.stringify(box)}).getBoundingClientRect();
+        const layout = root.getBoundingClientRect();
+        return { text: root.dataset.text ?? '100', left: r.left - layout.left, right: layout.right - r.right,
+          overflow: root.scrollWidth - root.clientWidth };
+      })()`);
     }
     check(Object.values(gutters).every(g => g.text === String(scale) && Math.abs(g.left - 16) <= 1 && Math.abs(g.right - 16) <= 1 && g.overflow <= 0),
       `#402 AC-03 ${width}px / ${scale}%: Khám phá and Bàn viết keep a 16px gutter (${JSON.stringify(gutters)})`);
@@ -2343,21 +2347,27 @@ async function accountAppearance(page) {
   check(meOverflow.ok, `AC-03 real-control 150% /toi has no unintended overflow (${meOverflow.reasons.join('; ')})`);
   await page.click('.vk-ui-rail a[href="/"]');
   await page.waitFor(`location.pathname === '/' && document.documentElement.dataset.text === '150' && getComputedStyle(document.documentElement).fontSize === '24px'`, '150% preference persists across client route to /');
+  await page.waitFor("document.querySelector('#open-tag-filters')", 'catalog exposes Lọc thẻ on the signed-in Explore route');
   const exploreOverflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript()));
   check(exploreOverflow.ok, `AC-03 real-control 150% / has no unintended overflow (${exploreOverflow.reasons.join('; ')})`);
   for (const width of [320, 390]) {
     await page.viewport(width);
-    await page.eval('document.fonts.ready');
-    check(await page.eval(`(() => {
-      const rects = ['#open-public-search', '#open-tag-filters', '#discovery-tools .vk-brand']
+    await editorLayoutReady(page);
+    const layout = await page.eval(`(() => {
+      const tools = ['#open-public-search', '#open-tag-filters', '#discovery-tools .vk-brand']
         .map(selector => document.querySelector(selector)?.getBoundingClientRect());
       const mid = rect => (rect.top + rect.bottom) / 2;
-      const group = getComputedStyle(document.querySelector('.vk-explore-modes__group')).display !== 'none';
-      const menu = getComputedStyle(document.querySelector('#explore-mode-menu')).display !== 'none';
-      return rects.every(rect => rect?.width > 0 && rect.left >= 0 && rect.right <= innerWidth) &&
-        rects.every(rect => Math.abs(mid(rect) - mid(rects[0])) <= 2) &&
-        group !== menu && document.documentElement.scrollWidth <= innerWidth;
-    })()`), `AC-07 ${width}px at Lớn 150% keeps the logo and both tools in one row and exactly one mode control visible`);
+      return {
+        visible: tools.every(rect => rect?.width > 0 && rect.left >= 0 && rect.right <= innerWidth),
+        oneRow: tools.every(rect => rect && tools[0] && Math.abs(mid(rect) - mid(tools[0])) <= 2),
+        toolRects: tools.map(rect => rect?.toJSON()),
+        tabs: [...document.querySelectorAll('.vk-explore-modes a')].map(tab => tab.getBoundingClientRect().height),
+        overflow: document.documentElement.scrollWidth - innerWidth,
+      };
+    })()`);
+    check(layout.visible && layout.oneRow && layout.tabs.length >= 2 &&
+      layout.tabs.every(height => height >= 48) && layout.overflow <= 0,
+      `AC-07 ${width}px at Lớn 150% keeps the logo and both tools in one row with every mode reachable (${JSON.stringify(layout)})`);
   }
   await page.viewport(1440);
   await page.click('.vk-ui-rail a[href="/ban-viet"]');
@@ -2665,8 +2675,18 @@ async function mediumRail(page) {
   await page.waitFor(`!${RAIL_MODAL_OPEN} && document.activeElement?.id === 'navigation-toggle'`, 'Medium Escape dismisses and restores the base toggle');
   await page.key('Enter');
   await page.waitFor(RAIL_MODAL_OPEN, 'Medium Enter opens rail');
-  await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 760, y: 20, button: 'left', clickCount: 1 });
-  await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 760, y: 20, button: 'left', clickCount: 1 });
+  const scrim = await page.eval(`(() => {
+    const dialog = document.querySelector('#navigation-modal');
+    const right = dialog.getBoundingClientRect().right;
+    const edge = document.documentElement.clientWidth;
+    const x = Math.floor((right + edge) / 2);
+    const y = Math.floor(innerHeight / 2);
+    return {x, y, hitsBackdrop: x > right && x < edge && document.elementFromPoint(x, y) === dialog};
+  })()`);
+  check(scrim.hitsBackdrop, 'Medium scrim point hits the modal backdrop within the content viewport');
+  for (const type of ['mousePressed', 'mouseReleased']) {
+    await page.send('Input.dispatchMouseEvent', {type, x: scrim.x, y: scrim.y, button: 'left', clickCount: 1});
+  }
   await page.waitFor(`!${RAIL_MODAL_OPEN} && document.activeElement?.id === 'navigation-toggle'`, 'Medium scrim dismisses and restores the base toggle');
   await page.click(toggle);
   await page.click(modal);

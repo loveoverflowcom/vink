@@ -487,7 +487,7 @@ pub fn SearchField(
     #[prop(optional, into)] name: Option<String>,
     /// Bar-only native fallback. The host callback handles unmodified hydrated activation.
     #[prop(optional, into)]
-    clear_href: Option<String>,
+    clear_href: Option<Signal<String>>,
     #[prop(optional, into)] clear_id: Option<String>,
     #[prop(optional, into)] on_clear: Option<Callback<()>>,
     #[prop(optional)] input_ref: Option<NodeRef<leptos::html::Input>>,
@@ -547,7 +547,7 @@ fn search_bar(
     mode: FieldMode,
     placeholder: Option<String>,
     name: Option<String>,
-    clear_href: Option<String>,
+    clear_href: Option<Signal<String>>,
     clear_id: Option<String>,
     on_clear: Option<Callback<()>>,
     input_ref: Option<NodeRef<leptos::html::Input>>,
@@ -609,7 +609,7 @@ fn search_bar(
                     })}
                 </div>
                 {move || (!value.get().is_empty() && mode == FieldMode::Editable).then(|| {
-                    if let Some(href) = clear_href.clone() {
+                    if let Some(href) = clear_href {
                         view! {
                             <crate::action::Link href=href variant=crate::action::LinkVariant::Standalone
                                 attr:class="vk-ui-search__clear" attr:id=clear_id.clone() attr:aria-label="Xóa tìm kiếm"
@@ -979,7 +979,7 @@ mod tests {
             <form method="get" action="/">
                 <SearchField id="q" name="q" label="Tìm kiếm" variant=SearchVariant::Bar
                     value=Signal::stored("  Đường & 0  ".to_string()) on_input=|_| {}
-                    help="Tiêu đề, tác giả · tối đa 12 tác phẩm đã tải" clear_href="/" clear_id="clear-q" />
+                    help="Tiêu đề, tác giả · tối đa 12 tác phẩm đã tải" clear_href=Signal::stored("/".to_owned()) clear_id="clear-q" />
             </form>
         }.into_any()
         });

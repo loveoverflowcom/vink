@@ -176,7 +176,7 @@ TypeScript, dependency npm đã cài và các kiểm dữ liệu Editor trước
 | `editor-first-draft` | App đã migrate và hai principal mới, một cho mỗi format | `firstDraftFormat`, CTA/radius/keyboard ở 320px text200, POST và reload |
 | `reader` | Sample work đã công khai, nháp riêng và tag catalog, loopback author | `serverHtml`, `readerBeforeHydration`, `conditionalPublicReads`, `tracePublicReadLifecycle`, 404/asset của Preview, `publicReading`, stanza/font/hydration và không tải editor runtime |
 | `discussion` | Sample work và author, scratch writes cùng response fixture có nhãn | `discussionReadingAndWrites` (lost ACK, CAS, closed/copy, own remove, flat context, paging, theme/geometry) và `endorsementAsAuthor` |
-| `appearance` | Sample App và loopback author | `adaptiveShell` + `bottomNavigationRegression`, brand, hydration/first paint, focus/overflow, theme/text, storage denied, forced colors/reduced motion |
+| `appearance` | Sample App, danh mục thẻ từ lệnh operator và loopback author | `adaptiveShell` + `bottomNavigationRegression`, brand, hydration/first paint, focus/overflow, theme/text, storage denied, forced colors/reduced motion |
 | `desk` | Sample App/author, response fixture có nhãn, browser context riêng và App khách tắt sign-in | `authorWorks`, `draftDashboard`, `deskEmptyState`, `draftR6Hierarchy`, `timestampPresentation`, `draftPagination`, `selectChevron`, `deskGuest` |
 | `editor-chrome` | Sample App/author, nháp mới và tag catalog | `editorChrome` gọi `editorPaperFirst`, `editorWriting`, reflow, AX, CDP IME, race và recovery matrices |
 | `editor` | Sample App/author và catalog thật | Cùng client navigation Reader → Desk → nháp, Vietnamese input, save/reload, conflict, leave/back, late ACK, undo/redo và `draftTags` |

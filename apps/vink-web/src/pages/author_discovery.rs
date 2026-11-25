@@ -2,14 +2,13 @@
 use leptos::prelude::*;
 use leptos_meta::{Link, Meta, Title};
 use leptos_router::hooks::use_navigate;
-use vink_ui::{
-    Avatar, AvatarSize, Heading, HeadingLevel, HiddenField, SearchField, SearchVariant, TypeRole,
-};
+use vink_ui::{Avatar, AvatarSize, Heading, HeadingLevel, TypeRole};
 
 use super::{ResponseStatus, focus_recovery};
 use crate::api::{self, InvalidRead, LoadError};
 use crate::contract::{PublicAuthorPage, PublicAuthorRef};
-use crate::discovery::{ExploreContext, ExploreMode, ExploreQuery, author_search_href};
+use crate::discovery::{ExploreContext, ExploreQuery, author_search_href};
+use crate::ui::empty_state::{EmptyArtwork, EmptyState};
 use crate::ui::patterns::{Author, AuthorIdentity, ProfileLink, profile_label};
 
 #[cfg(feature = "browser")]
@@ -18,15 +17,18 @@ mod browser;
 const RESULTS_HEADING: &str = "author-search-results-heading";
 
 #[component]
-pub(super) fn AuthorSearch(q: String, cursor: Option<String>) -> impl IntoView {
+pub(super) fn AuthorSearch(
+    q: String,
+    cursor: Option<String>,
+    clear: Callback<()>,
+    refresh: RwSignal<u64>,
+) -> impl IntoView {
     let status = ResponseStatus::capture();
     status.set_no_store();
-    let buffer = RwSignal::new(q.clone());
     let q = StoredValue::new(q);
     let url_has_cursor = cursor.is_some();
     let active_cursor = RwSignal::new(cursor);
     let generation = RwSignal::new(0u64);
-    let composing = RwSignal::new(false);
     let renew = move || generation.update(|value| *value += 1);
     let resource = api::author_search_resource(q, active_cursor, generation);
     #[cfg(feature = "browser")]
@@ -41,97 +43,61 @@ pub(super) fn AuthorSearch(q: String, cursor: Option<String>) -> impl IntoView {
     let own_handle = Signal::stored(None);
 
     let canonical = crate::canonical_url(&author_search_href(&q.get_value(), None));
-    let clear_href = author_search_href("", None);
     let navigate = use_navigate();
-    let restart = Callback::new({
-        let navigate = navigate.clone();
-        move |()| {
-            return_notice.set(false);
-            #[cfg(feature = "browser")]
-            super::clear_profile_return();
-            if url_has_cursor {
-                q.with_value(|q| navigate(&author_search_href(q, None), Default::default()));
-            } else {
-                active_cursor.set(None);
-                renew();
-            }
-            focus_recovery(RESULTS_HEADING);
-        }
-    });
-    let clear = Callback::new({
-        let navigate = navigate.clone();
-        move |()| {
-            buffer.set(String::new());
-            if q.with_value(|q| q.trim().is_empty()) {
-                restart.run(());
-            } else {
-                navigate(&clear_href, Default::default());
-            }
-            focus_recovery("author-search-query");
-        }
-    });
-    let submit = move |event: leptos::ev::SubmitEvent| {
-        event.prevent_default();
-        if composing.get_untracked() {
-            return;
-        }
-        let entered = buffer.get_untracked();
-        if q.with_value(|q| q == &entered) {
-            restart.run(());
+    let reset = move || {
+        return_notice.set(false);
+        #[cfg(feature = "browser")]
+        super::clear_profile_return();
+        if url_has_cursor {
+            q.with_value(|q| navigate(&author_search_href(q, None), Default::default()));
         } else {
-            navigate(&author_search_href(&entered, None), Default::default());
-            focus_recovery(RESULTS_HEADING);
+            active_cursor.set(None);
+            renew();
         }
     };
+    let restart = Callback::new({
+        let reset = reset.clone();
+        move |()| {
+            reset();
+            focus_recovery(RESULTS_HEADING);
+        }
+    });
+    Effect::watch(move || refresh.get(), move |_, _, _| reset(), false);
     let suggestions = q.with_value(|q| q.trim().is_empty());
 
     view! {
         <Title text="Tìm tác giả · Vink" />
         <Meta name="description" content="Tìm tác giả Vink theo bút danh hoặc @handle." />
         <Link rel="canonical" href=canonical />
-        <div id="explore" class="vk-explore vk-author-search">
-            <super::discovery::ExploreTitleRow title="Tìm tác giả" />
-            <super::discovery::ExploreModes mode=ExploreMode::Authors author_query=q.get_value() />
-            <form method="get" action="/" role="search" id="author-search"
-                on:compositionstart=move |_| composing.set(true)
-                on:compositionend=move |_| composing.set(false)
-                on:submit=submit>
-                <HiddenField name="mode" value=Signal::stored("authors") />
-                <SearchField id="author-search-query" label="Tìm bút danh hoặc @handle"
-                    placeholder="Bút danh hoặc @handle" name="q" variant=SearchVariant::Bar
-                    value=buffer on_input=move |input: vink_ui::TextInput| buffer.set(input.value)
-                    clear_href=author_search_href("", None) on_clear=move |_| clear.run(()) />
-            </form>
-            <section aria-labelledby=RESULTS_HEADING class="vk-author-search__results grid [grid-template-columns:minmax(0,1fr)] gap-vk-3 [min-inline-size:0] wrap-anywhere">
-                {q.with_value(|q| results_heading(q))}
-                <Show when=move || return_notice.get()>
-                    <p id="author-search-notice" role="status" class="vk-author-search__note">
-                        "Một hồ sơ không còn truy cập được; danh sách đã cập nhật."
-                    </p>
-                </Show>
-                <Transition fallback=move || search_loading(suggestions)>
-                    {move || {
-                        let status = status.clone();
-                        match resource.get() {
-                            Some((stamp, result)) if stamp == generation.get() => match result {
-                                Ok(page) => view! {
-                                    <AuthorResults page q cursor=active_cursor.get_untracked() clear own_handle
-                                        on_refresh=Callback::new(move |()| renew()) on_restart=restart />
-                                }.into_any(),
-                                Err(error) => {
-                                    status.set(if error.is_invalid() { 422 } else { 503 });
-                                    view! {
-                                        <SearchError error q cursor=active_cursor.get_untracked()
-                                            on_retry=Callback::new(move |()| renew()) on_restart=restart />
-                                    }.into_any()
-                                }
-                            },
-                            _ => search_loading(suggestions).into_any(),
-                        }
-                    }}
-                </Transition>
-            </section>
-        </div>
+        <section aria-labelledby=RESULTS_HEADING class="vk-author-search vk-author-search__results grid [grid-template-columns:minmax(0,1fr)] gap-vk-3 [min-inline-size:0] wrap-anywhere">
+            {q.with_value(|q| results_heading(q))}
+            <Show when=move || return_notice.get()>
+                <p id="author-search-notice" role="status" class="vk-author-search__note">
+                    "Một hồ sơ không còn truy cập được; danh sách đã cập nhật."
+                </p>
+            </Show>
+            <Transition fallback=move || search_loading(suggestions)>
+                {move || {
+                    let status = status.clone();
+                    match resource.get() {
+                        Some((stamp, result)) if stamp == generation.get() => match result {
+                            Ok(page) => view! {
+                                <AuthorResults page q cursor=active_cursor.get_untracked() clear own_handle
+                                    on_refresh=Callback::new(move |()| renew()) on_restart=restart />
+                            }.into_any(),
+                            Err(error) => {
+                                status.set(if error.is_invalid() { 422 } else { 503 });
+                                view! {
+                                    <SearchError error q cursor=active_cursor.get_untracked()
+                                        on_retry=Callback::new(move |()| renew()) on_restart=restart />
+                                }.into_any()
+                            }
+                        },
+                        _ => search_loading(suggestions).into_any(),
+                    }
+                }}
+            </Transition>
+        </section>
     }
 }
 
@@ -217,20 +183,19 @@ fn SearchError(
 fn SearchEmpty(q: StoredValue<String>, clear: Callback<()>) -> impl IntoView {
     let q = q.get_value();
     if q.trim().is_empty() {
-        return view! { <p id="author-search-empty" class="grid gap-vk-2" role="status">"Chưa có gợi ý tác giả."</p> }
-            .into_any();
+        return view! { <div id="author-search-empty" role="status">
+            <EmptyState artwork=EmptyArtwork::NoResults message="Chưa có gợi ý tác giả." />
+        </div> }
+        .into_any();
     }
     let works = ExploreContext {
         query: ExploreQuery::new(q.clone(), Vec::new(), None),
         ..Default::default()
     };
     view! {
-        <div class="vk-author-search__empty grid gap-vk-2">
-            <div id="author-search-empty" class="grid gap-vk-2" role="status">
-                <p>{format!("Chưa có tác giả khớp “{q}”.")}</p>
-                <p class="vk-author-search__note">"Thử bút danh khác, hoặc nhập chính xác @handle."</p>
-            </div>
-            <div class="vk-author-search__actions flex flex-wrap [align-items:start] gap-y-vk-1 gap-x-vk-4">
+        <div id="author-search-empty" role="status">
+            <EmptyState artwork=EmptyArtwork::NoResults message=format!("Chưa có tác giả khớp “{q}”. Thử bút danh khác, hoặc nhập chính xác @handle.")>
+            <div class="vk-author-search__actions flex flex-wrap justify-center gap-y-vk-1 gap-x-vk-4">
                 <a id="author-search-in-works" class="vk-ui-link vk-author-search__in-works" href=works.href(None)>"Tìm trong tác phẩm"</a>
                 <a id="author-search-clear" class="vk-ui-link" href=author_search_href("", None)
                     on:click=move |event| {
@@ -240,6 +205,7 @@ fn SearchEmpty(q: StoredValue<String>, clear: Callback<()>) -> impl IntoView {
                         }
                     }>"Xóa tìm kiếm"</a>
             </div>
+            </EmptyState>
         </div>
     }.into_any()
 }

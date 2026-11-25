@@ -310,6 +310,7 @@ impl Scenario {
         matches!(
             self,
             Self::Reader
+                | Self::Appearance
                 | Self::Editor
                 | Self::EditorChrome
                 | Self::EditorFormat
@@ -350,7 +351,7 @@ impl Scenario {
                 "sample Reader/author; App scratch writes and labelled intercepted projections"
             }
             Self::Appearance => {
-                "sample App scratch; loopback fixture, appearance and shell/nav matrices"
+                "sample App scratch and operator tag catalog; loopback fixture, appearance and shell/nav matrices"
             }
             Self::Desk => {
                 "sample App scratch with loopback author; labelled Desk responses, isolated empty browser context, sign-in-disabled guest App"

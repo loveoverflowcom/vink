@@ -1,3 +1,4 @@
+use crate::ui::empty_state::{EmptyArtwork, EmptyState};
 use std::collections::HashMap;
 
 use leptos::{prelude::*, task::spawn_local};
@@ -374,10 +375,12 @@ pub(super) fn ActiveFeed(
             {move || match phase.get() {
                 Phase::Loading => view! { <p role="status" data-feed-state="loading">"Đang tải tác phẩm…"</p> }.into_any(),
                 Phase::Ready { has_following } if ids.with(Vec::is_empty) => view! {
-                    <div class=FEED_STATE_CLASS data-feed-state=if has_following { "no-works" } else { "no-follows" }>
-                        <p class="m-0" role="status">{if has_following { "Chưa có tác phẩm công khai đủ điều kiện." }
-                        else { "Bạn chưa theo dõi tác giả nào." }}</p>
-                        {(!has_following).then(|| view! { <Link href=ExploreMode::AUTHORS_HREF>"Tìm tác giả"</Link> })}
+                    <div data-feed-state=if has_following { "no-works" } else { "no-follows" }>
+                        <EmptyState artwork=EmptyArtwork::NoResults announce=true
+                            message=if has_following { "Chưa có tác phẩm công khai đủ điều kiện." }
+                                else { "Bạn chưa theo dõi tác giả nào." }>
+                            {(!has_following).then(|| view! { <Link href=ExploreMode::AUTHORS_HREF>"Tìm tác giả"</Link> })}
+                        </EmptyState>
                     </div>
                 }.into_any(),
                 Phase::Ready { .. } => ().into_any(),
