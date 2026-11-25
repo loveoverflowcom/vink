@@ -2347,20 +2347,27 @@ async function accountAppearance(page) {
   check(meOverflow.ok, `AC-03 real-control 150% /toi has no unintended overflow (${meOverflow.reasons.join('; ')})`);
   await page.click('.vk-ui-rail a[href="/"]');
   await page.waitFor(`location.pathname === '/' && document.documentElement.dataset.text === '150' && getComputedStyle(document.documentElement).fontSize === '24px'`, '150% preference persists across client route to /');
+  await page.waitFor("document.querySelector('#open-tag-filters')", 'catalog exposes Lọc thẻ on the signed-in Explore route');
   const exploreOverflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript()));
   check(exploreOverflow.ok, `AC-03 real-control 150% / has no unintended overflow (${exploreOverflow.reasons.join('; ')})`);
   for (const width of [320, 390]) {
     await page.viewport(width);
-    await page.eval('document.fonts.ready');
-    check(await page.eval(`(() => {
-      const rects = ['#open-public-search', '#open-tag-filters', '#discovery-tools .vk-brand']
+    await editorLayoutReady(page);
+    const layout = await page.eval(`(() => {
+      const tools = ['#open-public-search', '#open-tag-filters', '#discovery-tools .vk-brand']
         .map(selector => document.querySelector(selector)?.getBoundingClientRect());
       const mid = rect => (rect.top + rect.bottom) / 2;
-      const tabs = [...document.querySelectorAll('.vk-explore-modes a')];
-      return rects.every(rect => rect?.width > 0 && rect.left >= 0 && rect.right <= innerWidth) &&
-        rects.every(rect => Math.abs(mid(rect) - mid(rects[0])) <= 2) &&
-        tabs.length >= 2 && tabs.every(tab => tab.getBoundingClientRect().height >= 48) && document.documentElement.scrollWidth <= innerWidth;
-    })()`), `AC-07 ${width}px at Lớn 150% keeps the logo and both tools in one row with every mode reachable`);
+      return {
+        visible: tools.every(rect => rect?.width > 0 && rect.left >= 0 && rect.right <= innerWidth),
+        oneRow: tools.every(rect => rect && tools[0] && Math.abs(mid(rect) - mid(tools[0])) <= 2),
+        toolRects: tools.map(rect => rect?.toJSON()),
+        tabs: [...document.querySelectorAll('.vk-explore-modes a')].map(tab => tab.getBoundingClientRect().height),
+        overflow: document.documentElement.scrollWidth - innerWidth,
+      };
+    })()`);
+    check(layout.visible && layout.oneRow && layout.tabs.length >= 2 &&
+      layout.tabs.every(height => height >= 48) && layout.overflow <= 0,
+      `AC-07 ${width}px at Lớn 150% keeps the logo and both tools in one row with every mode reachable (${JSON.stringify(layout)})`);
   }
   await page.viewport(1440);
   await page.click('.vk-ui-rail a[href="/ban-viet"]');
