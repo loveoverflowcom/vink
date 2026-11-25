@@ -855,6 +855,89 @@ mod tests {
     }
 
     #[test]
+    fn nav_item_switches_between_filled_and_outlined_icons_by_active_state() {
+        for (key, label, icon, outlined, href) in [
+            (
+                "explore",
+                "Khám phá",
+                IconName::Explore,
+                IconName::ExploreOutline,
+                "/",
+            ),
+            (
+                "desk",
+                "Bàn viết",
+                IconName::Edit,
+                IconName::EditOutline,
+                "/ban-viet",
+            ),
+            (
+                "me",
+                "Tài khoản",
+                IconName::Person,
+                IconName::PersonOutline,
+                "/toi",
+            ),
+        ] {
+            let active_html = render(move || {
+                view! { <NavItem destination=NavDestination::new(key, label, icon, href) active=Signal::stored(true) /> }
+                    .into_any()
+            });
+            let inactive_html = render(move || {
+                view! { <NavItem destination=NavDestination::new(key, label, icon, href) active=Signal::stored(false) /> }
+                    .into_any()
+            });
+            assert!(
+                active_html.contains("aria-current=\"page\""),
+                "{active_html}"
+            );
+            assert!(
+                !inactive_html.contains("aria-current=\"page\""),
+                "{inactive_html}"
+            );
+            assert!(
+                active_html.contains(&format!("data-icon=\"{}\"", icon.id())),
+                "active {key}: {active_html}"
+            );
+            assert!(
+                active_html.contains(&format!("d=\"{}\"", icon.path())),
+                "active path {key}: {active_html}"
+            );
+            assert!(
+                inactive_html.contains(&format!("data-icon=\"{}\"", outlined.id())),
+                "inactive {key}: {inactive_html}"
+            );
+            assert!(
+                inactive_html.contains(&format!("d=\"{}\"", outlined.path())),
+                "inactive path {key}: {inactive_html}"
+            );
+            assert_ne!(
+                icon.path(),
+                outlined.path(),
+                "distinct glyph path for {key}"
+            );
+        }
+        let custom_leading = render(|| {
+            view! {
+                <NavItem
+                    destination=NavDestination::new("me", "Tài khoản", IconName::Person, "/toi")
+                    active=Signal::stored(false)
+                    leading=move || view! { <span data-kind="account">"TT"</span> }
+                />
+            }
+            .into_any()
+        });
+        assert!(
+            custom_leading.contains("data-kind=\"account\""),
+            "{custom_leading}"
+        );
+        assert!(
+            !custom_leading.contains("data-icon=\"person"),
+            "{custom_leading}"
+        );
+    }
+
+    #[test]
     fn scaffold_resolves_in_css_unless_fixed_and_keeps_the_skip_link() {
         let auto = render(|| {
             view! {

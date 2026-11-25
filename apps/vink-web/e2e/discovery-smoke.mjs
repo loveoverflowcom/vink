@@ -1,6 +1,7 @@
 // TAG-PR-06. Real server reads unless a case explicitly says transport fixture.
 // SQL publications in the dedicated phase qualify public reading, never author publication.
 import { discoveryChipGeometry } from './discovery-chip-geometry.mjs';
+import { collectElementAccessibility } from './visual-evidence.mjs';
 export async function discoveryReading(page, { args, check, textContrast }) {
   const ready = async () => page.waitFor("document.documentElement.dataset.hydrated === 'true' && document.querySelector('#public-query')", 'discovery hydration');
   const goto = async path => { await page.goto(args.base + path); await ready(); };
@@ -126,6 +127,21 @@ export async function discoveryReading(page, { args, check, textContrast }) {
         header.radius === (wide ? '16px' : '14px'),
         '#404 header: page title left, [tìm][Lọc thẻ] + logo on one row above the mode group and results ' + [theme,width,JSON.stringify(header)].join('/'));
     }
+    if ([320,390].includes(width) && [100,150].includes(scale)) {
+      const mobile = await page.eval(`(() => {
+        const h1=document.querySelector('#explore-heading h1').getBoundingClientRect();
+        const items=['#open-public-search','#open-tag-filters','#discovery-tools .vk-brand'].map(s=>document.querySelector(s).getBoundingClientRect());
+        const first=document.querySelector('.vk-public-row__title').getBoundingClientRect();
+        const mid=r=>(r.top+r.bottom)/2;
+        return {hidden: h1.width<=1,
+          visible: items.every(r=>r.width>0 && r.left>=0 && r.right<=innerWidth),
+          oneRow: items.every(r=>Math.abs(mid(r)-mid(items[0]))<=2),
+          firstTop: first.top + scrollY,
+          usable: innerHeight - (document.querySelector('#bottom-navigation')?.getBoundingClientRect().height ?? 0)};
+      })()`);
+      check(mobile.visible && mobile.oneRow && (scale !== 150 || mobile.firstTop < mobile.usable && (width !== 320 || mobile.hidden)),
+        '#427 AC-01 mobile ' + scale + '%: logo and both buttons stay on one row (and at 320px / 150% H1 is visually hidden with first work above bottom bar) ' + [theme,width,JSON.stringify(mobile)].join('/'));
+    }
     if ([320,390].includes(width) && scale === 200) {
       const narrow = await page.eval(`(() => {
         const top=document.querySelector('.vk-explore__top').getBoundingClientRect();
@@ -136,7 +152,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
           firstTop: first.top + scrollY, usable: innerHeight - (document.querySelector('#bottom-navigation')?.getBoundingClientRect().height ?? 0), top: top.height};
       })()`);
       check(narrow.firstTop < narrow.usable && (width !== 320 || narrow.hidden && narrow.oneRow),
-        '#404 mobile / 200%: first work starts above the bottom bar, and at 320px the title is visually hidden with the icons and logo on one row ' + [theme,width,JSON.stringify(narrow)].join('/'));
+        '#404/#427 stress 200% (dom-override-geometry-only): first work starts above the bottom bar, and at 320px the title is visually hidden with the icons and logo on one row ' + [theme,width,JSON.stringify(narrow)].join('/'));
     }
     if ([320,390,834,1440].includes(width)) {
       check(await page.eval(`(() => {
@@ -179,8 +195,21 @@ export async function discoveryReading(page, { args, check, textContrast }) {
       (modes.shown ? modes.oneRow && modes.corners.join() === '14px,8px,14px,8px' : modes.summary),
       '#404 mode group stays one connected row or folds into the menu ' + [theme,width,scale,JSON.stringify(modes)].join('/'));
     if (width === 374 && scale === 100) check(modes.menu, '#404 374px: the menu replaces a row whose labels would clip their padding');
+    if (width === 320 && scale === 100) check(modes.menu, '#427 AC-01 320px / 100%: modes fold into the menu');
+    if (width === 390 && scale === 100) check(modes.shown, '#427 AC-01 390px / 100%: modes stay one connected row');
+    if ([320, 390].includes(width) && scale === 150) {
+      check(modes.menu, `#427 AC-01 ${width}px / 150% (${theme}): modes fold into the menu`);
+      if (theme === 'light') {
+        await page.eval("document.querySelector('#explore-mode-menu-button').focus(); document.querySelector('#explore-mode-menu-button').click()");
+        await page.waitFor("document.querySelector('#explore-mode-menu').open", `#427 mode menu opens at ${width}px / 150%`);
+        await page.eval("document.querySelector('#explore-menu-authors').focus()");
+        await page.key('Escape');
+        check(await page.eval("!document.querySelector('#explore-mode-menu').open && document.activeElement?.id==='explore-mode-menu-button' && document.querySelector('#explore').dataset.search==='closed'"),
+          `#427 Escape closes the mode menu and returns focus to its button at ${width}px / 150%`);
+      }
+    }
     if (width === 320 && scale === 200) {
-      check(modes.menu, '#404 320px / 200%: modes fold into the menu');
+      check(modes.menu, '#404/#427 stress 200% (320px): modes fold into the menu');
       await page.eval("document.querySelector('#explore-mode-menu-button').focus(); document.querySelector('#explore-mode-menu-button').click()");
       await page.waitFor("document.querySelector('#explore-mode-menu').open", '#404 mode menu opens');
       await page.eval("document.querySelector('#explore-menu-authors').focus()");
@@ -189,6 +218,9 @@ export async function discoveryReading(page, { args, check, textContrast }) {
         '#404 Escape closes the mode menu and returns focus to its button');
     }
     if (width === 1440) check(modes.shown, '#404 1440px keeps the connected mode group ' + [theme,scale].join('/'));
+    if (theme === 'light' && ([320, 390, 1440].includes(width) && [100, 150].includes(scale) || width === 320 && scale === 200)) {
+      await checkExploreModesTabAndAx(page, { check, label: `${width}px/${scale}%`, expectMenu: modes.menu });
+    }
 
     const dock = await page.eval("document.querySelector('#tag-dock').getBoundingClientRect().width>0");
     check(!dock, '#308 hydrated discovery has no filter column ' + [theme,width,scale].join('/'));
@@ -249,7 +281,11 @@ export async function discoveryReading(page, { args, check, textContrast }) {
         `320px / 200% ${theme}: enlarged R3 row stacks without overflow (${JSON.stringify(card)})`,
       );
     }
-    if ([320,390,834,1440].includes(width)) await page.capture('discovery-' + [theme,width,scale].join('-'), { boundary: 'real-public-api', scenario: 'TAG-PR-06' });
+    if ([320,390,834,1440].includes(width)) await page.capture('discovery-' + [theme,width,scale].join('-'), {
+      boundary: 'real-public-api',
+      scenario: 'TAG-PR-06',
+      textScaleLane: scale === 200 ? 'dom-override-geometry-only' : 'app-text-scale',
+    });
   }
   await page.eval("delete document.documentElement.dataset.text");
   await desktopSearchDock(page, {args, check, ready});
@@ -696,12 +732,143 @@ async function desktopSearchDock(page, {args, check, ready}) {
   check(await page.eval("document.querySelector('#public-query').value===''"), '#404 closing dropped the unsent text');
   await page.click('#close-public-search');
   await page.waitFor("document.querySelector('#explore').dataset.search==='closed' && document.activeElement?.id==='open-public-search'", '#404 ← closes the dock and returns focus');
+
+  // R4.3 (#427 AC-03, R4-INV-06): SSR /?q=… opens the dock with q; closing via ← or Escape drops
+  // q (and cursor), keeps applied tags, and never leaves a hidden active filter.
+  const ssrQueryRes = await fetch(args.base + '/?q=mua');
+  const ssrQueryHtml = await ssrQueryRes.text();
+  check(ssrQueryRes.status === 200 &&
+    /<div\b[^>]*\bid="explore"[^>]*\bdata-search="open"/.test(ssrQueryHtml) &&
+    /<input\b[^>]*\bid="public-query"[^>]*\bvalue="mua"/.test(ssrQueryHtml),
+    '#427 AC-03 SSR /?q=mua renders with the search dock open and value="mua" before hydration');
+
   await page.goto(args.base + '/?q=mua');
   await ready();
-  check(await page.eval("document.querySelector('#explore').dataset.search==='open' && document.querySelector('#public-query').value==='mua' && document.querySelector('#public-query').getClientRects().length>0"),
-    '#404 a URL with q opens the dock with the query kept');
+  check(await page.eval("document.querySelector('#explore').dataset.search==='open' && document.querySelector('#public-query').value==='mua' && document.querySelector('#public-query').getClientRects().length>0 && document.querySelector('#open-public-search').getClientRects().length===0"),
+    '#404/#427 AC-03 desktop SSR /?q=mua opens the dock with q kept');
+  await page.click('#close-public-search');
+  await page.waitFor("location.search==='' && document.querySelector('#explore').dataset.search==='closed' && document.querySelector('#public-query').getClientRects().length===0 && document.activeElement?.id==='open-public-search'",
+    '#427 AC-03 closing desktop /?q=mua via #close-public-search drops q, closes dock and restores launcher focus');
+
+  await page.goto(args.base + '/?q=mua');
+  await ready();
+  await page.eval("document.querySelector('#public-query').focus()");
+  await page.key('Escape');
+  await page.waitFor("location.search==='' && document.querySelector('#explore').dataset.search==='closed' && document.querySelector('#public-query').getClientRects().length===0 && document.activeElement?.id==='open-public-search'",
+    '#427 AC-03 closing desktop /?q=mua via Escape drops q, closes dock and restores launcher focus');
+
+  const catalog = await (await fetch(args.base + '/api/v1/tags')).json();
+  const keptTag = catalog.tags.find(t => t.label === 'Ký ức') ?? catalog.tags[0];
+  if (keptTag) {
+    const taggedUrl = `${args.base}/?q=mua&tag=${encodeURIComponent(keptTag.slug)}`;
+    for (const via of ['button', 'Escape']) {
+      await page.goto(taggedUrl);
+      await ready();
+      check(await page.eval(`document.querySelector('#explore').dataset.search==='open' && document.querySelector('#public-query').value==='mua' && new URL(location.href).searchParams.getAll('tag').includes(${JSON.stringify(keptTag.slug)})`),
+        `#427 AC-03 desktop SSR /?q=mua&tag opens dock before ${via} close`);
+      if (via === 'button') {
+        await page.click('#close-public-search');
+      } else {
+        await page.eval("document.querySelector('#public-query').focus()");
+        await page.key('Escape');
+      }
+      await page.waitFor(`!new URL(location.href).searchParams.has('q') && !new URL(location.href).searchParams.has('cursor') && new URL(location.href).searchParams.getAll('tag').includes(${JSON.stringify(keptTag.slug)}) && document.querySelector('#explore').dataset.search==='closed' && document.activeElement?.id==='open-public-search'`,
+        `#427 AC-03 closing /?q=mua&tag via ${via} drops q/cursor, keeps applied tag and closes dock`);
+    }
+  }
+
+  // Mobile SSR /?q=… closes via Escape and #close-public-search back to a query-less URL.
+  await page.viewport(390, 844);
+  for (const via of ['Escape', 'button']) {
+    await page.goto(args.base + '/?q=mua');
+    await ready();
+    check(await page.eval("document.querySelector('#explore').dataset.search==='open' && document.querySelector('#public-query').value==='mua' && document.querySelector('#public-query').getClientRects().length>0 && getComputedStyle(document.querySelector('#bottom-navigation')).display==='none'"),
+      `#427 AC-03 mobile SSR /?q=mua opens full-screen dock before ${via} close`);
+    if (via === 'Escape') {
+      await page.eval("document.querySelector('#public-query').focus()");
+      await page.key('Escape');
+    } else {
+      await page.click('#close-public-search');
+    }
+    await page.waitFor("location.search==='' && document.querySelector('#explore').dataset.search==='closed' && document.activeElement?.id==='open-public-search' && getComputedStyle(document.querySelector('#bottom-navigation')).display!=='none'",
+      `#427 AC-03 closing mobile SSR /?q=mua via ${via} drops q, restores bottom nav and launcher focus`);
+  }
+
+  await page.viewport(1440);
   await page.goto(args.base + '/');
   await ready();
+}
+
+// R4.3 (#427 AC-02, KP-R43-02): only the visible mode link surface participates in Tab order
+// and the accessibility tree; the hidden duplicate never leaks into either.
+async function checkExploreModesTabAndAx(page, { check, label, expectMenu }) {
+  const { groupIds, menuIds } = await page.eval(`({
+    groupIds: [...document.querySelectorAll('.vk-explore-modes__group a')].map(a => a.id),
+    menuIds: [...document.querySelectorAll('#explore-mode-menu .vk-explore-modes__list a')].map(a => a.id),
+  })`);
+  const walkModesTab = async () => {
+    await page.eval("document.querySelector('#discovery-tools .vk-brand').focus()");
+    const stops = [];
+    for (let i = 0; i < 8; i++) {
+      await page.key('Tab');
+      const hit = await page.eval(`(() => {
+        const el = document.activeElement;
+        return el?.closest('.vk-explore-modes') ? (el.id || el.tagName) : null;
+      })()`);
+      if (hit) stops.push(hit);
+      else if (stops.length > 0) break;
+    }
+    return stops;
+  };
+  const inspectAx = async (expectedVisibleIds, expectedHiddenIds, expectedNavLinkCount, stateLabel) => {
+    await page.send('Accessibility.enable');
+    for (const id of expectedVisibleIds) {
+      const info = await collectElementAccessibility(page, '#' + id);
+      check(info.present && !info.ax.ignored && Boolean(info.ax.name),
+        `#427 AC-02 ${label} (${stateLabel}): visible mode control #${id} is exposed in AX (${JSON.stringify(info.ax)})`);
+    }
+    for (const id of expectedHiddenIds) {
+      const info = await collectElementAccessibility(page, '#' + id);
+      check(info.present && info.ax.ignored,
+        `#427 AC-02 ${label} (${stateLabel}): hidden mode control #${id} is ignored in AX (${JSON.stringify(info.ax)})`);
+    }
+    const { nodes } = await page.send('Accessibility.getFullAXTree');
+    const byId = new Map(nodes.map(node => [node.nodeId, node]));
+    const navNode = nodes.find(node => !node.ignored && node.role?.value === 'navigation' && node.name?.value === 'Chế độ Khám phá');
+    const exposedLinks = [];
+    if (navNode) {
+      const queue = [...(navNode.childIds ?? [])];
+      while (queue.length) {
+        const node = byId.get(queue.shift());
+        if (!node) continue;
+        if (!node.ignored && node.role?.value === 'link') exposedLinks.push(node.name?.value ?? '');
+        if (node.childIds) queue.push(...node.childIds);
+      }
+    }
+    check(Boolean(navNode) && exposedLinks.length === expectedNavLinkCount,
+      `#427 AC-02 ${label} (${stateLabel}): AX navigation 'Chế độ Khám phá' exposes exactly ${expectedNavLinkCount} link(s) (got ${JSON.stringify(exposedLinks)})`);
+  };
+
+  if (!expectMenu) {
+    const stops = await walkModesTab();
+    check(stops.join(',') === groupIds.join(','),
+      `#427 AC-02 ${label} (group): Tab visits only group links (${JSON.stringify(stops)} vs ${JSON.stringify(groupIds)})`);
+    await inspectAx(groupIds, ['explore-mode-menu-button', ...menuIds], groupIds.length, 'group');
+  } else {
+    const closedStops = await walkModesTab();
+    check(closedStops.join(',') === 'explore-mode-menu-button',
+      `#427 AC-02 ${label} (menu closed): Tab visits only menu summary (${JSON.stringify(closedStops)})`);
+    await inspectAx(['explore-mode-menu-button'], [...groupIds, ...menuIds], 0, 'menu closed');
+
+    await page.eval("document.querySelector('#explore-mode-menu').open = true");
+    const openStops = await walkModesTab();
+    const expectedOpen = ['explore-mode-menu-button', ...menuIds];
+    check(openStops.join(',') === expectedOpen.join(','),
+      `#427 AC-02 ${label} (menu open): Tab visits summary then only menu links (${JSON.stringify(openStops)} vs ${JSON.stringify(expectedOpen)})`);
+    await inspectAx(expectedOpen, groupIds, menuIds.length, 'menu open');
+    await page.eval("document.querySelector('#explore-mode-menu').open = false");
+  }
+  await page.eval("document.activeElement?.blur(); scrollTo(0, 0)");
 }
 
 // Revalidation changes freshness text, not the identity of focused recovery controls.

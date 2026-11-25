@@ -217,16 +217,15 @@ thanh công cụ và điểm vào tìm kiếm có bề rộng và cạnh phải 
 và `display` khác `none`, trang không cuộn ngang. Helper chạy trước hydration và
 trong `railReview`, gồm ca rail 220/96px và stress 200% qua DOM override. Ma trận Khám phá hẹp nằm trong `discoveryReading`.
 `adaptiveShell` kiểm đổi rail giữ đầu trang trên mép cột và nội dung đang nhập trong search
-dock. `railReview` đo trục icon, vùng bấm, chữ tiếng Việt và focus khi cửa sổ thấp; tooltip
+dock. `railReview` đo trục icon, vùng bấm, chữ tiếng Việt và focus khi cửa sổ thấp (gồm 100%, Lớn 150% và stress 200% riêng); tooltip
 toggle nằm bên phải nút, không che đích đầu (#403), và xác nhận không còn nút Giao diện
-(`#profile-trigger`, `.vk-ui-nav-utility`) trên rail (#413). `railR4Surfaces` kiểm rail, trang
-và thanh dưới cùng `bg-page`, chỉ đích hiện hành có nền. DQ‑11 có số đo riêng cho nền hàng Tôi và dấu chọn. CSS hiện hành tô cả hàng Tôi khi đích đang chọn ở rail mở rộng, trong khi DQ‑11 yêu cầu nền trang khi có chữ. Chênh lệch có trước #413, theo dõi cùng tín hiệu chọn trong [#427](https://github.com/loveoverflowcom/vink/issues/427#acceptance).
-Đầu trang Khám phá R4.2 (#404): `discoveryReading` kiểm ở 390/1440px và chữ 100% rằng
-H1, nút tìm, Lọc thẻ và logo căn cùng hàng, khoảng cách giữa các nút và logo đúng
-8/12px theo viewport, nhóm chế độ và kết quả nằm dưới. Ca stress 320px/200% qua DOM
-override kiểm H1 ẩn thị giác, hai nút và logo giữ cùng hàng. `desktopSearchDock` kiểm
+(`#profile-trigger`, `.vk-ui-nav-utility`) trên rail (#413). `assertNavIcons` (`browser-smoke.mjs`), `deskGuest` (`desk-empty-smoke.mjs`) và unit test `vink-ui` kiểm đích đang chọn dùng icon filled (`explore`, `edit`, `person` khi khách) còn đích chưa chọn dùng outlined (`explore-outline`, `edit-outline`, `person-outline`) có path SVG riêng trên rail, modal tablet và thanh dưới (#427 AC-04). `railR4Surfaces` kiểm rail, trang
+và thanh dưới cùng `bg-page`, chỉ đích hiện hành có nền. DQ‑11 có số đo riêng cho nền hàng Tôi và dấu chọn. CSS hiện hành tô cả hàng Tôi khi đích đang chọn ở rail mở rộng, trong khi DQ‑11 yêu cầu nền trang khi có chữ (chênh lệch có trước #413; #427 giữ nguyên DQ-11).
+Đầu trang Khám phá R4.2 (#404) và bổ sung R4.3 (#427): `discoveryReading` kiểm ở 320/390/1440px và chữ 100%/150% rằng
+logo cùng nút tìm và Lọc thẻ giữ một hàng, không cuộn ngang, nhóm chế độ là một hàng nối liền hoặc gập thành `#explore-mode-menu`, và ở 320px/150% H1 ẩn thị giác để bài đầu tới được trên thanh dưới; ca stress 320/390px/200% qua DOM
+override báo riêng. `checkExploreModesTabAndAx` kiểm bằng phím Tab thật và `Accessibility.getFullAXTree` rằng ở mọi bề rộng chỉ bộ link chế độ đang hiện lọt vào thứ tự Tab và cây trợ năng (#427 AC-02). `desktopSearchDock` kiểm
 dock mở bằng nút hoặc “/” (không khi đang gõ ô khác), Escape/← đóng, bỏ chữ chưa gửi, trả focus về nút,
-giữ IME và URL có `q` mở sẵn dock. Thẻ Khám phá R4.2 (#405, DQ-08/DQ-09): thẻ rời `bg-content`
+giữ IME, SSR `/?q=…` mở sẵn dock với `q` và đóng bằng `#close-public-search`/Escape (trên desktop lẫn mobile, có hoặc không có `tag`) điều hướng về URL bỏ `q`/cursor và giữ thẻ đã áp dụng (#427 AC-03). Thẻ Khám phá R4.2 (#405, DQ-08/DQ-09): thẻ rời `bg-content`
 bo 20 cách 8 px (cả Tất cả, Đang theo dõi và chế độ Tác giả), dòng `Thể loại · ngày công khai đầu`
 màu `tertiary` theo múi giờ `Asia/Ho_Chi_Minh` ở mọi chế độ, giữ avatar tròn (#352), khách ở
 Đang theo dõi có nút filled “Đăng nhập”, không kết quả nhắc từ khóa kèm lối “Tìm tác giả “q””.
