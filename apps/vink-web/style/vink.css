@@ -1670,7 +1670,7 @@ html:has(.vk-discovery:not(.vk-discovery--tag)) { scrollbar-gutter: stable; }
 .vk-explore-modes a {
   display: grid;
   place-items: center;
-  min-block-size: var(--vk-size-hit-target);
+  min-block-size: var(--vk-density-control-height);
   padding-block: var(--vk-space-2);
   padding-inline: min(var(--vk-space-1), 4px);
   color: var(--vk-on-surface-variant);
