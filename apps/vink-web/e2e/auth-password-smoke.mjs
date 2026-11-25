@@ -11,6 +11,7 @@ import { EDITOR_READY, HYDRATED, STANDING, account, cookies, fabricate, fill, ma
 import { deskGuest } from './desk-empty-smoke.mjs';
 import { captureRequest, holdAnswer } from './auth-browser-network.mjs';
 import { APPEARANCE_SETTLED } from './visual-evidence.mjs';
+import { standaloneWorkViewCheck } from './work-views-smoke.mjs';
 
 const API = '/api/v1/auth/password';
 const PANEL = '#account-session';
@@ -981,4 +982,5 @@ export async function standalone(page, {args, check}) {
     'the second account can open the public author profile');
   check(!await page.eval("document.body.textContent.includes('Bản thảo trên Vink')"),
     'a pending work stays off the public author profile');
+  await standaloneWorkViewCheck(page, { args, check });
 }

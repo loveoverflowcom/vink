@@ -121,6 +121,36 @@ impl Session {
         self.checking.get()
     }
 
+    #[cfg(feature = "browser")]
+    pub(crate) fn settled_authority(self) -> crate::work_view::AuthoritySnapshot {
+        use crate::session::Standing;
+        use crate::work_view::{AuthorityKind, AuthoritySnapshot};
+
+        self.owner.with(|owner| match owner.standing() {
+            Standing::Unknown | Standing::Unavailable => AuthoritySnapshot::Unsettled,
+            Standing::Anonymous => AuthoritySnapshot::Settled {
+                generation: owner.generation(),
+                principal_id: None,
+                kind: AuthorityKind::Anonymous,
+            },
+            Standing::NeedsPrincipal => AuthoritySnapshot::Settled {
+                generation: owner.generation(),
+                principal_id: None,
+                kind: AuthorityKind::NeedsPrincipal,
+            },
+            Standing::Suspended => AuthoritySnapshot::Settled {
+                generation: owner.generation(),
+                principal_id: None,
+                kind: AuthorityKind::Suspended,
+            },
+            Standing::Active(account) => AuthoritySnapshot::Settled {
+                generation: owner.generation(),
+                principal_id: Some(account.principal_id.clone()),
+                kind: AuthorityKind::Active,
+            },
+        })
+    }
+
     fn dispatch(
         self,
         epoch: u64,

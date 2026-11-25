@@ -8,6 +8,7 @@ members = [
     "packages/ui-system/leptos",
     "packages/ui-system/leptos/preview",
     "packages/vink-patterns/leptos",
+    "packages/work-view-policy",
     "services/vink-app",
     "services/vink-identity",
     "services/vink-notifications",

@@ -244,6 +244,17 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .merge(super::follow::routes())
         .merge(super::notifications::routes())
         .merge(super::feed::routes(state.following_feed_enabled))
+        .merge(
+            Router::new()
+                .route(
+                    "/works/{work_id}/views",
+                    post(super::work_views::record_work_view),
+                )
+                .layer(SetResponseHeaderLayer::overriding(
+                    header::CACHE_CONTROL,
+                    HeaderValue::from_static("no-store"),
+                )),
+        )
         .merge(publication_author)
         .merge(moderation_works)
         .merge(super::appeals::routes())

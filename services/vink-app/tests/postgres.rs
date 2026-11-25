@@ -104,6 +104,8 @@ mod taxonomy_api;
 mod work_moderation;
 #[path = "postgres/work_view.rs"]
 mod work_view;
+#[path = "postgres/work_view_intake.rs"]
+mod work_view_intake;
 #[path = "postgres/work_view_reads.rs"]
 mod work_view_reads;
 

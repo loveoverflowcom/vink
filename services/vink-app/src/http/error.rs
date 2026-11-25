@@ -10,6 +10,7 @@ use crate::application::endorsement::{EndorsementError, EndorsementInput};
 use crate::application::moderation::ModerationActionError;
 use crate::application::publication::AuthorPublicationError;
 use crate::application::taxonomy::{TagError, TagInput, TagRejection};
+use crate::application::work_view::WorkViewError;
 use crate::application::{DraftError, InvalidInput, ReadError};
 use crate::domain::endorsement::EndorsementState;
 use crate::domain::ids::{RevisionId, TagId};
@@ -856,6 +857,19 @@ impl From<ModerationActionError> for ApiError {
             ModerationActionError::Suspended => Self::PrincipalSuspended,
             ModerationActionError::Unavailable => Self::DependencyUnavailable,
             ModerationActionError::Internal => Self::Internal,
+        }
+    }
+}
+
+impl From<WorkViewError> for ApiError {
+    fn from(error: WorkViewError) -> Self {
+        match error {
+            WorkViewError::Invalid(input) => Self::Validation {
+                field: input.field(),
+                message: format!("invalid {}", input.field()),
+            },
+            WorkViewError::Unavailable => Self::DependencyUnavailable,
+            WorkViewError::Internal => Self::Internal,
         }
     }
 }

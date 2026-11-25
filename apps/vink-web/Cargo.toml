@@ -15,6 +15,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 vink-markdown-text = { path = "../../packages/markdown-text" }
+vink-work-view-policy = { path = "../../packages/work-view-policy" }
 serde_json.workspace = true
 vink-patterns = { path = "../../packages/vink-patterns/leptos" }
 leptos.workspace = true
