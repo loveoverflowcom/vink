@@ -16,6 +16,7 @@ mod health;
 mod moderation_queue;
 pub mod notifications;
 mod profile;
+mod saved_works;
 #[cfg(feature = "legacy-ssr")]
 mod ssr;
 mod work_views;
@@ -289,12 +290,20 @@ fn routes(state: &AppState) -> Router<AppState> {
         .nest("/api/v1", api::routes(state.clone()))
 }
 
+fn request_span<B>(request: &axum::http::Request<B>) -> tracing::Span {
+    // Never log private query strings or the target of a private bookmark action.
+    let path = request.uri().path();
+    let path = if path.starts_with("/api/v1/me/saved-works/") {
+        "/api/v1/me/saved-works/{work_id}"
+    } else {
+        path
+    };
+    tracing::debug_span!("request", method = %request.method(), path)
+}
+
 pub fn api_router(state: AppState) -> Router {
     routes(&state)
-        .layer(TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {
-            // Private title queries/cursors must never enter request traces, even at DEBUG.
-            tracing::debug_span!("request", method = %request.method(), path = %request.uri().path())
-        }))
+        .layer(TraceLayer::new_for_http().make_span_with(request_span))
         .with_state(state)
 }
 
@@ -305,10 +314,7 @@ pub use api_router as router;
 pub fn router(state: AppState) -> Router {
     routes(&state)
         .merge(ssr::routes(&state))
-        .layer(TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {
-            // Private title queries/cursors must never enter request traces, even at DEBUG.
-            tracing::debug_span!("request", method = %request.method(), path = %request.uri().path())
-        }))
+        .layer(TraceLayer::new_for_http().make_span_with(request_span))
         .with_state(state)
 }
 

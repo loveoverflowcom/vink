@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "version_conflict",
+    "message": "saved work generation changed",
+    "current_version": 3,
+    "field": "expected_generation"
+  }
+}

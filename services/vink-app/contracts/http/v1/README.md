@@ -20,9 +20,9 @@ The [proposed Social Graph contract r1](social-graph.md) defines public, own and
 
 The [proposed Notifications v1 contract](notifications.md) (`NOT_IMPLEMENTED`, #345) defines the shared inter-service envelope/receipt/ACK semantics, gateway badge/inbox/`Seen`/`Read`/private decision-detail semantics, and the proposed public paginated **Thấm** list for #346–#348 and non-Web consumers (`P-14A`).
 
-## Lưu bài · hợp đồng đích #385
+## Lưu bài · API riêng
 
-`GET /api/v1/me/saved-works` đọc danh sách; `GET/PUT/DELETE /api/v1/me/saved-works/{work_id}` đọc hoặc đặt trạng thái của chính mình. [Hợp đồng Lưu bài](saved-works.md) quy định tham số, ACK, cursor, fence, quyền, lỗi và cache riêng cho #386–387. Mức triển khai là `NOT_IMPLEMENTED`.
+`GET /api/v1/me/saved-works` đọc danh sách; `GET/PUT/DELETE /api/v1/me/saved-works/{work_id}` đọc hoặc đặt trạng thái của chính mình. [Hợp đồng Lưu bài](saved-works.md) quy định tham số, ACK, cursor, fence, quyền, lỗi và cache riêng của các route. Mức triển khai là `persistence-api` (#387).
 
 ## Conventions
 
