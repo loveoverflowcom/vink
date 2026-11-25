@@ -33,6 +33,8 @@ pub enum ApiError {
     DiscussionConflict {
         current_version: i64,
     },
+    SavedWorkConflict(i64),
+    SavedWorksLimitReached,
     CommentsClosed,
     HiddenReadOnly,
     TargetUnavailable,
@@ -174,6 +176,8 @@ impl ApiError {
             | Self::EndorsementNotPermitted => StatusCode::FORBIDDEN,
             Self::NotFound => StatusCode::NOT_FOUND,
             Self::VersionConflict { .. }
+            | Self::SavedWorkConflict(_)
+            | Self::SavedWorksLimitReached
             | Self::DiscussionConflict { .. }
             | Self::PublicationConflict { .. }
             | Self::RevisionRejected
@@ -247,6 +251,8 @@ impl ApiError {
                 Some(*current_version),
                 None,
             ),
+            Self::SavedWorkConflict(current) => ("version_conflict", "saved work generation changed".into(), Some(*current), Some("expected_generation")),
+            Self::SavedWorksLimitReached => ("saved_works_limit_reached", "Danh sách Đã lưu đã đầy. Bỏ lưu một bài để lưu thêm.".into(), None, None),
             Self::DiscussionConflict { current_version } => (
                 "version_conflict",
                 "the comments settings changed since the expected generation; nothing was written"

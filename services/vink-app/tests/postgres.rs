@@ -36,6 +36,7 @@ const SOCIAL_RETIREMENT_MIGRATION: i64 = 20261129000000;
 const WORK_VIEWS_MIGRATION: i64 = 20261130000000;
 const PUBLIC_ENDORSER_LIST_MIGRATION: i64 = 20261201000000;
 const COMMENT_UNG_NOTIFICATION_MIGRATION: i64 = 20261203000000;
+const SAVED_WORKS_MIGRATION: i64 = 20261204000000;
 const ORIGIN: &str = "http://127.0.0.1:3000";
 
 #[path = "postgres/abuse.rs"]
@@ -94,6 +95,8 @@ mod publication_policy;
 mod publication_state;
 #[path = "postgres/publication_state_budget.rs"]
 mod publication_state_budget;
+#[path = "postgres/saved_works.rs"]
+mod saved_works;
 #[path = "postgres/social_retirement.rs"]
 mod social_retirement;
 #[path = "postgres/taxonomy.rs"]

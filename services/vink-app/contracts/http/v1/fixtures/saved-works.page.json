@@ -1,0 +1,29 @@
+{
+  "items": [
+    {
+      "kind": "readable",
+      "work_id": "33333333-3333-4333-8333-333333333333",
+      "generation": 2,
+      "saved_at": "2026-11-25T08:00:00Z",
+      "title": "Mưa trên phố cũ",
+      "form": "Thơ",
+      "author": {
+        "kind": "linked",
+        "pen_name": "Nhật Ánh",
+        "handle": "ngay-nang",
+        "href": "/@ngay-nang"
+      }
+    },
+    {
+      "kind": "hidden",
+      "work_id": "55555555-5555-4555-8555-555555555555",
+      "generation": 4
+    },
+    {
+      "kind": "author_deleted",
+      "work_id": "66666666-6666-4666-8666-666666666666",
+      "generation": 2
+    }
+  ],
+  "next_cursor": null
+}

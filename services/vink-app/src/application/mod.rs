@@ -17,6 +17,7 @@ pub mod ports;
 pub mod post_review;
 pub mod profile;
 pub mod publication;
+pub mod saved_works;
 pub mod social_retirement;
 pub mod taxonomy;
 pub mod work_view;

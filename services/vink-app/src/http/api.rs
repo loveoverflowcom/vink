@@ -235,6 +235,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
             header::CACHE_CONTROL,
             HeaderValue::from_static("no-store"),
         ));
+    let same_origin = middleware::from_fn_with_state(state.clone(), require_same_origin);
     Router::new()
         .merge(public)
         .merge(super::author_discovery::routes())
@@ -263,7 +264,13 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .merge(catalog)
         .merge(super::auth::routes())
         .fallback(|| async { ApiError::NotFound })
-        .layer(middleware::from_fn_with_state(state, require_same_origin))
+        .layer(same_origin.clone())
+        .merge(super::saved_works::routes().layer(same_origin).layer(
+            SetResponseHeaderLayer::overriding(
+                header::CACHE_CONTROL,
+                HeaderValue::from_static("private, no-store"),
+            ),
+        ))
 }
 
 /// CSRF/Origin seam for unsafe methods: browsers always send `Origin` on PUT/POST, so a missing

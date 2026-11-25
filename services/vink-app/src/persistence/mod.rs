@@ -28,6 +28,7 @@ pub(crate) mod postgres;
 mod principal;
 mod profile;
 pub(crate) mod publication;
+mod saved_works;
 mod social_retirement;
 mod taxonomy;
 pub mod work_view;

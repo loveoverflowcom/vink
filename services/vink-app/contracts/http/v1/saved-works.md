@@ -1,6 +1,6 @@
 # HTTP v1 · Danh sách Đã lưu của tôi
 
-Hợp đồng đích cho #386–387, mức `NOT_IMPLEMENTED`. Vink App sở hữu quan hệ (PrincipalId, WorkId). [PRD §18 và bảng vòng đời](../../../../../prd/requirements.md#18-lưu-bài-để-đọc-lại-saved-works) · [phiên, Origin và lỗi v1](README.md) · [registry](../../../../../docs/development/saved-works.md).
+Hợp đồng đã triển khai ở mức `persistence-api` (#387). Vink App sở hữu quan hệ (PrincipalId, WorkId). [PRD §18 và bảng vòng đời](../../../../../prd/requirements.md#18-lưu-bài-để-đọc-lại-saved-works) · [phiên, Origin và lỗi v1](README.md) · [registry](../../../../../docs/development/saved-works.md).
 
 ## Tuyến và quyền
 
@@ -25,7 +25,7 @@ PUT/DELETE yêu cầu `Origin` khớp `VINK_PUBLIC_ORIGIN`. Client gửi thêm h
 | G cũ hơn, trạng thái hiện tại đã bằng mong muốn | `200` với trạng thái/generation **hiện tại**. Không tăng fence, đổi saved_at hay tính suất lần nữa. ACK mô tả kết quả hiện có. |
 | G cũ hơn, trạng thái trái mong muốn, hoặc G lớn hơn generation hiện tại | `409 version_conflict` kèm `field: expected_generation` và `current_version` là generation hiện hành. Không ghi. |
 
-Kiểm cap trong cùng lần commit khi thêm membership. Tính tất cả quan hệ Saved, gồm cả dòng đang bị bỏ qua; fence NotSaved không chiếm suất. Khi đang đủ 10.000, PUT xác nhận lại một bài đã lưu vẫn được. Đang ở 9.999, hai lệnh đồng thời cho hai WorkId mới chỉ được cấp một suất. Lệnh bị từ chối không tiêu thụ generation. Giữ fence qua DELETE, chỉ xóa cùng dữ liệu của người lưu khi xóa tài khoản. Cách lưu fence/receipt thuộc #386–387.
+Kiểm cap trong cùng lần commit khi thêm membership. Tính tất cả quan hệ Saved, gồm cả dòng đang bị bỏ qua; fence NotSaved không chiếm suất. Khi đang đủ 10.000, PUT xác nhận lại một bài đã lưu vẫn được. Đang ở 9.999, hai lệnh đồng thời cho hai WorkId mới chỉ được cấp một suất. Lệnh bị từ chối không tiêu thụ generation. Giữ fence qua DELETE, chỉ xóa cùng dữ liệu của người lưu khi xóa tài khoản. PostgreSQL giữ generation và thời điểm lưu trên cùng một dòng. Bỏ lưu đặt thời điểm về NULL.
 
 Ví dụ: PUT(1) → Saved/2; retry PUT(1) → Saved/2; PUT(2) → Saved/3 cùng saved_at; DELETE(3) → NotSaved/4. PUT(1) đến muộn → 409. DELETE(4) mới → NotSaved/5, PUT(4) đến sau → 409. Khi người dùng thực sự lưu lại bằng PUT(5) → Saved/6 với saved_at mới. DELETE(3) cũ không thể đảo lần lưu thứ hai (ABA).
 
