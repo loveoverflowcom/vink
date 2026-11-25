@@ -2,8 +2,8 @@
 //!
 //! The runtime lives in `apps/vink-web/editor` (TypeScript, built by `cargo xtask build` into
 //! `/pkg/vink-editor.js`) and is fetched only when an editor mounts. CodeMirror owns the live body
-//! text; [`BodySource::snapshot`] is the one way save, preview and the leave guard read
-//! it. Save state stays with [`crate::desk_state::EditorSession`]. One view lives per open draft:
+//! text; [`BodySource::snapshot`] is the one way save, the format conversion preview and the leave
+//! guard read it. Save state stays with [`crate::desk_state::EditorSession`]. One view lives per open draft:
 //! reactive updates around it (status, notices, dialogs, theme, format) never remount it.
 
 use leptos::html;
@@ -16,8 +16,6 @@ use crate::contract::DocumentFormatDto;
 pub const BODY_LABEL_ID: &str = "editor-body-label";
 pub const BODY_HINT_ID: &str = "editor-body-hint";
 pub const BODY_TITLE_ERROR_ID: &str = "editor-body-title-error";
-/// Id of the sticky toolbar above the text; the caret is scrolled clear of it.
-pub const TOOLBAR_ID: &str = "editor-toolbar";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BodyState {
@@ -113,17 +111,6 @@ impl BodySource {
         {
             false
         }
-    }
-
-    #[allow(dead_code)]
-    pub fn set_format(&self, format: DocumentFormatDto) {
-        self.format.try_set_value(format);
-        #[cfg(feature = "browser")]
-        self.view.try_with_value(|view| {
-            if let Some(view) = view {
-                view.set_format(format);
-            }
-        });
     }
 
     pub fn apply_converted_document(&self, format: DocumentFormatDto, text: &str) {
@@ -272,7 +259,7 @@ mod bridge {
     use wasm_bindgen::prelude::*;
     use web_sys::HtmlElement;
 
-    use super::{BODY_HINT_ID, BODY_LABEL_ID, BODY_TITLE_ERROR_ID, TOOLBAR_ID};
+    use super::{BODY_HINT_ID, BODY_LABEL_ID, BODY_TITLE_ERROR_ID};
     use crate::contract::DocumentFormatDto;
 
     #[wasm_bindgen(module = "/editor/bridge.js")]
@@ -289,9 +276,6 @@ mod bridge {
         fn focus_editor(handle: &JsValue);
         #[wasm_bindgen(js_name = isComposing)]
         fn is_composing(handle: &JsValue) -> bool;
-        #[allow(dead_code)]
-        #[wasm_bindgen(js_name = setFormat)]
-        fn set_format(handle: &JsValue, format: &str);
         #[wasm_bindgen(js_name = applyConvertedDocument)]
         fn apply_converted_document(handle: &JsValue, format: &str, text: &str);
         #[wasm_bindgen(js_name = applyHeading)]
@@ -333,7 +317,6 @@ mod bridge {
                     "describedBy",
                     JsValue::from_str(&format!("{BODY_HINT_ID} {BODY_TITLE_ERROR_ID}")),
                 ),
-                ("stickyAboveId", JsValue::from_str(TOOLBAR_ID)),
             ] {
                 Reflect::set(&options, &JsValue::from_str(key), &value)?;
             }
@@ -361,11 +344,6 @@ mod bridge {
 
         pub fn is_composing(&self) -> bool {
             is_composing(&self.handle)
-        }
-
-        #[allow(dead_code)]
-        pub fn set_format(&self, format: DocumentFormatDto) {
-            set_format(&self.handle, format.as_str());
         }
 
         pub fn apply_converted_document(&self, format: DocumentFormatDto, text: &str) {

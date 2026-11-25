@@ -383,7 +383,7 @@ a {
 }
 
 /* Recovery action rows belong to their screen, visual controls to vink-ui. */
-.vk-notice__actions { display: flex; flex-wrap: wrap; gap: var(--vk-space-2); margin-top: var(--vk-space-4); }
+.vk-notice__actions { display: flex; flex-wrap: wrap; gap: var(--vk-space-2); }
 
 /* Reader */
 
@@ -778,7 +778,6 @@ a {
 .vk-editor-topbar .vk-editor-tools { position: relative; }
 .vk-editor-topbar .vk-editor-tools[open] { flex-basis: auto; }
 .vk-editor-topbar .vk-editor-tools > summary {
-  justify-content: center;
   min-inline-size: var(--vk-density-control-height);
   padding-inline: var(--vk-space-2);
   border-radius: var(--vk-radius-control-48);
@@ -801,7 +800,6 @@ a {
     inline-size: min(16rem, 100%);
   }
 }
-.vk-editor-topbar .vk-draft-action-icon { inline-size: 18px; block-size: 18px; }
 
 .vk-editor-heading__back {
   position: relative;
@@ -898,7 +896,6 @@ a {
 .vk-editor-paper > .vk-ui-field .vk-ui-field__label { margin-inline: 0; }
 .vk-editor-paper > .vk-ui-field .vk-ui-input { padding-inline: 0; }
 .vk-editor-paper > .vk-field { min-inline-size: 0; }
-.vk-editor-paper .vk-editor-body { background: transparent; }
 .vk-editor-title-measure {
   position: absolute;
   inline-size: 0;
@@ -929,13 +926,11 @@ a {
   .vk-main:has(> .vk-desk--editor) { padding-inline: var(--vk-size-gutter-narrow); }
   .vk-desk--editor .vk-editor-paper { padding-inline: min(var(--vk-space-4), 5vw); }
 }
-.vk-desk--editor .vk-notice__actions { margin-top: var(--vk-space-2); }
 .vk-desk--editor .vk-notice__actions > .vk-ui-action { flex: 0 1 auto; min-width: 0; }
 .vk-desk--editor .vk-notice__actions .vk-ui-button__label { overflow-wrap: normal; }
 .vk-editor-recovery { display: grid; gap: var(--vk-space-2); min-inline-size: 0; padding: var(--vk-space-4); border-radius: var(--vk-radius-lg); background: var(--vk-error-container); color: var(--vk-on-error-container); }
 .vk-editor-recovery[data-tone="warning"] { background: var(--vk-warning-container); color: var(--vk-on-warning-container); }
 /* Child .vk-ui-notice reset and icon hide moved to utility variants on .vk-editor-recovery (W01 cascade coexistence). */
-.vk-desk--editor .vk-editor-recovery .vk-notice__actions { margin: 0; }
 .vk-editor-recovery .vk-ui-button--text { color: inherit; }
 
 /* WorkInfo keeps the taxonomy status and recovery inside the article options. */
@@ -957,7 +952,6 @@ a {
 .vk-publication p { margin: 0; overflow-wrap: anywhere; }
 .vk-publication__live:empty { display: none; }
 .vk-publication > .vk-editor-recovery { padding: var(--vk-space-3); }
-.vk-publication > .vk-editor-recovery .vk-notice__actions { margin: 0; }
 /* The recovery notice sits inside the region's own surface, so its padding comes on top of the
    region's. When the region is narrow for its text (rem-relative: it is reached at 200% text on a
    phone, not at 100%) the nested card gives up its padding, its actions take the full width, and
@@ -985,7 +979,7 @@ a {
 .vk-editor-body {
   border: 0;
   border-radius: var(--vk-radius-lg);
-  background: var(--vk-surface-container-low);
+  background: transparent;
   color: var(--vk-on-surface);
 }
 
@@ -1012,10 +1006,6 @@ a {
   background: var(--vk-surface-container-low);
 }
 
-.vk-save-slot {
-  min-width: 0;
-}
-
 .vk-save-slot__icon {
   color: var(--vk-on-surface-variant);
 }
@@ -1031,10 +1021,6 @@ a {
 .vk-save-slot[data-status="failed"][data-problem="uncertain"] .vk-save-slot__icon,
 .vk-save-slot[data-status="conflict"] .vk-save-slot__icon {
   color: var(--vk-warning);
-}
-
-.vk-save-slot__readout {
-  min-width: 0;
 }
 
 .vk-save-slot__readout:has(.vk-save-status[data-status="failed"][data-problem="uncertain"]),
@@ -1060,9 +1046,7 @@ a {
 }
 
 .vk-save-status[data-status="unsaved"]::before,
-.vk-save-status[data-status="dirty"]::before,
-.vk-save-status[data-status="saving"]::before,
-.vk-save-status[data-status="pending"]::before {
+.vk-save-status[data-status="saving"]::before {
   content: "";
   flex: none;
   width: 0.625rem;
@@ -1071,8 +1055,7 @@ a {
   background: var(--vk-tertiary);
 }
 
-.vk-save-status[data-status="saving"]::before,
-.vk-save-status[data-status="pending"]::before {
+.vk-save-status[data-status="saving"]::before {
   background: var(--vk-primary);
 }
 

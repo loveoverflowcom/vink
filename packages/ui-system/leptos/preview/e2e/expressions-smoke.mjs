@@ -43,11 +43,11 @@ export async function expressionPilot(page, args, check) {
     const html = await fetch(url).then(r => r.text());
     check((html.match(/data-expression-index=/g) ?? []).length === 16 && !html.includes('<canvas'), 'fixture HTML contains sixteen static named assets and no canvas');
     check(html.includes(sample) && !html.includes('/expressions/runtime/'), 'fixture HTML preserves ZWJ/selector/modifier/flag/keycap source and contains no animation engine');
-    await page.send('Emulation.setScriptExecutionDisabled', { value: true });
+    await page.setScriptsDisabled(true);
     await go();
     check(await page.eval(`document.querySelectorAll('#emoji-catalog img').length === 16 && !document.querySelector('canvas') && document.querySelector('#expression-pilot').dataset.ready === 'false'`), 'actual no-JS pilot retains static artwork');
     await page.capture('expressions-no-js-1440-light');
-    await page.send('Emulation.setScriptExecutionDisabled', { value: false });
+    await page.setScriptsDisabled(false);
     await open();
     await page.waitFor(`[...document.querySelectorAll('#emoji-catalog img')].every(i => i.complete && i.naturalWidth > 0)`, 'static Google SVG decoding');
     check(!requests.some(engineRequest), 'hydration and all static images leave animation engine/WASM unloaded');
@@ -236,7 +236,7 @@ export async function expressionPilot(page, args, check) {
     await open();
     check(await page.eval(`${active} === 0 && !document.querySelector('canvas')`), 'fresh mount recovers with no stale reservation');
   } finally {
-    await page.send('Emulation.setScriptExecutionDisabled', { value: false });
+    await page.setScriptsDisabled(false);
     await page.send('Network.setBlockedURLs', { urls: [] });
     await page.send('Network.setCacheDisabled', { cacheDisabled: false });
     await reduce(false);

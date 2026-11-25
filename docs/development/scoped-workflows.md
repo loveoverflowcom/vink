@@ -50,7 +50,8 @@ preview. `build web` tạo browser bundle và App.
   không cần wasm-bindgen CLI, npm, asset bundle, database hoặc browser.
 - `verify unit OWNER [--filter NAME]` nhận `app|identity|store|xtask|web|notifications|ui|patterns|expressions|markdown|preview`,
   cùng danh sách owner của `verify check`. Chọn lib/bins theo manifest. Unit App có
-  graph SSR theo feature mặc định và unit của các crate UI dùng đúng dependency Leptos.
+  graph SSR theo feature mặc định. Unit Web bật rõ `--features ssr` để các test render
+  HTML chạy được cả khi chỉ chọn riêng `vink-web`.
 - `verify postgres store|app|identity|notifications [--filter NAME]` chọn đúng
   `--test postgres`. App giữ feature SSR mặc định vì test target có các ca SSR.
   Một số integration test còn yêu cầu Cargo build binary cùng package. Lượt `lifecycle`

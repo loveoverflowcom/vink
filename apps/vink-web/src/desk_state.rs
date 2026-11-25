@@ -312,7 +312,8 @@ impl DraftSession {
 
     /// Whether an author-triggered manual save (`Lưu`, `Ctrl/Cmd+S`, title `Enter`) should issue
     /// any write. Clean and pending activations are ignored, and a conflict or refusal only
-    /// blocks the affected part.
+    /// blocks the affected part. The editor asks `begin_manual_save`; tests read the predicate.
+    #[cfg(test)]
     pub fn needs_manual_save(&self) -> bool {
         let (text_needs, tags_needs) = self.manual_save_parts();
         text_needs || tags_needs

@@ -27,8 +27,6 @@
 
 /* Unlayered CodeMirror 6 host overrides: must stay outside `@layer legacy` to outrank CodeMirror's
  * runtime-injected unlayered `style-mod` base theme (e.g. `.cm-editor.cm-focused` dotted outline). */
-.vk-editor-paper .vk-editor-body .cm-editor .cm-content { padding: var(--vk-space-2) 0 var(--vk-space-6); }
-
 .vk-editor-body .cm-editor.cm-focused {
   outline: none;
 }
@@ -39,9 +37,10 @@
   line-height: var(--vk-leading-reading);
 }
 
+/* The paper owns the inline inset, so the text keeps the full paper measure. */
 .vk-editor-body .cm-editor .cm-content {
   min-height: 50vh;
-  padding: var(--vk-space-6);
+  padding: var(--vk-space-2) 0 var(--vk-space-6);
   caret-color: var(--vk-primary);
 }
 
@@ -147,11 +146,4 @@
 
 .vk-editor-body .cm-writing-rule {
   color: var(--vk-outline);
-}
-
-@media (max-width: 30rem) {
-  /* Enlarged text needs the width more than the inner margin. */
-  .vk-editor-body .cm-editor .cm-content {
-    padding: var(--vk-space-4) var(--vk-space-3);
-  }
 }

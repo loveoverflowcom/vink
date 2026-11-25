@@ -291,6 +291,18 @@ mod tests {
                 "--target wasm32-unknown-unknown --features hydrate",
             ),
             (
+                &["verify", "check", "web", "--target", "csr"],
+                &[Tool::Rust, Tool::WasmTarget],
+                &[],
+                "--target wasm32-unknown-unknown --features csr",
+            ),
+            (
+                &["verify", "unit", "web", "--filter", "endorsement"],
+                &[Tool::Rust],
+                &[],
+                "-p vink-web --lib --features ssr -- endorsement",
+            ),
+            (
                 &["verify", "check", "app", "--target", "api"],
                 &[Tool::Rust],
                 &[],

@@ -1,5 +1,9 @@
 # Hợp nhất trạng thái–hành động lưu trong Bàn viết — #217 (PR 1/2)
 
+> Bàn giao lịch sử. Projection lưu và slot `#save-slot` vẫn có hiệu lực. [Editor R4](editor-r4.md)
+> bỏ `#preview`, `#export` và nhóm secondary actions của `EditorToolbar`; thanh lưu chỉ còn
+> readout, `save_action` và “Chi tiết lưu”.
+
 Proposal kỹ thuật [VDR-EDITOR-SAVE-PROJECTION@r1](../../decisions/proposals/VDR-EDITOR-SAVE-PROJECTION.r1.toml) **PENDING** ghi projection và guard thủ công đã triển khai; không chốt autosave, không thay D-04.
 
 ## Trạng thái trên bốn trục độc lập

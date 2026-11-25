@@ -440,6 +440,9 @@ async function exactVersion({ author, mod, work, base, check, openPage, reopen }
   await author.typeInBody(' [y]');
   await wire.release();
   await waitPhase(author, 'failed', 'the submission stops');
+  // The region stops as soon as [y] lands, before the released PUT is answered: read the server
+  // only after the editor has applied that answer, or the read races the commit.
+  await author.waitStatus('unsaved', 'the pressed save is acknowledged');
   const stored = storedText(await author.draft(work));
   check(wire.count('POST', '/snapshots') === 0 && (await countRevisions(author, work)) === before, 'text typed while the save was in flight: no snapshot was taken, nothing was sent');
   check(stored.endsWith('[x]') && !stored.includes('[y]') && (await author.body()).endsWith('[y]') && (await author.status()) === 'unsaved', 'the server holds only what was pressed on; the newer text stays in the editor, still unsaved');

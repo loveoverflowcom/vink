@@ -430,12 +430,12 @@ impl Runner {
 /// A control that held focus can be gone after the region re-rendered: the primary action once a
 /// withdrawal left nothing to press, "Đã hiểu" once it was dismissed. Focus then falls to the
 /// document body, which a keyboard user cannot tell from the page's start. Return it to the action
-/// when there still is one, else to the audience control or its disclosure. Focus that is anywhere else is never
-/// taken, and the page does not scroll.
+/// when there still is one, else to the audience switch, else to the region's refresh (the switch
+/// is disabled while a command runs), and to the options disclosure only when the folded panel
+/// hides the region. Focus that is anywhere else is never taken, and the page does not scroll.
 fn restore_lost_focus() {
     #[cfg(feature = "browser")]
     request_animation_frame(move || {
-        use wasm_bindgen::JsCast;
         let lost = document()
             .active_element()
             .is_none_or(|element| element.tag_name() == "BODY");
@@ -445,19 +445,15 @@ fn restore_lost_focus() {
         let target = [
             "publication-primary",
             "audience-public",
+            "publication-refresh",
             "work-options-toggle",
         ]
         .into_iter()
         .filter_map(|id| document().get_element_by_id(id))
         .find(|element| {
             !element.has_attribute("disabled") && element.get_bounding_client_rect().height() > 0.0
-        })
-        .and_then(|element| element.dyn_into::<web_sys::HtmlElement>().ok());
-        if let Some(target) = target {
-            let options = web_sys::FocusOptions::new();
-            options.set_prevent_scroll(true);
-            let _ = target.focus_with_options(&options);
-        }
+        });
+        crate::shell::focus_without_scroll(target);
     });
 }
 
@@ -700,7 +696,7 @@ pub fn PublicationPanel(
         let checking = controller.with(Controller::checking);
         let can_resume = controller.with(Controller::can_resume_captured);
         Some(view! {
-            <section class="vk-editor-recovery [&>.vk-ui-notice]:p-0 [&>.vk-ui-notice]:bg-transparent [&>.vk-ui-notice]:text-inherit" id="publication-recovery" data-testid="publication-recovery"
+            <section class=super::work_info::RECOVERY_CLASS id="publication-recovery" data-testid="publication-recovery"
                 data-tone=if tone == Tone::Error { "error" } else { "warning" } aria-label="Phục hồi công khai">
                 <InlineNotice tone announce=Announce::Polite title message />
                 <div class="vk-notice__actions">

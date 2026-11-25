@@ -42,11 +42,6 @@ pub fn desk_editable(document: &DocumentDto) -> Result<(), NotEditable> {
     }
 }
 
-/// Whether the source holds any visible text (blank and whitespace-only lines do not count).
-pub fn has_text(document: &DocumentDto) -> bool {
-    !document.source.trim().is_empty()
-}
-
 /// Result of previewing an intentional format conversion (#262).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConversionPreview {
@@ -381,8 +376,6 @@ mod tests {
             vec![vec!["a", "b"], vec!["c", " d"]]
         );
         assert!(paragraphs("  \n\n").is_empty());
-        assert!(!has_text(&default_document(" \n\t\n")));
-        assert!(has_text(&default_document("\n# x")));
     }
 
     #[test]
