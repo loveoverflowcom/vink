@@ -603,8 +603,11 @@ fn restore_explore_position(
                     .and_then(|link| link.dyn_into::<web_sys::HtmlElement>().ok())
             });
             let fallback = match fallback_heading {
-                Some(id) => document()
-                    .get_element_by_id(id)
+                Some(id) => stream
+                    .query_selector("[data-explore-restore-heading]")
+                    .ok()
+                    .flatten()
+                    .or_else(|| document().get_element_by_id(id))
                     .filter(|heading| stream.contains(Some(heading)))
                     .and_then(|heading| heading.dyn_into::<web_sys::HtmlElement>().ok()),
                 None => Some(stream.clone().unchecked_into()),

@@ -9,6 +9,9 @@ const FEED = '/?mode=following';
 const AUTHORS = '/?mode=authors';
 const POINTER_TIME = '2026-11-19T18:00:00Z';
 const HEADING = '#following-feed-heading';
+const EMPTY_HEADING = '#following-feed-empty-heading';
+const NO_FOLLOWS = '[data-feed-state="no-follows"]';
+const DISCOVER_AUTHORS = NO_FOLLOWS + ' a';
 const ROWS = "document.querySelectorAll('#following-cards > li').length";
 const FRAME = 'new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))';
 const state = (name) => q(`[data-feed-state="${name}"]`);
@@ -72,8 +75,13 @@ async function focusEvidence(page, selector, check, name, {capture = true} = {})
     const light = color => color.match(/[0-9.]+/g).slice(0, 3).map(value => value / 255)
       .map(value => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
       .reduce((sum, value, i) => sum + [0.2126, 0.7152, 0.0722][i] * value, 0);
-    const levels = [light(style.outlineColor), light(bg)].sort((a, b) => b - a);
-    const ratio = (levels[0] + 0.05) / (levels[1] + 0.05);
+    const contrastWith = background => {
+      const [high, low] = [light(style.outlineColor), light(background)].sort((a, b) => b - a);
+      return (high + 0.05) / (low + 0.05);
+    };
+    const ratio = target.matches('a.vk-ui-button')
+      ? Math.min(contrastWith(bg), contrastWith(style.backgroundColor))
+      : contrastWith(bg);
     const {top, bottom} = target.getBoundingClientRect();
     const nav = document.querySelector('#bottom-navigation').getBoundingClientRect();
     return {focused: document.activeElement === target, outline: parseFloat(style.outlineWidth),
@@ -83,6 +91,92 @@ async function focusEvidence(page, selector, check, name, {capture = true} = {})
   check(facts.focused && facts.outline >= 2 && facts.style !== 'none' && facts.ratio >= 3 &&
     facts.top >= 0 && facts.bottom <= facts.limit, `${name} visible focus and contrast (${JSON.stringify(facts)})`);
   if (capture) await page.capture(name, { requiredTargets: [selector] });
+}
+
+async function setFeedAppearance(page, theme, text) {
+  await page.eval(`document.documentElement.dataset.theme = '${theme}';
+    if (${text} === 150) document.documentElement.dataset.text = '150';
+    else delete document.documentElement.dataset.text;
+    document.documentElement.style.fontSize = ${text} === 200 ? '200%' : '';
+    scrollTo(0, 0); document.fonts.ready.then(() => true)`);
+  await page.eval(FRAME);
+  // Measure both colors after the background transition has reached the selected theme.
+  await page.eval(`Promise.allSettled(document.querySelector('#explore').getAnimations({subtree: true})
+    .filter(animation => animation instanceof CSSTransition).map(animation => animation.finished)).then(() => true)`);
+}
+
+async function noFollowsLayout(page, check, textContrast) {
+  await page.send('Page.bringToFront');
+  const measure = `(() => {
+    const region = ${q('#community-stream')};
+    const panel = ${q(NO_FOLLOWS)};
+    const heading = ${q(EMPTY_HEADING)};
+    const action = ${q(DISCOVER_AUTHORS)};
+    const style = getComputedStyle(action);
+    const rect = element => element.getBoundingClientRect();
+    const midpoint = element => (rect(element).left + rect(element).right) / 2;
+    const within = (child, parent) => rect(child).left >= rect(parent).left &&
+      rect(child).right <= rect(parent).right;
+    return {
+      overflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
+      tabs: Array.from(document.querySelectorAll('.vk-explore-modes a'), tab =>
+        [tab.id, tab.scrollWidth <= tab.clientWidth, tab.getBoundingClientRect().height >= 44]),
+      centerDelta: Math.abs(midpoint(action) - midpoint(region)),
+      height: rect(action).height,
+      radius: style.borderTopLeftRadius,
+      decoration: style.textDecorationLine,
+      title: heading.textContent.trim(),
+      link: action.textContent.trim(),
+      checked: action.getAttribute('href') === '${AUTHORS}' && panel.querySelectorAll('a').length === 1 &&
+        within(action, region) && within(heading, region) && within(panel.querySelector('p'), region) &&
+        within(action.querySelector('.vk-ui-button__label'), action) &&
+        !${q(HEADING)}.getClientRects().length &&
+        style.backgroundColor !== 'rgba(0, 0, 0, 0)' && getComputedStyle(panel).boxShadow === 'none' &&
+        panel.querySelectorAll('svg[aria-hidden="true"]').length === 2,
+    };
+  })()`;
+  for (const width of [320, 390, 834]) {
+    await page.viewport(width, 900);
+    for (const theme of ['light', 'dark']) {
+      for (const text of [100, 150, 200]) {
+        const name = `feed-355-r1-after-${width}-${theme}-${text}`;
+        await setFeedAppearance(page, theme, text);
+        const got = await page.eval(measure);
+        check(got.tabs.map(([id]) => id).join(',') === 'explore-mode-works,explore-mode-following,explore-mode-authors' &&
+          got.tabs.every(([, fits, reachable]) => fits && reachable), `${name}: three persistent tabs fit (${JSON.stringify(got.tabs)})`);
+        check(got.checked && got.overflow === 0 && got.centerDelta <= 1 && got.height >= 48 &&
+          got.radius === '14px' && got.decoration === 'none' && got.title === 'Chưa theo dõi tác giả nào' &&
+          got.link === 'Khám phá tác giả', `${name}: centered empty state and tonal link (${JSON.stringify(got)})`);
+        const inView = await page.eval(`(() => {
+          const action = ${q(DISCOVER_AUTHORS)};
+          const bar = ${q('#bottom-navigation')}.getBoundingClientRect();
+          const limit = bar.height > 0 ? bar.top : innerHeight;
+          if (action.getBoundingClientRect().bottom > limit) action.scrollIntoView({block: 'end'});
+          const rect = action.getBoundingClientRect();
+          return rect.top >= 0 && rect.bottom <= limit &&
+            action.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+        })()`);
+        check(inView, `${name}: the full link can scroll clear of the bottom bar`);
+        if (text !== 150 || width === 320) {
+          await page.capture(name, {requiredTargets: [EMPTY_HEADING, DISCOVER_AUTHORS],
+            textScaleLane: text === 200 ? 'dom-override-geometry-only' : 'app-text-scale'});
+        }
+        await textContrast(page, theme, 'following-empty', [EMPTY_HEADING, NO_FOLLOWS + ' p', DISCOVER_AUTHORS]);
+        await page.eval(`${q(DISCOVER_AUTHORS)}.focus()`);
+        await page.key('Tab', 8);
+        await page.key('Tab');
+        await focusEvidence(page, DISCOVER_AUTHORS, check, `${name}-focus`, {capture: width === 320 && text === 200});
+        await page.eval('document.activeElement.blur()');
+      }
+    }
+  }
+  const {nodes} = await page.send('Accessibility.getFullAXTree');
+  check(nodes.some(node => node.role?.value === 'region' && node.name?.value === 'Đang theo dõi') &&
+    nodes.some(node => node.role?.value === 'heading' && node.name?.value === 'Chưa theo dõi tác giả nào') &&
+    nodes.some(node => node.role?.value === 'link' && node.name?.value === 'Khám phá tác giả'),
+    'no-follows exposes the named region, current heading and native link in the accessibility tree');
+  await setFeedAppearance(page, 'light', 100);
+  await page.viewport(390, 900);
 }
 
 async function layout(page, check, textContrast) {
@@ -117,12 +211,7 @@ async function layout(page, check, textContrast) {
     await page.viewport(width, 900);
     for (const theme of ['light', 'dark']) {
       for (const text of [100, 150, 200]) {
-        await page.eval(`document.documentElement.dataset.theme = '${theme}';
-          if (${text} === 150) document.documentElement.dataset.text = '150';
-          else delete document.documentElement.dataset.text;
-          document.documentElement.style.fontSize = ${text} === 200 ? '200%' : '';
-          scrollTo(0, 0); document.fonts.ready.then(() => true)`);
-        await page.eval(FRAME);
+        await setFeedAppearance(page, theme, text);
         const got = await page.eval(measure);
         const scaleLabel = text === 200 ? 'stress 200% (root font-size override)' : `app CSS ${text}%`;
         check(got.overflow === 0 && !got.nested && got.gap >= 16 && got.targets.length === 4 &&
@@ -154,7 +243,7 @@ async function layout(page, check, textContrast) {
       }
     }
   }
-  await page.eval("document.documentElement.style.fontSize = ''; delete document.documentElement.dataset.text; document.documentElement.dataset.theme = 'light'");
+  await setFeedAppearance(page, 'light', 100);
   await page.viewport(1280, 900);
 }
 
@@ -182,11 +271,18 @@ export async function followingFeed(control, other, {base, openPage, check, hold
   await page.waitFor(q('#me-return-link'), 'active native account can resume the guest route');
   await page.click('#me-return-link');
   await page.waitFor(state('no-follows'), 'account with no active follows gets its own empty state');
-  await page.viewport(390, 900);
-  await page.capture('feed-355-no-follows', {requiredTargets: ['[data-feed-state="no-follows"] a']});
-  await page.click('[data-feed-state="no-follows"] a');
-  await page.waitFor(`location.search === '${AUTHORS.slice(1)}' && ${q('#author-search-query')}`,
-    'empty Feed links to the real author-search mode');
+  await noFollowsLayout(page, check, textContrast);
+  await page.eval(`${q(DISCOVER_AUTHORS)}.focus()`);
+  await page.key('Space');
+  check(await page.eval(`location.search === '${FEED.slice(1)}'`), 'Space does not activate the native link');
+  await page.key('Enter');
+  const authorsReady = `location.search === '${AUTHORS.slice(1)}' && ${q('#explore-mode-authors')}?.getAttribute('aria-current') === 'page' && ${q('#explore')}?.dataset.search === 'closed'`;
+  await page.waitFor(authorsReady, 'Enter opens the real author-search mode');
+  await page.eval('history.back()');
+  await page.waitFor(`location.search === '${FEED.slice(1)}' && ${q(DISCOVER_AUTHORS)}`,
+    'Back restores the empty Follow mode');
+  await page.eval('history.forward()');
+  await page.waitFor(authorsReady, 'Forward restores the Authors mode');
   await page.click('#open-public-search');
   await fill(page, '#author-search-query', '@' + b.handle);
   await page.key('Enter');
@@ -206,6 +302,8 @@ export async function followingFeed(control, other, {base, openPage, check, hold
     'Back preserves author search');
   await page.click('#explore-mode-following');
   await page.waitFor(state('no-works'), 'the newly followed author has no eligible work');
+  check(await page.eval(`!${q(DISCOVER_AUTHORS)} && !!${q(HEADING)}`),
+    'no-works retains its state and heading without the discovery CTA');
   await page.capture('feed-355-no-works', {requiredTargets: ['[data-feed-state="no-works"]']});
 
   const bWorks = publish(b.principal_id, 16, 'Feed riêng · tác phẩm đã theo dõi');
@@ -490,8 +588,11 @@ export async function followingFeed(control, other, {base, openPage, check, hold
   await toggle(control, base, b.handle, false);
   await page.send('Page.bringToFront');
   await page.eval('history.back()');
-  await page.waitFor(`${state('no-follows')} && ${ROWS}===0 && document.activeElement === ${q(HEADING)}`,
-    'Back after Unfollow uses the Feed heading even though Reader is still public');
+  await page.waitFor(`${state('no-follows')} && ${ROWS}===0 && document.activeElement === ${q(EMPTY_HEADING)}`,
+    'Back after Unfollow focuses the visible empty heading even though Reader is still public');
+  await focusEvidence(page, EMPTY_HEADING, check, 'feed-355-r1-back-after-unfollow');
+  await page.key('Tab');
+  await focusEvidence(page, DISCOVER_AUTHORS, check, 'feed-355-r1-tab-after-unfollow', {capture: false});
   await toggle(control, base, b.handle, true);
   await page.waitFor(`${ROWS}===12 && ${q('#feed-load-more')}`, 'Follow restores eligible works after return');
 

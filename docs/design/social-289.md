@@ -279,6 +279,36 @@ Mỗi vùng dùng sizing, theme, thứ tự focus, overlay và các trạng thá
   kết quả. Dùng WorkCard, StatePanel và quy ước ExploreContext/PageChain; cần mode,
   state đọc riêng theo phiên và cursor riêng. Không tái dùng chain của tìm tác giả hay tìm bài.
 
+#### Following Empty CTA R1 · #355
+
+Chỉ hiện khi lượt đọc theo phiên trả về trạng thái sẵn sàng, danh sách rỗng và
+`has_following=false`. Vùng `community-stream` vẫn có tên “Đang theo dõi”. Cây hiển thị gồm hai phần.
+
+- **Khám phá** → nhóm chọn mode → **Đang theo dõi**.
+- **Vùng kết quả** → biểu tượng người trang trí → H2 “Chưa theo dõi tác giả nào”
+  → “Khám phá những cây bút bạn yêu thích.”
+  → link tonal có biểu tượng tìm kiếm “Khám phá tác giả” (`/?mode=authors`).
+
+Khối căn giữa trực tiếp trên nền trang. Tiêu đề của vùng chỉ dùng để đặt tên cho
+`community-stream` trong trạng thái này. CTA không gạch chân, cao tối thiểu 48 CSS px,
+bo góc `radius.control-48` và xuống dòng khi cần. Kiểm sáng/tối ở 320/390/834 CSS px
+ở cỡ mặc định 100%, cỡ Lớn 150% của ứng dụng và stress riêng với font gốc 200%.
+Thanh tab cố định tuân theo LayoutSpec #530. Enter mở mode Tác giả với Search Dock
+đóng. Khi Back từ Reader
+và lượt đọc lại xác nhận đã mất anchor vì không còn theo dõi ai, focus về H2 của
+trạng thái rỗng. Nếu vẫn có tác giả theo dõi, dùng heading Feed hiện hành.
+
+**CHOICE-02 (triển khai Web)** dùng composition cục bộ với Heading, Icon và
+ButtonVariant::Tonal. Tiêu đề của trạng thái là đích khôi phục focus dành cho
+Feed. Cách này tránh mở rộng API của `EmptyState` và vẫn dùng kiểu biểu tượng,
+lời nhắn và nút từ hệ hiện hành. Catalog hiện có dùng biểu tượng người và tìm kiếm.
+
+[Issue #355](https://github.com/loveoverflowcom/vink/issues/355) ·
+[SVG](https://drive.google.com/file/d/1GFpKKO5ho2z7pDbNLtJXtMOXo6gS1nRT/view?usp=drivesdk) ·
+[HTML](https://drive.google.com/file/d/1fgf7RjIS2nIairatOkrbzTTWz43T70h9/view?usp=drivesdk) ·
+[PNG](https://drive.google.com/file/d/11EzRusgJxWsfMzwxq257Kbo4ff8czRmz/view?usp=drivesdk).
+Các khung R1 là concept `DESIGN_PROPOSED / NO_APPROVED_REFERENCE`.
+
 <a name="author-search"></a>
 
 ### 8. Tìm và xem gợi ý tác giả · `#author-search`

@@ -1,5 +1,7 @@
 # Đang theo dõi · #355
 
+[Ảnh và phép đo CTA Khám phá tác giả R1](r1/README.md).
+
 Trước sửa là develop a9d6a4f9fb0a35b1e0e56f843132d4e3fe5dbb20, với smoke mở rộng để chụp cùng corpus.
 Bản kiểm Web sau sửa là 83f1137efa8ad3c0be7d915e94f5699a23cf022f. Chrome 158.0.8127.36
 trên macOS arm64, DPR 1, viewport cao 900 CSS px, App và Identity thật với PostgreSQL scratch
