@@ -961,7 +961,15 @@ pub struct ErrorEnvelope {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SubmissionIssue {
+    pub field: &'static str,
+    pub code: &'static str,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ErrorBody {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub issues: Vec<SubmissionIssue>,
     pub code: &'static str,
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -3236,6 +3244,14 @@ mod tests {
                     "error.work_unavailable.json",
                     ApiError::WorkUnavailable,
                     409,
+                ),
+                (
+                    "error.submission_validation_failed.json",
+                    ApiError::InvalidSubmission(vink_markdown_text::submission::SubmissionIssues {
+                        title_missing: true,
+                        body_missing: true,
+                    }),
+                    422,
                 ),
                 (
                     "error.publication_key_reused.json",

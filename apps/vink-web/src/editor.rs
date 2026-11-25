@@ -315,7 +315,9 @@ mod bridge {
                 ("labelledBy", JsValue::from_str(BODY_LABEL_ID)),
                 (
                     "describedBy",
-                    JsValue::from_str(&format!("{BODY_HINT_ID} {BODY_TITLE_ERROR_ID}")),
+                    JsValue::from_str(&format!(
+                        "{BODY_HINT_ID} {BODY_TITLE_ERROR_ID} submission-body-errors"
+                    )),
                 ),
             ] {
                 Reflect::set(&options, &JsValue::from_str(key), &value)?;

@@ -563,7 +563,7 @@ pub fn error_message(error: &ApiError) -> &'static str {
         ApiError::KeyReused => {
             "Mã lần gửi không khớp nội dung. Chưa gửi lại; bản đang soạn được giữ lại."
         }
-        ApiError::Invalid { .. } => {
+        ApiError::Invalid { .. } | ApiError::InvalidSubmission { .. } => {
             "Nội dung chưa hợp lệ (tối đa 4.000 ký tự, 200 dòng). Sửa rồi gửi lại; chữ vẫn được giữ."
         }
         // Draft-tag answers never reach the composer; a conflict-shaped answer reads as one.

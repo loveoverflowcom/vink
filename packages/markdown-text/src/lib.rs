@@ -16,6 +16,8 @@
 //! - The caller applies `Title::parse` (trim, NFC, forbidden characters, 200-character limit).
 //!   Nothing is truncated and the source is never rewritten.
 
+pub mod submission;
+
 pub use pulldown_cmark::{Event, HeadingLevel, Tag, TagEnd};
 use pulldown_cmark::{Options, Parser};
 

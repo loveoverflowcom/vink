@@ -54,6 +54,20 @@ fn hex_digest(digest: impl AsRef<[u8]>) -> String {
     hex
 }
 
+/// Publication policy is evaluated only for new submissions, separately from history restoration.
+pub fn submission_issues(
+    content: &TitledDocument,
+) -> vink_markdown_text::submission::SubmissionIssues {
+    use super::document::DocumentFormat;
+    use vink_markdown_text::submission::{SubmissionBody, check_submission};
+    let source = content.document().source();
+    let body = match content.format() {
+        DocumentFormat::Default => SubmissionBody::Literal(source),
+        DocumentFormat::Markdown => SubmissionBody::Markdown(source),
+    };
+    check_submission(content.title().as_str(), body)
+}
+
 /// Content of an immutable revision snapshot. Revisions always carry a title.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RevisionContent {

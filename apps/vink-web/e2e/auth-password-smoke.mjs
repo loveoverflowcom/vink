@@ -948,9 +948,9 @@ export async function standalone(page, {args, check}) {
   await page.eval("document.querySelector('#audience-public').click()");
   await page.waitFor(q('#publication-primary'), 'request review of the saved revision');
   await page.eval("document.querySelector('#publication-primary').click()");
-  await page.waitFor(`document.querySelector('#publication')?.dataset.phase === 'reconciled' && document.querySelector('#publication-requested')`, 'pending review');
+  await page.waitFor(`document.querySelector('#publication')?.dataset.phase === 'reconciled' && document.querySelector('#publication-status')?.textContent.trim() === 'Đang chờ kiểm duyệt'`, 'pending review');
   const publication = await read(page, '/api/v1/works/' + id + '/publication/state');
-  check(publication.data?.revisions.length === 1 && publication.data.revisions[0].moderation === 'pending' && !publication.data.pointer,
+  check(publication.data?.revisions.length === 1 && publication.data.revisions[0].moderation === 'pending' && publication.data.intent?.revision_id === publication.data.revisions[0].revision_id && !publication.data.pointer,
     'author submission records one pending revision without publishing it');
   await page.goto(reader);
   await page.waitFor(q('#root-composer'), 'signed-in discussion composer');

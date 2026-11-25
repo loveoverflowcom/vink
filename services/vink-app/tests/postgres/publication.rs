@@ -1188,3 +1188,197 @@ async fn author_web_recovery_contract_on_real_rows(pool: PgPool) {
     assert_eq!(json(&body)["error"]["code"], "idempotency_key_reused");
     assert_eq!(state().await["generation"], 5);
 }
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn publication_submission_validates_exact_revision_without_mutation(pool: PgPool) {
+    let app = app(&pool).await;
+    let work = dev_seed::SAMPLE_WORK;
+    let owner = Some(dev_seed::SAMPLE_AUTHOR);
+    let draft = format!("/api/v1/drafts/{work}");
+    let original = call(&app, "GET", &public_read_path(work), None, None, None).await;
+    let at_limit = "ơ".repeat(200_000);
+    let mut version = 1;
+    for source in ["", " \r\n\t\u{2800}", at_limit.as_str(), ""] {
+        let request = json!({"expected_version": version, "title": "",
+                             "document": {"format": "default", "source": source}});
+        let (status, _, _) = call(&app, "PUT", &draft, owner, Some(ORIGIN), Some(request)).await;
+        assert_eq!(status, StatusCode::OK);
+        let (_, _, saved) = call(&app, "GET", &draft, owner, None, None).await;
+        let saved = json(&saved);
+        assert_eq!(saved["document"]["source"].as_str(), Some(source));
+        assert_eq!(saved["title"], "");
+        version = saved["version"].as_i64().unwrap();
+    }
+
+    let capture = |version| json!({"command_key": "phase-one-snapshot", "expected_draft_version": version, "expected_metadata_version": 1});
+    let (status, _, error) = call(
+        &app,
+        "POST",
+        &snapshots_path(work),
+        owner,
+        Some(ORIGIN),
+        Some(capture(version)),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        json(&error),
+        serde_json::from_str::<Value>(include_str!(
+            "../../contracts/http/v1/fixtures/error.submission_validation_failed.json"
+        ))
+        .unwrap()
+    );
+
+    // The public pointer already exists. Capture an independently valid title-only Markdown
+    // revision, then make the working draft publishable. The new text cannot validate the old id.
+    let save_markdown = |version, source| json!({"expected_version": version, "document": {"format":"markdown","source": source}});
+    let (status, _, saved) = call(
+        &app,
+        "PUT",
+        &draft,
+        owner,
+        Some(ORIGIN),
+        Some(save_markdown(version, "# Mưa")),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    version = json(&saved)["version"].as_i64().unwrap();
+    let (status, _, captured) = call(
+        &app,
+        "POST",
+        &snapshots_path(work),
+        owner,
+        Some(ORIGIN),
+        Some(capture(version)),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{captured}");
+    let revision = json(&captured)["revision_id"].as_str().unwrap().to_owned();
+    let (status, _, _) = call(
+        &app,
+        "PUT",
+        &draft,
+        owner,
+        Some(ORIGIN),
+        Some(save_markdown(version, "# Mưa\n\nƠ")),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let state = call(
+        &app,
+        "GET",
+        &publication_state_path(work),
+        owner,
+        None,
+        None,
+    )
+    .await;
+    let generation = json(&state.2)["generation"].as_i64().unwrap();
+    let request = |generation| json!({"revision_id": revision, "expected_generation": generation, "command_key": "phase-one-submit"});
+
+    let counts = "SELECT (SELECT count(*) FROM work_evaluation_jobs),
+                         (SELECT count(*) FROM moderation_cases),
+                         (SELECT count(*) FROM work_publication_command_receipts),
+                         (SELECT count(*) FROM notification_events),
+                         (SELECT count(*) FROM notification_deliveries)";
+    let before: (i64, i64, i64, i64, i64) = sqlx::query_as(counts).fetch_one(&pool).await.unwrap();
+    let (status, _, _) = call(
+        &app,
+        "POST",
+        &request_public_path(work),
+        Some(dev_seed::OTHER_PRINCIPAL),
+        Some(ORIGIN),
+        Some(request(generation)),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    let (status, _, _) = call(
+        &app,
+        "POST",
+        &request_public_path(work),
+        owner,
+        Some(ORIGIN),
+        Some(request(generation + 1)),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    for endpoint in [
+        request_public_path(work),
+        format!("/api/v1/works/{work}/publication/submit"),
+    ] {
+        let (status, cache, body) = call(
+            &app,
+            "POST",
+            &endpoint,
+            owner,
+            Some(ORIGIN),
+            Some(request(generation)),
+        )
+        .await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(cache.as_deref(), Some("no-store"));
+        let error = &json(&body)["error"];
+        assert_eq!(error["code"], "submission_validation_failed");
+        assert_eq!(
+            error["issues"],
+            json!([{"field":"body","code":"missing_body_text"}])
+        );
+        assert!(!body.contains("Mưa"));
+    }
+    assert_eq!(
+        call(
+            &app,
+            "GET",
+            &publication_state_path(work),
+            owner,
+            None,
+            None
+        )
+        .await,
+        state
+    );
+    assert_eq!(
+        call(&app, "GET", &public_read_path(work), None, None, None).await,
+        original
+    );
+    assert_eq!(
+        sqlx::query_as::<_, (i64, i64, i64, i64, i64)>(counts)
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        before
+    );
+
+    // A receipt from before the structural check wins even if both the revision and
+    // its expected generation would now be refused. Replaying it creates no second job.
+    let old_generation = generation - 1;
+    let old_payload = format!("request_public:{revision}:{old_generation}");
+    sqlx::query("INSERT INTO work_publication_command_receipts
+        (actor_id, work_id, operation, command_key, payload_digest, outcome, revision_id, generation)
+        VALUES ($1,$2,'request_public','historic-result',sha256(convert_to($3, 'UTF8')),'submitted',$4,$5)")
+        .bind(dev_seed::SAMPLE_AUTHOR).bind(work).bind(old_payload)
+        .bind(Uuid::parse_str(&revision).unwrap()).bind(generation)
+        .execute(&pool).await.unwrap();
+    let mut retry = request(old_generation);
+    retry["command_key"] = json!("historic-result");
+    let (status, _, body) = call(
+        &app,
+        "POST",
+        &request_public_path(work),
+        owner,
+        Some(ORIGIN),
+        Some(retry),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(json(&body)["replayed"], true);
+    assert_eq!(json(&body)["generation"], generation);
+    let after = sqlx::query_as::<_, (i64, i64, i64, i64, i64)>(counts)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        after,
+        (before.0, before.1, before.2 + 1, before.3, before.4)
+    );
+}

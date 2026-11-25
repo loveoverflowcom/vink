@@ -1,0 +1,16 @@
+{
+  "error": {
+    "code": "submission_validation_failed",
+    "message": "required submission content is missing",
+    "issues": [
+      {
+        "field": "title",
+        "code": "missing_title"
+      },
+      {
+        "field": "body",
+        "code": "missing_body_text"
+      }
+    ]
+  }
+}

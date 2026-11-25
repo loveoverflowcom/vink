@@ -80,7 +80,10 @@ async fn markdown_title_is_materialized_in_the_same_save_and_cas(pool: PgPool) {
             "command_key": "untitled-snapshot", "expected_draft_version": 4, "expected_metadata_version": 1
         }))).await;
     assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert_eq!(json(&body)["error"]["field"], "title");
+    assert_eq!(
+        json(&body)["error"]["issues"],
+        json!([{"field":"title", "code":"missing_title"}])
+    );
     let revision_count: i64 = sqlx::query_scalar("SELECT count(*) FROM revisions WHERE work_id=$1")
         .bind(work.as_uuid())
         .fetch_one(&pool)

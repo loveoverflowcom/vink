@@ -655,6 +655,12 @@ fn native_auth_scratch(
         let app = server.with_database(PASSWORD_AUTH_DATABASE)?;
         prepare_app(root, &app, matches!(phase, IdentityPhase::Standalone))?;
         if matches!(phase, IdentityPhase::Standalone) {
+            // The standalone writer checks a pending human review. Pin its isolated
+            // fixture independently of the default evaluator and deployment settings.
+            crate::identity::sql(
+                &with_database(admin_url, PASSWORD_AUTH_DATABASE)?,
+                "UPDATE moderation_automation_state SET mode = 'paused' WHERE id = 1",
+            )?;
             seed_tag_catalog(root, &app)?;
             crate::process::run(
                 &mut app.command(root, &["principal", "backfill-handles"]),

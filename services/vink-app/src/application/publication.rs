@@ -183,8 +183,8 @@ pub enum AuthorPublicationError {
     NotFound,
     #[error("audience intent generation changed; current generation is {current_generation}")]
     Stale { current_generation: i64 },
-    #[error("a revision needs a title")]
-    MissingTitle,
+    #[error("publication submission lacks required content")]
+    InvalidSubmission(vink_markdown_text::submission::SubmissionIssues),
     #[error("revision was rejected")]
     RevisionRejected,
     #[error("unknown revision")]
@@ -262,7 +262,9 @@ where
             .await?
         {
             CaptureSnapshotOutcome::Saved(capture) => Ok(capture),
-            CaptureSnapshotOutcome::MissingTitle => Err(AuthorPublicationError::MissingTitle),
+            CaptureSnapshotOutcome::InvalidSubmission(issues) => {
+                Err(AuthorPublicationError::InvalidSubmission(issues))
+            }
             CaptureSnapshotOutcome::Conflict {
                 current_draft_version,
                 current_metadata_version,
@@ -300,6 +302,9 @@ where
                 Err(AuthorPublicationError::Stale {
                     current_generation: current_generation.get(),
                 })
+            }
+            RequestPublicOutcome::InvalidSubmission(issues) => {
+                Err(AuthorPublicationError::InvalidSubmission(issues))
             }
             RequestPublicOutcome::RevisionRejected => Err(AuthorPublicationError::RevisionRejected),
             RequestPublicOutcome::UnknownRevision => Err(AuthorPublicationError::UnknownRevision),
