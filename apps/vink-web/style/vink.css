@@ -838,6 +838,9 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
   .vk-editor-topbar .vk-editor-toolbar { inline-size: 100%; flex-wrap: nowrap; }
   .vk-editor-topbar .vk-save-slot { flex: 1; }
 }
+@container vk-editor-page (max-width: 15rem) {
+  .vk-editor-topbar .vk-save-slot__action .vk-ui-button { padding-inline: var(--vk-space-2); }
+}
 .vk-editor-topbar .vk-editor-tools { position: relative; }
 .vk-editor-topbar .vk-editor-tools[open] { flex-basis: auto; }
 .vk-editor-topbar .vk-editor-tools > summary {
