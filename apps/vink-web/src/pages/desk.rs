@@ -216,8 +216,13 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
             use wasm_bindgen::JsCast;
             let trigger = document().active_element();
             request_animation_frame(move || {
+                // A just-closed dock may restore focus to this same toggle before the frame.
+                let active = document().active_element();
+                let on_toggle = active
+                    .as_ref()
+                    .is_some_and(|el| el.id() == "close-draft-search");
                 if dock_open.try_get_untracked() == Some(true)
-                    && document().active_element() == trigger
+                    && (active == trigger || on_toggle)
                     && let Some(input) = document()
                         .get_element_by_id("draft-search")
                         .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())

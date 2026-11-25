@@ -3754,7 +3754,7 @@ async function draftDashboard(page) {
     check(closed.length === opened.length && closed.every((v,i) => Math.abs(v-opened[i]) <= 1),
       `#531 Desk ${theme} ${width}/${scale}: title, lock, bell, format and creation remain anchored`);
     await searchBarGeometry(page,'#draft-search',`Desk ${width}/${scale}/${theme}`);
-    if ([390,1440].includes(width) && scale === 100 || width === 320 && scale === 200) {
+    if (([390,1440].includes(width) && scale === 100) || (width === 320 && scale === 200)) {
       await page.eval('scrollTo(0,0)');
       await page.capture(`desk-search-open-${width}-${scale}-${theme}`, {
         scenario: '#531-open', requiredTargets: ['#draft-search', '#close-draft-search', '#create-draft-format', '#create-draft'],
@@ -3858,6 +3858,9 @@ async function draftDashboard(page) {
     !document.querySelector('#draft-filter').textContent.includes('chưa gửi') &&
     document.querySelectorAll('[data-testid=draft-row]').length === 2 &&
     !location.search`), '#531 collapsed filter names the applied query');
+  await page.capture('desk-applied-filter-1440', {
+    scenario: '#531-collapsed', requiredTargets: ['#draft-filter', '#open-draft-search', '#clear-draft-filter'],
+  });
   await page.key('Enter');
   await page.waitFor(`document.activeElement.id === 'draft-search' && document.activeElement.value.includes('chưa gửi')`,
     'reopening restores the unsubmitted buffer');
@@ -3901,6 +3904,8 @@ async function draftDashboard(page) {
   gate.list = { status: 503, body: { error: { code: 'dependency_unavailable', message: 'test fixture' } } };
   gate.holdGets = true;
   const rowTop = `document.querySelector('#draft-results').getBoundingClientRect().top + scrollY`;
+  // Measure refresh from the settled search layout, after its independent disclosure transition.
+  await page.eval(`Promise.all(document.querySelector('#desk-search-form').getAnimations().map(a=>a.finished.catch(()=>{})))`);
   const beforeRefresh = await page.eval(rowTop);
   await wakeDesk(page);
   const pendingRefresh = await gate.next('gets');
