@@ -456,11 +456,7 @@ Chạy trên nhánh `feat/343-work-views-intake` (base `origin/develop@922656c3`
 | `cargo xtask verify static tokens` & `cargo xtask verify static repo` | static/tokens/docs/decisions | PASS (`ui-tokens --check`, `decisions`, `skills`, `links`, `boundaries`, `fonts`, `editor packages`, Tailwind/CSS guard `ui_qualification.rs`) |
 | `cargo xtask verify web --scenario reader --capture checks` & `--scenario standalone --capture checks` | Google Chrome + App + Identity + PG thật | **NOT_RUN** trên commit ghép `#514` (lượt đang chạy bị dừng theo lệnh bàn giao của người dùng; `reader` từng timeout chờ hydration ở trang `/` trong lúc máy chịu tải swap cao). Lần đầy đủ trên nhánh trước P1/P3 đã PASS; phiên review cuối cần chạy lại trọn gói `desk`, `reader`, `standalone` |
 
-**Phần còn mở / bàn giao:**
-- Chưa chạy lại `VINK_TEST_DATABASE_URL=… cargo xtask verify postgres app --filter work_view` sau sửa P2 (`Resolution::Suspended` → `Viewer::Member`).
-- Chưa chạy xong `cargo xtask verify web --scenario desk --scenario reader --scenario standalone --capture checks` trên `HEAD` cuối; chờ phiên review kế tiếp chạy trước khi ready/merge.
-- Kiểm thử đổi `Session` giữa chừng trên Reader: mới có unit test thuần trên `Session::settled_authority` + `ViewVisitTracker::on_authority_update`, chưa có ca E2E bật/tắt phiên trực tiếp giữa lúc đếm ở Chrome.
-- Route xóa tác phẩm/tài khoản (`OQ-2`) và admin gỡ cả bài (`OQ-4`) chưa có ở runtime; signoff `VDR-WORK-VIEWS@r2` (`PENDING`) và `DQ-05`/`DQ-10` (`OPEN`) giữ nguyên chờ chủ sản phẩm.
+Bảng này giữ bằng chứng trước rebase. Kết quả sau sửa P2, review và các giới hạn hiện tại nằm ở §12.
 
 ## 11. Giao diện Bàn viết Design r3 (#514)
 
@@ -473,6 +469,8 @@ Theo chỉ dẫn trực tiếp của chủ sản phẩm ngày 25/11/2026, phần
 - **Giải thích độ phủ (`UX-07`):** thêm nút `#views-explainer-trigger` (chỉ hiện khi danh sách có tác phẩm không ở `never_public`) và sheet `#views-explainer` (`DialogKind::Sheet`, trả focus về trigger khi đóng/Escape/Back), đọc ngưỡng động từ `WorkViewDurationPolicy::DEFAULT` của `vink-work-view-policy` để giữ một nguồn cấu hình duy nhất.
 
 ### 11.2 Bằng chứng đơn vị, E2E và tự kiểm UI năm chiều
+
+Đây là bằng chứng của lần bàn giao trước review độc lập. Xem §12 để biết kết quả ở revision tích hợp.
 
 | Phép kiểm | Ranh giới | Kết quả thực tế |
 | --- | --- | --- |
@@ -489,3 +487,34 @@ Theo chỉ dẫn trực tiếp của chủ sản phẩm ngày 25/11/2026, phần
 | Visual | **SCREENSHOT_INSPECTED** (mở trực tiếp PNG từ run `1795599062264813000-43827` đối chiếu bộ r3 `DESIGN_SPEC` / `LAYOUT_SPEC`): `1440` sáng/tối, `390` sáng, `320/150%` sáng, `320/200%` tối, `no-draft 390/200%` tối; kết hợp kiểm sheet `#views-explainer` `1440` sáng và `390` tối ở run `1795597787117725000-33327`. Giữ `DESIGN_PROPOSED`; giữ `DQ-05` (`<Timestamp>` đầy đủ) và `DQ-10` (secondary-container, không dùng tertiary) đang `OPEN`. |
 | Accessibility/Responsive | **PASS** tương phản CSS token từ runner `desk` (tối thiểu ≥ 4,5), focus title trên sheet `#views-explainer`, Escape/Close trả focus về `#views-explainer-trigger`, văn bản ẩn screen reader cho `never_public` và nhãn trạng thái. Screen reader có tên, OS touch/mobile thật, zoom trình duyệt thật: **NOT_RUN**. |
 | Interaction | **PASS** mở/đóng sheet `#views-explainer` bằng phím Enter/Escape và click, refresh thay đồng bộ `publication` + `views` không cướp focus khỏi `#draft-search`, 503 giữ snapshot stale, 403 xóa dữ kiện riêng. OS IME thật: **NOT_RUN**. |
+
+## 12. Đối soát độc lập PR #519
+
+Rebase `07a3aa8d` lên `origin/develop@4af0733f`. Xung đột ở bản đồ tính năng được giải bằng
+cách giữ các mục Tài khoản #523/#524 và mục Bàn viết r3. Các bản vá review hủy lượt ngay khi
+nhận tín hiệu đổi phiên, giữ nhãn và số liệu trong hàng ở 320 px/chữ 200%, tìm đúng tác phẩm
+mẫu khi Desk đã tạo 250 bản thảo và bỏ kết quả hồ sơ khi vùng Tài khoản bị hủy. Phép thử
+standalone dùng lối Bàn viết trên điều hướng chính của phiên bản tích hợp.
+
+| Phép kiểm | Revision và kết quả |
+| --- | --- |
+| `python3 ./tools/local-budget run -- cargo xtask verify postgres app --filter work_view` | **PASS 22/22** trên `0eed558c9692726efd2abdb68c1296d95ed0d374`, macOS arm64, PostgreSQL 17.11 tạm trên loopback. Bao gồm phiên đình chỉ, chống trùng, quyền tác giả, rollback, phiên bản công khai và ETag. DB, HTTP intake và fixture PostgreSQL giữ nguyên qua các bản vá Web. |
+| `cargo fmt --all -- --check`, `cargo xtask verify static tokens`, `cargo xtask verify static repo` | **PASS** tại `96fbf0fb`, 16 file sinh khớp. Marker r1 active và signoff r1 giữ nguyên. |
+| `cargo xtask verify web --scenario desk --scenario reader --scenario standalone --capture checks` | Run `1795603257900796000-47616` tại `6057b8f1`: **PASS** `desk`, `desk-guest`, `reader`, `reader-views` và ca 10 đọc lại 3 lượt từ PostgreSQL trên Bàn viết sau kịch bản 250 nháp. `standalone` **FAIL** khi fixture còn trỏ vào nút Bàn viết cũ. |
+| `cargo xtask verify web --scenario reader --capture checks` | Run `1795604497850188000-51942` tại `96fbf0fbc7ce08dce4160495bbd1150eb98aeec9`, Chrome 158.0.8127.89 và PostgreSQL tạm. **PASS** `reader` và pha `reader-views`, gồm ca 10 đọc 3 lượt thật lên Bàn viết. |
+| `cargo xtask verify web --scenario standalone --capture checks` | Run `1795604387699622000-51303` trên cùng `96fbf0fb`. **PASS** CSR với App/Identity thật, E-41 và kiểm tra console sạch. |
+| PNG Bàn viết, `--capture full` | Run `1795602810495643000-45926` tại `1c0dd1cd`. Đã mở ảnh Bàn viết 1440 sáng/100%, 390 tối/100%, 320 và 390 tối/200%, sheet 1440 sáng và 390 tối. Các thay đổi sau run nằm ở fixture E2E và callback Hồ sơ Tài khoản. |
+
+Lượt gộp `reader` và `standalone` đầu tiên trên `96fbf0fb` mất phản hồi DevTools trong 30 giây tại `reader-views`. Hai lượt chạy riêng ở trên hoàn tất trên cùng SHA.
+
+| Chiều UX | Kết quả và giới hạn |
+| --- | --- |
+| Functional | **PASS** trên Bàn viết SSR/hydration. Ca 10 đọc số thật sau Reader. 4 trạng thái và số lịch sử được kiểm qua các phản hồi mẫu trên bề mặt Bàn viết thật. |
+| Geometry | **PASS 30/30** ở 320/390/834/1024/1440 px × sáng/tối × cỡ chữ 100/150/200%. Phép đo kiểm tràn của trang và từng thẻ, trạng thái và hàng số liệu. |
+| Visual | **PASS** đối chiếu [bộ ảnh r3](https://drive.google.com/drive/folders/1QtovsyJfBO-98GJXGb_2ysR4Wa6trd_3). Bố cục hàng, thứ tự số liệu, nhãn chờ duyệt secondary và nút tonal khớp LayoutSpec. Mốc tham chiếu `fidelity: NO_APPROVED_REFERENCE`. |
+| Accessibility/Responsive | **PASS** reflow chữ lớn, cây DOM có nhãn ẩn cho `never_public`, focus hiện và tương phản Desk qua runner. Trình đọc màn hình, chạm trên thiết bị thật và zoom hệ điều hành **NOT_RUN**. |
+| Interaction | **PASS** Enter mở sheet, Escape/Đóng/Back trả focus, xác nhận cả sau khung hình Back. E-41 dùng phiên thật bị thu hồi và giữ phản hồi đọc lại để kiểm tra hủy lượt trước khi phiên xác nhận lại. |
+
+`VDR-WORK-VIEWS@r1` vẫn active và `PRODUCT_CONFIRMED`. `VDR-WORK-VIEWS@r2`
+`PENDING`, CHOICE và LayoutSpec r3 `DESIGN_PROPOSED`, `DQ-05` và `DQ-10` `OPEN`.
+Phạm vi triển khai còn lại gồm các route xóa của OQ-2 và gỡ cả bài của OQ-4.
