@@ -19,5 +19,6 @@ pub mod principal;
 pub mod profile;
 pub mod publication;
 pub mod revision;
+pub mod saved_work;
 pub mod taxonomy;
 pub mod work_view;

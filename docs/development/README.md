@@ -596,6 +596,7 @@ production đỏ; model mutant tạo OFF→old ON resurrection. Harness và kế
 - UI kiểm duyệt bình luận, báo cáo/khiếu nại, thông báo, inbox, hậu kiểm theo admission,
   reconciliation (D-08, S-02, S-04). Outbox có consumer shadow/audit riêng và hậu kiểm operator có authority, mặc định tắt request mới ([runbook](discussion-post-review.md)); chưa có producer admission đăng-trước.
   Discourse không còn trong phạm vi (Vink sở hữu bình luận).
+- [Lưu bài để đọc lại](saved-works.md) (#384–389): SSOT, hợp đồng v1 và core lưu/bỏ lưu; PostgreSQL/API và Web còn ở mức `NOT_IMPLEMENTED`.
 - Lượt xem tác phẩm ([#323](https://github.com/loveoverflowcom/vink/issues/323), [#340](https://github.com/loveoverflowcom/vink/issues/340), [#343](https://github.com/loveoverflowcom/vink/issues/343), [#514](https://github.com/loveoverflowcom/vink/issues/514)): [đặc tả](../architecture/work-views.md), [LayoutSpec r3](../design/work-views.md)
   và [registry](work-views.md) ghi luật đếm (kèm delta 25/11/2026: ngưỡng 5 giây foreground cấu hình
   tập trung qua `vink-work-view-policy`, `OQ-1..4`, `UX-01..10`, `D-01` Thấm → Nhận xét → Lượt xem và
