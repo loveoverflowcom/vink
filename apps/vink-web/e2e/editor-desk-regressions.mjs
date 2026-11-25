@@ -154,8 +154,10 @@ async function expectMissingSnapshotTitle(page, check, id, version) {
   const { status, body } = await write(page, `/api/v1/works/${id}/snapshots`, 'POST', {
     command_key: 'title-refusal-' + version, expected_draft_version: version, expected_metadata_version: tags.version,
   });
-  check(status === 422 && body.error?.field === 'title' && body.error.message === 'a revision needs a title',
-    '#263 snapshot rejects the saved empty authoritative title with MissingTitle');
+  const error = body.error;
+  check(status === 422 && error?.code === 'submission_validation_failed' &&
+    error.issues?.length === 1 && error.issues[0].field === 'title' && error.issues[0].code === 'missing_title',
+    '#263/#543 snapshot rejects the saved empty authoritative title with a title-only validation issue');
 }
 
 async function titleValidation(page, { args, check }) {
