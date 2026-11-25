@@ -1671,7 +1671,8 @@ html:has(.vk-discovery:not(.vk-discovery--tag)) { scrollbar-gutter: stable; }
   display: grid;
   place-items: center;
   min-block-size: var(--vk-density-control-height);
-  padding-block: var(--vk-space-2);
+  /* Two lines at normal text still fit the 48px control on narrow screens. */
+  padding-block: calc(var(--vk-space-1) / 2);
   padding-inline: min(var(--vk-space-1), 4px);
   color: var(--vk-on-surface-variant);
   font-size: var(--vk-type-label-size);
