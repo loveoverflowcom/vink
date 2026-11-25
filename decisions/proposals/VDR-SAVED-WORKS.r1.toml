@@ -1,0 +1,40 @@
+version = 1
+id = "VDR-SAVED-WORKS"
+revision = 1
+
+[content]
+kind = "product"
+domain = "saved-works"
+title = "Lưu tác phẩm để đọc lại trong hồ sơ của chính mình"
+resolution = """
+SAV-01..04 và SAV-INV-01..05 (PRD §18). Mỗi thành viên có một danh sách riêng theo WorkId. Chỉ chủ thấy tab Đã lưu trên /@handle. URL tab của người khác có cùng biểu diễn như URL không tồn tại. Mở bài luôn đọc publication hiện tại. Không công bố danh tính, tổng số bài đã lưu hay số lượt lưu, kể cả cho tác giả. Dữ liệu lưu độc lập với bộ sưu tập, Thấm, Ưng và không đi vào AI hoặc xếp hạng.
+D1: chỉ một cặp Thấm · Lưu ở cuối Reader. D2: khách mở sheet đăng nhập Reader, trở về đúng bài và focus nút để tự bấm. D3: giữ chữ Lưu, bookmark đặc, nền tonal, hình viên thuốc, ✓ và tên truy cập phản ánh trạng thái đã xác nhận. D4: dùng token chung R4/Tailwind trong phạm vi nhóm. D5: hai nút cùng kích thước, số Thấm cạnh chữ trên cùng dòng.
+D6: tối đa 10.000 quan hệ đang lưu mỗi tài khoản, không tổng trên UI. D7: mới lưu trước, khóa phụ ổn định. D8: được lưu bài công khai của mình. D9: lưu/bỏ lưu không thông báo. D10: 20 bài mỗi trang, cursor, Xem thêm. D11: pending tại nút, cập nhật sau ACK, lỗi/mất ACK giữ trạng thái đã biết và đọc lại. D12: không TTL; xóa tài khoản người lưu xóa cả quan hệ và fence.
+Chỉ lưu khi còn đọc được bài công khai tại commit; bỏ lưu được cả khi bài không đọc được. Hạn chế đăng/bình luận không cấm lưu, đình chỉ chặn theo standing. Quan hệ không chứa nhan đề, tác giả hay trích đoạn. Kiểm lại quyền khi chiếu từng dòng: công khai hiện thẻ; tác giả ẩn hoặc xóa hiện câu trung tính tương ứng; xóa tài khoản tác giả theo tombstone; admin gỡ/missing không hiện, giữ quan hệ có thể khôi phục. Công khai lại giữ saved_at. Không tiết lộ qua SSR, API công khai, cache hay log. Fence bền qua bỏ lưu, lệnh cũ không đảo ý định đã nhận; cách lưu fence thuộc #386–387.
+Hoãn thư mục/playlist, tìm kiếm trong danh sách, ghi chú, vị trí đọc dở, offline, chia sẻ/công khai, lưu bình luận và CMP/native.
+"""
+rationale = "Ngày 21/11/2026 chủ sản phẩm chọn SAV-01..04 (#384 §1–2). Ngày 25/11/2026: “DUYỆT: Duyệt D1–D12 theo phương án đề xuất”; “DUYỆT: Duyệt quy tắc vòng đời dữ liệu”; “DUYỆT: Duyệt giữ các tính năng mở rộng ở DEFERRED”. Nguồn: https://github.com/loveoverflowcom/vink/issues/384 §8. Delta thiết kế: https://github.com/loveoverflowcom/vink/issues/384#issuecomment-7155013123. Các D-ID chỉ thuộc Epic. Lời duyệt nghiệp vụ có trước payload TOML của #385."
+requires = ["VDR-DECISION-SIGNOFF@r1"]
+related_ids = [
+    "AUD-01",
+    "AUD-02",
+    "COL-01",
+    "COM-05",
+    "LVE-FR-07",
+    "PUB-04",
+    "PUB-05",
+    "PUB-07",
+    "RANK-01",
+    "RANK-02",
+    "SAV-01",
+    "SAV-02",
+    "SAV-03",
+    "SAV-04",
+    "SAV-INV-01",
+    "SAV-INV-02",
+    "SAV-INV-03",
+    "SAV-INV-04",
+    "SAV-INV-05",
+    "SOC-LIFE-01",
+    "SOC-LIFE-02",
+]

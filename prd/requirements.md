@@ -92,7 +92,7 @@ Lịch sử moderation giữ kết luận, policy/model version, thời điểm 
 | COM-02 | Must — Pilot | Tiền kiểm ở owner của bình luận trên mọi cửa đang bật | Tạo qua Web/native/API đều chưa public khi pending; không có đường email/import; nếu cho sửa bình luận công khai thì phải có gate tương ứng; test cả quyền staff/system đã được phép ngoại lệ. **10/11/2026:** hướng đích là evaluator AI quyết định thay cho người có grant (COM-09) và sửa bình luận được mở có gate (COM-10); code hiện tại vẫn là `premoderation.v1` |
 | COM-03 | Must — Pilot | User actions thực thi đúng người và đúng quyền | Browser không thể đổi username/user ID để gửi thay tài khoản khác; account mapping lấy từ session; key không xuất hiện trong HTML, WASM, JS, logs hoặc lỗi gửi cho người dùng |
 | COM-04 | Must — Pilot | Suy giảm chức năng rõ khi phần thảo luận lỗi | Bài công khai vẫn đọc được; bình luận hiển thị trạng thái phù hợp, không giả gửi thành công; retry không nhân đôi phản hồi; hoạt động trở lại có thể đối soát |
-| COM-05 | Must — Pilot | Góp ý có ngữ cảnh và lưu bài | Tác giả chọn mục đích phản hồi; người đọc thấy tín hiệu đó; lưu/bỏ lưu rõ và idempotent; không dùng điểm sao làm cổng đăng bài |
+| COM-05 | Must — Pilot | Góp ý có ngữ cảnh và lưu bài | Tác giả chọn mục đích phản hồi; người đọc thấy tín hiệu đó; lưu/bỏ lưu rõ và idempotent theo [SAV-01..04 và SAV-INV-01..05](#18-lưu-bài-để-đọc-lại-saved-works); không dùng điểm sao làm cổng đăng bài |
 | COM-06 | Should — Beta | Theo dõi tác giả và cảm nhận nhẹ | Theo dõi/bỏ theo dõi rõ, không tạo bản dữ liệu cạnh tranh ở hai owner; tín hiệu tương tác không tự quyết định quyền đăng hoặc tuyển chọn |
 | COM-07 | Must — Pilot | Tác giả bật/tắt bình luận trên từng tác phẩm | Chỉ tác giả tác phẩm đổi được; thao tác idempotent và có version để tab cũ không đè lựa chọn mới (yêu cầu mang đúng version hiện tại luôn được chấp nhận và tăng version, kể cả khi chỉ giữ nguyên chế độ; chủ sản phẩm xác nhận 05/11/2026); tắt chặn bình luận/phản hồi mới tại commit, không xóa hay ẩn bình luận đã có (chủ sản phẩm xác nhận 03/11/2026; tác phẩm mới công khai mặc định bật); độc lập với quyền kiểm duyệt |
 | COM-08 | Must — Pilot | Tác giả tác phẩm không sửa/xóa bình luận của người khác | Mọi đường ghi kiểm quyền tại server; tác giả tác phẩm chỉ gỡ bình luận của chính mình; gỡ/duyệt bình luận người khác thuộc authority kiểm duyệt hệ thống |
@@ -493,3 +493,40 @@ Các ID dưới đây giữ nguyên WR-01, UX-01, AUD-01/02, PUB-04/05/07, MOD-0
 - *Ngoài phạm vi §17:* số công khai ở Reader/Khám phá/hồ sơ, danh sách người xem,
   dashboard/biểu đồ, xếp hạng, Notifications, CMP/native và route xóa tác phẩm/tài khoản (`OQ-2` /
   `O-08`).
+
+## 18. Lưu bài để đọc lại (Saved Works)
+
+**Must — Pilot · COM-05.** Ngày 21/11/2026, chủ sản phẩm mô tả mục tiêu: “Lưu lại, giống nút lưu trên youtube này, lưu những bài viết mình muốn xem lại, và mở danh sách này ở trang cá nhân của mình.” Ngày 25/11, chủ sản phẩm duyệt D1–D12, vòng đời bên dưới và phạm vi hoãn. Các mã D trong mục này thuộc riêng Epic #384. [Nguồn lựa chọn 21/11 và lời duyệt tại §8](https://github.com/loveoverflowcom/vink/issues/384).
+
+| ID · trạng thái sản phẩm | Quy tắc | Ví dụ nghiệm thu |
+| --- | --- | --- |
+| SAV-01 · PRODUCT_CONFIRMED | Một danh sách theo `WorkId` cho mỗi tài khoản. Được lưu bài công khai của chính mình (D8). Tối đa 10.000 quan hệ đang lưu, kể cả bài đang ẩn khỏi danh sách (D6). Mới lưu trước, khóa phụ ổn định (D7), 20 bài/lần bằng cursor và “Xem thêm” (D10). Không TTL (D12). Khác bộ sưu tập tác phẩm của tác giả (COL-01). | Lưu khi revision A đang công khai, mở lại sau khi B được công khai thì đọc B. Từ 9.999, hai lần lưu đồng thời hai bài mới chỉ một lần thêm thành công. |
+| SAV-02 · PRODUCT_CONFIRMED | “Chỉ mình tôi”: chỉ chủ thấy tab “Đã lưu” trên hồ sơ của mình và đọc/sửa được danh sách. Khách và người khác mở `/@handle/da-luu` thấy cùng trang như URL không tồn tại. | So hồ sơ từ hai tài khoản: chỉ chủ thấy tab sau khi xác nhận phiên. Đọc HTML công khai hoặc đổi handle/ID trong request không tiết lộ quan hệ. |
+| SAV-03 · PRODUCT_CONFIRMED | “Không hiện cho ai”: không có số lượt lưu của bài, kể cả cho tác giả, hoặc tổng số bài đã lưu trên UI. Không gửi thông báo khi lưu/bỏ lưu (D9), không làm tín hiệu Đề xuất, Top 100 hay xếp hạng khác, không gửi cho AI. | Lưu và bỏ lưu cùng bài: tác giả không thấy số hay sự kiện trong inbox; dữ liệu xếp hạng không thay đổi. |
+| SAV-04 · PRODUCT_CONFIRMED | “Icon hiện sẵn”: duy nhất một cặp Thấm · Lưu ở cuối Reader, cùng kích thước, số Thấm cạnh chữ một dòng (D1/D5). Dùng token R4/Tailwind theo phạm vi nhóm (D4). Giữ nhãn Lưu, khi đã lưu có bookmark đặc, nền tonal, đổi hình, ✓ và trạng thái truy cập (D3). Chờ ACK tại nút, lỗi/mất ACK giữ giá trị đã biết, đọc lại (D11). | Khách mở sheet đăng nhập, quay lại đúng bài và focus nút, chỉ lần bấm tiếp mới gửi lệnh (D2). Hai tab gửi ý định trái nhau không thể dùng ACK trễ để đảo trạng thái hiện tại. |
+
+### Vòng đời và quyền tại lần đọc/ghi
+
+Quan hệ lưu giữ định danh và thời điểm lưu, không sao chép nhan đề, tên tác giả, thẻ hoặc trích đoạn. Chỉ cho lưu khi có publication công khai đọc được tại commit. Bỏ lưu chỉ cần quyền trên quan hệ của chính mình. Hạn chế đăng/bình luận vẫn được đọc danh sách và lưu/bỏ lưu. Đình chỉ chặn theo standing hiện hành, kể cả khi quyền đổi giữa lúc gửi và commit.
+
+| Trạng thái tại lần đọc | Dòng của chủ và điều kiện kiểm chứng |
+| --- | --- |
+| Công khai, đọc được | Hiện thể loại, ngày lưu, nhan đề và tác giả từ biểu diễn được phép; mở Reader theo WorkId. |
+| Chưa từng công khai | Không thể tạo quan hệ, kể cả với nháp của mình. |
+| Từng công khai, tác giả chuyển riêng tư (PUB-07) | Chỉ hiện “Nội dung đã được ẩn” và Bỏ lưu. |
+| Tác giả xóa (PUB-04), hoặc tài khoản tác giả bị xóa (SOC-LIFE-02) | Với người lưu khác, hiện “Nội dung đã được tác giả xoá” và Bỏ lưu theo trang thay thế. Hai loại dòng trung tính đều không có nhan đề, tác giả, thẻ, ngày lưu hay liên kết đọc. |
+| Admin gỡ hoặc không tìm thấy | Bỏ qua dòng, không để ô trống hay tiết lộ lý do. Giữ quan hệ khi còn khả năng khôi phục. |
+| Công khai lại, quan hệ vẫn còn | Dòng hiện lại với publication hiện tại, đúng thời điểm và vị trí lưu ban đầu. Nếu người dùng đã bỏ lưu thì không hiện lại. |
+| Xóa tài khoản người lưu | Xóa mọi quan hệ **và fence** của người đó, cả quan hệ đã bỏ lưu. Quan hệ do người khác tạo tuân theo trạng thái của tác phẩm. |
+
+### Bất biến
+
+| ID · trạng thái sản phẩm | Quy tắc và ví dụ nghiệm thu |
+| --- | --- |
+| SAV-INV-01 · PRODUCT_CONFIRMED | Mỗi cặp (PrincipalId, WorkId) có tối đa một quan hệ đang lưu. Lưu lặp không nhân dòng, không làm mới ngày lưu. |
+| SAV-INV-02 · PRODUCT_CONFIRMED | Chỉ chủ đọc được dữ liệu lưu của mình. Hai lịch sử lưu khác nhau cho cùng byte/ETag của bài công khai và hồ sơ công khai, không lộ dấu vết qua HTML, log, cache hoặc DTO chung. |
+| SAV-INV-03 · PRODUCT_CONFIRMED | Mỗi lần chiếu một dòng phải kiểm lại quyền đọc. Ẩn bài giữa hai trang rồi tải trang kế tiếp thì không còn metadata cũ của bài đó. |
+| SAV-INV-04 · PRODUCT_CONFIRMED | Generation của cặp tồn tại qua bỏ lưu, tăng cả khi nhận ý định mới trùng trạng thái. Retry lệnh lưu cũ sau lưu → bỏ lưu không tạo lại quan hệ. |
+| SAV-INV-05 · PRODUCT_CONFIRMED | Lưu/bỏ lưu chỉ tác động danh sách của chủ. So trước/sau: audience, publication, kiểm duyệt, Thấm/Ưng, xếp hạng và thông báo đều độc lập. |
+
+**DEFERRED** gồm thư mục/playlist, tìm kiếm trong danh sách, ghi chú, vị trí đọc dở, offline, chia sẻ/công khai, lưu bình luận và CMP/native. Trạng thái revision TOML, hợp đồng HTTP, LayoutSpec và mức triển khai tra tại [registry Lưu bài](../docs/development/saved-works.md).

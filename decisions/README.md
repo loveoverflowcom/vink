@@ -58,6 +58,10 @@ Chủ sản phẩm đã signoff đúng revision/SHA-256 ngày 20/11/2026
 ngữ trong [literary endorsement](../docs/architecture/literary-endorsement.md#delta-thuật-ngữ-20112026--359),
 không có revision TOML riêng (như #213).
 
+## Lưu bài để đọc lại
+
+[VDR-SAVED-WORKS@r1](proposals/VDR-SAVED-WORKS.r1.toml) ghi SAV-01..04, D1–D12 và vòng đời từ [Epic #384 §8](https://github.com/loveoverflowcom/vink/issues/384). Revision còn `PENDING`. [Registry Lưu bài](../docs/development/saved-works.md) ghi hash và phạm vi signoff còn chờ.
+
 ## Lượt xem tác phẩm
 
 [VDR-WORK-VIEWS@r1](proposals/VDR-WORK-VIEWS.r1.toml) ghi P-01..P-11 của

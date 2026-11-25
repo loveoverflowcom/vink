@@ -68,6 +68,10 @@ và vị trí logo. Phạm vi Web đã được R4 cập nhật dẫn tới [Lay
 sở hữu ma trận quyền, projection và lỗi. [Bàn giao #288](../development/social-graph.md)
 ghi gate theo từng màn.
 
+## Lưu bài để đọc lại (#385)
+
+[LayoutSpec Reader và tab Đã lưu](saved-works.md) nối r2, D1–D12 và chi tiết bàn giao R3 với [delta Thấm · Lưu](pen-flight-r2.md#cặp-thấm--lưu-trên-reader).
+
 ## Thông báo và danh sách Thấm công khai (#485)
 
 [LayoutSpec Thông báo R4](notifications.md) mô tả chuông, hộp thư, quyết định và danh sách người Thấm. Specimen Leptos dùng dữ liệu mẫu. Thiết kế giữ `DESIGN_PROPOSED`.
