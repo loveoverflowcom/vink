@@ -84,6 +84,11 @@ Tham chiếu là hướng bố cục đã chọn trong #521. LayoutSpec R4.3 gi�
 - Đầu trang gồm H1 Khám phá, nút tìm, nút Lọc thẻ có số đã áp dụng, logo ở phải. Chế độ Tất cả /
   Đang theo dõi / Tác giả dùng link, giữ feature flag của Đang theo dõi. Nhóm nối liền có selected
   primary + dấu chọn. Khi không vừa một hàng, dùng menu vẫn giữ đích link và `aria-current`.
+- Theo [#522](https://github.com/loveoverflowcom/vink/issues/522), nút mở tìm ở Khám phá và Bàn viết
+  dùng `IconButton` Standard. Khi nghỉ, icon nằm trực tiếp trên nền cha. Khám phá giữ vùng bấm
+  56 px trên desktop và 48 px trên mobile. Nút quay lại và xóa chữ dùng nền của ô tìm đang mở.
+  Giữ mặt nền ô nhập, nền tertiary của Lọc thẻ và các trạng thái hover, pressed, focus-visible,
+  forced-colors và reduced motion.
 - Một hàng/thẻ dùng thể loại và ngày công khai đầu (Asia/Ho_Chi_Minh khi xác định được), nhan đề,
   trích đoạn và byline với avatar tròn. Dùng tertiary cho dòng thông tin và tertiary-container cho
   nút Lọc thẻ. Hàng phải đọc được ở màn hẹp kể cả khi nhan đề dài.
@@ -112,6 +117,19 @@ có tên.
 bỏ q khi đóng, sắp xếp còn thấy khi tìm và focus đích heading nếu dock đóng. #426 hiện giữ q khi
 đóng, ẩn sắp xếp khi dock mở và dùng launcher cho nhiều đường phục hồi. Ba điểm này cần đối soát
 ở owner Desk trước khi sửa runtime. Xem [HOW Bàn viết](how-ban-viet.md) và [disposition](review-414.md).
+
+**Bố cục header khi có bản thảo · [#522](https://github.com/loveoverflowcom/vink/issues/522).**
+H1 và ổ khóa ở đầu, tiếp theo là hàng Search → Select → “Tạo bản thảo” ở mép cuối.
+Ở 100%, hàng nút cách nhau 8 CSS px. Tâm và chiều cao của các control cùng hàng lệch tối đa
+1 CSS px. Search rộng 48 px, cả ba control cao 48 px và dùng bán kính `radius.control-48`.
+Select giữ giá trị hiện tại (“Mặc định” hoặc “Markdown”) và nhãn native “Định dạng bản thảo”
+trong cây trợ năng. Nhãn nhìn thấy vẫn thuộc vùng tạo bản thảo đầu tiên.
+
+Khi hẹp hoặc tăng cỡ chữ, cho các control xuống dòng theo thứ tự đọc và cho CTA tăng chiều cao
+để chứa nguyên nhãn. Ở đầu trang mobile có chuông và thiếu chỗ, chuông ở cùng hàng tiêu đề,
+hàng control dùng toàn bề rộng. Giữ focus và node nhập của dock theo §5.1.
+Nguồn là yêu cầu của chủ sản phẩm ghi tại #522 về căn hàng và để nút tìm “cùng màu nền”.
+Ảnh crop trong issue ghi nhận lỗi ban đầu. Mốc thị giác của delta là `NO_APPROVED_REFERENCE`.
 
 ### 5.2. Khách, lần đầu, đang tải và lỗi
 
@@ -145,6 +163,7 @@ kiểm duyệt mở từ thẻ.
 | --- | --- | --- |
 | Bàn viết | Đổi phiên/401/403, lỗi trước và sau khi tải, lần tạo mất phản hồi, cursor hết hiệu lực, clear/retry làm gì với focus và query | #408/#411, cùng [registry tác giả](../../development/desk-author-feedback.md) |
 | Khám phá | SSR `/?q=…` ở Tất cả rồi đóng bằng nút/Esc, Back khỏi Reader, chỉ một bộ link có trong Tab/AX, logo + hai nút một hàng ở 320/390 px tại 100%/150%, GET filter và cursor lỗi | #404/#406 và phần còn lại #427 |
+| Header Bàn viết và nút mở tìm | #522 kiểm rect, nền khi nghỉ, tên truy cập và focus ở Desk/Khám phá. Hai theme, 320/390/834/1440, 100%/150% và stress 200% riêng | [#522](https://github.com/loveoverflowcom/vink/issues/522) |
 | Shell/cỡ chữ | 320/390/834/1440, cả hai theme, 100/150 theo #413 và stress 200 riêng. Kiểm keyboard, focus và AX đúng bề mặt | #403/#413/#427 |
 
 Ghi kết quả Functional, Geometry, Visual, Accessibility–Responsive và Interaction theo từng

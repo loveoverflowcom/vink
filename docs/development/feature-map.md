@@ -230,6 +230,13 @@ giữ IME và URL có `q` mở sẵn dock. Thẻ Khám phá R4.2 (#405, DQ-08/DQ
 bo 20 cách 8 px (cả Tất cả, Đang theo dõi và chế độ Tác giả), dòng `Thể loại · ngày công khai đầu`
 màu `tertiary` theo múi giờ `Asia/Ho_Chi_Minh` ở mọi chế độ, giữ avatar tròn (#352), khách ở
 Đang theo dõi có nút filled “Đăng nhập”, không kết quả nhắc từ khóa kèm lối “Tìm tác giả “q””.
+
+[#522](https://github.com/loveoverflowcom/vink/issues/522) căn Search, Select và CTA trong header
+Bàn viết có bản thảo, đồng thời dùng nền trong suốt của nút mở tìm ở Bàn viết và Khám phá.
+Select ở vùng lần đầu vẫn có nhãn nhìn thấy. Các tiêu chí về bố cục và trạng thái nằm trong
+[LayoutSpec R4.3](../design/redesign-r4/layout-spec.md#51-header-tìm-và-phục-hồi).
+Assertions Desk/Khám phá mới có bằng chứng review source, runtime `NOT_RUN`.
+
 Sheet Lọc thẻ R4.2 (#406, DQ-07): `discoveryChipGeometry` và `discoveryReading` kiểm nền
 `bg-content`, chip theo bề rộng chữ tự xuống dòng bo 12, chọn `primary` + dấu chọn không dịch
 rect >1 CSS px, nút “Bỏ chọn” chỉ xóa nháp phía client, mở bằng con trỏ không vẽ viền tiêu đề,

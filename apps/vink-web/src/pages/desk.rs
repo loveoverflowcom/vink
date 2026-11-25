@@ -651,7 +651,7 @@ fn CreateDraftControls(
     #[prop(default = false)] first: bool,
 ) -> impl IntoView {
     view! {
-        <div class="vk-desk-create flex flex-wrap [align-items:end] [gap:min(var(--vk-space-2),8px)_min(var(--vk-space-3),12px)] [min-inline-size:0] [max-inline-size:100%]">
+        <div class="vk-desk-create flex-wrap [align-items:end] [gap:min(var(--vk-space-2),8px)_min(var(--vk-space-3),12px)] [min-inline-size:0] [max-inline-size:100%]">
             <Select id="create-draft-format" label="Định dạng bản thảo"
                 variant=SelectVariant::Inset16 required=true
                 options=vec![ChoiceOption::new("default", "Mặc định"), ChoiceOption::new("markdown", "Markdown")]
