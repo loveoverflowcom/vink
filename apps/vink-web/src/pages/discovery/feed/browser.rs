@@ -1,8 +1,9 @@
-use crate::ui::empty_state::{EmptyArtwork, EmptyState};
 use std::collections::HashMap;
 
 use leptos::{prelude::*, task::spawn_local};
-use vink_ui::{ActionState, Button, ButtonVariant, Link};
+use vink_ui::{
+    ActionState, Button, ButtonVariant, Heading, HeadingLevel, Icon, IconName, IconSize,
+};
 
 use super::{FEED_STATE_CLASS, FeedOff, Restricted, SignIn};
 use crate::{
@@ -12,6 +13,7 @@ use crate::{
     discovery::{ExploreContext, ExploreMode, encode},
     pages::ExploreRestore,
     read_lifecycle::{Intent, PageChain, ReadOwner, ReadTicket},
+    ui::empty_state::{EmptyArtwork, EmptyState},
 };
 
 const CHECK_LIMIT: usize = 48;
@@ -374,13 +376,12 @@ pub(super) fn ActiveFeed(
         <div class="vk-feed-content" aria-busy=move || (phase.get() == Phase::Loading || appending.get()).to_string()>
             {move || match phase.get() {
                 Phase::Loading => view! { <p role="status" data-feed-state="loading">"Đang tải tác phẩm…"</p> }.into_any(),
-                Phase::Ready { has_following } if ids.with(Vec::is_empty) => view! {
-                    <div data-feed-state=if has_following { "no-works" } else { "no-follows" }>
+                Phase::Ready { has_following: false } if ids.with(Vec::is_empty) =>
+                    view! { <NoFollows /> }.into_any(),
+                Phase::Ready { has_following: true } if ids.with(Vec::is_empty) => view! {
+                    <div data-feed-state="no-works">
                         <EmptyState artwork=EmptyArtwork::NoResults announce=true
-                            message=if has_following { "Chưa có tác phẩm công khai đủ điều kiện." }
-                                else { "Bạn chưa theo dõi tác giả nào." }>
-                            {(!has_following).then(|| view! { <Link href=ExploreMode::AUTHORS_HREF>"Tìm tác giả"</Link> })}
-                        </EmptyState>
+                            message="Chưa có tác phẩm công khai đủ điều kiện." />
                     </div>
                 }.into_any(),
                 Phase::Ready { .. } => ().into_any(),
@@ -426,6 +427,24 @@ pub(super) fn ActiveFeed(
                     </Show>
                 </div>
             </Show>
+        </div>
+    }
+}
+
+#[component]
+fn NoFollows() -> impl IntoView {
+    view! {
+        <div class="vk-feed-no-follows" data-feed-state="no-follows">
+            <span class="vk-empty-state__icon"><Icon name=IconName::PersonOutline /></span>
+            <Heading id="following-feed-empty-heading" level=HeadingLevel::H2
+                role=vink_ui::TypeRole::Title attr:tabindex="-1" attr:data-explore-restore-heading="">
+                "Chưa theo dõi tác giả nào"
+            </Heading>
+            <p class="vk-empty-state__message" role="status">"Khám phá những cây bút bạn yêu thích."</p>
+            <a class=ButtonVariant::Tonal.classes() href=ExploreMode::AUTHORS_HREF>
+                <Icon name=IconName::Search size=IconSize::Small />
+                <span class="vk-ui-button__label">"Khám phá tác giả"</span>
+            </a>
         </div>
     }
 }

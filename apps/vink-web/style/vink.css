@@ -1705,8 +1705,32 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
   clip-path: inset(50%);
   white-space: nowrap;
 }
-#following-feed-heading:focus {
+#community-stream:has(.vk-feed-no-follows) > #following-feed-heading {
+  /* aria-labelledby still names the region from this otherwise hidden heading. */
+  display: none;
+}
+.vk-feed-no-follows {
+  display: grid;
+  justify-items: center;
+  gap: var(--vk-space-3);
+  padding-block: var(--vk-space-6);
+  text-align: center;
+}
+.vk-feed-no-follows .vk-ui-button {
+  --vk-ui-control-radius: var(--vk-radius-control-48);
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
+  min-block-size: max(48px, var(--vk-density-control-height));
+  text-decoration: none;
+  white-space: normal;
+}
+#following-feed-empty-heading {
+  margin: 0;
+  scroll-margin-block-start: 5.5rem;
+}
+:is(#following-feed-heading, #following-feed-empty-heading):focus {
   inline-size: fit-content;
+  max-inline-size: 100%;
   scroll-margin-block-start: 5.5rem;
   outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
   outline-offset: var(--vk-size-focus-offset);

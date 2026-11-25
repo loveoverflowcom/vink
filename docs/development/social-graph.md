@@ -197,16 +197,18 @@ toàn dùng bản có cả migration lẫn redaction, ưu tiên tắt entry form
   [route owner](../../apps/vink-web/src/pages/discovery.rs) định tuyến `Works` và
   `Following` (`/?mode=following`). [Module Feed](../../apps/vink-web/src/pages/discovery/feed.rs)
   sở hữu status, owner phiên và append. Thêm mode Tác giả ở route chung bằng module và
-  query/cursor riêng. Thay liên kết “Khám phá tác phẩm” của trạng thái chưa theo dõi ai
-  bằng đích Tác giả khi #295 có route thật. Feed v1 giữ query cố định và mẫu WorkCard
+  query/cursor riêng. Khi chưa theo dõi ai, Feed hiện nút tonal “Khám phá tác giả”
+  đến `/?mode=authors` theo [LayoutSpec R1](../design/social-289.md#following-empty-cta-r1--355).
+  Feed v1 giữ query cố định và mẫu WorkCard
   Lavender R3. Tìm kiếm/lọc thẻ tiếp tục ở mode Tất cả.
 - **Vòng đời.** `ReadOwner` và `PageChain` xét ticket theo generation phiên. Khi append,
   revalidate các thẻ đã hiển thị và trả lại projection còn hợp lệ. Khi nhận ACK Follow,
   xóa chain và đọc lại. Wake/Back đọc lại từ server. Mỗi history entry giữ anchor
   công khai và dấu điều hướng mờ của phiên, không giữ thẻ hay cursor. Sau lần đọc
   được chấp nhận, Back trả về link nhan đề hoặc bút danh còn hợp lệ, kể cả qua
-  document mới. Khi anchor mất, focus về tiêu đề “Đang theo dõi” (H2). Lỗi mạng
-  giữ ý định quay lại để thử đọc mới. Thay đổi Follow trong lúc chờ focus cần một
+  document mới. Khi anchor mất, focus về H2 của trạng thái đang hiện. Các trạng thái
+  Feed dùng “Đang theo dõi”, riêng trạng thái chưa theo dõi ai dùng “Chưa theo dõi tác giả nào”.
+  Lỗi mạng giữ ý định quay lại để thử đọc mới. Thay đổi Follow trong lúc chờ focus cần một
   lần đọc mới. Thay phiên loại dữ liệu và kết quả đang bay; dấu cũ mất hiệu lực.
   Khi Back nhanh đổi entry trước hydrate, Web đối chiếu mã băm tuyến SSR rồi tải
   đúng địa chỉ đang mở.
