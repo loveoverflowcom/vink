@@ -243,7 +243,11 @@ fn test_args<'a>(owner: UnitOwner, targets: &[&'a str], filter: Option<&'a str>)
 }
 
 pub fn unit_args(owner: UnitOwner, filter: Option<&str>) -> Vec<&str> {
-    test_args(owner, owner.test_targets(), filter)
+    let targets: &[&str] = match owner {
+        UnitOwner::Web => &["--lib", "--features", "ssr"],
+        _ => owner.test_targets(),
+    };
+    test_args(owner, targets, filter)
 }
 
 fn postgres_args(owner: UnitOwner, filter: Option<&str>) -> Vec<&str> {
