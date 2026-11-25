@@ -1,6 +1,6 @@
-# Vùng công khai của Bàn viết — LayoutSpec r2
+# Vùng công khai của Bàn viết — LayoutSpec r3
 
-> [Editor R4](editor-r4.md) đặt vùng này trong Tùy chọn bài viết và dùng công tắc thay cho RadioGroup. Công tắc đổi ý định; nút xác nhận vẫn gửi lệnh riêng. Các trạng thái và quy tắc snapshot bên dưới tiếp tục áp dụng; nút Xem trước trong cây bên dưới đã bỏ theo delta 24/11 (#475).
+> [Editor R4](editor-r4.md) đặt vùng này trong Tùy chọn bài viết và dùng công tắc thay cho RadioGroup. Công tắc đổi ý định; nút xác nhận vẫn gửi lệnh riêng. Các trạng thái và quy tắc snapshot bên dưới tiếp tục áp dụng; nút Xem trước đã bỏ theo delta 24/11 (#475).
 
 Phạm vi: **PUB-AUTHOR-WEB-01**. Vùng nối Bàn viết với API publication có sẵn
 ([publication-runtime](../development/publication-runtime.md)) và [chi tiết kiểm duyệt trong Bàn viết](redesign-r4/desk-moderation.md)
@@ -15,37 +15,38 @@ và nút theo công thức container hẹp của `vk-state-panel`; (2) pha `ackn
 chưa đọc lại được kết quả); (3) hợp đồng focus khi control vừa bấm biến mất. Chi tiết ở mục
 “Rà soát client-state” của [owner doc](../development/publication-author-web.md).
 
+**r3 (25/11/2026, `refactor/ban-viet-cong-khai-ui`)** tinh giản trình bày tại chỗ trong Tùy chọn bài
+viết mà không đổi domain, API, state machine hay quy tắc kiểm duyệt:
+- Giữ công tắc **Công khai** (`#audience-public`) và bỏ nhãn trạng thái Bật/Tắt (`show_state=false`).
+- Bỏ nút tải lại (`#publication-refresh`) cùng tooltip; đồng bộ tự động khi mở, đổi phiên, quay lại
+  tab/cửa sổ (`focus`/`visibilitychange`), có mạng trở lại (`online`) và sau mỗi lệnh.
+- Bỏ dòng “Máy chủ đang áp dụng…” (`#audience-applied`) và các dòng giải thích dư thừa.
+- Gom trạng thái máy chủ thành một dòng ngắn gọn duy nhất (`#publication-status`).
+- Đổi nhãn “Gửi duyệt bản đã lưu” thành “Gửi duyệt”, giữ nguyên hành vi.
+- Liên kết “Xem kết quả kiểm duyệt” (`#editor-review-status`) chỉ hiện khi tác phẩm có ngữ cảnh
+  kiểm duyệt (đang công khai, đang gửi, có ticket mở, có bản đã từng gửi/từ chối/phản đối).
+- Vùng `#publication` dùng chung nền với Bàn viết (`bg-transparent` trên `bg-content`), không
+  border, không container màu riêng; giữ `tabindex="-1"` làm đích trả focus trong vùng khi nút chính
+  và công tắc đang ẩn/khóa.
+
 ```text
-LayoutSpec: Vùng công khai tại chỗ, r1 — proposed (agent triển khai, cùng người giao PUB-AUTHOR-WEB-01)
+LayoutSpec: Vùng công khai tại chỗ, r3 — proposed
 Context: tác giả đã đăng nhập, mở /ban-viet/{id}. Nội dung thật của tác giả không đưa vào tài liệu;
   dữ liệu mẫu trong fixture/e2e mang nhãn [Mẫu].
-Intent: viết/duyệt trạng thái — vùng đọc trạng thái kèm một hành động chính. Tác giả phải làm được:
-  (1) biết bản nào đang được người đọc đọc, bản nào đang chờ, quyết định của bản đó; (2) chọn
-  “Công khai” và xác nhận gửi đúng bản vừa lưu; (3) chuyển “Chỉ mình tôi” mà không phải lưu hay bỏ
-  chữ đang viết; (4) hiểu và xử lý mất phản hồi, xung đột, đổi phiên.
-Sources: develop@23fffd8 (base; checkout sạch, relevant dirty inputs: không có). Đã đọc
-  apps/vink-web/src/pages/desk.rs, desk_state.rs, tag_state.rs, pages/work_info.rs,
-  pages/moderation.rs, style/vink.css (.vk-work-info, .vk-editor-recovery, .vk-notice__actions),
-  packages/ui-system/leptos (RadioGroup, Button, InlineNotice, SupportingDetails).
-  Gap: chưa có token/CSS riêng cho vùng này; dùng lại .vk-work-info làm công thức.
-References: không có mốc được duyệt (NO_APPROVED_REFERENCE). Nhịp, tầng nền và chiều rộng kế thừa
-  .vk-work-info (cùng trang, cùng surface-container-low) — chỉ ràng buộc nhịp/phân cấp, không phải
-  mục tiêu so pixel. Ảnh tự chụp sau triển khai không thành golden.
+Intent: viết/duyệt trạng thái — vùng đọc trạng thái gọn kèm một hành động chính. Tác giả phải làm
+  được: (1) biết ngay trạng thái công khai/kiểm duyệt hiện tại; (2) bật “Công khai” và xác nhận gửi
+  đúng bản vừa lưu; (3) tắt “Công khai” → “Chuyển riêng tư” mà không phải lưu hay bỏ chữ đang viết;
+  (4) hiểu và xử lý mất phản hồi, xung đột, đổi phiên.
 
 Screen #draft-editor — /ban-viet/{id}
-  Region #existing-editor — giữ nguyên: tiêu đề, thân bài, thẻ (#work-info), Lưu, Xem trước, rời trang
-  Region #publication — section, aria-labelledby=publication-title, cuối trang sau thông tin tác phẩm
-    Heading #publication-title — “Công khai” (h2, cùng kiểu .vk-work-info__heading)
-    Region #publication-summary — chỉ dữ kiện máy chủ trả (role=status khi đổi)
-      #publication-public    — “Đang công khai: «tiêu đề»” | “Chưa công khai. Chỉ bạn đọc được.”
-      #publication-requested — “Đang gửi: «tiêu đề» — <trạng thái>” (+ lý do, nếu có)
-      #publication-draft     — “Chữ chưa lưu không nằm trong bản đã gửi.” (chỉ khi editor còn chữ chưa lưu)
-      #publication-unsent    — “Có N bản đã chụp nhưng chưa gửi duyệt.” (chỉ khi có)
-    Region #audience-choice — RadioGroup “Ai đọc được tác phẩm”: Chỉ mình tôi / Công khai
-      help: “Máy chủ đang áp dụng: …” (tách lựa chọn đang chọn khỏi trạng thái đã xác nhận)
-    Region #publication-actions — đúng một hành động chính theo trạng thái + “Tải lại”
-    Region #publication-recovery — thông báo mất phản hồi/xung đột/lỗi kèm đúng hành động phục hồi
-    Region #review-detail — Link “Xem kết quả kiểm duyệt trong Bàn viết” → /ban-viet?review={id}
+  Region #work-options — Tùy chọn bài viết (bg-content, cùng mặt nền với Bàn viết)
+    Region #publication — section (tabindex=-1, nền trong suốt, không border, không container riêng)
+      Region #audience-choice — Switch “Công khai” (#audience-public, không nhãn Bật/Tắt)
+      Region #publication-live — một dòng role=status cho tiến trình/xác nhận (ẩn khi rỗng)
+      Text #publication-status — một dòng trạng thái ngắn gọn từ dữ kiện máy chủ
+      Region #publication-recovery — thông báo mất phản hồi/xung đột/lỗi kèm hành động phục hồi (chỉ khi có sự cố)
+      Region #publication-actions — đúng một hành động chính theo trạng thái (ẩn khi không có hành động)
+      Link #editor-review-status — “Xem kết quả kiểm duyệt” → /ban-viet?review={id} (chỉ hiện khi cần)
 ```
 
 ## Phương án đã chọn (và phương án bỏ)
@@ -54,7 +55,7 @@ Screen #draft-editor — /ban-viet/{id}
 | --- | --- | --- | --- |
 | CHOICE-01 Lưu và gửi | **B**: “Lưu và gửi duyệt” gọi chính hàm lưu của editor (`DraftSession`) rồi chỉ **quan sát** kết quả; chụp snapshot đúng `draft_version` + `metadata_version` được máy chủ xác nhận | A: bắt tác giả bấm “Lưu” riêng rồi mới được gửi | Không sao chép logic lưu, không sửa editor. Nếu có chữ/thẻ mới sau khi bấm thì **dừng**, không chụp (xem Interaction). A vẫn là hành vi khi thẻ chưa tải hoặc lưu đang lỗi/xung đột: nút khóa kèm lý do |
 | CHOICE-02 Trình bày | **A**: vùng gọn, mở rộng tại chỗ sau thông tin tác phẩm | B: nút trạng thái + dialog | Trạng thái “chưa xác nhận”, “xung đột” phải còn thấy và thao tác được sau khi gửi; ở chữ 200% và 320 CSS px vùng tại chỗ chỉ xếp dọc trong luồng trang, không thêm vùng cuộn hay bẫy focus; dialog che trạng thái lưu của editor mà tác giả đang cần đọc |
-| CHOICE-03 Làm mới | **A**: đọc khi mở, khi quay lại tab/cửa sổ, sau mỗi lệnh và bằng “Tải lại” | B: A + polling hữu hạn | Kiểm duyệt không có SLA; polling thêm hẹn giờ, chồng request và rủi ro cướp focus/cuộn. Đảo được khi có số liệu |
+| CHOICE-03 Làm mới | **A**: tự động đồng bộ khi mở, đổi phiên, quay lại tab/cửa sổ (`focus`/`visibilitychange`), có mạng trở lại (`online`) và sau mỗi lệnh (không có nút tải lại thủ công trên tiêu đề; chỉ giữ “Tải lại” trong khung phục hồi khi đọc lỗi) | B: A + polling hữu hạn | Kiểm duyệt không có SLA; polling thêm hẹn giờ, chồng request và rủi ro cướp focus/cuộn. Đảo được khi có số liệu |
 
 Các lựa chọn trên là triển khai, không phải quyết định sản phẩm.
 
@@ -67,11 +68,11 @@ chọn) để không bị đẩy xuống dưới hai nút khi chữ 200%. Hành 
 
 | Điều kiện (từ dữ kiện máy chủ + editor) | Hành động chính |
 | --- | --- |
-| Chọn “Công khai”, editor sạch | “Gửi duyệt bản đã lưu” |
+| Chọn “Công khai”, editor sạch | “Gửi duyệt” |
 | Chọn “Công khai”, editor còn chữ/thẻ chưa lưu | “Lưu và gửi duyệt” |
 | Chọn “Công khai”, đã có bản đang công khai/đang gửi | “Gửi bản mới” (cùng luồng) |
 | Chọn “Chỉ mình tôi”, máy chủ đang công khai | “Chuyển riêng tư” |
-| Chọn đúng trạng thái máy chủ đang áp dụng | không có hành động; chỉ giải thích một câu |
+| Chọn đúng trạng thái máy chủ đang áp dụng | không có hành động; chỉ giữ một dòng trạng thái ngắn gọn |
 | Đang chờ phản hồi | cùng nút ở trạng thái pending (`ActionState::pending`), các nút khác khóa |
 | Mất phản hồi | “Kiểm tra lại” |
 
@@ -79,9 +80,9 @@ Chọn radio **không gửi request**. Nút nói đúng việc sẽ làm; không
 
 ## Sizing
 
-Kế thừa `.vk-desk--editor` (chiều đọc `--vk-measure` + 2×`--vk-space-6`). Surface
-`--vk-surface-container-low`, bo `--vk-radius-lg`, padding `clamp(--vk-space-3, 3vw, --vk-space-6)`,
-khoảng cách `--vk-space-3`; vùng phục hồi dùng `.vk-editor-recovery` (error/warning container).
+Nằm trực tiếp trong `.vk-work-options__body` của Bàn viết, dùng chung nền `bg-content` (`background:
+transparent`), không border ngăn cách và không container màu riêng; khoảng cách `--vk-space-2`;
+vùng phục hồi dùng `.vk-editor-recovery` (error/warning container) khi có sự cố.
 Không viền trang trí, không card/pill lồng nhau. (r2) Thẻ phục hồi là phần tử lồng duy nhất; khi
 vùng hẹp so với chữ (container `vk-publication` ≤ 16rem, tính theo gốc rem nên chạm tới ở chữ 200% trên
 điện thoại, không ở 100%) nó còn `--vk-space-2` padding, hành động xếp dọc, và nút dùng công thức

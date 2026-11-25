@@ -10,12 +10,9 @@
 //!   tab's session scope and the route, and is never stored: not the manuscript, not a token.
 
 use leptos::prelude::*;
-use vink_ui::{
-    ActionState, Announce, Button, ButtonVariant, IconName, InlineNotice, Switch, Tone,
-    TooltipIconButton,
-};
+use vink_ui::{ActionState, Announce, Button, ButtonVariant, InlineNotice, Switch, Tone};
 
-use crate::contract::publication::{Audience, Decision};
+use crate::contract::publication::{Audience, AuthorPublicationState, Decision};
 use crate::desk_state::DraftSession;
 use crate::publication_state::{
     Blocked, Conflict, Controller, Done, EditorFacts, Phase, ReadFailure, Refusal, Scope, Step,
@@ -40,51 +37,62 @@ pub(crate) fn decision_label(decision: Decision) -> &'static str {
     }
 }
 
-/// What the page tells the author about the work, from server facts only.
-fn summary_lines(summary: &Summary) -> Vec<(&'static str, String)> {
-    let named = |title: &str| {
-        if title.trim().is_empty() {
-            "(chưa đặt tên)".to_string()
-        } else {
-            format!("«{title}»")
-        }
-    };
-    let mut lines = Vec::new();
-    lines.push((
-        "publication-public",
-        match (&summary.public, summary.audience) {
-            (Some(public), _) => format!("Đang công khai: {}.", named(&public.title)),
-            (None, Audience::Public) => "Chưa có bản nào đang công khai.".to_string(),
-            (None, _) => "Chưa công khai. Chỉ bạn đọc được.".to_string(),
-        },
-    ));
-    if let Some(requested) = &summary.requested {
-        let mut text = format!(
-            "Đang gửi: {} — {}.",
-            named(&requested.title),
-            decision_label(requested.decision)
-        );
-        if requested.decision == Decision::Approved && summary.public.is_none() {
-            text.push_str(" Chưa là bản đang công khai.");
-        }
-        if let Some(reason) = requested.reason.as_deref().filter(|r| !r.trim().is_empty()) {
-            text.push_str(&format!(" Lý do: {reason}"));
-        }
-        if summary.public.is_some() {
-            text.push_str(" Người đọc vẫn đọc bản đang công khai.");
-        }
-        lines.push(("publication-requested", text));
-    }
-    if summary.unsent > 0 {
-        lines.push((
-            "publication-unsent",
-            format!(
-                "Có {} bản đã chụp nhưng chưa gửi duyệt. Gửi bản mới nếu bạn muốn công khai.",
-                summary.unsent
+/// One concise status line from server facts only.
+fn status_line(summary: &Summary) -> String {
+    match (&summary.public, &summary.requested) {
+        (Some(_), Some(requested)) => match requested
+            .reason
+            .as_deref()
+            .map(str::trim)
+            .filter(|r| !r.is_empty())
+        {
+            Some(reason) => format!(
+                "Đang công khai · Bản mới: {} ({reason})",
+                decision_label(requested.decision)
             ),
-        ));
+            None => format!(
+                "Đang công khai · Bản mới: {}",
+                decision_label(requested.decision)
+            ),
+        },
+        (Some(_), None) => "Đang công khai".to_string(),
+        (None, Some(requested)) => {
+            if requested.decision == Decision::Approved {
+                "Đã được duyệt · Chưa công khai".to_string()
+            } else if let Some(reason) = requested
+                .reason
+                .as_deref()
+                .map(str::trim)
+                .filter(|r| !r.is_empty())
+            {
+                format!("{} ({reason})", decision_label(requested.decision))
+            } else {
+                decision_label(requested.decision).to_string()
+            }
+        }
+        (None, None) => match summary.audience {
+            Audience::Public => "Chưa có bản công khai".to_string(),
+            _ if summary.unsent > 0 => format!("Chỉ mình tôi · {} bản chưa gửi", summary.unsent),
+            _ => "Chỉ mình tôi".to_string(),
+        },
     }
-    lines
+}
+
+/// The review details link is shown only when the work has moderation context to inspect.
+fn show_review_link(facts: Option<&AuthorPublicationState>, phase: Phase) -> bool {
+    if matches!(phase, Phase::Failed(Refusal::RevisionRejected)) {
+        return true;
+    }
+    let Some(facts) = facts else {
+        return false;
+    };
+    facts.pointer.is_some()
+        || facts.intent.is_some()
+        || facts.open_ticket.is_some()
+        || facts
+            .revisions
+            .iter()
+            .any(|revision| revision.moderation != Decision::Unsubmitted || revision.can_appeal)
 }
 
 /// Why the primary action is disabled, in a short visible note. `None`: nothing to explain.
@@ -117,12 +125,8 @@ fn live_text(phase: Phase) -> &'static str {
         Phase::Capturing => "Đang chụp bản đã lưu…",
         Phase::RequestingPublic => "Đang gửi yêu cầu công khai…",
         Phase::MakingPrivate => "Đang chuyển riêng tư…",
-        Phase::Reconciled(Done::Requested) => {
-            "Đã ghi nhận yêu cầu công khai. Trạng thái ở trên lấy từ máy chủ."
-        }
-        Phase::Reconciled(Done::MadePrivate) => {
-            "Đã chuyển riêng tư. Trang công khai ngừng phục vụ nội dung này."
-        }
+        Phase::Reconciled(Done::Requested) => "Đã ghi nhận yêu cầu công khai.",
+        Phase::Reconciled(Done::MadePrivate) => "Đã chuyển riêng tư.",
         Phase::Ready
         | Phase::Acknowledged(_)
         | Phase::Unavailable(_)
@@ -289,7 +293,7 @@ fn primary_label(primary: Primary) -> &'static str {
             saves_first: true, ..
         } => "Lưu và gửi duyệt",
         Primary::Submit { replaces: true, .. } => "Gửi bản mới",
-        Primary::Submit { .. } => "Gửi duyệt bản đã lưu",
+        Primary::Submit { .. } => "Gửi duyệt",
         Primary::Withdraw => "Chuyển riêng tư",
         Primary::Nothing => "",
     }
@@ -430,9 +434,9 @@ impl Runner {
 /// A control that held focus can be gone after the region re-rendered: the primary action once a
 /// withdrawal left nothing to press, "Đã hiểu" once it was dismissed. Focus then falls to the
 /// document body, which a keyboard user cannot tell from the page's start. Return it to the action
-/// when there still is one, else to the audience switch, else to the region's refresh (the switch
-/// is disabled while a command runs), and to the options disclosure only when the folded panel
-/// hides the region. Focus that is anywhere else is never taken, and the page does not scroll.
+/// when there still is one, else to the audience switch, else to the region itself (the switch is
+/// disabled while a command runs), and to the options disclosure only when the folded panel hides
+/// the region. Focus that is anywhere else is never taken, and the page does not scroll.
 fn restore_lost_focus() {
     #[cfg(feature = "browser")]
     request_animation_frame(move || {
@@ -445,7 +449,7 @@ fn restore_lost_focus() {
         let target = [
             "publication-primary",
             "audience-public",
-            "publication-refresh",
+            "publication",
             "work-options-toggle",
         ]
         .into_iter()
@@ -532,7 +536,8 @@ pub fn PublicationPanel(
         runner.refresh();
     });
 
-    // Returning to the tab or window: read again, at most every two seconds, never mid-command.
+    // Returning to the tab/window or regaining network: sync automatically, at most every two
+    // seconds, never mid-command.
     #[cfg(feature = "browser")]
     {
         let last = StoredValue::new(0.0_f64);
@@ -552,9 +557,11 @@ pub fn PublicationPanel(
         };
         let focus = window_event_listener(leptos::ev::focus, move |_| on_return());
         let visible = window_event_listener(leptos::ev::visibilitychange, move |_| on_return());
+        let online = window_event_listener(leptos::ev::online, move |_| on_return());
         on_cleanup(move || {
             focus.remove();
             visible.remove();
+            online.remove();
         });
     }
 
@@ -735,80 +742,58 @@ pub fn PublicationPanel(
         })
     };
 
+    let status = Memo::new(move |_| summary.with(|s| s.as_ref().map(status_line)));
+    let review_link_visible = Memo::new(move |_| {
+        let phase = phase.get();
+        controller.with(|c| show_review_link(c.facts(), phase))
+    });
+
     view! {
-        <section id="publication" class="vk-publication grid gap-vk-2 min-w-0" aria-label="Công khai"
-            data-testid="publication" data-phase=move || phase_token(phase.get())>
-            <div class="vk-publication__heading flex flex-wrap items-center justify-between gap-vk-2 min-w-0">
-                <div class="vk-publication__choice min-w-0" id="audience-choice">
-                    <Switch id="audience-public" label="Công khai"
-                        checked=Signal::derive(move || choice.with(|value| value == PUBLIC))
-                        disabled=Signal::derive(move || working.get() || facts_audience.get().is_none())
-                        on_change=move |checked| choice.set(if checked { PUBLIC } else { PRIVATE }.into()) />
-                </div>
-                <TooltipIconButton icon=IconName::Refresh label="Tải lại trạng thái công khai" id="publication-refresh"
-                    state=Signal::derive(move || if controller.with(Controller::reading) { ActionState::Disabled { reason: None } } else { ActionState::Enabled })
-                    on_press=move |_| reload.run(()) />
+        <section
+            id="publication"
+            tabindex="-1"
+            class="vk-publication grid gap-vk-2 min-w-0 bg-transparent border-0 focus-visible:[outline:var(--vk-size-focus-ring)_solid_var(--vk-focus-ring)]"
+            aria-label="Công khai"
+            data-testid="publication"
+            data-phase=move || phase_token(phase.get())
+        >
+            <div class="vk-publication__choice min-w-0" id="audience-choice">
+                <Switch
+                    id="audience-public"
+                    label="Công khai"
+                    checked=Signal::derive(move || choice.with(|value| value == PUBLIC))
+                    disabled=Signal::derive(move || working.get() || facts_audience.get().is_none())
+                    show_state=false
+                    on_change=move |checked| choice.set(if checked { PUBLIC } else { PRIVATE }.into())
+                />
             </div>
             <p class="vk-publication__live" id="publication-live" role="status" aria-atomic="true" data-testid="publication-live">
                 {move || live_text(phase.get())}
             </p>
-            <div class="vk-publication__summary grid gap-vk-2 [min-inline-size:0]" id="publication-summary" data-testid="publication-summary">
-                {move || summary.get().map(|summary| {
-                    summary_lines(&summary)
-                        .into_iter()
-                        .map(|(id, text)| view! { <p id=id data-testid=id>{text}</p> })
-                        .collect_view()
-                })}
-                <Show when=move || unsaved.get() && summary.with(Option::is_some)>
-                    <p class=PUBLICATION_NOTE_CLASS id="publication-draft" data-testid="publication-draft">
-                        "Chữ hoặc thẻ chưa lưu sẽ không nằm trong bản được gửi."
-                    </p>
-                </Show>
-                <Show when=move || summary.with(|s| s.as_ref().is_some_and(|s| s.public.is_some())) && !unsaved.get()>
-                    <p class=PUBLICATION_NOTE_CLASS data-testid="publication-draft-note">
-                        "Sửa bản nháp không đổi bản đang công khai cho tới khi bạn gửi bản mới và được duyệt."
-                    </p>
-                </Show>
-                {stale_note}
-            </div>
+            <Show when=move || status.with(Option::is_some)>
+                <p class=PUBLICATION_NOTE_CLASS id="publication-status" data-testid="publication-status">
+                    {move || status.get().unwrap_or_default()}
+                </p>
+            </Show>
+            {stale_note}
             {notice}
-            <p class=PUBLICATION_NOTE_CLASS id="audience-applied" data-testid="audience-applied">
-                {move || match facts_audience.get() {
-                    Some(Audience::Public) => "Máy chủ đang áp dụng: Công khai.",
-                    Some(Audience::Private) => "Máy chủ đang áp dụng: Chỉ mình tôi.",
-                    _ => "Chưa đọc được lựa chọn đã áp dụng.",
-                }}
-            </p>
-            <div class="vk-publication__actions flex flex-wrap items-center gap-vk-3 [min-inline-size:0] empty:hidden" id="publication-actions">
-                <Show when=move || primary.get() != Primary::Nothing
-                    fallback=move || view! {
-                        <p class=PUBLICATION_NOTE_CLASS data-testid="publication-nothing">
-                            {move || if facts_audience.get() == Some(Audience::Private) {
-                                "Chỉ bạn đọc được tác phẩm này. Chọn Công khai khi muốn gửi duyệt."
-                            } else {
-                                ""
-                            }}
-                        </p>
-                    }>
+            <div class="vk-publication__actions flex flex-wrap items-center gap-vk-2 [min-inline-size:0] empty:hidden" id="publication-actions">
+                <Show when=move || primary.get() != Primary::Nothing>
                     <Button variant=ButtonVariant::Filled id="publication-primary" state=primary_state
                         on_press=move |_| press_primary.run(())>
                         {move || primary_label(primary.get())}
                     </Button>
                 </Show>
             </div>
-            <Show when=move || matches!(primary.get(), Primary::Withdraw)>
-                <p class=PUBLICATION_NOTE_CLASS data-testid="publication-private-note">
-                    "Chuyển riêng tư không xóa bài và không xóa chữ đang viết. Trang công khai ngừng phục vụ nội dung; bản sao ngoài Vink hoặc ở thẻ chưa tải lại có thể còn."
-                </p>
+            <Show when=move || review_link_visible.get()>
+                <vink_ui::Link
+                    variant=vink_ui::LinkVariant::Standalone
+                    attr:id="editor-review-status"
+                    href=super::desk_review::work_review_href(&work.get_value())
+                >
+                    "Xem kết quả kiểm duyệt"
+                </vink_ui::Link>
             </Show>
-            <Show when=move || matches!(primary.get(), Primary::Submit { .. })>
-                <p class=PUBLICATION_NOTE_CLASS data-testid="publication-submit-note">
-                    "Gửi duyệt chụp đúng bản đã lưu. Phần gõ thêm sau đó không nằm trong bản đã gửi."
-                </p>
-            </Show>
-            <vink_ui::Link variant=vink_ui::LinkVariant::Standalone attr:id="editor-review-status" href=super::desk_review::work_review_href(&work.get_value())>
-                "Xem kết quả kiểm duyệt trong Bàn viết"
-            </vink_ui::Link>
         </section>
     }
 }
@@ -817,7 +802,7 @@ pub fn PublicationPanel(
 mod tests {
     use super::*;
     use crate::contract::publication::{
-        AuthorPublicationState, AuthorRevision, Lifecycle, PublicPointer, PublishIntent,
+        AuthorRevision, Lifecycle, OpenTicket, PublicPointer, PublishIntent,
     };
 
     fn revision(
@@ -852,25 +837,26 @@ mod tests {
         }
     }
 
-    fn text(summary: &Summary) -> String {
-        summary_lines(summary)
-            .into_iter()
-            .map(|(_, text)| text)
-            .collect::<Vec<_>>()
-            .join(" | ")
-    }
-
     #[test]
     fn a_private_work_is_not_public_and_an_empty_audience_is_not_a_verdict() {
         let summary = Summary::of(&state(Audience::Private));
-        assert_eq!(text(&summary), "Chưa công khai. Chỉ bạn đọc được.");
+        assert_eq!(status_line(&summary), "Chỉ mình tôi");
         // Public audience with no public revision: waiting, not "Đang công khai".
         let waiting = Summary::of(&state(Audience::Public));
-        assert_eq!(text(&waiting), "Chưa có bản nào đang công khai.");
+        assert_eq!(status_line(&waiting), "Chưa có bản công khai");
+        assert!(!status_line(&waiting).contains("Đang công khai"));
+        let mut with_unsent = state(Audience::Private);
+        with_unsent
+            .revisions
+            .push(revision("r1", "Bản một", Decision::Unsubmitted, None));
+        assert_eq!(
+            status_line(&Summary::of(&with_unsent)),
+            "Chỉ mình tôi · 1 bản chưa gửi"
+        );
     }
 
     #[test]
-    fn r1_stays_public_while_r2_waits_and_the_copy_says_readers_still_read_r1() {
+    fn r1_stays_public_while_r2_waits_and_the_copy_names_both() {
         let mut s = state(Audience::Public);
         s.pointer = Some(PublicPointer {
             revision_id: "r1".into(),
@@ -884,20 +870,15 @@ mod tests {
             revision("r2", "Bản hai", Decision::Pending, None),
             revision("r1", "Bản một", Decision::Approved, None),
         ];
-        let said = text(&Summary::of(&s));
-        assert!(said.contains("Đang công khai: «Bản một»."), "{said}");
-        assert!(
-            said.contains("Đang gửi: «Bản hai» — Đang chờ kiểm duyệt."),
-            "{said}"
-        );
-        assert!(
-            said.contains("Người đọc vẫn đọc bản đang công khai."),
-            "{said}"
+        assert_eq!(
+            status_line(&Summary::of(&s)),
+            "Đang công khai · Bản mới: Đang chờ kiểm duyệt"
         );
         s.revisions[0] = revision("r2", "Bản hai", Decision::Rejected, Some("Chưa phù hợp."));
-        let said = text(&Summary::of(&s));
-        assert!(said.contains("Bị từ chối. Lý do: Chưa phù hợp."), "{said}");
-        assert!(said.contains("Đang công khai: «Bản một»."), "{said}");
+        assert_eq!(
+            status_line(&Summary::of(&s)),
+            "Đang công khai · Bản mới: Bị từ chối (Chưa phù hợp.)"
+        );
     }
 
     #[test]
@@ -908,12 +889,48 @@ mod tests {
             generation: 3,
         });
         s.revisions = vec![revision("r1", "Bản một", Decision::Approved, None)];
-        let said = text(&Summary::of(&s));
-        assert!(
-            said.contains("Đã được duyệt. Chưa là bản đang công khai."),
-            "{said}"
-        );
+        let said = status_line(&Summary::of(&s));
+        assert_eq!(said, "Đã được duyệt · Chưa công khai");
         assert!(!said.contains("Đang công khai"), "{said}");
+    }
+
+    #[test]
+    fn review_link_appears_only_when_moderation_context_exists() {
+        assert!(!show_review_link(None, Phase::Ready));
+        assert!(show_review_link(
+            None,
+            Phase::Failed(Refusal::RevisionRejected)
+        ));
+
+        let private_draft = state(Audience::Private);
+        assert!(!show_review_link(Some(&private_draft), Phase::Ready));
+
+        let mut only_unsubmitted = state(Audience::Private);
+        only_unsubmitted
+            .revisions
+            .push(revision("r1", "Bản một", Decision::Unsubmitted, None));
+        assert!(!show_review_link(Some(&only_unsubmitted), Phase::Ready));
+
+        let mut pending = state(Audience::Public);
+        pending.intent = Some(PublishIntent {
+            revision_id: "r1".into(),
+            generation: 3,
+        });
+        assert!(show_review_link(Some(&pending), Phase::Ready));
+
+        let mut with_ticket = state(Audience::Private);
+        with_ticket.open_ticket = Some(OpenTicket {
+            evaluation_id: "e1".into(),
+            revision_id: "r1".into(),
+            policy_version: 1,
+        });
+        assert!(show_review_link(Some(&with_ticket), Phase::Ready));
+
+        let mut rejected_private = state(Audience::Private);
+        rejected_private
+            .revisions
+            .push(revision("r1", "Bản một", Decision::Rejected, Some("Lý do")));
+        assert!(show_review_link(Some(&rejected_private), Phase::Ready));
     }
 
     #[test]
@@ -950,7 +967,7 @@ mod tests {
         );
         assert_eq!(
             primary_label(primary_for(PUBLIC, Some(Private), false)),
-            "Gửi duyệt bản đã lưu"
+            "Gửi duyệt"
         );
         assert_eq!(
             primary_label(primary_for(PUBLIC, Some(Private), true)),

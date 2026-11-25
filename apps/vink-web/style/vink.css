@@ -993,8 +993,13 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
   --vk-ui-control-radius: var(--vk-radius-control-40);
 }
 
-/* Publication (PUB-AUTHOR-WEB-01): paragraph flow also covers shared notice/action content.
-   Keep the live region visibility and recovery composition with the panel container rules. */
+/* Publication (PUB-AUTHOR-WEB-01): shares the Desk content background with no border or separate
+   colored container. Keep live region visibility and recovery composition with container rules. */
+.vk-publication {
+  container: vk-publication / inline-size;
+  background: transparent;
+  border: 0;
+}
 .vk-publication p { margin: 0; overflow-wrap: anywhere; }
 .vk-publication__live:empty { display: none; }
 .vk-publication > .vk-editor-recovery { padding: var(--vk-space-3); }
@@ -1003,7 +1008,6 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
    phone, not at 100%) the nested card gives up its padding, its actions take the full width, and
    the region's buttons follow the shared narrow-container recipe (`vk-state-panel`, 16rem: less
    horizontal padding so whole Vietnamese words fit). */
-.vk-publication { container: vk-publication / inline-size; }
 @container vk-publication (max-width: 16rem) {
   .vk-publication .vk-ui-button { padding-inline: var(--vk-space-3); }
   .vk-publication > .vk-editor-recovery { padding: var(--vk-space-2); }
@@ -1202,12 +1206,15 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
 .vk-work-options[open] .vk-work-options__review { display: none; }
 .vk-work-options__review { color: var(--vk-on-surface-variant); font-size: var(--vk-type-label-size); }
 .vk-work-options__body { padding: 0 var(--vk-space-3) var(--vk-space-3); }
-.vk-work-options__body > :not(:first-child) {
+.vk-work-options__body > :not(:first-child):not(.vk-publication) {
   border-block-start: 1px solid var(--vk-outline-variant);
   padding-block-start: var(--vk-space-3);
 }
+.vk-work-options__body > .vk-publication {
+  border-block-start: 0;
+  padding-block-start: var(--vk-space-2);
+}
 .vk-work-options .vk-ui-select { border-radius: var(--vk-radius-control-48); }
-.vk-work-options .vk-publication__choice { flex: 1 1 auto; }
 
 .vk-md-toolbar .vk-ui-button {
   min-inline-size: var(--vk-density-control-height);

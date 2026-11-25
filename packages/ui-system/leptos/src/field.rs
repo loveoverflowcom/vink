@@ -651,7 +651,7 @@ const CHOICE_LABEL_CLASS: &str = "vk-ui-choice__label wrap-anywhere";
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Toggle {
     Checkbox,
-    Switch,
+    Switch { show_state: bool },
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -673,9 +673,11 @@ fn toggle(
         let id = id.clone();
         move || described_by(&id, has_help, invalid.get())
     };
+    let is_switch = matches!(kind, Toggle::Switch { .. });
+    let show_state = matches!(kind, Toggle::Switch { show_state: true });
     let class = match kind {
         Toggle::Checkbox => "vk-ui-choice flex flex-col gap-vk-1 [min-inline-size:0]",
-        Toggle::Switch => {
+        Toggle::Switch { .. } => {
             "vk-ui-choice vk-ui-choice--switch flex flex-col gap-vk-1 [min-inline-size:0]"
         }
     };
@@ -688,7 +690,7 @@ fn toggle(
                     value=value
                     id=id.clone()
                     class=CHOICE_INPUT_CLASS
-                    role=(kind == Toggle::Switch).then_some("switch")
+                    role=is_switch.then_some("switch")
                     checked=checked.get_untracked()
                     prop:checked=move || checked.get()
                     disabled=move || disabled.get()
@@ -700,7 +702,7 @@ fn toggle(
                     }
                 />
                 <span class=CHOICE_LABEL_CLASS>{label}</span>
-                {(kind == Toggle::Switch).then(|| view! {
+                {show_state.then(|| view! {
                     <span class="vk-ui-choice__state" aria-hidden="true">
                         {move || if checked.get() { "Bật" } else { "Tắt" }}
                     </span>
@@ -740,7 +742,7 @@ pub fn Checkbox(
     )
 }
 
-/// An on/off switch (`role="switch"`) with a visible Bật/Tắt state.
+/// An on/off switch (`role="switch"`), with an optional visible Bật/Tắt state label.
 #[component]
 pub fn Switch(
     #[prop(into)] id: String,
@@ -749,9 +751,10 @@ pub fn Switch(
     #[prop(into)] on_change: Callback<bool>,
     #[prop(optional, into)] help: Option<String>,
     #[prop(optional, into)] disabled: Signal<bool>,
+    #[prop(default = true)] show_state: bool,
 ) -> impl IntoView {
     toggle(
-        Toggle::Switch,
+        Toggle::Switch { show_state },
         id,
         label,
         checked,
@@ -1156,6 +1159,25 @@ mod tests {
         });
         assert!(
             html.contains("role=\"switch\"") && html.contains("Tắt"),
+            "{html}"
+        );
+        let html = render(|| {
+            view! {
+                <Switch
+                    id="s-quiet"
+                    label="Công khai"
+                    checked=Signal::stored(false)
+                    show_state=false
+                    on_change=|_| {}
+                />
+            }
+            .into_any()
+        });
+        assert!(
+            html.contains("role=\"switch\"")
+                && !html.contains("vk-ui-choice__state")
+                && !html.contains("Tắt")
+                && !html.contains("Bật"),
             "{html}"
         );
         let html = render(|| {
