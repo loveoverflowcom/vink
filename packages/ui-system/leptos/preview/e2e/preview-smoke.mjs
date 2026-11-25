@@ -92,6 +92,7 @@ class Page {
     this.cdp = cdp;
     this.sessionId = sessionId;
     this.errors = [];
+    this.scriptsDisabled = false;
     this.media = { 'prefers-color-scheme': 'light', 'prefers-reduced-motion': 'no-preference' };
     this.state = { width: 1440, scale: '100%' };
     cdp.listeners.push((message) => {
@@ -205,7 +206,18 @@ class Page {
     await this.settle();
   }
 
+  async setScriptsDisabled(disabled) {
+    await this.send('Emulation.setScriptExecutionDisabled', { value: disabled });
+    this.scriptsDisabled = disabled;
+  }
+
   async settle() {
+    if (this.scriptsDisabled) {
+      // Page animation callbacks cannot run here. Flush the static layout through CDP
+      // before taking the screenshot or checking the restored viewport and focus.
+      await this.send('Page.getLayoutMetrics');
+      return;
+    }
     await this.eval(`new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))`);
   }
 
@@ -630,7 +642,7 @@ async function components(page) {
   check(await page.eval(`document.querySelector('#support-details').open`), 'Details: Escape does not impersonate an overlay close');
   await page.key('Space');
   check(await page.eval(`!document.querySelector('#support-details').open`), 'Details: Space closes with native behavior');
-  await page.send('Emulation.setScriptExecutionDisabled', {value:true});
+  await page.setScriptsDisabled(true);
   try {
     await page.send('Input.dispatchKeyEvent', {type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\r'});
     await page.send('Input.dispatchKeyEvent', {type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
@@ -643,7 +655,7 @@ async function components(page) {
     check(true, 'Details: CDP touch tap toggles the same native summary without JavaScript');
   } finally {
     await page.send('Emulation.setTouchEmulationEnabled', {enabled:false});
-    await page.send('Emulation.setScriptExecutionDisabled', {value:false});
+    await page.setScriptsDisabled(false);
   }
 
   await page.eval(`document.querySelector('#tooltip-back').focus(); history.replaceState(null, '', '#action.link/default'); dispatchEvent(new HashChangeEvent('hashchange'))`);
