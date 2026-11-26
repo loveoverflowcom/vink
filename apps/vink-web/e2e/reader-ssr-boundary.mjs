@@ -41,22 +41,6 @@ export async function readerBeforeHydration(page, { args, check }) {
     check(await page.eval(`document.querySelector('link[rel=canonical]')?.href===${JSON.stringify(args.base + PATH)} && !!document.querySelector('meta[name=description]') && !document.documentElement.outerHTML.includes('Khổ đang viết dở — chưa công khai.')`), 'unhydrated document retains canonical/description and excludes the private draft');
     check(await page.eval("document.querySelector('#root-composer-send')?.getAttribute('aria-disabled')==='true' && document.querySelector('#root-composer-send')?.type==='button'"), 'unready composer send is unavailable and has no native form submission');
     check(await page.eval("!document.querySelector('#discussion-refresh')"), 'healthy SSR has no discussion refresh control');
-    for (const theme of ['light', 'dark']) {
-      for (const [width, height] of [[1440, 900], [390, 844]]) {
-        await page.viewport(width, height);
-        await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: theme }] });
-        await page.eval(`document.documentElement.dataset.theme='${theme}'; document.querySelector('#feedback-heading').scrollIntoView()`);
-        check(await page.eval("!document.querySelector('#discussion-refresh, #own-comments-refresh') && document.documentElement.scrollWidth <= innerWidth + 1"),
-          `#557 guest SSR discussion fits ${width} × ${height} in ${theme}`);
-        await page.capture(`557-discussion-guest-${width}-${theme}`, {
-          boundary: 'real-app-postgres-public-ssr-bootstrap-held',
-          requestedScene: { width, height, theme, scale: 100 }, skipSceneValidation: true,
-        });
-      }
-    }
-    await page.send('Emulation.setEmulatedMedia', { features: [] });
-    await page.eval("delete document.documentElement.dataset.theme");
-    await page.viewport(1280, 900);
     await page.click('#root-composer-send');
     noMutation('clicks before bootstrap do not submit a mutation');
     await page.click('#reader-return');

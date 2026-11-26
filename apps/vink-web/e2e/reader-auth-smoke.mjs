@@ -78,6 +78,20 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
     await page.waitFor(`${HYDRATED} && ${q(result)}`, 'seeded Reader in filtered Discovery results');
     await page.click(result);
     await page.waitFor(`location.pathname === '${HERE}' && ${q(ROOT_EDITOR+'-auth')}`, 'guest Reader SPA route');
+    await page.waitFor(`${standing('anonymous')} && ${q('.vk-discussion-root')}`, 'populated discussion with a real guest session');
+    for (const theme of ['light', 'dark']) {
+      for (const [width, height] of [[1440, 900], [390, 844]]) {
+        await page.viewport(width, height);
+        await page.eval(`document.documentElement.dataset.theme='${theme}'; document.querySelector('#feedback-heading').scrollIntoView()`);
+        check(await page.eval("!document.querySelector('meta[name=vink-local-discussion-fixture], #discussion-refresh, #own-comments') && document.documentElement.scrollWidth <= innerWidth + 1"),
+          `#557 guest discussion fits ${width} × ${height} in ${theme}`);
+        await page.capture(`557-discussion-guest-${width}-${theme}`, {
+          boundary: 'real-app-postgres-guest-no-local-principal',
+          requestedScene: { width, height, theme, scale: 100 }, skipSceneValidation: true,
+        });
+      }
+    }
+    await page.eval("delete document.documentElement.dataset.theme");
     await page.viewport(1280, 844);
     await page.send('Page.bringToFront');
     await page.typeAtEnd(ROOT_EDITOR, ROOT_TEXT);
