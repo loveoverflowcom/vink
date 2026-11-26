@@ -2,6 +2,7 @@
 """Pre-Cargo admission for Vink local build/test. Workflow selection still belongs to xtask."""
 
 import argparse
+from collections import ChainMap
 import contextlib
 import fcntl
 import os
@@ -32,6 +33,13 @@ UNSUPPORTED = 69
 CARGO_DIRECTORIES = ("CARGO_TARGET_DIR", "CARGO_BUILD_TARGET_DIR", "CARGO_BUILD_BUILD_DIR")
 
 
+# Only the selected invocation and its dev/test Cargo children inherit these settings.
+LOW_DISK = {
+    "CARGO_PROFILE_DEV_DEBUG": "0", "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_INCREMENTAL": "false", "CARGO_PROFILE_TEST_INCREMENTAL": "false",
+}
+
+
 class Refusal(Exception):
     def __init__(self, message, code=2):
         super().__init__(message)
@@ -50,13 +58,14 @@ def positive(value, name):
     raise Refusal(f"{name} must be a positive integer")
 
 
-def cargo_jobs(environ, root):
+def cargo_jobs(environ, root, low_disk, file_defaults):
     # Read only the knobs this launcher owns. Cargo uses the extensionless file if both exist,
     # the nearest config wins, and the shell variable takes precedence over build.jobs.
     cargo_home = root / environ.get("CARGO_HOME", str(Path.home() / ".cargo"))
     directories = [root / ".cargo", *(p / ".cargo" for p in root.parents), cargo_home]
     build_keys = ("jobs", "rustc-wrapper", "rustc-workspace-wrapper")
     env_keys = ("CARGO_BUILD_JOBS", "RUSTC_WRAPPER", "RUSTC_WORKSPACE_WRAPPER")
+    profile_keys = (*LOW_DISK, "CARGO_INCREMENTAL", "CARGO_BUILD_INCREMENTAL") if low_disk else ()
     configured = {}
     for directory in dict.fromkeys(directories):
         path = directory / "config"
@@ -68,12 +77,12 @@ def cargo_jobs(environ, root):
             config = tomllib.load(source)
         if "include" in config:
             raise Refusal(f"Cargo includes in {path} are not supported by this profile")
-        for key in (*env_keys, *CARGO_DIRECTORIES, "CARGO_BUILD_RUSTC_WRAPPER",
+        for key in (*env_keys, *CARGO_DIRECTORIES, *profile_keys, "CARGO_BUILD_RUSTC_WRAPPER",
                     "CARGO_BUILD_RUSTC_WORKSPACE_WRAPPER", "RUST_TEST_THREADS", "CARGO_MAKEFLAGS", "MAKEFLAGS", "MFLAGS", MARKER):
             if key in config.get("env", {}):
                 raise Refusal(f"Cargo [env] {key} can override the local-budget environment")
         build = config.get("build", {})
-        for key in build_keys:
+        for key in (*build_keys, "incremental"):
             if key in build:
                 configured.setdefault(key, build[key])
     for key, variable in zip(build_keys[1:], env_keys[1:]):
@@ -81,31 +90,42 @@ def cargo_jobs(environ, root):
         if environ.get(variable, environ.get(cargo_var, configured.get(key))):
             raise Refusal("UNSUPPORTED: rustc wrapper may use external compiler processes",
                           UNSUPPORTED)
+    if low_disk:
+        # Bootstrap sees the shell. Some nested Cargo commands also receive xtask's .env.
+        for scope, values in (("bootstrap", environ), ("xtask .env", ChainMap(environ, file_defaults))):
+            incremental = values.get("CARGO_INCREMENTAL", values.get(
+                "CARGO_BUILD_INCREMENTAL", configured.get("incremental", False)))
+            if str(incremental).lower() not in ("false", "0"):
+                raise Refusal(f"--low-disk conflicts with the build-wide incremental setting ({scope})")
     value = environ.get("CARGO_BUILD_JOBS", configured.get("jobs", "default"))
     return 2 if value == "default" else min(2, positive(value, "Cargo build jobs"))
 
 
-def test_threads(environ, root):
-    if "RUST_TEST_THREADS" in environ:
-        return min(2, positive(environ["RUST_TEST_THREADS"], "RUST_TEST_THREADS"))
+def dotenv_defaults(root, keys):
+    defaults = {}
     path = root / ".env"
-    value = None
-    if path.is_file():
+    if keys and path.is_file():
         for line in path.read_text().splitlines():
             key, sep, raw = line.strip().partition("=")
-            if sep and key.strip() == "RUST_TEST_THREADS":
+            if sep and key.strip() in keys:
                 # Match xtask Env::load, including last assignment and empty file defaults.
-                value = raw.strip().strip('"').strip("'")
-    return min(2, positive(value, "RUST_TEST_THREADS")) if value else 2
+                defaults[key.strip()] = raw.strip().strip('"').strip("'")
+    return defaults
 
 
-def settings(environ, root):
+def settings(environ, root, low_disk=False):
     if "CARGO_ALIAS_XTASK" in environ:
         raise Refusal("unset CARGO_ALIAS_XTASK to use Vink's xtask alias")
     for key in ("CARGO_MAKEFLAGS", "MAKEFLAGS", "MFLAGS"):
         if "jobserver" in environ.get(key, ""):
             raise Refusal(f"inherited jobserver in {key}; launch from the owning shell")
-    return cargo_jobs(environ, root), test_threads(environ, root)
+    keys = {"RUST_TEST_THREADS"}
+    if low_disk:
+        keys.update(("CARGO_INCREMENTAL", "CARGO_BUILD_INCREMENTAL"))
+    defaults = dotenv_defaults(root, keys.difference(environ))
+    jobs = cargo_jobs(environ, root, low_disk, defaults)
+    threads = environ.get("RUST_TEST_THREADS", defaults.get("RUST_TEST_THREADS") or 2)
+    return jobs, min(2, positive(threads, "RUST_TEST_THREADS"))
 
 
 def validate_command(argv, threads):
@@ -382,6 +402,8 @@ def main():
     run.add_argument("--timeout", metavar="SECONDS", help="optional deadline including bootstrap")
     for command in (plan, run):
         command.add_argument("--mode", choices=("soft", "strict"), default="soft")
+        command.add_argument("--low-disk", action="store_true",
+                             help="disable dev/test debuginfo and incremental compilation for this run")
         command.add_argument("cargo", nargs=argparse.REMAINDER, help="-- cargo <command> [args]")
     args = parser.parse_args()
     if MARKER in os.environ:
@@ -391,7 +413,7 @@ def main():
                       "no strict workload was started", UNSUPPORTED)
     if not hasattr(os, "waitid"):
         raise Refusal("UNSUPPORTED: macOS requires Python 3.13+ with os.waitid", UNSUPPORTED)
-    jobs, threads = settings(os.environ, ROOT)
+    jobs, threads = settings(os.environ, ROOT, args.low_disk)
     target = ROOT / "target"
     if target.is_symlink():
         raise Refusal("checkout target resolves through a symlink; choose an isolated checkout")
@@ -399,6 +421,8 @@ def main():
         "managed_target=10–12 GiB (advisory) hard_cap=none; "
         "Cargo bootstrap included; preflight requires normal pressure; retries manual")
     log(f"cargo_target_dir={target} cargo_build_dir={target}; compiler wrappers unsupported")
+    if args.low_disk:
+        log("low-disk: " + " ".join(f"{k}={v}" for k, v in LOW_DISK.items()))
     if args.action == "plan":
         if args.cargo:
             validate_command(args.cargo, threads)
@@ -411,6 +435,8 @@ def main():
     environ = dict(os.environ, CARGO_BUILD_JOBS=str(jobs), RUST_TEST_THREADS=str(threads),
                    VINK_LOCAL_BUDGET="local-24g")
     environ.update(dict.fromkeys(CARGO_DIRECTORIES, str(target)))
+    if args.low_disk:
+        environ.update(LOW_DISK)
     return execute(argv, environ, timeout, args.samples)
 
 
