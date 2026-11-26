@@ -17,7 +17,9 @@ When selectors or their callers change, update the diff mapping and its owner fi
 | Information | Owner |
 | --- | --- |
 | User journey, route, preconditions, observable states, check coverage | [Feature map](../../../docs/development/feature-map.md) |
-| Setup, supported commands, prerequisites and lane limits | [Development guide](../../../docs/development/README.md) |
+| Developer environment and setup | [Development guide](../../../docs/development/README.md) |
+| Command syntax, defaults, dependencies and execution scope | [Scoped workflows](../../../docs/development/scoped-workflows.md) |
+| Host admission, resource limits and artifact lifecycle | [Local resource budget](../../../docs/development/local-resource-budget.md) |
 | Executable commands and process setup | [xtask](../../../xtask/src/main.rs), [web runner](../../../xtask/src/web.rs), [Tailwind compiler](../../../xtask/src/tailwind.rs), [UI token/API guard](../../../xtask/src/ui_qualification.rs), [CI](../../../.github/workflows/ci.yml) |
 | Web CSS/WASM/SSR baseline & Tailwind rollout evidence | [Web perf baseline](../../../docs/development/web-perf-baseline.md), [Tailwind Web foundation](../../../docs/development/tailwind-web-foundation.md), [perf harness](../../../apps/vink-web/e2e/web-perf-baseline.mjs) |
 | Which evidence a claim requires; result vocabulary | [Verification guide](../vink-engineering/references/verification.md) |
@@ -69,7 +71,7 @@ For an actual tooling change, keep commands composable with actionable errors, s
 status and bounded waits. Add structured output when there is a real machine consumer; use
 preview/dry-run for an applicable mutation rather than inventing one for read-only checks.
 Make fixture/resource ownership and cleanup explicit, and keep credentials and manuscripts
-out of diagnostics. Update the development guide with any changed command contract.
+out of diagnostics. Update the scoped workflow guide when the command contract changes.
 
 Browser smoke checks interactions via CDP and writes captures/context under `target/verify-web/<run-id>/`;
 the UI preview commands have separate capture/test outputs. Native diagnostic commands and
