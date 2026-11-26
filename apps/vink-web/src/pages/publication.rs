@@ -736,11 +736,12 @@ pub fn PublicationPanel(
         );
         let checking = controller.with(Controller::checking);
         let can_resume = controller.with(Controller::can_resume_captured);
+        let dismissible = !uncertain && !reads && !matches!(phase, Phase::Unavailable(_));
         Some(view! {
             <section class=super::work_info::RECOVERY_CLASS id="publication-recovery" data-testid="publication-recovery"
                 data-tone=if tone == Tone::Error { "error" } else { "warning" } aria-label="Phục hồi công khai">
                 <InlineNotice tone announce=Announce::Polite title message />
-                <div class="vk-notice__actions">
+                <div class="vk-notice__actions empty:hidden">
                     {uncertain.then(|| view! {
                         <Button variant=ButtonVariant::Text id="publication-retry"
                             state=Signal::derive(move || if checking { ActionState::pending("Đang kiểm tra…") } else { ActionState::Enabled })
@@ -754,7 +755,7 @@ pub fn PublicationPanel(
                         <Button variant=ButtonVariant::Text id="publication-reload"
                             on_press=move |_| reload.run(())>"Kiểm tra trạng thái"</Button>
                     })}
-                    {(!uncertain && !reads).then(|| view! {
+                    {dismissible.then(|| view! {
                         <Button variant=ButtonVariant::Text id="publication-dismiss"
                             on_press=move |_| dismiss.run(())>"Đã hiểu"</Button>
                     })}
