@@ -6204,7 +6204,7 @@ async function retiredTagAfterRestart(page, workId) {
 /** Real local fixture identity + scratch PostgreSQL writes. Rendering fixtures used below
  * have a separate label and never substitute for persistence/auth/moderation evidence. */
 async function wakeDiscussion(page) {
-  await page.eval("const now = performance.now.bind(performance); performance.now = () => now() + 121000; window.dispatchEvent(new Event('focus'))");
+  await page.eval("(() => { const now = performance.now.bind(performance); performance.now = () => now() + 121000; window.dispatchEvent(new Event('focus')); })()");
 }
 
 async function discussionReadingAndWrites(page) {
