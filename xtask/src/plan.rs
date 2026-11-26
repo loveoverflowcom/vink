@@ -67,6 +67,9 @@ impl UnitOwner {
     }
 
     pub fn parse(owner: &str) -> Result<Self, String> {
+        if owner == "work-view-policy" {
+            return Ok(Self::WorkViews);
+        }
         Self::ALL
             .into_iter()
             .find(|o| o.name() == owner)
@@ -646,8 +649,33 @@ impl Plan {
                 fixtures.push_str(&format!("  {}: {}\n", scenario.name(), scenario.fixture()));
             }
         }
+        let mut dag = String::new();
+        let profile = if self.request.release {
+            "wasm-release"
+        } else {
+            "dev"
+        };
+        for artifact in &self.artifacts {
+            let feature = match artifact {
+                Artifact::Spa => "csr",
+                Artifact::Bundle
+                    if self.scenarios.iter().any(|s| {
+                        matches!(s, Scenario::PerfBaseline | Scenario::ReturnPosition)
+                    }) =>
+                {
+                    "perf-probe"
+                }
+                Artifact::Bundle => "hydrate",
+                _ => continue,
+            };
+            dag.push_str(&crate::web_dag::describe_dag(
+                *artifact == Artifact::Spa,
+                profile,
+                feature,
+            ));
+        }
         format!(
-            "coverage: {coverage}\noperation: {:?}; target: {:?}; auth: {auth}\nbuild: {:?}; profile: {}\nrequired tools: {:?}\nowned services: {:?}\nattached database configuration (values hidden): {:?}\nmigrations: {:?}; dev seed: {} (Web fixtures follow the scenario catalog)\nselected checks: {selected:?}\nalias expansion: {dependencies:?}\nnot selected Web checks: {excluded:?}\n{fixtures}API target isolation: no bundle, no SSR dependencies or static routes.\ndata: dev attaches prepared databases; Web verification owns scratch only. No containers.\nartifacts: build from current source; Web bundles may reuse verified bindgen and static outputs.\n",
+            "coverage: {coverage}\noperation: {:?}; target: {:?}; auth: {auth}\nbuild: {:?}; profile: {}\nrequired tools: {:?}\nowned services: {:?}\nattached database configuration (values hidden): {:?}\nmigrations: {:?}; dev seed: {} (Web fixtures follow the scenario catalog)\nselected checks: {selected:?}\nalias expansion: {dependencies:?}\nnot selected Web checks: {excluded:?}\n{fixtures}{dag}API target isolation: no bundle, no SSR dependencies or static routes.\ndata: dev attaches prepared databases; Web verification owns scratch only. No containers.\nartifacts: build from current source; Web bundles may reuse verified bindgen, CSS, editor JS and static outputs.\n",
             self.request.operation,
             self.request.target,
             self.artifacts,

@@ -11,6 +11,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+memchr = "2"
 base64 = "0.22.1"
 pulldown-cmark = { version = "0.13.6", default-features = false }
 saphyr = { version = "0.3.4", default-features = false }
@@ -22,3 +23,6 @@ tokio = { workspace = true, features = ["rt", "macros", "signal"] }
 toml = "1.1.8"
 
 vink-store-postgres = { path = "../packages/store-postgres" }
+
+[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
+rustix = { version = "1.1.5", features = ["fs"] }

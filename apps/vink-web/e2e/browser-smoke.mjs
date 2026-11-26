@@ -6789,6 +6789,10 @@ try {
   else if (args.phase === 'reader-guest-history') await readerGuestHistory(page, { args, check });
   else if (args.phase === 'main') await mainPhase(page);
   else if (args.phase === 'reader') await readerPhase(page);
+  else if (args.phase === 'reader-bundle') {
+    await readerRendering(page);
+    check(await page.eval(`import('/pkg/vink-editor.js').then(runtime => typeof runtime.createEditor === 'function')`), 'the published editor module loads');
+  }
   else if (args.phase === 'reader-views') await workViewsE2E(page, { cdp, openPage: (isolated) => openPage(cdp, isolated), args, check });
   else if (args.phase === 'discussion') await discussionPhase(page);
   else if (args.phase === 'appearance-shell') await appearanceShellPhase(page);

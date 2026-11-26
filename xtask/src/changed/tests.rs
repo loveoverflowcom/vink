@@ -455,6 +455,12 @@ fn matrix() -> Vec<Case> {
             false,
         ),
         c(
+            &["xtask/src/web_dag.rs", "xtask/src/tailwind_inputs.mjs"],
+            &["verify unit xtask", FULL_WEB[0], FULL_WEB[1]],
+            &["verify quick", "verify postgres"],
+            false,
+        ),
+        c(
             &["xtask/src/web.rs"],
             &["verify unit xtask", FULL_WEB[0], FULL_WEB[1], PERF],
             &[],
@@ -976,4 +982,23 @@ fn account_deletion_opt_in_is_selected_for_its_fixture_and_identity_contract() {
             "{input}"
         );
     }
+}
+
+#[test]
+fn dispatcher_records_bundle_smoke_and_owner_alias_uses_the_same_unit_target() {
+    let (selection, _) = select(&[rules::BROWSER_DISPATCHER]);
+    assert!(
+        selection
+            .manual
+            .keys()
+            .any(|name| name.contains("reader-bundle"))
+    );
+    assert_eq!(
+        crate::plan::UnitOwner::parse("work-view-policy").unwrap(),
+        crate::plan::UnitOwner::WorkViews
+    );
+    assert_eq!(
+        normalize("cargo xtask verify unit work-view-policy"),
+        "verify unit work-views"
+    );
 }

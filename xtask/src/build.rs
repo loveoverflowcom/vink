@@ -1,9 +1,10 @@
 //! Artifact adapters: no migrations, servers or tests.
 use crate::plan::Artifact;
 use crate::process::cargo;
-use crate::{checks, doctor, env, process, root, ui_tokens, web_assets::Package};
+use crate::web_dag::WebArtifactId;
+use crate::{checks, doctor, env, process, root, web_assets::Package};
 use std::path::Path;
-const EDITOR_RUNTIME_DIR: &str = "apps/vink-web/editor";
+use std::time::Instant;
 
 pub fn binary(artifact: Artifact, release: bool) -> Result<(), String> {
     process::run(
@@ -19,6 +20,18 @@ fn binary_command(artifact: Artifact, release: bool) -> Result<std::process::Com
         _ => return Err("expected a server binary".into()),
     };
     let mut command = cargo(&root());
+    // cargo run sets these for xtask. Leaking its package identity into nested Cargo
+    // makes cc/ring invalidate the native dependencies shared with the next bootstrap.
+    for key in [
+        "CARGO_MANIFEST_DIR",
+        "CARGO_PKG_NAME",
+        "CARGO_PKG_VERSION_MAJOR",
+        "CARGO_PKG_VERSION_MINOR",
+        "CARGO_PKG_VERSION_PATCH",
+        "CARGO_PKG_VERSION_PRE",
+    ] {
+        command.env_remove(key);
+    }
     command.args(["build", "--locked", "-p", package, "--bin", bin]);
     if artifact == Artifact::Worker {
         command.arg("--no-default-features");
@@ -109,20 +122,61 @@ pub fn spa(release: bool, scratch: bool) -> Result<(), String> {
         Err(e) => return Err(format!("clear {}: {e}", entry.display())),
     }
     bundle_at(release, "csr", &pkg, Some(&prefix))?;
+    let index_started = Instant::now();
     let pending = site.join("index.tmp");
-    std::fs::write(&pending, index)
+    // Unlink a pending entry left by an interrupted run (including a symlink).
+    match std::fs::remove_file(&pending) {
+        Ok(()) => (),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
+        Err(e) => return Err(format!("clear {}: {e}", pending.display())),
+    }
+    use std::io::Write;
+    std::fs::File::create_new(&pending)
+        .and_then(|mut file| file.write_all(index.as_bytes()))
         .and_then(|()| std::fs::rename(pending, entry))
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    let index_digest = checks::sha256_hex(index.as_bytes());
+    println!(
+        "==> {}: UPDATED ({} ms, sha256={})",
+        WebArtifactId::SpaIndex.name(),
+        index_started.elapsed().as_millis(),
+        &index_digest[..12]
+    );
+    Ok(())
 }
 
 fn bundle_at(release: bool, feature: &str, pkg: &Path, prefix: Option<&str>) -> Result<(), String> {
     let root = root();
-    let package = Package::new(&root, pkg)?;
-    crate::web_boundary::check(&root)?;
+    let rustc_version = doctor::toolchain(&root)?;
     let bindgen = doctor::require_wasm_bindgen(&root)?;
-    doctor::node_version()?;
+    let node_version = doctor::node_version()?;
     doctor::npm_version()?;
     let profile = if release { "wasm-release" } else { "dev" };
+    let effective_prefix = prefix
+        .map(str::to_owned)
+        .or_else(|| std::env::var("VINK_ASSET_PREFIX").ok());
+    let mut package = Package::new(
+        &root,
+        pkg,
+        profile,
+        feature,
+        effective_prefix.as_deref(),
+        &rustc_version,
+        &node_version,
+        &bindgen,
+    )?;
+
+    package.tokens(&root)?;
+    let boundary_started = Instant::now();
+    crate::web_boundary::check(&root)?;
+    package.record_step(
+        WebArtifactId::WebBoundary,
+        "VERIFIED",
+        boundary_started.elapsed().as_millis() as u64,
+        String::new(),
+        "routes and five Cargo graphs checked".into(),
+    );
+
     let mut wasm = cargo(&root);
     if let Some(prefix) = prefix {
         wasm.env("VINK_ASSET_PREFIX", prefix);
@@ -139,54 +193,63 @@ fn bundle_at(release: bool, feature: &str, pkg: &Path, prefix: Option<&str>) -> 
         feature,
         "--profile",
         profile,
+        "--message-format=json-render-diagnostics",
     ]);
-    process::run(
-        &mut wasm,
-        &format!("build browser bundle (vink-web, {feature})"),
-    )?;
+    let label = format!("build browser bundle (vink-web, {feature}, {profile})");
+    let mut compile = || process::run_cargo_json(&mut wasm, &label);
+    let freshness = compile()?;
     let out_dir = if release { "wasm-release" } else { "debug" };
     let wasm_file = root
         .join("target/wasm32-unknown-unknown")
         .join(out_dir)
         .join("vink_web.wasm");
-    package.bindgen(&wasm_file, feature, profile, prefix, &bindgen, release)?;
-    let stage = package.stage();
-    editor_runtime(&root, &stage.join("vink-editor.js"))?;
-    stylesheet(&root, &stage.join("vink.css"), release)?;
-    for output in ["vink-editor.js", "vink.css"] {
-        let metadata = std::fs::symlink_metadata(stage.join(output))
-            .map_err(|error| format!("missing Web output {output}: {error}"))?;
-        if !metadata.is_file() || metadata.len() == 0 {
-            return Err(format!("Web output {output} must be a nonempty file"));
-        }
-    }
-    package.static_files("fonts", &root.join(checks::FONTS_DIR), |path| {
-        path.file_name()
-            .and_then(|name| name.to_str())
-            .is_some_and(|name| name.ends_with(".woff2") || name.starts_with("OFL"))
-    })?;
+    let raw = package.record_rust_wasm(&root, &wasm_file, freshness, compile)?;
+    package.bindgen(&wasm_file, raw, release)?;
+    package.editor_js(&root, &node_version)?;
+    package.tailwind_css(&root, release, &node_version)?;
+
+    package.static_files(
+        WebArtifactId::StaticFonts,
+        "fonts",
+        &root.join(checks::FONTS_DIR),
+        |path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.ends_with(".woff2") || name.starts_with("OFL"))
+        },
+    )?;
     let mut problems = Vec::new();
     checks::brand(&root, &mut problems);
     if !problems.is_empty() {
         return Err(problems.join("\n"));
     }
-    package.static_files("brand", &root.join(checks::BRAND_DIR), |path| {
-        matches!(
-            path.extension().and_then(|ext| ext.to_str()),
-            Some("png" | "svg" | "webmanifest")
-        )
-    })?;
-    check_empty_artwork(&root)?;
-    package.static_files("empty", &root.join("apps/vink-web/assets/empty"), |path| {
-        matches!(
-            path.file_name().and_then(|n| n.to_str()),
-            Some(
-                "vink-empty-no-results.webp"
-                    | "vink-empty-no-public-works.webp"
-                    | "vink-empty-first-draft.webp"
+    package.static_files(
+        WebArtifactId::StaticBrand,
+        "brand",
+        &root.join(checks::BRAND_DIR),
+        |path| {
+            matches!(
+                path.extension().and_then(|ext| ext.to_str()),
+                Some("png" | "svg" | "webmanifest")
             )
-        )
-    })?;
+        },
+    )?;
+    check_empty_artwork(&root)?;
+    package.static_files(
+        WebArtifactId::StaticEmpty,
+        "empty",
+        &root.join("apps/vink-web/assets/empty"),
+        |path| {
+            matches!(
+                path.file_name().and_then(|n| n.to_str()),
+                Some(
+                    "vink-empty-no-results.webp"
+                        | "vink-empty-no-public-works.webp"
+                        | "vink-empty-first-draft.webp"
+                )
+            )
+        },
+    )?;
     package.publish()
 }
 
@@ -201,41 +264,6 @@ pub fn legacy(env: &env::Env, release: bool) -> Result<(), String> {
         binary(artifact, release)?;
     }
     Ok(())
-}
-
-/// `/pkg/vink.css`: checks generated UI tokens first (so a stale `tokens.css` or
-/// `tailwind-theme.css` is never served), then compiles `packages/ui-system/leptos/tailwind/web.css`
-/// with the pinned Tailwind v4 CLI into one stylesheet (`--minify` in release).
-fn stylesheet(root: &Path, out: &Path, release: bool) -> Result<(), String> {
-    ui_tokens::run(root, true)?;
-    crate::tailwind::compile(root, &root.join(crate::tailwind::WEB_ENTRY), out, release)
-}
-
-/// The CodeMirror runtime (`apps/vink-web/editor`): installs the locked npm dependencies when the
-/// lockfile changed since the last install, then type-checks and bundles it to `outfile`.
-/// Install scripts are not run; esbuild and TypeScript ship their binaries as packages.
-fn editor_runtime(root: &Path, outfile: &Path) -> Result<(), String> {
-    let dir = root.join(EDITOR_RUNTIME_DIR);
-    let lock = std::fs::read(dir.join("package-lock.json"))
-        .map_err(|e| format!("read {EDITOR_RUNTIME_DIR}/package-lock.json: {e}"))?;
-    let stamp = dir.join("node_modules/.vink-installed-lock.json");
-    if std::fs::read(&stamp).ok().as_ref() != Some(&lock) {
-        let mut install = std::process::Command::new("npm");
-        install
-            .current_dir(&dir)
-            .args(["ci", "--ignore-scripts", "--no-audit", "--no-fund"]);
-        process::run(&mut install, "npm ci (editor runtime, locked)")?;
-        std::fs::write(&stamp, &lock).map_err(|e| format!("write {}: {e}", stamp.display()))?;
-    }
-    let mut bundle = std::process::Command::new("node");
-    bundle
-        .current_dir(&dir)
-        .arg("scripts/build.mjs")
-        .arg(outfile);
-    process::run(
-        &mut bundle,
-        "editor runtime: type check + bundle → vink-editor.js",
-    )
 }
 
 /// Only verified runtime derivatives enter /pkg; sources, boards and scripts stay out.

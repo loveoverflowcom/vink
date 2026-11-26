@@ -15,7 +15,7 @@ pub const HELP: &str = "Scoped workflows (PostgreSQL is attached, never started)
   doctor <scoped command above>         check only that command's prerequisites
 
 Rust owners: app, identity, store, xtask, web, notifications, ui, patterns, expressions, markdown,
-  preview, work-views. verify unit --test runs one integration target (not postgres).
+  preview, work-views (alias: work-view-policy). verify unit --test runs one integration target (not postgres).
 PostgreSQL without a selector runs the full lane. --filter applies to owner tests only.
 Web scenarios: main (alias), editor-first-draft, editor-chrome, editor, editor-format,
   desk, appearance, reader, discussion, storage, discovery, restart, endorsement, review,

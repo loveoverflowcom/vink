@@ -146,7 +146,7 @@ fn pinned_toolchain(root: &Path) -> Option<String> {
         .map(|v| v.trim_matches('"').to_string())
 }
 
-fn toolchain(root: &Path) -> Result<String, String> {
+pub fn toolchain(root: &Path) -> Result<String, String> {
     let pinned = pinned_toolchain(root).ok_or("rust-toolchain.toml has no channel")?;
     let version = output("rustc", &["--version"], root).ok_or("rustc not found; install rustup")?;
     if version.starts_with(&format!("rustc {pinned} ")) {

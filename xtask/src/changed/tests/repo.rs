@@ -528,3 +528,22 @@ fn a_source_edit_during_execution_invalidates_the_rest_of_the_plan() {
     assert!(outcomes[1].detail.contains("drifted"), "{outcomes:#?}");
     assert!(outcomes[2..].iter().all(|o| o.status == Status::NotRun));
 }
+
+#[test]
+fn rendered_build_impact_covers_both_names_of_a_rename() {
+    let repo = Repo::new("artifact-rename");
+    repo.write(CSS, "same bytes");
+    repo.commit("base");
+    let editor = "apps/vink-web/editor/src/test.ts";
+    fs::create_dir_all(repo.path().join(editor).parent().unwrap()).unwrap();
+    repo.git(&["mv", CSS, editor]);
+    let plan = repo.plan(&["--base", "HEAD"]).unwrap();
+    let output = render(&plan, std::time::Duration::ZERO, false);
+    let impact = output
+        .lines()
+        .find(|line| line.starts_with("web build DAG impact:"))
+        .unwrap();
+    for artifact in ["editor-js", "tailwind-css", "spa-index"] {
+        assert!(impact.contains(artifact), "{impact}");
+    }
+}

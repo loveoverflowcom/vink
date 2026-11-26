@@ -396,6 +396,7 @@ pub const XTASK_MODULES: &[(&str, &[Role])] = {
         ("process", &[R::Shared]),
         ("provision", &[R::Postgres]),
         ("tailwind", &[R::Web, R::Preview]),
+        ("tailwind_inputs.mjs", &[R::Web]),
         ("ui_navigation", &[R::Preview]),
         ("ui_preview", &[R::Preview, R::Cmp]),
         ("ui_qualification", &[R::Preview, R::Cmp]),
@@ -406,6 +407,7 @@ pub const XTASK_MODULES: &[(&str, &[Role])] = {
         ("web", &[R::WebPerf]),
         ("web_assets", &[R::Web]),
         ("web_boundary", &[R::Web]),
+        ("web_dag", &[R::Web]),
         ("workflow", &[R::Shared]),
     ]
 };
@@ -552,25 +554,7 @@ fn formal(sel: &mut Selection, g: &Graph, path: &str) -> bool {
 }
 
 fn tokens(sel: &mut Selection, path: &str) -> bool {
-    use crate::ui_tokens as t;
-    let outputs = [
-        t::CSS_OUT,
-        t::TAILWIND_THEME_OUT,
-        t::RUST_TOKENS_OUT,
-        t::RUST_CATALOG_OUT,
-        t::RUST_ICONS_OUT,
-        t::RUST_IDENTITY_OUT,
-        crate::ui_states::RUST_STATES_OUT,
-        crate::ui_navigation::RUST_NAVIGATION_OUT,
-        crate::ui_toggle::RUST_TOGGLE_OUT,
-        t::KOTLIN_TOKENS_OUT,
-        t::KOTLIN_CATALOG_OUT,
-        t::KOTLIN_ICONS_OUT,
-        t::KOTLIN_IDENTITY_OUT,
-        crate::ui_states::KOTLIN_STATES_OUT,
-        crate::ui_navigation::KOTLIN_NAVIGATION_OUT,
-        crate::ui_toggle::KOTLIN_TOGGLE_OUT,
-    ];
+    let outputs = crate::web_dag::TOKENS_SPEC.outputs;
     let input = path.starts_with(SHARED_UI_DIR);
     if !input && !outputs.contains(&path) {
         return false;
@@ -712,6 +696,7 @@ fn web_assets(sel: &mut Selection, path: &str) -> bool {
 fn browser(sel: &mut Selection, g: &Graph, path: &str) -> bool {
     if path == BROWSER_DISPATCHER {
         let why = "browser dispatcher hosts every phase and inline assertion";
+        manual_phases(sel, &["reader-bundle"], path);
         sel.owner(path, "browser fixture");
         sel.web_all(why, path);
         sel.scenario(Scenario::PerfBaseline, why, path);
@@ -1269,9 +1254,10 @@ fn app_lanes(sel: &mut Selection, local: &str, path: &str) {
 fn xtask_lanes(sel: &mut Selection, local: &str, path: &str) {
     let stem = local
         .trim_start_matches("src/")
-        .split(['/', '.'])
+        .split('/')
         .next()
-        .unwrap_or_default();
+        .unwrap_or(local)
+        .trim_end_matches(".rs");
     let Some((_, roles)) = XTASK_MODULES.iter().find(|(m, _)| *m == stem) else {
         sel.fallback("xtask module missing from XTASK_MODULES", path);
         return;

@@ -211,7 +211,7 @@ pub fn Button(
                 aria-label=move || accessible_label.map(|label| label.get())
                 aria-describedby=move || {
                     let mut ids = described_by.clone().into_iter().collect::<Vec<_>>();
-                    if let Some(note) = state.with(ActionState::note).and(note_id.map(|id| id.get())) { ids.push(note); }
+                    if let Some(note) = state.with(ActionState::note).and(described.clone()) { ids.push(note); }
                     (!ids.is_empty()).then(|| ids.join(" "))
                 }
                 on:click=press_handler(state, on_press)

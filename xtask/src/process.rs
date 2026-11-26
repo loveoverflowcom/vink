@@ -1,5 +1,13 @@
 use std::path::Path;
 use std::process::{Command, ExitCode};
+use std::time::Instant;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CargoFreshness {
+    pub fresh_units: usize,
+    pub rebuilt_units: usize,
+    pub elapsed_ms: u64,
+}
 
 pub fn cargo(root: &Path) -> Command {
     let mut command = Command::new(std::env::var("CARGO").unwrap_or_else(|_| "cargo".into()));
@@ -90,6 +98,51 @@ pub fn output(command: &mut Command, label: &str) -> Result<std::process::Output
         stdout,
         stderr,
     })
+}
+
+/// Runs a Cargo build with `--message-format=json-render-diagnostics`, streaming stderr live while
+/// parsing compiler-artifact freshness counts from stdout.
+pub fn run_cargo_json(command: &mut Command, label: &str) -> Result<CargoFreshness, String> {
+    use std::io::{BufRead, BufReader};
+    println!("==> {label}");
+    let start = Instant::now();
+    command
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::inherit());
+    let mut child = spawn_group(command, label)?;
+    let stdout = child.stdout.take().ok_or("missing stdout pipe")?;
+    let reader = std::thread::spawn(move || -> Result<(usize, usize), String> {
+        let mut fresh_units = 0usize;
+        let mut rebuilt_units = 0usize;
+        for line in BufReader::new(stdout).lines() {
+            let line = line.map_err(|e| e.to_string())?;
+            let Ok(value) = serde_json::from_str::<serde_json::Value>(&line) else {
+                continue;
+            };
+            if value.get("reason").and_then(|v| v.as_str()) == Some("compiler-artifact") {
+                if value.get("fresh").and_then(|v| v.as_bool()) == Some(true) {
+                    fresh_units += 1;
+                } else {
+                    rebuilt_units += 1;
+                }
+            }
+        }
+        Ok((fresh_units, rebuilt_units))
+    });
+    let status = wait_owned(&mut child)?;
+    let (fresh_units, rebuilt_units) = reader.join().map_err(|_| "stdout reader failed")??;
+    if status.success() && fresh_units + rebuilt_units == 0 {
+        return Err(format!("{label}: Cargo reported no compiler artifacts"));
+    }
+    if status.success() {
+        Ok(CargoFreshness {
+            fresh_units,
+            rebuilt_units,
+            elapsed_ms: start.elapsed().as_millis() as u64,
+        })
+    } else {
+        Err(format!("{label}: exited with {status}"))
+    }
 }
 
 /// Requires each named test in what `command` (a `cargo test ... --` invocation with its filters)

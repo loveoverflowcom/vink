@@ -15,6 +15,17 @@ use crate::process;
 pub const DIR: &str = "packages/ui-system/leptos/tailwind";
 pub const WEB_ENTRY: &str = "packages/ui-system/leptos/tailwind/web.css";
 pub const PREVIEW_ENTRY: &str = "packages/ui-system/leptos/tailwind/preview.css";
+pub const WEB_SOURCE_ROOTS: &[&str] = &[
+    "apps/vink-web/src",
+    "packages/ui-system/leptos/src",
+    "packages/vink-patterns/leptos/src",
+];
+pub const PREVIEW_SOURCE_ROOTS: &[&str] = &[
+    "packages/ui-system/leptos/src",
+    "packages/ui-system/leptos/preview/src",
+    "packages/ui-system/leptos/preview/examples",
+    "packages/vink-patterns/leptos/src",
+];
 /// Tailwind v4.1.8 fixed extraction for Leptos `class:` syntax (tailwindlabs/tailwindcss#18093).
 pub const MIN_VERSION: (u32, u32, u32) = (4, 1, 8);
 
@@ -27,10 +38,17 @@ pub fn ensure_installed(root: &Path) -> Result<PathBuf, String> {
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     let dir = root.join(DIR);
+    crate::web_assets::require_local_path(root, &dir.join("node_modules"))?;
     let inputs = package_inputs(&dir)?;
     let bin = dir.join("node_modules/.bin/tailwindcss");
+    let theme_css = dir.join("node_modules/tailwindcss/theme.css");
+    let utilities_css = dir.join("node_modules/tailwindcss/utilities.css");
     let stamp = dir.join("node_modules/.vink-tailwind-inputs");
-    if !bin.is_file() || std::fs::read(&stamp).ok().as_ref() != Some(&inputs) {
+    if !bin.is_file()
+        || !theme_css.is_file()
+        || !utilities_css.is_file()
+        || std::fs::read(&stamp).ok().as_ref() != Some(&inputs)
+    {
         let mut install = Command::new("npm");
         install
             .current_dir(&dir)
@@ -38,9 +56,9 @@ pub fn ensure_installed(root: &Path) -> Result<PathBuf, String> {
         process::run(&mut install, "npm ci (Tailwind v4 compiler, locked)")?;
         std::fs::write(&stamp, &inputs).map_err(|e| format!("write {}: {e}", stamp.display()))?;
     }
-    if !bin.is_file() {
+    if !bin.is_file() || !theme_css.is_file() || !utilities_css.is_file() {
         return Err(format!(
-            "Tailwind compiler binary missing after npm ci: {}",
+            "Tailwind compiler artifacts missing after npm ci: {}",
             bin.display()
         ));
     }
@@ -109,7 +127,7 @@ pub fn compile(root: &Path, input: &Path, output: &Path, minify: bool) -> Result
 }
 
 /// Validate exact pins before consulting either a cold or a warm npm cache.
-fn package_inputs(dir: &Path) -> Result<Vec<u8>, String> {
+pub(crate) fn package_inputs(dir: &Path) -> Result<Vec<u8>, String> {
     let read_json = |name: &str| -> Result<_, String> {
         let path = dir.join(name);
         let bytes = std::fs::read(&path).map_err(|e| format!("read {}: {e}", path.display()))?;
@@ -167,26 +185,21 @@ pub fn check(root: &Path, problems: &mut Vec<String>) {
     }
 
     let expected = [
-        (
-            WEB_ENTRY,
-            &[
-                "apps/vink-web/src",
-                "packages/ui-system/leptos/src",
-                "packages/vink-patterns/leptos/src",
-            ][..],
-        ),
-        (
-            PREVIEW_ENTRY,
-            &[
-                "packages/ui-system/leptos/src",
-                "packages/ui-system/leptos/preview/src",
-                "packages/ui-system/leptos/preview/examples",
-                "packages/vink-patterns/leptos/src",
-            ][..],
-        ),
+        (WEB_ENTRY, WEB_SOURCE_ROOTS),
+        (PREVIEW_ENTRY, PREVIEW_SOURCE_ROOTS),
     ];
     for (entry, required) in expected {
         check_entry(root, entry, required, problems);
+    }
+}
+
+pub(crate) fn validate_web_entry(root: &Path) -> Result<(), String> {
+    let mut problems = Vec::new();
+    check_entry(root, WEB_ENTRY, WEB_SOURCE_ROOTS, &mut problems);
+    if problems.is_empty() {
+        Ok(())
+    } else {
+        Err(problems.join("\n"))
     }
 }
 

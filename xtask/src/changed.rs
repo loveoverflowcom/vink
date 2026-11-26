@@ -38,7 +38,19 @@ fn normalize(check: &str) -> String {
         ["cargo", "xtask", rest @ ..] => rest,
         rest => rest,
     };
-    words.join(" ")
+    match words {
+        [
+            "verify",
+            kind @ ("unit" | "check"),
+            "work-view-policy",
+            rest @ ..,
+        ] => ["verify", kind, "work-views"]
+            .into_iter()
+            .chain(rest.iter().copied())
+            .collect::<Vec<_>>()
+            .join(" "),
+        _ => words.join(" "),
+    }
 }
 
 pub fn parse(args: &[&str]) -> Result<Args, String> {
@@ -401,6 +413,29 @@ pub fn render(plan: &ChangedPlan, elapsed: Duration, executing: bool) -> String 
             .unwrap();
         }
         writeln!(out, "     from: {}", list(&check.entry.paths, 4)).unwrap();
+    }
+    let paths: Vec<_> = s
+        .changes
+        .iter()
+        .flat_map(|change| change.paths.iter().map(String::as_str))
+        .collect();
+    let impact = crate::web_dag::affected_artifacts(&paths, true);
+    if !impact.is_empty() {
+        let direct: Vec<_> = impact.direct.keys().map(|id| id.name()).collect();
+        let closure: Vec<_> = impact.closure.iter().map(|id| id.name()).collect();
+        writeln!(
+            out,
+            "\nweb build DAG impact: direct={direct:?}; closure={closure:?}"
+        )
+        .unwrap();
+        if !impact.unmapped_web_paths.is_empty() {
+            writeln!(
+                out,
+                "web build DAG unmapped paths: {:?}",
+                impact.unmapped_web_paths
+            )
+            .unwrap();
+        }
     }
     if !plan.selection.artifacts.is_empty() {
         out.push_str(
