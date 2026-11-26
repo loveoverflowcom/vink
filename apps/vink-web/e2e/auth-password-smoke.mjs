@@ -418,7 +418,7 @@ async function authR3Login(page, check, openPage) {
   await page.waitFor(q(LOGIN), 'password mode after email');
 }
 
-async function memberAppearance(page, { base, check, openPage, userA, userB, principalA, principalB }) {
+async function memberAppearance(page, { base, check, openPage, other, userA, principalA, principalB }) {
   const sessionPath = '/api/v1/auth/session';
   await openAccount(page, base, 'active');
   await page.waitFor(`${DARK_LARGE_COMPACT} && ${q('#page-appearance')}`, 'member A restores all three choices after reload');
@@ -450,16 +450,28 @@ async function memberAppearance(page, { base, check, openPage, userA, userB, pri
     await old.finish(false, true);
     await expectDefaultAppearance(tab, check, 'old Active answer delivered after logout');
 
-    await credentials(page, LOGIN, userB, SECRET_B);
-    await page.click(LOGIN + '-submit');
+    // Reuse B's real Identity cookie from the isolated test profile. The shared login
+    // quota is also exercised by the later password recovery fixture.
+    const bSession = (await cookies(other, base))[sessionCookie];
+    check(bSession?.httpOnly && bSession.secure, 'B already has a real browser session');
+    await page.send('Network.setCookie', {name: bSession.name, value: bSession.value, url: base,
+      path: '/', secure: true, httpOnly: true, sameSite: bSession.sameSite});
+    const notifyTabs = () => page.eval(`(() => {
+      const channel = new BroadcastChannel('vink-session');
+      channel.postMessage('changed');
+      channel.close();
+    })()`);
+    await notifyTabs();
     await tab.waitFor(`${q('#page-appearance')} && ${ROOT_DEFAULTS}`, 'cross-tab B receives its defaults');
     await page.waitFor(`${q('#page-appearance')} && ${ROOT_DEFAULTS}`, 'B does not inherit A choices');
     check((await account(page)).body.principal_id === principalB, 'real account B receives defaults while A preferences are saved');
     await chooseAppearance(page, 'theme', 'light');
     await page.waitFor(`document.documentElement.dataset.theme === 'light'`, 'B saves its own theme');
     await chooseAppearance(page, 'theme', 'system');
-    await signOut(page, base);
-    await expectDefaultAppearance(page, check, 'B signs out');
+    await page.send('Network.deleteCookies', {name: sessionCookie, url: base});
+    await notifyTabs();
+    await page.waitFor(`${STANDING} === 'anonymous'`, 'the shared browser loses B’s cookie');
+    await expectDefaultAppearance(page, check, 'B’s session is absent from the shared browser');
     await credentials(page, LOGIN, userA, SECRET_A);
     await page.click(LOGIN + '-submit');
     await tab.waitFor(DARK_LARGE_COMPACT, 'cross-tab return to A restores A choices');
@@ -808,7 +820,7 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
     await control.waitFor(`${STANDING} === 'active'`, 'replacement cookie confirmed');
   };
   await memberAppearance(page, {
-    base, check, openPage, userA, userB, principalA: A.principal_id, principalB: B.principal_id,
+    base, check, openPage, other, userA, principalA: A.principal_id, principalB: B.principal_id,
   });
   await authorFollows(page, other, {
     base, openPage, check, holdAnswer, textContrast, switchActor,

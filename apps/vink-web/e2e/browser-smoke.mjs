@@ -385,6 +385,10 @@ async function bottomNavigationLinks(page) {
 }
 
 async function bottomNavigationRegression(page) {
+  const waitForSavedTheme = async theme => {
+    await page.waitFor(`document.documentElement.dataset.theme === '${theme}'`, 'member theme confirmed');
+    await page.waitFor(APPEARANCE_SETTLED, 'navigation colors settle after session confirmation');
+  };
   for (const theme of ['dark', 'light']) {
     await page.viewport(320);
     await page.goto(`${args.base}/toi`);
@@ -402,6 +406,7 @@ async function bottomNavigationRegression(page) {
                 : ''),
             'navigation route hydration',
           );
+          await waitForSavedTheme(theme);
           await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
           const slug = route === '/' ? 'explore' : route.slice(1);
           const name = `nav-${slug}-${width}-${scale}-${theme}`;
@@ -438,6 +443,7 @@ async function bottomNavigationRegression(page) {
         `document.documentElement.dataset.hydrated === 'true' && Boolean(document.querySelector('#draft-scope')) && document.querySelector('#draft-scope').textContent !== 'Đang tìm tác phẩm…'`,
         `800-height nav hydration (${width})`,
       );
+      await waitForSavedTheme(theme);
       await page.eval(`document.documentElement.style.fontSize = '200%'; scrollTo(0, 0)`);
       await page.capture(`nav-ban-viet-${width}x800-200-${theme}`, {
         scenario: `bottom-nav-${width}x800`,
@@ -450,6 +456,7 @@ async function bottomNavigationRegression(page) {
     await page.viewport(390);
     await page.goto(`${args.base}/`);
     await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'navigation contrast hydration');
+    await waitForSavedTheme(theme);
     await textContrast(page, theme, 'bottom-navigation', [
       ...['/', '/ban-viet', '/toi'].map(href => `.vk-ui-bottom-nav a[href="${href}"] .vk-ui-nav-item__label`),
       '.vk-ui-bottom-nav a[aria-current="page"] .vk-ui-icon',
@@ -485,6 +492,7 @@ async function bottomNavigationRegression(page) {
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'after-hydration nav check');
   await page.waitFor(`document.querySelector('.vk-ui-bottom-nav a[href="/toi"] [data-kind=account]')?.dataset.initials === 'TT'`, 'nav avatar initials hydrated');
   await page.eval(`document.documentElement.style.fontSize = '200%'; scrollTo(0, 0)`);
+  await waitForSavedTheme('light');
   await bottomNavigationAnatomy(page, '/toi', 'signed-in avatar');
   await bottomNavigationAlignment(page, 'nav-toi-360x800-200-after-hydration');
 
