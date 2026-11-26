@@ -1148,7 +1148,11 @@ export async function standalone(page, {args, check, openPage}) {
   check(!await page.eval("document.body.textContent.includes('Bản thảo trên Vink')"),
     'a pending work stays off the public author profile');
   await standaloneWorkViewCheck(page, { args, check });
-  // #388: the work-view check ends signed out; the save journey starts as a guest.
+  // #388 starts signed out and measures baseline text in this disposable Chrome profile.
+  // The appearance checks above deliberately saved settings for one of its readers.
+  await page.eval(`for (const key of Object.keys(localStorage)) {
+    if (key.startsWith('vink.ui.member.')) localStorage.removeItem(key);
+  }`);
   await readerSave(page, { args, check, openPage,
     reader: { username: username + 'b', password: SECRET_B },
     other: { username, password: SECRET_A } });
