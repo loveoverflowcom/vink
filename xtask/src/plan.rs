@@ -349,6 +349,7 @@ impl Scenario {
         matches!(
             self,
             Self::Reader
+                | Self::Review
                 | Self::Appearance
                 | Self::Editor
                 | Self::EditorChrome
@@ -410,7 +411,9 @@ impl Scenario {
             Self::Endorsement => {
                 "App scratch; loopback author + second principal with moderator grant"
             }
-            Self::Review => "App scratch; loopback author, moderator and reviewer/admin seat",
+            Self::Review => {
+                "App scratch with tag catalog; loopback author, moderator and reviewer/admin seat"
+            }
             Self::Auth => {
                 "sample App scratch + separate real Identity scratch/local outbox; also sign-in-disabled guest"
             }

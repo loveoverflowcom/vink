@@ -6857,7 +6857,7 @@ try {
   else if (args.phase === 'after-restart') await afterRestartPhase(page);
   else if (args.phase === 'endorsement') await endorsementAsReader(page, { args, check, captureMatrix: captureDiscussionMatrix });
   else if (args.phase === 'review-withdrawn') {
-    await reviewWithdrawnPage(page, { args, check, captureMatrix: captureDiscussionMatrix });
+    await reviewWithdrawnPage(page, { args, check, openPage: () => openPage(cdp), captureMatrix: captureDiscussionMatrix });
     await markdownReader(page, { args, check, textContrast });
   }
   else if (args.phase === 'auth') await authWeb(page, { args, check, openPage: (isolated) => openPage(cdp, isolated) });

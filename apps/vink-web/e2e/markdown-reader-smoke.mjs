@@ -1,4 +1,4 @@
-// #264 and #263 AC-04: real App/PG publication, three reading surfaces, shared render corpus.
+// #264 and #263 AC-04: real App/PG publication, authorized case snapshot and shared Reader render corpus.
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
