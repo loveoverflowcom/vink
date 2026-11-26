@@ -6227,7 +6227,7 @@ async function discussionReadingAndWrites(page) {
   check(await page.eval("!document.querySelector('#discussion-refresh, #own-comments-refresh, #discussion-read-retry, #own-comments-retry')"), 'authenticated healthy discussion has no manual reload control');
   // #560 mapping: docs/development/web-semantics.md. Local author and real settings CAS.
   const modeAction = '#feedback-region #discussion-mode-toggle';
-  check(await page.eval("document.querySelector('#comments-mode').dataset.modeKind === 'open'")
+  check(await page.eval("document.querySelector('#comments-mode').dataset.modeKind === 'open' && !document.querySelector('#comments-mode .vk-discussion-mode__status, .vk-discussion-mode__dot')")
     && await matchesAXButton(page, modeAction, { name: 'Tắt bình luận' }),
     '#560 open policy exposes the close action without a disclosure state');
   const text = 'D2T-03 [Mẫu] Đọc khổ thơ\n\n  Tiếng Việt 👩‍💻 🌧️';
@@ -6340,7 +6340,7 @@ async function discussionReadingAndWrites(page) {
     && await matchesAXButton(page, modeAction, { name: 'Mở bình luận' }),
     '#560 closed policy exposes the reopen action without a disclosure state');
   await page.send('Browser.grantPermissions', { permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'] });
-  check(await page.eval(`window.discussionComposerNode === document.querySelector('#root-composer') && document.querySelector('#root-composer').value===${JSON.stringify(text + newer)} && document.querySelector('#root-composer').readOnly === true && !document.querySelector('#root-composer-send') && document.querySelector('.vk-discussion-closed-banner')?.textContent.includes('Bạn đã tắt bình luận cho bài viết này') && !!document.querySelector('[data-own-comment="${commentId}"]')`), 'closing keeps readonly draft, author notice, readable own projection and removes Gửi button');
+  check(await page.eval(`window.discussionComposerNode === document.querySelector('#root-composer') && document.querySelector('#root-composer').value===${JSON.stringify(text + newer)} && document.querySelector('#root-composer').readOnly === true && !document.querySelector('#root-composer-send') && document.querySelector('#comments-mode [role=status]')?.textContent.includes('Bạn đã tắt bình luận cho bài viết này') && !!document.querySelector('[data-own-comment="${commentId}"]')`), 'closing keeps readonly draft, author notice, readable own projection and removes Gửi button');
   await page.eval(`[...document.querySelectorAll('.vk-discussion-closed-actions button')].find(b=>b.textContent.includes('Sao chép nháp'))?.click()`);
   await page.waitFor(`document.querySelector('.vk-discussion-closed-actions [data-copied="true"]')?.textContent.includes('Đã sao chép nháp')`, 'closed draft copy confirmation');
   check(await page.eval('navigator.clipboard.readText()') === text + newer, 'closed draft copy writes exact draft text to real clipboard');
@@ -6544,7 +6544,7 @@ async function discussionReadingAndWrites(page) {
     const retryRead = readCursors.length;
     check(await page.eval("document.querySelectorAll('#discussion-read-retry').length===1"), 'one localized retry after a failed background GET');
     await page.click('#discussion-read-retry');
-    await page.waitFor(`document.querySelector('#root-pagination button') && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'root pagination control');
+    await page.waitFor(`document.querySelector('#root-pagination button') && document.querySelector('#root-list')?.dataset.hasMore === 'true' && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'root pagination control');
     check(JSON.stringify(readCursors.slice(retryRead)) === JSON.stringify([null]), 'one new head GET on retry');
     check(await page.eval("!document.querySelector('#discussion-read-retry')"), 'recovered discussion removes its retry');
     failNextPage = true;
@@ -6581,7 +6581,7 @@ async function discussionReadingAndWrites(page) {
     currentFixture = { ...fixture, roots: [], next_cursor: null };
     await wakeDiscussion(page);
     await page.waitFor(`document.querySelector('.vk-discussion-empty') && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'authoritative empty discussion state');
-    check(await page.eval(`document.querySelector('.vk-discussion-empty')?.textContent.includes('Chưa có nhận xét nào được hiển thị.') && !document.querySelector('#discussion-load-retry') && !document.querySelector('#feedback-region')?.textContent.includes('Đã hết danh sách nhận xét')`), 'R4 empty state renders cleanly without error button or list end');
+    check(await page.eval(`document.querySelector('.vk-discussion-empty')?.textContent.includes('Chưa có nhận xét nào được hiển thị.') && !document.querySelector('#discussion-load-retry') && document.querySelector('#root-list')?.dataset.hasMore === 'false' && !document.querySelector('#feedback-region .vk-ui-list-end')`), 'R4 empty state renders cleanly without error button or list end');
     check(await page.eval(`(() => {
       const empty = document.querySelector('.vk-discussion-empty');
       const region = empty.closest('#feedback-region').getBoundingClientRect();
@@ -6637,7 +6637,8 @@ async function discussionR31Geometry(page, width, scale, scenario) {
       getComputedStyle(rootReply).borderTopLeftRadius === '6px' &&
       getComputedStyle(segment).columnGap === '2px';
     const headingStatic = document.querySelector('.vk-discussion-head')?.textContent.includes('Nhận xét') &&
-      document.querySelector('.vk-discussion-order')?.textContent.trim() === 'Cũ đến mới' &&
+      !document.querySelector('.vk-discussion-order') &&
+      document.querySelector('#root-list')?.dataset.order === 'oldest-first' &&
       !document.querySelector('#feedback-region select');
     return {root:rect(root), group:rect(group), composer:rect(composer), body:rect(body),
       segment:rect(segment), avatarLeft:rect(root.querySelector('.vk-discussion-byline .vk-ui-avatar')).left,
@@ -6668,7 +6669,7 @@ async function discussionR31Geometry(page, width, scale, scenario) {
     `${scenario}: R4 alignment (${isDesktop ? 'desktop name-track indent' : 'mobile full width'}) (${JSON.stringify(geometry)})`
   );
   check(close(geometry.fieldPadLeft, geometry.fieldPadRight) && geometry.gap===16, `${scenario}: symmetrical composer inset and 16px reply spacing`);
-  check(geometry.headingStatic && geometry.segmentOrderOk && geometry.segmentCornersOk, `${scenario}: R4 heading “Cũ đến mới” static and root segmented Ưng|Trả lời 6px inner corners`);
+  check(geometry.headingStatic && geometry.segmentOrderOk && geometry.segmentCornersOk, `${scenario}: quiet heading, semantic oldest-first order and R4 root segmented Ưng|Trả lời 6px inner corners`);
   check(geometry.reasons===1 && geometry.targetReasons===0 && geometry.descriptions && geometry.shared, `${scenario}: one uniform branch reason describes every separate target`);
   check(geometry.field && geometry.radius==='28px' && geometry.rootSeg48 && geometry.buttons, `${scenario}: one native field, 28px tonal surface, 48px root segment and >=44px targets`);
   check(geometry.contrast>=4.5, `${scenario}: resolved body/metadata/label/button contrast >=4.5 (${geometry.contrast.toFixed(2)})`);

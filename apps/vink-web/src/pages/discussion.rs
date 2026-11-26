@@ -13,7 +13,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use leptos::prelude::*;
 use vink_ui::{
     ActionState, Button, ButtonVariant, FieldMode, Heading, HeadingLevel, Icon, IconButton,
-    IconName, IconSize, ListEnd, LoadingIndicator, Skeleton, SkeletonShape, TextInput, TypeRole,
+    IconName, IconSize, LoadingIndicator, Skeleton, SkeletonShape, TextInput, TypeRole,
 };
 #[cfg(feature = "browser")]
 use vink_ui::{Clock, use_loading_gate};
@@ -22,8 +22,8 @@ use super::endorsement::Endorsements;
 use crate::api::{self, LoadError};
 use crate::contract::{ApiError, DiscussionPage, EndorsementSummaries, ReplyList};
 use crate::discussion_state::{
-    ComposerKey, ComposerStatus, Delivery, DiscussionController, NoticeTone, Receipt, ReplyTarget,
-    Scope, SendEmphasis, Target,
+    ComposerKey, ComposerStatus, Delivery, DiscussionController, NoticeTone, ReplyTarget, Scope,
+    SendEmphasis, SendIntent, Target,
 };
 use crate::endorsement_state::page_targets;
 #[cfg(feature = "browser")]
@@ -150,6 +150,7 @@ struct ViewState {
     unavailable: bool,
     #[cfg_attr(not(feature = "browser"), allow(dead_code))]
     epoch: u64,
+    local_fixture: bool,
     mutation: Option<DiscussionMutation>,
     mutation_message: Option<String>,
     mutation_needs_refresh: bool,
@@ -332,16 +333,8 @@ fn initial_chain(page: &DiscussionPage) -> crate::read_lifecycle::PageChain {
 }
 
 /// `viewer_is_author` is the server's `viewer_is_work_author` (VDR-DISCUSSION-R4@r1 §4).
-fn comments_mode_message(
-    unavailable: bool,
-    comments_open: bool,
-    viewer_is_author: bool,
-) -> &'static str {
-    if unavailable {
-        "Thảo luận hiện không khả dụng. Bản đang soạn được giữ lại."
-    } else if comments_open {
-        "Bình luận đang mở"
-    } else if viewer_is_author {
+fn closed_comments_message(viewer_is_author: bool) -> &'static str {
+    if viewer_is_author {
         "Bạn đã tắt bình luận cho bài viết này"
     } else {
         "Tác giả đã tắt bình luận cho bài viết này"
@@ -353,9 +346,9 @@ fn shows_empty(state: &ViewState) -> bool {
     !state.unavailable && state.error.is_none() && state.page.roots.is_empty()
 }
 
-/// The end of the list is a fact of the cursor: only a non-empty list without a next cursor.
-fn shows_list_end(state: &ViewState) -> bool {
-    !state.unavailable && !state.page.roots.is_empty() && state.page.next_cursor.is_none()
+/// Both pagination and its DOM metadata read the server's continuation.
+fn has_more_roots(state: &ViewState) -> bool {
+    state.page.next_cursor.is_some()
 }
 
 /// Decorative icon of an own-comment chip; the label carries the meaning.
@@ -391,10 +384,8 @@ fn comments_mode_kind(
         "system-locked"
     } else if !controller.settings.comments_open {
         "author-closed"
-    } else if state.own.author {
-        "open"
     } else {
-        "reader"
+        "open"
     }
 }
 
@@ -578,7 +569,6 @@ pub fn Discussion(work_id: String, #[prop(optional)] read_only: bool) -> impl In
             data-readonly=read_only.then_some("true")>
             <div class="vk-discussion-head flex flex-wrap items-baseline justify-between gap-x-vk-4 gap-y-vk-2 [&_.vk-ui-heading]:m-0">
                 <Heading level=HeadingLevel::H2 role=TypeRole::Title id="feedback-heading" attr:tabindex="-1">"Nhận xét"</Heading>
-                <span class="vk-discussion-order text-[length:var(--vk-type-caption-size)] text-vk-on-surface-variant">"Cũ đến mới"</span>
             </div>
             {read_only.then(|| view! {
                 <div class="vk-discussion-readonly-notice flex items-start gap-[12px] [padding:14px_16px] rounded-vk-lg bg-vk-surface-container-high text-vk-on-surface [&>.vk-ui-icon]:shrink-0 [&>.vk-ui-icon]:[margin-block-start:2px] [&>.vk-ui-icon]:text-vk-on-surface-variant"
@@ -721,6 +711,7 @@ fn DiscussionLoaded(
         page_error: None,
         unavailable: false,
         epoch: 0,
+        local_fixture: fixture.is_some(),
         mutation: None,
         mutation_message: None,
         mutation_needs_refresh: false,
@@ -826,31 +817,39 @@ fn DiscussionLoaded(
     });
     let mode_kind =
         Memo::new(move |_| comments_mode_kind(&state.read(), &controller.read(), read_only));
+    let show_mode_surface = move || {
+        let s = state.read();
+        mode_kind.get() != "open" || s.own.author || s.local_fixture || s.mutation_message.is_some()
+    };
     let retry_skeleton = discussion_skeleton_visibility(Signal::derive(move || {
         let state = state.read();
         state.loading && state.page.roots.is_empty()
     }));
     view! {
-        <div id="comments-mode" class="vk-discussion-mode grid gap-vk-2 min-w-0"
+        <div id="comments-mode" class="vk-discussion-mode gap-vk-2 min-w-0"
+            hidden=move || !show_mode_surface()
             data-mode-kind=move || mode_kind.get()
             aria-busy=move || (state.read().loading || state.read().mutation.is_some()).to_string()
             data-tone=move || (state.read().unavailable || state.read().error.is_some()).then_some("adverse")>
+            <Show when=move || mode_kind.get() != "open" || (!read_only && state.read().own.author && !state.read().unavailable)>
             <div class="vk-discussion-mode__row flex flex-wrap items-center justify-between gap-x-vk-3 gap-y-vk-2 min-w-0">
+                <Show when=move || mode_kind.get() != "open">
                 <div class="vk-discussion-mode__status flex items-start gap-[10px] flex-[1_1_14rem] min-w-0 [&>.vk-ui-icon]:shrink-0 [&>.vk-ui-icon]:[margin-block-start:3px]">
                     {move || match mode_kind.get() {
-                        "open" => view! { <span class="vk-discussion-mode__dot" aria-hidden="true"></span> }.into_any(),
                         "changing" => view! { <LoadingIndicator /> }.into_any(),
                         "conflict" => view! { <Icon name=IconName::Info size=IconSize::Small /> }.into_any(),
                         "author-closed" => view! { <Icon name=IconName::Lock size=IconSize::Small /> }.into_any(),
                         "system-locked" => view! { <Icon name=IconName::VerifiedUser size=IconSize::Small /> }.into_any(),
-                        _ => view! { <span class="vk-discussion-mode__dot vk-discussion-mode__dot--subtle" aria-hidden="true"></span> }.into_any(),
+                        _ => ().into_any(),
                     }}
                     <div class="vk-discussion-mode__copy min-w-0">
                         <p role="status" class="m-0 wrap-anywhere [font-weight:var(--vk-type-label-weight)]">{move || match mode_kind.get() {
                             "changing" => "Đang cập nhật thiết lập bình luận…",
                             "system-locked" => "Hệ thống đang khóa bình luận",
                             "conflict" if !state.read().unavailable => "Chưa xác nhận được trạng thái bình luận",
-                            _ => comments_mode_message(state.read().unavailable, controller.read().settings.comments_open, state.read().own.author),
+                            "conflict" => "Thảo luận hiện không khả dụng. Bản đang soạn được giữ lại.",
+                            "author-closed" => closed_comments_message(state.read().own.author),
+                            _ => "",
                         }}</p>
                         {move || {
                             let s = state.read();
@@ -859,20 +858,20 @@ fn DiscussionLoaded(
                                 Some("Kiểm tra trạng thái mới nhất trước khi thao tác tiếp.".to_owned())
                             } else if (read_only || !c.settings.comments_open) && !s.unavailable {
                                 Some("Nhận xét cũ vẫn hiển thị bên dưới.".to_owned())
-                            } else if mode_kind.get() == "open" {
-                                Some("Người đọc có thể gửi bình luận gốc và trả lời.".to_owned())
                             } else {
                                 None
                             }
                         }.map(|detail| view! { <p class="vk-muted m-0 wrap-anywhere text-[length:var(--vk-type-caption-size)]">{detail}</p> })}
                     </div>
                 </div>
+                </Show>
                 <Show when=move || !read_only && !state.read().unavailable && state.read().own.author>
                     <Button id="discussion-mode-toggle" variant=ButtonVariant::Tonal state=write_state on_press=move |_| change_mode(state, controller, lve)>
                         {move || if controller.read().settings.comments_open { "Tắt bình luận" } else { "Mở bình luận" }}
                     </Button>
                 </Show>
             </div>
+            </Show>
             {fixture.is_some().then(|| view! { <p class="vk-muted vk-discussion-fixture-note">"Định danh thử trên thiết bị này · Không phải tài khoản thật."</p> })}
             <Show when=move || !state.read().unavailable && state.read().error.is_some()>
                 <p role="status" class="vk-discussion-mode__alert">{move || state.read().error.clone().unwrap_or_default()}</p>
@@ -893,9 +892,6 @@ fn DiscussionLoaded(
             <DiscussionComposer key=ComposerKey::Root controller state refresh />
         </Show>
         <OwnComments state controller lve client_ready />
-        <Show when=move || !read_only>
-            <p class="vk-muted vk-discussion-tools-note">"Bạn có thể dùng emoji từ bàn phím."</p>
-        </Show>
         <Show when=move || state.read().unavailable && !retry_skeleton.get()>
             <div class="vk-discussion-state-card" data-tone="adverse" role="region" aria-label="Lỗi tải nhận xét">
                 <Icon name=IconName::Error size=IconSize::Small />
@@ -919,11 +915,12 @@ fn DiscussionLoaded(
             <Show when=move || state.read().restarted_tail>
                 <p role="status" class="vk-muted" data-testid="discussion-chain-restarted">"Đã làm mới nhận xét. Các trang sau cần được tải lại."</p>
             </Show>
-            <div id="root-list">
+            <div id="root-list" data-order="oldest-first"
+                data-has-more=move || has_more_roots(&state.read()).to_string()>
                 <For each=move || { state.read().page.roots.iter().map(|root| adapters::root_id(root).to_owned()).collect::<Vec<_>>() } key=|id| id.clone()
                     children=move |root| view! { <RootThreadView root controller state refresh write_state lve read_only /> } />
             </div>
-            <Show when=move || state.read().page.next_cursor.is_some()>
+            <Show when=move || has_more_roots(&state.read())>
                 <div id="root-pagination" class="vk-discussion-pagination justify-items-center gap-vk-2 my-vk-4 min-w-0">
                     <Show when=move || state.read().page_error.is_some()>
                         <div class="vk-discussion-inline-error" data-tone="adverse">
@@ -941,9 +938,6 @@ fn DiscussionLoaded(
                         read_roots(state, controller, lve, append);
                     }>{move || state.read().page_error.as_ref().map_or("Xem thêm nhận xét", PageReadFailure::action)}</Button>
                 </div>
-            </Show>
-            <Show when=move || shows_list_end(&state.read())>
-                <ListEnd label="Đã hết danh sách nhận xét được cấp." />
             </Show>
         </Show>
         <Show when=move || !read_only>
@@ -1373,56 +1367,45 @@ fn DiscussionComposer(
     let editor_id = StoredValue::new(id.clone());
     let session = Session::current();
     let host = expect_context::<ReaderAuth>();
-    let can_auth = Memo::new(move |_| {
-        if blocked || state.read().unavailable {
-            return false;
-        }
+    let send_intent = move || {
+        let s = state.read();
         let c = controller.read();
-        c.sign_in_open
-            && c.settings.comments_open
-            && c.scope.session.is_none()
-            && matches!(
-                session.standing.get(),
-                crate::session::Standing::Anonymous | crate::session::Standing::NeedsPrincipal
-            )
-            && (key.get_value() == ComposerKey::Root || c.draft(&key.get_value()).target_available)
-    });
+        let owner_ready = s.local_fixture
+            || session
+                .profile_scope
+                .with(|scope| scope.is_some() && *scope == c.scope.session);
+        let intent = session
+            .standing
+            .with(|standing| c.send_intent(&key.get_value(), standing, owner_ready));
+        if intent != SendIntent::Pending
+            && (blocked
+                || s.unavailable
+                || s.loading
+                || s.mutation.is_some()
+                || s.mutation_needs_refresh)
+        {
+            SendIntent::Blocked("Chờ tải lại nhận xét và chọn ngữ cảnh trước khi gửi.")
+        } else {
+            intent
+        }
+    };
     let copy_status = RwSignal::new(Option::<(bool, &'static str)>::None);
     let is_closed = Memo::new(move |_| !controller.read().settings.comments_open);
-    let auth_action = ViewFn::from(move || {
-        move || {
-            if is_closed.get() {
-                return view! {
-                <div class="vk-discussion-closed-actions">
-                    <span class="vk-muted">"Chỉ đọc lúc này"</span>
-                    <Show when=move || !value.get().is_empty()>
-                        <Button variant=ButtonVariant::Tonal leading=IconName::ContentCopy
-                            on_press=move |_| copy_draft_text(editor_id.get_value(), value.get_untracked(), copy_status)>
-                            "Sao chép nháp"
-                        </Button>
-                    </Show>
-                    {move || copy_status.get().map(|(ok, msg)| view! {
-                        <span role="status" class="vk-discussion-copy-status" data-copied=ok.then_some("true")>{msg}</span>
-                    })}
-                </div>
-            }.into_any();
-            }
-            view! {
-                <Button id=format!("{}-auth", editor_id.get_value()) variant=ButtonVariant::Filled
-                    on_press=move |_| {
-                        if can_auth.get_untracked() {
-                            host.open_for_comment(editor_id.get_value(), controller, state);
-                        }
-                    }>
-                    {move || if session.standing.get() == crate::session::Standing::NeedsPrincipal {
-                        "Chọn bút danh"
-                    } else {
-                        "Đăng nhập để nhận xét"
-                    }}
+    let closed_actions = ViewFn::from(move || {
+        view! {
+        <div class="vk-discussion-closed-actions">
+            <span class="vk-muted">"Chỉ đọc lúc này"</span>
+            <Show when=move || !value.get().is_empty()>
+                <Button variant=ButtonVariant::Tonal leading=IconName::ContentCopy
+                    on_press=move |_| copy_draft_text(editor_id.get_value(), value.get_untracked(), copy_status)>
+                    "Sao chép nháp"
                 </Button>
-            }
-            .into_any()
-        }
+            </Show>
+            {move || copy_status.get().map(|(ok, msg)| view! {
+                <span role="status" class="vk-discussion-copy-status" data-copied=ok.then_some("true")>{msg}</span>
+            })}
+        </div>
+    }.into_any()
     });
     let field_mode = Signal::derive(move || {
         if is_closed.get() {
@@ -1431,25 +1414,11 @@ fn DiscussionComposer(
             FieldMode::Editable
         }
     });
-    let show_alternative = Signal::derive(move || is_closed.get() || can_auth.get());
-    let action = Signal::derive(move || {
-        let c = controller.read();
-        if matches!(c.draft(&key.get_value()).delivery, Delivery::Sending(_)) {
-            return ActionState::pending("Đang gửi…");
-        }
-        if blocked
-            || state.read().unavailable
-            || state.read().loading
-            || state.read().mutation.is_some()
-            || state.read().mutation_needs_refresh
-        {
-            return ActionState::disabled("Chờ tải lại nhận xét và chọn ngữ cảnh trước khi gửi.");
-        }
-        if let Some(reason) = c.reason(&key.get_value()) {
-            ActionState::disabled(reason)
-        } else {
-            ActionState::Enabled
-        }
+    let action = Signal::derive(move || match send_intent() {
+        SendIntent::Pending => ActionState::pending("Đang gửi…"),
+        SendIntent::Empty => ActionState::Disabled { reason: None },
+        SendIntent::Blocked(reason) => ActionState::disabled(reason),
+        SendIntent::Authenticate | SendIntent::Submit => ActionState::Enabled,
     });
     // R4: tonal while empty, filled with text; progress is the pending state of the button.
     let send_variant =
@@ -1472,12 +1441,16 @@ fn DiscussionComposer(
         <div class="vk-discussion-composer" data-status=move || controller.read().status(&key.get_value()).id()>
             <FeedbackComposer id intent=FeedbackIntent::Unspecified value state=action tonal=true
                 comments_closed=is_closed field_mode
-                show_alternative alternative=auth_action send_variant send_icon
+                show_alternative=is_closed alternative=closed_actions send_variant send_icon
                 on_input=move |input: TextInput| {
                     copy_status.set(None);
                     controller.update(|c| c.edit(&key.get_value(), input.value, input.composing));
                 }
-                on_submit=move |_| { if !blocked { submit(controller, state, key.get_value(), refresh, false); } } >
+                on_submit=move |_| match untrack(send_intent) {
+                    SendIntent::Authenticate => host.open_for_comment(editor_id.get_value(), controller, state),
+                    SendIntent::Submit => submit(controller, state, key.get_value(), refresh, false),
+                    _ => {}
+                } >
                 {matches!(key.get_value(), ComposerKey::Replies(_)).then(|| view! {
                     <div class="vk-discussion-composer-heading flex flex-wrap items-center justify-between gap-vk-2 min-w-0">
                         <Show when=move || matches!(controller.read().reply_target(&key.get_value()), Some(ReplyTarget::Root | ReplyTarget::Reply { .. }))>
@@ -1548,19 +1521,13 @@ fn DiscussionComposer(
                         </div>
                     </Show>
                 })}
-                <Show when=move || is_closed.get()>
+                <Show when=move || is_closed.get() && matches!(key.get_value(), ComposerKey::Replies(_))>
                     <div class="vk-discussion-closed-banner" data-tone="neutral" role="status">
                         <Icon name=IconName::Lock size=IconSize::Small />
                         <div>
-                            <strong>{move || comments_mode_message(false, false, controller.read().viewer_is_author)}</strong>
+                            <strong>{move || closed_comments_message(controller.read().viewer_is_author)}</strong>
                             <p>"Nhận xét cũ vẫn hiển thị bên dưới. Bạn vẫn có thể sao chép đoạn đã soạn để giữ lại."</p>
                         </div>
-                    </div>
-                </Show>
-                <Show when=move || !is_closed.get() && can_auth.get()>
-                    <div class="vk-discussion-guest-banner">
-                        <Icon name=IconName::Info size=IconSize::Small />
-                        <p>"Đăng nhập để gửi nhận xét. Bạn vẫn đọc được bình luận bên dưới."</p>
                     </div>
                 </Show>
             </FeedbackComposer>
@@ -1591,11 +1558,6 @@ fn DiscussionComposer(
                     else if state.read().loading || state.read().mutation.is_some() || state.read().mutation_needs_refresh { ActionState::disabled("Chờ tải lại nhận xét trước khi đối soát.") }
                     else { ActionState::Enabled }
                 }) on_press=move |_| submit(controller, state, key.get_value(), refresh, true)>"Kiểm tra lần gửi"</Button>
-            </Show>
-            <Show when=move || controller.read().status(&key.get_value()) == ComposerStatus::Refused
-                && controller.read().sign_in_open
-                && matches!(controller.read().draft(&key.get_value()).receipt, Some(Receipt::Refused(ApiError::Unauthenticated)))>
-                <Button variant=ButtonVariant::Tonal on_press=move |_| host.open_for_comment(editor_id.get_value(), controller, state)>"Đăng nhập lại"</Button>
             </Show>
             </div>
         </div>
@@ -1967,11 +1929,16 @@ fn submit(
         let Some(submission) = submission else {
             return;
         };
+        let session = Session::current();
         spawn_transport(async move {
             let result = api::submit_comment(&submission.scope.work_id, &submission.request).await;
+            let unauthenticated = matches!(result, Err(ApiError::Unauthenticated));
             let mut accepted = false;
             controller.try_update(|c| accepted = c.complete(&submission, result));
             if accepted {
+                if unauthenticated && !state.read_untracked().local_fixture {
+                    session.fence_profile();
+                }
                 refresh.run(());
             }
         });
@@ -2175,35 +2142,17 @@ mod tests {
         assert!(unsettled.holds_work());
     }
     #[test]
-    fn loss_of_public_access_never_claims_the_author_closed_comments() {
-        for prior_mode in [true, false] {
-            for author in [true, false] {
-                assert_eq!(
-                    comments_mode_message(true, prior_mode, author),
-                    "Thảo luận hiện không khả dụng. Bản đang soạn được giữ lại."
-                );
-                let message = comments_mode_message(true, prior_mode, author);
-                assert!(!message.contains("Tác giả") && !message.contains("Bạn đã tắt"));
-            }
-        }
+    fn closed_copy_follows_the_servers_author_fact() {
         assert_eq!(
-            comments_mode_message(false, false, false),
+            closed_comments_message(false),
             "Tác giả đã tắt bình luận cho bài viết này"
         );
-        // VDR-DISCUSSION-R4@r1 §4: only the server's author fact changes the wording.
         assert_eq!(
-            comments_mode_message(false, false, true),
+            closed_comments_message(true),
             "Bạn đã tắt bình luận cho bài viết này"
         );
-        assert_eq!(
-            comments_mode_message(false, true, true),
-            "Bình luận đang mở"
-        );
-        assert_eq!(
-            comments_mode_message(false, true, false),
-            "Bình luận đang mở"
-        );
     }
+
     #[test]
     fn a_failed_next_page_stays_local_while_a_refresh_failure_or_loss_of_access_keeps_its_scope() {
         use crate::contract::ApiError;
@@ -2235,6 +2184,7 @@ mod tests {
             page_error: None,
             unavailable: false,
             epoch: 0,
+            local_fixture: false,
             mutation: None,
             mutation_message: None,
             mutation_needs_refresh: false,
@@ -2325,6 +2275,7 @@ mod tests {
             page_error: None,
             unavailable: false,
             epoch: 0,
+            local_fixture: false,
             mutation: None,
             mutation_message: None,
             mutation_needs_refresh: false,
@@ -2406,6 +2357,7 @@ mod separated_read_regressions {
             page_error: None,
             unavailable: false,
             epoch: 0,
+            local_fixture: false,
             mutation: None,
             mutation_message: None,
             mutation_needs_refresh: false,
@@ -2417,8 +2369,10 @@ mod separated_read_regressions {
         let mut controller =
             DiscussionController::new(state.own.scope.clone(), state.page.settings.clone());
         controller.settings.comments_open = true;
-        state.own.author = true;
-        assert_eq!(comments_mode_kind(&state, &controller, false), "open");
+        for author in [false, true] {
+            state.own.author = author;
+            assert_eq!(comments_mode_kind(&state, &controller, false), "open");
+        }
         state.mutation = Some(DiscussionMutation::RemoveOwn);
         assert_eq!(comments_mode_kind(&state, &controller, false), "open");
         state.mutation = Some(DiscussionMutation::ChangeMode);
@@ -2427,6 +2381,9 @@ mod separated_read_regressions {
         state.mutation_needs_refresh = true;
         assert_eq!(comments_mode_kind(&state, &controller, false), "conflict");
         state.mutation_needs_refresh = false;
+        state.unavailable = true;
+        assert_eq!(comments_mode_kind(&state, &controller, false), "conflict");
+        state.unavailable = false;
         controller.settings.comments_open = false;
         for author in [true, false] {
             state.own.author = author;
@@ -2524,23 +2481,23 @@ mod separated_read_regressions {
         );
     }
     #[test]
-    fn r4_a_failed_read_is_never_shown_as_empty_and_the_end_follows_the_cursor() {
+    fn r4_a_failed_read_is_never_shown_as_empty_and_pagination_follows_the_cursor() {
         use crate::contract::ApiError;
         let mut s = state();
         assert!(!s.page.roots.is_empty());
         s.page.next_cursor = Some("next".into());
-        assert!(!shows_empty(&s) && !shows_list_end(&s), "more pages remain");
+        assert!(!shows_empty(&s) && has_more_roots(&s), "more pages remain");
         s.page.next_cursor = None;
-        assert!(shows_list_end(&s) && !shows_empty(&s));
+        assert!(!has_more_roots(&s) && !shows_empty(&s));
         s.page.roots.clear();
         assert!(
-            shows_empty(&s) && !shows_list_end(&s),
+            shows_empty(&s) && !has_more_roots(&s),
             "empty is not an end marker"
         );
         s.fail_roots_read(false, &ApiError::Network);
         assert!(!shows_empty(&s), "a failed refresh is not “no comments”");
         s.error = None;
         s.fail_roots_read(true, &ApiError::NotFound);
-        assert!(s.unavailable && !shows_empty(&s) && !shows_list_end(&s));
+        assert!(s.unavailable && !shows_empty(&s) && !has_more_roots(&s));
     }
 }

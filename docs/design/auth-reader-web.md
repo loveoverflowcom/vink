@@ -11,13 +11,13 @@ thứ tự hành động, lỗi và đối soát phiên.
 
 | Vùng | Bố cục và thứ tự đọc |
 | --- | --- |
-| Reader + composer | Giữ bài và ô soạn phía sau scrim. Khi khách đủ điều kiện, chỗ nút Gửi là “Đăng nhập để nhận xét”; nếu phiên cần bút danh, hiện “Chọn bút danh”. |
+| Reader + composer | Giữ bài và ô soạn phía sau scrim. Khách và thành viên cùng dùng nút Gửi cho nhận xét gốc và phản hồi. Khi khách có nháp đủ điều kiện và bấm Gửi, Reader mở Auth theo ngữ cảnh. Phiên đã xác thực nhưng thiếu bút danh vào thẳng bước Chọn bút danh. |
 | Sheet/dialog | Logo Vink căn giữa, Đóng ở góc trên bên phải. Tiêu đề và lời dẫn theo mục đích, căn giữa trước form. Tên đăng nhập → Mật khẩu → Đăng nhập (Filled) → Hoặc → Dùng mã email (Tonal) → Tạo tài khoản (Tonal). Hai lựa chọn Tonal toàn chiều rộng, mỗi nút một hàng. Các bước chuyển phương thức và bút danh dùng form chung. |
 | Responsive | Sheet chạm đáy viewport dưới 760 CSS px. Từ 760 CSS px trở lên, dialog căn giữa, rộng tối đa 30rem. Vùng form cuộn dọc bên trong dialog, chừa lề 20–24 px và giữ tiêu đề nhìn thấy khi mở ở 320 CSS px/chữ gốc 200%. Tab tới được nút cuối. |
 
-**Interaction.** Native dialog làm nền inert; click hoặc Enter vào CTA mở, focus đầu tại Đóng.
+**Interaction.** Native dialog làm nền inert. Kích hoạt Gửi bằng chuột, chạm hoặc bàn phím mới mở dialog, focus đầu tại Đóng. Focus ô soạn, nhập chữ, Enter xuống dòng và mở ô trả lời không mở Auth.
 Tab và Shift+Tab không rời modal. Escape, Đóng và Back qua điều hướng trong ứng dụng trả focus
-về điểm gọi. Khi chủ tài khoản đã xác nhận, trả focus về đúng textarea đã mở modal. Phần riêng
+về nút Gửi đã gọi hoặc về ô soạn nếu nút đã biến mất. Sau khi phiên và phần riêng được đối soát, trả focus về đúng textarea đã mở modal. Người viết bấm Gửi lần nữa để tạo nhận xét. Phần riêng
 có thể xuất hiện trước một nhánh; giữ vị trí của ô soạn so với viewport thay vì đơn thuần giữ
 `scrollY` khi bố cục phía trên ô thay đổi. Việc trả focus không dựng lại input; nếu ngữ cảnh
 cũ không còn hợp lệ, không phục hồi quyền gửi cũ.
@@ -26,7 +26,7 @@ Không dùng animation làm điều kiện đóng, không thêm vuốt để đ�
 **Hai điểm vào Reader.** #388 dùng lại dialog từ nút Lưu và truyền mục đích, điểm trả focus
 và điều kiện xác nhận phiên từ nơi gọi. [LayoutSpec Lưu bài](saved-works.md) sở hữu copy và hành vi
 đó. Delta viền 2 px từ #388 là hình thức lịch sử, được thay bằng hai nút Tonal ở #559. Khi đăng
-nhập từ composer, focus về đúng ô soạn. Thay đổi cách gọi Auth từ nút Gửi thuộc #328.
+nhập từ composer, focus về đúng ô soạn. Intent từ nút Gửi và bố cục yên tĩnh thuộc #328.
 
 **Evidence.** So sánh cùng cảnh Reader trước/sau ở desktop sáng và mobile tối. Smoke Auth
 kiểm computed style trong cả hai theme, dialog/sheet ở 320/390/834/1440 CSS px và cỡ chữ
