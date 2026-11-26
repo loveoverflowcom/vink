@@ -56,6 +56,12 @@ dùng Chrome DevTools Protocol; không bắt cài Playwright để dùng skill. 
 thể tạo scratch DB, ghi fixture và fault injection: đọc prerequisite, dùng local
 đúng quyền, không trỏ vào dữ liệu thật chỉ để lấy ảnh.
 
+Khi chụp `/thong-bao` với dữ liệu mô phỏng, dùng ảnh và `contexts.json` của
+`cargo xtask verify web --scenario notifications --capture full`.
+[Fixture của scenario](../../../../apps/vink-web/e2e/notifications-smoke.mjs) lấy phản hồi đếm từ
+hợp đồng Gateway. Đối chiếu count trước và sau Seen, số dòng chưa đọc, cảnh báo và nút thử lại
+với trạng thái dự kiến của từng ca. Với dữ liệu thật, xem [đường kiểm Gateway](../../../../docs/development/notifications.md#85-gateway-qua-process-thật-verify-postgres).
+
 Leptos preview có deep link `#<catalog-id>/<scenario-id>`, ảnh và `contexts.json`
 qua runner [preview-smoke](../../../../apps/vink-preview/leptos/e2e/preview-smoke.mjs).
 Chế độ focus opt-in được ghi trong development guide: giữ menu/matrix raw, thêm
