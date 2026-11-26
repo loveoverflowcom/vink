@@ -1,5 +1,6 @@
 // Runs the real routes and hydrated state owner. Only the API responses under test are
 // controlled by CDP so an old count/receipt can be delivered in a reproducible order.
+import assert from 'node:assert/strict';
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
@@ -23,8 +24,10 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function fixture(page) {
   const calls = [];
+  const trace = [];
+  const started = performance.now();
   const state = { session: 'A', countMode: 'fresh', staleCount: 8, firstFailure: false, count: 3, snapshot: 45, seen: 0,
-    marked: false, moreFailure: true, holdCount: false, holdMark: false };
+    pageSize: null, marked: false, moreFailure: true, holdCount: false, holdMark: false };
   const held = new Map();
   const root = gateway.response.items[0];
   const [tham, rejected] = examples.inbox.items;
@@ -77,25 +80,37 @@ async function fixture(page) {
       Object.assign(fixture.decisions[0], { outcome: 'rejected', action_required: true, can_appeal: true, reason: 'Lý do riêng của tác phẩm' });
       response = scope === 'A' ? [200, fixture] : [404, denied];
     } else if (path === `${inbox}/count`) {
-      response = state.countMode === 'unavailable' ? [503, unavailable]
-        : state.countMode === 'stale' ? [200, { freshness: { status: 'stale', last_known_count: state.staleCount, count_is_lower_bound: false } }]
-          : [200, { freshness: { status: 'fresh', unseen_group_count: state.seen >= state.snapshot ? 0 : state.count,
-            count_is_lower_bound: false, as_of_snapshot: snapshot(scope) } }];
+      const [fresh, stale] = examples.counts;
+      const freshness = state.countMode === 'stale'
+        ? { ...stale.freshness, last_known_count: state.staleCount, as_of_snapshot: snapshot(scope) }
+        : { ...fresh.freshness, unseen_group_count: state.seen >= state.snapshot ? 0 : state.count,
+          as_of_snapshot: snapshot(scope) };
+      if (state.countMode === 'legacy') {
+        // Replay the c277/c281 capture handler: HTTP 200, one required field missing, count fixed across Seen.
+        delete freshness.count_is_lower_bound;
+        freshness.unseen_group_count = state.count;
+      }
+      response = state.countMode === 'unavailable' ? [503, unavailable] : [200, { freshness }];
       if (state.holdCount) { state.holdCount = false; held.set('count', () => reply(requestId, ...response)); return; }
     } else if (path === inbox) {
       const more = searchParams.has('cursor');
       response = (more ? state.moreFailure : state.firstFailure) ? [503, unavailable] : [200, {
-        inbox_snapshot: snapshot(scope), next_cursor: more ? null : 'next-fixture',
-        items: (more ? source.slice(3) : source.slice(0, 3)).map(row => ({
+        inbox_snapshot: snapshot(scope), next_cursor: more || state.pageSize !== null ? null : 'next-fixture',
+        items: (more ? source.slice(3) : source.slice(0, state.pageSize ?? 3)).map((row, index) => ({
           ...row, is_read: state.marked ? true : row.is_read,
+          ...(state.pageSize !== null && { is_unseen: state.seen < state.snapshot && index < state.count }),
           target: scope === 'B' ? { ...row.target, work_title: 'Thông báo của tài khoản B' }
             : state.snapshot >= 46 && row.group_id === source[0].group_id
               ? { ...row.target, work_title: 'Tác phẩm có cập nhật' } : row.target,
         })),
       }];
     } else if (path === `${inbox}/seen`) {
-      state.seen = Math.max(state.seen, Number(body.up_to_snapshot.split('.')[1]));
-      response = [200, { seen_snapshot: snapshot(scope, state.seen) }];
+      if (body.up_to_snapshot === snapshot(scope)) {
+        state.seen = state.snapshot;
+        response = [200, { seen_snapshot: snapshot(scope, state.seen) }];
+      } else {
+        response = [400, { error: { code: 'invalid_snapshot' } }];
+      }
     } else if (path === read) {
       response = [200, { group_id: body.group_id, group_version: body.observed_group_version, is_read: true }];
       held.set('read', () => reply(requestId, ...response));
@@ -115,13 +130,24 @@ async function fixture(page) {
       page.send('Fetch.continueRequest', { requestId }).catch(() => {});
       return;
     }
+    if (state.pageSize !== null && [inbox, `${inbox}/count`, `${inbox}/seen`].includes(path)) {
+      const [status, payload] = response;
+      const freshness = payload.freshness;
+      trace.push({ ms: Math.round(performance.now() - started), method: request.method, path, status,
+        scopeMatches: expectScope === scope, fields: Object.keys(payload),
+        ...(freshness && { freshness: freshness.status, count: freshness.unseen_group_count,
+          countFields: Object.keys(freshness) }),
+        ...(payload.items && { rows: payload.items.length, unseen: payload.items.filter(item => item.is_unseen).length }),
+        ...(path.endsWith('/seen') && { snapshotMatches: body.up_to_snapshot === payload.seen_snapshot }),
+      });
+    }
     reply(requestId, ...response).catch(() => {});
   };
   page.cdp.listeners.push(listener);
   await page.send('Fetch.enable', { patterns: [
     { urlPattern: '*/api/v1/auth/session*' }, { urlPattern: `*${inbox}*` }, { urlPattern: `*${apiReview}` },
   ] });
-  return { state, calls, rows: source, held, async change(next) {
+  return { state, calls, trace, rows: source, held, async change(next) {
     state.session = next;
     await page.eval(`(() => { const channel = new BroadcastChannel('vink-session');
       channel.postMessage('changed'); setTimeout(() => channel.close(), 10); })()`);
@@ -173,6 +199,100 @@ const mounted = `(document.documentElement.dataset.renderMode === 'csr'
 const row = '.vk-notif-row';
 const visible = selector => `document.querySelector(${JSON.stringify(selector)})?.getBoundingClientRect().width > 0`;
 const focused = selector => `document.activeElement?.matches(${JSON.stringify(selector)})`;
+
+// A title or an empty/filled list can coexist with a failed count. Check both owners on /thong-bao.
+function inboxObservation() {
+  const body = document.querySelector('main .vk-notif-body');
+  const rows = body?.querySelectorAll('.vk-notif-row');
+  return {
+    rows: rows?.length ?? null,
+    unread: body?.querySelectorAll('.vk-notif-row--unread').length ?? null,
+    empty: !!body?.querySelector('.vk-notif-empty'),
+    listError: !!body?.querySelector('.vk-notif-error button'),
+    countWarning: body?.querySelector('.vk-notif-note [role=status]')?.textContent ?? null,
+    countRetry: !!body?.querySelector('#notification-count-retry'),
+  };
+}
+
+async function captureInboxCases(page, args, { state, trace }) {
+  const countPath = `${inbox}/count`, seenPath = `${inbox}/seen`;
+  const unknown = 'Chưa tải được số thông báo mới.';
+  for (const [width, height, theme] of [[390, 844, 'light'], [1440, 900, 'dark']]) {
+    const cases = ['empty', 'populated', 'count-error', 'list-error'];
+    if (width === 390) cases.unshift('legacy-empty', 'legacy-populated');
+    for (const name of cases) {
+      const empty = name.endsWith('empty'), legacy = name.startsWith('legacy-');
+      const countFailed = legacy || name === 'count-error', listFailed = name === 'list-error';
+      const count = empty ? 0 : legacy ? 3 : 2;
+      Object.assign(state, { pageSize: empty ? 0 : 3, count, seen: 0, marked: false,
+        countMode: legacy ? 'legacy' : countFailed ? 'unavailable' : 'fresh', firstFailure: listFailed });
+      trace.length = 0;
+      await page.viewport(width, height);
+      await page.send('Emulation.setEmulatedMedia', { features: [
+        { name: 'prefers-color-scheme', value: theme }, { name: 'prefers-reduced-motion', value: 'reduce' },
+      ] });
+      await page.goto(`${args.base}/`);
+      const badge = `document.querySelector('${width === 390 ? mobile : bell} .vk-ui-badge')`;
+      const beforeBadge = countFailed ? 'unknown' : count ? 'count' : 'hidden';
+      await eventually(() => trace.some(event => event.path === countPath), 'shell count response');
+      await page.waitFor(`${badge}?.dataset.state === '${beforeBadge}' && ${badge}.textContent === '${countFailed || !count ? '' : count}'`, 'pre-inbox badge');
+      await page.goto(`${args.base}/thong-bao`);
+      await eventually(() => trace.some(event => event.path === inbox), 'inbox response');
+      if (!listFailed) {
+        await eventually(() => {
+          const seen = trace.findIndex(event => event.method === 'POST' && event.path === seenPath && event.snapshotMatches);
+          return seen >= 0 && trace.slice(seen + 1).some(event => event.path === countPath);
+        }, 'count refresh after scoped Seen receipt');
+      }
+      const rows = listFailed || empty ? 0 : 3;
+      const expected = { rows, unread: rows, empty, listError: listFailed,
+        countWarning: countFailed ? unknown : null, countRetry: countFailed };
+      const readDom = `(${inboxObservation.toString()})()`;
+      await page.waitFor(`JSON.stringify(${readDom}) === ${JSON.stringify(JSON.stringify(expected))}`, `${name} inbox and count`);
+      const observed = await page.eval(readDom);
+      const list = trace.find(event => event.path === inbox);
+      const counts = trace.filter(event => event.path === countPath);
+      assert.ok(trace.every(event => event.scopeMatches));
+      assert.equal(list.status, listFailed ? 503 : 200);
+      assert.equal(counts[0].status, name === 'count-error' ? 503 : 200);
+      if (!listFailed) assert.equal(list.rows, rows);
+      if (!countFailed) {
+        assert.equal(counts[0].count, count);
+        assert.equal(counts.at(-1).count, listFailed ? count : 0);
+        assert.ok(counts.every(event => event.freshness === 'fresh' && event.countFields.includes('count_is_lower_bound')));
+        if (!listFailed) assert.equal(list.unseen, count);
+      }
+      if (listFailed) assert.ok(trace.every(event => event.path !== seenPath));
+      const normal = { ...expected, countWarning: null, countRetry: false };
+      if (legacy) {
+        assert.ok(counts.every(event => !event.countFields.includes('count_is_lower_bound')));
+        assert.throws(() => assert.deepEqual(observed, normal), assert.AssertionError);
+      } else if (!countFailed) {
+        assert.deepEqual(observed, normal);
+      }
+      const observedTheme = await page.eval("document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')");
+      assert.equal(observedTheme, theme);
+      await page.capture(`notifications-${name}-${width}x${height}-${theme}`, {
+        scenario: `notifications-inbox-${name}`, boundary: 'Product Web / CDP simulated Gateway', dataMode: 'simulated',
+        requestedScene: { width, height }, expectedTheme: theme, observedTheme,
+        expected, observed, trace: [...trace],
+      });
+      if (name === 'count-error') {
+        state.countMode = 'fresh';
+        await page.click('#notification-count-retry');
+        await page.waitFor(`JSON.stringify(${readDom}) === ${JSON.stringify(JSON.stringify(normal))}`, 'count retry keeps the unread rows');
+        assert.equal(trace.filter(event => event.path === countPath).at(-1).count, 0);
+      }
+      if (!legacy && !listFailed) {
+        const previousCount = trace.filter(event => event.path === countPath).length;
+        await page.goto(`${args.base}/`);
+        await eventually(() => trace.filter(event => event.path === countPath).length > previousCount, 'verified zero after Seen');
+        assert.equal(trace.filter(event => event.path === countPath).at(-1).count, 0);
+        await page.waitFor(`${badge}?.dataset.state === 'hidden' && ${badge}.hidden`, 'no badge after verified zero');
+      }
+    }
+  }
+}
 
 export async function notifications(page, { args, check }) {
   const controlled = await fixture(page);
@@ -452,4 +572,6 @@ export async function notifications(page, { args, check }) {
   await controlled.change(null);
   await page.waitFor(`!document.querySelector('${bell}') && !document.body.textContent.includes('Lý do riêng của nhận xét')`, 'logout discards decision and bell');
   check(await page.eval(`!document.querySelector('${mobile}')`), 'AC-01 guest has neither bell');
+  await controlled.change('A');
+  await captureInboxCases(page, args, controlled);
 }
