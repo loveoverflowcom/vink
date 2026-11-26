@@ -193,6 +193,10 @@ tiếp, closure và đường Web chưa ánh xạ. Planner giữ các lệnh ki�
 Khi thực thi, digest thực tế quyết định có cần chạy producer. Preview có compiler entry và
 thư mục xuất riêng.
 
+Để đối chiếu hai package SSR, chạy trực tiếp `browser-smoke.mjs --phase reader-bundle`
+với `--base`, `--chrome` và `--state` cho từng App dùng DB scratch có bài thơ mẫu.
+Smoke kiểm hydration, hai khổ thơ, CSS, font và import module editor.
+
 ## Scenario Web và setup
 
 | Selector | Setup / dependency | Assertion được dùng lại |
