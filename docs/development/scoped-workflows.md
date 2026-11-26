@@ -252,7 +252,7 @@ Smoke kiểm hydration, hai khổ thơ, CSS, font và import module editor.
 | `discovery` | Seed/catalog + corpus SQL riêng | `discovery-corpus` |
 | `restart` | `restart-prepare` lưu và reload nháp riêng, catalog Đô thị/Mùa; stop → retire tag → start | Giữ `afterRestartPhase` và `retiredTagAfterRestart` cho đúng draft/version/title, tag và unsaved buffer |
 | `endorsement` | Sample App; App tác giả + reader có moderator grant trong scratch | `endorsement`, không cần Identity |
-| `review` | Sample App, tác giả + admin + reviewer trong scratch | `review-withdrawn`, queue continuation/recovery #205 và #264 (Markdown editor, case, Reader, hai revision và chuyển riêng tư) |
+| `review` | Sample App, tag catalog, tác giả + admin + reviewer trong scratch | `review-withdrawn`, phản đối tại Bàn viết, quyền API ca/quyết định, snapshot Markdown và Reader SSR/hydrate |
 | `auth` | App scratch migrate/seed + Identity scratch/local outbox | `auth` với session thật |
 | `password` | App password scratch migrate + Identity native scratch/local outbox | `auth-password`, không cần phase auth/main |
 | `standalone` | Artifact CSR + proxy loopback, API-only, Identity và App DB scratch | Reader, tìm kiếm, lịch sử, mật khẩu, editor, bảo vệ bản nháp |

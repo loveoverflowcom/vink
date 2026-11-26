@@ -1040,7 +1040,7 @@ fn bounded(path: &str) -> bool {
         || path.ends_with("/publication/request-public")
         || path.ends_with("/publication/set-private");
     publication_command
-        || path.contains("/moderation/")
+        || path.ends_with("/publication/review")
         || path.contains("/appeals")
         || path.contains("/publication/state")
         || path.contains("/discussion")
@@ -1121,7 +1121,7 @@ pub(crate) async fn set_saved_work(
 
 #[cfg(feature = "browser")]
 mod http {
-    use gloo_net::http::{Method, Request, RequestBuilder, Response};
+    use gloo_net::http::{Request, Response};
     use serde::Serialize;
     use serde::de::DeserializeOwned;
 
@@ -1323,20 +1323,6 @@ mod http {
             .await
             .map_err(|_| ApiError::Network)?;
         decode(path, response).await
-    }
-
-    pub(super) async fn can_read_work_review_queue() -> bool {
-        let Ok(deadline) = Deadline::new() else {
-            return false;
-        };
-        // Axum applies the same authorization as GET and strips the response body for HEAD.
-        RequestBuilder::new("/api/v1/moderation/works/queue/page?limit=1")
-            .method(Method::HEAD)
-            .cache(web_sys::RequestCache::NoStore)
-            .abort_signal(Some(&deadline.controller.signal()))
-            .send()
-            .await
-            .is_ok_and(|response| response.status() == 200 && !response.redirected())
     }
 
     pub(super) async fn following_feed(
@@ -1545,12 +1531,13 @@ mod publication_path_tests {
         }
     }
 
-    /// Every publication call has a deadline: the three commands (a lost answer is uncertain,
-    /// never a rejection) and the state read. Nothing else is claimed by this list.
+    /// Publication/appeal commands and the private reads that reconcile their outcomes are bounded.
     #[test]
     fn every_publication_call_ends_by_deadline() {
         for path in [
             super::publication_state_path(WORK),
+            super::author_work_review_path(WORK),
+            super::file_appeal_path(WORK, "r"),
             super::snapshots_path(WORK),
             super::request_public_path(WORK),
             super::set_private_path(WORK),
@@ -1626,15 +1613,6 @@ mod separated_discussion_paths {
 }
 
 /// Private moderation transports. Called only by LocalResource or explicit intents; no SSR data.
-pub(crate) async fn can_read_work_review_queue() -> bool {
-    #[cfg(feature = "browser")]
-    {
-        http::can_read_work_review_queue().await
-    }
-    #[cfg(not(feature = "browser"))]
-    false
-}
-
 pub(crate) async fn moderation_get<T: serde::de::DeserializeOwned>(
     _path: &str,
 ) -> Result<T, crate::contract::ApiError> {

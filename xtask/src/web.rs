@@ -1498,7 +1498,7 @@ fn run_web_checks(
         );
     let ok = ok
         && (!selected.contains(&Scenario::Review) || report.step(
-            "review-withdrawn, moderation queues and Markdown (#264): exact snapshots, Reader SSR/hydration and current visibility",
+            "author review, authorized case/appeal API and Markdown: exact snapshots, Reader SSR/hydration and current visibility",
             || {
                 smoke(
                     root,

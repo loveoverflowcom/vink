@@ -323,7 +323,7 @@ Bảng ghi các phần đã có điểm vào và các phần đang chờ. Nguồ
 | --- | --- | --- | --- |
 | Chọn “Chỉ mình tôi”/“Công khai”, gửi để kiểm duyệt, đăng đúng bản | AUD-01/02, PUB-01/02 | API tác giả #158 (chụp snapshot, yêu cầu công khai, chuyển riêng tư, đọc trạng thái) + #159: consumer `vink-worker` (tắt mặc định, chỉ evaluator kịch bản local/test) hoặc người duyệt kết luận trên hàng chờ; không có evaluator thì bản mới chờ người duyệt. Web: vùng “Công khai” trong Bàn viết chọn audience, lưu → chụp → gửi, chuyển riêng tư và đối soát ([PUB-AUTHOR-WEB-01](publication-author-web.md)); chi tiết kiểm duyệt tại Bàn viết dùng cùng DTO ([#477](../design/redesign-r4/desk-moderation.md)) | [Pure core/replay](publication-core.md); [runtime](publication-runtime.md) + mục PUB-RUNTIME-01 dưới đây |
 | Trợ lý AI duyệt, quản trị viên override | MOD-07..09 | Lõi thuần #151; #159 nối lease/claim, thử lại với `EvaluationId` mới và kết luận của admin/moderator ([moderation-runtime](moderation-runtime.md)). Chưa có AI provider thật: `/health` và worker báo `ai_moderation: not_implemented` | [Moderation core/replay](moderation-core.md); replay M1 + `evaluator-vectors.json` |
-| Quản trị kiểm duyệt: admin/grant/nhóm, nhận ca, phản đối (cả quyết định moderator), dừng tự động, điều tra riêng | MOD-09..15 | #159 persistence-api: ghế admin (CLI), grant người/nhóm, ca duyệt (nhận, nhả, ghi chú, chuyển admin, tiếp quản, kết luận, mở ca can thiệp), dừng/bật tự động có audit. Sau #170 có store/API phản đối và Web ca tác phẩm/phản đối/chế độ tự động; còn điều tra riêng, ca bình luận và UI grant/nhóm | [ADMIN-CORE-01](moderation-core.md#admin-moderation-core--admin-core-01); replay M4 `governance.qnt` + `governance_tests` |
+| Quản trị kiểm duyệt: admin/grant/nhóm, nhận ca, phản đối (cả quyết định moderator), dừng tự động, điều tra riêng | MOD-09..15 | #159 persistence-api: ghế admin (CLI), grant người/nhóm, ca duyệt (nhận, nhả, ghi chú, chuyển admin, tiếp quản, kết luận, mở ca can thiệp), dừng/bật tự động có audit. Sau #170 có store/API phản đối; #555 gỡ màn nhân sự, giữ API ca/phản đối/chế độ tự động; còn điều tra riêng, ca bình luận và UI grant/nhóm | [ADMIN-CORE-01](moderation-core.md#admin-moderation-core--admin-core-01); replay M4 `governance.qnt` + `governance_tests` |
 | Tác giả xóa bài, trang thay thế còn bình luận; trang “Nội dung đã được ẩn” khi bài đang công khai chuyển riêng tư | PUB-04/05/07, COM-11 | Trang sau kiểm duyệt (`O-17@r2`) có ở API/SSR/Web (#159). Trang “Nội dung đã được ẩn” có reader API/SSR/Web, chỉ giữ bình luận đủ điều kiện; tombstone chưa có runtime | Lõi thuần + replay M3 `tombstone.qnt` ([PUB-HIDDEN-01](publication-core.md#trang-ẩn-và-gửi-duyệt-theo-phiên-bản--pub-hidden-01)) |
 | Sửa bình luận, dấu “Đã sửa” | COM-10 | Không; chỉ gỡ được bình luận của mình | Model `comment_edit.qnt` |
 | Bộ sưu tập cá nhân | COL-01..06 | Không | Model `collections.qnt` |
@@ -747,16 +747,16 @@ Owner, DecisionMap, khóa, retry/deadline, kill switch, backout và giới hạn
 | Hành vi | Bằng chứng | Giới hạn |
 | --- | --- | --- |
 | Worker áp kết quả dưới fence claim, chế độ tự động và `DecisionVersion` | `stale_claim_or_pause_before_finish_changes_nothing`, `retryable_failures_use_fresh_evaluation_ids_then_go_to_people` (`postgres`); unit cấu hình trong `evaluation_worker.rs` | Chỉ evaluator kịch bản; không đo hai worker song song thật |
-| Dừng tự động, gửi khi đang dừng, ca duyệt, mất quyền, nhóm, tự né | `paused_submission_goes_to_the_human_queue`, `stale_note_and_lost_authority_are_persisted_honestly`, `group_grants_recusal_and_membership_removal` (`postgres`) | Web ca tác phẩm và chế độ tự động; UI grant/nhóm chưa có |
+| Dừng tự động, gửi khi đang dừng, ca duyệt, mất quyền, nhóm, tự né | `paused_submission_goes_to_the_human_queue`, `stale_note_and_lost_authority_are_persisted_honestly`, `group_grants_recusal_and_membership_removal` (`postgres`) | API nhân sự; UI quản trị nằm ngoài Product Web |
 | Trang “Bản này đã bị gỡ sau khi kiểm duyệt.” giữ bình luận, sống qua lần gửi lại, nhường bản duyệt kế tiếp | `review_withdrawn_page_survives_a_pending_resubmission` (`postgres`); phase `review-withdrawn` (`web`: SSR `noindex`/`no-store`, hydration, xóa cache tab và thẻ Khám phá, chặn bình luận mới) | M3 thêm `ReviewWithdrawn`, 53/53 bước + NC chống lộ body; model tách biệt HTML/IO |
 
 
 | Trang ẩn không lộ metadata, giữ bình luận và chặn ghi mới; công khai lại | `hidden_reader_retains_only_discussion_and_republication_restores_body` (`postgres`); phase `review-withdrawn` (`web`) | Chưa có tombstone/xóa bài |
-| Phản đối duy nhất mỗi quyết định, admin final, riêng tư đóng hồ sơ, ý định mới thắng approval cũ | Nhóm `work_appeal*`, `private_closes*`, `appeal_on_old_revision*` trong `work_moderation.rs`; tác giả gửi/admin đảo qua UI trong phase `review-withdrawn` | Không có thông báo, comment appeals hoặc điều tra |
+| Phản đối duy nhất mỗi quyết định, admin final, riêng tư đóng hồ sơ, ý định mới thắng approval cũ | Nhóm `work_appeal*`, `private_closes*`, `appeal_on_old_revision*` trong `work_moderation.rs`; tác giả gửi qua UI, admin đảo qua API trong phase `review-withdrawn` | Không có thông báo, comment appeals hoặc điều tra |
 
-Queue work/admin appeals #205: routes `/moderation/works/queue/page`, `/moderation/appeals/page`,
-`QueuePanel` độc lập dùng ReadOwner/PageChain + authority fingerprint; regression
-`postgres::moderation_queue`, provider/Web fixtures và `moderationQueues` trong scenario `review`.
+Queue work/admin appeals #205: API `/moderation/works/queue/page`, `/moderation/appeals/page`,
+phân trang theo quyền do server xác nhận. Regression `postgres::moderation_queue` và provider fixtures.
+Scenario `publication` kiểm URL staff cũ và quyền API, `review` kiểm ca thật và lịch sử tác giả.
 [Registry](moderation-runtime.md#10-hai-queue-hữu-hạn-205),
 [LayoutSpec paging](../design/moderation-queue-pagination.md). Comment queue đã paging;
 author appeal/revision history ngoài lát này.
@@ -775,8 +775,8 @@ tái lập. `read_lifecycle_replay.rs` gọi primitive production, không dựng
 | Append lỗi giữ cursor/rows, từ chối duplicate/overlap/cursor cycle; refresh bỏ tail | Cùng replay, `ticketFence`, `pageIntegrity`, `rejectedKeepsChain`, `headReplacesTail`; simulation + drift trong `discussion` | Không SQL live keyset, continuation 240 mục hay HTTP/DOM |
 | Oracle phát hiện bỏ guard | Hai mutant Quint: ticket cũ sau remount và overlap page; `quint_read_lifecycle_counterexamples_are_refused_by_production` bắt Rust từ chối | Không exhaustive proof, freshness coordinator hoặc IndexedDB transaction |
 
-Consumer thật vẫn cần tests riêng: `draftPagination`/`authWeb` cho Bàn viết, `moderationQueues`
-trong `review` cho quyền/authority fingerprint, `discussion_reads` và discussion browser cho
+Consumer thật vẫn cần tests riêng: `draftPagination`/`authWeb` cho Bàn viết, `postgres::moderation_queue`
+cho quyền/authority fingerprint của API nhân sự, `discussion_reads` và discussion browser cho
 public/own overlay. Source/test presence là coverage intent; [run 16/11](verification-reconciliation-20261116.md)
 chỉ ghi những boundary thực sự chạy ở lượt này.
 

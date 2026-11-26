@@ -2,7 +2,7 @@
 
 **Phạm vi:** lưu quyết định kiểm duyệt tác phẩm, consumer đánh giá trong `vink-worker`, ghế admin,
 grant và nhóm, ca duyệt, dừng/bật tự động và trang ở URL cũ sau khi bản đang đăng bị bác
-(`O-17@r2`), trang ẩn, phản đối quyết định và Web duyệt tác phẩm. Nguồn luật: MOD-01..15, PUB-05/06, INV-08 trong [PRD](../../prd/requirements.md),
+(`O-17@r2`), trang ẩn, phản đối quyết định và chi tiết kiểm duyệt dành cho tác giả. Nguồn luật: MOD-01..15, PUB-05/06, INV-08 trong [PRD](../../prd/requirements.md),
 [đặc tả](../architecture/publication-moderation.md), [DecisionDelta](../architecture/product-decisions-20261110.md)
 và [registry quyết định](../../decisions/README.md).
 
@@ -212,23 +212,20 @@ ràng buộc duy nhất `(work_id, revision_id, decision_version)`; lịch sử 
 
 ## 7. Web kiểm duyệt
 
-[LayoutSpec](../design/moderation-workspace.md) dùng các primitive và token hiện có:
+Từ [#555](https://github.com/loveoverflowcom/vink/issues/555), Product Web dành cho độc giả và tác giả.
+Trang Tôi không thăm dò quyền hàng chờ. Ba URL cũ của nhân sự dẫn tới trang 404;
+`/:author` chỉ phân giải hồ sơ khi segment bắt đầu bằng `@`. Studio Admin được hoãn.
 
 | Đường dẫn | Người dùng và chức năng |
 | --- | --- |
-| `/kiem-duyet` | Hàng ca trong phạm vi của người duyệt; admin thêm hàng phản đối và chế độ tự động. |
-| `/kiem-duyet/ca/{id}` | Snapshot đã gửi, trạng thái/version, nhận/trả/chuyển admin, ghi chú và kết luận có lý do. |
-| `/kiem-duyet/phan-doi/{id}` | Admin đọc snapshot, giữ nguyên hoặc đảo quyết định có lý do. |
 | `/ban-viet?review={id}` | Tác giả mở chi tiết trong Bàn viết để xem trạng thái, lý do, lịch sử quyết định và phản đối. |
 | `/ban-viet/{id}/kiem-duyet` | URL tương thích chuyển đến chi tiết trong Bàn viết. |
+| `/api/v1/moderation/*` | Nhân sự dùng phiên được cấp quyền, theo hợp đồng các mục trên. Server kiểm standing, phạm vi, tự né và version tại lệnh. |
 
-Đọc riêng tư bằng `LocalResource`, kết quả gắn session scope và route; phản hồi của tài khoản cũ
-không được hiển thị. Chỉ dựng nội dung và control riêng tư sau khi tab xác nhận scope tài khoản;
-response thành công bằng cookie khi scope còn chưa biết không được dựng form rồi làm mất chữ/focus
-khi xác nhận phiên hoàn tất. Browser scenario giữ chậm response tài khoản thật và kiểm tra refresh
-cùng tài khoản giữ nguyên ô lý do, chữ và focus. Nút pending khóa gửi trùng, không đổi quyết định lạc quan. Lỗi mạng/CAS giữ
-lý do và tải lại trạng thái để đối chiếu. UI không cấp quyền: server vẫn kiểm mọi lệnh.
-Chưa có UI cấp grant/nhóm, điều tra riêng, ca bình luận hoặc sửa policy. Chọn audience/gửi duyệt/chuyển
+Khi mở lại chi tiết hoặc sau khi gửi phản đối, Bàn viết đọc snapshot mới. Nếu kết quả ghi
+không rõ hoặc xung đột, chỉ đọc để đối chiếu. “Thử lại” xuất hiện khi lượt đọc có thể phục hồi.
+Đổi phiên hoặc đổi đích kết thúc quyền áp dụng kết quả của lượt trước.
+Chọn audience/gửi duyệt/chuyển
 riêng tư nằm ở [vùng công khai của Bàn viết](publication-author-web.md). Chi tiết
 [#477](https://github.com/loveoverflowcom/vink/issues/477) dùng chung DTO trạng thái và nhãn quyết định
 với vùng đó. Khi mở chi tiết, `GET …/publication/review` trả trạng thái công khai, lịch sử quyết định
@@ -273,9 +270,8 @@ CLI `vink-app admin add|list|remove` nhả connection trước khi đóng pool; 
 - `cargo xtask verify discussion`: M3 có `ReviewWithdrawn`, 53/53 bước qua pure production và
   counterexample `mutatedWithdrawnStep` (không được để lộ body). M1 64 và M4 105 giữ nguyên.
   Simulation có biên; Apalache `NOT_RUN`. M3 không mô hình hóa HTML hay tên tác giả.
-- `cargo xtask verify web`: phase `review-withdrawn` đi qua ca duyệt bằng UI, moderator bác bằng
-  API, SSR/hydration/cache trang bị gỡ, tác giả gửi phản đối bằng UI, admin đảo bằng UI, ẩn bài và
-  công khai lại bằng API. Ảnh desktop/mobile ở output lane; snapshot riêng không nằm trong SSR.
+- `cargo xtask verify web --scenario review`: ca duyệt, kết luận, đảo quyết định qua API;
+  SSR/hydration/cache trang bị gỡ, tác giả gửi phản đối trong Bàn viết, ẩn bài và công khai lại. Ảnh desktop/mobile ở output lane; snapshot riêng không nằm trong SSR.
 - Kết quả chạy, SHA và CI của phần hoàn thiện ở [PR #171](https://github.com/loveoverflowcom/vink/pull/171).
   Danh sách trên là phạm vi suite; chỉ kết quả trên đúng SHA mới là bằng chứng PASS. CI merge #170
   (`25dc464`) bị hủy ở Web sau CLI cấp ghế admin, không phải bằng chứng smoke reader đã qua.
@@ -284,7 +280,7 @@ CLI `vink-app admin add|list|remove` nhả connection trước khi đóng pool; 
 
 Lựa chọn kỹ thuật: [VDR-MODERATION-QUEUE-PAGINATION@r1](../../decisions/proposals/VDR-MODERATION-QUEUE-PAGINATION.r1.toml), **PENDING**. Model/replay [ReadOwner/PageChain](../../apps/vink-web/behavior/README.md) chỉ phủ primitive; quyền/rows trong snapshot vẫn cần PostgreSQL, authority fingerprint/session clear cần browser.
 
-Mức triển khai `persistence-api` + `web`; không thay quyết định sản phẩm hay nhận ADR Accepted.
+Mức triển khai hiện tại `persistence-api`. Phần Web dưới đây ghi lại implementation lịch sử #205 trước khi #555 gỡ consumer staff; không thay quyết định sản phẩm hay nhận ADR Accepted.
 `ADM-01@r1 PRODUCT_CONFIRMED`, `O-18@r1 OPEN`; snapshot registry tại base `6de515d`:
 `cef5662c19d3db1219bab14d197b5413f203aa816c99eaa11e8f2c31688091c2`.
 

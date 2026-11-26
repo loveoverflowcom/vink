@@ -1,5 +1,7 @@
 # Hai hàng chờ kiểm duyệt hữu hạn (#205)
 
+Thiết kế lịch sử của #205. Từ #555, hàng chờ dành cho nhân sự chỉ còn ở [API](../development/moderation-runtime.md#10-hai-queue-hữu-hạn-205).
+
 Intent: người duyệt đi tiếp trong đúng phạm vi quyền hiện tại, hiểu lỗi và có thể đối soát từ đầu.
 References: source `develop@6de515d`, regression reference; `NO_APPROVED_REFERENCE` cho lát này.
 

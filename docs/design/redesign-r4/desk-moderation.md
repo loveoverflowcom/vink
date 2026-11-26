@@ -35,7 +35,7 @@ chưa được xem. DQ-05 và DQ-10 vẫn `OPEN`.
 | Đã rút/ẩn hoặc quyết định cũ | Nhãn đời sống từ read-model | Quyết định theo đúng số phiên bản. Hồ sơ cũ nằm cùng quyết định |
 | Hồ sơ mở, giữ, đảo, đóng | Nhãn kiểm duyệt từ read-model | Hồ sơ và lý do kết luận nếu có; receipt phân biệt ghi nhận mới với đã có |
 | Trạng thái mới chưa biết | Nhãn chưa rõ theo read-model | Trạng thái chưa nhận diện. Không suy ra được duyệt |
-| Đang tải, lỗi mạng, sai đích hoặc mất quyền | Danh sách vẫn do Desk quản lý | Loading; tải lại khi phù hợp; thông báo riêng cho đích không thể mở |
+| Đang tải, lỗi mạng, sai đích hoặc mất quyền | Danh sách vẫn do Desk quản lý | Đang đọc; “Thử lại” khi đọc lỗi tạm thời; thông báo riêng cho đích không thể mở |
 
 ## DecisionMap và tương tác
 
@@ -49,6 +49,12 @@ Focus ban đầu vào tiêu đề hộp thoại. Khi đóng, primitive trả foc
 Bàn viết dùng tiêu đề làm đích khi nút đó không hiện diện. Tìm/sắp xếp/phân trang không phụ thuộc
 query chi tiết. Với Editor, dùng link thật để đi qua leave guard sẵn có. Không tự cuộn tới
 nội dung khi dữ liệu async về. Giữ lời báo dựa trên receipt, trạng thái hồ sơ và quyền tại server.
+
+### Đối chiếu sau khi gửi phản đối (#555)
+
+Mở lại chi tiết tạo lượt đọc mới theo phiên và đích. Sau khi gửi, kể cả khi mất phản hồi
+hoặc quyết định đã đổi, sheet đọc lại hồ sơ hiện tại. Nút “Thử lại” chỉ hiện cạnh lỗi đọc
+có thể phục hồi và chỉ gửi GET. Mỗi POST cần một lần nhấn rõ ràng trên quyết định đủ điều kiện.
 
 ## HOW và WHY
 

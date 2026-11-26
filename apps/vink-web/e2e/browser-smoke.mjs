@@ -25,7 +25,6 @@ import { accountDeletion, closedAccountAppearance, passwordAuth, standalone } fr
 import { publicationAuthor } from './publication-author-smoke.mjs';
 import { reviewWithdrawnPage } from './review-withdrawn-smoke.mjs';
 import { markdownReader } from './markdown-reader-smoke.mjs';
-import { moderationQueues } from './moderation-queue-smoke.mjs';
 import { publicStorage, storageReopened } from './public-storage-smoke.mjs';
 import { draftPagination } from './draft-pagination-smoke.mjs';
 import { authorWorks } from './author-works-smoke.mjs';
@@ -6858,8 +6857,7 @@ try {
   else if (args.phase === 'after-restart') await afterRestartPhase(page);
   else if (args.phase === 'endorsement') await endorsementAsReader(page, { args, check, captureMatrix: captureDiscussionMatrix });
   else if (args.phase === 'review-withdrawn') {
-    await reviewWithdrawnPage(page, { args, check, captureMatrix: captureDiscussionMatrix });
-    await moderationQueues(page, { args, check });
+    await reviewWithdrawnPage(page, { args, check, openPage: () => openPage(cdp), captureMatrix: captureDiscussionMatrix });
     await markdownReader(page, { args, check, textContrast });
   }
   else if (args.phase === 'auth') await authWeb(page, { args, check, openPage: (isolated) => openPage(cdp, isolated) });

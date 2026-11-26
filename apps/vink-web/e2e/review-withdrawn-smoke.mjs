@@ -21,7 +21,7 @@ async function api(actor, path, init = {}) {
   return { status: response.status, cache: response.headers.get('cache-control'), body };
 }
 
-export async function reviewWithdrawnPage(page, { args, check, captureMatrix }) {
+export async function reviewWithdrawnPage(page, { args, check, openPage, captureMatrix }) {
   console.log('O-17@r2 review-withdrawn page (author + admin fixtures, real API):');
   const author = { base: args['author-base'] };
   const admin = { base: args.base };
@@ -56,21 +56,13 @@ export async function reviewWithdrawnPage(page, { args, check, captureMatrix }) 
   check(queued?.origin === 'automation_paused', 'a paused submission waits in the human queue');
   const detail = await api(admin, `/api/v1/moderation/works/cases/${queued.id}`);
   check(detail.status === 200 && detail.body.document.source === LINE, 'the reviewer reads the exact submitted snapshot');
-  await page.goto(`${admin.base}/kiem-duyet/ca/${queued.id}`);
-  await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('#case-claim')`, 'private case snapshot');
-  check(await page.eval(`document.querySelector('.vk-moderation__snapshot')?.textContent.includes(${JSON.stringify(LINE)})`), 'the case UI renders the submitted snapshot');
-  const staffResponse = await fetch(`${admin.base}/kiem-duyet/ca/${queued.id}`);
-  check(staffResponse.headers.get('cache-control') === 'no-store', 'private case HTML is no-store');
-  const staffHtml = await staffResponse.text();
-  check(!staffHtml.includes(LINE), 'staff snapshot is absent from SSR and hydration payload');
-  check(await page.eval(`!document.querySelector('#case-approve')`), 'an unclaimed case has no conclusion action');
-  await page.click('#case-claim');
-  await page.waitFor(`document.querySelector('#moderation-case')?.textContent.includes('Phiên bản ca 2')`, 'claim acknowledged');
-  await page.typeAtEnd('#case-reason', 'Phù hợp chính sách');
-  await page.capture('moderation-case-desktop');
-  await page.click('#case-approve');
-  await page.waitFor(`document.querySelector('#moderation-case')?.textContent.includes('Đã kết luận')`, 'approval acknowledged');
-  check((await api(admin, `/api/v1/works/${work}/publication`)).status === 200, 'case UI approves through the real API');
+  const casePath = `/api/v1/moderation/works/cases/${queued.id}`;
+  const denied = await post(author, casePath + '/claim', { expected_version: detail.body.version });
+  check([403, 404].includes(denied.status), 'the author cannot claim their own review case');
+  const claim = await post(admin, casePath + '/claim', { expected_version: detail.body.version });
+  check(claim.status === 200, 'the authorized admin claims the exact queued case');
+  const approval = await post(admin, casePath + '/conclude', { expected_version: claim.body.version, verdict: 'approved', reason: 'Duyệt bản đã gửi' });
+  check(approval.status === 200 && (await api(admin, `/api/v1/works/${work}/publication`)).status === 200, 'the authorized conclusion publishes the revision');
 
   // A comment from the author, approved by the admin (a comment moderator grant from the
   // endorsement phase), stays after the rejection.
@@ -161,20 +153,24 @@ export async function reviewWithdrawnPage(page, { args, check, captureMatrix }) 
   // The old link opens the same Desk dialog. The admin resolves the stored case.
   await page.goto(`${author.base}/ban-viet/${work}/kiem-duyet`, `${author.base}/ban-viet?review=${work}`);
   await page.waitFor(`location.pathname === '/ban-viet' && location.search === '?review=${work}' && document.querySelector('#desk-review').open && document.querySelector('[id^="file-appeal"]')`, 'legacy URL redirects to the author appeal action in Desk');
+  // Keep the original decision visible in a second tab while the first files the appeal.
+  const stale = await openPage();
+  await stale.viewport(390, 844);
+  await stale.goto(`${author.base}/ban-viet?review=${work}`);
+  await stale.waitFor("document.querySelector('[id^=file-appeal]')", 'second tab has the eligible decision');
+  await stale.capture('desk-review-author-mobile');
+  await page.send('Page.bringToFront');
   await page.click('[id^="file-appeal"]');
   await page.waitFor(`document.querySelector('#desk-review-content')?.textContent.includes('Đã ghi nhận, chờ quản trị viên')`, 'appeal recorded');
   check(await page.eval(`document.body.textContent.includes('Chưa có thông báo nào được gửi')`), 'author is told that no notification was sent');
   const appealQueue = await api(admin, '/api/v1/moderation/appeals');
   const appeal = appealQueue.body.find(a => a.work_id === work);
   check(appeal?.state === 'open', 'admin queue contains the actual recorded appeal');
-  await page.goto(`${admin.base}/kiem-duyet/phan-doi/${appeal.id}`);
-  await page.waitFor(`document.querySelector('#appeal-reason')`, 'admin appeal snapshot');
   await page.viewport(390, 844);
-  await page.typeAtEnd('#appeal-reason', 'Đã xem xét lại, bản này phù hợp');
-  check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), 'appeal page reflows at 390px');
-  await page.capture('moderation-appeal-mobile');
-  await page.click('#appeal-reverse');
-  await page.waitFor(`document.querySelector('#moderation-appeal')?.textContent.includes('Đã ghi nhận.')`, 'appeal conclusion acknowledged');
+  const conclusion = await post(admin, `/api/v1/moderation/appeals/${appeal.id}/conclude`, {
+    expected_decision_version: appeal.decision_version, verdict: 'reverse', reason: 'Đã xem xét lại, bản này phù hợp',
+  });
+  check(conclusion.status === 200, 'the admin reverses the recorded appeal');
   check((await api(admin, `/api/v1/works/${work}/publication`)).status === 200, 'appeal reversal republishes the exact current intent');
 
   // A notification for the earlier rejection retains its identity after the reversal.
@@ -205,6 +201,18 @@ export async function reviewWithdrawnPage(page, { args, check, captureMatrix }) 
   const beforeHide = await api(author, `/api/v1/works/${work}/publication/state`);
   const hidden = await post(author, `/api/v1/works/${work}/publication/set-private`, { command_key: crypto.randomUUID(), expected_generation: beforeHide.body.generation });
   check(hidden.status === 200, 'author makes the public work private');
+  // This decision is now withdrawn. A deliberate press must reconcile the 409 by GET only.
+  await stale.send('Page.bringToFront');
+  await stale.eval('performance.clearResourceTimings()');
+  await stale.click('[id^="file-appeal"]');
+  await stale.waitFor("document.querySelector('#desk-review-feedback')?.textContent.includes('Quyết định đã thay đổi') && document.querySelector('#desk-review-content article') && !document.querySelector('[id^=file-appeal]')", 'stale appeal reads the new state');
+  const requests = await stale.eval("performance.getEntriesByType('resource').map(r => ({path:new URL(r.name).pathname,status:r.responseStatus}))");
+  check(requests.filter(r => r.path.endsWith('/appeals')).length === 1 &&
+    requests.some(r => r.path.endsWith('/appeals') && r.status === 409) &&
+    requests.filter(r => r.path.endsWith('/publication/review') && r.status === 200).length === 1,
+    'withdrawal wins over the stale tab: one refused POST, one authoritative GET');
+  await stale.send('Page.close');
+  await page.send('Page.bringToFront');
   const hiddenReader = await api(admin, `/api/v1/works/${work}/reader`);
   check(JSON.stringify(Object.keys(hiddenReader.body).sort()) === JSON.stringify(['status','work_id']) && hiddenReader.body.status === 'hidden' && hiddenReader.cache === 'no-store', 'hidden reader exposes no author or manuscript metadata');
   const hiddenResponse = await fetch(`${admin.base}${readerPath}`);

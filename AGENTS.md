@@ -81,8 +81,8 @@ those registries rather than duplicating long status narratives across skills.
     individual/group `comments` grants with global/`WorkId` scope, inherited legacy grants, recusal
     and decision provenance). `O-17@r2` (`PRODUCT_CONFIRMED`) adds the review-withdrawn page at the
     old URL (`GET /api/v1/works/{id}/reader`, Web reader). The follow-up also serves the
-    author-hidden page, persists work appeals and adds Web case/appeal/automation screens plus
-    author review status. Investigations, comment cases/hide/restore, comment moderation UI and
+    author-hidden page, persists work appeals and adds author review status. Staff use the authorized moderation API;
+    #555 retired the Product Web case, appeal and automation screens. Investigations, comment cases/hide/restore, comment moderation UI and
     grant/group management UI remain unimplemented.
   - Author publication persistence + HTTP API (`#158`,
     [publication-runtime](docs/development/publication-runtime.md)) implements snapshot capture,

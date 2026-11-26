@@ -170,9 +170,6 @@ fn Chrome() -> impl IntoView {
                     <Route path=path!("/tac-pham/:id") view=Reader ssr=SsrMode::Async />
                     <Route path=path!("/ban-viet") view=DeskIndex />
                     <Route path=path!("/ban-viet/:id") view=DraftEditor />
-                    <Route path=path!("/kiem-duyet") view=pages::moderation::ModerationHome />
-                    <Route path=path!("/kiem-duyet/ca/:id") view=pages::moderation::CasePage />
-                    <Route path=path!("/kiem-duyet/phan-doi/:id") view=pages::moderation::AppealPage />
                     <Route path=path!("/ban-viet/:id/kiem-duyet") view=pages::desk_review::LegacyDeskReview />
                     <Route path=path!("/thong-bao") view=notifications::InboxPage />
                     <Route path=path!("/thong-bao/nhan-xet/:id/:version") view=notifications::CommentDecisionPage />

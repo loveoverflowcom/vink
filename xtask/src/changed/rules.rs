@@ -278,7 +278,6 @@ pub const BROWSER_MODULES: &[(&str, &[Scenario], &[&str])] = {
         ("apps/vink-web/e2e/editor-writing-smoke.mjs", &[S::EditorChrome], &[]),
         ("apps/vink-web/e2e/endorsement-smoke.mjs", &[S::Discussion, S::Endorsement], &[]),
         ("apps/vink-web/e2e/markdown-reader-smoke.mjs", &[S::Review], &[]),
-        ("apps/vink-web/e2e/moderation-queue-smoke.mjs", &[S::Review], &[]),
         ("apps/vink-web/e2e/notifications-smoke.mjs", &[S::Notifications], &[]),
         ("apps/vink-web/e2e/public-storage-smoke.mjs", &[S::Storage], &[]),
         ("apps/vink-web/e2e/publication-author-smoke.mjs", &[S::Publication], &[]),

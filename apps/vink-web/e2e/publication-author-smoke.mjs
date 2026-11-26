@@ -1,12 +1,12 @@
 // PUB-AUTHOR-WEB-01 browser scenario: the author's whole path through the real Web, against the
 // real App, the real Identity process and scratch PostgreSQL (docs/design/publication-author.md).
 //
-// Two real people are signed in at the same time, each in its own browser context (its own cookie
-// jar): the author, and a second person who holds an admin seat. Sign-in goes through the
+// Three real people are signed in at the same time, each in its own browser context (its own cookie
+// jar): the author, a scoped reviewer and an admin. Sign-in goes through the
 // email-code form (codes are read from Identity's local outbox: the only non-production part).
 // The admin seat is granted through the operator CLI (`vink-app admin add`); pausing the
 // automatic evaluator, writing, saving, tagging, submitting, approving/rejecting and withdrawing
-// are done through the pages. No principal is a fixture, no publication row is inserted, no
+// use the author UI or the authorized moderation API. No principal is a fixture, no publication row is inserted, no
 // approval is faked.
 //
 // Fault injection only delays or drops real traffic: an answer that the server did commit is
@@ -246,25 +246,44 @@ async function pickFormTag(page) {
   await page.waitFor(`document.querySelector('[data-testid=tag-status]')?.dataset.status === 'unsaved'`, 'the chosen tag is unsaved');
 }
 
-/** The moderator opens the queue page, then the case of exactly this revision (found in the
- * queue the server lists), and reads its snapshot. */
-async function openCase(mod, base, work, revision) {
-  await mod.goto(`${base}/kiem-duyet`);
-  await mod.waitFor(`${HYDRATED} && document.querySelector('#moderation-home')`, 'the moderation queue');
-  const queue = (await call(mod, '/api/v1/moderation/works/queue')).body;
-  const item = queue.find((c) => c.work_id === work && c.revision_id === revision);
-  if (!item) throw new Error(`no queued case for revision ${revision}: ${JSON.stringify(queue.map((c) => [c.work_id, c.revision_id, c.state]))}`);
-  await mod.waitFor(`document.querySelector('a[href="/kiem-duyet/ca/${item.id}"]')`, 'the case link in the queue');
-  await mod.eval(`document.querySelector('a[href="/kiem-duyet/ca/${item.id}"]').click()`);
-  await mod.waitFor(`${q('#case-claim')} && document.querySelector('.vk-moderation__snapshot')`, 'the case page with its snapshot');
+async function openCase(mod, work, revision) {
+  const queue = await call(mod, '/api/v1/moderation/works/queue');
+  const item = queue.body.find(c => c.work_id === work && c.revision_id === revision);
+  if (!item) throw new Error(`no queued case for revision ${revision}`);
+  const detail = await call(mod, `/api/v1/moderation/works/cases/${item.id}`);
+  if (detail.status !== 200 || detail.body.revision_id !== revision) throw new Error('wrong review snapshot');
+  return detail.body;
 }
 
-async function conclude(mod, verdict, reason) {
-  await mod.click('#case-claim');
-  await mod.waitFor(`document.querySelector('#moderation-case')?.textContent.includes('Phiên bản ca 2')`, 'claim acknowledged');
-  await mod.typeAtEnd('#case-reason', reason);
-  await mod.click(verdict === 'approved' ? '#case-approve' : '#case-reject');
-  await mod.waitFor(`document.querySelector('#moderation-case')?.textContent.includes('Đã kết luận')`, `${verdict} acknowledged`);
+async function conclude(mod, item, verdict, reason) {
+  const path = `/api/v1/moderation/works/cases/${item.id}`;
+  const claim = await post(mod, path + '/claim', { expected_version: item.version });
+  if (claim.status !== 200) throw new Error(`claim: ${claim.status}`);
+  const result = await post(mod, path + '/conclude', { expected_version: claim.body.version, verdict, reason });
+  if (result.status !== 200) throw new Error(`conclude: ${result.status}`);
+}
+
+async function retiredRoutes(page, base, role, check) {
+  const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const panel = '[data-panel="error:not-found"]';
+  const reads = new Wire(page);
+  try {
+    await page.goto(base + '/toi');
+    await page.waitFor(HYDRATED, 'account hydration');
+    for (const path of ['/kiem-duyet', '/kiem-duyet/ca/' + id, '/kiem-duyet/phan-doi/' + id]) {
+      const direct = await page.eval(`fetch(${JSON.stringify(path)}).then(async r => ({ status: r.status, html: await r.text() }))`);
+      check(direct.status === 404 && !/id="(?:moderation-(?:home|case|appeal)|case-queue|author-profile-heading)"/.test(direct.html),
+        `${role}: direct ${path} returns 404 without staff or profile content`);
+      await page.eval(`(() => { const a = document.createElement('a'); a.href = ${JSON.stringify(path)}; document.body.append(a); a.click(); a.remove(); })()`);
+      await page.waitFor(`location.pathname === ${JSON.stringify(path)} && document.querySelector('${panel}')`, role + ' sees product NotFound');
+      await page.click(panel + ' a');
+      await page.waitFor(`location.pathname === '/' && ${HYDRATED}`, 'return from retired URL');
+    }
+    check(!reads.requests.some(r => r.path.includes('/moderation/') || r.path.startsWith('/api/v1/authors/kiem-duyet')),
+      role + ' makes no staff API or author lookup on the retired routes');
+  } finally {
+    await reads.close();
+  }
 }
 
 export async function publicationAuthor(page, { args, check, openPage }) {
@@ -274,48 +293,35 @@ export async function publicationAuthor(page, { args, check, openPage }) {
   const ctx = { args, base, seen: new Set() };
   const stamp = Date.now().toString(36);
   const author = page;
-  console.log('Publication author (PUB-AUTHOR-WEB-01): two real people, real Identity:');
+  console.log('Publication author (PUB-AUTHOR-WEB-01): three real people, real Identity:');
 
   // ---- three real people, each with its own session --------------------------------------------
   // The author; an admin who only does setup (pauses the evaluator, grants work moderation); and
-  // a moderator who holds that grant and gives every verdict through the pages. An admin's own
+  // a moderator who holds that grant and gives every verdict through the API. An admin's own
   // verdict would be final and not appealable (MOD-10), so the moderator is not the admin.
   const contexts = [];
   for (let i = 0; i < 2; i++) contexts.push((await page.cdp.send('Target.createBrowserContext', { disposeOnDetach: false })).browserContextId);
   const admin = await openPage(contexts[0]);
   const mod = await openPage(contexts[1]);
+  await retiredRoutes(author, base, 'guest', check);
+  check((await call(author, '/api/v1/moderation/works/queue')).status === 401, 'guest cannot read the staff queue');
   const principalA = await enter(author, ctx, `tac-gia-${stamp}@vi-du.vn`, 'Tác giả [Mẫu]');
   const principalAdmin = await enter(admin, ctx, `quan-tri-${stamp}@vi-du.vn`, 'Quản trị [Mẫu]');
   const principalM = await enter(mod, ctx, `nguoi-duyet-${stamp}@vi-du.vn`, 'Người duyệt [Mẫu]');
   check(new Set([principalA, principalAdmin, principalM]).size === 3, 'the author, the admin and the moderator are three real principals with separate sessions');
   // Setup through the operator CLI (the admin seat has no web way to be granted).
   execFileSync(process.env.VINK_E2E_APP_BIN, ['admin', 'add', principalAdmin, 'verify web PUB-AUTHOR-WEB-01'], { env: process.env, stdio: 'pipe' });
-  // The cookie is valid, but this new document has not confirmed whose session it is yet.
-  // Let the real private queue answer before the real account answer: no usable control may
-  // appear under the unknown scope and then disappear when the account confirmation arrives.
-  const sessionWire = new Wire(admin);
-  sessionWire.holdResponse = { method: 'GET', suffix: '/auth/session/account' };
-  await sessionWire.enable(['*/api/v1/auth/session/account']);
-  await admin.goto(`${base}/kiem-duyet`);
-  await sessionWire.heldAnswer();
-  await admin.waitFor(`${HYDRATED} && document.querySelector('#moderation-home')`, 'hydrated queue while account confirmation is held');
-  await admin.waitFor(`performance.getEntriesByType('resource').some((r) => r.name.endsWith('/api/v1/moderation/automation'))`, 'the real automation read before account confirmation');
-  await admin.eval(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
-  check(!(await admin.eval(`${q('#automation-toggle')}`)), 'no moderation controls render before the tab confirms the acting account');
-  await sessionWire.releaseAnswer();
-  await sessionWire.close();
-  await admin.waitFor(`${HYDRATED} && ${q('#automation-toggle')}`, 'the admin controls');
-  if (!(await admin.eval(`document.querySelector('#moderation-home').textContent.includes('Đang dừng')`))) {
-    await admin.typeAtEnd('#automation-reason', 'verify web PUB-AUTHOR-WEB-01: người duyệt xử lý');
-    const accountReads = await admin.eval(`performance.getEntriesByType('resource').filter((r) => r.name.endsWith('/api/v1/auth/session/account')).length`);
-    await admin.eval(`window.__moderationReason = document.querySelector('#automation-reason'); window.dispatchEvent(new Event('focus'))`);
-    await admin.waitFor(`performance.getEntriesByType('resource').filter((r) => r.name.endsWith('/api/v1/auth/session/account')).length > ${accountReads}`, 'same-account focus refresh');
-    await admin.eval(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
-    check(await admin.eval(`document.querySelector('#automation-reason') === window.__moderationReason && window.__moderationReason.value === 'verify web PUB-AUTHOR-WEB-01: người duyệt xử lý' && document.activeElement === window.__moderationReason`), 'confirmed-account refresh preserves the moderation reason node, text and focus');
-    await admin.click('#automation-toggle');
-    await admin.waitFor(`document.querySelector('#moderation-home')?.textContent.includes('Đang dừng')`, 'automation paused through the page');
+  await retiredRoutes(admin, base, 'admin', check);
+  await retiredRoutes(author, base, 'author', check);
+  check((await call(author, '/api/v1/moderation/works/queue')).status === 403, 'an ordinary author cannot read the staff queue');
+  const mode = await call(admin, '/api/v1/moderation/automation');
+  check(mode.status === 200, 'the authenticated admin can read automation');
+  if (mode.body.mode !== 'paused') {
+    const paused = await post(admin, '/api/v1/moderation/automation/mode', {
+      expected_version: mode.body.version, mode: 'paused', reason: 'verify web PUB-AUTHOR-WEB-01',
+    });
+    check(paused.status === 200 && paused.body.mode === 'paused', 'the admin pauses automation via the authorized API');
   }
-  check(true, 'the admin pauses the automatic evaluator through the page: submissions wait for a person');
 
   await submissionStructure(author, base, check);
 
@@ -349,9 +355,9 @@ export async function publicationAuthor(page, { args, check, openPage }) {
   await matrix(author, 'pending', check);
 
   console.log('  the moderator approves it from the human queue:');
-  await openCase(mod, base, work, r1);
-  check(await mod.eval(`document.querySelector('.vk-moderation__snapshot')?.textContent.includes(${JSON.stringify(LINE_1A)}) && document.querySelector('#moderation-case h1')?.textContent.includes(${JSON.stringify(TITLE_1)})`), 'the reviewer reads the exact submitted title and lines');
-  await conclude(mod, 'approved', 'Phù hợp chính sách (verify web)');
+  const firstCase = await openCase(mod, work, r1);
+  check(firstCase.title === TITLE_1 && firstCase.document.source.includes(LINE_1A), 'the reviewer reads the exact submitted title and lines');
+  await conclude(mod, firstCase, 'approved', 'Phù hợp chính sách (verify web)');
 
   console.log('  the author reads the result; Explore and the reader show that revision:');
   check((await publicRead(base, work)).status === 200, 'the work is public after the approval');
@@ -428,8 +434,7 @@ async function rest(env) {
   check(said.includes('Đang công khai · Bản mới: Đang chờ kiểm duyệt'), 'the region distinguishes the public pointer from the pending revision');
   check((await publicRead(base, work)).body.revision_id === r1 && (await publicRead(base, work)).body.title === TITLE_1, 'readers still get r1, text for text');
   await matrix(author, 'public-r1-pending-r2', check);
-  await openCase(mod, base, work, r2);
-  await conclude(mod, 'rejected', 'Nội dung cần chỉnh theo chính sách (verify web)');
+  await conclude(mod, await openCase(mod, work, r2), 'rejected', 'Nội dung cần chỉnh theo chính sách (verify web)');
   await refreshOnReturn(author);
   await author.waitFor(`document.querySelector('#publication-status')?.innerText.includes('Đang công khai · Bản mới: Bị từ chối (Nội dung cần chỉnh theo chính sách')`, 'the rejection and its reason from the server');
   const rejected = await stateOf(author, work);
@@ -444,7 +449,27 @@ async function rest(env) {
   check(reviewText.includes('vẫn đang công khai') && reviewText.includes('Bị từ chối') && reviewText.includes('Nội dung cần chỉnh theo chính sách'), 'Desk distinguishes public r1 from rejected r2 and shows its reason');
   await author.click('#desk-review-content summary');
   check(await author.eval(`document.querySelector('#desk-review-content details').innerText.includes('Đang công khai.')`), 'history identifies the public revision');
-  await author.click('[id^="file-appeal-"]');
+  check(await author.eval("!document.querySelector('#desk-review-retry,#desk-review-reload')"), 'healthy review has no permanent reload');
+  await author.capture('desk-review-eligible');
+  await author.viewport(390, 844);
+  await author.capture('desk-review-eligible-mobile');
+  await author.send('Emulation.clearDeviceMetricsOverride');
+  const appealWire = new Wire(author);
+  await appealWire.enable();
+  try {
+    // Lose the committed POST answer and fail the first reconciliation GET before it reaches App.
+    appealWire.drop = { method: 'POST', suffix: '/appeals' };
+    appealWire.failBefore = { method: 'GET', suffix: '/publication/review' };
+    await author.click('[id^="file-appeal-"]');
+    await author.waitFor("document.querySelector('#desk-review-retry')", 'a failed read offers contextual retry');
+    await author.capture('desk-review-read-error');
+    await author.click('#desk-review-retry');
+    await author.waitFor("document.querySelector('#desk-review-content')?.textContent.includes('Đã ghi nhận, chờ quản trị viên')", 'a fresh read recovers the committed appeal');
+    check(appealWire.dropped === 1 && appealWire.count('POST', '/appeals') === 1 && appealWire.count('GET', '/publication/review') === 2,
+      'one explicit appeal POST followed by automatic and manual GET only');
+  } finally {
+    await appealWire.close();
+  }
   await author.waitFor(`document.querySelector('#desk-review-content')?.textContent.includes('Đã ghi nhận, chờ quản trị viên') && !document.querySelector('[id^="file-appeal-"]')`, 'the receipt shows the appeal and removes the duplicate action');
   await author.click('#desk-review-close');
   await author.waitFor(`location.pathname === '/ban-viet' && location.search === '' && !document.querySelector('#desk-review').open`, 'closing the Editor entry leaves the Desk list');
@@ -754,8 +779,7 @@ async function twoTabs({ author, mod, work, base, check, openPage, reopen, edito
 async function withdrawal({ author, mod, work, base, check, reopen, editorPath }) {
   console.log('  withdrawal with unsaved edits, a lost answer, and what readers get afterwards:');
   const intent = await intentOf(author, work);
-  await openCase(mod, base, work, intent);
-  await conclude(mod, 'approved', 'Phù hợp (verify web)');
+  await conclude(mod, await openCase(mod, work, intent), 'approved', 'Phù hợp (verify web)');
   await reopen(author);
   const approved = await stateOf(author, work);
   check((await panelText(author)).includes('Đang công khai') && approved.pointer?.revision_id === intent &&
@@ -925,6 +949,12 @@ async function sessions({ author, work, base, check, openPage, reopen, ctx }) {
   const other = await openPage();
   await other.goto(`${base}/toi`);
   await other.waitFor(`${HYDRATED_EXPR} && ${STANDING} === 'active'`, 'the same account in a second tab');
+  const detailTab = await openPage();
+  const detailWire = new Wire(detailTab);
+  detailWire.holdResponse = { method: 'GET', suffix: '/publication/review' };
+  await detailWire.enable();
+  await detailTab.goto(`${base}/ban-viet?review=${work}`);
+  await detailWire.heldAnswer();
   // Keep this edit dirty while the publication refresh waits out its cooldown.
   await holdEditorDebounce(author);
   const wire = new Wire(author);
@@ -938,12 +968,15 @@ async function sessions({ author, work, base, check, openPage, reopen, ctx }) {
     const out = await signOut(other, base);
     check(out.includes(204), 'the session ends for real (sign-out in the other tab, 204)');
     await author.waitFor(`document.querySelector('${PUBLICATION}')?.dataset.phase === 'unavailable'`, 'the first tab learns the session ended');
+    await detailTab.waitFor("!document.querySelector('#desk-review-content')", 'private sheet is disposed at logout');
+    await detailWire.releaseAnswer();
     await wire.releaseAnswer();
     await sleep(500);
     const late = await panelText(author);
     check(late.includes('Phiên đăng nhập đã hết') && !late.includes('Đang công khai') && !late.includes('Chưa công khai') && !late.includes(title), 'the late answer of the old session changes nothing: no facts, only the session notice');
     check((await author.body()).endsWith('[phiên]') && (await author.status()) === 'unsaved', 'the unsaved text stays on the page when the session ends');
   } finally {
+    await detailWire.close();
     await wire.close();
     await author.eval('window.__restoreEditorClock?.()');
   }
@@ -960,6 +993,11 @@ async function sessions({ author, work, base, check, openPage, reopen, ctx }) {
   await sleep(800);
   const gone = await author.eval(`document.body.innerText`);
   check(!gone.includes(title) && !gone.includes('[phiên]') && !gone.includes('Đang công khai') && !gone.includes(LINE_1A), 'another account in the browser: none of the author’s text, title or publication facts remain on the page');
+  await detailTab.waitFor("document.querySelector('#desk-review-content [role=alert]')?.textContent.includes('Không mở được tác phẩm')", 'new author cannot open the old work');
+  check(await detailTab.eval(`!document.querySelector('#desk-review-content article, #desk-review-retry, [id^="file-appeal-"]') &&
+    !document.body.innerText.includes(${JSON.stringify(title)})`) && detailWire.count('POST', '/appeals') === 0,
+    'a delayed private GET cannot restore author A’s review or send an appeal under B');
+  await detailTab.send('Page.close');
   const foreign = await call(other, `/api/v1/works/${work}/publication/state`);
   check(foreign.status === 404 && foreign.cache === 'no-store', 'the other account asking for the author’s state gets 404 no-store');
   const html = await (await fetch(`${base}/ban-viet/${work}`)).text();

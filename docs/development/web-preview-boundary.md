@@ -14,7 +14,7 @@ còn `PENDING`; việc di chuyển không đổi trạng thái đó.
 | --- | --- | --- |
 | PRODUCT | `/`, `/the/:slug`, `/tac-pham/:id` | Khám phá/Reader gọi public reads có phân trang, SSR và cache. Giữ. |
 | PRODUCT | `/ban-viet`, `/ban-viet/:id`, `/ban-viet/:id/kiem-duyet` | Desk tác giả, DraftSession/CodeMirror, trạng thái kiểm duyệt và redirect tương thích. Giữ Markdown Live Preview, chuyển định dạng và guard sản phẩm. |
-| PRODUCT (tạm) | `/kiem-duyet`, `/kiem-duyet/ca/:id`, `/kiem-duyet/phan-doi/:id` | Màn staff gọi App moderation với quyền theo phiên. Vẫn mount và nằm trong allowlist của guard; [#555](https://github.com/loveoverflowcom/vink/issues/555) (PR 3/4) gỡ khỏi Product, giữ API và authority server. Studio Admin làm sau. |
+| RETIRED | `/kiem-duyet`, `/kiem-duyet/ca/:id`, `/kiem-duyet/phan-doi/:id` | [#555](https://github.com/loveoverflowcom/vink/issues/555) gỡ các màn, link, probe quyền trên trang Tôi và CSS chỉ dùng cho staff. URL cũ về 404. Nhân sự dùng [API được phân quyền](moderation-runtime.md#7-web-kiểm-duyệt). Studio Admin được hoãn. |
 | PRODUCT | `/toi`, `/toi/chinh-ho-so`, `/toi/dia-chi` | Account/Profile/Handle và compatibility thuộc owner Profile. Giữ cho #488. |
 | PRODUCT | `/:author` và hai danh sách `nguoi-theo-doi`, `dang-theo-doi` | Public author/follow resolver kiểm tên, quyền danh sách, alias và tombstone. Giữ. |
 | PRODUCT | `vink-app → vink-web/ssr`, `vink-web/hydrate`, shared UI/patterns/Markdown, npm editor, profile navigation, cache và `vink.css` | App và UX thật. Giữ edge và font, empty/brand, snippet có caller trong Web build, OCI và Pages. |
@@ -58,7 +58,7 @@ và package Web; vấn đề là owner và vị trí, chưa có số đo cho th�
   thực thi nằm trong `apps/vink-preview`; fixture có consumer Product đặt ở owner contract hoặc
   thư viện.
 - Mẫu motion dùng Preview với poster, license và hành động mô phỏng. Markdown Live Preview
-  trong editor là hành vi làm việc của tác giả. Màn kiểm duyệt dùng auth thật.
+  trong editor là hành vi làm việc của tác giả. Chi tiết kiểm duyệt tác giả dùng phiên đã xác nhận.
 - Để promote prototype, ghi caller thật, authority, fallback, route, dependencies, assets, kiểm
   tra tại runtime và quyết định sản phẩm còn mở. Giữ fixture để tiếp tục thử độc lập.
 - CHOICE-01 B dùng đường dựng fixture tĩnh/hydrate hiện có để giữ no-JS và vòng đời. Gallery

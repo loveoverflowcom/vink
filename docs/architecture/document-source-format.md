@@ -77,7 +77,7 @@ hash thân response, tự đổi khi shape JSON đổi. Không còn `of_source_v
 | Application | `save_draft` (document trước, rồi title authority), `PublicWork.content`, `request_public` | `request_public` nhận hai format canonical sau #264 rồi áp dụng cùng hàng rào revision, generation và kiểm duyệt. |
 | PostgreSQL | `postgres.rs::content`, `publication.rs` (capture, revision content), `discovery.rs` (đọc + kiểm hash), `moderation.rs`/`appeals.rs` (trả `DocumentData` của snapshot), `author_works.rs` (`d.document IS DISTINCT FROM pr.document`) | Đọc/ghi một shape; capture lấy title + source từ cùng phiên bản nháp đã khóa `FOR SHARE`. |
 | HTTP API v1 | `Draft`, `SaveDraftRequest` (`title` tùy chọn), `Publication`, `CaseDetailDto`, appeals | Fixture `contracts/http/v1/fixtures/*` dùng `{format, source}` với dòng trống và newline cuối để chứng minh nguyên văn. |
-| Web | `contract.rs`, `document.rs`, `pages/desk.rs` (gửi buffer CodeMirror nguyên văn), `pages/mod.rs`, `pages/moderation.rs`, `public_persistence.rs`, `public-cache/indexeddb.js` | Reader, preview và snapshot dùng chung phép chiếu theo format. Validator Rust/JS nhận hai format canonical, với IndexedDB tắt. |
+| Web | `contract.rs`, `document.rs`, `pages/desk.rs` (gửi buffer CodeMirror nguyên văn), `pages/mod.rs`, `public_persistence.rs`, `public-cache/indexeddb.js` | Reader, preview và snapshot dùng chung phép chiếu theo format. Validator Rust/JS nhận hai format canonical, với IndexedDB tắt. |
 | Fixture/seed | `dev_seed.rs`, `xtask/src/provision.rs`, `apps/vink-web/e2e/fixtures/*.sql`, script e2e (`e2e/document.mjs`) | Canonical shape và hash mới. |
 
 ## 6. Cutover cơ sở dữ liệu và lịch sử bất biến

@@ -2,7 +2,6 @@ mod author_discovery;
 mod desk;
 pub(crate) mod desk_review;
 mod discovery;
-pub(crate) mod moderation;
 pub use discovery::{Home, TagDetail};
 mod discussion;
 mod endorsement;
