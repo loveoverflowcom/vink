@@ -916,8 +916,10 @@ async function sessions({ author, work, base, check, openPage, reopen, ctx }) {
   await done();
   await author.waitFor(`document.querySelector('${PUBLICATION}')?.dataset.phase === 'unavailable'`, 'a refusal clears the facts');
   check((await panelText(author)).includes('Yêu cầu bị từ chối') && !(await panelText(author)).includes('Chưa công khai') && !(await panelText(author)).includes('Đang công khai'), '403 on the read (fabricated): the facts leave the page and the refusal is named');
-  await author.click('#publication-reload');
-  await waitPhase(author, 'ready', 'a real read restores it');
+  check(await author.eval("!document.querySelector('#publication-reload, #publication-dismiss')"),
+    '403 leaves the authority notice without a retry or a no-op dismiss action');
+  await refreshOnReturn(author);
+  await waitPhase(author, 'ready', 'the existing return lifecycle restores facts after authority is confirmed');
 
   // A real answer that arrives after the session ended in another tab.
   const other = await openPage();
