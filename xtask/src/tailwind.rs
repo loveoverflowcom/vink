@@ -22,8 +22,8 @@ pub const WEB_SOURCE_ROOTS: &[&str] = &[
 ];
 pub const PREVIEW_SOURCE_ROOTS: &[&str] = &[
     "packages/ui-system/leptos/src",
-    "packages/ui-system/leptos/preview/src",
-    "packages/ui-system/leptos/preview/examples",
+    "apps/vink-preview/leptos/src",
+    "apps/vink-preview/leptos/examples",
     "packages/vink-patterns/leptos/src",
 ];
 /// Tailwind v4.1.8 fixed extraction for Leptos `class:` syntax (tailwindlabs/tailwindcss#18093).

@@ -203,7 +203,7 @@ pub fn check(root: &Path, problems: &mut Vec<String>) {
         "apps/vink-web/style/vink.css",
         "packages/ui-system/leptos/style/vink-ui.css",
         "packages/vink-patterns/leptos/patterns.css",
-        "packages/ui-system/leptos/preview/style/preview.css",
+        "apps/vink-preview/leptos/style/preview.css",
         "packages/ui-system/leptos/tailwind/web.css",
         "packages/ui-system/leptos/tailwind/preview.css",
     ] {
@@ -222,8 +222,8 @@ pub fn check(root: &Path, problems: &mut Vec<String>) {
         "apps/vink-web/src",
         "packages/ui-system/leptos/src",
         "packages/vink-patterns/leptos/src",
-        "packages/ui-system/leptos/preview/src",
-        "packages/ui-system/leptos/preview/examples",
+        "apps/vink-preview/leptos/src",
+        "apps/vink-preview/leptos/examples",
     ] {
         for file in files(&root.join(dir), "rs") {
             let rel = file

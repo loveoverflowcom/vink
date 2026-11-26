@@ -20,7 +20,7 @@ thật chưa dùng được. Bố cục và lựa chọn thiết kế: [LayoutSp
 | Adapter DTO → facts | [`ui/adapters.rs`](../../apps/vink-web/src/ui/adapters.rs) (`TagLabels`, `tag_selection`, `tag_catalog`, `tag_options`, `exact_option`, `tag_refusal_text`) |
 | App controller trong editor | [`pages/work_info.rs`](../../apps/vink-web/src/pages/work_info.rs) (`WorkInfo`), gửi/settle trong `Editor` của [`pages/desk.rs`](../../apps/vink-web/src/pages/desk.rs) |
 | Composition dùng chung | [`vink-patterns/leptos/src/tags.rs`](../../packages/vink-patterns/leptos/src/tags.rs), [`Tags.kt`](../../packages/vink-patterns/cmp/src/commonMain/kotlin/vink/patterns/Tags.kt); CSS ở [`patterns.css`](../../packages/vink-patterns/leptos/patterns.css) |
-| Gallery | Leptos [`preview/src/tags.rs`](../../packages/ui-system/leptos/preview/src/tags.rs), CMP [`TagSpecimens.kt`](../../packages/ui-system/cmp/diagnostics/src/commonMain/kotlin/vink/ui/preview/TagSpecimens.kt); entry `composition.tag-selector` |
+| Gallery | Leptos [`preview/src/tags.rs`](../../apps/vink-preview/leptos/src/tags.rs), CMP [`TagSpecimens.kt`](../../packages/ui-system/cmp/diagnostics/src/commonMain/kotlin/vink/ui/preview/TagSpecimens.kt); entry `composition.tag-selector` |
 | Kiểm trình duyệt | `draftTags`, `retiredTagAfterRestart` trong [`browser-smoke.mjs`](../../apps/vink-web/e2e/browser-smoke.mjs); seed/retire catalog qua `vink-app tag` trong [`xtask/src/web.rs`](../../xtask/src/web.rs) |
 
 ## 1. Lựa chọn

@@ -55,9 +55,10 @@ def validate(spec):
 
 
 def is_preview_asset(name):
+    # Outputs of the Preview app (apps/vink-preview, #552) never ship with the product package.
     parts = name.split("/")
     return any(part in {"expressions", "preview", "fixtures"} or part.startswith(
-        ("vink-ui-preview-", "vink_ui_preview", "expression_hydration")) for part in parts)
+        ("vink-ui-preview-", "vink_ui_preview", "vink-preview", "expression_hydration")) for part in parts)
 
 
 def inventory(pkg, *, retained=False):

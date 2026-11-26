@@ -13,7 +13,7 @@ import { wakeDesk } from './desk-lifecycle.mjs';
 import { defaultDocument, paragraphs } from './document.mjs';
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { checkSelectGeometry, selectCharacter } from '../../../packages/ui-system/leptos/preview/e2e/select-geometry.mjs';
+import { checkSelectGeometry, selectCharacter } from '../../../packages/ui-system/leptos/e2e/select-geometry.mjs';
 import { discoveryReading, discoveryCorpus } from './discovery-smoke.mjs';
 import { authorSearch } from './author-search-smoke.mjs';
 import { discoveryChipGeometry } from './discovery-chip-geometry.mjs';

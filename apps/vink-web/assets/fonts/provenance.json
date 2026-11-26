@@ -12,7 +12,7 @@
     "notes": "Subset to Latin, Vietnamese, combining marks, punctuation and common symbols; all OpenType layout features, all name records (including the license fields) and hinting are kept. Be Vietnam Pro keeps every mapped code point; Literata drops Greek, Cyrillic and one private-use glyph. Neither font declares a Reserved Font Name. Running the command again reproduces identical bytes."
   },
   "desktop": {
-    "directory": "packages/ui-system/cmp/preview/fonts",
+    "directory": "apps/vink-preview/cmp/fonts",
     "fonttools_version": "4.68.0",
     "brotli_version": "1.2.1",
     "command": "python3 apps/vink-web/assets/fonts/derive_desktop.py",

@@ -13,7 +13,7 @@ use sha2::{Digest, Sha256};
 
 /// Self-hosted font faces, their OFL licenses and `provenance.json`.
 pub const FONTS_DIR: &str = "apps/vink-web/assets/fonts";
-const DESKTOP_FONTS_DIR: &str = "packages/ui-system/cmp/preview/fonts";
+const DESKTOP_FONTS_DIR: &str = "apps/vink-preview/cmp/fonts";
 pub const BRAND_DIR: &str = "apps/vink-web/assets/brand";
 
 pub fn run(root: &Path) -> Result<(), String> {
@@ -657,7 +657,7 @@ fn ui_system(root: &Path, problems: &mut Vec<String>) {
     ];
     for manifest in [
         "packages/ui-system/leptos/Cargo.toml",
-        "packages/ui-system/leptos/preview/Cargo.toml",
+        "apps/vink-preview/leptos/Cargo.toml",
     ] {
         let text = read(&root.join(manifest)).unwrap_or_default();
         for line in text.lines().map(str::trim_start) {
@@ -670,10 +670,7 @@ fn ui_system(root: &Path, problems: &mut Vec<String>) {
     }
     let mut sources = Vec::new();
     rust_files(&root.join("packages/ui-system/leptos/src"), &mut sources);
-    rust_files(
-        &root.join("packages/ui-system/leptos/preview/src"),
-        &mut sources,
-    );
+    rust_files(&root.join("apps/vink-preview/leptos/src"), &mut sources);
     for file in sources {
         let Some(text) = read(&file) else { continue };
         for (number, line) in text.lines().enumerate() {

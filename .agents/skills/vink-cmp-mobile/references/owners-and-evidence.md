@@ -10,7 +10,7 @@ claiming implementation or choosing checks; this snapshot is a starting point.
 | State/navigation policy and components | Same directory: `VinkState.kt`, `VinkFeedback.kt`, `VinkNavigation.kt`; shared [states](../../../../packages/ui-system/shared/states.md) and [navigation](../../../../packages/ui-system/shared/navigation.md) |
 | Literary compositions | [patterns CMP](../../../../packages/vink-patterns/cmp), [pattern contract](../../../../packages/vink-patterns/README.md) |
 | One set of diagnostic specimens | [diagnostics commonMain](../../../../packages/ui-system/cmp/diagnostics/src/commonMain/kotlin/vink/ui/preview) — `Workbench.kt`, `Components.kt`, `StateSpecimens.kt`, `NavigationSpecimens.kt`, `ScreenRecipes.kt`, `DiagnosticHost.kt` |
-| Desktop window/fonts and render tests | [Desktop preview](../../../../packages/ui-system/cmp/preview/src/desktopMain/kotlin/vink/ui/preview), [desktopTest](../../../../packages/ui-system/cmp/preview/src/desktopTest/kotlin/vink/ui/preview) |
+| Desktop window/fonts and render tests | [Desktop preview](../../../../apps/vink-preview/cmp/src/desktopMain/kotlin/vink/ui/preview), [desktopTest](../../../../apps/vink-preview/cmp/src/desktopTest/kotlin/vink/ui/preview) |
 | Android debug host and instrumentation | [Android host](../../../../packages/ui-system/cmp/androidDiagnostic); `DiagnosticActivity.kt`, `DiagnosticTest.kt`, actual manifest/build |
 | iOS simulator composition and XCTest | [iOS host](../../../../packages/ui-system/cmp/iosDiagnostic); `project.yml`, `Sources/App.swift`, `Tests/DiagnosticTests.swift`; Kotlin controller in diagnostics `iosMain` |
 
@@ -32,7 +32,7 @@ Manifests win when these change.
 | Claim | Boundary needed | Limits/artifacts |
 | --- | --- | --- |
 | Pure region/overlay/identity policy | Existing `commonTest` vectors, through CMP verify | No OS or rendering claim |
-| Shared Compose layout, input, semantics, callbacks | CMP verify: common + Desktop tests; open relevant `preview/build/captures` PNGs and actual context sidecar | JVM/off-screen, no OS window, native IME or screen reader |
+| Shared Compose layout, input, semantics, callbacks | CMP verify: common + Desktop tests; open relevant `apps/vink-preview/cmp/build/captures` PNGs and actual context sidecar | JVM/off-screen, no OS window, native IME or screen reader |
 | Interaction gesture, nested scroll, focus flow | Desktop JVM tests for pointer/state logic; native host for gesture tracking | JVM proves logic, not finger feel or 60/120fps; static tree is not TalkBack/VoiceOver |
 | Reduced motion & loop termination | JVM unit test verifies `loopsRun == false`; Desktop/native verify visual stop | Static PNG proves frame, not loop termination; verify `loopsRun` and timed frames |
 | Web counterpart or shared-token change | Token drift/quick + Leptos preview; Web verify when app consumer changes | Leptos pixels are browser evidence |

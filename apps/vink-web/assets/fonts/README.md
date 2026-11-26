@@ -52,7 +52,7 @@ những điều đó cần ảnh chụp đã mở ở viewport/theme/cỡ chữ 
 
 Skiko 0.9.22.2 trên Linux không giải mã được các WOFF2 đã kiểm hash, trong khi TTF giải nén
 từ cùng dữ liệu đọc được. Desktop đóng gói bốn derivative trong
-[`preview/fonts`](../../../../packages/ui-system/cmp/preview/fonts), tổng **975 744 bytes**;
+[`preview/fonts`](../../../../apps/vink-preview/cmp/fonts), tổng **975 744 bytes**;
 Gradle chép chúng, OFL và provenance vào classpath `vink-fonts/`. Web tiếp tục dùng các WOFF2
 trong bảng trên. Không cần Python hoặc mạng khi build/chạy preview.
 

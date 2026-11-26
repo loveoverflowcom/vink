@@ -129,7 +129,7 @@ const WEB_BOUNDARY_SPEC: WebArtifactSpec = WebArtifactSpec {
         "packages/markdown-text/Cargo.toml",
         "packages/store-postgres/Cargo.toml",
         "packages/ui-system/leptos/Cargo.toml",
-        "packages/ui-system/leptos/preview/Cargo.toml",
+        "apps/vink-preview/leptos/Cargo.toml",
         "packages/vink-patterns/leptos/Cargo.toml",
         "packages/work-view-policy/Cargo.toml",
         "services/vink-app/Cargo.toml",

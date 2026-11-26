@@ -2,6 +2,9 @@
  *
  * Shares the exact same `@layer` order, `@theme inline` token mapping and `source(none)` contract
  * as `web.css`, swapping only the final legacy leaf from `vink.css` to `preview.css`.
+ * The entry stays beside the pinned Tailwind compiler so `tailwindcss/*` resolves from its
+ * node_modules; the host stylesheet and sources it reads belong to `apps/vink-preview/leptos`.
+ * Product Web never reads this entry (`web.css` is its only stylesheet).
  */
 @layer theme, base, legacy, components, utilities;
 
@@ -10,10 +13,10 @@
 @import "../style/tokens.css" layer(base);
 @import "../style/vink-ui.css" layer(legacy);
 @import "../../../vink-patterns/leptos/patterns.css" layer(legacy);
-@import "../preview/style/preview.css" layer(legacy);
+@import "../../../../apps/vink-preview/leptos/style/preview.css" layer(legacy);
 @import "tailwindcss/utilities.css" layer(utilities) source(none);
 
 @source "../src";
-@source "../preview/src";
-@source "../preview/examples";
+@source "../../../../apps/vink-preview/leptos/src";
+@source "../../../../apps/vink-preview/leptos/examples";
 @source "../../../vink-patterns/leptos/src";

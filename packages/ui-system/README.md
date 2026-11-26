@@ -19,16 +19,17 @@ Enso và Leptos 0.8.
 | Owner | Nội dung | Trạng thái |
 | --- | --- | --- |
 | [`shared`](shared/README.md) | `tokens.json` (nguồn token duy nhất), `tokens.schema.json`, `preview-catalog.json`, `fixtures/` (gồm golden vectors identity, states và navigation), `icons.json` + license, [contract component](shared/components.md), [contract trạng thái](shared/states.md), [contract điều hướng](shared/navigation.md) | Đã triển khai |
-| [`leptos`](leptos/README.md) | crate `vink-ui`: token/catalog/icon/vector Rust sinh ra, `tokens.css` sinh ra, `UiRoot`/`ThemeScope`, component theo họ (`text`, `layout`, `action`, `field`, `media`, `identity`, `feedback`), contract thuần `state`, CSS renderer có scope; crate `vink-ui-preview` | Đã triển khai; preview kiểm bằng Chrome headless |
-| [`cmp`](cmp/README.md) | Gradle: `:ui` (commonMain, `VinkTheme`/`VinkScope`, component `Vink*` theo họ), `:diagnostics` (specimens common), `:preview` (Desktop), opt-in Android debug/iOS simulator hosts | Đã triển khai; evidence từng target ghi riêng, không suy native parity từ JVM |
+| [`leptos`](leptos/README.md) | crate `vink-ui`: token/catalog/icon/vector Rust sinh ra, `tokens.css` sinh ra, `UiRoot`/`ThemeScope`, component theo họ (`text`, `layout`, `action`, `field`, `media`, `identity`, `feedback`), contract thuần `state`, CSS renderer có scope; probe `e2e/select-geometry.mjs` dùng chung cho runner Web và Preview | Đã triển khai |
+| [`cmp`](cmp/README.md) | Gradle: `:ui` (commonMain, `VinkTheme`/`VinkScope`, component `Vink*` theo họ), `:diagnostics` (specimens common), map `:preview` (Desktop) của app Preview, opt-in Android debug/iOS simulator hosts | Đã triển khai; evidence từng target ghi riêng, không suy native parity từ JVM |
 | `xtask/src/ui_tokens.rs`, `xtask/src/ui_states.rs`, `xtask/src/ui_navigation.rs`, `xtask/src/ui_toggle.rs` | Validate + generate + `--check` (token, catalog, fixture, icon registry, identity vectors, state vectors, navigation vectors, toggle vectors) | Đã triển khai |
+| [`apps/vink-preview`](../../apps/vink-preview/README.md) | App Preview (#552): host Leptos `vink-ui-preview` và CMP Desktop `:preview`; chỉ dùng public API của `vink-ui`/`:ui` và patterns, không gọi service | Đã triển khai; kiểm bằng Chrome headless và Compose Desktop |
 | `xtask/src/ui_preview.rs` | `cargo xtask ui-preview leptos\|cmp build\|verify\|run` | Đã triển khai |
 | App (`apps/vink-web`) | Key `vink.ui.theme`/`vink.ui.rail`, bootstrap trước CSS, khi nào ghi storage, route/copy/dữ liệu, đích Vink và thứ tự, `NavigationGuard`, lớp phủ Tôi | Giữ nguyên owner; shell render bằng primitive UIS-04 |
 
 Một role chỉ có một owner. `apps/vink-web/style/vink.css` không còn khai báo giá trị token: build
 biên dịch `tailwind-theme.css` (`@theme inline`) + `tokens.css` (sinh), CSS legacy theo layer và
 utilities đã allowlist qua `packages/ui-system/leptos/tailwind/{web,preview}.css` thành `/pkg/vink.css`
-(Web) và `vink-preview.css` (preview). Xem [nền tảng Tailwind Web](../../docs/development/tailwind-web-foundation.md).
+(Web) và `vink-preview.css` (app Preview, đọc `style/preview.css` và source của `apps/vink-preview/leptos`). Xem [nền tảng Tailwind Web](../../docs/development/tailwind-web-foundation.md).
 
 ```text
 shared/tokens.json + preview-catalog.json + fixtures/ + icons.json   (không runtime, không backend)
@@ -48,7 +49,7 @@ Nguồn lệnh duy nhất vẫn là [docs/development](../../docs/development/RE
 | `cargo xtask ui-tokens` | Validate các nguồn shared rồi ghi 16 file sinh ra (chỉ ghi file thay đổi, gồm `tailwind-theme.css`) |
 | `cargo xtask ui-tokens --check` | Không ghi; lỗi khi thiếu hoặc lệch. Chạy trong `verify quick` và trước mọi build web/preview |
 | `cargo xtask ui-preview leptos build\|run\|verify` | Bundle wasm (`csr`) vào `target/ui-preview/leptos`; `run` phục vụ ở `VINK_UI_PREVIEW_BIND` (mặc định `127.0.0.1:3019`); `verify` chạy Chrome headless và ghi ảnh vào `target/ui-preview/leptos/captures/` |
-| `cargo xtask ui-preview cmp build\|run\|verify` | Gradle wrapper 8.14.3; `run` mở cửa sổ desktop; `verify` chạy test common + desktop và ghi ảnh vào `cmp/preview/build/captures/` |
+| `cargo xtask ui-preview cmp build\|run\|verify` | Gradle wrapper 8.14.3; `run` mở cửa sổ desktop; `verify` chạy test common + desktop và ghi ảnh vào `apps/vink-preview/cmp/build/captures/` |
 | `VINK_UI_NATIVE_TARGETS=1 cargo xtask ui-preview cmp build\|verify` | Thêm Android (`ANDROID_HOME`) và iOS arm64/simulator arm64 (Xcode, tải Kotlin/Native lần đầu) |
 
 Link kịch bản chính xác của preview Leptos: `http://127.0.0.1:3019/#<catalog-id>/<scenario>`, ví dụ

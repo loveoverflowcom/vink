@@ -348,6 +348,10 @@ nhận `403 principal_suspended` và service không nhận lệnh. Chưa cấu h
 
 ## 3. Bộ ví dụ dữ liệu hợp đồng (dùng được ngoài Web)
 
+Ví dụ 2–4 có bản JSON tại [notifications-examples.json](fixtures/notifications-examples.json):
+test `vink-web` (`notifications::state`), `notifications-smoke.mjs` và specimen của app Preview
+đọc file này. Provider chưa có test đối chiếu riêng cho file này.
+
 ### Ví dụ 1 — Event Envelope liên dịch vụ (`#346` → `#347`) & Receipt
 
 ```json

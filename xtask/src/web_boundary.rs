@@ -2,6 +2,9 @@
 use crate::process::cargo;
 use std::{collections::BTreeSet, path::Path};
 
+/// Root of the Preview app (#552): every package below it is preview-only, whatever its name.
+const PREVIEW_APP: &str = "apps/vink-preview";
+
 const APPROVED_ROUTES: &[&str] = &[
     "/",
     "/the/:slug",
@@ -12,6 +15,7 @@ const APPROVED_ROUTES: &[&str] = &[
     "/ban-viet",
     "/ban-viet/:id",
     "/ban-viet/:id/kiem-duyet",
+    // Staff moderation workspace: still mounted; #555 (Epic #554, PR 3/4) retires it from Product.
     "/kiem-duyet",
     "/kiem-duyet/ca/:id",
     "/kiem-duyet/phan-doi/:id",
@@ -129,8 +133,10 @@ fn graph(root: &Path, tree: &str) -> Result<(), String> {
             .and_then(|(_, path)| path.split_once(')'))
             .and_then(|(path, _)| Path::new(path).strip_prefix(root).ok())
             .is_some_and(|path| {
-                path.iter()
-                    .any(|part| matches!(part.to_str(), Some("preview" | "examples" | "fixtures")))
+                path.starts_with(PREVIEW_APP)
+                    || path.iter().any(|part| {
+                        matches!(part.to_str(), Some("preview" | "examples" | "fixtures"))
+                    })
             });
         if matches!(package, "vink-expressions" | "vink-ui-preview") || test_owner {
             return Err(format!(
@@ -175,6 +181,7 @@ fn forbidden_artifact(name: &str) -> bool {
     parts.iter().any(|part| {
         matches!(*part, "expressions" | "preview" | "fixtures")
             || part.starts_with("vink-ui-preview-")
+            || part.starts_with("vink-preview")
             || part.starts_with("vink_ui_preview")
             || part.starts_with("expression_hydration")
     })
@@ -209,13 +216,18 @@ mod tests {
 
     #[test]
     fn normal_graph_accepts_shared_packages_and_rejects_preview_edges() {
-        let lawful = "vink-web v0.1\nvink-ui v0.1\nvink-patterns v0.1";
+        let lawful = "vink-web v0.1 (/repo/apps/vink-web)\n\
+                      vink-ui v0.1 (/repo/packages/ui-system/leptos)\n\
+                      vink-patterns v0.1 (/repo/packages/vink-patterns/leptos)";
         let root = Path::new("/repo");
         assert!(graph(root, lawful).is_ok());
         for injected in [
             "vink-expressions v0.1",
             "vink-ui-preview v0.1",
             "specimen v0.1 (/repo/preview/specimen)",
+            // Any crate of the Preview app, renamed or not, is rejected by its location.
+            "gallery v0.1 (/repo/apps/vink-preview/leptos)",
+            "mock-host v0.1 (/repo/apps/vink-preview/web/mock)",
         ] {
             assert!(graph(root, &format!("{lawful}\n{injected}")).is_err());
         }
@@ -228,6 +240,7 @@ mod tests {
             "snippets/vink-web-f00/expressions/bridge.js",
             "snippets/vink-ui-preview-f00/runtime.js",
             "expression_hydration_bg.wasm",
+            "vink-preview.css",
         ] {
             assert!(forbidden_artifact(file));
         }

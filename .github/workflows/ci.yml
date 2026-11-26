@@ -169,8 +169,8 @@ jobs:
         with:
           name: ui-cmp-macos-evidence
           path: |
-            packages/ui-system/cmp/preview/build/captures/
-            packages/ui-system/cmp/preview/build/test-results/
+            apps/vink-preview/cmp/build/captures/
+            apps/vink-preview/cmp/build/test-results/
             packages/ui-system/cmp/diagnostics/build/test-results/
           retention-days: 14
 
@@ -193,7 +193,7 @@ jobs:
         with:
           name: ui-cmp-evidence
           path: |
-            packages/ui-system/cmp/preview/build/captures/
-            packages/ui-system/cmp/preview/build/test-results/
+            apps/vink-preview/cmp/build/captures/
+            apps/vink-preview/cmp/build/test-results/
             packages/ui-system/cmp/diagnostics/build/test-results/
           retention-days: 14
