@@ -2249,7 +2249,10 @@ async function preferenceSurfaces(page) {
   const errorsBefore = page.errors.length;
   try {
     await page.goto(`${args.base}/toi`);
-    check(await page.eval(`document.documentElement.dataset.hydrated!=='true' && document.querySelectorAll('#build-info').length===0 && document.querySelector('#page-account .vk-account-status h1')?.textContent==='Tài khoản' && document.querySelector('#page-theme input[type=radio]')!==null`), 'SSR /toi renders without page JavaScript or build-info footer');
+    check(await page.eval(`document.documentElement.dataset.hydrated !== 'true' &&
+      document.querySelector('#page-account .vk-account-status h1')?.textContent === 'Tài khoản' &&
+      !document.querySelector('#build-info, #page-appearance, #auth-appearance')`),
+    'no-JS SSR /toi renders the generic account heading without appearance controls');
   } finally {
     await page.send('Emulation.setScriptExecutionDisabled', { value: false });
     await page.send('Network.setBlockedURLs', { urls: [] });
