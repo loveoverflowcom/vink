@@ -1311,8 +1311,15 @@ fn reusable_bindgen(version: &str) -> Option<PathBuf> {
     find_native_executable("wasm-bindgen")
 }
 
+// The editor and Tailwind's env shebang resolve Node from their package directories.
+// Relative PATH entries (including an empty entry) can name a different executable there.
+fn node_search_path_is_absolute(path: &std::ffi::OsStr) -> bool {
+    std::env::split_paths(path).all(|dir| dir.is_absolute())
+}
+
 fn reusable_node(forbidden_env: &[&str]) -> Option<PathBuf> {
-    if has_unsafe_loader_env()
+    if !node_search_path_is_absolute(&std::env::var_os("PATH")?)
+        || has_unsafe_loader_env()
         || forbidden_env
             .iter()
             .any(|key| std::env::var_os(key).is_some_and(|v| !v.is_empty()))
@@ -1442,6 +1449,21 @@ mod tests {
         }
         if !stage.join("vink.css").exists() {
             fs::write(stage.join("vink.css"), "body{}").unwrap();
+        }
+    }
+
+    #[test]
+    fn node_provenance_rejects_cwd_dependent_search_paths() {
+        use std::ffi::OsStr;
+        assert!(node_search_path_is_absolute(OsStr::new("/usr/bin:/bin")));
+        for path in [
+            "./bin:/usr/bin",
+            "/usr/bin:tools",
+            ":/usr/bin",
+            "/usr/bin:",
+            "",
+        ] {
+            assert!(!node_search_path_is_absolute(OsStr::new(path)), "{path:?}");
         }
     }
 
