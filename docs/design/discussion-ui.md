@@ -211,3 +211,41 @@ Delta [#328](https://github.com/loveoverflowcom/vink/issues/328) ngày 26/11/202
 ### Đối chiếu R4 trên Reader Web Linux
 
 Đã đối chiếu ảnh R4 01–08 và 10 cùng các biến thể desktop với Reader. Ảnh 04 giữ textarea editable khi đang gửi. Riêng ảnh 10, Mạnh đã chốt nhãn tĩnh “Ưng” không số cho cả tác phẩm chuyển riêng tư và tác phẩm bị rút. Reader giữ quyền gỡ theo `can_remove`. Hợp đồng đọc và quyền truy cập được giữ nguyên. Phép đo tối kiểm màu chữ của receipt trên chính nền thông tin; nhãn field và hai pill phải đạt 4,5:1 cả trong khi đổi theme. [Ảnh trước/sau, SHA và lệnh kiểm](../development/discussion-ui-evidence.md).
+
+## Nhận xét R5 · #561
+
+[Hướng đã duyệt và ảnh tham chiếu](https://github.com/loveoverflowcom/vink/issues/561) ·
+[Semantic UI #560/#570](../development/web-semantics.md#từ-yêu-cầu-tới-bằng-chứng) ·
+[Auth theo ý định #328/#572](auth-reader-web.md). R5 thay phần trình bày R4. Quyền
+ghi, premoderation, xác nhận gỡ, cursor, thứ tự và biên nhận vẫn theo hợp đồng
+đang áp dụng.
+
+```text
+#feedback-region · cùng measure với Reader
+  h2 Nhận xét
+  #comments-mode · trạng thái ngoại lệ, thao tác tác giả hoặc retry khi cần
+  #root-composer · nhãn Viết nhận xét, textarea tonal, Gửi có nhãn
+  #own-comments · lượt tải riêng, mục riêng, lỗi hoặc phân trang thật
+  #root-list · gốc/neo theo thứ tự cũ → mới
+    Bút danh và thời gian · nội dung có xuống dòng · Ưng · Trả lời
+    Nhóm tonal · phản hồi phẳng có ngữ cảnh khi trỏ tới phản hồi khác
+    Ô soạn · Trả lời [bút danh], Đóng, textarea Viết phản hồi, Gửi
+  Phân trang khi còn cursor, trạng thái rỗng/lỗi/phục hồi đúng ngữ cảnh
+```
+
+- Reader phối hợp state và transport trong `RootThreadView` và dùng lại
+  `DiscussionThread`/`FeedbackComposer`. Nhận xét gốc dùng nền trang và khoảng
+  cách. Bút danh dùng Be Vietnam Pro đậm hơn phần nội dung Literata. Tên, thời
+  gian và hành động được xuống dòng ở chữ lớn mà vẫn cùng cột đọc.
+- Gửi dùng nút Filled có chữ khi sẵn sàng. Giới hạn xuất hiện cùng lý do cần sửa.
+  Khi có chữ, nhắc giữ nháp và duyệt công khai theo ngữ cảnh. Bản nháp, selection,
+  IME, lần gửi và khả năng đối soát thuộc cùng controller. Đóng trả focus về
+  đích trả lời hoặc control phục hồi của nhánh.
+- Dùng `data-mode-kind` cho policy, `aria-expanded` cho nút mở ô trả lời,
+  nhãn hành động đã xác nhận của Ưng và mô tả textarea trỏ vào đích hiện tại.
+  Chữ tương đối được tính tại lúc trình bày ở trình duyệt. `time[datetime]`
+  giữ dữ liệu thật cùng nhãn thời gian tuyệt đối đọc được qua trợ năng.
+
+Kiểm ảnh Chrome của Product ở sáng/tối, 1440/100%, 390/100–150% và 320/200%.
+Ca trả lời mất đích và response phân trang dùng fixture có nhãn. Tách ảnh
+Preview khỏi kết quả kiểm Product.

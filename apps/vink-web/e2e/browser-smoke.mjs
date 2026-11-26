@@ -6225,6 +6225,9 @@ async function discussionReadingAndWrites(page) {
   await page.waitFor(`document.documentElement.dataset.hydrated==='true' && document.querySelector('#discussion-mode-toggle') && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'local fixture discussion readiness');
   check(await page.eval(`!!document.querySelector('meta[name="vink-local-discussion-fixture"]') && document.querySelector('#comments-mode').textContent.includes('Định danh thử trên thiết bị này')`), 'fixture readiness is labelled and supplied by the trusted host');
   check(await page.eval("!document.querySelector('#discussion-refresh, #own-comments-refresh, #discussion-read-retry, #own-comments-retry')"), 'authenticated healthy discussion has no manual reload control');
+  await page.waitFor("!document.getElementById('own-comments')", '#561 a loaded empty own projection leaves no private section');
+  check(await page.eval("!document.getElementById('root-composer-help') && !document.querySelector('#feedback-region .vk-feedback-policy')"),
+    '#561 the empty field has its own label with no persistent instruction or policy note');
   // #560 mapping: docs/development/web-semantics.md. Local author and real settings CAS.
   const modeAction = '#feedback-region #discussion-mode-toggle';
   check(await page.eval("document.querySelector('#comments-mode').dataset.modeKind === 'open' && !document.querySelector('#comments-mode .vk-discussion-mode__status, .vk-discussion-mode__dot')")
@@ -6485,11 +6488,19 @@ async function discussionReadingAndWrites(page) {
     await page.click(`#reply-to-${replyId}`);
     await page.waitFor(`document.activeElement?.id==='reply-composer-${rootId}'`, 'reply moves focus to its own stable field');
     check(await replyMatches(true), '#560 root reply reflects the expanded composer after real input');
+    const editorSelector = '#reply-composer-' + rootId;
+    const editor = await collectElementAccessibility(page, editorSelector);
+    const linkedContext = await page.eval("document.activeElement?.getAttribute('aria-describedby') === " + JSON.stringify(editorSelector.slice(1) + '-target'));
+    check(editor.ax.role === 'textbox' && editor.ax.name === 'Viết phản hồi'
+      && editor.ax.description?.startsWith('Trả lời ') && linkedContext,
+      '#561 reply textarea exposes its contextual description and keeps an independent label');
+    check(await matchesAXButton(page, editorSelector + '-close', { name: 'Đóng ô trả lời, giữ nháp' }),
+      '#561 close icon is an action with a name and no disclosure state');
     await page.typeAtEnd(`#reply-composer-${rootId}`, 'Bản trả lời có ngữ cảnh\n\n  Giữ nguyên 👩‍💻');
-    check(await page.eval(`document.querySelector('#comment-${replyId}')?.dataset.replyTarget==='true' && document.querySelector('#comment-${replyId} .vk-discussion-target-badge')?.textContent.includes('Đang là đích trả lời')`), 'targeted reply highlights inside the branch');
+    check(await page.eval(`document.querySelector('#comment-${replyId}')?.dataset.replyTarget==='true' && document.querySelector('.vk-discussion-reply-target')?.dataset.target==='reply'`), 'targeted reply highlights inside the branch');
     check(await page.eval(`document.querySelectorAll('.vk-discussion-replies .vk-discussion-replies').length===0 && document.querySelectorAll('#reply-composer-${rootId}').length===1`), 'reply-to-reply mounts one composer in its root and no third indentation level');
-    await page.eval(`document.querySelector('.vk-discussion-target-chip button')?.click()`);
-    await page.waitFor(`document.activeElement?.id==='reply-composer-${rootId}' && document.querySelector('.vk-discussion-target-chip')?.dataset.target==='root'`, 'clearing target chip returns to root target while keeping draft and focus');
+    await page.click('.vk-discussion-reply-target button');
+    await page.waitFor(`document.activeElement?.id==='reply-composer-${rootId}' && document.querySelector('.vk-discussion-reply-target')?.dataset.target==='root'`, 'selecting the root again keeps draft and focus');
     check(await page.eval(`document.querySelector('#reply-composer-${rootId}')?.value.includes('Giữ nguyên')`), 'clearing target preserves draft');
     await page.click(`#reply-to-${replyId}`);
     await page.waitFor(`document.activeElement?.id==='reply-composer-${rootId}'`, 're-select reply target');
@@ -6503,9 +6514,10 @@ async function discussionReadingAndWrites(page) {
     check(await page.eval(`(() => { const b = document.querySelector('#reply-composer-${rootId}-send'); const f = document.querySelector('#reply-composer-${rootId}'); return b?.getAttribute('aria-busy')==='true' && getComputedStyle(b.querySelector(':scope > .vk-ui-icon')).display==='none' && !!b.querySelector('.vk-ui-button__status svg') && f?.readOnly===false && b.querySelector('.vk-ui-button__status').getBoundingClientRect().right <= b.querySelector('.vk-ui-button__label').getBoundingClientRect().left; })()`), 'R4 Sending keeps the field editable and places the progress indicator before its label');
     await page.eval(`window.discussionReplyComposerNode = document.querySelector('#reply-composer-${rootId}');
       window.discussionReplyComposerNode.setSelectionRange(1, 4, 'backward')`);
-    await page.eval(`[...document.querySelectorAll('.vk-discussion-reply-composer button')].find(b=>b.textContent.trim()==='Thu ô · Giữ chữ').click()`);
+    await page.click('#reply-composer-' + rootId + '-close');
     await page.waitFor(`document.querySelector('#reply-composer-${rootId}') === window.discussionReplyComposerNode && window.discussionReplyComposerNode.getClientRects().length === 0 && document.activeElement?.id==='reply-to-${replyId}' && document.querySelector('.vk-discussion-reply-kept')?.textContent.includes('Bản trả lời được giữ lại')`, 'reply composer collapsed cleanly with R4 kept pill');
-    await page.click(`#reopen-reply-${rootId}`);
+    check(await replyMatches(false), '#561 closing the editor restores the collapsed AX state');
+    await page.click('#reopen-reply-' + rootId);
     await page.waitFor(`document.activeElement === window.discussionReplyComposerNode &&
       document.querySelector('#reply-composer-${rootId}') === window.discussionReplyComposerNode &&
       window.discussionReplyComposerNode.selectionStart === 1 && window.discussionReplyComposerNode.selectionEnd === 4 &&
@@ -6605,7 +6617,7 @@ async function discussionReadingAndWrites(page) {
   }
 }
 
-async function discussionR31Geometry(page, width, scale, scenario) {
+async function discussionR5Geometry(page, width, scale, scenario) {
   const geometry = await page.eval(`(() => {
     const thread = document.querySelector('.vk-discussion-root'), pattern = thread.querySelector('.vk-discussion-thread');
     const root = pattern.querySelector(':scope > .vk-discussion-comment'), group = pattern.querySelector('.vk-discussion-reply-group');
@@ -6614,6 +6626,9 @@ async function discussionR31Geometry(page, width, scale, scenario) {
     const rootEndorse = segment?.querySelector('.vk-endorsement .vk-ui-toggle__control');
     const rootReply = segment?.querySelector('[id^="reply-to-"]');
     const nameEl = root.querySelector('.vk-discussion-byline .vk-ui-byline__name');
+    const time = root.querySelector('time');
+    const relative = time.querySelector('[aria-hidden=true]');
+    const absolute = time.querySelector('.vk-ui-visually-hidden');
     const rect = e => { const r=e.getBoundingClientRect(); return {left:r.left, right:r.right}; };
     const controls = [...pattern.querySelectorAll('.vk-ui-toggle__control')];
     const luminance = color => {
@@ -6651,8 +6666,13 @@ async function discussionR31Geometry(page, width, scale, scenario) {
       reasons:reasons.length, targetReasons:pattern.querySelectorAll('.vk-ui-action__note').length,
       descriptions:controls.every(b=>(b.getAttribute('aria-describedby')||'').split(' ').filter(Boolean).every(id=>!!document.getElementById(id))),
       shared:controls.length>=2 && controls.every(b=>(b.getAttribute('aria-describedby')||'').includes(reasons[0]?.id)),
-      field:composer.querySelectorAll('textarea').length===1 && !!composer.querySelector('label[for]'),
-      radius:getComputedStyle(composer).borderTopLeftRadius,
+      field:composer.querySelectorAll('textarea').length===1 && !!composer.querySelector('label[for]')
+        && composer.querySelector('textarea').rows === 2 && !composer.querySelector('.vk-ui-field__help'),
+      surface:getComputedStyle(composer).backgroundColor,
+      bodyDistinct:getComputedStyle(nameEl).fontFamily!==getComputedStyle(body).fontFamily
+        && Number(getComputedStyle(nameEl).fontWeight)>Number(getComputedStyle(body).fontWeight),
+      time:!Number.isNaN(Date.parse(time.dateTime)) && absolute?.textContent===time.title
+        && !!relative?.textContent.trim() && relative.textContent!==time.title,
       rootSeg48:[rootEndorse, rootReply].every(b=>{const r=b.getBoundingClientRect();return r.width>=48 && r.height>=48;}),
       buttons:[...thread.querySelectorAll('button')].every(b=>{const r=b.getBoundingClientRect();return r.width>=44 && r.height>=44 && r.left>=0 && r.right<=innerWidth+1;})};
   })()`);
@@ -6671,7 +6691,10 @@ async function discussionR31Geometry(page, width, scale, scenario) {
   check(close(geometry.fieldPadLeft, geometry.fieldPadRight) && geometry.gap===16, `${scenario}: symmetrical composer inset and 16px reply spacing`);
   check(geometry.headingStatic && geometry.segmentOrderOk && geometry.segmentCornersOk, `${scenario}: quiet heading, semantic oldest-first order and R4 root segmented Ưng|Trả lời 6px inner corners`);
   check(geometry.reasons===1 && geometry.targetReasons===0 && geometry.descriptions && geometry.shared, `${scenario}: one uniform branch reason describes every separate target`);
-  check(geometry.field && geometry.radius==='28px' && geometry.rootSeg48 && geometry.buttons, `${scenario}: one native field, 28px tonal surface, 48px root segment and >=44px targets`);
+  check(geometry.field && geometry.surface==='rgba(0, 0, 0, 0)' && geometry.rootSeg48 && geometry.buttons,
+    `${scenario}: compact native field without an extra card, 48px root segment and >=44px targets`);
+  check(geometry.bodyDistinct && geometry.time,
+    `${scenario}: distinct name/body typography and relative display with absolute accessible time`);
   check(geometry.contrast>=4.5, `${scenario}: resolved body/metadata/label/button contrast >=4.5 (${geometry.contrast.toFixed(2)})`);
   if (width === 390 || width === 360 || width === 1440 || (width === 320 && scale === 200)) {
     const scroll = await page.eval('({x:scrollX,y:scrollY})');
@@ -6741,7 +6764,14 @@ async function captureDiscussionMatrix(page, name, anchor, boundary) {
         requiredTargets: [anchor],
         overflow: ov100,
       });
-      if (name === 'contract-fixture-flat') await discussionR31Geometry(page, width, 100, `${name}/${theme}/${width}`);
+      if (name === 'contract-fixture-flat') {
+        await discussionR5Geometry(page, width, 100, `${name}/${theme}/${width}`);
+        if (width === 390) {
+          await page.eval("document.documentElement.style.fontSize='150%'");
+          await discussionR5Geometry(page, width, 150, `${name}/${theme}/${width}/150%`);
+          await page.eval("document.documentElement.style.fontSize=''");
+        }
+      }
       if (width <= 390 || width >= 1280) {
         await page.eval(`document.documentElement.style.fontSize='200%'; document.querySelector(${JSON.stringify(anchor)}).scrollIntoView({block:'start'})`);
         const ov200 = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript({
@@ -6749,7 +6779,7 @@ async function captureDiscussionMatrix(page, name, anchor, boundary) {
         })));
         check(ov200.ok && await page.eval(`document.documentElement.scrollWidth<=innerWidth+1`),
           `${name}/${theme}/${width}/200%: text reflows without unintended overflow (${ov200.reasons.join('; ')})`);
-        if (name === 'contract-fixture-flat') await discussionR31Geometry(page, width, 200, `${name}/${theme}/${width}/200%`);
+        if (name === 'contract-fixture-flat') await discussionR5Geometry(page, width, 200, `${name}/${theme}/${width}/200%`);
         await page.capture(`discussion-${name}-${width}-200-${theme}`, {
           scenario: 'D2T-03-large-text',
           state: `text200-${theme}`,

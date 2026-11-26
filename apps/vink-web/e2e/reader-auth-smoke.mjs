@@ -311,8 +311,19 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
       && await matchesAXButton(page, REPLY_SEND, { name: 'Gửi' }) && comments.count() === 0,
       '#328 opening a reply and typing reaches the shared named Send without Auth or POST');
     const before = await snapshot(page, REPLY_EDITOR, 'readerAuthReply');
-    const context = await page.eval(`${q(REPLY_EDITOR)}.closest('.vk-feedback-composer').querySelector('.vk-discussion-composer-heading p').textContent`);
-    check(before.y > 0 && context === 'Trả lời bình luận gốc', '#328 starting from a nonzero scroll position with the selected public root as reply target');
+    const context = await page.eval(`(() => {
+      const editor = ${q(REPLY_EDITOR)};
+      const target = document.getElementById(editor.getAttribute('aria-describedby'));
+      const byline = document.getElementById('comment-' + ${JSON.stringify(ROOT)}).querySelector('.vk-ui-byline__name');
+      return {
+        id: target?.id,
+        label: target?.textContent.trim(),
+        byline: byline.textContent.trim(),
+        target: target?.closest('.vk-discussion-reply-target')?.dataset.target,
+      };
+    })()`);
+    check(before.y > 0 && context.target === 'root' && context.label === 'Trả lời ' + context.byline,
+      '#328 starting from a nonzero scroll position with the selected public root as reply target');
     await page.click(REPLY_SEND);
     await page.waitFor(isOpen, 'reply opens the shared Auth entry');
     await page.key('Escape');
@@ -387,7 +398,10 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
       const e = ${q(REPLY_EDITOR)}, before = window.readerAuthReply;
       const sameRoot = ${q(ROOT_EDITOR)} === window.readerAuthRoot.e && ${q(ROOT_EDITOR)}.value === ${JSON.stringify(ROOT_TEXT)};
       const sameReply = ${preserved(REPLY_EDITOR, 'readerAuthReply', REPLY_TEXT, false)};
-      const sameContext = e.closest('.vk-feedback-composer').querySelector('.vk-discussion-composer-heading p').textContent === ${JSON.stringify(context)};
+      const target = document.getElementById(e.getAttribute('aria-describedby'));
+      const sameContext = target?.id === ${JSON.stringify(context.id)} &&
+        target.textContent.trim() === ${JSON.stringify(context.label)} &&
+        target.closest('.vk-discussion-reply-target')?.dataset.target === 'root';
       return { active: ${standing('active')}, sameRoot, sameReply, sameContext, beforeTop: before.top,
         top: e.getBoundingClientRect().top, scroll: scrollY, focus: document.activeElement?.id };
     })()`);

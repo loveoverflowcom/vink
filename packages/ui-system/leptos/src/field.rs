@@ -86,7 +86,7 @@ impl ChoiceOption {
     }
 }
 
-/// Blank error text is not an error.
+/// A blank message does not describe the field.
 fn present(error: Option<String>) -> Option<String> {
     error.filter(|e| !e.trim().is_empty())
 }
@@ -265,16 +265,24 @@ fn text_field(
     variant: FieldVariant,
     reveal_password: bool,
     leading: Option<IconName>,
+    description_id: Option<String>,
 ) -> impl IntoView {
     let invalid = Signal::derive(move || present(error.get()).is_some());
     let help = Signal::derive(move || {
-        help.clone().or_else(|| {
+        present(help.clone()).or_else(|| {
             (mode.get() == FieldMode::Disabled).then(|| "Tính năng chưa khả dụng.".into())
         })
     });
     let described = {
         let id = id.clone();
-        Signal::derive(move || described_by(&id, help.with(Option::is_some), invalid.get()))
+        Signal::derive(move || {
+            let messages = described_by(&id, help.with(Option::is_some), invalid.get());
+            match (&description_id, messages) {
+                (Some(context), Some(messages)) => Some(format!("{context} {messages}")),
+                (Some(context), None) => Some(context.clone()),
+                (None, messages) => messages,
+            }
+        })
     };
     let floating = variant == FieldVariant::FloatingTonal;
     let node = input_ref.unwrap_or_default();
@@ -434,6 +442,7 @@ pub fn TextField(
         variant,
         reveal_password,
         leading,
+        None,
     )
 }
 
@@ -451,6 +460,9 @@ pub fn TextArea(
     #[prop(optional)] variant: FieldVariant,
     #[prop(default = 4)] rows: u16,
     #[prop(optional, into)] placeholder: Option<String>,
+    /// An existing context element, read before inline help and errors.
+    #[prop(optional_no_strip)]
+    described_by: Option<String>,
 ) -> impl IntoView {
     text_field(
         TextControl::Area(rows),
@@ -472,6 +484,7 @@ pub fn TextArea(
         variant,
         false,
         None,
+        described_by,
     )
 }
 
@@ -539,6 +552,7 @@ pub fn SearchField(
         None,
         FieldVariant::ExternalLabel,
         false,
+        None,
         None,
     )
     .into_any()

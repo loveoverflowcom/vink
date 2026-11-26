@@ -533,38 +533,21 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
 .vk-discussion-copy-status { font-size: var(--vk-type-caption-size); color: var(--vk-on-surface-variant); }
 .vk-discussion-copy-status[data-copied="true"] { color: var(--vk-success); font-weight: var(--vk-type-label-weight); }
 
-/* R4 (#360 ảnh 05): reply target pill & unavailable warning box. */
-.vk-discussion-target-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-block-size: var(--vk-size-hit-target);
-  padding: 2px 4px 2px 12px;
-  border-radius: var(--vk-radius-full);
-  background: var(--vk-primary-container);
-  color: var(--vk-on-primary-container);
-  font-size: var(--vk-type-caption-size);
-  max-inline-size: 100%;
-  min-width: 0;
+/* The contextual heading and the recovery note are separate from the field surface. */
+.vk-discussion-composer-heading { padding-inline: var(--vk-space-2); }
+.vk-discussion-reply-target > p {
+  margin: 0;
+  color: var(--vk-on-surface);
+  font-weight: var(--vk-type-section-weight);
+  overflow-wrap: anywhere;
 }
-.vk-discussion-target-chip[data-target="root"] {
-  padding-inline-end: 12px;
-  background: var(--vk-secondary-container);
-  color: var(--vk-on-secondary-container);
-}
-.vk-discussion-target-chip > .vk-ui-icon { flex-shrink: 0; }
-.vk-discussion-target-chip > p { margin: 0; overflow-wrap: anywhere; }
-.vk-discussion-target-chip .vk-ui-icon-button { color: inherit; min-block-size: var(--vk-size-hit-target); min-inline-size: var(--vk-size-hit-target); }
 .vk-discussion-target-lost__head { display: flex; align-items: flex-start; gap: 10px; }
 .vk-discussion-target-lost__head > .vk-ui-icon { flex-shrink: 0; margin-block-start: 2px; }
 .vk-discussion-target-lost__head strong { display: block; font-size: var(--vk-type-label-size); font-weight: var(--vk-type-section-weight); }
 .vk-discussion-target-lost__actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--vk-space-2); }
 
 .vk-discussion-root {
-  margin-block: 16px;
-  padding: 16px;
-  border-radius: var(--vk-radius-xl);
-  background: var(--vk-surface-container-low);
+  margin-block: var(--vk-space-6);
   min-width: 0;
 }
 .vk-discussion-reply-composer { display: grid; gap: var(--vk-space-3); margin-block-start: var(--vk-space-3); min-width: 0; }
@@ -616,9 +599,6 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
 /* Keep pager display in the same layer as its [hidden] rule below. */
 .vk-discussion-pagination { display: grid; }
 .vk-discussion-pagination > p { margin: 0; min-width: 0; overflow-wrap: anywhere; }
-@media (max-width: 359px) {
-  .vk-discussion-root { padding-inline: 12px; }
-}
 .vk-reader__header { overflow-wrap: anywhere; margin-bottom: var(--vk-space-8); }
 
 .vk-document {
