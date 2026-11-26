@@ -1,5 +1,9 @@
 # Bản đồ tính năng và đường kiểm chứng Vink
 
+## Semantic UI trên Web
+
+[Bản đồ Semantic UI](web-semantics.md) nối PRD/UIS với control, state và oracle của từng caller. Pilot Reader/Discussion nằm trong scenario `discussion`. Trang mapping ghi rõ build đã kiểm và các consumer còn chờ.
+
 ## Hồ sơ tác giả và Theo dõi (#288)
 
 **Mức triển khai Social tại base `c24e5849` là `NOT_IMPLEMENTED`.** Hợp đồng r1 cho #289–#298

@@ -23,6 +23,8 @@ Nếu nhận run từ Drive hoặc bundle capture, đọc
 build và variant trước khi so. Giữ gap/authority/inspection status của manifest;
 không coi upload VERIFIED là design PASS hay recipe mẫu là màn sản phẩm thật.
 
+Với claim semantic trên Web, theo [mapping owner → control → phép kiểm](../../../docs/development/web-semantics.md). Giới hạn probe vào control của fixture, kiểm role/tên tính bởi trình duyệt và quan sát hệ quả sau thao tác phím/click. Chỉ lưu kết quả so khớp. Giữ các kết luận DOM/AX, hình ảnh và lượt đọc bằng công nghệ trợ năng thật ở đúng lớp bằng chứng.
+
 ## 1. Khóa phạm vi đủ dùng
 
 Ghi surface/route, vùng user hỏi, nguồn ảnh/code, viewport/theme/locale/text scale

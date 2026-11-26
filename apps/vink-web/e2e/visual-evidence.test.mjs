@@ -13,6 +13,7 @@ import {
   evaluateOverflowReport,
   evaluateTargetGeometry,
   extractAxNodeSummary,
+  matchesAXButton,
   parsePngMetadata,
   parseSceneFilenameExpectations,
   validateCaptureScene,
@@ -239,6 +240,30 @@ test('AC-03: overflow oracle catches hidden overflow with scrollX=0 while allowi
   assert.equal(clipped.ok, false);
   assert.equal(clipped.status, 'FAIL');
   assert.ok(clipped.reasons.some((r) => r.includes('clipped')));
+});
+
+test('scoped AX button returns only a match and releases the target even for a private name', async () => {
+  const node = { role: { value: 'button' }, name: { value: 'synthetic private text' }, properties: [] };
+  const calls = [];
+  const page = { async send(method, params) {
+    calls.push(method);
+    if (method === 'Runtime.evaluate') return { result: { objectId: 'control' } };
+    if (method === 'Accessibility.getPartialAXTree') {
+      assert.deepEqual(params, { objectId: 'control', fetchRelatives: false });
+      return { nodes: [node] };
+    }
+    assert.equal(method, 'Runtime.releaseObject');
+    assert.deepEqual(params, { objectId: 'control' });
+  } };
+  const match = () => matchesAXButton(page, '#fixture', { name: 'Trả lời', expanded: false });
+  assert.equal(await match(), false);
+  assert.deepEqual(calls, ['Runtime.evaluate', 'Accessibility.getPartialAXTree', 'Runtime.releaseObject']);
+  node.name.value = 'Trả lời';
+  assert.equal(await match(), false); // Missing expanded is distinct from collapsed.
+  node.properties.push({ name: 'expanded', value: { value: false } });
+  assert.equal(await match(), true);
+  node.role.value = 'link';
+  assert.equal(await match(), false);
 });
 
 test('AC-03: AX oracle separates raw textContent from computed AX name and catches altered accessible name', () => {
