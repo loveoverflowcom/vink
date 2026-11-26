@@ -1267,6 +1267,9 @@ pub struct SaveFacts {
 
 /// SAV-04 copy: the visible label stays “Lưu” in every state (D3); the confirmed state is
 /// `aria-pressed`, the filled bookmark, the tonal pill and the check mark.
+/// The accessible name is also always “Lưu” (owner decision 26/11/2026, PR #546): with
+/// `aria-pressed`, a name switching to `selected_name` (“Bỏ lưu”) would read “Bỏ lưu, đã nhấn”.
+/// `selected_name` is therefore never rendered here; keep it only for the shared copy shape.
 pub fn save_copy() -> ToggleCopy {
     ToggleCopy {
         pending_on: "Đang lưu…".into(),
@@ -1322,6 +1325,7 @@ pub fn SaveAction(
                 copy=save_copy()
                 icon=IconName::BookmarkBorder
                 selected_icon=IconName::Bookmark
+                // Stable name “Lưu” + `aria-pressed` (26/11/2026); Thấm stays action-named.
                 pressed_semantics=true
                 note_icons=true
                 value=Signal::derive(move || facts.with(|f| f.value))

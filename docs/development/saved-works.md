@@ -42,7 +42,7 @@ Khi App ghi fence xóa tài khoản hoặc thu hồi handle theo đường cũ, 
 | Tab hiện lại, khôi phục từ lịch sử | Đọc lại khi rảnh, tối đa một lần mỗi 15 giây, để hai tab không giữ trạng thái cũ quá lâu. |
 | Trang ẩn, gỡ sau kiểm duyệt, đã xóa | Không có nhóm nút; chỉ trang công khai dựng `WorkEndorsement`. |
 
-Dialog đăng nhập chuyển lên cấp trang Reader để composer và Lưu dùng chung, mỗi nơi gọi tự nêu điều kiện “owner riêng đã áp phiên mới”. `ToggleAction` có thêm các tùy chọn Web không đổi `toggle-contract-v1` ([components](../../packages/ui-system/shared/components.md)). Nhóm Thấm · Lưu chỉ đặt chữ `on-surface` và nền `action.neutral.container` bên trong nhóm, nên Ưng và các ToggleAction khác giữ nguyên token. Liên kết “Mở Đã lưu” lấy handle từ `GET /api/v1/me/profile` của đúng principal và trỏ tới `/@handle/da-luu` của #389.
+Dialog đăng nhập chuyển lên cấp trang Reader để composer và Lưu dùng chung, mỗi nơi gọi tự nêu điều kiện “owner riêng đã áp phiên mới”. `ToggleAction` có thêm các tùy chọn Web không đổi `toggle-contract-v1` ([components](../../packages/ui-system/shared/components.md)). Nhóm Thấm · Lưu chỉ đặt chữ `on-surface` và nền `action.neutral.container` bên trong nhóm, nên Ưng và các ToggleAction khác giữ nguyên token. Liên kết “Mở Đã lưu” lấy handle từ `GET /api/v1/me/profile` của đúng principal và trỏ tới `/@handle/da-luu` của #389. Ngày 26/11/2026 chủ sản phẩm chốt ba điểm mở của lát này (tên truy cập “Lưu” + `aria-pressed`, link tới trang #389 trả NotFound đến khi PR3 merge, Thấm của khách giữ lý do hiện có); chi tiết ở [LayoutSpec](../design/saved-works.md#cặp-thấm--lưu).
 
 ### Kiểm chứng #388
 

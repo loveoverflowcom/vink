@@ -177,6 +177,7 @@ mod browser {
         }
 
         /// D2: the Reader's sheet, back to this button, never a save on the guest's behalf.
+        /// Only Lưu takes this path; a guest's Thấm keeps its blocked reason (outside #388).
         fn sign_in(&self) {
             let Some(auth) = self.auth else {
                 return;
@@ -221,6 +222,8 @@ mod browser {
         }
 
         /// The viewer's own handle for “Mở Đã lưu”, read once per scope from `/me/profile`.
+        /// The link targets `/@handle/da-luu`, the owner-only page of #389; until #389 ships it
+        /// resolves to the same NotFound as any unknown URL (accepted 26/11/2026, PR #546).
         fn load_list_href(&self) {
             let Some((scope, known)) = self
                 .controller

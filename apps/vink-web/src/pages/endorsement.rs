@@ -241,6 +241,8 @@ fn random_key() -> Option<String> {
 /// the reader shows and “Lưu” for the work. The count is the public summary of that revision
 /// only; another revision's count is never shown for it. Each half keeps its own authority,
 /// pending state and feedback; neither renders on a hidden or removed page.
+/// A guest's Thấm keeps its visible reason “Cần đăng nhập để Thấm.”: only Lưu opens the sign-in
+/// sheet (#388 D2; the guest flow of Thấm is outside #388, confirmed 26/11/2026).
 #[component]
 pub(crate) fn WorkEndorsement(
     revision_id: String,
