@@ -524,6 +524,7 @@ pub struct CommentsSettingsRequest {
 }
 
 /// Pending comments for a moderator, oldest first.
+#[cfg(test)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModerationQueue {
     pub pending_total: i64,
@@ -531,6 +532,7 @@ pub struct ModerationQueue {
     pub next_cursor: Option<String>,
 }
 
+#[cfg(test)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct QueueEntry {
     pub comment_id: String,
@@ -544,6 +546,7 @@ pub struct QueueEntry {
     pub can_decide: bool,
 }
 
+#[cfg(test)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModerationDecisionRequest {
     pub expected_version: i64,
@@ -553,6 +556,7 @@ pub struct ModerationDecisionRequest {
     pub reason: Option<String>,
 }
 
+#[cfg(test)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModerationDecision {
     pub comment_id: String,

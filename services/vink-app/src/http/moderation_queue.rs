@@ -121,5 +121,40 @@ mod tests {
             headers[header::LINK],
             format!("</api/v1/moderation/works/queue?limit=50&cursor={cursor}>; rel=\"next\"")
         );
+
+        // Last and empty pages retain the authority key and have no continuation.
+        let mut last = QueuePage {
+            authority_key: q.authority_key(true, &[]),
+            items: array,
+            next_cursor: None,
+        };
+        let golden = |raw| serde_json::from_str::<serde_json::Value>(raw).unwrap();
+        assert_eq!(
+            serde_json::to_value(&last).unwrap(),
+            golden(include_str!(
+                "../../contracts/http/v1/fixtures/moderation.works.end.json"
+            ))
+        );
+        last.items.clear();
+        assert_eq!(
+            serde_json::to_value(&last).unwrap(),
+            golden(include_str!(
+                "../../contracts/http/v1/fixtures/moderation.queue.empty.json"
+            ))
+        );
+        let appeals = QueueQuery::parse(actor, QueueKind::Appeals, None, None).unwrap();
+        let page = QueuePage {
+            authority_key: appeals.authority_key(true, &[]),
+            items: vec![golden(include_str!(
+                "../../contracts/http/v1/fixtures/appeal.open.json"
+            ))],
+            next_cursor: None,
+        };
+        assert_eq!(
+            serde_json::to_value(page).unwrap(),
+            golden(include_str!(
+                "../../contracts/http/v1/fixtures/moderation.appeals.page.json"
+            ))
+        );
     }
 }

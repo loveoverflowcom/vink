@@ -193,10 +193,10 @@ export async function markdownReader(page, { args, check, textContrast }) {
     const caseAPI = '/api/v1/moderation/works/cases/' + queued.id;
     const detail = await request(admin, caseAPI);
     check(detail.status === 200 && detail.cache === 'no-store' && detail.data.title === poem.title && detail.data.document.source === source, 'staff sees captured r1 with no-store');
-    const claim = await post(admin, caseAPI + '/claim', { expected_version: detail.data.version });
-    check(claim.status === 200, 'the admin claims the Markdown snapshot');
-    const approved = await post(admin, caseAPI + '/conclude', { expected_version: claim.data.version, verdict: 'approved', reason: 'Duyệt đúng bản đã chụp.' });
-    check(approved.status === 200, 'the admin approves the exact revision through the API');
+    const firstClaim = await post(admin, caseAPI + '/claim', { expected_version: detail.data.version });
+    check(firstClaim.status === 200, 'the admin claims the Markdown snapshot');
+    const firstApproval = await post(admin, caseAPI + '/conclude', { expected_version: firstClaim.data.version, verdict: 'approved', reason: 'Duyệt đúng bản đã chụp.' });
+    check(firstApproval.status === 200, 'the admin approves the exact revision through the API');
 
     const live = await request(reviewer, readerAPI);
     check(live.status === 200 && live.data.revision_id === r1.data.revision_id

@@ -1531,12 +1531,13 @@ mod publication_path_tests {
         }
     }
 
-    /// Every publication call has a deadline: the three commands (a lost answer is uncertain,
-    /// never a rejection) and the state read. Nothing else is claimed by this list.
+    /// Publication/appeal commands and the private reads that reconcile their outcomes are bounded.
     #[test]
     fn every_publication_call_ends_by_deadline() {
         for path in [
             super::publication_state_path(WORK),
+            super::author_work_review_path(WORK),
+            super::file_appeal_path(WORK, "r"),
             super::snapshots_path(WORK),
             super::request_public_path(WORK),
             super::set_private_path(WORK),
