@@ -982,7 +982,6 @@ fn DeskError(error: ApiError) -> impl IntoView {
     let kind = match error {
         ApiError::Unauthenticated => ProblemKind::AuthRequired,
         ApiError::Forbidden => ProblemKind::Forbidden,
-        ApiError::NotFound => ProblemKind::NotFound,
         _ => ProblemKind::Unavailable,
     };
     // Only where this deployment accepts sign-in; elsewhere the old wording stays truthful.
@@ -995,10 +994,6 @@ fn DeskError(error: ApiError) -> impl IntoView {
         ApiError::Unauthenticated => (
             "Bạn chưa đăng nhập.",
             "Cần đăng nhập để mở bản thảo riêng. Bạn vẫn có thể đọc các tác phẩm công khai.",
-        ),
-        ApiError::NotFound => (
-            "Không tìm thấy bản nháp này.",
-            "Bản nháp không tồn tại hoặc không thuộc về bạn.",
         ),
         ApiError::Unavailable | ApiError::Network => (
             "Chưa tải được bản thảo.",
@@ -1089,26 +1084,38 @@ pub fn DraftEditor() -> impl IntoView {
         (scope, principal.or(typed_as))
     });
     view! {
-        <Title text="Bản nháp — Bàn viết — Vink" />
         <Meta name="robots" content="noindex" />
+        <Suspense fallback=|| view! {
+            <DraftEditorFrame><EditorHeading label=Signal::stored("Bản nháp") /><p class="vk-muted">"Đang mở bản nháp…"</p></DraftEditorFrame>
+        }>
+            {move || Suspend::new(async move {
+                match draft.await {
+                    // The editor saves its buffer verbatim as a default document. A draft it
+                    // could not save back unchanged (Markdown until #256/#262, or CR line
+                    // endings that CodeMirror normalizes) is not opened.
+                    Ok(draft) => match crate::document::desk_editable(&draft.document) {
+                        Ok(()) => view! { <DraftEditorFrame><Editor draft /></DraftEditorFrame> }.into_any(),
+                        Err(reason) => view! {
+                            <DraftEditorFrame><EditorHeading label=Signal::stored("Bản nháp") /><FormatNotEditable reason /></DraftEditorFrame>
+                        }.into_any(),
+                    },
+                    Err(ApiError::NotFound) => view! { <crate::ui::empty_state::NotFoundContent /> }.into_any(),
+                    Err(error) => view! {
+                        <DraftEditorFrame><EditorHeading label=Signal::stored("Bản nháp") /><DeskError error /></DraftEditorFrame>
+                    }.into_any(),
+                }
+            })}
+        </Suspense>
+    }
+}
+
+#[component]
+fn DraftEditorFrame(children: Children) -> impl IntoView {
+    view! {
+        <Title text="Bản nháp — Bàn viết — Vink" />
         <section class="vk-desk vk-desk--editor" aria-labelledby="editor-heading">
-            <noscript>
-                <p class="vk-desk-noscript">{DESK_UNAVAILABLE_SSR}</p>
-            </noscript>
-            <Suspense fallback=|| view! { <EditorHeading label=Signal::stored("Bản nháp") /><p class="vk-muted">"Đang mở bản nháp…"</p> }>
-                {move || Suspend::new(async move {
-                    match draft.await {
-                        // The editor saves its buffer verbatim as a default document. A draft it
-                        // could not save back unchanged (Markdown until #256/#262, or CR line
-                        // endings that CodeMirror normalizes) is not opened.
-                        Ok(draft) => match crate::document::desk_editable(&draft.document) {
-                            Ok(()) => view! { <Editor draft /> }.into_any(),
-                            Err(reason) => view! { <EditorHeading label=Signal::stored("Bản nháp") /><FormatNotEditable reason /> }.into_any(),
-                        },
-                        Err(error) => view! { <EditorHeading label=Signal::stored("Bản nháp") /><DeskError error /> }.into_any(),
-                    }
-                })}
-            </Suspense>
+            <noscript><p class="vk-desk-noscript">{DESK_UNAVAILABLE_SSR}</p></noscript>
+            {children()}
         </section>
     }
 }

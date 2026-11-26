@@ -10,21 +10,31 @@ use vink_ui::{
 
 use super::contract::{Item, Target, segment};
 use super::state::Load;
-use super::{INBOX_PATH, Notifications};
-use crate::ui::empty_state::EmptyState;
+use super::{INBOX_PATH, Notifications, PageAccess};
+use crate::ui::empty_state::{EmptyState, NotFoundContent};
 
 #[component]
 pub(crate) fn InboxPage() -> impl IntoView {
     crate::pages::ResponseStatus::capture().set_no_store();
     let owner = Notifications::current();
     view! {
-        <Title text="Thông báo — Vink" />
         <Meta name="robots" content="noindex" />
+        <Show when=move || owner.page_access.get() == PageAccess::Anonymous
+            fallback=move || view! { <InboxPageContent owner /> }>
+            <NotFoundContent />
+        </Show>
+    }
+}
+
+#[component]
+fn InboxPageContent(owner: Notifications) -> impl IntoView {
+    view! {
+        <Title text="Thông báo — Vink" />
         <section class="vk-notif-page vk-state-page" aria-labelledby="notification-page-title">
             <div class="vk-notif-page__top"><BackButton /><ReadAll owner /></div>
             <header class="vk-notif-page__head">
                 <h1 id="notification-page-title" class="vk-ui-heading vk-notif-title" tabindex="-1">"Thông báo"</h1>
-                {move || owner.inbox.with(|inbox| {
+                {move || owner.available().then(|| owner.inbox.with(|inbox| {
                     (inbox.snapshot.is_some() && !inbox.items.is_empty()).then(|| {
                         let count = inbox.items.iter().filter(|item| !item.is_read).count();
                         let suffix = if inbox.next.is_some() && count > 0 { "+" } else { "" };
@@ -32,7 +42,7 @@ pub(crate) fn InboxPage() -> impl IntoView {
                             <span class="vk-notif-unread">{format!("{count}{suffix} chưa đọc")}</span>
                         })
                     }).flatten()
-                })}
+                })).flatten()}
             </header>
             <InboxBody owner />
         </section>
@@ -65,7 +75,7 @@ pub(crate) fn InboxPopover(open: Signal<bool>, on_close: Callback<()>) -> impl I
         <Show when=move || open.get()>
             <div class="vk-notif-popover__scroll"><InboxBody owner compact=true /></div>
         </Show>
-        <Show when=move || open.get() && owner.inbox.with(|inbox| inbox.next.is_some())>
+        <Show when=move || open.get() && owner.available() && owner.inbox.with(|inbox| inbox.next.is_some())>
             <footer class="vk-notif-popover__foot">
                 <a class=ButtonVariant::Text.classes() href=INBOX_PATH>"Mở trang Thông báo →"</a>
             </footer>
@@ -76,7 +86,7 @@ pub(crate) fn InboxPopover(open: Signal<bool>, on_close: Callback<()>) -> impl I
 #[component]
 fn ReadAll(owner: Notifications) -> impl IntoView {
     view! {
-        <Show when=move || owner.inbox.with(|inbox| inbox.items.iter().any(|row| !row.is_read))>
+        <Show when=move || owner.available() && owner.inbox.with(|inbox| inbox.items.iter().any(|row| !row.is_read))>
             <Button id="notification-read-all" variant=ButtonVariant::Tonal
                 state=Signal::derive(move || owner.inbox.with(|inbox| {
                     if inbox.mark == Load::Loading { ActionState::pending("Đang đánh dấu…") }
@@ -131,11 +141,13 @@ fn InboxBody(owner: Notifications, #[prop(optional)] compact: bool) -> impl Into
         owner.load(false);
     });
     view! {
-        <div class="vk-notif-body vk-state-slot" tabindex="-1" aria-busy=move || owner.inbox.with(|inbox| inbox.first == Load::Loading).to_string()>
+        <div class="vk-notif-body vk-state-slot" tabindex="-1" aria-busy=move || (owner.page_access.get() == PageAccess::Pending
+            || owner.available() && owner.inbox.with(|inbox| inbox.first == Load::Loading)).to_string()>
             <Show when=move || offline.get()>
                 <p class="vk-notif-note" role="status">"Đang ngoại tuyến. Danh sách có thể đã cũ."</p>
             </Show>
             <Show when=move || !offline.get()
+                && owner.available()
                 && owner.count_failed.get()
                 && owner.inbox.with(|inbox| inbox.snapshot.is_some() && inbox.first == Load::Idle)>
                 <div class="vk-notif-note">
@@ -151,22 +163,20 @@ fn InboxBody(owner: Notifications, #[prop(optional)] compact: bool) -> impl Into
                 </div>
             </Show>
             {move || {
-                if !owner.available() {
-                    use crate::session::Standing;
-                    return match owner.session.standing.get() {
-                        Standing::Unknown => view! { <Loading /> }.into_any(),
-                        Standing::Active(account) if account.notification_scope.is_some() => {
-                            view! { <Loading /> }.into_any()
-                        }
-                        Standing::Unavailable => view! {
-                            <Failure message="Chưa kiểm tra được phiên đăng nhập." retry=Callback::new(move |()| owner.session.refresh()) />
-                        }.into_any(),
-                        _ => view! {
-                            <EmptyState compact hook="vk-notif-empty" icon=IconName::Lock message="Đăng nhập để xem thông báo của bạn.">
-                                <a href="/toi" class=ButtonVariant::Tonal.classes()>"Mở Tài khoản"</a>
-                            </EmptyState>
-                        }.into_any(),
-                    };
+                match owner.page_access.get() {
+                    PageAccess::Pending => return view! { <Loading /> }.into_any(),
+                    PageAccess::SessionUnavailable => return view! {
+                        <Failure message="Chưa kiểm tra được phiên đăng nhập." retry=Callback::new(move |()| owner.session.refresh()) />
+                    }.into_any(),
+                    // The full page selects NotFound above this body. A closing popover
+                    // never renders a full-page state.
+                    PageAccess::Anonymous => return ().into_any(),
+                    PageAccess::UnavailableToAccount => return view! {
+                        <EmptyState compact hook="vk-notif-empty" icon=IconName::Lock message="Đăng nhập để xem thông báo của bạn.">
+                            <a href="/toi" class=ButtonVariant::Tonal.classes()>"Mở Tài khoản"</a>
+                        </EmptyState>
+                    }.into_any(),
+                    PageAccess::Available => {}
                 }
                 owner.inbox.with(|inbox| match (inbox.snapshot.is_some(), inbox.first, inbox.next.is_some()) {
                     (false, Load::Failed, _) => view! { <Failure message="Chưa tải được thông báo." retry=refresh /> }.into_any(),
@@ -211,13 +221,13 @@ fn InboxBody(owner: Notifications, #[prop(optional)] compact: bool) -> impl Into
                         </NotificationGroup> }
                     } />
             </Show>
-            <Show when=move || owner.inbox.with(|inbox| inbox.mark == Load::Failed)>
+            <Show when=move || owner.available() && owner.inbox.with(|inbox| inbox.mark == Load::Failed)>
                 <Failure message="Chưa đánh dấu được thông báo." tonal=true retry=Callback::new(move |()| {
                     #[cfg(feature = "browser")]
                     owner.mark_all();
                 }) />
             </Show>
-            <Show when=move || owner.inbox.with(|inbox| inbox.next.is_some())>
+            <Show when=move || owner.available() && owner.inbox.with(|inbox| inbox.next.is_some())>
                 <div class="vk-notif-more">
                     <Show when=move || owner.inbox.with(|inbox| inbox.more == Load::Failed)
                         fallback=move || view! { <Button id="notification-load-more" variant=ButtonVariant::Tonal

@@ -34,6 +34,9 @@ pub fn EmptyState(
     #[prop(optional)] mark: Option<Children>,
     #[prop(default = vink_ui::HeadingLevel::H3)] heading: vink_ui::HeadingLevel,
     #[prop(optional)] title: Option<&'static str>,
+    /// A named page heading can also receive focus from the route's navigation owner.
+    #[prop(optional)]
+    title_id: Option<&'static str>,
     #[prop(optional, into)] message: String,
     #[prop(optional)] announce: bool,
     /// Region-local state in normal flow: smaller decoration and rhythm, no artwork.
@@ -78,11 +81,28 @@ pub fn EmptyState(
             {decoration}
             <div class="vk-empty-state__text" role=announce.then_some("status") aria-atomic=announce.then_some("true")>
                 {title.map(|title| view! { <vink_ui::Heading class:vk-empty-state__title=true
-                    level=heading role=title_role>{title}</vink_ui::Heading> })}
+                    level=heading role=title_role attr:id=title_id attr:tabindex=title_id.map(|_| "-1")>{title}</vink_ui::Heading> })}
                 {(!message.is_empty()).then(|| view! { <p class="vk-empty-state__message">{message}</p> })}
             </div>
             {children.map(|children| view! { <div class="vk-empty-state__actions">{children()}</div> })}
         </div>
+    }
+}
+
+/// Shared presentation. The route keeps ownership of status, robots and cache headers.
+#[component]
+pub(crate) fn NotFoundContent(
+    #[prop(default = "/".to_string())] return_href: String,
+    #[prop(default = "not-found-title")] heading_id: &'static str,
+) -> impl IntoView {
+    view! {
+        <leptos_meta::Title text="Không tìm thấy — Vink" />
+        <section class="vk-state-page" data-panel="error:not-found" aria-labelledby=heading_id>
+            <EmptyState icon=vink_ui::IconName::Search heading=vink_ui::HeadingLevel::H1 title="Không tìm thấy trang này."
+                title_id=heading_id message="Hãy kiểm tra lại đường dẫn.">
+                <a class=vink_ui::ButtonVariant::Tonal.classes() href=return_href>"Về Khám phá"</a>
+            </EmptyState>
+        </section>
     }
 }
 

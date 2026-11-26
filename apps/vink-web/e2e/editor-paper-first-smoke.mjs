@@ -38,7 +38,14 @@ export async function editorPaperFirst(page, { args, check, editorTarget, fitsEd
     await page.send('Emulation.setScriptExecutionDisabled',{value:false});
     await page.send('Network.setBlockedURLs',{urls:[]});
   }
-  await page.reload(); await page.waitFor(ready,'editor after load/no-JS probes');
+  const missing = `${args.base}/ban-viet/11111111-2222-4333-8444-555555555555`;
+  await page.goto(missing);
+  await page.waitFor(`document.querySelector('main [data-panel="error:not-found"]') && document.title === 'Không tìm thấy — Vink'`,
+    'opening a missing draft reaches general NotFound');
+  check(await page.eval(`document.querySelectorAll('main h1').length === 1 && !document.querySelector('.cm-editor')`),
+    '#575 opening a missing draft never mounts the editor');
+  await page.goto(`${args.base}/ban-viet/${workId}`);
+  await page.waitFor(ready,'editor after load/no-JS probes');
   await writingFocus(page, { check, setEditorScene, shift, format: 'default' });
   await page.typeAtEnd('#draft-title', title); await page.typeInBody(poem);
   await page.click('#save'); await page.waitStatus('saved');

@@ -81,6 +81,10 @@ impl SessionOwner {
             .map(|principal| format!("{principal}/{}", self.generation))
     }
 
+    pub(crate) fn private_scope_fenced(&self) -> bool {
+        self.session_may_have_changed
+    }
+
     /// Profile forms stop applying private answers as soon as a cookie change is signalled.
     pub(crate) fn profile_scope(&self) -> Option<String> {
         if self.session_may_have_changed {

@@ -4,7 +4,7 @@ use leptos_meta::{Link, Meta, Title};
 use leptos_router::hooks::{use_params_map, use_query_map};
 use vink_ui::{HiddenField, Link as UiLink};
 
-use crate::ui::empty_state::EmptyState;
+use crate::ui::empty_state::{EmptyState, NotFoundContent};
 
 const NO_PUBLIC_WORKS: &str = "Chưa có tác phẩm công khai.";
 
@@ -173,11 +173,14 @@ fn render_profile(
             "Hồ sơ không còn trên Vink",
             "Tài khoản của tác giả đã được xóa. Địa chỉ này sẽ không dẫn đến hồ sơ khác.",
         ),
-        Ok(AuthorResolution::Missing) => (
-            404,
-            "Không tìm thấy hồ sơ",
-            "Hãy kiểm tra lại địa chỉ trong liên kết hoặc quay về Khám phá.",
-        ),
+        Ok(AuthorResolution::Missing) => {
+            status.set(404);
+            return view! {
+                <Meta name="robots" content="noindex" />
+                <NotFoundContent heading_id="author-profile-heading" />
+            }
+            .into_any();
+        }
         _ => (
             503,
             "Chưa tải được hồ sơ",

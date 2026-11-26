@@ -27,7 +27,8 @@ async function fixture(page) {
   const trace = [];
   const started = performance.now();
   const state = { session: 'A', countMode: 'fresh', staleCount: 8, firstFailure: false, count: 3, snapshot: 45, seen: 0,
-    pageSize: null, marked: false, moreFailure: true, holdCount: false, holdMark: false };
+    pageSize: null, marked: false, moreFailure: true, holdCount: false, holdMark: false,
+    checkFailure: false, holdSession: false, standing: 'anonymous' };
   const held = new Map();
   const root = gateway.response.items[0];
   const [tham, rejected] = examples.inbox.items;
@@ -67,7 +68,13 @@ async function fixture(page) {
     calls.push({ path, body, query: searchParams.toString(), scope: expectScope, method: request.method });
     let response;
     if (path === '/api/v1/auth/session') {
-      response = [200, scope ? { state: 'active', principal_id: sessionId[scope] } : { state: 'anonymous' }];
+      response = state.checkFailure ? [503, unavailable]
+        : [200, scope ? { state: 'active', principal_id: sessionId[scope] } : { state: state.standing }];
+      if (state.holdSession) {
+        state.holdSession = false;
+        held.set('session', () => reply(requestId, ...response));
+        return;
+      }
     } else if (path === '/api/v1/auth/session/account') {
       response = scope ? [200, { principal_id: sessionId[scope], display_name: `Bút danh ${scope}`, notification_scope: scope }]
         : [401, { error: { code: 'unauthenticated' } }];
@@ -177,8 +184,8 @@ async function geometry(page, scope) {
 }
 
 const viewport = [320, 390, 834, 1024, 1440];
-async function preferences(page, width, theme, scale) {
-  await page.viewport(width, 900);
+async function preferences(page, width, theme, scale, height = 900) {
+  await page.viewport(width, height);
   await page.send('Emulation.setEmulatedMedia', { features: [
     { name: 'prefers-color-scheme', value: theme }, { name: 'prefers-reduced-motion', value: 'reduce' },
   ] });
@@ -297,20 +304,117 @@ async function captureInboxCases(page, args, { state, trace }) {
   }
 }
 
+async function inboxSessionStates(page, { args, check }, controlled) {
+  const { state, calls, held } = controlled;
+  const inboxPath = '/thong-bao';
+  const auth = '/api/v1/auth/session';
+  const notFound = 'main [data-panel="error:not-found"]';
+  const explore = notFound + ' a[href="/"]';
+  const loading = '!!document.querySelector("main .vk-notif-loading")';
+  const privateControls = 'main .vk-notif-row, main .vk-notif-unread, #notification-read-all, #notification-load-more';
+  const noPrivate = `!document.querySelector('${privateControls}')`;
+  const isMissing = `!!document.querySelector('${notFound}')`;
+  const retry = 'main .vk-notif-error button';
+  const sessionError = `document.querySelector('main [role=alert]')?.textContent.includes('Chưa kiểm tra được phiên đăng nhập.')`;
+  const historyPath = path => `location.pathname === '${path}'`;
+
+  state.session = null;
+  state.holdSession = true;
+  await page.goto(args.base + inboxPath);
+  await eventually(() => held.has('session'), 'initial session check is held');
+  check(await page.eval(`${loading} && !(${isMissing}) && ${noPrivate}`), '#575 unknown session is pending');
+  await held.get('session')();
+  await page.waitFor(`${isMissing} || document.querySelector('main a[href="/toi"]')`, 'guest presentation settled');
+  for (const [width, height, theme, scale] of [
+    [1440, 900, 'light', 100], [1440, 900, 'dark', 150],
+    [390, 844, 'light', 150], [390, 844, 'dark', 100], [320, 540, 'dark', 200],
+  ]) {
+    await preferences(page, width, theme, scale, height);
+    await page.capture(`inbox-guest-${width}-${theme}-${scale}`, {
+      scenario: 'inbox-confirmed-anonymous', requestedScene: { width, height, scale, theme },
+      boundary: 'Chrome · session response fixture', skipSceneValidation: true,
+    });
+  }
+  check(await page.eval(`${isMissing} && ${historyPath(inboxPath)} && ${noPrivate}
+    && document.querySelectorAll('main h1').length === 1
+    && document.querySelector('main h1').textContent === 'Không tìm thấy trang này.'
+    && document.title === 'Không tìm thấy — Vink'
+    && document.querySelector('meta[name=robots][content=noindex]')
+    && !document.querySelector('#notification-page-title, main a[href="/toi"]')
+    && !document.querySelector('main').textContent.includes('Đăng nhập để xem thông báo')`),
+  '#575 confirmed Anonymous uses shared NotFound at the Inbox URL');
+  check(await page.eval('document.documentElement.scrollWidth <= innerWidth + 1'), '#575 guest NotFound at 320px and 200% fits the viewport');
+
+  await preferences(page, 390, 'light', 100, 844);
+  await page.eval(`document.querySelector('${notFound} h1').focus()`);
+  await page.key('Tab', 0, { settle: false });
+  await page.waitFor(`document.activeElement?.matches('${explore}')`, 'Tab reaches the general recovery link');
+  check(await page.eval('getComputedStyle(document.activeElement).outlineStyle !== "none"'),
+    '#575 guest recovery link has a visible keyboard outline');
+  await page.key('Enter', 0, { settle: false });
+  await page.waitFor(historyPath('/'), 'Enter opens Khám phá');
+  await page.eval('history.back()');
+  await page.waitFor(`${historyPath(inboxPath)} && ${isMissing}`, 'Back restores guest Inbox at its own URL');
+  await page.eval('history.forward()');
+  await page.waitFor(historyPath('/'), 'Forward returns to Khám phá');
+
+  state.session = 'A';
+  state.checkFailure = true;
+  await page.goto(args.base + inboxPath);
+  await page.waitFor(`${sessionError} && !(${loading}) && !(${isMissing})`, 'first session 503 offers retry');
+  state.checkFailure = false;
+  state.pageSize = 0;
+  await page.click(retry);
+  await page.waitFor('document.querySelector("main").textContent.includes("Chưa có thông báo.")', 'session retry reaches signed-in empty inbox');
+  check(!calls.some(request => request.path === inbox && request.scope == null), '#575 no unauthorised inbox read during session verification');
+
+  state.pageSize = null;
+  await page.reload();
+  await page.waitFor(`document.querySelector('main ${row}') && document.querySelector('#notification-read-all')`, 'Inbox loaded before the session fence');
+  held.delete('session');
+  state.holdSession = true;
+  state.checkFailure = true;
+  await controlled.change('B');
+  await eventually(() => held.has('session'), 'fenced session recheck is held');
+  await page.waitFor(`${loading} && ${noPrivate} && !(${isMissing})`, 'session fence removes rows, unread and actions while pending');
+  await held.get('session')();
+  await page.waitFor(`${sessionError} && ${noPrivate} && !(${loading}) && !(${isMissing})`, 'fenced 503 offers session retry without private DOM');
+  const sessionChecks = calls.filter(request => request.path === auth).length;
+  state.checkFailure = false;
+  await page.click(retry);
+  await page.waitFor(`document.querySelector('main ${row}')?.textContent.includes('Thông báo của tài khoản B')`, 'session retry loads B Inbox');
+  check(calls.filter(request => request.path === auth).length > sessionChecks
+    && await page.eval(`!document.querySelector('main').textContent.includes('${privateTitle}')`),
+  '#575 retry checks session before restoring scoped rows');
+  await controlled.change(null);
+  await page.waitFor(`${isMissing} && ${noPrivate}`, 'logout replaces the loaded Inbox with guest NotFound');
+
+  state.standing = 'suspended';
+  await controlled.change(null);
+  await page.waitFor(`document.querySelector('main a[href="/toi"]') && ${noPrivate} && !(${isMissing})`,
+    'confirmed suspended account keeps its account recovery without NotFound');
+
+  state.standing = 'anonymous';
+  state.session = 'A';
+  state.seen = 0;
+  await preferences(page, 1440, 'light', 100);
+  await page.goto(args.base + '/');
+}
+
 export async function notifications(page, { args, check }) {
   const controlled = await fixture(page);
   const { state, calls, held } = controlled;
   const latest = path => calls.findLast(request => request.path === path);
   const report = [];
   await page.viewport(1440);
-  await page.goto(`${args.base}/`);
-  await page.waitFor(mounted, 'notification shell mounted');
   const screenshot = (name, width, scale, theme) => page.capture(name, {
     scenario: 'notifications-r4', requestedScene: { width, height: 900, scale, theme },
     boundary: 'Chrome-CDP-dom-override-geometry', skipSceneValidation: true,
   });
 
   if (args['notification-baseline'] === 'yes') {
+    await page.goto(`${args.base}/`);
+    await page.waitFor(mounted, 'notification shell mounted');
     for (const theme of ['light', 'dark']) {
       for (const width of viewport) {
         for (const scale of [100, 150, 200]) {
@@ -322,6 +426,9 @@ export async function notifications(page, { args, check }) {
     return;
   }
 
+  await inboxSessionStates(page, { args, check }, controlled);
+  // Keep the original popover assertions scoped to the fresh shell.
+  calls.length = 0;
   await page.waitFor(`${visible(bell)} && document.querySelector('${bell} .vk-ui-badge').textContent === '3'`, 'fresh rail badge');
   await screenshot('notifications-badge-fresh', 1440, 100, 'light');
   check(await page.eval(`document.querySelector('${bell}').previousElementSibling.dataset.destination === 'desk'
@@ -572,8 +679,17 @@ export async function notifications(page, { args, check }) {
   check(await page.eval(`parseFloat(getComputedStyle(document.querySelector('.vk-notif-decision__panel')).paddingInlineStart) >= 20`),
     'AC-05 decision panel preserves R4 inset');
   await screenshot('notifications-comment-decision', 1440, 100, 'light');
+  state.checkFailure = true;
+  await controlled.change('A');
+  await page.waitFor(`document.querySelector('main [role=alert]')?.textContent.includes('Chưa kiểm tra được phiên đăng nhập.')
+    && !document.querySelector('main .vk-notif-loading') && !document.querySelector('.vk-notif-decision__panel')`,
+    '#575 decision removes private details and offers session retry after fenced 503');
+  state.checkFailure = false;
+  await page.click('main .vk-notif-error button');
+  await page.waitFor(`document.body.textContent.includes('Lý do riêng của nhận xét')`, 'session retry restores decision under the confirmed scope');
   await controlled.change(null);
-  await page.waitFor(`!document.querySelector('${bell}') && !document.body.textContent.includes('Lý do riêng của nhận xét')`, 'logout discards decision and bell');
+  await page.waitFor(`!document.querySelector('${bell}') && !document.body.textContent.includes('Lý do riêng của nhận xét')
+    && document.querySelector('main h1')?.textContent === 'Nội dung không còn khả dụng'`, 'logout keeps decision masking and discards decision and bell');
   check(await page.eval(`!document.querySelector('${mobile}')`), 'AC-01 guest has neither bell');
   await controlled.change('A');
   await captureInboxCases(page, args, controlled);

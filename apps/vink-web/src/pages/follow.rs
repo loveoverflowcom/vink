@@ -814,17 +814,8 @@ fn render_list_status(
         }
         LiveListState::Missing => {
             status.set(404);
-            view! {
-                <Title text="Không tìm thấy hồ sơ · Vink" />
-                <section id="relationship-list" class=RELATIONSHIP_PAGE_CLASS aria-labelledby="relationship-title">
-                    <Heading id="relationship-title" level=HeadingLevel::H1 attr:tabindex="-1">
-                        "Không tìm thấy hồ sơ"
-                    </Heading>
-                    <p>"Hãy kiểm tra lại địa chỉ trong liên kết."</p>
-                    <UiLink variant=LinkVariant::Standalone href="/">"Khám phá"</UiLink>
-                </section>
-            }
-            .into_any()
+            view! { <crate::ui::empty_state::NotFoundContent heading_id="relationship-title" /> }
+                .into_any()
         }
         LiveListState::Unavailable => {
             status.set(503);

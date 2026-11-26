@@ -130,20 +130,30 @@ async function profileRecovery(guest, base, handle, { check, textContrast }) {
   const lookup = `${base}/@${handle}?cursor=tiep`;
   const heading = '#author-profile-heading';
   const retry = '#profile-retry';
+  const missingExplore = '[data-panel="error:not-found"] a[href="/"]';
   const response = (url, method) => fetch(url, {method, redirect: 'manual'});
   for (const method of ['GET', 'HEAD']) {
-    check((await response(missing, method)).status === 404, `${method} to unknown profile returns 404`);
+    const missingPage = await response(missing, method);
+    check(missingPage.status === 404 && missingPage.headers.get('cache-control') === 'no-store',
+      `${method} to unknown profile returns 404 and no-store`);
+    for (const path of ['nguoi-theo-doi', 'dang-theo-doi']) {
+      const missingList = await response(`${missing}/${path}`, method);
+      check(missingList.status === 404, `${method} to unknown profile ${path} returns 404`);
+      if (method === 'GET') check((await missingList.text()).includes('data-panel="error:not-found"'),
+        `unknown profile ${path} uses the same missing presentation`);
+    }
   }
   await guest.send('Emulation.setScriptExecutionDisabled', {value: true});
   try {
     await guest.viewport(390);
     await guest.goto(missing);
-    check(await guest.eval(`${q(heading)}?.textContent === 'Không tìm thấy hồ sơ' &&
-      ${q('#profile-unavailable-explore')}?.getAttribute('href') === '/' &&
-      !document.documentElement.dataset.hydrated`), '404 explains the address and offers Khám phá with JavaScript disabled');
+    check(await guest.eval(`${q(heading)}?.textContent === 'Không tìm thấy trang này.' &&
+      ${q(missingExplore)}?.textContent === 'Về Khám phá' &&
+      document.querySelector('meta[name=robots][content=noindex]') &&
+      !document.documentElement.dataset.hydrated`), '404 uses shared NotFound and offers Khám phá with JavaScript disabled');
     await guest.eval(`${q(heading)}.focus()`);
     await guest.key('Tab', 0, {settle: false});
-    await guest.waitFor("document.activeElement?.id === 'profile-unavailable-explore'", '404 Tab reaches the recovery link');
+    await guest.waitFor(`document.activeElement?.matches(${JSON.stringify(missingExplore)})`, '404 Tab reaches the recovery link');
     await guest.capture('profile-missing-390-light-100', {scenario: 'profile-missing', textScale: 100, boundary: 'real SSR, JS disabled'});
     await guest.key('Enter', 0, {settle: false});
     await guest.waitFor("location.pathname === '/'", '404 recovery link opens Khám phá by keyboard');
