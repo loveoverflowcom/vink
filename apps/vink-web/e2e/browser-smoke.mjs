@@ -6564,11 +6564,18 @@ async function discussionReadingAndWrites(page) {
     await page.waitFor(`document.querySelector('.vk-discussion-empty') && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'authoritative empty discussion state');
     check(await page.eval(`document.querySelector('.vk-discussion-empty')?.textContent.includes('Chưa có nhận xét nào được hiển thị.') && !document.querySelector('#discussion-load-retry') && !document.querySelector('#feedback-region')?.textContent.includes('Đã hết danh sách nhận xét')`), 'R4 empty state renders cleanly without error button or list end');
     check(await page.eval(`(() => {
-      const empty = document.querySelector('.vk-discussion-empty'), region = empty.parentElement.getBoundingClientRect(), box = empty.getBoundingClientRect();
-      const text = empty.querySelector('.vk-empty-state__text');
-      return empty.classList.contains('vk-empty-state--compact') && getComputedStyle(empty).backgroundColor === 'rgba(0, 0, 0, 0)'
-        && text?.getAttribute('role') === 'status' && text.textContent.includes('Chưa có nhận xét nào được hiển thị.')
-        && Math.abs((box.left + box.right) / 2 - (region.left + region.right) / 2) <= 1
+      const empty = document.querySelector('.vk-discussion-empty');
+      const region = empty.closest('#feedback-region').getBoundingClientRect();
+      const box = empty.getBoundingClientRect(), text = empty.querySelector('.vk-empty-state__text');
+      const heading = text?.querySelector('h3'), range = document.createRange();
+      if (!heading) return false;
+      range.selectNodeContents(heading);
+      const title = range.getBoundingClientRect(), center = (region.left + region.right) / 2;
+      return region.width > 0 && empty.classList.contains('vk-empty-state--compact')
+        && getComputedStyle(empty).backgroundColor === 'rgba(0, 0, 0, 0)'
+        && text.getAttribute('role') === 'status' && heading.textContent === 'Chưa có nhận xét nào được hiển thị.'
+        && Math.abs((box.left + box.right) / 2 - center) <= 1
+        && Math.abs((title.left + title.right) / 2 - center) <= 1
         && !getComputedStyle(document.querySelector('.vk-main')).display.includes('flex');
     })()`), '#558 empty discussion is a compact, cardless group centred in its own region without stretching the Reader');
   } finally {
