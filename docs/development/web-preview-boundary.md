@@ -17,6 +17,7 @@ còn `PENDING`; việc di chuyển không đổi trạng thái đó.
 | RETIRED | `/kiem-duyet`, `/kiem-duyet/ca/:id`, `/kiem-duyet/phan-doi/:id` | [#555](https://github.com/loveoverflowcom/vink/issues/555) gỡ các màn, link, probe quyền trên trang Tôi và CSS chỉ dùng cho staff. URL cũ về 404. Nhân sự dùng [API được phân quyền](moderation-runtime.md#7-web-kiểm-duyệt). Studio Admin được hoãn. |
 | PRODUCT | `/toi`, `/toi/chinh-ho-so`, `/toi/dia-chi` | Account/Profile/Handle và compatibility thuộc owner Profile. Giữ cho #488. |
 | PRODUCT | `/:author` và hai danh sách `nguoi-theo-doi`, `dang-theo-doi` | Public author/follow resolver kiểm tên, quyền danh sách, alias và tombstone. Giữ. |
+| PRODUCT | `/:author/da-luu` | [Đã lưu](saved-works.md#hồ-sơ-web-389) có caller Reader và chủ hồ sơ sau khi xác minh phiên. SSR dùng trang 404 chung. |
 | PRODUCT | `vink-app → vink-web/ssr`, `vink-web/hydrate`, shared UI/patterns/Markdown, npm editor, profile navigation, cache và `vink.css` | App và UX thật. Giữ edge và font, empty/brand, snippet có caller trong Web build, OCI và Pages. |
 | PREVIEW_ONLY | EMO-01A, CSS pilot, npm dotLottie, JS/WASM, poster và NOTICE | `vink-ui-preview` trong `apps/vink-preview/leptos`. `/expressions.html` có HTML tĩnh và hydrate, link từ gallery. URL Web cũ qua NotFound. |
 | PREVIEW_ONLY | `state.playground`, catalog/hash, inspector và mẫu màn hình | App Preview (Leptos, CMP Desktop) và specimen `:diagnostics`. Giữ CSS/Tailwind source riêng. |

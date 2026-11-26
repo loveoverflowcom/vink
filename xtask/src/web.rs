@@ -548,7 +548,19 @@ fn auth_web(
     let outbox = outbox.display().to_string();
     let result = match phase {
         IdentityPhase::Standalone => {
-            smoke(root, &["--phase", "standalone"], chrome, &origin, state)
+            let scratch = app
+                .env
+                .iter()
+                .find(|(key, _)| key == "VINK_MIGRATE_DATABASE_URL")
+                .ok_or("missing standalone scratch database URL")?;
+            smoke_with_env(
+                root,
+                &["--phase", "standalone"],
+                chrome,
+                &origin,
+                state,
+                &[("VINK_SAVED_WORKS_SCRATCH".into(), scratch.1.clone())],
+            )
         }
         IdentityPhase::Auth => smoke(
             root,

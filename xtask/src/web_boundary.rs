@@ -21,6 +21,7 @@ const APPROVED_ROUTES: &[&str] = &[
     "/:author",
     "/:author/nguoi-theo-doi",
     "/:author/dang-theo-doi",
+    "/:author/da-luu",
 ];
 
 pub fn check(root: &Path) -> Result<(), String> {

@@ -1,11 +1,11 @@
 # Lưu bài · registry triển khai và bàn giao
 
-| Chiều | Trạng thái sau #388 |
+| Chiều | Trạng thái sau #389 |
 | --- | --- |
 | Sản phẩm | SAV-01..04 (21/11), D1–D12, vòng đời và phạm vi DEFERRED (25/11) đã được chủ sản phẩm duyệt tại [Epic #384 §8](https://github.com/loveoverflowcom/vink/issues/384). [PRD §18](../../prd/requirements.md#18-lưu-bài-để-đọc-lại-saved-works) sở hữu quy tắc và ví dụ SAV-INV-01..05. |
 | Registry quyết định | [VDR-SAVED-WORKS@r1](../../decisions/proposals/VDR-SAVED-WORKS.r1.toml) · `PENDING` · SHA-256 `7ebf41f88b6b3f91bf2aed1dd10d0f221b133ce30d55027e57d36d3d6e468b45`. Epic ghi “DUYỆT: Duyệt D1–D12 theo phương án đề xuất” và “DUYỆT: Duyệt quy tắc vòng đời dữ liệu”. Chưa có lời duyệt chỉ đích danh revision/hash này theo [quy tắc signoff](../../decisions/signoffs/VDR-DECISION-SIGNOFF.r1.toml). |
 | Kiến trúc | [Contract v1](../../services/vink-app/contracts/http/v1/saved-works.md) là `DESIGN_PROPOSED` cho một owner trong Vink App. CHOICE-01 dùng một dòng bền cho mỗi cặp người lưu và tác phẩm. |
-| Triển khai | [Domain Lưu bài](../../services/vink-app/src/domain/saved_work.rs) và [adapter PostgreSQL](../../services/vink-app/src/persistence/saved_works.rs) đạt mức `persistence-api`. Reader Web đạt mức `web` từ #388: [ReaderSave](../../apps/vink-web/src/pages/saved_work.rs), [reducer phiên](../../apps/vink-web/src/saved_state.rs), `SaveAction`/`ActionPair` trong [vink-patterns](../../packages/vink-patterns/leptos/src/lib.rs), trình diễn bằng dữ liệu Mẫu ở mục preview Leptos `composition.save-pair` (CMP `unsupported`). Tab Đã lưu (#389) chưa triển khai. [LayoutSpec](../design/saved-works.md) cùng [delta Pen Flight](../design/pen-flight-r2.md) mô tả đích. CMP/native thuộc DEFERRED. |
+| Triển khai | [Domain Lưu bài](../../services/vink-app/src/domain/saved_work.rs) và [adapter PostgreSQL](../../services/vink-app/src/persistence/saved_works.rs) đạt mức `persistence-api`. Reader Web đạt mức `web` từ #388: [ReaderSave](../../apps/vink-web/src/pages/saved_work.rs), [reducer phiên](../../apps/vink-web/src/saved_state.rs), `SaveAction`/`ActionPair` trong [vink-patterns](../../packages/vink-patterns/leptos/src/lib.rs), trình diễn bằng dữ liệu Mẫu ở mục preview Leptos `composition.save-pair` (CMP `unsupported`). [Tab Đã lưu](../../apps/vink-web/src/pages/saved_profile.rs) đạt mức `web` (#389). [LayoutSpec](../design/saved-works.md) cùng [delta Pen Flight](../design/pen-flight-r2.md) mô tả đích. CMP/native thuộc DEFERRED. |
 | Kiểm chứng | [#385](https://github.com/loveoverflowcom/vink/issues/385) có bằng chứng tài liệu và registry. [Các ca unit #386](../../services/vink-app/src/domain/saved_work/tests.rs) chạy bằng `cargo xtask verify unit app --filter domain::saved_work`. Các [test tích hợp #387](../../services/vink-app/tests/postgres/saved_works.rs) đi qua Axum và PostgreSQL. Kết quả, SHA và giới hạn bằng chứng được ghi ở [#387](https://github.com/loveoverflowcom/vink/issues/387). |
 
 ## Truy vết quyết định và phần cần chứng minh
@@ -26,6 +26,14 @@ GET danh sách dùng một snapshot PostgreSQL cho standing, retirement, publica
 Khi App ghi fence xóa tài khoản hoặc thu hồi handle theo đường cũ, trigger dọn các dòng do tài khoản đó sở hữu ngay trong giao dịch. Những người từng lưu bài của tác giả đã xóa thấy hàng trung tính theo quyền hiện tại. [Account Deletion #297](../architecture/account-deletion.md) ghi fence sau xác minh. Bài bị kiểm duyệt gỡ tiếp tục bị loại trước khi chiếu hàng trung tính. SOC-DEP-02 vẫn sở hữu hạn chế riêng cho đăng bài và nhận xét.
 
 **Bàn giao Web.** [PR #527](https://github.com/loveoverflowcom/vink/pull/527) đưa đặc tả và domain vào develop. #387 cung cấp API cho Reader #388 và hồ sơ #389. Sau khi mất ACK, consumer đọc lại đúng cặp của phiên hiện hành. [Hợp đồng và bảng lỗi](../../services/vink-app/contracts/http/v1/saved-works.md).
+
+## Hồ sơ Web (#389)
+
+Tab “Đã lưu” dùng `/@handle/da-luu`. Web chỉ hiện tab và tải danh sách khi `SessionOwner` xác nhận `profile_scope` và `GET /api/v1/me/profile` xác nhận đúng principal, handle hiện hành. SSR dùng trang 404 chung. Cả trang công khai và Reader giữ nguyên ranh giới dữ liệu công khai.
+
+`ReadOwner` và `PageChain` quản lý các trang 20 dòng. Khi mở Reader, Web chỉ ghi một dấu ngẫu nhiên vào lịch sử. Cùng tài liệu và phiên, bộ nhớ tab giữ WorkId, vị trí và số trang đã mở. Back dựng lại chuỗi cursor từ đầu trước khi trả focus. Nếu scope đã đổi, tài liệu đã tải lại hoặc thẻ đọc không còn, focus về tiêu đề sau khi xác minh.
+
+Bỏ lưu dùng generation từ đúng dòng, kể cả hai dòng trung tính. Pending giữ dòng. 409 đọc lại đúng cặp; mất ACK yêu cầu “Kiểm tra lại” để đọc. Chỉ phản hồi xác nhận hết lưu mới gỡ dòng. Sau khi gỡ, Web xác minh lại quyền đọc trước khi đưa nhan đề vào thông báo. Đọc danh sách và đọc đối soát cặp gửi điều kiện `X-Vink-Expected-Principal`. [Hợp đồng](../../services/vink-app/contracts/http/v1/saved-works.md) · [Hành trình Web](../../apps/vink-web/e2e/saved-profile-smoke.mjs) · [Vòng đời và phân trang](../../apps/vink-web/e2e/saved-profile-lifecycle.mjs).
 
 ## Reader Web (#388)
 

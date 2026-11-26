@@ -155,13 +155,37 @@ fn parameter(raw: RawQuery, allowed: &'static str) -> Result<Option<String>, Api
     Ok(result)
 }
 
+fn expected_principal(headers: &HeaderMap) -> Result<Option<PrincipalId>, ApiError> {
+    let mut values = headers.get_all("x-vink-expected-principal").iter();
+    values
+        .next()
+        .map(|value| {
+            value
+                .to_str()
+                .ok()
+                .and_then(PrincipalId::parse)
+                .filter(|_| values.next().is_none())
+                .ok_or_else(|| invalid("expected_principal"))
+        })
+        .transpose()
+}
+
+fn check_read_principal(headers: &HeaderMap, actor: PrincipalId) -> Result<(), ApiError> {
+    if expected_principal(headers)?.is_some_and(|expected| expected != actor) {
+        return Err(ApiError::Forbidden);
+    }
+    Ok(())
+}
+
 async fn state(
     State(app): State<AppState>,
     Actor(actor): Actor,
     path: Result<Path<String>, PathRejection>,
+    headers: HeaderMap,
     raw: RawQuery,
 ) -> Result<Json<Membership>, ApiError> {
     let actor = actor.ok_or(ApiError::Unauthenticated)?;
+    check_read_principal(&headers, actor)?;
     parameter(raw, "")?;
     Ok(Json(
         app.vink.saved_work(actor, work_id(path)?).await?.into(),
@@ -177,13 +201,7 @@ async fn set(
     raw: RawQuery,
 ) -> Result<Json<Membership>, ApiError> {
     let actor = actor.ok_or(ApiError::Unauthenticated)?;
-    let mut values = headers.get_all("x-vink-expected-principal").iter();
-    let expected = values
-        .next()
-        .and_then(|v| v.to_str().ok())
-        .and_then(PrincipalId::parse)
-        .filter(|_| values.next().is_none())
-        .ok_or_else(|| invalid("expected_principal"))?;
+    let expected = expected_principal(&headers)?.ok_or_else(|| invalid("expected_principal"))?;
     let generation = parameter(raw, "expected_generation")?
         .and_then(|s| s.parse().ok())
         .and_then(SavedGeneration::new)
@@ -204,9 +222,11 @@ async fn set(
 async fn list(
     State(app): State<AppState>,
     Actor(actor): Actor,
+    headers: HeaderMap,
     raw: RawQuery,
 ) -> Result<Json<Page>, ApiError> {
     let actor = actor.ok_or(ApiError::Unauthenticated)?;
+    check_read_principal(&headers, actor)?;
     let cursor = parameter(raw, "cursor")?;
     let page = app.vink.saved_works(actor, cursor.as_deref()).await?;
     Ok(Json(Page {

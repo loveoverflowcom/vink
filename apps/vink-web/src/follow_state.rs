@@ -545,8 +545,16 @@ pub(crate) fn own_relationship_list_matches(
     author.handle == handle && author.valid_href().is_some() && *actual_direction == direction
 }
 
-/// Allows returning ONLY to internal canonical `/@{handle}` or `/@{handle}/(nguoi-theo-doi|dang-theo-doi)`.
+/// Public return targets can never enter a private profile view.
 pub fn safe_profile_return(raw: &str) -> Option<String> {
+    safe_profile_return_for_owner(raw, None)
+}
+
+/// The caller must supply the verified current profile handle for a saved-list return.
+pub(crate) fn safe_profile_return_for_owner(
+    raw: &str,
+    owner_handle: Option<&str>,
+) -> Option<String> {
     let trimmed = raw.trim();
     let rest = trimmed.strip_prefix("/@")?;
     if rest.contains('\\') || rest.contains('?') || rest.contains('#') {
@@ -558,7 +566,8 @@ pub fn safe_profile_return(raw: &str) -> Option<String> {
             if segment.contains('/') {
                 return None;
             }
-            let valid_seg = segment == "nguoi-theo-doi" || segment == "dang-theo-doi";
+            let valid_seg = matches!(segment, "nguoi-theo-doi" | "dang-theo-doi")
+                || (segment == "da-luu" && owner_handle == Some(handle));
             (valid_seg && valid_canonical_handle(handle)).then(|| format!("/@{handle}/{segment}"))
         }
     }
@@ -916,6 +925,13 @@ mod tests {
 
     #[test]
     fn safe_profile_return_and_vi_count_enforce_strict_rules() {
+        let saved = "/@an-may/da-luu";
+        assert_eq!(safe_profile_return(saved), None);
+        assert_eq!(safe_profile_return_for_owner(saved, Some("ben-song")), None);
+        assert_eq!(
+            safe_profile_return_for_owner(saved, Some("an-may")).as_deref(),
+            Some(saved)
+        );
         assert_eq!(safe_profile_return("/@an-may"), Some("/@an-may".into()));
         assert_eq!(
             safe_profile_return("/@an-may/nguoi-theo-doi"),

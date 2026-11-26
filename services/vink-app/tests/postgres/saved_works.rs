@@ -222,6 +222,32 @@ async fn owner_origin_and_query_validation(pool: PgPool) {
             "expected_principal"
         );
     }
+    for read_path in [LIST, &pair] {
+        assert_eq!(
+            request(&app, "GET", read_path, Some(AUTHOR), &headers)
+                .await
+                .0,
+            StatusCode::FORBIDDEN
+        );
+        assert_eq!(
+            request(&app, "GET", read_path, Some(OWNER), &headers)
+                .await
+                .0,
+            StatusCode::OK
+        );
+        assert_eq!(
+            request(
+                &app,
+                "GET",
+                read_path,
+                Some(OWNER),
+                &[("x-vink-expected-principal", "bad")]
+            )
+            .await
+            .0,
+            StatusCode::UNPROCESSABLE_ENTITY
+        );
+    }
     for suffix in [
         "?cursor=",
         "?cursor=bad",

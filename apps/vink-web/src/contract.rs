@@ -835,6 +835,52 @@ pub struct SavedWorkState {
     pub generation: i64,
 }
 
+/// The authenticated owner's current projection. Only readable rows carry metadata.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SavedWorksPage {
+    pub items: Vec<SavedWorkRow>,
+    pub next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum SavedWorkRow {
+    Readable {
+        work_id: String,
+        generation: i64,
+        saved_at: String,
+        title: String,
+        form: Option<String>,
+        author: AuthorProjection,
+    },
+    Hidden {
+        work_id: String,
+        generation: i64,
+    },
+    AuthorDeleted {
+        work_id: String,
+        generation: i64,
+    },
+}
+
+impl SavedWorkRow {
+    pub fn work_id(&self) -> &str {
+        match self {
+            Self::Readable { work_id, .. }
+            | Self::Hidden { work_id, .. }
+            | Self::AuthorDeleted { work_id, .. } => work_id,
+        }
+    }
+
+    pub fn generation(&self) -> i64 {
+        match self {
+            Self::Readable { generation, .. }
+            | Self::Hidden { generation, .. }
+            | Self::AuthorDeleted { generation, .. } => *generation,
+        }
+    }
+}
+
 /// Outcome classes of the API, as this client needs to distinguish them.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ApiError {

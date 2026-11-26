@@ -1,6 +1,6 @@
 # Lưu bài · Reader và tab Đã lưu
 
-Người đọc lưu một bài ở cuối Reader, tìm lại trên hồ sơ của mình, mở bài rồi quay về cùng vị trí. **Hướng đã duyệt** là r2 + D1–D12 ngày 25/11/2026. LayoutSpec này dùng chi tiết R3 do chủ sản phẩm bổ sung cho r2. Miền Lưu bài đã có core (#386) và API (#387). Cặp Thấm · Lưu trên Reader đạt mức `web` (#388); tab Đã lưu trên hồ sơ (#389) vẫn `NOT_IMPLEMENTED`. [PRD §18](../../prd/requirements.md#18-lưu-bài-để-đọc-lại-saved-works) · [quyết định §8](https://github.com/loveoverflowcom/vink/issues/384) · [tám lựa chọn trong handoff R3](https://github.com/loveoverflowcom/vink/issues/384#issuecomment-7155013123).
+Người đọc lưu một bài ở cuối Reader, tìm lại trên hồ sơ của mình, mở bài rồi quay về cùng vị trí. **Hướng đã duyệt** là r2 + D1–D12 ngày 25/11/2026. LayoutSpec này dùng chi tiết R3 do chủ sản phẩm bổ sung cho r2. Miền Lưu bài đã có core (#386) và API (#387). Cặp Thấm · Lưu trên Reader đạt mức `web` (#388); tab Đã lưu trên hồ sơ đạt mức `web` (#389). [PRD §18](../../prd/requirements.md#18-lưu-bài-để-đọc-lại-saved-works) · [quyết định §8](https://github.com/loveoverflowcom/vink/issues/384) · [tám lựa chọn trong handoff R3](https://github.com/loveoverflowcom/vink/issues/384#issuecomment-7155013123).
 
 | Mốc đối chiếu | Phạm vi |
 | --- | --- |
