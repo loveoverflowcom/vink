@@ -1,3 +1,4 @@
+import { deepStrictEqual } from 'node:assert';
 import { checkSelectGeometry, selectCharacter } from '../../../packages/ui-system/leptos/e2e/select-geometry.mjs';
 
 const CM = "document.querySelector('.cm-content')?.cmTile?.root?.view";
@@ -261,19 +262,35 @@ async function titleValidation(page, { args, check }) {
 async function outlineOffsets(page, { args, check }) {
   const label = 'Mục trùng';
   const first = '# Tên\n\n👩🏽‍💻 Vie\u0323\u0302t\n\n## ' + label + '\n\n';
-  const source = first + 'Một đoạn đi ngang cánh đồng.\n\n'.repeat(6520) + '## ' + label + '\n\n### Mục sau\n';
+  const fence = '~~~text\n## ' + label + '\n~~~\n\n';
+  const source = first + fence + 'Một đoạn đi ngang cánh đồng.\n\n'.repeat(6520) + '## ' + label + '\n\n### Mục sau\n';
   const tail = source.lastIndexOf('## ' + label);
   const labelStart = tail + 3;
   const end = labelStart + label.length;
   const item = from => `#editor-outline-panel button:has([data-heading-from="${from}"])`;
   const at = from => `document.querySelector(${JSON.stringify(item(from))})`;
+  const finalHeading = source.lastIndexOf('### Mục sau');
+  const expected = [
+    ['Tên', 1, 0],
+    [label, 2, first.indexOf('## ')],
+    [label, 2, tail],
+    ['Mục sau', 3, finalHeading],
+  ];
+  async function checkReadyOutline() {
+    await page.waitFor(`${at(finalHeading)} && !document.querySelector('#editor-outline-panel .vk-editor-outline__empty')`,
+      'the final heading is present and partial parsing has finished');
+    const headings = await page.eval(`[...document.querySelectorAll('#editor-outline-panel [data-heading-from]')]
+      .map(el => [el.textContent, Number(el.dataset.headingLevel), Number(el.dataset.headingFrom)])`);
+    deepStrictEqual(headings, expected, 'only AST headings appear, with their levels and UTF-16 offsets');
+  }
+  await openDraft(page, args.base, check, { format: 'default', source }, 'Đối chứng văn bản');
+  check(await page.eval(`${SAME_VIEW} && ${SOURCE} === ${JSON.stringify(source)} &&
+    !document.querySelector('#outline-toggle, #editor-outline-panel')`),
+  '#553 the same source opens verbatim as Default without a Markdown outline');
+
   const id = await openDraft(page, args.base, check, { format: 'markdown', source });
   await page.click('#outline-toggle');
-  await page.waitFor(at(tail), 'outline completes parsing to the final headings');
-  check(await page.eval(`(() => {
-    const items = [...document.querySelectorAll('#editor-outline-panel [data-heading-from]')].filter(el => el.textContent === ${JSON.stringify(label)});
-    return items.map(el => Number(el.dataset.headingFrom)).join(',') === '${first.indexOf('## ')},${tail}';
-  })()`), '#257 duplicate labels retain distinct UTF-16 offsets after emoji and decomposed Vietnamese');
+  await checkReadyOutline();
 
   check(await page.eval(`(() => {
     const v = ${CM}, old = ${at(tail)};
@@ -322,8 +339,13 @@ async function outlineOffsets(page, { args, check }) {
   await page.reload();
   await page.waitFor(CM, 'resolved draft reloads');
   await page.click('#outline-toggle');
-  await page.waitFor(at(tail), 'reloaded long draft rebuilds the final heading');
+  await checkReadyOutline();
   check(await page.eval(`${SOURCE} === ${JSON.stringify(source)}`), '#257 reload restores full source and rebuilds the tail outline after explicit conflict recovery');
+  await page.capture('markdown-outline-reopened', {
+    scenario: 'editor.outline-headings', target: '#editor-outline-title',
+    state: 'saved Markdown reopened, full AST with four headings',
+    boundary: 'Product SSR/hydrate, local fixture principal, real PostgreSQL draft',
+  });
 }
 
 export async function editorDeskRegressions(page, options) {
