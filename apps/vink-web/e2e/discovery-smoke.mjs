@@ -182,22 +182,36 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     const modes = await page.eval(`(() => {
       const nav = document.querySelector('.vk-explore-modes');
       const links = [...nav.querySelectorAll('a')];
+      const current = [...nav.querySelectorAll('[aria-current="page"]')];
       const boxes = links.map(link => link.getBoundingClientRect());
-      const indicator = getComputedStyle(nav, '::after');
+      const owner = document.querySelector('#explore > header').getBoundingClientRect();
+      const row = document.querySelector('.vk-public-row').getBoundingClientRect();
+      const indicator = getComputedStyle(current[0], '::after');
+      const near = (left, right) => Math.abs(left - right) <= 1;
+      const intrinsic = links.every((link, index) => {
+        const range = document.createRange();
+        range.selectNodeContents(link);
+        const text = range.getBoundingClientRect();
+        const style = getComputedStyle(link);
+        const expected = text.width + parseFloat(style.paddingInlineStart) + parseFloat(style.paddingInlineEnd);
+        return near(boxes[index].width, Math.max(parseFloat(style.minInlineSize), expected))
+          && text.left >= boxes[index].left && text.right <= boxes[index].right;
+      });
       return {
+        current: current.map(link => link.id),
         count: links.length,
-        current: nav.querySelector('[aria-current="page"]')?.id,
-        equal: boxes.every(box => Math.abs(box.width - boxes[0].width) <= 1 &&
-          Math.abs(box.top - boxes[0].top) <= 1 && Math.abs(box.height - boxes[0].height) <= 1),
-        fillsRow: Math.abs(boxes.at(-1).right - nav.getBoundingClientRect().right) <= 1,
-        height: boxes[0].height,
-        indicator: indicator.height,
+        intrinsic,
+        aligned: near(boxes[0].left, owner.left) && near(boxes[0].left, row.left),
+        endSpace: owner.right - Math.max(...boxes.map(box => box.right)),
+        height: Math.min(...boxes.map(box => box.height)),
+        indicator: indicator.height === '3px' && parseFloat(indicator.insetInlineStart) > 0
+          && links.slice(1).every(link => getComputedStyle(link, '::after').height !== '3px'),
         icons: nav.querySelectorAll('svg').length,
       };
     })()`);
-    check(modes.current === 'explore-mode-works' && modes.count === 3 && modes.equal && modes.fillsRow &&
-      modes.height >= 48 && (scale !== 100 || modes.height === 48) && modes.indicator === '3px' && modes.icons === 0,
-      'DQ-03 equal-width tabs and independent Lavender indicator ' + [theme,width,scale,JSON.stringify(modes)].join('/'));
+    check(modes.current.join() === 'explore-mode-works' && modes.count === 3 && modes.intrinsic && modes.aligned
+      && (scale !== 100 || modes.endSpace > 1) && modes.height >= 48 && modes.indicator && modes.icons === 0,
+      '#566 left-aligned intrinsic tabs with a local 3px underline ' + [theme,width,scale,JSON.stringify(modes)].join('/'));
     if (theme === 'light' && ([320,390,1440].includes(width) && [100,150].includes(scale) ||
         [320,390].includes(width) && scale === 200)) {
       await checkExploreModesTabAndAx(page, {check, label: `${width}px/${scale}%`});

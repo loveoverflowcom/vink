@@ -560,13 +560,7 @@ fn ExploreModes(mode: Memo<ExploreMode>, context: Memo<ExploreContext>) -> impl 
     }
     modes.push((ExploreMode::Authors, "authors", "Tác giả"));
     view! {
-        <nav class="vk-explore-modes" aria-label="Chế độ Khám phá"
-            data-following=following.to_string()
-            data-mode=move || match mode.get() {
-                ExploreMode::Works => "works",
-                ExploreMode::Following => "following",
-                ExploreMode::Authors => "authors",
-            }>
+        <nav class="vk-explore-modes" aria-label="Chế độ Khám phá">
             {modes.into_iter().map(|(entry, key, label)| view! {
                 <a id=format!("explore-mode-{key}")
                     aria-current=move || (mode.get() == entry).then_some("page")
@@ -1441,6 +1435,23 @@ mod tests {
             tag_page: None,
         }
     }
+    #[test]
+    fn explore_modes_serve_native_links_with_or_without_following() {
+        for following in [false, true] {
+            let html = Owner::new().with(|| {
+                provide_context(crate::server::FollowingFeedEnabled(following));
+                let mode = Memo::new(|_| ExploreMode::Authors);
+                let context = Memo::new(|_| context("mưa", None));
+                view! { <ExploreModes mode context /> }.to_html()
+            });
+            assert!(html.contains(r#"aria-label="Chế độ Khám phá""#));
+            assert_eq!(html.matches("<a ").count(), if following { 3 } else { 2 });
+            assert_eq!(html.matches(r#"aria-current="page""#).count(), 1);
+            assert!(html.contains(r#"href="/?mode=authors&amp;q=m%C6%B0a""#));
+            assert_eq!(html.contains(r#"href="/?mode=following""#), following);
+        }
+    }
+
     #[test]
     fn empty_corpus_and_filtered_miss_keep_one_html_status_and_real_recovery() {
         let corpus = render(context("", None), empty(), false, false);

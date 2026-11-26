@@ -1,5 +1,5 @@
-// #295 and #354: real SSR, Chrome and native Identity against disposable PostgreSQL databases.
-import { fill, HYDRATED, q } from './auth-smoke.mjs';
+// #295, #354 and #566: real SSR, Chrome and native Identity against disposable PostgreSQL databases.
+import { fill, HYDRATED, q, STANDING } from './auth-smoke.mjs';
 import { authorFixtureSql } from './author-fixtures.mjs';
 
 const MODE = '/?mode=authors';
@@ -188,8 +188,40 @@ async function discoveryModeStability(page, base, check) {
         });
       }
       if (width === 320) {
-        check(await page.eval(`getComputedStyle(${q('.vk-explore-modes')}, '::after').transitionProperty === 'none'`),
-          '#473 reduced motion moves the indicator immediately');
+        const indicator = await page.eval(`(() => {
+          const current = ${q(authors)};
+          const underline = getComputedStyle(current, '::after');
+          return {
+            reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
+            thickness: underline.height,
+            previousThickness: getComputedStyle(${q(following)}, '::after').height,
+            moving: current.getAnimations({subtree: true}).some(animation =>
+              animation.effect?.pseudoElement === '::after'),
+          };
+        })()`);
+        check(indicator.reduced && indicator.thickness === '3px'
+          && indicator.previousThickness !== '3px' && !indicator.moving,
+          `#566 reduced motion switches the local underline immediately (${JSON.stringify(indicator)})`);
+      }
+      if (width === 320 && scale === 200) {
+        await page.send('Emulation.setEmulatedMedia', { features: [
+          { name: 'forced-colors', value: 'active' },
+          { name: 'prefers-reduced-motion', value: 'reduce' },
+        ] });
+        check(await page.eval(`(() => {
+          const current = ${q(authors)};
+          const ink = document.createElement('span');
+          ink.style.color = 'Highlight';
+          document.body.append(ink);
+          const selected = getComputedStyle(current, '::after').backgroundColor === getComputedStyle(ink).color;
+          ink.remove();
+          const box = current.getBoundingClientRect();
+          return matchMedia('(forced-colors: active)').matches && selected && current.matches(':focus-visible')
+            && getComputedStyle(current).outlineStyle !== 'none' && box.left >= 0 && box.right <= innerWidth;
+        })()`), '#566 forced colors retain the selected underline and visible focused link');
+        await page.send('Emulation.setEmulatedMedia', { features: [
+          { name: 'prefers-reduced-motion', value: 'reduce' },
+        ] });
       }
       await activate(works);
       await page.waitFor(`${mode(works)} && ${q('#public-results')}`, 'Works selected before Authors resolves');
@@ -212,6 +244,138 @@ async function discoveryModeStability(page, base, check) {
   }
   await page.send('Emulation.setEmulatedMedia', { features: [] });
   await page.viewport(1280);
+}
+
+async function followingGuest(page, base, check, textContrast) {
+  const feed = '/?mode=following';
+  const action = '#feed-sign-in';
+  const username = 'following_guest_566';
+  const password = 'synthetic following browser fixture';
+  const title = '#community-stream .vk-empty-state__title';
+  const message = '#community-stream .vk-empty-state__message';
+  await page.goto(base + feed);
+  await page.waitFor(q(action), 'confirmed anonymous session sees the Following action');
+  check(await page.eval(`${hasCopy(title, 'Gần hơn với tác giả')} && ${hasCopy(action, 'Đăng nhập')}
+    && ${q('#community-stream .vk-empty-state__icon svg[aria-hidden="true"]')}
+    && document.querySelectorAll('#community-stream [role="status"]').length === 1
+    && document.querySelectorAll('#community-stream a, #community-stream button').length === 1
+    && ${q('#community-stream')}.getAttribute('aria-labelledby') === 'following-feed-heading'
+    && !${q('dialog[open]')}`), '#566 guest state has one announcement, decorative icon and native sign-in link');
+
+  for (const [width, height] of [[320, 800], [390, 844], [834, 1112], [1440, 900]]) {
+    await page.viewport(width, height);
+    for (const theme of ['light', 'dark']) for (const scale of [100, 150, 200]) {
+      const scene = `${width}x${height}-${theme}-${scale}`;
+      const facts = await page.eval(`(async () => {
+        const root = document.documentElement;
+        root.dataset.theme = '${theme}';
+        root.dataset.text = '${scale}';
+        await document.fonts.ready;
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        await Promise.allSettled(document.getAnimations()
+          .filter(animation => animation instanceof CSSTransition).map(animation => animation.finished));
+        scrollTo(0, 0);
+        const region = ${q('#community-stream')}.getBoundingClientRect();
+        const state = ${q('#community-stream .vk-empty-state')};
+        const cta = ${q(action)};
+        const panel = state.getBoundingClientRect();
+        const link = cta.getBoundingClientRect();
+        const bottomBar = ${q('#bottom-navigation')}.getBoundingClientRect();
+        const usableEnd = bottomBar.height > 0 ? bottomBar.top : innerHeight;
+        const middle = r => (r.left + r.right) / 2;
+        return {
+          centerX: middle(link) - middle(region),
+          centerY: (panel.top + panel.bottom - region.top - region.bottom) / 2,
+          xOverflow: root.scrollWidth - root.clientWidth,
+          visible: link.top >= 0 && link.bottom <= usableEnd,
+          actionBelowBar: Math.max(0, link.bottom - usableEnd),
+          uiFont: getComputedStyle(${q(title)}).fontFamily.startsWith('"Be Vietnam Pro"'),
+          height: link.height,
+          round: parseFloat(getComputedStyle(cta).borderTopLeftRadius) >= link.height / 2,
+          borderless: getComputedStyle(state).borderWidth === '0px' && getComputedStyle(state).boxShadow === 'none',
+        };
+      })()`);
+      check(Math.abs(facts.centerX) <= 1 && Math.abs(facts.centerY) <= 1 && facts.xOverflow <= 1
+        && facts.uiFont && facts.height >= 48 && facts.round && facts.borderless && (scale !== 100 || facts.visible),
+        `#566 centered guest state ${scene} (${JSON.stringify(facts)})`);
+      if (scale === 100 && (width === 390 || width === 1440) || scale === 200 && width === 320) {
+        await textContrast(page, theme, 'following-guest', [title, message, action]);
+        if (facts.actionBelowBar > 0) {
+          await page.eval(`scrollBy(0, ${Math.ceil(facts.actionBelowBar) + 8})`);
+        }
+        await page.capture('following-guest-566-' + scene, {
+          boundary: 'Chrome + Identity + scratch App PostgreSQL', scenario: 'following-guest',
+          requiredTargets: [title, action],
+        });
+      }
+    }
+  }
+  await page.eval("delete document.documentElement.dataset.text");
+  await page.click('#open-public-search');
+  await page.waitFor(`${q('#public-query')}?.getClientRects().length > 0`, 'Following Search Dock opens');
+  check(await page.eval(`(() => {
+    const dock = ${q('#discovery-search-dock')}.getBoundingClientRect();
+    const region = ${q('#community-stream')}.getBoundingClientRect();
+    const state = ${q('#community-stream .vk-empty-state')}.getBoundingClientRect();
+    return dock.height > 0 && region.top >= dock.bottom - 1
+      && Math.abs((state.top + state.bottom - region.top - region.bottom) / 2) <= 1;
+  })()`), '#566 the open search dock is above the centered results region');
+  await page.click('#close-public-search');
+
+  await page.viewport(390, 370);
+  await page.eval(`(() => {
+    document.documentElement.dataset.theme = 'light';
+    document.documentElement.dataset.text = '200';
+    ${q(action)}.scrollIntoView({block: 'center'});
+  })()`);
+  check(await page.eval(`(() => {
+    const action = ${q(action)};
+    const link = action.getBoundingClientRect();
+    const bar = ${q('#bottom-navigation')}.getBoundingClientRect();
+    return link.top >= 0 && link.bottom <= bar.top &&
+      action.contains(document.elementFromPoint(link.x + link.width / 2, link.y + link.height / 2));
+  })()`), '#566 short viewport can scroll the full CTA above the bottom bar');
+
+  await page.viewport(390, 844);
+  await page.eval("delete document.documentElement.dataset.text");
+  await page.eval(`${q(action)}.focus()`);
+  await enter(page);
+  const next = `${searchParam('next')} === '${feed}'`;
+  await page.waitFor(`location.pathname === '/toi' && ${next} && ${q('#password-login')}`, 'guest CTA reaches real Auth R3');
+  await page.click('#use-registration');
+  await fill(page, '#password-register-username', username);
+  await fill(page, '#password-register-password', password);
+  await page.click('#password-register-submit');
+  await page.waitFor(`${STANDING} === 'needs_principal' && ${q('#pen-name-form')}`, 'Identity registration needs a principal');
+  await page.goto(base + feed);
+  await page.waitFor(hasCopy(action, 'Hoàn tất bút danh'), 'Following gives the registered session its own action');
+  check(await page.eval(`${q('[data-feed-state="guest"]')} && !${q(title)} && !${q('#community-stream button')}`),
+    '#566 the shared guest marker retains the distinct principal-completion UI');
+  await page.click(action);
+  await page.waitFor(`location.pathname === '/toi' && ${next} && ${q('#pen-name')}`, 'principal action retains Following return context');
+  await fill(page, '#pen-name', 'Độc giả thử luồng theo dõi');
+  await page.click('#pen-name-save');
+  await page.waitFor(`${STANDING} === 'active' && ${q('#me-return-link')}`, 'real principal and safe return link');
+  await page.click('#me-return-link');
+  await page.waitFor(`location.search === '?mode=following' && ${q('[data-feed-state="no-follows"]')}`,
+    'confirmed account returns to its own Following results');
+
+  await page.goto(base + '/toi');
+  await page.waitFor(q('#sign-out'), 'registered account can sign out');
+  await page.click('#sign-out');
+  await page.waitFor(`${STANDING} === 'anonymous'`, 'Identity confirms sign-out');
+  await page.goto(base + feed);
+  await page.waitFor(hasCopy(action, 'Đăng nhập'), 'guest gate returns after sign-out');
+  await page.click(action);
+  await page.waitFor(`${next} && ${q('#password-login')}`, 'password sign-in retains Following return context');
+  await fill(page, '#password-login-username', username);
+  await fill(page, '#password-login-password', password);
+  await page.click('#password-login-submit');
+  await page.waitFor(`${STANDING} === 'active' && ${q('#me-return-link')}`, 'password sign-in confirms a new session');
+  await page.click('#me-return-link');
+  await page.waitFor(`location.search === '?mode=following' && ${q('[data-feed-state="no-follows"]')}`,
+    'existing account reads its Following results after password sign-in');
+  check(await page.eval(`!${q(action)}`), '#566 password sign-in returns to Following without a stale guest gate');
 }
 
 async function backThroughUnhydratedProfile(page, base, path, selector, query) {
@@ -403,7 +567,7 @@ async function longHandleReflow(page, base, presentation) {
   }
 }
 
-export async function authorSearch(page, { args, check, textContrast }) {
+export async function authorSearch(page, { args, check, openPage, textContrast }) {
   // Run every presentation contract against both baseline and candidate using the same scenario.
   // Collect only presentation failures so the legacy fixture and interaction checks stay fail-fast.
   const failures = [];
@@ -429,6 +593,14 @@ export async function authorSearch(page, { args, check, textContrast }) {
   await page.send('Network.setBlockedURLs', { urls: [base + '/pkg/vink.js*', base + '/pkg/vink_bg.wasm*'] });
   await page.send('Emulation.setScriptExecutionDisabled', { value: true });
   try {
+    await page.goto(base + '/');
+    await page.waitFor(q('#explore-mode-following'), 'SSR supplies the native Following link');
+    await page.eval(`${q('#explore-mode-following')}.focus()`);
+    await enter(page);
+    await page.waitFor(`location.search === '?mode=following' &&
+      ${q('#explore-mode-following[aria-current="page"]')} &&
+      ${q('[data-feed-state="checking"]')} && !${q('#feed-sign-in')} && !(${HYDRATED})`,
+      'no-JS Following link keeps current state and waits for session authority');
     await page.goto(base + MODE);
     await page.waitFor(q(INPUT), 'SSR author search form before Web bundle');
     await fill(page, INPUT, pen);
@@ -442,6 +614,12 @@ export async function authorSearch(page, { args, check, textContrast }) {
   }
 
   await discoveryModeStability(page, base, check);
+  const { browserContextId } = await page.cdp.send('Target.createBrowserContext');
+  try {
+    await followingGuest(await openPage(browserContextId), base, check, textContrast);
+  } finally {
+    await page.cdp.send('Target.disposeBrowserContext', { browserContextId });
+  }
   await page.goto(base + '/');
   const entry = '#explore-mode-authors';
   await page.waitFor(`${HYDRATED} && ${q(entry)}`, 'author search mode in Khám phá');

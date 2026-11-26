@@ -1,13 +1,14 @@
 //! The account-scoped results region of Khám phá.
 use leptos::prelude::*;
 use leptos_meta::{Link, Meta, Title};
-use vink_ui::{Button, ButtonVariant, Heading, HeadingLevel, Link as UiLink};
+use vink_ui::{Button, ButtonVariant, Heading, HeadingLevel, IconName, Link as UiLink};
 
 use crate::{
     account::Session,
     api,
     discovery::{ExploreContext, ExploreMode, encode},
     session::Standing,
+    ui::empty_state::EmptyState,
 };
 
 #[cfg(feature = "browser")]
@@ -21,6 +22,7 @@ const FEED_STATE_CLASS: &str = "vk-feed-state my-vk-6 grid justify-items-start g
 pub(super) fn FollowingFeed(context: ExploreContext) -> impl IntoView {
     let session = Session::current();
     let enabled = api::following_feed_enabled();
+    let sign_in_open = api::sign_in_open();
     let expired = RwSignal::new(false);
     let stream = NodeRef::<leptos::html::Section>::new();
     #[cfg(feature = "browser")]
@@ -69,8 +71,9 @@ pub(super) fn FollowingFeed(context: ExploreContext) -> impl IntoView {
                 view! {
                     <Show when=move || session.profile_scope.get().is_none()>
                         {move || match session.standing.get() {
-                            Standing::Anonymous => view! { <SignIn expired=expired.get() /> }.into_any(),
-                            Standing::NeedsPrincipal => view! { <SignIn needs_name=true /> }.into_any(),
+                            Standing::Anonymous if expired.get() => view! { <AccountRecovery sign_in_open /> }.into_any(),
+                            Standing::Anonymous => view! { <GuestAccess sign_in_open /> }.into_any(),
+                            Standing::NeedsPrincipal => view! { <AccountRecovery needs_name=true sign_in_open /> }.into_any(),
                             Standing::Suspended => view! { <Restricted /> }.into_any(),
                             Standing::Unavailable if !session.checking() => view! {
                                 <div class=FEED_STATE_CLASS data-feed-state="unavailable">
@@ -106,23 +109,43 @@ pub(super) fn FollowingFeed(context: ExploreContext) -> impl IntoView {
 }
 
 #[component]
-fn SignIn(#[prop(optional)] expired: bool, #[prop(optional)] needs_name: bool) -> impl IntoView {
-    let sign_in_open = api::sign_in_open();
-    let href = format!("/toi?next={}", encode(ExploreMode::FOLLOWING_HREF));
+fn GuestAccess(sign_in_open: bool) -> impl IntoView {
     view! {
-        <div class=FEED_STATE_CLASS data-feed-state=if expired { "expired" } else { "guest" }>
+        <div class="vk-following-guest" data-feed-state="guest">
+            {if sign_in_open {
+                view! {
+                    <EmptyState icon=IconName::PersonAdd title="Gần hơn với tác giả" announce=true
+                        message="Theo dõi những cây bút bạn yêu thích và đón đọc tác phẩm mới.">
+                        <FeedAccountLink label="Đăng nhập" />
+                    </EmptyState>
+                }.into_any()
+            } else {
+                view! { <EmptyState announce=true message="Vink chưa mở đăng nhập." /> }.into_any()
+            }}
+        </div>
+    }
+}
+
+#[component]
+fn AccountRecovery(sign_in_open: bool, #[prop(optional)] needs_name: bool) -> impl IntoView {
+    view! {
+        <div class=FEED_STATE_CLASS data-feed-state=if needs_name { "guest" } else { "expired" }>
             <p class="m-0" role="status">
                 {if needs_name { "Hoàn tất bút danh để xem tác phẩm đang theo dõi." }
-                    else if expired { "Phiên đã hết. Đăng nhập lại để xem tác phẩm đang theo dõi." }
-                    else if sign_in_open { "Đăng nhập để xem tác phẩm của các tác giả bạn theo dõi." }
-                    else { "Vink chưa mở đăng nhập." }}
+                    else { "Phiên đã hết. Đăng nhập lại để xem tác phẩm đang theo dõi." }}
             </p>
-            {(sign_in_open || needs_name).then(|| view! {
-                <a id="feed-sign-in" class=ButtonVariant::Filled.classes() href=href>
-                    {if needs_name { "Hoàn tất bút danh" } else { "Đăng nhập" }}
-                </a>
+            {(needs_name || sign_in_open).then(|| view! {
+                <FeedAccountLink label=if needs_name { "Hoàn tất bút danh" } else { "Đăng nhập" } />
             })}
         </div>
+    }
+}
+
+#[component]
+fn FeedAccountLink(label: &'static str) -> impl IntoView {
+    let href = format!("/toi?next={}", encode(ExploreMode::FOLLOWING_HREF));
+    view! {
+        <a id="feed-sign-in" class=ButtonVariant::Filled.classes() href=href>{label}</a>
     }
 }
 
@@ -143,5 +166,36 @@ fn FeedOff() -> impl IntoView {
             <p class="m-0" role="status">"Đang theo dõi hiện chưa khả dụng."</p>
             <UiLink href="/">"Khám phá tác phẩm"</UiLink>
         </div>
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn following_access_actions_respect_sign_in_gate_and_standing() {
+        Owner::new().with(|| {
+            let guest = view! { <GuestAccess sign_in_open=true /> }.to_html();
+            let closed = view! { <GuestAccess sign_in_open=false /> }.to_html();
+            let needs_name =
+                view! { <AccountRecovery sign_in_open=false needs_name=true /> }.to_html();
+            let expired = view! { <AccountRecovery sign_in_open=false /> }.to_html();
+
+            assert!(guest.contains("Gần hơn với tác giả") && guest.contains(">Đăng nhập<"));
+            assert!(closed.contains("Vink chưa mở đăng nhập.") && !closed.contains("feed-sign-in"));
+            assert!(
+                needs_name.contains(r#"data-feed-state="guest""#)
+                    && needs_name.contains(">Hoàn tất bút danh<")
+            );
+            for view in [&guest, &needs_name] {
+                assert!(view.contains(r#"href="/toi?next=%2F%3Fmode%3Dfollowing""#));
+                assert_eq!(view.matches(r#"role="status""#).count(), 1);
+            }
+            assert!(
+                expired.contains(r#"data-feed-state="expired""#)
+                    && !expired.contains("feed-sign-in")
+            );
+        });
     }
 }
