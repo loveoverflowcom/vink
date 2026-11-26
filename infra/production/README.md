@@ -12,6 +12,8 @@ Giữ Vink test và Cantos trên mạng và dữ liệu hiện tại.
 Quy trình giữ domain ở registrar Spaceship và chuyển authoritative DNS sang Cloudflare Free
 trước khi bật proxy. Build và phát hành image dùng workflow bên dưới.
 
+Mỗi lượt deploy bắt đầu từ [quy trình Early Production](early-production.md). Chọn FAST, SCHEMA, BOOTSTRAP hoặc MAINTENANCE theo hai revision và dữ liệu đang có.
+
 ## Build và xác nhận bản phát hành
 
 Chạy [workflow thủ công](../../.github/workflows/publish-images.yml) với `platform=linux/amd64` cho
@@ -70,7 +72,7 @@ Các bước DNS/Caddy trực tiếp bên dưới mô tả nền #304. Khi chuy�
 
 1. Lấy bốn digest cùng revision từ workflow đã qua smoke. Cập nhật receiver và `artifacts.py` đã cài trên host để nhận cả receipt cũ và mới. Chuẩn bị env của candidate từ env hiện hành, thêm ba biến Notifications trong [mẫu public](release.env.example). Giữ nguyên cờ auth, mail overlay và credential của App/Identity. Với runtime đã có, chạy `create-runtime-files.py` vào một thư mục riêng mode 0700; lấy riêng hai file `notifications-{runtime,migrator}.env` và hai dòng `VINK_NOTIFICATIONS_{RUNTIME,MIGRATOR}_PASSWORD` tương ứng cho `provision.env`. Khi tiếp tục lượt chuẩn bị dở, dùng lại đúng cặp mật khẩu đã cấp cho DB.
 2. Dùng manifest và env candidate trong bước provision và kiểm role ở trên. Tạo thư mục inbox và ingest riêng, mode 0700, UID/GID của runtime. Kiểm unit systemd **và drop-in Resend** tạo/chown cả hai thư mục khi boot và start/stop service `notifications`. Đưa hai biến đường dẫn vào env dùng bởi controller. Không thay pin image của các tiến trình đang chạy.
-3. Trước lượt chuyển đầu tiên, đối chiếu migrations của `services/vink-notifications` giữa hai SHA. Nếu giống nhau, chạy `migrate-notifications` của candidate trên DB mới, rồi kiểm chạy lại no-op. Nếu khác, chuẩn bị DB ở ledger của predecessor rồi dùng schema review của cả ba owner. Lấy bộ backup mới theo thứ tự Notifications → App → Identity và diễn tập restore trước khi chuyển. Dùng controller cho các migration còn lại và chuyển release theo [runbook edge](cloudflare-edge.md).
+3. Trước lượt chuyển đầu tiên, đối chiếu migrations của `services/vink-notifications` giữa hai SHA. Nếu giống nhau, chạy `migrate-notifications` của candidate trên DB mới, rồi kiểm chạy lại no-op. Nếu khác, chuẩn bị DB ở ledger của predecessor rồi dùng schema review của cả ba owner. Với BOOTSTRAP + SCHEMA đã review, ghi nhận bộ backup timer của predecessor. Với cửa sổ bảo trì hoặc lượt chuyển topology theo controller cũ, chuẩn bị bộ backup theo điều kiện của [đường phát hành đã chọn](early-production.md). Dùng controller cho các migration còn lại và chuyển release theo [runbook edge](cloudflare-edge.md).
 4. Kiểm `/health/ready` qua socket inbox **từ App** và socket ingest **từ worker**. Cả hai phải trả `ready`, `schema=current`, `role=least_privileged`, `recovery=serving`. Kiểm count và inbox bằng phiên test qua HTTPS. Chỉ sau đó bật thu sự kiện bằng `vink-app notifications activate <ghi chú>`. Cutoff lấy tại giao dịch kích hoạt.
 5. Khi backout, dùng `vink-app notifications deactivate <ghi chú>`, kiểm nghĩa vụ relay và giữ DB cùng receipts. Khi restore, đóng cổng recovery trước khi cho đọc và chỉ mở sau đối soát/replay theo [runbook Notifications](../../docs/development/notifications.md#73-retention-sự-kiện-muộn-và-phục-hồi). Khi quay về topology ba image, dừng relay và Notifications trước khi đổi manifest, đồng bộ lại unit/drop-in với release cũ.
 
@@ -83,17 +85,17 @@ Các bước DNS/Caddy trực tiếp bên dưới mô tả nền #304. Khi chuy�
   response disabled. Không dùng tài khoản hoặc nội dung của test cho production.
 - Chạy một restart **chỉ Vink production**, kiểm lại health, migration và dữ liệu. Kiểm unit được
   enable và dependency trong systemd. Reboot VPS là bài kiểm riêng cần lịch và đồng ý do dùng chung.
-- `vink-prod-backup.timer` chạy hằng ngày từ 02:15 UTC. Mỗi lần ghi một custom dump có checksum
-  cho từng DB đã provision (`vink_notifications` khi đã có, rồi `vink`, `vink_identity`; dump
+- `vink-prod-backup.timer` chạy hằng ngày từ 02:15 UTC. Script của topology bốn image yêu cầu cả ba custom dump có checksum
+  (`vink_notifications`, rồi `vink`, `vink_identity`; dump
   Notification lấy trước để bản restore không bao giờ đi trước App), giữ bảy bộ trên cùng VPS với mode 0700. Không khẳng định offsite hoặc
   snapshot chung giữa các DB. Khi khôi phục, làm theo [runbook theo loại sự cố](../../docs/development/notifications.md#73-retention-sự-kiện-muộn-và-phục-hồi)
   (Notification không bao giờ được phục vụ khi đi trước App; replay lấp khoảng trống).
   Restore rehearsal dùng PostgreSQL 17 riêng và volume tạm, kiểm checksum, replay `pg_restore
   --exit-on-error`, so khớp schema/migrations và số dòng. Vai trò phải tồn tại khi dùng owner/grants
   trong lần recovery thật. Ghi vị trí/checksum, thời gian và giới hạn, không đính kèm dumps vào PR.
-- Với release kế tiếp, lấy backup mới, kiểm migration tương thích và giữ release/digest cũ trước
+- Với release kế tiếp, áp dụng chính sách backup theo [chế độ deploy](early-production.md), kiểm migration tương thích và giữ release/digest cũ trước
   khi đổi `current` và env. Nếu rollback lần đầu, gỡ import production và reload edge sau khi
-  validate, hoàn nguyên đúng hai record theo fresh UI, rồi dừng **chỉ** `vink-prod.service` và timer.
+  validate, hoàn nguyên đúng hai record theo fresh UI, rồi dừng riêng các container ứng dụng nếu cần. Giữ PostgreSQL chạy và `vink-prod.service` active vì backup service khai báo `Requisite=vink-prod.service`. Giữ timer hằng ngày.
   Giữ volume, backup và bằng chứng. Nếu đã thêm bridge/UFW production, chỉ gỡ chính rule/attachment
   production khi đã xác nhận phạm vi. Không xóa bản ghi hoặc hạ tầng của Cantos/Vink test.
 - Không rollback schema theo image. Chỉ quay về image trước khi readiness của từng owner đã được

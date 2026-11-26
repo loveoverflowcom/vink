@@ -19,3 +19,6 @@ Index tĩnh có tiêu đề chung và hướng dẫn bật JavaScript. Người 
 ## Phát hành
 
 Giữ Pages hiện hữu và cùng origin để dùng lại hợp đồng private của API. Worker kiểm inventory cả khi phục vụ asset, nên cần đo số invocation, CPU, giới hạn dung lượng và lưu lượng trên account trước cutover. Static hosting khác có thể phục vụ cùng artifact bằng fallback cho document và proxy cùng origin cho API. Gói trả phí và việc đổi production cần quyết định riêng. [Quy trình và trạng thái](../development/edge-frontend.md)
+
+<!-- vdr: active VDR-EARLY-PRODUCTION-RELEASE@r1 -->
+Trước cutover SPA, chính sách Early Production cho phép phát hành nhanh với gián đoạn ngắn và yêu cầu bảo vệ dữ liệu. Các chế độ deploy, điều kiện rollback và thiết kế epoch chuyển tiếp thuộc [runbook production](../../infra/production/early-production.md). Tiêu chí cutover SPA của #504 vẫn xét riêng.

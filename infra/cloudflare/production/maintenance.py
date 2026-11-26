@@ -1,4 +1,5 @@
 """Opt-in, local origin maintenance. The caller holds release.py's host lock."""
+from datetime import datetime, timezone
 import fcntl
 import hashlib
 import json
@@ -105,6 +106,34 @@ def observed_overlay(unit, labels, flags, release_env):
     require(enabled or flags["identity"].get("VINK_IDENTITY_MAIL_TRANSPORT") != "resend-api",
             "running Resend transport requires the unit overlay")
     return enabled
+
+
+def daily_backup(owners):
+    """Describe the latest completed timer-format set. Never start a backup here."""
+    observation = {"timestamp": None, "manifest_sha256": None, "warnings": []}
+    warnings = observation["warnings"]
+    try:
+        stamps = sorted(path for path in BACKUPS.iterdir() if re.fullmatch(r"[0-9]{8}T[0-9]{6}Z", path.name)
+                        and path.is_dir() and not path.is_symlink())
+        if not stamps:
+            warnings.append("no completed daily backup")
+            return observation
+        backup = stamps[-1]
+        observation["timestamp"] = backup.name
+        stamp = datetime.strptime(backup.name, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
+        if not 0 <= time.time() - stamp.timestamp() <= 26 * 3600:
+            warnings.append("backup outside 26-hour window")
+        manifest = (backup / "SHA256SUMS").read_bytes()
+        observation["manifest_sha256"] = sha(manifest)
+        entries = manifest.decode("ascii").splitlines()
+        for db in sorted(owners):
+            dump = backup / (db + ".dump")
+            if (not any(re.fullmatch(r"[a-f0-9]{64}  " + re.escape(db + ".dump"), line) for line in entries)
+                    or dump.is_symlink() or not dump.is_file() or dump.stat().st_size == 0):
+                warnings.append("backup missing " + db)
+    except (OSError, ValueError):
+        warnings.append("daily backup inventory unavailable")
+    return observation
 
 
 def checked_backup(owners):
