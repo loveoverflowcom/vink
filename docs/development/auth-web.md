@@ -76,12 +76,15 @@ Giao diện, đăng xuất và điều hướng. Từ [#483](https://github.com/
 [LayoutSpec Auth R2](../design/auth-password-web.md).
 Reader [#328](https://github.com/loveoverflowcom/vink/issues/328) gắn cùng view trong
 [host nhận xét](../../apps/vink-web/src/pages/discussion/auth.rs), không chạy qua `/toi`.
-Root và reply đều chỉ hiện hành động đăng nhập/bút danh khi môi trường mở, bài cho phép nhận
-xét và ngữ cảnh trả lời còn hợp lệ. Reader giữ DOM của ô soạn. Sheet/dialog chỉ giữ điểm gọi
+Khách soạn nhận xét gốc và trả lời bằng cùng nút Gửi như thành viên. Khi có nháp đủ điều kiện
+và người đọc kích hoạt Gửi, xác nhận gate, mode và đích trước khi mở Auth hoặc Chọn bút danh.
+Composer phân luồng qua `SendIntent`. Quyền ghi vẫn phải qua `DiscussionController::begin`
+và kiểm tra từ App. Khi máy chủ từ chối phiên, đọc lại qua SessionOwner để hành động Gửi tiếp
+theo dùng scope đã xác nhận. Reader giữ DOM của ô soạn. Sheet/dialog chỉ giữ điểm gọi
 và vị trí cuộn; AuthGate giữ lane cho request kể cả khi view đã đóng. Thành công chờ
 `SessionOwner` đối soát principal và `DiscussionController` nhận đúng scope rồi mới trả focus
-về ô soạn. Nhận scope mới ngay trong overlay đọc lại phần riêng và quyền, không tự làm rơi
-trang bình luận đã tải. Không lưu bền nháp hoặc tự gửi/replay. [LayoutSpec Reader](../design/auth-reader-web.md).
+về ô soạn. Khi hủy, trả focus về Gửi hoặc ô soạn nếu trigger đã biến mất. Nhận scope mới ngay
+trong overlay đọc lại phần riêng và quyền, không tự làm rơi trang bình luận đã tải. Không lưu bền nháp hoặc tự gửi/replay. [LayoutSpec Reader](../design/auth-reader-web.md).
 
 ## 2. Luồng
 

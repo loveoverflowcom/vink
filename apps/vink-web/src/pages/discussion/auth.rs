@@ -160,17 +160,16 @@ impl ReaderAuth {
             let cycle = self.cycle.get_value();
             let scroll = self.scroll.get_value();
             let editor_top = self.editor_top.get_value();
+            let comment_dismissed =
+                !authenticated && self.purpose.get_untracked() == ReaderAuthPurpose::Comment;
             let restore = move || {
                 if self.cycle.try_get_value() != Some(cycle)
                     || self.origin.try_get_untracked() != Some(None)
                 {
                     return;
                 }
-                let focused = if authenticated {
-                    focus(&composer)
-                } else {
-                    focus(&format!("{composer}-auth")) || focus(&composer)
-                };
+                let focused =
+                    (comment_dismissed && focus(&format!("{composer}-send"))) || focus(&composer);
                 if !focused {
                     focus("feedback-heading");
                 }
@@ -293,6 +292,7 @@ fn focus(id: &str) -> bool {
     let options = web_sys::FocusOptions::new();
     options.set_prevent_scroll(true);
     target.focus_with_options(&options).is_ok()
+        && document().active_element().as_ref() == Some(target.as_ref())
 }
 
 #[cfg(feature = "browser")]

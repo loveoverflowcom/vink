@@ -158,6 +158,20 @@ pub enum SendEmphasis {
     Progress,
 }
 
+/// The result of pressing the composer control, separate from permission to begin a write.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum SendIntent {
+    Empty,
+    Pending,
+    Blocked(&'static str),
+    Authenticate,
+    Submit,
+}
+
+const EMPTY_DRAFT: &str = "Viết nhận xét trước khi gửi.";
+const SESSION_UNCONFIRMED: &str =
+    "Máy chủ chưa xác nhận phiên đăng nhập. Tải lại để đối chiếu; chữ vẫn được giữ.";
+
 /// The reply composer's target chip (R4 image 05). An unavailable context is not inferred as
 /// deleted and offers another target; sending stays blocked until a visible one is chosen.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -378,13 +392,11 @@ impl DiscussionController {
         }
     }
 
-    pub fn reason(&self, key: &ComposerKey) -> Option<&'static str> {
-        let draft = self.drafts.get(key);
-        if draft.is_some_and(|d| matches!(d.delivery, Delivery::Sending(_))) {
-            return Some("Đang gửi nhận xét…");
-        }
-        if draft.is_some_and(|d| matches!(d.delivery, Delivery::Uncertain(_))) {
-            return Some("Kiểm tra lần gửi trước khi gửi tiếp.");
+    fn delivery_or_policy_reason(&self, key: &ComposerKey) -> Option<&'static str> {
+        match self.drafts.get(key).map(|d| &d.delivery) {
+            Some(Delivery::Sending(_)) => return Some("Đang gửi nhận xét…"),
+            Some(Delivery::Uncertain(_)) => return Some("Kiểm tra lần gửi trước khi gửi tiếp."),
+            _ => {}
         }
         if !self.settings.comments_open {
             return Some(if self.viewer_is_author {
@@ -393,19 +405,14 @@ impl DiscussionController {
                 "Tác giả đã tắt bình luận cho bài viết này. Bản đang soạn được giữ lại."
             });
         }
-        if self.session_invalid {
-            return Some(
-                "Máy chủ chưa xác nhận phiên đăng nhập. Tải lại để đối chiếu; chữ vẫn được giữ.",
-            );
-        }
-        if !self.write_ready() {
-            return Some(if self.sign_in_open {
-                "Cần phiên đăng nhập hợp lệ để gửi. Chữ bạn soạn tại đây được giữ lại."
-            } else {
-                "Vink chưa mở đăng nhập; chưa thể gửi nhận xét. Bạn có thể soạn tại đây."
-            });
-        }
-        if draft.is_some_and(|d| d.target.is_some() && !d.target_available) {
+        None
+    }
+
+    fn draft_reason(&self, key: &ComposerKey) -> Option<&'static str> {
+        let draft = self.drafts.get(key);
+        if matches!(key, ComposerKey::Replies(_))
+            && !draft.is_some_and(|d| d.target.is_some() && d.target_available)
+        {
             return Some(
                 "Chọn lại bình luận được phép trả lời; ngữ cảnh cũ chưa khả dụng. Chữ được giữ lại.",
             );
@@ -414,9 +421,60 @@ impl DiscussionController {
             return Some("Hoàn tất nhập chữ trước khi gửi.");
         }
         if draft.is_none_or(|d| d.body.trim().is_empty()) {
-            return Some("Viết nhận xét trước khi gửi.");
+            return Some(EMPTY_DRAFT);
         }
         None
+    }
+
+    pub fn reason(&self, key: &ComposerKey) -> Option<&'static str> {
+        self.delivery_or_policy_reason(key)
+            .or_else(|| self.session_invalid.then_some(SESSION_UNCONFIRMED))
+            .or_else(|| {
+                (!self.write_ready()).then_some(if self.sign_in_open {
+                    "Cần phiên đăng nhập hợp lệ để gửi. Chữ bạn soạn tại đây được giữ lại."
+                } else {
+                    "Vink chưa mở đăng nhập; chưa thể gửi nhận xét. Bạn có thể soạn tại đây."
+                })
+            })
+            .or_else(|| self.draft_reason(key))
+    }
+
+    pub(crate) fn send_intent(
+        &self,
+        key: &ComposerKey,
+        standing: &crate::session::Standing,
+        owner_ready: bool,
+    ) -> SendIntent {
+        use crate::session::Standing;
+        if self.status(key) == ComposerStatus::Sending {
+            return SendIntent::Pending;
+        }
+        if let Some(reason) = self.delivery_or_policy_reason(key) {
+            return SendIntent::Blocked(reason);
+        }
+        let can_auth = self.sign_in_open
+            && self.scope.session.is_none()
+            && matches!(standing, Standing::Anonymous | Standing::NeedsPrincipal);
+        let reason = if owner_ready {
+            self.reason(key)
+        } else if can_auth {
+            self.draft_reason(key)
+        } else if *standing == Standing::Suspended {
+            Some("Tài khoản đang bị tạm khóa trên Vink.")
+        } else if matches!(standing, Standing::Active(_))
+            || self.sign_in_open && matches!(standing, Standing::Unknown | Standing::Unavailable)
+        {
+            Some(SESSION_UNCONFIRMED)
+        } else {
+            self.reason(key)
+        };
+        match reason {
+            Some(EMPTY_DRAFT) => SendIntent::Empty,
+            Some(reason) => SendIntent::Blocked(reason),
+            None if can_auth => SendIntent::Authenticate,
+            None if owner_ready => SendIntent::Submit,
+            None => SendIntent::Blocked(SESSION_UNCONFIRMED),
+        }
     }
 
     pub fn begin(&mut self, key: &ComposerKey, command_key: String) -> Option<Submission> {
@@ -737,6 +795,89 @@ mod tests {
             Some("reply")
         );
     }
+    #[test]
+    fn guest_send_intent_can_authenticate_without_authorizing_a_write() {
+        use crate::session::Standing;
+
+        let mut c = controller();
+        let root = ComposerKey::Root;
+        let reply = ComposerKey::Replies("root".into());
+        c.change_session(None);
+        c.sign_in_open = true;
+
+        for standing in [Standing::Anonymous, Standing::NeedsPrincipal] {
+            c.edit(&root, " \n ".into(), false);
+            assert_eq!(c.send_intent(&root, &standing, false), SendIntent::Empty);
+            c.edit(&root, "Chữ đang soạn".into(), true);
+            assert!(matches!(
+                c.send_intent(&root, &standing, false),
+                SendIntent::Blocked(_)
+            ));
+            c.edit(&root, "Chữ đã soạn".into(), false);
+            assert_eq!(
+                c.send_intent(&root, &standing, false),
+                SendIntent::Authenticate
+            );
+            assert!(c.begin(&root, "guest".into()).is_none());
+        }
+        for standing in [
+            Standing::Unknown,
+            Standing::Unavailable,
+            Standing::Suspended,
+        ] {
+            assert!(matches!(
+                c.send_intent(&root, &standing, false),
+                SendIntent::Blocked(_)
+            ));
+        }
+
+        c.reply(
+            "root".into(),
+            Target {
+                id: "root".into(),
+                label: "Tác giả".into(),
+            },
+        );
+        c.edit(&reply, "Giữ trả lời".into(), false);
+        assert_eq!(
+            c.send_intent(&reply, &Standing::Anonymous, false),
+            SendIntent::Authenticate
+        );
+        c.revalidate_targets(&[]);
+        assert!(matches!(
+            c.send_intent(&reply, &Standing::Anonymous, false),
+            SendIntent::Blocked(_)
+        ));
+        assert!(c.begin(&reply, "guest-reply".into()).is_none());
+
+        c.sign_in_open = false;
+        assert!(matches!(
+            c.send_intent(&root, &Standing::Anonymous, false),
+            SendIntent::Blocked(_)
+        ));
+        c.sign_in_open = true;
+        c.settings.comments_open = false;
+        assert!(matches!(
+            c.send_intent(&root, &Standing::Anonymous, false),
+            SendIntent::Blocked(_)
+        ));
+        c.settings.comments_open = true;
+        c.change_session(Some("confirmed-scope".into()));
+        assert!(matches!(
+            c.send_intent(&root, &Standing::Unknown, false),
+            SendIntent::Blocked(_)
+        ));
+        assert_eq!(
+            c.send_intent(&root, &Standing::Unknown, true),
+            SendIntent::Submit
+        );
+        assert!(c.begin(&root, "member".into()).is_some());
+        assert_eq!(
+            c.send_intent(&root, &Standing::Unknown, true),
+            SendIntent::Pending
+        );
+    }
+
     #[test]
     fn d2t_03_guest_never_sends_and_rejection_keeps_draft() {
         let mut c = controller();

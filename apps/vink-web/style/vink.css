@@ -449,19 +449,15 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
 #reader-return .vk-ui-icon { margin: 0; }
 /* Discussion keeps its live announcement region available when empty. */
 .vk-discussion [role="status"]:empty:not(.vk-discussion-live) { display: none; }
-/* .vk-discussion-order and .vk-reader-replacement-badge migrated to Tailwind utilities (W01 pilot). */
 
 /* R4 (#360 ảnh 08): app mode surfaces share the cascade with the later data-tone rules. */
 .vk-discussion-mode {
+  display: grid;
   padding: 12px 14px;
   border-radius: var(--vk-radius-lg);
   background: var(--vk-surface-container-low);
 }
-.vk-discussion-mode[data-mode-kind="reader"] {
-  padding: 8px 0;
-  border-radius: 0;
-  background: transparent;
-}
+.vk-discussion-mode[hidden] { display: none; }
 .vk-discussion-mode[data-mode-kind="conflict"] {
   background: var(--vk-info-container);
   color: var(--vk-on-info-container);
@@ -471,15 +467,6 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
 .vk-discussion-mode[data-mode-kind="system-locked"] {
   background: var(--vk-surface-container-highest);
 }
-.vk-discussion-mode__dot {
-  inline-size: 10px;
-  block-size: 10px;
-  border-radius: var(--vk-radius-full);
-  background: var(--vk-success);
-  flex-shrink: 0;
-  margin-block-start: 6px;
-}
-.vk-discussion-mode__dot--subtle { background: var(--vk-outline); }
 .vk-discussion-fixture-note, .vk-discussion-mode__alert { margin: 0; overflow-wrap: anywhere; }
 .vk-discussion-mode__alert { color: inherit; font-size: var(--vk-type-caption-size); }
 
@@ -516,7 +503,6 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
 .vk-discussion-composer { display: grid; gap: var(--vk-space-2); min-width: 0; }
 .vk-discussion-mode > p, .vk-discussion-composer > p, .vk-discussion-root > p, .vk-discussion-reply-composer > p { margin: 0; }
 .vk-discussion-closed-banner,
-.vk-discussion-guest-banner,
 .vk-discussion-target-lost {
   display: grid;
   gap: var(--vk-space-2);
@@ -531,20 +517,10 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
   background: var(--vk-surface-container-highest);
   color: var(--vk-on-surface);
 }
-.vk-discussion-closed-banner > .vk-ui-icon,
-.vk-discussion-guest-banner > .vk-ui-icon { flex-shrink: 0; margin-block-start: 2px; }
+.vk-discussion-closed-banner > .vk-ui-icon { flex-shrink: 0; margin-block-start: 2px; }
 .vk-discussion-closed-banner strong { display: block; font-size: var(--vk-type-label-size); font-weight: var(--vk-type-section-weight); }
 .vk-discussion-closed-banner p,
-.vk-discussion-guest-banner p,
 .vk-discussion-target-lost p { margin: 2px 0 0; font-size: var(--vk-type-caption-size); overflow-wrap: anywhere; }
-.vk-discussion-guest-banner {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: var(--vk-surface-container);
-  color: var(--vk-on-surface-variant);
-}
 .vk-discussion-closed-actions {
   display: flex;
   flex-wrap: wrap;
@@ -637,7 +613,6 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
 }
 .vk-discussion-reply-kept > p { margin: 0; font-size: var(--vk-type-caption-size); font-weight: var(--vk-type-label-weight); }
 .vk-discussion-recovered { border-block-start: 1px solid var(--vk-outline-variant); padding-block: var(--vk-space-4); display: grid; gap: var(--vk-space-3); }
-.vk-discussion-tools-note { font-size: var(--vk-type-caption-size); margin: 0; }
 /* Keep pager display in the same layer as its [hidden] rule below. */
 .vk-discussion-pagination { display: grid; }
 .vk-discussion-pagination > p { margin: 0; min-width: 0; overflow-wrap: anywhere; }

@@ -670,7 +670,7 @@ pub fn FeedbackComposer(
     /// Reader-only tonal recipe; other feedback consumers retain their current form.
     #[prop(optional)]
     tonal: bool,
-    /// Replace only the action (e.g. contextual sign-in), not the editor or its selection.
+    /// Replace only the action (e.g. read-only recovery), not the editor or its selection.
     #[prop(optional, into)]
     show_alternative: Signal<bool>,
     #[prop(optional)] alternative: Option<ViewFn>,
