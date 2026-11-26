@@ -1,4 +1,4 @@
-//! Absolute instants: deterministic UTC on SSR/first hydrate, device zone after mount.
+//! Deterministic UTC for SSR and first hydration, with device-local display after mount.
 use leptos::prelude::*;
 use time::{OffsetDateTime, UtcOffset, format_description::well_known::Rfc3339};
 
@@ -49,25 +49,46 @@ pub fn work_view_date_hcm(timestamp: &str) -> Option<String> {
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen::prelude::wasm_bindgen(inline_js = "
+let absoluteFormat;
+let relativeFormat;
+
 export function vinkLocalTimestamp(instant, fallback) {
     try {
-        return new Intl.DateTimeFormat('vi-VN', {
+        absoluteFormat ??= new Intl.DateTimeFormat('vi-VN', {
             day: '2-digit', month: '2-digit', year: 'numeric',
             hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZoneName: 'short'
-        }).format(new Date(instant));
+        });
+        return absoluteFormat.format(new Date(instant));
     } catch (_) { return fallback; }
+}
+
+export function vinkRelativeTimestamp(instant) {
+    try {
+        const seconds = (Date.parse(instant) - Date.now()) / 1000;
+        if (!Number.isFinite(seconds)) return '';
+        relativeFormat ??= new Intl.RelativeTimeFormat('vi-VN');
+        const elapsed = Math.abs(seconds);
+        if (elapsed < 60) {
+            return seconds > 0 ? relativeFormat.format(Math.ceil(seconds), 'second') : 'Vừa xong';
+        }
+        if (elapsed < 3600) return relativeFormat.format(Math.trunc(seconds / 60), 'minute');
+        if (elapsed < 86400) return relativeFormat.format(Math.trunc(seconds / 3600), 'hour');
+        return relativeFormat.format(Math.trunc(seconds / 86400), 'day');
+    } catch (_) { return ''; }
 }
 ")]
 extern "C" {
     #[wasm_bindgen::prelude::wasm_bindgen(js_name = vinkLocalTimestamp)]
     fn local_timestamp(instant: &str, fallback: &str) -> String;
+    #[wasm_bindgen::prelude::wasm_bindgen(js_name = vinkRelativeTimestamp)]
+    fn relative_timestamp(instant: &str) -> String;
 }
 
 #[component]
-pub(crate) fn Timestamp(instant: String) -> impl IntoView {
+pub(crate) fn Timestamp(instant: String, #[prop(optional)] relative: bool) -> impl IntoView {
     let label = RwSignal::new(updated_at_label(&instant));
-    // Effects run after hydration, never during SSR or its matching first client render.
-    // A single absolute presentation needs no timer, provider call or independent clock.
+    let relative_label = RwSignal::new(None::<String>);
+    // After hydration, derive display labels once from the same provider instant.
     #[cfg(target_arch = "wasm32")]
     {
         let source = instant.clone();
@@ -75,10 +96,25 @@ pub(crate) fn Timestamp(instant: String) -> impl IntoView {
             let fallback = updated_at_label(&source);
             if fallback != INVALID {
                 label.set(local_timestamp(&source, &fallback));
+                if relative {
+                    let compact = relative_timestamp(&source);
+                    relative_label.set((!compact.is_empty()).then_some(compact));
+                }
             }
         });
     }
-    view! { <time datetime=instant.clone() title=instant>{move || label.get()}</time> }
+    let datetime = instant.clone();
+    view! {
+        <time datetime=datetime title=move || if relative { label.get() } else { instant.clone() }>
+            {move || match relative_label.get() {
+                Some(compact) => view! {
+                    <span aria-hidden="true">{compact}</span>
+                    <span class="vk-ui-visually-hidden">{label.get()}</span>
+                }.into_any(),
+                None => label.get().into_any(),
+            }}
+        </time>
+    }
 }
 
 #[cfg(test)]

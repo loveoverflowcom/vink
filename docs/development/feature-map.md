@@ -514,6 +514,16 @@ Các hàng dưới là assertion đã viết, không tự xác nhận kết qu�
 
 `DiscussionThread` trình bày cú bấm Ưng, nhánh Phản hồi và đích đang chọn. `Discussion` sở hữu cursor, snapshot/key, quyền ghi và gỡ. Root và reply dùng cùng native textarea khi đổi chế độ. Trang thay thế tắt ghi; chỉ chủ nhận xét có `can_remove` còn thấy Gỡ. Cả trang tác giả chuyển riêng tư và trang bị rút qua kiểm duyệt hiện chữ tĩnh “Ưng” không số, kể cả khi số đã được xác nhận trước đó. Endpoint summary tiếp tục trả 404 cho tác phẩm ẩn. [Lệnh, ảnh và số đo theo SHA](discussion-ui-evidence.md), gồm [chín trạng thái của ô trả lời tại bb25af4](../design/evidence/discussion-r4-366/reply-bb25af4.jpg).
 
+## Reader Web · Nhận xét R5 (#561)
+
+[LayoutSpec conversation-first](../design/discussion-ui.md#nhận-xét-r5--561) ·
+[Semantic UI](web-semantics.md#từ-yêu-cầu-tới-bằng-chứng). Reader dùng cùng ô native
+cho khách và thành viên, nhóm hồi đáp phẳng, ngày giờ từ public projection và vùng
+“Bạn đã gửi” theo dữ liệu riêng sau hydrate. Kiểm hành vi và hình học tại
+`discussionReadingAndWrites`, xác thực theo ý định tại
+`contextualReaderAuth`. Các scenario dùng Chrome với App cục bộ. Ca trả lời
+mất đích dùng response fixture có ghi provenance.
+
 ## DISC-WEB-PUBLIC-OWN-READS (10/11/2026)
 
 Nền `4891c77`; [DecisionMap/LayoutSpec/scope](discussion-web-reads.md). Coverage dưới đây là

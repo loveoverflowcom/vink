@@ -670,6 +670,10 @@ pub fn FeedbackComposer(
     /// Reader-only tonal recipe; other feedback consumers retain their current form.
     #[prop(optional)]
     tonal: bool,
+    #[prop(optional, into)] field_label: Option<String>,
+    /// The caller may describe the active reply target without changing the editor's name.
+    #[prop(optional_no_strip)]
+    field_description: Option<String>,
     /// Replace only the action (e.g. read-only recovery), not the editor or its selection.
     #[prop(optional, into)]
     show_alternative: Signal<bool>,
@@ -694,17 +698,25 @@ pub fn FeedbackComposer(
             state.get()
         }
     });
+    let label = field_label.unwrap_or_else(|| {
+        if intent == FeedbackIntent::Technique {
+            "Góp ý kỹ thuật có ngữ cảnh"
+        } else {
+            "Nhận xét của bạn"
+        }
+        .into()
+    });
     view! {
-        <section class="vk-feedback-composer grid" class:vk-feedback-composer--tonal=tonal data-filled=move || (!value.get().is_empty()).then_some("true")>
+        <section class="vk-feedback-composer grid" class:vk-feedback-composer--tonal=tonal>
             {children.map(|header| header())}
             {intent.label().map(|label| view! { <Text role=TypeRole::Label>{label}</Text> })}
-            <TextArea id label=if intent == FeedbackIntent::Technique { "Góp ý kỹ thuật có ngữ cảnh" } else { "Nhận xét của bạn" }
+            <TextArea id label described_by=field_description
                 value on_input mode=field_mode variant=if tonal { FieldVariant::FloatingTonal } else { FieldVariant::ExternalLabel }
-                rows=if tonal { 1 } else { 4 }
-                help=if tonal { "Tối đa 4.000 ký tự, 200 dòng. Enter xuống dòng." } else { "Tối đa 4.000 ký tự, 200 dòng. Enter xuống dòng; chỉ gửi khi bấm nút." } />
+                rows=if tonal { 2 } else { 4 }
+                help=if tonal { "" } else { "Tối đa 4.000 ký tự, 200 dòng. Enter xuống dòng; chỉ gửi khi bấm nút." } />
             <Show when=move || tonal && !value.get().is_empty() && !comments_closed.get()><p class="vk-feedback-draft-note m-0 [padding-inline:6px]">"Rời trang có thể mất nháp."</p></Show>
             <div class="vk-feedback-composer__footer flex flex-wrap items-center gap-vk-2 [padding-inline:4px] min-w-0">
-                <Show when=move || tonal && !comments_closed.get() && !show_alternative.get()>
+                <Show when=move || tonal && !value.get().is_empty() && !comments_closed.get() && !show_alternative.get()>
                     <p class="vk-feedback-policy items-center gap-[6px] m-0 min-w-0">
                         <Icon name=IconName::VerifiedUser size=IconSize::Small />
                         <span>"Duyệt trước khi hiện công khai"</span>
@@ -879,7 +891,6 @@ pub fn DiscussionThread(
             {move || root.get().map(|comment| discussion_comment(comment, true, reply_expanded, ctx))
                 .unwrap_or_else(|| view! { <p class="vk-muted">"Bình luận gốc không còn hiển thị."</p> }.into_any())}
             <div class="vk-discussion-reply-group min-w-0" hidden=move || facts.get().replies.is_empty() && !has_more_replies.get()>
-            <p class="vk-discussion-reply-heading">"Phản hồi"</p>
             <ul class="vk-discussion-replies grid gap-[16px] [list-style:none] p-0 m-0 [border:0]" aria-label="Phản hồi theo thứ tự cũ đến mới">
                 <For each=move || { facts.get().replies.into_iter().map(|comment| comment.id).collect::<Vec<_>>() } key=|id| id.clone()
                     children=move |id| {
@@ -983,18 +994,15 @@ fn discussion_comment(
             && reply_target_id.get().as_deref() == Some(target_match_id.as_str())
     });
     view! {
-        <article id=format!("comment-{}", comment.id) class="vk-feedback-item vk-discussion-comment grid gap-vk-3 min-w-0" tabindex="-1"
+        <article id=format!("comment-{}", comment.id) class="vk-discussion-comment grid gap-vk-2 min-w-0" tabindex="-1"
             data-reply-target=move || is_target.get().then_some("true")>
-            <div class="vk-discussion-byline flex flex-wrap items-start justify-between gap-y-vk-1 gap-x-vk-3 min-w-0">
+            <div class="vk-discussion-byline flex flex-wrap items-center gap-y-vk-1 gap-x-vk-3 min-w-0">
                 <AuthorIdentity author=comment.author id=Some(author_id) size />
                 // Outside the profile link.
-                <Timestamp instant=published_at />
+                <Timestamp instant=published_at relative=true />
             </div>
-            <Show when=move || is_target.get()>
-                <p class="vk-discussion-target-badge">"Đang là đích trả lời"</p>
-            </Show>
             {comment.context.map(|context| match context {
-                DiscussionContext::Root => view! { <p class=DISCUSSION_CONTEXT_CLASS>"Trả lời bình luận gốc"</p> }.into_any(),
+                DiscussionContext::Root => ().into_any(),
                 DiscussionContext::Unavailable => view! { <p class=DISCUSSION_CONTEXT_CLASS>"Bình luận được trả lời không còn hiển thị"</p> }.into_any(),
                 DiscussionContext::Reply { name, href, profile } => view! {
                     <p class=DISCUSSION_CONTEXT_CLASS>"Đang trả lời "
