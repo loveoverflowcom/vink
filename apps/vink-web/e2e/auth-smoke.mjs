@@ -422,7 +422,7 @@ async function discussionSessionRaces(other, ctx, mailA, mailB, openPage, check)
   const reader = await openPage();
   await reader.goto(`${base}/tac-pham/${work}`);
   const ownText = `(document.querySelector('#own-comments')?.textContent ?? '')`;
-  const settled = `document.querySelector('#own-comments-refresh')?.getAttribute('aria-busy') !== 'true' && document.querySelector('#discussion-refresh')?.getAttribute('aria-busy') !== 'true'`;
+  const settled = `document.querySelector('#own-comments')?.getAttribute('aria-busy') !== 'true' && document.querySelector('#comments-mode')?.getAttribute('aria-busy') !== 'true'`;
   await reader.waitFor(`${ownText}.includes(${JSON.stringify(textA)}) && ${settled}`, 'Reader: own A loaded');
   const html = await reader.eval(`fetch(location.href).then(r=>r.text())`);
   check(!html.includes(textA) && !html.includes(textB) && !html.includes('own_pending') && !html.includes('viewer_is_work_author'), 'Reader/Auth: SSR and hydration contain no own body or viewer facts');
@@ -434,7 +434,7 @@ async function discussionSessionRaces(other, ctx, mailA, mailB, openPage, check)
     const { requestId, request, responseStatusCode } = message.params;
     const u = new URL(request.url);
     if (u.pathname === `${endpoint}/me` && !u.searchParams.has('ids') && !gate.first) gate.first = { requestId, status: responseStatusCode };
-    else if (u.pathname === `${endpoint}/public` && !gate.publicFirst) gate.publicFirst = { requestId, status: responseStatusCode };
+    else if (u.pathname === `${endpoint}/public` && gate.first && !gate.publicFirst) gate.publicFirst = { requestId, status: responseStatusCode };
     else { gate.passed++; reader.send('Fetch.continueRequest', {requestId}).catch(()=>{}); }
   };
   gate.enable = async () => {
@@ -442,11 +442,10 @@ async function discussionSessionRaces(other, ctx, mailA, mailB, openPage, check)
     await reader.send('Fetch.enable', {patterns:[{urlPattern:`*${endpoint}/me*`, requestStage:'Response'},{urlPattern:`*${endpoint}/public*`, requestStage:'Response'}]});
   };
   await gate.enable();
-  // Own refresh is an independent intent. Hold it first, then the public refresh whose
-  // successful head normally schedules own reconciliation against the new public IDs.
-  await reader.click('#own-comments-refresh');
+  // Hold the own projection from the first wake, then the public head from the next wake.
+  await wakeDiscussion(reader);
   await gate.held();
-  await reader.click('#discussion-refresh');
+  await wakeDiscussion(reader);
   const publicDeadline = Date.now()+10000;
   while (!gate.publicFirst) { if (Date.now()>publicDeadline) throw new Error('held public response missing'); await sleep(30); }
   await select(cookieB); // Direct A → B; no anonymous observation in between.
@@ -508,17 +507,17 @@ async function discussionSessionRaces(other, ctx, mailA, mailB, openPage, check)
   await reader.click(`#confirm-remove-comment-${createdA.body.comment_id}`);
   await waitRemoves(2);
   await reader.send('Fetch.continueRequest',{requestId:removes[0].requestId});
-  check(await reader.eval(`document.querySelector('#discussion-refresh')?.getAttribute('aria-busy') === 'true'`), 'Reader/Auth: B removal ACK cannot clear the new A mutation busy owner');
+  check(await reader.eval(`document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'true'`), 'Reader/Auth: B removal ACK cannot clear the new A mutation busy owner');
   await reader.send('Fetch.continueRequest',{requestId:removes[1].requestId});
   reader.cdp.listeners.splice(reader.cdp.listeners.indexOf(removeListener),1);
   await reader.send('Fetch.disable');
   await reader.waitFor(settled, 'A mutation completes and releases busy');
   await select(cookieB);
-  await reader.waitFor(`document.querySelector('.vk-nav-account-avatar [data-initials]')?.dataset.initials === ${JSON.stringify(avatarB)} && document.querySelector('#own-comments-refresh') && ${settled}`, 'return B confirmed by the Session-driven avatar after removals');
+  await reader.waitFor(`document.querySelector('.vk-nav-account-avatar [data-initials]')?.dataset.initials === ${JSON.stringify(avatarB)} && document.querySelector('#own-comments') && ${settled}`, 'return B confirmed by the Session-driven avatar after removals');
   await reader.waitFor(`${ownText}.includes('Chưa có nhận xét riêng') && ${settled}`, 'B own empty state after removals');
   check(await reader.eval(`!${ownText}.includes(${JSON.stringify(textA)})`), 'Reader/Auth: successful empty own list is distinct from failure and contains no A data');
   check((await post(other, textB)).status === 201, 'Reader/Auth: B creates a fresh pending comment after removal');
-  await reader.click('#own-comments-refresh');
+  await wakeDiscussion(reader);
   await reader.waitFor(`${ownText}.includes(${JSON.stringify(textB)}) && ${settled}`, 'fresh B read after removals');
   await reader.typeAtEnd('#root-composer','B đang viết sau đổi phiên');
   // Fabricated failure of own/capability only; public GET remains real and usable.
@@ -529,19 +528,24 @@ async function discussionSessionRaces(other, ctx, mailA, mailB, openPage, check)
   };
   reader.cdp.listeners.push(failed);
   await reader.send('Fetch.enable',{patterns:[{urlPattern:`*${endpoint}/me*`,requestStage:'Request'},{urlPattern:`*${endpoint}?limit=1`,requestStage:'Request'}]});
-  await reader.click('#own-comments-refresh');
+  await wakeDiscussion(reader);
   await reader.waitFor(`${ownText}.includes('Chưa làm mới được') && ${settled}`, 'private failure is local');
   const failureFacts = await reader.eval(`({publicText:document.querySelector('#root-list')?.textContent, draft:document.querySelector('#root-composer').value})`);
   check(failureFacts.publicText === publicBefore && failureFacts.draft === 'B đang viết sau đổi phiên', `Reader/Auth fabricated Identity read failure: public timeline and newer text remain ${JSON.stringify(failureFacts)}`);
   await reader.capture('discussion-own-private-error',{boundary:'fabricated-identity-outage-real-auth-session'});
   reader.cdp.listeners.splice(reader.cdp.listeners.indexOf(failed),1);
   await reader.send('Fetch.disable');
-  await reader.click('#own-comments-refresh');
+  await reader.click('#own-comments-retry');
   await reader.waitFor(`${ownText}.includes(${JSON.stringify(textB)}) && !${ownText}.includes('Chưa làm mới được') && ${settled}`, 'private retry recovers with real B data');
   check(await reader.eval(`(() => { const stored=JSON.stringify([Object.entries(localStorage),Object.entries(sessionStorage)]); return !stored.includes(${JSON.stringify(textA)}) && !stored.includes(${JSON.stringify(textB)}) && !stored.includes('B đang viết sau đổi phiên') && !stored.includes('Chờ duyệt'); })()`), 'Reader/Auth: own bodies, draft and receipt never enter localStorage/sessionStorage');
   await discussionOwnFixtures(reader, endpoint, check);
   await openAccount(other, base, 'active'); // B remains selected for the existing limiter test.
   return reader;
+}
+
+/** Use the existing discussion lifecycle without reloading a page or moving focus. */
+async function wakeDiscussion(page) {
+  await page.eval("const now = performance.now.bind(performance); performance.now = () => now() + 121000; window.dispatchEvent(new Event('focus'))");
 }
 
 /** Labelled provider fixtures for off-page/unlisted/rejected and reconciliation, separate
@@ -560,11 +564,11 @@ async function discussionOwnFixtures(page, endpoint, check) {
   };
   page.cdp.listeners.push(listener);
   await page.send('Fetch.enable',{patterns:[{urlPattern:`*${endpoint}/me*`,requestStage:'Request'}]});
-  await page.click('#own-comments-refresh');
+  await wakeDiscussion(page);
   const rejected=fixture.comments[2];
-  await page.waitFor(`document.querySelector('#own-comments-more') && document.querySelector('#own-comments-refresh')?.getAttribute('aria-busy') !== 'true'`, 'independent own cursor');
+  await page.waitFor(`document.querySelector('#own-comments-more') && document.querySelector('#own-comments')?.getAttribute('aria-busy') !== 'true'`, 'independent own cursor');
   await page.click('#own-comments-more');
-  await page.waitFor(`document.querySelector('#own-comments')?.textContent.includes(${JSON.stringify(rejected.rejection_reason)}) && document.querySelector('#own-comments-refresh')?.getAttribute('aria-busy') !== 'true'`, 'own rejected fixture');
+  await page.waitFor(`document.querySelector('#own-comments')?.textContent.includes(${JSON.stringify(rejected.rejection_reason)}) && document.querySelector('#own-comments')?.getAttribute('aria-busy') !== 'true'`, 'own rejected fixture');
   check(await page.eval(`document.querySelector('[data-own-comment="${rejected.comment_id}"] .vk-discussion-own-chip')?.dataset.tone==='adverse' && document.querySelector('[data-own-comment="${rejected.comment_id}"] .vk-discussion-own-rejection')?.textContent.includes('Lý do chỉ bạn thấy')`), 'rejected own item uses adverse tone chip and writer-only reason box');
   check(ownCursors.includes('fixture-own-next') && ownBatches.every(b=>b.length<=20 && b.length===new Set(b).size) && ownBatches.some(b=>b.length>1), 'labelled own fixtures: separate own cursor and deduplicated multi-ID lookup batches <=20');
   check(await page.eval(`document.querySelector('#own-comments').textContent.includes('Nhánh chưa có trong danh sách công khai') && !document.querySelector('#root-list').textContent.includes(${JSON.stringify(rejected.body)})`), 'labelled own fixtures: off-page pending, unlisted-root reply and own rejection remain outside the public timeline');
@@ -572,9 +576,14 @@ async function discussionOwnFixtures(page, endpoint, check) {
   await page.eval(`window.__discussionInput = document.querySelector('#root-composer'); window.__discussionInput.focus(); window.__discussionInput.setSelectionRange(window.__discussionInput.value.length,window.__discussionInput.value.length)`);
   await page.send('Input.imeSetComposition',{text:'d',selectionStart:1,selectionEnd:1});
   await page.send('Input.imeSetComposition',{text:'đ',selectionStart:1,selectionEnd:1});
-  // Refresh without moving native focus away from the active composition.
-  await page.eval(`document.querySelector('#own-comments-refresh').click()`);
-  await page.waitFor(`document.querySelector('#own-comments-refresh')?.getAttribute('aria-busy') !== 'true'`, 'own refresh during simulated composition');
+  // Wake without moving native focus away from the active composition.
+  const beforeWake = ownCursors.length;
+  await wakeDiscussion(page);
+  for (const deadline = Date.now() + 10000; ownCursors.length === beforeWake;) {
+    if (Date.now() > deadline) throw new Error('own reconciliation did not follow the wake');
+    await sleep(30);
+  }
+  await page.waitFor(`document.querySelector('#own-comments')?.getAttribute('aria-busy') !== 'true'`, 'own refresh during simulated composition');
   await page.send('Input.insertText',{text:'đ'});
   check(await page.eval(`window.__discussionInput === document.querySelector('#root-composer') && window.__discussionInput.value === ${JSON.stringify(beforeInput+'đ')}`), 'own fixture refresh preserves native composition/input identity (CDP simulation)');
   for (const [command, modifiers, expected] of [['undo',page.mod,beforeInput],['redo',page.mod|8,beforeInput+'đ'],['undo',page.mod,beforeInput]]) {
@@ -590,12 +599,12 @@ async function discussionOwnFixtures(page, endpoint, check) {
     await page.capture(`discussion-own-${width}-${theme}-${scale}`,{boundary:'intercepted-provider-own-fixture-real-auth-session',textScale:scale});
   }
   own.comments[0].status='approved';
-  await page.click('#own-comments-refresh');
+  await wakeDiscussion(page);
   await page.waitFor(`document.querySelector('[data-own-comment="${own.comments[0].comment_id}"]')?.textContent.includes('Đã được duyệt')`, 'off-page approval confirmed by lookup');
-  check(await page.eval(`document.querySelector('[data-own-comment="${own.comments[0].comment_id}"] .vk-discussion-own-chip')?.dataset.tone==='success' && [...document.querySelectorAll('[data-own-comment="${own.comments[0].comment_id}"] button')].some(b=>b.textContent.includes('Tải lại nhận xét'))`), 'approved off-page chip uses green success tone and offers Tải lại nhận xét');
+  check(await page.eval(`document.querySelector('[data-own-comment="${own.comments[0].comment_id}"] .vk-discussion-own-chip')?.dataset.tone==='success' && [...document.querySelectorAll('[data-own-comment="${own.comments[0].comment_id}"] button')].every(b=>!b.textContent.includes('Tải lại nhận xét'))`), 'approved off-page chip uses green success tone without a reload control');
   check(await page.eval(`document.querySelectorAll('[data-own-comment="${own.comments[0].comment_id}"]').length === 1`),'labelled fixture pending→approved off-page has one representation');
   own.comments[0].status='removed'; own.comments[0].body=null; own.comments[0].can_remove=false;
-  await page.click('#own-comments-refresh');
+  await wakeDiscussion(page);
   await page.waitFor(`document.querySelector('[data-own-comment="${own.comments[0].comment_id}"]')?.textContent.includes('không còn hiển thị')`, 'removed fixture');
   check(await page.eval(`!document.querySelector('[data-own-comment="${own.comments[0].comment_id}"]').textContent.includes(${JSON.stringify(fixture.comments[0].body)})`),'labelled fixture removed strips body and capability');
   await page.capture('discussion-own-removed',{boundary:'intercepted-provider-own-fixture-real-auth-session',textScale:200});

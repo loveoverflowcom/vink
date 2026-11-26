@@ -336,8 +336,8 @@ export async function webPerfBaseline(page, { args, check }) {
       // Only a limited page may be mounted, never all 1,000 comments from the hot thread.
       check(reader.discussion_roots === ROOT_PAGE_SIZE && reader.comment_nodes > 0 && reader.comment_nodes <= MAX_MOUNTED_COMMENTS,
         '#234 hot thread mounts one bounded page (' + reader.comment_nodes + ' nodes) #' + i);
-      await page.waitFor("document.querySelector('#discussion-refresh')?.dataset.state==='enabled'",
-        'discussion reload control ready #' + i);
+      await page.waitFor("document.querySelector('#comments-mode')?.getAttribute('aria-busy')==='false'",
+        'discussion ready #' + i);
       const readyTime = (await page.eval('performance.now()')) - before;
       phase.current = 'return-' + i;
       results.intended_reads.push({ phase: phase.current, reason: 'return_to_discovery', representation: 'discovery-filtered' });

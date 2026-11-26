@@ -6203,13 +6203,18 @@ async function retiredTagAfterRestart(page, workId) {
 
 /** Real local fixture identity + scratch PostgreSQL writes. Rendering fixtures used below
  * have a separate label and never substitute for persistence/auth/moderation evidence. */
+async function wakeDiscussion(page) {
+  await page.eval("const now = performance.now.bind(performance); performance.now = () => now() + 121000; window.dispatchEvent(new Event('focus'))");
+}
+
 async function discussionReadingAndWrites(page) {
   console.log('D2T-03: anonymous SSR, local discussion writes and exact keyed reconciliation:');
   const endpoint = `${args.base}/api/v1/works/${SAMPLE_WORK}/discussion`;
   const wirePattern = `${args.base}/api/v1/works/*/discussion`;
   await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);
-  await page.waitFor(`document.documentElement.dataset.hydrated==='true' && document.querySelector('#discussion-mode-toggle') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'local fixture discussion readiness');
+  await page.waitFor(`document.documentElement.dataset.hydrated==='true' && document.querySelector('#discussion-mode-toggle') && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'local fixture discussion readiness');
   check(await page.eval(`!!document.querySelector('meta[name="vink-local-discussion-fixture"]') && document.querySelector('#comments-mode').textContent.includes('Định danh thử trên thiết bị này')`), 'fixture readiness is labelled and supplied by the trusted host');
+  check(await page.eval("!document.querySelector('#discussion-refresh, #own-comments-refresh, #discussion-read-retry, #own-comments-retry')"), 'authenticated healthy discussion has no manual reload control');
   const text = 'D2T-03 [Mẫu] Đọc khổ thơ\n\n  Tiếng Việt 👩‍💻 🌧️';
   const newer = ' Chữ mới sau khi gửi.';
   await page.eval(`window.discussionComposerNode = document.querySelector('#root-composer')`);
@@ -6243,7 +6248,7 @@ async function discussionReadingAndWrites(page) {
     await page.click('#root-composer-send');
     check(held.length === 1, 'double activation starts only one command');
     await page.send('Fetch.failRequest', { requestId: held[0].requestId, errorReason: 'ConnectionClosed' });
-    await page.waitFor(`document.querySelector('#feedback-region').textContent.includes('Kiểm tra lần gửi') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'lost ACK is uncertain, never falsely failed or public');
+    await page.waitFor(`document.querySelector('#feedback-region').textContent.includes('Kiểm tra lần gửi') && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'lost ACK is uncertain, never falsely failed or public');
     await page.send('Emulation.setEmulatedMedia', {features:[{name:'prefers-reduced-motion',value:'reduce'}]});
     for (const [width, scale] of [[390,100],[320,200]]) {
       await page.viewport(width);
@@ -6295,7 +6300,7 @@ async function discussionReadingAndWrites(page) {
     const first = JSON.parse(held[0].request.postData), replay = JSON.parse(held[1].request.postData);
     check(JSON.stringify(first) === JSON.stringify(replay) && held[1].responseStatusCode === 200, 'reconciliation replays exactly the same key/body/target; server returns the original receipt');
     await page.send('Fetch.continueRequest', { requestId: held[1].requestId });
-    await page.waitFor(`document.querySelector('[data-testid=discussion-receipt]')?.textContent.includes('Chờ duyệt') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'accepted-for-review receipt');
+    await page.waitFor(`document.querySelector('[data-testid=discussion-receipt]')?.textContent.includes('Chờ duyệt') && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'accepted-for-review receipt');
     check(await page.eval(`document.querySelector('#root-composer').value===${JSON.stringify(text + newer)}`), 'late success keeps all newly typed text');
     const own = await (await fetch(endpoint)).json();
     const matches = own.roots.filter(root => root.root.kind === 'comment' && root.root.comment.body === text.trim());
@@ -6315,7 +6320,7 @@ async function discussionReadingAndWrites(page) {
     page.cdp.listeners = page.cdp.listeners.filter(item => item !== listener);
   }
   await page.click('#discussion-mode-toggle');
-  await page.waitFor(`document.querySelector('#discussion-mode-toggle')?.textContent==='Mở bình luận' && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'author closes comments with generation CAS');
+  await page.waitFor(`document.querySelector('#discussion-mode-toggle')?.textContent==='Mở bình luận' && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'author closes comments with generation CAS');
   await page.send('Browser.grantPermissions', { permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'] });
   check(await page.eval(`window.discussionComposerNode === document.querySelector('#root-composer') && document.querySelector('#root-composer').value===${JSON.stringify(text + newer)} && document.querySelector('#root-composer').readOnly === true && !document.querySelector('#root-composer-send') && document.querySelector('.vk-discussion-closed-banner')?.textContent.includes('Bạn đã tắt bình luận cho bài viết này') && !!document.querySelector('[data-own-comment="${commentId}"]')`), 'closing keeps readonly draft, author notice, readable own projection and removes Gửi button');
   await page.eval(`[...document.querySelectorAll('.vk-discussion-closed-actions button')].find(b=>b.textContent.includes('Sao chép nháp'))?.click()`);
@@ -6339,7 +6344,7 @@ async function discussionReadingAndWrites(page) {
   check(!closed.settings.comments_open && closed.settings.generation > 1, 'closed mode is a durable provider fact');
   await captureDiscussionMatrix(page, 'local-postgres-closed', '#feedback-heading', 'real-local-postgresql-with-fixture-identity');
   await page.click('#discussion-mode-toggle');
-  await page.waitFor(`document.querySelector('#discussion-mode-toggle')?.textContent==='Tắt bình luận' && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true' && document.querySelector('#remove-comment-${commentId}')`, 'author reopens the same thread');
+  await page.waitFor(`document.querySelector('#discussion-mode-toggle')?.textContent==='Tắt bình luận' && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false' && document.querySelector('#remove-comment-${commentId}')`, 'author reopens the same thread');
   check(await page.eval(`window.discussionComposerNode === document.querySelector('#root-composer') && !window.discussionComposerNode.readOnly`), 'reopening keeps the original editable textarea');
   // VDR-DISCUSSION-R4@r1 §2: asking opens an in-place confirmation; only “Gỡ” sends DELETE.
   await page.click(`#remove-comment-${commentId}`);
@@ -6350,7 +6355,7 @@ async function discussionReadingAndWrites(page) {
   await page.click(`#remove-comment-${commentId}`);
   await page.waitFor(`document.querySelector('#confirm-remove-comment-${commentId}')`, 'confirmation reopened');
   await page.click(`#confirm-remove-comment-${commentId}`);
-  await page.waitFor(`!document.querySelector('[data-own-comment="${commentId}"] .vk-discussion-own-body')?.textContent && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'own removal refreshes the authorized projection');
+  await page.waitFor(`!document.querySelector('[data-own-comment="${commentId}"] .vk-discussion-own-body')?.textContent && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'own removal refreshes the authorized projection');
 
   console.log('D2T-03: labelled provider fixture projection for flat contexts and responsive states:');
   const fixture = JSON.parse(readFileSync(new URL('../../../services/vink-app/contracts/http/v1/fixtures/discussion.public.get.json', import.meta.url), 'utf8'));
@@ -6363,6 +6368,7 @@ async function discussionReadingAndWrites(page) {
   let holdInitialRead = true;
   let failRead = true;
   let failNextPage = false;
+  let expireCursor = false;
   const readCursors = [];
   const nextRootId = '0192f3a1-0000-7000-8000-000000000098';
   const nextRoot = structuredClone(fixture.roots[0]);
@@ -6386,6 +6392,13 @@ async function discussionReadingAndWrites(page) {
       heldInitialPublic = message.params.requestId;
       return;
     }
+    if (expireCursor && cursor === 'expired-root-cursor') {
+      page.send('Fetch.fulfillRequest', { requestId: message.params.requestId, responseCode: 422,
+        responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
+        body: Buffer.from(JSON.stringify({ error: { code: 'validation_failed', field: 'cursor' } })).toString('base64'),
+      }).catch(() => {});
+      return;
+    }
     if (failRead || (failNextPage && cursor !== null)) {
       page.send('Fetch.fulfillRequest', { requestId: message.params.requestId, responseCode: 503,
         responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Cache-Control', value: 'no-store' }],
@@ -6395,7 +6408,7 @@ async function discussionReadingAndWrites(page) {
     }
     page.send('Fetch.fulfillRequest', { requestId: message.params.requestId, responseCode: 200,
       responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Cache-Control', value: 'no-store' }],
-      body: Buffer.from(JSON.stringify(cursor === null ? currentFixture : { ...currentFixture, roots: [nextRoot], next_cursor: null })).toString('base64'),
+      body: Buffer.from(JSON.stringify(cursor === null ? currentFixture : { ...currentFixture, roots: [nextRoot], next_cursor: 'expired-root-cursor' })).toString('base64'),
     }).catch(() => {});
   };
   page.cdp.listeners.push(fixtureListener);
@@ -6429,7 +6442,7 @@ async function discussionReadingAndWrites(page) {
     await page.capture('discussion-contract-fixture-initial-error', { scenario: 'D2T-03-load-retry', target: retrySelector, boundary: 'intercepted-provider-contract-fixture-no-persistence' });
     failRead = false;
     await page.click(retrySelector);
-    await page.waitFor(`document.querySelector('#reply-to-${replyId}') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'initial retry completes with contract fixture projection');
+    await page.waitFor(`document.querySelector('#reply-to-${replyId}') && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'initial retry completes with contract fixture projection');
     check(readCursors.length > failedInitialReads && !await page.eval(`!!document.querySelector('#discussion-load-retry')`), 'initial retry issues a new GET and replaces the error with loaded comments');
     // These projected IDs are absent from the real endorsement store. Its independent read
     // replaces the inline recovery action with one shared reason, moving the adjacent reply.
@@ -6480,8 +6493,8 @@ async function discussionReadingAndWrites(page) {
     currentFixture = structuredClone(fixture);
     currentFixture.roots[0].preview = currentFixture.roots[0].preview.filter(comment => comment.comment_id !== replyId);
     currentFixture.roots[0].preview[0].reply_to = { kind: 'unavailable' };
-    await page.click('#discussion-refresh');
-    await page.waitFor(`!document.querySelector('#comment-${replyId}') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'context revocation fixture refresh');
+    await wakeDiscussion(page);
+    await page.waitFor(`!document.querySelector('#comment-${replyId}') && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'context revocation fixture refresh');
     check(await page.eval(`document.querySelector('#reply-composer-${rootId}')?.value.includes('Giữ nguyên') && document.querySelector('#reply-composer-${rootId}-send')?.getAttribute('aria-disabled')==='true' && document.querySelector('.vk-discussion-target-lost')?.textContent.includes('Bình luận được trả lời không còn hiển thị') && document.querySelectorAll('.vk-discussion-replies .vk-discussion-comment').length===3`), 'revoked context shows warning card with copy/reselect without claiming deletion');
     await page.eval(`[...document.querySelectorAll('.vk-discussion-target-lost button')].find(b=>b.textContent.includes('Sao chép nháp'))?.click()`);
     await page.waitFor(`document.querySelector('.vk-discussion-target-lost [data-copied="true"]')?.textContent.includes('Đã sao chép nháp')`, 'revoked context copy feedback');
@@ -6493,14 +6506,18 @@ async function discussionReadingAndWrites(page) {
     await page.eval(`document.querySelector('.vk-discussion-reply-composer').scrollIntoView({ block: 'center', behavior: 'instant' })`);
     await page.capture('discussion-contract-fixture-context-revoked', { scenario: 'D2T-03-context', boundary: 'intercepted-provider-contract-fixture-no-persistence' });
     failRead = true;
-    await page.click('#discussion-refresh');
-    await page.waitFor(`document.querySelector('#comments-mode').textContent.includes('Chưa làm mới được') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'refresh failure uses read-specific copy');
+    await wakeDiscussion(page);
+    await page.waitFor(`document.querySelector('#comments-mode').textContent.includes('Chưa làm mới được') && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'refresh failure uses read-specific copy');
     check(await page.eval(`!document.querySelector('#comments-mode').textContent.includes('chưa rõ kết quả') && !!document.querySelector('#comment-${rootId}') && document.querySelector('#reply-composer-${rootId}')?.value.includes('Giữ nguyên')`), 'failed refresh preserves loaded comments and draft without implying an unknown write');
     failRead = false;
     currentFixture = structuredClone(fixture);
     currentFixture.next_cursor = 'next-root-cursor';
-    await page.click('#discussion-refresh');
-    await page.waitFor(`document.querySelector('#root-pagination button') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'root pagination control');
+    const retryRead = readCursors.length;
+    check(await page.eval("document.querySelectorAll('#discussion-read-retry').length===1"), 'one localized retry after a failed background GET');
+    await page.click('#discussion-read-retry');
+    await page.waitFor(`document.querySelector('#root-pagination button') && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'root pagination control');
+    check(JSON.stringify(readCursors.slice(retryRead)) === JSON.stringify([null]), 'one new head GET on retry');
+    check(await page.eval("!document.querySelector('#discussion-read-retry')"), 'recovered discussion removes its retry');
     failNextPage = true;
     const beforePaging = readCursors.length;
     await page.click('#root-pagination button');
@@ -6511,11 +6528,20 @@ async function discussionReadingAndWrites(page) {
     await page.capture('discussion-contract-fixture-next-page-error', { scenario: 'D2T-03-paging', boundary: 'intercepted-provider-contract-fixture-no-persistence' });
     failNextPage = false;
     await page.click('#root-pagination button');
-    await page.waitFor(`document.querySelector('#comment-${nextRootId}') && !document.querySelector('#root-pagination') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'retry appends the returned page and reaches the authoritative end');
+    await page.waitFor(`document.querySelector('#comment-${nextRootId}') && document.querySelector('#root-pagination') && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'retry appends the returned page exactly once');
     check(JSON.stringify(readCursors.slice(beforePaging)) === JSON.stringify(['next-root-cursor', 'next-root-cursor']), 'failed page and its retry each issue one GET with the same cursor');
     check(await page.eval(`!!document.querySelector('#comment-${rootId}') && document.querySelector('#reply-composer-${rootId}')?.value.includes('Giữ nguyên')`), 'successful paging keeps prior comments and draft');
-    await page.click('#discussion-refresh');
-    await page.waitFor(`!document.querySelector('#comment-${nextRootId}') && document.querySelector('[data-testid=discussion-chain-restarted]') && document.querySelector('#root-pagination button')`, 'head refresh discards the previous tail and restarts continuation');
+    const readsWithTail = readCursors.length;
+    await wakeDiscussion(page);
+    await sleep(250);
+    check(readCursors.length === readsWithTail && await page.eval(`!!document.querySelector('#comment-${nextRootId}')`),
+      'lifecycle wake leaves a loaded discussion tail alone');
+    expireCursor = true;
+    await page.click('#root-pagination button');
+    await page.waitFor("document.querySelector('#root-pagination button')?.textContent.trim() === 'Tải từ đầu'", 'expired cursor offers a restart');
+    await page.click('#root-pagination button');
+    await page.waitFor(`!document.querySelector('#comment-${nextRootId}') && document.querySelector('[data-testid=discussion-chain-restarted]') && document.querySelector('#root-pagination button')`, 'explicit cursor recovery restarts the continuation');
+    check(JSON.stringify(readCursors.slice(readsWithTail)) === JSON.stringify(['expired-root-cursor', null]), 'cursor recovery fetches the head without repeating the expired cursor');
     check(await page.eval(`document.querySelector('#reply-composer-${rootId}')?.value.includes('Giữ nguyên')`), 'chain restart keeps the unsent reply draft');
     await page.eval(`document.querySelector('[data-testid=discussion-chain-restarted]').scrollIntoView({ block: 'center' })`);
     await page.capture('discussion-chain-restarted', { scenario: '#202-head-refresh', boundary: 'intercepted-provider-contract-fixture-no-persistence' });
@@ -6524,8 +6550,8 @@ async function discussionReadingAndWrites(page) {
     check(await page.eval(`document.documentElement.scrollWidth <= innerWidth + 1`), 'chain restart notice reflows at 390px / text 200%');
     await page.capture('discussion-chain-restarted-390-200', { scenario: '#202-head-refresh', viewport: {width:390}, textScale:200, boundary: 'intercepted-provider-contract-fixture-no-persistence' });
     currentFixture = { ...fixture, roots: [], next_cursor: null };
-    await page.click('#discussion-refresh');
-    await page.waitFor(`document.querySelector('.vk-discussion-empty') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'authoritative empty discussion state');
+    await wakeDiscussion(page);
+    await page.waitFor(`document.querySelector('.vk-discussion-empty') && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'authoritative empty discussion state');
     check(await page.eval(`document.querySelector('.vk-discussion-empty')?.textContent.includes('Chưa có nhận xét nào được hiển thị.') && !document.querySelector('#discussion-load-retry') && !document.querySelector('#feedback-region')?.textContent.includes('Đã hết danh sách nhận xét')`), 'R4 empty state renders empty card cleanly without error button or list end');
   } finally {
     await page.send('Fetch.disable');

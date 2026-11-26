@@ -219,7 +219,7 @@ pub fn WorkInfo(
                             message=format!("{} Chữ vẫn sửa và lưu được.", super::desk::failure_reason(failure)) />
                         <div class="vk-notice__actions">
                             <Button variant=ButtonVariant::Text id="tags-reload" leading=IconName::Refresh
-                                on_press=move |_| load_tags()>"Tải lại thẻ"</Button>
+                                on_press=move |_| load_tags()>"Thử lại"</Button>
                         </div>
                     </section>
                 }

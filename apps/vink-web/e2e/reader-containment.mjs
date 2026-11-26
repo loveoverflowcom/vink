@@ -273,13 +273,10 @@ export async function readerContainment(page, { args, check }) {
     await page.waitFor("document.querySelectorAll('.vk-discussion-root').length===40", 'second bounded page');
     await page.eval(frames);
     record('paging preserves article anchor', Math.abs((await top()) - anchor) <= 2);
-    await page.eval("document.querySelector('#discussion-refresh').click()");
-    await page.waitFor(
-      "document.querySelectorAll('.vk-discussion-root').length===20",
-      'refresh replaces the tail',
-    );
+    await page.eval("const now=performance.now.bind(performance);performance.now=()=>now()+121000;window.dispatchEvent(new Event('focus'))");
     await page.eval(frames);
-    record('refresh preserves article anchor', Math.abs((await top()) - anchor) <= 2);
+    record('wake preserves loaded discussion tail', await page.eval("document.querySelectorAll('.vk-discussion-root').length===40"));
+    record('wake preserves article anchor', Math.abs((await top()) - anchor) <= 2);
     await page.eval("document.querySelector('#contain-probe').remove()");
     await page.eval(frames);
     record(

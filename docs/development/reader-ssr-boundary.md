@@ -118,3 +118,8 @@ hydration không phát/request lại thao tác ghi; hydrate thành công không 
 `main`, `discovery`, `review` release đã chạy trên App/PostgreSQL thật. Lịch sử, retry manual,
 304 và ABA được phân biệt ở ledger bổ sung của #234. Giữ Async: chưa thực nghiệm mode B/C,
 rollback một mode khác hoặc so sánh chunk trên proxy; không tuyên bố gain/architecture Accepted.
+
+
+[#557](https://github.com/loveoverflowcom/vink/issues/557) bỏ `discussion-refresh` khỏi
+trạng thái bình thường. `discussion-load-retry` hiện với lỗi tạm thời và vẫn chờ hydration
+trước khi gọi lại dữ liệu của vùng Nhận xét.

@@ -247,19 +247,19 @@ fn notice_text(phase: Phase, captured: bool) -> Option<(Tone, String, String)> {
         ),
         Phase::Acknowledged(Done::Requested) => warn(
             "Đã gửi yêu cầu, nhưng chưa đọc lại được kết quả.",
-            "Máy chủ đã ghi nhận lệnh. Trang chưa đọc lại được trạng thái nên chưa nói bản nào đang công khai. Hãy tải lại; chưa gửi thêm gì.",
+            "Máy chủ đã ghi nhận lệnh. Trang chưa đọc lại được trạng thái nên chưa nói bản nào đang công khai. Kiểm tra trạng thái trước khi gửi thêm.",
         ),
         Phase::Acknowledged(Done::MadePrivate) => warn(
             "Đã chuyển riêng tư, nhưng chưa đọc lại được kết quả.",
-            "Máy chủ đã ghi nhận lệnh. Hãy tải lại để thấy trạng thái hiện tại; chữ đang viết không bị ảnh hưởng.",
+            "Máy chủ đã ghi nhận lệnh. Kiểm tra trạng thái hiện tại. chữ đang viết không bị ảnh hưởng.",
         ),
         Phase::Unreadable => error(
             "Chưa hiểu trạng thái máy chủ trả về.",
-            "Không gửi gì. Hãy tải lại; nếu vẫn vậy, báo cho người vận hành.",
+            "Chưa gửi gì. Kiểm tra trạng thái. Nếu lỗi vẫn còn, hãy báo cho người vận hành.",
         ),
         Phase::Unavailable(ReadFailure::Unreachable) => error(
             "Chưa đọc được trạng thái công khai.",
-            "Chưa kết nối được máy chủ. Chữ đang viết không bị ảnh hưởng; hãy tải lại.",
+            "Chưa kết nối được máy chủ. Chữ đang viết vẫn được giữ.",
         ),
         Phase::Reading
         | Phase::Ready
@@ -730,7 +730,9 @@ pub fn PublicationPanel(
         let conflict = matches!(phase, Phase::Conflict(_));
         let reads = matches!(
             phase,
-            Phase::Unreadable | Phase::Unavailable(_) | Phase::Acknowledged(_)
+            Phase::Unreadable
+                | Phase::Unavailable(ReadFailure::Unreachable)
+                | Phase::Acknowledged(_)
         );
         let checking = controller.with(Controller::checking);
         let can_resume = controller.with(Controller::can_resume_captured);
@@ -750,7 +752,7 @@ pub fn PublicationPanel(
                     })}
                     {reads.then(|| view! {
                         <Button variant=ButtonVariant::Text id="publication-reload"
-                            on_press=move |_| reload.run(())>"Tải lại"</Button>
+                            on_press=move |_| reload.run(())>"Kiểm tra trạng thái"</Button>
                     })}
                     {(!uncertain && !reads).then(|| view! {
                         <Button variant=ButtonVariant::Text id="publication-dismiss"

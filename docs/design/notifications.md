@@ -72,22 +72,22 @@ Overlay #notif-popover — dialog modal (OverlayLayer), neo #bell (đỉnh thẳ
       Button #read-all "Đọc tất cả" (tonal; chỉ khi có dòng chưa đọc)
       IconButton #pop-close "Đóng thông báo" (48)
     Region #pop-body — cuộn riêng, đệm 6/8/8
-      InlineNotice #fresh-note (stale | unavailable | offline)
-      Button #new-signal "Có cập nhật mới" (sticky, filled)
+      Ghi chú ngoại tuyến hoặc lỗi đếm; “Thử lại” chỉ hiện khi số đếm cũ hoặc chưa tải được
       Region #groups — NotificationGroup × (Hôm nay | 7 ngày qua | Cũ hơn)
         List #list — NotificationRow × n
       Region #state — Skeleton | StatePanel(empty) | thông báo lỗi trên nền chung + Button “Thử lại”
       Region #load-more — Xem thêm | Chưa tải thêm được + Thử lại
     Link #pop-more "Mở trang Thông báo →" (khi còn next_cursor)
-Hierarchy: tiêu đề → dòng chưa đọc → "Có cập nhật mới" (nếu có, điểm nhấn duy nhất) → đọc/đã đọc
+Hierarchy: tiêu đề → dòng chưa đọc → đọc/đã đọc
 Sizing: rộng 400 (tối đa 100% − 24); cao tối đa viewport − 24 − đáy neo; chỉ #pop-body cuộn
 Responsive: không dùng < 760 hoặc chữ ≥ 150% (chuyển sang §4)
 Scroll: #pop-body cuộn; header + footer cố định; vòng focus không bị cắt nhờ đệm ≥ 6 px
 Overlays: anchor = #bell; dismiss = Esc / Đóng / bấm ngoài (không scrim làm tối); focus vào #pt,
   Tab xoay trong popover, đóng → trả focus #bell; resize < 760 → đóng, focus #noi-dung
 Themes: surface + hàng đọc surface-container-low + chưa đọc primary-container (sáng/tối cùng cấu trúc)
-States: tải, trống, 503, stale, offline, new, tải thêm lỗi, đang đánh dấu — comp-states-light/dark
+States: tải, trống, 503, stale, offline, tải thêm lỗi, đang đánh dấu — comp-states-light/dark
 Interaction: mở → tải trang đầu → Seen(snapshot) → xác minh lại badge, dòng vẫn chưa đọc; bấm dòng → Read rồi tới đích;
+  số mới cập nhật trên chuông; lần mở kế tiếp lấy trang đầu mới. Danh sách đang mở giữ nguyên thứ tự, vị trí cuộn và mốc Seen;
   scale .92 → 1 (320 ms, ease.spatial); reduced-motion: hiện ngay
 Accessibility: role=dialog aria-modal aria-labelledby=#pt; danh sách ul/li, mỗi dòng một link
 Invariants: một modal tại một lúc; popover không nằm trong cây AX khi đóng; Seen không đánh dấu Read
@@ -101,7 +101,7 @@ Screen #thong-bao — mặc định < 760 và deep link; desktop dùng cùng n�
   Column #np (≤ 640; gutter 24 | 16 hẹp)
     Row #np-top — IconButton #back (mobile/có lịch sử) · khoảng trống · Button #read-all
     Row #np-head — Heading h1 "Thông báo" (Literata 30) + Count "{n} chưa đọc" (neutral)
-    Region #np-body — giống #pop-body: note · new-signal · groups · state · load-more
+    Region #np-body — giống #pop-body: note · groups · state · load-more
 Hierarchy: h1 → #read-all (hàng trên) → dòng chưa đọc
 Sizing: nhãn ngày chỉ khi > 1 nhóm; nhóm cách nhau 20; hàng đầu cao ≥ 48
 Responsive: dòng chuyển "xếp chồng" khi bề rộng danh sách / hệ số chữ < ≈ 215 px (320 px ≥ 150%);

@@ -2586,12 +2586,6 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
 }
 
 .vk-notif-body { display: grid; gap: calc(var(--vk-space-4) + var(--vk-space-1)); min-inline-size: 0; }
-.vk-notif-updates {
-  position: sticky;
-  inset-block-start: 0;
-  z-index: 2;
-  padding: var(--vk-space-1);
-}
 .vk-notif-note,
 .vk-notif-error,
 .vk-notif-more {

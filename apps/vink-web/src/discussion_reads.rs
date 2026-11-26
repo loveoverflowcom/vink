@@ -21,6 +21,7 @@ pub struct OwnState {
     pub error: Option<ApiError>,
     pub author: bool,
     pub capability_error: Option<ApiError>,
+    pub capability_loading: bool,
     /// The one own comment whose removal waits for an explicit “Gỡ” (VDR-DISCUSSION-R4@r1).
     confirming: Option<String>,
 }
@@ -79,6 +80,7 @@ impl OwnState {
             error: None,
             author: false,
             capability_error: None,
+            capability_loading: false,
             confirming: None,
         }
     }
@@ -190,6 +192,10 @@ impl OwnState {
             self.error = Some(error);
         }
     }
+    pub fn has_loaded_page(&self) -> bool {
+        self.chain.pages > 0
+    }
+
     pub fn can_remove(&self, id: &str) -> bool {
         self.error.is_none() && !self.loading && self.comments.get(id).is_some_and(|c| c.can_remove)
     }

@@ -17,7 +17,6 @@ pub(super) enum Freshness {
     Fresh {
         unseen_group_count: u32,
         count_is_lower_bound: bool,
-        as_of_snapshot: String,
     },
     Stale {
         last_known_count: u32,

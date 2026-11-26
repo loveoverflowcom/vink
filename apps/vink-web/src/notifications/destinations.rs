@@ -301,7 +301,7 @@ fn EndorserList(work: String, revision: String, title: String) -> impl IntoView 
                         revision.set(current_revision_id.clone());
                         title.set(String::new());
                         load.run(false);
-                    }>"Tải lại"</Button>
+                    }>"Xem danh sách hiện tại"</Button>
                 </div>
             }.into_any(),
             Some(_) if data.with(Option::is_none) => view! {

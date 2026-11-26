@@ -113,7 +113,8 @@ fn ReaderScope(id: String) -> impl IntoView {
                             status.set(503);
                             view! {
                                 <Title text="Chưa tải được tác phẩm — Vink" />
-                                <Unavailable return_href=return_href.get_untracked() heading=HeadingLevel::H1 />
+                                <Unavailable return_href=return_href.get_untracked() heading=HeadingLevel::H1
+                                    on_retry=Some(Callback::new(move |()| reader.refetch())) />
                             }.into_any()
                         }
                     }
@@ -384,50 +385,58 @@ fn PublicationContent(
 
 #[component]
 pub(crate) fn Unavailable(
-    /// Where to leave to. `None` on Explore itself, whose same-URL link would neither leave
-    /// nor refetch the list.
+    /// Where to leave to, when the current surface has a distinct destination.
     #[prop(optional, into)]
     return_href: Option<String>,
     #[prop(default = HeadingLevel::H2)] heading: HeadingLevel,
+    #[prop(optional_no_strip)] on_retry: Option<Callback<()>>,
 ) -> impl IntoView {
+    let ready = client_read_action_ready();
+    let retrying = RwSignal::new(false);
     let message = if return_href.is_some() {
-        "Chưa thể tải nội dung lúc này. Bạn có thể tải lại trang hoặc quay về Khám phá."
+        "Chưa thể tải nội dung lúc này."
     } else {
-        "Chưa thể tải danh sách lúc này. Đây không phải danh sách rỗng; bạn có thể tải lại trang."
+        "Chưa thể tải danh sách lúc này."
     };
-    let location = leptos_router::hooks::use_location();
-    let retry_href = Memo::new(move |_| {
-        let mut href = location.pathname.get();
-        let search = location.search.get();
-        let hash = location.hash.get();
-        if !search.is_empty() {
-            href.push('?');
-            href.push_str(search.trim_start_matches('?'));
-        }
-        if !hash.is_empty() && hash != "#" {
-            href.push('#');
-            href.push_str(hash.trim_start_matches('#'));
-        }
-        href
-    });
     view! {
         <div data-testid="public-unavailable" role="alert">
             <StatePanel heading content=PanelContent { kind: PanelKind::Error(ProblemKind::Unavailable), title: "Tạm thời chưa đọc được nội dung.".into(), message: message.into(), actions: vec![], code: None }>
-                <vink_ui::Link href=retry_href attr:rel="external" attr:id="retry-public" variant=vink_ui::LinkVariant::Standalone
-                    on:click=move |_event: leptos::ev::MouseEvent| {
-                        #[cfg(feature = "browser")]
-                        if _event.button() == 0 && !_event.meta_key() && !_event.ctrl_key() && !_event.shift_key() && !_event.alt_key() {
-                            // A same-URL link with a fragment only scrolls. This intent always
-                            // reloads the GET document while retaining its query AND fragment.
-                            _event.prevent_default();
-                            let _ = window().location().reload();
-                        }
-                    }>"Thử tải lại"</vink_ui::Link>
+                {on_retry.map(|on_retry| view! {
+                    <vink_ui::Button id="retry-public" variant=vink_ui::ButtonVariant::Tonal
+                        state=Signal::derive(move || {
+                            if retrying.get() {
+                                vink_ui::ActionState::pending("Đang tải…")
+                            } else {
+                                read_retry_state(ready.get())
+                            }
+                        })
+                        on_press=move |_| {
+                            if !retrying.get_untracked() {
+                                retrying.set(true);
+                                on_retry.run(());
+                            }
+                        }>"Thử lại"</vink_ui::Button>
+                })}
                 {return_href.clone().map(|href| view! {
                     <vink_ui::Link href variant=vink_ui::LinkVariant::Standalone>"Về Khám phá"</vink_ui::Link>
                 })}
             </StatePanel>
         </div>
+    }
+}
+
+fn client_read_action_ready() -> RwSignal<bool> {
+    let ready = RwSignal::new(false);
+    #[cfg(feature = "browser")]
+    Effect::new(move |_| ready.set(true));
+    ready
+}
+
+fn read_retry_state(ready: bool) -> vink_ui::ActionState {
+    if ready {
+        vink_ui::ActionState::Enabled
+    } else {
+        vink_ui::ActionState::disabled("Cần JavaScript để thử lại.")
     }
 }
 
