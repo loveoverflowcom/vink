@@ -84,10 +84,20 @@ Tham chiếu là hướng bố cục đã chọn trong #521. LayoutSpec R4.3 gi�
 - [Delta DQ-03 của #530](../redesign-r4-ban-viet-kham-pha.md#dq-03-cập-nhật-ngày-25112026) dùng
   chung H1 Khám phá, nút tìm, vị trí Lọc thẻ và logo. Một thanh Primary Tabs gồm các link Tất cả /
   Đang theo dõi / Tác giả, giữ feature flag của Đang theo dõi, `aria-current` và node của từng link
-  qua các lần đổi chế độ. Các ô chia đều, cao tối thiểu 48 CSS px, xuống dòng theo từ khi thiếu
-  chỗ. Chỉ báo 3 CSS px dùng màu primary, trượt trong 240 ms và đổi ngay khi giảm chuyển động.
+  qua các lần đổi chế độ. [#566](https://github.com/loveoverflowcom/vink/issues/566) cập nhật
+  riêng hình học thanh tab. Các link căn trái theo header và danh sách, rộng theo nhãn và padding,
+  cao tối thiểu 48 CSS px. Khi thiếu chỗ, link xuống hàng trong thanh mode. Link hiện hành dùng chữ
+  primary và gạch chân 3 CSS px bên dưới nhãn. Chỉ báo đổi tức thì và giữ màu hệ thống khi bật
+  forced colors.
 - Dock mở dưới thanh tab. Tác giả tìm bút danh hoặc @handle. Gửi truy vấn từ Đang theo dõi chuyển
   sang Tất cả. Hai vùng tìm và kết quả theo chế độ trên URL.
+- **Guest State của Đang theo dõi (#566).** Sau khi phiên được xác nhận là khách, `EmptyState`
+  căn giữa trong vùng kết quả tính từ dưới tab và dock đến trước điều hướng dưới/safe area.
+  Icon trang trí đứng trước tiêu đề “Gần hơn với tác giả” và lời mời theo dõi. Một link Filled
+  bo tròn, cao tối thiểu 48 CSS px, mở Auth R3 tại `/toi?next=…`. Sau đăng nhập, đường “Quay lại
+  Đang theo dõi” giữ đích đó. Khi đóng sign-in, trạng thái khách chỉ hiện thông báo. Phiên đã có
+  Identity và thiếu bút danh giữ hành động “Hoàn tất bút danh” cùng đích an toàn. H2 của vùng vẫn
+  làm nhãn và đích focus khi quay từ Reader. Khi chiều cao không đủ, cuộn trang để tới được CTA.
 - Theo [#522](https://github.com/loveoverflowcom/vink/issues/522), nút mở tìm ở Khám phá và Bàn viết
   dùng `IconButton` Standard. Khi nghỉ, icon nằm trực tiếp trên nền cha. Khám phá giữ vùng bấm
   56 px trên desktop và 48 px trên mobile. Nút quay lại và xóa chữ dùng nền của ô tìm đang mở.

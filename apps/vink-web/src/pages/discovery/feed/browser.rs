@@ -5,7 +5,7 @@ use vink_ui::{
     ActionState, Button, ButtonVariant, Heading, HeadingLevel, Icon, IconName, IconSize,
 };
 
-use super::{FEED_STATE_CLASS, FeedOff, Restricted, SignIn};
+use super::{AccountRecovery, FEED_STATE_CLASS, FeedOff, Restricted};
 use crate::{
     account::Session,
     api,
@@ -358,6 +358,7 @@ pub(super) fn ActiveFeed(
     });
     on_cleanup(move || pagehide.remove());
 
+    let sign_in_open = api::sign_in_open();
     let phase = Memo::new(move |_| feed.with(|state| state.phase));
     let ids = Memo::new(move |_| {
         feed.with(|state| {
@@ -385,7 +386,7 @@ pub(super) fn ActiveFeed(
                     </div>
                 }.into_any(),
                 Phase::Ready { .. } => ().into_any(),
-                Phase::Expired => view! { <SignIn expired=true /> }.into_any(),
+                Phase::Expired => view! { <AccountRecovery sign_in_open /> }.into_any(),
                 Phase::Restricted => view! { <Restricted /> }.into_any(),
                 Phase::Disabled => view! { <FeedOff /> }.into_any(),
                 Phase::Restart | Phase::Unavailable => {

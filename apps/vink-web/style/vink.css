@@ -1697,41 +1697,23 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
 #tag-picker .vk-ui-dialog__title { font-family: var(--vk-font-ui); }
 #tag-picker .vk-ui-dialog__header-action .vk-ui-icon-button { background-color: var(--vk-bg-inset); }
 #tag-picker .vk-ui-dialog__content { grid-column: 1 / -1; min-inline-size: 0; }
-/* DQ-03 primary tabs. The indicator moves independently of the equal-width links. */
+/* DQ-03 (#566): URL links keep their intrinsic width and can wrap as a group. */
 .vk-explore-modes {
-  --mode-count: 2;
-  --mode-index: 0;
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(var(--mode-count), minmax(0, 1fr));
+  --vk-explore-mode-padding: min(var(--vk-space-3), 12px);
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--vk-space-1);
   margin-block: var(--vk-space-2) var(--vk-space-6);
 }
-.vk-explore-modes[data-following="true"] { --mode-count: 3; }
-.vk-explore-modes[data-mode="following"],
-.vk-explore-modes[data-mode="authors"] { --mode-index: 1; }
-.vk-explore-modes[data-following="true"][data-mode="authors"] { --mode-index: 2; }
-.vk-explore-modes::after {
-  position: absolute;
-  inset-inline-start: 0;
-  inset-block-end: 0;
-  inline-size: calc(100% / var(--mode-count));
-  block-size: 3px;
-  border-start-start-radius: var(--vk-radius-full);
-  border-start-end-radius: var(--vk-radius-full);
-  background: var(--vk-primary);
-  content: "";
-  pointer-events: none;
-  translate: calc(var(--mode-index) * 100%);
-  transition: translate calc((var(--vk-duration-short) + var(--vk-duration-medium)) / 2) var(--vk-ease-emphasized);
-}
-.vk-explore-modes[data-following="false"][data-mode="following"]::after { visibility: hidden; }
 .vk-explore-modes a {
+  position: relative;
   display: grid;
   place-items: center;
-  min-block-size: var(--vk-density-control-height);
-  /* Two lines at normal text still fit the 48px control on narrow screens. */
+  min-block-size: max(48px, var(--vk-density-control-height));
+  min-inline-size: 48px;
+  max-inline-size: 100%;
   padding-block: calc(var(--vk-space-1) / 2);
-  padding-inline: min(var(--vk-space-1), 4px);
+  padding-inline: var(--vk-explore-mode-padding);
   color: var(--vk-on-surface-variant);
   font-size: var(--vk-type-label-size);
   font-weight: var(--vk-type-label-weight);
@@ -1740,18 +1722,26 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
   text-decoration: none;
   overflow-wrap: anywhere;
 }
-.vk-explore-modes a[aria-current] { color: var(--vk-primary); }
+.vk-explore-modes a[aria-current="page"] { color: var(--vk-primary); }
+.vk-explore-modes a[aria-current="page"]::after {
+  position: absolute;
+  inset-inline: var(--vk-explore-mode-padding);
+  inset-block-end: 0;
+  block-size: 3px;
+  border-start-start-radius: var(--vk-radius-full);
+  border-start-end-radius: var(--vk-radius-full);
+  background: currentColor;
+  content: "";
+  pointer-events: none;
+  transition-property: none;
+}
 .vk-explore-modes a:hover { background: var(--vk-state-hover); }
 .vk-explore-modes a:focus-visible {
-  z-index: 1;
   outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
   outline-offset: calc(-1 * var(--vk-size-focus-ring));
 }
-@media (prefers-reduced-motion: reduce) {
-  .vk-explore-modes::after { transition: none; }
-}
 @media (forced-colors: active) {
-  .vk-explore-modes::after { forced-color-adjust: none; background: Highlight; }
+  .vk-explore-modes a[aria-current="page"]::after { forced-color-adjust: none; background: Highlight; }
 }
 /* The feed heading names the region and is also the fallback for a failed return. */
 #following-feed-heading:not(:focus) {
@@ -2051,6 +2041,15 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
 @media (min-width: 760px) {
   .vk-discovery .vk-empty-state__art { inline-size: min(216px, 100%); }
 }
+#community-stream > .vk-following-guest { margin-block: auto; }
+.vk-following-guest .vk-empty-state { gap: var(--vk-space-4); }
+.vk-following-guest .vk-empty-state__title { font-family: var(--vk-font-ui); }
+.vk-following-guest .vk-empty-state__message {
+  color: var(--vk-on-surface-variant);
+  font-weight: var(--vk-type-body-weight);
+}
+.vk-following-guest .vk-empty-state__actions { --vk-ui-control-radius: var(--vk-radius-full); }
+.vk-following-guest .vk-ui-button { min-block-size: max(48px, var(--vk-density-control-height)); }
 .vk-empty-state__actions {
   display: flex;
   flex-wrap: wrap;
