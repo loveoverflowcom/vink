@@ -28,7 +28,7 @@ use vink_ui::{Density, MotionPreference, Preferences, ThemePreference, ThemeScop
 pub use components::EventLog;
 
 /// Catalog IDs this preview renders; a test keeps it equal to the shared catalog.
-pub const REGISTERED: [&str; 54] = [
+pub const REGISTERED: [&str; 55] = [
     "foundation.color-roles",
     "foundation.typography",
     "foundation.shape-spacing",
@@ -80,6 +80,7 @@ pub const REGISTERED: [&str; 54] = [
     "screen.me",
     "composition.feedback",
     "composition.endorsement",
+    "composition.save-pair",
     "composition.tag-selector",
     "composition.interaction",
     "composition.notifications",

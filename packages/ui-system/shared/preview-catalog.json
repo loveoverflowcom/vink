@@ -1453,6 +1453,41 @@
       }
     },
     {
+      "id": "composition.save-pair",
+      "family": "composition",
+      "label": "Thấm · Lưu — Mẫu",
+      "summary": "Cặp nút ngang hàng cuối Reader (SAV-04, #388): ActionPair gom Thấm và SaveAction trong một nhóm có tên; Lưu giữ nhãn và tên “Lưu”, trạng thái đã xác nhận qua aria-pressed, dấu trang đặc và hình viên thuốc. Dữ liệu Mẫu, không gọi dịch vụ, không xác nhận ghi.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Chưa lưu"
+        },
+        {
+          "id": "saved",
+          "label": "Đã lưu, có liên kết Đã lưu"
+        },
+        {
+          "id": "pending",
+          "label": "Đang lưu"
+        },
+        {
+          "id": "unknown",
+          "label": "Đang đọc trạng thái riêng"
+        },
+        {
+          "id": "refused",
+          "label": "Danh sách Đã lưu đã đầy"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "unsupported"
+      },
+      "unsupported": {
+        "cmp": "Lưu bài triển khai Web trước; CMP/native thuộc DEFERRED (#388)."
+      }
+    },
+    {
       "id": "composition.tag-selector",
       "family": "composition",
       "label": "Bộ chọn thẻ — Mẫu",
