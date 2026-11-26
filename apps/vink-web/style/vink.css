@@ -440,11 +440,11 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
   }
 }
 
-/* R4 (#360 ảnh 07): static skeleton after 300ms delay, distinct error card and empty card. */
+/* R4 (#360 ảnh 07): static skeleton after 300ms delay and a distinct error card. The settled
+ * empty discussion is a compact `.vk-empty-state` without a card since #558. */
 .vk-discussion-load:not([hidden]) { display: contents; }
 .vk-discussion-loading .vk-ui-skeleton { animation: none; border-radius: var(--vk-radius-xl); background: var(--vk-surface-container-low); }
 .vk-discussion-state-card,
-.vk-discussion-empty,
 .vk-discussion-inline-error {
   display: flex;
   flex-wrap: wrap;
@@ -457,14 +457,11 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
 }
 .vk-discussion-inline-error { padding: 10px 14px; border-radius: var(--vk-radius-lg); inline-size: 100%; box-sizing: border-box; }
 .vk-discussion-state-card > .vk-ui-icon,
-.vk-discussion-empty > .vk-ui-icon,
 .vk-discussion-inline-error > .vk-ui-icon { flex-shrink: 0; }
 .vk-discussion-state-card__body { flex: 1 1 14rem; min-width: 0; }
 .vk-discussion-state-card__body strong { display: block; font-size: var(--vk-type-label-size); font-weight: var(--vk-type-section-weight); }
 .vk-discussion-state-card__body p,
-.vk-discussion-empty p,
 .vk-discussion-inline-error p { margin: 2px 0 0; overflow-wrap: anywhere; }
-.vk-discussion-empty__title { margin: 0; font-weight: var(--vk-type-label-weight); }
 
 .vk-discussion-composer { display: grid; gap: var(--vk-space-2); min-width: 0; }
 .vk-discussion-mode > p, .vk-discussion-composer > p, .vk-discussion-root > p, .vk-discussion-reply-composer > p { margin: 0; }
@@ -1983,20 +1980,23 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
  * own heading/controls. `.vk-main` already excludes rail, top bar and bottom-nav insets, so no
  * viewport arithmetic. Only a screen that renders one becomes a column flex chain. Its auto
  * margins fall back to top alignment when content is taller. Page scroll stays the only scroll:
- * no fixed height, overlay or nested scroller. */
-.vk-main:has(.vk-empty-state, .vk-desk-loading),
-.vk-main:has(.vk-empty-state, .vk-desk-loading) :is(.vk-desk--index, .vk-drafts-region, .vk-desk-works, .vk-draft-list,
-  .vk-discovery, #community-stream, #public-collection, #public-results) {
+ * no fixed height, overlay or nested scroller. Owners: Desk, Explore and, since #558, any page
+ * marked `.vk-state-page` (through at most one `.vk-state-slot`). A full-size state lives only
+ * inside one of those owners. Region states (`--compact`) stay in normal flow. */
+.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact), .vk-desk-loading),
+.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact), .vk-desk-loading) :is(.vk-desk--index, .vk-drafts-region, .vk-desk-works, .vk-draft-list,
+  .vk-discovery, #community-stream, #public-collection, #public-results, .vk-state-page, .vk-state-page > .vk-state-slot) {
   display: flex;
   flex-direction: column;
 }
-.vk-main:has(.vk-empty-state, .vk-desk-loading) :is(.vk-desk--index, .vk-drafts-region, .vk-desk-works, .vk-draft-list,
-  .vk-discovery, #community-stream, #public-collection, #public-results) {
+.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact), .vk-desk-loading) :is(.vk-desk--index, .vk-drafts-region, .vk-desk-works, .vk-draft-list,
+  .vk-discovery, #community-stream, #public-collection, #public-results, .vk-state-page, .vk-state-page > .vk-state-slot) {
   flex: 1 0 auto;
 }
-/* Auto inline margins disable flex stretch, so keep Desk and Discovery measure instead of shrinking to content. */
-.vk-main:has(.vk-empty-state, .vk-desk-loading) > :is(.vk-desk--index, .vk-discovery) { inline-size: 100%; }
+/* Auto inline margins disable flex stretch, so keep each owner's measure instead of shrinking to content. */
+.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact), .vk-desk-loading) > :is(.vk-desk--index, .vk-discovery, .vk-state-page) { inline-size: 100%; }
 .vk-main :is(#public-results, .vk-draft-list) > :has(> .vk-empty-state) { margin-block: auto; }
+.vk-main :is(.vk-state-page, .vk-state-page > .vk-state-slot) > .vk-empty-state:not(.vk-empty-state--compact) { margin-block: auto; }
 .vk-desk--index > :is(.vk-desk-access, .vk-desk-loading),
 .vk-draft-list > .vk-desk-loading { margin-block: auto; }
 /* Only real rows need room below the error. Empty retained results still center the state. */
@@ -2024,7 +2024,24 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
   font: var(--vk-type-body-weight) var(--vk-type-body-size)/var(--vk-type-body-line-height) var(--vk-type-body-font);
   overflow-wrap: anywhere;
 }
-.vk-empty-state__title { margin-block-end: calc(-1 * var(--vk-space-3)); }
+/* Title and message are one text group (and one status when announced): title→message rhythm. */
+.vk-empty-state__text {
+  display: grid;
+  justify-items: center;
+  gap: var(--vk-space-1);
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+/* Region state (#558): discussion, dialog, profile lists. Same hierarchy, quieter decoration,
+ * no nested card. It centres on the region's inline axis and keeps normal block flow. */
+.vk-empty-state--compact { gap: var(--vk-space-3); padding-block: var(--vk-space-4); }
+.vk-empty-state--compact .vk-empty-state__icon { inline-size: 40px; block-size: 40px; }
+.vk-empty-state--compact .vk-empty-state__icon > .vk-ui-icon { inline-size: 20px; block-size: 20px; }
+.vk-empty-state--compact .vk-empty-state__title {
+  font-size: var(--vk-type-label-size);
+  line-height: var(--vk-type-label-line-height);
+  font-weight: var(--vk-type-label-weight);
+}
 .vk-discovery .vk-empty-state { gap: var(--vk-space-2); }
 .vk-discovery .vk-empty-state__message { color: var(--vk-on-surface); font-weight: var(--vk-type-title-weight); }
 .vk-discovery .vk-empty-state__actions { --vk-ui-control-radius: var(--vk-radius-control-56); }
@@ -2603,8 +2620,7 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
 .vk-notif-error { padding-block: var(--vk-space-3); }
 .vk-notif-error p { margin: 0; }
 .vk-notif-more > .vk-notif-error { flex: 1 1 100%; }
-.vk-notif-loading,
-.vk-notif-empty {
+.vk-notif-loading {
   display: grid;
   gap: var(--vk-space-2);
 }
@@ -2613,14 +2629,6 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
   border-radius: var(--vk-radius-lg);
   background: var(--vk-surface-container-low);
 }
-.vk-notif-empty {
-  place-items: center;
-  text-align: center;
-  padding: var(--vk-space-6) var(--vk-space-3);
-}
-.vk-notif-empty p { margin: 0; color: var(--vk-on-surface-variant); }
-.vk-notif-empty .vk-ui-shape-mark { inline-size: 96px; block-size: 96px; }
-.vk-notif-empty .vk-ui-shape-mark > .vk-ui-icon { inline-size: 40px; block-size: 40px; }
 .vk-notif-back { display: inline-grid; align-items: center; min-block-size: var(--vk-size-hit-target); }
 .vk-notif-decision { max-inline-size: min(100%, 48rem); }
 .vk-notif-decision__panel,

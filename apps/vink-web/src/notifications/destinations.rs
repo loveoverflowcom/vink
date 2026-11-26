@@ -7,6 +7,7 @@ use super::contract::{CommentDecision, Endorsers, segment};
 use super::inbox::{BackButton, Failure, Loading};
 use crate::account::Session;
 use crate::contract::ApiError;
+use crate::ui::empty_state::EmptyState;
 
 #[component]
 pub(crate) fn CommentDecisionPage() -> impl IntoView {
@@ -16,7 +17,7 @@ pub(crate) fn CommentDecisionPage() -> impl IntoView {
     view! {
         <Title text="Quyết định về nhận xét — Vink" />
         <Meta name="robots" content="noindex" />
-        <section class="vk-notif-page vk-notif-decision">
+        <section class="vk-notif-page vk-notif-decision vk-state-page">
             <a class="vk-ui-link vk-notif-back" href=super::INBOX_PATH>"← Thông báo"</a>
             <Show when=move || session.notification_scope.with(Option::is_none)>
                 {move || match session.standing.get() {
@@ -121,10 +122,10 @@ fn CommentDecisionDetail(decision: CommentDecision) -> impl IntoView {
 #[component]
 fn Gone() -> impl IntoView {
     view! {
-        <section class="vk-notif-empty">
-            <h1 class="vk-ui-heading vk-notif-title">"Nội dung không còn khả dụng"</h1>
+        <EmptyState hook="vk-notif-empty" icon=IconName::VisibilityOff
+            heading=vink_ui::HeadingLevel::H1 title="Nội dung không còn khả dụng">
             <a class=ButtonVariant::Tonal.classes() href="/">"Về Khám phá"</a>
-        </section>
+        </EmptyState>
     }
 }
 
@@ -181,7 +182,7 @@ pub(crate) fn EndorsersTrigger(
             header_action=move || view! { <IconButton label="Đóng danh sách người đã Thấm"
                 icon=IconName::Close on_press=move |_| open.set(false) /> }>
             <Show when=move || open.get()>
-                <SessionEndorsers work=work.clone() revision=revision.clone() title=title.clone() />
+                <SessionEndorsers work=work.clone() revision=revision.clone() title=title.clone() compact=true />
             </Show>
         </Dialog>
     }
@@ -203,28 +204,29 @@ pub(crate) fn EndorsersPage() -> impl IntoView {
     view! {
         <Title text="Người đã Thấm — Vink" />
         <Meta name="robots" content="noindex" />
-        <section class="vk-notif-page" aria-labelledby="work-endorsers-page-title">
+        <section class="vk-notif-page vk-state-page" aria-labelledby="work-endorsers-page-title">
             <BackButton />
             <h1 class="vk-ui-heading vk-notif-title" id="work-endorsers-page-title">"Người đã Thấm"</h1>
             <For each=move || Some((params.read().get("id").unwrap_or_default(),
                 params.read().get("revision").unwrap_or_default())) key=Clone::clone
-                children=move |(work, revision)| view! { <SessionEndorsers work revision title=String::new() /> } />
+                children=move |(work, revision)| view! { <SessionEndorsers work revision title=String::new() compact=false /> } />
         </section>
     }
 }
 
 #[component]
-fn SessionEndorsers(work: String, revision: String, title: String) -> impl IntoView {
+fn SessionEndorsers(work: String, revision: String, title: String, compact: bool) -> impl IntoView {
     let session = Session::current();
     view! {
         <For each=move || Some(session.profile_scope.get().zip(session.notification_scope.get()))
             key=Clone::clone
-            children=move |_| view! { <EndorserList work=work.clone() revision=revision.clone() title=title.clone() /> } />
+            children=move |_| view! { <EndorserList work=work.clone() revision=revision.clone() title=title.clone() compact /> } />
     }
 }
 
+/// `compact` is the dialog region; the page variant centres its settled states in the page slot.
 #[component]
-fn EndorserList(work: String, revision: String, title: String) -> impl IntoView {
+fn EndorserList(work: String, revision: String, title: String, compact: bool) -> impl IntoView {
     let data = RwSignal::new(None::<Endorsers>);
     let loading = RwSignal::new(true);
     let problem = RwSignal::new(None::<ApiError>);
@@ -292,8 +294,9 @@ fn EndorserList(work: String, revision: String, title: String) -> impl IntoView 
     view! {
         {move || match problem.get() {
             Some(ApiError::NotFound) => view! {
-                <div class="vk-notif-empty"><p>"Nội dung không còn khả dụng."</p>
-                    <a class=ButtonVariant::Tonal.classes() href="/">"Về Khám phá"</a></div>
+                <EmptyState compact hook="vk-notif-empty" icon=IconName::VisibilityOff message="Nội dung không còn khả dụng.">
+                    <a class=ButtonVariant::Tonal.classes() href="/">"Về Khám phá"</a>
+                </EmptyState>
             }.into_any(),
             Some(ApiError::RevisionChanged { current_revision_id }) => view! {
                 <div class="vk-notif-note" role="status">"Danh sách đã thay đổi."
@@ -311,30 +314,32 @@ fn EndorserList(work: String, revision: String, title: String) -> impl IntoView 
             _ => ().into_any(),
         }}
         {move || data.get().map(|page| {
+            // A settled empty list is one state, not a "0 người" count above an empty message.
+            if page.items.is_empty() && page.next_cursor.is_none() {
+                return view! {
+                    <EmptyState compact hook="vk-notif-endorsers-empty" icon=IconName::PenFlight message="Chưa có lượt Thấm nào." />
+                }.into_any();
+            }
             let title = title.get();
             let total = if title.is_empty() { format!("{} người", page.total_count) } else { format!("{} người · {title}", page.total_count) };
             view! {
                 <p class="vk-notif-endorser-total">{total}</p>
-                {if page.items.is_empty() && page.next_cursor.is_none() {
-                    view! { <p>"Chưa có lượt Thấm nào."</p> }.into_any()
-                } else {
-                    view! { <ul class="vk-notif-endorsers">
-                        {page.items.into_iter().map(|item| {
-                            let name = item.author.label().to_owned();
-                            let handle = item.author.handle().map(str::to_owned);
-                            let key = handle.clone().unwrap_or_default();
-                            let avatar = view! { <Avatar name=name.clone() identity_key=key size=AvatarSize::Reader decorative=true /> };
-                            view! { <li>
-                                {if let Some(handle) = handle {
-                                    let href = format!("/@{}", segment(&handle));
-                                    view! { <a href=href>{avatar}<span><strong>{name}</strong><small>{format!("@{handle}")}</small></span></a> }.into_any()
-                                } else {
-                                    view! { <div>{avatar}<strong>{name}</strong></div> }.into_any()
-                                }}
-                            </li> }
-                        }).collect_view()}
-                    </ul> }.into_any()
-                }}
+                <ul class="vk-notif-endorsers">
+                    {page.items.into_iter().map(|item| {
+                        let name = item.author.label().to_owned();
+                        let handle = item.author.handle().map(str::to_owned);
+                        let key = handle.clone().unwrap_or_default();
+                        let avatar = view! { <Avatar name=name.clone() identity_key=key size=AvatarSize::Reader decorative=true /> };
+                        view! { <li>
+                            {if let Some(handle) = handle {
+                                let href = format!("/@{}", segment(&handle));
+                                view! { <a href=href>{avatar}<span><strong>{name}</strong><small>{format!("@{handle}")}</small></span></a> }.into_any()
+                            } else {
+                                view! { <div>{avatar}<strong>{name}</strong></div> }.into_any()
+                            }}
+                        </li> }
+                    }).collect_view()}
+                </ul>
                 {page.next_cursor.is_some().then(|| view! {
                     <Show when=move || problem.with(Option::is_some) fallback=move || view! {
                         <Button variant=ButtonVariant::Tonal
@@ -344,7 +349,7 @@ fn EndorserList(work: String, revision: String, title: String) -> impl IntoView 
                         <Failure message="Chưa tải thêm được." retry=Callback::new(move |()| load.run(true)) tonal=true />
                     </Show>
                 })}
-            }
+            }.into_any()
         })}
     }
 }

@@ -25,7 +25,7 @@ use crate::canonical_url;
 use crate::contract::Publication;
 use crate::document::ReadingDocument;
 use crate::public_reads;
-use crate::ui::{adapters, patterns::ReaderHeader};
+use crate::ui::{adapters, empty_state::EmptyState, patterns::ReaderHeader};
 use vink_ui::{
     Heading, HeadingLevel, Icon, IconName, InlineNotice, PanelContent, PanelKind, ProblemKind,
     RecoveryAction, RecoveryIntent, StatePanel, Text, TextTone, Tone, TypeRole,
@@ -679,10 +679,11 @@ fn restore_explore_position(
 fn NotFoundContent(#[prop(default = "/".to_string())] return_href: String) -> impl IntoView {
     view! {
         <Title text="Không tìm thấy — Vink" />
-        <div>
-            <StatePanel heading=HeadingLevel::H1 content=PanelContent { kind: PanelKind::Error(ProblemKind::NotFound), title: "Không tìm thấy trang này.".into(), message: "Tác phẩm có thể chưa được công khai hoặc đường dẫn không đúng.".into(), actions: vec![], code: None }>
-                <vink_ui::Link href=return_href.clone() variant=vink_ui::LinkVariant::Standalone>"Về Khám phá"</vink_ui::Link>
-            </StatePanel>
+        <div class="vk-state-page" data-testid="not-found">
+            <EmptyState icon=IconName::VisibilityOff heading=HeadingLevel::H1 title="Không tìm thấy trang này."
+                message="Tác phẩm có thể chưa được công khai hoặc đường dẫn không đúng.">
+                <a class=vink_ui::ButtonVariant::Tonal.classes() href=return_href>"Về Khám phá"</a>
+            </EmptyState>
         </div>
     }
 }

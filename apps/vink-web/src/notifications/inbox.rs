@@ -4,13 +4,13 @@ use vink_patterns::{
     NotificationGroup, NotificationLeading, NotificationRow, NotificationRowFacts,
 };
 use vink_ui::{
-    ActionState, Button, ButtonVariant, ExpressiveShape, IconButton, IconName, Person, ShapeMark,
-    ShapeTone,
+    ActionState, Button, ButtonVariant, ExpressiveShape, IconButton, IconName, Person, ShapeTone,
 };
 
 use super::contract::{Item, Target, segment};
 use super::state::Load;
 use super::{INBOX_PATH, Notifications};
+use crate::ui::empty_state::EmptyState;
 
 #[component]
 pub(crate) fn InboxPage() -> impl IntoView {
@@ -19,7 +19,7 @@ pub(crate) fn InboxPage() -> impl IntoView {
     view! {
         <Title text="Thông báo — Vink" />
         <Meta name="robots" content="noindex" />
-        <section class="vk-notif-page" aria-labelledby="notification-page-title">
+        <section class="vk-notif-page vk-state-page" aria-labelledby="notification-page-title">
             <div class="vk-notif-page__top"><BackButton /><ReadAll owner /></div>
             <header class="vk-notif-page__head">
                 <h1 id="notification-page-title" class="vk-ui-heading vk-notif-title" tabindex="-1">"Thông báo"</h1>
@@ -125,7 +125,7 @@ fn InboxBody(owner: Notifications) -> impl IntoView {
         owner.load(false);
     });
     view! {
-        <div class="vk-notif-body" tabindex="-1" aria-busy=move || owner.inbox.with(|inbox| inbox.first == Load::Loading).to_string()>
+        <div class="vk-notif-body vk-state-slot" tabindex="-1" aria-busy=move || owner.inbox.with(|inbox| inbox.first == Load::Loading).to_string()>
             <Show when=move || offline.get()>
                 <p class="vk-notif-note" role="status">"Đang ngoại tuyến. Danh sách có thể đã cũ."</p>
             </Show>
@@ -156,10 +156,9 @@ fn InboxBody(owner: Notifications) -> impl IntoView {
                             <Failure message="Chưa kiểm tra được phiên đăng nhập." retry=Callback::new(move |()| owner.session.refresh()) />
                         }.into_any(),
                         _ => view! {
-                            <div class="vk-notif-empty">
-                                <p>"Đăng nhập để xem thông báo của bạn."</p>
+                            <EmptyState hook="vk-notif-empty" icon=IconName::Lock message="Đăng nhập để xem thông báo của bạn.">
                                 <a href="/toi" class=ButtonVariant::Tonal.classes()>"Mở Tài khoản"</a>
-                            </div>
+                            </EmptyState>
                         }.into_any(),
                     };
                 }
@@ -168,11 +167,8 @@ fn InboxBody(owner: Notifications) -> impl IntoView {
                     (false, _, _) => view! { <Loading /> }.into_any(),
                     (true, Load::Failed, _) => view! { <Failure message="Chưa cập nhật được thông báo." retry=refresh /> }.into_any(),
                     (true, Load::Idle, false) if inbox.items.is_empty() => view! {
-                        <div class="vk-notif-empty">
-                            <ShapeMark shape=ExpressiveShape::Cookie tone=ShapeTone::PrimaryFixed icon=IconName::NotificationsNone />
-                            <h3 class="vk-ui-heading">"Chưa có thông báo."</h3>
-                            <p>"Tương tác và kết quả kiểm duyệt sẽ xuất hiện ở đây."</p>
-                        </div>
+                        <EmptyState hook="vk-notif-empty" icon=IconName::NotificationsNone title="Chưa có thông báo."
+                            message="Tương tác và kết quả kiểm duyệt sẽ xuất hiện ở đây." />
                     }.into_any(),
                     _ => ().into_any(),
                 })

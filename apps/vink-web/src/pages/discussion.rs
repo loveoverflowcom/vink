@@ -30,10 +30,13 @@ use crate::endorsement_state::page_targets;
 use crate::endorsement_state::public_targets;
 use crate::ui::{
     adapters,
+    empty_state::EmptyState,
     patterns::{
         DiscussionThread, FeedbackComposer, FeedbackIntent, OwnRemoveAction, RemoveConfirmation,
     },
 };
+
+const DISCUSSION_EMPTY: &str = "Chưa có nhận xét nào được hiển thị.";
 
 #[cfg(feature = "browser")]
 #[derive(Clone)]
@@ -909,13 +912,13 @@ fn DiscussionLoaded(
         </Show>
         <Show when=move || !state.read().unavailable && !retry_skeleton.get()>
             <Show when=move || !state.read().loading && shows_empty(&state.read())>
-                <div class="vk-discussion-empty" role="status">
-                    <Icon name=IconName::ChatBubbleOutline size=IconSize::Small />
-                    <div>
-                        <p class="vk-discussion-empty__title">"Chưa có nhận xét nào được hiển thị."</p>
-                        {(!read_only).then(|| view! { <p class="vk-muted">"Nếu tác phẩm gợi được một ý hay một câu còn vương lại, bạn có thể mở lời trước."</p> })}
-                    </div>
-                </div>
+                {if read_only {
+                    view! { <EmptyState compact=true hook="vk-discussion-empty" icon=IconName::ChatBubbleOutline announce=true
+                        title=DISCUSSION_EMPTY /> }.into_any()
+                } else {
+                    view! { <EmptyState compact=true hook="vk-discussion-empty" icon=IconName::ChatBubbleOutline announce=true
+                        title=DISCUSSION_EMPTY message="Nếu tác phẩm gợi được một ý hay một câu còn vương lại, bạn có thể mở lời trước." /> }.into_any()
+                }}
             </Show>
             <Show when=move || state.read().restarted_tail>
                 <p role="status" class="vk-muted" data-testid="discussion-chain-restarted">"Đã làm mới nhận xét. Các trang sau cần được tải lại."</p>
