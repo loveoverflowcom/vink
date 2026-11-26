@@ -15,10 +15,6 @@ const APPROVED_ROUTES: &[&str] = &[
     "/ban-viet",
     "/ban-viet/:id",
     "/ban-viet/:id/kiem-duyet",
-    // Staff moderation workspace: still mounted; #555 (Epic #554, PR 3/4) retires it from Product.
-    "/kiem-duyet",
-    "/kiem-duyet/ca/:id",
-    "/kiem-duyet/phan-doi/:id",
     "/toi",
     "/toi/chinh-ho-so",
     "/toi/dia-chi",
@@ -205,6 +201,18 @@ mod tests {
             ))
             .is_err()
         );
+        for retired in [
+            "/kiem-duyet",
+            "/kiem-duyet/ca/:id",
+            "/kiem-duyet/phan-doi/:id",
+        ] {
+            assert!(
+                routes(&format!(
+                    "{source}<Route path=path!(\"{retired}\") view=Staff />"
+                ))
+                .is_err()
+            );
+        }
         assert!(routes(&format!("{source}<Route path=SOME_FIXTURE view=Preview />")).is_err());
         assert!(
             routes(&format!(

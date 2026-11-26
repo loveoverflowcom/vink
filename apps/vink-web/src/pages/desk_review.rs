@@ -352,7 +352,6 @@ async fn fetch_review(
 struct AppealActions {
     submit: Callback<(String, i64)>,
     busy: RwSignal<bool>,
-    issue: RwSignal<Option<ApiError>>,
     receipts: RwSignal<Vec<Appeal>>,
 }
 
@@ -376,11 +375,12 @@ fn ReviewDetails(target: ReviewTarget, session: Session) -> impl IntoView {
     });
     let feedback = RwSignal::new("");
     let busy = RwSignal::new(false);
-    let issue = RwSignal::new(None);
+    let denied = RwSignal::new(None::<ApiError>);
     let receipts = RwSignal::new(Vec::<Appeal>::new());
     let submit = Callback::new(move |(revision, version): (String, i64)| {
         if busy.get_untracked()
-            || issue.with_untracked(Option::is_some)
+            || denied.with_untracked(Option::is_some)
+            || !matches!(data.get_untracked(), Some((attempt, Ok(_))) if attempt == generation.get_untracked())
             || session.scope.get_untracked() != scope.get_value()
         {
             return;
@@ -433,7 +433,7 @@ fn ReviewDetails(target: ReviewTarget, session: Session) -> impl IntoView {
                         let feedback = document().get_element_by_id("desk-review-feedback");
                         request_animation_frame(move || {
                             use wasm_bindgen::JsCast;
-                            if generation.try_get_untracked() == Some(generation_at_start)
+                            if generation.try_get_untracked() == Some(generation_at_start + 1)
                                 && document()
                                     .active_element()
                                     .is_some_and(|el| el.tag_name() == "BODY")
@@ -448,9 +448,17 @@ fn ReviewDetails(target: ReviewTarget, session: Session) -> impl IntoView {
                         });
                     }
                 }
-                Ok(_) => issue.set(Some(ApiError::Unexpected { status: 200 })),
-                Err(error) => issue.set(Some(error)),
+                Err(error) if access_error(&error) => {
+                    denied.set(Some(error));
+                    busy.set(false);
+                    return;
+                }
+                Err(ApiError::VersionConflict { .. } | ApiError::Unexpected { status: 409 }) => {
+                    feedback.set("Quyết định đã thay đổi.")
+                }
+                _ => feedback.set("Chưa xác nhận được kết quả gửi yêu cầu."),
             }
+            generation.update(|n| *n += 1);
             busy.set(false);
         });
     });
@@ -458,21 +466,11 @@ fn ReviewDetails(target: ReviewTarget, session: Session) -> impl IntoView {
     let actions = AppealActions {
         submit,
         busy,
-        issue,
         receipts,
     };
-    let denied = Memo::new(move |_| issue.get().filter(access_error));
     view! {
         <div id="desk-review-content" class=CONTENT_CLASS>
             <p id="desk-review-feedback" tabindex="-1" role="status">{move || feedback.get()}</p>
-            {move || issue.get().filter(|e| !access_error(e)).map(|e| {
-                let message = match e {
-                    ApiError::Network | ApiError::Unavailable | ApiError::Unexpected { status: 200 | 500..=599 } =>
-                        "Chưa xác nhận được kết quả. Tải lại chi tiết để đối chiếu hồ sơ.",
-                    _ => "Quyết định hoặc quyền phản đối đã thay đổi. Tải lại chi tiết trước khi thử tiếp.",
-                };
-                view! { <p role="alert">{message}</p> }
-            })}
             <Suspense fallback=|| view! { <p role="status">"Đang tải chi tiết kiểm duyệt…"</p> }>
                 {move || {
                     if let Some(error) = denied.get() {
@@ -482,22 +480,21 @@ fn ReviewDetails(target: ReviewTarget, session: Session) -> impl IntoView {
                     match data.get() {
                         Some((attempt, Ok(data))) if current == attempt =>
                             review_content(data, &target.get_value(), actions),
-                        Some((attempt, Err(error))) if current == attempt =>
-                            view! { <p role="alert">{read_error(&error)}</p> }.into_any(),
+                        Some((attempt, Err(error))) if current == attempt => view! {
+                            <p role="alert">{read_error(&error)}</p>
+                            {(!access_error(&error)).then(move || view! {
+                                <Button id="desk-review-retry" variant=ButtonVariant::Tonal
+                                    on_press=move |_| {
+                                        if generation.get_untracked() == attempt {
+                                            generation.update(|n| *n += 1);
+                                        }
+                                    }>"Thử lại"</Button>
+                            })}
+                        }.into_any(),
                         _ => ().into_any(),
                     }
                 }}
             </Suspense>
-            <Button id="desk-review-reload" variant=ButtonVariant::Text
-                state=Signal::derive(move || if busy.get() { ActionState::pending("Đang ghi nhận…") } else { ActionState::Enabled })
-                on_press=move |_| {
-                    if !busy.get_untracked() {
-                        generation.update(|n| *n += 1);
-                        receipts.set(Vec::new());
-                        issue.set(None);
-                        feedback.set("");
-                    }
-                }>"Tải lại chi tiết"</Button>
         </div>
     }
 }
@@ -515,7 +512,7 @@ fn read_error(error: &ApiError) -> &'static str {
             "Phiên đăng nhập đã thay đổi. Hãy mở Tài khoản để kiểm tra lại."
         }
         ApiError::Forbidden | ApiError::NotFound => "Không mở được tác phẩm hoặc quyết định này.",
-        _ => "Chưa tải được chi tiết kiểm duyệt. Hãy thử tải lại.",
+        _ => "Chưa tải được chi tiết kiểm duyệt.",
     }
 }
 
@@ -672,16 +669,15 @@ fn revision_review(
     let appeal_target = StoredValue::new(appeal_target);
     let display_appeal = Memo::new(move |_| {
         if let Some((revision, version)) = appeal_target.get_value() {
-            actions
-                .receipts
-                .with(|rows| {
+            appeal.get_value().or_else(|| {
+                actions.receipts.with(|rows| {
                     rows.iter()
                         .find(|item| {
                             item.revision_id == revision && item.decision_version == version
                         })
                         .cloned()
                 })
-                .or_else(|| appeal.get_value())
+            })
         } else {
             None
         }
@@ -730,9 +726,7 @@ fn revision_review(
                     variant=ButtonVariant::Tonal
                     state=Signal::derive(move || {
                         if actions.busy.get() { ActionState::pending("Đang ghi nhận…") }
-                        else if actions.issue.with(Option::is_some) {
-                            ActionState::Disabled { reason: Some("Tải lại chi tiết để đối chiếu.".into()) }
-                        } else { ActionState::Enabled }
+                        else { ActionState::Enabled }
                     })
                     on_press=move |_| {
                         if let Some(target) = appeal_target.get_value() {

@@ -1967,9 +1967,6 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
 /* Own comment bodies preserve authored lines at every text size. */
 .vk-discussion-own-body { white-space: pre-wrap; overflow-wrap: anywhere; }
 
-/* Queue status has no reserved blank row after a settled read (#205). */
-.vk-moderation__queue > p:empty { display: none; }
-
 .vk-discovery #community-stream:focus-visible {
   outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
   outline-offset: var(--vk-size-focus-offset);

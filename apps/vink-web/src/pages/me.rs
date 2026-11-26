@@ -49,16 +49,6 @@ pub fn Me() -> impl IntoView {
             }
         })
     });
-    let review_access = LocalResource::new(move || {
-        let scope = session.profile_scope.get();
-        async move {
-            let scope = scope?;
-            crate::api::can_read_work_review_queue()
-                .await
-                .then_some(scope)
-        }
-    });
-
     view! {
         <Title text="Tài khoản — Vink" />
         <Meta name="robots" content="noindex" />
@@ -75,12 +65,6 @@ pub fn Me() -> impl IntoView {
                             {label}
                         </vink_ui::Link>
                     })}
-                {move || {
-                    let scope = session.profile_scope.get()?;
-                    (review_access.get().flatten().as_ref() == Some(&scope)).then(|| view! {
-                        <vink_ui::Link attr:id="me-moderation-link" href="/kiem-duyet">"Kiểm duyệt"</vink_ui::Link>
-                    })
-                }}
             </AccountHub>
             <Show when=move || !matches!(session.standing.get(), Standing::Active(_))>
                 <AccountAppearance />
