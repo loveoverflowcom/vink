@@ -243,182 +243,46 @@ const SHARED_UI_DIR: &str = "packages/ui-system/shared/";
 /// phases call them (derived from the dispatcher and `web.rs`), plus phases no xtask scenario
 /// runs. Helper modules map through their importers. A module that is neither registered nor
 /// imported by a registered one broadens to the full Web lane.
+#[rustfmt::skip]
 pub const BROWSER_MODULES: &[(&str, &[Scenario], &[&str])] = {
     use Scenario as S;
     &[
-        (
-            "apps/vink-web/e2e/auth-password-smoke.mjs",
-            &[S::Auth, S::Password, S::Standalone],
-            &[],
-        ),
+        ("apps/vink-web/e2e/auth-password-smoke.mjs", &[S::Auth, S::Password, S::Standalone], &[]),
         ("apps/vink-web/e2e/auth-smoke.mjs", &[S::Auth], &[]),
-        (
-            "apps/vink-web/e2e/author-search-smoke.mjs",
-            &[S::AuthorSearch],
-            &[],
-        ),
-        (
-            "apps/vink-web/e2e/author-works-smoke.mjs",
-            &[S::Desk],
-            &["author-works"],
-        ),
-        (
-            "apps/vink-web/e2e/desk-empty-smoke.mjs",
-            &[S::Desk],
-            &["desk-empty", "desk-empty-context"],
-        ),
-        (
-            "apps/vink-web/e2e/desk-lifecycle.mjs",
-            &[S::Desk],
-            &["desk-empty-context", "desk-layout"],
-        ),
-        (
-            "apps/vink-web/e2e/discovery-chip-geometry.mjs",
-            &[],
-            &["discovery-chip-geometry"],
-        ),
-        (
-            "apps/vink-web/e2e/discovery-return-position.mjs",
-            &[S::ReturnPosition],
-            &[],
-        ),
-        (
-            "apps/vink-web/e2e/discovery-smoke.mjs",
-            &[S::Discovery, S::Reader],
-            &["desk-layout", "public-search"],
-        ),
-        (
-            "apps/vink-web/e2e/document-budget.mjs",
-            &[],
-            &["document-budget"],
-        ),
-        (
-            "apps/vink-web/e2e/document.mjs",
-            &[S::Reader, S::Editor, S::EditorChrome, S::EditorFormat],
-            &["public-cache"],
-        ),
-        (
-            "apps/vink-web/e2e/draft-pagination-smoke.mjs",
-            &[S::Desk],
-            &["desk-pagination"],
-        ),
-        (
-            "apps/vink-web/e2e/editor-autosave.mjs",
-            &[S::Editor, S::EditorChrome, S::Restart],
-            &[],
-        ),
-        (
-            "apps/vink-web/e2e/editor-desk-regressions.mjs",
-            &[S::EditorFirstDraft, S::EditorFormat],
-            &[],
-        ),
-        (
-            "apps/vink-web/e2e/editor-markdown-budget.mjs",
-            &[S::EditorFormat],
-            &[],
-        ),
-        (
-            "apps/vink-web/e2e/editor-paper-first-smoke.mjs",
-            &[S::EditorChrome, S::EditorFormat],
-            &[],
-        ),
-        (
-            "apps/vink-web/e2e/editor-writing-smoke.mjs",
-            &[S::EditorChrome],
-            &[],
-        ),
-        (
-            "apps/vink-web/e2e/endorsement-smoke.mjs",
-            &[S::Discussion, S::Endorsement],
-            &[],
-        ),
-        (
-            "apps/vink-web/e2e/markdown-reader-smoke.mjs",
-            &[S::Review],
-            &[],
-        ),
-        (
-            "apps/vink-web/e2e/moderation-queue-smoke.mjs",
-            &[S::Review],
-            &[],
-        ),
-        (
-            "apps/vink-web/e2e/notifications-smoke.mjs",
-            &[S::Notifications],
-            &[],
-        ),
-        (
-            "apps/vink-web/e2e/public-storage-smoke.mjs",
-            &[S::Storage],
-            &[],
-        ),
-        (
-            "apps/vink-web/e2e/publication-author-smoke.mjs",
-            &[S::Publication],
-            &[],
-        ),
+        ("apps/vink-web/e2e/author-search-smoke.mjs", &[S::AuthorSearch], &[]),
+        ("apps/vink-web/e2e/author-works-smoke.mjs", &[S::Desk], &["author-works"]),
+        ("apps/vink-web/e2e/desk-empty-smoke.mjs", &[S::Desk], &["desk-empty", "desk-empty-context"]),
+        ("apps/vink-web/e2e/desk-lifecycle.mjs", &[S::Desk], &["desk-empty-context", "desk-layout"]),
+        ("apps/vink-web/e2e/discovery-chip-geometry.mjs", &[], &["discovery-chip-geometry"]),
+        ("apps/vink-web/e2e/discovery-return-position.mjs", &[S::ReturnPosition], &[]),
+        ("apps/vink-web/e2e/discovery-smoke.mjs", &[S::Discovery, S::Reader], &["desk-layout", "public-search"]),
+        ("apps/vink-web/e2e/document-budget.mjs", &[], &["document-budget"]),
+        ("apps/vink-web/e2e/document.mjs", &[S::Reader, S::Editor, S::EditorChrome, S::EditorFormat], &["public-cache"]),
+        ("apps/vink-web/e2e/draft-pagination-smoke.mjs", &[S::Desk], &["desk-pagination"]),
+        ("apps/vink-web/e2e/editor-autosave.mjs", &[S::Editor, S::EditorChrome, S::Restart], &[]),
+        ("apps/vink-web/e2e/editor-desk-regressions.mjs", &[S::EditorFirstDraft, S::EditorFormat], &[]),
+        ("apps/vink-web/e2e/editor-markdown-budget.mjs", &[S::EditorFormat], &[]),
+        ("apps/vink-web/e2e/editor-paper-first-smoke.mjs", &[S::EditorChrome, S::EditorFormat], &[]),
+        ("apps/vink-web/e2e/editor-writing-smoke.mjs", &[S::EditorChrome], &[]),
+        ("apps/vink-web/e2e/endorsement-smoke.mjs", &[S::Discussion, S::Endorsement], &[]),
+        ("apps/vink-web/e2e/markdown-reader-smoke.mjs", &[S::Review], &[]),
+        ("apps/vink-web/e2e/moderation-queue-smoke.mjs", &[S::Review], &[]),
+        ("apps/vink-web/e2e/notifications-smoke.mjs", &[S::Notifications], &[]),
+        ("apps/vink-web/e2e/public-storage-smoke.mjs", &[S::Storage], &[]),
+        ("apps/vink-web/e2e/publication-author-smoke.mjs", &[S::Publication], &[]),
         ("apps/vink-web/e2e/reader-auth-smoke.mjs", &[S::Auth], &[]),
-        (
-            "apps/vink-web/e2e/reader-containment.mjs",
-            &[],
-            &["reader-containment"],
-        ),
-        (
-            "apps/vink-web/e2e/reader-intent-cost.mjs",
-            &[],
-            &["reader-intent-cost"],
-        ),
-        (
-            "apps/vink-web/e2e/reader-ssr-boundary.mjs",
-            &[S::Reader],
-            &["reader-guest-history"],
-        ),
-        (
-            "apps/vink-web/e2e/reader-startup.mjs",
-            &[],
-            &["reader-startup"],
-        ),
-        (
-            "apps/vink-web/e2e/review-withdrawn-smoke.mjs",
-            &[S::Review],
-            &[],
-        ),
-        (
-            "apps/vink-web/e2e/visual-evidence.mjs",
-            &[
-                S::Reader,
-                S::Discussion,
-                S::Appearance,
-                S::Desk,
-                S::Editor,
-                S::EditorChrome,
-                S::EditorFormat,
-            ],
-            &[
-                "appearance",
-                "bottom-navigation",
-                "desk-layout",
-                "discussion-only",
-                "first-paint",
-                "public-cache",
-            ],
-        ),
-        (
-            "apps/vink-web/e2e/web-perf-baseline.mjs",
-            &[S::PerfBaseline],
-            &[],
-        ),
-        (
-            "apps/vink-web/e2e/web-request-ledger.mjs",
-            &[],
-            &["public-cache"],
-        ),
+        ("apps/vink-web/e2e/reader-containment.mjs", &[], &["reader-containment"]),
+        ("apps/vink-web/e2e/reader-intent-cost.mjs", &[], &["reader-intent-cost"]),
+        ("apps/vink-web/e2e/reader-ssr-boundary.mjs", &[S::Reader], &["reader-guest-history"]),
+        ("apps/vink-web/e2e/reader-startup.mjs", &[], &["reader-startup"]),
+        ("apps/vink-web/e2e/review-withdrawn-smoke.mjs", &[S::Review], &[]),
+        ("apps/vink-web/e2e/visual-evidence.mjs",
+            &[S::Reader, S::Discussion, S::Appearance, S::Desk, S::Editor, S::EditorChrome, S::EditorFormat],
+            &["appearance", "bottom-navigation", "desk-layout", "discussion-only", "first-paint", "public-cache"]),
+        ("apps/vink-web/e2e/web-perf-baseline.mjs", &[S::PerfBaseline], &[]),
+        ("apps/vink-web/e2e/web-request-ledger.mjs", &[], &["public-cache"]),
         ("apps/vink-web/e2e/work-views-smoke.mjs", &[S::Reader], &[]),
-        (
-            "packages/ui-system/leptos/preview/e2e/select-geometry.mjs",
-            &[S::Desk],
-            &["select-chevron"],
-        ),
+        ("packages/ui-system/leptos/preview/e2e/select-geometry.mjs", &[S::Desk], &["select-chevron"]),
     ]
 };
 pub const BROWSER_DISPATCHER: &str = "apps/vink-web/e2e/browser-smoke.mjs";
@@ -501,6 +365,7 @@ pub enum Role {
 }
 
 /// Every xtask module and the lanes whose behavior it implements.
+#[rustfmt::skip]
 pub const XTASK_MODULES: &[(&str, &[Role])] = {
     use Role as R;
     &[
