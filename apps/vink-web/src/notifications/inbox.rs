@@ -4,7 +4,8 @@ use vink_patterns::{
     NotificationGroup, NotificationLeading, NotificationRow, NotificationRowFacts,
 };
 use vink_ui::{
-    ActionState, Button, ButtonVariant, ExpressiveShape, IconButton, IconName, Person, ShapeTone,
+    ActionState, Button, ButtonVariant, ExpressiveShape, HeadingLevel, IconButton, IconName,
+    Person, ShapeMark, ShapeTone,
 };
 
 use super::contract::{Item, Target, segment};
@@ -62,7 +63,7 @@ pub(crate) fn InboxPopover(open: Signal<bool>, on_close: Callback<()>) -> impl I
             <IconButton label="Đóng thông báo" icon=IconName::Close on_press=move |_| on_close.run(()) />
         </header>
         <Show when=move || open.get()>
-            <div class="vk-notif-popover__scroll"><InboxBody owner /></div>
+            <div class="vk-notif-popover__scroll"><InboxBody owner compact=true /></div>
         </Show>
         <Show when=move || open.get() && owner.inbox.with(|inbox| inbox.next.is_some())>
             <footer class="vk-notif-popover__foot">
@@ -92,7 +93,12 @@ fn ReadAll(owner: Notifications) -> impl IntoView {
 }
 
 #[component]
-fn InboxBody(owner: Notifications) -> impl IntoView {
+fn InboxBody(owner: Notifications, #[prop(optional)] compact: bool) -> impl IntoView {
+    let empty_heading = if compact {
+        HeadingLevel::H3
+    } else {
+        HeadingLevel::H2
+    };
     #[cfg(feature = "browser")]
     let navigation = crate::navigation::use_navigation_guard();
     let groups = Memo::new(move |_| {
@@ -156,7 +162,7 @@ fn InboxBody(owner: Notifications) -> impl IntoView {
                             <Failure message="Chưa kiểm tra được phiên đăng nhập." retry=Callback::new(move |()| owner.session.refresh()) />
                         }.into_any(),
                         _ => view! {
-                            <EmptyState hook="vk-notif-empty" icon=IconName::Lock message="Đăng nhập để xem thông báo của bạn.">
+                            <EmptyState compact hook="vk-notif-empty" icon=IconName::Lock message="Đăng nhập để xem thông báo của bạn.">
                                 <a href="/toi" class=ButtonVariant::Tonal.classes()>"Mở Tài khoản"</a>
                             </EmptyState>
                         }.into_any(),
@@ -167,7 +173,9 @@ fn InboxBody(owner: Notifications) -> impl IntoView {
                     (false, _, _) => view! { <Loading /> }.into_any(),
                     (true, Load::Failed, _) => view! { <Failure message="Chưa cập nhật được thông báo." retry=refresh /> }.into_any(),
                     (true, Load::Idle, false) if inbox.items.is_empty() => view! {
-                        <EmptyState hook="vk-notif-empty" icon=IconName::NotificationsNone title="Chưa có thông báo."
+                        <EmptyState compact hook="vk-notif-empty" heading=empty_heading title="Chưa có thông báo."
+                            mark=Box::new(|| view! { <ShapeMark shape=ExpressiveShape::Cookie
+                                tone=ShapeTone::PrimaryFixed icon=IconName::NotificationsNone /> }.into_any())
                             message="Tương tác và kết quả kiểm duyệt sẽ xuất hiện ở đây." />
                     }.into_any(),
                     _ => ().into_any(),

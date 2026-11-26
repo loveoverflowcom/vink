@@ -24,16 +24,17 @@ impl EmptyArtwork {
     }
 }
 
-/// One decoration (artwork, icon or none), an HTML title/message and real caller-owned actions.
+/// One decoration (artwork, decorative mark, icon or none), an HTML title/message and real caller-owned actions.
 /// `announce` makes the text group (title + message, never the actions) one polite status;
 /// opt in only when the caller has no other result announcement.
 #[component]
 pub fn EmptyState(
     #[prop(optional)] artwork: Option<EmptyArtwork>,
     #[prop(optional)] icon: Option<vink_ui::IconName>,
+    #[prop(optional)] mark: Option<Children>,
     #[prop(default = vink_ui::HeadingLevel::H3)] heading: vink_ui::HeadingLevel,
     #[prop(optional)] title: Option<&'static str>,
-    #[prop(optional, into)] message: Option<String>,
+    #[prop(optional, into)] message: String,
     #[prop(optional)] announce: bool,
     /// Region-local state in normal flow: smaller decoration and rhythm, no artwork.
     #[prop(optional)]
@@ -54,18 +55,31 @@ pub fn EmptyState(
         (false, Some(hook)) => format!("vk-empty-state {hook}"),
         (true, Some(hook)) => format!("vk-empty-state vk-empty-state--compact {hook}"),
     };
+    let decoration = if let Some(artwork) = artwork {
+        Some(view! {
+            <img class="vk-empty-state__art" src=crate::asset_url(artwork.src()) alt="" width="512" height="427" decoding="async" />
+        }.into_any())
+    } else if let Some(mark) = mark {
+        Some(mark())
+    } else {
+        icon.map(|name| {
+            view! {
+                <span class="vk-empty-state__icon"><vink_ui::Icon name /></span>
+            }
+            .into_any()
+        })
+    };
+    let title_role = match heading {
+        vink_ui::HeadingLevel::H1 => vink_ui::TypeRole::Headline,
+        _ => vink_ui::TypeRole::Title,
+    };
     view! {
         <div class=class id=id>
-            {artwork.map(|artwork| view! {
-                <img class="vk-empty-state__art" src=crate::asset_url(artwork.src()) alt="" width="512" height="427" decoding="async" />
-            })}
-            {icon.map(|name| view! {
-                <span class="vk-empty-state__icon"><vink_ui::Icon name /></span>
-            })}
+            {decoration}
             <div class="vk-empty-state__text" role=announce.then_some("status") aria-atomic=announce.then_some("true")>
                 {title.map(|title| view! { <vink_ui::Heading class:vk-empty-state__title=true
-                    level=heading role=vink_ui::TypeRole::Title>{title}</vink_ui::Heading> })}
-                {message.map(|message| view! { <p class="vk-empty-state__message">{message}</p> })}
+                    level=heading role=title_role>{title}</vink_ui::Heading> })}
+                {(!message.is_empty()).then(|| view! { <p class="vk-empty-state__message">{message}</p> })}
             </div>
             {children.map(|children| view! { <div class="vk-empty-state__actions">{children()}</div> })}
         </div>

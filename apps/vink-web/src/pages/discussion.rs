@@ -36,8 +36,6 @@ use crate::ui::{
     },
 };
 
-const DISCUSSION_EMPTY: &str = "Chưa có nhận xét nào được hiển thị.";
-
 #[cfg(feature = "browser")]
 #[derive(Clone)]
 struct TransportOwner(leptos::reactive::owner::WeakOwner);
@@ -912,13 +910,11 @@ fn DiscussionLoaded(
         </Show>
         <Show when=move || !state.read().unavailable && !retry_skeleton.get()>
             <Show when=move || !state.read().loading && shows_empty(&state.read())>
-                {if read_only {
-                    view! { <EmptyState compact=true hook="vk-discussion-empty" icon=IconName::ChatBubbleOutline announce=true
-                        title=DISCUSSION_EMPTY /> }.into_any()
-                } else {
-                    view! { <EmptyState compact=true hook="vk-discussion-empty" icon=IconName::ChatBubbleOutline announce=true
-                        title=DISCUSSION_EMPTY message="Nếu tác phẩm gợi được một ý hay một câu còn vương lại, bạn có thể mở lời trước." /> }.into_any()
-                }}
+                <EmptyState compact=true hook="vk-discussion-empty" icon=IconName::ChatBubbleOutline announce=true
+                    title="Chưa có nhận xét nào được hiển thị."
+                    message=if read_only { "" } else {
+                        "Nếu tác phẩm gợi được một ý hay một câu còn vương lại, bạn có thể mở lời trước."
+                    } />
             </Show>
             <Show when=move || state.read().restarted_tail>
                 <p role="status" class="vk-muted" data-testid="discussion-chain-restarted">"Đã làm mới nhận xét. Các trang sau cần được tải lại."</p>

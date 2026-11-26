@@ -1988,9 +1988,6 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
   .vk-discovery, #community-stream, #public-collection, #public-results, .vk-state-page, .vk-state-page > .vk-state-slot) {
   display: flex;
   flex-direction: column;
-}
-.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact), .vk-desk-loading) :is(.vk-desk--index, .vk-drafts-region, .vk-desk-works, .vk-draft-list,
-  .vk-discovery, #community-stream, #public-collection, #public-results, .vk-state-page, .vk-state-page > .vk-state-slot) {
   flex: 1 0 auto;
 }
 /* Auto inline margins disable flex stretch, so keep each owner's measure instead of shrinking to content. */
@@ -2031,6 +2028,7 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
   gap: var(--vk-space-1);
   min-inline-size: 0;
   max-inline-size: 100%;
+  overflow-wrap: anywhere;
 }
 /* Region state (#558): discussion, dialog, profile lists. Same hierarchy, quieter decoration,
  * no nested card. It centres on the region's inline axis and keeps normal block flow. */
@@ -2628,6 +2626,14 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
   min-block-size: 72px;
   border-radius: var(--vk-radius-lg);
   background: var(--vk-surface-container-low);
+}
+.vk-notif-empty > .vk-ui-shape-mark {
+  --vk-ui-shape-size: 96px;
+  --vk-ui-shape-icon-size: 40px;
+}
+.vk-notif-empty.vk-empty-state--compact > .vk-ui-shape-mark {
+  --vk-ui-shape-size: 56px;
+  --vk-ui-shape-icon-size: var(--vk-size-notification-system-icon);
 }
 .vk-notif-back { display: inline-grid; align-items: center; min-block-size: var(--vk-size-hit-target); }
 .vk-notif-decision { max-inline-size: min(100%, 48rem); }

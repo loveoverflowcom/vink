@@ -680,7 +680,7 @@ fn NotFoundContent(#[prop(default = "/".to_string())] return_href: String) -> im
     view! {
         <Title text="Không tìm thấy — Vink" />
         <div class="vk-state-page" data-testid="not-found">
-            <EmptyState icon=IconName::VisibilityOff heading=HeadingLevel::H1 title="Không tìm thấy trang này."
+            <EmptyState icon=IconName::Search heading=HeadingLevel::H1 title="Không tìm thấy trang này."
                 message="Tác phẩm có thể chưa được công khai hoặc đường dẫn không đúng.">
                 <a class=vink_ui::ButtonVariant::Tonal.classes() href=return_href>"Về Khám phá"</a>
             </EmptyState>
