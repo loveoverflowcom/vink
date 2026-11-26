@@ -6,10 +6,12 @@ use uuid::Uuid;
 use vink_app::application::{
     Vink,
     ports::{PrincipalStore, StoreError},
+    work_view::WorkViewResult,
 };
 use vink_app::domain::discussion::moderation::ModerationAction;
 use vink_app::domain::ids::PrincipalId;
 use vink_app::domain::principal::{PenName, SubjectKey};
+use vink_app::domain::work_view::ViewRefusal;
 use vink_app::identity::client::AccountDeletion;
 use vink_app::persistence::PgStore;
 
@@ -350,17 +352,20 @@ async fn account_deletion_retries_atomically_and_keeps_only_neutral_public_proje
 
     let now = operation.accepted_at + time::Duration::minutes(1);
     let id = work_view::event_at(now);
-    assert!(
-        work_view::view(
-            &vink,
-            work_view::guest(),
-            vink_app::domain::ids::WorkId::from_uuid(work),
-            &id,
-            now
-        )
-        .await
-        .is_err()
+    let record = work_view::view(
+        &vink,
+        work_view::guest(),
+        vink_app::domain::ids::WorkId::from_uuid(work),
+        &id,
+        now,
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        record.result,
+        WorkViewResult::Ignored(ViewRefusal::WorkNotFound)
     );
+    assert_eq!(record.basis, None);
     assert_eq!(
         sqlx::query_scalar::<_, i64>("SELECT count(*) FROM work_view_receipts WHERE work_id = $1")
             .bind(work)

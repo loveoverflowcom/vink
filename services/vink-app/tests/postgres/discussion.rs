@@ -2192,6 +2192,7 @@ async fn upgrade_records_premoderation_for_existing_comments(pool: PgPool) {
         );
     }
     // The upgraded database admits new comments through the store as before.
+    legacy_standing_fixture(&pool).await;
     let id = post(&vink, other(), None, "Sau nâng cấp").await;
     assert_eq!(
         admission_of(&pool, id).await,

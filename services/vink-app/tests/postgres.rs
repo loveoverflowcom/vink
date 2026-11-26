@@ -239,6 +239,19 @@ async fn before_cutover(pool: &PgPool) -> bool {
     !applied
 }
 
+/// Older migration fixtures sometimes exercise a current store against a deliberately staged
+/// schema. There can be no retired accounts at that boundary. Provide only an empty read model
+/// for the current standing queries. Drop it if the fixture migrates to the latest schema.
+async fn legacy_standing_fixture(pool: &PgPool) {
+    sqlx::query(
+        "CREATE VIEW account_deletions AS
+         SELECT NULL::uuid AS principal_id, NULL::uuid AS account_id WHERE false",
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
 /// The dev-seed sample. On a schema older than the canonical cutover this writes the rows exactly
 /// as binaries of that time did (retired `{schema_version, blocks}` shape, v1 content hash); the
 /// current runtime never reads that shape, so such tests check older migrations at SQL level.

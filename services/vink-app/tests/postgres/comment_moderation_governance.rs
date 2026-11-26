@@ -1065,6 +1065,7 @@ async fn schema_provenance_atomicity_history_and_upgrade_backout(pool: PgPool) {
     else {
         panic!("expected grant");
     };
+    legacy_standing_fixture(&pool).await;
     let legacy_comment = post(&vink, other(), None, "Duyệt trước nâng cấp").await;
     sqlx::query("UPDATE comments SET review = 'approved', moderation_version = 2 WHERE id = $1")
         .bind(legacy_comment.as_uuid())

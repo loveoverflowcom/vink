@@ -1017,6 +1017,7 @@ async fn upgrade_and_unused_backout_preserve_comments_and_human_audit(pool: PgPo
     previous.run(&pool).await.unwrap();
     let vink = setup(&pool).await;
     // A comment approved + audited by the pre-governance binary (before 20261117/20261119 tables).
+    legacy_standing_fixture(&pool).await;
     let id = post(&vink, "Nội dung cần kiểm lại, không ghi vào log").await;
     let grant_id: Uuid = sqlx::query_scalar(
         "SELECT id FROM discussion_moderator_grants WHERE principal_id = $1 AND revoked_at IS NULL",
