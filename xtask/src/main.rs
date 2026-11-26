@@ -70,6 +70,8 @@ usage: cargo xtask <command>
                          integration tests default to 2 threads (RUST_TEST_THREADS overrides)
   verify web             SSR + hydration + desk interactions in headless Chrome
   verify all             quick, discussion, expressions, postgres and web in order
+  verify changed [--plan]
+                         select (and run) the xtask checks a Git diff needs; see --help
   decision --help        inspect, compare and propose versioned decisions
   ui-tokens [--check]    regenerate UI token CSS/Rust/Kotlin from packages/ui-system/shared
                          (--check: write nothing, fail on missing or drifted output)
@@ -100,7 +102,7 @@ fn main() -> ExitCode {
         return ExitCode::SUCCESS;
     }
     if let ["verify", "changed", rest @ ..] = args.as_slice() {
-        return finish(changed::describe(&root(), rest).map(|plan| print!("{plan}")));
+        return changed::run(&root(), rest);
     }
     if let ["infra", rest @ ..] = args.as_slice() {
         if matches!(rest, ["build-images", ..]) {

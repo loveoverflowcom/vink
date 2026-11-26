@@ -1,495 +1,600 @@
-//! Advisory selection over local Git inputs. Only the explicit selectors execute workloads.
+//! Diff-aware verification (#501). `verify changed --plan` reads pinned Git inputs and the
+//! checkout's Cargo/Tailwind/Kani/browser-module facts, then selects existing xtask selectors
+//! with a reason per changed path. `verify changed` computes the same plan and executes exactly
+//! those selectors, stopping as soon as the inputs drift from the plan.
+mod exec;
+mod git;
+mod graph;
+mod rules;
+
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Write,
     path::Path,
-    process::Command,
+    process::ExitCode,
+    time::{Duration, Instant},
 };
 
-const USAGE: &str = "verify changed --base REV (--head REV | --worktree) --plan";
-const OWNER_DIRS: &[(&str, &str)] = &[
-    ("packages/ui-system/leptos/preview/", "preview"),
-    ("packages/ui-system/leptos/", "ui"),
-    ("packages/vink-patterns/leptos/", "patterns"),
-    ("packages/markdown-text/", "markdown"),
-    ("packages/expressions/", "expressions"),
-    ("packages/store-postgres/", "store"),
-    ("services/vink-app/", "app"),
-    ("services/vink-identity/", "identity"),
-    ("services/vink-notifications/", "notifications"),
-    ("apps/vink-web/", "web"),
-    ("xtask/", "xtask"),
-];
+use sha2::{Digest, Sha256};
 
-fn git(root: &Path, args: &[&str]) -> Result<Vec<u8>, String> {
-    // The executor always uses its compiled checkout. A hook or exported alternate index
-    // must not supply a different set of Git inputs for a coverage claim about that tree.
-    for key in [
-        "GIT_DIR",
-        "GIT_WORK_TREE",
-        "GIT_COMMON_DIR",
-        "GIT_INDEX_FILE",
+/// The integration branch's remote-tracking ref; resolved locally, never fetched.
+pub const DEFAULT_BASE: &str = "origin/develop";
+const USAGE: &str = "usage: cargo xtask verify changed [--base REV] [--head REV | --worktree] [--only CHECK]... [--expect PLAN_ID] [--plan]";
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Args {
+    pub base: Option<String>,
+    /// Committed scope ending at this revision; `None` is the worktree scope.
+    pub head: Option<String>,
+    pub plan: bool,
+    pub only: Vec<String>,
+    pub expect: Option<String>,
+}
+
+/// `cargo xtask verify static docs` and `verify  static docs` name the same check.
+fn normalize(check: &str) -> String {
+    let words: Vec<_> = check.split_ascii_whitespace().collect();
+    let words = match words.as_slice() {
+        ["cargo", "xtask", rest @ ..] => rest,
+        rest => rest,
+    };
+    words.join(" ")
+}
+
+pub fn parse(args: &[&str]) -> Result<Args, String> {
+    let mut parsed = Args::default();
+    let mut worktree = false;
+    let mut i = 0;
+    while i < args.len() {
+        let flag = args[i];
+        let mut value = || {
+            i += 1;
+            args.get(i)
+                .filter(|v| !v.trim().is_empty() && !v.starts_with("--"))
+                .map(|v| v.to_string())
+                .ok_or_else(|| format!("{flag} needs a value; {USAGE}"))
+        };
+        match flag {
+            "--base" if parsed.base.is_none() => parsed.base = Some(value()?),
+            "--head" if parsed.head.is_none() && !worktree => parsed.head = Some(value()?),
+            "--worktree" if parsed.head.is_none() && !worktree => worktree = true,
+            "--plan" if !parsed.plan => parsed.plan = true,
+            "--expect" if parsed.expect.is_none() => parsed.expect = Some(value()?),
+            "--only" => {
+                let check = normalize(&value()?);
+                if parsed.only.contains(&check) {
+                    return Err(format!("duplicate --only `{check}`"));
+                }
+                parsed.only.push(check);
+            }
+            other => return Err(format!("unsupported or repeated option `{other}`; {USAGE}")),
+        }
+        i += 1;
+    }
+    Ok(parsed)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Cost {
+    Static,
+    Compile,
+    Unit,
+    Formal,
+    Postgres,
+    Browser,
+    Lane,
+}
+
+impl Cost {
+    fn describe(self) -> &'static str {
+        match self {
+            Self::Static => "static: xtask/Node checker, no product compile",
+            Self::Compile => {
+                "compile: cargo check of the selected target graph (cold minutes, warm seconds)"
+            }
+            Self::Unit => "unit: compile+link one owner test target, then run it",
+            Self::Formal => "formal: pinned Quint (Node) or Kani/CBMC plus Rust replay",
+            Self::Postgres => "postgres: test binaries plus a real disposable cluster",
+            Self::Browser => "browser: WASM/bindgen/App (or Gradle) build plus Chrome per scenario",
+            Self::Lane => {
+                "full lane: workspace clippy (server + 3 WASM), doctests, unit and static"
+            }
+        }
+    }
+
+    fn name(self) -> &'static str {
+        match self {
+            Self::Static => "static",
+            Self::Compile => "compile",
+            Self::Unit => "unit",
+            Self::Formal => "formal",
+            Self::Postgres => "postgres",
+            Self::Browser => "browser",
+            Self::Lane => "lane",
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Check {
+    pub command: String,
+    pub entry: rules::Entry,
+    pub cost: Cost,
+    pub needs: String,
+}
+
+/// Validates a selector against the real CLI parser and summarizes its prerequisites.
+pub fn describe_check(command: &str) -> Result<(Cost, String), String> {
+    let words: Vec<_> = command.split_ascii_whitespace().collect();
+    let fixed = match words.as_slice() {
+        ["verify", "quick"] => Some((Cost::Lane, "rustfmt, wasm32 target; no database or browser")),
+        ["verify", "discussion"] => Some((
+            Cost::Formal,
+            "Node 22+/npm (pinned Quint); vink-app and vink-web replay tests",
+        )),
+        ["verify", "expressions"] => Some((
+            Cost::Formal,
+            "Node 22+/npm (pinned Quint); vink-expressions replay",
+        )),
+        ["verify", "kani"] => Some((Cost::Formal, "pinned cargo-kani")),
+        ["verify", "postgres"] => Some((
+            Cost::Postgres,
+            "VINK_TEST_DATABASE_URL, psql 15+, pg_dump/pg_restore; four owners then lifecycle",
+        )),
+        ["ui-preview", "cmp", "verify"] => Some((
+            Cost::Browser,
+            "JDK 17 and the Gradle wrapper (Compose desktop preview)",
+        )),
+        _ => None,
+    };
+    if let Some((cost, needs)) = fixed {
+        return Ok((cost, needs.to_string()));
+    }
+    let mut args = words.clone();
+    args.push("--plan");
+    let invocation = crate::cli::parse(&args)
+        .map_err(|e| format!("`{command}`: {e}"))?
+        .filter(|i| i.plan.request.operation == crate::plan::Operation::Verify)
+        .ok_or_else(|| format!("`{command}` is not a verify selector"))?;
+    let plan = invocation.plan;
+    use crate::plan::Target as T;
+    let cost = match plan.request.target {
+        T::Static(_) => Cost::Static,
+        T::Check(_, _) => Cost::Compile,
+        T::Unit(_) => Cost::Unit,
+        T::Postgres(_) => Cost::Postgres,
+        _ => Cost::Browser,
+    };
+    let mut needs = vec![format!("tools {:?}", plan.tools)];
+    if !plan.artifacts.is_empty() {
+        needs.push(format!("artifacts {:?}", plan.artifacts));
+    }
+    if !plan.services.is_empty() {
+        needs.push(format!("services {:?}", plan.services));
+    }
+    if !plan.databases.is_empty() {
+        needs.push(format!("databases {:?}", plan.databases));
+    }
+    Ok((cost, needs.join("; ")))
+}
+
+/// Merges Web scenarios, folds subsumed commands into the broader one and validates every
+/// selector through the real CLI parser. Ordered cheapest first.
+pub fn checks(
+    selection: &rules::Selection,
+) -> Result<(Vec<Check>, BTreeMap<String, &'static str>), String> {
+    let mut commands = selection.commands();
+    let subsumed = rules::subsumed(&commands);
+    for (cmd, by) in &subsumed {
+        if let Some(entry) = commands.remove(cmd) {
+            let target = commands
+                .get_mut(*by)
+                .expect("subsuming command is selected");
+            for reason in entry.reasons {
+                target.reasons.insert(format!("covers `{cmd}`: {reason}"));
+            }
+            target.paths.extend(entry.paths);
+        }
+    }
+    let mut checks = Vec::new();
+    for (command, entry) in commands {
+        let (cost, needs) = describe_check(&command)
+            .map_err(|e| format!("planner emitted an invalid selector: {e}"))?;
+        checks.push(Check {
+            command,
+            entry,
+            cost,
+            needs,
+        });
+    }
+    checks.sort_by(|a, b| (a.cost, &a.command).cmp(&(b.cost, &b.command)));
+    Ok((checks, subsumed))
+}
+
+pub struct ChangedPlan {
+    pub snapshot: git::Snapshot,
+    pub base_defaulted: bool,
+    pub selection: rules::Selection,
+    pub checks: Vec<Check>,
+    pub subsumed: BTreeMap<String, &'static str>,
+    /// Short digest of the input fingerprint and the selected commands.
+    pub id: String,
+    pub graph: Option<String>,
+}
+
+impl ChangedPlan {
+    pub fn is_no_work(&self) -> bool {
+        self.snapshot.is_empty()
+    }
+}
+
+/// Builds the plan. The graph loader runs only when the diff is nonempty.
+pub fn compute(
+    root: &Path,
+    args: &Args,
+    load: impl FnOnce() -> Result<graph::Graph, String>,
+) -> Result<ChangedPlan, String> {
+    let base_ref = args.base.as_deref().unwrap_or(DEFAULT_BASE);
+    let snapshot = git::snapshot(root, base_ref, args.head.as_deref())?;
+    let mut selection = rules::Selection::default();
+    let mut summary = None;
+    if !snapshot.is_empty() {
+        let graph = load()?;
+        summary = Some(format!(
+            "cargo metadata --no-deps --offline ({} workspace packages); {} embedded inputs; {} browser import edges; {} Tailwind entries; {} Kani inputs",
+            graph.packages.len(),
+            graph.includes.len(),
+            graph.importers.values().map(BTreeSet::len).sum::<usize>(),
+            graph.stylesheets.len(),
+            graph.kani_inputs.len()
+        ));
+        for change in &snapshot.changes {
+            for path in &change.paths {
+                if change.gitlink {
+                    selection
+                        .fallback("submodule/gitlink content is outside this repository", path);
+                }
+                if change.status.starts_with(['T', 'U']) {
+                    selection.fallback("file type changed or the index is unmerged", path);
+                }
+                rules::classify(&mut selection, &graph, path, &graph.includers(path));
+            }
+        }
+        selection.expand_broad(&graph);
+    }
+    let (checks, subsumed) = checks(&selection)?;
+    let mut hasher = Sha256::new();
+    hasher.update(&snapshot.fingerprint);
+    for check in &checks {
+        hasher.update(format!("\n{}", check.command));
+    }
+    let id: String = hasher.finalize()[..8]
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    Ok(ChangedPlan {
+        base_defaulted: args.base.is_none(),
+        snapshot,
+        selection,
+        checks,
+        subsumed,
+        id,
+        graph: summary,
+    })
+}
+
+fn list(paths: &BTreeSet<String>, limit: usize) -> String {
+    let mut shown: Vec<_> = paths.iter().take(limit).map(String::as_str).collect();
+    let more = paths.len().saturating_sub(limit);
+    let suffix = if more > 0 {
+        format!(" (+{more} more)")
+    } else {
+        String::new()
+    };
+    if shown.is_empty() {
+        shown.push("—");
+    }
+    format!("{}{suffix}", shown.join(", "))
+}
+
+pub fn render(plan: &ChangedPlan, elapsed: Duration, executing: bool) -> String {
+    let s = &plan.snapshot;
+    let mut out = String::new();
+    let scope = match s.mode {
+        git::Mode::Worktree => {
+            "worktree: merge-base..HEAD + staged + unstaged + non-ignored untracked"
+        }
+        git::Mode::Committed => "committed: merge-base..head commits only (dirty files excluded)",
+    };
+    let mode = match (plan.is_no_work(), executing) {
+        (true, _) => "NO_WORK",
+        (false, false) => "plan only; nothing executed",
+        (false, true) => "executing the checks below in order",
+    };
+    writeln!(out, "verify changed plan {} — {mode}", plan.id).unwrap();
+    writeln!(out, "scope: {scope}").unwrap();
+    writeln!(
+        out,
+        "base: {} = {}{}",
+        s.base_ref,
+        s.base,
+        if plan.base_defaulted {
+            " (default --base; local ref, not fetched by xtask)"
+        } else {
+            ""
+        }
+    )
+    .unwrap();
+    let excluded = if s.base_only > 0 {
+        format!("; {} commit(s) only on base are excluded", s.base_only)
+    } else {
+        String::new()
+    };
+    writeln!(
+        out,
+        "merge-base: {} ({} commit(s) to head{excluded})",
+        s.merge_base, s.head_only
+    )
+    .unwrap();
+    writeln!(out, "head: {} = {}", s.head_ref, s.head).unwrap();
+    writeln!(out, "inputs fingerprint: {}", s.fingerprint).unwrap();
+    if plan.is_no_work() {
+        out.push_str("status: NO_WORK — no changed paths in this scope; no checks selected and no coverage established (this is not a PASS).\n");
+        return out;
+    }
+    if let Some(graph) = &plan.graph {
+        writeln!(out, "dependency facts: {graph}").unwrap();
+    }
+    writeln!(
+        out,
+        "\nchanged paths ({}):",
+        s.changes.iter().map(|c| c.paths.len()).sum::<usize>()
+    )
+    .unwrap();
+    for change in &s.changes {
+        let owners: BTreeSet<_> = change
+            .paths
+            .iter()
+            .flat_map(|p| plan.selection.owners.get(p).into_iter().flatten())
+            .map(String::as_str)
+            .collect();
+        writeln!(
+            out,
+            "  {:<9} {:<4} {}  [{}]",
+            change.layer.name(),
+            change.status,
+            change.paths.join(" -> "),
+            owners.into_iter().collect::<Vec<_>>().join(", ")
+        )
+        .unwrap();
+    }
+    writeln!(
+        out,
+        "\nselected checks ({}), cheapest first:",
+        plan.checks.len()
+    )
+    .unwrap();
+    for (i, check) in plan.checks.iter().enumerate() {
+        writeln!(out, "{:>3}. cargo xtask {}", i + 1, check.command).unwrap();
+        writeln!(out, "     cost: {}", check.cost.describe()).unwrap();
+        writeln!(out, "     needs: {}", check.needs).unwrap();
+        for reason in check.entry.reasons.iter().take(6) {
+            writeln!(out, "     why: {reason}").unwrap();
+        }
+        if check.entry.reasons.len() > 6 {
+            writeln!(
+                out,
+                "     why: … {} more reason(s)",
+                check.entry.reasons.len() - 6
+            )
+            .unwrap();
+        }
+        writeln!(out, "     from: {}", list(&check.entry.paths, 4)).unwrap();
+    }
+    if !plan.selection.artifacts.is_empty() {
+        out.push_str(
+            "\nartifacts the selected checks rebuild (verified receipts may be reused, #500):\n",
+        );
+        for (artifact, entry) in &plan.selection.artifacts {
+            writeln!(
+                out,
+                "  - {artifact}: {} [{}]",
+                list(&entry.reasons, 2),
+                list(&entry.paths, 3)
+            )
+            .unwrap();
+        }
+    }
+    if !plan.selection.manual.is_empty() {
+        out.push_str("\nmanual obligations (no xtask selector; reported NOT_RUN on execution):\n");
+        for (what, entry) in &plan.selection.manual {
+            writeln!(out, "  - {what} [{}]", list(&entry.paths, 3)).unwrap();
+        }
+    }
+    out.push_str("\nnot selected:\n");
+    for (cmd, by) in &plan.subsumed {
+        writeln!(out, "  - {cmd}: executed inside `{by}`").unwrap();
+    }
+    let selected = |cmd: &str| plan.checks.iter().any(|c| c.command == cmd);
+    for (check, entry) in &plan.selection.consumers {
+        let covered = selected(check)
+            || (check.starts_with("verify web --scenario <") && selected("verify web"));
+        if !covered {
+            writeln!(
+                out,
+                "  - {check}: {} [{}]",
+                list(&entry.reasons, 2),
+                list(&entry.paths, 3)
+            )
+            .unwrap();
+        }
+    }
+    for (lane, prefix) in [
+        ("verify static", "verify static"),
+        ("verify check", "verify check"),
+        ("verify unit", "verify unit"),
+        ("verify postgres", "verify postgres"),
+        ("verify web", "verify web"),
+        ("verify preview", "verify preview"),
+        ("verify discussion", "verify discussion"),
+        ("verify expressions", "verify expressions"),
+        ("verify kani", "verify kani"),
+        ("verify quick", "verify quick"),
+        ("ui-preview cmp verify", "ui-preview cmp"),
     ] {
-        if std::env::var_os(key).is_some() {
+        let used = plan.checks.iter().any(|c| c.command.starts_with(prefix))
+            || plan.subsumed.keys().any(|c| c.starts_with(prefix));
+        if !used {
+            writeln!(out, "  - {lane}: no changed input maps to this lane").unwrap();
+        }
+    }
+    if plan.selection.unknown.is_empty() {
+        out.push_str("\nunknown inputs: none\n");
+    } else {
+        writeln!(
+            out,
+            "\nunknown inputs ({}): {}",
+            plan.selection.unknown.len(),
+            list(&plan.selection.unknown, 8)
+        )
+        .unwrap();
+    }
+    if plan.selection.fallback.is_empty() {
+        out.push_str("fallback: none\n");
+    } else {
+        for (reason, paths) in &plan.selection.fallback {
+            writeln!(
+                out,
+                "fallback: {reason} [{}] -> every CI lane plus Web opt-ins",
+                list(paths, 4)
+            )
+            .unwrap();
+        }
+    }
+    let mut classes: BTreeMap<Cost, usize> = BTreeMap::new();
+    for check in &plan.checks {
+        *classes.entry(check.cost).or_default() += 1;
+    }
+    let classes: Vec<_> = classes
+        .iter()
+        .map(|(c, n)| format!("{n} {}", c.name()))
+        .collect();
+    writeln!(
+        out,
+        "cost: {} check(s): {}; highest class {}",
+        plan.checks.len(),
+        classes.join(", "),
+        plan.checks
+            .iter()
+            .map(|c| c.cost)
+            .max()
+            .map_or("none", Cost::name)
+    )
+    .unwrap();
+    writeln!(out, "planning took {:.3} s (Git + read-only manifest/entry scan; no build, network, database or browser)", elapsed.as_secs_f64()).unwrap();
+    writeln!(
+        out,
+        "evidence: NOT_RUN. Execute this exact plan: cargo xtask verify changed{} --expect {}",
+        plan.snapshot_args(),
+        plan.id
+    )
+    .unwrap();
+    out.push_str(
+        "A selected PASS covers only these checks; it is not a full-lane or merge-gate PASS.\n",
+    );
+    out
+}
+
+impl ChangedPlan {
+    fn snapshot_args(&self) -> String {
+        let mut args = String::new();
+        if !self.base_defaulted {
+            write!(args, " --base {}", self.snapshot.base_ref).unwrap();
+        }
+        if self.snapshot.mode == git::Mode::Committed {
+            write!(args, " --head {}", self.snapshot.head_ref).unwrap();
+        }
+        args
+    }
+}
+
+/// Resolves `--only` against the plan: a typo, an unselected check or an empty plan is an error.
+pub fn select_only(
+    plan: &ChangedPlan,
+    only: &[String],
+) -> Result<Option<BTreeSet<String>>, String> {
+    if only.is_empty() {
+        return Ok(None);
+    }
+    if plan.checks.is_empty() {
+        return Err("--only matched nothing: this scope selects no checks (NO_WORK)".into());
+    }
+    let selected: Vec<_> = plan.checks.iter().map(|c| c.command.as_str()).collect();
+    let mut chosen = BTreeSet::new();
+    for check in only {
+        if selected.contains(&check.as_str()) {
+            chosen.insert(check.clone());
+        } else if let Some(by) = plan.subsumed.get(check) {
             return Err(format!(
-                "{key} overrides Git inputs; rerun from the intended checkout without that override"
+                "`{check}` runs inside `{by}` in this plan; pass --only \"{by}\""
+            ));
+        } else if let Err(error) = describe_check(check) {
+            return Err(format!("unknown check {error}"));
+        } else {
+            return Err(format!(
+                "`{check}` is a valid selector but this diff does not select it; selected: {selected:?}"
             ));
         }
     }
-    let out = Command::new("git")
-        .env("GIT_NO_LAZY_FETCH", "1")
-        .args(["--no-optional-locks", "-c", "core.fsmonitor=false"])
-        .args(args)
-        .current_dir(root)
-        .output()
-        .map_err(|e| format!("read Git inputs: {e}"))?;
-    if !out.status.success() {
-        return Err(format!(
-            "git {} failed: {}",
-            args[0],
-            String::from_utf8_lossy(&out.stderr).trim()
-        ));
-    }
-    Ok(out.stdout)
+    Ok(Some(chosen))
 }
 
-fn commit(root: &Path, rev: &str) -> Result<String, String> {
-    if rev.is_empty() || rev.starts_with('-') {
-        return Err("expected a nonempty commit reference".into());
-    }
-    let bytes = git(
-        root,
-        &[
-            "rev-parse",
-            "--verify",
-            "--end-of-options",
-            &format!("{rev}^{{commit}}"),
-        ],
-    )?;
-    Ok(std::str::from_utf8(&bytes)
-        .map_err(|e| e.to_string())?
-        .trim()
-        .into())
-}
-
-#[derive(Debug)]
-struct Change<'a> {
-    layer: &'static str,
-    status: &'a str,
-    paths: Vec<&'a str>,
-}
-
-fn fields(raw: &[u8]) -> Result<impl Iterator<Item = &str>, String> {
-    let data = std::str::from_utf8(raw)
-        .map_err(|_| "non-UTF-8 Git path: inspect bytes and select full owner coverage manually")?;
-    Ok(data.split_terminator('\0'))
-}
-
-fn changes<'a>(raw: &'a [u8], layer: &'static str) -> Result<Vec<Change<'a>>, String> {
-    let mut entries = fields(raw)?;
-    let mut result = Vec::new();
-    while let Some(status) = entries.next() {
-        let count = match status.as_bytes().first() {
-            Some(b'R' | b'C') => 2,
-            Some(b'A' | b'D' | b'M' | b'T' | b'U') => 1,
-            _ => {
-                return Err(format!(
-                    "unmapped Git status {status:?}: manual owner review required"
-                ));
-            }
-        };
-        let paths: Vec<_> = entries.by_ref().take(count).collect();
-        if paths.len() != count || paths.contains(&"") {
-            return Err("incomplete Git name-status record".into());
+pub fn run(root: &Path, raw: &[&str]) -> ExitCode {
+    let args = match parse(raw) {
+        Ok(args) => args,
+        Err(error) => {
+            eprintln!("xtask: {error}");
+            return ExitCode::from(2);
         }
-        result.push(Change {
-            layer,
-            status,
-            paths,
-        });
-    }
-    Ok(result)
-}
-
-fn diff(root: &Path, endpoints: &[&str]) -> Result<Vec<u8>, String> {
-    let mut args = vec![
-        "diff",
-        "--name-status",
-        "-z",
-        "--no-ext-diff",
-        "--no-textconv",
-        "--ignore-submodules=none",
-        "--find-renames",
-    ];
-    args.extend(endpoints);
-    args.push("--");
-    git(root, &args)
-}
-
-#[derive(Default)]
-struct Selection {
-    commands: BTreeMap<String, BTreeSet<&'static str>>,
-    broad: bool,
-}
-
-impl Selection {
-    fn add(&mut self, cmd: &str, reason: &'static str) {
-        self.commands.entry(cmd.into()).or_default().insert(reason);
-    }
-
-    fn fallback(&mut self, reason: &'static str) {
-        self.broad = true;
-        for cmd in [
-            "verify quick",
-            "verify discussion",
-            "verify expressions",
-            "verify kani",
-            "verify postgres",
-            "verify web",
-            "verify preview",
-            "verify web --scenario standalone",
-            "verify web --scenario perf-baseline --release",
-            "verify web --scenario return-position --release",
-        ] {
-            self.add(cmd, reason);
-        }
-    }
-
-    fn web(&mut self) {
-        self.add(
-            "verify static tokens",
-            "dependency: token generator precedes CSS",
-        );
-        self.add(
-            "verify web",
-            "dependency: shared Web package and SSR/hydration consumers",
-        );
-        self.add(
-            "verify web --scenario standalone",
-            "dependency: standalone CSR has a separate package and fixture",
-        );
-    }
-
-    fn path(&mut self, path: &str) -> &'static str {
-        if matches!(
-            path,
-            "AGENTS.md"
-                | "docs/development/scoped-workflows.md"
-                | "docs/development/local-resource-budget.md"
-                | "docs/development/feature-map.md"
-                | "docs/development/README.md"
-        ) || (path.starts_with(".agents/skills/") && path.ends_with(".md"))
-        {
-            self.add(
-                "verify static docs",
-                "selected: contributor guidance, skill metadata and local links",
-            );
-            return "guidance; review changed instructions and their command owners";
-        }
-        if matches!(
-            path,
-            "apps/vink-web/style/vink.css" | "packages/ui-system/leptos/tailwind/web.css"
-        ) {
-            self.web();
-            self.add(
-                "verify static repo",
-                "selected: Tailwind input and package boundary guards",
-            );
-            return "Web stylesheet feeds SSR and standalone; review affected visual routes";
-        }
-        if path == "apps/vink-web/e2e/web-perf-baseline.test.mjs" {
-            self.add(
-                "verify static perf",
-                "selected: Node performance analyzer and negative controls",
-            );
-            return "performance analyzer test; browser measurements use a separate fixture";
-        }
-        let browser = match path {
-            "apps/vink-web/e2e/web-perf-baseline.mjs" => {
-                self.add(
-                    "verify static perf",
-                    "dependency: Node analyzer imports the browser performance module",
-                );
-                Some("verify web --scenario perf-baseline --release")
-            }
-            "apps/vink-web/e2e/discovery-return-position.mjs" => {
-                Some("verify web --scenario return-position --release")
-            }
-            "apps/vink-web/e2e/author-works-smoke.mjs"
-            | "apps/vink-web/e2e/draft-pagination-smoke.mjs" => Some("verify web --scenario desk"),
-            "apps/vink-web/e2e/desk-empty-smoke.mjs" => {
-                self.add(
-                    "verify web --scenario password",
-                    "dependency: passwordAuth uses the signed-out Desk fixture before sign-in",
-                );
-                Some("verify web --scenario desk")
-            }
-            "apps/vink-web/e2e/editor-paper-first-smoke.mjs"
-            | "apps/vink-web/e2e/editor-writing-smoke.mjs" => {
-                Some("verify web --scenario editor-chrome")
-            }
-            "apps/vink-web/e2e/editor-desk-regressions.mjs" => {
-                Some("verify web --scenario editor-format --scenario editor-first-draft")
-            }
-            "apps/vink-web/e2e/public-storage-smoke.mjs" => Some("verify web --scenario storage"),
-            "apps/vink-web/e2e/notifications-smoke.mjs" => {
-                Some("verify web --scenario notifications")
-            }
-            _ => None,
-        };
-        if let Some(cmd) = browser {
-            self.add(
-                cmd,
-                "selected: browser dispatcher calls this scenario fixture",
-            );
-            return "owned browser assertion; use real product and fresh profile";
-        }
-        if path.starts_with("apps/vink-web/editor/") {
-            self.web();
-            self.add(
-                "verify static repo",
-                "selected: Editor packages and Web boundary",
-            );
-            return "Editor package runs typecheck, Markdown corpus and bundler; review affected IME and visual claims";
-        }
-        if path == "packages/ui-system/shared/tokens.json"
-            || path.starts_with("packages/ui-system/leptos/style/")
-            || path == "packages/vink-patterns/leptos/patterns.css"
-        {
-            self.web();
-            self.add(
-                "verify preview",
-                "dependency: shared tokens/styles feed Preview",
-            );
-            self.fallback("fallback: shared UI input; review native and diagnostic consumers too");
-            return "shared UI; review CMP and native targets in the feature map";
-        }
-        let Some(&(dir, owner)) = OWNER_DIRS.iter().find(|(dir, _)| path.starts_with(dir)) else {
-            self.fallback("fallback: shared, external or unclassified input");
-            return "fallback: unknown or shared path; determine owners and additional gates";
-        };
-        let local = &path[dir.len()..];
-        if local == "tests/postgres.rs"
-            && matches!(owner, "store" | "app" | "identity" | "notifications")
-        {
-            self.add(
-                &format!("verify postgres {owner}"),
-                "selected: owning real PostgreSQL test binary",
-            );
-            return "PostgreSQL test target; use a disposable cluster";
-        }
-        if matches!(owner, "app" | "identity" | "notifications")
-            && local.ends_with(".sql")
-            && (local.starts_with("migrations/") || local.starts_with("migrations-rollback/"))
-        {
-            self.add(
-                "verify postgres",
-                "selected: migrations, cross-service lifecycle, provisioning and rollback",
-            );
-            self.web();
-            return "SQL migration; review data consumers and migration-specific recovery cases";
-        }
-        if local.starts_with("src/") && local.ends_with(".rs") {
-            self.add(
-                &format!("verify check {owner} --target all-targets"),
-                "selected: compile owner and its targets",
-            );
-            self.add(
-                &format!("verify unit {owner}"),
-                "selected: link and run owner unit targets",
-            );
-            match owner {
-                "preview" => {
-                    self.add(
-                        "verify check preview --target csr",
-                        "dependency: Preview WASM",
-                    );
-                    self.add(
-                        "verify preview",
-                        "dependency: Preview CSS scanner and browser fixture",
-                    );
-                    return "Preview Rust owner and its browser";
-                }
-                "store" => {
-                    for consumer in ["app", "identity", "notifications", "xtask"] {
-                        self.add(
-                            &format!("verify unit {consumer}"),
-                            "dependency: Rust consumer of vink-store-postgres",
-                        );
-                    }
-                    self.add(
-                        "verify postgres",
-                        "dependency: all database owners use the pool/migrator and lifecycle",
-                    );
-                    self.web();
-                    return "shared store; check its consumers, real database and Web scratch lifecycle";
-                }
-                "expressions" => {
-                    self.add(
-                        "verify static assets",
-                        "dependency: expression catalog and manifest",
-                    );
-                    self.add("verify expressions", "dependency: model and Rust replay");
-                    self.add("verify kani", "dependency: expression policy harnesses");
-                    self.add(
-                        "verify preview",
-                        "dependency: expression renderer in Preview",
-                    );
-                    return "expression policy and its Preview consumer; review CMP contract when applicable";
-                }
-                "notifications" => {
-                    self.add(
-                        "verify postgres",
-                        "dependency: service, App Gateway/worker, role and recovery boundaries",
-                    );
-                    self.add("verify unit app", "dependency: App Gateway and worker");
-                    return "notification service and its inter-process consumers";
-                }
-                "web" | "patterns" | "ui" | "markdown" => self.web(),
-                _ => {}
-            }
-        }
-        self.fallback("fallback: transitive consumers, feature variants, contracts or verification implementation");
-        "fallback: inspect consumers and feature-specific boundaries alongside the owner"
-    }
-
-    fn describe(&self, out: &mut String) -> Result<(), String> {
-        let mut commands: Vec<_> = self.commands.iter().collect();
-        // Print the cheap edit loop first. The list is advisory and never executed as a batch.
-        commands.sort_by_key(|(cmd, _)| match cmd.split_ascii_whitespace().nth(1) {
-            Some("static") => 0,
-            Some("check") => 1,
-            Some("unit") => 2,
-            _ => 3,
-        });
-        for (cmd, reasons) in commands {
-            writeln!(out, "\nselected: cargo xtask {cmd}").unwrap();
-            for reason in reasons {
-                writeln!(out, "  {reason}").unwrap();
-            }
-            // Legacy full lanes use their existing dispatcher. Scoped commands go through the
-            // same parser and Plan::resolve as execution, including full Postgres inspection.
-            if matches!(
-                cmd.as_str(),
-                "verify quick" | "verify discussion" | "verify expressions" | "verify kani"
-            ) {
-                out.push_str("  full lane; see its inventory and tool prerequisites in the development guide\n");
-            } else {
-                let mut args: Vec<_> = cmd.split_ascii_whitespace().collect();
-                args.push("--plan");
-                let invocation = crate::cli::parse(&args)?.ok_or("missing scoped selector")?;
-                out.push_str(&invocation.plan.describe());
-            }
-        }
-        if self.broad {
-            out.push_str("\nfallback: manual coverage review required for opt-in, platform, formal and release-specific claims.\n");
-        }
-        for group in [
-            "static",
-            "check",
-            "unit",
-            "postgres",
-            "web",
-            "preview",
-            "quick",
-            "discussion",
-            "expressions",
-            "kani",
-        ] {
-            if !self
-                .commands
-                .keys()
-                .any(|cmd| cmd.split_ascii_whitespace().nth(1) == Some(group))
-            {
-                writeln!(out, "not-selected as explicit root: verify {group} (no mapped input requires this selector; broader lanes can include it)").unwrap();
-            }
-        }
-        out.push_str("Existing acceptance, platform, opt-in and merge/release obligations require separate review.\n");
-        Ok(())
-    }
-}
-
-pub fn describe(root: &Path, args: &[&str]) -> Result<String, String> {
-    let (base_ref, head_ref, worktree) = match args {
-        ["--base", base, "--head", head, "--plan"] => (*base, *head, false),
-        ["--base", base, "--worktree", "--plan"] => (*base, "HEAD", true),
-        _ => return Err(format!("usage: cargo xtask {USAGE}")),
     };
-    let base = commit(root, base_ref)?;
-    let head = commit(root, head_ref)?;
-    let (selection, mut out, _) = inspect(root, &base, &head, worktree)?;
-    if selection.commands.is_empty() {
-        return Ok(out);
-    }
-    selection.describe(&mut out)?;
-    let scope = if worktree { "worktree" } else { "committed" };
-    writeln!(
-        out,
-        "to revalidate and execute one selected command, append: --from-diff {base} {head} {scope}"
-    )
-    .unwrap();
-    Ok(out)
-}
-
-fn inspect(
-    root: &Path,
-    base: &str,
-    head: &str,
-    worktree: bool,
-) -> Result<(Selection, String, bool), String> {
-    let committed = diff(root, &[base, head])?;
-    let mut inputs = changes(&committed, "committed")?;
-    let (index, unstaged, untracked);
-    if worktree {
-        let flags = git(root, &["ls-files", "-v", "-z"])?;
-        if fields(&flags)?.any(|entry| {
-            entry.starts_with('S') || entry.starts_with(|c: char| c.is_ascii_lowercase())
-        }) {
-            return Err("worktree has skip-worktree/assume-unchanged entries; inspect those inputs explicitly".into());
+    let started = Instant::now();
+    let plan = match compute(root, &args, || graph::Graph::load(root)) {
+        Ok(plan) => plan,
+        Err(error) => {
+            eprintln!("xtask: {error}");
+            return ExitCode::FAILURE;
         }
-        index = diff(root, &["--cached", head])?;
-        unstaged = diff(root, &[])?;
-        untracked = git(root, &["ls-files", "--others", "--exclude-standard", "-z"])?;
-        inputs.extend(changes(&index, "index")?);
-        inputs.extend(changes(&unstaged, "worktree")?);
-        for path in fields(&untracked)? {
-            inputs.push(Change {
-                layer: "untracked",
-                status: "?",
-                paths: vec![path],
-            });
-        }
-    }
-    let mode = if worktree {
-        "committed + index + unstaged + nonignored untracked"
-    } else {
-        "committed endpoints only"
     };
-    let mut out = format!(
-        "base={base} head={head}\nrange: endpoint trees ({mode})\nevidence: NOT_RUN; advisory plan, recompute after input changes. Cargo bootstrap may compile/link xtask.\n"
-    );
-    let dirty = inputs.iter().any(|input| input.layer != "committed");
-    if inputs.is_empty() {
-        out.push_str(
-            "no changed paths in this scope; no checks selected and no coverage established.\n",
+    let elapsed = started.elapsed();
+    let stale = args
+        .expect
+        .as_ref()
+        .filter(|expected| **expected != plan.id);
+    let only = select_only(&plan, &args.only);
+    let runs = !args.plan && stale.is_none() && only.is_ok();
+    print!("{}", render(&plan, elapsed, runs));
+    if let Some(expected) = stale {
+        eprintln!(
+            "xtask: plan changed since it was reviewed: expected {expected}, current {}; review the plan above and pass its id",
+            plan.id
         );
-        return Ok((Selection::default(), out, dirty));
+        return ExitCode::FAILURE;
     }
-    let mut selected = Selection::default();
-    for change in inputs {
-        for path in change.paths {
-            let reason = selected.path(path);
-            writeln!(out, "{} {} {path:?}: {reason}", change.layer, change.status).unwrap();
+    let only = match only {
+        Ok(only) => only,
+        Err(error) => {
+            eprintln!("xtask: {error}");
+            return ExitCode::from(2);
         }
-        if matches!(change.status, "T" | "U") {
-            selected.fallback("fallback: file type changed or index is unmerged");
-        }
+    };
+    if args.plan {
+        return ExitCode::SUCCESS;
     }
-    Ok((selected, out, dirty))
+    exec::execute(root, &args, &plan, only.as_ref())
 }
 
-/// The normal explicit command still owns admission, locking and execution. This optional
-/// suffix only checks that the requested selector belongs to the current diff.
+/// `--from-diff` suffix kept from #512: revalidates one explicit selector against the current
+/// diff before the normal dispatcher runs it. `verify changed --only` supersedes it.
 pub fn revalidate(
     root: &Path,
     command: &[&str],
@@ -500,20 +605,30 @@ pub fn revalidate(
     if !matches!(mode, "committed" | "worktree") {
         return Err("expected --from-diff BASE_SHA HEAD_SHA committed|worktree".into());
     }
-    if commit(root, base)? != base || commit(root, "HEAD")? != head {
+    if git::commit(root, base)? != base || git::commit(root, "HEAD")? != head {
         return Err("pinned base or checked-out HEAD differs; generate a new diff plan".into());
     }
-    let (selection, _, dirty) = inspect(root, base, head, true)?;
-    if mode == "committed" && dirty {
+    let args = Args {
+        base: Some(base.into()),
+        ..Args::default()
+    };
+    let plan = compute(root, &args, || graph::Graph::load(root))?;
+    if mode == "committed"
+        && plan
+            .snapshot
+            .changes
+            .iter()
+            .any(|c| c.layer != git::Layer::Committed)
+    {
         return Err("committed plan has dirty inputs; replan with --worktree".into());
     }
-    if !selection.commands.contains_key(&command.join(" ")) {
+    let wanted = normalize(&command.join(" "));
+    if !plan.checks.iter().any(|c| c.command == wanted) {
         return Err("command is not selected by the current diff; generate a new plan".into());
     }
     println!(
-        "revalidated {mode} at {head}; current selected roots: {:?}; executing only: {}",
-        selection.commands.keys().collect::<Vec<_>>(),
-        command.join(" ")
+        "revalidated {mode} at {head} (plan {}); executing only: {wanted}",
+        plan.id
     );
     Ok(())
 }
