@@ -237,6 +237,7 @@ pub enum Scenario {
     Review,
     Auth,
     Password,
+    AccountDeletion,
     AuthorSearch,
     Publication,
     Notifications,
@@ -267,7 +268,12 @@ impl Scenario {
         Self::Publication,
         Self::Notifications,
     ];
-    const OPT_IN: [Self; 3] = [Self::PerfBaseline, Self::ReturnPosition, Self::Standalone];
+    const OPT_IN: [Self; 4] = [
+        Self::PerfBaseline,
+        Self::ReturnPosition,
+        Self::Standalone,
+        Self::AccountDeletion,
+    ];
 
     pub fn selectable() -> impl Iterator<Item = Self> {
         [Self::Main]
@@ -309,6 +315,7 @@ impl Scenario {
             Self::Review => "review",
             Self::Auth => "auth",
             Self::Password => "password",
+            Self::AccountDeletion => "account-deletion",
             Self::AuthorSearch => "author-search",
             Self::Publication => "publication",
             Self::Notifications => "notifications",
@@ -326,7 +333,12 @@ impl Scenario {
     pub fn identity(self) -> bool {
         matches!(
             self,
-            Self::Auth | Self::Password | Self::AuthorSearch | Self::Publication | Self::Standalone
+            Self::Auth
+                | Self::Password
+                | Self::AccountDeletion
+                | Self::AuthorSearch
+                | Self::Publication
+                | Self::Standalone
         )
     }
 
@@ -399,7 +411,7 @@ impl Scenario {
             Self::Auth => {
                 "sample App scratch + separate real Identity scratch/local outbox; also sign-in-disabled guest"
             }
-            Self::Password | Self::AuthorSearch => {
+            Self::Password | Self::AccountDeletion | Self::AuthorSearch => {
                 "separate fresh App and real Identity scratch; native credentials and local mail outbox"
             }
             Self::Publication => {

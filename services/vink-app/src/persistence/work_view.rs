@@ -207,11 +207,36 @@ impl WorkViewStore for PgStore {
                 .await
                 .map_err(classify)?;
         // The owner never changes; the loaded row is the fact, never the request.
-        let owner: Option<Uuid> = sqlx::query_scalar("SELECT owner_id FROM works WHERE id = $1")
-            .bind(work_id.as_uuid())
-            .fetch_optional(&mut *tx)
+        // Even when the pointer is absent, the principal fence orders this decision against
+        // account deletion. Read the fence in a separate statement after the lock wait.
+        let owner: Option<Uuid> = sqlx::query_scalar(
+            "SELECT w.owner_id FROM works w JOIN principals p ON p.id = w.owner_id
+              WHERE w.id = $1 FOR KEY SHARE OF p",
+        )
+        .bind(work_id.as_uuid())
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(classify)?;
+        if let Some(owner) = owner {
+            let deleted: bool = sqlx::query_scalar(
+                "SELECT EXISTS (SELECT 1 FROM account_deletions WHERE principal_id = $1)",
+            )
+            .bind(owner)
+            .fetch_one(&mut *tx)
             .await
             .map_err(classify)?;
+            if deleted {
+                return Ok(decide_view(
+                    &write.event,
+                    ViewFacts {
+                        work: None,
+                        receipt: None,
+                        window: None,
+                        now: write.now,
+                    },
+                ));
+            }
+        }
         let work = owner.map(|owner| WorkFacts {
             owner: PrincipalId::from_uuid(owner),
             published: published.map(RevisionId::from_uuid),

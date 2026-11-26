@@ -125,6 +125,24 @@ refresh bắt đầu chain mới, không ghép đầu mới với đuôi cũ. �
 (`q` rỗng, `limit=1`) độc lập filter/sort đang xem. Đọc nháp không đi vào SSR payload,
 public cache hoặc READ-02. [Owner triển khai và query plan](../../../../../docs/development/desk-pagination.md).
 
+### Xóa tài khoản
+
+Ba `POST /api/v1/auth/account-deletion/…` cùng origin, `Cache-Control: no-store`. Dùng chính sách
+Origin và giới hạn request của Auth. Phiên hiện hành giới hạn proof vào account đang dùng. Luồng
+này cũng nhận khách và tài khoản bị đình chỉ đang xác minh bằng credential của họ.
+
+| Path cuối | Body | Thành công |
+| --- | --- | --- |
+| `challenges` | `{"email":"tac-gia@example.test"}` | `202` với `challenge_id`, `expires_at` và cookie HttpOnly riêng. |
+| `confirm` | `{"method":"password","operation_id":"<UUID ngẫu nhiên>","username":"tac-gia","password":"…"}` hoặc `{"method":"email_code","operation_id":"<UUID ngẫu nhiên>","challenge_id":"<UUID>","code":"…"}` | `202 {"state":"accepted"}` khi Identity đã thu hồi tài khoản và App còn đang xử lý, hoặc `200 {"state":"deleted"}` khi hàng rào App đã commit. |
+| `status` | `{"operation_id":"<cùng UUID>"}` | Đọc lại kết quả bằng cùng UUID sau mất ACK. Cùng hai trạng thái trên. |
+
+Request sai bằng chứng trả `401 invalid_credentials`, `422 code_rejected`, `409 challenge_closed`
+hoặc `429 rate_limited`. Hết thời gian có thể đã commit. Đọc trạng thái trước khi gửi yêu cầu mới.
+Xác nhận chỉ trả trạng thái. Cookie phiên và mã cũ được xóa khi có biên nhận; tất cả phiên khác đã
+mất hiệu lực tại Identity. Sau xóa, Reader của bài có tombstone trả `{"status":"author_deleted","work_id":"<UUID>"}`,
+`no-store`, còn đường đọc publication trả 404. [Owner Account](../../../../../docs/architecture/account-deletion.md).
+
 ### Public discovery (TAG-PR-04)
 
 `GET /api/v1/works` searches the whole public library; there is no other discovery route. No

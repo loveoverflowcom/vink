@@ -130,9 +130,9 @@ fn ReaderLoaded(initial: crate::contract::ReaderResponse, return_href: String) -
     use crate::contract::ReaderResponse;
     let id = match &initial {
         ReaderResponse::Published(p) => p.work_id.clone(),
-        ReaderResponse::Hidden { work_id } | ReaderResponse::ReviewWithdrawn { work_id, .. } => {
-            work_id.clone()
-        }
+        ReaderResponse::Hidden { work_id }
+        | ReaderResponse::ReviewWithdrawn { work_id, .. }
+        | ReaderResponse::AuthorDeleted { work_id } => work_id.clone(),
     };
     let live = public_reads::follow_reader(id, initial.clone());
     let data = live.data;
@@ -153,6 +153,7 @@ fn ReaderLoaded(initial: crate::contract::ReaderResponse, return_href: String) -
         match data.get() {
             ReaderResponse::Published(_) => (0, None),
             ReaderResponse::Hidden { work_id } => (1, Some((work_id, None))),
+            ReaderResponse::AuthorDeleted { work_id } => (5, Some((work_id, None))),
             ReaderResponse::ReviewWithdrawn {
                 work_id,
                 author_name,
@@ -188,9 +189,10 @@ fn ReaderLoaded(initial: crate::contract::ReaderResponse, return_href: String) -
                 view! { <PublicationView publication live=publication_live visit_eligible /> }
                     .into_any()
             }
-            1 | 2 => {
+            1 | 2 | 5 => {
                 let (work_id, author_name) = replacement.unwrap();
-                view! { <ReplacementView work_id author_name return_href=return_href.clone() /> }
+                let deleted = kind == 5;
+                view! { <ReplacementView work_id author_name deleted return_href=return_href.clone() /> }
                     .into_any()
             }
             3 => view! { <NotFoundContent return_href=return_href.clone() /> }.into_any(),
@@ -233,33 +235,35 @@ fn PublicationView(
 fn ReplacementView(
     work_id: String,
     author_name: Option<String>,
+    deleted: bool,
     return_href: String,
 ) -> impl IntoView {
     let context = discovery::reader_context();
     // The replacement keeps eligible comments and their public summaries. Its discussion
     // only renders confirmed counts and never exposes endorsement write controls.
     endorsement::Endorsements::provide(work_id.clone(), Callback::new(|()| {}));
-    let hidden = author_name.is_none();
-    let badge = if hidden {
-        "Không hiển thị"
-    } else {
-        "Gỡ sau kiểm duyệt"
-    };
-    let notice = if hidden {
-        "Nội dung đã được ẩn"
-    } else {
-        "Bản này đã bị gỡ sau khi kiểm duyệt."
-    };
-    let detail = if hidden {
-        "Tác phẩm này không còn hiển thị với người đọc."
-    } else {
-        "Bản công khai của tác phẩm đã được rút sau khi kiểm duyệt."
-    };
-    let state = if hidden { "hidden" } else { "review-withdrawn" };
-    let test_id = if hidden {
-        "reader-hidden"
-    } else {
-        "reader-review-withdrawn"
+    let (badge, notice, detail, state, test_id) = match (deleted, author_name.is_some()) {
+        (true, _) => (
+            "Đã xóa",
+            "Tác phẩm đã bị xóa",
+            "Bạn vẫn có thể đọc các nhận xét còn hiển thị.",
+            "author-deleted",
+            "reader-author-deleted",
+        ),
+        (false, false) => (
+            "Không hiển thị",
+            "Nội dung đã được ẩn",
+            "Tác phẩm này không còn hiển thị với người đọc.",
+            "hidden",
+            "reader-hidden",
+        ),
+        (false, true) => (
+            "Gỡ sau kiểm duyệt",
+            "Bản này đã bị gỡ sau khi kiểm duyệt.",
+            "Bản công khai của tác phẩm đã được rút sau khi kiểm duyệt.",
+            "review-withdrawn",
+            "reader-review-withdrawn",
+        ),
     };
     view! {
         <Title text=format!("{notice} — Vink") />

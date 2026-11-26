@@ -415,17 +415,19 @@ impl PgStore {
             handle: Option<String>,
             retired: bool,
             hidden: bool,
+            deleted: bool,
         }
 
         let row: Option<WithdrawnRow> = sqlx::query_as(
-            "SELECT a.display_name, a.handle, a.retired, (wp.hidden_revision_id IS NOT NULL) AS hidden
+            "SELECT a.display_name, a.handle, a.retired, (wp.hidden_revision_id IS NOT NULL) AS hidden,
+                    (wp.lifecycle = 'author_deleted') AS deleted
                FROM work_publications wp
                JOIN works w ON w.id = wp.work_id
                JOIN public_author_attribution a ON a.id = w.owner_id
-              WHERE wp.work_id = $1
-                AND wp.lifecycle = 'active'
-                AND (wp.hidden_revision_id IS NOT NULL
-                     OR (wp.audience = 'public' AND wp.review_withdrawn_revision_id IS NOT NULL))",
+              WHERE wp.work_id = $1 AND
+                    ((wp.lifecycle = 'active' AND (wp.hidden_revision_id IS NOT NULL
+                       OR (wp.audience = 'public' AND wp.review_withdrawn_revision_id IS NOT NULL)))
+                    OR (wp.lifecycle = 'author_deleted' AND wp.deletion_provenance = 'tombstone'))",
         )
         .bind(work_id.as_uuid())
         .fetch_optional(self.pool())
@@ -433,6 +435,9 @@ impl PgStore {
         .map_err(classify)?;
 
         if let Some(r) = row {
+            if r.deleted {
+                return Ok(Some(ReaderWorkFacts::AuthorDeleted { work_id }));
+            }
             if r.hidden {
                 return Ok(Some(ReaderWorkFacts::Hidden { work_id }));
             }

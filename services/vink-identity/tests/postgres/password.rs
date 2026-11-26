@@ -24,6 +24,96 @@ use vink_identity::password::{Password, Username};
 
 const CALLER: u32 = 501;
 
+#[sqlx::test(migrator = "vink_identity::persistence::MIGRATOR")]
+async fn account_deletion_password_only_revokes_every_session_and_rejects_operation_reuse(
+    pool: PgPool,
+) {
+    use vink_identity::contract::ContractError;
+    let store = store(&pool);
+    let username = Username::parse("tac_gia_xoa").unwrap();
+    let password = Password::parse("mat-khau-fixture-xoa").unwrap();
+    let first = store
+        .register_password(&username, &password)
+        .await
+        .unwrap()
+        .unwrap();
+    let second = store
+        .sign_in_password(&username, password.expose())
+        .await
+        .unwrap()
+        .unwrap();
+    let op = Uuid::now_v7();
+    assert!(matches!(
+        store
+            .complete_deletion_password(&username, "wrong password", None, op)
+            .await,
+        Err(ContractError::InvalidCredentials)
+    ));
+    assert!(store.pending_deletions(None).await.unwrap().is_empty());
+    assert!(
+        store
+            .verify(&first.credential.encode())
+            .await
+            .unwrap()
+            .is_ok()
+    );
+
+    let (one, two) = tokio::join!(
+        store.complete_deletion_password(&username, password.expose(), Some(first.account_id), op),
+        store.complete_deletion_password(&username, password.expose(), Some(first.account_id), op),
+    );
+    let accepted = match (one, two) {
+        (Ok(accepted), Err(_)) | (Err(_), Ok(accepted)) => accepted,
+        answers => panic!("exactly one deletion should commit: {answers:?}"),
+    };
+    assert_eq!(accepted.account_id, first.account_id);
+    assert_eq!(store.pending_deletions(None).await.unwrap(), [accepted]);
+    for session in [first, second] {
+        assert!(
+            store
+                .verify(&session.credential.encode())
+                .await
+                .unwrap()
+                .is_err()
+        );
+    }
+    assert!(matches!(
+        store
+            .sign_in_password(&username, password.expose())
+            .await
+            .unwrap(),
+        Err(PasswordSignInRejection::InvalidCredentials)
+    ));
+    let new = store
+        .register_password(&username, &password)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_ne!(new.account_id, accepted.account_id);
+    assert!(matches!(
+        store
+            .complete_deletion_password(&username, password.expose(), None, op)
+            .await,
+        Err(ContractError::ChallengeClosed)
+    ));
+    assert!(
+        store
+            .verify(&new.credential.encode())
+            .await
+            .unwrap()
+            .is_ok()
+    );
+    assert_eq!(
+        vink_identity::accounts::enable_account(&pool, accepted.account_id)
+            .await
+            .unwrap(),
+        vink_identity::accounts::AccountChange::Unchanged
+    );
+    store.finish_deletion(op).await.unwrap();
+    assert!(store.pending_deletions(None).await.unwrap().is_empty());
+    assert_eq!(store.deletion(op).await.unwrap(), Some(accepted));
+}
+
 fn store(pool: &PgPool) -> AccountStore {
     AccountStore::new(pool.clone(), Policy::default(), Arc::new(Notify::new()))
 }

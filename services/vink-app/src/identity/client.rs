@@ -19,6 +19,9 @@ use time::OffsetDateTime;
 use tokio::net::UnixStream;
 use uuid::Uuid;
 
+mod deletion;
+pub use deletion::{AccountDeletion, DeletionError};
+
 /// Below the server's 2 s deadline, so the client gives up first.
 pub const CALL_TIMEOUT: Duration = Duration::from_millis(1500);
 /// Sign-in, logout and other committing operations: below the server's 5 s write deadline. Rare

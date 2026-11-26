@@ -19,7 +19,7 @@ Rust owners: app, identity, store, xtask, web, notifications, ui, patterns, expr
 PostgreSQL without a selector runs the full lane. --filter applies to owner tests only.
 Web scenarios: main (alias), editor-first-draft, editor-chrome, editor, editor-format,
   desk, appearance, reader, discussion, storage, discovery, restart, endorsement, review,
-  auth, password, author-search, publication, notifications, standalone (CSR + API), perf-baseline, return-position.
+  auth, password, account-deletion, author-search, publication, notifications,\n  standalone (CSR + API), perf-baseline, return-position.
 No selector runs full Web regression, excluding standalone and the two performance opt-ins.
 --capture checks requires explicit scenarios; it retains functional/a11y/DOM checks.
 --plan performs no selected task I/O.

@@ -412,7 +412,8 @@ async fn upgrade_keeps_existing_untagged_works_readable_without_backfill(pool: P
         .unwrap();
     assert_eq!(after, hash, "content_hash v1 is untouched");
 
-    // The upgraded database works: tag an old work.
+    // The upgraded database works: tag an old work before the canonical cutover.
+    legacy_standing_fixture(&pool).await;
     create(&pool, KY_UC, TagFacet::Theme, "Ký ức").await;
     let saved = save_tags(&vink, author(), 1, None, &[KY_UC]).await.unwrap();
     assert_eq!(saved.version.get(), 2);

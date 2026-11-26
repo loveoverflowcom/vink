@@ -1376,6 +1376,7 @@ async fn upgrading_keeps_old_comments_and_new_ones_start_owing_work(pool: PgPool
         .await
         .unwrap();
     assert_eq!(review, "pending");
+    legacy_standing_fixture(&pool).await;
     let new = post(&vink, "Sau nâng cấp").await;
     assert_eq!(deliveries_of(&pool, new).await.len(), 1);
 
@@ -1418,6 +1419,7 @@ async fn the_schema_rollback_refuses_while_work_is_owed_and_keeps_comments(pool:
     // own backout refuses while immutable revisions exist.
     upgrade_before_cutover(&pool).await;
     let vink = setup(&pool).await;
+    legacy_standing_fixture(&pool).await;
     let id = post(&vink, "Trước khi rollback").await;
     let script = std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
