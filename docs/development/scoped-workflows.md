@@ -157,7 +157,8 @@ Tool wrapper, phiên bản bindgen mới, loader injection và WASM có thể th
 Fonts, brand và empty artwork so trực tiếp tập tên tệp và SHA-256 với nguồn. Brand và artwork
 vẫn chạy kiểm provenance mỗi lần. `HIT` tái dùng tệp nội bộ trong cùng checkout, `MISS` tạo
 lại bước tương ứng. Package mới được dựng trong staging rồi chuyển vào đường publish khi đủ tệp
-và qua Web artifact guard. Xtask kiểm tín hiệu hủy trước khi bắt đầu chuyển package. Nếu cập
+và qua Web artifact guard. Trên macOS/Linux, hệ điều hành đổi chỗ hai thư mục trong một
+thao tác. Filesystem cần hỗ trợ directory exchange. Các host Unix khác giữ cơ chế chuyển dưới khóa. Xtask kiểm tín hiệu hủy trước khi bắt đầu chuyển package. Nếu cập
 nhật receipt lỗi sau khi chuyển, xtask thu hồi package mới và khôi phục bản trước nếu có. Khi
 package và receipt đã được cài, lỗi dọn bản sao cũ sẽ được báo để lượt sau dọn tiếp. SPA chỉ
 khôi phục entry sau khi publish package thành công. Verify vẫn chạy kiểm bí mật, fixture và
@@ -174,8 +175,8 @@ Bảng cuối log cho biết bước nào HIT, MISS hoặc VERIFIED, lý do và 
 | Token | Nguồn JSON, fixture, license/icon, font và 16 tệp CSS/Rust/Kotlin đã sinh. Mỗi lượt đối chiếu lại với generator. |
 | Rust/WASM | Cargo theo dõi crate, dependency, toolchain, profile, feature và cờ. Digest của WASM thô cấp đầu vào cho bindgen. |
 | Bindgen | Bytes của WASM, executable và version, target/flags, feature, profile, prefix, environment. Kiểm đủ JS, WASM và snippets trước khi tái dùng. |
-| Tailwind | Entry và các CSS import cục bộ, nội dung các thư mục Rust trong allowlist, tập file Oxide chọn, npm lock, cây compiler đã cài, Node, environment và minify. Directive ngoài cú pháp đã kiểm sẽ chạy compiler. |
-| Editor | Nguồn TypeScript, script build, tsconfig, corpus, package/lock, cây npm đã cài và Node. Typecheck và corpus chạy cả khi HIT. Khi MISS, esbuild kê đầu vào thực trong metafile. Chỉ lưu receipt khi toàn bộ thuộc editor. |
+| Tailwind | Entry và các CSS import cục bộ, nội dung các thư mục Rust trong allowlist, tập file Oxide chọn, npm lock, cây compiler đã cài, Node, environment và minify. Compiler khai báo dependency thực. Plugin/config động hoặc nguồn ngoài allowlist buộc tạo lại CSS. |
+| Editor | Nguồn TypeScript, script build, tsconfig, corpus, package/lock, cây npm đã cài và Node. Typecheck và corpus chạy cả khi HIT. Khi MISS, esbuild kê đầu vào thực trong metafile. Chỉ lưu receipt với một output và toàn bộ input thuộc editor. |
 | Fonts, brand, empty | So tên và bytes với nguồn đã chọn. Tệp bị xóa khỏi nguồn cũng biến mất khỏi package mới. |
 | Entry CSR | Template, appearance, revision/prefix và hai cờ `VINK_SPA_*`. Ghi entry sau khi package hoàn tất. |
 

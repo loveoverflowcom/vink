@@ -249,7 +249,10 @@ fn repository_inputs_are_recomputed_and_both_sides_of_moves_are_selected() {
             && endpoints.contains("new selector")
     );
     assert!(endpoints.contains("selected: cargo xtask verify web --scenario desk"));
-    assert!(endpoints.contains("fallback:") && !endpoints.contains("Cargo.lock"));
+    assert!(endpoints.contains("fallback:"));
+    assert!(!endpoints.lines().any(|line| line.starts_with("index ")
+        || line.starts_with("untracked ")
+        || line.starts_with("worktree D ")));
     let before = g(&["status", "--porcelain=v1", "-z"]);
     let index_before = fs::read(dir.join(".git/index")).unwrap();
     let result = describe(&dir, &local).unwrap();

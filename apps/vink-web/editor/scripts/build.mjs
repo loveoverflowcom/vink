@@ -48,4 +48,8 @@ const result = await build({
   metafile: mode === '--bundle',
   outfile: resolve(outfile),
 });
-if (mode === '--bundle') writeFileSync(process.argv[4], JSON.stringify(Object.keys(result.metafile.inputs)));
+if (mode === '--bundle') {
+  // Additional esbuild outputs (e.g. imported CSS) must be regenerated as a group.
+  const inputs = Object.keys(result.metafile.outputs).length === 1 ? Object.keys(result.metafile.inputs) : [];
+  writeFileSync(process.argv[4], JSON.stringify(inputs));
+}

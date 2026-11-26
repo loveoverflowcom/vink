@@ -16,7 +16,7 @@ type DigestInputs = Option<(String, Parts)>;
 
 // Re-audit external inputs when the editor bundle recipe changes.
 const REVIEWED_EDITOR_RECIPE: &str =
-    "3189dafbdc872ddcb5d368017c048ad41e9481ba201ec88028fd3a9fe94f9c05";
+    "6bd6a58e136329259fef867474530b5519509a04e53907735847873d07163cc1";
 const MANIFEST_SCHEMA: u32 = 1;
 const MANIFEST_FILE: &str = "manifest.json";
 const LEGACY_BINDGEN_FILE: &str = "bindgen.json";
@@ -203,20 +203,12 @@ impl Package {
         &mut self,
         root: &Path,
         wasm: &Path,
-        freshness: process::CargoFreshness,
+        mut freshness: process::CargoFreshness,
+        rebuild: impl FnOnce() -> Result<process::CargoFreshness, String>,
     ) -> Result<(String, bool), String> {
+        let initial_cargo_ms = freshness.elapsed_ms;
         let hashing = Instant::now();
-        let (wasm_digest, has_no_pkg_json) = digest_and_check_bindgen_manifest(wasm)?;
-        let status = if freshness.rebuilt_units == 0 {
-            "HIT"
-        } else {
-            "MISS"
-        };
-        let detail = format!(
-            "fresh={}/{} units",
-            freshness.fresh_units,
-            freshness.fresh_units + freshness.rebuilt_units
-        );
+        let mut raw = digest_and_check_bindgen_manifest(wasm)?;
         let mut parts = BTreeMap::new();
         parts.insert("profile".into(), self.next_manifest.profile.clone());
         parts.insert("feature".into(), self.next_manifest.feature.clone());
@@ -227,7 +219,20 @@ impl Package {
         );
         parts.insert(
             "flags_env".into(),
-            env_digest(|key| key.starts_with(b"CARGO_") || key.starts_with(b"RUST"))?,
+            env_digest(|key| {
+                key.starts_with(b"CARGO_PROFILE_")
+                    || key.starts_with(b"CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_")
+                    || key.starts_with(b"CARGO_BUILD_RUST")
+                    || matches!(
+                        key,
+                        b"RUSTFLAGS"
+                            | b"CARGO_ENCODED_RUSTFLAGS"
+                            | b"RUSTUP_TOOLCHAIN"
+                            | b"RUSTC"
+                            | b"RUSTC_WRAPPER"
+                            | b"RUSTC_WORKSPACE_WRAPPER"
+                    )
+            })?,
         );
         let spec = crate::web_dag::RUST_WASM_SPEC;
         let mut files = Inventory::new();
@@ -247,16 +252,43 @@ impl Package {
         // Cargo normally checks output existence and freshness. Reject a changed raw
         // output when the last successful build and the compiler agree on these inputs.
         if freshness.rebuilt_units == 0
-            && self.prev_receipt(spec.id).is_some_and(|r| {
-                r.input_digest.as_ref() == Some(&key) && r.output_digest != wasm_digest
-            })
+            && self
+                .prev_receipt(spec.id)
+                .is_some_and(|r| r.input_digest.as_ref() == Some(&key) && r.output_digest != raw.0)
         {
-            return Err(format!(
-                "Cargo reported a fresh but changed raw WASM at {}; rebuild the vink-web WASM target",
-                wasm.display()
-            ));
+            println!(
+                "==> rust-wasm: MISS (fresh Cargo output failed SHA-256; rebuilding vink-web)"
+            );
+            let sibling = wasm
+                .parent()
+                .ok_or("missing WASM target directory")?
+                .join("deps/vink_web.wasm");
+            // Cargo may copy or hardlink the crate output to the top-level target.
+            // Discard only copies with the demonstrably mismatching bytes.
+            if sibling.is_file() && digest(&sibling)? == raw.0 {
+                remove_file(&sibling)?;
+            }
+            remove_file(wasm)?;
+            let previous = raw.0;
+            freshness = rebuild()?;
+            raw = digest_and_check_bindgen_manifest(wasm)?;
+            if freshness.rebuilt_units == 0 && raw.0 == previous {
+                return Err(
+                    "Cargo retained the damaged vink-web WASM; inspect the checkout target".into(),
+                );
+            }
         }
-        let elapsed_ms = freshness.elapsed_ms + hashing.elapsed().as_millis() as u64;
+        let (wasm_digest, has_no_pkg_json) = raw;
+        let status = if freshness.rebuilt_units == 0 {
+            "HIT"
+        } else {
+            "MISS"
+        };
+        let detail = format!(
+            "Cargo fresh={} rebuilt={}",
+            freshness.fresh_units, freshness.rebuilt_units
+        );
+        let elapsed_ms = initial_cargo_ms + hashing.elapsed().as_millis() as u64;
         let mut outputs = Inventory::new();
         outputs.insert(PathBuf::from("vink_web.wasm"), wasm_digest.clone());
         self.next_manifest.artifacts.insert(
@@ -445,6 +477,18 @@ impl Package {
             cmd.current_dir(&dir).arg("scripts/build.mjs");
             cmd
         };
+        if digest(&dir.join("scripts/build.mjs"))? != REVIEWED_EDITOR_RECIPE {
+            return self.generated_file(
+                WebArtifactId::EditorJs,
+                "vink-editor.js",
+                start,
+                || Ok(None),
+                |out| {
+                    process::run(command().arg(out), "build editor with changed recipe")?;
+                    Ok(false)
+                },
+            );
+        }
         process::run(
             command().arg("--check"),
             "editor type check and Markdown corpus",
@@ -652,25 +696,21 @@ impl Package {
         // finish it or roll it back before returning to the caller.
         lifecycle::check_cancelled()?;
         if had_active {
-            rename(&self.active, &previous)?;
-        }
-        if let Err(error) = rename(&stage, &self.active) {
-            if had_active {
-                rename(&previous, &self.active)
-                    .map_err(|rollback| format!("{error}; restore previous package: {rollback}"))?;
-            }
-            return Err(error);
+            exchange_packages(&stage, &self.active, &previous)?;
+        } else {
+            rename(&stage, &self.active)?;
         }
 
         let active_manifest = self.state.join(MANIFEST_FILE);
         if let Err(error) = rename(&staged_manifest, &active_manifest) {
             // A failed rename leaves the old manifest in place. Restore its package too.
-            rename(&self.active, &stage)
-                .map_err(|rollback| format!("{error}; withdraw failed package: {rollback}"))?;
-            if had_active {
-                rename(&previous, &self.active)
-                    .map_err(|rollback| format!("{error}; restore previous package: {rollback}"))?;
-            }
+            let rollback = if had_active {
+                exchange_packages(&stage, &self.active, &previous)
+            } else {
+                rename(&self.active, &stage)
+            };
+            rollback
+                .map_err(|rollback| format!("{error}; restore previous package: {rollback}"))?;
             return Err(error);
         }
 
@@ -775,10 +815,38 @@ fn tailwind_inputs(
     ]) else {
         return Ok(None);
     };
-    let Some(css_map) = tailwind::resolve_css_imports(root, &root.join(tailwind::WEB_ENTRY))?
-    else {
+    #[derive(Deserialize)]
+    struct CssInputs {
+        css: Vec<PathBuf>,
+        scanned: Vec<PathBuf>,
+    }
+
+    let tw_dir = root.join(tailwind::DIR);
+    let mut probe = Command::new(&node);
+    let repo = root.canonicalize().map_err(|e| path_error(root, e))?;
+    probe
+        .current_dir(&tw_dir)
+        .args([
+            "--input-type=module",
+            "--eval",
+            include_str!("tailwind_inputs.mjs"),
+        ])
+        .arg(repo.join(tailwind::WEB_ENTRY))
+        .args(tailwind::WEB_SOURCE_ROOTS.iter().map(|dir| repo.join(dir)));
+    let result = process::output(&mut probe, "Tailwind dependency inventory")?;
+    if !result.status.success() {
         return Ok(None);
-    };
+    }
+    let closure: CssInputs =
+        serde_json::from_slice(&result.stdout).map_err(|e| format!("Tailwind inventory: {e}"))?;
+    let mut css_map = Inventory::new();
+    for path in closure.css {
+        let canonical = path.canonicalize().map_err(|e| path_error(&path, e))?;
+        let Ok(rel) = canonical.strip_prefix(&repo) else {
+            return Ok(None);
+        };
+        css_map.insert(rel.to_owned(), digest(&canonical)?);
+    }
     let mut rust_map = Inventory::new();
     for dir in tailwind::WEB_SOURCE_ROOTS {
         let Some(tree) = walk_tree_digest(root, &root.join(dir))? else {
@@ -786,7 +854,6 @@ fn tailwind_inputs(
         };
         rust_map.extend(tree);
     }
-    let tw_dir = root.join(tailwind::DIR);
     let pkg_bytes = tailwind::package_inputs(&tw_dir)?;
     let mut lock_files = Inventory::new();
     lock_files.insert("package_inputs".into(), checks::sha256_hex(&pkg_bytes));
@@ -798,18 +865,6 @@ fn tailwind_inputs(
         "bin".into(),
         digest(&fs::canonicalize(bin).map_err(|e| path_error(bin, e))?)?,
     );
-    // Oxide applies ignore rules when selecting source files. Membership can change
-    // even if every byte underneath the three source roots stays identical.
-    let mut scanner = Command::new(&node);
-    scanner.current_dir(&tw_dir).arg("-e").arg(r#"
-        const {Scanner} = require('@tailwindcss/oxide');
-        const sources = process.argv.slice(1).map(base => ({base, pattern: '**/*', negated: false}));
-        console.log(JSON.stringify(new Scanner({sources}).files.sort()));
-    "#).args(tailwind::WEB_SOURCE_ROOTS.iter().map(|dir| root.join(dir)));
-    let membership = process::output(&mut scanner, "Tailwind source inventory")?;
-    if !membership.status.success() {
-        return Ok(None);
-    }
     let env_hash = env_digest(|k| {
         k.starts_with(b"NODE_")
             || k.starts_with(b"LIGHTNINGCSS_")
@@ -827,7 +882,7 @@ fn tailwind_inputs(
     parts.insert("rust_sources".into(), inventory_digest(&rust_map)?);
     parts.insert(
         "scanned_files".into(),
-        checks::sha256_hex(&membership.stdout),
+        checks::sha256_hex(&serde_json::to_vec(&closure.scanned).map_err(|e| e.to_string())?),
     );
     parts.insert("tailwind_lock".into(), inventory_digest(&lock_files)?);
     parts.insert("profile_flags".into(), format!("minify={release}"));
@@ -1294,6 +1349,31 @@ fn remove_dir(path: &Path) -> Result<(), String> {
     }
 }
 
+// Swap real directories without an interval where the served package is absent.
+// The old package stays in our private staging directory until the receipt commits.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn exchange_packages(stage: &Path, active: &Path, _backup: &Path) -> Result<(), String> {
+    use rustix::fs::{CWD, RenameFlags, renameat_with};
+    renameat_with(CWD, stage, CWD, active, RenameFlags::EXCHANGE).map_err(|error| {
+        format!(
+            "exchange {} and {}: {error}",
+            stage.display(),
+            active.display()
+        )
+    })
+}
+
+// Preserve the legacy lock-protected switch on other Unix hosts.
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+fn exchange_packages(stage: &Path, active: &Path, backup: &Path) -> Result<(), String> {
+    rename(active, backup)?;
+    if let Err(error) = rename(stage, active) {
+        rename(backup, active)?;
+        return Err(error);
+    }
+    rename(backup, stage)
+}
+
 fn rename(from: &Path, to: &Path) -> Result<(), String> {
     fs::rename(from, to).map_err(|e| format!("rename {} → {}: {e}", from.display(), to.display()))
 }
@@ -1638,6 +1718,39 @@ mod tests {
     }
 
     #[test]
+    fn fresh_cargo_output_with_changed_bytes_rebuilds_just_the_damaged_wasm() {
+        let fixture = Fixture::new();
+        let wasm = fixture.0.join("vink_web.wasm");
+        let sibling = fixture.0.join("deps/vink_web.wasm");
+        fs::create_dir(sibling.parent().unwrap()).unwrap();
+        let observation = |rebuilt_units| process::CargoFreshness {
+            fresh_units: 1,
+            rebuilt_units,
+            elapsed_ms: 0,
+        };
+        fs::write(&wasm, b"raw v1").unwrap();
+        let mut first = fixture.package(SSR);
+        first
+            .record_rust_wasm(&fixture.0, &wasm, observation(1), || {
+                panic!("already compiled")
+            })
+            .unwrap();
+        stage_product_outputs(&first);
+        first.publish().unwrap();
+        fs::write(&wasm, b"damaged").unwrap();
+        fs::hard_link(&wasm, &sibling).unwrap();
+        let mut next = fixture.package(SSR);
+        let recovered = next
+            .record_rust_wasm(&fixture.0, &wasm, observation(0), || {
+                assert!(!wasm.exists() && !sibling.exists());
+                fs::write(&wasm, b"raw v1").unwrap();
+                Ok(observation(1))
+            })
+            .unwrap();
+        assert_eq!(recovered.0, checks::sha256_hex(b"raw v1"));
+    }
+
+    #[test]
     fn streaming_wasm_check_detects_package_json_across_chunk_boundaries() {
         let fixture = Fixture::new();
         let clean = fixture.0.join("clean.wasm");
@@ -1663,29 +1776,11 @@ mod tests {
         let fixture = Fixture::new();
         // Copy only Tailwind and Editor minimal fixtures to an isolated temp root.
         let tw_dir = fixture.0.join(tailwind::DIR);
-        fs::create_dir_all(tw_dir.join("node_modules/@tailwindcss/cli")).unwrap();
-        fs::create_dir_all(tw_dir.join("node_modules/tailwindcss")).unwrap();
-        fs::create_dir_all(tw_dir.join("node_modules/.bin")).unwrap();
+        fs::create_dir_all(&tw_dir).unwrap();
         for name in ["package.json", "package-lock.json", "web.css"] {
             fs::copy(root.join(tailwind::DIR).join(name), tw_dir.join(name)).unwrap();
         }
-        fs::create_dir_all(tw_dir.join("node_modules/@tailwindcss/oxide")).unwrap();
-        fs::write(
-            tw_dir.join("node_modules/@tailwindcss/oxide/index.js"),
-            "exports.Scanner = class { files = [] };",
-        )
-        .unwrap();
-        fs::write(tw_dir.join("node_modules/.package-lock.json"), "{}").unwrap();
-        fs::write(tw_dir.join("node_modules/tailwindcss/package.json"), "{}").unwrap();
-        fs::write(tw_dir.join("node_modules/tailwindcss/theme.css"), "").unwrap();
-        fs::write(tw_dir.join("node_modules/tailwindcss/utilities.css"), "").unwrap();
-        fs::write(
-            tw_dir.join("node_modules/@tailwindcss/cli/package.json"),
-            "{}",
-        )
-        .unwrap();
-        fs::write(tw_dir.join("node_modules/.bin/tailwindcss"), "#!/bin/sh\n").unwrap();
-
+        tailwind::ensure_installed(&fixture.0).unwrap();
         for css in [
             "packages/ui-system/leptos/style/tailwind-theme.css",
             "packages/ui-system/leptos/style/tokens.css",
@@ -1785,6 +1880,32 @@ mod tests {
                 .is_none()
         );
 
+        fs::remove_file(fixture.0.join("apps/vink-web/src/symlink.rs")).unwrap();
+        let nested = fixture.0.join("apps/vink-web/style/nested.css");
+        fs::write(&nested, ".đẹp { opacity: .5; }").unwrap();
+        fs::write(
+            fixture.0.join("apps/vink-web/style/vink.css"),
+            "@import './nested.css';",
+        )
+        .unwrap();
+        let first_nested = tailwind_inputs(&fixture.0, &bin, false, "v26.12.0")
+            .unwrap()
+            .unwrap()
+            .0;
+        fs::write(&nested, ".đẹp { opacity: .7; }").unwrap();
+        assert_ne!(
+            first_nested,
+            tailwind_inputs(&fixture.0, &bin, false, "v26.12.0")
+                .unwrap()
+                .unwrap()
+                .0
+        );
+        fs::write(&nested, "@plugin './unbounded.js';").unwrap();
+        assert!(
+            tailwind_inputs(&fixture.0, &bin, false, "v26.12.0")
+                .unwrap()
+                .is_none()
+        );
         // Editor input closure: TS, scripts, markdown fixtures, and parent-escape fail-closed.
         let ed_dir = fixture.0.join(EDITOR_RUNTIME_DIR);
         fs::create_dir_all(ed_dir.join("src")).unwrap();

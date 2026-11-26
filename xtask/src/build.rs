@@ -183,16 +183,15 @@ fn bundle_at(release: bool, feature: &str, pkg: &Path, prefix: Option<&str>) -> 
         profile,
         "--message-format=json-render-diagnostics",
     ]);
-    let freshness = process::run_cargo_json(
-        &mut wasm,
-        &format!("build browser bundle (vink-web, {feature}, {profile})"),
-    )?;
+    let label = format!("build browser bundle (vink-web, {feature}, {profile})");
+    let mut compile = || process::run_cargo_json(&mut wasm, &label);
+    let freshness = compile()?;
     let out_dir = if release { "wasm-release" } else { "debug" };
     let wasm_file = root
         .join("target/wasm32-unknown-unknown")
         .join(out_dir)
         .join("vink_web.wasm");
-    let raw = package.record_rust_wasm(&root, &wasm_file, freshness)?;
+    let raw = package.record_rust_wasm(&root, &wasm_file, freshness, compile)?;
     package.bindgen(&wasm_file, raw, release)?;
     package.editor_js(&root, &node_version)?;
     package.tailwind_css(&root, release, &node_version)?;
