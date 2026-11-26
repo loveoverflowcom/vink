@@ -736,6 +736,18 @@
     },
     {
       "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/lib.rs",
+      "symbol": "SaveAction",
+      "entry": "composition.save-pair"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/lib.rs",
+      "symbol": "ActionPair",
+      "entry": "composition.save-pair"
+    },
+    {
+      "renderer": "leptos",
       "source": "packages/vink-patterns/leptos/src/tags.rs",
       "symbol": "TagChip",
       "entry": "composition.tag-selector"

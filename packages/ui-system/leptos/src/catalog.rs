@@ -1309,6 +1309,36 @@ pub const ENTRIES: &[CatalogEntry] = &[
         cmp: "implemented-unverified",
     },
     CatalogEntry {
+        id: "composition.save-pair",
+        family: "composition",
+        label: "Thấm · Lưu — Mẫu",
+        summary: "Cặp nút ngang hàng cuối Reader (SAV-04, #388): ActionPair gom Thấm và SaveAction trong một nhóm có tên; Lưu giữ nhãn và tên “Lưu”, trạng thái đã xác nhận qua aria-pressed, dấu trang đặc và hình viên thuốc. Dữ liệu Mẫu, không gọi dịch vụ, không xác nhận ghi.",
+        scenarios: &[
+            Scenario {
+                id: "default",
+                label: "Chưa lưu",
+            },
+            Scenario {
+                id: "saved",
+                label: "Đã lưu, có liên kết Đã lưu",
+            },
+            Scenario {
+                id: "pending",
+                label: "Đang lưu",
+            },
+            Scenario {
+                id: "unknown",
+                label: "Đang đọc trạng thái riêng",
+            },
+            Scenario {
+                id: "refused",
+                label: "Danh sách Đã lưu đã đầy",
+            },
+        ],
+        leptos: "implemented-unverified",
+        cmp: "unsupported",
+    },
+    CatalogEntry {
         id: "composition.tag-selector",
         family: "composition",
         label: "Bộ chọn thẻ — Mẫu",
