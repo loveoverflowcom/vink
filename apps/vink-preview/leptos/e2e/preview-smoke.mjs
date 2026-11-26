@@ -225,12 +225,14 @@ class Page {
     return this.eval(`getComputedStyle(document.querySelector(${JSON.stringify(selector)})).getPropertyValue(${JSON.stringify(property)}).trim()`);
   }
 
-  async capture(name) {
+  async capture(name, { fullPage = true } = {}) {
     return captureTransaction(this, async () => {
       await this.eval('document.fonts.ready');
-      const height = await this.eval('Math.min(document.documentElement.scrollHeight, 6000)');
-      await this.send('Emulation.setDeviceMetricsOverride', { width: this.state.width, height, deviceScaleFactor: 1, mobile: false });
-      await this.eval('scrollTo(0,0)');
+      if (fullPage) {
+        const height = await this.eval('Math.min(document.documentElement.scrollHeight, 6000)');
+        await this.send('Emulation.setDeviceMetricsOverride', { width: this.state.width, height, deviceScaleFactor: 1, mobile: false });
+        await this.eval('scrollTo(0,0)');
+      }
       await this.settle();
       const { data } = await this.send('Page.captureScreenshot', { format: 'png' });
       mkdirSync(args.out, { recursive: true });
@@ -238,6 +240,8 @@ class Page {
       const context = await this.eval(`({
         hash: location.hash,
         width: innerWidth,
+        height: innerHeight,
+        scrollY,
         dpr: devicePixelRatio,
         rootFontSize: getComputedStyle(document.documentElement).fontSize,
         theme: document.documentElement.dataset.theme ?? document.querySelector('.vk-ui')?.dataset.theme ?? 'system',
@@ -1883,6 +1887,48 @@ async function screenPatterns(page) {
   await page.viewport(1440);
 }
 
+async function literarySpecimens(page) {
+  const appRequests = [];
+  await page.send('Network.enable');
+  const listener = ({ sessionId, method, params }) => {
+    if (sessionId === page.sessionId && method === 'Network.requestWillBeSent' &&
+        new URL(params.request.url).pathname.startsWith('/api/')) appRequests.push(params.request.url);
+  };
+  page.cdp.listeners.push(listener);
+  try {
+    await page.viewport(1440, 900);
+    await page.choose('theme', 'Sáng');
+    await page.open('screen.desk', 'long');
+    check(await page.eval(`(() => {
+      const sample = document.getElementById('specimen-scope');
+      return sample.innerText.includes('Bản mới chờ duyệt') &&
+        sample.innerText.includes('Không nối tìm kiếm/phân trang');
+    })()`), 'screen.desk/long shows sample rows and labels their boundary');
+    await page.eval("document.getElementById('specimen-scope').scrollIntoView()");
+    await page.capture('screen.desk--long--light--1440x900', { fullPage: false });
+
+    await page.viewport(390, 844);
+    await page.choose('theme', 'Tối');
+    await page.open('screen.editor', 'long');
+    check(await page.eval(`(() => {
+      const sample = document.getElementById('specimen-scope');
+      const body = sample.querySelector('#sample-body');
+      const stanzas = body?.value.split('\\n\\n');
+      return body?.checkVisibility() && stanzas?.length === 2 &&
+        stanzas.every(stanza => stanza.split('\\n').length === 3) &&
+        body.value.startsWith('Ngọn đèn chờ nước ròng') &&
+        sample.innerText.includes('Mẫu không có CodeMirror, backend') &&
+        !sample.querySelector('.cm-editor');
+    })()`), 'screen.editor/long preserves two stanzas in the controlled specimen');
+    await page.eval("document.getElementById('specimen-scope').scrollIntoView()");
+    await page.capture('screen.editor--long--dark--390x844', { fullPage: false });
+    check(appRequests.length === 0, 'literary Preview specimens call no Product API');
+  } finally {
+    page.cdp.listeners = page.cdp.listeners.filter(item => item !== listener);
+    await page.send('Network.disable');
+  }
+}
+
 async function captures(page) {
   for (const [theme, label] of [['light', 'Sáng'], ['dark', 'Tối']]) {
     await page.choose('theme', label);
@@ -2031,7 +2077,10 @@ try {
   await cdp.open();
   page = await openPage(cdp);
   const version = await cdp.send('Browser.getVersion');
-  if (args['overlays-only'] !== '1' && args['actions-only'] !== '1' && args['selects-only'] !== '1') {
+  const literaryOnly = args['literary-only'] === '1';
+  const fullSuite = !literaryOnly &&
+    args['overlays-only'] !== '1' && args['actions-only'] !== '1' && args['selects-only'] !== '1';
+  if (fullSuite) {
     await mediaHydration(page);
     await noticeHydration(page);
     await expressionPilot(page, args, check);
@@ -2040,10 +2089,11 @@ try {
   // The debug WASM can be large after the separate hydration fixture. Give bootstrap its own
   // bounded wait; interaction assertions retain the shorter default timeout.
   await page.waitFor(`document.documentElement.dataset.ready === 'true' && document.getElementById('specimen-scope')`, 'preview mounted', 60000);
-  if (args['selects-only'] === '1') { await selectChevron(page); await formatSelect(page); }
+  if (literaryOnly) await literarySpecimens(page);
+  else if (args['selects-only'] === '1') { await selectChevron(page); await formatSelect(page); }
   else if (args['actions-only'] === '1') { await actionSurfaces(page); await toggles(page); }
   else await overlayCaptures(page, {out:args.out, version, check});
-  if (args['overlays-only'] !== '1' && args['actions-only'] !== '1' && args['selects-only'] !== '1') {
+  if (fullSuite) {
     await structure(page);
     await meSelection(page);
     await themes(page);
@@ -2066,7 +2116,7 @@ try {
   }
   check(page.errors.length === 0, `no console errors or exceptions${page.errors.length ? `: ${page.errors.join(' | ')}` : ''}`);
   writeFileSync(join(args.out, 'contexts.json'), JSON.stringify({ source: sourceIdentity(), browser: version.product, userAgent: version.userAgent, captures: page.contexts }, null, 2));
-  console.log(`preview-smoke${args['selects-only'] === '1' ? ' selects-only' : args['actions-only'] === '1' ? ' actions-only' : ''}: PASS (${Object.keys(page.contexts).length} captures in ${args.out})`);
+  console.log(`preview-smoke${literaryOnly ? ' literary-only' : args['selects-only'] === '1' ? ' selects-only' : args['actions-only'] === '1' ? ' actions-only' : ''}: PASS (${Object.keys(page.contexts).length} captures in ${args.out})`);
 } catch (error) {
   console.error(`preview-smoke: FAIL ${error.message}`);
   if (page?.errors.length) console.error(`  page errors: ${page.errors.join(' | ')}`);

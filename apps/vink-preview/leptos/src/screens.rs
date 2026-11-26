@@ -4,6 +4,14 @@ use vink_patterns::*;
 use vink_ui::catalog::fixture;
 use vink_ui::*;
 
+const LITERARY_VERSE: &str = "Ngọn đèn chờ nước ròng
+Gió đẩy bèo qua ngõ
+Có tiếng ai trên sông
+
+Tôi khép hờ cánh cửa
+Để một vệt đèn thôi
+Cho người về thấy ngõ.";
+
 fn author(long: bool) -> Author {
     Author {
         name: if long {
@@ -92,7 +100,11 @@ pub fn specimen(id: &str, scenario: &str) -> Option<AnyView> {
 
 #[component]
 fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
-    let input = RwSignal::new(fixture::READING.to_string());
+    let sample_body = match (id.as_str(), scenario.as_str()) {
+        ("screen.editor", "long") => LITERARY_VERSE,
+        _ => fixture::READING,
+    };
+    let input = RwSignal::new(sample_body.to_string());
     let search = RwSignal::new(String::new());
     let theme = RwSignal::new("system".to_string());
     let title = RwSignal::new(

@@ -19,6 +19,7 @@ import { execFileSync } from 'node:child_process';
 import { EDITOR_READY, HYDRATED, STANDING, account, fabricate, fill, openAccount, q, signIn, signOut } from './auth-smoke.mjs';
 import { paragraphs } from './document.mjs';
 import { holdEditorDebounce } from './editor-autosave.mjs';
+import { literaryFirstUse, literaryPopulated, seedLiteraryDrafts } from './literary-review-smoke.mjs';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -187,6 +188,7 @@ async function newDraft(page, base, title, body) {
 
 /** #533: drive the actual editor and count publication writes independently of its copy. */
 async function submissionStructure(author, base, check) {
+  let pending;
   for (const format of ['default', 'markdown']) {
     await author.goto(base + '/ban-viet');
     await author.waitFor(HYDRATED + " && document.querySelector('#create-draft-format')", 'draft format');
@@ -234,7 +236,9 @@ async function submissionStructure(author, base, check) {
       wire.count('POST', '/snapshots') === 2 && wire.count('POST', '/publication/request-public') === 1, format + ' one revision and one reviewed intent');
     check((await author.draft(work)).document.source.endsWith('u\u031b\u0301'), 'NFD poem roundtrips exactly');
     await wire.close();
+    pending ??= work;
   }
+  return pending;
 }
 
 async function pickFormTag(page) {
@@ -323,7 +327,9 @@ export async function publicationAuthor(page, { args, check, openPage }) {
     check(paused.status === 200 && paused.body.mode === 'paused', 'the admin pauses automation via the authorized API');
   }
 
-  await submissionStructure(author, base, check);
+  await literaryFirstUse(author, { base, call, check });
+  const fixtures = await seedLiteraryDrafts(author, call);
+  const pending = await submissionStructure(author, base, check);
 
   // ---- AC-01: write, tag, submit, approve, read ------------------------------------------------
   console.log('  author writes, tags and submits from Bàn viết:');
@@ -375,6 +381,11 @@ export async function publicationAuthor(page, { args, check, openPage }) {
   check(html.includes(TITLE_1) && html.includes(LINE_1A) && html.includes(FORM_TAG), 'the reader page renders that revision and its tag');
   check(await author.eval(`document.querySelector('#editor-review-status')?.textContent.includes('kiểm duyệt')`), 'the link to Desk review stays in the region');
 
+  await literaryPopulated(author, { base, call, check, fixtures, published: work, pending, principal: principalA });
+  await author.goto(`${base}/ban-viet/${work}`);
+  await author.waitFor(EDITOR_READY, 'the approved work reopens after the literary review');
+  await waitPhase(author, 'ready');
+  await author.eval("document.querySelector('#work-options').open = true");
   await rest({ author, mod, work, r1, base, ctx, check, openPage });
 }
 
