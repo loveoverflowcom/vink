@@ -147,6 +147,7 @@ file khóa để vượt một lượt đang chạy.
 `build web`, `dev web` và các kịch bản SSR dùng `target/site/pkg`. CSR phát hành dùng
 `target/spa/_v/<revision>/pkg`, CSR verification dùng `target/verify-spa/_v/<revision>/pkg`.
 Các lệnh vẫn gọi Cargo với profile, feature, Cargo.lock, environment và dependency graph hiện hành.
+Cargo con build binary bỏ metadata tên, phiên bản và thư mục manifest của xtask để dependency native dùng chung với Cargo cha giữ được freshness.
 Cargo quyết định freshness của WASM thô. Package có thể tái dùng đầu ra wasm-bindgen khi
 WASM thô, executable bindgen đã kiểm version, cờ, feature, profile, prefix và biến
 `WASM_BINDGEN_*` cùng đường loader do Cargo truyền khớp, đồng thời đủ tệp và SHA-256 khớp.

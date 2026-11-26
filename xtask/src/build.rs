@@ -20,6 +20,18 @@ fn binary_command(artifact: Artifact, release: bool) -> Result<std::process::Com
         _ => return Err("expected a server binary".into()),
     };
     let mut command = cargo(&root());
+    // cargo run sets these for xtask. Leaking its package identity into nested Cargo
+    // makes cc/ring invalidate the native dependencies shared with the next bootstrap.
+    for key in [
+        "CARGO_MANIFEST_DIR",
+        "CARGO_PKG_NAME",
+        "CARGO_PKG_VERSION_MAJOR",
+        "CARGO_PKG_VERSION_MINOR",
+        "CARGO_PKG_VERSION_PATCH",
+        "CARGO_PKG_VERSION_PRE",
+    ] {
+        command.env_remove(key);
+    }
     command.args(["build", "--locked", "-p", package, "--bin", bin]);
     if artifact == Artifact::Worker {
         command.arg("--no-default-features");
