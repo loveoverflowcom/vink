@@ -40,6 +40,8 @@ use crate::email_code::{ChallengeHandle, Code, EmailAddress};
 use crate::password::{Password, Username};
 use crate::persistence::{SchemaState, role_is_privileged, schema_state};
 
+mod deletion;
+
 /// Server-side bound on one contract call, body upload included.
 pub const DEADLINE: Duration = Duration::from_secs(2);
 /// Bound on the email-code operations that commit (sign-in, revoke, email change). They are rare
@@ -60,6 +62,7 @@ fn writes(path: &str) -> bool {
         "/identity/v1/email-change/",
         "/identity/v1/email/attachment/",
         "/identity/v1/password/",
+        "/identity/v1/account-deletion/",
     ]
     .iter()
     .any(|prefix| path.starts_with(prefix))
@@ -192,6 +195,26 @@ pub fn router(state: IdentityState) -> Router {
         .route(
             "/identity/v1/password/enroll/status",
             post(password_enrollment_status),
+        )
+        .route(
+            "/identity/v1/account-deletion/challenges",
+            post(deletion::start),
+        )
+        .route(
+            "/identity/v1/account-deletion/confirm",
+            post(deletion::confirm),
+        )
+        .route(
+            "/identity/v1/account-deletion/status",
+            post(deletion::status),
+        )
+        .route(
+            "/identity/v1/account-deletion/pending",
+            get(deletion::pending),
+        )
+        .route(
+            "/identity/v1/account-deletion/finish",
+            post(deletion::finish),
         )
         .route("/identity/{version}", any(unknown_operation))
         .route("/identity/{version}/{*rest}", any(unknown_operation))

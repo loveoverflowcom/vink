@@ -13,8 +13,9 @@ use crate::domain::notification::principal_standing_changed;
 use crate::domain::principal::{PenName, Standing, SubjectKey, SuspensionReason};
 
 const BOUND: &str = "SELECT b.principal_id,
-        EXISTS (SELECT 1 FROM principal_suspensions s
-                 WHERE s.principal_id = b.principal_id AND s.lifted_at IS NULL) AS suspended
+        (EXISTS (SELECT 1 FROM principal_suspensions s
+                 WHERE s.principal_id = b.principal_id AND s.lifted_at IS NULL)
+         OR EXISTS (SELECT 1 FROM account_deletions d WHERE d.principal_id = b.principal_id)) AS suspended
    FROM principal_bindings b WHERE b.authority = $1 AND b.subject_id = $2";
 
 fn bound(row: &sqlx::postgres::PgRow) -> Result<BoundPrincipal, sqlx::Error> {
@@ -55,7 +56,8 @@ pub(super) async fn locked_standing(
     }
     let suspended: bool = sqlx::query_scalar(
         "SELECT EXISTS (SELECT 1 FROM principal_suspensions
-                         WHERE principal_id = $1 AND lifted_at IS NULL)",
+                         WHERE principal_id = $1 AND lifted_at IS NULL)
+             OR EXISTS (SELECT 1 FROM account_deletions WHERE principal_id = $1)",
     )
     .bind(actor.as_uuid())
     .fetch_one(&mut **tx)
@@ -118,6 +120,21 @@ impl PrincipalStore for PgStore {
         pen_name: &PenName,
     ) -> Result<Provisioned, StoreError> {
         let mut tx = self.pool().begin().await.map_err(classify)?;
+        if subject.authority() == super::account_deletion::NATIVE_AUTHORITY {
+            super::account_deletion::lock_subject(&mut tx, subject.id()).await?;
+            if let Ok(id) = Uuid::parse_str(subject.id()) {
+                let retired: bool = sqlx::query_scalar(
+                    "SELECT EXISTS (SELECT 1 FROM account_deletions WHERE account_id = $1)",
+                )
+                .bind(id)
+                .fetch_one(&mut *tx)
+                .await
+                .map_err(classify)?;
+                if retired {
+                    return Err(StoreError::PrincipalSuspended);
+                }
+            }
+        }
         sqlx::query("INSERT INTO principals (id, display_name) VALUES ($1, $2)")
             .bind(candidate.as_uuid())
             .bind(pen_name.as_str())
@@ -230,7 +247,9 @@ async fn standing_changed(
     principal: PrincipalId,
 ) -> Result<(), StoreError> {
     let version: i64 = sqlx::query_scalar(
-        "SELECT count(*) + count(lifted_at) FROM principal_suspensions WHERE principal_id = $1",
+        "SELECT count(*) + count(lifted_at)
+             + (EXISTS (SELECT 1 FROM account_deletions WHERE principal_id = $1))::int
+           FROM principal_suspensions WHERE principal_id = $1",
     )
     .bind(principal.as_uuid())
     .fetch_one(&mut **tx)

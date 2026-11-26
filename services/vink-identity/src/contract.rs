@@ -8,6 +8,15 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+/// Replayable receipt. The stable operation ID links the two database commits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow)]
+pub struct AccountDeletion {
+    pub account_id: uuid::Uuid,
+    pub operation_id: uuid::Uuid,
+    #[serde(with = "time::serde::rfc3339")]
+    pub accepted_at: OffsetDateTime,
+}
+
 pub const CONTRACT: &str = "vink.identity.v1";
 /// Largest request body accepted by RPCs without a password field.
 pub const MAX_BODY_BYTES: usize = 8 * 1024;

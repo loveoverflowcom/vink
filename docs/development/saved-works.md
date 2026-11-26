@@ -23,7 +23,7 @@
 
 GET danh sách dùng một snapshot PostgreSQL cho standing, retirement, publication, thẻ thể loại và byline. Truy vấn lọc Gone trước khi lấy tối đa 21 dòng hiện được. Cursor ký biên thời gian và WorkId bằng khóa ngẫu nhiên của cặp, gắn với chủ và thứ tự v1. Vì fence giữ khóa qua bỏ lưu, cursor vẫn xác minh được cả khi người dùng đã bỏ lưu hoặc lưu lại bài ở cuối trang trước. [Truy vấn](../../services/vink-app/src/persistence/saved_works/list.sql) · [Cursor](../../services/vink-app/src/persistence/saved_works/cursor.rs).
 
-Khi App ghi fence xóa tài khoản hoặc thu hồi handle theo đường cũ, trigger dọn các dòng do tài khoản đó sở hữu ngay trong giao dịch. Những người từng lưu bài của tác giả đã xóa thấy hàng trung tính theo quyền hiện tại. Việc Account/Identity phát lệnh xóa đã xác minh và cấp trạng thái chỉ hạn chế đăng/bình luận lần lượt thuộc SOC-DEP-01 và SOC-DEP-02. [Ranh giới Account](../architecture/social-graph.md).
+Khi App ghi fence xóa tài khoản hoặc thu hồi handle theo đường cũ, trigger dọn các dòng do tài khoản đó sở hữu ngay trong giao dịch. Những người từng lưu bài của tác giả đã xóa thấy hàng trung tính theo quyền hiện tại. [Account Deletion #297](../architecture/account-deletion.md) ghi fence sau xác minh. Bài bị kiểm duyệt gỡ tiếp tục bị loại trước khi chiếu hàng trung tính. SOC-DEP-02 vẫn sở hữu hạn chế riêng cho đăng bài và nhận xét.
 
 **Bàn giao Web.** [PR #527](https://github.com/loveoverflowcom/vink/pull/527) đưa đặc tả và domain vào develop. #387 cung cấp API cho Reader #388 và hồ sơ #389. Sau khi mất ACK, consumer đọc lại đúng cặp của phiên hiện hành. [Hợp đồng và bảng lỗi](../../services/vink-app/contracts/http/v1/saved-works.md).
 

@@ -49,6 +49,8 @@ use crate::identity::client::{
 };
 use crate::identity::{IdentityClient, Resolution, SESSION_COOKIE, bind, presented_credential};
 
+mod deletion;
+
 /// Holds the challenge handle between "send me a code" and "here is the code". `Strict`: the
 /// completion is a same-origin request, so no cross-site navigation ever carries it.
 pub const CHALLENGE_COOKIE: &str = "__Host-vink_sign_in";
@@ -89,6 +91,9 @@ pub fn routes() -> Router<AppState> {
             "/auth/email/attachment/complete",
             post(complete_email_attachment),
         )
+        .route("/auth/account-deletion/challenges", post(deletion::start))
+        .route("/auth/account-deletion/confirm", post(deletion::confirm))
+        .route("/auth/account-deletion/status", post(deletion::status))
         .route("/auth/session", get(session_state).delete(sign_out))
         .route("/auth/session/account", get(current_account))
         .route("/auth/principal", post(provision_principal))
@@ -257,6 +262,14 @@ async fn admit(state: &AppState, parts: &Parts, limit: &RateLimit) -> Result<(),
         tracing::error!("sign-in request without a peer address; refused");
         return Err(ApiError::DependencyUnavailable);
     };
+    admit_network(state, network, limit).await
+}
+
+async fn admit_network(
+    state: &AppState,
+    network: Network,
+    limit: &RateLimit,
+) -> Result<(), ApiError> {
     match state.limiter.admit(limit, network).await {
         Ok(Admission::Admitted) => Ok(()),
         Ok(Admission::Refused {

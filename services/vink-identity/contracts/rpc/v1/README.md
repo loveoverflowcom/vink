@@ -24,6 +24,23 @@ The caller is the OS user of the connecting process (`SO_PEERCRED`/`getpeereid`)
 `x-user-id`, `x-vink-principal`, `x-forwarded-for` or `authorization` are never read; a browser
 never reaches this socket and nothing it sends can name a caller or a subject.
 
+## Xóa tài khoản
+
+Dành cho App đã xác thực bằng peer UID. Các path riêng dưới `/identity/v1/account-deletion`.
+
+- `POST /challenges` nhận email và subject UUID dự kiến nếu có phiên. Phát mã một lần theo purpose
+  `delete_account`, khác sign-in. Mã gắn với địa chỉ đang xác minh và account lúc phát.
+- `POST /confirm` nhận `method` (`password` hoặc `email_code`), `operation_id` UUID và
+  `expected` UUID tùy chọn. Password gửi username/mật khẩu. Email gửi private handle/mã.
+  Thành công trả `account_id`, `operation_id`, `accepted_at` RFC3339; credential đã được thu hồi.
+  `422` sai proof, `409 challenge_closed` hết hạn/đã dùng, `429` quá hạn mức.
+- `GET /pending?after=<operation_id>` duyệt tối đa 32 biên nhận chưa xử lý theo mỗi lượt. `POST /status` nhận `operation_id`, trả biên nhận
+  hoặc JSON null. `POST /finish` nhận `operation_id`, App gọi sau khi các hiệu ứng bền đã hoàn tất;
+  retry trả 204.
+
+Identity giữ hàng rào và biên nhận sau khi hoàn tất. Web không gọi trực tiếp socket và không
+nhận `account_id`. [Vòng đời](../../../../../docs/architecture/account-deletion.md).
+
 ## Operations
 
 | Request | Success | Errors |

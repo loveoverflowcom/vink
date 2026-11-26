@@ -297,6 +297,7 @@ where
                     tags,
                 }))
             }
+            ReaderWorkFacts::AuthorDeleted { work_id } => Ok(ReaderWork::AuthorDeleted { work_id }),
             ReaderWorkFacts::Hidden { work_id } => Ok(ReaderWork::Hidden { work_id }),
             ReaderWorkFacts::ReviewWithdrawn { work_id, author } => {
                 Ok(ReaderWork::ReviewWithdrawn { work_id, author })

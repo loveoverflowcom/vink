@@ -37,10 +37,13 @@ const WORK_VIEWS_MIGRATION: i64 = 20261130000000;
 const PUBLIC_ENDORSER_LIST_MIGRATION: i64 = 20261201000000;
 const COMMENT_UNG_NOTIFICATION_MIGRATION: i64 = 20261203000000;
 const SAVED_WORKS_MIGRATION: i64 = 20261204000000;
+const ACCOUNT_DELETION_MIGRATION: i64 = 20261205000000;
 const ORIGIN: &str = "http://127.0.0.1:3000";
 
 #[path = "postgres/abuse.rs"]
 mod abuse;
+#[path = "postgres/account_deletion.rs"]
+mod account_deletion;
 #[path = "postgres/author_discovery.rs"]
 mod author_discovery;
 #[path = "postgres/author_works.rs"]

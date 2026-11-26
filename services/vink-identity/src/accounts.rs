@@ -25,6 +25,7 @@ use crate::mail::Purpose;
 use crate::password::{Password, Username};
 
 mod attachment;
+mod deletion;
 pub use attachment::AttachmentRejection;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -76,6 +77,7 @@ pub enum EnrollmentOutcome {
 
 enum ChallengeScope {
     SignIn,
+    DeleteAccount(Option<Uuid>),
     ChangeEmail(Uuid),
     EnrollPassword {
         account: Uuid,
@@ -236,14 +238,13 @@ impl AccountStore {
         Ok(Ok(session))
     }
 
-    /// Verifies username and password and issues a session.
-    /// Hashes/verifies outside row locks; verifies account and credential standing
-    /// under commit fence before issuing session.
-    pub async fn sign_in_password(
+    /// Shared password proof and throttle. Neither a valid hash nor an unlocked version
+    /// authorizes a write without the caller rechecking under the account lock.
+    async fn verify_password(
         &self,
         username: &Username,
         raw_password: &str,
-    ) -> Result<Result<NewSession, PasswordSignInRejection>, StoreError> {
+    ) -> Result<Result<(Uuid, i32, bool), PasswordSignInRejection>, StoreError> {
         // Throttling per username: check recent failed attempts
         let recent_failures: i64 = sqlx::query_scalar(
             "SELECT count(*) FROM password_login_attempts
@@ -284,11 +285,26 @@ impl AccountStore {
                     .await;
             return Ok(Err(PasswordSignInRejection::InvalidCredentials));
         };
-        if row.try_get::<bool, _>("disabled")? {
+        Ok(Ok((
+            row.try_get("account_id")?,
+            row.try_get("version")?,
+            row.try_get("disabled")?,
+        )))
+    }
+
+    pub async fn sign_in_password(
+        &self,
+        username: &Username,
+        raw_password: &str,
+    ) -> Result<Result<NewSession, PasswordSignInRejection>, StoreError> {
+        let (account_id, expected_version, disabled) =
+            match self.verify_password(username, raw_password).await? {
+                Ok(proof) => proof,
+                Err(rejection) => return Ok(Err(rejection)),
+            };
+        if disabled {
             return Ok(Err(PasswordSignInRejection::AccountDisabled));
         }
-        let account_id: Uuid = row.try_get("account_id")?;
-        let expected_version: i32 = row.try_get("version")?;
 
         let mut tx = self.pool.begin().await?;
         let check = sqlx::query(
@@ -536,9 +552,19 @@ impl AccountStore {
         code: &Code,
     ) -> Result<SignInOutcome, StoreError> {
         let mut tx = self.pool.begin().await?;
+        let address: Option<String> = sqlx::query_scalar(
+            "SELECT address FROM email_challenges WHERE id = $1 AND purpose = 'sign_in'",
+        )
+        .bind(handle.id)
+        .fetch_optional(&mut *tx)
+        .await?;
+        let Some(address) = address else {
+            return Ok(SignInOutcome::Rejected(ChallengeRejection::ChallengeClosed));
+        };
+        deletion::lock_email_owner(&mut tx, &address).await?;
         let row = sqlx::query(
             "SELECT address, code_hash, failed_attempts, consumed_at IS NOT NULL AS consumed,
-                    expires_at <= now() AS expired
+                    expires_at <= clock_timestamp() AS expired
                FROM email_challenges WHERE id = $1 AND purpose = 'sign_in' FOR UPDATE",
         )
         .bind(handle.id)
@@ -804,6 +830,9 @@ impl AccountStore {
         let (purpose, account, enrollment_session, attachment_session, attachment_version) =
             match scope {
                 ChallengeScope::SignIn => (Purpose::SignIn, None, None, None, None),
+                ChallengeScope::DeleteAccount(account) => {
+                    (Purpose::DeleteAccount, account, None, None, None)
+                }
                 ChallengeScope::ChangeEmail(account) => {
                     (Purpose::ChangeEmail, Some(account), None, None, None)
                 }
@@ -1066,7 +1095,8 @@ pub async fn disable_account(pool: &PgPool, account: Uuid) -> Result<AccountChan
 
 pub async fn enable_account(pool: &PgPool, account: Uuid) -> Result<AccountChange, StoreError> {
     let updated = sqlx::query(
-        "UPDATE accounts SET disabled_at = NULL WHERE id = $1 AND disabled_at IS NOT NULL",
+        "UPDATE accounts SET disabled_at = NULL WHERE id = $1 AND disabled_at IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM account_deletions WHERE account_id = $1)",
     )
     .bind(account)
     .execute(pool)

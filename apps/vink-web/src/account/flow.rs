@@ -14,6 +14,9 @@ pub(super) enum Operation {
     AttachmentChallenge,
     AttachmentComplete,
     PenName,
+    DeletionChallenge,
+    ConfirmDeletion,
+    DeletionStatus,
     SignOut,
 }
 
@@ -30,6 +33,9 @@ impl Operation {
             Self::AttachmentComplete => "Đang xác minh mã…",
             Self::Enrollment => "Đang thêm mật khẩu…",
             Self::PenName => "Đang lưu bút danh…",
+            Self::DeletionChallenge => "Đang xin mã…",
+            Self::ConfirmDeletion => "Đang xác minh yêu cầu xóa…",
+            Self::DeletionStatus => "Đang kiểm tra kết quả…",
             Self::SignOut => "Đang đăng xuất…",
         }
     }
@@ -48,6 +54,9 @@ impl Operation {
             Self::AttachmentChallenge | Self::AttachmentComplete => {
                 "Vink chưa hỗ trợ thêm email trên hệ thống này."
             }
+            Self::DeletionChallenge | Self::ConfirmDeletion | Self::DeletionStatus => {
+                "Tính năng xóa tài khoản hiện chưa khả dụng."
+            }
             Self::PenName | Self::SignOut => "Thao tác này hiện chưa khả dụng.",
         }
     }
@@ -60,6 +69,8 @@ impl Operation {
                 | Self::PasswordRegister
                 | Self::EmailCode
                 | Self::PenName
+                | Self::ConfirmDeletion
+                | Self::DeletionStatus
                 | Self::SignOut
         )
     }

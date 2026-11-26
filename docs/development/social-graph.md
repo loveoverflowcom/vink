@@ -255,8 +255,9 @@ toàn dùng bản có cả migration lẫn redaction, ưu tiên tắt entry form
 ## Social adapter thu hồi tài khoản #297
 
 - **Sản phẩm.** SOC-LIFE-02 yêu cầu thu hồi mọi địa chỉ và quan hệ của tài khoản đã
-  xác minh xóa. SOC-DEP-01 thuộc Account/Identity và vẫn là phụ thuộc ngoài. SOC-DEP-02
-  giữ nguyên phạm vi. Phân loại full suspension tiếp tục dùng guard hiện hành.
+  xác minh xóa. [Account Deletion](../architecture/account-deletion.md) cấp biên nhận đã
+  xác minh cho adapter theo SOC-DEP-01. Phân loại full suspension vẫn dùng guard hiện hành.
+  Hạn chế riêng cho đăng bài và nhận xét thuộc SOC-DEP-02.
 - **Kiến trúc.** [Adapter App](../../services/vink-app/src/persistence/social_retirement.rs)
   nhận PrincipalId đã binding và operation ID ổn định qua retry. Transaction thứ nhất
   khóa Principal trước Profile, ghi fence và bỏ con trỏ Handle. Từ commit này, các alias
@@ -275,4 +276,5 @@ toàn dùng bản có cả migration lẫn redaction, ưu tiên tắt entry form
   [Feed và tìm tác giả](../../services/vink-app/tests/postgres/feed.rs) đọc lại sau fence
   trong khi cạnh còn active trong bảng. [Reader và Discussion](../../services/vink-app/tests/postgres/discussion.rs)
   kiểm validator cũ, attribution và ngữ cảnh trả lời.
-  Account E2E và SOC-AC-20/21 cấp Epic ở trạng thái `NOT_RUN` cho đến khi có SOC-DEP-01.
+  Tại PR #371, kiểm chứng Account E2E và SOC-AC-20/21 cấp Epic còn ở trạng thái `NOT_RUN`. Theo dõi
+  kết quả tích hợp mới tại [#297](https://github.com/loveoverflowcom/vink/issues/297).

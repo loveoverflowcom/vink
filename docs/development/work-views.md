@@ -274,8 +274,9 @@ trạng thái cuối của `scenario.json` làm oracle đọc.
 
 - HTTP thu nhận, cookie khách, bộ giới hạn tần suất, cấu hình khóa và tín hiệu Web: #343.
 - API đọc, “0”/“—”/“Tính từ”: #342 (§9). Chưa có số liệu nào được hiển thị trên giao diện.
-- Route xóa tác phẩm/tài khoản chưa có (OQ-2); chỉ có `erase_work` và cascade, đã kiểm trên
-  PostgreSQL.
+- [Account Deletion #297](../architecture/account-deletion.md) gọi `erase_work` trong giao dịch
+  rút bài. Account giữ WorkId làm tombstone, nên các FK cascade sẽ không chạy. VIEW-11 ở luồng
+  xóa tác phẩm riêng vẫn theo owner Publication.
 - OQ-3 không đổi luật ghi; OQ-1, OQ-4 thuộc phía đọc.
 - Tranh chấp bài nóng chỉ đo local (32 lượt đồng thời), chưa đo tải thật.
 - Không có quy trình đổi khóa hai khóa song song.

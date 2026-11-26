@@ -1146,7 +1146,13 @@ async fn serve(config: Config, api_only: bool) -> Result<(), Failure> {
         work_views = if config.work_view_digest_key.is_some() { "configured" } else { "unconfigured" },
         "vink-app listening"
     );
-    axum::serve(
+    let deletion_reconciler = state.sign_in.clone().map(|client| {
+        tokio::spawn(vink_app::account_deletion::reconcile(
+            PgStore::new(pool.clone()),
+            client,
+        ))
+    });
+    let result = axum::serve(
         listener,
         (if api_only {
             vink_app::http::api_router(state)
@@ -1156,8 +1162,12 @@ async fn serve(config: Config, api_only: bool) -> Result<(), Failure> {
         .into_make_service_with_connect_info::<SocketAddr>(),
     )
     .with_graceful_shutdown(runtime::shutdown_signal())
-    .await
-    .map_err(|error| Failure::Runtime(format!("server error: {error}")))?;
+    .await;
+    if let Some(reconciler) = deletion_reconciler {
+        reconciler.abort();
+        let _ = reconciler.await;
+    }
+    result.map_err(|error| Failure::Runtime(format!("server error: {error}")))?;
     pool.close().await;
     tracing::info!("vink-app stopped");
     Ok(())

@@ -606,7 +606,7 @@ async fn populated_schema_upgrades_once_without_public_changes(pool: PgPool) {
     assert_eq!(before.0, StatusCode::OK);
     assert_eq!(
         migrate(&pool).await.unwrap().applied,
-        [SAVED_WORKS_MIGRATION]
+        [SAVED_WORKS_MIGRATION, ACCOUNT_DELETION_MIGRATION]
     );
     assert!(migrate(&pool).await.unwrap().applied.is_empty());
     assert_eq!(change(&app, "PUT", WORK, 1).await.0, StatusCode::OK);

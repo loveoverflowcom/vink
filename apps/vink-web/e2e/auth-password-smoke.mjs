@@ -2,6 +2,8 @@
 // The mail carrier is a local outbox. Faults delay/drop a real response or explicitly inject
 // a refusal; no synthetic success is used. Don't log request bodies, credentials or cookies.
 
+import { spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { wakeDesk } from './desk-lifecycle.mjs';
 import { followingFeed } from './following-feed-smoke.mjs';
 import { authorFollows } from './author-follow-smoke.mjs';
@@ -883,6 +885,127 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
       !document.cookie.includes('vink_s') && !location.search && !location.hash;
   })()`), 'no test credentials in script-visible cookies, storage or the URL');
   check(other.errors.length === 0 && tab.errors.length === 0, 'no console exceptions in the extra password tabs');
+}
+
+export async function accountDeletion(page, { args, check, openPage }) {
+  const { base } = args;
+  const scratch = process.env.VINK_HANDLE_SCRATCH;
+  const database = scratch && new URL(scratch);
+  if (database?.pathname !== '/vink_verify_web_password_auth' ||
+      !['127.0.0.1', 'localhost', '[::1]'].includes(database.hostname)) {
+    throw new Error('account deletion scenario requires its isolated loopback scratch database');
+  }
+  const db = (statement) => {
+    const result = spawnSync('psql', ['-X', '--no-password', '-v', 'ON_ERROR_STOP=1', '-qtA', '-c', statement], {
+      encoding: 'utf8', env: { ...process.env, PGDATABASE: scratch },
+    });
+    if (result.status !== 0) throw new Error(`account deletion scratch SQL failed: ${result.stderr.trim()}`);
+    return result.stdout.trim();
+  };
+  const username = 'tacgia.xoa';
+  const pen = 'Bút danh cần thu hồi';
+  await openAccount(page, base, 'anonymous');
+  await page.click('#use-registration');
+  await credentials(page, REGISTER, username, SECRET_A);
+  await page.click(REGISTER + '-submit');
+  await setPenName(page, pen);
+  const principal = (await read(page, '/api/v1/auth/session')).data.principal_id;
+  const { handle } = (await read(page, '/api/v1/me/profile')).data;
+  const other = await openPage(true);
+  await openAccount(other, base, 'anonymous');
+  await credentials(other, LOGIN, username, SECRET_A);
+  await other.click(LOGIN + '-submit');
+  await other.waitFor(`${STANDING} === 'active'`, 'second independent browser session');
+
+  const work = randomUUID();
+  const revision = randomUUID();
+  // A valid runtime Publication binding, cloned from the scratch seed. The owner came from the
+  // real registration above. Only the fault trigger is fabricated.
+  db(`BEGIN;
+    INSERT INTO works (id, owner_id) VALUES ('${work}', '${principal}');
+    INSERT INTO revisions (id, work_id, title, document, content_hash, created_by)
+      SELECT '${revision}', '${work}', title, document, content_hash, '${principal}'
+        FROM revisions WHERE work_id = '33333333-3333-4333-8333-333333333333';
+    INSERT INTO work_revision_moderation (work_id, revision_id, decision_version, moderation, provenance_kind)
+      VALUES ('${work}', '${revision}', 2, 'approved', 'legacy_bootstrap');
+    INSERT INTO work_publications (work_id, audience, lifecycle, generation, intent_revision_id, intent_generation,
+      pointer_revision_id, pointer_intent_generation, ever_public, public_epoch)
+      VALUES ('${work}', 'public', 'active', 2, '${revision}', 2, '${revision}', 2, ARRAY['${revision}'::uuid], 1);
+    INSERT INTO publications (work_id, revision_id, generation, published_at)
+      VALUES ('${work}', '${revision}', 2, now());
+    CREATE FUNCTION inject_account_deletion_failure() RETURNS trigger LANGUAGE plpgsql AS
+      $$BEGIN RAISE EXCEPTION 'scratch-only rollback'; END;$$;
+    CREATE TRIGGER inject_account_deletion_failure BEFORE INSERT ON account_deletions
+      FOR EACH ROW EXECUTE FUNCTION inject_account_deletion_failure();
+    COMMIT`);
+  try {
+    await page.goto(`${base}/tac-pham/${work}`);
+    await page.waitFor(q('.vk-document'), 'Reader before deletion');
+    await openAccount(page, base, 'active');
+    await page.click('#open-account-deletion');
+    await page.waitFor(`document.activeElement?.id === 'account-deletion-title'`, 'explicit opening focuses the warning');
+    for (const width of [320, 1440]) {
+      await page.viewport(width, 800);
+      check(await page.eval(`(() => {
+        const form = document.querySelector('#delete-account-form');
+        const action = document.querySelector('#confirm-account-deletion-password');
+        return form.scrollWidth <= form.clientWidth + 1 &&
+          action.getBoundingClientRect().right <= window.innerWidth;
+      })()`), `the warning and confirmation fit at ${width}px`);
+    }
+    await fill(page, '#account-delete-username', username);
+    await fill(page, '#account-delete-password', 'mot-mat-khau-sai');
+    await page.click('#confirm-account-deletion-password');
+    await page.waitFor(contains('Tên đăng nhập hoặc mật khẩu chưa đúng'), 'wrong proof shows an error and keeps the account active');
+    await fill(page, '#account-delete-password', SECRET_A);
+    await page.click('#confirm-account-deletion-password');
+    await page.waitFor(`${STANDING} === 'anonymous' && ${contains('Yêu cầu đã được tiếp nhận')}`, 'revoked at Identity while App rolls back');
+    check((await read(other, '/api/v1/auth/session')).data.state === 'anonymous',
+      'the other device lost its session before App recovered');
+    check(db('SELECT count(*) FROM account_deletions') === '0', 'failed App transaction wrote no fence receipt');
+  } finally {
+    db('DROP TRIGGER inject_account_deletion_failure ON account_deletions; DROP FUNCTION inject_account_deletion_failure()');
+  }
+  const deadline = Date.now() + 20000;
+  while (Date.now() < deadline && db('SELECT count(*) FROM account_deletions') === '0') await sleep(150);
+  await page.click('#check-account-deletion');
+  await page.waitFor(contains('Tài khoản đã được xóa vĩnh viễn'), 'background retry committed on the App and status reconciled');
+  await page.eval('history.back()');
+  await page.waitFor(q('[data-testid=reader-author-deleted]'), 'Back from Account loads the neutral Reader replacement');
+  check(await page.eval(`!document.querySelector('.vk-document') && !document.body.innerText.includes(${JSON.stringify(pen)})`),
+    'the replacement has no original text or author name');
+  const old = await fetch(`${base}/@${handle}`, { redirect: 'manual' });
+  check(old.status === 410 && !old.headers.has('location'), 'the earlier Handle stays gone');
+
+  await openAccount(page, base, 'anonymous');
+  await page.click('#use-registration');
+  await credentials(page, REGISTER, username, SECRET_A);
+  await page.click(REGISTER + '-submit');
+  await setPenName(page, 'Tác giả mới');
+  const replacement = (await read(page, '/api/v1/auth/session')).data.principal_id;
+  check(replacement !== principal, 'reusing the username creates a different principal');
+  await signOut(page, base);
+
+  const email = 'xoa-tai-khoan@example.test';
+  const seen = new Set();
+  await signIn(page, { args, seen }, email);
+  await setPenName(page, 'Tác giả dùng mã');
+  const suspended = (await read(page, '/api/v1/auth/session')).data.principal_id;
+  db(`INSERT INTO principal_suspensions (id, principal_id, reason)
+        VALUES ('${randomUUID()}', '${suspended}', 'Đình chỉ trong kiểm thử')`);
+  await openAccount(page, base, 'suspended');
+  await page.click('#open-account-deletion');
+  await page.click('#account-delete-with-email');
+  await fill(page, '#account-delete-email', email);
+  await page.click('#send-account-deletion-code');
+  await page.waitFor(q('#account-delete-code'), 'dedicated email OTP step');
+  await fill(page, '#account-delete-code', await mailedCode(args.outbox, email, seen));
+  await page.click('#confirm-account-deletion-code');
+  await page.waitFor(`${STANDING} === 'anonymous' && ${contains('Tài khoản đã được xóa vĩnh viễn')}`, 'real email OTP retires the suspended account without issuing a session');
+  await signIn(page, { args, seen }, email);
+  await setPenName(page, 'Người dùng email mới');
+  check((await read(page, '/api/v1/auth/session')).data.principal_id !== suspended,
+    'the same email proves a different principal after deletion');
 }
 
 // Same Chrome driver and real password/editor journeys against the standalone host.
