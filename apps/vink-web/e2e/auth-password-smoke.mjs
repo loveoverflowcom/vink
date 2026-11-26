@@ -12,6 +12,7 @@ import { deskGuest } from './desk-empty-smoke.mjs';
 import { captureRequest, holdAnswer } from './auth-browser-network.mjs';
 import { APPEARANCE_SETTLED } from './visual-evidence.mjs';
 import { standaloneWorkViewCheck } from './work-views-smoke.mjs';
+import { readerSave } from './saved-works-smoke.mjs';
 
 const API = '/api/v1/auth/password';
 const PANEL = '#account-session';
@@ -885,7 +886,7 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
 }
 
 // Same Chrome driver and real password/editor journeys against the standalone host.
-export async function standalone(page, {args, check}) {
+export async function standalone(page, {args, check, openPage}) {
   const base = args.base;
   const work = '33333333-3333-4333-8333-333333333333';
   const reader = base + '/tac-pham/' + work;
@@ -995,4 +996,8 @@ export async function standalone(page, {args, check}) {
   check(!await page.eval("document.body.textContent.includes('Bản thảo trên Vink')"),
     'a pending work stays off the public author profile');
   await standaloneWorkViewCheck(page, { args, check });
+  // #388: the work-view check ends signed out; the save journey starts as a guest.
+  await readerSave(page, { args, check, openPage,
+    reader: { username: username + 'b', password: SECRET_B },
+    other: { username, password: SECRET_A } });
 }

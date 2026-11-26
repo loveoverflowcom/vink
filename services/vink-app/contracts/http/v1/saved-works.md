@@ -1,6 +1,6 @@
 # HTTP v1 · Danh sách Đã lưu của tôi
 
-Hợp đồng đã triển khai ở mức `persistence-api` (#387). Vink App sở hữu quan hệ (PrincipalId, WorkId). [PRD §18 và bảng vòng đời](../../../../../prd/requirements.md#18-lưu-bài-để-đọc-lại-saved-works) · [phiên, Origin và lỗi v1](README.md) · [registry](../../../../../docs/development/saved-works.md).
+Hợp đồng đã triển khai ở mức `persistence-api` (#387). Vink App sở hữu quan hệ (PrincipalId, WorkId). Consumer Web đầu tiên là nút Lưu của Reader (#388, [ReaderSave](../../../../../apps/vink-web/src/pages/saved_work.rs)), dùng hai tuyến theo từng bài. [PRD §18 và bảng vòng đời](../../../../../prd/requirements.md#18-lưu-bài-để-đọc-lại-saved-works) · [phiên, Origin và lỗi v1](README.md) · [registry](../../../../../docs/development/saved-works.md).
 
 ## Tuyến và quyền
 

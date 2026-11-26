@@ -83,8 +83,8 @@ pub use theme::{
     ThemePreference,
 };
 pub use toggle::{
-    CountFact, ToggleAction, ToggleCopy, ToggleNote, TogglePhase, ToggleValue, ToggleView,
-    toggle_glyph,
+    CountFact, ToggleAction, ToggleCopy, ToggleLink, ToggleNote, ToggleOutcome, TogglePhase,
+    ToggleValue, ToggleView, toggle_glyph,
 };
 pub use tokens::ColorRole;
 

@@ -16,6 +16,10 @@ pub enum IconName {
     ArrowBack,
     /// Không có quyền
     Block,
+    /// Đã lưu bài (Lưu đã xác nhận)
+    Bookmark,
+    /// Lưu bài
+    BookmarkBorder,
     /// Không được duyệt, từ chối
     Cancel,
     /// Chưa có nhận xét nào
@@ -93,13 +97,15 @@ pub enum IconName {
 }
 
 impl IconName {
-    pub const ALL: [IconName; 40] = [Self::Add, Self::ArrowBack, Self::Block, Self::Cancel, Self::ChatBubbleOutline, Self::Check, Self::Close, Self::ContentCopy, Self::Download, Self::Edit, Self::EditOutline, Self::Error, Self::ExpandMore, Self::Explore, Self::ExploreOutline, Self::FilterList, Self::Heart, Self::HeartOutline, Self::Help, Self::Image, Self::Info, Self::Lock, Self::Menu, Self::MenuOpen, Self::Notifications, Self::NotificationsNone, Self::OpenInNew, Self::PenFlight, Self::Person, Self::PersonOutline, Self::Refresh, Self::Reply, Self::Schedule, Self::Search, Self::Send, Self::VerifiedUser, Self::Visibility, Self::VisibilityOff, Self::VisibilityOutline, Self::Warning];
+    pub const ALL: [IconName; 42] = [Self::Add, Self::ArrowBack, Self::Block, Self::Bookmark, Self::BookmarkBorder, Self::Cancel, Self::ChatBubbleOutline, Self::Check, Self::Close, Self::ContentCopy, Self::Download, Self::Edit, Self::EditOutline, Self::Error, Self::ExpandMore, Self::Explore, Self::ExploreOutline, Self::FilterList, Self::Heart, Self::HeartOutline, Self::Help, Self::Image, Self::Info, Self::Lock, Self::Menu, Self::MenuOpen, Self::Notifications, Self::NotificationsNone, Self::OpenInNew, Self::PenFlight, Self::Person, Self::PersonOutline, Self::Refresh, Self::Reply, Self::Schedule, Self::Search, Self::Send, Self::VerifiedUser, Self::Visibility, Self::VisibilityOff, Self::VisibilityOutline, Self::Warning];
 
     pub const fn id(self) -> &'static str {
         match self {
             Self::Add => "add",
             Self::ArrowBack => "arrow-back",
             Self::Block => "block",
+            Self::Bookmark => "bookmark",
+            Self::BookmarkBorder => "bookmark-border",
             Self::Cancel => "cancel",
             Self::ChatBubbleOutline => "chat-bubble-outline",
             Self::Check => "check",
@@ -145,6 +151,8 @@ impl IconName {
             Self::Add => "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z",
             Self::ArrowBack => "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z",
             Self::Block => "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z",
+            Self::Bookmark => "M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z",
+            Self::BookmarkBorder => "M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z",
             Self::Cancel => "M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z",
             Self::ChatBubbleOutline => "M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z",
             Self::Check => "M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z",
@@ -190,6 +198,8 @@ impl IconName {
             Self::Add => "src/content/add/materialicons/24px.svg",
             Self::ArrowBack => "src/navigation/arrow_back/materialicons/24px.svg",
             Self::Block => "src/content/block/materialicons/24px.svg",
+            Self::Bookmark => "src/action/bookmark/materialicons/24px.svg",
+            Self::BookmarkBorder => "src/action/bookmark_border/materialicons/24px.svg",
             Self::Cancel => "src/navigation/cancel/materialicons/24px.svg",
             Self::ChatBubbleOutline => "src/communication/chat_bubble_outline/materialicons/24px.svg",
             Self::Check => "src/navigation/check/materialicons/24px.svg",

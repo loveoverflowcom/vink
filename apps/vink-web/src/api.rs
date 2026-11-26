@@ -1025,6 +1025,7 @@ fn bounded(path: &str) -> bool {
         || path == "/api/v1/me/handle"
         || path.starts_with("/api/v1/me/handle/receipts/")
         || path.starts_with("/api/v1/me/follows/")
+        || path.starts_with("/api/v1/me/saved-works/")
         || path.starts_with("/api/v1/me/relationships/")
         || path.starts_with("/api/v1/authors/")
         || path.starts_with("/api/v1/authors?")
@@ -1059,6 +1060,36 @@ pub(crate) async fn endorser_request<T: serde::de::DeserializeOwned>(
     path: &str,
 ) -> Result<T, ApiError> {
     http::get(path).await
+}
+
+/// The viewer's own membership for one work (#387). Never a public read.
+#[cfg_attr(not(any(test, feature = "browser")), allow(dead_code))]
+fn saved_work_path(work_id: &str) -> String {
+    format!("/api/v1/me/saved-works/{}", encode_segment(work_id))
+}
+
+#[cfg(feature = "browser")]
+pub(crate) async fn load_saved_work(
+    work_id: &str,
+) -> Result<crate::contract::SavedWorkState, ApiError> {
+    http::saved_work("GET", &saved_work_path(work_id), None).await
+}
+
+/// `PUT` saves, `DELETE` unsaves, both with the generation the viewer last confirmed and the
+/// principal that started the intent; the server still authenticates the actor.
+#[cfg(feature = "browser")]
+pub(crate) async fn set_saved_work(
+    work_id: &str,
+    saved: bool,
+    expected_generation: i64,
+    principal: &str,
+) -> Result<crate::contract::SavedWorkState, ApiError> {
+    let path = format!(
+        "{}?expected_generation={expected_generation}",
+        saved_work_path(work_id)
+    );
+    let method = if saved { "PUT" } else { "DELETE" };
+    http::saved_work(method, &path, Some(principal)).await
 }
 
 #[cfg(feature = "browser")]
@@ -1234,6 +1265,25 @@ mod http {
         }
     }
 
+    /// A private saved-works request: bounded, never stored by the browser, and for writes
+    /// fenced to the principal that started it.
+    pub(super) async fn saved_work<T: DeserializeOwned>(
+        method: &str,
+        path: &str,
+        principal: Option<&str>,
+    ) -> Result<T, ApiError> {
+        let deadline = Deadline::new()?;
+        let signal = deadline.controller.signal();
+        let mut builder = request(method, path, Some(&signal))
+            .ok_or(ApiError::Unexpected { status: 0 })?
+            .cache(web_sys::RequestCache::NoStore);
+        if let Some(principal) = principal {
+            builder = builder.header("x-vink-expected-principal", principal);
+        }
+        let response = builder.send().await.map_err(|_| ApiError::Network)?;
+        decode(path, response).await
+    }
+
     pub async fn get<T: DeserializeOwned>(path: &str) -> Result<T, ApiError> {
         let deadline = bounded(path).then(Deadline::new).transpose()?;
         let signal = deadline
@@ -1406,6 +1456,24 @@ mod tag_path_tests {
             super::tag_suggestions_path("hồi & x=1#", "theme"),
             "/api/v1/tags/suggestions?q=h%E1%BB%93i%20%26%20x%3D1%23&facet=theme"
         );
+    }
+}
+
+#[cfg(test)]
+mod saved_work_path_tests {
+    #[test]
+    fn the_saved_work_path_is_private_and_encodes_one_segment() {
+        assert_eq!(
+            super::saved_work_path("33333333-3333-4333-8333-333333333333"),
+            "/api/v1/me/saved-works/33333333-3333-4333-8333-333333333333"
+        );
+        assert_eq!(
+            super::saved_work_path("../x?y"),
+            "/api/v1/me/saved-works/%2E%2E%2Fx%3Fy"
+        );
+        assert!(super::bounded(
+            "/api/v1/me/saved-works/w?expected_generation=1"
+        ));
     }
 }
 

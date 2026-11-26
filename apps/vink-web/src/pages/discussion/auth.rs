@@ -1,10 +1,14 @@
 //! Reader owns the modal and its return target; the shell still owns browser navigation,
 //! and the tab-wide AuthGate/SessionOwner own all authentication and reconciliation.
+//! One dialog serves the composers (#328) and “Lưu” (#388, D2); the caller names its purpose,
+//! its return target and when its own private state has applied the confirmed session.
+use std::sync::Arc;
+
 use leptos::{html, prelude::*};
 use vink_ui::{CloseReason, IconButton, IconName};
 
 use crate::{
-    account::{AuthEntry, Session, standing_id},
+    account::{AuthEntry, ReaderPresentation, Session, standing_id},
     discussion_state::DiscussionController,
     navigation::use_navigation_guard,
     session::Standing,
@@ -13,21 +17,58 @@ use crate::{
 const DIALOG: &str = "reader-auth";
 const CLOSE: &str = "reader-auth-close";
 
+/// Why the guest is asked to sign in from the Reader. Copy only: no write is implied.
+#[cfg_attr(not(feature = "browser"), allow(dead_code))]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) enum ReaderAuthPurpose {
+    #[default]
+    Comment,
+    Save,
+}
+
+impl ReaderAuthPurpose {
+    pub(crate) const fn presentation(self) -> ReaderPresentation {
+        match self {
+            Self::Comment => ReaderPresentation {
+                title: "Đăng nhập để nhận xét",
+                lead: None,
+            },
+            Self::Save => ReaderPresentation {
+                title: "Đăng nhập để lưu bài",
+                lead: Some("Bài sẽ nằm trong danh sách Đã lưu riêng trên hồ sơ của bạn."),
+            },
+        }
+    }
+}
+
+/// Whether the caller's private owner already applied the confirmed session scope. A plain
+/// closure kept by the dialog: the button that opened it may re-render (and dispose its own
+/// reactive owner) before the session is confirmed.
+pub(crate) type ReaderAuthReady = Arc<dyn Fn(&str) -> bool + Send + Sync>;
+/// Told whether the dialog closed after a confirmed sign-in.
+pub(crate) type ReaderAuthSettled = Arc<dyn Fn(bool) + Send + Sync>;
+
 #[cfg_attr(not(feature = "browser"), allow(dead_code))]
 #[derive(Clone, Copy)]
-pub(super) struct ReaderAuth {
+pub(crate) struct ReaderAuth {
     dialog: NodeRef<html::Dialog>,
     origin: RwSignal<Option<String>>,
+    purpose: RwSignal<ReaderAuthPurpose>,
+    ready: StoredValue<Option<ReaderAuthReady>>,
+    settled: StoredValue<Option<ReaderAuthSettled>>,
     cycle: StoredValue<u64>,
     scroll: StoredValue<(f64, f64)>,
     editor_top: StoredValue<Option<f64>>,
 }
 
 impl ReaderAuth {
-    pub(super) fn provide() -> Self {
+    pub(crate) fn provide() -> Self {
         let this = Self {
             dialog: NodeRef::new(),
             origin: RwSignal::new(None),
+            purpose: RwSignal::new(ReaderAuthPurpose::Comment),
+            ready: StoredValue::new(None),
+            settled: StoredValue::new(None),
             cycle: StoredValue::new(0),
             scroll: StoredValue::new((0.0, 0.0)),
             editor_top: StoredValue::new(None),
@@ -36,11 +77,39 @@ impl ReaderAuth {
         this
     }
 
-    pub(super) fn open(self, composer: String) {
+    #[cfg_attr(not(feature = "browser"), allow(dead_code))]
+    pub(crate) fn current() -> Option<Self> {
+        use_context::<Self>()
+    }
+
+    /// A composer returns to its editor once the discussion applied the new session.
+    pub(super) fn open_for_comment(
+        self,
+        composer: String,
+        controller: RwSignal<DiscussionController>,
+    ) {
+        let ready: ReaderAuthReady = Arc::new(move |scope: &str| {
+            controller
+                .try_with(|c| c.scope.session.as_deref() == Some(scope))
+                .unwrap_or(false)
+        });
+        self.open(composer, ReaderAuthPurpose::Comment, ready, None);
+    }
+
+    pub(crate) fn open(
+        self,
+        composer: String,
+        purpose: ReaderAuthPurpose,
+        ready: ReaderAuthReady,
+        settled: Option<ReaderAuthSettled>,
+    ) {
         #[cfg(feature = "browser")]
         if self.origin.get_untracked().is_none()
             && let Some(dialog) = self.dialog.get_untracked()
         {
+            self.ready.set_value(Some(ready));
+            self.settled.set_value(settled);
+            self.purpose.set(purpose);
             self.scroll.set_value((
                 window().scroll_x().unwrap_or_default(),
                 window().scroll_y().unwrap_or_default(),
@@ -59,7 +128,7 @@ impl ReaderAuth {
             }
         }
         #[cfg(not(feature = "browser"))]
-        let _ = (self, composer);
+        let _ = (self, composer, purpose, ready, settled);
     }
 
     #[cfg(feature = "browser")]
@@ -75,6 +144,10 @@ impl ReaderAuth {
         };
         if let Some(dialog) = self.dialog.get_untracked() {
             dialog.close();
+        }
+        self.ready.set_value(None);
+        if let Some(settled) = self.settled.try_update_value(Option::take).flatten() {
+            settled(authenticated);
         }
         #[cfg(feature = "browser")]
         if reason != CloseReason::Navigate {
@@ -128,10 +201,7 @@ impl ReaderAuth {
 }
 
 #[component]
-pub(super) fn ReaderAuthDialog(
-    host: ReaderAuth,
-    controller: RwSignal<DiscussionController>,
-) -> impl IntoView {
+pub(crate) fn ReaderAuthDialog(host: ReaderAuth) -> impl IntoView {
     let session = Session::current();
     let navigation = use_navigation_guard();
     let overlay = navigation.set_overlay(move |reason| host.close(reason, false));
@@ -157,22 +227,26 @@ pub(super) fn ReaderAuthDialog(
 
     #[cfg(feature = "browser")]
     Effect::new(move |_| {
-        // Only return after the session owner has confirmed an active account AND
-        // DiscussionController has applied that scope (which may discard another owner's draft).
+        // Only return after the session owner has confirmed an active account AND the
+        // caller's owner has applied that scope (a composer may discard another owner's draft;
+        // “Lưu” reads the new account's own state). The callback's reads are tracked here.
         if host.origin.with(Option::is_some)
             && !session.checking()
             && let Some(scope) = session.profile_scope.get()
-            && controller.read().scope.session.as_ref() == Some(&scope)
+            && host
+                .ready
+                .with_value(Clone::clone)
+                .is_none_or(|ready| ready(&scope))
         {
             host.close(CloseReason::Dismiss, true);
         }
     });
-    #[cfg(not(feature = "browser"))]
-    let _ = controller;
+    let title = move || host.purpose.get().presentation().title;
     view! {
         <dialog id=DIALOG
             class="vk-reader-auth box-border [max-inline-size:none] [border:0] overscroll-contain overflow-auto"
-            aria-label="Đăng nhập để nhận xét" aria-labelledby="reader-auth-title"
+            aria-label=title aria-labelledby="reader-auth-title"
+            aria-describedby=move || host.purpose.get().presentation().lead.map(|_| "reader-auth-lead")
             node_ref=host.dialog
             data-standing=move || session.standing.with(standing_id)
             on:cancel=move |event: leptos::ev::Event| { event.prevent_default(); host.close(CloseReason::Escape, false); }
@@ -183,11 +257,11 @@ pub(super) fn ReaderAuthDialog(
                     on_press=move |_| { host.close(CloseReason::Dismiss, false); } />
             </header>
             <Show when=move || host.origin.with(Option::is_some)>
-                <AuthEntry reader=true />
+                <AuthEntry reader=host.purpose.get_untracked().presentation() />
                 {move || match session.standing.get() {
                     Standing::Anonymous | Standing::NeedsPrincipal => None,
                     standing => Some(view! {
-                        <h2 id="reader-auth-title" class="vk-reader-auth-title m-0 wrap-anywhere">"Đăng nhập để nhận xét"</h2>
+                        <h2 id="reader-auth-title" class="vk-reader-auth-title m-0 wrap-anywhere">{title()}</h2>
                         <p role="status">{if standing == Standing::Suspended {
                             "Tài khoản đang bị tạm khóa trên Vink."
                         } else {

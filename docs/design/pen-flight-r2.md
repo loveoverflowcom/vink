@@ -49,7 +49,7 @@ Kết quả và giới hạn: [evidence](../development/pen-flight-r2-evidence.m
 
 Delta 25/11/2026, D1/D4/D5 của [Epic #384](https://github.com/loveoverflowcom/vink/issues/384). Sau thân bài có một nhóm nối, thứ tự **Thấm + số → Lưu**, tiếp đến phản hồi và liên kết danh sách người Thấm. Số Thấm cạnh chữ trên một dòng. Hai nút cùng kích thước, cao 56 px ở 100%, khe 2 px, nội dung chưa chọn căn giữa. Pen Flight giữ path và viewBox 24×24, hiển thị 24 px trong nhóm (20 px khi hẹp); khi chọn dùng hình viên thuốc và ✓. Token chữ `on-surface` chỉ áp dụng trong nhóm.
 
-Delta thay bố cục nút Thấm ở cuối Reader; glyph, count theo revision, phase/ACK, order/session và Ưng ở bình luận theo owner hiện hành. [LayoutSpec Lưu bài](saved-works.md) sở hữu responsive, motion, focus, sheet và trạng thái. Bằng chứng R2 ở trên thuộc phiên bản trước khi ghép cặp; bằng chứng cho nhóm đích thuộc #388.
+Delta thay bố cục nút Thấm ở cuối Reader; glyph, count theo revision, phase/ACK, order/session và Ưng ở bình luận theo owner hiện hành. [LayoutSpec Lưu bài](saved-works.md) sở hữu responsive, motion, focus, sheet và trạng thái. Bằng chứng R2 ở trên thuộc phiên bản trước khi ghép cặp. Nhóm đích đã triển khai ở #388, kết quả và giới hạn ghi trong [registry Lưu bài](../development/saved-works.md#reader-web-388).
 
 ## Specimen hẹp
 

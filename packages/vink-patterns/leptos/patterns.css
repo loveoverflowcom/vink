@@ -83,6 +83,106 @@
 }
 .vk-endorsement[data-kind="comment"] .vk-ui-toggle__count { font-weight: inherit; }
 .vk-endorsement[data-kind="comment"] .vk-ui-toggle__count[data-count="known"]::before { content: "·\00a0"; }
+/* Saved Works #388 (SAV-04, D1–D5): “Thấm · Lưu” as one connected M3 Expressive pair, 56px high,
+ * equal halves, 2px gap, outer corners 28 and inner 8; a confirmed On grows into a full pill.
+ * Both ToggleAction wrappers are `display: contents`, so the two buttons share row 1 and each
+ * control's feedback spans the pair underneath, in DOM order. The on-surface content and the
+ * neutral container exist only inside this group: Ưng and every other ToggleAction keep theirs.
+ * The host is the inline-size container, so the pair stacks before “Thấm + số” would be cut. */
+.vk-action-pair-host { container-type: inline-size; inline-size: 100%; min-inline-size: 0; }
+.vk-action-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 2px;
+  inline-size: min(100%, max(400px, 25rem));
+}
+/* `!important` in this legacy layer outranks the wrapper's own `inline-flex` utility. */
+.vk-action-pair > :is(.vk-endorsement, .vk-save) { display: contents !important; }
+.vk-action-pair > :is(.vk-endorsement, .vk-save) > .vk-ui-toggle { display: contents; }
+.vk-save { display: inline-flex; max-inline-size: 100%; }
+.vk-action-pair > :nth-child(1) > .vk-ui-toggle > .vk-ui-toggle__control { grid-area: 1 / 1; }
+.vk-action-pair > :nth-child(2) > .vk-ui-toggle > .vk-ui-toggle__control { grid-area: 1 / 2; }
+.vk-action-pair > :nth-child(1) > .vk-ui-toggle > .vk-ui-toggle__feedback { grid-area: 2 / 1 / auto / -1; }
+.vk-action-pair > :nth-child(2) > .vk-ui-toggle > .vk-ui-toggle__feedback { grid-area: 3 / 1 / auto / -1; }
+.vk-action-pair .vk-ui-toggle__feedback[data-active] { margin-block-start: var(--vk-space-2); }
+/* One reserved line under the pair: a note or outcome never pushes the page when it appears. */
+.vk-action-pair > .vk-save > .vk-ui-toggle > .vk-ui-toggle__feedback {
+  box-sizing: border-box;
+  min-block-size: calc(1.5rem + var(--vk-space-2));
+  padding-block-start: var(--vk-space-2);
+  margin-block-start: 0;
+}
+.vk-action-pair .vk-ui-toggle__control {
+  justify-content: center;
+  flex-wrap: wrap;
+  column-gap: var(--vk-space-2);
+  row-gap: 0;
+  inline-size: 100%;
+  min-inline-size: 0;
+  min-block-size: 56px;
+  padding: var(--vk-space-2);
+  border: 0;
+  border-radius: var(--vk-radius-xl);
+  background-color: var(--vk-action-neutral-container);
+  text-align: center;
+  transition:
+    border-radius var(--vk-duration-medium) var(--vk-ease-spatial),
+    background-color var(--vk-duration-short) var(--vk-ease-emphasized),
+    color var(--vk-duration-short) var(--vk-ease-emphasized);
+}
+.vk-action-pair .vk-ui-toggle__control:not([data-state="disabled"]) { color: var(--vk-on-surface); }
+.vk-action-pair > :nth-child(1) .vk-ui-toggle__control:not([data-pressed="true"]) {
+  border-start-end-radius: var(--vk-radius-sm);
+  border-end-end-radius: var(--vk-radius-sm);
+}
+.vk-action-pair > :nth-child(2) .vk-ui-toggle__control:not([data-pressed="true"]) {
+  border-start-start-radius: var(--vk-radius-sm);
+  border-end-start-radius: var(--vk-radius-sm);
+}
+.vk-action-pair .vk-ui-toggle__control[data-pressed="true"]:not([data-state="disabled"]) {
+  background-color: var(--vk-action-toggle-selected-container);
+  color: var(--vk-action-toggle-selected-content);
+}
+.vk-action-pair .vk-ui-toggle__control:focus-visible {
+  outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
+  outline-offset: var(--vk-size-focus-offset);
+}
+.vk-action-pair :is(.vk-ui-toggle__label, .vk-ui-toggle__count) { white-space: nowrap; }
+/* “Thấm 12.480”: one word space between label and count, so five digits stay on one line. */
+.vk-action-pair .vk-ui-toggle__count {
+  margin-inline-start: calc(var(--vk-space-1) - var(--vk-space-2));
+  font-variant-numeric: tabular-nums;
+}
+.vk-action-pair .vk-ui-toggle__glyph { inline-size: var(--vk-size-icon); }
+.vk-action-pair .vk-ui-toggle__glyph > .vk-ui-icon { inline-size: var(--vk-size-icon); block-size: var(--vk-size-icon); }
+/* The reserved check/arc slot pulls back a little so the unselected content reads centred. */
+.vk-action-pair .vk-ui-toggle__mark { margin-inline-start: calc(-1 * var(--vk-space-1)); }
+.vk-save .vk-ui-action__note[data-note="failed"] { color: var(--vk-error); }
+@container (max-width: 24rem) {
+  .vk-action-pair .vk-ui-toggle__glyph { inline-size: var(--vk-size-icon-sm); }
+  .vk-action-pair .vk-ui-toggle__glyph > .vk-ui-icon { inline-size: var(--vk-size-icon-sm); block-size: var(--vk-size-icon-sm); }
+}
+@container (max-width: 20rem) {
+  .vk-action-pair { grid-template-columns: minmax(0, 1fr); row-gap: 2px; }
+  .vk-action-pair > :nth-child(2) > .vk-ui-toggle > .vk-ui-toggle__control { grid-area: 2 / 1; }
+  .vk-action-pair > :nth-child(1) > .vk-ui-toggle > .vk-ui-toggle__feedback { grid-area: 3 / 1; }
+  .vk-action-pair > :nth-child(2) > .vk-ui-toggle > .vk-ui-toggle__feedback { grid-area: 4 / 1; }
+  .vk-action-pair > :nth-child(1) .vk-ui-toggle__control:not([data-pressed="true"]) {
+    border-radius: var(--vk-radius-xl) var(--vk-radius-xl) var(--vk-radius-sm) var(--vk-radius-sm);
+  }
+  .vk-action-pair > :nth-child(2) .vk-ui-toggle__control:not([data-pressed="true"]) {
+    border-radius: var(--vk-radius-sm) var(--vk-radius-sm) var(--vk-radius-xl) var(--vk-radius-xl);
+  }
+}
+@media (forced-colors: active) {
+  .vk-action-pair .vk-ui-toggle__control { border: 2px solid ButtonText; }
+  .vk-action-pair .vk-ui-toggle__control[data-pressed="true"] {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background-color: Highlight;
+    color: HighlightText;
+  }
+}
 /* Foreground and fill switch together. Cross-fading opposite palettes loses text contrast. */
 .vk-discussion-action-segment :is(.vk-ui-toggle__control, .vk-ui-button) { transition-property: border-color; }
 .vk-discussion-action-segment[data-root="true"] .vk-endorsement[data-kind="comment"] .vk-ui-toggle__control {

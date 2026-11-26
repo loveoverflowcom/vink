@@ -22,7 +22,7 @@ có thể xuất hiện trước một nhánh; giữ vị trí của ô soạn s
 cũ không còn hợp lệ, không phục hồi quyền gửi cũ.
 Không dùng animation làm điều kiện đóng, không thêm vuốt để đóng hoặc nút recovery.
 
-**Delta đích của Lưu bài (25/11/2026).** #388 dùng lại dialog này từ nút Lưu, với tiêu đề, lời dẫn và điểm trả focus theo [LayoutSpec Lưu bài](saved-works.md). Trong sheet #328, “Tạo tài khoản” và “Dùng mã email” dùng viền 2 px on-surface-variant theo handoff R3; mô tả hai hành động text và ảnh R2 ở trên thuộc bản trước delta. Khi đăng nhập từ composer, focus vẫn về đúng ô soạn.
+**Delta đích của Lưu bài (25/11/2026).** #388 dùng lại dialog này từ nút Lưu, với tiêu đề, lời dẫn và điểm trả focus theo [LayoutSpec Lưu bài](saved-works.md). Trong sheet #328, “Tạo tài khoản” và “Dùng mã email” dùng viền 2 px on-surface-variant theo handoff R3; mô tả hai hành động text và ảnh R2 ở trên thuộc bản trước delta. Khi đăng nhập từ composer, focus vẫn về đúng ô soạn. Đã triển khai ở #388: dialog thuộc trang Reader, nhận mục đích (nhận xét/lưu bài), điểm trả focus và điều kiện “owner riêng đã áp phiên mới” từ nơi gọi.
 
 **Evidence.** Đối chiếu mobile tối 390×844/100% với mốc được duyệt; Chrome cũng đo desktop sáng
 và 320×800/tối/200% với reduced motion. Xem [cách chạy Auth Web](../development/auth-web.md#kiểm-chứng).
