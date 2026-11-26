@@ -361,6 +361,7 @@ async fn cutover_converts_retired_drafts_exactly_once(pool: PgPool) {
             PUBLIC_ENDORSER_LIST_MIGRATION,
             COMMENT_UNG_NOTIFICATION_MIGRATION,
             SAVED_WORKS_MIGRATION,
+            ACCOUNT_DELETION_MIGRATION,
         ]
     );
     let (title, document, version) = stored(&pool, WorkId::from_uuid(work)).await;

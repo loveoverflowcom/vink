@@ -416,7 +416,9 @@ async fn get_reader(
     let resp = ReaderResponse::from(work);
     match &resp {
         ReaderResponse::Published(_) => conditional::respond(&headers, &resp),
-        ReaderResponse::ReviewWithdrawn { .. } | ReaderResponse::Hidden { .. } => {
+        ReaderResponse::ReviewWithdrawn { .. }
+        | ReaderResponse::Hidden { .. }
+        | ReaderResponse::AuthorDeleted { .. } => {
             let mut response = Json(resp).into_response();
             response
                 .headers_mut()

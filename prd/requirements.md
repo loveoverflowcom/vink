@@ -371,6 +371,21 @@ principal, bút danh và quyền với nội dung. Đăng ký mới yêu cầu p
 Web `/toi` dùng mật khẩu làm lựa chọn đầu, vẫn có mã email và hỗ trợ thêm mật khẩu trên cùng
 tài khoản ([Auth Web](../docs/development/auth-web.md)). CMP và runtime khôi phục còn thiếu. [Đặc tả recovery #181](../docs/architecture/password-recovery.md) và [LayoutSpec](../docs/design/password-recovery.md) chuẩn bị luồng riêng, cùng account/principal/dữ liệu; email tùy chọn và thu hồi mọi phiên là đề xuất chờ duyệt, không đổi đăng ký hiện tại. `O-11@r1` vẫn `OPEN`, proposal r2 chưa có signoff. Production mặc định `VINK_AUTH_SIGN_IN=disabled` và D-05 vẫn `PROVISIONAL`.
 
+### 14.7. Xóa tài khoản
+
+Chủ sản phẩm xác nhận ngày 26/11/2026. [Quyết định nguồn #297](https://github.com/loveoverflowcom/vink/issues/297) · [Vòng đời](../docs/architecture/account-deletion.md)
+
+| ID | Yêu cầu |
+| --- | --- |
+| DEL-01 | Xóa vĩnh viễn sau khi xác minh và xác nhận, thu hồi quyền và phiên ngay. |
+| DEL-02 | Xác minh lại với mật khẩu hiện tại hoặc mã từ email đã xác minh của tài khoản. Tài khoản chỉ dùng mật khẩu không cần gắn email. |
+| DEL-03 | Username và email có thể được dùng cho đăng ký mới, với account/subject/PrincipalId mới. Handle và alias đã dùng giữ tombstone vĩnh viễn. |
+| DEL-04 | Xóa tác phẩm, bản nháp, lịch sử chỉnh sửa và nội dung/ảnh thuộc sở hữu. Bài công khai về trang thay thế theo Publication. Bài bị kiểm duyệt gỡ giữ disposition chặt hơn. |
+| DEL-05 | Thu hồi Thấm và Ưng do tài khoản thực hiện, đối soát số đếm và danh sách. |
+| DEL-06 | Hủy nhận xét chờ duyệt và chặn quyết định đến trễ. Giữ chữ của nhận xét công khai hợp lệ dưới nhãn “Tài khoản đã xóa”, bỏ định danh công khai. |
+| DEL-07 | Tài khoản bị đình chỉ vẫn được xác minh xóa qua luồng riêng. Giữ chứng cứ kiểm duyệt cần thiết. |
+| DEL-08 | Dọn dữ liệu chính ngay nếu khả thi, tối đa 30 ngày. Giữ tối thiểu tombstone, binding bất biến, biên nhận chống replay và audit cần thiết. |
+
 ## 15. Hồ sơ tác giả và Theo dõi (Social Graph)
 
 Từ bút danh cạnh bài viết hoặc bình luận, người đọc mở đúng tác giả ở `/@handle`, kể cả khi

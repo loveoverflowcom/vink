@@ -61,7 +61,8 @@ async fn serve_is_not_ready_until_identity_migrates_and_migrating_twice_is_a_no_
             20261113000000,
             20261114000000,
             20261119000000,
-            20261120000000
+            20261120000000,
+            20261205000000
         ]
     );
     assert!(migrate(&pool).await.unwrap().applied.is_empty());
@@ -99,6 +100,7 @@ async fn identity_owns_only_credential_and_session_tables(pool: PgPool) {
         tables,
         [
             "_sqlx_migrations",
+            "account_deletions",
             "account_emails",
             "account_passwords",
             "accounts",

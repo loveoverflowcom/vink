@@ -359,6 +359,7 @@ mod coordinator {
                 PublicKey::Reader(id),
                 Snapshot::Control(
                     crate::contract::ReaderResponse::Hidden { work_id }
+                    | crate::contract::ReaderResponse::AuthorDeleted { work_id }
                     | crate::contract::ReaderResponse::ReviewWithdrawn { work_id, .. },
                 ),
             ) => id == work_id,
@@ -711,6 +712,7 @@ mod coordinator {
                 }
                 Ok(
                     control @ (ReaderResponse::Hidden { .. }
+                    | ReaderResponse::AuthorDeleted { .. }
                     | ReaderResponse::ReviewWithdrawn { .. }),
                 ) => Outcome::Fresh(Snapshot::Control(control.clone())),
                 Err(LoadError::NotFound) => Outcome::Removed,

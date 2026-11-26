@@ -31,48 +31,55 @@ async fn checkpoint(
     })
 }
 
+/// Take Principal before Profile so competing Follow/rename either commits first or sees
+/// the tombstone. Account calls this in the same transaction as its own fence.
+pub(super) async fn fence(
+    tx: &mut Transaction<'_, Postgres>,
+    command: SocialRetirement,
+) -> Result<SocialRetirementProgress, SocialRetirementError> {
+    locked_standing(tx, command.principal).await?;
+    let bound = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM principal_bindings WHERE principal_id = $1)",
+    )
+    .bind(command.principal.as_uuid())
+    .fetch_one(&mut **tx)
+    .await
+    .map_err(classify)?;
+    if !bound {
+        return Err(SocialRetirementError::Unbound);
+    }
+    let created = sqlx::query(
+        "INSERT INTO social_retirements (principal_id, operation_id)
+              VALUES ($1, $2) ON CONFLICT DO NOTHING",
+    )
+    .bind(command.principal.as_uuid())
+    .bind(command.operation_id)
+    .execute(&mut **tx)
+    .await
+    .map_err(classify)?
+    .rows_affected()
+        != 0;
+
+    let progress = if created {
+        // Absence of a profile can occur before backfill. The durable marker still redacts
+        // attribution in the same commit and prevents future provisioning.
+        handle::clear_current_handle(tx, command.principal).await?;
+        SocialRetirementProgress::Fenced
+    } else {
+        checkpoint(tx, command)
+            .await?
+            .ok_or(SocialRetirementError::OperationConflict)?
+    };
+    Ok(progress)
+}
+
 impl PgStore {
-    /// Apply the fence for a verified Account operation. Take Principal before Profile so a
-    /// competing Follow/rename either commits first or sees the irrevocable tombstone.
     pub async fn fence_social_retirement(
         &self,
         command: SocialRetirement,
     ) -> Result<SocialRetirementProgress, SocialRetirementError> {
         let mut tx = self.pool().begin().await.map_err(classify)?;
-        // A previously suspended account may also be deleted by a verified Account operation.
-        locked_standing(&mut tx, command.principal).await?;
-        let bound = sqlx::query_scalar::<_, bool>(
-            "SELECT EXISTS(SELECT 1 FROM principal_bindings WHERE principal_id = $1)",
-        )
-        .bind(command.principal.as_uuid())
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(classify)?;
-        if !bound {
-            return Err(SocialRetirementError::Unbound);
-        }
-        let created = sqlx::query(
-            "INSERT INTO social_retirements (principal_id, operation_id)
-              VALUES ($1, $2) ON CONFLICT DO NOTHING",
-        )
-        .bind(command.principal.as_uuid())
-        .bind(command.operation_id)
-        .execute(&mut *tx)
-        .await
-        .map_err(classify)?
-        .rows_affected()
-            != 0;
-
-        let progress = if created {
-            // Absence of a profile can occur before backfill. The durable marker still redacts
-            // attribution in the same commit and prevents future provisioning.
-            handle::clear_current_handle(&mut tx, command.principal).await?;
-            SocialRetirementProgress::Fenced
-        } else {
-            checkpoint(&mut tx, command)
-                .await?
-                .ok_or(SocialRetirementError::OperationConflict)?
-        };
+        let progress = fence(&mut tx, command).await?;
         tx.commit().await.map_err(classify)?;
         Ok(progress)
     }

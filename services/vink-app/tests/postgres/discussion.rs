@@ -28,7 +28,7 @@ use super::*;
 
 const MODERATOR: Uuid = Uuid::from_u128(0x5555_5555_5555_4555_8555_5555_5555_5555);
 
-async fn discussion(pool: &PgPool) -> Vink<PgStore> {
+pub(super) async fn discussion(pool: &PgPool) -> Vink<PgStore> {
     let vink = seeded(pool).await;
     sqlx::query("INSERT INTO principals (id, display_name) VALUES ($1, 'Kiểm duyệt viên')")
         .bind(MODERATOR)
@@ -62,7 +62,7 @@ fn command(target: Option<CommentId>, body: &str, key: &str) -> SubmitComment {
     }
 }
 
-async fn post(
+pub(super) async fn post(
     vink: &Vink<PgStore>,
     actor: Option<PrincipalId>,
     target: Option<CommentId>,
@@ -77,7 +77,7 @@ async fn post(
     submitted.comment_id
 }
 
-async fn moderate(
+pub(super) async fn moderate(
     vink: &Vink<PgStore>,
     comment_id: CommentId,
     expected_version: i64,
@@ -96,7 +96,7 @@ async fn moderate(
     .await
 }
 
-async fn published(
+pub(super) async fn published(
     vink: &Vink<PgStore>,
     actor: Option<PrincipalId>,
     target: Option<CommentId>,
@@ -2192,6 +2192,7 @@ async fn upgrade_records_premoderation_for_existing_comments(pool: PgPool) {
         );
     }
     // The upgraded database admits new comments through the store as before.
+    legacy_standing_fixture(&pool).await;
     let id = post(&vink, other(), None, "Sau nâng cấp").await;
     assert_eq!(
         admission_of(&pool, id).await,

@@ -44,11 +44,15 @@ pub(crate) async fn lock_work(
             .fetch_optional(&mut *conn)
             .await
             .map_err(classify)?;
-    let owner: Option<Uuid> = query_scalar("SELECT owner_id FROM works WHERE id = $1 FOR SHARE")
-        .bind(work.as_uuid())
-        .fetch_optional(&mut *conn)
-        .await
-        .map_err(classify)?;
+    let owner: Option<Uuid> = query_scalar(
+        "SELECT owner_id FROM works WHERE id = $1
+          AND NOT EXISTS (SELECT 1 FROM account_deletions d WHERE d.principal_id = works.owner_id)
+          FOR SHARE",
+    )
+    .bind(work.as_uuid())
+    .fetch_optional(&mut *conn)
+    .await
+    .map_err(classify)?;
     Ok(owner.map(PrincipalId::from_uuid))
 }
 

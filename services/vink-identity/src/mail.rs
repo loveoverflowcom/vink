@@ -28,6 +28,7 @@ pub enum Purpose {
     EnrollPassword,
     /// First verified email on an existing password account.
     AttachEmail,
+    DeleteAccount,
     /// `vink-identity mail test`: proves the transport end to end. Never stored (the outbox
     /// schema accepts only the code purposes) and its text contains no usable code.
     TransportCheck,
@@ -40,6 +41,7 @@ impl Purpose {
             Purpose::ChangeEmail => "change_email",
             Purpose::EnrollPassword => "enroll_password",
             Purpose::AttachEmail => "attach_email",
+            Purpose::DeleteAccount => "delete_account",
             Purpose::TransportCheck => "transport_check",
         }
     }
@@ -50,6 +52,7 @@ impl Purpose {
             "change_email" => Some(Purpose::ChangeEmail),
             "enroll_password" => Some(Purpose::EnrollPassword),
             "attach_email" => Some(Purpose::AttachEmail),
+            "delete_account" => Some(Purpose::DeleteAccount),
             _ => None,
         }
     }
@@ -121,6 +124,7 @@ pub fn render(message: &Message) -> (String, String) {
         Purpose::ChangeEmail => "xác nhận địa chỉ email mới cho tài khoản Vink",
         Purpose::EnrollPassword => "thêm mật khẩu đăng nhập cho tài khoản Vink",
         Purpose::AttachEmail => "xác minh email cho tài khoản Vink",
+        Purpose::DeleteAccount => "xác nhận xóa vĩnh viễn tài khoản Vink",
         Purpose::TransportCheck => {
             return (
                 "Vink: thư kiểm tra đường gửi".into(),
@@ -133,6 +137,9 @@ pub fn render(message: &Message) -> (String, String) {
     };
     let subject = format!("Mã {action}");
     let ignore = match message.purpose {
+        Purpose::DeleteAccount => {
+            "Nếu bạn không yêu cầu xóa tài khoản, hãy bỏ qua thư và giữ riêng mã này."
+        }
         Purpose::AttachEmail => {
             "Nếu bạn không yêu cầu mã này, hãy bỏ qua thư; email sẽ không được gắn vào tài khoản."
         }

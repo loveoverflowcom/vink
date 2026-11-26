@@ -355,6 +355,7 @@ enum IdentityPhase {
     Auth,
     /// AUTH-PASSWORD-WEB-01: the same App against native Identity with both methods.
     PasswordAuth,
+    AccountDeletion,
     Standalone,
     /// Author discovery with separate public and session-scoped projections.
     AuthorSearch,
@@ -442,6 +443,7 @@ fn auth_web(
             "VINK_IDENTITY_AUTHORITY",
             match phase {
                 IdentityPhase::PasswordAuth
+                | IdentityPhase::AccountDeletion
                 | IdentityPhase::AuthorSearch
                 | IdentityPhase::Standalone => "native",
                 _ => "email-code",
@@ -555,14 +557,16 @@ fn auth_web(
             &origin,
             state,
         ),
-        IdentityPhase::PasswordAuth | IdentityPhase::AuthorSearch => smoke_with_env(
+        IdentityPhase::PasswordAuth
+        | IdentityPhase::AccountDeletion
+        | IdentityPhase::AuthorSearch => smoke_with_env(
             root,
             &[
                 "--phase",
-                if matches!(phase, IdentityPhase::AuthorSearch) {
-                    "author-search"
-                } else {
-                    "auth-password"
+                match phase {
+                    IdentityPhase::AuthorSearch => "author-search",
+                    IdentityPhase::AccountDeletion => "account-deletion",
+                    _ => "auth-password",
                 },
                 "--outbox",
                 &outbox,
@@ -571,11 +575,22 @@ fn auth_web(
             &origin,
             state,
             &[(
-                "VINK_HANDLE_SCRATCH".into(),
+                if matches!(phase, IdentityPhase::AccountDeletion) {
+                    "VINK_ACCOUNT_DELETION_SCRATCH"
+                } else {
+                    "VINK_HANDLE_SCRATCH"
+                }
+                .into(),
                 app.env
                     .iter()
-                    .find(|(key, _)| key == "DATABASE_URL")
-                    .ok_or("missing password scratch runtime URL")?
+                    .find(|(key, _)| {
+                        key == if matches!(phase, IdentityPhase::AccountDeletion) {
+                            "VINK_MIGRATE_DATABASE_URL"
+                        } else {
+                            "DATABASE_URL"
+                        }
+                    })
+                    .ok_or("missing password scratch database URL")?
                     .1
                     .clone(),
             )],
@@ -653,7 +668,20 @@ fn native_auth_scratch(
     .map_err(|e| format!("password auth scratch database: {e}"))?;
     let result = (|| {
         let app = server.with_database(PASSWORD_AUTH_DATABASE)?;
-        prepare_app(root, &app, matches!(phase, IdentityPhase::Standalone))?;
+        prepare_app(
+            root,
+            &app,
+            matches!(
+                phase,
+                IdentityPhase::Standalone | IdentityPhase::AccountDeletion
+            ),
+        )?;
+        if matches!(phase, IdentityPhase::AccountDeletion) {
+            crate::process::run(
+                &mut app.command(root, &["principal", "backfill-handles"]),
+                "provision public handles in deletion scratch",
+            )?;
+        }
         if matches!(phase, IdentityPhase::Standalone) {
             // The standalone writer checks a pending human review. Pin its isolated
             // fixture independently of the default evaluator and deployment settings.
@@ -847,18 +875,20 @@ pub fn verify_selected(report: &mut Report, env: &Env, plan: &Plan) -> bool {
                         &state,
                         IdentityPhase::Standalone,
                     ),
-                    Scenario::Password | Scenario::AuthorSearch => native_auth_scratch(
-                        &root,
-                        &server,
-                        &url,
-                        &chrome,
-                        &state,
-                        if *scenario == Scenario::AuthorSearch {
-                            IdentityPhase::AuthorSearch
-                        } else {
-                            IdentityPhase::PasswordAuth
-                        },
-                    ),
+                    Scenario::Password | Scenario::AccountDeletion | Scenario::AuthorSearch => {
+                        native_auth_scratch(
+                            &root,
+                            &server,
+                            &url,
+                            &chrome,
+                            &state,
+                            match scenario {
+                                Scenario::AuthorSearch => IdentityPhase::AuthorSearch,
+                                Scenario::AccountDeletion => IdentityPhase::AccountDeletion,
+                                _ => IdentityPhase::PasswordAuth,
+                            },
+                        )
+                    }
                     Scenario::Publication => {
                         publication_author(&root, &server, &url, &chrome, &state)
                     }
@@ -881,7 +911,10 @@ pub fn verify_selected(report: &mut Report, env: &Env, plan: &Plan) -> bool {
     if plan.scenarios.iter().any(|scenario| {
         matches!(
             scenario,
-            Scenario::Password | Scenario::AuthorSearch | Scenario::Standalone
+            Scenario::Password
+                | Scenario::AccountDeletion
+                | Scenario::AuthorSearch
+                | Scenario::Standalone
         )
     }) {
         let _ = crate::identity::sql(

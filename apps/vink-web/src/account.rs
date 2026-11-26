@@ -16,6 +16,8 @@ use crate::contract::{
 use crate::session::{AuthError, Millis, SessionOwner, Standing};
 
 use flow::{AuthGate, Operation};
+#[cfg(feature = "browser")]
+pub(crate) use forms::DeletionStage;
 use forms::{AuthHeading, GuestAuth, PenName, SignOut, SignedInSettings};
 
 // Auth inputs exist only in the mounted form and the request that consumes them.
@@ -30,6 +32,9 @@ enum Command {
     RequestEmailAttachment(StartEmailAttachment),
     CompleteEmailAttachment(CompleteEmailAttachment),
     PenName(String),
+    StartDeletion(String),
+    ConfirmDeletion(serde_json::Value),
+    DeletionStatus(String),
     SignOut,
 }
 
@@ -45,6 +50,9 @@ impl Command {
             Self::RequestEmailAttachment(_) => Operation::AttachmentChallenge,
             Self::CompleteEmailAttachment(_) => Operation::AttachmentComplete,
             Self::PenName(_) => Operation::PenName,
+            Self::StartDeletion(_) => Operation::DeletionChallenge,
+            Self::ConfirmDeletion(_) => Operation::ConfirmDeletion,
+            Self::DeletionStatus(_) => Operation::DeletionStatus,
             Self::SignOut => Operation::SignOut,
         }
     }
@@ -54,6 +62,8 @@ impl Command {
 enum Reply {
     Done,
     Challenge(Millis),
+    DeletionChallenge(String),
+    Deletion(forms::DeletionStage),
     AttachmentChallenge {
         id: String,
         email: String,
@@ -379,6 +389,7 @@ pub(crate) fn AccountHub(children: Children) -> impl IntoView {
                     }.into_any(),
                     }
                 }}
+                {(!fixture).then(|| view! { <forms::AccountDeletion /> })}
                 <Show when=move || !entry()><SessionRetry /></Show>
                 <Show when=entry>
                     // Let the browser scroll *and focus* the target instead of the router only scrolling it.

@@ -640,7 +640,8 @@ async fn readable_thread(
     let work: Option<(Uuid, bool)> = sqlx::query_as(
         "SELECT w.owner_id, (p.work_id IS NOT NULL OR (wp.lifecycle = 'active' AND
                       (wp.hidden_revision_id IS NOT NULL OR
-                       (wp.audience = 'public' AND wp.review_withdrawn_revision_id IS NOT NULL))))
+                       (wp.audience = 'public' AND wp.review_withdrawn_revision_id IS NOT NULL)))
+                    OR (wp.lifecycle = 'author_deleted' AND wp.deletion_provenance = 'tombstone'))
            FROM works w
            LEFT JOIN publications p ON p.work_id = w.id
            LEFT JOIN work_publications wp ON wp.work_id = w.id
@@ -1011,7 +1012,8 @@ impl DiscussionStore for PgStore {
             "SELECT c.author_id, c.review, c.removal, c.moderation_version,
                     (p.work_id IS NOT NULL OR (wp.lifecycle = 'active' AND
                       (wp.hidden_revision_id IS NOT NULL OR
-                       (wp.audience = 'public' AND wp.review_withdrawn_revision_id IS NOT NULL))))
+                       (wp.audience = 'public' AND wp.review_withdrawn_revision_id IS NOT NULL)))
+                    OR (wp.lifecycle = 'author_deleted' AND wp.deletion_provenance = 'tombstone'))
                FROM comments c
                JOIN discussion_threads t ON t.id = c.thread_id
                LEFT JOIN publications p ON p.work_id = t.work_id

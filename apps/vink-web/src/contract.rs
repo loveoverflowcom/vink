@@ -154,6 +154,9 @@ pub struct Publication {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum ReaderResponse {
+    AuthorDeleted {
+        work_id: String,
+    },
     Hidden {
         work_id: String,
     },

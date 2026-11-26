@@ -145,6 +145,13 @@ nằm ở [evidence](../docs/development/evidence/web-compress-487/README.md).
 [VDR-EDGE-FRONTEND@r2](proposals/VDR-EDGE-FRONTEND.r2.toml) đề xuất SPA Leptos CSR độc lập trên Pages, API cùng origin trên VPS và metadata chung trước JavaScript theo hướng mới của [#504](https://github.com/loveoverflowcom/vink/issues/504). Revision r2 đang `PENDING`. [Revision r1](proposals/VDR-EDGE-FRONTEND.r1.toml) lưu phương án SSR ban đầu.
 [ADR](../docs/architecture/edge-frontend.md) · [route và bằng chứng](../docs/development/edge-frontend.md).
 
+## Xóa tài khoản
+
+[VDR-ACCOUNT-DELETION@r1](proposals/VDR-ACCOUNT-DELETION.r1.toml) ghi nhận DEL-01–08 từ
+[#297](https://github.com/loveoverflowcom/vink/issues/297). Quy tắc nghiệp vụ đã chốt ngày
+26/11/2026. Revision của registry đang `PENDING` theo [quy trình signoff](signoffs/VDR-DECISION-SIGNOFF.r1.toml).
+[Đặc tả vòng đời](../docs/architecture/account-deletion.md).
+
 ## Tra cứu theo phạm vi công việc
 
 [Đối soát PR 15–16/11/2026](../docs/development/verification-reconciliation-20261116.md#quyết-định-toml-mới)
