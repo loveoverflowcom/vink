@@ -240,9 +240,9 @@ const CMP_DIRS: [&str; 2] = ["packages/ui-system/cmp/", "packages/vink-patterns/
 const SHARED_UI_DIR: &str = "packages/ui-system/shared/";
 
 /// Browser fixture modules imported by `browser-smoke.mjs`, mapped to the scenarios whose
-/// phases call them (derived from the dispatcher and `web.rs`), plus phases no xtask scenario
-/// runs. Helper modules map through their importers. A module that is neither registered nor
-/// imported by a registered one broadens to the full Web lane.
+/// phases call them (derived from the dispatcher and `web.rs`), plus manual phases with
+/// distinct assertions or setup. Helper modules map through their importers. An unregistered
+/// module with no registered caller broadens to the full Web lane.
 #[rustfmt::skip]
 pub const BROWSER_MODULES: &[(&str, &[Scenario], &[&str])] = {
     use Scenario as S;
@@ -250,15 +250,15 @@ pub const BROWSER_MODULES: &[(&str, &[Scenario], &[&str])] = {
         ("apps/vink-web/e2e/auth-password-smoke.mjs", &[S::Auth, S::Password, S::Standalone], &[]),
         ("apps/vink-web/e2e/auth-smoke.mjs", &[S::Auth], &[]),
         ("apps/vink-web/e2e/author-search-smoke.mjs", &[S::AuthorSearch], &[]),
-        ("apps/vink-web/e2e/author-works-smoke.mjs", &[S::Desk], &["author-works"]),
-        ("apps/vink-web/e2e/desk-empty-smoke.mjs", &[S::Desk], &["desk-empty", "desk-empty-context"]),
-        ("apps/vink-web/e2e/desk-lifecycle.mjs", &[S::Desk], &["desk-empty-context", "desk-layout"]),
+        ("apps/vink-web/e2e/author-works-smoke.mjs", &[S::Desk], &[]),
+        ("apps/vink-web/e2e/desk-empty-smoke.mjs", &[S::Desk], &["desk-empty-context"]),
+        ("apps/vink-web/e2e/desk-lifecycle.mjs", &[S::Desk], &["desk-empty-context"]),
         ("apps/vink-web/e2e/discovery-chip-geometry.mjs", &[], &["discovery-chip-geometry"]),
         ("apps/vink-web/e2e/discovery-return-position.mjs", &[S::ReturnPosition], &[]),
-        ("apps/vink-web/e2e/discovery-smoke.mjs", &[S::Discovery, S::Reader], &["desk-layout", "public-search"]),
+        ("apps/vink-web/e2e/discovery-smoke.mjs", &[S::Discovery, S::Reader], &[]),
         ("apps/vink-web/e2e/document-budget.mjs", &[], &["document-budget"]),
-        ("apps/vink-web/e2e/document.mjs", &[S::Reader, S::Editor, S::EditorChrome, S::EditorFormat], &["public-cache"]),
-        ("apps/vink-web/e2e/draft-pagination-smoke.mjs", &[S::Desk], &["desk-pagination"]),
+        ("apps/vink-web/e2e/document.mjs", &[S::Reader, S::Editor, S::EditorChrome, S::EditorFormat], &[]),
+        ("apps/vink-web/e2e/draft-pagination-smoke.mjs", &[S::Desk], &[]),
         ("apps/vink-web/e2e/editor-autosave.mjs", &[S::Editor, S::EditorChrome, S::Restart], &[]),
         ("apps/vink-web/e2e/editor-desk-regressions.mjs", &[S::EditorFirstDraft, S::EditorFormat], &[]),
         ("apps/vink-web/e2e/editor-markdown-budget.mjs", &[S::EditorFormat], &[]),
@@ -278,11 +278,11 @@ pub const BROWSER_MODULES: &[(&str, &[Scenario], &[&str])] = {
         ("apps/vink-web/e2e/review-withdrawn-smoke.mjs", &[S::Review], &[]),
         ("apps/vink-web/e2e/visual-evidence.mjs",
             &[S::Reader, S::Discussion, S::Appearance, S::Desk, S::Editor, S::EditorChrome, S::EditorFormat],
-            &["appearance", "bottom-navigation", "desk-layout", "discussion-only", "first-paint", "public-cache"]),
+            &[]),
         ("apps/vink-web/e2e/web-perf-baseline.mjs", &[S::PerfBaseline], &[]),
-        ("apps/vink-web/e2e/web-request-ledger.mjs", &[], &["public-cache"]),
+        ("apps/vink-web/e2e/web-request-ledger.mjs", &[S::Reader], &[]),
         ("apps/vink-web/e2e/work-views-smoke.mjs", &[S::Reader], &[]),
-        ("packages/ui-system/leptos/preview/e2e/select-geometry.mjs", &[S::Desk], &["select-chevron"]),
+        ("packages/ui-system/leptos/preview/e2e/select-geometry.mjs", &[S::Desk], &[]),
     ]
 };
 pub const BROWSER_DISPATCHER: &str = "apps/vink-web/e2e/browser-smoke.mjs";
@@ -554,10 +554,16 @@ fn tokens(sel: &mut Selection, path: &str) -> bool {
         t::RUST_CATALOG_OUT,
         t::RUST_ICONS_OUT,
         t::RUST_IDENTITY_OUT,
+        crate::ui_states::RUST_STATES_OUT,
+        crate::ui_navigation::RUST_NAVIGATION_OUT,
+        crate::ui_toggle::RUST_TOGGLE_OUT,
         t::KOTLIN_TOKENS_OUT,
         t::KOTLIN_CATALOG_OUT,
         t::KOTLIN_ICONS_OUT,
         t::KOTLIN_IDENTITY_OUT,
+        crate::ui_states::KOTLIN_STATES_OUT,
+        crate::ui_navigation::KOTLIN_NAVIGATION_OUT,
+        crate::ui_toggle::KOTLIN_TOGGLE_OUT,
     ];
     let input = path.starts_with(SHARED_UI_DIR);
     if !input && !outputs.contains(&path) {
@@ -760,9 +766,7 @@ fn browser(sel: &mut Selection, g: &Graph, path: &str) -> bool {
             BROWSER_MODULES.iter().find(|(m, _, _)| m == root)
         {
             sel.scenarios(scenarios, &via, path);
-            if scenarios.is_empty() {
-                manual_phases(sel, phases, path);
-            }
+            manual_phases(sel, phases, path);
             mapped = true;
         } else if let Some((_, selector)) = NODE_TESTS.iter().find(|(t, _)| t == root) {
             node_test(sel, root, *selector, path);
@@ -779,7 +783,7 @@ fn manual_phases(sel: &mut Selection, phases: &[&str], path: &str) {
     for phase in phases {
         sel.manual(
             &format!("browser phase `{phase}`: no xtask scenario runs it (node apps/vink-web/e2e/browser-smoke.mjs --phase {phase} against a prepared App)"),
-            "assertion reachable only from a manual phase",
+            "browser assertions or setup specific to this manual phase",
             path,
         );
     }

@@ -213,12 +213,7 @@ pub(super) fn drift_of(
 
 /// A committed-scope plan describes commits only: it runs on a clean checkout of `head`.
 fn committed_tree_matches(root: &Path, plan: &ChangedPlan) -> Result<(), String> {
-    let current = git::snapshot(root, &plan.snapshot.merge_base, None)?;
-    let dirty = current
-        .changes
-        .iter()
-        .any(|c| c.layer != git::Layer::Committed);
-    if current.head != plan.snapshot.head || dirty {
+    if !git::clean_checkout_of(root, &plan.snapshot.head)? {
         return Err(
             "a committed-scope plan executes only on a clean checkout of its head; omit --head to plan the worktree".into(),
         );

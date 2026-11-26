@@ -422,7 +422,7 @@ fn literal(text: &str) -> Option<&str> {
 
 /// Embedded files of every workspace Rust source. Runtime reads (`fs::read` of a fixture
 /// directory) are not visible here; the registry names those directories explicitly.
-fn compile_inputs(
+pub(super) fn compile_inputs(
     root: &Path,
     packages: &[Package],
 ) -> Result<BTreeMap<String, BTreeSet<String>>, String> {
@@ -463,7 +463,7 @@ fn compile_inputs(
             for (at, _) in source.match_indices("migrate!(") {
                 let rest = &source[at + 9..];
                 let lit = literal(rest).unwrap_or("./migrations");
-                found.push(join(crate_dir, lit));
+                found.push(join(crate_dir, lit).map(|dir| format!("{dir}/")));
             }
             for (at, _) in source.match_indices("#[path = ") {
                 if let Some(lit) = literal(&source[at + 9..]) {
@@ -471,15 +471,8 @@ fn compile_inputs(
                 }
             }
             for path in found.into_iter().flatten() {
-                let full = root.join(&path);
-                let key = if full.is_dir() {
-                    format!("{path}/")
-                } else if full.is_file() {
-                    path
-                } else {
-                    continue; // literal inside a test string or generated at build time
-                };
-                inputs.entry(key).or_default().insert(file.clone());
+                // A removed literal input still belongs to the source that requires it.
+                inputs.entry(path).or_default().insert(file.clone());
             }
         }
     }

@@ -234,6 +234,14 @@ fn worktree_scope_pins_merge_base_and_every_dirty_layer() {
     );
     assert!(!commands(&committed).contains(&"verify unit notifications"));
 
+    assert!(
+        committed
+            .graph
+            .as_deref()
+            .unwrap()
+            .contains("committed dependency graph unavailable")
+    );
+
     // A browser fixture moved to an unregistered name keeps its old owner and broadens.
     repo.git(&["mv", PAGINATION, "apps/vink-web/e2e/pagination-renamed.mjs"]);
     let moved = repo.plan(&[]).unwrap();
@@ -314,6 +322,53 @@ fn invalid_references_and_unsafe_states_fail_explicitly() {
             .err()
             .unwrap()
             .contains("assume-unchanged")
+    );
+}
+
+#[test]
+fn committed_planning_never_reads_another_heads_dependency_graph() {
+    let (repo, fork, head) = branched();
+    repo.git(&["checkout", "--detach", &fork]);
+    let plan = compute(repo.path(), &parse(&["--head", &head]).unwrap(), || {
+        panic!("must not read dependency facts from another revision")
+    })
+    .unwrap();
+    assert!(commands(&plan).contains(&"verify quick"));
+    assert!(
+        plan.graph
+            .unwrap()
+            .contains("committed dependency graph unavailable")
+    );
+}
+
+#[test]
+fn worktree_rejects_untracked_nested_repository_without_a_content_fingerprint() {
+    let repo = Repo::new("nested");
+    repo.commit("base");
+    let child = repo.path().join("child");
+    fs::create_dir(&child).unwrap();
+    git::git(&child, &["init", "--quiet"]).unwrap();
+    git::git(
+        &child,
+        &[
+            "-c",
+            "user.name=fixture",
+            "-c",
+            "user.email=test@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "--quiet",
+            "--allow-empty",
+            "-m",
+            "child",
+        ],
+    )
+    .unwrap();
+    let error = repo.plan(&["--base", "HEAD"]).err().unwrap();
+    assert!(
+        error.contains("cannot fingerprint nested directory"),
+        "{error}"
     );
 }
 

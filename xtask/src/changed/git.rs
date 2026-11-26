@@ -191,6 +191,39 @@ fn count(root: &Path, range: &str) -> Result<u64, String> {
         .map_err(|e| format!("rev-list count: {e}"))
 }
 
+fn check_index_flags(root: &Path) -> Result<(), String> {
+    let flags = git(root, &["ls-files", "-v", "-z"])?;
+    let flagged = std::str::from_utf8(&flags)
+        .map_err(|_| "non-UTF-8 Git path in the index")?
+        .split_terminator('\0')
+        .any(|entry| entry.starts_with('S') || entry.starts_with(|c: char| c.is_ascii_lowercase()));
+    if flagged {
+        return Err(
+            "worktree has skip-worktree/assume-unchanged entries; inspect those inputs explicitly"
+                .into(),
+        );
+    }
+    Ok(())
+}
+
+pub fn clean_checkout_of(root: &Path, head: &str) -> Result<bool, String> {
+    if commit(root, "HEAD")? != head {
+        return Ok(false);
+    }
+    check_index_flags(root)?;
+    Ok(git(
+        root,
+        &[
+            "status",
+            "--porcelain=v1",
+            "-z",
+            "--untracked-files=normal",
+            "--ignore-submodules=none",
+        ],
+    )?
+    .is_empty())
+}
+
 /// Reads the selected scope. Worktree mode pins HEAD; committed mode reads only commits.
 pub fn snapshot(root: &Path, base_ref: &str, head_ref: Option<&str>) -> Result<Snapshot, String> {
     let mode = if head_ref.is_some() {
@@ -212,16 +245,7 @@ pub fn snapshot(root: &Path, base_ref: &str, head_ref: Option<&str>) -> Result<S
     hasher.update(&committed);
     let mut changes = raw_changes(&committed, Layer::Committed)?;
     if mode == Mode::Worktree {
-        let flags = git(root, &["ls-files", "-v", "-z"])?;
-        let flagged = std::str::from_utf8(&flags)
-            .map_err(|_| "non-UTF-8 Git path in the index")?
-            .split_terminator('\0')
-            .any(|entry| {
-                entry.starts_with('S') || entry.starts_with(|c: char| c.is_ascii_lowercase())
-            });
-        if flagged {
-            return Err("worktree has skip-worktree/assume-unchanged entries; inspect those inputs explicitly".into());
-        }
+        check_index_flags(root)?;
         let index = diff(root, &["--cached", &head])?;
         let unstaged = diff(root, &[])?;
         let untracked = git(root, &["ls-files", "--others", "--exclude-standard", "-z"])?;
@@ -246,7 +270,7 @@ pub fn snapshot(root: &Path, base_ref: &str, head_ref: Option<&str>) -> Result<S
         for change in dirty.iter().chain(&untracked) {
             for path in &change.paths {
                 hasher.update(format!("\0content\0{path}\0"));
-                hasher.update(content_digest(&root.join(path)));
+                hasher.update(content_digest(&root.join(path))?);
             }
         }
         changes.extend(dirty);
@@ -270,16 +294,49 @@ pub fn snapshot(root: &Path, base_ref: &str, head_ref: Option<&str>) -> Result<S
     })
 }
 
-fn content_digest(path: &Path) -> String {
-    let bytes = match std::fs::symlink_metadata(path) {
-        Err(_) => return "absent".into(),
-        Ok(meta) if meta.file_type().is_symlink() => std::fs::read_link(path)
-            .map(|target| format!("symlink:{}", target.display()).into_bytes()),
-        Ok(meta) if meta.is_dir() => return "directory".into(),
-        Ok(_) => std::fs::read(path),
+fn content_digest(path: &Path) -> Result<sha2::digest::Output<Sha256>, String> {
+    let error = |e: std::io::Error| format!("fingerprint {}: {e}", path.display());
+    let meta = match std::fs::symlink_metadata(path) {
+        Ok(meta) => meta,
+        Err(e)
+            if matches!(
+                e.kind(),
+                std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory
+            ) =>
+        {
+            return Ok(Sha256::digest(b"absent"));
+        }
+        Err(e) => return Err(error(e)),
     };
-    match bytes {
-        Ok(bytes) => crate::checks::sha256_hex(&bytes),
-        Err(error) => format!("unreadable:{}", error.kind()),
+    if meta.is_symlink() {
+        let target = std::fs::read_link(path).map_err(error)?;
+        let mut hash = Sha256::new();
+        hash.update(b"symlink\0");
+        hash.update(target.as_os_str().as_encoded_bytes());
+        return Ok(hash.finalize());
     }
+    if meta.is_dir() {
+        return Err(format!(
+            "cannot fingerprint nested directory {}; verify the nested checkout separately",
+            path.display()
+        ));
+    }
+    if !meta.is_file() {
+        return Err(format!(
+            "cannot fingerprint special file {}",
+            path.display()
+        ));
+    }
+    let mut file = std::fs::File::open(path).map_err(error)?;
+    let mut hash = Sha256::new();
+    hash.update(b"file\0");
+    let mut buffer = [0; 64 * 1024];
+    loop {
+        let read = std::io::Read::read(&mut file, &mut buffer).map_err(error)?;
+        if read == 0 {
+            break;
+        }
+        hash.update(&buffer[..read]);
+    }
+    Ok(hash.finalize())
 }

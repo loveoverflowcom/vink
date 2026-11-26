@@ -88,7 +88,7 @@ cargo xtask verify changed --only "verify unit app"    # chạy một phần, k�
 nên fetch trước nếu cần base mới. Planner lấy merge base của base và head. Commit chỉ có ở
 base không vào diff; plan in số commit bị loại. Không có `--head`, scope là worktree: commit
 `merge-base..HEAD`, index, thay đổi chưa stage và tệp mới chưa bị ignore. `--head REV` chỉ xét
-commit. Plan committed chỉ chạy trên checkout sạch đúng head. Rename xét cả hai tên, deletion
+commit. Khi checkout khác head đã chọn hoặc có thay đổi cục bộ, plan committed chỉ đưa ra các lane bảo thủ và ghi rõ chưa xác định các integration target của head. Để nhận và chạy plan chính xác, dùng checkout sạch đúng head. Rename xét cả hai tên, deletion
 giữ owner cũ. Ref sai, range (`A..B`), lịch sử không có merge base, tệp
 `skip-worktree`/`assume-unchanged` và biến chuyển hướng `GIT_DIR`, `GIT_WORK_TREE`,
 `GIT_COMMON_DIR`, `GIT_INDEX_FILE` đều là lỗi.

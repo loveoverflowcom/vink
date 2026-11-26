@@ -590,6 +590,73 @@ fn narrow_inputs_select_exactly_their_owner() {
 }
 
 #[test]
+fn generated_vector_outputs_select_the_generator_check() {
+    for path in [
+        crate::ui_states::RUST_STATES_OUT,
+        crate::ui_states::KOTLIN_STATES_OUT,
+        crate::ui_navigation::RUST_NAVIGATION_OUT,
+        crate::ui_navigation::KOTLIN_NAVIGATION_OUT,
+        crate::ui_toggle::RUST_TOGGLE_OUT,
+        crate::ui_toggle::KOTLIN_TOGGLE_OUT,
+    ] {
+        let (_, commands) = select(&[path]);
+        assert!(
+            commands.iter().any(|c| c == "verify static tokens"),
+            "{path}"
+        );
+    }
+}
+
+#[test]
+fn browser_reports_distinct_manual_coverage_alongside_its_scenario() {
+    let (selection, commands) = select(&["apps/vink-web/e2e/reader-ssr-boundary.mjs"]);
+    assert!(commands.iter().any(|c| c == "verify web --scenario reader"));
+    assert!(
+        selection
+            .manual
+            .keys()
+            .any(|m| m.contains("`reader-guest-history`"))
+    );
+    let (selection, _) = select(&["apps/vink-web/e2e/author-works-smoke.mjs"]);
+    assert!(
+        !selection
+            .manual
+            .keys()
+            .any(|m| m.contains("`author-works`"))
+    );
+}
+
+#[test]
+fn deleting_an_embedded_fixture_keeps_its_cross_package_test() {
+    use std::{
+        fs,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    let source = "apps/vink-web/src/document.rs";
+    let fixture = "services/vink-app/tests/fixtures/title-authority/render.json";
+    let stamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let root =
+        std::env::temp_dir().join(format!("vink-deleted-embed-{}-{stamp}", std::process::id()));
+    let dst = root.join(source);
+    fs::create_dir_all(dst.parent().unwrap()).unwrap();
+    fs::copy(crate::root().join(source), &dst).unwrap();
+    assert!(!root.join(fixture).exists());
+
+    let mut g = graph().clone();
+    let inputs = graph::compile_inputs(&root, &g.packages);
+    fs::remove_dir_all(&root).unwrap();
+    g.includes = inputs.unwrap();
+    assert_eq!(g.includers(fixture), [source]);
+    let (selection, commands) = select_with(&g, &[fixture]);
+    assert!(selection.fallback.is_empty());
+    assert!(commands.iter().any(|c| c == "verify unit web"));
+}
+
+#[test]
 fn negative_controls_show_the_oracle_detects_dropped_dependency_facts() {
     // Each mutation removes one real dependency fact; the matrix oracle must notice.
     let web_src = "apps/vink-web/src/read_lifecycle.rs";

@@ -238,7 +238,18 @@ pub fn compute(
     let snapshot = git::snapshot(root, base_ref, args.head.as_deref())?;
     let mut selection = rules::Selection::default();
     let mut summary = None;
-    if !snapshot.is_empty() {
+    // The dependency scanner reads real Cargo manifests, source and module imports.
+    // A different or dirty checkout cannot supply facts about a committed head.
+    let foreign_graph = !snapshot.is_empty()
+        && snapshot.mode == git::Mode::Committed
+        && !git::clean_checkout_of(root, &snapshot.head)?;
+    if foreign_graph {
+        let reason = "committed dependency graph unavailable in this checkout; replan on its clean head for exact owner and integration targets";
+        summary = Some(reason.into());
+        for path in snapshot.changes.iter().flat_map(|change| &change.paths) {
+            selection.fallback(reason, path);
+        }
+    } else if !snapshot.is_empty() {
         let graph = load()?;
         summary = Some(format!(
             "cargo metadata --no-deps --offline ({} workspace packages); {} embedded inputs; {} browser import edges; {} Tailwind entries; {} Kani inputs",
