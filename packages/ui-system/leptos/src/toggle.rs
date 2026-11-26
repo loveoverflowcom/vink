@@ -248,6 +248,25 @@ impl ToggleCopy {
     }
 }
 
+/// A confirmed result the caller may report in the live region while no note applies (idle,
+/// known value), e.g. “Đã lưu vào hồ sơ của bạn.” with a link onward. It never replaces a
+/// pending, uncertain, failed or unknown note and claims nothing the owner did not confirm.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ToggleOutcome {
+    pub text: String,
+    /// `true`: a confirmed change (check mark); `false`: guidance (info mark).
+    pub confirmed: bool,
+    pub link: Option<ToggleLink>,
+}
+
+/// A same-origin link shown after an outcome. Unsafe schemes are dropped by [`crate::Link`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ToggleLink {
+    pub id: String,
+    pub label: String,
+    pub href: String,
+}
+
 /// The leading glyph for a confirmed `pressed` projection: `selected` only when confirmed on, so
 /// the state never rests on colour alone and a pending or unknown press shows no new glyph.
 pub const fn toggle_glyph(
@@ -293,6 +312,24 @@ pub fn ToggleAction(
     selected_icon: Option<IconName>,
     #[prop(into)] on_set: Callback<bool>,
     #[prop(into)] on_recover: Callback<RecoveryIntent>,
+    /// Opt-in pressed-toggle semantics (e.g. “Lưu”): `aria-pressed` follows the confirmed value
+    /// (absent while unknown) and the accessible name stays `label`, so a screen reader never
+    /// hears “Bỏ lưu, đã nhấn”. Default: action-named (“Thấm”/“Bỏ Thấm”) without `aria-pressed`.
+    #[prop(optional)]
+    pressed_semantics: bool,
+    /// Replaces `copy.failed` for the current refusal (a quota, or the direction of the intent).
+    #[prop(optional, into)]
+    failed_note: Signal<Option<String>>,
+    /// The owner is reading the confirmed value now: an unknown value is held quietly (no
+    /// “unknown” note) and Reconcile stays hidden until the read settles.
+    #[prop(optional, into)]
+    reading: Signal<bool>,
+    /// A confirmed outcome for the live region, shown only while no note applies.
+    #[prop(optional, into)]
+    outcome: Signal<Option<ToggleOutcome>>,
+    /// A leading mark for each note and outcome (arc, info, error, check); never colour alone.
+    #[prop(optional)]
+    note_icons: bool,
 ) -> impl IntoView {
     let copy = StoredValue::new(copy);
     let view = Memo::new(move |_| {
@@ -302,7 +339,23 @@ pub fn ToggleAction(
     let note_id = format!("{id}-note");
     let note_text = Memo::new(move |_| {
         let note = view.get().note?;
+        if note == ToggleNote::Unknown && reading.get() {
+            return None;
+        }
+        if note == ToggleNote::Failed
+            && let Some(text) = failed_note.get().filter(|t| !t.trim().is_empty())
+        {
+            return Some(text);
+        }
         blocked.with(|reason| copy.with_value(|c| c.note(note, reason.as_deref())))
+    });
+    let reconcile = Memo::new(move |_| view.get().reconcile && !reading.get());
+    let shown_outcome = Memo::new(move |_| {
+        if note_text.with(Option::is_some) || reconcile.get() {
+            None
+        } else {
+            outcome.get()
+        }
     });
     let described = {
         let (count_id, note_id) = (count_id.clone(), note_id.clone());
@@ -344,10 +397,16 @@ pub fn ToggleAction(
                 id=id
                 class="vk-ui-toggle__control"
                 data-surface=move || surface.get().id()
-                aria-label=move || copy.with_value(|c| c.name(view.get().pressed).to_string())
+                aria-label=move || copy.with_value(|c| if pressed_semantics {
+                    c.label.clone()
+                } else {
+                    c.name(view.get().pressed).to_string()
+                })
+                aria-pressed=move || pressed_semantics.then(|| view.get().pressed).flatten()
+                    .map(|on| if on { "true" } else { "false" })
                 aria-describedby=described
                 aria-disabled=move || view.get().dispatch.is_none().then_some("true")
-                aria-busy=move || view.get().busy.then_some("true")
+                aria-busy=move || (view.get().busy || (reading.get() && view.get().pressed.is_none())).then_some("true")
                 data-state=state
                 data-pressed=pressed
                 on:click=move |ev| match view.get_untracked().dispatch {
@@ -399,12 +458,34 @@ pub fn ToggleAction(
             <span
                 class="vk-ui-toggle__feedback"
                 aria-live="polite"
-                data-active=move || (note_text.with(Option::is_some) || view.get().reconcile).then_some("true")
+                data-active=move || (note_text.with(Option::is_some) || reconcile.get() || shown_outcome.with(Option::is_some)).then_some("true")
             >
-                {move || note_text.get().filter(|_| !(view.get().note == Some(ToggleNote::Blocked) && phase.get() == TogglePhase::Idle && blocked_description.get().is_some())).map(|text| view! {
-                    <span class="vk-ui-action__note" id=note_id.clone()>{text}</span>
+                {move || note_text.get().filter(|_| !(view.get().note == Some(ToggleNote::Blocked) && phase.get() == TogglePhase::Idle && blocked_description.get().is_some())).map(|text| {
+                    let kind = view.get_untracked().note;
+                    view! {
+                        <span class="vk-ui-action__note" id=note_id.clone() data-note=kind.map(ToggleNote::id)>
+                            {note_icons.then(|| note_mark(kind))}
+                            {text}
+                        </span>
+                    }
                 })}
-                {move || view.get().reconcile.then(|| view! {
+                {move || shown_outcome.get().map(|outcome| {
+                    let mark = if outcome.confirmed { IconName::Check } else { IconName::Info };
+                    view! {
+                        <span class="vk-ui-action__note" data-note=if outcome.confirmed { "confirmed" } else { "guidance" }>
+                            {note_icons.then(|| view! {
+                                <span class="vk-ui-toggle__note-mark" aria-hidden="true"><Icon name=mark size=IconSize::Small /></span>
+                            })}
+                            {outcome.text}
+                        </span>
+                        {outcome.link.map(|link| view! {
+                            <span class="vk-ui-toggle__outcome-link" id=link.id>
+                                <crate::Link href=link.href>{link.label}</crate::Link>
+                            </span>
+                        })}
+                    }
+                })}
+                {move || reconcile.get().then(|| view! {
                     <Button
                         variant=ButtonVariant::Text
                         on_press=move |_| on_recover.run(RecoveryIntent::Reconcile)
@@ -415,6 +496,25 @@ pub fn ToggleAction(
             </span>
         </span>
     }
+}
+
+/// The leading mark of a note when the caller opts in: an arc while pending, an error mark for
+/// a refusal, an info mark while the state is uncertain or unknown; blocked reasons stay plain.
+fn note_mark(note: Option<ToggleNote>) -> Option<AnyView> {
+    let inner = match note? {
+        ToggleNote::PendingOn | ToggleNote::PendingOff => view! { <LoadingIndicator /> }.into_any(),
+        ToggleNote::Failed => {
+            view! { <Icon name=IconName::Error size=IconSize::Small /> }.into_any()
+        }
+        ToggleNote::Uncertain | ToggleNote::Unknown => {
+            view! { <Icon name=IconName::Info size=IconSize::Small /> }.into_any()
+        }
+        ToggleNote::Blocked => return None,
+    };
+    Some(
+        view! { <span class="vk-ui-toggle__note-mark" aria-hidden="true">{inner}</span> }
+            .into_any(),
+    )
 }
 
 #[cfg(test)]
@@ -625,6 +725,150 @@ mod tests {
             html.contains("Chưa rõ trạng thái.") && html.contains("Kiểm tra lại"),
             "{html}"
         );
+    }
+
+    fn opted_in(
+        value: ToggleValue,
+        phase: TogglePhase,
+        reading: bool,
+        failed: Option<&str>,
+        outcome: Option<ToggleOutcome>,
+    ) -> String {
+        let failed = failed.map(str::to_string);
+        render(move || {
+            view! {
+                <ToggleAction
+                    id="save-1"
+                    copy=ToggleCopy::new("Lưu", "Bỏ lưu")
+                    value=value
+                    phase=phase
+                    pressed_semantics=true
+                    note_icons=true
+                    reading=reading
+                    failed_note=failed
+                    outcome=outcome
+                    on_set=|_: bool| {}
+                    on_recover=|_: RecoveryIntent| {}
+                />
+            }
+            .into_any()
+        })
+    }
+
+    #[test]
+    fn pressed_semantics_keep_the_name_and_follow_only_the_confirmed_value() {
+        for (value, pressed) in [
+            (ToggleValue::Off, Some("false")),
+            (ToggleValue::On, Some("true")),
+            (ToggleValue::Unknown, None),
+        ] {
+            for phase in [
+                TogglePhase::Idle,
+                TogglePhase::Pending { desired: true },
+                TogglePhase::Uncertain { desired: false },
+            ] {
+                let html = opted_in(value, phase, false, None, None);
+                let b = button(&html);
+                assert!(b.contains("aria-label=\"Lưu\""), "stable name: {b}");
+                match pressed {
+                    Some(p) => assert!(b.contains(&format!("aria-pressed=\"{p}\"")), "{b}"),
+                    None => assert!(!b.contains("aria-pressed"), "unknown claims nothing: {b}"),
+                }
+            }
+        }
+        // The default contract is unchanged: action-named, no aria-pressed.
+        let endorse = sample(ToggleValue::On, TogglePhase::Idle, CountFact::Hidden, None);
+        assert!(
+            button(&endorse).contains("aria-label=\"Bỏ Thấm\"")
+                && !endorse.contains("aria-pressed"),
+            "{endorse}"
+        );
+        assert!(!endorse.contains("vk-ui-toggle__note-mark"), "{endorse}");
+    }
+
+    #[test]
+    fn reading_failed_note_and_outcome_only_refine_what_the_owner_confirmed() {
+        let quiet = opted_in(ToggleValue::Unknown, TogglePhase::Idle, true, None, None);
+        assert!(
+            !quiet.contains("Chưa rõ trạng thái.") && !quiet.contains("Kiểm tra lại"),
+            "{quiet}"
+        );
+        assert!(button(&quiet).contains("aria-busy=\"true\""), "{quiet}");
+        let unknown = opted_in(ToggleValue::Unknown, TogglePhase::Idle, false, None, None);
+        assert!(
+            unknown.contains("Chưa rõ trạng thái.") && unknown.contains("Kiểm tra lại"),
+            "{unknown}"
+        );
+        assert!(unknown.contains("data-icon=\"info\""), "{unknown}");
+
+        let failed = opted_in(
+            ToggleValue::Off,
+            TogglePhase::Failed,
+            false,
+            Some("Danh sách đã đầy."),
+            None,
+        );
+        assert!(
+            failed.contains("Danh sách đã đầy.") && !failed.contains("Chưa thực hiện được"),
+            "{failed}"
+        );
+        assert!(
+            failed.contains("data-note=\"failed\"") && failed.contains("data-icon=\"error\""),
+            "{failed}"
+        );
+
+        let link = ToggleOutcome {
+            text: "Đã lưu.".into(),
+            confirmed: true,
+            link: Some(ToggleLink {
+                id: "save-1-list".into(),
+                label: "Mở".into(),
+                href: "/@an/da-luu".into(),
+            }),
+        };
+        let done = opted_in(
+            ToggleValue::On,
+            TogglePhase::Idle,
+            false,
+            None,
+            Some(link.clone()),
+        );
+        assert!(
+            done.contains("Đã lưu.")
+                && done.contains("href=\"/@an/da-luu\"")
+                && done.contains("data-icon=\"check\""),
+            "{done}"
+        );
+        assert!(done.contains("data-active=\"true\""), "{done}");
+        // A pending note always wins over an outcome.
+        let pending = opted_in(
+            ToggleValue::On,
+            TogglePhase::Pending { desired: false },
+            false,
+            None,
+            Some(link),
+        );
+        assert!(
+            !pending.contains("Đã lưu.") && pending.contains("Đang gửi…"),
+            "{pending}"
+        );
+        let unsafe_link = ToggleOutcome {
+            text: "x".into(),
+            confirmed: false,
+            link: Some(ToggleLink {
+                id: "l".into(),
+                label: "y".into(),
+                href: "javascript:alert(1)".into(),
+            }),
+        };
+        let html = opted_in(
+            ToggleValue::Off,
+            TogglePhase::Idle,
+            false,
+            None,
+            Some(unsafe_link),
+        );
+        assert!(!html.contains("javascript:"), "{html}");
     }
 
     #[test]

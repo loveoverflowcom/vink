@@ -6813,7 +6813,7 @@ try {
     await closedAccountAppearance(page, { args, check });
     await readerAuthClosed(page, { args, check });
   }
-  else if (args.phase === 'standalone') await standalone(page, { args, check });
+  else if (args.phase === 'standalone') await standalone(page, { args, check, openPage: (isolated) => openPage(cdp, isolated) });
   else if (args.phase === 'auth-password') await passwordAuth(page, { args, check, textContrast, openPage: (isolated) => openPage(cdp, isolated) });
   else if (args.phase === 'publication-author') await publicationAuthor(page, { args, check, openPage: (isolated) => openPage(cdp, isolated), capture: (target, name, evidence) => target.capture(name, evidence) });
   else if (args.phase === 'author-search') await authorSearch(page, { args, check, textContrast });

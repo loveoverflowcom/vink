@@ -274,16 +274,20 @@ fn SessionRetry() -> impl IntoView {
     }
 }
 
-/// Only presentation varies by host; AuthGate and all input owners are shared.
-#[derive(Clone, Copy)]
-struct ReaderPresentation;
+/// Only presentation varies by host; AuthGate and all input owners are shared. The Reader
+/// names why it asks (“Đăng nhập để nhận xét” / “Đăng nhập để lưu bài”) and may add a lead.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct ReaderPresentation {
+    pub(crate) title: &'static str,
+    pub(crate) lead: Option<&'static str>,
+}
 
 /// Mount once in the current host. The host supplies layout and post-auth navigation, never
 /// standing or credentials. The existing form owners are disposed on a mode/epoch change.
 #[component]
-pub(crate) fn AuthEntry(#[prop(optional)] reader: bool) -> impl IntoView {
-    if reader {
-        provide_context(ReaderPresentation);
+pub(crate) fn AuthEntry(#[prop(optional)] reader: Option<ReaderPresentation>) -> impl IntoView {
+    if let Some(presentation) = reader {
+        provide_context(presentation);
     }
     let session = Session::current();
     let open = crate::api::sign_in_open();

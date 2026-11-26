@@ -5,7 +5,9 @@ mod auth;
 use crate::account::Session;
 use crate::contract::{CommentStatus, OwnPlacement};
 use crate::discussion_reads::{OwnChip, OwnState};
-use auth::{ReaderAuth, ReaderAuthDialog};
+pub(crate) use auth::{ReaderAuth, ReaderAuthDialog};
+#[cfg(feature = "browser")]
+pub(crate) use auth::{ReaderAuthPurpose, ReaderAuthReady, ReaderAuthSettled};
 use std::collections::{BTreeMap, BTreeSet};
 
 use leptos::prelude::*;
@@ -644,7 +646,9 @@ fn DiscussionLoaded(
         page.settings.clone(),
     ));
     controller.update_untracked(|c| c.sign_in_open = api::sign_in_open());
-    let reader_auth = ReaderAuth::provide();
+    // The Reader page provides the sign-in dialog for its composers and “Lưu” (#388).
+    #[cfg(feature = "browser")]
+    let reader_auth = ReaderAuth::current();
     #[cfg(feature = "browser")]
     let work_id = page.work_id.clone();
     #[cfg(feature = "browser")]
@@ -733,7 +737,7 @@ fn DiscussionLoaded(
             state.update(|s| s.change_session(controller.get_untracked().scope));
             // Invalidate presentation context from the earlier viewer immediately.
             state.with_untracked(|s| revalidate_targets(s, controller));
-            if scope.is_some() && reader_auth.is_open() {
+            if scope.is_some() && reader_auth.is_some_and(ReaderAuth::is_open) {
                 // Public roots/replies are actor-free. Keeping the current pagination chain
                 // avoids remounting an open composer on page 2+ simply to read the new viewer.
                 // Reconcile settings and private facts without restarting the public list.
@@ -829,7 +833,6 @@ fn DiscussionLoaded(
         </div>
         <Show when=move || !read_only>
             <DiscussionComposer key=ComposerKey::Root controller state refresh />
-            <ReaderAuthDialog host=reader_auth controller />
         </Show>
         <OwnComments state controller lve refresh />
         <Show when=move || !read_only>
@@ -1321,7 +1324,7 @@ fn DiscussionComposer(
                 <Button id=format!("{}-auth", editor_id.get_value()) variant=ButtonVariant::Filled
                     on_press=move |_| {
                         if can_auth.get_untracked() {
-                            host.open(editor_id.get_value());
+                            host.open_for_comment(editor_id.get_value(), controller);
                         }
                     }>
                     {move || if session.standing.get() == crate::session::Standing::NeedsPrincipal {
@@ -1507,7 +1510,7 @@ fn DiscussionComposer(
             <Show when=move || controller.read().status(&key.get_value()) == ComposerStatus::Refused
                 && controller.read().sign_in_open
                 && matches!(controller.read().draft(&key.get_value()).receipt, Some(Receipt::Refused(ApiError::Unauthenticated)))>
-                <Button variant=ButtonVariant::Tonal on_press=move |_| host.open(editor_id.get_value())>"Đăng nhập lại"</Button>
+                <Button variant=ButtonVariant::Tonal on_press=move |_| host.open_for_comment(editor_id.get_value(), controller)>"Đăng nhập lại"</Button>
             </Show>
             </div>
         </div>

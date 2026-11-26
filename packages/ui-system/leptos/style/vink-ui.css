@@ -489,6 +489,11 @@
 }
 
 .vk-ui-toggle__feedback[data-active] { margin-block-start: var(--vk-space-1); }
+/* Opt-in note marks (`note_icons`) and an outcome link keep a ≥44px target in the live region. */
+.vk-ui-action__note:has(> .vk-ui-toggle__note-mark) { display: inline-flex; align-items: center; gap: var(--vk-space-1); }
+.vk-ui-toggle__note-mark { display: inline-flex; flex-shrink: 0; inline-size: 18px; block-size: 18px; }
+.vk-ui-toggle__note-mark > :is(.vk-ui-icon, .vk-ui-arc) { inline-size: 18px; block-size: 18px; }
+.vk-ui-toggle__outcome-link > .vk-ui-link { display: inline-flex; align-items: center; min-block-size: var(--vk-size-hit-target); }
 
 /* Fields -------------------------------------------------------------------------------------- */
 

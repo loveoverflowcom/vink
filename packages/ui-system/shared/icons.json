@@ -28,6 +28,18 @@
       "use": "Không có quyền",
       "path": "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"
     },
+    "bookmark": {
+      "upstream": "src/action/bookmark/materialicons/24px.svg",
+      "sha256": "2da2cc7c80170bd0a75628f8dd516510a0ebb40e3959fd9bc4e0373d8d84f746",
+      "use": "Đã lưu bài (Lưu đã xác nhận)",
+      "path": "M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"
+    },
+    "bookmark-border": {
+      "upstream": "src/action/bookmark_border/materialicons/24px.svg",
+      "sha256": "9414a0cbfd6fb81208d9db330d5a9cb3834a787b76c860152067aa7e90ec93b6",
+      "use": "Lưu bài",
+      "path": "M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z"
+    },
     "check": {
       "upstream": "src/navigation/check/materialicons/24px.svg",
       "sha256": "3f622661988927d85b134f07b0aa7842aeb404c71735d3c32f31de6c695b8d31",

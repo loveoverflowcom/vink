@@ -1134,7 +1134,8 @@ fn classify(error: &ApiError) -> Answer {
         | ApiError::FollowActorUnavailable
         | ApiError::FollowConflict { .. }
         | ApiError::HandleRefused(_)
-        | ApiError::FollowKeyReused => Answer::Lost,
+        | ApiError::FollowKeyReused
+        | ApiError::SavedWorksLimit => Answer::Lost,
     }
 }
 

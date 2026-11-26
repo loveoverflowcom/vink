@@ -820,6 +820,14 @@ pub fn decode_success<T: serde::de::DeserializeOwned>(text: &str) -> Option<T> {
     }
 }
 
+/// `GET|PUT|DELETE /api/v1/me/saved-works/{work_id}` (#387): the viewer's own membership for
+/// one work and its server-issued generation. Private (`no-store`); never part of a public read.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SavedWorkState {
+    pub saved: bool,
+    pub generation: i64,
+}
+
 /// Outcome classes of the API, as this client needs to distinguish them.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ApiError {
@@ -890,6 +898,8 @@ pub enum ApiError {
     },
     FollowKeyReused,
     HandleRefused(profile::HandleRefusal),
+    /// `409 saved_works_limit_reached`: the Đã lưu list is full (D6). Nothing was written.
+    SavedWorksLimit,
     Invalid {
         field: Option<String>,
     },
@@ -1032,6 +1042,7 @@ impl ApiError {
                 },
                 None => Self::Unexpected { status },
             },
+            (409, Some("saved_works_limit_reached")) => Self::SavedWorksLimit,
             (409, Some("comments_closed")) => Self::CommentsClosed,
             (409, Some("target_unavailable")) => Self::TargetUnavailable,
             (409, Some("comment_removed")) => Self::CommentRemoved,
@@ -1206,6 +1217,32 @@ mod tests {
         let value: T = serde_json::from_value(json.clone()).unwrap();
         assert_eq!(serde_json::to_value(&value).unwrap(), json, "{name}");
         value
+    }
+
+    #[test]
+    fn saved_work_contract_round_trips_the_state_and_classifies_its_refusals() {
+        let state: SavedWorkState = round_trip("saved-work.state.json");
+        assert_eq!(
+            state,
+            SavedWorkState {
+                saved: true,
+                generation: 2
+            }
+        );
+        let error = |name: &str| {
+            let raw = std::fs::read_to_string(format!("{FIXTURES}/{name}")).unwrap();
+            ApiError::from_response(409, serde_json::from_str(&raw).ok())
+        };
+        assert_eq!(
+            error("error.saved-work-conflict.json"),
+            ApiError::GenerationConflict {
+                current_generation: 3
+            }
+        );
+        assert_eq!(
+            error("error.saved-works-limit.json"),
+            ApiError::SavedWorksLimit
+        );
     }
 
     #[test]
