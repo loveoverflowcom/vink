@@ -1,9 +1,13 @@
-//! ToggleAction and the LVE EndorsementAction composition through public APIs. The "owner" in
+//! ToggleAction, the LVE EndorsementAction composition and the Reader's “Thấm · Lưu” pair
+//! (ActionPair + SaveAction, SAV-04) through public APIs. The "owner" in
 //! the lifecycle scenario is an in-memory sample: nothing is fetched, written or confirmed by a
 //! service, and every person, work and count is [Mẫu].
 
 use leptos::prelude::*;
-use vink_patterns::{EndorsementAction, EndorsementBlock, EndorsementFacts, EndorsementKind};
+use vink_patterns::{
+    ActionPair, EndorsementAction, EndorsementBlock, EndorsementFacts, EndorsementKind, SaveAction,
+    SaveFacts, SaveOutcome, SaveRefusal,
+};
 use vink_ui::{
     ActionSurface, Align, Button, ButtonVariant, CountFact, Direction, RecoveryIntent, Space,
     Stack, Surface, SurfaceTone, Text, TextTag, TextTone, ToggleAction, ToggleCopy, TogglePhase,
@@ -16,6 +20,7 @@ pub fn specimen(id: &str, scenario: &str) -> Option<AnyView> {
     Some(match id {
         "action.toggle-action" => toggle(scenario),
         "composition.endorsement" => endorsement(scenario),
+        "composition.save-pair" => save_pair(scenario),
         _ => return None,
     })
 }
@@ -486,6 +491,58 @@ fn endorsement(scenario: &str) -> AnyView {
     .into_any()
 }
 
+/// The Reader pair with sample facts: the adapter's request, generation fence and session are
+/// absent, so a press only logs the desired membership.
+fn save_pair(scenario: &str) -> AnyView {
+    let save = match scenario {
+        "saved" => SaveFacts {
+            value: ToggleValue::On,
+            outcome: Some(SaveOutcome::Saved {
+                list_href: Some("#composition.save-pair/saved".into()),
+            }),
+            ..SaveFacts::default()
+        },
+        "pending" => SaveFacts {
+            value: ToggleValue::Off,
+            phase: TogglePhase::Pending { desired: true },
+            ..SaveFacts::default()
+        },
+        "unknown" => SaveFacts {
+            value: ToggleValue::Unknown,
+            reading: true,
+            ..SaveFacts::default()
+        },
+        "refused" => SaveFacts {
+            value: ToggleValue::Off,
+            phase: TogglePhase::Failed,
+            refusal: Some(SaveRefusal::Limit),
+            ..SaveFacts::default()
+        },
+        _ => SaveFacts {
+            value: ToggleValue::Off,
+            ..SaveFacts::default()
+        },
+    };
+    let work = facts(
+        ToggleValue::Off,
+        TogglePhase::Idle,
+        CountFact::Known(12),
+        None,
+    );
+    view! {
+        <Stack gap=Space::S3 align=Align::Start>
+            <Text role=TypeRole::Caption tone=TextTone::Muted>"Mẫu · Không gọi dịch vụ, không xác nhận ghi"</Text>
+            <ActionPair id="sample-pair" label="Thấm và lưu tác phẩm">
+                <EndorsementAction id="sample-pair-endorse" kind=EndorsementKind::Work facts=work
+                    on_set=logged_set("sample-pair-endorse") on_recover=logged_recover("sample-pair-endorse") />
+                <SaveAction id="sample-pair-save" facts=save
+                    on_set=logged_set("sample-pair-save") on_recover=logged_recover("sample-pair-save") />
+            </ActionPair>
+        </Stack>
+    }
+    .into_any()
+}
+
 const fn facts(
     value: ToggleValue,
     phase: TogglePhase,
@@ -528,6 +585,23 @@ mod tests {
                 && html.contains("data-icon=\"heart-outline\""),
             "#359: Thấm keeps Pen Flight, Ưng uses the heart: {html}"
         );
+        for scenario in ["default", "saved", "pending", "unknown", "refused"] {
+            let html = Owner::new().with(|| save_pair(scenario).to_html());
+            assert!(
+                html.contains("role=\"group\"")
+                    && html.contains("aria-label=\"Thấm và lưu tác phẩm\"")
+                    && html.matches("vk-ui-toggle__control").count() == 2
+                    && html.contains("id=\"sample-pair-save\""),
+                "{scenario}: one named group with Thấm and Lưu: {html}"
+            );
+        }
+        let saved = Owner::new().with(|| save_pair("saved").to_html());
+        assert!(
+            saved.contains("aria-pressed=\"true\"") && saved.contains("data-icon=\"bookmark\""),
+            "{saved}"
+        );
+        let refused = Owner::new().with(|| save_pair("refused").to_html());
+        assert!(refused.contains(SaveRefusal::Limit.text()), "{refused}");
         let html = Owner::new().with(|| endorsement("signed-out").to_html());
         assert!(
             html.contains("Cần đăng nhập để Thấm.") && html.contains("Cần đăng nhập để Ưng."),

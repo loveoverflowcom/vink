@@ -523,13 +523,13 @@ fn DeskWorks(scope: String, session: crate::account::Session) -> AnyView {
             <Show when=move || access_error.with(Option::is_none)>
                 <div class="vk-desk-heading__actions flex-wrap items-center gap-[8px] [min-inline-size:0] [max-inline-size:100%]" hidden=move || !show_tools.get() && !dock_open.get()>
                     <span class="vk-search-launcher">
-                        <button type="button" class="vk-ui-icon-button"
-                            id=move || if dock_open.get() { "close-draft-search" } else { "open-draft-search" }
-                            aria-label=move || if dock_open.get() { "Đóng ô tìm tác phẩm" } else { "Tìm tác phẩm" }
-                            aria-expanded=move || dock_open.get().to_string() aria-controls="desk-search-form"
-                            on:click=move |_| if dock_open.get_untracked() { close_dock.run(()) } else { open_dock() }>
-                            {move || view! { <vink_ui::Icon name=if dock_open.get() { IconName::ArrowBack } else { IconName::Search } /> }}
-                        </button>
+                        // One node keeps focus while it turns from “open” into “close” (#540).
+                        <vink_ui::IconButton
+                            id=Signal::derive(move || if dock_open.get() { "close-draft-search" } else { "open-draft-search" }.to_string())
+                            label=Signal::derive(move || if dock_open.get() { "Đóng ô tìm tác phẩm" } else { "Tìm tác phẩm" }.to_string())
+                            icon=Signal::derive(move || if dock_open.get() { IconName::ArrowBack } else { IconName::Search })
+                            expanded=dock_open controls="desk-search-form"
+                            on_press=Callback::new(move |()| if dock_open.get_untracked() { close_dock.run(()) } else { open_dock() }) />
                     </span>
                     <Show when=move || ready.get() && !first_use.get()>
                         <CreateDraftControls creation can_create create create_format />
