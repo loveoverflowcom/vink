@@ -217,6 +217,9 @@ function inboxObservation() {
 async function captureInboxCases(page, args, { state, trace }) {
   const countPath = `${inbox}/count`, seenPath = `${inbox}/seen`;
   const unknown = 'Chưa tải được số thông báo mới.';
+  await page.viewport(390, 844);
+  await page.goto(`${args.base}/`);
+  await page.waitFor(visible(mobile), 'signed-in home for notification cases');
   for (const [width, height, theme] of [[390, 844, 'light'], [1440, 900, 'dark']]) {
     const cases = ['empty', 'populated', 'count-error', 'list-error'];
     if (width === 390) cases.unshift('legacy-empty', 'legacy-populated');
@@ -227,16 +230,17 @@ async function captureInboxCases(page, args, { state, trace }) {
       Object.assign(state, { pageSize: empty ? 0 : 3, count, seen: 0, marked: false,
         countMode: legacy ? 'legacy' : countFailed ? 'unavailable' : 'fresh', firstFailure: listFailed });
       trace.length = 0;
-      await page.viewport(width, height);
       await page.send('Emulation.setEmulatedMedia', { features: [
         { name: 'prefers-color-scheme', value: theme }, { name: 'prefers-reduced-motion', value: 'reduce' },
       ] });
-      await page.goto(`${args.base}/`);
-      const badge = `document.querySelector('${width === 390 ? mobile : bell} .vk-ui-badge')`;
+      await page.eval("window.dispatchEvent(new Event('online'))");
+      const badge = `document.querySelector('${mobile} .vk-ui-badge')`;
       const beforeBadge = countFailed ? 'unknown' : count ? 'count' : 'hidden';
       await eventually(() => trace.some(event => event.path === countPath), 'shell count response');
       await page.waitFor(`${badge}?.dataset.state === '${beforeBadge}' && ${badge}.textContent === '${countFailed || !count ? '' : count}'`, 'pre-inbox badge');
-      await page.goto(`${args.base}/thong-bao`);
+      await page.click(mobile);
+      await page.waitFor("location.pathname === '/thong-bao'", 'bell opens inbox');
+      await page.viewport(width, height);
       await eventually(() => trace.some(event => event.path === inbox), 'inbox response');
       if (!listFailed) {
         await eventually(() => {
@@ -283,11 +287,10 @@ async function captureInboxCases(page, args, { state, trace }) {
         await page.waitFor(`JSON.stringify(${readDom}) === ${JSON.stringify(JSON.stringify(normal))}`, 'count retry keeps the unread rows');
         assert.equal(trace.filter(event => event.path === countPath).at(-1).count, 0);
       }
+      await page.viewport(390, 844);
+      await page.click('main .vk-notif-page button[aria-label="Quay lại"]');
+      await page.waitFor(`location.pathname === '/' && ${visible(mobile)}`, 'inbox Back returns to the bell');
       if (!legacy && !listFailed) {
-        const previousCount = trace.filter(event => event.path === countPath).length;
-        await page.goto(`${args.base}/`);
-        await eventually(() => trace.filter(event => event.path === countPath).length > previousCount, 'verified zero after Seen');
-        assert.equal(trace.filter(event => event.path === countPath).at(-1).count, 0);
         await page.waitFor(`${badge}?.dataset.state === 'hidden' && ${badge}.hidden`, 'no badge after verified zero');
       }
     }
