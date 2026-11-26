@@ -10,7 +10,7 @@ skill khác dẫn về tài liệu này thay vì lặp lại luật compiler, `@
   Leptos, [Tailwind #18093](https://github.com/tailwindlabs/tailwindcss/pull/18093), phát hành ở
   [v4.1.8](https://github.com/tailwindlabs/tailwindcss/releases/tag/v4.1.8), khóa tại `xtask/src/tailwind.rs::MIN_VERSION`).
 - **Ranh giới nền tảng:** Chỉ áp dụng cho Web (`apps/vink-web`, `packages/ui-system/leptos`,
-  `packages/vink-patterns/leptos`, `packages/ui-system/leptos/preview`). Không đổi Compose
+  `packages/vink-patterns/leptos`, `apps/vink-preview/leptos`). Không đổi Compose
   Multiplatform (`packages/ui-system/cmp`), không chuyển sang `cargo-leptos`, không thêm CSS
   runtime hay JS framework.
 
@@ -76,7 +76,7 @@ Cả `web.css` và `preview.css` dùng chung thứ tự layer:
   `@layer utilities` bất kể specificity! Trước khi xóa rule legacy của một component, hãy grep
   toàn bộ các file CSS nguồn (`packages/ui-system/leptos/style/vink-ui.css`,
   `packages/vink-patterns/leptos/patterns.css`, `apps/vink-web/style/vink.css`,
-  `packages/ui-system/leptos/preview/style/preview.css`) tìm mọi rule cha/modifier đè lên class đó
+  `apps/vink-preview/leptos/style/preview.css`) tìm mọi rule cha/modifier đè lên class đó
   và chuyển override sang utility của cha (ví dụ `[&>.vk-ui-notice]:p-0 [&>.vk-ui-notice]:bg-transparent [&>.vk-ui-notice]:text-inherit`)
   hoặc xóa rule xung đột cùng lát.
 - **Thoát dấu gạch dưới kép của BEM trong arbitrary variant:** Tailwind đọc nguyên văn nguồn.
@@ -92,7 +92,7 @@ Cả `web.css` và `preview.css` dùng chung thứ tự layer:
   - Web (`web.css`): `apps/vink-web/src`, `packages/ui-system/leptos/src`,
     `packages/vink-patterns/leptos/src`.
   - Preview (`preview.css`): `packages/ui-system/leptos/src`,
-    `packages/ui-system/leptos/preview/src`, `packages/ui-system/leptos/preview/examples`,
+    `apps/vink-preview/leptos/src`, `apps/vink-preview/leptos/examples`,
     `packages/vink-patterns/leptos/src`.
 - `tailwind::check` trong `verify quick` yêu cầu đúng tập `@source` của từng entry (docs,
   skills, fixtures, SQL, `target/` không bao giờ bị quét vào stylesheet).
@@ -123,10 +123,10 @@ Cả `web.css` và `preview.css` dùng chung thứ tự layer:
      `--text-*: initial`, `--font-weight-*: initial`, `--shadow-*: initial`, `--ease-*: initial`).
   2. `xtask/src/ui_qualification.rs` (chạy trong `verify quick`) quét toàn bộ 6 file CSS
      (`apps/vink-web/style/vink.css`, `packages/ui-system/leptos/style/vink-ui.css`,
-     `packages/vink-patterns/leptos/patterns.css`, `packages/ui-system/leptos/preview/style/preview.css`,
+     `packages/vink-patterns/leptos/patterns.css`, `apps/vink-preview/leptos/style/preview.css`,
      `packages/ui-system/leptos/tailwind/{web,preview}.css`) và mọi literal chuỗi / `class:<token>=`
      trong 5 thư mục nguồn Rust UI (`apps/vink-web/src`, `packages/ui-system/leptos/src`,
-     `packages/vink-patterns/leptos/src`, `packages/ui-system/leptos/preview/{src,examples}`, bỏ qua
+     `packages/vink-patterns/leptos/src`, `apps/vink-preview/leptos/{src,examples}`, bỏ qua
      file sinh tự động và thân module `#[cfg(test)]`), **từ chối cứng**:
      - Bảng màu mặc định Tailwind (`bg-red-500`, `text-slate-600`, `bg-white`, `text-black`) và
        màu arbitrary (`bg-[#fff]`, `text-[rgb(...)]`, `hsl(`, `oklch(`).
@@ -220,7 +220,7 @@ Cả `web.css` và `preview.css` dùng chung thứ tự layer:
   - `@keyframes` animation phức tạp, container query hoặc `::backdrop` đặc thù khi utility khó đọc
     hoặc giảm rõ ràng.
 - **Giữ semantic hook & dọn rule cũ:**
-  - Giữ các class hook mà E2E/smoke (`apps/vink-web/e2e/`, `packages/ui-system/leptos/preview/e2e/`)
+  - Giữ các class hook mà E2E/smoke (`apps/vink-web/e2e/`, `apps/vink-preview/leptos/e2e/`)
     đang truy vấn (`vk-ui-notice`, `vk-ui-status`, `vk-ui-list-end`, `vk-draft-meta`, …) trên phần
     tử đã migrate, đồng thời **xóa rule tạo kiểu cũ** trong file CSS legacy tương ứng để không tồn
     tại hai nguồn sự thật cạnh tranh.

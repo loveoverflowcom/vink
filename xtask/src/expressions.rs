@@ -2,7 +2,7 @@
 use crate::process::{self, Report, cargo};
 use std::path::Path;
 use std::process::Command;
-const PREVIEW_RUNTIME: &str = "packages/ui-system/leptos/preview/expressions";
+const PREVIEW_RUNTIME: &str = "apps/vink-preview/leptos/expressions";
 const MODEL: &str = "packages/expressions/behavior";
 /// Feeds model inputs to the shared policy. Its absence fails the lane.
 const REPLAY: &str = "tests::quint_inputs_replay_through_the_real_policy";

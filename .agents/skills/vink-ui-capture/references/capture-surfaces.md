@@ -57,7 +57,7 @@ thể tạo scratch DB, ghi fixture và fault injection: đọc prerequisite, d�
 đúng quyền, không trỏ vào dữ liệu thật chỉ để lấy ảnh.
 
 Leptos preview có deep link `#<catalog-id>/<scenario-id>`, ảnh và `contexts.json`
-qua runner [preview-smoke](../../../../packages/ui-system/leptos/preview/e2e/preview-smoke.mjs).
+qua runner [preview-smoke](../../../../apps/vink-preview/leptos/e2e/preview-smoke.mjs).
 Chế độ focus opt-in được ghi trong development guide: giữ menu/matrix raw, thêm
 ảnh `#specimen` (heading/scenario + scope, không inspector) ở sáu entry chọn lọc.
 Manifest liên kết ảnh raw có giới hạn chiều cao với các tile specimen đầy đủ;

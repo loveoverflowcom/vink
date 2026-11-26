@@ -1,12 +1,12 @@
 [workspace]
 resolver = "3"
 members = [
+    "apps/vink-preview/leptos",
     "apps/vink-web",
     "packages/expressions",
     "packages/markdown-text",
     "packages/store-postgres",
     "packages/ui-system/leptos",
-    "packages/ui-system/leptos/preview",
     "packages/vink-patterns/leptos",
     "packages/work-view-policy",
     "services/vink-app",

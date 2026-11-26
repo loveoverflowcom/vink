@@ -32,7 +32,8 @@ those registries rather than duplicating long status narratives across skills.
 - **UI System (`packages/ui-system`, `packages/vink-patterns`):** one token source in
   `shared/tokens.json` generating CSS/Rust/Kotlin (`cargo xtask ui-tokens`), Leptos `vink-ui`,
   Compose Multiplatform `:ui`, shared primitives/state/navigation vectors (UIS-02..05) and DTO-free
-  patterns consumed by Web and diagnostic previews. Opt-in Android/iOS/Desktop `:diagnostics` hosts
+  patterns consumed by Web and the Preview app (`apps/vink-preview`: Leptos `vink-ui-preview` and
+  CMP Desktop `:preview`, no services, never in Product). Opt-in Android/iOS/Desktop `:diagnostics` hosts
   and Lossy WebP fixtures exist for qualification only; **no native product app exists**
   ([qualification evidence](docs/development/ui-system-qualification-evidence.md)).
 - **Expressions (`packages/expressions`):** 16-asset Google Noto manifest, pure admission/generation

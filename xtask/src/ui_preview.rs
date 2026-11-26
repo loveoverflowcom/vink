@@ -1,11 +1,14 @@
-//! `cargo xtask ui-preview leptos|cmp build|verify|run` — the two UI system previews.
+//! `cargo xtask ui-preview leptos|cmp build|verify|run` — the two hosts of the Preview app.
 //!
-//! Both render the shared catalog IDs through their renderer's public API and call no service.
-//! Leptos: a client-rendered wasm bundle plus the generated tokens, served from
-//! `target/ui-preview/leptos` by a loopback static server; `verify` drives it in headless Chrome
-//! and writes captures there. CMP: the Gradle build in `packages/ui-system/cmp` (pinned wrapper,
-//! JDK from the machine — never auto-provisioned); `verify` runs the common and desktop tests,
-//! including the capture test that writes PNGs under `cmp/preview/build/captures`.
+//! The Preview app (`apps/vink-preview`, #552) is the only executable home of UI specimens,
+//! mocks and demos; both hosts render the shared catalog IDs through their renderer's public
+//! API and call no service. Leptos (`apps/vink-preview/leptos`): a client-rendered wasm bundle
+//! plus the generated tokens, served from `target/ui-preview/leptos` by a loopback static server;
+//! `verify` drives it in headless Chrome and writes captures there. CMP
+//! (`apps/vink-preview/cmp`, Gradle project `:preview` of the build in `packages/ui-system/cmp`:
+//! pinned wrapper, JDK from the machine — never auto-provisioned); `verify` runs the common and
+//! desktop tests, including the capture test that writes PNGs under
+//! `apps/vink-preview/cmp/build/captures`.
 //! Android/iOS targets are opt-in (`VINK_UI_NATIVE_TARGETS=1`) so the JVM preview needs neither
 //! the Android SDK nor Xcode.
 
@@ -17,7 +20,9 @@ use std::process::Command;
 use crate::env::Env;
 use crate::process::{self, Report, cargo};
 
-const LEPTOS_DIR: &str = "packages/ui-system/leptos";
+/// Leptos host of the Preview app (crate `vink-ui-preview`).
+const LEPTOS_HOST: &str = "apps/vink-preview/leptos";
+/// Gradle build that owns the CMP renderer and maps the Preview app's `:preview` project.
 const CMP_DIR: &str = "packages/ui-system/cmp";
 const OUT_DIR: &str = "target/ui-preview/leptos";
 const DEFAULT_BIND: &str = "127.0.0.1:3019";
@@ -90,10 +95,10 @@ fn leptos_build(root: &Path) -> Result<(), String> {
         .arg(root.join("target/wasm32-unknown-unknown/debug/vink_ui_preview.wasm"));
     process::run(&mut bindgen, "wasm-bindgen → target/ui-preview/leptos/pkg")?;
     std::fs::copy(
-        root.join(LEPTOS_DIR).join("preview/index.html"),
+        root.join(LEPTOS_HOST).join("index.html"),
         out.join("index.html"),
     )
-    .map_err(|e| format!("copy preview/index.html: {e}"))?;
+    .map_err(|e| format!("copy {LEPTOS_HOST}/index.html: {e}"))?;
     // Remove unbundled legacy CSS files from earlier builds so only `vink-preview.css` is served.
     for stale in ["tokens.css", "vink-ui.css", "patterns.css", "preview.css"] {
         let path = out.join(stale);
@@ -165,14 +170,8 @@ fn leptos_verify(report: &mut Report, root: &Path, env: &Env) -> bool {
             process::run(
                 Command::new("node")
                     .arg("--test")
-                    .arg(
-                        root.join(LEPTOS_DIR)
-                            .join("preview/e2e/focus-capture.test.mjs"),
-                    )
-                    .arg(
-                        root.join(LEPTOS_DIR)
-                            .join("preview/e2e/overlay-capture.test.mjs"),
-                    ),
+                    .arg(root.join(LEPTOS_HOST).join("e2e/focus-capture.test.mjs"))
+                    .arg(root.join(LEPTOS_HOST).join("e2e/overlay-capture.test.mjs")),
                 "focused specimen and overlay geometry regressions",
             )?;
             let listener = TcpListener::bind("127.0.0.1:0").map_err(|e| format!("bind: {e}"))?;
@@ -184,7 +183,7 @@ fn leptos_verify(report: &mut Report, root: &Path, env: &Env) -> bool {
             std::thread::spawn(move || serve(listener, site));
             let mut smoke = Command::new("node");
             smoke
-                .arg(root.join(LEPTOS_DIR).join("preview/e2e/preview-smoke.mjs"))
+                .arg(root.join(LEPTOS_HOST).join("e2e/preview-smoke.mjs"))
                 .args(["--base", &format!("http://127.0.0.1:{port}/")])
                 .args(["--chrome", chrome.as_deref().unwrap_or_default()])
                 .arg("--out")
@@ -490,7 +489,7 @@ mod tests {
 
     #[test]
     fn static_paths_cannot_escape_the_site() {
-        let site = crate::root().join(LEPTOS_DIR);
+        let site = crate::root().join("packages/ui-system/leptos");
         assert_eq!(resolve(&site, "/../Cargo.toml"), None);
         assert_eq!(resolve(&site, "/style/../../Cargo.toml"), None);
         assert!(resolve(&site, "/style/vink-ui.css").is_some());

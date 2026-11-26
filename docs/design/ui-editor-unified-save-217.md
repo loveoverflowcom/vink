@@ -19,7 +19,7 @@ Proposal kỹ thuật [VDR-EDITOR-SAVE-PROJECTION@r1](../../decisions/proposals/
 - Fidelity tham chiếu: `NO_APPROVED_REFERENCE` (kế thừa R5 Lavender tokens, tự kiểm theo rubric 5 chiều của `ux-quality`).
 - Owners:
   - State & guards: [`DraftSession` / `EditorSession`](../../apps/vink-web/src/desk_state.rs), [`TagSession`](../../apps/vink-web/src/tag_state.rs), [`TagLoad`](../../apps/vink-web/src/pages/work_info.rs)
-  - Pattern & preview: [`EditorToolbar`](../../packages/vink-patterns/leptos/src/lib.rs), [`patterns.css`](../../packages/vink-patterns/leptos/patterns.css), [`screens.rs`](../../packages/ui-system/leptos/preview/src/screens.rs)
+  - Pattern & preview: [`EditorToolbar`](../../packages/vink-patterns/leptos/src/lib.rs), [`patterns.css`](../../packages/vink-patterns/leptos/patterns.css), [`screens.rs`](../../apps/vink-preview/leptos/src/screens.rs)
   - Web desk & CSS & CM bridge: [`Editor` / `project_save_slot`](../../apps/vink-web/src/pages/desk.rs), [`vink.css`](../../apps/vink-web/style/vink.css), [`editor.ts`](../../apps/vink-web/editor/src/editor.ts)
 
 ## LayoutSpec và `CHOICE-01 B`

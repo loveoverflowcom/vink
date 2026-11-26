@@ -97,7 +97,7 @@ fn matrix() -> Vec<Case> {
             false,
         ),
         c(
-            &["packages/ui-system/leptos/preview/style/preview.css"],
+            &["apps/vink-preview/leptos/style/preview.css"],
             &["verify static repo", "verify preview"],
             &[
                 "verify web",
@@ -392,7 +392,7 @@ fn matrix() -> Vec<Case> {
             false,
         ),
         c(
-            &["packages/ui-system/leptos/preview/e2e/select-geometry.mjs"],
+            &["packages/ui-system/leptos/e2e/select-geometry.mjs"],
             &[
                 "verify preview",
                 "verify web --scenario editor-first-draft --scenario desk --scenario editor-format",

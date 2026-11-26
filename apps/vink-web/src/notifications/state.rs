@@ -106,7 +106,7 @@ mod tests {
     fn count_contract_maps_verified_stale_and_lower_bound_without_a_fake_zero() {
         use super::super::contract::Count;
         let fixture: serde_json::Value = serde_json::from_str(include_str!(
-            "../../../../packages/ui-system/leptos/preview/fixtures/notifications-examples.json"
+            "../../../../services/vink-app/contracts/http/v1/fixtures/notifications-examples.json"
         ))
         .unwrap();
         let verified: Count = serde_json::from_value(fixture["counts"][0].clone()).unwrap();

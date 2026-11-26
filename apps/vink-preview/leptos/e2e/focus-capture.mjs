@@ -9,7 +9,8 @@ export const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 export function sourceIdentity() {
   const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
   const paths = git('ls-files', '--cached', '--others', '--exclude-standard', '--',
-    'packages/ui-system/shared', 'packages/ui-system/leptos', 'packages/vink-patterns/leptos');
+    'packages/ui-system/shared', 'packages/ui-system/leptos', 'packages/vink-patterns/leptos',
+    'apps/vink-preview/leptos');
   const files = Object.fromEntries(paths.split('\n').filter(Boolean).sort().map(path => [path, digest(readFileSync(path))]));
   return { git_sha: git('rev-parse', 'HEAD'), dirty: Boolean(git('status', '--porcelain')),
     source_fingerprint: digest(JSON.stringify(files)), source_files: files };

@@ -4,7 +4,7 @@ import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 const json = path => JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8'));
-const examples = json('../../../packages/ui-system/leptos/preview/fixtures/notifications-examples.json');
+const examples = json('../../../services/vink-app/contracts/http/v1/fixtures/notifications-examples.json');
 const gateway = json('../../../services/vink-app/contracts/http/v1/fixtures/notifications-gateway.json');
 const bell = '#notification-bell';
 const mobile = '#notification-bell-mobile';

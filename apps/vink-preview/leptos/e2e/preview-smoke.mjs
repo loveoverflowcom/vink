@@ -14,7 +14,7 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { checkSelectGeometry, selectCharacter } from './select-geometry.mjs';
+import { checkSelectGeometry, selectCharacter } from '../../../../packages/ui-system/leptos/e2e/select-geometry.mjs';
 import { captureTransaction, captureSpecimen, sourceIdentity } from './focus-capture.mjs';
 import { overlayCaptures } from './overlay-capture.mjs';
 
@@ -677,7 +677,7 @@ async function components(page) {
   check(chip === 'true' && next === 1, 'FilterChip: Space toggles aria-pressed and Tab moves to the next chip');
 
   // Both the App fallback and the shared field CSS use the legacy layer in the Web entry.
-  const appFocus = readFileSync(new URL('../../../../../apps/vink-web/style/vink.css', import.meta.url), 'utf8')
+  const appFocus = readFileSync(new URL('../../../../apps/vink-web/style/vink.css', import.meta.url), 'utf8')
     .match(/^:focus-visible\s*\{[^}]+\}/m)?.[0];
   check(appFocus, 'FloatingTonal: Web global focus fallback exists');
   const probePaint = await page.eval(`(() => {

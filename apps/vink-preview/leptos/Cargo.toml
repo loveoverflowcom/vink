@@ -16,11 +16,11 @@ crate-type = ["cdylib", "rlib"]
 # Depends on the renderer's public API only. Without `csr` the crate compiles (and tests) on the
 # host so workspace clippy/test cover it; `cargo xtask ui-preview leptos build` enables `csr`.
 [dependencies]
-vink-expressions = { path = "../../../expressions" }
-vink-patterns = { path = "../../../vink-patterns/leptos" }
+vink-expressions = { path = "../../../packages/expressions" }
+vink-patterns = { path = "../../../packages/vink-patterns/leptos" }
 leptos.workspace = true
 serde_json.workspace = true
-vink-ui = { path = ".." }
+vink-ui = { path = "../../../packages/ui-system/leptos" }
 unicode-normalization = "0.1.26"
 wasm-bindgen = { workspace = true, optional = true }
 js-sys = { version = "0.3.106", optional = true }

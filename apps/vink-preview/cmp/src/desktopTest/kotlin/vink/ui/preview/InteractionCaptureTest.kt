@@ -40,7 +40,8 @@ class InteractionCaptureTest {
         }
         fun sha(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
         fun sources() = git("ls-files", "--cached", "--others", "--exclude-standard", "--",
-            "packages/ui-system/shared", "packages/ui-system/cmp", "packages/vink-patterns/cmp")
+            "packages/ui-system/shared", "packages/ui-system/cmp", "packages/vink-patterns/cmp",
+            "apps/vink-preview/cmp")
             .lines().sorted().associateWith { sha(File(repo, it).readBytes()) }
         val sourceFiles = sources()
         val sourceFingerprint = sha(sourceFiles.entries.joinToString("\n") { "${it.key}=${it.value}" }.toByteArray())

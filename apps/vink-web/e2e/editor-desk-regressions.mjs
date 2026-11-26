@@ -1,4 +1,4 @@
-import { checkSelectGeometry, selectCharacter } from '../../../packages/ui-system/leptos/preview/e2e/select-geometry.mjs';
+import { checkSelectGeometry, selectCharacter } from '../../../packages/ui-system/leptos/e2e/select-geometry.mjs';
 
 const CM = "document.querySelector('.cm-content')?.cmTile?.root?.view";
 const SAVE = '#save';

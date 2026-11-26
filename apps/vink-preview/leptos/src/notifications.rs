@@ -10,9 +10,11 @@ use vink_ui::{
     NotificationBadge, Person, ShapeTone, TypeRole,
 };
 
-const EXAMPLES: &str = include_str!("../fixtures/notifications-examples.json");
+const EXAMPLES: &str = include_str!(
+    "../../../../services/vink-app/contracts/http/v1/fixtures/notifications-examples.json"
+);
 const GATEWAY: &str = include_str!(
-    "../../../../../services/vink-app/contracts/http/v1/fixtures/notifications-gateway.json"
+    "../../../../services/vink-app/contracts/http/v1/fixtures/notifications-gateway.json"
 );
 
 pub fn specimen(id: &str, scenario: &str) -> Option<AnyView> {

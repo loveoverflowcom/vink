@@ -256,9 +256,9 @@ API mode dùng App không bật feature `legacy-ssr`. Xem [các workflow theo sc
 | `cargo xtask dev` | Build, migrate các owner, chạy Identity (nếu có `VINK_IDENTITY_SOCKET`) và chờ ready, rồi chạy server ở `VINK_BIND` | Bất kỳ bước nào lỗi, Identity không ready trong 20 s |
 | `cargo xtask decision --help` | Tra quyết định, diff revision, ghi proposal và signoff, kiểm import/reference. Xem [kho TOML](../../decisions/README.md) | Cú pháp, format, base hoặc tham chiếu không hợp lệ |
 | `cargo xtask ui-tokens [--check]` | Validate `packages/ui-system/shared/{tokens.json, preview-catalog.json, icons.json, fixtures/}` (type, đơn vị, alias treo/vòng/sai type, đủ light/dark, tương phản khai báo; icon: commit pin, license, SHA-256 upstream dựng lại; identity: tone trong khoảng, ảnh base64; states: tổ hợp vùng, intent, placement, notice và ca `LoadingGate` khớp chính sách token; navigation; toggle: đủ 36 tổ hợp, không phát lệnh mù, unavailable không thành số) rồi ghi 16 file: `tokens.css`, `tailwind-theme.css`, `tokens.rs`, `catalog.rs`, `icons.rs`, `identity_vectors.rs`, `state_vectors.rs`, `navigation_vectors.rs`, `toggle_vectors.rs`, `VinkTokens.kt`, `VinkCatalog.kt`, `VinkIcons.kt`, `VinkIdentityVectors.kt`, `VinkStateVectors.kt`, `VinkNavigationVectors.kt`, `VinkToggleVectors.kt`; `--check` không ghi | Nguồn không hợp lệ; với `--check`, file sinh ra thiếu hoặc lệch |
-| `cargo xtask ui-preview leptos build\|run\|verify` | Bundle preview Leptos (`csr`) và biên dịch `vink-preview.css` qua Tailwind v4 CLI vào `target/ui-preview/leptos`; `run` phục vụ loopback ở `VINK_UI_PREVIEW_BIND` (mặc định `127.0.0.1:3019`); `verify` tạo fixture HTML/WASM riêng để kiểm ảnh trước/sau hydration, chạy [preview-smoke](../../packages/ui-system/leptos/preview/e2e/preview-smoke.mjs) trong Chrome headless và ghi ảnh + `contexts.json` | Build, wasm-bindgen, Node/npm/Chrome thiếu, Tailwind CLI lỗi hoặc một assertion lỗi |
+| `cargo xtask ui-preview leptos build\|run\|verify` | Bundle preview Leptos (`csr`) và biên dịch `vink-preview.css` qua Tailwind v4 CLI vào `target/ui-preview/leptos`; `run` phục vụ loopback ở `VINK_UI_PREVIEW_BIND` (mặc định `127.0.0.1:3019`); `verify` tạo fixture HTML/WASM riêng để kiểm ảnh trước/sau hydration, chạy [preview-smoke](../../apps/vink-preview/leptos/e2e/preview-smoke.mjs) trong Chrome headless và ghi ảnh + `contexts.json` | Build, wasm-bindgen, Node/npm/Chrome thiếu, Tailwind CLI lỗi hoặc một assertion lỗi |
 | `VINK_UI_FOCUS_CAPTURE=1 cargo xtask ui-preview leptos verify` | Giữ smoke/matrix raw hiện có; thêm 36 capture specimen chọn lọc (6 entry × light/dark × 390/1440 text100, 390 text200), `focus-manifest.json` và PNG `--focus[--partN]`. Clip theo geometry, padding 12 CSS px; specimen cao chia tile cân bằng, tối đa 4096px và không quá chiều cao viewport (mặc định 900px), không thu ảnh. Cuộn trong viewport thật, không dùng CDP resize ngầm. Kiểm PNG/bounds/ảnh không trắng, phục hồi viewport/scroll/focus và source fingerprint | Cùng prerequisite với preview; identity/theme/clip/PNG/restore hoặc source đổi trong lúc chụp |
-| `cargo xtask ui-preview cmp build\|run\|verify` | Gradle trong `packages/ui-system/cmp`: compile `:ui`/`:preview` (desktop); `run` mở cửa sổ; `verify` chạy test common + desktop và ghi ảnh vào `packages/ui-system/cmp/preview/build/captures`. `VINK_UI_NATIVE_TARGETS=1` thêm Android/iOS | JDK/Gradle thiếu, compile hoặc test lỗi |
+| `cargo xtask ui-preview cmp build\|run\|verify` | Gradle trong `packages/ui-system/cmp`: compile `:ui`/`:preview` (desktop; `:preview` map tới `apps/vink-preview/cmp`); `run` mở cửa sổ; `verify` chạy test common + desktop và ghi ảnh vào `apps/vink-preview/cmp/build/captures`. `VINK_UI_NATIVE_TARGETS=1` thêm Android/iOS | JDK/Gradle thiếu, compile hoặc test lỗi |
 | `cargo xtask verify quick` | `ui-tokens --check`, `fmt`, clippy server (workspace, `ssr`), clippy browser (`hydrate`, wasm32), clippy preview UI (`vink-ui-preview`, `csr`, wasm32), doctests type-boundary của literary core (`vink-app`), unit/contract tests không cần database (gồm `vink-ui`, `vink-ui-preview`, generator, compiler/guard Tailwind), kiểm kho quyết định, skill, link và ranh giới module (UI system không phụ thuộc service/router/storage; Kotlin `commonMain` không import API nền tảng), font/logo asset theo `provenance.json`, phiên bản pin của runtime editor và compiler Tailwind (`source(none)` + `@source` allowlist), guard token `ui_qualification.rs` trên 6 file CSS và 5 cây nguồn Rust UI, unit test Node của oracle chứng cứ trực quan (`visual-evidence.test.mjs`, cũng chạy đầu `verify web`), unit test Node của analyzer baseline Web Perf #234 (`web-perf-baseline.test.mjs`), mọi crate kế thừa lint workspace (`unsafe_code = "forbid"`) và mỗi doctest `compile_fail` có lawful twin | Một bước lỗi |
 | `cargo xtask verify postgres` | Test integration của Store, App, Identity và Notifications trên PostgreSQL thật ([mặc định 2 luồng mỗi gói](#giới-hạn-song-song-khi-kiểm-thử)); config sai thoát 2; `provision.sh` thật với tên tạm (DB cũ được nhận quyền, DB mới, Identity, chạy lại, ca âm), migrate/seed bằng role tách, thử DDL/kết nối chéo, worker start/SIGTERM bằng role runtime, và kiểm enrollment giữ cùng tài khoản/principal qua hai binary thật | Thiếu `VINK_TEST_DATABASE_URL`, PostgreSQL hoặc `psql` 15+, hoặc một bước lỗi |
 | `cargo xtask verify discussion` | Cài Quint 0.33.1 theo lockfile, typecheck/scenarios, simulation seed cố định, negative controls, fixture drift và replay Rust production. Đòi đủ 21 replay App + 2 replay Web có tên trong `xtask/src/discussion.rs`. Canonical M1/M3/M4 và evaluator scripts: [publication owner](../../services/vink-app/behavior/publication/README.md). [ReadOwner/PageChain](../../apps/vink-web/behavior/README.md): 52 bước lawful + 2 counterexample qua Rust thật. Ba [model đích](../../services/vink-app/behavior/target/README.md) `collections/comment_edit/discovery` không có aggregate replay | Thiếu Node/npm, sai pin, model/test/drift, negative control không phát hiện lỗi hoặc replay không được chọn |
@@ -273,7 +273,7 @@ PNG sạch + `--overlay.png`. Capture gallery cao tối đa 6000px vẫn giữ r
 F-01, mở `cargo xtask ui-preview leptos run` để build/serve source hiện tại, rồi ở terminal khác:
 
 ```sh
-node packages/ui-system/leptos/preview/e2e/preview-smoke.mjs \
+node apps/vink-preview/leptos/e2e/preview-smoke.mjs \
   --base http://127.0.0.1:3019/ --chrome /usr/bin/google-chrome \
   --out target/ui-preview/overlay-check \
   --catalog packages/ui-system/shared/preview-catalog.json --overlays-only 1
@@ -403,7 +403,7 @@ chạy thêm kiểm thử codec/đo workload trong tiến trình Kotlin trên iO
 [Thiết bị, kết quả và giới hạn](ui-system-qualification-evidence.md#lossy-webp-trong-cmp-116).
 
 Output: Android `androidDiagnostic/build/outputs/androidTest-results/`, iOS
-`iosDiagnostic/build/DerivedData/Logs/Test/*.xcresult`, CMP `preview/build/captures/`.
+`iosDiagnostic/build/DerivedData/Logs/Test/*.xcresult`, CMP `apps/vink-preview/cmp/build/captures/`.
 Chụp màn native bằng `adb exec-out screencap -p > PATH.png` hoặc
 `xcrun simctl io "$VINK_UI_IOS_DEVICE" screenshot PATH.png`, rồi mở ảnh và ghi context/hash.
 Đây không phải screenshot baseline tự được bless. Native dùng font hệ thống; pipeline branded
@@ -412,6 +412,10 @@ TTF/OTF, OS IME tiếng Việt, TalkBack/VoiceOver và device thật cần evide
 ## Cấu trúc và chiều phụ thuộc
 
 ```text
+apps/vink-preview/        app Preview (#552): host thực thi duy nhất cho specimen/mock/demo; không
+                          service, không ship cùng Product ([ranh giới](web-preview-boundary.md))
+  leptos/                 crate vink-ui-preview (CSR, fixture hydrate, Chrome smoke, dotLottie)
+  cmp/                    Gradle :preview (Desktop, font TTF, capture test)
 apps/vink-web/            crate vink-web: view Leptos, route, DTO riêng của web, CSS tokens
   src/shell.rs            đích Vink (Destination), dialog Giao diện và rail Medium, chính sách responsive; render bằng
                           primitive UIS-04, dùng NavigationGuard cho chuyển trang
@@ -439,9 +443,10 @@ apps/vink-web/            crate vink-web: view Leptos, route, DTO riêng của w
   e2e/visual-evidence.mjs oracle chứng cứ trực quan, PNG/manifest/AX/overflow/modal & test (`visual-evidence.test.mjs`)
 packages/ui-system/       UI System (README owner map): shared/ tokens.json + catalog + fixtures;
   leptos/                 crate vink-ui (tokens/catalog sinh ra, UiRoot, ThemeScope, component,
-                          state/feedback, navigation) + preview/
-                          crate vink-ui-preview (CSR, Chrome smoke)
-  cmp/                    Gradle: :ui (Compose Multiplatform commonMain), :preview (Desktop)
+                          state/feedback, navigation); e2e/select-geometry.mjs dùng chung cho
+                          runner Web và Preview
+  cmp/                    Gradle: :ui (Compose Multiplatform commonMain), :diagnostics, map
+                          :patterns và :preview (Desktop) của apps/vink-preview/cmp
 packages/store-postgres/  crate vink-store-postgres: pool, vòng đời migration, trạng thái schema,
                           phân loại lỗi kết nối; không biết database/bảng nghiệp vụ
 services/postgres/        container PostgreSQL (compose + overlay local), provision.sh, runbook
@@ -635,7 +640,7 @@ production đỏ; model mutant tạo OFF→old ON resurrection. Harness và kế
 Mở Thử biểu cảm · Mẫu từ Leptos Preview hoặc vào `/expressions.html` trên Preview host.
 Catalog 16 asset, nguồn/hash/license, policy Rust và traceability nằm ở
 [expressions](expressions.md) và [manifest owner](../../packages/expressions/README.md).
-Build Preview dùng npm lockfile riêng ở `packages/ui-system/leptos/preview/expressions` và
+Build Preview dùng npm lockfile riêng ở `apps/vink-preview/leptos/expressions` và
 host controller/Software JS, WASM, asset có hash dưới `/pkg/expressions/`.
 [Ranh giới Web/Preview](web-preview-boundary.md) ghi điều kiện đóng gói và đường dẫn cũ trả 404.
 

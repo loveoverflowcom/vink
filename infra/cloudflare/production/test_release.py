@@ -121,6 +121,15 @@ class Packages(unittest.TestCase):
             self.assertFalse((output / "_v" / B / "pkg/expressions/pilot.js").exists())
             self.assertTrue((output / "_v" / A / "pkg/expressions/pilot.js").exists())
 
+    def test_preview_app_outputs_are_never_product_assets(self):
+        for name in ("vink-preview.css", "snippets/vink-ui-preview-ab12/runtime.js", "vink_ui_preview_bg.wasm",
+                     "fixtures/sample.webp", "expression_hydration.js"):
+            with self.subTest(asset=name):
+                self.assertTrue(art.is_preview_asset(name))
+        for name in ("vink.css", "vink_bg.wasm", "snippets/vink-web-ab12/editor/bridge.js"):
+            with self.subTest(asset=name):
+                self.assertFalse(art.is_preview_asset(name))
+
     def test_first_notification_release_preserves_predecessor_and_binds_fourth_digest(self):
         legacy = spec(A)
         upgraded = spec(B)

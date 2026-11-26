@@ -61,9 +61,11 @@ pub struct Graph {
     pub includes: BTreeMap<String, BTreeSet<String>>,
 }
 
-pub const BROWSER_DIRS: [&str; 2] = [
+/// Browser runner modules: the Web app, the Preview app and shared UI library probes.
+pub const BROWSER_DIRS: [&str; 3] = [
     "apps/vink-web/e2e/",
-    "packages/ui-system/leptos/preview/e2e/",
+    "apps/vink-preview/leptos/e2e/",
+    "packages/ui-system/leptos/e2e/",
 ];
 
 impl Graph {

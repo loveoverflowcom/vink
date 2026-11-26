@@ -240,9 +240,15 @@ const DOC_DIRS: [&str; 6] = [
 ];
 const EDITOR_DIR: &str = "apps/vink-web/editor/";
 const EMPTY_ARTWORK_DIR: &str = "apps/vink-web/assets/empty/";
-const PREVIEW_DIR: &str = "packages/ui-system/leptos/preview/";
-/// Gradle projects of `ui-preview cmp verify` (packages/ui-system/cmp/settings.gradle.kts).
-const CMP_DIRS: [&str; 2] = ["packages/ui-system/cmp/", "packages/vink-patterns/cmp/"];
+/// Leptos host of the Preview app (`apps/vink-preview`, #552).
+const PREVIEW_DIR: &str = "apps/vink-preview/leptos/";
+/// Gradle projects of `ui-preview cmp verify` (packages/ui-system/cmp/settings.gradle.kts maps
+/// `:patterns` and the Preview app's `:preview` outside its own directory).
+const CMP_DIRS: [&str; 3] = [
+    "packages/ui-system/cmp/",
+    "packages/vink-patterns/cmp/",
+    "apps/vink-preview/cmp/",
+];
 const SHARED_UI_DIR: &str = "packages/ui-system/shared/";
 
 /// Browser fixture modules imported by `browser-smoke.mjs`, mapped to the scenarios whose
@@ -288,7 +294,7 @@ pub const BROWSER_MODULES: &[(&str, &[Scenario], &[&str])] = {
         ("apps/vink-web/e2e/web-perf-baseline.mjs", &[S::PerfBaseline], &[]),
         ("apps/vink-web/e2e/web-request-ledger.mjs", &[S::Reader], &[]),
         ("apps/vink-web/e2e/work-views-smoke.mjs", &[S::Reader], &[]),
-        ("packages/ui-system/leptos/preview/e2e/select-geometry.mjs", &[S::Desk], &[]),
+        ("packages/ui-system/leptos/e2e/select-geometry.mjs", &[S::Desk], &[]),
     ]
 };
 pub const BROWSER_DISPATCHER: &str = "apps/vink-web/e2e/browser-smoke.mjs";
@@ -309,11 +315,11 @@ pub const NODE_TESTS: [(&str, Option<&str>); 7] = [
         Some("verify static assets"),
     ),
     (
-        "packages/ui-system/leptos/preview/e2e/focus-capture.test.mjs",
+        "apps/vink-preview/leptos/e2e/focus-capture.test.mjs",
         Some("verify preview"),
     ),
     (
-        "packages/ui-system/leptos/preview/e2e/overlay-capture.test.mjs",
+        "apps/vink-preview/leptos/e2e/overlay-capture.test.mjs",
         Some("verify preview"),
     ),
 ];
@@ -723,16 +729,18 @@ fn browser(sel: &mut Selection, g: &Graph, path: &str) -> bool {
     {
         return false;
     }
-    if path.starts_with(PREVIEW_DIR) {
-        sel.add(
-            "verify preview",
-            "Preview browser fixture or capture oracle",
-            path,
-        );
-    }
     sel.owner(path, "browser fixture");
     let mut roots = vec![path.to_string()];
     roots.extend(g.importer_closure(path));
+    // A Preview runner, or a shared helper (such as the UI library's Select probe) it imports.
+    let preview = roots.iter().any(|root| root.starts_with(PREVIEW_DIR));
+    if preview {
+        sel.add(
+            "verify preview",
+            "Preview browser fixture, capture oracle or a helper its runner imports",
+            path,
+        );
+    }
     let mut mapped = false;
     for root in &roots {
         let via = if root == path {
@@ -764,7 +772,7 @@ fn browser(sel: &mut Selection, g: &Graph, path: &str) -> bool {
             mapped = true;
         }
     }
-    if !mapped && !path.starts_with(PREVIEW_DIR) {
+    if !mapped && !preview {
         sel.fallback("browser module with no registered caller", path);
     }
     true
