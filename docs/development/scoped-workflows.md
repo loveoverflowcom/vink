@@ -19,6 +19,8 @@ Tất cả ví dụ chạy ở repo root. Dùng `cargo xtask --help` để xem c
 | PostgreSQL một owner | `cargo xtask verify postgres store --filter fresh_database` | Cluster test qua `VINK_TEST_DATABASE_URL` | Một test target, lock scratch, fixture thật |
 | PostgreSQL lifecycle | `cargo xtask verify postgres lifecycle` | Cluster test, `psql` 15+, `pg_dump`/`pg_restore` | Binary App/Identity/Notifications, config rejection, provision, role fences, backup/restore/recovery |
 | Unit/contract một owner | `cargo xtask verify unit app --filter publication` | Dependency biên dịch thật của package | Test binary, không server/DB/browser; zero match là FAIL |
+| Một integration target | `cargo xtask verify unit app --test ssr_boundary` | Như unit | Đúng target đó; `postgres` vẫn qua `verify postgres OWNER` |
+| Chọn kiểm theo diff | `cargo xtask verify changed --plan` rồi `cargo xtask verify changed --expect PLAN_ID` | Theo từng check đã chọn | Plan chỉ đọc; khi chạy, xtask kiểm drift trước mỗi check |
 | Build FE standalone | `cargo xtask build spa --release` | wasm-bindgen, wasm target, Node/npm | [Index CSR và asset theo revision](edge-frontend.md), độc lập App/DB |
 | Build API | `cargo xtask build api` | Không tool frontend | Chỉ binary `vink-app` |
 | API công khai | `cargo xtask dev api` | App DB đã migrate, role runtime | App với health + API, ẩn danh |
@@ -48,7 +50,7 @@ preview. `build web` tạo browser bundle và App.
   hiện hữu của owner. `api` dành cho App không feature `legacy-ssr`, `ssr` dành cho
   App/Web, `hydrate` cho Web, `csr` cho Web/Preview. Hai target WASM cần Rust target,
   không cần wasm-bindgen CLI, npm, asset bundle, database hoặc browser.
-- `verify unit OWNER [--filter NAME]` nhận `app|identity|store|xtask|web|notifications|ui|patterns|expressions|markdown|preview`,
+- `verify unit OWNER [--test TARGET] [--filter NAME]` nhận `app|identity|store|xtask|web|notifications|ui|patterns|expressions|markdown|preview|work-views`,
   cùng danh sách owner của `verify check`. Chọn lib/bins theo manifest. Unit App có
   graph SSR theo feature mặc định. Unit Web bật rõ `--features ssr` để các test render
   HTML chạy được cả khi chỉ chọn riêng `vink-web`.
@@ -76,32 +78,67 @@ hay Resend HTTPS API, dùng [runbook auth](auth-operations.md) và binary trực
 ## Lập kế hoạch theo diff
 
 ```sh
-cargo xtask verify changed --base origin/develop --worktree --plan
-cargo xtask verify changed --base BASE_SHA --head HEAD_SHA --plan
+cargo xtask verify changed --plan                      # mặc định: origin/develop, worktree
+cargo xtask verify changed --expect PLAN_ID            # chạy đúng plan đã xem
+cargo xtask verify changed --base BASE --head HEAD_SHA --plan
+cargo xtask verify changed --only "verify unit app"    # chạy một phần, kết quả PARTIAL
 ```
 
-Hai SHA là hai cây đầu cuối. Với nhánh phân kỳ, truyền merge base đã chọn làm
-`--base` nếu muốn chỉ xét phần nhánh. `--worktree` ghim HEAD rồi lấy hợp của diff
-commit, index, tệp sửa và tệp mới chưa ignore. Rename xét cả hai tên, deletion giữ
-owner cũ. Chế độ `--head` chỉ xét commit. Tệp bị Git ignore, toolchain, môi trường
-và fixture ngoài Git cần khai báo riêng. Giữ inputs ổn định khi lấy plan. Planner từ chối các biến chuyển hướng checkout/index
-(`GIT_DIR`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, `GIT_INDEX_FILE`) để diff và executor cùng đọc một worktree.
+**Phạm vi.** `--base` mặc định là `origin/develop` của checkout. Xtask không fetch ref này,
+nên fetch trước nếu cần base mới. Planner lấy merge base của base và head. Commit chỉ có ở
+base không vào diff; plan in số commit bị loại. Không có `--head`, scope là worktree: commit
+`merge-base..HEAD`, index, thay đổi chưa stage và tệp mới chưa bị ignore. `--head REV` chỉ xét
+commit. Plan committed chỉ chạy trên checkout sạch đúng head. Rename xét cả hai tên, deletion
+giữ owner cũ. Ref sai, range (`A..B`), lịch sử không có merge base, tệp
+`skip-worktree`/`assume-unchanged` và biến chuyển hướng `GIT_DIR`, `GIT_WORK_TREE`,
+`GIT_COMMON_DIR`, `GIT_INDEX_FILE` đều là lỗi.
 
-Planner đọc Git local và giải các selector bằng cùng parser/plan với executor. Mỗi
-lệnh được đề xuất nêu owner, dependency, chi phí hoặc phạm vi. Mapping chưa rõ,
-contract, lockfile, feature và source dùng chung mở rộng phạm vi và yêu cầu review
-các consumer. Kiểm tra các lane opt-in, CMP, formal và gate thực tế của AC. Diff rỗng
-chỉ cho biết không có path trong phạm vi. Sau khi đổi input, lập lại plan và chạy
-selector từ checkout tương ứng. Có thể nối hậu tố do plan in ra vào lệnh nguyên gốc,
-ví dụ `cargo xtask verify static docs --from-diff BASE_SHA HEAD_SHA committed`.
-Xtask đọc lại diff trước khi giao lệnh cho executor hiện hữu. Chế độ `committed` đòi
-đúng HEAD và cây sạch, `worktree` tính lại các selector theo input hiện tại. Lệnh chỉ
-chạy một selector; các selector còn lại vẫn cần evidence theo AC.
+**Dependency.** Owner/path registry nằm ở [rules.rs](../../xtask/src/changed/rules.rs).
+Registry kết hợp các dữ kiện đọc từ checkout ([graph.rs](../../xtask/src/changed/graph.rs)), không giữ bản sao:
 
-Ví dụ, sửa guide này chọn `verify static docs`. Sửa fixture phân trang Desk chọn
-`verify web --scenario desk`. Sửa cả hai chọn cả hai ranh giới. Migration App mở
-rộng sang PostgreSQL lifecycle và consumer Web. Chính sách bằng chứng ở
-[verification](../../.agents/skills/vink-engineering/references/verification.md).
+- `cargo metadata --no-deps --offline` cho package, target, feature và path dependency.
+  Thay đổi trong một crate chọn check mọi target, các biến thể feature có thật
+  (`api`, `ssr`, `hydrate`, `csr`), unit, integration target và closure các crate phụ thuộc.
+- `include_str!`/`include_bytes!`, `#[wasm_bindgen(module)]`, `sqlx::migrate!` và `#[path]` nối tệp
+  dữ liệu về crate nhúng nó. Vector Quint, fixture contract và JS của Web đi theo cách này.
+- `@import`/`@source` của hai entry Tailwind, module Kani và replay filter của `verify discussion`.
+- Import ES giữa các fixture browser. Module được dispatcher gọi map tới scenario trong
+  `BROWSER_MODULES`; helper đi theo importer. Phase chỉ chạy tay được ghi là nghĩa vụ thủ công.
+
+Docs chọn `verify static docs`. CSS chọn token/repo guard, toàn bộ Web và standalone. Editor
+chọn các scenario có editor. Domain App chọn unit, `discussion` hoặc Kani nếu bị replay hay compile.
+HTTP chọn biến thể `api` và `verify postgres app`. Migration chọn PostgreSQL của owner và `lifecycle`.
+Contract chọn test producer và consumer. `Cargo.lock`, toolchain, `.cargo/`, `.gitignore`, runner
+xtask dùng chung hoặc tệp không có rule mở rộng sang mọi lane CI cùng các opt-in Web. Consumer
+không chọn được ghi kèm điều kiện cần thêm. `verify quick` thay các selector nó đã chạy.
+`verify postgres` thay các owner PostgreSQL.
+
+**Output.** Plan in base/merge-base/head, fingerprint input, từng path với layer, status và
+owner. Mỗi check có chi phí, prerequisite, lý do và path gây ra nó. Plan cũng in artifact cần
+dựng lại, nghĩa vụ thủ công, phần không chọn kèm lý do, input không rõ, fallback và thời
+gian lập plan. `--plan` chỉ đọc Git, manifest Cargo và vài tệp entry. Lệnh không build,
+migrate, chạm database/browser hay network ngoài Cargo bootstrap của xtask. Diff rỗng in
+`NO_WORK`, không coi là PASS.
+
+**Thực thi.** Không có `--plan`, xtask tính cùng plan và chạy từng selector qua executor hiện
+hữu, rẻ trước. `--expect PLAN_ID` từ chối nếu plan đã khác bản đã xem. Trước mỗi check và sau
+check cuối, xtask tính lại fingerprint. Nếu commit, index, tệp sửa hay tệp mới thay đổi, các
+check còn lại `NOT_RUN` và kết quả `FAIL`; khi đó lập plan lại. Một lỗi dừng các check sau.
+Trong `tools/local-budget`, lane browser/Gradle được báo `UNSUPPORTED`.
+Exit code là 0 khi mọi check đã chọn PASS, 1 khi có FAIL hoặc drift, 2 khi sai cú pháp
+hoặc `--only` sai. Exit 3 dành cho `PARTIAL` (`--only`, `UNSUPPORTED`) và `NO_WORK`.
+`--only` nhận đúng selector có trong plan. Typo, selector hợp lệ nhưng không được chọn và
+selector đã nằm trong lane rộng hơn đều bị từ chối. Nghĩa vụ thủ công luôn `NOT_RUN` trong summary.
+
+`verify unit OWNER --test TARGET` chạy một integration target ngoài `postgres`, ví dụ
+`ssr_boundary`, `document_budget` của App, `scoped_cli` của xtask hay `editor_tools` của
+patterns. Owner `work-views` là `vink-work-view-policy`. Hậu tố cũ
+`--from-diff BASE_SHA HEAD_SHA committed|worktree` vẫn kiểm một selector với diff hiện tại.
+
+Thêm package, module xtask, module browser hay loại input mới thì cập nhật registry. Test xtask
+fail khi package thiếu owner, feature WASM thiếu selector, dispatcher import module chưa
+đăng ký, module xtask chưa có vai trò, registry trỏ tới tệp không còn hoặc tệp tracked chưa có rule.
+Chính sách bằng chứng ở [verification](../../.agents/skills/vink-engineering/references/verification.md).
 
 ## Plan, doctor, dữ liệu và artifact
 

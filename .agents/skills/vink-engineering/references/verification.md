@@ -23,8 +23,25 @@ The map records coverage, not current PASS results. For requested maintenance of
 instructions or repeated checking workflows, use
 [vink-maintain-verification](../../vink-maintain-verification/SKILL.md).
 
+## Start from the diff
+
+Before choosing a large workload, run `cargo xtask verify changed --plan` (default base
+`origin/develop`, never fetched; worktree scope includes staged, unstaged and untracked files).
+It names each selected check, its reason, the triggering paths, dependency closure, artifacts,
+manual obligations and what it did not select. Run the cheapest selected check that answers the
+current question while editing; before handoff run the plan with
+`cargo xtask verify changed --expect PLAN_ID`, which executes exactly that plan and stops on drift.
+Broaden beyond the plan when the claim needs a boundary the planner records only as a consumer
+condition (for example a Web route whose response changed), when a check fails for a reason
+outside the selected owner, or when the plan shows `fallback`. Do not narrow below it: an
+unknown input, shared runner or workspace input broadens on purpose. The planner never replaces
+a gate the target requires; a selected PASS is not a full-lane or merge PASS, and `NO_WORK` is
+not a PASS. Reuse an earlier result only while its plan's inputs fingerprint and boundary
+still match; otherwise rerun the affected check. Its registry and dependency rules are in
+the [scoped workflow guide](../../../../docs/development/scoped-workflows.md#lập-kế-hoạch-theo-diff).
+
 For a focused local task, use the [scoped workflow guide](../../../../docs/development/scoped-workflows.md):
-`verify static`, `verify check <owner>`, `verify unit <owner> [--filter NAME]`,
+`verify static`, `verify check <owner>`, `verify unit <owner> [--test TARGET] [--filter NAME]`,
 `verify postgres <owner> [--filter NAME]`, `verify web --scenario NAME`, `verify preview`
 and `doctor <scoped command>`. `--capture checks` on explicit Web scenarios leaves PNG/visual
 evidence `NOT_RUN`. Cite runnable test count separately from Cargo compile/link cost.
@@ -131,6 +148,8 @@ failure from a regression, and test one supported hypothesis before rerunning.
 Use `PASS` for an executed successful check, `FAIL` for an executed failure, `NOT_RUN` for a
 check not executed, and `UNSUPPORTED` when the target/tool cannot perform it. `xtask` prints
 the same words; a missing prerequisite is a `FAIL`, and steps after a failure are `NOT_RUN`.
+`verify changed` adds `PARTIAL` (some selected checks `NOT_RUN`/`UNSUPPORTED`, exit 3) and
+`NO_WORK` (empty diff, exit 3); report both as they are, never as `PASS`.
 A workflow file is not evidence that GitHub Actions ran; cite the run when claiming CI. Preserve the
 runner's own output and clarify any mapping. For each material result, name the exact command,
 source inputs and boundary: pure core, fake adapter, real PostgreSQL, browser

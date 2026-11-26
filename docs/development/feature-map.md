@@ -782,7 +782,7 @@ chỉ ghi những boundary thực sự chạy ở lượt này.
 ## Tooling local có phạm vi (#184)
 
 [Workflow guide](scoped-workflows.md) sở hữu cú pháp, dependencies, defaults và recovery.
-[Diff planner](../../xtask/src/changed.rs) chọn các selector theo path. [Planner](../../xtask/src/plan.rs) và [CLI tests](../../xtask/tests/scoped_cli.rs) kiểm selection,
+[Diff planner](../../xtask/src/changed.rs) chọn selector theo diff, dùng [registry](../../xtask/src/changed/rules.rs) và dependency đọc từ Cargo/Tailwind/Kani/import ([graph](../../xtask/src/changed/graph.rs)). Executor chạy đúng plan và kiểm drift. [Test planner](../../xtask/src/changed/tests.rs) có ma trận required-check, negative control và fixture Git. [Planner](../../xtask/src/plan.rs) và [CLI tests](../../xtask/tests/scoped_cli.rs) kiểm selection,
 restart → browser setup riêng, invalid/empty input và đường inspection không gọi executor hoặc lộ credentials.
 [Workflow tests](../../xtask/src/workflow.rs) kiểm env runtime không mang fixture/socket/migrator
 ngoài lựa chọn; [lifecycle](../../xtask/src/lifecycle.rs) kiểm duplicate lock/reaped child.
