@@ -424,6 +424,20 @@ async function discussionSessionRaces(other, ctx, mailA, mailB, openPage, check)
   const ownText = `(document.querySelector('#own-comments')?.textContent ?? '')`;
   const settled = `document.querySelector('#own-comments')?.getAttribute('aria-busy') !== 'true' && document.querySelector('#comments-mode')?.getAttribute('aria-busy') !== 'true'`;
   await reader.waitFor(`${ownText}.includes(${JSON.stringify(textA)}) && ${settled}`, 'Reader: own A loaded');
+  for (const theme of ['light', 'dark']) {
+    for (const [width, height] of [[1440, 900], [390, 844]]) {
+      await reader.viewport(width, height);
+      await reader.eval(`document.documentElement.dataset.theme='${theme}'; document.querySelector('#feedback-heading').scrollIntoView()`);
+      check(await reader.eval("!document.querySelector('#discussion-refresh, #own-comments-refresh, #own-comments-retry') && document.documentElement.scrollWidth <= innerWidth + 1"),
+        `#557 authenticated discussion fits ${width} × ${height} in ${theme}`);
+      await reader.capture(`557-discussion-auth-${width}-${theme}`, {
+        boundary: 'real-app-postgres-identity',
+        requestedScene: { width, height, theme, scale: 100 }, skipSceneValidation: true,
+      });
+    }
+  }
+  await reader.eval("delete document.documentElement.dataset.theme");
+  await reader.viewport(1280, 900);
   const html = await reader.eval(`fetch(location.href).then(r=>r.text())`);
   check(!html.includes(textA) && !html.includes(textB) && !html.includes('own_pending') && !html.includes('viewer_is_work_author'), 'Reader/Auth: SSR and hydration contain no own body or viewer facts');
   await reader.typeAtEnd('#root-composer', 'Nháp của A');

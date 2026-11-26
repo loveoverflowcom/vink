@@ -25,6 +25,7 @@ pub(crate) const POPOVER: &str = "notification-popover";
 pub(crate) struct Notifications {
     session: Session,
     count: RwSignal<BadgeState>,
+    count_failed: RwSignal<bool>,
     offline: RwSignal<bool>,
     large_text: RwSignal<bool>,
     #[cfg(feature = "browser")]
@@ -45,6 +46,7 @@ impl Notifications {
         let this = Self {
             session,
             count: RwSignal::new(BadgeState::Hidden),
+            count_failed: RwSignal::new(false),
             offline: RwSignal::new(false),
             large_text,
             #[cfg(feature = "browser")]

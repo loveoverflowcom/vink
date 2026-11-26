@@ -36,6 +36,7 @@ impl Notifications {
             self.stop_timer();
             self.poll.set_value(Poll::default());
             self.count.set(BadgeState::Hidden);
+            self.count_failed.set(false);
             self.poll_now();
         });
 
@@ -81,6 +82,7 @@ impl Notifications {
                 self.session.suspend_private_scope();
                 self.inbox.set(Inbox::default());
                 self.count.set(BadgeState::Hidden);
+                self.count_failed.set(false);
             }
         });
         let restore = window_event_listener(leptos::ev::pageshow, move |event| {
@@ -173,6 +175,7 @@ impl Notifications {
                     freshness: Freshness::Fresh { .. }
                 })
             );
+            self.count_failed.set(failed);
             match response {
                 Ok(count) => {
                     let badge = count.freshness.badge();

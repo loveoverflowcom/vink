@@ -130,7 +130,7 @@ fn InboxBody(owner: Notifications) -> impl IntoView {
                 <p class="vk-notif-note" role="status">"Đang ngoại tuyến. Danh sách có thể đã cũ."</p>
             </Show>
             <Show when=move || !offline.get()
-                && matches!(owner.count.get(), vink_ui::BadgeState::Stale(_) | vink_ui::BadgeState::StaleLowerBound | vink_ui::BadgeState::Unknown)
+                && owner.count_failed.get()
                 && owner.inbox.with(|inbox| inbox.snapshot.is_some() && inbox.first == Load::Idle)>
                 <div class="vk-notif-note">
                     <p role="status">{move || if owner.count.get() == vink_ui::BadgeState::Unknown {
