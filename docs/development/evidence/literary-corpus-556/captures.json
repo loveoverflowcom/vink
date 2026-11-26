@@ -1,0 +1,712 @@
+{
+  "browser": "Chrome/158.0.8127.89",
+  "expected": {
+    "product": 11,
+    "preview": 2
+  },
+  "captures": [
+    {
+      "path": "product/literary-desk-first-use-1440x900-light-100.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "byteSize": 66253,
+        "sha256": "5b73eff111c2415d0d7177c483a3c32030b5e4f60dd981677aa5bca8253b9314"
+      },
+      "inspected": true,
+      "captured": "2026-11-26T12:48:21.050Z",
+      "scene": {
+        "width": 1440,
+        "height": 900,
+        "dpr": 1,
+        "theme": "light",
+        "textScale": 100,
+        "scrollY": 0
+      },
+      "host": "product",
+      "build": "SSR/hydrate dev",
+      "sourceSHA": "19f29afe168d3ff5c90c6a08f18640163df0a67e",
+      "fingerprint": "2439118575fd12c773f83620f06a2c409f8f45ff2b54f011c3e07a468a94d7af",
+      "scopedDirty": false,
+      "scenario": "desk-first-use",
+      "route": "/ban-viet",
+      "auth": "authenticated / Identity email-code",
+      "data": "scratch PostgreSQL",
+      "fixture": "literary-review-v1/first-use",
+      "state": "fresh authenticated author, zero works",
+      "runtime": {
+        "works": 0
+      }
+    },
+    {
+      "path": "product/literary-desk-populated-1440x900-light-100.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "byteSize": 126788,
+        "sha256": "2a1893a8616d7d9ed9bd1ce14f68eec901dfc6cc88fb7d5483a65b98d99acdfc"
+      },
+      "inspected": true,
+      "captured": "2026-11-26T12:48:35.092Z",
+      "scene": {
+        "width": 1440,
+        "height": 900,
+        "dpr": 1,
+        "theme": "light",
+        "textScale": 100,
+        "scrollY": 0
+      },
+      "host": "product",
+      "build": "SSR/hydrate dev",
+      "sourceSHA": "19f29afe168d3ff5c90c6a08f18640163df0a67e",
+      "fingerprint": "2439118575fd12c773f83620f06a2c409f8f45ff2b54f011c3e07a468a94d7af",
+      "scopedDirty": false,
+      "scenario": "desk-populated",
+      "route": "/ban-viet",
+      "auth": "authenticated / Identity email-code",
+      "data": "scratch PostgreSQL",
+      "fixture": "literary-review-v1/desk-populated",
+      "state": "private drafts, a pending work and a public work",
+      "runtime": {
+        "privateDrafts": [
+          "prose",
+          "verse",
+          "markdown"
+        ],
+        "pending": true,
+        "published": true
+      }
+    },
+    {
+      "path": "product/literary-desk-populated-390x844-dark-100.png",
+      "png": {
+        "width": 390,
+        "height": 844,
+        "byteSize": 55647,
+        "sha256": "ea31fef198af615b5954c38296d3e8b93982fc7f1d91e4e0c17032473a8abf55"
+      },
+      "inspected": true,
+      "captured": "2026-11-26T12:48:35.177Z",
+      "scene": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1,
+        "theme": "dark",
+        "textScale": 100,
+        "scrollY": 0
+      },
+      "host": "product",
+      "build": "SSR/hydrate dev",
+      "sourceSHA": "19f29afe168d3ff5c90c6a08f18640163df0a67e",
+      "fingerprint": "2439118575fd12c773f83620f06a2c409f8f45ff2b54f011c3e07a468a94d7af",
+      "scopedDirty": false,
+      "scenario": "desk-populated",
+      "route": "/ban-viet",
+      "auth": "authenticated / Identity email-code",
+      "data": "scratch PostgreSQL",
+      "fixture": "literary-review-v1/desk-populated",
+      "state": "private drafts, a pending work and a public work",
+      "runtime": {
+        "privateDrafts": [
+          "prose",
+          "verse",
+          "markdown"
+        ],
+        "pending": true,
+        "published": true
+      }
+    },
+    {
+      "path": "product/literary-editor-prose-1440x900-light-100.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "byteSize": 200698,
+        "sha256": "e89a7b3633d42af3bd0d6529984a009601eb2149e9592392594d0498dd9cbc51"
+      },
+      "inspected": true,
+      "captured": "2026-11-26T12:48:36.201Z",
+      "scene": {
+        "width": 1440,
+        "height": 900,
+        "dpr": 1,
+        "theme": "light",
+        "textScale": 100,
+        "scrollY": 0
+      },
+      "host": "product",
+      "build": "SSR/hydrate dev",
+      "sourceSHA": "19f29afe168d3ff5c90c6a08f18640163df0a67e",
+      "fingerprint": "2439118575fd12c773f83620f06a2c409f8f45ff2b54f011c3e07a468a94d7af",
+      "scopedDirty": false,
+      "scenario": "editor-prose",
+      "route": "/ban-viet/:id",
+      "auth": "authenticated / Identity email-code",
+      "data": "scratch PostgreSQL",
+      "fixture": "literary-review-v1/prose",
+      "state": "saved Default draft reopened",
+      "runtime": {
+        "version": 2,
+        "format": "default",
+        "headings": [],
+        "deskRow": true
+      }
+    },
+    {
+      "path": "product/literary-editor-verse-390x844-dark-100.png",
+      "png": {
+        "width": 390,
+        "height": 844,
+        "byteSize": 57971,
+        "sha256": "ee1c45f83c926090b1b484ad049249b7a9a78638a1c55637be29aa59bf63ea90"
+      },
+      "inspected": true,
+      "captured": "2026-11-26T12:48:38.143Z",
+      "scene": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1,
+        "theme": "dark",
+        "textScale": 100,
+        "scrollY": 0
+      },
+      "host": "product",
+      "build": "SSR/hydrate dev",
+      "sourceSHA": "19f29afe168d3ff5c90c6a08f18640163df0a67e",
+      "fingerprint": "2439118575fd12c773f83620f06a2c409f8f45ff2b54f011c3e07a468a94d7af",
+      "scopedDirty": false,
+      "scenario": "editor-verse",
+      "route": "/ban-viet/:id",
+      "auth": "authenticated / Identity email-code",
+      "data": "scratch PostgreSQL",
+      "fixture": "literary-review-v1/verse",
+      "state": "saved Default draft reopened",
+      "runtime": {
+        "version": 2,
+        "format": "default",
+        "headings": [],
+        "deskRow": true
+      }
+    },
+    {
+      "path": "product/literary-editor-markdown-1440x900-light-100.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "byteSize": 96176,
+        "sha256": "8491622919ce6fa95db8624f3502def59d4e4b6fc13ccefc8a87ed1e51034c63"
+      },
+      "inspected": true,
+      "captured": "2026-11-26T12:48:40.240Z",
+      "scene": {
+        "width": 1440,
+        "height": 900,
+        "dpr": 1,
+        "theme": "light",
+        "textScale": 100,
+        "scrollY": 0
+      },
+      "host": "product",
+      "build": "SSR/hydrate dev",
+      "sourceSHA": "19f29afe168d3ff5c90c6a08f18640163df0a67e",
+      "fingerprint": "2439118575fd12c773f83620f06a2c409f8f45ff2b54f011c3e07a468a94d7af",
+      "scopedDirty": false,
+      "scenario": "editor-markdown",
+      "route": "/ban-viet/:id",
+      "auth": "authenticated / Identity email-code",
+      "data": "scratch PostgreSQL",
+      "fixture": "literary-review-v1/markdown",
+      "state": "saved Markdown reopened with full outline",
+      "runtime": {
+        "version": 2,
+        "format": "markdown",
+        "headings": [
+          [
+            "Qua bậc cửa",
+            1,
+            0
+          ],
+          [
+            "Mưa đầu mùa",
+            2,
+            35
+          ],
+          [
+            "Dưới hiên",
+            3,
+            83
+          ],
+          [
+            "Mưa đầu mùa",
+            2,
+            98
+          ],
+          [
+            "Bờ giếng",
+            3,
+            210
+          ],
+          [
+            "Vết nước",
+            4,
+            259
+          ],
+          [
+            "Mảnh ngói",
+            5,
+            331
+          ],
+          [
+            "Ghi cuối trang",
+            6,
+            391
+          ]
+        ],
+        "deskRow": true
+      }
+    },
+    {
+      "path": "product/literary-editor-markdown-1440x900-dark-100.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "byteSize": 106186,
+        "sha256": "0698ca45b77d2ca89d10c99f425bf497779049c98eee93eaa5e0d9ba4c61e2e2"
+      },
+      "inspected": true,
+      "captured": "2026-11-26T12:48:40.377Z",
+      "scene": {
+        "width": 1440,
+        "height": 900,
+        "dpr": 1,
+        "theme": "dark",
+        "textScale": 100,
+        "scrollY": 256
+      },
+      "host": "product",
+      "build": "SSR/hydrate dev",
+      "sourceSHA": "19f29afe168d3ff5c90c6a08f18640163df0a67e",
+      "fingerprint": "2439118575fd12c773f83620f06a2c409f8f45ff2b54f011c3e07a468a94d7af",
+      "scopedDirty": false,
+      "scenario": "editor-markdown",
+      "route": "/ban-viet/:id",
+      "auth": "authenticated / Identity email-code",
+      "data": "scratch PostgreSQL",
+      "fixture": "literary-review-v1/markdown",
+      "state": "saved Markdown reopened with full outline",
+      "runtime": {
+        "version": 2,
+        "format": "markdown",
+        "headings": [
+          [
+            "Qua bậc cửa",
+            1,
+            0
+          ],
+          [
+            "Mưa đầu mùa",
+            2,
+            35
+          ],
+          [
+            "Dưới hiên",
+            3,
+            83
+          ],
+          [
+            "Mưa đầu mùa",
+            2,
+            98
+          ],
+          [
+            "Bờ giếng",
+            3,
+            210
+          ],
+          [
+            "Vết nước",
+            4,
+            259
+          ],
+          [
+            "Mảnh ngói",
+            5,
+            331
+          ],
+          [
+            "Ghi cuối trang",
+            6,
+            391
+          ]
+        ],
+        "deskRow": true
+      }
+    },
+    {
+      "path": "product/literary-editor-markdown-390x844-light-100.png",
+      "png": {
+        "width": 390,
+        "height": 844,
+        "byteSize": 31354,
+        "sha256": "bb54052213ced2621c82316f9176b8e8c377a20c425e00452b7a93de958b0bc4"
+      },
+      "inspected": true,
+      "captured": "2026-11-26T12:48:40.474Z",
+      "scene": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1,
+        "theme": "light",
+        "textScale": 100,
+        "scrollY": 256
+      },
+      "host": "product",
+      "build": "SSR/hydrate dev",
+      "sourceSHA": "19f29afe168d3ff5c90c6a08f18640163df0a67e",
+      "fingerprint": "2439118575fd12c773f83620f06a2c409f8f45ff2b54f011c3e07a468a94d7af",
+      "scopedDirty": false,
+      "scenario": "editor-markdown",
+      "route": "/ban-viet/:id",
+      "auth": "authenticated / Identity email-code",
+      "data": "scratch PostgreSQL",
+      "fixture": "literary-review-v1/markdown",
+      "state": "saved Markdown reopened with full outline",
+      "runtime": {
+        "version": 2,
+        "format": "markdown",
+        "headings": [
+          [
+            "Qua bậc cửa",
+            1,
+            0
+          ],
+          [
+            "Mưa đầu mùa",
+            2,
+            35
+          ],
+          [
+            "Dưới hiên",
+            3,
+            83
+          ],
+          [
+            "Mưa đầu mùa",
+            2,
+            98
+          ],
+          [
+            "Bờ giếng",
+            3,
+            210
+          ],
+          [
+            "Vết nước",
+            4,
+            259
+          ],
+          [
+            "Mảnh ngói",
+            5,
+            331
+          ],
+          [
+            "Ghi cuối trang",
+            6,
+            391
+          ]
+        ],
+        "deskRow": true
+      }
+    },
+    {
+      "path": "product/literary-editor-markdown-390x844-dark-100.png",
+      "png": {
+        "width": 390,
+        "height": 844,
+        "byteSize": 31097,
+        "sha256": "37f3ba0fc0852f96cffbcfbfaec52e20facf8804e1319e0effa377c2f999af1d"
+      },
+      "inspected": true,
+      "captured": "2026-11-26T12:48:40.543Z",
+      "scene": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1,
+        "theme": "dark",
+        "textScale": 100,
+        "scrollY": 256
+      },
+      "host": "product",
+      "build": "SSR/hydrate dev",
+      "sourceSHA": "19f29afe168d3ff5c90c6a08f18640163df0a67e",
+      "fingerprint": "2439118575fd12c773f83620f06a2c409f8f45ff2b54f011c3e07a468a94d7af",
+      "scopedDirty": false,
+      "scenario": "editor-markdown",
+      "route": "/ban-viet/:id",
+      "auth": "authenticated / Identity email-code",
+      "data": "scratch PostgreSQL",
+      "fixture": "literary-review-v1/markdown",
+      "state": "saved Markdown reopened with full outline",
+      "runtime": {
+        "version": 2,
+        "format": "markdown",
+        "headings": [
+          [
+            "Qua bậc cửa",
+            1,
+            0
+          ],
+          [
+            "Mưa đầu mùa",
+            2,
+            35
+          ],
+          [
+            "Dưới hiên",
+            3,
+            83
+          ],
+          [
+            "Mưa đầu mùa",
+            2,
+            98
+          ],
+          [
+            "Bờ giếng",
+            3,
+            210
+          ],
+          [
+            "Vết nước",
+            4,
+            259
+          ],
+          [
+            "Mảnh ngói",
+            5,
+            331
+          ],
+          [
+            "Ghi cuối trang",
+            6,
+            391
+          ]
+        ],
+        "deskRow": true
+      }
+    },
+    {
+      "path": "product/literary-editor-markdown-390x844-dark-150.png",
+      "png": {
+        "width": 390,
+        "height": 844,
+        "byteSize": 30825,
+        "sha256": "66a49d939da3da9bc6a03667f53f54d9b8987cb60f46ef98cd5f557d28993c5f"
+      },
+      "inspected": true,
+      "captured": "2026-11-26T12:48:40.646Z",
+      "scene": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1,
+        "theme": "dark",
+        "textScale": 150,
+        "scrollY": 256
+      },
+      "host": "product",
+      "build": "SSR/hydrate dev",
+      "sourceSHA": "19f29afe168d3ff5c90c6a08f18640163df0a67e",
+      "fingerprint": "2439118575fd12c773f83620f06a2c409f8f45ff2b54f011c3e07a468a94d7af",
+      "scopedDirty": false,
+      "scenario": "editor-markdown",
+      "route": "/ban-viet/:id",
+      "auth": "authenticated / Identity email-code",
+      "data": "scratch PostgreSQL",
+      "fixture": "literary-review-v1/markdown",
+      "state": "saved Markdown reopened with full outline",
+      "runtime": {
+        "version": 2,
+        "format": "markdown",
+        "headings": [
+          [
+            "Qua bậc cửa",
+            1,
+            0
+          ],
+          [
+            "Mưa đầu mùa",
+            2,
+            35
+          ],
+          [
+            "Dưới hiên",
+            3,
+            83
+          ],
+          [
+            "Mưa đầu mùa",
+            2,
+            98
+          ],
+          [
+            "Bờ giếng",
+            3,
+            210
+          ],
+          [
+            "Vết nước",
+            4,
+            259
+          ],
+          [
+            "Mảnh ngói",
+            5,
+            331
+          ],
+          [
+            "Ghi cuối trang",
+            6,
+            391
+          ]
+        ],
+        "deskRow": true
+      }
+    },
+    {
+      "path": "product/literary-editor-markdown-320x800-dark-200.png",
+      "png": {
+        "width": 320,
+        "height": 800,
+        "byteSize": 25429,
+        "sha256": "0e8d441f8162198cd4db005f88ed8c8130216aae6c87d335660211b5adf92442"
+      },
+      "inspected": true,
+      "captured": "2026-11-26T12:48:40.741Z",
+      "scene": {
+        "width": 320,
+        "height": 800,
+        "dpr": 1,
+        "theme": "dark",
+        "textScale": 200,
+        "scrollY": 256
+      },
+      "host": "product",
+      "build": "SSR/hydrate dev",
+      "sourceSHA": "19f29afe168d3ff5c90c6a08f18640163df0a67e",
+      "fingerprint": "2439118575fd12c773f83620f06a2c409f8f45ff2b54f011c3e07a468a94d7af",
+      "scopedDirty": false,
+      "scenario": "editor-markdown",
+      "route": "/ban-viet/:id",
+      "auth": "authenticated / Identity email-code",
+      "data": "scratch PostgreSQL",
+      "fixture": "literary-review-v1/markdown",
+      "state": "saved Markdown reopened with full outline",
+      "runtime": {
+        "version": 2,
+        "format": "markdown",
+        "headings": [
+          [
+            "Qua bậc cửa",
+            1,
+            0
+          ],
+          [
+            "Mưa đầu mùa",
+            2,
+            35
+          ],
+          [
+            "Dưới hiên",
+            3,
+            83
+          ],
+          [
+            "Mưa đầu mùa",
+            2,
+            98
+          ],
+          [
+            "Bờ giếng",
+            3,
+            210
+          ],
+          [
+            "Vết nước",
+            4,
+            259
+          ],
+          [
+            "Mảnh ngói",
+            5,
+            331
+          ],
+          [
+            "Ghi cuối trang",
+            6,
+            391
+          ]
+        ],
+        "deskRow": true
+      }
+    },
+    {
+      "path": "preview/screen.desk--long--light--1440x900.png",
+      "png": {
+        "width": 1440,
+        "height": 900,
+        "byteSize": 164675,
+        "sha256": "456956cac94787368aaae7765b7ecb9cc99d860fa66577e63528fae417a9f904"
+      },
+      "inspected": true,
+      "captured": "2026-11-26T12:46:40.992Z",
+      "scene": {
+        "width": 1440,
+        "height": 900,
+        "dpr": 1,
+        "theme": "light",
+        "textScale": 100,
+        "scrollY": 369
+      },
+      "host": "preview",
+      "build": "standalone Leptos CSR dev (debug-info off)",
+      "sourceSHA": "3e7c9c4ea157b28aa45b99ba34ca72a19cc52328",
+      "fingerprint": "ea6a45a2735efb3983a5ab4f3871a5e84c870770c73a286778c4f4ce908bb753",
+      "catalog": "screen.desk",
+      "scenario": "long",
+      "route": "/#screen.desk/long",
+      "auth": "not-applicable",
+      "data": "owner-local specimen",
+      "fixture": "long title and simulated work states"
+    },
+    {
+      "path": "preview/screen.editor--long--dark--390x844.png",
+      "png": {
+        "width": 390,
+        "height": 844,
+        "byteSize": 62271,
+        "sha256": "2e987c3de235f761933f1c2b9b9037f7c10108d0b19210eb0c1f856d1b1c1004"
+      },
+      "inspected": true,
+      "captured": "2026-11-26T12:46:41.188Z",
+      "scene": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1,
+        "theme": "dark",
+        "textScale": 100,
+        "scrollY": 4906
+      },
+      "host": "preview",
+      "build": "standalone Leptos CSR dev (debug-info off)",
+      "sourceSHA": "3e7c9c4ea157b28aa45b99ba34ca72a19cc52328",
+      "fingerprint": "ea6a45a2735efb3983a5ab4f3871a5e84c870770c73a286778c4f4ce908bb753",
+      "catalog": "screen.editor",
+      "scenario": "long",
+      "route": "/#screen.editor/long",
+      "auth": "not-applicable",
+      "data": "owner-local specimen",
+      "fixture": "literary verse (two stanzas)"
+    }
+  ]
+}

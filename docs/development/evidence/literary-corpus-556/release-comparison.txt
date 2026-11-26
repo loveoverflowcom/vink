@@ -1,0 +1,29 @@
+baseline 261ce09c445ff340c6b7adb1da0d6c501b3fdfac feature=csr profile=wasm-release prefix=/_v/261ce09c445ff340c6b7adb1da0d6c501b3fdfac
+path	raw	gzip -n -9	brotli -q 11	sha256
+snippets/vink-patterns-07001ef1e5e58d58/inline0.js	345	230	189	e7b3e878810f53c235643659bdd93250953882c74ce32b056a6083c4bad6e772
+snippets/vink-web-556eaa3108f24a40/editor/bridge.js	1566	657	568	c3364a78a5fb25caf1a8630d88bdd683f95206740150e9b47e441da63bfc0aa0
+snippets/vink-web-556eaa3108f24a40/profile/navigation.js	11952	3712	3167	816deae9e2ac2812561156e1389602dab8ba1451a7a8c0785389d87751fc8ae1
+snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js	14654	4807	4169	17266381c11ab38a8e4c2d3f2a405f6f37de649a3c770ede0f348b40ef095aee
+vink-editor.js	369425	125573	107324	9a1821f9873964fb310d05e7bd870baa4b3391ad1b22f5090a8e01f3f1660116
+vink.css	204522	31959	26353	1a7760daf2b194a43cc32e34a38d50677cc44204b653b3e1ba38c12a64410b53
+vink.js	95416	13767	11403	bf9f0cc83690668777b43b1536a44df5ac42dafff9be3cf1a4bc53caab0421e4
+vink_bg.wasm	6771655	1823630	1296336	f3d9689274b0bb59a589804e7a1fdc6c11c52dd0264c53a80ea262964f88a703
+TOTAL	7469535	2004335	1449509
+staff markers: appeal-reverse, appeal-uphold, case-approve, case-claim, case-reject, desk-review-reload, moderation-home
+Preview/corpus markers: none
+Pages index digest: 2b0ec591c4d2d746f4880bd85baeac71a2be74315fd932e8f84dfb4dac9d69e4
+
+final 403e9addcb3b1397ae3567ef026e137b4c3f7955 feature=csr profile=wasm-release prefix=/_v/261ce09c445ff340c6b7adb1da0d6c501b3fdfac
+path	raw	gzip -n -9	brotli -q 11	sha256
+snippets/vink-patterns-07001ef1e5e58d58/inline0.js	345	230	189	e7b3e878810f53c235643659bdd93250953882c74ce32b056a6083c4bad6e772
+snippets/vink-web-556eaa3108f24a40/editor/bridge.js	1566	657	568	c3364a78a5fb25caf1a8630d88bdd683f95206740150e9b47e441da63bfc0aa0
+snippets/vink-web-556eaa3108f24a40/profile/navigation.js	11952	3712	3167	816deae9e2ac2812561156e1389602dab8ba1451a7a8c0785389d87751fc8ae1
+snippets/vink-web-556eaa3108f24a40/public-cache/indexeddb.js	14654	4807	4169	17266381c11ab38a8e4c2d3f2a405f6f37de649a3c770ede0f348b40ef095aee
+vink-editor.js	369425	125573	107324	9a1821f9873964fb310d05e7bd870baa4b3391ad1b22f5090a8e01f3f1660116
+vink.css	204918	31983	26343	09efd1dfa3edff548c166a7835793ebd2a23a4d7b9e159d0a88f291fd990e5ba
+vink.js	95274	13743	11399	b3f7ebcd36ce8d80d6628c57f6ac4a6fd94574d6dfbe1d319915e6a7380a9899
+vink_bg.wasm	6572929	1776703	1267605	4c42d2683e756519ce4a7739553785f72c45b6b75baa0b608d52ca45e85dc9d6
+TOTAL	7271063	1957408	1420764
+staff markers: none
+Preview/corpus markers: none
+Pages index digest: afb2eb81738bdfec620347cd105bef004adc3fc921557ea66db914b63a363fcd
