@@ -28,6 +28,7 @@ import vink.ui.ActionState
 import vink.ui.ButtonVariant
 import vink.ui.FieldMode
 import vink.ui.FieldVariant
+import vink.ui.IconName
 import vink.ui.VinkButton
 import vink.ui.VinkFilterChip
 import vink.ui.VinkPreferences
@@ -48,7 +49,8 @@ class SharedControlsTest {
         setContent {
             VinkTheme(VinkPreferences(), systemDark = dark.value, fonts = fonts.fonts) {
                 VinkTextField("Tên bản thảo", value.value, { value.value = it }, Modifier.testTag("title"),
-                    variant = FieldVariant.FloatingTonal, mode = mode.value, error = error.value, help = "Có thể sửa sau.")
+                    variant = FieldVariant.FloatingTonal, mode = mode.value, error = error.value,
+                    help = "Có thể sửa sau.", leading = IconName.PersonOutline)
             }
         }
         runOnIdle { dark.value = true }

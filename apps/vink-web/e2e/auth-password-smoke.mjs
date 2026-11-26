@@ -2,6 +2,7 @@
 // The mail carrier is a local outbox. Faults delay/drop a real response or explicitly inject
 // a refusal; no synthetic success is used. Don't log request bodies, credentials or cookies.
 
+import { checkLoginR3 } from './auth-r3-smoke.mjs';
 import { accountDeletionFixtureSql } from './author-fixtures.mjs';
 import { randomUUID } from 'node:crypto';
 import { wakeDesk } from './desk-lifecycle.mjs';
@@ -194,7 +195,7 @@ async function chooseAppearance(page, group, value) {
 async function matrix(page, scenario, anchor, check) {
   const path = JSON.stringify(anchor);
   const actions = ({
-    login: ['#password-login-submit', '#use-registration', '#use-email-code'],
+    login: ['#password-login-submit', '#use-email-code', '#use-registration'],
     registration: ['#password-register-submit', '#use-password', '#use-email-code'],
     email: ['#sign-in-send', '#use-password'],
     'pen-name': ['#pen-name-save'],
@@ -203,7 +204,7 @@ async function matrix(page, scenario, anchor, check) {
   const r2 = actions !== undefined;
   const boundary = scenario === 'closed' ? 'App (sign-in disabled) + scratch PostgreSQL' :
     'native Identity + App + scratch PostgreSQL';
-  const widths = r2 ? [320, 390, 834, 1280] : [320, 390, 1280];
+  const widths = scenario === 'login' ? [320, 390, 834, 1280, 1440] : r2 ? [320, 390, 834, 1280] : [320, 390, 1280];
   const scales = r2 ? [100, 150, 200] : [100, 200];
   const initial = await page.eval(`({
     theme: document.querySelector('#page-theme input:checked')?.value,
@@ -316,13 +317,14 @@ async function matrix(page, scenario, anchor, check) {
         link.primary && link.contrast >= 4.5 && link.width >= 48 && link.height >= 48 && link.placed,
         `#483 ${scenario} ${width}/${theme}/${scale}: native Appearance text action, placement and ≥4.5:1 contrast (${JSON.stringify(link)})`);
     }
+    const loginR3 = scenario === 'login' ? await checkLoginR3(page, check, `/toi ${width}/${theme}/${scale}`) : undefined;
     const textScaleLane = r2 && scale !== 200 ? 'app-appearance-control' : 'dom-override-geometry-only';
     if (scenario === 'login' || (width === 390 && scale === 100) || (width === 320 && scale === 200 && theme === 'dark') ||
         (width === 1280 && scale === 100 && theme === 'light')) {
       await page.capture(`auth-password-${scenario}-${width}-${theme}-${scale}`, {
         boundary,
         requiredTargets: measured.link?.inView ? ['#auth-appearance'] : [],
-        scenario, textScale: scale, textScaleLane, font: 'Be Vietnam Pro', ...measured,
+        scenario, textScale: scale, textScaleLane, font: 'Be Vietnam Pro', ...measured, loginR3,
       });
       if (measured.partial) {
         await page.eval(`(() => {
@@ -464,7 +466,7 @@ export async function closedAccountAppearance(page, { args, check }) {
   await appearanceFragment(page);
 }
 
-async function authR2Login(page, check) {
+async function authR3Login(page, check) {
   check(await page.eval(`(() => {
     const entry = document.querySelector('.vk-auth-entry'), form = ${q(LOGIN)};
     return entry?.contains(form) && entry.querySelectorAll('form').length === 1
@@ -476,10 +478,12 @@ async function authR2Login(page, check) {
       && ${q(LOGIN + '-submit')}.textContent.trim() === 'Đăng nhập'
       && ${q('#use-registration')}.textContent.trim() === 'Tạo tài khoản'
       && ${q('#use-email-code')}.textContent.trim() === 'Dùng mã email';
-  })()`), '#327 login renders one R2 form, without the old guest status card, a premature pen-name step, duplicated actions, or autofocus');
+  })()`), '#559 login renders one R3 form, without the old guest status card, a premature pen-name step, duplicated actions, or autofocus');
   await matrix(page, 'login', LOGIN, check);
   await probeAppearanceInput(page, LOGIN + '-username', 'tam-thoi');
-  for (const id of [LOGIN + '-password', LOGIN + '-password-reveal', LOGIN + '-submit', '#use-registration', '#use-email-code', '#auth-appearance']) {
+  const utilities = await page.eval(`${q('#open-account-deletion')}?.checkVisibility()`)
+    ? ['#open-account-deletion', '#auth-appearance'] : ['#auth-appearance'];
+  for (const id of [LOGIN + '-password', LOGIN + '-password-reveal', LOGIN + '-submit', '#use-email-code', '#use-registration', ...utilities]) {
     await page.key('Tab');
     check(await page.eval(`document.activeElement === ${q(id)} && document.activeElement.matches(':focus-visible')`), `#327 keyboard order and focus-visible: ${id}`);
   }
@@ -534,7 +538,7 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   check(await page.eval(`(() => { const p=${q(LOGIN + '-password')}; return p.type === 'password' && p.name === 'password' && p.autocomplete === 'current-password' &&
     !p.hasAttribute('maxlength') && p.getAttribute('aria-required') === 'true' && ${q(LOGIN + '-username')}.autocomplete === 'username'; })()`), 'native login field names and autocomplete, with no raw maxlength');
 
-  await authR2Login(page, check);
+  await authR3Login(page, check);
   const loginField = (name) => q(LOGIN + '-' + name);
   const invalid = (name, message) =>
     `${loginField(name)}.getAttribute('aria-invalid') === 'true' &&
@@ -545,6 +549,17 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   await page.waitFor(`${invalid('username', 'Hãy nhập tên đăng nhập.')} &&
     ${invalid('password', 'Hãy nhập mật khẩu.')} && document.activeElement === ${loginField('username')}`,
     'F-11 empty login marks both fields and focuses the first');
+  const invalidPaint = await page.eval(`(() => {
+    const fields = [...document.querySelectorAll('#password-login .vk-ui-field__control')];
+    return fields.map(field => {
+      const s = getComputedStyle(field), input = getComputedStyle(field.querySelector('input'));
+      return [s.outlineWidth, s.outlineColor, s.borderTopWidth, input.outlineWidth];
+    });
+  })()`);
+  check(invalidPaint[0][0] === '2px' && invalidPaint[1][0] === '1px' &&
+    invalidPaint[0][1] === invalidPaint[1][1] &&
+    invalidPaint.every(([, , border, inputOutline]) => border === '0px' && inputOutline === '0px'),
+    `#559 error and error+focus use one shared perimeter (${JSON.stringify(invalidPaint)})`);
   await fill(page, LOGIN + '-username', userA);
   await page.key('Enter');
   await page.waitFor(`${invalid('password', 'Hãy nhập mật khẩu.')} && document.activeElement === ${loginField('password')} &&

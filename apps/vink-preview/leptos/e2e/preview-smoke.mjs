@@ -704,6 +704,12 @@ async function components(page) {
     && probePaint[3] === '2px' && probePaint[4] === 'solid',
   `FloatingTonal: Web fallback paints a native input in the legacy layer (${JSON.stringify(probePaint)})`);
   await page.open('field.text-field');
+  check(await page.eval(`(() => {
+    const input = document.getElementById('contact'), shell = input.parentElement;
+    const icon = shell.querySelector('svg[data-icon=mail][aria-hidden=true]');
+    return icon && input.labels.length === 1 && input.labels[0].textContent === 'Email liên hệ' &&
+      icon.getBoundingClientRect().right < input.getBoundingClientRect().left + parseFloat(getComputedStyle(input).paddingInlineStart);
+  })()`), 'TextField: an opted-in leading icon reserves space and keeps the native accessible label');
   const fieldPaint = () => page.eval(`(() => {
     const i = document.getElementById('title'), shell = i.parentElement;
     const s = getComputedStyle(shell), c = getComputedStyle(i), l = getComputedStyle(document.querySelector('label[for=title]'));

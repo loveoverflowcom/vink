@@ -163,6 +163,12 @@ khi giữa hai tài khoản có một lúc đăng xuất.
 | A → B với hai/ba tab, câu trả lời của A bị giữ rồi thả muộn, reload | Thật (câu trả lời thật bị giữ ở trình duyệt) |
 | Reader #328: modal/Back/Escape, mã sai, đóng khi phản hồi thành công tới muộn, bút danh, giữ cả hai ô soạn, chỉ một POST nhận xét sau khi bấm Gửi | Chrome + App/Identity/PostgreSQL thật; dữ liệu khởi tạo gồm nhận xét công khai và một bài đã khóa nhận xét |
 
+Riêng Auth R3 [#559](https://github.com/loveoverflowcom/vink/issues/559), chạy
+`cargo xtask verify web --scenario auth --scenario password`. Hai scenario dùng App và Identity
+thật, đo màu và hình học ở Reader (nhận xét, Lưu) và `/toi`, đồng thời kiểm các bước đăng ký,
+mã email, bút danh, focus và phản hồi lỗi. `--capture checks` giữ assertion và bỏ PNG.
+Cảnh 200% là stress qua cỡ chữ gốc. Ảnh preview thiết kế nằm trong issue.
+
 Quyết định thuần có unit test trong `session.rs` (`cargo test -p vink-web --lib --features ssr`).
 
 ### AUTH-PASSWORD-WEB-01

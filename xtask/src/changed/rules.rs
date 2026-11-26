@@ -281,6 +281,7 @@ pub const BROWSER_MODULES: &[(&str, &[Scenario], &[&str])] = {
         ("apps/vink-web/e2e/notifications-smoke.mjs", &[S::Notifications], &[]),
         ("apps/vink-web/e2e/public-storage-smoke.mjs", &[S::Storage], &[]),
         ("apps/vink-web/e2e/publication-author-smoke.mjs", &[S::Publication], &[]),
+        ("apps/vink-web/e2e/auth-r3-smoke.mjs", &[S::Auth, S::Password, S::Standalone], &[]),
         ("apps/vink-web/e2e/reader-auth-smoke.mjs", &[S::Auth], &[]),
         ("apps/vink-web/e2e/reader-containment.mjs", &[], &["reader-containment"]),
         ("apps/vink-web/e2e/reader-intent-cost.mjs", &[], &["reader-intent-cost"]),

@@ -3,6 +3,7 @@
 // count replace only the count text in the DOM (`dom-override-geometry-only`).
 import { HYDRATED, fill, q } from './auth-smoke.mjs';
 import { captureRequest, holdAnswer } from './auth-browser-network.mjs';
+import { checkLoginR3 } from './auth-r3-smoke.mjs';
 
 const WORK = '33333333-3333-4333-8333-333333333333';
 const HERE = `/tac-pham/${WORK}`;
@@ -157,17 +158,13 @@ export async function readerSave(page, { args, check, openPage, reader, other })
     const sheet = await page.eval(`(() => {
       const d = ${q(DIALOG)};
       return { modal: d.matches(':modal'), heading: document.getElementById(d.getAttribute('aria-labelledby'))?.textContent.trim(),
-        lead: ${q('#reader-auth-lead')}?.textContent.trim(), described: d.getAttribute('aria-describedby'),
-        alternatives: [...d.querySelectorAll('#use-registration, #use-email-code')].map(b => {
-          const s = getComputedStyle(b); return [b.textContent.trim(), s.borderTopWidth, Math.round(b.getBoundingClientRect().width)];
-        }) };
+        lead: ${q('#reader-auth-lead')}?.textContent.trim(), described: d.getAttribute('aria-describedby') };
     })()`);
     check(sheet.modal && sheet.heading === 'Đăng nhập để lưu bài' &&
-      sheet.lead === 'Bài sẽ nằm trong danh sách Đã lưu riêng trên hồ sơ của bạn.' && sheet.described === 'reader-auth-lead' &&
-      sheet.alternatives.length === 2 && sheet.alternatives.every(([, border]) => border === '2px') &&
-      Math.abs(sheet.alternatives[0][2] - sheet.alternatives[1][2]) <= 1,
-      `#388 D2: “Đăng nhập để lưu bài” sheet with its lead and two equal 2px outline alternatives (${JSON.stringify(sheet)})`);
-    await page.capture('reader-save-guest-sheet-1280-light', { boundary: 'real-reader-save-guest-sheet' });
+      sheet.lead === 'Bài sẽ nằm trong danh sách Đã lưu riêng trên hồ sơ của bạn.' && sheet.described === 'reader-auth-lead',
+      `#388 D2: “Đăng nhập để lưu bài” sheet with its contextual lead (${JSON.stringify(sheet)})`);
+    const loginR3 = await checkLoginR3(page, check, 'standalone Reader save 1280/light/100');
+    await page.capture('reader-save-guest-sheet-1280-light', { boundary: 'real-reader-save-guest-sheet', loginR3 });
     await page.key('Escape');
     await page.waitFor(`!${isOpen} && ${active('save-work')}`, 'Escape returns focus to Lưu');
     await page.key('Space');

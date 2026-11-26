@@ -2,6 +2,7 @@
 // public root and a closed publication; no application responses are fabricated here.
 import { account, fill, HYDRATED, mailedCode, q } from './auth-smoke.mjs';
 import { captureRequest, holdAnswer } from './auth-browser-network.mjs';
+import { checkLoginR3 } from './auth-r3-smoke.mjs';
 
 const WORK = '33333333-3333-4333-8333-333333333333';
 const ROOT = '3ac70000-0000-4000-8000-000000000002';
@@ -58,7 +59,7 @@ export async function readerAuthClosed(page, { args, check }) {
 }
 
 export async function contextualReaderAuth(owner, { args, check, openPage, seen }) {
-  console.log('Reader Auth R2: local sheet/dialog with owned draft, real Identity and explicit send.');
+  console.log('Reader Auth R3: local sheet/dialog with owned draft, real Identity and explicit send.');
   const { browserContextId } = await owner.cdp.send('Target.createBrowserContext');
   try {
     const page = await openPage(browserContextId);
@@ -94,6 +95,23 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
     await page.eval("delete document.documentElement.dataset.theme");
     await page.viewport(1280, 844);
     await page.send('Page.bringToFront');
+
+    const saveWrite = captureRequest(page, 'PUT', '/api/v1/me/saved-works/' + WORK);
+    await page.waitFor(`${q('#save-work')}?.getAttribute('aria-disabled') !== 'true' && ${q('#save-work')}`, 'guest can open Auth from Lưu');
+    await page.click('#save-work');
+    await page.waitFor(`${isOpen} && ${active('reader-auth-close')}`, 'Lưu opens the R3 login dialog');
+    check(await page.eval(`
+      ${q('#reader-auth-title')}.textContent === 'Đăng nhập để lưu bài' &&
+      ${q('#reader-auth-lead')}.textContent === 'Bài sẽ nằm trong danh sách Đã lưu riêng trên hồ sơ của bạn.' &&
+      ${q(DIALOG)}.getAttribute('aria-describedby') === 'reader-auth-lead'
+    `), '#559 Reader save keeps its contextual title and lead');
+    const saveR3 = await checkLoginR3(page, check, 'Reader save desktop');
+    await page.capture('reader-auth-save-1280-light-100', { boundary: 'real-reader-save-guest-r3', loginR3: saveR3 });
+    await page.key('Escape');
+    await page.waitFor(`!${isOpen} && ${active('save-work')}`, 'Escape returns focus to Lưu');
+    check(saveWrite.count() === 0, '#559 opening and dismissing Auth from Lưu does not save');
+    saveWrite.close();
+
     await page.typeAtEnd(ROOT_EDITOR, ROOT_TEXT);
     await page.eval(`${q(ROOT_EDITOR+'-auth')}.focus()`);
     await snapshot(page, ROOT_EDITOR, 'readerAuthRoot');
@@ -105,9 +123,10 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
         heading: document.getElementById(d.getAttribute('aria-labelledby')).textContent.trim() };
     })()`);
     check(desktop.modal && Math.abs(desktop.center - desktop.viewport) <= 2 && desktop.heading === 'Đăng nhập để nhận xét', '#328 native desktop dialog, centered, same shared contextual form and name');
-    await page.capture('reader-auth-1280-light-100', { boundary: 'real-auth-reader-guest-desktop' });
+    const desktopR3 = await checkLoginR3(page, check, 'Reader comment desktop');
+    await page.capture('reader-auth-1280-light-100', { boundary: 'real-auth-reader-guest-desktop', loginR3: desktopR3 });
     await page.key('Tab', 8); // Shift+Tab from the first stop wraps to the last action.
-    check(await page.eval(active('use-email-code')), '#328 Shift+Tab stays in modal');
+    check(await page.eval(active('use-registration')), '#328 Shift+Tab stays in modal on the last R3 action');
     await page.key('Tab');
     check(await page.eval(active('reader-auth-close')), '#328 Tab from the last action wraps to Close');
     await page.key('Escape');
@@ -126,15 +145,63 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
     })()`);
     check(await page.eval(`location.pathname === '${HERE}' && ${preserved(ROOT_EDITOR, 'readerAuthRoot', ROOT_TEXT)}`), `#328 Back keeps the same route, mounted draft, selection and scroll (${JSON.stringify(historyFacts)})`);
 
+    // Reflow the actual native modal across both themes. Keep only representative PNGs.
+    await page.key('Enter');
+    await page.waitFor(`${isOpen} && ${active('reader-auth-close')}`, 'open Reader for the R3 reflow matrix');
+    for (const [width, height] of [[320, 800], [390, 844], [834, 1112], [1440, 900]]) {
+      await page.viewport(width, height);
+      for (const theme of ['light', 'dark']) for (const scale of [100, 150, 200]) {
+        await page.eval(`(async () => {
+          document.documentElement.dataset.theme = '${theme}';
+          document.documentElement.style.fontSize = '${scale}%';
+          await document.fonts.ready;
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          const modal = document.querySelector('#reader-auth');
+          const transitions = modal.getAnimations({ subtree: true }).filter(animation => animation instanceof CSSTransition);
+          await Promise.all(transitions.map(transition => transition.finished.catch(() => {})));
+        })()`);
+        const loginR3 = await checkLoginR3(page, check, `Reader comment ${width}/${theme}/${scale}`);
+        if ((width === 390 || width === 1440) && scale === 100 && !(width === 390 && theme === 'dark')) {
+          await page.capture(`reader-auth-${width}-${theme}-${scale}`, { boundary: 'real-auth-reader-guest-r3', textScale: scale, loginR3 });
+        }
+      }
+    }
+    await page.key('Escape');
+
     await page.viewport(390, 844);
-    await page.eval(`document.documentElement.dataset.theme = 'dark'; ${q(ROOT_EDITOR+'-auth')}.focus();`);
+    await page.eval(`document.documentElement.style.fontSize = ''; document.documentElement.dataset.theme = 'dark'; ${q(ROOT_EDITOR+'-auth')}.focus();`);
     await page.key('Enter');
     await page.waitFor(isOpen, 'mobile sheet at reference viewport');
     check(await page.eval(`(() => {
       const r = ${q(DIALOG)}.getBoundingClientRect();
       return Math.abs(r.bottom-innerHeight) <= 1 && r.left === 0 && r.right === innerWidth;
     })()`), '#328 mobile sheet is pinned to the bottom edge at the approved 390×844 viewport');
-    await page.capture('reader-auth-390-dark-100', { boundary: 'real-auth-reader-guest-reference-viewport' });
+    const mobileR3 = await checkLoginR3(page, check, 'Reader comment 390/dark/100');
+    await page.capture('reader-auth-390-dark-100', { boundary: 'real-auth-reader-guest-reference-viewport', loginR3: mobileR3 });
+
+    await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'forced-colors', value: 'active' }] });
+    await page.key('Tab');
+    const forcedPaint = await page.eval(`(() => {
+      const user = document.querySelector('#password-login-username'), password = document.querySelector('#password-login-password');
+      const paint = input => {
+        const s = getComputedStyle(input.closest('.vk-ui-field__control'));
+        return [s.outlineWidth, s.outlineStyle, s.outlineColor, s.borderTopWidth, getComputedStyle(input).outlineWidth];
+      };
+      return { active: document.activeElement === user, user: paint(user), password: paint(password) };
+    })()`);
+    check(forcedPaint.active && forcedPaint.user[0] === '2px' && forcedPaint.password[0] === '1px' &&
+      [forcedPaint.user, forcedPaint.password].every(([, style, , border, inputOutline]) => style === 'solid' && border === '0px' && inputOutline === '0px') &&
+      forcedPaint.user[2] !== forcedPaint.password[2],
+      `#559 Reader forced colors retains a single system-color edge and a distinct input focus (${JSON.stringify(forcedPaint)})`);
+    await page.key('Tab');
+    await page.key('Tab');
+    check(await page.eval(`(() => {
+      const reveal = document.querySelector('#password-login-password-reveal');
+      const shell = reveal.closest('.vk-ui-field__control');
+      return document.activeElement === reveal && getComputedStyle(reveal).outlineWidth === '2px' &&
+        getComputedStyle(shell).outlineWidth === '1px';
+    })()`), '#559 password reveal owns its own focus perimeter in forced colors');
+    await page.send('Emulation.setEmulatedMedia', { features: [] });
     await page.click('#reader-auth-close');
 
     await page.viewport(320, 800);
@@ -157,13 +224,13 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
     for (let i = 0; i < 8; i++) {
       await page.key('Tab');
       tabs.push(await page.eval('document.activeElement?.id'));
-      if (tabs.at(-1) === 'use-email-code') break;
+      if (tabs.at(-1) === 'use-registration') break;
     }
     const hit = await page.eval(`(() => {
-      const el = ${q('#use-email-code')}, r = el.getBoundingClientRect();
+      const el = ${q('#use-registration')}, r = el.getBoundingClientRect();
       return el.contains(document.elementFromPoint(r.x + r.width/2, r.y + r.height/2));
     })()`);
-    check(hit && ['password-login-username', 'password-login-password', 'password-login-submit', 'use-registration', 'use-email-code'].every(id => tabs.includes(id)),
+    check(hit && ['password-login-username', 'password-login-password', 'password-login-submit', 'use-email-code', 'use-registration'].every(id => tabs.includes(id)),
       `#328 320px/200%: form fields, primary and both alternatives reachable by Tab (${tabs.join(', ')})`);
     await page.capture('reader-auth-320-dark-200-end', { boundary: 'real-auth-reader-last-action-focused' });
     await page.key('Escape');

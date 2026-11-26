@@ -247,19 +247,71 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
   }
 }
 
-/* Auth Web R2. The form owns its fields and actions; only Tôi owns the viewport and rail. */
-.vk-auth-entry { gap: var(--vk-space-6); inline-size: min(100%, 24rem); }
-.vk-auth-heading { gap: var(--vk-space-6); }
+/* Auth R3 uses the shared input and action states in both Reader and Tôi. */
+.vk-auth-entry {
+  --vk-auth-field-edge: var(--vk-field-outline);
+  gap: var(--vk-space-6);
+  inline-size: min(100%, 24rem);
+}
+.vk-auth-heading { gap: var(--vk-space-4); }
 .vk-auth-heading .vk-brand__lockup { height: 2.5rem; width: calc(2.5rem * 1018 / 410); max-width: 100%; }
 .vk-auth-heading h2 {
   margin: 0; font: var(--vk-type-display-weight) var(--vk-text-auth-heading)/var(--vk-type-display-line-height) var(--vk-font-reading);
   letter-spacing: var(--vk-type-display-tracking);
 }
-.vk-auth-entry .vk-account-form { inline-size: 100%; }
+.vk-auth-entry .vk-account-form {
+  --vk-field-container: var(--vk-surface-container-highest);
+  inline-size: 100%;
+}
+.vk-auth-entry .vk-ui-field--floating .vk-ui-field__control {
+  grid-template-columns: minmax(0, 1fr);
+  min-block-size: 56px;
+  border-radius: var(--vk-radius-xl);
+}
+.vk-auth-entry .vk-ui-field--floating .vk-ui-field__control > .vk-ui-input {
+  min-block-size: 0;
+  padding-block: 0 var(--vk-space-2);
+  border-end-start-radius: var(--vk-radius-xl);
+  border-end-end-radius: var(--vk-radius-xl);
+}
+/* The tonal fill does not reach 3:1 against either host on its own.
+ * One inset edge identifies an idle field until the shared focus/error perimeter takes over. */
+.vk-auth-entry .vk-ui-field--floating[data-mode="editable"]:not([data-invalid])
+  .vk-ui-field__control:not(:has(> .vk-ui-input:focus)) {
+  outline: 1px solid var(--vk-auth-field-edge);
+  outline-offset: -1px;
+}
+.vk-auth-entry .vk-ui-field__reveal { inset-block: 0; inset-inline-end: var(--vk-space-1); }
+.vk-auth-entry .vk-ui-field__reveal .vk-ui-icon-button:focus-visible { outline-offset: -2px; }
 .vk-auth-entry .vk-account-actions, .vk-auth-alternatives { display: grid; gap: var(--vk-space-3); }
 .vk-auth-entry .vk-account-actions { margin-block-start: var(--vk-space-1); }
-.vk-auth-entry :is(.vk-account-actions, .vk-auth-alternatives) > .vk-ui-action { align-items: stretch; }
-.vk-auth-switch .vk-ui-button { padding-inline: var(--vk-space-2); }
+.vk-auth-entry :is(.vk-account-actions, .vk-auth-alternatives) > .vk-ui-action {
+  min-inline-size: 0;
+  align-items: stretch;
+}
+.vk-auth-entry :is(.vk-account-actions, .vk-auth-alternatives) .vk-ui-button { min-block-size: 48px; }
+.vk-auth-entry .vk-auth-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--vk-space-3);
+  margin: 0;
+  color: var(--vk-on-surface-variant);
+  font: var(--vk-type-label-weight) var(--vk-type-label-size)/var(--vk-type-label-line-height) var(--vk-type-label-font);
+}
+.vk-auth-divider::before, .vk-auth-divider::after {
+  content: "";
+  flex: 1;
+  border-block-start: 1px solid var(--vk-outline-variant);
+}
+@media (forced-colors: none) {
+  .vk-auth-entry :is(.vk-account-actions, .vk-auth-alternatives) .vk-ui-button { border-width: 0; }
+}
+@media (forced-colors: active) {
+  .vk-auth-entry { --vk-auth-field-edge: ButtonText; }
+  .vk-auth-entry .vk-ui-field--floating .vk-ui-field__control { border: 0; }
+  :is(.vk-auth-entry, .vk-reader-auth) .vk-ui-icon-button:focus-visible,
+  .vk-auth-entry .vk-ui-button:focus-visible { outline-color: Highlight; }
+}
 .vk-main:has(> .vk-me .vk-auth-entry) {
   max-inline-size: none; padding-inline: clamp(16px, 5vw, 32px);
 }
@@ -271,7 +323,6 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
   display: flex; flex-direction: column; align-items: center; gap: var(--vk-space-6);
   min-block-size: 100svh; padding-block: clamp(32px, 11.5svh, 100px) var(--vk-space-6);
 }
-.vk-me .vk-auth-heading { margin-block-end: var(--vk-space-6); }
 .vk-me #auth-appearance {
   min-block-size: 48px; min-inline-size: 48px; padding-block: var(--vk-space-1);
   border: 0; text-decoration: none;
@@ -300,7 +351,6 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
     align-content: start;
     min-block-size: calc(100svh - var(--vk-ui-bar-height, 5rem) - var(--vk-pen-entry-top));
   }
-  .vk-me .vk-auth-heading { margin-block-end: var(--vk-space-4); gap: calc(var(--vk-space-4) + var(--vk-space-1)); }
   .vk-me .vk-auth-heading .vk-brand__lockup { height: 2.25rem; width: calc(2.25rem * 1018 / 410); }
 }
 
@@ -2351,7 +2401,7 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
   min-block-size: max(44px, var(--vk-size-hit-target));
 }
 
-/* Auth Web R2 in Reader: the same modal is a bottom sheet on a compact viewport.
+/* Reader Auth: the same modal is a bottom sheet on a compact viewport.
  * Native top-layer inertness keeps the mounted Reader and its editor out of the tab order. */
 html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
 .vk-reader-auth {
@@ -2359,36 +2409,37 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
   max-block-size: calc(100dvh - 48px);
   padding: 24px;
   border-radius: var(--vk-radius-xl);
-  background: var(--vk-surface-container-high);
+  background: var(--vk-surface-container);
   color: var(--vk-on-surface);
   color-scheme: inherit;
 }
 .vk-reader-auth::backdrop { background: color-mix(in srgb, var(--vk-scrim) 76%, transparent); }
-.vk-reader-auth-bar .vk-brand__lockup { inline-size: 4.5rem; block-size: 1.8125rem; max-inline-size: 55%; }
+.vk-reader-auth-bar {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 48px;
+  align-items: center;
+  margin-block-end: var(--vk-space-4);
+}
+.vk-reader-auth-bar .vk-brand__lockup {
+  grid-column: 2;
+  justify-self: center;
+  max-inline-size: 100%;
+}
+.vk-reader-auth-bar > .vk-ui-action { grid-column: 3; justify-self: end; }
+.vk-reader-auth-bar .vk-ui-icon-button { min-inline-size: 48px; min-block-size: 48px; }
 .vk-reader-auth-title {
   font: var(--vk-type-display-weight) var(--vk-text-auth-dialog-heading)/var(--vk-type-display-line-height) var(--vk-font-reading);
   letter-spacing: var(--vk-type-display-tracking);
+  text-align: center;
 }
-.vk-reader-auth .vk-auth-entry { inline-size: 100%; gap: var(--vk-space-4); }
-/* #388 delta (shared with #328): “Tạo tài khoản” and “Dùng mã email” are two equal outline
- * actions with a 2px on-surface-variant edge; they wrap to one per row before clipping. */
-.vk-reader-auth .vk-auth-entry:has(#password-login) .vk-auth-alternatives {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
-  gap: var(--vk-space-3);
+.vk-reader-auth .vk-auth-entry { inline-size: 100%; }
+.vk-reader-auth-lead {
+  margin-block-start: calc(-1 * var(--vk-space-3));
+  color: var(--vk-on-surface-variant);
+  font-size: var(--vk-type-body-size);
+  line-height: var(--vk-type-body-line-height);
+  text-align: center;
 }
-.vk-reader-auth .vk-auth-switch { min-inline-size: 0; max-inline-size: 100%; }
-.vk-reader-auth .vk-auth-alternatives .vk-ui-action { min-inline-size: 0; max-inline-size: 100%; }
-.vk-reader-auth .vk-auth-entry:has(#password-login) .vk-auth-alternatives > .vk-ui-action,
-.vk-reader-auth .vk-auth-entry:has(#password-login) .vk-auth-switch > .vk-ui-action { inline-size: 100%; }
-.vk-reader-auth .vk-auth-entry:has(#password-login) .vk-auth-alternatives .vk-ui-button--outlined {
-  justify-content: center;
-  inline-size: 100%;
-  border-width: 2px;
-  border-color: var(--vk-on-surface-variant);
-  color: var(--vk-on-surface);
-}
-.vk-reader-auth-lead { color: var(--vk-on-surface-variant); font-size: var(--vk-type-body-size); line-height: var(--vk-type-body-line-height); }
 @media (max-width: 759px) {
   .vk-reader-auth {
     inline-size: 100%;

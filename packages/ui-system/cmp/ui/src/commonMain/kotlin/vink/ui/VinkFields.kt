@@ -142,6 +142,7 @@ private fun TextControlField(
     inputModifier: Modifier,
     imeAction: ImeAction,
     onImeAction: ((ImeAction) -> Unit)?,
+    leading: IconName? = null,
 ) {
     val vink = LocalVink.current
     val c = vink.colors
@@ -160,6 +161,7 @@ private fun TextControlField(
         }
     }
     val floating = variant == FieldVariant.FloatingTonal && control != TextControl.Area
+    val leadingName = if (control == TextControl.Search) IconName.Search else leading
     val description = help ?: if (mode == FieldMode.Disabled) "Tính năng chưa khả dụng." else null
     Column(modifier, verticalArrangement = Arrangement.spacedBy(VinkDimens.Space1)) {
         if (!floating) Text(name, Modifier.clearAndSetSemantics {}, style = vink.text(VinkTextRoles.Label), color = c[ColorRole.OnSurface])
@@ -178,11 +180,7 @@ private fun TextControlField(
             readOnly = mode == FieldMode.ReadOnly,
             textStyle = vink.text(VinkTextRoles.Body),
             placeholder = placeholder?.let { { Text(it, style = vink.text(VinkTextRoles.Body)) } },
-            leadingIcon = if (control == TextControl.Search) {
-                { VinkIcon(IconName.Search) }
-            } else {
-                null
-            },
+            leadingIcon = leadingName?.let { name -> { VinkIcon(name) } },
             trailingIcon = if (control == TextControl.Search && value.text.isNotEmpty() && mode == FieldMode.Editable) {
                 { VinkIconButton(IconName.Close, "Xóa chữ tìm", onPress = {
                     onValueChange(TextFieldValue(""))
@@ -226,7 +224,8 @@ fun VinkTextField(
     inputModifier: Modifier = Modifier,
     imeAction: ImeAction = ImeAction.Next,
     onImeAction: ((ImeAction) -> Unit)? = null,
-) = TextControlField(TextControl.Field, label, value, onValueChange, modifier, help, error, required, mode, kind, placeholder, 1, null, variant, inputModifier, imeAction, onImeAction)
+    leading: IconName? = null,
+) = TextControlField(TextControl.Field, label, value, onValueChange, modifier, help, error, required, mode, kind, placeholder, 1, null, variant, inputModifier, imeAction, onImeAction, leading)
 
 /** Multi-line text; newlines, blank lines and leading spaces are kept verbatim. */
 @Composable

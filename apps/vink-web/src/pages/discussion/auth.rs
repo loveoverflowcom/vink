@@ -257,7 +257,7 @@ pub(crate) fn ReaderAuthDialog(host: ReaderAuth) -> impl IntoView {
             data-standing=move || session.standing.with(standing_id)
             on:cancel=move |event: leptos::ev::Event| { event.prevent_default(); host.close(CloseReason::Escape, false); }
             on:keydown=move |event| trap_tab(event, host.dialog)>
-            <header class="vk-reader-auth-bar flex justify-between items-center gap-vk-3 [margin-block-end:var(--vk-space-3)]">
+            <header class="vk-reader-auth-bar">
                 <span class="vk-brand__lockup" role="img" aria-label="Vink"></span>
                 <IconButton icon=IconName::Close label="Đóng" id=CLOSE
                     on_press=move |_| { host.close(CloseReason::Dismiss, false); } />
