@@ -4,10 +4,11 @@ use leptos::prelude::*;
 use leptos_meta::{Link, Meta, Title};
 use leptos_router::hooks::{use_params_map, use_query_map};
 use vink_ui::{
-    ActionState, AvatarSize, Button, ButtonVariant, Heading, HeadingLevel, Link as UiLink,
-    LinkVariant,
+    ActionState, AvatarSize, Button, ButtonVariant, Heading, HeadingLevel, IconName,
+    Link as UiLink, LinkVariant,
 };
 
+use crate::ui::empty_state::EmptyState;
 use crate::ui::patterns::{Author as BylineAuthor, AuthorIdentity, ProfileLink};
 
 use crate::account::Session;
@@ -626,7 +627,8 @@ fn RelationshipResults(
                     />
                 </ul>
             }>
-                <p id="relationship-empty" class="vk-rel-empty">{empty_copy(direction, continued)}</p>
+                <EmptyState compact=true id="relationship-empty" hook="vk-rel-empty"
+                    icon=IconName::PersonOutline message=empty_copy(direction, continued) />
             </Show>
             <Show when=move || has_previous_page.get()>
                 <UiLink variant=LinkVariant::Standalone attr:id="rel-first-page"

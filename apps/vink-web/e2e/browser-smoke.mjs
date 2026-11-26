@@ -2808,6 +2808,16 @@ async function adaptiveShell(page) {
     await page.goto(`${args.base}${path}`);
     await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('h1')?.textContent === 'Không tìm thấy trang này.'`, `${path} NotFound`);
     check(await page.eval(`document.querySelectorAll('[aria-current=page]').length === 0`), `${path} marks no destination active`);
+    // #558: one borderless group centred in the free main slot on both axes, real recovery link.
+    check(await page.eval(`(() => {
+      const main = document.querySelector('.vk-main'), group = document.querySelector('[data-testid=not-found] > .vk-empty-state');
+      if (!group || !group.querySelector('h1') || !group.querySelector('.vk-empty-state__actions a.vk-ui-button[href]')) return false;
+      const style = getComputedStyle(main), m = main.getBoundingClientRect(), g = group.getBoundingClientRect();
+      const left = m.left + parseFloat(style.paddingLeft), right = m.right - parseFloat(style.paddingRight);
+      const top = m.top + parseFloat(style.paddingTop), bottom = Math.min(innerHeight, m.bottom - parseFloat(style.paddingBottom));
+      return Math.abs((g.left + g.right) / 2 - (left + right) / 2) <= 8 && Math.abs((g.top + g.bottom) / 2 - (top + bottom) / 2) <= 8
+        && getComputedStyle(group).backgroundColor === 'rgba(0, 0, 0, 0)' && document.documentElement.scrollWidth <= innerWidth + 1;
+    })()`), `${path} NotFound group is centred in the main slot (#558)`);
     await assertNavIcons(page, '#navigation', null, { guest: 'auto', label: `${path} 404 rail` });
     await assertBrandPlacement(page);
   }
@@ -6552,7 +6562,15 @@ async function discussionReadingAndWrites(page) {
     currentFixture = { ...fixture, roots: [], next_cursor: null };
     await wakeDiscussion(page);
     await page.waitFor(`document.querySelector('.vk-discussion-empty') && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'authoritative empty discussion state');
-    check(await page.eval(`document.querySelector('.vk-discussion-empty')?.textContent.includes('Chưa có nhận xét nào được hiển thị.') && !document.querySelector('#discussion-load-retry') && !document.querySelector('#feedback-region')?.textContent.includes('Đã hết danh sách nhận xét')`), 'R4 empty state renders empty card cleanly without error button or list end');
+    check(await page.eval(`document.querySelector('.vk-discussion-empty')?.textContent.includes('Chưa có nhận xét nào được hiển thị.') && !document.querySelector('#discussion-load-retry') && !document.querySelector('#feedback-region')?.textContent.includes('Đã hết danh sách nhận xét')`), 'R4 empty state renders cleanly without error button or list end');
+    check(await page.eval(`(() => {
+      const empty = document.querySelector('.vk-discussion-empty'), region = empty.parentElement.getBoundingClientRect(), box = empty.getBoundingClientRect();
+      const text = empty.querySelector('.vk-empty-state__text');
+      return empty.classList.contains('vk-empty-state--compact') && getComputedStyle(empty).backgroundColor === 'rgba(0, 0, 0, 0)'
+        && text?.getAttribute('role') === 'status' && text.textContent.includes('Chưa có nhận xét nào được hiển thị.')
+        && Math.abs((box.left + box.right) / 2 - (region.left + region.right) / 2) <= 1
+        && !getComputedStyle(document.querySelector('.vk-main')).display.includes('flex');
+    })()`), '#558 empty discussion is a compact, cardless group centred in its own region without stretching the Reader');
   } finally {
     await page.send('Fetch.disable');
     page.cdp.listeners = page.cdp.listeners.filter(item => item !== fixtureListener);

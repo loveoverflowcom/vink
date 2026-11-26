@@ -4,6 +4,10 @@ use leptos_meta::{Link, Meta, Title};
 use leptos_router::hooks::{use_params_map, use_query_map};
 use vink_ui::{HiddenField, Link as UiLink};
 
+use crate::ui::empty_state::EmptyState;
+
+const NO_PUBLIC_WORKS: &str = "Chưa có tác phẩm công khai.";
+
 #[component]
 pub fn Author() -> impl IntoView {
     let params = use_params_map();
@@ -137,9 +141,9 @@ fn render_profile(
                                 let empty = items.is_empty();
                                 let next = next_cursor.map(|cursor| format!("{}?cursor={cursor}", author.href));
                                 view! {
-                                    {empty.then(|| view! { <p>{if continued {
+                                    {empty.then(|| view! { <EmptyState compact=true hook="vk-author-works-empty" message=if continued {
                                         "Trang này không còn tác phẩm."
-                                    } else { "Chưa có tác phẩm công khai." }}</p> })}
+                                    } else { NO_PUBLIC_WORKS } /> })}
                                     {(!empty).then(|| view! { <ul class="vk-author-works [list-style:none] [margin:0_0_var(--vk-space-4)] p-0">{items}</ul> })}
                                     {next.map(|href| view! { <UiLink href>"Trang tiếp"</UiLink> })}
                                     {continued.then(|| view! { <UiLink href=author.href>"Về trang đầu"</UiLink> })}
@@ -149,7 +153,7 @@ fn render_profile(
                                 <p role="alert">"Trang tác phẩm không còn khớp với hồ sơ này."</p>
                                 <UiLink href=author.href>"Về trang đầu"</UiLink>
                             }.into_any(),
-                            None if !has_public_works => view! { <p>"Chưa có tác phẩm công khai."</p> }.into_any(),
+                            None if !has_public_works => view! { <EmptyState compact=true hook="vk-author-works-empty" message=NO_PUBLIC_WORKS /> }.into_any(),
                             None => view! {
                                 <p role="alert">"Chưa tải được danh sách tác phẩm."</p>
                                 <vink_ui::Button variant=vink_ui::ButtonVariant::Tonal

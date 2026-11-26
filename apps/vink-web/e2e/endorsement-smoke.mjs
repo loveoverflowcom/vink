@@ -118,6 +118,25 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
   const reader = `${args.base}/tac-pham/${SAMPLE_WORK}`;
   const html = await (await fetch(reader)).text();
   check([root, reply].every((id) => ssrCount(html, `endorse-comment-${id}`)?.text === '0'), 'SSR renders “Ưng” with a public count on the root and on the flat reply');
+  // #558: before any Thấm the public list is one settled Empty State centred in the page slot,
+  // without a “0 người” count line above it.
+  for (const width of [390, 1440]) {
+    await page.viewport(width);
+    await page.goto(`${reader}/tham/${SAMPLE_REVISION}`);
+    await page.waitFor(`document.querySelector('main .vk-notif-endorsers-empty')`, `settled empty Thấm list at ${width}px`);
+    check(await page.eval(`(() => {
+      const main = document.querySelector('.vk-main'), group = document.querySelector('main .vk-notif-endorsers-empty');
+      const head = document.querySelector('#work-endorsers-page-title').getBoundingClientRect(), g = group.getBoundingClientRect();
+      const page = group.parentElement.getBoundingClientRect(), style = getComputedStyle(main);
+      const bottom = Math.min(innerHeight, main.getBoundingClientRect().bottom - parseFloat(style.paddingBottom));
+      return !document.querySelector('.vk-notif-endorser-total') && !document.querySelector('.vk-notif-endorsers')
+        && group.textContent.includes('Chưa có lượt Thấm nào.') && !group.classList.contains('vk-empty-state--compact')
+        && Math.abs((g.left + g.right) / 2 - (page.left + page.right) / 2) <= 1
+        && Math.abs((g.top + g.bottom) / 2 - (head.bottom + bottom) / 2) <= 8
+        && document.documentElement.scrollWidth <= innerWidth + 1;
+    })()`), `#558 empty Thấm list is one centred state without a zero count at ${width}px`);
+  }
+  await page.viewport(1440);
   await page.goto(reader);
   const ready = `document.documentElement.dataset.hydrated==='true' && ${button('endorse-work')}?.dataset.state==='enabled' && ${button(`endorse-comment-${reply}`)}?.dataset.state==='enabled'`;
   await page.waitFor(ready, 'own states read after hydration');
