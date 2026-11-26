@@ -11,6 +11,7 @@ pub(crate) mod handle;
 pub(crate) mod me;
 pub(crate) mod profile;
 pub(crate) mod publication;
+mod saved_work;
 pub(crate) mod work_info;
 
 pub use desk::{DeskIndex, DraftEditor};
@@ -313,6 +314,8 @@ fn PublicationContent(
         Callback::new(move |()| live.refresh())
     };
     endorsement::Endorsements::provide(publication.work_id.clone(), on_superseded);
+    // One sign-in dialog for the composers (#328) and “Lưu” (#388); it returns to its caller.
+    let reader_auth = discussion::ReaderAuth::provide();
     let work_summary = api::work_endorsement_resource(publication.work_id.clone());
     let endorsement_title = StoredValue::new(publication.title.clone());
     let endorsement_search = leptos_router::hooks::use_location().search;
@@ -370,6 +373,7 @@ fn PublicationContent(
             }}
         </Suspense>
         <discussion::ReaderDiscussion work_id=discussion_work />
+        <discussion::ReaderAuthDialog host=reader_auth />
         </div>
     }
 }

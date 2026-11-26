@@ -8,7 +8,7 @@ use vink_ui::RecoveryIntent;
 
 use crate::contract::EndorsementSummaries;
 use crate::endorsement_state::{EndorsementController, Scope, TargetKey};
-use crate::ui::patterns::{CommentEndorsements, EndorsementAction, EndorsementKind};
+use crate::ui::patterns::{ActionPair, CommentEndorsements, EndorsementAction, EndorsementKind};
 
 /// One reader page's endorsement state, shared by the work action and every comment action.
 #[derive(Clone, Copy)]
@@ -237,8 +237,10 @@ fn random_key() -> Option<String> {
     Some(crate::endorsement_state::uuid_v4(random))
 }
 
-/// “Thấm” for the revision the reader shows, after the text. The count is the public
-/// summary of that revision only; another revision's count is never shown for it.
+/// “Thấm · Lưu” after the text (SAV-04, D1/D5): one connected pair, “Thấm” for the revision
+/// the reader shows and “Lưu” for the work. The count is the public summary of that revision
+/// only; another revision's count is never shown for it. Each half keeps its own authority,
+/// pending state and feedback; neither renders on a hidden or removed page.
 #[component]
 pub(crate) fn WorkEndorsement(
     revision_id: String,
@@ -252,6 +254,7 @@ pub(crate) fn WorkEndorsement(
     let work_id = endorsements
         .controller
         .with_untracked(|owner| owner.scope().work_id.clone());
+    let save_work = work_id.clone();
     let target = TargetKey::Work {
         revision_id: revision_id.clone(),
     };
@@ -293,13 +296,16 @@ pub(crate) fn WorkEndorsement(
     });
     view! {
         <div id="work-endorsement" tabindex="-1" class="vk-reader-endorsement flex [margin-block:var(--vk-space-6)_0] min-w-0">
-            <EndorsementAction
-                id="endorse-work"
-                kind=EndorsementKind::Work
-                facts
-                on_set=move |desired: bool| endorsements.press(set_target.clone(), desired)
-                on_recover=move |_: RecoveryIntent| endorsements.recover(recover_target.clone())
-            />
+            <ActionPair id="sv-pair" label="Thấm và lưu tác phẩm">
+                <EndorsementAction
+                    id="endorse-work"
+                    kind=EndorsementKind::Work
+                    facts
+                    on_set=move |desired: bool| endorsements.press(set_target.clone(), desired)
+                    on_recover=move |_: RecoveryIntent| endorsements.recover(recover_target.clone())
+                />
+                <super::saved_work::ReaderSave work_id=save_work />
+            </ActionPair>
             <Show when=move || previous_revision.get()>
                 <p class="vk-notif-note">"Lượt Thấm trong thông báo thuộc một bản trước. Bạn đang xem bản công khai hiện tại."</p>
             </Show>
@@ -370,6 +376,51 @@ mod tests {
         assert!(
             html.contains("data-count=\"unavailable\"") && !html.contains(">0<"),
             "{html}"
+        );
+    }
+
+    #[test]
+    fn save_web_ssr_renders_one_held_pair_without_private_state() {
+        let guest = render(None, Some(summaries("r1", 12)));
+        let fixture = render(Some("fixture"), Some(summaries("r1", 12)));
+        for html in [&guest, &fixture] {
+            assert_eq!(html.matches("role=\"group\"").count(), 1, "{html}");
+            assert!(
+                html.contains("aria-label=\"Thấm và lưu tác phẩm\""),
+                "{html}"
+            );
+            assert_eq!(
+                html.matches("id=\"save-work\"").count(),
+                1,
+                "D1: one Lưu: {html}"
+            );
+            let save = html.split("id=\"save-work\"").nth(1).unwrap();
+            let save = save.split('>').next().unwrap();
+            assert!(save.contains("aria-label=\"Lưu\""), "{save}");
+            assert!(save.contains("data-pressed=\"unknown\""), "{save}");
+            assert!(
+                !save.contains("aria-pressed"),
+                "no claim before the private read: {save}"
+            );
+            assert!(html.contains("data-icon=\"bookmark-border\""), "{html}");
+            assert!(
+                !html.contains("data-icon=\"heart"),
+                "Lưu is never a heart: {html}"
+            );
+            for private in ["Đã lưu", "generation", "saved-works", "Bỏ lưu", "da-luu"] {
+                assert!(!html.contains(private), "{private} in SSR: {html}");
+            }
+            let pair = html.find("id=\"endorse-work\"").unwrap();
+            assert!(
+                pair < html.find("id=\"save-work\"").unwrap(),
+                "Thấm then Lưu: {html}"
+            );
+        }
+        let strip = |html: &str| html.replace("Cần đăng nhập để Thấm.", "");
+        assert_eq!(
+            strip(&guest).split("id=\"save-work\"").nth(1),
+            strip(&fixture).split("id=\"save-work\"").nth(1),
+            "the save half does not depend on who renders it"
         );
     }
 

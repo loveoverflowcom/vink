@@ -356,12 +356,10 @@ fn GuestPassword(
         ),
     };
     let is_register = mode == Mode::Register;
-    let contextual_login = !is_register && use_context::<ReaderPresentation>().is_some();
-    let heading = if contextual_login {
-        "Đăng nhập để nhận xét"
-    } else {
-        title
-    };
+    let reader = use_context::<ReaderPresentation>().filter(|_| !is_register);
+    let contextual_login = reader.is_some();
+    let heading = reader.map_or(title, |reader| reader.title);
+    let lead = reader.and_then(|reader| reader.lead);
     let username = InputValue::new();
     let password = InputValue::new();
     username.focus_on_mount(focus);
@@ -371,6 +369,7 @@ fn GuestPassword(
     let can_submit = move || result.get() == GuestResult::Ready;
     view! {
         <AuthHeading title=heading />
+        {lead.map(|lead| view! { <p id="reader-auth-lead" class="vk-reader-auth-lead m-0 wrap-anywhere">{lead}</p> })}
         <form id=form_id class="vk-account-form" method="post" novalidate
             on:submit=move |event| {
                 event.prevent_default();
@@ -455,11 +454,13 @@ fn GuestPassword(
                     view! { <Button id="use-password" variant=ButtonVariant::Text
                         on_press=move |_| switch.run(Mode::Login)>"Quay lại đăng nhập"</Button> }.into_any()
                 } else {
-                    view! { {(!contextual_login).then_some(view! { <span>"Chưa có tài khoản?"</span> })} <Button id="use-registration" variant=ButtonVariant::Text
+                    // Reader sheet (#328 + #388 delta): two equal 2px-outline alternatives.
+                    view! { {(!contextual_login).then_some(view! { <span>"Chưa có tài khoản?"</span> })} <Button id="use-registration"
+                        variant=if contextual_login { ButtonVariant::Outlined } else { ButtonVariant::Text }
                         on_press=move |_| switch.run(Mode::Register)>"Tạo tài khoản"</Button> }.into_any()
                 }}
             </div>
-            <Button id="use-email-code" variant=if contextual_login { ButtonVariant::Text } else { ButtonVariant::Outlined }
+            <Button id="use-email-code" variant=ButtonVariant::Outlined
                 on_press=move |_| switch.run(Mode::Email)>"Dùng mã email"</Button>
         </div>
     }

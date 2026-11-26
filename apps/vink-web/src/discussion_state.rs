@@ -584,7 +584,8 @@ pub fn error_message(error: &ApiError) -> &'static str {
         | ApiError::FollowActorUnavailable
         | ApiError::FollowConflict { .. }
         | ApiError::HandleRefused(_)
-        | ApiError::FollowKeyReused => {
+        | ApiError::FollowKeyReused
+        | ApiError::SavedWorksLimit => {
             "Thiết lập đã thay đổi ở nơi khác. Tải lại trước khi đổi tiếp."
         }
         ApiError::CommentRemoved => "Nhận xét không còn hiển thị.",

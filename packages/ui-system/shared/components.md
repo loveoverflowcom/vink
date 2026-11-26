@@ -196,6 +196,15 @@ chặn/chưa rõ, phát lại đúng trạng thái đang hiện, hoặc uncertai
   cuối). Ghi nhận văn học dùng Pen Flight R2 A · Mềm (CHOICE-07), glyph Vink-owned
   có provenance/hash riêng trong `icons.json`, 20px trang trí. Gửi giữ mũi tên ngang. Không có glyph thì chữ bắt đầu sau padding 12, thẳng với Text button.
 
+- **Tùy chọn Web cho Lưu bài (#388, `toggle-contract-v1` không đổi).** Mặc định giữ nguyên với
+  Thấm/Ưng. `pressed_semantics` dùng cho nút có nhãn cố định như “Lưu”: tên truy cập luôn là
+  `label`, `aria-pressed` theo giá trị đã xác nhận và bỏ hẳn khi chưa rõ. Nút không đọc thành
+  “Bỏ lưu, đã nhấn”. `failed_note` thay câu lỗi theo lý do, ví dụ hạn mức hoặc chiều bỏ lưu.
+  `reading` giữ yên lặng giá trị chưa rõ khi owner đang đọc và ẩn Kiểm tra lại.
+  `outcome` (`ToggleOutcome`/`ToggleLink`) chỉ báo kết quả đã xác nhận khi không có note.
+  `note_icons` thêm vòng chờ, info, error hoặc ✓ trước note. Không prop nào đổi `ToggleView`,
+  dispatch hay vectors. CMP chưa có consumer, Lưu bài trên native thuộc DEFERRED.
+
 Tương quan CHOICE-10: primitive chỉ trình bày hướng A (pending + xác nhận sau ACK/readback). Hướng
 B (optimistic có nhãn pending) cần một phase mới và `toggle-contract-v2`, không giả bằng cách
 truyền `On` trước khi owner xác nhận. Lát adapter Web đã chốt CHOICE-10 **A** cho sản phẩm

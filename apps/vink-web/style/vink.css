@@ -2355,11 +2355,25 @@ html:has(#reader-auth[open]) { overflow: hidden; overflow-anchor: none; }
   letter-spacing: var(--vk-type-display-tracking);
 }
 .vk-reader-auth .vk-auth-entry { inline-size: 100%; gap: var(--vk-space-4); }
+/* #388 delta (shared with #328): “Tạo tài khoản” and “Dùng mã email” are two equal outline
+ * actions with a 2px on-surface-variant edge; they wrap to one per row before clipping. */
 .vk-reader-auth .vk-auth-entry:has(#password-login) .vk-auth-alternatives {
-  display: flex; flex-wrap: wrap; justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: var(--vk-space-3);
 }
 .vk-reader-auth .vk-auth-switch { min-inline-size: 0; max-inline-size: 100%; }
 .vk-reader-auth .vk-auth-alternatives .vk-ui-action { min-inline-size: 0; max-inline-size: 100%; }
+.vk-reader-auth .vk-auth-entry:has(#password-login) .vk-auth-alternatives > .vk-ui-action,
+.vk-reader-auth .vk-auth-entry:has(#password-login) .vk-auth-switch > .vk-ui-action { inline-size: 100%; }
+.vk-reader-auth .vk-auth-entry:has(#password-login) .vk-auth-alternatives .vk-ui-button--outlined {
+  justify-content: center;
+  inline-size: 100%;
+  border-width: 2px;
+  border-color: var(--vk-on-surface-variant);
+  color: var(--vk-on-surface);
+}
+.vk-reader-auth-lead { color: var(--vk-on-surface-variant); font-size: var(--vk-type-body-size); line-height: var(--vk-type-body-line-height); }
 @media (max-width: 759px) {
   .vk-reader-auth {
     inline-size: 100%;

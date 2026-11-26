@@ -1219,6 +1219,142 @@ pub fn EndorsementAction(
     }
 }
 
+/// Why the viewer's last save intent was refused; nothing changed (Epic #384 D6/D11). The
+/// quota has its own sentence and never names a number.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum SaveRefusal {
+    Save,
+    Unsave,
+    Limit,
+}
+
+impl SaveRefusal {
+    pub const fn text(self) -> &'static str {
+        match self {
+            Self::Save => "Chưa lưu được. Bạn có thể thử lại.",
+            Self::Unsave => "Chưa bỏ lưu được. Bạn có thể thử lại.",
+            Self::Limit => "Danh sách Đã lưu đã đầy. Bỏ lưu một bài để lưu thêm.",
+        }
+    }
+}
+
+/// A result the reader reports beside the pair, only after the owner confirmed it (D11).
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum SaveOutcome {
+    /// Saved; `list_href` opens the viewer's own Đã lưu list once their handle is known.
+    Saved {
+        list_href: Option<String>,
+    },
+    Unsaved,
+    /// A guest signed in from the save sheet (D2): nothing was saved on their behalf.
+    SignedIn,
+}
+
+/// What a save adapter projects for one work and the current session. Membership, generation,
+/// session scope and late answers stay with the adapter; the pattern renders facts only.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct SaveFacts {
+    /// Confirmed membership; `Unknown` until the private read settles (never assumed Off).
+    pub value: ToggleValue,
+    pub phase: TogglePhase,
+    /// The confirmed state is being read right now (first read or Reconcile).
+    pub reading: bool,
+    pub refusal: Option<SaveRefusal>,
+    pub outcome: Option<SaveOutcome>,
+    /// A visible reason why this account cannot save here.
+    pub blocked: Option<&'static str>,
+}
+
+/// SAV-04 copy: the visible label stays “Lưu” in every state (D3); the confirmed state is
+/// `aria-pressed`, the filled bookmark, the tonal pill and the check mark.
+pub fn save_copy() -> ToggleCopy {
+    ToggleCopy {
+        pending_on: "Đang lưu…".into(),
+        pending_off: "Đang bỏ lưu…".into(),
+        uncertain: "Chưa xác nhận được lượt lưu.".into(),
+        failed: SaveRefusal::Save.text().into(),
+        unknown: "Chưa rõ bạn đã lưu bài này chưa.".into(),
+        reconcile: "Kiểm tra lại".into(),
+        ..ToggleCopy::new("Lưu", "Bỏ lưu")
+    }
+}
+
+/// “Lưu” beside “Thấm” at the end of the Reader (SAV-04, D1–D5, D11). A press emits the desired
+/// membership; the adapter owns the request, the generation fence and the session. Nothing is
+/// optimistic: icon, `aria-pressed` and shape change only with `facts.value`.
+#[component]
+pub fn SaveAction(
+    #[prop(into)] id: String,
+    #[prop(into)] facts: Signal<SaveFacts>,
+    #[prop(into)] on_set: Callback<bool>,
+    #[prop(into)] on_recover: Callback<RecoveryIntent>,
+) -> impl IntoView {
+    let list_id = format!("{id}-list");
+    let outcome = Signal::derive(move || {
+        facts
+            .with(|f| f.outcome.clone())
+            .map(|outcome| match outcome {
+                SaveOutcome::Saved { list_href } => ToggleOutcome {
+                    text: "Đã lưu vào hồ sơ của bạn.".into(),
+                    confirmed: true,
+                    link: list_href.map(|href| ToggleLink {
+                        id: list_id.clone(),
+                        label: "Mở Đã lưu".into(),
+                        href,
+                    }),
+                },
+                SaveOutcome::Unsaved => ToggleOutcome {
+                    text: "Đã bỏ lưu.".into(),
+                    confirmed: true,
+                    link: None,
+                },
+                SaveOutcome::SignedIn => ToggleOutcome {
+                    text: "Bạn đã đăng nhập. Bấm Lưu để lưu bài này.".into(),
+                    confirmed: false,
+                    link: None,
+                },
+            })
+    });
+    view! {
+        <span class="vk-save" data-kind="save">
+            <ToggleAction
+                id
+                copy=save_copy()
+                icon=IconName::BookmarkBorder
+                selected_icon=IconName::Bookmark
+                pressed_semantics=true
+                note_icons=true
+                value=Signal::derive(move || facts.with(|f| f.value))
+                phase=Signal::derive(move || facts.with(|f| f.phase))
+                reading=Signal::derive(move || facts.with(|f| f.reading))
+                blocked=Signal::derive(move || facts.with(|f| f.blocked.map(str::to_string)))
+                failed_note=Signal::derive(move || facts.with(|f| f.refusal.map(|r| r.text().to_string())))
+                outcome
+                on_set
+                on_recover
+            />
+        </span>
+    }
+}
+
+/// A connected M3 Expressive pair of equal actions (“Thấm · Lưu”, D5): one named group, two
+/// independent controls, each with its own state and feedback row under the pair. The host is
+/// the inline-size container, so the pair stacks before a label or count would be cut.
+#[component]
+pub fn ActionPair(
+    #[prop(into)] id: String,
+    #[prop(into)] label: String,
+    children: Children,
+) -> impl IntoView {
+    view! {
+        <div class="vk-action-pair-host">
+            <div id=id class="vk-action-pair" role="group" aria-label=label>
+                {children()}
+            </div>
+        </div>
+    }
+}
+
 /// No authoritative recent timestamps in today's adapter: use an explicitly labelled sample.
 #[component]
 pub fn RecentFeedback(items: Vec<Feedback>) -> impl IntoView {
@@ -1234,6 +1370,196 @@ pub fn RecentFeedback(items: Vec<Feedback>) -> impl IntoView {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn save_html(facts: SaveFacts) -> String {
+        Owner::new().with(|| {
+            view! {
+                <ActionPair id="sv-pair" label="Thấm và lưu tác phẩm">
+                    <SaveAction id="save-work" facts=Signal::stored(facts)
+                        on_set=|_: bool| {} on_recover=|_: RecoveryIntent| {} />
+                </ActionPair>
+            }
+            .to_html()
+        })
+    }
+
+    fn save_button(html: &str) -> &str {
+        html.split("<button")
+            .nth(1)
+            .unwrap()
+            .split('>')
+            .next()
+            .unwrap()
+    }
+
+    #[test]
+    fn save_action_keeps_the_label_and_states_membership_with_aria_pressed_shape_and_glyph() {
+        let off = save_html(SaveFacts {
+            value: ToggleValue::Off,
+            ..SaveFacts::default()
+        });
+        let b = save_button(&off);
+        for needle in [
+            "id=\"save-work\"",
+            "aria-label=\"Lưu\"",
+            "aria-pressed=\"false\"",
+            "data-state=\"enabled\"",
+        ] {
+            assert!(b.contains(needle), "{needle} in {b}");
+        }
+        assert!(
+            off.contains("role=\"group\"") && off.contains("aria-label=\"Thấm và lưu tác phẩm\""),
+            "{off}"
+        );
+        assert!(
+            off.contains("data-icon=\"bookmark-border\"") && !off.contains("data-icon=\"check\""),
+            "{off}"
+        );
+
+        let on = save_html(SaveFacts {
+            value: ToggleValue::On,
+            outcome: Some(SaveOutcome::Saved {
+                list_href: Some("/@an/da-luu".into()),
+            }),
+            ..SaveFacts::default()
+        });
+        let b = save_button(&on);
+        assert!(
+            b.contains("aria-label=\"Lưu\"") && b.contains("aria-pressed=\"true\""),
+            "D3 label stays: {b}"
+        );
+        assert!(
+            on.contains("data-icon=\"bookmark\"") && on.contains("data-icon=\"check\""),
+            "filled + check: {on}"
+        );
+        assert!(
+            on.contains("Đã lưu vào hồ sơ của bạn.")
+                && on.contains("href=\"/@an/da-luu\"")
+                && on.contains("Mở Đã lưu"),
+            "{on}"
+        );
+        assert!(!on.contains("Bỏ lưu"), "no state-flipping name: {on}");
+
+        let unknown = save_html(SaveFacts {
+            reading: true,
+            ..SaveFacts::default()
+        });
+        let b = save_button(&unknown);
+        assert!(
+            !b.contains("aria-pressed")
+                && b.contains("aria-busy=\"true\"")
+                && b.contains("data-pressed=\"unknown\""),
+            "{b}"
+        );
+        assert!(
+            !unknown.contains("Chưa rõ") && !unknown.contains("Kiểm tra lại"),
+            "a first read is quiet: {unknown}"
+        );
+    }
+
+    #[test]
+    fn save_action_pending_refusal_and_lost_answer_never_claim_a_new_state() {
+        let pending = save_html(SaveFacts {
+            value: ToggleValue::Off,
+            phase: TogglePhase::Pending { desired: true },
+            outcome: Some(SaveOutcome::Unsaved),
+            ..SaveFacts::default()
+        });
+        let b = save_button(&pending);
+        assert!(
+            b.contains("aria-pressed=\"false\"") && b.contains("aria-busy=\"true\""),
+            "{b}"
+        );
+        assert!(
+            pending.contains("Đang lưu…") && !pending.contains("Đã bỏ lưu."),
+            "{pending}"
+        );
+        assert!(
+            pending.contains("data-icon=\"bookmark-border\""),
+            "no optimistic glyph: {pending}"
+        );
+
+        let pending_off = save_html(SaveFacts {
+            value: ToggleValue::On,
+            phase: TogglePhase::Pending { desired: false },
+            ..SaveFacts::default()
+        });
+        assert!(
+            pending_off.contains("Đang bỏ lưu…") && pending_off.contains("data-icon=\"bookmark\""),
+            "{pending_off}"
+        );
+
+        let limit = save_html(SaveFacts {
+            value: ToggleValue::Off,
+            phase: TogglePhase::Failed,
+            refusal: Some(SaveRefusal::Limit),
+            ..SaveFacts::default()
+        });
+        assert!(
+            limit.contains("Danh sách Đã lưu đã đầy. Bỏ lưu một bài để lưu thêm.")
+                && limit.contains("data-note=\"failed\""),
+            "{limit}"
+        );
+        assert!(
+            limit.contains("data-icon=\"error\"") && !limit.contains("10.000"),
+            "{limit}"
+        );
+        let unsave = save_html(SaveFacts {
+            value: ToggleValue::On,
+            phase: TogglePhase::Failed,
+            refusal: Some(SaveRefusal::Unsave),
+            ..SaveFacts::default()
+        });
+        assert!(
+            unsave.contains("Chưa bỏ lưu được. Bạn có thể thử lại."),
+            "{unsave}"
+        );
+
+        let lost = save_html(SaveFacts {
+            value: ToggleValue::Off,
+            phase: TogglePhase::Uncertain { desired: true },
+            ..SaveFacts::default()
+        });
+        let b = save_button(&lost);
+        assert!(
+            b.contains("aria-disabled=\"true\"") && b.contains("aria-pressed=\"false\""),
+            "{b}"
+        );
+        assert!(
+            lost.contains("Chưa xác nhận được lượt lưu.") && lost.contains("Kiểm tra lại"),
+            "{lost}"
+        );
+        let checking = save_html(SaveFacts {
+            value: ToggleValue::Off,
+            phase: TogglePhase::Uncertain { desired: true },
+            reading: true,
+            ..SaveFacts::default()
+        });
+        assert!(
+            checking.contains("Chưa xác nhận được lượt lưu.") && !checking.contains("Kiểm tra lại"),
+            "{checking}"
+        );
+
+        let guest_hint = save_html(SaveFacts {
+            value: ToggleValue::Off,
+            outcome: Some(SaveOutcome::SignedIn),
+            ..SaveFacts::default()
+        });
+        assert!(
+            guest_hint.contains("Bạn đã đăng nhập. Bấm Lưu để lưu bài này.")
+                && guest_hint.contains("data-icon=\"info\""),
+            "{guest_hint}"
+        );
+        let blocked = save_html(SaveFacts {
+            blocked: Some("Tài khoản đang bị tạm khóa nên chưa thể lưu bài."),
+            ..SaveFacts::default()
+        });
+        assert!(
+            blocked.contains("chưa thể lưu bài")
+                && save_button(&blocked).contains("data-state=\"disabled\""),
+            "{blocked}"
+        );
+    }
 
     #[test]
     fn compact_row_keeps_unicode_destination_and_version_facts_outside_row_presentation() {
