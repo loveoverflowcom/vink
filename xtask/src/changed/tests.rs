@@ -960,3 +960,20 @@ fn cli_arguments_are_strict() {
         assert!(parse(bad).is_err(), "{bad:?}");
     }
 }
+
+#[test]
+fn account_deletion_opt_in_is_selected_for_its_fixture_and_identity_contract() {
+    for input in [
+        "apps/vink-web/e2e/auth-password-smoke.mjs",
+        "services/vink-identity/contracts/rpc/v1/README.md",
+        rules::BROWSER_DISPATCHER,
+    ] {
+        assert!(
+            select(&[input])
+                .1
+                .iter()
+                .any(|cmd| cmd == "verify web --scenario account-deletion"),
+            "{input}"
+        );
+    }
+}

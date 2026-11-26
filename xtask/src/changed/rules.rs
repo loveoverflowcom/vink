@@ -73,10 +73,16 @@ impl Selection {
         }
     }
 
-    /// Every default Web suite plus standalone CSR; release performance stays explicit.
+    /// Every functional Web scenario; release performance stays explicit.
     fn web_all(&mut self, reason: &str, path: &str) {
-        self.scenarios(&Scenario::ALL, reason, path);
-        self.scenario(Scenario::Standalone, reason, path);
+        for scenario in Scenario::selectable().filter(|s| {
+            !matches!(
+                s,
+                Scenario::Main | Scenario::PerfBaseline | Scenario::ReturnPosition
+            )
+        }) {
+            self.scenario(scenario, reason, path);
+        }
     }
 
     fn identity_web(&mut self, reason: &str, path: &str) {
@@ -147,7 +153,7 @@ impl Selection {
     }
 
     /// Selected root commands. Web scenarios merge into one dev invocation (or the full
-    /// default lane), one standalone invocation and one release performance invocation.
+    /// default lane), separate functional opt-ins and one release performance invocation.
     pub fn commands(&self) -> BTreeMap<String, Entry> {
         let mut out = self.checks.clone();
         let mut merge = |cmd: String, names: &[&str]| {
@@ -175,11 +181,11 @@ impl Selection {
             let flags: Vec<_> = dev.iter().map(|n| format!("--scenario {n}")).collect();
             merge(format!("verify web {}", flags.join(" ")), &dev);
         }
-        if self.scenarios.contains_key(Scenario::Standalone.name()) {
-            merge(
-                "verify web --scenario standalone".into(),
-                &[Scenario::Standalone.name()],
-            );
+        for name in picked(&|s| {
+            !Scenario::ALL.contains(&s)
+                && !matches!(s, Scenario::PerfBaseline | Scenario::ReturnPosition)
+        }) {
+            merge(format!("verify web --scenario {name}"), &[name]);
         }
         let perf = picked(&|s| matches!(s, Scenario::PerfBaseline | Scenario::ReturnPosition));
         if !perf.is_empty() {
@@ -247,7 +253,7 @@ const SHARED_UI_DIR: &str = "packages/ui-system/shared/";
 pub const BROWSER_MODULES: &[(&str, &[Scenario], &[&str])] = {
     use Scenario as S;
     &[
-        ("apps/vink-web/e2e/auth-password-smoke.mjs", &[S::Auth, S::Password, S::Standalone], &[]),
+        ("apps/vink-web/e2e/auth-password-smoke.mjs", &[S::Auth, S::Password, S::Standalone, S::AccountDeletion], &[]),
         ("apps/vink-web/e2e/auth-smoke.mjs", &[S::Auth], &[]),
         ("apps/vink-web/e2e/author-search-smoke.mjs", &[S::AuthorSearch], &[]),
         ("apps/vink-web/e2e/author-works-smoke.mjs", &[S::Desk], &[]),
