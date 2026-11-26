@@ -9,6 +9,8 @@
 // author (writes a root, then a flat reply once the root is public) and `--base` as a second
 // principal holding a moderator grant, who approves both and then endorses in the browser.
 
+import { matchesAXButton } from './visual-evidence.mjs';
+
 const SAMPLE_WORK = '33333333-3333-4333-8333-333333333333';
 const SAMPLE_REVISION = '44444444-4444-4444-8444-444444444444';
 const LAST_LINE = 'đã theo mưa về rất lâu.';
@@ -138,22 +140,60 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
   }
   await page.viewport(1440);
   await page.goto(reader);
-  const ready = `document.documentElement.dataset.hydrated==='true' && ${button('endorse-work')}?.dataset.state==='enabled' && ${button(`endorse-comment-${reply}`)}?.dataset.state==='enabled'`;
-  await page.waitFor(ready, 'own states read after hydration');
+  const controls = [
+    { id: 'endorse-work', region: 'work', action: 'Thấm' },
+    { id: `endorse-comment-${root}`, region: 'root', action: 'Ưng' },
+    { id: `endorse-comment-${reply}`, region: 'flat reply', action: 'Ưng' },
+  ];
+  const ready = [
+    "document.documentElement.dataset.hydrated==='true'",
+    ...controls.map(({ id }) => `${button(id)}?.dataset.state==='enabled'`),
+  ].join(' && ');
+  await page.waitFor(ready, 'work, root and reply own states read after hydration');
   check(await page.eval(`${button('endorse-work')}.dataset.pressed==='false' && ${count('endorse-work')}.startsWith('0')`), 'a reader who has not endorsed sees Off and the public count');
-  const glyphs = async (phase) => check(await page.eval(`(() => {
-    const controls = [...document.querySelectorAll('.vk-endorsement .vk-ui-toggle__control')];
-    return controls.length >= 3 && controls.every(b => {
-      const glyph = b.querySelector('.vk-ui-toggle__glyph svg');
-      // #359: Thấm keeps Pen Flight; Ưng shows the filled heart only for a confirmed On.
-      const expected = b.closest('.vk-endorsement')?.dataset.kind === 'work' ? 'pen-flight'
-        : b.dataset.pressed === 'true' ? 'heart' : 'heart-outline';
-      return glyph?.dataset.icon === expected && glyph.getAttribute('aria-hidden') === 'true'
-        && glyph.getBoundingClientRect().width === 20 && glyph.getBoundingClientRect().height === 20
-        && b.getBoundingClientRect().width >= 48 && b.getBoundingClientRect().height >= 48;
-    });
-  })()`), `Pen Flight (Thấm) and heart (Ưng): work, root and flat reply keep decorative 20px glyph / 48px targets (${phase})`);
-  await glyphs('ready');
+
+  async function checkControls(phase, compact = false) {
+    for (const { id, region, action } of controls) {
+      const measured = await page.eval(`(() => {
+        const controls = document.querySelectorAll(${JSON.stringify('#' + id)});
+        const target = controls[0];
+        const glyph = target?.querySelector('.vk-ui-toggle__glyph svg');
+        const dimensions = node => {
+          const rect = node?.getBoundingClientRect();
+          return rect ? [rect.width, rect.height] : [];
+        };
+        return {
+          count: controls.length, nativeButton: target?.tagName === 'BUTTON',
+          pressed: target?.dataset.pressed, hasAriaPressed: target?.hasAttribute('aria-pressed'),
+          icon: glyph?.dataset.icon, decorative: glyph?.getAttribute('aria-hidden') === 'true',
+          glyphSize: dimensions(glyph), targetSize: dimensions(target),
+        };
+      })()`);
+      const context = `${region} ${phase}`;
+      check(measured.count === 1 && measured.nativeButton, `${context}: exactly one native control (found ${measured.count})`);
+      const selected = measured.pressed === 'true';
+      const name = selected ? `Bỏ ${action}` : action;
+      check(['true', 'false'].includes(measured.pressed) && !measured.hasAriaPressed &&
+        await matchesAXButton(page, '#' + id, { name }), `${context}: AX button “${name}” with action-name semantics`);
+
+      // The Reader Thấm · Lưu pair (#388) uses 24px at the wide measure and
+      // 20px when compact. Comment hearts (#359) use 20px in both compositions.
+      const icon = region === 'work' ? 'pen-flight' : selected ? 'heart' : 'heart-outline';
+      const size = region === 'work' && !compact ? 24 : 20;
+      const [glyphWidth, glyphHeight] = measured.glyphSize;
+      check(measured.icon === icon && measured.decorative && glyphWidth === size && glyphHeight === size,
+        `${context}: decorative ${icon} ${size}×${size}px (got ${measured.icon} ${glyphWidth}×${glyphHeight}px)`);
+
+      // The compact flat reply alone may use the 44px floor in the Discussion LayoutSpec.
+      const min = compact && region === 'flat reply' ? 44 : 48;
+      const [width, height] = measured.targetSize;
+      check(width >= min && height >= min, `${context}: target ≥${min}×${min}px (got ${width}×${height}px)`);
+    }
+  }
+  await checkControls('ready at 1440px');
+  await page.viewport(390);
+  await checkControls('ready at 390px', true);
+  await page.viewport(1440);
   const order = `[...document.querySelectorAll('.vk-discussion-comment')].map(c => c.id).join()`;
   const before = await page.eval(order);
 
@@ -188,7 +228,7 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
     check(await page.eval(`${button('endorse-work')}.dataset.pressed==='false' && ${note('endorse-work')}.includes('Đang gửi')`), 'CHOICE-10 A: no optimistic selection while the command is pending');
     check(await page.eval(`${exactCount('endorse-work', 0)}`), '#226 pending On keeps the last confirmed count at 0');
     await sameTarget('endorse-work', 'pending On');
-    await glyphs('pending');
+    await checkControls('pending');
     const firstBody = JSON.parse(first.request.postData);
     check(first.responseStatusCode === 200 && firstBody.expected_order === 1 && firstBody.endorsed === true && firstBody.revision_id === SAMPLE_REVISION && /^[0-9a-f]{8}-[0-9a-f]{4}-4/.test(firstBody.command_key), 'the command names the shown revision, the shown order and a UUID key');
     await gate.release(first);
@@ -213,7 +253,7 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
 
     check(await page.eval(`${button('endorse-work')}.getAttribute('aria-label')==='Bỏ Thấm' && !!document.querySelector('#endorse-work .vk-ui-toggle__mark svg, #endorse-work .vk-ui-toggle__mark .vk-ui-icon')`), 'after the ACK: accessible name “Bỏ Thấm” and the check mark');
 
-    await glyphs('confirmed');
+    await checkControls('confirmed');
     check(await page.eval(`document.querySelector('#endorse-work .vk-ui-toggle__mark svg')?.dataset.icon === 'check'`), 'Pen Flight remains leading; confirmed check uses the trailing slot');
     console.log('  lost ACK after the commit, exact keyed replay:');
     await page.click('#endorse-work');
