@@ -52,6 +52,8 @@ if operation in ("linger", "orphan", "stubborn"):
     pathlib.Path("child").write_text(str(descendant.pid))
     if operation != "orphan":
         descendant.wait()
+pathlib.Path("profiles.json").write_text(json.dumps(
+    {k: v for k, v in os.environ.items() if k.startswith("CARGO_PROFILE_")}))
 pathlib.Path("cargo-dirs.json").write_text(json.dumps([
     os.environ["CARGO_TARGET_DIR"], os.environ["CARGO_BUILD_TARGET_DIR"],
     os.environ["CARGO_BUILD_BUILD_DIR"]]))
@@ -105,6 +107,22 @@ class Profile(unittest.TestCase):
             local.unlink()
             with self.assertRaisesRegex(budget.Refusal, "CARGO_ALIAS_XTASK"):
                 budget.settings(dict(env, CARGO_ALIAS_XTASK="run"), root)
+
+    def test_low_disk_detects_global_incremental_override(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            local = root / ".cargo"
+            local.mkdir()
+            config = local / "config.toml"
+            config.write_text("[build]\nincremental = true\n")
+            env = {"CARGO_HOME": temp}
+            with self.assertRaisesRegex(budget.Refusal, "build-wide incremental"):
+                budget.settings(env, root, low_disk=True)
+            budget.settings(env, root)
+            budget.settings(dict(env, CARGO_INCREMENTAL="0"), root, low_disk=True)
+            config.write_text('[env]\nCARGO_PROFILE_DEV_DEBUG = { value = "2", force = true }\n')
+            with self.assertRaisesRegex(budget.Refusal, "CARGO_PROFILE_DEV_DEBUG"):
+                budget.settings(env, root, low_disk=True)
 
     def test_argv_preserves_narrower_libtest_flag_and_refuses_overrides(self):
         argv = ["cargo", "test", "-p", "xtask", "--", "--test-threads=1"]
@@ -227,8 +245,10 @@ class Lifecycle(unittest.TestCase):
                         CARGO_HOME=temp.name, CARGO_BUILD_JOBS="1", RUST_TEST_THREADS="7")
         self.env.pop(budget.MARKER, None)
 
-    def launch(self, operation, *cargo_args, checkout=0, timeout=None, samples=False):
+    def launch(self, operation, *cargo_args, checkout=0, timeout=None, samples=False, low_disk=False):
         options = ["--timeout", str(timeout)] if timeout is not None else []
+        if low_disk:
+            options.append("--low-disk")
         if samples:
             options.append("--samples")
         child = subprocess.Popen(
@@ -272,6 +292,23 @@ class Lifecycle(unittest.TestCase):
             self.assertIn(f"cargo_target_dir={expected} cargo_build_dir={expected}", output)
             self.assertEqual(json.loads((root / "cargo-dirs.json").read_text()), [expected] * 3)
         self.assertFalse((self.root / "shared").exists())
+
+    def test_low_disk_only_sets_dev_test_on_opt_in(self):
+        root = self.launchers[0].parents[1]
+        self.env = {k: v for k, v in self.env.items() if not k.startswith("CARGO_PROFILE_")}
+        self.env.update(CARGO_PROFILE_DEV_DEBUG="2", CARGO_PROFILE_RELEASE_DEBUG="1")
+        expected = {"CARGO_PROFILE_DEV_DEBUG": "2", "CARGO_PROFILE_RELEASE_DEBUG": "1"}
+        compact = {"CARGO_PROFILE_DEV_DEBUG": "0", "CARGO_PROFILE_TEST_DEBUG": "0",
+                   "CARGO_PROFILE_DEV_INCREMENTAL": "false", "CARGO_PROFILE_TEST_INCREMENTAL": "false",
+                   "CARGO_PROFILE_RELEASE_DEBUG": "1"}
+        for low_disk in (True, False):
+            with self.subTest(low_disk=low_disk):
+                output = self.result(self.launch("ok", low_disk=low_disk), 0)
+                profiles = json.loads((root / "profiles.json").read_text())
+                self.assertEqual(profiles, compact if low_disk else expected)
+                if low_disk:
+                    for k, v in budget.LOW_DISK.items():
+                        self.assertIn(f"{k}={v}", output)
 
     def test_symlinked_shared_target_refused_before_admission(self):
         checkout = self.launchers[0].parents[1]

@@ -40,7 +40,7 @@ Cargo bootstrap. Planner và executor [#184](scoped-workflows.md) giữ quyền 
   trung gian ở lại đó khi chạy lại. Launcher từ chối `--target-dir` trỏ nơi khác,
   mọi symlink ở chính `target` (kể cả link hỏng hay vòng) và Cargo `[env]` đặt các biến này.
   Với `--target-dir` hợp lệ, Cargo nhận đường dẫn tuyệt đối đã kiểm tra. Profile và debug info vẫn do
-  Cargo chọn theo lệnh. [Cấu hình target-dir và build-dir](https://doc.rust-lang.org/cargo/reference/config.html#buildtarget-dir).
+  Cargo chọn theo lệnh hoặc tùy chọn tiết kiệm đĩa bên dưới. [Cấu hình target-dir và build-dir](https://doc.rust-lang.org/cargo/reference/config.html#buildtarget-dir).
 - Mốc 10–12 GiB là mục tiêu quan sát trên máy 24 GiB, để chừa khoảng 12–14 GiB cho macOS, IDE,
   trình duyệt và dịch vụ có sẵn. Profile thử hai compiler job và hai libtest thread để giảm
   số đỉnh đồng thời mà vẫn giữ một ít song song. Một compiler/solver có thể dùng nhiều RAM hơn
@@ -48,6 +48,32 @@ Cargo bootstrap. Planner và executor [#184](scoped-workflows.md) giữ quyền 
   và ghi RSS cộng theo session từ `ps` mỗi khoảng 1 giây. Số mẫu lớn nhất có thể bỏ qua đỉnh ngắn
   và tính lặp shared pages. Nó không phải RAM vật lý duy nhất hay trần RAM.
   [Chỉ báo pressure trên macOS](https://github.com/apple-oss-distributions/xnu/blob/main/doc/vm/memorystatus_notify.md).
+
+## Build dev/test khi ít dung lượng đĩa
+
+Trên checkout sẽ dùng cho nhiều lượt liên tiếp, chọn cùng một chế độ từ lượt đầu.
+Để giảm dung lượng artifact của Cargo, thêm `--low-disk` trước dấu `--`.
+Ví dụ kiểm cấu hình trước bootstrap, rồi chạy đúng nhóm test đã chọn:
+
+```sh
+./tools/local-budget plan --low-disk -- cargo xtask verify unit store
+./tools/local-budget run --low-disk -- cargo xtask verify unit store
+```
+
+Lượt này đặt `debug=0` và `incremental=false` cho profile Cargo `dev` và `test`,
+kể cả khi bootstrap xtask và khi xtask gọi Cargo con. Plan in bốn biến profile sẽ chuyển
+cho Cargo. Cargo vẫn giữ dependency và binary hợp lệ trong `target` của checkout.
+Đổi source có thể tốn thêm thời gian biên dịch crate đã sửa. Debugger và backtrace mất
+thông tin file/dòng của các crate build với `debug=0`. Bỏ cờ khi cần debug đầy đủ.
+Khi đổi chế độ, Cargo có thể giữ cả hai bộ artifact, làm đĩa tăng trong lần chuyển đầu.
+Giữ log cần bàn giao ngoài `target` trước khi dọn artifact do chính lượt đó tạo.
+
+Cờ chỉ đặt giá trị mặc định của hai profile trong môi trường child. Cargo vẫn áp dụng
+override riêng của package và rustflags tường minh. Nếu launcher báo xung đột với
+`build.incremental`, hãy bỏ override của phiên shell hoặc bỏ cờ. Các đường release,
+browser, CMP và Linux vẫn theo phạm vi ở bảng bên dưới.
+[Cargo profiles](https://doc.rust-lang.org/cargo/reference/profiles.html) ·
+[Quy tắc build.incremental](https://doc.rust-lang.org/cargo/reference/config.html#buildincremental).
 
 ## Đo một verification step
 
