@@ -6395,7 +6395,7 @@ async function discussionReadingAndWrites(page) {
     if (expireCursor && cursor === 'expired-root-cursor') {
       page.send('Fetch.fulfillRequest', { requestId: message.params.requestId, responseCode: 422,
         responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
-        body: Buffer.from(JSON.stringify({ error: { code: 'validation_failed', field: 'cursor' } })).toString('base64'),
+        body: Buffer.from(JSON.stringify({ error: { code: 'validation_failed', field: 'cursor', message: 'fixture expired cursor' } })).toString('base64'),
       }).catch(() => {});
       return;
     }
