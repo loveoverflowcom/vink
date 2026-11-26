@@ -44,10 +44,10 @@ phục chọn lại cả dòng, rồi chữ gõ tiếp thay mất dòng ấy. Sm
 focus trở lại tới khi phím vào editor, nên kiểm được cửa sổ này trên mọi nền tảng.
 Chọn vị trí bằng chuột tiếp tục dùng hành vi CodeMirror hiện có.
 
-`cargo xtask build` (và `dev`, `verify web`) chạy `npm ci --ignore-scripts` khi
-`package-lock.json` đổi so với lần cài trước, rồi `node scripts/build.mjs` để type-check bằng
-TypeScript và bundle bằng esbuild vào `target/site/pkg/vink-editor.js`. Phiên bản package được pin
-chính xác; `verify quick` kiểm điều đó và kiểm lockfile khớp `package.json`. Đổi dependency:
+Các lệnh build, dev và verify Web kiểm manifest/lock, typecheck TypeScript và chạy corpus
+Markdown ở mỗi lượt. Khi cần tạo lại `vink-editor.js`, esbuild bundle vào staging. Xem
+[đầu vào và điều kiện tái dùng](../../../docs/development/scoped-workflows.md#build-package-web).
+Dependency dùng phiên bản pin chính xác. Cập nhật dependency bằng lệnh sau.
 
 ```bash
 npm install --prefix apps/vink-web/editor --ignore-scripts

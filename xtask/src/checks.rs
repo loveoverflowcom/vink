@@ -876,7 +876,7 @@ fn desktop_fonts(root: &Path, record: &serde_json::Value, problems: &mut Vec<Str
 
 /// The editor runtime pins exact package versions, and its lockfile was produced from the same
 /// manifest, so `npm ci` installs what was reviewed.
-fn editor_packages(root: &Path, problems: &mut Vec<String>) {
+pub(crate) fn editor_packages(root: &Path, problems: &mut Vec<String>) {
     const DIR: &str = "apps/vink-web/editor";
     let mut parse = |name: &str| -> Option<serde_json::Value> {
         match read(&root.join(DIR).join(name)).map(|t| serde_json::from_str(&t)) {

@@ -35,6 +35,7 @@ mod verify;
 mod web;
 mod web_assets;
 mod web_boundary;
+mod web_dag;
 mod workflow;
 
 use std::path::{Path, PathBuf};

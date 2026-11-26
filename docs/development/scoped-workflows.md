@@ -48,7 +48,7 @@ preview. `build web` tạo browser bundle và App.
   hiện hữu của owner. `api` dành cho App không feature `legacy-ssr`, `ssr` dành cho
   App/Web, `hydrate` cho Web, `csr` cho Web/Preview. Hai target WASM cần Rust target,
   không cần wasm-bindgen CLI, npm, asset bundle, database hoặc browser.
-- `verify unit OWNER [--filter NAME]` nhận `app|identity|store|xtask|web|notifications|ui|patterns|expressions|markdown|preview`,
+- `verify unit OWNER [--filter NAME]` nhận `app|identity|store|xtask|web|notifications|ui|patterns|expressions|markdown|work-view-policy|preview`,
   cùng danh sách owner của `verify check`. Chọn lib/bins theo manifest. Unit App có
   graph SSR theo feature mặc định. Unit Web bật rõ `--features ssr` để các test render
   HTML chạy được cả khi chỉ chọn riêng `vink-web`.
@@ -163,10 +163,34 @@ package và receipt đã được cài, lỗi dọn bản sao cũ sẽ được 
 khôi phục entry sau khi publish package thành công. Verify vẫn chạy kiểm bí mật, fixture và
 assertion của scenario đã chọn.
 
-Tailwind vẫn biên dịch từ CSS, token và allowlist Rust sau khi kiểm token. Editor vẫn typecheck,
-chạy corpus Markdown và bundle với npm lock. Hai bước giữ npm install stamp hiện hữu.
-Preview dùng owner và thư mục riêng. Cần xác minh closure nhập CSS và nguồn
-TypeScript, dependency npm đã cài và các kiểm dữ liệu Editor trước khi thêm reuse cho hai bước đó.
+Manifest theo từng package lưu bên ngoài thư mục public, tại
+`target/.xtask-web/<khóa checkout và đường package>/manifest.json`. Mỗi mục ghi fingerprint
+đầu vào, các nhóm tạo nên fingerprint và SHA-256 của output. Cargo vẫn chạy ở mỗi lượt. Xtask đọc
+thông điệp `compiler-artifact.fresh` và băm WASM theo khối, kể cả bản debug lớn.
+Bảng cuối log cho biết bước nào HIT, MISS hoặc VERIFIED, lý do và thời gian.
+
+| Artifact | Đầu vào quyết định việc tạo lại |
+| --- | --- |
+| Token | Nguồn JSON, fixture, license/icon, font và 16 tệp CSS/Rust/Kotlin đã sinh. Mỗi lượt đối chiếu lại với generator. |
+| Rust/WASM | Cargo theo dõi crate, dependency, toolchain, profile, feature và cờ. Digest của WASM thô cấp đầu vào cho bindgen. |
+| Bindgen | Bytes của WASM, executable và version, target/flags, feature, profile, prefix, environment. Kiểm đủ JS, WASM và snippets trước khi tái dùng. |
+| Tailwind | Entry và các CSS import cục bộ, nội dung các thư mục Rust trong allowlist, tập file Oxide chọn, npm lock, cây compiler đã cài, Node, environment và minify. Directive ngoài cú pháp đã kiểm sẽ chạy compiler. |
+| Editor | Nguồn TypeScript, script build, tsconfig, corpus, package/lock, cây npm đã cài và Node. Typecheck và corpus chạy cả khi HIT. Khi MISS, esbuild kê đầu vào thực trong metafile. Chỉ lưu receipt khi toàn bộ thuộc editor. |
+| Fonts, brand, empty | So tên và bytes với nguồn đã chọn. Tệp bị xóa khỏi nguồn cũng biến mất khỏi package mới. |
+| Entry CSR | Template, appearance, revision/prefix và hai cờ `VINK_SPA_*`. Ghi entry sau khi package hoàn tất. |
+
+Hai owner npm giữ stamp cài đặt trong checkout. Thay đổi cục bộ trong package phụ thuộc cũng đổi
+khóa artifact. Wrapper, trình nạp tùy biến, symlink ngoài phạm vi hoặc thay đổi script bundle
+có thể khiến bước tương ứng phải chạy mỗi lượt. Khi đổi cách build Editor, rà các input thật và
+cập nhật digest của recipe sau khi kiểm.
+
+**Bàn giao cho #501.** [Hợp đồng DAG](../../xtask/src/web_dag.rs) khai báo node, cạnh,
+đường nguồn, tool, environment và output cho SSR/hydration, perf-probe và CSR.
+`build web --plan` và `build spa --plan` in hợp đồng theo variant. `verify changed --base REV
+--worktree --plan` gọi `affected_artifacts` cho cả hai phía của rename, in node bị chạm trực
+tiếp, closure và đường Web chưa ánh xạ. Planner giữ các lệnh kiểm và fallback của owner.
+Khi thực thi, digest thực tế quyết định có cần chạy producer. Preview có compiler entry và
+thư mục xuất riêng.
 
 ## Scenario Web và setup
 

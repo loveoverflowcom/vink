@@ -30,6 +30,7 @@ pub enum UnitOwner {
     Patterns,
     Expressions,
     Markdown,
+    WorkViewPolicy,
     Preview,
 }
 impl UnitOwner {
@@ -44,6 +45,7 @@ impl UnitOwner {
             "ui" => Ok(Self::Ui),
             "patterns" => Ok(Self::Patterns),
             "expressions" => Ok(Self::Expressions),
+            "work-view-policy" => Ok(Self::WorkViewPolicy),
             "markdown" => Ok(Self::Markdown),
             "preview" => Ok(Self::Preview),
             _ => Err(format!("unknown Rust owner `{owner}`")),
@@ -69,6 +71,7 @@ impl UnitOwner {
             Self::Ui => "vink-ui",
             Self::Patterns => "vink-patterns",
             Self::Expressions => "vink-expressions",
+            Self::WorkViewPolicy => "vink-work-view-policy",
             Self::Markdown => "vink-markdown-text",
             Self::Preview => "vink-ui-preview",
         }
@@ -594,8 +597,33 @@ impl Plan {
                 fixtures.push_str(&format!("  {}: {}\n", scenario.name(), scenario.fixture()));
             }
         }
+        let mut dag = String::new();
+        let profile = if self.request.release {
+            "wasm-release"
+        } else {
+            "dev"
+        };
+        for artifact in &self.artifacts {
+            let feature = match artifact {
+                Artifact::Spa => "csr",
+                Artifact::Bundle
+                    if self.scenarios.iter().any(|s| {
+                        matches!(s, Scenario::PerfBaseline | Scenario::ReturnPosition)
+                    }) =>
+                {
+                    "perf-probe"
+                }
+                Artifact::Bundle => "hydrate",
+                _ => continue,
+            };
+            dag.push_str(&crate::web_dag::describe_dag(
+                *artifact == Artifact::Spa,
+                profile,
+                feature,
+            ));
+        }
         format!(
-            "coverage: {coverage}\noperation: {:?}; target: {:?}; auth: {auth}\nbuild: {:?}; profile: {}\nrequired tools: {:?}\nowned services: {:?}\nattached database configuration (values hidden): {:?}\nmigrations: {:?}; dev seed: {} (Web fixtures follow the scenario catalog)\nselected checks: {selected:?}\nalias expansion: {dependencies:?}\nnot selected Web checks: {excluded:?}\n{fixtures}API target isolation: no bundle, no SSR dependencies or static routes.\ndata: dev attaches prepared databases; Web verification owns scratch only. No containers.\nartifacts: build from current source; Web bundles may reuse verified bindgen and static outputs.\n",
+            "coverage: {coverage}\noperation: {:?}; target: {:?}; auth: {auth}\nbuild: {:?}; profile: {}\nrequired tools: {:?}\nowned services: {:?}\nattached database configuration (values hidden): {:?}\nmigrations: {:?}; dev seed: {} (Web fixtures follow the scenario catalog)\nselected checks: {selected:?}\nalias expansion: {dependencies:?}\nnot selected Web checks: {excluded:?}\n{fixtures}{dag}API target isolation: no bundle, no SSR dependencies or static routes.\ndata: dev attaches prepared databases; Web verification owns scratch only. No containers.\nartifacts: build from current source; Web bundles may reuse verified bindgen, CSS, editor JS and static outputs.\n",
             self.request.operation,
             self.request.target,
             self.artifacts,

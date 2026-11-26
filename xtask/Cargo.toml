@@ -11,6 +11,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+memchr = "2"
 base64 = "0.22.1"
 pulldown-cmark = { version = "0.13.6", default-features = false }
 saphyr = { version = "0.3.4", default-features = false }

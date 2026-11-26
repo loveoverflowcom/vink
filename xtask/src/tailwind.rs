@@ -3,18 +3,30 @@
 //! package (`packages/ui-system/leptos/tailwind`) with `npm ci --ignore-scripts`, explicit
 //! `@layer` coexistence, and `source(none)` + allowlisted `@source` roots.
 
-use std::collections::{BTreeMap, BTreeSet};
-use std::path::{Path, PathBuf};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use crate::checks::sha256_hex;
 use crate::process;
 
 pub const DIR: &str = "packages/ui-system/leptos/tailwind";
 pub const WEB_ENTRY: &str = "packages/ui-system/leptos/tailwind/web.css";
 pub const PREVIEW_ENTRY: &str = "packages/ui-system/leptos/tailwind/preview.css";
+pub const WEB_SOURCE_ROOTS: &[&str] = &[
+    "apps/vink-web/src",
+    "packages/ui-system/leptos/src",
+    "packages/vink-patterns/leptos/src",
+];
+pub const PREVIEW_SOURCE_ROOTS: &[&str] = &[
+    "packages/ui-system/leptos/src",
+    "packages/ui-system/leptos/preview/src",
+    "packages/ui-system/leptos/preview/examples",
+    "packages/vink-patterns/leptos/src",
+];
 /// Tailwind v4.1.8 fixed extraction for Leptos `class:` syntax (tailwindlabs/tailwindcss#18093).
 pub const MIN_VERSION: (u32, u32, u32) = (4, 1, 8);
 
@@ -27,10 +39,17 @@ pub fn ensure_installed(root: &Path) -> Result<PathBuf, String> {
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     let dir = root.join(DIR);
+    crate::web_assets::require_local_path(root, &dir.join("node_modules"))?;
     let inputs = package_inputs(&dir)?;
     let bin = dir.join("node_modules/.bin/tailwindcss");
+    let theme_css = dir.join("node_modules/tailwindcss/theme.css");
+    let utilities_css = dir.join("node_modules/tailwindcss/utilities.css");
     let stamp = dir.join("node_modules/.vink-tailwind-inputs");
-    if !bin.is_file() || std::fs::read(&stamp).ok().as_ref() != Some(&inputs) {
+    if !bin.is_file()
+        || !theme_css.is_file()
+        || !utilities_css.is_file()
+        || std::fs::read(&stamp).ok().as_ref() != Some(&inputs)
+    {
         let mut install = Command::new("npm");
         install
             .current_dir(&dir)
@@ -38,9 +57,9 @@ pub fn ensure_installed(root: &Path) -> Result<PathBuf, String> {
         process::run(&mut install, "npm ci (Tailwind v4 compiler, locked)")?;
         std::fs::write(&stamp, &inputs).map_err(|e| format!("write {}: {e}", stamp.display()))?;
     }
-    if !bin.is_file() {
+    if !bin.is_file() || !theme_css.is_file() || !utilities_css.is_file() {
         return Err(format!(
-            "Tailwind compiler binary missing after npm ci: {}",
+            "Tailwind compiler artifacts missing after npm ci: {}",
             bin.display()
         ));
     }
@@ -109,7 +128,7 @@ pub fn compile(root: &Path, input: &Path, output: &Path, minify: bool) -> Result
 }
 
 /// Validate exact pins before consulting either a cold or a warm npm cache.
-fn package_inputs(dir: &Path) -> Result<Vec<u8>, String> {
+pub(crate) fn package_inputs(dir: &Path) -> Result<Vec<u8>, String> {
     let read_json = |name: &str| -> Result<_, String> {
         let path = dir.join(name);
         let bytes = std::fs::read(&path).map_err(|e| format!("read {}: {e}", path.display()))?;
@@ -167,27 +186,238 @@ pub fn check(root: &Path, problems: &mut Vec<String>) {
     }
 
     let expected = [
-        (
-            WEB_ENTRY,
-            &[
-                "apps/vink-web/src",
-                "packages/ui-system/leptos/src",
-                "packages/vink-patterns/leptos/src",
-            ][..],
-        ),
-        (
-            PREVIEW_ENTRY,
-            &[
-                "packages/ui-system/leptos/src",
-                "packages/ui-system/leptos/preview/src",
-                "packages/ui-system/leptos/preview/examples",
-                "packages/vink-patterns/leptos/src",
-            ][..],
-        ),
+        (WEB_ENTRY, WEB_SOURCE_ROOTS),
+        (PREVIEW_ENTRY, PREVIEW_SOURCE_ROOTS),
     ];
     for (entry, required) in expected {
         check_entry(root, entry, required, problems);
     }
+}
+
+pub(crate) fn validate_web_entry(root: &Path) -> Result<(), String> {
+    let mut problems = Vec::new();
+    check_entry(root, WEB_ENTRY, WEB_SOURCE_ROOTS, &mut problems);
+    if problems.is_empty() {
+        Ok(())
+    } else {
+        Err(problems.join("\n"))
+    }
+}
+
+/// Resolves the transitive local `@import` CSS closure starting at `entry`.
+/// Returns `Ok(None)` (fail-closed: disable CSS artifact reuse) if any file uses `@plugin`,
+/// `@config`, nested `@source`, an unclosed CSS comment, a non-local `@import`, or a symlink.
+pub(crate) fn resolve_css_imports(
+    root: &Path,
+    entry: &Path,
+) -> Result<Option<BTreeMap<PathBuf, String>>, String> {
+    let canonical_root =
+        std::fs::canonicalize(root).map_err(|e| format!("canonicalize {}: {e}", root.display()))?;
+    let mut collected = BTreeMap::new();
+    let mut queue = VecDeque::new();
+    let Ok(rel) = entry.strip_prefix(root) else {
+        return Ok(None);
+    };
+    let Some(entry_rel) = verify_local_regular_file(&canonical_root, &canonical_root.join(rel))?
+    else {
+        return Ok(None);
+    };
+    queue.push_back((entry_rel, true));
+
+    while let Some((rel, is_entry)) = queue.pop_front() {
+        if collected.contains_key(&rel) {
+            continue;
+        }
+        let full = canonical_root.join(&rel);
+        let bytes = std::fs::read(&full).map_err(|e| format!("read {}: {e}", full.display()))?;
+        collected.insert(rel.clone(), sha256_hex(&bytes));
+        let Ok(text) = std::str::from_utf8(&bytes) else {
+            return Ok(None);
+        };
+        let Some(stripped) = strip_css_comments(text) else {
+            return Ok(None);
+        };
+        let parent = rel.parent().unwrap_or_else(|| Path::new(""));
+        for line in stripped.lines().map(str::trim) {
+            // Cache the project's literal directive grammar. The real compiler handles
+            // anything broader. In particular a second same-line @source cannot extend
+            // the scan without entering the key.
+            let lower = line.to_ascii_lowercase();
+            if ["@reference", "@plugin", "@config", "@tailwind", "@\\"]
+                .iter()
+                .any(|s| lower.contains(s))
+            {
+                return Ok(None);
+            }
+            if lower.contains("@source") {
+                let source = line
+                    .strip_prefix("@source \"")
+                    .and_then(|s| s.strip_suffix("\";"));
+                if !is_entry
+                    || !source.is_some_and(|src| {
+                        normalize_rel(&parent.join(src))
+                            .is_some_and(|p| WEB_SOURCE_ROOTS.contains(&p.to_str().unwrap_or("")))
+                    })
+                {
+                    return Ok(None);
+                }
+            }
+            if lower.contains("source(")
+                && line != "@import \"tailwindcss/utilities.css\" layer(utilities) source(none);"
+            {
+                return Ok(None);
+            }
+            if !lower.contains("@import") {
+                continue;
+            }
+            let Some(rest) = line.strip_prefix("@import ") else {
+                return Ok(None);
+            };
+            let Some(quote) = rest.chars().next().filter(|c| matches!(c, '\'' | '"')) else {
+                return Ok(None);
+            };
+            let Some((target, suffix)) = rest[1..].split_once(quote) else {
+                return Ok(None);
+            };
+            if !suffix.ends_with(';')
+                || suffix[..suffix.len() - 1].contains([';', '@'])
+                || target.contains(['\\', '?', '#'])
+            {
+                return Ok(None);
+            }
+            if matches!(
+                target,
+                "tailwindcss/theme.css" | "tailwindcss/utilities.css"
+            ) {
+                // Bare package imports from a different directory may resolve another installation.
+                if !is_entry {
+                    return Ok(None);
+                }
+                continue;
+            }
+            if !(target.starts_with("./") || target.starts_with("../")) {
+                return Ok(None);
+            }
+            let Some(next_rel) = normalize_rel(&parent.join(target)) else {
+                return Ok(None);
+            };
+            let expected = canonical_root.join(&next_rel);
+            if canonical_root
+                .join(parent)
+                .join(target)
+                .canonicalize()
+                .ok()
+                .as_ref()
+                != Some(&expected)
+            {
+                return Ok(None);
+            }
+            let Some(verified_rel) =
+                verify_local_regular_file(&canonical_root, &canonical_root.join(&next_rel))?
+            else {
+                return Ok(None);
+            };
+            if !collected.contains_key(&verified_rel) {
+                queue.push_back((verified_rel, false));
+            }
+        }
+    }
+
+    Ok(Some(collected))
+}
+
+fn verify_local_regular_file(
+    canonical_root: &Path,
+    candidate: &Path,
+) -> Result<Option<PathBuf>, String> {
+    let Ok(rel) = candidate.strip_prefix(canonical_root) else {
+        return Ok(None);
+    };
+    let mut at = canonical_root.to_path_buf();
+    for component in rel.components() {
+        let Component::Normal(name) = component else {
+            return Ok(None);
+        };
+        at.push(name);
+        let Ok(meta) = std::fs::symlink_metadata(&at) else {
+            return Ok(None);
+        };
+        if meta.file_type().is_symlink() {
+            return Ok(None);
+        }
+    }
+    let Ok(meta) = std::fs::symlink_metadata(&at) else {
+        return Ok(None);
+    };
+    if !meta.is_file() {
+        return Ok(None);
+    }
+    let Ok(canon) = std::fs::canonicalize(&at) else {
+        return Ok(None);
+    };
+    let Ok(verified) = canon.strip_prefix(canonical_root) else {
+        return Ok(None);
+    };
+    Ok(Some(verified.to_path_buf()))
+}
+
+fn normalize_rel(path: &Path) -> Option<PathBuf> {
+    let mut out = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                if !out.pop() {
+                    return None;
+                }
+            }
+            Component::Normal(part) => out.push(part),
+            Component::RootDir | Component::Prefix(_) => return None,
+        }
+    }
+    Some(out)
+}
+
+fn strip_css_comments(input: &str) -> Option<String> {
+    let mut out = String::with_capacity(input.len());
+    let mut chars = input.char_indices().peekable();
+    let mut quote: Option<char> = None;
+    while let Some((idx, ch)) = chars.next() {
+        if let Some(q) = quote {
+            out.push(ch);
+            if ch == '\\' {
+                if let Some((_, escaped)) = chars.next() {
+                    out.push(escaped);
+                }
+            } else if ch == q {
+                quote = None;
+            }
+            continue;
+        }
+        if ch == '"' || ch == '\'' {
+            quote = Some(ch);
+            out.push(ch);
+            continue;
+        }
+        if ch == '/' && input[idx..].starts_with("/*") {
+            chars.next();
+            let mut closed = false;
+            while let Some((end_idx, end_ch)) = chars.next() {
+                if end_ch == '*' && input[end_idx..].starts_with("*/") {
+                    chars.next();
+                    closed = true;
+                    break;
+                }
+            }
+            if !closed {
+                return None;
+            }
+            out.push(' ');
+            continue;
+        }
+        out.push(ch);
+    }
+    Some(out)
 }
 
 fn check_entry(root: &Path, entry: &str, required: &[&str], problems: &mut Vec<String>) {
@@ -551,5 +781,81 @@ mod tests {
                 .any(|p| p.contains("outside the Rust UI allowlist")),
             "{problems:?}"
         );
+    }
+
+    #[test]
+    fn resolve_css_imports_collects_closure_and_fails_closed_on_dynamic_directives() {
+        let root = crate::root();
+        let closure = resolve_css_imports(&root, &root.join(WEB_ENTRY))
+            .unwrap()
+            .expect("real web.css closure must be resolvable");
+        for expected in [
+            "packages/ui-system/leptos/tailwind/web.css",
+            "packages/ui-system/leptos/style/tailwind-theme.css",
+            "packages/ui-system/leptos/style/tokens.css",
+            "packages/ui-system/leptos/style/vink-ui.css",
+            "packages/vink-patterns/leptos/patterns.css",
+            "apps/vink-web/style/vink.css",
+        ] {
+            assert!(
+                closure.contains_key(Path::new(expected)),
+                "missing {expected} in closure: {:?}",
+                closure.keys().collect::<Vec<_>>()
+            );
+        }
+
+        let dir = temp_dir("css-closure");
+        std::fs::create_dir_all(dir.join("sub")).unwrap();
+        let entry = dir.join("entry.css");
+        std::fs::write(
+            &entry,
+            "/* @import \"https://evil.example/a.css\"; */\n\
+             @import \"./sub/a.css\";\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("sub/a.css"),
+            "@import \"./b.css\";\n.a { color: red; }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("sub/b.css"),
+            ".b { content: \"/* not a comment\"; }\n",
+        )
+        .unwrap();
+        let ok = resolve_css_imports(&dir, &entry).unwrap().unwrap();
+        assert_eq!(ok.len(), 3);
+        assert!(ok.contains_key(Path::new("sub/b.css")));
+
+        for (label, bad_css) in [
+            ("same-line-source", ".x {} @source \"extra\";"),
+            ("reference", "@reference \"./external.css\";"),
+            ("plugin", "@plugin \"./x.js\";\n"),
+            ("config", "@config \"./tw.config.js\";\n"),
+            ("remote", "@import \"https://cdn.example/x.css\";\n"),
+            (
+                "unclosed",
+                "/* unclosed comment\n@import \"./sub/a.css\";\n",
+            ),
+        ] {
+            let bad = dir.join(format!("{label}.css"));
+            std::fs::write(&bad, bad_css).unwrap();
+            assert!(
+                resolve_css_imports(&dir, &bad).unwrap().is_none(),
+                "{label} must disable CSS reuse"
+            );
+        }
+
+        // Nested @source outside entry must fail closed.
+        std::fs::write(dir.join("sub/b.css"), "@source \"../other\";\n").unwrap();
+        assert!(resolve_css_imports(&dir, &entry).unwrap().is_none());
+
+        // Symlink import target must fail closed.
+        std::fs::write(dir.join("sub/b.css"), ".b {}\n").unwrap();
+        std::os::unix::fs::symlink(dir.join("sub/b.css"), dir.join("sub/link.css")).unwrap();
+        std::fs::write(dir.join("sub/a.css"), "@import \"./link.css\";\n").unwrap();
+        assert!(resolve_css_imports(&dir, &entry).unwrap().is_none());
+
+        std::fs::remove_dir_all(dir).unwrap();
     }
 }

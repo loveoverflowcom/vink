@@ -14,7 +14,7 @@ pub const HELP: &str = "Scoped workflows (PostgreSQL is attached, never started)
   verify preview [--plan]               Leptos preview browser regression
   doctor <scoped command above>         check only that command's prerequisites
 
-Rust owners: app, identity, store, xtask, web, notifications, ui, patterns, expressions, markdown, preview.
+Rust owners: app, identity, store, xtask, web, notifications, ui, patterns, expressions, markdown, work-view-policy, preview.
 PostgreSQL without a selector runs the full lane. --filter applies to owner tests only.
 Web scenarios: main (alias), editor-first-draft, editor-chrome, editor, editor-format,
   desk, appearance, reader, discussion, storage, discovery, restart, endorsement, review,

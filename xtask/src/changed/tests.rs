@@ -277,3 +277,45 @@ fn repository_inputs_are_recomputed_and_both_sides_of_moves_are_selected() {
             .contains("assume-unchanged")
     );
 }
+
+#[test]
+fn changed_plan_reports_web_build_dag_impact() {
+    let dir = std::env::temp_dir().join(format!("vink-changed-dag-{}", std::process::id()));
+    fs::create_dir(&dir).unwrap();
+    struct Cleanup<'a>(&'a Path);
+    impl Drop for Cleanup<'_> {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(self.0);
+        }
+    }
+    let _cleanup = Cleanup(&dir);
+    let g = |args: &[&str]| git(&dir, args).unwrap();
+    g(&["init", "--quiet"]);
+    g(&["config", "user.name", "fixture"]);
+    g(&["config", "user.email", "fixture@invalid.example"]);
+    for rel in [
+        "apps/vink-web/style/vink.css",
+        "apps/vink-web/editor/src/editor.ts",
+        "apps/vink-web/src/lib.rs",
+    ] {
+        let p = dir.join(rel);
+        fs::create_dir_all(p.parent().unwrap()).unwrap();
+        fs::write(&p, "base\n").unwrap();
+    }
+    g(&["add", "."]);
+    g(&["-c", "commit.gpgsign=false", "commit", "-qm", "base"]);
+
+    fs::write(dir.join("apps/vink-web/style/vink.css"), "css\n").unwrap();
+    let css_plan = describe(&dir, &["--base", "HEAD", "--worktree", "--plan"]).unwrap();
+    assert!(
+        css_plan.contains("web build DAG impact: direct=[\"tailwind-css\"]; closure=[\"tailwind-css\", \"spa-index\"]"),
+        "{css_plan}"
+    );
+
+    fs::write(dir.join("apps/vink-web/src/lib.rs"), "rust\n").unwrap();
+    let combined_plan = describe(&dir, &["--base", "HEAD", "--worktree", "--plan"]).unwrap();
+    assert!(
+        combined_plan.contains("rust-wasm") && combined_plan.contains("wasm-bindgen"),
+        "{combined_plan}"
+    );
+}

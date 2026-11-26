@@ -11,6 +11,7 @@ const OWNER_DIRS: &[(&str, &str)] = &[
     ("packages/ui-system/leptos/preview/", "preview"),
     ("packages/ui-system/leptos/", "ui"),
     ("packages/vink-patterns/leptos/", "patterns"),
+    ("packages/work-view-policy/", "work-view-policy"),
     ("packages/markdown-text/", "markdown"),
     ("packages/expressions/", "expressions"),
     ("packages/store-postgres/", "store"),
@@ -345,7 +346,7 @@ impl Selection {
                     self.add("verify unit app", "dependency: App Gateway and worker");
                     return "notification service and its inter-process consumers";
                 }
-                "web" | "patterns" | "ui" | "markdown" => self.web(),
+                "web" | "patterns" | "ui" | "markdown" | "work-view-policy" => self.web(),
                 _ => {}
             }
         }
@@ -476,13 +477,33 @@ fn inspect(
         return Ok((Selection::default(), out, dirty));
     }
     let mut selected = Selection::default();
+    let mut changed_paths = Vec::new();
     for change in inputs {
         for path in change.paths {
+            changed_paths.push(path);
             let reason = selected.path(path);
             writeln!(out, "{} {} {path:?}: {reason}", change.layer, change.status).unwrap();
         }
         if matches!(change.status, "T" | "U") {
             selected.fallback("fallback: file type changed or index is unmerged");
+        }
+    }
+    let web_impact = crate::web_dag::affected_artifacts(&changed_paths, true);
+    if !web_impact.is_empty() {
+        let direct: Vec<_> = web_impact.direct.keys().map(|id| id.name()).collect();
+        let closure: Vec<_> = web_impact.closure.iter().map(|id| id.name()).collect();
+        writeln!(
+            out,
+            "web build DAG impact: direct={direct:?}; closure={closure:?}"
+        )
+        .unwrap();
+        if !web_impact.unmapped_web_paths.is_empty() {
+            writeln!(
+                out,
+                "web build DAG unmapped paths: {:?}",
+                web_impact.unmapped_web_paths
+            )
+            .unwrap();
         }
     }
     Ok((selected, out, dirty))
