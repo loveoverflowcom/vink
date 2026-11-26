@@ -59,7 +59,9 @@ fixture, simulated browser composition and lifecycle-only worker leave explicit 
 
 ## Improve tooling only for a concrete repeated need
 
-Inspect existing `xtask` and browser helpers before creating anything. Prefer a focused
+When a route, browser module, package, xtask module or input kind changes ownership, update
+the diff planner registry in `xtask/src/changed/rules.rs` with the feature map; its tests name
+the missing entry. Inspect existing `xtask` and browser helpers before creating anything. Prefer a focused
 extension when repeatable automation is necessary and authorized; documentation can often
 resolve a discovery problem. Do not add a new runner or parallel CLI merely to validate skills.
 

@@ -31,23 +31,46 @@ pub enum UnitOwner {
     Expressions,
     Markdown,
     Preview,
+    WorkViews,
 }
 impl UnitOwner {
-    pub fn parse(owner: &str) -> Result<Self, String> {
-        match owner {
-            "app" => Ok(Self::App),
-            "identity" => Ok(Self::Identity),
-            "store" => Ok(Self::Store),
-            "xtask" => Ok(Self::Xtask),
-            "web" => Ok(Self::Web),
-            "notifications" => Ok(Self::Notifications),
-            "ui" => Ok(Self::Ui),
-            "patterns" => Ok(Self::Patterns),
-            "expressions" => Ok(Self::Expressions),
-            "markdown" => Ok(Self::Markdown),
-            "preview" => Ok(Self::Preview),
-            _ => Err(format!("unknown Rust owner `{owner}`")),
+    pub const ALL: [Self; 12] = [
+        Self::App,
+        Self::Identity,
+        Self::Store,
+        Self::Xtask,
+        Self::Web,
+        Self::Notifications,
+        Self::Ui,
+        Self::Patterns,
+        Self::Expressions,
+        Self::Markdown,
+        Self::Preview,
+        Self::WorkViews,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::App => "app",
+            Self::Identity => "identity",
+            Self::Store => "store",
+            Self::Xtask => "xtask",
+            Self::Web => "web",
+            Self::Notifications => "notifications",
+            Self::Ui => "ui",
+            Self::Patterns => "patterns",
+            Self::Expressions => "expressions",
+            Self::Markdown => "markdown",
+            Self::Preview => "preview",
+            Self::WorkViews => "work-views",
         }
+    }
+
+    pub fn parse(owner: &str) -> Result<Self, String> {
+        Self::ALL
+            .into_iter()
+            .find(|o| o.name() == owner)
+            .ok_or_else(|| format!("unknown Rust owner `{owner}`"))
     }
 
     pub fn test_targets(self) -> &'static [&'static str] {
@@ -71,6 +94,7 @@ impl UnitOwner {
             Self::Expressions => "vink-expressions",
             Self::Markdown => "vink-markdown-text",
             Self::Preview => "vink-ui-preview",
+            Self::WorkViews => "vink-work-view-policy",
         }
     }
 }
@@ -417,6 +441,8 @@ pub struct Request {
     pub scenarios: Vec<Scenario>,
     pub capture: Capture,
     pub filter: Option<String>,
+    /// `verify unit OWNER --test NAME`: one integration test target instead of lib/bins.
+    pub test: Option<String>,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Plan {
@@ -547,9 +573,23 @@ impl Plan {
                 target.args(owner).join(" "),
             )),
             Target::Unit(owner) => {
-                let args = crate::verify::unit_args(owner, self.request.filter.as_deref());
+                let args = crate::verify::unit_args(
+                    owner,
+                    self.request.test.as_deref(),
+                    self.request.filter.as_deref(),
+                );
+                let (coverage, excluded) = match &self.request.test {
+                    Some(name) => (
+                        format!("integration test target `{name}`"),
+                        "lib/bins unit tests, other integration targets",
+                    ),
+                    None => (
+                        "selected unit/contract tests".to_string(),
+                        "integration targets",
+                    ),
+                };
                 Some(format!(
-                    "coverage: selected unit/contract tests\nselected: cargo {args} --list; cargo {args} --list --ignored; cargo {args}\ndependencies: compile/link {} test targets; filter selects runnable tests, Cargo can still compile/link the requested targets\nnot selected: other workspace owners as roots, integration targets, doctests, database, browser\n",
+                    "coverage: {coverage}\nselected: cargo {args} --list; cargo {args} --list --ignored; cargo {args}\ndependencies: compile/link {} test targets; filter selects runnable tests, Cargo can still compile/link the requested targets\nnot selected: other workspace owners as roots, {excluded}, doctests, database, browser\n",
                     owner.package(),
                     args = crate::verify::display_args(&args),
                 ))
@@ -638,6 +678,7 @@ mod tests {
             scenarios: vec![],
             capture: Capture::Full,
             filter: None,
+            test: None,
         }
     }
     #[test]

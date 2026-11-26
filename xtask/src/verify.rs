@@ -242,12 +242,18 @@ fn test_args<'a>(owner: UnitOwner, targets: &[&'a str], filter: Option<&'a str>)
     args
 }
 
-pub fn unit_args(owner: UnitOwner, filter: Option<&str>) -> Vec<&str> {
-    let targets: &[&str] = match owner {
-        UnitOwner::Web => &["--lib", "--features", "ssr"],
-        _ => owner.test_targets(),
+/// lib/bins unit tests, or exactly one integration target with `test`.
+pub fn unit_args<'a>(
+    owner: UnitOwner,
+    test: Option<&'a str>,
+    filter: Option<&'a str>,
+) -> Vec<&'a str> {
+    let targets: Vec<&str> = match (test, owner) {
+        (Some(name), _) => vec!["--test", name],
+        (None, UnitOwner::Web) => vec!["--lib", "--features", "ssr"],
+        (None, _) => owner.test_targets().to_vec(),
     };
-    test_args(owner, targets, filter)
+    test_args(owner, &targets, filter)
 }
 
 fn postgres_args(owner: UnitOwner, filter: Option<&str>) -> Vec<&str> {
@@ -315,8 +321,8 @@ fn require_runnable(args: &[&str]) -> Result<usize, String> {
     Ok(runnable)
 }
 
-pub fn unit(owner: UnitOwner, filter: Option<&str>) -> Result<(), String> {
-    let args = unit_args(owner, filter);
+pub fn unit(owner: UnitOwner, test: Option<&str>, filter: Option<&str>) -> Result<(), String> {
+    let args = unit_args(owner, test, filter);
     require_runnable(&args)?;
     let mut command = cargo(&root());
     command.args(&args);

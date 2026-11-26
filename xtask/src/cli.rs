@@ -8,22 +8,26 @@ pub const HELP: &str = "Scoped workflows (PostgreSQL is attached, never started)
   dev preview [--plan]                 Leptos UI preview, no business services
   verify static [docs|tokens|assets|visual|perf|fmt|repo|all] [--plan]
   verify check OWNER [--target lib|bins|all-targets|api|ssr|hydrate|csr] [--plan]
-  verify unit OWNER [--filter NAME] [--plan]
+  verify unit OWNER [--test TARGET] [--filter NAME] [--plan]
   verify postgres [store|app|identity|notifications|lifecycle] [--filter NAME] [--plan]
   verify web [--scenario NAME]... [--capture full|checks] [--release] [--plan]
   verify preview [--plan]               Leptos preview browser regression
   doctor <scoped command above>         check only that command's prerequisites
 
-Rust owners: app, identity, store, xtask, web, notifications, ui, patterns, expressions, markdown, preview.
+Rust owners: app, identity, store, xtask, web, notifications, ui, patterns, expressions, markdown,
+  preview, work-views. verify unit --test runs one integration target (not postgres).
 PostgreSQL without a selector runs the full lane. --filter applies to owner tests only.
 Web scenarios: main (alias), editor-first-draft, editor-chrome, editor, editor-format,
   desk, appearance, reader, discussion, storage, discovery, restart, endorsement, review,
   auth, password, account-deletion, author-search, publication, notifications,\n  standalone (CSR + API), perf-baseline, return-position.
 No selector runs full Web regression, excluding standalone and the two performance opt-ins.
 --capture checks requires explicit scenarios; it retains functional/a11y/DOM checks.
---plan performs no selected task I/O. Read-only Git advisory (requires --plan):
-  verify changed --base REV (--head REV | --worktree) --plan
-  Append --from-diff BASE_SHA HEAD_SHA committed|worktree to execute one selected verify command.
+--plan performs no selected task I/O.
+Diff-aware selection (docs/development/scoped-workflows.md#lập-kế-hoạch-theo-diff):
+  verify changed [--base REV] [--head REV | --worktree] [--only CHECK]... [--expect PLAN_ID] [--plan]
+  Default --base origin/develop (never fetched) and worktree scope: merge-base..HEAD, staged,
+  unstaged and non-ignored untracked files. --plan reads Git and Cargo manifests only; without it
+  the same plan runs, stopping when inputs drift. Exit 0 only when every selected check passed.
 Auth defaults to none, independent of .env. fixture requires explicit VINK_DEV_PRINCIPAL.
 identity uses native credentials and local mail outbox; no fixture fallback or external mail.
 Dev defaults to prepared databases: --migrate explicitly migrates selected owners;
@@ -68,6 +72,7 @@ pub fn parse(args: &[&str]) -> Result<Option<Invocation>, String> {
         scenarios: vec![],
         capture: Capture::Full,
         filter: None,
+        test: None,
     };
     let mut i = 2;
     match args.as_slice() {
@@ -181,6 +186,24 @@ pub fn parse(args: &[&str]) -> Result<Option<Invocation>, String> {
                 let target = args.get(i).ok_or("--target needs a compile target")?;
                 r.target = Target::Check(owner, CheckTarget::parse(owner, target)?);
             }
+            "--test" if matches!(r.target, Target::Unit(_)) => {
+                i += 1;
+                let name = args
+                    .get(i)
+                    .filter(|s| {
+                        !s.is_empty()
+                            && !s.starts_with('-')
+                            && s.bytes()
+                                .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+                    })
+                    .ok_or("--test needs an integration test target name")?;
+                if *name == "postgres" {
+                    return Err(
+                        "the `postgres` target needs a database: use verify postgres OWNER".into(),
+                    );
+                }
+                r.test = Some((*name).into());
+            }
             "--filter"
                 if matches!(
                     r.target,
@@ -270,6 +293,12 @@ mod tests {
             vec!["dev", "api", "--auth", "fixture", "--auth", "none"],
             vec!["build", "preview", "--release"],
             vec!["dev", "preview", "--migrate"],
+            vec!["verify", "unit", "app", "--test", "postgres"],
+            vec!["verify", "unit", "app", "--test", ""],
+            vec!["verify", "unit", "app", "--test", "--filter"],
+            vec!["verify", "unit", "app", "--test", "a", "--test", "b"],
+            vec!["verify", "check", "app", "--test", "ssr_boundary"],
+            vec!["verify", "postgres", "app", "--test", "ssr_boundary"],
         ] {
             assert!(parse(&args).is_err(), "{args:?}");
         }
@@ -313,6 +342,26 @@ mod tests {
                 &[Tool::Rust],
                 &[],
                 "-p vink-expressions --lib -- candidate",
+            ),
+            (
+                &[
+                    "verify",
+                    "unit",
+                    "app",
+                    "--test",
+                    "ssr_boundary",
+                    "--filter",
+                    "reader",
+                ],
+                &[Tool::Rust],
+                &[],
+                "-p vink-app --test ssr_boundary -- reader",
+            ),
+            (
+                &["verify", "unit", "work-views"],
+                &[Tool::Rust],
+                &[],
+                "-p vink-work-view-policy --lib --",
             ),
             (
                 &["verify", "postgres", "store", "--filter", "fresh_database"],

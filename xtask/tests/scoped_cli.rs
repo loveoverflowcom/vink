@@ -117,3 +117,47 @@ fn changed_plan_and_guard_reject_redirected_git_inputs() {
         }
     }
 }
+
+#[test]
+fn changed_reports_no_work_and_rejects_invalid_selection_before_execution() {
+    let bin = env!("CARGO_BIN_EXE_xtask");
+    let run = |args: &[&str]| {
+        let out = Command::new(bin).args(args).output().unwrap();
+        (
+            out.status.code(),
+            String::from_utf8_lossy(&out.stdout).into_owned(),
+            String::from_utf8_lossy(&out.stderr).into_owned(),
+        )
+    };
+    let empty = ["verify", "changed", "--base", "HEAD", "--head", "HEAD"];
+    let (code, stdout, _) = run(&[&empty[..], &["--plan"]].concat());
+    assert_eq!(code, Some(0));
+    assert!(stdout.contains("NO_WORK") && stdout.contains("not a PASS"));
+    let (code, stdout, _) = run(&empty);
+    assert_eq!(code, Some(3), "NO_WORK must not exit like a PASS");
+    assert!(stdout.contains("overall: NO_WORK") && !stdout.contains("overall: PASS"));
+
+    let (code, _, stderr) = run(&["verify", "changed", "--base", "no-such-ref", "--plan"]);
+    assert_eq!(code, Some(1));
+    assert!(stderr.contains("unknown revision `no-such-ref`"));
+    let (code, _, _) = run(&["verify", "changed", "--head", "HEAD", "--worktree"]);
+    assert_eq!(code, Some(2));
+
+    // A real committed range: these all fail before any selected check could start.
+    let parent = Command::new("git")
+        .args(["rev-parse", "--verify", "--quiet", "HEAD~1"])
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .output()
+        .unwrap();
+    if !parent.status.success() {
+        eprintln!("shallow checkout without HEAD~1: committed-range assertions NOT_RUN");
+        return;
+    }
+    let last = ["verify", "changed", "--base", "HEAD~1", "--head", "HEAD"];
+    let (code, stdout, stderr) = run(&[&last[..], &["--only", "verify unit apx"]].concat());
+    assert_eq!(code, Some(2), "{stderr}");
+    assert!(stderr.contains("unknown check") && !stdout.contains("==> ["));
+    let (code, stdout, stderr) = run(&[&last[..], &["--expect", "0000000000000000"]].concat());
+    assert_eq!(code, Some(1));
+    assert!(stderr.contains("plan changed since it was reviewed") && !stdout.contains("==> ["));
+}

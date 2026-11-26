@@ -30,7 +30,13 @@ pub fn execute(plan: &Plan, env: &Env) -> Result<(), String> {
     }
     doctor::scoped(plan, env)?;
     match plan.request.target {
-        Target::Unit(owner) => return verify::unit(owner, plan.request.filter.as_deref()),
+        Target::Unit(owner) => {
+            return verify::unit(
+                owner,
+                plan.request.test.as_deref(),
+                plan.request.filter.as_deref(),
+            );
+        }
         Target::Static(scope) => return verify::static_checks(scope),
         Target::Check(owner, target) => {
             let mut command = process::cargo(&root());
