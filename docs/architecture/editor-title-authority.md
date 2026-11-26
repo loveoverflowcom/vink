@@ -66,7 +66,7 @@ trước), không vào source, metadata hay vượt `MissingTitle`.
 | `drafts.rs`, `author_works.rs`, discovery search | Đọc cột `title`/khóa sinh sẵn — cùng phiên bản với source. | PG drafts/author works/discovery hiện có. |
 | `http/contract.rs`, `contracts/http/v1/` | `title` tùy chọn theo format; response `title` là title hiệu lực. | Provider/consumer fixture tests. |
 | Web `pages/desk.rs` | Bàn viết dùng title draft mới nhất. Outline lấy H1 đầu từ buffer hiện tại. | CodeMirror corpus và Web main. |
-| Web `pages/mod.rs`, `pages/moderation.rs` | Reader và màn ca/phản đối lấy title từ snapshot. H1 đầu tiên của Markdown chiếm đúng vị trí nội dung, kể cả Setext hoặc H1 trong trích dẫn. | Corpus và Web review cùng PostgreSQL scratch. |
+| Web `pages/mod.rs` | Reader lấy title từ snapshot đã công khai. Nhân sự đọc snapshot qua API được cấp quyền. H1 đầu tiên của Markdown chiếm đúng vị trí nội dung, kể cả Setext hoặc H1 trong trích dẫn. | Corpus và Web review cùng PostgreSQL scratch. |
 
 ## Lịch sử
 

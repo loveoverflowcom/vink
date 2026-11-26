@@ -385,7 +385,7 @@ Chưa chọn giữa Kotlin repository + StateFlow + Ktor (A của issue) và Rus
 
 ## Chưa làm / rủi ro còn lại
 
-- Đã nối `invalidate_publication` / `invalidate_withdrawn` từ tác giả (`pages/publication.rs`) và áp dụng thu hồi trên đường đọc `/reader` (`public_reads::Coordinator::finish` khi `api::reader_resource` nhận `Control`/`404` cho `ReaderLoaded` trong `pages/mod.rs`). Chưa có caller invalidation từ `pages/moderation.rs` hoặc caller `clear()` từ `session.rs`/`account`. Rủi ro còn lại là **tab khác hoặc thiết bị khác** chưa nhận push/broadcast liên tab ngay lúc rút bài (vẫn chờ revalidate hoặc lần mở tiếp theo).
+- Đã nối `invalidate_publication` / `invalidate_withdrawn` từ tác giả (`pages/publication.rs`) và áp dụng thu hồi trên đường đọc `/reader` (`public_reads::Coordinator::finish` khi `api::reader_resource` nhận `Control`/`404` cho `ReaderLoaded` trong `pages/mod.rs`). Product đã gỡ UI staff (#555). Chưa có caller `clear()` từ `session.rs`/`account`. Rủi ro còn lại là **tab khác hoặc thiết bị khác** chưa nhận push/broadcast liên tab ngay lúc rút bài (vẫn chờ revalidate hoặc lần mở tiếp theo).
 - Giá trị giả định `max_display_age = 15 phút` (và chính sách hiển thị stale khi lỗi tạm / offline lâu hơn) vẫn là mục **`OPEN`** chờ chủ sản phẩm chốt; `READ-01-CHOICE-*` và `READ-02-CHOICE-*` vẫn là `DESIGN_PROPOSED`.
 - IndexedDB đã có adapter và kiểm thử dưới gate **tắt** ([#203](#indexeddb-203)); offline
   full-text qua restart/App Shell/Service Worker chưa bật, thuộc #204. SQLite, Top 100 runtime
@@ -438,7 +438,7 @@ giữ nguyên SHA và phạm vi lần chạy, không bao phủ tự động các
 | Public discussion (`ViewState`) | SSR public; lifecycle/manual refresh head; roots/replies continuation; refresh bỏ tail | `ReadOwner<Scope>`/`PageChain`, public epoch và mutation guard; stable composers, public DTO | Không cache discussion |
 | Own discussion (`OwnState`) | Browser only; head rồi lookup bounded; cursor riêng | Session scope + ticket; page accept trước cursor; lookup thắng listing; 401/403/404 bỏ private facts | Không authority từ public cache |
 | Desk list (`DeskIndex`) | Browser only, scoped server query; reconnect head giữ last success, append/đổi phần có giới hạn | `ReadOwner` scope session/query/sort/limit, `DraftPages` dùng `PageChain`; WakePolicy; route disposal; editor độc lập | [#201](desk-pagination.md) sở hữu paging; sau #221/#222 Web đọc `/author/works`, bỏ resume/Recent/1; [owner hiện hành](desk-author-feedback.md) |
-| Moderation (`pages/moderation.rs`) | Hai `QueuePanel` work/appeals đã dùng ReadOwner/PageChain: head/append/restart, refresh supersede append và lifecycle wake | Session/dispose fence, authority fingerprint đổi xóa chain; 401/403/404 xóa private facts; detail/command có guard riêng | [#205/#223](moderation-runtime.md#10-hai-queue-hữu-hạn-205) đã triển khai; case detail/author history không được suy là đã paging |
+| Moderation (consumer lịch sử #205, gỡ trong #555) | Hai `QueuePanel` work/appeals đã dùng ReadOwner/PageChain: head/append/restart, refresh supersede append và lifecycle wake | Session/dispose fence, authority fingerprint đổi xóa chain; 401/403/404 xóa private facts; detail/command có guard riêng | [#205/#223](moderation-runtime.md#10-hai-queue-hữu-hạn-205) đã triển khai; case detail/author history không được suy là đã paging |
 
 ### Seam cho #201 / #205
 

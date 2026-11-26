@@ -26,7 +26,7 @@ cuối là vị trí regression tương ứng trong [Web E2E](../../apps/vink-we
 | `/toi`, `/toi/chinh-ho-so`, `/toi/dia-chi`, tài khoản, Đã lưu và dialog địa chỉ ([me.rs](../../apps/vink-web/src/pages/me.rs), [profile.rs](../../apps/vink-web/src/pages/profile.rs), [account.rs](../../apps/vink-web/src/account.rs), [saved_work.rs](../../apps/vink-web/src/pages/saved_work.rs)) | Phiên, lưu hồ sơ/ảnh và lưu tác phẩm giữ recovery của owner. “Kiểm tra địa chỉ” chỉ hiện khi trạng thái địa chỉ cần đối soát. | `auth`, `password`, `author-profile-smoke.mjs` |
 | `/:author`, danh sách người theo dõi/đang theo dõi ([handle.rs](../../apps/vink-web/src/pages/handle.rs), [follow.rs](../../apps/vink-web/src/pages/follow.rs)) | Giữ retry khi lỗi hồ sơ/quan hệ/đọc tiếp và đối soát nút Theo dõi. Trạng thái rỗng/riêng tư và paging giữ ý nghĩa hiện có. | `author-search`, `author-follow-smoke.mjs` |
 | Menu điều hướng, giao diện, fallback 404 ([shell.rs](../../apps/vink-web/src/shell.rs), [lib.rs](../../apps/vink-web/src/lib.rs)) | Menu chọn đích/giao diện, đóng overlay và link quay về là điều hướng hoặc thiết lập người dùng. Audit cả nhãn icon và action slot. | `appearance`, `reader` |
-| `/kiem-duyet*`, `/ban-viet/:id/kiem-duyet` và phần review tác giả | [#555](https://github.com/loveoverflowcom/vink/issues/555) sở hữu việc bỏ refresh thường trực và tách bề mặt staff. | Theo dõi tại #555 |
+| `/kiem-duyet*`, `/ban-viet/:id/kiem-duyet` và phần review tác giả | Chi tiết tác giả đọc khi mở và sau lệnh, retry GET khi lỗi. Các route nhân sự đã gỡ. | [Owner](moderation-runtime.md#7-web-kiểm-duyệt) |
 
 ## Native mobile về sau
 

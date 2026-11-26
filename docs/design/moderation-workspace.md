@@ -5,6 +5,13 @@ Nguồn luật và API: [moderation-runtime](../development/moderation-runtime.m
 [publication-moderation](../architecture/publication-moderation.md). Bản layout này ghi phương án
 đã mô tả trong phiên triển khai sau #170; không phải signoff sản phẩm mới.
 
+## Phạm vi hiện hành
+
+Từ [#555](https://github.com/loveoverflowcom/vink/issues/555), Product Web chỉ có
+[chi tiết của tác giả trong Bàn viết](redesign-r4/desk-moderation.md) và Reader thay thế.
+Các màn staff mô tả bên dưới là thiết kế lịch sử của #170. Nhân sự xử lý qua
+[API kiểm duyệt](../development/moderation-runtime.md#7-web-kiểm-duyệt). Studio Admin được hoãn.
+
 ## Người dùng và tác vụ
 
 - Người duyệt mở hàng ca đúng phạm vi, đọc snapshot đã gửi, nhận ca rồi quyết định/ghi chú/chuyển admin.

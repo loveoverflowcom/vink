@@ -274,7 +274,7 @@ async function retiredRoutes(page, base, role, check) {
       const direct = await page.eval(`fetch(${JSON.stringify(path)}).then(async r => ({ status: r.status, html: await r.text() }))`);
       check(direct.status === 404 && !/id="(?:moderation-(?:home|case|appeal)|case-queue|author-profile-heading)"/.test(direct.html),
         `${role}: direct ${path} returns 404 without staff or profile content`);
-      await page.eval(`const a = document.createElement('a'); a.href = ${JSON.stringify(path)}; document.body.append(a); a.click(); a.remove()`);
+      await page.eval(`(() => { const a = document.createElement('a'); a.href = ${JSON.stringify(path)}; document.body.append(a); a.click(); a.remove(); })()`);
       await page.waitFor(`location.pathname === ${JSON.stringify(path)} && document.querySelector('${panel}')`, role + ' sees product NotFound');
       await page.click(panel + ' a');
       await page.waitFor(`location.pathname === '/' && ${HYDRATED}`, 'return from retired URL');
@@ -450,6 +450,7 @@ async function rest(env) {
   await author.click('#desk-review-content summary');
   check(await author.eval(`document.querySelector('#desk-review-content details').innerText.includes('Đang công khai.')`), 'history identifies the public revision');
   check(await author.eval("!document.querySelector('#desk-review-retry,#desk-review-reload')"), 'healthy review has no permanent reload');
+  await author.capture('desk-review-eligible');
   const appealWire = new Wire(author);
   await appealWire.enable();
   try {
@@ -458,6 +459,7 @@ async function rest(env) {
     appealWire.failBefore = { method: 'GET', suffix: '/publication/review' };
     await author.click('[id^="file-appeal-"]');
     await author.waitFor("document.querySelector('#desk-review-retry')", 'a failed read offers contextual retry');
+    await author.capture('desk-review-read-error');
     await author.click('#desk-review-retry');
     await author.waitFor("document.querySelector('#desk-review-content')?.textContent.includes('Đã ghi nhận, chờ quản trị viên')", 'a fresh read recovers the committed appeal');
     check(appealWire.dropped === 1 && appealWire.count('POST', '/appeals') === 1 && appealWire.count('GET', '/publication/review') === 2,

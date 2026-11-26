@@ -208,7 +208,7 @@ pub(super) fn ExactDeskDecision(session: Session) -> impl IntoView {
         <section class="vk-notif-page vk-notif-decision" aria-label="Kết quả kiểm duyệt">
             <a id="desk-decision-back" class="vk-ui-link vk-notif-back" href="/ban-viet">"← Kết quả kiểm duyệt"</a>
             <For each=move || session.profile_scope.get().zip(target.with(exact_target)) key=Clone::clone
-                children=move |(_, target)| view! { <ReviewDetails target session /> } />
+                children=move |(scope, target)| view! { <ReviewDetails target session scope /> } />
             <Show when=move || session.profile_scope.with(Option::is_none)>
                 {move || match session.standing.get() {
                     crate::session::Standing::Unknown | crate::session::Standing::Active(_) => view! {
@@ -287,8 +287,8 @@ pub(super) fn DeskReview(session: Session) -> impl IntoView {
             <Show when=move || target.with(|target| matches!(target, Some(Err(()))))>
                 <p role="alert">"Đường dẫn kiểm duyệt chưa hợp lệ."</p>
             </Show>
-            <For each=move || target.get().and_then(Result::ok) key=Clone::clone
-                children=move |target| view! { <ReviewDetails target session /> } />
+            <For each=move || session.profile_scope.get().zip(target.get().and_then(Result::ok)) key=Clone::clone
+                children=move |(scope, target)| view! { <ReviewDetails target session scope /> } />
         </Dialog>
     }
 }
@@ -356,9 +356,11 @@ struct AppealActions {
 }
 
 #[component]
-fn ReviewDetails(target: ReviewTarget, session: Session) -> impl IntoView {
+fn ReviewDetails(target: ReviewTarget, session: Session, scope: String) -> impl IntoView {
     let target = StoredValue::new(target);
-    let scope = StoredValue::new(session.scope.get_untracked());
+    let scope = StoredValue::new(scope);
+    let feedback = RwSignal::new("");
+    let unconfirmed = RwSignal::new(None::<(String, i64)>);
     let generation = RwSignal::new(0u64);
     let data = LocalResource::new(move || {
         let work = target.with_value(|target| target.work_id.clone());
@@ -367,21 +369,35 @@ fn ReviewDetails(target: ReviewTarget, session: Session) -> impl IntoView {
         async move {
             let still_current = || {
                 generation.try_get_untracked() == Some(attempt)
-                    && session.scope.try_get_untracked() == Some(expected_scope.clone())
+                    && session.profile_scope.try_get_untracked().flatten().as_ref()
+                        == Some(&expected_scope)
             };
             let result = fetch_review(&work, still_current).await;
+            if still_current()
+                && let Ok(review) = &result
+                && let Some((revision, version)) = unconfirmed.get_untracked()
+            {
+                let recorded = review.appeals.iter().any(|appeal| {
+                    appeal.revision_id == revision && appeal.decision_version == version
+                });
+                feedback.set(if recorded {
+                    "Vink đã ghi nhận yêu cầu xem xét."
+                } else {
+                    "Chưa thấy hồ sơ phản đối cho quyết định này."
+                });
+                unconfirmed.set(None);
+            }
             (attempt, result)
         }
     });
-    let feedback = RwSignal::new("");
     let busy = RwSignal::new(false);
     let denied = RwSignal::new(None::<ApiError>);
     let receipts = RwSignal::new(Vec::<Appeal>::new());
     let submit = Callback::new(move |(revision, version): (String, i64)| {
         if busy.get_untracked()
             || denied.with_untracked(Option::is_some)
-            || !matches!(data.get_untracked(), Some((attempt, Ok(_))) if attempt == generation.get_untracked())
-            || session.scope.get_untracked() != scope.get_value()
+            || !data.with_untracked(|read| matches!(read, Some((attempt, Ok(_))) if *attempt == generation.get_untracked()))
+            || session.profile_scope.get_untracked().as_ref() != Some(&scope.get_value())
         {
             return;
         }
@@ -407,7 +423,7 @@ fn ReviewDetails(target: ReviewTarget, session: Session) -> impl IntoView {
                 serde_json::from_value::<Filed>(body)
                     .map_err(|_| ApiError::Unexpected { status: 200 })
             });
-            if session.scope.try_get_untracked() != Some(expected_scope)
+            if session.profile_scope.try_get_untracked().flatten() != Some(expected_scope)
                 || generation.try_get_untracked() != Some(generation_at_start)
             {
                 return;
@@ -456,7 +472,10 @@ fn ReviewDetails(target: ReviewTarget, session: Session) -> impl IntoView {
                 Err(ApiError::VersionConflict { .. } | ApiError::Unexpected { status: 409 }) => {
                     feedback.set("Quyết định đã thay đổi.")
                 }
-                _ => feedback.set("Chưa xác nhận được kết quả gửi yêu cầu."),
+                _ => {
+                    unconfirmed.set(Some((revision, version)));
+                    feedback.set("Chưa xác nhận được kết quả gửi yêu cầu.");
+                }
             }
             generation.update(|n| *n += 1);
             busy.set(false);
