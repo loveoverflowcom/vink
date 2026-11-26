@@ -158,11 +158,52 @@ class Packages(unittest.TestCase):
             review = root / "review.json"
             review.write_bytes(art.encode(evidence))
             self.assertEqual(release.schema_action(A, B, review, root), "expand")
+            for rev in (A, B):
+                for relative in ("services/postgres/compose.yaml", "infra/production/auth-resend.compose.yaml"):
+                    file = root / rev / relative
+                    file.parent.mkdir(parents=True, exist_ok=True)
+                    file.write_text("existing topology")
+            (root / A / "infra/production/compose.yaml").write_text("services:\n")
+            additive = evidence | {"changes_existing_data": False}
+            review.write_bytes(art.encode(additive))
+            with self.assertRaisesRegex(ValueError, "unclassified topology"):
+                release.schema_action(A, B, review, root)
+            review.write_bytes(art.encode(additive | {"bootstrap_service": "notifications"}))
+            self.assertEqual(release.schema_action(A, B, review, root), "expand-additive")
+            review.write_bytes(art.encode(evidence | {"changes_existing_data": False,
+                                                    "vink-app": {"old_on_result": "FAIL", "new_on_result": "PASS",
+                                                                 "rehearsal": "scratch"}}))
+            with self.assertRaisesRegex(ValueError, "both binaries"):
+                release.schema_action(A, B, review, root)
             review.write_bytes(art.encode(evidence | {"from": B, "to": A, "action": "keep"}))
             self.assertEqual(release.schema_action(B, A, review, root), "keep")
+            for owner in ("vink-app", "vink-identity", "vink-notifications"):
+                (root / B / "services" / owner / "migrations/2_add.sql").unlink()
+            review.write_bytes(art.encode(additive | {"bootstrap_service": "notifications"}))
+            with self.assertRaisesRegex(ValueError, "requires a forward migration"):
+                release.schema_action(A, B, review, root)
+            review.write_bytes(art.encode(evidence | {"from": B, "to": A, "action": "keep"}))
             (path / "1_initial.sql").write_text("drift")
             with self.assertRaisesRegex(ValueError, "divergent"):
                 release.schema_action(B, A, review, root)
+
+    def test_timer_observation_reports_age_manifest_and_missing_owner(self):
+        with TemporaryDirectory() as tmp, patch.object(release.maintenance, "BACKUPS", Path(tmp)):
+            owners = {"vink", "vink_identity"}
+            self.assertTrue(release.maintenance.daily_backup(owners)["warnings"])
+            stamp = "20260101T000000Z"
+            backup = Path(tmp) / stamp
+            backup.mkdir()
+            manifest = ("f" * 64 + "  vink.dump\n").encode()
+            (backup / "SHA256SUMS").write_bytes(manifest)
+            (backup / "vink.dump").write_bytes(b"dump")
+            with patch.object(release.maintenance.time, "time", return_value=1767225600 + 26 * 3600):
+                result = release.maintenance.daily_backup(owners)
+                self.assertEqual(result, {"timestamp": stamp, "manifest_sha256": art.sha(manifest),
+                                          "warnings": ["backup missing vink_identity"]})
+                self.assertFalse(release.maintenance.daily_backup({"vink"})["warnings"])
+            with patch.object(release.maintenance.time, "time", return_value=1767225600 + 26 * 3600 + 1):
+                self.assertIn("backup outside 26-hour window", release.maintenance.daily_backup(owners)["warnings"])
 
     def test_wrong_image_revision_stops_before_export(self):
         web = spec(A)["images"]["web"]
@@ -718,6 +759,13 @@ class Maintenance(unittest.TestCase):
             review.write_bytes(art.encode(evidence | {"action": "expand"}))
             with self.assertRaisesRegex(ValueError, "both binaries"):
                 release.schema_action(A, B, review, root)
+            evidence["vink-app"]["old_on_result"] = "PASS"
+            evidence["changes_existing_data"] = True
+            review.write_bytes(art.encode(evidence | {"action": "expand"}))
+            with self.assertRaisesRegex(ValueError, "existing data require maintenance"):
+                release.schema_action(A, B, review, root)
+            review.write_bytes(art.encode(evidence))
+            self.assertEqual(release.schema_action(A, B, review, root, window=True), "maintenance")
             evidence["vink-app"]["old_on_restored"] = "FAIL"
             review.write_bytes(art.encode(evidence))
             with self.assertRaisesRegex(ValueError, "restored predecessor"):

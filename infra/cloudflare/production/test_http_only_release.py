@@ -47,6 +47,7 @@ class HttpOnlyRelease(unittest.TestCase):
         self.http_error = None
         self.catalog = {"works": [], "next_cursor": None}
         self.compatible = True
+        self.expected_schema = "same"
         self.change_edge = False
         for name, value in {
             "STATE": self.root, "WRANGLER": self.receipt,
@@ -97,7 +98,7 @@ class HttpOnlyRelease(unittest.TestCase):
             mode, old, rev, web, worker, identity, platform, schema = args[1:]
             images = spec(rev)["images"]
             self.assertEqual((web, worker, identity), (images["web"], images["worker"], images["identity"]))
-            self.assertEqual((rev, platform, schema), (self.candidate, "linux/amd64", "same"))
+            self.assertEqual((rev, platform, schema), (self.candidate, "linux/amd64", self.expected_schema))
             self.assertEqual(old, self.live)
             self.calls.append(("origin", mode))
             if mode == "plan" and not self.compatible:
@@ -221,7 +222,7 @@ class HttpOnlyRelease(unittest.TestCase):
             self.execute("apply", "--preview-only", reason=None)
         for mode, extra, edge in (
             ("apply", ("--maintenance",), OLD_EDGE),
-            ("apply", ("--schema-review", "review.json"), OLD_EDGE),
+            ("apply", ("--rollback-predecessor", "--schema-review", "review.json"), OLD_EDGE),
             ("apply", ("--browser-host", "runner"), OLD_EDGE),
             ("apply", (), "none"),
             ("rollback-origin", (), OLD_EDGE),
@@ -236,6 +237,21 @@ class HttpOnlyRelease(unittest.TestCase):
             self.execute("apply", "--preview-only")
         self.assertEqual(self.calls, [("origin", "plan")])
         self.assertFalse(self.journal.exists())
+
+    def test_reviewed_expand_keeps_timer_observation_across_resume(self):
+        review = self.root / "schema-review.json"
+        review.write_text("reviewed migration fixture")
+        self.expected_schema = "expand-additive"
+        observation = {"timestamp": None, "manifest_sha256": None, "warnings": ["no completed daily backup"]}
+        args = ("--schema-review", str(review))
+        with patch.object(release, "schema_action", return_value=self.expected_schema), \
+                patch.object(release.maintenance, "daily_backup", return_value=observation) as daily:
+            self.assertEqual(self.execute("apply", *args, "--preview-only")["daily_backup"], observation)
+            result = self.execute("resume", *args)
+            self.assertEqual(result["phase"], "http_only_verified")
+            self.assertEqual(result["daily_backup"], observation)
+            daily.assert_called_once()
+            self.browser.assert_not_called()
 
     def test_completed_http_only_receipt_survives_lost_ack_without_replaying(self):
         self.execute("apply", "--preview-only")

@@ -90,19 +90,33 @@ case "$schema_action" in
         for owner in "${owners[@]}"; do
             diff -qr "$current/services/$owner/migrations" "$target/services/$owner/migrations" >/dev/null
         done;;
-    expand|keep) ;; # release.py checked the direction and exact migration inventory.
+    expand|expand-additive|keep) ;; # release.py checked the direction and exact migration inventory.
     maintenance) [[ $mode == plan ]] ;; # Only the journaled maintenance adapter can switch.
     *) exit 2;;
 esac
-backup=$(realpath "${VINK_VERIFIED_BACKUP:?recent pair of verified Vink dumps required}")
-[[ $backup =~ ^/var/backups/vink-prod/[0-9]{8}T[0-9]{6}Z$ ]]
-test -s "$backup/vink.dump" && test -s "$backup/vink_identity.dump"
-if [[ -n $notifications || " ${old_services[*]} " == *" notifications "* ]]; then
-    test -s "$backup/vink_notifications.dump"
-    grep -Eq '^[a-f0-9]{64}  vink_notifications.dump$' "$backup/SHA256SUMS"
+# Maintenance and older schema reviews retain the verified-backup gate. Only a
+# reviewed additive migration, or an unchanged deployment topology, can omit it.
+needs_backup=true
+if [[ $schema_action == expand-additive ]]; then
+    needs_backup=false
+elif [[ $schema_action == same ]] && [[ "${old_services[*]}" == "${new_services[*]}" ]] &&
+     cmp -s "$current/services/postgres/compose.yaml" "$target/services/postgres/compose.yaml" &&
+     cmp -s "$current/infra/production/compose.yaml" "$target/infra/production/compose.yaml" &&
+     cmp -s "$current/infra/production/auth-resend.compose.yaml" "$target/infra/production/auth-resend.compose.yaml"; then
+    needs_backup=false
 fi
-test -n "$(find "$backup/SHA256SUMS" -mtime -1 -print)"
-(cd "$backup" && sha256sum --check --strict SHA256SUMS >/dev/null)
+if [[ $needs_backup == true ]]; then
+    backup=$(realpath "${VINK_VERIFIED_BACKUP:?recent pair of verified Vink dumps required}")
+    [[ $backup =~ ^/var/backups/vink-prod/[0-9]{8}T[0-9]{6}Z$ ]]
+    test -s "$backup/vink.dump"
+    test -s "$backup/vink_identity.dump"
+    if [[ -n $notifications || " ${old_services[*]} " == *" notifications "* ]]; then
+        test -s "$backup/vink_notifications.dump"
+        grep -Eq '^[a-f0-9]{64}  vink_notifications.dump$' "$backup/SHA256SUMS"
+    fi
+    test -n "$(find "$backup/SHA256SUMS" -mtime -1 -print)"
+    (cd "$backup" && sha256sum --check --strict SHA256SUMS >/dev/null)
+fi
 [[ $mode == apply ]] || exit 0
 saved=$(mktemp -d "$archive/origin-$old.XXXXXXXX")
 cp -p "$envfile" "$saved/release.env"
@@ -122,7 +136,7 @@ fi
 ln -s "$target" "$link"
 mv -T "$next" "$envfile"
 mv -T "$link" "$current"
-if [[ $schema_action == expand ]]; then
+if [[ $schema_action == expand || $schema_action == expand-additive ]]; then
     migrators=(migrate-app migrate-identity)
     if [[ -n $notifications ]]; then migrators+=(migrate-notifications); fi
     for migrator in "${migrators[@]}"; do

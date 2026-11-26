@@ -4,6 +4,8 @@
 
 [Runbook SPA #504](../../docs/development/edge-frontend.md) mô tả artifact CSR, đóng gói A+B, diễn tập và rollback frontend độc lập. Controller ghép image/asset dưới đây phục vụ topology trước cutover.
 
+Chọn chế độ và lệnh cho từng lượt ở [quy trình Early Production](early-production.md). Các mục dưới đây mô tả tham số controller, điều kiện của từng đường và cách phục hồi.
+
 ## Mốc triển khai ngày 22/11/2026
 
 - `vink.forum` và `www.vink.forum` chạy trên Pages `vink-production`, nhánh `main`. Bản
@@ -55,7 +57,7 @@ Pages và Workers Static Assets giới hạn 25 MiB/file. Đường build tối 
 2. Chuẩn bị Pages **Direct Upload** project `vink-production`, nhánh production `main`, subdomain `vink-production.pages.dev` trong đúng account. Compatibility date ít nhất `2026-10-01`, fail closed ở cả hai môi trường. Preview branch `r-<sha>` cần truy cập được các byte công khai qua HTTPS. URL provider trả 404/noindex cho HTML/API. Đặt secret `ORIGIN_KEY` **chỉ** ở deployment config production. Chọn một giá trị ngẫu nhiên từ ít nhất 32 byte, đặt cùng giá trị vào environment `VINK_ORIGIN_KEY` của Caddy qua secret store. Không ghi token/giá trị binding vào manifest hoặc lệnh shell lưu history.
 3. Origin DNS-only có chứng chỉ tin cậy cho chính `origin-prod.vink.forum`, renew bằng HTTP-01/DNS-01 phù hợp. Import [vhost dành cho Worker](origin-prod.caddy.example) vào bản candidate của Caddy dùng chung. Validate toàn bộ, reload theo lịch, kiểm yêu cầu thiếu secret trả 403 và TLS hostname hợp lệ. Worker lấy IP từ `CF-Connecting-IP` do Cloudflare cấp, thay các header forwarding từ client. Caddy chỉ chuyển IP qua hop đã xác thực, App chỉ tin peer `10.89.4.2/32`. Tắt Pseudo IPv4 overwrite, kiểm Managed Transforms và IPv6 ở zone thật. Sau cutover bỏ ingress trực tiếp đến App ở vhost apex/www cũ (deny, giữ challenge/renewal cần thiết). Giữ đường khôi phục Caddy private đã kiểm.
 4. Cố định repo sạch ở `/opt/vink-prod/releases/<sha>` cho current và candidate. Trên **một** VPS/controller chạy rootful Linux Podman, cài Python 3.11+, Podman Compose 1.3, GNU coreutils, curl, OpenSSL, Node 22+, npm, Chrome và tài khoản không đặc quyền `vink-release-check` có quyền đọc source. Cài `npm ci --prefix infra/cloudflare --ignore-scripts --no-audit --no-fund` từ lock của release. Chuẩn bị `/var/lib/vink-production-release` root:root, mode 0700, đủ chỗ cho archive giữ lại và một bộ staging. Sao lưu các manifest, byte asset và receipt. Token Pages Edit giới hạn account Vink và auth GHCR read thuộc quy trình vận hành. Chỉ controller có quyền cập nhật project/runtime trong cửa sổ phát hành.
-5. Chạy backup/restore rehearsal độc lập cho từng owner, gồm Notifications khi đã provision; chọn bộ dump đủ checksum trong 24 giờ. `VINK_VERIFIED_BACKUP` trỏ đến thư mục timestamp đã kiểm trong `/var/backups/vink-prod`. Mặc định adapter so file migration của từng owner. Khi đổi schema, thử cả binary cũ và mới trên bản sao sau migration. Thêm `--schema-review /secure/rehearsal.json` vào cùng input ở plan/apply/resume. File có `from`, `to` bằng SHA thật, `action` là `expand` (chạy migrator App và Identity) hoặc `keep` (rollback image, giữ schema đã áp dụng). Hai object `vink-app`, `vink-identity` đều có `old_on_result` và `new_on_result` bằng `PASS`, `rehearsal` trỏ bằng chứng kiểm đọc/ghi của cả hai bản. Controller đối chiếu chiều thay đổi và hash migration cũ, lưu hash báo cáo trong receipt. Dị biệt lịch sử hoặc migration phá tương thích cần đợt triển khai riêng. Không hạ schema theo image hoặc restore đè writes mới.
+5. Chọn chính sách backup theo [chế độ phát hành](early-production.md). Với MAINTENANCE, đặt `VINK_VERIFIED_BACKUP` trỏ tới bộ dump đã kiểm trong 24 giờ. Khi đổi schema, dùng `--schema-review /secure/rehearsal.json` với cùng nội dung cho plan/apply/resume. File có `from`, `to` là hai SHA, `action` là `expand` (chạy migrator), `keep` (quay image, giữ schema) hoặc `maintenance`. Mỗi owner liên quan (`vink-app`, `vink-identity`, thêm `vink-notifications` khi hiện diện) có kết quả `old_on_result`, `new_on_result` và `rehearsal` trỏ đến phép kiểm. Với rolling cả hai kết quả phải đạt. Khi review xác nhận expand thuần bổ sung, đặt `changes_existing_data: false` ở cấp cao nhất để dùng backup timer theo SCHEMA. Báo cáo expand cũ vẫn dùng cổng backup trước đây.
 
 ## Từ build đến receipt
 
@@ -63,7 +65,7 @@ Chạy [Publish OCI images manually](../../.github/workflows/publish-images.yml)
 
 Chuẩn bị receiver một lần. Khi chưa có tree, receiver clone riêng develop từ URL Vink cố định, kiểm HEAD đúng SHA đã qualify rồi cài Wrangler từ lock và rename vào releases. Nếu develop đã chạy trước, dừng và qualify lại. Các tree đã giữ dùng cho rollback. Host cần GitHub read nếu repo private. Cài [receive.py](../cloudflare/production/receive.py) và artifacts.py cùng thư mục root-owned. User SSH riêng `vink-release` có key với `restrict,command="sudo -n /usr/local/sbin/vink-release-receive"`; sudoers chỉ cho wrapper cố định không có argv. Wrapper root-owned tải env từ file mode 0600 ngoài repo và exec Python receiver ở đường dẫn tuyệt đối. Chỉ root được ghi tree, phụ thuộc và schema-reviews. Environment cần var `VINK_RELEASE_SSH_HOST` và secrets `VINK_RELEASE_KNOWN_HOSTS`, `VINK_RELEASE_SSH_KEY`; token Pages, GHCR read và secret origin nằm trên host/binding. Nếu khác migration, đặt báo cáo đã duyệt trong `/opt/vink-prod/schema-reviews/<old>-<new>.json`. Cấu hình protection của Environment theo quyền vận hành. Mất SSH không dispatch lại; đọc journal và dùng resume ở controller.
 
-Trong checkout candidate trên controller, dùng `CLOUDFLARE_ACCOUNT_ID` và nạp `CLOUDFLARE_API_TOKEN` từ `VINK_PAGES_API_TOKEN` theo [preflight Secret Manager](production-handoff.md#kiểm-pages-trước-mỗi-release). Lấy `VINK_VERIFIED_BACKUP` và `VINK_RELEASE_CHROME` từ cấu hình vận hành. `OLD_SHA` là revision của current tree và ba container, `OLD_EDGE` là ID deployment canonical quan sát ở Pages (`none` nếu project mới), `READER` là UUID của một tác phẩm công khai thật.
+Trong checkout candidate trên controller, dùng `CLOUDFLARE_ACCOUNT_ID` và nạp `CLOUDFLARE_API_TOKEN` từ `VINK_PAGES_API_TOKEN` theo [preflight Secret Manager](production-handoff.md#kiểm-pages-trước-mỗi-release). Nạp `VINK_VERIFIED_BACKUP` khi đường đã chọn yêu cầu backup bắt buộc và `VINK_RELEASE_CHROME` khi dùng browser cục bộ. `OLD_SHA` là revision của current tree và các container ứng dụng, `OLD_EDGE` là ID deployment canonical quan sát ở Pages (`none` nếu project mới), `READER` là UUID của một tác phẩm công khai thật.
 
 ```sh
 r=infra/cloudflare/production/release.py
@@ -207,18 +209,18 @@ fallback hai PoP vẫn áp dụng. Preview Pages chỉ phục vụ asset.
 ## Rolling chỉ dùng HTTP smoke
 
 Người vận hành trực tiếp có thể chọn `--http-only 'lý do đã duyệt'` cho một lượt rolling
-khi đã có predecessor và hai cây migration App/Identity giống hệt nhau. Truyền cùng lý do và bộ
+khi đã có Pages predecessor. Nếu migration thay đổi, truyền thêm schema review rolling đã kiểm. Truyền cùng lý do và bộ
 input cho `plan`, `apply --preview-only` và `resume`. Dùng `--reader` với tác phẩm công khai hoặc
 `--empty-catalog` nếu catalog thật rỗng. Giữ quy trình `--resume-with-reader` nếu catalog có tác
 phẩm trong lúc chờ. Ghi lý do vận hành ngắn, không chứa bí mật.
 
-Controller vẫn kiểm backup, ba image/digest, asset ở preview, alias, apex, origin và HTTP smoke
+Controller áp dụng chính sách backup theo chế độ, kiểm image/digest, asset ở preview, alias, apex, origin và HTTP smoke
 của release. Với Reader đã chọn, controller kiểm API công khai trả đúng tác phẩm `published`.
 Chỉ khi các kiểm tra đạt, receipt mới có pha `http_only_verified` và trường `browser_coverage`
 ghi `NOT_RUN` kèm lý do. Coverage này không xác nhận hydration hoặc thao tác trình duyệt.
 Nếu kiểm tra lỗi hoặc mất ACK, dùng `status` và `resume` với mode đã ghi. Quy trình rolling giữ
 asset của cả hai bản khi rollback. Trước promote, giữ bản sao receipt image của predecessor và
-các archive đã đối chiếu. Receiver SSH tự động, bootstrap và bảo trì dùng đường browser hiện hành.
+các archive đã đối chiếu. Receiver SSH tự động, Pages chưa có predecessor và bảo trì dùng đường browser hiện hành.
 
 ### Quay lại predecessor của lượt HTTP-only
 
@@ -227,7 +229,7 @@ Chạy controller từ checkout sạch của bản đang cần quay lại, kể 
 `apply --preview-only` và `resume`. File release là receipt image của predecessor cần khôi phục;
 `--previous-origin` và `--previous-edge` là SHA và Pages ID của lượt đang cần đảo chiều. Chọn
 Reader công khai hoặc catalog rỗng như khi phát hành. Controller chỉ nhận predecessor ghi trong
-receipt hoặc journal của lượt HTTP-only mở và kiểm SHA/digest, backup, schema và cả hai bộ asset.
+receipt hoặc journal của lượt HTTP-only cùng schema, rồi kiểm SHA/digest, điều kiện backup, schema và cả hai bộ asset.
 
 Lượt còn journal phải đã đi tới bước đổi origin. Nếu origin chưa đổi đủ ba container, `plan`
 dừng để đối soát. Khi bắt đầu rollback từ journal đó, controller lưu nguyên bản journal vào
@@ -241,7 +243,7 @@ Với hai cây migration App và Identity giống hệt predecessor, người v�
 `--empty-catalog` thay cho `--reader` trong lệnh `plan` ở trên. Sau khi plan đạt, chạy
 `apply --preview-only`, kiểm URL preview bất biến và alias, rồi dùng `resume` với cùng input và
 `--empty-catalog`. Controller vẫn giữ asset cả hai bản và kiểm đường phục vụ ở apex trước khi
-promote Pages và trước khi đổi origin. Đường rolling này dùng `schema=same` nên không chạy migration.
+promote Pages và trước khi đổi origin. Đường rolling với browser và catalog rỗng dùng `schema=same`. Với HTTP-only, catalog rỗng cũng dùng được cùng schema review rolling.
 
 Controller xác nhận API catalog trả `works: []` và `next_cursor: null` trước preview, ngay trước
 promote và trước khi đổi origin. Nếu catalog không còn rỗng hoặc API không xác nhận được, dừng tại
@@ -259,8 +261,7 @@ origin. Giữ bộ input của lượt và dùng `resume --empty-catalog --resum
 
 ## Nâng cấp trong cửa sổ bảo trì
 
-Dùng đường local trên controller khi image cũ không đạt trên
-ledger mới. Chế độ mặc định vẫn yêu cầu `old_on_result=PASS` và `new_on_result=PASS`. Cửa sổ bảo
+Dùng đường local trên controller khi migration sửa dữ liệu hiện có hoặc image cũ không đạt trên ledger mới. Chế độ mặc định vẫn yêu cầu `old_on_result=PASS` và `new_on_result=PASS`. Cửa sổ bảo
 trì phải có lệnh `--maintenance`, báo cáo `--schema-review` khớp đúng SHA/digest và người vận
 hành trực tiếp. Receiver SSH không tự vào chế độ này. Lên lịch cho phép HTTP động gián đoạn
 trong khi origin đóng. Asset hai SHA đã stage sẵn vẫn được phục vụ trên Pages.
@@ -268,8 +269,7 @@ trong khi origin đóng. Asset hai SHA đã stage sẵn vẫn được phục v�
 1. Trước cửa sổ, cài và đọc lại `ExecStartPre` trong unit Vink từ release đã duyệt. Chốt cấm
    unit khởi động lại trong lúc có `/var/lib/vink-production-release/origin-maintenance.json`.
    Giữ `podman-restart.service` bất hoạt trên host và xác nhận không có job khác khởi động App,
-   Worker hay Identity ngoài controller. Kiểm PostgreSQL và volume riêng của Vink, chỉ đúng hai
-   owner. Hai cây dưới `/opt/vink-prod/releases/<sha>` cần là checkout Git sạch, có đủ migrations.
+   Worker hay Identity ngoài controller. Kiểm PostgreSQL và volume riêng của Vink, đủ các owner đang có trên volume. Hai cây dưới `/opt/vink-prod/releases/<sha>` cần là checkout Git sạch, có đủ migrations.
    Với cây bootstrap chỉ chứa file vận hành, đối chiếu và chuẩn bị cây cũ ở đúng SHA trong một
    bước riêng trước cửa sổ. Giữ manifest đang dùng và đọc lại container, overlay và readiness.
    Chuẩn bị browser cục bộ hoặc máy kiểm SSH đã ghim, tài khoản smoke và UUID Reader theo quy
@@ -277,10 +277,10 @@ trong khi origin đóng. Asset hai SHA đã stage sẵn vẫn được phục v�
    có dữ liệu cần tác phẩm công khai thật.
 2. Diễn tập với backup đã kiểm checksum trong 24 giờ, đúng cặp digest và schema sở hữu. Báo cáo
    dùng `action: "maintenance"`, `from` và `to` theo SHA, `images: {"from": {...}, "to": {...}}`
-   theo đúng map Web/Worker/Identity của hai receipt, và `backup_sha256` là SHA-256 của
+   theo đúng map image của hai receipt, và `backup_sha256` là SHA-256 của
    `SHA256SUMS` trong `VINK_VERIFIED_BACKUP`. Mỗi owner cần `new_on_result: "PASS"`,
    `old_on_restored: "PASS"` và `rehearsal` trỏ tới kết quả đọc/ghi và phục hồi. Ghi
-   `old_on_result` theo kết quả thực đo được, ít nhất một owner phải là `FAIL`. Controller so
+   `old_on_result` theo kết quả thực đo được, ít nhất một owner phải là `FAIL` hoặc báo cáo khai `changes_existing_data: true` vì migration tác động dữ liệu hiện có. Controller so
    phiên bản và checksum SHA-384 của ledger trước/sau, rồi so backup với báo cáo.
 3. Với mốc Pages thủ công chưa có `active.json`, giữ nguyên receipt đã xác nhận ở kho riêng
    và truyền `--bootstrap-receipt <file>`. Controller so ID canonical, metadata SHA và kiểm
@@ -290,7 +290,7 @@ trong khi origin đóng. Asset hai SHA đã stage sẵn vẫn được phục v�
    theo [quy trình khôi phục](#cutover-và-khôi-phục).
 4. Dùng đúng cùng bộ tham số cho `plan` rồi `apply`, thêm `--maintenance` và báo cáo schema.
    Sau khi Pages có asset cả hai bản, controller ghi chốt trước khi dừng App, Worker và
-   Identity. Chỉ tiếp tục khi cả ba thoát sạch và hai DB hết kết nối. Controller tạo cặp dump
+   Identity. Chỉ tiếp tục khi các service đã thoát sạch và DB của các owner hết kết nối. Controller tạo bộ dump
    mới sau drain, kiểm checksum, giữ một bản sao PostgreSQL của từng owner với kết nối bị
    khóa, rồi mới migrate. Candidate chạy probe App trên loopback và Identity trên socket
    riêng với password authority, Worker vẫn dừng. Kiểm ledger và readiness phải đạt trước
@@ -302,7 +302,7 @@ trong khi origin đóng. Asset hai SHA đã stage sẵn vẫn được phục v�
 6. Trước `origin_opening`, dùng `rollback-origin` để quay về image cũ. Nếu controller đã ghi
    `origin_switch_started` còn origin chưa có journal, lệnh chỉ ghi nhận rollback khi đã xác
    minh môi trường, ledger và readiness của predecessor. Nếu thấy chốt hoặc dấu vết khác
-   của bảo trì, lệnh dừng và giữ pha cũ để đối soát. Nếu đã bắt đầu migration, một transaction đổi tên **cả hai** bản sao về tên canonical, giữ riêng hai DB
+   của bảo trì, lệnh dừng và giữ pha cũ để đối soát. Nếu đã bắt đầu migration, một transaction đổi tên các bản sao về tên canonical, giữ riêng các DB
    đã migrate với kết nối bị khóa. Đối chiếu OID, ledger và readiness private trước khi mở
    lại App cũ. Mất ACK ở đây dùng `resume` để hoàn tất đúng ý định rollback, kiểm lại OID
    trước khi làm thêm. Controller ghi `origin_rolled_back` và giữ journal vì Pages vẫn chứa

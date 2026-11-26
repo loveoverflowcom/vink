@@ -1,0 +1,13 @@
+version = 1
+id = "VDR-EARLY-PRODUCTION-RELEASE"
+revision = 1
+
+[content]
+kind = "product"
+domain = "platform"
+title = "Ưu tiên phát hành sớm và bảo vệ dữ liệu production"
+resolution = """
+Chuyển từ Strict Production sang Early Production — Fast Release. Ưu tiên phát hành, chấp nhận gián đoạn ngắn và lỗi có thể sửa được, nhưng vẫn bảo vệ dữ liệu người dùng. Không phải mọi lỗi đều là blocker.
+Tự phát hiện, tự bổ sung điều kiện còn thiếu, tự khắc phục và tiếp tục phát hành; chỉ dừng trước những rủi ro thực sự không thể xử lý an toàn.
+"""
+rationale = "Áp dụng cho quy trình phát hành Vink. Runbook ghi các điều kiện để tự xử lý, bằng chứng phải giữ khi đổi schema và giới hạn của controller từng phiên bản."

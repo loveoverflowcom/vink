@@ -157,6 +157,10 @@ def schema_action(old, new, review, releases=Path("/opt/vink-prod/releases"), *,
     require(evidence["from"] == old and evidence["to"] == new and action in ("expand", "keep", "maintenance"),
             "schema review must match source, destination and migration direction")
     require(window == (action == "maintenance"), "maintenance requires explicit opt-in and matching review")
+    changes_data = evidence.get("changes_existing_data")
+    if "changes_existing_data" in evidence:
+        require(type(changes_data) is bool, "changes_existing_data must be a boolean")
+        require(action != "expand" or not changes_data, "changes to existing data require maintenance")
     incompatible = False
     adds_migrations = False
     owners = ["vink-app", "vink-identity"]
@@ -177,7 +181,22 @@ def schema_action(old, new, review, releases=Path("/opt/vink-prod/releases"), *,
         older, newer = (after, before) if action == "keep" else (before, after)
         require(list(older.items()) == list(newer.items())[:len(older)], "edited or divergent applied migration")
         adds_migrations |= len(newer) > len(older)
-    require(not window or (incompatible and adds_migrations), "maintenance requires an incompatible forward migration")
+    require(not window or (adds_migrations and (incompatible or changes_data)),
+            "maintenance requires a data-changing or incompatible forward migration")
+    if action == "expand" and changes_data is False:
+        require(adds_migrations, "additive review requires a forward migration")
+        old_tree, new_tree = releases / old, releases / new
+        bootstrap = evidence.get("bootstrap_service") == "notifications"
+        if bootstrap:
+            require(not maintenance.has_notifications(old_tree) and maintenance.has_notifications(new_tree),
+                    "bootstrap review requires first deployment of Notifications")
+        paths = ["services/postgres/compose.yaml", "infra/production/auth-resend.compose.yaml"]
+        if not bootstrap:
+            paths.append("infra/production/compose.yaml")
+        for path in paths:
+            require((old_tree / path).read_bytes() == (new_tree / path).read_bytes(),
+                    f"unclassified topology change in {path}")
+        return "expand-additive"
     return action
 
 
@@ -489,7 +508,7 @@ def main():
     p.add_argument("--resume-with-reader", metavar="UUID",
                    help="verify a published Reader for one resume attempt of a rolling empty-catalog release")
     p.add_argument("--browser-host", help="pinned SSH alias for an external release browser")
-    p.add_argument("--http-only", metavar="REASON", help="use HTTP smoke only for a same-schema rolling release")
+    p.add_argument("--http-only", metavar="REASON", help="use HTTP smoke for a rolling release with an observed predecessor")
     p.add_argument("--rollback-predecessor", action="store_true",
                    help="with --http-only, use the current release controller to restore its recorded predecessor")
     p.add_argument("--previous-origin", required=True)
@@ -497,9 +516,10 @@ def main():
     a = p.parse_args()
     browser_coverage = None
     if a.http_only is not None:
-        require(a.mode in {"plan", "apply", "resume"} and not a.maintenance and a.schema_review is None
+        require(a.mode in {"plan", "apply", "resume"} and not a.maintenance
+                and not (a.rollback_predecessor and a.schema_review)
                 and a.browser_host is None and a.previous_edge != "none",
-                "HTTP-only requires an existing predecessor and a rolling plan/apply/resume without a schema review or browser host")
+                "HTTP-only requires an existing predecessor and a rolling plan/apply/resume without a browser host; predecessor rollback requires unchanged schema")
         require(1 <= len(a.http_only) <= 240 and a.http_only.isprintable() and a.http_only == a.http_only.strip(),
                 "HTTP-only requires a single-line reason of 1 to 240 characters")
         browser_coverage = {"status": "NOT_RUN", "reason": a.http_only}
@@ -621,7 +641,7 @@ def main():
             for release, digest in last["retained"].items():
                 require(sha((archive / release / "manifest.json").read_bytes()) == digest, "lost retained release")
         schema = schema_action(a.previous_origin, rev, a.schema_review, window=a.maintenance)
-        require(not a.empty_catalog or a.maintenance or schema == "same",
+        require(not a.empty_catalog or a.maintenance or schema == "same" or browser_coverage,
                 "rolling empty-catalog smoke requires unchanged migrations")
         require(not external or schema in {"same", "maintenance"},
                 "external rolling browser requires unchanged migrations")
@@ -649,6 +669,11 @@ def main():
                       "previous_origin": a.previous_origin, "asset_digest": manifest["asset_digest"],
                       "legacy_assets": legacy, "worker_digest": worker_digest, "retained": retained,
                       "schema_action": schema, "schema_review": sha(a.schema_review.read_bytes()) if a.schema_review else None}
+            if schema == "expand-additive" and not resume:
+                owners = set(maintenance.OWNERS)
+                if maintenance.has_notifications(maintenance.RELEASES / a.previous_origin):
+                    owners.add("vink_notifications")
+                result["daily_backup"] = maintenance.daily_backup(owners)
             if external:
                 result["browser_runner"] = external.binding
             if browser_coverage:
