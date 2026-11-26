@@ -1056,7 +1056,14 @@ export async function standalone(page, {args, check, openPage}) {
   await page.goto(base + '/the/' + encodeURIComponent('ký-ức'));
   await page.waitFor(`document.querySelector('main h1')?.textContent.includes('Ký ức')`, 'public tag deep link');
   await page.goto(base + '/@nguoi-chua-co');
-  await page.waitFor(q('#profile-unavailable'), 'unknown author has a settled profile state');
+  await page.waitFor(q('main [data-panel="error:not-found"]'), 'unknown author uses shared NotFound in CSR');
+
+  await page.goto(base + '/thong-bao');
+  await page.waitFor(`${q('main [data-panel="error:not-found"]')} && document.title === 'Không tìm thấy — Vink'`,
+    'confirmed guest Inbox uses shared NotFound in CSR');
+  check(await page.eval(`location.pathname === '/thong-bao' && document.querySelectorAll('main h1').length === 1
+    && !document.querySelector('main a[href="/toi"], #notification-page-title')`),
+    'CSR Inbox keeps its URL and has no guest-only account prompt');
 
   await page.goto(base + '/toi');
   await page.waitFor(q('#use-registration'), 'anonymous password form');

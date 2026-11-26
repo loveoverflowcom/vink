@@ -131,6 +131,10 @@ impl Session {
         self.owner.update(SessionOwner::expect_session_change);
     }
 
+    pub(crate) fn private_scope_fenced(self) -> bool {
+        self.owner.with(SessionOwner::private_scope_fenced)
+    }
+
     pub(crate) fn checking(self) -> bool {
         self.checking.get()
     }

@@ -3,6 +3,7 @@ use leptos::prelude::*;
 use vink_ui::{BadgeState, Icon, IconName, NavUtility, NotificationBadge};
 
 use crate::account::Session;
+use crate::session::Standing;
 
 #[cfg(feature = "browser")]
 mod browser;
@@ -21,9 +22,42 @@ pub(crate) const BELL: &str = "notification-bell";
 pub(crate) const MOBILE_BELL: &str = "notification-bell-mobile";
 pub(crate) const POPOVER: &str = "notification-popover";
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum PageAccess {
+    Pending,
+    SessionUnavailable,
+    Anonymous,
+    UnavailableToAccount,
+    Available,
+}
+
+impl PageAccess {
+    fn from_session(session: Session) -> Self {
+        if session.notification_scope.with(Option::is_some) {
+            return Self::Available;
+        }
+        // A failed recheck retains the previous standing. The fence owns whether it
+        // can still be used, and checking tells us whether another answer is pending.
+        let standing = session.standing.get();
+        if session.private_scope_fenced() || standing == Standing::Unavailable {
+            return if session.checking() {
+                Self::Pending
+            } else {
+                Self::SessionUnavailable
+            };
+        }
+        match standing {
+            Standing::Unknown => Self::Pending,
+            Standing::Anonymous => Self::Anonymous,
+            _ => Self::UnavailableToAccount,
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub(crate) struct Notifications {
     session: Session,
+    page_access: Memo<PageAccess>,
     count: RwSignal<BadgeState>,
     count_failed: RwSignal<bool>,
     offline: RwSignal<bool>,
@@ -45,6 +79,7 @@ impl Notifications {
     ) -> Self {
         let this = Self {
             session,
+            page_access: Memo::new(move |_| PageAccess::from_session(session)),
             count: RwSignal::new(BadgeState::Hidden),
             count_failed: RwSignal::new(false),
             offline: RwSignal::new(false),

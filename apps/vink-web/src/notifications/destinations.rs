@@ -5,6 +5,7 @@ use vink_ui::{Avatar, AvatarSize, Button, ButtonVariant, Dialog, IconButton, Ico
 
 use super::contract::{CommentDecision, Endorsers, segment};
 use super::inbox::{BackButton, Failure, Loading};
+use super::{Notifications, PageAccess};
 use crate::account::Session;
 use crate::contract::ApiError;
 use crate::ui::empty_state::EmptyState;
@@ -14,25 +15,20 @@ pub(crate) fn CommentDecisionPage() -> impl IntoView {
     crate::pages::ResponseStatus::capture().set_no_store();
     let params = use_params_map();
     let session = Session::current();
+    let access = Notifications::current().page_access;
     view! {
         <Title text="Quyết định về nhận xét — Vink" />
         <Meta name="robots" content="noindex" />
         <section class="vk-notif-page vk-notif-decision vk-state-page">
             <a class="vk-ui-link vk-notif-back" href=super::INBOX_PATH>"← Thông báo"</a>
-            <Show when=move || session.notification_scope.with(Option::is_none)>
-                {move || match session.standing.get() {
-                    crate::session::Standing::Unknown => view! { <Loading /> }.into_any(),
-                    crate::session::Standing::Active(account)
-                        if account.notification_scope.is_some() =>
-                    {
-                        view! { <Loading /> }.into_any()
-                    }
-                    crate::session::Standing::Unavailable => view! {
-                        <Failure message="Chưa kiểm tra được phiên đăng nhập." retry=Callback::new(move |()| session.refresh()) />
-                    }.into_any(),
-                    _ => view! { <Gone /> }.into_any(),
-                }}
-            </Show>
+            {move || match access.get() {
+                PageAccess::Pending => view! { <Loading /> }.into_any(),
+                PageAccess::SessionUnavailable => view! {
+                    <Failure message="Chưa kiểm tra được phiên đăng nhập." retry=Callback::new(move |()| session.refresh()) />
+                }.into_any(),
+                PageAccess::Anonymous | PageAccess::UnavailableToAccount => view! { <Gone /> }.into_any(),
+                PageAccess::Available => ().into_any(),
+            }}
             <For each=move || {
                 let params = params.read();
                 session.profile_scope.get().zip(session.notification_scope.get())

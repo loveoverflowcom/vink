@@ -24,7 +24,7 @@ use crate::canonical_url;
 use crate::contract::Publication;
 use crate::document::ReadingDocument;
 use crate::public_reads;
-use crate::ui::{adapters, empty_state::EmptyState, patterns::ReaderHeader};
+use crate::ui::{adapters, empty_state::NotFoundContent, patterns::ReaderHeader};
 use vink_ui::{
     Heading, HeadingLevel, Icon, IconName, InlineNotice, PanelContent, PanelKind, ProblemKind,
     RecoveryAction, RecoveryIntent, StatePanel, Text, TextTone, Tone, TypeRole,
@@ -672,19 +672,6 @@ fn restore_explore_position(
             });
         }
     });
-}
-
-#[component]
-fn NotFoundContent(#[prop(default = "/".to_string())] return_href: String) -> impl IntoView {
-    view! {
-        <Title text="Không tìm thấy — Vink" />
-        <div class="vk-state-page" data-panel="error:not-found">
-            <EmptyState icon=IconName::Search heading=HeadingLevel::H1 title="Không tìm thấy trang này."
-                message="Tác phẩm có thể chưa được công khai hoặc đường dẫn không đúng.">
-                <a class=vink_ui::ButtonVariant::Tonal.classes() href=return_href>"Về Khám phá"</a>
-            </EmptyState>
-        </div>
-    }
 }
 
 #[component]
