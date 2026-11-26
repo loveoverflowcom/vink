@@ -1410,7 +1410,7 @@ fn DiscussionComposer(
                 <Button id=format!("{}-auth", editor_id.get_value()) variant=ButtonVariant::Filled
                     on_press=move |_| {
                         if can_auth.get_untracked() {
-                            host.open_for_comment(editor_id.get_value(), controller);
+                            host.open_for_comment(editor_id.get_value(), controller, state);
                         }
                     }>
                     {move || if session.standing.get() == crate::session::Standing::NeedsPrincipal {
@@ -1594,7 +1594,7 @@ fn DiscussionComposer(
             <Show when=move || controller.read().status(&key.get_value()) == ComposerStatus::Refused
                 && controller.read().sign_in_open
                 && matches!(controller.read().draft(&key.get_value()).receipt, Some(Receipt::Refused(ApiError::Unauthenticated)))>
-                <Button variant=ButtonVariant::Tonal on_press=move |_| host.open_for_comment(editor_id.get_value(), controller)>"Đăng nhập lại"</Button>
+                <Button variant=ButtonVariant::Tonal on_press=move |_| host.open_for_comment(editor_id.get_value(), controller, state)>"Đăng nhập lại"</Button>
             </Show>
             </div>
         </div>

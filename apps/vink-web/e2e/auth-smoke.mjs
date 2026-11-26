@@ -559,7 +559,7 @@ async function discussionSessionRaces(other, ctx, mailA, mailB, openPage, check)
 
 /** Use the existing discussion lifecycle without reloading a page or moving focus. */
 async function wakeDiscussion(page) {
-  await page.eval("const now = performance.now.bind(performance); performance.now = () => now() + 121000; window.dispatchEvent(new Event('focus'))");
+  await page.eval("(() => { const now = performance.now.bind(performance); performance.now = () => now() + 121000; window.dispatchEvent(new Event('focus')); })()");
 }
 
 /** Labelled provider fixtures for off-page/unlisted/rejected and reconciliation, separate

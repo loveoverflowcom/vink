@@ -273,7 +273,7 @@ export async function readerContainment(page, { args, check }) {
     await page.waitFor("document.querySelectorAll('.vk-discussion-root').length===40", 'second bounded page');
     await page.eval(frames);
     record('paging preserves article anchor', Math.abs((await top()) - anchor) <= 2);
-    await page.eval("const now=performance.now.bind(performance);performance.now=()=>now()+121000;window.dispatchEvent(new Event('focus'))");
+    await page.eval("(() => { const now = performance.now.bind(performance); performance.now = () => now() + 121000; window.dispatchEvent(new Event('focus')); })()");
     await page.eval(frames);
     record('wake preserves loaded discussion tail', await page.eval("document.querySelectorAll('.vk-discussion-root').length===40"));
     record('wake preserves article anchor', Math.abs((await top()) - anchor) <= 2);
@@ -298,7 +298,7 @@ export async function readerContainment(page, { args, check }) {
         patterns: [{ urlPattern: args.base + '/api/v1/works/' + work + '/reader', requestStage: 'Request' }],
       });
       await page.eval(
-        "const now=performance.now.bind(performance);performance.now=()=>now()+121000;window.dispatchEvent(new Event('focus'))",
+        "(() => { const now = performance.now.bind(performance); performance.now = () => now() + 121000; window.dispatchEvent(new Event('focus')); })()",
       );
       const deadline = Date.now() + 5000;
       while (!held && Date.now() < deadline) await new Promise((r) => setTimeout(r, 20));

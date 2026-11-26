@@ -82,16 +82,22 @@ impl ReaderAuth {
         use_context::<Self>()
     }
 
-    /// A composer returns to its editor once the discussion applied the new session.
+    /// Reanchor the composer once the new session's own section has settled above it.
     pub(super) fn open_for_comment(
         self,
         composer: String,
         controller: RwSignal<DiscussionController>,
+        state: RwSignal<super::ViewState>,
     ) {
         let ready: ReaderAuthReady = Arc::new(move |scope: &str| {
-            controller
-                .try_with(|c| c.scope.session.as_deref() == Some(scope))
-                .unwrap_or(false)
+            controller.try_with(|c| c.scope.session.as_deref() == Some(scope)) == Some(true)
+                && state.try_with(|s| {
+                    s.own.scope.session.as_deref() == Some(scope)
+                        && (s.unavailable
+                            || (!s.own.loading
+                                && !s.own.capability_loading
+                                && (s.own.has_loaded_page() || s.own.error.is_some())))
+                }) == Some(true)
         });
         self.open(composer, ReaderAuthPurpose::Comment, ready, None);
     }
