@@ -211,6 +211,8 @@ const TAILWIND_CSS_SPEC: WebArtifactSpec = WebArtifactSpec {
     id: WebArtifactId::TailwindCss,
     depends_on: &[WebArtifactId::Tokens],
     input_files: &[
+        "xtask/src/tailwind.rs",
+        "xtask/src/tailwind_inputs.mjs",
         "packages/ui-system/leptos/tailwind/web.css",
         "packages/ui-system/leptos/tailwind/package.json",
         "packages/ui-system/leptos/tailwind/package-lock.json",
@@ -545,6 +547,14 @@ mod tests {
 
     #[test]
     fn affected_closures_isolate_css_js_rust_ui_and_non_ui_changes() {
+        for recipe in ["xtask/src/tailwind.rs", "xtask/src/tailwind_inputs.mjs"] {
+            let impact = affected_artifacts(&[recipe], true);
+            assert_eq!(
+                impact.direct.keys().copied().collect::<Vec<_>>(),
+                [WebArtifactId::TailwindCss]
+            );
+            assert!(impact.closure.contains(&WebArtifactId::SpaIndex));
+        }
         let css = affected_artifacts(&["apps/vink-web/style/vink.css"], false);
         assert_eq!(css.closure, BTreeSet::from([WebArtifactId::TailwindCss]));
 

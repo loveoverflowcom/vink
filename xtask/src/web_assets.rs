@@ -878,6 +878,16 @@ fn tailwind_inputs(
         serde_json::to_vec(&(digest(&node)?, node_version, env_hash)).map_err(|e| e.to_string())?;
 
     let mut parts = BTreeMap::new();
+    // Pin the compiler invocation and the dependency probe built into this xtask.
+    let recipe = concat!(
+        include_str!("tailwind.rs"),
+        "\0",
+        include_str!("tailwind_inputs.mjs")
+    );
+    parts.insert(
+        "tailwind_recipe".into(),
+        checks::sha256_hex(recipe.as_bytes()),
+    );
     parts.insert("css".into(), inventory_digest(&css_map)?);
     parts.insert("rust_sources".into(), inventory_digest(&rust_map)?);
     parts.insert(

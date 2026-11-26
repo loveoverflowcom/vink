@@ -213,7 +213,7 @@ Bảng cuối log cho biết bước nào HIT, MISS hoặc VERIFIED, lý do và 
 | Token | Nguồn JSON, fixture, license/icon, font và 16 tệp CSS/Rust/Kotlin đã sinh. Mỗi lượt đối chiếu lại với generator. |
 | Rust/WASM | Cargo theo dõi crate, dependency, toolchain, profile, feature và cờ. Digest của WASM thô cấp đầu vào cho bindgen. |
 | Bindgen | Bytes của WASM, executable và version, target/flags, feature, profile, prefix, environment. Kiểm đủ JS, WASM và snippets trước khi tái dùng. |
-| Tailwind | Entry và các CSS import cục bộ, nội dung các thư mục Rust trong allowlist, tập file Oxide chọn, npm lock, cây compiler đã cài, Node, environment và minify. Compiler khai báo dependency thực. Plugin/config động hoặc nguồn ngoài allowlist buộc tạo lại CSS. |
+| Tailwind | Recipe gọi compiler, script dò dependency, entry và các CSS import cục bộ, nội dung các thư mục Rust trong allowlist, tập file Oxide chọn, npm lock, cây compiler đã cài, Node, environment và minify. Compiler khai báo dependency thực. Plugin/config động hoặc nguồn ngoài allowlist buộc tạo lại CSS. |
 | Editor | Nguồn TypeScript, script build, tsconfig, corpus, package/lock, cây npm đã cài và Node. Typecheck và corpus chạy cả khi HIT. Khi MISS, esbuild kê đầu vào thực trong metafile. Chỉ lưu receipt với một output và toàn bộ input thuộc editor. |
 | Fonts, brand, empty | So tên và bytes với nguồn đã chọn. Tệp bị xóa khỏi nguồn cũng biến mất khỏi package mới. |
 | Entry CSR | Template, appearance, revision/prefix và hai cờ `VINK_SPA_*`. Ghi entry sau khi package hoàn tất. |
