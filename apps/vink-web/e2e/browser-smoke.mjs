@@ -2810,7 +2810,7 @@ async function adaptiveShell(page) {
     check(await page.eval(`document.querySelectorAll('[aria-current=page]').length === 0`), `${path} marks no destination active`);
     // #558: one borderless group centred in the free main slot on both axes, real recovery link.
     check(await page.eval(`(() => {
-      const main = document.querySelector('.vk-main'), group = document.querySelector('[data-testid=not-found] > .vk-empty-state');
+      const main = document.querySelector('.vk-main'), group = document.querySelector('[data-panel="error:not-found"] > .vk-empty-state');
       if (!group || !group.querySelector('h1') || !group.querySelector('.vk-empty-state__actions a.vk-ui-button[href]')) return false;
       const style = getComputedStyle(main), m = main.getBoundingClientRect(), g = group.getBoundingClientRect();
       const left = m.left + parseFloat(style.paddingLeft), right = m.right - parseFloat(style.paddingRight);
