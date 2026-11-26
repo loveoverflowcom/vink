@@ -31,15 +31,30 @@ async fn account_deletion_retries_atomically_and_keeps_only_neutral_public_proje
     let actor = dev_seed::SAMPLE_AUTHOR;
     let peer = dev_seed::OTHER_PRINCIPAL;
     let operation = operation();
+    let mut profile = pool.begin().await.unwrap();
     sqlx::query(
         "INSERT INTO principal_bindings (principal_id, authority, subject_id)
          VALUES ($1, 'vink-identity', $2)",
     )
     .bind(actor)
     .bind(operation.account_id.to_string())
-    .execute(&pool)
+    .execute(&mut *profile)
     .await
     .unwrap();
+    sqlx::query("INSERT INTO author_handle_names (principal_id, handle) VALUES ($1, 'ho-so-cu')")
+        .bind(actor)
+        .execute(&mut *profile)
+        .await
+        .unwrap();
+    sqlx::query(
+        "INSERT INTO author_profiles (principal_id, current_handle, bio)
+                 VALUES ($1, 'ho-so-cu', 'Tiểu sử cần dọn')",
+    )
+    .bind(actor)
+    .execute(&mut *profile)
+    .await
+    .unwrap();
+    profile.commit().await.unwrap();
     let moderated = Uuid::new_v4();
     sqlx::query("INSERT INTO works (id, owner_id) VALUES ($1, $2)")
         .bind(moderated)
@@ -220,6 +235,33 @@ async fn account_deletion_retries_atomically_and_keeps_only_neutral_public_proje
             .await
             .unwrap();
     assert_eq!(row, (None, None));
+    let profile: (Option<String>, Option<String>) =
+        sqlx::query_as("SELECT current_handle, bio FROM author_profiles WHERE principal_id = $1")
+            .bind(actor)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(profile, (None, None));
+    assert!(sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS (SELECT 1 FROM author_handle_names WHERE handle = 'ho-so-cu' AND principal_id = $1)",
+    ).bind(actor).fetch_one(&pool).await.unwrap());
+    let publication = sqlx::query(
+        "INSERT INTO publications (work_id, revision_id, generation, published_at)
+         VALUES ($1, $2, 2, now())",
+    )
+    .bind(work)
+    .bind(dev_seed::SAMPLE_REVISION)
+    .execute(&pool)
+    .await;
+    assert_eq!(
+        publication
+            .unwrap_err()
+            .as_database_error()
+            .unwrap()
+            .code()
+            .as_deref(),
+        Some("23000")
+    );
     let remaining: i64 = sqlx::query_scalar(
         "SELECT (SELECT count(*) FROM working_drafts WHERE work_id = $1)
               + (SELECT count(*) FROM work_view_totals WHERE work_id = $1)

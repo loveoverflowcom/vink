@@ -96,6 +96,7 @@ impl PgStore {
 
         let social = social_command(&mut tx, principal, operation.operation_id).await?;
         if let (Some(principal), Some(social)) = (principal, social) {
+            erase_profile(&mut tx, principal).await?;
             super::social_retirement::fence(&mut tx, social).await?;
             for work in works {
                 super::publication::retire_owned_work(&mut tx, principal, work).await?;
@@ -191,6 +192,32 @@ async fn owned_works(
     )
 }
 
+async fn erase_profile(
+    tx: &mut Transaction<'_, Postgres>,
+    principal: PrincipalId,
+) -> Result<(), StoreError> {
+    // Clear live profile data before Social makes the profile immutable.
+    sqlx::query(
+        "UPDATE author_profiles SET bio = NULL, policies = DEFAULT
+          WHERE principal_id = $1 AND current_handle IS NOT NULL",
+    )
+    .bind(principal.as_uuid())
+    .execute(&mut **tx)
+    .await
+    .map_err(classify)?;
+
+    // An older standalone Social retirement could already have reserved a tombstone with bio.
+    sqlx::query(
+        "UPDATE author_profiles SET bio = NULL
+          WHERE principal_id = $1 AND current_handle IS NULL AND bio IS NOT NULL",
+    )
+    .bind(principal.as_uuid())
+    .execute(&mut **tx)
+    .await
+    .map_err(classify)?;
+    Ok(())
+}
+
 async fn purge_principal(
     tx: &mut Transaction<'_, Postgres>,
     principal: PrincipalId,
@@ -263,13 +290,6 @@ async fn purge_principal(
         super::notification::emit(tx, notice).await?;
     }
 
-    sqlx::query(
-        "UPDATE author_profiles SET bio = NULL, policies = DEFAULT WHERE principal_id = $1",
-    )
-    .bind(id)
-    .execute(&mut **tx)
-    .await
-    .map_err(classify)?;
     sqlx::query("UPDATE principals SET display_name = 'Tài khoản đã xóa' WHERE id = $1")
         .bind(id)
         .execute(&mut **tx)
