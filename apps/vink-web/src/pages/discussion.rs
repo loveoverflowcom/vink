@@ -1283,22 +1283,24 @@ fn RootThreadView(
             .map(|comment| comment.id)
     });
     let reply_expanded = Signal::derive(move || {
-        !read_only && {
-            let c = controller.read();
-            let d = c.draft(&key.get_value());
-            d.open && !c.collapsed_with_work(&key.get_value())
-        }
+        !read_only
+            && controller
+                .read()
+                .drafts
+                .get(&key.get_value())
+                .is_some_and(|draft| draft.open)
     });
     let reply_target_id = Signal::derive(move || {
-        (!read_only)
-            .then(|| {
-                let c = controller.read();
-                let d = c.draft(&key.get_value());
-                (d.open && !c.collapsed_with_work(&key.get_value()))
-                    .then(|| d.target.map(|t| t.id))
-                    .flatten()
-            })
-            .flatten()
+        if !reply_expanded.get() {
+            return None;
+        }
+        controller
+            .read()
+            .drafts
+            .get(&key.get_value())?
+            .target
+            .as_ref()
+            .map(|target| target.id.clone())
     });
     view! {
         <section class="vk-discussion-root" aria-label="Nhánh nhận xét">

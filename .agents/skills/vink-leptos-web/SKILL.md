@@ -5,6 +5,8 @@ description: Build or change Vink Leptos routes, browser state and the writing e
 
 # Vink Leptos web
 
+For a semantic UI change, start with the [Web mapping](../../../docs/development/web-semantics.md). Trace the confirmed fact from its owner to the native control, then test what changes after a real browser action. Keep disclosure, permissions, read failures and pending writes distinct. In a report record boolean or enumerated outcomes instead of raw DOM, AX names or input values.
+
 ## Choose the rendering path
 
 Trace the affected route through [the shared router](../../../apps/vink-web/src/lib.rs) and

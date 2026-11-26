@@ -57,6 +57,7 @@ import {
   classifyTextScaleLane,
   collectElementAccessibility,
   collectSourceIdentity,
+  matchesAXButton,
   evaluateAccessibleElement,
   evaluateLeaveModalBranch,
   evaluateNavAlignment,
@@ -6224,6 +6225,11 @@ async function discussionReadingAndWrites(page) {
   await page.waitFor(`document.documentElement.dataset.hydrated==='true' && document.querySelector('#discussion-mode-toggle') && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'local fixture discussion readiness');
   check(await page.eval(`!!document.querySelector('meta[name="vink-local-discussion-fixture"]') && document.querySelector('#comments-mode').textContent.includes('Định danh thử trên thiết bị này')`), 'fixture readiness is labelled and supplied by the trusted host');
   check(await page.eval("!document.querySelector('#discussion-refresh, #own-comments-refresh, #discussion-read-retry, #own-comments-retry')"), 'authenticated healthy discussion has no manual reload control');
+  // #560 mapping: docs/development/web-semantics.md. Local author and real settings CAS.
+  const modeAction = '#feedback-region #discussion-mode-toggle';
+  check(await page.eval("document.querySelector('#comments-mode').dataset.modeKind === 'open'")
+    && await matchesAXButton(page, modeAction, { name: 'Tắt bình luận' }),
+    '#560 open policy exposes the close action without a disclosure state');
   const text = 'D2T-03 [Mẫu] Đọc khổ thơ\n\n  Tiếng Việt 👩‍💻 🌧️';
   const newer = ' Chữ mới sau khi gửi.';
   await page.eval(`window.discussionComposerNode = document.querySelector('#root-composer')`);
@@ -6330,6 +6336,9 @@ async function discussionReadingAndWrites(page) {
   }
   await page.click('#discussion-mode-toggle');
   await page.waitFor(`document.querySelector('#discussion-mode-toggle')?.textContent==='Mở bình luận' && document.querySelector('#comments-mode')?.getAttribute('aria-busy') === 'false'`, 'author closes comments with generation CAS');
+  check(await page.eval("document.querySelector('#comments-mode').dataset.modeKind === 'author-closed'")
+    && await matchesAXButton(page, modeAction, { name: 'Mở bình luận' }),
+    '#560 closed policy exposes the reopen action without a disclosure state');
   await page.send('Browser.grantPermissions', { permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'] });
   check(await page.eval(`window.discussionComposerNode === document.querySelector('#root-composer') && document.querySelector('#root-composer').value===${JSON.stringify(text + newer)} && document.querySelector('#root-composer').readOnly === true && !document.querySelector('#root-composer-send') && document.querySelector('.vk-discussion-closed-banner')?.textContent.includes('Bạn đã tắt bình luận cho bài viết này') && !!document.querySelector('[data-own-comment="${commentId}"]')`), 'closing keeps readonly draft, author notice, readable own projection and removes Gửi button');
   await page.eval(`[...document.querySelectorAll('.vk-discussion-closed-actions button')].find(b=>b.textContent.includes('Sao chép nháp'))?.click()`);
@@ -6446,6 +6455,8 @@ async function discussionReadingAndWrites(page) {
       'initial read shows an actionable retry after the skeleton clears');
     await page.eval(`document.querySelector('${retrySelector}').scrollIntoView({block:'center', behavior:'instant'})`);
     check(await page.eval(`document.querySelector('.vk-discussion-state-card[data-tone="adverse"]')?.textContent.includes('Chưa tải được nhận xét') && !document.querySelector('#feedback-region').textContent.includes('Chưa có nhận xét nào')`), 'initial error is distinct from empty state');
+    check(await page.eval("!document.querySelector('#feedback-region #comments-mode, #feedback-region #root-composer-send')"),
+      '#560 failed initial read makes no policy or send claim');
     const failedInitialReads = readCursors.length;
     check(failedInitialReads === 1, 'one failed initial GET exposes the retry button');
     await page.capture('discussion-contract-fixture-initial-error', { scenario: 'D2T-03-load-retry', target: retrySelector, boundary: 'intercepted-provider-contract-fixture-no-persistence' });
@@ -6463,8 +6474,17 @@ async function discussionReadingAndWrites(page) {
         && endorse?.getAttribute('aria-describedby')?.split(' ').includes('${reasonId}')
         && document.getElementById('reply-to-${replyId}')?.checkVisibility();
     })()`, 'the fixture reply is visible beside the confirmed unavailable endorsement');
+    // The projection is intercepted in this part of the scenario. Existing focus,
+    // visibility and draft assertions below independently observe the actual composer.
+    const rootReply = `#feedback-region #reply-to-${rootId}`;
+    const replyMatches = expanded => matchesAXButton(page, rootReply, { name: 'Trả lời', expanded });
+    check(await replyMatches(false), '#560 root reply is an accessible collapsed button');
+    check(!await replyMatches(true)
+      && !await matchesAXButton(page, rootReply, { name: 'Mở bình luận', expanded: false }),
+      '#560 wrong disclosure state and accessible name are rejected');
     await page.click(`#reply-to-${replyId}`);
     await page.waitFor(`document.activeElement?.id==='reply-composer-${rootId}'`, 'reply moves focus to its own stable field');
+    check(await replyMatches(true), '#560 root reply reflects the expanded composer after real input');
     await page.typeAtEnd(`#reply-composer-${rootId}`, 'Bản trả lời có ngữ cảnh\n\n  Giữ nguyên 👩‍💻');
     check(await page.eval(`document.querySelector('#comment-${replyId}')?.dataset.replyTarget==='true' && document.querySelector('#comment-${replyId} .vk-discussion-target-badge')?.textContent.includes('Đang là đích trả lời')`), 'targeted reply highlights inside the branch');
     check(await page.eval(`document.querySelectorAll('.vk-discussion-replies .vk-discussion-replies').length===0 && document.querySelectorAll('#reply-composer-${rootId}').length===1`), 'reply-to-reply mounts one composer in its root and no third indentation level');

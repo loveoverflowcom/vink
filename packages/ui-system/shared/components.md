@@ -8,6 +8,8 @@ cả hai renderer, đăng ký trong cả hai preview với trạng thái `implem
 nghĩa dùng chung: Leptos (`vink-ui`) và CMP (`:ui`) giữ **cùng tên, props, sự kiện, owner và trạng
 thái không hỗ trợ**, không cần cùng DOM/cây Compose.
 
+Trên Leptos Web, truy từ các contract này đến caller, tên/trạng thái mà Chrome tính và phép kiểm tại [bản đồ Semantic UI](../../../docs/development/web-semantics.md).
+
 UIS-05 bổ sung seam cho consumer thật, không đổi owner dữ liệu: Web `Link.href` nhận
 `Signal<String>` (chuỗi tĩnh vẫn dùng được), URL không hợp lệ thành anchor không có href;
 `TextField` có `name`, `max_length`, `TextKind::Search`, `input_ref` và `on_focus` để form GET

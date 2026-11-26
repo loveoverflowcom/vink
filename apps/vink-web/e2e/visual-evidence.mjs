@@ -678,6 +678,36 @@ export function extractAxNodeSummary(axNode) {
   };
 }
 
+// Resolve the target again for each sample; AX node IDs expire across navigation.
+async function readElementAX(page, selector) {
+  const { result } = await page.send('Runtime.evaluate', {
+    expression: `document.querySelector(${JSON.stringify(selector)})`,
+    returnByValue: false,
+  });
+  try {
+    if (result?.objectId) {
+      const partial = await page.send('Accessibility.getPartialAXTree', {
+        objectId: result.objectId,
+        fetchRelatives: false,
+      });
+      return partial.nodes?.[0] ?? null;
+    }
+  } finally {
+    if (result?.objectId) {
+      await page.send('Runtime.releaseObject', { objectId: result.objectId }).catch(() => {});
+    }
+  }
+  return null;
+}
+
+// Compare one control in memory. Return only a boolean even for a wrong accessible
+// name, which can contain private user text. Omitted expanded expects no such state.
+export async function matchesAXButton(page, selector, { name, expanded }) {
+  const node = await readElementAX(page, selector);
+  return !!node && !node.ignored && node.role?.value === 'button' && node.name?.value === name
+    && node.properties?.find(property => property.name === 'expanded')?.value?.value === expanded;
+}
+
 /**
  * Queries a DOM element's raw text/attributes alongside Chrome's computed AX tree node.
  */
@@ -701,24 +731,7 @@ export async function collectElementAccessibility(page, selector) {
   if (!dom.present) {
     return { selector, present: false, rawTextContent: null, ax: extractAxNodeSummary(null), dom };
   }
-  const { result } = await page.send('Runtime.evaluate', {
-    expression: `document.querySelector(${JSON.stringify(selector)})`,
-    returnByValue: false,
-  });
-  let axNode = null;
-  try {
-    if (result?.objectId) {
-      const partial = await page.send('Accessibility.getPartialAXTree', {
-        objectId: result.objectId,
-        fetchRelatives: false,
-      });
-      axNode = partial.nodes?.[0] ?? null;
-    }
-  } finally {
-    if (result?.objectId) {
-      await page.send('Runtime.releaseObject', { objectId: result.objectId }).catch(() => {});
-    }
-  }
+  const axNode = await readElementAX(page, selector);
   return {
     selector,
     present: true,
