@@ -32,7 +32,7 @@ export async function readerBeforeHydration(page, { args, check }) {
   const assertUnavailable = async () => check(await page.eval(`!(${READY}) &&
     document.querySelector('.vk-document')?.textContent.includes(${JSON.stringify(TEXT)}) &&
     !!document.querySelector('#reader-return[href]') &&
-    ['root-composer-send','discussion-refresh'].every(id=>document.getElementById(id)?.getAttribute('aria-disabled')==='true')`),
+    document.querySelector('#root-composer-send')?.getAttribute('aria-disabled')==='true' && !document.querySelector('#discussion-refresh')`),
   'complete SSR article, return link and unavailable client actions during ' + phase);
   try {
     await page.send('Network.setBlockedURLs', { urls: assets });
@@ -40,9 +40,8 @@ export async function readerBeforeHydration(page, { args, check }) {
     check(await page.eval(`!(${READY}) && document.querySelector('.vk-document')?.textContent.includes(${JSON.stringify(TEXT)})`), 'failed bootstrap retains the complete SSR article');
     check(await page.eval(`document.querySelector('link[rel=canonical]')?.href===${JSON.stringify(args.base + PATH)} && !!document.querySelector('meta[name=description]') && !document.documentElement.outerHTML.includes('Khổ đang viết dở — chưa công khai.')`), 'unhydrated document retains canonical/description and excludes the private draft');
     check(await page.eval("document.querySelector('#root-composer-send')?.getAttribute('aria-disabled')==='true' && document.querySelector('#root-composer-send')?.type==='button'"), 'unready composer send is unavailable and has no native form submission');
-    check(await page.eval("document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')==='true'"), 'client-only discussion refresh is unavailable without bootstrap');
+    check(await page.eval("!document.querySelector('#discussion-refresh')"), 'healthy SSR has no discussion refresh control');
     await page.click('#root-composer-send');
-    await page.click('#discussion-refresh');
     noMutation('clicks before bootstrap do not submit a mutation');
     await page.click('#reader-return');
     await page.waitFor("location.pathname==='/' && !!document.querySelector('#public-query')", 'native Reader return without WASM');
@@ -74,16 +73,15 @@ export async function readerBeforeHydration(page, { args, check }) {
       // the actual paused request; DOM readiness alone is not proof of an injected hold.
       for (const deadline = Date.now() + 10000; held.size === 0 && Date.now() < deadline;) await sleep(10);
       check(held.size > 0 && await page.eval(`!(${READY})`), 'bootstrap is actually paused before the click (' + holdMs + 'ms)');
-      check(await page.eval("document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')==='true'"), 'discussion refresh remains unavailable while bootstrap is held (' + holdMs + 'ms)');
+      check(await page.eval("!document.querySelector('#discussion-refresh')"), 'healthy discussion has no refresh control while bootstrap is held (' + holdMs + 'ms)');
       await page.click('#root-composer-send');
-      await page.click('#discussion-refresh');
       await sleep(holdMs);
       noMutation('no mutation while bootstrap is held (' + holdMs + 'ms)');
       // Disable interception before continuing: modules/WASM requested afterwards flow normally.
       await page.send('Fetch.disable');
       held.clear();
       await page.waitFor(READY, 'hydration after held bootstrap', 120000);
-      await page.waitFor("document.querySelector('#discussion-refresh')?.dataset.state==='enabled'", 'discussion refresh becomes available after hydration');
+      await page.waitFor("document.querySelector('#comments-mode')?.getAttribute('aria-busy')==='false' && !document.querySelector('#discussion-refresh')", 'discussion stays free of generic refresh after hydration');
       await page.eval('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
       await sleep(300);
       noMutation('hydration does not replay a pre-hydration click (' + holdMs + 'ms)');
@@ -118,7 +116,6 @@ export async function readerBeforeHydration(page, { args, check }) {
           r.response_status === 200 && r.finished_s != null), 'JS loads successfully while only WASM is paused');
         await assertUnavailable();
         await page.click('#root-composer-send');
-        await page.click('#discussion-refresh');
         if (holdMs === null) {
           for (const requestId of held) {
             await page.send('Fetch.fulfillRequest', { requestId, responseCode: 503,
@@ -141,8 +138,8 @@ export async function readerBeforeHydration(page, { args, check }) {
           await assertUnavailable();
           noMutation('WASM hold submits no mutation');
           await page.send('Fetch.disable');
-          await page.waitFor(READY + " && document.querySelector('#discussion-refresh')?.dataset.state==='enabled'",
-            'release of WASM brings actions online', 120000);
+          await page.waitFor(READY + " && document.querySelector('#comments-mode')?.getAttribute('aria-busy')==='false' && !document.querySelector('#discussion-refresh')",
+            'release of WASM hydrates the discussion', 120000);
           await sleep(300);
           noMutation('WASM recovery does not replay pre-hydration clicks');
           assertNoHydrationRead(raw.transport, phase, 'reader');
@@ -179,7 +176,7 @@ export async function readerGuestHistory(page, {args,check}) {
     await page.send('Emulation.setScriptExecutionDisabled',{value:true});
     await page.goto(args.base+reader);
     check(await page.eval(`${article} && !(${READY}) &&
-      document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')==='true' &&
+      !document.querySelector('#discussion-refresh') &&
       document.querySelector('link[rel=canonical]')?.href===${JSON.stringify(args.base+reader)}`),'full canonical Reader with JS disabled');
     await page.eval("document.querySelector('#reader-return').focus()");
     const enter=async()=>{for(const type of ['keyDown','keyUp'])await page.send('Input.dispatchKeyEvent',{

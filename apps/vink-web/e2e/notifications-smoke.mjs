@@ -88,7 +88,9 @@ async function fixture(page) {
         inbox_snapshot: snapshot(scope), next_cursor: more ? null : 'next-fixture',
         items: (more ? source.slice(3) : source.slice(0, 3)).map(row => ({
           ...row, is_read: state.marked ? true : row.is_read,
-          target: scope === 'B' ? { ...row.target, work_title: 'Thông báo của tài khoản B' } : row.target,
+          target: scope === 'B' ? { ...row.target, work_title: 'Thông báo của tài khoản B' }
+            : state.snapshot >= 46 && row.group_id === source[0].group_id
+              ? { ...row.target, work_title: 'Tác phẩm có cập nhật' } : row.target,
         })),
       }];
     } else if (path === `${inbox}/seen`) {
@@ -333,11 +335,25 @@ export async function notifications(page, { args, check }) {
   await page.waitFor(`document.querySelector('${bell}')?.tagName === 'BUTTON'`, 'desktop normal text');
   await page.click(bell);
   await page.waitFor(`document.querySelectorAll('${popup} ${row}').length >= 3`, 'reopen inbox');
+  const seenBefore = calls.filter(({path}) => path === `${inbox}/seen`).length;
+  const fetchesBefore = calls.filter(({path}) => path === inbox).length;
+  const oldRow = await page.eval(`window.__shownNotification = document.querySelector('${popup} ${row}'); !!window.__shownNotification`);
   state.snapshot++;
   state.count = 120;
   await page.eval(`window.dispatchEvent(new Event('online'))`);
-  await page.waitFor(`document.querySelector('#notification-updates') && document.querySelector('${bell} .vk-ui-badge').textContent === '99+'`, 'new count and update banner');
-  check(await page.eval(`document.querySelectorAll('${popup} ${row}').length === 3`), 'AC-03 incoming count does not insert inbox rows');
+  await page.waitFor(`document.querySelector('${bell} .vk-ui-badge').textContent === '99+'`, 'new count on the existing poll');
+  check(oldRow && await page.eval(`!document.querySelector('#notification-updates, #notification-count-retry')
+    && !document.querySelector('${popup}').textContent.includes('Tác phẩm có cập nhật')
+    && document.querySelector('${popup} ${row}') === window.__shownNotification
+    && document.querySelectorAll('${popup} ${row}').length === 3`), 'fresh count leaves the open rows mounted without a reload control');
+  check(calls.filter(({path}) => path === inbox).length === fetchesBefore
+    && calls.filter(({path}) => path === `${inbox}/seen`).length === seenBefore,
+    'fresh count does not reset paging or advance Seen');
+  await page.key('Escape');
+  await page.click(bell);
+  await eventually(() => latest(`${inbox}/seen`).body.up_to_snapshot === 's1.46.A', 'reopen sees the new snapshot');
+  await page.waitFor(`document.querySelectorAll('${popup} ${row}').length === 3
+    && document.querySelector('${popup}').textContent.includes('Tác phẩm có cập nhật')`, 'new snapshot and rows load on reopen');
 
   const clicked = controlled.rows.find(item => item.target.kind === 'work_comment_thread');
   const selector = `${popup} .vk-notif-row__link[href*="nhan-xet=${clicked.target.comment_id}"]`;

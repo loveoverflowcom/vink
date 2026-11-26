@@ -117,3 +117,13 @@ vẫn thuộc discussion. Xem [conformance và seam](public-read-freshness.md#li
 ## Layout danh sách nhận xét #238
 
 Giữ layout thường cho danh sách nhận xét. Containment trên `#root-list` tiết kiệm thời gian khi vùng này nằm dưới bài 200.000 đoạn, dịch mép danh sách 19 px và không đạt ngưỡng lợi ích ở bài ngắn. [Thử nghiệm A/B, native controls và kết quả từng AC](evidence/web-perf-238-canonical/README.md).
+
+
+## Nút khôi phục trong Nhận xét (#557)
+
+Áp dụng [quy tắc retry Product Web](product-web-refresh.md). Vùng chế độ và “Bạn đã gửi”
+chỉ hiển thị hành động dựa trên lỗi hoặc quyền hiện tại. Biên nhận đã duyệt ngoài trang
+vẫn dựa vào own lookup và ID thực sự có trong trang công khai. Wake theo ngưỡng hiện có
+hoãn đọc lại head khi đã mở trang tiếp theo của luồng công khai. Lần vào Reader tiếp theo
+đọc head mới. Đổi phiên, invalidation theo hồ sơ, biên nhận thao tác và phục hồi cursor
+vẫn đi qua các owner hiện tại.

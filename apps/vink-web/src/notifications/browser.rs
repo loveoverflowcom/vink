@@ -181,12 +181,8 @@ impl Notifications {
                     } else {
                         badge
                     });
-                    if self
-                        .inbox
-                        .with_untracked(|inbox| inbox.has_new_signal(&count.freshness))
-                    {
-                        self.inbox.update(|inbox| inbox.updates = true);
-                    }
+                    // Polling the count never replaces the open snapshot or advances Seen.
+                    // The next open loads a new snapshot through the existing inbox owner.
                 }
                 Err(error) => {
                     if !self.offline.get_untracked() {
@@ -405,15 +401,13 @@ impl Notifications {
                             .into_iter()
                             .map(|row| (row.group_id.clone(), row))
                             .collect::<std::collections::HashMap<_, _>>();
-                        let updates = &mut inbox.updates;
                         inbox.items.retain_mut(|row| {
                             let Some(current) = by_id.remove(&row.group_id) else {
                                 return false;
                             };
-                            // A newer event stays behind “Có cập nhật mới”, even if it reused
-                            // this group. Do not insert its new excerpt, actors or target.
+                            // A newer event is outside the displayed snapshot, even when it
+                            // reuses the group. It will be read on the next inbox open.
                             if row.updated_at != current.updated_at {
-                                *updates = true;
                                 return false;
                             }
                             *row = current;

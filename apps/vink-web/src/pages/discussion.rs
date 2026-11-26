@@ -92,6 +92,38 @@ enum DiscussionMutation {
 }
 
 #[derive(Clone)]
+struct PageReadFailure {
+    message: &'static str,
+    restart: bool,
+}
+
+impl PageReadFailure {
+    const RESTART: Self = Self {
+        message: "Danh sách nhận xét đã thay đổi. Phần đã tải vẫn được giữ.",
+        restart: true,
+    };
+
+    fn from_read(error: &ApiError) -> Self {
+        if matches!(error, ApiError::Invalid { field: Some(field) } if field == "cursor") {
+            Self::RESTART
+        } else {
+            Self {
+                message: crate::discussion_state::read_error_message(error, true),
+                restart: false,
+            }
+        }
+    }
+
+    fn action(&self) -> &'static str {
+        if self.restart {
+            "Tải từ đầu"
+        } else {
+            "Thử lại"
+        }
+    }
+}
+
+#[derive(Clone)]
 struct ViewState {
     page: DiscussionPage,
     roots_read: crate::read_lifecycle::ReadOwner<Scope>,
@@ -107,13 +139,13 @@ struct ViewState {
     reply_loading: BTreeMap<String, bool>,
     #[cfg_attr(not(feature = "browser"), allow(dead_code))]
     reply_chains: BTreeMap<String, crate::read_lifecycle::PageChain>,
-    reply_errors: BTreeMap<String, String>,
+    reply_errors: BTreeMap<String, PageReadFailure>,
     loading: bool,
     #[cfg_attr(not(feature = "browser"), allow(dead_code))]
     refresh_queued: bool,
     error: Option<String>,
     /// A failed "load more roots" read, shown beside the control that started it.
-    page_error: Option<String>,
+    page_error: Option<PageReadFailure>,
     unavailable: bool,
     #[cfg_attr(not(feature = "browser"), allow(dead_code))]
     epoch: u64,
@@ -124,6 +156,10 @@ struct ViewState {
 
 #[cfg_attr(not(any(feature = "browser", test)), allow(dead_code))]
 impl ViewState {
+    fn has_paged_tail(&self) -> bool {
+        self.roots_chain.pages > 1 || self.reply_chains.values().any(|chain| chain.pages > 1)
+    }
+
     fn change_session(&mut self, scope: Scope) {
         self.roots_read.change_scope(scope.clone());
         self.own.change_scope(scope);
@@ -267,14 +303,14 @@ impl ViewState {
     /// A refresh failure belongs to the whole region; a failed next-page read stays by its
     /// button so the loaded list and the retry control keep their meaning.
     fn fail_roots_read(&mut self, append: bool, error: &crate::contract::ApiError) {
-        if error == &crate::contract::ApiError::NotFound {
+        if !can_retry_discussion_read(error) {
             self.error = Some(crate::discussion_state::error_message(error).into());
             self.unavailable = true;
             self.page.roots.clear();
             self.replies.clear();
             self.own.change_scope(self.own.scope.clone());
         } else if append {
-            self.page_error = Some(crate::discussion_state::read_error_message(error, true).into());
+            self.page_error = Some(PageReadFailure::from_read(error));
         } else {
             self.error = Some(crate::discussion_state::read_error_message(error, false).into());
         }
@@ -511,7 +547,7 @@ fn LinkedComment(work_id: String, comment: String) -> impl IntoView {
                                     on_reply=Callback::new(|_: String| {}) on_remove=Callback::new(|_: String| {}) />
                             }.into_any()
                         }
-                        Err(ApiError::NotFound) => {
+                        Err(error) if !can_retry_discussion_read(&error) => {
                             #[cfg(feature = "browser")]
                             super::focus_recovery("feedback-heading");
                             view! { <p role="status">"Nhận xét này không còn khả dụng."</p> }.into_any()
@@ -563,7 +599,10 @@ pub fn Discussion(work_id: String, #[prop(optional)] read_only: bool) -> impl In
                         initial_loading.try_set(false);
                         match result {
                             Ok(load) => view! { <DiscussionLoaded page=load.page.into() endorsements=load.endorsements fixture read_only /> }.into_any(),
-                            Err(_) => view! {
+                            Err(LoadError::NotFound | LoadError::Invalid(_)) => view! {
+                                <p role="status">"Nhận xét không còn khả dụng."</p>
+                            }.into_any(),
+                            Err(LoadError::Unavailable) => view! {
                                 <div class="vk-discussion-state-card" data-tone="adverse" role="region" aria-label="Lỗi tải nhận xét">
                                     <Icon name=IconName::Error size=IconSize::Small />
                                     <div class="vk-discussion-state-card__body">
@@ -572,8 +611,10 @@ pub fn Discussion(work_id: String, #[prop(optional)] read_only: bool) -> impl In
                                     </div>
                                     // A same-URL fragment link only scrolls and never re-runs the resource.
                                     <DiscussionLoadRetry on_retry=move |_| {
-                                        initial_loading.set(true);
-                                        resource.refetch();
+                                        if !initial_loading.get_untracked() {
+                                            initial_loading.set(true);
+                                            resource.refetch();
+                                        }
                                     } />
                                 </div>
                             }.into_any(),
@@ -590,24 +631,30 @@ pub fn Discussion(work_id: String, #[prop(optional)] read_only: bool) -> impl In
 // Start false on both SSR and hydration; only a mounted client control can dispatch.
 // Each control owner schedules its effect after rendering, preserving hydration parity.
 fn client_action_ready() -> RwSignal<bool> {
-    let ready = RwSignal::new(false);
-    #[cfg(feature = "browser")]
-    Effect::new(move |_| ready.set(true));
-    ready
+    super::client_read_action_ready()
+}
+
+fn discussion_retry_state(ready: bool, busy: bool) -> ActionState {
+    if busy && ready {
+        ActionState::pending("Đang kiểm tra nhận xét…")
+    } else {
+        super::read_retry_state(ready)
+    }
+}
+
+fn can_retry_discussion_read(error: &ApiError) -> bool {
+    !matches!(
+        error,
+        ApiError::Unauthenticated | ApiError::Forbidden | ApiError::NotFound
+    )
 }
 
 #[component]
 fn DiscussionLoadRetry(#[prop(into)] on_retry: Callback<()>) -> impl IntoView {
     let ready = client_action_ready();
-    let state = Signal::derive(move || {
-        if ready.get() {
-            ActionState::Enabled
-        } else {
-            ActionState::disabled("Cần JavaScript để tải lại nhận xét.")
-        }
-    });
+    let state = Signal::derive(move || discussion_retry_state(ready.get(), false));
     view! {
-        <Button id="discussion-load-retry" variant=ButtonVariant::Tonal state on_press=on_retry>"Tải lại nhận xét"</Button>
+        <Button id="discussion-load-retry" variant=ButtonVariant::Tonal state on_press=on_retry>"Thử lại"</Button>
     }
 }
 
@@ -693,6 +740,9 @@ fn DiscussionLoaded(
         if crate::read_events::visible()
             && state.try_with_untracked(|s| {
                 s.wake.due(crate::read_events::now())
+                    // The next Reader entry starts with a fresh head. A passive wake must
+                    // not throw away a continuation the reader is still using.
+                    && !s.has_paged_tail()
                     && s.mutation.is_none()
                     && (!s.loading
                         || s.roots_read.in_flight_intent()
@@ -760,9 +810,9 @@ fn DiscussionLoaded(
         if state.read().mutation.is_some() {
             ActionState::pending("Đang cập nhật…")
         } else if state.read().loading || state.read().unavailable {
-            ActionState::disabled("Chờ tải lại nhận xét trước khi thao tác.")
+            ActionState::disabled("Chờ nhận xét khả dụng trước khi thao tác.")
         } else if state.read().mutation_needs_refresh {
-            ActionState::disabled("Tải lại để đối chiếu trước khi thao tác tiếp.")
+            ActionState::disabled("Kiểm tra trạng thái bình luận trước khi thao tác tiếp.")
         } else if !controller.read().write_ready() {
             ActionState::disabled(if controller.read().sign_in_open {
                 "Đăng nhập ở mục Tôi để thao tác."
@@ -782,6 +832,7 @@ fn DiscussionLoaded(
     view! {
         <div id="comments-mode" class="vk-discussion-mode grid gap-vk-2 min-w-0"
             data-mode-kind=move || mode_kind.get()
+            aria-busy=move || (state.read().loading || state.read().mutation.is_some()).to_string()
             data-tone=move || (state.read().unavailable || state.read().error.is_some()).then_some("adverse")>
             <div class="vk-discussion-mode__row flex flex-wrap items-center justify-between gap-x-vk-3 gap-y-vk-2 min-w-0">
                 <div class="vk-discussion-mode__status flex items-start gap-[10px] flex-[1_1_14rem] min-w-0 [&>.vk-ui-icon]:shrink-0 [&>.vk-ui-icon]:[margin-block-start:3px]">
@@ -804,7 +855,7 @@ fn DiscussionLoaded(
                             let s = state.read();
                             let c = controller.read();
                             if s.mutation_needs_refresh {
-                                Some("Tải lại để đối chiếu trạng thái mới nhất.".to_owned())
+                                Some("Kiểm tra trạng thái mới nhất trước khi thao tác tiếp.".to_owned())
                             } else if (read_only || !c.settings.comments_open) && !s.unavailable {
                                 Some("Nhận xét cũ vẫn hiển thị bên dưới.".to_owned())
                             } else if mode_kind.get() == "open" {
@@ -815,26 +866,32 @@ fn DiscussionLoaded(
                         }.map(|detail| view! { <p class="vk-muted m-0 wrap-anywhere text-[length:var(--vk-type-caption-size)]">{detail}</p> })}
                     </div>
                 </div>
-                <div class="vk-discussion-mode__actions flex flex-wrap items-center gap-vk-2">
-                    <Show when=move || !read_only && !state.read().unavailable && state.read().own.author>
-                        <Button id="discussion-mode-toggle" variant=ButtonVariant::Tonal state=write_state on_press=move |_| change_mode(state, controller, lve)>
-                            {move || if controller.read().settings.comments_open { "Tắt bình luận" } else { "Mở bình luận" }}
-                        </Button>
-                    </Show>
-                    <Button id="discussion-refresh"
-                        variant=Signal::derive(move || if mode_kind.get() == "conflict" { ButtonVariant::Filled } else { ButtonVariant::Text })
-                        state=Signal::derive(move || if !client_ready.get() { ActionState::disabled("Cần JavaScript để tải lại nhận xét.") } else if state.read().loading || state.read().mutation.is_some() { ActionState::pending("Đang cập nhật nhận xét…") } else { ActionState::Enabled })
-                        on_press=move |_| refresh.run(())>"Tải lại nhận xét"</Button>
-                </div>
+                <Show when=move || !read_only && !state.read().unavailable && state.read().own.author>
+                    <Button id="discussion-mode-toggle" variant=ButtonVariant::Tonal state=write_state on_press=move |_| change_mode(state, controller, lve)>
+                        {move || if controller.read().settings.comments_open { "Tắt bình luận" } else { "Mở bình luận" }}
+                    </Button>
+                </Show>
             </div>
             {fixture.is_some().then(|| view! { <p class="vk-muted vk-discussion-fixture-note">"Định danh thử trên thiết bị này · Không phải tài khoản thật."</p> })}
-            <p role="status" class="vk-discussion-mode__alert vk-discussion-live" class:vk-ui-visually-hidden=move || state.read().error.is_none()>{move || state.read().error.clone().unwrap_or_default()}</p>
-            <p role="status" class="vk-discussion-mode__alert">{move || state.read().mutation_message.clone().unwrap_or_default()}</p>
+            <Show when=move || !state.read().unavailable && state.read().error.is_some()>
+                <p role="status" class="vk-discussion-mode__alert">{move || state.read().error.clone().unwrap_or_default()}</p>
+            </Show>
+            <p role="status" class="vk-discussion-mode__alert vk-discussion-live"
+                class:vk-ui-visually-hidden=move || state.read().mutation_message.is_none()>
+                {move || state.read().mutation_message.clone().unwrap_or_default()}
+            </p>
+            <Show when=move || !state.read().unavailable && (state.read().error.is_some() || state.read().mutation_needs_refresh)>
+                <Button id="discussion-read-retry" variant=ButtonVariant::Tonal
+                    state=Signal::derive(move || discussion_retry_state(client_ready.get(), state.read().loading || state.read().mutation.is_some()))
+                    on_press=move |_| refresh.run(())>
+                    {move || if state.read().mutation_needs_refresh { "Kiểm tra trạng thái bình luận" } else { "Thử lại" }}
+                </Button>
+            </Show>
         </div>
         <Show when=move || !read_only>
             <DiscussionComposer key=ComposerKey::Root controller state refresh />
         </Show>
-        <OwnComments state controller lve refresh />
+        <OwnComments state controller lve client_ready />
         <Show when=move || !read_only>
             <p class="vk-muted vk-discussion-tools-note">"Bạn có thể dùng emoji từ bàn phím."</p>
         </Show>
@@ -842,11 +899,9 @@ fn DiscussionLoaded(
             <div class="vk-discussion-state-card" data-tone="adverse" role="region" aria-label="Lỗi tải nhận xét">
                 <Icon name=IconName::Error size=IconSize::Small />
                 <div class="vk-discussion-state-card__body">
-                    <strong>"Chưa tải được nhận xét"</strong>
-                    <p role="status">"Dữ liệu nhận xét hiện chưa khả dụng. Hãy thử tải lại."</p>
+                    <strong>"Nhận xét không còn khả dụng"</strong>
+                    <p role="status">{move || state.read().error.clone().unwrap_or_default()}</p>
                 </div>
-                <Button variant=ButtonVariant::Tonal state=Signal::derive(move || if state.read().loading { ActionState::pending("Đang tải lại…") } else { ActionState::Enabled })
-                    on_press=move |_| refresh.run(())>"Tải lại nhận xét"</Button>
             </div>
         </Show>
         <Show when=move || retry_skeleton.get()>
@@ -874,10 +929,18 @@ fn DiscussionLoaded(
                     <Show when=move || state.read().page_error.is_some()>
                         <div class="vk-discussion-inline-error" data-tone="adverse">
                             <Icon name=IconName::Error size=IconSize::Small />
-                            <p role="status">{move || state.read().page_error.clone().unwrap_or_default()}</p>
+                            <p role="status">{move || state.read().page_error.as_ref().map(|e| e.message).unwrap_or_default()}</p>
                         </div>
                     </Show>
-                    <Button variant=ButtonVariant::Tonal state=Signal::derive(move || if state.read().loading { ActionState::pending("Đang tải…") } else { ActionState::Enabled }) on_press=move |_| read_roots(state, controller, lve, true)>"Xem thêm nhận xét"</Button>
+                    <Button variant=ButtonVariant::Tonal state=Signal::derive(move || {
+                        let s = state.read();
+                        if s.loading { ActionState::pending("Đang tải…") }
+                        else if s.mutation_needs_refresh { ActionState::disabled("Kiểm tra trạng thái bình luận trước.") }
+                        else { ActionState::Enabled }
+                    }) on_press=move |_| {
+                        let append = !state.with_untracked(|s| s.page_error.as_ref().is_some_and(|e| e.restart));
+                        read_roots(state, controller, lve, append);
+                    }>{move || state.read().page_error.as_ref().map_or("Xem thêm nhận xét", PageReadFailure::action)}</Button>
                 </div>
             </Show>
             <Show when=move || shows_list_end(&state.read())>
@@ -912,23 +975,37 @@ fn OwnComments(
     state: RwSignal<ViewState>,
     controller: RwSignal<DiscussionController>,
     lve: Option<Endorsements>,
-    refresh: Callback<()>,
+    client_ready: RwSignal<bool>,
 ) -> impl IntoView {
+    let busy = Memo::new(move |_| {
+        let s = state.read();
+        s.loading || s.own.loading || s.own.capability_loading || s.mutation.is_some()
+    });
     view! {
         <Show when=move || !state.read().unavailable && controller.read().scope.session.is_some()>
-            <section id="own-comments" class="vk-discussion-recovered" aria-labelledby="own-comments-heading">
-                <div class="vk-discussion-own-head flex flex-wrap items-baseline justify-between gap-vk-2">
-                    <div>
-                        <Heading level=HeadingLevel::H3 role=TypeRole::Title id="own-comments-heading" attr:tabindex="-1">"Bạn đã gửi"</Heading>
-                        <p class="vk-muted">"Chỉ bạn thấy trước khi được duyệt."</p>
-                    </div>
-                    <Button id="own-comments-refresh" variant=ButtonVariant::Text
-                        state=Signal::derive(move || if state.read().own.loading { ActionState::pending("Đang tải nhận xét của bạn…") } else { ActionState::Enabled })
-                        on_press=move |_| read_private(state, controller, false)>"Làm mới nhận xét của bạn"</Button>
+            <section id="own-comments" class="vk-discussion-recovered" aria-labelledby="own-comments-heading"
+                aria-busy=move || busy.get().to_string()>
+                <div class="vk-discussion-own-head">
+                    <Heading level=HeadingLevel::H3 role=TypeRole::Title id="own-comments-heading" attr:tabindex="-1">"Bạn đã gửi"</Heading>
+                    <p class="vk-muted">"Chỉ bạn thấy trước khi được duyệt."</p>
                 </div>
-                <p role="status" class="vk-discussion-live" class:vk-ui-visually-hidden=move || state.read().own.error.is_none()>{move || state.read().own.error.as_ref().map(|e| crate::discussion_state::read_error_message(e, false)).unwrap_or_default()}</p>
-                <p role="status" class="vk-discussion-live" class:vk-ui-visually-hidden=move || state.read().own.capability_error.is_none()>{move || state.read().own.capability_error.as_ref().map(|_| "Chưa xác nhận được quyền thay đổi bình luận. Hãy làm mới nhận xét của bạn.").unwrap_or_default()}</p>
-                <Show when=move || !state.read().own.loading && state.read().own.error.is_none() && state.read().own.visible_items(&state.read().public_ids()).is_empty()>
+                <Show when=move || state.read().own.error.is_some() || state.read().own.capability_error.is_some()>
+                    <div class="vk-discussion-inline-error flex flex-wrap items-center gap-vk-2" data-tone="adverse">
+                        <p role="status">{move || {
+                            let s = state.read();
+                            s.own.error.as_ref().map_or("Chưa xác nhận được quyền thay đổi bình luận.", |e| crate::discussion_state::read_error_message(e, false))
+                        }}</p>
+                        <Show when=move || {
+                            let s = state.read();
+                            s.own.error.as_ref().or(s.own.capability_error.as_ref()).is_some_and(can_retry_discussion_read)
+                        }>
+                            <Button id="own-comments-retry" variant=ButtonVariant::Tonal
+                                state=Signal::derive(move || discussion_retry_state(client_ready.get(), busy.get()))
+                                on_press=move |_| read_private(state, controller, false)>"Thử lại"</Button>
+                        </Show>
+                    </div>
+                </Show>
+                <Show when=move || state.read().own.has_loaded_page() && !state.read().own.loading && state.read().own.error.is_none() && state.read().own.visible_items(&state.read().public_ids()).is_empty()>
                     <p>"Chưa có nhận xét riêng nào trong phần đã tải."</p>
                 </Show>
                 <For each=move || { state.read().own.visible_items(&state.read().public_ids()).into_iter().map(|c| c.comment_id).collect::<Vec<_>>() } key=|id| id.clone()
@@ -958,21 +1035,16 @@ fn OwnComments(
                                             <p>{reason}</p>
                                         </div>
                                     })}
-                                <div class="vk-discussion-own-card__actions flex flex-wrap items-center gap-vk-2 [inline-size:100%]">
-                                    <Show when=move || state.read().own.comments.get(&id.get_value()).is_some_and(|c| c.status == CommentStatus::Approved)>
-                                        <Button variant=ButtonVariant::Tonal
-                                            state=Signal::derive(move || if state.read().loading { ActionState::pending("Đang tải lại…") } else { ActionState::Enabled })
-                                            on_press=move |_| refresh.run(())>"Tải lại nhận xét"</Button>
-                                    </Show>
-                                    <Show when=move || state.read().own.can_remove(&id.get_value())>
+                                <Show when=move || state.read().own.can_remove(&id.get_value())>
+                                    <div class="vk-discussion-own-card__actions flex flex-wrap items-center gap-vk-2 [inline-size:100%]">
                                         <OwnRemoveAction comment_id=id.get_value()
                                             confirming=Signal::derive(move || state.read().own.confirming(&id.get_value()))
                                             state=Signal::derive(move || if state.read().mutation.is_some() { ActionState::pending("Đang gỡ…") } else { ActionState::Enabled })
                                             on_ask=move |_| ask_remove(state, id.get_value())
                                             on_confirm=move |_| remove_own(state, controller, lve, id.get_value())
                                             on_cancel=move |_| cancel_remove(state, id.get_value()) />
-                                    </Show>
-                                </div>
+                                    </div>
+                                </Show>
                             </article>
                         }
                     } />
@@ -995,12 +1067,12 @@ fn read_private(
     #[cfg(feature = "browser")]
     {
         let scope = controller.get_untracked().scope;
-        if scope.session.is_none() {
+        if scope.session.is_none() || state.read_untracked().own.capability_loading {
             return;
         }
         state.update(|s| {
             s.own.author = false;
-            s.own.capability_error = None;
+            s.own.capability_loading = true;
         });
         spawn_private(true, async move {
             let result = api::load_discussion_capability(&scope.work_id).await;
@@ -1010,29 +1082,36 @@ fn read_private(
             {
                 return;
             }
-            state.try_update(|s| match result {
-                Ok(c)
-                    if c.work_id == scope.work_id
-                        && !matches!(
-                            s.own.error,
-                            Some(
-                                crate::contract::ApiError::Unauthenticated
-                                    | crate::contract::ApiError::Forbidden
-                                    | crate::contract::ApiError::NotFound
-                            )
-                        ) =>
-                {
-                    s.own.author = c.viewer_is_work_author;
-                    if let Some(settings) = c.settings
-                        && settings.generation >= s.page.settings.generation
+            state.try_update(|s| {
+                s.own.capability_loading = false;
+                s.own.capability_error = None;
+                match result {
+                    Ok(c)
+                        if c.work_id == scope.work_id
+                            && !matches!(
+                                s.own.error,
+                                Some(
+                                    crate::contract::ApiError::Unauthenticated
+                                        | crate::contract::ApiError::Forbidden
+                                        | crate::contract::ApiError::NotFound
+                                )
+                            ) =>
                     {
-                        s.page.settings = settings.clone();
-                        controller.update(|c| c.settings = settings);
+                        s.own.author = c.viewer_is_work_author;
+                        if let Some(settings) = c.settings
+                            && settings.generation >= s.page.settings.generation
+                        {
+                            s.page.settings = settings.clone();
+                            controller.update(|c| c.settings = settings);
+                        }
                     }
-                }
-                _ => {
-                    s.own.author = false;
-                    s.own.capability_error = Some(crate::contract::ApiError::Unavailable);
+                    Ok(c) if c.work_id != scope.work_id => {
+                        s.own.capability_error = Some(ApiError::Unexpected { status: 200 });
+                    }
+                    Ok(_) => {}
+                    Err(error) => {
+                        s.own.capability_error = Some(error);
+                    }
                 }
             });
         });
@@ -1234,12 +1313,19 @@ fn RootThreadView(
             <Show when=move || state.read().reply_errors.contains_key(&root.get_value())>
                 <div class="vk-discussion-inline-error" data-tone="adverse">
                     <Icon name=IconName::Error size=IconSize::Small />
-                    <p role="status">{move || state.read().reply_errors.get(&root.get_value()).cloned().unwrap_or_default()}</p>
+                    <p role="status">{move || state.read().reply_errors.get(&root.get_value()).map(|e| e.message).unwrap_or_default()}</p>
                 </div>
             </Show>
             <Show when=move || next_reply_cursor(&state.read(), &root.get_value()).is_some()>
                 <Button variant=ButtonVariant::Text state=Signal::derive(move || if state.read().reply_loading.get(&root.get_value()) == Some(&true) { ActionState::pending("Đang tải phản hồi…") } else { ActionState::Enabled })
-                    on_press=move |_| read_replies(state, controller, lve, root.get_value())>"Xem thêm phản hồi"</Button>
+                    on_press=move |_| {
+                        let root = root.get_value();
+                        if state.with_untracked(|s| s.reply_errors.get(&root).is_some_and(|e| e.restart)) {
+                            refresh.run(());
+                        } else {
+                            read_replies(state, controller, lve, root);
+                        }
+                    }>{move || state.read().reply_errors.get(&root.get_value()).map_or("Xem thêm phản hồi", PageReadFailure::action)}</Button>
             </Show>
             </div>
                 }.into_any()) />
@@ -1446,9 +1532,7 @@ fn DiscussionComposer(
                             <div class="vk-discussion-target-lost__actions">
                                 <Button variant=ButtonVariant::Tonal leading=IconName::ContentCopy
                                     on_press=move |_| copy_draft_text(editor_id.get_value(), value.get_untracked(), copy_status)>"Sao chép nháp"</Button>
-                                <Show when=move || reselect_id.get().is_some() fallback=move || view! {
-                                    <Button variant=ButtonVariant::Tonal on_press=move |_| refresh.run(())>"Tải lại nhận xét"</Button>
-                                }>
+                                <Show when=move || reselect_id.get().is_some()>
                                     <Button variant=ButtonVariant::Filled on_press=move |_| {
                                         #[cfg(feature = "browser")]
                                         if let Some(id) = reselect_id.get_untracked() {
@@ -1608,7 +1692,7 @@ fn read_roots(
         } else {
             None
         };
-        if append && cursor.is_none() {
+        if append && (cursor.is_none() || state.read_untracked().mutation_needs_refresh) {
             return;
         }
         let Some(Some(ticket)) = state.try_update(|s| {
@@ -1631,7 +1715,6 @@ fn read_roots(
             s.loading = true;
             s.refresh_queued = false;
             s.reply_loading.clear();
-            s.error = None;
             s.page_error = None;
             s.epoch += 1;
             epoch = s.epoch;
@@ -1653,8 +1736,7 @@ fn read_roots(
                 s.loading = false;
                 refresh_again = s.refresh_queued;
                 s.refresh_queued = false;
-                let had_tail =
-                    s.roots_chain.pages > 1 || s.reply_chains.values().any(|chain| chain.pages > 1);
+                let had_tail = s.has_paged_tail();
                 match result {
                     Ok(page)
                         if page.work_id == scope.work_id
@@ -1668,6 +1750,9 @@ fn read_roots(
                         endorsable = Some(page_targets(&page));
                         controller.update(|c| c.settings = page.settings.clone());
                         s.unavailable = false;
+                        if !append {
+                            s.error = None;
+                        }
                         s.mutation_needs_refresh = false;
                         // Invalidate old per-root reads and context projections on a refresh.
                         s.reply_loading.clear();
@@ -1687,14 +1772,14 @@ fn read_roots(
                     }
                     Err(error) => {
                         s.fail_roots_read(append, &error);
-                        if error == crate::contract::ApiError::NotFound {
+                        if s.unavailable {
                             revalidate_targets(s, controller);
                         }
                     }
                     _ => {
                         let message = "Phản hồi không khớp tác phẩm; chưa cập nhật.".to_owned();
                         if append {
-                            s.page_error = Some(message);
+                            s.page_error = Some(PageReadFailure::RESTART);
                         } else {
                             s.error = Some(message);
                         }
@@ -1706,11 +1791,10 @@ fn read_roots(
                 }
             });
             // Fresh counts and own states for the comments this read returned.
-            let public_loaded = endorsable.is_some();
             if let (Some(lve), Some(targets)) = (lve, endorsable) {
                 lve.read(targets, true);
             }
-            if public_loaded || state.try_with_untracked(|s| s.accepts_read(epoch)) == Some(true) {
+            if state.try_with_untracked(|s| !s.unavailable && s.accepts_read(epoch)) == Some(true) {
                 read_private(state, controller, false);
             }
             if refresh_again {
@@ -1792,10 +1876,8 @@ fn read_replies(
                                 page.next_cursor.clone(),
                             )
                         }) {
-                            s.reply_errors.insert(
-                                root.clone(),
-                                "Phản hồi trang tiếp không hợp lệ. Hãy tải lại nhận xét.".into(),
-                            );
+                            s.reply_errors
+                                .insert(root.clone(), PageReadFailure::RESTART);
                             return;
                         }
                         endorsable = Some(public_targets(&page.replies));
@@ -1823,10 +1905,8 @@ fn read_replies(
                                 .retain(|thread| adapters::root_id(thread) != root);
                             revalidate_targets(s, controller);
                         }
-                        s.reply_errors.insert(
-                            root,
-                            crate::discussion_state::read_error_message(&error, true).into(),
-                        );
+                        s.reply_errors
+                            .insert(root, PageReadFailure::from_read(&error));
                     }
                 }
             });
@@ -2164,8 +2244,16 @@ mod tests {
             state.error.is_none(),
             "region status must not carry a next-page failure"
         );
-        let local = state.page_error.clone().unwrap();
+        let local = state.page_error.as_ref().unwrap().message;
         assert!(local.contains("thử lại") && !local.contains("chưa rõ kết quả"));
+        state.fail_roots_read(
+            true,
+            &ApiError::Invalid {
+                field: Some("cursor".into()),
+            },
+        );
+        assert!(state.page_error.as_ref().unwrap().restart);
+        assert_eq!(state.page_error.as_ref().unwrap().action(), "Tải từ đầu");
         assert_eq!(state.page.roots.len(), loaded);
         assert!(!state.unavailable);
         state.fail_roots_read(false, &ApiError::Network);

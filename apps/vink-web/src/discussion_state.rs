@@ -106,15 +106,15 @@ impl Receipt {
     pub fn message(&self) -> &'static str {
         match self {
             Self::Pending => "Chờ duyệt · Chưa công khai",
-            Self::Approved => "Lần gửi này đã được duyệt. Tải lại để xem trạng thái hiện tại.",
-            Self::Rejected => "Lần gửi này không được duyệt. Tải lại để xem lý do được cấp.",
+            Self::Approved => "Lần gửi này đã được duyệt.",
+            Self::Rejected => "Lần gửi này không được duyệt. Xem chi tiết trong mục Bạn đã gửi.",
             Self::Removed => "Nhận xét của lần gửi này không còn hiển thị.",
             Self::Uncertain => {
                 "Chưa rõ máy chủ đã nhận hay chưa. Đối soát dùng lại đúng nội dung và mã của lần gửi trước; chữ mới vẫn được giữ."
             }
             Self::Refused(error) => error_message(error),
             Self::SessionChanged => {
-                "Phiên đăng nhập đã thay đổi trước khi lần gửi trước được xác nhận. Tải lại nhận xét để kiểm tra trước khi gửi lại; chữ vẫn được giữ."
+                "Phiên đăng nhập đã thay đổi trước khi lần gửi trước được xác nhận. Kiểm tra mục Bạn đã gửi trước khi gửi lại. Chữ vẫn được giữ."
             }
         }
     }

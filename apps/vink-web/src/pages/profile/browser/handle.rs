@@ -638,7 +638,7 @@ pub(super) fn HandleDialog(controller: Controller) -> impl IntoView {
                 </p>
                 <Show when=move || controller.unavailable.get() && !pending()>
                     <Button variant=ButtonVariant::Text state=Signal::derive(move || button_state(busy()))
-                        on_press=Callback::new(move |()| controller.refresh())>"Tải lại địa chỉ"</Button>
+                        on_press=Callback::new(move |()| controller.refresh())>"Kiểm tra địa chỉ"</Button>
                 </Show>
             </form>
         </Dialog>

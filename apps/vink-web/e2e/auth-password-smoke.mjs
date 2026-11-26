@@ -1032,8 +1032,10 @@ export async function standalone(page, {args, check, openPage}) {
   await outage();
   check(!await page.eval(`document.body.textContent.includes(${JSON.stringify(line)})`),
     'failed revalidation keeps the old publication body out of the Reader');
+  const readerDocument = await page.eval('performance.timeOrigin');
   await page.click('#retry-public');
   await page.waitFor(q('.vk-document'), 'retry obtains the current publication');
+  check(await page.eval('performance.timeOrigin') === readerDocument, 'Reader recovery refetches without replacing the document');
 
   await page.goto(base + '/the/' + encodeURIComponent('ký-ức'));
   await page.waitFor(`document.querySelector('main h1')?.textContent.includes('Ký ức')`, 'public tag deep link');

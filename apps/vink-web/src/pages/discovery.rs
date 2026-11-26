@@ -745,7 +745,8 @@ fn DiscoveryFilters(context: ExploreContext, search_open: Memo<bool>) -> impl In
     } else {
         format!("Lọc thẻ, đã chọn {applied_count} thẻ")
     };
-    let filter_retry = StoredValue::new(context.href(None));
+    let catalog_retry_ready = super::client_read_action_ready();
+    let catalog_retry = Signal::derive(move || super::read_retry_state(catalog_retry_ready.get()));
     let filter_query = StoredValue::new(context.query.q);
     let dismiss = move || {
         draft.set(initial.get_value());
@@ -809,7 +810,8 @@ fn DiscoveryFilters(context: ExploreContext, search_open: Memo<bool>) -> impl In
                     <details id="tag-dock" class="vk-tag-dock">
                         <summary>"Lọc thẻ"</summary>
                         <p role="alert">"Chưa tải được danh mục thẻ."</p>
-                        <a class="vk-ui-link" href=filter_retry.get_value()>"Tải lại danh mục thẻ"</a>
+                        <Button variant=ButtonVariant::Tonal state=catalog_retry
+                            on_press=move |_| catalog.refetch()>"Thử lại"</Button>
                     </details>
                 }.into_any()),
             })}
@@ -829,10 +831,10 @@ fn DiscoveryFilters(context: ExploreContext, search_open: Memo<bool>) -> impl In
                     Err(_) => view! {
                         <div class="vk-discovery-catalog-error grid justify-items-start gap-vk-3">
                             <p role="alert">"Chưa tải được danh mục thẻ. Các thẻ đang áp dụng vẫn được giữ."</p>
-                            <Button variant=ButtonVariant::Tonal id="retry-tag-catalog" on_press=move |_| {
+                            <Button variant=ButtonVariant::Tonal id="retry-tag-catalog" state=catalog_retry on_press=move |_| {
                                 focus_recovery("tag-picker-title");
                                 catalog.refetch();
-                            }>"Thử tải lại"</Button>
+                            }>"Thử lại"</Button>
                         </div>
                     }.into_any(),
                 })}
@@ -871,7 +873,7 @@ fn WorkResults(
                                 let live = public_reads::follow_works(context.query.clone(), list);
                                 view! { <PublicResults context live /> }.into_any()
                             }
-                            Err(error) => view! { <DiscoveryFailure context error /> }.into_any(),
+                            Err(error) => view! { <DiscoveryFailure context error on_retry=Callback::new(move |()| works.refetch()) /> }.into_any(),
                         }
                     })
                 }}
@@ -1348,7 +1350,11 @@ pub(super) fn PublicTags(tags: Vec<PublicTagDto>) -> impl IntoView {
 }
 
 #[component]
-fn DiscoveryFailure(context: ExploreContext, error: LoadError) -> AnyView {
+fn DiscoveryFailure(
+    context: ExploreContext,
+    error: LoadError,
+    #[prop(optional)] on_retry: Option<Callback<()>>,
+) -> AnyView {
     use crate::api::{InvalidInputField, InvalidRead};
     let mut first = context.clone();
     first.query.cursor = None;
@@ -1391,7 +1397,11 @@ fn DiscoveryFailure(context: ExploreContext, error: LoadError) -> AnyView {
             <a class="vk-ui-link" href="/">"Bỏ toàn bộ bộ lọc"</a>
         }
         .into_any(),
-        LoadError::NotFound | LoadError::Unavailable => view! {
+        LoadError::Unavailable => view! {
+            <Unavailable on_retry />
+        }
+        .into_any(),
+        LoadError::NotFound => view! {
             <Unavailable />
             <a id="restart-public" class="vk-ui-link" href=first.href(None)>"Thử từ trang đầu"</a>
             <a class="vk-ui-link" href="/">"Bỏ toàn bộ bộ lọc"</a>

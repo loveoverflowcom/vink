@@ -122,37 +122,26 @@ fn InboxBody(owner: Notifications) -> impl IntoView {
     let offline = owner.offline;
     let refresh = Callback::new(move |()| {
         #[cfg(feature = "browser")]
-        {
-            owner.load(false);
-            owner.poll_now();
-        }
+        owner.load(false);
     });
     view! {
         <div class="vk-notif-body" tabindex="-1" aria-busy=move || owner.inbox.with(|inbox| inbox.first == Load::Loading).to_string()>
             <Show when=move || offline.get()>
                 <p class="vk-notif-note" role="status">"Đang ngoại tuyến. Danh sách có thể đã cũ."</p>
             </Show>
-            <Show when=move || !offline.get() && matches!(owner.count.get(), vink_ui::BadgeState::Stale(_) | vink_ui::BadgeState::StaleLowerBound)>
-                <p class="vk-notif-note">"Số mới có thể chưa cập nhật."
-                    <Button variant=ButtonVariant::Text on_press=move |_| {
-                        #[cfg(feature = "browser")]
-                        owner.poll_now();
-                    }>"Tải lại"</Button>
-                </p>
-            </Show>
-            <Show when=move || !offline.get() && owner.count.get() == vink_ui::BadgeState::Unknown
+            <Show when=move || !offline.get()
+                && matches!(owner.count.get(), vink_ui::BadgeState::Stale(_) | vink_ui::BadgeState::StaleLowerBound | vink_ui::BadgeState::Unknown)
                 && owner.inbox.with(|inbox| inbox.snapshot.is_some() && inbox.first == Load::Idle)>
-                <p class="vk-notif-note" role="status">"Chưa tải được số thông báo mới."
-                    <Button variant=ButtonVariant::Text on_press=move |_| {
+                <div class="vk-notif-note">
+                    <p role="status">{move || if owner.count.get() == vink_ui::BadgeState::Unknown {
+                        "Chưa tải được số thông báo mới."
+                    } else {
+                        "Số thông báo mới có thể chưa cập nhật."
+                    }}</p>
+                    <Button id="notification-count-retry" variant=ButtonVariant::Text on_press=move |_| {
                         #[cfg(feature = "browser")]
                         owner.poll_now();
                     }>"Thử lại"</Button>
-                </p>
-            </Show>
-            <Show when=move || owner.inbox.with(|inbox| inbox.updates)>
-                <div class="vk-notif-updates">
-                    <Button id="notification-updates" variant=ButtonVariant::Filled leading=IconName::Refresh
-                        on_press=move |_| refresh.run(())>"Có cập nhật mới"</Button>
                 </div>
             </Show>
             {move || {
