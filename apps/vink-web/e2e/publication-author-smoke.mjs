@@ -451,6 +451,9 @@ async function rest(env) {
   check(await author.eval(`document.querySelector('#desk-review-content details').innerText.includes('Đang công khai.')`), 'history identifies the public revision');
   check(await author.eval("!document.querySelector('#desk-review-retry,#desk-review-reload')"), 'healthy review has no permanent reload');
   await author.capture('desk-review-eligible');
+  await author.viewport(390, 844);
+  await author.capture('desk-review-eligible-mobile');
+  await author.send('Emulation.clearDeviceMetricsOverride');
   const appealWire = new Wire(author);
   await appealWire.enable();
   try {
@@ -946,6 +949,12 @@ async function sessions({ author, work, base, check, openPage, reopen, ctx }) {
   const other = await openPage();
   await other.goto(`${base}/toi`);
   await other.waitFor(`${HYDRATED_EXPR} && ${STANDING} === 'active'`, 'the same account in a second tab');
+  const detailTab = await openPage();
+  const detailWire = new Wire(detailTab);
+  detailWire.holdResponse = { method: 'GET', suffix: '/publication/review' };
+  await detailWire.enable();
+  await detailTab.goto(`${base}/ban-viet?review=${work}`);
+  await detailWire.heldAnswer();
   // Keep this edit dirty while the publication refresh waits out its cooldown.
   await holdEditorDebounce(author);
   const wire = new Wire(author);
@@ -959,12 +968,15 @@ async function sessions({ author, work, base, check, openPage, reopen, ctx }) {
     const out = await signOut(other, base);
     check(out.includes(204), 'the session ends for real (sign-out in the other tab, 204)');
     await author.waitFor(`document.querySelector('${PUBLICATION}')?.dataset.phase === 'unavailable'`, 'the first tab learns the session ended');
+    await detailTab.waitFor("!document.querySelector('#desk-review-content')", 'private sheet is disposed at logout');
+    await detailWire.releaseAnswer();
     await wire.releaseAnswer();
     await sleep(500);
     const late = await panelText(author);
     check(late.includes('Phiên đăng nhập đã hết') && !late.includes('Đang công khai') && !late.includes('Chưa công khai') && !late.includes(title), 'the late answer of the old session changes nothing: no facts, only the session notice');
     check((await author.body()).endsWith('[phiên]') && (await author.status()) === 'unsaved', 'the unsaved text stays on the page when the session ends');
   } finally {
+    await detailWire.close();
     await wire.close();
     await author.eval('window.__restoreEditorClock?.()');
   }
@@ -981,6 +993,11 @@ async function sessions({ author, work, base, check, openPage, reopen, ctx }) {
   await sleep(800);
   const gone = await author.eval(`document.body.innerText`);
   check(!gone.includes(title) && !gone.includes('[phiên]') && !gone.includes('Đang công khai') && !gone.includes(LINE_1A), 'another account in the browser: none of the author’s text, title or publication facts remain on the page');
+  await detailTab.waitFor("document.querySelector('#desk-review-content [role=alert]')?.textContent.includes('Không mở được tác phẩm')", 'new author cannot open the old work');
+  check(await detailTab.eval(`!document.querySelector('#desk-review-content article, #desk-review-retry, [id^="file-appeal-"]') &&
+    !document.body.innerText.includes(${JSON.stringify(title)})`) && detailWire.count('POST', '/appeals') === 0,
+    'a delayed private GET cannot restore author A’s review or send an appeal under B');
+  await detailTab.send('Page.close');
   const foreign = await call(other, `/api/v1/works/${work}/publication/state`);
   check(foreign.status === 404 && foreign.cache === 'no-store', 'the other account asking for the author’s state gets 404 no-store');
   const html = await (await fetch(`${base}/ban-viet/${work}`)).text();
