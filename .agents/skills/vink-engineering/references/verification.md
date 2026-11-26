@@ -1,10 +1,12 @@
 # Verification scope and evidence
 
-Use the manifests and command owners at the current checkout. The implemented lanes are
-`cargo xtask verify quick|discussion|expressions|kani|postgres|web|all`; what each covers, its prerequisites and its limits
-are defined once in [docs/development](../../../../docs/development/README.md). CI runs the same
-lanes. On shared macOS machines, run supported heavy commands via
-[local-budget](../../../../docs/development/local-resource-budget.md) (`./tools/local-budget run -- ...`, requiring Python 3.13+; note unsupported lanes such as `verify web`, Gradle/CMP and native diagnostics). `discussion` covers the structural D2T-01, lifecycle D2T-02 (with receipts), reaction D2T-INV-08 and literary endorsement (LVE #73) Quint models and real Rust replay;
+[Scoped workflows](../../../../docs/development/scoped-workflows.md) owns the command contract
+and [local resource budget](../../../../docs/development/local-resource-budget.md) owns host
+admission, limits and cleanup. Use the [development guide](../../../../docs/development/README.md)
+for environment setup. On a shared Mac, put supported heavy commands through the launcher
+before Cargo bootstrap. The launcher reports browser, Gradle/CMP and native diagnostics as `UNSUPPORTED`.
+
+`discussion` covers the structural D2T-01, lifecycle D2T-02 (with receipts), reaction D2T-INV-08 and literary endorsement (LVE #73) Quint models and real Rust replay;
 there is no generic behavior lane. Canonical publication/moderation/governance model counts and
 replay limits belong to the [publication owner](../../../../services/vink-app/behavior/publication/README.md).
 The lane also checks the [Web read-lifecycle model](../../../../apps/vink-web/behavior/README.md)
@@ -25,28 +27,24 @@ instructions or repeated checking workflows, use
 
 ## Start from the diff
 
-Before choosing a large workload, run `cargo xtask verify changed --plan` (default base
-`origin/develop`, never fetched; worktree scope includes staged, unstaged and untracked files).
-It names each selected check, its reason, the triggering paths, dependency closure, artifacts,
-manual obligations and what it did not select. Run the cheapest selected check that answers the
-current question while editing; before handoff run the plan with
-`cargo xtask verify changed --expect PLAN_ID`, which executes exactly that plan and stops on drift.
-Broaden beyond the plan when the claim needs a boundary the planner records only as a consumer
-condition (for example a Web route whose response changed), when a check fails for a reason
-outside the selected owner, or when the plan shows `fallback`. Do not narrow below it: an
-unknown input, shared runner or workspace input broadens on purpose. The planner never replaces
-a gate the target requires; a selected PASS is not a full-lane or merge PASS, and `NO_WORK` is
-not a PASS. Reuse an earlier result only while its plan's inputs fingerprint and boundary
-still match; otherwise rerun the affected check. Its registry and dependency rules are in
-the [scoped workflow guide](../../../../docs/development/scoped-workflows.md#lập-kế-hoạch-theo-diff).
+Use `cargo xtask verify changed --plan` for a worktree whose inputs are all in scope.
+It fingerprints staged and unstaged changes and reads non-ignored untracked files.
+For a PR or a checkout with unrelated local files, plan the committed range with
+`cargo xtask verify changed --base BASE_SHA --head HEAD_SHA --plan`. Account separately
+for relevant edits made after that head. The plan lists triggering paths, selected checks,
+dependencies, manual obligations and fallback reasons.
 
-For a focused local task, use the [scoped workflow guide](../../../../docs/development/scoped-workflows.md):
-`verify static`, `verify check <owner>`, `verify unit <owner> [--test TARGET] [--filter NAME]`,
-`verify postgres <owner> [--filter NAME]`, `verify web --scenario NAME`, `verify preview`
-and `doctor <scoped command>`. `--capture checks` on explicit Web scenarios leaves PNG/visual
-evidence `NOT_RUN`. Cite runnable test count separately from Cargo compile/link cost.
-Inspect dependencies with trailing `--plan`. A selected result is not a full lane PASS; `restart`
-creates its own draft and carries its ID across the App restart. Full lanes and formal-method obligations below remain unchanged.
+During an edit, run the cheapest selected check that exercises the changed behavior. At handoff,
+account for every selected check and each required consumer or target. To execute the reviewed plan, repeat its scope flags with
+`--expect PLAN_ID` in place of `--plan`. The executor stops on drift. Where earlier results
+cover part of the plan, run the outstanding selectors and cite the original evidence for the rest.
+Only an actual plan execution supplies an overall planner result.
+[Commands and execution limits](../../../../docs/development/scoped-workflows.md#lập-kế-hoạch-theo-diff)
+
+If a committed plan cannot inspect a clean checkout of its head, it reports a conservative
+fallback. Record that reason. Trace the committed paths to their owners, run the applicable
+selectors separately and identify any unchecked obligations. An unknown or shared input can
+require broader regression. Preserve the target's actual integration and release gates.
 
 ## Scoped completion claims
 
@@ -63,13 +61,15 @@ A child PR may satisfy its own acceptance without claiming `OUTCOME_COMPLETE` fo
 A Draft PR can carry a focused result and an explicit gap. During review, trace each changed
 caller and the original evidence inputs. Before integration or release, run the outstanding
 cross-owner checks and the gates required for that target. Open the feature map for opt-in
-performance, native, formal, IME, security and visual obligations. An empty diff, inspected
-plan or artifact HIT establishes no test result.
+performance, native, formal, IME, security and visual obligations. Choose `quick` or `all` when the
+affected inputs or the target gate call for their coverage. Preserve reusable artifacts between
+checks. For disk pressure or confirmed corruption, save evidence outside `target` and remove
+only authorized, reproducible artifacts from the affected run. Skip routine `cargo clean`.
 
 | Change | First check during an edit | Evidence for the boundary |
 | --- | --- | --- |
 | Contributor docs or skills | `verify static docs`, inspect the affected links and CLI | Run changed examples against their owner or its plan |
-| CSS or shared component | `verify static tokens` and relevant repository guards | Product route at affected themes/sizes plus opened captures. Shared sources also feed Preview and may feed CMP |
+| CSS or shared component | Inspect the affected route or Preview caller. Run `verify static tokens` for generated-token drift | Check the rendered state at the affected themes/sizes and open the captures. With `--capture checks`, visual evidence stays `NOT_RUN`. Trace shared changes to their Web, Preview and CMP consumers |
 | Rust module | `verify check OWNER` for types, then `verify unit OWNER --filter NAME` for a decision | Record the matched runnable tests. Cargo can still compile and link the entire selected test target |
 | SQL, roles or migration | `verify postgres OWNER` on a disposable cluster | Add lifecycle, rollback, races or full PostgreSQL when shared schema or provisioning changes |
 | Auth or shared HTTP contract | Start at the owning service tests and a scoped PostgreSQL fixture | Verify actual Web and service consumers, including disabled auth and negative access cases |
@@ -117,10 +117,16 @@ An AC on a product route needs evidence from that route.
 Record the source SHA and relevant dirty content, target/feature/profile, toolchain and flags,
 dependency locks, generator/validator inputs, fixture or corpus, command, original logs and claim.
 For cold/warm comparisons identify which cache began empty, which stayed warm and the measurement
-boundary (process RSS or cgroup peak). Separate an artifact HIT from an executed assertion.
+boundary (process RSS or cgroup peak). Compare like workloads, toolchains, fixtures and cache
+states. For example, the [verification baseline](../../../../docs/development/evidence/verification-budget-497/README.md)
+includes a two-worktree fixture. The [low-disk comparison](../../../../docs/development/evidence/cargo-low-disk-502.md)
+measured cold/warm dev/test artifacts in one checkout. Switching its warm target kept both
+artifact sets. A two-worktree low-disk benchmark is still `NOT_RUN`. Separate an artifact HIT
+from an executed assertion.
 When copying a source snapshot into a reused build directory, preserved mtimes can predate the
 previous binary. Verify the changed producer with a regression that the old binary fails.
-Mark unresolved inputs `NOT_RUN` or `PARTIAL` and unsupported targets `UNSUPPORTED`.
+Keep the runner's result on the inputs it executed. Record a missing run on the new inputs
+as `NOT_RUN` and name the prerequisite for any `UNSUPPORTED` boundary.
 
 Compare the tested inputs with the final delta. Rerun an affected check if its code, build,
 fixture or target changed in a relevant way. If the delta is unrelated, record why the original

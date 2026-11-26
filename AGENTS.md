@@ -228,7 +228,7 @@ launcher with an installed Python 3.13+ (e.g. `/opt/homebrew/bin/python3 ./tools
 `./tools/local-budget plan` inspects the profile without Cargo bootstrap. Raw commands outside
 the launcher do not join its host-user slot. See the guide for unsupported lanes and recovery.
 
-Discover manifests, scripts and CI before selecting checks. `cargo xtask verify
+Inspect the manifests and command owners before selecting checks. `cargo xtask verify
 quick|discussion|expressions|kani|postgres|web` are implemented lanes, used by CI as well. `discussion` checks
 the structural D2T-01, lifecycle D2T-02 (with receipts) and reaction D2T-INV-08 Quint models and replays their inputs through the real
 pure decisions (the lane fails if a named replay test is not selected); locking, transactions and
@@ -246,9 +246,10 @@ agent runtimes (Codex, Claude Code, Antigravity) load it without truncation.
 For documentation/skill changes, check the diff, relative links, YAML metadata and referenced
 files. For behavior changes, use the cheapest meaningful regression and then the actual
 boundary needed by the claim: real PostgreSQL for transactions and a browser for hydration/editor interactions. Quint evidence is separate from code/I/O evidence.
-Start with `cargo xtask verify changed --plan` before choosing a large workload, then run the
-cheapest selected check that answers the question; `verify changed --expect PLAN_ID` executes
-that exact plan and stops on input drift ([scoped workflows](docs/development/scoped-workflows.md)).
+Use the [diff planner](docs/development/scoped-workflows.md#lập-kế-hoạch-theo-diff) before a
+large workload. Its default worktree plan reads non-ignored untracked files. For a committed
+PR range, pass `--base BASE_SHA --head HEAD_SHA --plan`. Match the selected checks to each
+claim and reuse applicable evidence at its original SHA.
 A plan, `NO_WORK`, warm target or asset cache hit supplies no execution evidence.
 Use [the verification guide](.agents/skills/vink-engineering/references/verification.md) to report
 which acceptance criteria the evidence covers and which boundaries still need verification.

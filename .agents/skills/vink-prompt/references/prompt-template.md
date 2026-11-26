@@ -40,8 +40,9 @@ Extend the same block when the work needs more context:
   fix budget that apply. Check 100% and 200% text when affected. Omit UX_CRITERIA for a copy or
   single-property fix with an obvious check.
 - **VERIFY and BLOCKERS.** Select an existing command or inspection from the
-  [scoped workflows](../../../../docs/development/scoped-workflows.md). For a mixed diff, start from
-  `cargo xtask verify changed --plan` and carry its base/head or worktree scope, plan id and selected commands. Record actual execution beside its AC. Give the target, fixture
+  [scoped workflows](../../../../docs/development/scoped-workflows.md). When using the diff planner, carry its
+  scope, base/head, plan ID and selected commands. For PR review or unrelated local inputs, use a committed range. Record actual
+  execution or applicable prior evidence beside each AC. Give the target, fixture
   and prerequisite when they affect the claim. If a dependency or decision blocks an AC,
   identify the dependent check, work that can proceed and the condition for resuming it.
 - **HANDOFF.** Use the [verification guide](../../vink-engineering/references/verification.md#evidence-handoff-and-provenance)
