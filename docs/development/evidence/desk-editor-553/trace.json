@@ -1,0 +1,502 @@
+{
+  "timeline": [
+    {
+      "ms": 7,
+      "path": "/ban-viet",
+      "status": 200
+    },
+    {
+      "ms": 791,
+      "path": "/api/v1/auth/session",
+      "status": 200
+    },
+    {
+      "ms": 894,
+      "state": "guest guard",
+      "route": "/ban-viet",
+      "hydrated": "true",
+      "views": 0,
+      "headings": 0
+    },
+    {
+      "ms": 1101,
+      "path": "/api/v1/auth/password/register",
+      "status": 200
+    },
+    {
+      "ms": 1107,
+      "path": "/api/v1/auth/principal",
+      "status": 201
+    },
+    {
+      "ms": 1109,
+      "path": "/api/v1/auth/session",
+      "status": 200
+    },
+    {
+      "ms": 1113,
+      "path": "/ban-viet",
+      "status": 200
+    },
+    {
+      "ms": 1820,
+      "path": "/api/v1/auth/session",
+      "status": 200
+    },
+    {
+      "ms": 1822,
+      "path": "/api/v1/auth/session/account",
+      "status": 200
+    },
+    {
+      "ms": 1853,
+      "path": "/api/v1/me/notifications/count",
+      "status": 503
+    },
+    {
+      "ms": 1855,
+      "path": "/api/v1/author/works",
+      "status": 200
+    },
+    {
+      "ms": 1922,
+      "state": "native first-use",
+      "route": "/ban-viet",
+      "hydrated": "true",
+      "views": 0,
+      "headings": 0
+    },
+    {
+      "ms": 2003,
+      "path": "/api/v1/drafts",
+      "status": 201
+    },
+    {
+      "ms": 2006,
+      "path": "/api/v1/drafts/:id",
+      "status": 200
+    },
+    {
+      "ms": 2009,
+      "path": "/api/v1/drafts",
+      "status": 201
+    },
+    {
+      "ms": 2013,
+      "path": "/ban-viet/:id",
+      "status": 200
+    },
+    {
+      "ms": 2675,
+      "path": "/api/v1/auth/session",
+      "status": 200
+    },
+    {
+      "ms": 2676,
+      "path": "/api/v1/auth/session/account",
+      "status": 200
+    },
+    {
+      "ms": 2679,
+      "path": "/api/v1/me/notifications/count",
+      "status": 503
+    },
+    {
+      "ms": 2693,
+      "path": "/api/v1/drafts/:id",
+      "status": 200
+    },
+    {
+      "ms": 2731,
+      "path": "/api/v1/tags",
+      "status": 200
+    },
+    {
+      "ms": 2731,
+      "path": "/api/v1/drafts/:id/tags",
+      "status": 200
+    },
+    {
+      "ms": 2731,
+      "path": "/api/v1/works/:id/publication/state",
+      "status": 200
+    },
+    {
+      "ms": 2731,
+      "path": "/pkg/vink-editor.js",
+      "status": 200
+    },
+    {
+      "ms": 2864,
+      "state": "empty markdown ready",
+      "route": "/ban-viet/:id",
+      "hydrated": "true",
+      "body": "ready",
+      "views": 1,
+      "headings": 0
+    },
+    {
+      "ms": 2995,
+      "path": "/api/v1/drafts/:id",
+      "status": 200
+    },
+    {
+      "ms": 2999,
+      "path": "/ban-viet",
+      "status": 200
+    },
+    {
+      "ms": 3661,
+      "path": "/api/v1/auth/session",
+      "status": 200
+    },
+    {
+      "ms": 3663,
+      "path": "/api/v1/auth/session/account",
+      "status": 200
+    },
+    {
+      "ms": 3671,
+      "path": "/api/v1/me/notifications/count",
+      "status": 503
+    },
+    {
+      "ms": 3676,
+      "path": "/api/v1/author/works",
+      "status": 200
+    },
+    {
+      "ms": 3685,
+      "state": "populated desk",
+      "route": "/ban-viet",
+      "hydrated": "true",
+      "views": 0,
+      "headings": 0
+    },
+    {
+      "ms": 3781,
+      "path": "/ban-viet/:id",
+      "status": 200
+    },
+    {
+      "ms": 4443,
+      "path": "/api/v1/auth/session",
+      "status": 200
+    },
+    {
+      "ms": 4444,
+      "path": "/api/v1/drafts/:id",
+      "status": 200
+    },
+    {
+      "ms": 4452,
+      "path": "/pkg/vink-editor.js",
+      "status": 200
+    },
+    {
+      "ms": 4452,
+      "path": "/api/v1/auth/session/account",
+      "status": 200
+    },
+    {
+      "ms": 4452,
+      "path": "/api/v1/tags",
+      "status": 200
+    },
+    {
+      "ms": 4452,
+      "path": "/api/v1/drafts/:id/tags",
+      "status": 200
+    },
+    {
+      "ms": 4465,
+      "path": "/api/v1/me/notifications/count",
+      "status": 503
+    },
+    {
+      "ms": 4465,
+      "path": "/api/v1/works/:id/publication/state",
+      "status": 200
+    },
+    {
+      "ms": 4466,
+      "state": "plain ready",
+      "route": "/ban-viet/:id",
+      "hydrated": "true",
+      "body": "ready",
+      "views": 1,
+      "headings": 0
+    },
+    {
+      "ms": 4551,
+      "path": "/ban-viet/:id",
+      "status": 200
+    },
+    {
+      "ms": 5214,
+      "path": "/api/v1/auth/session",
+      "status": 200
+    },
+    {
+      "ms": 5215,
+      "path": "/api/v1/drafts/:id",
+      "status": 200
+    },
+    {
+      "ms": 5221,
+      "path": "/pkg/vink-editor.js",
+      "status": 200
+    },
+    {
+      "ms": 5221,
+      "path": "/api/v1/auth/session/account",
+      "status": 200
+    },
+    {
+      "ms": 5226,
+      "path": "/api/v1/tags",
+      "status": 200
+    },
+    {
+      "ms": 5226,
+      "path": "/api/v1/drafts/:id/tags",
+      "status": 200
+    },
+    {
+      "ms": 5237,
+      "path": "/api/v1/me/notifications/count",
+      "status": 503
+    },
+    {
+      "ms": 5237,
+      "path": "/api/v1/works/:id/publication/state",
+      "status": 200
+    },
+    {
+      "ms": 5279,
+      "state": "ready AST",
+      "route": "/ban-viet/:id",
+      "hydrated": "true",
+      "body": "ready",
+      "views": 1,
+      "headings": 4
+    },
+    {
+      "items": [
+        {
+          "label": "Qua bậc cửa",
+          "from": 0
+        },
+        {
+          "label": "Mưa đầu mùa",
+          "from": 35
+        },
+        {
+          "label": "Dưới hiên",
+          "from": 83
+        },
+        {
+          "label": "Mưa đầu mùa",
+          "from": 98
+        }
+      ]
+    },
+    {
+      "ms": 5869,
+      "state": "mobile jump",
+      "route": "/ban-viet/:id",
+      "hydrated": "true",
+      "body": "ready",
+      "views": 1,
+      "headings": 0
+    },
+    {
+      "ms": 5883,
+      "path": "/ban-viet/:id",
+      "status": 200
+    },
+    {
+      "ms": 6601,
+      "path": "/api/v1/drafts/:id",
+      "status": 200
+    },
+    {
+      "ms": 6601,
+      "path": "/api/v1/auth/session",
+      "status": 200
+    },
+    {
+      "ms": 6611,
+      "path": "/api/v1/tags",
+      "status": 200
+    },
+    {
+      "ms": 6611,
+      "path": "/api/v1/drafts/:id/tags",
+      "status": 200
+    },
+    {
+      "ms": 6611,
+      "path": "/api/v1/auth/session/account",
+      "status": 200
+    },
+    {
+      "ms": 6616,
+      "path": "/api/v1/me/notifications/count",
+      "status": 503
+    },
+    {
+      "ms": 6617,
+      "path": "/api/v1/works/:id/publication/state",
+      "status": 200
+    },
+    {
+      "ms": 6729,
+      "state": "module held",
+      "route": "/ban-viet/:id",
+      "hydrated": "true",
+      "body": "loading",
+      "views": 0,
+      "headings": 0
+    },
+    {
+      "ms": 6834,
+      "state": "module failed deliberately",
+      "route": "/ban-viet/:id",
+      "hydrated": "true",
+      "body": "failed",
+      "views": 0,
+      "headings": 0
+    },
+    {
+      "ms": 6847,
+      "path": "/ban-viet/:id",
+      "status": 200
+    },
+    {
+      "ms": 7552,
+      "path": "/api/v1/auth/session",
+      "status": 200
+    },
+    {
+      "ms": 7552,
+      "path": "/api/v1/drafts/:id",
+      "status": 200
+    },
+    {
+      "ms": 7558,
+      "path": "/api/v1/auth/session/account",
+      "status": 200
+    },
+    {
+      "ms": 7563,
+      "path": "/api/v1/tags",
+      "status": 200
+    },
+    {
+      "ms": 7564,
+      "path": "/api/v1/drafts/:id/tags",
+      "status": 200
+    },
+    {
+      "ms": 7564,
+      "path": "/api/v1/me/notifications/count",
+      "status": 503
+    },
+    {
+      "ms": 7564,
+      "path": "/api/v1/works/:id/publication/state",
+      "status": 200
+    },
+    {
+      "ms": 7567,
+      "path": "/pkg/vink-editor.js",
+      "status": 200
+    },
+    {
+      "ms": 7634,
+      "state": "reload recovered",
+      "route": "/ban-viet/:id",
+      "hydrated": "true",
+      "body": "ready",
+      "views": 1,
+      "headings": 0
+    },
+    {
+      "ms": 7678,
+      "path": "/api/v1/drafts/:id",
+      "status": 200
+    },
+    {
+      "ms": 7683,
+      "path": "/ban-viet/:id",
+      "status": 200
+    },
+    {
+      "ms": 8432,
+      "path": "/api/v1/auth/session",
+      "status": 200
+    },
+    {
+      "ms": 8460,
+      "path": "/api/v1/drafts/:id",
+      "status": 200
+    },
+    {
+      "ms": 8471,
+      "path": "/api/v1/auth/session/account",
+      "status": 200
+    },
+    {
+      "ms": 8473,
+      "path": "/api/v1/tags",
+      "status": 200
+    },
+    {
+      "ms": 8473,
+      "path": "/api/v1/drafts/:id/tags",
+      "status": 200
+    },
+    {
+      "ms": 8479,
+      "path": "/api/v1/me/notifications/count",
+      "status": 503
+    },
+    {
+      "ms": 8479,
+      "path": "/api/v1/works/:id/publication/state",
+      "status": 200
+    },
+    {
+      "ms": 8576,
+      "path": "/pkg/vink-editor.js",
+      "status": 200
+    },
+    {
+      "astPhases": [
+        [
+          "Đang đọc mục lục…",
+          0
+        ],
+        [
+          "Đang cập nhật phần còn lại…",
+          4
+        ],
+        [
+          "ready",
+          5
+        ]
+      ]
+    },
+    {
+      "ms": 8665,
+      "state": "long draft ready",
+      "route": "/ban-viet/:id",
+      "hydrated": "true",
+      "body": "ready",
+      "views": 1,
+      "headings": 5
+    }
+  ],
+  "console": []
+}
