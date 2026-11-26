@@ -93,13 +93,6 @@ fn render_profile(
             has_public_works,
             relationships,
         }) if author.valid_href().is_some() => {
-            let initials = author
-                .pen_name
-                .split_whitespace()
-                .filter_map(|s| s.chars().next())
-                .take(2)
-                .collect::<String>()
-                .to_uppercase();
             // The overlay belongs to this exact public projection. An authoritative refresh
             // may have revoked a list or count since the write; no old overlay may outlive it.
             let (public_summary, on_summary) =
@@ -108,14 +101,7 @@ fn render_profile(
                 <Title text=format!("{} · Vink", author.pen_name) />
                 <Link rel="canonical" href=crate::canonical_url(&author.href) />
                 <article class="vk-author-public">
-                    <MobileBrand />
-                    <div class="vk-author-identity">
-                        <span class="vk-author-seal" aria-hidden="true">{initials}</span>
-                        <header>
-                            <h1 id="author-profile-heading" tabindex="-1">{author.pen_name}</h1>
-                            <p>{format!("@{}", author.handle)}</p>
-                        </header>
-                    </div>
+                    <ProfileIdentity pen_name=author.pen_name handle=author.handle.clone() />
                     <super::follow::ProfileActionRegion
                         handle=author.handle.clone()
                         on_summary
@@ -129,7 +115,7 @@ fn render_profile(
                     {bio.map(|text| view! { <p class="vk-author-bio">{text}</p> })}
                     <section aria-labelledby="author-works-heading"
                         class="[margin-block-start:calc(var(--vk-space-8)_+_var(--vk-space-2))] [&>.vk-ui-link]:inline-block [&>.vk-ui-link]:[margin-inline-end:var(--vk-space-3)]">
-                        <h2 id="author-works-heading" tabindex="-1">"Tác phẩm công khai"</h2>
+                        <super::saved_profile::PublicWorksSlot handle=author.handle.clone() />
                         {match publications {
                             Some(ProfileWorks::Page { works, next_cursor }) => {
                                 let items = works.into_iter().map(|work| view! {
@@ -213,7 +199,7 @@ fn render_profile(
 
 // The public summary lives with the rendered profile. A viewer change affects the
 // command/receipt and the private overlay, but the public read can still settle or retry.
-fn profile_summary(
+pub(super) fn profile_summary(
     handle: String,
     initial: crate::contract::follow::PublicRelationships,
 ) -> (
@@ -300,6 +286,26 @@ pub(super) fn redirect_alias(status: &super::ResponseStatus, source_path: &str, 
 extern "C" {
     #[wasm_bindgen(js_name = replaceProfileAlias)]
     fn replace_profile_alias(source_path: &str, href: &str);
+}
+
+#[component]
+pub(super) fn ProfileIdentity(pen_name: String, handle: String) -> impl IntoView {
+    let initials = pen_name
+        .split_whitespace()
+        .filter_map(|s| s.chars().next())
+        .take(2)
+        .collect::<String>()
+        .to_uppercase();
+    view! {
+        <MobileBrand />
+        <div class="vk-author-identity">
+            <span class="vk-author-seal" aria-hidden="true">{initials}</span>
+            <header>
+                <h1 id="author-profile-heading" tabindex="-1">{pen_name}</h1>
+                <p>{format!("@{handle}")}</p>
+            </header>
+        </div>
+    }
 }
 
 #[component]

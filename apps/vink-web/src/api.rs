@@ -1102,6 +1102,38 @@ pub(crate) async fn load_saved_work(
     http::saved_work("GET", &saved_work_path(work_id), None).await
 }
 
+#[cfg(feature = "browser")]
+pub(crate) async fn load_saved_works(
+    cursor: Option<&str>,
+    principal: &str,
+) -> Result<crate::contract::SavedWorksPage, ApiError> {
+    let path = "/api/v1/me/saved-works";
+    let path = match cursor {
+        Some(cursor) => format!("{path}?cursor={}", encode_segment(cursor)),
+        None => path.to_owned(),
+    };
+    http::saved_work("GET", &path, Some(principal)).await
+}
+
+#[cfg(feature = "browser")]
+pub(crate) async fn reconcile_saved_work(
+    work_id: &str,
+    principal: &str,
+) -> Result<crate::contract::SavedWorkState, ApiError> {
+    http::saved_work("GET", &saved_work_path(work_id), Some(principal)).await
+}
+
+/// A notification may name a removed row only after a fresh, public Reader projection.
+#[cfg(feature = "browser")]
+pub(crate) async fn readable_saved_title(work_id: &str) -> Option<String> {
+    use crate::contract::ReaderResponse;
+    let path = format!("/api/v1/works/{}/reader", encode_segment(work_id));
+    match http::saved_work("GET", &path, None).await.ok()? {
+        ReaderResponse::Published(work) if work.work_id == work_id => Some(work.title),
+        _ => None,
+    }
+}
+
 /// `PUT` saves, `DELETE` unsaves, both with the generation the viewer last confirmed and the
 /// principal that started the intent; the server still authenticates the actor.
 #[cfg(feature = "browser")]
@@ -1292,8 +1324,7 @@ mod http {
         }
     }
 
-    /// A private saved-works request: bounded, never stored by the browser, and for writes
-    /// fenced to the principal that started it.
+    /// A bounded, no-store private request. The caller can bind it to a confirmed principal.
     pub(super) async fn saved_work<T: DeserializeOwned>(
         method: &str,
         path: &str,

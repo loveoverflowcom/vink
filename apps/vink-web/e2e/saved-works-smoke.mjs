@@ -4,6 +4,8 @@
 import { HYDRATED, fill, q } from './auth-smoke.mjs';
 import { captureRequest, holdAnswer } from './auth-browser-network.mjs';
 import { checkLoginR3 } from './auth-r3-smoke.mjs';
+import { savedProfileJourney, savedProfilePrivacy } from './saved-profile-smoke.mjs';
+import { savedProfileLifecycle } from './saved-profile-lifecycle.mjs';
 
 const WORK = '33333333-3333-4333-8333-333333333333';
 const HERE = `/tac-pham/${WORK}`;
@@ -331,6 +333,9 @@ export async function readerSave(page, { args, check, openPage, reader, other })
     await page.eval(settledPaint);
     await page.capture('reader-save-390-dark-saved', { boundary: 'real-reader-save-saved-dark', requiredTargets: ['#sv-pair'] });
     await geometryMatrix(page, check, base);
+    const paths = await savedProfileJourney(page, { args, check, lost: true });
+    await savedProfileLifecycle(page, { args, check, paths });
+    await savedProfilePrivacy(page, { args, check, openPage, paths, other: reader });
     const errors = page.errors.slice(errorsBefore);
     check(errors.length === 0, `#388 no console exceptions during the save journey (${errors.slice(0, 3).join(' | ')})`);
   } finally {
@@ -375,6 +380,7 @@ export async function readerSaveSsr(page, { args, check }) {
   await page.click(SAVE);
   await page.waitFor(`${pressed('false')} && ${says('Đã bỏ lưu.')}`, 'SSR Reader unsaves');
   check((await readState(page)).body?.saved === false, '#388 SSR/hydration: save and unsave reach the private API');
+  await savedProfileJourney(page, { args, check, ssr: true });
 }
 
 export { captureRequest };

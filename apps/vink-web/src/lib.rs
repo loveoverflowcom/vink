@@ -180,6 +180,7 @@ fn Chrome() -> impl IntoView {
                     <Route path=path!("/:author") view=pages::handle::Author ssr=SsrMode::Async />
                     <Route path=path!("/:author/nguoi-theo-doi") view=pages::follow::FollowersList ssr=SsrMode::Async />
                     <Route path=path!("/:author/dang-theo-doi") view=pages::follow::FollowingList ssr=SsrMode::Async />
+                    <Route path=path!("/:author/da-luu") view=pages::saved_profile::SavedProfile ssr=SsrMode::Async />
                 </Routes>
             </main>
         </AdaptiveShell>

@@ -1,6 +1,6 @@
 # HTTP v1 · Danh sách Đã lưu của tôi
 
-Hợp đồng đã triển khai ở mức `persistence-api` (#387). Vink App sở hữu quan hệ (PrincipalId, WorkId). Consumer Web đầu tiên là nút Lưu của Reader (#388, [ReaderSave](../../../../../apps/vink-web/src/pages/saved_work.rs)), dùng hai tuyến theo từng bài. [PRD §18 và bảng vòng đời](../../../../../prd/requirements.md#18-lưu-bài-để-đọc-lại-saved-works) · [phiên, Origin và lỗi v1](README.md) · [registry](../../../../../docs/development/saved-works.md).
+Hợp đồng đã triển khai ở mức `persistence-api` (#387). Vink App sở hữu quan hệ (PrincipalId, WorkId). Web dùng hai tuyến theo bài từ [Reader](../../../../../apps/vink-web/src/pages/saved_work.rs) và dùng cả tuyến danh sách từ [Hồ sơ Đã lưu](../../../../../apps/vink-web/src/pages/saved_profile.rs). [PRD §18 và bảng vòng đời](../../../../../prd/requirements.md#18-lưu-bài-để-đọc-lại-saved-works) · [phiên, Origin và lỗi v1](README.md) · [registry](../../../../../docs/development/saved-works.md).
 
 ## Tuyến và quyền
 
@@ -12,6 +12,8 @@ Hợp đồng đã triển khai ở mức `persistence-api` (#387). Vink App s�
 | `GET /api/v1/me/saved-works` hoặc `?cursor=C` | Trang đầu bỏ cursor; trang sau dùng nguyên token server cấp | `{"items":[…],"next_cursor":null}` hoặc token chuỗi nếu còn dòng để đọc. Không có total/limit tùy chỉnh. |
 
 App xác thực phiên v1 và tự giải PrincipalId cho **tất cả** các tuyến. Không có tuyến đọc theo handle hay PrincipalId do người gọi chọn. GET một bài chỉ hỏi về quan hệ của chủ, không tra hoặc tiết lộ bài đích có tồn tại hay không. Tài khoản chỉ bị hạn chế đăng/bình luận vẫn dùng được cả bốn tuyến.
+
+GET chấp nhận điều kiện tùy chọn `X-Vink-Expected-Principal`. Web Hồ sơ đặt điều kiện này khi tải danh sách và đọc đối soát một cặp. Thiếu header vẫn đọc theo phiên. Header hợp lệ nhưng khác principal đã xác thực trả 403 trước khi lấy dữ liệu.
 
 PUT/DELETE yêu cầu `Origin` khớp `VINK_PUBLIC_ORIGIN`. Client gửi thêm header `X-Vink-Expected-Principal` là PrincipalId của phiên lúc khởi tạo thao tác. Đây là điều kiện chống đổi tài khoản giữa hai tab, actor vẫn do server xác thực. Kiểm standing hiện hành tại commit bằng fence của App. Với PUT, kể cả PUT lặp, phải đọc được publication công khai tại commit, gồm bài của chính mình. Preview, nháp, bản riêng của chủ và trang thay thế đều không đủ điều kiện. DELETE chỉ cần standing và fence của cặp.
 

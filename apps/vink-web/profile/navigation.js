@@ -4,6 +4,63 @@ const aliasFocusKey = 'vinkProfileAliasFocus';
 const recheckKey = 'vinkProfileRecheck';
 let pendingDestination;
 
+const savedReturnKey = 'vinkSavedReturnEntry';
+const savedReturns = new Map();
+
+// Only an opaque entry marker goes into history. Work, scope and position live in this
+// document's memory. No cursor or previous response travels with the entry.
+export function rememberSavedReturn(path, scope, work, pages) {
+  const anchor = document.getElementById('saved-open-' + work);
+  if (path !== location.pathname || !anchor || !globalThis.crypto?.randomUUID) return;
+  const entry = crypto.randomUUID();
+  savedReturns.set(entry, { path, scope, work, pages, top: anchor.getBoundingClientRect().top });
+  if (savedReturns.size > 16) savedReturns.delete(savedReturns.keys().next().value);
+  history.replaceState({ ...history.state, [savedReturnKey]: entry }, '');
+}
+
+export function fenceSavedReturns(scope) {
+  for (const [key, item] of savedReturns) {
+    if (item.scope !== scope) savedReturns.delete(key);
+  }
+}
+
+function savedPosition(path, scope) {
+  if (path !== location.pathname || !scope) return undefined;
+  const item = savedReturns.get(history.state?.[savedReturnKey]);
+  return item?.path === path && item.scope === scope ? item : undefined;
+}
+
+export function savedReturnPages(path, scope) {
+  return savedPosition(path, scope)?.pages ?? 0;
+}
+
+// Called by the current route only after its owner check and (when authorized)
+// a new cursor chain. An absent or neutral projection has no reader anchor.
+export function focusSavedReturn(path, scope) {
+  const entry = history.state?.[savedReturnKey];
+  if (!entry || path !== location.pathname) return;
+  requestAnimationFrame(() => {
+    if (location.pathname !== path || entry !== history.state?.[savedReturnKey]) return;
+    const confirmed = savedPosition(path, scope);
+    const active = document.activeElement;
+    const candidate = confirmed && document.getElementById('saved-open-' + confirmed.work);
+    const anchor = candidate?.getAttribute('href') === '/tac-pham/' + confirmed?.work ? candidate : null;
+    const {[savedReturnKey]: _, ...state} = history.state;
+    history.replaceState(state, '');
+    savedReturns.delete(entry);
+    if (active !== document.body && active?.id !== 'noi-dung' && active?.id !== 'not-found-title') return;
+    if (anchor) {
+      window.scrollBy({top: anchor.getBoundingClientRect().top - confirmed.top, behavior: 'instant'});
+      anchor.focus({preventScroll: true});
+    } else {
+      const heading = document.getElementById('saved-heading') || document.getElementById('not-found-title');
+      heading?.focus({preventScroll: true});
+      heading?.scrollIntoView({block: 'nearest', behavior: 'instant'});
+    }
+  });
+}
+
+
 const address = () => location.pathname + location.search + location.hash;
 
 // Back can change the active history entry while an SSR document waits for WASM.

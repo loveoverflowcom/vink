@@ -58,6 +58,14 @@ pub(super) fn watch(session: Session) {
             })
         });
     }
+    Effect::new(move |_| {
+        #[wasm_bindgen::prelude::wasm_bindgen(module = "/profile/navigation.js")]
+        extern "C" {
+            #[wasm_bindgen(js_name = fenceSavedReturns)]
+            fn fence_saved_returns(scope: Option<String>);
+        }
+        fence_saved_returns(session.profile_scope.get());
+    });
     Effect::new(move |_| refresh(session));
 }
 

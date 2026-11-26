@@ -10,6 +10,7 @@ pub(crate) mod handle;
 pub(crate) mod me;
 pub(crate) mod profile;
 pub(crate) mod publication;
+pub(crate) mod saved_profile;
 mod saved_work;
 pub(crate) mod work_info;
 
