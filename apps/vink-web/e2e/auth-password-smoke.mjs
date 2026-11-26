@@ -2,7 +2,7 @@
 // The mail carrier is a local outbox. Faults delay/drop a real response or explicitly inject
 // a refusal; no synthetic success is used. Don't log request bodies, credentials or cookies.
 
-import { spawnSync } from 'node:child_process';
+import { accountDeletionFixtureSql } from './author-fixtures.mjs';
 import { randomUUID } from 'node:crypto';
 import { wakeDesk } from './desk-lifecycle.mjs';
 import { followingFeed } from './following-feed-smoke.mjs';
@@ -889,19 +889,7 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
 
 export async function accountDeletion(page, { args, check, openPage }) {
   const { base } = args;
-  const scratch = process.env.VINK_HANDLE_SCRATCH;
-  const database = scratch && new URL(scratch);
-  if (database?.pathname !== '/vink_verify_web_password_auth' ||
-      !['127.0.0.1', 'localhost', '[::1]'].includes(database.hostname)) {
-    throw new Error('account deletion scenario requires its isolated loopback scratch database');
-  }
-  const db = (statement) => {
-    const result = spawnSync('psql', ['-X', '--no-password', '-v', 'ON_ERROR_STOP=1', '-qtA', '-c', statement], {
-      encoding: 'utf8', env: { ...process.env, PGDATABASE: scratch },
-    });
-    if (result.status !== 0) throw new Error(`account deletion scratch SQL failed: ${result.stderr.trim()}`);
-    return result.stdout.trim();
-  };
+  const db = accountDeletionFixtureSql;
   const username = 'tacgia.xoa';
   const pen = 'Bút danh cần thu hồi';
   await openAccount(page, base, 'anonymous');
@@ -911,11 +899,13 @@ export async function accountDeletion(page, { args, check, openPage }) {
   await setPenName(page, pen);
   const principal = (await read(page, '/api/v1/auth/session')).data.principal_id;
   const { handle } = (await read(page, '/api/v1/me/profile')).data;
-  const other = await openPage(true);
+  const { browserContextId } = await page.cdp.send('Target.createBrowserContext');
+  const other = await openPage(browserContextId);
   await openAccount(other, base, 'anonymous');
   await credentials(other, LOGIN, username, SECRET_A);
   await other.click(LOGIN + '-submit');
   await other.waitFor(`${STANDING} === 'active'`, 'second independent browser session');
+  await page.send('Page.bringToFront');
 
   const work = randomUUID();
   const revision = randomUUID();

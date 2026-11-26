@@ -575,7 +575,12 @@ fn auth_web(
             &origin,
             state,
             &[(
-                "VINK_HANDLE_SCRATCH".into(),
+                if matches!(phase, IdentityPhase::AccountDeletion) {
+                    "VINK_ACCOUNT_DELETION_SCRATCH"
+                } else {
+                    "VINK_HANDLE_SCRATCH"
+                }
+                .into(),
                 app.env
                     .iter()
                     .find(|(key, _)| {
