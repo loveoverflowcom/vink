@@ -563,6 +563,7 @@ fn field_text(scenario: &str) -> AnyView {
                 value=email
                 on_input=text_logger("contact", email)
                 autocomplete="email"
+                leading=IconName::Mail
             />
             <p class="vkp-note" data-testid="title-value">{move || format!("Giá trị caller giữ: {:?}", text.get())}</p>
         </Stack>

@@ -264,6 +264,7 @@ fn text_field(
     on_focus: Option<Callback<()>>,
     variant: FieldVariant,
     reveal_password: bool,
+    leading: Option<IconName>,
 ) -> impl IntoView {
     let invalid = Signal::derive(move || present(error.get()).is_some());
     let help = Signal::derive(move || {
@@ -341,8 +342,9 @@ fn text_field(
                     {required_mark(required)}
                 </label>
             })}
-            <div class="vk-ui-field__control" data-search=search.then_some("true") data-reveal=move || reveal().then_some("true")>
-                {search.then(|| view! { <Icon name=IconName::Search /> })}
+            <div class="vk-ui-field__control" data-search=search.then_some("true")
+                data-reveal=move || reveal().then_some("true") data-leading=leading.map(|_| "true")>
+                {if search { Some(IconName::Search) } else { leading }.map(|name| view! { <Icon name /> })}
                 {text_control(control, props, node)}
                 {floating.then(|| view! {
                     <label class="vk-ui-field__label" for=id.clone() id=format!("{id}-label")>
@@ -408,6 +410,9 @@ pub fn TextField(
     /// Web password field only. Each mounted field starts hidden.
     #[prop(optional)]
     reveal_password: bool,
+    /// Decorative icon inside the control. The native label still names the field.
+    #[prop(optional)]
+    leading: Option<IconName>,
 ) -> impl IntoView {
     text_field(
         TextControl::Field(kind),
@@ -428,6 +433,7 @@ pub fn TextField(
         on_focus,
         variant,
         reveal_password,
+        leading,
     )
 }
 
@@ -465,6 +471,7 @@ pub fn TextArea(
         None,
         variant,
         false,
+        None,
     )
 }
 
@@ -532,6 +539,7 @@ pub fn SearchField(
         None,
         FieldVariant::ExternalLabel,
         false,
+        None,
     )
     .into_any()
 }

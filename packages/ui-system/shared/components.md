@@ -111,7 +111,9 @@ blocker và unsaved state không được đưa vào detail tùy chọn. Rail gi
 ngoài scroll containment. Leptos preview và Desk refresh dùng owner này; CMP chưa có
 support API/parity, không có native qualification từ Web checks.
 
-Cây floating Web: `Field → Control [Input + Label] → Help/Error`. Input và label dùng hai hàng
+Cây floating Web: `Field → Control [Input + Label] → Help/Error`. `TextField` và
+`VinkTextField` nhận `leading` tùy chọn từ icon catalog. Icon trang trí nằm trong control,
+để lại đủ chỗ cho chữ và giữ nhãn native làm tên truy cập. Input và label dùng hai hàng
 intrinsic để nhãn dài tiếng Việt reflow ở 200%; empty blur đặt nhãn giữa shell, focus/filled/
 restored/autofill đặt nhãn trên hàng chữ. CSS đọc giá trị DOM (`:placeholder-shown`, `:autofill`),
 không remount hoặc thay input khi label đổi. Label thật có `for`, helper/error có
@@ -126,7 +128,9 @@ không shadow vẽ viền. Nút trailing chỉ vẽ focus của chính nó. Acti
 flush; Outlined vẫn có API riêng. CMP tắt cả bốn indicator Material, một border trên native
 TextField là perimeter duy nhất. Chỉ focus của text control kích hoạt perimeter, không dùng
 focus-within của parent cho trailing action. Forced-colors được thêm stroke hệ thống và giữ
-focus; không có chuyển động nhãn custom.
+focus; không có chuyển động nhãn custom. [Auth Web R3](../../../docs/design/auth-password-web.md)
+chọn nền và một nét nhận biết ở trạng thái nghỉ trong form Auth. Recipe mặc định giữ
+nguyên cho TextField, TextArea, Select và SearchField.
 
 Chip idle dùng SurfaceContainer, selected dùng SecondaryContainer + check/pressed; slot check
 được giữ để toggle không dịch hàng. Filled/Tonal/Text/Outlined/Danger/DangerText và action guards giữ nguyên;

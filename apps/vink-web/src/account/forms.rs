@@ -280,6 +280,7 @@ fn PasswordFields(
         ),
     };
     let enrollment = matches!(purpose, PasswordUse::Register | PasswordUse::Enroll);
+    let guest = matches!(purpose, PasswordUse::Login | PasswordUse::Register);
     let help = enrollment.then_some(
         "3–30 ký tự: chữ cái không dấu, số, dấu _ hoặc dấu chấm. Không phân biệt hoa thường. Tên đăng nhập khác bút danh."
     );
@@ -309,6 +310,7 @@ fn PasswordFields(
         }))
         .build();
     user.help = help.map(str::to_owned);
+    user.leading = guest.then_some(IconName::PersonOutline);
     let mut secret = vink_ui::TextFieldProps::builder()
         .id(password_id)
         .name("password")
@@ -330,6 +332,7 @@ fn PasswordFields(
         }))
         .build();
     secret.help = password_help.map(str::to_owned);
+    secret.leading = guest.then_some(IconName::Lock);
     view! { {TextField(user)} {TextField(secret)} }
 }
 
@@ -367,7 +370,6 @@ fn GuestPassword(
     };
     let is_register = mode == Mode::Register;
     let reader = use_context::<ReaderPresentation>().filter(|_| !is_register);
-    let contextual_login = reader.is_some();
     let heading = reader.map_or(title, |reader| reader.title);
     let lead = reader.and_then(|reader| reader.lead);
     let username = InputValue::new();
@@ -458,21 +460,26 @@ fn GuestPassword(
                 })}
             </div>
         </form>
-        <div class="vk-auth-alternatives">
-            <div class="vk-auth-switch flex flex-wrap items-center justify-center [gap:0_var(--vk-space-1)] text-center text-vk-on-surface-variant text-[length:var(--vk-type-label-size)]">
-                {if is_register {
-                    view! { <Button id="use-password" variant=ButtonVariant::Text
-                        on_press=move |_| switch.run(Mode::Login)>"Quay lại đăng nhập"</Button> }.into_any()
-                } else {
-                    // Reader sheet (#328 + #388 delta): two equal 2px-outline alternatives.
-                    view! { {(!contextual_login).then_some(view! { <span>"Chưa có tài khoản?"</span> })} <Button id="use-registration"
-                        variant=if contextual_login { ButtonVariant::Outlined } else { ButtonVariant::Text }
-                        on_press=move |_| switch.run(Mode::Register)>"Tạo tài khoản"</Button> }.into_any()
-                }}
-            </div>
-            <Button id="use-email-code" variant=ButtonVariant::Outlined
-                on_press=move |_| switch.run(Mode::Email)>"Dùng mã email"</Button>
-        </div>
+        {if is_register {
+            view! {
+                <div class="vk-auth-alternatives">
+                    <Button id="use-password" variant=ButtonVariant::Text
+                        on_press=move |_| switch.run(Mode::Login)>"Quay lại đăng nhập"</Button>
+                    <Button id="use-email-code" variant=ButtonVariant::Text leading=IconName::Mail
+                        on_press=move |_| switch.run(Mode::Email)>"Dùng mã email"</Button>
+                </div>
+            }.into_any()
+        } else {
+            view! {
+                <p class="vk-auth-divider">"Hoặc"</p>
+                <div class="vk-auth-alternatives">
+                    <Button id="use-email-code" variant=ButtonVariant::Tonal leading=IconName::Mail
+                        on_press=move |_| switch.run(Mode::Email)>"Dùng mã email"</Button>
+                    <Button id="use-registration" variant=ButtonVariant::Tonal leading=IconName::PersonAdd
+                        on_press=move |_| switch.run(Mode::Register)>"Tạo tài khoản"</Button>
+                </div>
+            }.into_any()
+        }}
     }
 }
 
@@ -651,7 +658,7 @@ fn EmailSignIn(
         }}
         <div class="vk-auth-alternatives">
             <Button id="use-password" variant=ButtonVariant::Text
-                on_press=move |_| switch.run(Mode::Login)>"Dùng mật khẩu"</Button>
+                on_press=move |_| switch.run(Mode::Login)>"Quay lại đăng nhập"</Button>
         </div>
     }
 }
