@@ -35,7 +35,10 @@ pub(super) fn now() -> Millis {
 pub(super) fn watch(session: Session) {
     let focus = window_event_listener(leptos::ev::focus, move |_| refresh(session));
     on_cleanup(move || focus.remove());
-    api::on_unauthenticated(move || refresh(session));
+    api::on_unauthenticated(move || {
+        session.owner.update(SessionOwner::recheck_appearance);
+        refresh(session);
+    });
     if let Ok(channel) = web_sys::BroadcastChannel::new(CHANNEL) {
         let heard = Closure::<dyn FnMut(web_sys::MessageEvent)>::new(move |_| {
             session.auth.update(|gate| gate.invalidate(true));
@@ -269,6 +272,15 @@ pub(super) fn dispatch(
             announce();
         }
         if reread {
+            if matches!(
+                error,
+                Some(
+                    AuthError::Unauthenticated | AuthError::AccountDisabled | AuthError::Suspended
+                )
+            ) || (operation == Operation::SignOut && changed_cookie && !revoked)
+            {
+                session.owner.update(SessionOwner::recheck_appearance);
+            }
             refresh(session);
         }
     });

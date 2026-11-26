@@ -122,6 +122,12 @@ thuật `CHOICE-01 A`), và chỉ thay thế có phạm vi phần giữ nút Gia
 trong registry TOML và chưa gắn marker pin kích hoạt cho tới khi có file signoff trích đúng
 revision/SHA-256.
 
+[VDR-WEB-APPEARANCE@r2](proposals/VDR-WEB-APPEARANCE.r2.toml) (`PENDING`) ghi delta
+[#576](https://github.com/loveoverflowcom/vink/issues/576): chỉ thành viên có phiên Active
+đã xác nhận mới chỉnh Giao diện tại Tôi. Màu hệ thống, chữ 100% và rail theo ngữ cảnh được
+dùng trước xác nhận phiên và khi mất xác nhận. [LayoutSpec Giao diện](../docs/design/me-preferences-r1-209.md)
+ghi cách lưu trên thiết bị và kiểm chứng.
+
 ## Editor R4
 
 [VDR-EDITOR-R4@r1](proposals/VDR-EDITOR-R4.r1.toml) ghi delta ngày 24/11 trong

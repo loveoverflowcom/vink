@@ -1,0 +1,26 @@
+version = 1
+id = "VDR-WEB-APPEARANCE"
+revision = 2
+
+[base]
+revision = 1
+sha256 = "e49d51487417906adb3e866e15cf63cd61a647942c534aafacb8928c1d7f7570"
+
+[content]
+kind = "product"
+domain = "ui-system"
+title = "Web Giao diện chỉ dành cho thành viên"
+resolution = """
+1. Trang Tôi (/toi) là điểm chỉnh Giao diện duy nhất, trong Cài đặt của thành viên Active đã được xác nhận. Giữ Chế độ màu, Cỡ chữ (Mặc định 100% / Lớn 150%) và Thanh điều hướng. Gỡ liên kết từ form khách của #483. Rail không có nút Giao diện.
+2. SSR, tài liệu CSR ban đầu và mọi trạng thái chưa xác nhận Active dùng theme hệ thống, chữ 100% và rail tự động theo cửa sổ/ngữ cảnh. Khi mất xác nhận do đăng xuất, phiên đổi hoặc lần kiểm phiên mới nhất lỗi, quay về mặc định cho tới khi xác nhận lại.
+3. Nút thu/mở rail phục vụ điều hướng tạm thời trong tài liệu đang mở. Việc lựa chọn radio ở Tôi mới lưu tùy chọn. Giữ chế độ màu hệ thống, phóng chữ hệ điều hành/trình duyệt, forced colors và điều hướng bằng phím.
+4. Lựa chọn kỹ thuật #576: dùng SessionOwner xác nhận principal trước khi Appearance đọc và ghi tùy chọn cục bộ theo principal. Không gán lại giá trị dùng chung của thiết bị cho một tài khoản khi không biết chủ. Giá trị 200 trong kho đã có scope nếu gặp được đọc ở mức Lớn 150%. Không đồng bộ qua máy chủ hoặc thiết bị.
+"""
+rationale = """
+Chủ sản phẩm ngày 26/11/2026 trong #576 (https://github.com/loveoverflowcom/vink/issues/576): “Khi chưa đăng nhập, không cần có tùy chọn giao diện nữa, mà mặc định theme với các cỡ chữ theo hệ thống ban đầu, ẩn hết các tùy chọn khi chưa đăng nhập đi. Đăng nhập xong mới cần.” Delta cập nhật phần khách và thời điểm áp dụng preference của r1. Kiểm reflow ở 200% vẫn độc lập với tùy chọn Lớn 150%.
+"""
+related_ids = [
+    "UX-01",
+    "WR-01",
+    "WR-02",
+]

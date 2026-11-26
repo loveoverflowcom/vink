@@ -2,25 +2,15 @@
 
 use leptos::prelude::*;
 
-pub(crate) const THEME_KEY: &str = "vink.ui.theme";
-pub(crate) const RAIL_KEY: &str = "vink.ui.rail";
-const TEXT_KEY: &str = "vink.ui.text";
-/// Stored and root (`data-text`) value of Lớn; Mặc định is the absent value (#413).
+use crate::account::Session;
+
+/// Stored and root (\`data-text\`) value of Lớn. Mặc định is the absent value.
 const LARGE_TEXT: &str = "150";
 
-// Runs before CSS; only mutates the document root outside the hydrated app. Hydration adopts
-// all three preferences synchronously from that root. Storage denial keeps defaults intact.
-// Head links are outside the hydrated body. Observe the existing theme authority so explicit
-// choices, system changes and storage-denied sessions share one icon/manifest selection.
-// Text size: `150` is the canonical Lớn value (#413). A pre-#413 `200` means the same choice, so
-// it is normalized here, before CSS and first paint, and rewritten when storage allows.
+// Runs before CSS in both builds. The document uses system defaults until the tab confirms an
+// active account. Observe the root so member choices and OS changes also update the head links.
 #[cfg(not(feature = "csr"))]
 pub(crate) const BOOTSTRAP: &str = include_str!("../appearance.js");
-
-// The head bootstrap cannot see SSR controls yet. Run directly after each group's markup,
-// before the parser yields to paint, and change properties only (not the hydrated DOM shape).
-// Read the root authority rather than storage again; hydration adopts this same preference.
-const CHOICE_BOOTSTRAP: &str = r#"(()=>{const group=document.currentScript.previousElementSibling,value=document.documentElement.dataset[group.parentElement.dataset.preference];if(value)for(const input of group.querySelectorAll('input[type=radio]'))input.checked=input.value===value})()"#;
 
 // This parser-time script updates only the toggle's attributes. The two icon shapes already
 // exist in the SSR markup and CSS selects the visible one from aria-expanded.
@@ -28,8 +18,7 @@ pub(crate) const RAIL_BOOTSTRAP: &str = r#"(()=>{
     const toggle=document.getElementById('navigation-toggle');
     const desktop=matchMedia('(min-width: 1100px)').matches;
     const medium=!desktop&&matchMedia('(min-width: 760px)').matches;
-    const preferred=document.documentElement.dataset.rail;
-    const expanded=desktop&&(preferred==='expanded'||(!preferred&&!toggle.closest('#shell').hasAttribute('data-compact-rail')));
+    const expanded=desktop&&!toggle.closest('#shell').hasAttribute('data-compact-rail');
     toggle.setAttribute('aria-expanded',String(expanded));
     toggle.setAttribute('aria-label',expanded?toggle.dataset.collapseLabel:toggle.dataset.expandLabel);
     if(medium){
@@ -38,82 +27,173 @@ pub(crate) const RAIL_BOOTSTRAP: &str = r#"(()=>{
     }
 })()"#;
 
-/// Theme preference values and parsing are owned by the UI system; this module keeps the
-/// storage key, the pre-CSS bootstrap and when to persist.
-pub(crate) use vink_ui::ThemePreference as Theme;
+pub(crate) use vink_ui::{RailPreference as Rail, ThemePreference as Theme};
 
-/// Rail preference values are owned by the UI system too; the key and bootstrap stay here.
-pub(crate) use vink_ui::RailPreference as Rail;
+#[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
+struct Preferences {
+    theme: Theme,
+    rail: Option<Rail>,
+    large_text: bool,
+}
+
+impl Preferences {
+    #[cfg(any(test, feature = "browser"))]
+    fn read(mut get: impl FnMut(&str) -> Option<String>) -> Self {
+        Self {
+            theme: Theme::parse(get("theme").as_deref().unwrap_or_default()),
+            rail: Rail::parse(get("rail").as_deref().unwrap_or_default()),
+            large_text: matches!(get("text").as_deref(), Some(LARGE_TEXT | "200")),
+        }
+    }
+}
+
+#[derive(Default)]
+struct MemberPreferences {
+    principal: Option<String>,
+    values: Preferences,
+}
+
+/// Device-local keys are derived from an already verified opaque principal. The hash keeps
+/// the raw principal out of storage; a key, even when present, never establishes authority.
+#[cfg(any(test, feature = "browser"))]
+fn member_key(principal: &str, preference: &str) -> String {
+    use sha2::{Digest, Sha256};
+
+    let digest: String = Sha256::digest(principal.as_bytes())
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
+    format!("vink.ui.member.{digest}.{preference}")
+}
 
 #[derive(Clone, Copy)]
 pub(crate) struct Appearance {
-    pub theme: RwSignal<Theme>,
-    pub rail: RwSignal<Option<Rail>>,
-    large_text: RwSignal<bool>,
+    session: Session,
+    stored: RwSignal<MemberPreferences>,
+    preferences: Memo<Preferences>,
+    navigation_rail: RwSignal<Option<Rail>>,
+    pub rail: Memo<Option<Rail>>,
 }
 
 impl Appearance {
-    pub fn provide() -> Self {
+    pub fn provide(session: Session) -> Self {
+        let stored = RwSignal::new(MemberPreferences::default());
+        let preferences = Memo::new(move |_| {
+            session.appearance_principal.with(|principal| {
+                stored.with(|stored| {
+                    if principal.is_some() && stored.principal == *principal {
+                        stored.values
+                    } else {
+                        Preferences::default()
+                    }
+                })
+            })
+        });
+        let navigation_rail = RwSignal::<Option<Rail>>::new(None);
+        let rail = Memo::new(move |_| navigation_rail.get().or_else(|| preferences.get().rail));
+
         #[cfg(feature = "browser")]
-        let (theme, rail, large_text) = {
-            let root = document().document_element();
-            let preference = |name| root.as_ref().and_then(|root| root.get_attribute(name));
-            (
-                Theme::parse(preference("data-theme").as_deref().unwrap_or_default()),
-                Rail::parse(preference("data-rail").as_deref().unwrap_or_default()),
-                preference("data-text").as_deref() == Some(LARGE_TEXT),
-            )
-        };
-        #[cfg(not(feature = "browser"))]
-        let (theme, rail, large_text) = (Theme::System, None, false);
+        {
+            Effect::new(move |_| {
+                let principal = session.appearance_principal.get();
+                // Never read the old device-wide keys: they cannot be attributed to a member.
+                let values = principal
+                    .as_deref()
+                    .and_then(|principal| {
+                        let storage = window().local_storage().ok().flatten()?;
+                        Some(Preferences::read(|name| {
+                            storage
+                                .get_item(&member_key(principal, name))
+                                .ok()
+                                .flatten()
+                        }))
+                    })
+                    .unwrap_or_default();
+                navigation_rail.set(None);
+                stored.set(MemberPreferences { principal, values });
+            });
+            Effect::new(move |_| {
+                let values = preferences.get();
+                let rail = rail.get();
+                if let Some(root) = document().document_element() {
+                    let theme = (values.theme != Theme::System).then_some(values.theme.value());
+                    for (attribute, value) in [
+                        ("data-theme", theme),
+                        ("data-rail", rail.map(Rail::value)),
+                        ("data-text", values.large_text.then_some(LARGE_TEXT)),
+                    ] {
+                        if let Some(value) = value {
+                            let _ = root.set_attribute(attribute, value);
+                        } else {
+                            let _ = root.remove_attribute(attribute);
+                        }
+                    }
+                }
+            });
+        }
+
         let state = Self {
-            theme: RwSignal::new(theme),
-            rail: RwSignal::new(rail),
-            large_text: RwSignal::new(large_text),
+            session,
+            stored,
+            preferences,
+            navigation_rail,
+            rail,
         };
         provide_context(state);
         state
     }
 
-    pub fn set_theme(self, theme: Theme) {
-        self.theme.set(theme);
-        apply(
-            THEME_KEY,
-            "data-theme",
-            (theme != Theme::System).then_some(theme.value()),
-        );
+    fn set_theme(self, theme: Theme) {
+        let value = (theme != Theme::System).then_some(theme.value());
+        self.update("theme", value, |prefs| prefs.theme = theme);
     }
 
-    pub fn set_rail(self, rail: Option<Rail>) {
-        self.rail.set(rail);
-        apply(RAIL_KEY, "data-rail", rail.map(Rail::value));
+    fn set_rail(self, rail: Option<Rail>) {
+        if self.update("rail", rail.map(Rail::value), |prefs| prefs.rail = rail) {
+            self.navigation_rail.set(None);
+        }
+    }
+
+    /// The desktop rail button is a navigation affordance. Only the choices in Tôi persist.
+    pub fn set_navigation_rail(self, rail: Rail) {
+        self.navigation_rail.set(Some(rail));
     }
 
     fn set_large_text(self, large: bool) {
-        self.large_text.set(large);
-        apply(TEXT_KEY, "data-text", large.then_some(LARGE_TEXT));
+        self.update("text", large.then_some(LARGE_TEXT), |prefs| {
+            prefs.large_text = large
+        });
     }
-}
 
-fn apply(key: &str, attribute: &str, value: Option<&str>) {
-    #[cfg(feature = "browser")]
-    {
-        if let Some(root) = document().document_element() {
-            if let Some(value) = value {
-                let _ = root.set_attribute(attribute, value);
-            } else {
-                let _ = root.remove_attribute(attribute);
-            }
+    fn update(
+        self,
+        name: &str,
+        value: Option<&str>,
+        change: impl FnOnce(&mut Preferences),
+    ) -> bool {
+        let Some(principal) = self.session.appearance_principal.get_untracked() else {
+            return false;
+        };
+        if !self
+            .stored
+            .with_untracked(|stored| stored.principal.as_deref() == Some(&principal))
+        {
+            return false;
         }
+
+        self.stored.update(|stored| change(&mut stored.values));
+        #[cfg(feature = "browser")]
         if let Ok(Some(storage)) = window().local_storage() {
+            let key = member_key(&principal, name);
             let _ = match value {
-                Some(value) => storage.set_item(key, value),
-                None => storage.remove_item(key),
+                Some(value) => storage.set_item(&key, value),
+                None => storage.remove_item(&key),
             };
         }
+        #[cfg(not(feature = "browser"))]
+        let _ = (name, value);
+        true
     }
-    #[cfg(not(feature = "browser"))]
-    let _ = (key, attribute, value);
 }
 
 /// Delegates to the UI system's `avatar-identity-v1` rule (first and last word, NFC, Vietnamese
@@ -162,15 +242,15 @@ pub(crate) fn AppearanceChoices(prefix: &'static str) -> impl IntoView {
         <div class="vk-appearance-region">
             <AppearanceRow prefix preference="theme" label="Chế độ màu" icon="system"
                 options=&[("system", "Hệ thống"), ("light", "Sáng"), ("dark", "Tối")]
-                value=Signal::derive(move || Some(appearance.theme.get().value().to_owned()))
+                value=Signal::derive(move || Some(appearance.preferences.get().theme.value().to_owned()))
                 on_change=Callback::new(move |value: String| appearance.set_theme(Theme::parse(&value))) />
             <AppearanceRow prefix preference="text" label="Cỡ chữ" icon="100"
                 options=&[("100", "Mặc định"), (LARGE_TEXT, "Lớn")]
-                value=Signal::derive(move || Some(if appearance.large_text.get() { LARGE_TEXT } else { "100" }.to_owned()))
+                value=Signal::derive(move || Some(if appearance.preferences.get().large_text { LARGE_TEXT } else { "100" }.to_owned()))
                 on_change=Callback::new(move |value: String| appearance.set_large_text(value == LARGE_TEXT)) />
             <AppearanceRow prefix preference="rail" label="Thanh điều hướng" icon="rail"
                 options=&[("auto", "Tự động"), ("expanded", "Mở rộng"), ("compact", "Thu gọn")]
-                value=Signal::derive(move || Some(appearance.rail.get().map_or("auto", Rail::value).to_owned()))
+                value=Signal::derive(move || Some(appearance.preferences.get().rail.map_or("auto", Rail::value).to_owned()))
                 on_change=Callback::new(move |value: String| appearance.set_rail(Rail::parse(&value))) />
         </div>
     }
@@ -196,9 +276,8 @@ fn AppearanceRow(
     view! {
         <div class="vk-appearance-row">
             <h3 id=format!("{id}-title")><span data-appearance-icon=icon aria-hidden="true"></span>{label}</h3>
-            <div class="vk-appearance-region__choices" data-preference=preference>
+            <div class="vk-appearance-region__choices">
                 <vink_ui::RadioGroup id legend=label options value on_change />
-                <script inner_html=CHOICE_BOOTSTRAP></script>
                 {(preference == "rail").then(|| view! {
                     <p class="vk-appearance-rail-hint">"Trên màn hình vừa, thanh bên mở rộng khi bạn bấm nút điều hướng."</p>
                 })}
@@ -227,10 +306,36 @@ mod tests {
     }
 
     #[test]
-    fn unknown_preferences_fall_back_to_system_and_context() {
-        assert_eq!(Theme::parse("broken"), Theme::System);
-        assert_eq!(Theme::parse("dark"), Theme::Dark);
-        assert_eq!(Rail::parse("220"), None);
-        assert_eq!(Rail::parse("compact"), Some(Rail::Compact));
+    fn absent_or_invalid_member_preferences_use_system_defaults() {
+        assert_eq!(Preferences::read(|_| None), Preferences::default());
+        assert_eq!(
+            Preferences::read(|_| Some("invalid".into())),
+            Preferences::default()
+        );
+    }
+
+    #[test]
+    fn member_storage_isolated_from_other_members_and_unowned_legacy() {
+        use std::collections::HashMap;
+
+        let storage = HashMap::from([
+            (member_key("account-a", "theme"), "dark"),
+            (member_key("account-a", "rail"), "compact"),
+            (member_key("account-a", "text"), "200"),
+            ("vink.ui.text".into(), "200"),
+        ]);
+        let read = |id| {
+            Preferences::read(|name| storage.get(&member_key(id, name)).map(|v| v.to_string()))
+        };
+        assert_eq!(
+            read("account-a"),
+            Preferences {
+                theme: Theme::Dark,
+                rail: Some(Rail::Compact),
+                large_text: true,
+            }
+        );
+        assert_eq!(read("account-b"), Preferences::default());
+        assert!(!member_key("account-a", "theme").contains("account-a"));
     }
 }

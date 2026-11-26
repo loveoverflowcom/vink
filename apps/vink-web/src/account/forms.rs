@@ -897,7 +897,9 @@ pub(super) fn SignedInSettings(epoch: u64, fixture: bool) -> impl IntoView {
                     }}
                 }.into_any()
             }}
-            <super::AccountAppearance />
+            <Show when=move || session.appearance_principal.with(Option::is_some)>
+                <super::AccountAppearance />
+            </Show>
             {(!fixture).then(|| view! {
                 <div class="vk-account-setting">
                     <SignOut epoch before=move |_| {

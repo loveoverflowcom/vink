@@ -85,6 +85,7 @@ pub(crate) struct Session {
     /// Scope of viewer-private state. Its format remains principal/generation.
     pub(crate) scope: Memo<Option<String>>,
     pub(crate) profile_scope: Memo<Option<String>>,
+    pub(crate) appearance_principal: Memo<Option<String>>,
     pub(crate) notification_scope: Memo<Option<String>>,
 }
 
@@ -103,6 +104,9 @@ impl Session {
             principal: Memo::new(move |_| owner.with(|o| o.principal().map(str::to_owned))),
             scope: Memo::new(move |_| owner.with(SessionOwner::scope)),
             profile_scope: Memo::new(move |_| owner.with(SessionOwner::profile_scope)),
+            appearance_principal: Memo::new(move |_| {
+                owner.with(|owner| owner.appearance_principal().map(str::to_owned))
+            }),
             notification_scope: Memo::new(move |_| owner.with(SessionOwner::notification_scope)),
         };
         provide_context(this);
@@ -395,15 +399,6 @@ pub(crate) fn AccountHub(children: Children) -> impl IntoView {
                 }}
                 {(!fixture).then(|| view! { <forms::AccountDeletion /> })}
                 <Show when=move || !entry()><SessionRetry /></Show>
-                <Show when=entry>
-                    // Let the browser scroll *and focus* the target instead of the router only scrolling it.
-                    <a id="auth-appearance" class=ButtonVariant::Text.classes()
-                        class=("min-[760px]:absolute", true)
-                        rel="external" href="#page-appearance">
-                        <span data-appearance-icon="palette" aria-hidden="true"></span>
-                        <span class="vk-ui-button__label">"Giao diện"</span>
-                    </a>
-                </Show>
             </div>
             <noscript><p class="vk-muted">"Đăng nhập cần JavaScript. Bạn vẫn có thể đọc các tác phẩm công khai."</p></noscript>
         </div>
@@ -411,9 +406,9 @@ pub(crate) fn AccountHub(children: Children) -> impl IntoView {
 }
 
 #[component]
-pub(crate) fn AccountAppearance() -> impl IntoView {
+fn AccountAppearance() -> impl IntoView {
     view! {
-        <section id="page-appearance" tabindex="-1" class="vk-appearance-card" aria-labelledby="page-appearance-title">
+        <section id="page-appearance" class="vk-appearance-card" aria-labelledby="page-appearance-title">
             <crate::appearance::AppearanceTitle id="page-appearance-title" />
             <crate::appearance::AppearanceChoices prefix="page" />
         </section>

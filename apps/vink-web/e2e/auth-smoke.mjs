@@ -187,7 +187,7 @@ export async function authWeb(page, { args, check, openPage }) {
   const html = await (await fetch(`${base}/toi`)).text();
   check(html.includes('name="vink-sign-in"') && html.includes('data-standing="unknown"') && !html.includes('id="sign-in-email"'), 'SSR says only whether sign-in is open; the standing is unknown until the browser asks');
   await openAccount(page, base, 'anonymous');
-  check(await page.eval(`${q('#password-login')} && ${q('#use-email-code')} && !${q('#sign-out')} && ${q('#auth-appearance')} && !${q('#pen-name-form')}`), 'a guest sees password sign-in first and can choose email');
+  check(await page.eval(`${q('#password-login')} && ${q('#use-email-code')} && !${q('#sign-out')} && !${q('#auth-appearance, #page-appearance')} && !${q('#pen-name-form')}`), 'a guest sees password sign-in first and can choose email');
   check(await page.eval(`document.querySelectorAll('main h1').length === 1 &&
     document.querySelector('#page-account h1#me-title')?.textContent === 'Tài khoản' &&
     document.querySelector('.vk-auth-heading h2')?.textContent === 'Đăng nhập' &&
@@ -199,7 +199,7 @@ export async function authWeb(page, { args, check, openPage }) {
   await fill(page, '#password-login-password', 'local browser fixture');
   await page.click('#password-login-submit');
   await page.waitFor(`${PANEL_TEXT}.includes('chưa mở đăng nhập và đăng ký bằng mật khẩu')`, 'real email-only method refusal');
-  check(await page.eval(`Boolean(${q('#use-email-code')} && ${q('#auth-appearance')})`), '#327 real 501 on password login leaves email and Appearance available');
+  check(await page.eval(`Boolean(${q('#use-email-code')} && !${q('#auth-appearance, #page-appearance')})`), '#327 real 501 on password login leaves email available');
   await page.goto(`${base}/ban-viet`);
   await page.waitFor(`${HYDRATED} && ${q('#desk-sign-in')}`, 'guest desk');
   check(await page.eval(`${q('#desk-sign-in')}.getAttribute('href') === '/toi?next=/ban-viet' && !${q('#create-draft')} && !${q('[data-testid=draft-empty]')}`), 'F-06 Bàn viết points a guest to Tôi with a return target and no private controls');

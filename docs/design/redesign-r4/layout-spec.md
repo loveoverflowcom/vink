@@ -39,11 +39,11 @@ preference (mở rộng 220 px, thu gọn 96 px). Điều hướng không đổi
 
 [DQ-11](../redesign-r4-ban-viet-kham-pha.md#8-sửa-theo-thiết-kế-hiện-hành-vs-cần-quyết-định)
 giữ hai lựa chọn: bác thẻ tài khoản ở chân rail và dùng nền trang cho mục Tài khoản khi mục này có chữ.
-[#413](https://github.com/loveoverflowcom/vink/issues/413) thay riêng phần “giữ Giao diện”. Web #413
-bỏ nút ở rail mở rộng, thu gọn và hộp thoại. Trên Web, khách và người đã đăng nhập chỉnh
-Giao diện tại Tài khoản (`/toi`). Mặc định 100%, Lớn 150%; bootstrap chuyển preference cũ 200 → Lớn 150%
-trước CSS và hydration. Stress 200% có phương pháp và metadata riêng. Source đã pin ở đầu tài
-liệu ghi lại baseline trước #413.
+[#413](https://github.com/loveoverflowcom/vink/issues/413) gỡ nút Giao diện khỏi rail mở rộng,
+thu gọn và hộp thoại. Theo [#576](https://github.com/loveoverflowcom/vink/issues/576), chỉ thành viên
+Active đã xác nhận mới chỉnh Giao diện tại Tài khoản (`/toi`). Mặc định 100%, Lớn 150%. Trước khi
+phiên được xác nhận, màu theo hệ thống, chữ 100% và rail theo ngữ cảnh. Stress 200% có phương pháp
+và metadata riêng.
 
 [#427 AC-04](https://github.com/loveoverflowcom/vink/issues/427#acceptance) giữ tên đích và
 `aria-current="page"`, dùng icon outlined cho đích chưa chọn và filled cho đích đang chọn.
@@ -70,8 +70,8 @@ xuống dòng khi thiếu chỗ. Khách giữ tiêu đề form hiện có và H1
 - CHOICE-01 gom “Quyền riêng tư”, “Tên đăng nhập và mật khẩu”, email xác minh, “Giao diện” và
   “Đăng xuất” dưới H2 “Cài đặt” theo quyền hiện có. Quyền riêng tư trỏ thẳng tới vùng policy
   trong Chỉnh hồ sơ. Khối mật khẩu mở tại chỗ và giữ form đã mở trong cùng phiên. Email hiện
-  trạng thái hoặc tác vụ xác minh có thật. Giao diện dùng vùng điều khiển hiện có và mục nhảy
-  từ form khách. Đăng xuất dùng luồng đọc lại phiên hiện có.
+  trạng thái hoặc tác vụ xác minh có thật. Giao diện dùng vùng điều khiển duy nhất của thành
+  viên có phiên Active đã xác nhận. Đăng xuất dùng luồng đọc lại phiên hiện có.
 - Khối nền tonal bo theo token R4 và dùng font UI. Hàng tương tác có vùng bấm tối thiểu 44 CSS px.
   Ưu tiên một cột ở màn hẹp, giữ thứ tự bàn phím và nhãn tiếng Việt đầy đủ. Kiểm Chrome ở hai
   theme, 320/390 px và desktop, 100%/150% cùng stress 200% riêng.
