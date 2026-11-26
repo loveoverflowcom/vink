@@ -75,8 +75,10 @@ lượt này không đổi glyph/flow đó.
 Actions và reason dài wrap theo nghĩa, nhãn nguyên dấu, không ellipsis/shrink target.
 100% ưu tiên nhịp đọc; 200% vẫn phân biệt hành động và giữ thứ tự, không cuộn ngang.
 `Invariants`: mỗi endorsement chỉ một target; Web ≥44 CSS px và giữ ≥48 ở endorsement
-hiện có, CMP ≥48dp; Pen Flight 20px; một focus perimeter; không nested interactive;
-không thêm tầng replies. Contrast/forced-colors đo trên render, không suy từ tên token.
+hiện có, CMP ≥48dp; một focus perimeter; không nested interactive; không thêm tầng replies.
+Contrast/forced-colors đo trên render, không suy từ tên token. Glyph nhỏ của Ưng là 20px.
+Khi Thấm nằm trong [cặp Thấm · Lưu #388](saved-works.md#cặp-thấm--lưu), Pen Flight dùng
+24px ở vùng rộng và 20px ở vùng hẹp. Đo glyph và vùng chạm riêng tại mỗi caller.
 
 `Interaction`: pointer/Enter/Space một dispatch; pending/uncertain chặn lệnh mới. Chỉ ACK/readback
 xác nhận mới đổi selected/count. Unknown không là Off; unavailable không là 0; hidden không có
