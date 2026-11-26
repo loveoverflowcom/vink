@@ -96,6 +96,76 @@ impl Harness {
     }
 }
 
+#[sqlx::test(migrator = "vink_identity::persistence::MIGRATOR")]
+async fn account_deletion_email_for_disabled_owner_rejects_wrong_expired_and_spent_codes(
+    pool: PgPool,
+) {
+    use vink_identity::contract::ContractError;
+    let h = harness(
+        &pool,
+        Policy {
+            max_challenges_per_window: 12,
+            max_email_changes_per_window: 10,
+            ..Policy::default()
+        },
+    );
+    let email = "tac-gia-xoa@example.test";
+    let old = h.sign_in(email).await;
+    let sign_in = h.challenge(email).await;
+    let old_code = h.code(&sign_in).await;
+    disable_account(&pool, old.account_id).await.unwrap();
+    let issue = || async {
+        match h.store.start_deletion(&address(email), None).await.unwrap() {
+            ChallengeOutcome::Issued { handle, .. } => handle,
+            denial => panic!("no deletion code: {denial:?}"),
+        }
+    };
+    let expired = issue().await;
+    let expired_code = h.code(&expired).await;
+    sqlx::query(
+        "UPDATE email_challenges SET created_at = now() - interval '20 minutes',
+        expires_at = now() - interval '10 minutes' WHERE id = $1",
+    )
+    .bind(expired.id)
+    .execute(&pool)
+    .await
+    .unwrap();
+    let id = Uuid::now_v7();
+    assert!(matches!(
+        h.store
+            .complete_deletion_code(&expired, &expired_code, None, id)
+            .await,
+        Err(ContractError::ChallengeClosed)
+    ));
+    let fresh = issue().await;
+    let code = h.code(&fresh).await;
+    assert!(matches!(
+        h.store
+            .complete_deletion_code(&fresh, &wrong(&code), None, id)
+            .await,
+        Err(ContractError::InvalidCode)
+    ));
+    assert!(h.store.pending_deletions(None).await.unwrap().is_empty());
+    let receipt = h
+        .store
+        .complete_deletion_code(&fresh, &code, None, id)
+        .await
+        .unwrap();
+    assert_eq!(receipt.account_id, old.account_id);
+    assert!(matches!(
+        h.store
+            .complete_deletion_code(&fresh, &code, None, id)
+            .await,
+        Err(ContractError::ChallengeClosed)
+    ));
+    assert!(matches!(
+        h.store.complete_sign_in(&sign_in, &old_code).await.unwrap(),
+        SignInOutcome::Rejected(ChallengeRejection::ChallengeClosed)
+    ));
+    let new = h.sign_in(email).await;
+    assert_ne!(new.account_id, old.account_id);
+}
+
 fn wrong(code: &Code) -> Code {
     let digit = (code.expose().as_bytes()[0] - b'0' + 1) % 10;
     Code::parse(&format!("{digit}{}", &code.expose()[1..])).unwrap()

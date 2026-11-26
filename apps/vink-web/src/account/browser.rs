@@ -171,6 +171,26 @@ async fn send(command: Command) -> Result<Reply, AuthError> {
             .await
             .map(|()| Reply::Done),
         Command::PenName(name) => api::provision_principal(name).await.map(|_| Reply::Done),
+        Command::StartDeletion(email) => {
+            let sent: api::DeletionChallenge =
+                api::account_deletion("challenges", serde_json::json!({ "email": email }), &[202])
+                    .await?;
+            Ok(Reply::DeletionChallenge(sent.challenge_id))
+        }
+        Command::ConfirmDeletion(proof) => {
+            let result: api::DeletionReceipt =
+                api::account_deletion("confirm", proof, &[200, 202]).await?;
+            Ok(Reply::Deletion(result.state))
+        }
+        Command::DeletionStatus(id) => {
+            let result: api::DeletionReceipt = api::account_deletion(
+                "status",
+                serde_json::json!({ "operation_id": id }),
+                &[200, 202],
+            )
+            .await?;
+            Ok(Reply::Deletion(result.state))
+        }
         Command::SignOut => api::sign_out().await.map(|()| Reply::Done),
     }
 }
@@ -194,6 +214,9 @@ pub(super) fn dispatch(
             matches!(standing, Standing::Active(_))
         }
         Operation::PenName => matches!(standing, Standing::NeedsPrincipal),
+        Operation::DeletionChallenge | Operation::ConfirmDeletion | Operation::DeletionStatus => {
+            !matches!(standing, Standing::Unknown | Standing::Unavailable)
+        }
         Operation::SignOut => matches!(
             standing,
             Standing::NeedsPrincipal | Standing::Active(_) | Standing::Suspended
@@ -215,7 +238,11 @@ pub(super) fn dispatch(
         let reread = operation.reread_session(error.as_ref());
         let changed_cookie =
             operation.changes_session() && error.as_ref().is_none_or(AuthError::uncertain);
-        let revoked = operation == Operation::SignOut && outcome.is_ok();
+        let revoked = outcome.is_ok()
+            && matches!(
+                operation,
+                Operation::SignOut | Operation::ConfirmDeletion | Operation::DeletionStatus
+            );
         let owns = session.auth.with_untracked(|gate| gate.owns(ticket));
         session.auth.update(|gate| {
             if reread && (operation != Operation::SignOut || revoked) {

@@ -2,6 +2,9 @@
 //! the tab still reconciles any write that could have changed the browser's cookie.
 
 mod attachment;
+mod deletion;
+pub(super) use deletion::AccountDeletion;
+pub(crate) use deletion::DeletionStage;
 
 use leptos::{html::Input, prelude::*};
 use vink_ui::{
@@ -241,6 +244,7 @@ pub(super) fn GuestAuth(epoch: u64) -> impl IntoView {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum PasswordUse {
+    Deletion,
     Login,
     Register,
     Enroll,
@@ -254,6 +258,11 @@ fn PasswordFields(
     error: RwSignal<Option<AuthError>>,
 ) -> impl IntoView {
     let (user_id, password_id, autocomplete) = match purpose {
+        PasswordUse::Deletion => (
+            "account-delete-username",
+            "account-delete-password",
+            "current-password",
+        ),
         PasswordUse::Login => (
             "password-login-username",
             "password-login-password",
@@ -270,10 +279,11 @@ fn PasswordFields(
             "new-password",
         ),
     };
-    let help = (purpose != PasswordUse::Login).then_some(
+    let enrollment = matches!(purpose, PasswordUse::Register | PasswordUse::Enroll);
+    let help = enrollment.then_some(
         "3–30 ký tự: chữ cái không dấu, số, dấu _ hoặc dấu chấm. Không phân biệt hoa thường. Tên đăng nhập khác bút danh."
     );
-    let password_help = (purpose != PasswordUse::Login).then_some(
+    let password_help = enrollment.then_some(
         "10–128 ký tự sau khi chuẩn hóa Unicode, tối đa 4.096 byte nhập. Không bắt buộc chữ hoa, số hay ký hiệu."
     );
     let username_error = field_error(error, |e| {

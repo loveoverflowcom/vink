@@ -211,7 +211,7 @@ pub fn Button(
                 aria-label=move || accessible_label.map(|label| label.get())
                 aria-describedby=move || {
                     let mut ids = described_by.clone().into_iter().collect::<Vec<_>>();
-                    if let Some(note) = state.with(ActionState::note).and(described.clone()) { ids.push(note); }
+                    if let Some(note) = state.with(ActionState::note).and(note_id.map(|id| id.get())) { ids.push(note); }
                     (!ids.is_empty()).then(|| ids.join(" "))
                 }
                 on:click=press_handler(state, on_press)
@@ -232,43 +232,48 @@ pub fn Button(
 }
 
 /// An icon-only action. `label` is its accessible name; `pressed` makes it a toggle.
+/// `id`, `label` and `icon` may follow a signal, so one disclosure toggle can keep its DOM node
+/// (and focus) while it changes from “open” to “close”.
 #[component]
 pub fn IconButton(
-    icon: IconName,
-    #[prop(into)] label: String,
+    #[prop(into)] icon: Signal<IconName>,
+    #[prop(into)] label: Signal<String>,
     #[prop(optional, into)] surface: Signal<ActionSurface>,
     #[prop(optional, into)] state: Signal<ActionState>,
     #[prop(optional, into)] pressed: Option<Signal<bool>>,
     /// Optional alternate icon for the pressed state of a toggle.
     #[prop(optional)]
     pressed_icon: Option<IconName>,
-    #[prop(optional, into)] id: Option<String>,
+    #[prop(optional, into)] id: Option<Signal<String>>,
     /// Optional supporting information; the accessible name remains `label`.
     #[prop(optional, into)]
     described_by: Option<String>,
     /// Disclosure state (`aria-expanded`) when the button opens a region or dialog.
     #[prop(optional, into)]
     expanded: Option<Signal<bool>>,
+    /// The id of the region this disclosure opens (`aria-controls`).
+    #[prop(optional, into)]
+    controls: Option<String>,
     #[prop(optional, into)] on_press: Option<Callback<()>>,
 ) -> impl IntoView {
-    let note_id = id.as_ref().map(|id| format!("{id}-note"));
-    let described = note_id.clone();
+    let note_id = id.map(|id| Signal::derive(move || format!("{}-note", id.get())));
     view! {
         <span class="vk-ui-action">
             <button
                 type="button"
-                id=id
+                id=move || id.map(|id| id.get())
                 class="vk-ui-icon-button"
                 data-surface=move || surface.get().id()
                 aria-label=label
                 aria-expanded=move || expanded.map(|value| value.get().to_string())
+                aria-controls=controls
                 aria-pressed=move || pressed.map(|p| if p.get() { "true" } else { "false" })
                 data-state=move || state.with(ActionState::id)
                 aria-disabled=move || (!state.with(ActionState::is_enabled)).then_some("true")
                 aria-busy=move || state.with(|s| matches!(s, ActionState::Pending { .. })).then_some("true")
                 aria-describedby=move || {
                     let mut ids = described_by.clone().into_iter().collect::<Vec<_>>();
-                    if let Some(note) = state.with(ActionState::note).and(described.clone()) { ids.push(note); }
+                    if let Some(note) = state.with(ActionState::note).and(note_id.map(|id| id.get())) { ids.push(note); }
                     (!ids.is_empty()).then(|| ids.join(" "))
                 }
                 on:click=press_handler(state, on_press)
@@ -276,12 +281,12 @@ pub fn IconButton(
                 {move || {
                     let name = match pressed_icon {
                         Some(alternate) if pressed.is_some_and(|p| p.get()) => alternate,
-                        _ => icon,
+                        _ => icon.get(),
                     };
                     view! { <Icon name /> }
                 }}
             </button>
-            {note_view(state, note_id)}
+            {move || note_view(state, note_id.map(|id| id.get()))}
         </span>
     }
 }
@@ -573,6 +578,7 @@ mod tests {
             .into_any()
         });
         assert!(html.contains("aria-expanded=\"false\""), "{html}");
+        assert!(!html.contains("aria-controls"), "{html}");
         let html = render(|| {
             view! { <FilterChip label="Thơ" selected=Signal::stored(true) on_toggle=|_| {} /> }
                 .into_any()
@@ -582,6 +588,55 @@ mod tests {
             "{html}"
         );
     }
+    #[test]
+    fn a_disclosure_icon_button_follows_its_signals_and_names_its_region() {
+        let (html_closed, html_open) = Owner::new().with(|| {
+            let open = RwSignal::new(false);
+            let view = move || {
+                view! {
+                    <IconButton
+                        id=Signal::derive(move || if open.get() { "close-x" } else { "open-x" }.to_string())
+                        label=Signal::derive(move || if open.get() { "Đóng ô tìm" } else { "Tìm" }.to_string())
+                        icon=Signal::derive(move || if open.get() { IconName::ArrowBack } else { IconName::Search })
+                        expanded=open controls="x-form"
+                        state=ActionState::disabled("Mẫu")
+                    />
+                }
+                .to_html()
+            };
+            let closed = view();
+            open.set(true);
+            (closed, view())
+        });
+        for (html, id, label, icon, expanded) in [
+            (&html_closed, "open-x", "Tìm", IconName::Search, "false"),
+            (
+                &html_open,
+                "close-x",
+                "Đóng ô tìm",
+                IconName::ArrowBack,
+                "true",
+            ),
+        ] {
+            assert!(html.contains(&format!("id=\"{id}\"")), "{html}");
+            assert!(html.contains(&format!("aria-label=\"{label}\"")), "{html}");
+            assert!(
+                html.contains(&format!("aria-expanded=\"{expanded}\"")),
+                "{html}"
+            );
+            assert!(html.contains("aria-controls=\"x-form\""), "{html}");
+            assert!(
+                html.contains(&format!("data-icon=\"{}\"", icon.id())),
+                "{html}"
+            );
+            assert!(
+                html.contains(&format!("aria-describedby=\"{id}-note\""))
+                    && html.contains(&format!("id=\"{id}-note\"")),
+                "the note follows the current id: {html}"
+            );
+        }
+    }
+
     #[test]
     fn surfaces_are_independent_of_selection_and_state() {
         assert_eq!(ActionSurface::default(), ActionSurface::Standard);

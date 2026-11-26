@@ -148,6 +148,33 @@ pub(crate) async fn login_password(
 }
 
 #[cfg(feature = "browser")]
+#[derive(serde::Deserialize)]
+pub(crate) struct DeletionChallenge {
+    pub challenge_id: String,
+}
+
+#[cfg(feature = "browser")]
+#[derive(serde::Deserialize)]
+pub(crate) struct DeletionReceipt {
+    pub state: crate::account::DeletionStage,
+}
+
+#[cfg(feature = "browser")]
+pub(crate) async fn account_deletion<T: serde::de::DeserializeOwned>(
+    suffix: &str,
+    proof: serde_json::Value,
+    status: &[u16],
+) -> Result<T, crate::session::AuthError> {
+    http::auth(
+        "POST",
+        &format!("/api/v1/auth/account-deletion/{suffix}"),
+        status,
+        Some(&proof),
+    )
+    .await
+}
+
+#[cfg(feature = "browser")]
 const ENROLL_PASSWORD: &str = "/api/v1/auth/password/enroll";
 
 #[cfg(feature = "browser")]

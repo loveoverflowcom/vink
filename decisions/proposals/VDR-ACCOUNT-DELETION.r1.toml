@@ -1,0 +1,18 @@
+version = 1
+id = "VDR-ACCOUNT-DELETION"
+revision = 1
+
+[content]
+kind = "product"
+domain = "account"
+title = "Xóa tài khoản vĩnh viễn sau xác minh"
+resolution = """
+DEL-01..08 theo PRD §14.7 và #297. Mật khẩu hiện tại hoặc mã từ email đã xác minh là bằng chứng trong luồng xóa riêng, kể cả khi tài khoản bị đình chỉ. Identity thu hồi mọi phiên và giải phóng thông tin đăng nhập. Đăng ký lại tạo tài khoản mới và principal mới. Handle và alias đã dùng tiếp tục được giữ trong namespace.
+App ghi hàng rào, thu hồi hồ sơ và Theo dõi hai chiều, gỡ tác phẩm, dọn dữ liệu sở hữu và lượt xem, thu hồi Thấm/Ưng và hủy nhận xét chờ. Giữ bản ghi tối thiểu phục vụ binding, truy vết kiểm duyệt và chống replay. Nhận xét công khai còn hợp lệ giữ chữ, được ghi là “Tài khoản đã xóa”. Xóa ngay khi xác minh và xác nhận; dọn dữ liệu chính ngay nếu có thể, tối đa 30 ngày. Giữ nguyên chính sách cho tác phẩm đã bị kiểm duyệt gỡ và các bản sao lưu hạ tầng.
+"""
+rationale = "Chủ sản phẩm chốt DEL-01..08 ngày 26/11/2026 tại https://github.com/loveoverflowcom/vink/issues/297, với nguồn liên miền https://github.com/loveoverflowcom/vink/issues/284 và https://github.com/loveoverflowcom/vink/issues/288. Nguồn xác nhận các quy tắc nghiệp vụ có trước payload của revision này."
+requires = ["VDR-DECISION-SIGNOFF@r1"]
+related_ids = [
+    "ACC-03", "DEL-01", "DEL-02", "DEL-03", "DEL-04", "DEL-05", "DEL-06", "DEL-07", "DEL-08",
+    "PUB-04", "PUB-05", "SOC-LIFE-02", "VIEW-11",
+]

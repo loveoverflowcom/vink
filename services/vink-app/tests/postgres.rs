@@ -37,10 +37,13 @@ const WORK_VIEWS_MIGRATION: i64 = 20261130000000;
 const PUBLIC_ENDORSER_LIST_MIGRATION: i64 = 20261201000000;
 const COMMENT_UNG_NOTIFICATION_MIGRATION: i64 = 20261203000000;
 const SAVED_WORKS_MIGRATION: i64 = 20261204000000;
+const ACCOUNT_DELETION_MIGRATION: i64 = 20261205000000;
 const ORIGIN: &str = "http://127.0.0.1:3000";
 
 #[path = "postgres/abuse.rs"]
 mod abuse;
+#[path = "postgres/account_deletion.rs"]
+mod account_deletion;
 #[path = "postgres/author_discovery.rs"]
 mod author_discovery;
 #[path = "postgres/author_works.rs"]
@@ -234,6 +237,19 @@ async fn before_cutover(pool: &PgPool) -> bool {
             .await
             .unwrap();
     !applied
+}
+
+/// Older migration fixtures sometimes exercise a current store against a deliberately staged
+/// schema. There can be no retired accounts at that boundary. Provide only an empty read model
+/// for the current standing queries. Drop it if the fixture migrates to the latest schema.
+async fn legacy_standing_fixture(pool: &PgPool) {
+    sqlx::query(
+        "CREATE VIEW account_deletions AS
+         SELECT NULL::uuid AS principal_id, NULL::uuid AS account_id WHERE false",
+    )
+    .execute(pool)
+    .await
+    .unwrap();
 }
 
 /// The dev-seed sample. On a schema older than the canonical cutover this writes the rows exactly

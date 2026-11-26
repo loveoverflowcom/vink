@@ -30,26 +30,50 @@ pub enum UnitOwner {
     Patterns,
     Expressions,
     Markdown,
-    WorkViewPolicy,
     Preview,
+    WorkViews,
 }
 impl UnitOwner {
-    pub fn parse(owner: &str) -> Result<Self, String> {
-        match owner {
-            "app" => Ok(Self::App),
-            "identity" => Ok(Self::Identity),
-            "store" => Ok(Self::Store),
-            "xtask" => Ok(Self::Xtask),
-            "web" => Ok(Self::Web),
-            "notifications" => Ok(Self::Notifications),
-            "ui" => Ok(Self::Ui),
-            "patterns" => Ok(Self::Patterns),
-            "expressions" => Ok(Self::Expressions),
-            "work-view-policy" => Ok(Self::WorkViewPolicy),
-            "markdown" => Ok(Self::Markdown),
-            "preview" => Ok(Self::Preview),
-            _ => Err(format!("unknown Rust owner `{owner}`")),
+    pub const ALL: [Self; 12] = [
+        Self::App,
+        Self::Identity,
+        Self::Store,
+        Self::Xtask,
+        Self::Web,
+        Self::Notifications,
+        Self::Ui,
+        Self::Patterns,
+        Self::Expressions,
+        Self::Markdown,
+        Self::Preview,
+        Self::WorkViews,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::App => "app",
+            Self::Identity => "identity",
+            Self::Store => "store",
+            Self::Xtask => "xtask",
+            Self::Web => "web",
+            Self::Notifications => "notifications",
+            Self::Ui => "ui",
+            Self::Patterns => "patterns",
+            Self::Expressions => "expressions",
+            Self::Markdown => "markdown",
+            Self::Preview => "preview",
+            Self::WorkViews => "work-views",
         }
+    }
+
+    pub fn parse(owner: &str) -> Result<Self, String> {
+        if owner == "work-view-policy" {
+            return Ok(Self::WorkViews);
+        }
+        Self::ALL
+            .into_iter()
+            .find(|o| o.name() == owner)
+            .ok_or_else(|| format!("unknown Rust owner `{owner}`"))
     }
 
     pub fn test_targets(self) -> &'static [&'static str] {
@@ -71,9 +95,9 @@ impl UnitOwner {
             Self::Ui => "vink-ui",
             Self::Patterns => "vink-patterns",
             Self::Expressions => "vink-expressions",
-            Self::WorkViewPolicy => "vink-work-view-policy",
             Self::Markdown => "vink-markdown-text",
             Self::Preview => "vink-ui-preview",
+            Self::WorkViews => "vink-work-view-policy",
         }
     }
 }
@@ -216,6 +240,7 @@ pub enum Scenario {
     Review,
     Auth,
     Password,
+    AccountDeletion,
     AuthorSearch,
     Publication,
     Notifications,
@@ -246,7 +271,12 @@ impl Scenario {
         Self::Publication,
         Self::Notifications,
     ];
-    const OPT_IN: [Self; 3] = [Self::PerfBaseline, Self::ReturnPosition, Self::Standalone];
+    const OPT_IN: [Self; 4] = [
+        Self::PerfBaseline,
+        Self::ReturnPosition,
+        Self::Standalone,
+        Self::AccountDeletion,
+    ];
 
     pub fn selectable() -> impl Iterator<Item = Self> {
         [Self::Main]
@@ -288,6 +318,7 @@ impl Scenario {
             Self::Review => "review",
             Self::Auth => "auth",
             Self::Password => "password",
+            Self::AccountDeletion => "account-deletion",
             Self::AuthorSearch => "author-search",
             Self::Publication => "publication",
             Self::Notifications => "notifications",
@@ -305,7 +336,12 @@ impl Scenario {
     pub fn identity(self) -> bool {
         matches!(
             self,
-            Self::Auth | Self::Password | Self::AuthorSearch | Self::Publication | Self::Standalone
+            Self::Auth
+                | Self::Password
+                | Self::AccountDeletion
+                | Self::AuthorSearch
+                | Self::Publication
+                | Self::Standalone
         )
     }
 
@@ -378,7 +414,7 @@ impl Scenario {
             Self::Auth => {
                 "sample App scratch + separate real Identity scratch/local outbox; also sign-in-disabled guest"
             }
-            Self::Password | Self::AuthorSearch => {
+            Self::Password | Self::AccountDeletion | Self::AuthorSearch => {
                 "separate fresh App and real Identity scratch; native credentials and local mail outbox"
             }
             Self::Publication => {
@@ -408,6 +444,8 @@ pub struct Request {
     pub scenarios: Vec<Scenario>,
     pub capture: Capture,
     pub filter: Option<String>,
+    /// `verify unit OWNER --test NAME`: one integration test target instead of lib/bins.
+    pub test: Option<String>,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Plan {
@@ -538,9 +576,23 @@ impl Plan {
                 target.args(owner).join(" "),
             )),
             Target::Unit(owner) => {
-                let args = crate::verify::unit_args(owner, self.request.filter.as_deref());
+                let args = crate::verify::unit_args(
+                    owner,
+                    self.request.test.as_deref(),
+                    self.request.filter.as_deref(),
+                );
+                let (coverage, excluded) = match &self.request.test {
+                    Some(name) => (
+                        format!("integration test target `{name}`"),
+                        "lib/bins unit tests, other integration targets",
+                    ),
+                    None => (
+                        "selected unit/contract tests".to_string(),
+                        "integration targets",
+                    ),
+                };
                 Some(format!(
-                    "coverage: selected unit/contract tests\nselected: cargo {args} --list; cargo {args} --list --ignored; cargo {args}\ndependencies: compile/link {} test targets; filter selects runnable tests, Cargo can still compile/link the requested targets\nnot selected: other workspace owners as roots, integration targets, doctests, database, browser\n",
+                    "coverage: {coverage}\nselected: cargo {args} --list; cargo {args} --list --ignored; cargo {args}\ndependencies: compile/link {} test targets; filter selects runnable tests, Cargo can still compile/link the requested targets\nnot selected: other workspace owners as roots, {excluded}, doctests, database, browser\n",
                     owner.package(),
                     args = crate::verify::display_args(&args),
                 ))
@@ -654,6 +706,7 @@ mod tests {
             scenarios: vec![],
             capture: Capture::Full,
             filter: None,
+            test: None,
         }
     }
     #[test]

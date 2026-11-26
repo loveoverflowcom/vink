@@ -471,6 +471,15 @@ object VinkCatalog {
             cmp = "implemented-unverified",
         ),
         CatalogEntry(
+            id = "composition.save-pair",
+            family = "composition",
+            label = "Thấm · Lưu — Mẫu",
+            summary = "Cặp nút ngang hàng cuối Reader (SAV-04, #388): ActionPair gom Thấm và SaveAction trong một nhóm có tên; Lưu giữ nhãn và tên “Lưu”, trạng thái đã xác nhận qua aria-pressed, dấu trang đặc và hình viên thuốc. Dữ liệu Mẫu, không gọi dịch vụ, không xác nhận ghi.",
+            scenarios = listOf(Scenario("default", "Chưa lưu"), Scenario("saved", "Đã lưu, có liên kết Đã lưu"), Scenario("pending", "Đang lưu"), Scenario("unknown", "Đang đọc trạng thái riêng"), Scenario("refused", "Danh sách Đã lưu đã đầy")),
+            leptos = "implemented-unverified",
+            cmp = "unsupported",
+        ),
+        CatalogEntry(
             id = "composition.tag-selector",
             family = "composition",
             label = "Bộ chọn thẻ — Mẫu",

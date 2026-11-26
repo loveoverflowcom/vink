@@ -5,6 +5,7 @@
 //! the App's own migrations, so no other registry reaches the App database.
 
 mod abuse;
+mod account_deletion;
 mod author_discovery;
 pub use author_discovery::AUTHOR_SEARCH_SQL;
 mod author_works;

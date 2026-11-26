@@ -45,6 +45,9 @@ use crate::domain::publication::{
 use crate::domain::revision::{ContentHash, RevisionContent};
 use crate::domain::taxonomy::MetadataVersion;
 
+mod retirement;
+pub(super) use retirement::{erase_owned_work_content, retire_owned_work};
+
 /// A stored receipt outcome; anything else is corruption, never a guessed answer.
 fn parse_outcome(raw: &str) -> Result<AuthorOutcome, StoreError> {
     [
@@ -527,6 +530,32 @@ async fn load_paired_facts<C>(
     };
 
     Ok((publication_facts, mod_facts, metadata_list))
+}
+
+/// Close current moderation work and invalidate any previously leased or claimed writer.
+async fn close_withdrawn_moderation(
+    conn: &mut PgConnection,
+    work: WorkId,
+) -> Result<(), StoreError> {
+    for statement in [
+        "UPDATE work_appeals SET state = 'closed', close_reason = 'withdrawn', updated_at = now()
+          WHERE work_id = $1 AND state = 'open'",
+        "UPDATE work_evaluation_jobs
+            SET state = 'withdrawn', lease_expires_at = NULL, updated_at = now()
+          WHERE work_id = $1 AND state IN ('open', 'leased', 'rerouted')",
+        "UPDATE moderation_cases
+            SET state = 'closed', close_reason = 'withdrawn', version = version + 1,
+                claimed_by = NULL, claimed_basis_kind = NULL, claimed_basis_grant_id = NULL,
+                updated_at = now()
+          WHERE work_id = $1 AND state IN ('queued', 'claimed', 'escalated')",
+    ] {
+        query(statement)
+            .bind(work.as_uuid())
+            .execute(&mut *conn)
+            .await
+            .map_err(classify)?;
+    }
+    Ok(())
 }
 
 async fn read_author_state(
@@ -1347,34 +1376,7 @@ impl AuthorPublicationStore for PgStore {
             super::notification::work_left_public(&mut tx, work_id, cleared.rows_affected())
                 .await?;
 
-            query("UPDATE work_appeals SET state = 'closed', close_reason = 'withdrawn', updated_at = now() WHERE work_id = $1 AND state = 'open'")
-                .bind(work_id.as_uuid()).execute(&mut *tx).await.map_err(classify)?;
-
-            // 5b. Withdraw every open, leased or rerouted job (PUB-06): a late finisher of a
-            // leased job fails its claim fence.
-            query(
-                "UPDATE work_evaluation_jobs
-                    SET state = 'withdrawn', lease_expires_at = NULL, updated_at = now()
-                  WHERE work_id = $1 AND state IN ('open', 'leased', 'rerouted')",
-            )
-            .bind(work_id.as_uuid())
-            .execute(&mut *tx)
-            .await
-            .map_err(classify)?;
-
-            // 5c. Close open review cases with reason withdrawn (PUB-06); a close advances the
-            // case version so a reviewer's stale command is refused.
-            query(
-                "UPDATE moderation_cases
-                    SET state = 'closed', close_reason = 'withdrawn', version = version + 1,
-                        claimed_by = NULL, claimed_basis_kind = NULL, claimed_basis_grant_id = NULL,
-                        updated_at = now()
-                  WHERE work_id = $1 AND state IN ('queued', 'claimed', 'escalated')",
-            )
-            .bind(work_id.as_uuid())
-            .execute(&mut *tx)
-            .await
-            .map_err(classify)?;
+            close_withdrawn_moderation(&mut tx, work_id).await?;
 
             // 6. Write receipt
             query(

@@ -4,6 +4,7 @@
 //! ports) → `domain` (pure rules). `http` also hosts `vink-web` SSR and implements its
 //! `PublicReads` seam. Both binaries (`vink-app`, `vink-worker`) share `config` and `runtime`.
 
+pub mod account_deletion;
 pub mod application;
 pub mod config;
 pub mod dev_seed;

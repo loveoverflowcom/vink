@@ -351,11 +351,16 @@ async fn profile_fields_upgrade_existing_handle_without_resetting_receipts(pool:
     use vink_app::persistence::MIGRATOR;
 
     MIGRATOR.run_to(HANDLE_MIGRATION, &pool).await.unwrap();
+    legacy_standing_fixture(&pool).await;
     let store = PgStore::new(pool.clone());
     let actor = create(&pool, "profile-upgrade", "Mực mới").await;
     let old = store.own_handle(actor).await.unwrap();
     let setup = command(actor, Intent::Setup, 0, "muc-moi");
     let receipt = store.set_handle(actor, &setup).await.unwrap();
+    sqlx::query("DROP VIEW account_deletions")
+        .execute(&pool)
+        .await
+        .unwrap();
     MIGRATOR.run(&pool).await.unwrap();
 
     let prior = sqlx::migrate::Migrator::with_migrations(

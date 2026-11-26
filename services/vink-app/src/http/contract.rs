@@ -132,6 +132,9 @@ pub struct Publication {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum ReaderResponse {
+    AuthorDeleted {
+        work_id: String,
+    },
     Hidden {
         work_id: String,
     },
@@ -1095,6 +1098,9 @@ impl From<crate::application::ReaderWork> for ReaderResponse {
             crate::application::ReaderWork::Published(public) => {
                 Self::Published(Publication::from(&public))
             }
+            crate::application::ReaderWork::AuthorDeleted { work_id } => Self::AuthorDeleted {
+                work_id: work_id.to_string(),
+            },
             crate::application::ReaderWork::Hidden { work_id } => Self::Hidden {
                 work_id: work_id.to_string(),
             },
@@ -1114,6 +1120,9 @@ impl From<&crate::application::ReaderWork> for ReaderResponse {
             crate::application::ReaderWork::Published(public) => {
                 Self::Published(Publication::from(public))
             }
+            crate::application::ReaderWork::AuthorDeleted { work_id } => Self::AuthorDeleted {
+                work_id: work_id.to_string(),
+            },
             crate::application::ReaderWork::Hidden { work_id } => Self::Hidden {
                 work_id: work_id.to_string(),
             },

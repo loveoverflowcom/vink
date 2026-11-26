@@ -12,7 +12,8 @@ use crate::process::{self, Report, cargo};
 
 const MODEL_DIR: &str = "services/vink-app/behavior/discussion";
 const TARGET_DIR: &str = "services/vink-app/behavior/target";
-const FILTERS: [&str; 14] = [
+/// Production module filters of the replay step; the diff planner maps them to source paths.
+pub const FILTERS: [&str; 14] = [
     "domain::discussion::tests",
     "domain::discussion::admission::tests",
     "domain::discussion::admission_replay",
@@ -28,6 +29,8 @@ const FILTERS: [&str; 14] = [
     "application::moderation::",
     "application::publication::",
 ];
+/// Web read-lifecycle replay filter (`apps/vink-web/src/read_lifecycle*`).
+pub const WEB_REPLAY_FILTER: &str = "read_lifecycle::";
 /// The tests that feed model inputs to production code. Their absence fails the lane.
 const REPLAYS: [&str; 21] = [
     "domain::publication::replay::quint_publication_author_inputs_and_admitted_decision_effects_replay_through_production",
@@ -127,7 +130,7 @@ pub fn verify(report: &mut Report) -> bool {
             "--features",
             "ssr",
             "--",
-            "read_lifecycle::",
+            WEB_REPLAY_FILTER,
         ]);
         command
     };
