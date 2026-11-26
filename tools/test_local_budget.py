@@ -124,6 +124,22 @@ class Profile(unittest.TestCase):
             with self.assertRaisesRegex(budget.Refusal, "CARGO_PROFILE_DEV_DEBUG"):
                 budget.settings(env, root, low_disk=True)
 
+    def test_low_disk_checks_xtask_file_defaults_as_well_as_bootstrap(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / ".env").write_text("CARGO_INCREMENTAL=1\n")
+            env = {"CARGO_HOME": temp}
+            with self.assertRaisesRegex(budget.Refusal, "xtask .env"):
+                budget.settings(env, root, low_disk=True)
+            budget.settings(env, root)
+            budget.settings(dict(env, CARGO_INCREMENTAL="0"), root, low_disk=True)
+            # A file override applies to nested commands only. Bootstrap still sees build=true.
+            (root / ".env").write_text("CARGO_INCREMENTAL=0\n")
+            (root / ".cargo").mkdir()
+            (root / ".cargo/config.toml").write_text("[build]\nincremental = true\n")
+            with self.assertRaisesRegex(budget.Refusal, "bootstrap"):
+                budget.settings(env, root, low_disk=True)
+
     def test_argv_preserves_narrower_libtest_flag_and_refuses_overrides(self):
         argv = ["cargo", "test", "-p", "xtask", "--", "--test-threads=1"]
         self.assertEqual(budget.validate_command(["--", *argv], 2), argv)

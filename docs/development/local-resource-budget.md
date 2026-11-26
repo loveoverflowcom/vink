@@ -53,7 +53,7 @@ Cargo bootstrap. Planner và executor [#184](scoped-workflows.md) giữ quyền 
 
 Trên checkout sẽ dùng cho nhiều lượt liên tiếp, chọn cùng một chế độ từ lượt đầu.
 Để giảm dung lượng artifact của Cargo, thêm `--low-disk` trước dấu `--`.
-Ví dụ kiểm cấu hình trước bootstrap, rồi chạy đúng nhóm test đã chọn:
+Ví dụ kiểm cấu hình trước bootstrap, rồi chạy đúng nhóm test đã chọn.
 
 ```sh
 ./tools/local-budget plan --low-disk -- cargo xtask verify unit store
@@ -68,9 +68,12 @@ thông tin file/dòng của các crate build với `debug=0`. Bỏ cờ khi cầ
 Khi đổi chế độ, Cargo có thể giữ cả hai bộ artifact, làm đĩa tăng trong lần chuyển đầu.
 Giữ log cần bàn giao ngoài `target` trước khi dọn artifact do chính lượt đó tạo.
 
+[Số đo lạnh/ấm, chuyển chế độ trên cùng target và giới hạn](evidence/cargo-low-disk-502.md).
+
 Cờ chỉ đặt giá trị mặc định của hai profile trong môi trường child. Cargo vẫn áp dụng
 override riêng của package và rustflags tường minh. Nếu launcher báo xung đột với
-`build.incremental`, hãy bỏ override của phiên shell hoặc bỏ cờ. Các đường release,
+`build.incremental`, kiểm cả shell, Cargo config và giá trị mặc định trong `.env` mà
+một số lệnh con của xtask nhận. Bỏ override cho lượt chạy hoặc bỏ cờ. Các đường release,
 browser, CMP và Linux vẫn theo phạm vi ở bảng bên dưới.
 [Cargo profiles](https://doc.rust-lang.org/cargo/reference/profiles.html) ·
 [Quy tắc build.incremental](https://doc.rust-lang.org/cargo/reference/config.html#buildincremental).
