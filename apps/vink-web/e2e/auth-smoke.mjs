@@ -527,9 +527,14 @@ async function discussionSessionRaces(other, ctx, mailA, mailB, openPage, check)
   await reader.send('Fetch.disable');
   await reader.waitFor(settled, 'A mutation completes and releases busy');
   await select(cookieB);
-  await reader.waitFor(`document.querySelector('.vk-nav-account-avatar [data-initials]')?.dataset.initials === ${JSON.stringify(avatarB)} && document.querySelector('#own-comments') && ${settled}`, 'return B confirmed by the Session-driven avatar after removals');
-  await reader.waitFor(`${ownText}.includes('Chưa có nhận xét riêng') && ${settled}`, 'B own empty state after removals');
-  check(await reader.eval(`!${ownText}.includes(${JSON.stringify(textA)})`), 'Reader/Auth: successful empty own list is distinct from failure and contains no A data');
+  await reader.waitFor(`document.querySelector('.vk-nav-account-avatar [data-initials]')?.dataset.initials === ${JSON.stringify(avatarB)} && ${settled}`, 'return B confirmed by the Session-driven avatar after removals');
+  check(await reader.eval(`(async () => {
+    const response = await fetch(${JSON.stringify(endpoint + '/me')});
+    if (!response.ok) return false;
+    const projection = await response.json();
+    return Array.isArray(projection.comments) && projection.comments.length === 0
+      && !projection.next_cursor && !document.querySelector('#own-comments');
+  })()`), 'Reader/Auth: a confirmed empty own projection has no private section');
   check((await post(other, textB)).status === 201, 'Reader/Auth: B creates a fresh pending comment after removal');
   await wakeDiscussion(reader);
   await reader.waitFor(`${ownText}.includes(${JSON.stringify(textB)}) && ${settled}`, 'fresh B read after removals');
