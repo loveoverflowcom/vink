@@ -193,31 +193,10 @@ export async function markdownReader(page, { args, check, textContrast }) {
     const caseAPI = '/api/v1/moderation/works/cases/' + queued.id;
     const detail = await request(admin, caseAPI);
     check(detail.status === 200 && detail.cache === 'no-store' && detail.data.title === poem.title && detail.data.document.source === source, 'staff sees captured r1 with no-store');
-    const casePath = '/kiem-duyet/ca/' + queued.id;
-    const staffHtml = await request(admin, casePath);
-    check(staffHtml.cache === 'no-store' && !staffHtml.text.includes(networkHost), 'staff SSR sends no private manuscript or network URL');
-    await page.goto(admin + casePath);
-    await page.waitFor(`${ready} && document.querySelector('.vk-moderation__snapshot .vk-markdown')`, 'hydrated Markdown review snapshot');
-    const staff = await view(page, '#moderation-case .vk-moderation__snapshot');
-    check(staff.format === 'markdown' && staff.headings[0][0] === 'muc-1'
-      && staff.headings.filter(([, text]) => text === poem.title).length === 1
-      && staff.text.indexOf('Lời đề') < staff.text.indexOf(poem.title), 'private case shows the canonical H1 once and at its source position');
-    check(!staff.executable && equal(staff.alt, ['Ảnh bên ngoài', 'Ảnh'])
-      && equal(staff.links.map(([href]) => href), ['#muc-2', `https://${networkHost}/link`, '/', '#muc-1'])
-      && staff.links.every(([, text, rel]) => text && rel.includes('noreferrer'))
-      && staff.text.includes('<vink-inline') && staff.text.includes('<img src='),
-    'only named safe links remain; raw HTML and image alt are inert');
-    check(staff.structure.some(([tag, , start]) => tag === 'OL' && start === '3')
-      && staff.structure.some(([tag]) => tag === 'BR') && staff.text.includes('Dòng đầu ❤️‍🔥\ndòng tiếp.')
-      && staff.text.includes('| --- | --- |') && staff.text.includes('[ ] Việc vẫn bằng chữ'),
-    'CommonMark structure, line breaks and unsupported extensions match the shared corpus');
-
-    geometry.review = await matrix(page, check, textContrast, 'review', '#moderation-case');
-    await page.click('#case-claim');
-    await page.waitFor("document.querySelector('#case-approve')", 'the claimed case can be concluded');
-    await page.typeAtEnd('#case-reason', 'Duyệt đúng bản đã chụp.');
-    await page.click('#case-approve');
-    await page.waitFor("document.querySelector('#moderation-case').textContent.includes('Đã kết luận')", 'approval settles through the moderation UI');
+    const claim = await post(admin, caseAPI + '/claim', { expected_version: detail.data.version });
+    check(claim.status === 200, 'the admin claims the Markdown snapshot');
+    const approved = await post(admin, caseAPI + '/conclude', { expected_version: claim.data.version, verdict: 'approved', reason: 'Duyệt đúng bản đã chụp.' });
+    check(approved.status === 200, 'the admin approves the exact revision through the API');
 
     const live = await request(reviewer, readerAPI);
     check(live.status === 200 && live.data.revision_id === r1.data.revision_id
@@ -233,7 +212,20 @@ export async function markdownReader(page, { args, check, textContrast }) {
     await page.waitFor(`${ready} && document.querySelector('#reader-paper .vk-markdown')`, 'hydrated real Markdown Reader');
     const beforeWasm = await view(page, '#reader-paper', ssr.text);
     const afterWasm = await view(page, '#reader-paper');
-    check(equal(staff, beforeWasm) && equal(beforeWasm, afterWasm), 'the real SSR HTML, hydrated Reader and case have identical projections');
+    check(afterWasm.format === 'markdown' && afterWasm.headings[0][0] === 'muc-1'
+      && afterWasm.headings.filter(([, text]) => text === poem.title).length === 1
+      && afterWasm.text.indexOf('Lời đề') < afterWasm.text.indexOf(poem.title), 'Reader shows the canonical H1 once and at its source position');
+    check(!afterWasm.executable && equal(afterWasm.alt, ['Ảnh bên ngoài', 'Ảnh'])
+      && equal(afterWasm.links.map(([href]) => href), ['#muc-2', `https://${networkHost}/link`, '/', '#muc-1'])
+      && afterWasm.links.every(([, text, rel]) => text && rel.includes('noreferrer'))
+      && afterWasm.text.includes('<vink-inline') && afterWasm.text.includes('<img src='),
+    'only named safe links remain; raw HTML and image alt are inert');
+    check(afterWasm.structure.some(([tag, , start]) => tag === 'OL' && start === '3')
+      && afterWasm.structure.some(([tag]) => tag === 'BR') && afterWasm.text.includes('Dòng đầu ❤️‍🔥\ndòng tiếp.')
+      && afterWasm.text.includes('| --- | --- |') && afterWasm.text.includes('[ ] Việc vẫn bằng chữ'),
+    'CommonMark structure, line breaks and unsupported extensions match the shared corpus');
+
+    check(equal(beforeWasm, afterWasm), 'SSR and hydrated Reader have identical projections');
     const expectedTitle = JSON.stringify(poem.title + ' — Vink');
     check(await page.eval(`new DOMParser().parseFromString(${JSON.stringify(ssr.text)}, 'text/html').title === ${expectedTitle}
       && document.title === ${expectedTitle}
@@ -252,7 +244,7 @@ export async function markdownReader(page, { args, check, textContrast }) {
     check(await page.eval("document.activeElement.matches(':focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'"), 'keyboard focus is visible on a named document link');
     await page.key('Enter');
     await page.waitFor("location.hash === '#muc-2' && document.querySelector('#muc-2')", 'fragment link lands at the projected heading');
-    check(!network.length, 'no external manuscript request across editor, staff and published Reader');
+    check(!network.length, 'no external manuscript request across editor and published Reader');
 
     await page.goto(reviewer + '/?q=' + encodeURIComponent('mua tren bac cua'));
     const exploreLink = `a.vk-public-row__link[href^="${readerPath}"]`;

@@ -643,10 +643,11 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   check(A.display_name === penA && A.display_name !== userA, 'the server confirms a separate pen name');
   const draftA = await createDraft(page, '[Mẫu] Nháp tạo sau đăng ký');
   await expiredDesk(page, {base, check, openPage});
-  const writerReview = await holdAnswer(page, 'HEAD', workQueuePath);
+  const writerReview = captureRequest(page, 'HEAD', workQueuePath);
   await openAccount(page, base, 'active');
-  check(await writerReview.held() === 403, 'F-18 the bodyless authorization check refuses an ordinary writer');
-  await writerReview.finish(false, true);
+  check(writerReview.count() === 0, 'Tôi makes no moderation probe for an ordinary writer');
+  writerReview.close();
+  check((await read(page, workQueuePath)).status === 403, 'the server refuses the ordinary writer’s queue read');
   check(await page.eval(`${STORED_APPEARANCE} && !${q('#auth-appearance')} && !!${q('#page-appearance')}`),
     '#483 the same stored Appearance applies after real sign-in and pen-name completion');
   await chooseAppearance(page, 'theme', 'system');
@@ -1090,7 +1091,7 @@ export async function standalone(page, {args, check, openPage}) {
   check(discussion.status === 200 && !JSON.stringify(discussion.data).includes(comment),
     'a submitted comment appears only in its author’s overlay before approval');
   await page.goto(base + '/kiem-duyet');
-  await page.waitFor(q('#moderation-home'), 'moderation deep link');
+  await page.waitFor(q('[data-panel="error:not-found"]'), 'retired moderation deep link');
   check((await read(page, '/api/v1/moderation/automation')).status === 403,
     'the ordinary account cannot read the administrator’s automation controls');
   await page.goto(base + '/toi');
