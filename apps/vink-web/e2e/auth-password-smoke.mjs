@@ -650,6 +650,7 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
       await page.waitFor(`document.documentElement.dataset.theme === '${theme}' &&
         document.documentElement.dataset.text === '150'`, 'member appearance matrix');
       await page.eval(`document.querySelector('#page-appearance').scrollIntoView({block:'start', behavior:'instant'})`);
+      await page.waitFor(APPEARANCE_SETTLED, 'member appearance colours settle before capture');
       await page.capture(`appearance-ssr-native-active-${width}-${theme}`, {
         textScale: 150, textScaleLane: 'app-appearance-control', requiredTargets: ['#page-appearance-title'],
       });

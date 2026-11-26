@@ -299,6 +299,8 @@ export async function authorHandles(page, { base, openPage, check, holdAnswer, t
   check(await guest.eval("location.pathname === '/toi' && !sessionStorage.getItem('vinkProfileAliasFocus')"),
     'abandoned alias cannot replace the newer destination or queue stale focus');
   await guest.goto(base + '/@mua-ngo');
+  await guest.waitFor("document.documentElement.dataset.hydrated === 'true'",
+    'the profile has registered its lifecycle observer before testing Back from another document');
   const formerName = await guest.eval(`${has('#author-profile-heading')}.textContent`);
   await guest.capture('handle-public-guest', { scenario: 'handle-public', textScale: 100 });
   await guest.goto(base + '/toi');

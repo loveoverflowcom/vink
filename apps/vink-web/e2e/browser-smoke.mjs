@@ -2522,10 +2522,11 @@ async function railReview(page) {
   ];
   for (const [width, height, scale, theme, railWidth] of cases) {
     await page.viewport(width, height);
-    await page.eval(`document.documentElement.dataset.theme = '${theme}';
-      if (${scale} === 150) { document.documentElement.dataset.text = '150'; document.documentElement.style.fontSize = ''; }
-      else { delete document.documentElement.dataset.text; document.documentElement.style.fontSize = '${scale}%'; }`);
     if ((await page.eval(RAIL_WIDTH)) !== railWidth) await page.click('#navigation-toggle');
+    await page.waitFor(`${RAIL_WIDTH} === ${railWidth}`, 'rail toggle settles before geometry overrides');
+    await page.eval(`document.documentElement.dataset.theme = '${theme}';
+      delete document.documentElement.dataset.text;
+      document.documentElement.style.fontSize = '${scale}%';`);
     await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: width - 10, y: 10 });
     await page.eval(`document.activeElement?.blur(); document.querySelector('#navigation').scrollTop = 0`);
     const name = `rail-r1-${width}x${height}-${railWidth}-${theme}-text${scale}`;
@@ -2568,7 +2569,7 @@ async function railReview(page) {
     await page.capture(name, {
       scenario: 'rail-r1',
       requestedScene: { width, height, scale, theme },
-      textScaleLane: scale === 200 ? 'dom-override-geometry-only' : 'app-text-scale',
+      textScaleLane: 'dom-override-geometry-only',
       requiredTargets: ['#navigation', '#navigation-toggle', RAIL_ME],
       railNav: { itemCount: railNav.items.length, fonts: railNav.items.map(i => i.labelFont), lineCounts: railNav.items.map(i => i.lineCount) },
       profileAx: axProfile.ax,
