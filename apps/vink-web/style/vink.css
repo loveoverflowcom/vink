@@ -1988,6 +1988,9 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
   .vk-discovery, #community-stream, #public-collection, #public-results, .vk-state-page, .vk-state-page > .vk-state-slot) {
   display: flex;
   flex-direction: column;
+}
+.vk-main:has(.vk-empty-state:not(.vk-empty-state--compact), .vk-desk-loading) :is(.vk-desk--index, .vk-drafts-region, .vk-desk-works, .vk-draft-list,
+  .vk-discovery, #community-stream, #public-collection, #public-results, .vk-state-page, .vk-state-page > .vk-state-slot) {
   flex: 1 0 auto;
 }
 /* Auto inline margins disable flex stretch, so keep each owner's measure instead of shrinking to content. */
