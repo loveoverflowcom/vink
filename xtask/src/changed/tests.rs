@@ -455,6 +455,12 @@ fn matrix() -> Vec<Case> {
             false,
         ),
         c(
+            &["xtask/src/web_dag.rs", "xtask/src/tailwind_inputs.mjs"],
+            &["verify unit xtask", FULL_WEB[0], FULL_WEB[1]],
+            &["verify quick", "verify postgres"],
+            false,
+        ),
+        c(
             &["xtask/src/web.rs"],
             &["verify unit xtask", FULL_WEB[0], FULL_WEB[1], PERF],
             &[],

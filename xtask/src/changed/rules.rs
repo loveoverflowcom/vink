@@ -396,6 +396,7 @@ pub const XTASK_MODULES: &[(&str, &[Role])] = {
         ("process", &[R::Shared]),
         ("provision", &[R::Postgres]),
         ("tailwind", &[R::Web, R::Preview]),
+        ("tailwind_inputs.mjs", &[R::Web]),
         ("ui_navigation", &[R::Preview]),
         ("ui_preview", &[R::Preview, R::Cmp]),
         ("ui_qualification", &[R::Preview, R::Cmp]),
@@ -406,6 +407,7 @@ pub const XTASK_MODULES: &[(&str, &[Role])] = {
         ("web", &[R::WebPerf]),
         ("web_assets", &[R::Web]),
         ("web_boundary", &[R::Web]),
+        ("web_dag", &[R::Web]),
         ("workflow", &[R::Shared]),
     ]
 };
@@ -1252,9 +1254,10 @@ fn app_lanes(sel: &mut Selection, local: &str, path: &str) {
 fn xtask_lanes(sel: &mut Selection, local: &str, path: &str) {
     let stem = local
         .trim_start_matches("src/")
-        .split(['/', '.'])
+        .split('/')
         .next()
-        .unwrap_or_default();
+        .unwrap_or(local)
+        .trim_end_matches(".rs");
     let Some((_, roles)) = XTASK_MODULES.iter().find(|(m, _)| *m == stem) else {
         sel.fallback("xtask module missing from XTASK_MODULES", path);
         return;
