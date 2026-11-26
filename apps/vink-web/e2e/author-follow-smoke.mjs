@@ -15,7 +15,8 @@ async function checkLayoutAndA11y(page, check, textContrast, url, contrastSelect
   // DOM checks run in a background tab, but PNG capture needs its compositor surface.
   await page.send('Page.bringToFront');
   await page.goto(url);
-  await page.waitFor(`document.visibilityState === 'visible' && ${contrastSelectors.map(q).join(' && ')}`,
+  await page.waitFor(`document.visibilityState === 'visible' && document.documentElement.dataset.hydrated === 'true' &&
+    ${contrastSelectors.map(q).join(' && ')}`,
     `${label} visible with required targets`);
   for (const width of [320, 390, 834, 1024, 1440]) {
     for (const theme of ['light', 'dark']) {

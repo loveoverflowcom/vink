@@ -805,6 +805,7 @@ class Page {
           };
           const preferenceSurface = '.vk-appearance-card';
           const surface = document.querySelector(preferenceSurface);
+          if (!surface) return null;
           const surfaceStyle = getComputedStyle(surface);
           const region = surface.querySelector('.vk-appearance-region');
           const rows = [...region.querySelectorAll('.vk-appearance-row')];
@@ -1826,14 +1827,11 @@ async function r4PageColumns(page) {
   }
   for (const width of [320, 390]) for (const scale of [100, 150, 200]) {
     await page.viewport(width);
-    await page.eval(`(() => {
-      document.documentElement.style.fontSize = '';
-      try { ${scale === 150 ? "localStorage.setItem('vink.ui.text', '150')" : "localStorage.removeItem('vink.ui.text')"}; } catch {}
-    })()`);
+
     const gutters = {};
     for (const [path, ready, box] of [['/', '#explore-heading h1', '#explore > .vk-explore__top'], ['/ban-viet', '#desk-title', '#desk']]) {
       await open(path, ready);
-      if (scale === 200) await page.eval(`document.documentElement.dataset.text = '200'`);
+      if (scale !== 100) await page.eval(`document.documentElement.dataset.text = '${scale}'`);
       gutters[path] = await page.eval(`(() => {
         const root = document.documentElement;
         const r = document.querySelector(${JSON.stringify(box)}).getBoundingClientRect();
@@ -1845,7 +1843,7 @@ async function r4PageColumns(page) {
     check(Object.values(gutters).every(g => g.text === String(scale) && Math.abs(g.left - 16) <= 1 && Math.abs(g.right - 16) <= 1 && g.overflow <= 0),
       `#402 AC-03 ${width}px / ${scale}%: Khám phá and Bàn viết keep a 16px gutter (${JSON.stringify(gutters)})`);
   }
-  await page.eval(`(() => { delete document.documentElement.dataset.text; try { localStorage.removeItem('vink.ui.text'); } catch {} })()`);
+  await page.eval(`delete document.documentElement.dataset.text`);
   await page.viewport(1440);
   await open('/ban-viet', '#create-draft');
   const before = await page.eval('document.documentElement.dataset.theme ?? null');
@@ -1920,7 +1918,8 @@ async function railR4Surfaces(page, theme) {
 async function waitForPageAccount(page) {
   // Hydration can finish before the account panel above the choices changes height.
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true' &&
-    document.querySelector('#account-session')?.dataset.standing === 'active'`, 'hydrated Tôi account panel');
+    document.querySelector('#account-session')?.dataset.standing === 'active' &&
+    document.querySelector('#page-appearance')`, 'hydrated and verified Tôi account panel');
   await page.eval('document.fonts.ready');
 }
 
@@ -2063,10 +2062,11 @@ async function brandAssets(page) {
     await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: system }] });
     await page.eval(theme === 'system' ? `localStorage.removeItem('vink.ui.theme')` : `localStorage.setItem('vink.ui.theme', '${theme}')`);
     await page.goto(`${args.base}/`);
-    const selected = theme === 'system' ? `!document.documentElement.hasAttribute('data-theme')` : `document.documentElement.dataset.theme === '${theme}'`;
-    check(await page.eval(`document.documentElement.dataset.hydrated !== 'true' && ${selected}`), `${theme}/${system} bootstrap selects the preference without hydration`);
-    await assertBrand(page, theme);
-    await assertExploreHeader(page, `${theme}/${system} before hydration`);
+    check(await page.eval(`document.documentElement.dataset.hydrated !== 'true' &&
+      !document.documentElement.hasAttribute('data-theme')`),
+    `stored ${theme}/OS ${system}: bootstrap follows the OS before session confirmation`);
+    await assertBrand(page, 'system');
+    await assertExploreHeader(page, `stored ${theme}/OS ${system} before hydration`);
     await page.capture(`brand-before-hydration-${theme}${theme === 'system' ? '-' + system : ''}`);
   }
   await page.send('Network.setBlockedURLs', { urls: [] });
@@ -2308,7 +2308,7 @@ async function accountAppearance(page) {
     'Mặc định restores 16px baseline without resetting rail or theme');
   await page.click('#page-rail label:has([value="auto"])');
   await page.waitFor(`!document.documentElement.dataset.text && !document.documentElement.dataset.rail &&
-    localStorage.getItem('vink.ui.text') === null && localStorage.getItem('vink.ui.rail') === null &&
+    Object.keys(localStorage).every(key => !/^vink[.]ui[.]member[.].+[.](text|rail)$/.test(key)) &&
     ${RAIL_WIDTH} === 220`, 'Mặc định and Tự động clear overrides');
   await chooseTheme(page, 'system', 'page-theme');
   const choicePositions = () => page.eval(`[...document.querySelectorAll('#page-theme .vk-ui-choice__label')].map(el => {
@@ -2344,7 +2344,7 @@ async function accountAppearance(page) {
 
   await chooseTheme(page, 'light', 'page-theme');
   await page.click('#page-text label:has([value="150"])');
-  await page.waitFor(`document.documentElement.dataset.text === '150' && getComputedStyle(document.documentElement).fontSize === '24px' && localStorage.getItem('vink.ui.text') === '150'`, 'real Lớn (150%) control applies root font scale 1.5x on /toi');
+  await page.waitFor(`document.documentElement.dataset.text === '150' && getComputedStyle(document.documentElement).fontSize === '24px' && Object.entries(localStorage).some(([key, value]) => /^vink[.]ui[.]member[.].+[.]text$/.test(key) && value === '150')`, 'real Lớn (150%) control applies root font scale 1.5x on /toi');
   const meOverflow = evaluateOverflowReport(await page.eval(buildOverflowInspectionScript()));
   check(meOverflow.ok, `AC-03 real-control 150% /toi has no unintended overflow (${meOverflow.reasons.join('; ')})`);
   await page.click('.vk-ui-rail a[href="/"]');
@@ -2400,10 +2400,9 @@ async function accountAppearance(page) {
   });
   await page.click('#page-text label:has([value="100"])');
   await page.waitFor(`!document.documentElement.dataset.text && getComputedStyle(document.documentElement).fontSize === '16px' &&
-    localStorage.getItem('vink.ui.text') === null && document.documentElement.dataset.theme === 'light'`, 'restoring Mặc định via /toi clears text scale while keeping theme');
+    Object.keys(localStorage).every(key => !/^vink[.]ui[.]member[.].+[.]text$/.test(key)) && document.documentElement.dataset.theme === 'light'`, 'restoring Mặc định via /toi clears text scale while keeping theme');
   await chooseTheme(page, 'system', 'page-theme');
   EVIDENCE_STATE.lanes.appAppearanceControl = 'PASS';
-  await page.eval(`localStorage.removeItem('vink.ui.rail')`);
   await page.viewport(1440);
   await page.goto(`${args.base}/toi`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'canonical Me restored');
@@ -2628,7 +2627,7 @@ async function railReview(page) {
     }
   }
   await page.viewport(1440);
-  await page.eval(`delete document.documentElement.dataset.text; document.documentElement.style.fontSize = ''; localStorage.removeItem('vink.ui.rail')`);
+  await page.eval(`delete document.documentElement.dataset.text; document.documentElement.style.fontSize = ''`);
   await page.reload();
 }
 
@@ -2646,7 +2645,8 @@ async function mediumRail(page) {
   await page.eval(`window.__mediumRailMain = document.querySelector('#noi-dung');`);
   const mainRect = () => page.eval(`document.querySelector('#noi-dung').getBoundingClientRect().toJSON()`);
   const before = await mainRect();
-  const preference = await page.eval(`localStorage.getItem('vink.ui.rail')`);
+  const storedRail = `JSON.stringify(Object.entries(localStorage).filter(([key]) => /^vink[.]ui[.]member[.].+[.]rail$/.test(key)))`;
+  const preference = await page.eval(storedRail);
   await page.click(toggle);
   await page.waitFor(RAIL_MODAL_OPEN, 'first Medium toggle opens the modal rail');
   check(JSON.stringify(await mainRect()) === JSON.stringify(before), 'opening Medium rail leaves the main geometry in place');
@@ -2693,7 +2693,7 @@ async function mediumRail(page) {
   await page.click(toggle);
   await page.click(modal);
   await page.waitFor(`!${RAIL_MODAL_OPEN} && document.activeElement?.id === 'navigation-toggle'`, 'explicit Medium collapse restores the base toggle');
-  check(await page.eval(`localStorage.getItem('vink.ui.rail')`) === preference, 'transient Medium expansion preserves the saved device preference');
+  check(await page.eval(storedRail) === preference, 'transient Medium expansion preserves saved member preferences');
 }
 
 async function adaptiveShell(page) {
@@ -2781,11 +2781,10 @@ async function adaptiveShell(page) {
   await page.key('Escape');
   check(await page.eval(`document.querySelector('[role=tooltip]').hidden`), 'Escape also dismisses a hover tooltip without trigger focus');
   await page.reload();
-  check((await page.eval(RAIL_WIDTH)) === 96, 'rail preference survives reload');
+  check((await page.eval(RAIL_WIDTH)) === 220, 'navigation-only compact rail returns to the contextual default on reload');
   await page.viewport(1024);
-  check((await page.eval(RAIL_WIDTH)) === 96, 'manual compact preference survives resize');
+  check((await page.eval(RAIL_WIDTH)) === 96, 'medium viewport uses contextual compact rail');
   await mediumRail(page);
-  await page.eval(`localStorage.removeItem('vink.ui.rail')`);
   await page.reload();
   check((await page.eval(RAIL_WIDTH)) === 96, 'tablet defaults to a compact rail');
   await page.viewport(1440);
@@ -2861,7 +2860,7 @@ async function adaptiveShell(page) {
   await railR4Surfaces(page, 'dark');
   await page.capture('1440-toi-dark');
   await page.reload();
-  check(await page.eval(`document.documentElement.dataset.theme === 'dark'`), 'theme preference survives reload');
+  await page.waitFor(`document.documentElement.dataset.theme === 'dark'`, 'verified member theme preference survives reload');
   await assertBrand(page, 'dark');
   await page.click('#navigation-primary a[href="/"]');
   await page.waitFor(`location.pathname === '/'`, 'return to Khám phá before testing RAIL_ME navigation');
@@ -2920,11 +2919,11 @@ async function adaptiveShell(page) {
   await chooseTheme(page, 'dark', 'page-theme');
   await chooseTextSize(page, 150, 'page-text');
   await page.viewport(1440);
-  await page.click('#navigation-toggle');
-  check(await page.eval(`document.documentElement.dataset.theme === 'dark' &&
+  await page.click('#page-rail label:has([value="compact"])');
+  await page.waitFor(`document.documentElement.dataset.theme === 'dark' &&
     document.documentElement.dataset.rail === 'compact' &&
     document.documentElement.dataset.text === '150' &&
-    getComputedStyle(document.documentElement).fontSize === '24px'`), 'storage-denied theme, text 150% and rail still work in memory');
+    getComputedStyle(document.documentElement).fontSize === '24px'`, 'storage-denied theme, text 150% and rail still work in memory');
   await assertBrand(page, 'dark');
   // Client navigation retains the session preference even while storage is unavailable.
   await page.click('#navigation-primary a[href="/"]');
@@ -2942,8 +2941,7 @@ async function adaptiveShell(page) {
   await page.capture('appearance-storage-denied-page-system');
   await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
   await page.reload();
-  await page.eval(`localStorage.removeItem('vink.ui.rail'); localStorage.removeItem('vink.ui.theme'); localStorage.removeItem('vink.ui.text')`);
-  await page.reload();
+  await chooseTheme(page, 'system', 'page-theme');
 
   await accountAppearance(page);
   await preferenceSurfaces(page);
@@ -3074,240 +3072,55 @@ async function adaptiveShell(page) {
   await appearanceFirstPaint(page);
 }
 
-/** Keep first-paint selection evidence separate from hydrated interaction evidence. */
+/** Inspect the SSR document separately from the browser's confirmed account UI. */
 async function appearanceFirstPaint(page) {
-  console.log('appearance preference before hydration:');
+  const defaults = `!document.documentElement.dataset.theme && !document.documentElement.dataset.rail &&
+    !document.documentElement.dataset.text && getComputedStyle(document.documentElement).fontSize === '16px'
+    && !document.querySelector('#page-appearance, #auth-appearance')`;
   const response = await fetch(args.base + '/toi');
   const html = await response.text();
-  check(response.ok && html.includes('id="page-appearance"') &&
-    !/id="(?:profile-trigger|navigation-expanded-appearance|profile-menu)"/.test(html),
-    'SSR renders Giao diện on Tôi with no utility in either rail host');
+  check(response.ok && !/id="(?:auth-appearance|page-appearance|profile-trigger|navigation-expanded-appearance|profile-menu)"/.test(html),
+    'SSR emits generic Account HTML and leaves appearance settings out');
   const errorsBefore = page.errors.length;
-  const mismatches = [];
-  let navigations = 0;
-  const { identifier } = await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `window.__appearancePaints = [];
-    const sample = () => {
-      const choice = document.querySelector('#page-theme input:checked');
-      if (choice) { const signature = (document.documentElement.dataset.theme || 'system') + ':' + choice.value; if (!window.__appearancePaints.includes(signature)) window.__appearancePaints.push(signature); }
-      if (document.documentElement.dataset.hydrated !== 'true') requestAnimationFrame(sample);
-    }; requestAnimationFrame(sample);` });
-  for (const [theme, os] of [['light', 'dark'], ['dark', 'light'], ['system', 'light'], ['system', 'dark']]) {
-    await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: os }] });
-    await page.eval(theme === 'system' ? `localStorage.removeItem('vink.ui.theme')` : `localStorage.setItem('vink.ui.theme', '${theme}')`);
-    for (const width of [1440, 768, 320]) {
+  await page.eval(`localStorage.setItem('vink.ui.theme', 'dark'); localStorage.setItem('vink.ui.rail', 'compact');
+    localStorage.setItem('vink.ui.text', '200')`);
+  await page.send('Network.setBlockedURLs', { urls: [`${args.base}/pkg/vink.js*`, `${args.base}/pkg/vink_bg.wasm*`] });
+  try {
+    for (const [width, rail, theme] of [[1440, 220, 'light'], [768, 96, 'dark'], [320, 0, 'dark']]) {
       await page.viewport(width, 900);
-      await page.send('Network.setBlockedURLs', { urls: [`${args.base}/pkg/vink.js*`, `${args.base}/pkg/vink_bg.wasm*`] });
-      await page.goto(`${args.base}/toi`);
-      navigations++;
-      const toiNavSelector = width >= 760 ? RAIL_ME : '.vk-ui-bottom-nav a[href="/toi"]';
-      const guestLabel = await page.eval(`document.querySelector('meta[name="vink-sign-in"]') ? 'Đăng nhập' : 'Tài khoản'`);
+      await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: theme }] });
+      await page.goto(args.base + '/toi');
+      check(await page.eval(`document.documentElement.dataset.hydrated !== 'true' && ${defaults}
+        && Math.abs(${RAIL_WIDTH} - ${rail}) <= 1`), `${width}px SSR before hydration ignores legacy storage and lays out contextual navigation`);
       if (width === 768) {
         check(await page.eval(`(() => {
           const toggle = document.querySelector('#navigation-toggle');
-          return ${RAIL_WIDTH} === 96 && toggle.getAttribute('aria-expanded') === 'false' &&
+          return toggle.getAttribute('aria-expanded') === 'false' &&
             toggle.getAttribute('aria-controls') === 'navigation-modal' &&
             toggle.querySelector('[data-icon="menu"]').getClientRects().length === 1;
-        })()`), '768px rail button and glyph match the compact CSS before hydration');
+        })()`), 'Medium rail button and glyph match compact CSS before hydration');
       }
-      for (const scale of [100, 200]) {
-        await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
-        const name = `appearance-first-paint-${theme}-os-${os}-${width}-text${scale}`;
-        const firstPaintMeta = {
-          scenario: 'UI-REVIEW-21-first-paint',
-          fixture: 'local-fixture-unknown-account',
-          boundary: 'no-js-bootstrap-pre-hydration',
-          hydrationPhase: 'before-hydration',
-          requestedScene: { width, height: 900, scale, theme, hydrationPhase: 'before-hydration' },
-          requiredTargets: ['#me-title', '#page-theme'],
-          textScaleLane: 'dom-override-geometry-only',
-        };
-        await page.capture(name, firstPaintMeta);
-        await page.eval(`document.querySelector('#page-theme').scrollIntoView({ block: 'end' })`);
-        await page.capture(`${name}-appearance`, { ...firstPaintMeta, state: 'before-hydration-scrolled' });
-        if (scale === 100) {
-          const axBefore = await collectElementAccessibility(page, toiNavSelector);
-          const axBeforeEval = evaluateAccessibleElement(axBefore, { role: 'link', name: guestLabel, excludeSubstrings: ['TT', '•'] });
-          check(axBeforeEval.ok, `${name}: SSR exposes the account link with the guest label (${axBeforeEval.reasons.join('; ')})`);
-        }
-        const state = await page.eval(`({ hydrated: document.documentElement.dataset.hydrated === 'true', theme: document.documentElement.dataset.theme || 'system', choices: ['page-theme'].map(id => document.querySelector('#' + id + ' input:checked')?.value) })`);
-        if (state.hydrated || state.theme !== theme || state.choices.some(value => value !== theme)) mismatches.push({ name, expected: theme, ...state });
-      }
-      await page.send('Network.setBlockedURLs', { urls: [] });
-      await page.reload();
-      await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'appearance hydration after reload');
-      await waitForPageAccount(page);
-      const axAfter = await collectElementAccessibility(page, toiNavSelector);
-      const axAfterEval = evaluateAccessibleElement(axAfter, { role: 'link', name: 'Tài khoản', excludeSubstrings: ['TT', '•'] });
-      check(axAfterEval.ok, `first-paint reload ${theme}/${os}/${width}: Tôi AX exposes 'Tài khoản' after hydration (${axAfterEval.reasons.join('; ')})`);
-      const hydrated = await page.eval(`({ theme: document.documentElement.dataset.theme || 'system', choices: ['page-theme'].map(id => document.querySelector('#' + id + ' input:checked')?.value), paints: window.__appearancePaints })`);
-      if (hydrated.theme !== theme || hydrated.choices.some(value => value !== theme) || hydrated.paints.some(value => value !== `${theme}:${theme}`)) mismatches.push({ name: 'hydration-' + theme + '-' + width, expected: theme, ...hydrated });
-    }
-  }
-  await page.send('Network.setBlockedURLs', { urls: [] });
-  for (const deadline = Date.now() + 5000; page.errors.length < errorsBefore + navigations && Date.now() < deadline;) await sleep(50);
-  const blocked = page.errors.splice(errorsBefore);
-  check(blocked.length === navigations && blocked.every(error => error === `TypeError: Failed to fetch dynamically imported module: ${args.base}/pkg/vink.js`), 'blocked hydration produces only the expected import failures');
-  await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
-  await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM] });
-  check(mismatches.length === 0, `first paint and native selection agree with the preference before hydration: ${JSON.stringify(mismatches)}`);
-
-  // AC-04 compatibility matrix: legacy 200 -> Lớn 150, canonical 150, absent, invalid, and read-only/setItem-blocked storage
-  // before CSS / first paint (zero frames at 200%/32px or Mặc định/16px) and after hydration/reload.
-  await page.viewport(1440);
-  const { identifier: paintWatch } = await page.send('Page.addScriptToEvaluateOnNewDocument', {
-    source: `window.__textPaints = [];
-      let hydratedFrames = 0;
-      const recordTextPaint = () => {
-        const root = document.documentElement;
-        // A frame can paint the page before the appearance radio group has been parsed.
-        if (root && document.querySelector('link[rel=stylesheet]')?.sheet) {
-          const group = document.querySelector('#page-text');
-          const choice = group ? group.querySelector('input:checked')?.value || 'unchecked' : 'not-parsed';
-          const frame = (root.dataset.text || 'null') + ':' + getComputedStyle(root).fontSize + ':' + choice;
-          if (!window.__textPaints.includes(frame)) window.__textPaints.push(frame);
-        }
-        if (root?.dataset.hydrated === 'true') hydratedFrames++;
-        if (hydratedFrames < 2) requestAnimationFrame(recordTextPaint);
-        else window.__textPaintsSettled = true;
-      };
-      requestAnimationFrame(recordTextPaint);`,
-  });
-  const expectedPaints = (frames, attr, px, choice) => {
-    const prefix = (attr ?? 'null') + ':' + px + ':';
-    return frames.includes(prefix + choice) &&
-      frames.every(frame => frame === prefix + choice || frame === prefix + 'not-parsed');
-  };
-  let compatibilityNavigations = 0;
-  try {
-    for (const [label, stored, expectedAttr, expectedPx, expectedChoice, expectedStored] of [
-      ['legacy-200', '200', '150', '24px', '150', '150'],
-      ['new-150', '150', '150', '24px', '150', '150'],
-      ['absent', null, null, '16px', '100', null],
-      ['invalid', 'broken', null, '16px', '100', 'broken'],
-    ]) {
-      const seedPreference = stored === null
-        ? `localStorage.removeItem('vink.ui.text')`
-        : `localStorage.setItem('vink.ui.text', ${JSON.stringify(stored)})`;
-      await page.eval(seedPreference);
-      await page.send('Network.setBlockedURLs', { urls: [`${args.base}/pkg/vink.js*`, `${args.base}/pkg/vink_bg.wasm*`] });
-      await page.goto(`${args.base}/toi`);
-      compatibilityNavigations++;
-      await page.waitFor(`window.__textPaints?.some(frame => frame.endsWith(':${expectedChoice}'))`, `AC-04 ${label} pre-hydration paint`);
-      const preHydration = await page.eval(`({
-        hydrated: document.documentElement.dataset.hydrated === 'true',
-        attr: document.documentElement.dataset.text || null,
-        fontSize: getComputedStyle(document.documentElement).fontSize,
-        choice: document.querySelector('#page-text input:checked')?.value || null,
-        stored: localStorage.getItem('vink.ui.text'),
-        paints: window.__textPaints,
-      })`);
-      check(!preHydration.hydrated &&
-        preHydration.attr === expectedAttr &&
-        preHydration.fontSize === expectedPx &&
-        preHydration.choice === expectedChoice &&
-        preHydration.stored === expectedStored &&
-        expectedPaints(preHydration.paints, expectedAttr, expectedPx, expectedChoice),
-        `AC-04 ${label} before hydration: ${JSON.stringify(preHydration)}`);
-      await page.send('Network.setBlockedURLs', { urls: [] });
-      // Reset what the new document reads. The first pass may have rewritten legacy 200.
-      await page.eval(seedPreference);
-      await page.reload();
-      await page.waitFor('window.__textPaintsSettled', `AC-04 ${label} hydrated`);
-      const postHydration = await page.eval(`({
-        attr: document.documentElement.dataset.text || null,
-        fontSize: getComputedStyle(document.documentElement).fontSize,
-        choice: document.querySelector('#page-text input:checked')?.value || null,
-        stored: localStorage.getItem('vink.ui.text'),
-        paints: window.__textPaints,
-      })`);
-      check(postHydration.attr === expectedAttr &&
-        postHydration.fontSize === expectedPx &&
-        postHydration.choice === expectedChoice &&
-        postHydration.stored === expectedStored &&
-        expectedPaints(postHydration.paints, expectedAttr, expectedPx, expectedChoice),
-        `AC-04 ${label} after hydration/reload (no flash): ${JSON.stringify(postHydration)}`);
-    }
-    const { identifier: readOnlyLegacy } = await page.send('Page.addScriptToEvaluateOnNewDocument', {
-      source: `(() => {
-        const prototype = Storage.prototype;
-        const original = Object.getOwnPropertyDescriptors(prototype);
-        const overrides = {
-          getItem: k => k === 'vink.ui.text' ? '200' : null,
-          setItem: () => { throw new DOMException('QuotaExceededError', 'QuotaExceededError'); },
-          removeItem: () => { throw new DOMException('SecurityError', 'SecurityError'); },
-        };
-        window.__restoreReadOnlyLegacyStorage = () => {
-          for (const method of Object.keys(overrides)) {
-            Object.defineProperty(prototype, method, original[method]);
-          }
-          delete window.__restoreReadOnlyLegacyStorage;
-        };
-        for (const [method, value] of Object.entries(overrides)) {
-          Object.defineProperty(prototype, method, { ...original[method], value });
-        }
-      })();`,
-    });
-    try {
-      await page.goto(`${args.base}/toi`);
-      await page.waitFor('window.__textPaintsSettled', 'AC-04 read-only legacy200 hydrated');
-      const roState = await page.eval(`({
-        attr: document.documentElement.dataset.text || null,
-        fontSize: getComputedStyle(document.documentElement).fontSize,
-        choice: document.querySelector('#page-text input:checked')?.value || null,
-        paints: window.__textPaints,
-        stored: localStorage.getItem('vink.ui.text'),
-      })`);
-      check(roState.attr === '150' && roState.fontSize === '24px' && roState.choice === '150' &&
-        roState.stored === '200' && expectedPaints(roState.paints, '150', '24px', '150'),
-        `AC-04 legacy-200 with setItem blocked still applies Lớn 150% without throwing: ${JSON.stringify(roState)}`);
-      await page.click('#page-text label:has([value="100"])');
-      await page.waitFor(`!document.documentElement.dataset.text && getComputedStyle(document.documentElement).fontSize === '16px'`, 'in-session switch works even when removeItem throws');
-    } finally {
-      try {
-        await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier: readOnlyLegacy });
-      } finally {
-        // Removing the CDP preload only affects future documents.
-        await page.eval('window.__restoreReadOnlyLegacyStorage?.()');
-      }
+      const link = width >= 760 ? RAIL_ME : '.vk-ui-bottom-nav a[href="/toi"]';
+      const label = await page.eval(`document.querySelector('meta[name="vink-sign-in"]') ? 'Đăng nhập' : 'Tài khoản'`);
+      const ax = evaluateAccessibleElement(await collectElementAccessibility(page, link),
+        { role: 'link', name: label, excludeSubstrings: ['TT', '•'] });
+      check(ax.ok, `${width}px SSR exposes the generic account link (${ax.reasons.join('; ')})`);
+      await page.capture(`appearance-first-paint-${theme}-${width}`, {textScale: 100, hydrationPhase: 'before-hydration'});
     }
   } finally {
     await page.send('Network.setBlockedURLs', { urls: [] });
-    await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier: paintWatch });
-    for (const deadline = Date.now() + 3000; page.errors.length < errorsBefore + compatibilityNavigations && Date.now() < deadline;) await sleep(50);
-    const compatibilityErrors = page.errors.splice(errorsBefore);
-    check(compatibilityErrors.length === compatibilityNavigations &&
-      compatibilityErrors.every(error => error === `TypeError: Failed to fetch dynamically imported module: ${args.base}/pkg/vink.js`),
-      'AC-04 compatibility captures produce only expected blocked imports');
-    check(await page.eval(`(() => {
-      localStorage.removeItem('vink.ui.text');
-      return localStorage.getItem('vink.ui.text') === null;
-    })()`), 'AC-04 native storage works again in the current document');
+    for (const deadline = Date.now() + 5000; page.errors.length < errorsBefore + 3 && Date.now() < deadline;) await sleep(50);
+    const blocked = page.errors.splice(errorsBefore);
+    check(blocked.length === 3 && blocked.every(error => error === `TypeError: Failed to fetch dynamically imported module: ${args.base}/pkg/vink.js`),
+      'pre-hydration coverage incurred only the expected blocked module requests');
   }
-
-  // Another tab can write a preference after the bootstrap has applied this document's snapshot.
-  await page.viewport(1440);
-  await chooseTextSize(page, 150, 'page-text');
-  await page.eval(`localStorage.removeItem('vink.ui.theme');
-    localStorage.setItem('vink.ui.rail', 'compact');`);
-  const { identifier: changeRailStorage } = await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `
-    const observer = new MutationObserver(() => {
-      if (document.documentElement?.dataset.rail !== 'compact') return;
-      observer.disconnect();
-      localStorage.setItem('vink.ui.rail', 'expanded');
-    });
-    observer.observe(document, { subtree: true, attributes: true, attributeFilter: ['data-rail'] });` });
-  try {
-    await page.reload();
-    await page.waitFor(`document.documentElement.dataset.hydrated === 'true' &&
-      localStorage.getItem('vink.ui.rail') === 'expanded' && ${RAIL_WIDTH} === 96 &&
-      getComputedStyle(document.documentElement).fontSize === '24px' &&
-      document.querySelector('#page-rail input:checked')?.value === 'compact' &&
-      document.querySelector('#page-text input:checked')?.value === '150'`, 'hydration keeps the bootstrapped rail and text preferences even if storage changes');
-  } finally {
-    await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier: changeRailStorage });
-    await page.eval(`localStorage.removeItem('vink.ui.rail'); localStorage.removeItem('vink.ui.text');`);
-    await page.reload();
-  }
+  await page.reload();
+  await waitForPageAccount(page);
+  check(await page.eval(`document.querySelector('#page-text input:checked')?.value === '100' &&
+    !document.documentElement.dataset.text && localStorage.getItem('vink.ui.text') === '200'`),
+  'confirmed member skips the unowned legacy choice and leaves that value intact');
+  await page.eval(`['theme', 'rail', 'text'].forEach(name => localStorage.removeItem('vink.ui.' + name))`);
+  await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM] });
 }
 
 async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
@@ -5211,7 +5024,9 @@ async function appearanceShellPhase(page) {
   // The nav matrix persists its last page-theme choice; later main steps start from the
   // system preference that adaptiveShell restored, not from a leaked explicit theme.
   await page.viewport(1440, 900);
-  await page.eval(`localStorage.removeItem('vink.ui.theme'); document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme; scrollTo(0, 0)`);
+  await page.goto(args.base + '/toi');
+  await chooseTheme(page, 'system', 'page-theme');
+  await page.eval(`document.documentElement.style.fontSize = ''; scrollTo(0, 0)`);
 }
 
 async function deskPhase(page) {

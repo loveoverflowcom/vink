@@ -105,8 +105,8 @@ export async function deskGuest(page, {args, check}, signInOpen) {
       parseFloat(getComputedStyle(document.activeElement).outlineWidth)>0`), '#308 guest rail link is keyboard reachable with a focus ring');
     check(draftReads.length===0, '#308 guest Desk sends zero private list requests');
     await page.key('Enter');
-    await page.waitFor(`location.pathname==='/toi' && document.querySelector('#page-appearance-title') &&
-      document.querySelector('${signInOpen?'#password-login':'#sign-in-closed'}')`, '#308 rail goes to Account and keeps access to Appearance');
+    await page.waitFor(`location.pathname==='/toi' &&
+      document.querySelector('${signInOpen?'#password-login':'#sign-in-closed'}')`, '#308 rail goes to Account');
     const guestMeRail = await guestIcons('#navigation');
     const guestMeBar = await guestIcons('#bottom-navigation');
     check(guestMeRail.explore.icon === 'explore-outline' && guestMeRail.desk.icon === 'edit-outline' &&
@@ -114,24 +114,14 @@ export async function deskGuest(page, {args, check}, signInOpen) {
       guestMeRail.me.path !== guestDeskRail.me.path && guestMeRail.desk.path !== guestDeskRail.desk.path &&
       guestMeBar.explore.icon === 'explore-outline' && guestMeBar.desk.icon === 'edit-outline' && guestMeBar.me.icon === 'person',
       `#427 AC-04 guest /toi uses filled person icon with distinct SVG path from person-outline (${JSON.stringify({ guestMeRail, guestMeBar })})`);
+    check(await page.eval(`!document.querySelector('#page-appearance, #auth-appearance') &&
+      !document.documentElement.dataset.text && getComputedStyle(document.documentElement).fontSize === '16px'`),
+      '#576 guest settings are absent and leave the default text size');
     if (!signInOpen) {
       check(await page.eval(`!document.querySelector('#account-session form')
-        && document.querySelector('#sign-in-closed').textContent.includes('Vink chưa mở đăng nhập')
-        && document.querySelector('#auth-appearance').getAttribute('href') === '#page-appearance'`),
-        '#327 real sign-in-disabled App has only availability copy and retains the Appearance entry');
-      await page.click('#auth-appearance');
-      await page.waitFor(`location.hash === '#page-appearance' && document.querySelector('#page-theme input')`,
-        '#327 sign-in-disabled Appearance anchor reaches actual choices');
+        && document.querySelector('#sign-in-closed').textContent.includes('Vink chưa mở đăng nhập')`),
+        '#327 real sign-in-disabled App has only availability copy');
     }
-    await page.eval(`document.querySelector('#page-text input[value="100"]').focus()`);
-    await page.key('ArrowRight');
-    await page.waitFor(`document.activeElement?.matches('#page-text input[value="150"]:checked:focus-visible') &&
-      document.documentElement.dataset.text === '150' && getComputedStyle(document.documentElement).fontSize === '24px'`,
-      '#413 the guest can select Lớn with the native radio keyboard');
-    await page.key('ArrowLeft');
-    await page.waitFor(`document.activeElement?.matches('#page-text input[value="100"]:checked') &&
-      !document.documentElement.dataset.text && getComputedStyle(document.documentElement).fontSize === '16px'`,
-      '#413 the guest can return to Mặc định');
   } finally {
     page.cdp.listeners = page.cdp.listeners.filter(handler=>handler!==observe);
   }

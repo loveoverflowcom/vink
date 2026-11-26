@@ -168,9 +168,13 @@ async function expiredDesk(page, {base, check, openPage}) {
     const desk = await openPage(browserContextId);
     await desk.send('Network.setCookie', {name:cookie.name, value:cookie.value, url:base,
       path:'/', secure:true, httpOnly:true, sameSite:cookie.sameSite});
+    await openAccount(desk, base, 'active');
+    await chooseAppearance(desk, 'theme', 'dark');
+    await desk.waitFor("document.documentElement.dataset.theme === 'dark'", 'active Desk fixture saves a member theme');
     const reads = captureRequest(desk, 'GET', '/api/v1/author/works');
     await desk.goto(base+'/ban-viet');
     await desk.waitFor(q('[data-testid=draft-row]'), '#308 active scope loads its own draft');
+    await desk.waitFor("document.documentElement.dataset.theme === 'dark'", 'the scoped member theme reaches Desk');
     check(reads.count()===1, '#308 active scope starts exactly one initial read');
     const late = await holdAnswer(desk, 'GET', '/api/v1/author/works');
     await desk.send('Network.deleteCookies', {name:sessionCookie, url:base});
@@ -178,6 +182,7 @@ async function expiredDesk(page, {base, check, openPage}) {
     check(await late.held()===401, '#308 holding the real 401 from a private refresh after session loss');
     await late.finish();
     await desk.waitFor(q('#desk-sign-in'), '#308 late 401 reconciles through the session owner');
+    await expectDefaultAppearance(desk, check, 'private 401 after the browser loses its session cookie');
     check(reads.count()===2 && await desk.eval("!document.querySelector('#draft-search, #retry-drafts, [data-testid=draft-row]')"),
       '#308 previous rows and controls are gone with no further list read');
     reads.close();
@@ -201,31 +206,21 @@ async function matrix(page, scenario, anchor, check) {
     'pen-name': ['#pen-name-save'],
     closed: [],
   })[scenario];
-  const r2 = actions !== undefined;
+  const guest = actions !== undefined;
   const boundary = scenario === 'closed' ? 'App (sign-in disabled) + scratch PostgreSQL' :
     'native Identity + App + scratch PostgreSQL';
-  const widths = scenario === 'login' ? [320, 390, 834, 1280, 1440] : r2 ? [320, 390, 834, 1280] : [320, 390, 1280];
-  const scales = r2 ? [100, 150, 200] : [100, 200];
-  const initial = await page.eval(`({
-    theme: document.querySelector('#page-theme input:checked')?.value,
-    text: document.querySelector('#page-text input:checked')?.value,
-    themeAttribute: document.documentElement.getAttribute('data-theme'),
-  })`);
-  for (const width of widths) for (const theme of ['light', 'dark']) for (const scale of scales) {
+  const widths = guest ? [320, 390, 834, 1440] : [320, 390, 1280];
+  for (const width of widths) for (const theme of ['light', 'dark']) for (const scale of [100, 200]) {
     await page.viewport(width, width === 834 ? 600 : 900);
+    await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: theme }] });
     await page.eval("document.documentElement.style.fontSize = ''");
-    if (r2) {
-      await chooseAppearance(page, 'theme', theme);
-      await chooseAppearance(page, 'text', scale === 200 ? 150 : scale);
-      await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 0, y: 0 });
-    }
+    if (guest) await expectDefaultAppearance(page, check, scenario);
     await page.waitFor(APPEARANCE_SETTLED, 'Auth appearance colours settle');
     const endTarget = actions?.at(-1) ?? anchor;
     const measured = await page.eval(`(async () => {
-      if (!${r2}) document.documentElement.dataset.theme = '${theme}';
-      if (!${r2} || ${scale} === 200) document.documentElement.style.fontSize = '${scale}%';
+      if (${scale} === 200) document.documentElement.style.fontSize = '200%';
       const panel = ${q(PANEL)}, section = document.querySelector(${path});
-      if (${r2}) scrollTo({top: 0, behavior: 'instant'});
+      if (${guest}) scrollTo({top: 0, behavior: 'instant'});
       else section.scrollIntoView({block: 'start', behavior: 'instant'});
       await document.fonts.ready;
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -265,65 +260,25 @@ async function matrix(page, scenario, anchor, check) {
         Math.abs(r.left - fields[0].left) <= 1 && r.top >= fields[i-1].bottom);
       const ordered = ${JSON.stringify(actions ?? [])}.map(sel => document.querySelector(sel)?.getBoundingClientRect())
         .every((r, i, rects) => r && r.width > 0 && r.height > 0 && (!i || r.top >= rects[i-1].bottom - 1));
-      const appearance = document.getElementById('auth-appearance');
-      let link = null;
-      if (${r2}) {
-        const style = getComputedStyle(appearance), bounds = appearance.getBoundingClientRect();
-        const icon = appearance.querySelector('[data-appearance-icon="palette"]');
-        const iconRect = icon?.getBoundingClientRect();
-        const label = appearance.querySelector('.vk-ui-button__label');
-        const labelRect = label?.getBoundingClientRect();
-        const auth = entry.getBoundingClientRect();
-        const account = panel.getBoundingClientRect();
-        const colors = document.createElement('canvas').getContext('2d');
-        colors.fillStyle = style.color;
-        const foreground = colors.fillStyle;
-        colors.fillStyle = style.getPropertyValue('--vk-primary').trim();
-        link = {
-          native: appearance.matches('a[href="#page-appearance"][rel=external]') && appearance.tabIndex === 0 &&
-            appearance.textContent.trim() === 'Giao diện' && !appearance.hasAttribute('role') &&
-            !appearance.hasAttribute('aria-expanded') && !appearance.hasAttribute('aria-haspopup') &&
-            document.querySelectorAll('a[href="#page-appearance"]').length === 1 &&
-            document.querySelectorAll('#page-appearance').length === 1 &&
-            !document.querySelector('#profile-trigger, #profile-menu, .vk-ui-nav-utility'),
-          icon: icon?.getAttribute('aria-hidden') === 'true' && getComputedStyle(icon).maskImage !== 'none' &&
-            iconRect.width === 24 && iconRect.height === 24 && label?.checkVisibility() && iconRect.right <= labelRect.left,
-          idle: style.backgroundColor === 'rgba(0, 0, 0, 0)' && style.textDecorationLine === 'none' &&
-            style.borderTopWidth === '0px' && style.boxShadow === 'none' &&
-            getComputedStyle(appearance, '::after').opacity === '0',
-          primary: colors.fillStyle === foreground,
-          contrast: contrast(appearance),
-          width: bounds.width, height: bounds.height,
-          placed: bounds.left >= -1 && bounds.right <= innerWidth + 1 &&
-            (innerWidth < 760 ? bounds.top >= auth.bottom - 1 :
-              bounds.bottom <= auth.top + 1 && bounds.top >= account.top && Math.abs(bounds.right - account.right) <= 1),
-          inView: bounds.top >= 0 && bounds.bottom <= barTop + 1,
-        };
-      }
       return { logoAsset, logoVisible: Boolean(logo?.checkVisibility()), singleColumn, ordered,
         minContrast: contrasts.length ? Math.min(...contrasts) : null, ok: !!rect.width && !clipped && document.documentElement.scrollWidth <= innerWidth + 1 && font,
-        width: rect.width, left: rect.left, font, device: devicePixelRatio, link,
+        width: rect.width, left: rect.left, font, device: devicePixelRatio,
         rootSize: getComputedStyle(document.documentElement).fontSize,
         focus: document.activeElement?.id,
         partial: (target?.getBoundingClientRect().bottom ?? rect.bottom) > barTop };
     })()`);
     check(measured.ok, `${scenario} at ${width}px / ${theme} / text ${scale}%: no horizontal clipping, Be Vietnam Pro loaded (${JSON.stringify(measured)})`);
     if (measured.minContrast !== null) check(measured.minContrast >= 4.5, `${scenario}: measured label/help/error contrast ≥ 4.5:1`);
-    if (r2) check(measured.logoVisible && measured.logoAsset.includes(`/brand/vpen-r1-lockup-${theme}.svg`) &&
+    if (guest) check(measured.logoVisible && measured.logoAsset.includes(`/brand/vpen-r1-lockup-${theme}.svg`) &&
       measured.singleColumn && measured.ordered, `#327 ${scenario} ${width}/${theme}/${scale}: theme asset and one-column reading order`);
-    if (r2) {
-      const link = measured.link;
-      check(measured.rootSize === `${16 * scale / 100}px` && link.native && link.icon && link.idle &&
-        link.primary && link.contrast >= 4.5 && link.width >= 48 && link.height >= 48 && link.placed,
-        `#483 ${scenario} ${width}/${theme}/${scale}: native Appearance text action, placement and ≥4.5:1 contrast (${JSON.stringify(link)})`);
-    }
+    check(measured.rootSize === `${16 * scale / 100}px`, 'Auth uses the expected root text size');
     const loginR3 = scenario === 'login' ? await checkLoginR3(page, check, `/toi ${width}/${theme}/${scale}`) : undefined;
-    const textScaleLane = r2 && scale !== 200 ? 'app-appearance-control' : 'dom-override-geometry-only';
+    const textScaleLane = scale === 200 ? 'dom-override-geometry-only' : 'default-100';
     if (scenario === 'login' || (width === 390 && scale === 100) || (width === 320 && scale === 200 && theme === 'dark') ||
-        (width === 1280 && scale === 100 && theme === 'light')) {
+        (scenario === 'email' && width === 1440 && scale === 100) || (width === 1280 && scale === 100 && theme === 'light')) {
       await page.capture(`auth-password-${scenario}-${width}-${theme}-${scale}`, {
         boundary,
-        requiredTargets: measured.link?.inView ? ['#auth-appearance'] : [],
+        requiredTargets: measured.partial ? [] : [anchor],
         scenario, textScale: scale, textScaleLane, font: 'Be Vietnam Pro', ...measured, loginR3,
       });
       if (measured.partial) {
@@ -336,10 +291,10 @@ async function matrix(page, scenario, anchor, check) {
         });
       }
     }
-    if (r2) {
+    if (guest && width <= 390 && scale === 200) {
       check(await page.eval(`(() => {
         const nav = document.querySelector('#bottom-navigation'), barTop = nav?.getClientRects().length ? nav.getBoundingClientRect().top : innerHeight;
-        const targets = ${JSON.stringify(width <= 390 && scale === 200 ? [...actions, '#auth-appearance'] : ['#auth-appearance'])};
+        const targets = ${JSON.stringify(actions)};
         return targets.every(sel => {
           const action = document.querySelector(sel);
           action.scrollIntoView({block:'center',behavior:'instant'});
@@ -347,159 +302,177 @@ async function matrix(page, scenario, anchor, check) {
           return r.top >= 0 && r.bottom <= barTop + 1 &&
             action.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
         });
-      })()`), `#483 ${scenario} Appearance is reachable without navigation covering it: ${width}/${theme}/${scale}`);
+      })()`), `#576 ${scenario} actions remain reachable above bottom navigation: ${width}/${theme}/${scale}`);
     }
   }
   await page.eval("document.documentElement.style.fontSize = ''");
-  if (r2) {
-    await chooseAppearance(page, 'theme', initial.theme);
-    await chooseAppearance(page, 'text', initial.text);
-  } else {
-    await page.eval(initial.themeAttribute === null
-      ? "document.documentElement.removeAttribute('data-theme')"
-      : `document.documentElement.dataset.theme = ${JSON.stringify(initial.themeAttribute)}`);
-  }
+  await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
   await page.viewport(1280);
   await page.eval("scrollTo({top:0,behavior:'instant'})");
 }
 
-async function appearanceFragment(page) {
-  await page.waitFor(`location.hash === '#page-appearance' && document.activeElement?.id === 'page-appearance'`,
-    '#483 native activation focuses the Appearance section');
+const MISSING_APPEARANCE = `!${q('#page-appearance, #auth-appearance, a[href="#page-appearance"]')}`;
+const ROOT_DEFAULTS = `['theme', 'text', 'rail'].every(name => !document.documentElement.dataset[name])
+  && getComputedStyle(document.documentElement).fontSize === '16px'`;
+const DARK_LARGE_COMPACT = `document.documentElement.dataset.theme === 'dark' &&
+  document.documentElement.dataset.text === '150' && document.documentElement.dataset.rail === 'compact'`;
+
+async function expectDefaultAppearance(page, check, state) {
+  await page.waitFor(`${MISSING_APPEARANCE} && ${ROOT_DEFAULTS}`, `${state}: system defaults and no appearance controls`);
+  const { nodes } = await page.send('Accessibility.getFullAXTree');
+  check(!nodes.some(node => !node.ignored && ['Giao diện', 'Chế độ màu', 'Cỡ chữ', 'Thanh điều hướng'].includes(node.name?.value)),
+    `${state}: the accessibility tree has no appearance actions or settings`);
 }
 
-async function probeAppearanceInput(page, selector, value) {
-  await fill(page, selector, value);
-  await page.eval(`(() => {
-    const input = ${q(selector)};
-    const probe = window.appearanceProbe = { input, value: ${JSON.stringify(value)}, submitted: false };
-    input.form.addEventListener('submit', () => { probe.submitted = true; }, { once: true });
-  })()`);
+async function seedLegacyAppearance(page) {
+  await page.eval(`localStorage.setItem('vink.ui.theme', 'dark');
+    localStorage.setItem('vink.ui.text', '200'); localStorage.setItem('vink.ui.rail', 'compact')`);
 }
 
-async function preservedAppearanceInput(page, selector, check, method) {
-  check(await page.eval(`(() => {
-    const probe = window.appearanceProbe;
-    const input = ${q(selector)};
-    const section = document.getElementById('page-appearance').getBoundingClientRect();
-    return input === probe?.input && input.value === probe.value && !probe.submitted &&
-      section.top >= -1 && section.top < innerHeight && !document.querySelector('dialog[open]');
-  })()`), `#483 ${method} scrolls in the same document without submitting or remounting the typed field`);
-  await page.eval(`history.replaceState(history.state, '', location.pathname + location.search)`);
-  await fill(page, selector, '');
-}
+async function firstPaintAppearance(page, base, check, mode, standing = 'guest') {
+  const response = await fetch(base + '/toi', {headers: {accept: 'text/html'}});
+  const html = await response.text();
+  check(response.ok && !/id="(?:auth-appearance|page-appearance)"|<html[^>]+data-(?:theme|text|rail)=/.test(html),
+    `${mode}: initial HTML contains neither appearance controls nor personal root overrides`);
 
-async function appearancePoint(page) {
-  return page.eval(`(() => {
-    const link = ${q('#auth-appearance')};
-    link.scrollIntoView({ block: 'center', behavior: 'instant' });
-    const r = link.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-  })()`);
-}
-
-async function pointerAppearance(page, check) {
-  const field = REGISTER + '-username';
-  await probeAppearanceInput(page, field, 'tam-thoi');
-  const point = await appearancePoint(page);
-  const opacity = `getComputedStyle(${q('#auth-appearance')}, '::after').opacity`;
-  await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
-  await page.waitFor(`${opacity} === '0.08'`, '#483 hover state layer');
-  await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', clickCount: 1 });
-  await page.waitFor(`${opacity} === '0.12'`, '#483 pressed state layer');
-  await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...point, button: 'left', clickCount: 1 });
-  await appearanceFragment(page);
-  await preservedAppearanceInput(page, field, check, 'pointer');
-}
-
-async function emailAppearance(page, check) {
-  await page.click('#use-email-code');
-  await page.waitFor(`document.activeElement?.id === 'sign-in-address'`, 'email mode focuses its input');
-  await matrix(page, 'email', '#sign-in-email', check);
-  await page.viewport(390);
-  await probeAppearanceInput(page, '#sign-in-address', 'thu@vi-du.vn');
-  const point = await appearancePoint(page);
-  await page.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
-  await page.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-  await appearanceFragment(page);
-  await preservedAppearanceInput(page, '#sign-in-address', check, 'touch');
-  await page.click('#use-password');
-  await page.waitFor(q(LOGIN), 'password mode after email');
-  await page.viewport(1280);
-}
-
-const STORED_APPEARANCE = `document.documentElement.dataset.theme === 'dark' &&
-  document.documentElement.dataset.text === '150' &&
-  localStorage.getItem('vink.ui.theme') === 'dark' && localStorage.getItem('vink.ui.text') === '150'`;
-
-async function appearanceReload(page, check) {
-  await chooseAppearance(page, 'theme', 'dark');
-  await chooseAppearance(page, 'text', 150);
-  check(await page.eval(STORED_APPEARANCE), '#483 Appearance choices apply and persist from the Auth host');
-  await page.eval("localStorage.setItem('vink.ui.text', '200')");
-  const { identifier } = await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `
-    const observer = new MutationObserver(() => {
-      if (document.documentElement?.dataset.text !== '150') return;
-      window.appearanceBeforeHydration = document.documentElement.dataset.hydrated !== 'true' &&
-        localStorage.getItem('vink.ui.text') === '150';
-      observer.disconnect();
-    });
-    observer.observe(document, { subtree: true, attributes: true, attributeFilter: ['data-text'] });
-  ` });
-  await page.reload();
-  await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
-  await page.waitFor(q(LOGIN), 'guest form after Appearance reload');
-  check(await page.eval(`window.appearanceBeforeHydration && ${STORED_APPEARANCE} &&
-    document.querySelector('#page-text input:checked')?.value === '150' &&
-    document.querySelector('#page-theme input:checked')?.value === 'dark'`),
-    '#483 legacy 200 normalizes to 150 before hydration and the choices retain dark and 150 after reload');
+  const errorsBefore = page.errors.length;
+  await page.send('Network.setBlockedURLs', { urls: ['*/pkg/vink.js*', '*/pkg/vink_bg.wasm*'] });
+  try {
+    await page.goto(base + '/toi');
+    await page.waitFor(`${ROOT_DEFAULTS} && ${MISSING_APPEARANCE} &&
+      document.documentElement.dataset.hydrated !== 'true'`, `${mode}: first paint while the app bundle is blocked`);
+    for (const theme of ['dark', 'light']) {
+      await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: theme }] });
+      await page.waitFor(`document.querySelector('#vink-favicon')?.href.endsWith('-${theme}.svg')
+        && document.querySelector('#vink-manifest')?.href.endsWith('-${theme}.webmanifest') && ${ROOT_DEFAULTS}`,
+      `${mode}: system ${theme} changes head assets without app hydration`);
+    }
+    await page.capture(`appearance-${mode}-${standing}-before-session`, { textScale: 100, textScaleLane: 'default-100' });
+  } finally {
+    await page.send('Network.setBlockedURLs', { urls: [] });
+    const blockedImport = `TypeError: Failed to fetch dynamically imported module: ${base}/pkg/vink.js`;
+    if (mode === 'ssr') {
+      for (const deadline = Date.now() + 5000; page.errors.length === errorsBefore && Date.now() < deadline;) await sleep(50);
+    }
+    page.errors = [...page.errors.slice(0, errorsBefore), ...page.errors.slice(errorsBefore).filter(error => error !== blockedImport)];
+  }
 }
 
 export async function closedAccountAppearance(page, { args, check }) {
   await page.goto(args.base + '/toi');
-  await page.waitFor(`${HYDRATED} && ${q('#sign-in-closed')} && ${q('#auth-appearance')}`, 'closed sign-in on Tôi');
+  await page.waitFor(`${HYDRATED} && ${q('#sign-in-closed')}`, 'closed sign-in on Tôi');
   check(await page.eval(`!${q('#password-login, #password-register, #sign-in-email, #pen-name-form')} &&
     ${q('#sign-in-closed')}.textContent.includes('Vink chưa mở đăng nhập')`), '#327 closed gate has no Auth form');
   await matrix(page, 'closed', '#sign-in-closed', check);
-  await page.eval(`${q('#auth-appearance')}.focus()`);
-  await page.key('Enter');
-  await appearanceFragment(page);
 }
 
-async function authR3Login(page, check) {
+async function nativeAccountZoom(page, openPage, check, member) {
+  const settings = await openPage();
+  const { targetInfo } = await settings.send('Target.getTargetInfo');
+  const defaultZoom = 'new Promise(resolve => chrome.settingsPrivate.getDefaultZoom(resolve))';
+  try {
+    await settings.send('Page.navigate', {url: 'chrome://settings/appearance'});
+    await settings.waitFor("typeof chrome.settingsPrivate?.setDefaultZoom === 'function'", 'Chrome native zoom setting');
+    check(await settings.eval(defaultZoom) === 1, 'Chrome starts at native zoom 100%');
+    await page.viewport(1440);
+    await settings.eval('chrome.settingsPrivate.setDefaultZoom(2)');
+    check(await settings.eval(defaultZoom) === 2, 'Chrome native zoom is 200%');
+    await page.send('Page.bringToFront');
+    const expectedSize = member ? '24px' : '16px';
+    await page.waitFor(`innerWidth === 720 && devicePixelRatio === 2 &&
+      getComputedStyle(document.documentElement).fontSize === '${expectedSize}'`, 'real zoom halves CSS width and doubles pixel ratio');
+    check(await page.eval(`${member ? q('#page-appearance') + " && document.documentElement.dataset.text === '150'" : MISSING_APPEARANCE} &&
+      document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1`),
+    member ? 'member app text remains 150% at browser zoom 200%' : 'guest email form keeps 100% app text at browser zoom 200%');
+  } finally {
+    await settings.eval('chrome.settingsPrivate?.setDefaultZoom(1)').catch(() => {});
+    await page.cdp.send('Target.closeTarget', {targetId: targetInfo.targetId});
+    await page.send('Page.bringToFront');
+    await page.viewport(1280);
+  }
+}
+
+async function authR3Login(page, check, openPage) {
   check(await page.eval(`(() => {
     const entry = document.querySelector('.vk-auth-entry'), form = ${q(LOGIN)};
     return entry?.contains(form) && entry.querySelectorAll('form').length === 1
       && !document.querySelector('#page-account .vk-account-status, #pen-name-form')
       && !form.querySelector('a[href*="quen"], [role=tablist]')
       && document.activeElement !== form.querySelector('input')
-      && ${q('#auth-appearance')}.getAttribute('href') === '#page-appearance'
-      && ${q('#page-appearance-title')}.textContent.trim() === 'Giao diện'
       && ${q(LOGIN + '-submit')}.textContent.trim() === 'Đăng nhập'
       && ${q('#use-registration')}.textContent.trim() === 'Tạo tài khoản'
       && ${q('#use-email-code')}.textContent.trim() === 'Dùng mã email';
-  })()`), '#559 login renders one R3 form, without the old guest status card, a premature pen-name step, duplicated actions, or autofocus');
+  })()`), '#559 login renders one R3 form without the guest status card, premature pen-name step, duplicate actions or autofocus');
   await matrix(page, 'login', LOGIN, check);
-  await probeAppearanceInput(page, LOGIN + '-username', 'tam-thoi');
-  const utilities = await page.eval(`${q('#open-account-deletion')}?.checkVisibility()`)
-    ? ['#open-account-deletion', '#auth-appearance'] : ['#auth-appearance'];
+  await page.eval(`${q(LOGIN + '-username')}.focus()`);
+  const utilities = await page.eval(`${q('#open-account-deletion')}?.checkVisibility()`) ? ['#open-account-deletion'] : [];
   for (const id of [LOGIN + '-password', LOGIN + '-password-reveal', LOGIN + '-submit', '#use-email-code', '#use-registration', ...utilities]) {
     await page.key('Tab');
     check(await page.eval(`document.activeElement === ${q(id)} && document.activeElement.matches(':focus-visible')`), `#327 keyboard order and focus-visible: ${id}`);
   }
-  await page.waitFor(`(() => {
-    const link = ${q('#auth-appearance')}, style = getComputedStyle(link);
-    return style.outlineStyle === 'solid' && parseFloat(style.outlineWidth) >= 2 &&
-      getComputedStyle(link, '::after').opacity === '0.12';
-  })()`, '#483 visible keyboard focus with the state layer');
-  await page.key('Enter');
-  await appearanceFragment(page);
-  await page.key('Tab');
-  check(await page.eval(`document.activeElement.matches('#page-theme input[type=radio]:focus-visible')`),
-    '#327 the next Tab reaches an Appearance radio with visible keyboard focus');
-  await preservedAppearanceInput(page, LOGIN + '-username', check, 'keyboard');
-  await emailAppearance(page, check);
-  await appearanceReload(page, check);
+  await page.click('#use-email-code');
+  await page.waitFor(`document.activeElement?.id === 'sign-in-address'`, 'email mode focuses its input');
+  await matrix(page, 'email', '#sign-in-email', check);
+  await nativeAccountZoom(page, openPage, check, false);
+  await page.click('#use-password');
+  await page.waitFor(q(LOGIN), 'password mode after email');
+}
+
+async function memberAppearance(page, { base, check, openPage, userA, userB, principalA, principalB }) {
+  const sessionPath = '/api/v1/auth/session';
+  await openAccount(page, base, 'active');
+  await page.waitFor(`${DARK_LARGE_COMPACT} && ${q('#page-appearance')}`, 'member A restores all three choices after reload');
+
+  const outage = await fabricate(page, 'GET', sessionPath, 503, {error: {code: 'dependency_unavailable'}});
+  await page.eval("window.dispatchEvent(new Event('focus'))");
+  await outage();
+  await expectDefaultAppearance(page, check, 'failed read after a confirmed active session');
+  check(await page.eval(`${STANDING} === 'active'`), 'a failed read retains the existing account UI state without exposing preferences');
+  const recovery = await holdAnswer(page, 'GET', sessionPath);
+  await page.eval("window.dispatchEvent(new Event('focus'))");
+  check(await recovery.held() === 200, 'real A session read answers during recovery');
+  await expectDefaultAppearance(page, check, 'reconfirmation pending');
+  await recovery.finish();
+  await page.waitFor(DARK_LARGE_COMPACT, 'reconfirmation restores only A’s choices');
+
+  const tab = await openPage();
+  const { targetInfo } = await tab.send('Target.getTargetInfo');
+  try {
+    await openAccount(tab, base, 'active');
+    await tab.waitFor(DARK_LARGE_COMPACT, 'same-profile second tab sees A’s choices');
+    const old = await holdAnswer(tab, 'GET', sessionPath);
+    await tab.eval("window.dispatchEvent(new Event('focus'))");
+    check(await old.held() === 200, 'the other tab holds a real session answer for A');
+    await signOut(page, base);
+    await expectDefaultAppearance(page, check, 'confirmed logout');
+    await tab.waitFor(`${STANDING} === 'anonymous'`, 'cross-tab logout accepted');
+    await expectDefaultAppearance(tab, check, 'cross-tab logout');
+    await old.finish(false, true);
+    await expectDefaultAppearance(tab, check, 'old Active answer delivered after logout');
+
+    await credentials(page, LOGIN, userB, SECRET_B);
+    await page.click(LOGIN + '-submit');
+    await tab.waitFor(`${q('#page-appearance')} && ${ROOT_DEFAULTS}`, 'cross-tab B receives its defaults');
+    await page.waitFor(`${q('#page-appearance')} && ${ROOT_DEFAULTS}`, 'B does not inherit A choices');
+    check((await account(page)).body.principal_id === principalB, 'real account B receives defaults while A preferences are saved');
+    await chooseAppearance(page, 'theme', 'light');
+    await page.waitFor(`document.documentElement.dataset.theme === 'light'`, 'B saves its own theme');
+    await chooseAppearance(page, 'theme', 'system');
+    await signOut(page, base);
+    await expectDefaultAppearance(page, check, 'B signs out');
+    await credentials(page, LOGIN, userA, SECRET_A);
+    await page.click(LOGIN + '-submit');
+    await tab.waitFor(DARK_LARGE_COMPACT, 'cross-tab return to A restores A choices');
+    await page.waitFor(DARK_LARGE_COMPACT, 'A reloads its choices without B theme');
+    check((await account(page)).body.principal_id === principalA, 'real account A restores its theme, text and rail after B');
+    await chooseAppearance(page, 'theme', 'system');
+    await chooseAppearance(page, 'text', 100);
+    await chooseAppearance(page, 'rail', 'auto');
+    await page.waitFor(ROOT_DEFAULTS, 'restore A defaults for the subsequent profile audits');
+  } finally {
+    await page.cdp.send('Target.closeTarget', { targetId: targetInfo.targetId });
+    await page.send('Page.bringToFront');
+  }
 }
 
 export async function passwordAuth(page, { args, check, openPage, textContrast }) {
@@ -538,7 +511,10 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   check(await page.eval(`(() => { const p=${q(LOGIN + '-password')}; return p.type === 'password' && p.name === 'password' && p.autocomplete === 'current-password' &&
     !p.hasAttribute('maxlength') && p.getAttribute('aria-required') === 'true' && ${q(LOGIN + '-username')}.autocomplete === 'username'; })()`), 'native login field names and autocomplete, with no raw maxlength');
 
-  await authR3Login(page, check);
+  await seedLegacyAppearance(page);
+  await firstPaintAppearance(page, base, check, 'ssr');
+  await openAccount(page, base, 'anonymous');
+  await authR3Login(page, check, openPage);
   const loginField = (name) => q(LOGIN + '-' + name);
   const invalid = (name, message) =>
     `${loginField(name)}.getAttribute('aria-invalid') === 'true' &&
@@ -574,9 +550,7 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   await page.key('Enter');
   await page.waitFor(`document.activeElement?.id === 'password-register-username'`, 'explicit mode switch focuses first field');
   check(await page.eval(`!${q(LOGIN)} && ${q(REGISTER + '-password')}.autocomplete === 'new-password'`), 'registration asks for username and password without email');
-  check(await page.eval(STORED_APPEARANCE), '#483 Appearance survives switching from login to registration');
   await matrix(page, 'registration', REGISTER, check);
-  await pointerAppearance(page, check);
   // DOM autofill simulation: set the actual values, without input events.
   await page.eval(`(() => {
     ${q(REGISTER + '-username')}.value = ${JSON.stringify(userA.toUpperCase())};
@@ -663,10 +637,28 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
   check(writerReview.count() === 0, 'Tôi makes no moderation probe for an ordinary writer');
   writerReview.close();
   check((await read(page, workQueuePath)).status === 403, 'the server refuses the ordinary writer’s queue read');
-  check(await page.eval(`${STORED_APPEARANCE} && !${q('#auth-appearance')} && !!${q('#page-appearance')}`),
-    '#483 the same stored Appearance applies after real sign-in and pen-name completion');
-  await chooseAppearance(page, 'theme', 'system');
-  await chooseAppearance(page, 'text', 100);
+  await page.waitFor(`document.querySelectorAll('#page-appearance').length === 1 && ${ROOT_DEFAULTS}`,
+    'new native member gets one settings region and ignores unowned legacy keys');
+  await chooseAppearance(page, 'theme', 'dark');
+  await chooseAppearance(page, 'text', 150);
+  await chooseAppearance(page, 'rail', 'compact');
+  await page.waitFor(DARK_LARGE_COMPACT, 'real A account applies theme, text and rail from Tôi');
+  for (const width of [320, 390, 1440]) {
+    await page.viewport(width);
+    for (const theme of ['light', 'dark']) {
+      await chooseAppearance(page, 'theme', theme);
+      await page.waitFor(`document.documentElement.dataset.theme === '${theme}' &&
+        document.documentElement.dataset.text === '150'`, 'member appearance matrix');
+      await page.eval(`document.querySelector('#page-appearance').scrollIntoView({block:'start', behavior:'instant'})`);
+      await page.capture(`appearance-ssr-native-active-${width}-${theme}`, {
+        textScale: 150, textScaleLane: 'app-appearance-control', requiredTargets: ['#page-appearance-title'],
+      });
+    }
+  }
+  await nativeAccountZoom(page, openPage, check, true);
+  await firstPaintAppearance(page, base, check, 'ssr', 'active');
+  await openAccount(page, base, 'active');
+  await page.waitFor(DARK_LARGE_COMPACT, 'SSR active reload applies choices only after confirmation');
   check(await page.eval(`!${q('#me-moderation-link')}`), 'F-18 Tôi offers no moderation link to an ordinary writer');
   await page.click('#password-credential');
   await page.waitFor(contains('đã có thông tin đăng nhập'), 'credential already present');
@@ -814,6 +806,9 @@ export async function passwordAuth(page, { args, check, openPage, textContrast }
     await control.click(LOGIN + '-submit');
     await control.waitFor(`${STANDING} === 'active'`, 'replacement cookie confirmed');
   };
+  await memberAppearance(page, {
+    base, check, openPage, userA, userB, principalA: A.principal_id, principalB: B.principal_id,
+  });
   await authorFollows(page, other, {
     base, openPage, check, holdAnswer, textContrast, switchActor,
   });
@@ -1065,13 +1060,29 @@ export async function standalone(page, {args, check, openPage}) {
     && !document.querySelector('main a[href="/toi"], #notification-page-title')`),
     'CSR Inbox keeps its URL and has no guest-only account prompt');
 
+  await seedLegacyAppearance(page);
+  await firstPaintAppearance(page, base, check, 'csr');
   await page.goto(base + '/toi');
   await page.waitFor(q('#use-registration'), 'anonymous password form');
+  await expectDefaultAppearance(page, check, 'CSR guest after mount');
   await page.click('#use-registration');
   const username = 'spa' + Date.now().toString(36);
   await credentials(page, REGISTER, username, SECRET_A);
   await page.click(REGISTER + '-submit');
   await setPenName(page, 'Người viết SPA');
+  await page.goto(base + '/toi');
+  await page.waitFor(`${STANDING} === 'active'`, 'CSR account confirmation');
+  await page.waitFor(q('#page-appearance'), 'CSR native member settings');
+  await chooseAppearance(page, 'theme', 'dark');
+  await chooseAppearance(page, 'text', 150);
+  await page.waitFor(`document.documentElement.dataset.theme === 'dark' &&
+    document.documentElement.dataset.text === '150'`, 'native member applies CSR choices');
+  await page.capture('appearance-csr-native-active', {textScale: 150, textScaleLane: 'app-appearance-control'});
+  await firstPaintAppearance(page, base, check, 'csr', 'active');
+  await page.goto(base + '/toi');
+  await page.waitFor(`${STANDING} === 'active'`, 'CSR account confirmation');
+  await page.waitFor(`document.documentElement.dataset.theme === 'dark' &&
+    document.documentElement.dataset.text === '150'`, 'CSR applies saved choices after mount and confirmation');
   const author = await read(page, '/api/v1/me/profile');
   check(author.status === 200 && Boolean(author.data?.handle), 'new author has a public handle');
   await page.goto(base + '/?mode=following');
@@ -1121,11 +1132,13 @@ export async function standalone(page, {args, check, openPage}) {
   await signOut(page, base);
   const result = await read(page, '/api/v1/drafts/' + id);
   check(result.status === 401, 'logout revokes the private draft read on the same origin');
+  await expectDefaultAppearance(page, check, 'CSR logout');
   await page.waitFor(q('#use-registration'), 'account switch');
   await page.click('#use-registration');
   await credentials(page, REGISTER, username + 'b', SECRET_B);
   await page.click(REGISTER + '-submit');
   await setPenName(page, 'Bạn đọc SPA');
+  await page.waitFor(`${q('#page-appearance')} && ${ROOT_DEFAULTS}`, 'CSR second native member gets its own defaults');
   check((await read(page, '/api/v1/drafts/' + id)).status === 404,
     'the second account cannot read the first account’s private draft');
   await page.goto(base + '/@' + encodeURIComponent(author.data.handle));

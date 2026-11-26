@@ -315,27 +315,12 @@ a.vk-account-setting { padding-block: var(--vk-space-2); }
 .vk-main:has(> .vk-me .vk-auth-entry) {
   max-inline-size: none; padding-inline: clamp(16px, 5vw, 32px);
 }
-.vk-me:has(.vk-auth-entry) { position: relative; padding-block-start: 0; }
-.vk-me:has(.vk-auth-entry) > :not(#page-account) {
-  inline-size: min(100%, 54rem); margin-inline: auto;
-}
+.vk-me:has(.vk-auth-entry) { padding-block-start: 0; }
 .vk-me .vk-account-session:has(.vk-auth-entry) {
   display: flex; flex-direction: column; align-items: center; gap: var(--vk-space-6);
   min-block-size: 100svh; padding-block: clamp(32px, 11.5svh, 100px) var(--vk-space-6);
 }
-.vk-me #auth-appearance {
-  min-block-size: 48px; min-inline-size: 48px; padding-block: var(--vk-space-1);
-  border: 0; text-decoration: none;
-}
-.vk-me #auth-appearance:focus-visible::after { opacity: 0.12; }
 .vk-me .vk-auth-exit { margin-block-start: auto; padding-block-start: var(--vk-space-6); }
-@media (min-width: 760px) {
-  .vk-me #auth-appearance { inset-block-start: var(--vk-space-2); inset-inline-end: 0; }
-  /* Reserve the top action row on short screens and at larger text sizes. */
-  .vk-me .vk-account-session:has(.vk-auth-entry) {
-    padding-block-start: clamp(calc(48px + var(--vk-space-4)), 11.5svh, 100px);
-  }
-}
 @media (max-width: 759px) {
   .vk-me .vk-account-session:has(.vk-auth-entry) {
     min-block-size: calc(100svh - var(--vk-ui-bar-height, 5rem));

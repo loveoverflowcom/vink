@@ -118,10 +118,9 @@ prototype. Lavender là palette riêng của Vink do người dùng chọn, khô
 
 Light là mặc định. Dark theo `prefers-color-scheme` khi `<html>` không có `data-theme`;
 `data-theme="dark"` hoặc `"light"` ghi đè hệ thống ở cả hai chiều và đặt `color-scheme` tương ứng.
-Bộ chọn trong Tôi lưu `vink.ui.theme` trên thiết bị; Hệ thống xóa override để CSS theo OS.
-Bootstrap trước stylesheet khôi phục override trước hydration; SSR không cần đọc storage và vẫn
-có CSS theo hệ thống khi JavaScript/storage bị chặn. Lựa chọn mới vẫn áp dụng trong phiên nếu ghi
-storage lỗi, nhưng không hứa giữ sau reload.
+Bộ chọn màu trong Tôi lưu tùy chọn theo thành viên đã xác nhận. Bootstrap trước CSS đồng bộ
+favicon và manifest theo OS. Sau xác nhận phiên, lựa chọn mới cập nhật `data-theme` và các
+asset cùng chủ đề. Nếu storage bị chặn, lựa chọn vẫn áp dụng trong tài liệu đang mở.
 
 | Role | Light | Dark | Dùng cho |
 | --- | --- | --- | --- |
@@ -242,9 +241,8 @@ reader có tên và cài đặt reduced-motion của hệ điều hành. Ảnh t
 ## Shell thích ứng #7
 
 **Phạm vi hiện hành.** Dùng [LayoutSpec R4.3 §3](redesign-r4/layout-spec.md#3-shell-rail-và-thanh-dưới)
-và [#413](https://github.com/loveoverflowcom/vink/issues/413) cho rail, Giao diện và cỡ chữ Web.
-#413 đặt Giao diện tại Tôi cho khách và người đã đăng nhập và dùng Mặc định 100% / Lớn 150%.
-Các tùy chọn màu và thanh điều hướng vẫn ở cùng vùng Giao diện.
+và [Giao diện Web #576](me-preferences-r1-209.md) cho rail, Giao diện và cỡ chữ Web. Thành viên
+đã xác nhận chỉnh màu, chữ Mặc định 100% / Lớn 150% và rail tại Tôi. Khách theo hệ thống.
 
 **Lịch sử R1/v4 và audit ngày 22/11/2026.** Phần dưới lưu thiết kế và bằng chứng cũ, gồm chế độ
 Giao diện trên rail. Mục **Tôi** trên rail và thanh dưới dẫn tới `/toi`.
@@ -283,8 +281,8 @@ thêm palette hay logo. `initials` ủy quyền cho `vink_ui::identity::initials
 `avatar-identity-v1`): từ đầu/cuối, NFC và uppercase tiếng Việt, bỏ từ không có chữ/số (emoji,
 dấu câu đứng riêng); không có tên thật thì trả dấu trung tính. An Nhiên → AN chỉ là fixture unit test.
 
-- Từ 1100px mặc định 220px, riêng editor mặc định 96px. Preference `vink.ui.rail` ghi đè ngữ cảnh
-  ở lớp cửa sổ này. Ở 760–1099px, xem [hợp đồng rail Medium](../../packages/ui-system/shared/navigation.md#chọn-khung-navlayoutresolve).
+- Từ 1100px mặc định 220px, riêng editor mặc định 96px. Tùy chọn rail của thành viên
+  đã xác nhận có thể ghi đè ngữ cảnh ở lớp cửa sổ này. Ở 760–1099px, xem [hợp đồng rail Medium](../../packages/ui-system/shared/navigation.md#chọn-khung-navlayoutresolve).
   Rail compact đặt icon trên nhãn và cuộn khi thiếu chiều cao.
 - Dưới 760px rail ẩn và bottom bar có ba đích. Editor ẩn bottom bar,
   giữ đường Về Bàn viết hiện có. `ResizeObserver` đo chiều cao bar (gồm safe area) để dành đáy,
@@ -302,11 +300,10 @@ dấu câu đứng riêng); không có tên thật thì trả dấu trung tính.
   Back/Forward đóng modal và giữ URL hiện tại, Back tiếp theo đi qua guard editor. Sự kiện `close`
   đến muộn của lần đóng trước không làm mất trạng thái của modal đã mở lại. (Overlay `#profile-menu`
   từ `#7`/`#209` đã được bỏ hoàn toàn ở #413.)
-- Chọn màu theo hệ thống, cỡ chữ Mặc định (100%) hoặc rail tự động sẽ xóa giá trị ghi đè tương ứng trong
-  `localStorage`; cỡ chữ Lớn ghi `vink.ui.text="150"` (giá trị cũ `"200"` được bootstrap quy đổi
-  sang `"150"` trước CSS và first paint). Ba khóa là `vink.ui.theme`, `vink.ui.text` và `vink.ui.rail`.
-  Bootstrap áp dụng preference trước CSS và đồng bộ lựa chọn SSR. Liên kết **Tôi** và back/forward
-  đi qua `NavigationGuard`. Lưu lỗi/xung đột/treo giữ nguyên xác nhận rời không lưu.
+- Tùy chọn Hệ thống, Mặc định (100%) và Tự động xóa override tương ứng của tài khoản.
+  Chỉ radio trong Giao diện ghi vào storage. Nút thu/mở rail thay đổi điều hướng tạm thời.
+  Liên kết **Tôi** và back/forward đi qua `NavigationGuard`. Lưu lỗi/xung đột/treo giữ nguyên
+  xác nhận rời không lưu.
 - Loading/empty/lỗi/saved/dirty/conflict tiếp tục do route/editor hiện có trình bày. Shell không
   suy ra trạng thái tài khoản hay bản thảo. Tooltip thu/mở rail có hover/focus/Escape, nằm ngoài
   vùng rail cuộn để không bị cắt; thông tin thiết yếu vẫn có nhãn và trạng thái trực tiếp.

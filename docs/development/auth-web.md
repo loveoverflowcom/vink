@@ -63,17 +63,18 @@ với ô tìm hiện tại. Khi lượt đọc bị từ chối quyền, trang d
 Khi môi trường mở đăng nhập, nút **Đăng nhập** ở Bàn viết dẫn đến `/toi?next=/ban-viet`.
 Sau khi xác nhận principal hoạt động, trang đưa người vừa đăng nhập hoặc vừa đặt bút danh về
 Bàn viết. Khi môi trường đóng đăng nhập, khách có lối sang Khám phá. Mục tài khoản ở chân rail
-và thanh dưới dẫn tới `/toi`, nơi cũng có các lựa chọn Giao diện.
+và thanh dưới dẫn tới `/toi`. Thành viên đã xác nhận mới có các lựa chọn Giao diện tại đây.
 
 **Form R2 trong Tôi [#327](https://github.com/loveoverflowcom/vink/issues/327).** `account::AuthEntry`
 là điểm gắn duy nhất của form khách/bút danh trên trang: đọc `Session::standing` và epoch của
 cùng tab, không nhận trạng thái phiên từ host. Đổi bước chủ động hủy form cũ; refresh nền cùng
 standing/epoch không dựng lại input. CHOICE-01: dùng một view chung bọc các owner form hiện có,
-gồm cả đường đọc lại phiên sau lỗi, không sao chép dispatch, AuthGate hay input state. Tôi sở hữu
-Giao diện, đăng xuất và điều hướng. Từ [#483](https://github.com/loveoverflowcom/vink/issues/483),
-`#auth-appearance` dùng kiểu Text của UI system trên liên kết fragment native. Hai scenario
-`password` và `auth` kiểm bố cục, focus, input đang nhập và vòng đời tùy chọn theo
-[LayoutSpec Auth R2](../design/auth-password-web.md).
+gồm cả đường đọc lại phiên sau lỗi, chia sẻ dispatch, AuthGate và input state. Từ
+[#576](https://github.com/loveoverflowcom/vink/issues/576), bỏ điểm nhảy Giao diện của #483 khỏi
+các trạng thái Auth. Giao diện đọc quyền từ cùng `SessionOwner` và trở về mặc định khi lượt đọc
+mới nhất tạm thời không xác nhận được phiên. Các trạng thái Auth vẫn giữ cơ chế bảo toàn form.
+Scenario `password` và `standalone` đi qua phiên thật để kiểm vùng cài đặt, dữ liệu lưu theo tài khoản
+và chuỗi đăng nhập/đăng xuất. [LayoutSpec](../design/me-preferences-r1-209.md).
 Reader [#328](https://github.com/loveoverflowcom/vink/issues/328) gắn cùng view trong
 [host nhận xét](../../apps/vink-web/src/pages/discussion/auth.rs), không chạy qua `/toi`.
 Khách soạn nhận xét gốc và trả lời bằng cùng nút Gửi như thành viên. Khi có nháp đủ điều kiện

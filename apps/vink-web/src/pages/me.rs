@@ -1,7 +1,8 @@
 use leptos::prelude::*;
 use leptos_meta::{Meta, Title};
 
-use crate::account::{AccountAppearance, AccountHub};
+use crate::account::AccountHub;
+#[cfg(feature = "browser")]
 use crate::session::Standing;
 
 #[component]
@@ -66,9 +67,6 @@ pub fn Me() -> impl IntoView {
                         </vink_ui::Link>
                     })}
             </AccountHub>
-            <Show when=move || !matches!(session.standing.get(), Standing::Active(_))>
-                <AccountAppearance />
-            </Show>
         </section>
     }
 }

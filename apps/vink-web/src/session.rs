@@ -52,6 +52,7 @@ pub struct SessionOwner {
     confirmed: bool,
     checks: u64,
     session_may_have_changed: bool,
+    appearance_needs_check: bool,
 }
 
 impl SessionOwner {
@@ -93,6 +94,19 @@ impl SessionOwner {
         self.scope()
     }
 
+    /// Appearance requires a verified active account, even when other UI retains standing.
+    pub(crate) fn appearance_principal(&self) -> Option<&str> {
+        if self.session_may_have_changed || self.appearance_needs_check {
+            return None;
+        }
+        self.principal()
+    }
+
+    #[cfg(feature = "browser")]
+    pub(crate) fn recheck_appearance(&mut self) {
+        self.appearance_needs_check = true;
+    }
+
     pub(crate) fn notification_scope(&self) -> Option<String> {
         if self.session_may_have_changed {
             return None;
@@ -123,6 +137,7 @@ impl SessionOwner {
         }
         let next = match observation {
             Observation::Unavailable => {
+                self.appearance_needs_check = true;
                 if !self.confirmed {
                     self.standing = Standing::Unavailable;
                 }
@@ -145,6 +160,7 @@ impl SessionOwner {
             self.generation += 1;
         }
         self.confirmed = true;
+        self.appearance_needs_check = false;
         changed
     }
 }
@@ -437,6 +453,38 @@ mod tests {
         assert!(!settle(&mut owner, Observation::Unavailable));
         assert_eq!(owner.principal(), Some("a"));
         assert_eq!(owner.generation(), 0);
+    }
+
+    #[test]
+    fn appearance_requires_the_latest_confirmed_active_account() {
+        let mut owner = SessionOwner::default();
+        assert_eq!(owner.appearance_principal(), None);
+        settle(&mut owner, Observation::NeedsPrincipal);
+        assert_eq!(owner.appearance_principal(), None);
+        settle(&mut owner, Observation::Active(account("a")));
+        assert_eq!(owner.appearance_principal(), Some("a"));
+
+        let stale = owner.begin_check();
+        assert!(!settle(&mut owner, Observation::Unavailable));
+        assert_eq!(owner.principal(), Some("a"));
+        assert_eq!(owner.appearance_principal(), None);
+        owner.settle(stale, Observation::Active(account("a")));
+        assert_eq!(owner.appearance_principal(), None);
+
+        settle(&mut owner, Observation::Active(account("a")));
+        assert_eq!(owner.appearance_principal(), Some("a"));
+        owner.expect_session_change();
+        assert_eq!(owner.appearance_principal(), None);
+        settle(&mut owner, Observation::Unavailable);
+        assert_eq!(owner.appearance_principal(), None);
+        settle(&mut owner, Observation::Active(account("b")));
+        assert_eq!(owner.appearance_principal(), Some("b"));
+        settle(&mut owner, Observation::Suspended);
+        assert_eq!(owner.appearance_principal(), None);
+        settle(&mut owner, Observation::Anonymous);
+        assert_eq!(owner.appearance_principal(), None);
+        settle(&mut owner, Observation::Active(account("a")));
+        assert_eq!(owner.appearance_principal(), Some("a"));
     }
 
     #[test]

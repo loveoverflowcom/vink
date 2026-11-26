@@ -77,8 +77,8 @@ fn editor_context(path: &str) -> NavContext {
 
 #[component]
 pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
-    let appearance = Appearance::provide();
     let session = crate::account::Session::provide();
+    let appearance = Appearance::provide(session);
     #[cfg(feature = "browser")]
     {
         crate::pages::profile::observe_changes(crate::public_reads::invalidate_author_attribution);
@@ -230,7 +230,7 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
                     appearance.rail.get_untracked(),
                 );
                 if let Some(next) = shown.next_preference() {
-                    appearance.set_rail(Some(next));
+                    appearance.set_navigation_rail(next);
                 }
             }
         }
