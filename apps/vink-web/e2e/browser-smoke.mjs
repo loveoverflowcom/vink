@@ -3043,8 +3043,8 @@ async function adaptiveShell(page) {
   })));
   check(stressOverflow.ok, `320px / 200% stress: /toi has no clipped controls (${stressOverflow.reasons.join('; ')})`);
   check(await appearanceRows(page, 'page'), '320px / 200% stress: appearance controls keep whole Vietnamese labels and 48px targets');
-  await page.eval(`scrollTo(0, document.documentElement.scrollHeight)`);
   await page.waitFor(`parseFloat(getComputedStyle(document.querySelector('.vk-ui-scaffold')).getPropertyValue('--vk-ui-bar-height')) === document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().height`, 'measured bottom clearance');
+  await page.eval(`scrollTo({top: document.documentElement.scrollHeight, behavior: 'instant'})`);
   check(await page.eval(`document.querySelector('.vk-me').getBoundingClientRect().bottom <= document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().top`), 'bottom bar clears the end of page content at 320px / 200% stress text');
   await page.capture('320-me-dark-text200-bottom', {
     scenario: 'shell-me-stress-200-bottom',
