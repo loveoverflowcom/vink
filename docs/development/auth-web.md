@@ -144,6 +144,8 @@ khi giữa hai tài khoản có một lúc đăng xuất.
 | Thảo luận/ghi nhận văn học | Chữ bình luận ở lại cho cùng người; lệnh đang bay hoặc chưa chắc không còn được theo dõi và không bao giờ replay dưới phiên khác; receipt bị bỏ; số đếm và trạng thái riêng được đọc lại |
 | Reload | Trạng thái dựng lại hoàn toàn từ server |
 
+Xem [kiểm kê hành động Auth Product Web](auth-action-inventory.md) cho #625.
+
 ## Kiểm chứng
 
 `cargo xtask verify web` có thêm bước **Auth Web**: dựng database và role Identity tạm

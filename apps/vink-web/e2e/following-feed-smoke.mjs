@@ -262,8 +262,10 @@ export async function followingFeed(control, other, {base, openPage, check, hold
   await guest.goto(base + FEED);
   await guest.waitFor(state('guest'), 'the direct URL still opens the protected guest Feed gate');
   const target = await guest.eval(`${q('#feed-sign-in')}.getAttribute('href')`);
-  check(await guest.eval(`${q('#feed-sign-in')}.classList.contains('vk-ui-button--filled')`),
-    '#405 guest Feed sign-in uses a filled primary button like guest Desk');
+  check(await guest.eval(`${q('#feed-sign-in')}.classList.contains('vk-ui-button--filled')
+    && ${q('#feed-sign-in')}.firstElementChild.matches('svg[data-icon=lock][aria-hidden=true]')
+    && ${q('#feed-sign-in')}.textContent.trim() === 'Đăng nhập' `),
+    '#625 guest Feed sign-in keeps the filled native link with a leading Lock');
   check(new URL(target, base).searchParams.get('next') === FEED, 'guest sign-in maintains the Feed return context');
   await guest.click('#feed-sign-in');
   await guest.waitFor("location.pathname==='/toi' && !!document.querySelector('#password-login')", 'CTA reaches real auth');

@@ -256,7 +256,6 @@ a {
 .vk-account-setting-action > .vk-ui-button[data-state="disabled"] { color: var(--vk-disabled-content); }
 .vk-account-setting-action > .vk-ui-button[data-state="disabled"] .vk-ui-icon { color: inherit; }
 .vk-account-setting-email__body { display: grid; gap: var(--vk-space-2); padding-inline: var(--vk-space-3); }
-.vk-account-setting-action > #sign-out { padding-inline-end: var(--vk-space-6); }
 .vk-account-setting .vk-account-form { margin-block-start: var(--vk-space-2); }
 .vk-account-settings :is(h2, h3) { margin: 0; }
 /* Centre the 32px avatar on the shared icon axis, including in the expanded rail. */
@@ -1534,7 +1533,7 @@ a {
   margin-inline: auto;
 }
 /* Stable mode geometry also keeps the R4 page column aligned with the Desk index. */
-html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gutter: stable; }
+html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index, .vk-me) { scrollbar-gutter: stable; }
 .vk-explore__top {
   display: flex;
   padding-block: 16px 12px;

@@ -17,6 +17,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { contextualReaderAuth } from './reader-auth-smoke.mjs';
 import { readerSaveSsr } from './saved-works-smoke.mjs';
+import { checkAuthPending, snapshotAuthAction } from './auth-r3-smoke.mjs';
+import { captureRequest, holdAnswer } from './auth-browser-network.mjs';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export const HYDRATED = `document.documentElement.dataset.hydrated === 'true'`;
@@ -246,7 +248,19 @@ export async function authWeb(page, { args, check, openPage }) {
   await page.waitFor(`${fieldError('sign-in-digits')}.includes('đúng 6 chữ số')`, 'local code refusal');
   const wrong = String((Number(realC) + 1) % 1000000).padStart(6, '0');
   await fill(page, '#sign-in-digits', wrong);
+  const completionPath = '/api/v1/auth/sign-in/complete';
+  const completion = await holdAnswer(page, 'POST', completionPath);
+  const requests = captureRequest(page, 'POST', completionPath);
+  const otp = await snapshotAuthAction(page, '#sign-in-complete');
+  check((await snapshotAuthAction(page, '#sign-in-resend')).icon === 'mail',
+    '#625 disabled resend retains its Mail icon');
   await page.click('#sign-in-complete');
+  check(await completion.held() === 422, 'Identity rejected the wrong code');
+  await checkAuthPending(page, check, '#sign-in-complete', otp, 'lock', 'Đăng nhập', 'sign-in-complete');
+  await page.key('Enter');
+  check(requests.count() === 1, '#625 pending OTP sends one completion');
+  await completion.finish();
+  requests.close();
   await page.waitFor(`${fieldError('sign-in-digits')}.includes('Mã chưa đúng')`, 'wrong code');
   check(await page.eval(`${q('#sign-in-digits')}.value === ${JSON.stringify(wrong)} && ${STANDING} === 'anonymous'`), '422 code_rejected: the same step accepts another attempt and keeps what was typed');
   let attempts = 1;

@@ -8,9 +8,9 @@ use leptos_router::hooks::use_params_map;
 
 use vink_ui::{
     ActionState, Announce, Button, ButtonKind, ButtonVariant, ChoiceOption, Dialog, DialogKind,
-    DismissPolicy, Heading, HeadingLevel, IconButton, IconName, InlineNotice, PanelContent,
-    PanelKind, PlainTooltip, ProblemKind, SearchField, SearchVariant, Select, SelectVariant,
-    StatePanel, TextField, Tone, TypeRole,
+    DismissPolicy, Heading, HeadingLevel, Icon, IconButton, IconName, IconSize, InlineNotice,
+    PanelContent, PanelKind, PlainTooltip, ProblemKind, SearchField, SearchVariant, Select,
+    SelectVariant, StatePanel, TextField, Tone, TypeRole,
 };
 
 use crate::contract::{ApiError, DocumentFormatDto, Draft};
@@ -104,7 +104,10 @@ fn DeskSession(session: crate::account::Session) -> impl IntoView {
         Standing::Active(_) if session.checking() => view! { <DeskLoading /> }.into_any(),
         Standing::Anonymous if sign_in_open => view! {
             <DeskAccess title="Đăng nhập để mở Bàn viết" message="Viết và mở bản thảo riêng của bạn.">
-                <a id="desk-sign-in" class=ButtonVariant::Filled.classes() href=sign_in>"Đăng nhập"</a>
+                <a id="desk-sign-in" class=ButtonVariant::Filled.classes() href=sign_in>
+                    <Icon name=IconName::Lock size=IconSize::Small />
+                    <span class="vk-ui-button__label">"Đăng nhập"</span>
+                </a>
                 <vink_ui::Link href="/" variant=vink_ui::LinkVariant::Standalone>"Khám phá tác phẩm"</vink_ui::Link>
             </DeskAccess>
         }.into_any(),
@@ -1012,7 +1015,7 @@ fn DeskError(error: ApiError) -> impl IntoView {
         <div data-testid="desk-error" role="alert">
             <StatePanel content=PanelContent { kind: PanelKind::Error(kind), title: title.into(), message: detail.into(), actions: vec![], code: None }>
                 {sign_in.then(|| view! {
-                    <vink_ui::Link href=DESK_SIGN_IN variant=vink_ui::LinkVariant::Standalone attr:id="desk-sign-in">"Đăng nhập ở mục Tôi"</vink_ui::Link>
+                    <vink_ui::Link href=DESK_SIGN_IN variant=vink_ui::LinkVariant::Standalone leading=IconName::Lock attr:id="desk-sign-in">"Đăng nhập ở mục Tôi"</vink_ui::Link>
                 })}
                 <vink_ui::Link href="/" variant=vink_ui::LinkVariant::Standalone>"Khám phá tác phẩm"</vink_ui::Link>
             </StatePanel>

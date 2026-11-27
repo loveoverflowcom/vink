@@ -2,7 +2,7 @@
 // public root and a closed publication; no application responses are fabricated here.
 import { account, fill, HYDRATED, mailedCode, q } from './auth-smoke.mjs';
 import { captureRequest, holdAnswer } from './auth-browser-network.mjs';
-import { checkAuthR31, checkModeSwitches } from './auth-r3-smoke.mjs';
+import { checkAuthR31, checkModeSwitches, snapshotAuthAction } from './auth-r3-smoke.mjs';
 import { matchesAXButton } from './visual-evidence.mjs';
 
 const WORK = '33333333-3333-4333-8333-333333333333';
@@ -139,6 +139,9 @@ export async function contextualReaderAuth(owner, { args, check, openPage, seen 
     await page.waitFor(`${q('#save-work')}?.getAttribute('aria-disabled') !== 'true' && ${q('#save-work')}`, 'guest can open Auth from Lưu');
     await page.click('#save-work');
     await page.waitFor(`${isOpen} && ${active('reader-auth-close')}`, 'Lưu opens the R3 login dialog');
+    check((await snapshotAuthAction(page, '#password-login-submit')).icon === 'lock' &&
+      await matchesAXButton(page, '#password-login-submit', { name: 'Đăng nhập' }),
+      '#625 Reader save opens the shared Lock login with a native accessible button');
     check(await page.eval(`
       ${q('#reader-auth-title')}.textContent === 'Đăng nhập để lưu bài' &&
       ${q('#reader-auth-lead')}.textContent === 'Bài sẽ nằm trong danh sách Đã lưu riêng trên hồ sơ của bạn.' &&

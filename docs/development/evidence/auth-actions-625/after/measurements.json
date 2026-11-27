@@ -1,0 +1,1422 @@
+[
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/toi",
+    "screen": "login",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "scale": 100,
+    "initial": {
+      "button": [
+        18.75,
+        344.578125,
+        337.5,
+        48
+      ],
+      "label": [
+        163.796875,
+        358.421875,
+        75.390625,
+        20.296875
+      ],
+      "icon": "lock",
+      "glyph": [
+        135.796875,
+        358.578125,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng nhập",
+      "href": null,
+      "focus": "",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    },
+    "pending": {
+      "button": [
+        18.75,
+        344.578125,
+        337.5,
+        48
+      ],
+      "label": [
+        163.796875,
+        358.421875,
+        75.390625,
+        20.296875
+      ],
+      "glyph": null,
+      "busy": "true",
+      "status": "Đang đăng nhập…",
+      "arcCount": 1,
+      "arcBeforeLabel": true,
+      "animation": "vk-ui-spin",
+      "iterations": "infinite",
+      "text": "Đăng nhập",
+      "href": null,
+      "focus": "password-login-submit",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    },
+    "reduced": {
+      "button": [
+        18.75,
+        344.578125,
+        337.5,
+        48
+      ],
+      "label": [
+        163.796875,
+        358.421875,
+        75.390625,
+        20.296875
+      ],
+      "glyph": null,
+      "busy": "true",
+      "status": "Đang đăng nhập…",
+      "arcCount": 1,
+      "arcBeforeLabel": true,
+      "animation": "vk-ui-spin",
+      "iterations": "0",
+      "text": "Đăng nhập",
+      "href": null,
+      "focus": "password-login-submit",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    },
+    "forced": {
+      "button": [
+        18.75,
+        356.578125,
+        337.5,
+        48
+      ],
+      "label": [
+        163.796875,
+        370.421875,
+        75.390625,
+        20.296875
+      ],
+      "glyph": null,
+      "busy": "true",
+      "status": "Đang đăng nhập…",
+      "arcCount": 1,
+      "arcBeforeLabel": true,
+      "animation": "vk-ui-spin",
+      "iterations": "0",
+      "text": "Đăng nhập",
+      "href": null,
+      "focus": "password-login-submit",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    },
+    "restored": {
+      "button": [
+        18.75,
+        386.171875,
+        337.5,
+        48
+      ],
+      "label": [
+        163.796875,
+        400.015625,
+        75.390625,
+        20.296875
+      ],
+      "icon": "lock",
+      "glyph": [
+        135.796875,
+        400.171875,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng nhập",
+      "href": null,
+      "focus": "password-login-submit",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/toi",
+    "screen": "register",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "scale": 100,
+    "initial": {
+      "button": [
+        18.75,
+        270.6875,
+        337.5,
+        48
+      ],
+      "label": [
+        144.65625,
+        284.53125,
+        113.6875,
+        20.296875
+      ],
+      "icon": "mail",
+      "glyph": [
+        116.65625,
+        284.6875,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Gửi mã xác minh",
+      "href": null,
+      "focus": "registration-address",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/toi",
+    "screen": "email",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "scale": 100,
+    "initial": {
+      "button": [
+        18.75,
+        307.484375,
+        337.5,
+        48
+      ],
+      "label": [
+        138.40625,
+        321.328125,
+        126.1875,
+        20.296875
+      ],
+      "icon": "mail",
+      "glyph": [
+        110.40625,
+        321.484375,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Gửi mã đăng nhập",
+      "href": null,
+      "focus": "sign-in-address",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/ban-viet",
+    "screen": "desk",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "scale": 100,
+    "initial": {
+      "button": [
+        33.453125,
+        435.796875,
+        153.390625,
+        48
+      ],
+      "label": [
+        86.453125,
+        449.640625,
+        75.390625,
+        20.296875
+      ],
+      "icon": "lock",
+      "glyph": [
+        58.453125,
+        449.796875,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng nhập",
+      "href": "/toi?next=/ban-viet",
+      "focus": "",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          null
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/?mode=following",
+    "screen": "following",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "scale": 100,
+    "initial": {
+      "button": [
+        110.796875,
+        472.6875,
+        153.390625,
+        48
+      ],
+      "label": [
+        163.796875,
+        486.53125,
+        75.390625,
+        20.296875
+      ],
+      "icon": "lock",
+      "glyph": [
+        135.796875,
+        486.6875,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng nhập",
+      "href": "/toi?next=%2F%3Fmode%3Dfollowing",
+      "focus": "",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          null
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/toi",
+    "screen": "login",
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "scale": 100,
+    "initial": {
+      "button": [
+        18.75,
+        344.578125,
+        337.5,
+        48
+      ],
+      "label": [
+        163.796875,
+        358.421875,
+        75.390625,
+        20.296875
+      ],
+      "icon": "lock",
+      "glyph": [
+        135.796875,
+        358.578125,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng nhập",
+      "href": null,
+      "focus": "",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    },
+    "pending": {
+      "button": [
+        18.75,
+        344.578125,
+        337.5,
+        48
+      ],
+      "label": [
+        163.796875,
+        358.421875,
+        75.390625,
+        20.296875
+      ],
+      "glyph": null,
+      "busy": "true",
+      "status": "Đang đăng nhập…",
+      "arcCount": 1,
+      "arcBeforeLabel": true,
+      "animation": "vk-ui-spin",
+      "iterations": "infinite",
+      "text": "Đăng nhập",
+      "href": null,
+      "focus": "password-login-submit",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    },
+    "reduced": {
+      "button": [
+        18.75,
+        344.578125,
+        337.5,
+        48
+      ],
+      "label": [
+        163.796875,
+        358.421875,
+        75.390625,
+        20.296875
+      ],
+      "glyph": null,
+      "busy": "true",
+      "status": "Đang đăng nhập…",
+      "arcCount": 1,
+      "arcBeforeLabel": true,
+      "animation": "vk-ui-spin",
+      "iterations": "0",
+      "text": "Đăng nhập",
+      "href": null,
+      "focus": "password-login-submit",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    },
+    "forced": {
+      "button": [
+        18.75,
+        356.578125,
+        337.5,
+        48
+      ],
+      "label": [
+        163.796875,
+        370.421875,
+        75.390625,
+        20.296875
+      ],
+      "glyph": null,
+      "busy": "true",
+      "status": "Đang đăng nhập…",
+      "arcCount": 1,
+      "arcBeforeLabel": true,
+      "animation": "vk-ui-spin",
+      "iterations": "0",
+      "text": "Đăng nhập",
+      "href": null,
+      "focus": "password-login-submit",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    },
+    "restored": {
+      "button": [
+        18.75,
+        386.171875,
+        337.5,
+        48
+      ],
+      "label": [
+        163.796875,
+        400.015625,
+        75.390625,
+        20.296875
+      ],
+      "icon": "lock",
+      "glyph": [
+        135.796875,
+        400.171875,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng nhập",
+      "href": null,
+      "focus": "password-login-submit",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/toi",
+    "screen": "register",
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "scale": 100,
+    "initial": {
+      "button": [
+        18.75,
+        270.6875,
+        337.5,
+        48
+      ],
+      "label": [
+        144.65625,
+        284.53125,
+        113.6875,
+        20.296875
+      ],
+      "icon": "mail",
+      "glyph": [
+        116.65625,
+        284.6875,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Gửi mã xác minh",
+      "href": null,
+      "focus": "registration-address",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/toi",
+    "screen": "email",
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "scale": 100,
+    "initial": {
+      "button": [
+        18.75,
+        307.484375,
+        337.5,
+        48
+      ],
+      "label": [
+        138.40625,
+        321.328125,
+        126.1875,
+        20.296875
+      ],
+      "icon": "mail",
+      "glyph": [
+        110.40625,
+        321.484375,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Gửi mã đăng nhập",
+      "href": null,
+      "focus": "sign-in-address",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/ban-viet",
+    "screen": "desk",
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "scale": 100,
+    "initial": {
+      "button": [
+        33.453125,
+        435.796875,
+        153.390625,
+        48
+      ],
+      "label": [
+        86.453125,
+        449.640625,
+        75.390625,
+        20.296875
+      ],
+      "icon": "lock",
+      "glyph": [
+        58.453125,
+        449.796875,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng nhập",
+      "href": "/toi?next=/ban-viet",
+      "focus": "",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          null
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/?mode=following",
+    "screen": "following",
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "scale": 100,
+    "initial": {
+      "button": [
+        110.796875,
+        472.6875,
+        153.390625,
+        48
+      ],
+      "label": [
+        163.796875,
+        486.53125,
+        75.390625,
+        20.296875
+      ],
+      "icon": "lock",
+      "glyph": [
+        135.796875,
+        486.6875,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng nhập",
+      "href": "/toi?next=%2F%3Fmode%3Dfollowing",
+      "focus": "",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          null
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/toi",
+    "screen": "login",
+    "width": 320,
+    "height": 800,
+    "theme": "dark",
+    "scale": 200,
+    "initial": {
+      "button": [
+        16,
+        255.375,
+        273,
+        129.1875
+      ],
+      "label": [
+        100,
+        279.375,
+        141,
+        81.1875
+      ],
+      "icon": "lock",
+      "glyph": [
+        64,
+        309.96875,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng nhập",
+      "href": null,
+      "focus": "",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "32px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/toi",
+    "screen": "register",
+    "width": 320,
+    "height": 800,
+    "theme": "dark",
+    "scale": 200,
+    "initial": {
+      "button": [
+        16,
+        286.984375,
+        273,
+        129.1875
+      ],
+      "label": [
+        100,
+        310.984375,
+        141,
+        81.1875
+      ],
+      "icon": "mail",
+      "glyph": [
+        64,
+        341.578125,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Gửi mã xác minh",
+      "href": null,
+      "focus": "registration-address",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "32px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/toi",
+    "screen": "email",
+    "width": 320,
+    "height": 800,
+    "theme": "dark",
+    "scale": 200,
+    "initial": {
+      "button": [
+        16,
+        267.171875,
+        273,
+        169.78125
+      ],
+      "label": [
+        100,
+        291.171875,
+        141,
+        121.78125
+      ],
+      "icon": "mail",
+      "glyph": [
+        64,
+        342.0625,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Gửi mã đăng nhập",
+      "href": null,
+      "focus": "sign-in-address",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "32px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/ban-viet",
+    "screen": "desk",
+    "width": 320,
+    "height": 800,
+    "theme": "dark",
+    "scale": 200,
+    "initial": {
+      "button": [
+        16,
+        254.140625,
+        273,
+        131.1875
+      ],
+      "label": [
+        101,
+        279.140625,
+        139,
+        81.1875
+      ],
+      "icon": "lock",
+      "glyph": [
+        65,
+        309.734375,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng nhập",
+      "href": "/toi?next=/ban-viet",
+      "focus": "",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          null
+        ]
+      ],
+      "rootPx": "32px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/?mode=following",
+    "screen": "following",
+    "width": 320,
+    "height": 800,
+    "theme": "dark",
+    "scale": 200,
+    "initial": {
+      "button": [
+        16,
+        384.78125,
+        273,
+        131.1875
+      ],
+      "label": [
+        101,
+        409.78125,
+        139,
+        81.1875
+      ],
+      "icon": "lock",
+      "glyph": [
+        65,
+        440.375,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng nhập",
+      "href": "/toi?next=%2F%3Fmode%3Dfollowing",
+      "focus": "",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          null
+        ]
+      ],
+      "rootPx": "32px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/toi",
+    "screen": "login",
+    "width": 834,
+    "height": 900,
+    "theme": "light",
+    "scale": 150,
+    "initial": {
+      "button": [
+        169.5,
+        502.875,
+        576,
+        66.4375
+      ],
+      "label": [
+        416.953125,
+        520.875,
+        113.09375,
+        30.4375
+      ],
+      "icon": "lock",
+      "glyph": [
+        384.953125,
+        526.09375,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng nhập",
+      "href": null,
+      "focus": "",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "24px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/toi",
+    "screen": "register",
+    "width": 834,
+    "height": 900,
+    "theme": "light",
+    "scale": 150,
+    "initial": {
+      "button": [
+        169.5,
+        392.03125,
+        576,
+        66.4375
+      ],
+      "label": [
+        388.234375,
+        410.03125,
+        170.53125,
+        30.4375
+      ],
+      "icon": "mail",
+      "glyph": [
+        356.234375,
+        415.25,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Gửi mã xác minh",
+      "href": null,
+      "focus": "registration-address",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "24px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/toi",
+    "screen": "email",
+    "width": 834,
+    "height": 900,
+    "theme": "light",
+    "scale": 150,
+    "initial": {
+      "button": [
+        169.5,
+        392.03125,
+        576,
+        66.4375
+      ],
+      "label": [
+        378.859375,
+        410.03125,
+        189.28125,
+        30.4375
+      ],
+      "icon": "mail",
+      "glyph": [
+        346.859375,
+        415.25,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Gửi mã đăng nhập",
+      "href": null,
+      "focus": "sign-in-address",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "24px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/ban-viet",
+    "screen": "desk",
+    "width": 834,
+    "height": 900,
+    "theme": "light",
+    "scale": 150,
+    "initial": {
+      "button": [
+        231.921875,
+        531.421875,
+        219.09375,
+        68.4375
+      ],
+      "label": [
+        300.921875,
+        550.421875,
+        113.09375,
+        30.4375
+      ],
+      "icon": "lock",
+      "glyph": [
+        268.921875,
+        555.640625,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng nhập",
+      "href": "/toi?next=/ban-viet",
+      "focus": "",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          null
+        ]
+      ],
+      "rootPx": "24px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/?mode=following",
+    "screen": "following",
+    "width": 834,
+    "height": 900,
+    "theme": "light",
+    "scale": 150,
+    "initial": {
+      "button": [
+        347.953125,
+        573.828125,
+        219.09375,
+        68.4375
+      ],
+      "label": [
+        416.953125,
+        592.828125,
+        113.09375,
+        30.4375
+      ],
+      "icon": "lock",
+      "glyph": [
+        384.953125,
+        598.046875,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng nhập",
+      "href": "/toi?next=%2F%3Fmode%3Dfollowing",
+      "focus": "",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          null
+        ]
+      ],
+      "rootPx": "24px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/toi",
+    "screen": "login",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "scale": 100,
+    "initial": {
+      "button": [
+        630.5,
+        373.078125,
+        384,
+        48
+      ],
+      "label": [
+        798.796875,
+        386.921875,
+        75.390625,
+        20.296875
+      ],
+      "icon": "lock",
+      "glyph": [
+        770.796875,
+        387.078125,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng nhập",
+      "href": null,
+      "focus": "",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/toi",
+    "screen": "register",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "scale": 100,
+    "initial": {
+      "button": [
+        630.5,
+        299.1875,
+        384,
+        48
+      ],
+      "label": [
+        779.65625,
+        313.03125,
+        113.6875,
+        20.296875
+      ],
+      "icon": "mail",
+      "glyph": [
+        751.65625,
+        313.1875,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Gửi mã xác minh",
+      "href": null,
+      "focus": "registration-address",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/toi",
+    "screen": "email",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "scale": 100,
+    "initial": {
+      "button": [
+        630.5,
+        340.484375,
+        384,
+        48
+      ],
+      "label": [
+        773.40625,
+        354.328125,
+        126.1875,
+        20.296875
+      ],
+      "icon": "mail",
+      "glyph": [
+        745.40625,
+        354.484375,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Gửi mã đăng nhập",
+      "href": null,
+      "focus": "sign-in-address",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          "page"
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/ban-viet",
+    "screen": "desk",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "scale": 100,
+    "initial": {
+      "button": [
+        668.453125,
+        519.09375,
+        153.390625,
+        48
+      ],
+      "label": [
+        721.453125,
+        532.9375,
+        75.390625,
+        20.296875
+      ],
+      "icon": "lock",
+      "glyph": [
+        693.453125,
+        533.09375,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng nhập",
+      "href": "/toi?next=/ban-viet",
+      "focus": "",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          null
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    }
+  },
+  {
+    "sha": "9def42688c02a295e1856d2fc2a52fd84d7da797",
+    "fixture": "loopback guest session, Product SPA",
+    "route": "/?mode=following",
+    "screen": "following",
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "scale": 100,
+    "initial": {
+      "button": [
+        745.796875,
+        562.6875,
+        153.390625,
+        48
+      ],
+      "label": [
+        798.796875,
+        576.53125,
+        75.390625,
+        20.296875
+      ],
+      "icon": "lock",
+      "glyph": [
+        770.796875,
+        576.6875,
+        20,
+        20
+      ],
+      "busy": null,
+      "arcCount": 0,
+      "arcBeforeLabel": false,
+      "text": "Đăng nhập",
+      "href": "/toi?next=%2F%3Fmode%3Dfollowing",
+      "focus": "",
+      "nav": [
+        [
+          "Đăng nhập",
+          "lock",
+          null
+        ]
+      ],
+      "rootPx": "16px",
+      "overflow": -15
+    }
+  }
+]
