@@ -350,8 +350,8 @@ fn search_author_identity(author: PublicAuthorRef, id: String, q: &str) -> AnyVi
                 <a class="vk-ui-byline__identity" id=id aria-label=label data-profile-return="true" href=profile.href.clone()>
                     <Avatar name=avatar_name size=AvatarSize::Feed decorative=true />
                     <span class="vk-ui-byline__text">
-                        <span class="vk-ui-byline__name" data-blank=blank.then_some("true")>{name}</span>
-                        <span class="vk-ui-byline__handle"><mark class="vk-search-mark">{handle}</mark></span>
+                        <span class="vk-ui-byline__name vk-ui-identity-name" data-blank=blank.then_some("true")>{name}</span>
+                        <span class="vk-ui-byline__handle vk-ui-identity-handle"><mark class="vk-search-mark">{handle}</mark></span>
                     </span>
                 </a>
             </div>

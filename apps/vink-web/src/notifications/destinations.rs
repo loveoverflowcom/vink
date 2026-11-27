@@ -329,7 +329,7 @@ fn EndorserList(work: String, revision: String, title: String, compact: bool) ->
                         view! { <li>
                             {if let Some(handle) = handle {
                                 let href = format!("/@{}", segment(&handle));
-                                view! { <a href=href>{avatar}<span><strong class="vk-ui-identity-name">{name}</strong><small class="vk-ui-identity-handle">{format!("@{handle}")}</small></span></a> }.into_any()
+                                view! { <a href=href>{avatar}<span class="min-w-0"><strong class="vk-ui-identity-name">{name}</strong><small class="vk-ui-identity-handle">{format!("@{handle}")}</small></span></a> }.into_any()
                             } else {
                                 view! { <div>{avatar}<strong class="vk-ui-identity-name">{name}</strong></div> }.into_any()
                             }}

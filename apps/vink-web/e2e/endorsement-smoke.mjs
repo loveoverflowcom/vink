@@ -246,6 +246,14 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
     await page.waitFor(`location.pathname.endsWith('/tham/${SAMPLE_REVISION}')
       && document.querySelector('main .vk-notif-endorsers li')
       && !document.querySelector('#notification-bell-mobile')`, 'real public Thấm membership on the mobile route');
+    check(await page.eval(`(() => {
+      const row = document.querySelector('main .vk-notif-endorsers li');
+      const name = row.querySelector('.vk-ui-identity-name');
+      const handle = row.querySelector('.vk-ui-identity-handle');
+      return name && getComputedStyle(name).webkitLineClamp === '2' &&
+        (!handle || getComputedStyle(handle).textOverflow === 'ellipsis') &&
+        document.documentElement.scrollWidth <= innerWidth + 1;
+    })()`), '#605 public Thấm identity uses the shared summary recipe and fits on mobile');
     await page.viewport(1440);
     await page.eval('history.back()');
     await page.waitFor(`location.pathname.endsWith('${SAMPLE_WORK}') && (${ready})`, 'return to the Reader');

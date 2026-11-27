@@ -550,6 +550,7 @@ async function longHandleReflow(page, base, presentation) {
       const heading = ${q(HEADING)};
       const row = ${link}.closest('li');
       const handle = row.querySelector('.vk-ui-byline__handle');
+      const handleStyle = getComputedStyle(handle);
       const edges = ({ left, right }) => [left, right];
       const textEdges = node => {
         const range = document.createRange();
@@ -561,14 +562,17 @@ async function longHandleReflow(page, base, presentation) {
         heading: edges(heading.getBoundingClientRect()),
         headingText: textEdges(heading),
         row: edges(row.getBoundingClientRect()),
-        handleText: textEdges(handle),
+        handleBounds: edges(handle.getBoundingClientRect()),
+        singleHandleLine: handleStyle.textOverflow === 'ellipsis' && handleStyle.whiteSpace === 'nowrap'
+          && handle.clientHeight <= parseFloat(handleStyle.lineHeight) + 1,
         fullText: heading.textContent.includes(${JSON.stringify(query)})
-          && handle.textContent.trim() === ${JSON.stringify(query)},
+          && handle.textContent.trim() === ${JSON.stringify(query)}
+          && ${link}.getAttribute('aria-label').includes(${JSON.stringify(query)}),
       };
     })()`);
     const inside = ([left, right]) => right > left && left >= -1 && right <= layout.clientWidth + 1;
-    const bounds = [layout.heading, layout.row, ...layout.headingText, ...layout.handleText];
-    presentation(layout.fullText && layout.scrollWidth <= layout.clientWidth + 1 && bounds.every(inside),
+    const bounds = [layout.heading, layout.row, ...layout.headingText, layout.handleBounds];
+    presentation(layout.fullText && layout.singleHandleLine && layout.scrollWidth <= layout.clientWidth + 1 && bounds.every(inside),
       `S6 exact long @handle fits the heading and row at ${width}px/${theme}/${scale}% (${JSON.stringify(layout)})`);
   }
 }
