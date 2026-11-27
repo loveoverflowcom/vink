@@ -15,7 +15,7 @@ Nguồn: [Epic #323](https://github.com/loveoverflowcom/vink/issues/323),
 | --- | --- |
 | Quyết định sản phẩm | VIEW-01..12 `r1` là `PRODUCT_CONFIRMED` ngày 21/11/2026 ([VDR-WORK-VIEWS@r1](../../decisions/proposals/VDR-WORK-VIEWS.r1.toml) + [signoff](../../decisions/signoffs/VDR-WORK-VIEWS.r1.toml), revision đang kích hoạt của marker VDR). Delta 25/11/2026 (`#323`/`#340`: ngưỡng 5 giây foreground cấu hình tập trung, `OQ-1=A`, `OQ-2`, `OQ-3A/B`, `OQ-4`, `UX-01..10`, giữ riêng tư, `D-01` Thấm → Nhận xét → Lượt xem, `D-02` bỏ nút Đọc ở Bàn viết) được chủ sản phẩm chốt trên issue và ghi thành [VDR-WORK-VIEWS@r2](../../decisions/proposals/VDR-WORK-VIEWS.r2.toml) (`PENDING` chờ signoff đúng payload/SHA-256 theo `VDR-DECISION-SIGNOFF@r1`). |
 | Quyết định kiến trúc | CHOICE-02 A, CHOICE-03 và CHOICE-06 A `DESIGN_PROPOSED` bởi #341 (§7.1); CHOICE-05 A `DESIGN_PROPOSED` bởi #342 (§9.1); CHOICE-01, CHOICE-04 và CHOICE-POLICY `DESIGN_PROPOSED` bởi #343 (§10). Thiết kế r3 Bàn viết ([LayoutSpec](../design/work-views.md)) giữ `DESIGN_PROPOSED`; `DQ-05` và `DQ-10` giữ `OPEN`. Chưa lựa chọn kiến trúc nào `Accepted`. |
-| Mức triển khai | Đường ghi #341: `core` + PostgreSQL + dọn hạn `vink-worker`. Đọc #342: `persistence-api` (`views` của `GET /api/v1/author/works`). #343: `vink-work-view-policy` + HTTP `POST /api/v1/works/{work_id}/views` + cookie khách + Reader visibility tracker & retry hữu hạn. #514 (ghép thêm commit trong PR #519 theo yêu cầu chủ sản phẩm): UI Bàn viết Design r3 (`AuthorWorkRow`, `DeskIndex`, `#views-explainer`), bỏ nút Đọc (`D-02`), thứ tự `Thấm → Nhận xét → Lượt xem` (`D-01`), và đồng bộ `docs/design/*`. |
+| Mức triển khai | Đường ghi #341: `core` + PostgreSQL + dọn hạn `vink-worker`. Đọc #342: `persistence-api` (`views` của `GET /api/v1/author/works`). #343: `vink-work-view-policy` + HTTP `POST /api/v1/works/{work_id}/views` + cookie khách + Reader visibility tracker & retry hữu hạn. #514 (ghép thêm commit trong PR #519 theo yêu cầu chủ sản phẩm): UI Bàn viết Design r3 (`AuthorWorkRow`, `DeskIndex`, `#views-explainer`), bỏ nút Đọc (`D-02`), thứ tự `Thấm → Nhận xét → Lượt xem` (`D-01`), và đồng bộ `docs/design/*`. Xóa tài khoản tác giả (#550) gọi `erase_work` trong giao dịch fence (`OQ-2`); race, rollback và tài khoản người đọc kiểm ở §13. Route xóa tác phẩm và admin gỡ cả bài: `CONDITIONAL_DEFERRED` (owner Publication). |
 | Bằng chứng | #340 r1: kiểm tài liệu (§6); #341: unit + PostgreSQL (§7.6); #342: unit/contract + PostgreSQL qua HTTP (§9.5); #343 & #514: cập nhật tại §10.3 và §11 sau khi chạy scoped checks + Chrome thực trên `HEAD` cuối. |
 
 ## 2. Snapshot quyết định
@@ -49,10 +49,10 @@ revision hay signoff mới; người tiếp tục tra lại.
 | VIEW-05 | `core` + PostgreSQL (#341) | #341 | So principal với `works.owner_id` tại lúc ghi; client hủy nếu đổi authority phiên. |
 | VIEW-06 | Khóa ghi: `core` + PostgreSQL (#341). Đọc: `persistence-api` (#342) | #341 (khóa ghi), #342 (đọc không reset) | Mọi bảng khóa theo `WorkId`; revision chỉ là căn cứ ghi trong receipt. Đọc không nhìn revision. |
 | VIEW-07 | `persistence-api` (#342) + `web` (#514) | #342, #514 | Chỉ `GET /api/v1/author/works` của phiên chủ; không API công khai; D-01 thứ tự Thấm → Nhận xét → Lượt xem; D-02 bỏ hẳn nút “Đọc” trên Bàn viết. |
-| VIEW-08 | Phía ghi: `core` + PostgreSQL (#341). Đọc: `persistence-api` (#342) + `web` (#514) | #342 (đọc), #341 (không tăng khi hết công khai), #514 (hiển thị lịch sử) | Tổng không bao giờ giảm khi ẩn/rút/admin gỡ cả bài (`OQ-4`). Bài riêng tư/ẩn giữ số cũ theo `OQ-1 = A`. |
+| VIEW-08 | Phía ghi: `core` + PostgreSQL (#341). Đọc: `persistence-api` (#342) + `web` (#514) | #342 (đọc), #341 (không tăng khi hết công khai), #514 (hiển thị lịch sử) | Tổng không bao giờ giảm khi ẩn/rút (`OQ-1 = A`, kiểm PostgreSQL). Admin gỡ cả bài (`OQ-4`): luật đọc theo `WorkId` không nhìn lifecycle, nhưng chưa có route admin nên chưa có ca runtime (`CONDITIONAL_DEFERRED`, §13). |
 | VIEW-09 | Mốc lưu ở `work_view_counting` (#341). Dữ liệu nhãn: `persistence-api` (`counted_since`, #342). Nhãn hiển thị: `web` (#514) | #342, #514 | Không backfill; mốc là lần quyết định sự kiện đầu tiên; hiển thị “Tính từ dd/mm/yyyy” theo `Asia/Ho_Chi_Minh`. |
 | VIEW-10 | Idempotency: `core` + PostgreSQL (#341). Retry hữu hạn: `web` (#343) | #343 (retry), #341 (idempotency) | Kỳ vọng khoảng 1 phút, không SLA. Retry cùng UUIDv7 trong tab; lỗi thống kê không cản đọc. |
-| VIEW-11 | `core` + PostgreSQL + `vink-worker` (#341) | #341, PR có route xóa (`OQ-2`) | Ba loại dữ liệu; cửa sổ và receipt xóa sau 24 giờ (chu kỳ dọn mỗi giờ). Xóa theo `WorkId` có hàm `erase_work`, route xóa thuộc PR xóa tác phẩm/tài khoản tương lai (`OQ-2`). |
+| VIEW-11 | `core` + PostgreSQL + `vink-worker` (#341); xóa theo tài khoản tác giả: `persistence-api` (#550) | #341, #550 (xóa tài khoản), PR có route xóa tác phẩm (`OQ-2`) | Ba loại dữ liệu; cửa sổ và receipt xóa sau 24 giờ (chu kỳ dọn mỗi giờ). `erase_work` chạy trong giao dịch fence xóa tài khoản (§13). Route xóa tác phẩm: `CONDITIONAL_DEFERRED`. |
 | VIEW-12 | Trạng thái dữ liệu: `persistence-api` (`views.state`, #342). UI + copy + dialog giải thích: `web` (#514) | #342 (dữ liệu), #514 (hiển thị & UX-01..10) | Giải thích `UX-07` (`#views-explainer`) lấy ngưỡng từ cùng nguồn `vink-work-view-policy`. |
 
 ## 4. Bản đồ P/CHOICE sang issue và kế hoạch 2 PR
@@ -366,9 +366,9 @@ nhìn trạng thái publication, nên đổi revision, chuyển riêng tư, ẩn
 - **Quyền.** Chủ lấy từ phiên (`Actor`); không nhận owner ID từ client; khách `401`, Identity lỗi
   `503`, đều `no-store`. Đọc của chính tác giả không đi qua standing fence, như phần còn lại của
   read-model (đình chỉ vẫn đọc được bài mình); quyền sở hữu không chuyển được.
-- **OQ-2, OQ-4.** Chưa có route xóa tác phẩm/tài khoản hay admin gỡ cả bài, nên không có ca runtime.
-  Khi route xóa có, `erase_work` (#341) xóa hàng và tác phẩm rời danh sách; quyết định cho admin
-  gỡ cả bài vẫn `OPEN`, không tự áp P-08.
+- **OQ-2, OQ-4** (ghi lúc #342; hiện trạng ở §13). Lúc đó chưa có route xóa nào. Xóa tài khoản
+  tác giả (#550) nay gọi `erase_work`; `OQ-4` đã chốt trong `VDR-WORK-VIEWS@r2` (`PENDING`) và
+  vẫn chưa có route admin gỡ cả bài.
 
 ### 9.3 Hợp đồng và ví dụ
 
@@ -518,4 +518,122 @@ Lượt gộp `reader` và `standalone` đầu tiên trên `96fbf0fb` mất ph�
 
 `VDR-WORK-VIEWS@r1` vẫn active và `PRODUCT_CONFIRMED`. `VDR-WORK-VIEWS@r2`
 `PENDING`, CHOICE và LayoutSpec r3 `DESIGN_PROPOSED`, `DQ-05` và `DQ-10` `OPEN`.
-Phạm vi triển khai còn lại gồm các route xóa của OQ-2 và gỡ cả bài của OQ-4.
+Phạm vi triển khai còn lại lúc đó gồm các route xóa của OQ-2 và gỡ cả bài của OQ-4. §13 ghi
+hiện trạng sau #550.
+
+## 13. Vòng đời và xóa tài khoản (OQ-1/OQ-2/OQ-4)
+
+Nguồn: [Epic #323](https://github.com/loveoverflowcom/vink/issues/323), `#340`–`#342`, liên quan
+[#297](https://github.com/loveoverflowcom/vink/issues/297) /
+[PR #550](https://github.com/loveoverflowcom/vink/pull/550) (xóa tài khoản) và
+[PR #519](https://github.com/loveoverflowcom/vink/pull/519) (`#343` + `#514`). Base
+`develop@91191186`. Đặc tả áp dụng là `VDR-WORK-VIEWS@r2` (`PENDING`); `@r1` vẫn active. Lượt này
+không đổi luật sản phẩm, schema, HTTP, Web, chính sách 5 giây hay 24 giờ.
+
+### 13.1 Kết quả audit vòng đời
+
+`record_view` chỉ đếm khi có pointer `publications` tại lúc quyết định, khóa pointer `FOR SHARE`,
+rồi khóa principal của chủ `FOR KEY SHARE` và đọc `account_deletions`. Luật đọc (§9.2) không nhìn
+lifecycle. Bảng dưới đối chiếu từng đường với code và test hiện có.
+
+| Đường | Kết quả mong đợi | Code | Bằng chứng PostgreSQL |
+| --- | --- | --- | --- |
+| Công khai → riêng tư (`set-private`, L-07) | Giữ số cũ (`OQ-1 = A`), +0 khi riêng tư | `PointerEffect::Clear` → `Skipped(not_public)` | `shared_timeline_oracle_on_postgres`, `a_withdrawal_committed_before_the_decision_skips_the_view`, `a_view_decided_before_the_withdrawal_commits_counts`, `http_view_intake_drives_guest_member_dedup_retry_privacy_and_author_readback` |
+| Riêng tư → công khai (L-09) | Đếm tiếp từ số cũ; người có lượt trong 24 giờ vẫn bị chặn | Pointer đặt lại, cửa sổ theo `WorkId` | Các bước `set_private`/`restore` của `scenario.json`; bước 10 của test HTTP intake |
+| Rút sau kiểm duyệt (`O-17@r2`, L-08) | Giữ số, +0 | Pointer bị xóa qua route ca duyệt | `views_survive_review_withdrawal_and_count_on_after_republication`; bước 10 HTTP intake |
+| Đăng lại với revision mới (L-06) | Cộng dồn theo `WorkId`, không reset | Receipt ghi `basis_revision_id`, tổng theo `WorkId` | Bước 10–11 của `scenario.json` (r2 thay r1 qua evaluator thật) |
+| Admin gỡ cả bài (`PUB-05 C`, L-14, `OQ-4`) | Giữ số riêng tư, +0 | Core có `apply_admin_remove`; **không có route** | `CONDITIONAL_DEFERRED`: owner Publication/Moderation. Route nào đưa vào runtime phải giữ hàng Lượt xem và thêm test đọc lại |
+| Xóa tài khoản tác giả (L-11, `OQ-2`) | Xóa cả bốn bảng của mọi tác phẩm; không lượt nào tái tạo dữ liệu | `apply_account_deletion` → `retire_owned_work` → `erase_work`; `record_view` đọc fence | Test của #550 và năm test mới ở §13.2 |
+| Xóa tài khoản người đọc | Không trừ tổng; cửa sổ băm tự hết hạn | Không hàng nào lưu theo người | `a_reader_account_deletion_keeps_the_counts_it_contributed` |
+| Tác giả xóa tác phẩm (L-10, `PUB-04`) | Xóa số liệu trong cùng giao dịch | **Không có route** | `CONDITIONAL_DEFERRED`: owner Publication. Route đó phải gọi `erase_work` (hoặc xóa hàng `works`, cascade) kèm test |
+
+Không thấy gap hành vi nào trong code. Gap có bằng chứng là thiếu test cho race giữa intake và
+xóa tài khoản, cho rollback/retry khi xóa lỗi sau `erase_work` và cho tài khoản người đọc. Doc
+comment của `erase_work` mô tả thiếu: pointer lock chỉ phủ bài công khai, bài riêng tư dựa vào
+fence principal. Lượt này thêm test và sửa doc comment, không đổi lock hay transaction.
+
+### 13.2 Thứ tự khóa khi xóa tài khoản
+
+| Bước | Quyết định lượt xem (`record_view`) | Xóa tài khoản (`apply_account_deletion`) |
+| --- | --- | --- |
+| 1 | `publications` `FOR SHARE` | Advisory lock theo subject |
+| 2 | Principal chủ `FOR KEY SHARE`, rồi đọc `account_deletions` | Mỗi tác phẩm: `publications` `FOR UPDATE`, `work_publications` `FOR UPDATE`, `works` `FOR SHARE` |
+| 3 | Advisory lock theo sự kiện, receipt, cửa sổ `FOR UPDATE` | Principal `FOR UPDATE` (`locked_standing`) |
+| 4 | Ghi theo quyết định, commit | `account_deletions`, Social fence, `retire_owned_work` (`erase_work`, xóa pointer), tombstone principal, commit |
+
+Hai bên lấy `publications` rồi principal theo cùng thứ tự, nên không có deadlock. Bài công khai:
+lượt giữ pointer trước thì xóa chờ ở bước 2 và xóa luôn hàng vừa ghi; xóa giữ pointer trước thì
+lượt chờ, thấy pointer đã mất và fence đã commit, nên không ghi gì. Bài riêng tư không có hàng
+pointer: `FOR KEY SHARE` xung đột với `FOR UPDATE` của `locked_standing`, nên receipt `not_public`
+commit trước bước 3 của xóa và bị xóa theo. `lock_timeout = 2s` của xóa tài khoản giữ nguyên;
+một lượt giữ khóa lâu hơn làm lần xóa đó trả `Unavailable` và retry.
+
+| Test (`tests/postgres/work_view_lifecycle.rs`) | Thứ tự | Kết quả kiểm |
+| --- | --- | --- |
+| `a_public_view_decided_first_is_erased_by_the_author_deletion` | Lượt giữ pointer → xóa chờ | Lượt `Counted`; sau xóa bốn bảng 0; gửi lại cùng mã → `work_not_found`, vẫn 0 |
+| `a_private_view_decided_first_leaves_no_receipt_after_the_author_deletion` | Bài riêng tư giữ số cũ (`OQ-1 = A`); lượt giữ fence → xóa chờ | Lượt `Skipped(not_public)`; sau xóa bốn bảng 0 |
+| `a_view_waiting_behind_the_author_deletion_writes_nothing` | Xóa dừng sau `erase_work` → lượt mới và lượt gửi lại chờ | Cả hai `work_not_found`; bốn bảng 0; HTTP trả `204` + `no-store` như mọi `Ok` và không ghi gì |
+| `a_failed_author_deletion_keeps_views_and_its_retry_erases_them` | Lỗi chèn sau `erase_work` | Rollback giữ fence và số liệu (vẫn đếm được); retry xóa một lần; replay không đổi gì |
+| `a_reader_account_deletion_keeps_the_counts_it_contributed` | Xóa tài khoản người đọc | Tổng, tổng ngày và số tác giả đọc giữ nguyên; cửa sổ và receipt chỉ rời khi dọn hạn |
+
+### 13.3 Cách đọc trạng thái cho tác giả
+
+| Trạng thái | Khi nào | Bảo đảm |
+| --- | --- | --- |
+| `counted` 0 | Mốc đếm đã có, bài từng công khai, chưa có tổng | Chỉ trạng thái này hiện “0” |
+| `counted` > 0 khi bài riêng tư/rút | Số lịch sử (`OQ-1 = A`) | Không tăng khi không có pointer |
+| `not_started` | Chưa có sự kiện nào được quyết định trên hệ thống | Không phải 0 |
+| `never_public` | Bài chưa từng công khai | Không phải 0 |
+| `unavailable` | Lỗi nguồn số liệu hoặc dữ liệu không nhất quán | Tên, trạng thái, Thấm/Nhận xét còn |
+
+Chỉ phiên chủ tác phẩm đọc qua `GET /api/v1/author/works` (`no-store`); khách `401`, người khác
+không thấy tác phẩm. Ghi một lượt không đổi byte hay `ETag` của Reader, danh sách công khai và
+`/publication` (`only_the_owner_reads_views_and_no_public_surface_depends_on_them`). Lượt này không
+đổi đường đọc.
+
+### 13.4 Bằng chứng
+
+Chạy trên nhánh `fix/work-views-lifecycle` (base `develop@91191186`), Linux x86_64 (không phải
+Mac mini như prompt ghi), PostgreSQL `17.11-alpine` tạm trên loopback, build trong scope giới hạn
+RAM 12 GB. SHA commit ghi trong PR.
+
+| Lệnh | Ranh giới | Kết quả |
+| --- | --- | --- |
+| `cargo test -p vink-app --test postgres -- work_view account_deletion --test-threads=4` | postgres + router Axum | **PASS 29/29** (5 test mới, 24 cũ của `#341`–`#343` và `#550`) |
+| Đối chứng âm 1: tạm bỏ nhánh `account_deletions` trong `record_view` | postgres | **FAIL đúng** 4 test: 3 test mới và test của `#550` |
+| Đối chứng âm 2: tạm bỏ `FOR KEY SHARE OF p` | postgres | **FAIL đúng** `a_private_view_decided_first_leaves_no_receipt_after_the_author_deletion` (xóa không còn chờ lượt) |
+| `cargo fmt --all -- --check`, `cargo clippy -p vink-app --test postgres -- -D warnings` | format, lint | PASS |
+| `cargo xtask decision validate` | registry | PASS, 156 revision, snapshot `eb01b0eb95e1d0247f37215b62f7273388ffbfd063977d675bd540e1b858e541` |
+| `cargo xtask decision query VDR-WORK-VIEWS --history` | registry | `r1` `PRODUCT_CONFIRMED` `cfb789cc…`; `r2` `PENDING` `f6a3bcb7b8d27b188d18878e68efa1c04bb776ccaf0a06c3f27c57aded904a60` |
+
+Không chạy Kani/Quint: không đổi luật thuần `decide_view`/`read_view_count` hay mô hình nào.
+Không chạy browser: không đổi Web.
+
+### 13.5 Bản đồ AC-07/AC-08 của #323
+
+| AC | Đã có | Còn thiếu |
+| --- | --- | --- |
+| AC-07 | Luật và delta ở PRD §17, đặc tả §4/§7, `VDR-WORK-VIEWS@r2` (`PENDING`, `f6a3bcb7…`); `r1` và signoff giữ nguyên; ngưỡng một owner (`vink-work-view-policy`, §10); fixture và hợp đồng (§9.3, §10.2); lượt này đồng bộ L-10/L-11/L-14, §5, §9, §11 và hợp đồng intake với #550 | **Signoff `r2`** đúng revision/SHA-256 theo `VDR-DECISION-SIGNOFF@r1` (§13.6) |
+| AC-08 | Chrome + PostgreSQL thật ở PR #519 (§12): dưới ngưỡng, đúng ngưỡng, ẩn/tạm dừng, hủy điều hướng, prefetch/SSR/hydration, khách/thành viên/tự xem, 24 giờ, quyền, `503` retry cùng `event_id`, CSR standalone E-41. Mất phản hồi sau commit ở server: `lost_answer_and_restart_replay_without_effect` và replay HTTP | **Mất phản hồi sau commit ở ranh giới trình duyệt** (`NOT_RUN`: smoke chỉ có `503` trước commit). Cần một pha `work-views-smoke.mjs` chặn phản hồi `204` sau khi server đã ghi |
+
+### 13.6 Chuẩn bị signoff `VDR-WORK-VIEWS@r2`
+
+Lượt này không sửa payload `r2` nên hash giữ nguyên. Các câu chốt 25/11 trên #323/#340 là lời
+chốt sản phẩm, chưa phải signoff payload. Câu hỏi cần gửi chủ sản phẩm, nguyên văn:
+
+> Bạn duyệt `VDR-WORK-VIEWS@r2` (SHA-256 `f6a3bcb7b8d27b188d18878e68efa1c04bb776ccaf0a06c3f27c57aded904a60`,
+> `decisions/proposals/VDR-WORK-VIEWS.r2.toml`) để tôi ghi signoff không?
+
+Chỉ khi có câu trả lời của chính chủ sản phẩm cho đúng câu này mới chạy
+`cargo xtask decision signoff VDR-WORK-VIEWS@r2 f6a3bcb7… <INPUT>` và trích nguyên văn câu đó.
+Tới lúc đó `r2` giữ `PENDING`, marker `active VDR-WORK-VIEWS@r1` giữ nguyên.
+
+### 13.7 Phần còn mở
+
+| Mục | Trạng thái | Owner |
+| --- | --- | --- |
+| Route tác giả xóa tác phẩm (L-10, `PUB-04`) | `CONDITIONAL_DEFERRED`: PR đầu tiên đưa route vào phải gọi `erase_work` (hoặc xóa `works`) trong giao dịch và có test như §13.2 | Publication |
+| Admin gỡ cả bài (L-14, `PUB-05 C`, `OQ-4`) | `CONDITIONAL_DEFERRED`: route phải giữ hàng Lượt xem, +0, và có test đọc lại | Publication / Moderation |
+| Signoff `r2` | `PENDING` | Chủ sản phẩm |
+| Mất phản hồi sau commit ở trình duyệt (AC-08) | `NOT_RUN` | Web (`#343` owner) |
+| `O-08` purge vật lý | `OPEN`, tách khỏi OQ-2 | Publication |
