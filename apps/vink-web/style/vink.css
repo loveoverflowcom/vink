@@ -2139,6 +2139,7 @@ html:has(.vk-discovery:not(.vk-discovery--tag), .vk-desk--index) { scrollbar-gut
   block-size: auto;
   aspect-ratio: 512 / 427;
 }
+.vk-empty-state__title { color: var(--vk-on-surface); }
 .vk-empty-state__message {
   margin: 0;
   max-inline-size: 36ch;

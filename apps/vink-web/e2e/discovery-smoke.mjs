@@ -422,26 +422,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await page.click('#close-public-search');
   await page.waitFor("location.search==='' && document.querySelector('#explore').dataset.search==='closed' && document.activeElement?.id==='open-public-search' && getComputedStyle(document.querySelector('#bottom-navigation')).display!=='none'", '#308 r1 close-public-search returns to browse with focus on launcher');
 
-  const poetry = '/the/' + encodeURIComponent('thơ');
-  await goto(poetry);
-  await page.waitFor("document.querySelector('.vk-empty-state__art')?.naturalWidth === 512", 'c049 true empty tag retains artwork');
-  for (const [width,height,scale,theme] of [[390,844,100,'light'],[320,540,150,'light'],[320,540,200,'dark'],[1440,900,100,'dark']]) {
-    await page.viewport(width,height);
-    await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}; document.documentElement.style.fontSize='${scale}%'; document.fonts.ready`);
-    check(await page.eval(`(() => {
-      const a=document.querySelector('.vk-ui-back-link'), h=document.querySelector('#explore-heading h1'),
-        input=document.querySelector('#public-query'), search=input.closest('form'), main=document.querySelector('#community-stream');
-      return a.getAttribute('href')==='/' && a.textContent.trim()==='Về Khám phá' && a.firstElementChild.matches('[data-icon=arrow-back][aria-hidden=true]') &&
-        h.textContent==='Thơ' && a.getBoundingClientRect().bottom<=h.getBoundingClientRect().top+1 &&
-        search.getBoundingClientRect().top>=h.getBoundingClientRect().bottom-1 && input.labels[0].textContent==='Tìm trong thẻ' &&
-        !document.querySelector('#open-tag-filters,.vk-explore-modes') && !main.querySelector('a[href="/"]') &&
-        document.documentElement.scrollWidth<=innerWidth;
-    })()`), 'c049 parent, separate heading, native search and sole recovery '+[width,scale,theme]);
-    await page.capture('603-c049-'+[width,scale,theme].join('-'), {scenario:'tag-empty',boundary:'Product SSR + hydrated Chrome',requestedScene:{width,height,scale,theme}});
-  }
-  await goto(poetry+'?q=muc-603');
-  check(await page.eval(`new URL(document.querySelector('#clear-public-tags').href).searchParams.get('q')==='muc-603' &&
-    document.querySelector('#clear-public-results').getAttribute('href')===${JSON.stringify(poetry)}`), 'tag page clear-filter retains q and clear-query retains tag');
+  await tagRecovery(page, { args, check }, 'active');
 
   const catalog = await (await fetch(args.base + '/api/v1/tags')).json();
   const tag = catalog.tags.find(t => t.label === 'Ký ức');
@@ -550,6 +531,36 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     await submittedReadKeepsTyping(page, {args, check});
   }
   await goto('/');
+}
+
+// Both loopback servers read the same seeded catalog. The guest server has no dev principal.
+export async function tagRecovery(page, { args, check }, standing) {
+  const poetry = '/the/' + encodeURIComponent('thơ');
+  const goto = async path => {
+    await page.goto(args.base + path);
+    await page.waitFor("document.documentElement.dataset.hydrated === 'true' && document.querySelector('#public-query')", 'tag discovery hydration');
+  };
+  await goto(poetry);
+  const session = await page.eval("fetch('/api/v1/auth/session').then(response => response.json()).then(session => session.state)");
+  check(session === standing, 'tag capture uses the requested local session: ' + standing);
+  await page.waitFor("document.querySelector('.vk-empty-state__art')?.naturalWidth === 512", 'c049 true empty tag retains artwork');
+  for (const [width,height,scale,theme] of [[390,844,100,'light'],[320,540,150,'light'],[320,540,200,'dark'],[1440,900,100,'dark']]) {
+    await page.viewport(width,height);
+    await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}; document.documentElement.style.fontSize='${scale}%'; document.fonts.ready`);
+    check(await page.eval(`(() => {
+      const a=document.querySelector('.vk-ui-back-link'), h=document.querySelector('#explore-heading h1'),
+        input=document.querySelector('#public-query'), search=input.closest('form'), main=document.querySelector('#community-stream');
+      return a.getAttribute('href')==='/' && a.textContent.trim()==='Về Khám phá' && a.firstElementChild.matches('[data-icon=arrow-back][aria-hidden=true]') &&
+        h.textContent==='Thơ' && a.getBoundingClientRect().bottom<=h.getBoundingClientRect().top+1 &&
+        search.getBoundingClientRect().top>=h.getBoundingClientRect().bottom-1 && input.labels[0].textContent==='Tìm trong thẻ' &&
+        !document.querySelector('#open-tag-filters,.vk-explore-modes') && !main.querySelector('a[href="/"]') &&
+        document.documentElement.scrollWidth<=innerWidth;
+    })()`), 'c049 parent, separate heading, native search and sole recovery '+[width,scale,theme]);
+    await page.capture('603-c049-'+[standing,width,scale,theme].join('-'), {scenario:'tag-empty',boundary:'Product SSR + hydrated Chrome · '+standing,requestedScene:{width,height,scale,theme}});
+  }
+  await goto(poetry+'?q=muc-603');
+  check(await page.eval(`new URL(document.querySelector('#clear-public-tags').href).searchParams.get('q')==='muc-603' &&
+    document.querySelector('#clear-public-results').getAttribute('href')===${JSON.stringify(poetry)}`), 'tag page clear-filter retains q and clear-query retains tag');
 }
 
 async function catalogRecovery(page, {args, check, goto}) {

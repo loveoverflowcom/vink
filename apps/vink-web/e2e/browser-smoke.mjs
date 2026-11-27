@@ -14,7 +14,7 @@ import { defaultDocument, paragraphs } from './document.mjs';
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { checkSelectGeometry, selectCharacter } from '../../../packages/ui-system/leptos/e2e/select-geometry.mjs';
-import { discoveryReading, discoveryCorpus } from './discovery-smoke.mjs';
+import { discoveryReading, discoveryCorpus, tagRecovery } from './discovery-smoke.mjs';
 import { authorSearch } from './author-search-smoke.mjs';
 import { discoveryChipGeometry } from './discovery-chip-geometry.mjs';
 import { endorsementAsAuthor, endorsementAsReader } from './endorsement-smoke.mjs';
@@ -6724,7 +6724,10 @@ try {
     await readerRendering(page);
     check(await page.eval(`import('/pkg/vink-editor.js').then(runtime => typeof runtime.createEditor === 'function')`), 'the published editor module loads');
   }
-  else if (args.phase === 'reader-views') await workViewsE2E(page, { cdp, openPage: (isolated) => openPage(cdp, isolated), args, check });
+  else if (args.phase === 'reader-views') {
+    await tagRecovery(page, { args, check }, 'anonymous');
+    await workViewsE2E(page, { cdp, openPage: (isolated) => openPage(cdp, isolated), args, check });
+  }
   else if (args.phase === 'discussion') await discussionPhase(page);
   else if (args.phase === 'appearance-shell') await appearanceShellPhase(page);
   else if (args.phase === 'desk') await deskPhase(page);

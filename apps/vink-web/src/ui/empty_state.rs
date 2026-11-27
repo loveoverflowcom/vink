@@ -38,10 +38,10 @@ fn reveal_recovery(_event: leptos::ev::FocusEvent) {
             }
             if let Some(bar) = document().get_element_by_id("bottom-navigation") {
                 let bounds = bar.get_bounding_client_rect();
-                if bounds.height() > 0.0
-                    && control.get_bounding_client_rect().bottom() > bounds.top()
-                {
-                    control.scroll_into_view_with_bool(false);
+                let overlap = control.get_bounding_client_rect().bottom() - bounds.top();
+                if bounds.height() > 0.0 && overlap > 0.0 {
+                    // Leave room for the focus outline on the scrollable page.
+                    window().scroll_by_with_x_and_y(0.0, overlap.ceil() + 8.0);
                 }
             }
         });

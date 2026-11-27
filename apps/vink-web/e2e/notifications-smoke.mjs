@@ -340,6 +340,11 @@ async function inboxSessionStates(page, { args, check }, controlled) {
       [320,540,'light',100],[320,540,'light',150],[320,540,'dark',200],[1440,900,'light',100]]) {
       await preferences(page,width,theme,scale,height);
       await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}`);
+      await page.waitFor(`(() => {
+        const bar = document.getElementById('bottom-navigation');
+        return !bar.getClientRects().length || Math.abs(bar.getBoundingClientRect().height -
+          parseFloat(getComputedStyle(bar).getPropertyValue('--vk-ui-bar-height'))) < 1;
+      })()`, 'bottom navigation height has settled');
       await page.eval(`document.querySelector('${notFound} h1').focus()`);
       await page.key('Tab');
       await page.eval('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
@@ -348,6 +353,13 @@ async function inboxSessionStates(page, { args, check }, controlled) {
         const rect = link.getBoundingClientRect();
         const icon = link.querySelector('svg[data-icon=explore][aria-hidden=true]');
         const text = [...link.childNodes].find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
+        const title = document.querySelector('${notFound} h1');
+        const probe = document.createElement('span');
+        probe.style.color = 'var(--vk-on-surface)';
+        title.after(probe);
+        const titleColor = getComputedStyle(title).color === getComputedStyle(probe).color;
+        probe.remove();
+        const bar = document.getElementById('bottom-navigation').getBoundingClientRect();
         const label = document.createRange();
         if (text) label.selectNodeContents(text);
         const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
@@ -355,11 +367,12 @@ async function inboxSessionStates(page, { args, check }, controlled) {
           focus: link.matches(':focus-visible') && document.activeElement === link,
           label: link.textContent.trim(), leading: !!icon && !!text && icon.getBoundingClientRect().right <= label.getBoundingClientRect().left + 1,
           visible: link.contains(hit), hit: hit?.tagName + '.' + hit?.getAttribute('class'),
-          rect: rect.toJSON(), viewport: innerWidth, overflow: document.documentElement.scrollWidth - innerWidth,
+          titleColor, bottomLimit: bar.height ? bar.top : innerHeight, rect: rect.toJSON(), viewport: innerWidth, overflow: document.documentElement.scrollWidth - innerWidth,
         };
       })()`);
       check(recovery.focus && recovery.label === 'Về Khám phá' && recovery.leading &&
-        recovery.visible && recovery.rect.height >= 48 && recovery.rect.left >= 0 &&
+        recovery.visible && recovery.titleColor && recovery.rect.bottom + 2 <= recovery.bottomLimit &&
+        recovery.rect.height >= 48 && recovery.rect.left >= 0 &&
         recovery.rect.right <= recovery.viewport && recovery.overflow <= 0,
         'keyboard reaches leading compass above navigation '+[scene,width,theme,scale]+' '+JSON.stringify(recovery));
       await page.capture('603-'+[scene,width,theme,scale].join('-'), {scenario:scene,requestedScene:{width,height,theme,scale},boundary:'Product Chrome · synthetic session'});
