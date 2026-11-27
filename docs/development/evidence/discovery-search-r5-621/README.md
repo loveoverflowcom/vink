@@ -32,3 +32,31 @@ và Author Search. Hai lỗi static tại baseline là scanner nhầm literal tr
 Các phép đo và SHA-256 PNG nằm trong [measurements.json](measurements.json). Bộ ảnh đầy đủ, context
 và log nằm ngoài `target` ở `/Users/manhblue/vink-evidence/621`. Ma trận dùng app text scale;
 ảnh Light tablet replay dùng root font 200% như manifest lịch sử.
+
+## Đối chiếu lại trên cùng fixture
+
+Chạy cùng query và cùng fixture trên `develop@4bb11f23` và Product `aa51827a`, có đủ 24 cặp
+320/390/834/1440 CSS px, Light/Dark, chữ 100/150/200%. Probe baseline chỉ sửa tạm harness Chrome.
+Mã Product, WASM và CSS baseline dựng từ `4bb11f23`. Đã mở hai cặp Light/Dark ở 834×900, chữ 150%.
+
+| 834×900 | Baseline | Sau sửa |
+| --- | --- | --- |
+| Chiều cao thanh theo 100 / 150 / 200% | 56 / 56 / 68,80 px | 56 / 63,59 / 84,80 px |
+| Bán kính / border nghỉ | 16 / 0 px | 999 / 0 px |
+| Chữ nhập theo 100 / 150 / 200% | 16 / 24 / 32 px, weight 400 | 16 / 24 / 32 px, body token weight 400 |
+| Recovery trong panel / link Đang theo dõi trong nav khách | 2 / có | 1 / vắng |
+
+Hai bộ PNG, `contexts.json` và manifest cặp nằm ngoài target. Đường dẫn Mac mini là
+`/Users/manhblue/vink-evidence/621`, các bộ `before-matrix` và `after-author`.
+
+## Kiểm chứng local bổ sung
+
+- PASS `cargo xtask verify web --scenario reader --capture checks` và lane `discovery` trên head
+  test `a988bed8`. Reader giữ focus/artwork khi refresh, native GET, IME và recovery. X trên trang
+  có cursor thật giữ đủ hai thẻ lịch sử. Back phục hồi đúng trang, picker mới vẫn ghi một thẻ.
+- PASS `cargo xtask verify web` theo các scenario `desk`, `password` và `standalone`, capture checks.
+  Password dùng hai phiên Identity thật, kiểm Reader return, đổi phiên/ACK đến muộn và feed 401.
+- PASS `cargo xtask verify unit web` (327 đạt, một benchmark ignored theo cấu hình),
+  `cargo xtask verify unit ui --filter search` (2 đạt), `cargo xtask verify preview` (938 capture),
+  Clippy SSR, rustfmt và static repo. Các phép thử chạy theo từng lane trên cùng mã Product.
+- Giới hạn của bằng chứng là Chrome/CDP. Chưa chạy IME hệ điều hành hoặc trình đọc màn hình thủ công.
