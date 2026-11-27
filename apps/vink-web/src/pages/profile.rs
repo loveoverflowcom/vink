@@ -107,7 +107,7 @@ fn OwnProfileLink() -> impl IntoView {
                                 </Link>
                             }.into_any(),
                             None => view! {
-                                <p role="status" class="vk-account-profile-note">"Thiết lập địa chỉ tác giả trong Chỉnh hồ sơ."</p>
+                                <p role="status" class="vk-account-profile-note">"Thiết lập địa chỉ trong Chỉnh hồ sơ."</p>
                             }.into_any(),
                         },
                         Err(ApiError::NotFound) => view! {
